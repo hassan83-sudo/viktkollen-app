@@ -24,6 +24,19 @@ function sanitizeText(value, fallback = '') {
   return value.trim().slice(0, 1000)
 }
 
+function parseWeight(value) {
+  const numericValue = Number(String(value ?? '').replace(',', '.').replace(' kg', ''))
+
+  return Number.isFinite(numericValue) && numericValue > 0 ? numericValue : null
+}
+
+function formatWeight(value) {
+  return value.toLocaleString('sv-SE', {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 1,
+  })
+}
+
 function countDoneFoods(foods = []) {
   return foods.filter((item) => item?.done).length
 }
@@ -47,8 +60,8 @@ function formatContext(body) {
     profile: {
       name: sanitizeText(profile.name, 'användaren'),
       goal: sanitizeText(profile.goal, 'hållbara vanor'),
-      startWeight: sanitizeText(profile.startWeight),
-      goalWeight: sanitizeText(profile.goalWeight),
+      startWeight: parseWeight(profile.startWeight),
+      goalWeight: parseWeight(profile.goalWeight),
       activityLevel: sanitizeText(profile.activityLevel),
     },
     current: {
@@ -73,11 +86,11 @@ function makeWeightSentence(context) {
   const goalWeight = context.profile.goalWeight
 
   if (hasValue(currentWeight) && hasValue(goalWeight)) {
-    return `Nuvarande vikt är ${currentWeight} kg och målvikt är ${goalWeight} kg.`
+    return `Nuvarande vikt är ${formatWeight(Number(currentWeight))} kg och målvikt är ${formatWeight(goalWeight)} kg.`
   }
 
   if (hasValue(currentWeight)) {
-    return `Nuvarande vikt är ${currentWeight} kg.`
+    return `Nuvarande vikt är ${formatWeight(Number(currentWeight))} kg.`
   }
 
   return 'Viktmålet saknas, så fokusera på vanor och måltidsstruktur.'

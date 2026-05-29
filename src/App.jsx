@@ -194,6 +194,14 @@ function formatWeight(value) {
   return `${formatDecimal(value)} kg`
 }
 
+function formatOptionalWeight(value) {
+  const numericValue = parseWeight(String(value ?? ''))
+
+  return Number.isFinite(numericValue) && numericValue > 0
+    ? formatWeight(numericValue)
+    : ''
+}
+
 function formatDate(date) {
   return new Intl.DateTimeFormat('sv-SE', {
     day: 'numeric',
@@ -206,7 +214,13 @@ function getTodayDate() {
 }
 
 function parseWeight(value) {
-  return Number(value.replace(',', '.'))
+  return Number(String(value).replace(',', '.'))
+}
+
+function isValidWeightInput(value) {
+  const numericValue = parseWeight(value)
+
+  return Number.isFinite(numericValue) && numericValue > 0
 }
 
 function makeMockPhotoAnalysis(profile, checkIn, foods) {
@@ -459,6 +473,7 @@ function App() {
     ...initialProfile,
     ...(readStoredValue(storageKeys.profile, null, isStoredProfile) ?? {}),
   }))
+  const [profileError, setProfileError] = useState('')
   const [showOnboarding, setShowOnboarding] = useState(() => !profile)
   const [checkIn, setCheckIn] = useState(() =>
     readStoredValue(storageKeys.checkIn, initialCheckIn, isStoredCheckIn),
@@ -490,6 +505,12 @@ function App() {
   const startWeight = weights[0]
   const weightChange = Number((latestWeight.value - startWeight.value).toFixed(1))
   const foodScore = foods.filter((item) => item.done).length
+  const safeProfileGoalWeight = formatOptionalWeight(profile?.goalWeight)
+  const profileSummaryParts = [
+    profile?.goal,
+    safeProfileGoalWeight ? `mål ${safeProfileGoalWeight}` : '',
+    profile?.activityLevel ? `aktivitet ${profile.activityLevel}` : '',
+  ].filter(Boolean)
   const habitScore = Math.round(
     ((checkIn.energy >= 6 ? 1 : 0) +
       (checkIn.steps >= 7000 ? 1 : 0) +
@@ -551,6 +572,8 @@ function App() {
 
   function saveProfile(event) {
     event.preventDefault()
+    setProfileError('')
+
     const nextProfile = {
       ...profileForm,
       name: profileForm.name.trim(),
@@ -558,12 +581,27 @@ function App() {
       goalWeight: profileForm.goalWeight.trim(),
     }
 
-    if (!nextProfile.name || !nextProfile.startWeight || !nextProfile.goalWeight) {
+    if (!nextProfile.name) {
+      setProfileError('Ange ditt namn.')
       return
     }
 
-    setProfile(nextProfile)
-    setProfileForm(nextProfile)
+    if (
+      !isValidWeightInput(nextProfile.startWeight) ||
+      !isValidWeightInput(nextProfile.goalWeight)
+    ) {
+      setProfileError('Startvikt och målvikt måste vara giltiga siffror.')
+      return
+    }
+
+    const normalizedProfile = {
+      ...nextProfile,
+      startWeight: formatDecimal(parseWeight(nextProfile.startWeight)),
+      goalWeight: formatDecimal(parseWeight(nextProfile.goalWeight)),
+    }
+
+    setProfile(normalizedProfile)
+    setProfileForm(normalizedProfile)
     setShowOnboarding(false)
   }
 
@@ -654,15 +692,14 @@ function App() {
   }
 
   function getValidatedProfile() {
+    const startWeight = formatOptionalWeight(profile?.startWeight)
+    const goalWeight = formatOptionalWeight(profile?.goalWeight)
+
     return {
       ...(profile?.name?.trim() && { name: profile.name.trim() }),
       ...(profile?.goal?.trim() && { goal: profile.goal.trim() }),
-      ...(profile?.startWeight?.trim() && {
-        startWeight: profile.startWeight.trim(),
-      }),
-      ...(profile?.goalWeight?.trim() && {
-        goalWeight: profile.goalWeight.trim(),
-      }),
+      ...(startWeight && { startWeight }),
+      ...(goalWeight && { goalWeight }),
       ...(profile?.activityLevel?.trim() && {
         activityLevel: profile.activityLevel.trim(),
       }),
@@ -862,6 +899,12 @@ function App() {
               </select>
             </label>
 
+            {profileError && (
+              <p className="form-error" role="alert">
+                {profileError}
+              </p>
+            )}
+
             <button type="submit">Spara och fortsätt</button>
           </form>
         </section>
@@ -878,8 +921,7 @@ function App() {
             {profile?.name ? `Hej ${profile.name}` : 'Coach för träning, mat och vanor'}
           </h1>
           <p className="profile-summary">
-            {profile?.goal} · mål {profile?.goalWeight} kg · aktivitet{' '}
-            {profile?.activityLevel}
+            {profileSummaryParts.join(' · ')}
           </p>
         </div>
         <div className="topbar-actions">

@@ -638,6 +638,17 @@ a:focus-visible {
   gap: 14px;
 }
 
+.form-error {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--warning-border);
+  border-radius: 8px;
+  color: var(--warning-text);
+  background: var(--warning-bg);
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .onboarding-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

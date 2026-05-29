@@ -204,6 +204,24 @@ function formatOptionalWeight(value) {
     : ''
 }
 
+function makeValidatedProfile(profile) {
+  const startWeight = formatOptionalWeight(profile?.startWeight)
+  const goalWeight =
+    profile?.goal === 'gå ner i vikt'
+      ? formatOptionalWeight(profile?.goalWeight)
+      : ''
+
+  return {
+    ...(profile?.name?.trim() && { name: profile.name.trim() }),
+    ...(profile?.goal?.trim() && { goal: profile.goal.trim() }),
+    ...(startWeight && { startWeight }),
+    ...(goalWeight && { goalWeight }),
+    ...(profile?.activityLevel?.trim() && {
+      activityLevel: profile.activityLevel.trim(),
+    }),
+  }
+}
+
 function formatDate(date) {
   return new Intl.DateTimeFormat('sv-SE', {
     day: 'numeric',
@@ -262,7 +280,9 @@ function makeCoachMessage(profile, checkIn, foods, meals, weightTrend, currentWe
   const goal = profile?.goal || 'hålla en stabil rutin'
   const goalWeight = parseWeight(profile?.goalWeight || '')
   const startWeight = parseWeight(profile?.startWeight || '')
-  const distanceToGoal = Number.isFinite(goalWeight)
+  const canDiscussWeightLoss = goal === 'gå ner i vikt'
+  const canDiscussMuscleGain = goal === 'bygga muskler'
+  const distanceToGoal = canDiscussWeightLoss && Number.isFinite(goalWeight)
     ? Number((currentWeight - goalWeight).toFixed(1))
     : null
   const totalProfileChange =
@@ -276,15 +296,22 @@ function makeCoachMessage(profile, checkIn, foods, meals, weightTrend, currentWe
         ? 'Med en lägre aktivitetsnivå räcker små, konsekventa steg långt.'
         : 'Din aktivitetsnivå är lagom för att bygga stabila vanor utan att pressa för hårt.'
 
-  const profileHint =
-    distanceToGoal !== null
-      ? `${name}, ditt mål är att ${goal}. Du ligger på ${formatWeight(currentWeight)} och målet är ${formatWeight(goalWeight)}, alltså ${formatWeight(Math.abs(distanceToGoal))} ${distanceToGoal >= 0 ? 'från' : 'förbi'} målet.`
-      : `${name}, ditt mål är att ${goal}. Dagens fokus är att hålla riktningen enkel och hållbar.`
+  let profileHint = `${name}, ditt mål är att ${goal}. Dagens fokus är att hålla riktningen enkel och hållbar.`
+
+  if (distanceToGoal !== null) {
+    profileHint = `${name}, ditt mål är att ${goal}. Du ligger på ${formatWeight(currentWeight)} och målet är ${formatWeight(goalWeight)}, alltså ${formatWeight(Math.abs(distanceToGoal))} ${distanceToGoal >= 0 ? 'från' : 'förbi'} målet.`
+  } else if (canDiscussMuscleGain) {
+    profileHint = `${name}, ditt mål är att bygga muskler. Nuvarande vikt är ${formatWeight(currentWeight)}; fokusera på styrka, protein och jämn energi.`
+  } else if (goal === 'hålla vikten') {
+    profileHint = `${name}, ditt mål är att hålla vikten. Nuvarande vikt är ${formatWeight(currentWeight)}; fokusera på stabila vanor och jämn energi.`
+  }
 
   const startHint =
-    totalProfileChange !== null
+    totalProfileChange !== null && canDiscussWeightLoss
       ? `Sedan din angivna startvikt är förändringen ${formatWeight(totalProfileChange)}.`
-      : ''
+      : totalProfileChange !== null
+        ? 'Startvikten finns sparad som bakgrund, men dagens fokus är vanor och energi.'
+        : ''
 
   const energyHint =
     checkIn.energy >= 7
@@ -315,12 +342,15 @@ function makeCoachMessage(profile, checkIn, foods, meals, weightTrend, currentWe
         ? `Du är på god väg med ${checkIn.steps.toLocaleString('sv-SE')} steg.`
         : `Du har ${checkIn.steps.toLocaleString('sv-SE')} steg hittills; ett kort, lugnt pass kan räcka.`
 
-  const trendHint =
-    weightTrend < 0
+  const trendHint = canDiscussWeightLoss
+    ? weightTrend < 0
       ? 'Den senaste vikttrenden går gradvis nedåt.'
       : weightTrend > 0
         ? 'Den senaste vikttrenden går lite uppåt, så fokusera på konsekvens i stället för att reagera hårt.'
         : 'Den senaste vikttrenden är jämn, vilket är användbar feedback inför nästa lilla justering.'
+    : canDiscussMuscleGain
+      ? 'Använd viktloggen som bakgrund och låt styrka, protein och återhämtning styra dagens val.'
+      : 'Använd viktloggen som bakgrund och låt stabila rutiner, energi och måltidsbalans styra dagens val.'
 
   return `${profileHint} ${startHint} ${activityHint} ${energyHint} ${stepsHint} ${nutritionHint} ${habitHint} ${mealHint} ${trendHint} Inga extrema upplägg behövs; sikta på en trygg, hållbar riktning.`
 }
@@ -330,6 +360,8 @@ function makeChatResponse(message, profile, checkIn, foods, meals, currentWeight
   const name = profile?.name || 'du'
   const goal = profile?.goal || 'hålla en stabil rutin'
   const goalWeight = profile?.goalWeight?.trim()
+  const canDiscussWeightLoss = goal === 'gå ner i vikt'
+  const canDiscussMuscleGain = goal === 'bygga muskler'
   const foodScore = foods.filter((item) => item.done).length
   const mealContext =
     meals.length > 0
@@ -339,9 +371,11 @@ function makeChatResponse(message, profile, checkIn, foods, meals, currentWeight
     checkIn.steps >= 7000
       ? `Stegen ser okej ut: ${checkIn.steps.toLocaleString('sv-SE')}.`
       : `Stegen är lite låga just nu: ${checkIn.steps.toLocaleString('sv-SE')}.`
-  const weightContext = goalWeight
+  const weightContext = canDiscussWeightLoss && goalWeight
     ? `Nuvarande vikt är ${formatWeight(currentWeight)} och målvikt är ${goalWeight} kg.`
-    : `Nuvarande vikt är ${formatWeight(currentWeight)}.`
+    : canDiscussMuscleGain
+      ? `Nuvarande vikt är ${formatWeight(currentWeight)}; fokusera på styrka, protein och jämn energi.`
+      : `Nuvarande vikt är ${formatWeight(currentWeight)}; fokusera på stabila vanor och jämn energi.`
   const intro = `${name}, utifrån målet att ${goal}: ${weightContext} Tänk hållbar riktning snarare än hårda regler.`
   const safety = 'Det här är allmänt wellness-stöd, inte medicinsk rådgivning.'
   const daysMatch = text.match(/(\d+)\s*(dag|dagar)/)
@@ -418,7 +452,7 @@ Dagens enkla handling: förbered ett mellanmål som tar under fem minuter.`
 - Välj en minsta nivå: 10 min promenad, en proteinrik måltid eller en punkt i checklistan.
 - ${activityContext} Det räcker att bygga vidare lugnt i dag.
 - Om humöret är ${checkIn.mood.toLowerCase()}, sänk ribban och gör något som skapar flyt.
-- Se viktmålet som en kompass, inte ett dagligt betyg.
+- Se dagens vanor som kompassen, inte en enskild vikt eller ett perfekt resultat.
 
 ${safety}
 
@@ -440,10 +474,16 @@ Dagens enkla handling: bestäm morgondagens lunchprotein redan nu.`
   }
 
   if (text.includes('vikt') || text.includes('mål')) {
+    const goalFocus = canDiscussWeightLoss
+      ? 'Fokusera på vikttrenden över tid, inte en enskild dag.'
+      : canDiscussMuscleGain
+        ? 'Fokusera på styrka, protein, återhämtning och en jämn rutin.'
+        : 'Fokusera på stabila rutiner, jämn energi och måltider som är lätta att upprepa.'
+
     return `${intro}
 
 - ${weightContext}
-- Fokusera på trenden över tid, inte en enskild dag.
+- ${goalFocus}
 - Måltidsidé: proteinrik lunch med kyckling, tofu eller bönor, plus grönsaker och potatis eller ris.
 - Med energi ${checkIn.energy}/10 och ${checkIn.steps.toLocaleString('sv-SE')} steg är en rimlig insats bättre än ett hårt upplägg.
 - Undvik extrema dieter; håll vanorna genomförbara.
@@ -510,7 +550,10 @@ function App() {
   const startWeight = weights[0]
   const weightChange = Number((latestWeight.value - startWeight.value).toFixed(1))
   const foodScore = foods.filter((item) => item.done).length
-  const safeProfileGoalWeight = formatOptionalWeight(profile?.goalWeight)
+  const safeProfileGoalWeight =
+    profile?.goal === 'gå ner i vikt'
+      ? formatOptionalWeight(profile?.goalWeight)
+      : ''
   const profileSummaryParts = [
     profile?.goal,
     safeProfileGoalWeight ? `mål ${safeProfileGoalWeight}` : '',
@@ -524,18 +567,43 @@ function App() {
       25,
   )
 
-  const coachMessage = useMemo(
+  const latestWeightTrend = weights.at(-1).value - weights.at(-2).value
+  const fallbackCoachMessage = useMemo(
     () =>
       makeCoachMessage(
         profile,
         checkIn,
         foods,
         meals,
-        weights.at(-1).value - weights.at(-2).value,
+        latestWeightTrend,
         latestWeight.value,
       ),
+    [checkIn, foods, latestWeight.value, latestWeightTrend, meals, profile],
+  )
+  const dailyCoachKey = useMemo(
+    () =>
+      JSON.stringify({
+        checkIn,
+        currentWeight: latestWeight.value,
+        foods,
+        meals,
+        profile,
+        weights,
+      }),
     [checkIn, foods, latestWeight.value, meals, profile, weights],
   )
+  const [dailyCoachResult, setDailyCoachResult] = useState(null)
+  const hasFreshDailyCoach = dailyCoachResult?.key === dailyCoachKey
+  const coachMessage = hasFreshDailyCoach && dailyCoachResult.summary
+    ? dailyCoachResult.summary
+    : fallbackCoachMessage
+  const coachStatus = hasFreshDailyCoach
+    ? dailyCoachResult.source === 'openai'
+      ? 'AI-genererad daglig sammanfattning.'
+      : 'Lokal fallback används just nu.'
+    : demoMode && !showOnboarding
+      ? 'Uppdaterar AI-coach...'
+      : ''
 
   useEffect(() => {
     writeStoredValue(storageKeys.demoMode, demoMode)
@@ -570,6 +638,83 @@ function App() {
       writeStoredValue(storageKeys.profile, profile)
     }
   }, [profile])
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!demoMode || showOnboarding) {
+      return () => {
+        cancelled = true
+      }
+    }
+
+    async function loadDailyCoach() {
+      try {
+        console.info('[Viktkollen daily coach] Calling /api/daily-coach')
+
+        const apiResponse = await fetch('/api/daily-coach', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            profile: makeValidatedProfile(profile),
+            checkIn,
+            foods,
+            meals,
+            weights,
+            currentWeight: latestWeight.value,
+          }),
+        })
+
+        if (!apiResponse.ok) {
+          throw new Error(`Daily coach API failed with status ${apiResponse.status}`)
+        }
+
+        const data = await apiResponse.json()
+
+        console.info('[Viktkollen daily coach] /api/daily-coach response', {
+          source: data.source,
+          fallbackReason: data.fallbackReason,
+          debug: data.debug,
+        })
+
+        if (!cancelled && typeof data.summary === 'string' && data.summary.trim()) {
+          setDailyCoachResult({
+            key: dailyCoachKey,
+            source: data.source === 'openai' ? 'openai' : 'mock',
+            summary: data.summary.trim(),
+          })
+        }
+      } catch (error) {
+        console.warn('[Viktkollen daily coach] API unavailable, using mock', {
+          reason: error instanceof Error ? error.message : String(error),
+        })
+
+        if (!cancelled) {
+          setDailyCoachResult({
+            key: dailyCoachKey,
+            source: 'mock',
+            summary: '',
+          })
+        }
+      }
+    }
+
+    void loadDailyCoach()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    checkIn,
+    dailyCoachKey,
+    demoMode,
+    foods,
+    latestWeight.value,
+    meals,
+    profile,
+    showOnboarding,
+    weights,
+  ])
 
   function updateProfileForm(key, value) {
     setProfileForm((current) => ({ ...current, [key]: value }))
@@ -739,18 +884,7 @@ function App() {
   }
 
   function getValidatedProfile() {
-    const startWeight = formatOptionalWeight(profile?.startWeight)
-    const goalWeight = formatOptionalWeight(profile?.goalWeight)
-
-    return {
-      ...(profile?.name?.trim() && { name: profile.name.trim() }),
-      ...(profile?.goal?.trim() && { goal: profile.goal.trim() }),
-      ...(startWeight && { startWeight }),
-      ...(goalWeight && { goalWeight }),
-      ...(profile?.activityLevel?.trim() && {
-        activityLevel: profile.activityLevel.trim(),
-      }),
-    }
+    return makeValidatedProfile(profile)
   }
 
   async function requestChatReply(message) {
@@ -1091,8 +1225,7 @@ function App() {
           </div>
           <p className="coach-copy">{coachMessage}</p>
           <div className="coach-note">
-            Tillfällig återkoppling. En senare version kan ersätta den
-            regelbaserade texten med ett riktigt AI-API.
+            {coachStatus || 'AI-coachen använder dagens profil, vanor och loggar.'}
           </div>
         </article>
 

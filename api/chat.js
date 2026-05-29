@@ -55,13 +55,15 @@ function formatContext(body) {
     .slice(0, 6)
     .map((meal) => `${meal.type}: ${meal.text}`)
     .join(' | ')
+  const goal = sanitizeText(profile.goal, 'hållbara vanor')
 
   return {
     profile: {
       name: sanitizeText(profile.name, 'användaren'),
-      goal: sanitizeText(profile.goal, 'hållbara vanor'),
+      goal,
       startWeight: parseWeight(profile.startWeight),
-      goalWeight: parseWeight(profile.goalWeight),
+      goalWeight:
+        goal === 'gå ner i vikt' ? parseWeight(profile.goalWeight) : null,
       activityLevel: sanitizeText(profile.activityLevel),
     },
     current: {
@@ -84,16 +86,21 @@ function hasValue(value) {
 function makeWeightSentence(context) {
   const currentWeight = context.current.weight
   const goalWeight = context.profile.goalWeight
+  const goal = context.profile.goal
 
-  if (hasValue(currentWeight) && hasValue(goalWeight)) {
+  if (goal === 'gå ner i vikt' && hasValue(currentWeight) && hasValue(goalWeight)) {
     return `Nuvarande vikt är ${formatWeight(Number(currentWeight))} kg och målvikt är ${formatWeight(goalWeight)} kg.`
   }
 
-  if (hasValue(currentWeight)) {
-    return `Nuvarande vikt är ${formatWeight(Number(currentWeight))} kg.`
+  if (goal === 'bygga muskler' && hasValue(currentWeight)) {
+    return `Nuvarande vikt är ${formatWeight(Number(currentWeight))} kg; fokusera på styrka, protein och jämn energi.`
   }
 
-  return 'Viktmålet saknas, så fokusera på vanor och måltidsstruktur.'
+  if (hasValue(currentWeight)) {
+    return `Nuvarande vikt är ${formatWeight(Number(currentWeight))} kg; fokusera på stabila vanor och jämn energi.`
+  }
+
+  return 'Fokusera på vanor, måltidsstruktur och jämn energi.'
 }
 
 function detectPlanDays(message) {
@@ -251,7 +258,7 @@ Dagens enkla handling: förbered ett mellanmål som tar under fem minuter.`
 - Välj en minsta nivå: 10 min promenad, en proteinrik måltid eller att kryssa en punkt i checklistan.
 - Med ${steps} steg i dag kan du bygga vidare lugnt, inte jaga perfektion.
 - Om humöret är ${context.current.mood}, sänk friktionen: lägg fram träningskläder eller planera nästa måltid.
-- Se viktmålet som en kompass, inte ett dagligt betyg.
+- Se dagens vanor som en kompass, inte en enskild vikt eller ett perfekt resultat.
 
 ${safety}
 
@@ -381,7 +388,7 @@ export default async function handler(request, response) {
         model,
         max_output_tokens: 420,
         instructions:
-          'Du är Viktkollens svenska AI-coach för allmänt välmående. Svara alltid endast på svenska. Tilltala användaren naturligt med namn när namnet finns. Skriv 100-250 ord. Använd tydliga rubriker och korta punktlistor. Ge konkreta måltidsförslag med budgetvänliga svenska livsmedel som ägg, kvarg, keso, potatis, ris, havregryn, tonfisk, bönor, linser, frysta grönsaker, kyckling och tofu. Använd användarens mål, profil, aktivitetsnivå, nuvarande vikt, viktlogg, måltider, checklista, steg, energi och humör när det är relevant. Nämn målvikt endast om den finns i kontexten; hitta aldrig på värden och skriv aldrig placeholders som "dd kg", "okänd kg" eller "inte satt kg". Om användaren ber om flera dagar, gör en dag-för-dag-plan med rubriker som "Dag 1", "Dag 2", "Dag 3", ungefärliga kalorier och protein per dag samt inköpslista om relevant. Håll tonen varm, stödjande och praktisk. Ge inte medicinsk diagnos, behandlingsråd, extrema dieter, fasta-råd eller farliga råd. Avsluta alltid med exakt en enkel handling för i dag, formulerad som: "Dagens enkla handling: ...".',
+          'Du är Viktkollens svenska AI-coach för allmänt välmående. Svara alltid endast på svenska. Tilltala användaren naturligt med namn när namnet finns. Skriv 100-250 ord. Använd tydliga rubriker och korta punktlistor. Ge konkreta måltidsförslag med budgetvänliga svenska livsmedel som ägg, kvarg, keso, potatis, ris, havregryn, tonfisk, bönor, linser, frysta grönsaker, kyckling och tofu. Använd användarens mål, profil, aktivitetsnivå, nuvarande vikt, viktlogg, måltider, checklista, steg, energi och humör när det är relevant. Om målet är "hålla vikten", prata inte om att gå ner i vikt, viktminskning eller avstånd till målvikt; fokusera på stabilitet, energi och vanor. Prata bara om viktminskning när målet är "gå ner i vikt". Prata bara om muskelbygge när målet är "bygga muskler". Nämn målvikt endast när målet är "gå ner i vikt" och målvikt finns i kontexten. Hitta aldrig på värden och skriv aldrig placeholders som "dd kg", "okänd kg" eller "inte satt kg". Om användaren ber om flera dagar, gör en dag-för-dag-plan med rubriker som "Dag 1", "Dag 2", "Dag 3", ungefärliga kalorier och protein per dag samt inköpslista om relevant. Håll tonen varm, stödjande och praktisk. Ge inte medicinsk diagnos, behandlingsråd, extrema dieter, fasta-råd eller farliga råd. Avsluta alltid med exakt en enkel handling för i dag, formulerad som: "Dagens enkla handling: ...".',
         input: [
           {
             role: 'user',

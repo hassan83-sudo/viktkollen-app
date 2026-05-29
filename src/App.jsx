@@ -549,6 +549,63 @@ function App() {
     ])
   }
 
+  async function requestChatReply(message) {
+    try {
+      const apiResponse = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message,
+          profile,
+          checkIn,
+          foods,
+          meals,
+          weights,
+          currentWeight: latestWeight.value,
+          chatHistory: chatMessages.slice(-8),
+        }),
+      })
+
+      if (!apiResponse.ok) {
+        throw new Error('Chat API failed')
+      }
+
+      const data = await apiResponse.json()
+
+      if (typeof data.reply === 'string' && data.reply.trim()) {
+        return data.reply.trim()
+      }
+    } catch {
+      // Vite dev has no serverless route; keep the app useful with mock chat.
+    }
+
+    return makeChatResponse(
+      message,
+      profile,
+      checkIn,
+      foods,
+      meals,
+      latestWeight.value,
+    )
+  }
+
+  function appendChatMessage(role, text) {
+    setChatMessages((current) => [
+      ...current,
+      {
+        id: current.length + 1,
+        role,
+        text,
+      },
+    ])
+  }
+
+  async function sendChatText(text) {
+    appendChatMessage('user', text)
+    const reply = await requestChatReply(text)
+    appendChatMessage('assistant', reply)
+  }
+
   function sendChatMessage(event) {
     event.preventDefault()
     const text = chatInput.trim()
@@ -557,58 +614,12 @@ function App() {
       return
     }
 
-    setChatMessages((current) => {
-      const nextId = current.length + 1
-
-      return [
-        ...current,
-        {
-          id: nextId,
-          role: 'user',
-          text,
-        },
-        {
-          id: nextId + 1,
-          role: 'assistant',
-          text: makeChatResponse(
-            text,
-            profile,
-            checkIn,
-            foods,
-            meals,
-            latestWeight.value,
-          ),
-        },
-      ]
-    })
     setChatInput('')
+    void sendChatText(text)
   }
 
   function handleStarterPrompt(prompt) {
-    setChatMessages((current) => {
-      const nextId = current.length + 1
-
-      return [
-        ...current,
-        {
-          id: nextId,
-          role: 'user',
-          text: prompt,
-        },
-        {
-          id: nextId + 1,
-          role: 'assistant',
-          text: makeChatResponse(
-            prompt,
-            profile,
-            checkIn,
-            foods,
-            meals,
-            latestWeight.value,
-          ),
-        },
-      ]
-    })
+    void sendChatText(prompt)
   }
 
   if (!demoMode) {
@@ -910,8 +921,8 @@ function App() {
             <button type="submit">Skicka</button>
           </form>
           <p className="chat-safety-note">
-            Svaren är mockade och ger bara allmänt stöd, inte medicinsk
-            rådgivning.
+            Svaren är allmänt wellness-stöd på svenska. Ingen medicinsk
+            diagnos, behandling eller extrem diet.
           </p>
         </article>
 

@@ -1,6 +1,21 @@
 const OPENAI_API_URL = 'https://api.openai.com/v1/responses'
 const DEFAULT_MODEL = 'gpt-4.1-mini'
 
+function isDevelopment() {
+  return process.env.NODE_ENV !== 'production'
+}
+
+function logChatEvent(message, details = {}) {
+  console.info('[api/chat]', message, details)
+}
+
+function logChatError(message, error, details = {}) {
+  console.error('[api/chat]', message, {
+    ...details,
+    error: error instanceof Error ? error.message : String(error),
+  })
+}
+
 function sanitizeText(value, fallback = '') {
   return typeof value === 'string' ? value.slice(0, 1000) : fallback
 }
@@ -82,13 +97,46 @@ function extractResponseText(data) {
   return textParts?.join('\n').trim() || ''
 }
 
+function parseRequestBody(request) {
+  if (typeof request.body === 'string') {
+    return JSON.parse(request.body)
+  }
+
+  return request.body ?? {}
+}
+
+function fallbackPayload(message, context, reason, details = {}) {
+  const payload = {
+    reply: makeMockReply(message, context),
+    source: 'mock',
+    fallbackReason: reason,
+  }
+
+  if (isDevelopment()) {
+    payload.debug = details
+  }
+
+  return payload
+}
+
 export default async function handler(request, response) {
   if (request.method !== 'POST') {
     response.setHeader('Allow', 'POST')
     return response.status(405).json({ error: 'Method not allowed' })
   }
 
-  const body = request.body ?? {}
+  let body
+
+  try {
+    body = parseRequestBody(request)
+  } catch (error) {
+    logChatError('Invalid JSON request body', error)
+    return response.status(400).json({
+      error: 'Invalid JSON request body',
+      ...(isDevelopment() && { detail: error.message }),
+    })
+  }
+
   const message = sanitizeText(body.message)
   const context = formatContext(body)
 
@@ -96,14 +144,32 @@ export default async function handler(request, response) {
     return response.status(400).json({ error: 'Message is required' })
   }
 
+  const hasApiKey = Boolean(process.env.OPENAI_API_KEY)
+  const model = process.env.OPENAI_MODEL || DEFAULT_MODEL
+
+  logChatEvent('Request received', {
+    hasApiKey,
+    model,
+    messageLength: message.length,
+    profileGoal: context.profile.goal,
+  })
+
   if (!process.env.OPENAI_API_KEY) {
-    return response.status(200).json({
-      reply: makeMockReply(message, context),
-      source: 'mock',
-    })
+    logChatEvent('OPENAI_API_KEY missing, returning mock fallback')
+    return response.status(200).json(
+      fallbackPayload(message, context, 'missing_openai_api_key', {
+        hasApiKey,
+        model,
+      }),
+    )
   }
 
   try {
+    logChatEvent('Calling OpenAI Responses API', {
+      url: OPENAI_API_URL,
+      model,
+    })
+
     const openaiResponse = await fetch(OPENAI_API_URL, {
       method: 'POST',
       headers: {
@@ -111,7 +177,7 @@ export default async function handler(request, response) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
+        model,
         max_output_tokens: 180,
         instructions:
           'Du är Viktkollens svenska AI-coach för allmänt välmående. Svara kort, varmt och mobilvänligt på svenska. Använd användarens profil, mål, viktlogg, måltider, checklista, steg, energi och humör. Ge inte medicinsk diagnos, behandlingsråd, extrema dieter eller farliga råd. Föreslå hållbara vanor och säg vid behov att användaren bör kontakta vården vid medicinska frågor.',
@@ -136,20 +202,52 @@ export default async function handler(request, response) {
     })
 
     if (!openaiResponse.ok) {
-      throw new Error(`OpenAI request failed: ${openaiResponse.status}`)
+      const errorText = await openaiResponse.text()
+      throw new Error(
+        `OpenAI request failed: ${openaiResponse.status} ${errorText.slice(0, 500)}`,
+      )
     }
 
     const data = await openaiResponse.json()
     const reply = extractResponseText(data)
 
-    return response.status(200).json({
-      reply: reply || makeMockReply(message, context),
-      source: reply ? 'openai' : 'mock',
+    logChatEvent('OpenAI response received', {
+      hasReply: Boolean(reply),
+      outputItems: Array.isArray(data.output) ? data.output.length : 0,
     })
-  } catch {
+
+    if (!reply) {
+      logChatEvent('OpenAI response had no text, returning mock fallback')
+      return response.status(200).json(
+        fallbackPayload(message, context, 'empty_openai_response', {
+          hasApiKey,
+          model,
+        }),
+      )
+    }
+
     return response.status(200).json({
-      reply: makeMockReply(message, context),
-      source: 'mock',
+      reply,
+      source: 'openai',
+      ...(isDevelopment() && {
+        debug: {
+          model,
+          executedOpenAIRequest: true,
+        },
+      }),
     })
+  } catch (error) {
+    logChatError('OpenAI call failed, returning mock fallback', error, {
+      hasApiKey,
+      model,
+    })
+
+    return response.status(200).json(
+      fallbackPayload(message, context, 'openai_request_failed', {
+        hasApiKey,
+        model,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    )
   }
 }

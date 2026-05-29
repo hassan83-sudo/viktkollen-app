@@ -551,6 +551,8 @@ function App() {
 
   async function requestChatReply(message) {
     try {
+      console.info('[Viktkollen chat] Calling /api/chat')
+
       const apiResponse = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -567,15 +569,24 @@ function App() {
       })
 
       if (!apiResponse.ok) {
-        throw new Error('Chat API failed')
+        throw new Error(`Chat API failed with status ${apiResponse.status}`)
       }
 
       const data = await apiResponse.json()
 
+      console.info('[Viktkollen chat] /api/chat response', {
+        source: data.source,
+        fallbackReason: data.fallbackReason,
+        debug: data.debug,
+      })
+
       if (typeof data.reply === 'string' && data.reply.trim()) {
         return data.reply.trim()
       }
-    } catch {
+    } catch (error) {
+      console.warn('[Viktkollen chat] /api/chat unavailable, using local mock', {
+        reason: error instanceof Error ? error.message : String(error),
+      })
       // Vite dev has no serverless route; keep the app useful with mock chat.
     }
 

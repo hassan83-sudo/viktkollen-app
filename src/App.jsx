@@ -103,6 +103,8 @@ function isStoredPhotoMeals(value) {
         Number.isFinite(entry.analysis.protein) &&
         Number.isFinite(entry.analysis.carbs) &&
         Number.isFinite(entry.analysis.fat) &&
+        Array.isArray(entry.analysis.foods) &&
+        typeof entry.analysis.confidence === 'string' &&
         typeof entry.analysis.explanation === 'string',
     )
   )
@@ -243,10 +245,12 @@ function makeMockPhotoAnalysis(profile, checkIn, foods) {
     520 + goalAdjustment.calories + activityAdjustment.calories + energyAdjustment + checklistAdjustment
 
   return {
+    foods: ['protein', 'grönsaker', 'kolhydratkälla'],
     calories,
     protein: 32 + goalAdjustment.protein,
     carbs: 54 + goalAdjustment.carbs + activityAdjustment.carbs,
     fat: 18 + goalAdjustment.fat,
+    confidence: 'låg',
     explanation:
       'Mockanalysen uppskattar en balanserad måltid utifrån bilden och dagens data. Använd siffrorna som en grov riktning, inte som exakta näringsvärden.',
   }
@@ -489,6 +493,7 @@ function App() {
     readStoredValue(storageKeys.meals, initialMeals, isStoredMeals),
   )
   const [foodPhotoPreview, setFoodPhotoPreview] = useState('')
+  const [photoAnalysisStatus, setPhotoAnalysisStatus] = useState('')
   const [photoMeals, setPhotoMeals] = useState(() =>
     readStoredValue(
       storageKeys.photoMeals,
@@ -674,12 +679,53 @@ function App() {
     reader.readAsDataURL(file)
   }
 
-  function analyzePhotoMeal() {
+  async function requestMealAnalysis(image) {
+    try {
+      console.info('[Viktkollen meal] Calling /api/analyze-meal')
+
+      const apiResponse = await fetch('/api/analyze-meal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image,
+          profile: getValidatedProfile(),
+          checkIn,
+          foods,
+          meals,
+        }),
+      })
+
+      if (!apiResponse.ok) {
+        throw new Error(`Meal API failed with status ${apiResponse.status}`)
+      }
+
+      const data = await apiResponse.json()
+
+      console.info('[Viktkollen meal] /api/analyze-meal response', {
+        source: data.source,
+        fallbackReason: data.fallbackReason,
+        debug: data.debug,
+      })
+
+      if (data.analysis) {
+        return data.analysis
+      }
+    } catch (error) {
+      console.warn('[Viktkollen meal] API unavailable, using mock analysis', {
+        reason: error instanceof Error ? error.message : String(error),
+      })
+    }
+
+    return makeMockPhotoAnalysis(profile, checkIn, foods)
+  }
+
+  async function analyzePhotoMeal() {
     if (!foodPhotoPreview) {
       return
     }
 
-    const analysis = makeMockPhotoAnalysis(profile, checkIn, foods)
+    setPhotoAnalysisStatus('Analyserar måltid...')
+    const analysis = await requestMealAnalysis(foodPhotoPreview)
     setPhotoMeals((current) => [
       {
         id: Date.now(),
@@ -689,6 +735,7 @@ function App() {
       },
       ...current.slice(0, 4),
     ])
+    setPhotoAnalysisStatus('')
   }
 
   function getValidatedProfile() {
@@ -1213,8 +1260,12 @@ function App() {
             >
               Analysera måltid
             </button>
+            {photoAnalysisStatus && (
+              <p className="analysis-status">{photoAnalysisStatus}</p>
+            )}
             <p className="estimate-note">
-              Endast uppskattning från mock-AI. Ingen medicinsk rådgivning.
+              Endast uppskattning från AI eller mockfallback. Ingen medicinsk
+              rådgivning.
             </p>
           </div>
 
@@ -1227,6 +1278,9 @@ function App() {
                     <strong>
                       {entry.analysis.calories} kcal uppskattat
                     </strong>
+                    <p>
+                      Livsmedel: {entry.analysis.foods.join(', ')}
+                    </p>
                     <dl>
                       <div>
                         <dt>Protein</dt>
@@ -1239,6 +1293,10 @@ function App() {
                       <div>
                         <dt>Fett</dt>
                         <dd>{entry.analysis.fat} g</dd>
+                      </div>
+                      <div>
+                        <dt>Säkerhet</dt>
+                        <dd>{entry.analysis.confidence}</dd>
                       </div>
                     </dl>
                     <p>{entry.analysis.explanation}</p>

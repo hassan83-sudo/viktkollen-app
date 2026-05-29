@@ -433,6 +433,11 @@ a:focus-visible {
   color: var(--warning-text) !important;
 }
 
+.analysis-status {
+  color: var(--accent) !important;
+  font-weight: 800;
+}
+
 .photo-meal-list {
   display: grid;
   gap: 12px;
@@ -463,7 +468,7 @@ a:focus-visible {
 
 .photo-meal-list dl {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin: 10px 0;
 }
@@ -732,6 +737,10 @@ a:focus-visible {
 
   .photo-meal-list img {
     width: 100%;
+  }
+
+  .photo-meal-list dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .bottom-nav {

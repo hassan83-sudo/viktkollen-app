@@ -64,24 +64,83 @@ function makeMockReply(message, context) {
   const text = message.toLowerCase()
   const name = context.profile.name || 'du'
   const goal = context.profile.goal || 'ditt mål'
+  const currentWeight = context.current.weight
+  const goalWeight = context.profile.goalWeight
+  const steps = context.current.steps
+  const energy = context.current.energy
+  const checklistScore = context.current.checklistScore
+  const meals = context.current.meals
+  const intro = `${name}, med målet att ${goal} kan du hålla det konkret och hållbart i dag. Nuvarande vikt är ${currentWeight} kg och målvikt är ${goalWeight} kg, så tänk riktning över tid snarare än hårda snabba regler.`
+  const safety =
+    'Det här är allmänt wellness-stöd, inte medicinsk rådgivning eller behandling.'
 
   if (text.includes('middag') || text.includes('ikväll') || text.includes('äta')) {
-    return `${name}, välj en enkel middag för ${goal}: protein, mycket grönt och en lagom kolhydratkälla. Håll det snällt och hållbart.`
+    return `${intro}
+
+- Välj en middag med tydlig proteinbas: kyckling, lax, tofu, bönor eller ägg.
+- Lägg till mycket grönsaker och en lagom kolhydratkälla som potatis, ris eller fullkornspasta.
+- Exempel: lax med potatis och broccoli, kycklingbowl med ris och grönsaker, eller tofuwok med nudlar.
+- Du har ${steps} steg, energi ${energy}/10 och checklistan är ${checklistScore}, så gör måltiden enkel nog att faktiskt bli av.
+- Tidigare måltider: ${meals}.
+
+${safety}
+
+Dagens enkla handling: välj en proteinbas innan du bestämmer resten av middagen.`
   }
 
   if (text.includes('mellanmål')) {
-    return `Testa yoghurt eller kvarg med bär, eller ägg på knäckebröd. Bra när energin är ${context.current.energy}/10.`
+    return `${intro}
+
+- Ett bra mellanmål ska vara lätt att fixa och ge mättnad utan att bli ett stort projekt.
+- Förslag: kvarg eller yoghurt med bär, ägg på knäckebröd, keso med frukt, eller hummus med morötter.
+- Om du vill ha mer protein: välj kvarg, ägg, keso eller en enkel tonfiskmacka.
+- Med energi ${energy}/10 är det smart att välja något som stabiliserar eftermiddagen utan extrema regler.
+- Checklistan är ${checklistScore}, så välj gärna något som hjälper en sak till bli avklarad.
+
+${safety}
+
+Dagens enkla handling: förbered ett mellanmål som tar under fem minuter.`
   }
 
   if (text.includes('motivation')) {
-    return `${name}, gör nästa steg litet: fyll i en vana, ta en kort promenad eller planera nästa måltid. Inget extremt behövs.`
+    return `${intro}
+
+- Motivation blir lättare när målet görs litet nog att klara även en vanlig dag.
+- Välj en minsta nivå: 10 min promenad, en proteinrik måltid eller att kryssa en punkt i checklistan.
+- Med ${steps} steg i dag kan du bygga vidare lugnt, inte jaga perfektion.
+- Om humöret är ${context.current.mood}, sänk friktionen: lägg fram träningskläder eller planera nästa måltid.
+- Se viktmålet som en kompass, inte ett dagligt betyg.
+
+${safety}
+
+Dagens enkla handling: gör en sak i fem minuter innan du utvärderar dagen.`
   }
 
   if (text.includes('protein') || text.includes('lunch')) {
-    return `Billigt och proteinrikt: ägg, tonfisk, bönor eller kyckling med ris/potatis och grönsaker. Anpassa portionen efter hunger.`
+    return `${intro}
+
+- Billig proteinrik lunch: ägg, tonfisk, kyckling, linser, bönor, keso eller tofu.
+- Konkreta alternativ: tonfisk med ris och majs, äggwrap med grönsaker, linsgryta med potatis, eller kycklingsallad med bröd.
+- För ${goal}: håll proteinet tydligt och justera mängden ris, pasta eller potatis efter hunger och aktivitetsnivå.
+- Du har energi ${energy}/10, så välj något som mättar utan att göra eftermiddagen tung.
+- Checklistan är ${checklistScore}; lägg gärna till frukt eller grönsaker.
+
+${safety}
+
+Dagens enkla handling: välj en lunch där proteinet är bestämt först.`
   }
 
-  return `${name}, håll det enkelt: protein i nästa måltid, lite rörelse efter energi och en punkt till i checklistan. Allmänt stöd, inte medicinsk rådgivning.`
+  return `${intro}
+
+- Börja med nästa måltid: protein + grönsaker + en kolhydratkälla som passar hunger och energi.
+- Konkreta val: yoghurt med bär, kyckling med potatis, tofu med ris, äggmacka eller bönsallad.
+- Med ${steps} steg och energi ${energy}/10 är ett rimligt mål bättre än ett perfekt mål.
+- Matchecklistan är ${checklistScore}; välj en punkt som känns enklast att klara.
+- Undvik extrema upplägg. En jämn rutin vinner över snabba ryck.
+
+${safety}
+
+Dagens enkla handling: planera din nästa måltid i en mening.`
 }
 
 function extractResponseText(data) {
@@ -178,9 +237,9 @@ export default async function handler(request, response) {
       },
       body: JSON.stringify({
         model,
-        max_output_tokens: 180,
+        max_output_tokens: 420,
         instructions:
-          'Du är Viktkollens svenska AI-coach för allmänt välmående. Svara kort, varmt och mobilvänligt på svenska. Använd användarens profil, mål, viktlogg, måltider, checklista, steg, energi och humör. Ge inte medicinsk diagnos, behandlingsråd, extrema dieter eller farliga råd. Föreslå hållbara vanor och säg vid behov att användaren bör kontakta vården vid medicinska frågor.',
+          'Du är Viktkollens svenska AI-coach för allmänt välmående. Svara alltid endast på svenska. Tilltala användaren naturligt med namn när namnet finns. Skriv 100-250 ord. Använd korta punktlistor. Ge konkreta måltidsförslag med protein, grönsaker och rimliga kolhydrater. Använd användarens mål, profil, aktivitetsnivå, nuvarande vikt, målvikt, viktlogg, måltider, checklista, steg, energi och humör när det är relevant. Håll tonen varm, stödjande och praktisk. Ge inte medicinsk diagnos, behandlingsråd, extrema dieter, fasta-råd eller farliga råd. Föreslå hållbara vanor och säg vid behov att användaren bör kontakta vården vid medicinska frågor. Avsluta alltid med exakt en enkel handling för i dag, formulerad som: "Dagens enkla handling: ...".',
         input: [
           {
             role: 'user',

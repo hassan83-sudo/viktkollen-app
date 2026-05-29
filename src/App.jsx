@@ -311,6 +311,7 @@ function makeChatResponse(message, profile, checkIn, foods, meals, currentWeight
   const text = message.toLowerCase()
   const name = profile?.name || 'du'
   const goal = profile?.goal || 'hålla en stabil rutin'
+  const goalWeight = profile?.goalWeight || 'inte satt'
   const foodScore = foods.filter((item) => item.done).length
   const mealContext =
     meals.length > 0
@@ -320,28 +321,90 @@ function makeChatResponse(message, profile, checkIn, foods, meals, currentWeight
     checkIn.steps >= 7000
       ? `Stegen ser okej ut: ${checkIn.steps.toLocaleString('sv-SE')}.`
       : `Stegen är lite låga just nu: ${checkIn.steps.toLocaleString('sv-SE')}.`
+  const intro = `${name}, utifrån målet att ${goal}, nuvarande vikt ${formatWeight(currentWeight)} och målvikt ${goalWeight} kg kan du tänka hållbar riktning snarare än hårda regler.`
+  const safety = 'Det här är allmänt wellness-stöd, inte medicinsk rådgivning.'
 
   if (text.includes('ikväll') || text.includes('middag') || text.includes('äta')) {
-    return `${name}, för målet att ${goal}: välj en enkel tallrik med protein, grönsaker och lugna kolhydrater. Exempel: kyckling eller tofu, potatis eller ris, och mycket grönt. ${mealContext}`
+    return `${intro}
+
+- Välj en middag med protein: kyckling, lax, tofu, bönor eller ägg.
+- Lägg till grönsaker och en lagom kolhydratkälla som potatis, ris eller fullkornspasta.
+- Konkreta förslag: lax med potatis och broccoli, kycklingbowl med ris, eller tofuwok med nudlar.
+- ${mealContext} Matchecklistan är ${foodScore}/${foods.length}, så välj gärna en punkt som hjälper dig framåt.
+- ${activityContext} Anpassa mängden efter hunger och energi ${checkIn.energy}/10.
+
+${safety}
+
+Dagens enkla handling: välj proteinbas till middagen först.`
   }
 
   if (text.includes('mellanmål')) {
-    return `Ett bra mellanmål: kvarg eller yoghurt med bär, eller knäckebröd med ägg. Det hjälper särskilt om energin är ${checkIn.energy}/10. Bara en uppskattning, ingen medicinsk rådgivning.`
+    return `${intro}
+
+- Ett bra mellanmål ska vara enkelt, mättande och passa din dag.
+- Förslag: kvarg eller yoghurt med bär, ägg på knäckebröd, keso med frukt, eller hummus med morötter.
+- Vill du prioritera protein: välj kvarg, ägg, keso, tonfiskmacka eller bönröra.
+- Med energi ${checkIn.energy}/10 kan ett jämnt mellanmål hjälpa dig undvika att bli superhungrig senare.
+- Håll portionen normal och snäll; inget extremt behövs.
+
+${safety}
+
+Dagens enkla handling: förbered ett mellanmål som tar under fem minuter.`
   }
 
   if (text.includes('motivation') || text.includes('motiver')) {
-    return `${name}, gör det litet i dag: en promenad, en planerad måltid eller fyll i checklistan. ${activityContext} Hållbart slår perfekt.`
+    return `${intro}
+
+- Motivation blir lättare när nästa steg är litet nog att klara.
+- Välj en minsta nivå: 10 min promenad, en proteinrik måltid eller en punkt i checklistan.
+- ${activityContext} Det räcker att bygga vidare lugnt i dag.
+- Om humöret är ${checkIn.mood.toLowerCase()}, sänk ribban och gör något som skapar flyt.
+- Se viktmålet som en kompass, inte ett dagligt betyg.
+
+${safety}
+
+Dagens enkla handling: gör en hälsosam sak i fem minuter.`
   }
 
   if (text.includes('billig') || text.includes('proteinrik') || text.includes('lunch')) {
-    return `Billig proteinrik lunch: tonfisk/ägg/bönor med ris eller potatis och grönsaker. För ${goal} är det smart att hålla portionen jämn och proteinbasen tydlig.`
+    return `${intro}
+
+- Billig proteinrik lunch: ägg, tonfisk, kyckling, linser, bönor, keso eller tofu.
+- Konkreta alternativ: tonfisk med ris och majs, äggwrap med grönsaker, linsgryta med potatis, eller kycklingsallad med bröd.
+- För ${goal}: håll proteinet tydligt och justera ris, pasta eller potatis efter hunger.
+- Lägg gärna till frukt eller grönsaker så checklistan (${foodScore}/${foods.length}) rör sig framåt.
+- En bra lunch ska vara upprepningsbar, inte perfekt.
+
+${safety}
+
+Dagens enkla handling: bestäm morgondagens lunchprotein redan nu.`
   }
 
   if (text.includes('vikt') || text.includes('mål')) {
-    return `${name}, nuvarande vikt är ${formatWeight(currentWeight)} och ditt mål är ${profile?.goalWeight || 'inte satt'} kg. Fokusera på nästa måltid och dagens vanor, inte extrema justeringar.`
+    return `${intro}
+
+- Nuvarande vikt är ${formatWeight(currentWeight)} och målvikt är ${goalWeight} kg.
+- Fokusera på trenden över tid, inte en enskild dag.
+- Måltidsidé: proteinrik lunch med kyckling, tofu eller bönor, plus grönsaker och potatis eller ris.
+- Med energi ${checkIn.energy}/10 och ${checkIn.steps.toLocaleString('sv-SE')} steg är en rimlig insats bättre än ett hårt upplägg.
+- Undvik extrema dieter; håll vanorna genomförbara.
+
+${safety}
+
+Dagens enkla handling: logga nästa måltid innan du äter.`
   }
 
-  return `${name}, kort råd: håll nästa steg enkelt. Protein i nästa måltid, fyll en punkt i matchecklistan (${foodScore}/${foods.length}) och välj rörelse efter energi (${checkIn.energy}/10).`
+  return `${intro}
+
+- Börja med nästa måltid: protein, grönsaker och en lagom kolhydratkälla.
+- Konkreta val: yoghurt med bär, kyckling med potatis, tofu med ris, äggmacka eller bönsallad.
+- ${activityContext} Anpassa rörelsen efter energi ${checkIn.energy}/10.
+- Matchecklistan är ${foodScore}/${foods.length}; välj den enklaste punkten att förbättra.
+- En trygg rutin slår snabba extrema lösningar.
+
+${safety}
+
+Dagens enkla handling: skriv ner vad din nästa måltid ska vara.`
 }
 
 function App() {

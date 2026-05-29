@@ -311,7 +311,7 @@ function makeChatResponse(message, profile, checkIn, foods, meals, currentWeight
   const text = message.toLowerCase()
   const name = profile?.name || 'du'
   const goal = profile?.goal || 'hålla en stabil rutin'
-  const goalWeight = profile?.goalWeight || 'inte satt'
+  const goalWeight = profile?.goalWeight?.trim()
   const foodScore = foods.filter((item) => item.done).length
   const mealContext =
     meals.length > 0
@@ -321,8 +321,49 @@ function makeChatResponse(message, profile, checkIn, foods, meals, currentWeight
     checkIn.steps >= 7000
       ? `Stegen ser okej ut: ${checkIn.steps.toLocaleString('sv-SE')}.`
       : `Stegen är lite låga just nu: ${checkIn.steps.toLocaleString('sv-SE')}.`
-  const intro = `${name}, utifrån målet att ${goal}, nuvarande vikt ${formatWeight(currentWeight)} och målvikt ${goalWeight} kg kan du tänka hållbar riktning snarare än hårda regler.`
+  const weightContext = goalWeight
+    ? `Nuvarande vikt är ${formatWeight(currentWeight)} och målvikt är ${goalWeight} kg.`
+    : `Nuvarande vikt är ${formatWeight(currentWeight)}.`
+  const intro = `${name}, utifrån målet att ${goal}: ${weightContext} Tänk hållbar riktning snarare än hårda regler.`
   const safety = 'Det här är allmänt wellness-stöd, inte medicinsk rådgivning.'
+  const daysMatch = text.match(/(\d+)\s*(dag|dagar)/)
+  const planDays = daysMatch
+    ? Math.min(Math.max(Number(daysMatch[1]), 2), 7)
+    : text.includes('flera dagar') || text.includes('veckoplan') || text.includes('matschema')
+      ? 3
+      : 0
+
+  if (planDays) {
+    const dayTemplates = [
+      ['Äggwrap med vitkål och keso', 'Kyckling, potatis och frysta grönsaker', 1750, 115],
+      ['Tonfisk med ris, majs och gurka', 'Linsgryta med potatis och yoghurt', 1800, 105],
+      ['Keso, kokt ägg, knäckebröd och frukt', 'Tofuwok med nudlar och wokgrönsaker', 1700, 100],
+      ['Bönsallad med pasta och ägg', 'Fiskpinnar, potatis och ärtor', 1850, 105],
+      ['Kycklingwrap med grönsaker', 'Chili på bönor med ris', 1780, 110],
+      ['Havregrynsgröt, kvarg och bär', 'Omelett med potatis', 1650, 95],
+      ['Tonfiskmackor med ägg', 'Kycklinggryta med ris', 1900, 120],
+    ].slice(0, planDays)
+
+    return `${intro}
+
+${dayTemplates
+  .map(
+    ([lunch, dinner, calories, protein], index) => `### Dag ${index + 1}
+- Lunch: ${lunch}
+- Middag: ${dinner}
+- Uppskattning: ca ${calories} kcal och ${protein} g protein`,
+  )
+  .join('\n\n')}
+
+### Inköpslista
+- Ägg, kyckling, tonfisk, linser/bönor, tofu och keso
+- Potatis, ris, pasta, wraps, havregryn och nudlar
+- Frysta grönsaker, vitkål, morötter, gurka, frukt och yoghurt/kvarg
+
+${safety}
+
+Dagens enkla handling: välj två proteinkällor från inköpslistan.`
+  }
 
   if (text.includes('ikväll') || text.includes('middag') || text.includes('äta')) {
     return `${intro}
@@ -383,7 +424,7 @@ Dagens enkla handling: bestäm morgondagens lunchprotein redan nu.`
   if (text.includes('vikt') || text.includes('mål')) {
     return `${intro}
 
-- Nuvarande vikt är ${formatWeight(currentWeight)} och målvikt är ${goalWeight} kg.
+- ${weightContext}
 - Fokusera på trenden över tid, inte en enskild dag.
 - Måltidsidé: proteinrik lunch med kyckling, tofu eller bönor, plus grönsaker och potatis eller ris.
 - Med energi ${checkIn.energy}/10 och ${checkIn.steps.toLocaleString('sv-SE')} steg är en rimlig insats bättre än ett hårt upplägg.
@@ -612,6 +653,22 @@ function App() {
     ])
   }
 
+  function getValidatedProfile() {
+    return {
+      ...(profile?.name?.trim() && { name: profile.name.trim() }),
+      ...(profile?.goal?.trim() && { goal: profile.goal.trim() }),
+      ...(profile?.startWeight?.trim() && {
+        startWeight: profile.startWeight.trim(),
+      }),
+      ...(profile?.goalWeight?.trim() && {
+        goalWeight: profile.goalWeight.trim(),
+      }),
+      ...(profile?.activityLevel?.trim() && {
+        activityLevel: profile.activityLevel.trim(),
+      }),
+    }
+  }
+
   async function requestChatReply(message) {
     try {
       console.info('[Viktkollen chat] Calling /api/chat')
@@ -621,7 +678,7 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message,
-          profile,
+          profile: getValidatedProfile(),
           checkIn,
           foods,
           meals,

@@ -17,7 +17,11 @@ function logChatError(message, error, details = {}) {
 }
 
 function sanitizeText(value, fallback = '') {
-  return typeof value === 'string' ? value.slice(0, 1000) : fallback
+  if (typeof value !== 'string') {
+    return fallback
+  }
+
+  return value.trim().slice(0, 1000)
 }
 
 function countDoneFoods(foods = []) {
@@ -30,7 +34,7 @@ function formatContext(body) {
   const foods = Array.isArray(body.foods) ? body.foods : []
   const meals = Array.isArray(body.meals) ? body.meals : []
   const weights = Array.isArray(body.weights) ? body.weights : []
-  const latestWeight = weights.at(-1)?.value ?? body.currentWeight ?? 'okänd'
+  const latestWeight = weights.at(-1)?.value ?? body.currentWeight ?? null
   const checklist = foods
     .map((item) => `${item.label}: ${item.done ? 'klar' : 'ej klar'}`)
     .join(', ')
@@ -43,9 +47,9 @@ function formatContext(body) {
     profile: {
       name: sanitizeText(profile.name, 'användaren'),
       goal: sanitizeText(profile.goal, 'hållbara vanor'),
-      startWeight: sanitizeText(profile.startWeight, 'okänd'),
-      goalWeight: sanitizeText(profile.goalWeight, 'okänd'),
-      activityLevel: sanitizeText(profile.activityLevel, 'okänd'),
+      startWeight: sanitizeText(profile.startWeight),
+      goalWeight: sanitizeText(profile.goalWeight),
+      activityLevel: sanitizeText(profile.activityLevel),
     },
     current: {
       weight: latestWeight,
@@ -60,19 +64,144 @@ function formatContext(body) {
   }
 }
 
+function hasValue(value) {
+  return value !== null && value !== undefined && value !== ''
+}
+
+function makeWeightSentence(context) {
+  const currentWeight = context.current.weight
+  const goalWeight = context.profile.goalWeight
+
+  if (hasValue(currentWeight) && hasValue(goalWeight)) {
+    return `Nuvarande vikt är ${currentWeight} kg och målvikt är ${goalWeight} kg.`
+  }
+
+  if (hasValue(currentWeight)) {
+    return `Nuvarande vikt är ${currentWeight} kg.`
+  }
+
+  return 'Viktmålet saknas, så fokusera på vanor och måltidsstruktur.'
+}
+
+function detectPlanDays(message) {
+  const lowerMessage = message.toLowerCase()
+  const digitMatch = lowerMessage.match(/(\d+)\s*(dag|dagar)/)
+
+  if (digitMatch) {
+    return Math.min(Math.max(Number(digitMatch[1]), 2), 7)
+  }
+
+  if (
+    lowerMessage.includes('flera dagar') ||
+    lowerMessage.includes('veckoplan') ||
+    lowerMessage.includes('matschema')
+  ) {
+    return 3
+  }
+
+  return 0
+}
+
+function makeMealPlanReply(message, context) {
+  const days = detectPlanDays(message)
+
+  if (!days) {
+    return ''
+  }
+
+  const dayTemplates = [
+    {
+      lunch: 'Äggwrap med morot, vitkål och keso',
+      dinner: 'Kyckling, potatis och frysta grönsaker',
+      calories: 1750,
+      protein: 115,
+    },
+    {
+      lunch: 'Tonfisk med ris, majs och gurka',
+      dinner: 'Linsgryta med potatis och yoghurt',
+      calories: 1800,
+      protein: 105,
+    },
+    {
+      lunch: 'Keso, kokt ägg, knäckebröd och frukt',
+      dinner: 'Tofuwok med nudlar och frysta wokgrönsaker',
+      calories: 1700,
+      protein: 100,
+    },
+    {
+      lunch: 'Bönsallad med pasta, ägg och vitkål',
+      dinner: 'Fiskpinnar, potatis och ärtor',
+      calories: 1850,
+      protein: 105,
+    },
+    {
+      lunch: 'Kycklingrester i wrap med grönsaker',
+      dinner: 'Chili på bönor med ris och yoghurt',
+      calories: 1780,
+      protein: 110,
+    },
+    {
+      lunch: 'Havregrynsgröt, kvarg och bär',
+      dinner: 'Omelett med potatis och grönsaker',
+      calories: 1650,
+      protein: 95,
+    },
+    {
+      lunch: 'Tonfiskmackor med ägg och frukt',
+      dinner: 'Kycklinggryta med ris och frysta grönsaker',
+      calories: 1900,
+      protein: 120,
+    },
+  ]
+  const selectedDays = dayTemplates.slice(0, days)
+  const averageCalories = Math.round(
+    selectedDays.reduce((sum, day) => sum + day.calories, 0) / days,
+  )
+  const averageProtein = Math.round(
+    selectedDays.reduce((sum, day) => sum + day.protein, 0) / days,
+  )
+
+  return `${context.profile.name}, här är en enkel budgetvänlig plan för ${days} dagar utifrån målet att ${context.profile.goal}. ${makeWeightSentence(context)}
+
+${selectedDays
+  .map(
+    (day, index) => `### Dag ${index + 1}
+- Lunch: ${day.lunch}
+- Middag: ${day.dinner}
+- Uppskattning: ca ${day.calories} kcal och ${day.protein} g protein`,
+  )
+  .join('\n\n')}
+
+### Inköpslista
+- Ägg, kyckling, tonfisk, linser/bönor, tofu eller keso
+- Potatis, ris, pasta, wraps eller nudlar
+- Frysta grönsaker, vitkål, morötter, gurka och frukt
+- Yoghurt/kvarg för extra protein
+
+### Riktning
+- Snittet är ungefär ${averageCalories} kcal och ${averageProtein} g protein per dag.
+- Anpassa portionerna efter hunger, energi ${context.current.energy}/10 och aktivitet.
+- Detta är allmänt wellness-stöd, inte medicinsk rådgivning.
+
+Dagens enkla handling: välj två proteinkällor från inköpslistan.`
+}
+
 function makeMockReply(message, context) {
   const text = message.toLowerCase()
   const name = context.profile.name || 'du'
   const goal = context.profile.goal || 'ditt mål'
-  const currentWeight = context.current.weight
-  const goalWeight = context.profile.goalWeight
+  const mealPlanReply = makeMealPlanReply(message, context)
   const steps = context.current.steps
   const energy = context.current.energy
   const checklistScore = context.current.checklistScore
   const meals = context.current.meals
-  const intro = `${name}, med målet att ${goal} kan du hålla det konkret och hållbart i dag. Nuvarande vikt är ${currentWeight} kg och målvikt är ${goalWeight} kg, så tänk riktning över tid snarare än hårda snabba regler.`
+  const intro = `${name}, med målet att ${goal} kan du hålla det konkret och hållbart i dag. ${makeWeightSentence(context)} Tänk riktning över tid snarare än hårda snabba regler.`
   const safety =
     'Det här är allmänt wellness-stöd, inte medicinsk rådgivning eller behandling.'
+
+  if (mealPlanReply) {
+    return mealPlanReply
+  }
 
   if (text.includes('middag') || text.includes('ikväll') || text.includes('äta')) {
     return `${intro}
@@ -239,7 +368,7 @@ export default async function handler(request, response) {
         model,
         max_output_tokens: 420,
         instructions:
-          'Du är Viktkollens svenska AI-coach för allmänt välmående. Svara alltid endast på svenska. Tilltala användaren naturligt med namn när namnet finns. Skriv 100-250 ord. Använd korta punktlistor. Ge konkreta måltidsförslag med protein, grönsaker och rimliga kolhydrater. Använd användarens mål, profil, aktivitetsnivå, nuvarande vikt, målvikt, viktlogg, måltider, checklista, steg, energi och humör när det är relevant. Håll tonen varm, stödjande och praktisk. Ge inte medicinsk diagnos, behandlingsråd, extrema dieter, fasta-råd eller farliga råd. Föreslå hållbara vanor och säg vid behov att användaren bör kontakta vården vid medicinska frågor. Avsluta alltid med exakt en enkel handling för i dag, formulerad som: "Dagens enkla handling: ...".',
+          'Du är Viktkollens svenska AI-coach för allmänt välmående. Svara alltid endast på svenska. Tilltala användaren naturligt med namn när namnet finns. Skriv 100-250 ord. Använd tydliga rubriker och korta punktlistor. Ge konkreta måltidsförslag med budgetvänliga svenska livsmedel som ägg, kvarg, keso, potatis, ris, havregryn, tonfisk, bönor, linser, frysta grönsaker, kyckling och tofu. Använd användarens mål, profil, aktivitetsnivå, nuvarande vikt, viktlogg, måltider, checklista, steg, energi och humör när det är relevant. Nämn målvikt endast om den finns i kontexten; hitta aldrig på värden och skriv aldrig placeholders som "dd kg", "okänd kg" eller "inte satt kg". Om användaren ber om flera dagar, gör en dag-för-dag-plan med rubriker som "Dag 1", "Dag 2", "Dag 3", ungefärliga kalorier och protein per dag samt inköpslista om relevant. Håll tonen varm, stödjande och praktisk. Ge inte medicinsk diagnos, behandlingsråd, extrema dieter, fasta-råd eller farliga råd. Avsluta alltid med exakt en enkel handling för i dag, formulerad som: "Dagens enkla handling: ...".',
         input: [
           {
             role: 'user',

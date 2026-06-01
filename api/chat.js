@@ -157,14 +157,15 @@ Handla: ägg, kyckling/tonfisk, linser/bönor, potatis/ris och frysta grönsaker
 function makeMockReply(message, context) {
   const text = message.toLowerCase()
   const mealPlanReply = makeMealPlanReply(message)
-  const steps = context.current.steps
-  const energy = context.current.energy
-  const checklistScore = context.current.checklistScore
   const currentWeight = context.current.weight
   const goal = context.profile.goal
 
   if (mealPlanReply) {
     return mealPlanReply
+  }
+
+  if (/^(hej|hejsan|hallå|tjena|god morgon|god kväll)[!.\s]*$/i.test(message.trim())) {
+    return 'Hej! Hur kan jag hjälpa dig idag?'
   }
 
   if (text.includes('hur mycket') && text.includes('väger')) {
@@ -183,6 +184,13 @@ function makeMockReply(message, context) {
         : 'Det kan absolut få plats i en vanlig rutin.'
 
     return `${goalHint} Ta en normal portion och komplettera gärna med sallad eller något proteinrikt om du vill bli mättare. Är det lunch eller middag du funderar på?`
+  }
+
+  if (
+    (text.includes('åt') || text.includes('ätit')) &&
+    (text.includes('dåligt') || text.includes('onyttigt') || text.includes('helgen'))
+  ) {
+    return `Det är lugnt, en helg förstör ingenting. Gör en enkel reset: drick vatten, ät en vanlig proteinrik måltid och ta en kort promenad om det känns bra. Försök gå tillbaka till rutinen utan att kompensera hårt. Vad var det som gjorde helgen svårast?`
   }
 
   if (text.includes('middag') || text.includes('ikväll') || text.includes('äta')) {
@@ -204,7 +212,7 @@ Ta det som kräver minst fix.`
   }
 
   if (text.includes('motivation')) {
-    return `Det händer alla. Försök fokusera på nästa lilla steg i stället för hela målet. Med energi ${energy}/10 kan det räcka med något väldigt enkelt. Vad känns svårast just nu – maten, träningen eller att hålla rutinen?`
+    return `Det händer alla. Försök fokusera på nästa lilla steg i stället för hela målet. Det kan räcka med något väldigt enkelt i dag. Vad känns svårast just nu – maten, träningen eller att hålla rutinen?`
   }
 
   if (text.includes('protein') || text.includes('lunch')) {
@@ -228,7 +236,7 @@ Välj en och upprepa den i veckan.`
     return 'Om målet är att hålla vikten är en stabil trend oftast ett bra tecken. Titta på veckosnittet snarare än en enskild dag.'
   }
 
-  return `Jag är med. Du har ${steps} steg, energi ${energy}/10 och matchecklistan är ${checklistScore}. Vad vill du helst få hjälp med just nu – mat, motivation eller planering?`
+  return 'Jag förstår. Vill du att jag hjälper dig med mat, motivation eller en enkel plan framåt?'
 }
 
 function extractResponseText(data) {
@@ -327,7 +335,7 @@ export default async function handler(request, response) {
         model,
         max_output_tokens: 360,
         instructions:
-          'Du är Viktkollens svenska wellness-assistent i chatten. Svara alltid på svenska och låt det kännas som ett naturligt samtal, inte en rapport. Svara på användarens faktiska fråga först. Kort som standard: 2-6 meningar. Använd punktlista bara när det gör svaret tydligare, till exempel matförslag eller plan. Längre svar endast om användaren ber om det. Ställ gärna en kort följdfråga när det hjälper samtalet. Använd profil, mål, viktlogg, måltider, checklista, steg, energi och humör som tyst kontext, men upprepa inte vikt, målvikt, mål eller disclaimer om det inte är relevant. Nämn aktuell vikt bara när användaren frågar om vikt eller viktutveckling. Om användaren frågar "Hur mycket väger jag nu?", svara bara med senaste registrerade vikt. För pizza eller sug: normalisera, ge praktiskt portions-/balanstips och fråga om måltidssituation. För dålig motivation: var empatisk och fråga vad som känns svårast. För "Vad ska jag äta ikväll?": ge 2-3 konkreta alternativ. För mellanmål: ge 3 snabba alternativ. För billig proteinrik lunch: ge 3 konkreta luncher. För flerdagars matplan: använd kompakt format "Dag 1: ...". Om målet är "hålla vikten", prata inte om viktminskning eller avstånd till målvikt. Prata bara om viktminskning när målet är "gå ner i vikt". Prata bara om muskelbygge när målet är "bygga muskler". Wellness-stöd endast: ge inte diagnos, behandling, extrema dieter eller fasta-råd. Avsluta inte alltid med action item.',
+          'Du är Viktkollens svenska wellness-assistent i chatten. Svara alltid på svenska och låt det kännas som ett naturligt samtal, inte en rapport. Svara på användarens faktiska fråga först. För hälsningar som "hej", svara naturligt: "Hej! Hur kan jag hjälpa dig idag?" Kort som standard: 2-6 meningar. Använd punktlista bara när det gör svaret tydligare, till exempel matförslag eller plan. Längre svar endast om användaren ber om det. Ställ gärna en kort följdfråga när det hjälper samtalet. Använd profil, mål, viktlogg, måltider, checklista, steg, energi och humör som tyst kontext. Nämn inte steg, energi eller checklista om frågan inte handlar om aktivitet, ork, daglig status eller planering. Upprepa inte vikt, målvikt, mål eller disclaimer om det inte är relevant. Nämn aktuell vikt bara när användaren frågar om vikt eller viktutveckling. Om användaren frågar "Hur mycket väger jag nu?", svara bara med senaste registrerade vikt. För "Jag åt dåligt hela helgen": svara empatiskt och ge en enkel reset-plan utan skuld eller hård kompensation. För pizza eller sug: normalisera, ge praktiskt portions-/balanstips och fråga om måltidssituation. För dålig motivation: var empatisk och fråga vad som känns svårast. För "Vad ska jag äta ikväll?": ge 2-3 konkreta alternativ. För mellanmål: ge 3 snabba alternativ. För billig proteinrik lunch: ge 3 konkreta luncher. För flerdagars matplan: använd kompakt format "Dag 1: ...". Använd chatthistoriken för att variera formuleringar och undvik att återanvända samma öppningsfras flera gånger. Om målet är "hålla vikten", prata inte om viktminskning eller avstånd till målvikt. Prata bara om viktminskning när målet är "gå ner i vikt". Prata bara om muskelbygge när målet är "bygga muskler". Wellness-stöd endast: ge inte diagnos, behandling, extrema dieter eller fasta-råd. Avsluta inte alltid med action item.',
         input: [
           {
             role: 'user',

@@ -452,7 +452,6 @@ function makeChatResponse(message, profile, checkIn, foods, currentWeight) {
   const goalWeight = profile?.goalWeight?.trim()
   const canDiscussWeightLoss = goal === 'gå ner i vikt'
   const canDiscussMuscleGain = goal === 'bygga muskler'
-  const foodScore = foods.filter((item) => item.done).length
   const weightContext = canDiscussWeightLoss && goalWeight
     ? `Nuvarande vikt är ${formatWeight(currentWeight)} och målvikt är ${goalWeight} kg.`
     : canDiscussMuscleGain
@@ -487,6 +486,10 @@ ${dayTemplates
 Handla: ägg, kyckling/tonfisk, linser/bönor, potatis/ris och frysta grönsaker.`
   }
 
+  if (/^(hej|hejsan|hallå|tjena|god morgon|god kväll)[!.\s]*$/i.test(message.trim())) {
+    return 'Hej! Hur kan jag hjälpa dig idag?'
+  }
+
   if (text.includes('hur mycket') && text.includes('väger')) {
     return Number.isFinite(Number(currentWeight))
       ? `Din senaste registrerade vikt är ${formatWeight(currentWeight)}.`
@@ -500,6 +503,13 @@ Handla: ägg, kyckling/tonfisk, linser/bönor, potatis/ris och frysta grönsaker
         : 'Det kan absolut få plats i en vanlig rutin.'
 
     return `${goalHint} Ta en normal portion och komplettera gärna med sallad eller något proteinrikt om du vill bli mättare. Är det lunch eller middag du funderar på?`
+  }
+
+  if (
+    (text.includes('åt') || text.includes('ätit')) &&
+    (text.includes('dåligt') || text.includes('onyttigt') || text.includes('helgen'))
+  ) {
+    return `Det är lugnt, en helg förstör ingenting. Gör en enkel reset: drick vatten, ät en vanlig proteinrik måltid och ta en kort promenad om det känns bra. Försök gå tillbaka till rutinen utan att kompensera hårt. Vad var det som gjorde helgen svårast?`
   }
 
   if (text.includes('ikväll') || text.includes('middag') || text.includes('äta')) {
@@ -521,7 +531,7 @@ Ta det som kräver minst fix.`
   }
 
   if (text.includes('motivation') || text.includes('motiver')) {
-    return `Det händer alla. Försök fokusera på nästa lilla steg i stället för hela målet. Med energi ${checkIn.energy}/10 kan det räcka med något väldigt enkelt. Vad känns svårast just nu – maten, träningen eller att hålla rutinen?`
+    return `Det händer alla. Försök fokusera på nästa lilla steg i stället för hela målet. Det kan räcka med något väldigt enkelt i dag. Vad känns svårast just nu – maten, träningen eller att hålla rutinen?`
   }
 
   if (text.includes('billig') || text.includes('proteinrik') || text.includes('lunch')) {
@@ -545,7 +555,7 @@ Välj en och upprepa den i veckan.`
     return 'Om målet är att hålla vikten är en stabil trend oftast ett bra tecken. Titta på veckosnittet snarare än en enskild dag.'
   }
 
-  return `Jag är med. Du har energi ${checkIn.energy}/10 och matchecklistan är ${foodScore}/${foods.length}. Vad vill du helst få hjälp med just nu – mat, motivation eller planering?`
+  return 'Jag förstår. Vill du att jag hjälper dig med mat, motivation eller en enkel plan framåt?'
 }
 
 function makeLocalWeeklyReport(profile, checkIn, foods, meals, weights) {

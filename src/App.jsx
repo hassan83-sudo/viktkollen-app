@@ -446,7 +446,45 @@ function makeCoachMessage(profile, checkIn, foods, meals) {
 • ${mealHint}`
 }
 
-function makeChatResponse(message, profile, checkIn, foods, currentWeight) {
+function hasBedtimeEatingContext(message, chatHistory = []) {
+  const text = [
+    ...chatHistory.slice(-4).map((entry) => entry?.text ?? ''),
+    message,
+  ]
+    .join(' ')
+    .toLowerCase()
+
+  return (
+    (text.includes('lägga mig') ||
+      text.includes('sova') ||
+      text.includes('läggdags') ||
+      text.includes('innan jag ska lägga')) &&
+    (text.includes('äter') ||
+      text.includes('äta') ||
+      text.includes('åt') ||
+      text.includes('mat'))
+  )
+}
+
+function asksIfHarmful(message) {
+  const text = message.toLowerCase()
+
+  return (
+    text.includes('skadligt') ||
+    text.includes('farligt') ||
+    text.includes('dåligt för kroppen') ||
+    text.includes('inte bra för kroppen')
+  )
+}
+
+function makeChatResponse(
+  message,
+  profile,
+  checkIn,
+  foods,
+  currentWeight,
+  chatHistory = [],
+) {
   const text = message.toLowerCase()
   const goal = profile?.goal || 'hålla en stabil rutin'
   const goalWeight = profile?.goalWeight?.trim()
@@ -488,6 +526,14 @@ Handla: ägg, kyckling/tonfisk, linser/bönor, potatis/ris och frysta grönsaker
 
   if (/^(hej|hejsan|hallå|tjena|god morgon|god kväll)[!.\s]*$/i.test(message.trim())) {
     return 'Hej! Hur kan jag hjälpa dig idag?'
+  }
+
+  if (asksIfHarmful(message) && hasBedtimeEatingContext(message, chatHistory)) {
+    return 'För de flesta är det inte skadligt att äta nära läggdags. Däremot kan det påverka sömn, reflux, hungervanor eller göra det lättare att äta mer än man tänkt för vissa. Om du är hungrig sent kan du testa något lättare, som yoghurt, ägg, keso eller en liten macka. Prova också att ändra tajming och portionsstorlek några kvällar och se hur kroppen reagerar.'
+  }
+
+  if (asksIfHarmful(message)) {
+    return 'Oftast beror det på vad det gäller, mängd och hur du mår av det. Det är sällan en enskild vana är “skadlig” i sig, men den kan påverka sömn, energi, mage eller rutiner. Berätta gärna vad du syftar på, så kan jag svara mer konkret.'
   }
 
   if (text.includes('hur mycket') && text.includes('väger')) {
@@ -1371,6 +1417,7 @@ function App() {
       checkIn,
       foods,
       latestWeight.value,
+      chatMessages.slice(-8),
     )
   }
 

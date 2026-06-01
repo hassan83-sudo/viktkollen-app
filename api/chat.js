@@ -154,7 +154,38 @@ ${selectedDays
 Handla: ägg, kyckling/tonfisk, linser/bönor, potatis/ris och frysta grönsaker.`
 }
 
-function makeMockReply(message, context) {
+function hasBedtimeEatingContext(message, chatHistory = []) {
+  const text = [
+    ...chatHistory.slice(-4).map((entry) => entry?.text ?? ''),
+    message,
+  ]
+    .join(' ')
+    .toLowerCase()
+
+  return (
+    (text.includes('lägga mig') ||
+      text.includes('sova') ||
+      text.includes('läggdags') ||
+      text.includes('innan jag ska lägga')) &&
+    (text.includes('äter') ||
+      text.includes('äta') ||
+      text.includes('åt') ||
+      text.includes('mat'))
+  )
+}
+
+function asksIfHarmful(message) {
+  const text = message.toLowerCase()
+
+  return (
+    text.includes('skadligt') ||
+    text.includes('farligt') ||
+    text.includes('dåligt för kroppen') ||
+    text.includes('inte bra för kroppen')
+  )
+}
+
+function makeMockReply(message, context, chatHistory = []) {
   const text = message.toLowerCase()
   const mealPlanReply = makeMealPlanReply(message)
   const currentWeight = context.current.weight
@@ -166,6 +197,14 @@ function makeMockReply(message, context) {
 
   if (/^(hej|hejsan|hallå|tjena|god morgon|god kväll)[!.\s]*$/i.test(message.trim())) {
     return 'Hej! Hur kan jag hjälpa dig idag?'
+  }
+
+  if (asksIfHarmful(message) && hasBedtimeEatingContext(message, chatHistory)) {
+    return 'För de flesta är det inte skadligt att äta nära läggdags. Däremot kan det påverka sömn, reflux, hunger­vanor eller göra det lättare att äta mer än man tänkt för vissa. Om du är hungrig sent kan du testa något lättare, som yoghurt, ägg, keso eller en liten macka. Prova också att ändra tajming och portionsstorlek några kvällar och se hur kroppen reagerar.'
+  }
+
+  if (asksIfHarmful(message)) {
+    return 'Oftast beror det på vad det gäller, mängd och hur du mår av det. Det är sällan en enskild vana är “skadlig” i sig, men den kan påverka sömn, energi, mage eller rutiner. Berätta gärna vad du syftar på, så kan jag svara mer konkret.'
   }
 
   if (text.includes('hur mycket') && text.includes('väger')) {
@@ -262,7 +301,7 @@ function parseRequestBody(request) {
 
 function fallbackPayload(message, context, reason, details = {}) {
   const payload = {
-    reply: makeMockReply(message, context),
+    reply: makeMockReply(message, context, details.chatHistory),
     source: 'mock',
     fallbackReason: reason,
   }
@@ -313,6 +352,9 @@ export default async function handler(request, response) {
     logChatEvent('OPENAI_API_KEY missing, returning mock fallback')
     return response.status(200).json(
       fallbackPayload(message, context, 'missing_openai_api_key', {
+        chatHistory: Array.isArray(body.chatHistory)
+          ? body.chatHistory.slice(-8)
+          : [],
         hasApiKey,
         model,
       }),
@@ -335,7 +377,7 @@ export default async function handler(request, response) {
         model,
         max_output_tokens: 360,
         instructions:
-          'Du är Viktkollens svenska wellness-assistent i chatten. Svara alltid på svenska och låt det kännas som ett naturligt samtal, inte en rapport. Svara på användarens faktiska fråga först. För hälsningar som "hej", svara naturligt: "Hej! Hur kan jag hjälpa dig idag?" Kort som standard: 2-6 meningar. Använd punktlista bara när det gör svaret tydligare, till exempel matförslag eller plan. Längre svar endast om användaren ber om det. Ställ gärna en kort följdfråga när det hjälper samtalet. Använd profil, mål, viktlogg, måltider, checklista, steg, energi och humör som tyst kontext. Nämn inte steg, energi eller checklista om frågan inte handlar om aktivitet, ork, daglig status eller planering. Upprepa inte vikt, målvikt, mål eller disclaimer om det inte är relevant. Nämn aktuell vikt bara när användaren frågar om vikt eller viktutveckling. Om användaren frågar "Hur mycket väger jag nu?", svara bara med senaste registrerade vikt. För "Jag åt dåligt hela helgen": svara empatiskt och ge en enkel reset-plan utan skuld eller hård kompensation. För pizza eller sug: normalisera, ge praktiskt portions-/balanstips och fråga om måltidssituation. För dålig motivation: var empatisk och fråga vad som känns svårast. För "Vad ska jag äta ikväll?": ge 2-3 konkreta alternativ. För mellanmål: ge 3 snabba alternativ. För billig proteinrik lunch: ge 3 konkreta luncher. För flerdagars matplan: använd kompakt format "Dag 1: ...". Använd chatthistoriken för att variera formuleringar och undvik att återanvända samma öppningsfras flera gånger. Om målet är "hålla vikten", prata inte om viktminskning eller avstånd till målvikt. Prata bara om viktminskning när målet är "gå ner i vikt". Prata bara om muskelbygge när målet är "bygga muskler". Wellness-stöd endast: ge inte diagnos, behandling, extrema dieter eller fasta-råd. Avsluta inte alltid med action item.',
+          'Du är Viktkollens svenska wellness-assistent i chatten. Svara alltid på svenska och låt det kännas som ett naturligt samtal, inte en rapport. Svara på användarens faktiska fråga först och använd chatthistoriken för att förstå följdfrågor. Använd inte generiska fallbackfrågor om meddelandet kan tolkas utifrån historiken. För hälsningar som "hej", svara naturligt: "Hej! Hur kan jag hjälpa dig idag?" Kort som standard: 2-6 meningar. Använd punktlista bara när det gör svaret tydligare. Ställ gärna en kort följdfråga när det hjälper samtalet. Använd profil, mål, viktlogg, måltider, checklista, steg, energi och humör som tyst kontext. Nämn inte steg, energi eller checklista om frågan inte handlar om aktivitet, ork, daglig status eller planering. Upprepa inte vikt, målvikt, mål eller disclaimer om det inte är relevant. Om användaren frågar om något är skadligt eller farligt, svara direkt med säker generell wellness-vägledning utan medicinsk diagnos. Om historiken handlar om att äta precis innan läggdags och användaren frågar om det är skadligt: säg att det oftast inte är skadligt för de flesta, men att det kan påverka sömn, reflux, hungervanor eller kaloriintag för vissa; föreslå lättare alternativ om personen är hungrig och att testa tajming och portionsstorlek. Om användaren frågar "Hur mycket väger jag nu?", svara bara med senaste registrerade vikt. För "Jag åt dåligt hela helgen": svara empatiskt och ge en enkel reset-plan utan skuld eller hård kompensation. För pizza eller sug: normalisera, ge praktiskt portions-/balanstips och fråga om måltidssituation. För dålig motivation: var empatisk och fråga vad som känns svårast. För flerdagars matplan: använd kompakt format "Dag 1: ...". Använd chatthistoriken för att variera formuleringar och undvik att återanvända samma öppningsfras flera gånger. Om målet är "hålla vikten", prata inte om viktminskning eller avstånd till målvikt. Prata bara om viktminskning när målet är "gå ner i vikt". Prata bara om muskelbygge när målet är "bygga muskler". Wellness-stöd endast: ge inte diagnos, behandling, extrema dieter eller fasta-råd. Avsluta inte alltid med action item.',
         input: [
           {
             role: 'user',
@@ -375,6 +417,9 @@ export default async function handler(request, response) {
       logChatEvent('OpenAI response had no text, returning mock fallback')
       return response.status(200).json(
         fallbackPayload(message, context, 'empty_openai_response', {
+          chatHistory: Array.isArray(body.chatHistory)
+            ? body.chatHistory.slice(-8)
+            : [],
           hasApiKey,
           model,
         }),
@@ -399,6 +444,9 @@ export default async function handler(request, response) {
 
     return response.status(200).json(
       fallbackPayload(message, context, 'openai_request_failed', {
+        chatHistory: Array.isArray(body.chatHistory)
+          ? body.chatHistory.slice(-8)
+          : [],
         hasApiKey,
         model,
         error: error instanceof Error ? error.message : String(error),

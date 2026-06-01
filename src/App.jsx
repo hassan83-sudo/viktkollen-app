@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 
 const starterWeights = [
@@ -22,6 +22,20 @@ const initialMeals = [
 ]
 
 const initialPhotoMeals = []
+
+const initialScannedProducts = []
+
+const initialProgressPhotos = []
+
+const initialReminderSettings = {
+  enabled: false,
+  weight: true,
+  weightTime: '08:00',
+  meal: true,
+  mealTime: '12:00',
+  water: true,
+  waterTime: '15:00',
+}
 
 const initialChatMessages = [
   {
@@ -52,6 +66,12 @@ const goalOptions = ['gå ner i vikt', 'hålla vikten', 'bygga muskler']
 
 const activityOptions = ['Låg', 'Medel', 'Hög']
 
+const chartRangeOptions = [
+  { label: '7 dagar', value: '7' },
+  { label: '30 dagar', value: '30' },
+  { label: 'All tid', value: 'all' },
+]
+
 const storageKeys = {
   chat: 'viktkollen.chat',
   checkIn: 'viktkollen.checkIn',
@@ -60,6 +80,10 @@ const storageKeys = {
   meals: 'viktkollen.meals',
   photoMeals: 'viktkollen.photoMeals',
   profile: 'viktkollen.profile',
+  progressPhotos: 'viktkollen.progressPhotos',
+  reminders: 'viktkollen.reminders',
+  reminderLog: 'viktkollen.reminderLog',
+  scannedProducts: 'viktkollen.scannedProducts',
   weights: 'viktkollen.weights',
 }
 
@@ -110,6 +134,38 @@ function isStoredPhotoMeals(value) {
   )
 }
 
+function isStoredScannedProducts(value) {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (entry) =>
+        entry &&
+        typeof entry.id === 'number' &&
+        typeof entry.barcode === 'string' &&
+        typeof entry.name === 'string' &&
+        typeof entry.createdAt === 'string' &&
+        Number.isFinite(entry.calories) &&
+        Number.isFinite(entry.protein) &&
+        Number.isFinite(entry.carbs) &&
+        Number.isFinite(entry.fat),
+    )
+  )
+}
+
+function isStoredProgressPhotos(value) {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (entry) =>
+        entry &&
+        typeof entry.id === 'number' &&
+        typeof entry.image === 'string' &&
+        typeof entry.createdAt === 'string' &&
+        typeof entry.note === 'string',
+    )
+  )
+}
+
 function isStoredChatMessages(value) {
   return (
     Array.isArray(value) &&
@@ -146,6 +202,19 @@ function isStoredProfile(value) {
 
 function isStoredBoolean(value) {
   return typeof value === 'boolean'
+}
+
+function isStoredReminderSettings(value) {
+  return (
+    value &&
+    typeof value.enabled === 'boolean' &&
+    typeof value.weight === 'boolean' &&
+    typeof value.weightTime === 'string' &&
+    typeof value.meal === 'boolean' &&
+    typeof value.mealTime === 'string' &&
+    typeof value.water === 'boolean' &&
+    typeof value.waterTime === 'string'
+  )
 }
 
 function readStoredValue(key, fallback, isValid) {
@@ -227,6 +296,76 @@ function formatDate(date) {
     day: 'numeric',
     month: 'short',
   }).format(new Date(date))
+}
+
+function formatFullDate(date) {
+  return new Intl.DateTimeFormat('sv-SE', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(date))
+}
+
+function getFilteredWeights(weights, range) {
+  const sortedWeights = [...weights].sort(
+    (a, b) => new Date(a.date) - new Date(b.date),
+  )
+
+  if (range === 'all') {
+    return sortedWeights
+  }
+
+  return sortedWeights.slice(-Number(range))
+}
+
+function getAverageWeeklyChange(weights) {
+  if (weights.length < 2) {
+    return 0
+  }
+
+  const first = weights[0]
+  const last = weights.at(-1)
+  const days = Math.max(
+    1,
+    (new Date(last.date) - new Date(first.date)) / 86400000,
+  )
+
+  return Number((((last.value - first.value) / days) * 7).toFixed(1))
+}
+
+function getLinearTrendValues(weights) {
+  if (weights.length < 2) {
+    return weights.map((entry) => entry.value)
+  }
+
+  const count = weights.length
+  const sumX = weights.reduce((sum, _, index) => sum + index, 0)
+  const sumY = weights.reduce((sum, entry) => sum + entry.value, 0)
+  const sumXY = weights.reduce(
+    (sum, entry, index) => sum + index * entry.value,
+    0,
+  )
+  const sumXX = weights.reduce((sum, _, index) => sum + index * index, 0)
+  const denominator = count * sumXX - sumX * sumX
+  const slope = denominator === 0 ? 0 : (count * sumXY - sumX * sumY) / denominator
+  const intercept = (sumY - slope * sumX) / count
+
+  return weights.map((_, index) => intercept + slope * index)
+}
+
+function getChartPoints(values, minValue, range, width, height, padding) {
+  const usableWidth = width - padding * 2
+  const usableHeight = height - padding * 2
+
+  return values.map((value, index) => {
+    const x =
+      values.length === 1
+        ? width / 2
+        : padding + (index / (values.length - 1)) * usableWidth
+    const y = padding + ((range - (value - minValue)) / range) * usableHeight
+
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  })
 }
 
 function getTodayDate() {
@@ -506,7 +645,56 @@ ${safety}
 Dagens enkla handling: skriv ner vad din nästa måltid ska vara.`
 }
 
+function makeLocalWeeklyReport(profile, checkIn, foods, meals, weights) {
+  const name = profile?.name || 'du'
+  const goal = profile?.goal || 'hållbara vanor'
+  const recentWeights = weights.slice(-7)
+  const weeklyChange = getAverageWeeklyChange(recentWeights)
+  const checklistScore = `${foods.filter((item) => item.done).length}/${foods.length}`
+  const goalFocus =
+    goal === 'gå ner i vikt'
+      ? 'Följ vikttrenden lugnt och låt måltidsrutinen göra jobbet över tid.'
+      : goal === 'bygga muskler'
+        ? 'Prioritera protein, styrka och återhämtning som veckans tydligaste signaler.'
+        : 'Prioritera stabil energi, jämna måltider och vanor som går att upprepa.'
+
+  return `### Veckans sammanfattning
+- ${name}, ditt mål är att ${goal}. ${goalFocus}
+- Vikt: genomsnittlig veckoförändring är ${weeklyChange > 0 ? '+' : ''}${formatWeight(weeklyChange)}.
+- Mat: ${meals.length} måltider är loggade och checklistan är ${checklistScore}.
+- Aktivitet: ${checkIn.steps.toLocaleString('sv-SE')} steg, energi ${checkIn.energy}/10 och humör ${checkIn.mood.toLowerCase()}.
+
+### Fokus nästa vecka
+- Välj protein till nästa två huvudmåltider.
+- Kryssa en extra punkt i matchecklistan.
+- Planera en rörelseinsats som passar energin.
+
+Det här är allmänt wellness-stöd, inte medicinsk rådgivning.`
+}
+
+function makeProductFromBarcode(barcode) {
+  const digits = barcode.replace(/\D/g, '')
+  const seed = [...digits].reduce((sum, digit) => sum + Number(digit), 0)
+  const protein = 6 + (seed % 24)
+  const carbs = 12 + ((seed * 3) % 48)
+  const fat = 3 + ((seed * 5) % 22)
+
+  return {
+    id: Date.now(),
+    barcode,
+    name: `Skannad produkt ${barcode.slice(-4) || barcode}`,
+    calories: Math.round(protein * 4 + carbs * 4 + fat * 9),
+    protein,
+    carbs,
+    fat,
+    createdAt: new Date().toISOString(),
+  }
+}
+
 function App() {
+  const barcodeVideoRef = useRef(null)
+  const barcodeStreamRef = useRef(null)
+  const barcodeTimerRef = useRef(null)
   const [demoMode, setDemoMode] = useState(() =>
     readStoredValue(storageKeys.demoMode, false, isStoredBoolean),
   )
@@ -526,6 +714,7 @@ function App() {
   const [weights, setWeights] = useState(() =>
     readStoredValue(storageKeys.weights, starterWeights, isStoredWeights),
   )
+  const [chartRange, setChartRange] = useState('7')
   const [foods, setFoods] = useState(readStoredFoods)
   const [mealType, setMealType] = useState('Lunch')
   const [mealText, setMealText] = useState('')
@@ -541,15 +730,80 @@ function App() {
       isStoredPhotoMeals,
     ),
   )
+  const [barcodeInput, setBarcodeInput] = useState('')
+  const [barcodeStatus, setBarcodeStatus] = useState('')
+  const [barcodeScannerActive, setBarcodeScannerActive] = useState(false)
+  const [scannedProducts, setScannedProducts] = useState(() =>
+    readStoredValue(
+      storageKeys.scannedProducts,
+      initialScannedProducts,
+      isStoredScannedProducts,
+    ),
+  )
+  const [progressPhotoNote, setProgressPhotoNote] = useState('')
+  const [beforePhotoId, setBeforePhotoId] = useState('')
+  const [afterPhotoId, setAfterPhotoId] = useState('')
+  const [progressPhotos, setProgressPhotos] = useState(() =>
+    readStoredValue(
+      storageKeys.progressPhotos,
+      initialProgressPhotos,
+      isStoredProgressPhotos,
+    ),
+  )
+  const [reminderSettings, setReminderSettings] = useState(() =>
+    readStoredValue(
+      storageKeys.reminders,
+      initialReminderSettings,
+      isStoredReminderSettings,
+    ),
+  )
+  const [reminderStatus, setReminderStatus] = useState('')
   const [chatInput, setChatInput] = useState('')
   const [chatMessages, setChatMessages] = useState(() =>
     readStoredValue(storageKeys.chat, initialChatMessages, isStoredChatMessages),
   )
+  const [weeklyReport, setWeeklyReport] = useState('')
+  const [weeklyReportStatus, setWeeklyReportStatus] = useState('')
 
   const latestWeight = weights.at(-1)
   const startWeight = weights[0]
   const weightChange = Number((latestWeight.value - startWeight.value).toFixed(1))
   const foodScore = foods.filter((item) => item.done).length
+  const chartWeights = useMemo(
+    () => getFilteredWeights(weights, chartRange),
+    [chartRange, weights],
+  )
+  const chartValues = chartWeights.map((entry) => entry.value)
+  const chartTrendValues = getLinearTrendValues(chartWeights)
+  const chartMin = Math.min(...chartValues, ...chartTrendValues)
+  const chartMax = Math.max(...chartValues, ...chartTrendValues)
+  const chartRangeSize = Math.max(chartMax - chartMin, 1)
+  const chartPadding = 24
+  const chartWidth = 360
+  const chartHeight = 190
+  const chartPoints = getChartPoints(
+    chartValues,
+    chartMin,
+    chartRangeSize,
+    chartWidth,
+    chartHeight,
+    chartPadding,
+  )
+  const trendPoints = getChartPoints(
+    chartTrendValues,
+    chartMin,
+    chartRangeSize,
+    chartWidth,
+    chartHeight,
+    chartPadding,
+  )
+  const averageWeeklyChange = getAverageWeeklyChange(chartWeights)
+  const beforePhoto =
+    progressPhotos.find((photo) => String(photo.id) === beforePhotoId) ??
+    progressPhotos.at(-1)
+  const afterPhoto =
+    progressPhotos.find((photo) => String(photo.id) === afterPhotoId) ??
+    progressPhotos[0]
   const safeProfileGoalWeight =
     profile?.goal === 'gå ner i vikt'
       ? formatOptionalWeight(profile?.goalWeight)
@@ -626,6 +880,18 @@ function App() {
   }, [photoMeals])
 
   useEffect(() => {
+    writeStoredValue(storageKeys.scannedProducts, scannedProducts)
+  }, [scannedProducts])
+
+  useEffect(() => {
+    writeStoredValue(storageKeys.progressPhotos, progressPhotos)
+  }, [progressPhotos])
+
+  useEffect(() => {
+    writeStoredValue(storageKeys.reminders, reminderSettings)
+  }, [reminderSettings])
+
+  useEffect(() => {
     writeStoredValue(storageKeys.chat, chatMessages)
   }, [chatMessages])
 
@@ -638,6 +904,77 @@ function App() {
       writeStoredValue(storageKeys.profile, profile)
     }
   }, [profile])
+
+  useEffect(
+    () => () => {
+      if (barcodeTimerRef.current) {
+        window.clearInterval(barcodeTimerRef.current)
+      }
+
+      if (barcodeStreamRef.current) {
+        barcodeStreamRef.current.getTracks().forEach((track) => track.stop())
+      }
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (!reminderSettings.enabled || !('Notification' in window)) {
+      return undefined
+    }
+
+    const reminderTypes = [
+      {
+        enabled: reminderSettings.weight,
+        key: 'weight',
+        message: 'Dags att logga dagens vikt i Viktkollen.',
+        time: reminderSettings.weightTime,
+        title: 'Viktpåminnelse',
+      },
+      {
+        enabled: reminderSettings.meal,
+        key: 'meal',
+        message: 'Lägg in en snabb måltidsnotering när du har ätit.',
+        time: reminderSettings.mealTime,
+        title: 'Måltidspåminnelse',
+      },
+      {
+        enabled: reminderSettings.water,
+        key: 'water',
+        message: 'Ta ett glas vatten och kryssa vattenmålet om det passar.',
+        time: reminderSettings.waterTime,
+        title: 'Vattenpåminnelse',
+      },
+    ]
+
+    const intervalId = window.setInterval(() => {
+      if (window.Notification.permission !== 'granted') {
+        return
+      }
+
+      const now = new Date()
+      const currentTime = now.toTimeString().slice(0, 5)
+      const today = now.toLocaleDateString('sv-SE')
+      const sentLog = readStoredValue(storageKeys.reminderLog, {}, (value) =>
+        Boolean(value && typeof value === 'object'),
+      )
+
+      reminderTypes.forEach((reminder) => {
+        const logKey = `${today}-${reminder.key}`
+
+        if (reminder.enabled && reminder.time === currentTime && !sentLog[logKey]) {
+          new window.Notification(reminder.title, {
+            body: reminder.message,
+          })
+          sentLog[logKey] = true
+        }
+      })
+
+      writeStoredValue(storageKeys.reminderLog, sentLog)
+    }, 30000)
+
+    return () => window.clearInterval(intervalId)
+  }, [reminderSettings])
 
   useEffect(() => {
     let cancelled = false
@@ -883,8 +1220,203 @@ function App() {
     setPhotoAnalysisStatus('')
   }
 
+  function saveScannedProduct(barcode) {
+    const normalizedBarcode = barcode.trim()
+
+    if (!normalizedBarcode) {
+      setBarcodeStatus('Ange eller skanna en streckkod först.')
+      return
+    }
+
+    const product = makeProductFromBarcode(normalizedBarcode)
+
+    setScannedProducts((current) => [
+      product,
+      ...current.filter((item) => item.barcode !== normalizedBarcode).slice(0, 9),
+    ])
+    setBarcodeInput('')
+    setBarcodeStatus('Produkt sparad lokalt.')
+  }
+
+  function stopBarcodeScanner() {
+    if (barcodeTimerRef.current) {
+      window.clearInterval(barcodeTimerRef.current)
+      barcodeTimerRef.current = null
+    }
+
+    if (barcodeStreamRef.current) {
+      barcodeStreamRef.current.getTracks().forEach((track) => track.stop())
+      barcodeStreamRef.current = null
+    }
+
+    if (barcodeVideoRef.current) {
+      barcodeVideoRef.current.srcObject = null
+    }
+
+    setBarcodeScannerActive(false)
+  }
+
+  async function startBarcodeScanner() {
+    if (!('BarcodeDetector' in window)) {
+      setBarcodeStatus(
+        'Kameraskanning stöds inte i den här webbläsaren. Skriv koden manuellt.',
+      )
+      return
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setBarcodeStatus('Kameran är inte tillgänglig. Skriv koden manuellt.')
+      return
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' },
+      })
+      const detector = new window.BarcodeDetector({
+        formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'],
+      })
+
+      barcodeStreamRef.current = stream
+
+      if (barcodeVideoRef.current) {
+        barcodeVideoRef.current.srcObject = stream
+        await barcodeVideoRef.current.play()
+      }
+
+      setBarcodeScannerActive(true)
+      setBarcodeStatus('Rikta kameran mot streckkoden.')
+
+      barcodeTimerRef.current = window.setInterval(async () => {
+        if (!barcodeVideoRef.current) {
+          return
+        }
+
+        try {
+          const codes = await detector.detect(barcodeVideoRef.current)
+          const barcode = codes[0]?.rawValue
+
+          if (barcode) {
+            saveScannedProduct(barcode)
+            stopBarcodeScanner()
+          }
+        } catch {
+          setBarcodeStatus('Kunde inte läsa streckkoden ännu. Försök hålla kameran stilla.')
+        }
+      }, 900)
+    } catch (error) {
+      setBarcodeStatus(
+        error instanceof Error
+          ? `Kameran kunde inte startas: ${error.message}`
+          : 'Kameran kunde inte startas.',
+      )
+    }
+  }
+
+  function submitManualBarcode(event) {
+    event.preventDefault()
+    saveScannedProduct(barcodeInput)
+  }
+
+  function handleProgressPhotoChange(event) {
+    const file = event.target.files?.[0]
+
+    if (!file) {
+      return
+    }
+
+    const reader = new FileReader()
+    reader.addEventListener('load', () => {
+      if (typeof reader.result === 'string') {
+        const photo = {
+          id: Date.now(),
+          image: reader.result,
+          createdAt: new Date().toISOString(),
+          note: progressPhotoNote.trim(),
+        }
+
+        setProgressPhotos((current) => [photo, ...current])
+        setAfterPhotoId(String(photo.id))
+        setProgressPhotoNote('')
+        event.target.value = ''
+      }
+    })
+    reader.readAsDataURL(file)
+  }
+
+  function updateReminderSetting(key, value) {
+    setReminderSettings((current) => ({ ...current, [key]: value }))
+  }
+
+  async function requestNotificationPermission() {
+    if (!('Notification' in window)) {
+      setReminderStatus('Webbläsaren stödjer inte notiser.')
+      return
+    }
+
+    const permission = await window.Notification.requestPermission()
+
+    if (permission === 'granted') {
+      setReminderStatus('Notiser är aktiverade.')
+      setReminderSettings((current) => ({ ...current, enabled: true }))
+      return
+    }
+
+    setReminderStatus('Notiser är inte aktiverade. Inställningarna sparas ändå.')
+  }
+
   function getValidatedProfile() {
     return makeValidatedProfile(profile)
+  }
+
+  async function createWeeklyReport() {
+    setWeeklyReportStatus('Skapar veckorapport...')
+
+    try {
+      console.info('[Viktkollen weekly report] Calling /api/weekly-report')
+
+      const apiResponse = await fetch('/api/weekly-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profile: getValidatedProfile(),
+          checkIn,
+          foods,
+          meals,
+          weights,
+          currentWeight: latestWeight.value,
+        }),
+      })
+
+      if (!apiResponse.ok) {
+        throw new Error(`Weekly report API failed with status ${apiResponse.status}`)
+      }
+
+      const data = await apiResponse.json()
+
+      console.info('[Viktkollen weekly report] /api/weekly-report response', {
+        source: data.source,
+        fallbackReason: data.fallbackReason,
+        debug: data.debug,
+      })
+
+      if (typeof data.report === 'string' && data.report.trim()) {
+        setWeeklyReport(data.report.trim())
+        setWeeklyReportStatus(
+          data.source === 'openai'
+            ? 'AI-genererad veckorapport.'
+            : 'Lokal fallback används just nu.',
+        )
+        return
+      }
+    } catch (error) {
+      console.warn('[Viktkollen weekly report] API unavailable, using mock', {
+        reason: error instanceof Error ? error.message : String(error),
+      })
+    }
+
+    setWeeklyReport(makeLocalWeeklyReport(profile, checkIn, foods, meals, weights))
+    setWeeklyReportStatus('Lokal fallback används just nu.')
   }
 
   async function requestChatReply(message) {
@@ -1296,6 +1828,72 @@ function App() {
             />
             <button type="submit">Lägg till</button>
           </form>
+          <div className="chart-card">
+            <div className="chart-toolbar">
+              <div>
+                <span>Genomsnitt per vecka</span>
+                <strong>
+                  {averageWeeklyChange > 0 ? '+' : ''}
+                  {formatWeight(averageWeeklyChange)}
+                </strong>
+              </div>
+              <div className="segmented-control" aria-label="Välj tidsperiod">
+                {chartRangeOptions.map((option) => (
+                  <button
+                    className={chartRange === option.value ? 'active' : ''}
+                    type="button"
+                    key={option.value}
+                    onClick={() => setChartRange(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="weight-chart" aria-label="Viktgraf med trendlinje">
+              <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img">
+                <title>Viktutveckling</title>
+                <line
+                  x1={chartPadding}
+                  y1={chartPadding}
+                  x2={chartPadding}
+                  y2={chartHeight - chartPadding}
+                />
+                <line
+                  x1={chartPadding}
+                  y1={chartHeight - chartPadding}
+                  x2={chartWidth - chartPadding}
+                  y2={chartHeight - chartPadding}
+                />
+                <polyline className="trend-line" points={trendPoints.join(' ')} />
+                <polyline className="weight-line" points={chartPoints.join(' ')} />
+                {chartPoints.map((point, index) => {
+                  const [cx, cy] = point.split(',')
+
+                  return (
+                    <circle
+                      key={`${chartWeights[index].date}-${chartWeights[index].value}`}
+                      cx={cx}
+                      cy={cy}
+                      r="4.5"
+                    />
+                  )
+                })}
+              </svg>
+            </div>
+
+            <div className="chart-footer">
+              <span>
+                {chartWeights[0] ? formatFullDate(chartWeights[0].date) : ''}
+              </span>
+              <span>
+                {chartWeights.at(-1)
+                  ? formatFullDate(chartWeights.at(-1).date)
+                  : ''}
+              </span>
+            </div>
+          </div>
           <div className="weight-bars" aria-label="Senaste vikttrend">
             {weights.map((weight, index) => {
               const weightValues = weights.map((entry) => entry.value)
@@ -1449,6 +2047,242 @@ function App() {
           </ul>
         </article>
 
+        <article className="panel scanner-panel" id="streckkod">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Streckkod</p>
+              <h2>Skanna produkt</h2>
+            </div>
+          </div>
+
+          <div className="scanner-tool">
+            <video
+              className="barcode-video"
+              ref={barcodeVideoRef}
+              muted
+              playsInline
+            />
+            <div className="scanner-actions">
+              <button type="button" onClick={startBarcodeScanner}>
+                Starta kamera
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={stopBarcodeScanner}
+                disabled={!barcodeScannerActive}
+              >
+                Stoppa
+              </button>
+            </div>
+            {barcodeStatus && <p className="analysis-status">{barcodeStatus}</p>}
+            <form className="inline-form" onSubmit={submitManualBarcode}>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="Skriv streckkod manuellt"
+                value={barcodeInput}
+                onChange={(event) => setBarcodeInput(event.target.value)}
+              />
+              <button type="submit">Spara</button>
+            </form>
+          </div>
+
+          {scannedProducts.length > 0 && (
+            <ul className="product-list">
+              {scannedProducts.map((product) => (
+                <li key={`${product.barcode}-${product.id}`}>
+                  <div>
+                    <strong>{product.name}</strong>
+                    <span>{product.barcode}</span>
+                  </div>
+                  <dl>
+                    <div>
+                      <dt>Kalorier</dt>
+                      <dd>{product.calories} kcal</dd>
+                    </div>
+                    <div>
+                      <dt>Protein</dt>
+                      <dd>{product.protein} g</dd>
+                    </div>
+                    <div>
+                      <dt>Kolhydrater</dt>
+                      <dd>{product.carbs} g</dd>
+                    </div>
+                    <div>
+                      <dt>Fett</dt>
+                      <dd>{product.fat} g</dd>
+                    </div>
+                  </dl>
+                </li>
+              ))}
+            </ul>
+          )}
+        </article>
+
+        <article className="panel photos-panel" id="bilder">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Progressbilder</p>
+              <h2>Bildtidslinje</h2>
+            </div>
+          </div>
+
+          <div className="progress-upload">
+            <label className="field">
+              <span>Anteckning</span>
+              <input
+                type="text"
+                placeholder="Exempel: morgon, efter pass, vecka 1"
+                value={progressPhotoNote}
+                onChange={(event) => setProgressPhotoNote(event.target.value)}
+              />
+            </label>
+            <label className="photo-input">
+              <span>Lägg till bild</span>
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleProgressPhotoChange}
+              />
+            </label>
+          </div>
+
+          {progressPhotos.length > 0 && (
+            <>
+              <div className="comparison-controls">
+                <label className="field">
+                  <span>Före</span>
+                  <select
+                    value={beforePhoto ? String(beforePhoto.id) : ''}
+                    onChange={(event) => setBeforePhotoId(event.target.value)}
+                  >
+                    {progressPhotos.map((photo) => (
+                      <option value={photo.id} key={photo.id}>
+                        {formatFullDate(photo.createdAt)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="field">
+                  <span>Efter</span>
+                  <select
+                    value={afterPhoto ? String(afterPhoto.id) : ''}
+                    onChange={(event) => setAfterPhotoId(event.target.value)}
+                  >
+                    {progressPhotos.map((photo) => (
+                      <option value={photo.id} key={photo.id}>
+                        {formatFullDate(photo.createdAt)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="before-after">
+                {[beforePhoto, afterPhoto].filter(Boolean).map((photo, index) => (
+                  <figure key={`${photo.id}-${index}`}>
+                    <img src={photo.image} alt={index === 0 ? 'Förebild' : 'Efterbild'} />
+                    <figcaption>
+                      {index === 0 ? 'Före' : 'Efter'} · {formatFullDate(photo.createdAt)}
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+
+              <div className="photo-timeline">
+                {progressPhotos.map((photo) => (
+                  <article key={photo.id}>
+                    <img src={photo.image} alt="Progressbild" />
+                    <div>
+                      <strong>{formatFullDate(photo.createdAt)}</strong>
+                      <span>{photo.note || 'Ingen anteckning'}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </>
+          )}
+        </article>
+
+        <article className="panel settings-panel" id="installningar">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Inställningar</p>
+              <h2>Dagliga påminnelser</h2>
+            </div>
+          </div>
+
+          <div className="reminder-master">
+            <label className="toggle-row">
+              <input
+                type="checkbox"
+                checked={reminderSettings.enabled}
+                onChange={(event) =>
+                  updateReminderSetting('enabled', event.target.checked)
+                }
+              />
+              <span>Aktivera påminnelser</span>
+            </label>
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={requestNotificationPermission}
+            >
+              Tillåt notiser
+            </button>
+          </div>
+          {reminderStatus && <p className="analysis-status">{reminderStatus}</p>}
+
+          <div className="reminder-list">
+            {[
+              {
+                enabledKey: 'weight',
+                label: 'Viktpåminnelse',
+                timeKey: 'weightTime',
+              },
+              {
+                enabledKey: 'meal',
+                label: 'Måltidsloggning',
+                timeKey: 'mealTime',
+              },
+              {
+                enabledKey: 'water',
+                label: 'Vattenpåminnelse',
+                timeKey: 'waterTime',
+              },
+            ].map((reminder) => (
+              <div className="reminder-row" key={reminder.enabledKey}>
+                <label className="toggle-row">
+                  <input
+                    type="checkbox"
+                    checked={reminderSettings[reminder.enabledKey]}
+                    onChange={(event) =>
+                      updateReminderSetting(
+                        reminder.enabledKey,
+                        event.target.checked,
+                      )
+                    }
+                  />
+                  <span>{reminder.label}</span>
+                </label>
+                <input
+                  type="time"
+                  value={reminderSettings[reminder.timeKey]}
+                  onChange={(event) =>
+                    updateReminderSetting(reminder.timeKey, event.target.value)
+                  }
+                />
+              </div>
+            ))}
+          </div>
+          <p className="settings-note">
+            Notiser fungerar när webbläsaren tillåter det och appen kan köras i
+            bakgrunden. Allt sparas lokalt i den här webbläsaren.
+          </p>
+        </article>
+
         <article className="panel trends-panel" id="framsteg">
           <div className="panel-heading">
             <div>
@@ -1470,6 +2304,26 @@ function App() {
               <strong>{checkIn.steps >= 7000 ? 'På rätt väg' : 'Behöver fler steg'}</strong>
             </div>
           </div>
+          <div className="weekly-report">
+            <button type="button" onClick={createWeeklyReport}>
+              Skapa veckorapport
+            </button>
+            {weeklyReportStatus && (
+              <p className="analysis-status">{weeklyReportStatus}</p>
+            )}
+            {weeklyReport && (
+              <div className="report-card">
+                {weeklyReport.split('\n').map((line, index) => (
+                  <p
+                    className={line.startsWith('###') ? 'report-heading' : ''}
+                    key={`${line}-${index}`}
+                  >
+                    {line.replace('### ', '')}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
         </article>
       </section>
 
@@ -1489,6 +2343,10 @@ function App() {
         <a href="#mat" aria-label="Gå till matchecklistan">
           <span>＋</span>
           <strong>Mat</strong>
+        </a>
+        <a href="#installningar" aria-label="Gå till inställningar">
+          <span>⚙</span>
+          <strong>Mer</strong>
         </a>
       </nav>
     </main>

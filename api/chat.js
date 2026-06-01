@@ -30,13 +30,6 @@ function parseWeight(value) {
   return Number.isFinite(numericValue) && numericValue > 0 ? numericValue : null
 }
 
-function formatWeight(value) {
-  return value.toLocaleString('sv-SE', {
-    maximumFractionDigits: 1,
-    minimumFractionDigits: 1,
-  })
-}
-
 function countDoneFoods(foods = []) {
   return foods.filter((item) => item?.done).length
 }
@@ -79,30 +72,6 @@ function formatContext(body) {
   }
 }
 
-function hasValue(value) {
-  return value !== null && value !== undefined && value !== ''
-}
-
-function makeWeightSentence(context) {
-  const currentWeight = context.current.weight
-  const goalWeight = context.profile.goalWeight
-  const goal = context.profile.goal
-
-  if (goal === 'gå ner i vikt' && hasValue(currentWeight) && hasValue(goalWeight)) {
-    return `Nuvarande vikt är ${formatWeight(Number(currentWeight))} kg och målvikt är ${formatWeight(goalWeight)} kg.`
-  }
-
-  if (goal === 'bygga muskler' && hasValue(currentWeight)) {
-    return `Nuvarande vikt är ${formatWeight(Number(currentWeight))} kg; fokusera på styrka, protein och jämn energi.`
-  }
-
-  if (hasValue(currentWeight)) {
-    return `Nuvarande vikt är ${formatWeight(Number(currentWeight))} kg; fokusera på stabila vanor och jämn energi.`
-  }
-
-  return 'Fokusera på vanor, måltidsstruktur och jämn energi.'
-}
-
 function detectPlanDays(message) {
   const lowerMessage = message.toLowerCase()
   const digitMatch = lowerMessage.match(/(\d+)\s*(dag|dagar)/)
@@ -122,7 +91,7 @@ function detectPlanDays(message) {
   return 0
 }
 
-function makeMealPlanReply(message, context) {
+function makeMealPlanReply(message) {
   const days = detectPlanDays(message)
 
   if (!days) {
@@ -174,122 +143,72 @@ function makeMealPlanReply(message, context) {
     },
   ]
   const selectedDays = dayTemplates.slice(0, days)
-  const averageCalories = Math.round(
-    selectedDays.reduce((sum, day) => sum + day.calories, 0) / days,
-  )
-  const averageProtein = Math.round(
-    selectedDays.reduce((sum, day) => sum + day.protein, 0) / days,
-  )
-
-  return `${context.profile.name}, här är en enkel budgetvänlig plan för ${days} dagar utifrån målet att ${context.profile.goal}. ${makeWeightSentence(context)}
-
+  return `En enkel plan:
 ${selectedDays
   .map(
-    (day, index) => `### Dag ${index + 1}
-- Lunch: ${day.lunch}
-- Middag: ${day.dinner}
-- Uppskattning: ca ${day.calories} kcal och ${day.protein} g protein`,
+    (day, index) =>
+      `Dag ${index + 1}: ${day.lunch} + ${day.dinner} (${day.calories} kcal, ${day.protein} g protein)`,
   )
-  .join('\n\n')}
+  .join('\n')}
 
-### Inköpslista
-- Ägg, kyckling, tonfisk, linser/bönor, tofu eller keso
-- Potatis, ris, pasta, wraps eller nudlar
-- Frysta grönsaker, vitkål, morötter, gurka och frukt
-- Yoghurt/kvarg för extra protein
-
-### Riktning
-- Snittet är ungefär ${averageCalories} kcal och ${averageProtein} g protein per dag.
-- Anpassa portionerna efter hunger, energi ${context.current.energy}/10 och aktivitet.
-- Detta är allmänt wellness-stöd, inte medicinsk rådgivning.
-
-Dagens enkla handling: välj två proteinkällor från inköpslistan.`
+Handla: ägg, kyckling/tonfisk, linser/bönor, potatis/ris och frysta grönsaker.`
 }
 
 function makeMockReply(message, context) {
   const text = message.toLowerCase()
   const name = context.profile.name || 'du'
-  const goal = context.profile.goal || 'ditt mål'
-  const mealPlanReply = makeMealPlanReply(message, context)
+  const mealPlanReply = makeMealPlanReply(message)
   const steps = context.current.steps
   const energy = context.current.energy
   const checklistScore = context.current.checklistScore
-  const meals = context.current.meals
-  const intro = `${name}, med målet att ${goal} kan du hålla det konkret och hållbart i dag. ${makeWeightSentence(context)} Tänk riktning över tid snarare än hårda snabba regler.`
-  const safety =
-    'Det här är allmänt wellness-stöd, inte medicinsk rådgivning eller behandling.'
+  const intro = `${name}, håll det enkelt i dag:`
 
   if (mealPlanReply) {
     return mealPlanReply
   }
 
   if (text.includes('middag') || text.includes('ikväll') || text.includes('äta')) {
-    return `${intro}
+    return `Testa något enkelt ikväll:
+• Kyckling + potatis + frysta grönsaker
+• Äggwrap med keso och vitkål
+• Linsgryta med ris
 
-- Välj en middag med tydlig proteinbas: kyckling, lax, tofu, bönor eller ägg.
-- Lägg till mycket grönsaker och en lagom kolhydratkälla som potatis, ris eller fullkornspasta.
-- Exempel: lax med potatis och broccoli, kycklingbowl med ris och grönsaker, eller tofuwok med nudlar.
-- Du har ${steps} steg, energi ${energy}/10 och checklistan är ${checklistScore}, så gör måltiden enkel nog att faktiskt bli av.
-- Tidigare måltider: ${meals}.
-
-${safety}
-
-Dagens enkla handling: välj en proteinbas innan du bestämmer resten av middagen.`
+Välj det som går snabbast att laga.`
   }
 
   if (text.includes('mellanmål')) {
-    return `${intro}
+    return `Snabba mellanmål:
+• Kvarg + bär
+• Ägg på knäckebröd
+• Keso + frukt
 
-- Ett bra mellanmål ska vara lätt att fixa och ge mättnad utan att bli ett stort projekt.
-- Förslag: kvarg eller yoghurt med bär, ägg på knäckebröd, keso med frukt, eller hummus med morötter.
-- Om du vill ha mer protein: välj kvarg, ägg, keso eller en enkel tonfiskmacka.
-- Med energi ${energy}/10 är det smart att välja något som stabiliserar eftermiddagen utan extrema regler.
-- Checklistan är ${checklistScore}, så välj gärna något som hjälper en sak till bli avklarad.
-
-${safety}
-
-Dagens enkla handling: förbered ett mellanmål som tar under fem minuter.`
+Ta det som kräver minst fix.`
   }
 
   if (text.includes('motivation')) {
     return `${intro}
+• Sänk ribban till 5 minuter.
+• Välj en sak: promenad, protein till nästa måltid eller vatten.
+• Med ${steps} steg och energi ${energy}/10 räcker “lite” bra.
 
-- Motivation blir lättare när målet görs litet nog att klara även en vanlig dag.
-- Välj en minsta nivå: 10 min promenad, en proteinrik måltid eller att kryssa en punkt i checklistan.
-- Med ${steps} steg i dag kan du bygga vidare lugnt, inte jaga perfektion.
-- Om humöret är ${context.current.mood}, sänk friktionen: lägg fram träningskläder eller planera nästa måltid.
-- Se dagens vanor som en kompass, inte en enskild vikt eller ett perfekt resultat.
-
-${safety}
-
-Dagens enkla handling: gör en sak i fem minuter innan du utvärderar dagen.`
+Gör första lilla steget nu.`
   }
 
   if (text.includes('protein') || text.includes('lunch')) {
-    return `${intro}
+    return `Billig proteinrik lunch:
+• Tonfisk + ris + majs
+• Äggwrap + keso + grönsaker
+• Linsgryta + potatis
 
-- Billig proteinrik lunch: ägg, tonfisk, kyckling, linser, bönor, keso eller tofu.
-- Konkreta alternativ: tonfisk med ris och majs, äggwrap med grönsaker, linsgryta med potatis, eller kycklingsallad med bröd.
-- För ${goal}: håll proteinet tydligt och justera mängden ris, pasta eller potatis efter hunger och aktivitetsnivå.
-- Du har energi ${energy}/10, så välj något som mättar utan att göra eftermiddagen tung.
-- Checklistan är ${checklistScore}; lägg gärna till frukt eller grönsaker.
-
-${safety}
-
-Dagens enkla handling: välj en lunch där proteinet är bestämt först.`
+Välj en och upprepa den i veckan.`
   }
 
   return `${intro}
+• Nästa måltid: protein + grönsak + potatis/ris/bröd.
+• Checklistan är ${checklistScore}; välj enklaste punkten.
+• Energi ${energy}/10: håll nivån rimlig.
 
-- Börja med nästa måltid: protein + grönsaker + en kolhydratkälla som passar hunger och energi.
-- Konkreta val: yoghurt med bär, kyckling med potatis, tofu med ris, äggmacka eller bönsallad.
-- Med ${steps} steg och energi ${energy}/10 är ett rimligt mål bättre än ett perfekt mål.
-- Matchecklistan är ${checklistScore}; välj en punkt som känns enklast att klara.
-- Undvik extrema upplägg. En jämn rutin vinner över snabba ryck.
-
-${safety}
-
-Dagens enkla handling: planera din nästa måltid i en mening.`
+Planera nästa måltid i en mening.`
 }
 
 function extractResponseText(data) {
@@ -386,9 +305,9 @@ export default async function handler(request, response) {
       },
       body: JSON.stringify({
         model,
-        max_output_tokens: 420,
+        max_output_tokens: 220,
         instructions:
-          'Du är Viktkollens svenska AI-coach för allmänt välmående. Svara alltid endast på svenska. Tilltala användaren naturligt med namn när namnet finns. Skriv 100-250 ord. Använd tydliga rubriker och korta punktlistor. Ge konkreta måltidsförslag med budgetvänliga svenska livsmedel som ägg, kvarg, keso, potatis, ris, havregryn, tonfisk, bönor, linser, frysta grönsaker, kyckling och tofu. Använd användarens mål, profil, aktivitetsnivå, nuvarande vikt, viktlogg, måltider, checklista, steg, energi och humör när det är relevant. Om målet är "hålla vikten", prata inte om att gå ner i vikt, viktminskning eller avstånd till målvikt; fokusera på stabilitet, energi och vanor. Prata bara om viktminskning när målet är "gå ner i vikt". Prata bara om muskelbygge när målet är "bygga muskler". Nämn målvikt endast när målet är "gå ner i vikt" och målvikt finns i kontexten. Hitta aldrig på värden och skriv aldrig placeholders som "dd kg", "okänd kg" eller "inte satt kg". Om användaren ber om flera dagar, gör en dag-för-dag-plan med rubriker som "Dag 1", "Dag 2", "Dag 3", ungefärliga kalorier och protein per dag samt inköpslista om relevant. Håll tonen varm, stödjande och praktisk. Ge inte medicinsk diagnos, behandlingsråd, extrema dieter, fasta-råd eller farliga råd. Avsluta alltid med exakt en enkel handling för i dag, formulerad som: "Dagens enkla handling: ...".',
+          'Du är Viktkollens svenska AI-coach. Svara alltid på svenska, kort och praktiskt. Normal svarslängd: 3-5 korta bullets eller 2-4 korta rader. Inga långa stycken. Upprepa inte nuvarande vikt eller målvikt om användaren inte frågar om viktutveckling. Upprepa inte medicinska disclaimers. För "Vad ska jag äta ikväll?": ge 2-3 konkreta middagsalternativ. För mellanmål: ge 3 snabba alternativ. För billig proteinrik lunch: ge 3 konkreta luncher. För flerdagars matplan: använd kompakt format "Dag 1: ...", "Dag 2: ...", "Dag 3: ..." och högst en kort inköpsrad. Om målet är "hålla vikten", prata inte om viktminskning eller avstånd till målvikt. Prata bara om viktminskning när målet är "gå ner i vikt". Prata bara om muskelbygge när målet är "bygga muskler". Ge inte diagnos, behandling, extrema dieter eller fasta-råd. Avsluta med en enkel handling bara när det tillför något.',
         input: [
           {
             role: 'user',

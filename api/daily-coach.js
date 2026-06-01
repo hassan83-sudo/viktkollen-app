@@ -74,14 +74,19 @@ function makeMockSummary(context) {
     typeof context.current.steps === 'number'
       ? context.current.steps.toLocaleString('sv-SE')
       : context.current.steps
-  const weightLine =
-    goal === 'gå ner i vikt' && context.profile.goalWeight
-      ? 'Håll koll på trenden, men låt dagens vanor styra.'
-      : goal === 'bygga muskler'
-        ? 'Prioritera protein, styrka och återhämtning före snabba viktomdömen.'
-        : 'Fokusera på stabil energi, jämna måltider och rutiner som går att upprepa.'
+  const focus =
+    goal === 'bygga muskler'
+      ? 'protein och återhämtning'
+      : goal === 'gå ner i vikt'
+        ? 'enkla matval och jämn rörelse'
+        : 'stabil energi och jämna måltider'
 
-  return `${name}, här är dagens riktning: ${weightLine} Du har ${steps} steg, energi ${context.current.energy}/10 och humöret är ${context.current.mood.toLowerCase()}. Matchecklistan är ${checklist}, så välj ett enkelt nästa steg: protein och frukt eller grönsaker i nästa måltid. Det här är allmänt wellness-stöd, inte medicinsk rådgivning.`
+  return `${name}, dagens fokus:
+• Satsa på ${focus}.
+• Steg: ${steps}, energi: ${context.current.energy}/10.
+• Matchecklistan är ${checklist}.
+
+Välj en enkel måltid med protein och grönsaker.`
 }
 
 function fallbackPayload(context, reason, details = {}) {
@@ -165,9 +170,9 @@ export default async function handler(request, response) {
       },
       body: JSON.stringify({
         model,
-        max_output_tokens: 220,
+        max_output_tokens: 150,
         instructions:
-          'Du är Viktkollens svenska AI-coach för allmänt välmående. Skriv en kort daglig coachsammanfattning på svenska, 60-110 ord, i varm och praktisk ton. Använd profil, mål, vikttrend, måltider, matchecklista, steg, humör och energi. Om målet är "hålla vikten", prata inte om att gå ner i vikt, viktminskning eller avstånd till målvikt; fokusera på stabilitet, energi och vanor. Prata bara om viktminskning när målet är "gå ner i vikt". Prata bara om muskelbygge när målet är "bygga muskler". Nämn målvikt endast när målet är "gå ner i vikt" och målvikt finns i kontexten. Ge inte medicinsk diagnos, behandlingsråd eller extrema dieter. Avsluta med en enkel handling för i dag.',
+          'Du är Viktkollens svenska AI-coach. Skriv en mycket kort daglig sammanfattning på svenska: max 3 korta bullets plus eventuell sista handlingsrad. Inga långa stycken. Upprepa inte nuvarande vikt eller målvikt om det inte behövs för viktutveckling. Upprepa ingen medicinsk disclaimer. Använd mål, måltider, matchecklista, steg, humör och energi. Om målet är "hålla vikten", prata inte om viktminskning eller avstånd till målvikt. Prata bara om viktminskning när målet är "gå ner i vikt". Prata bara om muskelbygge när målet är "bygga muskler". Ge inte diagnos, behandling eller extrema dieter.',
         input: [
           {
             role: 'user',

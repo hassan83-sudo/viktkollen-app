@@ -81,24 +81,19 @@ function makeMockReport(context) {
   const name = context.profile.name || 'du'
   const goal = context.profile.goal
   const goalText =
-    goal === 'gå ner i vikt'
-      ? 'Vikttrenden kan följas lugnt utan hårda regler.'
-      : goal === 'bygga muskler'
-        ? 'Låt styrka, protein och återhämtning vara huvudsignalerna.'
-        : 'Stabil energi och upprepbara vanor är veckans viktigaste signaler.'
+    goal === 'bygga muskler'
+      ? 'Prioritera protein och återhämtning.'
+      : goal === 'gå ner i vikt'
+        ? 'Fortsätt med enkla måltider och jämn rörelse.'
+        : 'Håll rutinen stabil och lätt att upprepa.'
 
-  return `### Veckans sammanfattning
-- ${name}, ditt mål är att ${goal}. ${goalText}
-- Vikt: genomsnittlig veckoförändring är ${context.week.averageWeeklyChange}.
-- Mat: ${context.week.meals.length} måltider är loggade och checklistan är ${context.week.checklistCompletion}.
-- Aktivitet: ${context.week.steps} steg, energi ${context.week.energy}/10 och humör ${context.week.mood}.
+  return `### Veckorapport
+• ${name}: ${goalText}
+• Vikttrend: ${context.week.averageWeeklyChange} per vecka.
+• Mat: ${context.week.meals.length} loggade måltider, checklista ${context.week.checklistCompletion}.
+• Aktivitet: ${context.week.steps} steg, energi ${context.week.energy}/10.
 
-### Nästa fokus
-- Välj en proteinbas till två måltider i förväg.
-- Håll vattenmålet synligt under dagen.
-- Gör en rimlig rörelseinsats som passar energin.
-
-Det här är allmänt wellness-stöd, inte medicinsk rådgivning.`
+Nästa steg: planera två proteinbaser för veckan.`
 }
 
 function fallbackPayload(context, reason, details = {}) {
@@ -179,9 +174,9 @@ export default async function handler(request, response) {
       },
       body: JSON.stringify({
         model,
-        max_output_tokens: 520,
+        max_output_tokens: 260,
         instructions:
-          'Du är Viktkollens svenska AI-coach. Skapa en veckorapport på svenska med rubriker och korta punktlistor. Analysera vikttrend, måltider, matchecklista, steg, energi och humör. Håll tonen stödjande, konkret och mobilvänlig. Om målet är "hålla vikten", prata inte om viktminskning eller avstånd till målvikt. Prata bara om viktminskning när målet är "gå ner i vikt". Prata bara om muskelbygge när målet är "bygga muskler". Ge inte medicinska råd, diagnoser, behandling eller extrema dieter.',
+          'Du är Viktkollens svenska AI-coach. Skapa en kort veckorapport på svenska med en rubrik och max 4 korta bullets. Analysera vikttrend, måltider, matchecklista, steg, energi och humör utan långa stycken. Upprepa inte nuvarande vikt eller målvikt om det inte behövs. Upprepa ingen medicinsk disclaimer. Om målet är "hålla vikten", prata inte om viktminskning eller avstånd till målvikt. Prata bara om viktminskning när målet är "gå ner i vikt". Prata bara om muskelbygge när målet är "bygga muskler". Avsluta med ett kort nästa steg om det är användbart. Ge inte diagnos, behandling eller extrema dieter.',
         input: [
           {
             role: 'user',

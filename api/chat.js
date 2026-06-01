@@ -156,15 +156,33 @@ Handla: ägg, kyckling/tonfisk, linser/bönor, potatis/ris och frysta grönsaker
 
 function makeMockReply(message, context) {
   const text = message.toLowerCase()
-  const name = context.profile.name || 'du'
   const mealPlanReply = makeMealPlanReply(message)
   const steps = context.current.steps
   const energy = context.current.energy
   const checklistScore = context.current.checklistScore
-  const intro = `${name}, håll det enkelt i dag:`
+  const currentWeight = context.current.weight
+  const goal = context.profile.goal
 
   if (mealPlanReply) {
     return mealPlanReply
+  }
+
+  if (text.includes('hur mycket') && text.includes('väger')) {
+    return Number.isFinite(Number(currentWeight))
+      ? `Din senaste registrerade vikt är ${Number(currentWeight).toLocaleString('sv-SE', {
+        maximumFractionDigits: 1,
+        minimumFractionDigits: 1,
+      })} kg.`
+      : 'Jag hittar ingen giltig vikt i loggen just nu.'
+  }
+
+  if (text.includes('pizza') || text.includes('sugen')) {
+    const goalHint =
+      goal === 'gå ner i vikt'
+        ? 'Om målet är viktnedgång kan du fortfarande äta pizza.'
+        : 'Det kan absolut få plats i en vanlig rutin.'
+
+    return `${goalHint} Ta en normal portion och komplettera gärna med sallad eller något proteinrikt om du vill bli mättare. Är det lunch eller middag du funderar på?`
   }
 
   if (text.includes('middag') || text.includes('ikväll') || text.includes('äta')) {
@@ -186,12 +204,7 @@ Ta det som kräver minst fix.`
   }
 
   if (text.includes('motivation')) {
-    return `${intro}
-• Sänk ribban till 5 minuter.
-• Välj en sak: promenad, protein till nästa måltid eller vatten.
-• Med ${steps} steg och energi ${energy}/10 räcker “lite” bra.
-
-Gör första lilla steget nu.`
+    return `Det händer alla. Försök fokusera på nästa lilla steg i stället för hela målet. Med energi ${energy}/10 kan det räcka med något väldigt enkelt. Vad känns svårast just nu – maten, träningen eller att hålla rutinen?`
   }
 
   if (text.includes('protein') || text.includes('lunch')) {
@@ -203,12 +216,19 @@ Gör första lilla steget nu.`
 Välj en och upprepa den i veckan.`
   }
 
-  return `${intro}
-• Nästa måltid: protein + grönsak + potatis/ris/bröd.
-• Checklistan är ${checklistScore}; välj enklaste punkten.
-• Energi ${energy}/10: håll nivån rimlig.
+  if (text.includes('vikt') || text.includes('mål')) {
+    if (goal === 'gå ner i vikt') {
+      return 'Titta helst på vikttrenden över flera dagar, inte bara en enskild vägning. Vill du att jag jämför de senaste registreringarna åt dig?'
+    }
 
-Planera nästa måltid i en mening.`
+    if (goal === 'bygga muskler') {
+      return 'För muskelbygge är vikten bara en del av bilden. Det är ofta mer användbart att följa styrka, energi, protein och återhämtning.'
+    }
+
+    return 'Om målet är att hålla vikten är en stabil trend oftast ett bra tecken. Titta på veckosnittet snarare än en enskild dag.'
+  }
+
+  return `Jag är med. Du har ${steps} steg, energi ${energy}/10 och matchecklistan är ${checklistScore}. Vad vill du helst få hjälp med just nu – mat, motivation eller planering?`
 }
 
 function extractResponseText(data) {
@@ -305,9 +325,9 @@ export default async function handler(request, response) {
       },
       body: JSON.stringify({
         model,
-        max_output_tokens: 220,
+        max_output_tokens: 360,
         instructions:
-          'Du är Viktkollens svenska AI-coach. Svara alltid på svenska, kort och praktiskt. Normal svarslängd: 3-5 korta bullets eller 2-4 korta rader. Inga långa stycken. Upprepa inte nuvarande vikt eller målvikt om användaren inte frågar om viktutveckling. Upprepa inte medicinska disclaimers. För "Vad ska jag äta ikväll?": ge 2-3 konkreta middagsalternativ. För mellanmål: ge 3 snabba alternativ. För billig proteinrik lunch: ge 3 konkreta luncher. För flerdagars matplan: använd kompakt format "Dag 1: ...", "Dag 2: ...", "Dag 3: ..." och högst en kort inköpsrad. Om målet är "hålla vikten", prata inte om viktminskning eller avstånd till målvikt. Prata bara om viktminskning när målet är "gå ner i vikt". Prata bara om muskelbygge när målet är "bygga muskler". Ge inte diagnos, behandling, extrema dieter eller fasta-råd. Avsluta med en enkel handling bara när det tillför något.',
+          'Du är Viktkollens svenska wellness-assistent i chatten. Svara alltid på svenska och låt det kännas som ett naturligt samtal, inte en rapport. Svara på användarens faktiska fråga först. Kort som standard: 2-6 meningar. Använd punktlista bara när det gör svaret tydligare, till exempel matförslag eller plan. Längre svar endast om användaren ber om det. Ställ gärna en kort följdfråga när det hjälper samtalet. Använd profil, mål, viktlogg, måltider, checklista, steg, energi och humör som tyst kontext, men upprepa inte vikt, målvikt, mål eller disclaimer om det inte är relevant. Nämn aktuell vikt bara när användaren frågar om vikt eller viktutveckling. Om användaren frågar "Hur mycket väger jag nu?", svara bara med senaste registrerade vikt. För pizza eller sug: normalisera, ge praktiskt portions-/balanstips och fråga om måltidssituation. För dålig motivation: var empatisk och fråga vad som känns svårast. För "Vad ska jag äta ikväll?": ge 2-3 konkreta alternativ. För mellanmål: ge 3 snabba alternativ. För billig proteinrik lunch: ge 3 konkreta luncher. För flerdagars matplan: använd kompakt format "Dag 1: ...". Om målet är "hålla vikten", prata inte om viktminskning eller avstånd till målvikt. Prata bara om viktminskning när målet är "gå ner i vikt". Prata bara om muskelbygge när målet är "bygga muskler". Wellness-stöd endast: ge inte diagnos, behandling, extrema dieter eller fasta-råd. Avsluta inte alltid med action item.',
         input: [
           {
             role: 'user',

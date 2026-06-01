@@ -448,7 +448,6 @@ function makeCoachMessage(profile, checkIn, foods, meals) {
 
 function makeChatResponse(message, profile, checkIn, foods, currentWeight) {
   const text = message.toLowerCase()
-  const name = profile?.name || 'du'
   const goal = profile?.goal || 'hålla en stabil rutin'
   const goalWeight = profile?.goalWeight?.trim()
   const canDiscussWeightLoss = goal === 'gå ner i vikt'
@@ -459,7 +458,6 @@ function makeChatResponse(message, profile, checkIn, foods, currentWeight) {
     : canDiscussMuscleGain
       ? 'Fokus: styrka, protein och återhämtning.'
       : 'Fokus: stabil energi och jämna måltider.'
-  const intro = `${name}, håll det enkelt:`
   const daysMatch = text.match(/(\d+)\s*(dag|dagar)/)
   const planDays = daysMatch
     ? Math.min(Math.max(Number(daysMatch[1]), 2), 7)
@@ -489,6 +487,21 @@ ${dayTemplates
 Handla: ägg, kyckling/tonfisk, linser/bönor, potatis/ris och frysta grönsaker.`
   }
 
+  if (text.includes('hur mycket') && text.includes('väger')) {
+    return Number.isFinite(Number(currentWeight))
+      ? `Din senaste registrerade vikt är ${formatWeight(currentWeight)}.`
+      : 'Jag hittar ingen giltig vikt i loggen just nu.'
+  }
+
+  if (text.includes('pizza') || text.includes('sugen')) {
+    const goalHint =
+      goal === 'gå ner i vikt'
+        ? 'Om målet är viktnedgång kan du fortfarande äta pizza.'
+        : 'Det kan absolut få plats i en vanlig rutin.'
+
+    return `${goalHint} Ta en normal portion och komplettera gärna med sallad eller något proteinrikt om du vill bli mättare. Är det lunch eller middag du funderar på?`
+  }
+
   if (text.includes('ikväll') || text.includes('middag') || text.includes('äta')) {
     return `Testa något enkelt ikväll:
 • Kyckling + potatis + frysta grönsaker
@@ -508,12 +521,7 @@ Ta det som kräver minst fix.`
   }
 
   if (text.includes('motivation') || text.includes('motiver')) {
-    return `${intro}
-• Välj en minsta nivå: 5 min promenad eller ett glas vatten.
-• Gör nästa måltid lite enklare, inte perfekt.
-• Energi ${checkIn.energy}/10: anpassa nivån efter dagen.
-
-Gör första lilla steget nu.`
+    return `Det händer alla. Försök fokusera på nästa lilla steg i stället för hela målet. Med energi ${checkIn.energy}/10 kan det räcka med något väldigt enkelt. Vad känns svårast just nu – maten, träningen eller att hålla rutinen?`
   }
 
   if (text.includes('billig') || text.includes('proteinrik') || text.includes('lunch')) {
@@ -526,26 +534,18 @@ Välj en och upprepa den i veckan.`
   }
 
   if (text.includes('vikt') || text.includes('mål')) {
-    const goalFocus = canDiscussWeightLoss
-      ? 'Fokusera på vikttrenden över tid, inte en enskild dag.'
-      : canDiscussMuscleGain
-        ? 'Fokusera på styrka, protein, återhämtning och en jämn rutin.'
-        : 'Fokusera på stabila rutiner, jämn energi och måltider som är lätta att upprepa.'
+    if (canDiscussWeightLoss) {
+      return `${weightContext} Titta helst på trenden över flera dagar, inte bara en enskild vägning. Vill du att jag jämför de senaste registreringarna åt dig?`
+    }
 
-    return `${intro}
-• ${weightContext}
-• ${goalFocus}
-• Matidé: kyckling/tofu/bönor + potatis/ris + grönsaker.
+    if (canDiscussMuscleGain) {
+      return 'För muskelbygge är vikten bara en del av bilden. Det är ofta mer användbart att följa styrka, energi, protein och återhämtning.'
+    }
 
-Logga nästa måltid om du vill följa trenden tydligare.`
+    return 'Om målet är att hålla vikten är en stabil trend oftast ett bra tecken. Titta på veckosnittet snarare än en enskild dag.'
   }
 
-  return `${intro}
-• Nästa måltid: protein + grönsak + potatis/ris/bröd.
-• Matchecklistan är ${foodScore}/${foods.length}; välj enklaste punkten.
-• Energi ${checkIn.energy}/10: håll nivån rimlig.
-
-Skriv ner nästa måltid i en mening.`
+  return `Jag är med. Du har energi ${checkIn.energy}/10 och matchecklistan är ${foodScore}/${foods.length}. Vad vill du helst få hjälp med just nu – mat, motivation eller planering?`
 }
 
 function makeLocalWeeklyReport(profile, checkIn, foods, meals, weights) {

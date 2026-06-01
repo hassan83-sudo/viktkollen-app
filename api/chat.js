@@ -185,11 +185,51 @@ function asksIfHarmful(message) {
   )
 }
 
+function isMeaninglessMessage(message) {
+  const text = message.trim().toLowerCase()
+
+  return (
+    text.length === 0 ||
+    /^[^\p{L}\p{N}]+$/u.test(text) ||
+    /^(ok|okej|mm|mhm|test|asdf|qwerty)$/i.test(text)
+  )
+}
+
+function makeCommonWellnessReply(message) {
+  const text = message.toLowerCase()
+
+  if (text.includes('sov') || text.includes('sömn') || text.includes('sova')) {
+    return 'För de flesta vuxna är 7–9 timmars sömn en bra riktlinje. 8 timmar är alltså ett bra mål, men det viktigaste är hur du mår på dagen och om sömnen känns återhämtande.'
+  }
+
+  if (text.includes('stress') || text.includes('stressad')) {
+    return 'Stress påverkar både energi, hunger och motivation. Testa att sänka kraven för resten av dagen: ät något enkelt, ta fem lugna minuter och välj bara en sak som behöver bli gjord. Vad stressar mest just nu?'
+  }
+
+  if (text.includes('träna') || text.includes('träning') || text.includes('gym') || text.includes('promenad')) {
+    return 'Ja, rörelse är oftast en bra idé om kroppen känns okej. Håll nivån efter dagsformen: promenad om du är trött, styrka eller intervaller om du har mer energi. Vad hade du tänkt träna?'
+  }
+
+  if (text.includes('vana') || text.includes('rutin') || text.includes('disciplin')) {
+    return 'Börja mindre än du tycker behövs. En vana fastnar lättare om den är enkel att upprepa, till exempel samma frukost, en kort promenad eller att logga första måltiden. Vilken rutin vill du få ordning på?'
+  }
+
+  if (text.includes('mat') || text.includes('hungrig') || text.includes('äta')) {
+    return 'Sikta på något enkelt: protein, en kolhydratkälla och frukt eller grönsaker. Till exempel äggmacka, kyckling med ris eller yoghurt med bär. Vill du ha förslag för frukost, lunch eller middag?'
+  }
+
+  return ''
+}
+
 function makeMockReply(message, context, chatHistory = []) {
   const text = message.toLowerCase()
   const mealPlanReply = makeMealPlanReply(message)
   const currentWeight = context.current.weight
   const goal = context.profile.goal
+
+  if (isMeaninglessMessage(message)) {
+    return 'Jag hängde inte riktigt med där. Skriv gärna frågan en gång till.'
+  }
 
   if (mealPlanReply) {
     return mealPlanReply
@@ -275,7 +315,7 @@ Välj en och upprepa den i veckan.`
     return 'Om målet är att hålla vikten är en stabil trend oftast ett bra tecken. Titta på veckosnittet snarare än en enskild dag.'
   }
 
-  return 'Jag förstår. Vill du att jag hjälper dig med mat, motivation eller en enkel plan framåt?'
+  return makeCommonWellnessReply(message) || 'Jag hängde inte riktigt med där. Kan du skriva lite mer om vad du menar?'
 }
 
 function extractResponseText(data) {
@@ -377,7 +417,7 @@ export default async function handler(request, response) {
         model,
         max_output_tokens: 360,
         instructions:
-          'Du är Viktkollens svenska wellness-assistent i chatten. Svara alltid på svenska och låt det kännas som ett naturligt samtal, inte en rapport. Svara på användarens faktiska fråga först och använd chatthistoriken för att förstå följdfrågor. Använd inte generiska fallbackfrågor om meddelandet kan tolkas utifrån historiken. För hälsningar som "hej", svara naturligt: "Hej! Hur kan jag hjälpa dig idag?" Kort som standard: 2-6 meningar. Använd punktlista bara när det gör svaret tydligare. Ställ gärna en kort följdfråga när det hjälper samtalet. Använd profil, mål, viktlogg, måltider, checklista, steg, energi och humör som tyst kontext. Nämn inte steg, energi eller checklista om frågan inte handlar om aktivitet, ork, daglig status eller planering. Upprepa inte vikt, målvikt, mål eller disclaimer om det inte är relevant. Om användaren frågar om något är skadligt eller farligt, svara direkt med säker generell wellness-vägledning utan medicinsk diagnos. Om historiken handlar om att äta precis innan läggdags och användaren frågar om det är skadligt: säg att det oftast inte är skadligt för de flesta, men att det kan påverka sömn, reflux, hungervanor eller kaloriintag för vissa; föreslå lättare alternativ om personen är hungrig och att testa tajming och portionsstorlek. Om användaren frågar "Hur mycket väger jag nu?", svara bara med senaste registrerade vikt. För "Jag åt dåligt hela helgen": svara empatiskt och ge en enkel reset-plan utan skuld eller hård kompensation. För pizza eller sug: normalisera, ge praktiskt portions-/balanstips och fråga om måltidssituation. För dålig motivation: var empatisk och fråga vad som känns svårast. För flerdagars matplan: använd kompakt format "Dag 1: ...". Använd chatthistoriken för att variera formuleringar och undvik att återanvända samma öppningsfras flera gånger. Om målet är "hålla vikten", prata inte om viktminskning eller avstånd till målvikt. Prata bara om viktminskning när målet är "gå ner i vikt". Prata bara om muskelbygge när målet är "bygga muskler". Wellness-stöd endast: ge inte diagnos, behandling, extrema dieter eller fasta-råd. Avsluta inte alltid med action item.',
+          'Du är Viktkollens svenska wellness-assistent i chatten. Svara alltid på svenska och låt det kännas som ett naturligt samtal, inte en rapport. Svara på användarens faktiska fråga först och använd chatthistoriken för att förstå följdfrågor. Använd inte generiska fallbackfrågor om meddelandet kan tolkas utifrån historiken eller är en vanlig wellnessfråga. För hälsningar som "hej", svara naturligt: "Hej! Hur kan jag hjälpa dig idag?" För sömnfrågor som "ska jag sova 8 timmar", svara direkt att 7–9 timmar är en bra riktlinje för de flesta vuxna. Hantera vanliga wellnessfrågor om sömn, stress, motivation, mat, träning, vikt och vanor direkt. Kort som standard: 2-6 meningar. Använd punktlista bara när det gör svaret tydligare. Ställ gärna en kort följdfråga när det hjälper samtalet. Använd profil, mål, viktlogg, måltider, checklista, steg, energi och humör som tyst kontext. Nämn inte steg, energi eller checklista om frågan inte handlar om aktivitet, ork, daglig status eller planering. Upprepa inte vikt, målvikt, mål eller disclaimer om det inte är relevant. Om användaren frågar om något är skadligt eller farligt, svara direkt med säker generell wellness-vägledning utan medicinsk diagnos. Om historiken handlar om att äta precis innan läggdags och användaren frågar om det är skadligt: säg att det oftast inte är skadligt för de flesta, men att det kan påverka sömn, reflux, hungervanor eller kaloriintag för vissa; föreslå lättare alternativ om personen är hungrig och att testa tajming och portionsstorlek. Om användaren frågar "Hur mycket väger jag nu?", svara bara med senaste registrerade vikt. För "Jag åt dåligt hela helgen": svara empatiskt och ge en enkel reset-plan utan skuld eller hård kompensation. För pizza eller sug: normalisera, ge praktiskt portions-/balanstips och fråga om måltidssituation. För dålig motivation: var empatisk och fråga vad som känns svårast. För flerdagars matplan: använd kompakt format "Dag 1: ...". Använd chatthistoriken för att variera formuleringar och undvik att återanvända samma öppningsfras flera gånger. Om målet är "hålla vikten", prata inte om viktminskning eller avstånd till målvikt. Prata bara om viktminskning när målet är "gå ner i vikt". Prata bara om muskelbygge när målet är "bygga muskler". Wellness-stöd endast: ge inte diagnos, behandling, extrema dieter eller fasta-råd. Endast om meddelandet är tomt eller meningslöst får du be användaren skriva om frågan.',
         input: [
           {
             role: 'user',

@@ -477,6 +477,42 @@ function asksIfHarmful(message) {
   )
 }
 
+function isMeaninglessMessage(message) {
+  const text = message.trim().toLowerCase()
+
+  return (
+    text.length === 0 ||
+    /^[^\p{L}\p{N}]+$/u.test(text) ||
+    /^(ok|okej|mm|mhm|test|asdf|qwerty)$/i.test(text)
+  )
+}
+
+function makeCommonWellnessReply(message) {
+  const text = message.toLowerCase()
+
+  if (text.includes('sov') || text.includes('sömn') || text.includes('sova')) {
+    return 'För de flesta vuxna är 7–9 timmars sömn en bra riktlinje. 8 timmar är alltså ett bra mål, men det viktigaste är hur du mår på dagen och om sömnen känns återhämtande.'
+  }
+
+  if (text.includes('stress') || text.includes('stressad')) {
+    return 'Stress påverkar både energi, hunger och motivation. Testa att sänka kraven för resten av dagen: ät något enkelt, ta fem lugna minuter och välj bara en sak som behöver bli gjord. Vad stressar mest just nu?'
+  }
+
+  if (text.includes('träna') || text.includes('träning') || text.includes('gym') || text.includes('promenad')) {
+    return 'Ja, rörelse är oftast en bra idé om kroppen känns okej. Håll nivån efter dagsformen: promenad om du är trött, styrka eller intervaller om du har mer energi. Vad hade du tänkt träna?'
+  }
+
+  if (text.includes('vana') || text.includes('rutin') || text.includes('disciplin')) {
+    return 'Börja mindre än du tycker behövs. En vana fastnar lättare om den är enkel att upprepa, till exempel samma frukost, en kort promenad eller att logga första måltiden. Vilken rutin vill du få ordning på?'
+  }
+
+  if (text.includes('mat') || text.includes('hungrig') || text.includes('äta')) {
+    return 'Sikta på något enkelt: protein, en kolhydratkälla och frukt eller grönsaker. Till exempel äggmacka, kyckling med ris eller yoghurt med bär. Vill du ha förslag för frukost, lunch eller middag?'
+  }
+
+  return ''
+}
+
 function makeChatResponse(
   message,
   profile,
@@ -501,6 +537,10 @@ function makeChatResponse(
     : text.includes('flera dagar') || text.includes('veckoplan') || text.includes('matschema')
       ? 3
       : 0
+
+  if (isMeaninglessMessage(message)) {
+    return 'Jag hängde inte riktigt med där. Skriv gärna frågan en gång till.'
+  }
 
   if (planDays) {
     const dayTemplates = [
@@ -601,7 +641,7 @@ Välj en och upprepa den i veckan.`
     return 'Om målet är att hålla vikten är en stabil trend oftast ett bra tecken. Titta på veckosnittet snarare än en enskild dag.'
   }
 
-  return 'Jag förstår. Vill du att jag hjälper dig med mat, motivation eller en enkel plan framåt?'
+  return makeCommonWellnessReply(message) || 'Jag hängde inte riktigt med där. Kan du skriva lite mer om vad du menar?'
 }
 
 function makeLocalWeeklyReport(profile, checkIn, foods, meals, weights) {

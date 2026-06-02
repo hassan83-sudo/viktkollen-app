@@ -753,6 +753,8 @@ function App() {
   )
   const [reminderStatus, setReminderStatus] = useState('')
   const [chatInput, setChatInput] = useState('')
+  const [voiceStatus, setVoiceStatus] = useState('')
+  const [isListening, setIsListening] = useState(false)
   const [chatMessages, setChatMessages] = useState(() =>
     readStoredValue(storageKeys.chat, initialChatMessages, isStoredChatMessages),
   )
@@ -1493,6 +1495,51 @@ function App() {
     void sendChatText(text)
   }
 
+  function startVoiceInput() {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition
+
+    if (!SpeechRecognition) {
+      setVoiceStatus(
+        'Röstinmatning stöds inte i den här webbläsaren. Skriv frågan i stället.',
+      )
+      return
+    }
+
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'sv-SE'
+    recognition.continuous = false
+    recognition.interimResults = false
+
+    recognition.addEventListener('start', () => {
+      setIsListening(true)
+      setVoiceStatus('Lyssnar...')
+    })
+
+    recognition.addEventListener('result', (event) => {
+      const transcript = Array.from(event.results)
+        .map((result) => result[0]?.transcript ?? '')
+        .join(' ')
+        .trim()
+
+      if (transcript) {
+        setChatInput(transcript)
+        setVoiceStatus('Texten är ifylld. Du kan redigera innan du skickar.')
+      }
+    })
+
+    recognition.addEventListener('error', () => {
+      setVoiceStatus('Kunde inte lyssna just nu. Försök igen eller skriv frågan.')
+    })
+
+    recognition.addEventListener('end', () => {
+      setIsListening(false)
+      setVoiceStatus((current) => (current === 'Lyssnar...' ? '' : current))
+    })
+
+    recognition.start()
+  }
+
   function handleStarterPrompt(prompt) {
     void sendChatText(prompt)
   }
@@ -1797,8 +1844,22 @@ function App() {
               onChange={(event) => setChatInput(event.target.value)}
               placeholder="Skriv en fråga..."
             />
+            <button
+              className={`mic-button ${isListening ? 'listening' : ''}`}
+              type="button"
+              onClick={startVoiceInput}
+              aria-label="Starta röstinmatning"
+              title="Starta röstinmatning"
+            >
+              {isListening ? 'Lyssnar' : 'Mic'}
+            </button>
             <button type="submit">Skicka</button>
           </form>
+          {voiceStatus && (
+            <p className="voice-status" aria-live="polite">
+              {voiceStatus}
+            </p>
+          )}
           <p className="chat-safety-note">
             Svaren är allmänt wellness-stöd på svenska. Ingen medicinsk
             diagnos, behandling eller extrem diet.

@@ -308,9 +308,32 @@ a:focus-visible {
 
 .chat-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 10px;
   margin-top: 12px;
+}
+
+.mic-button {
+  min-width: 54px;
+  padding: 0 14px;
+  color: var(--text-h);
+  background: var(--soft-bg);
+  box-shadow: none;
+  font-size: 13px;
+}
+
+.mic-button:hover,
+.mic-button.listening {
+  color: #ffffff;
+  background: var(--green);
+}
+
+.voice-status {
+  margin: 10px 0 0;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
 }
 
 .chat-safety-note {

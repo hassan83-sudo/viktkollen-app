@@ -1425,7 +1425,10 @@ function App() {
           meals,
           weights,
           currentWeight: latestWeight.value,
-          chatHistory: chatMessages.slice(-8),
+          chatHistory: chatMessages.slice(-20).map((chatMessage) => ({
+            role: chatMessage.role,
+            text: chatMessage.text,
+          })),
         }),
       })
 
@@ -1457,7 +1460,7 @@ function App() {
       checkIn,
       foods,
       latestWeight.value,
-      chatMessages.slice(-8),
+      chatMessages.slice(-20),
     )
   }
 

@@ -24,6 +24,20 @@ function sanitizeText(value, fallback = '') {
   return value.trim().slice(0, 1000)
 }
 
+function sanitizeChatHistory(value) {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .slice(-20)
+    .map((entry) => ({
+      role: entry?.role === 'assistant' ? 'assistant' : 'user',
+      text: sanitizeText(entry?.text),
+    }))
+    .filter((entry) => entry.text)
+}
+
 function parseWeight(value) {
   const numericValue = Number(String(value ?? '').replace(',', '.').replace(' kg', ''))
 
@@ -70,6 +84,50 @@ function formatContext(body) {
       meals: mealNotes || 'inga måltider loggade',
     },
   }
+}
+
+function formatHealthContextForModel(context) {
+  return [
+    `Profil: ${JSON.stringify(context.profile)}`,
+    `Vikt och trenddata: aktuell vikt ${context.current.weight ?? 'saknas'}`,
+    `Måltider: ${context.current.meals}`,
+    `Matchecklista: ${context.current.checklistScore} (${context.current.checklist})`,
+    `Dagens check-in: ${context.current.steps} steg, energi ${context.current.energy}, humör ${context.current.mood}, träning/rörelse ${context.current.workout ? 'ja' : 'nej'}`,
+  ].join('\n')
+}
+
+function buildConversationInput(message, context, chatHistory) {
+  const conversation = chatHistory.map((entry) => ({
+    role: entry.role,
+    content: [
+      {
+        type: 'input_text',
+        text: entry.text,
+      },
+    ],
+  }))
+
+  return [
+    {
+      role: 'system',
+      content: [
+        {
+          type: 'input_text',
+          text: `Hälsokontext för Viktkollen. Använd bara när det hjälper svaret:\n${formatHealthContextForModel(context)}`,
+        },
+      ],
+    },
+    ...conversation,
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'input_text',
+          text: message,
+        },
+      ],
+    },
+  ]
 }
 
 function detectPlanDays(message) {
@@ -341,7 +399,7 @@ function parseRequestBody(request) {
 
 function fallbackPayload(message, context, reason, details = {}) {
   const payload = {
-    reply: makeMockReply(message, context, details.chatHistory),
+    reply: makeMockReply(message, context, details.chatHistory ?? []),
     source: 'mock',
     fallbackReason: reason,
   }
@@ -373,6 +431,7 @@ export default async function handler(request, response) {
 
   const message = sanitizeText(body.message)
   const context = formatContext(body)
+  const chatHistory = sanitizeChatHistory(body.chatHistory)
 
   if (!message) {
     return response.status(400).json({ error: 'Message is required' })
@@ -392,9 +451,7 @@ export default async function handler(request, response) {
     logChatEvent('OPENAI_API_KEY missing, returning mock fallback')
     return response.status(200).json(
       fallbackPayload(message, context, 'missing_openai_api_key', {
-        chatHistory: Array.isArray(body.chatHistory)
-          ? body.chatHistory.slice(-8)
-          : [],
+        chatHistory,
         hasApiKey,
         model,
       }),
@@ -417,24 +474,8 @@ export default async function handler(request, response) {
         model,
         max_output_tokens: 360,
         instructions:
-          'Du är Viktkollens svenska wellness-assistent i chatten. Svara alltid på svenska och låt det kännas som ett naturligt samtal, inte en rapport. Svara på användarens faktiska fråga först och använd chatthistoriken för att förstå följdfrågor. Använd inte generiska fallbackfrågor om meddelandet kan tolkas utifrån historiken eller är en vanlig wellnessfråga. För hälsningar som "hej", svara naturligt: "Hej! Hur kan jag hjälpa dig idag?" För sömnfrågor som "ska jag sova 8 timmar", svara direkt att 7–9 timmar är en bra riktlinje för de flesta vuxna. Hantera vanliga wellnessfrågor om sömn, stress, motivation, mat, träning, vikt och vanor direkt. Kort som standard: 2-6 meningar. Använd punktlista bara när det gör svaret tydligare. Ställ gärna en kort följdfråga när det hjälper samtalet. Använd profil, mål, viktlogg, måltider, checklista, steg, energi och humör som tyst kontext. Nämn inte steg, energi eller checklista om frågan inte handlar om aktivitet, ork, daglig status eller planering. Upprepa inte vikt, målvikt, mål eller disclaimer om det inte är relevant. Om användaren frågar om något är skadligt eller farligt, svara direkt med säker generell wellness-vägledning utan medicinsk diagnos. Om historiken handlar om att äta precis innan läggdags och användaren frågar om det är skadligt: säg att det oftast inte är skadligt för de flesta, men att det kan påverka sömn, reflux, hungervanor eller kaloriintag för vissa; föreslå lättare alternativ om personen är hungrig och att testa tajming och portionsstorlek. Om användaren frågar "Hur mycket väger jag nu?", svara bara med senaste registrerade vikt. För "Jag åt dåligt hela helgen": svara empatiskt och ge en enkel reset-plan utan skuld eller hård kompensation. För pizza eller sug: normalisera, ge praktiskt portions-/balanstips och fråga om måltidssituation. För dålig motivation: var empatisk och fråga vad som känns svårast. För flerdagars matplan: använd kompakt format "Dag 1: ...". Använd chatthistoriken för att variera formuleringar och undvik att återanvända samma öppningsfras flera gånger. Om målet är "hålla vikten", prata inte om viktminskning eller avstånd till målvikt. Prata bara om viktminskning när målet är "gå ner i vikt". Prata bara om muskelbygge när målet är "bygga muskler". Wellness-stöd endast: ge inte diagnos, behandling, extrema dieter eller fasta-råd. Endast om meddelandet är tomt eller meningslöst får du be användaren skriva om frågan.',
-        input: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'input_text',
-                text: JSON.stringify({
-                  question: message,
-                  context,
-                  recentChat: Array.isArray(body.chatHistory)
-                    ? body.chatHistory.slice(-8)
-                    : [],
-                }),
-              },
-            ],
-          },
-        ],
+          'Du är Viktkollens smarta svenska wellness-assistent i chatten. Svara alltid på svenska och låt det kännas som ett naturligt samtal, ungefär som ChatGPT. Läs hela konversationen, förstå följdfrågor och svara på användarens faktiska fråga först. Använd hälsokontexten endast när den hjälper, och tvinga inte in coaching i varje svar. Kort som standard: 2-6 meningar; längre bara när användaren ber om det. Ställ följdfrågor när det är användbart. Undvik repetitiva fraser och upprepa inte steg, energi, checklista, vikt, mål eller disclaimer om det inte är relevant. För hälsningar som "hej", svara naturligt. För sömnfrågor som "ska jag sova 8 timmar", svara direkt att 7-9 timmar är en bra riktlinje för de flesta vuxna. Hantera vanliga wellnessfrågor om sömn, stress, motivation, mat, träning, vikt och vanor direkt. Om användaren frågar om något är skadligt eller farligt, svara direkt med säker generell wellness-vägledning utan medicinsk diagnos. Om historiken handlar om att äta precis innan läggdags och användaren frågar om det är skadligt: säg att det oftast inte är skadligt för de flesta, men att det kan påverka sömn, reflux, hungervanor eller kaloriintag för vissa; föreslå lättare alternativ om personen är hungrig och att testa tajming och portionsstorlek. Om användaren frågar "Hur mycket väger jag nu?", svara bara med senaste registrerade vikt. För "Jag åt dåligt hela helgen": svara empatiskt och ge en enkel reset-plan utan skuld eller hård kompensation. Om målet är "hålla vikten", prata inte om viktminskning eller avstånd till målvikt. Prata bara om viktminskning när målet är "gå ner i vikt". Prata bara om muskelbygge när målet är "bygga muskler". Wellness-stöd endast: ge inte diagnos, behandling, extrema dieter eller fasta-råd. Bara om meddelandet är tomt eller omöjligt att förstå får du be användaren skriva om.',
+        input: buildConversationInput(message, context, chatHistory),
       }),
     })
 
@@ -457,9 +498,7 @@ export default async function handler(request, response) {
       logChatEvent('OpenAI response had no text, returning mock fallback')
       return response.status(200).json(
         fallbackPayload(message, context, 'empty_openai_response', {
-          chatHistory: Array.isArray(body.chatHistory)
-            ? body.chatHistory.slice(-8)
-            : [],
+          chatHistory,
           hasApiKey,
           model,
         }),
@@ -484,9 +523,7 @@ export default async function handler(request, response) {
 
     return response.status(200).json(
       fallbackPayload(message, context, 'openai_request_failed', {
-        chatHistory: Array.isArray(body.chatHistory)
-          ? body.chatHistory.slice(-8)
-          : [],
+        chatHistory,
         hasApiKey,
         model,
         error: error instanceof Error ? error.message : String(error),

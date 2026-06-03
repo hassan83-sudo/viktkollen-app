@@ -856,6 +856,7 @@ function App() {
   const barcodeVideoRef = useRef(null)
   const barcodeStreamRef = useRef(null)
   const barcodeTimerRef = useRef(null)
+  const chatThreadRef = useRef(null)
   const messagesEndRef = useRef(null)
   const [demoMode, setDemoMode] = useState(() =>
     readStoredValue(storageKeys.demoMode, false, isStoredBoolean),
@@ -1020,6 +1021,22 @@ function App() {
       ? 'Uppdaterar AI-coach...'
       : ''
 
+  function scrollChatToBottom(behavior = 'smooth') {
+    const chatThread = chatThreadRef.current
+    const messagesEnd = messagesEndRef.current
+
+    if (!chatThread || !messagesEnd) {
+      return
+    }
+
+    const bottomOffset = messagesEnd.offsetTop + messagesEnd.offsetHeight
+
+    chatThread.scrollTo({
+      top: Math.max(bottomOffset - chatThread.clientHeight, 0),
+      behavior,
+    })
+  }
+
   useEffect(() => {
     writeStoredValue(storageKeys.demoMode, demoMode)
   }, [demoMode])
@@ -1057,10 +1074,17 @@ function App() {
   }, [chatMessages])
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'end',
+    const animationFrame = window.requestAnimationFrame(() => {
+      scrollChatToBottom()
     })
+    const timeout = window.setTimeout(() => {
+      scrollChatToBottom()
+    }, 80)
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame)
+      window.clearTimeout(timeout)
+    }
   }, [chatMessages])
 
   useEffect(() => {
@@ -2003,7 +2027,7 @@ function App() {
             ))}
           </div>
 
-          <div className="chat-thread" aria-live="polite">
+          <div ref={chatThreadRef} className="chat-thread" aria-live="polite">
             {chatMessages.map((message) => (
               <div className={`chat-message ${message.role}`} key={message.id}>
                 <span>{message.role === 'user' ? 'Du' : 'AI-coach'}</span>
@@ -2019,6 +2043,7 @@ function App() {
               value={chatInput}
               onChange={(event) => setChatInput(event.target.value)}
               placeholder="Skriv en fråga..."
+              enterKeyHint="send"
             />
             <button
               className={`mic-button ${isListening ? 'listening' : ''}`}

@@ -858,6 +858,7 @@ function App() {
   const barcodeTimerRef = useRef(null)
   const chatThreadRef = useRef(null)
   const messagesEndRef = useRef(null)
+  const recognitionRef = useRef(null)
   const [demoMode, setDemoMode] = useState(() =>
     readStoredValue(storageKeys.demoMode, false, isStoredBoolean),
   )
@@ -1099,6 +1100,10 @@ function App() {
 
   useEffect(
     () => () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort()
+      }
+
       if (barcodeTimerRef.current) {
         window.clearInterval(barcodeTimerRef.current)
       }
@@ -1695,6 +1700,13 @@ function App() {
   }
 
   function startVoiceInput() {
+    if (isListening) {
+      recognitionRef.current?.stop()
+      setIsListening(false)
+      setVoiceStatus('Lyssningen stoppades.')
+      return
+    }
+
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition
 
@@ -1705,10 +1717,23 @@ function App() {
       return
     }
 
+    if (!window.isSecureContext && window.location.hostname !== 'localhost') {
+      setVoiceStatus(
+        'Mikrofonen kräver oftast HTTPS. Testa i en säker webbläsarsession.',
+      )
+      return
+    }
+
     const recognition = new SpeechRecognition()
+    let hasTranscript = false
+
+    recognitionRef.current?.abort()
+    recognitionRef.current = recognition
+
     recognition.lang = 'sv-SE'
     recognition.continuous = false
     recognition.interimResults = false
+    recognition.maxAlternatives = 1
 
     recognition.addEventListener('start', () => {
       setIsListening(true)
@@ -1722,21 +1747,66 @@ function App() {
         .trim()
 
       if (transcript) {
+        hasTranscript = true
         setChatInput(transcript)
         setVoiceStatus('Texten är ifylld. Du kan redigera innan du skickar.')
       }
     })
 
-    recognition.addEventListener('error', () => {
+    recognition.addEventListener('error', (event) => {
+      setIsListening(false)
+
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        setVoiceStatus(
+          'Mikrofonbehörighet nekades. Tillåt mikrofon i webbläsaren och försök igen.',
+        )
+        return
+      }
+
+      if (event.error === 'no-speech') {
+        setVoiceStatus('Jag hörde inget. Tryck på mikrofonen och försök igen.')
+        return
+      }
+
+      if (event.error === 'audio-capture') {
+        setVoiceStatus('Ingen mikrofon hittades. Kontrollera mikrofonen eller skriv frågan.')
+        return
+      }
+
       setVoiceStatus('Kunde inte lyssna just nu. Försök igen eller skriv frågan.')
     })
 
     recognition.addEventListener('end', () => {
       setIsListening(false)
-      setVoiceStatus((current) => (current === 'Lyssnar...' ? '' : current))
+
+      if (recognitionRef.current === recognition) {
+        recognitionRef.current = null
+      }
+
+      setVoiceStatus((current) => {
+        if (current !== 'Lyssnar...') {
+          return current
+        }
+
+        return hasTranscript
+          ? 'Texten är ifylld. Du kan redigera innan du skickar.'
+          : 'Jag hörde inget. Tryck på mikrofonen och försök igen.'
+      })
     })
 
-    recognition.start()
+    try {
+      recognition.start()
+      setIsListening(true)
+      setVoiceStatus('Lyssnar...')
+    } catch (error) {
+      recognitionRef.current = null
+      setIsListening(false)
+      setVoiceStatus(
+        error instanceof Error
+          ? `Mikrofonen kunde inte starta: ${error.message}`
+          : 'Mikrofonen kunde inte starta. Försök igen eller skriv frågan.',
+      )
+    }
   }
 
   function handleStarterPrompt(prompt) {

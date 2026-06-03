@@ -2142,40 +2142,6 @@ function App() {
           </div>
         </article>
 
-        <article className="panel coach-panel" id="coach">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">AI-coach</p>
-              <h2>Dagens återkoppling</h2>
-            </div>
-          </div>
-          <p className="coach-copy">{coachMessage}</p>
-          <div className="coach-note">
-            {coachStatus || 'AI-coachen använder dagens profil, vanor och loggar.'}
-          </div>
-        </article>
-
-        <article className="panel" id="mat">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Matchecklista</p>
-              <h2>Grunder för maten</h2>
-            </div>
-          </div>
-          <div className="checklist">
-            {foods.map((item) => (
-              <label className="toggle-row" key={item.id}>
-                <input
-                  type="checkbox"
-                  checked={item.done}
-                  onChange={() => toggleFood(item.id)}
-                />
-                <span>{item.label}</span>
-              </label>
-            ))}
-          </div>
-        </article>
-
         <article className="panel chat-panel" id="chat">
           <div className="panel-heading">
             <div>
@@ -2240,6 +2206,40 @@ function App() {
             Svaren är allmänt wellness-stöd på svenska. Ingen medicinsk
             diagnos, behandling eller extrem diet.
           </p>
+        </article>
+
+        <article className="panel coach-panel" id="coach">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">AI-coach</p>
+              <h2>Dagens återkoppling</h2>
+            </div>
+          </div>
+          <p className="coach-copy">{coachMessage}</p>
+          <div className="coach-note">
+            {coachStatus || 'AI-coachen använder dagens profil, vanor och loggar.'}
+          </div>
+        </article>
+
+        <article className="panel" id="mat">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Matchecklista</p>
+              <h2>Grunder för maten</h2>
+            </div>
+          </div>
+          <div className="checklist">
+            {foods.map((item) => (
+              <label className="toggle-row" key={item.id}>
+                <input
+                  type="checkbox"
+                  checked={item.done}
+                  onChange={() => toggleFood(item.id)}
+                />
+                <span>{item.label}</span>
+              </label>
+            ))}
+          </div>
         </article>
 
         <article className="panel check-in-panel" id="checkin">

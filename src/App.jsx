@@ -457,7 +457,9 @@ function hasBedtimeEatingContext(message, chatHistory = []) {
   return (
     (text.includes('lägga mig') ||
       text.includes('sova') ||
+      text.includes('sover') ||
       text.includes('läggdags') ||
+      text.includes('lägger mig') ||
       text.includes('innan jag ska lägga')) &&
     (text.includes('äter') ||
       text.includes('äta') ||
@@ -474,6 +476,42 @@ function asksIfHarmful(message) {
     text.includes('farligt') ||
     text.includes('dåligt för kroppen') ||
     text.includes('inte bra för kroppen')
+  )
+}
+
+function asksAboutRapidWeightLoss(message) {
+  const text = message.toLowerCase()
+
+  return (
+    (text.includes('gå ner') ||
+      text.includes('gÃ¥ ner') ||
+      text.includes('tappa') ||
+      text.includes('minska')) &&
+    text.includes('kg') &&
+    (text.includes('vecka') ||
+      text.includes('snabbt') ||
+      text.includes('fort'))
+  )
+}
+
+function asksAboutSleep(message) {
+  const text = message.toLowerCase()
+
+  return text.includes('sov') || text.includes('sömn') || text.includes('sÃ¶mn') || text.includes('sova')
+}
+
+function asksAboutFood(message) {
+  const text = message.toLowerCase()
+
+  return (
+    text.includes('mat') ||
+    text.includes('äta') ||
+    text.includes('Ã¤ta') ||
+    text.includes('äter') ||
+    text.includes('Ã¤ter') ||
+    text.includes('middag') ||
+    text.includes('ikväll') ||
+    text.includes('ikvÃ¤ll')
   )
 }
 
@@ -513,6 +551,62 @@ function makeCommonWellnessReply(message) {
   return ''
 }
 
+function makeSleepReply(message) {
+  const text = message.toLowerCase()
+  const wakeMatch = text.match(/(?:vakna|går upp|gÃ¥r upp|upp)\s*(?:kl\.?|klockan)?\s*(\d{1,2})(?::|\.?)(\d{2})?/)
+  const wakeHour = wakeMatch ? Number(wakeMatch[1]) : null
+  const wakeMinute = wakeMatch?.[2] ? Number(wakeMatch[2]) : 0
+
+  if (Number.isFinite(wakeHour) && wakeHour >= 0 && wakeHour <= 23) {
+    const bedtimeStart = new Date(0, 0, 0, wakeHour, wakeMinute)
+    bedtimeStart.setHours(bedtimeStart.getHours() - 9)
+    const bedtimeEnd = new Date(0, 0, 0, wakeHour, wakeMinute)
+    bedtimeEnd.setHours(bedtimeEnd.getHours() - 7)
+    const formatTime = (date) =>
+      date.toLocaleTimeString('sv-SE', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+
+    return `För de flesta vuxna är 7-9 timmars sömn en bra riktlinje. Om du ska gå upp ${formatTime(new Date(0, 0, 0, wakeHour, wakeMinute))} kan ett rimligt sovfönster vara ungefär ${formatTime(bedtimeStart)}-${formatTime(bedtimeEnd)}. Försök hålla tiden ganska jämn även på vardagar.`
+  }
+
+  return 'För de flesta vuxna är 7-9 timmars sömn en bra riktlinje. 8 timmar är ett bra mål, men försök framför allt ha en ganska konsekvent läggtid och se hur pigg du är dagen efter.'
+}
+
+function makeRapidWeightLossReply() {
+  return 'Att gå ner 2 kg på en vecka kan hända, men mycket är ofta vätska och det kan vara svårt att behålla. Sikta hellre på vanor som går att upprepa: protein i varje måltid, mycket grönsaker, lagom portioner, vardagsrörelse och bra sömn. Undvik extrem svält eller hård kompensation. Vill du kan jag göra en enkel 7-dagars plan som är rimlig och inte extrem.'
+}
+
+function makeBedtimeEatingReply() {
+  return 'För de flesta är det inte skadligt att äta nära läggdags. Det kan däremot påverka sömn, reflux, hungervanor eller göra det lättare att äta mer än man tänkt. Om du är hungrig sent, testa något lättare som yoghurt, ägg, keso eller en liten macka. Prova också tidigare middag eller mindre portion några kvällar och se vad som funkar.'
+}
+
+function makeMultiPartReply(message, chatHistory = []) {
+  const parts = []
+
+  if (asksAboutFood(message)) {
+    parts.push(`Mat idag: välj något enkelt och mättande:
+• Kyckling + potatis + frysta grönsaker
+• Äggwrap med keso och vitkål
+• Linsgryta med ris`)
+  }
+
+  if (asksAboutSleep(message)) {
+    parts.push(makeSleepReply(message))
+  }
+
+  if (asksIfHarmful(message) && hasBedtimeEatingContext(message, chatHistory)) {
+    parts.push(makeBedtimeEatingReply())
+  }
+
+  if (asksAboutRapidWeightLoss(message)) {
+    parts.push(makeRapidWeightLossReply())
+  }
+
+  return parts.length > 1 ? parts.join('\n\n') : ''
+}
+
 function makeChatResponse(
   message,
   profile,
@@ -542,6 +636,12 @@ function makeChatResponse(
     return 'Jag hängde inte riktigt med där. Skriv gärna frågan en gång till.'
   }
 
+  const multiPartReply = makeMultiPartReply(message, chatHistory)
+
+  if (multiPartReply) {
+    return multiPartReply
+  }
+
   if (planDays) {
     const dayTemplates = [
       ['Äggwrap med vitkål och keso', 'Kyckling, potatis och frysta grönsaker', 1750, 115],
@@ -568,8 +668,12 @@ Handla: ägg, kyckling/tonfisk, linser/bönor, potatis/ris och frysta grönsaker
     return 'Hej! Hur kan jag hjälpa dig idag?'
   }
 
+  if (asksAboutRapidWeightLoss(message)) {
+    return makeRapidWeightLossReply()
+  }
+
   if (asksIfHarmful(message) && hasBedtimeEatingContext(message, chatHistory)) {
-    return 'För de flesta är det inte skadligt att äta nära läggdags. Däremot kan det påverka sömn, reflux, hungervanor eller göra det lättare att äta mer än man tänkt för vissa. Om du är hungrig sent kan du testa något lättare, som yoghurt, ägg, keso eller en liten macka. Prova också att ändra tajming och portionsstorlek några kvällar och se hur kroppen reagerar.'
+    return makeBedtimeEatingReply()
   }
 
   if (asksIfHarmful(message)) {
@@ -618,6 +722,10 @@ Ta det som kräver minst fix.`
 
   if (text.includes('motivation') || text.includes('motiver')) {
     return `Det händer alla. Försök fokusera på nästa lilla steg i stället för hela målet. Det kan räcka med något väldigt enkelt i dag. Vad känns svårast just nu – maten, träningen eller att hålla rutinen?`
+  }
+
+  if (asksAboutSleep(message)) {
+    return makeSleepReply(message)
   }
 
   if (text.includes('billig') || text.includes('proteinrik') || text.includes('lunch')) {

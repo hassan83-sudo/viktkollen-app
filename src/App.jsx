@@ -1687,16 +1687,20 @@ function App() {
     appendChatMessage('assistant', reply)
   }
 
-  function sendChatMessage(event) {
-    event.preventDefault()
-    const text = chatInput.trim()
+  function submitChatText(text) {
+    const trimmedText = text.trim()
 
-    if (!text) {
+    if (!trimmedText) {
       return
     }
 
     setChatInput('')
-    void sendChatText(text)
+    void sendChatText(trimmedText)
+  }
+
+  function sendChatMessage(event) {
+    event.preventDefault()
+    submitChatText(chatInput)
   }
 
   async function startVoiceInput() {
@@ -1754,6 +1758,7 @@ function App() {
 
     const recognition = new SpeechRecognition()
     let hasTranscript = false
+    let hasSubmittedTranscript = false
 
     recognitionRef.current?.abort()
     recognitionRef.current = recognition
@@ -1775,9 +1780,18 @@ function App() {
         .trim()
 
       if (transcript) {
+        if (hasSubmittedTranscript) {
+          return
+        }
+
         hasTranscript = true
+        hasSubmittedTranscript = true
         setChatInput(transcript)
-        setVoiceStatus('Texten är ifylld. Du kan redigera innan du skickar.')
+        setVoiceStatus('Skickar meddelandet...')
+
+        window.requestAnimationFrame(() => {
+          submitChatText(transcript)
+        })
       }
     })
 

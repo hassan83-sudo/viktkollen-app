@@ -515,6 +515,41 @@ function asksAboutFood(message) {
   )
 }
 
+function asksAboutProteinKnowledge(message) {
+  const text = message.toLowerCase()
+
+  return (
+    text.includes('protein') &&
+    (text.includes('hur mycket') ||
+      text.includes('hur många') ||
+      text.includes('hur mÃ¥nga') ||
+      text.includes('gram') ||
+      text.includes('per dag') ||
+      text.includes('om dagen') ||
+      text.includes('rekommend') ||
+      text.includes('bra för') ||
+      text.includes('bra fÃ¶r'))
+  )
+}
+
+function asksForMealSuggestion(message) {
+  const text = message.toLowerCase()
+
+  return (
+    text.includes('lunch') ||
+    text.includes('middag') ||
+    text.includes('ikväll') ||
+    text.includes('ikvÃ¤ll') ||
+    text.includes('mellanmål') ||
+    text.includes('mellanmÃ¥l') ||
+    text.includes('vad ska jag äta') ||
+    text.includes('vad ska jag Ã¤ta') ||
+    text.includes('matförslag') ||
+    text.includes('matfÃ¶rslag') ||
+    (text.includes('billig') && text.includes('proteinrik'))
+  )
+}
+
 function isMeaninglessMessage(message) {
   const text = message.trim().toLowerCase()
 
@@ -582,10 +617,26 @@ function makeBedtimeEatingReply() {
   return 'För de flesta är det inte skadligt att äta nära läggdags. Det kan däremot påverka sömn, reflux, hungervanor eller göra det lättare att äta mer än man tänkt. Om du är hungrig sent, testa något lättare som yoghurt, ägg, keso eller en liten macka. Prova också tidigare middag eller mindre portion några kvällar och se vad som funkar.'
 }
 
+function makeProteinKnowledgeReply(message) {
+  const text = message.toLowerCase()
+  const weightMatch = text.match(/(\d{2,3})(?:\s?kg|\s?kilo)/)
+  const bodyWeight = weightMatch ? Number(weightMatch[1]) : null
+
+  if (Number.isFinite(bodyWeight)) {
+    const lower = Math.round(bodyWeight * 1.2)
+    const upper = Math.round(bodyWeight * 1.6)
+    const activeUpper = Math.round(bodyWeight * 2)
+
+    return `För en person som väger ${bodyWeight} kg är ett rimligt riktmärke ofta cirka ${lower}-${upper} g protein per dag. Om personen styrketränar mycket eller vill bygga muskler kan ungefär ${upper}-${activeUpper} g per dag vara mer relevant. Fördela gärna över 3-4 måltider, till exempel 25-40 g per måltid.`
+  }
+
+  return 'Ett vanligt riktmärke är cirka 1,2-1,6 g protein per kilo kroppsvikt per dag för en aktiv vardag. Vid mycket styrketräning kan behovet ligga högre, ofta runt 1,6-2,0 g/kg. Fördela det gärna över flera måltider.'
+}
+
 function makeMultiPartReply(message, chatHistory = []) {
   const parts = []
 
-  if (asksAboutFood(message)) {
+  if (asksForMealSuggestion(message) || asksAboutFood(message)) {
     parts.push(`Mat idag: välj något enkelt och mättande:
 • Kyckling + potatis + frysta grönsaker
 • Äggwrap med keso och vitkål
@@ -672,6 +723,10 @@ Handla: ägg, kyckling/tonfisk, linser/bönor, potatis/ris och frysta grönsaker
     return makeRapidWeightLossReply()
   }
 
+  if (asksAboutProteinKnowledge(message)) {
+    return makeProteinKnowledgeReply(message)
+  }
+
   if (asksIfHarmful(message) && hasBedtimeEatingContext(message, chatHistory)) {
     return makeBedtimeEatingReply()
   }
@@ -702,7 +757,11 @@ Handla: ägg, kyckling/tonfisk, linser/bönor, potatis/ris och frysta grönsaker
     return `Det är lugnt, en helg förstör ingenting. Gör en enkel reset: drick vatten, ät en vanlig proteinrik måltid och ta en kort promenad om det känns bra. Försök gå tillbaka till rutinen utan att kompensera hårt. Vad var det som gjorde helgen svårast?`
   }
 
-  if (text.includes('ikväll') || text.includes('middag') || text.includes('äta')) {
+  if (
+    text.includes('ikväll') ||
+    text.includes('middag') ||
+    text.includes('vad ska jag äta')
+  ) {
     return `Testa något enkelt ikväll:
 • Kyckling + potatis + frysta grönsaker
 • Äggwrap med keso och vitkål
@@ -728,7 +787,7 @@ Ta det som kräver minst fix.`
     return makeSleepReply(message)
   }
 
-  if (text.includes('billig') || text.includes('proteinrik') || text.includes('lunch')) {
+  if (text.includes('billig') || text.includes('proteinrik lunch') || text.includes('lunch')) {
     return `Billig proteinrik lunch:
 • Tonfisk + ris + majs
 • Äggwrap + keso + grönsaker

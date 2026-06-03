@@ -2040,145 +2040,6 @@ function App() {
       </section>
 
       <section className="content-grid">
-        <article className="panel check-in-panel" id="checkin">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Dagens check-in</p>
-              <h2>Hur dagen går</h2>
-            </div>
-          </div>
-
-          <label className="field">
-            <span>Energi</span>
-            <input
-              type="range"
-              min="1"
-              max="10"
-              value={checkIn.energy}
-              onChange={(event) =>
-                updateCheckIn('energy', Number(event.target.value))
-              }
-            />
-            <strong>{checkIn.energy}/10</strong>
-          </label>
-
-          <label className="field">
-            <span>Steg</span>
-            <input
-              type="number"
-              min="0"
-              step="100"
-              value={checkIn.steps}
-              onChange={(event) =>
-                updateCheckIn('steps', Number(event.target.value))
-              }
-            />
-          </label>
-
-          <label className="field">
-            <span>Humör</span>
-            <select
-              value={checkIn.mood}
-              onChange={(event) => updateCheckIn('mood', event.target.value)}
-            >
-              <option>Fokuserad</option>
-              <option>Lugn</option>
-              <option>Trött</option>
-              <option>Stressad</option>
-            </select>
-          </label>
-
-          <label className="toggle-row">
-            <input
-              type="checkbox"
-              checked={checkIn.workout}
-              onChange={(event) =>
-                updateCheckIn('workout', event.target.checked)
-              }
-            />
-            <span>Träning eller medveten rörelse genomförd</span>
-          </label>
-        </article>
-
-        <article className="panel coach-panel" id="coach">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">AI-coach</p>
-              <h2>Dagens återkoppling</h2>
-            </div>
-          </div>
-          <p className="coach-copy">{coachMessage}</p>
-          <div className="coach-note">
-            {coachStatus || 'AI-coachen använder dagens profil, vanor och loggar.'}
-          </div>
-        </article>
-
-        <article className="panel chat-panel" id="chat">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Coachchatt</p>
-              <h2>Fråga AI-coachen</h2>
-            </div>
-          </div>
-
-          <div className="starter-prompts" aria-label="Förslag på frågor">
-            {[
-              'Vad ska jag äta ikväll?',
-              'Ge mig ett hälsosamt mellanmål',
-              'Hur håller jag motivationen?',
-              'Billig proteinrik lunch?',
-            ].map((prompt) => (
-              <button
-                className="prompt-chip"
-                type="button"
-                key={prompt}
-                onClick={() => handleStarterPrompt(prompt)}
-              >
-                {prompt}
-              </button>
-            ))}
-          </div>
-
-          <div ref={chatThreadRef} className="chat-thread" aria-live="polite">
-            {chatMessages.map((message) => (
-              <div className={`chat-message ${message.role}`} key={message.id}>
-                <span>{message.role === 'user' ? 'Du' : 'AI-coach'}</span>
-                <p>{message.text}</p>
-              </div>
-            ))}
-            <div ref={messagesEndRef} className="messages-end" aria-hidden="true" />
-          </div>
-
-          <form className="chat-form" onSubmit={sendChatMessage}>
-            <input
-              type="text"
-              value={chatInput}
-              onChange={(event) => setChatInput(event.target.value)}
-              placeholder="Skriv en fråga..."
-              enterKeyHint="send"
-            />
-            <button
-              className={`mic-button ${isListening ? 'listening' : ''}`}
-              type="button"
-              onClick={startVoiceInput}
-              aria-label="Starta röstinmatning"
-              title="Starta röstinmatning"
-            >
-              {isListening ? 'Lyssnar' : 'Mic'}
-            </button>
-            <button type="submit">Skicka</button>
-          </form>
-          {voiceStatus && (
-            <p className="voice-status" aria-live="polite">
-              {voiceStatus}
-            </p>
-          )}
-          <p className="chat-safety-note">
-            Svaren är allmänt wellness-stöd på svenska. Ingen medicinsk
-            diagnos, behandling eller extrem diet.
-          </p>
-        </article>
-
         <article className="panel" id="vikt">
           <div className="panel-heading">
             <div>
@@ -2281,24 +2142,16 @@ function App() {
           </div>
         </article>
 
-        <article className="panel" id="mat">
+        <article className="panel coach-panel" id="coach">
           <div className="panel-heading">
             <div>
-              <p className="eyebrow">Matchecklista</p>
-              <h2>Grunder för maten</h2>
+              <p className="eyebrow">AI-coach</p>
+              <h2>Dagens återkoppling</h2>
             </div>
           </div>
-          <div className="checklist">
-            {foods.map((item) => (
-              <label className="toggle-row" key={item.id}>
-                <input
-                  type="checkbox"
-                  checked={item.done}
-                  onChange={() => toggleFood(item.id)}
-                />
-                <span>{item.label}</span>
-              </label>
-            ))}
+          <p className="coach-copy">{coachMessage}</p>
+          <div className="coach-note">
+            {coachStatus || 'AI-coachen använder dagens profil, vanor och loggar.'}
           </div>
         </article>
 
@@ -2413,6 +2266,153 @@ function App() {
               </li>
             ))}
           </ul>
+        </article>
+
+        <article className="panel check-in-panel" id="checkin">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Dagens check-in</p>
+              <h2>Hur dagen går</h2>
+            </div>
+          </div>
+
+          <label className="field">
+            <span>Energi</span>
+            <input
+              type="range"
+              min="1"
+              max="10"
+              value={checkIn.energy}
+              onChange={(event) =>
+                updateCheckIn('energy', Number(event.target.value))
+              }
+            />
+            <strong>{checkIn.energy}/10</strong>
+          </label>
+
+          <label className="field">
+            <span>Steg</span>
+            <input
+              type="number"
+              min="0"
+              step="100"
+              value={checkIn.steps}
+              onChange={(event) =>
+                updateCheckIn('steps', Number(event.target.value))
+              }
+            />
+          </label>
+
+          <label className="field">
+            <span>Humör</span>
+            <select
+              value={checkIn.mood}
+              onChange={(event) => updateCheckIn('mood', event.target.value)}
+            >
+              <option>Fokuserad</option>
+              <option>Lugn</option>
+              <option>Trött</option>
+              <option>Stressad</option>
+            </select>
+          </label>
+
+          <label className="toggle-row">
+            <input
+              type="checkbox"
+              checked={checkIn.workout}
+              onChange={(event) =>
+                updateCheckIn('workout', event.target.checked)
+              }
+            />
+            <span>Träning eller medveten rörelse genomförd</span>
+          </label>
+        </article>
+
+        <article className="panel chat-panel" id="chat">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">AI Coach</p>
+              <h2>Fråga AI-coachen</h2>
+            </div>
+          </div>
+
+          <div className="starter-prompts" aria-label="Förslag på frågor">
+            {[
+              'Vad ska jag äta ikväll?',
+              'Ge mig ett hälsosamt mellanmål',
+              'Hur håller jag motivationen?',
+              'Billig proteinrik lunch?',
+            ].map((prompt) => (
+              <button
+                className="prompt-chip"
+                type="button"
+                key={prompt}
+                onClick={() => handleStarterPrompt(prompt)}
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
+
+          <div ref={chatThreadRef} className="chat-thread" aria-live="polite">
+            {chatMessages.map((message) => (
+              <div className={`chat-message ${message.role}`} key={message.id}>
+                <span>{message.role === 'user' ? 'Du' : 'AI-coach'}</span>
+                <p>{message.text}</p>
+              </div>
+            ))}
+            <div ref={messagesEndRef} className="messages-end" aria-hidden="true" />
+          </div>
+
+          <form className="chat-form" onSubmit={sendChatMessage}>
+            <input
+              type="text"
+              value={chatInput}
+              onChange={(event) => setChatInput(event.target.value)}
+              placeholder="Skriv en fråga..."
+              enterKeyHint="send"
+            />
+            <button
+              className={`mic-button ${isListening ? 'listening' : ''}`}
+              type="button"
+              onClick={startVoiceInput}
+              aria-label="Starta röstinmatning"
+              title="Starta röstinmatning"
+            >
+              {isListening ? 'Lyssnar' : 'Mic'}
+            </button>
+            <button type="submit">Skicka</button>
+          </form>
+          {voiceStatus && (
+            <p className="voice-status" aria-live="polite">
+              {voiceStatus}
+            </p>
+          )}
+          <p className="chat-safety-note">
+            Svaren är allmänt wellness-stöd på svenska. Ingen medicinsk
+            diagnos, behandling eller extrem diet.
+          </p>
+        </article>
+
+        <article className="panel" id="mat">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Matchecklista</p>
+              <h2>Grunder för maten</h2>
+            </div>
+          </div>
+          <div className="checklist">
+            {foods.map((item) => (
+              <label className="toggle-row" key={item.id}>
+                <input
+                  type="checkbox"
+                  checked={item.done}
+                  onChange={() => toggleFood(item.id)}
+                />
+                <span>{item.label}</span>
+              </label>
+            ))}
+          </div>
         </article>
 
         <article className="panel scanner-panel" id="streckkod">

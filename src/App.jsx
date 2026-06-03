@@ -856,6 +856,7 @@ function App() {
   const barcodeVideoRef = useRef(null)
   const barcodeStreamRef = useRef(null)
   const barcodeTimerRef = useRef(null)
+  const messagesEndRef = useRef(null)
   const [demoMode, setDemoMode] = useState(() =>
     readStoredValue(storageKeys.demoMode, false, isStoredBoolean),
   )
@@ -1053,6 +1054,13 @@ function App() {
 
   useEffect(() => {
     writeStoredValue(storageKeys.chat, chatMessages)
+  }, [chatMessages])
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'end',
+    })
   }, [chatMessages])
 
   useEffect(() => {
@@ -2002,6 +2010,7 @@ function App() {
                 <p>{message.text}</p>
               </div>
             ))}
+            <div ref={messagesEndRef} className="messages-end" aria-hidden="true" />
           </div>
 
           <form className="chat-form" onSubmit={sendChatMessage}>

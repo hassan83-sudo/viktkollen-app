@@ -110,6 +110,10 @@
   grid-column: span 3;
 }
 
+.chat-panel {
+  min-height: 0;
+}
+
 .panel:not(.check-in-panel, .chat-panel, .coach-panel, .meals-panel, .photos-panel, .scanner-panel, .settings-panel, .trends-panel) {
   grid-column: span 2;
 }
@@ -268,10 +272,12 @@ a:focus-visible {
 }
 
 .chat-thread {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
-  height: clamp(220px, 34dvh, 300px);
-  max-height: 300px;
+  height: 260px;
+  max-height: 260px;
+  min-height: 0;
   overflow-y: auto;
   padding: 12px;
   border-radius: 8px;
@@ -297,12 +303,14 @@ a:focus-visible {
 }
 
 .chat-message.user {
+  align-self: flex-end;
   justify-self: end;
   color: #ffffff;
   background: var(--accent);
 }
 
 .chat-message.assistant {
+  align-self: flex-start;
   justify-self: start;
 }
 

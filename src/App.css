@@ -262,6 +262,11 @@ a:focus-visible {
   background: var(--chart-bg);
 }
 
+.chat-title {
+  font-size: 26px;
+  line-height: 1.08;
+}
+
 .chat-thread {
   display: grid;
   gap: 10px;
@@ -323,18 +328,29 @@ a:focus-visible {
 }
 
 .mic-button {
-  min-width: 54px;
-  padding: 0 14px;
+  min-width: 118px;
+  padding: 0 16px;
   color: var(--text-h);
   background: var(--soft-bg);
   box-shadow: none;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .mic-button:hover,
 .mic-button.listening {
   color: #ffffff;
   background: var(--green);
+}
+
+.send-button {
+  min-width: 92px;
+  padding: 0 20px;
+  background: var(--accent-strong);
+  box-shadow: 0 12px 26px var(--accent-shadow);
+}
+
+.send-button:hover {
+  background: var(--accent);
 }
 
 .voice-status {

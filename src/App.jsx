@@ -2146,7 +2146,7 @@ function App() {
           <div className="panel-heading">
             <div>
               <p className="eyebrow">AI Coach</p>
-              <h2>Fråga AI-coachen</h2>
+              <h2 className="chat-title">Fråga AI-coachen</h2>
             </div>
           </div>
 
@@ -2193,9 +2193,9 @@ function App() {
               aria-label="Starta röstinmatning"
               title="Starta röstinmatning"
             >
-              {isListening ? 'Lyssnar' : 'Mic'}
+              {isListening ? 'Lyssnar' : '🎤 Mikrofon'}
             </button>
-            <button type="submit">Skicka</button>
+            <button className="send-button" type="submit">Skicka</button>
           </form>
           {voiceStatus && (
             <p className="voice-status" aria-live="polite">
@@ -2203,8 +2203,7 @@ function App() {
             </p>
           )}
           <p className="chat-safety-note">
-            Svaren är allmänt wellness-stöd på svenska. Ingen medicinsk
-            diagnos, behandling eller extrem diet.
+            AI-coachen ger allmänna råd om kost, vanor och motivation.
           </p>
         </article>
 

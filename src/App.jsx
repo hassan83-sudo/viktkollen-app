@@ -1699,7 +1699,7 @@ function App() {
     void sendChatText(text)
   }
 
-  function startVoiceInput() {
+  async function startVoiceInput() {
     if (isListening) {
       recognitionRef.current?.stop()
       setIsListening(false)
@@ -1721,6 +1721,34 @@ function App() {
       setVoiceStatus(
         'Mikrofonen kräver oftast HTTPS. Testa i en säker webbläsarsession.',
       )
+      return
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setVoiceStatus('Mikrofonen är inte tillgänglig i den här webbläsaren.')
+      return
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      stream.getTracks().forEach((track) => track.stop())
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'NotAllowedError') {
+        setVoiceStatus(
+          'Mikrofonbehörighet nekades. Tillåt mikrofon i webbläsaren och försök igen.',
+        )
+        return
+      }
+
+      if (
+        error instanceof DOMException &&
+        (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError')
+      ) {
+        setVoiceStatus('Ingen mikrofon hittades. Kontrollera mikrofonen eller skriv frågan.')
+        return
+      }
+
+      setVoiceStatus('Mikrofonen kunde inte starta. Försök igen eller skriv frågan.')
       return
     }
 

@@ -2193,7 +2193,7 @@ function App() {
               aria-label="Starta röstinmatning"
               title="Starta röstinmatning"
             >
-              {isListening ? 'Lyssnar' : 'Mic'}
+              {isListening ? 'Lyssnar' : '🎙️'}
             </button>
             <button className="send-button" type="submit">Skicka</button>
           </form>

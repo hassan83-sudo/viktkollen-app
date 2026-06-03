@@ -332,17 +332,17 @@ a:focus-visible {
 .chat-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 10px;
-  margin-top: 12px;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .mic-button {
-  min-width: 54px;
-  padding: 0 14px;
+  min-width: 48px;
+  padding: 0 12px;
   color: var(--text-h);
   background: var(--soft-bg);
   box-shadow: none;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .mic-button:hover,
@@ -352,8 +352,8 @@ a:focus-visible {
 }
 
 .send-button {
-  min-width: 92px;
-  padding: 0 20px;
+  min-width: 84px;
+  padding: 0 16px;
   background: var(--accent-strong);
   box-shadow: 0 12px 26px var(--accent-shadow);
 }
@@ -363,7 +363,7 @@ a:focus-visible {
 }
 
 .voice-status {
-  margin: 10px 0 0;
+  margin: 6px 0 0;
   color: var(--accent);
   font-size: 12px;
   font-weight: 800;
@@ -371,7 +371,7 @@ a:focus-visible {
 }
 
 .chat-safety-note {
-  margin: 10px 0 0;
+  margin: 6px 0 0;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.45;

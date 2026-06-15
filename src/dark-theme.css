@@ -91,6 +91,62 @@ textarea {
   border-radius: 24px;
 }
 
+.dashboard-summary-card {
+  overflow: hidden;
+  border-color: rgba(34, 211, 238, 0.24);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top left, rgba(34, 211, 238, 0.12), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.13), transparent 38%),
+    var(--surface);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.dashboard-summary-heading > span {
+  border-color: rgba(34, 211, 238, 0.28);
+  color: #a5f3fc;
+  background: rgba(34, 211, 238, 0.09);
+}
+
+.dashboard-weight-summary {
+  border-color: rgba(34, 211, 238, 0.27);
+  background:
+    linear-gradient(145deg, rgba(34, 211, 238, 0.1), rgba(15, 23, 42, 0.32)),
+    rgba(2, 6, 23, 0.32);
+}
+
+.dashboard-stat {
+  border-color: rgba(148, 163, 184, 0.16);
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.dashboard-stat:nth-child(2) {
+  border-color: rgba(139, 92, 246, 0.24);
+  background: rgba(139, 92, 246, 0.07);
+}
+
+.dashboard-stat:nth-child(3) {
+  border-color: rgba(34, 211, 238, 0.2);
+  background: rgba(34, 211, 238, 0.06);
+}
+
+.dashboard-weight-summary span,
+.dashboard-stat span {
+  color: #cbd5e1;
+}
+
+.dashboard-weight-summary strong,
+.dashboard-stat strong {
+  color: var(--text-h);
+}
+
+.dashboard-weight-summary small,
+.dashboard-stat small {
+  color: #94a3b8;
+}
+
 .metric,
 .panel {
   border-radius: 20px;
@@ -646,6 +702,15 @@ button:hover:not(:disabled) {
   .welcome-card,
   .onboarding-card {
     border-radius: 20px;
+  }
+
+  .dashboard-summary-card {
+    border-radius: 18px;
+  }
+
+  .dashboard-weight-summary,
+  .dashboard-stat {
+    border-radius: 13px;
   }
 
   .metric,

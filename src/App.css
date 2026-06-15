@@ -49,6 +49,108 @@
   line-height: 1.5;
 }
 
+.dashboard-overview {
+  margin-bottom: 12px;
+}
+
+.dashboard-summary-card {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.dashboard-summary-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dashboard-summary-heading h2 {
+  margin: 0;
+}
+
+.dashboard-summary-heading > span {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.dashboard-summary-content {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(0, 2fr);
+  gap: 10px;
+}
+
+.dashboard-weight-summary,
+.dashboard-stat {
+  display: grid;
+  align-content: center;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.dashboard-weight-summary {
+  gap: 7px;
+  min-height: 106px;
+  padding: 15px 16px;
+}
+
+.dashboard-weight-summary span,
+.dashboard-stat span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.dashboard-weight-summary strong,
+.dashboard-stat strong {
+  color: var(--text-h);
+  line-height: 1.05;
+}
+
+.dashboard-weight-summary strong {
+  font-size: 30px;
+}
+
+.dashboard-weight-summary small,
+.dashboard-stat small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.dashboard-weight-summary small {
+  font-size: 12px;
+}
+
+.dashboard-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.dashboard-stat {
+  gap: 7px;
+  min-height: 106px;
+  padding: 14px;
+}
+
+.dashboard-stat strong {
+  font-size: 23px;
+}
+
+.dashboard-stat small {
+  font-size: 11px;
+}
+
 .summary-grid,
 .content-grid {
   display: grid;
@@ -1269,6 +1371,10 @@ a:focus-visible {
   .metric-primary {
     grid-column: span 2;
   }
+
+  .dashboard-summary-content {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 560px) {
@@ -1289,6 +1395,44 @@ a:focus-visible {
 
   .topbar-actions button {
     min-height: 46px;
+  }
+
+  .dashboard-summary-card {
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .dashboard-summary-heading .eyebrow {
+    margin-bottom: 4px;
+  }
+
+  .dashboard-summary-content,
+  .dashboard-stat-grid {
+    gap: 7px;
+  }
+
+  .dashboard-weight-summary {
+    min-height: auto;
+    padding: 12px;
+  }
+
+  .dashboard-weight-summary strong {
+    font-size: 26px;
+  }
+
+  .dashboard-stat {
+    gap: 5px;
+    min-height: 88px;
+    padding: 10px 8px;
+  }
+
+  .dashboard-stat span,
+  .dashboard-stat small {
+    font-size: 10px;
+  }
+
+  .dashboard-stat strong {
+    font-size: 19px;
   }
 
   .summary-grid,

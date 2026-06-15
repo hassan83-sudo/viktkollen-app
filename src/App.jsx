@@ -2034,31 +2034,48 @@ function App() {
         </div>
       </header>
 
-      <section className="summary-grid" aria-label="Översikt">
-        <article className="metric metric-primary">
-          <span>Nuvarande vikt</span>
-          <strong>
-            {formatWeight(latestWeight.value)} (start:{' '}
-            {formatWeight(startWeight.value)})
-          </strong>
-          <small>{formatWeight(weightChange)} sedan start</small>
-        </article>
-        <article className="metric">
-          <span>Vanepoäng</span>
-          <strong>{habitScore}%</strong>
-          <small>Baserat på dagens check-in</small>
-        </article>
-        <article className="metric">
-          <span>Matchecklista</span>
-          <strong>
-            {foodScore}/{foods.length}
-          </strong>
-          <small>Grundvanor för maten</small>
-        </article>
-        <article className="metric">
-          <span>Steg i dag</span>
-          <strong>{checkIn.steps.toLocaleString('sv-SE')}</strong>
-          <small>{checkIn.workout ? 'Träning planerad' : 'Återhämtningsdag'}</small>
+      <section className="dashboard-overview" aria-label="Översikt">
+        <article className="dashboard-summary-card">
+          <div className="dashboard-summary-heading">
+            <div>
+              <p className="eyebrow">Din översikt</p>
+              <h2>Dashboard</h2>
+            </div>
+            <span>I dag</span>
+          </div>
+
+          <div className="dashboard-summary-content">
+            <div className="dashboard-weight-summary">
+              <span>Nuvarande vikt</span>
+              <strong>{formatWeight(latestWeight.value)}</strong>
+              <small>
+                {formatWeight(weightChange)} sedan start · Start{' '}
+                {formatWeight(startWeight.value)}
+              </small>
+            </div>
+
+            <div className="dashboard-stat-grid">
+              <div className="dashboard-stat">
+                <span>Vanepoäng</span>
+                <strong>{habitScore}%</strong>
+                <small>Dagens check-in</small>
+              </div>
+              <div className="dashboard-stat">
+                <span>Matchecklista</span>
+                <strong>
+                  {foodScore}/{foods.length}
+                </strong>
+                <small>Grundvanor</small>
+              </div>
+              <div className="dashboard-stat">
+                <span>Steg i dag</span>
+                <strong>{checkIn.steps.toLocaleString('sv-SE')}</strong>
+                <small>
+                  {checkIn.workout ? 'Träning planerad' : 'Återhämtningsdag'}
+                </small>
+              </div>
+            </div>
+          </div>
         </article>
       </section>
 

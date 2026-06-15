@@ -790,6 +790,88 @@ a:focus-visible {
   gap: 12px;
 }
 
+.progress-photo-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.progress-photo-upload-card {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 4px 12px;
+  align-items: center;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  cursor: pointer;
+}
+
+.progress-photo-upload-card .progress-photo-icon {
+  grid-row: span 2;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 14px;
+  font-weight: 900;
+}
+
+.progress-photo-upload-card strong,
+.progress-photo-upload-card small {
+  min-width: 0;
+}
+
+.progress-photo-upload-card input {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+}
+
+.progress-photo-safety {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.progress-photo-history-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.progress-photo-history-heading > div {
+  display: grid;
+  gap: 3px;
+}
+
+.progress-photo-history-heading strong,
+.progress-photo-history-heading span {
+  display: block;
+}
+
+.progress-photo-local-badge,
+.progress-photo-view-badge {
+  width: fit-content;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.progress-photo-local-badge {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+}
+
+.progress-photo-view-badge {
+  margin-bottom: 5px;
+  padding: 4px 8px;
+}
+
 .comparison-controls {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 16px;
@@ -859,6 +941,38 @@ a:focus-visible {
   margin-top: 4px;
   color: var(--muted);
   font-size: 13px;
+}
+
+.progress-photo-compare-preview {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.progress-photo-compare-preview summary {
+  min-height: 0;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.progress-photo-compare-preview > p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.progress-photo-empty {
+  display: grid;
+  gap: 6px;
+  margin-top: 18px;
+  padding: 18px;
+  border-radius: 16px;
+  text-align: center;
+}
+
+.progress-photo-empty span {
+  line-height: 1.5;
 }
 
 .reminder-master {
@@ -983,7 +1097,7 @@ a:focus-visible {
   left: 50%;
   z-index: 20;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 6px;
   width: min(520px, calc(100% - 20px));
   margin: 0;
@@ -1246,7 +1360,8 @@ a:focus-visible {
   }
 
   .comparison-controls,
-  .before-after {
+  .before-after,
+  .progress-photo-upload-grid {
     grid-template-columns: 1fr;
   }
 

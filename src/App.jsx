@@ -161,7 +161,10 @@ function isStoredProgressPhotos(value) {
         typeof entry.id === 'number' &&
         typeof entry.image === 'string' &&
         typeof entry.createdAt === 'string' &&
-        typeof entry.note === 'string',
+        typeof entry.note === 'string' &&
+        (entry.view === undefined ||
+          entry.view === 'front' ||
+          entry.view === 'side'),
     )
   )
 }
@@ -1515,7 +1518,7 @@ function App() {
     saveScannedProduct(barcodeInput)
   }
 
-  function handleProgressPhotoChange(event) {
+  function handleProgressPhotoChange(event, view) {
     const file = event.target.files?.[0]
 
     if (!file) {
@@ -1530,6 +1533,7 @@ function App() {
           image: reader.result,
           createdAt: new Date().toISOString(),
           note: progressPhotoNote.trim(),
+          view,
         }
 
         setProgressPhotos((current) => [photo, ...current])
@@ -2501,11 +2505,11 @@ function App() {
           )}
         </article>
 
-        <article className="panel photos-panel" id="bilder">
+        <article className="panel photos-panel" id="framstegsbilder">
           <div className="panel-heading">
             <div>
-              <p className="eyebrow">Progressbilder</p>
-              <h2>Bildtidslinje</h2>
+              <p className="eyebrow">AI Framstegsbilder V1</p>
+              <h2>Framstegsbilder</h2>
             </div>
           </div>
 
@@ -2519,71 +2523,144 @@ function App() {
                 onChange={(event) => setProgressPhotoNote(event.target.value)}
               />
             </label>
-            <label className="photo-input">
-              <span>Lägg till bild</span>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleProgressPhotoChange}
-              />
-            </label>
+            <div className="progress-photo-upload-grid">
+              <label className="progress-photo-upload-card">
+                <span className="progress-photo-icon" aria-hidden="true">
+                  F
+                </span>
+                <strong>Framifrån</strong>
+                <small>Ta en ny bild eller välj från mobilen.</small>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={(event) =>
+                    handleProgressPhotoChange(event, 'front')
+                  }
+                />
+              </label>
+              <label className="progress-photo-upload-card">
+                <span className="progress-photo-icon" aria-hidden="true">
+                  S
+                </span>
+                <strong>Från sidan</strong>
+                <small>Ta en ny bild eller välj från mobilen.</small>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={(event) =>
+                    handleProgressPhotoChange(event, 'side')
+                  }
+                />
+              </label>
+            </div>
+            <p className="progress-photo-safety">
+              Bilderna sparas bara lokalt i webbläsaren. Funktionen gör ingen
+              medicinsk diagnos, kroppsfettanalys eller viktuppskattning.
+            </p>
           </div>
 
           {progressPhotos.length > 0 && (
             <>
-              <div className="comparison-controls">
-                <label className="field">
-                  <span>Före</span>
-                  <select
-                    value={beforePhoto ? String(beforePhoto.id) : ''}
-                    onChange={(event) => setBeforePhotoId(event.target.value)}
-                  >
-                    {progressPhotos.map((photo) => (
-                      <option value={photo.id} key={photo.id}>
-                        {formatFullDate(photo.createdAt)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="field">
-                  <span>Efter</span>
-                  <select
-                    value={afterPhoto ? String(afterPhoto.id) : ''}
-                    onChange={(event) => setAfterPhotoId(event.target.value)}
-                  >
-                    {progressPhotos.map((photo) => (
-                      <option value={photo.id} key={photo.id}>
-                        {formatFullDate(photo.createdAt)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              <div className="before-after">
-                {[beforePhoto, afterPhoto].filter(Boolean).map((photo, index) => (
-                  <figure key={`${photo.id}-${index}`}>
-                    <img src={photo.image} alt={index === 0 ? 'Förebild' : 'Efterbild'} />
-                    <figcaption>
-                      {index === 0 ? 'Före' : 'Efter'} · {formatFullDate(photo.createdAt)}
-                    </figcaption>
-                  </figure>
-                ))}
+              <div className="progress-photo-history-heading">
+                <div>
+                  <strong>Bildhistorik</strong>
+                  <span>{progressPhotos.length} sparade bilder</span>
+                </div>
+                <span className="progress-photo-local-badge">Endast lokalt</span>
               </div>
 
               <div className="photo-timeline">
                 {progressPhotos.map((photo) => (
                   <article key={photo.id}>
-                    <img src={photo.image} alt="Progressbild" />
+                    <img
+                      src={photo.image}
+                      alt={
+                        photo.view === 'front'
+                          ? 'Framstegsbild framifrån'
+                          : photo.view === 'side'
+                            ? 'Framstegsbild från sidan'
+                            : 'Tidigare framstegsbild'
+                      }
+                    />
                     <div>
+                      <span className="progress-photo-view-badge">
+                        {photo.view === 'front'
+                          ? 'Framifrån'
+                          : photo.view === 'side'
+                            ? 'Från sidan'
+                            : 'Tidigare bild'}
+                      </span>
                       <strong>{formatFullDate(photo.createdAt)}</strong>
                       <span>{photo.note || 'Ingen anteckning'}</span>
                     </div>
                   </article>
                 ))}
               </div>
+
+              <details className="progress-photo-compare-preview">
+                <summary>Manuell före/efter-visning</summary>
+                <p>
+                  AI-jämförelse och observationer över tid kommer i en senare
+                  version.
+                </p>
+                <div className="comparison-controls">
+                  <label className="field">
+                    <span>Före</span>
+                    <select
+                      value={beforePhoto ? String(beforePhoto.id) : ''}
+                      onChange={(event) => setBeforePhotoId(event.target.value)}
+                    >
+                      {progressPhotos.map((photo) => (
+                        <option value={photo.id} key={photo.id}>
+                          {formatFullDate(photo.createdAt)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span>Efter</span>
+                    <select
+                      value={afterPhoto ? String(afterPhoto.id) : ''}
+                      onChange={(event) => setAfterPhotoId(event.target.value)}
+                    >
+                      {progressPhotos.map((photo) => (
+                        <option value={photo.id} key={photo.id}>
+                          {formatFullDate(photo.createdAt)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <div className="before-after">
+                  {[beforePhoto, afterPhoto]
+                    .filter(Boolean)
+                    .map((photo, index) => (
+                      <figure key={`${photo.id}-${index}`}>
+                        <img
+                          src={photo.image}
+                          alt={index === 0 ? 'Förebild' : 'Efterbild'}
+                        />
+                        <figcaption>
+                          {index === 0 ? 'Före' : 'Efter'} ·{' '}
+                          {formatFullDate(photo.createdAt)}
+                        </figcaption>
+                      </figure>
+                    ))}
+                </div>
+              </details>
             </>
+          )}
+
+          {progressPhotos.length === 0 && (
+            <div className="progress-photo-empty">
+              <strong>Ingen bildhistorik ännu</strong>
+              <span>
+                Börja med en bild framifrån eller från sidan. Du väljer själv
+                när du vill lägga till nästa.
+              </span>
+            </div>
           )}
         </article>
 
@@ -2724,6 +2801,10 @@ function App() {
         <a href="#mat" aria-label="Gå till matchecklistan">
           <span>＋</span>
           <strong>Mat</strong>
+        </a>
+        <a href="#framstegsbilder" aria-label="Gå till framstegsbilder">
+          <span>▣</span>
+          <strong>Bilder</strong>
         </a>
         <a href="#installningar" aria-label="Gå till inställningar">
           <span>⚙</span>

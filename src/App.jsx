@@ -1681,6 +1681,12 @@ function App() {
     ])
   }
 
+  function clearChat() {
+    setChatMessages(initialChatMessages)
+    setChatInput('')
+    setVoiceStatus('')
+  }
+
   async function sendChatText(text) {
     appendChatMessage('user', text)
     const reply = await requestChatReply(text)
@@ -2148,6 +2154,14 @@ function App() {
               <p className="eyebrow">AI Coach</p>
               <h2 className="chat-title">Fråga AI-coachen</h2>
             </div>
+            <button
+              className="clear-chat-button"
+              type="button"
+              onClick={clearChat}
+              disabled={chatMessages.length <= initialChatMessages.length}
+            >
+              Rensa chatten
+            </button>
           </div>
 
           <div className="starter-prompts" aria-label="Förslag på frågor">

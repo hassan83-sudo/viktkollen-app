@@ -1,0 +1,190 @@
+export const questionBank = {
+  Matematik: [
+    {
+      question: 'Vad är 8 × 7?',
+      options: ['54', '56', '64', '48'],
+      answer: '56',
+      hint: 'Multiplicera 8 med 7. Ett snabbt sätt är 8 × 5 + 8 × 2.',
+    },
+    {
+      question: 'Vad är 144 ÷ 12?',
+      options: ['10', '11', '12', '14'],
+      answer: '12',
+      hint: 'Tänk vilket tal gånger 12 som blir 144.',
+    },
+    {
+      question: 'Vilket tal är 25% av 80?',
+      options: ['15', '20', '25', '30'],
+      answer: '20',
+      hint: '25% är en fjärdedel. Dela 80 med 4.',
+    },
+    {
+      question: 'Vad är 3² + 4²?',
+      options: ['12', '18', '25', '49'],
+      answer: '25',
+      hint: '3² är 9 och 4² är 16. Lägg ihop dem.',
+    },
+    {
+      question: 'Lös x: x + 9 = 17',
+      options: ['6', '7', '8', '9'],
+      answer: '8',
+      hint: 'Subtrahera 9 från båda sidor.',
+    },
+    {
+      question: 'Vad är 0,5 som bråk?',
+      options: ['1/5', '1/4', '1/2', '2/5'],
+      answer: '1/2',
+      hint: '0,5 är halva vägen från 0 till 1.',
+    },
+    {
+      question: 'Vad är omkretsen av en kvadrat med sidan 6 cm?',
+      options: ['12 cm', '18 cm', '24 cm', '36 cm'],
+      answer: '24 cm',
+      hint: 'En kvadrat har fyra lika långa sidor.',
+    },
+    {
+      question: 'Vilket tal är störst?',
+      options: ['0,7', '0,07', '0,17', '0,71'],
+      answer: '0,71',
+      hint: 'Jämför tiondelar och hundradelar.',
+    },
+    {
+      question: 'Vad är 15% av 200?',
+      options: ['20', '25', '30', '35'],
+      answer: '30',
+      hint: '10% är 20 och 5% är 10.',
+    },
+    {
+      question: 'Vad är medelvärdet av 4, 6 och 8?',
+      options: ['5', '6', '7', '8'],
+      answer: '6',
+      hint: 'Addera talen och dela med tre.',
+    },
+  ],
+  Engelska: [
+    {
+      question: 'Vad betyder "library" på svenska?',
+      options: ['Bokhandel', 'Bibliotek', 'Skola', 'Kontor'],
+      answer: 'Bibliotek',
+      hint: 'Det är platsen där du kan låna böcker.',
+    },
+    {
+      question: 'Vilket ord är ett verb?',
+      options: ['Run', 'Blue', 'Happy', 'Chair'],
+      answer: 'Run',
+      hint: 'Verb beskriver något man gör.',
+    },
+    {
+      question: 'Vilken mening är korrekt?',
+      options: ['She are kind', 'She is kind', 'She am kind', 'She be kind'],
+      answer: 'She is kind',
+      hint: 'Tredje person singular använder "is".',
+    },
+    {
+      question: 'Vad är plural av "child"?',
+      options: ['Childs', 'Children', 'Childes', 'Childrens'],
+      answer: 'Children',
+      hint: 'Det här är en oregelbunden pluralform.',
+    },
+    {
+      question: 'Vad betyder "because"?',
+      options: ['Men', 'Därför att', 'Eller', 'Innan'],
+      answer: 'Därför att',
+      hint: 'Ordet förklarar en anledning.',
+    },
+    {
+      question: 'Vilket ord betyder "snabb"?',
+      options: ['Slow', 'Fast', 'Soft', 'Late'],
+      answer: 'Fast',
+      hint: 'Motsatsen är "slow".',
+    },
+    {
+      question: 'Vilket pronomen passar: "__ am ready."',
+      options: ['I', 'You', 'He', 'They'],
+      answer: 'I',
+      hint: 'Bara ett pronomen används med "am".',
+    },
+    {
+      question: 'Vad betyder "weather"?',
+      options: ['Väder', 'Vinter', 'Vatten', 'Vind'],
+      answer: 'Väder',
+      hint: 'Sol, regn och snö handlar om detta.',
+    },
+    {
+      question: 'Vilket är motsatsen till "easy"?',
+      options: ['Hard', 'Clean', 'Small', 'Young'],
+      answer: 'Hard',
+      hint: 'Det betyder svår.',
+    },
+    {
+      question: 'Vad betyder "I agree"?',
+      options: ['Jag glömmer', 'Jag håller med', 'Jag frågar', 'Jag väntar'],
+      answer: 'Jag håller med',
+      hint: 'Du säger detta när du tycker samma sak.',
+    },
+  ],
+  Svenska: [
+    {
+      question: 'Vilket ord är ett substantiv?',
+      options: ['Springa', 'Glad', 'Bok', 'Snabbt'],
+      answer: 'Bok',
+      hint: 'Substantiv är saker, personer, platser eller begrepp.',
+    },
+    {
+      question: 'Vilken mening har rätt skiljetecken?',
+      options: ['Vad heter du.', 'Vad heter du?', 'Vad heter du!', 'Vad heter du,'],
+      answer: 'Vad heter du?',
+      hint: 'En fråga slutar med frågetecken.',
+    },
+    {
+      question: 'Vad är synonym till "glad"?',
+      options: ['Ledsen', 'Lycklig', 'Arg', 'Trött'],
+      answer: 'Lycklig',
+      hint: 'Synonymer betyder ungefär samma sak.',
+    },
+    {
+      question: 'Vilket ord är ett adjektiv?',
+      options: ['Grön', 'Hoppa', 'Stol', 'Igår'],
+      answer: 'Grön',
+      hint: 'Adjektiv beskriver hur något är eller ser ut.',
+    },
+    {
+      question: 'Vad är motsatsen till "tidig"?',
+      options: ['Sen', 'Lång', 'Kort', 'Mjuk'],
+      answer: 'Sen',
+      hint: 'Tänk på att komma för sent.',
+    },
+    {
+      question: 'Vilken är korrekt stavning?',
+      options: ['Intresant', 'Intressant', 'Intresannt', 'Intressangt'],
+      answer: 'Intressant',
+      hint: 'Ordet har dubbel-s efter "intre".',
+    },
+    {
+      question: 'Vad kallas början av en berättelse?',
+      options: ['Slut', 'Inledning', 'Rubrik', 'Replik'],
+      answer: 'Inledning',
+      hint: 'Den leder läsaren in i texten.',
+    },
+    {
+      question: 'Vilket ord är ett verb?',
+      options: ['Cykla', 'Cykel', 'Cyklande', 'Cyklist'],
+      answer: 'Cykla',
+      hint: 'Verb beskriver en handling.',
+    },
+    {
+      question: 'Vad är en replik?',
+      options: ['När någon talar', 'En bildtext', 'En rubrik', 'En lista'],
+      answer: 'När någon talar',
+      hint: 'Repliker används ofta i dialog.',
+    },
+    {
+      question: 'Vilket ord passar bäst: "Hon ___ en bok."',
+      options: ['läser', 'läs', 'läst', 'läsning'],
+      answer: 'läser',
+      hint: 'Meningens verb ska stå i presens.',
+    },
+  ],
+}
+
+export const subjects = Object.keys(questionBank)

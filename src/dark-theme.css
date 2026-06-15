@@ -523,6 +523,11 @@ button:hover:not(:disabled) {
   background: rgba(34, 211, 238, 0.08);
 }
 
+.bottom-nav a span {
+  color: currentColor;
+  transition: transform 160ms ease;
+}
+
 .bottom-nav strong {
   max-width: 100%;
   overflow: hidden;
@@ -538,6 +543,44 @@ button:hover:not(:disabled) {
     rgba(34, 211, 238, 0.2),
     rgba(139, 92, 246, 0.22)
   );
+}
+
+.app-shell:has(:target) .bottom-nav a:first-child {
+  border-color: transparent;
+  color: #94a3b8;
+  background: transparent;
+}
+
+.app-shell:has(#hem:target) .bottom-nav a[href='#hem'],
+.app-shell:has(#checkin:target) .bottom-nav a[href='#checkin'],
+.app-shell:has(#vikt:target) .bottom-nav a[href='#vikt'],
+.app-shell:has(#mat:target) .bottom-nav a[href='#mat'],
+.app-shell:has(#framstegsbilder:target) .bottom-nav a[href='#framstegsbilder'],
+.app-shell:has(#installningar:target) .bottom-nav a[href='#installningar'] {
+  border-color: rgba(34, 211, 238, 0.42);
+  color: #f8fafc;
+  background: linear-gradient(
+    135deg,
+    rgba(34, 211, 238, 0.22),
+    rgba(139, 92, 246, 0.26)
+  );
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.app-shell:has(#hem:target) .bottom-nav a[href='#hem'] span,
+.app-shell:has(#checkin:target) .bottom-nav a[href='#checkin'] span,
+.app-shell:has(#vikt:target) .bottom-nav a[href='#vikt'] span,
+.app-shell:has(#mat:target) .bottom-nav a[href='#mat'] span,
+.app-shell:has(#framstegsbilder:target)
+  .bottom-nav
+  a[href='#framstegsbilder']
+  span,
+.app-shell:has(#installningar:target)
+  .bottom-nav
+  a[href='#installningar']
+  span {
+  color: #67e8f9;
+  transform: translateY(-1px);
 }
 
 ::selection {
@@ -558,27 +601,19 @@ button:hover:not(:disabled) {
   }
 
   .bottom-nav {
-    display: flex;
-    justify-content: flex-start;
-    padding-bottom: max(6px, env(safe-area-inset-bottom));
-    overflow-x: auto;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    padding-bottom: 5px;
+    overflow: visible;
     border-radius: 20px;
-    scrollbar-width: none;
-    scroll-snap-type: x proximity;
-  }
-
-  .bottom-nav::-webkit-scrollbar {
-    display: none;
   }
 
   .bottom-nav a {
-    flex: 0 0 68px;
     min-width: 0;
-    scroll-snap-align: center;
   }
 
   .bottom-nav strong {
-    font-size: 10px;
+    font-size: 9px;
   }
 
   .chat-message {

@@ -2792,7 +2792,7 @@ function App() {
         </a>
         <a href="#checkin" aria-label="Gå till dagens check-in">
           <span>✓</span>
-          <strong>Check-in</strong>
+          <strong>Check</strong>
         </a>
         <a href="#vikt" aria-label="Gå till viktloggen">
           <span>↗</span>
@@ -2804,7 +2804,7 @@ function App() {
         </a>
         <a href="#framstegsbilder" aria-label="Gå till framstegsbilder">
           <span>▣</span>
-          <strong>Bilder</strong>
+          <strong>Foto</strong>
         </a>
         <a href="#installningar" aria-label="Gå till inställningar">
           <span>⚙</span>

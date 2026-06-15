@@ -302,17 +302,19 @@ a:focus-visible {
 .starter-prompts {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: 7px;
+  margin-bottom: 16px;
+  padding: 4px;
+  border-radius: 18px;
 }
 
 .prompt-chip {
-  min-height: 36px;
-  padding: 0 12px;
+  min-height: 38px;
+  padding: 0 14px;
   color: var(--text-h);
   background: var(--soft-bg);
   box-shadow: none;
-  font-size: 13px;
+  font-size: 12px;
   border: 1px solid var(--border);
 }
 
@@ -493,19 +495,22 @@ a:focus-visible {
 .segmented-control {
   display: inline-grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
-  padding: 4px;
+  gap: 5px;
+  min-width: 250px;
+  padding: 5px;
   border-radius: 999px;
   background: var(--surface);
 }
 
 .segmented-control button {
-  min-height: 34px;
-  padding: 0 10px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
   color: var(--muted);
   background: transparent;
   box-shadow: none;
   font-size: 12px;
+  letter-spacing: 0.01em;
 }
 
 .segmented-control button.active {

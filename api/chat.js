@@ -1,3 +1,5 @@
+import { makePersonalCoachReply } from '../src/lib/coachReply.js'
+
 const OPENAI_API_URL = 'https://api.openai.com/v1/responses'
 const DEFAULT_MODEL = 'gpt-4.1-mini'
 const CHAT_INSTRUCTIONS = [
@@ -8,6 +10,8 @@ const CHAT_INSTRUCTIONS = [
   'Om användaren ställer flera frågor i samma meddelande ska du svara på varje del, kort och tydligt. Exempel: om frågan gäller både vad personen ska äta idag och när det är bra att sova, ge både matförslag och sömnråd.',
   'Använd senaste chatthistoriken för att tolka referenser som "det", "så", "detta", "är det farligt?" och "är det skadligt?". Om senaste ämnet var att äta precis innan sömn ska "det" tolkas som att äta nära läggdags.',
   'Kort som standard: 2-6 meningar; längre bara när användaren ber om det. Ställ följdfrågor när det är användbart. Undvik repetitiva fraser och upprepa inte steg, energi, checklista, vikt, mål eller disclaimer om det inte är relevant.',
+  'Börja med ett direkt svar på den faktiska frågan. Om användaren frågar om sin vikt, målvikt, utveckling, steg, energi, humör eller dagens plan ska du använda de exakta värdena i hälsokontexten. Hitta inte på saknade värden.',
+  'Variera formuleringarna utifrån frågan. Använd inte samma generella råd om protein, grönsaker eller promenad när frågan gäller något annat.',
   'För hälsningar som "hej", svara naturligt. För sömnfrågor: säg att 7-9 timmar är en bra riktlinje för de flesta vuxna, rekommendera konsekvent läggtid och räkna enkelt bakåt om användaren nämner uppstigningstid.',
   'Om användaren frågar om något är skadligt eller farligt, svara direkt med säker generell wellness-vägledning utan medicinsk diagnos. Använd historiken om frågan är en följdfråga.',
   'För att äta nära läggdags: säg att det oftast inte är skadligt för de flesta, men kan påverka sömn, reflux, hungervanor eller kaloriintag; föreslå lättare alternativ om personen är hungrig och att testa tajming och portionsstorlek.',
@@ -454,6 +458,30 @@ function makeMockReply(message, context, chatHistory = []) {
     return 'Hej! Hur kan jag hjälpa dig idag?'
   }
 
+  const personalReply = makePersonalCoachReply({
+    checkIn: {
+      energy: context.current.energy,
+      mood: context.current.mood,
+      steps: context.current.steps,
+      workout: context.current.workout,
+    },
+    currentWeight,
+    foods: Array.from(
+      { length: Number(context.current.checklistScore.split('/')[1]) || 0 },
+      (_, index) => ({
+        done:
+          index <
+          (Number(context.current.checklistScore.split('/')[0]) || 0),
+      }),
+    ),
+    message,
+    profile: context.profile,
+  })
+
+  if (personalReply) {
+    return personalReply
+  }
+
   if (asksAboutRapidWeightLoss(message)) {
     return makeRapidWeightLossReply()
   }
@@ -645,7 +673,7 @@ export default async function handler(request, response) {
       },
       body: JSON.stringify({
         model,
-        max_output_tokens: 360,
+        max_output_tokens: 260,
         instructions: CHAT_INSTRUCTIONS,
         input: buildConversationInput(message, context, chatHistory),
       }),

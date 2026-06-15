@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
+import { makePersonalCoachReply } from './lib/coachReply.js'
 
 const starterWeights = [
   { date: '2026-05-23', value: 91.8 },
@@ -720,6 +721,18 @@ Handla: ägg, kyckling/tonfisk, linser/bönor, potatis/ris och frysta grönsaker
 
   if (/^(hej|hejsan|hallå|tjena|god morgon|god kväll)[!.\s]*$/i.test(message.trim())) {
     return 'Hej! Hur kan jag hjälpa dig idag?'
+  }
+
+  const personalReply = makePersonalCoachReply({
+    checkIn,
+    currentWeight,
+    foods,
+    message,
+    profile,
+  })
+
+  if (personalReply) {
+    return personalReply
   }
 
   if (asksAboutRapidWeightLoss(message)) {

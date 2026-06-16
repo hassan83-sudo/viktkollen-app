@@ -411,6 +411,8 @@ button:hover:not(:disabled) {
 .coach-note,
 .photo-meal-tool,
 .photo-meal-list li,
+.photo-meal-detected div,
+.photo-meal-feedback,
 .product-list li,
 .photo-timeline article,
 .reminder-master,
@@ -419,6 +421,28 @@ button:hover:not(:disabled) {
 .trend-list div {
   border: 1px solid rgba(148, 163, 184, 0.1);
   background: var(--soft-bg);
+}
+
+.photo-meal-detected div {
+  border-color: rgba(34, 211, 238, 0.18);
+  background:
+    linear-gradient(145deg, rgba(34, 211, 238, 0.08), rgba(139, 92, 246, 0.06)),
+    rgba(2, 6, 23, 0.25);
+}
+
+.photo-meal-detected div:nth-child(2) {
+  border-color: rgba(45, 212, 191, 0.22);
+}
+
+.photo-meal-detected div:nth-child(3) {
+  border-color: rgba(139, 92, 246, 0.24);
+}
+
+.photo-meal-feedback {
+  border-color: rgba(139, 92, 246, 0.2);
+  background:
+    radial-gradient(circle at top right, rgba(139, 92, 246, 0.1), transparent 42%),
+    rgba(2, 6, 23, 0.24);
 }
 
 .report-card {

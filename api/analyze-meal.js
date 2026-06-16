@@ -13,14 +13,22 @@ function sanitizeImage(value) {
 
 function makeMockAnalysis() {
   return {
-    foods: ['okänd proteinkälla', 'grönsaker', 'kolhydratkälla'],
+    foods: ['trolig proteinkälla', 'troliga grönsaker', 'trolig kolhydratkälla'],
+    likelyProtein: 'ser ut att innehålla en proteinkälla',
+    likelyVegetables: 'troligen grönsaker eller sallad',
+    likelyCarbs: 'kan innehålla ris, potatis, pasta eller annan kolhydratkälla',
+    summary:
+      'Måltiden ser ut att ha en proteinbas, någon form av grönsaker och en kolhydratkälla.',
+    positiveFeedback: 'Bra proteinbas och en tydlig måltidsstruktur.',
+    improvementSuggestion:
+      'Ett enkelt nästa steg kan vara att öka mängden grönsaker något.',
     calories: 540,
     protein: 32,
     carbs: 58,
     fat: 18,
     confidence: 'låg',
     explanation:
-      'Mockanalysen kunde inte använda riktig bildtolkning. Se siffrorna som en grov uppskattning och justera efter portion och ingredienser.',
+      'Mockanalysen kunde inte använda riktig bildtolkning. Se detta som försiktiga observationer, inte som exakt kaloriberäkning eller näringsdeklaration.',
   }
 }
 
@@ -53,6 +61,12 @@ function parseAnalysisText(text) {
     foods: Array.isArray(parsed.foods)
       ? parsed.foods.map(String).slice(0, 8)
       : [],
+    likelyProtein: String(parsed.likelyProtein || ''),
+    likelyVegetables: String(parsed.likelyVegetables || ''),
+    likelyCarbs: String(parsed.likelyCarbs || ''),
+    summary: String(parsed.summary || ''),
+    positiveFeedback: String(parsed.positiveFeedback || ''),
+    improvementSuggestion: String(parsed.improvementSuggestion || ''),
     calories: Number(parsed.calories),
     protein: Number(parsed.protein),
     carbs: Number(parsed.carbs),
@@ -71,6 +85,12 @@ function validateAnalysis(analysis) {
     Number.isFinite(analysis.carbs) &&
     Number.isFinite(analysis.fat) &&
     ['låg', 'medel', 'hög'].includes(analysis.confidence) &&
+    analysis.likelyProtein &&
+    analysis.likelyVegetables &&
+    analysis.likelyCarbs &&
+    analysis.summary &&
+    analysis.positiveFeedback &&
+    analysis.improvementSuggestion &&
     analysis.explanation
   )
 }
@@ -140,14 +160,14 @@ export default async function handler(request, response) {
         model,
         max_output_tokens: 500,
         instructions:
-          'Du analyserar matbilder för en svensk wellness-app. Svara endast med giltig JSON utan markdown. Identifiera synliga livsmedel och uppskatta kalorier, protein, kolhydrater och fett för hela portionen. Svara på svenska. Var tydlig med att detta är en uppskattning. Confidence ska vara "låg", "medel" eller "hög". Ge inga medicinska råd.',
+          'Du analyserar matbilder för en svensk wellness-app. Svara endast med giltig JSON utan markdown. Skriv på svenska. Använd försiktiga formuleringar som "ser ut att", "troligen" och "kan innehålla". Försök identifiera trolig proteinkälla, troliga grönsaker och trolig kolhydratkälla. Ge en kort sammanfattning, positiv feedback och ett enkelt förbättringsförslag. Ge inga medicinska råd, ingen exakt kaloriberäkning och ingen exakt näringsdeklaration. Numeriska fält är bara grova uppskattningar för bakåtkompatibilitet. Confidence ska vara "låg", "medel" eller "hög".',
         input: [
           {
             role: 'user',
             content: [
               {
                 type: 'input_text',
-                text: 'Returnera JSON med exakt dessa fält: foods (array av svenska matnamn), calories (number), protein (number gram), carbs (number gram), fat (number gram), confidence (låg/medel/hög), explanation (kort svensk förklaring om osäkerhet och antaganden).',
+                text: 'Returnera JSON med exakt dessa fält: foods (array av svenska matnamn), likelyProtein (kort text), likelyVegetables (kort text), likelyCarbs (kort text), summary (1 kort mening), positiveFeedback (1 kort mening), improvementSuggestion (1 kort mening), calories (number, grov uppskattning), protein (number gram, grov uppskattning), carbs (number gram, grov uppskattning), fat (number gram, grov uppskattning), confidence (låg/medel/hög), explanation (kort svensk text om osäkerhet och att detta inte är exakta näringsvärden).',
               },
               {
                 type: 'input_image',

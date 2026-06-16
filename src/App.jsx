@@ -418,14 +418,24 @@ function makeMockPhotoAnalysis(profile, checkIn, foods) {
     520 + goalAdjustment.calories + activityAdjustment.calories + energyAdjustment + checklistAdjustment
 
   return {
-    foods: ['protein', 'grönsaker', 'kolhydratkälla'],
+    foods: ['trolig proteinkälla', 'troliga grönsaker', 'trolig kolhydratkälla'],
+    likelyProtein: 'ser ut att innehålla en proteinkälla',
+    likelyVegetables: 'troligen grönsaker eller sallad',
+    likelyCarbs: 'kan innehålla ris, potatis, pasta eller annan kolhydratkälla',
+    summary:
+      'Måltiden ser ut att ha en proteinbas, någon form av grönsaker och en kolhydratkälla.',
+    positiveFeedback: 'Bra att måltiden verkar ha flera delar som kan ge mättnad.',
+    improvementSuggestion:
+      completedFoods >= 3
+        ? 'Ett enkelt nästa steg kan vara att hålla samma struktur även vid nästa måltid.'
+        : 'Ett enkelt nästa steg kan vara att lägga till lite mer grönsaker eller en tydligare proteinbas.',
     calories,
     protein: 32 + goalAdjustment.protein,
     carbs: 54 + goalAdjustment.carbs + activityAdjustment.carbs,
     fat: 18 + goalAdjustment.fat,
     confidence: 'låg',
     explanation:
-      'Mockanalysen uppskattar en balanserad måltid utifrån bilden och dagens data. Använd siffrorna som en grov riktning, inte som exakta näringsvärden.',
+      'Ser ut att vara en balanserad måltid, men bildanalysen är osäker. Se all information som en grov riktning, inte som exakt kaloriberäkning eller näringsdeklaration.',
   }
 }
 
@@ -2445,10 +2455,11 @@ function App() {
           <div className="photo-meal-tool">
             <div>
               <p className="eyebrow">Matfoto</p>
-              <h3>Mockanalys av måltid</h3>
+              <h3>Matfotoanalys V2</h3>
               <p>
-                Ladda upp eller ta en bild. Analysen är bara en grov uppskattning
-                och ersätter inte exakta näringsvärden.
+                Ladda upp eller ta en bild. Analysen försöker hitta trolig
+                proteinkälla, grönsaker och kolhydratkälla utan exakta
+                näringsvärden.
               </p>
             </div>
             <label className="photo-input">
@@ -2478,45 +2489,91 @@ function App() {
               <p className="analysis-status">{photoAnalysisStatus}</p>
             )}
             <p className="estimate-note">
-              Endast uppskattning från AI eller mockfallback. Ingen medicinsk
-              rådgivning.
+              Endast försiktig bildtolkning från AI eller lokal fallback. Ingen
+              medicinsk rådgivning, exakt kaloriberäkning eller exakt
+              näringsdeklaration.
             </p>
           </div>
 
           {photoMeals.length > 0 && (
             <ul className="photo-meal-list">
-              {photoMeals.map((entry) => (
-                <li key={entry.id}>
-                  <img src={entry.image} alt="Analyserad måltid" />
-                  <div>
-                    <strong>
-                      {entry.analysis.calories} kcal uppskattat
-                    </strong>
-                    <p>
-                      Livsmedel: {entry.analysis.foods.join(', ')}
-                    </p>
-                    <dl>
-                      <div>
-                        <dt>Protein</dt>
-                        <dd>{entry.analysis.protein} g</dd>
+              {photoMeals.map((entry) => {
+                const likelyProtein =
+                  entry.analysis.likelyProtein ||
+                  entry.analysis.foods[0] ||
+                  'ser ut att innehålla en proteinkälla'
+                const likelyVegetables =
+                  entry.analysis.likelyVegetables ||
+                  entry.analysis.foods[1] ||
+                  'troligen grönsaker eller sallad'
+                const likelyCarbs =
+                  entry.analysis.likelyCarbs ||
+                  entry.analysis.foods[2] ||
+                  'kan innehålla en kolhydratkälla'
+                const summary =
+                  entry.analysis.summary ||
+                  `Ser ut att innehålla ${entry.analysis.foods.join(', ')}.`
+                const positiveFeedback =
+                  entry.analysis.positiveFeedback ||
+                  'Bra att du använder fotoanalysen för att reflektera över måltiden.'
+                const improvementSuggestion =
+                  entry.analysis.improvementSuggestion ||
+                  'Ett enkelt nästa steg kan vara att lägga till en tydlig grönsak eller proteinkälla.'
+
+                return (
+                  <li key={entry.id}>
+                    <img src={entry.image} alt="Analyserad måltid" />
+                    <div className="photo-meal-result">
+                      <strong>Matfotoanalys V2</strong>
+                      <p>{summary}</p>
+
+                      <div className="photo-meal-detected">
+                        <div>
+                          <span>Proteinkälla</span>
+                          <strong>{likelyProtein}</strong>
+                        </div>
+                        <div>
+                          <span>Grönsaker</span>
+                          <strong>{likelyVegetables}</strong>
+                        </div>
+                        <div>
+                          <span>Kolhydratkälla</span>
+                          <strong>{likelyCarbs}</strong>
+                        </div>
                       </div>
-                      <div>
-                        <dt>Kolhydrater</dt>
-                        <dd>{entry.analysis.carbs} g</dd>
+
+                      <div className="photo-meal-feedback">
+                        <p>
+                          <strong>Positivt:</strong> {positiveFeedback}
+                        </p>
+                        <p>
+                          <strong>Nästa steg:</strong> {improvementSuggestion}
+                        </p>
                       </div>
-                      <div>
-                        <dt>Fett</dt>
-                        <dd>{entry.analysis.fat} g</dd>
-                      </div>
-                      <div>
-                        <dt>Säkerhet</dt>
-                        <dd>{entry.analysis.confidence}</dd>
-                      </div>
-                    </dl>
-                    <p>{entry.analysis.explanation}</p>
-                  </div>
-                </li>
-              ))}
+
+                      <dl>
+                        <div>
+                          <dt>Energi, grovt</dt>
+                          <dd>{entry.analysis.calories} kcal</dd>
+                        </div>
+                        <div>
+                          <dt>Protein, grovt</dt>
+                          <dd>{entry.analysis.protein} g</dd>
+                        </div>
+                        <div>
+                          <dt>Kolhydrater, grovt</dt>
+                          <dd>{entry.analysis.carbs} g</dd>
+                        </div>
+                        <div>
+                          <dt>Säkerhet</dt>
+                          <dd>{entry.analysis.confidence}</dd>
+                        </div>
+                      </dl>
+                      <p>{entry.analysis.explanation}</p>
+                    </div>
+                  </li>
+                )
+              })}
             </ul>
           )}
 

@@ -1177,9 +1177,9 @@ a:focus-visible {
 
 .report-card {
   display: grid;
-  gap: 8px;
-  padding: 14px;
-  border-radius: 8px;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 14px;
   background: var(--chart-bg);
 }
 
@@ -1192,10 +1192,14 @@ a:focus-visible {
 }
 
 .report-card .report-heading {
-  margin-top: 4px;
+  margin-top: 10px;
   color: var(--text-h);
   font-size: 16px;
   font-weight: 850;
+}
+
+.report-card .report-heading:first-child {
+  margin-top: 0;
 }
 
 .bottom-nav {
@@ -1433,6 +1437,20 @@ a:focus-visible {
 
   .dashboard-stat strong {
     font-size: 19px;
+  }
+
+  .weekly-report {
+    gap: 10px;
+  }
+
+  .report-card {
+    gap: 8px;
+    padding: 13px;
+    border-radius: 13px;
+  }
+
+  .report-card p {
+    font-size: 13px;
   }
 
   .summary-grid,

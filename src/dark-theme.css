@@ -416,10 +416,17 @@ button:hover:not(:disabled) {
 .reminder-master,
 .reminder-row,
 .meal-list li,
-.trend-list div,
-.report-card {
+.trend-list div {
   border: 1px solid rgba(148, 163, 184, 0.1);
   background: var(--soft-bg);
+}
+
+.report-card {
+  border: 1px solid rgba(34, 211, 238, 0.18);
+  background:
+    radial-gradient(circle at top left, rgba(34, 211, 238, 0.09), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.1), transparent 36%),
+    rgba(2, 6, 23, 0.3);
 }
 
 .progress-photo-upload-card {

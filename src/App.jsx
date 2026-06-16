@@ -337,6 +337,18 @@ function getAverageWeeklyChange(weights) {
   return Number((((last.value - first.value) / days) * 7).toFixed(1))
 }
 
+function getPeriodWeightChange(weights) {
+  if (weights.length < 2) {
+    return null
+  }
+
+  return Number((weights.at(-1).value - weights[0].value).toFixed(1))
+}
+
+function formatSignedWeight(value) {
+  return `${value > 0 ? '+' : ''}${formatWeight(value)}`
+}
+
 function getLinearTrendValues(weights) {
   if (weights.length < 2) {
     return weights.map((entry) => entry.value)
@@ -830,23 +842,79 @@ Välj en och upprepa den i veckan.`
 function makeLocalWeeklyReport(profile, checkIn, foods, meals, weights) {
   const name = profile?.name || 'du'
   const goal = profile?.goal || 'hållbara vanor'
-  const recentWeights = weights.slice(-7)
-  const weeklyChange = getAverageWeeklyChange(recentWeights)
-  const checklistScore = `${foods.filter((item) => item.done).length}/${foods.length}`
-  const goalFocus =
-    goal === 'gå ner i vikt'
-      ? 'Fortsätt med enkla måltider och jämn rörelse.'
-      : goal === 'bygga muskler'
-        ? 'Prioritera protein och återhämtning.'
-        : 'Håll rutinen stabil och lätt att upprepa.'
+  const sortedWeights = [...weights].sort(
+    (a, b) => new Date(a.date) - new Date(b.date),
+  )
+  const recentWeights = sortedWeights.slice(-7)
+  const previousWeights = sortedWeights.slice(-14, -7)
+  const weeklyChange = getPeriodWeightChange(recentWeights)
+  const previousChange = getPeriodWeightChange(previousWeights)
+  const weeklyTrend = getAverageWeeklyChange(recentWeights)
+  const completedFoods = foods.filter((item) => item.done).length
+  const foodPercent = foods.length
+    ? Math.round((completedFoods / foods.length) * 100)
+    : 0
+  const habitScore = Math.round(
+    ((checkIn.energy >= 6 ? 1 : 0) +
+      (checkIn.steps >= 7000 ? 1 : 0) +
+      (checkIn.workout ? 1 : 0) +
+      (foods.length ? completedFoods / foods.length : 0)) *
+      25,
+  )
+  const dateRange =
+    recentWeights.length >= 2
+      ? `${formatDate(recentWeights[0].date)}-${formatDate(recentWeights.at(-1).date)}`
+      : 'för kort historik ännu'
+  const comparison =
+    previousChange === null || weeklyChange === null
+      ? 'Ingen jämförbar föregående vecka ännu.'
+      : `${formatSignedWeight(Number((weeklyChange - previousChange).toFixed(1)))} jämfört med förra veckan.`
+  const trainingStatus = checkIn.workout
+    ? 'Träning är markerad i veckans check-in.'
+    : 'Ingen träning är markerad just nu.'
+  const strengths = [
+    foodPercent >= 75 ? 'Matchecklistan sitter starkt.' : '',
+    checkIn.steps >= 7000 ? 'Stegen ligger på en bra nivå.' : '',
+    checkIn.energy >= 6 ? 'Energin ser stabil ut.' : '',
+    checkIn.workout ? 'Du har träning med i rutinen.' : '',
+    meals.length > 0 ? `${meals.length} måltider är loggade.` : '',
+  ].filter(Boolean)
+  const recommendation =
+    foodPercent < 75
+      ? 'Välj en punkt i matchecklistan och gör den enkel att upprepa nästa vecka.'
+      : checkIn.steps < 7000
+        ? 'Lägg in en kort promenad på samma tid varje dag för jämnare aktivitet.'
+        : checkIn.energy < 6
+          ? 'Planera återhämtning och en enkel måltidsrutin för bättre energi.'
+          : 'Fortsätt med samma bas och höj bara en liten vana åt gången.'
+  const aiInsight =
+    weeklyChange === null
+      ? `${name}, logga några fler vägningar så blir vikttrenden säkrare.`
+      : goal === 'gå ner i vikt' && weeklyChange <= 0
+        ? `${name}, veckan rör sig i linje med ditt mål utan att rapporten behöver dra stora slutsatser.`
+        : goal === 'bygga muskler'
+          ? `${name}, följ styrka, mat och energi tillsammans med vikten för en mer rättvis bild.`
+          : `${name}, stabila vanor verkar vara viktigare här än en enskild siffra på vågen.`
 
-  return `### Veckorapport
-• ${name}: ${goalFocus}
-• Vikttrend: ${weeklyChange > 0 ? '+' : ''}${formatWeight(weeklyChange)} per vecka.
-• Mat: ${meals.length} loggade måltider, checklista ${checklistScore}.
-• Aktivitet: ${checkIn.steps.toLocaleString('sv-SE')} steg, energi ${checkIn.energy}/10.
+  return `### Veckorapport V2
+• Viktförändring denna vecka: ${weeklyChange === null ? 'Inte tillräckligt med data' : formatSignedWeight(weeklyChange)} (${dateRange}).
+• Förändring sedan förra veckan: ${comparison}
+• Snittsteg per dag: ${checkIn.steps.toLocaleString('sv-SE')} steg.
+• Matchecklista: ${foodPercent}% (${completedFoods}/${foods.length}).
+• Träningsstatus: ${trainingStatus}
+• Vanepoäng: ${habitScore}%.
+• Vikttrend per vecka: ${formatSignedWeight(weeklyTrend)}.
 
-Nästa steg: planera två proteinbaser för veckan.`
+### Styrkor denna vecka
+• ${strengths.length ? strengths.join('\n• ') : 'Du har en startpunkt att bygga vidare från.'}
+
+### Rekommendation inför nästa vecka
+• ${recommendation}
+
+### Kort AI-insikt
+• ${aiInsight}
+
+Obs: Rapporten är allmänt stöd och inte medicinsk rådgivning.`
 }
 
 function makeProductFromBarcode(barcode) {

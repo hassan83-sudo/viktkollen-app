@@ -388,6 +388,56 @@ function getTodayDate() {
   return new Date().toLocaleDateString('sv-SE')
 }
 
+function getProgressPhotoViewLabel(view) {
+  if (view === 'front') {
+    return 'framifrån'
+  }
+
+  if (view === 'side') {
+    return 'från sidan'
+  }
+
+  return 'samma perspektiv'
+}
+
+function makeProgressPhotoComparison(latestPhoto, previousPhoto) {
+  if (!latestPhoto) {
+    return null
+  }
+
+  const viewLabel = getProgressPhotoViewLabel(latestPhoto.view)
+
+  if (!previousPhoto) {
+    return {
+      latestPhoto,
+      previousPhoto: null,
+      viewLabel,
+      summary: `Lägg till en till bild ${viewLabel} för att skapa en försiktig V2-jämförelse.`,
+      observations: [
+        'När två bilder med samma perspektiv finns kan små visuella förändringar jämföras mer rättvist.',
+        'Försök gärna använda liknande ljus, avstånd och hållning nästa gång.',
+      ],
+    }
+  }
+
+  const perspectiveObservation =
+    latestPhoto.view === 'side'
+      ? 'Sidoprofilen ser ut att kunna jämföras med föregående sidobild, men ljus och vinkel kan påverka intrycket.'
+      : 'Midjeområdet och hållningen ser ut att kunna jämföras med föregående bild framifrån, men ljus och vinkel kan påverka intrycket.'
+
+  return {
+    latestPhoto,
+    previousPhoto,
+    viewLabel,
+    summary: `Nyaste bilden ${viewLabel} jämförs med föregående bild från samma perspektiv.`,
+    observations: [
+      perspectiveObservation,
+      'Hållningen ser ut att vara relativt lik, men små skillnader i pose kan påverka jämförelsen.',
+      'Små visuella förändringar kan anas, men bilden räcker inte för att dra säkra slutsatser.',
+    ],
+  }
+}
+
 function parseWeight(value) {
   return Number(String(value).replace(',', '.'))
 }
@@ -1064,6 +1114,20 @@ function App() {
   const afterPhoto =
     progressPhotos.find((photo) => String(photo.id) === afterPhotoId) ??
     progressPhotos[0]
+  const latestProgressPhoto = progressPhotos[0] ?? null
+  const previousSameViewPhoto = latestProgressPhoto
+    ? ['front', 'side'].includes(latestProgressPhoto.view)
+      ? progressPhotos.find(
+        (photo) =>
+          photo.id !== latestProgressPhoto.id &&
+          photo.view === latestProgressPhoto.view,
+      )
+      : null
+    : null
+  const progressPhotoComparison = makeProgressPhotoComparison(
+    latestProgressPhoto,
+    previousSameViewPhoto,
+  )
   const safeProfileGoalWeight =
     profile?.goal === 'gå ner i vikt'
       ? formatOptionalWeight(profile?.goalWeight)
@@ -2663,7 +2727,7 @@ function App() {
         <article className="panel photos-panel" id="framstegsbilder">
           <div className="panel-heading">
             <div>
-              <p className="eyebrow">AI Framstegsbilder V1</p>
+              <p className="eyebrow">AI Framstegsbilder V2</p>
               <h2>Framstegsbilder</h2>
             </div>
           </div>
@@ -2718,6 +2782,56 @@ function App() {
 
           {progressPhotos.length > 0 && (
             <>
+              {progressPhotoComparison && (
+                <div className="progress-photo-ai-comparison">
+                  <div className="progress-photo-ai-heading">
+                    <div>
+                      <p className="eyebrow">AI Framstegsbilder V2</p>
+                      <h3>Försiktig jämförelse</h3>
+                    </div>
+                    <span>{progressPhotoComparison.viewLabel}</span>
+                  </div>
+
+                  <p>{progressPhotoComparison.summary}</p>
+
+                  <div className="progress-photo-ai-images">
+                    {[
+                      progressPhotoComparison.previousPhoto,
+                      progressPhotoComparison.latestPhoto,
+                    ]
+                      .filter(Boolean)
+                      .map((photo, index) => (
+                        <figure key={`${photo.id}-${index}`}>
+                          <img
+                            src={photo.image}
+                            alt={
+                              index === 0
+                                ? 'Tidigare jämförelsebild'
+                                : 'Nyaste jämförelsebild'
+                            }
+                          />
+                          <figcaption>
+                            {index === 0 ? 'Tidigare' : 'Nyaste'} ·{' '}
+                            {formatFullDate(photo.createdAt)}
+                          </figcaption>
+                        </figure>
+                      ))}
+                  </div>
+
+                  <ul>
+                    {progressPhotoComparison.observations.map((observation) => (
+                      <li key={observation}>{observation}</li>
+                    ))}
+                  </ul>
+
+                  <p className="progress-photo-ai-safety">
+                    Observationerna är försiktiga och lokala. Ingen medicinsk
+                    diagnos, kroppsfettprocent, viktuppskattning eller
+                    hälsobedömning görs.
+                  </p>
+                </div>
+              )}
+
               <div className="progress-photo-history-heading">
                 <div>
                   <strong>Bildhistorik</strong>
@@ -2757,8 +2871,9 @@ function App() {
               <details className="progress-photo-compare-preview">
                 <summary>Manuell före/efter-visning</summary>
                 <p>
-                  AI-jämförelse och observationer över tid kommer i en senare
-                  version.
+                  Välj två bilder själv om du vill se dem bredvid varandra.
+                  AI V2 ovan jämför automatiskt nyaste bilden med föregående
+                  bild från samma perspektiv när det finns.
                 </p>
                 <div className="comparison-controls">
                   <label className="field">

@@ -1025,6 +1025,93 @@ a:focus-visible {
   padding: 4px 8px;
 }
 
+.progress-photo-ai-comparison {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+}
+
+.progress-photo-ai-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.progress-photo-ai-heading h3 {
+  margin: 0;
+  color: var(--text-h);
+  font-size: 18px;
+}
+
+.progress-photo-ai-heading > span {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: capitalize;
+}
+
+.progress-photo-ai-comparison > p,
+.progress-photo-ai-comparison li {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.progress-photo-ai-images {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.progress-photo-ai-images figure {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+
+.progress-photo-ai-images img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.progress-photo-ai-images figcaption {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.progress-photo-ai-comparison ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.progress-photo-ai-comparison li {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--soft-bg);
+}
+
+.progress-photo-ai-safety {
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
 .comparison-controls {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 16px;
@@ -1580,6 +1667,7 @@ a:focus-visible {
 
   .comparison-controls,
   .before-after,
+  .progress-photo-ai-images,
   .progress-photo-upload-grid {
     grid-template-columns: 1fr;
   }

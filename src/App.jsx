@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
+import CoachCard from './components/CoachCard.jsx'
+import MealLogger from './components/MealLogger.jsx'
+import WeightChart from './components/WeightChart.jsx'
+import WeeklyReport from './components/WeeklyReport.jsx'
 import { makePersonalCoachReply } from './lib/coachReply.js'
 
 const starterWeights = [
@@ -560,7 +564,7 @@ function asksAboutRapidWeightLoss(message) {
 
   return (
     (text.includes('gå ner') ||
-      text.includes('gÃ¥ ner') ||
+      text.includes('gå ner') ||
       text.includes('tappa') ||
       text.includes('minska')) &&
     text.includes('kg') &&
@@ -573,7 +577,7 @@ function asksAboutRapidWeightLoss(message) {
 function asksAboutSleep(message) {
   const text = message.toLowerCase()
 
-  return text.includes('sov') || text.includes('sömn') || text.includes('sÃ¶mn') || text.includes('sova')
+  return text.includes('sov') || text.includes('sömn') || text.includes('sömn') || text.includes('sova')
 }
 
 function asksAboutFood(message) {
@@ -582,12 +586,12 @@ function asksAboutFood(message) {
   return (
     text.includes('mat') ||
     text.includes('äta') ||
-    text.includes('Ã¤ta') ||
+    text.includes('äta') ||
     text.includes('äter') ||
-    text.includes('Ã¤ter') ||
+    text.includes('äter') ||
     text.includes('middag') ||
     text.includes('ikväll') ||
-    text.includes('ikvÃ¤ll')
+    text.includes('ikväll')
   )
 }
 
@@ -598,13 +602,13 @@ function asksAboutProteinKnowledge(message) {
     text.includes('protein') &&
     (text.includes('hur mycket') ||
       text.includes('hur många') ||
-      text.includes('hur mÃ¥nga') ||
+      text.includes('hur många') ||
       text.includes('gram') ||
       text.includes('per dag') ||
       text.includes('om dagen') ||
       text.includes('rekommend') ||
       text.includes('bra för') ||
-      text.includes('bra fÃ¶r'))
+      text.includes('bra för'))
   )
 }
 
@@ -615,13 +619,13 @@ function asksForMealSuggestion(message) {
     text.includes('lunch') ||
     text.includes('middag') ||
     text.includes('ikväll') ||
-    text.includes('ikvÃ¤ll') ||
+    text.includes('ikväll') ||
     text.includes('mellanmål') ||
-    text.includes('mellanmÃ¥l') ||
+    text.includes('mellanmål') ||
     text.includes('vad ska jag äta') ||
-    text.includes('vad ska jag Ã¤ta') ||
+    text.includes('vad ska jag äta') ||
     text.includes('matförslag') ||
-    text.includes('matfÃ¶rslag') ||
+    text.includes('matförslag') ||
     (text.includes('billig') && text.includes('proteinrik'))
   )
 }
@@ -664,7 +668,7 @@ function makeCommonWellnessReply(message) {
 
 function makeSleepReply(message) {
   const text = message.toLowerCase()
-  const wakeMatch = text.match(/(?:vakna|går upp|gÃ¥r upp|upp)\s*(?:kl\.?|klockan)?\s*(\d{1,2})(?::|\.?)(\d{2})?/)
+  const wakeMatch = text.match(/(?:vakna|går upp|går upp|upp)\s*(?:kl\.?|klockan)?\s*(\d{1,2})(?::|\.?)(\d{2})?/)
   const wakeHour = wakeMatch ? Number(wakeMatch[1]) : null
   const wakeMinute = wakeMatch?.[2] ? Number(wakeMatch[2]) : 0
 
@@ -1144,6 +1148,37 @@ function App() {
       foodScore / foods.length) *
       25,
   )
+  const displayPhotoMeals = photoMeals.map((entry) => ({
+    ...entry,
+    likelyProtein:
+      entry.analysis.likelyProtein ||
+      entry.analysis.foods[0] ||
+      'ser ut att innehålla en proteinkälla',
+    likelyVegetables:
+      entry.analysis.likelyVegetables ||
+      entry.analysis.foods[1] ||
+      'troligen grönsaker eller sallad',
+    likelyCarbs:
+      entry.analysis.likelyCarbs ||
+      entry.analysis.foods[2] ||
+      'kan innehålla en kolhydratkälla',
+    summary:
+      entry.analysis.summary ||
+      `Ser ut att innehålla ${entry.analysis.foods.join(', ')}.`,
+    positiveFeedback:
+      entry.analysis.positiveFeedback ||
+      'Bra att du använder fotoanalysen för att reflektera över måltiden.',
+    improvementSuggestion:
+      entry.analysis.improvementSuggestion ||
+      'Ett enkelt nästa steg kan vara att lägga till en tydlig grönsak eller proteinkälla.',
+  }))
+  const weeklyReportLines = weeklyReport
+    ? weeklyReport.split('\n').map((line, index) => ({
+      id: `${line}-${index}`,
+      isHeading: line.startsWith('###'),
+      text: line.replace('### ', ''),
+    }))
+    : []
 
   const fallbackCoachMessage = useMemo(
     () =>
@@ -2239,72 +2274,24 @@ function App() {
             />
             <button type="submit">Lägg till</button>
           </form>
-          <div className="chart-card">
-            <div className="chart-toolbar">
-              <div>
-                <span>Genomsnitt per vecka</span>
-                <strong>
-                  {averageWeeklyChange > 0 ? '+' : ''}
-                  {formatWeight(averageWeeklyChange)}
-                </strong>
-              </div>
-              <div className="segmented-control" aria-label="Välj tidsperiod">
-                {chartRangeOptions.map((option) => (
-                  <button
-                    className={chartRange === option.value ? 'active' : ''}
-                    type="button"
-                    key={option.value}
-                    onClick={() => setChartRange(option.value)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="weight-chart" aria-label="Viktgraf med trendlinje">
-              <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img">
-                <title>Viktutveckling</title>
-                <line
-                  x1={chartPadding}
-                  y1={chartPadding}
-                  x2={chartPadding}
-                  y2={chartHeight - chartPadding}
-                />
-                <line
-                  x1={chartPadding}
-                  y1={chartHeight - chartPadding}
-                  x2={chartWidth - chartPadding}
-                  y2={chartHeight - chartPadding}
-                />
-                <polyline className="trend-line" points={trendPoints.join(' ')} />
-                <polyline className="weight-line" points={chartPoints.join(' ')} />
-                {chartPoints.map((point, index) => {
-                  const [cx, cy] = point.split(',')
-
-                  return (
-                    <circle
-                      key={`${chartWeights[index].date}-${chartWeights[index].value}`}
-                      cx={cx}
-                      cy={cy}
-                      r="4.5"
-                    />
-                  )
-                })}
-              </svg>
-            </div>
-
-            <div className="chart-footer">
-              <span>
-                {chartWeights[0] ? formatFullDate(chartWeights[0].date) : ''}
-              </span>
-              <span>
-                {chartWeights.at(-1)
-                  ? formatFullDate(chartWeights.at(-1).date)
-                  : ''}
-              </span>
-            </div>
-          </div>
+          <WeightChart
+            averageWeeklyChangeLabel={`${averageWeeklyChange > 0 ? '+' : ''}${formatWeight(averageWeeklyChange)}`}
+            chartHeight={chartHeight}
+            chartPadding={chartPadding}
+            chartPoints={chartPoints}
+            chartRange={chartRange}
+            chartRangeOptions={chartRangeOptions}
+            chartWeights={chartWeights}
+            chartWidth={chartWidth}
+            endDateLabel={
+              chartWeights.at(-1) ? formatFullDate(chartWeights.at(-1).date) : ''
+            }
+            onChartRangeChange={setChartRange}
+            startDateLabel={
+              chartWeights[0] ? formatFullDate(chartWeights[0].date) : ''
+            }
+            trendPoints={trendPoints}
+          />
           <div className="weight-bars" aria-label="Senaste vikttrend">
             {weights.map((weight, index) => {
               const weightValues = weights.map((entry) => entry.value)
@@ -2397,18 +2384,7 @@ function App() {
           </p>
         </article>
 
-        <article className="panel coach-panel" id="coach">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">AI-coach</p>
-              <h2>Dagens återkoppling</h2>
-            </div>
-          </div>
-          <p className="coach-copy">{coachMessage}</p>
-          <div className="coach-note">
-            {coachStatus || 'AI-coachen använder dagens profil, vanor och loggar.'}
-          </div>
-        </article>
+        <CoachCard coachMessage={coachMessage} coachStatus={coachStatus} />
 
         <article className="panel" id="mat">
           <div className="panel-heading">
@@ -2491,165 +2467,20 @@ function App() {
           </label>
         </article>
 
-        <article className="panel meals-panel" id="maltider">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Snabbregistrera måltid</p>
-              <h2>Måltidsnoteringar</h2>
-            </div>
-          </div>
-          <form className="meal-form" onSubmit={addMeal}>
-            <select
-              value={mealType}
-              onChange={(event) => setMealType(event.target.value)}
-            >
-              {mealOptions.map((option) => (
-                <option key={option}>{option}</option>
-              ))}
-            </select>
-            <input
-              type="text"
-              placeholder="Exempel: lax, ris, gurka"
-              value={mealText}
-              onChange={(event) => setMealText(event.target.value)}
-            />
-            <button type="submit">Lägg till måltid</button>
-          </form>
-
-          <div className="photo-meal-tool">
-            <div>
-              <p className="eyebrow">Matfoto</p>
-              <h3>Matfotoanalys V2</h3>
-              <p>
-                Ladda upp eller ta en bild. Analysen försöker hitta trolig
-                proteinkälla, grönsaker och kolhydratkälla utan exakta
-                näringsvärden.
-              </p>
-            </div>
-            <label className="photo-input">
-              <span>Välj matfoto</span>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleFoodPhotoChange}
-              />
-            </label>
-            {foodPhotoPreview && (
-              <img
-                className="food-preview"
-                src={foodPhotoPreview}
-                alt="Förhandsvisning av måltid"
-              />
-            )}
-            <button
-              type="button"
-              disabled={!foodPhotoPreview}
-              onClick={analyzePhotoMeal}
-            >
-              Analysera måltid
-            </button>
-            {photoAnalysisStatus && (
-              <p className="analysis-status">{photoAnalysisStatus}</p>
-            )}
-            <p className="estimate-note">
-              Endast försiktig bildtolkning från AI eller lokal fallback. Ingen
-              medicinsk rådgivning, exakt kaloriberäkning eller exakt
-              näringsdeklaration.
-            </p>
-          </div>
-
-          {photoMeals.length > 0 && (
-            <ul className="photo-meal-list">
-              {photoMeals.map((entry) => {
-                const likelyProtein =
-                  entry.analysis.likelyProtein ||
-                  entry.analysis.foods[0] ||
-                  'ser ut att innehålla en proteinkälla'
-                const likelyVegetables =
-                  entry.analysis.likelyVegetables ||
-                  entry.analysis.foods[1] ||
-                  'troligen grönsaker eller sallad'
-                const likelyCarbs =
-                  entry.analysis.likelyCarbs ||
-                  entry.analysis.foods[2] ||
-                  'kan innehålla en kolhydratkälla'
-                const summary =
-                  entry.analysis.summary ||
-                  `Ser ut att innehålla ${entry.analysis.foods.join(', ')}.`
-                const positiveFeedback =
-                  entry.analysis.positiveFeedback ||
-                  'Bra att du använder fotoanalysen för att reflektera över måltiden.'
-                const improvementSuggestion =
-                  entry.analysis.improvementSuggestion ||
-                  'Ett enkelt nästa steg kan vara att lägga till en tydlig grönsak eller proteinkälla.'
-
-                return (
-                  <li key={entry.id}>
-                    <img src={entry.image} alt="Analyserad måltid" />
-                    <div className="photo-meal-result">
-                      <strong>Matfotoanalys V2</strong>
-                      <p>{summary}</p>
-
-                      <div className="photo-meal-detected">
-                        <div>
-                          <span>Proteinkälla</span>
-                          <strong>{likelyProtein}</strong>
-                        </div>
-                        <div>
-                          <span>Grönsaker</span>
-                          <strong>{likelyVegetables}</strong>
-                        </div>
-                        <div>
-                          <span>Kolhydratkälla</span>
-                          <strong>{likelyCarbs}</strong>
-                        </div>
-                      </div>
-
-                      <div className="photo-meal-feedback">
-                        <p>
-                          <strong>Positivt:</strong> {positiveFeedback}
-                        </p>
-                        <p>
-                          <strong>Nästa steg:</strong> {improvementSuggestion}
-                        </p>
-                      </div>
-
-                      <dl>
-                        <div>
-                          <dt>Energi, grovt</dt>
-                          <dd>{entry.analysis.calories} kcal</dd>
-                        </div>
-                        <div>
-                          <dt>Protein, grovt</dt>
-                          <dd>{entry.analysis.protein} g</dd>
-                        </div>
-                        <div>
-                          <dt>Kolhydrater, grovt</dt>
-                          <dd>{entry.analysis.carbs} g</dd>
-                        </div>
-                        <div>
-                          <dt>Säkerhet</dt>
-                          <dd>{entry.analysis.confidence}</dd>
-                        </div>
-                      </dl>
-                      <p>{entry.analysis.explanation}</p>
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-
-          <ul className="meal-list">
-            {meals.map((meal) => (
-              <li key={meal.id}>
-                <strong>{meal.type}</strong>
-                <span>{meal.text}</span>
-              </li>
-            ))}
-          </ul>
-        </article>
+        <MealLogger
+          displayPhotoMeals={displayPhotoMeals}
+          foodPhotoPreview={foodPhotoPreview}
+          handleFoodPhotoChange={handleFoodPhotoChange}
+          mealOptions={mealOptions}
+          mealText={mealText}
+          mealType={mealType}
+          meals={meals}
+          onAddMeal={addMeal}
+          onAnalyzePhotoMeal={analyzePhotoMeal}
+          onMealTextChange={setMealText}
+          onMealTypeChange={setMealType}
+          photoAnalysisStatus={photoAnalysisStatus}
+        />
 
         <article className="panel scanner-panel" id="streckkod">
           <div className="panel-heading">
@@ -3032,26 +2863,11 @@ function App() {
               <strong>{checkIn.steps >= 7000 ? 'På rätt väg' : 'Behöver fler steg'}</strong>
             </div>
           </div>
-          <div className="weekly-report">
-            <button type="button" onClick={createWeeklyReport}>
-              Skapa veckorapport
-            </button>
-            {weeklyReportStatus && (
-              <p className="analysis-status">{weeklyReportStatus}</p>
-            )}
-            {weeklyReport && (
-              <div className="report-card">
-                {weeklyReport.split('\n').map((line, index) => (
-                  <p
-                    className={line.startsWith('###') ? 'report-heading' : ''}
-                    key={`${line}-${index}`}
-                  >
-                    {line.replace('### ', '')}
-                  </p>
-                ))}
-              </div>
-            )}
-          </div>
+          <WeeklyReport
+            onCreateWeeklyReport={createWeeklyReport}
+            weeklyReportLines={weeklyReportLines}
+            weeklyReportStatus={weeklyReportStatus}
+          />
         </article>
       </section>
 

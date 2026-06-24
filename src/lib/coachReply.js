@@ -9,6 +9,116 @@ function includesAny(text, phrases) {
   return phrases.some((phrase) => text.includes(phrase))
 }
 
+function getLastUserText(chatHistory = []) {
+  return [...chatHistory]
+    .reverse()
+    .find((entry) => entry?.role === 'user' && entry?.text)
+    ?.text ?? ''
+}
+
+function getConversationTopic(message, chatHistory = []) {
+  const text = normalizeText(message)
+  const previousText = normalizeText(getLastUserText(chatHistory))
+  const combinedText = `${previousText} ${text}`
+
+  if (
+    includesAny(combinedText, [
+      'målvikt',
+      'målvikten',
+      'mål vikt',
+      'målet',
+      'mitt mål',
+      'mot mål',
+      'till mål',
+    ])
+  ) {
+    return 'goalWeight'
+  }
+
+  if (
+    includesAny(combinedText, [
+      'vikt',
+      'väger',
+      'vägning',
+      'gå ner',
+      'gick upp',
+      'gick ner',
+    ])
+  ) {
+    return 'weight'
+  }
+
+  if (
+    includesAny(combinedText, [
+      'steg',
+      'gått',
+      'promenad',
+      'aktivitet',
+    ])
+  ) {
+    return 'steps'
+  }
+
+  if (
+    includesAny(combinedText, [
+      'energi',
+      'trött',
+      'orkar',
+      'pigg',
+    ])
+  ) {
+    return 'energy'
+  }
+
+  if (
+    includesAny(combinedText, [
+      'humör',
+      'mår',
+      'måendet',
+      'check-in',
+      'checkin',
+    ])
+  ) {
+    return 'checkIn'
+  }
+
+  if (
+    includesAny(combinedText, [
+      'mat',
+      'måltid',
+      'måltider',
+      'äta',
+      'äter',
+      'mellanmål',
+      'protein',
+      'grönsak',
+      'checklista',
+      'checklistan',
+    ])
+  ) {
+    return 'food'
+  }
+
+  return ''
+}
+
+function isShortFollowUp(text) {
+  return includesAny(text, [
+    'är det skadligt',
+    'är de skadligt',
+    'skadligt',
+    'farligt',
+    'varför',
+    'varför då',
+    'hur mycket',
+    'hur mycket då',
+    'hur många',
+    'hur många då',
+    'hur länge',
+    'hur länge då',
+  ])
+}
+
 function parseWeight(value) {
   const parsedValue = Number(
     String(value ?? '')
@@ -74,6 +184,43 @@ function getFoodSummary(context) {
   }
 
   return `Du har ${context.completedFoods}/${context.foodTotal} matpunkter klara. Gör nästa steg litet: lägg till en proteinbas eller frukt/grönsaker.`
+}
+
+function makeMealsReply(meals = []) {
+  if (!Array.isArray(meals) || meals.length === 0) {
+    return 'Jag ser inga måltider loggade ännu i dag. Lägg gärna in en enkel måltid så kan jag resonera mer konkret.'
+  }
+
+  const mealSummary = meals
+    .slice(-4)
+    .map((meal) => `${meal.type}: ${meal.text}`)
+    .join('; ')
+
+  return `Dagens loggade måltider: ${mealSummary}. ${meals.length >= 2 ? 'Det ger en bra bild av dagen.' : 'Lägg gärna till nästa måltid när du äter.'}`
+}
+
+function makeGoalWeightReply(context) {
+  if (context.goalWeight === null) {
+    return context.weight === null
+      ? 'Jag hittar ingen registrerad målvikt ännu.'
+      : `Jag hittar ingen registrerad målvikt ännu. Din senaste vikt är ${formatWeight(context.weight)}.`
+  }
+
+  if (context.weight === null) {
+    return `Din registrerade målvikt är ${formatWeight(context.goalWeight)}.`
+  }
+
+  const difference = Number((context.weight - context.goalWeight).toFixed(1))
+
+  if (difference > 0) {
+    return `Din registrerade målvikt är ${formatWeight(context.goalWeight)}. Från senaste vikten är det ${formatWeight(difference)} kvar.`
+  }
+
+  if (difference < 0) {
+    return `Din registrerade målvikt är ${formatWeight(context.goalWeight)}. Du ligger ${formatWeight(Math.abs(difference))} under den senaste registrerade målvärdet.`
+  }
+
+  return `Din registrerade målvikt är ${formatWeight(context.goalWeight)} och senaste vikten ligger precis där.`
 }
 
 function makeStepsReply(context) {
@@ -210,7 +357,23 @@ function makeCheckInReply(context) {
   return `Dagens check-in: humör ${mood}, energi ${energy}, ${steps} steg och ${workout}.`
 }
 
-function makeWhyReply(context) {
+function makeWhyReply(context, topic = '') {
+  if (topic === 'weight' || topic === 'goalWeight') {
+    return `${makeWeightProgressReply(context)} Jag säger så eftersom vikt bör bedömas som trend och i relation till startvikt, målvikt och hur hållbara vanorna känns.`
+  }
+
+  if (topic === 'steps') {
+    return `${makeStepsReply(context)} Steg är en bra vardagsmarkör, men nivån ska passa dagens energi.`
+  }
+
+  if (topic === 'energy' || topic === 'checkIn') {
+    return `${makeCheckInReply(context)} Energi, humör och rörelse hänger ihop, därför är dagens check-in mer relevant än en enskild siffra.`
+  }
+
+  if (topic === 'food') {
+    return `${getFoodSummary(context)} Jag fokuserar på checklistan eftersom den visar om grunden för måltiderna är på plats.`
+  }
+
   const reasons = []
 
   if (context.energy !== null) {
@@ -236,7 +399,27 @@ function makeWhyReply(context) {
   return `För att jag väger ihop din aktuella data: ${reasons.join(', ')}. Därför är ett litet, konkret nästa steg bättre än att ändra allt på en gång.`
 }
 
-function makeHowMuchReply(context) {
+function makeHowMuchReply(context, topic = '') {
+  if (topic === 'weight') {
+    return makeWeightProgressReply(context)
+  }
+
+  if (topic === 'goalWeight') {
+    return makeGoalWeightReply(context)
+  }
+
+  if (topic === 'energy') {
+    return makeEnergyReply(context)
+  }
+
+  if (topic === 'checkIn') {
+    return makeCheckInReply(context)
+  }
+
+  if (topic === 'food') {
+    return getFoodSummary(context)
+  }
+
   if (context.goalWeight !== null && context.weight !== null) {
     const remaining = Number((context.weight - context.goalWeight).toFixed(1))
 
@@ -260,7 +443,41 @@ function makeHowMuchReply(context) {
   return 'Lagom mycket är ett litet steg du kan upprepa: 10-15 minuter rörelse, en normal portion eller en extra protein-/grönsakskomponent.'
 }
 
-function makeSafetyReply(context) {
+function makeHowLongReply(context, topic = '') {
+  if (topic === 'steps') {
+    return context.steps === null
+      ? 'Jag saknar stegdata just nu, så jag kan inte säga exakt. En kort promenad på 10-15 minuter är ofta en lagom start.'
+      : 'Om du menar steg räcker ofta 10-20 minuter lugn promenad för att göra märkbar skillnad utan att pressa dagen.'
+  }
+
+  if (topic === 'weight' || topic === 'goalWeight') {
+    return 'För vikt och målvikt är veckor bättre än dagar. Titta på trenden över 2-4 veckor, inte en enskild vägning.'
+  }
+
+  if (topic === 'food') {
+    return 'För matvanor räcker det att fokusera på nästa måltid. Om det funkar kan du upprepa samma enkla bas några dagar.'
+  }
+
+  if (topic === 'energy' || topic === 'checkIn') {
+    return 'Ge det resten av dagen och följ upp i nästa check-in. Energi kan ändras snabbt med mat, vätska, vila och lagom rörelse.'
+  }
+
+  return 'Börja med en kort period: 10-15 minuter om det gäller rörelse, eller en måltid i taget om det gäller mat.'
+}
+
+function makeSafetyReply(context, topic = '') {
+  if (topic === 'steps' || topic === 'energy' || topic === 'checkIn') {
+    return `${makeCheckInReply(context)} Det är inte automatiskt skadligt, men anpassa nivån efter energi, smärta och återhämtning.`
+  }
+
+  if (topic === 'weight' || topic === 'goalWeight') {
+    return 'Det är inte skadligt att följa vikt eller målvikt, men det kan bli stressande om du tolkar varje enskild vägning för hårt. Följ hellre trenden och håll vanorna rimliga.'
+  }
+
+  if (topic === 'food') {
+    return 'Det är sällan en enskild måltid är skadlig. Det viktiga är helheten: regelbundna måltider, tillräckligt med energi, protein och att du mår bra av rutinen.'
+  }
+
   const dataHint = context.energy !== null
     ? ` Med din energi på ${context.energy}/10 bör du anpassa nivån efter kroppen.`
     : ''
@@ -269,13 +486,16 @@ function makeSafetyReply(context) {
 }
 
 export function makePersonalCoachReply({
+  chatHistory = [],
   checkIn,
   currentWeight,
   foods,
+  meals = [],
   message,
   profile,
 }) {
   const text = normalizeText(message)
+  const topic = getConversationTopic(message, chatHistory)
   const context = getPersonalContext({
     checkIn,
     currentWeight,
@@ -293,7 +513,7 @@ export function makePersonalCoachReply({
       'inte bra för kroppen',
     ])
   ) {
-    return makeSafetyReply(context)
+    return makeSafetyReply(context, topic)
   }
 
   if (
@@ -305,7 +525,18 @@ export function makePersonalCoachReply({
       'hur långt',
     ])
   ) {
-    return makeHowMuchReply(context)
+    return makeHowMuchReply(context, topic)
+  }
+
+  if (
+    includesAny(text, [
+      'hur länge',
+      'hur länge då',
+      'hur lång tid',
+      'hur lång tid då',
+    ])
+  ) {
+    return makeHowLongReply(context, topic)
   }
 
   if (
@@ -315,7 +546,11 @@ export function makePersonalCoachReply({
       'hur kommer det sig',
     ])
   ) {
-    return makeWhyReply(context)
+    return makeWhyReply(context, topic)
+  }
+
+  if (isShortFollowUp(text) && topic) {
+    return makeWhyReply(context, topic)
   }
 
   if (
@@ -345,9 +580,11 @@ export function makePersonalCoachReply({
       'checkin',
       'hur mår jag',
       'mitt humör',
+      'humör',
+      'måendet',
     ])
   ) {
-    return includesAny(text, ['check-in', 'checkin', 'hur mår jag', 'mitt humör'])
+    return includesAny(text, ['check-in', 'checkin', 'hur mår jag', 'mitt humör', 'humör', 'måendet'])
       ? makeCheckInReply(context)
       : makeEnergyReply(context)
   }
@@ -367,7 +604,9 @@ export function makePersonalCoachReply({
       'målet',
     ])
   ) {
-    return makeWeightProgressReply(context)
+    return includesAny(text, ['målvikt', 'målvikten', 'till målvikt'])
+      ? makeGoalWeightReply(context)
+      : makeWeightProgressReply(context)
   }
 
   if (
@@ -383,7 +622,9 @@ export function makePersonalCoachReply({
       'checklistan',
     ])
   ) {
-    return getFoodSummary(context)
+    return includesAny(text, ['måltid', 'måltider', 'ätit idag', 'ätit i dag'])
+      ? makeMealsReply(meals)
+      : getFoodSummary(context)
   }
 
   if (

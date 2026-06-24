@@ -119,6 +119,118 @@ function isShortFollowUp(text) {
   ])
 }
 
+function detectIntent(message, chatHistory = []) {
+  const text = normalizeText(message)
+  const previousText = normalizeText(getLastUserText(chatHistory))
+  const combinedText = `${previousText} ${text}`
+
+  if (includesAny(text, ['är det skadligt', 'är de skadligt', 'skadligt', 'farligt'])) {
+    return 'generell hälsa'
+  }
+
+  if (includesAny(text, ['varför', 'varför då'])) {
+    return getConversationTopic(message, chatHistory) || 'generell hälsa'
+  }
+
+  if (includesAny(text, ['hur mycket', 'hur många', 'hur länge', 'hur lång tid'])) {
+    return getConversationTopic(message, chatHistory) || 'generell hälsa'
+  }
+
+  if (
+    includesAny(combinedText, [
+      'sena måltider',
+      'sent på kvällen',
+      'sent ikväll',
+      'innan läggdags',
+      'nära läggdags',
+      'äta sent',
+      'äter sent',
+    ])
+  ) {
+    return 'sena måltider'
+  }
+
+  if (includesAny(combinedText, ['sömn', 'sova', 'sover', 'sov', 'läggdags'])) {
+    return 'sömn'
+  }
+
+  if (includesAny(combinedText, ['stress', 'stressad', 'pressad', 'överväldigad'])) {
+    return 'stress'
+  }
+
+  if (includesAny(combinedText, ['motivation', 'motiverad', 'ge upp', 'orkar inte', 'tappat'])) {
+    return 'motivation'
+  }
+
+  if (includesAny(combinedText, ['protein', 'proteiner', 'proteinrik'])) {
+    return 'protein'
+  }
+
+  if (includesAny(combinedText, ['kalorier', 'kcal', 'kaloriunderskott', 'kalorimål'])) {
+    return 'kalorier'
+  }
+
+  if (includesAny(combinedText, ['målvikt', 'målvikten', 'mål vikt', 'till målvikt'])) {
+    return 'målvikt'
+  }
+
+  if (
+    includesAny(combinedText, [
+      'viktförändring',
+      'gått ner',
+      'gått upp',
+      'sedan start',
+      'förändrats',
+      'ändrats',
+    ])
+  ) {
+    return 'viktförändring'
+  }
+
+  if (includesAny(combinedText, ['vad väger jag', 'min vikt', 'vikt nu', 'väger jag', 'vikten'])) {
+    return 'vikt'
+  }
+
+  if (includesAny(combinedText, ['steg', 'gått', 'promenad', 'aktivitet'])) {
+    return 'steg'
+  }
+
+  if (includesAny(combinedText, ['energi', 'trött', 'pigg', 'ork'])) {
+    return 'energi'
+  }
+
+  if (includesAny(combinedText, ['humör', 'mår', 'måendet', 'check-in', 'checkin'])) {
+    return 'humör'
+  }
+
+  if (
+    includesAny(combinedText, [
+      'måltid',
+      'måltider',
+      'ätit',
+      'frukost',
+      'lunch',
+      'middag',
+      'mellanmål',
+      'mat',
+      'checklista',
+      'checklistan',
+    ])
+  ) {
+    return 'måltider'
+  }
+
+  if (includesAny(combinedText, ['träna', 'träning', 'pass', 'gym', 'styrka'])) {
+    return 'träning'
+  }
+
+  if (includesAny(combinedText, ['hälsa', 'hälsosamt', 'nyttigt', 'onyttigt', 'bra för kroppen'])) {
+    return 'generell hälsa'
+  }
+
+  return ''
+}
+
 function parseWeight(value) {
   const parsedValue = Number(
     String(value ?? '')
@@ -485,6 +597,139 @@ function makeSafetyReply(context, topic = '') {
   return `Det låter inte automatiskt skadligt, men det beror på mängd, sammanhang och hur du mår.${dataHint} Om det gäller smärta, yrsel, extrem svält eller stark oro ska du välja ett säkrare alternativ och söka vårdråd.`
 }
 
+function makeWeightChangeReply(context) {
+  if (context.weight === null || context.startWeight === null) {
+    return makeWeightProgressReply(context)
+  }
+
+  const change = Number((context.weight - context.startWeight).toFixed(1))
+
+  if (change === 0) {
+    return `Din senaste vikt är ${formatWeight(context.weight)}, samma som din registrerade startvikt. Följ gärna trenden över flera vägningar.`
+  }
+
+  return `Din senaste vikt är ${formatWeight(context.weight)}. Det är ${change < 0 ? 'ned' : 'upp'} ${formatWeight(Math.abs(change))} sedan start.`
+}
+
+function makeSleepReply(context) {
+  const energyHint = context.energy === null
+    ? ''
+    : ` Din energi är ${context.energy}/10, så låt den styra hur ambitiös dagen ska vara.`
+
+  return `Sömn påverkar hunger, ork och motivation mer än många tror.${energyHint} Sikta på en jämn läggtid och gör nästa steg enkelt: mat, vatten och lugn kvällsrutin.`
+}
+
+function makeProteinReply(context) {
+  const weightHint = context.weight === null
+    ? 'Ett bra riktmärke är protein i varje måltid.'
+    : `Med senaste vikt ${formatWeight(context.weight)} kan protein i varje måltid vara ett bra fokus.`
+  const checklistHint = context.foodTotal > 0
+    ? ` Matchecklistan visar ${context.completedFoods}/${context.foodTotal} klara punkter.`
+    : ''
+
+  return `${weightHint}${checklistHint} Välj något enkelt: ägg, kvarg, kyckling, fisk, tofu, bönor eller keso.`
+}
+
+function makeCaloriesReply(context) {
+  const goalHint = context.goal === 'gå ner i vikt'
+    ? 'För viktnedgång är ett rimligt underskott bättre än att pressa hårt.'
+    : 'Kalorier behöver passa mål, hunger och vardag.'
+  const weightHint = context.weight === null
+    ? ''
+    : ` Senaste vikt i appen är ${formatWeight(context.weight)}.`
+
+  return `${goalHint}${weightHint} Använd kalorier som riktning, inte som ett krav på perfektion.`
+}
+
+function makeMotivationReply(context) {
+  const nextStep = context.steps !== null && context.steps < 5000
+    ? 'ta 10 minuter promenad'
+    : context.foodTotal > 0 && context.completedFoods < context.foodTotal
+      ? 'bocka av en matpunkt'
+      : 'upprepa en vana som redan fungerar'
+
+  return `Motivation blir lättare när nästa steg är litet. I dag skulle jag välja: ${nextStep}. Du behöver inte vinna hela veckan just nu, bara göra nästa bra sak.`
+}
+
+function makeStressReply(context) {
+  const energyHint = context.energy === null
+    ? ''
+    : ` Energin är ${context.energy}/10, så sänk kraven om kroppen känns pressad.`
+
+  return `Vid stress är målet stabilitet, inte perfektion.${energyHint} Välj en enkel måltid, drick vatten och gör bara en liten sak i taget.`
+}
+
+function makeLateMealReply(context) {
+  const foodHint = context.foodTotal > 0
+    ? ` Din matchecklista är ${context.completedFoods}/${context.foodTotal} i dag.`
+    : ''
+
+  return `En sen måltid är oftast inte skadlig i sig.${foodHint} Om du är hungrig: välj något lätt och mättande, till exempel yoghurt, ägg, keso eller en liten macka.`
+}
+
+function makeGeneralHealthReply(context) {
+  return `${makeSafetyReply(context)} Jag kan hjälpa dig bäst om vi kopplar frågan till appens data: vikt, steg, energi, humör, mat eller träning.`
+}
+
+function makeIntentReply(intent, { context, meals, text, topic }) {
+  if (!intent) {
+    return ''
+  }
+
+  if (includesAny(text, ['hur mycket', 'hur många'])) {
+    return makeHowMuchReply(context, topic)
+  }
+
+  if (includesAny(text, ['hur länge', 'hur lång tid'])) {
+    return makeHowLongReply(context, topic)
+  }
+
+  if (includesAny(text, ['varför'])) {
+    return makeWhyReply(context, topic)
+  }
+
+  if (includesAny(text, ['skadligt', 'farligt'])) {
+    return makeSafetyReply(context, topic)
+  }
+
+  switch (intent) {
+    case 'vikt':
+      return makeWeightProgressReply(context)
+    case 'målvikt':
+      return makeGoalWeightReply(context)
+    case 'viktförändring':
+      return makeWeightChangeReply(context)
+    case 'steg':
+      return makeStepsReply(context)
+    case 'energi':
+      return makeEnergyReply(context)
+    case 'humör':
+      return makeCheckInReply(context)
+    case 'sömn':
+      return makeSleepReply(context)
+    case 'protein':
+      return makeProteinReply(context)
+    case 'kalorier':
+      return makeCaloriesReply(context)
+    case 'måltider':
+      return includesAny(text, ['checklista', 'checklistan'])
+        ? getFoodSummary(context)
+        : makeMealsReply(meals)
+    case 'motivation':
+      return makeMotivationReply(context)
+    case 'stress':
+      return makeStressReply(context)
+    case 'sena måltider':
+      return makeLateMealReply(context)
+    case 'träning':
+      return makeTrainingReply(context)
+    case 'generell hälsa':
+      return makeGeneralHealthReply(context)
+    default:
+      return ''
+  }
+}
+
 export function makePersonalCoachReply({
   chatHistory = [],
   checkIn,
@@ -496,12 +741,23 @@ export function makePersonalCoachReply({
 }) {
   const text = normalizeText(message)
   const topic = getConversationTopic(message, chatHistory)
+  const intent = detectIntent(message, chatHistory)
   const context = getPersonalContext({
     checkIn,
     currentWeight,
     foods,
     profile,
   })
+  const intentReply = makeIntentReply(intent, {
+    context,
+    meals,
+    text,
+    topic,
+  })
+
+  if (intentReply) {
+    return intentReply
+  }
 
   if (
     includesAny(text, [

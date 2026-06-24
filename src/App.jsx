@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
+import ChatPanel from './components/ChatPanel.jsx'
 import CoachCard from './components/CoachCard.jsx'
 import MealLogger from './components/MealLogger.jsx'
+import ProgressPhotos from './components/ProgressPhotos.jsx'
+import ReminderSettings from './components/ReminderSettings.jsx'
 import WeightChart from './components/WeightChart.jsx'
 import WeeklyReport from './components/WeeklyReport.jsx'
 import { makePersonalCoachReply } from './lib/coachReply.js'
@@ -70,6 +73,13 @@ const mealOptions = ['Frukost', 'Lunch', 'Middag', 'Mellanmål']
 const goalOptions = ['gå ner i vikt', 'hålla vikten', 'bygga muskler']
 
 const activityOptions = ['Låg', 'Medel', 'Hög']
+
+const starterPrompts = [
+  'Vad ska jag äta ikväll?',
+  'Ge mig ett hälsosamt mellanmål',
+  'Hur håller jag motivationen?',
+  'Billig proteinrik lunch?',
+]
 
 const chartRangeOptions = [
   { label: '7 dagar', value: '7' },
@@ -1132,6 +1142,69 @@ function App() {
     latestProgressPhoto,
     previousSameViewPhoto,
   )
+  const progressPhotoComparisonImages = progressPhotoComparison
+    ? [
+      progressPhotoComparison.previousPhoto,
+      progressPhotoComparison.latestPhoto,
+    ]
+      .filter(Boolean)
+      .map((photo, index) => ({
+        alt:
+          index === 0
+            ? 'Tidigare jämförelsebild'
+            : 'Nyaste jämförelsebild',
+        caption: `${index === 0 ? 'Tidigare' : 'Nyaste'} · ${formatFullDate(photo.createdAt)}`,
+        id: `${photo.id}-${index}`,
+        image: photo.image,
+      }))
+    : []
+  const progressPhotoItems = progressPhotos.map((photo) => ({
+    alt:
+      photo.view === 'front'
+        ? 'Framstegsbild framifrån'
+        : photo.view === 'side'
+          ? 'Framstegsbild från sidan'
+          : 'Tidigare framstegsbild',
+    createdAtLabel: formatFullDate(photo.createdAt),
+    id: photo.id,
+    image: photo.image,
+    note: photo.note || 'Ingen anteckning',
+    viewLabel:
+      photo.view === 'front'
+        ? 'Framifrån'
+        : photo.view === 'side'
+          ? 'Från sidan'
+          : 'Tidigare bild',
+  }))
+  const progressPhotoOptions = progressPhotos.map((photo) => ({
+    id: photo.id,
+    label: formatFullDate(photo.createdAt),
+  }))
+  const beforeAfterPhotos = [beforePhoto, afterPhoto]
+    .filter(Boolean)
+    .map((photo, index) => ({
+      alt: index === 0 ? 'Förebild' : 'Efterbild',
+      caption: `${index === 0 ? 'Före' : 'Efter'} · ${formatFullDate(photo.createdAt)}`,
+      id: `${photo.id}-${index}`,
+      image: photo.image,
+    }))
+  const reminderOptions = [
+    {
+      enabledKey: 'weight',
+      label: 'Viktpåminnelse',
+      timeKey: 'weightTime',
+    },
+    {
+      enabledKey: 'meal',
+      label: 'Måltidsloggning',
+      timeKey: 'mealTime',
+    },
+    {
+      enabledKey: 'water',
+      label: 'Vattenpåminnelse',
+      timeKey: 'waterTime',
+    },
+  ]
   const safeProfileGoalWeight =
     profile?.goal === 'gå ner i vikt'
       ? formatOptionalWeight(profile?.goalWeight)
@@ -2311,78 +2384,21 @@ function App() {
           </div>
         </article>
 
-        <article className="panel chat-panel" id="chat">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">AI Coach</p>
-              <h2 className="chat-title">Fråga AI-coachen</h2>
-            </div>
-            <button
-              className="clear-chat-button"
-              type="button"
-              onClick={clearChat}
-              disabled={chatMessages.length <= initialChatMessages.length}
-            >
-              Rensa chatten
-            </button>
-          </div>
-
-          <div className="starter-prompts" aria-label="Förslag på frågor">
-            {[
-              'Vad ska jag äta ikväll?',
-              'Ge mig ett hälsosamt mellanmål',
-              'Hur håller jag motivationen?',
-              'Billig proteinrik lunch?',
-            ].map((prompt) => (
-              <button
-                className="prompt-chip"
-                type="button"
-                key={prompt}
-                onClick={() => handleStarterPrompt(prompt)}
-              >
-                {prompt}
-              </button>
-            ))}
-          </div>
-
-          <div ref={chatThreadRef} className="chat-thread" aria-live="polite">
-            {chatMessages.map((message) => (
-              <div className={`chat-message ${message.role}`} key={message.id}>
-                <span>{message.role === 'user' ? 'Du' : 'AI-coach'}</span>
-                <p>{message.text}</p>
-              </div>
-            ))}
-            <div ref={messagesEndRef} className="messages-end" aria-hidden="true" />
-          </div>
-
-          <form className="chat-form" onSubmit={sendChatMessage}>
-            <input
-              type="text"
-              value={chatInput}
-              onChange={(event) => setChatInput(event.target.value)}
-              placeholder="Skriv en fråga..."
-              enterKeyHint="send"
-            />
-            <button
-              className={`mic-button ${isListening ? 'listening' : ''}`}
-              type="button"
-              onClick={startVoiceInput}
-              aria-label="Starta röstinmatning"
-              title="Starta röstinmatning"
-            >
-              {isListening ? 'Lyssnar' : '🎙️'}
-            </button>
-            <button className="send-button" type="submit">Skicka</button>
-          </form>
-          {voiceStatus && (
-            <p className="voice-status" aria-live="polite">
-              {voiceStatus}
-            </p>
-          )}
-          <p className="chat-safety-note">
-            AI-coachen ger allmänna råd om kost, vanor och motivation.
-          </p>
-        </article>
+        <ChatPanel
+          canClearChat={chatMessages.length > initialChatMessages.length}
+          chatInput={chatInput}
+          chatMessages={chatMessages}
+          chatThreadRef={chatThreadRef}
+          isListening={isListening}
+          messagesEndRef={messagesEndRef}
+          onChatInputChange={setChatInput}
+          onClearChat={clearChat}
+          onSendChatMessage={sendChatMessage}
+          onStartVoiceInput={startVoiceInput}
+          onStarterPrompt={handleStarterPrompt}
+          starterPrompts={starterPrompts}
+          voiceStatus={voiceStatus}
+        />
 
         <CoachCard coachMessage={coachMessage} coachStatus={coachStatus} />
 
@@ -2555,292 +2571,30 @@ function App() {
           )}
         </article>
 
-        <article className="panel photos-panel" id="framstegsbilder">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">AI Framstegsbilder V2</p>
-              <h2>Framstegsbilder</h2>
-            </div>
-          </div>
+        <ProgressPhotos
+          afterPhotoId={afterPhoto ? String(afterPhoto.id) : ''}
+          beforeAfterPhotos={beforeAfterPhotos}
+          beforePhotoId={beforePhoto ? String(beforePhoto.id) : ''}
+          hasProgressPhotos={progressPhotos.length > 0}
+          onAfterPhotoIdChange={setAfterPhotoId}
+          onBeforePhotoIdChange={setBeforePhotoId}
+          onProgressPhotoChange={handleProgressPhotoChange}
+          onProgressPhotoNoteChange={setProgressPhotoNote}
+          progressPhotoComparison={progressPhotoComparison}
+          progressPhotoComparisonImages={progressPhotoComparisonImages}
+          progressPhotoCountLabel={`${progressPhotos.length} sparade bilder`}
+          progressPhotoItems={progressPhotoItems}
+          progressPhotoNote={progressPhotoNote}
+          progressPhotoOptions={progressPhotoOptions}
+        />
 
-          <div className="progress-upload">
-            <label className="field">
-              <span>Anteckning</span>
-              <input
-                type="text"
-                placeholder="Exempel: morgon, efter pass, vecka 1"
-                value={progressPhotoNote}
-                onChange={(event) => setProgressPhotoNote(event.target.value)}
-              />
-            </label>
-            <div className="progress-photo-upload-grid">
-              <label className="progress-photo-upload-card">
-                <span className="progress-photo-icon" aria-hidden="true">
-                  F
-                </span>
-                <strong>Framifrån</strong>
-                <small>Ta en ny bild eller välj från mobilen.</small>
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={(event) =>
-                    handleProgressPhotoChange(event, 'front')
-                  }
-                />
-              </label>
-              <label className="progress-photo-upload-card">
-                <span className="progress-photo-icon" aria-hidden="true">
-                  S
-                </span>
-                <strong>Från sidan</strong>
-                <small>Ta en ny bild eller välj från mobilen.</small>
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={(event) =>
-                    handleProgressPhotoChange(event, 'side')
-                  }
-                />
-              </label>
-            </div>
-            <p className="progress-photo-safety">
-              Bilderna sparas bara lokalt i webbläsaren. Funktionen gör ingen
-              medicinsk diagnos, kroppsfettanalys eller viktuppskattning.
-            </p>
-          </div>
-
-          {progressPhotos.length > 0 && (
-            <>
-              {progressPhotoComparison && (
-                <div className="progress-photo-ai-comparison">
-                  <div className="progress-photo-ai-heading">
-                    <div>
-                      <p className="eyebrow">AI Framstegsbilder V2</p>
-                      <h3>Försiktig jämförelse</h3>
-                    </div>
-                    <span>{progressPhotoComparison.viewLabel}</span>
-                  </div>
-
-                  <p>{progressPhotoComparison.summary}</p>
-
-                  <div className="progress-photo-ai-images">
-                    {[
-                      progressPhotoComparison.previousPhoto,
-                      progressPhotoComparison.latestPhoto,
-                    ]
-                      .filter(Boolean)
-                      .map((photo, index) => (
-                        <figure key={`${photo.id}-${index}`}>
-                          <img
-                            src={photo.image}
-                            alt={
-                              index === 0
-                                ? 'Tidigare jämförelsebild'
-                                : 'Nyaste jämförelsebild'
-                            }
-                          />
-                          <figcaption>
-                            {index === 0 ? 'Tidigare' : 'Nyaste'} ·{' '}
-                            {formatFullDate(photo.createdAt)}
-                          </figcaption>
-                        </figure>
-                      ))}
-                  </div>
-
-                  <ul>
-                    {progressPhotoComparison.observations.map((observation) => (
-                      <li key={observation}>{observation}</li>
-                    ))}
-                  </ul>
-
-                  <p className="progress-photo-ai-safety">
-                    Observationerna är försiktiga och lokala. Ingen medicinsk
-                    diagnos, kroppsfettprocent, viktuppskattning eller
-                    hälsobedömning görs.
-                  </p>
-                </div>
-              )}
-
-              <div className="progress-photo-history-heading">
-                <div>
-                  <strong>Bildhistorik</strong>
-                  <span>{progressPhotos.length} sparade bilder</span>
-                </div>
-                <span className="progress-photo-local-badge">Endast lokalt</span>
-              </div>
-
-              <div className="photo-timeline">
-                {progressPhotos.map((photo) => (
-                  <article key={photo.id}>
-                    <img
-                      src={photo.image}
-                      alt={
-                        photo.view === 'front'
-                          ? 'Framstegsbild framifrån'
-                          : photo.view === 'side'
-                            ? 'Framstegsbild från sidan'
-                            : 'Tidigare framstegsbild'
-                      }
-                    />
-                    <div>
-                      <span className="progress-photo-view-badge">
-                        {photo.view === 'front'
-                          ? 'Framifrån'
-                          : photo.view === 'side'
-                            ? 'Från sidan'
-                            : 'Tidigare bild'}
-                      </span>
-                      <strong>{formatFullDate(photo.createdAt)}</strong>
-                      <span>{photo.note || 'Ingen anteckning'}</span>
-                    </div>
-                  </article>
-                ))}
-              </div>
-
-              <details className="progress-photo-compare-preview">
-                <summary>Manuell före/efter-visning</summary>
-                <p>
-                  Välj två bilder själv om du vill se dem bredvid varandra.
-                  AI V2 ovan jämför automatiskt nyaste bilden med föregående
-                  bild från samma perspektiv när det finns.
-                </p>
-                <div className="comparison-controls">
-                  <label className="field">
-                    <span>Före</span>
-                    <select
-                      value={beforePhoto ? String(beforePhoto.id) : ''}
-                      onChange={(event) => setBeforePhotoId(event.target.value)}
-                    >
-                      {progressPhotos.map((photo) => (
-                        <option value={photo.id} key={photo.id}>
-                          {formatFullDate(photo.createdAt)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="field">
-                    <span>Efter</span>
-                    <select
-                      value={afterPhoto ? String(afterPhoto.id) : ''}
-                      onChange={(event) => setAfterPhotoId(event.target.value)}
-                    >
-                      {progressPhotos.map((photo) => (
-                        <option value={photo.id} key={photo.id}>
-                          {formatFullDate(photo.createdAt)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                <div className="before-after">
-                  {[beforePhoto, afterPhoto]
-                    .filter(Boolean)
-                    .map((photo, index) => (
-                      <figure key={`${photo.id}-${index}`}>
-                        <img
-                          src={photo.image}
-                          alt={index === 0 ? 'Förebild' : 'Efterbild'}
-                        />
-                        <figcaption>
-                          {index === 0 ? 'Före' : 'Efter'} ·{' '}
-                          {formatFullDate(photo.createdAt)}
-                        </figcaption>
-                      </figure>
-                    ))}
-                </div>
-              </details>
-            </>
-          )}
-
-          {progressPhotos.length === 0 && (
-            <div className="progress-photo-empty">
-              <strong>Ingen bildhistorik ännu</strong>
-              <span>
-                Börja med en bild framifrån eller från sidan. Du väljer själv
-                när du vill lägga till nästa.
-              </span>
-            </div>
-          )}
-        </article>
-
-        <article className="panel settings-panel" id="installningar">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Inställningar</p>
-              <h2>Dagliga påminnelser</h2>
-            </div>
-          </div>
-
-          <div className="reminder-master">
-            <label className="toggle-row">
-              <input
-                type="checkbox"
-                checked={reminderSettings.enabled}
-                onChange={(event) =>
-                  updateReminderSetting('enabled', event.target.checked)
-                }
-              />
-              <span>Aktivera påminnelser</span>
-            </label>
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={requestNotificationPermission}
-            >
-              Tillåt notiser
-            </button>
-          </div>
-          {reminderStatus && <p className="analysis-status">{reminderStatus}</p>}
-
-          <div className="reminder-list">
-            {[
-              {
-                enabledKey: 'weight',
-                label: 'Viktpåminnelse',
-                timeKey: 'weightTime',
-              },
-              {
-                enabledKey: 'meal',
-                label: 'Måltidsloggning',
-                timeKey: 'mealTime',
-              },
-              {
-                enabledKey: 'water',
-                label: 'Vattenpåminnelse',
-                timeKey: 'waterTime',
-              },
-            ].map((reminder) => (
-              <div className="reminder-row" key={reminder.enabledKey}>
-                <label className="toggle-row">
-                  <input
-                    type="checkbox"
-                    checked={reminderSettings[reminder.enabledKey]}
-                    onChange={(event) =>
-                      updateReminderSetting(
-                        reminder.enabledKey,
-                        event.target.checked,
-                      )
-                    }
-                  />
-                  <span>{reminder.label}</span>
-                </label>
-                <input
-                  type="time"
-                  value={reminderSettings[reminder.timeKey]}
-                  onChange={(event) =>
-                    updateReminderSetting(reminder.timeKey, event.target.value)
-                  }
-                />
-              </div>
-            ))}
-          </div>
-          <p className="settings-note">
-            Notiser fungerar när webbläsaren tillåter det och appen kan köras i
-            bakgrunden. Allt sparas lokalt i den här webbläsaren.
-          </p>
-        </article>
+        <ReminderSettings
+          onReminderSettingChange={updateReminderSetting}
+          onRequestNotificationPermission={requestNotificationPermission}
+          reminderOptions={reminderOptions}
+          reminderSettings={reminderSettings}
+          reminderStatus={reminderStatus}
+        />
 
         <article className="panel trends-panel" id="framsteg">
           <div className="panel-heading">

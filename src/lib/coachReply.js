@@ -9,6 +9,55 @@ function includesAny(text, phrases) {
   return phrases.some((phrase) => text.includes(phrase))
 }
 
+const intentPhrases = {
+  dinner: [
+    'middag idag',
+    'middag i dag',
+    'tips på middag',
+    'middagstips',
+    'vad blir det till middag',
+    'vad ska jag äta',
+    'vad ska jag äta idag',
+    'vad ska jag äta i dag',
+    'vad ska jag äta ikväll',
+    'äta ikväll',
+  ],
+  protein: [
+    'hur mycket protein',
+    'protein per dag',
+    'proteinbehov',
+    'hur många gram protein',
+    'gram protein',
+    'proteinrik',
+    'proteiner',
+    'protein',
+  ],
+  sleep: [
+    'när ska jag sova',
+    'vilken tid ska jag lägga mig',
+    'när bör jag gå och lägga mig',
+    'gå och lägga mig',
+    'lägga mig',
+    'läggdags',
+    'sovtid',
+    'sömn',
+    'sova',
+    'sover',
+    'sov',
+  ],
+  weight: [
+    'hur mycket väger jag',
+    'vad väger jag',
+    'min vikt',
+    'vikt idag',
+    'vikt i dag',
+    'hur ser min vikt ut',
+    'vikt nu',
+    'väger jag',
+    'vikten',
+  ],
+}
+
 function isLateMealQuestion(text) {
   return includesAny(text, [
     'sena måltider',
@@ -26,6 +75,10 @@ function isLateMealQuestion(text) {
     'äta innan',
     'äter innan',
   ])
+}
+
+function hasPreviousContext(chatHistory = []) {
+  return Boolean(getLastUserText(chatHistory))
 }
 
 function isHarmQuestion(text) {
@@ -51,6 +104,14 @@ function getConversationTopic(message, chatHistory = []) {
   const previousText = normalizeText(getLastUserText(chatHistory))
   const combinedText = `${previousText} ${text}`
 
+  if (isLateMealQuestion(combinedText)) {
+    return 'lateMeal'
+  }
+
+  if (includesAny(combinedText, intentPhrases.sleep)) {
+    return 'sleep'
+  }
+
   if (
     includesAny(combinedText, [
       'målvikt',
@@ -67,8 +128,8 @@ function getConversationTopic(message, chatHistory = []) {
 
   if (
     includesAny(combinedText, [
+      ...intentPhrases.weight,
       'vikt',
-      'väger',
       'vägning',
       'gå ner',
       'gick upp',
@@ -112,15 +173,19 @@ function getConversationTopic(message, chatHistory = []) {
     return 'checkIn'
   }
 
+  if (includesAny(combinedText, intentPhrases.protein)) {
+    return 'protein'
+  }
+
   if (
     includesAny(combinedText, [
+      ...intentPhrases.dinner,
       'mat',
       'måltid',
       'måltider',
       'äta',
       'äter',
       'mellanmål',
-      'protein',
       'grönsak',
       'checklista',
       'checklistan',
@@ -149,6 +214,28 @@ function isShortFollowUp(text) {
   ])
 }
 
+function isContextualFollowUp(text) {
+  return includesAny(text, [
+    'varför',
+    'varför då',
+    'hur mycket',
+    'hur mycket då',
+    'hur länge',
+    'hur länge då',
+    'hur lång tid',
+    'är det farligt',
+    'är de farligt',
+    'är det skadligt',
+    'är de skadligt',
+    'vad menar du',
+    'vad menar du?',
+  ])
+}
+
+function makeClarificationReply() {
+  return 'Vad syftar du på? Skriv gärna en kort mening till, till exempel om det gäller mat, sömn, vikt, steg eller träning.'
+}
+
 function detectIntent(message, chatHistory = []) {
   const text = normalizeText(message)
   const previousText = normalizeText(getLastUserText(chatHistory))
@@ -156,6 +243,10 @@ function detectIntent(message, chatHistory = []) {
 
   if (isLateMealQuestion(combinedText)) {
     return 'sena måltider'
+  }
+
+  if (isContextualFollowUp(text) && !hasPreviousContext(chatHistory)) {
+    return ''
   }
 
   if (isHarmQuestion(text)) {
@@ -170,7 +261,7 @@ function detectIntent(message, chatHistory = []) {
     return getConversationTopic(message, chatHistory) || 'generell hälsa'
   }
 
-  if (includesAny(combinedText, ['sömn', 'sova', 'sover', 'sov', 'läggdags'])) {
+  if (includesAny(combinedText, intentPhrases.sleep)) {
     return 'sömn'
   }
 
@@ -182,7 +273,7 @@ function detectIntent(message, chatHistory = []) {
     return 'motivation'
   }
 
-  if (includesAny(combinedText, ['protein', 'proteiner', 'proteinrik'])) {
+  if (includesAny(combinedText, intentPhrases.protein)) {
     return 'protein'
   }
 
@@ -207,7 +298,7 @@ function detectIntent(message, chatHistory = []) {
     return 'viktförändring'
   }
 
-  if (includesAny(combinedText, ['vad väger jag', 'min vikt', 'vikt nu', 'väger jag', 'vikten'])) {
+  if (includesAny(combinedText, intentPhrases.weight)) {
     return 'vikt'
   }
 
@@ -225,6 +316,7 @@ function detectIntent(message, chatHistory = []) {
 
   if (
     includesAny(combinedText, [
+      ...intentPhrases.dinner,
       'måltid',
       'måltider',
       'ätit',
@@ -249,6 +341,108 @@ function detectIntent(message, chatHistory = []) {
   }
 
   return ''
+}
+
+function detectIntents(message, chatHistory = []) {
+  const text = normalizeText(message)
+  const previousText = normalizeText(getLastUserText(chatHistory))
+  const combinedText = `${previousText} ${text}`
+  const intents = []
+
+  const addIntent = (intent) => {
+    if (!intents.includes(intent)) {
+      intents.push(intent)
+    }
+  }
+
+  if (isLateMealQuestion(combinedText)) {
+    addIntent('sena måltider')
+  }
+
+  if (includesAny(combinedText, intentPhrases.sleep)) {
+    addIntent('sömn')
+  }
+
+  if (includesAny(combinedText, ['stress', 'stressad', 'pressad', 'överväldigad'])) {
+    addIntent('stress')
+  }
+
+  if (includesAny(combinedText, ['motivation', 'motiverad', 'ge upp', 'tappat motivation'])) {
+    addIntent('motivation')
+  }
+
+  if (includesAny(combinedText, intentPhrases.protein)) {
+    addIntent('protein')
+  }
+
+  if (includesAny(combinedText, ['kalorier', 'kcal', 'kaloriunderskott', 'kalorimål'])) {
+    addIntent('kalorier')
+  }
+
+  if (includesAny(combinedText, ['målvikt', 'målvikten', 'mål vikt', 'till målvikt'])) {
+    addIntent('målvikt')
+  }
+
+  if (
+    includesAny(combinedText, [
+      'viktförändring',
+      'gått ner',
+      'gått upp',
+      'sedan start',
+      'förändrats',
+      'ändrats',
+    ])
+  ) {
+    addIntent('viktförändring')
+  }
+
+  if (includesAny(combinedText, intentPhrases.weight)) {
+    addIntent('vikt')
+  }
+
+  if (includesAny(combinedText, ['steg', 'gått', 'promenad', 'aktivitet'])) {
+    addIntent('steg')
+  }
+
+  if (includesAny(combinedText, ['energi', 'trött', 'pigg', 'ork'])) {
+    addIntent('energi')
+  }
+
+  if (includesAny(combinedText, ['humör', 'mår', 'måendet', 'check-in', 'checkin'])) {
+    addIntent('humör')
+  }
+
+  if (
+    includesAny(combinedText, [
+      ...intentPhrases.dinner,
+      'måltid',
+      'måltider',
+      'ätit',
+      'äta',
+      'äter',
+      'frukost',
+      'lunch',
+      'middag',
+      'mellanmål',
+      'mat',
+      'checklista',
+      'checklistan',
+      'ikväll',
+      'idag',
+    ])
+  ) {
+    addIntent('måltider')
+  }
+
+  if (includesAny(combinedText, ['träna', 'träning', 'pass', 'gym', 'styrka'])) {
+    addIntent('träning')
+  }
+
+  if (includesAny(combinedText, ['hälsa', 'hälsosamt', 'nyttigt', 'onyttigt', 'bra för kroppen'])) {
+    addIntent('generell hälsa')
+  }
+
+  return intents
 }
 
 function parseWeight(value) {
@@ -561,6 +755,14 @@ function makeCheckInReply(context) {
 }
 
 function makeWhyReply(context, topic = '') {
+  if (topic === 'lateMeal') {
+    return 'För att mat nära läggdags inte är farligt i sig, men kroppen kan reagera olika. Det kan påverka sömn, reflux, hunger eller göra det lättare att äta mer än planerat.'
+  }
+
+  if (topic === 'sleep') {
+    return `${makeSleepReply(context)} Sömn påverkar hunger, ork och impulskontroll, därför väger jag in den när du frågar om vanor på kvällen.`
+  }
+
   if (topic === 'weight' || topic === 'goalWeight') {
     return `${makeWeightProgressReply(context)} Jag säger så eftersom vikt bör bedömas som trend och i relation till startvikt, målvikt och hur hållbara vanorna känns.`
   }
@@ -603,6 +805,14 @@ function makeWhyReply(context, topic = '') {
 }
 
 function makeHowMuchReply(context, topic = '') {
+  if (topic === 'lateMeal') {
+    return 'Om du är hungrig nära läggdags: välj en liten, lätt portion. Till exempel yoghurt, ägg, keso eller en liten macka räcker ofta.'
+  }
+
+  if (topic === 'sleep') {
+    return 'Om frågan gäller sömn är en rimlig riktning 7-9 timmar för de flesta vuxna, men dagsform och regelbundenhet spelar också stor roll.'
+  }
+
   if (topic === 'weight') {
     return makeCurrentWeightReply(context)
   }
@@ -647,6 +857,10 @@ function makeHowMuchReply(context, topic = '') {
 }
 
 function makeHowLongReply(context, topic = '') {
+  if (topic === 'lateMeal') {
+    return 'Testa några kvällar och se hur du sover och hur magen känns. Om det stör sömnen kan du prova att äta lite tidigare eller välja något lättare.'
+  }
+
   if (topic === 'steps') {
     return context.steps === null
       ? 'Jag saknar stegdata just nu, så jag kan inte säga exakt. En kort promenad på 10-15 minuter är ofta en lagom start.'
@@ -669,6 +883,14 @@ function makeHowLongReply(context, topic = '') {
 }
 
 function makeSafetyReply(context, topic = '') {
+  if (topic === 'lateMeal') {
+    return makeLateMealSafetyReply()
+  }
+
+  if (topic === 'sleep') {
+    return 'Det är oftast inte skadligt att ha en enstaka sen kväll eller sämre sömn, men återkommande sömnbrist kan påverka hunger, energi och återhämtning.'
+  }
+
   if (topic === 'steps' || topic === 'energy' || topic === 'checkIn') {
     return `${makeCheckInReply(context)} Det är inte automatiskt skadligt, men anpassa nivån efter energi, smärta och återhämtning.`
   }
@@ -771,6 +993,10 @@ function makeIntentReply(intent, { context, meals, text, topic }) {
     return ''
   }
 
+  if (intent === 'protein') {
+    return makeProteinReply(context)
+  }
+
   if (intent === 'sena måltider' && isHarmQuestion(text)) {
     return makeLateMealSafetyReply()
   }
@@ -784,6 +1010,10 @@ function makeIntentReply(intent, { context, meals, text, topic }) {
   }
 
   if (includesAny(text, ['varför'])) {
+    return makeWhyReply(context, topic)
+  }
+
+  if (includesAny(text, ['vad menar du'])) {
     return makeWhyReply(context, topic)
   }
 
@@ -810,8 +1040,6 @@ function makeIntentReply(intent, { context, meals, text, topic }) {
       return makeCheckInReply(context)
     case 'sömn':
       return makeSleepReply(context)
-    case 'protein':
-      return makeProteinReply(context)
     case 'kalorier':
       return makeCaloriesReply(context)
     case 'måltider':
@@ -833,6 +1061,61 @@ function makeIntentReply(intent, { context, meals, text, topic }) {
   }
 }
 
+function makeCombinedIntentReply(intents, { context, meals, text }) {
+  const meaningfulIntents = intents.filter(
+    (intent) => intent !== 'generell hälsa',
+  )
+
+  if (meaningfulIntents.length < 2) {
+    return ''
+  }
+
+  const replies = meaningfulIntents
+    .map((intent) => {
+      switch (intent) {
+        case 'vikt':
+          return makeCurrentWeightReply(context)
+        case 'målvikt':
+          return makeGoalWeightReply(context)
+        case 'viktförändring':
+          return makeWeightChangeReply(context)
+        case 'steg':
+          return makeStepsReply(context)
+        case 'energi':
+          return makeEnergyReply(context)
+        case 'humör':
+          return makeCheckInReply(context)
+        case 'sömn':
+          return makeSleepReply(context)
+        case 'protein':
+          return makeProteinReply(context)
+        case 'kalorier':
+          return makeCaloriesReply(context)
+        case 'måltider':
+          return includesAny(text, ['checklista', 'checklistan'])
+            ? getFoodSummary(context)
+            : makeMealsReply(meals)
+        case 'motivation':
+          return makeMotivationReply(context)
+        case 'stress':
+          return makeStressReply(context)
+        case 'sena måltider':
+          return makeLateMealReply(context)
+        case 'träning':
+          return makeTrainingReply(context)
+        default:
+          return ''
+      }
+    })
+    .filter(Boolean)
+
+  if (replies.length < 2) {
+    return replies[0] || ''
+  }
+
+  return replies.join(' ')
+}
+
 export function makePersonalCoachReply({
   chatHistory = [],
   checkIn,
@@ -846,6 +1129,7 @@ export function makePersonalCoachReply({
   const text = normalizeText(message)
   const topic = getConversationTopic(message, chatHistory)
   const intent = detectIntent(message, chatHistory)
+  const intents = detectIntents(message, chatHistory)
   const context = getPersonalContext({
     checkIn,
     currentWeight,
@@ -853,6 +1137,18 @@ export function makePersonalCoachReply({
     profile,
     weights,
   })
+  const combinedIntentReply = isHarmQuestion(text)
+    ? ''
+    : makeCombinedIntentReply(intents, {
+      context,
+      meals,
+      text,
+    })
+
+  if (combinedIntentReply) {
+    return combinedIntentReply
+  }
+
   const intentReply = makeIntentReply(intent, {
     context,
     meals,
@@ -862,6 +1158,10 @@ export function makePersonalCoachReply({
 
   if (intentReply) {
     return intentReply
+  }
+
+  if (isContextualFollowUp(text) && !topic) {
+    return makeClarificationReply()
   }
 
   if (

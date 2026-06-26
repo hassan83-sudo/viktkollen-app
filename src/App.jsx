@@ -704,7 +704,7 @@ function makeRapidWeightLossReply() {
 }
 
 function makeBedtimeEatingReply() {
-  return 'För de flesta är det inte skadligt att äta nära läggdags. Det kan däremot påverka sömn, reflux, hungervanor eller göra det lättare att äta mer än man tänkt. Om du är hungrig sent, testa något lättare som yoghurt, ägg, keso eller en liten macka. Prova också tidigare middag eller mindre portion några kvällar och se vad som funkar.'
+  return 'För de flesta är det inte skadligt att äta nära läggdags. Det kan däremot påverka sömn, reflux, hungervanor eller göra det lättare att äta mer än man tänkt. Om du är hungrig sent, testa något lättare som yoghurt, ägg, keso eller en liten macka.'
 }
 
 function makeProteinKnowledgeReply(message) {
@@ -724,6 +724,10 @@ function makeProteinKnowledgeReply(message) {
 }
 
 function makeMultiPartReply(message, chatHistory = []) {
+  if (asksIfHarmful(message) && hasBedtimeEatingContext(message, chatHistory)) {
+    return makeBedtimeEatingReply()
+  }
+
   const parts = []
 
   if (asksForMealSuggestion(message) || asksAboutFood(message)) {

@@ -197,23 +197,6 @@ function getConversationTopic(message, chatHistory = []) {
   return ''
 }
 
-function isShortFollowUp(text) {
-  return includesAny(text, [
-    'är det skadligt',
-    'är de skadligt',
-    'skadligt',
-    'farligt',
-    'varför',
-    'varför då',
-    'hur mycket',
-    'hur mycket då',
-    'hur många',
-    'hur många då',
-    'hur länge',
-    'hur länge då',
-  ])
-}
-
 function isContextualFollowUp(text) {
   return includesAny(text, [
     'varför',
@@ -259,6 +242,19 @@ function detectIntent(message, chatHistory = []) {
 
   if (includesAny(text, ['hur mycket', 'hur många', 'hur länge', 'hur lång tid'])) {
     return getConversationTopic(message, chatHistory) || 'generell hälsa'
+  }
+
+  if (
+    includesAny(combinedText, [
+      'vad ska jag göra idag',
+      'vad ska jag göra i dag',
+      'dagens plan',
+      'dagens fokus',
+      'vad bör jag fokusera på',
+      'nästa steg',
+    ])
+  ) {
+    return 'dagens plan'
   }
 
   if (includesAny(combinedText, intentPhrases.sleep)) {
@@ -357,6 +353,19 @@ function detectIntents(message, chatHistory = []) {
 
   if (isLateMealQuestion(combinedText)) {
     addIntent('sena måltider')
+  }
+
+  if (
+    includesAny(combinedText, [
+      'vad ska jag göra idag',
+      'vad ska jag göra i dag',
+      'dagens plan',
+      'dagens fokus',
+      'vad bör jag fokusera på',
+      'nästa steg',
+    ])
+  ) {
+    addIntent('dagens plan')
   }
 
   if (includesAny(combinedText, intentPhrases.sleep)) {
@@ -984,20 +993,47 @@ function makeLateMealSafetyReply() {
   return 'För de flesta är det inte skadligt att äta nära läggdags. Det kan däremot påverka sömn, reflux, hunger eller göra det lättare att äta mer än planerat. Om du är hungrig sent, välj något lätt som yoghurt, ägg, keso eller en liten macka.'
 }
 
+function makeExclusiveLateMealReply(text) {
+  if (!isLateMealQuestion(text)) {
+    return ''
+  }
+
+  return isHarmQuestion(text)
+    ? makeLateMealSafetyReply()
+    : 'En sen måltid är oftast inte skadlig i sig. Om du är hungrig nära läggdags, välj något lätt som yoghurt, ägg, keso eller en liten macka.'
+}
+
 function makeGeneralHealthReply(context) {
   return `${makeSafetyReply(context)} Jag kan hjälpa dig bäst om vi kopplar frågan till appens data: vikt, steg, energi, humör, mat eller träning.`
 }
 
+function normalizeIntentName(intent) {
+  const intentMap = {
+    checkIn: 'humör',
+    energy: 'energi',
+    food: 'måltider',
+    goalWeight: 'målvikt',
+    lateMeal: 'sena måltider',
+    sleep: 'sömn',
+    steps: 'steg',
+    weight: 'vikt',
+  }
+
+  return intentMap[intent] || intent
+}
+
 function makeIntentReply(intent, { context, meals, text, topic }) {
-  if (!intent) {
+  const normalizedIntent = normalizeIntentName(intent)
+
+  if (!normalizedIntent) {
     return ''
   }
 
-  if (intent === 'protein') {
+  if (normalizedIntent === 'protein') {
     return makeProteinReply(context)
   }
 
-  if (intent === 'sena måltider' && isHarmQuestion(text)) {
+  if (normalizedIntent === 'sena måltider' && isHarmQuestion(text)) {
     return makeLateMealSafetyReply()
   }
 
@@ -1018,14 +1054,14 @@ function makeIntentReply(intent, { context, meals, text, topic }) {
   }
 
   if (includesAny(text, ['skadligt', 'farligt'])) {
-    if (intent === 'sena måltider') {
+    if (normalizedIntent === 'sena måltider') {
       return makeLateMealSafetyReply()
     }
 
     return makeSafetyReply(context, topic)
   }
 
-  switch (intent) {
+  switch (normalizedIntent) {
     case 'vikt':
       return makeCurrentWeightReply(context)
     case 'målvikt':
@@ -1054,6 +1090,8 @@ function makeIntentReply(intent, { context, meals, text, topic }) {
       return makeLateMealReply(context)
     case 'träning':
       return makeTrainingReply(context)
+    case 'dagens plan':
+      return makeTodayPlanReply(context)
     case 'generell hälsa':
       return makeGeneralHealthReply(context)
     default:
@@ -1066,13 +1104,13 @@ function makeCombinedIntentReply(intents, { context, meals, text }) {
     (intent) => intent !== 'generell hälsa',
   )
 
-  if (meaningfulIntents.length < 2) {
+  if (meaningfulIntents.length < 1) {
     return ''
   }
 
   const replies = meaningfulIntents
     .map((intent) => {
-      switch (intent) {
+      switch (normalizeIntentName(intent)) {
         case 'vikt':
           return makeCurrentWeightReply(context)
         case 'målvikt':
@@ -1103,6 +1141,8 @@ function makeCombinedIntentReply(intents, { context, meals, text }) {
           return makeLateMealReply(context)
         case 'träning':
           return makeTrainingReply(context)
+        case 'dagens plan':
+          return makeTodayPlanReply(context)
         default:
           return ''
       }
@@ -1127,6 +1167,15 @@ export function makePersonalCoachReply({
   weights = [],
 }) {
   const text = normalizeText(message)
+  const previousText = normalizeText(getLastUserText(chatHistory))
+  const exclusiveLateMealReply = makeExclusiveLateMealReply(
+    `${previousText} ${text}`,
+  )
+
+  if (exclusiveLateMealReply) {
+    return exclusiveLateMealReply
+  }
+
   const topic = getConversationTopic(message, chatHistory)
   const intent = detectIntent(message, chatHistory)
   const intents = detectIntents(message, chatHistory)
@@ -1162,159 +1211,6 @@ export function makePersonalCoachReply({
 
   if (isContextualFollowUp(text) && !topic) {
     return makeClarificationReply()
-  }
-
-  if (
-    includesAny(text, [
-      'är det skadligt',
-      'är de skadligt',
-      'skadligt',
-      'farligt',
-      'dåligt för kroppen',
-      'inte bra för kroppen',
-    ])
-  ) {
-    return makeSafetyReply(context, topic)
-  }
-
-  if (
-    includesAny(text, [
-      'hur mycket då',
-      'hur mycket',
-      'hur många då',
-      'hur många',
-      'hur långt',
-    ])
-  ) {
-    return makeHowMuchReply(context, topic)
-  }
-
-  if (
-    includesAny(text, [
-      'hur länge',
-      'hur länge då',
-      'hur lång tid',
-      'hur lång tid då',
-    ])
-  ) {
-    return makeHowLongReply(context, topic)
-  }
-
-  if (
-    includesAny(text, [
-      'varför',
-      'varför då',
-      'hur kommer det sig',
-    ])
-  ) {
-    return makeWhyReply(context, topic)
-  }
-
-  if (isShortFollowUp(text) && topic) {
-    return makeWhyReply(context, topic)
-  }
-
-  if (
-    includesAny(text, [
-      'hur många steg',
-      'mina steg',
-      'steg idag',
-      'steg i dag',
-      'har jag gått',
-      'gått idag',
-      'gått i dag',
-      'aktivitet',
-    ])
-  ) {
-    return makeStepsReply(context)
-  }
-
-  if (
-    includesAny(text, [
-      'min energi',
-      'energi idag',
-      'energi i dag',
-      'orkar inte',
-      'är trött',
-      'känner mig trött',
-      'check-in',
-      'checkin',
-      'hur mår jag',
-      'mitt humör',
-      'humör',
-      'måendet',
-    ])
-  ) {
-    return includesAny(text, ['check-in', 'checkin', 'hur mår jag', 'mitt humör', 'humör', 'måendet'])
-      ? makeCheckInReply(context)
-      : makeEnergyReply(context)
-  }
-
-  if (
-    includesAny(text, [
-      'vad väger jag',
-      'hur mycket väger jag',
-      'min vikt',
-      'vikt nu',
-      'hur går det med vikten',
-      'hur långt har jag kommit',
-      'mot mitt mål',
-      'till målvikt',
-      'min målvikt',
-      'målvikt',
-      'målet',
-    ])
-  ) {
-    return includesAny(text, ['målvikt', 'målvikten', 'till målvikt'])
-      ? makeGoalWeightReply(context)
-      : makeWeightProgressReply(context)
-  }
-
-  if (
-    includesAny(text, [
-      'mat',
-      'måltid',
-      'äta',
-      'äter',
-      'mellanmål',
-      'protein',
-      'grönsaker',
-      'matchecklista',
-      'checklistan',
-    ])
-  ) {
-    return includesAny(text, ['måltid', 'måltider', 'ätit idag', 'ätit i dag'])
-      ? makeMealsReply(meals)
-      : getFoodSummary(context)
-  }
-
-  if (
-    includesAny(text, [
-      'vad ska jag göra idag',
-      'vad ska jag göra i dag',
-      'dagens plan',
-      'dagens fokus',
-      'vad bör jag fokusera på',
-      'hur går det idag',
-      'hur går det i dag',
-      'nästa steg',
-    ])
-  ) {
-    return makeTodayPlanReply(context)
-  }
-
-  if (
-    includesAny(text, [
-      'ska jag träna',
-      'träna idag',
-      'träna i dag',
-      'vilket pass',
-      'promenad eller träning',
-      'träning',
-      'pass',
-    ])
-  ) {
-    return makeTrainingReply(context)
   }
 
   return ''

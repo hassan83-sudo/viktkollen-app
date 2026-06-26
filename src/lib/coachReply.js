@@ -475,6 +475,77 @@ function formatWeight(value) {
   })} kg`
 }
 
+function getWeightChange(context) {
+  if (context.weight === null || context.startWeight === null) {
+    return null
+  }
+
+  return Number((context.weight - context.startWeight).toFixed(1))
+}
+
+function makeWeightTrendSentence(context) {
+  const change = getWeightChange(context)
+
+  if (change === null || change === 0) {
+    return ''
+  }
+
+  return change < 0
+    ? `Du är ${formatWeight(Math.abs(change))} ner sedan start.`
+    : `Du är ${formatWeight(change)} upp sedan start.`
+}
+
+function makeGoalDistanceSentence(context) {
+  if (context.weight === null || context.goalWeight === null) {
+    return ''
+  }
+
+  const remaining = Number((context.weight - context.goalWeight).toFixed(1))
+
+  if (remaining > 0) {
+    return `Det är ${formatWeight(remaining)} kvar till målet.`
+  }
+
+  if (remaining < 0) {
+    return `${formatWeight(Math.abs(remaining))} under målet just nu.`
+  }
+
+  return 'Du ligger precis på målet.'
+}
+
+function makeEnergyMoodHint(context) {
+  const details = []
+
+  if (context.energy !== null) {
+    details.push(`energi ${context.energy}/10`)
+  }
+
+  if (context.mood) {
+    details.push(`humör: ${context.mood}`)
+  }
+
+  return details.length ? details.join(', ') : ''
+}
+
+function makeFoodProgressHint(context) {
+  if (context.foodTotal <= 0) {
+    return ''
+  }
+
+  return `${context.completedFoods}/${context.foodTotal} matpunkter klara`
+}
+
+function makeRecentMealsHint(meals = [], limit = 4) {
+  if (!Array.isArray(meals) || meals.length === 0) {
+    return ''
+  }
+
+  return meals
+    .slice(-limit)
+    .map((meal) => `${meal.type}: ${meal.text}`)
+    .join('; ')
+}
+
 function getWeightEntries(weights = []) {
   if (!Array.isArray(weights)) {
     return []
@@ -548,29 +619,35 @@ function getFoodSummary(context) {
   }
 
   const percent = Math.round((context.completedFoods / context.foodTotal) * 100)
+  const energyHint = context.energy !== null && context.energy <= 4
+    ? ` Eftersom energin är ${context.energy}/10, håll nästa måltid enkel.`
+    : ''
 
   if (percent >= 75) {
-    return `Matchecklistan ser stark ut: ${context.completedFoods}/${context.foodTotal} punkter är klara. Fortsätt med samma bas i nästa måltid.`
+    return `Matchecklistan ser stark ut: ${context.completedFoods}/${context.foodTotal} punkter är klara. Fortsätt med samma bas i nästa måltid.${energyHint}`
   }
 
   if (percent >= 40) {
-    return `Du har ${context.completedFoods}/${context.foodTotal} matpunkter klara. Välj en sak till, helst protein eller grönsaker, så blir dagen stabilare.`
+    return `Du har ${context.completedFoods}/${context.foodTotal} matpunkter klara. Välj en sak till, helst protein eller grönsaker, så blir dagen stabilare.${energyHint}`
   }
 
-  return `Du har ${context.completedFoods}/${context.foodTotal} matpunkter klara. Gör nästa steg litet: lägg till en proteinbas eller frukt/grönsaker.`
+  return `Du har ${context.completedFoods}/${context.foodTotal} matpunkter klara. Gör nästa steg litet: lägg till en proteinbas eller frukt/grönsaker.${energyHint}`
 }
 
-function makeMealsReply(meals = []) {
+function makeMealsReply(meals = [], context = {}) {
   if (!Array.isArray(meals) || meals.length === 0) {
-    return 'Jag ser inga måltider loggade ännu i dag. Lägg gärna in en enkel måltid så kan jag resonera mer konkret.'
+    const checklistHint = makeFoodProgressHint(context)
+
+    return checklistHint
+      ? `Jag ser inga måltider loggade ännu i dag, men checklistan visar ${checklistHint}. Lägg gärna in nästa måltid så kan jag resonera mer konkret.`
+      : 'Jag ser inga måltider loggade ännu i dag. Lägg gärna in en enkel måltid så kan jag resonera mer konkret.'
   }
 
-  const mealSummary = meals
-    .slice(-4)
-    .map((meal) => `${meal.type}: ${meal.text}`)
-    .join('; ')
+  const mealSummary = makeRecentMealsHint(meals)
+  const checklistHint = makeFoodProgressHint(context)
+  const extraHint = checklistHint ? ` Matchecklistan ligger på ${checklistHint}.` : ''
 
-  return `Dagens loggade måltider: ${mealSummary}. ${meals.length >= 2 ? 'Det ger en bra bild av dagen.' : 'Lägg gärna till nästa måltid när du äter.'}`
+  return `Dagens loggade måltider: ${mealSummary}.${extraHint} ${meals.length >= 2 ? 'Det ger en bra bild av dagen.' : 'Lägg gärna till nästa måltid när du äter.'}`
 }
 
 function makeGoalWeightReply(context) {
@@ -587,7 +664,9 @@ function makeGoalWeightReply(context) {
   const difference = Number((context.weight - context.goalWeight).toFixed(1))
 
   if (difference > 0) {
-    return `Din registrerade målvikt är ${formatWeight(context.goalWeight)}. Från senaste vikten är det ${formatWeight(difference)} kvar.`
+    const trend = makeWeightTrendSentence(context)
+
+    return `Din registrerade målvikt är ${formatWeight(context.goalWeight)}. Från senaste vikten är det ${formatWeight(difference)} kvar.${trend ? ` ${trend}` : ''}`
   }
 
   if (difference < 0) {
@@ -609,7 +688,9 @@ function makeStepsReply(context) {
   }
 
   if (context.steps < 5000) {
-    return `Du har ${steps} steg i dag. Ett enkelt nästa steg är 10-15 minuters promenad, gärna uppdelat i två korta rundor.`
+    const moodHint = context.mood ? ` Humöret är markerat som ${context.mood}, så välj en nivå som känns snäll.` : ''
+
+    return `Du har ${steps} steg i dag. Ett enkelt nästa steg är 10-15 minuters promenad, gärna uppdelat i två korta rundor.${moodHint}`
   }
 
   if (context.steps < 8000) {
@@ -625,11 +706,15 @@ function makeEnergyReply(context) {
   }
 
   if (context.energy <= 3) {
-    return `Din energi är ${context.energy}/10. Gör dagen enklare: välj en lätt måltid, drick vatten och prioritera återhämtning framför ett hårt pass.`
+    const foodHint = makeFoodProgressHint(context)
+
+    return `Din energi är ${context.energy}/10. Gör dagen enklare: välj en lätt måltid, drick vatten och prioritera återhämtning framför ett hårt pass.${foodHint ? ` Matchecklistan är ${foodHint}, så välj bara en punkt till om du orkar.` : ''}`
   }
 
   if (context.energy <= 6) {
-    return `Din energi är ${context.energy}/10. Håll planen enkel: en vanlig måltid och lätt rörelse är en rimlig nivå i dag.`
+    const stepsHint = context.steps !== null ? ` Du har ${context.steps.toLocaleString('sv-SE')} steg, så lätt rörelse räcker fint.` : ''
+
+    return `Din energi är ${context.energy}/10. Håll planen enkel: en vanlig måltid och lätt rörelse är en rimlig nivå i dag.${stepsHint}`
   }
 
   return `Din energi är ${context.energy}/10. Om kroppen känns bra passar det fint med ett planerat pass eller en rask promenad.`
@@ -661,7 +746,9 @@ function makeWeightProgressReply(context) {
 
     if (change !== 0) {
       parts.push(
-        `${change < 0 ? 'Ned' : 'Upp'} ${formatWeight(Math.abs(change))} sedan start.`,
+        change < 0
+          ? `Du har gått ner ${formatWeight(Math.abs(change))} sedan start.`
+          : `Du har gått upp ${formatWeight(Math.abs(change))} sedan start.`,
       )
     }
   }
@@ -675,6 +762,7 @@ function makeCurrentWeightReply(context) {
   }
 
   const parts = [`Du väger just nu ${formatWeight(context.weight)}.`]
+  const goalDistance = makeGoalDistanceSentence(context)
 
   if (context.startWeight !== null) {
     const change = Number((context.weight - context.startWeight).toFixed(1))
@@ -686,16 +774,12 @@ function makeCurrentWeightReply(context) {
     }
   }
 
-  if (context.goalWeight !== null) {
-    const remaining = Number((context.weight - context.goalWeight).toFixed(1))
-
-    if (remaining > 0) {
-      parts.push(`Det är ${formatWeight(remaining)} kvar till ditt mål.`)
-    } else if (remaining < 0) {
-      parts.push(`Du ligger ${formatWeight(Math.abs(remaining))} under ditt mål.`)
-    } else {
-      parts.push('Du ligger precis på ditt mål.')
-    }
+  if (goalDistance) {
+    parts.push(
+      goalDistance
+        .replace('kvar till målet', 'kvar till ditt mål')
+        .replace('under målet just nu', 'under ditt mål'),
+    )
   }
 
   return parts.join(' ')
@@ -729,7 +813,9 @@ function makeTodayPlanReply(context) {
     actions.push('fokusera på en jämn och upprepbar rutin')
   }
 
-  return `Dagens enkla plan:\n• ${actions.join('\n• ')}`
+  const checkInHint = makeEnergyMoodHint(context)
+
+  return `Dagens enkla plan${checkInHint ? ` utifrån ${checkInHint}` : ''}:\n• ${actions.join('\n• ')}`
 }
 
 function makeTrainingReply(context) {
@@ -738,7 +824,9 @@ function makeTrainingReply(context) {
   }
 
   if (context.workout) {
-    return 'Du har markerat träning eller medveten rörelse som genomförd. Låt resten av dagen handla om mat, vätska och återhämtning.'
+    const foodHint = makeFoodProgressHint(context)
+
+    return `Du har markerat träning eller medveten rörelse som genomförd. Låt resten av dagen handla om mat, vätska och återhämtning.${foodHint ? ` Matmässigt ligger du på ${foodHint}.` : ''}`
   }
 
   if (context.energy !== null && context.energy >= 7) {
@@ -760,7 +848,9 @@ function makeCheckInReply(context) {
     ? 'träning/rörelse är markerad'
     : 'träning/rörelse är inte markerad'
 
-  return `Dagens check-in: humör ${mood}, energi ${energy}, ${steps} steg och ${workout}.`
+  const foodHint = makeFoodProgressHint(context)
+
+  return `Dagens check-in: humör ${mood}, energi ${energy}, ${steps} steg och ${workout}.${foodHint ? ` Matchecklistan är ${foodHint}.` : ''}`
 }
 
 function makeWhyReply(context, topic = '') {
@@ -1132,7 +1222,7 @@ function makeCombinedIntentReply(intents, { context, meals, text }) {
         case 'måltider':
           return includesAny(text, ['checklista', 'checklistan'])
             ? getFoodSummary(context)
-            : makeMealsReply(meals)
+            : makeMealsReply(meals, context)
         case 'motivation':
           return makeMotivationReply(context)
         case 'stress':

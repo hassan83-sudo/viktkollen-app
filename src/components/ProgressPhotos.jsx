@@ -3,6 +3,9 @@ import BodyAnalysisCard from './BodyAnalysisCard.jsx'
 import ProgressPhotoEmptyState from './ProgressPhotoEmptyState.jsx'
 import ProgressPhotoUpload from './ProgressPhotoUpload.jsx'
 
+const bodyAnalysisHistoryKey = 'viktkollen.bodyAnalysis.history'
+const bodyAnalysisLegacyKey = 'viktkollen.bodyAnalysis.latest'
+
 const swedishMonthNumbers = {
   apr: 3,
   april: 3,
@@ -97,6 +100,22 @@ function getSameOccasionComparison(progressPhotoItems) {
   return Object.values(photosByDate).find((group) => group.front && group.side)
 }
 
+function hasStoredBodyAnalyses() {
+  try {
+    const storedHistory = window.localStorage.getItem(bodyAnalysisHistoryKey)
+
+    if (storedHistory) {
+      const parsedHistory = JSON.parse(storedHistory)
+
+      return Array.isArray(parsedHistory) && parsedHistory.length > 0
+    }
+
+    return Boolean(window.localStorage.getItem(bodyAnalysisLegacyKey))
+  } catch {
+    return false
+  }
+}
+
 function ProgressPhotos({
   afterPhotoId,
   beforeAfterPhotos,
@@ -115,6 +134,9 @@ function ProgressPhotos({
 }) {
   const [showSameOccasionComparison, setShowSameOccasionComparison] =
     useState(false)
+  const [hasBodyAnalysisHistory, setHasBodyAnalysisHistory] = useState(() =>
+    hasStoredBodyAnalyses(),
+  )
   const sameOccasionComparison = getSameOccasionComparison(progressPhotoItems)
 
   return (
@@ -132,7 +154,9 @@ function ProgressPhotos({
         progressPhotoNote={progressPhotoNote}
       />
 
-      <BodyAnalysisCard />
+      <BodyAnalysisCard
+        onAnalysisHistoryChange={setHasBodyAnalysisHistory}
+      />
 
       {hasProgressPhotos && (
         <>
@@ -282,7 +306,9 @@ function ProgressPhotos({
         </>
       )}
 
-      {!hasProgressPhotos && <ProgressPhotoEmptyState />}
+      {!hasProgressPhotos && !hasBodyAnalysisHistory && (
+        <ProgressPhotoEmptyState />
+      )}
     </article>
   )
 }

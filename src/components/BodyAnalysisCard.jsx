@@ -14,6 +14,12 @@ const mockComparisonInsights = [
   'Ingen tydlig förändring i överkroppen.',
   'Fortsätt använda samma fotograferingsvinkel.',
 ]
+const mockRecommendations = [
+  'Ta nästa bild om 7 dagar.',
+  'Använd samma ljus och avstånd.',
+  'Fortsätt med nuvarande tränings- och kostrutiner.',
+  'Fokusera på jämna veckovisa förändringar.',
+]
 
 function isStoredAnalysis(value) {
   return (
@@ -77,7 +83,7 @@ function formatAnalysisDate(date) {
   }).format(new Date(date))
 }
 
-function BodyAnalysisCard() {
+function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   const [analysisHistory, setAnalysisHistory] = useState(() =>
     readStoredAnalyses(),
   )
@@ -131,6 +137,7 @@ function BodyAnalysisCard() {
       writeStoredAnalyses(nextHistory)
       setAnalysisHistory(nextHistory)
       setSavedAnalysis(nextAnalysis)
+      onAnalysisHistoryChange(true)
       setIsAnalyzing(false)
     }, 2000)
   }
@@ -238,6 +245,12 @@ function BodyAnalysisCard() {
               <dd>{savedAnalysis.result.waistTrend}</dd>
             </div>
           </dl>
+          <p className="report-heading">AI:s rekommendationer</p>
+          <ul>
+            {mockRecommendations.map((recommendation) => (
+              <li key={recommendation}>{recommendation}</li>
+            ))}
+          </ul>
         </div>
       )}
       <div className="progress-photo-ai-comparison">

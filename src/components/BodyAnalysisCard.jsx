@@ -2,8 +2,6 @@ import { useState } from 'react'
 
 import { analyzeBodyWithAI } from '../services/bodyAnalysisService'
 
-const legacyStorageKey = 'viktkollen.bodyAnalysis.latest'
-const storageKey = 'viktkollen.bodyAnalysis.history'
 const mockComparisonInsights = [
   'Midjan ser något smalare ut.',
   'Hållningen verkar förbättrad.',
@@ -71,59 +69,6 @@ const bodyOverviewMarkers = [
   },
 ]
 
-function isStoredAnalysis(value) {
-  return (
-    value &&
-    typeof value.createdAt === 'string' &&
-    value.frontPhoto &&
-    typeof value.frontPhoto.name === 'string' &&
-    typeof value.frontPhoto.preview === 'string' &&
-    value.sidePhoto &&
-    typeof value.sidePhoto.name === 'string' &&
-    typeof value.sidePhoto.preview === 'string' &&
-    value.result &&
-    typeof value.result.bodyFat === 'string' &&
-    typeof value.result.muscleMass === 'string' &&
-    typeof value.result.posture === 'string' &&
-    typeof value.result.waistTrend === 'string'
-  )
-}
-
-function readStoredAnalyses() {
-  try {
-    const storedValue = window.localStorage.getItem(storageKey)
-
-    if (storedValue) {
-      const parsedValue = JSON.parse(storedValue)
-
-      return Array.isArray(parsedValue)
-        ? parsedValue.filter(isStoredAnalysis)
-        : []
-    }
-
-    const legacyValue = window.localStorage.getItem(legacyStorageKey)
-
-    if (!legacyValue) {
-      return []
-    }
-
-    const parsedLegacyValue = JSON.parse(legacyValue)
-
-    return isStoredAnalysis(parsedLegacyValue) ? [parsedLegacyValue] : []
-  } catch {
-    return []
-  }
-}
-
-function clearStoredAnalyses() {
-  try {
-    window.localStorage.removeItem(storageKey)
-    window.localStorage.removeItem(legacyStorageKey)
-  } catch {
-    // Keep the UI usable even if the browser blocks localStorage.
-  }
-}
-
 function formatAnalysisDate(date) {
   return new Intl.DateTimeFormat('sv-SE', {
     day: 'numeric',
@@ -175,19 +120,79 @@ function isAnalysisWithinDays(analysis, days) {
   return createdAt >= cutoff
 }
 
+function toTextList(value, fallback = []) {
+  return Array.isArray(value) && value.length > 0 ? value : fallback
+}
+
+function getResultSummary(result) {
+  return (
+    result.summary ||
+    'Analysen visar en försiktig visuell uppskattning baserad på bilderna. Följ utvecklingen över tid och jämför bilder med liknande ljus, avstånd och vinkel.'
+  )
+}
+
+function getResultComposition(result) {
+  return (
+    result.composition ||
+    result.visualAssessment ||
+    [
+      `Kroppsfett: ${result.bodyFat || '~24 %'}`,
+      `Muskelmassa: ${result.muscleMass || 'Normal'}`,
+      `Hållning: ${result.posture || 'Bra'}`,
+      `Midjeutveckling: ${result.waistTrend || 'Följs över tid'}`,
+    ].join(' ')
+  )
+}
+
+function getResultStrengths(result) {
+  return toTextList(result.strengths, [
+    'Du har skapat en tydlig startpunkt för framtida jämförelser.',
+    'Bilder från två vinklar gör utvecklingen lättare att följa.',
+  ])
+}
+
+function getResultImprovements(result) {
+  return toTextList(result.improvements, [
+    'Använd samma ljus och avstånd vid nästa analys.',
+    'Försök ta nästa bild vid ungefär samma tid på dagen.',
+  ])
+}
+
+function getResultNextSteps(result) {
+  return toTextList(result.nextSteps, result.recommendations || mockRecommendations)
+}
+
+function getResultSafetyNotice(result) {
+  return (
+    result.safetyNotice ||
+    'Detta är en visuell uppskattning och inte medicinsk rådgivning, diagnos eller behandling.'
+  )
+}
+
+function getTimelineSummary(result) {
+  return result.summary || result.waistTrend || 'Analys klar med mock-resultat.'
+}
+
 function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   const [activeBodyMarker, setActiveBodyMarker] = useState(bodyOverviewMarkers[0])
-  const [analysisHistory, setAnalysisHistory] = useState(() =>
-    readStoredAnalyses(),
-  )
+  const [analysisHistory, setAnalysisHistory] = useState([])
   const [analysisError, setAnalysisError] = useState('')
-  const [analysisStatus, setAnalysisStatus] = useState('')
+  const [analysisStatus, setAnalysisStatus] = useState('Väntar på bilder')
   const [frontPhoto, setFrontPhoto] = useState(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [savedAnalysis, setSavedAnalysis] = useState(() => analysisHistory[0] ?? null)
   const [sidePhoto, setSidePhoto] = useState(null)
   const [timelineFilter, setTimelineFilter] = useState('all')
   const canAnalyze = Boolean(frontPhoto && sidePhoto) && !isAnalyzing
+  const currentAnalysisStatus = isAnalyzing
+    ? 'Analyserar bilder'
+    : analysisError
+      ? 'Analys misslyckades'
+      : analysisStatus === 'Analys klar'
+        ? 'Analys klar'
+        : canAnalyze
+          ? 'Redo att analysera'
+          : 'Väntar på bilder'
   const analysisCount = analysisHistory.length
   const latestAnalysisDate = analysisHistory[0]?.createdAt
   const nextStepText =
@@ -285,10 +290,12 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
 
       if (view === 'front') {
         setFrontPhoto(photo)
+        setAnalysisStatus(sidePhoto ? 'Redo att analysera' : 'Väntar på bilder')
         return
       }
 
       setSidePhoto(photo)
+      setAnalysisStatus(frontPhoto ? 'Redo att analysera' : 'Väntar på bilder')
     })
     reader.readAsDataURL(file)
   }
@@ -300,7 +307,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
 
     setIsAnalyzing(true)
     setAnalysisError('')
-    setAnalysisStatus('AI analyserar bilderna...')
+    setAnalysisStatus('Analyserar bilder')
 
     window.setTimeout(async () => {
       try {
@@ -317,9 +324,14 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
           frontPhoto: storedFrontPhoto,
           result: await analyzeBodyWithAI({ frontPhoto, sidePhoto }),
           sidePhoto: storedSidePhoto,
+          status: 'Analys klar',
         }
 
         setSavedAnalysis(nextAnalysis)
+        setAnalysisHistory((currentHistory) =>
+          [nextAnalysis, ...currentHistory].slice(0, 5),
+        )
+        onAnalysisHistoryChange(true)
         setAnalysisStatus('Analys klar')
       } catch (error) {
         setAnalysisError(
@@ -327,7 +339,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
             ? error.message
             : 'Analysen kunde inte genomföras just nu. Försök igen om en stund.',
         )
-        setAnalysisStatus('')
+        setAnalysisStatus('Analys misslyckades')
       } finally {
         setIsAnalyzing(false)
       }
@@ -335,7 +347,6 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   }
 
   function handleClearHistory() {
-    clearStoredAnalyses()
     setAnalysisHistory([])
     setSavedAnalysis(null)
     onAnalysisHistoryChange(false)
@@ -407,18 +418,13 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
       <button type="button" onClick={handleAnalyzeBody} disabled={!canAnalyze}>
         Analysera kroppen
       </button>
+      <p className="analysis-status">{currentAnalysisStatus}</p>
       <p className="progress-photo-safety">
         Bilderna skickas till AI-analysen när du väljer att analysera dem. De
         sparas inte permanent i denna version och används endast för att skapa
         analysresultatet. Funktionen ger inte medicinska diagnoser eller
         behandling.
       </p>
-      {isAnalyzing && (
-        <p className="analysis-status">{analysisStatus}</p>
-      )}
-      {!isAnalyzing && analysisStatus && !analysisError && (
-        <p className="analysis-status">{analysisStatus}</p>
-      )}
       {analysisError && (
         <div className="progress-photo-ai-comparison">
           <div className="progress-photo-ai-heading">
@@ -471,24 +477,30 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
               <figcaption>{savedAnalysis.sidePhoto.name}</figcaption>
             </figure>
           </div>
-          <dl>
-            <div>
-              <dt>Kroppsfett</dt>
-              <dd>{savedAnalysis.result.bodyFat}</dd>
-            </div>
-            <div>
-              <dt>Muskelmassa</dt>
-              <dd>{savedAnalysis.result.muscleMass}</dd>
-            </div>
-            <div>
-              <dt>Hållning</dt>
-              <dd>{savedAnalysis.result.posture}</dd>
-            </div>
-            <div>
-              <dt>Midjeutveckling</dt>
-              <dd>{savedAnalysis.result.waistTrend}</dd>
-            </div>
-          </dl>
+          <p className="report-heading">Sammanfattning</p>
+          <p>{getResultSummary(savedAnalysis.result)}</p>
+          <p className="report-heading">
+            Kroppssammansättning / visuell bedömning
+          </p>
+          <p>{getResultComposition(savedAnalysis.result)}</p>
+          <p className="report-heading">Styrkor</p>
+          <ul>
+            {getResultStrengths(savedAnalysis.result).map((strength) => (
+              <li key={strength}>{strength}</li>
+            ))}
+          </ul>
+          <p className="report-heading">Förbättringsområden</p>
+          <ul>
+            {getResultImprovements(savedAnalysis.result).map((improvement) => (
+              <li key={improvement}>{improvement}</li>
+            ))}
+          </ul>
+          <p className="report-heading">Rekommenderat nästa steg</p>
+          <ul>
+            {getResultNextSteps(savedAnalysis.result).map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ul>
           <p className="report-heading">Visuell kroppsöversikt</p>
           <div
             className="progress-photo-ai-images"
@@ -538,12 +550,6 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
               </button>
             ))}
           </div>
-          <p className="report-heading">AI:s rekommendationer</p>
-          <ul>
-            {mockRecommendations.map((recommendation) => (
-              <li key={recommendation}>{recommendation}</li>
-            ))}
-          </ul>
           <p className="report-heading">Mål för nästa analys</p>
           <ul className="body-analysis-goals">
             {mockNextAnalysisGoals.map((goal) => (
@@ -567,7 +573,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
             ))}
           </ul>
           <p className="progress-photo-safety">
-            Detta är en uppskattning och inte en medicinsk bedömning.
+            {getResultSafetyNotice(savedAnalysis.result)}
           </p>
         </div>
       )}
@@ -705,6 +711,8 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
                         </span>
                       )}
                     </div>
+                    <p>{getTimelineSummary(analysis.result)}</p>
+                    <span>{analysis.status || 'Analys klar'}</span>
                     <div className="body-analysis-timeline-images">
                       <img
                         src={analysis.frontPhoto.preview}

@@ -53,7 +53,13 @@ async function callBodyAnalysisApi(payload) {
       method: 'POST',
     })
 
-    const body = await response.json()
+    let body = {}
+
+    try {
+      body = await response.json()
+    } catch {
+      body = {}
+    }
 
     if (!response.ok) {
       throw new Error(body?.error || 'Kunde inte analysera bilderna just nu.')
@@ -61,6 +67,13 @@ async function callBodyAnalysisApi(payload) {
 
     return body
   } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error(
+        'Kunde inte nå analysservern. Kontrollera anslutningen och försök igen.',
+        { cause: error },
+      )
+    }
+
     handleBodyAnalysisError(error)
   }
 }

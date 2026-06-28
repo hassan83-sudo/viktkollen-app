@@ -1,3 +1,5 @@
+import { analyzeBodyImages } from '../src/services/bodyAnalysisAi.js'
+
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
 const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png']
 
@@ -9,7 +11,17 @@ export const config = {
 
 const mockBodyAnalysisResult = {
   bodyFat: '~24 %',
+  composition:
+    'Kroppsfett uppskattas visuellt till ungefär ~24 %, muskelmassa ser normal ut och hållningen bedöms som bra.',
+  improvements: [
+    'Försök ta nästa bilder med samma avstånd till kameran.',
+    'Använd liknande ljus och kläder för säkrare jämförelser.',
+  ],
   muscleMass: 'Normal',
+  nextSteps: [
+    'Ta nästa analys om ungefär 7 dagar.',
+    'Registrera gärna vikten samma dag som du tar bilderna.',
+  ],
   posture: 'Bra',
   recommendations: [
     'Ta nästa bild om 7 dagar.',
@@ -18,6 +30,14 @@ const mockBodyAnalysisResult = {
     'Fokusera på jämna veckovisa förändringar.',
   ],
   reliability: 'Medel',
+  safetyNotice:
+    'Detta är en visuell uppskattning och inte medicinsk rådgivning, diagnos eller behandling.',
+  strengths: [
+    'Du har laddat upp bilder från två vinklar.',
+    'Det ger en bättre grund för att följa förändringar över tid.',
+  ],
+  summary:
+    'Analysen är klar. Resultatet är en försiktig visuell uppskattning och bör främst användas för att följa utveckling över tid.',
   waistTrend: 'Följs över tid',
 }
 
@@ -165,14 +185,12 @@ function createMockAnalysis() {
 }
 
 async function analyzeWithOpenAI(frontImage, sideImage) {
-  // TODO: Call OpenAI here through src/services/bodyAnalysisAi.js.
+  // TODO: Implement OpenAI Vision analysis in src/services/bodyAnalysisAi.js.
   const prompt = buildOpenAIPrompt()
 
   void prompt
-  void frontImage
-  void sideImage
 
-  return createMockAnalysis()
+  return analyzeBodyImages(frontImage, sideImage)
 }
 
 export default async function handler(request, response) {
@@ -199,7 +217,17 @@ export default async function handler(request, response) {
   }
 
   try {
-    const result = await analyzeWithOpenAI(images.frontImage, images.sideImage)
+    let result
+
+    try {
+      result = await analyzeWithOpenAI(images.frontImage, images.sideImage)
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Not implemented') {
+        result = createMockAnalysis()
+      } else {
+        throw error
+      }
+    }
 
     return sendResponse(response, 200, result)
   } catch {

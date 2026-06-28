@@ -75,6 +75,10 @@ const bodyOverviewMarkers = [
   },
 ]
 
+function analyzeBodyWithAI() {
+  return mockBodyResult
+}
+
 function isStoredAnalysis(value) {
   return (
     value &&
@@ -192,6 +196,8 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   const [analysisHistory, setAnalysisHistory] = useState(() =>
     readStoredAnalyses(),
   )
+  const [analysisError, setAnalysisError] = useState('')
+  const [analysisStatus, setAnalysisStatus] = useState('')
   const [frontPhoto, setFrontPhoto] = useState(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [savedAnalysis, setSavedAnalysis] = useState(() => analysisHistory[0] ?? null)
@@ -308,21 +314,32 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
     }
 
     setIsAnalyzing(true)
+    setAnalysisError('')
+    setAnalysisStatus('AI analyserar bilderna...')
 
     window.setTimeout(() => {
-      const nextAnalysis = {
-        createdAt: new Date().toISOString(),
-        frontPhoto,
-        result: mockBodyResult,
-        sidePhoto,
-      }
-      const nextHistory = [nextAnalysis, ...analysisHistory]
+      try {
+        const nextAnalysis = {
+          createdAt: new Date().toISOString(),
+          frontPhoto,
+          result: analyzeBodyWithAI(),
+          sidePhoto,
+        }
+        const nextHistory = [nextAnalysis, ...analysisHistory]
 
-      writeStoredAnalyses(nextHistory)
-      setAnalysisHistory(nextHistory)
-      setSavedAnalysis(nextAnalysis)
-      onAnalysisHistoryChange(true)
-      setIsAnalyzing(false)
+        writeStoredAnalyses(nextHistory)
+        setAnalysisHistory(nextHistory)
+        setSavedAnalysis(nextAnalysis)
+        onAnalysisHistoryChange(true)
+        setAnalysisStatus('Analys klar')
+      } catch {
+        setAnalysisError(
+          'Analysen kunde inte genomföras just nu. Försök igen om en stund.',
+        )
+        setAnalysisStatus('')
+      } finally {
+        setIsAnalyzing(false)
+      }
     }, 2000)
   }
 
@@ -404,7 +421,13 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
         server i denna version.
       </p>
       {isAnalyzing && (
-        <p className="analysis-status">Analyserar kroppen...</p>
+        <p className="analysis-status">{analysisStatus}</p>
+      )}
+      {!isAnalyzing && analysisStatus && !analysisError && (
+        <p className="analysis-status">{analysisStatus}</p>
+      )}
+      {analysisError && (
+        <p className="analysis-status">{analysisError}</p>
       )}
       {!savedAnalysis && !isAnalyzing && (
         <div className="progress-photo-ai-comparison">

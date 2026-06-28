@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 const swedishMonthNumbers = {
   apr: 3,
   april: 3,
@@ -71,6 +73,27 @@ function getProgressPhotoTimelineLabel(index) {
   return ''
 }
 
+function getSameOccasionComparison(progressPhotoItems) {
+  const photosByDate = progressPhotoItems.reduce((groups, photo) => {
+    const currentGroup = groups[photo.createdAtLabel] || {}
+
+    if (photo.viewLabel === 'Framifrån') {
+      currentGroup.front = photo
+    }
+
+    if (photo.viewLabel === 'Från sidan') {
+      currentGroup.side = photo
+    }
+
+    return {
+      ...groups,
+      [photo.createdAtLabel]: currentGroup,
+    }
+  }, {})
+
+  return Object.values(photosByDate).find((group) => group.front && group.side)
+}
+
 function ProgressPhotos({
   afterPhotoId,
   beforeAfterPhotos,
@@ -87,6 +110,10 @@ function ProgressPhotos({
   progressPhotoNote,
   progressPhotoOptions,
 }) {
+  const [showSameOccasionComparison, setShowSameOccasionComparison] =
+    useState(false)
+  const sameOccasionComparison = getSameOccasionComparison(progressPhotoItems)
+
   return (
     <article className="panel photos-panel" id="framstegsbilder">
       <div className="panel-heading">
@@ -215,6 +242,31 @@ function ProgressPhotos({
               )
             })}
           </div>
+
+          {sameOccasionComparison && (
+            <div className="progress-photo-compare-preview">
+              <button
+                type="button"
+                onClick={() => setShowSameOccasionComparison(true)}
+              >
+                Jämför bilder
+              </button>
+              {showSameOccasionComparison && (
+                <div className="before-after">
+                  {[sameOccasionComparison.front, sameOccasionComparison.side].map(
+                    (photo) => (
+                      <figure key={photo.id}>
+                        <img src={photo.image} alt={photo.alt} />
+                        <figcaption>
+                          {photo.viewLabel} · {photo.createdAtLabel}
+                        </figcaption>
+                      </figure>
+                    ),
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           <details className="progress-photo-compare-preview">
             <summary>Manuell före/efter-visning</summary>

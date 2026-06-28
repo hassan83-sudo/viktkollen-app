@@ -134,6 +134,35 @@ function formatAnalysisDate(date) {
   }).format(new Date(date))
 }
 
+function formatShortDate(date) {
+  return new Intl.DateTimeFormat('sv-SE', {
+    day: 'numeric',
+    month: 'short',
+  }).format(new Date(date))
+}
+
+function getDaysSince(date) {
+  const createdAt = new Date(date).getTime()
+
+  if (Number.isNaN(createdAt)) {
+    return null
+  }
+
+  const difference = Date.now() - createdAt
+
+  return Math.max(0, Math.floor(difference / (24 * 60 * 60 * 1000)))
+}
+
+function getNextAnalysisDate(date) {
+  const createdAt = new Date(date).getTime()
+
+  if (Number.isNaN(createdAt)) {
+    return null
+  }
+
+  return new Date(createdAt + 7 * 24 * 60 * 60 * 1000)
+}
+
 function isAnalysisWithinDays(analysis, days) {
   const createdAt = new Date(analysis.createdAt).getTime()
 
@@ -159,6 +188,18 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   const canAnalyze = Boolean(frontPhoto && sidePhoto) && !isAnalyzing
   const analysisCount = analysisHistory.length
   const latestAnalysisDate = analysisHistory[0]?.createdAt
+  const nextStepText =
+    analysisCount === 0
+      ? 'Skapa din första analys för att börja följa utvecklingen.'
+      : analysisCount === 1
+        ? 'Lägg till en analys till för att kunna jämföra förändringar.'
+        : 'Du kan nu följa förändringar över tid.'
+  const daysSinceLatestAnalysis = latestAnalysisDate
+    ? getDaysSince(latestAnalysisDate)
+    : null
+  const nextAnalysisDate = latestAnalysisDate
+    ? getNextAnalysisDate(latestAnalysisDate)
+    : null
   const visibleAnalysisHistory =
     timelineFilter === 'all'
       ? analysisHistory
@@ -234,6 +275,15 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
         AI kommer att uppskatta kroppssammansättning och följa förändringar
         över tid.
       </p>
+      <div className="body-analysis-help">
+        <h3>Så får du bättre jämförelser</h3>
+        <ul>
+          <li>Använd samma plats.</li>
+          <li>Ha liknande ljus.</li>
+          <li>Stå på samma avstånd från kameran.</li>
+          <li>Använd liknande kläder.</li>
+        </ul>
+      </div>
       <div className="progress-photo-upload-grid">
         <label className="progress-photo-upload-card">
           <span className="progress-photo-icon" aria-hidden="true">
@@ -439,6 +489,34 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
           </p>
         )}
       </div>
+      <div className="body-analysis-stats">
+        <div>
+          <span>Totalt antal analyser</span>
+          <strong>{analysisCount > 0 ? analysisCount : '-'}</strong>
+        </div>
+        <div>
+          <span>Dagar sedan senaste</span>
+          <strong>
+            {daysSinceLatestAnalysis !== null
+              ? `${daysSinceLatestAnalysis} dagar`
+              : 'Ingen analys än'}
+          </strong>
+        </div>
+        <div>
+          <span>Nästa analys</span>
+          <strong>
+            {nextAnalysisDate
+              ? formatShortDate(nextAnalysisDate)
+              : 'Skapa första'}
+          </strong>
+        </div>
+      </div>
+      <p className="body-analysis-next-step">{nextStepText}</p>
+      {analysisCount === 0 && (
+        <p className="progress-photo-safety">
+          Skapa din första analys för att börja följa förändringar över tid.
+        </p>
+      )}
       {analysisHistory.length > 0 && (
         <>
           <div className="body-analysis-filter">

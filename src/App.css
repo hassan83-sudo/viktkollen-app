@@ -1219,6 +1219,67 @@ a:focus-visible {
   line-height: 1.5;
 }
 
+.body-analysis-help {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--soft-bg);
+}
+
+.body-analysis-help h3 {
+  margin: 0;
+}
+
+.body-analysis-help ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.body-analysis-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.body-analysis-stats div {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--soft-bg);
+}
+
+.body-analysis-stats span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.body-analysis-stats strong {
+  color: var(--text-h);
+  font-size: 16px;
+}
+
+.body-analysis-next-step {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--soft-bg);
+  color: var(--text-h);
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .body-analysis-filter .is-active {
   border-color: var(--accent);
   color: var(--text-h);

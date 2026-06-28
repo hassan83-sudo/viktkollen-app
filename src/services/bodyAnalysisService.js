@@ -1,4 +1,5 @@
 const BODY_ANALYSIS_ENDPOINT = '/api/body-analysis'
+const USE_MOCK_BODY_ANALYSIS = true
 
 const mockBodyResult = {
   bodyFat: '~24 %',
@@ -34,6 +35,12 @@ function handleBodyAnalysisError(error) {
   throw error
 }
 
+function callMockBodyAnalysis(payload) {
+  void payload
+
+  return mockBodyResult
+}
+
 function callBodyAnalysisApi(payload) {
   try {
     // TODO: Use fetch(BODY_ANALYSIS_ENDPOINT, ...) when the backend is connected.
@@ -57,11 +64,12 @@ export function analyzeBodyWithAI({ frontPhoto, sidePhoto }) {
 
   const payload = buildBodyAnalysisPayload(frontPhoto, sidePhoto)
 
-  // TODO: Replace this mock with a backend API request for body analysis.
   // TODO: Send the selected front-facing image as one parameter.
   // TODO: Send the selected side-facing image as one parameter.
   // TODO: Return the AI result from the backend instead of the mock result.
-  const response = callBodyAnalysisApi(payload)
+  const response = USE_MOCK_BODY_ANALYSIS
+    ? callMockBodyAnalysis(payload)
+    : callBodyAnalysisApi(payload)
 
   return normalizeBodyAnalysisResponse(response)
 }

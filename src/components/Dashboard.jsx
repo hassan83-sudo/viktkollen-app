@@ -6,6 +6,7 @@ function Dashboard({
   onClaimDailyReward,
   onLogout,
   streak,
+  weights = [],
   username,
   xp,
 }) {
@@ -20,6 +21,12 @@ function Dashboard({
     completedFoods,
     foodTotal: foods.length,
     missingFood,
+  })
+  const quickStatus = getQuickStatus({
+    checkIn,
+    completedFoods,
+    foodTotal: foods.length,
+    weights,
   })
 
   return (
@@ -43,6 +50,7 @@ function Dashboard({
             <span>Dagens fokus</span>
             <strong>{dailyFocus.title}</strong>
             <small>{dailyFocus.description}</small>
+            <small>{quickStatus}</small>
           </article>
         )}
         <article className="stat-card primary-stat">
@@ -69,6 +77,46 @@ function Dashboard({
       </div>
     </header>
   )
+}
+
+function getQuickStatus({ checkIn, completedFoods, foodTotal, weights }) {
+  const weightTrend = getWeightTrendLabel(weights)
+  const foodStatus = foodTotal > 0
+    ? `${completedFoods}/${foodTotal} vanor`
+    : 'inga matvanor ännu'
+  const steps = Number(checkIn?.steps)
+  const activityStatus = checkIn?.workout
+    ? 'träning klar'
+    : Number.isFinite(steps)
+      ? `${steps.toLocaleString('sv-SE')} steg`
+      : 'aktivitet saknas'
+
+  return `Snabb status: ${weightTrend} · ${foodStatus} · ${activityStatus}`
+}
+
+function getWeightTrendLabel(weights) {
+  if (!Array.isArray(weights) || weights.length < 2) {
+    return 'vikttrend saknas'
+  }
+
+  const firstWeight = Number(weights[0]?.value)
+  const latestWeight = Number(weights.at(-1)?.value)
+
+  if (!Number.isFinite(firstWeight) || !Number.isFinite(latestWeight)) {
+    return 'vikttrend saknas'
+  }
+
+  const change = Number((latestWeight - firstWeight).toFixed(1))
+
+  if (change < 0) {
+    return `vikttrend ner ${Math.abs(change).toLocaleString('sv-SE')} kg`
+  }
+
+  if (change > 0) {
+    return `vikttrend upp ${change.toLocaleString('sv-SE')} kg`
+  }
+
+  return 'vikttrend stabil'
 }
 
 function getDailyFocus({ checkIn, completedFoods, foodTotal, missingFood }) {

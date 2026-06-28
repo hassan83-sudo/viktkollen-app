@@ -12,13 +12,13 @@ function PhotoAnalysis({
           <p className="eyebrow">Matfoto</p>
           <h3>Matfotoanalys V2</h3>
           <p>
-            Ladda upp eller ta en bild. Analysen försöker hitta trolig
-            proteinkälla, grönsaker och kolhydratkälla utan exakta
+            Ta eller välj en tydlig bild av måltiden. Analysen ger en trygg
+            uppskattning av innehållet, inte exakta kalorier eller
             näringsvärden.
           </p>
         </div>
         <label className="photo-input">
-          <span>Välj matfoto</span>
+          <span>Välj eller ta bild</span>
           <input
             type="file"
             accept="image/*"
@@ -38,15 +38,15 @@ function PhotoAnalysis({
           disabled={!foodPhotoPreview}
           onClick={onAnalyzePhotoMeal}
         >
-          Analysera måltid
+          Uppskatta måltiden
         </button>
         {photoAnalysisStatus && (
           <p className="analysis-status">{photoAnalysisStatus}</p>
         )}
         <p className="estimate-note">
-          Endast försiktig bildtolkning från AI eller lokal fallback. Ingen
-          medicinsk rådgivning, exakt kaloriberäkning eller exakt
-          näringsdeklaration.
+          Se resultatet som en hjälpsam uppskattning. Bildanalys kan missa
+          mängder, ingredienser och tillagning, så använd svaret som stöd och
+          inte som exakt näringsdeklaration eller medicinsk rådgivning.
         </p>
       </div>
 
@@ -56,48 +56,48 @@ function PhotoAnalysis({
             <li key={entry.id}>
               <img src={entry.image} alt="Analyserad måltid" />
               <div className="photo-meal-result">
-                <strong>Matfotoanalys V2</strong>
+                <strong>Uppskattad måltidsanalys</strong>
                 <p>{entry.summary}</p>
 
                 <div className="photo-meal-detected">
                   <div>
-                    <span>Proteinkälla</span>
+                    <span>Trolig proteinkälla</span>
                     <strong>{entry.likelyProtein}</strong>
                   </div>
                   <div>
-                    <span>Grönsaker</span>
+                    <span>Troliga grönsaker</span>
                     <strong>{entry.likelyVegetables}</strong>
                   </div>
                   <div>
-                    <span>Kolhydratkälla</span>
+                    <span>Trolig kolhydratkälla</span>
                     <strong>{entry.likelyCarbs}</strong>
                   </div>
                 </div>
 
                 <div className="photo-meal-feedback">
                   <p>
-                    <strong>Positivt:</strong> {entry.positiveFeedback}
+                    <strong>Det ser bra ut:</strong> {entry.positiveFeedback}
                   </p>
                   <p>
-                    <strong>Nästa steg:</strong> {entry.improvementSuggestion}
+                    <strong>Om du vill förbättra:</strong> {entry.improvementSuggestion}
                   </p>
                 </div>
 
                 <dl>
                   <div>
-                    <dt>Energi, grovt</dt>
+                    <dt>Energi, uppskattat</dt>
                     <dd>{entry.analysis.calories} kcal</dd>
                   </div>
                   <div>
-                    <dt>Protein, grovt</dt>
+                    <dt>Protein, uppskattat</dt>
                     <dd>{entry.analysis.protein} g</dd>
                   </div>
                   <div>
-                    <dt>Kolhydrater, grovt</dt>
+                    <dt>Kolhydrater, uppskattat</dt>
                     <dd>{entry.analysis.carbs} g</dd>
                   </div>
                   <div>
-                    <dt>Säkerhet</dt>
+                    <dt>Tillförlitlighet</dt>
                     <dd>{entry.analysis.confidence}</dd>
                   </div>
                 </dl>

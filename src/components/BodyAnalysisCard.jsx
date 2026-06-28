@@ -20,6 +20,43 @@ const mockRecommendations = [
   'Fortsätt med nuvarande tränings- och kostrutiner.',
   'Fokusera på jämna veckovisa förändringar.',
 ]
+const mockReliabilityTips = [
+  'Samma ljus ger bättre jämförelser.',
+  'Samma avstånd förbättrar analysen.',
+  'Samma kläder eller liknande kläder ger bättre resultat.',
+]
+const bodyOverviewMarkers = [
+  {
+    label: 'Axlar',
+    text: 'Följs över tid.',
+    x: 50,
+    y: 25,
+  },
+  {
+    label: 'Armar',
+    text: 'Ingen tydlig förändring ännu.',
+    x: 25,
+    y: 42,
+  },
+  {
+    label: 'Midja',
+    text: 'Möjlig positiv utveckling.',
+    x: 50,
+    y: 47,
+  },
+  {
+    label: 'Höfter',
+    text: 'Följs över tid.',
+    x: 50,
+    y: 61,
+  },
+  {
+    label: 'Ben',
+    text: 'Ingen tydlig förändring ännu.',
+    x: 56,
+    y: 80,
+  },
+]
 
 function isStoredAnalysis(value) {
   return (
@@ -73,6 +110,15 @@ function writeStoredAnalyses(analyses) {
   }
 }
 
+function clearStoredAnalyses() {
+  try {
+    window.localStorage.removeItem(storageKey)
+    window.localStorage.removeItem(legacyStorageKey)
+  } catch {
+    // Keep the UI usable even if the browser blocks localStorage.
+  }
+}
+
 function formatAnalysisDate(date) {
   return new Intl.DateTimeFormat('sv-SE', {
     day: 'numeric',
@@ -84,6 +130,7 @@ function formatAnalysisDate(date) {
 }
 
 function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
+  const [activeBodyMarker, setActiveBodyMarker] = useState(bodyOverviewMarkers[0])
   const [analysisHistory, setAnalysisHistory] = useState(() =>
     readStoredAnalyses(),
   )
@@ -140,6 +187,13 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
       onAnalysisHistoryChange(true)
       setIsAnalyzing(false)
     }, 2000)
+  }
+
+  function handleClearHistory() {
+    clearStoredAnalyses()
+    setAnalysisHistory([])
+    setSavedAnalysis(null)
+    onAnalysisHistoryChange(false)
   }
 
   return (
@@ -245,57 +299,133 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
               <dd>{savedAnalysis.result.waistTrend}</dd>
             </div>
           </dl>
+          <p className="report-heading">Visuell kroppsöversikt</p>
+          <div
+            className="progress-photo-ai-images"
+            style={{ position: 'relative' }}
+          >
+            <figure>
+              <svg
+                aria-label="Enkel kroppsöversikt"
+                role="img"
+                viewBox="0 0 120 220"
+              >
+                <circle cx="60" cy="24" fill="currentColor" r="14" />
+                <path
+                  d="M43 46 Q60 38 77 46 L88 108 Q75 122 72 151 L67 205 H53 L48 151 Q45 122 32 108 Z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="8"
+                />
+                <path
+                  d="M42 62 L18 118 M78 62 L102 118 M50 148 L40 205 M70 148 L80 205"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeWidth="8"
+                />
+              </svg>
+              <figcaption>{activeBodyMarker.text}</figcaption>
+            </figure>
+            {bodyOverviewMarkers.map((marker) => (
+              <button
+                className="progress-photo-view-badge"
+                key={marker.label}
+                style={{
+                  left: `${marker.x}%`,
+                  position: 'absolute',
+                  top: `${marker.y}%`,
+                  transform: 'translate(-50%, -50%)',
+                }}
+                title={marker.text}
+                type="button"
+                onClick={() => setActiveBodyMarker(marker)}
+                onFocus={() => setActiveBodyMarker(marker)}
+              >
+                {marker.label}
+              </button>
+            ))}
+          </div>
           <p className="report-heading">AI:s rekommendationer</p>
           <ul>
             {mockRecommendations.map((recommendation) => (
               <li key={recommendation}>{recommendation}</li>
             ))}
           </ul>
-        </div>
-      )}
-      <div className="progress-photo-ai-comparison">
-        <div className="progress-photo-ai-heading">
-          <div>
-            <p className="eyebrow">Mock-jämförelse</p>
-            <h3>Förändring sedan förra analysen</h3>
+          <p className="report-heading">Analysens tillförlitlighet</p>
+          <div className="progress-photo-ai-heading">
+            <div>
+              <p className="eyebrow">Tillförlitlighet</p>
+              <h3>Medel</h3>
+            </div>
+            <span>Mock-data</span>
           </div>
-          <span>Ej AI ännu</span>
-        </div>
-        {analysisHistory.length >= 2 ? (
           <ul>
-            {mockComparisonInsights.map((insight) => (
-              <li key={insight}>{insight}</li>
+            {mockReliabilityTips.map((tip) => (
+              <li key={tip}>{tip}</li>
             ))}
           </ul>
-        ) : (
-          <p>Minst två analyser behövs för att kunna jämföra förändringar.</p>
-        )}
-      </div>
-      {analysisHistory.length > 0 && (
-        <div className="photo-timeline">
-          {analysisHistory.map((analysis) => (
-            <article key={analysis.createdAt}>
-              <img
-                src={analysis.frontPhoto.preview}
-                alt="Miniatyr framifrån"
-              />
-              <img
-                src={analysis.sidePhoto.preview}
-                alt="Miniatyr från sidan"
-              />
-              <div>
-                <strong>{formatAnalysisDate(analysis.createdAt)}</strong>
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={() => setSavedAnalysis(analysis)}
-                >
-                  Visa analys
-                </button>
-              </div>
-            </article>
-          ))}
+          <p className="progress-photo-safety">
+            Detta är en uppskattning och inte en medicinsk bedömning.
+          </p>
         </div>
+      )}
+      {analysisHistory.length > 0 && (
+        <div className="progress-photo-ai-comparison">
+          <div className="progress-photo-ai-heading">
+            <div>
+              <p className="eyebrow">Mock-jämförelse</p>
+              <h3>Förändring sedan förra analysen</h3>
+            </div>
+            <span>Ej AI ännu</span>
+          </div>
+          {analysisHistory.length >= 2 ? (
+            <ul>
+              {mockComparisonInsights.map((insight) => (
+                <li key={insight}>{insight}</li>
+              ))}
+            </ul>
+          ) : (
+            <p>Minst två analyser behövs för att kunna jämföra förändringar.</p>
+          )}
+        </div>
+      )}
+      {analysisHistory.length > 0 && (
+        <>
+          <div className="photo-timeline">
+            {analysisHistory.map((analysis) => (
+              <article key={analysis.createdAt}>
+                <img
+                  src={analysis.frontPhoto.preview}
+                  alt="Miniatyr framifrån"
+                />
+                <img
+                  src={analysis.sidePhoto.preview}
+                  alt="Miniatyr från sidan"
+                />
+                <div>
+                  <strong>{formatAnalysisDate(analysis.createdAt)}</strong>
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={() => setSavedAnalysis(analysis)}
+                  >
+                    Visa analys
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={handleClearHistory}
+          >
+            Rensa analys-historik
+          </button>
+        </>
       )}
     </div>
   )

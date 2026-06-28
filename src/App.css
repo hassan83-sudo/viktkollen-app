@@ -1242,6 +1242,22 @@ a:focus-visible {
   font-size: 14px;
 }
 
+.body-analysis-goals {
+  list-style: none;
+  padding-left: 0;
+}
+
+.body-analysis-goals li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.body-analysis-goals span {
+  color: var(--accent);
+  font-weight: 900;
+}
+
 .body-analysis-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));

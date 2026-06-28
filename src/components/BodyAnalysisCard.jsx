@@ -20,6 +20,12 @@ const mockRecommendations = [
   'Fortsätt med nuvarande tränings- och kostrutiner.',
   'Fokusera på jämna veckovisa förändringar.',
 ]
+const mockNextAnalysisGoals = [
+  'Ta nästa bild inom 7 dagar.',
+  'Behåll samma fotograferingsvinkel.',
+  'Fortsätt registrera vikten regelbundet.',
+  'Fortsätt med dina nuvarande kost- och träningsvanor.',
+]
 const mockReliabilityTips = [
   'Samma ljus ger bättre jämförelser.',
   'Samma avstånd förbättrar analysen.',
@@ -329,8 +335,27 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
       <button type="button" onClick={handleAnalyzeBody} disabled={!canAnalyze}>
         Analysera kroppen
       </button>
+      <p className="progress-photo-safety">
+        Bilderna sparas bara lokalt i din webbläsare och skickas inte till någon
+        server i denna version.
+      </p>
       {isAnalyzing && (
         <p className="analysis-status">Analyserar kroppen...</p>
+      )}
+      {!savedAnalysis && !isAnalyzing && (
+        <div className="progress-photo-ai-comparison">
+          <div className="progress-photo-ai-heading">
+            <div>
+              <p className="eyebrow">Resultat</p>
+              <h3>Ingen analys ännu</h3>
+            </div>
+            <span>Väntar</span>
+          </div>
+          <p>
+            Resultatet visas här efter att du valt två bilder och klickat på
+            Analysera kroppen.
+          </p>
+        </div>
       )}
       {savedAnalysis && (
         <div className="progress-photo-ai-comparison">
@@ -428,6 +453,15 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
           <ul>
             {mockRecommendations.map((recommendation) => (
               <li key={recommendation}>{recommendation}</li>
+            ))}
+          </ul>
+          <p className="report-heading">Mål för nästa analys</p>
+          <ul className="body-analysis-goals">
+            {mockNextAnalysisGoals.map((goal) => (
+              <li key={goal}>
+                <span aria-hidden="true">✓</span>
+                {goal}
+              </li>
             ))}
           </ul>
           <p className="report-heading">Analysens tillförlitlighet</p>

@@ -1,3 +1,5 @@
+import ReminderMasterControls from './ReminderMasterControls.jsx'
+
 function ReminderSettings({
   onReminderSettingChange,
   onRequestNotificationPermission,
@@ -23,25 +25,11 @@ function ReminderSettings({
         Små påminnelser kan göra det lättare att skapa hållbara vanor.
       </p>
 
-      <div className="reminder-master">
-        <label className="toggle-row">
-          <input
-            type="checkbox"
-            checked={reminderSettings.enabled}
-            onChange={(event) =>
-              onReminderSettingChange('enabled', event.target.checked)
-            }
-          />
-          <span>Aktivera påminnelser</span>
-        </label>
-        <button
-          className="secondary-button"
-          type="button"
-          onClick={onRequestNotificationPermission}
-        >
-          Tillåt notiser
-        </button>
-      </div>
+      <ReminderMasterControls
+        onReminderSettingChange={onReminderSettingChange}
+        onRequestNotificationPermission={onRequestNotificationPermission}
+        remindersEnabled={reminderSettings.enabled}
+      />
       {reminderStatus && <p className="analysis-status">{reminderStatus}</p>}
 
       <div className="reminder-list">

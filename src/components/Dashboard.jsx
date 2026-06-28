@@ -1,3 +1,6 @@
+import DailyFocusCard from './DailyFocusCard.jsx'
+import WeeklyGoalsCard from './WeeklyGoalsCard.jsx'
+
 function Dashboard({
   checkIn,
   foods = [],
@@ -52,21 +55,9 @@ function Dashboard({
 
       <div className="stats-grid" aria-label="Din progression">
         {dailyFocus && (
-          <article className="stat-card primary-stat">
-            <span>Dagens fokus</span>
-            <strong>{dailyFocus.title}</strong>
-            <small>{dailyFocus.description}</small>
-            <small>{quickStatus}</small>
-          </article>
+          <DailyFocusCard dailyFocus={dailyFocus} quickStatus={quickStatus} />
         )}
-        <article className="stat-card">
-          <span>Veckans mål</span>
-          {weeklyGoals.map((goal) => (
-            <small key={goal.text}>
-              {goal.done ? '✓' : '☐'} {goal.text}
-            </small>
-          ))}
-        </article>
+        <WeeklyGoalsCard weeklyGoals={weeklyGoals} />
         <article className="stat-card primary-stat">
           <span>XP</span>
           <strong>{xp}</strong>

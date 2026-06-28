@@ -1,3 +1,5 @@
+import WeightSummary from './WeightSummary.jsx'
+
 function WeightChart({
   averageWeeklyChangeLabel,
   chartHeight,
@@ -14,24 +16,12 @@ function WeightChart({
 }) {
   return (
     <div className="chart-card">
-      <div className="chart-toolbar">
-        <div>
-          <span>Genomsnitt per vecka</span>
-          <strong>{averageWeeklyChangeLabel}</strong>
-        </div>
-        <div className="segmented-control" aria-label="Välj tidsperiod">
-          {chartRangeOptions.map((option) => (
-            <button
-              className={chartRange === option.value ? 'active' : ''}
-              type="button"
-              key={option.value}
-              onClick={() => onChartRangeChange(option.value)}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <WeightSummary
+        averageWeeklyChangeLabel={averageWeeklyChangeLabel}
+        chartRange={chartRange}
+        chartRangeOptions={chartRangeOptions}
+        onChartRangeChange={onChartRangeChange}
+      />
 
       <div className="weight-chart" aria-label="Viktgraf med trendlinje">
         <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img">

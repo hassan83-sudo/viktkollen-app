@@ -1,3 +1,4 @@
+import MealList from './MealList.jsx'
 import PhotoAnalysis from './PhotoAnalysis.jsx'
 
 function MealLogger({
@@ -48,14 +49,7 @@ function MealLogger({
         photoAnalysisStatus={photoAnalysisStatus}
       />
 
-      <ul className="meal-list">
-        {meals.map((meal) => (
-          <li key={meal.id}>
-            <strong>{meal.type}</strong>
-            <span>{meal.text}</span>
-          </li>
-        ))}
-      </ul>
+      <MealList meals={meals} />
     </article>
   )
 }

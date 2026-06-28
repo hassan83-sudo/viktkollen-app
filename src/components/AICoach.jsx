@@ -1,4 +1,9 @@
+import CoachSuggestions from './CoachSuggestions.jsx'
+
 function AICoach({ coachMessage, coachStatus }) {
+  const resolvedCoachStatus =
+    coachStatus || 'AI-coachen använder dagens profil, vanor och loggar.'
+
   return (
     <article className="panel coach-panel" id="coach">
       <div className="panel-heading">
@@ -7,10 +12,10 @@ function AICoach({ coachMessage, coachStatus }) {
           <h2>Dagens återkoppling</h2>
         </div>
       </div>
-      <p className="coach-copy">{coachMessage}</p>
-      <div className="coach-note">
-        {coachStatus || 'AI-coachen använder dagens profil, vanor och loggar.'}
-      </div>
+      <CoachSuggestions
+        coachMessage={coachMessage}
+        coachStatus={resolvedCoachStatus}
+      />
     </article>
   )
 }

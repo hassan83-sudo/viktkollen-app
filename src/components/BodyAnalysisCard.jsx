@@ -1,13 +1,9 @@
 import { useState } from 'react'
 
+import { analyzeBodyWithAI } from '../services/bodyAnalysisService'
+
 const legacyStorageKey = 'viktkollen.bodyAnalysis.latest'
 const storageKey = 'viktkollen.bodyAnalysis.history'
-const mockBodyResult = {
-  bodyFat: '~24 %',
-  muscleMass: 'Normal',
-  posture: 'Bra',
-  waistTrend: 'Följs över tid',
-}
 const mockComparisonInsights = [
   'Midjan ser något smalare ut.',
   'Hållningen verkar förbättrad.',
@@ -74,10 +70,6 @@ const bodyOverviewMarkers = [
     y: 80,
   },
 ]
-
-function analyzeBodyWithAI() {
-  return mockBodyResult
-}
 
 function isStoredAnalysis(value) {
   return (
@@ -322,7 +314,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
         const nextAnalysis = {
           createdAt: new Date().toISOString(),
           frontPhoto,
-          result: analyzeBodyWithAI(),
+          result: analyzeBodyWithAI({ frontPhoto, sidePhoto }),
           sidePhoto,
         }
         const nextHistory = [nextAnalysis, ...analysisHistory]
@@ -332,9 +324,11 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
         setSavedAnalysis(nextAnalysis)
         onAnalysisHistoryChange(true)
         setAnalysisStatus('Analys klar')
-      } catch {
+      } catch (error) {
         setAnalysisError(
-          'Analysen kunde inte genomföras just nu. Försök igen om en stund.',
+          error instanceof Error
+            ? error.message
+            : 'Analysen kunde inte genomföras just nu. Försök igen om en stund.',
         )
         setAnalysisStatus('')
       } finally {

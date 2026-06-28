@@ -26,6 +26,12 @@ const mockNextAnalysisGoals = [
   'Fortsätt registrera vikten regelbundet.',
   'Fortsätt med dina nuvarande kost- och träningsvanor.',
 ]
+const mockWeeklyFocus = [
+  'Ta en ny analys denna vecka.',
+  'Försök fotografera vid samma tid på dagen.',
+  'Registrera vikten samtidigt som du tar bilder.',
+  'Fokusera på jämna förändringar, inte snabba resultat.',
+]
 const mockReliabilityTips = [
   'Samma ljus ger bättre jämförelser.',
   'Samma avstånd förbättrar analysen.',
@@ -200,12 +206,70 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
       : analysisCount === 1
         ? 'Lägg till en analys till för att kunna jämföra förändringar.'
         : 'Du kan nu följa förändringar över tid.'
+  const nextRecommendedSteps =
+    analysisCount === 0
+      ? [
+          'Skapa din första analys.',
+          'Välj både framifrån- och sidobild.',
+          'Använd samma plats och ljus från start.',
+        ]
+      : analysisCount === 1
+        ? [
+            'Skapa en till analys för jämförelse.',
+            'Ta nästa bilder med samma vinkel.',
+            'Spara nästa analys inom 7 dagar.',
+          ]
+        : [
+            'Fortsätt följa utvecklingen veckovis.',
+            'Jämför bilder med samma ljus och avstånd.',
+            'Håll rutinen enkel och konsekvent.',
+          ]
+  const weeklyFocus = mockWeeklyFocus[analysisCount % mockWeeklyFocus.length]
   const daysSinceLatestAnalysis = latestAnalysisDate
     ? getDaysSince(latestAnalysisDate)
     : null
   const nextAnalysisDate = latestAnalysisDate
     ? getNextAnalysisDate(latestAnalysisDate)
     : null
+  const progressIndicators = [
+    {
+      label: 'Vikttrend',
+      status: 'neutral',
+      value: 'Stabil trend',
+    },
+    {
+      label: 'Analysfrekvens',
+      status:
+        analysisCount === 0
+          ? 'neutral'
+          : analysisCount === 1 || daysSinceLatestAnalysis > 14
+            ? 'warning'
+            : 'positive',
+      value:
+        analysisCount === 0
+          ? 'Ingen data än'
+          : analysisCount === 1
+            ? 'Behöver en till'
+            : 'Bra rytm',
+    },
+    {
+      label: 'Fotokonsekvens',
+      status: analysisCount >= 2 ? 'positive' : 'warning',
+      value: analysisCount >= 2 ? 'Följs över tid' : 'Bygg rutin',
+    },
+    {
+      label: 'Nästa rekommenderade analys',
+      status:
+        daysSinceLatestAnalysis === null
+          ? 'neutral'
+          : daysSinceLatestAnalysis > 7
+            ? 'warning'
+            : 'positive',
+      value: nextAnalysisDate
+        ? formatShortDate(nextAnalysisDate)
+        : 'Efter första analys',
+    },
+  ]
   const visibleAnalysisHistory =
     timelineFilter === 'all'
       ? analysisHistory
@@ -546,6 +610,39 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
         </div>
       </div>
       <p className="body-analysis-next-step">{nextStepText}</p>
+      <div className="body-analysis-weekly-focus">
+        <p className="eyebrow">Veckans AI-fokus</p>
+        <h3>{weeklyFocus}</h3>
+      </div>
+      <div className="body-analysis-recommended-steps">
+        <div>
+          <p className="eyebrow">Nästa rekommenderade steg</p>
+          <h3>Fortsätt framåt</h3>
+        </div>
+        <ul>
+          {nextRecommendedSteps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ul>
+      </div>
+      <div className="body-analysis-progress">
+        <div>
+          <p className="eyebrow">Utveckling över tid</p>
+          <h3>Översikt</h3>
+        </div>
+        <div className="body-analysis-progress-grid">
+          {progressIndicators.map((indicator) => (
+            <div key={indicator.label}>
+              <span
+                className={`body-analysis-status-dot is-${indicator.status}`}
+                aria-hidden="true"
+              />
+              <small>{indicator.label}</small>
+              <strong>{indicator.value}</strong>
+            </div>
+          ))}
+        </div>
+      </div>
       {analysisCount === 0 && (
         <p className="progress-photo-safety">
           Skapa din första analys för att börja följa förändringar över tid.

@@ -28,6 +28,12 @@ function Dashboard({
     foodTotal: foods.length,
     weights,
   })
+  const weeklyGoals = getWeeklyGoals({
+    checkIn,
+    completedFoods,
+    foodTotal: foods.length,
+    weights,
+  })
 
   return (
     <header className="dashboard">
@@ -53,6 +59,14 @@ function Dashboard({
             <small>{quickStatus}</small>
           </article>
         )}
+        <article className="stat-card">
+          <span>Veckans mål</span>
+          {weeklyGoals.map((goal) => (
+            <small key={goal.text}>
+              {goal.done ? '✓' : '☐'} {goal.text}
+            </small>
+          ))}
+        </article>
         <article className="stat-card primary-stat">
           <span>XP</span>
           <strong>{xp}</strong>
@@ -77,6 +91,28 @@ function Dashboard({
       </div>
     </header>
   )
+}
+
+function getWeeklyGoals({ checkIn, completedFoods, foodTotal, weights }) {
+  const steps = Number(checkIn?.steps)
+  const hasEnoughWeights = Array.isArray(weights) && weights.length >= 2
+  const hasStepGoal = Number.isFinite(steps) && steps >= 8000
+  const hasFoodGoal = foodTotal > 0 && completedFoods === foodTotal
+
+  return [
+    {
+      done: hasEnoughWeights,
+      text: 'Registrera vikten minst 2 gånger.',
+    },
+    {
+      done: hasStepGoal,
+      text: 'Nå 8 000 steg tre dagar.',
+    },
+    {
+      done: hasFoodGoal,
+      text: 'Klara matchecklistan 5 dagar.',
+    },
+  ]
 }
 
 function getQuickStatus({ checkIn, completedFoods, foodTotal, weights }) {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import AICoach from './components/AICoach.jsx'
+import BarcodeScanner from './components/BarcodeScanner.jsx'
 import ChatPanel from './components/ChatPanel.jsx'
 import CheckIn from './components/CheckIn.jsx'
 import MealLogger from './components/MealLogger.jsx'
@@ -2436,78 +2437,17 @@ function App() {
           photoAnalysisStatus={photoAnalysisStatus}
         />
 
-        <article className="panel scanner-panel" id="streckkod">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Streckkod</p>
-              <h2>Skanna produkt</h2>
-            </div>
-          </div>
-
-          <div className="scanner-tool">
-            <video
-              className="barcode-video"
-              ref={barcodeVideoRef}
-              muted
-              playsInline
-            />
-            <div className="scanner-actions">
-              <button type="button" onClick={startBarcodeScanner}>
-                Starta kamera
-              </button>
-              <button
-                className="secondary-button"
-                type="button"
-                onClick={stopBarcodeScanner}
-                disabled={!barcodeScannerActive}
-              >
-                Stoppa
-              </button>
-            </div>
-            {barcodeStatus && <p className="analysis-status">{barcodeStatus}</p>}
-            <form className="inline-form" onSubmit={submitManualBarcode}>
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="Skriv streckkod manuellt"
-                value={barcodeInput}
-                onChange={(event) => setBarcodeInput(event.target.value)}
-              />
-              <button type="submit">Spara</button>
-            </form>
-          </div>
-
-          {scannedProducts.length > 0 && (
-            <ul className="product-list">
-              {scannedProducts.map((product) => (
-                <li key={`${product.barcode}-${product.id}`}>
-                  <div>
-                    <strong>{product.name}</strong>
-                    <span>{product.barcode}</span>
-                  </div>
-                  <dl>
-                    <div>
-                      <dt>Kalorier</dt>
-                      <dd>{product.calories} kcal</dd>
-                    </div>
-                    <div>
-                      <dt>Protein</dt>
-                      <dd>{product.protein} g</dd>
-                    </div>
-                    <div>
-                      <dt>Kolhydrater</dt>
-                      <dd>{product.carbs} g</dd>
-                    </div>
-                    <div>
-                      <dt>Fett</dt>
-                      <dd>{product.fat} g</dd>
-                    </div>
-                  </dl>
-                </li>
-              ))}
-            </ul>
-          )}
-        </article>
+        <BarcodeScanner
+          barcodeInput={barcodeInput}
+          barcodeScannerActive={barcodeScannerActive}
+          barcodeStatus={barcodeStatus}
+          barcodeVideoRef={barcodeVideoRef}
+          onBarcodeInputChange={setBarcodeInput}
+          onStartBarcodeScanner={startBarcodeScanner}
+          onStopBarcodeScanner={stopBarcodeScanner}
+          onSubmitManualBarcode={submitManualBarcode}
+          scannedProducts={scannedProducts}
+        />
 
         <ProgressPhotos
           afterPhotoId={afterPhoto ? String(afterPhoto.id) : ''}

@@ -25,6 +25,11 @@ const mockReliabilityTips = [
   'Samma avstånd förbättrar analysen.',
   'Samma kläder eller liknande kläder ger bättre resultat.',
 ]
+const timelineFilters = [
+  { label: 'Alla', value: 'all' },
+  { label: 'Senaste 30 dagarna', value: '30' },
+  { label: 'Senaste 90 dagarna', value: '90' },
+]
 const bodyOverviewMarkers = [
   {
     label: 'Axlar',
@@ -129,6 +134,18 @@ function formatAnalysisDate(date) {
   }).format(new Date(date))
 }
 
+function isAnalysisWithinDays(analysis, days) {
+  const createdAt = new Date(analysis.createdAt).getTime()
+
+  if (Number.isNaN(createdAt)) {
+    return false
+  }
+
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
+
+  return createdAt >= cutoff
+}
+
 function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   const [activeBodyMarker, setActiveBodyMarker] = useState(bodyOverviewMarkers[0])
   const [analysisHistory, setAnalysisHistory] = useState(() =>
@@ -138,7 +155,16 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [savedAnalysis, setSavedAnalysis] = useState(() => analysisHistory[0] ?? null)
   const [sidePhoto, setSidePhoto] = useState(null)
+  const [timelineFilter, setTimelineFilter] = useState('all')
   const canAnalyze = Boolean(frontPhoto && sidePhoto) && !isAnalyzing
+  const analysisCount = analysisHistory.length
+  const latestAnalysisDate = analysisHistory[0]?.createdAt
+  const visibleAnalysisHistory =
+    timelineFilter === 'all'
+      ? analysisHistory
+      : analysisHistory.filter((analysis) =>
+          isAnalysisWithinDays(analysis, Number(timelineFilter)),
+        )
 
   function handlePhotoChange(event, view) {
     const file = event.target.files?.[0]
@@ -392,31 +418,84 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
           )}
         </div>
       )}
+      <div className="body-analysis-summary">
+        <div>
+          <p className="eyebrow">Analystidslinje</p>
+          <h3>
+            {analysisCount > 0
+              ? `${analysisCount} sparade analyser`
+              : 'Ingen analys sparad ännu'}
+          </h3>
+        </div>
+        {latestAnalysisDate ? (
+          <p>
+            Senaste analysen sparades {formatAnalysisDate(latestAnalysisDate)}.
+            Jämförelser blir bättre när bilder tas regelbundet.
+          </p>
+        ) : (
+          <p>
+            När du sparar din första analys visas den här tillsammans med
+            historik och jämförelser över tid.
+          </p>
+        )}
+      </div>
       {analysisHistory.length > 0 && (
         <>
-          <div className="photo-timeline">
-            {analysisHistory.map((analysis) => (
-              <article key={analysis.createdAt}>
-                <img
-                  src={analysis.frontPhoto.preview}
-                  alt="Miniatyr framifrån"
-                />
-                <img
-                  src={analysis.sidePhoto.preview}
-                  alt="Miniatyr från sidan"
-                />
-                <div>
-                  <strong>{formatAnalysisDate(analysis.createdAt)}</strong>
-                  <button
-                    className="secondary-button"
-                    type="button"
-                    onClick={() => setSavedAnalysis(analysis)}
-                  >
-                    Visa analys
-                  </button>
-                </div>
-              </article>
+          <div className="body-analysis-filter">
+            {timelineFilters.map((filter) => (
+              <button
+                className={
+                  timelineFilter === filter.value
+                    ? 'secondary-button is-active'
+                    : 'secondary-button'
+                }
+                key={filter.value}
+                type="button"
+                onClick={() => setTimelineFilter(filter.value)}
+              >
+                {filter.label}
+              </button>
             ))}
+          </div>
+          <div className="body-analysis-timeline">
+            {visibleAnalysisHistory.length > 0 ? (
+              visibleAnalysisHistory.map((analysis) => (
+                <article key={analysis.createdAt}>
+                  <span className="body-analysis-timeline-dot" />
+                  <div className="body-analysis-timeline-content">
+                    <div className="body-analysis-timeline-heading">
+                      <strong>{formatAnalysisDate(analysis.createdAt)}</strong>
+                      {analysis.createdAt === analysisHistory[0]?.createdAt && (
+                        <span className="progress-photo-view-badge">
+                          Senaste
+                        </span>
+                      )}
+                    </div>
+                    <div className="body-analysis-timeline-images">
+                      <img
+                        src={analysis.frontPhoto.preview}
+                        alt="Miniatyr framifrån"
+                      />
+                      <img
+                        src={analysis.sidePhoto.preview}
+                        alt="Miniatyr från sidan"
+                      />
+                    </div>
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={() => setSavedAnalysis(analysis)}
+                    >
+                      Visa analys
+                    </button>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <p className="progress-photo-safety">
+                Inga analyser finns i den valda perioden.
+              </p>
+            )}
           </div>
           <button
             className="secondary-button"

@@ -1183,6 +1183,106 @@ a:focus-visible {
   font-size: 13px;
 }
 
+.body-analysis-timeline {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+  padding-left: 18px;
+}
+
+.body-analysis-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.body-analysis-summary {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--soft-bg);
+}
+
+.body-analysis-summary h3 {
+  margin: 0;
+}
+
+.body-analysis-summary p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.body-analysis-filter .is-active {
+  border-color: var(--accent);
+  color: var(--text-h);
+}
+
+.body-analysis-timeline::before {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 5px;
+  width: 1px;
+  background: var(--border);
+  content: '';
+}
+
+.body-analysis-timeline article {
+  position: relative;
+}
+
+.body-analysis-timeline-dot {
+  position: absolute;
+  top: 18px;
+  left: -18px;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--accent);
+  border-radius: 999px;
+  background: var(--panel);
+}
+
+.body-analysis-timeline-content {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--soft-bg);
+}
+
+.body-analysis-timeline-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.body-analysis-timeline-heading strong {
+  color: var(--text-h);
+}
+
+.body-analysis-timeline-images {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.body-analysis-timeline-images img {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
 .progress-photo-compare-preview {
   margin-top: 16px;
   padding: 12px 14px;

@@ -1,3 +1,7 @@
+import ChatInput from './ChatInput.jsx'
+import ChatMessageList from './ChatMessageList.jsx'
+import QuickActions from './QuickActions.jsx'
+
 function ChatPanel({
   canClearChat,
   chatInput,
@@ -30,48 +34,24 @@ function ChatPanel({
         </button>
       </div>
 
-      <div className="starter-prompts" aria-label="Förslag på frågor">
-        {starterPrompts.map((prompt) => (
-          <button
-            className="prompt-chip"
-            type="button"
-            key={prompt}
-            onClick={() => onStarterPrompt(prompt)}
-          >
-            {prompt}
-          </button>
-        ))}
-      </div>
+      <QuickActions
+        onStarterPrompt={onStarterPrompt}
+        starterPrompts={starterPrompts}
+      />
 
-      <div ref={chatThreadRef} className="chat-thread" aria-live="polite">
-        {chatMessages.map((message) => (
-          <div className={`chat-message ${message.role}`} key={message.id}>
-            <span>{message.role === 'user' ? 'Du' : 'AI-coach'}</span>
-            <p>{message.text}</p>
-          </div>
-        ))}
-        <div ref={messagesEndRef} className="messages-end" aria-hidden="true" />
-      </div>
+      <ChatMessageList
+        chatMessages={chatMessages}
+        chatThreadRef={chatThreadRef}
+        messagesEndRef={messagesEndRef}
+      />
 
-      <form className="chat-form" onSubmit={onSendChatMessage}>
-        <input
-          type="text"
-          value={chatInput}
-          onChange={(event) => onChatInputChange(event.target.value)}
-          placeholder="Skriv en fråga..."
-          enterKeyHint="send"
-        />
-        <button
-          className={`mic-button ${isListening ? 'listening' : ''}`}
-          type="button"
-          onClick={onStartVoiceInput}
-          aria-label="Starta röstinmatning"
-          title="Starta röstinmatning"
-        >
-          {isListening ? 'Lyssnar' : '🎙️'}
-        </button>
-        <button className="send-button" type="submit">Skicka</button>
-      </form>
+      <ChatInput
+        chatInput={chatInput}
+        isListening={isListening}
+        onChatInputChange={onChatInputChange}
+        onSendChatMessage={onSendChatMessage}
+        onStartVoiceInput={onStartVoiceInput}
+      />
       {voiceStatus && (
         <p className="voice-status" aria-live="polite">
           {voiceStatus}

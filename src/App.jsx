@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
+import AICoach from './components/AICoach.jsx'
 import ChatPanel from './components/ChatPanel.jsx'
-import CoachCard from './components/CoachCard.jsx'
 import MealLogger from './components/MealLogger.jsx'
 import ProgressPhotos from './components/ProgressPhotos.jsx'
 import ReminderSettings from './components/ReminderSettings.jsx'
@@ -574,7 +574,6 @@ function asksAboutRapidWeightLoss(message) {
 
   return (
     (text.includes('gå ner') ||
-      text.includes('gå ner') ||
       text.includes('tappa') ||
       text.includes('minska')) &&
     text.includes('kg') &&
@@ -587,7 +586,7 @@ function asksAboutRapidWeightLoss(message) {
 function asksAboutSleep(message) {
   const text = message.toLowerCase()
 
-  return text.includes('sov') || text.includes('sömn') || text.includes('sömn') || text.includes('sova')
+  return text.includes('sov') || text.includes('sömn') || text.includes('sova')
 }
 
 function asksAboutFood(message) {
@@ -596,11 +595,8 @@ function asksAboutFood(message) {
   return (
     text.includes('mat') ||
     text.includes('äta') ||
-    text.includes('äta') ||
-    text.includes('äter') ||
     text.includes('äter') ||
     text.includes('middag') ||
-    text.includes('ikväll') ||
     text.includes('ikväll')
   )
 }
@@ -612,12 +608,10 @@ function asksAboutProteinKnowledge(message) {
     text.includes('protein') &&
     (text.includes('hur mycket') ||
       text.includes('hur många') ||
-      text.includes('hur många') ||
       text.includes('gram') ||
       text.includes('per dag') ||
       text.includes('om dagen') ||
       text.includes('rekommend') ||
-      text.includes('bra för') ||
       text.includes('bra för'))
   )
 }
@@ -629,12 +623,8 @@ function asksForMealSuggestion(message) {
     text.includes('lunch') ||
     text.includes('middag') ||
     text.includes('ikväll') ||
-    text.includes('ikväll') ||
-    text.includes('mellanmål') ||
     text.includes('mellanmål') ||
     text.includes('vad ska jag äta') ||
-    text.includes('vad ska jag äta') ||
-    text.includes('matförslag') ||
     text.includes('matförslag') ||
     (text.includes('billig') && text.includes('proteinrik'))
   )
@@ -739,10 +729,6 @@ function makeMultiPartReply(message, chatHistory = []) {
 
   if (asksAboutSleep(message)) {
     parts.push(makeSleepReply(message))
-  }
-
-  if (asksIfHarmful(message) && hasBedtimeEatingContext(message, chatHistory)) {
-    parts.push(makeBedtimeEatingReply())
   }
 
   if (asksAboutRapidWeightLoss(message)) {
@@ -2404,7 +2390,7 @@ function App() {
           voiceStatus={voiceStatus}
         />
 
-        <CoachCard coachMessage={coachMessage} coachStatus={coachStatus} />
+        <AICoach coachMessage={coachMessage} coachStatus={coachStatus} />
 
         <article className="panel" id="mat">
           <div className="panel-heading">

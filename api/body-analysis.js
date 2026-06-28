@@ -20,8 +20,36 @@ function parseRequestBody(request) {
   return request.body ?? {}
 }
 
+function hasMultipartFile(request, fieldName) {
+  const contentType = request.headers?.['content-type'] || ''
+
+  if (!contentType.includes('multipart/form-data')) {
+    return false
+  }
+
+  const rawBody = Buffer.isBuffer(request.body)
+    ? request.body.toString('latin1')
+    : String(request.body || '')
+
+  return rawBody.includes(`name="${fieldName}"`) && rawBody.includes('filename=')
+}
+
+function buildOpenAIPrompt() {
+  return [
+    'Du är en försiktig AI-assistent för visuell kroppsanalys.',
+    'Ge en varsam visuell bedömning baserad på bilderna.',
+    'Ställ aldrig diagnos och gör ingen medicinsk bedömning.',
+    'Uppskatta inte exakt kroppsfett som ett medicinskt värde.',
+    'Fokusera på förändringar över tid, hållning, fotokonsekvens och allmänna råd.',
+    'Svara kort, tydligt och tryggt.',
+  ].join(' ')
+}
+
 async function analyzeWithOpenAI(frontImage, sideImage) {
   // TODO: Implement the OpenAI body analysis request here.
+  const prompt = buildOpenAIPrompt()
+
+  void prompt
   void frontImage
   void sideImage
 
@@ -37,9 +65,18 @@ export default async function handler(request, response) {
   }
 
   try {
-    const body = parseRequestBody(request)
+    const isMultipart = request.headers?.['content-type']?.includes(
+      'multipart/form-data',
+    )
+    const body = isMultipart ? {} : parseRequestBody(request)
+    const hasFrontImage = isMultipart
+      ? hasMultipartFile(request, 'frontImage')
+      : Boolean(body.frontImage)
+    const hasSideImage = isMultipart
+      ? hasMultipartFile(request, 'sideImage')
+      : Boolean(body.sideImage)
 
-    if (!body.frontImage || !body.sideImage) {
+    if (!hasFrontImage || !hasSideImage) {
       return response.status(400).json({
         error: 'Both frontImage and sideImage are required.',
       })

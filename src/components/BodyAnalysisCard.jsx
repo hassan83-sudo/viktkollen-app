@@ -115,14 +115,6 @@ function readStoredAnalyses() {
   }
 }
 
-function writeStoredAnalyses(analyses) {
-  try {
-    window.localStorage.setItem(storageKey, JSON.stringify(analyses))
-  } catch {
-    // Keep the UI usable even if the browser blocks localStorage.
-  }
-}
-
 function clearStoredAnalyses() {
   try {
     window.localStorage.removeItem(storageKey)
@@ -286,6 +278,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
 
     reader.addEventListener('load', () => {
       const photo = {
+        file,
         name: file.name,
         preview: typeof reader.result === 'string' ? reader.result : '',
       }
@@ -311,18 +304,22 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
 
     window.setTimeout(async () => {
       try {
+        const storedFrontPhoto = {
+          name: frontPhoto.name,
+          preview: frontPhoto.preview,
+        }
+        const storedSidePhoto = {
+          name: sidePhoto.name,
+          preview: sidePhoto.preview,
+        }
         const nextAnalysis = {
           createdAt: new Date().toISOString(),
-          frontPhoto,
+          frontPhoto: storedFrontPhoto,
           result: await analyzeBodyWithAI({ frontPhoto, sidePhoto }),
-          sidePhoto,
+          sidePhoto: storedSidePhoto,
         }
-        const nextHistory = [nextAnalysis, ...analysisHistory]
 
-        writeStoredAnalyses(nextHistory)
-        setAnalysisHistory(nextHistory)
         setSavedAnalysis(nextAnalysis)
-        onAnalysisHistoryChange(true)
         setAnalysisStatus('Analys klar')
       } catch (error) {
         setAnalysisError(

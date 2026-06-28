@@ -1,5 +1,5 @@
 const BODY_ANALYSIS_ENDPOINT = '/api/body-analysis'
-const USE_MOCK_BODY_ANALYSIS = true
+const USE_MOCK_BODY_ANALYSIS = false
 
 const mockBodyResult = {
   bodyFat: '~24 %',
@@ -20,8 +20,8 @@ function buildBodyAnalysisPayload(frontImage, sideImage) {
 
   return {
     createdAt: new Date().toISOString(),
-    frontImage,
-    sideImage,
+    frontImage: frontImage.file,
+    sideImage: sideImage.file,
   }
 }
 
@@ -43,14 +43,13 @@ async function callMockBodyAnalysis(payload) {
 
 async function callBodyAnalysisApi(payload) {
   try {
+    const formData = new FormData()
+
+    formData.append('frontImage', payload.frontImage)
+    formData.append('sideImage', payload.sideImage)
+
     const response = await fetch(BODY_ANALYSIS_ENDPOINT, {
-      body: JSON.stringify({
-        frontImage: payload.frontImage,
-        sideImage: payload.sideImage,
-      }),
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      body: formData,
       method: 'POST',
     })
 
@@ -67,11 +66,11 @@ async function callBodyAnalysisApi(payload) {
 }
 
 export async function analyzeBodyWithAI({ frontPhoto, sidePhoto }) {
-  if (!frontPhoto) {
+  if (!frontPhoto?.file) {
     throw new Error('Bild framifrån saknas. Välj en bild och försök igen.')
   }
 
-  if (!sidePhoto) {
+  if (!sidePhoto?.file) {
     throw new Error('Bild från sidan saknas. Välj en bild och försök igen.')
   }
 

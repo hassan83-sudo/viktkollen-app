@@ -5,6 +5,12 @@ function ReminderSettings({
   reminderSettings,
   reminderStatus,
 }) {
+  const reminderDescriptions = {
+    meal: 'Hjälper dig komma ihåg att logga dagens måltider.',
+    water: 'Påminner dig att dricka vatten under dagen.',
+    weight: 'Påminner dig att registrera vikten.',
+  }
+
   return (
     <article className="panel settings-panel" id="installningar">
       <div className="panel-heading">
@@ -13,6 +19,9 @@ function ReminderSettings({
           <h2>Dagliga påminnelser</h2>
         </div>
       </div>
+      <p className="settings-note">
+        Små påminnelser kan göra det lättare att skapa hållbara vanor.
+      </p>
 
       <div className="reminder-master">
         <label className="toggle-row">
@@ -51,6 +60,7 @@ function ReminderSettings({
               />
               <span>{reminder.label}</span>
             </label>
+            <span>{reminderDescriptions[reminder.enabledKey]}</span>
             <input
               type="time"
               value={reminderSettings[reminder.timeKey]}
@@ -64,6 +74,7 @@ function ReminderSettings({
       <p className="settings-note">
         Notiser fungerar när webbläsaren tillåter det och appen kan köras i
         bakgrunden. Allt sparas lokalt i den här webbläsaren.
+        Du kan när som helst stänga av eller ändra tiderna.
       </p>
     </article>
   )

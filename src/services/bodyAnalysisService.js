@@ -8,6 +8,15 @@ const mockBodyResult = {
 }
 
 function buildBodyAnalysisPayload(frontImage, sideImage) {
+  const requestMetadata = {
+    createdAt: new Date().toISOString(),
+    requestId: `body-analysis-${Date.now()}`,
+    source: 'body-analysis',
+  }
+
+  // TODO: Include requestMetadata in the payload when request status is added.
+  void requestMetadata
+
   return {
     createdAt: new Date().toISOString(),
     frontImage,
@@ -18,6 +27,23 @@ function buildBodyAnalysisPayload(frontImage, sideImage) {
 function normalizeBodyAnalysisResponse(response) {
   // TODO: Normalize future API responses into the body analysis result shape here.
   return response
+}
+
+function handleBodyAnalysisError(error) {
+  // TODO: Translate future API errors into user-friendly messages here.
+  throw error
+}
+
+function callBodyAnalysisApi(payload) {
+  try {
+    // TODO: Use fetch(BODY_ANALYSIS_ENDPOINT, ...) when the backend is connected.
+    void BODY_ANALYSIS_ENDPOINT
+    void payload
+
+    return mockBodyResult
+  } catch (error) {
+    handleBodyAnalysisError(error)
+  }
 }
 
 export function analyzeBodyWithAI({ frontPhoto, sidePhoto }) {
@@ -31,13 +57,11 @@ export function analyzeBodyWithAI({ frontPhoto, sidePhoto }) {
 
   const payload = buildBodyAnalysisPayload(frontPhoto, sidePhoto)
 
-  // TODO: Use BODY_ANALYSIS_ENDPOINT when the fetch request is connected.
   // TODO: Replace this mock with a backend API request for body analysis.
   // TODO: Send the selected front-facing image as one parameter.
   // TODO: Send the selected side-facing image as one parameter.
   // TODO: Return the AI result from the backend instead of the mock result.
-  void BODY_ANALYSIS_ENDPOINT
-  void payload
+  const response = callBodyAnalysisApi(payload)
 
-  return normalizeBodyAnalysisResponse(mockBodyResult)
+  return normalizeBodyAnalysisResponse(response)
 }

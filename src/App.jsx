@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import AICoach from './components/AICoach.jsx'
 import ChatPanel from './components/ChatPanel.jsx'
+import CheckIn from './components/CheckIn.jsx'
 import MealLogger from './components/MealLogger.jsx'
 import ProgressPhotos from './components/ProgressPhotos.jsx'
 import ReminderSettings from './components/ReminderSettings.jsx'
@@ -2413,65 +2414,12 @@ function App() {
           </div>
         </article>
 
-        <article className="panel check-in-panel" id="checkin">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Dagens check-in</p>
-              <h2>Hur dagen går</h2>
-            </div>
-          </div>
-
-          <label className="field">
-            <span>Energi</span>
-            <input
-              type="range"
-              min="1"
-              max="10"
-              value={checkIn.energy}
-              onChange={(event) =>
-                updateCheckIn('energy', Number(event.target.value))
-              }
-            />
-            <strong>{checkIn.energy}/10</strong>
-          </label>
-
-          <label className="field">
-            <span>Steg</span>
-            <input
-              type="number"
-              min="0"
-              step="100"
-              value={checkIn.steps}
-              onChange={(event) =>
-                updateCheckIn('steps', Number(event.target.value))
-              }
-            />
-          </label>
-
-          <label className="field">
-            <span>Humör</span>
-            <select
-              value={checkIn.mood}
-              onChange={(event) => updateCheckIn('mood', event.target.value)}
-            >
-              <option>Fokuserad</option>
-              <option>Lugn</option>
-              <option>Trött</option>
-              <option>Stressad</option>
-            </select>
-          </label>
-
-          <label className="toggle-row">
-            <input
-              type="checkbox"
-              checked={checkIn.workout}
-              onChange={(event) =>
-                updateCheckIn('workout', event.target.checked)
-              }
-            />
-            <span>Träning eller medveten rörelse genomförd</span>
-          </label>
-        </article>
+        <CheckIn
+          checkIn={checkIn}
+          foodScore={foodScore}
+          foodTotal={foods.length}
+          onUpdateCheckIn={updateCheckIn}
+        />
 
         <MealLogger
           displayPhotoMeals={displayPhotoMeals}

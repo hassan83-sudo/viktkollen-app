@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import BodyAnalysisCard from './BodyAnalysisCard.jsx'
 import ProgressPhotoEmptyState from './ProgressPhotoEmptyState.jsx'
 import ProgressPhotoUpload from './ProgressPhotoUpload.jsx'
 
@@ -130,6 +131,8 @@ function ProgressPhotos({
         onProgressPhotoNoteChange={onProgressPhotoNoteChange}
         progressPhotoNote={progressPhotoNote}
       />
+
+      <BodyAnalysisCard />
 
       {hasProgressPhotos && (
         <>

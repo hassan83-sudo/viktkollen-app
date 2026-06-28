@@ -219,6 +219,70 @@ function makeClarificationReply() {
   return 'Vad syftar du på? Skriv gärna en kort mening till, till exempel om det gäller mat, sömn, vikt, steg eller träning.'
 }
 
+function getShortSocialReply(text, context) {
+  const compactText = text
+    .replace(/[.!?…]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  const greeting = context.name ? `Hej ${context.name}!` : 'Hej!'
+
+  if (compactText === 'hej' || compactText === 'hejsan' || compactText === 'hallå') {
+    return `${greeting} Vad vill du ha hjälp med idag?`
+  }
+
+  if (
+    compactText === 'tack' ||
+    compactText === 'tackar' ||
+    compactText === 'tack så mycket'
+  ) {
+    return 'Varsågod! Skriv om du vill ha hjälp med mat, vikt eller vanor.'
+  }
+
+  if (compactText === 'okej' || compactText === 'ok') {
+    return 'Toppen! Säg bara till om du vill fortsätta.'
+  }
+
+  if (compactText === 'bra' || compactText === 'perfekt' || compactText === 'toppen') {
+    return 'Härligt! Säg till om du vill fortsätta.'
+  }
+
+  if (compactText === '👍') {
+    return 'Toppen! Jag finns här om du vill fortsätta.'
+  }
+
+  return ''
+}
+
+function isMotivationDrop(text) {
+  return includesAny(text, [
+    'jag orkar inte',
+    'orkar inte',
+    'det går dåligt',
+    'går dåligt',
+    'vill ge upp',
+    'ge upp',
+    'har fuskat',
+    'fuskat hela veckan',
+    'jag har fuskat',
+    'misslyckades',
+    'jag misslyckades',
+    'misslyckats',
+    'allt går dåligt',
+    'tappat motivationen',
+    'tappar motivationen',
+  ])
+}
+
+function makeMotivationDropReply(context) {
+  const nextStep = context.energy !== null && context.energy <= 3
+    ? 'drick ett glas vatten och gör nästa val enkelt'
+    : context.foodTotal > 0 && context.completedFoods < context.foodTotal
+      ? 'bocka av en enda matpunkt i checklistan'
+      : 'ta 10 lugna minuter promenad'
+
+  return `Det låter som en tung period, men det betyder inte att du har misslyckats. Gör bara en sak nu: ${nextStep}.`
+}
+
 function detectIntent(message, chatHistory = []) {
   const text = normalizeText(message)
   const previousText = normalizeText(getLastUserText(chatHistory))
@@ -265,7 +329,7 @@ function detectIntent(message, chatHistory = []) {
     return 'stress'
   }
 
-  if (includesAny(combinedText, ['motivation', 'motiverad', 'ge upp', 'orkar inte', 'tappat'])) {
+  if (includesAny(combinedText, ['motivation', 'motiverad', 'motivera', 'ge upp', 'orkar inte', 'tappat'])) {
     return 'motivation'
   }
 
@@ -376,7 +440,7 @@ function detectIntents(message, chatHistory = []) {
     addIntent('stress')
   }
 
-  if (includesAny(combinedText, ['motivation', 'motiverad', 'ge upp', 'tappat motivation'])) {
+  if (includesAny(combinedText, ['motivation', 'motiverad', 'motivera', 'ge upp', 'tappat motivation'])) {
     addIntent('motivation')
   }
 
@@ -473,6 +537,32 @@ function formatWeight(value) {
     maximumFractionDigits: 1,
     minimumFractionDigits: 1,
   })} kg`
+}
+
+function sanitizeName(value) {
+  const name = String(value || '').trim()
+
+  return /^(dd|ddd|undefined|null)$/i.test(name) ? '' : name
+}
+
+function sanitizeCoachReply(reply) {
+  return String(reply || '')
+    .replace(/\b(?:ddd|dd|undefined|null)\b/gi, '')
+    .replace(/[^\S\r\n]+([,.:;!?])/g, '$1')
+    .replace(/,\s*,/g, ',')
+    .replace(/^\s*[,.:;!?]\s*/, '')
+    .replace(/[^\S\r\n]{2,}/g, ' ')
+    .trim()
+}
+
+function makeNamePrefix(context) {
+  return context.name ? `Hej ${context.name}, ` : ''
+}
+
+function makeNamedSentence(context, sentence) {
+  return context.name
+    ? `${makeNamePrefix(context)}${sentence}`
+    : `${sentence.charAt(0).toLocaleUpperCase('sv-SE')}${sentence.slice(1)}`
 }
 
 function getWeightChange(context) {
@@ -605,7 +695,7 @@ function getPersonalContext({
     goal: profile.goal || 'hållbara vanor',
     goalWeight,
     mood: String(checkIn.mood || '').trim(),
-    name: String(profile.name || '').trim(),
+    name: sanitizeName(profile.name),
     startWeight,
     steps: Number.isFinite(steps) ? steps : null,
     weight,
@@ -815,7 +905,7 @@ function makeTodayPlanReply(context) {
 
   const checkInHint = makeEnergyMoodHint(context)
 
-  return `Dagens enkla plan${checkInHint ? ` utifrån ${checkInHint}` : ''}:\n• ${actions.join('\n• ')}`
+  return `${makeNamedSentence(context, `dagens enkla plan${checkInHint ? ` utifrån ${checkInHint}` : ''}`)}:\n• ${actions.join('\n• ')}`
 }
 
 function makeTrainingReply(context) {
@@ -1060,7 +1150,10 @@ function makeMotivationReply(context) {
       ? 'bocka av en matpunkt'
       : 'upprepa en vana som redan fungerar'
 
-  return `Motivation blir lättare när nästa steg är litet. I dag skulle jag välja: ${nextStep}. Du behöver inte vinna hela veckan just nu, bara göra nästa bra sak.`
+  return makeNamedSentence(
+    context,
+    `motivation blir lättare när nästa steg är litet. I dag skulle jag välja: ${nextStep}. Du behöver inte vinna hela veckan just nu, bara göra nästa bra sak.`,
+  )
 }
 
 function makeStressReply(context) {
@@ -1171,7 +1264,7 @@ function makeIntentReply(intent, { context, meals, text, topic }) {
     case 'måltider':
       return includesAny(text, ['checklista', 'checklistan'])
         ? getFoodSummary(context)
-        : makeMealsReply(meals)
+        : makeMealsReply(meals, context)
     case 'motivation':
       return makeMotivationReply(context)
     case 'stress':
@@ -1257,18 +1350,6 @@ export function makePersonalCoachReply({
   weights = [],
 }) {
   const text = normalizeText(message)
-  const previousText = normalizeText(getLastUserText(chatHistory))
-  const exclusiveLateMealReply = makeExclusiveLateMealReply(
-    `${previousText} ${text}`,
-  )
-
-  if (exclusiveLateMealReply) {
-    return exclusiveLateMealReply
-  }
-
-  const topic = getConversationTopic(message, chatHistory)
-  const intent = detectIntent(message, chatHistory)
-  const intents = detectIntents(message, chatHistory)
   const context = getPersonalContext({
     checkIn,
     currentWeight,
@@ -1276,6 +1357,28 @@ export function makePersonalCoachReply({
     profile,
     weights,
   })
+  const shortSocialReply = getShortSocialReply(text, context)
+
+  if (shortSocialReply) {
+    return sanitizeCoachReply(shortSocialReply)
+  }
+
+  if (isMotivationDrop(text)) {
+    return sanitizeCoachReply(makeMotivationDropReply(context))
+  }
+
+  const previousText = normalizeText(getLastUserText(chatHistory))
+  const exclusiveLateMealReply = makeExclusiveLateMealReply(
+    `${previousText} ${text}`,
+  )
+
+  if (exclusiveLateMealReply) {
+    return sanitizeCoachReply(exclusiveLateMealReply)
+  }
+
+  const topic = getConversationTopic(message, chatHistory)
+  const intent = detectIntent(message, chatHistory)
+  const intents = detectIntents(message, chatHistory)
   const combinedIntentReply = isHarmQuestion(text)
     ? ''
     : makeCombinedIntentReply(intents, {
@@ -1285,7 +1388,7 @@ export function makePersonalCoachReply({
     })
 
   if (combinedIntentReply) {
-    return combinedIntentReply
+    return sanitizeCoachReply(combinedIntentReply)
   }
 
   const intentReply = makeIntentReply(intent, {
@@ -1296,12 +1399,12 @@ export function makePersonalCoachReply({
   })
 
   if (intentReply) {
-    return intentReply
+    return sanitizeCoachReply(intentReply)
   }
 
   if (isContextualFollowUp(text) && !topic) {
-    return makeClarificationReply()
+    return sanitizeCoachReply(makeClarificationReply())
   }
 
-  return ''
+  return sanitizeCoachReply('')
 }

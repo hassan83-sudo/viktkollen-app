@@ -1,3 +1,12 @@
+const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
+const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png']
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+}
+
 const mockBodyAnalysisResult = {
   bodyFat: '~24 %',
   muscleMass: 'Normal',
@@ -12,26 +21,132 @@ const mockBodyAnalysisResult = {
   waistTrend: 'Följs över tid',
 }
 
-function parseRequestBody(request) {
-  if (typeof request.body === 'string') {
-    return JSON.parse(request.body)
-  }
-
-  return request.body ?? {}
+function sendResponse(response, status, payload) {
+  return response.status(status).json(payload)
 }
 
-function hasMultipartFile(request, fieldName) {
-  const contentType = request.headers?.['content-type'] || ''
+function getRequestHeader(request, name) {
+  const headers = request.headers ?? {}
 
-  if (!contentType.includes('multipart/form-data')) {
-    return false
+  return headers[name] || headers[name.toLowerCase()] || ''
+}
+
+function getMultipartBoundary(contentType) {
+  return contentType
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith('boundary='))
+    ?.replace('boundary=', '')
+}
+
+async function readRequestBody(request) {
+  if (request.body) {
+    return Buffer.isBuffer(request.body)
+      ? request.body
+      : Buffer.from(String(request.body), 'latin1')
   }
 
-  const rawBody = Buffer.isBuffer(request.body)
-    ? request.body.toString('latin1')
-    : String(request.body || '')
+  const chunks = []
 
-  return rawBody.includes(`name="${fieldName}"`) && rawBody.includes('filename=')
+  for await (const chunk of request) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  }
+
+  return Buffer.concat(chunks)
+}
+
+function parseMultipartImages(rawBodyBuffer, boundary) {
+  const rawBody = rawBodyBuffer.toString('latin1')
+  const images = {}
+
+  rawBody.split(`--${boundary}`).forEach((part) => {
+    if (!part.includes('Content-Disposition')) {
+      return
+    }
+
+    const [rawHeaders, ...contentParts] = part.split('\r\n\r\n')
+    const content = contentParts.join('\r\n\r\n').replace(/\r\n--$/, '')
+    const fieldName = rawHeaders.match(/name="([^"]+)"/)?.[1]
+    const fileName = rawHeaders.match(/filename="([^"]*)"/)?.[1]
+    const contentType = rawHeaders.match(/Content-Type:\s*([^\r\n]+)/i)?.[1]
+
+    if (!fieldName || !fileName) {
+      return
+    }
+
+    images[fieldName] = {
+      contentType: contentType?.toLowerCase() || '',
+      name: fileName,
+      size: Buffer.byteLength(content, 'latin1'),
+    }
+  })
+
+  return images
+}
+
+async function parseImages(request) {
+  const contentType = getRequestHeader(request, 'content-type')
+  const boundary = getMultipartBoundary(contentType)
+
+  if (!contentType.includes('multipart/form-data') || !boundary) {
+    return {
+      frontImage: null,
+      sideImage: null,
+    }
+  }
+
+  const rawBodyBuffer = await readRequestBody(request)
+  const images = parseMultipartImages(rawBodyBuffer, boundary)
+
+  return {
+    frontImage: images.frontImage ?? null,
+    sideImage: images.sideImage ?? null,
+  }
+}
+
+function validateImage(image, label) {
+  if (!image) {
+    return `${label} saknas.`
+  }
+
+  if (!allowedImageTypes.includes(image.contentType)) {
+    return `${label} måste vara JPEG, JPG eller PNG.`
+  }
+
+  if (image.size > MAX_IMAGE_SIZE_BYTES) {
+    return `${label} får vara max 10 MB.`
+  }
+
+  return ''
+}
+
+function validateRequest(request, images) {
+  if (request.method !== 'POST') {
+    return {
+      error: 'Only POST requests are allowed for body analysis.',
+      status: 405,
+    }
+  }
+
+  const frontImageError = validateImage(images.frontImage, 'Bild framifrån')
+
+  if (frontImageError) {
+    return {
+      error: frontImageError,
+      status: 400,
+    }
+  }
+
+  const sideImageError = validateImage(images.sideImage, 'Bild från sidan')
+
+  if (sideImageError) {
+    return {
+      error: sideImageError,
+      status: 400,
+    }
+  }
+
+  return null
 }
 
 function buildOpenAIPrompt() {
@@ -45,48 +160,50 @@ function buildOpenAIPrompt() {
   ].join(' ')
 }
 
+function createMockAnalysis() {
+  return mockBodyAnalysisResult
+}
+
 async function analyzeWithOpenAI(frontImage, sideImage) {
-  // TODO: Implement the OpenAI body analysis request here.
+  // TODO: Call OpenAI here through src/services/bodyAnalysisAi.js.
   const prompt = buildOpenAIPrompt()
 
   void prompt
   void frontImage
   void sideImage
 
-  return mockBodyAnalysisResult
+  return createMockAnalysis()
 }
 
 export default async function handler(request, response) {
-  if (request.method !== 'POST') {
-    response.setHeader('Allow', 'POST')
-    return response.status(405).json({
-      error: 'Only POST requests are allowed for body analysis.',
+  let images
+
+  try {
+    images = await parseImages(request)
+  } catch {
+    return sendResponse(response, 400, {
+      error: 'Kunde inte läsa bilderna.',
+    })
+  }
+
+  const validationError = validateRequest(request, images)
+
+  if (validationError) {
+    if (validationError.status === 405) {
+      response.setHeader('Allow', 'POST')
+    }
+
+    return sendResponse(response, validationError.status, {
+      error: validationError.error,
     })
   }
 
   try {
-    const isMultipart = request.headers?.['content-type']?.includes(
-      'multipart/form-data',
-    )
-    const body = isMultipart ? {} : parseRequestBody(request)
-    const hasFrontImage = isMultipart
-      ? hasMultipartFile(request, 'frontImage')
-      : Boolean(body.frontImage)
-    const hasSideImage = isMultipart
-      ? hasMultipartFile(request, 'sideImage')
-      : Boolean(body.sideImage)
+    const result = await analyzeWithOpenAI(images.frontImage, images.sideImage)
 
-    if (!hasFrontImage || !hasSideImage) {
-      return response.status(400).json({
-        error: 'Both frontImage and sideImage are required.',
-      })
-    }
-
-    const result = await analyzeWithOpenAI(body.frontImage, body.sideImage)
-
-    return response.status(200).json(result)
+    return sendResponse(response, 200, result)
   } catch {
-    return response.status(500).json({
+    return sendResponse(response, 500, {
       error: 'Internal server error.',
     })
   }

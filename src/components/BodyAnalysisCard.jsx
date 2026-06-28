@@ -408,8 +408,10 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
         Analysera kroppen
       </button>
       <p className="progress-photo-safety">
-        Bilderna sparas bara lokalt i din webbläsare och skickas inte till någon
-        server i denna version.
+        Bilderna skickas till AI-analysen när du väljer att analysera dem. De
+        sparas inte permanent i denna version och används endast för att skapa
+        analysresultatet. Funktionen ger inte medicinska diagnoser eller
+        behandling.
       </p>
       {isAnalyzing && (
         <p className="analysis-status">{analysisStatus}</p>
@@ -418,9 +420,18 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
         <p className="analysis-status">{analysisStatus}</p>
       )}
       {analysisError && (
-        <p className="analysis-status">{analysisError}</p>
+        <div className="progress-photo-ai-comparison">
+          <div className="progress-photo-ai-heading">
+            <div>
+              <p className="eyebrow">Resultat</p>
+              <h3>Analysen kunde inte genomföras</h3>
+            </div>
+            <span>Fel</span>
+          </div>
+          <p>{analysisError}</p>
+        </div>
       )}
-      {!savedAnalysis && !isAnalyzing && (
+      {!savedAnalysis && !isAnalyzing && !analysisError && (
         <div className="progress-photo-ai-comparison">
           <div className="progress-photo-ai-heading">
             <div>

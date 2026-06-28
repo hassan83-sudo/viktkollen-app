@@ -1,9 +1,89 @@
 import { useState } from 'react'
 
+const legacyStorageKey = 'viktkollen.bodyAnalysis.latest'
+const storageKey = 'viktkollen.bodyAnalysis.history'
+const mockBodyResult = {
+  bodyFat: '~24 %',
+  muscleMass: 'Normal',
+  posture: 'Bra',
+  waistTrend: 'Följs över tid',
+}
+const mockComparisonInsights = [
+  'Midjan ser något smalare ut.',
+  'Hållningen verkar förbättrad.',
+  'Ingen tydlig förändring i överkroppen.',
+  'Fortsätt använda samma fotograferingsvinkel.',
+]
+
+function isStoredAnalysis(value) {
+  return (
+    value &&
+    typeof value.createdAt === 'string' &&
+    value.frontPhoto &&
+    typeof value.frontPhoto.name === 'string' &&
+    typeof value.frontPhoto.preview === 'string' &&
+    value.sidePhoto &&
+    typeof value.sidePhoto.name === 'string' &&
+    typeof value.sidePhoto.preview === 'string' &&
+    value.result &&
+    typeof value.result.bodyFat === 'string' &&
+    typeof value.result.muscleMass === 'string' &&
+    typeof value.result.posture === 'string' &&
+    typeof value.result.waistTrend === 'string'
+  )
+}
+
+function readStoredAnalyses() {
+  try {
+    const storedValue = window.localStorage.getItem(storageKey)
+
+    if (storedValue) {
+      const parsedValue = JSON.parse(storedValue)
+
+      return Array.isArray(parsedValue)
+        ? parsedValue.filter(isStoredAnalysis)
+        : []
+    }
+
+    const legacyValue = window.localStorage.getItem(legacyStorageKey)
+
+    if (!legacyValue) {
+      return []
+    }
+
+    const parsedLegacyValue = JSON.parse(legacyValue)
+
+    return isStoredAnalysis(parsedLegacyValue) ? [parsedLegacyValue] : []
+  } catch {
+    return []
+  }
+}
+
+function writeStoredAnalyses(analyses) {
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(analyses))
+  } catch {
+    // Keep the UI usable even if the browser blocks localStorage.
+  }
+}
+
+function formatAnalysisDate(date) {
+  return new Intl.DateTimeFormat('sv-SE', {
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(date))
+}
+
 function BodyAnalysisCard() {
+  const [analysisHistory, setAnalysisHistory] = useState(() =>
+    readStoredAnalyses(),
+  )
   const [frontPhoto, setFrontPhoto] = useState(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [mockResult, setMockResult] = useState(null)
+  const [savedAnalysis, setSavedAnalysis] = useState(() => analysisHistory[0] ?? null)
   const [sidePhoto, setSidePhoto] = useState(null)
   const canAnalyze = Boolean(frontPhoto && sidePhoto) && !isAnalyzing
 
@@ -24,12 +104,10 @@ function BodyAnalysisCard() {
 
       if (view === 'front') {
         setFrontPhoto(photo)
-        setMockResult(null)
         return
       }
 
       setSidePhoto(photo)
-      setMockResult(null)
     })
     reader.readAsDataURL(file)
   }
@@ -40,15 +118,19 @@ function BodyAnalysisCard() {
     }
 
     setIsAnalyzing(true)
-    setMockResult(null)
 
     window.setTimeout(() => {
-      setMockResult({
-        bodyFat: '~24 %',
-        muscleMass: 'Normal',
-        posture: 'Bra',
-        waistTrend: 'Följs över tid',
-      })
+      const nextAnalysis = {
+        createdAt: new Date().toISOString(),
+        frontPhoto,
+        result: mockBodyResult,
+        sidePhoto,
+      }
+      const nextHistory = [nextAnalysis, ...analysisHistory]
+
+      writeStoredAnalyses(nextHistory)
+      setAnalysisHistory(nextHistory)
+      setSavedAnalysis(nextAnalysis)
       setIsAnalyzing(false)
     }, 2000)
   }
@@ -113,33 +195,93 @@ function BodyAnalysisCard() {
       {isAnalyzing && (
         <p className="analysis-status">Analyserar kroppen...</p>
       )}
-      {mockResult && (
+      {savedAnalysis && (
         <div className="progress-photo-ai-comparison">
           <div className="progress-photo-ai-heading">
             <div>
-              <p className="eyebrow">Mock-resultat</p>
-              <h3>Kroppsanalys</h3>
+              <p className="eyebrow">Senaste sparade analys</p>
+              <h3>{formatAnalysisDate(savedAnalysis.createdAt)}</h3>
             </div>
-            <span>Ej AI ännu</span>
+            <span>Lokalt sparad</span>
+          </div>
+          <div className="progress-photo-ai-images">
+            <figure>
+              <img
+                src={savedAnalysis.frontPhoto.preview}
+                alt="Sparad bild framifrån"
+              />
+              <figcaption>{savedAnalysis.frontPhoto.name}</figcaption>
+            </figure>
+            <figure>
+              <img
+                src={savedAnalysis.sidePhoto.preview}
+                alt="Sparad bild från sidan"
+              />
+              <figcaption>{savedAnalysis.sidePhoto.name}</figcaption>
+            </figure>
           </div>
           <dl>
             <div>
               <dt>Kroppsfett</dt>
-              <dd>{mockResult.bodyFat}</dd>
+              <dd>{savedAnalysis.result.bodyFat}</dd>
             </div>
             <div>
               <dt>Muskelmassa</dt>
-              <dd>{mockResult.muscleMass}</dd>
+              <dd>{savedAnalysis.result.muscleMass}</dd>
             </div>
             <div>
               <dt>Hållning</dt>
-              <dd>{mockResult.posture}</dd>
+              <dd>{savedAnalysis.result.posture}</dd>
             </div>
             <div>
               <dt>Midjeutveckling</dt>
-              <dd>{mockResult.waistTrend}</dd>
+              <dd>{savedAnalysis.result.waistTrend}</dd>
             </div>
           </dl>
+        </div>
+      )}
+      <div className="progress-photo-ai-comparison">
+        <div className="progress-photo-ai-heading">
+          <div>
+            <p className="eyebrow">Mock-jämförelse</p>
+            <h3>Förändring sedan förra analysen</h3>
+          </div>
+          <span>Ej AI ännu</span>
+        </div>
+        {analysisHistory.length >= 2 ? (
+          <ul>
+            {mockComparisonInsights.map((insight) => (
+              <li key={insight}>{insight}</li>
+            ))}
+          </ul>
+        ) : (
+          <p>Minst två analyser behövs för att kunna jämföra förändringar.</p>
+        )}
+      </div>
+      {analysisHistory.length > 0 && (
+        <div className="photo-timeline">
+          {analysisHistory.map((analysis) => (
+            <article key={analysis.createdAt}>
+              <img
+                src={analysis.frontPhoto.preview}
+                alt="Miniatyr framifrån"
+              />
+              <img
+                src={analysis.sidePhoto.preview}
+                alt="Miniatyr från sidan"
+              />
+              <div>
+                <strong>{formatAnalysisDate(analysis.createdAt)}</strong>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => setSavedAnalysis(analysis)}
+                >
+                  Visa analys
+                </button>
+              </div>
+            </article>
+          ))}
         </div>
       )}
     </div>

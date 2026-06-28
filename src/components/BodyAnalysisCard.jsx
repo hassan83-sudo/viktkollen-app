@@ -309,12 +309,12 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
     setAnalysisError('')
     setAnalysisStatus('AI analyserar bilderna...')
 
-    window.setTimeout(() => {
+    window.setTimeout(async () => {
       try {
         const nextAnalysis = {
           createdAt: new Date().toISOString(),
           frontPhoto,
-          result: analyzeBodyWithAI({ frontPhoto, sidePhoto }),
+          result: await analyzeBodyWithAI({ frontPhoto, sidePhoto }),
           sidePhoto,
         }
         const nextHistory = [nextAnalysis, ...analysisHistory]

@@ -35,25 +35,38 @@ function handleBodyAnalysisError(error) {
   throw error
 }
 
-function callMockBodyAnalysis(payload) {
+async function callMockBodyAnalysis(payload) {
   void payload
 
   return mockBodyResult
 }
 
-function callBodyAnalysisApi(payload) {
+async function callBodyAnalysisApi(payload) {
   try {
-    // TODO: Use fetch(BODY_ANALYSIS_ENDPOINT, ...) when the backend is connected.
-    void BODY_ANALYSIS_ENDPOINT
-    void payload
+    const response = await fetch(BODY_ANALYSIS_ENDPOINT, {
+      body: JSON.stringify({
+        frontImage: payload.frontImage,
+        sideImage: payload.sideImage,
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
 
-    return mockBodyResult
+    const body = await response.json()
+
+    if (!response.ok) {
+      throw new Error(body?.error || 'Kunde inte analysera bilderna just nu.')
+    }
+
+    return body
   } catch (error) {
     handleBodyAnalysisError(error)
   }
 }
 
-export function analyzeBodyWithAI({ frontPhoto, sidePhoto }) {
+export async function analyzeBodyWithAI({ frontPhoto, sidePhoto }) {
   if (!frontPhoto) {
     throw new Error('Bild framifrån saknas. Välj en bild och försök igen.')
   }
@@ -68,8 +81,8 @@ export function analyzeBodyWithAI({ frontPhoto, sidePhoto }) {
   // TODO: Send the selected side-facing image as one parameter.
   // TODO: Return the AI result from the backend instead of the mock result.
   const response = USE_MOCK_BODY_ANALYSIS
-    ? callMockBodyAnalysis(payload)
-    : callBodyAnalysisApi(payload)
+    ? await callMockBodyAnalysis(payload)
+    : await callBodyAnalysisApi(payload)
 
   return normalizeBodyAnalysisResponse(response)
 }

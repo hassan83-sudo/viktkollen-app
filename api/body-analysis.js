@@ -20,6 +20,14 @@ function parseRequestBody(request) {
   return request.body ?? {}
 }
 
+async function analyzeWithOpenAI(frontImage, sideImage) {
+  // TODO: Implement the OpenAI body analysis request here.
+  void frontImage
+  void sideImage
+
+  return mockBodyAnalysisResult
+}
+
 export default async function handler(request, response) {
   if (request.method !== 'POST') {
     response.setHeader('Allow', 'POST')
@@ -37,7 +45,9 @@ export default async function handler(request, response) {
       })
     }
 
-    return response.status(200).json(mockBodyAnalysisResult)
+    const result = await analyzeWithOpenAI(body.frontImage, body.sideImage)
+
+    return response.status(200).json(result)
   } catch {
     return response.status(500).json({
       error: 'Internal server error.',

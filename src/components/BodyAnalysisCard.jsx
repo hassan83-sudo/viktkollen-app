@@ -418,8 +418,12 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
           previousAnalysis: getLatestAnalysis()?.result,
           sidePhoto,
         }),
+        schemaVersion: 1,
         sidePhoto: storedSidePhoto,
         status: 'Analys klar',
+        syncStatus: 'local',
+        updatedAt: new Date().toISOString(),
+        userId: null,
       }
       const nextHistory = addAnalysis(nextAnalysis)
 
@@ -622,6 +626,10 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
         Bilderna skickas till AI-analysen när du klickar på Analysera kroppen.
         Bilderna sparas inte permanent i appen. Resultatet är endast en allmän
         uppskattning och ingen medicinsk diagnos.
+      </p>
+      <p className="progress-photo-safety">
+        Historiken sparas lokalt på denna enhet. Molnsynk kan läggas till
+        senare.
       </p>
       {showAnalysisConsent && (
         <div className="progress-photo-ai-comparison">

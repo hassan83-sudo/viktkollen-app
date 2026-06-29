@@ -1,6 +1,8 @@
+import { getBodyAnalysisStorage } from './bodyAnalysisStorage'
+
 const HISTORY_VERSION = 1
+const ANALYSIS_SCHEMA_VERSION = 1
 const MAX_ANALYSES = 10
-const STORAGE_KEY = 'viktkollen.bodyAnalysis.history.v1'
 
 function isObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -16,15 +18,9 @@ function sortNewestFirst(analyses) {
 
 function readStoredHistory() {
   try {
-    const storedValue = window.localStorage.getItem(STORAGE_KEY)
-
-    if (!storedValue) {
-      return []
-    }
-
-    const parsedValue = JSON.parse(storedValue)
-    const analyses = Array.isArray(parsedValue?.analyses)
-      ? parsedValue.analyses
+    const storedPayload = getBodyAnalysisStorage().read()
+    const analyses = Array.isArray(storedPayload?.analyses)
+      ? storedPayload.analyses
       : []
 
     return sortNewestFirst(
@@ -37,13 +33,10 @@ function readStoredHistory() {
 
 function writeStoredHistory(analyses) {
   try {
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        analyses: sortNewestFirst(analyses).slice(0, MAX_ANALYSES),
-        version: HISTORY_VERSION,
-      }),
-    )
+    getBodyAnalysisStorage().write({
+      analyses: sortNewestFirst(analyses).slice(0, MAX_ANALYSES),
+      version: HISTORY_VERSION,
+    })
   } catch {
     // Keep the app usable if localStorage is unavailable or full.
   }
@@ -66,13 +59,24 @@ export function normalizeAnalysis(analysis) {
     return null
   }
 
+  const updatedAt = new Date(analysis.updatedAt || analysis.createdAt)
+
   return {
     ...analysis,
     analysisNumber: Number.isFinite(Number(analysis.analysisNumber))
       ? Number(analysis.analysisNumber)
       : 1,
     createdAt: createdAt.toISOString(),
+    schemaVersion: Number.isFinite(Number(analysis.schemaVersion))
+      ? Number(analysis.schemaVersion)
+      : ANALYSIS_SCHEMA_VERSION,
     status: typeof analysis.status === 'string' ? analysis.status : 'Analys klar',
+    syncStatus:
+      typeof analysis.syncStatus === 'string' ? analysis.syncStatus : 'local',
+    updatedAt: Number.isNaN(updatedAt.getTime())
+      ? createdAt.toISOString()
+      : updatedAt.toISOString(),
+    userId: analysis.userId ?? null,
   }
 }
 
@@ -99,6 +103,10 @@ export function mergeHistories(currentHistory, incomingHistory) {
     .map((analysis, index, history) => ({
       ...analysis,
       analysisNumber: history.length - index,
+      schemaVersion: ANALYSIS_SCHEMA_VERSION,
+      syncStatus: 'local',
+      updatedAt: analysis.updatedAt || new Date().toISOString(),
+      userId: analysis.userId ?? null,
     }))
 }
 

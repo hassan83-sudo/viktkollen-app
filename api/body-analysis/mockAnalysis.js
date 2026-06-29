@@ -2,9 +2,13 @@
  * Creates the temporary mock body analysis result used before OpenAI Vision.
  *
  * @param {object | null} previousAnalysis
+ * @param {string} sourceReason
  * @returns {object}
  */
-export function createMockAnalysis(previousAnalysis = null) {
+export function createMockAnalysis(
+  previousAnalysis = null,
+  sourceReason = 'api_error',
+) {
   return {
     bodyComposition:
       'Visuell kroppssammansättning ser stabil ut. Bedömningen är försiktig och följer inte exakta medicinska värden.',
@@ -14,8 +18,7 @@ export function createMockAnalysis(previousAnalysis = null) {
             'Bilderna ger en ny jämförelsepunkt, men mockläget gör inga säkra visuella förändringspåståenden.',
           nextFocus:
             'Fortsätt med samma ljus, vinkel och avstånd till nästa analys.',
-          unchanged:
-            'Hållning och fotokonsekvens följs vidare över tid.',
+          unchanged: 'Hållning och fotokonsekvens följs vidare över tid.',
         }
       : {
           better: 'Det här är din första analys.',
@@ -55,8 +58,7 @@ export function createMockAnalysis(previousAnalysis = null) {
     safetyNote:
       'Detta är en visuell uppskattning och inte medicinsk rådgivning, diagnos eller behandling.',
     source: 'mock',
-    sourceReason:
-      'Mockresultat visas eftersom AI inte kunde användas eller inte är tillgängligt just nu.',
+    sourceReason,
     status: 'completed',
     strengths: [
       'Du har laddat upp bilder från två vinklar.',

@@ -23,7 +23,7 @@ const mockBodyResult = {
   safetyNote:
     'Detta är en visuell uppskattning och inte medicinsk rådgivning.',
   source: 'mock',
-  sourceReason: 'Lokalt demoresultat.',
+  sourceReason: 'demo',
   status: 'completed',
   strengths: ['Du har valt bilder från två vinklar.'],
   summary: 'Demoanalysen är klar och visas som en försiktig uppskattning.',

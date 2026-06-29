@@ -8,6 +8,20 @@ function BodyAnalysisResult({
   renderResultValue,
   savedAnalysis,
 }) {
+  const result = savedAnalysis?.result
+  const meaningText =
+    result?.progressSummary ||
+    result?.summary ||
+    'Resultatet är en försiktig visuell uppskattning som främst hjälper dig följa utveckling över tid.'
+  const nextActionText =
+    result?.routineFeedback ||
+    result?.nextSteps?.[0] ||
+    'Ta nästa analys med liknande ljus, avstånd och kläder.'
+  const limitationText =
+    result?.limitations?.[0] ||
+    result?.safetyNote ||
+    'Analysen kan inte avgöra medicinska tillstånd, exakt vikt eller exakt kroppsfett.'
+
   if (!savedAnalysis) {
     return (
       <div className="progress-photo-ai-comparison">
@@ -62,6 +76,17 @@ function BodyAnalysisResult({
           )}
         </div>
       )}
+      <div className="body-analysis-recommended-steps">
+        <div>
+          <p className="eyebrow">Analysrapport</p>
+          <h3>Det här betyder resultatet</h3>
+        </div>
+        <p>{meaningText}</p>
+        <p className="report-heading">Vad du kan göra till nästa gång</p>
+        <p>{nextActionText}</p>
+        <p className="report-heading">Vad analysen inte kan avgöra</p>
+        <p>{limitationText}</p>
+      </div>
       {getResultSections(savedAnalysis.result).map((section) => (
         <div key={section.key}>
           <p className="report-heading">{section.label}</p>

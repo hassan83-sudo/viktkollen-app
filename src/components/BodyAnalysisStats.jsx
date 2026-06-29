@@ -11,12 +11,40 @@ function StatGrid({ items }) {
   )
 }
 
+function BodyAnalysisProgressGraph({ items }) {
+  if (items.length === 0) {
+    return (
+      <p className="progress-photo-safety">
+        Ingen progressgraf ännu. När du har sparat analyser visas de senaste fem
+        här som enkla tidskort.
+      </p>
+    )
+  }
+
+  return (
+    <div className="body-analysis-progress-grid">
+      {items.map((item) => (
+        <div key={item.id}>
+          <span
+            className={`body-analysis-status-dot is-${item.status}`}
+            aria-hidden="true"
+          />
+          <small>{item.date}</small>
+          <strong>Analys {item.analysisNumber}</strong>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function BodyAnalysisStats({
+  aiStatus,
   analysisCount,
   latestAnalysisDate,
   latestInsights,
   nextAnalysisRecommendation,
   nextRecommendedSteps,
+  progressGraphItems,
   progressIndicators,
   progressOverviewStats,
   progressStats,
@@ -37,7 +65,19 @@ function BodyAnalysisStats({
         <p>{summaryText}</p>
         <p>Du kan när som helst radera din lokala analysdata.</p>
       </div>
+      <div className="body-analysis-weekly-focus">
+        <p className="eyebrow">Senaste AI-status</p>
+        <h3>{aiStatus.label}</h3>
+        <p>Orsak: {aiStatus.reason}</p>
+      </div>
       <StatGrid items={progressStats} />
+      <div className="body-analysis-progress">
+        <div>
+          <p className="eyebrow">Progressgraf</p>
+          <h3>Senaste 5 analyser</h3>
+        </div>
+        <BodyAnalysisProgressGraph items={progressGraphItems} />
+      </div>
       <div className="body-analysis-progress">
         <div>
           <p className="eyebrow">Utveckling över tid</p>

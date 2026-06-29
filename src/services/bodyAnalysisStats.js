@@ -53,7 +53,9 @@ export function getBodyAnalysisProgressStats(history) {
     },
     {
       label: 'Fokus denna månad',
-      value: latestAnalysis?.result?.monthlyFocus || 'Skapa en jämn bildrutin.',
+      value:
+        latestAnalysis?.result?.monthlyFocus ||
+        'Inget månadsfokus finns ännu. Skapa en analys för att få ett tydligare fokus.',
     },
     {
       label: 'Senaste sammanfattning',

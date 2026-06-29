@@ -13,6 +13,7 @@ import {
 } from '../services/bodyAnalysisHistory'
 import { analyzeBodyWithAI } from '../services/bodyAnalysisService'
 import { getBodyAnalysisProgressStats } from '../services/bodyAnalysisStats'
+import BodyAnalysisDevChecklist from './BodyAnalysisDevChecklist'
 import BodyAnalysisPrivacy from './BodyAnalysisPrivacy'
 import BodyAnalysisQuality from './BodyAnalysisQuality'
 import BodyAnalysisResult from './BodyAnalysisResult'
@@ -170,6 +171,20 @@ function getResultSourceLabel(result) {
   return result.source === 'ai' ? 'AI-resultat' : 'Mock-resultat'
 }
 
+function getLatestAiStatus(analysis) {
+  if (!analysis?.result) {
+    return {
+      label: 'Ingen analys ännu',
+      reason: 'ingen_historik',
+    }
+  }
+
+  return {
+    label: analysis.result.source === 'ai' ? 'AI fungerade' : 'Mock användes',
+    reason: analysis.result.sourceReason || 'api_error',
+  }
+}
+
 function getNextAnalysisRecommendation(daysSinceLatestAnalysis) {
   if (daysSinceLatestAnalysis === null) {
     return 'Skapa första analys'
@@ -231,7 +246,7 @@ function createDemoBodyAnalysisResult(previousAnalysis) {
     safetyNote:
       'Detta är en allmän uppskattning och inte medicinsk rådgivning.',
     source: 'mock',
-    sourceReason: 'Demoanalys skapad lokalt i utvecklarläge.',
+    sourceReason: 'demo',
     status: 'completed',
     strengths: ['Du har en tydlig startpunkt för framtida jämförelser.'],
     summary: 'Demoanalysen är skapad och visas som ett mock-resultat.',
@@ -409,6 +424,13 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
           .slice(0, 10)
   const selectedComparison = getAnalysisComparison(savedAnalysis, analysisHistory)
   const progressOverviewStats = getBodyAnalysisProgressStats(analysisHistory)
+  const progressGraphItems = analysisHistory.slice(0, 5).map((analysis) => ({
+    analysisNumber: analysis.analysisNumber,
+    date: formatShortDate(analysis.createdAt),
+    id: analysis.createdAt,
+    status: analysis.result?.source === 'ai' ? 'positive' : 'warning',
+  }))
+  const latestAiStatus = getLatestAiStatus(savedAnalysis)
 
   function handlePhotoChange(event, view) {
     const file = event.target.files?.[0]
@@ -575,6 +597,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
     const file = event.target.files?.[0]
 
     if (!file) {
+      setAnalysisError('Ingen importfil valdes.')
       return
     }
 
@@ -647,13 +670,16 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
         onPhotoChange={handlePhotoChange}
       />
       {import.meta.env.DEV && (
-        <button
-          className="secondary-button"
-          type="button"
-          onClick={handleCreateDemoAnalysis}
-        >
-          Skapa demoanalys
-        </button>
+        <>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={handleCreateDemoAnalysis}
+          >
+            Skapa demoanalys
+          </button>
+          <BodyAnalysisDevChecklist />
+        </>
       )}
       <BodyAnalysisQuality items={analysisQualityItems} />
       <BodyAnalysisPrivacy
@@ -706,11 +732,13 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
         </div>
       )}
       <BodyAnalysisStats
+        aiStatus={latestAiStatus}
         analysisCount={analysisCount}
         latestAnalysisDate={latestAnalysisDate}
         latestInsights={getLatestInsights(savedAnalysis)}
         nextAnalysisRecommendation={nextAnalysisRecommendation}
         nextRecommendedSteps={nextRecommendedSteps}
+        progressGraphItems={progressGraphItems}
         progressIndicators={progressIndicators}
         progressStats={progressStats}
         progressOverviewStats={progressOverviewStats}

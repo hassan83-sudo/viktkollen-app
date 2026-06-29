@@ -24,21 +24,49 @@ async function runBodyAnalysis(images) {
       images.previousAnalysis,
     )
 
+    const result = {
+      ...analysis,
+      source: 'ai',
+      sourceReason: analysis.sourceReason || 'ai_success',
+    }
+
     console.info('[api/body-analysis] Analysis completed', {
       durationMs: Date.now() - startedAt,
-      source: 'ai',
+      source: result.source,
+      sourceReason: result.sourceReason,
     })
 
-    return analysis
+    return result
   } catch (error) {
+    const sourceReason = getFallbackReason(error)
+
     console.warn('[api/body-analysis] AI analysis failed, using mock', {
       durationMs: Date.now() - startedAt,
       error: error instanceof Error ? error.message : String(error),
       source: 'mock',
+      sourceReason,
     })
 
-    return createMockAnalysis(images.previousAnalysis)
+    return createMockAnalysis(images.previousAnalysis, sourceReason)
   }
+}
+
+function getFallbackReason(error) {
+  if (error instanceof Error) {
+    if (error.message.includes('OPENAI_API_KEY')) {
+      return 'missing_api_key'
+    }
+
+    if (error.name === 'AbortError' || error.message.includes('aborted')) {
+      return 'timeout'
+    }
+
+    if (error instanceof SyntaxError || error.message.includes('JSON')) {
+      return 'invalid_json'
+    }
+  }
+
+  return 'api_error'
 }
 
 /**
@@ -74,6 +102,11 @@ export default async function handler(request, response) {
   try {
     const analysis = await runBodyAnalysis(images)
     const result = formatBodyAnalysisResult(analysis)
+
+    console.info('[api/body-analysis] Response sent', {
+      source: result.source,
+      sourceReason: result.sourceReason,
+    })
 
     return sendResponse(response, 200, result)
   } catch (error) {

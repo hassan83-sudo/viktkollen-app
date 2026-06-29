@@ -167,13 +167,15 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   const [analysisStatus, setAnalysisStatus] = useState('Väntar på bilder')
   const [expandedAnalysisIds, setExpandedAnalysisIds] = useState([])
   const [frontPhoto, setFrontPhoto] = useState(null)
+  const [hasApprovedAnalysis, setHasApprovedAnalysis] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [savedAnalysis, setSavedAnalysis] = useState(() => analysisHistory[0] ?? null)
+  const [showAnalysisConsent, setShowAnalysisConsent] = useState(false)
   const [sidePhoto, setSidePhoto] = useState(null)
   const [timelineFilter, setTimelineFilter] = useState('all')
   const canAnalyze = Boolean(frontPhoto && sidePhoto) && !isAnalyzing
   const currentAnalysisStatus = isAnalyzing
-    ? 'Analyserar bilder'
+    ? analysisStatus
     : analysisError
       ? 'Analys misslyckades'
       : analysisStatus === 'Analys klar'
@@ -288,51 +290,77 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
     reader.readAsDataURL(file)
   }
 
-  function handleAnalyzeBody() {
+  async function runBodyAnalysis() {
     if (!frontPhoto || !sidePhoto || isAnalyzing) {
       return
     }
 
     setIsAnalyzing(true)
     setAnalysisError('')
-    setAnalysisStatus('Analyserar bilder')
+    setAnalysisStatus('Bilder skickas säkert...')
 
-    window.setTimeout(async () => {
-      try {
-        const storedFrontPhoto = {
-          name: frontPhoto.name,
-          preview: frontPhoto.preview,
-        }
-        const storedSidePhoto = {
-          name: sidePhoto.name,
-          preview: sidePhoto.preview,
-        }
-        const nextAnalysis = {
-          analysisNumber: analysisHistory.length + 1,
-          createdAt: new Date().toISOString(),
-          frontPhoto: storedFrontPhoto,
-          result: await analyzeBodyWithAI({ frontPhoto, sidePhoto }),
-          sidePhoto: storedSidePhoto,
-          status: 'Analys klar',
-        }
+    const statusTimers = [
+      window.setTimeout(() => setAnalysisStatus('AI analyserar...'), 700),
+      window.setTimeout(
+        () => setAnalysisStatus('Resultat förbereds...'),
+        1400,
+      ),
+    ]
 
-        setSavedAnalysis(nextAnalysis)
-        setAnalysisHistory((currentHistory) =>
-          [nextAnalysis, ...currentHistory].slice(0, 5),
-        )
-        onAnalysisHistoryChange(true)
-        setAnalysisStatus('Analys klar')
-      } catch (error) {
-        setAnalysisError(
-          error instanceof Error
-            ? error.message
-            : 'Analysen kunde inte genomföras just nu. Försök igen om en stund.',
-        )
-        setAnalysisStatus('Analys misslyckades')
-      } finally {
-        setIsAnalyzing(false)
+    try {
+      const storedFrontPhoto = {
+        name: frontPhoto.name,
+        preview: frontPhoto.preview,
       }
-    }, 2000)
+      const storedSidePhoto = {
+        name: sidePhoto.name,
+        preview: sidePhoto.preview,
+      }
+      const nextAnalysis = {
+        analysisNumber: analysisHistory.length + 1,
+        createdAt: new Date().toISOString(),
+        frontPhoto: storedFrontPhoto,
+        result: await analyzeBodyWithAI({ frontPhoto, sidePhoto }),
+        sidePhoto: storedSidePhoto,
+        status: 'Analys klar',
+      }
+
+      setSavedAnalysis(nextAnalysis)
+      setAnalysisHistory((currentHistory) =>
+        [nextAnalysis, ...currentHistory].slice(0, 5),
+      )
+      onAnalysisHistoryChange(true)
+      setAnalysisStatus('Analys klar')
+    } catch (error) {
+      setAnalysisError(
+        error instanceof Error
+          ? error.message
+          : 'Analysen kunde inte genomföras just nu. Försök igen om en stund.',
+      )
+      setAnalysisStatus('Analys misslyckades')
+    } finally {
+      statusTimers.forEach((timer) => window.clearTimeout(timer))
+      setIsAnalyzing(false)
+    }
+  }
+
+  function handleAnalyzeBody() {
+    if (!frontPhoto || !sidePhoto || isAnalyzing) {
+      return
+    }
+
+    if (!hasApprovedAnalysis) {
+      setShowAnalysisConsent(true)
+      return
+    }
+
+    runBodyAnalysis()
+  }
+
+  function handleApproveAnalysis() {
+    setHasApprovedAnalysis(true)
+    setShowAnalysisConsent(false)
+    runBodyAnalysis()
   }
 
   function handleClearHistory() {
@@ -418,11 +446,36 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
       </button>
       <p className="analysis-status">{currentAnalysisStatus}</p>
       <p className="progress-photo-safety">
-        Bilderna skickas till AI-analysen när du väljer att analysera dem. De
-        sparas inte permanent i denna version och används endast för att skapa
-        analysresultatet. Funktionen ger inte medicinska diagnoser eller
-        behandling.
+        Bilderna skickas till AI-analysen när du klickar på Analysera kroppen.
+        Bilderna sparas inte permanent i appen. Resultatet är endast en allmän
+        uppskattning och ingen medicinsk diagnos.
       </p>
+      {showAnalysisConsent && (
+        <div className="progress-photo-ai-comparison">
+          <div className="progress-photo-ai-heading">
+            <div>
+              <p className="eyebrow">Bekräfta analys</p>
+              <h3>Skicka bilder till AI-analysen?</h3>
+            </div>
+            <span>Integritet</span>
+          </div>
+          <p>
+            Bilderna används bara för att skapa analysresultatet i denna version
+            och sparas inte permanent i appen. Resultatet är en allmän
+            uppskattning och inte medicinsk rådgivning.
+          </p>
+          <button type="button" onClick={handleApproveAnalysis}>
+            Jag godkänner och analyserar
+          </button>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => setShowAnalysisConsent(false)}
+          >
+            Avbryt
+          </button>
+        </div>
+      )}
       {analysisError && (
         <div className="progress-photo-ai-comparison">
           <div className="progress-photo-ai-heading">
@@ -459,6 +512,11 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
             </div>
             <span>{getResultSourceLabel(savedAnalysis.result)}</span>
           </div>
+          {savedAnalysis.result.status === 'mock' && (
+            <p className="progress-photo-safety">
+              Demoresultat visas eftersom AI inte kunde användas just nu.
+            </p>
+          )}
           <div className="progress-photo-ai-images">
             <figure>
               <img

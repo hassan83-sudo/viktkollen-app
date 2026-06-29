@@ -8,12 +8,6 @@ const mockComparisonInsights = [
   'Ingen tydlig förändring i överkroppen.',
   'Fortsätt använda samma fotograferingsvinkel.',
 ]
-const mockRecommendations = [
-  'Ta nästa bild om 7 dagar.',
-  'Använd samma ljus och avstånd.',
-  'Fortsätt med nuvarande tränings- och kostrutiner.',
-  'Fokusera på jämna veckovisa förändringar.',
-]
 const mockNextAnalysisGoals = [
   'Ta nästa bild inom 7 dagar.',
   'Behåll samma fotograferingsvinkel.',
@@ -68,6 +62,20 @@ const bodyOverviewMarkers = [
     y: 80,
   },
 ]
+const resultModelFields = [
+  ['status', 'Status'],
+  ['generatedAt', 'Genererad'],
+  ['summary', 'Sammanfattning'],
+  ['bodyComposition', 'Kroppssammansättning'],
+  ['posture', 'Hållning'],
+  ['strengths', 'Styrkor'],
+  ['improvementAreas', 'Förbättringsområden'],
+  ['progressEstimate', 'Utveckling över tid'],
+  ['confidence', 'Tillförlitlighet'],
+  ['recommendations', 'Rekommendationer'],
+  ['nextSteps', 'Nästa steg'],
+  ['safetyNote', 'Säkerhetsnotis'],
+]
 
 function formatAnalysisDate(date) {
   return new Intl.DateTimeFormat('sv-SE', {
@@ -120,57 +128,32 @@ function isAnalysisWithinDays(analysis, days) {
   return createdAt >= cutoff
 }
 
-function toTextList(value, fallback = []) {
-  return Array.isArray(value) && value.length > 0 ? value : fallback
-}
-
-function getResultSummary(result) {
-  return (
-    result.summary ||
-    'Analysen visar en försiktig visuell uppskattning baserad på bilderna. Följ utvecklingen över tid och jämför bilder med liknande ljus, avstånd och vinkel.'
-  )
-}
-
-function getResultComposition(result) {
-  return (
-    result.composition ||
-    result.visualAssessment ||
-    [
-      `Kroppsfett: ${result.bodyFat || '~24 %'}`,
-      `Muskelmassa: ${result.muscleMass || 'Normal'}`,
-      `Hållning: ${result.posture || 'Bra'}`,
-      `Midjeutveckling: ${result.waistTrend || 'Följs över tid'}`,
-    ].join(' ')
-  )
-}
-
-function getResultStrengths(result) {
-  return toTextList(result.strengths, [
-    'Du har skapat en tydlig startpunkt för framtida jämförelser.',
-    'Bilder från två vinklar gör utvecklingen lättare att följa.',
-  ])
-}
-
-function getResultImprovements(result) {
-  return toTextList(result.improvements, [
-    'Använd samma ljus och avstånd vid nästa analys.',
-    'Försök ta nästa bild vid ungefär samma tid på dagen.',
-  ])
-}
-
-function getResultNextSteps(result) {
-  return toTextList(result.nextSteps, result.recommendations || mockRecommendations)
-}
-
-function getResultSafetyNotice(result) {
-  return (
-    result.safetyNotice ||
-    'Detta är en visuell uppskattning och inte medicinsk rådgivning, diagnos eller behandling.'
-  )
-}
-
 function getTimelineSummary(result) {
-  return result.summary || result.waistTrend || 'Analys klar med mock-resultat.'
+  return result.summary || result.progressEstimate || 'Analys klar.'
+}
+
+function formatResultValue(key, value) {
+  if (key === 'generatedAt') {
+    return formatAnalysisDate(value)
+  }
+
+  return value
+}
+
+function getResultSections(result) {
+  return resultModelFields
+    .map(([key, label]) => ({
+      key,
+      label,
+      value: result[key],
+    }))
+    .filter(({ value }) => {
+      if (Array.isArray(value)) {
+        return value.length > 0
+      }
+
+      return value !== undefined && value !== null && value !== ''
+    })
 }
 
 function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
@@ -178,6 +161,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   const [analysisHistory, setAnalysisHistory] = useState([])
   const [analysisError, setAnalysisError] = useState('')
   const [analysisStatus, setAnalysisStatus] = useState('Väntar på bilder')
+  const [expandedAnalysisIds, setExpandedAnalysisIds] = useState([])
   const [frontPhoto, setFrontPhoto] = useState(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [savedAnalysis, setSavedAnalysis] = useState(() => analysisHistory[0] ?? null)
@@ -320,6 +304,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
           preview: sidePhoto.preview,
         }
         const nextAnalysis = {
+          analysisNumber: analysisHistory.length + 1,
           createdAt: new Date().toISOString(),
           frontPhoto: storedFrontPhoto,
           result: await analyzeBodyWithAI({ frontPhoto, sidePhoto }),
@@ -348,8 +333,17 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
 
   function handleClearHistory() {
     setAnalysisHistory([])
+    setExpandedAnalysisIds([])
     setSavedAnalysis(null)
     onAnalysisHistoryChange(false)
+  }
+
+  function toggleExpandedAnalysis(createdAt) {
+    setExpandedAnalysisIds((currentIds) =>
+      currentIds.includes(createdAt)
+        ? currentIds.filter((id) => id !== createdAt)
+        : [...currentIds, createdAt],
+    )
   }
 
   return (
@@ -477,30 +471,20 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
               <figcaption>{savedAnalysis.sidePhoto.name}</figcaption>
             </figure>
           </div>
-          <p className="report-heading">Sammanfattning</p>
-          <p>{getResultSummary(savedAnalysis.result)}</p>
-          <p className="report-heading">
-            Kroppssammansättning / visuell bedömning
-          </p>
-          <p>{getResultComposition(savedAnalysis.result)}</p>
-          <p className="report-heading">Styrkor</p>
-          <ul>
-            {getResultStrengths(savedAnalysis.result).map((strength) => (
-              <li key={strength}>{strength}</li>
-            ))}
-          </ul>
-          <p className="report-heading">Förbättringsområden</p>
-          <ul>
-            {getResultImprovements(savedAnalysis.result).map((improvement) => (
-              <li key={improvement}>{improvement}</li>
-            ))}
-          </ul>
-          <p className="report-heading">Rekommenderat nästa steg</p>
-          <ul>
-            {getResultNextSteps(savedAnalysis.result).map((step) => (
-              <li key={step}>{step}</li>
-            ))}
-          </ul>
+          {getResultSections(savedAnalysis.result).map((section) => (
+            <div key={section.key}>
+              <p className="report-heading">{section.label}</p>
+              {Array.isArray(section.value) ? (
+                <ul>
+                  {section.value.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p>{formatResultValue(section.key, section.value)}</p>
+              )}
+            </div>
+          ))}
           <p className="report-heading">Visuell kroppsöversikt</p>
           <div
             className="progress-photo-ai-images"
@@ -572,9 +556,6 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
               <li key={tip}>{tip}</li>
             ))}
           </ul>
-          <p className="progress-photo-safety">
-            {getResultSafetyNotice(savedAnalysis.result)}
-          </p>
         </div>
       )}
       {analysisHistory.length > 0 && (
@@ -699,40 +680,79 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
           </div>
           <div className="body-analysis-timeline">
             {visibleAnalysisHistory.length > 0 ? (
-              visibleAnalysisHistory.map((analysis) => (
-                <article key={analysis.createdAt}>
-                  <span className="body-analysis-timeline-dot" />
-                  <div className="body-analysis-timeline-content">
-                    <div className="body-analysis-timeline-heading">
-                      <strong>{formatAnalysisDate(analysis.createdAt)}</strong>
-                      {analysis.createdAt === analysisHistory[0]?.createdAt && (
-                        <span className="progress-photo-view-badge">
-                          Senaste
-                        </span>
+              visibleAnalysisHistory.map((analysis) => {
+                const isExpanded = expandedAnalysisIds.includes(
+                  analysis.createdAt,
+                )
+
+                return (
+                  <article key={analysis.createdAt}>
+                    <span className="body-analysis-timeline-dot" />
+                    <div className="body-analysis-timeline-content">
+                      <div className="body-analysis-timeline-heading">
+                        <strong>
+                          Analys {analysis.analysisNumber} ·{' '}
+                          {formatAnalysisDate(analysis.createdAt)}
+                        </strong>
+                        {analysis.createdAt === analysisHistory[0]?.createdAt && (
+                          <span className="progress-photo-view-badge">
+                            Senaste
+                          </span>
+                        )}
+                      </div>
+                      <p>{getTimelineSummary(analysis.result)}</p>
+                      <span>{analysis.status || 'Analys klar'}</span>
+                      <div className="body-analysis-timeline-images">
+                        <img
+                          src={analysis.frontPhoto.preview}
+                          alt="Miniatyr framifrån"
+                        />
+                        <img
+                          src={analysis.sidePhoto.preview}
+                          alt="Miniatyr från sidan"
+                        />
+                      </div>
+                      {isExpanded && (
+                        <div className="body-analysis-timeline-details">
+                          {getResultSections(analysis.result).map((section) => (
+                            <div key={section.key}>
+                              <strong>{section.label}</strong>
+                              {Array.isArray(section.value) ? (
+                                <ul>
+                                  {section.value.map((item) => (
+                                    <li key={item}>{item}</li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p>
+                                  {formatResultValue(
+                                    section.key,
+                                    section.value,
+                                  )}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       )}
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={() => setSavedAnalysis(analysis)}
+                      >
+                        Visa analys
+                      </button>
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={() => toggleExpandedAnalysis(analysis.createdAt)}
+                      >
+                        {isExpanded ? 'Dölj detaljer' : 'Visa detaljer'}
+                      </button>
                     </div>
-                    <p>{getTimelineSummary(analysis.result)}</p>
-                    <span>{analysis.status || 'Analys klar'}</span>
-                    <div className="body-analysis-timeline-images">
-                      <img
-                        src={analysis.frontPhoto.preview}
-                        alt="Miniatyr framifrån"
-                      />
-                      <img
-                        src={analysis.sidePhoto.preview}
-                        alt="Miniatyr från sidan"
-                      />
-                    </div>
-                    <button
-                      className="secondary-button"
-                      type="button"
-                      onClick={() => setSavedAnalysis(analysis)}
-                    >
-                      Visa analys
-                    </button>
-                  </div>
-                </article>
-              ))
+                  </article>
+                )
+              })
             ) : (
               <p className="progress-photo-safety">
                 Inga analyser finns i den valda perioden.

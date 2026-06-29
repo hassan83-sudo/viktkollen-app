@@ -1461,6 +1461,40 @@ a:focus-visible {
   border-radius: 8px;
 }
 
+.body-analysis-timeline-details {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.body-analysis-timeline-details div {
+  display: grid;
+  gap: 5px;
+}
+
+.body-analysis-timeline-details strong {
+  color: var(--text-h);
+  font-size: 13px;
+}
+
+.body-analysis-timeline-details p,
+.body-analysis-timeline-details li {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.body-analysis-timeline-details ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 18px;
+}
+
 .progress-photo-compare-preview {
   margin-top: 16px;
   padding: 12px 14px;

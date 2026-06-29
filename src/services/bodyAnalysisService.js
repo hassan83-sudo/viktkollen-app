@@ -78,6 +78,12 @@ async function callBodyAnalysisApi(payload) {
   }
 }
 
+/**
+ * Sends selected body analysis images to the backend route.
+ *
+ * @param {{frontPhoto: {file?: File}, sidePhoto: {file?: File}}} params
+ * @returns {Promise<Record<string, unknown>>}
+ */
 export async function analyzeBodyWithAI({ frontPhoto, sidePhoto }) {
   if (!frontPhoto?.file) {
     throw new Error('Bild framifrån saknas. Välj en bild och försök igen.')

@@ -195,6 +195,34 @@ function getAiAnalysisCount(history) {
   return history.filter((analysis) => analysis.result?.source === 'ai').length
 }
 
+function getNextAnalysisRecommendation(daysSinceLatestAnalysis) {
+  if (daysSinceLatestAnalysis === null) {
+    return 'Skapa första analys'
+  }
+
+  if (daysSinceLatestAnalysis < 7) {
+    return 'Vänta några dagar'
+  }
+
+  return 'Dags för ny analys'
+}
+
+function getLatestInsights(analysis) {
+  if (!analysis?.result) {
+    return [
+      'Skapa en analys för att få personliga insikter.',
+      'Två bilder ger bättre underlag.',
+      'Konsekventa bilder gör jämförelser tydligare.',
+    ]
+  }
+
+  return [
+    analysis.result.strengths?.[0],
+    analysis.result.improvementAreas?.[0],
+    analysis.result.nextSteps?.[0],
+  ].filter(Boolean).slice(0, 3)
+}
+
 function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   const [activeBodyMarker, setActiveBodyMarker] = useState(bodyOverviewMarkers[0])
   const [analysisHistory, setAnalysisHistory] = useState(() =>
@@ -256,6 +284,36 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   const nextAnalysisDate = latestAnalysisDate
     ? getNextAnalysisDate(latestAnalysisDate)
     : null
+  const latestInsights = getLatestInsights(savedAnalysis)
+  const nextAnalysisRecommendation =
+    getNextAnalysisRecommendation(daysSinceLatestAnalysis)
+  const analysisQualityItems = [
+    {
+      label: 'Bild framifrån vald',
+      status: frontPhoto ? 'positive' : 'neutral',
+      value: frontPhoto ? 'Klar' : 'Väntar',
+    },
+    {
+      label: 'Sidobild vald',
+      status: sidePhoto ? 'positive' : 'neutral',
+      value: sidePhoto ? 'Klar' : 'Väntar',
+    },
+    {
+      label: 'Samma ljus rekommenderas',
+      status: 'warning',
+      value: 'För bättre jämförelser',
+    },
+    {
+      label: 'Samma avstånd rekommenderas',
+      status: 'warning',
+      value: 'För jämnare analys',
+    },
+    {
+      label: 'Liknande kläder rekommenderas',
+      status: 'warning',
+      value: 'För tydligare förändring',
+    },
+  ]
   const progressIndicators = [
     {
       label: 'Vikttrend',
@@ -517,6 +575,24 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
           )}
         </div>
       )}
+      <div className="body-analysis-progress">
+        <div>
+          <p className="eyebrow">Analyskvalitet</p>
+          <h3>För bättre jämförelser</h3>
+        </div>
+        <div className="body-analysis-progress-grid">
+          {analysisQualityItems.map((item) => (
+            <div key={item.label}>
+              <span
+                className={`body-analysis-status-dot is-${item.status}`}
+                aria-hidden="true"
+              />
+              <small>{item.label}</small>
+              <strong>{item.value}</strong>
+            </div>
+          ))}
+        </div>
+      </div>
       <button type="button" onClick={handleAnalyzeBody} disabled={!canAnalyze}>
         Analysera kroppen
       </button>
@@ -761,6 +837,21 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
         </div>
       </div>
       <p className="body-analysis-next-step">{nextStepText}</p>
+      <div className="body-analysis-weekly-focus">
+        <p className="eyebrow">Nästa rekommenderade analys</p>
+        <h3>{nextAnalysisRecommendation}</h3>
+      </div>
+      <div className="body-analysis-recommended-steps">
+        <div>
+          <p className="eyebrow">Mina insikter</p>
+          <h3>Från senaste analysen</h3>
+        </div>
+        <ul>
+          {latestInsights.map((insight) => (
+            <li key={insight}>{insight}</li>
+          ))}
+        </ul>
+      </div>
       <div className="body-analysis-weekly-focus">
         <p className="eyebrow">Veckans AI-fokus</p>
         <h3>{weeklyFocus}</h3>

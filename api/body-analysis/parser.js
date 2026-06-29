@@ -38,7 +38,10 @@ function parseMultipartImages(rawBodyBuffer, boundary) {
     }
 
     const [rawHeaders, ...contentParts] = part.split('\r\n\r\n')
-    const content = contentParts.join('\r\n\r\n').replace(/\r\n--$/, '')
+    const content = contentParts
+      .join('\r\n\r\n')
+      .replace(/\r\n--$/, '')
+      .replace(/\r\n$/, '')
     const fieldName = rawHeaders.match(/name="([^"]+)"/)?.[1]
     const fileName = rawHeaders.match(/filename="([^"]*)"/)?.[1]
     const contentType = rawHeaders.match(/Content-Type:\s*([^\r\n]+)/i)?.[1]
@@ -49,6 +52,10 @@ function parseMultipartImages(rawBodyBuffer, boundary) {
 
     images[fieldName] = {
       contentType: contentType?.toLowerCase() || '',
+      dataUrl: `data:${contentType};base64,${Buffer.from(
+        content,
+        'latin1',
+      ).toString('base64')}`,
       name: fileName,
       size: Buffer.byteLength(content, 'latin1'),
     }

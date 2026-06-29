@@ -156,6 +156,10 @@ function getResultSections(result) {
     })
 }
 
+function getResultSourceLabel(result) {
+  return result.status === 'ai' ? 'AI-resultat' : 'Mock-resultat'
+}
+
 function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   const [activeBodyMarker, setActiveBodyMarker] = useState(bodyOverviewMarkers[0])
   const [analysisHistory, setAnalysisHistory] = useState([])
@@ -453,7 +457,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
               <p className="eyebrow">Senaste sparade analys</p>
               <h3>{formatAnalysisDate(savedAnalysis.createdAt)}</h3>
             </div>
-            <span>Lokalt sparad</span>
+            <span>{getResultSourceLabel(savedAnalysis.result)}</span>
           </div>
           <div className="progress-photo-ai-images">
             <figure>

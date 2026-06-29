@@ -14,18 +14,29 @@ export const config = {
 
 async function runBodyAnalysis(images) {
   const prompt = createBodyAnalysisPrompt()
+  const startedAt = Date.now()
 
   try {
-    // TODO: Pass prompt and images into OpenAI Vision when implemented.
-    void prompt
+    const analysis = await analyzeBodyImages(
+      images.frontImage,
+      images.sideImage,
+      prompt,
+    )
 
-    return await analyzeBodyImages(images.frontImage, images.sideImage)
+    console.info('[api/body-analysis] Analysis completed', {
+      durationMs: Date.now() - startedAt,
+      source: 'ai',
+    })
+
+    return analysis
   } catch (error) {
-    if (error instanceof Error && error.message === 'Not implemented') {
-      return createMockAnalysis()
-    }
+    console.warn('[api/body-analysis] AI analysis failed, using mock', {
+      durationMs: Date.now() - startedAt,
+      error: error instanceof Error ? error.message : String(error),
+      source: 'mock',
+    })
 
-    throw error
+    return createMockAnalysis()
   }
 }
 
@@ -64,7 +75,12 @@ export default async function handler(request, response) {
     const result = formatBodyAnalysisResult(analysis)
 
     return sendResponse(response, 200, result)
-  } catch {
+  } catch (error) {
+    console.error('[api/body-analysis] Unexpected route error', {
+      error: error instanceof Error ? error.message : String(error),
+      source: 'error',
+    })
+
     return sendResponse(response, 500, {
       error: 'Internal server error.',
     })

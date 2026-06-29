@@ -12,9 +12,9 @@ function PhotoAnalysis({
           <p className="eyebrow">Matfoto</p>
           <h3>Matfotoanalys V2</h3>
           <p>
-            Ta eller välj en tydlig bild av måltiden. Analysen ger en trygg
-            uppskattning av innehållet, inte exakta kalorier eller
-            näringsvärden.
+            Ta eller välj en tydlig bild av måltiden. Du kan analysera flera
+            måltidsbilder samma dag och följa dem i lokal historik. Analysen är
+            en trygg uppskattning, inte exakta kalorier eller näringsvärden.
           </p>
         </div>
         <label className="photo-input">
@@ -23,6 +23,7 @@ function PhotoAnalysis({
             type="file"
             accept="image/*"
             capture="environment"
+            aria-label="Välj eller ta en måltidsbild"
             onChange={handleFoodPhotoChange}
           />
         </label>
@@ -36,6 +37,7 @@ function PhotoAnalysis({
         <button
           type="button"
           disabled={!foodPhotoPreview}
+          aria-label="Analysera vald måltidsbild"
           onClick={onAnalyzePhotoMeal}
         >
           Uppskatta måltiden
@@ -61,25 +63,33 @@ function PhotoAnalysis({
 
                 <div className="photo-meal-detected">
                   <div>
-                    <span>Trolig proteinkälla</span>
-                    <strong>{entry.likelyProtein}</strong>
+                    <span>Proteinstatus</span>
+                    <strong>{entry.analysis.proteinStatus}</strong>
                   </div>
                   <div>
-                    <span>Troliga grönsaker</span>
-                    <strong>{entry.likelyVegetables}</strong>
+                    <span>Grönsaksstatus</span>
+                    <strong>{entry.analysis.vegetableStatus}</strong>
                   </div>
                   <div>
-                    <span>Trolig kolhydratkälla</span>
-                    <strong>{entry.likelyCarbs}</strong>
+                    <span>Fiber/kolhydratbalans</span>
+                    <strong>{entry.analysis.fiberCarbBalance}</strong>
                   </div>
                 </div>
 
                 <div className="photo-meal-feedback">
                   <p>
+                    <strong>Portion:</strong> {entry.analysis.portionEstimate}
+                  </p>
+                  <p>
                     <strong>Det ser bra ut:</strong> {entry.positiveFeedback}
                   </p>
                   <p>
-                    <strong>Om du vill förbättra:</strong> {entry.improvementSuggestion}
+                    <strong>Om du vill förbättra:</strong>{' '}
+                    {entry.improvementSuggestion}
+                  </p>
+                  <p>
+                    <strong>Billigt nästa mål:</strong>{' '}
+                    {entry.analysis.cheapNextMealSuggestion}
                   </p>
                 </div>
 

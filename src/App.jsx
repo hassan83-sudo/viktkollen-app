@@ -10,6 +10,8 @@ import ReminderSettings from './components/ReminderSettings.jsx'
 import WeightChart from './components/WeightChart.jsx'
 import WeeklyReport from './components/WeeklyReport.jsx'
 import { makePersonalCoachReply } from './lib/coachReply.js'
+import { addMealAnalysis, getMealHistory, setMealHistory } from './services/mealHistory.js'
+import { analyzeMealPhoto } from './services/mealAnalysisService.js'
 
 const starterWeights = [
   { date: '2026-05-23', value: 91.8 },
@@ -462,47 +464,6 @@ function isValidWeightInput(value) {
   const numericValue = parseWeight(value)
 
   return Number.isFinite(numericValue) && numericValue > 0
-}
-
-function makeMockPhotoAnalysis(profile, checkIn, foods) {
-  const completedFoods = foods.filter((item) => item.done).length
-  const goalAdjustment =
-    profile?.goal === 'bygga muskler'
-      ? { calories: 120, protein: 12, carbs: 12, fat: 2 }
-      : profile?.goal === 'gå ner i vikt'
-        ? { calories: -70, protein: 4, carbs: -10, fat: -2 }
-        : { calories: 0, protein: 6, carbs: 0, fat: 0 }
-  const activityAdjustment =
-    profile?.activityLevel === 'Hög'
-      ? { calories: 80, carbs: 12 }
-      : profile?.activityLevel === 'Låg'
-        ? { calories: -40, carbs: -6 }
-        : { calories: 0, carbs: 0 }
-  const energyAdjustment = checkIn.energy <= 3 ? 60 : 0
-  const checklistAdjustment = completedFoods >= 3 ? -20 : 35
-  const calories =
-    520 + goalAdjustment.calories + activityAdjustment.calories + energyAdjustment + checklistAdjustment
-
-  return {
-    foods: ['trolig proteinkälla', 'troliga grönsaker', 'trolig kolhydratkälla'],
-    likelyProtein: 'ser ut att innehålla en proteinkälla',
-    likelyVegetables: 'troligen grönsaker eller sallad',
-    likelyCarbs: 'kan innehålla ris, potatis, pasta eller annan kolhydratkälla',
-    summary:
-      'Måltiden ser ut att ha en proteinbas, någon form av grönsaker och en kolhydratkälla.',
-    positiveFeedback: 'Bra att måltiden verkar ha flera delar som kan ge mättnad.',
-    improvementSuggestion:
-      completedFoods >= 3
-        ? 'Ett enkelt nästa steg kan vara att hålla samma struktur även vid nästa måltid.'
-        : 'Ett enkelt nästa steg kan vara att lägga till lite mer grönsaker eller en tydligare proteinbas.',
-    calories,
-    protein: 32 + goalAdjustment.protein,
-    carbs: 54 + goalAdjustment.carbs + activityAdjustment.carbs,
-    fat: 18 + goalAdjustment.fat,
-    confidence: 'låg',
-    explanation:
-      'Ser ut att vara en balanserad måltid, men bildanalysen är osäker. Se all information som en grov riktning, inte som exakt kaloriberäkning eller näringsdeklaration.',
-  }
 }
 
 function makeCoachMessage(profile, checkIn, foods, meals) {
@@ -1037,13 +998,21 @@ function App() {
   )
   const [foodPhotoPreview, setFoodPhotoPreview] = useState('')
   const [photoAnalysisStatus, setPhotoAnalysisStatus] = useState('')
-  const [photoMeals, setPhotoMeals] = useState(() =>
-    readStoredValue(
-      storageKeys.photoMeals,
-      initialPhotoMeals,
-      isStoredPhotoMeals,
-    ),
-  )
+  const [photoMeals, setPhotoMeals] = useState(() => {
+    const storedMealHistory = getMealHistory()
+
+    if (storedMealHistory.length > 0) {
+      return storedMealHistory
+    }
+
+    return setMealHistory(
+      readStoredValue(
+        storageKeys.photoMeals,
+        initialPhotoMeals,
+        isStoredPhotoMeals,
+      ),
+    )
+  })
   const [barcodeInput, setBarcodeInput] = useState('')
   const [barcodeStatus, setBarcodeStatus] = useState('')
   const [barcodeScannerActive, setBarcodeScannerActive] = useState(false)
@@ -1236,6 +1205,25 @@ function App() {
     improvementSuggestion:
       entry.analysis.improvementSuggestion ||
       'Ett enkelt nästa steg kan vara att lägga till en tydlig grönsak eller proteinkälla.',
+    analysis: {
+      ...entry.analysis,
+      cheapNextMealSuggestion:
+        entry.analysis.cheapNextMealSuggestion ||
+        'Billigt nästa mål: ägg, potatis och frysta grönsaker.',
+      fiberCarbBalance:
+        entry.analysis.fiberCarbBalance ||
+        'Välj gärna fullkorn, potatis, frukt eller grönsaker för bättre fiberbalans.',
+      portionEstimate:
+        entry.analysis.portionEstimate || 'Portionen ser medelstor ut.',
+      proteinStatus:
+        entry.analysis.proteinStatus ||
+        entry.analysis.likelyProtein ||
+        'Proteinstatus är osäker.',
+      vegetableStatus:
+        entry.analysis.vegetableStatus ||
+        entry.analysis.likelyVegetables ||
+        'Grönsaksstatus är osäker.',
+    },
   }))
   const weeklyReportLines = weeklyReport
     ? weeklyReport.split('\n').map((line, index) => ({
@@ -1313,7 +1301,7 @@ function App() {
   }, [meals])
 
   useEffect(() => {
-    writeStoredValue(storageKeys.photoMeals, photoMeals)
+    setMealHistory(photoMeals)
   }, [photoMeals])
 
   useEffect(() => {
@@ -1617,43 +1605,13 @@ function App() {
   }
 
   async function requestMealAnalysis(image) {
-    try {
-      console.info('[Viktkollen meal] Calling /api/analyze-meal')
-
-      const apiResponse = await fetch('/api/analyze-meal', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          image,
-          profile: getValidatedProfile(),
-          checkIn,
-          foods,
-          meals,
-        }),
-      })
-
-      if (!apiResponse.ok) {
-        throw new Error(`Meal API failed with status ${apiResponse.status}`)
-      }
-
-      const data = await apiResponse.json()
-
-      console.info('[Viktkollen meal] /api/analyze-meal response', {
-        source: data.source,
-        fallbackReason: data.fallbackReason,
-        debug: data.debug,
-      })
-
-      if (data.analysis) {
-        return data.analysis
-      }
-    } catch (error) {
-      console.warn('[Viktkollen meal] API unavailable, using mock analysis', {
-        reason: error instanceof Error ? error.message : String(error),
-      })
-    }
-
-    return makeMockPhotoAnalysis(profile, checkIn, foods)
+    return analyzeMealPhoto({
+      checkIn,
+      foods,
+      image,
+      meals,
+      profile: getValidatedProfile(),
+    })
   }
 
   async function analyzePhotoMeal() {
@@ -1663,15 +1621,15 @@ function App() {
 
     setPhotoAnalysisStatus('Analyserar måltid...')
     const analysis = await requestMealAnalysis(foodPhotoPreview)
-    setPhotoMeals((current) => [
-      {
-        id: Date.now(),
-        image: foodPhotoPreview,
-        createdAt: new Date().toISOString(),
-        analysis,
-      },
-      ...current.slice(0, 4),
-    ])
+    const nextEntry = {
+      analysis,
+      createdAt: new Date().toISOString(),
+      id: Date.now(),
+      image: foodPhotoPreview,
+      source: analysis.source || 'mock',
+    }
+
+    setPhotoMeals(addMealAnalysis(nextEntry))
     setPhotoAnalysisStatus('')
   }
 

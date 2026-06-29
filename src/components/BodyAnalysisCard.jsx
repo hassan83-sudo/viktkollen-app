@@ -14,12 +14,17 @@ import {
 import { analyzeBodyWithAI } from '../services/bodyAnalysisService'
 import { getBodyAnalysisProgressStats } from '../services/bodyAnalysisStats'
 import BodyAnalysisDevChecklist from './BodyAnalysisDevChecklist'
+import BodyAnalysisOnboarding from './BodyAnalysisOnboarding'
 import BodyAnalysisPrivacy from './BodyAnalysisPrivacy'
+import BodyAnalysisPremiumPreview from './BodyAnalysisPremiumPreview'
 import BodyAnalysisQuality from './BodyAnalysisQuality'
 import BodyAnalysisResult from './BodyAnalysisResult'
 import BodyAnalysisStats from './BodyAnalysisStats'
 import BodyAnalysisTimeline from './BodyAnalysisTimeline'
+import BodyAnalysisUnlockCard from './BodyAnalysisUnlockCard'
 import BodyAnalysisUploader from './BodyAnalysisUploader'
+
+const FREE_ANALYSIS_LIMIT = 3
 
 const timelineFilters = [
   { label: 'Alla', value: 'all' },
@@ -266,14 +271,21 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   const [hasApprovedAnalysis, setHasApprovedAnalysis] = useState(false)
   const [importSummary, setImportSummary] = useState(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [isPremiumPreviewEnabled, setIsPremiumPreviewEnabled] = useState(false)
   const [pendingDeleteAnalysisId, setPendingDeleteAnalysisId] = useState('')
   const [savedAnalysis, setSavedAnalysis] = useState(() => getLatestAnalysis())
   const [showAnalysisConsent, setShowAnalysisConsent] = useState(false)
   const [showClearHistoryConfirm, setShowClearHistoryConfirm] = useState(false)
   const [sidePhoto, setSidePhoto] = useState(null)
   const [timelineFilter, setTimelineFilter] = useState('all')
-  const canAnalyze = Boolean(frontPhoto && sidePhoto) && !isAnalyzing
   const analysisCount = analysisHistory.length
+  const isFreeLimitReached =
+    !isPremiumPreviewEnabled && analysisCount >= FREE_ANALYSIS_LIMIT
+  const canAnalyze =
+    Boolean(frontPhoto && sidePhoto) && !isAnalyzing && !isFreeLimitReached
+  const analyzeDisabledReason = isFreeLimitReached
+    ? 'Gratisgränsen på tre lokala analyser är nådd. Premium kan låsas upp senare.'
+    : ''
   const latestAnalysisDate = analysisHistory[0]?.createdAt
   const historyStats = getHistoryStats(analysisHistory)
   const daysSinceLatestAnalysis = latestAnalysisDate
@@ -286,6 +298,8 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
     ? analysisStatus
     : analysisError
       ? 'Analys misslyckades'
+      : isFreeLimitReached
+        ? 'Gratisgräns nådd'
       : analysisStatus === 'Analys klar'
         ? 'Analys klar'
         : canAnalyze
@@ -483,6 +497,13 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   }
 
   async function runBodyAnalysis() {
+    if (isFreeLimitReached) {
+      setAnalysisError(
+        'Gratisgränsen är nådd. Du kan behålla historiken, radera en analys eller förhandsvisa premiumläge utan betalning.',
+      )
+      return
+    }
+
     if (!frontPhoto || !sidePhoto || isAnalyzing) {
       return
     }
@@ -532,6 +553,13 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   }
 
   function handleAnalyzeBody() {
+    if (isFreeLimitReached) {
+      setAnalysisError(
+        'Gratisgränsen är nådd. Radera en analys eller testa premiumförhandsvisning för att skapa fler.',
+      )
+      return
+    }
+
     if (!frontPhoto || !sidePhoto || isAnalyzing) {
       return
     }
@@ -551,6 +579,13 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   }
 
   function handleCreateDemoAnalysis() {
+    if (isFreeLimitReached) {
+      setAnalysisError(
+        'Gratisgränsen är nådd. Aktivera premiumförhandsvisning i dev-läget för att testa fler demoanalyser.',
+      )
+      return
+    }
+
     setAnalysisError('')
     storeCompletedAnalysis(createDemoBodyAnalysisResult(getLatestAnalysis()?.result))
   }
@@ -652,28 +687,35 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
         AI kommer att uppskatta kroppssammansättning och följa förändringar
         över tid.
       </p>
-      <div className="body-analysis-help">
-        <h3>Så får du bättre jämförelser</h3>
-        <ul>
-          <li>Använd samma plats.</li>
-          <li>Ha liknande ljus.</li>
-          <li>Stå på samma avstånd från kameran.</li>
-          <li>Använd liknande kläder.</li>
-        </ul>
-      </div>
+      <BodyAnalysisOnboarding />
+      <BodyAnalysisPremiumPreview
+        analysisCount={analysisCount}
+        isPremiumPreviewEnabled={isPremiumPreviewEnabled}
+        localLimit={FREE_ANALYSIS_LIMIT}
+        onTogglePremiumPreview={() => {
+          setAnalysisError('')
+          setIsPremiumPreviewEnabled((currentValue) => !currentValue)
+        }}
+      />
       <BodyAnalysisUploader
         canAnalyze={canAnalyze}
         currentAnalysisStatus={currentAnalysisStatus}
+        disabledReason={analyzeDisabledReason}
         frontPhoto={frontPhoto}
         sidePhoto={sidePhoto}
         onAnalyze={handleAnalyzeBody}
         onPhotoChange={handlePhotoChange}
+      />
+      <BodyAnalysisUnlockCard
+        isLimitReached={isFreeLimitReached}
+        isPremiumPreviewEnabled={isPremiumPreviewEnabled}
       />
       {import.meta.env.DEV && (
         <>
           <button
             className="secondary-button"
             type="button"
+            aria-label="Skapa demoanalys i utvecklarläge"
             onClick={handleCreateDemoAnalysis}
           >
             Skapa demoanalys

@@ -1,6 +1,7 @@
 function BodyAnalysisUploader({
   canAnalyze,
   currentAnalysisStatus,
+  disabledReason,
   frontPhoto,
   onAnalyze,
   onPhotoChange,
@@ -14,10 +15,11 @@ function BodyAnalysisUploader({
             F
           </span>
           <strong>Bild framifrån</strong>
-          <small>Välj en bild för framtida kroppsanalys.</small>
+          <small>Välj en bild framifrån för kroppsanalysen.</small>
           <input
             type="file"
             accept="image/*"
+            aria-label="Välj bild framifrån för AI-kroppsanalys"
             onChange={(event) => onPhotoChange(event, 'front')}
           />
         </label>
@@ -26,10 +28,11 @@ function BodyAnalysisUploader({
             S
           </span>
           <strong>Bild från sidan</strong>
-          <small>Välj en sidobild för framtida jämförelse.</small>
+          <small>Välj en sidobild för jämförelse över tid.</small>
           <input
             type="file"
             accept="image/*"
+            aria-label="Välj bild från sidan för AI-kroppsanalys"
             onChange={(event) => onPhotoChange(event, 'side')}
           />
         </label>
@@ -50,10 +53,18 @@ function BodyAnalysisUploader({
           )}
         </div>
       )}
-      <button type="button" onClick={onAnalyze} disabled={!canAnalyze}>
+      <button
+        type="button"
+        aria-label="Starta AI-kroppsanalys med valda bilder"
+        onClick={onAnalyze}
+        disabled={!canAnalyze}
+      >
         Analysera kroppen
       </button>
       <p className="analysis-status">{currentAnalysisStatus}</p>
+      {disabledReason && (
+        <p className="progress-photo-safety">{disabledReason}</p>
+      )}
     </>
   )
 }

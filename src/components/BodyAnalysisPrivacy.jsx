@@ -24,10 +24,19 @@ function BodyAnalysisPrivacy({ showConsent, onApprove, onCancel }) {
             och sparas inte permanent i appen. Resultatet är en allmän
             uppskattning och inte medicinsk rådgivning.
           </p>
-          <button type="button" onClick={onApprove}>
+          <button
+            type="button"
+            aria-label="Godkänn och starta AI-kroppsanalys"
+            onClick={onApprove}
+          >
             Jag godkänner och analyserar
           </button>
-          <button className="secondary-button" type="button" onClick={onCancel}>
+          <button
+            className="secondary-button"
+            type="button"
+            aria-label="Avbryt AI-kroppsanalys"
+            onClick={onCancel}
+          >
             Avbryt
           </button>
         </div>

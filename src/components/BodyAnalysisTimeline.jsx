@@ -30,15 +30,17 @@ function BodyAnalysisTimeline({
         <button
           className="secondary-button"
           type="button"
+          aria-label="Exportera AI-kroppsanalysens lokala analystidslinje som JSON"
           onClick={onExportHistory}
         >
-          Exportera analystidslinje
+          Exportera analystidslinje som JSON
         </button>
         <label className="secondary-button">
-          Importera analystidslinje
+          Importera analystidslinje från JSON
           <input
             type="file"
             accept="application/json,.json"
+            aria-label="Importera AI-kroppsanalysens analystidslinje från JSON"
             style={{ display: 'none' }}
             onChange={onImportHistory}
           />
@@ -47,6 +49,7 @@ function BodyAnalysisTimeline({
           <button
             className="secondary-button"
             type="button"
+            aria-label="Rensa hela AI-kroppsanalysens lokala analystidslinje"
             onClick={onShowClearHistoryConfirm}
           >
             Rensa analystidslinje
@@ -73,12 +76,17 @@ function BodyAnalysisTimeline({
             Detta tar bort alla lokalt sparade analyser från den här
             webbläsaren.
           </p>
-          <button type="button" onClick={onClearHistory}>
+          <button
+            type="button"
+            aria-label="Bekräfta och rensa hela analystidslinjen"
+            onClick={onClearHistory}
+          >
             Ja, rensa analystidslinjen
           </button>
           <button
             className="secondary-button"
             type="button"
+            aria-label="Avbryt rensning av analystidslinjen"
             onClick={onCancelClearHistory}
           >
             Avbryt
@@ -102,6 +110,7 @@ function BodyAnalysisTimeline({
                 }
                 key={filter.value}
                 type="button"
+                aria-label={`Visa ${filter.label.toLowerCase()} i analystidslinjen`}
                 onClick={() => onTimelineFilterChange(filter.value)}
               >
                 {filter.label}
@@ -160,6 +169,7 @@ function BodyAnalysisTimeline({
                       <button
                         className="secondary-button"
                         type="button"
+                        aria-label={`Visa analys ${analysis.analysisNumber}`}
                         onClick={() => onSelectAnalysis(analysis)}
                       >
                         Visa analys
@@ -167,6 +177,11 @@ function BodyAnalysisTimeline({
                       <button
                         className="secondary-button"
                         type="button"
+                        aria-label={
+                          isExpanded
+                            ? `Dölj detaljer för analys ${analysis.analysisNumber}`
+                            : `Visa detaljer för analys ${analysis.analysisNumber}`
+                        }
                         onClick={() =>
                           onToggleExpandedAnalysis(analysis.createdAt)
                         }
@@ -176,6 +191,7 @@ function BodyAnalysisTimeline({
                       <button
                         className="secondary-button"
                         type="button"
+                        aria-label={`Radera analys ${analysis.analysisNumber}`}
                         onClick={() => onAskDeleteAnalysis(analysis.createdAt)}
                       >
                         Radera analys
@@ -195,6 +211,7 @@ function BodyAnalysisTimeline({
                           </p>
                           <button
                             type="button"
+                            aria-label={`Bekräfta radering av analys ${analysis.analysisNumber}`}
                             onClick={() => onDeleteAnalysis(analysis.createdAt)}
                           >
                             Ja, radera analysen
@@ -202,6 +219,7 @@ function BodyAnalysisTimeline({
                           <button
                             className="secondary-button"
                             type="button"
+                            aria-label={`Avbryt radering av analys ${analysis.analysisNumber}`}
                             onClick={onCancelDeleteAnalysis}
                           >
                             Avbryt

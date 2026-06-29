@@ -3,6 +3,8 @@ import { useState } from 'react'
 import {
   addAnalysis,
   clearAnalysisHistory,
+  deleteAnalysis,
+  exportAnalysisHistory,
   getAnalysisHistory,
   getLatestAnalysis,
 } from '../services/bodyAnalysisHistory'
@@ -205,6 +207,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   const [hasApprovedAnalysis, setHasApprovedAnalysis] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [savedAnalysis, setSavedAnalysis] = useState(() => getLatestAnalysis())
+  const [showClearHistoryConfirm, setShowClearHistoryConfirm] = useState(false)
   const [showAnalysisConsent, setShowAnalysisConsent] = useState(false)
   const [sidePhoto, setSidePhoto] = useState(null)
   const [timelineFilter, setTimelineFilter] = useState('all')
@@ -404,10 +407,42 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
     runBodyAnalysis()
   }
 
+  function handleExportHistory() {
+    const exportPayload = exportAnalysisHistory()
+    const blob = new Blob([JSON.stringify(exportPayload, null, 2)], {
+      type: 'application/json',
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+
+    link.href = url
+    link.download = `viktkollen-ai-kroppsanalys-${new Date()
+      .toISOString()
+      .slice(0, 10)}.json`
+    link.click()
+    window.URL.revokeObjectURL(url)
+  }
+
+  function handleDeleteAnalysis(createdAt) {
+    const nextHistory = deleteAnalysis(createdAt)
+
+    setAnalysisHistory(nextHistory)
+    setExpandedAnalysisIds((currentIds) =>
+      currentIds.filter((id) => id !== createdAt),
+    )
+
+    if (savedAnalysis?.createdAt === createdAt) {
+      setSavedAnalysis(nextHistory[0] ?? null)
+    }
+
+    onAnalysisHistoryChange(nextHistory.length > 0)
+  }
+
   function handleClearHistory() {
     setAnalysisHistory(clearAnalysisHistory())
     setExpandedAnalysisIds([])
     setSavedAnalysis(null)
+    setShowClearHistoryConfirm(false)
     onAnalysisHistoryChange(false)
   }
 
@@ -693,6 +728,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
             historik och jämförelser över tid.
           </p>
         )}
+        <p>Du kan när som helst radera din lokala analysdata.</p>
       </div>
       <div className="body-analysis-stats">
         <div>
@@ -760,11 +796,53 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
       </div>
       {analysisCount === 0 && (
         <p className="progress-photo-safety">
-          Skapa din första analys för att börja följa förändringar över tid.
+          Ingen lokal analystidslinje finns just nu. Skapa din första analys
+          för att börja följa förändringar över tid.
         </p>
       )}
       {analysisHistory.length > 0 && (
         <>
+          <div className="body-analysis-filter">
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={handleExportHistory}
+            >
+              Exportera analystidslinje
+            </button>
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => setShowClearHistoryConfirm(true)}
+            >
+              Rensa analystidslinje
+            </button>
+          </div>
+          {showClearHistoryConfirm && (
+            <div className="progress-photo-ai-comparison">
+              <div className="progress-photo-ai-heading">
+                <div>
+                  <p className="eyebrow">Bekräfta rensning</p>
+                  <h3>Rensa hela analystidslinjen?</h3>
+                </div>
+                <span>Lokalt</span>
+              </div>
+              <p>
+                Detta tar bort alla lokalt sparade analyser från den här
+                webbläsaren.
+              </p>
+              <button type="button" onClick={handleClearHistory}>
+                Ja, rensa analystidslinjen
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => setShowClearHistoryConfirm(false)}
+              >
+                Avbryt
+              </button>
+            </div>
+          )}
           <div className="body-analysis-filter">
             {timelineFilters.map((filter) => (
               <button
@@ -805,6 +883,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
                       </div>
                       <p>{getTimelineSummary(analysis.result)}</p>
                       <span>{analysis.status || 'Analys klar'}</span>
+                      <span>{getResultSourceLabel(analysis.result)}</span>
                       <div className="body-analysis-timeline-images">
                         <img
                           src={analysis.frontPhoto.preview}
@@ -839,6 +918,13 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
                       >
                         {isExpanded ? 'Dölj detaljer' : 'Visa detaljer'}
                       </button>
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={() => handleDeleteAnalysis(analysis.createdAt)}
+                      >
+                        Radera analys
+                      </button>
                     </div>
                   </article>
                 )
@@ -849,13 +935,6 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
               </p>
             )}
           </div>
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={handleClearHistory}
-          >
-            Rensa analystidslinje
-          </button>
         </>
       )}
     </div>

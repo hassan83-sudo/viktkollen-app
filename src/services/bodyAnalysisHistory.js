@@ -77,6 +77,35 @@ export function getLatestAnalysis() {
 }
 
 /**
+ * Removes one stored body analysis by creation timestamp.
+ *
+ * @param {string} createdAt
+ * @returns {object[]}
+ */
+export function deleteAnalysis(createdAt) {
+  const nextHistory = readStoredHistory().filter(
+    (analysis) => analysis.createdAt !== createdAt,
+  )
+
+  writeStoredHistory(nextHistory)
+
+  return nextHistory
+}
+
+/**
+ * Creates a JSON-safe export payload for stored body analysis history.
+ *
+ * @returns {{analyses: object[], exportedAt: string, version: number}}
+ */
+export function exportAnalysisHistory() {
+  return {
+    analyses: readStoredHistory(),
+    exportedAt: new Date().toISOString(),
+    version: HISTORY_VERSION,
+  }
+}
+
+/**
  * Clears stored body analysis history.
  *
  * @returns {object[]}

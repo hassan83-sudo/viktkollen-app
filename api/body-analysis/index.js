@@ -13,7 +13,7 @@ export const config = {
 }
 
 async function runBodyAnalysis(images) {
-  const prompt = createBodyAnalysisPrompt()
+  const prompt = createBodyAnalysisPrompt(images.previousAnalysis)
   const startedAt = Date.now()
 
   try {
@@ -21,6 +21,7 @@ async function runBodyAnalysis(images) {
       images.frontImage,
       images.sideImage,
       prompt,
+      images.previousAnalysis,
     )
 
     console.info('[api/body-analysis] Analysis completed', {
@@ -36,7 +37,7 @@ async function runBodyAnalysis(images) {
       source: 'mock',
     })
 
-    return createMockAnalysis()
+    return createMockAnalysis(images.previousAnalysis)
   }
 }
 

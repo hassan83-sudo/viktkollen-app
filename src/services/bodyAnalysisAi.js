@@ -44,9 +44,15 @@ function createTimeoutSignal() {
  * @param {{dataUrl: string}} frontImage
  * @param {{dataUrl: string}} sideImage
  * @param {string} prompt
+ * @param {object | null} previousAnalysis
  * @returns {Promise<object>}
  */
-export async function analyzeBodyImages(frontImage, sideImage, prompt) {
+export async function analyzeBodyImages(
+  frontImage,
+  sideImage,
+  prompt,
+  previousAnalysis = null,
+) {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error('OPENAI_API_KEY missing')
   }
@@ -58,6 +64,8 @@ export async function analyzeBodyImages(frontImage, sideImage, prompt) {
   const timeout = createTimeoutSignal()
 
   try {
+    void previousAnalysis
+
     const response = await fetch(OPENAI_API_URL, {
       body: JSON.stringify({
         input: [

@@ -2,13 +2,28 @@ const BODY_ANALYSIS_ENDPOINT = '/api/body-analysis'
 const USE_MOCK_BODY_ANALYSIS = false
 
 const mockBodyResult = {
-  bodyFat: '~24 %',
-  muscleMass: 'Normal',
-  posture: 'Bra',
-  waistTrend: 'Följs över tid',
+  bodyComposition:
+    'Visuell kroppssammansättning ser stabil ut i demoanalysen.',
+  comparison: {
+    better: 'Demoanalysen visar ingen säker förbättring utan tidigare jämförelse.',
+    nextFocus: 'Ta nästa analys med samma ljus, vinkel och avstånd.',
+    unchanged: 'Fotokonsekvens och hållning följs vidare över tid.',
+  },
+  confidence: 'Medel',
+  generatedAt: new Date().toISOString(),
+  improvementAreas: ['Fortsätt använda samma plats och ljus.'],
+  nextSteps: ['Ta nästa analys om ungefär 7 dagar.'],
+  posture: 'Hållningen ser stabil ut i demoanalysen.',
+  recommendations: ['Fokusera på jämna förändringar över tid.'],
+  safetyNote:
+    'Detta är en visuell uppskattning och inte medicinsk rådgivning.',
+  source: 'mock',
+  status: 'completed',
+  strengths: ['Du har valt bilder från två vinklar.'],
+  summary: 'Demoanalysen är klar och visas som en försiktig uppskattning.',
 }
 
-function buildBodyAnalysisPayload(frontImage, sideImage) {
+function buildBodyAnalysisPayload(frontImage, sideImage, previousAnalysis) {
   const requestMetadata = {
     createdAt: new Date().toISOString(),
     requestId: `body-analysis-${Date.now()}`,
@@ -21,6 +36,7 @@ function buildBodyAnalysisPayload(frontImage, sideImage) {
   return {
     createdAt: new Date().toISOString(),
     frontImage: frontImage.file,
+    previousAnalysis,
     sideImage: sideImage.file,
   }
 }
@@ -47,6 +63,10 @@ async function callBodyAnalysisApi(payload) {
 
     formData.append('frontImage', payload.frontImage)
     formData.append('sideImage', payload.sideImage)
+
+    if (payload.previousAnalysis) {
+      formData.append('previousAnalysis', JSON.stringify(payload.previousAnalysis))
+    }
 
     const response = await fetch(BODY_ANALYSIS_ENDPOINT, {
       body: formData,
@@ -81,10 +101,14 @@ async function callBodyAnalysisApi(payload) {
 /**
  * Sends selected body analysis images to the backend route.
  *
- * @param {{frontPhoto: {file?: File}, sidePhoto: {file?: File}}} params
+ * @param {{frontPhoto: {file?: File}, previousAnalysis?: object, sidePhoto: {file?: File}}} params
  * @returns {Promise<Record<string, unknown>>}
  */
-export async function analyzeBodyWithAI({ frontPhoto, sidePhoto }) {
+export async function analyzeBodyWithAI({
+  frontPhoto,
+  previousAnalysis,
+  sidePhoto,
+}) {
   if (!frontPhoto?.file) {
     throw new Error('Bild framifrån saknas. Välj en bild och försök igen.')
   }
@@ -93,7 +117,11 @@ export async function analyzeBodyWithAI({ frontPhoto, sidePhoto }) {
     throw new Error('Bild från sidan saknas. Välj en bild och försök igen.')
   }
 
-  const payload = buildBodyAnalysisPayload(frontPhoto, sidePhoto)
+  const payload = buildBodyAnalysisPayload(
+    frontPhoto,
+    sidePhoto,
+    previousAnalysis,
+  )
 
   // TODO: Send the selected front-facing image as one parameter.
   // TODO: Send the selected side-facing image as one parameter.

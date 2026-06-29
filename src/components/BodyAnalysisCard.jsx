@@ -1,13 +1,13 @@
 import { useState } from 'react'
 
+import {
+  addAnalysis,
+  clearAnalysisHistory,
+  getAnalysisHistory,
+  getLatestAnalysis,
+} from '../services/bodyAnalysisHistory'
 import { analyzeBodyWithAI } from '../services/bodyAnalysisService'
 
-const mockComparisonInsights = [
-  'Midjan ser något smalare ut.',
-  'Hållningen verkar förbättrad.',
-  'Ingen tydlig förändring i överkroppen.',
-  'Fortsätt använda samma fotograferingsvinkel.',
-]
 const mockNextAnalysisGoals = [
   'Ta nästa bild inom 7 dagar.',
   'Behåll samma fotograferingsvinkel.',
@@ -64,16 +64,17 @@ const bodyOverviewMarkers = [
 ]
 const resultModelFields = [
   ['status', 'Status'],
+  ['source', 'Källa'],
   ['generatedAt', 'Genererad'],
   ['summary', 'Sammanfattning'],
   ['bodyComposition', 'Kroppssammansättning'],
   ['posture', 'Hållning'],
   ['strengths', 'Styrkor'],
   ['improvementAreas', 'Förbättringsområden'],
-  ['progressEstimate', 'Utveckling över tid'],
-  ['confidence', 'Tillförlitlighet'],
   ['recommendations', 'Rekommendationer'],
   ['nextSteps', 'Nästa steg'],
+  ['comparison', 'Förändring sedan senaste analys'],
+  ['confidence', 'Tillförlitlighet'],
   ['safetyNote', 'Säkerhetsnotis'],
 ]
 
@@ -129,7 +130,7 @@ function isAnalysisWithinDays(analysis, days) {
 }
 
 function getTimelineSummary(result) {
-  return result.summary || result.progressEstimate || 'Analys klar.'
+  return result.summary || result.comparison?.unchanged || 'Analys klar.'
 }
 
 function formatResultValue(key, value) {
@@ -138,6 +139,30 @@ function formatResultValue(key, value) {
   }
 
   return value
+}
+
+function renderResultValue(key, value) {
+  if (Array.isArray(value)) {
+    return (
+      <ul>
+        {value.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    )
+  }
+
+  if (value && typeof value === 'object') {
+    return (
+      <ul>
+        {Object.entries(value).map(([itemKey, itemValue]) => (
+          <li key={itemKey}>{itemValue}</li>
+        ))}
+      </ul>
+    )
+  }
+
+  return <p>{formatResultValue(key, value)}</p>
 }
 
 function getResultSections(result) {
@@ -157,19 +182,29 @@ function getResultSections(result) {
 }
 
 function getResultSourceLabel(result) {
-  return result.status === 'ai' ? 'AI-resultat' : 'Mock-resultat'
+  return result.source === 'ai' ? 'AI-resultat' : 'Mock-resultat'
+}
+
+function getMockAnalysisCount(history) {
+  return history.filter((analysis) => analysis.result?.source === 'mock').length
+}
+
+function getAiAnalysisCount(history) {
+  return history.filter((analysis) => analysis.result?.source === 'ai').length
 }
 
 function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   const [activeBodyMarker, setActiveBodyMarker] = useState(bodyOverviewMarkers[0])
-  const [analysisHistory, setAnalysisHistory] = useState([])
+  const [analysisHistory, setAnalysisHistory] = useState(() =>
+    getAnalysisHistory(),
+  )
   const [analysisError, setAnalysisError] = useState('')
   const [analysisStatus, setAnalysisStatus] = useState('Väntar på bilder')
   const [expandedAnalysisIds, setExpandedAnalysisIds] = useState([])
   const [frontPhoto, setFrontPhoto] = useState(null)
   const [hasApprovedAnalysis, setHasApprovedAnalysis] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [savedAnalysis, setSavedAnalysis] = useState(() => analysisHistory[0] ?? null)
+  const [savedAnalysis, setSavedAnalysis] = useState(() => getLatestAnalysis())
   const [showAnalysisConsent, setShowAnalysisConsent] = useState(false)
   const [sidePhoto, setSidePhoto] = useState(null)
   const [timelineFilter, setTimelineFilter] = useState('all')
@@ -185,6 +220,8 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
           : 'Väntar på bilder'
   const analysisCount = analysisHistory.length
   const latestAnalysisDate = analysisHistory[0]?.createdAt
+  const aiAnalysisCount = getAiAnalysisCount(analysisHistory)
+  const mockAnalysisCount = getMockAnalysisCount(analysisHistory)
   const nextStepText =
     analysisCount === 0
       ? 'Skapa din första analys för att börja följa utvecklingen.'
@@ -257,10 +294,11 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   ]
   const visibleAnalysisHistory =
     timelineFilter === 'all'
-      ? analysisHistory
+      ? analysisHistory.slice(0, 5)
       : analysisHistory.filter((analysis) =>
           isAnalysisWithinDays(analysis, Number(timelineFilter)),
-        )
+        ).slice(0, 5)
+  const comparison = savedAnalysis?.result?.comparison
 
   function handlePhotoChange(event, view) {
     const file = event.target.files?.[0]
@@ -320,15 +358,18 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
         analysisNumber: analysisHistory.length + 1,
         createdAt: new Date().toISOString(),
         frontPhoto: storedFrontPhoto,
-        result: await analyzeBodyWithAI({ frontPhoto, sidePhoto }),
+        result: await analyzeBodyWithAI({
+          frontPhoto,
+          previousAnalysis: getLatestAnalysis()?.result,
+          sidePhoto,
+        }),
         sidePhoto: storedSidePhoto,
         status: 'Analys klar',
       }
+      const nextHistory = addAnalysis(nextAnalysis)
 
       setSavedAnalysis(nextAnalysis)
-      setAnalysisHistory((currentHistory) =>
-        [nextAnalysis, ...currentHistory].slice(0, 5),
-      )
+      setAnalysisHistory(nextHistory)
       onAnalysisHistoryChange(true)
       setAnalysisStatus('Analys klar')
     } catch (error) {
@@ -364,7 +405,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   }
 
   function handleClearHistory() {
-    setAnalysisHistory([])
+    setAnalysisHistory(clearAnalysisHistory())
     setExpandedAnalysisIds([])
     setSavedAnalysis(null)
     onAnalysisHistoryChange(false)
@@ -512,7 +553,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
             </div>
             <span>{getResultSourceLabel(savedAnalysis.result)}</span>
           </div>
-          {savedAnalysis.result.status === 'mock' && (
+          {savedAnalysis.result.source === 'mock' && (
             <p className="progress-photo-safety">
               Demoresultat visas eftersom AI inte kunde användas just nu.
             </p>
@@ -536,15 +577,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
           {getResultSections(savedAnalysis.result).map((section) => (
             <div key={section.key}>
               <p className="report-heading">{section.label}</p>
-              {Array.isArray(section.value) ? (
-                <ul>
-                  {section.value.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p>{formatResultValue(section.key, section.value)}</p>
-              )}
+              {renderResultValue(section.key, section.value)}
             </div>
           ))}
           <p className="report-heading">Visuell kroppsöversikt</p>
@@ -624,19 +657,19 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
         <div className="progress-photo-ai-comparison">
           <div className="progress-photo-ai-heading">
             <div>
-              <p className="eyebrow">Mock-jämförelse</p>
-              <h3>Förändring sedan förra analysen</h3>
+              <p className="eyebrow">Jämförelse</p>
+              <h3>Förändring sedan senaste analys</h3>
             </div>
-            <span>Ej AI ännu</span>
+            <span>{analysisHistory.length > 1 ? 'Aktiv' : 'Första'}</span>
           </div>
-          {analysisHistory.length >= 2 ? (
+          {analysisHistory.length > 1 && comparison ? (
             <ul>
-              {mockComparisonInsights.map((insight) => (
-                <li key={insight}>{insight}</li>
-              ))}
+              <li>{comparison.better}</li>
+              <li>{comparison.unchanged}</li>
+              <li>{comparison.nextFocus}</li>
             </ul>
           ) : (
-            <p>Minst två analyser behövs för att kunna jämföra förändringar.</p>
+            <p>Det här är din första analys.</p>
           )}
         </div>
       )}
@@ -667,12 +700,20 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
           <strong>{analysisCount > 0 ? analysisCount : '-'}</strong>
         </div>
         <div>
-          <span>Dagar sedan senaste</span>
+          <span>Senaste analys</span>
           <strong>
             {daysSinceLatestAnalysis !== null
               ? `${daysSinceLatestAnalysis} dagar`
               : 'Ingen analys än'}
           </strong>
+        </div>
+        <div>
+          <span>AI-resultat</span>
+          <strong>{aiAnalysisCount}</strong>
+        </div>
+        <div>
+          <span>Mock-resultat</span>
+          <strong>{mockAnalysisCount}</strong>
         </div>
         <div>
           <span>Nästa analys</span>
@@ -779,20 +820,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
                           {getResultSections(analysis.result).map((section) => (
                             <div key={section.key}>
                               <strong>{section.label}</strong>
-                              {Array.isArray(section.value) ? (
-                                <ul>
-                                  {section.value.map((item) => (
-                                    <li key={item}>{item}</li>
-                                  ))}
-                                </ul>
-                              ) : (
-                                <p>
-                                  {formatResultValue(
-                                    section.key,
-                                    section.value,
-                                  )}
-                                </p>
-                              )}
+                              {renderResultValue(section.key, section.value)}
                             </div>
                           ))}
                         </div>
@@ -826,7 +854,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
             type="button"
             onClick={handleClearHistory}
           >
-            Rensa analys-historik
+            Rensa analystidslinje
           </button>
         </>
       )}

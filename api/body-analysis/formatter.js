@@ -1,15 +1,16 @@
 const resultKeys = [
   'status',
+  'source',
   'generatedAt',
   'summary',
   'bodyComposition',
   'posture',
   'strengths',
   'improvementAreas',
-  'progressEstimate',
-  'confidence',
   'recommendations',
   'nextSteps',
+  'comparison',
+  'confidence',
   'safetyNote',
 ]
 

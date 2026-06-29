@@ -30,6 +30,7 @@ async function readRequestBody(request) {
 
 function parseMultipartImages(rawBodyBuffer, boundary) {
   const rawBody = rawBodyBuffer.toString('latin1')
+  const fields = {}
   const images = {}
 
   rawBody.split(`--${boundary}`).forEach((part) => {
@@ -46,7 +47,12 @@ function parseMultipartImages(rawBodyBuffer, boundary) {
     const fileName = rawHeaders.match(/filename="([^"]*)"/)?.[1]
     const contentType = rawHeaders.match(/Content-Type:\s*([^\r\n]+)/i)?.[1]
 
-    if (!fieldName || !fileName) {
+    if (!fieldName) {
+      return
+    }
+
+    if (!fileName) {
+      fields[fieldName] = content.trim()
       return
     }
 
@@ -61,7 +67,10 @@ function parseMultipartImages(rawBodyBuffer, boundary) {
     }
   })
 
-  return images
+  return {
+    fields,
+    images,
+  }
 }
 
 /**
@@ -77,15 +86,32 @@ export async function parseImages(request) {
   if (!contentType.includes('multipart/form-data') || !boundary) {
     return {
       frontImage: null,
+      previousAnalysis: null,
       sideImage: null,
     }
   }
 
   const rawBodyBuffer = await readRequestBody(request)
-  const images = parseMultipartImages(rawBodyBuffer, boundary)
+  const parsed = parseMultipartImages(rawBodyBuffer, boundary)
+  const previousAnalysis = parsePreviousAnalysis(parsed.fields.previousAnalysis)
 
   return {
-    frontImage: images.frontImage ?? null,
-    sideImage: images.sideImage ?? null,
+    frontImage: parsed.images.frontImage ?? null,
+    previousAnalysis,
+    sideImage: parsed.images.sideImage ?? null,
+  }
+}
+
+function parsePreviousAnalysis(value) {
+  if (!value) {
+    return null
+  }
+
+  try {
+    const parsedValue = JSON.parse(value)
+
+    return parsedValue && typeof parsedValue === 'object' ? parsedValue : null
+  } catch {
+    return null
   }
 }

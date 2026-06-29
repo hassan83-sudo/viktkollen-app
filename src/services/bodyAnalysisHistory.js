@@ -110,6 +110,20 @@ export function mergeHistories(currentHistory, incomingHistory) {
     }))
 }
 
+function getImportSummary(currentHistory, incomingHistory) {
+  const existingIds = new Set(currentHistory.map((analysis) => analysis.createdAt))
+  const normalizedIncoming = incomingHistory.map(normalizeAnalysis)
+  const validIncoming = normalizedIncoming.filter(Boolean)
+
+  return {
+    duplicates: validIncoming.filter((analysis) => existingIds.has(analysis.createdAt))
+      .length,
+    imported: validIncoming.filter((analysis) => !existingIds.has(analysis.createdAt))
+      .length,
+    invalid: normalizedIncoming.length - validIncoming.length,
+  }
+}
+
 /**
  * Adds a body analysis to local history with newest item first.
  *
@@ -210,7 +224,9 @@ export function getHistoryStats(history = readStoredHistory()) {
 export function exportHistory() {
   return {
     analyses: readStoredHistory(),
+    app: 'Viktkollen',
     exportedAt: new Date().toISOString(),
+    feature: 'AI Body Analysis',
     version: HISTORY_VERSION,
   }
 }
@@ -225,11 +241,16 @@ export function importHistory(payload) {
   const incomingHistory = Array.isArray(payload?.analyses)
     ? payload.analyses
     : []
-  const nextHistory = mergeHistories(readStoredHistory(), incomingHistory)
+  const currentHistory = readStoredHistory()
+  const summary = getImportSummary(currentHistory, incomingHistory)
+  const nextHistory = mergeHistories(currentHistory, incomingHistory)
 
   writeStoredHistory(nextHistory)
 
-  return nextHistory
+  return {
+    history: nextHistory,
+    summary,
+  }
 }
 
 /**

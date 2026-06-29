@@ -10,6 +10,13 @@ const resultKeys = [
   'recommendations',
   'nextSteps',
   'comparison',
+  'progressSummary',
+  'visualConsistency',
+  'routineFeedback',
+  'monthlyFocus',
+  'confidenceLevel',
+  'limitations',
+  'sourceReason',
   'confidence',
   'safetyNote',
 ]

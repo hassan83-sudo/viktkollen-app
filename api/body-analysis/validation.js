@@ -3,15 +3,15 @@ const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png']
 
 function validateImage(image, label) {
   if (!image) {
-    return `${label} saknas.`
+    return `${label} saknas. Ladda upp både bild framifrån och från sidan.`
   }
 
   if (!allowedImageTypes.includes(image.contentType)) {
-    return `${label} måste vara JPEG, JPG eller PNG.`
+    return `${label} måste vara en JPEG-, JPG- eller PNG-fil.`
   }
 
   if (image.size > MAX_IMAGE_SIZE_BYTES) {
-    return `${label} får vara max 10 MB.`
+    return `${label} är för stor. Maxstorlek är 10 MB.`
   }
 
   return ''

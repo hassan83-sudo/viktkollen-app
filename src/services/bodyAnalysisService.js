@@ -10,17 +10,24 @@ const mockBodyResult = {
     unchanged: 'Fotokonsekvens och hållning följs vidare över tid.',
   },
   confidence: 'Medel',
+  confidenceLevel: 'Medel',
   generatedAt: new Date().toISOString(),
   improvementAreas: ['Fortsätt använda samma plats och ljus.'],
+  limitations: ['Demoanalysen använder inte riktig bildtolkning.'],
+  monthlyFocus: 'Ta bilder konsekvent och följ utvecklingen över tid.',
   nextSteps: ['Ta nästa analys om ungefär 7 dagar.'],
   posture: 'Hållningen ser stabil ut i demoanalysen.',
+  progressSummary: 'Demoanalysen ger en lokal testpunkt för historiken.',
   recommendations: ['Fokusera på jämna förändringar över tid.'],
+  routineFeedback: 'Regelbundenhet gör jämförelserna mer användbara.',
   safetyNote:
     'Detta är en visuell uppskattning och inte medicinsk rådgivning.',
   source: 'mock',
+  sourceReason: 'Lokalt demoresultat.',
   status: 'completed',
   strengths: ['Du har valt bilder från två vinklar.'],
   summary: 'Demoanalysen är klar och visas som en försiktig uppskattning.',
+  visualConsistency: 'Försök använda samma ljus, avstånd och vinkel.',
 }
 
 function buildBodyAnalysisPayload(frontImage, sideImage, previousAnalysis) {
@@ -110,11 +117,11 @@ export async function analyzeBodyWithAI({
   sidePhoto,
 }) {
   if (!frontPhoto?.file) {
-    throw new Error('Bild framifrån saknas. Välj en bild och försök igen.')
+    throw new Error('Välj en bild framifrån innan du startar analysen.')
   }
 
   if (!sidePhoto?.file) {
-    throw new Error('Bild från sidan saknas. Välj en bild och försök igen.')
+    throw new Error('Välj en bild från sidan innan du startar analysen.')
   }
 
   const payload = buildBodyAnalysisPayload(

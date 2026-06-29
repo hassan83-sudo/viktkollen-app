@@ -4,9 +4,11 @@ import {
   addAnalysis,
   clearAnalysisHistory,
   deleteAnalysis,
-  exportAnalysisHistory,
+  exportHistory,
   getAnalysisHistory,
+  getHistoryStats,
   getLatestAnalysis,
+  importHistory,
 } from '../services/bodyAnalysisHistory'
 import { analyzeBodyWithAI } from '../services/bodyAnalysisService'
 
@@ -187,14 +189,6 @@ function getResultSourceLabel(result) {
   return result.source === 'ai' ? 'AI-resultat' : 'Mock-resultat'
 }
 
-function getMockAnalysisCount(history) {
-  return history.filter((analysis) => analysis.result?.source === 'mock').length
-}
-
-function getAiAnalysisCount(history) {
-  return history.filter((analysis) => analysis.result?.source === 'ai').length
-}
-
 function getNextAnalysisRecommendation(daysSinceLatestAnalysis) {
   if (daysSinceLatestAnalysis === null) {
     return 'Skapa första analys'
@@ -234,6 +228,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   const [frontPhoto, setFrontPhoto] = useState(null)
   const [hasApprovedAnalysis, setHasApprovedAnalysis] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [pendingDeleteAnalysisId, setPendingDeleteAnalysisId] = useState('')
   const [savedAnalysis, setSavedAnalysis] = useState(() => getLatestAnalysis())
   const [showClearHistoryConfirm, setShowClearHistoryConfirm] = useState(false)
   const [showAnalysisConsent, setShowAnalysisConsent] = useState(false)
@@ -251,8 +246,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
           : 'Väntar på bilder'
   const analysisCount = analysisHistory.length
   const latestAnalysisDate = analysisHistory[0]?.createdAt
-  const aiAnalysisCount = getAiAnalysisCount(analysisHistory)
-  const mockAnalysisCount = getMockAnalysisCount(analysisHistory)
+  const historyStats = getHistoryStats(analysisHistory)
   const nextStepText =
     analysisCount === 0
       ? 'Skapa din första analys för att börja följa utvecklingen.'
@@ -355,10 +349,10 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   ]
   const visibleAnalysisHistory =
     timelineFilter === 'all'
-      ? analysisHistory.slice(0, 5)
+      ? analysisHistory.slice(0, 10)
       : analysisHistory.filter((analysis) =>
           isAnalysisWithinDays(analysis, Number(timelineFilter)),
-        ).slice(0, 5)
+        ).slice(0, 10)
   const comparison = savedAnalysis?.result?.comparison
 
   function handlePhotoChange(event, view) {
@@ -466,7 +460,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   }
 
   function handleExportHistory() {
-    const exportPayload = exportAnalysisHistory()
+    const exportPayload = exportHistory()
     const blob = new Blob([JSON.stringify(exportPayload, null, 2)], {
       type: 'application/json',
     })
@@ -485,6 +479,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
     const nextHistory = deleteAnalysis(createdAt)
 
     setAnalysisHistory(nextHistory)
+    setPendingDeleteAnalysisId('')
     setExpandedAnalysisIds((currentIds) =>
       currentIds.filter((id) => id !== createdAt),
     )
@@ -496,9 +491,35 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
     onAnalysisHistoryChange(nextHistory.length > 0)
   }
 
+  function handleImportHistory(event) {
+    const file = event.target.files?.[0]
+
+    if (!file) {
+      return
+    }
+
+    const reader = new FileReader()
+
+    reader.addEventListener('load', () => {
+      try {
+        const importedHistory = importHistory(JSON.parse(String(reader.result)))
+
+        setAnalysisHistory(importedHistory)
+        setSavedAnalysis(importedHistory[0] ?? null)
+        onAnalysisHistoryChange(importedHistory.length > 0)
+      } catch {
+        setAnalysisError('Kunde inte importera analystidslinjen.')
+      } finally {
+        event.target.value = ''
+      }
+    })
+    reader.readAsText(file)
+  }
+
   function handleClearHistory() {
     setAnalysisHistory(clearAnalysisHistory())
     setExpandedAnalysisIds([])
+    setPendingDeleteAnalysisId('')
     setSavedAnalysis(null)
     setShowClearHistoryConfirm(false)
     onAnalysisHistoryChange(false)
@@ -809,23 +830,39 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
       <div className="body-analysis-stats">
         <div>
           <span>Totalt antal analyser</span>
-          <strong>{analysisCount > 0 ? analysisCount : '-'}</strong>
+          <strong>{historyStats.total > 0 ? historyStats.total : '-'}</strong>
         </div>
         <div>
-          <span>Senaste analys</span>
+          <span>Senaste datum</span>
           <strong>
-            {daysSinceLatestAnalysis !== null
-              ? `${daysSinceLatestAnalysis} dagar`
+            {historyStats.latestDate
+              ? formatShortDate(historyStats.latestDate)
+              : 'Ingen analys'}
+          </strong>
+        </div>
+        <div>
+          <span>Dagar sedan senaste</span>
+          <strong>
+            {historyStats.daysSinceLatest !== null
+              ? `${historyStats.daysSinceLatest} dagar`
               : 'Ingen analys än'}
           </strong>
         </div>
         <div>
           <span>AI-resultat</span>
-          <strong>{aiAnalysisCount}</strong>
+          <strong>{historyStats.ai}</strong>
         </div>
         <div>
           <span>Mock-resultat</span>
-          <strong>{mockAnalysisCount}</strong>
+          <strong>{historyStats.mock}</strong>
+        </div>
+        <div>
+          <span>Genomsnittligt intervall</span>
+          <strong>
+            {historyStats.averageIntervalDays !== null
+              ? `${historyStats.averageIntervalDays} dagar`
+              : '-'}
+          </strong>
         </div>
         <div>
           <span>Nästa analys</span>
@@ -901,6 +938,15 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
             >
               Exportera analystidslinje
             </button>
+            <label className="secondary-button">
+              Importera analystidslinje
+              <input
+                type="file"
+                accept="application/json,.json"
+                style={{ display: 'none' }}
+                onChange={handleImportHistory}
+              />
+            </label>
             <button
               className="secondary-button"
               type="button"
@@ -1012,10 +1058,40 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
                       <button
                         className="secondary-button"
                         type="button"
-                        onClick={() => handleDeleteAnalysis(analysis.createdAt)}
+                        onClick={() =>
+                          setPendingDeleteAnalysisId(analysis.createdAt)
+                        }
                       >
                         Radera analys
                       </button>
+                      {pendingDeleteAnalysisId === analysis.createdAt && (
+                        <div className="progress-photo-ai-comparison">
+                          <div className="progress-photo-ai-heading">
+                            <div>
+                              <p className="eyebrow">Bekräfta radering</p>
+                              <h3>Radera den här analysen?</h3>
+                            </div>
+                            <span>Lokalt</span>
+                          </div>
+                          <p>
+                            Analysen tas bort från den lokala tidslinjen i den
+                            här webbläsaren.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAnalysis(analysis.createdAt)}
+                          >
+                            Ja, radera analysen
+                          </button>
+                          <button
+                            className="secondary-button"
+                            type="button"
+                            onClick={() => setPendingDeleteAnalysisId('')}
+                          >
+                            Avbryt
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </article>
                 )

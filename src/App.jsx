@@ -5,11 +5,13 @@ import BarcodeScanner from './components/BarcodeScanner.jsx'
 import ChatPanel from './components/ChatPanel.jsx'
 import CheckIn from './components/CheckIn.jsx'
 import MealLogger from './components/MealLogger.jsx'
+import ProactiveCoachCard from './components/ProactiveCoachCard.jsx'
 import ProgressPhotos from './components/ProgressPhotos.jsx'
 import ReminderSettings from './components/ReminderSettings.jsx'
 import WeightChart from './components/WeightChart.jsx'
 import WeeklyReport from './components/WeeklyReport.jsx'
 import { makePersonalCoachReply } from './lib/coachReply.js'
+import { getAnalysisHistory } from './services/bodyAnalysisHistory.js'
 import {
   addMealAnalysis,
   clearMealHistory,
@@ -21,6 +23,7 @@ import {
   setMealHistory,
 } from './services/mealHistory.js'
 import { analyzeMealPhoto } from './services/mealAnalysisService.js'
+import { getProactiveCoachInsights, makeProactiveCoachInsights } from './services/proactiveCoachService.js'
 
 const starterWeights = [
   { date: '2026-05-23', value: 91.8 },
@@ -990,6 +993,7 @@ function App() {
     ...(readStoredValue(storageKeys.profile, null, isStoredProfile) ?? {}),
   }))
   const [profileError, setProfileError] = useState('')
+  const [proactiveCoachResult, setProactiveCoachResult] = useState(null)
   const [showOnboarding, setShowOnboarding] = useState(() => !profile)
   const [checkIn, setCheckIn] = useState(() =>
     readStoredValue(storageKeys.checkIn, initialCheckIn, isStoredCheckIn),
@@ -1281,6 +1285,32 @@ function App() {
       ? 'Uppdaterar AI-coach...'
       : ''
 
+  const proactiveCoachKey = useMemo(
+    () =>
+      JSON.stringify({
+        checkIn,
+        meals,
+        photoMeals,
+        weights,
+      }),
+    [checkIn, meals, photoMeals, weights],
+  )
+  const fallbackProactiveCoachInsights = useMemo(
+    () =>
+      makeProactiveCoachInsights({
+        bodyAnalysisHistory: getAnalysisHistory(),
+        checkIn,
+        mealHistory: photoMeals,
+        meals,
+        weights,
+      }),
+    [checkIn, meals, photoMeals, weights],
+  )
+  const proactiveCoachInsights =
+    proactiveCoachResult?.key === proactiveCoachKey
+      ? proactiveCoachResult.insights
+      : fallbackProactiveCoachInsights
+
   function scrollChatToBottom(behavior = 'smooth') {
     const chatThread = chatThreadRef.current
     const messagesEnd = messagesEndRef.current
@@ -1508,6 +1538,34 @@ function App() {
     showOnboarding,
     weights,
   ])
+
+  useEffect(() => {
+    let cancelled = false
+    const coachData = {
+      bodyAnalysisHistory: getAnalysisHistory(),
+      checkIn,
+      mealHistory: photoMeals,
+      meals,
+      weights,
+    }
+
+    async function loadProactiveCoach() {
+      const insights = await getProactiveCoachInsights(coachData)
+
+      if (!cancelled) {
+        setProactiveCoachResult({
+          insights,
+          key: proactiveCoachKey,
+        })
+      }
+    }
+
+    void loadProactiveCoach()
+
+    return () => {
+      cancelled = true
+    }
+  }, [checkIn, meals, photoMeals, proactiveCoachKey, weights])
 
   function updateProfileForm(key, value) {
     setProfileForm((current) => ({ ...current, [key]: value }))
@@ -2349,6 +2407,7 @@ function App() {
             </div>
           </div>
         </article>
+        <ProactiveCoachCard insights={proactiveCoachInsights} />
       </section>
 
       <section className="content-grid">

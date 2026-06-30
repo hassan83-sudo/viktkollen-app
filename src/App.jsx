@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import AICoach from './components/AICoach.jsx'
 import BarcodeScanner from './components/BarcodeScanner.jsx'
@@ -24,6 +24,7 @@ import {
 } from './services/mealHistory.js'
 import { analyzeMealPhoto } from './services/mealAnalysisService.js'
 import { getProactiveCoachInsights, makeProactiveCoachInsights } from './services/proactiveCoachService.js'
+import { createWeeklyReport as createAiWeeklyReport } from './services/weeklyReportService.js'
 
 const starterWeights = [
   { date: '2026-05-23', value: 91.8 },
@@ -34,14 +35,14 @@ const starterWeights = [
 ]
 
 const initialFoods = [
-  { id: 'protein', label: 'Protein till varje måltid (20-30 g)', done: true },
-  { id: 'veg', label: 'Frukt eller grönsaker', done: true },
-  { id: 'water', label: 'Vattenmål', done: false },
-  { id: 'snack', label: 'Planerat mellanmål', done: false },
+  { id: 'protein', label: 'Protein till varje mÃ¥ltid (20-30 g)', done: true },
+  { id: 'veg', label: 'Frukt eller grÃ¶nsaker', done: true },
+  { id: 'water', label: 'VattenmÃ¥l', done: false },
+  { id: 'snack', label: 'Planerat mellanmÃ¥l', done: false },
 ]
 
 const initialMeals = [
-  { id: 1, type: 'Frukost', text: 'Grekisk yoghurt, bär och havre' },
+  { id: 1, type: 'Frukost', text: 'Grekisk yoghurt, bÃ¤r och havre' },
   { id: 2, type: 'Lunch', text: 'Kycklingwrap med sallad' },
 ]
 
@@ -65,7 +66,7 @@ const initialChatMessages = [
   {
     id: 1,
     role: 'assistant',
-    text: 'Hej! Fråga mig om mat, vanor eller motivation så håller jag svaret kort och konkret.',
+    text: 'Hej! FrÃ¥ga mig om mat, vanor eller motivation sÃ¥ hÃ¥ller jag svaret kort och konkret.',
   },
 ]
 
@@ -78,22 +79,22 @@ const initialCheckIn = {
 
 const initialProfile = {
   name: '',
-  goal: 'gå ner i vikt',
+  goal: 'gÃ¥ ner i vikt',
   startWeight: '',
   goalWeight: '',
   activityLevel: 'Medel',
 }
 
-const mealOptions = ['Frukost', 'Lunch', 'Middag', 'Mellanmål']
+const mealOptions = ['Frukost', 'Lunch', 'Middag', 'MellanmÃ¥l']
 
-const goalOptions = ['gå ner i vikt', 'hålla vikten', 'bygga muskler']
+const goalOptions = ['gÃ¥ ner i vikt', 'hÃ¥lla vikten', 'bygga muskler']
 
-const activityOptions = ['Låg', 'Medel', 'Hög']
+const activityOptions = ['LÃ¥g', 'Medel', 'HÃ¶g']
 
 const starterPrompts = [
-  'Vad ska jag äta ikväll?',
-  'Ge mig ett hälsosamt mellanmål',
-  'Hur håller jag motivationen?',
+  'Vad ska jag Ã¤ta ikvÃ¤ll?',
+  'Ge mig ett hÃ¤lsosamt mellanmÃ¥l',
+  'Hur hÃ¥ller jag motivationen?',
   'Billig proteinrik lunch?',
 ]
 
@@ -310,7 +311,7 @@ function formatOptionalWeight(value) {
 function makeValidatedProfile(profile) {
   const startWeight = formatOptionalWeight(profile?.startWeight)
   const goalWeight =
-    profile?.goal === 'gå ner i vikt'
+    profile?.goal === 'gÃ¥ ner i vikt'
       ? formatOptionalWeight(profile?.goalWeight)
       : ''
 
@@ -367,18 +368,6 @@ function getAverageWeeklyChange(weights) {
   return Number((((last.value - first.value) / days) * 7).toFixed(1))
 }
 
-function getPeriodWeightChange(weights) {
-  if (weights.length < 2) {
-    return null
-  }
-
-  return Number((weights.at(-1).value - weights[0].value).toFixed(1))
-}
-
-function formatSignedWeight(value) {
-  return `${value > 0 ? '+' : ''}${formatWeight(value)}`
-}
-
 function getLinearTrendValues(weights) {
   if (weights.length < 2) {
     return weights.map((entry) => entry.value)
@@ -420,11 +409,11 @@ function getTodayDate() {
 
 function getProgressPhotoViewLabel(view) {
   if (view === 'front') {
-    return 'framifrån'
+    return 'framifrÃ¥n'
   }
 
   if (view === 'side') {
-    return 'från sidan'
+    return 'frÃ¥n sidan'
   }
 
   return 'samma perspektiv'
@@ -442,28 +431,28 @@ function makeProgressPhotoComparison(latestPhoto, previousPhoto) {
       latestPhoto,
       previousPhoto: null,
       viewLabel,
-      summary: `Lägg till en till bild ${viewLabel} för att skapa en försiktig V2-jämförelse.`,
+      summary: `LÃ¤gg till en till bild ${viewLabel} fÃ¶r att skapa en fÃ¶rsiktig V2-jÃ¤mfÃ¶relse.`,
       observations: [
-        'När två bilder med samma perspektiv finns kan små visuella förändringar jämföras mer rättvist.',
-        'Försök gärna använda liknande ljus, avstånd och hållning nästa gång.',
+        'NÃ¤r tvÃ¥ bilder med samma perspektiv finns kan smÃ¥ visuella fÃ¶rÃ¤ndringar jÃ¤mfÃ¶ras mer rÃ¤ttvist.',
+        'FÃ¶rsÃ¶k gÃ¤rna anvÃ¤nda liknande ljus, avstÃ¥nd och hÃ¥llning nÃ¤sta gÃ¥ng.',
       ],
     }
   }
 
   const perspectiveObservation =
     latestPhoto.view === 'side'
-      ? 'Sidoprofilen ser ut att kunna jämföras med föregående sidobild, men ljus och vinkel kan påverka intrycket.'
-      : 'Midjeområdet och hållningen ser ut att kunna jämföras med föregående bild framifrån, men ljus och vinkel kan påverka intrycket.'
+      ? 'Sidoprofilen ser ut att kunna jÃ¤mfÃ¶ras med fÃ¶regÃ¥ende sidobild, men ljus och vinkel kan pÃ¥verka intrycket.'
+      : 'MidjeomrÃ¥det och hÃ¥llningen ser ut att kunna jÃ¤mfÃ¶ras med fÃ¶regÃ¥ende bild framifrÃ¥n, men ljus och vinkel kan pÃ¥verka intrycket.'
 
   return {
     latestPhoto,
     previousPhoto,
     viewLabel,
-    summary: `Nyaste bilden ${viewLabel} jämförs med föregående bild från samma perspektiv.`,
+    summary: `Nyaste bilden ${viewLabel} jÃ¤mfÃ¶rs med fÃ¶regÃ¥ende bild frÃ¥n samma perspektiv.`,
     observations: [
       perspectiveObservation,
-      'Hållningen ser ut att vara relativt lik, men små skillnader i pose kan påverka jämförelsen.',
-      'Små visuella förändringar kan anas, men bilden räcker inte för att dra säkra slutsatser.',
+      'HÃ¥llningen ser ut att vara relativt lik, men smÃ¥ skillnader i pose kan pÃ¥verka jÃ¤mfÃ¶relsen.',
+      'SmÃ¥ visuella fÃ¶rÃ¤ndringar kan anas, men bilden rÃ¤cker inte fÃ¶r att dra sÃ¤kra slutsatser.',
     ],
   }
 }
@@ -481,34 +470,34 @@ function isValidWeightInput(value) {
 function makeCoachMessage(profile, checkIn, foods, meals) {
   const completedFoods = foods.filter((item) => item.done).length
   const name = profile?.name || 'du'
-  const goal = profile?.goal || 'hålla en stabil rutin'
-  const canDiscussWeightLoss = goal === 'gå ner i vikt'
+  const goal = profile?.goal || 'hÃ¥lla en stabil rutin'
+  const canDiscussWeightLoss = goal === 'gÃ¥ ner i vikt'
   const canDiscussMuscleGain = goal === 'bygga muskler'
   const focusHint = canDiscussMuscleGain
-    ? 'Fokus: protein, styrka och återhämtning.'
+    ? 'Fokus: protein, styrka och Ã¥terhÃ¤mtning.'
     : canDiscussWeightLoss
-      ? 'Fokus: enkla måltider och jämn rörelse.'
+      ? 'Fokus: enkla mÃ¥ltider och jÃ¤mn rÃ¶relse.'
       : 'Fokus: stabil energi och upprepbara vanor.'
   const energyHint =
     checkIn.energy >= 7
-      ? 'Energin är bra: lägg in ett pass eller en promenad.'
+      ? 'Energin Ã¤r bra: lÃ¤gg in ett pass eller en promenad.'
       : checkIn.energy >= 4
-        ? 'Energin är okej: håll rutinen enkel.'
-        : 'Energin är låg: välj återhämtning och en lätt måltid.'
+        ? 'Energin Ã¤r okej: hÃ¥ll rutinen enkel.'
+        : 'Energin Ã¤r lÃ¥g: vÃ¤lj Ã¥terhÃ¤mtning och en lÃ¤tt mÃ¥ltid.'
   const nutritionHint =
     completedFoods >= 3
       ? 'Matchecklistan ser stark ut.'
-      : 'Lägg till protein eller grönsaker i nästa måltid.'
+      : 'LÃ¤gg till protein eller grÃ¶nsaker i nÃ¤sta mÃ¥ltid.'
   const mealHint =
     meals.length > 0
-      ? `${meals.length} måltider loggade i dag.`
-      : 'Logga en snabb måltid när du kan.'
+      ? `${meals.length} mÃ¥ltider loggade i dag.`
+      : 'Logga en snabb mÃ¥ltid nÃ¤r du kan.'
 
   return `${name}, dagens riktning:
-• ${focusHint}
-• ${energyHint}
-• ${nutritionHint}
-• ${mealHint}`
+â€¢ ${focusHint}
+â€¢ ${energyHint}
+â€¢ ${nutritionHint}
+â€¢ ${mealHint}`
 }
 
 function hasBedtimeEatingContext(message, chatHistory = []) {
@@ -520,15 +509,15 @@ function hasBedtimeEatingContext(message, chatHistory = []) {
     .toLowerCase()
 
   return (
-    (text.includes('lägga mig') ||
+    (text.includes('lÃ¤gga mig') ||
       text.includes('sova') ||
       text.includes('sover') ||
-      text.includes('läggdags') ||
-      text.includes('lägger mig') ||
-      text.includes('innan jag ska lägga')) &&
-    (text.includes('äter') ||
-      text.includes('äta') ||
-      text.includes('åt') ||
+      text.includes('lÃ¤ggdags') ||
+      text.includes('lÃ¤gger mig') ||
+      text.includes('innan jag ska lÃ¤gga')) &&
+    (text.includes('Ã¤ter') ||
+      text.includes('Ã¤ta') ||
+      text.includes('Ã¥t') ||
       text.includes('mat'))
   )
 }
@@ -539,8 +528,8 @@ function asksIfHarmful(message) {
   return (
     text.includes('skadligt') ||
     text.includes('farligt') ||
-    text.includes('dåligt för kroppen') ||
-    text.includes('inte bra för kroppen')
+    text.includes('dÃ¥ligt fÃ¶r kroppen') ||
+    text.includes('inte bra fÃ¶r kroppen')
   )
 }
 
@@ -548,7 +537,7 @@ function asksAboutRapidWeightLoss(message) {
   const text = message.toLowerCase()
 
   return (
-    (text.includes('gå ner') ||
+    (text.includes('gÃ¥ ner') ||
       text.includes('tappa') ||
       text.includes('minska')) &&
     text.includes('kg') &&
@@ -561,7 +550,7 @@ function asksAboutRapidWeightLoss(message) {
 function asksAboutSleep(message) {
   const text = message.toLowerCase()
 
-  return text.includes('sov') || text.includes('sömn') || text.includes('sova')
+  return text.includes('sov') || text.includes('sÃ¶mn') || text.includes('sova')
 }
 
 function asksAboutFood(message) {
@@ -569,10 +558,10 @@ function asksAboutFood(message) {
 
   return (
     text.includes('mat') ||
-    text.includes('äta') ||
-    text.includes('äter') ||
+    text.includes('Ã¤ta') ||
+    text.includes('Ã¤ter') ||
     text.includes('middag') ||
-    text.includes('ikväll')
+    text.includes('ikvÃ¤ll')
   )
 }
 
@@ -582,12 +571,12 @@ function asksAboutProteinKnowledge(message) {
   return (
     text.includes('protein') &&
     (text.includes('hur mycket') ||
-      text.includes('hur många') ||
+      text.includes('hur mÃ¥nga') ||
       text.includes('gram') ||
       text.includes('per dag') ||
       text.includes('om dagen') ||
       text.includes('rekommend') ||
-      text.includes('bra för'))
+      text.includes('bra fÃ¶r'))
   )
 }
 
@@ -597,10 +586,10 @@ function asksForMealSuggestion(message) {
   return (
     text.includes('lunch') ||
     text.includes('middag') ||
-    text.includes('ikväll') ||
-    text.includes('mellanmål') ||
-    text.includes('vad ska jag äta') ||
-    text.includes('matförslag') ||
+    text.includes('ikvÃ¤ll') ||
+    text.includes('mellanmÃ¥l') ||
+    text.includes('vad ska jag Ã¤ta') ||
+    text.includes('matfÃ¶rslag') ||
     (text.includes('billig') && text.includes('proteinrik'))
   )
 }
@@ -618,24 +607,24 @@ function isMeaninglessMessage(message) {
 function makeCommonWellnessReply(message) {
   const text = message.toLowerCase()
 
-  if (text.includes('sov') || text.includes('sömn') || text.includes('sova')) {
-    return 'För de flesta vuxna är 7–9 timmars sömn en bra riktlinje. 8 timmar är alltså ett bra mål, men det viktigaste är hur du mår på dagen och om sömnen känns återhämtande.'
+  if (text.includes('sov') || text.includes('sÃ¶mn') || text.includes('sova')) {
+    return 'FÃ¶r de flesta vuxna Ã¤r 7â€“9 timmars sÃ¶mn en bra riktlinje. 8 timmar Ã¤r alltsÃ¥ ett bra mÃ¥l, men det viktigaste Ã¤r hur du mÃ¥r pÃ¥ dagen och om sÃ¶mnen kÃ¤nns Ã¥terhÃ¤mtande.'
   }
 
   if (text.includes('stress') || text.includes('stressad')) {
-    return 'Stress påverkar både energi, hunger och motivation. Testa att sänka kraven för resten av dagen: ät något enkelt, ta fem lugna minuter och välj bara en sak som behöver bli gjord. Vad stressar mest just nu?'
+    return 'Stress pÃ¥verkar bÃ¥de energi, hunger och motivation. Testa att sÃ¤nka kraven fÃ¶r resten av dagen: Ã¤t nÃ¥got enkelt, ta fem lugna minuter och vÃ¤lj bara en sak som behÃ¶ver bli gjord. Vad stressar mest just nu?'
   }
 
-  if (text.includes('träna') || text.includes('träning') || text.includes('gym') || text.includes('promenad')) {
-    return 'Ja, rörelse är oftast en bra idé om kroppen känns okej. Håll nivån efter dagsformen: promenad om du är trött, styrka eller intervaller om du har mer energi. Vad hade du tänkt träna?'
+  if (text.includes('trÃ¤na') || text.includes('trÃ¤ning') || text.includes('gym') || text.includes('promenad')) {
+    return 'Ja, rÃ¶relse Ã¤r oftast en bra idÃ© om kroppen kÃ¤nns okej. HÃ¥ll nivÃ¥n efter dagsformen: promenad om du Ã¤r trÃ¶tt, styrka eller intervaller om du har mer energi. Vad hade du tÃ¤nkt trÃ¤na?'
   }
 
   if (text.includes('vana') || text.includes('rutin') || text.includes('disciplin')) {
-    return 'Börja mindre än du tycker behövs. En vana fastnar lättare om den är enkel att upprepa, till exempel samma frukost, en kort promenad eller att logga första måltiden. Vilken rutin vill du få ordning på?'
+    return 'BÃ¶rja mindre Ã¤n du tycker behÃ¶vs. En vana fastnar lÃ¤ttare om den Ã¤r enkel att upprepa, till exempel samma frukost, en kort promenad eller att logga fÃ¶rsta mÃ¥ltiden. Vilken rutin vill du fÃ¥ ordning pÃ¥?'
   }
 
-  if (text.includes('mat') || text.includes('hungrig') || text.includes('äta')) {
-    return 'Sikta på något enkelt: protein, en kolhydratkälla och frukt eller grönsaker. Till exempel äggmacka, kyckling med ris eller yoghurt med bär. Vill du ha förslag för frukost, lunch eller middag?'
+  if (text.includes('mat') || text.includes('hungrig') || text.includes('Ã¤ta')) {
+    return 'Sikta pÃ¥ nÃ¥got enkelt: protein, en kolhydratkÃ¤lla och frukt eller grÃ¶nsaker. Till exempel Ã¤ggmacka, kyckling med ris eller yoghurt med bÃ¤r. Vill du ha fÃ¶rslag fÃ¶r frukost, lunch eller middag?'
   }
 
   return ''
@@ -643,7 +632,7 @@ function makeCommonWellnessReply(message) {
 
 function makeSleepReply(message) {
   const text = message.toLowerCase()
-  const wakeMatch = text.match(/(?:vakna|går upp|går upp|upp)\s*(?:kl\.?|klockan)?\s*(\d{1,2})(?::|\.?)(\d{2})?/)
+  const wakeMatch = text.match(/(?:vakna|gÃ¥r upp|gÃ¥r upp|upp)\s*(?:kl\.?|klockan)?\s*(\d{1,2})(?::|\.?)(\d{2})?/)
   const wakeHour = wakeMatch ? Number(wakeMatch[1]) : null
   const wakeMinute = wakeMatch?.[2] ? Number(wakeMatch[2]) : 0
 
@@ -658,18 +647,18 @@ function makeSleepReply(message) {
         minute: '2-digit',
       })
 
-    return `För de flesta vuxna är 7-9 timmars sömn en bra riktlinje. Om du ska gå upp ${formatTime(new Date(0, 0, 0, wakeHour, wakeMinute))} kan ett rimligt sovfönster vara ungefär ${formatTime(bedtimeStart)}-${formatTime(bedtimeEnd)}. Försök hålla tiden ganska jämn även på vardagar.`
+    return `FÃ¶r de flesta vuxna Ã¤r 7-9 timmars sÃ¶mn en bra riktlinje. Om du ska gÃ¥ upp ${formatTime(new Date(0, 0, 0, wakeHour, wakeMinute))} kan ett rimligt sovfÃ¶nster vara ungefÃ¤r ${formatTime(bedtimeStart)}-${formatTime(bedtimeEnd)}. FÃ¶rsÃ¶k hÃ¥lla tiden ganska jÃ¤mn Ã¤ven pÃ¥ vardagar.`
   }
 
-  return 'För de flesta vuxna är 7-9 timmars sömn en bra riktlinje. 8 timmar är ett bra mål, men försök framför allt ha en ganska konsekvent läggtid och se hur pigg du är dagen efter.'
+  return 'FÃ¶r de flesta vuxna Ã¤r 7-9 timmars sÃ¶mn en bra riktlinje. 8 timmar Ã¤r ett bra mÃ¥l, men fÃ¶rsÃ¶k framfÃ¶r allt ha en ganska konsekvent lÃ¤ggtid och se hur pigg du Ã¤r dagen efter.'
 }
 
 function makeRapidWeightLossReply() {
-  return 'Att gå ner 2 kg på en vecka kan hända, men mycket är ofta vätska och det kan vara svårt att behålla. Sikta hellre på vanor som går att upprepa: protein i varje måltid, mycket grönsaker, lagom portioner, vardagsrörelse och bra sömn. Undvik extrem svält eller hård kompensation. Vill du kan jag göra en enkel 7-dagars plan som är rimlig och inte extrem.'
+  return 'Att gÃ¥ ner 2 kg pÃ¥ en vecka kan hÃ¤nda, men mycket Ã¤r ofta vÃ¤tska och det kan vara svÃ¥rt att behÃ¥lla. Sikta hellre pÃ¥ vanor som gÃ¥r att upprepa: protein i varje mÃ¥ltid, mycket grÃ¶nsaker, lagom portioner, vardagsrÃ¶relse och bra sÃ¶mn. Undvik extrem svÃ¤lt eller hÃ¥rd kompensation. Vill du kan jag gÃ¶ra en enkel 7-dagars plan som Ã¤r rimlig och inte extrem.'
 }
 
 function makeBedtimeEatingReply() {
-  return 'För de flesta är det inte skadligt att äta nära läggdags. Det kan däremot påverka sömn, reflux, hungervanor eller göra det lättare att äta mer än man tänkt. Om du är hungrig sent, testa något lättare som yoghurt, ägg, keso eller en liten macka.'
+  return 'FÃ¶r de flesta Ã¤r det inte skadligt att Ã¤ta nÃ¤ra lÃ¤ggdags. Det kan dÃ¤remot pÃ¥verka sÃ¶mn, reflux, hungervanor eller gÃ¶ra det lÃ¤ttare att Ã¤ta mer Ã¤n man tÃ¤nkt. Om du Ã¤r hungrig sent, testa nÃ¥got lÃ¤ttare som yoghurt, Ã¤gg, keso eller en liten macka.'
 }
 
 function makeProteinKnowledgeReply(message) {
@@ -682,10 +671,10 @@ function makeProteinKnowledgeReply(message) {
     const upper = Math.round(bodyWeight * 1.6)
     const activeUpper = Math.round(bodyWeight * 2)
 
-    return `För en person som väger ${bodyWeight} kg är ett rimligt riktmärke ofta cirka ${lower}-${upper} g protein per dag. Om personen styrketränar mycket eller vill bygga muskler kan ungefär ${upper}-${activeUpper} g per dag vara mer relevant. Fördela gärna över 3-4 måltider, till exempel 25-40 g per måltid.`
+    return `FÃ¶r en person som vÃ¤ger ${bodyWeight} kg Ã¤r ett rimligt riktmÃ¤rke ofta cirka ${lower}-${upper} g protein per dag. Om personen styrketrÃ¤nar mycket eller vill bygga muskler kan ungefÃ¤r ${upper}-${activeUpper} g per dag vara mer relevant. FÃ¶rdela gÃ¤rna Ã¶ver 3-4 mÃ¥ltider, till exempel 25-40 g per mÃ¥ltid.`
   }
 
-  return 'Ett vanligt riktmärke är cirka 1,2-1,6 g protein per kilo kroppsvikt per dag för en aktiv vardag. Vid mycket styrketräning kan behovet ligga högre, ofta runt 1,6-2,0 g/kg. Fördela det gärna över flera måltider.'
+  return 'Ett vanligt riktmÃ¤rke Ã¤r cirka 1,2-1,6 g protein per kilo kroppsvikt per dag fÃ¶r en aktiv vardag. Vid mycket styrketrÃ¤ning kan behovet ligga hÃ¶gre, ofta runt 1,6-2,0 g/kg. FÃ¶rdela det gÃ¤rna Ã¶ver flera mÃ¥ltider.'
 }
 
 function makeMultiPartReply(message, chatHistory = []) {
@@ -696,10 +685,10 @@ function makeMultiPartReply(message, chatHistory = []) {
   const parts = []
 
   if (asksForMealSuggestion(message) || asksAboutFood(message)) {
-    parts.push(`Mat idag: välj något enkelt och mättande:
-• Kyckling + potatis + frysta grönsaker
-• Äggwrap med keso och vitkål
-• Linsgryta med ris`)
+    parts.push(`Mat idag: vÃ¤lj nÃ¥got enkelt och mÃ¤ttande:
+â€¢ Kyckling + potatis + frysta grÃ¶nsaker
+â€¢ Ã„ggwrap med keso och vitkÃ¥l
+â€¢ Linsgryta med ris`)
   }
 
   if (asksAboutSleep(message)) {
@@ -722,15 +711,15 @@ function makeChatResponse(
   chatHistory = [],
 ) {
   const text = message.toLowerCase()
-  const goal = profile?.goal || 'hålla en stabil rutin'
+  const goal = profile?.goal || 'hÃ¥lla en stabil rutin'
   const goalWeight = profile?.goalWeight?.trim()
-  const canDiscussWeightLoss = goal === 'gå ner i vikt'
+  const canDiscussWeightLoss = goal === 'gÃ¥ ner i vikt'
   const canDiscussMuscleGain = goal === 'bygga muskler'
   const weightContext = canDiscussWeightLoss && goalWeight
-    ? `Nuvarande vikt är ${formatWeight(currentWeight)} och målvikt är ${goalWeight} kg.`
+    ? `Nuvarande vikt Ã¤r ${formatWeight(currentWeight)} och mÃ¥lvikt Ã¤r ${goalWeight} kg.`
     : canDiscussMuscleGain
-      ? 'Fokus: styrka, protein och återhämtning.'
-      : 'Fokus: stabil energi och jämna måltider.'
+      ? 'Fokus: styrka, protein och Ã¥terhÃ¤mtning.'
+      : 'Fokus: stabil energi och jÃ¤mna mÃ¥ltider.'
   const daysMatch = text.match(/(\d+)\s*(dag|dagar)/)
   const planDays = daysMatch
     ? Math.min(Math.max(Number(daysMatch[1]), 2), 7)
@@ -739,7 +728,7 @@ function makeChatResponse(
       : 0
 
   if (isMeaninglessMessage(message)) {
-    return 'Jag hängde inte riktigt med där. Skriv gärna frågan en gång till.'
+    return 'Jag hÃ¤ngde inte riktigt med dÃ¤r. Skriv gÃ¤rna frÃ¥gan en gÃ¥ng till.'
   }
 
   const multiPartReply = makeMultiPartReply(message, chatHistory)
@@ -750,13 +739,13 @@ function makeChatResponse(
 
   if (planDays) {
     const dayTemplates = [
-      ['Äggwrap med vitkål och keso', 'Kyckling, potatis och frysta grönsaker', 1750, 115],
+      ['Ã„ggwrap med vitkÃ¥l och keso', 'Kyckling, potatis och frysta grÃ¶nsaker', 1750, 115],
       ['Tonfisk med ris, majs och gurka', 'Linsgryta med potatis och yoghurt', 1800, 105],
-      ['Keso, kokt ägg, knäckebröd och frukt', 'Tofuwok med nudlar och wokgrönsaker', 1700, 100],
-      ['Bönsallad med pasta och ägg', 'Fiskpinnar, potatis och ärtor', 1850, 105],
-      ['Kycklingwrap med grönsaker', 'Chili på bönor med ris', 1780, 110],
-      ['Havregrynsgröt, kvarg och bär', 'Omelett med potatis', 1650, 95],
-      ['Tonfiskmackor med ägg', 'Kycklinggryta med ris', 1900, 120],
+      ['Keso, kokt Ã¤gg, knÃ¤ckebrÃ¶d och frukt', 'Tofuwok med nudlar och wokgrÃ¶nsaker', 1700, 100],
+      ['BÃ¶nsallad med pasta och Ã¤gg', 'Fiskpinnar, potatis och Ã¤rtor', 1850, 105],
+      ['Kycklingwrap med grÃ¶nsaker', 'Chili pÃ¥ bÃ¶nor med ris', 1780, 110],
+      ['HavregrynsgrÃ¶t, kvarg och bÃ¤r', 'Omelett med potatis', 1650, 95],
+      ['Tonfiskmackor med Ã¤gg', 'Kycklinggryta med ris', 1900, 120],
     ].slice(0, planDays)
 
     return `En enkel plan:
@@ -767,11 +756,11 @@ ${dayTemplates
   )
   .join('\n')}
 
-Handla: ägg, kyckling/tonfisk, linser/bönor, potatis/ris och frysta grönsaker.`
+Handla: Ã¤gg, kyckling/tonfisk, linser/bÃ¶nor, potatis/ris och frysta grÃ¶nsaker.`
   }
 
-  if (/^(hej|hejsan|hallå|tjena|god morgon|god kväll)[!.\s]*$/i.test(message.trim())) {
-    return 'Hej! Hur kan jag hjälpa dig idag?'
+  if (/^(hej|hejsan|hallÃ¥|tjena|god morgon|god kvÃ¤ll)[!.\s]*$/i.test(message.trim())) {
+    return 'Hej! Hur kan jag hjÃ¤lpa dig idag?'
   }
 
   const personalReply = makePersonalCoachReply({
@@ -799,55 +788,55 @@ Handla: ägg, kyckling/tonfisk, linser/bönor, potatis/ris och frysta grönsaker
   }
 
   if (asksIfHarmful(message)) {
-    return 'Oftast beror det på vad det gäller, mängd och hur du mår av det. Det är sällan en enskild vana är “skadlig” i sig, men den kan påverka sömn, energi, mage eller rutiner. Berätta gärna vad du syftar på, så kan jag svara mer konkret.'
+    return 'Oftast beror det pÃ¥ vad det gÃ¤ller, mÃ¤ngd och hur du mÃ¥r av det. Det Ã¤r sÃ¤llan en enskild vana Ã¤r â€œskadligâ€ i sig, men den kan pÃ¥verka sÃ¶mn, energi, mage eller rutiner. BerÃ¤tta gÃ¤rna vad du syftar pÃ¥, sÃ¥ kan jag svara mer konkret.'
   }
 
-  if (text.includes('hur mycket') && text.includes('väger')) {
+  if (text.includes('hur mycket') && text.includes('vÃ¤ger')) {
     return Number.isFinite(Number(currentWeight))
-      ? `Din senaste registrerade vikt är ${formatWeight(currentWeight)}.`
+      ? `Din senaste registrerade vikt Ã¤r ${formatWeight(currentWeight)}.`
       : 'Jag hittar ingen giltig vikt i loggen just nu.'
   }
 
   if (text.includes('pizza') || text.includes('sugen')) {
     const goalHint =
-      goal === 'gå ner i vikt'
-        ? 'Om målet är viktnedgång kan du fortfarande äta pizza.'
-        : 'Det kan absolut få plats i en vanlig rutin.'
+      goal === 'gÃ¥ ner i vikt'
+        ? 'Om mÃ¥let Ã¤r viktnedgÃ¥ng kan du fortfarande Ã¤ta pizza.'
+        : 'Det kan absolut fÃ¥ plats i en vanlig rutin.'
 
-    return `${goalHint} Ta en normal portion och komplettera gärna med sallad eller något proteinrikt om du vill bli mättare. Är det lunch eller middag du funderar på?`
+    return `${goalHint} Ta en normal portion och komplettera gÃ¤rna med sallad eller nÃ¥got proteinrikt om du vill bli mÃ¤ttare. Ã„r det lunch eller middag du funderar pÃ¥?`
   }
 
   if (
-    (text.includes('åt') || text.includes('ätit')) &&
-    (text.includes('dåligt') || text.includes('onyttigt') || text.includes('helgen'))
+    (text.includes('Ã¥t') || text.includes('Ã¤tit')) &&
+    (text.includes('dÃ¥ligt') || text.includes('onyttigt') || text.includes('helgen'))
   ) {
-    return `Det är lugnt, en helg förstör ingenting. Gör en enkel reset: drick vatten, ät en vanlig proteinrik måltid och ta en kort promenad om det känns bra. Försök gå tillbaka till rutinen utan att kompensera hårt. Vad var det som gjorde helgen svårast?`
+    return `Det Ã¤r lugnt, en helg fÃ¶rstÃ¶r ingenting. GÃ¶r en enkel reset: drick vatten, Ã¤t en vanlig proteinrik mÃ¥ltid och ta en kort promenad om det kÃ¤nns bra. FÃ¶rsÃ¶k gÃ¥ tillbaka till rutinen utan att kompensera hÃ¥rt. Vad var det som gjorde helgen svÃ¥rast?`
   }
 
   if (
-    text.includes('ikväll') ||
+    text.includes('ikvÃ¤ll') ||
     text.includes('middag') ||
-    text.includes('vad ska jag äta')
+    text.includes('vad ska jag Ã¤ta')
   ) {
-    return `Testa något enkelt ikväll:
-• Kyckling + potatis + frysta grönsaker
-• Äggwrap med keso och vitkål
-• Linsgryta med ris
+    return `Testa nÃ¥got enkelt ikvÃ¤ll:
+â€¢ Kyckling + potatis + frysta grÃ¶nsaker
+â€¢ Ã„ggwrap med keso och vitkÃ¥l
+â€¢ Linsgryta med ris
 
-Välj det som går snabbast att laga.`
+VÃ¤lj det som gÃ¥r snabbast att laga.`
   }
 
-  if (text.includes('mellanmål')) {
-    return `Snabba mellanmål:
-• Kvarg + bär
-• Ägg på knäckebröd
-• Keso + frukt
+  if (text.includes('mellanmÃ¥l')) {
+    return `Snabba mellanmÃ¥l:
+â€¢ Kvarg + bÃ¤r
+â€¢ Ã„gg pÃ¥ knÃ¤ckebrÃ¶d
+â€¢ Keso + frukt
 
-Ta det som kräver minst fix.`
+Ta det som krÃ¤ver minst fix.`
   }
 
   if (text.includes('motivation') || text.includes('motiver')) {
-    return `Det händer alla. Försök fokusera på nästa lilla steg i stället för hela målet. Det kan räcka med något väldigt enkelt i dag. Vad känns svårast just nu – maten, träningen eller att hålla rutinen?`
+    return `Det hÃ¤nder alla. FÃ¶rsÃ¶k fokusera pÃ¥ nÃ¤sta lilla steg i stÃ¤llet fÃ¶r hela mÃ¥let. Det kan rÃ¤cka med nÃ¥got vÃ¤ldigt enkelt i dag. Vad kÃ¤nns svÃ¥rast just nu â€“ maten, trÃ¤ningen eller att hÃ¥lla rutinen?`
   }
 
   if (asksAboutSleep(message)) {
@@ -856,105 +845,28 @@ Ta det som kräver minst fix.`
 
   if (text.includes('billig') || text.includes('proteinrik lunch') || text.includes('lunch')) {
     return `Billig proteinrik lunch:
-• Tonfisk + ris + majs
-• Äggwrap + keso + grönsaker
-• Linsgryta + potatis
+â€¢ Tonfisk + ris + majs
+â€¢ Ã„ggwrap + keso + grÃ¶nsaker
+â€¢ Linsgryta + potatis
 
-Välj en och upprepa den i veckan.`
+VÃ¤lj en och upprepa den i veckan.`
   }
 
-  if (text.includes('vikt') || text.includes('mål')) {
+  if (text.includes('vikt') || text.includes('mÃ¥l')) {
     if (canDiscussWeightLoss) {
-      return `${weightContext} Titta helst på trenden över flera dagar, inte bara en enskild vägning. Vill du att jag jämför de senaste registreringarna åt dig?`
+      return `${weightContext} Titta helst pÃ¥ trenden Ã¶ver flera dagar, inte bara en enskild vÃ¤gning. Vill du att jag jÃ¤mfÃ¶r de senaste registreringarna Ã¥t dig?`
     }
 
     if (canDiscussMuscleGain) {
-      return 'För muskelbygge är vikten bara en del av bilden. Det är ofta mer användbart att följa styrka, energi, protein och återhämtning.'
+      return 'FÃ¶r muskelbygge Ã¤r vikten bara en del av bilden. Det Ã¤r ofta mer anvÃ¤ndbart att fÃ¶lja styrka, energi, protein och Ã¥terhÃ¤mtning.'
     }
 
-    return 'Om målet är att hålla vikten är en stabil trend oftast ett bra tecken. Titta på veckosnittet snarare än en enskild dag.'
+    return 'Om mÃ¥let Ã¤r att hÃ¥lla vikten Ã¤r en stabil trend oftast ett bra tecken. Titta pÃ¥ veckosnittet snarare Ã¤n en enskild dag.'
   }
 
-  return makeCommonWellnessReply(message) || 'Jag hängde inte riktigt med där. Kan du skriva lite mer om vad du menar?'
+  return makeCommonWellnessReply(message) || 'Jag hÃ¤ngde inte riktigt med dÃ¤r. Kan du skriva lite mer om vad du menar?'
 }
 
-function makeLocalWeeklyReport(profile, checkIn, foods, meals, weights) {
-  const name = profile?.name || 'du'
-  const goal = profile?.goal || 'hållbara vanor'
-  const sortedWeights = [...weights].sort(
-    (a, b) => new Date(a.date) - new Date(b.date),
-  )
-  const recentWeights = sortedWeights.slice(-7)
-  const previousWeights = sortedWeights.slice(-14, -7)
-  const weeklyChange = getPeriodWeightChange(recentWeights)
-  const previousChange = getPeriodWeightChange(previousWeights)
-  const weeklyTrend = getAverageWeeklyChange(recentWeights)
-  const completedFoods = foods.filter((item) => item.done).length
-  const foodPercent = foods.length
-    ? Math.round((completedFoods / foods.length) * 100)
-    : 0
-  const habitScore = Math.round(
-    ((checkIn.energy >= 6 ? 1 : 0) +
-      (checkIn.steps >= 7000 ? 1 : 0) +
-      (checkIn.workout ? 1 : 0) +
-      (foods.length ? completedFoods / foods.length : 0)) *
-      25,
-  )
-  const dateRange =
-    recentWeights.length >= 2
-      ? `${formatDate(recentWeights[0].date)}-${formatDate(recentWeights.at(-1).date)}`
-      : 'för kort historik ännu'
-  const comparison =
-    previousChange === null || weeklyChange === null
-      ? 'Ingen jämförbar föregående vecka ännu.'
-      : `${formatSignedWeight(Number((weeklyChange - previousChange).toFixed(1)))} jämfört med förra veckan.`
-  const trainingStatus = checkIn.workout
-    ? 'Träning är markerad i veckans check-in.'
-    : 'Ingen träning är markerad just nu.'
-  const strengths = [
-    foodPercent >= 75 ? 'Matchecklistan sitter starkt.' : '',
-    checkIn.steps >= 7000 ? 'Stegen ligger på en bra nivå.' : '',
-    checkIn.energy >= 6 ? 'Energin ser stabil ut.' : '',
-    checkIn.workout ? 'Du har träning med i rutinen.' : '',
-    meals.length > 0 ? `${meals.length} måltider är loggade.` : '',
-  ].filter(Boolean)
-  const recommendation =
-    foodPercent < 75
-      ? 'Välj en punkt i matchecklistan och gör den enkel att upprepa nästa vecka.'
-      : checkIn.steps < 7000
-        ? 'Lägg in en kort promenad på samma tid varje dag för jämnare aktivitet.'
-        : checkIn.energy < 6
-          ? 'Planera återhämtning och en enkel måltidsrutin för bättre energi.'
-          : 'Fortsätt med samma bas och höj bara en liten vana åt gången.'
-  const aiInsight =
-    weeklyChange === null
-      ? `${name}, logga några fler vägningar så blir vikttrenden säkrare.`
-      : goal === 'gå ner i vikt' && weeklyChange <= 0
-        ? `${name}, veckan rör sig i linje med ditt mål utan att rapporten behöver dra stora slutsatser.`
-        : goal === 'bygga muskler'
-          ? `${name}, följ styrka, mat och energi tillsammans med vikten för en mer rättvis bild.`
-          : `${name}, stabila vanor verkar vara viktigare här än en enskild siffra på vågen.`
-
-  return `### Veckorapport V2
-• Viktförändring denna vecka: ${weeklyChange === null ? 'Inte tillräckligt med data' : formatSignedWeight(weeklyChange)} (${dateRange}).
-• Förändring sedan förra veckan: ${comparison}
-• Snittsteg per dag: ${checkIn.steps.toLocaleString('sv-SE')} steg.
-• Matchecklista: ${foodPercent}% (${completedFoods}/${foods.length}).
-• Träningsstatus: ${trainingStatus}
-• Vanepoäng: ${habitScore}%.
-• Vikttrend per vecka: ${formatSignedWeight(weeklyTrend)}.
-
-### Styrkor denna vecka
-• ${strengths.length ? strengths.join('\n• ') : 'Du har en startpunkt att bygga vidare från.'}
-
-### Rekommendation inför nästa vecka
-• ${recommendation}
-
-### Kort AI-insikt
-• ${aiInsight}
-
-Obs: Rapporten är allmänt stöd och inte medicinsk rådgivning.`
-}
 
 function makeProductFromBarcode(barcode) {
   const digits = barcode.replace(/\D/g, '')
@@ -1064,6 +976,7 @@ function App() {
     readStoredValue(storageKeys.chat, initialChatMessages, isStoredChatMessages),
   )
   const [weeklyReport, setWeeklyReport] = useState('')
+  const [weeklyReportData, setWeeklyReportData] = useState(null)
   const [weeklyReportStatus, setWeeklyReportStatus] = useState('')
 
   const latestWeight = weights.at(-1)
@@ -1128,9 +1041,9 @@ function App() {
       .map((photo, index) => ({
         alt:
           index === 0
-            ? 'Tidigare jämförelsebild'
-            : 'Nyaste jämförelsebild',
-        caption: `${index === 0 ? 'Tidigare' : 'Nyaste'} · ${formatFullDate(photo.createdAt)}`,
+            ? 'Tidigare jÃ¤mfÃ¶relsebild'
+            : 'Nyaste jÃ¤mfÃ¶relsebild',
+        caption: `${index === 0 ? 'Tidigare' : 'Nyaste'} Â· ${formatFullDate(photo.createdAt)}`,
         id: `${photo.id}-${index}`,
         image: photo.image,
       }))
@@ -1138,9 +1051,9 @@ function App() {
   const progressPhotoItems = progressPhotos.map((photo) => ({
     alt:
       photo.view === 'front'
-        ? 'Framstegsbild framifrån'
+        ? 'Framstegsbild framifrÃ¥n'
         : photo.view === 'side'
-          ? 'Framstegsbild från sidan'
+          ? 'Framstegsbild frÃ¥n sidan'
           : 'Tidigare framstegsbild',
     createdAtLabel: formatFullDate(photo.createdAt),
     id: photo.id,
@@ -1148,9 +1061,9 @@ function App() {
     note: photo.note || 'Ingen anteckning',
     viewLabel:
       photo.view === 'front'
-        ? 'Framifrån'
+        ? 'FramifrÃ¥n'
         : photo.view === 'side'
-          ? 'Från sidan'
+          ? 'FrÃ¥n sidan'
           : 'Tidigare bild',
   }))
   const progressPhotoOptions = progressPhotos.map((photo) => ({
@@ -1160,35 +1073,35 @@ function App() {
   const beforeAfterPhotos = [beforePhoto, afterPhoto]
     .filter(Boolean)
     .map((photo, index) => ({
-      alt: index === 0 ? 'Förebild' : 'Efterbild',
-      caption: `${index === 0 ? 'Före' : 'Efter'} · ${formatFullDate(photo.createdAt)}`,
+      alt: index === 0 ? 'FÃ¶rebild' : 'Efterbild',
+      caption: `${index === 0 ? 'FÃ¶re' : 'Efter'} Â· ${formatFullDate(photo.createdAt)}`,
       id: `${photo.id}-${index}`,
       image: photo.image,
     }))
   const reminderOptions = [
     {
       enabledKey: 'weight',
-      label: 'Viktpåminnelse',
+      label: 'ViktpÃ¥minnelse',
       timeKey: 'weightTime',
     },
     {
       enabledKey: 'meal',
-      label: 'Måltidsloggning',
+      label: 'MÃ¥ltidsloggning',
       timeKey: 'mealTime',
     },
     {
       enabledKey: 'water',
-      label: 'Vattenpåminnelse',
+      label: 'VattenpÃ¥minnelse',
       timeKey: 'waterTime',
     },
   ]
   const safeProfileGoalWeight =
-    profile?.goal === 'gå ner i vikt'
+    profile?.goal === 'gÃ¥ ner i vikt'
       ? formatOptionalWeight(profile?.goalWeight)
       : ''
   const profileSummaryParts = [
     profile?.goal,
-    safeProfileGoalWeight ? `mål ${safeProfileGoalWeight}` : '',
+    safeProfileGoalWeight ? `mÃ¥l ${safeProfileGoalWeight}` : '',
     profile?.activityLevel ? `aktivitet ${profile.activityLevel}` : '',
   ].filter(Boolean)
   const habitScore = Math.round(
@@ -1203,42 +1116,42 @@ function App() {
     likelyProtein:
       entry.analysis.likelyProtein ||
       entry.analysis.foods[0] ||
-      'ser ut att innehålla en proteinkälla',
+      'ser ut att innehÃ¥lla en proteinkÃ¤lla',
     likelyVegetables:
       entry.analysis.likelyVegetables ||
       entry.analysis.foods[1] ||
-      'troligen grönsaker eller sallad',
+      'troligen grÃ¶nsaker eller sallad',
     likelyCarbs:
       entry.analysis.likelyCarbs ||
       entry.analysis.foods[2] ||
-      'kan innehålla en kolhydratkälla',
+      'kan innehÃ¥lla en kolhydratkÃ¤lla',
     summary:
       entry.analysis.summary ||
-      `Ser ut att innehålla ${entry.analysis.foods.join(', ')}.`,
+      `Ser ut att innehÃ¥lla ${entry.analysis.foods.join(', ')}.`,
     positiveFeedback:
       entry.analysis.positiveFeedback ||
-      'Bra att du använder fotoanalysen för att reflektera över måltiden.',
+      'Bra att du anvÃ¤nder fotoanalysen fÃ¶r att reflektera Ã¶ver mÃ¥ltiden.',
     improvementSuggestion:
       entry.analysis.improvementSuggestion ||
-      'Ett enkelt nästa steg kan vara att lägga till en tydlig grönsak eller proteinkälla.',
+      'Ett enkelt nÃ¤sta steg kan vara att lÃ¤gga till en tydlig grÃ¶nsak eller proteinkÃ¤lla.',
     analysis: {
       ...entry.analysis,
       cheapNextMealSuggestion:
         entry.analysis.cheapNextMealSuggestion ||
-        'Billigt nästa mål: ägg, potatis och frysta grönsaker.',
+        'Billigt nÃ¤sta mÃ¥l: Ã¤gg, potatis och frysta grÃ¶nsaker.',
       fiberCarbBalance:
         entry.analysis.fiberCarbBalance ||
-        'Välj gärna fullkorn, potatis, frukt eller grönsaker för bättre fiberbalans.',
+        'VÃ¤lj gÃ¤rna fullkorn, potatis, frukt eller grÃ¶nsaker fÃ¶r bÃ¤ttre fiberbalans.',
       portionEstimate:
         entry.analysis.portionEstimate || 'Portionen ser medelstor ut.',
       proteinStatus:
         entry.analysis.proteinStatus ||
         entry.analysis.likelyProtein ||
-        'Proteinstatus är osäker.',
+        'Proteinstatus Ã¤r osÃ¤ker.',
       vegetableStatus:
         entry.analysis.vegetableStatus ||
         entry.analysis.likelyVegetables ||
-        'Grönsaksstatus är osäker.',
+        'GrÃ¶nsaksstatus Ã¤r osÃ¤ker.',
     },
   }))
   const mealWeekSummary = getMealWeekSummary(photoMeals)
@@ -1280,7 +1193,7 @@ function App() {
   const coachStatus = hasFreshDailyCoach
     ? dailyCoachResult.source === 'openai'
       ? 'AI-genererad daglig sammanfattning.'
-      : 'Lokal fallback används just nu.'
+      : 'Lokal fallback anvÃ¤nds just nu.'
     : demoMode && !showOnboarding
       ? 'Uppdaterar AI-coach...'
       : ''
@@ -1415,21 +1328,21 @@ function App() {
         key: 'weight',
         message: 'Dags att logga dagens vikt i Viktkollen.',
         time: reminderSettings.weightTime,
-        title: 'Viktpåminnelse',
+        title: 'ViktpÃ¥minnelse',
       },
       {
         enabled: reminderSettings.meal,
         key: 'meal',
-        message: 'Lägg in en snabb måltidsnotering när du har ätit.',
+        message: 'LÃ¤gg in en snabb mÃ¥ltidsnotering nÃ¤r du har Ã¤tit.',
         time: reminderSettings.mealTime,
-        title: 'Måltidspåminnelse',
+        title: 'MÃ¥ltidspÃ¥minnelse',
       },
       {
         enabled: reminderSettings.water,
         key: 'water',
-        message: 'Ta ett glas vatten och kryssa vattenmålet om det passar.',
+        message: 'Ta ett glas vatten och kryssa vattenmÃ¥let om det passar.',
         time: reminderSettings.waterTime,
-        title: 'Vattenpåminnelse',
+        title: 'VattenpÃ¥minnelse',
       },
     ]
 
@@ -1591,7 +1504,7 @@ function App() {
       !isValidWeightInput(nextProfile.startWeight) ||
       !isValidWeightInput(nextProfile.goalWeight)
     ) {
-      setProfileError('Startvikt och målvikt måste vara giltiga siffror.')
+      setProfileError('Startvikt och mÃ¥lvikt mÃ¥ste vara giltiga siffror.')
       return
     }
 
@@ -1690,7 +1603,7 @@ function App() {
       return
     }
 
-    setPhotoAnalysisStatus('Analyserar måltid...')
+    setPhotoAnalysisStatus('Analyserar mÃ¥ltid...')
     const analysis = await requestMealAnalysis(foodPhotoPreview)
     const nextEntry = {
       analysis,
@@ -1739,7 +1652,7 @@ function App() {
         setPhotoAnalysisStatus('Mathistorik importerad.')
       } catch {
         setPhotoAnalysisStatus(
-          'Importen misslyckades. Kontrollera att filen är en exporterad JSON-fil från Viktkollen.',
+          'Importen misslyckades. Kontrollera att filen Ã¤r en exporterad JSON-fil frÃ¥n Viktkollen.',
         )
       } finally {
         event.target.value = ''
@@ -1760,14 +1673,14 @@ function App() {
 
     setPhotoMeals(nextHistory)
     setMealHistoryImportSummary(null)
-    setPhotoAnalysisStatus('Demo-måltidsdag skapad.')
+    setPhotoAnalysisStatus('Demo-mÃ¥ltidsdag skapad.')
   }
 
   function saveScannedProduct(barcode) {
     const normalizedBarcode = barcode.trim()
 
     if (!normalizedBarcode) {
-      setBarcodeStatus('Ange eller skanna en streckkod först.')
+      setBarcodeStatus('Ange eller skanna en streckkod fÃ¶rst.')
       return
     }
 
@@ -1802,13 +1715,13 @@ function App() {
   async function startBarcodeScanner() {
     if (!('BarcodeDetector' in window)) {
       setBarcodeStatus(
-        'Kameraskanning stöds inte i den här webbläsaren. Skriv koden manuellt.',
+        'Kameraskanning stÃ¶ds inte i den hÃ¤r webblÃ¤saren. Skriv koden manuellt.',
       )
       return
     }
 
     if (!navigator.mediaDevices?.getUserMedia) {
-      setBarcodeStatus('Kameran är inte tillgänglig. Skriv koden manuellt.')
+      setBarcodeStatus('Kameran Ã¤r inte tillgÃ¤nglig. Skriv koden manuellt.')
       return
     }
 
@@ -1844,7 +1757,7 @@ function App() {
             stopBarcodeScanner()
           }
         } catch {
-          setBarcodeStatus('Kunde inte läsa streckkoden ännu. Försök hålla kameran stilla.')
+          setBarcodeStatus('Kunde inte lÃ¤sa streckkoden Ã¤nnu. FÃ¶rsÃ¶k hÃ¥lla kameran stilla.')
         }
       }, 900)
     } catch (error) {
@@ -1894,19 +1807,19 @@ function App() {
 
   async function requestNotificationPermission() {
     if (!('Notification' in window)) {
-      setReminderStatus('Webbläsaren stödjer inte notiser.')
+      setReminderStatus('WebblÃ¤saren stÃ¶djer inte notiser.')
       return
     }
 
     const permission = await window.Notification.requestPermission()
 
     if (permission === 'granted') {
-      setReminderStatus('Notiser är aktiverade.')
+      setReminderStatus('Notiser Ã¤r aktiverade.')
       setReminderSettings((current) => ({ ...current, enabled: true }))
       return
     }
 
-    setReminderStatus('Notiser är inte aktiverade. Inställningarna sparas ändå.')
+    setReminderStatus('Notiser Ã¤r inte aktiverade. InstÃ¤llningarna sparas Ã¤ndÃ¥.')
   }
 
   function getValidatedProfile() {
@@ -1914,53 +1827,32 @@ function App() {
   }
 
   async function createWeeklyReport() {
-    setWeeklyReportStatus('Skapar veckorapport...')
+    return createWeeklyReportV2()
 
-    try {
-      console.info('[Viktkollen weekly report] Calling /api/weekly-report')
+  }
 
-      const apiResponse = await fetch('/api/weekly-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          profile: getValidatedProfile(),
-          checkIn,
-          foods,
-          meals,
-          weights,
-          currentWeight: latestWeight.value,
-        }),
-      })
+  async function createWeeklyReportV2() {
+    setWeeklyReportStatus('Skapar AI-veckorapport...')
 
-      if (!apiResponse.ok) {
-        throw new Error(`Weekly report API failed with status ${apiResponse.status}`)
-      }
+    const report = await createAiWeeklyReport({
+      bodyAnalysisHistory: getAnalysisHistory(),
+      checkIn,
+      currentWeight: latestWeight.value,
+      foods,
+      mealHistory: photoMeals,
+      meals,
+      proactiveCoach: proactiveCoachInsights,
+      profile: getValidatedProfile(),
+      weights,
+    })
 
-      const data = await apiResponse.json()
-
-      console.info('[Viktkollen weekly report] /api/weekly-report response', {
-        source: data.source,
-        fallbackReason: data.fallbackReason,
-        debug: data.debug,
-      })
-
-      if (typeof data.report === 'string' && data.report.trim()) {
-        setWeeklyReport(data.report.trim())
-        setWeeklyReportStatus(
-          data.source === 'openai'
-            ? 'AI-genererad veckorapport.'
-            : 'Lokal fallback används just nu.',
-        )
-        return
-      }
-    } catch (error) {
-      console.warn('[Viktkollen weekly report] API unavailable, using mock', {
-        reason: error instanceof Error ? error.message : String(error),
-      })
-    }
-
-    setWeeklyReport(makeLocalWeeklyReport(profile, checkIn, foods, meals, weights))
-    setWeeklyReportStatus('Lokal fallback används just nu.')
+    setWeeklyReportData(report)
+    setWeeklyReport('')
+    setWeeklyReportStatus(
+      report.source === 'openai'
+        ? 'AI-genererad veckorapport.'
+        : 'Smart fallback anvÃ¤nds just nu.',
+    )
   }
 
   async function requestChatReply(message) {
@@ -2069,20 +1961,20 @@ function App() {
 
     if (!SpeechRecognition) {
       setVoiceStatus(
-        'Röstinmatning stöds inte i den här webbläsaren. Skriv frågan i stället.',
+        'RÃ¶stinmatning stÃ¶ds inte i den hÃ¤r webblÃ¤saren. Skriv frÃ¥gan i stÃ¤llet.',
       )
       return
     }
 
     if (!window.isSecureContext && window.location.hostname !== 'localhost') {
       setVoiceStatus(
-        'Mikrofonen kräver oftast HTTPS. Testa i en säker webbläsarsession.',
+        'Mikrofonen krÃ¤ver oftast HTTPS. Testa i en sÃ¤ker webblÃ¤sarsession.',
       )
       return
     }
 
     if (!navigator.mediaDevices?.getUserMedia) {
-      setVoiceStatus('Mikrofonen är inte tillgänglig i den här webbläsaren.')
+      setVoiceStatus('Mikrofonen Ã¤r inte tillgÃ¤nglig i den hÃ¤r webblÃ¤saren.')
       return
     }
 
@@ -2092,7 +1984,7 @@ function App() {
     } catch (error) {
       if (error instanceof DOMException && error.name === 'NotAllowedError') {
         setVoiceStatus(
-          'Mikrofonbehörighet nekades. Tillåt mikrofon i webbläsaren och försök igen.',
+          'MikrofonbehÃ¶righet nekades. TillÃ¥t mikrofon i webblÃ¤saren och fÃ¶rsÃ¶k igen.',
         )
         return
       }
@@ -2101,11 +1993,11 @@ function App() {
         error instanceof DOMException &&
         (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError')
       ) {
-        setVoiceStatus('Ingen mikrofon hittades. Kontrollera mikrofonen eller skriv frågan.')
+        setVoiceStatus('Ingen mikrofon hittades. Kontrollera mikrofonen eller skriv frÃ¥gan.')
         return
       }
 
-      setVoiceStatus('Mikrofonen kunde inte starta. Försök igen eller skriv frågan.')
+      setVoiceStatus('Mikrofonen kunde inte starta. FÃ¶rsÃ¶k igen eller skriv frÃ¥gan.')
       return
     }
 
@@ -2153,22 +2045,22 @@ function App() {
 
       if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
         setVoiceStatus(
-          'Mikrofonbehörighet nekades. Tillåt mikrofon i webbläsaren och försök igen.',
+          'MikrofonbehÃ¶righet nekades. TillÃ¥t mikrofon i webblÃ¤saren och fÃ¶rsÃ¶k igen.',
         )
         return
       }
 
       if (event.error === 'no-speech') {
-        setVoiceStatus('Jag hörde inget. Tryck på mikrofonen och försök igen.')
+        setVoiceStatus('Jag hÃ¶rde inget. Tryck pÃ¥ mikrofonen och fÃ¶rsÃ¶k igen.')
         return
       }
 
       if (event.error === 'audio-capture') {
-        setVoiceStatus('Ingen mikrofon hittades. Kontrollera mikrofonen eller skriv frågan.')
+        setVoiceStatus('Ingen mikrofon hittades. Kontrollera mikrofonen eller skriv frÃ¥gan.')
         return
       }
 
-      setVoiceStatus('Kunde inte lyssna just nu. Försök igen eller skriv frågan.')
+      setVoiceStatus('Kunde inte lyssna just nu. FÃ¶rsÃ¶k igen eller skriv frÃ¥gan.')
     })
 
     recognition.addEventListener('end', () => {
@@ -2184,8 +2076,8 @@ function App() {
         }
 
         return hasTranscript
-          ? 'Texten är ifylld. Du kan redigera innan du skickar.'
-          : 'Jag hörde inget. Tryck på mikrofonen och försök igen.'
+          ? 'Texten Ã¤r ifylld. Du kan redigera innan du skickar.'
+          : 'Jag hÃ¶rde inget. Tryck pÃ¥ mikrofonen och fÃ¶rsÃ¶k igen.'
       })
     })
 
@@ -2199,7 +2091,7 @@ function App() {
       setVoiceStatus(
         error instanceof Error
           ? `Mikrofonen kunde inte starta: ${error.message}`
-          : 'Mikrofonen kunde inte starta. Försök igen eller skriv frågan.',
+          : 'Mikrofonen kunde inte starta. FÃ¶rsÃ¶k igen eller skriv frÃ¥gan.',
       )
     }
   }
@@ -2212,22 +2104,22 @@ function App() {
     return (
       <main className="app-shell welcome-shell">
         <section className="welcome-card">
-          <p className="eyebrow">Välkommen</p>
+          <p className="eyebrow">VÃ¤lkommen</p>
           <h1>Viktkollen</h1>
           <p className="welcome-subtitle">
-            Din personliga AI-coach för vikt, mat och vanor
+            Din personliga AI-coach fÃ¶r vikt, mat och vanor
           </p>
           <div className="welcome-actions">
             <button type="button" onClick={startDemo}>
               Starta demo
             </button>
             <button className="secondary-button" type="button" disabled>
-              Logga in · kommer snart
+              Logga in Â· kommer snart
             </button>
           </div>
           <p className="welcome-note">
-            Ingen backend och ingen riktig inloggning ännu. Demon sparas bara i
-            den här webbläsaren.
+            Ingen backend och ingen riktig inloggning Ã¤nnu. Demon sparas bara i
+            den hÃ¤r webblÃ¤saren.
           </p>
         </section>
       </main>
@@ -2238,11 +2130,11 @@ function App() {
     return (
       <main className="app-shell onboarding-shell">
         <section className="onboarding-card">
-          <p className="eyebrow">Välkommen till Viktkollen</p>
+          <p className="eyebrow">VÃ¤lkommen till Viktkollen</p>
           <h1>Skapa din profil</h1>
           <p className="onboarding-copy">
-            Svara på några snabba frågor så anpassar vi dashboarden efter ditt
-            mål. All data sparas bara lokalt i din webbläsare.
+            Svara pÃ¥ nÃ¥gra snabba frÃ¥gor sÃ¥ anpassar vi dashboarden efter ditt
+            mÃ¥l. All data sparas bara lokalt i din webblÃ¤sare.
           </p>
 
           <form className="onboarding-form" onSubmit={saveProfile}>
@@ -2260,7 +2152,7 @@ function App() {
             </label>
 
             <label className="field">
-              <span>Mål</span>
+              <span>MÃ¥l</span>
               <select
                 value={profileForm.goal}
                 onChange={(event) =>
@@ -2289,7 +2181,7 @@ function App() {
               </label>
 
               <label className="field">
-                <span>Målvikt</span>
+                <span>MÃ¥lvikt</span>
                 <input
                   type="text"
                   inputMode="decimal"
@@ -2304,7 +2196,7 @@ function App() {
             </div>
 
             <label className="field">
-              <span>Aktivitetsnivå</span>
+              <span>AktivitetsnivÃ¥</span>
               <select
                 value={profileForm.activityLevel}
                 onChange={(event) =>
@@ -2323,7 +2215,7 @@ function App() {
               </p>
             )}
 
-            <button type="submit">Spara och fortsätt</button>
+            <button type="submit">Spara och fortsÃ¤tt</button>
           </form>
         </section>
       </main>
@@ -2336,10 +2228,10 @@ function App() {
         <div>
           <p className="eyebrow">Viktkollen MVP</p>
           <h1>
-            {profile?.name ? `Hej ${profile.name}` : 'Coach för träning, mat och vanor'}
+            {profile?.name ? `Hej ${profile.name}` : 'Coach fÃ¶r trÃ¤ning, mat och vanor'}
           </h1>
           <p className="profile-summary">
-            {profileSummaryParts.join(' · ')}
+            {profileSummaryParts.join(' Â· ')}
           </p>
         </div>
         <div className="topbar-actions">
@@ -2348,7 +2240,7 @@ function App() {
             type="button"
             onClick={() => setShowOnboarding(true)}
           >
-            Ändra profil
+            Ã„ndra profil
           </button>
           <button
             className="secondary-button"
@@ -2358,17 +2250,17 @@ function App() {
             Logga ut demo
           </button>
           <p className="disclaimer">
-            Den här appen ger endast allmänt stöd för hälsa och välmående. Den är
-            inte medicinsk rådgivning, diagnos eller behandling.
+            Den hÃ¤r appen ger endast allmÃ¤nt stÃ¶d fÃ¶r hÃ¤lsa och vÃ¤lmÃ¥ende. Den Ã¤r
+            inte medicinsk rÃ¥dgivning, diagnos eller behandling.
           </p>
         </div>
       </header>
 
-      <section className="dashboard-overview" aria-label="Översikt">
+      <section className="dashboard-overview" aria-label="Ã–versikt">
         <article className="dashboard-summary-card">
           <div className="dashboard-summary-heading">
             <div>
-              <p className="eyebrow">Din översikt</p>
+              <p className="eyebrow">Din Ã¶versikt</p>
               <h2>Dashboard</h2>
             </div>
             <span>I dag</span>
@@ -2379,14 +2271,14 @@ function App() {
               <span>Nuvarande vikt</span>
               <strong>{formatWeight(latestWeight.value)}</strong>
               <small>
-                {formatWeight(weightChange)} sedan start · Start{' '}
+                {formatWeight(weightChange)} sedan start Â· Start{' '}
                 {formatWeight(startWeight.value)}
               </small>
             </div>
 
             <div className="dashboard-stat-grid">
               <div className="dashboard-stat">
-                <span>Vanepoäng</span>
+                <span>VanepoÃ¤ng</span>
                 <strong>{habitScore}%</strong>
                 <small>Dagens check-in</small>
               </div>
@@ -2401,7 +2293,7 @@ function App() {
                 <span>Steg i dag</span>
                 <strong>{checkIn.steps.toLocaleString('sv-SE')}</strong>
                 <small>
-                  {checkIn.workout ? 'Träning planerad' : 'Återhämtningsdag'}
+                  {checkIn.workout ? 'TrÃ¤ning planerad' : 'Ã…terhÃ¤mtningsdag'}
                 </small>
               </div>
             </div>
@@ -2415,7 +2307,7 @@ function App() {
           <div className="panel-heading">
             <div>
               <p className="eyebrow">Viktlogg</p>
-              <h2>Följ utvecklingen</h2>
+              <h2>FÃ¶lj utvecklingen</h2>
             </div>
           </div>
           <form className="inline-form" onSubmit={addWeightLog}>
@@ -2426,7 +2318,7 @@ function App() {
               value={weightInput}
               onChange={(event) => setWeightInput(event.target.value)}
             />
-            <button type="submit">Lägg till</button>
+            <button type="submit">LÃ¤gg till</button>
           </form>
           <WeightChart
             averageWeeklyChangeLabel={`${averageWeeklyChange > 0 ? '+' : ''}${formatWeight(averageWeeklyChange)}`}
@@ -2487,7 +2379,7 @@ function App() {
           <div className="panel-heading">
             <div>
               <p className="eyebrow">Matchecklista</p>
-              <h2>Grunder för maten</h2>
+              <h2>Grunder fÃ¶r maten</h2>
             </div>
           </div>
           <div className="checklist">
@@ -2582,7 +2474,7 @@ function App() {
           <div className="trend-list">
             <div>
               <span>Viktutveckling</span>
-              <strong>{weightChange <= 0 ? 'Nedåt' : 'Uppåt'}</strong>
+              <strong>{weightChange <= 0 ? 'NedÃ¥t' : 'UppÃ¥t'}</strong>
             </div>
             <div>
               <span>Matvanor</span>
@@ -2590,11 +2482,12 @@ function App() {
             </div>
             <div>
               <span>Aktivitet</span>
-              <strong>{checkIn.steps >= 7000 ? 'På rätt väg' : 'Behöver fler steg'}</strong>
+              <strong>{checkIn.steps >= 7000 ? 'PÃ¥ rÃ¤tt vÃ¤g' : 'BehÃ¶ver fler steg'}</strong>
             </div>
           </div>
           <WeeklyReport
             onCreateWeeklyReport={createWeeklyReport}
+            weeklyReportData={weeklyReportData}
             weeklyReportLines={weeklyReportLines}
             weeklyReportStatus={weeklyReportStatus}
           />
@@ -2602,28 +2495,28 @@ function App() {
       </section>
 
       <nav className="bottom-nav" aria-label="Huvudnavigation">
-        <a href="#hem" aria-label="Gå till översikt">
-          <span>⌂</span>
+        <a href="#hem" aria-label="GÃ¥ till Ã¶versikt">
+          <span>âŒ‚</span>
           <strong>Hem</strong>
         </a>
-        <a href="#checkin" aria-label="Gå till dagens check-in">
-          <span>✓</span>
+        <a href="#checkin" aria-label="GÃ¥ till dagens check-in">
+          <span>âœ“</span>
           <strong>Check</strong>
         </a>
-        <a href="#vikt" aria-label="Gå till viktloggen">
-          <span>↗</span>
+        <a href="#vikt" aria-label="GÃ¥ till viktloggen">
+          <span>â†—</span>
           <strong>Vikt</strong>
         </a>
-        <a href="#mat" aria-label="Gå till matchecklistan">
-          <span>＋</span>
+        <a href="#mat" aria-label="GÃ¥ till matchecklistan">
+          <span>ï¼‹</span>
           <strong>Mat</strong>
         </a>
-        <a href="#framstegsbilder" aria-label="Gå till framstegsbilder">
-          <span>▣</span>
+        <a href="#framstegsbilder" aria-label="GÃ¥ till framstegsbilder">
+          <span>â–£</span>
           <strong>Foto</strong>
         </a>
-        <a href="#installningar" aria-label="Gå till inställningar">
-          <span>⚙</span>
+        <a href="#installningar" aria-label="GÃ¥ till instÃ¤llningar">
+          <span>âš™</span>
           <strong>Mer</strong>
         </a>
       </nav>

@@ -10,7 +10,16 @@ import ReminderSettings from './components/ReminderSettings.jsx'
 import WeightChart from './components/WeightChart.jsx'
 import WeeklyReport from './components/WeeklyReport.jsx'
 import { makePersonalCoachReply } from './lib/coachReply.js'
-import { addMealAnalysis, getMealHistory, setMealHistory } from './services/mealHistory.js'
+import {
+  addMealAnalysis,
+  clearMealHistory,
+  createDemoMealDay,
+  exportMealHistory,
+  getMealHistory,
+  getMealWeekSummary,
+  importMealHistory,
+  setMealHistory,
+} from './services/mealHistory.js'
 import { analyzeMealPhoto } from './services/mealAnalysisService.js'
 
 const starterWeights = [
@@ -997,6 +1006,7 @@ function App() {
     readStoredValue(storageKeys.meals, initialMeals, isStoredMeals),
   )
   const [foodPhotoPreview, setFoodPhotoPreview] = useState('')
+  const [mealHistoryImportSummary, setMealHistoryImportSummary] = useState(null)
   const [photoAnalysisStatus, setPhotoAnalysisStatus] = useState('')
   const [photoMeals, setPhotoMeals] = useState(() => {
     const storedMealHistory = getMealHistory()
@@ -1013,6 +1023,8 @@ function App() {
       ),
     )
   })
+  const [showClearMealHistoryConfirm, setShowClearMealHistoryConfirm] =
+    useState(false)
   const [barcodeInput, setBarcodeInput] = useState('')
   const [barcodeStatus, setBarcodeStatus] = useState('')
   const [barcodeScannerActive, setBarcodeScannerActive] = useState(false)
@@ -1225,6 +1237,7 @@ function App() {
         'Grönsaksstatus är osäker.',
     },
   }))
+  const mealWeekSummary = getMealWeekSummary(photoMeals)
   const weeklyReportLines = weeklyReport
     ? weeklyReport.split('\n').map((line, index) => ({
       id: `${line}-${index}`,
@@ -1631,6 +1644,65 @@ function App() {
 
     setPhotoMeals(addMealAnalysis(nextEntry))
     setPhotoAnalysisStatus('')
+  }
+
+  function exportMealAnalysisHistory() {
+    const exportPayload = exportMealHistory()
+    const blob = new Blob([JSON.stringify(exportPayload, null, 2)], {
+      type: 'application/json',
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+
+    link.href = url
+    link.download = `viktkollen-mathistorik-${new Date()
+      .toISOString()
+      .slice(0, 10)}.json`
+    link.click()
+    window.URL.revokeObjectURL(url)
+  }
+
+  function importMealAnalysisHistory(event) {
+    const file = event.target.files?.[0]
+
+    if (!file) {
+      setPhotoAnalysisStatus('Ingen importfil valdes.')
+      return
+    }
+
+    const reader = new FileReader()
+
+    reader.addEventListener('load', () => {
+      try {
+        const importResult = importMealHistory(JSON.parse(String(reader.result)))
+
+        setPhotoMeals(importResult.history)
+        setMealHistoryImportSummary(importResult.summary)
+        setPhotoAnalysisStatus('Mathistorik importerad.')
+      } catch {
+        setPhotoAnalysisStatus(
+          'Importen misslyckades. Kontrollera att filen är en exporterad JSON-fil från Viktkollen.',
+        )
+      } finally {
+        event.target.value = ''
+      }
+    })
+    reader.readAsText(file)
+  }
+
+  function clearLocalMealHistory() {
+    setPhotoMeals(clearMealHistory())
+    setMealHistoryImportSummary(null)
+    setShowClearMealHistoryConfirm(false)
+    setPhotoAnalysisStatus('Mathistoriken har rensats.')
+  }
+
+  function createDemoMealAnalysisDay() {
+    const nextHistory = setMealHistory([...createDemoMealDay(), ...photoMeals])
+
+    setPhotoMeals(nextHistory)
+    setMealHistoryImportSummary(null)
+    setPhotoAnalysisStatus('Demo-måltidsdag skapad.')
   }
 
   function saveScannedProduct(barcode) {
@@ -2384,15 +2456,24 @@ function App() {
           displayPhotoMeals={displayPhotoMeals}
           foodPhotoPreview={foodPhotoPreview}
           handleFoodPhotoChange={handleFoodPhotoChange}
+          importSummary={mealHistoryImportSummary}
           mealOptions={mealOptions}
           mealText={mealText}
           mealType={mealType}
           meals={meals}
           onAddMeal={addMeal}
           onAnalyzePhotoMeal={analyzePhotoMeal}
+          onCancelClearMealHistory={() => setShowClearMealHistoryConfirm(false)}
+          onClearMealHistory={clearLocalMealHistory}
+          onCreateDemoMealDay={createDemoMealAnalysisDay}
+          onExportMealHistory={exportMealAnalysisHistory}
+          onImportMealHistory={importMealAnalysisHistory}
           onMealTextChange={setMealText}
           onMealTypeChange={setMealType}
+          onShowClearMealHistory={() => setShowClearMealHistoryConfirm(true)}
           photoAnalysisStatus={photoAnalysisStatus}
+          showClearMealHistoryConfirm={showClearMealHistoryConfirm}
+          weekSummary={mealWeekSummary}
         />
 
         <BarcodeScanner

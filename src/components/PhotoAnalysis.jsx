@@ -56,7 +56,7 @@ function PhotoAnalysis({
         <ul className="photo-meal-list">
           {displayPhotoMeals.map((entry) => (
             <li key={entry.id}>
-              <img src={entry.image} alt="Analyserad måltid" />
+              {entry.image && <img src={entry.image} alt="Analyserad måltid" />}
               <div className="photo-meal-result">
                 <strong>Uppskattad måltidsanalys</strong>
                 <p>{entry.summary}</p>

@@ -1,4 +1,7 @@
+import MealDailySummary from './MealDailySummary.jsx'
+import MealHistoryTools from './MealHistoryTools.jsx'
 import MealList from './MealList.jsx'
+import MealWeeklyReport from './MealWeeklyReport.jsx'
 import PhotoAnalysis from './PhotoAnalysis.jsx'
 
 const proteinKeywords = [
@@ -91,15 +94,24 @@ function MealLogger({
   displayPhotoMeals,
   foodPhotoPreview,
   handleFoodPhotoChange,
+  importSummary,
   mealOptions,
   mealText,
   mealType,
   meals,
   onAddMeal,
   onAnalyzePhotoMeal,
+  onCancelClearMealHistory,
+  onClearMealHistory,
+  onCreateDemoMealDay,
+  onExportMealHistory,
+  onImportMealHistory,
   onMealTextChange,
   onMealTypeChange,
+  onShowClearMealHistory,
   photoAnalysisStatus,
+  showClearMealHistoryConfirm,
+  weekSummary,
 }) {
   const todaysPhotoMeals = getTodaysPhotoMeals(displayPhotoMeals)
   const mealCount = meals.length + todaysPhotoMeals.length
@@ -150,66 +162,27 @@ function MealLogger({
         photoAnalysisStatus={photoAnalysisStatus}
       />
 
-      <div className="chart-card">
-        <div className="chart-toolbar">
-          <div>
-            <span>AI-sammanfattning</span>
-            <strong>Dagens mat</strong>
-          </div>
-        </div>
-        <p className="estimate-note">{dailySummary}</p>
-        <p className="estimate-note">
-          Proteinstatus:{' '}
-          {hasProtein
-            ? 'ser okej ut i dagens logg.'
-            : 'syns inte tydligt ännu.'}
-        </p>
-        <p className="estimate-note">
-          Grönsaksstatus:{' '}
-          {hasVegetables
-            ? 'grönsaker eller frukt verkar finnas med.'
-            : 'lägg gärna till något grönt.'}
-        </p>
-        <p className="estimate-note">
-          Fiber/kolhydratbalans:{' '}
-          {bestMeal?.analysis?.fiberCarbBalance ||
-            'välj gärna fullkorn, potatis, frukt eller grönsaker för mer fiber.'}
-        </p>
-        <p className="estimate-note">
-          Enkel portionsbedömning:{' '}
-          {bestMeal?.analysis?.portionEstimate ||
-            'ingen tydlig bildbedömning ännu.'}
-        </p>
-        <p className="estimate-note">
-          Dagens bästa måltid:{' '}
-          {bestMeal?.summary || 'analysera en måltidsbild för att välja en.'}
-        </p>
-        <p className="estimate-note">
-          Dagens förbättringsområde:{' '}
-          {bestMeal?.improvementSuggestion || nextMealTip}
-        </p>
-        <p className="estimate-note">
-          Billigt nästa måltidsförslag:{' '}
-          {bestMeal?.analysis?.cheapNextMealSuggestion || nextMealTip}
-        </p>
-      </div>
+      <MealDailySummary
+        bestMeal={bestMeal}
+        dailySummary={dailySummary}
+        hasProtein={hasProtein}
+        hasVegetables={hasVegetables}
+        mealCount={mealCount}
+        nextMealTip={nextMealTip}
+      />
 
-      <div className="chart-card">
-        <div className="chart-toolbar">
-          <div>
-            <span>Dagens mat</span>
-            <strong>
-              {mealCount} måltid{mealCount === 1 ? '' : 'er'} registrerade idag.
-            </strong>
-          </div>
-        </div>
-        <p className="estimate-note">
-          {hasProtein
-            ? 'Protein verkar finnas med i dagens måltider.'
-            : 'Protein syns inte tydligt i dagens måltider ännu.'}
-        </p>
-        <p className="estimate-note">{nextMealTip}</p>
-      </div>
+      <MealWeeklyReport weekSummary={weekSummary} />
+
+      <MealHistoryTools
+        importSummary={importSummary}
+        showClearHistoryConfirm={showClearMealHistoryConfirm}
+        onCancelClearHistory={onCancelClearMealHistory}
+        onClearHistory={onClearMealHistory}
+        onCreateDemoMealDay={onCreateDemoMealDay}
+        onExportHistory={onExportMealHistory}
+        onImportHistory={onImportMealHistory}
+        onShowClearHistory={onShowClearMealHistory}
+      />
 
       <MealList meals={meals} />
     </article>

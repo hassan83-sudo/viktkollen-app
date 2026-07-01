@@ -26,10 +26,11 @@ function AIStudyBuddy({ question, subject }) {
     setStatus('AI Study Buddy tänker...')
 
     try {
-      const response = await fetch('/api/study-buddy', {
+      const response = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'study-buddy',
           answer: question.answer,
           options: question.options,
           question: question.question,

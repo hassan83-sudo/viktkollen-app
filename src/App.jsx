@@ -1386,12 +1386,13 @@ function App() {
 
     async function loadDailyCoach() {
       try {
-        console.info('[Viktkollen daily coach] Calling /api/daily-coach')
+        console.info('[Viktkollen daily coach] Calling /api/ai')
 
-        const apiResponse = await fetch('/api/daily-coach', {
+        const apiResponse = await fetch('/api/ai', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            action: 'daily-coach',
             profile: makeValidatedProfile(profile),
             checkIn,
             foods,
@@ -1407,7 +1408,7 @@ function App() {
 
         const data = await apiResponse.json()
 
-        console.info('[Viktkollen daily coach] /api/daily-coach response', {
+        console.info('[Viktkollen daily coach] /api/ai response', {
           source: data.source,
           fallbackReason: data.fallbackReason,
           debug: data.debug,
@@ -1857,12 +1858,13 @@ function App() {
 
   async function requestChatReply(message) {
     try {
-      console.info('[Viktkollen chat] Calling /api/chat')
+      console.info('[Viktkollen chat] Calling /api/ai')
 
-      const apiResponse = await fetch('/api/chat', {
+      const apiResponse = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'chat',
           message,
           profile: getValidatedProfile(),
           checkIn,
@@ -1883,7 +1885,7 @@ function App() {
 
       const data = await apiResponse.json()
 
-      console.info('[Viktkollen chat] /api/chat response', {
+      console.info('[Viktkollen chat] /api/ai response', {
         source: data.source,
         fallbackReason: data.fallbackReason,
         debug: data.debug,
@@ -1893,7 +1895,7 @@ function App() {
         return data.reply.trim()
       }
     } catch (error) {
-      console.warn('[Viktkollen chat] /api/chat unavailable, using local mock', {
+      console.warn('[Viktkollen chat] /api/ai unavailable, using local mock', {
         reason: error instanceof Error ? error.message : String(error),
       })
       // Vite dev has no serverless route; keep the app useful with mock chat.

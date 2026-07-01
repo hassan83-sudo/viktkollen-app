@@ -105,6 +105,44 @@ function makeFallbackReport(data = {}) {
   }
 }
 
+function makeDailyCoachFallback(data = {}) {
+  const energy = Number(data.checkIn?.energy)
+  const steps = Number(data.checkIn?.steps)
+  const meals = Array.isArray(data.meals) ? data.meals : []
+
+  return energy <= 4
+    ? 'Energin verkar låg i dag. Håll det enkelt: en vanlig måltid, vatten och återhämtning räcker långt.'
+    : Number.isFinite(steps) && steps < 6000
+      ? 'Dagens bästa lilla steg är en kort promenad och en enkel måltid med protein.'
+      : meals.length > 0
+        ? 'Du har måltider loggade och en bra grund. Fortsätt med samma enkla struktur resten av dagen.'
+        : 'Logga nästa måltid och välj en enkel bas med protein, grönsaker eller frukt.'
+}
+
+function makeChatFallback(data = {}) {
+  const message = String(data.message || '').toLocaleLowerCase('sv-SE')
+
+  if (message.includes('protein')) {
+    return 'Ett enkelt riktmärke är protein i varje måltid. Välj något lätt att upprepa, till exempel ägg, kvarg, kyckling, bönor eller fisk.'
+  }
+
+  if (message.includes('trött') || message.includes('energi')) {
+    return 'När energin är låg är målet stabilitet, inte perfektion. Välj en enkel måltid, drick vatten och prioritera återhämtning.'
+  }
+
+  if (message.includes('middag') || message.includes('äta')) {
+    return 'Gör nästa måltid enkel: protein, något grönt och en lagom kolhydratkälla. Det räcker bra som bas.'
+  }
+
+  return 'Jag skulle börja med ett litet nästa steg: vatten, en enkel måltid eller en kort promenad. Vad vill du fokusera på just nu?'
+}
+
+function makeStudyBuddyFallback(data = {}) {
+  const subject = data.subject || 'ämnet'
+
+  return `Titta på nyckelorden i ${subject} och uteslut svar som inte passar. Försök hitta metoden innan du väljer alternativ.`
+}
+
 async function callOpenAI({ maxOutputTokens, prompt, userData }) {
   const openaiResponse = await fetch(OPENAI_API_URL, {
     body: JSON.stringify({
@@ -138,6 +176,102 @@ async function callOpenAI({ maxOutputTokens, prompt, userData }) {
   }
 
   return parseJson(extractText(await openaiResponse.json()))
+}
+
+async function handleDailyCoach(data, response) {
+  if (!process.env.OPENAI_API_KEY) {
+    return response.status(200).json({
+      source: 'mock',
+      summary: makeDailyCoachFallback(data),
+    })
+  }
+
+  try {
+    const result = await callOpenAI({
+      maxOutputTokens: 500,
+      prompt:
+        'Du är Viktkollens dagliga coach. Svara endast med JSON: {"summary":"..."} på svenska. Ge kort, trygg allmän wellness-coaching, inte medicinsk rådgivning.',
+      userData: data,
+    })
+
+    return response.status(200).json({
+      source: 'openai',
+      summary: result.summary || makeDailyCoachFallback(data),
+    })
+  } catch (error) {
+    console.warn('[api/ai] daily-coach OpenAI failed, using mock', {
+      error: error instanceof Error ? error.message : String(error),
+    })
+
+    return response.status(200).json({
+      source: 'mock',
+      summary: makeDailyCoachFallback(data),
+    })
+  }
+}
+
+async function handleChat(data, response) {
+  if (!process.env.OPENAI_API_KEY) {
+    return response.status(200).json({
+      reply: makeChatFallback(data),
+      source: 'mock',
+    })
+  }
+
+  try {
+    const result = await callOpenAI({
+      maxOutputTokens: 700,
+      prompt:
+        'Du är Viktkollens AI Coach. Svara endast med JSON: {"reply":"..."} på svenska. Var kort, personlig, trygg och ge bara allmän wellness-coaching, inte medicinsk rådgivning.',
+      userData: data,
+    })
+
+    return response.status(200).json({
+      reply: result.reply || makeChatFallback(data),
+      source: 'openai',
+    })
+  } catch (error) {
+    console.warn('[api/ai] chat OpenAI failed, using mock', {
+      error: error instanceof Error ? error.message : String(error),
+    })
+
+    return response.status(200).json({
+      reply: makeChatFallback(data),
+      source: 'mock',
+    })
+  }
+}
+
+async function handleStudyBuddy(data, response) {
+  if (!process.env.OPENAI_API_KEY) {
+    return response.status(200).json({
+      hint: makeStudyBuddyFallback(data),
+      source: 'mock',
+    })
+  }
+
+  try {
+    const result = await callOpenAI({
+      maxOutputTokens: 400,
+      prompt:
+        'Du är en pedagogisk Study Buddy. Svara endast med JSON: {"hint":"..."} på svenska. Ge en kort hint utan att avslöja svaret direkt.',
+      userData: data,
+    })
+
+    return response.status(200).json({
+      hint: result.hint || makeStudyBuddyFallback(data),
+      source: 'openai',
+    })
+  } catch (error) {
+    console.warn('[api/ai] study-buddy OpenAI failed, using mock', {
+      error: error instanceof Error ? error.message : String(error),
+    })
+
+    return response.status(200).json({
+      hint: makeStudyBuddyFallback(data),
+      source: 'mock',
+    })
+  }
 }
 
 async function handleProactiveCoach(data, response) {
@@ -254,6 +388,18 @@ export default async function handler(request, response) {
 
   if (body.action === 'weekly-report') {
     return handleWeeklyReport(body, response)
+  }
+
+  if (body.action === 'daily-coach') {
+    return handleDailyCoach(body, response)
+  }
+
+  if (body.action === 'chat') {
+    return handleChat(body, response)
+  }
+
+  if (body.action === 'study-buddy') {
+    return handleStudyBuddy(body, response)
   }
 
   return response.status(400).json({ error: 'Unknown AI action' })

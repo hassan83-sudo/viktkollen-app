@@ -10,7 +10,16 @@ const intentKeywords = {
   calories: ['kalorier', 'kcal', 'energiintag', 'kalorimål'],
   checkIn: ['check-in', 'checkin', 'energi', 'humör', 'mående', 'steg idag'],
   food: ['mat', 'måltid', 'äta', 'middag', 'lunch', 'frukost', 'mellanmål'],
-  goalWeight: ['målvikt', 'målvikten', 'mål vikt', 'viktmål', 'till mitt mål'],
+  goalWeight: [
+    'målvikt',
+    'målvikten',
+    'mål vikt',
+    'viktmål',
+    'till mitt mål',
+    'kvar till mål',
+    'kvar till min målvikt',
+    'till mål',
+  ],
   habits: ['vana', 'vanor', 'rutiner', 'hälsovanor', 'checklista', 'vatten'],
   mealAnalysis: ['matanalys', 'matfoto', 'måltidsbild', 'bild på maten'],
   motivation: [

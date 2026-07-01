@@ -1,8 +1,8 @@
 import { buildAiCoachContext } from '../../src/services/aiCoachContext.js'
+import { createDeterministicAiCoachReply } from '../../src/services/aiCoachDeterministicReplies.js'
 import { classifyAiCoachIntent } from '../../src/services/aiCoachIntentService.js'
 import {
   createAiCoachPrompt,
-  createDeterministicAiCoachReply,
   createLocalAiCoachReply,
 } from '../../src/services/aiCoachPrompt.js'
 
@@ -241,7 +241,7 @@ async function handleChat(data, response) {
 
   if (deterministicReply) {
     return response.status(200).json({
-      fallbackReason: 'deterministic_weight',
+      fallbackReason: 'deterministic_reply',
       intent: chatEngine.intent.intent,
       reply: deterministicReply,
       source: 'mock',

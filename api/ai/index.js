@@ -1,3 +1,10 @@
+import { buildAiCoachContext } from '../../src/services/aiCoachContext.js'
+import { classifyAiCoachIntent } from '../../src/services/aiCoachIntentService.js'
+import {
+  createAiCoachPrompt,
+  createLocalAiCoachReply,
+} from '../../src/services/aiCoachPrompt.js'
+
 const OPENAI_API_URL = 'https://api.openai.com/v1/responses'
 const DEFAULT_MODEL = 'gpt-4.1-mini'
 
@@ -119,22 +126,35 @@ function makeDailyCoachFallback(data = {}) {
         : 'Logga nästa måltid och välj en enkel bas med protein, grönsaker eller frukt.'
 }
 
-function makeChatFallback(data = {}) {
-  const message = String(data.message || '').toLocaleLowerCase('sv-SE')
+function getChatEngineData(data = {}) {
+  const intent = classifyAiCoachIntent({
+    chatHistory: data.chatHistory,
+    message: data.message,
+  })
+  const context = buildAiCoachContext({
+    bodyAnalysisHistory: data.bodyAnalysisHistory,
+    chatHistory: data.chatHistory,
+    checkIn: data.checkIn,
+    currentWeight: data.currentWeight,
+    foods: data.foods,
+    intent: intent.intent,
+    latestCoachReply: data.latestCoachReply,
+    latestWeeklyReport: data.latestWeeklyReport,
+    mealHistory: data.mealHistory,
+    meals: data.meals,
+    profile: data.profile,
+    weights: data.weights,
+  })
 
-  if (message.includes('protein')) {
-    return 'Ett enkelt riktmärke är protein i varje måltid. Välj något lätt att upprepa, till exempel ägg, kvarg, kyckling, bönor eller fisk.'
+  return {
+    context,
+    fallbackReply: createLocalAiCoachReply({
+      context,
+      intent,
+      message: data.message,
+    }),
+    intent,
   }
-
-  if (message.includes('trött') || message.includes('energi')) {
-    return 'När energin är låg är målet stabilitet, inte perfektion. Välj en enkel måltid, drick vatten och prioritera återhämtning.'
-  }
-
-  if (message.includes('middag') || message.includes('äta')) {
-    return 'Gör nästa måltid enkel: protein, något grönt och en lagom kolhydratkälla. Det räcker bra som bas.'
-  }
-
-  return 'Jag skulle börja med ett litet nästa steg: vatten, en enkel måltid eller en kort promenad. Vad vill du fokusera på just nu?'
 }
 
 function makeStudyBuddyFallback(data = {}) {
@@ -211,9 +231,13 @@ async function handleDailyCoach(data, response) {
 }
 
 async function handleChat(data, response) {
+  const chatEngine = getChatEngineData(data)
+
   if (!process.env.OPENAI_API_KEY) {
     return response.status(200).json({
-      reply: makeChatFallback(data),
+      fallbackReason: 'missing_api_key',
+      intent: chatEngine.intent.intent,
+      reply: chatEngine.fallbackReply,
       source: 'mock',
     })
   }
@@ -221,13 +245,19 @@ async function handleChat(data, response) {
   try {
     const result = await callOpenAI({
       maxOutputTokens: 700,
-      prompt:
-        'Du är Viktkollens AI Coach. Svara endast med JSON: {"reply":"..."} på svenska. Var kort, personlig, trygg och ge bara allmän wellness-coaching, inte medicinsk rådgivning.',
-      userData: data,
+      prompt: createAiCoachPrompt({
+        context: chatEngine.context,
+        intent: chatEngine.intent,
+      }),
+      userData: {
+        message: data.message,
+        recentConversation: chatEngine.context.conversation?.recentMessages || [],
+      },
     })
 
     return response.status(200).json({
-      reply: result.reply || makeChatFallback(data),
+      intent: chatEngine.intent.intent,
+      reply: result.reply || chatEngine.fallbackReply,
       source: 'openai',
     })
   } catch (error) {
@@ -236,7 +266,9 @@ async function handleChat(data, response) {
     })
 
     return response.status(200).json({
-      reply: makeChatFallback(data),
+      fallbackReason: 'api_error',
+      intent: chatEngine.intent.intent,
+      reply: chatEngine.fallbackReply,
       source: 'mock',
     })
   }

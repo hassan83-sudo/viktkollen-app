@@ -4,6 +4,7 @@ import QuickActions from './QuickActions.jsx'
 
 function ChatPanel({
   canClearChat,
+  chatEngineStatus,
   chatInput,
   chatMessages,
   chatThreadRef,
@@ -55,6 +56,11 @@ function ChatPanel({
       {voiceStatus && (
         <p className="voice-status" aria-live="polite">
           {voiceStatus}
+        </p>
+      )}
+      {chatEngineStatus && (
+        <p className="chat-engine-status" aria-live="polite">
+          {chatEngineStatus}
         </p>
       )}
       <p className="chat-safety-note">

@@ -523,7 +523,8 @@ a:focus-visible {
   background: var(--accent);
 }
 
-.voice-status {
+.voice-status,
+.chat-engine-status {
   margin: 6px 0 0;
   color: var(--accent);
   font-size: 12px;

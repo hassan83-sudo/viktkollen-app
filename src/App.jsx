@@ -12,6 +12,9 @@ import WeightChart from './components/WeightChart.jsx'
 import WeeklyReport from './components/WeeklyReport.jsx'
 import { makePersonalCoachReply } from './lib/coachReply.js'
 import { getAnalysisHistory } from './services/bodyAnalysisHistory.js'
+import { buildAiCoachContext } from './services/aiCoachContext.js'
+import { classifyAiCoachIntent } from './services/aiCoachIntentService.js'
+import { createLocalAiCoachReply } from './services/aiCoachPrompt.js'
 import {
   addMealAnalysis,
   clearMealHistory,
@@ -970,6 +973,7 @@ function App() {
   )
   const [reminderStatus, setReminderStatus] = useState('')
   const [chatInput, setChatInput] = useState('')
+  const [chatEngineStatus, setChatEngineStatus] = useState('')
   const [voiceStatus, setVoiceStatus] = useState('')
   const [isListening, setIsListening] = useState(false)
   const [chatMessages, setChatMessages] = useState(() =>
@@ -1856,7 +1860,58 @@ function App() {
     )
   }
 
+  function createLocalSmartChatReply(message, chatHistory) {
+    try {
+      const intent = classifyAiCoachIntent({
+        chatHistory,
+        message,
+      })
+      const context = buildAiCoachContext({
+        bodyAnalysisHistory: getAnalysisHistory(),
+        chatHistory,
+        checkIn,
+        currentWeight: latestWeight.value,
+        foods,
+        intent: intent.intent,
+        latestCoachReply: chatHistory
+          .filter((chatMessage) => chatMessage.role === 'assistant')
+          .at(-1)?.text || '',
+        latestWeeklyReport: weeklyReportData,
+        mealHistory: getMealHistory(),
+        meals,
+        profile: getValidatedProfile(),
+        weights,
+      })
+
+      return {
+        reply: createLocalAiCoachReply({
+          context,
+          intent,
+          message,
+        }),
+        source: 'mock',
+      }
+    } catch {
+      return {
+        reply: makeChatResponse(
+          message,
+          profile,
+          checkIn,
+          foods,
+          latestWeight.value,
+          chatHistory,
+        ),
+        source: 'mock',
+      }
+    }
+  }
+
   async function requestChatReply(message) {
+    const recentChatHistory = chatMessages.slice(-10).map((chatMessage) => ({
+      role: chatMessage.role,
+      text: chatMessage.text,
+    }))
+
     try {
       console.info('[Viktkollen chat] Calling /api/ai')
 
@@ -1870,17 +1925,23 @@ function App() {
           checkIn,
           foods,
           meals,
+          mealHistory: getMealHistory(),
+          bodyAnalysisHistory: getAnalysisHistory(),
+          latestWeeklyReport: weeklyReportData,
+          latestCoachReply: recentChatHistory
+            .filter((chatMessage) => chatMessage.role === 'assistant')
+            .at(-1)?.text || '',
           weights,
           currentWeight: latestWeight.value,
-          chatHistory: chatMessages.slice(-20).map((chatMessage) => ({
-            role: chatMessage.role,
-            text: chatMessage.text,
-          })),
+          chatHistory: recentChatHistory,
         }),
       })
 
       if (!apiResponse.ok) {
-        throw new Error(`Chat API failed with status ${apiResponse.status}`)
+        const errorData = await apiResponse.json().catch(() => ({}))
+        throw new Error(
+          errorData.error || `Chat API failed with status ${apiResponse.status}`,
+        )
       }
 
       const data = await apiResponse.json()
@@ -1892,7 +1953,10 @@ function App() {
       })
 
       if (typeof data.reply === 'string' && data.reply.trim()) {
-        return data.reply.trim()
+        return {
+          reply: data.reply.trim(),
+          source: data.source,
+        }
       }
     } catch (error) {
       console.warn('[Viktkollen chat] /api/ai unavailable, using local mock', {
@@ -1901,22 +1965,19 @@ function App() {
       // Vite dev has no serverless route; keep the app useful with mock chat.
     }
 
-    return makeChatResponse(
+    return createLocalSmartChatReply(
       message,
-      profile,
-      checkIn,
-      foods,
-      latestWeight.value,
-      chatMessages.slice(-20),
+      recentChatHistory,
     )
   }
 
-  function appendChatMessage(role, text) {
+  function appendChatMessage(role, text, source = '') {
     setChatMessages((current) => [
       ...current,
       {
         id: current.length + 1,
         role,
+        source,
         text,
       },
     ])
@@ -1925,13 +1986,21 @@ function App() {
   function clearChat() {
     setChatMessages(initialChatMessages)
     setChatInput('')
+    setChatEngineStatus('')
     setVoiceStatus('')
   }
 
   async function sendChatText(text) {
     appendChatMessage('user', text)
-    const reply = await requestChatReply(text)
-    appendChatMessage('assistant', reply)
+    const result = await requestChatReply(text)
+    const isLocalFallback = result.source !== 'openai'
+
+    setChatEngineStatus(
+      isLocalFallback
+        ? 'AI-coachen använder lokal fallback just nu.'
+        : '',
+    )
+    appendChatMessage('assistant', result.reply, result.source)
   }
 
   function submitChatText(text) {
@@ -2372,6 +2441,7 @@ function App() {
           onStartVoiceInput={startVoiceInput}
           onStarterPrompt={handleStarterPrompt}
           starterPrompts={starterPrompts}
+          chatEngineStatus={chatEngineStatus}
           voiceStatus={voiceStatus}
         />
 

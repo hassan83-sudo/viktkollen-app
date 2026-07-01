@@ -2,6 +2,7 @@ import { buildAiCoachContext } from '../../src/services/aiCoachContext.js'
 import { classifyAiCoachIntent } from '../../src/services/aiCoachIntentService.js'
 import {
   createAiCoachPrompt,
+  createDeterministicAiCoachReply,
   createLocalAiCoachReply,
 } from '../../src/services/aiCoachPrompt.js'
 
@@ -232,6 +233,20 @@ async function handleDailyCoach(data, response) {
 
 async function handleChat(data, response) {
   const chatEngine = getChatEngineData(data)
+  const deterministicReply = createDeterministicAiCoachReply({
+    context: chatEngine.context,
+    intent: chatEngine.intent,
+    message: data.message,
+  })
+
+  if (deterministicReply) {
+    return response.status(200).json({
+      fallbackReason: 'deterministic_weight',
+      intent: chatEngine.intent.intent,
+      reply: deterministicReply,
+      source: 'mock',
+    })
+  }
 
   if (!process.env.OPENAI_API_KEY) {
     return response.status(200).json({

@@ -17,7 +17,7 @@ function getWeightContext(weights = [], currentWeight) {
   )
   const firstWeight = validWeights[0]
   const latestWeight = validWeights.at(-1)
-  const latestValue = Number(currentWeight ?? latestWeight?.value)
+  const latestValue = Number(latestWeight?.value ?? currentWeight)
 
   return {
     changeSinceStart:

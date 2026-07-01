@@ -138,6 +138,103 @@ const responseTemplates = {
   ],
 }
 
+function parseNumber(value) {
+  if (typeof value === 'number') {
+    return value
+  }
+
+  const normalizedValue = String(value || '').replace(',', '.')
+  const number = Number(normalizedValue)
+
+  return Number.isFinite(number) ? number : null
+}
+
+function formatKg(value) {
+  return `${value.toLocaleString('sv-SE', {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: Number.isInteger(value) ? 0 : 1,
+  })} kg`
+}
+
+function makeWeightProgressText(changeSinceStart) {
+  if (!Number.isFinite(changeSinceStart)) {
+    return ''
+  }
+
+  if (changeSinceStart < 0) {
+    return ` Du har gått ner ${formatKg(Math.abs(changeSinceStart))} sedan start.`
+  }
+
+  if (changeSinceStart > 0) {
+    return ` Du ligger ${formatKg(changeSinceStart)} över startvikten.`
+  }
+
+  return ' Du ligger på samma vikt som start.'
+}
+
+function makeGoalDistanceText(currentWeight, goalWeight) {
+  const parsedGoalWeight = parseNumber(goalWeight)
+
+  if (!Number.isFinite(currentWeight) || !Number.isFinite(parsedGoalWeight)) {
+    return ''
+  }
+
+  const distanceToGoal = Number((currentWeight - parsedGoalWeight).toFixed(1))
+
+  if (distanceToGoal === 0) {
+    return ' Du är på din registrerade målvikt.'
+  }
+
+  return distanceToGoal > 0
+    ? ` Det är ${formatKg(distanceToGoal)} kvar till ditt mål.`
+    : ` Du ligger ${formatKg(Math.abs(distanceToGoal))} under ditt registrerade mål.`
+}
+
+function isDirectWeightQuestion(intent, message) {
+  const text = String(message || '').toLocaleLowerCase('sv-SE')
+
+  return (
+    intent.intent === 'weight' &&
+    (
+      text.includes('hur mycket väger jag') ||
+      text.includes('vad väger jag') ||
+      text.includes('min vikt') ||
+      text.includes('vikt nu') ||
+      text.includes('vikt idag') ||
+      text.includes('vikt i dag')
+    )
+  )
+}
+
+/**
+ * Creates a deterministic reply for direct weight questions.
+ *
+ * @param {object} params
+ * @param {object} params.context
+ * @param {object} params.intent
+ * @param {string} params.message
+ * @returns {string | null}
+ */
+export function createDeterministicAiCoachReply({ context, intent, message }) {
+  if (!isDirectWeightQuestion(intent, message)) {
+    return null
+  }
+
+  const currentWeight = parseNumber(context.weight?.currentWeight)
+
+  if (!Number.isFinite(currentWeight)) {
+    return null
+  }
+
+  const changeText = makeWeightProgressText(context.weight?.changeSinceStart)
+  const goalText = makeGoalDistanceText(
+    currentWeight,
+    context.profile?.goalWeight,
+  )
+
+  return `Du väger just nu ${formatKg(currentWeight)}.${changeText}${goalText}`
+}
+
 function getVariationIndex(seed, length) {
   if (length <= 1) {
     return 0
@@ -198,6 +295,16 @@ Svara endast med giltig JSON:
  * @returns {string}
  */
 export function createLocalAiCoachReply({ context, intent, message }) {
+  const deterministicReply = createDeterministicAiCoachReply({
+    context,
+    intent,
+    message,
+  })
+
+  if (deterministicReply) {
+    return deterministicReply
+  }
+
   const templates = responseTemplates[intent.intent] || responseTemplates.general
   const template = templates[getVariationIndex(`${message}-${intent.intent}`, templates.length)]
 

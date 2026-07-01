@@ -1,4 +1,4 @@
-const WEEKLY_REPORT_ENDPOINT = '/api/weekly-report'
+const AI_ENDPOINT = '/api/ai'
 
 function getWeightTrend(weights = []) {
   if (!Array.isArray(weights) || weights.length < 2) {
@@ -113,8 +113,11 @@ export async function createWeeklyReport(data) {
   const fallback = makeWeeklyReportFallback(data)
 
   try {
-    const response = await fetch(WEEKLY_REPORT_ENDPOINT, {
-      body: JSON.stringify(data),
+    const response = await fetch(AI_ENDPOINT, {
+      body: JSON.stringify({
+        ...data,
+        action: 'weekly-report',
+      }),
       headers: { 'Content-Type': 'application/json' },
       method: 'POST',
     })

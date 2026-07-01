@@ -1,4 +1,4 @@
-const PROACTIVE_COACH_ENDPOINT = '/api/proactive-coach'
+const AI_ENDPOINT = '/api/ai'
 
 function getWeightTrend(weights = []) {
   if (!Array.isArray(weights) || weights.length < 2) {
@@ -109,8 +109,11 @@ export async function getProactiveCoachInsights(data) {
   const fallback = makeProactiveCoachInsights(data)
 
   try {
-    const response = await fetch(PROACTIVE_COACH_ENDPOINT, {
-      body: JSON.stringify(data),
+    const response = await fetch(AI_ENDPOINT, {
+      body: JSON.stringify({
+        ...data,
+        action: 'proactive-coach',
+      }),
       headers: { 'Content-Type': 'application/json' },
       method: 'POST',
     })

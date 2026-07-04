@@ -1,3 +1,5 @@
+import { createAiResponseModel } from './aiFallbackEngine.js'
+
 const BODY_ANALYSIS_ENDPOINT = '/api/body-analysis'
 const USE_MOCK_BODY_ANALYSIS = false
 
@@ -49,8 +51,23 @@ function buildBodyAnalysisPayload(frontImage, sideImage, previousAnalysis) {
 }
 
 function normalizeBodyAnalysisResponse(response) {
-  // TODO: Normalize future API responses into the body analysis result shape here.
-  return response
+  const commonResponse = createAiResponseModel({
+    actions: response.nextSteps || response.actions,
+    confidence: response.confidenceLevel || response.confidence || 'medel',
+    followUp: response.followUp || 'Vill du jämföra mot nästa analys senare?',
+    generatedAt: response.generatedAt,
+    source: response.source || 'mock',
+    sourceReason: response.sourceReason || 'body_analysis',
+    status: response.status || 'completed',
+    summary: response.summary,
+    title: response.title || 'AI-kroppsanalys',
+    warnings: response.limitations || response.warnings,
+  })
+
+  return {
+    ...commonResponse,
+    ...response,
+  }
 }
 
 function handleBodyAnalysisError(error) {

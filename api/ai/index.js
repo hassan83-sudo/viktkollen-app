@@ -5,6 +5,7 @@ import {
   createAiCoachPrompt,
   createLocalAiCoachReply,
 } from '../../src/services/aiCoachPrompt.js'
+import { routeAiResponse } from '../../src/services/aiResponseRouter.js'
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/responses'
 const DEFAULT_MODEL = 'gpt-4.1-mini'
@@ -233,47 +234,52 @@ async function handleDailyCoach(data, response) {
 
 async function handleChat(data, response) {
   const chatEngine = getChatEngineData(data)
-  const deterministicReply = createDeterministicAiCoachReply({
-    context: chatEngine.context,
-    intent: chatEngine.intent,
-    message: data.message,
-  })
-
-  if (deterministicReply) {
-    return response.status(200).json({
-      fallbackReason: 'deterministic_reply',
-      intent: chatEngine.intent.intent,
-      reply: deterministicReply,
-      source: 'mock',
-    })
-  }
-
-  if (!process.env.OPENAI_API_KEY) {
-    return response.status(200).json({
-      fallbackReason: 'missing_api_key',
-      intent: chatEngine.intent.intent,
-      reply: chatEngine.fallbackReply,
-      source: 'mock',
-    })
-  }
+  const shouldUseLocalAi =
+    chatEngine.intent.intent !== 'general' && chatEngine.intent.confidence >= 0.55
 
   try {
-    const result = await callOpenAI({
-      maxOutputTokens: 700,
-      prompt: createAiCoachPrompt({
-        context: chatEngine.context,
-        intent: chatEngine.intent,
-      }),
-      userData: {
-        message: data.message,
-        recentConversation: chatEngine.context.conversation?.recentMessages || [],
+    const routedResponse = await routeAiResponse({
+      deterministic: () =>
+        createDeterministicAiCoachReply({
+          context: chatEngine.context,
+          intent: chatEngine.intent,
+          message: data.message,
+        }),
+      local: () => (shouldUseLocalAi ? chatEngine.fallbackReply : null),
+      openai: async () => {
+        if (!process.env.OPENAI_API_KEY) {
+          return {
+            source: 'mock',
+            sourceReason: 'missing_api_key',
+            summary: chatEngine.fallbackReply,
+          }
+        }
+
+        const result = await callOpenAI({
+          maxOutputTokens: 700,
+          prompt: createAiCoachPrompt({
+            context: chatEngine.context,
+            intent: chatEngine.intent,
+          }),
+          userData: {
+            message: data.message,
+            recentConversation: chatEngine.context.conversation?.recentMessages || [],
+          },
+        })
+
+        return {
+          source: 'openai',
+          sourceReason: 'openai',
+          summary: result.reply || chatEngine.fallbackReply,
+        }
       },
     })
 
     return response.status(200).json({
       intent: chatEngine.intent.intent,
-      reply: result.reply || chatEngine.fallbackReply,
-      source: 'openai',
+      reply: routedResponse.summary,
+      source: routedResponse.source,
+      sourceReason: routedResponse.sourceReason,
     })
   } catch (error) {
     console.warn('[api/ai] chat OpenAI failed, using mock', {

@@ -1,3 +1,5 @@
+import { createAiResponseModel } from './aiFallbackEngine.js'
+
 const MEAL_ANALYSIS_ENDPOINT = '/api/meal-analysis'
 
 export const fallbackMealAnalysis = {
@@ -34,12 +36,31 @@ export const fallbackMealAnalysis = {
  * @returns {object}
  */
 export function normalizeMealAnalysis(analysis = {}) {
-  return {
+  const normalizedAnalysis = {
     ...fallbackMealAnalysis,
     ...analysis,
     foods: Array.isArray(analysis.foods)
       ? analysis.foods.map(String).slice(0, 8)
       : fallbackMealAnalysis.foods,
+  }
+  const commonResponse = createAiResponseModel({
+    actions: [
+      normalizedAnalysis.improvementSuggestion,
+      normalizedAnalysis.cheapNextMealSuggestion,
+    ].filter(Boolean),
+    confidence: normalizedAnalysis.confidence,
+    followUp: 'Vill du ha förslag på nästa måltid?',
+    source: normalizedAnalysis.source || 'mock',
+    sourceReason: normalizedAnalysis.sourceReason || 'meal_analysis',
+    status: normalizedAnalysis.status || 'completed',
+    summary: normalizedAnalysis.summary,
+    title: normalizedAnalysis.title || 'AI-matanalys',
+    warnings: ['Analysen är en uppskattning, inte medicinsk rådgivning.'],
+  })
+
+  return {
+    ...commonResponse,
+    ...normalizedAnalysis,
   }
 }
 

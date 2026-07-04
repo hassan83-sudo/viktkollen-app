@@ -1,3 +1,7 @@
+import { getRecentAiConversation } from './aiConversationMemory.js'
+import { createAiFallback } from './aiFallbackEngine.js'
+import { buildAiUserContext } from './aiUserContext.js'
+
 const AI_ENDPOINT = '/api/ai'
 
 function getWeightTrend(weights = []) {
@@ -53,6 +57,11 @@ function hasStatus(history = [], key, keywords) {
  * @returns {object}
  */
 export function makeWeeklyReportFallback(data) {
+  const userContext = buildAiUserContext(data)
+  const aiFallback = createAiFallback({
+    feature: 'weeklyReport',
+    userContext,
+  })
   const steps = Number(data.checkIn?.steps)
   const energy = Number(data.checkIn?.energy)
   const mealHistory = data.mealHistory || []
@@ -95,6 +104,7 @@ export function makeWeeklyReportFallback(data) {
       energy <= 4
         ? 'Återhämtning bör prioriteras kommande vecka.'
         : 'Energin verkar ge utrymme för en stabil vardagsrutin.',
+    ...aiFallback,
     source: 'mock',
     summary:
       'Veckan visar framför allt värdet av enkel loggning: vikt, check-in och matdata ger riktning utan att behöva vara perfekt.',
@@ -117,6 +127,8 @@ export async function createWeeklyReport(data) {
       body: JSON.stringify({
         ...data,
         action: 'weekly-report',
+        aiConversationMemory: getRecentAiConversation(),
+        userContext: buildAiUserContext(data),
       }),
       headers: { 'Content-Type': 'application/json' },
       method: 'POST',

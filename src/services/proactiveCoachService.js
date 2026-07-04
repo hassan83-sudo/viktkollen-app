@@ -1,3 +1,7 @@
+import { getRecentAiConversation } from './aiConversationMemory.js'
+import { createAiFallback } from './aiFallbackEngine.js'
+import { buildAiUserContext } from './aiUserContext.js'
+
 const AI_ENDPOINT = '/api/ai'
 
 function getWeightTrend(weights = []) {
@@ -56,6 +60,11 @@ function hasVegetables(mealHistory = []) {
  * @returns {{budgetMealIdea: string, dailyRisk: string, dailyStrength: string, nextBestAction: string, recoveryAdvice: string, source: string}}
  */
 export function makeProactiveCoachInsights(data) {
+  const userContext = buildAiUserContext(data)
+  const aiFallback = createAiFallback({
+    feature: 'proactiveCoach',
+    userContext,
+  })
   const steps = Number(data.checkIn?.steps)
   const energy = Number(data.checkIn?.energy)
   const mealHistory = data.mealHistory || []
@@ -95,6 +104,7 @@ export function makeProactiveCoachInsights(data) {
       energy <= 4
         ? 'Välj återhämtning och en enkel måltid framför hård kompensation.'
         : 'Planera en lugn kvällsrutin så dagens vanor håller i morgon också.',
+    ...aiFallback,
     source: 'mock',
   }
 }
@@ -113,6 +123,8 @@ export async function getProactiveCoachInsights(data) {
       body: JSON.stringify({
         ...data,
         action: 'proactive-coach',
+        aiConversationMemory: getRecentAiConversation(),
+        userContext: buildAiUserContext(data),
       }),
       headers: { 'Content-Type': 'application/json' },
       method: 'POST',

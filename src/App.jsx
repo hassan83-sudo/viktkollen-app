@@ -13,8 +13,11 @@ import WeeklyReport from './components/WeeklyReport.jsx'
 import { makePersonalCoachReply } from './lib/coachReply.js'
 import { getAnalysisHistory } from './services/bodyAnalysisHistory.js'
 import { buildAiCoachContext } from './services/aiCoachContext.js'
+import { addAiConversationMemory } from './services/aiConversationMemory.js'
 import { classifyAiCoachIntent } from './services/aiCoachIntentService.js'
 import { createLocalAiCoachReply } from './services/aiCoachPrompt.js'
+import { createAiSuggestions } from './services/aiSuggestions.js'
+import { buildAiUserContext } from './services/aiUserContext.js'
 import {
   addMealAnalysis,
   clearMealHistory,
@@ -93,13 +96,6 @@ const mealOptions = ['Frukost', 'Lunch', 'Middag', 'MellanmÃ¥l']
 const goalOptions = ['gÃ¥ ner i vikt', 'hÃ¥lla vikten', 'bygga muskler']
 
 const activityOptions = ['LÃ¥g', 'Medel', 'HÃ¶g']
-
-const starterPrompts = [
-  'Vad ska jag Ã¤ta ikvÃ¤ll?',
-  'Ge mig ett hÃ¤lsosamt mellanmÃ¥l',
-  'Hur hÃ¥ller jag motivationen?',
-  'Billig proteinrik lunch?',
-]
 
 const chartRangeOptions = [
   { label: '7 dagar', value: '7' },
@@ -985,6 +981,35 @@ function App() {
 
   const latestWeight = weights.at(-1)
   const startWeight = weights[0]
+  const aiUserContext = useMemo(
+    () =>
+      buildAiUserContext({
+        bodyAnalysisHistory: getAnalysisHistory(),
+        chatHistory: chatMessages,
+        checkIn,
+        currentWeight: latestWeight.value,
+        foods,
+        latestWeeklyReport: weeklyReportData,
+        mealHistory: getMealHistory(),
+        meals,
+        profile: makeValidatedProfile(profile),
+        weights,
+      }),
+    [
+      chatMessages,
+      checkIn,
+      foods,
+      latestWeight.value,
+      meals,
+      profile,
+      weeklyReportData,
+      weights,
+    ],
+  )
+  const aiStarterPrompts = useMemo(
+    () => createAiSuggestions(aiUserContext).slice(0, 4),
+    [aiUserContext],
+  )
   const weightChange = Number((latestWeight.value - startWeight.value).toFixed(1))
   const foodScore = foods.filter((item) => item.done).length
   const chartWeights = useMemo(
@@ -1610,10 +1635,11 @@ function App() {
 
     setPhotoAnalysisStatus('Analyserar mÃ¥ltid...')
     const analysis = await requestMealAnalysis(foodPhotoPreview)
+    const createdAt = new Date().toISOString()
     const nextEntry = {
       analysis,
-      createdAt: new Date().toISOString(),
-      id: Date.now(),
+      createdAt,
+      id: new Date(createdAt).getTime(),
       image: foodPhotoPreview,
       source: analysis.source || 'mock',
     }
@@ -1931,6 +1957,7 @@ function App() {
           latestCoachReply: recentChatHistory
             .filter((chatMessage) => chatMessage.role === 'assistant')
             .at(-1)?.text || '',
+          userContext: aiUserContext,
           weights,
           currentWeight: latestWeight.value,
           chatHistory: recentChatHistory,
@@ -1992,6 +2019,11 @@ function App() {
 
   async function sendChatText(text) {
     appendChatMessage('user', text)
+    addAiConversationMemory({
+      feature: 'ai-coach',
+      role: 'user',
+      text,
+    })
     const result = await requestChatReply(text)
     const isLocalFallback = result.source !== 'openai'
 
@@ -2001,6 +2033,11 @@ function App() {
         : '',
     )
     appendChatMessage('assistant', result.reply, result.source)
+    addAiConversationMemory({
+      feature: 'ai-coach',
+      role: 'assistant',
+      text: result.reply,
+    })
   }
 
   function submitChatText(text) {
@@ -2440,7 +2477,7 @@ function App() {
           onSendChatMessage={sendChatMessage}
           onStartVoiceInput={startVoiceInput}
           onStarterPrompt={handleStarterPrompt}
-          starterPrompts={starterPrompts}
+          starterPrompts={aiStarterPrompts}
           chatEngineStatus={chatEngineStatus}
           voiceStatus={voiceStatus}
         />

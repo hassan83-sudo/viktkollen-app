@@ -1,11 +1,11 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import AICoach from './components/AICoach.jsx'
 import BarcodeScanner from './components/BarcodeScanner.jsx'
 import ChatPanel from './components/ChatPanel.jsx'
 import CheckIn from './components/CheckIn.jsx'
+import Dashboard from './components/Dashboard.jsx'
 import MealLogger from './components/MealLogger.jsx'
-import ProactiveCoachCard from './components/ProactiveCoachCard.jsx'
 import ProgressPhotos from './components/ProgressPhotos.jsx'
 import ReminderSettings from './components/ReminderSettings.jsx'
 import WeightChart from './components/WeightChart.jsx'
@@ -18,6 +18,7 @@ import { classifyAiCoachIntent } from './services/aiCoachIntentService.js'
 import { createLocalAiCoachReply } from './services/aiCoachPrompt.js'
 import { createAiSuggestions } from './services/aiSuggestions.js'
 import { buildAiUserContext } from './services/aiUserContext.js'
+import { createDashboardData } from './services/dashboardService.js'
 import {
   addMealAnalysis,
   clearMealHistory,
@@ -1133,13 +1134,6 @@ function App() {
     safeProfileGoalWeight ? `mÃ¥l ${safeProfileGoalWeight}` : '',
     profile?.activityLevel ? `aktivitet ${profile.activityLevel}` : '',
   ].filter(Boolean)
-  const habitScore = Math.round(
-    ((checkIn.energy >= 6 ? 1 : 0) +
-      (checkIn.steps >= 7000 ? 1 : 0) +
-      (checkIn.workout ? 1 : 0) +
-      foodScore / foods.length) *
-      25,
-  )
   const displayPhotoMeals = photoMeals.map((entry) => ({
     ...entry,
     likelyProtein:
@@ -1184,13 +1178,17 @@ function App() {
     },
   }))
   const mealWeekSummary = getMealWeekSummary(photoMeals)
-  const weeklyReportLines = weeklyReport
-    ? weeklyReport.split('\n').map((line, index) => ({
-      id: `${line}-${index}`,
-      isHeading: line.startsWith('###'),
-      text: line.replace('### ', ''),
-    }))
-    : []
+  const weeklyReportLines = useMemo(
+    () =>
+      weeklyReport
+        ? weeklyReport.split('\n').map((line, index) => ({
+          id: `${line}-${index}`,
+          isHeading: line.startsWith('###'),
+          text: line.replace('### ', ''),
+        }))
+        : [],
+    [weeklyReport],
+  )
 
   const fallbackCoachMessage = useMemo(
     () =>
@@ -1252,6 +1250,72 @@ function App() {
     proactiveCoachResult?.key === proactiveCoachKey
       ? proactiveCoachResult.insights
       : fallbackProactiveCoachInsights
+  const createWeeklyReport = useCallback(async () => {
+    setWeeklyReportStatus('Skapar AI-veckorapport...')
+
+    const report = await createAiWeeklyReport({
+      bodyAnalysisHistory: getAnalysisHistory(),
+      checkIn,
+      currentWeight: latestWeight.value,
+      foods,
+      mealHistory: photoMeals,
+      meals,
+      proactiveCoach: proactiveCoachInsights,
+      profile: makeValidatedProfile(profile),
+      weights,
+    })
+
+    setWeeklyReportData(report)
+    setWeeklyReport('')
+    setWeeklyReportStatus(
+      report.source === 'openai'
+        ? 'AI-genererad veckorapport.'
+        : 'Smart fallback anvÃ¤nds just nu.',
+    )
+  }, [
+    checkIn,
+    foods,
+    latestWeight.value,
+    meals,
+    photoMeals,
+    proactiveCoachInsights,
+    profile,
+    weights,
+  ])
+  const dashboardData = useMemo(
+    () =>
+      createDashboardData({
+        aiCoachMemory: chatMessages,
+        bodyAnalysisHistory: getAnalysisHistory(),
+        checkIn,
+        foods,
+        mealHistory: photoMeals,
+        meals,
+        profile,
+        proactiveCoach: proactiveCoachInsights,
+        weights,
+        weeklyReportData,
+        weeklyReportLines,
+      }),
+    [
+      chatMessages,
+      checkIn,
+      foods,
+      meals,
+      photoMeals,
+      profile,
+      proactiveCoachInsights,
+      weeklyReportData,
+      weeklyReportLines,
+      weights,
+    ],
+  )
+  const dashboardActions = useMemo(
+    () => ({
+      onCreateWeeklyReport: createWeeklyReport,
+    }),
+    [createWeeklyReport],
+  )
 
   function scrollChatToBottom(behavior = 'smooth') {
     const chatThread = chatThreadRef.current
@@ -1857,35 +1921,6 @@ function App() {
     return makeValidatedProfile(profile)
   }
 
-  async function createWeeklyReport() {
-    return createWeeklyReportV2()
-
-  }
-
-  async function createWeeklyReportV2() {
-    setWeeklyReportStatus('Skapar AI-veckorapport...')
-
-    const report = await createAiWeeklyReport({
-      bodyAnalysisHistory: getAnalysisHistory(),
-      checkIn,
-      currentWeight: latestWeight.value,
-      foods,
-      mealHistory: photoMeals,
-      meals,
-      proactiveCoach: proactiveCoachInsights,
-      profile: getValidatedProfile(),
-      weights,
-    })
-
-    setWeeklyReportData(report)
-    setWeeklyReport('')
-    setWeeklyReportStatus(
-      report.source === 'openai'
-        ? 'AI-genererad veckorapport.'
-        : 'Smart fallback anvÃ¤nds just nu.',
-    )
-  }
-
   function createLocalSmartChatReply(message, chatHistory) {
     try {
       const intent = classifyAiCoachIntent({
@@ -2364,51 +2399,7 @@ function App() {
         </div>
       </header>
 
-      <section className="dashboard-overview" aria-label="Ã–versikt">
-        <article className="dashboard-summary-card">
-          <div className="dashboard-summary-heading">
-            <div>
-              <p className="eyebrow">Din Ã¶versikt</p>
-              <h2>Dashboard</h2>
-            </div>
-            <span>I dag</span>
-          </div>
-
-          <div className="dashboard-summary-content">
-            <div className="dashboard-weight-summary">
-              <span>Nuvarande vikt</span>
-              <strong>{formatWeight(latestWeight.value)}</strong>
-              <small>
-                {formatWeight(weightChange)} sedan start Â· Start{' '}
-                {formatWeight(startWeight.value)}
-              </small>
-            </div>
-
-            <div className="dashboard-stat-grid">
-              <div className="dashboard-stat">
-                <span>VanepoÃ¤ng</span>
-                <strong>{habitScore}%</strong>
-                <small>Dagens check-in</small>
-              </div>
-              <div className="dashboard-stat">
-                <span>Matchecklista</span>
-                <strong>
-                  {foodScore}/{foods.length}
-                </strong>
-                <small>Grundvanor</small>
-              </div>
-              <div className="dashboard-stat">
-                <span>Steg i dag</span>
-                <strong>{checkIn.steps.toLocaleString('sv-SE')}</strong>
-                <small>
-                  {checkIn.workout ? 'TrÃ¤ning planerad' : 'Ã…terhÃ¤mtningsdag'}
-                </small>
-              </div>
-            </div>
-          </div>
-        </article>
-        <ProactiveCoachCard insights={proactiveCoachInsights} />
-      </section>
+      <Dashboard actions={dashboardActions} dashboard={dashboardData} />
 
       <section className="content-grid">
         <article className="panel" id="vikt">

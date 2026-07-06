@@ -1,203 +1,32 @@
-import DailyFocusCard from './DailyFocusCard.jsx'
-import WeeklyGoalsCard from './WeeklyGoalsCard.jsx'
+import { memo } from 'react'
+import DashboardActivity from './dashboard/DashboardActivity.jsx'
+import DashboardGoals from './dashboard/DashboardGoals.jsx'
+import DashboardHealthScore from './dashboard/DashboardHealthScore.jsx'
+import DashboardHero from './dashboard/DashboardHero.jsx'
+import DashboardInsights from './dashboard/DashboardInsights.jsx'
+import DashboardProgress from './dashboard/DashboardProgress.jsx'
+import DashboardQuickActions from './dashboard/DashboardQuickActions.jsx'
+import DashboardToday from './dashboard/DashboardToday.jsx'
 
-function Dashboard({
-  checkIn,
-  foods = [],
-  hasClaimedToday,
-  level,
-  onClaimDailyReward,
-  onLogout,
-  streak,
-  weights = [],
-  username,
-  xp,
-}) {
-  const nextLevelXp = level === 'Rookie' ? 500 : level === 'Smart' ? 1000 : xp
-  const progress = level === 'Genius'
-    ? 100
-    : Math.min(Math.round((xp / nextLevelXp) * 100), 100)
-  const completedFoods = foods.filter((item) => item?.done).length
-  const missingFood = foods.find((item) => !item?.done)
-  const dailyFocus = getDailyFocus({
-    checkIn,
-    completedFoods,
-    foodTotal: foods.length,
-    missingFood,
-  })
-  const quickStatus = getQuickStatus({
-    checkIn,
-    completedFoods,
-    foodTotal: foods.length,
-    weights,
-  })
-  const weeklyGoals = getWeeklyGoals({
-    checkIn,
-    completedFoods,
-    foodTotal: foods.length,
-    weights,
-  })
-
+/**
+ * Composes the Smart AI Dashboard from calculated dashboard data.
+ *
+ * @param {{actions: object, dashboard: object}} props
+ * @returns {import('react').JSX.Element}
+ */
+function Dashboard({ actions, dashboard }) {
   return (
-    <header className="dashboard">
-      <div className="hero-copy">
-        <div className="hero-topline">
-          <p className="eyebrow">PluggArena v2</p>
-          <button className="ghost-button" type="button" onClick={onLogout}>
-            Logga ut
-          </button>
-        </div>
-        <h1>PluggArena</h1>
-        <p className="subtitle">
-          Hej {username}, välj ämne, samla XP och bygg streak med ditt squad.
-        </p>
-      </div>
-
-      <div className="stats-grid" aria-label="Din progression">
-        {dailyFocus && (
-          <DailyFocusCard dailyFocus={dailyFocus} quickStatus={quickStatus} />
-        )}
-        <WeeklyGoalsCard weeklyGoals={weeklyGoals} />
-        <article className="stat-card primary-stat">
-          <span>XP</span>
-          <strong>{xp}</strong>
-          <small>{level === 'Genius' ? 'Maxnivå just nu' : `${progress}% till nästa nivå`}</small>
-          <div className="progress-track">
-            <span style={{ width: `${progress}%` }} />
-          </div>
-        </article>
-        <article className="stat-card">
-          <span>Level</span>
-          <strong>{level}</strong>
-          <small>Rookie 0-499 · Smart 500-999 · Genius 1000+</small>
-        </article>
-        <article className="stat-card streak-card">
-          <span>Daily Streak</span>
-          <strong>{streak} dagar</strong>
-          <small>i rad</small>
-          <button type="button" onClick={onClaimDailyReward} disabled={hasClaimedToday}>
-            {hasClaimedToday ? 'Bonus hämtad' : 'Hämta +50 XP'}
-          </button>
-        </article>
-      </div>
-    </header>
+    <section className="dashboard-v3" aria-label="Smart AI Dashboard">
+      <DashboardHero hero={dashboard.hero} />
+      <DashboardHealthScore healthScore={dashboard.healthScore} />
+      <DashboardToday today={dashboard.today} />
+      <DashboardQuickActions actions={actions} />
+      <DashboardInsights insights={dashboard.insights} />
+      <DashboardProgress progress={dashboard.progress} />
+      <DashboardActivity activity={dashboard.activity} />
+      <DashboardGoals goals={dashboard.goals} />
+    </section>
   )
 }
 
-function getWeeklyGoals({ checkIn, completedFoods, foodTotal, weights }) {
-  const steps = Number(checkIn?.steps)
-  const hasEnoughWeights = Array.isArray(weights) && weights.length >= 2
-  const hasStepGoal = Number.isFinite(steps) && steps >= 8000
-  const hasFoodGoal = foodTotal > 0 && completedFoods === foodTotal
-
-  return [
-    {
-      done: hasEnoughWeights,
-      text: 'Registrera vikten minst 2 gånger.',
-    },
-    {
-      done: hasStepGoal,
-      text: 'Nå 8 000 steg tre dagar.',
-    },
-    {
-      done: hasFoodGoal,
-      text: 'Klara matchecklistan 5 dagar.',
-    },
-  ]
-}
-
-function getQuickStatus({ checkIn, completedFoods, foodTotal, weights }) {
-  const weightTrend = getWeightTrendLabel(weights)
-  const foodStatus = foodTotal > 0
-    ? `${completedFoods}/${foodTotal} vanor`
-    : 'inga matvanor ännu'
-  const steps = Number(checkIn?.steps)
-  const activityStatus = checkIn?.workout
-    ? 'träning klar'
-    : Number.isFinite(steps)
-      ? `${steps.toLocaleString('sv-SE')} steg`
-      : 'aktivitet saknas'
-
-  return `Snabb status: ${weightTrend} · ${foodStatus} · ${activityStatus}`
-}
-
-function getWeightTrendLabel(weights) {
-  if (!Array.isArray(weights) || weights.length < 2) {
-    return 'vikttrend saknas'
-  }
-
-  const firstWeight = Number(weights[0]?.value)
-  const latestWeight = Number(weights.at(-1)?.value)
-
-  if (!Number.isFinite(firstWeight) || !Number.isFinite(latestWeight)) {
-    return 'vikttrend saknas'
-  }
-
-  const change = Number((latestWeight - firstWeight).toFixed(1))
-
-  if (change < 0) {
-    return `vikttrend ner ${Math.abs(change).toLocaleString('sv-SE')} kg`
-  }
-
-  if (change > 0) {
-    return `vikttrend upp ${change.toLocaleString('sv-SE')} kg`
-  }
-
-  return 'vikttrend stabil'
-}
-
-function getDailyFocus({ checkIn, completedFoods, foodTotal, missingFood }) {
-  const mood = String(checkIn?.mood || '').toLocaleLowerCase('sv-SE')
-  const energy = Number(checkIn?.energy)
-  const steps = Number(checkIn?.steps)
-  const hasWorkout = Boolean(checkIn?.workout)
-  const habitProgress = foodTotal > 0
-    ? `Du har ${completedFoods}/${foodTotal} vanor klara`
-    : 'Du har dagens vanor att bygga vidare på'
-
-  if (energy <= 3 || mood === 'trött') {
-    return {
-      description: `Energin är ${Number.isFinite(energy) ? `${energy}/10` : 'låg'}, så återhämtning är smartast just nu.`,
-      title: '😴 Prioritera återhämtning ikväll.',
-    }
-  }
-
-  if (foodTotal > 0 && completedFoods < foodTotal) {
-    const label = String(missingFood?.label || '').toLocaleLowerCase('sv-SE')
-
-    if (label.includes('vatten')) {
-      return {
-        description: `${habitProgress}, så vatten är enklaste nästa steg.`,
-        title: '💧 Drick mer vatten idag.',
-      }
-    }
-
-    if (label.includes('grönsak') || label.includes('frukt')) {
-      return {
-        description: `${habitProgress}, så något grönt gör nästa måltid starkare.`,
-        title: '🥗 Få in grönsaker till nästa måltid.',
-      }
-    }
-
-    if (label.includes('protein')) {
-      return {
-        description: `${habitProgress}, så protein är bästa lilla justeringen.`,
-        title: '💪 Protein till nästa måltid.',
-      }
-    }
-  }
-
-  if (Number.isFinite(steps) && steps < 7000 && !hasWorkout) {
-    return {
-      description: `Du har ${steps.toLocaleString('sv-SE')} steg och ingen träning markerad, så kort rörelse räcker.`,
-      title: '🚶 En kort promenad räcker idag.',
-    }
-  }
-
-  return {
-    description: `${habitProgress}${hasWorkout ? ' och träningen är markerad' : ''}, så håll nivån stabil.`,
-    title: '💪 Behåll dagens stabila rutin.',
-  }
-}
-
-export default Dashboard
+export default memo(Dashboard)

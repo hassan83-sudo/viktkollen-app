@@ -2,39 +2,61 @@ import { memo } from 'react'
 
 const quickActions = [
   {
+    fallbackHash: 'vikt',
     label: 'Registrera vikt',
     targets: ['vikt'],
   },
   {
+    fallbackHash: 'maltider',
     label: 'Lägg till måltid',
     targets: ['maltider', 'mat'],
   },
   {
+    fallbackHash: 'coach',
     label: 'AI Coach',
     targets: ['coach', 'chat'],
   },
   {
+    fallbackHash: 'framstegsbilder',
     label: 'AI Kroppsanalys',
     targets: ['framstegsbilder'],
   },
   {
+    fallbackHash: 'maltider',
     label: 'Matfotoanalys',
     targets: ['maltider', 'mat'],
   },
 ]
 
-function scrollToDashboardTarget(targets) {
-  const target = targets
+function findTarget(targets) {
+  return targets
     .map((targetId) => document.getElementById(targetId))
     .find(Boolean)
+}
 
-  if (!target) {
-    window.location.hash = targets[0] || ''
+function updateAppHash(targetId) {
+  window.history.replaceState(null, '', `#${targetId}`)
+  window.dispatchEvent(new HashChangeEvent('hashchange'))
+}
+
+function navigateToDashboardTarget({ fallbackHash, targets }) {
+  const target = findTarget(targets)
+
+  if (target) {
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    updateAppHash(target.id)
     return
   }
 
-  target.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  window.history.replaceState(null, '', `#${target.id}`)
+  updateAppHash(fallbackHash)
+
+  window.requestAnimationFrame(() => {
+    const delayedTarget = findTarget([fallbackHash, ...targets])
+
+    if (delayedTarget) {
+      delayedTarget.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  })
 }
 
 /**
@@ -58,7 +80,7 @@ function DashboardQuickActions({ actions }) {
             className="dashboard-action-button"
             key={action.label}
             type="button"
-            onClick={() => scrollToDashboardTarget(action.targets)}
+            onClick={() => navigateToDashboardTarget(action)}
           >
             {action.label}
           </button>
@@ -68,7 +90,10 @@ function DashboardQuickActions({ actions }) {
           type="button"
           onClick={() => {
             actions.onCreateWeeklyReport?.()
-            scrollToDashboardTarget(['framsteg'])
+            navigateToDashboardTarget({
+              fallbackHash: 'framsteg',
+              targets: ['framsteg'],
+            })
           }}
         >
           Veckorapport

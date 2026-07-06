@@ -3,7 +3,7 @@ import { memo } from 'react'
 /**
  * Shows goal-weight direction and next recommended step.
  *
- * @param {{goals: {currentWeight: number | null, nextStep: string, remainingLabel: string, targetLabel: string, trendDirection: string}}} props
+ * @param {{goals: {milestone: string, motivation: string, nextStep: string, percentRemainingLabel: string, remainingLabel: string, targetLabel: string, trendDirection: string}}} props
  * @returns {import('react').JSX.Element}
  */
 function DashboardGoals({ goals }) {
@@ -26,11 +26,20 @@ function DashboardGoals({ goals }) {
           <strong>{goals.remainingLabel}</strong>
         </div>
         <div>
+          <span>Procent kvar</span>
+          <strong>{goals.percentRemainingLabel}</strong>
+        </div>
+        <div>
           <span>Uppskattad riktning</span>
           <strong>{goals.trendDirection}</strong>
         </div>
+        <div>
+          <span>Nästa milstolpe</span>
+          <strong>{goals.milestone}</strong>
+        </div>
       </div>
       <p className="dashboard-note">{goals.nextStep}</p>
+      <p className="dashboard-card-copy">{goals.motivation}</p>
     </article>
   )
 }

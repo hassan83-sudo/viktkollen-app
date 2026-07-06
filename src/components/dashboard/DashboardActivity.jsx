@@ -3,7 +3,7 @@ import { memo } from 'react'
 /**
  * Lists recent app activity in descending time order.
  *
- * @param {{activity: Array<{detail: string, timeLabel: string, title: string, type: string}>}} props
+ * @param {{activity: Array<{description: string, icon: string, timeLabel: string, title: string, type: string}>}} props
  * @returns {import('react').JSX.Element}
  */
 function DashboardActivity({ activity }) {
@@ -19,16 +19,24 @@ function DashboardActivity({ activity }) {
         <ol className="dashboard-activity-list">
           {activity.map((item) => (
             <li key={`${item.type}-${item.timeLabel}-${item.title}`}>
-              <span>{item.timeLabel}</span>
+              <span className="dashboard-activity-icon" aria-hidden="true">
+                {item.icon}
+              </span>
               <div>
-                <strong>{item.title}</strong>
-                <p>{item.detail}</p>
+                <div className="dashboard-activity-meta">
+                  <strong>{item.title}</strong>
+                  <time>{item.timeLabel}</time>
+                </div>
+                <p>{item.description}</p>
               </div>
             </li>
           ))}
         </ol>
       ) : (
-        <p className="dashboard-empty">Aktivitet visas här när du börjar logga.</p>
+        <p className="dashboard-empty">
+          Logga vikt, analysera en måltid eller gör en check-in så byggs
+          tidslinjen automatiskt.
+        </p>
       )}
     </article>
   )

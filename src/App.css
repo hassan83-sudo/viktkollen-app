@@ -455,7 +455,7 @@
 
 .dashboard-activity-list li {
   display: grid;
-  grid-template-columns: 110px minmax(0, 1fr);
+  grid-template-columns: 42px minmax(0, 1fr);
   gap: 12px;
   padding: 12px;
   border: 1px solid var(--border);
@@ -463,8 +463,36 @@
   background: var(--soft-bg);
 }
 
+.dashboard-activity-icon {
+  display: inline-grid;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--accent);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.dashboard-activity-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .dashboard-activity-list strong {
   color: var(--text-h);
+}
+
+.dashboard-activity-list time {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
 }
 
 .dashboard-activity-list p {
@@ -2241,8 +2269,22 @@ a:focus-visible {
   }
 
   .dashboard-activity-list li {
-    grid-template-columns: 1fr;
-    gap: 6px;
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .dashboard-activity-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .dashboard-activity-meta {
+    display: grid;
+    gap: 3px;
+  }
+
+  .dashboard-activity-list time {
+    white-space: normal;
   }
 
   .dashboard-summary-heading .eyebrow {

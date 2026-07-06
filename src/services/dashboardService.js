@@ -9,6 +9,30 @@ const DEFAULT_CHECK_IN = {
   workout: false,
 }
 
+const dashboardInputKeys = [
+  'aiCoachMemory',
+  'bodyAnalysisHistory',
+  'checkIn',
+  'foods',
+  'mealHistory',
+  'meals',
+  'profile',
+  'proactiveCoach',
+  'weights',
+  'weeklyReportData',
+  'weeklyReportLines',
+]
+
+let lastDashboardInput = null
+let lastDashboardResult = null
+
+function hasSameDashboardInputs(currentInput, previousInput) {
+  return (
+    previousInput !== null &&
+    dashboardInputKeys.every((key) => currentInput[key] === previousInput[key])
+  )
+}
+
 function safeText(value, fallback = '') {
   return typeof value === 'string' && value.trim() ? value.trim() : fallback
 }
@@ -112,6 +136,10 @@ function includesAny(value, terms) {
   return terms.some((term) => text.includes(term))
 }
 
+function getDateTime(value) {
+  return safeDate(value)?.getTime() ?? 0
+}
+
 function normalizeWeight(entry) {
   const value = safeNumber(entry?.value)
 
@@ -125,10 +153,6 @@ function normalizeWeight(entry) {
     date: date ? date.toISOString() : null,
     value,
   }
-}
-
-function getDateTime(value) {
-  return safeDate(value)?.getTime() ?? 0
 }
 
 function getWeightStats(weights) {
@@ -217,17 +241,7 @@ function normalizeCheckIn(checkIn) {
   }
 }
 
-/**
- * Builds an AI Health Score from local habit signals only.
- *
- * @param {object} payload
- * @returns {{factors: object[], improvement: string, score: number, summary: string}}
- */
-export function calculateAiHealthScore(payload = {}) {
-  const checkIn = normalizeCheckIn(payload.checkIn)
-  const weightStats = getWeightStats(payload.weights)
-  const nutrition = getNutritionSignals(payload)
-  const foods = safeArray(payload.foods)
+function calculateAiHealthScoreFromContext({ checkIn, foods, nutrition, weightStats }) {
   const completedFoods = foods.filter((food) => Boolean(food?.done)).length
   const foodTotal = Math.max(foods.length, 1)
   const energy = checkIn.energy
@@ -329,6 +343,28 @@ export function calculateAiHealthScore(payload = {}) {
   }
 }
 
+/**
+ * Builds an AI Health Score from local habit signals only.
+ *
+ * @param {object} payload
+ * @returns {{factors: object[], improvement: string, score: number, summary: string}}
+ */
+export function calculateAiHealthScore(payload = {}) {
+  const checkIn = normalizeCheckIn(payload.checkIn)
+  const foods = safeArray(payload.foods)
+  const mealHistory = safeArray(payload.mealHistory)
+  const meals = safeArray(payload.meals)
+  const weightStats = getWeightStats(payload.weights)
+  const nutrition = getNutritionSignals({ foods, mealHistory, meals })
+
+  return calculateAiHealthScoreFromContext({
+    checkIn,
+    foods,
+    nutrition,
+    weightStats,
+  })
+}
+
 function makeDailyFocus({ checkIn, foods, proactiveCoach }) {
   const missingFood = safeArray(foods).find((food) => !food?.done)
   const steps = safeNumber(checkIn?.steps)
@@ -369,105 +405,190 @@ function getLatestInsightCards({
 
   return [
     {
-      empty: 'Starta AI Coach så visas senaste coachinsikten här.',
+      empty: 'Starta AI Coach för att få en prioriterad nästa handling.',
       meta: latestCoach ? formatDateTime(latestCoach.createdAt) : '',
+      relevance: latestCoach ? 95 : proactiveCoach?.nextBestAction ? 72 : 20,
       title: 'AI Coach',
       value: safeText(latestCoach?.text) || safeText(proactiveCoach?.nextBestAction),
     },
     {
-      empty: 'Skapa en veckorapport för att få veckans sammanfattning.',
+      empty: 'Skapa en veckorapport för att se vad som fungerade bäst.',
       meta: weeklySummary ? 'Senaste rapport' : '',
+      relevance: weeklySummary || latestWeeklyLine ? 88 : 18,
       title: 'Weekly Report',
       value: weeklySummary || safeText(latestWeeklyLine?.text),
     },
     {
       empty: 'Gör en AI kroppsanalys för att följa visuella framsteg.',
       meta: latestBody ? formatDateTime(latestBody.createdAt) : '',
+      relevance: latestBody ? 82 : 16,
       title: 'Body Analysis',
       value: safeText(latestBody?.result?.summary) || safeText(latestBody?.status),
     },
     {
-      empty: 'Analysera ett matfoto så visas senaste måltidsinsikten här.',
+      empty: 'Analysera ett matfoto för att få tydligare måltidsmönster.',
       meta: latestMeal ? formatDateTime(latestMeal.createdAt) : '',
+      relevance: latestMeal ? 90 : 22,
       title: 'Meal Analysis',
       value:
         safeText(latestMeal?.analysis?.summary) ||
         safeText(latestMeal?.analysis?.improvementSuggestion),
     },
   ]
+    .sort((first, second) => second.relevance - first.relevance)
+    .slice(0, 4)
 }
 
-function makeActivityItems({ bodyAnalysisHistory, checkIn, mealHistory, weights, weeklyReportData }) {
+function makeActivityItem({ description, icon, time, title, type }) {
+  return {
+    description,
+    icon,
+    time,
+    timeLabel: formatDateTime(time),
+    title,
+    type,
+  }
+}
+
+function makeActivityItems({
+  bodyAnalysisHistory,
+  checkIn,
+  coachMemory,
+  mealHistory,
+  weights,
+  weeklyReportData,
+}) {
   const weightItems = safeArray(weights)
     .map(normalizeWeight)
     .filter(Boolean)
-    .map((entry) => ({
-      detail: `${formatKg(entry.value)} registrerad${entry.date ? '' : ' utan datum'}.`,
-      time: entry.date,
-      title: 'Vikt registrerad',
-      type: 'weight',
-    }))
-  const mealItems = safeArray(mealHistory).map((entry) => ({
-    detail:
-      safeText(entry?.analysis?.summary) ||
-      safeText(entry?.analysis?.improvementSuggestion) ||
-      'Måltid loggad med AI-analys.',
-    time: entry?.createdAt,
-    title: 'Måltid loggad',
-    type: 'meal',
-  }))
-  const bodyItems = safeArray(bodyAnalysisHistory).map((entry) => ({
-    detail:
-      safeText(entry?.result?.summary) ||
-      safeText(entry?.status) ||
-      'Kroppsanalys genomförd.',
-    time: entry?.createdAt,
-    title: 'Kroppsanalys genomförd',
-    type: 'body',
-  }))
+    .map((entry) =>
+      makeActivityItem({
+        description: `${formatKg(entry.value)} registrerad${entry.date ? '' : ' utan datum'}.`,
+        icon: '↘',
+        time: entry.date,
+        title: 'Vikt registrerad',
+        type: 'weight',
+      }),
+    )
+  const mealItems = safeArray(mealHistory).map((entry) =>
+    makeActivityItem({
+      description:
+        safeText(entry?.analysis?.summary) ||
+        safeText(entry?.analysis?.improvementSuggestion) ||
+        'Måltid loggad med AI-analys.',
+      icon: '◎',
+      time: entry?.createdAt,
+      title: entry?.image ? 'Matfotoanalys' : 'Måltid loggad',
+      type: entry?.image ? 'photo-meal' : 'meal',
+    }),
+  )
+  const coachItems = safeArray(coachMemory)
+    .filter((entry) => safeText(entry?.text))
+    .slice(-3)
+    .map((entry) =>
+      makeActivityItem({
+        description: safeText(entry.text),
+        icon: 'AI',
+        time: entry.createdAt,
+        title: entry.role === 'assistant' ? 'AI Coach svarade' : 'AI Coach använd',
+        type: 'coach',
+      }),
+    )
+  const bodyItems = safeArray(bodyAnalysisHistory).map((entry) =>
+    makeActivityItem({
+      description:
+        safeText(entry?.result?.summary) ||
+        safeText(entry?.status) ||
+        'Kroppsanalys genomförd.',
+      icon: '◇',
+      time: entry?.createdAt,
+      title: 'Kroppsanalys genomförd',
+      type: 'body',
+    }),
+  )
   const weeklyItems = safeText(weeklyReportData?.summary)
     ? [
-      {
-        detail: safeText(weeklyReportData.summary, 'AI-rapport skapad.'),
+      makeActivityItem({
+        description: safeText(weeklyReportData.summary, 'AI-rapport skapad.'),
+        icon: '▣',
         time: weeklyReportData.createdAt,
         title: 'Veckorapport skapad',
         type: 'weekly',
-      },
+      }),
     ]
     : []
   const checkInItem =
     checkIn.energy !== null || checkIn.steps !== null || checkIn.mood !== 'Ej satt'
-      ? {
-        detail: `${formatInteger(checkIn.steps)} steg, energi ${
+      ? makeActivityItem({
+        description: `${formatInteger(checkIn.steps)} steg, energi ${
           checkIn.energy ?? 'saknas'
         }/10 och humör ${checkIn.mood}.`,
+        icon: '✓',
         time: new Date().toISOString(),
         title: 'Dagens check-in',
         type: 'check-in',
-      }
+      })
       : null
 
-  return [...weightItems, ...mealItems, ...bodyItems, ...weeklyItems, checkInItem]
+  return [
+    ...weightItems,
+    ...mealItems,
+    ...coachItems,
+    ...bodyItems,
+    ...weeklyItems,
+    checkInItem,
+  ]
     .filter(Boolean)
     .sort((first, second) => getDateTime(second.time) - getDateTime(first.time))
     .slice(0, 8)
-    .map((item) => ({
-      ...item,
-      timeLabel: formatDateTime(item.time),
-    }))
+}
+
+function getGoalProgress({ currentWeight, goalWeight, startWeight }) {
+  if (currentWeight === null || goalWeight === null || startWeight === null) {
+    return null
+  }
+
+  const totalDistance = Math.abs(startWeight - goalWeight)
+
+  if (totalDistance === 0) {
+    return null
+  }
+
+  const remainingDistance = Math.abs(currentWeight - goalWeight)
+
+  return Math.max(0, Math.min(100, Math.round((remainingDistance / totalDistance) * 100)))
 }
 
 function makeGoals({ profile, weightStats }) {
   const goalWeight = safeNumber(profile?.goalWeight)
   const currentWeight = weightStats.current
+  const startWeight = safeNumber(profile?.startWeight, weightStats.first)
   const remaining =
     goalWeight !== null && currentWeight !== null
       ? Number((currentWeight - goalWeight).toFixed(1))
       : null
+  const percentRemaining = getGoalProgress({
+    currentWeight,
+    goalWeight,
+    startWeight,
+  })
+  const milestone =
+    remaining === null
+      ? 'Sätt målvikt och logga nästa vikt.'
+      : Math.abs(remaining) <= 0.3
+        ? 'Håll målet stabilt i en vecka.'
+        : `Nästa milstolpe: ${formatKg(Math.max(Math.abs(remaining) - 1, 0))} kvar.`
 
   return {
     currentWeight,
     goalWeight,
+    milestone,
+    motivation:
+      remaining === null
+        ? 'En tydlig målbild gör dashboarden mer användbar.'
+        : weightStats.trend === 'Nedåt'
+          ? 'Du har riktning. Fortsätt med den enklaste vana som redan fungerar.'
+          : 'Ett litet steg i dag räcker för att vända riktningen över tid.',
     nextStep:
       remaining === null
         ? 'Fyll i målvikt och logga vikt för en tydligare plan.'
@@ -476,6 +597,8 @@ function makeGoals({ profile, weightStats }) {
           : weightStats.trend === 'Nedåt'
             ? 'Fortsätt med samma basvana och följ nästa veckosnitt.'
             : 'Välj en måltidsvana att göra enklare i dag.',
+    percentRemainingLabel:
+      percentRemaining === null ? 'Saknas' : `${percentRemaining}% kvar`,
     remaining,
     remainingLabel:
       remaining === null
@@ -492,13 +615,7 @@ function getSafeProfile(profile) {
   return profile && typeof profile === 'object' ? profile : {}
 }
 
-/**
- * Creates all view data for Dashboard V3.
- *
- * @param {object} data
- * @returns {object}
- */
-export function createDashboardData(data = {}) {
+function createDashboardContext(data) {
   const profile = getSafeProfile(data.profile)
   const bodyAnalysisHistory = safeArray(
     data.bodyAnalysisHistory ?? safeReadHistory(getAnalysisHistory),
@@ -508,17 +625,57 @@ export function createDashboardData(data = {}) {
     data.aiCoachMemory ?? safeReadHistory(getRecentAiConversation),
   )
   const checkIn = normalizeCheckIn(data.checkIn)
+  const foods = safeArray(data.foods)
+  const meals = safeArray(data.meals)
   const weightStats = getWeightStats(data.weights)
-  const healthScore = calculateAiHealthScore({
+  const nutrition = getNutritionSignals({ foods, mealHistory, meals })
+  const healthScore = calculateAiHealthScoreFromContext({
     checkIn,
-    foods: data.foods,
-    mealHistory,
-    meals: data.meals,
-    weights: data.weights,
+    foods,
+    nutrition,
+    weightStats,
   })
+
+  return {
+    bodyAnalysisHistory,
+    checkIn,
+    coachMemory,
+    foods,
+    healthScore,
+    mealHistory,
+    meals,
+    nutrition,
+    profile,
+    weightStats,
+  }
+}
+
+/**
+ * Creates all view data for the Smart AI Dashboard.
+ *
+ * @param {object} data
+ * @returns {object}
+ */
+export function createDashboardData(data = {}) {
+  if (hasSameDashboardInputs(data, lastDashboardInput)) {
+    return lastDashboardResult
+  }
+
+  const context = createDashboardContext(data)
+  const {
+    bodyAnalysisHistory,
+    checkIn,
+    coachMemory,
+    foods,
+    healthScore,
+    mealHistory,
+    profile,
+    weightStats,
+  } = context
   const activity = makeActivityItems({
     bodyAnalysisHistory,
     checkIn,
+    coachMemory,
     mealHistory,
     weights: data.weights,
     weeklyReportData: data.weeklyReportData,
@@ -527,15 +684,14 @@ export function createDashboardData(data = {}) {
   const bestFactor = [...healthScore.factors].sort(
     (first, second) => second.points - first.points,
   )[0]
-
-  return {
+  const result = {
     activity,
     goals: makeGoals({ profile, weightStats }),
     healthScore,
     hero: {
       focus: makeDailyFocus({
         checkIn,
-        foods: data.foods,
+        foods,
         proactiveCoach: data.proactiveCoach,
       }),
       greeting: safeText(profile.name) ? `Hej ${safeText(profile.name)}` : 'Hej',
@@ -557,8 +713,8 @@ export function createDashboardData(data = {}) {
     progress: {
       bodyAnalysisCount: bodyAnalysisHistory.length,
       latestActivity: latestActivity
-        ? `${latestActivity.title}: ${latestActivity.detail}`
-        : 'Ingen aktivitet ännu',
+        ? `${latestActivity.title}: ${latestActivity.description}`
+        : 'Logga vikt, måltid eller check-in för att starta flödet.',
       mealAnalysisCount: mealHistory.length,
       weeklyReportCount:
         data.weeklyReportData || safeArray(data.weeklyReportLines).length > 0 ? 1 : 0,
@@ -573,12 +729,17 @@ export function createDashboardData(data = {}) {
     today: {
       energy: checkIn.energy,
       energyLabel: checkIn.energy === null ? 'Saknas' : `${checkIn.energy}/10`,
-      habitCount: safeArray(data.foods).filter((food) => Boolean(food?.done)).length,
-      habitTotal: safeArray(data.foods).length,
+      habitCount: foods.filter((food) => Boolean(food?.done)).length,
+      habitTotal: foods.length,
       mood: checkIn.mood,
       steps: checkIn.steps,
       stepsLabel: formatInteger(checkIn.steps),
       workout: checkIn.workout,
     },
   }
+
+  lastDashboardInput = { ...data }
+  lastDashboardResult = result
+
+  return result
 }

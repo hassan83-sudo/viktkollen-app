@@ -3,14 +3,14 @@ import { memo } from 'react'
 /**
  * Displays today's check-in and habit status.
  *
- * @param {{today: {energy: number, habitCount: number, habitTotal: number, mood: string, steps: number, workout: boolean}}} props
+ * @param {{today: {energyLabel: string, habitCount: number, habitTotal: number, mood: string, stepsLabel: string, workout: boolean}}} props
  * @returns {import('react').JSX.Element}
  */
 function DashboardToday({ today }) {
   const stats = [
-    ['Energi', `${today.energy}/10`],
-    ['Humör', today.mood],
-    ['Steg', today.steps.toLocaleString('sv-SE')],
+    ['Energi', today.energyLabel || 'Saknas'],
+    ['Humör', today.mood || 'Ej satt'],
+    ['Steg', today.stepsLabel || 'Saknas'],
     ['Matvanor', `${today.habitCount}/${today.habitTotal}`],
   ]
 

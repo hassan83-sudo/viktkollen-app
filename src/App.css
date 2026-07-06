@@ -1,5 +1,6 @@
 .app-shell {
   width: min(1180px, calc(100% - 32px));
+  overflow-x: clip;
   margin: 0 auto;
   padding: 20px 0 calc(104px + env(safe-area-inset-bottom));
 }
@@ -156,11 +157,13 @@
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 12px;
+  isolation: isolate;
 }
 
 .dashboard-hero,
 .dashboard-card {
   min-width: 0;
+  overflow-wrap: anywhere;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
@@ -243,6 +246,7 @@
 .dashboard-card {
   display: grid;
   grid-column: span 2;
+  align-content: start;
   gap: 14px;
   padding: 18px;
 }
@@ -278,6 +282,10 @@
   line-height: 1.55;
 }
 
+.dashboard-card-copy {
+  max-width: 62ch;
+}
+
 .dashboard-note {
   padding: 12px;
   border: 1px solid var(--border);
@@ -287,6 +295,7 @@
 }
 
 .dashboard-mini-grid,
+.dashboard-score-explainer,
 .dashboard-insight-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -294,6 +303,7 @@
 }
 
 .dashboard-mini-stat,
+.dashboard-score-explainer div,
 .dashboard-insight,
 .dashboard-factor,
 .dashboard-progress-list div,
@@ -308,6 +318,24 @@
 .dashboard-mini-stat {
   display: grid;
   gap: 6px;
+}
+
+.dashboard-score-explainer div {
+  display: grid;
+  gap: 6px;
+  border-color: #c7e2dc;
+  background: #f6fbfa;
+}
+
+.dashboard-score-explainer span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.dashboard-score-explainer strong {
+  color: var(--text-h);
+  line-height: 1.35;
 }
 
 .dashboard-mini-stat strong {
@@ -348,28 +376,38 @@
   gap: 8px;
 }
 
-.dashboard-actions a,
 .dashboard-actions button {
   display: inline-grid;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
+  min-width: 0;
+  min-height: 48px;
   padding: 0 12px;
+  border: 1px solid var(--border);
   border-radius: 8px;
+  color: var(--text-h);
+  background: var(--soft-bg);
   text-align: center;
   text-decoration: none;
   font-weight: 800;
+  box-shadow: none;
+  white-space: normal;
 }
 
-.dashboard-actions a {
-  border: 1px solid var(--border);
-  color: var(--text-h);
-  background: var(--soft-bg);
-}
-
-.dashboard-actions a:hover {
+.dashboard-actions button:hover {
   border-color: var(--accent);
   background: var(--accent-soft);
+}
+
+.dashboard-actions button.primary {
+  border-color: var(--accent);
+  color: #ffffff;
+  background: var(--accent);
+  box-shadow: 0 8px 20px var(--accent-shadow);
+}
+
+.dashboard-actions button.primary:hover {
+  background: var(--accent-strong);
 }
 
 .dashboard-insight {
@@ -390,6 +428,14 @@
 }
 
 .dashboard-insight small {
+  color: var(--muted);
+}
+
+.dashboard-insight.is-empty {
+  border-style: dashed;
+}
+
+.dashboard-insight.is-empty p {
   color: var(--muted);
 }
 
@@ -2147,6 +2193,10 @@ a:focus-visible {
     gap: 8px;
   }
 
+  .dashboard-health {
+    grid-row: auto;
+  }
+
   .dashboard-hero,
   .dashboard-card {
     padding: 14px;
@@ -2170,9 +2220,24 @@ a:focus-visible {
   }
 
   .dashboard-mini-grid,
+  .dashboard-score-explainer,
   .dashboard-insight-grid,
   .dashboard-actions {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-actions button {
+    min-height: 52px;
+    padding: 8px 12px;
+  }
+
+  .dashboard-factor {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .dashboard-factor b {
+    justify-self: start;
   }
 
   .dashboard-activity-list li {

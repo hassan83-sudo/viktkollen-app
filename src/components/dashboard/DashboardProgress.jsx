@@ -1,5 +1,9 @@
 import { memo } from 'react'
 
+function formatCount(value) {
+  return Number(value) > 0 ? value : 'Inte än'
+}
+
 /**
  * Summarizes weight and AI analysis progress.
  *
@@ -8,11 +12,11 @@ import { memo } from 'react'
  */
 function DashboardProgress({ progress }) {
   const stats = [
-    ['Vikttrend', progress.weightTrend],
-    ['AI-analyser', progress.bodyAnalysisCount],
-    ['Måltidsanalyser', progress.mealAnalysisCount],
-    ['Veckorapporter', progress.weeklyReportCount],
-    ['Senaste aktivitet', progress.latestActivity],
+    ['Vikttrend', progress.weightTrend || 'Logga minst två vikter'],
+    ['AI-analyser', formatCount(progress.bodyAnalysisCount)],
+    ['Måltidsanalyser', formatCount(progress.mealAnalysisCount)],
+    ['Veckorapporter', formatCount(progress.weeklyReportCount)],
+    ['Senaste aktivitet', progress.latestActivity || 'Ingen aktivitet ännu'],
   ]
 
   return (

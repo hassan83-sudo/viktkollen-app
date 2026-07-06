@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useMemo } from 'react'
 
 /**
  * Explains the AI Health Score without medical assessment.
@@ -7,6 +7,21 @@ import { memo } from 'react'
  * @returns {import('react').JSX.Element}
  */
 function DashboardHealthScore({ healthScore }) {
+  const strongestFactor = useMemo(
+    () =>
+      [...healthScore.factors].sort(
+        (first, second) => second.points / second.max - first.points / first.max,
+      )[0],
+    [healthScore.factors],
+  )
+  const weakestFactor = useMemo(
+    () =>
+      [...healthScore.factors].sort(
+        (first, second) => second.missing - first.missing,
+      )[0],
+    [healthScore.factors],
+  )
+
   return (
     <article className="dashboard-card dashboard-health">
       <div className="dashboard-card-heading">
@@ -17,6 +32,18 @@ function DashboardHealthScore({ healthScore }) {
         <span>Vanor</span>
       </div>
       <p className="dashboard-card-copy">{healthScore.summary}</p>
+      <div className="dashboard-score-explainer" aria-label="Kort förklaring">
+        <div>
+          <span>Varför</span>
+          <strong>
+            {strongestFactor?.label || 'Data saknas'} väger positivt just nu.
+          </strong>
+        </div>
+        <div>
+          <span>Öka mest</span>
+          <strong>{weakestFactor?.improvement || healthScore.improvement}</strong>
+        </div>
+      </div>
       <div className="dashboard-factor-list">
         {healthScore.factors.map((factor) => (
           <div className="dashboard-factor" key={factor.label}>
@@ -31,8 +58,8 @@ function DashboardHealthScore({ healthScore }) {
         ))}
       </div>
       <p className="dashboard-note">
-        Mest förbättrar: {healthScore.improvement} Scoret är allmänt vanestöd,
-        inte medicinsk bedömning.
+        Scoret bygger på check-in, vikttrend, matvanor, aktivitet och återhämtning.
+        Det är allmänt vanestöd, inte medicinsk bedömning.
       </p>
     </article>
   )

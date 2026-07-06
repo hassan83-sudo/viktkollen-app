@@ -1,12 +1,41 @@
 import { memo } from 'react'
 
 const quickActions = [
-  ['Registrera vikt', '#vikt'],
-  ['Lägg till måltid', '#mat'],
-  ['AI Coach', '#coach'],
-  ['AI Kroppsanalys', '#framstegsbilder'],
-  ['Matfotoanalys', '#mat'],
+  {
+    label: 'Registrera vikt',
+    targets: ['vikt'],
+  },
+  {
+    label: 'Lägg till måltid',
+    targets: ['maltider', 'mat'],
+  },
+  {
+    label: 'AI Coach',
+    targets: ['coach', 'chat'],
+  },
+  {
+    label: 'AI Kroppsanalys',
+    targets: ['framstegsbilder'],
+  },
+  {
+    label: 'Matfotoanalys',
+    targets: ['maltider', 'mat'],
+  },
 ]
+
+function scrollToDashboardTarget(targets) {
+  const target = targets
+    .map((targetId) => document.getElementById(targetId))
+    .find(Boolean)
+
+  if (!target) {
+    window.location.hash = targets[0] || ''
+    return
+  }
+
+  target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  window.history.replaceState(null, '', `#${target.id}`)
+}
 
 /**
  * Renders dashboard shortcuts to core workflows.
@@ -24,12 +53,24 @@ function DashboardQuickActions({ actions }) {
         </div>
       </div>
       <div className="dashboard-actions">
-        {quickActions.map(([label, href]) => (
-          <a href={href} key={label}>
-            {label}
-          </a>
+        {quickActions.map((action) => (
+          <button
+            className="dashboard-action-button"
+            key={action.label}
+            type="button"
+            onClick={() => scrollToDashboardTarget(action.targets)}
+          >
+            {action.label}
+          </button>
         ))}
-        <button type="button" onClick={actions.onCreateWeeklyReport}>
+        <button
+          className="dashboard-action-button primary"
+          type="button"
+          onClick={() => {
+            actions.onCreateWeeklyReport?.()
+            scrollToDashboardTarget(['framsteg'])
+          }}
+        >
           Veckorapport
         </button>
       </div>

@@ -16,13 +16,20 @@ function DashboardInsights({ insights }) {
         </div>
       </div>
       <div className="dashboard-insight-grid">
-        {insights.map((insight) => (
-          <section className="dashboard-insight" key={insight.title}>
-            <span>{insight.title}</span>
-            <p>{insight.value || insight.empty}</p>
-            {insight.meta && <small>{insight.meta}</small>}
-          </section>
-        ))}
+        {insights.map((insight) => {
+          const hasValue = Boolean(insight.value)
+
+          return (
+            <section
+              className={`dashboard-insight${hasValue ? '' : ' is-empty'}`}
+              key={insight.title}
+            >
+              <span>{insight.title}</span>
+              <p>{hasValue ? insight.value : insight.empty}</p>
+              {insight.meta && <small>{insight.meta}</small>}
+            </section>
+          )
+        })}
       </div>
     </article>
   )

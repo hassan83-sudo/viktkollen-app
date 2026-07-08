@@ -247,6 +247,12 @@ function calculateAiHealthScoreFromContext({ checkIn, foods, nutrition, weightSt
   const energy = checkIn.energy
   const steps = checkIn.steps
   const habitRatio = completedFoods / foodTotal
+  const missingCoreData = [
+    energy === null,
+    steps === null,
+    !weightStats.hasWeights,
+    foods.length === 0,
+  ].filter(Boolean).length
 
   const factors = [
     makeScoreFactor(
@@ -335,7 +341,9 @@ function calculateAiHealthScoreFromContext({ checkIn, foods, nutrition, weightSt
     improvement: improvement?.improvement || 'Behåll dagens stabila rutin.',
     score,
     summary:
-      score >= 80
+      missingCoreData >= 2
+        ? 'Scoret är försiktigt eftersom vikt, check-in eller matdata saknas.'
+        : score >= 80
         ? 'Stark dag med flera positiva vanesignaler.'
         : score >= 60
           ? 'Bra grund, med ett tydligt nästa steg.'

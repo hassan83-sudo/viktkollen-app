@@ -3,6 +3,7 @@ import { getBodyAnalysisStorage } from './bodyAnalysisStorage'
 const HISTORY_VERSION = 1
 const ANALYSIS_SCHEMA_VERSION = 1
 const MAX_ANALYSES = 10
+const HISTORY_CHANGED_EVENT = 'viktkollen:body-analysis-history-changed'
 
 function isObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -39,6 +40,12 @@ function writeStoredHistory(analyses) {
     })
   } catch {
     // Keep the app usable if localStorage is unavailable or full.
+  }
+}
+
+function notifyHistoryChanged() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(HISTORY_CHANGED_EVENT))
   }
 }
 
@@ -134,6 +141,7 @@ export function addAnalysis(analysis) {
   const nextHistory = mergeHistories(readStoredHistory(), [analysis])
 
   writeStoredHistory(nextHistory)
+  notifyHistoryChanged()
 
   return nextHistory
 }
@@ -168,6 +176,7 @@ export function deleteAnalysis(createdAt) {
   )
 
   writeStoredHistory(nextHistory)
+  notifyHistoryChanged()
 
   return nextHistory
 }
@@ -246,6 +255,7 @@ export function importHistory(payload) {
   const nextHistory = mergeHistories(currentHistory, incomingHistory)
 
   writeStoredHistory(nextHistory)
+  notifyHistoryChanged()
 
   return {
     history: nextHistory,
@@ -260,6 +270,9 @@ export function importHistory(payload) {
  */
 export function clearAnalysisHistory() {
   writeStoredHistory([])
+  notifyHistoryChanged()
 
   return []
 }
+
+export { HISTORY_CHANGED_EVENT as bodyAnalysisHistoryChangedEvent }

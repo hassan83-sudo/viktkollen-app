@@ -11,7 +11,10 @@ import ReminderSettings from './components/ReminderSettings.jsx'
 import WeightChart from './components/WeightChart.jsx'
 import WeeklyReport from './components/WeeklyReport.jsx'
 import { makePersonalCoachReply } from './lib/coachReply.js'
-import { getAnalysisHistory } from './services/bodyAnalysisHistory.js'
+import {
+  bodyAnalysisHistoryChangedEvent,
+  getAnalysisHistory,
+} from './services/bodyAnalysisHistory.js'
 import { buildAiCoachContext } from './services/aiCoachContext.js'
 import { addAiConversationMemory } from './services/aiConversationMemory.js'
 import { classifyAiCoachIntent } from './services/aiCoachIntentService.js'
@@ -979,13 +982,16 @@ function App() {
   const [weeklyReport, setWeeklyReport] = useState('')
   const [weeklyReportData, setWeeklyReportData] = useState(null)
   const [weeklyReportStatus, setWeeklyReportStatus] = useState('')
+  const [bodyAnalysisHistory, setBodyAnalysisHistory] = useState(() =>
+    getAnalysisHistory(),
+  )
 
   const latestWeight = weights.at(-1)
   const startWeight = weights[0]
   const aiUserContext = useMemo(
     () =>
       buildAiUserContext({
-        bodyAnalysisHistory: getAnalysisHistory(),
+        bodyAnalysisHistory,
         chatHistory: chatMessages,
         checkIn,
         currentWeight: latestWeight.value,
@@ -997,6 +1003,7 @@ function App() {
         weights,
       }),
     [
+      bodyAnalysisHistory,
       chatMessages,
       checkIn,
       foods,
@@ -1238,13 +1245,13 @@ function App() {
   const fallbackProactiveCoachInsights = useMemo(
     () =>
       makeProactiveCoachInsights({
-        bodyAnalysisHistory: getAnalysisHistory(),
+        bodyAnalysisHistory,
         checkIn,
         mealHistory: photoMeals,
         meals,
         weights,
       }),
-    [checkIn, meals, photoMeals, weights],
+    [bodyAnalysisHistory, checkIn, meals, photoMeals, weights],
   )
   const proactiveCoachInsights =
     proactiveCoachResult?.key === proactiveCoachKey
@@ -1254,7 +1261,7 @@ function App() {
     setWeeklyReportStatus('Skapar AI-veckorapport...')
 
     const report = await createAiWeeklyReport({
-      bodyAnalysisHistory: getAnalysisHistory(),
+      bodyAnalysisHistory,
       checkIn,
       currentWeight: latestWeight.value,
       foods,
@@ -1274,6 +1281,7 @@ function App() {
     )
   }, [
     checkIn,
+    bodyAnalysisHistory,
     foods,
     latestWeight.value,
     meals,
@@ -1286,7 +1294,7 @@ function App() {
     () =>
       createDashboardData({
         aiCoachMemory: chatMessages,
-        bodyAnalysisHistory: getAnalysisHistory(),
+        bodyAnalysisHistory,
         checkIn,
         foods,
         mealHistory: photoMeals,
@@ -1298,6 +1306,7 @@ function App() {
         weeklyReportLines,
       }),
     [
+      bodyAnalysisHistory,
       chatMessages,
       checkIn,
       foods,
@@ -1368,6 +1377,24 @@ function App() {
   useEffect(() => {
     writeStoredValue(storageKeys.chat, chatMessages)
   }, [chatMessages])
+
+  useEffect(() => {
+    function refreshBodyAnalysisHistory() {
+      setBodyAnalysisHistory(getAnalysisHistory())
+    }
+
+    window.addEventListener(
+      bodyAnalysisHistoryChangedEvent,
+      refreshBodyAnalysisHistory,
+    )
+
+    return () => {
+      window.removeEventListener(
+        bodyAnalysisHistoryChangedEvent,
+        refreshBodyAnalysisHistory,
+      )
+    }
+  }, [])
 
   useEffect(() => {
     const animationFrame = window.requestAnimationFrame(() => {
@@ -1549,7 +1576,7 @@ function App() {
   useEffect(() => {
     let cancelled = false
     const coachData = {
-      bodyAnalysisHistory: getAnalysisHistory(),
+      bodyAnalysisHistory,
       checkIn,
       mealHistory: photoMeals,
       meals,
@@ -1572,7 +1599,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [checkIn, meals, photoMeals, proactiveCoachKey, weights])
+  }, [bodyAnalysisHistory, checkIn, meals, photoMeals, proactiveCoachKey, weights])
 
   function updateProfileForm(key, value) {
     setProfileForm((current) => ({ ...current, [key]: value }))
@@ -1928,7 +1955,7 @@ function App() {
         message,
       })
       const context = buildAiCoachContext({
-        bodyAnalysisHistory: getAnalysisHistory(),
+        bodyAnalysisHistory,
         chatHistory,
         checkIn,
         currentWeight: latestWeight.value,
@@ -1987,7 +2014,7 @@ function App() {
           foods,
           meals,
           mealHistory: getMealHistory(),
-          bodyAnalysisHistory: getAnalysisHistory(),
+          bodyAnalysisHistory,
           latestWeeklyReport: weeklyReportData,
           latestCoachReply: recentChatHistory
             .filter((chatMessage) => chatMessage.role === 'assistant')

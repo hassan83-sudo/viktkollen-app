@@ -1,5 +1,9 @@
 import { memo, useMemo } from 'react'
 
+function getFactorRatio(factor) {
+  return factor?.max > 0 ? factor.points / factor.max : 0
+}
+
 /**
  * Explains the AI Health Score without medical assessment.
  *
@@ -10,7 +14,7 @@ function DashboardHealthScore({ healthScore }) {
   const strongestFactor = useMemo(
     () =>
       [...healthScore.factors].sort(
-        (first, second) => second.points / second.max - first.points / first.max,
+        (first, second) => getFactorRatio(second) - getFactorRatio(first),
       )[0],
     [healthScore.factors],
   )

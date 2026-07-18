@@ -1,10 +1,29 @@
 import { getRecentAiConversation } from './aiConversationMemory.js'
 import { createAiFallback } from './aiFallbackEngine.js'
 import { buildAiUserContext } from './aiUserContext.js'
+import { formatKg, getWeightStats } from './healthCalculations.js'
 
 const AI_ENDPOINT = '/api/ai'
 
 function getWeightTrend(weights = []) {
+  const weightStats = getWeightStats(weights)
+  const change = weightStats.changeSinceStart
+
+  if (!weightStats.hasWeights || !Number.isFinite(change)) {
+    return 'Inte tillrÃ¤ckligt med viktdata Ã¤nnu.'
+  }
+
+  if (change < 0) {
+    return `Vikten Ã¤r ned ${formatKg(Math.abs(change))} sedan start.`
+  }
+
+  if (change > 0) {
+    return `Vikten Ã¤r upp ${formatKg(change)} sedan start.`
+  }
+
+  return 'Vikten Ã¤r stabil sedan start.'
+}
+/*
   if (!Array.isArray(weights) || weights.length < 2) {
     return 'Inte tillräckligt med viktdata ännu.'
   }
@@ -29,6 +48,7 @@ function getWeightTrend(weights = []) {
   return 'Vikten är stabil sedan start.'
 }
 
+*/
 function getMealPattern(mealHistory = [], meals = []) {
   if (mealHistory.length > 0) {
     return `${mealHistory.length} fotoanalyser ger bättre bild av matmönstret.`

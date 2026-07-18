@@ -1,4 +1,5 @@
 import { createDeterministicAiCoachReply } from './aiCoachDeterministicReplies.js'
+import { calculateProteinNeed } from './healthCalculations.js'
 
 const responseTemplates = {
   bodyAnalysis: [
@@ -27,6 +28,10 @@ const responseTemplates = {
         ? `Du har ${mealCount} måltid${mealCount === 1 ? '' : 'er'} loggad${mealCount === 1 ? '' : 'e'} idag. Nästa måltid kan vara enkel: protein, något grönt och en bas som potatis, ris, bröd eller pasta.`
         : 'Satsa på en enkel måltid idag: protein, något grönt eller frukt och en lagom kolhydratkälla. Det behöver inte bli perfekt för att vara bra.'
     },
+  ],
+  lateMeal: [
+    () =>
+      'For de flesta ar det inte skadligt att ata nara laggdags. Om du ar hungrig sent, valj nagot latt och mattande som yoghurt, agg, keso eller en liten macka.',
   ],
   goalWeight: [
     ({ context }) => {
@@ -67,8 +72,9 @@ const responseTemplates = {
       const current = context.weight?.currentWeight
 
       if (current) {
-        const lower = Math.round(current * 1.2)
-        const upper = Math.round(current * 1.6)
+        const proteinNeed = calculateProteinNeed(current)
+        const lower = proteinNeed.lower
+        const upper = proteinNeed.upper
 
         return `Med din senaste vikt blir ett enkelt riktmärke ungefär ${lower}-${upper} g protein per dag. Fördela det över måltiderna så blir det lättare att nå.`
       }
@@ -152,6 +158,20 @@ function getVariationIndex(seed, length) {
   return score % length
 }
 
+function getRepeatedQuestionCount(message, context = {}) {
+  const normalizedMessage = String(message || '').trim().toLocaleLowerCase('sv-SE')
+
+  if (!normalizedMessage) {
+    return 0
+  }
+
+  return (context.conversation?.recentMessages || []).filter(
+    (entry) =>
+      entry?.role === 'user' &&
+      String(entry.text || '').trim().toLocaleLowerCase('sv-SE') === normalizedMessage,
+  ).length
+}
+
 function getSafetyRules() {
   return [
     'Svara på svenska.',
@@ -211,7 +231,10 @@ export function createLocalAiCoachReply({ context, intent, message }) {
   }
 
   const templates = responseTemplates[intent.intent] || responseTemplates.general
-  const template = templates[getVariationIndex(`${message}-${intent.intent}`, templates.length)]
+  const repetition = getRepeatedQuestionCount(message, context)
+  const template = templates[
+    getVariationIndex(`${message}-${intent.intent}-${repetition}`, templates.length)
+  ]
 
   return template({ context, intent, message })
 }

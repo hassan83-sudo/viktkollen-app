@@ -1,3 +1,10 @@
+import {
+  calculateGoalDistance,
+  calculateProteinNeed,
+  formatKg,
+  parseWeightValue,
+} from './healthCalculations.js'
+
 function normalizeText(value) {
   return String(value || '')
     .trim()
@@ -6,20 +13,7 @@ function normalizeText(value) {
 }
 
 function parseNumber(value) {
-  if (typeof value === 'number') {
-    return value
-  }
-
-  const number = Number(String(value || '').replace(',', '.'))
-
-  return Number.isFinite(number) ? number : null
-}
-
-function formatKg(value) {
-  return `${value.toLocaleString('sv-SE', {
-    maximumFractionDigits: 1,
-    minimumFractionDigits: Number.isInteger(value) ? 0 : 1,
-  })} kg`
+  return parseWeightValue(value)
 }
 
 function includesAny(text, phrases) {
@@ -63,7 +57,7 @@ function makeGoalDistanceText(currentWeight, goalWeight) {
     return ''
   }
 
-  const distanceToGoal = Number((currentWeight - goalWeight).toFixed(1))
+  const distanceToGoal = calculateGoalDistance(currentWeight, goalWeight)
 
   if (distanceToGoal === 0) {
     return ' Du är på din registrerade målvikt.'
@@ -226,8 +220,9 @@ function makeProteinReply(context) {
     return 'Ett enkelt riktmärke är protein i varje måltid. Lägg gärna in aktuell vikt om du vill att jag räknar gram per dag mer exakt.'
   }
 
-  const lower = Math.round(currentWeight * 1.2)
-  const upper = Math.round(currentWeight * 1.6)
+  const proteinNeed = calculateProteinNeed(currentWeight)
+  const lower = proteinNeed.lower
+  const upper = proteinNeed.upper
   const templates = [
     `Med din senaste vikt blir ett rimligt riktmärke cirka ${lower}-${upper} g protein per dag. Fördela det gärna över 3-4 måltider.`,
     `Utifrån din senaste vikt kan du sikta på ungefär ${lower}-${upper} g protein per dag. Gör det enkelt: en proteinkälla i varje måltid.`,

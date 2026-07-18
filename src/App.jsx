@@ -23,6 +23,11 @@ import { createAiSuggestions } from './services/aiSuggestions.js'
 import { buildAiUserContext } from './services/aiUserContext.js'
 import { createDashboardData } from './services/dashboardService.js'
 import {
+  calculateProteinNeed,
+  formatKg as formatHealthKg,
+  parseWeightValue,
+} from './services/healthCalculations.js'
+import {
   addMealAnalysis,
   clearMealHistory,
   createDemoMealDay,
@@ -300,7 +305,11 @@ function formatDecimal(value) {
 }
 
 function formatWeight(value) {
-  return `${formatDecimal(value)} kg`
+  return formatHealthKg(value, {
+    fallback: '',
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 1,
+  })
 }
 
 function formatOptionalWeight(value) {
@@ -461,7 +470,7 @@ function makeProgressPhotoComparison(latestPhoto, previousPhoto) {
 }
 
 function parseWeight(value) {
-  return Number(String(value).replace(',', '.'))
+  return parseWeightValue(value)
 }
 
 function isValidWeightInput(value) {
@@ -670,9 +679,10 @@ function makeProteinKnowledgeReply(message) {
   const bodyWeight = weightMatch ? Number(weightMatch[1]) : null
 
   if (Number.isFinite(bodyWeight)) {
-    const lower = Math.round(bodyWeight * 1.2)
-    const upper = Math.round(bodyWeight * 1.6)
-    const activeUpper = Math.round(bodyWeight * 2)
+    const proteinNeed = calculateProteinNeed(bodyWeight)
+    const lower = proteinNeed.lower
+    const upper = proteinNeed.upper
+    const activeUpper = proteinNeed.activeUpper
 
     return `FÃ¶r en person som vÃ¤ger ${bodyWeight} kg Ã¤r ett rimligt riktmÃ¤rke ofta cirka ${lower}-${upper} g protein per dag. Om personen styrketrÃ¤nar mycket eller vill bygga muskler kan ungefÃ¤r ${upper}-${activeUpper} g per dag vara mer relevant. FÃ¶rdela gÃ¤rna Ã¶ver 3-4 mÃ¥ltider, till exempel 25-40 g per mÃ¥ltid.`
   }
@@ -712,6 +722,8 @@ function makeChatResponse(
   foods,
   currentWeight,
   chatHistory = [],
+  weights = [],
+  meals = [],
 ) {
   const text = message.toLowerCase()
   const goal = profile?.goal || 'hÃ¥lla en stabil rutin'
@@ -770,8 +782,10 @@ Handla: Ã¤gg, kyckling/tonfisk, linser/bÃ¶nor, potatis/ris och frysta grÃ¶
     checkIn,
     currentWeight,
     foods,
+    meals,
     message,
     profile,
+    weights,
   })
 
   if (personalReply) {
@@ -1988,6 +2002,8 @@ function App() {
           foods,
           latestWeight.value,
           chatHistory,
+          weights,
+          meals,
         ),
         source: 'mock',
       }

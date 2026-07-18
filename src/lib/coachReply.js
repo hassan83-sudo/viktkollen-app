@@ -1,3 +1,10 @@
+import {
+  calculateGoalDistance,
+  calculateWeightChange,
+  formatKg,
+  parseWeightValue,
+} from '../services/healthCalculations.js'
+
 function normalizeText(value) {
   return String(value || '')
     .trim()
@@ -519,24 +526,15 @@ function detectIntents(message, chatHistory = []) {
 }
 
 function parseWeight(value) {
-  const parsedValue = Number(
-    String(value ?? '')
-      .replace(',', '.')
-      .replace(' kg', ''),
-  )
-
-  return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : null
+  return parseWeightValue(value)
 }
 
 function formatWeight(value) {
-  if (!Number.isFinite(value)) {
-    return ''
-  }
-
-  return `${value.toLocaleString('sv-SE', {
+  return formatKg(value, {
+    fallback: '',
     maximumFractionDigits: 1,
     minimumFractionDigits: 1,
-  })} kg`
+  })
 }
 
 function sanitizeName(value) {
@@ -566,11 +564,7 @@ function makeNamedSentence(context, sentence) {
 }
 
 function getWeightChange(context) {
-  if (context.weight === null || context.startWeight === null) {
-    return null
-  }
-
-  return Number((context.weight - context.startWeight).toFixed(1))
+  return calculateWeightChange(context.weight, context.startWeight)
 }
 
 function makeWeightTrendSentence(context) {
@@ -590,7 +584,7 @@ function makeGoalDistanceSentence(context) {
     return ''
   }
 
-  const remaining = Number((context.weight - context.goalWeight).toFixed(1))
+  const remaining = calculateGoalDistance(context.weight, context.goalWeight)
 
   if (remaining > 0) {
     return `Det är ${formatWeight(remaining)} kvar till målet.`
@@ -751,7 +745,7 @@ function makeGoalWeightReply(context) {
     return `Din registrerade målvikt är ${formatWeight(context.goalWeight)}.`
   }
 
-  const difference = Number((context.weight - context.goalWeight).toFixed(1))
+  const difference = calculateGoalDistance(context.weight, context.goalWeight)
 
   if (difference > 0) {
     const trend = makeWeightTrendSentence(context)
@@ -821,7 +815,7 @@ function makeWeightProgressReply(context) {
     context.goal === 'gå ner i vikt' &&
     context.goalWeight !== null
   ) {
-    const remaining = Number((context.weight - context.goalWeight).toFixed(1))
+    const remaining = calculateGoalDistance(context.weight, context.goalWeight)
     parts.push(
       remaining > 0
         ? `Det är ${formatWeight(remaining)} kvar till ditt registrerade mål.`
@@ -832,7 +826,7 @@ function makeWeightProgressReply(context) {
   }
 
   if (context.startWeight !== null) {
-    const change = Number((context.weight - context.startWeight).toFixed(1))
+    const change = calculateWeightChange(context.weight, context.startWeight)
 
     if (change !== 0) {
       parts.push(
@@ -855,7 +849,7 @@ function makeCurrentWeightReply(context) {
   const goalDistance = makeGoalDistanceSentence(context)
 
   if (context.startWeight !== null) {
-    const change = Number((context.weight - context.startWeight).toFixed(1))
+    const change = calculateWeightChange(context.weight, context.startWeight)
 
     if (change < 0) {
       parts.push(`Du har gått ner ${formatWeight(Math.abs(change))} sedan start.`)
@@ -1023,7 +1017,7 @@ function makeHowMuchReply(context, topic = '') {
   }
 
   if (context.goalWeight !== null && context.weight !== null) {
-    const remaining = Number((context.weight - context.goalWeight).toFixed(1))
+    const remaining = calculateGoalDistance(context.weight, context.goalWeight)
 
     if (remaining > 0) {
       return `Om du menar målvikt är det ${formatWeight(remaining)} kvar från din senaste vikt till målet.`
@@ -1104,7 +1098,7 @@ function makeWeightChangeReply(context) {
     return makeWeightProgressReply(context)
   }
 
-  const change = Number((context.weight - context.startWeight).toFixed(1))
+  const change = calculateWeightChange(context.weight, context.startWeight)
 
   if (change === 0) {
     return `Din senaste vikt är ${formatWeight(context.weight)}, samma som din registrerade startvikt. Följ gärna trenden över flera vägningar.`

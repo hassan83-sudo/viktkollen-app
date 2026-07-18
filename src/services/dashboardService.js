@@ -1,5 +1,12 @@
 import { getRecentAiConversation } from './aiConversationMemory.js'
 import { getAnalysisHistory } from './bodyAnalysisHistory.js'
+import {
+  calculateGoalDistance,
+  calculateGoalProgress,
+  formatKg,
+  getWeightStats as getSharedWeightStats,
+  normalizeWeightEntries,
+} from './healthCalculations.js'
 import { getMealHistory } from './mealHistory.js'
 
 const DEFAULT_CHECK_IN = {
@@ -96,19 +103,6 @@ function safeReadHistory(readHistory) {
   }
 }
 
-function formatKg(value) {
-  const number = safeNumber(value)
-
-  if (number === null) {
-    return 'saknas'
-  }
-
-  return `${number.toLocaleString('sv-SE', {
-    maximumFractionDigits: 1,
-    minimumFractionDigits: 1,
-  })} kg`
-}
-
 function formatDateTime(value) {
   const date = safeDate(value)
 
@@ -140,22 +134,9 @@ function getDateTime(value) {
   return safeDate(value)?.getTime() ?? 0
 }
 
-function normalizeWeight(entry) {
-  const value = safeNumber(entry?.value)
-
-  if (value === null) {
-    return null
-  }
-
-  const date = safeDate(entry?.date)
-
-  return {
-    date: date ? date.toISOString() : null,
-    value,
-  }
-}
-
-function getWeightStats(weights) {
+function getWeightStats(weights, options) {
+  return getSharedWeightStats(weights, options)
+/*
   const sortedWeights = safeArray(weights)
     .map(normalizeWeight)
     .filter(Boolean)
@@ -185,6 +166,7 @@ function getWeightStats(weights) {
             : 'Stabil',
     weights: sortedWeights,
   }
+*/
 }
 
 function getNutritionSignals({ foods, mealHistory, meals }) {
@@ -466,9 +448,7 @@ function makeActivityItems({
   weights,
   weeklyReportData,
 }) {
-  const weightItems = safeArray(weights)
-    .map(normalizeWeight)
-    .filter(Boolean)
+  const weightItems = normalizeWeightEntries(weights)
     .map((entry) =>
       makeActivityItem({
         description: `${formatKg(entry.value)} registrerad${entry.date ? '' : ' utan datum'}.`,
@@ -551,35 +531,17 @@ function makeActivityItems({
     .slice(0, 8)
 }
 
-function getGoalProgress({ currentWeight, goalWeight, startWeight }) {
-  if (currentWeight === null || goalWeight === null || startWeight === null) {
-    return null
-  }
-
-  const totalDistance = Math.abs(startWeight - goalWeight)
-
-  if (totalDistance === 0) {
-    return null
-  }
-
-  const remainingDistance = Math.abs(currentWeight - goalWeight)
-
-  return Math.max(0, Math.min(100, Math.round((remainingDistance / totalDistance) * 100)))
-}
-
 function makeGoals({ profile, weightStats }) {
   const goalWeight = safeNumber(profile?.goalWeight)
   const currentWeight = weightStats.current
   const startWeight = safeNumber(profile?.startWeight, weightStats.first)
-  const remaining =
-    goalWeight !== null && currentWeight !== null
-      ? Number((currentWeight - goalWeight).toFixed(1))
-      : null
-  const percentRemaining = getGoalProgress({
+  const remaining = calculateGoalDistance(currentWeight, goalWeight)
+  const goalProgress = calculateGoalProgress({
     currentWeight,
     goalWeight,
     startWeight,
   })
+  const percentRemaining = goalProgress?.remainingPercent ?? null
   const milestone =
     remaining === null
       ? 'Sätt målvikt och logga nästa vikt.'
@@ -635,7 +597,9 @@ function createDashboardContext(data) {
   const checkIn = normalizeCheckIn(data.checkIn)
   const foods = safeArray(data.foods)
   const meals = safeArray(data.meals)
-  const weightStats = getWeightStats(data.weights)
+  const weightStats = getWeightStats(data.weights, {
+    startWeight: profile.startWeight,
+  })
   const nutrition = getNutritionSignals({ foods, mealHistory, meals })
   const healthScore = calculateAiHealthScoreFromContext({
     checkIn,

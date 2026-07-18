@@ -78,6 +78,27 @@ function isFollowUp(text) {
   return followUpPhrases.some((phrase) => text === phrase || text.includes(phrase))
 }
 
+function stripDiacritics(text) {
+  return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
+function isLateMealText(text) {
+  const plainText = stripDiacritics(text)
+  const hasMeal = ['mat', 'ata', 'ater', 'maltid'].some((term) =>
+    plainText.includes(term),
+  )
+  const hasSleepTiming = [
+    'fore somn',
+    'innan somn',
+    'innan jag sover',
+    'laggdags',
+    'sent pa kvallen',
+    'ata sent',
+  ].some((term) => plainText.includes(term))
+
+  return hasMeal && hasSleepTiming
+}
+
 /**
  * Classifies the user's AI coach message into a stable intent.
  *
@@ -91,6 +112,15 @@ export function classifyAiCoachIntent({ message, chatHistory = [] }) {
   const previousUserText = normalizeText(getLastUserMessage(chatHistory))
   const shouldUsePreviousContext = isFollowUp(text) && previousUserText
   const combinedText = shouldUsePreviousContext ? `${previousUserText} ${text}` : text
+
+  if (isLateMealText(combinedText)) {
+    return {
+      confidence: 0.95,
+      intent: 'lateMeal',
+      isFollowUp: Boolean(shouldUsePreviousContext),
+      matchedIntents: ['lateMeal'],
+    }
+  }
 
   const scores = Object.entries(intentKeywords)
     .map(([intent, keywords]) => ({

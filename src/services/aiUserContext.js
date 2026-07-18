@@ -1,3 +1,5 @@
+import { getWeightStats } from './healthCalculations.js'
+
 let lastContextKey = ''
 let lastContextValue = null
 
@@ -15,22 +17,14 @@ function compactProfile(profile = {}) {
 }
 
 function getWeightContext(weights = [], currentWeight) {
-  const validWeights = safeArray(weights).filter((entry) =>
-    Number.isFinite(Number(entry?.value)),
-  )
-  const startWeight = validWeights[0] || null
-  const latestWeight = validWeights.at(-1) || null
-  const latestValue = Number(latestWeight?.value ?? currentWeight)
+  const weightStats = getWeightStats(weights, { currentWeight })
 
   return {
-    changeSinceStart:
-      startWeight && Number.isFinite(latestValue)
-        ? Number((latestValue - Number(startWeight.value)).toFixed(1))
-        : null,
-    currentWeight: Number.isFinite(latestValue) ? latestValue : null,
-    history: validWeights.slice(-10),
-    latestWeight,
-    startWeight,
+    changeSinceStart: weightStats.changeSinceStart,
+    currentWeight: weightStats.current,
+    history: weightStats.weights.slice(-10),
+    latestWeight: weightStats.latestWeight,
+    startWeight: weightStats.weights[0] || null,
   }
 }
 
@@ -125,6 +119,7 @@ export function pickAiUserContextForIntent(userContext, intent) {
     calories: ['profile', 'meals', 'checkIn', 'coachConversation'],
     checkIn: ['profile', 'checkIn', 'foods', 'coachConversation'],
     food: ['profile', 'meals', 'checkIn', 'foods', 'coachConversation'],
+    lateMeal: ['profile', 'meals', 'checkIn', 'foods', 'coachConversation'],
     goalWeight: ['profile', 'weight', 'coachConversation'],
     habits: ['profile', 'checkIn', 'foods', 'coachConversation'],
     mealAnalysis: ['profile', 'meals', 'checkIn', 'coachConversation'],

@@ -1,34 +1,38 @@
 import { getRecentAiConversation } from './aiConversationMemory.js'
 import { createAiFallback } from './aiFallbackEngine.js'
 import { buildAiUserContext } from './aiUserContext.js'
+import { getWeightStats } from './healthCalculations.js'
 
 const AI_ENDPOINT = '/api/ai'
 
 function getWeightTrend(weights = []) {
-  if (!Array.isArray(weights) || weights.length < 2) {
-    return 'stabil'
+  return getWeightStats(weights).simpleTrend
+}
+
+/*
+  const weightStats = getWeightStats(weights)
+
+  if (weightStats.simpleTrend === 'down') {
+    return 'nedÃ¥t'
   }
 
-  const firstWeight = Number(weights[0]?.value)
-  const latestWeight = Number(weights.at(-1)?.value)
-
-  if (!Number.isFinite(firstWeight) || !Number.isFinite(latestWeight)) {
-    return 'stabil'
+  if (weightStats.simpleTrend === 'up') {
+    return 'uppÃ¥t'
   }
 
-  const change = latestWeight - firstWeight
+  return 'stabil'
+/*
 
-  if (change < -0.3) {
     return 'nedåt'
   }
 
-  if (change > 0.3) {
     return 'uppåt'
   }
 
   return 'stabil'
 }
 
+*/
 function hasProtein(meals = [], mealHistory = []) {
   const text = [
     ...meals.map((meal) => meal.text),
@@ -87,7 +91,7 @@ export function makeProactiveCoachInsights(data) {
             ? 'Största risken är att hoppa över nästa enkla rutin.'
             : 'Grönsaker eller frukt saknas lätt i dag.',
     dailyStrength:
-      weightTrend === 'nedåt'
+      weightTrend === 'down'
         ? 'Vikttrenden går åt rätt håll över tid.'
         : proteinLogged
           ? 'Du har fått in protein i dagens matbild.'

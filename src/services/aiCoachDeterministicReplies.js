@@ -1,6 +1,7 @@
-import {
+﻿import {
   calculateGoalDistance,
   calculateProteinNeed,
+  extractWeightFromText,
   formatKg,
   parseWeightValue,
 } from './healthCalculations.js'
@@ -94,9 +95,13 @@ function isGoalDistanceQuestion(text) {
   return includesAny(text, [
     'hur mycket är kvar till mål',
     'hur mycket kvar till mål',
+    'hur mycket är kvar till mitt mål',
+    'hur mycket kvar till mitt mål',
     'kvar till mål',
+    'kvar till mitt mål',
     'kvar till min målvikt',
     'till mål',
+    'till mitt mål',
   ])
 }
 
@@ -110,13 +115,15 @@ function isGoalWeightQuestion(text) {
 }
 
 function isProteinQuestion(text) {
+  const mentionedWeight = extractWeightFromText(text)
+
   return includesAny(text, [
     'hur många gram protein',
     'hur mycket protein',
     'protein behöver jag',
     'proteinbehov',
     'gram protein',
-  ])
+  ]) || (mentionedWeight !== null && /v\S*ger/.test(text))
 }
 
 function isDinnerQuestion(text) {
@@ -213,8 +220,9 @@ function makeGoalWeightReply(context) {
     : 'Jag hittar ingen registrerad målvikt ännu.'
 }
 
-function makeProteinReply(context) {
-  const currentWeight = getCurrentWeight(context)
+function makeProteinReply(context, message = '') {
+  const mentionedWeight = extractWeightFromText(message)
+  const currentWeight = mentionedWeight ?? getCurrentWeight(context)
 
   if (!Number.isFinite(currentWeight)) {
     return 'Ett enkelt riktmärke är protein i varje måltid. Lägg gärna in aktuell vikt om du vill att jag räknar gram per dag mer exakt.'
@@ -223,12 +231,13 @@ function makeProteinReply(context) {
   const proteinNeed = calculateProteinNeed(currentWeight)
   const lower = proteinNeed.lower
   const upper = proteinNeed.upper
+  const weightSource = mentionedWeight === null ? 'din senaste vikt' : formatKg(currentWeight)
   const templates = [
-    `Med din senaste vikt blir ett rimligt riktmärke cirka ${lower}-${upper} g protein per dag. Fördela det gärna över 3-4 måltider.`,
-    `Utifrån din senaste vikt kan du sikta på ungefär ${lower}-${upper} g protein per dag. Gör det enkelt: en proteinkälla i varje måltid.`,
+    `Med ${weightSource} blir ett rimligt riktmärke cirka ${lower}-${upper} g protein per dag. Fördela det gärna över 3-4 måltider.`,
+    `Utifrån ${weightSource} kan du sikta på ungefär ${lower}-${upper} g protein per dag. Gör det enkelt: en proteinkälla i varje måltid.`,
   ]
 
-  return pickTemplate(templates, currentWeight)
+  return pickTemplate(templates, `${message}-${currentWeight}`)
 }
 
 function makeDinnerReply(context, message) {
@@ -311,7 +320,7 @@ export function createDeterministicAiCoachReply({ context, intent, message }) {
   }
 
   if (isProteinQuestion(text) || intent.intent === 'protein') {
-    return makeProteinReply(context)
+    return makeProteinReply(context, message)
   }
 
   if (isDinnerQuestion(text)) {

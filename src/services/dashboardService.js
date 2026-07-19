@@ -1,4 +1,4 @@
-import { getRecentAiConversation } from './aiConversationMemory.js'
+﻿import { getRecentAiConversation } from './aiConversationMemory.js'
 import { getAnalysisHistory } from './bodyAnalysisHistory.js'
 import {
   calculateGoalDistance,
@@ -6,6 +6,7 @@ import {
   formatKg,
   getWeightStats as getSharedWeightStats,
   normalizeWeightEntries,
+  parseWeightValue,
 } from './healthCalculations.js'
 import { getMealHistory } from './mealHistory.js'
 
@@ -136,37 +137,6 @@ function getDateTime(value) {
 
 function getWeightStats(weights, options) {
   return getSharedWeightStats(weights, options)
-/*
-  const sortedWeights = safeArray(weights)
-    .map(normalizeWeight)
-    .filter(Boolean)
-    .sort((first, second) => getDateTime(first.date) - getDateTime(second.date))
-  const first = sortedWeights[0] ?? null
-  const latest = sortedWeights.at(-1) ?? null
-  const previous = sortedWeights.at(-2) ?? null
-  const changeSinceStart =
-    first && latest ? Number((latest.value - first.value).toFixed(1)) : null
-  const recentChange =
-    previous && latest ? Number((latest.value - previous.value).toFixed(1)) : null
-
-  return {
-    changeSinceStart,
-    current: latest?.value ?? null,
-    first: first?.value ?? null,
-    hasWeights: sortedWeights.length > 0,
-    latestDate: latest?.date ?? null,
-    recentChange,
-    trend:
-      recentChange === null
-        ? 'För lite data'
-        : recentChange < -0.1
-          ? 'Nedåt'
-          : recentChange > 0.1
-            ? 'Uppåt'
-            : 'Stabil',
-    weights: sortedWeights,
-  }
-*/
 }
 
 function getNutritionSignals({ foods, mealHistory, meals }) {
@@ -532,9 +502,9 @@ function makeActivityItems({
 }
 
 function makeGoals({ profile, weightStats }) {
-  const goalWeight = safeNumber(profile?.goalWeight)
+  const goalWeight = parseWeightValue(profile?.goalWeight)
   const currentWeight = weightStats.current
-  const startWeight = safeNumber(profile?.startWeight, weightStats.first)
+  const startWeight = parseWeightValue(profile?.startWeight, weightStats.first)
   const remaining = calculateGoalDistance(currentWeight, goalWeight)
   const goalProgress = calculateGoalProgress({
     currentWeight,

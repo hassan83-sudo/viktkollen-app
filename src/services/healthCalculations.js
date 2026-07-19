@@ -1,4 +1,4 @@
-export function parseWeightValue(value, fallback = null) {
+﻿export function parseWeightValue(value, fallback = null) {
   if (typeof value === 'number') {
     return Number.isFinite(value) && value > 0 ? value : fallback
   }
@@ -11,18 +11,33 @@ export function parseWeightValue(value, fallback = null) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
 }
 
+function parseSignedNumber(value, fallback = null) {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : fallback
+  }
+
+  const normalized = String(value ?? '')
+    .replace(',', '.')
+    .replace(/[^\d.-]/g, '')
+  const parsed = Number(normalized)
+
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
 export function formatKg(value, options = {}) {
-  const number = parseWeightValue(value)
+  const number = parseSignedNumber(value)
 
   if (number === null) {
     return options.fallback ?? 'saknas'
   }
 
-  return `${number.toLocaleString('sv-SE', {
+  const formattedNumber = number.toLocaleString('sv-SE', {
     maximumFractionDigits: options.maximumFractionDigits ?? 1,
     minimumFractionDigits:
       options.minimumFractionDigits ?? (Number.isInteger(number) ? 0 : 1),
-  })} kg`
+  }).replace('−', '-')
+
+  return `${formattedNumber} kg`
 }
 
 export function normalizeWeightEntries(weights = []) {
@@ -77,7 +92,10 @@ export function calculateGoalProgress({ currentWeight, goalWeight, startWeight }
     return null
   }
 
-  const remainingDistance = Math.abs(current - goal)
+  const remainingDistance = Math.max(
+    0,
+    start > goal ? current - goal : goal - current,
+  )
   const remainingPercent = Math.max(
     0,
     Math.min(100, Math.round((remainingDistance / totalDistance) * 100)),
@@ -114,6 +132,12 @@ export function calculateProteinNeed(weightKg) {
     lower: Math.round(weight * 1.2),
     upper: Math.round(weight * 1.6),
   }
+}
+
+export function extractWeightFromText(text) {
+  const match = String(text || '').match(/(\d{2,3}(?:[,.]\d+)?)\s*(?:kg|kilo)/i)
+
+  return match ? parseWeightValue(match[1]) : null
 }
 
 export function getWeightStats(weights = [], options = {}) {

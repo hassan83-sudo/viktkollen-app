@@ -1,3 +1,5 @@
+import { formatKg } from './healthCalculations.js'
+
 function getGeneratedAt() {
   return new Date().toISOString()
 }
@@ -11,16 +13,16 @@ function getWeightSummary(context = {}) {
   }
 
   if (!Number.isFinite(change)) {
-    return `Senaste vikt är ${currentWeight.toLocaleString('sv-SE')} kg.`
+    return `Senaste vikt är ${formatKg(currentWeight)}.`
   }
 
   const trend = change < 0
-    ? `ned ${Math.abs(change).toLocaleString('sv-SE')} kg`
+    ? `ned ${formatKg(Math.abs(change))}`
     : change > 0
-      ? `upp ${change.toLocaleString('sv-SE')} kg`
+      ? `upp ${formatKg(change)}`
       : 'stabil'
 
-  return `Senaste vikt är ${currentWeight.toLocaleString('sv-SE')} kg och trenden är ${trend} sedan start.`
+  return `Senaste vikt är ${formatKg(currentWeight)} och trenden är ${trend} sedan start.`
 }
 
 function getMealSummary(context = {}) {

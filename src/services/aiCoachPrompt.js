@@ -1,5 +1,9 @@
 import { createDeterministicAiCoachReply } from './aiCoachDeterministicReplies.js'
-import { calculateProteinNeed } from './healthCalculations.js'
+import {
+  calculateProteinNeed,
+  extractWeightFromText,
+  formatKg,
+} from './healthCalculations.js'
 
 const responseTemplates = {
   bodyAnalysis: [
@@ -68,15 +72,17 @@ const responseTemplates = {
       'Du behöver inte rädda hela veckan på en gång. Välj en sak som är lätt att göra nu, och låt det vara dagens vinst.',
   ],
   protein: [
-    ({ context }) => {
-      const current = context.weight?.currentWeight
+    ({ context, message }) => {
+      const mentionedWeight = extractWeightFromText(message)
+      const current = mentionedWeight ?? context.weight?.currentWeight
 
       if (current) {
         const proteinNeed = calculateProteinNeed(current)
         const lower = proteinNeed.lower
         const upper = proteinNeed.upper
+        const weightSource = mentionedWeight === null ? 'din senaste vikt' : formatKg(current)
 
-        return `Med din senaste vikt blir ett enkelt riktmärke ungefär ${lower}-${upper} g protein per dag. Fördela det över måltiderna så blir det lättare att nå.`
+        return `Med ${weightSource} blir ett enkelt riktmärke ungefär ${lower}-${upper} g protein per dag. Fördela det över måltiderna så blir det lättare att nå.`
       }
 
       return 'Ett vanligt riktmärke är protein i varje måltid, till exempel ägg, kvarg, fisk, kyckling, tofu eller bönor.'

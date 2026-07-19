@@ -1,4 +1,4 @@
-import { getRecentAiConversation } from './aiConversationMemory.js'
+﻿import { getRecentAiConversation } from './aiConversationMemory.js'
 import { createAiFallback } from './aiFallbackEngine.js'
 import { buildAiUserContext } from './aiUserContext.js'
 import { formatKg, getWeightStats } from './healthCalculations.js'
@@ -10,45 +10,20 @@ function getWeightTrend(weights = []) {
   const change = weightStats.changeSinceStart
 
   if (!weightStats.hasWeights || !Number.isFinite(change)) {
-    return 'Inte tillrÃ¤ckligt med viktdata Ã¤nnu.'
-  }
-
-  if (change < 0) {
-    return `Vikten Ã¤r ned ${formatKg(Math.abs(change))} sedan start.`
-  }
-
-  if (change > 0) {
-    return `Vikten Ã¤r upp ${formatKg(change)} sedan start.`
-  }
-
-  return 'Vikten Ã¤r stabil sedan start.'
-}
-/*
-  if (!Array.isArray(weights) || weights.length < 2) {
     return 'Inte tillräckligt med viktdata ännu.'
   }
 
-  const first = Number(weights[0]?.value)
-  const latest = Number(weights.at(-1)?.value)
-
-  if (!Number.isFinite(first) || !Number.isFinite(latest)) {
-    return 'Vikttrenden är osäker just nu.'
-  }
-
-  const change = Number((latest - first).toFixed(1))
-
   if (change < 0) {
-    return `Vikten är ned ${Math.abs(change).toLocaleString('sv-SE')} kg sedan start.`
+    return `Vikten är ned ${formatKg(Math.abs(change))} sedan start.`
   }
 
   if (change > 0) {
-    return `Vikten är upp ${change.toLocaleString('sv-SE')} kg sedan start.`
+    return `Vikten är upp ${formatKg(change)} sedan start.`
   }
 
   return 'Vikten är stabil sedan start.'
 }
 
-*/
 function getMealPattern(mealHistory = [], meals = []) {
   if (mealHistory.length > 0) {
     return `${mealHistory.length} fotoanalyser ger bättre bild av matmönstret.`

@@ -1,4 +1,4 @@
-import { getRecentAiConversation } from './aiConversationMemory.js'
+﻿import { getRecentAiConversation } from './aiConversationMemory.js'
 import { createAiFallback } from './aiFallbackEngine.js'
 import { buildAiUserContext } from './aiUserContext.js'
 import { getWeightStats } from './healthCalculations.js'
@@ -8,31 +8,6 @@ const AI_ENDPOINT = '/api/ai'
 function getWeightTrend(weights = []) {
   return getWeightStats(weights).simpleTrend
 }
-
-/*
-  const weightStats = getWeightStats(weights)
-
-  if (weightStats.simpleTrend === 'down') {
-    return 'nedÃ¥t'
-  }
-
-  if (weightStats.simpleTrend === 'up') {
-    return 'uppÃ¥t'
-  }
-
-  return 'stabil'
-/*
-
-    return 'nedåt'
-  }
-
-    return 'uppåt'
-  }
-
-  return 'stabil'
-}
-
-*/
 function hasProtein(meals = [], mealHistory = []) {
   const text = [
     ...meals.map((meal) => meal.text),

@@ -107,6 +107,57 @@ function isGoalDistanceQuestion(text) {
   ])
 }
 
+function isHealthyWeightLossQuestion(text) {
+  return (
+    includesAny(text, [
+      'gå ner i vikt',
+      'ga ner i vikt',
+      'viktnedgång',
+      'viktminskning',
+    ]) &&
+    includesAny(text, [
+      'hälsosamt',
+      'halsosamt',
+      'sunt',
+      'hållbart',
+      'hallbart',
+      'säkert',
+      'sakert',
+    ])
+  )
+}
+
+function extractSleepHours(text) {
+  const match = text.match(/(?:sov|sovit|sova)\s+(?:bara\s+)?(\d{1,2})(?:[,.]\d+)?\s*(?:tim|timmar|h)?/)
+
+  return match ? Number(match[1]) : null
+}
+
+function hasPizzaSignal(text) {
+  return includesAny(text, ['pizza', 'pizzamåltid', 'pizzan'])
+}
+
+function hasStressSignal(text) {
+  return includesAny(text, ['stress', 'stressad', 'pressad', 'överväldigad'])
+}
+
+function makeHealthyWeightLossReply() {
+  return 'Fokusera på ett måttligt energiunderskott, regelbundna måltider, tillräckligt med protein, grönsaker, vardagsrörelse och sömn. Sikta på hållbara vanor i stället för snabb viktnedgång.'
+}
+
+function makeCombinedDinnerWellnessReply(text) {
+  const sleepHours = extractSleepHours(text)
+  const sleepText = Number.isFinite(sleepHours)
+    ? ` och bara sovit ${sleepHours} timmar`
+    : ''
+  const stressText = hasStressSignal(text) ? 'du är stressad' : 'dagen varit mycket'
+  const pizzaText = hasPizzaSignal(text)
+    ? 'En pizzamåltid förstör inte dina framsteg.'
+    : 'En enskild måltid avgör inte dina framsteg.'
+
+  return `${pizzaText} Eftersom ${stressText}${sleepText}, håll kvällen enkel: välj något lätt och mättande med protein, till exempel ägg och knäckebröd, yoghurt med bär eller kyckling med potatis och grönsaker. Försök också prioritera en lugn kväll och sömn.`
+}
+
 function isGoalWeightQuestion(text) {
   return includesAny(text, [
     'vad är min målvikt',
@@ -181,6 +232,14 @@ function makeCurrentWeightReply(context) {
   )}${makeGoalDistanceText(currentWeight, getGoalWeight(context))}`
 }
 
+function makeCurrentWeightOnlyReply(context) {
+  const currentWeight = getCurrentWeight(context)
+
+  return Number.isFinite(currentWeight)
+    ? `Du väger just nu ${formatKg(currentWeight)}.`
+    : null
+}
+
 function makeWeightLossReply(context) {
   const change = context.weight?.changeSinceStart
 
@@ -239,15 +298,39 @@ function makeProteinReply(context, message = '') {
 
   const lower = proteinNeed.lower
   const upper = proteinNeed.upper
-  const weightSource = proteinNeed.weightWasMentioned
-    ? formatKg(proteinNeed.weight)
-    : 'din senaste vikt'
-  const templates = [
-    `Med ${weightSource} blir ett rimligt riktmärke cirka ${lower}-${upper} g protein per dag. Fördela det gärna över 3-4 måltider.`,
-    `Utifrån ${weightSource} kan du sikta på ungefär ${lower}-${upper} g protein per dag. Gör det enkelt: en proteinkälla i varje måltid.`,
-  ]
 
-  return pickTemplate(templates, `${message}-${proteinNeed.weight}`)
+  if (proteinNeed.weightWasMentioned) {
+    return `Utifrån ${formatKg(proteinNeed.weight)} är ett rimligt riktmärke cirka ${lower}-${upper} g protein per dag.`
+  }
+
+  return `Med din senaste vikt blir ett rimligt riktmärke cirka ${lower}-${upper} g protein per dag. Fördela det gärna över 3-4 måltider.`
+}
+
+function collectExplicitReplies(context, text, message) {
+  const replies = []
+  const addReply = (reply) => {
+    if (reply && !replies.includes(reply) && replies.length < 4) {
+      replies.push(reply)
+    }
+  }
+
+  if (isCurrentWeightQuestion(text)) {
+    addReply(makeCurrentWeightOnlyReply(context))
+  }
+
+  if (isWeightLossQuestion(text)) {
+    addReply(makeWeightLossReply(context))
+  }
+
+  if (isGoalDistanceQuestion(text)) {
+    addReply(makeGoalDistanceReply(context))
+  }
+
+  if (isProteinQuestion(text)) {
+    addReply(makeProteinReply(context, message))
+  }
+
+  return replies
 }
 
 function makeDinnerReply(context, message) {
@@ -308,9 +391,27 @@ function makeEightHoursSleepReply(context) {
  */
 export function createDeterministicAiCoachReply({ context, intent, message }) {
   const text = normalizeText(message)
+  const explicitReplies = collectExplicitReplies(context, text, message)
+
+  if (explicitReplies.length > 1) {
+    return explicitReplies.join('\n')
+  }
 
   if (isLateMealHarmQuestion(text)) {
     return makeLateMealHarmReply()
+  }
+
+  if (isHealthyWeightLossQuestion(text)) {
+    return makeHealthyWeightLossReply()
+  }
+
+  if (
+    (hasPizzaSignal(text) || text.includes('åt')) &&
+    hasStressSignal(text) &&
+    extractSleepHours(text) !== null &&
+    isDinnerQuestion(text)
+  ) {
+    return makeCombinedDinnerWellnessReply(text)
   }
 
   if (isCurrentWeightQuestion(text)) {

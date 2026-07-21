@@ -466,6 +466,21 @@ function detectIntents(message, chatHistory = []) {
 
   if (
     includesAny(combinedText, [
+      'hur mycket är kvar till mål',
+      'hur mycket kvar till mål',
+      'hur mycket är kvar till mitt mål',
+      'hur mycket kvar till mitt mål',
+      'kvar till mål',
+      'kvar till mitt mål',
+      'kvar till min målvikt',
+      'till mitt mål',
+    ])
+  ) {
+    addIntent('målvikt')
+  }
+
+  if (
+    includesAny(combinedText, [
       'viktförändring',
       'gått ner',
       'gått upp',
@@ -601,6 +616,57 @@ function makeGoalDistanceSentence(context) {
   }
 
   return 'Du ligger precis på målet.'
+}
+
+function isHealthyWeightLossQuestion(text) {
+  return (
+    includesAny(text, [
+      'gå ner i vikt',
+      'ga ner i vikt',
+      'viktnedgång',
+      'viktminskning',
+    ]) &&
+    includesAny(text, [
+      'hälsosamt',
+      'halsosamt',
+      'sunt',
+      'hållbart',
+      'hallbart',
+      'säkert',
+      'sakert',
+    ])
+  )
+}
+
+function extractSleepHours(text) {
+  const match = text.match(/(?:sov|sovit|sova)\s+(?:bara\s+)?(\d{1,2})(?:[,.]\d+)?\s*(?:tim|timmar|h)?/)
+
+  return match ? Number(match[1]) : null
+}
+
+function hasPizzaSignal(text) {
+  return includesAny(text, ['pizza', 'pizzamåltid', 'pizzan'])
+}
+
+function hasStressSignal(text) {
+  return includesAny(text, ['stress', 'stressad', 'pressad', 'överväldigad'])
+}
+
+function makeHealthyWeightLossReply() {
+  return 'Fokusera på ett måttligt energiunderskott, regelbundna måltider, tillräckligt med protein, grönsaker, vardagsrörelse och sömn. Sikta på hållbara vanor i stället för snabb viktnedgång.'
+}
+
+function makeCombinedDinnerWellnessReply(text) {
+  const sleepHours = extractSleepHours(text)
+  const sleepText = Number.isFinite(sleepHours)
+    ? ` och bara sovit ${sleepHours} timmar`
+    : ''
+  const stressText = hasStressSignal(text) ? 'du är stressad' : 'dagen varit mycket'
+  const pizzaText = hasPizzaSignal(text)
+    ? 'En pizzamåltid förstör inte dina framsteg.'
+    : 'En enskild måltid avgör inte dina framsteg.'
+
+  return `${pizzaText} Eftersom ${stressText}${sleepText}, håll kvällen enkel: välj något lätt och mättande med protein, till exempel ägg och knäckebröd, yoghurt med bär eller kyckling med potatis och grönsaker. Försök också prioritera en lugn kväll och sömn.`
 }
 
 function makeEnergyMoodHint(context) {
@@ -882,6 +948,12 @@ function makeCurrentWeightReply(context) {
   }
 
   return parts.join(' ')
+}
+
+function makeCurrentWeightOnlyReply(context) {
+  return context.weight === null
+    ? 'Jag hittar ingen aktuell vikt i loggen ännu.'
+    : `Du väger just nu ${formatWeight(context.weight)}.`
 }
 
 function makeTodayPlanReply(context) {
@@ -1309,10 +1381,11 @@ function makeCombinedIntentReply(intents, { context, meals, text }) {
   }
 
   const replies = meaningfulIntents
+    .slice(0, 4)
     .map((intent) => {
       switch (normalizeIntentName(intent)) {
         case 'vikt':
-          return makeCurrentWeightReply(context)
+          return makeCurrentWeightOnlyReply(context)
         case 'målvikt':
           return makeGoalWeightReply(context)
         case 'viktförändring':
@@ -1391,6 +1464,19 @@ export function makePersonalCoachReply({
 
   if (exclusiveLateMealReply) {
     return sanitizeCoachReply(exclusiveLateMealReply)
+  }
+
+  if (isHealthyWeightLossQuestion(text)) {
+    return sanitizeCoachReply(makeHealthyWeightLossReply())
+  }
+
+  if (
+    (hasPizzaSignal(text) || text.includes('åt')) &&
+    hasStressSignal(text) &&
+    extractSleepHours(text) !== null &&
+    includesAny(text, ['vad ska jag äta ikväll', 'middag', 'ikväll'])
+  ) {
+    return sanitizeCoachReply(makeCombinedDinnerWellnessReply(text))
   }
 
   const topic = getConversationTopic(message, chatHistory)

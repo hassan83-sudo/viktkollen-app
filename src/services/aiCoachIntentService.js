@@ -99,6 +99,23 @@ function isLateMealText(text) {
   return hasMeal && hasSleepTiming
 }
 
+function isHealthyWeightLossQuestion(text) {
+  const plainText = stripDiacritics(text)
+  const asksWeightLoss = [
+    'ga ner i vikt',
+    'viktnedgang',
+    'viktminskning',
+  ].some((term) => plainText.includes(term))
+  const asksHealthy = [
+    'halsosamt',
+    'sunt',
+    'hallbart',
+    'sakert',
+  ].some((term) => plainText.includes(term))
+
+  return asksWeightLoss && asksHealthy
+}
+
 /**
  * Classifies the user's AI coach message into a stable intent.
  *
@@ -119,6 +136,15 @@ export function classifyAiCoachIntent({ message, chatHistory = [] }) {
       intent: 'lateMeal',
       isFollowUp: Boolean(shouldUsePreviousContext),
       matchedIntents: ['lateMeal'],
+    }
+  }
+
+  if (isHealthyWeightLossQuestion(combinedText)) {
+    return {
+      confidence: 0.9,
+      intent: 'general',
+      isFollowUp: Boolean(shouldUsePreviousContext),
+      matchedIntents: ['general'],
     }
   }
 

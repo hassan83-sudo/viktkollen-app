@@ -1,8 +1,7 @@
 import { createDeterministicAiCoachReply } from './aiCoachDeterministicReplies.js'
 import {
-  calculateProteinNeed,
-  extractWeightFromText,
   formatKg,
+  getProteinNeedForContext,
 } from './healthCalculations.js'
 
 const responseTemplates = {
@@ -73,14 +72,17 @@ const responseTemplates = {
   ],
   protein: [
     ({ context, message }) => {
-      const mentionedWeight = extractWeightFromText(message)
-      const current = mentionedWeight ?? context.weight?.currentWeight
+      const proteinNeed = getProteinNeedForContext({
+        message,
+        savedWeight: context.weight?.currentWeight,
+      })
 
-      if (current) {
-        const proteinNeed = calculateProteinNeed(current)
+      if (proteinNeed) {
         const lower = proteinNeed.lower
         const upper = proteinNeed.upper
-        const weightSource = mentionedWeight === null ? 'din senaste vikt' : formatKg(current)
+        const weightSource = proteinNeed.weightWasMentioned
+          ? formatKg(proteinNeed.weight)
+          : 'din senaste vikt'
 
         return `Med ${weightSource} blir ett enkelt riktmärke ungefär ${lower}-${upper} g protein per dag. Fördela det över måltiderna så blir det lättare att nå.`
       }

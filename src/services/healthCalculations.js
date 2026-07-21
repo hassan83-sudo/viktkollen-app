@@ -92,18 +92,54 @@ export function calculateGoalProgress({ currentWeight, goalWeight, startWeight }
     return null
   }
 
-  const remainingDistance = Math.max(
+  const progressDistance = Math.max(
     0,
-    start > goal ? current - goal : goal - current,
+    start > goal ? start - current : current - start,
   )
-  const remainingPercent = Math.max(
+  const completePercent = Math.max(
     0,
-    Math.min(100, Math.round((remainingDistance / totalDistance) * 100)),
+    Math.min(100, Math.round((progressDistance / totalDistance) * 100)),
   )
+  const remainingPercent = Math.max(0, Math.min(100, 100 - completePercent))
 
   return {
-    completePercent: Math.max(0, Math.min(100, 100 - remainingPercent)),
+    completePercent,
     remainingPercent,
+  }
+}
+
+export function getGoalDistanceSummary({ currentWeight, goalWeight }) {
+  const current = parseWeightValue(currentWeight)
+  const goal = parseWeightValue(goalWeight)
+
+  if (current === null || goal === null) {
+    return null
+  }
+
+  const remaining = calculateGoalDistance(current, goal)
+
+  return {
+    currentWeight: current,
+    goalWeight: goal,
+    remaining,
+  }
+}
+
+export function getProteinWeight({ message = '', savedWeight }) {
+  return extractWeightFromText(message) ?? parseWeightValue(savedWeight)
+}
+
+export function getProteinNeedForContext({ message = '', savedWeight }) {
+  const weight = getProteinWeight({ message, savedWeight })
+
+  if (weight === null) {
+    return null
+  }
+
+  return {
+    ...calculateProteinNeed(weight),
+    weight,
+    weightWasMentioned: extractWeightFromText(message) !== null,
   }
 }
 

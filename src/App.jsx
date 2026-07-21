@@ -23,8 +23,8 @@ import { createAiSuggestions } from './services/aiSuggestions.js'
 import { buildAiUserContext } from './services/aiUserContext.js'
 import { createDashboardData } from './services/dashboardService.js'
 import {
-  calculateProteinNeed,
   formatKg as formatHealthKg,
+  getProteinNeedForContext,
   parseWeightValue,
 } from './services/healthCalculations.js'
 import {
@@ -674,17 +674,14 @@ function makeBedtimeEatingReply() {
 }
 
 function makeProteinKnowledgeReply(message) {
-  const text = message.toLowerCase()
-  const weightMatch = text.match(/(\d{2,3})(?:\s?kg|\s?kilo)/)
-  const bodyWeight = weightMatch ? Number(weightMatch[1]) : null
+  const proteinNeed = getProteinNeedForContext({ message })
 
-  if (Number.isFinite(bodyWeight)) {
-    const proteinNeed = calculateProteinNeed(bodyWeight)
+  if (proteinNeed) {
     const lower = proteinNeed.lower
     const upper = proteinNeed.upper
     const activeUpper = proteinNeed.activeUpper
 
-    return `FÃ¶r en person som vÃ¤ger ${bodyWeight} kg Ã¤r ett rimligt riktmÃ¤rke ofta cirka ${lower}-${upper} g protein per dag. Om personen styrketrÃ¤nar mycket eller vill bygga muskler kan ungefÃ¤r ${upper}-${activeUpper} g per dag vara mer relevant. FÃ¶rdela gÃ¤rna Ã¶ver 3-4 mÃ¥ltider, till exempel 25-40 g per mÃ¥ltid.`
+    return `FÃ¶r en person som vÃ¤ger ${formatWeight(proteinNeed.weight)} Ã¤r ett rimligt riktmÃ¤rke ofta cirka ${lower}-${upper} g protein per dag. Om personen styrketrÃ¤nar mycket eller vill bygga muskler kan ungefÃ¤r ${upper}-${activeUpper} g per dag vara mer relevant. FÃ¶rdela gÃ¤rna Ã¶ver 3-4 mÃ¥ltider, till exempel 25-40 g per mÃ¥ltid.`
   }
 
   return 'Ett vanligt riktmÃ¤rke Ã¤r cirka 1,2-1,6 g protein per kilo kroppsvikt per dag fÃ¶r en aktiv vardag. Vid mycket styrketrÃ¤ning kan behovet ligga hÃ¶gre, ofta runt 1,6-2,0 g/kg. FÃ¶rdela det gÃ¤rna Ã¶ver flera mÃ¥ltider.'

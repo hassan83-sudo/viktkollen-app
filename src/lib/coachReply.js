@@ -1,7 +1,8 @@
 import {
-  calculateGoalDistance,
   calculateWeightChange,
   formatKg,
+  getGoalDistanceSummary,
+  getProteinNeedForContext,
   parseWeightValue,
 } from '../services/healthCalculations.js'
 
@@ -580,14 +581,19 @@ function makeWeightTrendSentence(context) {
 }
 
 function makeGoalDistanceSentence(context) {
-  if (context.weight === null || context.goalWeight === null) {
+  const summary = getGoalDistanceSummary({
+    currentWeight: context.weight,
+    goalWeight: context.goalWeight,
+  })
+
+  if (summary === null) {
     return ''
   }
 
-  const remaining = calculateGoalDistance(context.weight, context.goalWeight)
+  const remaining = summary.remaining
 
   if (remaining > 0) {
-    return `Det är ${formatWeight(remaining)} kvar till målet.`
+    return `Det är ${formatWeight(remaining)} kvar till ditt mål på ${formatWeight(summary.goalWeight)}.`
   }
 
   if (remaining < 0) {
@@ -735,22 +741,27 @@ function makeMealsReply(meals = [], context = {}) {
 }
 
 function makeGoalWeightReply(context) {
+  const summary = getGoalDistanceSummary({
+    currentWeight: context.weight,
+    goalWeight: context.goalWeight,
+  })
+
   if (context.goalWeight === null) {
     return context.weight === null
       ? 'Jag hittar ingen registrerad målvikt ännu.'
       : `Jag hittar ingen registrerad målvikt ännu. Din senaste vikt är ${formatWeight(context.weight)}.`
   }
 
-  if (context.weight === null) {
+  if (summary === null) {
     return `Din registrerade målvikt är ${formatWeight(context.goalWeight)}.`
   }
 
-  const difference = calculateGoalDistance(context.weight, context.goalWeight)
+  const difference = summary.remaining
 
   if (difference > 0) {
     const trend = makeWeightTrendSentence(context)
 
-    return `Din registrerade målvikt är ${formatWeight(context.goalWeight)}. Från senaste vikten är det ${formatWeight(difference)} kvar.${trend ? ` ${trend}` : ''}`
+    return `Det är ${formatWeight(difference)} kvar till ditt mål på ${formatWeight(summary.goalWeight)}.${trend ? ` ${trend}` : ''}`
   }
 
   if (difference < 0) {
@@ -815,10 +826,14 @@ function makeWeightProgressReply(context) {
     context.goal === 'gå ner i vikt' &&
     context.goalWeight !== null
   ) {
-    const remaining = calculateGoalDistance(context.weight, context.goalWeight)
+    const goalSummary = getGoalDistanceSummary({
+      currentWeight: context.weight,
+      goalWeight: context.goalWeight,
+    })
+    const remaining = goalSummary?.remaining ?? null
     parts.push(
-      remaining > 0
-        ? `Det är ${formatWeight(remaining)} kvar till ditt registrerade mål.`
+      remaining !== null && remaining > 0
+        ? `Det är ${formatWeight(remaining)} kvar till ditt mål på ${formatWeight(goalSummary.goalWeight)}.`
         : 'Du är vid eller under ditt registrerade målvärde.',
     )
   } else if (context.goalWeight !== null) {
@@ -1017,10 +1032,14 @@ function makeHowMuchReply(context, topic = '') {
   }
 
   if (context.goalWeight !== null && context.weight !== null) {
-    const remaining = calculateGoalDistance(context.weight, context.goalWeight)
+    const goalSummary = getGoalDistanceSummary({
+      currentWeight: context.weight,
+      goalWeight: context.goalWeight,
+    })
+    const remaining = goalSummary?.remaining ?? null
 
-    if (remaining > 0) {
-      return `Om du menar målvikt är det ${formatWeight(remaining)} kvar från din senaste vikt till målet.`
+    if (remaining !== null && remaining > 0) {
+      return `Det är ${formatWeight(remaining)} kvar till ditt mål på ${formatWeight(goalSummary.goalWeight)}.`
     }
   }
 
@@ -1115,10 +1134,14 @@ function makeSleepReply(context) {
   return `Sömn påverkar hunger, ork och motivation mer än många tror.${energyHint} Sikta på en jämn läggtid och gör nästa steg enkelt: mat, vatten och lugn kvällsrutin.`
 }
 
-function makeProteinReply(context) {
-  const weightHint = context.weight === null
+function makeProteinReply(context, message = '') {
+  const proteinNeed = getProteinNeedForContext({
+    message,
+    savedWeight: context.weight,
+  })
+  const weightHint = proteinNeed === null
     ? 'Ett bra riktmärke är protein i varje måltid.'
-    : `Med senaste vikt ${formatWeight(context.weight)} kan protein i varje måltid vara ett bra fokus.`
+    : `För en person som väger ${formatWeight(proteinNeed.weight)} är ett rimligt riktmärke cirka ${proteinNeed.lower}-${proteinNeed.upper} g protein per dag.`
   const checklistHint = context.foodTotal > 0
     ? ` Matchecklistan visar ${context.completedFoods}/${context.foodTotal} klara punkter.`
     : ''
@@ -1207,7 +1230,7 @@ function makeIntentReply(intent, { context, meals, text, topic }) {
   }
 
   if (normalizedIntent === 'protein') {
-    return makeProteinReply(context)
+    return makeProteinReply(context, text)
   }
 
   if (normalizedIntent === 'sena måltider' && isHarmQuestion(text)) {
@@ -1303,7 +1326,7 @@ function makeCombinedIntentReply(intents, { context, meals, text }) {
         case 'sömn':
           return makeSleepReply(context)
         case 'protein':
-          return makeProteinReply(context)
+          return makeProteinReply(context, text)
         case 'kalorier':
           return makeCaloriesReply(context)
         case 'måltider':

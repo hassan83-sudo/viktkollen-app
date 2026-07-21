@@ -1,8 +1,8 @@
 ﻿import {
-  calculateGoalDistance,
-  calculateProteinNeed,
   extractWeightFromText,
   formatKg,
+  getGoalDistanceSummary,
+  getProteinNeedForContext,
   parseWeightValue,
 } from './healthCalculations.js'
 
@@ -54,18 +54,20 @@ function makeWeightProgressText(changeSinceStart) {
 }
 
 function makeGoalDistanceText(currentWeight, goalWeight) {
-  if (!Number.isFinite(currentWeight) || !Number.isFinite(goalWeight)) {
+  const summary = getGoalDistanceSummary({ currentWeight, goalWeight })
+
+  if (summary === null) {
     return ''
   }
 
-  const distanceToGoal = calculateGoalDistance(currentWeight, goalWeight)
+  const distanceToGoal = summary.remaining
 
   if (distanceToGoal === 0) {
     return ' Du är på din registrerade målvikt.'
   }
 
   return distanceToGoal > 0
-    ? ` Det är ${formatKg(distanceToGoal)} kvar till ditt mål.`
+    ? ` Det är ${formatKg(distanceToGoal)} kvar till ditt mål på ${formatKg(summary.goalWeight)}.`
     : ` Du ligger ${formatKg(Math.abs(distanceToGoal))} under ditt registrerade mål.`
 }
 
@@ -200,16 +202,21 @@ function makeWeightLossReply(context) {
 function makeGoalDistanceReply(context) {
   const currentWeight = getCurrentWeight(context)
   const goalWeight = getGoalWeight(context)
+  const summary = getGoalDistanceSummary({ currentWeight, goalWeight })
 
   if (!Number.isFinite(goalWeight)) {
     return 'Jag hittar ingen registrerad målvikt ännu. Lägg in en målvikt så kan jag räkna kvar till mål.'
   }
 
-  if (!Number.isFinite(currentWeight)) {
+  if (summary === null) {
     return `Din registrerade målvikt är ${formatKg(goalWeight)}. Jag saknar aktuell vikt för att räkna hur mycket som är kvar.`
   }
 
-  return makeGoalDistanceText(currentWeight, goalWeight).trim()
+  if (summary.remaining > 0) {
+    return `Det är ${formatKg(summary.remaining)} kvar till ditt mål på ${formatKg(summary.goalWeight)}.`
+  }
+
+  return makeGoalDistanceText(summary.currentWeight, summary.goalWeight).trim()
 }
 
 function makeGoalWeightReply(context) {
@@ -221,23 +228,26 @@ function makeGoalWeightReply(context) {
 }
 
 function makeProteinReply(context, message = '') {
-  const mentionedWeight = extractWeightFromText(message)
-  const currentWeight = mentionedWeight ?? getCurrentWeight(context)
+  const proteinNeed = getProteinNeedForContext({
+    message,
+    savedWeight: getCurrentWeight(context),
+  })
 
-  if (!Number.isFinite(currentWeight)) {
+  if (proteinNeed === null) {
     return 'Ett enkelt riktmärke är protein i varje måltid. Lägg gärna in aktuell vikt om du vill att jag räknar gram per dag mer exakt.'
   }
 
-  const proteinNeed = calculateProteinNeed(currentWeight)
   const lower = proteinNeed.lower
   const upper = proteinNeed.upper
-  const weightSource = mentionedWeight === null ? 'din senaste vikt' : formatKg(currentWeight)
+  const weightSource = proteinNeed.weightWasMentioned
+    ? formatKg(proteinNeed.weight)
+    : 'din senaste vikt'
   const templates = [
     `Med ${weightSource} blir ett rimligt riktmärke cirka ${lower}-${upper} g protein per dag. Fördela det gärna över 3-4 måltider.`,
     `Utifrån ${weightSource} kan du sikta på ungefär ${lower}-${upper} g protein per dag. Gör det enkelt: en proteinkälla i varje måltid.`,
   ]
 
-  return pickTemplate(templates, `${message}-${currentWeight}`)
+  return pickTemplate(templates, `${message}-${proteinNeed.weight}`)
 }
 
 function makeDinnerReply(context, message) {

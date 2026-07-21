@@ -1,12 +1,10 @@
 ﻿import { getRecentAiConversation } from './aiConversationMemory.js'
 import { getAnalysisHistory } from './bodyAnalysisHistory.js'
 import {
-  calculateGoalDistance,
-  calculateGoalProgress,
   formatKg,
+  getUnifiedWeightContext,
   getWeightStats as getSharedWeightStats,
   normalizeWeightEntries,
-  parseWeightValue,
 } from './healthCalculations.js'
 import { getMealHistory } from './mealHistory.js'
 
@@ -502,16 +500,15 @@ function makeActivityItems({
 }
 
 function makeGoals({ profile, weightStats }) {
-  const goalWeight = parseWeightValue(profile?.goalWeight)
-  const currentWeight = weightStats.current
-  const startWeight = parseWeightValue(profile?.startWeight, weightStats.first)
-  const remaining = calculateGoalDistance(currentWeight, goalWeight)
-  const goalProgress = calculateGoalProgress({
-    currentWeight,
-    goalWeight,
-    startWeight,
+  const weightContext = getUnifiedWeightContext({
+    currentWeight: weightStats.current,
+    profile,
+    weights: weightStats.weights,
   })
-  const percentRemaining = goalProgress?.remainingPercent ?? null
+  const currentWeight = weightContext.currentWeight
+  const goalWeight = weightContext.goalWeight
+  const remaining = weightContext.remainingKg
+  const percentRemaining = weightContext.percentRemaining
   const milestone =
     remaining === null
       ? 'Sätt målvikt och logga nästa vikt.'

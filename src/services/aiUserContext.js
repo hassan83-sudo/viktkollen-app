@@ -1,4 +1,4 @@
-import { getWeightStats } from './healthCalculations.js'
+import { getUnifiedWeightContext } from './healthCalculations.js'
 
 let lastContextKey = ''
 let lastContextValue = null
@@ -16,15 +16,24 @@ function compactProfile(profile = {}) {
   }
 }
 
-function getWeightContext(weights = [], currentWeight) {
-  const weightStats = getWeightStats(weights, { currentWeight })
+function getWeightContext(weights = [], currentWeight, profile = {}) {
+  const weightContext = getUnifiedWeightContext({
+    currentWeight,
+    profile,
+    weights,
+  })
 
   return {
-    changeSinceStart: weightStats.changeSinceStart,
-    currentWeight: weightStats.current,
-    history: weightStats.weights.slice(-10),
-    latestWeight: weightStats.latestWeight,
-    startWeight: weightStats.weights[0] || null,
+    changeSinceStart: weightContext.changeSinceStart,
+    completePercent: weightContext.completePercent,
+    currentWeight: weightContext.currentWeight,
+    goalWeight: weightContext.goalWeight,
+    history: weightContext.history.slice(-10),
+    latestWeight: weightContext.latestWeight,
+    percentRemaining: weightContext.percentRemaining,
+    remainingKg: weightContext.remainingKg,
+    startWeight: weightContext.startWeight,
+    trend: weightContext.trend,
   }
 }
 
@@ -100,7 +109,7 @@ export function buildAiUserContext(data = {}) {
     latestWeeklyReport: data.latestWeeklyReport || null,
     meals: getMealsContext(data.meals, data.mealHistory),
     profile: compactProfile(data.profile),
-    weight: getWeightContext(data.weights, data.currentWeight),
+    weight: getWeightContext(data.weights, data.currentWeight, data.profile),
   }
 
   return lastContextValue

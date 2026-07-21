@@ -1,9 +1,7 @@
 import {
-  calculateWeightChange,
   formatKg,
-  getGoalDistanceSummary,
+  getUnifiedWeightContext,
   getProteinNeedForContext,
-  parseWeightValue,
 } from '../services/healthCalculations.js'
 
 function normalizeText(value) {
@@ -300,7 +298,11 @@ function detectIntent(message, chatHistory = []) {
     return 'sena måltider'
   }
 
-  if (isContextualFollowUp(text) && !hasPreviousContext(chatHistory)) {
+  if (
+    isContextualFollowUp(text) &&
+    !hasPreviousContext(chatHistory) &&
+    detectIntents(message, chatHistory).length === 0
+  ) {
     return ''
   }
 
@@ -310,6 +312,37 @@ function detectIntent(message, chatHistory = []) {
 
   if (includesAny(text, ['varför', 'varför då'])) {
     return getConversationTopic(message, chatHistory) || 'generell hälsa'
+  }
+
+  if (
+    includesAny(combinedText, [
+      'hur mycket är kvar till mål',
+      'hur mycket kvar till mål',
+      'hur mycket är kvar till mitt mål',
+      'hur mycket kvar till mitt mål',
+      'kvar till mål',
+      'kvar till mitt mål',
+      'kvar till min målvikt',
+      'till mitt mål',
+    ])
+  ) {
+    return 'målvikt'
+  }
+
+  if (
+    includesAny(combinedText, [
+      'hur mycket har jag gått ner',
+      'hur mycket har jag gått ned',
+      'viktförändring',
+      'gått ner',
+      'gått ned',
+      'gått upp',
+      'sedan start',
+      'förändrats',
+      'ändrats',
+    ])
+  ) {
+    return 'viktförändring'
   }
 
   if (includesAny(text, ['hur mycket', 'hur många', 'hur länge', 'hur lång tid'])) {
@@ -370,7 +403,7 @@ function detectIntent(message, chatHistory = []) {
     return 'vikt'
   }
 
-  if (includesAny(combinedText, ['steg', 'gått', 'promenad', 'aktivitet'])) {
+  if (includesAny(combinedText, ['steg', 'promenad', 'aktivitet'])) {
     return 'steg'
   }
 
@@ -496,7 +529,7 @@ function detectIntents(message, chatHistory = []) {
     addIntent('vikt')
   }
 
-  if (includesAny(combinedText, ['steg', 'gått', 'promenad', 'aktivitet'])) {
+  if (includesAny(combinedText, ['steg', 'promenad', 'aktivitet'])) {
     addIntent('steg')
   }
 
@@ -541,15 +574,10 @@ function detectIntents(message, chatHistory = []) {
   return intents
 }
 
-function parseWeight(value) {
-  return parseWeightValue(value)
-}
-
 function formatWeight(value) {
   return formatKg(value, {
     fallback: '',
     maximumFractionDigits: 1,
-    minimumFractionDigits: 1,
   })
 }
 
@@ -579,36 +607,15 @@ function makeNamedSentence(context, sentence) {
     : `${sentence.charAt(0).toLocaleUpperCase('sv-SE')}${sentence.slice(1)}`
 }
 
-function getWeightChange(context) {
-  return calculateWeightChange(context.weight, context.startWeight)
-}
-
-function makeWeightTrendSentence(context) {
-  const change = getWeightChange(context)
-
-  if (change === null || change === 0) {
-    return ''
-  }
-
-  return change < 0
-    ? `Du är ${formatWeight(Math.abs(change))} ner sedan start.`
-    : `Du är ${formatWeight(change)} upp sedan start.`
-}
-
 function makeGoalDistanceSentence(context) {
-  const summary = getGoalDistanceSummary({
-    currentWeight: context.weight,
-    goalWeight: context.goalWeight,
-  })
+  const remaining = context.remainingKg
 
-  if (summary === null) {
+  if (!Number.isFinite(remaining) || context.goalWeight === null) {
     return ''
   }
-
-  const remaining = summary.remaining
 
   if (remaining > 0) {
-    return `Det är ${formatWeight(remaining)} kvar till ditt mål på ${formatWeight(summary.goalWeight)}.`
+    return `Det är ${formatWeight(remaining)} kvar till ditt mål på ${formatWeight(context.goalWeight)}.`
   }
 
   if (remaining < 0) {
@@ -650,6 +657,20 @@ function hasPizzaSignal(text) {
 
 function hasStressSignal(text) {
   return includesAny(text, ['stress', 'stressad', 'pressad', 'överväldigad'])
+}
+
+function hasUserMentionedMealToday(text) {
+  return (
+    hasPizzaSignal(text) ||
+    includesAny(text, [
+      'jag åt',
+      'jag har ätit',
+      'åt idag',
+      'åt i dag',
+      'ätit idag',
+      'ätit i dag',
+    ])
+  )
 }
 
 function makeHealthyWeightLossReply() {
@@ -702,38 +723,6 @@ function makeRecentMealsHint(meals = [], limit = 4) {
     .join('; ')
 }
 
-function getWeightEntries(weights = []) {
-  if (!Array.isArray(weights)) {
-    return []
-  }
-
-  return weights
-    .map((entry) => ({
-      date: entry?.date,
-      value: parseWeight(entry?.value),
-    }))
-    .filter((entry) => entry.date && entry.value !== null)
-}
-
-function getFallbackStartWeight(weight, startWeight, goalWeight) {
-  if (startWeight !== null) {
-    const looksLikeCurrentWeight =
-      weight !== null && Math.abs(startWeight - weight) <= 0.2
-    const hasLowerGoal =
-      weight !== null && goalWeight !== null && goalWeight < weight
-
-    if (!looksLikeCurrentWeight || !hasLowerGoal) {
-      return startWeight
-    }
-  }
-
-  if (weight !== null && Math.abs(weight - 90.1) <= 0.05) {
-    return 91.8
-  }
-
-  return startWeight
-}
-
 function getPersonalContext({
   checkIn = {},
   currentWeight,
@@ -741,15 +730,11 @@ function getPersonalContext({
   profile = {},
   weights = [],
 }) {
-  const weightEntries = getWeightEntries(weights)
-  const firstWeightEntry = weightEntries[0]
-  const latestWeightEntry = weightEntries.at(-1)
-  const weight = latestWeightEntry?.value ?? parseWeight(currentWeight)
-  const goalWeight = parseWeight(profile.goalWeight)
-  const profileStartWeight = parseWeight(profile.startWeight)
-  const startWeight =
-    firstWeightEntry?.value ??
-    getFallbackStartWeight(weight, profileStartWeight, goalWeight)
+  const weightContext = getUnifiedWeightContext({
+    currentWeight,
+    profile,
+    weights,
+  })
   const steps = Number(checkIn.steps)
   const energy = Number(checkIn.energy)
   const completedFoods = foods.filter((item) => item?.done).length
@@ -759,12 +744,15 @@ function getPersonalContext({
     energy: Number.isFinite(energy) ? energy : null,
     foodTotal: foods.length,
     goal: profile.goal || 'hållbara vanor',
-    goalWeight,
+    goalWeight: weightContext.goalWeight,
     mood: String(checkIn.mood || '').trim(),
     name: sanitizeName(profile.name),
-    startWeight,
+    changeSinceStart: weightContext.changeSinceStart,
+    percentRemaining: weightContext.percentRemaining,
+    remainingKg: weightContext.remainingKg,
+    startWeight: weightContext.startWeight,
     steps: Number.isFinite(steps) ? steps : null,
-    weight,
+    weight: weightContext.currentWeight,
     workout: Boolean(checkIn.workout),
   }
 }
@@ -790,9 +778,18 @@ function getFoodSummary(context) {
   return `Du har ${context.completedFoods}/${context.foodTotal} matpunkter klara. Gör nästa steg litet: lägg till en proteinbas eller frukt/grönsaker.${energyHint}`
 }
 
-function makeMealsReply(meals = [], context = {}) {
+function makeMealsReply(meals = [], context = {}, text = '') {
   if (!Array.isArray(meals) || meals.length === 0) {
     const checklistHint = makeFoodProgressHint(context)
+    const mentionedMealHint = hasUserMentionedMealToday(text)
+      ? 'Jag räknar det du skrev som dagens måltid, även om den inte ligger i loggen.'
+      : ''
+
+    if (mentionedMealHint) {
+      return checklistHint
+        ? `${mentionedMealHint} Checklistan visar ${checklistHint}. Nästa steg: håll kvällsmaten enkel med protein, något grönt och en lugn bas.`
+        : `${mentionedMealHint} Nästa steg: håll kvällsmaten enkel med protein, något grönt och en lugn bas.`
+    }
 
     return checklistHint
       ? `Jag ser inga måltider loggade ännu i dag, men checklistan visar ${checklistHint}. Lägg gärna in nästa måltid så kan jag resonera mer konkret.`
@@ -807,27 +804,20 @@ function makeMealsReply(meals = [], context = {}) {
 }
 
 function makeGoalWeightReply(context) {
-  const summary = getGoalDistanceSummary({
-    currentWeight: context.weight,
-    goalWeight: context.goalWeight,
-  })
-
   if (context.goalWeight === null) {
     return context.weight === null
       ? 'Jag hittar ingen registrerad målvikt ännu.'
       : `Jag hittar ingen registrerad målvikt ännu. Din senaste vikt är ${formatWeight(context.weight)}.`
   }
 
-  if (summary === null) {
+  if (!Number.isFinite(context.remainingKg)) {
     return `Din registrerade målvikt är ${formatWeight(context.goalWeight)}.`
   }
 
-  const difference = summary.remaining
+  const difference = context.remainingKg
 
   if (difference > 0) {
-    const trend = makeWeightTrendSentence(context)
-
-    return `Det är ${formatWeight(difference)} kvar till ditt mål på ${formatWeight(summary.goalWeight)}.${trend ? ` ${trend}` : ''}`
+    return `Det är ${formatWeight(difference)} kvar till ditt mål på ${formatWeight(context.goalWeight)}.`
   }
 
   if (difference < 0) {
@@ -892,14 +882,10 @@ function makeWeightProgressReply(context) {
     context.goal === 'gå ner i vikt' &&
     context.goalWeight !== null
   ) {
-    const goalSummary = getGoalDistanceSummary({
-      currentWeight: context.weight,
-      goalWeight: context.goalWeight,
-    })
-    const remaining = goalSummary?.remaining ?? null
+    const remaining = context.remainingKg
     parts.push(
-      remaining !== null && remaining > 0
-        ? `Det är ${formatWeight(remaining)} kvar till ditt mål på ${formatWeight(goalSummary.goalWeight)}.`
+      Number.isFinite(remaining) && remaining > 0
+        ? `Det är ${formatWeight(remaining)} kvar till ditt mål på ${formatWeight(context.goalWeight)}.`
         : 'Du är vid eller under ditt registrerade målvärde.',
     )
   } else if (context.goalWeight !== null) {
@@ -907,9 +893,9 @@ function makeWeightProgressReply(context) {
   }
 
   if (context.startWeight !== null) {
-    const change = calculateWeightChange(context.weight, context.startWeight)
+    const change = context.changeSinceStart
 
-    if (change !== 0) {
+    if (Number.isFinite(change) && change !== 0) {
       parts.push(
         change < 0
           ? `Du har gått ner ${formatWeight(Math.abs(change))} sedan start.`
@@ -930,11 +916,11 @@ function makeCurrentWeightReply(context) {
   const goalDistance = makeGoalDistanceSentence(context)
 
   if (context.startWeight !== null) {
-    const change = calculateWeightChange(context.weight, context.startWeight)
+    const change = context.changeSinceStart
 
-    if (change < 0) {
+    if (Number.isFinite(change) && change < 0) {
       parts.push(`Du har gått ner ${formatWeight(Math.abs(change))} sedan start.`)
-    } else if (change > 0) {
+    } else if (Number.isFinite(change) && change > 0) {
       parts.push(`Du har gått upp ${formatWeight(change)} sedan start.`)
     }
   }
@@ -1104,14 +1090,10 @@ function makeHowMuchReply(context, topic = '') {
   }
 
   if (context.goalWeight !== null && context.weight !== null) {
-    const goalSummary = getGoalDistanceSummary({
-      currentWeight: context.weight,
-      goalWeight: context.goalWeight,
-    })
-    const remaining = goalSummary?.remaining ?? null
+    const remaining = context.remainingKg
 
-    if (remaining !== null && remaining > 0) {
-      return `Det är ${formatWeight(remaining)} kvar till ditt mål på ${formatWeight(goalSummary.goalWeight)}.`
+    if (Number.isFinite(remaining) && remaining > 0) {
+      return `Det är ${formatWeight(remaining)} kvar till ditt mål på ${formatWeight(context.goalWeight)}.`
     }
   }
 
@@ -1189,13 +1171,19 @@ function makeWeightChangeReply(context) {
     return makeWeightProgressReply(context)
   }
 
-  const change = calculateWeightChange(context.weight, context.startWeight)
+  const change = context.changeSinceStart
 
-  if (change === 0) {
-    return `Din senaste vikt är ${formatWeight(context.weight)}, samma som din registrerade startvikt. Följ gärna trenden över flera vägningar.`
+  if (!Number.isFinite(change)) {
+    return makeWeightProgressReply(context)
   }
 
-  return `Din senaste vikt är ${formatWeight(context.weight)}. Det är ${change < 0 ? 'ned' : 'upp'} ${formatWeight(Math.abs(change))} sedan start.`
+  if (change === 0) {
+    return 'Du ligger på samma vikt som start just nu.'
+  }
+
+  return change < 0
+    ? `Du har gått ner ${formatWeight(Math.abs(change))} sedan start.`
+    : `Du ligger ${formatWeight(change)} över startvikten just nu.`
 }
 
 function makeSleepReply(context) {
@@ -1211,6 +1199,10 @@ function makeProteinReply(context, message = '') {
     message,
     savedWeight: context.weight,
   })
+  if (proteinNeed?.weightWasMentioned) {
+    return `Utifrån ${formatWeight(proteinNeed.weight)} är ett rimligt riktmärke cirka ${proteinNeed.lower}-${proteinNeed.upper} g protein per dag.`
+  }
+
   const weightHint = proteinNeed === null
     ? 'Ett bra riktmärke är protein i varje måltid.'
     : `För en person som väger ${formatWeight(proteinNeed.weight)} är ett rimligt riktmärke cirka ${proteinNeed.lower}-${proteinNeed.upper} g protein per dag.`
@@ -1310,6 +1302,18 @@ function makeIntentReply(intent, { context, meals, text, topic }) {
   }
 
   if (includesAny(text, ['hur mycket', 'hur många'])) {
+    if (normalizedIntent === 'viktförändring') {
+      return makeWeightChangeReply(context)
+    }
+
+    if (normalizedIntent === 'målvikt') {
+      return makeGoalWeightReply(context)
+    }
+
+    if (normalizedIntent === 'vikt') {
+      return makeCurrentWeightReply(context)
+    }
+
     return makeHowMuchReply(context, topic)
   }
 
@@ -1353,7 +1357,7 @@ function makeIntentReply(intent, { context, meals, text, topic }) {
     case 'måltider':
       return includesAny(text, ['checklista', 'checklistan'])
         ? getFoodSummary(context)
-        : makeMealsReply(meals, context)
+        : makeMealsReply(meals, context, text)
     case 'motivation':
       return makeMotivationReply(context)
     case 'stress':
@@ -1376,7 +1380,7 @@ function makeCombinedIntentReply(intents, { context, meals, text }) {
     (intent) => intent !== 'generell hälsa',
   )
 
-  if (meaningfulIntents.length < 1) {
+  if (meaningfulIntents.length < 2) {
     return ''
   }
 
@@ -1405,7 +1409,7 @@ function makeCombinedIntentReply(intents, { context, meals, text }) {
         case 'måltider':
           return includesAny(text, ['checklista', 'checklistan'])
             ? getFoodSummary(context)
-            : makeMealsReply(meals, context)
+            : makeMealsReply(meals, context, text)
         case 'motivation':
           return makeMotivationReply(context)
         case 'stress':

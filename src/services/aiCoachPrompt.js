@@ -39,10 +39,13 @@ const responseTemplates = {
   goalWeight: [
     ({ context }) => {
       const current = context.weight?.currentWeight
-      const goal = context.profile?.goalWeight
+      const goal = context.weight?.goalWeight
+      const remaining = context.weight?.remainingKg
 
-      if (current && goal) {
-        return `Du väger just nu ${current.toLocaleString('sv-SE')} kg och målet är ${goal} kg. Ta det som en riktning och fokusera på upprepbara veckovanor.`
+      if (Number.isFinite(current) && Number.isFinite(goal) && Number.isFinite(remaining)) {
+        return remaining > 0
+          ? `Det är ${formatKg(remaining)} kvar till ditt mål på ${formatKg(goal)}. Ta det som en riktning och fokusera på upprepbara veckovanor.`
+          : `Du ligger ${formatKg(Math.abs(remaining))} under ditt registrerade mål på ${formatKg(goal)}. Fokusera på hållbara vanor och följ trenden.`
       }
 
       return 'Jag saknar antingen aktuell vikt eller målvikt. Lägg gärna in båda, så kan jag räkna kvar till mål utan att gissa.'
@@ -126,24 +129,24 @@ const responseTemplates = {
     ({ context }) => {
       const current = context.weight?.currentWeight
       const change = context.weight?.changeSinceStart
-      const goal = context.profile?.goalWeight
+      const goal = context.weight?.goalWeight
 
-      if (!current) {
+      if (!Number.isFinite(current)) {
         return 'Jag hittar ingen aktuell vikt just nu. Lägg in en vikt så kan jag följa trenden utan att gissa.'
       }
 
       const changeText = Number.isFinite(change)
         ? change < 0
-          ? `Du har gått ner ${Math.abs(change).toLocaleString('sv-SE')} kg sedan start.`
+          ? `Du har gått ner ${formatKg(Math.abs(change))} sedan start.`
           : change > 0
-            ? `Du ligger ${change.toLocaleString('sv-SE')} kg över startvikten.`
+            ? `Du ligger ${formatKg(change)} över startvikten.`
             : 'Du ligger på samma vikt som start.'
         : ''
-      const goalText = goal
-        ? ` Målet är ${goal} kg.`
+      const goalText = Number.isFinite(goal)
+        ? ` Målet är ${formatKg(goal)}.`
         : ''
 
-      return `Du väger just nu ${current.toLocaleString('sv-SE')} kg. ${changeText}${goalText}`.trim()
+      return `Du väger just nu ${formatKg(current)}. ${changeText}${goalText}`.trim()
     },
   ],
   general: [

@@ -216,3 +216,46 @@ export function getWeightStats(weights = [], options = {}) {
     weights: sortedWeights,
   }
 }
+
+export function getUnifiedWeightContext({
+  currentWeight,
+  goalWeight,
+  profile = {},
+  startWeight,
+  weights = [],
+} = {}) {
+  const profileStartWeight = parseWeightValue(
+    startWeight ?? profile?.startWeight,
+  )
+  const profileGoalWeight = parseWeightValue(goalWeight ?? profile?.goalWeight)
+  const weightStats = getWeightStats(weights, {
+    currentWeight,
+    startWeight: profileStartWeight,
+  })
+  const current = weightStats.current
+  const start = weightStats.first
+  const remainingKg = calculateGoalDistance(current, profileGoalWeight)
+  const goalProgress = calculateGoalProgress({
+    currentWeight: current,
+    goalWeight: profileGoalWeight,
+    startWeight: start,
+  })
+  const changeSinceStart = calculateWeightChange(current, start)
+
+  return {
+    changeSinceStart,
+    completePercent: goalProgress?.completePercent ?? null,
+    currentWeight: current,
+    goalWeight: profileGoalWeight,
+    hasWeights: weightStats.hasWeights,
+    history: weightStats.weights,
+    latestDate: weightStats.latestDate,
+    latestWeight: weightStats.latestWeight,
+    percentRemaining: goalProgress?.remainingPercent ?? null,
+    recentChange: weightStats.recentChange,
+    remainingKg,
+    simpleTrend: weightStats.simpleTrend,
+    startWeight: start,
+    trend: weightStats.trend,
+  }
+}

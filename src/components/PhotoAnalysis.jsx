@@ -57,11 +57,15 @@ function PhotoAnalysis({
           {displayPhotoMeals.map((entry) => (
             <li key={entry.id}>
               {entry.image && <img src={entry.image} alt="Analyserad måltid" />}
-              <div className="photo-meal-result">
-                <strong>Uppskattad måltidsanalys</strong>
-                <p>{entry.summary}</p>
+          <div className="photo-meal-result">
+            <strong>Uppskattad måltidsanalys</strong>
+            <p>{entry.summary}</p>
+            <p>
+              <strong>Måltidstyp:</strong>{' '}
+              {entry.analysis.mealType || entry.mealType || 'Lunch'}
+            </p>
 
-                <div className="photo-meal-detected">
+            <div className="photo-meal-detected">
                   <div>
                     <span>Proteinstatus</span>
                     <strong>{entry.analysis.proteinStatus}</strong>
@@ -83,15 +87,19 @@ function PhotoAnalysis({
                   <p>
                     <strong>Det ser bra ut:</strong> {entry.positiveFeedback}
                   </p>
-                  <p>
-                    <strong>Om du vill förbättra:</strong>{' '}
-                    {entry.improvementSuggestion}
-                  </p>
-                  <p>
-                    <strong>Billigt nästa mål:</strong>{' '}
-                    {entry.analysis.cheapNextMealSuggestion}
-                  </p>
-                </div>
+                <p>
+                  <strong>Om du vill förbättra:</strong>{' '}
+                  {entry.analysis.improvement || entry.improvementSuggestion}
+                </p>
+                <p>
+                  <strong>Billigt nästa mål:</strong>{' '}
+                  {entry.analysis.cheapNextMealSuggestion}
+                </p>
+                <p>
+                  <strong>Coachsammanfattning:</strong>{' '}
+                  {entry.analysis.coachSummary}
+                </p>
+              </div>
 
                 <dl>
                   <div>

@@ -1179,20 +1179,30 @@ function App() {
       ...entry.analysis,
       cheapNextMealSuggestion:
         entry.analysis.cheapNextMealSuggestion ||
-        'Billigt nÃ¤sta mÃ¥l: Ã¤gg, potatis och frysta grÃ¶nsaker.',
+        'Liknande mÃ¥ltid billigare: bygg basen pÃ¥ Ã¤gg, potatis, bÃ¶nor eller frysta grÃ¶nsaker.',
+      coachSummary:
+        entry.analysis.coachSummary ||
+        'Protein, grÃ¶nsaker och portion bedÃ¶ms som en enkel helhet. AnvÃ¤nd analysen som riktning, inte facit.',
       fiberCarbBalance:
         entry.analysis.fiberCarbBalance ||
         'VÃ¤lj gÃ¤rna fullkorn, potatis, frukt eller grÃ¶nsaker fÃ¶r bÃ¤ttre fiberbalans.',
+      improvement:
+        entry.analysis.improvement ||
+        entry.analysis.improvementSuggestion ||
+        'LÃ¤gg till en frukt eller grÃ¶nsak.',
+      mealType: entry.analysis.mealType || entry.mealType || 'Lunch',
       portionEstimate:
-        entry.analysis.portionEstimate || 'Portionen ser medelstor ut.',
+        entry.analysis.portionEstimate || entry.analysis.portionSize || 'Lagom',
+      portionSize:
+        entry.analysis.portionSize || entry.analysis.portionEstimate || 'Lagom',
       proteinStatus:
         entry.analysis.proteinStatus ||
         entry.analysis.likelyProtein ||
-        'Proteinstatus Ã¤r osÃ¤ker.',
+        'Medel',
       vegetableStatus:
         entry.analysis.vegetableStatus ||
         entry.analysis.likelyVegetables ||
-        'GrÃ¶nsaksstatus Ã¤r osÃ¤ker.',
+        'Bra',
     },
   }))
   const mealWeekSummary = getMealWeekSummary(photoMeals)

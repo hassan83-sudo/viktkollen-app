@@ -10,6 +10,9 @@ function MealWeeklyReport({ weekSummary }) {
       <p className="estimate-note">
         Antal analyser denna vecka: {weekSummary.analysisCount}
       </p>
+      <p className="estimate-note">
+        Veckans vanligaste måltid: {weekSummary.commonMealType}
+      </p>
       <p className="estimate-note">Proteintrend: {weekSummary.proteinTrend}</p>
       <p className="estimate-note">
         Grönsakstrend: {weekSummary.vegetableTrend}

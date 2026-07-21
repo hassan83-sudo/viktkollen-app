@@ -6,27 +6,198 @@ export const fallbackMealAnalysis = {
   calories: 540,
   carbs: 58,
   cheapNextMealSuggestion:
-    'Billigt nästa mål: ägg, potatis och frysta grönsaker.',
+    'Liknande måltid billigare: byt dyrare protein mot kyckling, ägg, bönor eller tofu.',
   confidence: 'låg',
+  coachSummary:
+    'Protein ser ut att finnas med. Grönsakerna kan ökas lite. I övrigt är detta en bra måltid.',
   explanation:
     'Detta är en försiktig uppskattning. Bildanalys kan missa mängder, ingredienser och tillagning.',
   fat: 18,
   fiberCarbBalance:
     'Kolhydratdelen ser rimlig ut. Lägg gärna till fullkorn eller grönsaker för mer fiber.',
   foods: ['trolig proteinkälla', 'troliga grönsaker', 'trolig kolhydratkälla'],
-  improvementSuggestion:
-    'Ett enkelt nästa steg kan vara att lägga till lite mer grönsaker.',
+  improvement: 'Lägg till mer grönsaker.',
+  improvementSuggestion: 'Lägg till mer grönsaker.',
   likelyCarbs: 'kan innehålla ris, potatis, pasta eller annan kolhydratkälla',
   likelyProtein: 'ser ut att innehålla en proteinkälla',
   likelyVegetables: 'troligen grönsaker eller sallad',
-  portionEstimate: 'Portionen ser medelstor ut.',
+  mealType: 'Lunch',
+  portionEstimate: 'Lagom',
+  portionSize: 'Lagom',
   positiveFeedback: 'Bra att måltiden verkar ha flera delar som kan ge mättnad.',
   protein: 32,
-  proteinStatus: 'Protein verkar finnas i måltiden.',
+  proteinStatus: 'Medel',
   source: 'mock',
   summary:
     'Måltiden ser ut att ha protein, någon grönsak och en kolhydratkälla.',
-  vegetableStatus: 'Grönsaker verkar finnas, men mängden är osäker.',
+  vegetableStatus: 'Bra',
+}
+
+function normalizeText(value) {
+  return String(value || '').toLocaleLowerCase('sv-SE')
+}
+
+function includesAny(text, keywords) {
+  return keywords.some((keyword) => text.includes(keyword))
+}
+
+function normalizeStatus(value, allowed, fallback) {
+  const text = normalizeText(value)
+  const match = allowed.find((item) => text === normalizeText(item))
+
+  return match || fallback
+}
+
+function getAnalysisText(analysis = {}) {
+  return [
+    analysis.summary,
+    analysis.likelyProtein,
+    analysis.likelyVegetables,
+    analysis.likelyCarbs,
+    analysis.positiveFeedback,
+    analysis.improvementSuggestion,
+    Array.isArray(analysis.foods) ? analysis.foods.join(' ') : '',
+  ]
+    .join(' ')
+    .toLocaleLowerCase('sv-SE')
+}
+
+function inferMealType(analysis = {}) {
+  const text = getAnalysisText(analysis)
+  const hour = new Date().getHours()
+
+  if (
+    includesAny(text, [
+      'frukost',
+      'yoghurt',
+      'gröt',
+      'havre',
+      'äggmacka',
+      'bär',
+      'smoothie',
+    ])
+  ) {
+    return 'Frukost'
+  }
+
+  if (includesAny(text, ['mellanmål', 'kvarg', 'frukt', 'nötter', 'macka'])) {
+    return 'Mellanmål'
+  }
+
+  if (includesAny(text, ['middag', 'potatis', 'pasta', 'ris', 'kyckling', 'fisk'])) {
+    return hour >= 16 ? 'Middag' : 'Lunch'
+  }
+
+  if (hour < 10) {
+    return 'Frukost'
+  }
+
+  if (hour >= 16) {
+    return 'Middag'
+  }
+
+  return 'Lunch'
+}
+
+function inferProteinStatus(analysis = {}) {
+  const text = getAnalysisText(analysis)
+  const protein = Number(analysis.protein)
+
+  if (
+    Number.isFinite(protein) ||
+    includesAny(text, ['kyckling', 'lax', 'fisk', 'ägg', 'keso', 'kvarg', 'tofu', 'bön', 'linser', 'kött', 'tonfisk'])
+  ) {
+    if (protein >= 35 || includesAny(text, ['kyckling', 'lax', 'tonfisk', 'keso', 'kvarg'])) {
+      return 'Högt'
+    }
+
+    if (protein >= 18 || includesAny(text, ['ägg', 'tofu', 'bön', 'linser', 'protein'])) {
+      return 'Medel'
+    }
+  }
+
+  return 'Lågt'
+}
+
+function inferVegetableStatus(analysis = {}) {
+  const text = getAnalysisText(analysis)
+
+  if (includesAny(text, ['mycket grön', 'stor sallad', 'flera grönsaker', 'grönsaker och sallad'])) {
+    return 'Mycket bra'
+  }
+
+  if (includesAny(text, ['grön', 'sallad', 'tomat', 'gurka', 'broccoli', 'morot', 'paprika', 'frukt', 'bär'])) {
+    return 'Bra'
+  }
+
+  return 'Lågt'
+}
+
+function inferPortionSize(analysis = {}) {
+  const text = getAnalysisText(analysis)
+  const calories = Number(analysis.calories)
+
+  if (includesAny(text, ['liten portion', 'lätt måltid']) || (Number.isFinite(calories) && calories < 350)) {
+    return 'Liten'
+  }
+
+  if (includesAny(text, ['stor portion', 'rejäl portion']) || (Number.isFinite(calories) && calories > 750)) {
+    return 'Stor'
+  }
+
+  return 'Lagom'
+}
+
+function makeCheapAlternative(analysis = {}) {
+  const text = getAnalysisText(analysis)
+
+  if (includesAny(text, ['lax', 'räkor', 'oxfilé', 'biff'])) {
+    return 'Liknande måltid billigare: byt lax eller dyrare kött mot kyckling, ägg eller bönor.'
+  }
+
+  if (includesAny(text, ['kyckling', 'fisk', 'kött'])) {
+    return 'Liknande måltid billigare: byt proteinet mot ägg, bönor, linser eller tofu ibland.'
+  }
+
+  return 'Liknande måltid billigare: bygg basen på ägg, potatis, bönor, linser eller frysta grönsaker.'
+}
+
+function makeSingleImprovement({ proteinStatus, portionSize, vegetableStatus }) {
+  if (proteinStatus === 'Lågt') {
+    return 'Lägg till mer protein.'
+  }
+
+  if (vegetableStatus === 'Lågt') {
+    return 'Lägg till en frukt eller grönsak.'
+  }
+
+  if (vegetableStatus === 'Bra') {
+    return 'Lägg till lite mer grönsaker.'
+  }
+
+  if (portionSize === 'Stor') {
+    return 'Spara en del av portionen till senare.'
+  }
+
+  return 'Behåll samma enkla måltidsstruktur.'
+}
+
+function makeCoachSummary({ portionSize, proteinStatus, vegetableStatus }) {
+  const proteinText = proteinStatus === 'Högt'
+    ? 'Protein ser bra ut.'
+    : proteinStatus === 'Medel'
+      ? 'Protein ser okej ut.'
+      : 'Protein kan stärkas lite.'
+  const vegetableText = vegetableStatus === 'Mycket bra'
+    ? 'Grönsakerna ser mycket bra ut.'
+    : vegetableStatus === 'Bra'
+      ? 'Grönsakerna finns med men kan ökas lite.'
+      : 'Grönsaker eller frukt kan läggas till.'
+  const portionText = portionSize === 'Lagom'
+    ? 'I övrigt är detta en lagom måltid.'
+    : `Portionen ser ${portionSize.toLocaleLowerCase('sv-SE')} ut, så justera efter hunger och dagsform.`
+
+  return `${proteinText} ${vegetableText} ${portionText}`
 }
 
 /**
@@ -36,12 +207,53 @@ export const fallbackMealAnalysis = {
  * @returns {object}
  */
 export function normalizeMealAnalysis(analysis = {}) {
-  const normalizedAnalysis = {
+  const baseAnalysis = {
     ...fallbackMealAnalysis,
     ...analysis,
     foods: Array.isArray(analysis.foods)
       ? analysis.foods.map(String).slice(0, 8)
       : fallbackMealAnalysis.foods,
+  }
+  const mealType = normalizeStatus(
+    analysis.mealType || analysis.type,
+    ['Frukost', 'Lunch', 'Middag', 'Mellanmål'],
+    inferMealType(baseAnalysis),
+  )
+  const proteinStatus = normalizeStatus(
+    analysis.proteinStatus,
+    ['Lågt', 'Medel', 'Högt'],
+    inferProteinStatus(baseAnalysis),
+  )
+  const vegetableStatus = normalizeStatus(
+    analysis.vegetableStatus,
+    ['Lågt', 'Bra', 'Mycket bra'],
+    inferVegetableStatus(baseAnalysis),
+  )
+  const portionSize = normalizeStatus(
+    analysis.portionSize || analysis.portionEstimate,
+    ['Liten', 'Lagom', 'Stor'],
+    inferPortionSize(baseAnalysis),
+  )
+  const improvement = makeSingleImprovement({
+    portionSize,
+    proteinStatus,
+    vegetableStatus,
+  })
+  const normalizedAnalysis = {
+    ...baseAnalysis,
+    cheapNextMealSuggestion: makeCheapAlternative(baseAnalysis),
+    coachSummary: makeCoachSummary({
+      portionSize,
+      proteinStatus,
+      vegetableStatus,
+    }),
+    improvement,
+    improvementSuggestion: improvement,
+    mealType,
+    portionEstimate: portionSize,
+    portionSize,
+    proteinStatus,
+    vegetableStatus,
   }
   const commonResponse = createAiResponseModel({
     actions: [

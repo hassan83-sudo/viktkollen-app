@@ -39,6 +39,57 @@ function getMostCommon(values, fallback) {
   return [...counts.entries()].sort((first, second) => second[1] - first[1])[0]?.[0] || fallback
 }
 
+function normalizeStatus(value, allowed, fallback) {
+  const text = String(value || '').trim().toLocaleLowerCase('sv-SE')
+  const match = allowed.find((item) => item.toLocaleLowerCase('sv-SE') === text)
+
+  return match || fallback
+}
+
+function getAnalysisMealType(analysis = {}, fallback = 'Lunch') {
+  return normalizeStatus(
+    analysis.mealType || analysis.type,
+    ['Frukost', 'Lunch', 'Middag', 'Mellanmål'],
+    fallback,
+  )
+}
+
+function getAnalysisProteinStatus(analysis = {}) {
+  return normalizeStatus(
+    analysis.proteinStatus,
+    ['Lågt', 'Medel', 'Högt'],
+    includesAny(analysis.proteinStatus || analysis.likelyProtein, ['hög', 'kyckling', 'lax', 'fisk', 'keso', 'kvarg'])
+      ? 'Högt'
+      : includesAny(analysis.proteinStatus || analysis.likelyProtein, ['protein', 'ägg', 'bön', 'linser', 'tofu'])
+        ? 'Medel'
+        : 'Lågt',
+  )
+}
+
+function getAnalysisVegetableStatus(analysis = {}) {
+  return normalizeStatus(
+    analysis.vegetableStatus,
+    ['Lågt', 'Bra', 'Mycket bra'],
+    includesAny(analysis.vegetableStatus || analysis.likelyVegetables, ['mycket'])
+      ? 'Mycket bra'
+      : includesAny(analysis.vegetableStatus || analysis.likelyVegetables, ['grön', 'sallad', 'frukt', 'tomat', 'gurka'])
+        ? 'Bra'
+        : 'Lågt',
+  )
+}
+
+function getAnalysisPortionSize(analysis = {}) {
+  return normalizeStatus(
+    analysis.portionSize || analysis.portionEstimate,
+    ['Liten', 'Lagom', 'Stor'],
+    includesAny(analysis.portionSize || analysis.portionEstimate, ['liten'])
+      ? 'Liten'
+      : includesAny(analysis.portionSize || analysis.portionEstimate, ['stor'])
+        ? 'Stor'
+        : 'Lagom',
+  )
+}
+
 /**
  * Normalizes a stored meal analysis entry.
  *
@@ -56,12 +107,36 @@ export function normalizeMealEntry(entry) {
     return null
   }
 
+  const analysis = {
+    ...entry.analysis,
+    mealType: getAnalysisMealType(entry.analysis, entry.type || 'Lunch'),
+    portionEstimate: getAnalysisPortionSize(entry.analysis),
+    portionSize: getAnalysisPortionSize(entry.analysis),
+    proteinStatus: getAnalysisProteinStatus(entry.analysis),
+    vegetableStatus: getAnalysisVegetableStatus(entry.analysis),
+  }
+  const improvement =
+    analysis.improvement ||
+    analysis.improvementSuggestion ||
+    'Lägg till en enkel proteinkälla eller mer grönsaker.'
+
   return {
     ...entry,
+    analysis: {
+      ...analysis,
+      improvement,
+      improvementSuggestion: improvement,
+    },
     createdAt: createdAt.toISOString(),
+    date: createdAt.toISOString(),
     id: entry.id || createdAt.getTime(),
     image: typeof entry.image === 'string' ? entry.image : '',
+    improvement,
+    mealType: analysis.mealType,
+    portionSize: analysis.portionSize,
+    proteinStatus: analysis.proteinStatus,
     source: entry.source || entry.analysis.source || 'mock',
+    vegetableStatus: analysis.vegetableStatus,
   }
 }
 
@@ -185,29 +260,15 @@ export function importMealHistory(payload) {
  * Builds weekly meal analysis statistics.
  *
  * @param {object[]} history
- * @returns {{analysisCount: number, bestPattern: string, commonImprovement: string, proteinTrend: string, vegetableTrend: string}}
+ * @returns {{analysisCount: number, bestPattern: string, commonImprovement: string, commonMealType: string, proteinTrend: string, vegetableTrend: string}}
  */
 export function getMealWeekSummary(history) {
   const weekEntries = history.filter((entry) => isWithinLastDays(entry.createdAt, 7))
   const proteinCount = weekEntries.filter((entry) =>
-    includesAny(entry.analysis?.proteinStatus || entry.analysis?.likelyProtein, [
-      'protein',
-      'ägg',
-      'fisk',
-      'kyckling',
-      'bön',
-      'keso',
-      'kvarg',
-    ]),
+    ['Medel', 'Högt'].includes(entry.proteinStatus || entry.analysis?.proteinStatus),
   ).length
   const vegetableCount = weekEntries.filter((entry) =>
-    includesAny(entry.analysis?.vegetableStatus || entry.analysis?.likelyVegetables, [
-      'grön',
-      'sallad',
-      'frukt',
-      'tomat',
-      'gurka',
-    ]),
+    ['Bra', 'Mycket bra'].includes(entry.vegetableStatus || entry.analysis?.vegetableStatus),
   ).length
 
   return {
@@ -217,8 +278,12 @@ export function getMealWeekSummary(history) {
         ? 'Du bygger ett tydligt mönster genom att analysera flera måltider.'
         : 'Fler analyser gör mönstret tydligare.',
     commonImprovement: getMostCommon(
-      weekEntries.map((entry) => entry.analysis?.improvementSuggestion),
+      weekEntries.map((entry) => entry.improvement || entry.analysis?.improvementSuggestion),
       'Lägg till en enkel proteinkälla eller mer grönsaker.',
+    ),
+    commonMealType: getMostCommon(
+      weekEntries.map((entry) => entry.mealType || entry.analysis?.mealType),
+      'Saknas ännu',
     ),
     proteinTrend:
       proteinCount >= Math.max(1, Math.ceil(weekEntries.length / 2))
@@ -268,24 +333,31 @@ export function createDemoMealDay() {
       fiberCarbBalance:
         'Balansen ser rimlig ut. Mer fullkorn eller grönsaker kan stärka fibret.',
       foods: [meal.summary],
+      improvement:
+        index === 0
+          ? 'Lägg till mer protein.'
+          : 'Lägg till lite mer grönsaker.',
       improvementSuggestion:
         index === 0
-          ? 'Lägg gärna till en tydligare proteinkälla.'
-          : 'Behåll strukturen och fyll på med grönsaker.',
+          ? 'Lägg till mer protein.'
+          : 'Lägg till lite mer grönsaker.',
       likelyCarbs: 'trolig kolhydratkälla',
       likelyProtein: 'trolig proteinkälla',
       likelyVegetables: 'troliga grönsaker eller frukt',
-      portionEstimate: 'Portionen ser lagom ut.',
+      mealType: meal.type,
+      portionEstimate: 'Lagom',
+      portionSize: 'Lagom',
       positiveFeedback: 'Bra enkel måltidsstruktur.',
       protein: 24 + index * 5,
-      proteinStatus: 'Protein verkar finnas med.',
+      proteinStatus: index === 0 ? 'Medel' : 'Högt',
       source: 'mock',
       summary: meal.summary,
-      vegetableStatus: 'Grönsaker eller frukt verkar finnas med.',
+      vegetableStatus: index === 0 ? 'Bra' : 'Mycket bra',
     },
     createdAt: new Date(now - index * 3 * 60 * 60 * 1000).toISOString(),
     id: `demo-meal-${now}-${index}`,
     image: meal.image,
+    mealType: meal.type,
     source: 'mock',
     type: meal.type,
   }))

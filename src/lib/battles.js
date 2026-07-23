@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from './supabase.js'
+import { readStorage, writeStorage } from '../services/appStorageService.js'
 
 const localBattleKey = 'pluggarena.battles'
 const localResultKey = 'pluggarena.battleResults'
@@ -29,12 +30,10 @@ function migrateDemoNames(value) {
 
 function readLocal(key, fallback) {
   try {
-    const value = window.localStorage.getItem(key)
-    const parsedValue = value ? migrateDemoNames(JSON.parse(value)) : fallback
+    const storedValue = readStorage(key, fallback)
+    const parsedValue = migrateDemoNames(storedValue)
 
-    if (value) {
-      window.localStorage.setItem(key, JSON.stringify(parsedValue))
-    }
+    writeStorage(key, parsedValue)
 
     return parsedValue
   } catch {
@@ -43,7 +42,7 @@ function readLocal(key, fallback) {
 }
 
 function writeLocal(key, value) {
-  window.localStorage.setItem(key, JSON.stringify(value))
+  writeStorage(key, value)
   window.dispatchEvent(new CustomEvent('pluggarena:battle-change'))
 }
 

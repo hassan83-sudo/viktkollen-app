@@ -2,6 +2,7 @@ import { useState } from 'react'
 import BodyAnalysisCard from './BodyAnalysisCard.jsx'
 import ProgressPhotoEmptyState from './ProgressPhotoEmptyState.jsx'
 import ProgressPhotoUpload from './ProgressPhotoUpload.jsx'
+import { readStorage } from '../services/appStorageService.js'
 
 const bodyAnalysisHistoryKey = 'viktkollen.bodyAnalysis.history'
 const bodyAnalysisLegacyKey = 'viktkollen.bodyAnalysis.latest'
@@ -101,19 +102,13 @@ function getSameOccasionComparison(progressPhotoItems) {
 }
 
 function hasStoredBodyAnalyses() {
-  try {
-    const storedHistory = window.localStorage.getItem(bodyAnalysisHistoryKey)
+  const storedHistory = readStorage(bodyAnalysisHistoryKey, null)
 
-    if (storedHistory) {
-      const parsedHistory = JSON.parse(storedHistory)
-
-      return Array.isArray(parsedHistory) && parsedHistory.length > 0
-    }
-
-    return Boolean(window.localStorage.getItem(bodyAnalysisLegacyKey))
-  } catch {
-    return false
+  if (storedHistory) {
+    return Array.isArray(storedHistory) && storedHistory.length > 0
   }
+
+  return Boolean(readStorage(bodyAnalysisLegacyKey, null))
 }
 
 function ProgressPhotos({

@@ -1,4 +1,7 @@
-const STORAGE_KEY = 'viktkollen.bodyAnalysis.history.v1'
+import {
+  getBodyAnalysisHistoryPayload,
+  saveBodyAnalysisHistoryPayload,
+} from './userDataRepository.js'
 
 export const localBodyAnalysisStorage = {
   /**
@@ -7,9 +10,7 @@ export const localBodyAnalysisStorage = {
    * @returns {unknown}
    */
   read() {
-    const storedValue = window.localStorage.getItem(STORAGE_KEY)
-
-    return storedValue ? JSON.parse(storedValue) : null
+    return getBodyAnalysisHistoryPayload(null)
   },
 
   /**
@@ -19,7 +20,7 @@ export const localBodyAnalysisStorage = {
    * @returns {void}
    */
   write(payload) {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+    saveBodyAnalysisHistoryPayload(payload)
   },
 }
 

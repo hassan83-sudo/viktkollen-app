@@ -1,9 +1,9 @@
-const AI_CONVERSATION_MEMORY_KEY = 'viktkollen.aiConversationMemory'
-const MAX_MEMORY_MESSAGES = 10
+import {
+  getAiConversationMemory as readAiConversationMemory,
+  saveAiConversationMemory,
+} from './userDataRepository.js'
 
-function canUseStorage() {
-  return typeof localStorage !== 'undefined'
-}
+const MAX_MEMORY_MESSAGES = 10
 
 function normalizeMessage(message) {
   if (!message || typeof message.text !== 'string') {
@@ -24,12 +24,8 @@ function normalizeMessage(message) {
  * @returns {object[]}
  */
 export function getAiConversationMemory() {
-  if (!canUseStorage()) {
-    return []
-  }
-
   try {
-    const parsed = JSON.parse(localStorage.getItem(AI_CONVERSATION_MEMORY_KEY) || '[]')
+    const parsed = readAiConversationMemory([])
 
     return (Array.isArray(parsed) ? parsed : [])
       .map(normalizeMessage)
@@ -52,12 +48,7 @@ export function setAiConversationMemory(messages) {
     .filter(Boolean)
     .slice(-MAX_MEMORY_MESSAGES)
 
-  if (canUseStorage()) {
-    localStorage.setItem(
-      AI_CONVERSATION_MEMORY_KEY,
-      JSON.stringify(normalizedMessages),
-    )
-  }
+  saveAiConversationMemory(normalizedMessages)
 
   return normalizedMessages
 }

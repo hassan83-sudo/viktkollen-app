@@ -6,6 +6,7 @@ import ChatPanel from './components/ChatPanel.jsx'
 import CheckIn from './components/CheckIn.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import MealLogger from './components/MealLogger.jsx'
+import MonthlyReport from './components/MonthlyReport.jsx'
 import ProgressPhotos from './components/ProgressPhotos.jsx'
 import ReminderSettings from './components/ReminderSettings.jsx'
 import WeightChart from './components/WeightChart.jsx'
@@ -38,7 +39,9 @@ import {
   setMealHistory,
 } from './services/mealHistory.js'
 import { analyzeMealPhoto } from './services/mealAnalysisService.js'
+import { createMonthlyHealthReport } from './services/monthlyReportService.js'
 import { getProactiveCoachInsights, makeProactiveCoachInsights } from './services/proactiveCoachService.js'
+import * as userDataRepository from './services/userDataRepository.js'
 import { createWeeklyReport as createAiWeeklyReport } from './services/weeklyReportService.js'
 
 const starterWeights = [
@@ -111,21 +114,6 @@ const chartRangeOptions = [
   { label: '30 dagar', value: '30' },
   { label: 'All tid', value: 'all' },
 ]
-
-const storageKeys = {
-  chat: 'viktkollen.chat',
-  checkIn: 'viktkollen.checkIn',
-  demoMode: 'viktkollen.demoMode',
-  foods: 'viktkollen.foods',
-  meals: 'viktkollen.meals',
-  photoMeals: 'viktkollen.photoMeals',
-  profile: 'viktkollen.profile',
-  progressPhotos: 'viktkollen.progressPhotos',
-  reminders: 'viktkollen.reminders',
-  reminderLog: 'viktkollen.reminderLog',
-  scannedProducts: 'viktkollen.scannedProducts',
-  weights: 'viktkollen.weights',
-}
 
 function isStoredWeights(value) {
   return (
@@ -260,23 +248,8 @@ function isStoredReminderSettings(value) {
   )
 }
 
-function readStoredValue(key, fallback, isValid) {
-  try {
-    const storedValue = window.localStorage.getItem(key)
-
-    if (!storedValue) {
-      return fallback
-    }
-
-    const parsedValue = JSON.parse(storedValue)
-    return isValid(parsedValue) ? parsedValue : fallback
-  } catch {
-    return fallback
-  }
-}
-
 function readStoredFoods() {
-  const storedFoods = readStoredValue(storageKeys.foods, [], Array.isArray)
+  const storedFoods = userDataRepository.getFoods([], Array.isArray)
 
   return initialFoods.map((item) => {
     const storedItem = storedFoods.find((stored) => stored?.id === item.id)
@@ -287,14 +260,6 @@ function readStoredFoods() {
         typeof storedItem?.done === 'boolean' ? storedItem.done : item.done,
     }
   })
-}
-
-function writeStoredValue(key, value) {
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value))
-  } catch {
-    // Keep the app usable if private mode or browser settings block storage.
-  }
 }
 
 function formatDecimal(value) {
@@ -909,31 +874,31 @@ function App() {
   const messagesEndRef = useRef(null)
   const recognitionRef = useRef(null)
   const [demoMode, setDemoMode] = useState(() =>
-    readStoredValue(storageKeys.demoMode, false, isStoredBoolean),
+    userDataRepository.getDemoMode(false, isStoredBoolean),
   )
   const [profile, setProfile] = useState(() =>
-    readStoredValue(storageKeys.profile, null, isStoredProfile),
+    userDataRepository.getProfile(null, isStoredProfile),
   )
   const [profileForm, setProfileForm] = useState(() => ({
     ...initialProfile,
-    ...(readStoredValue(storageKeys.profile, null, isStoredProfile) ?? {}),
+    ...(userDataRepository.getProfile(null, isStoredProfile) ?? {}),
   }))
   const [profileError, setProfileError] = useState('')
   const [proactiveCoachResult, setProactiveCoachResult] = useState(null)
   const [showOnboarding, setShowOnboarding] = useState(() => !profile)
   const [checkIn, setCheckIn] = useState(() =>
-    readStoredValue(storageKeys.checkIn, initialCheckIn, isStoredCheckIn),
+    userDataRepository.getCheckIn(initialCheckIn, isStoredCheckIn),
   )
   const [weightInput, setWeightInput] = useState('89,8')
   const [weights, setWeights] = useState(() =>
-    readStoredValue(storageKeys.weights, starterWeights, isStoredWeights),
+    userDataRepository.getWeights(starterWeights, isStoredWeights),
   )
   const [chartRange, setChartRange] = useState('7')
   const [foods, setFoods] = useState(readStoredFoods)
   const [mealType, setMealType] = useState('Lunch')
   const [mealText, setMealText] = useState('')
   const [meals, setMeals] = useState(() =>
-    readStoredValue(storageKeys.meals, initialMeals, isStoredMeals),
+    userDataRepository.getMeals(initialMeals, isStoredMeals),
   )
   const [foodPhotoPreview, setFoodPhotoPreview] = useState('')
   const [mealHistoryImportSummary, setMealHistoryImportSummary] = useState(null)
@@ -946,8 +911,7 @@ function App() {
     }
 
     return setMealHistory(
-      readStoredValue(
-        storageKeys.photoMeals,
+      userDataRepository.getLegacyPhotoMeals(
         initialPhotoMeals,
         isStoredPhotoMeals,
       ),
@@ -959,8 +923,7 @@ function App() {
   const [barcodeStatus, setBarcodeStatus] = useState('')
   const [barcodeScannerActive, setBarcodeScannerActive] = useState(false)
   const [scannedProducts, setScannedProducts] = useState(() =>
-    readStoredValue(
-      storageKeys.scannedProducts,
+    userDataRepository.getScannedProducts(
       initialScannedProducts,
       isStoredScannedProducts,
     ),
@@ -969,15 +932,13 @@ function App() {
   const [beforePhotoId, setBeforePhotoId] = useState('')
   const [afterPhotoId, setAfterPhotoId] = useState('')
   const [progressPhotos, setProgressPhotos] = useState(() =>
-    readStoredValue(
-      storageKeys.progressPhotos,
+    userDataRepository.getProgressPhotos(
       initialProgressPhotos,
       isStoredProgressPhotos,
     ),
   )
   const [reminderSettings, setReminderSettings] = useState(() =>
-    readStoredValue(
-      storageKeys.reminders,
+    userDataRepository.getReminderSettings(
       initialReminderSettings,
       isStoredReminderSettings,
     ),
@@ -988,7 +949,7 @@ function App() {
   const [voiceStatus, setVoiceStatus] = useState('')
   const [isListening, setIsListening] = useState(false)
   const [chatMessages, setChatMessages] = useState(() =>
-    readStoredValue(storageKeys.chat, initialChatMessages, isStoredChatMessages),
+    userDataRepository.getCoachChat(initialChatMessages, isStoredChatMessages),
   )
   const [weeklyReport, setWeeklyReport] = useState('')
   const [weeklyReportData, setWeeklyReportData] = useState(null)
@@ -1206,6 +1167,15 @@ function App() {
     },
   }))
   const mealWeekSummary = getMealWeekSummary(photoMeals)
+  const monthlyReport = useMemo(
+    () =>
+      createMonthlyHealthReport({
+        mealHistory: photoMeals,
+        meals,
+        weights,
+      }),
+    [meals, photoMeals, weights],
+  )
   const weeklyReportLines = useMemo(
     () =>
       weeklyReport
@@ -1364,19 +1334,19 @@ function App() {
   }
 
   useEffect(() => {
-    writeStoredValue(storageKeys.demoMode, demoMode)
+    userDataRepository.saveDemoMode(demoMode)
   }, [demoMode])
 
   useEffect(() => {
-    writeStoredValue(storageKeys.weights, weights)
+    userDataRepository.saveWeights(weights)
   }, [weights])
 
   useEffect(() => {
-    writeStoredValue(storageKeys.foods, foods)
+    userDataRepository.saveFoods(foods)
   }, [foods])
 
   useEffect(() => {
-    writeStoredValue(storageKeys.meals, meals)
+    userDataRepository.saveMeals(meals)
   }, [meals])
 
   useEffect(() => {
@@ -1384,19 +1354,19 @@ function App() {
   }, [photoMeals])
 
   useEffect(() => {
-    writeStoredValue(storageKeys.scannedProducts, scannedProducts)
+    userDataRepository.saveScannedProducts(scannedProducts)
   }, [scannedProducts])
 
   useEffect(() => {
-    writeStoredValue(storageKeys.progressPhotos, progressPhotos)
+    userDataRepository.saveProgressPhotos(progressPhotos)
   }, [progressPhotos])
 
   useEffect(() => {
-    writeStoredValue(storageKeys.reminders, reminderSettings)
+    userDataRepository.saveReminderSettings(reminderSettings)
   }, [reminderSettings])
 
   useEffect(() => {
-    writeStoredValue(storageKeys.chat, chatMessages)
+    userDataRepository.saveCoachChat(chatMessages)
   }, [chatMessages])
 
   useEffect(() => {
@@ -1432,12 +1402,12 @@ function App() {
   }, [chatMessages])
 
   useEffect(() => {
-    writeStoredValue(storageKeys.checkIn, checkIn)
+    userDataRepository.saveCheckIn(checkIn)
   }, [checkIn])
 
   useEffect(() => {
     if (profile) {
-      writeStoredValue(storageKeys.profile, profile)
+      userDataRepository.saveProfile(profile)
     }
   }, [profile])
 
@@ -1495,8 +1465,9 @@ function App() {
       const now = new Date()
       const currentTime = now.toTimeString().slice(0, 5)
       const today = now.toLocaleDateString('sv-SE')
-      const sentLog = readStoredValue(storageKeys.reminderLog, {}, (value) =>
-        Boolean(value && typeof value === 'object'),
+      const sentLog = userDataRepository.getReminderLog(
+        {},
+        (value) => Boolean(value && typeof value === 'object'),
       )
 
       reminderTypes.forEach((reminder) => {
@@ -1510,7 +1481,7 @@ function App() {
         }
       })
 
-      writeStoredValue(storageKeys.reminderLog, sentLog)
+      userDataRepository.saveReminderLog(sentLog)
     }, 30000)
 
     return () => window.clearInterval(intervalId)
@@ -2614,6 +2585,8 @@ function App() {
           reminderStatus={reminderStatus}
         />
 
+        <MonthlyReport report={monthlyReport} />
+
         <article className="panel trends-panel" id="framsteg">
           <div className="panel-heading">
             <div>
@@ -2664,6 +2637,10 @@ function App() {
         <a href="#framstegsbilder" aria-label="GÃ¥ till framstegsbilder">
           <span>â–£</span>
           <strong>Foto</strong>
+        </a>
+        <a href="#manadsrapport" aria-label="GÃ¥ till mÃ¥nadsrapport">
+          <span>30</span>
+          <strong>Rapport</strong>
         </a>
         <a href="#installningar" aria-label="GÃ¥ till instÃ¤llningar">
           <span>âš™</span>

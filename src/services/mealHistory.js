@@ -1,4 +1,8 @@
-const MEAL_HISTORY_KEY = 'viktkollen.mealAnalysisHistory'
+import {
+  getMealHistory as readMealHistory,
+  saveMealHistory,
+} from './userDataRepository.js'
+
 const MEAL_HISTORY_VERSION = 1
 const MAX_MEAL_ANALYSES = 20
 
@@ -147,7 +151,7 @@ export function normalizeMealEntry(entry) {
  */
 export function getMealHistory() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(MEAL_HISTORY_KEY) || '[]')
+    const parsed = readMealHistory([])
     const entries = Array.isArray(parsed) ? parsed : parsed?.entries
 
     return sortNewestFirst(
@@ -178,7 +182,7 @@ export function addMealAnalysis(entry) {
     ...getMealHistory().filter((item) => item.id !== normalizedEntry.id),
   ]).slice(0, MAX_MEAL_ANALYSES)
 
-  localStorage.setItem(MEAL_HISTORY_KEY, JSON.stringify(nextHistory))
+  saveMealHistory(nextHistory)
 
   return nextHistory
 }
@@ -194,7 +198,7 @@ export function setMealHistory(entries) {
     entries.map(normalizeMealEntry).filter(Boolean),
   ).slice(0, MAX_MEAL_ANALYSES)
 
-  localStorage.setItem(MEAL_HISTORY_KEY, JSON.stringify(nextHistory))
+  saveMealHistory(nextHistory)
 
   return nextHistory
 }
@@ -205,7 +209,7 @@ export function setMealHistory(entries) {
  * @returns {object[]}
  */
 export function clearMealHistory() {
-  localStorage.setItem(MEAL_HISTORY_KEY, JSON.stringify([]))
+  saveMealHistory([])
 
   return []
 }

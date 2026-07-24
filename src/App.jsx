@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import AICoach from './components/AICoach.jsx'
+import AuthPanel from './components/AuthPanel.jsx'
 import BarcodeScanner from './components/BarcodeScanner.jsx'
 import ChatPanel from './components/ChatPanel.jsx'
 import CheckIn from './components/CheckIn.jsx'
@@ -21,6 +22,15 @@ import { addAiConversationMemory } from './services/aiConversationMemory.js'
 import { classifyAiCoachIntent } from './services/aiCoachIntentService.js'
 import { createLocalAiCoachReply } from './services/aiCoachPrompt.js'
 import { createAiSuggestions } from './services/aiSuggestions.js'
+import {
+  getAuthErrorMessage,
+  getAuthStatus,
+  getCurrentAuthSession,
+  signInWithEmail,
+  signOut,
+  signUpWithEmail,
+  subscribeToAuthChanges,
+} from './services/authService.js'
 import { buildAiUserContext } from './services/aiUserContext.js'
 import { createDashboardData } from './services/dashboardService.js'
 import {
@@ -229,10 +239,6 @@ function isStoredProfile(value) {
     typeof value.goalWeight === 'string' &&
     typeof value.activityLevel === 'string'
   )
-}
-
-function isStoredBoolean(value) {
-  return typeof value === 'boolean'
 }
 
 function isStoredReminderSettings(value) {
@@ -873,9 +879,11 @@ function App() {
   const chatThreadRef = useRef(null)
   const messagesEndRef = useRef(null)
   const recognitionRef = useRef(null)
-  const [demoMode, setDemoMode] = useState(() =>
-    userDataRepository.getDemoMode(false, isStoredBoolean),
-  )
+  const [authError, setAuthError] = useState('')
+  const [authLoading, setAuthLoading] = useState(true)
+  const [authNotice, setAuthNotice] = useState('')
+  const [authSession, setAuthSession] = useState(null)
+  const authStatus = useMemo(() => getAuthStatus(), [])
   const [profile, setProfile] = useState(() =>
     userDataRepository.getProfile(null, isStoredProfile),
   )
@@ -1219,7 +1227,7 @@ function App() {
     ? dailyCoachResult.source === 'openai'
       ? 'AI-genererad daglig sammanfattning.'
       : 'Lokal fallback anvÃ¤nds just nu.'
-    : demoMode && !showOnboarding
+    : authSession && !showOnboarding
       ? 'Uppdaterar AI-coach...'
       : ''
 
@@ -1334,8 +1342,47 @@ function App() {
   }
 
   useEffect(() => {
-    userDataRepository.saveDemoMode(demoMode)
-  }, [demoMode])
+    let cancelled = false
+
+    async function loadAuthSession() {
+      setAuthLoading(true)
+
+      if (!authStatus.authEnabled) {
+        setAuthSession(null)
+        setAuthLoading(false)
+        return
+      }
+
+      const { data, error } = await getCurrentAuthSession()
+
+      if (cancelled) {
+        return
+      }
+
+      if (error) {
+        setAuthError(getAuthErrorMessage(error))
+      } else {
+        setAuthError('')
+        setAuthSession(data?.session ?? null)
+      }
+
+      setAuthLoading(false)
+    }
+
+    void loadAuthSession()
+
+    const unsubscribe = subscribeToAuthChanges((session) => {
+      setAuthError('')
+      setAuthNotice('')
+      setAuthSession(session)
+      setAuthLoading(false)
+    })
+
+    return () => {
+      cancelled = true
+      unsubscribe()
+    }
+  }, [authStatus.authEnabled])
 
   useEffect(() => {
     userDataRepository.saveWeights(weights)
@@ -1490,7 +1537,7 @@ function App() {
   useEffect(() => {
     let cancelled = false
 
-    if (!demoMode || showOnboarding) {
+    if (!authSession || showOnboarding) {
       return () => {
         cancelled = true
       }
@@ -1556,7 +1603,7 @@ function App() {
   }, [
     checkIn,
     dailyCoachKey,
-    demoMode,
+    authSession,
     foods,
     latestWeight.value,
     meals,
@@ -1632,12 +1679,57 @@ function App() {
     setShowOnboarding(false)
   }
 
-  function startDemo() {
-    setDemoMode(true)
+  async function handleSignIn(credentials) {
+    setAuthError('')
+    setAuthNotice('')
+    setAuthLoading(true)
+
+    const { data, error } = await signInWithEmail(credentials)
+
+    if (error) {
+      setAuthError(getAuthErrorMessage(error))
+    } else {
+      setAuthSession(data?.session ?? null)
+    }
+
+    setAuthLoading(false)
   }
 
-  function resetDemoMode() {
-    setDemoMode(false)
+  async function handleSignUp(credentials) {
+    setAuthError('')
+    setAuthNotice('')
+    setAuthLoading(true)
+
+    const { data, error } = await signUpWithEmail(credentials)
+
+    if (error) {
+      setAuthError(getAuthErrorMessage(error))
+    } else {
+      setAuthSession(data?.session ?? null)
+      setAuthNotice(
+        data?.session
+          ? ''
+          : 'Kontot skapades. Kontrollera din e-post om Supabase kräver bekräftelse.',
+      )
+    }
+
+    setAuthLoading(false)
+  }
+
+  async function handleSignOut() {
+    setAuthError('')
+    setAuthNotice('')
+    setAuthLoading(true)
+
+    const { error } = await signOut()
+
+    if (error) {
+      setAuthError(getAuthErrorMessage(error))
+    } else {
+      setAuthSession(null)
+    }
+
+    setAuthLoading(false)
   }
 
   function updateCheckIn(key, value) {
@@ -2264,29 +2356,30 @@ function App() {
     void sendChatText(prompt)
   }
 
-  if (!demoMode) {
+  if (authLoading) {
     return (
       <main className="app-shell welcome-shell">
         <section className="welcome-card">
-          <p className="eyebrow">VÃ¤lkommen</p>
-          <h1>Viktkollen</h1>
+          <p className="eyebrow">Viktkollen Auth</p>
+          <h1>Kontrollerar inloggning</h1>
           <p className="welcome-subtitle">
-            Din personliga AI-coach fÃ¶r vikt, mat och vanor
-          </p>
-          <div className="welcome-actions">
-            <button type="button" onClick={startDemo}>
-              Starta demo
-            </button>
-            <button className="secondary-button" type="button" disabled>
-              Logga in Â· kommer snart
-            </button>
-          </div>
-          <p className="welcome-note">
-            Ingen backend och ingen riktig inloggning Ã¤nnu. Demon sparas bara i
-            den hÃ¤r webblÃ¤saren.
+            Väntar på Supabase-session...
           </p>
         </section>
       </main>
+    )
+  }
+
+  if (!authSession) {
+    return (
+      <AuthPanel
+        authError={authError}
+        authLoading={authLoading}
+        authNotice={authNotice}
+        authStatus={authStatus}
+        onSignIn={handleSignIn}
+        onSignUp={handleSignUp}
+      />
     )
   }
 
@@ -2399,6 +2492,9 @@ function App() {
           </p>
         </div>
         <div className="topbar-actions">
+          <p className="welcome-note">
+            Inloggad som {authSession.user?.email || 'okänd e-post'}
+          </p>
           <button
             className="secondary-button"
             type="button"
@@ -2409,9 +2505,10 @@ function App() {
           <button
             className="secondary-button"
             type="button"
-            onClick={resetDemoMode}
+            onClick={handleSignOut}
+            disabled={authLoading}
           >
-            Logga ut demo
+            Logga ut
           </button>
           <p className="disclaimer">
             Den hÃ¤r appen ger endast allmÃ¤nt stÃ¶d fÃ¶r hÃ¤lsa och vÃ¤lmÃ¥ende. Den Ã¤r

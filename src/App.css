@@ -2146,6 +2146,88 @@ a:focus-visible {
   justify-self: auto;
 }
 
+.backup-history {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.backup-history-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.backup-history-heading h3 {
+  margin: 0;
+  color: var(--text-h);
+  font-size: 18px;
+}
+
+.backup-empty-card,
+.backup-history-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--soft-bg);
+}
+
+.backup-empty-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+}
+
+.backup-empty-card strong {
+  color: var(--text-h);
+}
+
+.backup-empty-card span,
+.backup-history-meta span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.backup-history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.backup-history-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+}
+
+.backup-history-meta {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.backup-history-meta strong {
+  color: var(--text-h);
+}
+
+.backup-history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.danger-button {
+  color: var(--warning-text);
+  border-color: var(--warning-border);
+  background: var(--warning-bg);
+}
+
+.danger-button:hover {
+  background: rgba(239, 68, 68, 0.16);
+}
+
 .onboarding-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2172,6 +2254,22 @@ a:focus-visible {
 
   .secondary-button {
     justify-self: start;
+  }
+
+  .backup-history-heading,
+  .backup-history-item {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .backup-history-actions,
+  .cloud-backup-actions {
+    justify-content: stretch;
+  }
+
+  .backup-history-actions button,
+  .cloud-backup-actions button {
+    width: 100%;
   }
 
   .check-in-panel,

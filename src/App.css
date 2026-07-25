@@ -2146,6 +2146,44 @@ a:focus-visible {
   justify-self: auto;
 }
 
+.cloud-status-panel {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.cloud-status-grid,
+.cloud-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cloud-status-grid div,
+.cloud-stat-grid div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--soft-bg);
+}
+
+.cloud-status-grid span,
+.cloud-stat-grid span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.cloud-status-grid strong,
+.cloud-stat-grid strong {
+  overflow-wrap: anywhere;
+  color: var(--text-h);
+  font-size: 16px;
+}
+
 .backup-history {
   display: grid;
   gap: 12px;
@@ -2170,6 +2208,22 @@ a:focus-visible {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--soft-bg);
+  transition:
+    border-color 180ms ease,
+    transform 180ms ease,
+    background 180ms ease;
+}
+
+.backup-history-item:hover {
+  border-color: rgba(34, 211, 238, 0.35);
+  transform: translateY(-1px);
+}
+
+.backup-history-item.is-favorite {
+  border-color: rgba(139, 92, 246, 0.42);
+  background:
+    linear-gradient(135deg, rgba(34, 211, 238, 0.1), rgba(139, 92, 246, 0.12)),
+    var(--soft-bg);
 }
 
 .backup-empty-card {
@@ -2188,6 +2242,24 @@ a:focus-visible {
   font-size: 13px;
 }
 
+.backup-empty-card.is-loading {
+  position: relative;
+  overflow: hidden;
+}
+
+.backup-empty-card.is-loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(34, 211, 238, 0.12),
+    transparent
+  );
+  animation: cloud-loading-sweep 1.3s infinite;
+}
+
 .backup-history-list {
   display: grid;
   gap: 10px;
@@ -2195,10 +2267,19 @@ a:focus-visible {
 
 .backup-history-item {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 12px;
   align-items: center;
   padding: 14px;
+}
+
+.backup-select {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .backup-history-meta {
@@ -2211,11 +2292,60 @@ a:focus-visible {
   color: var(--text-h);
 }
 
-.backup-history-actions {
+.backup-history-meta code {
+  width: fit-content;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(15, 23, 42, 0.38);
+  font-size: 11px;
+}
+
+.backup-toolbar {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) repeat(2, minmax(150px, 0.8fr));
+  gap: 10px;
+}
+
+.backup-toolbar .field {
+  margin-bottom: 0;
+}
+
+.backup-bulk-actions,
+.backup-rename-row,
+.backup-preview {
+  grid-column: 1 / -1;
+}
+
+.backup-bulk-actions,
+.backup-rename-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  justify-content: flex-end;
+}
+
+.backup-rename-row input {
+  flex: 1 1 180px;
+}
+
+.backup-preview {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  background: rgba(15, 23, 42, 0.3);
+  font-size: 13px;
+}
+
+.backup-history-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-start;
 }
 
 .danger-button {
@@ -2226,6 +2356,26 @@ a:focus-visible {
 
 .danger-button:hover {
   background: rgba(239, 68, 68, 0.16);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+@keyframes cloud-loading-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
 }
 
 .onboarding-row {
@@ -2262,12 +2412,21 @@ a:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .backup-toolbar,
+  .cloud-status-grid,
+  .cloud-stat-grid {
+    grid-template-columns: 1fr;
+  }
+
   .backup-history-actions,
+  .backup-bulk-actions,
   .cloud-backup-actions {
     justify-content: stretch;
   }
 
   .backup-history-actions button,
+  .backup-bulk-actions button,
+  .backup-rename-row button,
   .cloud-backup-actions button {
     width: 100%;
   }

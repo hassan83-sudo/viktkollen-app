@@ -6,6 +6,7 @@ import BarcodeScanner from './components/BarcodeScanner.jsx'
 import ChatPanel from './components/ChatPanel.jsx'
 import CheckIn from './components/CheckIn.jsx'
 import CloudBackupPanel from './components/CloudBackupPanel.jsx'
+import CloudStatusPanel from './components/CloudStatusPanel.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import MealLogger from './components/MealLogger.jsx'
 import MonthlyReport from './components/MonthlyReport.jsx'
@@ -2519,6 +2520,8 @@ function App() {
       </header>
 
       <Dashboard actions={dashboardActions} dashboard={dashboardData} />
+
+      <CloudStatusPanel isAuthenticated={Boolean(authSession)} />
 
       <section className="content-grid">
         <article className="panel" id="vikt">

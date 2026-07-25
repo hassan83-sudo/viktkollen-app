@@ -3,16 +3,21 @@ create extension if not exists pgcrypto;
 create table if not exists public.user_backups (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade default auth.uid(),
+  name text,
+  is_favorite boolean not null default false,
   data jsonb not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 alter table public.user_backups add column if not exists id uuid default gen_random_uuid();
+alter table public.user_backups add column if not exists name text;
+alter table public.user_backups add column if not exists is_favorite boolean not null default false;
 alter table public.user_backups add column if not exists created_at timestamptz not null default now();
 alter table public.user_backups add column if not exists updated_at timestamptz not null default now();
 alter table public.user_backups alter column user_id set default auth.uid();
 alter table public.user_backups alter column id set default gen_random_uuid();
+alter table public.user_backups alter column is_favorite set default false;
 alter table public.user_backups alter column created_at set default now();
 alter table public.user_backups alter column updated_at set default now();
 

@@ -11,6 +11,7 @@ export const userDataKeys = {
   bodyAnalysisLatest: 'viktkollen.bodyAnalysis.latest',
   chat: 'viktkollen.chat',
   checkIn: 'viktkollen.checkIn',
+  cloudBackupMeta: 'viktkollen.cloudBackup.meta',
   demoMode: 'viktkollen.demoMode',
   foods: 'viktkollen.foods',
   mealHistory: 'viktkollen.mealAnalysisHistory',
@@ -171,6 +172,14 @@ export function saveBodyAnalysisHistoryPayload(payload) {
 
 export function removeUserData(key) {
   return removeStorage(key)
+}
+
+export function getCloudBackupMeta(fallbackValue = {}) {
+  return readStorage(userDataKeys.cloudBackupMeta, fallbackValue)
+}
+
+export function saveCloudBackupMeta(meta) {
+  return saveValue(userDataKeys.cloudBackupMeta, meta)
 }
 
 export function getUserDataBackupSnapshot() {

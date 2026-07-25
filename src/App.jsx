@@ -5,6 +5,7 @@ import AuthPanel from './components/AuthPanel.jsx'
 import BarcodeScanner from './components/BarcodeScanner.jsx'
 import ChatPanel from './components/ChatPanel.jsx'
 import CheckIn from './components/CheckIn.jsx'
+import CloudBackupPanel from './components/CloudBackupPanel.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import MealLogger from './components/MealLogger.jsx'
 import MonthlyReport from './components/MonthlyReport.jsx'
@@ -2681,6 +2682,8 @@ function App() {
           reminderSettings={reminderSettings}
           reminderStatus={reminderStatus}
         />
+
+        <CloudBackupPanel isAuthenticated={Boolean(authSession)} />
 
         <MonthlyReport report={monthlyReport} />
 

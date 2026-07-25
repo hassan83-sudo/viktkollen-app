@@ -2125,6 +2125,17 @@ a:focus-visible {
   font-weight: 700;
 }
 
+.success-message {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  border-radius: 8px;
+  color: var(--text-h);
+  background: rgba(34, 211, 238, 0.12);
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .onboarding-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -7,6 +7,8 @@ import {
 export const userDataKeys = {
   aiConversationMemory: 'viktkollen.aiConversationMemory',
   bodyAnalysisHistory: 'viktkollen.bodyAnalysis.history.v1',
+  bodyAnalysisLegacyHistory: 'viktkollen.bodyAnalysis.history',
+  bodyAnalysisLatest: 'viktkollen.bodyAnalysis.latest',
   chat: 'viktkollen.chat',
   checkIn: 'viktkollen.checkIn',
   demoMode: 'viktkollen.demoMode',
@@ -21,6 +23,9 @@ export const userDataKeys = {
   scannedProducts: 'viktkollen.scannedProducts',
   weights: 'viktkollen.weights',
 }
+
+const backupSnapshotVersion = 1
+const backupStorageKeys = Object.values(userDataKeys)
 
 function readValidated(key, fallbackValue, isValid = () => true) {
   const value = readStorage(key, fallbackValue)
@@ -158,4 +163,27 @@ export function saveBodyAnalysisHistoryPayload(payload) {
 
 export function removeUserData(key) {
   return removeStorage(key)
+}
+
+export function getUserDataBackupSnapshot() {
+  const data = backupStorageKeys.reduce((snapshot, key) => {
+    const value = readStorage(key, null)
+
+    if (value === null || value === undefined) {
+      return snapshot
+    }
+
+    return {
+      ...snapshot,
+      [key]: value,
+    }
+  }, {})
+
+  return {
+    app: 'Viktkollen',
+    createdAt: new Date().toISOString(),
+    data,
+    storageKeys: Object.keys(data),
+    version: backupSnapshotVersion,
+  }
 }

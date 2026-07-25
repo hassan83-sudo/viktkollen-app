@@ -6,8 +6,15 @@ create table if not exists public.user_backups (
 
 alter table public.user_backups enable row level security;
 
+drop policy if exists "Users can read their own backup" on public.user_backups;
 drop policy if exists "Users can insert their own backup" on public.user_backups;
 drop policy if exists "Users can update their own backup" on public.user_backups;
+
+create policy "Users can read their own backup"
+on public.user_backups
+for select
+to authenticated
+using (auth.uid() = user_id);
 
 create policy "Users can insert their own backup"
 on public.user_backups

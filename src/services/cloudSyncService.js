@@ -3,20 +3,26 @@ import {
   isSupabaseConfigured,
   supabase,
 } from './supabaseClient.js'
-import { getUserDataBackupSnapshot } from './userDataRepository.js'
+import {
+  getUserDataBackupSnapshot,
+  isValidUserDataBackupSnapshot,
+} from './userDataRepository.js'
 
 const disabledReason = 'Cloud sync is not enabled yet'
 const backupTable = 'user_backups'
 
-function getBackupErrorMessage(error) {
+function getCloudActionErrorMessage(error, action) {
   const message = String(error?.message || '').toLocaleLowerCase('sv-SE')
+  const isRestore = action === 'restore'
 
   if (!isSupabaseConfigured()) {
     return 'Supabase är inte konfigurerat ännu.'
   }
 
   if (message.includes('jwt') || message.includes('session') || message.includes('auth')) {
-    return 'Du behöver vara inloggad för att säkerhetskopiera.'
+    return isRestore
+      ? 'Du behöver vara inloggad för att återställa.'
+      : 'Du behöver vara inloggad för att säkerhetskopiera.'
   }
 
   if (message.includes('relation') || message.includes('does not exist')) {
@@ -24,14 +30,16 @@ function getBackupErrorMessage(error) {
   }
 
   if (message.includes('permission') || message.includes('policy') || message.includes('rls')) {
-    return 'Säkerhetskopiering nekades av Supabase-reglerna.'
+    return isRestore
+      ? 'Återställning nekades av Supabase-reglerna.'
+      : 'Säkerhetskopiering nekades av Supabase-reglerna.'
   }
 
   if (message.includes('failed to fetch') || message.includes('network')) {
     return 'Nätverksfel. Kontrollera anslutningen och försök igen.'
   }
 
-  return 'Säkerhetskopiering misslyckades.'
+  return isRestore ? 'Återställning misslyckades.' : 'Säkerhetskopiering misslyckades.'
 }
 
 async function getAuthenticatedUser() {
@@ -84,7 +92,7 @@ export async function uploadUserData() {
       ...getCloudSyncStatus(),
       action: 'upload',
       ok: false,
-      reason: getBackupErrorMessage(auth.error),
+      reason: getCloudActionErrorMessage(auth.error, 'backup'),
     }
   }
 
@@ -106,7 +114,7 @@ export async function uploadUserData() {
       ...getCloudSyncStatus(),
       action: 'upload',
       ok: false,
-      reason: getBackupErrorMessage(error),
+      reason: getCloudActionErrorMessage(error, 'backup'),
     }
   }
 
@@ -117,6 +125,61 @@ export async function uploadUserData() {
     ok: true,
     reason: 'Säkerhetskopiering lyckades.',
     storageKeys: backup.storageKeys,
+  }
+}
+
+export async function downloadUserData() {
+  const auth = await getAuthenticatedUser()
+
+  if (auth.error) {
+    return {
+      ...getCloudSyncStatus(),
+      action: 'download',
+      ok: false,
+      reason: getCloudActionErrorMessage(auth.error, 'restore'),
+    }
+  }
+
+  const { data, error } = await supabase
+    .from(backupTable)
+    .select('data, updated_at')
+    .eq('user_id', auth.user.id)
+    .maybeSingle()
+
+  if (error) {
+    return {
+      ...getCloudSyncStatus(),
+      action: 'download',
+      ok: false,
+      reason: getCloudActionErrorMessage(error, 'restore'),
+    }
+  }
+
+  if (!data?.data) {
+    return {
+      ...getCloudSyncStatus(),
+      action: 'download',
+      ok: false,
+      reason: 'Ingen säkerhetskopia hittades i molnet.',
+    }
+  }
+
+  if (!isValidUserDataBackupSnapshot(data.data)) {
+    return {
+      ...getCloudSyncStatus(),
+      action: 'download',
+      ok: false,
+      reason: 'Säkerhetskopian har ett ogiltigt format.',
+    }
+  }
+
+  return {
+    ...getCloudSyncStatus(),
+    action: 'download',
+    backup: data.data,
+    backupUpdatedAt: data.updated_at,
+    ok: true,
+    reason: 'Säkerhetskopian hämtades.',
   }
 }
 

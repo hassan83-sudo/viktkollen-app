@@ -187,3 +187,52 @@ export function getUserDataBackupSnapshot() {
     version: backupSnapshotVersion,
   }
 }
+
+export function isValidUserDataBackupSnapshot(snapshot) {
+  return (
+    snapshot &&
+    typeof snapshot === 'object' &&
+    snapshot.app === 'Viktkollen' &&
+    snapshot.version === backupSnapshotVersion &&
+    snapshot.data &&
+    typeof snapshot.data === 'object' &&
+    !Array.isArray(snapshot.data)
+  )
+}
+
+export function restoreUserDataBackupSnapshot(snapshot) {
+  if (!isValidUserDataBackupSnapshot(snapshot)) {
+    return {
+      failedKeys: [],
+      ok: false,
+      reason: 'Säkerhetskopian har ett ogiltigt format.',
+      restoredKeys: [],
+    }
+  }
+
+  const allowedKeys = new Set(backupStorageKeys)
+  const failedKeys = []
+  const restoredKeys = []
+
+  Object.entries(snapshot.data).forEach(([key, value]) => {
+    if (!allowedKeys.has(key) || value === undefined) {
+      return
+    }
+
+    if (writeStorage(key, value)) {
+      restoredKeys.push(key)
+    } else {
+      failedKeys.push(key)
+    }
+  })
+
+  return {
+    failedKeys,
+    ok: failedKeys.length === 0,
+    reason:
+      failedKeys.length > 0
+        ? 'Några lokala värden kunde inte återställas.'
+        : 'Återställning lyckades.',
+    restoredKeys,
+  }
+}

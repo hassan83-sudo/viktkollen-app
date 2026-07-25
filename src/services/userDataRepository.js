@@ -25,7 +25,15 @@ export const userDataKeys = {
 }
 
 const backupSnapshotVersion = 1
-const backupStorageKeys = Object.values(userDataKeys)
+const sensitiveBackupKeyPatterns = [
+  /auth/i,
+  /session/i,
+  /supabase/i,
+  /token/i,
+]
+const backupStorageKeys = Object.values(userDataKeys).filter((key) =>
+  sensitiveBackupKeyPatterns.every((pattern) => !pattern.test(key)),
+)
 
 function readValidated(key, fallbackValue, isValid = () => true) {
   const value = readStorage(key, fallbackValue)

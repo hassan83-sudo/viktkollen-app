@@ -104,7 +104,6 @@ export async function uploadUserData() {
       {
         data: backup,
         updated_at: updatedAt,
-        user_id: auth.user.id,
       },
       { onConflict: 'user_id' },
     )
@@ -143,7 +142,6 @@ export async function downloadUserData() {
   const { data, error } = await supabase
     .from(backupTable)
     .select('data, updated_at')
-    .eq('user_id', auth.user.id)
     .maybeSingle()
 
   if (error) {

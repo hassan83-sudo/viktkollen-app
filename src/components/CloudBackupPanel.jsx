@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   deleteUserBackups,
-  downloadUserData,
+  getSyncEvents,
+  getUndoRestoreStatus,
   listUserBackups,
-  saveLatestRestoreMeta,
+  previewCloudRestore,
+  pushLocalDataToCloud,
+  restoreCloudBackup,
+  undoLatestRestore,
   updateUserBackup,
-  uploadUserData,
 } from '../services/cloudSyncService.js'
 import {
-  isValidUserDataBackupSnapshot,
-  restoreUserDataBackupSnapshot,
-} from '../services/userDataRepository.js'
+  createPreRestoreBackup,
+  restoreCloudBackupPayload,
+  validateCloudBackupPayload,
+} from '../services/cloudBackupSchema.js'
 
 function formatBackupDate(value) {
   if (!value) {
@@ -79,12 +83,16 @@ function CloudBackupPanel({ isAuthenticated }) {
   const [isDeletingId, setIsDeletingId] = useState('')
   const [isImporting, setIsImporting] = useState(false)
   const [isLoadingBackups, setIsLoadingBackups] = useState(false)
+  const [isPreviewing, setIsPreviewing] = useState(false)
   const [isRestoringId, setIsRestoringId] = useState('')
+  const [lastPreview, setLastPreview] = useState(null)
   const [renameDrafts, setRenameDrafts] = useState({})
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedBackupIds, setSelectedBackupIds] = useState([])
   const [sortMode, setSortMode] = useState('favorit-nyast')
+  const [syncEvents, setSyncEvents] = useState([])
   const [totalBackupCount, setTotalBackupCount] = useState(0)
+  const [undoRestore, setUndoRestore] = useState(() => getUndoRestoreStatus())
 
   const refreshBackups = useCallback(async () => {
     if (!isAuthenticated) {
@@ -94,6 +102,7 @@ function CloudBackupPanel({ isAuthenticated }) {
 
     setIsLoadingBackups(true)
     const result = await listUserBackups()
+    const eventResult = await getSyncEvents()
 
     if (result.ok) {
       setBackups(result.backups)
@@ -110,6 +119,10 @@ function CloudBackupPanel({ isAuthenticated }) {
         message: result.reason || 'Kunde inte hämta säkerhetskopior.',
       })
       setTotalBackupCount(0)
+    }
+
+    if (eventResult.events) {
+      setSyncEvents(eventResult.events)
     }
 
     setIsLoadingBackups(false)
@@ -180,6 +193,7 @@ function CloudBackupPanel({ isAuthenticated }) {
   const hasBusyAction =
     isBackingUp ||
     isImporting ||
+    isPreviewing ||
     Boolean(isDeletingId) ||
     Boolean(isRestoringId)
   const selectedVisibleIds = visibleBackups.map((backup) => backup.id)
@@ -191,12 +205,12 @@ function CloudBackupPanel({ isAuthenticated }) {
     setIsBackingUp(true)
     setBackupStatus(null)
 
-    const result = await uploadUserData()
+    const result = await pushLocalDataToCloud()
 
     setBackupStatus({
       ok: Boolean(result.ok),
       message: result.ok
-        ? 'Säkerhetskopiering lyckades.'
+        ? result.reason || 'Säkerhetskopiering lyckades.'
         : result.reason || 'Säkerhetskopiering misslyckades.',
       updatedAt: result.backupCreatedAt || result.backupUpdatedAt,
     })
@@ -243,55 +257,80 @@ function CloudBackupPanel({ isAuthenticated }) {
     }
   }
 
-  function previewRestore(backup) {
+  function makeRestoreConfirmText(preview) {
+    const backup = preview?.backup
     const content = getBackupContentSummary(backup).join(', ')
 
     return [
       `Backup: ${getBackupTitle(backup)}`,
       `Datum: ${formatBackupDate(backup.createdAt)} ${formatBackupTime(backup.createdAt)}`,
       `Storlek: ${formatBackupSize(backup.sizeBytes)}`,
+      `Schema: V${backup.schemaVersion || preview.preview?.schemaVersion || '?'}`,
       `Datadelar: ${backup.storageKeyCount}`,
-      `Innehåller: ${content}`,
+      `Inneh?ller: ${content}`,
+      `Konfliktstatus: ${preview.conflict?.status || 'UNKNOWN'}`,
+      `Rekommendation: ${preview.conflict?.recommendation || 'F?rhandsgranska manuellt.'}`,
       '',
-      'Detta kommer att ersätta din lokala data med den valda säkerhetskopian från molnet. Vill du fortsätta?',
+      'Detta kommer att ers?tta din lokala data med den valda s?kerhetskopian fr?n molnet. En lokal ?ngra-backup skapas f?rst. Vill du forts?tta?',
     ].join('\n')
   }
 
-  async function handleRestore(backup) {
-    const shouldRestore = window.confirm(previewRestore(backup))
+  async function handlePreview(backup = null) {
+    setIsPreviewing(true)
+    setBackupStatus(null)
+
+    const result = await previewCloudRestore(backup?.id || '')
+
+    if (result.ok) {
+      setLastPreview(result)
+      setBackupStatus({
+        ok: true,
+        message: result.reason || 'Molnversionen f?rhandsgranskades.',
+      })
+    } else {
+      setBackupStatus({
+        ok: false,
+        message: result.reason || 'F?rhandsgranskning misslyckades.',
+      })
+    }
+
+    setIsPreviewing(false)
+  }
+
+  async function handleRestore(backup = null) {
+    const preview =
+      backup && lastPreview?.backup?.id === backup.id
+        ? lastPreview
+        : await previewCloudRestore(backup?.id || lastPreview?.backup?.id || '')
+
+    if (!preview.ok) {
+      setBackupStatus({
+        ok: false,
+        message: preview.reason || '?terst?llning misslyckades.',
+      })
+      return
+    }
+
+    const shouldRestore = window.confirm(makeRestoreConfirmText(preview))
 
     if (!shouldRestore) {
       return
     }
 
-    setIsRestoringId(backup.id)
+    setIsRestoringId(preview.backup.id)
     setBackupStatus(null)
 
-    const result = await downloadUserData(backup.id)
-
-    if (!result.ok) {
-      setBackupStatus({
-        ok: false,
-        message: result.reason || 'Återställning misslyckades.',
-      })
-      setIsRestoringId('')
-      return
-    }
-
-    const restoreResult = restoreUserDataBackupSnapshot(result.backup)
-
-    if (restoreResult.ok) {
-      saveLatestRestoreMeta(result)
-    }
+    const restoreResult = await restoreCloudBackup(preview.backup.id)
 
     setBackupStatus({
       ok: Boolean(restoreResult.ok),
       message: restoreResult.ok
-        ? 'Återställning lyckades. Appen laddas om...'
-        : restoreResult.reason || 'Återställning misslyckades.',
-      updatedAt: result.createdAt || result.updatedAt,
+        ? '?terst?llning lyckades. Appen laddas om...'
+        : restoreResult.reason || '?terst?llning misslyckades.',
+      updatedAt: preview.backup.createdAt || preview.backup.updatedAt,
     })
     setIsRestoringId('')
+    setUndoRestore(getUndoRestoreStatus())
 
     if (restoreResult.ok) {
       window.setTimeout(() => {
@@ -358,9 +397,12 @@ function CloudBackupPanel({ isAuthenticated }) {
 
   function handleExportBackup(backup) {
     downloadJsonFile(`viktkollen-backup-${backup.id}.json`, {
-      exportedAt: new Date().toISOString(),
-      source: 'Viktkollen',
-      backup: backup.backup,
+      ...backup.backup,
+      exportedAt: backup.backup?.exportedAt || new Date().toISOString(),
+      metadata: {
+        ...(backup.backup?.metadata || {}),
+        exportedFromCloudBackupId: backup.id,
+      },
     })
   }
 
@@ -371,31 +413,42 @@ function CloudBackupPanel({ isAuthenticated }) {
       return
     }
 
+    if (file.size > 5 * 1024 * 1024) {
+      setBackupStatus({
+        ok: false,
+        message: 'JSON-filen ?r f?r stor f?r lokal import i den h?r versionen.',
+      })
+      event.target.value = ''
+      return
+    }
+
     setIsImporting(true)
     setBackupStatus(null)
 
     try {
       const text = await file.text()
       const parsed = JSON.parse(text)
-      const snapshot = parsed?.backup || parsed
+      const validation = validateCloudBackupPayload(parsed?.backup || parsed)
 
-      if (!isValidUserDataBackupSnapshot(snapshot)) {
+      if (!validation.ok) {
         setBackupStatus({
           ok: false,
-          message: 'JSON-filen är inte en giltig Viktkollen-backup.',
+          message: validation.reason || 'JSON-filen ?r inte en giltig Viktkollen-backup.',
         })
         return
       }
 
       const shouldImport = window.confirm(
-        'Detta kommer att ersätta din lokala data med innehållet i JSON-filen. Vill du fortsätta?',
+        `Backupen inneh?ller ${validation.payload.metadata.storageKeyCount} datadelar och ?r cirka ${formatBackupSize(validation.payload.metadata.sizeBytes)}. Detta kommer att ers?tta din lokala data med inneh?llet i JSON-filen. En lokal ?ngra-backup skapas f?rst. Vill du forts?tta?`,
       )
 
       if (!shouldImport) {
         return
       }
 
-      const restoreResult = restoreUserDataBackupSnapshot(snapshot)
+      createPreRestoreBackup()
+      const restoreResult = restoreCloudBackupPayload(validation.payload)
+      setUndoRestore(getUndoRestoreStatus())
 
       setBackupStatus({
         ok: Boolean(restoreResult.ok),
@@ -412,11 +465,41 @@ function CloudBackupPanel({ isAuthenticated }) {
     } catch {
       setBackupStatus({
         ok: false,
-        message: 'JSON-filen kunde inte läsas eller tolkas.',
+        message: 'JSON-filen kunde inte l?sas eller tolkas.',
       })
     } finally {
       setIsImporting(false)
       event.target.value = ''
+    }
+  }
+
+  async function handleUndoRestore() {
+    const shouldUndo = window.confirm(
+      'Detta återställer den lokala datan som fanns precis före senaste molnrestore/import. Vill du fortsätta?',
+    )
+
+    if (!shouldUndo) {
+      return
+    }
+
+    setIsRestoringId('undo')
+    setBackupStatus(null)
+
+    const result = await undoLatestRestore()
+
+    setBackupStatus({
+      ok: Boolean(result.ok),
+      message: result.ok
+        ? 'Senaste återställning ångrades. Appen laddas om...'
+        : result.reason || 'Kunde inte ångra återställningen.',
+    })
+    setUndoRestore(getUndoRestoreStatus())
+    setIsRestoringId('')
+
+    if (result.ok) {
+      window.setTimeout(() => {
+        window.location.reload()
+      }, 900)
     }
   }
 
@@ -451,7 +534,23 @@ function CloudBackupPanel({ isAuthenticated }) {
 
       <div className="cloud-backup-actions">
         <button type="button" onClick={handleBackup} disabled={hasBusyAction}>
-          {isBackingUp ? 'Säkerhetskopierar...' : 'Skapa ny backup'}
+          {isBackingUp ? 'S?kerhetskopierar...' : 'Spara lokal data i molnet'}
+        </button>
+        <button
+          className="secondary-button"
+          type="button"
+          onClick={() => handlePreview()}
+          disabled={hasBusyAction}
+        >
+          {isPreviewing ? 'F?rhandsgranskar...' : 'F?rhandsgranska molnversion'}
+        </button>
+        <button
+          className="secondary-button"
+          type="button"
+          onClick={() => handleRestore()}
+          disabled={hasBusyAction || !lastPreview?.ok}
+        >
+          ?terst?ll fr?n molnet
         </button>
         <button
           className="secondary-button"
@@ -461,6 +560,14 @@ function CloudBackupPanel({ isAuthenticated }) {
         >
           {isImporting ? 'Importerar...' : 'Importera JSON'}
         </button>
+        <button
+          className="secondary-button"
+          type="button"
+          onClick={handleUndoRestore}
+          disabled={hasBusyAction || !undoRestore.ok}
+        >
+          ?ngra senaste ?terst?llning
+        </button>
         <input
           ref={fileInputRef}
           className="sr-only"
@@ -469,6 +576,49 @@ function CloudBackupPanel({ isAuthenticated }) {
           onChange={handleImportFile}
         />
       </div>
+
+      <div className="cloud-sync-overview">
+        <div>
+          <span>Inloggad</span>
+          <strong>{isAuthenticated ? 'Ja' : 'Nej'}</strong>
+        </div>
+        <div>
+          <span>Lokal lagring</span>
+          <strong>Aktiv</strong>
+        </div>
+        <div>
+          <span>Senaste ?ngra-backup</span>
+          <strong>{undoRestore.createdAt ? formatBackupDate(undoRestore.createdAt) + ' ' + formatBackupTime(undoRestore.createdAt) : 'Saknas'}</strong>
+        </div>
+      </div>
+
+      {lastPreview?.ok && (
+        <section className="cloud-conflict-card" aria-label="Konfliktanalys">
+          <div>
+            <p className="eyebrow">Konfliktkontroll</p>
+            <h3>{lastPreview.conflict?.status || 'UNKNOWN'}</h3>
+          </div>
+          <p>{lastPreview.conflict?.recommendation}</p>
+          <div className="cloud-preview-grid">
+            <div>
+              <span>Lokal version</span>
+              <strong>{formatBackupDate(lastPreview.local?.exportedAt)} {formatBackupTime(lastPreview.local?.exportedAt)}</strong>
+            </div>
+            <div>
+              <span>Molnversion</span>
+              <strong>{formatBackupDate(lastPreview.preview?.createdAt)} {formatBackupTime(lastPreview.preview?.createdAt)}</strong>
+            </div>
+            <div>
+              <span>Schema</span>
+              <strong>V{lastPreview.preview?.schemaVersion}</strong>
+            </div>
+            <div>
+              <span>Storlek</span>
+              <strong>{formatBackupSize(lastPreview.preview?.sizeBytes)}</strong>
+            </div>
+          </div>
+        </section>
+      )}
 
       {backupStatus && (
         <p className={backupStatus.ok ? 'success-message' : 'form-error'} role="status">
@@ -574,6 +724,8 @@ function CloudBackupPanel({ isAuthenticated }) {
                   <span>Datum: {formatBackupDate(backup.createdAt)}</span>
                   <span>Tid: {formatBackupTime(backup.createdAt)}</span>
                   <span>Storlek: {formatBackupSize(backup.sizeBytes)}</span>
+                  <span>Schema: V{backup.schemaVersion || 1}</span>
+                  <span>Källa: {backup.clientId ? 'Registrerad enhet' : 'Äldre backup'}</span>
                   <span>{backup.storageKeyCount} datadelar sparade</span>
                   <code>{backup.id}</code>
                 </div>
@@ -624,6 +776,14 @@ function CloudBackupPanel({ isAuthenticated }) {
                   <button
                     className="secondary-button"
                     type="button"
+                    onClick={() => handlePreview(backup)}
+                    disabled={hasBusyAction}
+                  >
+                    Förhandsgranska
+                  </button>
+                  <button
+                    className="secondary-button"
+                    type="button"
                     onClick={() => handleRestore(backup)}
                     disabled={hasBusyAction}
                   >
@@ -638,6 +798,33 @@ function CloudBackupPanel({ isAuthenticated }) {
                     {isDeletingId === backup.id ? 'Tar bort...' : 'Ta bort backup'}
                   </button>
                 </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="backup-history" aria-label="Molnhändelser">
+        <div className="backup-history-heading">
+          <div>
+            <p className="eyebrow">Synkhändelser</p>
+            <h3>Senaste manuella åtgärder</h3>
+          </div>
+        </div>
+
+        {syncEvents.length === 0 ? (
+          <div className="backup-empty-card">
+            <strong>Ingen synkhistorik ännu.</strong>
+            <span>Händelser visas här efter backup, preview, restore eller radering.</span>
+          </div>
+        ) : (
+          <div className="cloud-event-list">
+            {syncEvents.slice(0, 10).map((event) => (
+              <div className="cloud-event-item" key={event.id}>
+                <span>{event.eventType}</span>
+                <strong>{event.status}</strong>
+                <p>{event.message}</p>
+                <small>{formatBackupDate(event.createdAt)} {formatBackupTime(event.createdAt)}</small>
               </div>
             ))}
           </div>

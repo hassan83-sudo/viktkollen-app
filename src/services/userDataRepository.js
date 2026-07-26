@@ -33,6 +33,8 @@ export const userDataKeys = {
 }
 
 const backupSnapshotVersion = 1
+export const cloudClientIdKey = 'viktkollen.clientId'
+export const preRestoreBackupKey = 'viktkollen.preRestoreBackup'
 const sensitiveBackupKeyPatterns = [
   /auth/i,
   /session/i,
@@ -42,6 +44,10 @@ const sensitiveBackupKeyPatterns = [
 const backupStorageKeys = Object.values(userDataKeys).filter((key) =>
   sensitiveBackupKeyPatterns.every((pattern) => !pattern.test(key)),
 )
+
+export function getBackupStorageKeys() {
+  return [...backupStorageKeys]
+}
 
 function readValidated(key, fallbackValue, isValid = () => true) {
   const value = readStorage(key, fallbackValue)
@@ -315,4 +321,37 @@ export function restoreUserDataBackupSnapshot(snapshot) {
         : 'Återställning lyckades.',
     restoredKeys,
   }
+}
+
+export function getCloudClientId() {
+  const existing = readStorage(cloudClientIdKey, '')
+
+  if (typeof existing === 'string' && existing.startsWith('viktkollen-client-')) {
+    return existing
+  }
+
+  const randomPart =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`
+  const clientId = `viktkollen-client-${randomPart}`
+
+  writeStorage(cloudClientIdKey, clientId)
+
+  return clientId
+}
+
+export function savePreRestoreBackup(snapshot) {
+  return writeStorage(preRestoreBackupKey, {
+    createdAt: new Date().toISOString(),
+    snapshot,
+  })
+}
+
+export function getPreRestoreBackup(fallbackValue = null) {
+  return readStorage(preRestoreBackupKey, fallbackValue)
+}
+
+export function clearPreRestoreBackup() {
+  return removeStorage(preRestoreBackupKey)
 }

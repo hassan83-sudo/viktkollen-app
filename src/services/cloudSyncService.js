@@ -1,84 +1,77 @@
 import {
+  buildCloudBackupPayload,
+  compareCloudBackupPayloads,
+  createPreRestoreBackup,
+  getApproximatePayloadSize,
+  getLocalCloudBackupPayload,
+  getUndoRestorePreview,
+  normalizeCloudBackupPayload,
+  restoreCloudBackupPayload,
+  validateCloudBackupPayload,
+} from './cloudBackupSchema.js'
+import {
+  classifyCloudError,
+  cloudErrorCodes,
+  getCloudErrorMessage,
+  makeCloudFailure,
+} from './cloudSyncErrors.js'
+import {
   getSupabaseStatus,
   isSupabaseConfigured,
   supabase,
 } from './supabaseClient.js'
 import {
+  clearPreRestoreBackup,
   getCloudBackupMeta,
-  getUserDataBackupSnapshot,
-  isValidUserDataBackupSnapshot,
   saveCloudBackupMeta,
 } from './userDataRepository.js'
 
-const disabledReason = 'Cloud sync is not enabled yet'
+const disabledReason = 'Automatisk molnsynk är avstängd'
 const backupTable = 'user_backups'
+const syncStateTable = 'user_sync_state'
+const syncEventsTable = 'user_sync_events'
+const maxHistoryRows = 10
 
-function getCloudActionErrorMessage(error, action) {
-  const message = String(error?.message || '').toLocaleLowerCase('sv-SE')
-  const labels = {
-    backup: 'säkerhetskopiera',
-    delete: 'ta bort säkerhetskopior',
-    list: 'hämta säkerhetskopior',
-    rename: 'byta namn på säkerhetskopior',
-    restore: 'återställa',
-    update: 'uppdatera säkerhetskopior',
-  }
-
-  if (!isSupabaseConfigured()) {
-    return 'Molnbackup är inte konfigurerad ännu. Din lokala data påverkas inte.'
-  }
-
-  if (
-    message.includes('jwt') ||
-    message.includes('session') ||
-    message.includes('auth') ||
-    message.includes('ingen inloggad') ||
-    message.includes('not logged')
-  ) {
-    return `Du behöver vara inloggad för att ${labels[action] || 'använda molnbackup'}.`
-  }
-
-  if (message.includes('relation') || message.includes('does not exist')) {
-    return 'Molnbackupens databastabell saknas. Din lokala data påverkas inte.'
-  }
-
-  if (message.includes('permission') || message.includes('policy') || message.includes('rls')) {
-    return 'Du saknar behörighet för den här molnåtgärden. Din lokala data påverkas inte.'
-  }
-
-  if (message.includes('failed to fetch') || message.includes('network')) {
-    return 'Nätverksfel. Kontrollera anslutningen och försök igen. Din lokala data påverkas inte.'
-  }
-
-  return 'Molnåtgärden misslyckades. Din lokala data påverkas inte.'
+function nowIso() {
+  return new Date().toISOString()
 }
 
-function getCloudDatabaseStatusFromError(error) {
-  const message = String(error?.message || '').toLocaleLowerCase('sv-SE')
+function getLocalCloudBackupMeta() {
+  return getCloudBackupMeta({})
+}
 
-  if (!isSupabaseConfigured()) {
-    return 'Inte konfigurerad'
-  }
+function saveLocalCloudBackupMeta(meta) {
+  return saveCloudBackupMeta({
+    ...getLocalCloudBackupMeta(),
+    ...meta,
+  })
+}
 
-  if (message.includes('relation') || message.includes('does not exist')) {
-    return 'Tabell saknas'
-  }
+function getLocalEvents() {
+  const meta = getLocalCloudBackupMeta()
 
-  if (message.includes('permission') || message.includes('policy') || message.includes('rls')) {
-    return 'Behörighet nekad'
-  }
+  return Array.isArray(meta.syncEvents) ? meta.syncEvents : []
+}
 
-  if (message.includes('failed to fetch') || message.includes('network')) {
-    return 'Nätverksfel'
-  }
+function saveLocalEvent(event) {
+  const events = [
+    {
+      createdAt: nowIso(),
+      id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      ...event,
+    },
+    ...getLocalEvents(),
+  ].slice(0, 20)
 
-  return 'Fel'
+  saveLocalCloudBackupMeta({ syncEvents: events })
+
+  return events[0]
 }
 
 async function getAuthenticatedUser() {
-  if (!supabase) {
+  if (!supabase || !isSupabaseConfigured()) {
     return {
-      error: new Error('Supabase är inte konfigurerat ännu.'),
+      error: new Error('Supabase är inte konfigurerat.'),
       user: null,
     }
   }
@@ -102,38 +95,177 @@ async function getAuthenticatedUser() {
   }
 }
 
-function getApproximateBackupSize(snapshot) {
-  try {
-    return new Blob([JSON.stringify(snapshot)]).size
-  } catch {
-    return JSON.stringify(snapshot || {}).length
-  }
+function makeFailure(action, error, extra = {}) {
+  const code = extra.code || classifyCloudError(error, {
+    configured: isSupabaseConfigured(),
+  })
+  const failure = makeCloudFailure(action, error, {
+    ...getCloudSyncStatus(),
+    ...extra,
+    code,
+  })
+
+  saveLocalEvent({
+    eventType: action,
+    message: failure.reason,
+    status: 'failed',
+  })
+
+  return failure
 }
 
 function normalizeBackupRow(row) {
-  const backup = row.data
+  const backup = normalizeCloudBackupPayload(row.payload || row.data)
+  const sizeBytes = Number(row.size_bytes) || getApproximatePayloadSize(backup)
 
   return {
     backup,
+    checksum: row.checksum || backup?.checksum || '',
+    clientId: backup?.clientId || '',
     createdAt: row.created_at || row.updated_at,
     id: row.id,
     isFavorite: Boolean(row.is_favorite),
     name: typeof row.name === 'string' ? row.name : '',
-    sizeBytes: getApproximateBackupSize(backup),
-    storageKeyCount: Array.isArray(backup?.storageKeys)
-      ? backup.storageKeys.length
-      : 0,
+    schemaVersion: Number(row.schema_version) || backup?.schemaVersion || 1,
+    sizeBytes,
+    storageKeyCount: Array.isArray(backup?.metadata?.storageKeys)
+      ? backup.metadata.storageKeys.length
+      : Object.keys(backup?.userData || backup?.data || {}).length,
     updatedAt: row.updated_at,
   }
 }
 
-function makeFailure(action, error, extra = {}) {
+function getBackupSelectColumns() {
+  return 'id, name, is_favorite, payload, data, schema_version, client_updated_at, created_at, updated_at, size_bytes, checksum'
+}
+
+async function getLatestCloudBackup() {
+  const { data, error } = await supabase
+    .from(backupTable)
+    .select(getBackupSelectColumns())
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    return { backup: null, error }
+  }
+
   return {
-    ...getCloudSyncStatus(),
-    action,
-    ok: false,
-    reason: getCloudActionErrorMessage(error, action),
-    ...extra,
+    backup: data ? normalizeBackupRow(data) : null,
+    error: null,
+  }
+}
+
+async function createCloudEvent(eventType, status, message, metadata = {}) {
+  const localEvent = saveLocalEvent({
+    eventType,
+    message,
+    status,
+  })
+
+  if (!supabase || !isSupabaseConfigured()) {
+    return localEvent
+  }
+
+  await supabase
+    .from(syncEventsTable)
+    .insert({
+      event_type: eventType,
+      message,
+      metadata,
+      status,
+    })
+    .throwOnError()
+    .catch(() => null)
+
+  return localEvent
+}
+
+async function updateSyncState(payload, latestBackupId, direction, status) {
+  if (!supabase || !isSupabaseConfigured()) {
+    return null
+  }
+
+  const state = {
+    cloud_updated_at: nowIso(),
+    client_updated_at: payload?.exportedAt || nowIso(),
+    last_sync_direction: direction,
+    last_sync_status: status,
+    latest_backup_id: latestBackupId || null,
+    schema_version: payload?.schemaVersion || 2,
+  }
+
+  const { error } = await supabase
+    .from(syncStateTable)
+    .upsert(state, { onConflict: 'user_id' })
+
+  return error
+}
+
+function getConflictRecommendation(status) {
+  const recommendations = {
+    CLOUD_NEWER: 'Molnversionen är nyare. Förhandsgranska innan återställning.',
+    CLOUD_ONLY: 'Det finns bara molndata. Förhandsgranska innan du återställer.',
+    CONFLICT: 'Båda versionerna har ändrats. Välj vilken version du vill behålla.',
+    IN_SYNC: 'Versionerna är identiska.',
+    LOCAL_NEWER: 'Lokal data är nyare. Skicka den till molnet.',
+    LOCAL_ONLY: 'Det finns bara lokal data. Spara den i molnet om du vill.',
+    UNKNOWN: 'Status kunde inte avgöras. Uppdatera status och kontrollera igen.',
+  }
+
+  return recommendations[status] || recommendations.UNKNOWN
+}
+
+export function analyzeCloudConflict(localPayload, cloudPayload) {
+  const local = normalizeCloudBackupPayload(localPayload)
+  const cloud = normalizeCloudBackupPayload(cloudPayload)
+
+  if (local && !cloud) {
+    return {
+      recommendation: getConflictRecommendation('LOCAL_ONLY'),
+      status: 'LOCAL_ONLY',
+    }
+  }
+
+  if (!local && cloud) {
+    return {
+      recommendation: getConflictRecommendation('CLOUD_ONLY'),
+      status: 'CLOUD_ONLY',
+    }
+  }
+
+  if (!local || !cloud) {
+    return {
+      recommendation: getConflictRecommendation('UNKNOWN'),
+      status: 'UNKNOWN',
+    }
+  }
+
+  const comparison = compareCloudBackupPayloads(local, cloud)
+
+  if (comparison.identical || comparison.checksumMatches) {
+    return {
+      recommendation: getConflictRecommendation('IN_SYNC'),
+      status: 'IN_SYNC',
+    }
+  }
+
+  const localTime = new Date(local.exportedAt).getTime()
+  const cloudTime = new Date(cloud.exportedAt).getTime()
+
+  if (local.clientId !== cloud.clientId && localTime !== cloudTime) {
+    return {
+      recommendation: getConflictRecommendation('CONFLICT'),
+      status: 'CONFLICT',
+    }
+  }
+
+  const status = localTime > cloudTime ? 'LOCAL_NEWER' : 'CLOUD_NEWER'
+
+  return {
+    recommendation: getConflictRecommendation(status),
+    status,
   }
 }
 
@@ -152,37 +284,90 @@ export function canUseCloudSync() {
   return false
 }
 
-export async function uploadUserData(name = '') {
+export async function pushLocalDataToCloud(name = '') {
   const auth = await getAuthenticatedUser()
 
   if (auth.error) {
     return makeFailure('backup', auth.error)
   }
 
-  const backup = getUserDataBackupSnapshot()
+  const payload = buildCloudBackupPayload({ name, source: 'manual-push' })
+  const validation = validateCloudBackupPayload(payload)
+
+  if (!validation.ok) {
+    return makeFailure('backup', new Error(validation.reason), {
+      code: cloudErrorCodes.INVALID_PAYLOAD,
+    })
+  }
+
+  const latest = await getLatestCloudBackup()
+
+  if (latest.error) {
+    return makeFailure('backup', latest.error)
+  }
+
+  if (latest.backup?.checksum && latest.backup.checksum === validation.payload.checksum) {
+    await createCloudEvent('backup', 'skipped', 'Molnet har redan den senaste versionen.', {
+      checksum: validation.payload.checksum,
+    })
+
+    return {
+      ...getCloudSyncStatus(),
+      action: 'upload',
+      backupId: latest.backup.id,
+      backupUpdatedAt: latest.backup.updatedAt,
+      ok: true,
+      reason: 'Molnet har redan den senaste versionen.',
+      skipped: true,
+    }
+  }
+
   const { data, error } = await supabase
     .from(backupTable)
     .insert({
-      data: backup,
+      checksum: validation.payload.checksum,
+      client_updated_at: validation.payload.exportedAt,
       is_favorite: false,
       name: name.trim() || null,
+      payload: validation.payload,
+      schema_version: validation.payload.schemaVersion,
+      size_bytes: validation.payload.metadata.sizeBytes,
     })
-    .select('id, name, is_favorite, created_at, updated_at')
+    .select('id, name, is_favorite, payload, schema_version, client_updated_at, created_at, updated_at, size_bytes, checksum')
     .single()
 
   if (error) {
     return makeFailure('backup', error)
   }
 
+  const normalized = normalizeBackupRow(data)
+  const stateError = await updateSyncState(validation.payload, normalized.id, 'push', 'success')
+
+  if (stateError) {
+    return makeFailure('backup', stateError)
+  }
+
+  await createCloudEvent('backup', 'success', 'Lokal data sparades i molnet.', {
+    backupId: normalized.id,
+    checksum: normalized.checksum,
+    sizeBytes: normalized.sizeBytes,
+  })
+  saveLocalCloudBackupMeta({
+    latestBackupAt: normalized.createdAt,
+    latestBackupId: normalized.id,
+    latestSyncAt: nowIso(),
+  })
+
   return {
     ...getCloudSyncStatus(),
     action: 'upload',
-    backupCreatedAt: data.created_at,
-    backupId: data.id,
-    backupUpdatedAt: data.updated_at,
+    backup: normalized,
+    backupCreatedAt: normalized.createdAt,
+    backupId: normalized.id,
+    backupUpdatedAt: normalized.updatedAt,
     ok: true,
     reason: 'Säkerhetskopiering lyckades.',
-    storageKeys: backup.storageKeys,
+    storageKeys: validation.payload.metadata.storageKeys,
   }
 }
 
@@ -195,10 +380,10 @@ export async function listUserBackups() {
 
   const { count, data, error } = await supabase
     .from(backupTable)
-    .select('id, name, is_favorite, data, created_at, updated_at', { count: 'exact' })
+    .select(getBackupSelectColumns(), { count: 'exact' })
     .order('is_favorite', { ascending: false })
     .order('created_at', { ascending: false })
-    .limit(10)
+    .limit(maxHistoryRows)
 
   if (error) {
     return makeFailure('list', error, { backups: [] })
@@ -214,107 +399,263 @@ export async function listUserBackups() {
   }
 }
 
-export async function getCloudDashboardStatus() {
-  const auth = await getAuthenticatedUser()
-  const localMeta = getLocalCloudBackupMeta()
-
-  if (auth.error) {
-    return {
-      ...getCloudSyncStatus(),
-      backupCount: 0,
-      databaseStatus: getCloudDatabaseStatusFromError(auth.error),
-      isAuthenticated: false,
-      latestBackup: null,
-      latestRestoreAt: localMeta.latestRestoreAt || null,
-      ok: false,
-      reason: getCloudActionErrorMessage(auth.error, 'list'),
-      syncStatus: 'Manuell backup',
-    }
-  }
-
-  const { count, data, error } = await supabase
-    .from(backupTable)
-    .select('id, name, is_favorite, data, created_at, updated_at', { count: 'exact' })
-    .order('created_at', { ascending: false })
-    .limit(1)
-
-  if (error) {
-    return {
-      ...getCloudSyncStatus(),
-      backupCount: 0,
-      databaseStatus: getCloudDatabaseStatusFromError(error),
-      isAuthenticated: true,
-      latestBackup: null,
-      latestRestoreAt: localMeta.latestRestoreAt || null,
-      ok: false,
-      reason: getCloudActionErrorMessage(error, 'list'),
-      syncStatus: 'Manuell backup',
-    }
-  }
-
-  return {
-    ...getCloudSyncStatus(),
-    backupCount: count || 0,
-    databaseStatus: 'Ansluten',
-    isAuthenticated: true,
-    latestBackup: data?.[0] ? normalizeBackupRow(data[0]) : null,
-    latestRestoreAt: localMeta.latestRestoreAt || null,
-    ok: true,
-    reason: 'Molnstatus hämtades.',
-    syncStatus: 'Endast manuell',
-  }
-}
-
-export async function downloadUserData(backupId) {
+export async function previewCloudRestore(backupId = '') {
   const auth = await getAuthenticatedUser()
 
   if (auth.error) {
-    return makeFailure('restore', auth.error)
+    return makeFailure('preview', auth.error)
   }
 
   let query = supabase
     .from(backupTable)
-    .select('id, name, is_favorite, data, created_at, updated_at')
-    .order('is_favorite', { ascending: false })
+    .select(getBackupSelectColumns())
     .order('created_at', { ascending: false })
 
   if (backupId) {
     query = query.eq('id', backupId)
   }
 
-  // RLS limits this query to the authenticated user's own rows.
   const { data, error } = backupId
     ? await query.maybeSingle()
     : await query.limit(1).maybeSingle()
 
   if (error) {
-    return makeFailure('restore', error)
+    return makeFailure('preview', error)
   }
 
-  if (!data?.data) {
+  if (!data) {
+    return makeFailure('preview', new Error('Backup not found'), {
+      code: cloudErrorCodes.BACKUP_NOT_FOUND,
+    })
+  }
+
+  const backup = normalizeBackupRow(data)
+  const validation = validateCloudBackupPayload(backup.backup)
+
+  if (!validation.ok) {
+    return makeFailure('preview', new Error(validation.reason), {
+      code: cloudErrorCodes.INVALID_PAYLOAD,
+    })
+  }
+
+  const localPayload = getLocalCloudBackupPayload()
+  const conflict = analyzeCloudConflict(localPayload, validation.payload)
+
+  await createCloudEvent('preview', 'success', 'Molnversion förhandsgranskades.', {
+    backupId: backup.id,
+    conflictStatus: conflict.status,
+  })
+
+  return {
+    ...getCloudSyncStatus(),
+    action: 'preview',
+    backup: {
+      ...backup,
+      backup: validation.payload,
+    },
+    conflict,
+    local: {
+      clientId: localPayload.clientId,
+      checksum: localPayload.checksum,
+      exportedAt: localPayload.exportedAt,
+      sizeBytes: localPayload.metadata.sizeBytes,
+      storageKeyCount: localPayload.metadata.storageKeyCount,
+    },
+    ok: true,
+    preview: {
+      backupName: backup.name || 'Namnlös backup',
+      clientId: validation.payload.clientId,
+      cloudUpdatedAt: backup.updatedAt,
+      createdAt: backup.createdAt,
+      schemaVersion: validation.payload.schemaVersion,
+      sizeBytes: backup.sizeBytes,
+      storageKeyCount: validation.payload.metadata.storageKeyCount,
+    },
+    reason: 'Molnversionen förhandsgranskades.',
+  }
+}
+
+export async function restoreCloudBackup(backupId = '') {
+  const preview = await previewCloudRestore(backupId)
+
+  if (!preview.ok) {
+    await createCloudEvent('restore', 'failed', preview.reason)
+    return preview
+  }
+
+  createPreRestoreBackup()
+  const restoreResult = restoreCloudBackupPayload(preview.backup.backup)
+
+  if (!restoreResult.ok) {
+    await createCloudEvent('restore', 'failed', restoreResult.reason, {
+      backupId: preview.backup.id,
+    })
+
     return {
       ...getCloudSyncStatus(),
-      action: 'download',
+      action: 'restore',
       ok: false,
-      reason: 'Ingen säkerhetskopia hittades i molnet.',
+      reason: restoreResult.reason,
     }
   }
 
-  if (!isValidUserDataBackupSnapshot(data.data)) {
+  const stateError = await updateSyncState(preview.backup.backup, preview.backup.id, 'pull', 'success')
+
+  if (stateError) {
+    return makeFailure('restore', stateError)
+  }
+
+  await createCloudEvent('restore', 'success', 'Molnbackup återställdes till lokal lagring.', {
+    backupId: preview.backup.id,
+    restoredKeyCount: restoreResult.restoredKeys.length,
+  })
+  saveLatestRestoreMeta(preview.backup)
+
+  return {
+    ...getCloudSyncStatus(),
+    action: 'restore',
+    backup: preview.backup,
+    ok: true,
+    reason: 'Återställning lyckades.',
+    restoreResult,
+  }
+}
+
+export function getUndoRestoreStatus() {
+  return getUndoRestorePreview()
+}
+
+export async function undoLatestRestore() {
+  const undo = getUndoRestorePreview()
+
+  if (!undo.ok) {
     return {
       ...getCloudSyncStatus(),
-      action: 'download',
+      action: 'undo-restore',
       ok: false,
-      reason: 'Säkerhetskopian har ett ogiltigt format.',
+      reason: undo.reason || 'Det finns ingen giltig ångra-backup.',
+    }
+  }
+
+  const result = restoreCloudBackupPayload(undo.payload)
+
+  if (!result.ok) {
+    await createCloudEvent('undo_restore', 'failed', result.reason)
+    return {
+      ...getCloudSyncStatus(),
+      action: 'undo-restore',
+      ok: false,
+      reason: result.reason,
+    }
+  }
+
+  clearPreRestoreBackup()
+  await createCloudEvent('undo_restore', 'success', 'Senaste återställning ångrades.', {
+    restoredKeyCount: result.restoredKeys.length,
+  })
+
+  return {
+    ...getCloudSyncStatus(),
+    action: 'undo-restore',
+    ok: true,
+    reason: 'Senaste återställning ångrades.',
+    restoreResult: result,
+  }
+}
+
+export async function getCloudDashboardStatus() {
+  const auth = await getAuthenticatedUser()
+  const localMeta = getLocalCloudBackupMeta()
+
+  if (auth.error) {
+    const code = classifyCloudError(auth.error, { configured: isSupabaseConfigured() })
+
+    return {
+      ...getCloudSyncStatus(),
+      backupCount: 0,
+      databaseStatus: code === cloudErrorCodes.NOT_CONFIGURED ? 'Inte konfigurerad' : 'Ej inloggad',
+      isAuthenticated: false,
+      latestBackup: null,
+      latestRestoreAt: localMeta.latestRestoreAt || null,
+      latestSyncAt: localMeta.latestSyncAt || null,
+      ok: false,
+      reason: getCloudErrorMessage(code),
+      syncStatus: 'Inaktiv',
+    }
+  }
+
+  const { count, data, error } = await supabase
+    .from(backupTable)
+    .select(getBackupSelectColumns(), { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .limit(1)
+
+  if (error) {
+    const code = classifyCloudError(error, { configured: isSupabaseConfigured() })
+
+    return {
+      ...getCloudSyncStatus(),
+      backupCount: 0,
+      databaseStatus: code === cloudErrorCodes.TABLE_MISSING ? 'Tabell saknas' : getCloudErrorMessage(code),
+      isAuthenticated: true,
+      latestBackup: null,
+      latestRestoreAt: localMeta.latestRestoreAt || null,
+      latestSyncAt: localMeta.latestSyncAt || null,
+      ok: false,
+      reason: getCloudErrorMessage(code),
+      syncStatus: 'Endast manuell',
     }
   }
 
   return {
     ...getCloudSyncStatus(),
-    action: 'download',
-    ...normalizeBackupRow(data),
+    backupCount: count || 0,
+    databaseStatus: 'Tillgänglig',
+    isAuthenticated: true,
+    latestBackup: data?.[0] ? normalizeBackupRow(data[0]) : null,
+    latestRestoreAt: localMeta.latestRestoreAt || null,
+    latestSyncAt: localMeta.latestSyncAt || null,
     ok: true,
-    reason: 'Säkerhetskopian hämtades.',
+    reason: 'Molnstatus hämtades.',
+    syncStatus: 'Endast manuell',
+  }
+}
+
+export async function getSyncEvents() {
+  const auth = await getAuthenticatedUser()
+
+  if (auth.error) {
+    return {
+      ...makeFailure('events', auth.error),
+      events: getLocalEvents(),
+    }
+  }
+
+  const { data, error } = await supabase
+    .from(syncEventsTable)
+    .select('id, event_type, status, message, created_at')
+    .order('created_at', { ascending: false })
+    .limit(20)
+
+  if (error) {
+    return {
+      ...makeFailure('events', error),
+      events: getLocalEvents(),
+    }
+  }
+
+  return {
+    ...getCloudSyncStatus(),
+    action: 'events',
+    events: (data || []).map((event) => ({
+      createdAt: event.created_at,
+      eventType: event.event_type,
+      id: event.id,
+      message: event.message,
+      status: event.status,
+    })),
+    ok: true,
+    reason: 'Synkhistorik hämtades.',
   }
 }
 
@@ -339,7 +680,7 @@ export async function updateUserBackup(backupId, updates) {
     .from(backupTable)
     .update(payload)
     .eq('id', backupId)
-    .select('id, name, is_favorite, data, created_at, updated_at')
+    .select(getBackupSelectColumns())
     .maybeSingle()
 
   if (error) {
@@ -347,13 +688,14 @@ export async function updateUserBackup(backupId, updates) {
   }
 
   if (!data) {
-    return {
-      ...getCloudSyncStatus(),
-      action: 'update',
-      ok: false,
-      reason: 'Säkerhetskopian kunde inte uppdateras.',
-    }
+    return makeFailure('update', new Error('Backup not found'), {
+      code: cloudErrorCodes.BACKUP_NOT_FOUND,
+    })
   }
+
+  await createCloudEvent('update', 'success', 'Backupens metadata uppdaterades.', {
+    backupId,
+  })
 
   return {
     ...getCloudSyncStatus(),
@@ -378,12 +720,9 @@ export async function deleteUserBackups(backupIds) {
   const ids = [...new Set((backupIds || []).filter(Boolean))]
 
   if (ids.length === 0) {
-    return {
-      ...getCloudSyncStatus(),
-      action: 'delete',
-      ok: false,
-      reason: 'Ingen säkerhetskopia valdes.',
-    }
+    return makeFailure('delete', new Error('Backup not found'), {
+      code: cloudErrorCodes.BACKUP_NOT_FOUND,
+    })
   }
 
   const { error } = await supabase
@@ -394,6 +733,12 @@ export async function deleteUserBackups(backupIds) {
   if (error) {
     return makeFailure('delete', error)
   }
+
+  await createCloudEvent('delete', 'success', ids.length === 1
+    ? 'En molnbackup raderades.'
+    : 'Flera molnbackuper raderades.', {
+    backupIds: ids,
+  })
 
   return {
     ...getCloudSyncStatus(),
@@ -408,21 +753,25 @@ export async function deleteUserBackups(backupIds) {
 
 export function saveLatestRestoreMeta(backup) {
   const meta = {
-    ...getCloudBackupMeta({}),
-    latestRestoreAt: new Date().toISOString(),
+    latestRestoreAt: nowIso(),
     latestRestoreBackupId: backup?.id || '',
     latestRestoreName: backup?.name || '',
+    latestSyncAt: nowIso(),
   }
 
-  saveCloudBackupMeta(meta)
+  saveLocalCloudBackupMeta(meta)
 
-  return meta
-}
-
-export function getLocalCloudBackupMeta() {
-  return getCloudBackupMeta({})
+  return getLocalCloudBackupMeta()
 }
 
 export function canConfigureCloudSyncLater() {
   return isSupabaseConfigured()
+}
+
+export async function uploadUserData(name = '') {
+  return pushLocalDataToCloud(name)
+}
+
+export async function downloadUserData(backupId) {
+  return previewCloudRestore(backupId)
 }

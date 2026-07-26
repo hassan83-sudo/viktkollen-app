@@ -53,6 +53,18 @@ import {
 } from './services/mealHistory.js'
 import { analyzeMealPhoto } from './services/mealAnalysisService.js'
 import { createMonthlyHealthReport } from './services/monthlyReportService.js'
+import {
+  getTodayDateString as getNutritionTodayDateString,
+  getWeekStart,
+  mealDraftToMeal,
+  normalizeFavoriteMeals,
+  normalizeMeals,
+  normalizeNutritionGoals,
+  summarizeDay,
+  summarizeWeek,
+  upsertMeal,
+  buildNutritionInsights,
+} from './services/nutritionService.js'
 import { getProactiveCoachInsights, makeProactiveCoachInsights } from './services/proactiveCoachService.js'
 import * as userDataRepository from './services/userDataRepository.js'
 import { createWeeklyReport as createAiWeeklyReport } from './services/weeklyReportService.js'
@@ -115,8 +127,6 @@ const initialProfile = {
   goalWeight: '',
   activityLevel: 'Medel',
 }
-
-const mealOptions = ['Frukost', 'Lunch', 'Middag', 'MellanmÃ¥l']
 
 const goalOptions = ['gÃ¥ ner i vikt', 'hÃ¥lla vikten', 'bygga muskler']
 
@@ -906,11 +916,20 @@ function App() {
   )
   const [chartRange, setChartRange] = useState('7')
   const [foods, setFoods] = useState(readStoredFoods)
-  const [mealType, setMealType] = useState('Lunch')
-  const [mealText, setMealText] = useState('')
   const [meals, setMeals] = useState(() =>
-    userDataRepository.getMeals(initialMeals, isStoredMeals),
+    normalizeMeals(userDataRepository.getMeals(initialMeals, isStoredMeals)),
   )
+  const [nutritionGoals, setNutritionGoals] = useState(() =>
+    normalizeNutritionGoals(
+      userDataRepository.getNutritionGoals({}, (value) =>
+        value && typeof value === 'object' && !Array.isArray(value),
+      ),
+    ),
+  )
+  const [favoriteMeals, setFavoriteMeals] = useState(() =>
+    normalizeFavoriteMeals(userDataRepository.getFavoriteMeals([], Array.isArray)),
+  )
+  const [selectedMealDate, setSelectedMealDate] = useState(() => getNutritionTodayDateString())
   const [foodPhotoPreview, setFoodPhotoPreview] = useState('')
   const [mealHistoryImportSummary, setMealHistoryImportSummary] = useState(null)
   const [photoAnalysisStatus, setPhotoAnalysisStatus] = useState('')
@@ -1182,6 +1201,27 @@ function App() {
     },
   }))
   const mealWeekSummary = getMealWeekSummary(photoMeals)
+  const selectedNutritionWeekStart = useMemo(
+    () => getWeekStart(selectedMealDate),
+    [selectedMealDate],
+  )
+  const dailyNutritionSummary = useMemo(
+    () => summarizeDay(meals, selectedMealDate, nutritionGoals),
+    [meals, nutritionGoals, selectedMealDate],
+  )
+  const weeklyNutritionSummary = useMemo(
+    () => summarizeWeek(meals, selectedNutritionWeekStart, nutritionGoals),
+    [meals, nutritionGoals, selectedNutritionWeekStart],
+  )
+  const nutritionInsights = useMemo(
+    () =>
+      buildNutritionInsights({
+        goals: nutritionGoals,
+        meals,
+        weekStart: selectedNutritionWeekStart,
+      }),
+    [meals, nutritionGoals, selectedNutritionWeekStart],
+  )
   const monthlyReport = useMemo(
     () =>
       createMonthlyHealthReport({
@@ -1244,11 +1284,26 @@ function App() {
         checkIn,
         mealHistory: photoMeals,
         meals,
+        nutritionGoals,
+        nutritionInsights,
+        nutritionSummary: dailyNutritionSummary,
         previousReports: coachReports,
         profile: makeValidatedProfile(profile),
+        weeklyNutrition: weeklyNutritionSummary,
         weights,
       }),
-    [checkIn, coachReports, meals, photoMeals, profile, weights],
+    [
+      checkIn,
+      coachReports,
+      dailyNutritionSummary,
+      meals,
+      nutritionGoals,
+      nutritionInsights,
+      photoMeals,
+      profile,
+      weeklyNutritionSummary,
+      weights,
+    ],
   )
 
   const proactiveCoachKey = useMemo(
@@ -1317,15 +1372,30 @@ function App() {
         checkIn,
         mealHistory: photoMeals,
         meals,
+        nutritionGoals,
+        nutritionInsights,
+        nutritionSummary: dailyNutritionSummary,
         previousReports: coachReports,
         profile: makeValidatedProfile(profile),
+        weeklyNutrition: weeklyNutritionSummary,
         weights,
       })
 
       setCoachReports((current) => [report, ...current].slice(0, 20))
       setIsGeneratingCoachReport(false)
     }, 350)
-  }, [checkIn, coachReports, meals, photoMeals, profile, weights])
+  }, [
+    checkIn,
+    coachReports,
+    dailyNutritionSummary,
+    meals,
+    nutritionGoals,
+    nutritionInsights,
+    photoMeals,
+    profile,
+    weeklyNutritionSummary,
+    weights,
+  ])
   const deleteCoachReport = useCallback((reportId) => {
     setCoachReports((current) => current.filter((report) => report.id !== reportId))
   }, [])
@@ -1442,6 +1512,14 @@ function App() {
   useEffect(() => {
     userDataRepository.saveMeals(meals)
   }, [meals])
+
+  useEffect(() => {
+    userDataRepository.saveNutritionGoals(nutritionGoals)
+  }, [nutritionGoals])
+
+  useEffect(() => {
+    userDataRepository.saveFavoriteMeals(favoriteMeals)
+  }, [favoriteMeals])
 
   useEffect(() => {
     setMealHistory(photoMeals)
@@ -1813,21 +1891,6 @@ function App() {
     )
   }
 
-  function addMeal(event) {
-    event.preventDefault()
-    const text = mealText.trim()
-
-    if (!text) {
-      return
-    }
-
-    setMeals((current) => [
-      { id: Date.now(), type: mealType, text },
-      ...current,
-    ])
-    setMealText('')
-  }
-
   function handleFoodPhotoChange(event) {
     const file = event.target.files?.[0]
 
@@ -1869,8 +1932,29 @@ function App() {
       image: foodPhotoPreview,
       source: analysis.source || 'mock',
     }
+    const photoMeal = mealDraftToMeal({
+      calories: analysis.calories,
+      carbs: analysis.carbs,
+      date: getNutritionTodayDateString(),
+      description:
+        analysis.summary ||
+        `Fotoanalys: ${Array.isArray(analysis.foods) ? analysis.foods.join(', ') : 'måltid'}`,
+      fat: analysis.fat,
+      fiber: analysis.fiber,
+      name: analysis.mealType ? `${analysis.mealType} från foto` : 'Måltid från foto',
+      note: analysis.coachSummary || analysis.improvement || analysis.improvementSuggestion || '',
+      portionSize: analysis.portionSize || analysis.portionEstimate || '',
+      protein: analysis.protein,
+      source: 'Fotoanalys',
+      time: new Date(createdAt).toLocaleTimeString('sv-SE', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      type: analysis.mealType || 'Lunch',
+    })
 
     setPhotoMeals(addMealAnalysis(nextEntry))
+    setMeals((current) => upsertMeal(current, photoMeal))
     setPhotoAnalysisStatus('')
   }
 
@@ -2685,24 +2769,27 @@ function App() {
 
         <MealLogger
           displayPhotoMeals={displayPhotoMeals}
+          favoriteMeals={favoriteMeals}
           foodPhotoPreview={foodPhotoPreview}
           handleFoodPhotoChange={handleFoodPhotoChange}
           importSummary={mealHistoryImportSummary}
-          mealOptions={mealOptions}
-          mealText={mealText}
-          mealType={mealType}
           meals={meals}
-          onAddMeal={addMeal}
           onAnalyzePhotoMeal={analyzePhotoMeal}
           onCancelClearMealHistory={() => setShowClearMealHistoryConfirm(false)}
           onClearMealHistory={clearLocalMealHistory}
           onCreateDemoMealDay={createDemoMealAnalysisDay}
           onExportMealHistory={exportMealAnalysisHistory}
+          onFavoriteMealsChange={(nextFavorites) =>
+            setFavoriteMeals(normalizeFavoriteMeals(nextFavorites))}
           onImportMealHistory={importMealAnalysisHistory}
-          onMealTextChange={setMealText}
-          onMealTypeChange={setMealType}
+          onMealsChange={(nextMeals) => setMeals(normalizeMeals(nextMeals))}
+          onNutritionGoalsChange={(nextGoals) =>
+            setNutritionGoals(normalizeNutritionGoals(nextGoals))}
+          onSelectedMealDateChange={setSelectedMealDate}
           onShowClearMealHistory={() => setShowClearMealHistoryConfirm(true)}
+          nutritionGoals={nutritionGoals}
           photoAnalysisStatus={photoAnalysisStatus}
+          selectedMealDate={selectedMealDate}
           showClearMealHistoryConfirm={showClearMealHistoryConfirm}
           weekSummary={mealWeekSummary}
         />

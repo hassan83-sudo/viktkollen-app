@@ -126,8 +126,11 @@ function AICoach({
             <p>{coachReport.dailyAnalysis.summary}</p>
             <ul className="coach-v2-list">
               <li>Steg: {coachReport.dailyAnalysis.stepsLabel}</li>
+              <li>Måltider: {coachReport.dailyAnalysis.mealCount ?? 0}</li>
               <li>Protein: {coachReport.dailyAnalysis.proteinLabel}</li>
               <li>Kalorier: {coachReport.dailyAnalysis.caloriesLabel}</li>
+              <li>Fibrer: {coachReport.dailyAnalysis.fiberLabel}</li>
+              <li>Kostmål: {coachReport.dailyAnalysis.nutritionGoalLabel}</li>
               <li>Humör: {coachReport.dailyAnalysis.mood}</li>
               <li>Sömn: {coachReport.dailyAnalysis.sleepLabel}</li>
               <li>{coachReport.dailyAnalysis.trainingLabel}</li>
@@ -153,7 +156,10 @@ function AICoach({
             <h3>Senaste 7 dagarna</h3>
             <ul className="coach-v2-list">
               <li>Viktförändring: {coachReport.weeklySummary.weightChangeLabel}</li>
+              <li>Genomsnittliga kalorier: {coachReport.weeklySummary.calorieAverageLabel}</li>
               <li>Genomsnittligt protein: {coachReport.weeklySummary.proteinAverageLabel}</li>
+              <li>Genomsnittliga fibrer: {coachReport.weeklySummary.fiberAverageLabel}</li>
+              <li>Registrerade kostdagar: {coachReport.weeklySummary.registeredNutritionDays ?? 'Saknas'}</li>
               <li>Genomsnittliga steg: {coachReport.weeklySummary.stepsAverageLabel}</li>
               <li>Träningsdagar: {coachReport.weeklySummary.trainingDays}</li>
               <li>Incheckningar: {coachReport.weeklySummary.checkInCount}</li>
@@ -166,6 +172,11 @@ function AICoach({
             <p className="eyebrow">Motivation</p>
             <h3>Dagens ton</h3>
             <p>{coachReport.motivation.message}</p>
+            {coachReport.nutritionInsights?.[0] ? (
+              <div className="coach-note">
+                Kostinsikt: {coachReport.nutritionInsights[0].text}
+              </div>
+            ) : null}
             <div className="coach-note">{coachReport.weeklySummary.conclusion}</div>
           </section>
         </div>

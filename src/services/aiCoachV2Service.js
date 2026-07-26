@@ -106,6 +106,12 @@ function getMealProteinStatus(entry) {
   return entry?.analysis?.proteinStatus ?? entry?.proteinStatus
 }
 
+function formatNutritionValue(value, unit, fallback = 'Saknas') {
+  const number = safeNumber(value)
+
+  return number === null ? fallback : `${Math.round(number)} ${unit}`
+}
+
 function getLastActivityDate({ checkIn, mealHistory, meals, weights }) {
   const dates = [
     ...safeArray(weights).map((entry) => entry.date),
@@ -201,13 +207,33 @@ function buildCoachProfile({ checkIn, profile, weights }) {
   }
 }
 
-function buildDailyAnalysis({ checkIn, mealHistory, meals, profile, weights }) {
+function buildDailyAnalysis({
+  checkIn,
+  mealHistory,
+  meals,
+  nutritionGoals,
+  nutritionSummary,
+  profile,
+  weights,
+}) {
   const todayMeals = getRecentEntries([...safeArray(mealHistory), ...safeArray(meals)], 1)
   const weightStats = getWeightStats(weights, { startWeight: profile?.startWeight })
-  const calories = average(todayMeals.map(getMealCalories))
-  const protein = average(todayMeals.map(getMealProtein))
+  const hasNutritionSummary = nutritionSummary && typeof nutritionSummary === 'object'
+  const calories = hasNutritionSummary
+    ? safeNumber(nutritionSummary.totals?.calories)
+    : average(todayMeals.map(getMealCalories))
+  const protein = hasNutritionSummary
+    ? safeNumber(nutritionSummary.totals?.protein)
+    : average(todayMeals.map(getMealProtein))
+  const fiber = hasNutritionSummary ? safeNumber(nutritionSummary.totals?.fiber) : null
+  const mealCount = hasNutritionSummary ? safeNumber(nutritionSummary.mealCount, 0) : todayMeals.length
   const proteinStatuses = todayMeals.map(getMealProteinStatus).map(getProteinScore).filter(Boolean)
-  const proteinStatus = getProteinLabel(proteinStatuses.length ? average(proteinStatuses) : null)
+  const proteinGoal = safeNumber(nutritionGoals?.protein)
+  const proteinStatus = proteinGoal && protein !== null
+    ? protein >= proteinGoal * 0.85
+      ? 'Bra'
+      : 'Lågt'
+    : getProteinLabel(proteinStatuses.length ? average(proteinStatuses) : null)
   const steps = safeNumber(checkIn?.steps)
   const energy = safeNumber(checkIn?.energy)
   const sleep = safeNumber(checkIn?.sleep || checkIn?.sleepHours)
@@ -216,14 +242,33 @@ function buildDailyAnalysis({ checkIn, mealHistory, meals, profile, weights }) {
   const summaryParts = [
     weightStats.trend !== 'För lite data' ? `vikttrenden är ${weightStats.trend.toLocaleLowerCase('sv-SE')}` : '',
     steps !== null ? `${formatInteger(steps)} steg` : '',
+    mealCount > 0 ? `${mealCount} loggade måltider` : '',
     proteinStatus !== 'Saknas' ? `protein ser ${proteinStatus.toLocaleLowerCase('sv-SE')} ut` : '',
     energy !== null ? `energi ${energy}/10` : '',
   ].filter(Boolean)
 
   return {
-    caloriesLabel: calories === null ? 'Saknas' : `${Math.round(calories)} kcal i snitt per loggad måltid`,
+    caloriesLabel:
+      calories === null
+        ? 'Saknas'
+        : hasNutritionSummary
+          ? `${Math.round(calories)} kcal idag`
+          : `${Math.round(calories)} kcal i snitt per loggad måltid`,
+    fiberLabel: formatNutritionValue(fiber, 'g'),
+    mealCount,
+    nutritionGoalLabel:
+      safeNumber(nutritionGoals?.calories) ||
+      safeNumber(nutritionGoals?.protein) ||
+      safeNumber(nutritionGoals?.fiber)
+        ? 'Lokala kostmål finns'
+        : 'Kostmål saknas',
     mood,
-    proteinLabel: protein === null ? proteinStatus : `${Math.round(protein)} g i snitt`,
+    proteinLabel:
+      protein === null
+        ? proteinStatus
+        : hasNutritionSummary
+          ? `${Math.round(protein)} g idag`
+          : `${Math.round(protein)} g i snitt`,
     proteinStatus,
     sleepLabel: sleep === null ? 'Saknas' : `${sleep} timmar`,
     steps,
@@ -237,7 +282,7 @@ function buildDailyAnalysis({ checkIn, mealHistory, meals, profile, weights }) {
   }
 }
 
-function buildWeeklySummary({ checkIn, mealHistory, meals, weights }) {
+function buildWeeklySummary({ checkIn, mealHistory, meals, weeklyNutrition, weights }) {
   const weekWeights = getRecentEntries(weights, 7)
   const weekMeals = getRecentEntries([...safeArray(mealHistory), ...safeArray(meals)], 7)
   const firstWeight = weekWeights[0]?.value
@@ -246,7 +291,9 @@ function buildWeeklySummary({ checkIn, mealHistory, meals, weights }) {
     firstWeight !== undefined && lastWeight !== undefined
       ? Number((lastWeight - firstWeight).toFixed(1))
       : null
-  const proteinAverage = average(weekMeals.map(getMealProtein))
+  const proteinAverage = safeNumber(weeklyNutrition?.averageProtein) ?? average(weekMeals.map(getMealProtein))
+  const calorieAverage = safeNumber(weeklyNutrition?.averageCalories)
+  const fiberAverage = safeNumber(weeklyNutrition?.averageFiber)
   const proteinScore = average(weekMeals.map(getMealProteinStatus).map(getProteinScore))
   const steps = safeNumber(checkIn?.steps)
   const checkInCount = checkIn && Object.keys(checkIn).length > 0 ? 1 : 0
@@ -276,6 +323,9 @@ function buildWeeklySummary({ checkIn, mealHistory, meals, weights }) {
       proteinAverage === null
         ? getProteinLabel(proteinScore)
         : `${Math.round(proteinAverage)} g`,
+    calorieAverageLabel: calorieAverage === null ? 'Saknas' : `${Math.round(calorieAverage)} kcal`,
+    fiberAverageLabel: fiberAverage === null ? 'Saknas' : `${Math.round(fiberAverage)} g`,
+    registeredNutritionDays: weeklyNutrition?.registeredDays ?? null,
     stepsAverageLabel: steps === null ? 'Saknas' : formatInteger(steps),
     trainingDays,
     weightChangeLabel: weightChange === null ? 'Saknas' : formatKg(weightChange),
@@ -363,15 +413,21 @@ export function createAiCoachV2Report(data = {}) {
   const mealHistory = safeArray(data.mealHistory)
   const meals = safeArray(data.meals)
   const checkIn = data.checkIn || {}
+  const nutritionGoals = data.nutritionGoals || {}
+  const nutritionInsights = safeArray(data.nutritionInsights)
+  const nutritionSummary = data.nutritionSummary || null
+  const weeklyNutrition = data.weeklyNutrition || null
   const coachProfile = buildCoachProfile({ checkIn, profile, weights })
   const dailyAnalysis = buildDailyAnalysis({
     checkIn,
     mealHistory,
     meals,
+    nutritionGoals,
+    nutritionSummary,
     profile,
     weights,
   })
-  const weeklySummary = buildWeeklySummary({ checkIn, mealHistory, meals, weights })
+  const weeklySummary = buildWeeklySummary({ checkIn, mealHistory, meals, weeklyNutrition, weights })
   const goalCenter = buildGoalCenter(coachProfile)
   const motivation = buildMotivation({
     checkIn,
@@ -389,6 +445,7 @@ export function createAiCoachV2Report(data = {}) {
     goalCenter,
     id: `coach-report-${Date.now()}`,
     motivation,
+    nutritionInsights,
     weeklySummary,
   }
 }

@@ -15,8 +15,10 @@ export const userDataKeys = {
   cloudBackupMeta: 'viktkollen.cloudBackup.meta',
   demoMode: 'viktkollen.demoMode',
   foods: 'viktkollen.foods',
+  favoriteMeals: 'viktkollen.favoriteMeals',
   mealHistory: 'viktkollen.mealAnalysisHistory',
   meals: 'viktkollen.meals',
+  nutritionGoals: 'viktkollen.nutritionGoals',
   photoMeals: 'viktkollen.photoMeals',
   profile: 'viktkollen.profile',
   progressPhotos: 'viktkollen.progressPhotos',
@@ -89,6 +91,22 @@ export function getMeals(fallbackValue = [], isValid) {
 
 export function saveMeals(meals) {
   return saveValue(userDataKeys.meals, meals)
+}
+
+export function getNutritionGoals(fallbackValue = {}, isValid) {
+  return readValidated(userDataKeys.nutritionGoals, fallbackValue, isValid)
+}
+
+export function saveNutritionGoals(goals) {
+  return saveValue(userDataKeys.nutritionGoals, goals)
+}
+
+export function getFavoriteMeals(fallbackValue = [], isValid) {
+  return readValidated(userDataKeys.favoriteMeals, fallbackValue, isValid)
+}
+
+export function saveFavoriteMeals(favorites) {
+  return saveValue(userDataKeys.favoriteMeals, favorites)
 }
 
 export function getMealHistory(fallbackValue = []) {

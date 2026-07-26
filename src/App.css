@@ -2071,6 +2071,212 @@ a:focus-visible {
   overflow-wrap: anywhere;
 }
 
+.nutrition-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.nutrition-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background:
+    linear-gradient(135deg, rgba(34, 211, 238, 0.08), transparent 36%),
+    rgba(15, 23, 42, 0.74);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+}
+
+.nutrition-card-heading,
+.nutrition-actions,
+.nutrition-date-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.nutrition-card-heading h3,
+.nutrition-meal-card h4 {
+  margin: 0;
+  color: var(--text-h);
+}
+
+.nutrition-date-nav {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--soft-bg);
+}
+
+.nutrition-date-nav .field {
+  min-width: 190px;
+  margin-bottom: 0;
+}
+
+.meal-editor-grid,
+.nutrition-filter-grid,
+.nutrition-stat-grid,
+.nutrition-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.nutrition-details {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(2, 6, 23, 0.22);
+}
+
+.nutrition-details summary {
+  cursor: pointer;
+  color: var(--text-h);
+  font-weight: 800;
+}
+
+.field-error {
+  color: #fca5a5;
+  font-weight: 700;
+}
+
+.nutrition-stat-grid > div,
+.nutrition-mini-list > span,
+.nutrition-empty,
+.nutrition-insight-list article,
+.favorite-meal-list article {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.nutrition-stat-grid > div span,
+.nutrition-mini-list > span,
+.nutrition-insight-list article span,
+.favorite-meal-list article span,
+.nutrition-empty span {
+  color: var(--muted);
+}
+
+.nutrition-stat-grid > div strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-h);
+  font-size: 22px;
+}
+
+.nutrition-progress-list {
+  display: grid;
+  gap: 10px;
+}
+
+.nutrition-progress {
+  display: grid;
+  gap: 6px;
+}
+
+.nutrition-progress > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-h);
+  font-weight: 800;
+}
+
+.nutrition-progress-bar {
+  overflow: hidden;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.nutrition-progress-bar span {
+  display: block;
+  height: 100%;
+  max-width: 100%;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #22d3ee, #8b5cf6);
+}
+
+.nutrition-progress small {
+  color: var(--muted);
+}
+
+.nutrition-meal-list,
+.favorite-meal-list,
+.nutrition-insight-list,
+.nutrition-mini-list {
+  display: grid;
+  gap: 12px;
+}
+
+.nutrition-meal-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(180px, 0.8fr);
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(2, 6, 23, 0.26);
+}
+
+.nutrition-meal-card p,
+.favorite-meal-list article p {
+  margin: 6px 0;
+  color: var(--muted);
+}
+
+.favorite-meal-list article {
+  display: grid;
+  gap: 12px;
+}
+
+.favorite-meal-list article span {
+  display: block;
+  margin-top: 4px;
+}
+
+.nutrition-meal-card dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.nutrition-meal-card dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.nutrition-meal-card dd {
+  margin: 0;
+  color: var(--text-h);
+  font-weight: 800;
+}
+
+.nutrition-pill {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 5px 10px;
+  border: 1px solid rgba(34, 211, 238, 0.34);
+  border-radius: 999px;
+  color: #c4f1ff;
+  background: rgba(34, 211, 238, 0.1);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.nutrition-empty {
+  display: grid;
+  gap: 4px;
+}
+
 .trend-list {
   display: grid;
   gap: 10px;
@@ -2524,6 +2730,27 @@ a:focus-visible {
   .summary-grid,
   .content-grid,
   .meal-form {
+    grid-template-columns: 1fr;
+  }
+
+  .nutrition-date-nav,
+  .nutrition-card-heading,
+  .nutrition-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .nutrition-date-nav .field,
+  .nutrition-actions button {
+    width: 100%;
+  }
+
+  .meal-editor-grid,
+  .nutrition-filter-grid,
+  .nutrition-stat-grid,
+  .nutrition-mini-grid,
+  .nutrition-meal-card,
+  .nutrition-meal-card dl {
     grid-template-columns: 1fr;
   }
 

@@ -1,158 +1,471 @@
-import MealDailySummary from './MealDailySummary.jsx'
+import { useMemo, useRef, useState } from 'react'
+import {
+  addDays,
+  favoriteToMeal,
+  getCurrentTimeString,
+  getEmptyMeal,
+  getTodayDateString,
+  getWeekStart,
+  mealDraftToMeal,
+  normalizeFavoriteMeal,
+  normalizeMeals,
+  normalizeNutritionGoals,
+  parseNutritionImport,
+  summarizeDay,
+  summarizeWeek,
+  validateMealDraft,
+  validateNutritionGoals,
+  buildNutritionInsights,
+  exportNutritionData,
+} from '../services/nutritionService.js'
+import DailyNutritionSummary from './nutrition/DailyNutritionSummary.jsx'
+import FavoriteMeals from './nutrition/FavoriteMeals.jsx'
+import MealEditor from './nutrition/MealEditor.jsx'
+import MealHistory from './nutrition/MealHistory.jsx'
+import NutritionGoalsPanel from './nutrition/NutritionGoalsPanel.jsx'
+import NutritionImportExport from './nutrition/NutritionImportExport.jsx'
+import NutritionInsights from './nutrition/NutritionInsights.jsx'
+import WeeklyNutritionAnalysis from './nutrition/WeeklyNutritionAnalysis.jsx'
 import MealHistoryTools from './MealHistoryTools.jsx'
-import MealList from './MealList.jsx'
 import MealWeeklyReport from './MealWeeklyReport.jsx'
 import PhotoAnalysis from './PhotoAnalysis.jsx'
 
-const proteinKeywords = [
-  'ägg',
-  'bönor',
-  'fisk',
-  'keso',
-  'kyckling',
-  'kvarg',
-  'kött',
-  'lax',
-  'linser',
-  'protein',
-  'räkor',
-  'tonfisk',
-  'tofu',
-  'yoghurt',
-]
-
-function hasProteinToday(meals, photoMeals) {
-  const mealText = [
-    ...meals.map((meal) => meal.text),
-    ...photoMeals.map((meal) => meal.analysis?.likelyProtein || ''),
-  ]
-    .join(' ')
-    .toLocaleLowerCase('sv-SE')
-
-  return proteinKeywords.some((keyword) => mealText.includes(keyword))
+const defaultFilters = {
+  from: '',
+  search: '',
+  sort: 'newest',
+  to: '',
+  type: 'Alla',
 }
 
-function hasVegetablesToday(meals, photoMeals) {
-  const mealText = [
-    ...meals.map((meal) => meal.text),
-    ...photoMeals.map((meal) => meal.analysis?.likelyVegetables || ''),
-  ]
-    .join(' ')
-    .toLocaleLowerCase('sv-SE')
+function downloadJson(filename, payload) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: 'application/json',
+  })
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
 
-  return ['frukt', 'grönsak', 'sallad', 'gurka', 'tomat', 'bär'].some(
-    (keyword) => mealText.includes(keyword),
-  )
+  link.href = url
+  link.download = filename
+  link.click()
+  window.URL.revokeObjectURL(url)
 }
 
-function getTodaysPhotoMeals(photoMeals) {
-  const today = new Date().toLocaleDateString('sv-SE')
+function filterAndSortMeals(meals, filters) {
+  const search = filters.search.trim().toLocaleLowerCase('sv-SE')
 
-  return photoMeals.filter(
-    (meal) => new Date(meal.createdAt).toLocaleDateString('sv-SE') === today,
-  )
-}
+  return normalizeMeals(meals)
+    .filter((meal) => {
+      if (filters.type !== 'Alla' && meal.type !== filters.type) {
+        return false
+      }
 
-function getBestMeal(photoMeals) {
-  return (
-    photoMeals.find((meal) =>
-      String(meal.analysis?.proteinStatus || '')
+      if (filters.from && meal.date < filters.from) {
+        return false
+      }
+
+      if (filters.to && meal.date > filters.to) {
+        return false
+      }
+
+      if (!search) {
+        return true
+      }
+
+      return [meal.name, meal.description, meal.note]
+        .join(' ')
         .toLocaleLowerCase('sv-SE')
-        .includes('protein'),
-    ) || photoMeals[0]
-  )
-}
+        .includes(search)
+    })
+    .sort((first, second) => {
+      if (filters.sort === 'oldest') {
+        return `${first.date}T${first.time}`.localeCompare(`${second.date}T${second.time}`)
+      }
 
-function getDailyMealSummary({ hasProtein, hasVegetables, mealCount, photoMeals }) {
-  if (mealCount === 0 && photoMeals.length === 0) {
-    return 'Logga en måltid eller analysera en bild så sammanfattar Matcoachen dagen.'
-  }
+      if (filters.sort === 'caloriesHigh') {
+        return (second.calories || 0) - (first.calories || 0)
+      }
 
-  const proteinText = hasProtein
-    ? 'protein verkar finnas med'
-    : 'protein är dagens enklaste förbättring'
-  const vegetableText = hasVegetables
-    ? 'grönsaker eller frukt syns också'
-    : 'lägg gärna till något grönt eller frukt'
+      if (filters.sort === 'caloriesLow') {
+        return (first.calories || 0) - (second.calories || 0)
+      }
 
-  return `Dagens mat ser ut att ha ${proteinText}, och ${vegetableText}. Fortsätt tänka en måltid i taget.`
-}
+      if (filters.sort === 'proteinHigh') {
+        return (second.protein || 0) - (first.protein || 0)
+      }
 
-function getNextMealTip(hasProtein, hasVegetables) {
-  if (!hasProtein) {
-    return 'Nästa måltid: försök få med en billig proteinkälla som ägg, tonfisk, bönor eller kvarg.'
-  }
+      if (filters.sort === 'proteinLow') {
+        return (first.protein || 0) - (second.protein || 0)
+      }
 
-  if (!hasVegetables) {
-    return 'Nästa måltid: lägg till frysta grönsaker, morötter eller frukt.'
-  }
-
-  return 'Nästa måltid: fortsätt med samma enkla bas och håll portionen lagom.'
+      return `${second.date}T${second.time}`.localeCompare(`${first.date}T${first.time}`)
+    })
 }
 
 function MealLogger({
   displayPhotoMeals,
+  favoriteMeals,
   foodPhotoPreview,
   handleFoodPhotoChange,
   importSummary,
-  mealOptions,
-  mealText,
-  mealType,
   meals,
-  onAddMeal,
+  nutritionGoals,
   onAnalyzePhotoMeal,
   onCancelClearMealHistory,
   onClearMealHistory,
   onCreateDemoMealDay,
   onExportMealHistory,
+  onFavoriteMealsChange,
   onImportMealHistory,
-  onMealTextChange,
-  onMealTypeChange,
+  onMealsChange,
+  onNutritionGoalsChange,
+  onSelectedMealDateChange,
   onShowClearMealHistory,
   photoAnalysisStatus,
+  selectedMealDate,
   showClearMealHistoryConfirm,
   weekSummary,
 }) {
-  const todaysPhotoMeals = getTodaysPhotoMeals(displayPhotoMeals)
-  const mealCount = meals.length + todaysPhotoMeals.length
-  const hasProtein = hasProteinToday(meals, todaysPhotoMeals)
-  const hasVegetables = hasVegetablesToday(meals, todaysPhotoMeals)
-  const bestMeal = getBestMeal(todaysPhotoMeals)
-  const nextMealTip = getNextMealTip(hasProtein, hasVegetables)
-  const dailySummary = getDailyMealSummary({
-    hasProtein,
-    hasVegetables,
-    mealCount,
-    photoMeals: todaysPhotoMeals,
-  })
+  const fileInputRef = useRef(null)
+  const [draft, setDraft] = useState(() => getEmptyMeal(selectedMealDate))
+  const [editingFavoriteId, setEditingFavoriteId] = useState('')
+  const [editingMealId, setEditingMealId] = useState('')
+  const [errors, setErrors] = useState({})
+  const [favoriteSearch, setFavoriteSearch] = useState('')
+  const [filters, setFilters] = useState(defaultFilters)
+  const [goalDraft, setGoalDraft] = useState(() => normalizeNutritionGoals(nutritionGoals))
+  const [goalErrors, setGoalErrors] = useState({})
+  const [importStatus, setImportStatus] = useState('')
+  const [weekStart, setWeekStart] = useState(() => getWeekStart(selectedMealDate))
+
+  const normalizedMeals = useMemo(() => normalizeMeals(meals), [meals])
+  const normalizedGoals = useMemo(() => normalizeNutritionGoals(nutritionGoals), [nutritionGoals])
+  const dailySummary = useMemo(
+    () => summarizeDay(normalizedMeals, selectedMealDate, normalizedGoals),
+    [normalizedGoals, normalizedMeals, selectedMealDate],
+  )
+  const weekAnalysis = useMemo(
+    () => summarizeWeek(normalizedMeals, weekStart, normalizedGoals),
+    [normalizedGoals, normalizedMeals, weekStart],
+  )
+  const insights = useMemo(
+    () =>
+      buildNutritionInsights({
+        goals: normalizedGoals,
+        meals: normalizedMeals,
+        weekStart,
+      }),
+    [normalizedGoals, normalizedMeals, weekStart],
+  )
+  const visibleMeals = useMemo(
+    () => filterAndSortMeals(normalizedMeals, filters),
+    [filters, normalizedMeals],
+  )
+  const visibleFavorites = useMemo(() => {
+    const search = favoriteSearch.trim().toLocaleLowerCase('sv-SE')
+
+    return favoriteMeals.filter((favorite) =>
+      [favorite.name, favorite.description, favorite.type]
+        .join(' ')
+        .toLocaleLowerCase('sv-SE')
+        .includes(search),
+    )
+  }, [favoriteMeals, favoriteSearch])
+
+  function resetDraft(date = selectedMealDate) {
+    setDraft(getEmptyMeal(date))
+    setEditingFavoriteId('')
+    setEditingMealId('')
+    setErrors({})
+  }
+
+  function changeSelectedDate(date) {
+    onSelectedMealDateChange(date)
+    setDraft((current) => ({ ...current, date }))
+  }
+
+  function handleDraftChange(key, value) {
+    setDraft((current) => ({ ...current, [key]: value }))
+  }
+
+  function handleSubmitMeal(event) {
+    event.preventDefault()
+    const nextErrors = validateMealDraft(draft)
+
+    setErrors(nextErrors)
+
+    if (Object.keys(nextErrors).length > 0) {
+      return
+    }
+
+    if (editingFavoriteId) {
+      const favorite = normalizeFavoriteMeal({
+        ...draft,
+        favoriteId: editingFavoriteId,
+        id: editingFavoriteId,
+        updatedAt: new Date().toISOString(),
+      })
+
+      onFavoriteMealsChange([
+        favorite,
+        ...favoriteMeals.filter((entry) => entry.id !== editingFavoriteId),
+      ])
+      resetDraft(draft.date)
+      return
+    }
+
+    const existingMeal = normalizedMeals.find((meal) => meal.id === editingMealId)
+    const meal = mealDraftToMeal(draft, existingMeal)
+
+    onMealsChange([meal, ...normalizedMeals.filter((entry) => entry.id !== meal.id)])
+    changeSelectedDate(meal.date)
+    resetDraft(draft.date)
+  }
+
+  function editMeal(meal) {
+    setEditingFavoriteId('')
+    setEditingMealId(meal.id)
+    setDraft({ ...meal })
+    setErrors({})
+    changeSelectedDate(meal.date)
+  }
+
+  function copyMeal(meal) {
+    const date = window.prompt('Vilket datum ska kopian få? (ÅÅÅÅ-MM-DD)', selectedMealDate)
+
+    if (!date) {
+      return
+    }
+
+    const time = window.prompt('Vilken tid ska kopian få? (TT:MM)', getCurrentTimeString()) || getCurrentTimeString()
+    const copiedMeal = {
+      ...meal,
+      createdAt: new Date().toISOString(),
+      date,
+      id: '',
+      time,
+      updatedAt: new Date().toISOString(),
+    }
+    const normalized = mealDraftToMeal(copiedMeal)
+
+    onMealsChange([normalized, ...normalizedMeals])
+  }
+
+  function deleteMeal(mealId) {
+    const shouldDelete = window.confirm('Vill du ta bort den här måltiden?')
+
+    if (shouldDelete) {
+      onMealsChange(normalizedMeals.filter((meal) => meal.id !== mealId))
+    }
+  }
+
+  function saveFavorite(meal) {
+    const favorite = normalizeFavoriteMeal({
+      ...meal,
+      favoriteId: '',
+      id: `favorite-${Date.now()}`,
+    })
+
+    onFavoriteMealsChange([favorite, ...favoriteMeals.filter((item) => item.id !== favorite.id)])
+  }
+
+  function addFavoriteAsMeal(favorite) {
+    const date = window.prompt('Vilket datum ska favoriten läggas till?', selectedMealDate)
+
+    if (!date) {
+      return
+    }
+
+    const time = window.prompt('Vilken tid?', getCurrentTimeString()) || getCurrentTimeString()
+
+    onMealsChange([favoriteToMeal(favorite, date, time), ...normalizedMeals])
+  }
+
+  function editFavorite(favorite) {
+    setEditingFavoriteId(favorite.id)
+    setEditingMealId('')
+    setDraft({ ...favorite, date: selectedMealDate, time: getCurrentTimeString() })
+    setErrors({})
+  }
+
+  function deleteFavorite(favoriteId) {
+    const shouldDelete = window.confirm('Vill du ta bort den här favoriten?')
+
+    if (shouldDelete) {
+      onFavoriteMealsChange(favoriteMeals.filter((favorite) => favorite.id !== favoriteId))
+    }
+  }
+
+  function saveGoals() {
+    const nextErrors = validateNutritionGoals(goalDraft)
+
+    setGoalErrors(nextErrors)
+
+    if (Object.keys(nextErrors).length > 0) {
+      return
+    }
+
+    onNutritionGoalsChange({
+      ...normalizeNutritionGoals(goalDraft),
+      updatedAt: new Date().toISOString(),
+    })
+  }
+
+  function clearGoals() {
+    const shouldClear = window.confirm('Vill du rensa alla kostmål?')
+
+    if (shouldClear) {
+      setGoalDraft({})
+      onNutritionGoalsChange({})
+    }
+  }
+
+  function exportNutrition() {
+    downloadJson(
+      `viktkollen-kostdata-${new Date().toISOString().slice(0, 10)}.json`,
+      exportNutritionData({
+        favorites: favoriteMeals,
+        goals: normalizedGoals,
+        meals: normalizedMeals,
+      }),
+    )
+  }
+
+  function importNutrition(event) {
+    const file = event.target.files?.[0]
+
+    if (!file) {
+      setImportStatus('Ingen fil valdes.')
+      return
+    }
+
+    const reader = new FileReader()
+
+    reader.addEventListener('load', () => {
+      try {
+        const parsed = parseNutritionImport(JSON.parse(String(reader.result)))
+
+        if (!parsed.ok) {
+          setImportStatus(parsed.reason)
+          return
+        }
+
+        const mode = window.prompt(
+          `Importen innehåller ${parsed.summary.mealCount} måltider, ${parsed.summary.favoriteCount} favoriter och ${parsed.summary.hasGoals ? 'kostmål' : 'inga kostmål'}.\nSkriv "slå ihop" eller "ersätt".`,
+          'slå ihop',
+        )
+
+        if (!mode) {
+          setImportStatus('Import avbröts.')
+          return
+        }
+
+        if (mode.toLocaleLowerCase('sv-SE').includes('ers')) {
+          const shouldReplace = window.confirm('Detta ersätter endast kostdata lokalt. Vill du fortsätta?')
+
+          if (!shouldReplace) {
+            setImportStatus('Import avbröts.')
+            return
+          }
+
+          onMealsChange(parsed.meals)
+          onFavoriteMealsChange(parsed.favoriteMeals)
+        } else {
+          const currentIds = new Set(normalizedMeals.map((meal) => meal.id))
+          const importedMeals = parsed.meals.map((meal) =>
+            currentIds.has(meal.id)
+              ? { ...meal, id: `meal-import-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` }
+              : meal,
+          )
+
+          onMealsChange([...importedMeals, ...normalizedMeals])
+          onFavoriteMealsChange([...parsed.favoriteMeals, ...favoriteMeals])
+        }
+
+        if (parsed.hasGoals) {
+          setGoalDraft(parsed.goals)
+          onNutritionGoalsChange(parsed.goals)
+        }
+
+        setImportStatus('Kostdata importerad.')
+      } catch {
+        setImportStatus('Importen misslyckades. Kontrollera JSON-filen.')
+      } finally {
+        event.target.value = ''
+      }
+    })
+    reader.readAsText(file)
+  }
 
   return (
-    <article className="panel meals-panel" id="maltider">
+    <article className="panel meals-panel nutrition-panel" id="maltider">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Snabbregistrera måltid</p>
-          <h2>Måltidsnoteringar</h2>
+          <p className="eyebrow">Kost, måltider och näring</p>
+          <h2>Måltidscenter</h2>
         </div>
       </div>
-      <form className="meal-form" onSubmit={onAddMeal}>
-        <select
-          value={mealType}
-          aria-label="Välj måltidstyp"
-          onChange={(event) => onMealTypeChange(event.target.value)}
-        >
-          {mealOptions.map((option) => (
-            <option key={option}>{option}</option>
-          ))}
-        </select>
-        <input
-          type="text"
-          placeholder="Exempel: lax, ris, gurka"
-          value={mealText}
-          aria-label="Skriv måltidsnotering"
-          onChange={(event) => onMealTextChange(event.target.value)}
-        />
-        <button type="submit">Lägg till måltid</button>
-      </form>
+
+      <nav className="nutrition-date-nav" aria-label="Datum för kostöversikt">
+        <button className="secondary-button" type="button" onClick={() => changeSelectedDate(addDays(selectedMealDate, -1))}>
+          Föregående dag
+        </button>
+        <button className="secondary-button" type="button" onClick={() => changeSelectedDate(getTodayDateString())}>
+          Idag
+        </button>
+        <button className="secondary-button" type="button" onClick={() => changeSelectedDate(addDays(selectedMealDate, 1))}>
+          Nästa dag
+        </button>
+        <label className="field">
+          <span>Valt datum</span>
+          <input type="date" value={selectedMealDate} onChange={(event) => changeSelectedDate(event.target.value)} />
+        </label>
+      </nav>
+
+      <MealEditor
+        draft={draft}
+        errors={errors}
+        isEditing={Boolean(editingMealId || editingFavoriteId)}
+        onCancel={() => resetDraft()}
+        onChange={handleDraftChange}
+        onReset={() => resetDraft()}
+        onSubmit={handleSubmitMeal}
+      />
+
+      <DailyNutritionSummary summary={dailySummary} />
+
+      <NutritionGoalsPanel
+        draft={goalDraft}
+        errors={goalErrors}
+        onChange={(key, value) => setGoalDraft((current) => ({ ...current, [key]: value }))}
+        onClear={clearGoals}
+        onSave={saveGoals}
+      />
+
+      <WeeklyNutritionAnalysis
+        week={weekAnalysis}
+        weekStart={weekStart}
+        onWeekChange={setWeekStart}
+      />
+
+      <NutritionInsights insights={insights} />
+
+      <FavoriteMeals
+        favorites={visibleFavorites}
+        search={favoriteSearch}
+        onAddFavorite={addFavoriteAsMeal}
+        onDeleteFavorite={deleteFavorite}
+        onEditFavorite={editFavorite}
+        onSearchChange={setFavoriteSearch}
+      />
+
+      <NutritionImportExport
+        fileInputRef={fileInputRef}
+        importStatus={importStatus}
+        onExport={exportNutrition}
+        onFileChange={importNutrition}
+        onOpenImport={() => fileInputRef.current?.click()}
+      />
 
       <PhotoAnalysis
         displayPhotoMeals={displayPhotoMeals}
@@ -160,15 +473,6 @@ function MealLogger({
         handleFoodPhotoChange={handleFoodPhotoChange}
         onAnalyzePhotoMeal={onAnalyzePhotoMeal}
         photoAnalysisStatus={photoAnalysisStatus}
-      />
-
-      <MealDailySummary
-        bestMeal={bestMeal}
-        dailySummary={dailySummary}
-        hasProtein={hasProtein}
-        hasVegetables={hasVegetables}
-        mealCount={mealCount}
-        nextMealTip={nextMealTip}
       />
 
       <MealWeeklyReport weekSummary={weekSummary} />
@@ -184,7 +488,16 @@ function MealLogger({
         onShowClearHistory={onShowClearMealHistory}
       />
 
-      <MealList meals={meals} />
+      <MealHistory
+        filters={filters}
+        meals={visibleMeals}
+        onClearFilters={() => setFilters(defaultFilters)}
+        onCopyMeal={copyMeal}
+        onDeleteMeal={deleteMeal}
+        onEditMeal={editMeal}
+        onFilterChange={(key, value) => setFilters((current) => ({ ...current, [key]: value }))}
+        onSaveFavorite={saveFavorite}
+      />
     </article>
   )
 }

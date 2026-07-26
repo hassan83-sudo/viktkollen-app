@@ -1,9 +1,9 @@
 ﻿import { getRecentAiConversation } from './aiConversationMemory.js'
 import { createAiFallback } from './aiFallbackEngine.js'
+import { requestAiEndpoint } from './aiApiService.js'
 import { buildAiUserContext } from './aiUserContext.js'
 import { formatKg, getWeightStats } from './healthCalculations.js'
 
-const AI_ENDPOINT = '/api/ai'
 
 function getWeightTrend(weights = []) {
   const weightStats = getWeightStats(weights)
@@ -117,29 +117,21 @@ export function makeWeeklyReportFallback(data) {
 export async function createWeeklyReport(data) {
   const fallback = makeWeeklyReportFallback(data)
 
-  try {
-    const response = await fetch(AI_ENDPOINT, {
-      body: JSON.stringify({
-        ...data,
-        action: 'weekly-report',
-        aiConversationMemory: getRecentAiConversation(),
-        userContext: buildAiUserContext(data),
-      }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'POST',
-    })
-    const result = await response.json().catch(() => ({}))
+  const response = await requestAiEndpoint({
+    ...data,
+    action: 'weekly-report',
+    aiConversationMemory: getRecentAiConversation(),
+    userContext: buildAiUserContext(data),
+  })
+  const result = response.data || {}
 
-    if (!response.ok || !result.report) {
-      return fallback
-    }
-
-    return {
-      ...fallback,
-      ...result.report,
-      source: result.source === 'openai' ? 'openai' : 'mock',
-    }
-  } catch {
+  if (!response.ok || !result.report) {
     return fallback
+  }
+
+  return {
+    ...fallback,
+    ...result.report,
+    source: result.source === 'openai' ? 'openai' : 'mock',
   }
 }

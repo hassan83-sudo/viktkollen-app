@@ -2,7 +2,7 @@ import CoachSuggestions from './CoachSuggestions.jsx'
 
 function formatReportDate(value) {
   if (!value) {
-    return 'Datum saknas'
+    return 'Tidpunkt saknas'
   }
 
   return new Date(value).toLocaleString('sv-SE')

@@ -33,7 +33,7 @@ function getDate(value) {
 function formatDate(value) {
   const date = getDate(value)
 
-  return date ? date.toLocaleDateString('sv-SE') : 'Datum saknas'
+  return date ? date.toLocaleDateString('sv-SE') : 'Tidpunkt saknas'
 }
 
 function formatInteger(value, fallback = 'Saknas') {
@@ -156,15 +156,23 @@ function getMilestones(weightContext) {
 }
 
 function estimateGoalDate(weightContext) {
-  const remaining = Math.abs(weightContext.remainingKg ?? 0)
+  if (weightContext.goalWeight === null || weightContext.currentWeight === null) {
+    return 'Sätt en målvikt och logga vikt för att få en prognos.'
+  }
+
+  if (weightContext.remainingKg === null) {
+    return 'För lite data för en tillförlitlig prognos.'
+  }
+
+  const remaining = Math.abs(weightContext.remainingKg)
   const history = weightContext.history || []
 
-  if (remaining === 0) {
+  if (remaining <= 0.1) {
     return 'Målet är nått.'
   }
 
-  if (history.length < 2 || weightContext.recentChange === null) {
-    return 'Mer viktdata behövs.'
+  if (history.length < 6 || weightContext.recentChange === null) {
+    return 'Mer viktdata behövs för en tillförlitlig prognos.'
   }
 
   const weeklyRate = Math.abs(weightContext.recentChange)

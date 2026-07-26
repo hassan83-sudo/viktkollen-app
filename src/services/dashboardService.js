@@ -106,7 +106,7 @@ function formatDateTime(value) {
   const date = safeDate(value)
 
   if (!date) {
-    return 'Datum saknas'
+    return 'Tidpunkt saknas'
   }
 
   return new Intl.DateTimeFormat('sv-SE', {

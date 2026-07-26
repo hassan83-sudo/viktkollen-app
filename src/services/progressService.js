@@ -442,10 +442,36 @@ export function createWeightProjection(weights, profile = {}) {
           : 'låg'
   const latest = analysis.latest
   const goalWeight = analysis.target.goalWeight
-  const canProject = latest && goalWeight !== null && rate !== null && Math.abs(rate) >= 0.05 && sourceEntries.length >= 3
+  const startWeight = analysis.target.startWeight
+  const daysBetween =
+    sourceEntries.length >= 2
+      ? (parseDate(sourceEntries.at(-1).date) - parseDate(sourceEntries[0].date)) / dayMs
+      : 0
+  const goalDirection =
+    startWeight !== null && goalWeight !== null && startWeight !== goalWeight
+      ? Math.sign(goalWeight - startWeight)
+      : latest && goalWeight !== null
+        ? Math.sign(goalWeight - latest.value)
+        : 0
+  const hasReachedGoal =
+    latest && goalWeight !== null && (
+      goalDirection < 0
+        ? latest.value <= goalWeight
+        : goalDirection > 0
+          ? latest.value >= goalWeight
+          : Math.abs(latest.value - goalWeight) <= 0.1
+    )
+  const hasProjectionData =
+    latest &&
+    goalWeight !== null &&
+    rate !== null &&
+    Math.abs(rate) >= 0.05 &&
+    sourceEntries.length >= 6 &&
+    daysBetween >= 14
+  const canProject = Boolean(hasProjectionData && !hasReachedGoal)
 
   function projectedWeight(weeks) {
-    if (!latest || rate === null) {
+    if (!canProject) {
       return null
     }
 
@@ -454,9 +480,15 @@ export function createWeightProjection(weights, profile = {}) {
     return projected > 30 && projected < 300 ? Number(projected.toFixed(1)) : null
   }
 
-  let goalDate = 'För lite data'
+  let goalDate = 'För lite data för en tillförlitlig prognos.'
 
-  if (canProject) {
+  if (!latest) {
+    goalDate = 'Logga vikt för att få en prognos.'
+  } else if (goalWeight === null) {
+    goalDate = 'Sätt en målvikt för att få en prognos.'
+  } else if (hasReachedGoal) {
+    goalDate = 'Målet är nått.'
+  } else if (canProject) {
     const direction = latest.value > goalWeight ? -1 : 1
     const rateDirection = rate < 0 ? -1 : 1
 

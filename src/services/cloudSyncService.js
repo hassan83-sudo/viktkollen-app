@@ -25,26 +25,54 @@ function getCloudActionErrorMessage(error, action) {
   }
 
   if (!isSupabaseConfigured()) {
-    return 'Supabase är inte konfigurerat ännu.'
+    return 'Molnbackup är inte konfigurerad ännu. Din lokala data påverkas inte.'
   }
 
-  if (message.includes('jwt') || message.includes('session') || message.includes('auth')) {
+  if (
+    message.includes('jwt') ||
+    message.includes('session') ||
+    message.includes('auth') ||
+    message.includes('ingen inloggad') ||
+    message.includes('not logged')
+  ) {
     return `Du behöver vara inloggad för att ${labels[action] || 'använda molnbackup'}.`
   }
 
   if (message.includes('relation') || message.includes('does not exist')) {
-    return 'Tabellen för säkerhetskopior saknas i Supabase.'
+    return 'Molnbackupens databastabell saknas. Din lokala data påverkas inte.'
   }
 
   if (message.includes('permission') || message.includes('policy') || message.includes('rls')) {
-    return 'Åtgärden nekades av Supabase-reglerna.'
+    return 'Du saknar behörighet för den här molnåtgärden. Din lokala data påverkas inte.'
   }
 
   if (message.includes('failed to fetch') || message.includes('network')) {
-    return 'Nätverksfel. Kontrollera anslutningen och försök igen.'
+    return 'Nätverksfel. Kontrollera anslutningen och försök igen. Din lokala data påverkas inte.'
   }
 
-  return 'Molnåtgärden misslyckades.'
+  return 'Molnåtgärden misslyckades. Din lokala data påverkas inte.'
+}
+
+function getCloudDatabaseStatusFromError(error) {
+  const message = String(error?.message || '').toLocaleLowerCase('sv-SE')
+
+  if (!isSupabaseConfigured()) {
+    return 'Inte konfigurerad'
+  }
+
+  if (message.includes('relation') || message.includes('does not exist')) {
+    return 'Tabell saknas'
+  }
+
+  if (message.includes('permission') || message.includes('policy') || message.includes('rls')) {
+    return 'Behörighet nekad'
+  }
+
+  if (message.includes('failed to fetch') || message.includes('network')) {
+    return 'Nätverksfel'
+  }
+
+  return 'Fel'
 }
 
 async function getAuthenticatedUser() {
@@ -194,7 +222,7 @@ export async function getCloudDashboardStatus() {
     return {
       ...getCloudSyncStatus(),
       backupCount: 0,
-      databaseStatus: 'Ej tillgänglig',
+      databaseStatus: getCloudDatabaseStatusFromError(auth.error),
       isAuthenticated: false,
       latestBackup: null,
       latestRestoreAt: localMeta.latestRestoreAt || null,
@@ -214,7 +242,7 @@ export async function getCloudDashboardStatus() {
     return {
       ...getCloudSyncStatus(),
       backupCount: 0,
-      databaseStatus: 'Fel',
+      databaseStatus: getCloudDatabaseStatusFromError(error),
       isAuthenticated: true,
       latestBackup: null,
       latestRestoreAt: localMeta.latestRestoreAt || null,

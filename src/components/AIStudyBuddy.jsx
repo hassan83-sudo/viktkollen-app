@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { requestAiEndpoint } from '../services/aiApiService.js'
 
 function makeFallbackHint(question, subject) {
   if (!question) {
@@ -26,40 +27,29 @@ function AIStudyBuddy({ question, subject }) {
     setStatus('AI Study Buddy tänker...')
 
     try {
-      const response = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'study-buddy',
-          answer: question.answer,
-          options: question.options,
-          question: question.question,
-          subject,
-        }),
+      const result = await requestAiEndpoint({
+        action: 'study-buddy',
+        answer: question.answer,
+        options: question.options,
+        question: question.question,
+        subject,
       })
+      const data = result.data || {}
 
-      if (!response.ok) {
-        throw new Error(`Study Buddy API failed with status ${response.status}`)
-      }
-
-      const data = await response.json()
-
-      if (typeof data.hint === 'string' && data.hint.trim()) {
+      if (result.ok && typeof data.hint === 'string' && data.hint.trim()) {
         setHint(data.hint.trim())
         setStatus(data.source === 'openai' ? 'AI-genererad hint.' : 'Mockad fallback-hint.')
         setError(typeof data.message === 'string' ? data.message : '')
         return
       }
 
-      throw new Error('Study Buddy API returned no hint')
-    } catch (requestError) {
+      setError('Lokal fallback används just nu.')
+      setHint(makeFallbackHint(question, subject))
+      setStatus(result.reason || 'Fallback används.')
+    } catch {
       setError('Kunde inte nå AI just nu. Visar fallback-hint.')
       setHint(makeFallbackHint(question, subject))
-      setStatus(
-        requestError instanceof Error
-          ? requestError.message
-          : 'Fallback används.',
-      )
+      setStatus('Fallback används.')
     } finally {
       setIsLoading(false)
     }

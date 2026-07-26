@@ -23,6 +23,7 @@ import { buildAiCoachContext } from './services/aiCoachContext.js'
 import { addAiConversationMemory } from './services/aiConversationMemory.js'
 import { classifyAiCoachIntent } from './services/aiCoachIntentService.js'
 import { createLocalAiCoachReply } from './services/aiCoachPrompt.js'
+import { createAiCoachV2Report } from './services/aiCoachV2Service.js'
 import { createAiSuggestions } from './services/aiSuggestions.js'
 import {
   getAuthErrorMessage,
@@ -961,6 +962,10 @@ function App() {
   const [chatMessages, setChatMessages] = useState(() =>
     userDataRepository.getCoachChat(initialChatMessages, isStoredChatMessages),
   )
+  const [coachReports, setCoachReports] = useState(() =>
+    userDataRepository.getAiCoachReports([], Array.isArray),
+  )
+  const [isGeneratingCoachReport, setIsGeneratingCoachReport] = useState(false)
   const [weeklyReport, setWeeklyReport] = useState('')
   const [weeklyReportData, setWeeklyReportData] = useState(null)
   const [weeklyReportStatus, setWeeklyReportStatus] = useState('')
@@ -1232,6 +1237,19 @@ function App() {
     : authSession && !showOnboarding
       ? 'Uppdaterar AI-coach...'
       : ''
+  const latestCoachReport = coachReports[0] || null
+  const currentCoachPreview = useMemo(
+    () =>
+      createAiCoachV2Report({
+        checkIn,
+        mealHistory: photoMeals,
+        meals,
+        previousReports: coachReports,
+        profile: makeValidatedProfile(profile),
+        weights,
+      }),
+    [checkIn, coachReports, meals, photoMeals, profile, weights],
+  )
 
   const proactiveCoachKey = useMemo(
     () =>
@@ -1291,6 +1309,33 @@ function App() {
     profile,
     weights,
   ])
+  const createCoachReport = useCallback(() => {
+    setIsGeneratingCoachReport(true)
+
+    window.setTimeout(() => {
+      const report = createAiCoachV2Report({
+        checkIn,
+        mealHistory: photoMeals,
+        meals,
+        previousReports: coachReports,
+        profile: makeValidatedProfile(profile),
+        weights,
+      })
+
+      setCoachReports((current) => [report, ...current].slice(0, 20))
+      setIsGeneratingCoachReport(false)
+    }, 350)
+  }, [checkIn, coachReports, meals, photoMeals, profile, weights])
+  const deleteCoachReport = useCallback((reportId) => {
+    setCoachReports((current) => current.filter((report) => report.id !== reportId))
+  }, [])
+  const clearCoachReports = useCallback(() => {
+    const shouldClear = window.confirm('Vill du rensa all coachhistorik?')
+
+    if (shouldClear) {
+      setCoachReports([])
+    }
+  }, [])
   const dashboardData = useMemo(
     () =>
       createDashboardData({
@@ -1417,6 +1462,10 @@ function App() {
   useEffect(() => {
     userDataRepository.saveCoachChat(chatMessages)
   }, [chatMessages])
+
+  useEffect(() => {
+    userDataRepository.saveAiCoachReports(coachReports)
+  }, [coachReports])
 
   useEffect(() => {
     function refreshBodyAnalysisHistory() {
@@ -2595,7 +2644,16 @@ function App() {
           voiceStatus={voiceStatus}
         />
 
-        <AICoach coachMessage={coachMessage} coachStatus={coachStatus} />
+        <AICoach
+          coachMessage={coachMessage}
+          coachReport={latestCoachReport || currentCoachPreview}
+          coachReports={coachReports}
+          coachStatus={coachStatus}
+          isGeneratingReport={isGeneratingCoachReport}
+          onClearCoachReports={clearCoachReports}
+          onCreateCoachReport={createCoachReport}
+          onDeleteCoachReport={deleteCoachReport}
+        />
 
         <article className="panel" id="mat">
           <div className="panel-heading">

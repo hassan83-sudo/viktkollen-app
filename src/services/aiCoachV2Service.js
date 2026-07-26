@@ -1,0 +1,394 @@
+import {
+  calculateProteinNeed,
+  formatKg,
+  getUnifiedWeightContext,
+  getWeightStats,
+  parseWeightValue,
+} from './healthCalculations.js'
+
+function safeArray(value) {
+  return Array.isArray(value) ? value.filter(Boolean) : []
+}
+
+function safeText(value, fallback = '') {
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback
+}
+
+function safeNumber(value, fallback = null) {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : fallback
+  }
+
+  const parsed = Number(String(value ?? '').replace(',', '.').replace(/[^\d.-]/g, ''))
+
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function getDate(value) {
+  const date = new Date(value)
+
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function formatDate(value) {
+  const date = getDate(value)
+
+  return date ? date.toLocaleDateString('sv-SE') : 'Datum saknas'
+}
+
+function formatInteger(value, fallback = 'Saknas') {
+  const number = safeNumber(value)
+
+  return number === null ? fallback : Math.round(number).toLocaleString('sv-SE')
+}
+
+function average(values) {
+  const numbers = values.map((value) => safeNumber(value)).filter((value) => value !== null)
+
+  return numbers.length
+    ? numbers.reduce((sum, value) => sum + value, 0) / numbers.length
+    : null
+}
+
+function getRecentEntries(entries, days) {
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
+
+  return safeArray(entries).filter((entry) => {
+    const date = getDate(entry?.date || entry?.createdAt)
+
+    return date && date.getTime() >= cutoff
+  })
+}
+
+function getProteinScore(status) {
+  const text = safeText(status).toLocaleLowerCase('sv-SE')
+
+  if (text.includes('hög')) {
+    return 3
+  }
+
+  if (text.includes('medel') || text.includes('bra')) {
+    return 2
+  }
+
+  if (text.includes('låg')) {
+    return 1
+  }
+
+  return null
+}
+
+function getProteinLabel(score) {
+  if (score === null) {
+    return 'Saknas'
+  }
+
+  if (score >= 2.5) {
+    return 'Högt'
+  }
+
+  if (score >= 1.6) {
+    return 'Medel'
+  }
+
+  return 'Lågt'
+}
+
+function getMealCalories(entry) {
+  return safeNumber(entry?.analysis?.calories ?? entry?.calories)
+}
+
+function getMealProtein(entry) {
+  return safeNumber(entry?.analysis?.protein ?? entry?.protein)
+}
+
+function getMealProteinStatus(entry) {
+  return entry?.analysis?.proteinStatus ?? entry?.proteinStatus
+}
+
+function getLastActivityDate({ checkIn, mealHistory, meals, weights }) {
+  const dates = [
+    ...safeArray(weights).map((entry) => entry.date),
+    ...safeArray(mealHistory).map((entry) => entry.createdAt || entry.date),
+    ...safeArray(meals).map((entry) => entry.date || entry.createdAt),
+    checkIn?.updatedAt,
+  ]
+    .map(getDate)
+    .filter(Boolean)
+    .sort((first, second) => second - first)
+
+  return dates[0] || null
+}
+
+function getMilestones(weightContext) {
+  const start = weightContext.startWeight
+  const goal = weightContext.goalWeight
+  const current = weightContext.currentWeight
+
+  if (start === null || goal === null || current === null) {
+    return {
+      latest: 'Sätt startvikt, nuvarande vikt och målvikt för milstolpar.',
+      next: 'Nästa milstolpe visas när målet är komplett.',
+    }
+  }
+
+  const direction = start > goal ? -1 : 1
+  const passed = Math.abs(start - current)
+  const nextPassed = Math.floor(passed / 2.5 + 1) * 2.5
+  const latestPassed = Math.floor(passed / 2.5) * 2.5
+  const latestWeight = Number((start + latestPassed * direction).toFixed(1))
+  const nextWeight = Number((start + nextPassed * direction).toFixed(1))
+  const reachedGoal = direction < 0 ? nextWeight <= goal : nextWeight >= goal
+
+  return {
+    latest:
+      latestPassed > 0
+        ? `${formatKg(latestWeight)} passerad`
+        : 'Första milstolpen väntar.',
+    next: reachedGoal ? `Målet ${formatKg(goal)} är nästa.` : `${formatKg(nextWeight)} är nästa.`,
+  }
+}
+
+function estimateGoalDate(weightContext) {
+  const remaining = Math.abs(weightContext.remainingKg ?? 0)
+  const history = weightContext.history || []
+
+  if (remaining === 0) {
+    return 'Målet är nått.'
+  }
+
+  if (history.length < 2 || weightContext.recentChange === null) {
+    return 'Mer viktdata behövs.'
+  }
+
+  const weeklyRate = Math.abs(weightContext.recentChange)
+
+  if (weeklyRate < 0.1) {
+    return 'Trenden är för stabil för en prognos.'
+  }
+
+  const weeks = Math.ceil(remaining / weeklyRate)
+  const date = new Date()
+
+  date.setDate(date.getDate() + weeks * 7)
+
+  return date.toLocaleDateString('sv-SE', { month: 'long', year: 'numeric' })
+}
+
+function buildCoachProfile({ checkIn, profile, weights }) {
+  const weightContext = getUnifiedWeightContext({
+    currentWeight: weights.at(-1)?.value,
+    profile,
+    weights,
+  })
+  const proteinNeed = calculateProteinNeed(weightContext.currentWeight)
+
+  return {
+    activityLevel: safeText(profile?.activity || profile?.activityLevel, 'Inte angiven'),
+    age: safeNumber(profile?.age),
+    currentWeight: weightContext.currentWeight,
+    gender: safeText(profile?.gender || profile?.sex, 'Inte angivet'),
+    goalWeight: weightContext.goalWeight,
+    height: safeNumber(profile?.height),
+    name: safeText(profile?.name, 'du'),
+    proteinTarget:
+      proteinNeed === null
+        ? 'Saknas'
+        : `${proteinNeed.lower}-${proteinNeed.upper} g/dag`,
+    startWeight: weightContext.startWeight,
+    todaySteps: safeNumber(checkIn?.steps),
+    weightContext,
+  }
+}
+
+function buildDailyAnalysis({ checkIn, mealHistory, meals, profile, weights }) {
+  const todayMeals = getRecentEntries([...safeArray(mealHistory), ...safeArray(meals)], 1)
+  const weightStats = getWeightStats(weights, { startWeight: profile?.startWeight })
+  const calories = average(todayMeals.map(getMealCalories))
+  const protein = average(todayMeals.map(getMealProtein))
+  const proteinStatuses = todayMeals.map(getMealProteinStatus).map(getProteinScore).filter(Boolean)
+  const proteinStatus = getProteinLabel(proteinStatuses.length ? average(proteinStatuses) : null)
+  const steps = safeNumber(checkIn?.steps)
+  const energy = safeNumber(checkIn?.energy)
+  const sleep = safeNumber(checkIn?.sleep || checkIn?.sleepHours)
+  const mood = safeText(checkIn?.mood, 'Ej loggat')
+  const workout = Boolean(checkIn?.workout)
+  const summaryParts = [
+    weightStats.trend !== 'För lite data' ? `vikttrenden är ${weightStats.trend.toLocaleLowerCase('sv-SE')}` : '',
+    steps !== null ? `${formatInteger(steps)} steg` : '',
+    proteinStatus !== 'Saknas' ? `protein ser ${proteinStatus.toLocaleLowerCase('sv-SE')} ut` : '',
+    energy !== null ? `energi ${energy}/10` : '',
+  ].filter(Boolean)
+
+  return {
+    caloriesLabel: calories === null ? 'Saknas' : `${Math.round(calories)} kcal i snitt per loggad måltid`,
+    mood,
+    proteinLabel: protein === null ? proteinStatus : `${Math.round(protein)} g i snitt`,
+    proteinStatus,
+    sleepLabel: sleep === null ? 'Saknas' : `${sleep} timmar`,
+    steps,
+    stepsLabel: formatInteger(steps),
+    summary:
+      summaryParts.length > 0
+        ? `Dagens bild: ${summaryParts.join(', ')}.`
+        : 'Dagens analys blir tydligare när du loggar vikt, mat eller check-in.',
+    trainingLabel: workout ? 'Träning markerad' : 'Ingen träning markerad',
+    weightTrend: weightStats.trend,
+  }
+}
+
+function buildWeeklySummary({ checkIn, mealHistory, meals, weights }) {
+  const weekWeights = getRecentEntries(weights, 7)
+  const weekMeals = getRecentEntries([...safeArray(mealHistory), ...safeArray(meals)], 7)
+  const firstWeight = weekWeights[0]?.value
+  const lastWeight = weekWeights.at(-1)?.value
+  const weightChange =
+    firstWeight !== undefined && lastWeight !== undefined
+      ? Number((lastWeight - firstWeight).toFixed(1))
+      : null
+  const proteinAverage = average(weekMeals.map(getMealProtein))
+  const proteinScore = average(weekMeals.map(getMealProteinStatus).map(getProteinScore))
+  const steps = safeNumber(checkIn?.steps)
+  const checkInCount = checkIn && Object.keys(checkIn).length > 0 ? 1 : 0
+  const trainingDays = checkIn?.workout ? 1 : 0
+  const bestDay =
+    weekWeights.length > 0 || weekMeals.length > 0
+      ? formatDate((weekWeights.at(-1) || weekMeals.at(-1))?.date || weekMeals.at(-1)?.createdAt)
+      : 'Saknas'
+  const hardestDay =
+    safeNumber(checkIn?.energy) !== null && safeNumber(checkIn?.energy) <= 3
+      ? 'Dagen med låg energi'
+      : 'Ingen tydlig svår dag hittad'
+
+  return {
+    bestDay,
+    checkInCount,
+    conclusion:
+      weightChange === null
+        ? 'Coachens slutsats: fortsätt samla data så blir veckomönstret skarpare.'
+        : weightChange < 0
+          ? 'Coachens slutsats: veckan rör sig åt rätt håll, behåll de enkla vanorna.'
+          : weightChange > 0
+            ? 'Coachens slutsats: gör nästa vecka lugnare och mer förutsägbar, utan hård kompensation.'
+            : 'Coachens slutsats: stabilitet är också data. Välj ett litet tryck framåt.',
+    hardestDay,
+    proteinAverageLabel:
+      proteinAverage === null
+        ? getProteinLabel(proteinScore)
+        : `${Math.round(proteinAverage)} g`,
+    stepsAverageLabel: steps === null ? 'Saknas' : formatInteger(steps),
+    trainingDays,
+    weightChangeLabel: weightChange === null ? 'Saknas' : formatKg(weightChange),
+  }
+}
+
+function buildGoalCenter(coachProfile) {
+  const weightContext = coachProfile.weightContext
+  const milestones = getMilestones(weightContext)
+
+  return {
+    estimatedGoalDate: estimateGoalDate(weightContext),
+    latestMilestone: milestones.latest,
+    nextMilestone: milestones.next,
+    percentRemainingLabel:
+      weightContext.percentRemaining === null
+        ? 'Saknas'
+        : `${weightContext.percentRemaining}% kvar`,
+    remainingKgLabel:
+      weightContext.remainingKg === null
+        ? 'Saknas'
+        : `${formatKg(Math.abs(weightContext.remainingKg))} kvar`,
+  }
+}
+
+function getMotivationKind({ checkIn, dailyAnalysis, weights }) {
+  const lastActivity = getLastActivityDate({
+    checkIn,
+    mealHistory: [],
+    meals: [],
+    weights,
+  })
+  const daysAbsent = lastActivity
+    ? Math.floor((Date.now() - lastActivity.getTime()) / (24 * 60 * 60 * 1000))
+    : 99
+
+  if (daysAbsent >= 3) {
+    return 'absence'
+  }
+
+  if (dailyAnalysis.weightTrend === 'Nedåt') {
+    return 'down'
+  }
+
+  if (dailyAnalysis.weightTrend === 'Uppåt') {
+    return 'up'
+  }
+
+  return 'stable'
+}
+
+function buildMotivation({ checkIn, dailyAnalysis, previousReports, profile, weights }) {
+  const name = safeText(profile?.name, 'Du')
+  const kind = getMotivationKind({ checkIn, dailyAnalysis, weights })
+  const personalBest =
+    weights.length > 0 &&
+    weights.at(-1)?.value === Math.min(...weights.map((entry) => parseWeightValue(entry.value)).filter(Boolean))
+  const messages = {
+    absence: `${name}, kom tillbaka mjukt. En enda check-in räcker för att starta om rytmen.`,
+    down: `${name}, vikten rör sig nedåt. Fortsätt med det som är lättast att upprepa.`,
+    stable: `${name}, stabil vikt är inte ett misslyckande. Lägg fokus på steg, protein och sömn i dag.`,
+    up: `${name}, en uppgång är feedback, inte dom. Gör nästa måltid enkel och logga nästa vikt utan stress.`,
+  }
+  const recentMessages = safeArray(previousReports).slice(0, 4).map((report) => report.motivation?.message)
+  let message = personalBest
+    ? `${name}, nytt personbästa i viktloggen. Stanna upp och gör nästa steg lika enkelt.`
+    : messages[kind]
+
+  if (recentMessages.includes(message)) {
+    message =
+      kind === 'down'
+        ? 'Dagens påminnelse: upprepa basen, inte perfektionen.'
+        : 'Dagens fokus: välj en sak som gör kvällen lättare.'
+  }
+
+  return {
+    kind: personalBest ? 'personalBest' : kind,
+    message,
+  }
+}
+
+export function createAiCoachV2Report(data = {}) {
+  const profile = data.profile || {}
+  const weights = safeArray(data.weights)
+  const mealHistory = safeArray(data.mealHistory)
+  const meals = safeArray(data.meals)
+  const checkIn = data.checkIn || {}
+  const coachProfile = buildCoachProfile({ checkIn, profile, weights })
+  const dailyAnalysis = buildDailyAnalysis({
+    checkIn,
+    mealHistory,
+    meals,
+    profile,
+    weights,
+  })
+  const weeklySummary = buildWeeklySummary({ checkIn, mealHistory, meals, weights })
+  const goalCenter = buildGoalCenter(coachProfile)
+  const motivation = buildMotivation({
+    checkIn,
+    dailyAnalysis,
+    previousReports: data.previousReports,
+    profile,
+    weights,
+  })
+
+  return {
+    coachConclusion: `${coachProfile.name}, ${dailyAnalysis.summary} ${weeklySummary.conclusion}`,
+    coachProfile,
+    createdAt: new Date().toISOString(),
+    dailyAnalysis,
+    goalCenter,
+    id: `coach-report-${Date.now()}`,
+    motivation,
+    weeklySummary,
+  }
+}

@@ -751,6 +751,135 @@ a:focus-visible {
   font-size: 13px;
 }
 
+.coach-v2-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.coach-v2-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.coach-v2-card,
+.coach-v2-empty,
+.coach-v2-report {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(34, 211, 238, 0.08), rgba(139, 92, 246, 0.08)),
+    var(--soft-bg);
+}
+
+.coach-v2-card,
+.coach-v2-empty {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.coach-v2-wide {
+  grid-column: 1 / -1;
+}
+
+.coach-v2-section-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.coach-v2-section-heading h3,
+.coach-v2-card h3 {
+  margin: 0;
+  color: var(--text-h);
+}
+
+.coach-v2-card p,
+.coach-v2-empty span,
+.coach-v2-report p,
+.coach-v2-report span {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.coach-v2-pill {
+  padding: 6px 10px;
+  border: 1px solid rgba(34, 211, 238, 0.32);
+  border-radius: 999px;
+  color: var(--text-h);
+  background: rgba(34, 211, 238, 0.12);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.coach-v2-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.coach-v2-stats.is-compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.coach-v2-stat {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.32);
+}
+
+.coach-v2-stat span {
+  font-weight: 900;
+}
+
+.coach-v2-stat small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.coach-v2-stat strong {
+  overflow-wrap: anywhere;
+  color: var(--text-h);
+}
+
+.coach-v2-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
+.coach-v2-history {
+  display: grid;
+  gap: 12px;
+}
+
+.coach-v2-report-list {
+  display: grid;
+  gap: 10px;
+}
+
+.coach-v2-report {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 14px;
+}
+
+.coach-v2-report strong,
+.coach-v2-empty strong {
+  color: var(--text-h);
+}
+
 .starter-prompts {
   display: flex;
   flex-wrap: wrap;
@@ -2414,7 +2543,15 @@ a:focus-visible {
 
   .backup-toolbar,
   .cloud-status-grid,
-  .cloud-stat-grid {
+  .cloud-stat-grid,
+  .coach-v2-grid,
+  .coach-v2-stats,
+  .coach-v2-stats.is-compact {
+    grid-template-columns: 1fr;
+  }
+
+  .coach-v2-section-heading,
+  .coach-v2-report {
     grid-template-columns: 1fr;
   }
 
@@ -2427,6 +2564,7 @@ a:focus-visible {
   .backup-history-actions button,
   .backup-bulk-actions button,
   .backup-rename-row button,
+  .coach-v2-report button,
   .cloud-backup-actions button {
     width: 100%;
   }

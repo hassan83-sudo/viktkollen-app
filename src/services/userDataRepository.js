@@ -6,6 +6,7 @@ import {
 
 export const userDataKeys = {
   aiConversationMemory: 'viktkollen.aiConversationMemory',
+  aiCoachReports: 'viktkollen.aiCoach.reports.v1',
   bodyAnalysisHistory: 'viktkollen.bodyAnalysis.history.v1',
   bodyAnalysisLegacyHistory: 'viktkollen.bodyAnalysis.history',
   bodyAnalysisLatest: 'viktkollen.bodyAnalysis.latest',
@@ -160,6 +161,14 @@ export function getAiConversationMemory(fallbackValue = []) {
 
 export function saveAiConversationMemory(messages) {
   return saveValue(userDataKeys.aiConversationMemory, messages)
+}
+
+export function getAiCoachReports(fallbackValue = []) {
+  return readStorage(userDataKeys.aiCoachReports, fallbackValue)
+}
+
+export function saveAiCoachReports(reports) {
+  return saveValue(userDataKeys.aiCoachReports, reports)
 }
 
 export function getBodyAnalysisHistoryPayload(fallbackValue = null) {

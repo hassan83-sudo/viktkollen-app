@@ -2277,6 +2277,207 @@ a:focus-visible {
   gap: 4px;
 }
 
+.progress-center-panel {
+  display: grid;
+  gap: 16px;
+  grid-column: span 6;
+}
+
+.progress-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background:
+    linear-gradient(135deg, rgba(139, 92, 246, 0.1), transparent 34%),
+    rgba(15, 23, 42, 0.76);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+}
+
+.progress-card-heading,
+.progress-actions,
+.progress-chart-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.progress-card-heading h3 {
+  margin: 0;
+  color: var(--text-h);
+}
+
+.progress-form-grid,
+.progress-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.progress-stat-grid > div,
+.progress-empty,
+.progress-list-card,
+.progress-timeline article {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.progress-stat-grid span,
+.progress-list-card span,
+.progress-empty span,
+.progress-timeline small,
+.progress-timeline p {
+  color: var(--muted);
+}
+
+.progress-stat-grid strong,
+.progress-list-card strong,
+.progress-empty strong {
+  display: block;
+  color: var(--text-h);
+}
+
+.progress-stat-grid strong {
+  margin-top: 4px;
+  font-size: 22px;
+}
+
+.progress-range-control {
+  overflow-x: auto;
+  justify-content: start;
+}
+
+.progress-chart-toggles {
+  justify-content: start;
+}
+
+.progress-chart-toggles .toggle-row {
+  margin: 0;
+  min-width: 150px;
+}
+
+.progress-weight-chart {
+  overflow: hidden;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(2, 6, 23, 0.34);
+}
+
+.progress-weight-chart svg {
+  display: block;
+  width: 100%;
+  min-height: 220px;
+}
+
+.progress-weight-chart line {
+  stroke: rgba(148, 163, 184, 0.32);
+}
+
+.progress-weight-chart .weight-line {
+  fill: none;
+  stroke: #22d3ee;
+  stroke-width: 3;
+}
+
+.progress-weight-chart .moving-average-line {
+  fill: none;
+  stroke: #8b5cf6;
+  stroke-width: 3;
+}
+
+.progress-weight-chart .weekly-average-line {
+  fill: none;
+  stroke: #f0abfc;
+  stroke-dasharray: 6 6;
+  stroke-width: 2.5;
+}
+
+.progress-weight-chart .goal-line {
+  stroke: #fbbf24;
+  stroke-dasharray: 5 5;
+}
+
+.progress-weight-chart .start-line {
+  stroke: #94a3b8;
+  stroke-dasharray: 4 6;
+}
+
+.progress-weight-chart circle {
+  fill: #f8fafc;
+  stroke: #22d3ee;
+  stroke-width: 2;
+}
+
+.progress-bar-shell {
+  overflow: hidden;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.progress-bar-shell span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #22d3ee, #8b5cf6);
+}
+
+.progress-list,
+.progress-timeline {
+  display: grid;
+  gap: 12px;
+}
+
+.progress-list-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.progress-list-card p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.progress-pill {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 5px 10px;
+  border: 1px solid rgba(139, 92, 246, 0.42);
+  border-radius: 999px;
+  color: #ddd6fe;
+  background: rgba(139, 92, 246, 0.12);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.progress-timeline article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+}
+
+.progress-photo-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.progress-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .trend-list {
   display: grid;
   gap: 10px;
@@ -2752,6 +2953,34 @@ a:focus-visible {
   .nutrition-meal-card,
   .nutrition-meal-card dl {
     grid-template-columns: 1fr;
+  }
+
+  .progress-center-panel {
+    grid-column: span 1;
+  }
+
+  .progress-card-heading,
+  .progress-actions,
+  .progress-chart-toggles {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .progress-actions button,
+  .progress-card-heading button {
+    width: 100%;
+  }
+
+  .progress-form-grid,
+  .progress-stat-grid,
+  .progress-list-card,
+  .progress-photo-filters,
+  .progress-timeline article {
+    grid-template-columns: 1fr;
+  }
+
+  .progress-range-control {
+    width: 100%;
   }
 
   .topbar {

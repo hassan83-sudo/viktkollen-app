@@ -10,9 +10,9 @@ import CloudStatusPanel from './components/CloudStatusPanel.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import MealLogger from './components/MealLogger.jsx'
 import MonthlyReport from './components/MonthlyReport.jsx'
+import ProgressCenter from './components/ProgressCenter.jsx'
 import ProgressPhotos from './components/ProgressPhotos.jsx'
 import ReminderSettings from './components/ReminderSettings.jsx'
-import WeightChart from './components/WeightChart.jsx'
 import WeeklyReport from './components/WeeklyReport.jsx'
 import { makePersonalCoachReply } from './lib/coachReply.js'
 import {
@@ -66,6 +66,15 @@ import {
   buildNutritionInsights,
 } from './services/nutritionService.js'
 import { getProactiveCoachInsights, makeProactiveCoachInsights } from './services/proactiveCoachService.js'
+import {
+  analyzeBodyMeasurements,
+  analyzeWeights,
+  createProgressInsights,
+  createWeightProjection,
+  normalizeBodyMeasurements,
+  normalizeGoalSettings,
+  normalizeWeights,
+} from './services/progressService.js'
 import * as userDataRepository from './services/userDataRepository.js'
 import { createWeeklyReport as createAiWeeklyReport } from './services/weeklyReportService.js'
 
@@ -132,25 +141,6 @@ const goalOptions = ['gÃ¥ ner i vikt', 'hÃ¥lla vikten', 'bygga muskler']
 
 const activityOptions = ['LÃ¥g', 'Medel', 'HÃ¶g']
 
-const chartRangeOptions = [
-  { label: '7 dagar', value: '7' },
-  { label: '30 dagar', value: '30' },
-  { label: 'All tid', value: 'all' },
-]
-
-function isStoredWeights(value) {
-  return (
-    Array.isArray(value) &&
-    value.length >= 2 &&
-    value.every(
-      (entry) =>
-        entry &&
-        typeof entry.date === 'string' &&
-        Number.isFinite(entry.value),
-    )
-  )
-}
-
 function isStoredMeals(value) {
   return (
     Array.isArray(value) &&
@@ -215,7 +205,9 @@ function isStoredProgressPhotos(value) {
         typeof entry.note === 'string' &&
         (entry.view === undefined ||
           entry.view === 'front' ||
-          entry.view === 'side'),
+          entry.view === 'side' ||
+          entry.view === 'back' ||
+          entry.view === 'other'),
     )
   )
 }
@@ -322,85 +314,12 @@ function makeValidatedProfile(profile) {
   }
 }
 
-function formatDate(date) {
-  return new Intl.DateTimeFormat('sv-SE', {
-    day: 'numeric',
-    month: 'short',
-  }).format(new Date(date))
-}
-
 function formatFullDate(date) {
   return new Intl.DateTimeFormat('sv-SE', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
   }).format(new Date(date))
-}
-
-function getFilteredWeights(weights, range) {
-  const sortedWeights = [...weights].sort(
-    (a, b) => new Date(a.date) - new Date(b.date),
-  )
-
-  if (range === 'all') {
-    return sortedWeights
-  }
-
-  return sortedWeights.slice(-Number(range))
-}
-
-function getAverageWeeklyChange(weights) {
-  if (weights.length < 2) {
-    return 0
-  }
-
-  const first = weights[0]
-  const last = weights.at(-1)
-  const days = Math.max(
-    1,
-    (new Date(last.date) - new Date(first.date)) / 86400000,
-  )
-
-  return Number((((last.value - first.value) / days) * 7).toFixed(1))
-}
-
-function getLinearTrendValues(weights) {
-  if (weights.length < 2) {
-    return weights.map((entry) => entry.value)
-  }
-
-  const count = weights.length
-  const sumX = weights.reduce((sum, _, index) => sum + index, 0)
-  const sumY = weights.reduce((sum, entry) => sum + entry.value, 0)
-  const sumXY = weights.reduce(
-    (sum, entry, index) => sum + index * entry.value,
-    0,
-  )
-  const sumXX = weights.reduce((sum, _, index) => sum + index * index, 0)
-  const denominator = count * sumXX - sumX * sumX
-  const slope = denominator === 0 ? 0 : (count * sumXY - sumX * sumY) / denominator
-  const intercept = (sumY - slope * sumX) / count
-
-  return weights.map((_, index) => intercept + slope * index)
-}
-
-function getChartPoints(values, minValue, range, width, height, padding) {
-  const usableWidth = width - padding * 2
-  const usableHeight = height - padding * 2
-
-  return values.map((value, index) => {
-    const x =
-      values.length === 1
-        ? width / 2
-        : padding + (index / (values.length - 1)) * usableWidth
-    const y = padding + ((range - (value - minValue)) / range) * usableHeight
-
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  })
-}
-
-function getTodayDate() {
-  return new Date().toLocaleDateString('sv-SE')
 }
 
 function getProgressPhotoViewLabel(view) {
@@ -410,6 +329,14 @@ function getProgressPhotoViewLabel(view) {
 
   if (view === 'side') {
     return 'frÃ¥n sidan'
+  }
+
+  if (view === 'back') {
+    return 'bakifrån'
+  }
+
+  if (view === 'other') {
+    return 'annan vy'
   }
 
   return 'samma perspektiv'
@@ -910,11 +837,22 @@ function App() {
   const [checkIn, setCheckIn] = useState(() =>
     userDataRepository.getCheckIn(initialCheckIn, isStoredCheckIn),
   )
-  const [weightInput, setWeightInput] = useState('89,8')
   const [weights, setWeights] = useState(() =>
-    userDataRepository.getWeights(starterWeights, isStoredWeights),
+    normalizeWeights(userDataRepository.getWeights(starterWeights, Array.isArray)),
   )
-  const [chartRange, setChartRange] = useState('7')
+  const [bodyMeasurements, setBodyMeasurements] = useState(() =>
+    normalizeBodyMeasurements(userDataRepository.getBodyMeasurements([], Array.isArray)),
+  )
+  const [progressGoalSettings, setProgressGoalSettings] = useState(() =>
+    normalizeGoalSettings(
+      userDataRepository.getProgressGoalSettings({}, (value) =>
+        value && typeof value === 'object' && !Array.isArray(value),
+      ),
+    ),
+  )
+  const [progressReports, setProgressReports] = useState(() =>
+    userDataRepository.getProgressReports([], Array.isArray),
+  )
   const [foods, setFoods] = useState(readStoredFoods)
   const [meals, setMeals] = useState(() =>
     normalizeMeals(userDataRepository.getMeals(initialMeals, isStoredMeals)),
@@ -1026,35 +964,27 @@ function App() {
   )
   const weightChange = Number((latestWeight.value - startWeight.value).toFixed(1))
   const foodScore = foods.filter((item) => item.done).length
-  const chartWeights = useMemo(
-    () => getFilteredWeights(weights, chartRange),
-    [chartRange, weights],
+  const progressAnalysis = useMemo(
+    () => analyzeWeights(weights, makeValidatedProfile(profile)),
+    [profile, weights],
   )
-  const chartValues = chartWeights.map((entry) => entry.value)
-  const chartTrendValues = getLinearTrendValues(chartWeights)
-  const chartMin = Math.min(...chartValues, ...chartTrendValues)
-  const chartMax = Math.max(...chartValues, ...chartTrendValues)
-  const chartRangeSize = Math.max(chartMax - chartMin, 1)
-  const chartPadding = 24
-  const chartWidth = 360
-  const chartHeight = 190
-  const chartPoints = getChartPoints(
-    chartValues,
-    chartMin,
-    chartRangeSize,
-    chartWidth,
-    chartHeight,
-    chartPadding,
+  const progressProjection = useMemo(
+    () => createWeightProjection(weights, makeValidatedProfile(profile)),
+    [profile, weights],
   )
-  const trendPoints = getChartPoints(
-    chartTrendValues,
-    chartMin,
-    chartRangeSize,
-    chartWidth,
-    chartHeight,
-    chartPadding,
+  const bodyMeasurementAnalysis = useMemo(
+    () => analyzeBodyMeasurements(bodyMeasurements),
+    [bodyMeasurements],
   )
-  const averageWeeklyChange = getAverageWeeklyChange(chartWeights)
+  const progressInsights = useMemo(
+    () =>
+      createProgressInsights({
+        bodyMeasurements,
+        profile: makeValidatedProfile(profile),
+        weights,
+      }),
+    [bodyMeasurements, profile, weights],
+  )
   const beforePhoto =
     progressPhotos.find((photo) => String(photo.id) === beforePhotoId) ??
     progressPhotos.at(-1)
@@ -1097,7 +1027,9 @@ function App() {
         ? 'Framstegsbild framifrÃ¥n'
         : photo.view === 'side'
           ? 'Framstegsbild frÃ¥n sidan'
-          : 'Tidigare framstegsbild',
+          : photo.view === 'back'
+            ? 'Framstegsbild bakifrån'
+            : 'Framstegsbild annan vy',
     createdAtLabel: formatFullDate(photo.createdAt),
     id: photo.id,
     image: photo.image,
@@ -1107,7 +1039,10 @@ function App() {
         ? 'FramifrÃ¥n'
         : photo.view === 'side'
           ? 'FrÃ¥n sidan'
-          : 'Tidigare bild',
+          : photo.view === 'back'
+            ? 'Bakifrån'
+            : 'Annan vy',
+    weightLabel: photo.weight ? formatWeight(photo.weight) : 'Vikt saknas',
   }))
   const progressPhotoOptions = progressPhotos.map((photo) => ({
     id: photo.id,
@@ -1288,7 +1223,12 @@ function App() {
         nutritionInsights,
         nutritionSummary: dailyNutritionSummary,
         previousReports: coachReports,
+        progressAnalysis,
+        progressInsights,
+        progressProjection,
         profile: makeValidatedProfile(profile),
+        bodyMeasurementAnalysis,
+        bodyMeasurements,
         weeklyNutrition: weeklyNutritionSummary,
         weights,
       }),
@@ -1301,6 +1241,11 @@ function App() {
       nutritionInsights,
       photoMeals,
       profile,
+      progressAnalysis,
+      progressInsights,
+      progressProjection,
+      bodyMeasurementAnalysis,
+      bodyMeasurements,
       weeklyNutritionSummary,
       weights,
     ],
@@ -1376,7 +1321,12 @@ function App() {
         nutritionInsights,
         nutritionSummary: dailyNutritionSummary,
         previousReports: coachReports,
+        progressAnalysis,
+        progressInsights,
+        progressProjection,
         profile: makeValidatedProfile(profile),
+        bodyMeasurementAnalysis,
+        bodyMeasurements,
         weeklyNutrition: weeklyNutritionSummary,
         weights,
       })
@@ -1393,6 +1343,11 @@ function App() {
     nutritionInsights,
     photoMeals,
     profile,
+    progressAnalysis,
+    progressInsights,
+    progressProjection,
+    bodyMeasurementAnalysis,
+    bodyMeasurements,
     weeklyNutritionSummary,
     weights,
   ])
@@ -1504,6 +1459,22 @@ function App() {
   useEffect(() => {
     userDataRepository.saveWeights(weights)
   }, [weights])
+
+  useEffect(() => {
+    userDataRepository.saveBodyMeasurements(bodyMeasurements)
+  }, [bodyMeasurements])
+
+  useEffect(() => {
+    userDataRepository.saveProgressGoalSettings(progressGoalSettings)
+  }, [progressGoalSettings])
+
+  useEffect(() => {
+    userDataRepository.saveProgressReports(progressReports)
+  }, [progressReports])
+
+  useEffect(() => {
+    userDataRepository.saveProgressInsightsSeen(progressInsights.map((insight) => insight.type))
+  }, [progressInsights])
 
   useEffect(() => {
     userDataRepository.saveFoods(foods)
@@ -1865,24 +1836,6 @@ function App() {
     setCheckIn((current) => ({ ...current, [key]: value }))
   }
 
-  function addWeightLog(event) {
-    event.preventDefault()
-    const nextWeight = parseWeight(weightInput)
-
-    if (!Number.isFinite(nextWeight) || nextWeight <= 0) {
-      return
-    }
-
-    setWeights((current) => [
-      ...current.slice(-6),
-      {
-        date: getTodayDate(),
-        value: nextWeight,
-      },
-    ])
-    setWeightInput('')
-  }
-
   function toggleFood(id) {
     setFoods((current) =>
       current.map((item) =>
@@ -2130,6 +2083,7 @@ function App() {
           image: reader.result,
           createdAt: new Date().toISOString(),
           note: progressPhotoNote.trim(),
+          weight: latestWeight.value,
           view,
         }
 
@@ -2657,59 +2611,21 @@ function App() {
       <CloudStatusPanel isAuthenticated={Boolean(authSession)} />
 
       <section className="content-grid">
-        <article className="panel" id="vikt">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Viktlogg</p>
-              <h2>FÃ¶lj utvecklingen</h2>
-            </div>
-          </div>
-          <form className="inline-form" onSubmit={addWeightLog}>
-            <input
-              type="text"
-              inputMode="decimal"
-              placeholder="Vikt i kg"
-              value={weightInput}
-              onChange={(event) => setWeightInput(event.target.value)}
-            />
-            <button type="submit">LÃ¤gg till</button>
-          </form>
-          <WeightChart
-            averageWeeklyChangeLabel={`${averageWeeklyChange > 0 ? '+' : ''}${formatWeight(averageWeeklyChange)}`}
-            chartHeight={chartHeight}
-            chartPadding={chartPadding}
-            chartPoints={chartPoints}
-            chartRange={chartRange}
-            chartRangeOptions={chartRangeOptions}
-            chartWeights={chartWeights}
-            chartWidth={chartWidth}
-            endDateLabel={
-              chartWeights.at(-1) ? formatFullDate(chartWeights.at(-1).date) : ''
-            }
-            onChartRangeChange={setChartRange}
-            startDateLabel={
-              chartWeights[0] ? formatFullDate(chartWeights[0].date) : ''
-            }
-            trendPoints={trendPoints}
-          />
-          <div className="weight-bars" aria-label="Senaste vikttrend">
-            {weights.map((weight, index) => {
-              const weightValues = weights.map((entry) => entry.value)
-              const min = Math.min(...weightValues)
-              const max = Math.max(...weightValues)
-              const range = Math.max(max - min, 1)
-              const height = 36 + ((weight.value - min) / range) * 58
-
-              return (
-                <div className="bar-column" key={`${weight.date}-${index}`}>
-                  <span style={{ height: `${height}px` }}></span>
-                  <small>{formatDecimal(weight.value)}</small>
-                  <em>{formatDate(weight.date)}</em>
-                </div>
-              )
-            })}
-          </div>
-        </article>
+        <ProgressCenter
+          bodyAnalysisHistory={bodyAnalysisHistory}
+          bodyMeasurements={bodyMeasurements}
+          goalSettings={progressGoalSettings}
+          onBodyMeasurementsChange={(nextMeasurements) =>
+            setBodyMeasurements(normalizeBodyMeasurements(nextMeasurements))}
+          onGoalSettingsChange={(nextSettings) =>
+            setProgressGoalSettings(normalizeGoalSettings(nextSettings))}
+          onProgressReportsChange={setProgressReports}
+          onWeightsChange={(nextWeights) => setWeights(normalizeWeights(nextWeights))}
+          profile={makeValidatedProfile(profile)}
+          progressPhotos={progressPhotos}
+          progressReports={progressReports}
+          weights={weights}
+        />
 
         <ChatPanel
           canClearChat={chatMessages.length > initialChatMessages.length}
@@ -2813,8 +2729,18 @@ function App() {
           hasProgressPhotos={progressPhotos.length > 0}
           onAfterPhotoIdChange={setAfterPhotoId}
           onBeforePhotoIdChange={setBeforePhotoId}
+          onDeleteProgressPhoto={(photoId) => {
+            if (window.confirm('Vill du ta bort den här framstegsbilden?')) {
+              setProgressPhotos((current) => current.filter((photo) => photo.id !== photoId))
+            }
+          }}
           onProgressPhotoChange={handleProgressPhotoChange}
           onProgressPhotoNoteChange={setProgressPhotoNote}
+          onUpdateProgressPhoto={(photoId, updates) =>
+            setProgressPhotos((current) =>
+              current.map((photo) =>
+                photo.id === photoId ? { ...photo, ...updates, updatedAt: new Date().toISOString() } : photo,
+              ))}
           progressPhotoComparison={progressPhotoComparison}
           progressPhotoComparisonImages={progressPhotoComparisonImages}
           progressPhotoCountLabel={`${progressPhotos.length} sparade bilder`}

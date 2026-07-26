@@ -21,7 +21,11 @@ export const userDataKeys = {
   nutritionGoals: 'viktkollen.nutritionGoals',
   photoMeals: 'viktkollen.photoMeals',
   profile: 'viktkollen.profile',
+  progressGoalSettings: 'viktkollen.progress.goalSettings',
+  progressInsightsSeen: 'viktkollen.progress.insightsSeen',
   progressPhotos: 'viktkollen.progressPhotos',
+  progressReports: 'viktkollen.progress.reports.v1',
+  bodyMeasurements: 'viktkollen.bodyMeasurements',
   reminderLog: 'viktkollen.reminderLog',
   reminders: 'viktkollen.reminders',
   scannedProducts: 'viktkollen.scannedProducts',
@@ -139,6 +143,38 @@ export function getProgressPhotos(fallbackValue = [], isValid) {
 
 export function saveProgressPhotos(photos) {
   return saveValue(userDataKeys.progressPhotos, photos)
+}
+
+export function getBodyMeasurements(fallbackValue = [], isValid) {
+  return readValidated(userDataKeys.bodyMeasurements, fallbackValue, isValid)
+}
+
+export function saveBodyMeasurements(measurements) {
+  return saveValue(userDataKeys.bodyMeasurements, measurements)
+}
+
+export function getProgressGoalSettings(fallbackValue = {}, isValid) {
+  return readValidated(userDataKeys.progressGoalSettings, fallbackValue, isValid)
+}
+
+export function saveProgressGoalSettings(settings) {
+  return saveValue(userDataKeys.progressGoalSettings, settings)
+}
+
+export function getProgressReports(fallbackValue = [], isValid) {
+  return readValidated(userDataKeys.progressReports, fallbackValue, isValid)
+}
+
+export function saveProgressReports(reports) {
+  return saveValue(userDataKeys.progressReports, reports)
+}
+
+export function getProgressInsightsSeen(fallbackValue = [], isValid) {
+  return readValidated(userDataKeys.progressInsightsSeen, fallbackValue, isValid)
+}
+
+export function saveProgressInsightsSeen(types) {
+  return saveValue(userDataKeys.progressInsightsSeen, types)
 }
 
 export function getCoachChat(fallbackValue = [], isValid) {

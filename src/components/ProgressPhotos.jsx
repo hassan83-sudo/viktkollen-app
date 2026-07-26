@@ -117,9 +117,11 @@ function ProgressPhotos({
   beforePhotoId,
   hasProgressPhotos,
   onAfterPhotoIdChange,
+  onDeleteProgressPhoto,
   onBeforePhotoIdChange,
   onProgressPhotoChange,
   onProgressPhotoNoteChange,
+  onUpdateProgressPhoto,
   progressPhotoComparison,
   progressPhotoComparisonImages,
   progressPhotoCountLabel,
@@ -129,10 +131,24 @@ function ProgressPhotos({
 }) {
   const [showSameOccasionComparison, setShowSameOccasionComparison] =
     useState(false)
+  const [photoFilter, setPhotoFilter] = useState('Alla')
+  const [photoSearch, setPhotoSearch] = useState('')
   const [hasBodyAnalysisHistory, setHasBodyAnalysisHistory] = useState(() =>
     hasStoredBodyAnalyses(),
   )
   const sameOccasionComparison = getSameOccasionComparison(progressPhotoItems)
+  const visiblePhotos = progressPhotoItems.filter((photo) => {
+    const matchesView = photoFilter === 'Alla' || photo.viewLabel === photoFilter
+    const matchesSearch = [photo.note, photo.createdAtLabel, photo.weightLabel]
+      .join(' ')
+      .toLocaleLowerCase('sv-SE')
+      .includes(photoSearch.trim().toLocaleLowerCase('sv-SE'))
+
+    return matchesView && matchesSearch
+  })
+  const storageSizeKb = Math.ceil(
+    progressPhotoItems.reduce((sum, photo) => sum + String(photo.image || '').length, 0) / 1024,
+  )
 
   return (
     <article className="panel photos-panel" id="framstegsbilder">
@@ -198,13 +214,41 @@ function ProgressPhotos({
           <div className="progress-photo-history-heading">
             <div>
               <strong>Bildhistorik</strong>
-              <span>{progressPhotoCountLabel}</span>
+              <span>{progressPhotoCountLabel} · cirka {storageSizeKb.toLocaleString('sv-SE')} kB lokalt</span>
             </div>
             <span className="progress-photo-local-badge">Endast lokalt</span>
           </div>
 
+          <div className="progress-photo-filters">
+            <label className="field">
+              <span>Filtrera vy</span>
+              <select value={photoFilter} onChange={(event) => setPhotoFilter(event.target.value)}>
+                <option>Alla</option>
+                <option>Framifrån</option>
+                <option>Från sidan</option>
+                <option>Bakifrån</option>
+                <option>Annan vy</option>
+              </select>
+            </label>
+            <label className="field">
+              <span>Sök anteckning</span>
+              <input
+                type="search"
+                value={photoSearch}
+                onChange={(event) => setPhotoSearch(event.target.value)}
+                placeholder="Sök i anteckningar"
+              />
+            </label>
+          </div>
+
           <div className="photo-timeline">
-            {progressPhotoItems.map((photo, index) => {
+            {visiblePhotos.length === 0 && (
+              <div className="progress-empty">
+                <strong>Inga bilder matchar filtren.</strong>
+                <span>Justera vy eller sökning för att se fler bilder.</span>
+              </div>
+            )}
+            {visiblePhotos.map((photo, index) => {
               const timelineLabel = getProgressPhotoTimelineLabel(index)
               const daysSinceLabel = getDaysSinceLabel(photo.createdAtLabel)
 
@@ -222,7 +266,37 @@ function ProgressPhotos({
                   </span>
                   <strong>{photo.createdAtLabel}</strong>
                   {daysSinceLabel && <span>{daysSinceLabel}</span>}
+                  <span>{photo.weightLabel}</span>
                   <span>{photo.note}</span>
+                  <div className="progress-photo-actions">
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={() => {
+                        const note = window.prompt('Uppdatera anteckning', photo.note)
+
+                        if (note !== null) {
+                          onUpdateProgressPhoto(photo.id, { note })
+                        }
+                      }}
+                    >
+                      Redigera
+                    </button>
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={() => window.open(photo.image, '_blank', 'noopener,noreferrer')}
+                    >
+                      Öppna stort
+                    </button>
+                    <button
+                      className="secondary-button danger-button"
+                      type="button"
+                      onClick={() => onDeleteProgressPhoto(photo.id)}
+                    >
+                      Ta bort
+                    </button>
+                  </div>
                 </div>
               </article>
               )

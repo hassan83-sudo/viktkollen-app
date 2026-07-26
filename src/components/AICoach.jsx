@@ -152,6 +152,21 @@ function AICoach({
           </section>
 
           <section className="coach-v2-card">
+            <p className="eyebrow">Framsteg V3</p>
+            <h3>Vikt och kroppsmått</h3>
+            <ul className="coach-v2-list">
+              <li>Vikttrend: {coachReport.progressSummary?.trendLabel || 'Saknas'}</li>
+              <li>Senaste 7 dagar: {coachReport.progressSummary?.weightChangeLabel || 'Saknas'}</li>
+              <li>Registrering: {coachReport.progressSummary?.registrationLabel || 'Saknas'}</li>
+              <li>Kroppsmått: {coachReport.progressSummary?.bodyMeasurementLabel || 'Saknas'}</li>
+              <li>Prognos: {coachReport.progressSummary?.projectionLabel || 'För lite data'}</li>
+            </ul>
+            <div className="coach-note">
+              {coachReport.progressSummary?.insightLabel || 'Fler framstegsloggar ger tydligare coachinsikter.'}
+            </div>
+          </section>
+
+          <section className="coach-v2-card">
             <p className="eyebrow">Veckosammanfattning V2</p>
             <h3>Senaste 7 dagarna</h3>
             <ul className="coach-v2-list">

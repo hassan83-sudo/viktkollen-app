@@ -407,6 +407,37 @@ function buildMotivation({ checkIn, dailyAnalysis, previousReports, profile, wei
   }
 }
 
+function buildProgressSummary({
+  bodyMeasurementAnalysis,
+  bodyMeasurements,
+  progressAnalysis,
+  progressInsights,
+  progressProjection,
+}) {
+  const analysis = progressAnalysis || {}
+  const projection = progressProjection || {}
+  const measurements = safeArray(bodyMeasurements)
+  const measurementAnalysis = bodyMeasurementAnalysis || {}
+
+  return {
+    bodyMeasurementLabel:
+      measurementAnalysis.trackedTypes || measurements.length
+        ? `${measurementAnalysis.trackedTypes || 0} mått följs`
+        : 'Inga kroppsmått ännu',
+    insightLabel: safeArray(progressInsights)[0]?.text || 'Fler registreringar ger tydligare framstegsinsikter.',
+    projectionLabel: projection.estimatedGoalDate || 'För lite data',
+    registrationLabel:
+      analysis.registrationDays === undefined
+        ? 'Saknas'
+        : `${analysis.registrationDays} registrerade viktdagar`,
+    trendLabel: analysis.trend || 'För lite data',
+    weightChangeLabel:
+      analysis.change7 === null || analysis.change7 === undefined
+        ? 'Saknas'
+        : `${analysis.change7 > 0 ? '+' : ''}${formatKg(analysis.change7)}`,
+  }
+}
+
 export function createAiCoachV2Report(data = {}) {
   const profile = data.profile || {}
   const weights = safeArray(data.weights)
@@ -417,6 +448,13 @@ export function createAiCoachV2Report(data = {}) {
   const nutritionInsights = safeArray(data.nutritionInsights)
   const nutritionSummary = data.nutritionSummary || null
   const weeklyNutrition = data.weeklyNutrition || null
+  const progressSummary = buildProgressSummary({
+    bodyMeasurementAnalysis: data.bodyMeasurementAnalysis,
+    bodyMeasurements: data.bodyMeasurements,
+    progressAnalysis: data.progressAnalysis,
+    progressInsights: data.progressInsights,
+    progressProjection: data.progressProjection,
+  })
   const coachProfile = buildCoachProfile({ checkIn, profile, weights })
   const dailyAnalysis = buildDailyAnalysis({
     checkIn,
@@ -446,6 +484,7 @@ export function createAiCoachV2Report(data = {}) {
     id: `coach-report-${Date.now()}`,
     motivation,
     nutritionInsights,
+    progressSummary,
     weeklySummary,
   }
 }

@@ -21,7 +21,10 @@ import {
 } from './services/bodyAnalysisHistory.js'
 import { requestAiEndpoint } from './services/aiApiService.js'
 import { addAiConversationMemory } from './services/aiConversationMemory.js'
-import { buildAiCoachAppContextFromData } from './services/aiCoach/coachAppContext.js'
+import {
+  buildAiCoachAppContextFromData,
+  makePendingCoachChatHistory,
+} from './services/aiCoach/coachAppContext.js'
 import { createDeterministicAiCoachReply } from './services/aiCoachDeterministicReplies.js'
 import { createAiCoachV2Report } from './services/aiCoachV2Service.js'
 import { createAiSuggestions } from './services/aiSuggestions.js'
@@ -2162,8 +2165,10 @@ function App() {
     }
   }
 
-  async function requestChatReply(message) {
-    const recentChatHistory = chatMessages.slice(-10).map((chatMessage) => ({
+  async function requestChatReply(message, chatHistoryOverride = null) {
+    const sourceChatHistory = chatHistoryOverride || chatMessages
+    const recentChatHistory = sourceChatHistory.slice(-10).map((chatMessage) => ({
+      createdAt: chatMessage.createdAt,
       role: chatMessage.role,
       text: chatMessage.text,
     }))
@@ -2171,11 +2176,11 @@ function App() {
       createLocalSmartChatReply(message, recentChatHistory)
   }
 
-  function appendChatMessage(role, text, source = '') {
+  function appendChatMessage(role, text, source = '', createdAt = new Date().toISOString()) {
     setChatMessages((current) => [
       ...current,
       {
-        createdAt: new Date().toISOString(),
+        createdAt,
         id: current.length + 1,
         role,
         source,
@@ -2192,13 +2197,16 @@ function App() {
   }
 
   async function sendChatText(text) {
-    appendChatMessage('user', text)
+    const createdAt = new Date().toISOString()
+    const pendingChatHistory = makePendingCoachChatHistory(chatMessages, text, createdAt)
+
+    appendChatMessage('user', text, '', createdAt)
     addAiConversationMemory({
       feature: 'ai-coach',
       role: 'user',
       text,
     })
-    const result = await requestChatReply(text)
+    const result = await requestChatReply(text, pendingChatHistory)
     const isLocalFallback = result.source !== 'openai'
 
     setChatEngineStatus(

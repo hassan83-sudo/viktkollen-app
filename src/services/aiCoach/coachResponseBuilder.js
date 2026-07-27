@@ -366,17 +366,26 @@ function makeSmalltalkReply(facts, message) {
 function makeClarifyReply(facts, message) {
   const previous = facts.latestCoachReply || ''
   const normalized = normalizeAiCoachText(message)
+  const previousPlain = normalizeAiCoachText(previous).plain
 
   if (normalized.plain.includes('ge ett exempel')) {
+    if (previousPlain.includes('somn')) {
+      return 'Ett konkret exempel för sömn: håll träningen lätt idag, ät en vanlig mättande middag och lägg undan mobilen lite tidigare ikväll.'
+    }
+
     return 'Ett konkret exempel: om kvällen blir rörig, välj kvarg med bär, två ägg eller en liten smörgås i stället för att hoppa mellan snacks.'
   }
 
-  if (previous && normalizeAiCoachText(previous).plain.includes('pizza')) {
+  if (previous && previousPlain.includes('pizza')) {
     return 'Jag menar att pizzan inte nollställer något. Det viktiga är nästa val: ät vanligt igen, lägg gärna till protein och grönsaker, och undvik att kompensera hårt.'
   }
 
-  if (previous && normalizeAiCoachText(previous).plain.includes('protein')) {
+  if (previous && previousPlain.includes('protein')) {
     return `Jag menar att proteinmålet är ett dagsriktmärke, inte ett krav per måltid. Fördela det gärna över 3–4 måltider.${facts.proteinGoalLabel ? ` Ditt riktmärke är ${facts.proteinGoalLabel}.` : ''}`
+  }
+
+  if (previous && previousPlain.includes('somn')) {
+    return 'Jag menar att kort sömn ofta påverkar hunger, ork och återhämtning dagen efter. Ett konkret exempel är att hålla träningen lugnare och välja en enkel, mättande måltid i stället för att jaga perfekta val.'
   }
 
   if (previous) {

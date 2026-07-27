@@ -54,7 +54,15 @@ function parseDateTime(value) {
 }
 
 function getEntryDate(entry) {
-  const dateText = String(entry?.date || '').slice(0, 10)
+  const rawDate = String(entry?.date || '')
+
+  if (rawDate.includes('T')) {
+    const parsedDate = parseDateTime(rawDate)
+
+    return parsedDate ? getLocalDateString(parsedDate) : ''
+  }
+
+  const dateText = rawDate.slice(0, 10)
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateText)) {
     return dateText
@@ -202,6 +210,30 @@ function normalizeChatHistory(chatHistory) {
       return firstTime - secondTime
     })
     .slice(-10)
+}
+
+export function makePendingCoachChatHistory(chatHistory = [], message, createdAt = new Date().toISOString()) {
+  const pendingMessage = normalizeChatMessage({
+    createdAt,
+    role: 'user',
+    text: message,
+  })
+  const normalizedHistory = normalizeChatHistory(chatHistory)
+
+  if (!pendingMessage) {
+    return normalizedHistory
+  }
+
+  const alreadyIncluded = normalizedHistory.some(
+    (entry) =>
+      entry.role === pendingMessage.role &&
+      entry.text === pendingMessage.text &&
+      entry.createdAt === pendingMessage.createdAt,
+  )
+
+  return alreadyIncluded
+    ? normalizedHistory
+    : normalizeChatHistory([...normalizedHistory, pendingMessage])
 }
 
 function normalizeNutritionGoals(goals) {

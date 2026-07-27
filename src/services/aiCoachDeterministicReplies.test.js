@@ -6,7 +6,9 @@ import {
 import {
   buildAiCoachAppContextFromData,
   buildAiCoachAppContextFromStorage,
+  coachAppContextInternals,
   createDailyPriorityCoachAdvice,
+  makePendingCoachChatHistory,
 } from './aiCoach/coachAppContext.js'
 import { createDashboardData } from './dashboardService.js'
 import { getUnifiedWeightFacts } from './healthCalculations.js'
@@ -761,5 +763,110 @@ describe('AI Coach Pro V5 app integration', () => {
     })
 
     expect(buildAiCoachFacts(context).latestWeight).toBe(before)
+  })
+
+  it('includes the new user message in pending chat context', () => {
+    const pending = makePendingCoachChatHistory([
+      { createdAt: '2026-07-27T08:00:00', role: 'assistant', text: 'Hej.' },
+    ], 'Jag åt pizza.', '2026-07-27T08:01:00')
+
+    expect(pending.at(-1)).toMatchObject({
+      role: 'user',
+      text: 'Jag åt pizza.',
+    })
+  })
+
+  it('does not duplicate an already pending user message', () => {
+    const pending = makePendingCoachChatHistory([
+      { createdAt: '2026-07-27T08:01:00', role: 'user', text: 'Jag åt pizza.' },
+    ], 'Jag åt pizza.', '2026-07-27T08:01:00')
+
+    expect(pending).toHaveLength(1)
+  })
+
+  it('does not use old topic after cleared chat', () => {
+    const response = createDeterministicAiCoachReply({
+      chatHistory: [],
+      context: buildAiCoachAppContextFromData({ chatHistory: [] }),
+      message: 'Var det dumt?',
+    })
+
+    expect(response.toLocaleLowerCase('sv-SE')).not.toContain('chips')
+    expect(response.toLocaleLowerCase('sv-SE')).not.toContain('pizza')
+  })
+
+  it('prioritizes fresh React-state data over older storage-like data', () => {
+    const storageContext = buildAiCoachAppContextFromStorage(makeStorage(localStorageLikeData))
+    const stateContext = buildAiCoachAppContextFromData({
+      ...localStorageLikeData,
+      profile: { goalWeight: '78 kg', startWeight: '91,8 kg' },
+      weights: [
+        { date: '2026-07-01', id: 'w1', value: 91.8 },
+        { date: new Date().toISOString().slice(0, 10), id: 'fresh', value: 89.7 },
+      ],
+    })
+
+    expect(buildAiCoachFacts(storageContext).latestWeight).toBe(90.1)
+    expect(buildAiCoachFacts(stateContext).latestWeight).toBe(89.7)
+  })
+
+  it('keeps sleep context across two follow-up questions', () => {
+    const firstUser = { createdAt: '2026-07-27T08:00:00', role: 'user', text: 'Jag sov fem timmar.' }
+    const firstAssistant = {
+      createdAt: '2026-07-27T08:01:00',
+      role: 'assistant',
+      text: createDeterministicAiCoachReply({
+        chatHistory: [firstUser],
+        context: buildAiCoachAppContextFromData({ chatHistory: [firstUser] }),
+        message: firstUser.text,
+      }),
+    }
+    const secondUser = { createdAt: '2026-07-27T08:02:00', role: 'user', text: 'Varför spelar det roll?' }
+    const secondAssistantText = createDeterministicAiCoachReply({
+      chatHistory: [firstUser, firstAssistant, secondUser],
+      context: buildAiCoachAppContextFromData({ chatHistory: [firstUser, firstAssistant, secondUser] }),
+      message: secondUser.text,
+    })
+    const thirdUser = { createdAt: '2026-07-27T08:03:00', role: 'user', text: 'Ge ett exempel.' }
+    const thirdAssistantText = createDeterministicAiCoachReply({
+      chatHistory: [firstUser, firstAssistant, secondUser, { role: 'assistant', text: secondAssistantText }, thirdUser],
+      context: buildAiCoachAppContextFromData({
+        chatHistory: [firstUser, firstAssistant, secondUser, { role: 'assistant', text: secondAssistantText }, thirdUser],
+      }),
+      message: thirdUser.text,
+    })
+
+    expect(secondAssistantText.toLocaleLowerCase('sv-SE')).toContain('sömn')
+    expect(thirdAssistantText.toLocaleLowerCase('sv-SE')).toContain('sömn')
+  })
+
+  it('uses the later weight when two entries are on the same day', () => {
+    const context = buildAiCoachAppContextFromData({
+      weights: [
+        { date: '2026-07-27', id: 'morning', time: '08:00', value: 90.5 },
+        { date: '2026-07-27', id: 'evening', time: '21:00', value: 90.1 },
+      ],
+    }, { today: '2026-07-27' })
+
+    expect(buildAiCoachFacts(context).latestWeight).toBe(90.1)
+  })
+
+  it('handles ISO UTC dates near midnight using local date logic', () => {
+    const context = buildAiCoachAppContextFromData({
+      meals: [
+        { date: '2026-07-27T22:30:00.000Z', id: 'late', name: 'Kvarg', protein: 20 },
+      ],
+    }, { today: '2026-07-28' })
+
+    expect(context.todayMeals.map((meal) => meal.name)).toEqual(['Kvarg'])
+  })
+
+  it('keeps invalid date entries out of normalized weights', () => {
+    const weights = coachAppContextInternals.normalizeWeights([
+      { date: 'invalid', id: 'bad', value: 90 },
+      { date: '2026-07-27', id: 'good', value: 90.1 },
+    ], '2026-07-27')
+
+    expect(weights.map((entry) => entry.id)).toEqual(['good'])
   })
 })

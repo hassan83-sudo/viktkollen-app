@@ -1,3 +1,5 @@
+import { getUnifiedWeightFacts } from './healthCalculations.js'
+
 export const weightSources = ['Manuell', 'Importerad', 'Check-in', 'Kroppsanalys', 'Annat']
 
 export const bodyMeasurementTypes = [
@@ -326,17 +328,14 @@ export function analyzeWeights(weights, profile = {}) {
   const weeklyRate = changeTotal !== null ? Number(((changeTotal / days) * 7).toFixed(2)) : null
   const monthlyRate = changeTotal !== null ? Number(((changeTotal / days) * 30).toFixed(2)) : null
   const variation = getVariation(entries)
-  const goalWeight = parsePositiveNumber(profile.goalWeight, null, 500)
-  const startWeight = parsePositiveNumber(profile.startWeight, first?.value, 500)
-  const totalGoalDistance = startWeight !== null && goalWeight !== null ? Math.abs(startWeight - goalWeight) : null
-  const progressDistance =
-    startWeight !== null && goalWeight !== null && latest
-      ? Math.max(0, startWeight > goalWeight ? startWeight - latest.value : latest.value - startWeight)
-      : null
-  const completePercent =
-    totalGoalDistance && totalGoalDistance > 0
-      ? Math.max(0, Math.min(100, Math.round((progressDistance / totalGoalDistance) * 100)))
-      : null
+  const weightFacts = getUnifiedWeightFacts({
+    currentWeight: latest?.value,
+    profile,
+    weights: entries,
+  })
+  const goalWeight = weightFacts.goalWeight
+  const startWeight = weightFacts.startWeight
+  const completePercent = weightFacts.completePercent
 
   return {
     averageWeight: average(values),
@@ -366,7 +365,7 @@ export function analyzeWeights(weights, profile = {}) {
       goalWeight,
       kilosChanged: changeTotal,
       kilosRemaining:
-        latest && goalWeight !== null ? Number(Math.abs(latest.value - goalWeight).toFixed(1)) : null,
+        weightFacts.goalRemaining === null ? null : Math.abs(weightFacts.goalRemaining),
       startWeight,
     },
     trend:

@@ -2,7 +2,7 @@
 import { getAnalysisHistory } from './bodyAnalysisHistory.js'
 import {
   formatKg,
-  getUnifiedWeightContext,
+  getUnifiedWeightFacts,
   getWeightStats as getSharedWeightStats,
   normalizeWeightEntries,
 } from './healthCalculations.js'
@@ -500,14 +500,14 @@ function makeActivityItems({
 }
 
 function makeGoals({ profile, weightStats }) {
-  const weightContext = getUnifiedWeightContext({
+  const weightContext = getUnifiedWeightFacts({
     currentWeight: weightStats.current,
     profile,
     weights: weightStats.weights,
   })
-  const currentWeight = weightContext.currentWeight
+  const currentWeight = weightContext.latestWeight
   const goalWeight = weightContext.goalWeight
-  const remaining = weightContext.remainingKg
+  const remaining = weightContext.goalRemaining
   const percentRemaining = weightContext.percentRemaining
   const milestone =
     remaining === null

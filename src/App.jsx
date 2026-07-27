@@ -19,12 +19,9 @@ import {
   bodyAnalysisHistoryChangedEvent,
   getAnalysisHistory,
 } from './services/bodyAnalysisHistory.js'
-import { buildAiCoachContext } from './services/aiCoachContext.js'
 import { requestAiEndpoint } from './services/aiApiService.js'
 import { addAiConversationMemory } from './services/aiConversationMemory.js'
 import { createDeterministicAiCoachReply } from './services/aiCoachDeterministicReplies.js'
-import { classifyAiCoachIntent } from './services/aiCoachIntentService.js'
-import { createLocalAiCoachReply } from './services/aiCoachPrompt.js'
 import { createAiCoachV2Report } from './services/aiCoachV2Service.js'
 import { createAiSuggestions } from './services/aiSuggestions.js'
 import {
@@ -300,10 +297,7 @@ function formatOptionalWeight(value) {
 
 function makeValidatedProfile(profile) {
   const startWeight = formatOptionalWeight(profile?.startWeight)
-  const goalWeight =
-    profile?.goal === 'gå ner i vikt'
-      ? formatOptionalWeight(profile?.goalWeight)
-      : ''
+  const goalWeight = formatOptionalWeight(profile?.goalWeight)
 
   return {
     ...(profile?.name?.trim() && { name: profile.name.trim() }),
@@ -943,7 +937,7 @@ function App() {
         currentWeight: latestWeight.value,
         foods,
         latestWeeklyReport: weeklyReportData,
-        mealHistory: getMealHistory(),
+        mealHistory: photoMeals,
         meals,
         profile: makeValidatedProfile(profile),
         weights,
@@ -955,6 +949,7 @@ function App() {
       foods,
       latestWeight.value,
       meals,
+      photoMeals,
       profile,
       weeklyReportData,
       weights,
@@ -2103,31 +2098,25 @@ function App() {
 
   function createLocalSmartChatReply(message, chatHistory) {
     try {
-      const intent = classifyAiCoachIntent({
-        chatHistory,
-        message,
-      })
-      const context = buildAiCoachContext({
+      const context = {
         bodyAnalysisHistory,
         chatHistory,
         checkIn,
         currentWeight: latestWeight.value,
         foods,
-        intent: intent.intent,
-        latestCoachReply: chatHistory
-          .filter((chatMessage) => chatMessage.role === 'assistant')
-          .at(-1)?.text || '',
         latestWeeklyReport: weeklyReportData,
-        mealHistory: getMealHistory(),
+        mealHistory: photoMeals,
         meals,
+        nutritionGoals,
+        progressGoalSettings,
         profile: getValidatedProfile(),
         weights,
-      })
+      }
 
       return {
-        reply: createLocalAiCoachReply({
+        reply: createDeterministicAiCoachReply({
+          chatHistory,
           context,
-          intent,
           message,
         }),
         source: 'mock',
@@ -2151,27 +2140,23 @@ function App() {
 
   function createDeterministicChatReply(message, chatHistory) {
     try {
-      const intent = classifyAiCoachIntent({
-        chatHistory,
-        message,
-      })
-      const context = buildAiCoachContext({
+      const context = {
         bodyAnalysisHistory,
         chatHistory,
         checkIn,
         currentWeight: latestWeight.value,
         foods,
-        intent: intent.intent,
-        latestCoachReply: '',
         latestWeeklyReport: weeklyReportData,
-        mealHistory: getMealHistory(),
+        mealHistory: photoMeals,
         meals,
+        nutritionGoals,
+        progressGoalSettings,
         profile: getValidatedProfile(),
         weights,
-      })
+      }
       const reply = createDeterministicAiCoachReply({
+        chatHistory,
         context,
-        intent,
         message,
       })
 
@@ -2191,43 +2176,8 @@ function App() {
       role: chatMessage.role,
       text: chatMessage.text,
     }))
-    const deterministicReply = createDeterministicChatReply(message, recentChatHistory)
-
-    if (deterministicReply) {
-      return deterministicReply
-    }
-
-    const apiResult = await requestAiEndpoint({
-      action: 'chat',
-      message,
-      profile: getValidatedProfile(),
-      checkIn,
-      foods,
-      meals,
-      mealHistory: getMealHistory(),
-      bodyAnalysisHistory,
-      latestWeeklyReport: weeklyReportData,
-      latestCoachReply: recentChatHistory
-        .filter((chatMessage) => chatMessage.role === 'assistant')
-        .at(-1)?.text || '',
-      userContext: aiUserContext,
-      weights,
-      currentWeight: latestWeight.value,
-      chatHistory: recentChatHistory,
-    })
-    const data = apiResult.data || {}
-
-    if (apiResult.ok && typeof data.reply === 'string' && data.reply.trim()) {
-      return {
-        reply: data.reply.trim(),
-        source: data.source,
-      }
-    }
-
-    return createLocalSmartChatReply(
-      message,
-      recentChatHistory,
-    )
+    return createDeterministicChatReply(message, recentChatHistory) ||
+      createLocalSmartChatReply(message, recentChatHistory)
   }
 
   function appendChatMessage(role, text, source = '') {

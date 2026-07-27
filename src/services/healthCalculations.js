@@ -259,3 +259,25 @@ export function getUnifiedWeightContext({
     trend: weightStats.trend,
   }
 }
+
+export function getUnifiedWeightFacts(options = {}) {
+  const weightContext = getUnifiedWeightContext(options)
+  const latestWeight = weightContext.currentWeight
+  const startWeight = weightContext.startWeight
+  const goalWeight = weightContext.goalWeight
+  const weightLost =
+    latestWeight === null || startWeight === null
+      ? null
+      : Number((startWeight - latestWeight).toFixed(1))
+  const goalRemaining =
+    latestWeight === null || goalWeight === null
+      ? null
+      : Number((latestWeight - goalWeight).toFixed(1))
+
+  return {
+    ...weightContext,
+    goalRemaining,
+    latestWeight,
+    weightLost,
+  }
+}

@@ -1,7 +1,7 @@
 import {
   calculateProteinNeed,
   formatKg,
-  getUnifiedWeightContext,
+  getUnifiedWeightFacts,
   getWeightStats,
   parseWeightValue,
 } from './healthCalculations.js'
@@ -190,7 +190,7 @@ function estimateGoalDate(weightContext) {
 }
 
 function buildCoachProfile({ checkIn, profile, weights }) {
-  const weightContext = getUnifiedWeightContext({
+  const weightContext = getUnifiedWeightFacts({
     currentWeight: weights.at(-1)?.value,
     profile,
     weights,
@@ -353,9 +353,9 @@ function buildGoalCenter(coachProfile) {
         ? 'Saknas'
         : `${weightContext.percentRemaining}% kvar`,
     remainingKgLabel:
-      weightContext.remainingKg === null
+      weightContext.goalRemaining === null
         ? 'Saknas'
-        : `${formatKg(Math.abs(weightContext.remainingKg))} kvar`,
+        : `${formatKg(Math.abs(weightContext.goalRemaining))} kvar`,
   }
 }
 

@@ -3,6 +3,7 @@ import {
   extractWeightFromText,
   formatKg,
 } from '../healthCalculations.js'
+import { analyzeNutritionMessage } from '../nutrition/nutritionEngine.js'
 import { getIntentSourceText } from './coachConversation.js'
 import { buildAiCoachFacts, hasRecentAdvice } from './coachFacts.js'
 import { identifyAiCoachIntents } from './coachIntentDetector.js'
@@ -174,12 +175,20 @@ function makeCaloriesReply(facts) {
 
 function makeFoodReply(facts, message) {
   const normalized = normalizeAiCoachText(message)
+  const nutrition = analyzeNutritionMessage(message, {
+    proteinGoal: facts.proteinGoalLabel || facts.proteinGoal,
+    repeatedPizza: hasRecentAdvice(facts, ['pizza', 'gronsaker']),
+  })
   const recentMealText = facts.recentMeals.length
     ? ` Senaste loggade måltider: ${facts.recentMeals.join(', ')}.`
     : ''
   const proteinGoalText = facts.proteinGoalLabel
     ? ` Tänk på proteinmålet ${facts.proteinGoalLabel} över hela dagen.`
     : ''
+
+  if (nutrition.advice) {
+    return nutrition.advice
+  }
 
   if (normalized.plain.includes('pizza')) {
     return hasRecentAdvice(facts, ['pizza', 'gronsaker'])

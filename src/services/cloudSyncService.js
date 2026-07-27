@@ -168,16 +168,32 @@ async function createCloudEvent(eventType, status, message, metadata = {}) {
     return localEvent
   }
 
-  await supabase
-    .from(syncEventsTable)
-    .insert({
-      event_type: eventType,
-      message,
-      metadata,
+  try {
+    const { error } = await supabase
+      .from(syncEventsTable)
+      .insert({
+        event_type: eventType,
+        message,
+        metadata,
+        status,
+      })
+
+    if (error) {
+      console.warn('[Viktkollen molnbackup] Synkhändelsen kunde inte sparas.', {
+        eventType,
+        status,
+      })
+
+      return null
+    }
+  } catch {
+    console.warn('[Viktkollen molnbackup] Synkhändelsen kunde inte sparas.', {
+      eventType,
       status,
     })
-    .throwOnError()
-    .catch(() => null)
+
+    return null
+  }
 
   return localEvent
 }

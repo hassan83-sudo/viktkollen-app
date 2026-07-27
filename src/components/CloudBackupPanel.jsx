@@ -205,19 +205,27 @@ function CloudBackupPanel({ isAuthenticated }) {
     setIsBackingUp(true)
     setBackupStatus(null)
 
-    const result = await pushLocalDataToCloud()
+    try {
+      const result = await pushLocalDataToCloud()
 
-    setBackupStatus({
-      ok: Boolean(result.ok),
-      message: result.ok
-        ? result.reason || 'Säkerhetskopiering lyckades.'
-        : result.reason || 'Säkerhetskopiering misslyckades.',
-      updatedAt: result.backupCreatedAt || result.backupUpdatedAt,
-    })
-    setIsBackingUp(false)
+      setBackupStatus({
+        ok: Boolean(result.ok),
+        message: result.ok
+          ? result.reason || 'Säkerhetskopiering lyckades.'
+          : result.reason || 'Säkerhetskopiering misslyckades.',
+        updatedAt: result.backupCreatedAt || result.backupUpdatedAt,
+      })
 
-    if (result.ok) {
-      await refreshBackups()
+      if (result.ok) {
+        await refreshBackups()
+      }
+    } catch {
+      setBackupStatus({
+        ok: false,
+        message: 'Säkerhetskopiering misslyckades. Försök igen om en stund.',
+      })
+    } finally {
+      setIsBackingUp(false)
     }
   }
 
@@ -267,11 +275,11 @@ function CloudBackupPanel({ isAuthenticated }) {
       `Storlek: ${formatBackupSize(backup.sizeBytes)}`,
       `Schema: V${backup.schemaVersion || preview.preview?.schemaVersion || '?'}`,
       `Datadelar: ${backup.storageKeyCount}`,
-      `Inneh?ller: ${content}`,
+      `Innehåller: ${content}`,
       `Konfliktstatus: ${preview.conflict?.status || 'UNKNOWN'}`,
-      `Rekommendation: ${preview.conflict?.recommendation || 'F?rhandsgranska manuellt.'}`,
+      `Rekommendation: ${preview.conflict?.recommendation || 'Förhandsgranska manuellt.'}`,
       '',
-      'Detta kommer att ers?tta din lokala data med den valda s?kerhetskopian fr?n molnet. En lokal ?ngra-backup skapas f?rst. Vill du forts?tta?',
+      'Detta kommer att ersätta din lokala data med den valda säkerhetskopian från molnet. En lokal ångra-backup skapas först. Vill du fortsätta?',
     ].join('\n')
   }
 
@@ -285,12 +293,12 @@ function CloudBackupPanel({ isAuthenticated }) {
       setLastPreview(result)
       setBackupStatus({
         ok: true,
-        message: result.reason || 'Molnversionen f?rhandsgranskades.',
+        message: result.reason || 'Molnversionen förhandsgranskades.',
       })
     } else {
       setBackupStatus({
         ok: false,
-        message: result.reason || 'F?rhandsgranskning misslyckades.',
+        message: result.reason || 'Förhandsgranskning misslyckades.',
       })
     }
 
@@ -306,7 +314,7 @@ function CloudBackupPanel({ isAuthenticated }) {
     if (!preview.ok) {
       setBackupStatus({
         ok: false,
-        message: preview.reason || '?terst?llning misslyckades.',
+        message: preview.reason || 'Återställning misslyckades.',
       })
       return
     }
@@ -325,8 +333,8 @@ function CloudBackupPanel({ isAuthenticated }) {
     setBackupStatus({
       ok: Boolean(restoreResult.ok),
       message: restoreResult.ok
-        ? '?terst?llning lyckades. Appen laddas om...'
-        : restoreResult.reason || '?terst?llning misslyckades.',
+        ? 'Återställning lyckades. Appen laddas om...'
+        : restoreResult.reason || 'Återställning misslyckades.',
       updatedAt: preview.backup.createdAt || preview.backup.updatedAt,
     })
     setIsRestoringId('')
@@ -416,7 +424,7 @@ function CloudBackupPanel({ isAuthenticated }) {
     if (file.size > 5 * 1024 * 1024) {
       setBackupStatus({
         ok: false,
-        message: 'JSON-filen ?r f?r stor f?r lokal import i den h?r versionen.',
+        message: 'JSON-filen är för stor för lokal import i den här versionen.',
       })
       event.target.value = ''
       return
@@ -433,13 +441,13 @@ function CloudBackupPanel({ isAuthenticated }) {
       if (!validation.ok) {
         setBackupStatus({
           ok: false,
-          message: validation.reason || 'JSON-filen ?r inte en giltig Viktkollen-backup.',
+          message: validation.reason || 'JSON-filen är inte en giltig Viktkollen-backup.',
         })
         return
       }
 
       const shouldImport = window.confirm(
-        `Backupen inneh?ller ${validation.payload.metadata.storageKeyCount} datadelar och ?r cirka ${formatBackupSize(validation.payload.metadata.sizeBytes)}. Detta kommer att ers?tta din lokala data med inneh?llet i JSON-filen. En lokal ?ngra-backup skapas f?rst. Vill du forts?tta?`,
+        `Backupen innehåller ${validation.payload.metadata.storageKeyCount} datadelar och är cirka ${formatBackupSize(validation.payload.metadata.sizeBytes)}. Detta kommer att ers?tta din lokala data med innehållet i JSON-filen. En lokal ångra-backup skapas först. Vill du fortsätta?`,
       )
 
       if (!shouldImport) {
@@ -465,7 +473,7 @@ function CloudBackupPanel({ isAuthenticated }) {
     } catch {
       setBackupStatus({
         ok: false,
-        message: 'JSON-filen kunde inte l?sas eller tolkas.',
+        message: 'JSON-filen kunde inte läsas eller tolkas.',
       })
     } finally {
       setIsImporting(false)
@@ -534,7 +542,7 @@ function CloudBackupPanel({ isAuthenticated }) {
 
       <div className="cloud-backup-actions">
         <button type="button" onClick={handleBackup} disabled={hasBusyAction}>
-          {isBackingUp ? 'S?kerhetskopierar...' : 'Spara lokal data i molnet'}
+          {isBackingUp ? 'Säkerhetskopierar...' : 'Spara lokal data i molnet'}
         </button>
         <button
           className="secondary-button"
@@ -542,7 +550,7 @@ function CloudBackupPanel({ isAuthenticated }) {
           onClick={() => handlePreview()}
           disabled={hasBusyAction}
         >
-          {isPreviewing ? 'F?rhandsgranskar...' : 'F?rhandsgranska molnversion'}
+          {isPreviewing ? 'Förhandsgranskar...' : 'Förhandsgranska molnversion'}
         </button>
         <button
           className="secondary-button"
@@ -550,7 +558,7 @@ function CloudBackupPanel({ isAuthenticated }) {
           onClick={() => handleRestore()}
           disabled={hasBusyAction || !lastPreview?.ok}
         >
-          ?terst?ll fr?n molnet
+          Återställ från molnet
         </button>
         <button
           className="secondary-button"
@@ -566,7 +574,7 @@ function CloudBackupPanel({ isAuthenticated }) {
           onClick={handleUndoRestore}
           disabled={hasBusyAction || !undoRestore.ok}
         >
-          ?ngra senaste ?terst?llning
+          Ångra senaste återställning
         </button>
         <input
           ref={fileInputRef}
@@ -587,7 +595,7 @@ function CloudBackupPanel({ isAuthenticated }) {
           <strong>Aktiv</strong>
         </div>
         <div>
-          <span>Senaste ?ngra-backup</span>
+          <span>Senaste ångra-backup</span>
           <strong>{undoRestore.createdAt ? formatBackupDate(undoRestore.createdAt) + ' ' + formatBackupTime(undoRestore.createdAt) : 'Saknas'}</strong>
         </div>
       </div>

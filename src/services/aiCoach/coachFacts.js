@@ -1,0 +1,367 @@
+import {
+  calculateProteinNeed,
+  formatKg,
+  getUnifiedWeightFacts,
+  parseWeightValue,
+} from '../healthCalculations.js'
+import {
+  getLastAssistantMessage,
+  getLastDiscussedTopic,
+  getRecentAssistantTexts,
+} from './coachConversation.js'
+import { normalizeAiCoachText } from './coachText.js'
+
+function firstNumber(...values) {
+  for (const value of values) {
+    const parsed = parseWeightValue(value)
+
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
+  }
+
+  return null
+}
+
+function parseNumber(value) {
+  if (value === null || value === undefined || String(value).trim() === '') {
+    return null
+  }
+
+  const parsed = Number(String(value ?? '').replace(',', '.').replace(/[^\d.-]/g, ''))
+
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function getWeightEntryValue(entry) {
+  return parseWeightValue(entry?.value ?? entry?.weight)
+}
+
+function getWeightEntryTime(entry) {
+  const date = new Date(entry?.date || entry?.createdAt || 0)
+
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime()
+}
+
+function getSortedWeightValues(weights = []) {
+  return (Array.isArray(weights) ? weights : [])
+    .map((entry) => ({
+      date: entry?.date || '',
+      time: getWeightEntryTime(entry),
+      value: getWeightEntryValue(entry),
+    }))
+    .filter((entry) => Number.isFinite(entry.value))
+    .sort((first, second) => first.time - second.time)
+}
+
+function getWeightLossFacts({ currentWeight, profile = {}, weights = [] }) {
+  const sortedWeights = getSortedWeightValues(weights)
+  const latestWeight = firstNumber(currentWeight, sortedWeights.at(-1)?.value)
+  const startWeight = firstNumber(profile.startWeight, sortedWeights[0]?.value)
+  const weightLost = Number.isFinite(startWeight) && Number.isFinite(latestWeight)
+    ? Number((startWeight - latestWeight).toFixed(1))
+    : null
+
+  return {
+    latestWeight,
+    startWeight,
+    weightLost,
+  }
+}
+
+function getDateString(value) {
+  const date = new Date(value)
+
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10)
+}
+
+function getTodayDateString() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function getMealDate(meal) {
+  return String(meal?.date || getDateString(meal?.createdAt) || '').slice(0, 10)
+}
+
+function getTodayMeals(meals = []) {
+  const today = getTodayDateString()
+
+  return (Array.isArray(meals) ? meals : []).filter((meal) => getMealDate(meal) === today)
+}
+
+function getRecentMeals(meals = []) {
+  return (Array.isArray(meals) ? meals : [])
+    .slice(-5)
+    .map((meal) => meal?.name || meal?.text || meal?.type || '')
+    .filter(Boolean)
+}
+
+function getLatestMealAnalysis(mealHistory = []) {
+  return Array.isArray(mealHistory) ? mealHistory[0] || null : null
+}
+
+function getNumericGoal(goals = {}, key) {
+  const value = parseNumber(goals?.[key])
+
+  return Number.isFinite(value) && value > 0 ? value : null
+}
+
+function getGoalLabelFromText(value) {
+  const text = String(value || '')
+
+  return text.trim() || ''
+}
+
+function getFoodTermsFromMeals(meals = []) {
+  const text = normalizeAiCoachText(
+    (Array.isArray(meals) ? meals : [])
+      .map((meal) => `${meal?.name || ''} ${meal?.text || ''}`)
+      .join(' '),
+  ).plain
+  const terms = ['pizza', 'hamburgare', 'godis', 'chips', 'lask', 'kyckling', 'agg', 'kvarg', 'havregryn', 'ris', 'potatis']
+
+  return terms.filter((term) => text.includes(term))
+}
+
+function getChangeSinceDays(weights, days) {
+  const sortedWeights = getSortedWeightValues(weights)
+  const latest = sortedWeights.at(-1)
+
+  if (!latest || sortedWeights.length < 2) {
+    return null
+  }
+
+  const since = latest.time - days * 24 * 60 * 60 * 1000
+  const baseline = [...sortedWeights]
+    .reverse()
+    .find((entry) => entry.time <= since) || sortedWeights[0]
+
+  return baseline && baseline !== latest
+    ? Number((latest.value - baseline.value).toFixed(1))
+    : null
+}
+
+function getAverageStepData(context) {
+  const checkIns = Array.isArray(context.checkIns) ? context.checkIns : []
+  const values = checkIns
+    .map((entry) => parseNumber(entry?.steps))
+    .filter((value) => Number.isFinite(value))
+
+  if (values.length === 0) {
+    return null
+  }
+
+  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length)
+}
+
+function getLowEnergyDays(context) {
+  const checkIns = Array.isArray(context.checkIns) ? context.checkIns : []
+
+  return checkIns.filter((entry) => {
+    const energy = parseNumber(entry?.energy)
+
+    return Number.isFinite(energy) && energy <= 4
+  }).length
+}
+
+function getPoorSleepDays(context) {
+  const checkIns = Array.isArray(context.checkIns) ? context.checkIns : []
+
+  return checkIns.filter((entry) => {
+    const sleep = parseNumber(entry?.sleep ?? entry?.sleepHours)
+
+    return Number.isFinite(sleep) && sleep < 6
+  }).length
+}
+
+export function hasRecentAdvice(facts, terms) {
+  const recentText = normalizeAiCoachText(facts.recentAssistantTexts.join(' ')).plain
+
+  return terms.some((term) => recentText.includes(term))
+}
+
+export function createWeightPrognosis(facts) {
+  if (
+    !Number.isFinite(facts.goalWeight) ||
+    !Number.isFinite(facts.latestWeight) ||
+    !Number.isFinite(facts.goalRemaining) ||
+    facts.weightRegistrationCount < 4
+  ) {
+    return null
+  }
+
+  const sortedWeights = facts.weightHistory
+  const first = sortedWeights[0]
+  const latest = sortedWeights.at(-1)
+  const days = first && latest ? Math.max(1, (latest.time - first.time) / (24 * 60 * 60 * 1000)) : 0
+
+  if (days < 14 || facts.weightVariation === 'high') {
+    return null
+  }
+
+  const weeklyChange = Number((((latest.value - first.value) / days) * 7).toFixed(1))
+
+  if (!Number.isFinite(weeklyChange) || Math.abs(weeklyChange) < 0.1) {
+    return {
+      observation: 'Vikten ser ganska stabil ut just nu.',
+      text: 'Vikten ser ganska stabil ut just nu, så en målprognos blir osäker. Följ veckosnittet några veckor till innan du drar slutsatser.',
+      weeklyChange,
+    }
+  }
+
+  const directionToGoal = Math.sign(facts.goalWeight - facts.latestWeight)
+  const trendDirection = Math.sign(weeklyChange)
+
+  if (directionToGoal !== trendDirection) {
+    return {
+      observation: `Din senaste trend är cirka ${formatKg(Math.abs(weeklyChange))} per vecka åt fel håll mot målet.`,
+      text: `Din senaste trend är cirka ${formatKg(Math.abs(weeklyChange))} per vecka åt fel håll mot målet. Det är en signal att fokusera på sömn, steg och måltidsrytm innan prognosen blir meningsfull.`,
+      weeklyChange,
+    }
+  }
+
+  const weeks = Math.abs(facts.goalRemaining / weeklyChange)
+
+  if (!Number.isFinite(weeks) || weeks <= 0 || weeks > 156) {
+    return null
+  }
+
+  const monthsMin = Math.max(1, Math.floor(weeks / 4.4))
+  const monthsMax = Math.max(monthsMin, Math.ceil(weeks / 4.4))
+
+  return {
+    observation: `Din senaste trend motsvarar ungefär ${formatKg(Math.abs(weeklyChange))} per vecka.`,
+    text: `Din senaste trend motsvarar ungefär ${formatKg(Math.abs(weeklyChange))} per vecka. Om den fortsätter kan du närma dig målet på cirka ${monthsMin}–${monthsMax} månader. Det är bara en uppskattning.`,
+    weeklyChange,
+  }
+}
+
+export function createProactiveInsights(facts) {
+  const insights = []
+
+  if (facts.poorSleepDays >= 2) {
+    insights.push({
+      nextStep: 'Sätt en lugn kvällsrutin och håll koffein tidigare på dagen.',
+      observation: `${facts.poorSleepDays} dagar visar kort sömn.`,
+      significance: 'Kort sömn kan påverka hunger, energi och återhämtning.',
+    })
+  }
+
+  if (facts.averageSteps !== null && facts.averageSteps < 5000) {
+    insights.push({
+      nextStep: 'Lägg in 10–20 minuter promenad efter en måltid.',
+      observation: `Snittet är cirka ${facts.averageSteps.toLocaleString('sv-SE')} steg.`,
+      significance: 'Låga steg kan göra viktnedgången trögare.',
+    })
+  }
+
+  if (facts.lowEnergyDays >= 2) {
+    insights.push({
+      nextStep: 'Välj ett lätt träningspass eller vilodag och prioritera matrytm.',
+      observation: `${facts.lowEnergyDays} dagar har låg energi.`,
+      significance: 'Låg energi flera dagar kan öka sötsug och göra rutiner svårare.',
+    })
+  }
+
+  if (facts.weightRegistrationCount > 0 && facts.weightRegistrationCount < 3) {
+    insights.push({
+      nextStep: 'Logga vikt 2–3 gånger till innan du tolkar trenden.',
+      observation: `${facts.weightRegistrationCount} viktregistreringar finns.`,
+      significance: 'För få vägningar gör trendanalysen osäker.',
+    })
+  }
+
+  if (facts.weightPlateau) {
+    insights.push({
+      nextStep: 'Jämför veckosnitt och välj en liten justering i steg eller portionsstorlek.',
+      observation: 'Vikten ser ut att stå ganska still.',
+      significance: 'En platå kan vara normal variation, särskilt med få veckor data.',
+    })
+  }
+
+  return insights
+}
+
+export function buildAiCoachFacts(context = {}) {
+  const nestedWeight = context.weight || {}
+  const profile = context.profile || {}
+  const goalSettings = context.progressGoalSettings || context.goalSettings || {}
+  const weights = Array.isArray(context.weights) ? context.weights : nestedWeight.history || []
+  const weightHistory = getSortedWeightValues(weights)
+  const unifiedWeight = getUnifiedWeightFacts({
+    currentWeight: firstNumber(context.currentWeight, nestedWeight.currentWeight),
+    goalWeight: firstNumber(profile.goalWeight, nestedWeight.goalWeight, goalSettings.goalWeight, goalSettings.targetWeight),
+    profile,
+    startWeight: firstNumber(profile.startWeight, nestedWeight.startWeight),
+    weights,
+  })
+  const latestWeight = firstNumber(unifiedWeight.currentWeight, nestedWeight.currentWeight)
+  const startWeight = firstNumber(unifiedWeight.startWeight, nestedWeight.startWeight)
+  const goalWeight = firstNumber(unifiedWeight.goalWeight, nestedWeight.goalWeight)
+  const lossFacts = getWeightLossFacts({
+    currentWeight: latestWeight,
+    profile,
+    weights,
+  })
+  const todayMeals = getTodayMeals(context.meals?.loggedMealsToday || context.meals || [])
+  const todayCheckin = context.todayCheckin || context.checkIn || {}
+  const proteinGoal = getNumericGoal(context.nutritionGoals, 'protein')
+  const proteinNeed = calculateProteinNeed(latestWeight)
+  const change7 = getChangeSinceDays(weights, 7)
+  const change30 = getChangeSinceDays(weights, 30)
+  const recentChange = weightHistory.length >= 2
+    ? Number((weightHistory.at(-1).value - weightHistory.at(-2).value).toFixed(1))
+    : null
+  const weightPlateau = weightHistory.length >= 4 && Number.isFinite(change30) && Math.abs(change30) <= 0.2
+  const weightVariation = weightHistory.length >= 4 && Number.isFinite(recentChange) && Math.abs(recentChange) > 2
+    ? 'high'
+    : 'normal'
+  const facts = {
+    activityLevel: profile.activityLevel || profile.activity || '',
+    age: parseNumber(profile.age),
+    averageSteps: getAverageStepData(context),
+    bedtimeMealCount: 0,
+    caloriesGoal: getNumericGoal(context.nutritionGoals, 'calories'),
+    change30,
+    change7,
+    energy: Number.isFinite(Number(todayCheckin.energy)) ? Number(todayCheckin.energy) : null,
+    gender: profile.gender || profile.sex || '',
+    goalRemaining: unifiedWeight.goalRemaining,
+    goalWeight,
+    height: parseNumber(profile.height),
+    latestCoachReply: getLastAssistantMessage(context.chatHistory),
+    latestMealAnalysis: getLatestMealAnalysis(context.mealHistory || context.meals?.history),
+    latestWeight,
+    lowEnergyDays: getLowEnergyDays(context),
+    mood: todayCheckin.mood || '',
+    poorSleepDays: getPoorSleepDays(context),
+    proteinGoal: proteinGoal ?? null,
+    proteinGoalLabel: proteinGoal
+      ? getGoalLabelFromText(context.nutritionGoals?.protein) || `${proteinGoal} g`
+      : proteinNeed
+        ? `${proteinNeed.lower}–${proteinNeed.upper} g`
+        : null,
+    recentAssistantTexts: getRecentAssistantTexts(context.chatHistory),
+    recentFoods: getFoodTermsFromMeals(context.meals),
+    recentMeals: getRecentMeals(context.meals?.loggedMealsToday || context.meals || []),
+    sleepHours: parseNumber(todayCheckin.sleep ?? todayCheckin.sleepHours),
+    startWeight: lossFacts.startWeight ?? startWeight,
+    steps: Number.isFinite(Number(todayCheckin.steps)) ? Number(todayCheckin.steps) : null,
+    todayCheckin,
+    todayMeals,
+    training: todayCheckin.workout || todayCheckin.training || '',
+    water: todayCheckin.water ?? null,
+    weightHistory,
+    weightLost: lossFacts.weightLost,
+    weightPlateau,
+    weightRegistrationCount: weightHistory.length,
+    weightTrend: unifiedWeight.trend,
+    weightVariation,
+  }
+
+  facts.lastDiscussedTopic = getLastDiscussedTopic(context.chatHistory)
+  facts.proactiveInsights = createProactiveInsights(facts)
+  facts.weightPrognosis = createWeightPrognosis(facts)
+
+  return facts
+}

@@ -20,6 +20,13 @@ function includesAny(text, phrases) {
   return phrases.some((phrase) => text.includes(phrase))
 }
 
+function formatGoalKg(value) {
+  return formatKg(value, {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 1,
+  })
+}
+
 function pickTemplate(templates, seed) {
   const index = String(seed || '')
     .split('')
@@ -57,7 +64,7 @@ function makeGoalDistanceText(weightContext = {}) {
   }
 
   return remainingKg > 0
-    ? ` Det är ${formatKg(remainingKg)} kvar till ditt mål på ${formatKg(goalWeight)}.`
+    ? ` Du har ${formatKg(remainingKg)} kvar till ditt mål på ${formatGoalKg(goalWeight)}.`
     : ` Du ligger ${formatKg(Math.abs(remainingKg))} under ditt registrerade mål.`
 }
 
@@ -70,6 +77,12 @@ function isCurrentWeightQuestion(text) {
     'vikt idag',
     'vikt i dag',
   ])
+}
+
+function isTooShortUnclearMessage(text) {
+  const compactText = text.replace(/[^a-zåäö0-9]/gi, '')
+
+  return compactText.length > 0 && compactText.length <= 2
 }
 
 function isWeightLossQuestion(text) {
@@ -211,6 +224,8 @@ function isLateMealHarmQuestion(text) {
     'nära läggdags',
     'innan läggdags',
     'sent på kvällen',
+    'äta sent',
+    'äter sent',
   ])
   const asksHarm = includesAny(text, ['skadligt', 'farligt', 'dåligt'])
 
@@ -231,7 +246,7 @@ function makeCurrentWeightReply(context) {
     return null
   }
 
-  return `Du väger just nu ${formatKg(currentWeight)}.${makeWeightProgressText(
+  return `Din senaste registrerade vikt är ${formatKg(currentWeight)}.${makeWeightProgressText(
     context.weight?.changeSinceStart,
   )}${makeGoalDistanceText(context.weight)}`
 }
@@ -240,7 +255,7 @@ function makeCurrentWeightOnlyReply(context) {
   const currentWeight = parseNumber(context.weight?.currentWeight)
 
   return Number.isFinite(currentWeight)
-    ? `Du väger just nu ${formatKg(currentWeight)}.`
+    ? `Din senaste registrerade vikt är ${formatKg(currentWeight)}.`
     : null
 }
 
@@ -276,7 +291,7 @@ function makeGoalDistanceReply(context) {
   }
 
   if (remainingKg > 0) {
-    return `Det är ${formatKg(remainingKg)} kvar till ditt mål på ${formatKg(goalWeight)}.`
+    return `Du har ${formatKg(remainingKg)} kvar till ditt mål på ${formatGoalKg(goalWeight)}.`
   }
 
   return makeGoalDistanceText(context.weight).trim()
@@ -375,7 +390,7 @@ function makeStressReply(context, message) {
 }
 
 function makeLateMealHarmReply() {
-  return 'För de flesta är det inte skadligt att äta nära läggdags. Det kan däremot påverka sömn, reflux, hungervanor eller göra det lättare att äta mer än man tänkt. Om du är hungrig sent, testa något lättare som yoghurt, ägg, keso eller en liten macka.'
+  return 'För de flesta är det inte farligt eller skadligt att äta nära läggdags. Det kan däremot påverka sömn, reflux, magen eller göra det lättare att få i sig mer energi än tänkt.'
 }
 
 function makeEightHoursSleepReply(context) {
@@ -385,6 +400,19 @@ function makeEightHoursSleepReply(context) {
     : ''
 
   return `Ja, 8 timmar är ett bra riktmärke för många vuxna. Det viktigaste är ändå regelbunden sömn och att du känner dig återhämtad dagen efter.${energyHint}`
+}
+
+function makeShortSleepReply(context, message) {
+  const sleepHours = extractSleepHours(normalizeText(message))
+  const hoursText = Number.isFinite(sleepHours)
+    ? ` ${sleepHours} timmar är kort sömn för många.`
+    : ''
+  const energy = Number(context.checkIn?.energy)
+  const energyHint = Number.isFinite(energy)
+    ? ` Din registrerade energi är ${energy}/10.`
+    : ''
+
+  return `Sömn påverkar hunger, ork och återhämtning.${hoursText}${energyHint} Håll dagen enkel och sikta på en lugnare kväll.`
 }
 
 /**
@@ -398,10 +426,9 @@ function makeEightHoursSleepReply(context) {
  */
 export function createDeterministicAiCoachReply({ context, intent, message }) {
   const text = normalizeText(message)
-  const explicitReplies = collectExplicitReplies(context, text, message)
 
-  if (explicitReplies.length > 1) {
-    return explicitReplies.join('\n')
+  if (isTooShortUnclearMessage(text)) {
+    return 'Jag hängde inte riktigt med. Kan du skriva lite mer?'
   }
 
   if (isLateMealHarmQuestion(text)) {
@@ -419,6 +446,12 @@ export function createDeterministicAiCoachReply({ context, intent, message }) {
     isDinnerQuestion(text)
   ) {
     return makeCombinedDinnerWellnessReply(text)
+  }
+
+  const explicitReplies = collectExplicitReplies(context, text, message)
+
+  if (explicitReplies.length > 0) {
+    return explicitReplies.join('\n')
   }
 
   if (isCurrentWeightQuestion(text)) {
@@ -447,6 +480,10 @@ export function createDeterministicAiCoachReply({ context, intent, message }) {
 
   if (isStressStatement(text)) {
     return makeStressReply(context, message)
+  }
+
+  if (extractSleepHours(text) !== null || intent.intent === 'sleep') {
+    return makeShortSleepReply(context, message)
   }
 
   if (isEightHoursSleepQuestion(text)) {

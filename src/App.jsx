@@ -22,6 +22,7 @@ import {
 import { buildAiCoachContext } from './services/aiCoachContext.js'
 import { requestAiEndpoint } from './services/aiApiService.js'
 import { addAiConversationMemory } from './services/aiConversationMemory.js'
+import { createDeterministicAiCoachReply } from './services/aiCoachDeterministicReplies.js'
 import { classifyAiCoachIntent } from './services/aiCoachIntentService.js'
 import { createLocalAiCoachReply } from './services/aiCoachPrompt.js'
 import { createAiCoachV2Report } from './services/aiCoachV2Service.js'
@@ -2148,11 +2149,53 @@ function App() {
     }
   }
 
+  function createDeterministicChatReply(message, chatHistory) {
+    try {
+      const intent = classifyAiCoachIntent({
+        chatHistory,
+        message,
+      })
+      const context = buildAiCoachContext({
+        bodyAnalysisHistory,
+        chatHistory,
+        checkIn,
+        currentWeight: latestWeight.value,
+        foods,
+        intent: intent.intent,
+        latestCoachReply: '',
+        latestWeeklyReport: weeklyReportData,
+        mealHistory: getMealHistory(),
+        meals,
+        profile: getValidatedProfile(),
+        weights,
+      })
+      const reply = createDeterministicAiCoachReply({
+        context,
+        intent,
+        message,
+      })
+
+      return reply
+        ? {
+          reply,
+          source: 'mock',
+        }
+        : null
+    } catch {
+      return null
+    }
+  }
+
   async function requestChatReply(message) {
     const recentChatHistory = chatMessages.slice(-10).map((chatMessage) => ({
       role: chatMessage.role,
       text: chatMessage.text,
     }))
+    const deterministicReply = createDeterministicChatReply(message, recentChatHistory)
+
+    if (deterministicReply) {
+      return deterministicReply
+    }
 
     const apiResult = await requestAiEndpoint({
       action: 'chat',

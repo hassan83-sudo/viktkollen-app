@@ -15,6 +15,12 @@ function includesAny(text, phrases) {
   return phrases.some((phrase) => text.includes(phrase))
 }
 
+function isTooShortUnclearMessage(text) {
+  const compactText = text.replace(/[^a-zåäö0-9]/gi, '')
+
+  return compactText.length > 0 && compactText.length <= 2
+}
+
 const intentPhrases = {
   dinner: [
     'middag idag',
@@ -108,7 +114,9 @@ function getLastUserText(chatHistory = []) {
 function getConversationTopic(message, chatHistory = []) {
   const text = normalizeText(message)
   const previousText = normalizeText(getLastUserText(chatHistory))
-  const combinedText = `${previousText} ${text}`
+  const combinedText = isContextualFollowUp(text) && previousText
+    ? `${previousText} ${text}`
+    : text
 
   if (isLateMealQuestion(combinedText)) {
     return 'lateMeal'
@@ -292,7 +300,9 @@ function makeMotivationDropReply(context) {
 function detectIntent(message, chatHistory = []) {
   const text = normalizeText(message)
   const previousText = normalizeText(getLastUserText(chatHistory))
-  const combinedText = `${previousText} ${text}`
+  const combinedText = isContextualFollowUp(text) && previousText
+    ? `${previousText} ${text}`
+    : text
 
   if (isLateMealQuestion(combinedText)) {
     return 'sena måltider'
@@ -447,7 +457,9 @@ function detectIntent(message, chatHistory = []) {
 function detectIntents(message, chatHistory = []) {
   const text = normalizeText(message)
   const previousText = normalizeText(getLastUserText(chatHistory))
-  const combinedText = `${previousText} ${text}`
+  const combinedText = isContextualFollowUp(text) && previousText
+    ? `${previousText} ${text}`
+    : text
   const intents = []
 
   const addIntent = (intent) => {
@@ -581,6 +593,14 @@ function formatWeight(value) {
   })
 }
 
+function formatGoalWeight(value) {
+  return formatKg(value, {
+    fallback: '',
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 1,
+  })
+}
+
 function sanitizeName(value) {
   const name = String(value || '').trim()
 
@@ -615,7 +635,7 @@ function makeGoalDistanceSentence(context) {
   }
 
   if (remaining > 0) {
-    return `Det är ${formatWeight(remaining)} kvar till ditt mål på ${formatWeight(context.goalWeight)}.`
+    return `Du har ${formatWeight(remaining)} kvar till ditt mål på ${formatGoalWeight(context.goalWeight)}.`
   }
 
   if (remaining < 0) {
@@ -817,7 +837,7 @@ function makeGoalWeightReply(context) {
   const difference = context.remainingKg
 
   if (difference > 0) {
-    return `Det är ${formatWeight(difference)} kvar till ditt mål på ${formatWeight(context.goalWeight)}.`
+    return `Du har ${formatWeight(difference)} kvar till ditt mål på ${formatGoalWeight(context.goalWeight)}.`
   }
 
   if (difference < 0) {
@@ -885,7 +905,7 @@ function makeWeightProgressReply(context) {
     const remaining = context.remainingKg
     parts.push(
       Number.isFinite(remaining) && remaining > 0
-        ? `Det är ${formatWeight(remaining)} kvar till ditt mål på ${formatWeight(context.goalWeight)}.`
+        ? `Du har ${formatWeight(remaining)} kvar till ditt mål på ${formatGoalWeight(context.goalWeight)}.`
         : 'Du är vid eller under ditt registrerade målvärde.',
     )
   } else if (context.goalWeight !== null) {
@@ -912,7 +932,7 @@ function makeCurrentWeightReply(context) {
     return 'Jag hittar ingen aktuell vikt i loggen ännu.'
   }
 
-  const parts = [`Du väger just nu ${formatWeight(context.weight)}.`]
+  const parts = [`Din senaste registrerade vikt är ${formatWeight(context.weight)}.`]
   const goalDistance = makeGoalDistanceSentence(context)
 
   if (context.startWeight !== null) {
@@ -939,7 +959,7 @@ function makeCurrentWeightReply(context) {
 function makeCurrentWeightOnlyReply(context) {
   return context.weight === null
     ? 'Jag hittar ingen aktuell vikt i loggen ännu.'
-    : `Du väger just nu ${formatWeight(context.weight)}.`
+    : `Din senaste registrerade vikt är ${formatWeight(context.weight)}.`
 }
 
 function makeTodayPlanReply(context) {
@@ -1093,7 +1113,7 @@ function makeHowMuchReply(context, topic = '') {
     const remaining = context.remainingKg
 
     if (Number.isFinite(remaining) && remaining > 0) {
-      return `Det är ${formatWeight(remaining)} kvar till ditt mål på ${formatWeight(context.goalWeight)}.`
+      return `Du har ${formatWeight(remaining)} kvar till ditt mål på ${formatGoalWeight(context.goalWeight)}.`
     }
   }
 
@@ -1254,7 +1274,7 @@ function makeLateMealReply(context) {
 }
 
 function makeLateMealSafetyReply() {
-  return 'För de flesta är det inte skadligt att äta nära läggdags. Det kan däremot påverka sömn, reflux, hunger eller göra det lättare att äta mer än planerat. Om du är hungrig sent, välj något lätt som yoghurt, ägg, keso eller en liten macka.'
+  return 'För de flesta är det inte farligt eller skadligt att äta nära läggdags. Det kan däremot påverka sömn, reflux, magen eller göra det lättare att få i sig mer energi än tänkt.'
 }
 
 function makeExclusiveLateMealReply(text) {
@@ -1453,6 +1473,10 @@ export function makePersonalCoachReply({
   })
   const shortSocialReply = getShortSocialReply(text, context)
 
+  if (isTooShortUnclearMessage(text)) {
+    return 'Jag hängde inte riktigt med. Kan du skriva lite mer?'
+  }
+
   if (shortSocialReply) {
     return sanitizeCoachReply(shortSocialReply)
   }
@@ -1463,7 +1487,7 @@ export function makePersonalCoachReply({
 
   const previousText = normalizeText(getLastUserText(chatHistory))
   const exclusiveLateMealReply = makeExclusiveLateMealReply(
-    `${previousText} ${text}`,
+    isContextualFollowUp(text) && previousText ? `${previousText} ${text}` : text,
   )
 
   if (exclusiveLateMealReply) {

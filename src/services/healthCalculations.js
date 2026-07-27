@@ -233,7 +233,7 @@ export function getUnifiedWeightContext({
     startWeight: profileStartWeight,
   })
   const current = weightStats.current
-  const start = weightStats.first
+  const start = profileStartWeight ?? weightStats.first
   const remainingKg = calculateGoalDistance(current, profileGoalWeight)
   const goalProgress = calculateGoalProgress({
     currentWeight: current,

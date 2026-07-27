@@ -620,6 +620,11 @@ export function createDashboardData(data = {}) {
     weeklyReportData: data.weeklyReportData,
   })
   const latestActivity = activity[0]
+  const weightFacts = getUnifiedWeightFacts({
+    currentWeight: weightStats.current,
+    profile,
+    weights: weightStats.weights,
+  })
   const bestFactor = [...healthScore.factors].sort(
     (first, second) => second.points - first.points,
   )[0]
@@ -658,10 +663,14 @@ export function createDashboardData(data = {}) {
       weeklyReportCount:
         data.weeklyReportData || safeArray(data.weeklyReportLines).length > 0 ? 1 : 0,
       weightTrend: weightStats.hasWeights
-        ? `${weightStats.trend}${
-          weightStats.changeSinceStart === null
+        ? `${weightFacts.trend}${
+          weightFacts.weightChange === null
             ? ''
-            : ` · ${formatKg(weightStats.changeSinceStart)} sedan start`
+            : weightFacts.weightLost > 0
+              ? ` · ${formatKg(weightFacts.weightLost)} ned sedan start`
+              : weightFacts.weightGained > 0
+                ? ` · ${formatKg(weightFacts.weightGained)} upp sedan start`
+                : ' · stabil sedan start'
         }`
         : 'Logga vikt för att se trend',
     },

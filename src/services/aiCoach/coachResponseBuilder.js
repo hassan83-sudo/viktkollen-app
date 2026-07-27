@@ -105,10 +105,52 @@ function makeStepsReply(facts, message) {
   return 'Jag hittar inga steg för idag. Ett konkret mål kan vara en kort promenad efter nästa måltid.'
 }
 
+function makeCheckInReply(facts) {
+  const parts = []
+
+  if (Number.isFinite(facts.energy)) parts.push(`energi ${facts.energy}/10`)
+  if (facts.mood) parts.push(`humör: ${facts.mood}`)
+  if (Number.isFinite(facts.steps)) parts.push(`${facts.steps.toLocaleString('sv-SE')} steg`)
+
+  return parts.length
+    ? `Din senaste check-in visar ${parts.join(', ')}. Välj nästa steg efter dagsformen.`
+    : 'Jag hittar ingen tydlig check-in för idag ännu.'
+}
+
+function makeTodayFoodReply(facts) {
+  if (!facts.todayMeals.length) {
+    return 'Jag hittar inga måltider loggade för idag ännu.'
+  }
+
+  const names = facts.todayMeals
+    .map((meal) => meal.name || meal.text || meal.type || 'måltid')
+    .join(', ')
+  const proteinText = facts.todayProtein > 0
+    ? ` Totalt synligt protein är cirka ${facts.todayProtein.toLocaleString('sv-SE')} g.`
+    : ''
+
+  return `Idag ser jag: ${names}.${proteinText}`
+}
+
 function makeProteinReply(facts, message) {
   const explicitWeight = extractWeightFromText(message)
+  const normalized = normalizeAiCoachText(message)
   const proteinWeight = explicitWeight ?? facts.latestWeight
   const proteinNeed = calculateProteinNeed(proteinWeight)
+
+  if (includesAny(normalized.plain, ['tillrackligt', 'fatt i mig', 'fatt protein'])) {
+    if (!facts.todayMeals.length || facts.todayProtein <= 0) {
+      return 'Jag hittar inte tillräckligt med loggad mat för att avgöra proteinintaget idag.'
+    }
+
+    if (facts.proteinGoal) {
+      return facts.todayProtein >= facts.proteinGoal
+        ? `Du har loggat cirka ${facts.todayProtein.toLocaleString('sv-SE')} g protein idag, vilket når ditt proteinmål ${facts.proteinGoalLabel}.`
+        : `Du har loggat cirka ${facts.todayProtein.toLocaleString('sv-SE')} g protein idag. Det är under ditt proteinmål ${facts.proteinGoalLabel}, så lägg gärna till en proteinkälla i nästa måltid.`
+    }
+
+    return `Du har loggat cirka ${facts.todayProtein.toLocaleString('sv-SE')} g protein idag, men jag hittar inget proteinmål att jämföra med.`
+  }
 
   if (!proteinNeed) {
     return 'Ett vanligt riktmärke är cirka 1,2–1,6 g protein per kilo kroppsvikt per dag. Lägg in aktuell vikt om du vill att jag räknar gram.'
@@ -277,6 +319,20 @@ function makeInsightReply(facts) {
   return `${insight.observation} Det kan betyda att ${insight.significance.toLocaleLowerCase('sv-SE')} Nästa steg: ${insight.nextStep}`
 }
 
+function makeFocusReply(facts) {
+  const insight = facts.proactiveInsights[0]
+
+  if (insight) {
+    return `${insight.observation} Fokus idag: ${insight.nextStep}`
+  }
+
+  if (Number.isFinite(facts.steps) && facts.steps < 5000) {
+    return `Fokus idag: rörelse. Du har ${facts.steps.toLocaleString('sv-SE')} steg, så en kort promenad är ett rimligt nästa steg.`
+  }
+
+  return 'Fokus idag: håll det enkelt med vanlig mat, lite rörelse och en rimlig kvällsrutin.'
+}
+
 function makeSmalltalkReply(facts, message) {
   const normalized = normalizeAiCoachText(message)
 
@@ -366,9 +422,11 @@ function makeSafetyReply(facts, message) {
 function buildReplyForIntent(intent, facts, message) {
   const builders = {
     calories: makeCaloriesReply,
+    checkin: makeCheckInReply,
     clarify: makeClarifyReply,
     craving: makeCravingReply,
     food: makeFoodReply,
+    focus: makeFocusReply,
     goal: makeGoalReply,
     healthy_loss: makeHealthyLossReply,
     insight: makeInsightReply,
@@ -387,6 +445,7 @@ function buildReplyForIntent(intent, facts, message) {
     steps: makeStepsReply,
     stress: makeStressReply,
     training: makeTrainingReply,
+    today_food: makeTodayFoodReply,
     weight: makeWeightReply,
     weight_gain: makeWeightGainReply,
   }

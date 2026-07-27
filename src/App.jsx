@@ -21,6 +21,7 @@ import {
 } from './services/bodyAnalysisHistory.js'
 import { requestAiEndpoint } from './services/aiApiService.js'
 import { addAiConversationMemory } from './services/aiConversationMemory.js'
+import { buildAiCoachAppContextFromData } from './services/aiCoach/coachAppContext.js'
 import { createDeterministicAiCoachReply } from './services/aiCoachDeterministicReplies.js'
 import { createAiCoachV2Report } from './services/aiCoachV2Service.js'
 import { createAiSuggestions } from './services/aiSuggestions.js'
@@ -2096,26 +2097,29 @@ function App() {
     return makeValidatedProfile(profile)
   }
 
+  function buildCurrentAiCoachContext(chatHistory) {
+    return buildAiCoachAppContextFromData({
+      bodyAnalysisHistory,
+      chatHistory,
+      checkIn,
+      foods,
+      latestWeeklyReport: weeklyReportData,
+      mealHistory: photoMeals,
+      meals,
+      nutritionGoals,
+      progressGoalSettings,
+      profile: getValidatedProfile(),
+      weights,
+    })
+  }
+
   function createLocalSmartChatReply(message, chatHistory) {
     try {
-      const context = {
-        bodyAnalysisHistory,
-        chatHistory,
-        checkIn,
-        currentWeight: latestWeight.value,
-        foods,
-        latestWeeklyReport: weeklyReportData,
-        mealHistory: photoMeals,
-        meals,
-        nutritionGoals,
-        progressGoalSettings,
-        profile: getValidatedProfile(),
-        weights,
-      }
+      const context = buildCurrentAiCoachContext(chatHistory)
 
       return {
         reply: createDeterministicAiCoachReply({
-          chatHistory,
+          chatHistory: context.chatHistory,
           context,
           message,
         }),
@@ -2140,22 +2144,9 @@ function App() {
 
   function createDeterministicChatReply(message, chatHistory) {
     try {
-      const context = {
-        bodyAnalysisHistory,
-        chatHistory,
-        checkIn,
-        currentWeight: latestWeight.value,
-        foods,
-        latestWeeklyReport: weeklyReportData,
-        mealHistory: photoMeals,
-        meals,
-        nutritionGoals,
-        progressGoalSettings,
-        profile: getValidatedProfile(),
-        weights,
-      }
+      const context = buildCurrentAiCoachContext(chatHistory)
       const reply = createDeterministicAiCoachReply({
-        chatHistory,
+        chatHistory: context.chatHistory,
         context,
         message,
       })

@@ -11,6 +11,8 @@ export const intentOrder = [
   'prognosis',
   'plateau',
   'steps',
+  'checkin',
+  'today_food',
   'protein',
   'calories',
   'food',
@@ -25,6 +27,7 @@ export const intentOrder = [
   'stress',
   'sleep',
   'insight',
+  'focus',
   'clarify',
 ]
 
@@ -401,7 +404,19 @@ function isRestDay(normalized) {
 }
 
 function isStepsQuestion(normalized) {
-  return hasAnyTerm(normalized, ['hur många steg', 'bara gått', 'för lite rörelse', 'steg'], ['hur manga steg', 'bara gatt', 'for lite rorelse', 'steg'])
+  return hasAnyTerm(normalized, ['hur många steg', 'bara gått', 'för lite rörelse', 'rört mig tillräckligt', 'steg'], ['hur manga steg', 'bara gatt', 'for lite rorelse', 'rort mig tillrackligt', 'steg'])
+}
+
+function isCheckInQuestion(normalized) {
+  return hasAnyTerm(normalized, ['hur mår jag idag', 'hur mår jag i dag', 'måendet idag', 'energi idag'], ['hur mar jag idag', 'hur mar jag i dag', 'maendet idag', 'energi idag'])
+}
+
+function isTodayFoodQuestion(normalized) {
+  return hasAnyTerm(normalized, ['vad har jag ätit idag', 'vad har jag ätit i dag', 'ätit idag', 'ätit i dag'], ['vad har jag atit idag', 'vad har jag atit i dag', 'atit idag', 'atit i dag'])
+}
+
+function isFocusQuestion(normalized) {
+  return hasAnyTerm(normalized, ['vad bör jag fokusera på idag', 'vad ska jag fokusera på idag', 'fokus idag'], ['vad bor jag fokusera pa idag', 'vad ska jag fokusera pa idag', 'fokus idag'])
 }
 
 function isSmalltalk(normalized) {
@@ -484,6 +499,8 @@ export function identifyAiCoachIntents({ message, chatHistory = [] }) {
   if (isPrognosisQuestion(normalized)) addUnique(intents, 'prognosis')
   if (isPlateauQuestion(normalized)) addUnique(intents, 'plateau')
   if (isStepsQuestion(normalized)) addUnique(intents, 'steps')
+  if (isCheckInQuestion(normalized)) addUnique(intents, 'checkin')
+  if (isTodayFoodQuestion(normalized)) addUnique(intents, 'today_food')
   if (isProteinQuestion(normalized, sourceText)) addUnique(intents, 'protein')
   if (isCaloriesQuestion(normalized)) addUnique(intents, 'calories')
 
@@ -503,6 +520,10 @@ export function identifyAiCoachIntents({ message, chatHistory = [] }) {
 
   if (normalized.plain.includes('insikt') || normalized.plain.includes('analys')) {
     addUnique(intents, 'insight')
+  }
+
+  if (isFocusQuestion(normalized)) {
+    addUnique(intents, 'focus')
   }
 
   return intentOrder.filter((intent) => intents.includes(intent))

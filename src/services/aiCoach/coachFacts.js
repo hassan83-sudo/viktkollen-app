@@ -28,7 +28,8 @@ function parseNumber(value) {
     return null
   }
 
-  const parsed = Number(String(value ?? '').replace(',', '.').replace(/[^\d.-]/g, ''))
+  const match = String(value ?? '').replace(',', '.').match(/-?\d+(?:\.\d+)?/)
+  const parsed = match ? Number(match[0]) : NaN
 
   return Number.isFinite(parsed) ? parsed : null
 }
@@ -303,7 +304,13 @@ export function buildAiCoachFacts(context = {}) {
     profile,
     weights,
   })
-  const todayMeals = getTodayMeals(context.meals?.loggedMealsToday || context.meals || [])
+  const todayMeals = Array.isArray(context.todayMeals)
+    ? context.todayMeals
+    : getTodayMeals(context.meals?.loggedMealsToday || context.meals || [])
+  const todayProtein = todayMeals.reduce(
+    (sum, meal) => sum + (Number.isFinite(parseNumber(meal?.protein)) ? parseNumber(meal.protein) : 0),
+    0,
+  )
   const todayCheckin = context.todayCheckin || context.checkIn || {}
   const proteinGoal = getNumericGoal(context.nutritionGoals, 'protein')
   const proteinNeed = calculateProteinNeed(latestWeight)
@@ -349,6 +356,7 @@ export function buildAiCoachFacts(context = {}) {
     steps: Number.isFinite(Number(todayCheckin.steps)) ? Number(todayCheckin.steps) : null,
     todayCheckin,
     todayMeals,
+    todayProtein,
     training: todayCheckin.workout || todayCheckin.training || '',
     water: todayCheckin.water ?? null,
     weightHistory,

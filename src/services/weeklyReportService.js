@@ -2,23 +2,28 @@
 import { createAiFallback } from './aiFallbackEngine.js'
 import { requestAiEndpoint } from './aiApiService.js'
 import { buildAiUserContext } from './aiUserContext.js'
-import { formatKg, getWeightStats } from './healthCalculations.js'
+import { formatKg, getUnifiedWeightFacts, getWeightStats } from './healthCalculations.js'
 
 
-function getWeightTrend(weights = []) {
+function getWeightTrend(weights = [], profile = {}) {
   const weightStats = getWeightStats(weights)
-  const change = weightStats.changeSinceStart
+  const weightFacts = getUnifiedWeightFacts({
+    currentWeight: weightStats.current,
+    profile,
+    weights: weightStats.weights,
+  })
+  const change = weightFacts.weightChange
 
   if (!weightStats.hasWeights || !Number.isFinite(change)) {
     return 'Inte tillräckligt med viktdata ännu.'
   }
 
-  if (change < 0) {
-    return `Vikten är ned ${formatKg(Math.abs(change))} sedan start.`
+  if (weightFacts.weightLost > 0) {
+    return `Vikten är ned ${formatKg(weightFacts.weightLost)} sedan start.`
   }
 
-  if (change > 0) {
-    return `Vikten är upp ${formatKg(change)} sedan start.`
+  if (weightFacts.weightGained > 0) {
+    return `Vikten är upp ${formatKg(weightFacts.weightGained)} sedan start.`
   }
 
   return 'Vikten är stabil sedan start.'
@@ -103,7 +108,7 @@ export function makeWeeklyReportFallback(data) {
     source: 'mock',
     summary:
       'Veckan visar framför allt värdet av enkel loggning: vikt, check-in och matdata ger riktning utan att behöva vara perfekt.',
-    weightTrend: getWeightTrend(data.weights),
+    weightTrend: getWeightTrend(data.weights, data.profile),
     mealPattern: getMealPattern(mealHistory, data.meals),
   }
 }

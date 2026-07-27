@@ -265,10 +265,18 @@ export function getUnifiedWeightFacts(options = {}) {
   const latestWeight = weightContext.currentWeight
   const startWeight = weightContext.startWeight
   const goalWeight = weightContext.goalWeight
-  const weightLost =
+  const weightChange =
     latestWeight === null || startWeight === null
       ? null
-      : Number((startWeight - latestWeight).toFixed(1))
+      : Number((latestWeight - startWeight).toFixed(1))
+  const weightLost =
+    weightChange === null
+      ? null
+      : Number(Math.max(0, -weightChange).toFixed(1))
+  const weightGained =
+    weightChange === null
+      ? null
+      : Number(Math.max(0, weightChange).toFixed(1))
   const goalRemaining =
     latestWeight === null || goalWeight === null
       ? null
@@ -276,8 +284,12 @@ export function getUnifiedWeightFacts(options = {}) {
 
   return {
     ...weightContext,
+    firstEntry: weightContext.history[0] ?? null,
     goalRemaining,
+    latestEntry: weightContext.latestWeight,
     latestWeight,
+    weightChange,
+    weightGained,
     weightLost,
   }
 }

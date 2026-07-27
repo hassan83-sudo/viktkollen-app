@@ -3,6 +3,14 @@ import {
   buildAiCoachFacts,
   createDeterministicAiCoachReply,
 } from './aiCoachDeterministicReplies.js'
+import {
+  buildAiCoachAppContextFromData,
+  buildAiCoachAppContextFromStorage,
+  createDailyPriorityCoachAdvice,
+} from './aiCoach/coachAppContext.js'
+import { createDashboardData } from './dashboardService.js'
+import { getUnifiedWeightFacts } from './healthCalculations.js'
+import { userDataKeys } from './userDataRepository.js'
 
 const coachContext = {
   checkIn: {
@@ -454,5 +462,304 @@ describe('AI Coach Pro V4 regression', () => {
     const response = reply('Hej. Hur mycket väger jag nu? Jag åt chips och läsk. gym')
 
     expect(response).not.toMatch(/\b(?:NaN|undefined|null)\b/)
+  })
+})
+
+function makeStorage(data = {}) {
+  const values = new Map(
+    Object.entries(data).map(([key, value]) => [
+      key,
+      typeof value === 'string' ? value : JSON.stringify(value),
+    ]),
+  )
+
+  return {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+  }
+}
+
+const localStorageLikeData = {
+  [userDataKeys.chat]: [
+    { createdAt: '2026-07-27T08:00:00', role: 'assistant', text: 'Hej.' },
+    { createdAt: '2026-07-27T08:01:00', role: 'user', text: 'Jag åt pizza.' },
+    { createdAt: '2026-07-27T08:02:00', role: 'assistant', text: 'En pizza förstör inte dina framsteg.' },
+  ],
+  [userDataKeys.checkIn]: {
+    date: new Date().toISOString().slice(0, 10),
+    energy: 6,
+    mood: 'Fokuserad',
+    sleep: 7,
+    steps: 7200,
+    workout: true,
+  },
+  [userDataKeys.meals]: [
+    {
+      date: new Date().toISOString().slice(0, 10),
+      id: 'today-meal',
+      name: 'Kyckling med ris',
+      protein: 35,
+      time: '12:00',
+      type: 'Lunch',
+    },
+    {
+      date: '2999-01-01',
+      id: 'future-meal',
+      name: 'Framtidsmat',
+      protein: 99,
+    },
+    {
+      date: 'trasigt',
+      id: 'broken-meal',
+      name: 'Trasig måltid',
+    },
+  ],
+  [userDataKeys.nutritionGoals]: {
+    protein: '108–144 g',
+  },
+  [userDataKeys.profile]: {
+    activityLevel: 'Medel',
+    goalWeight: '78 kg',
+    startWeight: '91,8 kg',
+  },
+  [userDataKeys.weights]: [
+    { date: '2026-07-01', id: 'w1', value: 91.8 },
+    { date: '2026-07-27', id: 'w2', value: 90.1 },
+    { date: '2999-01-01', id: 'future-weight', value: 50 },
+    { date: 'nope', id: 'bad-weight', value: 'NaN' },
+  ],
+}
+
+describe('AI Coach Pro V5 app integration', () => {
+  it('builds context from realistic localStorage data', () => {
+    const context = buildAiCoachAppContextFromStorage(makeStorage(localStorageLikeData))
+    const facts = buildAiCoachFacts(context)
+
+    expect(facts.startWeight).toBe(91.8)
+    expect(facts.latestWeight).toBe(90.1)
+    expect(facts.goalWeight).toBe(78)
+    expect(context.todayMeals).toHaveLength(1)
+    expect(context.chatHistory.at(-1).text).toContain('pizza')
+  })
+
+  it('updates context after a new weight', () => {
+    const initial = buildAiCoachAppContextFromData({
+      profile: { goalWeight: '78 kg', startWeight: '91,8 kg' },
+      weights: localStorageLikeData[userDataKeys.weights].slice(0, 2),
+    })
+    const updated = buildAiCoachAppContextFromData({
+      profile: { goalWeight: '78 kg', startWeight: '91,8 kg' },
+      weights: [
+        ...localStorageLikeData[userDataKeys.weights].slice(0, 2),
+        {
+          date: new Date().toISOString().slice(0, 10),
+          id: 'w3',
+          time: '23:00',
+          value: 89.9,
+        },
+      ],
+    })
+
+    expect(buildAiCoachFacts(initial).latestWeight).toBe(90.1)
+    expect(buildAiCoachFacts(updated).latestWeight).toBe(89.9)
+  })
+
+  it('updates context after changed goal weight', () => {
+    const first = buildAiCoachFacts(buildAiCoachAppContextFromData({
+      profile: { goalWeight: '78 kg', startWeight: '91,8 kg' },
+      weights: localStorageLikeData[userDataKeys.weights].slice(0, 2),
+    }))
+    const second = buildAiCoachFacts(buildAiCoachAppContextFromData({
+      profile: { goalWeight: '75 kg', startWeight: '91,8 kg' },
+      weights: localStorageLikeData[userDataKeys.weights].slice(0, 2),
+    }))
+
+    expect(first.goalRemaining).toBe(12.1)
+    expect(second.goalRemaining).toBe(15.1)
+  })
+
+  it('filters todays meals correctly', () => {
+    const context = buildAiCoachAppContextFromStorage(makeStorage(localStorageLikeData))
+
+    expect(context.todayMeals.map((meal) => meal.name)).toEqual(['Kyckling med ris'])
+  })
+
+  it('ignores future meals', () => {
+    const context = buildAiCoachAppContextFromStorage(makeStorage(localStorageLikeData))
+
+    expect(context.meals.some((meal) => meal.name === 'Framtidsmat')).toBe(false)
+  })
+
+  it('ignores broken meal dates', () => {
+    const context = buildAiCoachAppContextFromStorage(makeStorage(localStorageLikeData))
+
+    expect(context.meals.some((meal) => meal.name === 'Trasig måltid')).toBe(false)
+  })
+
+  it('sorts chat messages chronologically', () => {
+    const context = buildAiCoachAppContextFromData({
+      chatHistory: [
+        { createdAt: '2026-07-27T08:02:00', role: 'assistant', text: 'Sist' },
+        { createdAt: '2026-07-27T08:01:00', role: 'user', text: 'Först' },
+      ],
+    })
+
+    expect(context.chatHistory.map((message) => message.text)).toEqual(['Först', 'Sist'])
+  })
+
+  it('uses the latest 10 chat messages', () => {
+    const context = buildAiCoachAppContextFromData({
+      chatHistory: Array.from({ length: 12 }, (_, index) => ({
+        createdAt: `2026-07-27T08:${String(index).padStart(2, '0')}:00`,
+        role: index % 2 === 0 ? 'user' : 'assistant',
+        text: `Meddelande ${index}`,
+      })),
+    })
+
+    expect(context.chatHistory).toHaveLength(10)
+    expect(context.chatHistory[0].text).toBe('Meddelande 2')
+  })
+
+  it('does not let an old food topic override a new direct weight question', () => {
+    const context = buildAiCoachAppContextFromStorage(makeStorage(localStorageLikeData))
+    const response = createDeterministicAiCoachReply({
+      chatHistory: context.chatHistory,
+      context,
+      message: 'Vad väger jag?',
+    })
+
+    expect(response).toContain('90,1 kg')
+    expect(response.toLocaleLowerCase('sv-SE')).not.toContain('pizza')
+  })
+
+  it('uses latest relevant topic for pronouns', () => {
+    const context = buildAiCoachAppContextFromStorage(makeStorage(localStorageLikeData))
+    const response = createDeterministicAiCoachReply({
+      chatHistory: context.chatHistory,
+      context,
+      message: 'Var det dumt?',
+    })
+
+    expect(response.toLocaleLowerCase('sv-SE')).toContain('pizza')
+  })
+
+  it('keeps coach and dashboard weight facts identical', () => {
+    const context = buildAiCoachAppContextFromStorage(makeStorage(localStorageLikeData))
+    const coachFacts = buildAiCoachFacts(context)
+    const dashboard = createDashboardData({
+      checkIn: context.checkIn,
+      foods: context.foods,
+      meals: context.meals,
+      profile: context.profile,
+      weights: context.weights,
+    })
+    const sharedFacts = getUnifiedWeightFacts({
+      currentWeight: context.currentWeight,
+      profile: context.profile,
+      weights: context.weights,
+    })
+
+    expect(coachFacts.weightLost).toBe(sharedFacts.weightLost)
+    expect(dashboard.goals.remaining).toBe(sharedFacts.goalRemaining)
+  })
+
+  it('does not crash on broken JSON', () => {
+    const context = buildAiCoachAppContextFromStorage(makeStorage({
+      [userDataKeys.profile]: '{broken json',
+      [userDataKeys.weights]: '[nope',
+    }))
+
+    expect(context.weights).toEqual([])
+  })
+
+  it('does not crash on empty localStorage', () => {
+    const context = buildAiCoachAppContextFromStorage(makeStorage({}))
+    const response = createDeterministicAiCoachReply({
+      context,
+      message: 'Vad väger jag?',
+    })
+
+    expect(response).toContain('ingen giltig vikt')
+  })
+
+  it('does not show NaN from app context replies', () => {
+    const response = createDeterministicAiCoachReply({
+      context: buildAiCoachAppContextFromStorage(makeStorage({
+        [userDataKeys.weights]: [{ date: 'bad', value: 'NaN' }],
+      })),
+      message: 'Vad väger jag?',
+    })
+
+    expect(response).not.toMatch(/NaN/)
+  })
+
+  it('does not show undefined from app context replies', () => {
+    const response = createDeterministicAiCoachReply({
+      context: buildAiCoachAppContextFromStorage(makeStorage({})),
+      message: 'Hur mår jag idag?',
+    })
+
+    expect(response).not.toMatch(/undefined/)
+  })
+
+  it('does not show null from app context replies', () => {
+    const response = createDeterministicAiCoachReply({
+      context: buildAiCoachAppContextFromStorage(makeStorage({})),
+      message: 'Hur mycket är kvar till mitt mål?',
+    })
+
+    expect(response).not.toMatch(/\bnull\b/)
+  })
+
+  it('creates daily priority advice from real data', () => {
+    const advice = createDailyPriorityCoachAdvice(buildAiCoachAppContextFromData({
+      checkIn: { energy: 2, sleep: 5, steps: 3200 },
+      meals: [{ date: new Date().toISOString().slice(0, 10), name: 'Ris', protein: 10 }],
+      nutritionGoals: { protein: '108–144 g' },
+    }))
+
+    expect(advice[0].observation).toContain('sömn')
+    expect(advice.length).toBeGreaterThan(0)
+  })
+
+  it('daily advice does not invent goals', () => {
+    const advice = createDailyPriorityCoachAdvice(buildAiCoachAppContextFromData({
+      checkIn: { steps: 3200 },
+      meals: [{ date: new Date().toISOString().slice(0, 10), name: 'Ris', protein: 10 }],
+      nutritionGoals: {},
+    }))
+
+    expect(JSON.stringify(advice)).not.toContain('proteinmål')
+  })
+
+  it('prognosis updates after new weight', () => {
+    const first = reply('När når jag målet?')
+    const updated = createDeterministicAiCoachReply({
+      context: buildAiCoachAppContextFromData({
+        profile: { goalWeight: '88 kg', startWeight: '95 kg' },
+        weights: [
+          { date: '2026-06-01', id: 'w1', value: 95 },
+          { date: '2026-06-15', id: 'w2', value: 94 },
+          { date: '2026-07-01', id: 'w3', value: 93 },
+          { date: '2026-07-27', id: 'w4', value: 91 },
+        ],
+      }),
+      message: 'När når jag målet?',
+    })
+
+    expect(updated).not.toBe(first)
+    expect(updated).toContain('uppskattning')
+  })
+
+  it('explicit weight in question does not mutate saved latest weight', () => {
+    const context = buildAiCoachAppContextFromStorage(makeStorage(localStorageLikeData))
+    const before = buildAiCoachFacts(context).latestWeight
+
+    createDeterministicAiCoachReply({
+      context,
+      message: 'Jag väger 82 kg, hur mycket protein behöver jag?',
+    })
+
+    expect(buildAiCoachFacts(context).latestWeight).toBe(before)
   })
 })

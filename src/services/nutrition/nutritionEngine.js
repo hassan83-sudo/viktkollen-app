@@ -59,8 +59,16 @@ export {
   sumMealNutrition,
 } from './nutritionCalculator.js'
 export {
+  buildProteinDistributionPlan,
+  calculateSuggestedCalorieGoal,
+  calculateSuggestedProteinGoal,
   calculateProteinGoalContribution,
+  createUpdatedNutritionGoals,
+  getLatestValidWeight,
+  makeNutritionGoalProgress,
+  normalizeNutritionGoals,
   parseProteinGoal,
+  validateNutritionGoals,
 } from './nutritionGoals.js'
 export {
   convertAmountToGrams,

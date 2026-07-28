@@ -3,6 +3,10 @@ import {
   removeStorage,
   writeStorage,
 } from './appStorageService.js'
+import {
+  createUpdatedNutritionGoals,
+  normalizeNutritionGoals,
+} from './nutrition/nutritionGoals.js'
 
 export const userDataKeys = {
   aiConversationMemory: 'viktkollen.aiConversationMemory',
@@ -108,7 +112,31 @@ export function getNutritionGoals(fallbackValue = {}, isValid) {
 }
 
 export function saveNutritionGoals(goals) {
-  return saveValue(userDataKeys.nutritionGoals, goals)
+  return saveValue(userDataKeys.nutritionGoals, normalizeNutritionGoals(goals))
+}
+
+export function readNutritionGoals() {
+  return normalizeNutritionGoals(readStorage(userDataKeys.nutritionGoals, {}))
+}
+
+export function writeNutritionGoals(goals) {
+  return saveNutritionGoals(goals)
+}
+
+export function updateNutritionGoals(draft, options = {}) {
+  const result = createUpdatedNutritionGoals(readNutritionGoals(), draft, options)
+
+  if (result.goals) {
+    saveNutritionGoals(result.goals)
+  }
+
+  return result
+}
+
+export function clearNutritionGoals() {
+  removeStorage(userDataKeys.nutritionGoals)
+
+  return {}
 }
 
 export function getFavoriteMeals(fallbackValue = [], isValid) {

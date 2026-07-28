@@ -7,7 +7,11 @@ import {
 import {
   buildMealMemory,
   buildMealTimeline,
+  buildProteinDistributionPlan,
+  calculateSuggestedCalorieGoal,
+  calculateSuggestedProteinGoal,
   calculateDailyNutritionSummary,
+  normalizeNutritionGoals,
 } from '../nutrition/nutritionEngine.js'
 import {
   getLastAssistantMessage,
@@ -317,24 +321,25 @@ export function buildAiCoachFacts(context = {}) {
     0,
   )
   const todayCheckin = context.todayCheckin || context.checkIn || {}
-  const proteinGoal = getNumericGoal(context.nutritionGoals, 'protein')
+  const nutritionGoals = normalizeNutritionGoals(context.nutritionGoals)
+  const proteinGoal = getNumericGoal(nutritionGoals, 'protein')
   const todayNutrition = calculateDailyNutritionSummary(
     context.meals?.loggedMealsToday || context.meals || todayMeals,
     getTodayDateString(),
     {
       ...profile,
-      nutritionGoals: context.nutritionGoals || {},
+      nutritionGoals,
     },
   )
   const todayMealTimeline = buildMealTimeline(
     context.meals?.loggedMealsToday || context.meals || todayMeals,
     getTodayDateString(),
     {
-      proteinGoal: context.nutritionGoals?.protein,
+      proteinGoal: nutritionGoals.protein,
     },
   )
   const todayMealMemory = buildMealMemory(todayMealTimeline, {
-    proteinGoal: context.nutritionGoals?.protein,
+    proteinGoal: nutritionGoals.protein,
   })
   const todayProtein = todayNutrition.totals.protein > 0
     ? todayNutrition.totals.protein
@@ -354,7 +359,8 @@ export function buildAiCoachFacts(context = {}) {
     age: parseNumber(profile.age),
     averageSteps: getAverageStepData(context),
     bedtimeMealCount: 0,
-    caloriesGoal: getNumericGoal(context.nutritionGoals, 'calories'),
+    caloriesGoal: getNumericGoal(nutritionGoals, 'calories'),
+    caloriesGoalSource: nutritionGoals.caloriesGoalSource || '',
     change30,
     change7,
     energy: Number.isFinite(Number(todayCheckin.energy)) ? Number(todayCheckin.energy) : null,
@@ -368,12 +374,14 @@ export function buildAiCoachFacts(context = {}) {
     lowEnergyDays: getLowEnergyDays(context),
     mood: todayCheckin.mood || '',
     poorSleepDays: getPoorSleepDays(context),
+    proteinDistributionPlan: buildProteinDistributionPlan(nutritionGoals.protein, context.meals?.loggedMealsToday || context.meals || todayMeals, { date: getTodayDateString() }),
     proteinGoal: proteinGoal ?? null,
     proteinGoalLabel: proteinGoal
-      ? getGoalLabelFromText(context.nutritionGoals?.protein) || `${proteinGoal} g`
+      ? getGoalLabelFromText(nutritionGoals.protein) || `${proteinGoal} g`
       : proteinNeed
         ? `${proteinNeed.lower}–${proteinNeed.upper} g`
         : null,
+    proteinGoalSource: nutritionGoals.proteinGoalSource || '',
     recentAssistantTexts: getRecentAssistantTexts(context.chatHistory),
     recentFoods: getFoodTermsFromMeals(context.meals),
     recentMeals: getRecentMeals(context.meals?.loggedMealsToday || context.meals || []),
@@ -386,6 +394,8 @@ export function buildAiCoachFacts(context = {}) {
     todayMeals,
     todayNutrition,
     todayProtein,
+    suggestedCalorieGoal: calculateSuggestedCalorieGoal(profile, { weights }),
+    suggestedProteinGoal: calculateSuggestedProteinGoal(profile, { weights }),
     training: todayCheckin.workout || todayCheckin.training || '',
     water: todayCheckin.water ?? null,
     weightHistory,

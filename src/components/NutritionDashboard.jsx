@@ -38,6 +38,9 @@ function NutritionDashboard({ date, meals, nutritionGoals }) {
         <div className="nutrition-dashboard-progress-list">
           <NutritionProgress progress={model.progress.protein} />
           <NutritionProgress progress={model.progress.calories} />
+          <NutritionProgress progress={model.progress.carbs} />
+          <NutritionProgress progress={model.progress.fat} />
+          <NutritionProgress progress={model.progress.fiber} />
         </div>
       </div>
 

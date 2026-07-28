@@ -1,4 +1,5 @@
 import { userDataKeys } from '../userDataRepository.js'
+import { normalizeNutritionGoals as normalizeNutritionGoalsModel } from '../nutrition/nutritionGoals.js'
 
 function isObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -237,14 +238,7 @@ export function makePendingCoachChatHistory(chatHistory = [], message, createdAt
 }
 
 function normalizeNutritionGoals(goals) {
-  if (!isObject(goals)) {
-    return {}
-  }
-
-  return {
-    calories: parseFiniteNumber(goals.calories, { min: 0, max: 10000 }) ?? goals.calories,
-    protein: goals.protein ?? '',
-  }
+  return normalizeNutritionGoalsModel(goals)
 }
 
 export function buildAiCoachAppContextFromData(data = {}, options = {}) {

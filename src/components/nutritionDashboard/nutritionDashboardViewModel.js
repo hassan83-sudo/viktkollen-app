@@ -5,6 +5,8 @@ import {
   calculateDailyNutritionSummary,
   formatApproxCalories,
   formatApproxGrams,
+  makeNutritionGoalProgress,
+  normalizeNutritionGoals,
 } from '../../services/nutrition/nutritionEngine.js'
 
 function safeNumber(value) {
@@ -40,7 +42,7 @@ function getGoalTarget(goal) {
   return null
 }
 
-function makeProgress({ goal, label, unit, value }) {
+export function makeLegacyNutritionDashboardProgress({ goal, label, unit, value }) {
   const target = getGoalTarget(goal)
   const safeValue = safeNumber(value)
 
@@ -178,14 +180,15 @@ export function createNutritionDashboardModel({
   meals = [],
   nutritionGoals = {},
 } = {}) {
+  const normalizedGoals = normalizeNutritionGoals(nutritionGoals)
   const summary = calculateDailyNutritionSummary(meals, date, {
-    nutritionGoals,
+    nutritionGoals: normalizedGoals,
   })
   const timeline = buildMealTimeline(meals, summary.date, {
-    proteinGoal: nutritionGoals.protein,
+    proteinGoal: normalizedGoals.protein,
   })
   const memory = buildMealMemory(timeline, {
-    proteinGoal: nutritionGoals.protein,
+    proteinGoal: normalizedGoals.protein,
   })
   const insights = buildMealMemoryInsights(timeline, memory)
   const caloriesGoal = Number.isFinite(summary.caloriesGoal) ? summary.caloriesGoal : null
@@ -197,18 +200,11 @@ export function createNutritionDashboardModel({
     hasMeals: timeline.mealCount > 0,
     insights,
     progress: {
-      calories: makeProgress({
-        goal: caloriesGoal,
-        label: 'Kalorier',
-        unit: 'kcal',
-        value: summary.totals.calories,
-      }),
-      protein: makeProgress({
-        goal: summary.proteinGoal,
-        label: 'Protein',
-        unit: 'g',
-        value: summary.totals.protein,
-      }),
+      calories: makeNutritionGoalProgress(summary.totals.calories, caloriesGoal, 'kcal', 'Kalorier'),
+      carbs: makeNutritionGoalProgress(summary.totals.carbs, normalizedGoals.carbs, 'g', 'Kolhydrater'),
+      fat: makeNutritionGoalProgress(summary.totals.fat, normalizedGoals.fat, 'g', 'Fett'),
+      fiber: makeNutritionGoalProgress(summary.totals.fiber, normalizedGoals.fiber, 'g', 'Fibrer'),
+      protein: makeNutritionGoalProgress(summary.totals.protein, summary.proteinGoal, 'g', 'Protein'),
     },
     summary: {
       analyzedMealCount,

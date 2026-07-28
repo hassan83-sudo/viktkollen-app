@@ -206,6 +206,48 @@ function makeProteinReply(facts, message) {
     : includesAny(normalized.plain, ['middag', 'middagen'])
       ? 'middag'
       : null
+  const asksGoal = includesAny(normalized.plain, ['proteinmal', 'proteinmål', 'mitt proteinmal', 'mitt proteinmål'])
+  const asksSource = includesAny(normalized.plain, ['hur sattes', 'varfor', 'varför', 'rimligt'])
+  const asksSuggestion = includesAny(normalized.plain, ['foresla', 'föreslå', 'forslag', 'förslag'])
+  const asksDistribution = includesAny(normalized.plain, ['fordela', 'fördela', 'fordelning', 'fördelning'])
+
+  if (asksDistribution) {
+    const plan = facts.proteinDistributionPlan
+
+    if (!plan) {
+      return 'Jag hittar inget sparat proteinmål att fördela idag. Du kan sätta ett mål i Kostmål, eller be mig föreslå ett generellt riktmärke.'
+    }
+
+    if (plan.achieved) {
+      return plan.explanation
+    }
+
+    const targets = plan.targets.map((target) => `${target.label.toLocaleLowerCase('sv-SE')}: ${target.rangeText}`).join(', ')
+
+    return `${plan.explanation} En enkel fördelning kan vara ${targets}. Se det som ett mjukt riktmärke.`
+  }
+
+  if (asksSuggestion && facts.suggestedProteinGoal) {
+    return `${facts.suggestedProteinGoal.explanation} Rekommenderad punkt är ungefär ${facts.suggestedProteinGoal.recommendedGrams} g. Det är ett generellt förslag, inte ett krav.`
+  }
+
+  if (asksGoal && facts.proteinGoal) {
+    const source = facts.proteinGoalSource === 'suggested'
+      ? 'Det är ett förslag baserat på profil som du har valt.'
+      : 'Det är ett manuellt mål.'
+
+    if (asksSource) {
+      return `Ditt proteinmål är ${facts.proteinGoalLabel}. ${source} Det bör ses som ett dagsriktmärke, inte en exakt regel per måltid.`
+    }
+
+    return `Ditt proteinmål är ${facts.proteinGoalLabel}. ${source}`
+  }
+
+  if (asksGoal && !facts.proteinGoal) {
+    return facts.suggestedProteinGoal
+      ? `Du har inget sparat proteinmål. ${facts.suggestedProteinGoal.explanation}`
+      : 'Du har inget sparat proteinmål och jag saknar giltig vikt för ett rimligt förslag.'
+  }
 
   if (mealType && facts.todayNutrition?.mealCount) {
     const meal = facts.todayNutrition.analyzedMeals.find((entry) => entry.analysis.mealType === mealType || normalizeAiCoachText(entry.text).plain.includes(mealType))
@@ -272,7 +314,16 @@ function makeProteinReply(facts, message) {
 function makeCaloriesReply(facts, message) {
   const normalized = normalizeAiCoachText(message)
   const asksToday = includesAny(normalized.plain, ['idag', 'i dag', 'fatt i mig', 'ätit', 'atit'])
+  const asksRemaining = includesAny(normalized.plain, ['kvar', 'aterstar', 'återstår'])
+  const asksSource = includesAny(normalized.plain, ['hur sattes', 'varfor', 'varför'])
+  const asksSuggestion = includesAny(normalized.plain, ['foresla', 'föreslå', 'forslag', 'förslag'])
   const summary = facts.todayNutrition
+
+  if (asksSuggestion) {
+    return facts.suggestedCalorieGoal?.suggestedGoal
+      ? `${facts.suggestedCalorieGoal.explanation} Det är en försiktig uppskattning och inget mål sparas från chatten.`
+      : facts.suggestedCalorieGoal?.explanation || 'Det finns inte tillräckligt med profiluppgifter för ett rimligt kaloriförslag.'
+  }
 
   if (asksToday) {
     if (!summary?.mealCount) {
@@ -286,11 +337,23 @@ function makeCaloriesReply(facts, message) {
     return `Du har loggat ungefär ${formatApproxCalories(summary.totals.calories)} idag.${goalText}`
   }
 
-  return facts.caloriesGoal
-    ? `Ditt kalorimål i appen är cirka ${facts.caloriesGoal.toLocaleString('sv-SE')} kcal. Se det som riktning, inte som en exakt dom för varje måltid.`
+  if (facts.caloriesGoal) {
+    const source = facts.caloriesGoalSource === 'suggested'
+      ? 'Det är ett förslag baserat på profil som du har valt.'
+      : 'Det är ett manuellt mål.'
+    const remaining = asksRemaining && summary?.caloriesGoal
+      ? ` Du har ungefär ${summary.caloriesRemaining.toLocaleString('sv-SE')} kcal kvar idag.`
+      : ''
+
+    return asksSource
+      ? `Ditt kalorimål är cirka ${facts.caloriesGoal.toLocaleString('sv-SE')} kcal. ${source} Det är en uppskattning att följa över tid, inte en medicinsk ordination.${remaining}`
+      : `Ditt kalorimål i appen är cirka ${facts.caloriesGoal.toLocaleString('sv-SE')} kcal.${remaining} Se det som riktning, inte som en exakt dom för varje måltid.`
+  }
+
+  return facts.suggestedCalorieGoal?.explanation
+    ? `Jag hittar inget sparat kalorimål. ${facts.suggestedCalorieGoal.explanation}`
     : 'Jag hittar inget kalorimål i appdata. Fokusera på mättande måltider med protein, grönsaker och lagom portion.'
 }
-
 function makeFoodReply(facts, message) {
   const normalized = normalizeAiCoachText(message)
   const nutrition = analyzeNutritionMessage(message, {

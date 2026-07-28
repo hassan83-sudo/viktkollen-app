@@ -14,7 +14,6 @@ import {
   summarizeDay,
   summarizeWeek,
   validateMealDraft,
-  validateNutritionGoals,
   buildNutritionInsights,
   exportNutritionData,
 } from '../services/nutritionService.js'
@@ -35,6 +34,10 @@ import PhotoAnalysis from './PhotoAnalysis.jsx'
 import {
   createMealEditDraft,
   createMealTemplateFromMeal,
+  calculateSuggestedCalorieGoal,
+  calculateSuggestedProteinGoal,
+  buildProteinDistributionPlan,
+  createUpdatedNutritionGoals,
   createUpdatedMealRecord,
   readMealTemplates,
   resetMealNutritionOverride,
@@ -134,8 +137,10 @@ function MealLogger({
   onSelectedMealDateChange,
   onShowClearMealHistory,
   photoAnalysisStatus,
+  profile,
   selectedMealDate,
   showClearMealHistoryConfirm,
+  weights,
   weekSummary,
 }) {
   const fileInputRef = useRef(null)
@@ -171,6 +176,18 @@ function MealLogger({
         weekStart,
       }),
     [normalizedGoals, normalizedMeals, weekStart],
+  )
+  const suggestedProteinGoal = useMemo(
+    () => calculateSuggestedProteinGoal(profile || {}, { weights: weights || [] }),
+    [profile, weights],
+  )
+  const suggestedCalorieGoal = useMemo(
+    () => calculateSuggestedCalorieGoal(profile || {}, { weights: weights || [] }),
+    [profile, weights],
+  )
+  const proteinDistributionPlan = useMemo(
+    () => buildProteinDistributionPlan(normalizedGoals.protein, normalizedMeals, { date: selectedMealDate }),
+    [normalizedGoals.protein, normalizedMeals, selectedMealDate],
   )
   const visibleMeals = useMemo(
     () => filterAndSortMeals(normalizedMeals, filters),
@@ -390,7 +407,8 @@ function MealLogger({
   }
 
   function saveGoals() {
-    const nextErrors = validateNutritionGoals(goalDraft)
+    const result = createUpdatedNutritionGoals(normalizedGoals, goalDraft, { source: 'manual' })
+    const nextErrors = result.errors
 
     setGoalErrors(nextErrors)
 
@@ -398,10 +416,22 @@ function MealLogger({
       return
     }
 
-    onNutritionGoalsChange({
-      ...normalizeNutritionGoals(goalDraft),
-      updatedAt: new Date().toISOString(),
-    })
+    onNutritionGoalsChange(result.goals || {})
+  }
+
+  function applySuggestedGoal(field, value) {
+    const result = createUpdatedNutritionGoals(normalizedGoals, {
+      ...normalizedGoals,
+      [field]: value,
+      [`${field}GoalSource`]: 'suggested',
+    }, { source: 'suggested' })
+
+    setGoalErrors(result.errors)
+
+    if (result.goals) {
+      setGoalDraft(result.goals)
+      onNutritionGoalsChange(result.goals)
+    }
   }
 
   function clearGoals() {
@@ -580,9 +610,15 @@ function MealLogger({
       <NutritionGoalsPanel
         draft={goalDraft}
         errors={goalErrors}
+        proteinDistributionPlan={proteinDistributionPlan}
+        suggestedCalorieGoal={suggestedCalorieGoal}
+        suggestedProteinGoal={suggestedProteinGoal}
         onChange={(key, value) => setGoalDraft((current) => ({ ...current, [key]: value }))}
         onClear={clearGoals}
+        onCancel={() => setGoalDraft(normalizedGoals)}
         onSave={saveGoals}
+        onUseSuggestedCalorieGoal={() => applySuggestedGoal('calories', suggestedCalorieGoal?.suggestedGoal)}
+        onUseSuggestedProteinGoal={() => applySuggestedGoal('protein', suggestedProteinGoal?.recommendedGrams)}
       />
 
       <WeeklyNutritionAnalysis

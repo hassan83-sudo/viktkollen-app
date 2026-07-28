@@ -3,6 +3,12 @@ import {
   parseCorrectionNumber,
   validateMealEditDraft,
 } from './nutrition/mealCorrections.js'
+import {
+  createUpdatedNutritionGoals,
+  makeNutritionGoalProgress,
+  normalizeNutritionGoals as normalizeNutritionGoalsModel,
+  validateNutritionGoals as validateNutritionGoalsModel,
+} from './nutrition/nutritionGoals.js'
 
 export const mealTypes = ['Frukost', 'Lunch', 'Middag', 'Mellanmål', 'Dryck', 'Annat']
 export const mealSources = ['Manuell', 'Fotoanalys', 'Snabbval', 'Importerad']
@@ -293,7 +299,7 @@ function getMealsForDate(meals, date) {
   return normalizeMeals(meals).filter((meal) => meal.date === date)
 }
 
-function makeGoalProgress(value, goal) {
+export function makeLegacyGoalProgress(value, goal) {
   const target = parseNutritionNumber(goal)
 
   if (target === null || target === 0) {
@@ -319,17 +325,16 @@ function makeGoalProgress(value, goal) {
 }
 
 export function normalizeNutritionGoals(goals = {}) {
-  return {
-    calories: parseNutritionNumber(goals.calories),
-    carbs: parseNutritionNumber(goals.carbs),
-    fat: parseNutritionNumber(goals.fat),
-    fiber: parseNutritionNumber(goals.fiber),
-    protein: parseNutritionNumber(goals.protein),
-    updatedAt: parseDate(goals.updatedAt)?.toISOString() || null,
-  }
+  return normalizeNutritionGoalsModel(goals)
 }
 
 export function validateNutritionGoals(goals) {
+  return validateNutritionGoalsModel(goals)
+}
+
+export { createUpdatedNutritionGoals }
+
+export function validateLegacyNutritionGoals(goals) {
   const errors = {}
 
   Object.entries(goals).forEach(([key, value]) => {
@@ -347,6 +352,7 @@ export function validateNutritionGoals(goals) {
 
 export function summarizeDay(meals, date, goals = {}) {
   const dayMeals = getMealsForDate(meals, date)
+  const normalizedGoals = normalizeNutritionGoals(goals)
   const totals = {
     calories: sumField(dayMeals, 'calories'),
     carbs: sumField(dayMeals, 'carbs'),
@@ -368,14 +374,16 @@ export function summarizeDay(meals, date, goals = {}) {
   return {
     byType,
     date,
-    goals: normalizeNutritionGoals(goals),
+    goals: normalizedGoals,
     largestMeal: largestMeal || null,
     mealCount: dayMeals.length,
     meals: dayMeals,
     progress: {
-      calories: makeGoalProgress(totals.calories, goals.calories),
-      fiber: makeGoalProgress(totals.fiber, goals.fiber),
-      protein: makeGoalProgress(totals.protein, goals.protein),
+      calories: makeNutritionGoalProgress(totals.calories, normalizedGoals.calories, 'kcal', 'Kalorier'),
+      carbs: makeNutritionGoalProgress(totals.carbs, normalizedGoals.carbs, 'g', 'Kolhydrater'),
+      fat: makeNutritionGoalProgress(totals.fat, normalizedGoals.fat, 'g', 'Fett'),
+      fiber: makeNutritionGoalProgress(totals.fiber, normalizedGoals.fiber, 'g', 'Fibrer'),
+      protein: makeNutritionGoalProgress(totals.protein, normalizedGoals.protein, 'g', 'Protein'),
     },
     totals,
     highestProteinMeal: highestProteinMeal || null,

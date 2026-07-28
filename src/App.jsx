@@ -2650,8 +2650,10 @@ function App() {
           onShowClearMealHistory={() => setShowClearMealHistoryConfirm(true)}
           nutritionGoals={nutritionGoals}
           photoAnalysisStatus={photoAnalysisStatus}
+          profile={profile}
           selectedMealDate={selectedMealDate}
           showClearMealHistoryConfirm={showClearMealHistoryConfirm}
+          weights={weights}
           weekSummary={mealWeekSummary}
         />
 

@@ -2389,6 +2389,72 @@ a:focus-visible {
   color: var(--text-h);
 }
 
+.nutrition-goals-panel {
+  gap: 16px;
+}
+
+.nutrition-goal-current-grid,
+.nutrition-goal-suggestion-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.nutrition-goal-current-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.nutrition-goal-current-grid > div,
+.nutrition-goal-suggestion,
+.nutrition-goal-plan {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.nutrition-goal-current-grid span,
+.nutrition-goal-current-grid small,
+.nutrition-goal-suggestion p,
+.nutrition-goal-suggestion small,
+.nutrition-goal-plan span {
+  color: var(--muted);
+}
+
+.nutrition-goal-current-grid strong,
+.nutrition-goal-suggestion strong,
+.nutrition-goal-plan strong {
+  color: var(--text-h);
+}
+
+.nutrition-goal-suggestion h4 {
+  margin: 0;
+  color: var(--text-h);
+}
+
+.nutrition-goal-suggestion p {
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+
+.nutrition-goal-plan ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nutrition-goal-plan li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .nutrition-dashboard {
   display: grid;
   gap: 14px;
@@ -3255,6 +3321,8 @@ a:focus-visible {
   .meal-template-toolbar,
   .meal-template-form-grid,
   .meal-copy-form,
+  .nutrition-goal-current-grid,
+  .nutrition-goal-suggestion-grid,
   .nutrition-filter-grid,
   .nutrition-stat-grid,
   .nutrition-dashboard-stat-grid,

@@ -4,7 +4,7 @@ import {
   formatApproxGrams,
   sumMealNutrition,
 } from './nutritionCalculator.js'
-import { parseProteinGoal } from './nutritionGoals.js'
+import { normalizeNutritionGoals, parseProteinGoal } from './nutritionGoals.js'
 
 function parseNumber(value) {
   const match = String(value ?? '').replace(',', '.').match(/\d+(?:\.\d+)?/)
@@ -67,11 +67,15 @@ function getMealKey(meal, index) {
 }
 
 function getProfileGoals(profile = {}, nutritionGoals = {}) {
-  const proteinGoal = parseProteinGoal(nutritionGoals.protein ?? profile.proteinGoal)
-  const caloriesGoal = parseNumber(nutritionGoals.calories ?? profile.caloriesGoal ?? profile.calorieGoal)
+  const normalizedGoals = normalizeNutritionGoals(nutritionGoals)
+  const proteinGoal = parseProteinGoal(normalizedGoals.protein ?? profile.proteinGoal)
+  const caloriesGoal = parseNumber(normalizedGoals.calories ?? profile.caloriesGoal ?? profile.calorieGoal)
 
   return {
     caloriesGoal,
+    carbsGoal: normalizedGoals.carbs,
+    fatGoal: normalizedGoals.fat,
+    fiberGoal: normalizedGoals.fiber,
     proteinGoal,
   }
 }
@@ -153,7 +157,10 @@ export function calculateDailyNutritionSummary(meals = [], date = getLocalDateSt
     analyzedMeals: analyses,
     caloriesGoal: goals.caloriesGoal,
     caloriesRemaining,
+    carbsGoal: goals.carbsGoal,
     date: today,
+    fatGoal: goals.fatGoal,
+    fiberGoal: goals.fiberGoal,
     mealCount: analyses.length,
     partiallyAnalyzedMealCount: analyses.filter((entry) => entry.partiallyAnalyzed).length,
     proteinGoal: goals.proteinGoal,

@@ -3,7 +3,16 @@ import { createDeterministicAiCoachReply } from '../aiCoachDeterministicReplies.
 import {
   analyzeMealText,
   analyzeNutritionMessage,
+  buildMealComparisons,
+  buildMealMemory,
+  buildMealTimeline,
   calculateDailyNutritionSummary,
+  describeLatestMeal,
+  describeMealByType,
+  describeMealCount,
+  describeMealMemory,
+  describeMostProteinMeal,
+  describeTodayMeals,
   getNutritionFoodById,
   nutritionFoods,
   parseProteinGoal,
@@ -768,5 +777,393 @@ describe('Nutrition Engine V2 robustness', () => {
 
     expect(summary.mealCount).toBe(0)
     expect(summary.totals.protein).toBe(0)
+  })
+})
+
+describe('Nutrition Engine V3 meal timeline', () => {
+  const today = '2026-07-28'
+
+  it('sorts meals by time', () => {
+    const timeline = buildMealTimeline([
+      { date: today, id: 'dinner', name: 'Middag lax med potatis', time: '18:30' },
+      { date: today, id: 'breakfast', name: 'Frukost två ägg', time: '07:45' },
+      { date: today, id: 'lunch', name: 'Lunch kyckling och ris', time: '12:15' },
+    ], today)
+
+    expect(timeline.entries.map((entry) => entry.id)).toEqual(['breakfast', 'lunch', 'dinner'])
+  })
+
+  it('identifies explicit breakfast meal type', () => {
+    const timeline = buildMealTimeline([{ date: today, name: 'Frukost två ägg', time: '08:00' }], today)
+
+    expect(timeline.entries[0].mealType).toBe('frukost')
+  })
+
+  it('identifies explicit snack meal type', () => {
+    const timeline = buildMealTimeline([{ date: today, name: 'Mellanmål kvarg med banan', time: '15:00' }], today)
+
+    expect(timeline.entries[0].mealType).toBe('mellanmål')
+  })
+
+  it('identifies explicit lunch meal type', () => {
+    const timeline = buildMealTimeline([{ date: today, name: 'Till lunch åt jag kyckling och ris', time: '12:00' }], today)
+
+    expect(timeline.entries[0].mealType).toBe('lunch')
+  })
+
+  it('identifies explicit dinner meal type', () => {
+    const timeline = buildMealTimeline([{ date: today, name: 'Middag lax med potatis', time: '18:00' }], today)
+
+    expect(timeline.entries[0].mealType).toBe('middag')
+  })
+
+  it('identifies explicit evening snack meal type', () => {
+    const timeline = buildMealTimeline([{ date: today, name: 'Kvällsmål grekisk yoghurt', time: '21:30' }], today)
+
+    expect(timeline.entries[0].mealType).toBe('kvällsmål')
+  })
+
+  it('identifies explicit night meal type', () => {
+    const timeline = buildMealTimeline([{ date: today, name: 'Nattmål kvarg', time: '02:30' }], today)
+
+    expect(timeline.entries[0].mealType).toBe('nattmål')
+  })
+
+  it('infers breakfast from timestamp when text has no type', () => {
+    const timeline = buildMealTimeline([{ date: today, name: 'två ägg', time: '08:15' }], today)
+
+    expect(timeline.entries[0].mealType).toBe('frukost')
+  })
+
+  it('infers lunch from timestamp when text has no type', () => {
+    const timeline = buildMealTimeline([{ date: today, name: 'kyckling och ris', time: '12:20' }], today)
+
+    expect(timeline.entries[0].mealType).toBe('lunch')
+  })
+
+  it('infers dinner from timestamp when text has no type', () => {
+    const timeline = buildMealTimeline([{ date: today, name: 'lax och potatis', time: '18:45' }], today)
+
+    expect(timeline.entries[0].mealType).toBe('middag')
+  })
+
+  it('does not invent meal type without timestamp or text signal', () => {
+    const timeline = buildMealTimeline([{ date: today, name: 'kyckling och ris' }], today)
+
+    expect(timeline.entries[0].mealType).toBeNull()
+  })
+
+  it('ignores meals from other dates', () => {
+    const timeline = buildMealTimeline([
+      { date: today, id: 'today', name: 'kyckling' },
+      { date: '2026-07-27', id: 'old', name: 'pizza' },
+    ], today)
+
+    expect(timeline.mealCount).toBe(1)
+  })
+
+  it('deduplicates repeated meal ids', () => {
+    const meal = { date: today, id: 'same', name: 'kyckling' }
+    const timeline = buildMealTimeline([meal, meal], today)
+
+    expect(timeline.mealCount).toBe(1)
+  })
+
+  it('uses logged nutrition when text cannot be analyzed', () => {
+    const timeline = buildMealTimeline([{ calories: 300, date: today, id: 'manual', name: 'Hemlagat', protein: 22 }], today)
+
+    expect(timeline.entries[0].totals.protein).toBe(22)
+    expect(timeline.entries[0].totals.calories).toBe(300)
+  })
+
+  it('sums timeline totals', () => {
+    const timeline = buildMealTimeline([
+      { date: today, name: 'två ägg' },
+      { date: today, name: 'kyckling' },
+    ], today)
+
+    expect(timeline.totals.protein).toBe(43)
+  })
+
+  it('uses createdAt time for sorting and inference', () => {
+    const timeline = buildMealTimeline([
+      { createdAt: `${today}T18:30:00`, id: 'late', name: 'kyckling' },
+      { createdAt: `${today}T08:00:00`, id: 'early', name: 'ägg' },
+    ], today)
+
+    expect(timeline.entries.map((entry) => entry.id)).toEqual(['early', 'late'])
+    expect(timeline.entries[0].mealType).toBe('frukost')
+  })
+
+  it('uses ISO date time for meal clock time', () => {
+    const timeline = buildMealTimeline([{ date: `${today}T12:10:00`, id: 'iso', name: 'ris' }], today)
+
+    expect(timeline.entries[0].time).toBe('12:10')
+    expect(timeline.entries[0].mealType).toBe('lunch')
+  })
+
+  it('keeps unknown text in timeline analysis', () => {
+    const timeline = buildMealTimeline([{ date: today, name: 'kyckling och hemlagad sås' }], today)
+
+    expect(timeline.entries[0].analysis.unknownFoods).toContain('hemlagad sås')
+  })
+})
+
+describe('Nutrition Engine V3 meal memory and history', () => {
+  const today = '2026-07-28'
+  const meals = [
+    { date: today, id: 'breakfast', name: 'Frukost två ägg', time: '08:00' },
+    { date: today, id: 'snack', name: 'Mellanmål kvarg med banan', time: '10:00' },
+    { date: today, id: 'lunch', name: 'Lunch 200 g kyckling och 150 g ris', time: '12:30' },
+    { date: today, id: 'dinner', name: 'Middag pizza och läsk', time: '19:30' },
+  ]
+
+  it('describes today meals in timeline order', () => {
+    const timeline = buildMealTimeline(meals, today)
+    const response = describeTodayMeals(timeline)
+
+    expect(response.indexOf('08:00')).toBeLessThan(response.indexOf('12:30'))
+    expect(response).toContain('Frukost två ägg')
+  })
+
+  it('describes a meal by type', () => {
+    const timeline = buildMealTimeline(meals, today)
+
+    expect(describeMealByType(timeline, 'lunch')).toContain('Lunch 200 g kyckling')
+  })
+
+  it('returns missing type text when meal type is absent', () => {
+    const timeline = buildMealTimeline(meals, today)
+
+    expect(describeMealByType(timeline, 'nattmål')).toContain('Jag hittar ingen tydlig nattmål')
+  })
+
+  it('describes latest meal', () => {
+    const timeline = buildMealTimeline(meals, today)
+
+    expect(describeLatestMeal(timeline)).toContain('Middag pizza')
+  })
+
+  it('describes meal count', () => {
+    const timeline = buildMealTimeline(meals, today)
+
+    expect(describeMealCount(timeline)).toContain('4 måltider')
+  })
+
+  it('finds meal with most protein', () => {
+    const timeline = buildMealTimeline(meals, today)
+    const memory = buildMealMemory(timeline)
+
+    expect(memory.mostProteinMeal.id).toBe('lunch')
+    expect(describeMostProteinMeal(memory)).toContain('mest protein')
+  })
+
+  it('finds largest meal', () => {
+    const timeline = buildMealTimeline(meals, today)
+    const memory = buildMealMemory(timeline)
+
+    expect(memory.largestMeal.id).toBe('dinner')
+  })
+
+  it('builds lunch versus breakfast comparison', () => {
+    const timeline = buildMealTimeline(meals, today)
+    const memory = buildMealMemory(timeline)
+    const comparisons = buildMealComparisons(timeline, memory)
+
+    expect(comparisons).toContain('Lunchen innehöll mer protein än frukosten.')
+  })
+
+  it('builds largest meal comparison', () => {
+    const timeline = buildMealTimeline(meals, today)
+    const memory = buildMealMemory(timeline)
+
+    expect(buildMealComparisons(timeline, memory).join(' ')).toContain('dagens största måltid')
+  })
+
+  it('detects no vegetables today', () => {
+    const timeline = buildMealTimeline(meals, today)
+    const memory = buildMealMemory(timeline)
+
+    expect(memory.signals.noVegetables).toBe(true)
+  })
+
+  it('detects much fast food when fast food appears more than once', () => {
+    const timeline = buildMealTimeline([
+      { date: today, name: 'Lunch hamburgare', time: '12:00' },
+      { date: today, name: 'Middag pizza', time: '18:00' },
+    ], today)
+
+    expect(buildMealMemory(timeline).signals.muchFastFood).toBe(true)
+  })
+
+  it('detects many sweets', () => {
+    const timeline = buildMealTimeline([
+      { date: today, name: 'Godis', time: '14:00' },
+      { date: today, name: 'Chips och läsk', time: '21:00' },
+    ], today)
+
+    expect(buildMealMemory(timeline).signals.manySweets).toBe(true)
+  })
+
+  it('detects long gaps between meals', () => {
+    const timeline = buildMealTimeline([
+      { date: today, name: 'Frukost två ägg', time: '07:00' },
+      { date: today, name: 'Middag kyckling och ris', time: '18:30' },
+    ], today)
+
+    expect(buildMealMemory(timeline).signals.longGaps[0].hours).toBeGreaterThan(10)
+  })
+
+  it('detects many small meals', () => {
+    const timeline = buildMealTimeline([
+      { date: today, name: 'äpple', time: '08:00' },
+      { date: today, name: 'banan', time: '10:00' },
+      { date: today, name: 'keso', time: '12:00' },
+      { date: today, name: 'kvarg', time: '14:00' },
+      { date: today, name: 'ägg', time: '16:00' },
+    ], today)
+
+    expect(buildMealMemory(timeline).signals.manySmallMeals).toBe(true)
+  })
+
+  it('detects few large meals', () => {
+    const timeline = buildMealTimeline([
+      { date: today, name: 'två hamburgare pommes och läsk', time: '18:00' },
+    ], today)
+
+    expect(buildMealMemory(timeline).signals.fewLargeMeals).toBe(true)
+  })
+
+  it('detects low protein today against goal', () => {
+    const timeline = buildMealTimeline([{ date: today, name: 'ris och banan', time: '12:00' }], today)
+
+    expect(buildMealMemory(timeline, { proteinGoal: '108–144 g' }).signals.lowProteinToday).toBe(true)
+  })
+
+  it('recommends protein-rich evening snack when protein remains', () => {
+    const timeline = buildMealTimeline([{ date: today, name: 'två ägg', time: '08:00' }], today)
+    const memory = buildMealMemory(timeline, { proteinGoal: '108–144 g' })
+
+    expect(memory.recommendations.join(' ')).toContain('proteinrikt kvällsmål')
+  })
+
+  it('recommends vegetables when none are present', () => {
+    const timeline = buildMealTimeline(meals, today)
+    const memory = buildMealMemory(timeline)
+
+    expect(memory.recommendations.join(' ')).toContain('grönsaker')
+  })
+
+  it('summarizes memory with comparisons and recommendation', () => {
+    const timeline = buildMealTimeline(meals, today)
+    const memory = buildMealMemory(timeline, { proteinGoal: '108–144 g' })
+    const response = describeMealMemory(timeline, memory)
+
+    expect(response).toContain('dagens tidslinje')
+    expect(response).toContain('Lunchen innehöll mer protein')
+  })
+
+  it('handles empty memory without unsafe values', () => {
+    const timeline = buildMealTimeline([], today)
+    const memory = buildMealMemory(timeline)
+
+    expect(memory.summaryText).toContain('inga måltider')
+    expect(JSON.stringify(memory)).not.toMatch(/NaN|undefined|Infinity|\[object Object\]/)
+  })
+
+  it('does not flag no vegetables when there are no meals', () => {
+    const timeline = buildMealTimeline([], today)
+
+    expect(buildMealMemory(timeline).signals.noVegetables).toBe(false)
+  })
+
+  it('recommends normal next meal after many sweets', () => {
+    const timeline = buildMealTimeline([
+      { date: today, name: 'godis', time: '14:00' },
+      { date: today, name: 'glass', time: '20:00' },
+    ], today)
+
+    expect(buildMealMemory(timeline).recommendations.join(' ')).toContain('vanlig måltid')
+  })
+
+  it('describes latest meal as missing for empty timeline', () => {
+    expect(describeLatestMeal(buildMealTimeline([], today))).toContain('ingen senaste måltid')
+  })
+})
+
+describe('Nutrition Engine V3 AI Coach meal memory', () => {
+  const today = new Date().toISOString().slice(0, 10)
+  const context = {
+    ...coachContext,
+    meals: [
+      { date: today, id: 'breakfast', name: 'Frukost två ägg', time: '08:00' },
+      { date: today, id: 'lunch', name: 'Till lunch åt jag 200 g kyckling och 150 g ris', time: '12:30' },
+      { date: today, id: 'dinner', name: 'Middag pizza och läsk', time: '19:30' },
+    ],
+    nutritionGoals: {
+      calories: 2200,
+      protein: '108–144 g',
+    },
+  }
+  const ask = (message) => createDeterministicAiCoachReply({ context, message })
+
+  it('answers what I ate today from saved meals', () => {
+    const response = ask('Vad åt jag idag?')
+
+    expect(response).toContain('Frukost två ägg')
+    expect(response).toContain('Till lunch åt jag')
+  })
+
+  it('answers what I ate for lunch', () => {
+    const response = ask('Vad åt jag till lunch?')
+
+    expect(response).toContain('Lunch')
+    expect(response).toContain('kyckling')
+  })
+
+  it('answers what I ate for breakfast', () => {
+    const response = ask('Vad åt jag till frukost?')
+
+    expect(response).toContain('Frukost')
+    expect(response).toContain('två ägg')
+  })
+
+  it('answers latest meal', () => {
+    const response = ask('Vad var min senaste måltid?')
+
+    expect(response).toContain('Din senaste måltid')
+    expect(response).toContain('Middag pizza')
+  })
+
+  it('answers meal count', () => {
+    const response = ask('Hur många måltider har jag ätit idag?')
+
+    expect(response).toContain('3 måltider')
+  })
+
+  it('answers meal with most protein', () => {
+    const response = ask('Vilken måltid innehöll mest protein?')
+
+    expect(response).toContain('mest protein')
+    expect(response).toContain('lunch')
+  })
+
+  it('keeps protein today using saved meal memory', () => {
+    const response = ask('Hur mycket protein har jag fått i mig idag?')
+
+    expect(response).toContain('protein idag')
+    expect(response).toContain('proteinmålet')
+  })
+
+  it('gives meal memory overview for comparison prompt', () => {
+    const response = ask('Jämför mina måltider idag')
+
+    expect(response).toContain('dagens tidslinje')
+  })
+
+  it('answers missing meal type politely', () => {
+    const response = ask('Vad åt jag till nattmål?')
+
+    expect(response).toContain('ingen tydlig nattmål')
   })
 })

@@ -1,5 +1,18 @@
 export { nutritionFoods, getNutritionFoodById } from './nutritionDatabase.js'
 export { calculateDailyNutritionSummary } from './dailyNutritionSummary.js'
+export {
+  buildMealComparisons,
+  describeLatestMeal,
+  describeMealByType,
+  describeMealCount,
+  describeMealMemory,
+  describeMostProteinMeal,
+  describeTodayMeals,
+  findMealByType,
+  getLatestMeal,
+} from './mealHistory.js'
+export { buildMealMemory, buildMealMemoryInsights } from './mealMemory.js'
+export { buildMealTimeline } from './mealTimeline.js'
 export { analyzeMealText } from './mealAnalyzer.js'
 export { buildNutritionAdvice } from './nutritionAdvice.js'
 export {

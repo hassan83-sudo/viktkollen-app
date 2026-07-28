@@ -5,6 +5,12 @@ import {
 } from '../healthCalculations.js'
 import {
   analyzeNutritionMessage,
+  describeLatestMeal,
+  describeMealByType,
+  describeMealCount,
+  describeMealMemory,
+  describeMostProteinMeal,
+  describeTodayMeals,
   formatApproxCalories,
   formatApproxGrams,
 } from '../nutrition/nutritionEngine.js'
@@ -123,6 +129,10 @@ function makeCheckInReply(facts) {
 }
 
 function makeTodayFoodReply(facts) {
+  if (facts.todayMealTimeline?.mealCount) {
+    return describeTodayMeals(facts.todayMealTimeline)
+  }
+
   if (!facts.todayMeals.length) {
     return 'Jag hittar inga måltider loggade för idag ännu.'
   }
@@ -138,6 +148,50 @@ function makeTodayFoodReply(facts) {
     : ''
 
   return `Idag ser jag: ${names}.${proteinText}${nutritionText}`
+}
+
+function makeMealMemoryReply(facts, message) {
+  const normalized = normalizeAiCoachText(message)
+  const timeline = facts.todayMealTimeline
+  const memory = facts.todayMealMemory
+
+  if (!timeline?.mealCount) {
+    return 'Jag hittar inga måltider loggade för idag ännu.'
+  }
+
+  if (includesAny(normalized.plain, ['senaste maltid', 'senaste maten'])) {
+    return describeLatestMeal(timeline)
+  }
+
+  if (includesAny(normalized.plain, ['hur manga maltider', 'antal maltider'])) {
+    return describeMealCount(timeline)
+  }
+
+  if (includesAny(normalized.plain, ['mest protein', 'inneholl mest protein'])) {
+    return describeMostProteinMeal(memory)
+  }
+
+  if (includesAny(normalized.plain, ['till lunch', 'lunchen'])) {
+    return describeMealByType(timeline, 'lunch')
+  }
+
+  if (includesAny(normalized.plain, ['till frukost', 'frukosten'])) {
+    return describeMealByType(timeline, 'frukost')
+  }
+
+  if (includesAny(normalized.plain, ['till middag', 'middagen'])) {
+    return describeMealByType(timeline, 'middag')
+  }
+
+  if (includesAny(normalized.plain, ['till nattmal', 'nattmal'])) {
+    return describeMealByType(timeline, 'nattmål')
+  }
+
+  if (includesAny(normalized.plain, ['jag idag', 'atit idag', 'at idag'])) {
+    return describeTodayMeals(timeline)
+  }
+
+  return describeMealMemory(timeline, memory)
 }
 
 function makeProteinReply(facts, message) {
@@ -552,6 +606,7 @@ function buildReplyForIntent(intent, facts, message) {
     late_meal: makeLateMealReply,
     loss: makeLossReply,
     meal: makeMealReply,
+    meal_memory: makeMealMemoryReply,
     motivation: makeMotivationReply,
     overeating: makeOvereatingReply,
     plateau: makePlateauReply,

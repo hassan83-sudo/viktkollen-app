@@ -50,7 +50,16 @@ function getMealDate(meal) {
 }
 
 function getMealText(meal) {
-  return String(meal?.name || meal?.text || meal?.title || meal?.type || '').trim()
+  return [
+    meal?.name,
+    meal?.description,
+    meal?.text,
+    meal?.title,
+    meal?.note,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
 }
 
 function getMealKey(meal, index) {

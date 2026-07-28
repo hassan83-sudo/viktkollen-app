@@ -13,6 +13,7 @@ export const intentOrder = [
   'steps',
   'checkin',
   'today_food',
+  'meal_memory',
   'protein',
   'calories',
   'food',
@@ -469,6 +470,46 @@ function isTodayFoodQuestion(normalized) {
   ])
 }
 
+function isMealMemoryQuestion(normalized) {
+  return hasAnyTerm(normalized, [
+    'vad åt jag idag',
+    'vad har jag ätit idag',
+    'vad åt jag till lunch',
+    'vad åt jag till frukost',
+    'vad åt jag till middag',
+    'vad åt jag till nattmål',
+    'senaste måltid',
+    'senaste maten',
+    'hur många måltider har jag ätit idag',
+    'hur många måltider',
+    'vilken måltid innehöll mest protein',
+    'måltid innehöll mest protein',
+    'mest protein',
+    'lunchen innehöll mer protein',
+    'middagen var dagens största',
+    'jämför mina måltider idag',
+    'jämför mina måltider',
+  ], [
+    'vad at jag idag',
+    'vad har jag atit idag',
+    'vad at jag till lunch',
+    'vad at jag till frukost',
+    'vad at jag till middag',
+    'vad at jag till nattmal',
+    'senaste maltid',
+    'senaste maten',
+    'hur manga maltider har jag atit idag',
+    'hur manga maltider',
+    'vilken maltid inneholl mest protein',
+    'maltid inneholl mest protein',
+    'mest protein',
+    'lunchen inneholl mer protein',
+    'middagen var dagens storsta',
+    'jamfor mina maltider idag',
+    'jamfor mina maltider',
+  ])
+}
+
 function isFocusQuestion(normalized) {
   return hasAnyTerm(normalized, ['vad bör jag fokusera på idag', 'vad ska jag fokusera på idag', 'fokus idag'], ['vad bor jag fokusera pa idag', 'vad ska jag fokusera pa idag', 'fokus idag'])
 }
@@ -556,9 +597,11 @@ export function identifyAiCoachIntents({ message, chatHistory = [] }) {
   if (isCheckInQuestion(normalized)) addUnique(intents, 'checkin')
   const asksProtein = isProteinQuestion(normalized, sourceText)
   const asksCalories = isCaloriesQuestion(normalized)
+  const asksMealMemory = isMealMemoryQuestion(normalized)
 
   if (isTodayFoodQuestion(normalized) && !asksProtein && !asksCalories) addUnique(intents, 'today_food')
-  if (asksProtein) addUnique(intents, 'protein')
+  if (asksMealMemory && !asksCalories) addUnique(intents, 'meal_memory')
+  if (asksProtein && !asksMealMemory) addUnique(intents, 'protein')
   if (asksCalories) addUnique(intents, 'calories')
 
   const hasLateMealIntent = isLateMealQuestion(normalized)

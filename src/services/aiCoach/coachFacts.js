@@ -4,7 +4,11 @@ import {
   getUnifiedWeightFacts,
   parseWeightValue,
 } from '../healthCalculations.js'
-import { calculateDailyNutritionSummary } from '../nutrition/nutritionEngine.js'
+import {
+  buildMealMemory,
+  buildMealTimeline,
+  calculateDailyNutritionSummary,
+} from '../nutrition/nutritionEngine.js'
 import {
   getLastAssistantMessage,
   getLastDiscussedTopic,
@@ -322,6 +326,16 @@ export function buildAiCoachFacts(context = {}) {
       nutritionGoals: context.nutritionGoals || {},
     },
   )
+  const todayMealTimeline = buildMealTimeline(
+    context.meals?.loggedMealsToday || context.meals || todayMeals,
+    getTodayDateString(),
+    {
+      proteinGoal: context.nutritionGoals?.protein,
+    },
+  )
+  const todayMealMemory = buildMealMemory(todayMealTimeline, {
+    proteinGoal: context.nutritionGoals?.protein,
+  })
   const todayProtein = todayNutrition.totals.protein > 0
     ? todayNutrition.totals.protein
     : loggedTodayProtein
@@ -367,6 +381,8 @@ export function buildAiCoachFacts(context = {}) {
     startWeight: lossFacts.startWeight ?? startWeight,
     steps: Number.isFinite(Number(todayCheckin.steps)) ? Number(todayCheckin.steps) : null,
     todayCheckin,
+    todayMealMemory,
+    todayMealTimeline,
     todayMeals,
     todayNutrition,
     todayProtein,

@@ -28,6 +28,7 @@ import NutritionInsights from './nutrition/NutritionInsights.jsx'
 import WeeklyNutritionAnalysis from './nutrition/WeeklyNutritionAnalysis.jsx'
 import MealHistoryTools from './MealHistoryTools.jsx'
 import MealWeeklyReport from './MealWeeklyReport.jsx'
+import NutritionDashboard from './NutritionDashboard.jsx'
 import PhotoAnalysis from './PhotoAnalysis.jsx'
 
 const defaultFilters = {
@@ -421,6 +422,12 @@ function MealLogger({
           <input type="date" value={selectedMealDate} onChange={(event) => changeSelectedDate(event.target.value)} />
         </label>
       </nav>
+
+      <NutritionDashboard
+        date={selectedMealDate}
+        meals={normalizedMeals}
+        nutritionGoals={normalizedGoals}
+      />
 
       <MealEditor
         draft={draft}

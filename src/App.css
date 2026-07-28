@@ -2277,6 +2277,129 @@ a:focus-visible {
   gap: 4px;
 }
 
+.nutrition-dashboard {
+  display: grid;
+  gap: 14px;
+}
+
+.nutrition-dashboard-summary {
+  gap: 16px;
+}
+
+.nutrition-dashboard-stat-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.nutrition-dashboard-progress-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.nutrition-dashboard-progress {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.nutrition-dashboard-progress > div:first-child {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.nutrition-dashboard-progress span,
+.nutrition-dashboard-progress small,
+.nutrition-dashboard-status span,
+.nutrition-dashboard-comparisons span {
+  color: var(--muted);
+}
+
+.nutrition-dashboard-progress strong {
+  color: var(--text-h);
+  text-align: right;
+}
+
+.nutrition-dashboard-progress-bar {
+  overflow: hidden;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.nutrition-dashboard-progress-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #22d3ee, #8b5cf6);
+}
+
+.nutrition-dashboard-progress.is-reached .nutrition-dashboard-progress-bar span {
+  background: linear-gradient(135deg, #34d399, #22d3ee);
+}
+
+.nutrition-dashboard-timeline,
+.nutrition-dashboard-insights,
+.nutrition-dashboard-comparisons {
+  display: grid;
+  gap: 12px;
+}
+
+.nutrition-dashboard-timeline article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(170px, 0.35fr);
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(2, 6, 23, 0.26);
+}
+
+.nutrition-dashboard-timeline h4 {
+  margin: 8px 0 4px;
+  color: var(--text-h);
+  overflow-wrap: anywhere;
+}
+
+.nutrition-dashboard-timeline p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.nutrition-dashboard-status {
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.nutrition-dashboard-status strong,
+.nutrition-dashboard-comparisons strong {
+  color: var(--text-h);
+}
+
+.nutrition-dashboard-insights article,
+.nutrition-dashboard-comparisons article {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.nutrition-dashboard-insights article {
+  color: var(--text-h);
+}
+
+.nutrition-dashboard-comparisons article {
+  display: grid;
+  gap: 4px;
+}
+
 .progress-center-panel {
   display: grid;
   gap: 16px;
@@ -3005,7 +3128,10 @@ a:focus-visible {
   .meal-editor-grid,
   .nutrition-filter-grid,
   .nutrition-stat-grid,
+  .nutrition-dashboard-stat-grid,
+  .nutrition-dashboard-progress-list,
   .nutrition-mini-grid,
+  .nutrition-dashboard-timeline article,
   .nutrition-meal-card,
   .nutrition-meal-card dl {
     grid-template-columns: 1fr;

@@ -1,3 +1,9 @@
+import {
+  getEffectiveMealNutrition,
+  parseCorrectionNumber,
+  validateMealEditDraft,
+} from './nutrition/mealCorrections.js'
+
 export const mealTypes = ['Frukost', 'Lunch', 'Middag', 'Mellanmål', 'Dryck', 'Annat']
 export const mealSources = ['Manuell', 'Fotoanalys', 'Snabbval', 'Importerad']
 
@@ -106,6 +112,17 @@ export function normalizeMeal(entry, options = {}) {
       ? entry.name.trim()
       : description.split(',')[0]?.trim() || 'Måltid'
 
+  const nutritionOverride = ['calories', 'protein', 'carbs', 'fat'].reduce((result, field) => {
+    const parsed = parseCorrectionNumber(entry.nutritionOverride?.[field])
+
+    if (parsed !== null) {
+      result[field] = parsed
+    }
+
+    return result
+  }, {})
+  const hasOverride = Object.keys(nutritionOverride).length > 0
+
   return {
     ...entry,
     calories: parseNutritionNumber(entry.calories),
@@ -118,6 +135,10 @@ export function normalizeMeal(entry, options = {}) {
     id: String(entry.id || createStableMealId(entry.createdAt || Date.now())),
     name,
     note: typeof entry.note === 'string' ? entry.note : '',
+    correctionNote: typeof entry.correctionNote === 'string' ? entry.correctionNote.trim() : '',
+    mealType: entry.mealType || entry.type || '',
+    nutritionOverride,
+    nutritionSource: hasOverride ? 'manual' : entry.nutritionSource || 'automatic',
     portionCount: parseNutritionNumber(entry.portionCount, 1) || 1,
     portionSize: typeof entry.portionSize === 'string' ? entry.portionSize : '',
     protein: parseNutritionNumber(entry.protein),
@@ -183,8 +204,10 @@ export function validateMealDraft(draft) {
   }
 
   numericFields.forEach((field) => {
-    if (draft[field] !== '' && parseNutritionNumber(draft[field]) === null) {
-      errors[field] = 'Ange ett positivt tal eller lämna tomt.'
+    if (draft[field] !== '' && draft[field] !== null && draft[field] !== undefined && parseCorrectionNumber(draft[field]) === null) {
+      errors[field] = String(draft[field]).trim().startsWith('-')
+        ? 'Värdet får inte vara negativt.'
+        : 'Ange ett giltigt tal eller lämna tomt.'
     }
   })
 
@@ -197,6 +220,29 @@ export function validateMealDraft(draft) {
 
 export function mealDraftToMeal(draft, existingMeal = null) {
   const now = new Date().toISOString()
+  const editValidation = validateMealEditDraft({
+    ...draft,
+    nutritionOverride: draft.nutritionOverride || {
+      calories: draft.calories,
+      carbs: draft.carbs,
+      fat: draft.fat,
+      protein: draft.protein,
+    },
+  })
+
+  if (Object.keys(editValidation).length > 0) {
+    return null
+  }
+
+  const nutritionOverride = ['calories', 'protein', 'carbs', 'fat'].reduce((result, field) => {
+    const parsed = parseCorrectionNumber(draft.nutritionOverride?.[field] ?? draft[field])
+
+    if (parsed !== null) {
+      result[field] = parsed
+    }
+
+    return result
+  }, {})
 
   return normalizeMeal({
     ...existingMeal,
@@ -204,6 +250,8 @@ export function mealDraftToMeal(draft, existingMeal = null) {
     createdAt: existingMeal?.createdAt || now,
     id: existingMeal?.id || draft.id || createStableMealId(now),
     source: draft.source || existingMeal?.source || 'Manuell',
+    nutritionOverride,
+    nutritionSource: Object.keys(nutritionOverride).length > 0 ? 'manual' : 'automatic',
     updatedAt: now,
   })
 }
@@ -238,7 +286,7 @@ export function compareMealsNewestFirst(first, second) {
 }
 
 function sumField(meals, field) {
-  return meals.reduce((sum, meal) => sum + (parseNutritionNumber(meal[field], 0) || 0), 0)
+  return meals.reduce((sum, meal) => sum + (getEffectiveMealNutrition(meal).totals[field] || 0), 0)
 }
 
 function getMealsForDate(meals, date) {
@@ -311,10 +359,10 @@ export function summarizeDay(meals, date, goals = {}) {
     type,
   }))
   const largestMeal = [...dayMeals].sort(
-    (first, second) => (second.calories || 0) - (first.calories || 0),
+    (first, second) => (getEffectiveMealNutrition(second).totals.calories || 0) - (getEffectiveMealNutrition(first).totals.calories || 0),
   )[0]
   const highestProteinMeal = [...dayMeals].sort(
-    (first, second) => (second.protein || 0) - (first.protein || 0),
+    (first, second) => (getEffectiveMealNutrition(second).totals.protein || 0) - (getEffectiveMealNutrition(first).totals.protein || 0),
   )[0]
 
   return {

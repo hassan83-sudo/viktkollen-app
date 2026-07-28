@@ -22,7 +22,10 @@ function MealTimelineCard({ hasMeals, rows }) {
                   {row.mealType}{row.time ? ` · ${row.time}` : ''}
                 </span>
                 <h4>{row.description}</h4>
-                <p>≈ {row.proteinText} protein · ≈ {row.caloriesText}</p>
+                <p>
+                  {row.showApproxProtein ? '≈ ' : ''}{row.proteinText} protein ·{' '}
+                  {row.showApproxCalories ? '≈ ' : ''}{row.caloriesText}
+                </p>
               </div>
               <div className="nutrition-dashboard-status">
                 <strong>{row.status.label}</strong>

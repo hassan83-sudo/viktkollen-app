@@ -1,4 +1,4 @@
-import { analyzeMealText } from './mealAnalyzer.js'
+import { getEffectiveMealNutrition } from './mealCorrections.js'
 import {
   formatApproxCalories,
   formatApproxGrams,
@@ -112,17 +112,21 @@ export function calculateDailyNutritionSummary(meals = [], date = getLocalDateSt
     seen.add(key)
 
     const text = getMealText(meal)
-    const analysis = analyzeMealText(text, {
+    const effective = getEffectiveMealNutrition(meal, {
       proteinGoal: profile.nutritionGoals?.protein ?? profile.proteinGoal,
     })
+    const analysis = effective.analysis
     const loggedNutrition = getLoggedNutrition(meal)
-    const totals = analysis.items.length ? analysis.totals : loggedNutrition || analysis.totals
+    const totals = effective.source !== 'automatic' || analysis.items.length
+      ? effective.totals
+      : loggedNutrition || effective.totals
     const partiallyAnalyzed = analysis.unknownFoods.length > 0
 
     unknownFoods.push(...analysis.unknownFoods)
     analyses.push({
       analysis,
       date: mealDate,
+      effectiveNutrition: effective,
       id: key,
       meal,
       partiallyAnalyzed,

@@ -2400,6 +2400,19 @@ a:focus-visible {
   gap: 4px;
 }
 
+.nutrition-edit-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  color: var(--text-h);
+  background: rgba(34, 211, 238, 0.1);
+}
+
 .progress-center-panel {
   display: grid;
   gap: 16px;

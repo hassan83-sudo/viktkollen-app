@@ -27,9 +27,16 @@ import NutritionImportExport from './nutrition/NutritionImportExport.jsx'
 import NutritionInsights from './nutrition/NutritionInsights.jsx'
 import WeeklyNutritionAnalysis from './nutrition/WeeklyNutritionAnalysis.jsx'
 import MealHistoryTools from './MealHistoryTools.jsx'
+import MealEditForm from './mealEditor/MealEditForm.jsx'
 import MealWeeklyReport from './MealWeeklyReport.jsx'
 import NutritionDashboard from './NutritionDashboard.jsx'
 import PhotoAnalysis from './PhotoAnalysis.jsx'
+import {
+  createMealEditDraft,
+  createUpdatedMealRecord,
+  resetMealNutritionOverride,
+  validateMealEditDraft,
+} from '../services/nutrition/nutritionEngine.js'
 
 const defaultFilters = {
   from: '',
@@ -137,6 +144,7 @@ function MealLogger({
   const [goalDraft, setGoalDraft] = useState(() => normalizeNutritionGoals(nutritionGoals))
   const [goalErrors, setGoalErrors] = useState({})
   const [importStatus, setImportStatus] = useState('')
+  const [lastMealEdit, setLastMealEdit] = useState(null)
   const [weekStart, setWeekStart] = useState(() => getWeekStart(selectedMealDate))
 
   const normalizedMeals = useMemo(() => normalizeMeals(meals), [meals])
@@ -189,6 +197,16 @@ function MealLogger({
     setDraft((current) => ({ ...current, [key]: value }))
   }
 
+  function handleNutritionOverrideChange(key, value) {
+    setDraft((current) => ({
+      ...current,
+      nutritionOverride: {
+        ...(current.nutritionOverride || {}),
+        [key]: value,
+      },
+    }))
+  }
+
   function handleSubmitMeal(event) {
     event.preventDefault()
     const nextErrors = validateMealDraft(draft)
@@ -216,6 +234,26 @@ function MealLogger({
     }
 
     const existingMeal = normalizedMeals.find((meal) => meal.id === editingMealId)
+
+    if (editingMealId) {
+      const result = createUpdatedMealRecord(existingMeal, draft)
+
+      setErrors(result.errors)
+
+      if (!result.meal) {
+        return
+      }
+
+      setLastMealEdit({
+        after: result.meal,
+        before: existingMeal,
+      })
+      onMealsChange([result.meal, ...normalizedMeals.filter((entry) => entry.id !== result.meal.id)])
+      changeSelectedDate(result.meal.date)
+      resetDraft(result.meal.date)
+      return
+    }
+
     const meal = mealDraftToMeal(draft, existingMeal)
 
     onMealsChange([meal, ...normalizedMeals.filter((entry) => entry.id !== meal.id)])
@@ -226,9 +264,38 @@ function MealLogger({
   function editMeal(meal) {
     setEditingFavoriteId('')
     setEditingMealId(meal.id)
-    setDraft({ ...meal })
+    setDraft(createMealEditDraft(meal))
     setErrors({})
     changeSelectedDate(meal.date)
+  }
+
+  function resetAutomaticAnalysis() {
+    const existingMeal = normalizedMeals.find((meal) => meal.id === editingMealId)
+
+    if (!existingMeal) {
+      resetDraft()
+      return
+    }
+
+    const resetMeal = resetMealNutritionOverride(existingMeal)
+
+    setLastMealEdit({
+      after: resetMeal,
+      before: existingMeal,
+    })
+    onMealsChange([resetMeal, ...normalizedMeals.filter((entry) => entry.id !== resetMeal.id)])
+    setDraft(createMealEditDraft(resetMeal))
+    setErrors({})
+  }
+
+  function undoLastMealEdit() {
+    if (!lastMealEdit?.before) return
+
+    onMealsChange([
+      lastMealEdit.before,
+      ...normalizedMeals.filter((entry) => entry.id !== lastMealEdit.before.id),
+    ])
+    setLastMealEdit(null)
   }
 
   function copyMeal(meal) {
@@ -257,6 +324,9 @@ function MealLogger({
 
     if (shouldDelete) {
       onMealsChange(normalizedMeals.filter((meal) => meal.id !== mealId))
+      if (editingMealId === mealId) {
+        resetDraft()
+      }
     }
   }
 
@@ -429,15 +499,45 @@ function MealLogger({
         nutritionGoals={normalizedGoals}
       />
 
-      <MealEditor
-        draft={draft}
-        errors={errors}
-        isEditing={Boolean(editingMealId || editingFavoriteId)}
-        onCancel={() => resetDraft()}
-        onChange={handleDraftChange}
-        onReset={() => resetDraft()}
-        onSubmit={handleSubmitMeal}
-      />
+      {lastMealEdit && (
+        <div className="nutrition-edit-status" role="status">
+          <span>Måltiden har uppdaterats.</span>
+          <button className="secondary-button" type="button" onClick={undoLastMealEdit}>
+            Ångra
+          </button>
+        </div>
+      )}
+
+      {editingMealId ? (
+        <MealEditForm
+          draft={draft}
+          errors={errors}
+          onCancel={() => resetDraft()}
+          onChange={handleDraftChange}
+          onNutritionChange={handleNutritionOverrideChange}
+          onResetAutomatic={resetAutomaticAnalysis}
+          onSubmit={(event) => {
+            event.preventDefault()
+            const nextErrors = validateMealEditDraft(draft)
+
+            setErrors(nextErrors)
+
+            if (Object.keys(nextErrors).length === 0) {
+              handleSubmitMeal(event)
+            }
+          }}
+        />
+      ) : (
+        <MealEditor
+          draft={draft}
+          errors={errors}
+          isEditing={Boolean(editingFavoriteId)}
+          onCancel={() => resetDraft()}
+          onChange={handleDraftChange}
+          onReset={() => resetDraft()}
+          onSubmit={handleSubmitMeal}
+        />
+      )}
 
       <DailyNutritionSummary summary={dailySummary} />
 

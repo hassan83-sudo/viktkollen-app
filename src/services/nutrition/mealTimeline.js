@@ -1,4 +1,4 @@
-import { analyzeMealText } from './mealAnalyzer.js'
+import { getEffectiveMealNutrition, normalizeMealRecord } from './mealCorrections.js'
 import { sumMealNutrition } from './nutritionCalculator.js'
 
 function parseDate(value) {
@@ -124,16 +124,24 @@ export function buildMealTimeline(meals = [], date = getLocalDateString(), optio
 
     const text = getMealText(meal)
     const time = getMealClockTime(meal)
-    const analysis = analyzeMealText(text, {
+    const normalizedRecord = normalizeMealRecord(meal)
+    const effective = getEffectiveMealNutrition(meal, {
       proteinGoal: options.proteinGoal,
     })
+    const analysis = effective.analysis
     const loggedNutrition = getLoggedNutrition(meal)
-    const totals = analysis.items.length ? analysis.totals : loggedNutrition || analysis.totals
-    const inferredMealType = analysis.mealType || (time ? inferMealTypeFromTime(time) : null)
+    const totals = effective.source !== 'automatic' || analysis.items.length
+      ? effective.totals
+      : loggedNutrition || effective.totals
+    const manualMealType = normalizedRecord?.mealType && !['Automatiskt', 'Annat'].includes(normalizedRecord.mealType)
+      ? normalizedRecord.mealType.toLocaleLowerCase('sv-SE')
+      : null
+    const inferredMealType = manualMealType || analysis.mealType || (time ? inferMealTypeFromTime(time) : null)
 
     entries.push({
       analysis,
       date: mealDate,
+      effectiveNutrition: effective,
       id,
       index,
       meal,

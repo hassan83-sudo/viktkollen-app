@@ -11,6 +11,16 @@ export {
   findMealByType,
   getLatestMeal,
 } from './mealHistory.js'
+export {
+  createUpdatedMealRecord,
+  createMealEditDraft,
+  getEffectiveMealNutrition,
+  mealCorrectionFields,
+  normalizeMealRecord,
+  parseCorrectionNumber,
+  resetMealNutritionOverride,
+  validateMealEditDraft,
+} from './mealCorrections.js'
 export { buildMealMemory, buildMealMemoryInsights } from './mealMemory.js'
 export { buildMealTimeline } from './mealTimeline.js'
 export { analyzeMealText } from './mealAnalyzer.js'

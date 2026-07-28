@@ -87,10 +87,10 @@ function MealHistory({
                 <div><dt>Fibrer</dt><dd>{formatMacro(meal.fiber, 'g')}</dd></div>
               </dl>
               <div className="nutrition-actions">
-                <button className="secondary-button" type="button" onClick={() => onEditMeal(meal)}>Redigera</button>
-                <button className="secondary-button" type="button" onClick={() => onCopyMeal(meal)}>Kopiera</button>
-                <button className="secondary-button" type="button" onClick={() => onSaveFavorite(meal)}>Spara favorit</button>
-                <button className="secondary-button danger-button" type="button" onClick={() => onDeleteMeal(meal.id)}>Ta bort</button>
+                <button aria-label={`Redigera ${meal.name}`} className="secondary-button" type="button" onClick={() => onEditMeal(meal)}>Redigera</button>
+                <button aria-label={`Kopiera ${meal.name}`} className="secondary-button" type="button" onClick={() => onCopyMeal(meal)}>Kopiera</button>
+                <button aria-label={`Spara ${meal.name} som favorit`} className="secondary-button" type="button" onClick={() => onSaveFavorite(meal)}>Spara favorit</button>
+                <button aria-label={`Ta bort ${meal.name}`} className="secondary-button danger-button" type="button" onClick={() => onDeleteMeal(meal.id)}>Ta bort</button>
               </div>
             </article>
           ))}

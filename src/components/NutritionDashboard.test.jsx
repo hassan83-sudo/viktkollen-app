@@ -117,7 +117,7 @@ describe('Nutrition Dashboard V1 view model', () => {
       nutritionGoals: goals,
     })
 
-    expect(model.timeline[0].status.label).toBe('Analyserad')
+    expect(model.timeline[0].status.label).toBe('Automatisk uppskattning')
   })
 
   it('marks partially analyzed meals', () => {
@@ -127,7 +127,7 @@ describe('Nutrition Dashboard V1 view model', () => {
       nutritionGoals: goals,
     })
 
-    expect(model.timeline[0].status.label).toBe('Delvis analyserad')
+    expect(model.timeline[0].status.label).toContain('Delvis analyserad')
     expect(model.timeline[0].status.detail).toContain('hemlagad sås')
   })
 

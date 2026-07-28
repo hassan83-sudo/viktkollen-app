@@ -85,17 +85,31 @@ function getMealLabel(entry) {
 }
 
 function getMealStatus(entry) {
+  if (entry.effectiveNutrition?.source === 'manual') {
+    return {
+      detail: '',
+      label: 'Manuellt korrigerad',
+    }
+  }
+
+  if (entry.effectiveNutrition?.source === 'partial_manual') {
+    return {
+      detail: '',
+      label: 'Delvis manuellt korrigerad',
+    }
+  }
+
   if (entry.analysis.unknownFoods.length > 0) {
     return {
       detail: `${entry.analysis.unknownFoods.join(', ')} kunde inte identifieras`,
-      label: 'Delvis analyserad',
+      label: 'Delvis analyserad · Automatisk uppskattning',
     }
   }
 
   if (entry.analysis.items.length > 0) {
     return {
       detail: '',
-      label: 'Analyserad',
+      label: 'Automatisk uppskattning',
     }
   }
 
@@ -115,6 +129,8 @@ function makeTimelineRows(timeline) {
       id: entry.id,
       mealType: getMealLabel(entry),
       proteinText: formatApproxGrams(entry.totals.protein),
+      showApproxCalories: !entry.effectiveNutrition?.manualFields?.includes('calories'),
+      showApproxProtein: !entry.effectiveNutrition?.manualFields?.includes('protein'),
       status,
       time: entry.time,
     }

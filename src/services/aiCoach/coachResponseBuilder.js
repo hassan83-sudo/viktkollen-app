@@ -194,6 +194,64 @@ function makeMealMemoryReply(facts, message) {
   return describeMealMemory(timeline, memory)
 }
 
+function makeWeeklyNutritionReply(facts, message) {
+  const normalized = normalizeAiCoachText(message)
+  const report = facts.weeklyNutritionReport
+  const summary = report?.summary
+
+  if (!summary) {
+    return 'Jag hittar ingen veckosummering för maten just nu.'
+  }
+
+  const incomplete = summary.registeredDays < 7
+    ? ` Registreringen är ofullständig: ${summary.registeredDays} av 7 dagar har mat.`
+    : ''
+
+  if (includesAny(normalized.plain, ['genomsnittligt protein', 'genomsnittliga protein'])) {
+    return `Protein låg i genomsnitt på cirka ${Math.round(summary.averages.proteinPerRegisteredDay).toLocaleString('sv-SE')} g per registrerad dag.${incomplete}`
+  }
+
+  if (includesAny(normalized.plain, ['proteinmalet', 'proteinmålet', 'nådde jag protein'])) {
+    return `Proteinmålet nåddes ${summary.proteinGoalDays.toLocaleString('sv-SE')} dagar denna vecka.${incomplete}`
+  }
+
+  if (includesAny(normalized.plain, ['registrerade jag mat', 'registrerade dagar'])) {
+    return `Du registrerade mat ${summary.registeredDays.toLocaleString('sv-SE')} av 7 dagar denna vecka.`
+  }
+
+  if (includesAny(normalized.plain, ['mest protein'])) {
+    return summary.mostProteinDay
+      ? `${summary.mostProteinDay.dayName} var dagen med mest protein, cirka ${Math.round(summary.mostProteinDay.totals.protein).toLocaleString('sv-SE')} g.${incomplete}`
+      : 'Jag hittar ingen registrerad dag med protein denna vecka.'
+  }
+
+  if (includesAny(normalized.plain, ['flest kalorier', 'högst kalorier', 'hogst kalorier'])) {
+    return summary.highestCalorieDay
+      ? `${summary.highestCalorieDay.dayName} hade högst kalorier, cirka ${Math.round(summary.highestCalorieDay.totals.calories).toLocaleString('sv-SE')} kcal.${incomplete}`
+      : 'Jag hittar ingen registrerad dag med kalorier denna vecka.'
+  }
+
+  if (includesAny(normalized.plain, ['skiljer sig', 'forra veckan', 'förra veckan', 'föregående vecka', 'foregaende vecka'])) {
+    return report.comparison.hasComparison
+      ? report.comparison.text.join(' ')
+      : report.comparison.reasons.join(' ')
+  }
+
+  if (includesAny(normalized.plain, ['regelbundet', 'maltidstyp', 'måltidstyp'])) {
+    const type = summary.patterns.mostCommonMealType?.type || 'ingen tydlig måltidstyp'
+
+    return `${type} var vanligast registrerad. Snittet var cirka ${summary.averages.mealsPerRegisteredDay.toFixed(1).replace('.', ',')} måltider per registrerad dag.${incomplete}`
+  }
+
+  if (includesAny(normalized.plain, ['fokusera pa nasta vecka', 'fokusera på nästa vecka'])) {
+    return report.focus.length
+      ? report.focus.join(' ')
+      : 'Fortsätt med samma lugna registrering nästa vecka och använd måltidsmallar där de sparar tid.'
+  }
+
+  return `Du registrerade mat under ${summary.registeredDays} av 7 dagar. På registrerade dagar låg protein på cirka ${Math.round(summary.averages.proteinPerRegisteredDay).toLocaleString('sv-SE')} g och kalorier på cirka ${Math.round(summary.averages.caloriesPerRegisteredDay).toLocaleString('sv-SE')} kcal i genomsnitt.${incomplete}`
+}
+
 function makeProteinReply(facts, message) {
   const explicitWeight = extractWeightFromText(message)
   const normalized = normalizeAiCoachText(message)
@@ -683,6 +741,7 @@ function buildReplyForIntent(intent, facts, message) {
     stress: makeStressReply,
     training: makeTrainingReply,
     today_food: makeTodayFoodReply,
+    weekly_nutrition: makeWeeklyNutritionReply,
     weight: makeWeightReply,
     weight_gain: makeWeightGainReply,
   }

@@ -71,6 +71,19 @@ export {
   validateNutritionGoals,
 } from './nutritionGoals.js'
 export {
+  buildDailyNutritionBreakdown,
+  buildNextWeekNutritionFocus,
+  buildWeeklyNutritionInsights,
+  buildWeeklyNutritionReport,
+  buildWeeklyNutritionSummary,
+  buildWeeklyNutritionTextSummary,
+  classifyDailyGoalProgress,
+  classifyWeeklyDataCoverage,
+  compareNutritionWeeks,
+  getWeeklyNutritionRange,
+  weeklyNutritionInternals,
+} from './weeklyNutritionSummary.js'
+export {
   convertAmountToGrams,
   normalizeUnit,
   parseQuantityTokens,

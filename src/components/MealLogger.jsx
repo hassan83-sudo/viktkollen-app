@@ -31,6 +31,7 @@ import MealQuickAdd from './mealTemplates/MealQuickAdd.jsx'
 import MealWeeklyReport from './MealWeeklyReport.jsx'
 import NutritionDashboard from './NutritionDashboard.jsx'
 import PhotoAnalysis from './PhotoAnalysis.jsx'
+import WeeklyNutritionDashboard from './WeeklyNutritionDashboard.jsx'
 import {
   createMealEditDraft,
   createMealTemplateFromMeal,
@@ -156,6 +157,7 @@ function MealLogger({
   const [lastMealEdit, setLastMealEdit] = useState(null)
   const [mealTemplateStatus, setMealTemplateStatus] = useState('')
   const [mealTemplates, setMealTemplates] = useState(() => readMealTemplates())
+  const [nutritionViewMode, setNutritionViewMode] = useState('day')
   const [weekStart, setWeekStart] = useState(() => getWeekStart(selectedMealDate))
 
   const normalizedMeals = useMemo(() => normalizeMeals(meals), [meals])
@@ -545,11 +547,29 @@ function MealLogger({
         </label>
       </nav>
 
-      <NutritionDashboard
-        date={selectedMealDate}
-        meals={normalizedMeals}
-        nutritionGoals={normalizedGoals}
-      />
+      <div className="segmented-control nutrition-view-toggle" aria-label="Välj kostvy">
+        <button aria-pressed={nutritionViewMode === 'day'} className={nutritionViewMode === 'day' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('day')}>
+          Dag
+        </button>
+        <button aria-pressed={nutritionViewMode === 'week'} className={nutritionViewMode === 'week' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('week')}>
+          Vecka
+        </button>
+      </div>
+
+      {nutritionViewMode === 'day' ? (
+        <NutritionDashboard
+          date={selectedMealDate}
+          meals={normalizedMeals}
+          nutritionGoals={normalizedGoals}
+        />
+      ) : (
+        <WeeklyNutritionDashboard
+          date={selectedMealDate}
+          meals={normalizedMeals}
+          nutritionGoals={normalizedGoals}
+          onDateChange={changeSelectedDate}
+        />
+      )}
 
       <MealQuickAdd
         meals={normalizedMeals}

@@ -14,6 +14,7 @@ export const intentOrder = [
   'checkin',
   'today_food',
   'meal_memory',
+  'weekly_nutrition',
   'protein',
   'calories',
   'food',
@@ -510,6 +511,42 @@ function isMealMemoryQuestion(normalized) {
   ])
 }
 
+function isWeeklyNutritionQuestion(normalized) {
+  return hasAnyTerm(normalized, [
+    'hur har min vecka sett ut',
+    'denna vecka',
+    'veckan',
+    'förra veckan',
+    'föregående vecka',
+    'genomsnittliga protein',
+    'genomsnittligt protein',
+    'dagar nådde jag proteinmålet',
+    'dagar registrerade jag mat',
+    'vilken dag åt jag mest protein',
+    'vilken dag åt jag flest kalorier',
+    'hur skiljer sig denna vecka',
+    'ätit regelbundet denna vecka',
+    'måltidstyp registrerade jag oftast',
+    'fokusera på nästa vecka',
+  ], [
+    'hur har min vecka sett ut',
+    'denna vecka',
+    'veckan',
+    'forra veckan',
+    'foregaende vecka',
+    'genomsnittliga protein',
+    'genomsnittligt protein',
+    'dagar nadde jag proteinmalet',
+    'dagar registrerade jag mat',
+    'vilken dag at jag mest protein',
+    'vilken dag at jag flest kalorier',
+    'hur skiljer sig denna vecka',
+    'atit regelbundet denna vecka',
+    'maltidstyp registrerade jag oftast',
+    'fokusera pa nasta vecka',
+  ])
+}
+
 function isFocusQuestion(normalized) {
   return hasAnyTerm(normalized, ['vad bör jag fokusera på idag', 'vad ska jag fokusera på idag', 'fokus idag'], ['vad bor jag fokusera pa idag', 'vad ska jag fokusera pa idag', 'fokus idag'])
 }
@@ -601,6 +638,7 @@ export function identifyAiCoachIntents({ message, chatHistory = [] }) {
 
   if (isTodayFoodQuestion(normalized) && !asksProtein && !asksCalories) addUnique(intents, 'today_food')
   if (asksMealMemory && !asksCalories) addUnique(intents, 'meal_memory')
+  if (isWeeklyNutritionQuestion(normalized)) addUnique(intents, 'weekly_nutrition')
   if (asksProtein && !asksMealMemory) addUnique(intents, 'protein')
   if (asksCalories) addUnique(intents, 'calories')
 

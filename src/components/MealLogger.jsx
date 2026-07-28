@@ -28,14 +28,18 @@ import NutritionInsights from './nutrition/NutritionInsights.jsx'
 import WeeklyNutritionAnalysis from './nutrition/WeeklyNutritionAnalysis.jsx'
 import MealHistoryTools from './MealHistoryTools.jsx'
 import MealEditForm from './mealEditor/MealEditForm.jsx'
+import MealQuickAdd from './mealTemplates/MealQuickAdd.jsx'
 import MealWeeklyReport from './MealWeeklyReport.jsx'
 import NutritionDashboard from './NutritionDashboard.jsx'
 import PhotoAnalysis from './PhotoAnalysis.jsx'
 import {
   createMealEditDraft,
+  createMealTemplateFromMeal,
   createUpdatedMealRecord,
+  readMealTemplates,
   resetMealNutritionOverride,
   validateMealEditDraft,
+  writeMealTemplates,
 } from '../services/nutrition/nutritionEngine.js'
 
 const defaultFilters = {
@@ -145,6 +149,8 @@ function MealLogger({
   const [goalErrors, setGoalErrors] = useState({})
   const [importStatus, setImportStatus] = useState('')
   const [lastMealEdit, setLastMealEdit] = useState(null)
+  const [mealTemplateStatus, setMealTemplateStatus] = useState('')
+  const [mealTemplates, setMealTemplates] = useState(() => readMealTemplates())
   const [weekStart, setWeekStart] = useState(() => getWeekStart(selectedMealDate))
 
   const normalizedMeals = useMemo(() => normalizeMeals(meals), [meals])
@@ -296,6 +302,22 @@ function MealLogger({
       ...normalizedMeals.filter((entry) => entry.id !== lastMealEdit.before.id),
     ])
     setLastMealEdit(null)
+  }
+
+  function changeMealTemplates(nextTemplates) {
+    setMealTemplates(writeMealTemplates(nextTemplates))
+  }
+
+  function saveMealTemplate(meal) {
+    const result = createMealTemplateFromMeal(meal, { isFavorite: true })
+
+    if (!result.template) {
+      setMealTemplateStatus('Måltiden kunde inte sparas som mall.')
+      return
+    }
+
+    changeMealTemplates([result.template, ...mealTemplates])
+    setMealTemplateStatus(`${result.template.name} sparades som mall.`)
   }
 
   function copyMeal(meal) {
@@ -499,6 +521,20 @@ function MealLogger({
         nutritionGoals={normalizedGoals}
       />
 
+      <MealQuickAdd
+        meals={normalizedMeals}
+        selectedMealDate={selectedMealDate}
+        templates={mealTemplates}
+        onMealsChange={onMealsChange}
+        onTemplatesChange={changeMealTemplates}
+      />
+
+      {mealTemplateStatus && (
+        <div className="nutrition-edit-status" role="status">
+          <span>{mealTemplateStatus}</span>
+        </div>
+      )}
+
       {lastMealEdit && (
         <div className="nutrition-edit-status" role="status">
           <span>Måltiden har uppdaterats.</span>
@@ -604,6 +640,7 @@ function MealLogger({
         onEditMeal={editMeal}
         onFilterChange={(key, value) => setFilters((current) => ({ ...current, [key]: value }))}
         onSaveFavorite={saveFavorite}
+        onSaveTemplate={saveMealTemplate}
       />
     </article>
   )

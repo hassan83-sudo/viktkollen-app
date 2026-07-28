@@ -15,6 +15,7 @@ function MealHistory({
   onEditMeal,
   onFilterChange,
   onSaveFavorite,
+  onSaveTemplate,
 }) {
   return (
     <section className="nutrition-card">
@@ -90,6 +91,7 @@ function MealHistory({
                 <button aria-label={`Redigera ${meal.name}`} className="secondary-button" type="button" onClick={() => onEditMeal(meal)}>Redigera</button>
                 <button aria-label={`Kopiera ${meal.name}`} className="secondary-button" type="button" onClick={() => onCopyMeal(meal)}>Kopiera</button>
                 <button aria-label={`Spara ${meal.name} som favorit`} className="secondary-button" type="button" onClick={() => onSaveFavorite(meal)}>Spara favorit</button>
+                <button aria-label={`Spara ${meal.name} som mall`} className="secondary-button" type="button" onClick={() => onSaveTemplate(meal)}>Spara mall</button>
                 <button aria-label={`Ta bort ${meal.name}`} className="secondary-button danger-button" type="button" onClick={() => onDeleteMeal(meal.id)}>Ta bort</button>
               </div>
             </article>

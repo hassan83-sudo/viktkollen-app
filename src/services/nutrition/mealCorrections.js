@@ -69,6 +69,10 @@ function normalizeOverride(override) {
   }, {})
 }
 
+export function normalizeNutritionOverride(override) {
+  return normalizeOverride(override)
+}
+
 function getMealText(meal) {
   return [
     meal?.name,

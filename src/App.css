@@ -2277,6 +2277,118 @@ a:focus-visible {
   gap: 4px;
 }
 
+.meal-quick-add {
+  gap: 16px;
+}
+
+.meal-template-toolbar,
+.meal-template-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.45fr);
+  gap: 12px;
+}
+
+.meal-template-toolbar .field,
+.meal-template-form-grid .field,
+.meal-copy-form .field {
+  margin-bottom: 0;
+}
+
+.meal-template-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.meal-template-card,
+.meal-template-form,
+.meal-copy-form {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.meal-template-card-heading,
+.meal-template-section-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.meal-template-card h4,
+.meal-template-form h4,
+.meal-template-section-heading h4 {
+  margin: 0;
+  color: var(--text-h);
+}
+
+.meal-template-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.meal-template-card small,
+.meal-template-section-heading span,
+.meal-copy-form span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.meal-template-preview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.meal-template-preview div {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.28);
+}
+
+.meal-template-preview dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.meal-template-preview dd {
+  margin: 4px 0 0;
+  color: var(--text-h);
+  font-weight: 850;
+}
+
+.meal-template-icon-button {
+  width: 42px;
+  min-width: 42px;
+  padding: 0;
+  justify-self: end;
+  font-size: 18px;
+}
+
+.meal-template-favorite-toggle {
+  align-self: center;
+  margin: 0;
+}
+
+.meal-copy-form {
+  grid-template-columns: minmax(0, 1fr) repeat(2, minmax(130px, 0.4fr)) auto;
+  align-items: end;
+}
+
+.meal-copy-form strong {
+  display: block;
+  color: var(--text-h);
+}
+
 .nutrition-dashboard {
   display: grid;
   gap: 14px;
@@ -3139,6 +3251,10 @@ a:focus-visible {
   }
 
   .meal-editor-grid,
+  .meal-template-grid,
+  .meal-template-toolbar,
+  .meal-template-form-grid,
+  .meal-copy-form,
   .nutrition-filter-grid,
   .nutrition-stat-grid,
   .nutrition-dashboard-stat-grid,

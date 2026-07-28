@@ -17,10 +17,34 @@ export {
   getEffectiveMealNutrition,
   mealCorrectionFields,
   normalizeMealRecord,
+  normalizeNutritionOverride,
   parseCorrectionNumber,
   resetMealNutritionOverride,
   validateMealEditDraft,
 } from './mealCorrections.js'
+export {
+  addMealTemplate,
+  buildMealTemplateDraft,
+  createMealCopy,
+  createMealFromTemplate,
+  createMealTemplate,
+  createMealTemplateFromMeal,
+  deleteMealTemplate,
+  filterMealTemplates,
+  getMealTemplatePreview,
+  getRecentUniqueMeals,
+  markMealTemplateUsed,
+  mealTemplateStorageKey,
+  mealTemplateTypes,
+  normalizeMealTemplate,
+  normalizeMealTemplates,
+  readMealTemplates,
+  toggleMealTemplateFavorite,
+  updateMealTemplate,
+  updateStoredMealTemplate,
+  validateMealTemplateDraft,
+  writeMealTemplates,
+} from './mealTemplates.js'
 export { buildMealMemory, buildMealMemoryInsights } from './mealMemory.js'
 export { buildMealTimeline } from './mealTimeline.js'
 export { analyzeMealText } from './mealAnalyzer.js'

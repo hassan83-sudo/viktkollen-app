@@ -4,6 +4,7 @@ import {
   getUnifiedWeightFacts,
   parseWeightValue,
 } from '../healthCalculations.js'
+import { calculateDailyNutritionSummary } from '../nutrition/nutritionEngine.js'
 import {
   getLastAssistantMessage,
   getLastDiscussedTopic,
@@ -307,12 +308,23 @@ export function buildAiCoachFacts(context = {}) {
   const todayMeals = Array.isArray(context.todayMeals)
     ? context.todayMeals
     : getTodayMeals(context.meals?.loggedMealsToday || context.meals || [])
-  const todayProtein = todayMeals.reduce(
+  const loggedTodayProtein = todayMeals.reduce(
     (sum, meal) => sum + (Number.isFinite(parseNumber(meal?.protein)) ? parseNumber(meal.protein) : 0),
     0,
   )
   const todayCheckin = context.todayCheckin || context.checkIn || {}
   const proteinGoal = getNumericGoal(context.nutritionGoals, 'protein')
+  const todayNutrition = calculateDailyNutritionSummary(
+    context.meals?.loggedMealsToday || context.meals || todayMeals,
+    getTodayDateString(),
+    {
+      ...profile,
+      nutritionGoals: context.nutritionGoals || {},
+    },
+  )
+  const todayProtein = todayNutrition.totals.protein > 0
+    ? todayNutrition.totals.protein
+    : loggedTodayProtein
   const proteinNeed = calculateProteinNeed(latestWeight)
   const change7 = getChangeSinceDays(weights, 7)
   const change30 = getChangeSinceDays(weights, 30)
@@ -356,6 +368,7 @@ export function buildAiCoachFacts(context = {}) {
     steps: Number.isFinite(Number(todayCheckin.steps)) ? Number(todayCheckin.steps) : null,
     todayCheckin,
     todayMeals,
+    todayNutrition,
     todayProtein,
     training: todayCheckin.workout || todayCheckin.training || '',
     water: todayCheckin.water ?? null,

@@ -40,9 +40,19 @@ const foodTerms = [
   'kyckling',
   'ägg',
   'kvarg',
+  'keso',
+  'lax',
+  'torsk',
+  'tonfisk',
   'havregryn',
   'ris',
   'potatis',
+  'pasta',
+  'bröd',
+  'mjölk',
+  'ost',
+  'pommes',
+  'cola',
 ]
 
 const plainFoodTerms = [
@@ -54,9 +64,19 @@ const plainFoodTerms = [
   'kyckling',
   'agg',
   'kvarg',
+  'keso',
+  'lax',
+  'torsk',
+  'tonfisk',
   'havregryn',
   'ris',
   'potatis',
+  'pasta',
+  'brod',
+  'mjolk',
+  'ost',
+  'pommes',
+  'cola',
 ]
 
 function extractSleepHours(text) {
@@ -181,6 +201,10 @@ function isProteinQuestion(normalized, message) {
     'protein behöver jag',
     'proteinbehov',
     'gram protein',
+    'protein idag',
+    'protein kvar',
+    'proteinrik',
+    'ätit tillräckligt',
     'protein',
   ], [
     'hur manga gram protein',
@@ -188,6 +212,10 @@ function isProteinQuestion(normalized, message) {
     'protein behover jag',
     'proteinbehov',
     'gram protein',
+    'protein idag',
+    'protein kvar',
+    'proteinrik',
+    'atit tillrackligt',
     'protein',
   ]) || /(\d{2,3}(?:[,.]\d+)?)\s*(?:kg|kilo)/i.test(message) && normalized.plain.includes('protein')
 }
@@ -320,18 +348,26 @@ function isMealQuestion(normalized) {
     'vad ska jag äta',
     'vad ska jag äta ikväll',
     'middag',
+    'middagen',
     'lunch',
+    'lunchen',
     'frukost',
     'mellanmål',
     'portionsstorlek',
+    'hur såg min lunch ut',
+    'hur såg middagen ut',
   ], [
     'vad ska jag ata',
     'vad ska jag ata ikvall',
     'middag',
+    'middagen',
     'lunch',
+    'lunchen',
     'frukost',
     'mellanmal',
     'portionsstorlek',
+    'hur sag min lunch ut',
+    'hur sag middagen ut',
   ])
 }
 
@@ -412,7 +448,25 @@ function isCheckInQuestion(normalized) {
 }
 
 function isTodayFoodQuestion(normalized) {
-  return hasAnyTerm(normalized, ['vad har jag ätit idag', 'vad har jag ätit i dag', 'ätit idag', 'ätit i dag'], ['vad har jag atit idag', 'vad har jag atit i dag', 'atit idag', 'atit i dag'])
+  return hasAnyTerm(normalized, [
+    'vad har jag ätit idag',
+    'vad har jag ätit i dag',
+    'ätit idag',
+    'ätit i dag',
+    'protein har jag ätit idag',
+    'protein har jag ätit i dag',
+    'kalorier har jag fått i mig',
+    'kalorier idag',
+  ], [
+    'vad har jag atit idag',
+    'vad har jag atit i dag',
+    'atit idag',
+    'atit i dag',
+    'protein har jag atit idag',
+    'protein har jag atit i dag',
+    'kalorier har jag fatt i mig',
+    'kalorier idag',
+  ])
 }
 
 function isFocusQuestion(normalized) {
@@ -500,9 +554,12 @@ export function identifyAiCoachIntents({ message, chatHistory = [] }) {
   if (isPlateauQuestion(normalized)) addUnique(intents, 'plateau')
   if (isStepsQuestion(normalized)) addUnique(intents, 'steps')
   if (isCheckInQuestion(normalized)) addUnique(intents, 'checkin')
-  if (isTodayFoodQuestion(normalized)) addUnique(intents, 'today_food')
-  if (isProteinQuestion(normalized, sourceText)) addUnique(intents, 'protein')
-  if (isCaloriesQuestion(normalized)) addUnique(intents, 'calories')
+  const asksProtein = isProteinQuestion(normalized, sourceText)
+  const asksCalories = isCaloriesQuestion(normalized)
+
+  if (isTodayFoodQuestion(normalized) && !asksProtein && !asksCalories) addUnique(intents, 'today_food')
+  if (asksProtein) addUnique(intents, 'protein')
+  if (asksCalories) addUnique(intents, 'calories')
 
   const hasLateMealIntent = isLateMealQuestion(normalized)
 

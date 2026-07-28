@@ -3,7 +3,11 @@ import {
   extractWeightFromText,
   formatKg,
 } from '../healthCalculations.js'
-import { analyzeNutritionMessage } from '../nutrition/nutritionEngine.js'
+import {
+  analyzeNutritionMessage,
+  formatApproxCalories,
+  formatApproxGrams,
+} from '../nutrition/nutritionEngine.js'
 import { getIntentSourceText } from './coachConversation.js'
 import { buildAiCoachFacts, hasRecentAdvice } from './coachFacts.js'
 import { identifyAiCoachIntents } from './coachIntentDetector.js'
@@ -129,8 +133,11 @@ function makeTodayFoodReply(facts) {
   const proteinText = facts.todayProtein > 0
     ? ` Totalt synligt protein är cirka ${facts.todayProtein.toLocaleString('sv-SE')} g.`
     : ''
+  const nutritionText = facts.todayNutrition?.mealCount
+    ? ` Min uppskattning för dagen är ${formatApproxGrams(facts.todayNutrition.totals.protein)} protein och ${formatApproxCalories(facts.todayNutrition.totals.calories)}.`
+    : ''
 
-  return `Idag ser jag: ${names}.${proteinText}`
+  return `Idag ser jag: ${names}.${proteinText}${nutritionText}`
 }
 
 function makeProteinReply(facts, message) {
@@ -138,6 +145,47 @@ function makeProteinReply(facts, message) {
   const normalized = normalizeAiCoachText(message)
   const proteinWeight = explicitWeight ?? facts.latestWeight
   const proteinNeed = calculateProteinNeed(proteinWeight)
+  const asksToday = !explicitWeight && includesAny(normalized.plain, ['idag', 'i dag', 'atit', 'fatt i mig'])
+  const asksRemaining = includesAny(normalized.plain, ['protein kvar', 'protein har jag kvar', 'protein aterstar', 'protein återstår'])
+  const mealType = includesAny(normalized.plain, ['lunch', 'lunchen'])
+    ? 'lunch'
+    : includesAny(normalized.plain, ['middag', 'middagen'])
+      ? 'middag'
+      : null
+
+  if (mealType && facts.todayNutrition?.mealCount) {
+    const meal = facts.todayNutrition.analyzedMeals.find((entry) => entry.analysis.mealType === mealType || normalizeAiCoachText(entry.text).plain.includes(mealType))
+
+    if (meal) {
+      const proteinText = meal.analysis.flags.proteinRich ? ' Den verkar proteinrik.' : ' Den verkar inte särskilt proteinrik, så komplettera gärna med en tydlig proteinkälla om du behöver mer mättnad.'
+
+      return `${mealType[0].toLocaleUpperCase('sv-SE')}${mealType.slice(1)}: ${meal.text}. Jag uppskattar den till ${formatApproxGrams(meal.totals.protein)} protein och ${formatApproxCalories(meal.totals.calories)}.${proteinText}`
+    }
+  }
+
+  if (asksToday || asksRemaining) {
+    const summary = facts.todayNutrition
+
+    if (!summary?.mealCount && facts.todayProtein <= 0) {
+      return 'Jag hittar inte tillräckligt med loggad mat för att avgöra proteinintaget idag.'
+    }
+
+    const proteinText = formatApproxGrams(summary?.totals?.protein || facts.todayProtein)
+
+    if (asksRemaining) {
+      if (!summary?.proteinGoal) {
+        return `Du har loggat ${proteinText} protein idag, men jag hittar inget proteinmål att jämföra med.`
+      }
+
+      return `Du har loggat ungefär ${proteinText} protein idag. Det är cirka ${summary.proteinPercent} % av proteinmålet ${summary.proteinGoal.label}, med ungefär ${summary.proteinRemaining.toLocaleString('sv-SE')} g kvar.`
+    }
+
+    if (summary?.proteinGoal) {
+      return `Du har loggat ungefär ${proteinText} protein idag, cirka ${summary.proteinPercent} % av proteinmålet ${summary.proteinGoal.label}.`
+    }
+
+    return `Du har loggat ungefär ${proteinText} protein idag, men jag hittar inget proteinmål att jämföra med.`
+  }
 
   if (includesAny(normalized.plain, ['tillrackligt', 'fatt i mig', 'fatt protein'])) {
     if (!facts.todayMeals.length || facts.todayProtein <= 0) {
@@ -167,7 +215,23 @@ function makeProteinReply(facts, message) {
   return `${prefix} är cirka ${proteinNeed.lower}–${proteinNeed.upper} g protein per dag ett bra riktmärke.${goalText}`
 }
 
-function makeCaloriesReply(facts) {
+function makeCaloriesReply(facts, message) {
+  const normalized = normalizeAiCoachText(message)
+  const asksToday = includesAny(normalized.plain, ['idag', 'i dag', 'fatt i mig', 'ätit', 'atit'])
+  const summary = facts.todayNutrition
+
+  if (asksToday) {
+    if (!summary?.mealCount) {
+      return 'Jag hittar inga analyserbara måltider för idag ännu.'
+    }
+
+    const goalText = summary.caloriesGoal
+      ? ` Det är ungefär ${summary.caloriesRemaining.toLocaleString('sv-SE')} kcal kvar till kalorimålet ${summary.caloriesGoal.toLocaleString('sv-SE')} kcal.`
+      : ''
+
+    return `Du har loggat ungefär ${formatApproxCalories(summary.totals.calories)} idag.${goalText}`
+  }
+
   return facts.caloriesGoal
     ? `Ditt kalorimål i appen är cirka ${facts.caloriesGoal.toLocaleString('sv-SE')} kcal. Se det som riktning, inte som en exakt dom för varje måltid.`
     : 'Jag hittar inget kalorimål i appdata. Fokusera på mättande måltider med protein, grönsaker och lagom portion.'
@@ -242,6 +306,43 @@ function makeHealthyLossReply() {
 
 function makeMealReply(facts, message) {
   const normalized = normalizeAiCoachText(message)
+  const summary = facts.todayNutrition
+
+  if (includesAny(normalized.plain, ['forbattra dagens mat', 'förbättra dagens mat', 'dagens mat'])) {
+    if (!summary?.mealCount) {
+      return 'Jag hittar inga analyserbara måltider för idag ännu. Logga en måltid så kan jag ge ett mer träffsäkert förslag.'
+    }
+
+    const proteinHint = summary.proteinGoal && summary.proteinRemaining > 0
+      ? ` Du har ungefär ${summary.proteinRemaining.toLocaleString('sv-SE')} g protein kvar till målet.`
+      : ''
+    const vegetableHint = summary.analyzedMeals.some((entry) => entry.analysis.flags.containsVegetables)
+      ? ' Fortsätt gärna med grönsaker i någon måltid till.'
+      : ' Lägg gärna till grönsaker i nästa måltid för mer volym och variation.'
+
+    return `Dagens mat är uppskattad till ${formatApproxGrams(summary.totals.protein)} protein och ${formatApproxCalories(summary.totals.calories)}.${proteinHint}${vegetableHint}`
+  }
+
+  const requestedMealType = includesAny(normalized.plain, ['lunch', 'lunchen'])
+    ? 'lunch'
+    : includesAny(normalized.plain, ['middag', 'middagen'])
+      ? 'middag'
+      : includesAny(normalized.plain, ['frukost'])
+        ? 'frukost'
+        : null
+
+  if (requestedMealType && summary?.mealCount && includesAny(normalized.plain, ['hur sag', 'hur såg', 'proteinrik', 'ut'])) {
+    const meal = summary.analyzedMeals.find((entry) => entry.analysis.mealType === requestedMealType || normalizeAiCoachText(entry.text).plain.includes(requestedMealType))
+
+    if (meal) {
+      const quality = meal.analysis.flags.proteinRich
+        ? ' Den verkar proteinrik.'
+        : ' Den kan kompletteras med mer protein om du vill bli mättare.'
+
+      return `${requestedMealType[0].toLocaleUpperCase('sv-SE')}${requestedMealType.slice(1)}: ${meal.text}. Uppskattningen är ${formatApproxGrams(meal.totals.protein)} protein och ${formatApproxCalories(meal.totals.calories)}.${quality}`
+    }
+  }
+
   const mealCount = facts.todayMeals.length
   const mealHint = mealCount > 0
     ? `Du har ${mealCount} måltider loggade idag.`

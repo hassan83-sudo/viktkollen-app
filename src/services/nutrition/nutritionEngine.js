@@ -1,8 +1,12 @@
 export { nutritionFoods, getNutritionFoodById } from './nutritionDatabase.js'
+export { calculateDailyNutritionSummary } from './dailyNutritionSummary.js'
 export { analyzeMealText } from './mealAnalyzer.js'
 export { buildNutritionAdvice } from './nutritionAdvice.js'
 export {
   buildMealFlags,
+  calculateNutritionForGrams,
+  formatApproxCalories,
+  formatApproxGrams,
   formatNutritionValue,
   multiplyFoodNutrition,
   sumMealNutrition,
@@ -11,6 +15,11 @@ export {
   calculateProteinGoalContribution,
   parseProteinGoal,
 } from './nutritionGoals.js'
+export {
+  convertAmountToGrams,
+  normalizeUnit,
+  parseQuantityTokens,
+} from './nutritionUnits.js'
 
 import { analyzeMealText } from './mealAnalyzer.js'
 import { buildNutritionAdvice } from './nutritionAdvice.js'

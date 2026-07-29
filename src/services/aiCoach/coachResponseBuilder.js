@@ -252,6 +252,74 @@ function makeWeeklyNutritionReply(facts, message) {
   return `Du registrerade mat under ${summary.registeredDays} av 7 dagar. På registrerade dagar låg protein på cirka ${Math.round(summary.averages.proteinPerRegisteredDay).toLocaleString('sv-SE')} g och kalorier på cirka ${Math.round(summary.averages.caloriesPerRegisteredDay).toLocaleString('sv-SE')} kcal i genomsnitt.${incomplete}`
 }
 
+function makeMonthlyNutritionReply(facts, message) {
+  const normalized = normalizeAiCoachText(message)
+  const report = facts.monthlyNutritionReport
+  const summary = report?.summary
+
+  if (!summary) {
+    return 'Jag hittar ingen månadsrapport för maten just nu.'
+  }
+
+  const incomplete = summary.registeredDays < summary.elapsedDays
+    ? ` Registreringen är ofullständig: ${summary.registeredDays} av ${summary.elapsedDays} möjliga dagar har mat.`
+    : ''
+
+  if (includesAny(normalized.plain, ['genomsnittligt protein', 'genomsnittliga protein'])) {
+    return `Protein låg i genomsnitt på cirka ${Math.round(summary.averages.proteinPerRegisteredDay).toLocaleString('sv-SE')} g per registrerad dag denna månad.${incomplete}`
+  }
+
+  if (includesAny(normalized.plain, ['proteinmalet', 'proteinmålet', 'nadde jag protein', 'nådde jag protein'])) {
+    return `Proteinmålet nåddes ${summary.proteinGoalDays.toLocaleString('sv-SE')} dagar denna månad.${incomplete}`
+  }
+
+  if (includesAny(normalized.plain, ['registrerade jag mat', 'registrerade dagar'])) {
+    return `Du registrerade mat ${summary.registeredDays.toLocaleString('sv-SE')} av ${summary.elapsedDays.toLocaleString('sv-SE')} möjliga dagar denna månad.`
+  }
+
+  if (includesAny(normalized.plain, ['vilken vecka', 'hogst protein', 'högst protein'])) {
+    const week = [...summary.weeklyBreakdown]
+      .filter((entry) => entry.registeredDays > 0)
+      .sort((first, second) => second.proteinAverage - first.proteinAverage)[0]
+
+    return week
+      ? `Veckan ${week.startDate} till ${week.endDate} hade högst protein, cirka ${Math.round(week.proteinAverage).toLocaleString('sv-SE')} g per registrerad dag.${incomplete}`
+      : 'Jag hittar ingen registrerad vecka med protein denna månad.'
+  }
+
+  if (includesAny(normalized.plain, ['vilken dag', 'mest protein'])) {
+    return summary.mostProteinDay
+      ? `${summary.mostProteinDay.date} var dagen med mest protein denna månad, cirka ${Math.round(summary.mostProteinDay.totals.protein).toLocaleString('sv-SE')} g.${incomplete}`
+      : 'Jag hittar ingen registrerad dag med protein denna månad.'
+  }
+
+  if (includesAny(normalized.plain, ['skiljer sig', 'forra manaden', 'förra månaden', 'foregaende manad', 'föregående månad'])) {
+    return report.comparison.hasComparison
+      ? report.comparison.text.join(' ')
+      : report.comparison.reasons.join(' ')
+  }
+
+  if (includesAny(normalized.plain, ['maltid at jag oftast', 'måltid åt jag oftast', 'vanligast', 'oftast'])) {
+    const recurring = summary.patterns.recurringMeal
+    const type = summary.patterns.mostCommonMealType
+
+    if (recurring) return `Den återkommande måltiden var "${recurring.text}", registrerad ${recurring.count} gånger denna månad.${incomplete}`
+    return `${type?.type || 'Ingen tydlig måltidstyp'} var vanligast registrerad denna månad.${incomplete}`
+  }
+
+  if (includesAny(normalized.plain, ['vikt', 'forandrades', 'förändrades'])) {
+    return summary.weightRelation?.text || 'Jag hittar ingen giltig viktdata för månaden.'
+  }
+
+  if (includesAny(normalized.plain, ['nasta manad', 'nästa månad', 'fokus'])) {
+    return summary.nextMonthFocus.length
+      ? summary.nextMonthFocus.join(' ')
+      : 'Fortsätt med samma lugna registrering nästa månad och använd måltidsmallar där de sparar tid.'
+  }
+
+  return `Denna månad registrerade du mat under ${summary.registeredDays} av ${summary.elapsedDays} möjliga dagar. På registrerade dagar låg protein på cirka ${Math.round(summary.averages.proteinPerRegisteredDay).toLocaleString('sv-SE')} g och kalorier på cirka ${Math.round(summary.averages.caloriesPerRegisteredDay).toLocaleString('sv-SE')} kcal i genomsnitt.${incomplete}`
+}
+
 function makeProteinReply(facts, message) {
   const explicitWeight = extractWeightFromText(message)
   const normalized = normalizeAiCoachText(message)
@@ -729,6 +797,7 @@ function buildReplyForIntent(intent, facts, message) {
     meal: makeMealReply,
     meal_memory: makeMealMemoryReply,
     motivation: makeMotivationReply,
+    monthly_nutrition: makeMonthlyNutritionReply,
     overeating: makeOvereatingReply,
     plateau: makePlateauReply,
     prognosis: makePrognosisReply,

@@ -29,6 +29,7 @@ import MealHistoryTools from './MealHistoryTools.jsx'
 import MealEditForm from './mealEditor/MealEditForm.jsx'
 import MealQuickAdd from './mealTemplates/MealQuickAdd.jsx'
 import MealWeeklyReport from './MealWeeklyReport.jsx'
+import MonthlyNutritionDashboard from './MonthlyNutritionDashboard.jsx'
 import NutritionDashboard from './NutritionDashboard.jsx'
 import PhotoAnalysis from './PhotoAnalysis.jsx'
 import WeeklyNutritionDashboard from './WeeklyNutritionDashboard.jsx'
@@ -554,6 +555,9 @@ function MealLogger({
         <button aria-pressed={nutritionViewMode === 'week'} className={nutritionViewMode === 'week' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('week')}>
           Vecka
         </button>
+        <button aria-pressed={nutritionViewMode === 'month'} className={nutritionViewMode === 'month' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('month')}>
+          MÃ¥nad
+        </button>
       </div>
 
       {nutritionViewMode === 'day' ? (
@@ -562,11 +566,19 @@ function MealLogger({
           meals={normalizedMeals}
           nutritionGoals={normalizedGoals}
         />
-      ) : (
+      ) : nutritionViewMode === 'week' ? (
         <WeeklyNutritionDashboard
           date={selectedMealDate}
           meals={normalizedMeals}
           nutritionGoals={normalizedGoals}
+          onDateChange={changeSelectedDate}
+        />
+      ) : (
+        <MonthlyNutritionDashboard
+          date={selectedMealDate}
+          meals={normalizedMeals}
+          nutritionGoals={normalizedGoals}
+          weights={weights}
           onDateChange={changeSelectedDate}
         />
       )}

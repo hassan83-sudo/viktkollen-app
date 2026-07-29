@@ -11,6 +11,7 @@ import {
   calculateSuggestedCalorieGoal,
   calculateSuggestedProteinGoal,
   calculateDailyNutritionSummary,
+  buildMonthlyNutritionReport,
   buildWeeklyNutritionReport,
   normalizeNutritionGoals,
 } from '../nutrition/nutritionEngine.js'
@@ -317,6 +318,11 @@ export function buildAiCoachFacts(context = {}) {
   const todayMeals = Array.isArray(context.todayMeals)
     ? context.todayMeals
     : getTodayMeals(context.meals?.loggedMealsToday || context.meals || [])
+  const allMealsForNutrition = Array.isArray(context.meals)
+    ? context.meals
+    : Array.isArray(context.meals?.loggedMealsToday)
+      ? context.meals.loggedMealsToday
+      : todayMeals
   const loggedTodayProtein = todayMeals.reduce(
     (sum, meal) => sum + (Number.isFinite(parseNumber(meal?.protein)) ? parseNumber(meal.protein) : 0),
     0,
@@ -325,7 +331,7 @@ export function buildAiCoachFacts(context = {}) {
   const nutritionGoals = normalizeNutritionGoals(context.nutritionGoals)
   const proteinGoal = getNumericGoal(nutritionGoals, 'protein')
   const todayNutrition = calculateDailyNutritionSummary(
-    context.meals?.loggedMealsToday || context.meals || todayMeals,
+    allMealsForNutrition,
     getTodayDateString(),
     {
       ...profile,
@@ -333,7 +339,7 @@ export function buildAiCoachFacts(context = {}) {
     },
   )
   const todayMealTimeline = buildMealTimeline(
-    context.meals?.loggedMealsToday || context.meals || todayMeals,
+    allMealsForNutrition,
     getTodayDateString(),
     {
       proteinGoal: nutritionGoals.protein,
@@ -344,8 +350,14 @@ export function buildAiCoachFacts(context = {}) {
   })
   const weeklyNutritionReport = buildWeeklyNutritionReport({
     date: getTodayDateString(),
-    meals: context.meals?.loggedMealsToday || context.meals || todayMeals,
+    meals: allMealsForNutrition,
     nutritionGoals,
+  })
+  const monthlyNutritionReport = buildMonthlyNutritionReport({
+    date: getTodayDateString(),
+    meals: allMealsForNutrition,
+    nutritionGoals,
+    weights,
   })
   const todayProtein = todayNutrition.totals.protein > 0
     ? todayNutrition.totals.protein
@@ -380,7 +392,8 @@ export function buildAiCoachFacts(context = {}) {
     lowEnergyDays: getLowEnergyDays(context),
     mood: todayCheckin.mood || '',
     poorSleepDays: getPoorSleepDays(context),
-    proteinDistributionPlan: buildProteinDistributionPlan(nutritionGoals.protein, context.meals?.loggedMealsToday || context.meals || todayMeals, { date: getTodayDateString() }),
+    monthlyNutritionReport,
+    proteinDistributionPlan: buildProteinDistributionPlan(nutritionGoals.protein, allMealsForNutrition, { date: getTodayDateString() }),
     proteinGoal: proteinGoal ?? null,
     proteinGoalLabel: proteinGoal
       ? getGoalLabelFromText(nutritionGoals.protein) || `${proteinGoal} g`

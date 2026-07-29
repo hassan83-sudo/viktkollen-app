@@ -84,6 +84,20 @@ export {
   weeklyNutritionInternals,
 } from './weeklyNutritionSummary.js'
 export {
+  buildMonthlyDailyBreakdown,
+  buildMonthlyExportPayload,
+  buildMonthlyNutritionInsights,
+  buildMonthlyNutritionReport,
+  buildMonthlyNutritionSummary,
+  buildMonthlyTextReport,
+  buildMonthlyWeightNutritionRelation,
+  buildNextMonthNutritionFocus,
+  classifyMonthlyDataCoverage,
+  compareNutritionMonths,
+  getMonthlyNutritionRange,
+  monthlyNutritionInternals,
+} from './monthlyNutritionSummary.js'
+export {
   convertAmountToGrams,
   normalizeUnit,
   parseQuantityTokens,

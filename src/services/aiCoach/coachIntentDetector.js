@@ -14,6 +14,7 @@ export const intentOrder = [
   'checkin',
   'today_food',
   'meal_memory',
+  'monthly_nutrition',
   'weekly_nutrition',
   'protein',
   'calories',
@@ -547,6 +548,46 @@ function isWeeklyNutritionQuestion(normalized) {
   ])
 }
 
+function isMonthlyNutritionQuestion(normalized) {
+  return hasAnyTerm(normalized, [
+    'hur har min mÃ¥nad sett ut',
+    'hur sÃ¥g min mÃ¥nad ut',
+    'denna mÃ¥nad',
+    'mÃ¥naden',
+    'mÃ¥nadens',
+    'fÃ¶rra mÃ¥naden',
+    'fÃ¶regÃ¥ende mÃ¥nad',
+    'genomsnittliga protein denna mÃ¥nad',
+    'genomsnittligt protein denna mÃ¥nad',
+    'dagar nÃ¥dde jag proteinmÃ¥let denna mÃ¥nad',
+    'dagar registrerade jag mat denna mÃ¥nad',
+    'vilken vecka hade hÃ¶gst protein',
+    'vilken dag hade mest protein denna mÃ¥nad',
+    'hur skiljer sig denna mÃ¥nad',
+    'vilken mÃ¥ltid Ã¥t jag oftast',
+    'hur fÃ¶rÃ¤ndrades min vikt denna mÃ¥nad',
+    'fokusera pÃ¥ nÃ¤sta mÃ¥nad',
+  ], [
+    'hur har min manad sett ut',
+    'hur sag min manad ut',
+    'denna manad',
+    'manaden',
+    'manadens',
+    'forra manaden',
+    'foregaende manad',
+    'genomsnittliga protein denna manad',
+    'genomsnittligt protein denna manad',
+    'dagar nadde jag proteinmalet denna manad',
+    'dagar registrerade jag mat denna manad',
+    'vilken vecka hade hogst protein',
+    'vilken dag hade mest protein denna manad',
+    'hur skiljer sig denna manad',
+    'vilken maltid at jag oftast',
+    'hur forandrades min vikt denna manad',
+    'fokusera pa nasta manad',
+  ])
+}
+
 function isFocusQuestion(normalized) {
   return hasAnyTerm(normalized, ['vad bör jag fokusera på idag', 'vad ska jag fokusera på idag', 'fokus idag'], ['vad bor jag fokusera pa idag', 'vad ska jag fokusera pa idag', 'fokus idag'])
 }
@@ -638,7 +679,8 @@ export function identifyAiCoachIntents({ message, chatHistory = [] }) {
 
   if (isTodayFoodQuestion(normalized) && !asksProtein && !asksCalories) addUnique(intents, 'today_food')
   if (asksMealMemory && !asksCalories) addUnique(intents, 'meal_memory')
-  if (isWeeklyNutritionQuestion(normalized)) addUnique(intents, 'weekly_nutrition')
+  if (isMonthlyNutritionQuestion(normalized)) addUnique(intents, 'monthly_nutrition')
+  if (isWeeklyNutritionQuestion(normalized) && !intents.includes('monthly_nutrition')) addUnique(intents, 'weekly_nutrition')
   if (asksProtein && !asksMealMemory) addUnique(intents, 'protein')
   if (asksCalories) addUnique(intents, 'calories')
 

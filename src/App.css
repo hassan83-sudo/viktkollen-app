@@ -2456,7 +2456,7 @@ a:focus-visible {
 }
 
 .nutrition-view-toggle {
-  width: min(280px, 100%);
+  width: min(360px, 100%);
 }
 
 .weekly-nutrition-dashboard,
@@ -2596,6 +2596,156 @@ a:focus-visible {
 .weekly-nutrition-day-list dd {
   margin: 0;
   font-weight: 800;
+}
+
+.monthly-nutrition-dashboard,
+.monthly-nutrition-section,
+.monthly-nutrition-header {
+  display: grid;
+  gap: 14px;
+}
+
+.monthly-nutrition-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.monthly-nutrition-card-grid,
+.monthly-pattern-grid,
+.monthly-weight-relation {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.monthly-nutrition-card-grid > div,
+.monthly-pattern-grid article,
+.monthly-nutrition-list,
+.monthly-weight-relation article {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.monthly-nutrition-card-grid span,
+.monthly-nutrition-card-grid small,
+.monthly-pattern-grid span,
+.monthly-pattern-grid small,
+.monthly-nutrition-list p,
+.monthly-weight-relation span,
+.monthly-empty-text {
+  color: var(--muted);
+}
+
+.monthly-nutrition-card-grid strong,
+.monthly-pattern-grid strong,
+.monthly-nutrition-list strong,
+.monthly-weight-relation strong {
+  color: var(--text-h);
+}
+
+.monthly-nutrition-card-grid strong {
+  font-size: 20px;
+}
+
+.monthly-week-chart {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  min-height: 210px;
+}
+
+.monthly-week-bar {
+  display: grid;
+  grid-template-rows: minmax(120px, 1fr) auto auto;
+  gap: 6px;
+  min-width: 0;
+  text-align: center;
+}
+
+.monthly-week-track {
+  display: flex;
+  align-items: end;
+  overflow: hidden;
+  min-height: 130px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.monthly-week-track span {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  background: linear-gradient(180deg, #22d3ee, #8b5cf6);
+}
+
+.monthly-week-bar.is-missing .monthly-week-track {
+  border-style: dashed;
+}
+
+.monthly-week-bar small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.monthly-daily-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.monthly-day-cell {
+  display: grid;
+  place-items: center;
+  min-height: 46px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-h);
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.monthly-day-cell small {
+  min-height: 14px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.monthly-day-cell.has-data {
+  border-color: rgba(34, 211, 238, 0.45);
+  background: rgba(34, 211, 238, 0.14);
+}
+
+.monthly-day-cell.is-near {
+  border-color: rgba(251, 191, 36, 0.55);
+  background: rgba(251, 191, 36, 0.14);
+}
+
+.monthly-day-cell.is-strong {
+  border-color: rgba(52, 211, 153, 0.55);
+  background: rgba(52, 211, 153, 0.16);
+}
+
+.monthly-day-cell.is-empty,
+.monthly-day-cell.is-future {
+  color: var(--muted);
+  border-style: dashed;
+}
+
+.monthly-weight-relation p,
+.monthly-empty-text,
+.monthly-nutrition-list p {
+  margin: 0;
+}
+
+.monthly-weight-relation p {
+  grid-column: 1 / -1;
+  color: var(--muted);
 }
 
 .nutrition-dashboard {
@@ -3466,6 +3616,9 @@ a:focus-visible {
   .meal-copy-form,
   .nutrition-goal-current-grid,
   .nutrition-goal-suggestion-grid,
+  .monthly-nutrition-card-grid,
+  .monthly-pattern-grid,
+  .monthly-weight-relation,
   .weekly-nutrition-card-grid,
   .weekly-nutrition-insight-grid,
   .weekly-nutrition-day-list article,
@@ -3486,10 +3639,20 @@ a:focus-visible {
     gap: 5px;
   }
 
+  .monthly-week-chart,
+  .monthly-daily-grid {
+    grid-template-columns: repeat(4, minmax(40px, 1fr));
+  }
+
   .weekly-nutrition-bar {
     grid-template-rows: 100px auto auto;
   }
 
+  .monthly-week-bar {
+    grid-template-rows: 100px auto auto;
+  }
+
+  .monthly-nutrition-nav button,
   .weekly-nutrition-nav button {
     width: 100%;
   }

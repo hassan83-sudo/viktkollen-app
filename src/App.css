@@ -2482,6 +2482,137 @@ a:focus-visible {
   font-size: 18px;
 }
 
+.weekly-meal-planner {
+  gap: 16px;
+}
+
+.meal-planner-week-nav,
+.meal-planner-inline-actions,
+.shopping-list-manual-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+}
+
+.meal-planner-week-nav strong {
+  color: var(--text-h);
+}
+
+.meal-planner-summary-grid,
+.meal-planner-day-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.meal-planner-summary-grid > div,
+.meal-planner-day-stats > div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.28);
+}
+
+.meal-planner-summary-grid span,
+.meal-planner-day-stats dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.meal-planner-summary-grid strong,
+.meal-planner-day-stats dd {
+  display: block;
+  margin: 4px 0 0;
+  color: var(--text-h);
+  font-weight: 850;
+}
+
+.meal-planner-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.8fr);
+  gap: 14px;
+}
+
+.meal-planner-days,
+.meal-planner-sidebar {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.meal-planner-day,
+.planned-meal-card,
+.meal-planner-template-list article,
+.shopping-list-category li {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(2, 6, 23, 0.25);
+}
+
+.meal-planner-day-heading,
+.planned-meal-heading,
+.shopping-list-category li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.planned-meal-heading h5,
+.meal-planner-day h4,
+.shopping-list-category h4 {
+  margin: 0;
+  color: var(--text-h);
+}
+
+.planned-meal-card p,
+.planned-meal-card small,
+.meal-planner-day-heading span,
+.meal-planner-template-list span {
+  margin: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.meal-planner-form,
+.meal-planner-template-list,
+.meal-planner-insights,
+.shopping-list-category ul {
+  display: grid;
+  gap: 10px;
+}
+
+.meal-planner-insights {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text);
+}
+
+.shopping-list-category ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shopping-list-category label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.shopping-list-category label span {
+  overflow-wrap: anywhere;
+}
+
 .meal-template-favorite-toggle {
   align-self: center;
   margin: 0;
@@ -4183,6 +4314,24 @@ a:focus-visible {
 
   .dietary-diet-type-control,
   .meal-template-filter-toggle {
+    width: 100%;
+  }
+
+  .meal-planner-layout,
+  .meal-planner-summary-grid,
+  .meal-planner-day-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .meal-planner-week-nav,
+  .meal-planner-inline-actions,
+  .shopping-list-manual-form {
+    align-items: stretch;
+  }
+
+  .meal-planner-week-nav button,
+  .meal-planner-inline-actions button,
+  .shopping-list-manual-form button {
     width: 100%;
   }
 

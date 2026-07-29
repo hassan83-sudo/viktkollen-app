@@ -36,6 +36,7 @@ import MealReviewPanel from './nutritionDataQuality/MealReviewPanel.jsx'
 import NutritionDashboard from './NutritionDashboard.jsx'
 import PhotoAnalysis from './PhotoAnalysis.jsx'
 import WeeklyNutritionDashboard from './WeeklyNutritionDashboard.jsx'
+import WeeklyMealPlanner from './WeeklyMealPlanner.jsx'
 import {
   createMealEditDraft,
   createMealTemplateFromMeal,
@@ -595,6 +596,9 @@ function MealLogger({
         <button aria-pressed={nutritionViewMode === 'month'} className={nutritionViewMode === 'month' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('month')}>
           MÃ¥nad
         </button>
+        <button aria-pressed={nutritionViewMode === 'planner'} className={nutritionViewMode === 'planner' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('planner')}>
+          Planera
+        </button>
       </div>
 
       {nutritionViewMode === 'day' ? (
@@ -610,13 +614,21 @@ function MealLogger({
           nutritionGoals={normalizedGoals}
           onDateChange={changeSelectedDate}
         />
-      ) : (
+      ) : nutritionViewMode === 'month' ? (
         <MonthlyNutritionDashboard
           date={selectedMealDate}
           meals={normalizedMeals}
           nutritionGoals={normalizedGoals}
           weights={weights}
           onDateChange={changeSelectedDate}
+        />
+      ) : (
+        <WeeklyMealPlanner
+          dietaryPreferences={dietaryPreferences}
+          meals={normalizedMeals}
+          nutritionGoals={normalizedGoals}
+          templates={mealTemplates}
+          onMealsChange={onMealsChange}
         />
       )}
 

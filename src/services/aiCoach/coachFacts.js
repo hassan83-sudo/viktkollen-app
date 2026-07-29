@@ -13,11 +13,19 @@ import {
   calculateDailyNutritionSummary,
   buildMonthlyNutritionReport,
   buildNutritionActionPlan,
+  buildPlannedWeekSummary,
+  buildMealPlanInsights,
+  buildMealPlanSuggestions,
   buildWeeklyNutritionReport,
+  getMealPlanWeek,
+  getMealPlanWeekStart,
+  getShoppingList,
   normalizeDietaryPreferences,
   normalizeNutritionGoals,
+  readMealPlans,
   readMealTemplates,
   readDietaryPreferences,
+  readShoppingLists,
 } from '../nutrition/nutritionEngine.js'
 import {
   getLastAssistantMessage,
@@ -335,6 +343,11 @@ export function buildAiCoachFacts(context = {}) {
   const nutritionGoals = normalizeNutritionGoals(context.nutritionGoals)
   const dietaryPreferences = normalizeDietaryPreferences(context.dietaryPreferences || readDietaryPreferences())
   const mealTemplates = Array.isArray(context.mealTemplates) ? context.mealTemplates : readMealTemplates()
+  const mealPlans = context.mealPlans || readMealPlans()
+  const shoppingLists = context.shoppingLists || readShoppingLists()
+  const currentPlanWeek = getMealPlanWeek(mealPlans, getMealPlanWeekStart())
+  const plannedWeekSummary = buildPlannedWeekSummary(currentPlanWeek, nutritionGoals)
+  const currentShoppingList = getShoppingList(shoppingLists, currentPlanWeek.weekStart)
   const proteinGoal = getNumericGoal(nutritionGoals, 'protein')
   const todayNutrition = calculateDailyNutritionSummary(
     allMealsForNutrition,
@@ -410,6 +423,13 @@ export function buildAiCoachFacts(context = {}) {
     monthlyNutritionReport,
     mealTemplates,
     nutritionActionPlan,
+    mealPlanInsights: buildMealPlanInsights(currentPlanWeek, nutritionGoals),
+    mealPlanSuggestions: buildMealPlanSuggestions({
+      dietaryPreferences,
+      goals: nutritionGoals,
+      templates: mealTemplates,
+      week: currentPlanWeek,
+    }),
     proteinDistributionPlan: buildProteinDistributionPlan(nutritionGoals.protein, allMealsForNutrition, { date: getTodayDateString() }),
     proteinGoal: proteinGoal ?? null,
     proteinGoalLabel: proteinGoal
@@ -422,6 +442,8 @@ export function buildAiCoachFacts(context = {}) {
     recentFoods: getFoodTermsFromMeals(context.meals),
     recentMeals: getRecentMeals(context.meals?.loggedMealsToday || context.meals || []),
     sleepHours: parseNumber(todayCheckin.sleep ?? todayCheckin.sleepHours),
+    plannedWeek: currentPlanWeek,
+    plannedWeekSummary,
     startWeight: lossFacts.startWeight ?? startWeight,
     steps: Number.isFinite(Number(todayCheckin.steps)) ? Number(todayCheckin.steps) : null,
     todayCheckin,
@@ -430,6 +452,7 @@ export function buildAiCoachFacts(context = {}) {
     todayMeals,
     todayNutrition,
     todayProtein,
+    shoppingList: currentShoppingList,
     suggestedCalorieGoal: calculateSuggestedCalorieGoal(profile, { weights }),
     suggestedProteinGoal: calculateSuggestedProteinGoal(profile, { weights }),
     training: todayCheckin.workout || todayCheckin.training || '',

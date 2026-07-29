@@ -16,6 +16,7 @@ export const intentOrder = [
   'meal_memory',
   'nutrition_quality',
   'dietary_preferences',
+  'meal_planner',
   'nutrition_recommendation',
   'monthly_nutrition',
   'weekly_nutrition',
@@ -701,6 +702,44 @@ function isDietaryPreferencesQuestion(normalized) {
   ])
 }
 
+function isMealPlannerQuestion(normalized) {
+  return hasAnyTerm(normalized, [
+    'vad har jag planerat denna vecka',
+    'planerat denna vecka',
+    'veckoplan',
+    'veckoplanering',
+    'planerade måltider',
+    'planerat protein',
+    'protein har jag planerat',
+    'vilka dagar saknar planerade måltider',
+    'når planen mitt proteinmål',
+    'vilka måltider kan jag lägga till',
+    'vilka måltidsmallar passar planen',
+    'vad finns på inköpslistan',
+    'inköpslistan',
+    'vilka varor är inte markerade',
+    'läggs planerade måltider till i min historik',
+    'hur registrerar jag en planerad måltid',
+  ], [
+    'vad har jag planerat denna vecka',
+    'planerat denna vecka',
+    'veckoplan',
+    'veckoplanering',
+    'planerade maltider',
+    'planerat protein',
+    'protein har jag planerat',
+    'vilka dagar saknar planerade maltider',
+    'nar planen mitt proteinmal',
+    'vilka maltider kan jag lagga till',
+    'vilka maltidsmallar passar planen',
+    'vad finns pa inkopslistan',
+    'inkopslistan',
+    'vilka varor ar inte markerade',
+    'laggs planerade maltider till i min historik',
+    'hur registrerar jag en planerad maltid',
+  ])
+}
+
 function isFocusQuestion(normalized) {
   return hasAnyTerm(normalized, ['vad bör jag fokusera på idag', 'vad ska jag fokusera på idag', 'fokus idag'], ['vad bor jag fokusera pa idag', 'vad ska jag fokusera pa idag', 'fokus idag'])
 }
@@ -794,6 +833,7 @@ export function identifyAiCoachIntents({ message, chatHistory = [] }) {
   if (asksMealMemory && !asksCalories) addUnique(intents, 'meal_memory')
   if (isNutritionQualityQuestion(normalized)) addUnique(intents, 'nutrition_quality')
   if (isDietaryPreferencesQuestion(normalized)) addUnique(intents, 'dietary_preferences')
+  if (isMealPlannerQuestion(normalized)) addUnique(intents, 'meal_planner')
   if (isNutritionRecommendationQuestion(normalized)) addUnique(intents, 'nutrition_recommendation')
   if (isMonthlyNutritionQuestion(normalized)) addUnique(intents, 'monthly_nutrition')
   if (isWeeklyNutritionQuestion(normalized) && !intents.includes('monthly_nutrition')) addUnique(intents, 'weekly_nutrition')

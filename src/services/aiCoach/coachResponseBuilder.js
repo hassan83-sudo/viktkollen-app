@@ -20,6 +20,7 @@ import {
   filterTemplatesByDietaryPreferences,
   getDietaryPreferencesSummary,
   hasDietaryPreferences,
+  categorizeShoppingListItems,
 } from '../nutrition/nutritionEngine.js'
 import { getIntentSourceText } from './coachConversation.js'
 import { buildAiCoachFacts, hasRecentAdvice } from './coachFacts.js'
@@ -507,6 +508,79 @@ function makeDietaryPreferencesReply(facts, message) {
   return `Jag filtrerar matförslag efter dina sparade matpreferenser när de finns.${suggestionText}${caution}`
 }
 
+function makeMealPlannerReply(facts, message) {
+  const normalized = normalizeAiCoachText(message)
+  const summary = facts.plannedWeekSummary
+  const week = facts.plannedWeek
+  const shoppingList = facts.shoppingList
+  const plannedDays = summary?.plannedDayCount || 0
+  const mealCount = summary?.mealCount || 0
+  const actualNote = 'Planerade måltider räknas inte som faktiskt intag förrän du registrerar dem.'
+
+  if (includesAny(normalized.plain, ['inkopslistan', 'inköpslistan', 'varor'])) {
+    const items = shoppingList?.items || []
+    const unchecked = items.filter((item) => !item.checked)
+
+    if (includesAny(normalized.plain, ['inte markerade', 'omarkerade'])) {
+      return unchecked.length
+        ? `Inte markerade varor: ${unchecked.slice(0, 6).map((item) => item.name).join(', ')}.`
+        : 'Alla varor på inköpslistan verkar markerade just nu.'
+    }
+
+    if (!items.length) return 'Jag hittar ingen inköpslista för aktuell planerad vecka ännu.'
+
+    const groups = categorizeShoppingListItems(items)
+    const firstItems = groups.flatMap((group) => group.items).slice(0, 6).map((item) => item.name)
+    return `På inköpslistan finns bland annat: ${firstItems.join(', ')}.`
+  }
+
+  if (includesAny(normalized.plain, ['historik', 'faktiskt intag', 'laggs planerade', 'läggs planerade'])) {
+    return `${actualNote} Använd knappen "Registrera som måltid" på den planerade måltiden när du faktiskt har ätit den.`
+  }
+
+  if (includesAny(normalized.plain, ['hur registrerar'])) {
+    return 'Öppna Planera i Måltidscenter och klicka på "Registrera som måltid" på kortet. Då skapas en ny faktisk måltid med egen meal-id; planen kan behållas.'
+  }
+
+  if (includesAny(normalized.plain, ['saknar planerade', 'tomma dagar', 'vilka dagar'])) {
+    const emptyDays = (summary?.days || []).filter((day) => day.mealCount === 0).map((day) => day.date)
+
+    return emptyDays.length
+      ? `Dagar utan planerade måltider: ${emptyDays.join(', ')}.`
+      : 'Alla dagar i veckan har minst en planerad måltid.'
+  }
+
+  if (includesAny(normalized.plain, ['proteinmal', 'proteinmål', 'nar planen', 'når planen'])) {
+    return summary
+      ? `Proteinplanen når målet under ${summary.proteinGoalDays} av ${plannedDays} planerade dagar. ${actualNote}`
+      : `Jag hittar ingen planerad vecka att jämföra med proteinmålet. ${actualNote}`
+  }
+
+  if (includesAny(normalized.plain, ['protein'])) {
+    const average = Number.isFinite(summary?.averageProtein) ? Math.round(summary.averageProtein) : null
+
+    return average
+      ? `Du har planerat i snitt cirka ${average} g protein per planerad dag. ${actualNote}`
+      : `Jag hittar ingen tydlig planerad proteinmängd ännu. ${actualNote}`
+  }
+
+  if (includesAny(normalized.plain, ['lagga till', 'lägga till', 'maltidsmallar', 'måltidsmallar', 'forslag', 'förslag'])) {
+    const suggestions = facts.mealPlanSuggestions || []
+
+    return suggestions.length
+      ? `${suggestions.slice(0, 3).join(' ')} ${actualNote}`
+      : `Jag hittar inget tydligt planeringsförslag just nu. ${actualNote}`
+  }
+
+  if (!mealCount) {
+    return `Jag hittar inga planerade måltider för aktuell vecka ännu. ${actualNote}`
+  }
+
+  const firstPlanned = Object.values(week?.days || {}).flat().slice(0, 3).map((meal) => meal.title)
+
+  return `Du har planerat ${mealCount} måltider för ${plannedDays} dagar. Exempel: ${firstPlanned.join(', ')}. Proteinmålet nås under ${summary.proteinGoalDays} planerade dagar. ${actualNote}`
+}
+
 function makeProteinReply(facts, message) {
   const explicitWeight = extractWeightFromText(message)
   const normalized = normalizeAiCoachText(message)
@@ -990,6 +1064,7 @@ function buildReplyForIntent(intent, facts, message) {
     loss: makeLossReply,
     meal: makeMealReply,
     meal_memory: makeMealMemoryReply,
+    meal_planner: makeMealPlannerReply,
     motivation: makeMotivationReply,
     monthly_nutrition: makeMonthlyNutritionReply,
     nutrition_quality: makeNutritionQualityReply,

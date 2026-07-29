@@ -14,7 +14,10 @@ import {
   buildMonthlyNutritionReport,
   buildNutritionActionPlan,
   buildWeeklyNutritionReport,
+  normalizeDietaryPreferences,
   normalizeNutritionGoals,
+  readMealTemplates,
+  readDietaryPreferences,
 } from '../nutrition/nutritionEngine.js'
 import {
   getLastAssistantMessage,
@@ -330,6 +333,8 @@ export function buildAiCoachFacts(context = {}) {
   )
   const todayCheckin = context.todayCheckin || context.checkIn || {}
   const nutritionGoals = normalizeNutritionGoals(context.nutritionGoals)
+  const dietaryPreferences = normalizeDietaryPreferences(context.dietaryPreferences || readDietaryPreferences())
+  const mealTemplates = Array.isArray(context.mealTemplates) ? context.mealTemplates : readMealTemplates()
   const proteinGoal = getNumericGoal(nutritionGoals, 'protein')
   const todayNutrition = calculateDailyNutritionSummary(
     allMealsForNutrition,
@@ -362,8 +367,10 @@ export function buildAiCoachFacts(context = {}) {
   })
   const nutritionActionPlan = buildNutritionActionPlan({
     date: getTodayDateString(),
+    dietaryPreferences,
     meals: allMealsForNutrition,
     nutritionGoals,
+    templates: mealTemplates,
     weights,
   })
   const todayProtein = todayNutrition.totals.protein > 0
@@ -388,6 +395,7 @@ export function buildAiCoachFacts(context = {}) {
     caloriesGoalSource: nutritionGoals.caloriesGoalSource || '',
     change30,
     change7,
+    dietaryPreferences,
     energy: Number.isFinite(Number(todayCheckin.energy)) ? Number(todayCheckin.energy) : null,
     gender: profile.gender || profile.sex || '',
     goalRemaining: unifiedWeight.goalRemaining,
@@ -400,6 +408,7 @@ export function buildAiCoachFacts(context = {}) {
     mood: todayCheckin.mood || '',
     poorSleepDays: getPoorSleepDays(context),
     monthlyNutritionReport,
+    mealTemplates,
     nutritionActionPlan,
     proteinDistributionPlan: buildProteinDistributionPlan(nutritionGoals.protein, allMealsForNutrition, { date: getTodayDateString() }),
     proteinGoal: proteinGoal ?? null,

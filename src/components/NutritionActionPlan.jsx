@@ -12,6 +12,7 @@ function flattenPlan(plan) {
 
 function NutritionActionPlan({
   date,
+  dietaryPreferences,
   meals,
   nutritionGoals,
   onAddTemplate,
@@ -22,8 +23,8 @@ function NutritionActionPlan({
   const [dismissedIds, setDismissedIds] = useState([])
   const [status, setStatus] = useState('')
   const plan = useMemo(
-    () => buildNutritionActionPlan({ date, meals, nutritionGoals, templates, weights }),
-    [date, meals, nutritionGoals, templates, weights],
+    () => buildNutritionActionPlan({ date, dietaryPreferences, meals, nutritionGoals, templates, weights }),
+    [date, dietaryPreferences, meals, nutritionGoals, templates, weights],
   )
   const recommendations = flattenPlan(plan).filter((item) => !dismissedIds.includes(item.id)).slice(0, 8)
 

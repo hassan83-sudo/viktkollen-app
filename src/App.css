@@ -2341,6 +2341,36 @@ a:focus-visible {
   font-weight: 750;
 }
 
+.dietary-preferences-form {
+  display: grid;
+  gap: 14px;
+}
+
+.dietary-preferences-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+}
+
+.dietary-preferences-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.meal-template-filter-toggle {
+  flex-wrap: wrap;
+}
+
+.meal-template-filter-toggle button {
+  font-size: 12px;
+  min-height: 34px;
+  padding: 0 10px;
+}
+
 .meal-template-preview {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

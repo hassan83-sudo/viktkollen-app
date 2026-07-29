@@ -18,6 +18,7 @@ import {
   exportNutritionData,
 } from '../services/nutritionService.js'
 import DailyNutritionSummary from './nutrition/DailyNutritionSummary.jsx'
+import DietaryPreferencesPanel from './nutrition/DietaryPreferencesPanel.jsx'
 import FavoriteMeals from './nutrition/FavoriteMeals.jsx'
 import MealEditor from './nutrition/MealEditor.jsx'
 import MealHistory from './nutrition/MealHistory.jsx'
@@ -45,8 +46,11 @@ import {
   createMealFromTemplate,
   createUpdatedNutritionGoals,
   createUpdatedMealRecord,
+  clearDietaryPreferences,
   readMealTemplates,
+  readDietaryPreferences,
   resetMealNutritionOverride,
+  writeDietaryPreferences,
   validateMealEditDraft,
   writeMealTemplates,
 } from '../services/nutrition/nutritionEngine.js'
@@ -160,6 +164,7 @@ function MealLogger({
   const [goalErrors, setGoalErrors] = useState({})
   const [importStatus, setImportStatus] = useState('')
   const [lastMealEdit, setLastMealEdit] = useState(null)
+  const [dietaryPreferences, setDietaryPreferences] = useState(() => readDietaryPreferences())
   const [mealTemplateStatus, setMealTemplateStatus] = useState('')
   const [mealTemplates, setMealTemplates] = useState(() => readMealTemplates())
   const [nutritionViewMode, setNutritionViewMode] = useState('day')
@@ -334,6 +339,20 @@ function MealLogger({
 
   function changeMealTemplates(nextTemplates) {
     setMealTemplates(writeMealTemplates(nextTemplates))
+  }
+
+  function saveDietaryPreferences(nextPreferences) {
+    const saved = writeDietaryPreferences(nextPreferences)
+
+    setDietaryPreferences(saved)
+    return saved
+  }
+
+  function resetDietaryPreferences() {
+    const cleared = clearDietaryPreferences()
+
+    setDietaryPreferences(cleared)
+    return cleared
   }
 
   function saveMealTemplate(meal) {
@@ -603,11 +622,18 @@ function MealLogger({
 
       <NutritionActionPlan
         date={selectedMealDate}
+        dietaryPreferences={dietaryPreferences}
         meals={normalizedMeals}
         nutritionGoals={normalizedGoals}
         templates={mealTemplates}
         weights={weights}
         onAddTemplate={addTemplateFromRecommendation}
+      />
+
+      <DietaryPreferencesPanel
+        dietaryPreferences={dietaryPreferences}
+        onClear={resetDietaryPreferences}
+        onSave={saveDietaryPreferences}
       />
 
       <MealReviewPanel
@@ -616,6 +642,7 @@ function MealLogger({
       />
 
       <MealQuickAdd
+        dietaryPreferences={dietaryPreferences}
         meals={normalizedMeals}
         selectedMealDate={selectedMealDate}
         templates={mealTemplates}

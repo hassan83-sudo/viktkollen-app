@@ -1,4 +1,9 @@
 import { calculateDailyNutritionSummary } from './dailyNutritionSummary.js'
+import {
+  filterTemplatesByDietaryPreferences,
+  normalizeDietaryPreferences,
+  rankMealSuggestionsByPreferences,
+} from './dietaryPreferences.js'
 import { getMealTemplatePreview, normalizeMealTemplates } from './mealTemplates.js'
 import { buildMonthlyNutritionReport } from './monthlyNutritionSummary.js'
 import { formatApproxCalories, formatApproxGrams } from './nutritionCalculator.js'
@@ -13,7 +18,7 @@ const suggestionLibrary = [
     estimatedProteinRange: 'cirka 25-35 g protein',
     name: 'Ägg och kvarg',
     suitableMealTypes: ['frukost', 'mellanmål', 'kvällsmål'],
-    tags: ['protein'],
+    tags: ['protein', 'vegetarian', 'egg', 'dairy', 'lactose'],
   },
   {
     description: 'Kyckling med potatis, ris eller grönsaker.',
@@ -21,7 +26,7 @@ const suggestionLibrary = [
     estimatedProteinRange: 'cirka 30-45 g protein',
     name: 'Kycklingmåltid',
     suitableMealTypes: ['lunch', 'middag'],
-    tags: ['protein', 'måltid'],
+    tags: ['protein', 'måltid', 'kyckling', 'halal-compatible'],
   },
   {
     description: 'Keso eller yoghurt med frukt.',
@@ -29,7 +34,7 @@ const suggestionLibrary = [
     estimatedProteinRange: 'cirka 18-30 g protein',
     name: 'Keso och frukt',
     suitableMealTypes: ['mellanmål', 'kvällsmål'],
-    tags: ['protein', 'snabb'],
+    tags: ['protein', 'snabb', 'vegetarian', 'dairy', 'lactose'],
   },
   {
     description: 'Fisk med potatis eller ris och något grönt.',
@@ -37,7 +42,7 @@ const suggestionLibrary = [
     estimatedProteinRange: 'cirka 30-45 g protein',
     name: 'Fiskmåltid',
     suitableMealTypes: ['lunch', 'middag'],
-    tags: ['protein', 'måltid'],
+    tags: ['protein', 'måltid', 'fisk', 'pescatarian', 'halal-compatible'],
   },
   {
     description: 'Bönor eller tofu med ris och grönsaker.',
@@ -45,7 +50,15 @@ const suggestionLibrary = [
     estimatedProteinRange: 'cirka 20-35 g protein',
     name: 'Bönor eller tofu',
     suitableMealTypes: ['lunch', 'middag'],
-    tags: ['protein', 'vegetariskt'],
+    tags: ['protein', 'vegetariskt', 'vegetarian', 'vegan', 'gluten-free', 'halal-compatible'],
+  },
+  {
+    description: 'Linsgryta med ris och grönsaker.',
+    estimatedCaloriesRange: 'cirka 450-650 kcal',
+    estimatedProteinRange: 'cirka 20-35 g protein',
+    name: 'Linsgryta med ris',
+    suitableMealTypes: ['lunch', 'middag'],
+    tags: ['protein', 'vegetariskt', 'vegetarian', 'vegan', 'gluten-free', 'halal-compatible'],
   },
 ]
 
@@ -146,8 +159,8 @@ export function prioritizeNutritionActions(recommendations = [], options = {}) {
     .slice(0, limit)
 }
 
-function findTemplateSuggestions(templates = [], remainingProtein = 0) {
-  return normalizeMealTemplates(templates)
+function findTemplateSuggestions(templates = [], remainingProtein = 0, dietaryPreferences = {}) {
+  return normalizeMealTemplates(filterTemplatesByDietaryPreferences(templates, dietaryPreferences))
     .map((template) => {
       const preview = getMealTemplatePreview(template)
       const protein = safeNumber(preview.totals.protein)
@@ -160,8 +173,14 @@ function findTemplateSuggestions(templates = [], remainingProtein = 0) {
     .slice(0, 3)
 }
 
-export function buildMealSuggestions({ mealType = '', remainingProtein = 0, templates = [] } = {}) {
-  const templateSuggestions = findTemplateSuggestions(templates, remainingProtein).map((entry) => ({
+export function buildMealSuggestions({
+  dietaryPreferences = {},
+  mealType = '',
+  remainingProtein = 0,
+  templates = [],
+} = {}) {
+  const normalizedPreferences = normalizeDietaryPreferences(dietaryPreferences)
+  const templateSuggestions = findTemplateSuggestions(templates, remainingProtein, normalizedPreferences).map((entry) => ({
     description: `Din mall "${entry.template.name}" ligger nära det protein som återstår idag.`,
     estimatedCaloriesRange: formatApproxCalories(entry.preview.totals.calories),
     estimatedProteinRange: formatApproxGrams(entry.preview.totals.protein),
@@ -174,7 +193,7 @@ export function buildMealSuggestions({ mealType = '', remainingProtein = 0, temp
   if (templateSuggestions.length) return templateSuggestions.slice(0, 3)
 
   const normalizedType = String(mealType || '').toLocaleLowerCase('sv-SE')
-  const library = suggestionLibrary
+  const library = rankMealSuggestionsByPreferences(suggestionLibrary, normalizedPreferences)
     .filter((suggestion) => !normalizedType || suggestion.suitableMealTypes.includes(normalizedType) || suggestion.tags.includes('protein'))
     .slice(0, 3)
 
@@ -194,6 +213,7 @@ export function buildRecommendationExplanation(recommendation) {
 
 export function buildDailyNutritionRecommendations({
   date,
+  dietaryPreferences = {},
   meals = [],
   nutritionGoals = {},
   templates = [],
@@ -266,7 +286,12 @@ export function buildDailyNutritionRecommendations({
     } else if (proteinProgress.remaining > 0) {
       const remaining = Math.max(0, round(proteinProgress.remaining))
       const mealType = new Date(now).getHours() >= 17 ? 'kvällsmål' : 'mellanmål'
-      const suggestions = buildMealSuggestions({ mealType, remainingProtein: remaining, templates })
+      const suggestions = buildMealSuggestions({
+        dietaryPreferences,
+        mealType,
+        remainingProtein: remaining,
+        templates,
+      })
       const topSuggestion = suggestions[0]
 
       recommendations.push(createRecommendation({
@@ -336,10 +361,17 @@ export function buildDailyNutritionRecommendations({
   return prioritizeNutritionActions(recommendations, { limit: defaultLimit.day })
 }
 
-export function buildWeeklyNutritionRecommendations({ date, meals = [], nutritionGoals = {}, templates = [] } = {}) {
+export function buildWeeklyNutritionRecommendations({
+  date,
+  dietaryPreferences = {},
+  meals = [],
+  nutritionGoals = {},
+  templates = [],
+} = {}) {
   const report = buildWeeklyNutritionReport({ date, meals, nutritionGoals })
   const summary = report.summary
   const recommendations = []
+  const compatibleTemplates = filterTemplatesByDietaryPreferences(templates, dietaryPreferences)
 
   if (summary.quality.reviewMealCount > 0) {
     recommendations.push(createRecommendation({
@@ -393,7 +425,7 @@ export function buildWeeklyNutritionRecommendations({ date, meals = [], nutritio
     }))
   }
 
-  if (summary.mealCount >= 6 && normalizeMealTemplates(templates).length === 0) {
+  if (summary.mealCount >= 6 && normalizeMealTemplates(compatibleTemplates).length === 0) {
     recommendations.push(createRecommendation({
       action: 'Skapa en mall för en återkommande lunch eller frukost.',
       category: 'template',
@@ -409,10 +441,18 @@ export function buildWeeklyNutritionRecommendations({ date, meals = [], nutritio
   return prioritizeNutritionActions(recommendations, { limit: defaultLimit.week })
 }
 
-export function buildMonthlyNutritionRecommendations({ date, meals = [], nutritionGoals = {}, templates = [], weights = [] } = {}) {
+export function buildMonthlyNutritionRecommendations({
+  date,
+  dietaryPreferences = {},
+  meals = [],
+  nutritionGoals = {},
+  templates = [],
+  weights = [],
+} = {}) {
   const report = buildMonthlyNutritionReport({ date, meals, nutritionGoals, weights })
   const summary = report.summary
   const recommendations = []
+  const compatibleTemplates = filterTemplatesByDietaryPreferences(templates, dietaryPreferences)
 
   if (summary.quality.reviewMealCount > 0) {
     recommendations.push(createRecommendation({
@@ -458,7 +498,7 @@ export function buildMonthlyNutritionRecommendations({ date, meals = [], nutriti
     }
   }
 
-  if (summary.mealCount >= 8 && normalizeMealTemplates(templates).length > 0) {
+  if (summary.mealCount >= 8 && normalizeMealTemplates(compatibleTemplates).length > 0) {
     recommendations.push(createRecommendation({
       action: 'Fortsätt använda mallar för återkommande måltider.',
       category: 'template',

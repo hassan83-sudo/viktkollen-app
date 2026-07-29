@@ -119,6 +119,25 @@ export {
   buildMealQualityReviewModel,
 } from './mealQuality.js'
 export {
+  clearDietaryPreferences,
+  createUpdatedDietaryPreferences,
+  dietaryPreferencesStorageKey,
+  dietTypes,
+  evaluateMealTemplateCompatibility,
+  explainSuggestionCompatibility,
+  filterMealSuggestionsByPreferences,
+  filterTemplatesByDietaryPreferences,
+  getDietaryPreferencesSummary,
+  hasDietaryPreferences,
+  isMealSuggestionCompatible,
+  normalizeDietaryPreferences,
+  rankMealSuggestionsByPreferences,
+  readDietaryPreferences,
+  updateDietaryPreferences,
+  validateDietaryPreferences,
+  writeDietaryPreferences,
+} from './dietaryPreferences.js'
+export {
   buildDailyNutritionRecommendations,
   buildMealSuggestions,
   buildMonthlyNutritionRecommendations,

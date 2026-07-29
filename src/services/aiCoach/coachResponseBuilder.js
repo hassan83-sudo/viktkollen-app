@@ -15,6 +15,11 @@ import {
   formatApproxCalories,
   formatApproxGrams,
   buildRecommendationExplanation,
+  buildMealSuggestions,
+  evaluateMealTemplateCompatibility,
+  filterTemplatesByDietaryPreferences,
+  getDietaryPreferencesSummary,
+  hasDietaryPreferences,
 } from '../nutrition/nutritionEngine.js'
 import { getIntentSourceText } from './coachConversation.js'
 import { buildAiCoachFacts, hasRecentAdvice } from './coachFacts.js'
@@ -421,6 +426,85 @@ function makeNutritionRecommendationReply(facts, message) {
   return recommendations
     .map((recommendation) => `${recommendation.title}: ${recommendation.action}`)
     .join(' ')
+}
+
+function makeDietaryPreferencesReply(facts, message) {
+  const normalized = normalizeAiCoachText(message)
+  const basePreferences = facts.dietaryPreferences || {}
+  const hasPreferences = hasDietaryPreferences(basePreferences)
+  const asksAllergy = includesAny(normalized.plain, ['allergi', 'allergisk'])
+
+  if (includesAny(normalized.plain, ['andra', 'ändra', 'matpreferenser', 'kostpreferenser']) && !includesAny(normalized.plain, ['forslag', 'förslag', 'rekommendation'])) {
+    const summary = getDietaryPreferencesSummary(basePreferences)
+
+    return hasPreferences
+      ? `Dina sparade matpreferenser är: ${summary}. Du kan ändra dem i Matpreferenser i Måltidscenter.`
+      : 'Du har inte angett några särskilda matpreferenser ännu. Du kan lägga till dem i Matpreferenser i Måltidscenter.'
+  }
+
+  if (includesAny(normalized.plain, ['undvika', 'undviker', 'matvaror'])) {
+    const avoided = basePreferences.avoidedFoods || []
+
+    return avoided.length
+      ? `Du har sparat att du vill undvika: ${avoided.join(', ')}. Jag filtrerar bort förslag som tydligt innehåller dem.`
+      : 'Du har inte sparat några livsmedel att undvika ännu.'
+  }
+
+  if (includesAny(normalized.plain, ['maltidsmall', 'måltidsmall', 'favoritmall', 'min mall'])) {
+    const compatible = filterTemplatesByDietaryPreferences(facts.mealTemplates || [], basePreferences)
+
+    if (includesAny(normalized.plain, ['varfor', 'varför', 'foreslar', 'föreslår'])) {
+      const template = facts.mealTemplates?.[0]
+      const evaluation = template ? evaluateMealTemplateCompatibility(template, basePreferences) : null
+
+      return evaluation
+        ? evaluation.explanation
+        : 'Jag hittar ingen sparad mall att jämföra med dina matpreferenser just nu.'
+    }
+
+    return compatible.length
+      ? `Jag hittar ${compatible.length.toLocaleString('sv-SE')} mallar som matchar dina matpreferenser. Exempel: ${compatible.slice(0, 3).map((template) => template.name).join(', ')}.`
+      : 'Jag hittar ingen sparad mall som tydligt matchar dina matpreferenser just nu.'
+  }
+
+  const forcedPreferences = {
+    ...basePreferences,
+    preferences: {
+      ...(basePreferences.preferences || {}),
+    },
+  }
+
+  if (includesAny(normalized.plain, ['vegansk', 'veganska', 'vegan'])) {
+    forcedPreferences.dietType = 'vegan'
+  } else if (includesAny(normalized.plain, ['vegetarisk', 'vegetariska'])) {
+    forcedPreferences.dietType = 'vegetarian'
+  }
+
+  if (includesAny(normalized.plain, ['utan laktos', 'laktosfritt'])) {
+    forcedPreferences.preferences.lactoseFree = true
+  }
+
+  if (includesAny(normalized.plain, ['utan gluten', 'glutenfritt'])) {
+    forcedPreferences.preferences.glutenFree = true
+  }
+
+  if (includesAny(normalized.plain, ['halal'])) {
+    forcedPreferences.preferences.halalPreferred = true
+  }
+
+  const suggestions = buildMealSuggestions({
+    dietaryPreferences: forcedPreferences,
+    remainingProtein: 25,
+    templates: facts.mealTemplates || [],
+  })
+  const suggestionText = suggestions.length
+    ? ` Exempel som passar: ${suggestions.slice(0, 3).map((suggestion) => suggestion.name).join(', ')}.`
+    : ' Jag hittar inget tydligt matchande förslag just nu.'
+  const caution = asksAllergy
+    ? ' Vid allergi behöver du alltid dubbelkolla innehåll och märkning själv.'
+    : ''
+
+  return `Jag filtrerar matförslag efter dina sparade matpreferenser när de finns.${suggestionText}${caution}`
 }
 
 function makeProteinReply(facts, message) {
@@ -896,6 +980,7 @@ function buildReplyForIntent(intent, facts, message) {
     checkin: makeCheckInReply,
     clarify: makeClarifyReply,
     craving: makeCravingReply,
+    dietary_preferences: makeDietaryPreferencesReply,
     food: makeFoodReply,
     focus: makeFocusReply,
     goal: makeGoalReply,

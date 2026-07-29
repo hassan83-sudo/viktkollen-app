@@ -5,8 +5,10 @@ import {
   createMealFromTemplate,
   createMealTemplate,
   filterMealTemplates,
+  filterTemplatesByDietaryPreferences,
   getMealTemplatePreview,
   getRecentUniqueMeals,
+  hasDietaryPreferences,
   markMealTemplateUsed,
   mealTemplateTypes,
   normalizeMealTemplates,
@@ -100,6 +102,7 @@ function RecentMealCard({ meal, onAddAgain, onCopy }) {
 }
 
 function MealQuickAdd({
+  dietaryPreferences,
   meals,
   onMealsChange,
   onTemplatesChange,
@@ -112,14 +115,21 @@ function MealQuickAdd({
   const [filters, setFilters] = useState({ search: '', type: 'Alla' })
   const [formMode, setFormMode] = useState('')
   const [submittingKey, setSubmittingKey] = useState('')
+  const [templateCompatibilityFilter, setTemplateCompatibilityFilter] = useState('all')
   const [templateDraft, setTemplateDraft] = useState(() => buildMealTemplateDraft())
   const [templateId, setTemplateId] = useState('')
   const [status, setStatus] = useState('')
 
   const normalizedTemplates = useMemo(() => normalizeMealTemplates(templates), [templates])
+  const templatesAfterCompatibilityFilter = useMemo(
+    () => templateCompatibilityFilter === 'matching'
+      ? filterTemplatesByDietaryPreferences(normalizedTemplates, dietaryPreferences)
+      : normalizedTemplates,
+    [dietaryPreferences, normalizedTemplates, templateCompatibilityFilter],
+  )
   const visibleTemplates = useMemo(
-    () => filterMealTemplates(normalizedTemplates, filters),
-    [filters, normalizedTemplates],
+    () => filterMealTemplates(templatesAfterCompatibilityFilter, filters),
+    [filters, templatesAfterCompatibilityFilter],
   )
   const recentMeals = useMemo(
     () => getRecentUniqueMeals(meals, { limit: 5, today: selectedMealDate }),
@@ -316,6 +326,25 @@ function MealQuickAdd({
 
       <div className="meal-template-section-heading">
         <h4>Sparade mallar</h4>
+        <div className="segmented-control meal-template-filter-toggle" aria-label="Filtrera mallar efter matpreferenser">
+          <button
+            aria-pressed={templateCompatibilityFilter === 'all'}
+            className={templateCompatibilityFilter === 'all' ? 'active' : ''}
+            type="button"
+            onClick={() => setTemplateCompatibilityFilter('all')}
+          >
+            Alla mallar
+          </button>
+          <button
+            aria-pressed={templateCompatibilityFilter === 'matching'}
+            className={templateCompatibilityFilter === 'matching' ? 'active' : ''}
+            disabled={!hasDietaryPreferences(dietaryPreferences)}
+            type="button"
+            onClick={() => setTemplateCompatibilityFilter('matching')}
+          >
+            Matchar mina matval
+          </button>
+        </div>
         <span>{visibleTemplates.length} mallar</span>
       </div>
       {visibleTemplates.length === 0 ? (

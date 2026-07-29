@@ -2871,6 +2871,62 @@ a:focus-visible {
   gap: 4px;
 }
 
+.nutrition-quality-summary,
+.meal-review-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.nutrition-quality-grid,
+.meal-review-list {
+  display: grid;
+  gap: 10px;
+}
+
+.nutrition-quality-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.nutrition-quality-grid article,
+.meal-review-list article {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.nutrition-quality-grid span,
+.meal-review-list p,
+.meal-review-list small,
+.meal-review-list li,
+.nutrition-dashboard-status li {
+  color: var(--muted);
+}
+
+.nutrition-quality-grid strong,
+.meal-review-list h4 {
+  color: var(--text-h);
+}
+
+.meal-review-filter {
+  width: min(720px, 100%);
+}
+
+.meal-review-list h4,
+.meal-review-list p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.meal-review-list ul,
+.nutrition-dashboard-status ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
 .nutrition-edit-status {
   display: flex;
   flex-wrap: wrap;
@@ -3616,6 +3672,7 @@ a:focus-visible {
   .meal-copy-form,
   .nutrition-goal-current-grid,
   .nutrition-goal-suggestion-grid,
+  .nutrition-quality-grid,
   .monthly-nutrition-card-grid,
   .monthly-pattern-grid,
   .monthly-weight-relation,
@@ -3653,6 +3710,7 @@ a:focus-visible {
   }
 
   .monthly-nutrition-nav button,
+  .meal-review-filter,
   .weekly-nutrition-nav button {
     width: 100%;
   }

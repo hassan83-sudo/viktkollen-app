@@ -341,7 +341,7 @@ describe('Monthly Nutrition Summary V1 service', () => {
   })
 
   it('uses no raw localStorage data in export', () => {
-    expect(Object.keys(buildMonthlyExportPayload(report()))).toEqual(['app', 'feature', 'month', 'reportVersion', 'summary'])
+    expect(Object.keys(buildMonthlyExportPayload(report()))).toEqual(['app', 'feature', 'month', 'quality', 'reportVersion', 'summary'])
   })
 
   it.each([

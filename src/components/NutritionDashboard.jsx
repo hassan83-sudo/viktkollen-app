@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import MealTimelineCard from './nutritionDashboard/MealTimelineCard.jsx'
+import NutritionQualitySummary from './nutritionDataQuality/NutritionQualitySummary.jsx'
 import NutritionComparisons from './nutritionDashboard/NutritionComparisons.jsx'
 import NutritionInsightsPanel from './nutritionDashboard/NutritionInsightsPanel.jsx'
 import NutritionProgress from './nutritionDashboard/NutritionProgress.jsx'
@@ -45,6 +46,7 @@ function NutritionDashboard({ date, meals, nutritionGoals }) {
       </div>
 
       <MealTimelineCard hasMeals={model.hasMeals} rows={model.timeline} />
+      <NutritionQualitySummary quality={model.quality} title="Dagens datakvalitet" />
       <NutritionInsightsPanel insights={model.insights} />
       <NutritionComparisons comparisons={model.comparisons} />
     </section>

@@ -10,6 +10,7 @@ import MonthlyPatterns from './monthlyNutrition/MonthlyPatterns.jsx'
 import MonthlySummaryCards from './monthlyNutrition/MonthlySummaryCards.jsx'
 import MonthlyWeeklyChart from './monthlyNutrition/MonthlyWeeklyChart.jsx'
 import MonthlyWeightRelation from './monthlyNutrition/MonthlyWeightRelation.jsx'
+import NutritionQualitySummary from './nutritionDataQuality/NutritionQualitySummary.jsx'
 
 function copyTextFallback(text) {
   if (typeof document === 'undefined') return false
@@ -105,6 +106,7 @@ function MonthlyNutritionDashboard({
       </div>
 
       <MonthlyWeeklyChart weeks={summary.weeklyBreakdown} />
+      <NutritionQualitySummary quality={summary.quality} title="Månadens datakvalitet" />
       <MonthlyDailyHeatmap days={summary.dailyBreakdown} />
       <MonthlyPatterns patterns={summary.patterns} />
       <MonthlyWeightRelation relation={summary.weightRelation} />

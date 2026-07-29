@@ -102,6 +102,22 @@ export {
   normalizeUnit,
   parseQuantityTokens,
 } from './nutritionUnits.js'
+export {
+  buildMealsNeedingReview,
+  buildNutritionConfidenceExplanation,
+  buildNutritionDataQualitySummary,
+  buildNutritionImprovementTips,
+  classifyNutritionConfidence,
+  describeNutritionDataQuality,
+  evaluateMealNutritionConfidence,
+  evaluateNutritionFieldConfidence,
+  getNutritionConfidenceLabel,
+  nutritionConfidenceFields,
+} from './nutritionConfidence.js'
+export {
+  buildMealQualityEntries,
+  buildMealQualityReviewModel,
+} from './mealQuality.js'
 
 import { analyzeMealText } from './mealAnalyzer.js'
 import { buildNutritionAdvice } from './nutritionAdvice.js'

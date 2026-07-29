@@ -1,4 +1,5 @@
 import { getEffectiveMealNutrition } from './mealCorrections.js'
+import { buildNutritionDataQualitySummary, buildMealsNeedingReview } from './nutritionConfidence.js'
 import {
   formatApproxCalories,
   formatApproxGrams,
@@ -85,8 +86,9 @@ function getLoggedNutrition(meal) {
   const calories = parseNumber(meal?.calories)
   const carbs = parseNumber(meal?.carbs ?? meal?.carbohydrates)
   const fat = parseNumber(meal?.fat)
+  const fiber = parseNumber(meal?.fiber)
 
-  if (!protein && !calories && !carbs && !fat) {
+  if (!protein && !calories && !carbs && !fat && !fiber) {
     return null
   }
 
@@ -94,6 +96,7 @@ function getLoggedNutrition(meal) {
     calories: calories || 0,
     carbs: carbs || 0,
     fat: fat || 0,
+    fiber: fiber || 0,
     protein: protein || 0,
   }
 }
@@ -142,6 +145,7 @@ export function calculateDailyNutritionSummary(meals = [], date = getLocalDateSt
   const totals = sumMealNutrition(analyses.map((entry) => ({
     nutrition: entry.totals,
   })))
+  const quality = buildNutritionDataQualitySummary(analyses)
   const goals = getProfileGoals(profile, profile.nutritionGoals || {})
   const proteinRemaining = goals.proteinGoal
     ? Math.max(0, Math.round(goals.proteinGoal.target - totals.protein))
@@ -166,6 +170,8 @@ export function calculateDailyNutritionSummary(meals = [], date = getLocalDateSt
     proteinGoal: goals.proteinGoal,
     proteinPercent,
     proteinRemaining,
+    quality,
+    reviewMeals: buildMealsNeedingReview(analyses),
     text: {
       calories: formatApproxCalories(totals.calories),
       protein: formatApproxGrams(totals.protein),

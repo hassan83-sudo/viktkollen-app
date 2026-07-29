@@ -10,6 +10,7 @@ import {
   describeMealCount,
   describeMealMemory,
   describeMostProteinMeal,
+  describeNutritionDataQuality,
   describeTodayMeals,
   formatApproxCalories,
   formatApproxGrams,
@@ -320,6 +321,56 @@ function makeMonthlyNutritionReply(facts, message) {
   return `Denna månad registrerade du mat under ${summary.registeredDays} av ${summary.elapsedDays} möjliga dagar. På registrerade dagar låg protein på cirka ${Math.round(summary.averages.proteinPerRegisteredDay).toLocaleString('sv-SE')} g och kalorier på cirka ${Math.round(summary.averages.caloriesPerRegisteredDay).toLocaleString('sv-SE')} kcal i genomsnitt.${incomplete}`
 }
 
+function makeNutritionQualityReply(facts, message) {
+  const normalized = normalizeAiCoachText(message)
+  const asksWeek = includesAny(normalized.plain, ['veckans', 'vecka'])
+  const asksMonth = includesAny(normalized.plain, ['manadens', 'månadens', 'manad', 'månad'])
+  const quality = asksMonth
+    ? facts.monthlyNutritionReport?.summary?.quality
+    : asksWeek
+      ? facts.weeklyNutritionReport?.summary?.quality
+      : facts.todayNutrition?.quality
+
+  if (!quality) {
+    return 'Jag hittar inga måltider att bedöma just nu.'
+  }
+
+  if (includesAny(normalized.plain, ['granska', 'behöver jag granska', 'behover jag granska'])) {
+    const meals = quality.reviewMeals || []
+
+    if (!meals.length) return 'Jag hittar inga måltider som tydligt behöver granskas just nu.'
+
+    const names = meals.slice(0, 3).map((entry) => `"${entry.text || 'måltid utan text'}"`).join(', ')
+
+    return `${quality.reviewMealCount} måltider kan behöva granskas. Börja med ${names}.`
+  }
+
+  if (includesAny(normalized.plain, ['saknar mangder', 'saknar mängder', 'kalorierna osakra', 'kalorierna osäkra'])) {
+    const meals = (quality.reviewMeals || []).filter((entry) => entry.confidence.missingInformation.includes('mängd saknas'))
+    const detail = meals.length
+      ? ` Exempel: ${meals.slice(0, 2).map((entry) => `"${entry.text}"`).join(', ')}.`
+      : ''
+
+    return `Kalorier blir mer osäkra när mängd eller portion saknas. ${quality.macroCoverage.calories.label} hade kalorier som kunde uppskattas.${detail}`
+  }
+
+  if (includesAny(normalized.plain, ['korrigerat manuellt', 'manuellt'])) {
+    return `${quality.manualMealCount} måltider har manuellt angivna näringsfält. Det betyder användarens korrigering, inte medicinskt verifierade värden.`
+  }
+
+  if (includesAny(normalized.plain, ['forbattra', 'förbättra', 'tips'])) {
+    const tip = quality.reviewMeals?.[0]?.tips?.[0] || 'Skriv gärna både ingrediens och mängd, till exempel 200 g kyckling eller 2 skivor bröd.'
+
+    return `För bättre uppskattningar: ${tip}`
+  }
+
+  if (includesAny(normalized.plain, ['hur manga', 'hur många', 'analyseras', 'analyserade'])) {
+    return `${quality.analyzedMealCount + quality.partiallyAnalyzedMealCount} av ${quality.validMealCount} måltider kunde analyseras helt eller delvis.`
+  }
+
+  return describeNutritionDataQuality(quality)
+}
+
 function makeProteinReply(facts, message) {
   const explicitWeight = extractWeightFromText(message)
   const normalized = normalizeAiCoachText(message)
@@ -383,6 +434,12 @@ function makeProteinReply(facts, message) {
 
       return `${mealType[0].toLocaleUpperCase('sv-SE')}${mealType.slice(1)}: ${meal.text}. Jag uppskattar den till ${formatApproxGrams(meal.totals.protein)} protein och ${formatApproxCalories(meal.totals.calories)}.${proteinText}`
     }
+  }
+
+  if (asksRemaining && (!facts.todayNutrition?.mealCount && facts.todayProtein <= 0)) {
+    return facts.proteinGoalLabel
+      ? `Jag hittar inte tillräckligt med loggad mat för idag, så jag kan inte räkna exakt kvar. Ditt proteinmål är ${facts.proteinGoalLabel}.`
+      : 'Jag hittar inte tillräckligt med loggad mat för idag för att räkna protein kvar.'
   }
 
   if (asksToday || asksRemaining) {
@@ -798,6 +855,7 @@ function buildReplyForIntent(intent, facts, message) {
     meal_memory: makeMealMemoryReply,
     motivation: makeMotivationReply,
     monthly_nutrition: makeMonthlyNutritionReply,
+    nutrition_quality: makeNutritionQualityReply,
     overeating: makeOvereatingReply,
     plateau: makePlateauReply,
     prognosis: makePrognosisReply,

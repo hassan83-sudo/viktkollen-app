@@ -94,8 +94,9 @@ function getLoggedNutrition(meal) {
   const calories = Number(meal?.calories)
   const carbs = Number(meal?.carbs ?? meal?.carbohydrates)
   const fat = Number(meal?.fat)
+  const fiber = Number(meal?.fiber)
 
-  if (![protein, calories, carbs, fat].some(Number.isFinite)) {
+  if (![protein, calories, carbs, fat, fiber].some(Number.isFinite)) {
     return null
   }
 
@@ -103,6 +104,7 @@ function getLoggedNutrition(meal) {
     calories: Number.isFinite(calories) ? calories : 0,
     carbs: Number.isFinite(carbs) ? carbs : 0,
     fat: Number.isFinite(fat) ? fat : 0,
+    fiber: Number.isFinite(fiber) ? fiber : 0,
     protein: Number.isFinite(protein) ? protein : 0,
   }
 }

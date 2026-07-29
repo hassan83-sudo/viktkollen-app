@@ -1,4 +1,5 @@
 import { mealTypes } from '../../services/nutritionService.js'
+import { getEffectiveMealNutrition } from '../../services/nutrition/nutritionEngine.js'
 
 function formatMacro(value, unit) {
   return value === null || value === undefined
@@ -78,6 +79,7 @@ function MealHistory({
             <article className="nutrition-meal-card" key={meal.id}>
               <div>
                 <span className="nutrition-pill">{meal.type}</span>
+                <span className="nutrition-pill">{getEffectiveMealNutrition(meal).confidence.label}</span>
                 <h4>{meal.name}</h4>
                 <p>{meal.description || 'Ingen beskrivning.'}</p>
                 <small>{meal.date} kl. {meal.time} · {meal.source}</small>

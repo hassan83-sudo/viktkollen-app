@@ -206,6 +206,7 @@ export function createNutritionDashboardModel({
       fiber: makeNutritionGoalProgress(summary.totals.fiber, normalizedGoals.fiber, 'g', 'Fibrer'),
       protein: makeNutritionGoalProgress(summary.totals.protein, summary.proteinGoal, 'g', 'Protein'),
     },
+    quality: summary.quality,
     summary: {
       analyzedMealCount,
       calories: formatInteger(summary.totals.calories, 'kcal'),

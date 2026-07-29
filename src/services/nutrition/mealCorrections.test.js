@@ -411,7 +411,7 @@ describe('Meal Editing V1 dashboard consistency', () => {
 
   it('removes meal from selected day when moved', () => {
     const updated = createUpdatedMealRecord({ date: today, id: 'meal', text: 'ägg' }, {
-      date: '2026-07-29',
+      date: '2026-07-30',
       description: 'ägg',
       time: '08:00',
     }, fixedNow).meal

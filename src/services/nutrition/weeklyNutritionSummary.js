@@ -1,5 +1,6 @@
 import { calculateDailyNutritionSummary } from './dailyNutritionSummary.js'
 import { buildMealTimeline } from './mealTimeline.js'
+import { buildNutritionDataQualitySummary } from './nutritionConfidence.js'
 import { normalizeNutritionGoals, parseProteinGoal } from './nutritionGoals.js'
 
 const weekDayNames = ['Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag', 'Söndag']
@@ -277,6 +278,7 @@ export function buildWeeklyNutritionSummary({
     protein: sumDays(days, 'protein'),
   }
   const mealCount = days.reduce((sum, day) => sum + day.mealCount, 0)
+  const quality = buildNutritionDataQualitySummary(days.flatMap((day) => day.summary.analyzedMeals || []))
   const analyzedMealCount = days.reduce((sum, day) => sum + (day.summary.analyzedMeals || []).filter((entry) => entry.analysis.items.length > 0).length, 0)
   const partiallyAnalyzedMealCount = days.reduce((sum, day) => sum + day.summary.partiallyAnalyzedMealCount, 0)
   const mostProteinDay = findDay(days, (day) => day.totals.protein)
@@ -311,6 +313,7 @@ export function buildWeeklyNutritionSummary({
     partiallyAnalyzedMealCount,
     patterns: buildMealPatterns(days),
     proteinGoalDays: days.filter((day) => day.proteinGoalStatus?.status === 'reached').length,
+    quality,
     registeredDays,
     startDate: range.startDate,
     totals,
@@ -371,6 +374,10 @@ export function buildWeeklyNutritionInsights(summary, comparison = null) {
 
   if (comparison?.hasComparison && comparison.proteinDifference !== 0) {
     insights.push(`Proteinintaget skiljde sig med cirka ${Math.abs(comparison.proteinDifference)} g per registrerad dag jämfört med föregående vecka.`)
+  }
+
+  if (summary.quality?.reviewMealCount > 0) {
+    insights.push(`${summary.quality.reviewMealCount} måltider hade begränsat underlag och kan behöva kompletteras.`)
   }
 
   return insights.slice(0, 4)

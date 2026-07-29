@@ -30,6 +30,7 @@ import MealEditForm from './mealEditor/MealEditForm.jsx'
 import MealQuickAdd from './mealTemplates/MealQuickAdd.jsx'
 import MealWeeklyReport from './MealWeeklyReport.jsx'
 import MonthlyNutritionDashboard from './MonthlyNutritionDashboard.jsx'
+import MealReviewPanel from './nutritionDataQuality/MealReviewPanel.jsx'
 import NutritionDashboard from './NutritionDashboard.jsx'
 import PhotoAnalysis from './PhotoAnalysis.jsx'
 import WeeklyNutritionDashboard from './WeeklyNutritionDashboard.jsx'
@@ -39,6 +40,7 @@ import {
   calculateSuggestedCalorieGoal,
   calculateSuggestedProteinGoal,
   buildProteinDistributionPlan,
+  buildMealQualityReviewModel,
   createUpdatedNutritionGoals,
   createUpdatedMealRecord,
   readMealTemplates,
@@ -195,6 +197,10 @@ function MealLogger({
   const visibleMeals = useMemo(
     () => filterAndSortMeals(normalizedMeals, filters),
     [filters, normalizedMeals],
+  )
+  const mealQualityReview = useMemo(
+    () => buildMealQualityReviewModel(normalizedMeals, { limit: 5, proteinGoal: normalizedGoals.protein }),
+    [normalizedGoals.protein, normalizedMeals],
   )
   const visibleFavorites = useMemo(() => {
     const search = favoriteSearch.trim().toLocaleLowerCase('sv-SE')
@@ -582,6 +588,11 @@ function MealLogger({
           onDateChange={changeSelectedDate}
         />
       )}
+
+      <MealReviewPanel
+        entries={mealQualityReview.entries}
+        onEditMeal={editMeal}
+      />
 
       <MealQuickAdd
         meals={normalizedMeals}

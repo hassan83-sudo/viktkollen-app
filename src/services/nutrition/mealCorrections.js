@@ -1,6 +1,8 @@
 import { analyzeMealText } from './mealAnalyzer.js'
+import { evaluateMealNutritionConfidence } from './nutritionConfidence.js'
 
-const macroFields = ['calories', 'protein', 'carbs', 'fat']
+const macroFields = ['calories', 'protein', 'carbs', 'fat', 'fiber']
+const coreMacroFields = ['calories', 'protein', 'carbs', 'fat']
 const validMealTypes = new Set([
   '',
   'Automatiskt',
@@ -153,24 +155,32 @@ export function getEffectiveMealNutrition(meal, options = {}) {
   const override = Object.keys(explicitOverride).length > 0 ? explicitOverride : legacyOverride
   const manualFields = macroFields.filter((field) => Object.prototype.hasOwnProperty.call(override, field))
   const totals = macroFields.reduce((result, field) => {
-    result[field] = manualFields.includes(field)
+    const value = manualFields.includes(field)
       ? override[field]
       : automatic.totals[field] || 0
+
+    if (field !== 'fiber' || value > 0 || manualFields.includes(field)) {
+      result[field] = value
+    }
 
     return result
   }, {})
   const source = manualFields.length === 0
     ? 'automatic'
-    : manualFields.length === macroFields.length
+    : coreMacroFields.every((field) => manualFields.includes(field))
       ? 'manual'
       : 'partial_manual'
-
-  return {
+  const result = {
     analysis: automatic,
+    estimatedFields: macroFields.filter((field) => !manualFields.includes(field) && totals[field] > 0),
     manualFields,
     source,
     totals,
   }
+
+  result.confidence = evaluateMealNutritionConfidence(record, result)
+
+  return result
 }
 
 export function validateMealEditDraft(draft) {
@@ -199,6 +209,7 @@ export function validateMealEditDraft(draft) {
       calories: 'Kalorier',
       carbs: 'Kolhydrater',
       fat: 'Fett',
+      fiber: 'Fibrer',
       protein: 'Protein',
     }[field]
 
@@ -259,6 +270,7 @@ export function resetMealNutritionOverride(meal, now = new Date().toISOString())
     carbs: null,
     correctionNote: '',
     fat: null,
+    fiber: null,
     nutritionOverride: {},
     nutritionSource: 'automatic',
     protein: null,

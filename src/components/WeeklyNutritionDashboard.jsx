@@ -7,6 +7,7 @@ import WeeklyNutritionChart from './weeklyNutrition/WeeklyNutritionChart.jsx'
 import WeeklyNutritionDayList from './weeklyNutrition/WeeklyNutritionDayList.jsx'
 import WeeklyNutritionInsights from './weeklyNutrition/WeeklyNutritionInsights.jsx'
 import WeeklyNutritionSummaryCards from './weeklyNutrition/WeeklyNutritionSummaryCards.jsx'
+import NutritionQualitySummary from './nutritionDataQuality/NutritionQualitySummary.jsx'
 
 function copyTextFallback(text) {
   if (typeof document === 'undefined') return false
@@ -83,6 +84,7 @@ function WeeklyNutritionDashboard({
       </div>
 
       <WeeklyNutritionChart summary={summary} />
+      <NutritionQualitySummary quality={summary.quality} title="Veckans datakvalitet" />
       <WeeklyNutritionDayList days={summary.days} />
       <WeeklyNutritionInsights
         comparison={report.comparison}

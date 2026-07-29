@@ -1,4 +1,5 @@
 import { calculateDailyNutritionSummary } from './dailyNutritionSummary.js'
+import { buildNutritionDataQualitySummary } from './nutritionConfidence.js'
 import {
   buildWeeklyNutritionSummary,
   classifyDailyGoalProgress,
@@ -292,6 +293,7 @@ export function buildMonthlyNutritionSummary({
     protein: dailyBreakdown.reduce((sum, day) => sum + safeNumber(day.totals.protein), 0),
   }
   const mealCount = dailyBreakdown.reduce((sum, day) => sum + day.mealCount, 0)
+  const quality = buildNutritionDataQualitySummary(dailyBreakdown.flatMap((day) => day.summary.analyzedMeals || []))
   const weeklyBreakdown = buildMonthlyWeeklyBreakdown({ date, meals, nutritionGoals, today })
   const summary = {
     averages: {
@@ -315,6 +317,7 @@ export function buildMonthlyNutritionSummary({
     mostProteinDay: findDay(dailyBreakdown, (day) => day.totals.protein),
     patterns: null,
     proteinGoalDays: dailyBreakdown.filter((day) => day.proteinGoalStatus?.status === 'reached').length,
+    quality,
     registeredDays,
     startDate: range.startDate,
     totals,
@@ -394,6 +397,7 @@ export function buildMonthlyNutritionInsights(summary, comparison = null) {
   if (summary.patterns.proteinConsistency > 0 && summary.registeredDays >= 4) insights.push('Proteinintaget varierade mellan registrerade dagar, så en jämnare fördelning kan göra månaden lättare att läsa.')
   if (summary.patterns.mostCommonMealType) insights.push(`${summary.patterns.mostCommonMealType.type} var den vanligaste måltidstypen.`)
   if (summary.patterns.longGaps > 0) insights.push('Flera registrerade dagar innehöll långa uppehåll mellan måltider.')
+  if (summary.quality?.reviewMealCount > 0) insights.push(`${summary.quality.reviewMealCount} måltider hade begränsat underlag och kan behöva kompletteras.`)
   if (comparison?.hasComparison) insights.push(comparison.text[0])
   if (summary.weightRelation?.limited) insights.push(`Månadens viktdata består av ${summary.weightRelation.weightCount} registreringar och bör tolkas försiktigt.`)
   return insights.slice(0, 5)
@@ -424,6 +428,11 @@ export function buildMonthlyTextReport(summary, comparison = null) {
   if (summary.mostProteinDay) lines.push(`Mest protein: ${summary.mostProteinDay.date}, cirka ${round(summary.mostProteinDay.totals.protein)} g`)
   if (summary.weightRelation?.hasData && summary.weightRelation.weightCount >= 2) lines.push(`Viktförändring: ${summary.weightRelation.startWeight.toLocaleString('sv-SE')} kg till ${summary.weightRelation.endWeight.toLocaleString('sv-SE')} kg`)
   lines.push(`Datakvalitet: ${summary.coverage.label.toLocaleLowerCase('sv-SE')}`)
+  if (summary.quality?.validMealCount > 0) {
+    lines.push(`Underlag: ${summary.quality.analyzedCoverage}`)
+    lines.push(`Kalorier: ${summary.quality.macroCoverage.calories.label}`)
+    lines.push(`Protein: ${summary.quality.macroCoverage.protein.label}`)
+  }
   if (comparison?.hasComparison) lines.push(comparison.text[0])
   if (summary.nextMonthFocus.length) {
     lines.push('', 'Fokus nästa månad:')
@@ -448,10 +457,25 @@ export function buildMonthlyNutritionReport(options = {}) {
 }
 
 export function buildMonthlyExportPayload(report) {
+  const quality = report?.summary?.quality
+
   return {
     app: 'Viktkollen',
     feature: 'monthly-nutrition-report',
     month: report?.summary?.startDate?.slice(0, 7) || '',
+    quality: quality
+      ? {
+          analyzedCoverage: quality.analyzedCoverage,
+          analyzedMealCount: quality.analyzedMealCount,
+          calorieCoverage: quality.macroCoverage.calories.label,
+          lowConfidenceMeals: quality.lowConfidenceMeals,
+          manualMealCount: quality.manualMealCount,
+          proteinCoverage: quality.macroCoverage.protein.label,
+          reviewMealCount: quality.reviewMealCount,
+          unanalyzedMealCount: quality.unanalyzedMealCount,
+          validMealCount: quality.validMealCount,
+        }
+      : null,
     reportVersion: 1,
     summary: report?.summary || {},
   }

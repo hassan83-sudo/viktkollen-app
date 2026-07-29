@@ -12,6 +12,7 @@ import {
   calculateSuggestedProteinGoal,
   calculateDailyNutritionSummary,
   buildMonthlyNutritionReport,
+  buildNutritionActionPlan,
   buildWeeklyNutritionReport,
   normalizeNutritionGoals,
 } from '../nutrition/nutritionEngine.js'
@@ -359,6 +360,12 @@ export function buildAiCoachFacts(context = {}) {
     nutritionGoals,
     weights,
   })
+  const nutritionActionPlan = buildNutritionActionPlan({
+    date: getTodayDateString(),
+    meals: allMealsForNutrition,
+    nutritionGoals,
+    weights,
+  })
   const todayProtein = todayNutrition.totals.protein > 0
     ? todayNutrition.totals.protein
     : loggedTodayProtein
@@ -393,6 +400,7 @@ export function buildAiCoachFacts(context = {}) {
     mood: todayCheckin.mood || '',
     poorSleepDays: getPoorSleepDays(context),
     monthlyNutritionReport,
+    nutritionActionPlan,
     proteinDistributionPlan: buildProteinDistributionPlan(nutritionGoals.protein, allMealsForNutrition, { date: getTodayDateString() }),
     proteinGoal: proteinGoal ?? null,
     proteinGoalLabel: proteinGoal

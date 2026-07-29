@@ -30,6 +30,7 @@ import MealEditForm from './mealEditor/MealEditForm.jsx'
 import MealQuickAdd from './mealTemplates/MealQuickAdd.jsx'
 import MealWeeklyReport from './MealWeeklyReport.jsx'
 import MonthlyNutritionDashboard from './MonthlyNutritionDashboard.jsx'
+import NutritionActionPlan from './NutritionActionPlan.jsx'
 import MealReviewPanel from './nutritionDataQuality/MealReviewPanel.jsx'
 import NutritionDashboard from './NutritionDashboard.jsx'
 import PhotoAnalysis from './PhotoAnalysis.jsx'
@@ -41,6 +42,7 @@ import {
   calculateSuggestedProteinGoal,
   buildProteinDistributionPlan,
   buildMealQualityReviewModel,
+  createMealFromTemplate,
   createUpdatedNutritionGoals,
   createUpdatedMealRecord,
   readMealTemplates,
@@ -400,6 +402,16 @@ function MealLogger({
     onMealsChange([favoriteToMeal(favorite, date, time), ...normalizedMeals])
   }
 
+  function addTemplateFromRecommendation(template) {
+    const meal = createMealFromTemplate(template, { date: selectedMealDate })
+
+    if (!meal) return false
+
+    onMealsChange([meal, ...normalizedMeals])
+    changeSelectedDate(meal.date)
+    return true
+  }
+
   function editFavorite(favorite) {
     setEditingFavoriteId(favorite.id)
     setEditingMealId('')
@@ -588,6 +600,15 @@ function MealLogger({
           onDateChange={changeSelectedDate}
         />
       )}
+
+      <NutritionActionPlan
+        date={selectedMealDate}
+        meals={normalizedMeals}
+        nutritionGoals={normalizedGoals}
+        templates={mealTemplates}
+        weights={weights}
+        onAddTemplate={addTemplateFromRecommendation}
+      />
 
       <MealReviewPanel
         entries={mealQualityReview.entries}

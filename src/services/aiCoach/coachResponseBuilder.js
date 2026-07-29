@@ -14,6 +14,7 @@ import {
   describeTodayMeals,
   formatApproxCalories,
   formatApproxGrams,
+  buildRecommendationExplanation,
 } from '../nutrition/nutritionEngine.js'
 import { getIntentSourceText } from './coachConversation.js'
 import { buildAiCoachFacts, hasRecentAdvice } from './coachFacts.js'
@@ -369,6 +370,57 @@ function makeNutritionQualityReply(facts, message) {
   }
 
   return describeNutritionDataQuality(quality)
+}
+
+function flattenActionPlan(plan) {
+  return [
+    ...(plan?.today || []),
+    ...(plan?.thisWeek || []),
+    ...(plan?.nextMonth || []),
+  ]
+}
+
+function makeNutritionRecommendationReply(facts, message) {
+  const normalized = normalizeAiCoachText(message)
+  const allRecommendations = flattenActionPlan(facts.nutritionActionPlan)
+  const scoped = includesAny(normalized.plain, ['vecka', 'veckans'])
+    ? facts.nutritionActionPlan?.thisWeek || []
+    : includesAny(normalized.plain, ['manad', 'månad', 'nasta manad', 'nästa månad'])
+      ? facts.nutritionActionPlan?.nextMonth || []
+      : facts.nutritionActionPlan?.today || allRecommendations
+  const recommendations = (scoped.length ? scoped : allRecommendations).slice(0, 3)
+
+  if (includesAny(normalized.plain, ['varfor', 'varför', 'foreslar', 'föreslår'])) {
+    const recommendation = recommendations[0]
+
+    return recommendation
+      ? buildRecommendationExplanation(recommendation)
+      : 'Jag hittar ingen tydlig rekommendation att förklara just nu.'
+  }
+
+  if (includesAny(normalized.plain, ['aterstar', 'återstår', 'proteinmalet', 'proteinmålet'])) {
+    const protein = allRecommendations.find((recommendation) => recommendation.relatedGoal === 'protein')
+
+    return protein
+      ? `${protein.message} Nästa steg: ${protein.action}`
+      : 'Jag hittar inget tydligt protein som återstår just nu, eller så är målet redan uppnått.'
+  }
+
+  if (includesAny(normalized.plain, ['maltidsmall', 'måltidsmall'])) {
+    const template = allRecommendations.find((recommendation) => recommendation.template)
+
+    return template
+      ? `Ja. ${template.message} ${template.template.name} kan passa som mall.`
+      : 'Jag hittar ingen måltidsmall som tydligt matchar det som återstår just nu.'
+  }
+
+  if (!recommendations.length) {
+    return 'Inga särskilda åtgärder föreslås utifrån den registrerade datan just nu.'
+  }
+
+  return recommendations
+    .map((recommendation) => `${recommendation.title}: ${recommendation.action}`)
+    .join(' ')
 }
 
 function makeProteinReply(facts, message) {
@@ -856,6 +908,7 @@ function buildReplyForIntent(intent, facts, message) {
     motivation: makeMotivationReply,
     monthly_nutrition: makeMonthlyNutritionReply,
     nutrition_quality: makeNutritionQualityReply,
+    nutrition_recommendation: makeNutritionRecommendationReply,
     overeating: makeOvereatingReply,
     plateau: makePlateauReply,
     prognosis: makePrognosisReply,

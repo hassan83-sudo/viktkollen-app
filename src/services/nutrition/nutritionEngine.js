@@ -118,6 +118,17 @@ export {
   buildMealQualityEntries,
   buildMealQualityReviewModel,
 } from './mealQuality.js'
+export {
+  buildDailyNutritionRecommendations,
+  buildMealSuggestions,
+  buildMonthlyNutritionRecommendations,
+  buildNutritionActionPlan,
+  buildRecommendationExplanation,
+  buildWeeklyNutritionRecommendations,
+  dedupeNutritionRecommendations,
+  nutritionRecommendationInternals,
+  prioritizeNutritionActions,
+} from './nutritionRecommendations.js'
 
 import { analyzeMealText } from './mealAnalyzer.js'
 import { buildNutritionAdvice } from './nutritionAdvice.js'

@@ -15,6 +15,7 @@ export const intentOrder = [
   'today_food',
   'meal_memory',
   'nutrition_quality',
+  'nutrition_recommendation',
   'monthly_nutrition',
   'weekly_nutrition',
   'protein',
@@ -625,6 +626,34 @@ function isNutritionQualityQuestion(normalized) {
   ])
 }
 
+function isNutritionRecommendationQuestion(normalized) {
+  return hasAnyTerm(normalized, [
+    'vad bÃ¶r jag fokusera pÃ¥ idag',
+    'vad kan jag Ã¤ta fÃ¶r att nÃ¥ proteinmÃ¥let',
+    'mÃ¥ltidsmall som passar',
+    'vad Ã¤r viktigast denna vecka',
+    'vad kan jag fÃ¶rbÃ¤ttra nÃ¤sta mÃ¥nad',
+    'varfÃ¶r fÃ¶reslÃ¥r du detta',
+    'vad Ã¥terstÃ¥r av mina mÃ¥l',
+    'behÃ¶ver jag registrera mer data',
+    'vilka rekommendationer har hÃ¶gst prioritet',
+    'rekommendationer',
+    'handlingsplan',
+  ], [
+    'vad bor jag fokusera pa idag',
+    'vad kan jag ata for att na proteinmalet',
+    'maltidsmall som passar',
+    'vad ar viktigast denna vecka',
+    'vad kan jag forbattra nasta manad',
+    'varfor foreslar du detta',
+    'vad aterstar av mina mal',
+    'behover jag registrera mer data',
+    'vilka rekommendationer har hogst prioritet',
+    'rekommendationer',
+    'handlingsplan',
+  ])
+}
+
 function isFocusQuestion(normalized) {
   return hasAnyTerm(normalized, ['vad bör jag fokusera på idag', 'vad ska jag fokusera på idag', 'fokus idag'], ['vad bor jag fokusera pa idag', 'vad ska jag fokusera pa idag', 'fokus idag'])
 }
@@ -717,6 +746,7 @@ export function identifyAiCoachIntents({ message, chatHistory = [] }) {
   if (isTodayFoodQuestion(normalized) && !asksProtein && !asksCalories) addUnique(intents, 'today_food')
   if (asksMealMemory && !asksCalories) addUnique(intents, 'meal_memory')
   if (isNutritionQualityQuestion(normalized)) addUnique(intents, 'nutrition_quality')
+  if (isNutritionRecommendationQuestion(normalized)) addUnique(intents, 'nutrition_recommendation')
   if (isMonthlyNutritionQuestion(normalized)) addUnique(intents, 'monthly_nutrition')
   if (isWeeklyNutritionQuestion(normalized) && !intents.includes('monthly_nutrition')) addUnique(intents, 'weekly_nutrition')
   if (asksProtein && !asksMealMemory) addUnique(intents, 'protein')

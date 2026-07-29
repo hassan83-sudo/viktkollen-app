@@ -36,6 +36,7 @@ import {
   getRecentAssistantTexts,
 } from './coachConversation.js'
 import { normalizeAiCoachText } from './coachText.js'
+import { buildProgressDashboardAnalytics } from '../progress/progressAnalytics.js'
 
 function firstNumber(...values) {
   for (const value of values) {
@@ -474,6 +475,19 @@ export function buildAiCoachFacts(context = {}) {
     weightTrend: unifiedWeight.trend,
     weightVariation,
   }
+
+  facts.progressDashboard = buildProgressDashboardAnalytics({
+    checkIn: todayCheckin,
+    checkIns: context.checkIns,
+    foods: context.foods,
+    generatedMealPlans,
+    mealPlans,
+    meals: allMealsForNutrition,
+    nutritionGoals,
+    profile,
+    weights,
+    weeklyReportData: context.latestWeeklyReport || context.weeklyReportData,
+  }, { period: context.progressPeriod || '30d' })
 
   facts.lastDiscussedTopic = getLastDiscussedTopic(context.chatHistory)
   facts.proactiveInsights = createProactiveInsights(facts)

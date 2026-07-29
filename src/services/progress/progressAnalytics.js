@@ -1,0 +1,416 @@
+import { formatKg, getUnifiedWeightFacts } from '../healthCalculations.js'
+import {
+  buildPlannedWeekSummary,
+  getMealPlanWeek,
+  getMealPlanWeekStart,
+  normalizeGeneratedMealPlans,
+  normalizeMealPlans,
+  normalizeNutritionGoals,
+} from '../nutrition/nutritionEngine.js'
+import { normalizeMeals } from '../nutritionService.js'
+import { forecastGoalProgress, normalizeForecastWeights } from './progressForecast.js'
+
+export const progressPeriods = [
+  { days: 7, id: '7d', label: '7 dagar' },
+  { days: 30, id: '30d', label: '30 dagar' },
+  { days: 90, id: '90d', label: '90 dagar' },
+  { days: null, id: 'all', label: 'Hela perioden' },
+]
+
+function safeDate(value) {
+  const date = new Date(value)
+
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function localDateString(date = new Date()) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-')
+}
+
+function parseLocalDate(value) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) {
+    const [year, month, day] = String(value).split('-').map(Number)
+    return new Date(year, month - 1, day)
+  }
+
+  return safeDate(value)
+}
+
+function addDays(date, amount) {
+  const next = new Date(date)
+  next.setDate(next.getDate() + amount)
+  return next
+}
+
+function safeNumber(value, fallback = null) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : fallback
+
+  const parsed = Number(String(value ?? '').replace(',', '.').replace(/[^\d.-]/g, ''))
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function round(value, digits = 1) {
+  const factor = 10 ** digits
+
+  return Math.round((value + Number.EPSILON) * factor) / factor
+}
+
+function normalizePeriod(period = '30d') {
+  return progressPeriods.find((entry) => entry.id === period) || progressPeriods[1]
+}
+
+export function getProgressPeriodRange(period = '30d', today = new Date()) {
+  const selected = normalizePeriod(period)
+  const end = parseLocalDate(localDateString(safeDate(today) || new Date()))
+  const start = selected.days ? addDays(end, -selected.days + 1) : null
+  const previousEnd = selected.days ? addDays(start, -1) : null
+  const previousStart = selected.days ? addDays(previousEnd, -selected.days + 1) : null
+
+  return {
+    days: selected.days,
+    end: localDateString(end),
+    id: selected.id,
+    label: selected.label,
+    previousEnd: previousEnd ? localDateString(previousEnd) : '',
+    previousStart: previousStart ? localDateString(previousStart) : '',
+    start: start ? localDateString(start) : '',
+  }
+}
+
+function isInRange(dateString, range) {
+  if (!dateString) return false
+  if (range.start && dateString < range.start) return false
+  if (range.end && dateString > range.end) return false
+  return true
+}
+
+function normalizeProgressWeights(weights = [], today = new Date()) {
+  return normalizeForecastWeights(weights, today)
+}
+
+function bestLoggingStreak(entries = []) {
+  const dates = [...new Set(entries.map((entry) => entry.date))].sort()
+  if (!dates.length) return 0
+
+  let best = 1
+  let current = 1
+  for (let index = 1; index < dates.length; index += 1) {
+    const previous = parseLocalDate(dates[index - 1])
+    const next = parseLocalDate(dates[index])
+    const diff = previous && next ? Math.round((next - previous) / 86400000) : 0
+
+    if (diff === 1) current += 1
+    else current = 1
+    best = Math.max(best, current)
+  }
+
+  return best
+}
+
+function analyzeWeightProgress(weights = [], profile = {}, range, today = new Date()) {
+  const normalized = normalizeProgressWeights(weights, today)
+  const periodWeights = normalized.filter((entry) => isInRange(entry.date, range))
+  const first = periodWeights[0] || null
+  const latest = periodWeights.at(-1) || null
+  const changeKg = first && latest ? round(latest.value - first.value) : null
+  const percentChange = first && changeKg !== null ? round((changeKg / first.value) * 100, 1) : null
+  const daysBetween = first && latest ? Math.max(1, (latest.time - first.time) / 86400000) : 0
+  const weeklyAverageChange = changeKg !== null && daysBetween > 0 ? round((changeKg / daysBetween) * 7, 2) : null
+  const unified = getUnifiedWeightFacts({
+    profile,
+    weights: normalized.map((entry) => ({ date: entry.date, value: entry.value })),
+  })
+
+  return {
+    bestLoggingStreak: bestLoggingStreak(periodWeights),
+    changeKg,
+    currentWeight: latest?.value ?? unified.currentWeight,
+    firstWeight: first?.value ?? null,
+    goalRemaining: unified.remainingKg,
+    goalWeight: unified.goalWeight,
+    latestWeight: latest?.value ?? null,
+    percentChange,
+    registrationCount: periodWeights.length,
+    startWeight: unified.startWeight,
+    trendDirection: changeKg === null ? 'insufficient' : changeKg < -0.1 ? 'down' : changeKg > 0.1 ? 'up' : 'stable',
+    weeklyAverageChange,
+    weights: periodWeights,
+  }
+}
+
+function dateKey(value) {
+  const date = parseLocalDate(value)
+
+  return date ? localDateString(date) : ''
+}
+
+function groupMealsByDate(meals = [], range) {
+  const days = new Map()
+  normalizeMeals(meals).forEach((meal) => {
+    if (!isInRange(meal.date, range)) return
+    if (!days.has(meal.date)) days.set(meal.date, [])
+    days.get(meal.date).push(meal)
+  })
+
+  return days
+}
+
+function sumMealField(meals, field) {
+  return meals.reduce((sum, meal) => sum + Math.max(0, safeNumber(meal[field], 0) || 0), 0)
+}
+
+function analyzeNutritionProgress(meals = [], nutritionGoals = {}, range) {
+  const goals = normalizeNutritionGoals(nutritionGoals)
+  const mealsByDate = groupMealsByDate(meals, range)
+  const days = [...mealsByDate.entries()].map(([date, dayMeals]) => {
+    const totals = {
+      calories: sumMealField(dayMeals, 'calories'),
+      carbs: sumMealField(dayMeals, 'carbs'),
+      fat: sumMealField(dayMeals, 'fat'),
+      protein: sumMealField(dayMeals, 'protein'),
+    }
+
+    return {
+      calorieGoalReached: goals.calories ? totals.calories > 0 && totals.calories <= goals.calories : false,
+      date,
+      mealCount: dayMeals.length,
+      meals: dayMeals,
+      proteinGoalReached: goals.protein ? totals.protein >= goals.protein : false,
+      totals,
+    }
+  })
+  const loggedDayCount = days.length
+  const totals = days.reduce((sum, day) => ({
+    calories: sum.calories + day.totals.calories,
+    carbs: sum.carbs + day.totals.carbs,
+    fat: sum.fat + day.totals.fat,
+    protein: sum.protein + day.totals.protein,
+  }), { calories: 0, carbs: 0, fat: 0, protein: 0 })
+  const mealTypes = new Map()
+  days.flatMap((day) => day.meals).forEach((meal) => {
+    const type = meal.type || meal.mealType || 'Annat'
+    mealTypes.set(type, (mealTypes.get(type) || 0) + 1)
+  })
+  const mostCommonMealType = [...mealTypes.entries()].sort((first, second) => second[1] - first[1] || first[0].localeCompare(second[0], 'sv-SE'))[0]?.[0] || ''
+
+  return {
+    averageCalories: loggedDayCount ? round(totals.calories / loggedDayCount) : 0,
+    averageProtein: loggedDayCount ? round(totals.protein / loggedDayCount) : 0,
+    calorieGoalDays: days.filter((day) => day.calorieGoalReached).length,
+    calorieGoalPercent: loggedDayCount && goals.calories ? Math.round((days.filter((day) => day.calorieGoalReached).length / loggedDayCount) * 100) : 0,
+    days,
+    goalComparison: {
+      caloriesGoal: goals.calories || null,
+      proteinGoal: goals.protein || null,
+    },
+    loggedDayCount,
+    mealCount: days.reduce((sum, day) => sum + day.mealCount, 0),
+    mostCommonMealType,
+    proteinGoalDays: days.filter((day) => day.proteinGoalReached).length,
+    proteinGoalPercent: loggedDayCount && goals.protein ? Math.round((days.filter((day) => day.proteinGoalReached).length / loggedDayCount) * 100) : 0,
+    totals,
+  }
+}
+
+function normalizeCheckIns(checkIn = {}, checkIns = [], range) {
+  const entries = Array.isArray(checkIns) ? checkIns : []
+  const single = checkIn && typeof checkIn === 'object' && Object.keys(checkIn).length
+    ? [{ ...checkIn, date: checkIn.date || range.end }]
+    : []
+  const seen = new Set()
+
+  return [...entries, ...single]
+    .map((entry) => ({
+      date: dateKey(entry?.date || entry?.createdAt),
+      energy: safeNumber(entry?.energy),
+      mood: normalizeText(entry?.mood),
+      steps: safeNumber(entry?.steps),
+      training: normalizeText(entry?.training || entry?.workoutType || entry?.workout),
+      workout: Boolean(entry?.workout || entry?.training || entry?.workoutType),
+    }))
+    .filter((entry) => entry.date && isInRange(entry.date, range))
+    .filter((entry) => {
+      if (seen.has(entry.date)) return false
+      seen.add(entry.date)
+      return true
+    })
+}
+
+function normalizeText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim()
+}
+
+function analyzeHabitProgress({ checkIn = {}, checkIns = [], foods = [], range }) {
+  const entries = normalizeCheckIns(checkIn, checkIns, range)
+  const energyValues = entries.map((entry) => entry.energy).filter(Number.isFinite)
+  const stepValues = entries.map((entry) => entry.steps).filter(Number.isFinite)
+  const moods = new Map()
+  const trainings = new Map()
+  entries.forEach((entry) => {
+    if (entry.mood) moods.set(entry.mood, (moods.get(entry.mood) || 0) + 1)
+    if (entry.training) trainings.set(entry.training, (trainings.get(entry.training) || 0) + 1)
+  })
+  const activeHabits = (Array.isArray(foods) ? foods : []).filter(Boolean)
+  const completedHabits = activeHabits.filter((habit) => habit.done).length
+
+  return {
+    activeHabits: activeHabits.length,
+    averageEnergy: energyValues.length ? round(energyValues.reduce((sum, value) => sum + value, 0) / energyValues.length, 1) : null,
+    averageMood: [...moods.entries()].sort((first, second) => second[1] - first[1] || first[0].localeCompare(second[0], 'sv-SE'))[0]?.[0] || '',
+    averageSteps: stepValues.length ? Math.round(stepValues.reduce((sum, value) => sum + value, 0) / stepValues.length) : null,
+    bestStreak: bestLoggingStreak(entries),
+    checkInCount: entries.length,
+    completedHabits,
+    currentStreak: bestLoggingStreak(entries.filter((entry) => entry.date >= (range.start || '0000-00-00'))),
+    entries,
+    trainingDays: entries.filter((entry) => entry.workout).length,
+    trainingForm: [...trainings.entries()].sort((first, second) => second[1] - first[1] || first[0].localeCompare(second[0], 'sv-SE'))[0]?.[0] || '',
+  }
+}
+
+function analyzePlanningProgress({ generatedMealPlans = {}, mealPlans = {}, nutritionGoals = {}, range }) {
+  const plans = normalizeMealPlans(mealPlans)
+  const currentWeek = getMealPlanWeek(plans, getMealPlanWeekStart(range.end))
+  const plannedWeekSummary = buildPlannedWeekSummary(currentWeek, nutritionGoals)
+  const generated = normalizeGeneratedMealPlans(generatedMealPlans)
+  const latestGeneratedPlan = generated.history[0] || null
+
+  return {
+    generatedPlanCount: generated.history.length,
+    latestGeneratedPlan,
+    plannedMealCount: plannedWeekSummary.mealCount,
+    plannedNutrition: plannedWeekSummary,
+    plannedWeekStart: currentWeek.weekStart,
+  }
+}
+
+function comparePeriods(current, previous) {
+  if (!previous) return { hasComparison: false }
+
+  return {
+    calorieGoalPercentDelta: current.nutrition.calorieGoalPercent - previous.nutrition.calorieGoalPercent,
+    checkInDelta: current.habits.checkInCount - previous.habits.checkInCount,
+    hasComparison: true,
+    mealCountDelta: current.nutrition.mealCount - previous.nutrition.mealCount,
+    proteinGoalPercentDelta: current.nutrition.proteinGoalPercent - previous.nutrition.proteinGoalPercent,
+    trainingDaysDelta: current.habits.trainingDays - previous.habits.trainingDays,
+    weightChangeDelta:
+      current.weight.changeKg !== null && previous.weight.changeKg !== null
+        ? round(current.weight.changeKg - previous.weight.changeKg)
+        : null,
+  }
+}
+
+function buildProgressInsights(analysis) {
+  const insights = []
+
+  if (analysis.weight.registrationCount < 2) {
+    insights.push({ tone: 'neutral', text: 'Mer viktdata behövs för en säker trend.' })
+  } else if (analysis.weight.trendDirection === 'down' && Number.isFinite(analysis.weight.goalRemaining) && analysis.weight.goalRemaining > 0) {
+    insights.push({ tone: 'positive', text: 'Vikten rör sig mot målet under vald period.' })
+  } else if (analysis.weight.trendDirection === 'stable') {
+    insights.push({ tone: 'neutral', text: 'Vikten är relativt stabil under vald period.' })
+  }
+
+  if (analysis.nutrition.proteinGoalPercent >= 70) {
+    insights.push({ tone: 'positive', text: 'Proteinmålet nås ofta när mat är loggad.' })
+  } else if (analysis.nutrition.loggedDayCount > 0) {
+    insights.push({ tone: 'neutral', text: 'Proteinmålet kan behöva mer planering i perioden.' })
+  }
+
+  if (analysis.planning.plannedMealCount === 0) {
+    insights.push({ tone: 'neutral', text: 'Planerade måltider saknas för aktuell vecka.' })
+  } else if (analysis.planning.plannedMealCount > analysis.nutrition.mealCount) {
+    insights.push({ tone: 'neutral', text: 'Planerad nutrition är tydligt separerad från faktiskt intag.' })
+  }
+
+  if (analysis.comparison.hasComparison && analysis.comparison.trainingDaysDelta > 0) {
+    insights.push({ tone: 'positive', text: 'Träningsfrekvensen har ökat jämfört med föregående period.' })
+  }
+
+  if (analysis.forecast.confidence === 'insufficient') {
+    insights.push({ tone: 'neutral', text: 'Målprognosen behöver mer regelbunden viktlogg.' })
+  }
+
+  return insights.slice(0, 5)
+}
+
+function buildCoreAnalysis(data = {}, range) {
+  const weight = analyzeWeightProgress(data.weights, data.profile, range, data.today)
+  const nutrition = analyzeNutritionProgress(data.meals, data.nutritionGoals, range)
+  const habits = analyzeHabitProgress({
+    checkIn: data.checkIn,
+    checkIns: data.checkIns,
+    foods: data.foods,
+    range,
+  })
+  const planning = analyzePlanningProgress({
+    generatedMealPlans: data.generatedMealPlans,
+    mealPlans: data.mealPlans,
+    nutritionGoals: data.nutritionGoals,
+    range,
+  })
+  const forecast = forecastGoalProgress({
+    currentWeight: weight.currentWeight,
+    goalWeight: weight.goalWeight,
+    today: data.today,
+    weights: data.weights,
+  })
+
+  return {
+    forecast,
+    habits,
+    nutrition,
+    period: range,
+    planning,
+    weeklySummary: data.weeklyReportData?.summary || '',
+    weight,
+  }
+}
+
+export function buildProgressDashboardAnalytics(data = {}, options = {}) {
+  const range = getProgressPeriodRange(options.period || data.period || '30d', options.today || data.today || new Date())
+  const current = buildCoreAnalysis(data, range)
+  const previousRange = range.days
+    ? {
+      ...range,
+      end: range.previousEnd,
+      start: range.previousStart,
+    }
+    : null
+  const previous = previousRange ? buildCoreAnalysis(data, previousRange) : null
+  const comparison = comparePeriods(current, previous)
+  const analysis = {
+    ...current,
+    comparison,
+  }
+
+  return {
+    ...analysis,
+    insights: buildProgressInsights(analysis),
+  }
+}
+
+export function formatProgressChange(value) {
+  if (!Number.isFinite(value)) return 'Saknas'
+  if (Math.abs(value) < 0.05) return 'Oförändrat'
+
+  return value < 0 ? `${formatKg(Math.abs(value))} ned` : `${formatKg(value)} upp`
+}
+
+export const progressAnalyticsInternals = {
+  analyzeHabitProgress,
+  analyzeNutritionProgress,
+  analyzePlanningProgress,
+  analyzeWeightProgress,
+  bestLoggingStreak,
+  comparePeriods,
+  isInRange,
+  normalizeCheckIns,
+  normalizeProgressWeights,
+  round,
+}

@@ -8,6 +8,7 @@ export const intentOrder = [
   'loss',
   'weight_gain',
   'goal',
+  'progress_dashboard',
   'prognosis',
   'plateau',
   'steps',
@@ -774,6 +775,47 @@ function isMealGeneratorQuestion(normalized) {
   ])
 }
 
+function isProgressDashboardQuestion(normalized) {
+  return hasAnyTerm(normalized, [
+    'min utveckling',
+    'mina framsteg',
+    'framstegsinsikt',
+    'viktigast just nu',
+    'min vikttrend',
+    'mÃ¥lprognos',
+    'målprognos',
+    'genomsnittliga protein',
+    'mitt genomsnittliga protein',
+    'kalorimÃ¥luppfyllelse',
+    'kalorimåluppfyllelse',
+    'hur ofta jag trÃ¤nat',
+    'hur ofta jag tränat',
+    'hur ofta har jag trÃ¤nat',
+    'hur ofta har jag tränat',
+    'mina check-ins',
+    'mina vanor',
+    'fÃ¶regÃ¥ende period',
+    'föregående period',
+    'skillnaden mellan denna',
+  ], [
+    'min utveckling',
+    'mina framsteg',
+    'framstegsinsikt',
+    'viktigast just nu',
+    'min vikttrend',
+    'malprognos',
+    'genomsnittliga protein',
+    'mitt genomsnittliga protein',
+    'kalorimaluppfyllelse',
+    'hur ofta jag tranat',
+    'hur ofta har jag tranat',
+    'mina check-ins',
+    'mina vanor',
+    'foregaende period',
+    'skillnaden mellan denna',
+  ])
+}
+
 function isMealPlannerQuestion(normalized) {
   return hasAnyTerm(normalized, [
     'vad har jag planerat denna vecka',
@@ -893,6 +935,7 @@ export function identifyAiCoachIntents({ message, chatHistory = [] }) {
   if (isWeightLossQuestion(normalized)) addUnique(intents, 'loss')
   if (isWeightGainQuestion(normalized)) addUnique(intents, 'weight_gain')
   if (isGoalQuestion(normalized)) addUnique(intents, 'goal')
+  if (isProgressDashboardQuestion(normalized)) addUnique(intents, 'progress_dashboard')
   if (isPrognosisQuestion(normalized)) addUnique(intents, 'prognosis')
   if (isPlateauQuestion(normalized)) addUnique(intents, 'plateau')
   if (isStepsQuestion(normalized)) addUnique(intents, 'steps')

@@ -10,10 +10,10 @@ import CloudStatusPanel from './components/CloudStatusPanel.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import MealLogger from './components/MealLogger.jsx'
 import MonthlyReport from './components/MonthlyReport.jsx'
+import ProgressDashboard from './components/ProgressDashboard.jsx'
 import ProgressCenter from './components/ProgressCenter.jsx'
 import ProgressPhotos from './components/ProgressPhotos.jsx'
 import ReminderSettings from './components/ReminderSettings.jsx'
-import WeeklyReport from './components/WeeklyReport.jsx'
 import { makePersonalCoachReply } from './lib/coachReply.js'
 import {
   bodyAnalysisHistoryChangedEvent,
@@ -931,7 +931,6 @@ function App() {
   )
 
   const latestWeight = weights.at(-1)
-  const startWeight = weights[0]
   const aiUserContext = useMemo(
     () =>
       buildAiUserContext({
@@ -963,7 +962,6 @@ function App() {
     () => createAiSuggestions(aiUserContext).slice(0, 4),
     [aiUserContext],
   )
-  const weightChange = Number((latestWeight.value - startWeight.value).toFixed(1))
   const foodScore = foods.filter((item) => item.done).length
   const progressAnalysis = useMemo(
     () => analyzeWeights(weights, makeValidatedProfile(profile)),
@@ -2708,34 +2706,19 @@ function App() {
 
         <MonthlyReport report={monthlyReport} />
 
-        <article className="panel trends-panel" id="framsteg">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Framsteg</p>
-              <h2>Trender</h2>
-            </div>
-          </div>
-          <div className="trend-list">
-            <div>
-              <span>Viktutveckling</span>
-              <strong>{weightChange <= 0 ? 'Nedåt' : 'Uppåt'}</strong>
-            </div>
-            <div>
-              <span>Matvanor</span>
-              <strong>{Math.round((foodScore / foods.length) * 100)}%</strong>
-            </div>
-            <div>
-              <span>Aktivitet</span>
-              <strong>{checkIn.steps >= 7000 ? 'På rätt väg' : 'Behöver fler steg'}</strong>
-            </div>
-          </div>
-          <WeeklyReport
-            onCreateWeeklyReport={createWeeklyReport}
-            weeklyReportData={weeklyReportData}
-            weeklyReportLines={weeklyReportLines}
-            weeklyReportStatus={weeklyReportStatus}
-          />
-        </article>
+        <ProgressDashboard
+          checkIn={checkIn}
+          checkIns={[]}
+          foods={foods}
+          meals={meals}
+          nutritionGoals={nutritionGoals}
+          profile={makeValidatedProfile(profile)}
+          weights={weights}
+          weeklyReportData={weeklyReportData}
+          weeklyReportLines={weeklyReportLines}
+          weeklyReportStatus={weeklyReportStatus}
+          onCreateWeeklyReport={createWeeklyReport}
+        />
       </section>
 
       <nav className="bottom-nav" aria-label="Huvudnavigation">

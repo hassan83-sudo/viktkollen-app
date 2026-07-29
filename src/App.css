@@ -2690,6 +2690,70 @@ a:focus-visible {
   background: rgba(255, 255, 255, 0.03);
 }
 
+.progress-dashboard-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.progress-period-toggle {
+  justify-content: flex-start;
+}
+
+.progress-summary-grid,
+.progress-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.progress-summary-card,
+.progress-detail-grid div {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.progress-summary-card span,
+.progress-detail-grid dt {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.progress-summary-card strong,
+.progress-detail-grid dd {
+  display: block;
+  margin: 4px 0 0;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.progress-summary-card.is-positive {
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.progress-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.progress-insight-list {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.progress-insight-list li {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  padding: 10px;
+}
+
 .meal-template-favorite-toggle {
   align-self: center;
   margin: 0;
@@ -4011,7 +4075,10 @@ a:focus-visible {
 
 @media (max-width: 900px) {
   .recipe-manager-layout,
-  .recipe-ingredient-row {
+  .recipe-ingredient-row,
+  .progress-dashboard-grid,
+  .progress-summary-grid,
+  .progress-detail-grid {
     grid-template-columns: 1fr;
   }
 

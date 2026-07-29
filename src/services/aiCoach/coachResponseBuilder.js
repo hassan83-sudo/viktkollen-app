@@ -31,6 +31,7 @@ import { getIntentSourceText } from './coachConversation.js'
 import { buildAiCoachFacts, hasRecentAdvice } from './coachFacts.js'
 import { identifyAiCoachIntents } from './coachIntentDetector.js'
 import { hasUnsafeOutput, includesAny, normalizeAiCoachText } from './coachText.js'
+import { formatProgressChange } from '../progress/progressAnalytics.js'
 
 function cleanReply(value) {
   const reply = String(value || '').replace(/\s+/g, ' ').trim()
@@ -521,6 +522,58 @@ function makeMealGeneratorReply(facts, message) {
     calories: facts.caloriesGoal,
     protein: facts.proteinGoal,
   })
+}
+
+function makeProgressDashboardReply(facts, message) {
+  const normalized = normalizeAiCoachText(message)
+  const progress = facts.progressDashboard
+  if (!progress) return 'Jag hittar ingen samlad framstegsanalys just nu.'
+
+  if (includesAny(normalized.plain, ['vikttrend', 'vikten forandrats', 'vikten förändrats'])) {
+    return `Vikttrenden för vald period är ${progress.weight.trendDirection}. Förändringen är ${formatProgressChange(progress.weight.changeKg)}.`
+  }
+
+  if (includesAny(normalized.plain, ['malprognos', 'målprognos', 'prognos'])) {
+    return progress.forecast.text
+  }
+
+  if (includesAny(normalized.plain, ['hur langt', 'hur långt', 'kvar till mal', 'kvar till mål'])) {
+    return Number.isFinite(progress.weight.goalRemaining)
+      ? `Du har ${formatKg(progress.weight.goalRemaining)} kvar till målet.`
+      : 'Jag saknar målvikt eller aktuell vikt för att räkna kvar till mål.'
+  }
+
+  if (includesAny(normalized.plain, ['protein'])) {
+    return `Ditt genomsnittliga protein i perioden är ${Math.round(progress.nutrition.averageProtein).toLocaleString('sv-SE')} g per loggad dag. Proteinmålet nåddes ${progress.nutrition.proteinGoalPercent}% av loggade dagar.`
+  }
+
+  if (includesAny(normalized.plain, ['kalori', 'kalorimaluppfyllelse', 'kalorimåluppfyllelse'])) {
+    return `Kalorimålet nåddes ${progress.nutrition.calorieGoalPercent}% av loggade dagar. Snittet är ${Math.round(progress.nutrition.averageCalories).toLocaleString('sv-SE')} kcal per loggad dag.`
+  }
+
+  if (includesAny(normalized.plain, ['tranat', 'tränat', 'traning', 'träning'])) {
+    return `Du har ${progress.habits.trainingDays} träningsdagar i perioden.${progress.habits.trainingForm ? ` Vanligaste formen är ${progress.habits.trainingForm}.` : ''}`
+  }
+
+  if (includesAny(normalized.plain, ['check-ins', 'checkins', 'check in'])) {
+    return `Du har ${progress.habits.checkInCount} check-ins i perioden. Energisnittet är ${progress.habits.averageEnergy ?? 'saknas'} och humöret är oftast ${progress.habits.averageMood || 'saknas'}.`
+  }
+
+  if (includesAny(normalized.plain, ['vanor', 'vana'])) {
+    return `Du har ${progress.habits.completedHabits} av ${progress.habits.activeHabits} aktiva vanor markerade och bästa streak är ${progress.habits.bestStreak} dagar.`
+  }
+
+  if (includesAny(normalized.plain, ['foregaende', 'föregående', 'skillnaden'])) {
+    return progress.comparison.hasComparison
+      ? `Jämfört med föregående period: ${progress.comparison.mealCountDelta} måltider, ${progress.comparison.trainingDaysDelta} träningsdagar och ${progress.comparison.checkInDelta} check-ins.`
+      : 'Föregående period saknar tillräcklig data för en rättvis jämförelse.'
+  }
+
+  if (includesAny(normalized.plain, ['insikt', 'viktigast'])) {
+    return progress.insights[0]?.text || 'Den viktigaste insikten är att mer data behövs för en tydligare trend.'
+  }
+
+  return `Din utveckling: vikt ${formatProgressChange(progress.weight.changeKg)}, ${progress.nutrition.mealCount} loggade måltider, ${progress.habits.checkInCount} check-ins och ${progress.habits.trainingDays} träningsdagar i perioden.`
 }
 
 function makeDietaryPreferencesReply(facts, message) {
@@ -1168,6 +1221,7 @@ function buildReplyForIntent(intent, facts, message) {
     plateau: makePlateauReply,
     prognosis: makePrognosisReply,
     protein: makeProteinReply,
+    progress_dashboard: makeProgressDashboardReply,
     recipe: makeRecipeReply,
     rest_day: makeRestDayReply,
     safety: makeSafetyReply,

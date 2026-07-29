@@ -16,7 +16,10 @@ import {
   formatApproxGrams,
   buildRecommendationExplanation,
   buildMealSuggestions,
+  buildRecipeAiSummary,
+  calculateRecipeNutrition,
   evaluateMealTemplateCompatibility,
+  filterRecipesByDietaryPreferences,
   filterTemplatesByDietaryPreferences,
   getDietaryPreferencesSummary,
   hasDietaryPreferences,
@@ -427,6 +430,50 @@ function makeNutritionRecommendationReply(facts, message) {
   return recommendations
     .map((recommendation) => `${recommendation.title}: ${recommendation.action}`)
     .join(' ')
+}
+
+function recipeNames(recipes = []) {
+  return recipes.slice(0, 3).map((recipe) => recipe.name).join(', ')
+}
+
+function makeRecipeReply(facts, message) {
+  const normalized = normalizeAiCoachText(message)
+  const recipes = Array.isArray(facts.recipes) ? facts.recipes : []
+  const summary = buildRecipeAiSummary(recipes, facts.dietaryPreferences)
+
+  if (!recipes.length) {
+    return 'Jag hittar inga sparade recept ännu. Skapa ett recept i Måltidscenter så kan jag föreslå favoriter, proteinrika recept och recept som matchar dina matval.'
+  }
+
+  if (includesAny(normalized.plain, ['favorit'])) {
+    return summary.favorites.length
+      ? `Dina favoritrecept är ${recipeNames(summary.favorites)}.`
+      : 'Du har inga favoritrecept markerade ännu.'
+  }
+
+  if (includesAny(normalized.plain, ['proteinrik', 'proteinrika', 'protein'])) {
+    const recipe = summary.proteinRich[0]
+    if (!recipe) return 'Jag hittar inget sparat recept som tydligt är proteinrikt ännu.'
+    const protein = calculateRecipeNutrition(recipe).perServing.protein
+
+    return `${recipe.name} är ditt tydligaste proteinrika recept just nu med ungefär ${Math.round(protein).toLocaleString('sv-SE')} g protein per portion.`
+  }
+
+  if (includesAny(normalized.plain, ['vegetarisk', 'vegetariska'])) {
+    const vegetarian = filterRecipesByDietaryPreferences(recipes, { dietType: 'vegetarian' })
+
+    return vegetarian.length
+      ? `Vegetariska recept som passar: ${recipeNames(vegetarian)}.`
+      : 'Jag hittar inget sparat vegetariskt recept som tydligt matchar ännu.'
+  }
+
+  if (includesAny(normalized.plain, ['matchar', 'passar', 'matval', 'preferenser'])) {
+    return summary.compatible.length
+      ? `Jag hittar ${summary.compatible.length.toLocaleString('sv-SE')} recept som matchar dina matval. Exempel: ${recipeNames(summary.compatible)}.`
+      : 'Jag hittar inget sparat recept som tydligt matchar dina matval just nu.'
+  }
+
+  return `Du har ${recipes.length.toLocaleString('sv-SE')} sparade recept. Exempel: ${recipeNames(recipes)}.`
 }
 
 function makeDietaryPreferencesReply(facts, message) {
@@ -1073,6 +1120,7 @@ function buildReplyForIntent(intent, facts, message) {
     plateau: makePlateauReply,
     prognosis: makePrognosisReply,
     protein: makeProteinReply,
+    recipe: makeRecipeReply,
     rest_day: makeRestDayReply,
     safety: makeSafetyReply,
     sleep: makeSleepReply,

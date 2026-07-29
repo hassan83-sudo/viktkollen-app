@@ -15,6 +15,7 @@ import {
   createPlannedMealFromDraft,
   createPlannedMealFromTemplate,
   filterTemplatesByDietaryPreferences,
+  filterRecipes,
   formatShoppingListForClipboard,
   getLocalDateString,
   getMealPlanWeek,
@@ -27,6 +28,7 @@ import {
   plannedMealTypes,
   readMealPlans,
   readShoppingLists,
+  recipeToPlannedMeal,
   removePlannedMeal,
   removeShoppingListItem,
   toggleShoppingListItem,
@@ -245,6 +247,7 @@ function WeeklyMealPlanner({
   meals,
   nutritionGoals,
   onMealsChange,
+  recipes = [],
   templates,
 }) {
   const [plans, setPlans] = useState(() => readMealPlans())
@@ -253,6 +256,7 @@ function WeeklyMealPlanner({
   const [draft, setDraft] = useState(() => emptyDraft(getMealPlanWeekStart()))
   const [editingMealId, setEditingMealId] = useState('')
   const [errors, setErrors] = useState({})
+  const [recipeSearch, setRecipeSearch] = useState('')
   const [templateSearch, setTemplateSearch] = useState('')
   const [copySourceDate, setCopySourceDate] = useState('')
   const [copyTargetDate, setCopyTargetDate] = useState('')
@@ -283,6 +287,10 @@ function WeeklyMealPlanner({
       .sort((first, second) => Number(!compatibleTemplateIds.has(first.id)) - Number(!compatibleTemplateIds.has(second.id)))
       .slice(0, 8)
   }, [compatibleTemplateIds, normalizedTemplates, templateSearch])
+  const visibleRecipes = useMemo(
+    () => filterRecipes(recipes, { search: recipeSearch, sort: 'updated' }).slice(0, 8),
+    [recipeSearch, recipes],
+  )
 
   function savePlans(nextPlans) {
     const saved = writeMealPlans(nextPlans)
@@ -311,6 +319,13 @@ function WeeklyMealPlanner({
     if (!result.meal) return
     savePlans(addPlannedMeal(plans, weekStart, result.meal))
     setStatus(`${result.meal.title} lades till i planen.`)
+  }
+
+  function addRecipe(recipe, date = weekDates[0]) {
+    const result = recipeToPlannedMeal(recipe, { date })
+    if (!result.meal) return
+    savePlans(addPlannedMeal(plans, weekStart, result.meal))
+    setStatus(`${result.meal.title} lades till från recept.`)
   }
 
   function submitDraft(event) {
@@ -531,6 +546,30 @@ function WeeklyMealPlanner({
                   <button className="secondary-button" type="button" onClick={() => addTemplate(template, draft.date || weekDates[0])}>Lägg till</button>
                 </article>
               ))}
+            </div>
+          </section>
+
+          <section className="nutrition-card">
+            <div className="nutrition-card-heading">
+              <div>
+                <p className="eyebrow">Recept</p>
+                <h4>Lägg till från recept</h4>
+              </div>
+            </div>
+            <label className="field">
+              <span>Sök recept</span>
+              <input value={recipeSearch} onChange={(event) => setRecipeSearch(event.target.value)} />
+            </label>
+            <div className="meal-planner-template-list">
+              {visibleRecipes.length ? visibleRecipes.map((recipe) => (
+                <article key={recipe.id}>
+                  <strong>{recipe.name}</strong>
+                  <span>{recipe.servings} portioner · {recipe.category}</span>
+                  <button className="secondary-button" type="button" onClick={() => addRecipe(recipe, draft.date || weekDates[0])}>Lägg till</button>
+                </article>
+              )) : (
+                <div className="nutrition-empty"><span>Inga recept matchar sökningen.</span></div>
+              )}
             </div>
           </section>
 

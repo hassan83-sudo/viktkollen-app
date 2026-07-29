@@ -160,7 +160,7 @@ export function normalizePlannedMeal(meal = {}, options = {}) {
     nutritionPreview: normalizeNutritionPreview(fallbackPreview),
     scheduledTime: isValidTime(meal.scheduledTime || meal.time) ? meal.scheduledTime || meal.time : '',
     sourceId: normalizeText(meal.sourceId, 160),
-    sourceType: ['template', 'custom', 'recommendation'].includes(meal.sourceType) ? meal.sourceType : 'custom',
+    sourceType: ['template', 'custom', 'recommendation', 'recipe'].includes(meal.sourceType) ? meal.sourceType : 'custom',
     text,
     title: title || text.split(',')[0] || 'Planerad måltid',
     updatedAt: Number.isNaN(updatedAt.getTime()) ? now : updatedAt.toISOString(),

@@ -45,6 +45,35 @@ export {
   validateMealTemplateDraft,
   writeMealTemplates,
 } from './mealTemplates.js'
+export {
+  buildRecipeAiSummary,
+  calculateRecipeNutrition,
+  calculateRecipeNutritionPerServing,
+  createRecipe,
+  deleteRecipe,
+  duplicateRecipe,
+  evaluateRecipeDietaryCompatibility,
+  filterRecipes,
+  filterRecipesByDietaryPreferences,
+  formatRecipeIngredient,
+  normalizeRecipe,
+  normalizeRecipeIngredient,
+  normalizeRecipes,
+  parseRecipeIngredient,
+  readRecipes,
+  recipeCategories,
+  recipeServiceInternals,
+  recipeStorageKey,
+  recipeToMealTemplateDraft,
+  recipeToPlannedMeal,
+  recipeToShoppingIngredients,
+  recipeUnits,
+  sortRecipes,
+  toggleRecipeFavorite,
+  updateRecipe,
+  validateRecipeDraft,
+  writeRecipes,
+} from './recipeService.js'
 export { buildMealMemory, buildMealMemoryInsights } from './mealMemory.js'
 export { buildMealTimeline } from './mealTimeline.js'
 export { analyzeMealText } from './mealAnalyzer.js'

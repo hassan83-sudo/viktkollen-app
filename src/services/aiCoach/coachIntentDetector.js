@@ -15,6 +15,7 @@ export const intentOrder = [
   'today_food',
   'meal_memory',
   'nutrition_quality',
+  'recipe',
   'dietary_preferences',
   'meal_planner',
   'nutrition_recommendation',
@@ -702,6 +703,33 @@ function isDietaryPreferencesQuestion(normalized) {
   ])
 }
 
+function isRecipeQuestion(normalized) {
+  return hasAnyTerm(normalized, [
+    'favoritrecept',
+    'proteinrika recept',
+    'proteinrikt recept',
+    'vegetariska recept',
+    'vegetariskt recept',
+    'recept som matchar',
+    'recept som passar',
+    'mina recept',
+    'vilka recept',
+    'har jag nÃ¥got recept',
+    'har jag något recept',
+  ], [
+    'favoritrecept',
+    'proteinrika recept',
+    'proteinrikt recept',
+    'vegetariska recept',
+    'vegetariskt recept',
+    'recept som matchar',
+    'recept som passar',
+    'mina recept',
+    'vilka recept',
+    'har jag nagot recept',
+  ])
+}
+
 function isMealPlannerQuestion(normalized) {
   return hasAnyTerm(normalized, [
     'vad har jag planerat denna vecka',
@@ -832,6 +860,7 @@ export function identifyAiCoachIntents({ message, chatHistory = [] }) {
   if (isTodayFoodQuestion(normalized) && !asksProtein && !asksCalories) addUnique(intents, 'today_food')
   if (asksMealMemory && !asksCalories) addUnique(intents, 'meal_memory')
   if (isNutritionQualityQuestion(normalized)) addUnique(intents, 'nutrition_quality')
+  if (isRecipeQuestion(normalized)) addUnique(intents, 'recipe')
   if (isDietaryPreferencesQuestion(normalized)) addUnique(intents, 'dietary_preferences')
   if (isMealPlannerQuestion(normalized)) addUnique(intents, 'meal_planner')
   if (isNutritionRecommendationQuestion(normalized)) addUnique(intents, 'nutrition_recommendation')

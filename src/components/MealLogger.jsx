@@ -37,8 +37,10 @@ import NutritionDashboard from './NutritionDashboard.jsx'
 import PhotoAnalysis from './PhotoAnalysis.jsx'
 import WeeklyNutritionDashboard from './WeeklyNutritionDashboard.jsx'
 import WeeklyMealPlanner from './WeeklyMealPlanner.jsx'
+import RecipeManager from './RecipeManager.jsx'
 import {
   createMealEditDraft,
+  createMealTemplate,
   createMealTemplateFromMeal,
   calculateSuggestedCalorieGoal,
   calculateSuggestedProteinGoal,
@@ -49,11 +51,13 @@ import {
   createUpdatedMealRecord,
   clearDietaryPreferences,
   readMealTemplates,
+  readRecipes,
   readDietaryPreferences,
   resetMealNutritionOverride,
   writeDietaryPreferences,
   validateMealEditDraft,
   writeMealTemplates,
+  writeRecipes,
 } from '../services/nutrition/nutritionEngine.js'
 
 const defaultFilters = {
@@ -169,6 +173,7 @@ function MealLogger({
   const [mealTemplateStatus, setMealTemplateStatus] = useState('')
   const [mealTemplates, setMealTemplates] = useState(() => readMealTemplates())
   const [nutritionViewMode, setNutritionViewMode] = useState('day')
+  const [recipes, setRecipes] = useState(() => readRecipes())
   const [weekStart, setWeekStart] = useState(() => getWeekStart(selectedMealDate))
 
   const normalizedMeals = useMemo(() => normalizeMeals(meals), [meals])
@@ -342,6 +347,10 @@ function MealLogger({
     setMealTemplates(writeMealTemplates(nextTemplates))
   }
 
+  function changeRecipes(nextRecipes) {
+    setRecipes(writeRecipes(nextRecipes))
+  }
+
   function saveDietaryPreferences(nextPreferences) {
     const saved = writeDietaryPreferences(nextPreferences)
 
@@ -361,6 +370,18 @@ function MealLogger({
 
     if (!result.template) {
       setMealTemplateStatus('Måltiden kunde inte sparas som mall.')
+      return
+    }
+
+    changeMealTemplates([result.template, ...mealTemplates])
+    setMealTemplateStatus(`${result.template.name} sparades som mall.`)
+  }
+
+  function createTemplateFromRecipe(templateDraft) {
+    const result = createMealTemplate(templateDraft)
+
+    if (!result.template) {
+      setMealTemplateStatus('Receptet kunde inte sparas som mall.')
       return
     }
 
@@ -599,6 +620,9 @@ function MealLogger({
         <button aria-pressed={nutritionViewMode === 'planner'} className={nutritionViewMode === 'planner' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('planner')}>
           Planera
         </button>
+        <button aria-pressed={nutritionViewMode === 'recipes'} className={nutritionViewMode === 'recipes' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('recipes')}>
+          Recept
+        </button>
       </div>
 
       {nutritionViewMode === 'day' ? (
@@ -622,13 +646,21 @@ function MealLogger({
           weights={weights}
           onDateChange={changeSelectedDate}
         />
-      ) : (
+      ) : nutritionViewMode === 'planner' ? (
         <WeeklyMealPlanner
           dietaryPreferences={dietaryPreferences}
           meals={normalizedMeals}
           nutritionGoals={normalizedGoals}
+          recipes={recipes}
           templates={mealTemplates}
           onMealsChange={onMealsChange}
+        />
+      ) : (
+        <RecipeManager
+          dietaryPreferences={dietaryPreferences}
+          recipes={recipes}
+          onRecipesChange={changeRecipes}
+          onTemplateCreate={createTemplateFromRecipe}
         />
       )}
 

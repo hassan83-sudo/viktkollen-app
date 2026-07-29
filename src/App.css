@@ -2613,6 +2613,70 @@ a:focus-visible {
   overflow-wrap: anywhere;
 }
 
+.recipe-manager-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1.1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.recipe-list,
+.recipe-ingredient-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.recipe-card {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.recipe-card-heading,
+.recipe-ingredient-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.recipe-card p,
+.recipe-card small,
+.recipe-card li {
+  overflow-wrap: anywhere;
+}
+
+.recipe-nutrition-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.recipe-nutrition-summary div {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.recipe-nutrition-summary dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.recipe-nutrition-summary dd {
+  margin: 3px 0 0;
+  font-weight: 700;
+}
+
+.recipe-ingredient-row {
+  display: grid;
+  grid-template-columns: minmax(70px, 0.5fr) minmax(80px, 0.5fr) minmax(140px, 1fr) minmax(140px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
 .meal-template-favorite-toggle {
   align-self: center;
   margin: 0;
@@ -3933,6 +3997,15 @@ a:focus-visible {
 }
 
 @media (max-width: 900px) {
+  .recipe-manager-layout,
+  .recipe-ingredient-row {
+    grid-template-columns: 1fr;
+  }
+
+  .recipe-nutrition-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .app-shell {
     width: min(100% - 24px, 640px);
     padding-top: 16px;

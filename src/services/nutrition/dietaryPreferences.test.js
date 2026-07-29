@@ -179,6 +179,14 @@ describe('dietary preferences storage and normalization', () => {
     expect(validateDietaryPreferences({ notes: 'a'.repeat(501) }).notes).toBeTruthy()
   })
 
+  it('validates long food entry', () => {
+    expect(validateDietaryPreferences({ avoidedFoods: ['a'.repeat(61)] }).avoidedFoods).toBeTruthy()
+  })
+
+  it('blocks same food in avoided and preferred lists', () => {
+    expect(validateDietaryPreferences({ avoidedFoods: ['Mjölk'], preferredFoods: ['mjölk'] }).foodConflict).toContain('Mjölk')
+  })
+
   it('reads default preferences when storage is empty', () => {
     expect(readDietaryPreferences(createStorage()).dietType).toBe('omnivore')
   })
@@ -202,6 +210,17 @@ describe('dietary preferences storage and normalization', () => {
     expect(readDietaryPreferences(storage).dietType).toBe('vegetarian')
   })
 
+  it('does not crash when storage write fails', () => {
+    const storage = {
+      getItem: () => null,
+      setItem: () => {
+        throw new Error('full')
+      },
+    }
+
+    expect(writeDietaryPreferences({ dietType: 'vegan' }, storage).dietType).toBe('vegan')
+  })
+
   it('updates preferences in storage', () => {
     const storage = createStorage()
 
@@ -215,6 +234,16 @@ describe('dietary preferences storage and normalization', () => {
     writeDietaryPreferences({ dietType: 'vegan' }, storage)
     expect(clearDietaryPreferences(storage).dietType).toBe('omnivore')
     expect(readDietaryPreferences(storage).dietType).toBe('omnivore')
+  })
+
+  it('does not crash when storage reset fails', () => {
+    const storage = {
+      removeItem: () => {
+        throw new Error('blocked')
+      },
+    }
+
+    expect(clearDietaryPreferences(storage).dietType).toBe('omnivore')
   })
 })
 
@@ -272,6 +301,18 @@ describe('dietary preference suggestion compatibility', () => {
   it('handles missing preferences without filtering', () => {
     expect(filterMealSuggestionsByPreferences(suggestions, {})).toHaveLength(suggestions.length)
   })
+
+  it('filters tag-only dairy suggestion for lactose free preferences', () => {
+    const tagOnly = { name: 'Proteinbowl', tags: ['contains-dairy'] }
+
+    expect(isMealSuggestionCompatible(tagOnly, lactoseFreePreferences)).toBe(false)
+  })
+
+  it('filters tag-only poultry suggestion for pescatarian preferences', () => {
+    const tagOnly = { name: 'Måltid', tags: ['poultry'] }
+
+    expect(isMealSuggestionCompatible(tagOnly, pescatarianPreferences)).toBe(false)
+  })
 })
 
 describe('dietary preference template compatibility', () => {
@@ -312,6 +353,23 @@ describe('dietary preference template compatibility', () => {
 
   it('handles malformed templates safely', () => {
     expect(filterTemplatesByDietaryPreferences([null, templates[1]], veganPreferences)).toHaveLength(1)
+  })
+
+  it('marks template without text as unknown', () => {
+    expect(evaluateMealTemplateCompatibility({}, veganPreferences).status).toBe('unknown')
+  })
+
+  it('does not recommend unknown templates automatically', () => {
+    expect(filterTemplatesByDietaryPreferences([{}], veganPreferences)).toHaveLength(0)
+  })
+
+  it('handles 1000 templates without changing compatibility result', () => {
+    const manyTemplates = Array.from({ length: 1000 }, (_, index) => ({
+      ...templates[index % templates.length],
+      id: `template-${index}`,
+    }))
+
+    expect(filterTemplatesByDietaryPreferences(manyTemplates, veganPreferences).length).toBe(250)
   })
 })
 
@@ -382,6 +440,18 @@ describe('dietary preferences in recommendation engine', () => {
     }).today.find((item) => item.relatedGoal === 'protein')
 
     expect(withPreferences.message).toBe(withoutPreferences.message)
+  })
+
+  it('keeps neutral action when no compatible generic suggestion exists', () => {
+    const plan = buildNutritionActionPlan({
+      date: '2026-07-29',
+      dietaryPreferences: { avoidedFoods: ['ägg', 'kyckling', 'keso', 'fisk', 'bönor', 'tofu', 'linsgryta'] },
+      meals: [lowProteinMeal],
+      nutritionGoals: { protein: 110 },
+      templates: [],
+    })
+
+    expect(JSON.stringify(plan.today)).toContain('Inga generella måltidsförslag matchar')
   })
 
   it('weekly template recommendation uses compatible template count', () => {

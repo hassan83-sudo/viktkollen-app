@@ -1,6 +1,9 @@
 export const dietaryPreferencesStorageKey = 'viktkollen.dietaryPreferences.v1'
 
 export const dietTypes = ['omnivore', 'vegetarian', 'vegan', 'pescatarian', 'custom']
+const maxFoodEntries = 30
+const maxFoodLength = 60
+const maxNoteLength = 500
 
 const animalTerms = [
   'kyckling',
@@ -23,11 +26,11 @@ const animalTerms = [
   'yogurt',
   'hamburgare',
 ]
-const meatTerms = ['kyckling', 'nötkött', 'notkott', 'fläsk', 'flask', 'hamburgare', 'kött', 'kott']
-const fishTerms = ['lax', 'torsk', 'tonfisk', 'fisk']
-const dairyTerms = ['mjölk', 'mjolk', 'ost', 'kvarg', 'keso', 'yoghurt', 'yogurt', 'grekisk yoghurt']
+const meatTerms = ['kyckling', 'nötkött', 'notkott', 'fläsk', 'flask', 'hamburgare', 'kött', 'kott', 'meat', 'poultry']
+const fishTerms = ['lax', 'torsk', 'tonfisk', 'fisk', 'fish']
+const dairyTerms = ['mjölk', 'mjolk', 'ost', 'kvarg', 'keso', 'yoghurt', 'yogurt', 'grekisk yoghurt', 'dairy', 'contains dairy', 'lactose']
 const eggTerms = ['ägg', 'agg']
-const glutenTerms = ['bröd', 'brod', 'pasta', 'vete', 'mjöl', 'mjol', 'pizza', 'hamburgare']
+const glutenTerms = ['bröd', 'brod', 'pasta', 'vete', 'mjöl', 'mjol', 'pizza', 'hamburgare', 'gluten', 'contains gluten']
 const porkTerms = ['fläsk', 'flask', 'bacon', 'skinka', 'gris']
 const alcoholTerms = ['alkohol', 'vin', 'öl', 'ol', 'cider']
 
@@ -49,10 +52,19 @@ function normalizeFoodList(value) {
     ? value
     : String(value || '')
       .split(/[,\n]/)
+  const seen = new Set()
+  const normalized = []
 
-  return [...new Set(list
-    .map((item) => String(item || '').trim())
-    .filter(Boolean))]
+  for (const item of list) {
+    const trimmed = String(item || '').replace(/\s+/g, ' ').trim()
+    const key = normalizeText(trimmed)
+
+    if (!trimmed || seen.has(key)) continue
+    seen.add(key)
+    normalized.push(trimmed)
+  }
+
+  return normalized
 }
 
 function nowIso() {
@@ -116,21 +128,34 @@ export function normalizeDietaryPreferences(value = {}) {
 export function validateDietaryPreferences(value = {}) {
   const normalized = normalizeDietaryPreferences(value)
   const errors = {}
+  const avoidedKeys = new Map(normalized.avoidedFoods.map((food) => [normalizeText(food), food]))
 
   if (!dietTypes.includes(normalized.dietType)) {
     errors.dietType = 'Välj en giltig kosttyp.'
   }
 
-  if (normalized.avoidedFoods.length > 30) {
-    errors.avoidedFoods = 'Spara högst 30 livsmedel att undvika.'
+  if (normalized.avoidedFoods.length > maxFoodEntries) {
+    errors.avoidedFoods = `Spara högst ${maxFoodEntries} livsmedel att undvika.`
   }
 
-  if (normalized.preferredFoods.length > 30) {
-    errors.preferredFoods = 'Spara högst 30 föredragna livsmedel.'
+  if (normalized.preferredFoods.length > maxFoodEntries) {
+    errors.preferredFoods = `Spara högst ${maxFoodEntries} föredragna livsmedel.`
   }
 
-  if (normalized.notes.length > 500) {
+  if (normalized.notes.length > maxNoteLength) {
     errors.notes = 'Anteckningen är för lång.'
+  }
+
+  const longAvoided = normalized.avoidedFoods.find((food) => food.length > maxFoodLength)
+  const longPreferred = normalized.preferredFoods.find((food) => food.length > maxFoodLength)
+  const conflict = normalized.preferredFoods.find((food) => avoidedKeys.has(normalizeText(food)))
+
+  if (longAvoided) errors.avoidedFoods = `"${longAvoided}" är för långt.`
+  if (longPreferred) errors.preferredFoods = `"${longPreferred}" är för långt.`
+  if (conflict) {
+    const display = avoidedKeys.get(normalizeText(conflict)) || conflict
+
+    errors.foodConflict = `"${display}" kan inte finnas både bland föredragna och undvikna matvaror.`
   }
 
   return errors
@@ -170,7 +195,12 @@ export function readDietaryPreferences(storage = globalThis.localStorage) {
 export function writeDietaryPreferences(value, storage = globalThis.localStorage) {
   const normalized = createUpdatedDietaryPreferences(readDietaryPreferences(storage), value)
 
-  storage?.setItem?.(dietaryPreferencesStorageKey, JSON.stringify(normalized))
+  try {
+    storage?.setItem?.(dietaryPreferencesStorageKey, JSON.stringify(normalized))
+  } catch {
+    return normalized
+  }
+
   return normalized
 }
 
@@ -179,7 +209,12 @@ export function updateDietaryPreferences(patch, storage = globalThis.localStorag
 }
 
 export function clearDietaryPreferences(storage = globalThis.localStorage) {
-  storage?.removeItem?.(dietaryPreferencesStorageKey)
+  try {
+    storage?.removeItem?.(dietaryPreferencesStorageKey)
+  } catch {
+    return normalizeDietaryPreferences()
+  }
+
   return normalizeDietaryPreferences()
 }
 
@@ -292,16 +327,25 @@ export function rankMealSuggestionsByPreferences(suggestions = [], preferences =
 export function evaluateMealTemplateCompatibility(template = {}, preferences = {}) {
   const normalized = normalizeDietaryPreferences(preferences)
   const text = getTemplateText(template)
+  const hasText = normalizeText(text).length > 0
   const reasons = getIncompatibilityReasons(text, normalized)
   const preferredMatches = normalized.preferredFoods.filter((food) => hasAny(text, [food]))
+  const status = reasons.length
+    ? 'incompatible'
+    : hasText
+      ? 'compatible'
+      : 'unknown'
 
   return {
-    compatible: reasons.length === 0,
-    explanation: reasons.length
+    compatible: status === 'compatible',
+    explanation: status === 'incompatible'
       ? `Mallen filtreras bort eftersom den ${reasons.join(' och ')}.`
-      : 'Mallen matchar dina sparade matpreferenser.',
+      : status === 'unknown'
+        ? 'Mallen föreslås inte automatiskt eftersom innehållet är oklart.'
+        : 'Mallen matchar dina sparade matpreferenser.',
     preferredMatches,
     reasons,
+    status,
     template,
   }
 }
@@ -315,7 +359,14 @@ export function filterTemplatesByDietaryPreferences(templates = [], preferences 
 
   return (Array.isArray(templates) ? templates : [])
     .filter(Boolean)
-    .filter((template) => evaluateMealTemplateCompatibility(template, normalized).compatible)
+    .map((template, index) => ({
+      evaluation: evaluateMealTemplateCompatibility(template, normalized),
+      index,
+      template,
+    }))
+    .filter((entry) => entry.evaluation.compatible)
+    .sort((first, second) => second.evaluation.preferredMatches.length - first.evaluation.preferredMatches.length || first.index - second.index)
+    .map((entry) => entry.template)
 }
 
 export const dietaryPreferencesInternals = {

@@ -2346,6 +2346,30 @@ a:focus-visible {
   gap: 14px;
 }
 
+.dietary-preferences-fieldset {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+.dietary-preferences-fieldset legend {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.dietary-diet-type-control {
+  flex-wrap: wrap;
+}
+
+.dietary-diet-type-control button {
+  min-height: 36px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
 .dietary-preferences-options {
   display: flex;
   flex-wrap: wrap;
@@ -2359,6 +2383,60 @@ a:focus-visible {
   color: var(--text);
   font-size: 13px;
   font-weight: 750;
+}
+
+.dietary-preferences-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dietary-food-tag-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dietary-food-tag-field {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.dietary-food-tag-input-row {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dietary-food-tag-input-row input {
+  min-width: 0;
+}
+
+.dietary-food-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.dietary-food-tag {
+  max-width: 100%;
+  gap: 6px;
+  overflow-wrap: anywhere;
+}
+
+.dietary-food-tag-remove {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.32);
+  color: inherit;
 }
 
 .meal-template-filter-toggle {
@@ -4092,6 +4170,20 @@ a:focus-visible {
   select,
   button {
     min-height: 42px;
+  }
+
+  .dietary-food-tag-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dietary-food-tag-input-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .dietary-diet-type-control,
+  .meal-template-filter-toggle {
+    width: 100%;
   }
 
   .meal-list li {

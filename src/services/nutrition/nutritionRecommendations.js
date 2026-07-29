@@ -18,7 +18,7 @@ const suggestionLibrary = [
     estimatedProteinRange: 'cirka 25-35 g protein',
     name: 'Ägg och kvarg',
     suitableMealTypes: ['frukost', 'mellanmål', 'kvällsmål'],
-    tags: ['protein', 'vegetarian', 'egg', 'dairy', 'lactose'],
+    tags: ['protein', 'vegetarian', 'egg', 'contains-dairy', 'lactose'],
   },
   {
     description: 'Kyckling med potatis, ris eller grönsaker.',
@@ -34,7 +34,7 @@ const suggestionLibrary = [
     estimatedProteinRange: 'cirka 18-30 g protein',
     name: 'Keso och frukt',
     suitableMealTypes: ['mellanmål', 'kvällsmål'],
-    tags: ['protein', 'snabb', 'vegetarian', 'dairy', 'lactose'],
+    tags: ['protein', 'snabb', 'vegetarian', 'contains-dairy', 'lactose'],
   },
   {
     description: 'Fisk med potatis eller ris och något grönt.',
@@ -293,11 +293,14 @@ export function buildDailyNutritionRecommendations({
         templates,
       })
       const topSuggestion = suggestions[0]
+      const proteinAction = !topSuggestion
+        ? 'Inga generella måltidsförslag matchar alla angivna matval just nu. Använd en kompatibel måltidsmall, registrera en egen måltid eller justera preferenserna om de inte längre stämmer.'
+        : remaining <= 20
+          ? 'Ett litet proteinrikt alternativ kan räcka om du planerar att äta mer idag.'
+          : 'Välj ett proteinrikt mellanmål eller använd en passande måltidsmall.'
 
       recommendations.push(createRecommendation({
-        action: remaining <= 20
-          ? 'Ett litet proteinrikt alternativ kan räcka om du planerar att äta mer idag.'
-          : 'Välj ett proteinrikt mellanmål eller använd en passande måltidsmall.',
+        action: proteinAction,
         category: 'protein',
         confidence: qualityConfidence,
         message: `Du har cirka ${remaining} g protein kvar till dagens mål.`,

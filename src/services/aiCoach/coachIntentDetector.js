@@ -15,6 +15,7 @@ export const intentOrder = [
   'today_food',
   'meal_memory',
   'nutrition_quality',
+  'meal_generator',
   'recipe',
   'dietary_preferences',
   'meal_planner',
@@ -730,6 +731,49 @@ function isRecipeQuestion(normalized) {
   ])
 }
 
+function isMealGeneratorQuestion(normalized) {
+  return hasAnyTerm(normalized, [
+    'ai-plan',
+    'ai plan',
+    'ai-genererad plan',
+    'ai genererad plan',
+    'ai-meny',
+    'ai meny',
+    'dagens ai-plan',
+    'veckans ai-plan',
+    'genererad mÃ¥ltidsplan',
+    'genererad måltidsplan',
+    'varfÃ¶r valdes receptet',
+    'varför valdes receptet',
+    'varfÃ¶r valdes fÃ¶rsta',
+    'varför valdes första',
+    'varfÃ¶r valdes den',
+    'varför valdes den',
+    'vilka recept valdes',
+    'protein i planen',
+    'kalorier i planen',
+    'hur fÃ¶ljer planen mÃ¥len',
+    'hur följer planen målen',
+  ], [
+    'ai-plan',
+    'ai plan',
+    'ai-genererad plan',
+    'ai genererad plan',
+    'ai-meny',
+    'ai meny',
+    'dagens ai-plan',
+    'veckans ai-plan',
+    'genererad maltidsplan',
+    'varfor valdes receptet',
+    'varfor valdes forsta',
+    'varfor valdes den',
+    'vilka recept valdes',
+    'protein i planen',
+    'kalorier i planen',
+    'hur foljer planen malen',
+  ])
+}
+
 function isMealPlannerQuestion(normalized) {
   return hasAnyTerm(normalized, [
     'vad har jag planerat denna vecka',
@@ -860,7 +904,8 @@ export function identifyAiCoachIntents({ message, chatHistory = [] }) {
   if (isTodayFoodQuestion(normalized) && !asksProtein && !asksCalories) addUnique(intents, 'today_food')
   if (asksMealMemory && !asksCalories) addUnique(intents, 'meal_memory')
   if (isNutritionQualityQuestion(normalized)) addUnique(intents, 'nutrition_quality')
-  if (isRecipeQuestion(normalized)) addUnique(intents, 'recipe')
+  if (isMealGeneratorQuestion(normalized)) addUnique(intents, 'meal_generator')
+  if (isRecipeQuestion(normalized) && !intents.includes('meal_generator')) addUnique(intents, 'recipe')
   if (isDietaryPreferencesQuestion(normalized)) addUnique(intents, 'dietary_preferences')
   if (isMealPlannerQuestion(normalized)) addUnique(intents, 'meal_planner')
   if (isNutritionRecommendationQuestion(normalized)) addUnique(intents, 'nutrition_recommendation')

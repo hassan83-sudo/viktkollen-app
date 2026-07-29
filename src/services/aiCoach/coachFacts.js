@@ -26,6 +26,8 @@ import {
   readMealTemplates,
   readDietaryPreferences,
   readRecipes,
+  readGeneratedMealPlans,
+  getLatestGeneratedMealPlan,
   readShoppingLists,
 } from '../nutrition/nutritionEngine.js'
 import {
@@ -345,6 +347,8 @@ export function buildAiCoachFacts(context = {}) {
   const dietaryPreferences = normalizeDietaryPreferences(context.dietaryPreferences || readDietaryPreferences())
   const mealTemplates = Array.isArray(context.mealTemplates) ? context.mealTemplates : readMealTemplates()
   const recipes = Array.isArray(context.recipes) ? context.recipes : readRecipes()
+  const generatedMealPlans = context.generatedMealPlans || readGeneratedMealPlans()
+  const latestGeneratedMealPlan = context.latestGeneratedMealPlan || getLatestGeneratedMealPlan(generatedMealPlans)
   const mealPlans = context.mealPlans || readMealPlans()
   const shoppingLists = context.shoppingLists || readShoppingLists()
   const currentPlanWeek = getMealPlanWeek(mealPlans, getMealPlanWeekStart())
@@ -425,6 +429,8 @@ export function buildAiCoachFacts(context = {}) {
     monthlyNutritionReport,
     mealTemplates,
     recipes,
+    generatedMealPlans,
+    latestGeneratedMealPlan,
     nutritionActionPlan,
     mealPlanInsights: buildMealPlanInsights(currentPlanWeek, nutritionGoals),
     mealPlanSuggestions: buildMealPlanSuggestions({

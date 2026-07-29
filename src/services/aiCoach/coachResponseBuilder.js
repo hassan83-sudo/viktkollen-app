@@ -18,11 +18,13 @@ import {
   buildMealSuggestions,
   buildRecipeAiSummary,
   calculateRecipeNutrition,
+  describeGeneratedMealPlan,
   evaluateMealTemplateCompatibility,
   filterRecipesByDietaryPreferences,
   filterTemplatesByDietaryPreferences,
   getDietaryPreferencesSummary,
   hasDietaryPreferences,
+  listGeneratedPlanRecipeNames,
   categorizeShoppingListItems,
 } from '../nutrition/nutritionEngine.js'
 import { getIntentSourceText } from './coachConversation.js'
@@ -474,6 +476,51 @@ function makeRecipeReply(facts, message) {
   }
 
   return `Du har ${recipes.length.toLocaleString('sv-SE')} sparade recept. Exempel: ${recipeNames(recipes)}.`
+}
+
+function makeMealGeneratorReply(facts, message) {
+  const normalized = normalizeAiCoachText(message)
+  const plan = facts.latestGeneratedMealPlan
+  if (!plan) {
+    return 'Jag hittar ingen AI-genererad måltidsplan ännu. Skapa en dag eller vecka i AI Meal Generator i Måltidscenter först.'
+  }
+
+  const summary = plan.summary || {}
+  if (includesAny(normalized.plain, ['vilka recept', 'recept valdes'])) {
+    const names = listGeneratedPlanRecipeNames(plan)
+
+    return names.length
+      ? `Recept som valdes i AI-planen: ${names.slice(0, 6).join(', ')}.`
+      : 'Den senaste AI-planen verkar mest använda måltidsmallar som fallback.'
+  }
+
+  if (includesAny(normalized.plain, ['varfor', 'varför', 'valdes'])) {
+    const meal = plan.days?.flatMap((day) => day.meals || [])?.[0]
+
+    return meal
+      ? `${meal.title} valdes eftersom ${meal.selectionReason || 'den passade planens mål och variation'}.`
+      : 'Jag hittar ingen vald måltid i den senaste AI-planen.'
+  }
+
+  if (includesAny(normalized.plain, ['protein'])) {
+    return `AI-planen innehåller totalt ungefär ${Math.round(summary.totals?.protein || 0).toLocaleString('sv-SE')} g protein, i snitt ${Math.round(summary.averageProtein || 0).toLocaleString('sv-SE')} g per dag.`
+  }
+
+  if (includesAny(normalized.plain, ['kalorier', 'kcal'])) {
+    return `AI-planen innehåller totalt ungefär ${Math.round(summary.totals?.calories || 0).toLocaleString('sv-SE')} kcal, i snitt ${Math.round(summary.averageCalories || 0).toLocaleString('sv-SE')} kcal per dag.`
+  }
+
+  if (includesAny(normalized.plain, ['mal', 'mål', 'foljer', 'följer'])) {
+    return describeGeneratedMealPlan(plan, {
+      calories: facts.caloriesGoal,
+      protein: facts.proteinGoal,
+    })
+  }
+
+  return describeGeneratedMealPlan(plan, {
+    calories: facts.caloriesGoal,
+    protein: facts.proteinGoal,
+  })
 }
 
 function makeDietaryPreferencesReply(facts, message) {
@@ -1111,6 +1158,7 @@ function buildReplyForIntent(intent, facts, message) {
     loss: makeLossReply,
     meal: makeMealReply,
     meal_memory: makeMealMemoryReply,
+    meal_generator: makeMealGeneratorReply,
     meal_planner: makeMealPlannerReply,
     motivation: makeMotivationReply,
     monthly_nutrition: makeMonthlyNutritionReply,

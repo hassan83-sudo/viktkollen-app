@@ -38,6 +38,7 @@ import PhotoAnalysis from './PhotoAnalysis.jsx'
 import WeeklyNutritionDashboard from './WeeklyNutritionDashboard.jsx'
 import WeeklyMealPlanner from './WeeklyMealPlanner.jsx'
 import RecipeManager from './RecipeManager.jsx'
+import AIMealGenerator from './AIMealGenerator.jsx'
 import {
   createMealEditDraft,
   createMealTemplate,
@@ -620,6 +621,9 @@ function MealLogger({
         <button aria-pressed={nutritionViewMode === 'planner'} className={nutritionViewMode === 'planner' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('planner')}>
           Planera
         </button>
+        <button aria-pressed={nutritionViewMode === 'generator'} className={nutritionViewMode === 'generator' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('generator')}>
+          AI-plan
+        </button>
         <button aria-pressed={nutritionViewMode === 'recipes'} className={nutritionViewMode === 'recipes' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('recipes')}>
           Recept
         </button>
@@ -654,6 +658,13 @@ function MealLogger({
           recipes={recipes}
           templates={mealTemplates}
           onMealsChange={onMealsChange}
+        />
+      ) : nutritionViewMode === 'generator' ? (
+        <AIMealGenerator
+          dietaryPreferences={dietaryPreferences}
+          nutritionGoals={normalizedGoals}
+          recipes={recipes}
+          templates={mealTemplates}
         />
       ) : (
         <RecipeManager

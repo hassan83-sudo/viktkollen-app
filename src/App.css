@@ -2677,6 +2677,19 @@ a:focus-visible {
   align-items: end;
 }
 
+.ai-meal-generator-preview {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.ai-meal-generator-day {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
 .meal-template-favorite-toggle {
   align-self: center;
   margin: 0;

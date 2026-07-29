@@ -74,6 +74,29 @@ export {
   validateRecipeDraft,
   writeRecipes,
 } from './recipeService.js'
+export {
+  applyGeneratedPlanToMealPlans,
+  buildMealGeneratorCandidates,
+  buildGeneratedMealPlanSummary,
+  buildSelectionReason,
+  describeGeneratedMealPlan,
+  generateDayMealPlan,
+  generateMealPlan,
+  generateWeekMealPlan,
+  generatedMealPlanVersion,
+  generatedMealPlansStorageKey,
+  generatedMealTypes,
+  generatedPlanToMealPlanWeek,
+  generatedPlanToShoppingList,
+  getLatestGeneratedMealPlan,
+  listGeneratedPlanRecipeNames,
+  mealGeneratorInternals,
+  normalizeGeneratedMealPlan,
+  normalizeGeneratedMealPlans,
+  readGeneratedMealPlans,
+  saveGeneratedMealPlan,
+  writeGeneratedMealPlans,
+} from './mealGenerator.js'
 export { buildMealMemory, buildMealMemoryInsights } from './mealMemory.js'
 export { buildMealTimeline } from './mealTimeline.js'
 export { analyzeMealText } from './mealAnalyzer.js'

@@ -1,3 +1,5 @@
+import { markSyncKeyDirty } from './sync/syncMetadata.js'
+
 function canUseLocalStorage() {
   return typeof window !== 'undefined' && Boolean(window.localStorage)
 }
@@ -27,6 +29,7 @@ export function writeStorage(key, value) {
 
   try {
     window.localStorage.setItem(key, JSON.stringify(value))
+    markSyncKeyDirty(key, window.localStorage)
     return true
   } catch {
     return false
@@ -40,6 +43,7 @@ export function removeStorage(key) {
 
   try {
     window.localStorage.removeItem(key)
+    markSyncKeyDirty(key, window.localStorage)
     return true
   } catch {
     return false

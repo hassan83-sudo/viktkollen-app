@@ -195,3 +195,85 @@ grant select, insert on public.user_sync_events to authenticated;
 comment on table public.user_backups is 'Viktkollen manuella backupversioner. RLS begränsar rader till auth.uid().';
 comment on table public.user_sync_state is 'Senaste manuella molnstatus per användare.';
 comment on table public.user_sync_events is 'Kort historik över manuella molnåtgärder utan känsliga tokens.';
+-- Automatic Cloud Sync V2 stores one allowlisted localStorage key per row.
+-- It is intentionally separate from user_backups so manual backup/restore remains unchanged.
+create table if not exists public.user_sync_items (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade default auth.uid(),
+  storage_key text not null,
+  payload jsonb,
+  data_version integer not null default 1,
+  client_updated_at timestamptz,
+  server_updated_at timestamptz not null default now(),
+  device_id text,
+  checksum text,
+  deleted_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (user_id, storage_key)
+);
+
+alter table public.user_sync_items add column if not exists user_id uuid references auth.users(id) on delete cascade default auth.uid();
+alter table public.user_sync_items add column if not exists storage_key text;
+alter table public.user_sync_items add column if not exists payload jsonb;
+alter table public.user_sync_items add column if not exists data_version integer not null default 1;
+alter table public.user_sync_items add column if not exists client_updated_at timestamptz;
+alter table public.user_sync_items add column if not exists server_updated_at timestamptz not null default now();
+alter table public.user_sync_items add column if not exists device_id text;
+alter table public.user_sync_items add column if not exists checksum text;
+alter table public.user_sync_items add column if not exists deleted_at timestamptz;
+alter table public.user_sync_items add column if not exists created_at timestamptz not null default now();
+alter table public.user_sync_items alter column user_id set default auth.uid();
+alter table public.user_sync_items alter column id set default gen_random_uuid();
+alter table public.user_sync_items alter column data_version set default 1;
+
+create unique index if not exists user_sync_items_user_storage_key_idx on public.user_sync_items (user_id, storage_key);
+create index if not exists user_sync_items_user_server_idx on public.user_sync_items (user_id, server_updated_at desc);
+create index if not exists user_sync_items_user_deleted_idx on public.user_sync_items (user_id, deleted_at);
+
+create or replace function public.viktkollen_set_sync_item_owner()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  new.user_id = auth.uid();
+  new.server_updated_at = now();
+  new.created_at = coalesce(new.created_at, now());
+  return new;
+end;
+$$;
+
+drop trigger if exists viktkollen_user_sync_items_owner on public.user_sync_items;
+create trigger viktkollen_user_sync_items_owner
+before insert or update on public.user_sync_items
+for each row execute function public.viktkollen_set_sync_item_owner();
+
+alter table public.user_sync_items enable row level security;
+alter table public.user_sync_items force row level security;
+
+drop policy if exists "Viktkollen users read own sync items" on public.user_sync_items;
+drop policy if exists "Viktkollen users insert own sync items" on public.user_sync_items;
+drop policy if exists "Viktkollen users update own sync items" on public.user_sync_items;
+drop policy if exists "Viktkollen users delete own sync items" on public.user_sync_items;
+
+create policy "Viktkollen users read own sync items"
+on public.user_sync_items for select to authenticated
+using (auth.uid() = user_id);
+
+create policy "Viktkollen users insert own sync items"
+on public.user_sync_items for insert to authenticated
+with check (auth.uid() = user_id);
+
+create policy "Viktkollen users update own sync items"
+on public.user_sync_items for update to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+create policy "Viktkollen users delete own sync items"
+on public.user_sync_items for delete to authenticated
+using (auth.uid() = user_id);
+
+grant select, insert, update, delete on public.user_sync_items to authenticated;
+
+comment on table public.user_sync_items is 'Automatisk Cloud Sync V2 per allowlistad localStorage-nyckel. Innehåller inga auth-sessioner, tokens eller hemligheter.';

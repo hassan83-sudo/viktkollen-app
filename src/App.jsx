@@ -6,6 +6,7 @@ import BarcodeScanner from './components/BarcodeScanner.jsx'
 import ChatPanel from './components/ChatPanel.jsx'
 import CheckIn from './components/CheckIn.jsx'
 import CloudBackupPanel from './components/CloudBackupPanel.jsx'
+import CloudSyncPanel from './components/CloudSyncPanel.jsx'
 import CloudStatusPanel from './components/CloudStatusPanel.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import MealLogger from './components/MealLogger.jsx'
@@ -2552,6 +2553,10 @@ function App() {
       <Dashboard actions={dashboardActions} dashboard={dashboardData} />
 
       <CloudStatusPanel isAuthenticated={Boolean(authSession)} />
+      <CloudSyncPanel
+        isAuthenticated={Boolean(authSession)}
+        userId={authSession?.user?.id || ''}
+      />
 
       <section className="content-grid">
         <ProgressCenter

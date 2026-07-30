@@ -3829,6 +3829,51 @@ a:focus-visible {
   margin-top: 12px;
 }
 
+.cloud-sync-actions,
+.cloud-sync-conflict-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cloud-sync-panel {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.cloud-sync-panel .panel-copy {
+  color: var(--muted);
+  margin: 0;
+}
+
+.cloud-sync-conflicts {
+  display: grid;
+  gap: 12px;
+}
+
+.cloud-sync-conflicts h3 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.cloud-sync-conflict {
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 13px;
+}
+
+.cloud-sync-conflict span {
+  color: var(--muted);
+  display: block;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
 .cloud-conflict-card {
   display: grid;
   gap: 12px;

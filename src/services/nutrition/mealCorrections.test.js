@@ -11,8 +11,9 @@ import {
   validateMealEditDraft,
 } from './nutritionEngine.js'
 
-const today = new Date().toISOString().slice(0, 10)
 const fixedNow = '2026-07-28T10:15:00.000Z'
+const today = new Date().toISOString().slice(0, 10)
+const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
 function coachReply(message, meals) {
   return createDeterministicAiCoachReply({
@@ -411,7 +412,7 @@ describe('Meal Editing V1 dashboard consistency', () => {
 
   it('removes meal from selected day when moved', () => {
     const updated = createUpdatedMealRecord({ date: today, id: 'meal', text: 'ägg' }, {
-      date: '2026-07-30',
+      date: tomorrow,
       description: 'ägg',
       time: '08:00',
     }, fixedNow).meal

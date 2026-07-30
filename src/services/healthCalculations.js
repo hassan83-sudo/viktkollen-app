@@ -41,6 +41,8 @@ export function formatKg(value, options = {}) {
 }
 
 export function normalizeWeightEntries(weights = []) {
+  const seen = new Set()
+
   return (Array.isArray(weights) ? weights : [])
     .map((entry) => {
       const value = parseWeightValue(entry?.value)
@@ -56,6 +58,16 @@ export function normalizeWeightEntries(weights = []) {
       }
     })
     .filter(Boolean)
+    .filter((entry) => {
+      const signature = `${entry.date}|${entry.value.toFixed(1)}`
+
+      if (seen.has(signature)) {
+        return false
+      }
+
+      seen.add(signature)
+      return true
+    })
     .sort((first, second) => new Date(first.date) - new Date(second.date))
 }
 

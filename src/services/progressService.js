@@ -152,18 +152,38 @@ export function compareProgressOldest(first, second) {
   return `${first.date}T${first.time}`.localeCompare(`${second.date}T${second.time}`)
 }
 
+export function getWeightEntrySignature(entry) {
+  const normalized = normalizeWeightEntry(entry)
+
+  if (!normalized) {
+    return ''
+  }
+
+  return [
+    normalized.date,
+    normalized.time,
+    normalized.value.toFixed(1),
+    normalized.source,
+    normalized.note.trim().toLocaleLowerCase('sv-SE'),
+  ].join('|')
+}
+
 export function normalizeWeights(weights) {
-  const seen = new Set()
+  const seenIds = new Set()
+  const seenSignatures = new Set()
 
   return (Array.isArray(weights) ? weights : [])
     .map(normalizeWeightEntry)
     .filter(Boolean)
     .filter((entry) => {
-      if (seen.has(entry.id)) {
+      const signature = getWeightEntrySignature(entry)
+
+      if (seenIds.has(entry.id) || seenSignatures.has(signature)) {
         return false
       }
 
-      seen.add(entry.id)
+      seenIds.add(entry.id)
+      seenSignatures.add(signature)
       return true
     })
     .sort(compareProgressOldest)
@@ -218,9 +238,11 @@ export function upsertWeight(weights, entry) {
     return normalizeWeights(weights)
   }
 
+  const signature = getWeightEntrySignature(normalized)
+
   return normalizeWeights([
     normalized,
-    ...normalizeWeights(weights).filter((item) => item.id !== normalized.id),
+    ...normalizeWeights(weights).filter((item) => item.id !== normalized.id && getWeightEntrySignature(item) !== signature),
   ])
 }
 

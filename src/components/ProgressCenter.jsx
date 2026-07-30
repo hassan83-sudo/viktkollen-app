@@ -836,7 +836,9 @@ function ProgressCenter({
     const nextEntry = weightDraftToEntry(weightDraft, existing)
 
     onWeightsChange(upsertWeight(normalizedWeights, nextEntry))
-    resetWeightDraft()
+    setWeightDraft(getEmptyWeightDraft(nextEntry))
+    setEditingWeightId('')
+    setWeightErrors({})
   }
 
   function editWeight(entry) {

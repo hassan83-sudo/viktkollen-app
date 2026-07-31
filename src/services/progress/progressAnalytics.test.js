@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createDeterministicAiCoachReply } from '../aiCoachDeterministicReplies.js'
+import { normalizeWorkout } from '../checkInWorkout.js'
 import {
   buildProgressDashboardAnalytics,
   formatProgressChange,
@@ -235,7 +236,7 @@ describe('habit progress analytics', () => {
     ['average mood', (result) => result.habits.averageMood === 'Fokuserad'],
     ['average steps', (result) => result.habits.averageSteps > 6000],
     ['training days', (result) => result.habits.trainingDays === 2],
-    ['training form', (result) => result.habits.trainingForm === 'gym'],
+    ['training form', (result) => result.habits.trainingForm === 'Gym'],
     ['active habits', (result) => result.habits.activeHabits === 3],
     ['completed habits', (result) => result.habits.completedHabits === 2],
     ['best streak', (result) => result.habits.bestStreak === 3],
@@ -249,6 +250,68 @@ describe('habit progress analytics', () => {
 
   it('deduplicates check-ins by day', () => {
     expect(analytics({ checkIns: [...checkIns, checkIns[0]] }).habits.checkInCount).toBe(3)
+  })
+
+  it('normalizes boolean workout without leaking true as a training form', () => {
+    const result = analytics({
+      checkIns: [{ date: '2026-03-25', energy: 7, mood: 'Fokuserad', steps: 8000, workout: true }],
+    })
+
+    expect(result.habits.trainingDays).toBe(1)
+    expect(result.habits.trainingForm).toBe('Träning markerad')
+    expect(JSON.stringify(result.habits)).not.toMatch(/"true"|"false"|\[object Object\]/)
+  })
+
+  it('does not count workout false as a training day', () => {
+    const result = analytics({
+      checkIns: [{ date: '2026-03-25', energy: 7, mood: 'Fokuserad', workout: false }],
+    })
+
+    expect(result.habits.trainingDays).toBe(0)
+    expect(result.habits.trainingForm).toBe('')
+  })
+
+  it('normalizes string workout type labels', () => {
+    expect(normalizeWorkout({ training: 'promenad' })).toEqual({
+      completed: true,
+      displayLabel: 'Promenad',
+      type: 'Promenad',
+    })
+  })
+
+  it('normalizes workout objects', () => {
+    expect(normalizeWorkout({ workout: { completed: true, type: 'styrketräning' } })).toEqual({
+      completed: true,
+      displayLabel: 'Styrketräning',
+      type: 'Styrketräning',
+    })
+  })
+
+  it('handles mixed legacy check-in formats and counts completed training only', () => {
+    const result = analytics({
+      checkIns: [
+        { date: '2026-03-25', workout: true },
+        { date: '2026-03-26', workout: false, workoutType: '' },
+        { date: '2026-03-27', training: 'gym' },
+        { date: '2026-03-28', workout: { done: true, name: 'cykling' } },
+      ],
+    })
+
+    expect(result.habits.trainingDays).toBe(3)
+    expect(result.habits.trainingForm).not.toMatch(/true|false|undefined|null|\[object Object\]/)
+  })
+
+  it('chooses the most common training from completed days only', () => {
+    const result = analytics({
+      checkIns: [
+        { date: '2026-03-25', workout: false, workoutType: 'gym' },
+        { date: '2026-03-26', training: 'promenad' },
+        { date: '2026-03-27', workoutType: 'promenad' },
+      ],
+    })
+
+    expect(result.habits.trainingDays).toBe(2)
+    expect(result.habits.trainingForm).toBe('Promenad')
   })
 })
 

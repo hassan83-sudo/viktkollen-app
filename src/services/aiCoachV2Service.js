@@ -10,6 +10,7 @@ import {
   filterActualMealsForDate,
   getLocalMealDateString,
 } from './nutrition/mealDateUtils.js'
+import { normalizeWorkout } from './checkInWorkout.js'
 import { analyzeWeights } from './progressService.js'
 
 function safeArray(value) {
@@ -263,7 +264,7 @@ function buildDailyAnalysis({
   const energy = safeNumber(checkIn?.energy)
   const sleep = safeNumber(checkIn?.sleep || checkIn?.sleepHours)
   const mood = safeText(checkIn?.mood, 'Ej loggat')
-  const workout = Boolean(checkIn?.workout)
+  const workout = normalizeWorkout(checkIn)
   const summaryParts = [
     weightStats.trend !== 'För lite data' ? `vikttrenden är ${weightStats.trend.toLocaleLowerCase('sv-SE')}` : '',
     steps !== null ? `${formatInteger(steps)} steg` : '',
@@ -302,7 +303,7 @@ function buildDailyAnalysis({
       summaryParts.length > 0
         ? `Dagens bild: ${summaryParts.join(', ')}.`
         : 'Dagens analys blir tydligare när du loggar vikt, mat eller check-in.',
-    trainingLabel: workout ? 'Träning markerad' : 'Ingen träning markerad',
+    trainingLabel: workout.completed ? workout.displayLabel : 'Ingen träning markerad',
     weightTrend: weightStats.trend,
   }
 }
@@ -317,7 +318,7 @@ function buildWeeklySummary({ checkIn, mealHistory, meals, profile, weeklyNutrit
   const proteinScore = average(weekMeals.map(getMealProteinStatus).map(getProteinScore))
   const steps = safeNumber(checkIn?.steps)
   const checkInCount = checkIn && Object.keys(checkIn).length > 0 ? 1 : 0
-  const trainingDays = checkIn?.workout ? 1 : 0
+  const trainingDays = normalizeWorkout(checkIn).completed ? 1 : 0
   const bestDay =
     weightAnalysis.latest || weekMeals.length > 0
       ? formatDate(weightAnalysis.latest?.date || weekMeals.at(-1)?.date || weekMeals.at(-1)?.createdAt)

@@ -38,6 +38,7 @@ import {
 } from './coachConversation.js'
 import { normalizeAiCoachText } from './coachText.js'
 import { buildProgressDashboardAnalytics } from '../progress/progressAnalytics.js'
+import { normalizeWorkout } from '../checkInWorkout.js'
 
 function firstNumber(...values) {
   for (const value of values) {
@@ -349,6 +350,7 @@ export function buildAiCoachFacts(context = {}) {
     0,
   )
   const todayCheckin = context.todayCheckin || context.checkIn || {}
+  const workout = normalizeWorkout(todayCheckin)
   const nutritionGoals = normalizeNutritionGoals(context.nutritionGoals)
   const dietaryPreferences = normalizeDietaryPreferences(context.dietaryPreferences || readDietaryPreferences())
   const mealTemplates = Array.isArray(context.mealTemplates) ? context.mealTemplates : readMealTemplates()
@@ -470,7 +472,7 @@ export function buildAiCoachFacts(context = {}) {
     shoppingList: currentShoppingList,
     suggestedCalorieGoal: calculateSuggestedCalorieGoal(profile, { weights }),
     suggestedProteinGoal: calculateSuggestedProteinGoal(profile, { weights }),
-    training: todayCheckin.workout || todayCheckin.training || '',
+    training: workout.completed ? workout.displayLabel : '',
     water: todayCheckin.water ?? null,
     weightHistory,
     weightLost: lossFacts.weightLost,

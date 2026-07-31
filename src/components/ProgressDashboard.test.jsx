@@ -78,6 +78,34 @@ describe('ProgressDashboard UI', () => {
     expect(html()).not.toMatch(/NaN|Infinity|undefined|null|\[object Object\]/)
   })
 
+  it('renders boolean workout as a neutral training label', () => {
+    const markup = html({
+      checkIn: { date: '2026-07-31', energy: 6, mood: 'Fokuserad', steps: 7200, workout: true },
+      checkIns: [],
+    })
+
+    expect(markup).toContain('Träning markerad')
+    expect(markup).not.toMatch(/Vanligaste träning<\/dt><dd>true|Vanligaste träning<\/dt><dd>false/)
+  })
+
+  it('does not render internal values in the habit card', () => {
+    const markup = renderToStaticMarkup(<HabitProgressCard habits={{
+      activeHabits: 0,
+      averageEnergy: null,
+      averageMood: 'undefined',
+      averageSteps: null,
+      bestStreak: 0,
+      checkInCount: 1,
+      completedHabits: 0,
+      currentStreak: 0,
+      trainingDays: 1,
+      trainingForm: 'true',
+    }} />)
+
+    expect(markup).toContain('Saknas')
+    expect(markup).not.toMatch(/>true<|>false<|>undefined<|>null<|\[object Object\]/)
+  })
+
   it('renders empty weight state', () => {
     const markup = renderToStaticMarkup(<ProgressTrendCard weight={{ ...analysis.weight, registrationCount: 0 }} />)
 

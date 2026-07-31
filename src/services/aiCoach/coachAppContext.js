@@ -1,5 +1,6 @@
 import { userDataKeys } from '../userDataRepository.js'
 import { normalizeNutritionGoals as normalizeNutritionGoalsModel } from '../nutrition/nutritionGoals.js'
+import { normalizeWorkout } from '../checkInWorkout.js'
 
 function isObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -133,15 +134,17 @@ function normalizeCheckIn(checkIn) {
     return {}
   }
 
+  const workout = normalizeWorkout(checkIn)
+
   return {
     date: getEntryDate(checkIn) || getLocalDateString(),
     energy: parseFiniteNumber(checkIn.energy, { min: 0, max: 10 }),
     mood: typeof checkIn.mood === 'string' ? checkIn.mood.trim() : '',
     sleep: parseFiniteNumber(checkIn.sleep ?? checkIn.sleepHours, { min: 0, max: 24 }),
     steps: parseFiniteNumber(checkIn.steps, { min: 0, max: 100000 }),
-    training: checkIn.training || checkIn.workout || '',
+    training: workout.displayLabel,
     water: parseFiniteNumber(checkIn.water, { min: 0, max: 20 }),
-    workout: Boolean(checkIn.workout || checkIn.training),
+    workout: workout.completed,
   }
 }
 

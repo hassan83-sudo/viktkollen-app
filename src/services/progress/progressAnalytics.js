@@ -8,6 +8,7 @@ import {
   normalizeNutritionGoals,
 } from '../nutrition/nutritionEngine.js'
 import { normalizeMeals } from '../nutritionService.js'
+import { normalizeWorkout } from '../checkInWorkout.js'
 import { forecastGoalProgress, normalizeForecastWeights } from './progressForecast.js'
 
 export const progressPeriods = [
@@ -234,14 +235,18 @@ function normalizeCheckIns(checkIn = {}, checkIns = [], range) {
   const seen = new Set()
 
   return [...entries, ...single]
-    .map((entry) => ({
-      date: dateKey(entry?.date || entry?.createdAt),
-      energy: safeNumber(entry?.energy),
-      mood: normalizeText(entry?.mood),
-      steps: safeNumber(entry?.steps),
-      training: normalizeText(entry?.training || entry?.workoutType || entry?.workout),
-      workout: Boolean(entry?.workout || entry?.training || entry?.workoutType),
-    }))
+    .map((entry) => {
+      const workout = normalizeWorkout(entry)
+
+      return {
+        date: dateKey(entry?.date || entry?.createdAt),
+        energy: safeNumber(entry?.energy),
+        mood: normalizeText(entry?.mood),
+        steps: safeNumber(entry?.steps),
+        training: workout.displayLabel,
+        workout: workout.completed,
+      }
+    })
     .filter((entry) => entry.date && isInRange(entry.date, range))
     .filter((entry) => {
       if (seen.has(entry.date)) return false
@@ -262,7 +267,7 @@ function analyzeHabitProgress({ checkIn = {}, checkIns = [], foods = [], range }
   const trainings = new Map()
   entries.forEach((entry) => {
     if (entry.mood) moods.set(entry.mood, (moods.get(entry.mood) || 0) + 1)
-    if (entry.training) trainings.set(entry.training, (trainings.get(entry.training) || 0) + 1)
+    if (entry.workout && entry.training) trainings.set(entry.training, (trainings.get(entry.training) || 0) + 1)
   })
   const activeHabits = (Array.isArray(foods) ? foods : []).filter(Boolean)
   const completedHabits = activeHabits.filter((habit) => habit.done).length

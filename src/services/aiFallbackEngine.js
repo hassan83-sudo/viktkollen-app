@@ -1,4 +1,5 @@
 import { formatKg } from './healthCalculations.js'
+import { normalizeCheckInMetrics } from './checkInNormalization.js'
 
 function getGeneratedAt() {
   return new Date().toISOString()
@@ -39,7 +40,7 @@ function getMealSummary(context = {}) {
 }
 
 function getRecoverySummary(context = {}) {
-  const energy = Number(context.checkIn?.energy)
+  const energy = normalizeCheckInMetrics(context.checkIn).energy.value
 
   return Number.isFinite(energy) && energy <= 4
     ? 'Energin verkar låg, så återhämtning och enkelhet bör prioriteras.'

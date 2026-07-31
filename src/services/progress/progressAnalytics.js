@@ -8,7 +8,7 @@ import {
   normalizeNutritionGoals,
 } from '../nutrition/nutritionEngine.js'
 import { normalizeMeals } from '../nutritionService.js'
-import { normalizeWorkout } from '../checkInWorkout.js'
+import { normalizeCheckInMetrics } from '../checkInNormalization.js'
 import { forecastGoalProgress, normalizeForecastWeights } from './progressForecast.js'
 
 export const progressPeriods = [
@@ -236,18 +236,24 @@ function normalizeCheckIns(checkIn = {}, checkIns = [], range) {
 
   return [...entries, ...single]
     .map((entry) => {
-      const workout = normalizeWorkout(entry)
+      const metrics = normalizeCheckInMetrics(entry)
 
       return {
         date: dateKey(entry?.date || entry?.createdAt),
-        energy: safeNumber(entry?.energy),
-        mood: normalizeText(entry?.mood),
-        steps: safeNumber(entry?.steps),
-        training: workout.displayLabel,
-        workout: workout.completed,
+        energy: metrics.energy.value,
+        energyLabel: metrics.energy.displayLabel,
+        energyLevel: metrics.energy.level,
+        mood: metrics.mood.displayLabel === 'Saknas' ? '' : metrics.mood.displayLabel,
+        moodKey: metrics.mood.key,
+        moodScore: metrics.mood.score,
+        steps: metrics.steps,
+        training: metrics.workout.displayLabel,
+        workout: metrics.workout.completed,
+        sortTime: getCheckInSortTime(entry),
       }
     })
     .filter((entry) => entry.date && isInRange(entry.date, range))
+    .sort((first, second) => second.sortTime - first.sortTime)
     .filter((entry) => {
       if (seen.has(entry.date)) return false
       seen.add(entry.date)
@@ -259,22 +265,36 @@ function normalizeText(value) {
   return String(value || '').replace(/\s+/g, ' ').trim()
 }
 
+function getCheckInSortTime(entry) {
+  const explicit = safeDate(entry?.updatedAt || entry?.createdAt)
+  if (explicit) return explicit.getTime()
+
+  const date = dateKey(entry?.date)
+  const time = normalizeText(entry?.time)
+  const withTime = date && time ? safeDate(`${date}T${time}`) : null
+
+  return (withTime || safeDate(date))?.getTime() || 0
+}
+
 function analyzeHabitProgress({ checkIn = {}, checkIns = [], foods = [], range }) {
   const entries = normalizeCheckIns(checkIn, checkIns, range)
   const energyValues = entries.map((entry) => entry.energy).filter(Number.isFinite)
   const stepValues = entries.map((entry) => entry.steps).filter(Number.isFinite)
   const moods = new Map()
   const trainings = new Map()
+  const chronologicalEntries = [...entries].sort((first, second) => first.sortTime - second.sortTime)
   entries.forEach((entry) => {
     if (entry.mood) moods.set(entry.mood, (moods.get(entry.mood) || 0) + 1)
     if (entry.workout && entry.training) trainings.set(entry.training, (trainings.get(entry.training) || 0) + 1)
   })
   const activeHabits = (Array.isArray(foods) ? foods : []).filter(Boolean)
   const completedHabits = activeHabits.filter((habit) => habit.done).length
+  const averageEnergy = energyValues.length ? round(energyValues.reduce((sum, value) => sum + value, 0) / energyValues.length, 1) : null
 
   return {
     activeHabits: activeHabits.length,
-    averageEnergy: energyValues.length ? round(energyValues.reduce((sum, value) => sum + value, 0) / energyValues.length, 1) : null,
+    averageEnergy,
+    averageEnergyLabel: averageEnergy === null ? 'Saknas' : `${averageEnergy.toLocaleString('sv-SE')} av 10`,
     averageMood: [...moods.entries()].sort((first, second) => second[1] - first[1] || first[0].localeCompare(second[0], 'sv-SE'))[0]?.[0] || '',
     averageSteps: stepValues.length ? Math.round(stepValues.reduce((sum, value) => sum + value, 0) / stepValues.length) : null,
     bestStreak: bestLoggingStreak(entries),
@@ -282,6 +302,7 @@ function analyzeHabitProgress({ checkIn = {}, checkIns = [], foods = [], range }
     completedHabits,
     currentStreak: bestLoggingStreak(entries.filter((entry) => entry.date >= (range.start || '0000-00-00'))),
     entries,
+    moodTrend: chronologicalEntries.map((entry) => entry.moodScore).filter(Number.isFinite),
     trainingDays: entries.filter((entry) => entry.workout).length,
     trainingForm: [...trainings.entries()].sort((first, second) => second[1] - first[1] || first[0].localeCompare(second[0], 'sv-SE'))[0]?.[0] || '',
   }

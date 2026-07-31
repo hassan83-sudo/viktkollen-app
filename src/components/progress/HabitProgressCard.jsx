@@ -9,6 +9,13 @@ function safeDisplay(value, fallback = 'Saknas') {
     : fallback
 }
 
+function formatEnergy(habits) {
+  if (habits.averageEnergyLabel) return safeDisplay(habits.averageEnergyLabel)
+  if (!Number.isFinite(habits.averageEnergy)) return 'Saknas'
+
+  return `${habits.averageEnergy.toLocaleString('sv-SE')} av 10`
+}
+
 function HabitProgressCard({ habits }) {
   return (
     <section className="nutrition-card progress-card" aria-labelledby="progress-habits-title">
@@ -20,7 +27,7 @@ function HabitProgressCard({ habits }) {
       </div>
       <dl className="progress-detail-grid">
         <div><dt>Check-ins</dt><dd>{habits.checkInCount}</dd></div>
-        <div><dt>Energi</dt><dd>{habits.averageEnergy === null ? 'Saknas' : `${habits.averageEnergy}/10`}</dd></div>
+        <div><dt>Energi</dt><dd>{formatEnergy(habits)}</dd></div>
         <div><dt>Humör</dt><dd>{safeDisplay(habits.averageMood)}</dd></div>
         <div><dt>Steg</dt><dd>{habits.averageSteps ? `${habits.averageSteps.toLocaleString('sv-SE')} steg/dag` : 'Saknas'}</dd></div>
         <div><dt>Träningsdagar</dt><dd>{habits.trainingDays}</dd></div>

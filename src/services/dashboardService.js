@@ -7,6 +7,7 @@ import {
   normalizeWeightEntries,
 } from './healthCalculations.js'
 import { getMealHistory } from './mealHistory.js'
+import { normalizeCheckInMetrics } from './checkInNormalization.js'
 
 const DEFAULT_CHECK_IN = {
   energy: null,
@@ -189,13 +190,20 @@ function makeScoreFactor(label, points, max, reason, improvement) {
 }
 
 function normalizeCheckIn(checkIn) {
+  const metrics = normalizeCheckInMetrics(checkIn)
+
   return {
     ...DEFAULT_CHECK_IN,
     ...(checkIn && typeof checkIn === 'object' ? checkIn : {}),
-    energy: safeNumber(checkIn?.energy),
-    mood: safeText(checkIn?.mood, 'Ej satt'),
-    steps: safeNumber(checkIn?.steps),
-    workout: Boolean(checkIn?.workout),
+    energy: metrics.energy.value,
+    energyLabel: metrics.energy.displayLabel,
+    energyLevel: metrics.energy.level,
+    mood: metrics.mood.displayLabel === 'Saknas' ? 'Ej satt' : metrics.mood.displayLabel,
+    moodKey: metrics.mood.key,
+    moodScore: metrics.mood.score,
+    steps: metrics.steps,
+    workout: metrics.workout.completed,
+    workoutLabel: metrics.workout.displayLabel,
   }
 }
 

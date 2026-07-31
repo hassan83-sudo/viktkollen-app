@@ -106,6 +106,17 @@ describe('ProgressDashboard UI', () => {
     expect(markup).not.toMatch(/>true<|>false<|>undefined<|>null<|\[object Object\]/)
   })
 
+  it('renders normalized energy and mood labels in the habit card', () => {
+    const markup = html({
+      checkIn: { date: '2026-07-31', energy: { scale: 5, value: 4 }, mood: 'good', steps: '7200' },
+      checkIns: [],
+    })
+
+    expect(markup).toContain('8 av 10')
+    expect(markup).toContain('Positiv')
+    expect(markup).not.toMatch(/<dd>good<\/dd>|<dd>low<\/dd>|<dd>neutral<\/dd>|<dd>true<\/dd>|<dd>false<\/dd>|<dd>undefined<\/dd>|<dd>null<\/dd>|NaN|\[object Object\]/)
+  })
+
   it('renders empty weight state', () => {
     const markup = renderToStaticMarkup(<ProgressTrendCard weight={{ ...analysis.weight, registrationCount: 0 }} />)
 

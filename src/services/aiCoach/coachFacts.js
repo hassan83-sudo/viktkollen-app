@@ -38,7 +38,7 @@ import {
 } from './coachConversation.js'
 import { normalizeAiCoachText } from './coachText.js'
 import { buildProgressDashboardAnalytics } from '../progress/progressAnalytics.js'
-import { normalizeWorkout } from '../checkInWorkout.js'
+import { normalizeCheckInMetrics } from '../checkInNormalization.js'
 
 function firstNumber(...values) {
   for (const value of values) {
@@ -178,7 +178,7 @@ function getChangeSinceDays(weights, days) {
 function getAverageStepData(context) {
   const checkIns = Array.isArray(context.checkIns) ? context.checkIns : []
   const values = checkIns
-    .map((entry) => parseNumber(entry?.steps))
+    .map((entry) => normalizeCheckInMetrics(entry).steps)
     .filter((value) => Number.isFinite(value))
 
   if (values.length === 0) {
@@ -192,7 +192,7 @@ function getLowEnergyDays(context) {
   const checkIns = Array.isArray(context.checkIns) ? context.checkIns : []
 
   return checkIns.filter((entry) => {
-    const energy = parseNumber(entry?.energy)
+    const energy = normalizeCheckInMetrics(entry).energy.value
 
     return Number.isFinite(energy) && energy <= 4
   }).length
@@ -202,7 +202,7 @@ function getPoorSleepDays(context) {
   const checkIns = Array.isArray(context.checkIns) ? context.checkIns : []
 
   return checkIns.filter((entry) => {
-    const sleep = parseNumber(entry?.sleep ?? entry?.sleepHours)
+    const sleep = normalizeCheckInMetrics(entry).sleep
 
     return Number.isFinite(sleep) && sleep < 6
   }).length
@@ -350,7 +350,7 @@ export function buildAiCoachFacts(context = {}) {
     0,
   )
   const todayCheckin = context.todayCheckin || context.checkIn || {}
-  const workout = normalizeWorkout(todayCheckin)
+  const checkInMetrics = normalizeCheckInMetrics(todayCheckin)
   const nutritionGoals = normalizeNutritionGoals(context.nutritionGoals)
   const dietaryPreferences = normalizeDietaryPreferences(context.dietaryPreferences || readDietaryPreferences())
   const mealTemplates = Array.isArray(context.mealTemplates) ? context.mealTemplates : readMealTemplates()
@@ -423,7 +423,9 @@ export function buildAiCoachFacts(context = {}) {
     change30,
     change7,
     dietaryPreferences,
-    energy: Number.isFinite(Number(todayCheckin.energy)) ? Number(todayCheckin.energy) : null,
+    energy: checkInMetrics.energy.value,
+    energyLabel: checkInMetrics.energy.displayLabel,
+    energyLevel: checkInMetrics.energy.level,
     gender: profile.gender || profile.sex || '',
     goalRemaining: unifiedWeight.goalRemaining,
     goalWeight,
@@ -432,7 +434,9 @@ export function buildAiCoachFacts(context = {}) {
     latestMealAnalysis: getLatestMealAnalysis(context.mealHistory || context.meals?.history),
     latestWeight,
     lowEnergyDays: getLowEnergyDays(context),
-    mood: todayCheckin.mood || '',
+    mood: checkInMetrics.mood.displayLabel === 'Saknas' ? '' : checkInMetrics.mood.displayLabel,
+    moodKey: checkInMetrics.mood.key,
+    moodScore: checkInMetrics.mood.score,
     poorSleepDays: getPoorSleepDays(context),
     monthlyNutritionReport,
     mealTemplates,
@@ -458,11 +462,11 @@ export function buildAiCoachFacts(context = {}) {
     recentAssistantTexts: getRecentAssistantTexts(context.chatHistory),
     recentFoods: getFoodTermsFromMeals(context.meals),
     recentMeals: getRecentMeals(context.meals?.loggedMealsToday || context.meals || []),
-    sleepHours: parseNumber(todayCheckin.sleep ?? todayCheckin.sleepHours),
+    sleepHours: checkInMetrics.sleep,
     plannedWeek: currentPlanWeek,
     plannedWeekSummary,
     startWeight: lossFacts.startWeight ?? startWeight,
-    steps: Number.isFinite(Number(todayCheckin.steps)) ? Number(todayCheckin.steps) : null,
+    steps: checkInMetrics.steps,
     todayCheckin,
     todayMealMemory,
     todayMealTimeline,
@@ -472,7 +476,7 @@ export function buildAiCoachFacts(context = {}) {
     shoppingList: currentShoppingList,
     suggestedCalorieGoal: calculateSuggestedCalorieGoal(profile, { weights }),
     suggestedProteinGoal: calculateSuggestedProteinGoal(profile, { weights }),
-    training: workout.completed ? workout.displayLabel : '',
+    training: checkInMetrics.workout.completed ? checkInMetrics.workout.displayLabel : '',
     water: todayCheckin.water ?? null,
     weightHistory,
     weightLost: lossFacts.weightLost,

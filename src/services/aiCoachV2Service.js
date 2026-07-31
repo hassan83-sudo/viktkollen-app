@@ -10,7 +10,7 @@ import {
   filterActualMealsForDate,
   getLocalMealDateString,
 } from './nutrition/mealDateUtils.js'
-import { normalizeWorkout } from './checkInWorkout.js'
+import { normalizeCheckInMetrics } from './checkInNormalization.js'
 import { analyzeWeights } from './progressService.js'
 
 function safeArray(value) {
@@ -208,6 +208,7 @@ function buildCoachProfile({ checkIn, profile, weights }) {
     weights,
   })
   const proteinNeed = calculateProteinNeed(weightContext.currentWeight)
+  const metrics = normalizeCheckInMetrics(checkIn)
 
   return {
     activityLevel: safeText(profile?.activity || profile?.activityLevel, 'Inte angiven'),
@@ -222,7 +223,7 @@ function buildCoachProfile({ checkIn, profile, weights }) {
         ? 'Saknas'
         : `${proteinNeed.lower}-${proteinNeed.upper} g/dag`,
     startWeight: weightContext.startWeight,
-    todaySteps: safeNumber(checkIn?.steps),
+    todaySteps: metrics.steps,
     weightContext,
   }
 }
@@ -260,11 +261,12 @@ function buildDailyAnalysis({
       ? 'Bra'
       : 'Lågt'
     : getProteinLabel(proteinStatuses.length ? average(proteinStatuses) : null)
-  const steps = safeNumber(checkIn?.steps)
-  const energy = safeNumber(checkIn?.energy)
-  const sleep = safeNumber(checkIn?.sleep || checkIn?.sleepHours)
-  const mood = safeText(checkIn?.mood, 'Ej loggat')
-  const workout = normalizeWorkout(checkIn)
+  const metrics = normalizeCheckInMetrics(checkIn)
+  const steps = metrics.steps
+  const energy = metrics.energy.value
+  const sleep = metrics.sleep
+  const mood = metrics.mood.displayLabel === 'Saknas' ? 'Ej loggat' : metrics.mood.displayLabel
+  const workout = metrics.workout
   const summaryParts = [
     weightStats.trend !== 'För lite data' ? `vikttrenden är ${weightStats.trend.toLocaleLowerCase('sv-SE')}` : '',
     steps !== null ? `${formatInteger(steps)} steg` : '',
@@ -316,15 +318,16 @@ function buildWeeklySummary({ checkIn, mealHistory, meals, profile, weeklyNutrit
   const calorieAverage = safeNumber(weeklyNutrition?.averageCalories)
   const fiberAverage = safeNumber(weeklyNutrition?.averageFiber)
   const proteinScore = average(weekMeals.map(getMealProteinStatus).map(getProteinScore))
-  const steps = safeNumber(checkIn?.steps)
+  const metrics = normalizeCheckInMetrics(checkIn)
+  const steps = metrics.steps
   const checkInCount = checkIn && Object.keys(checkIn).length > 0 ? 1 : 0
-  const trainingDays = normalizeWorkout(checkIn).completed ? 1 : 0
+  const trainingDays = metrics.workout.completed ? 1 : 0
   const bestDay =
     weightAnalysis.latest || weekMeals.length > 0
       ? formatDate(weightAnalysis.latest?.date || weekMeals.at(-1)?.date || weekMeals.at(-1)?.createdAt)
       : 'Saknas'
   const hardestDay =
-    safeNumber(checkIn?.energy) !== null && safeNumber(checkIn?.energy) <= 3
+    metrics.energy.value !== null && metrics.energy.value <= 3
       ? 'Dagen med låg energi'
       : 'Ingen tydlig svår dag hittad'
 

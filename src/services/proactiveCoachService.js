@@ -3,6 +3,7 @@ import { createAiFallback } from './aiFallbackEngine.js'
 import { requestAiEndpoint } from './aiApiService.js'
 import { buildAiUserContext } from './aiUserContext.js'
 import { getWeightStats } from './healthCalculations.js'
+import { normalizeCheckInMetrics } from './checkInNormalization.js'
 
 
 function getWeightTrend(weights = []) {
@@ -44,8 +45,9 @@ export function makeProactiveCoachInsights(data) {
     feature: 'proactiveCoach',
     userContext,
   })
-  const steps = Number(data.checkIn?.steps)
-  const energy = Number(data.checkIn?.energy)
+  const checkInMetrics = normalizeCheckInMetrics(data.checkIn)
+  const steps = checkInMetrics.steps
+  const energy = checkInMetrics.energy.value
   const mealHistory = data.mealHistory || []
   const meals = data.meals || []
   const weightTrend = getWeightTrend(data.weights)

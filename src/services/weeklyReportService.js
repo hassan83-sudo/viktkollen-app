@@ -3,6 +3,7 @@ import { createAiFallback } from './aiFallbackEngine.js'
 import { requestAiEndpoint } from './aiApiService.js'
 import { buildAiUserContext } from './aiUserContext.js'
 import { formatKg, getUnifiedWeightFacts, getWeightStats } from './healthCalculations.js'
+import { normalizeCheckInMetrics } from './checkInNormalization.js'
 
 
 function getWeightTrend(weights = [], profile = {}) {
@@ -62,8 +63,9 @@ export function makeWeeklyReportFallback(data) {
     feature: 'weeklyReport',
     userContext,
   })
-  const steps = Number(data.checkIn?.steps)
-  const energy = Number(data.checkIn?.energy)
+  const checkInMetrics = normalizeCheckInMetrics(data.checkIn)
+  const steps = checkInMetrics.steps
+  const energy = checkInMetrics.energy.value
   const mealHistory = data.mealHistory || []
   const hasProtein = hasStatus(mealHistory, 'proteinStatus', ['protein'])
   const hasVegetables = hasStatus(mealHistory, 'vegetableStatus', [

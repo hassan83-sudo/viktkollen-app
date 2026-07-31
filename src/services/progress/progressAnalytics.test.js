@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { createDeterministicAiCoachReply } from '../aiCoachDeterministicReplies.js'
-import { normalizeWorkout } from '../checkInWorkout.js'
+import { buildAiCoachFacts } from '../aiCoach/coachFacts.js'
+import {
+  normalizeCheckInMetrics,
+  normalizeEnergy,
+  normalizeMood,
+  normalizeWorkout,
+} from '../checkInNormalization.js'
 import {
   buildProgressDashboardAnalytics,
   formatProgressChange,
@@ -312,6 +318,138 @@ describe('habit progress analytics', () => {
 
     expect(result.habits.trainingDays).toBe(2)
     expect(result.habits.trainingForm).toBe('Promenad')
+  })
+
+  it('normalizes energy on a 1 to 10 scale', () => {
+    expect(normalizeEnergy(8)).toMatchObject({
+      displayLabel: '8 av 10',
+      level: 'high',
+      value: 8,
+    })
+  })
+
+  it('normalizes legacy energy objects with explicit 1 to 5 scale', () => {
+    expect(normalizeEnergy({ scale: 5, value: '4' })).toMatchObject({
+      displayLabel: '4 av 5',
+      level: 'high',
+      value: 8,
+    })
+  })
+
+  it('normalizes numeric energy strings', () => {
+    expect(normalizeEnergy('6/10')).toMatchObject({
+      displayLabel: '6 av 10',
+      level: 'medium',
+      value: 6,
+    })
+  })
+
+  it('normalizes Swedish mood strings', () => {
+    expect(normalizeMood('trött')).toMatchObject({
+      displayLabel: 'Trött',
+      score: 2,
+    })
+  })
+
+  it('normalizes English mood enums without exposing raw values', () => {
+    expect(normalizeMood('good')).toMatchObject({
+      displayLabel: 'Positiv',
+      key: 'positiv',
+      score: 4,
+    })
+  })
+
+  it('normalizes emoji mood values', () => {
+    expect(normalizeMood('🙂')).toMatchObject({
+      displayLabel: 'Glad',
+      score: 5,
+    })
+  })
+
+  it('normalizes object based legacy check-in formats', () => {
+    const metrics = normalizeCheckInMetrics({
+      energy: { scale: 5, value: 2 },
+      mood: { key: 'low' },
+      sleepHours: '5,5',
+      steps: '7200',
+      workout: { done: true, name: 'gym' },
+    })
+
+    expect(metrics.energy.value).toBe(4)
+    expect(metrics.mood.displayLabel).toBe('Låg')
+    expect(metrics.sleep).toBe(5.5)
+    expect(metrics.steps).toBe(7200)
+    expect(metrics.workout.displayLabel).toBe('Gym')
+  })
+
+  it('returns neutral fallback for invalid energy and mood values', () => {
+    expect(normalizeEnergy({ value: 'nope' }).displayLabel).toBe('Saknas')
+    expect(normalizeMood({ value: true }).displayLabel).toBe('Saknas')
+  })
+
+  it('uses normalized numeric energy for averages and trend data', () => {
+    const result = analytics({
+      checkIns: [
+        { date: '2026-03-25', energy: { scale: 5, value: 2 }, mood: 'neutral' },
+        { date: '2026-03-26', energy: '8', mood: 'good' },
+        { date: '2026-03-27', energy: 6, mood: 'good' },
+      ],
+    })
+
+    expect(result.habits.averageEnergy).toBe(6)
+    expect(result.habits.averageEnergyLabel).toBe('6 av 10')
+    expect(result.habits.moodTrend).toEqual([3, 4, 4])
+    expect(result.habits.averageMood).toBe('Positiv')
+  })
+
+  it('keeps AI Coach facts and Progress Dashboard aligned on mood labels', () => {
+    const checkInData = { date: '2026-03-31', energy: '8', mood: 'good', steps: '7200' }
+    const progress = analytics({ checkIn: checkInData, checkIns: [] }).habits
+    const facts = buildAiCoachFacts({ checkIn: checkInData, checkIns: [], meals: [], profile: {}, weights: [] })
+
+    expect(progress.averageMood).toBe('Positiv')
+    expect(facts.mood).toBe('Positiv')
+    expect(facts.energy).toBe(8)
+  })
+
+  it('uses local same-day latest check-in consistently', () => {
+    const result = analytics({
+      checkIns: [
+        { date: '2026-03-25', energy: 2, mood: 'low', time: '08:00' },
+        { date: '2026-03-25', energy: 8, mood: 'good', time: '20:00' },
+      ],
+    })
+
+    expect(result.habits.checkInCount).toBe(1)
+    expect(result.habits.averageEnergy).toBe(8)
+    expect(result.habits.averageMood).toBe('Positiv')
+  })
+
+  it('keeps today check-ins even when the time is later than the analysis clock', () => {
+    const result = buildProgressDashboardAnalytics({
+      checkIn: {},
+      checkIns: [{ date: '2026-03-31', energy: 7, mood: 'good', time: '23:59' }],
+      foods: [],
+      meals: [],
+      nutritionGoals: {},
+      profile: {},
+      weights: [],
+    }, { period: '7d', today })
+
+    expect(result.habits.checkInCount).toBe(1)
+    expect(result.habits.averageEnergy).toBe(7)
+  })
+
+  it('filters future calendar day check-ins', () => {
+    const result = analytics({
+      checkIns: [
+        { date: '2026-03-31', energy: 7, mood: 'good' },
+        { date: '2026-04-01', energy: 1, mood: 'bad' },
+      ],
+    })
+
+    expect(result.habits.checkInCount).toBe(1)
+    expect(result.habits.averageEnergy).toBe(7)
   })
 })
 

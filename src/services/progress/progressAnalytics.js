@@ -9,6 +9,17 @@ import {
 } from '../nutrition/nutritionEngine.js'
 import { normalizeMeals } from '../nutritionService.js'
 import { formatSleepDuration, normalizeCheckInMetrics } from '../checkInNormalization.js'
+import {
+  addLocalDays,
+  getEntryLocalDate,
+  getEntrySortTime as getLocalEntrySortTime,
+  getLocalCalendarDayDiff,
+  getLocalDateRange,
+  getLocalDateString,
+  isLocalDateInRange,
+  parseDateValue,
+  parseLocalDate,
+} from '../localDate.js'
 import { forecastGoalProgress, normalizeForecastWeights } from './progressForecast.js'
 
 export const progressPeriods = [
@@ -17,35 +28,6 @@ export const progressPeriods = [
   { days: 90, id: '90d', label: '90 dagar' },
   { days: null, id: 'all', label: 'Hela perioden' },
 ]
-
-function safeDate(value) {
-  const date = new Date(value)
-
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
-function localDateString(date = new Date()) {
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, '0'),
-    String(date.getDate()).padStart(2, '0'),
-  ].join('-')
-}
-
-function parseLocalDate(value) {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) {
-    const [year, month, day] = String(value).split('-').map(Number)
-    return new Date(year, month - 1, day)
-  }
-
-  return safeDate(value)
-}
-
-function addDays(date, amount) {
-  const next = new Date(date)
-  next.setDate(next.getDate() + amount)
-  return next
-}
 
 function safeNumber(value, fallback = null) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : fallback
@@ -66,27 +48,24 @@ function normalizePeriod(period = '30d') {
 
 export function getProgressPeriodRange(period = '30d', today = new Date()) {
   const selected = normalizePeriod(period)
-  const end = parseLocalDate(localDateString(safeDate(today) || new Date()))
-  const start = selected.days ? addDays(end, -selected.days + 1) : null
-  const previousEnd = selected.days ? addDays(start, -1) : null
-  const previousStart = selected.days ? addDays(previousEnd, -selected.days + 1) : null
+  const range = getLocalDateRange(selected.days, parseDateValue(today) || new Date())
+  const start = range.start ? parseLocalDate(range.start) : null
+  const previousEnd = selected.days ? addLocalDays(start, -1) : null
+  const previousStart = selected.days ? addLocalDays(previousEnd, -selected.days + 1) : null
 
   return {
     days: selected.days,
-    end: localDateString(end),
+    end: range.end,
     id: selected.id,
     label: selected.label,
-    previousEnd: previousEnd ? localDateString(previousEnd) : '',
-    previousStart: previousStart ? localDateString(previousStart) : '',
-    start: start ? localDateString(start) : '',
+    previousEnd: previousEnd ? getLocalDateString(previousEnd) : '',
+    previousStart: previousStart ? getLocalDateString(previousStart) : '',
+    start: range.start,
   }
 }
 
 function isInRange(dateString, range) {
-  if (!dateString) return false
-  if (range.start && dateString < range.start) return false
-  if (range.end && dateString > range.end) return false
-  return true
+  return isLocalDateInRange(dateString, range)
 }
 
 function normalizeProgressWeights(weights = [], today = new Date()) {
@@ -101,10 +80,9 @@ function bestLoggingStreak(entries = []) {
   let current = 1
   for (let index = 1; index < dates.length; index += 1) {
     const previous = parseLocalDate(dates[index - 1])
-    const next = parseLocalDate(dates[index])
-    const diff = previous && next ? Math.round((next - previous) / 86400000) : 0
+    const expectedNext = previous ? getLocalDateString(addLocalDays(previous, 1)) : ''
 
-    if (diff === 1) current += 1
+    if (expectedNext === dates[index]) current += 1
     else current = 1
     best = Math.max(best, current)
   }
@@ -119,7 +97,7 @@ function analyzeWeightProgress(weights = [], profile = {}, range, today = new Da
   const latest = periodWeights.at(-1) || null
   const periodChangeKg = first && latest ? round(latest.value - first.value) : null
   const percentChange = first && periodChangeKg !== null ? round((periodChangeKg / first.value) * 100, 1) : null
-  const daysBetween = first && latest ? Math.max(1, (latest.time - first.time) / 86400000) : 0
+  const daysBetween = first && latest ? Math.max(1, getLocalCalendarDayDiff(first.date, latest.date) || 0) : 0
   const weeklyAverageChange = periodChangeKg !== null && periodWeights.length >= 2 && daysBetween >= 7
     ? round((periodChangeKg / daysBetween) * 7, 2)
     : null
@@ -151,12 +129,6 @@ function analyzeWeightProgress(weights = [], profile = {}, range, today = new Da
     weeklyAverageChange,
     weights: periodWeights,
   }
-}
-
-function dateKey(value) {
-  const date = parseLocalDate(value)
-
-  return date ? localDateString(date) : ''
 }
 
 function groupMealsByDate(meals = [], range) {
@@ -239,7 +211,7 @@ function normalizeCheckIns(checkIn = {}, checkIns = [], range) {
       const metrics = normalizeCheckInMetrics(entry)
 
       return {
-        date: dateKey(entry?.date || entry?.createdAt),
+        date: getEntryLocalDate(entry),
         energy: metrics.energy.value,
         energyLabel: metrics.energy.displayLabel,
         energyLevel: metrics.energy.level,
@@ -253,7 +225,7 @@ function normalizeCheckIns(checkIn = {}, checkIns = [], range) {
         stepsLabel: metrics.stepsLabel,
         training: metrics.workout.displayLabel,
         workout: metrics.workout.completed,
-        sortTime: getCheckInSortTime(entry),
+        sortTime: getLocalEntrySortTime(entry),
       }
     })
     .filter((entry) => entry.date && isInRange(entry.date, range))
@@ -263,21 +235,6 @@ function normalizeCheckIns(checkIn = {}, checkIns = [], range) {
       seen.add(entry.date)
       return true
     })
-}
-
-function normalizeText(value) {
-  return String(value || '').replace(/\s+/g, ' ').trim()
-}
-
-function getCheckInSortTime(entry) {
-  const explicit = safeDate(entry?.updatedAt || entry?.createdAt)
-  if (explicit) return explicit.getTime()
-
-  const date = dateKey(entry?.date)
-  const time = normalizeText(entry?.time)
-  const withTime = date && time ? safeDate(`${date}T${time}`) : null
-
-  return (withTime || safeDate(date))?.getTime() || 0
 }
 
 function analyzeHabitProgress({ checkIn = {}, checkIns = [], foods = [], range }) {

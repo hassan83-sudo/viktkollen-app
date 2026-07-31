@@ -9,6 +9,11 @@ import {
   normalizeNutritionGoals as normalizeNutritionGoalsModel,
   validateNutritionGoals as validateNutritionGoalsModel,
 } from './nutrition/nutritionGoals.js'
+import {
+  addLocalDays,
+  getLocalDateString,
+  parseDateValue,
+} from './localDate.js'
 
 export const mealTypes = ['Frukost', 'Lunch', 'Middag', 'Mellanmål', 'Dryck', 'Annat']
 export const mealSources = ['Manuell', 'Fotoanalys', 'Snabbval', 'Importerad']
@@ -24,7 +29,7 @@ function pad(value) {
 }
 
 export function getTodayDateString(date = new Date()) {
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+  return getLocalDateString(date)
 }
 
 export function getCurrentTimeString(date = new Date()) {
@@ -32,9 +37,7 @@ export function getCurrentTimeString(date = new Date()) {
 }
 
 export function addDays(dateString, amount) {
-  const date = parseDate(dateString) || new Date()
-
-  date.setDate(date.getDate() + amount)
+  const date = addLocalDays(parseDate(dateString) || new Date(), amount)
 
   return getTodayDateString(date)
 }
@@ -44,9 +47,7 @@ export function parseDate(value) {
     return null
   }
 
-  const date = new Date(value)
-
-  return Number.isNaN(date.getTime()) ? null : date
+  return parseDateValue(value)
 }
 
 export function parseNutritionNumber(value, fallback = null) {

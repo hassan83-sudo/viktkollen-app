@@ -2,6 +2,13 @@ import { calculateDailyNutritionSummary } from './dailyNutritionSummary.js'
 import { buildMealTimeline } from './mealTimeline.js'
 import { buildNutritionDataQualitySummary } from './nutritionConfidence.js'
 import { normalizeNutritionGoals, parseProteinGoal } from './nutritionGoals.js'
+import {
+  addLocalDays,
+  getEntryLocalDate,
+  getLocalDateString,
+  isFutureLocalDate,
+  parseLocalDate,
+} from '../localDate.js'
 
 const weekDayNames = ['Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag', 'Söndag']
 
@@ -9,50 +16,20 @@ function isObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
-function pad(value) {
-  return String(value).padStart(2, '0')
-}
-
-function parseDate(value) {
-  if (!value) return null
-
-  const date = new Date(value)
-
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
 function localDateString(date = new Date()) {
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+  return getLocalDateString(date)
 }
 
 function addDays(dateText, amount) {
-  const date = parseDate(`${dateText}T12:00:00`) || new Date()
-
-  date.setDate(date.getDate() + amount)
-
-  return localDateString(date)
+  return localDateString(addLocalDays(parseLocalDate(dateText) || new Date(), amount))
 }
 
 function getMealDate(meal) {
-  const rawDate = String(meal?.date || '')
-
-  if (rawDate.includes('T')) {
-    const date = parseDate(rawDate)
-
-    return date ? localDateString(date) : ''
-  }
-
-  const dateText = rawDate.slice(0, 10)
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateText)) return dateText
-
-  const fallback = parseDate(meal?.createdAt || meal?.timestamp)
-
-  return fallback ? localDateString(fallback) : ''
+  return getEntryLocalDate(meal)
 }
 
 function getWeekStart(dateText = localDateString()) {
-  const date = parseDate(`${String(dateText).slice(0, 10)}T12:00:00`) || new Date()
+  const date = parseLocalDate(String(dateText).slice(0, 10)) || new Date()
   const day = date.getDay() || 7
 
   date.setDate(date.getDate() - day + 1)
@@ -84,7 +61,7 @@ function normalizeMealText(value) {
 }
 
 function isFutureDate(dateText, today) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(dateText) && dateText > today
+  return isFutureLocalDate(dateText, today)
 }
 
 export function getWeeklyNutritionRange(dateText = localDateString()) {

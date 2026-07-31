@@ -39,6 +39,11 @@ import {
 import { normalizeAiCoachText } from './coachText.js'
 import { buildProgressDashboardAnalytics } from '../progress/progressAnalytics.js'
 import { normalizeCheckInMetrics } from '../checkInNormalization.js'
+import {
+  getEntryLocalDate,
+  getLocalDateString,
+  parseDateValue,
+} from '../localDate.js'
 
 function firstNumber(...values) {
   for (const value of values) {
@@ -68,9 +73,9 @@ function getWeightEntryValue(entry) {
 }
 
 function getWeightEntryTime(entry) {
-  const date = new Date(entry?.date || entry?.createdAt || 0)
+  const date = parseDateValue(entry?.date || entry?.createdAt || 0)
 
-  return Number.isNaN(date.getTime()) ? 0 : date.getTime()
+  return date ? date.getTime() : 0
 }
 
 function getSortedWeightValues(weights = []) {
@@ -98,15 +103,7 @@ function getWeightLossFacts({ currentWeight, profile = {}, weights = [] }) {
 }
 
 function getDateString(value) {
-  const date = new Date(value)
-
-  return Number.isNaN(date.getTime())
-    ? ''
-    : [
-      date.getFullYear(),
-      String(date.getMonth() + 1).padStart(2, '0'),
-      String(date.getDate()).padStart(2, '0'),
-    ].join('-')
+  return getLocalDateString(value)
 }
 
 function getTodayDateString() {
@@ -114,7 +111,7 @@ function getTodayDateString() {
 }
 
 function getMealDate(meal) {
-  return String(meal?.date || getDateString(meal?.createdAt) || '').slice(0, 10)
+  return getEntryLocalDate(meal)
 }
 
 function getTodayMeals(meals = []) {

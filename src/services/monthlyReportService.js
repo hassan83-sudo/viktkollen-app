@@ -1,4 +1,12 @@
 import { formatKg, getWeightStats, normalizeDailyWeightEntries } from './healthCalculations.js'
+import {
+  addLocalDays,
+  getEntryLocalDate,
+  getLocalDateString,
+  getLocalDateRange,
+  isLocalDateInRange,
+  parseDateValue,
+} from './localDate.js'
 
 const DAYS_IN_REPORT = 30
 
@@ -7,13 +15,12 @@ function safeArray(value) {
 }
 
 function isWithinLastDays(date, days) {
-  const time = new Date(date).getTime()
+  const range = getLocalDateRange(days)
+  const localDate = typeof date === 'object'
+    ? getEntryLocalDate(date)
+    : getEntryLocalDate({ date })
 
-  if (Number.isNaN(time)) {
-    return false
-  }
-
-  return time >= Date.now() - days * 24 * 60 * 60 * 1000
+  return isLocalDateInRange(localDate, range)
 }
 
 function getMostCommon(values, fallback = 'Saknas') {
@@ -55,7 +62,7 @@ function getAverageScoreLabel(score, labels) {
 }
 
 function getMealDate(entry) {
-  return entry?.createdAt || entry?.date || new Date().toISOString()
+  return getEntryLocalDate(entry)
 }
 
 function getMealType(entry) {
@@ -64,17 +71,18 @@ function getMealType(entry) {
 
 function getBestWeek(weights = []) {
   const sortedWeights = [...weights].sort(
-    (first, second) => new Date(first.date) - new Date(second.date),
+    (first, second) => (parseDateValue(first.date)?.getTime() || 0) - (parseDateValue(second.date)?.getTime() || 0),
   )
   const weeks = []
 
   for (let index = 0; index < sortedWeights.length; index += 1) {
     const start = sortedWeights[index]
-    const endLimit = new Date(start.date).getTime() + 7 * 24 * 60 * 60 * 1000
+    const startDate = getEntryLocalDate(start)
+    const endDate = getLocalDateString(addLocalDays(startDate, 6))
     const weekEntries = sortedWeights.filter((entry) => {
-      const time = new Date(entry.date).getTime()
+      const entryDate = getEntryLocalDate(entry)
 
-      return time >= new Date(start.date).getTime() && time <= endLimit
+      return isLocalDateInRange(entryDate, { end: endDate, start: startDate })
     })
     const last = weekEntries.at(-1)
     const change = last ? Number((last.value - start.value).toFixed(1)) : 0
@@ -82,7 +90,7 @@ function getBestWeek(weights = []) {
     weeks.push({
       change,
       count: weekEntries.length,
-      label: `${new Date(start.date).toLocaleDateString('sv-SE')} - ${new Date(endLimit).toLocaleDateString('sv-SE')}`,
+      label: `${startDate} - ${endDate}`,
     })
   }
 
@@ -101,7 +109,7 @@ function getBestWeek(weights = []) {
 
 function getMealDays(meals) {
   return new Set(
-    meals.map((meal) => new Date(getMealDate(meal)).toLocaleDateString('sv-SE')),
+    meals.map((meal) => getMealDate(meal)).filter(Boolean),
   ).size
 }
 
@@ -203,7 +211,7 @@ export function createMonthlyHealthReport(data = {}) {
     isWithinLastDays(getMealDate(entry), DAYS_IN_REPORT),
   )
   const manualMeals = safeArray(data.meals).filter((entry) =>
-    isWithinLastDays(entry?.createdAt || entry?.date || new Date(), DAYS_IN_REPORT),
+    isWithinLastDays(entry, DAYS_IN_REPORT),
   )
   const totalMeals = recentMealAnalyses.length + manualMeals.length
   const proteinScores = recentMealAnalyses

@@ -1,17 +1,8 @@
 import { formatKg, normalizeDailyWeightEntries, parseWeightValue } from '../healthCalculations.js'
+import { getLocalCalendarDayDiff, getLocalDateString, parseDateValue } from '../localDate.js'
 
 function safeDate(value) {
-  const date = new Date(value)
-
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
-function localDateString(date = new Date()) {
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, '0'),
-    String(date.getDate()).padStart(2, '0'),
-  ].join('-')
+  return parseDateValue(value)
 }
 
 function safeNumber(value) {
@@ -28,13 +19,13 @@ function round(value, digits = 1) {
 
 export function normalizeForecastWeights(weights = [], today = new Date()) {
   const now = safeDate(today) || new Date()
-  const todayDate = localDateString(now)
+  const todayDate = getLocalDateString(now)
 
   return normalizeDailyWeightEntries(weights, { today: now })
     .map((entry) => {
       const date = safeDate(entry.date)
       const value = safeNumber(entry.value)
-      const entryDate = date ? localDateString(date) : ''
+      const entryDate = date ? getLocalDateString(date) : ''
 
       if (value === null || !date || entryDate > todayDate || value < 25 || value > 350) return null
 
@@ -54,7 +45,7 @@ export function calculateRobustWeeklyTrend(weights = [], options = {}) {
 
   const first = normalized[0]
   const latest = normalized.at(-1)
-  const days = Math.max(1, (latest.time - first.time) / 86400000)
+  const days = Math.max(1, getLocalCalendarDayDiff(first.date, latest.date) || 0)
   if (days < 14) return null
 
   const change = latest.value - first.value

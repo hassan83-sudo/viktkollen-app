@@ -1,6 +1,12 @@
 import { userDataKeys } from '../userDataRepository.js'
 import { normalizeNutritionGoals as normalizeNutritionGoalsModel } from '../nutrition/nutritionGoals.js'
 import { normalizeCheckInMetrics } from '../checkInNormalization.js'
+import {
+  getEntryLocalDate,
+  getEntrySortTime as getLocalEntrySortTime,
+  getLocalDateString as getCentralLocalDateString,
+  parseDateValue,
+} from '../localDate.js'
 
 function isObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -38,49 +44,19 @@ function parseFiniteNumber(value, { min = -Infinity, max = Infinity } = {}) {
 }
 
 function getLocalDateString(date = new Date()) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-
-  return `${year}-${month}-${day}`
+  return getCentralLocalDateString(date)
 }
 
 function parseDateTime(value) {
-  if (!value) {
-    return null
-  }
-
-  const date = new Date(value)
-
-  return Number.isNaN(date.getTime()) ? null : date
+  return parseDateValue(value)
 }
 
 function getEntryDate(entry) {
-  const rawDate = String(entry?.date || '')
-
-  if (rawDate.includes('T')) {
-    const parsedDate = parseDateTime(rawDate)
-
-    return parsedDate ? getLocalDateString(parsedDate) : ''
-  }
-
-  const dateText = rawDate.slice(0, 10)
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateText)) {
-    return dateText
-  }
-
-  const createdDate = parseDateTime(entry?.createdAt || entry?.time || entry?.timestamp)
-
-  return createdDate ? getLocalDateString(createdDate) : ''
+  return getEntryLocalDate(entry)
 }
 
 function getSortTime(entry) {
-  const date = getEntryDate(entry)
-  const time = /^\d{2}:\d{2}$/.test(String(entry?.time || '')) ? entry.time : '12:00'
-  const parsed = parseDateTime(`${date}T${time}:00`)
-
-  return parsed?.getTime() ?? 0
+  return getLocalEntrySortTime(entry)
 }
 
 function normalizeProfile(profile) {

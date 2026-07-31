@@ -24,6 +24,12 @@ function parseSignedNumber(value, fallback = null) {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
+function roundNumber(value, digits = 1) {
+  const factor = 10 ** digits
+
+  return Math.round((value + Number.EPSILON) * factor) / factor
+}
+
 export function formatKg(value, options = {}) {
   const number = parseSignedNumber(value)
 
@@ -180,22 +186,53 @@ export function calculateGoalProgress({ currentWeight, goalWeight, startWeight }
   const totalDistance = Math.abs(start - goal)
 
   if (totalDistance === 0) {
-    return null
+    return {
+      completePercent: current === goal ? 100 : 0,
+      completedKg: current === goal ? 0 : null,
+      direction: 'stable',
+      milestones: [],
+      nextMilestone: null,
+      passedMilestones: [],
+      remainingKg: current === goal ? 0 : null,
+      remainingPercent: current === goal ? 0 : 100,
+      totalDistance,
+    }
   }
 
-  const progressDistance = Math.max(
+  const rawProgressDistance = Math.max(
     0,
     start > goal ? start - current : current - start,
   )
+  const progressDistance = Math.min(totalDistance, rawProgressDistance)
   const completePercent = Math.max(
     0,
-    Math.min(100, Math.round((progressDistance / totalDistance) * 100)),
+    Math.min(100, roundNumber((progressDistance / totalDistance) * 100)),
   )
-  const remainingPercent = Math.max(0, Math.min(100, 100 - completePercent))
+  const remainingPercent = Math.max(0, Math.min(100, roundNumber(100 - completePercent)))
+  const direction = start > goal ? 'loss' : 'gain'
+  const milestonePercents = [10, 25, 50, 75, 90, 100]
+  const milestones = milestonePercents.map((percent) => {
+    const rawWeight = start + (goal - start) * (percent / 100)
+    const weight = roundNumber(rawWeight)
+    const passed = direction === 'loss'
+      ? current <= weight + 0.0001
+      : current >= weight - 0.0001
+
+    return { passed, percent, weight }
+  })
+  const passedMilestones = milestones.filter((milestone) => milestone.passed)
+  const nextMilestone = milestones.find((milestone) => !milestone.passed) ?? null
 
   return {
     completePercent,
+    completedKg: roundNumber(progressDistance),
+    direction,
+    milestones,
+    nextMilestone,
+    passedMilestones,
+    remainingKg: roundNumber(Math.max(0, totalDistance - progressDistance)),
     remainingPercent,
+    totalDistance: roundNumber(totalDistance),
   }
 }
 
@@ -315,16 +352,15 @@ export function getUnifiedWeightContext({
   startWeight,
   weights = [],
 } = {}) {
-  const profileStartWeight = parseWeightValue(
-    startWeight ?? profile?.startWeight,
-  )
+  const explicitStartWeight = parseWeightValue(startWeight)
+  const profileStartWeight = parseWeightValue(profile?.startWeight)
   const profileGoalWeight = parseWeightValue(goalWeight ?? profile?.goalWeight)
   const weightStats = getWeightStats(weights, {
     currentWeight,
-    startWeight: profileStartWeight,
+    startWeight: explicitStartWeight ?? profileStartWeight,
   })
   const current = weightStats.current
-  const start = profileStartWeight ?? weightStats.first
+  const start = weightStats.first ?? explicitStartWeight ?? profileStartWeight
   const remainingKg = calculateGoalDistance(current, profileGoalWeight)
   const goalProgress = calculateGoalProgress({
     currentWeight: current,
@@ -336,6 +372,7 @@ export function getUnifiedWeightContext({
   return {
     changeSinceStart,
     completePercent: goalProgress?.completePercent ?? null,
+    goalProgress,
     currentWeight: current,
     goalWeight: profileGoalWeight,
     hasWeights: weightStats.hasWeights,

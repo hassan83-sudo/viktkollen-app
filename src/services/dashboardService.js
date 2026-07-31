@@ -123,6 +123,14 @@ function formatInteger(value) {
   return number === null ? 'Saknas' : Math.round(number).toLocaleString('sv-SE')
 }
 
+function formatPercent(value) {
+  const number = safeNumber(value)
+
+  return number === null
+    ? 'Saknas'
+    : `${number.toLocaleString('sv-SE', { maximumFractionDigits: 1 })}%`
+}
+
 function includesAny(value, terms) {
   const text = String(value || '').toLocaleLowerCase('sv-SE')
 
@@ -510,12 +518,15 @@ function makeGoals({ profile, weightStats }) {
   const goalWeight = weightContext.goalWeight
   const remaining = weightContext.goalRemaining
   const percentRemaining = weightContext.percentRemaining
+  const nextMilestone = weightContext.goalProgress?.nextMilestone
   const milestone =
     remaining === null
       ? 'Sätt målvikt och logga nästa vikt.'
       : Math.abs(remaining) <= 0.3
         ? 'Håll målet stabilt i en vecka.'
-        : `Nästa milstolpe: ${formatKg(Math.max(Math.abs(remaining) - 1, 0))} kvar.`
+        : nextMilestone
+          ? `Nästa milstolpe: ${formatKg(nextMilestone.weight)}.`
+          : `Målet ${formatKg(goalWeight)} är nästa.`
 
   return {
     currentWeight,
@@ -536,7 +547,7 @@ function makeGoals({ profile, weightStats }) {
             ? 'Fortsätt med samma basvana och följ nästa veckosnitt.'
             : 'Välj en måltidsvana att göra enklare i dag.',
     percentRemainingLabel:
-      percentRemaining === null ? 'Saknas' : `${percentRemaining}% kvar`,
+      percentRemaining === null ? 'Saknas' : `${formatPercent(percentRemaining)} kvar`,
     remaining,
     remainingLabel:
       remaining === null

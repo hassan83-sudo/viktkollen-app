@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { createDashboardData } from './dashboardService.js'
-import { getUnifiedWeightFacts, getWeightStats, normalizeWeightEntries } from './healthCalculations.js'
+import {
+  calculateGoalProgress,
+  getUnifiedWeightFacts,
+  getWeightStats,
+  normalizeWeightEntries,
+} from './healthCalculations.js'
+import { createAiCoachV2Report } from './aiCoachV2Service.js'
 import { buildAiCoachFacts } from './aiCoach/coachFacts.js'
 import { buildProgressDashboardAnalytics } from './progress/progressAnalytics.js'
 import { makePersonalCoachReply } from '../lib/coachReply.js'
@@ -375,6 +381,90 @@ describe('weight module regression flow', () => {
     })
 
     expect(dashboard.progress.weightTrend).toBe('Logga vikt för att se trend')
+  })
+
+  it('central goal progress calculates loss milestones and percentages without using rounded kilos', () => {
+    const facts = getUnifiedWeightFacts({
+      profile: { goalWeight: '78 kg', startWeight: '78 kg' },
+      weights: [
+        { date: '2026-07-01', id: 'start', source: 'Manuell', time: '08:00', value: 91.8 },
+        { date: '2026-07-31', id: 'latest', source: 'Manuell', time: '04:09', value: 89.6 },
+      ],
+    })
+
+    expect(facts.startWeight).toBe(91.8)
+    expect(facts.latestWeight).toBe(89.6)
+    expect(facts.goalWeight).toBe(78)
+    expect(facts.goalProgress.totalDistance).toBe(13.8)
+    expect(facts.goalProgress.completedKg).toBe(2.2)
+    expect(facts.completePercent).toBe(15.9)
+    expect(facts.percentRemaining).toBe(84.1)
+    expect(facts.goalProgress.passedMilestones.map((milestone) => milestone.weight)).toEqual([90.4])
+    expect(facts.goalProgress.nextMilestone).toMatchObject({ percent: 25, weight: 88.4 })
+  })
+
+  it('AI Coach V2 uses central milestones for weight loss', () => {
+    const report = createAiCoachV2Report({
+      checkIn: {},
+      foods: [],
+      meals: [],
+      nutritionGoals: {},
+      profile: { goalWeight: '78 kg', startWeight: '78 kg' },
+      weights: [
+        { date: '2026-07-01', id: 'start', source: 'Manuell', time: '08:00', value: 91.8 },
+        { date: '2026-07-31', id: 'latest', source: 'Manuell', time: '04:09', value: 89.6 },
+      ],
+    })
+
+    expect(report.goalCenter.latestMilestone).toBe('90,4 kg passerad')
+    expect(report.goalCenter.latestMilestone).not.toContain('88 kg')
+    expect(report.goalCenter.nextMilestone).toBe('88,4 kg är nästa.')
+    expect(report.goalCenter.nextMilestone).not.toContain('Målet 78 kg är nästa')
+    expect(report.goalCenter.percentRemainingLabel).toBe('84,1% kvar')
+    expect(report.goalCenter.remainingKgLabel).toBe('11,6 kg kvar')
+  })
+
+  it('central goal progress calculates gain milestones with the opposite direction', () => {
+    const progress = calculateGoalProgress({
+      currentWeight: 82.1,
+      goalWeight: 90,
+      startWeight: 80,
+    })
+
+    expect(progress.completePercent).toBe(21)
+    expect(progress.remainingPercent).toBe(79)
+    expect(progress.passedMilestones.map((milestone) => milestone.weight)).toEqual([81])
+    expect(progress.nextMilestone).toMatchObject({ percent: 25, weight: 82.5 })
+  })
+
+  it('central goal progress counts an exact milestone hit as passed', () => {
+    const progress = calculateGoalProgress({
+      currentWeight: 88.4,
+      goalWeight: 78,
+      startWeight: 91.8,
+    })
+
+    expect(progress.passedMilestones.map((milestone) => milestone.percent)).toEqual([10, 25])
+    expect(progress.nextMilestone).toMatchObject({ percent: 50, weight: 84.9 })
+  })
+
+  it('central goal progress handles identical start and goal weights', () => {
+    const progress = calculateGoalProgress({
+      currentWeight: 80,
+      goalWeight: 80,
+      startWeight: 80,
+    })
+
+    expect(progress.completePercent).toBe(100)
+    expect(progress.remainingPercent).toBe(0)
+    expect(progress.milestones).toEqual([])
+    expect(progress.nextMilestone).toBeNull()
+  })
+
+  it('central goal progress returns null when required weight data is missing', () => {
+    expect(calculateGoalProgress({ currentWeight: 89.6, goalWeight: 78 })).toBeNull()
+    expect(calculateGoalProgress({ startWeight: 91.8, goalWeight: 78 })).toBeNull()
+    expect(calculateGoalProgress({ startWeight: 91.8, currentWeight: 89.6 })).toBeNull()
   })
 
   it('migrated duplicates do not inflate dashboard, progress analytics or reports', () => {

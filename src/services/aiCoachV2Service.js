@@ -42,6 +42,14 @@ function formatInteger(value, fallback = 'Saknas') {
   return number === null ? fallback : Math.round(number).toLocaleString('sv-SE')
 }
 
+function formatPercent(value, fallback = 'Saknas') {
+  const number = safeNumber(value)
+
+  return number === null
+    ? fallback
+    : `${number.toLocaleString('sv-SE', { maximumFractionDigits: 1 })}%`
+}
+
 function average(values) {
   const numbers = values.map((value) => safeNumber(value)).filter((value) => value !== null)
 
@@ -127,31 +135,28 @@ function getLastActivityDate({ checkIn, mealHistory, meals, weights }) {
 }
 
 function getMilestones(weightContext) {
-  const start = weightContext.startWeight
-  const goal = weightContext.goalWeight
-  const current = weightContext.currentWeight
+  const progress = weightContext.goalProgress
 
-  if (start === null || goal === null || current === null) {
+  if (!progress) {
     return {
       latest: 'Sätt startvikt, nuvarande vikt och målvikt för milstolpar.',
       next: 'Nästa milstolpe visas när målet är komplett.',
     }
   }
 
-  const direction = start > goal ? -1 : 1
-  const passed = Math.abs(start - current)
-  const nextPassed = Math.floor(passed / 2.5 + 1) * 2.5
-  const latestPassed = Math.floor(passed / 2.5) * 2.5
-  const latestWeight = Number((start + latestPassed * direction).toFixed(1))
-  const nextWeight = Number((start + nextPassed * direction).toFixed(1))
-  const reachedGoal = direction < 0 ? nextWeight <= goal : nextWeight >= goal
+  if (progress.totalDistance === 0) {
+    return {
+      latest: 'Start och mål är samma vikt.',
+      next: 'Inga mellanliggande milstolpar behövs.',
+    }
+  }
+
+  const latest = progress.passedMilestones.at(-1)
+  const next = progress.nextMilestone
 
   return {
-    latest:
-      latestPassed > 0
-        ? `${formatKg(latestWeight)} passerad`
-        : 'Första milstolpen väntar.',
-    next: reachedGoal ? `Målet ${formatKg(goal)} är nästa.` : `${formatKg(nextWeight)} är nästa.`,
+    latest: latest ? `${formatKg(latest.weight)} passerad` : 'Första milstolpen väntar.',
+    next: next ? `${formatKg(next.weight)} är nästa.` : `Målet ${formatKg(weightContext.goalWeight)} är nått.`,
   }
 }
 
@@ -351,7 +356,7 @@ function buildGoalCenter(coachProfile) {
     percentRemainingLabel:
       weightContext.percentRemaining === null
         ? 'Saknas'
-        : `${weightContext.percentRemaining}% kvar`,
+        : `${formatPercent(weightContext.percentRemaining)} kvar`,
     remainingKgLabel:
       weightContext.goalRemaining === null
         ? 'Saknas'

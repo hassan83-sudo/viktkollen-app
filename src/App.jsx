@@ -46,6 +46,7 @@ import {
   getWeightStats,
   parseWeightValue,
 } from './services/healthCalculations.js'
+import { buildHealthSnapshot } from './services/healthSnapshot.js'
 import {
   addMealAnalysis,
   clearMealHistory,
@@ -942,9 +943,26 @@ function App() {
     getAnalysisHistory(),
   )
 
-  const centralWeightStats = useMemo(() => getWeightStats(weights), [weights])
-  const latestWeight = weights.at(-1) || { value: centralWeightStats.current }
-  const centralCurrentWeight = centralWeightStats.current
+  const validatedProfile = useMemo(() => makeValidatedProfile(profile), [profile])
+  const healthSnapshot = useMemo(
+    () =>
+      buildHealthSnapshot({
+        checkIn,
+        mealHistory: photoMeals,
+        meals,
+        nutritionGoals,
+        profile: validatedProfile,
+        today: selectedMealDate,
+        weights,
+      }),
+    [checkIn, meals, nutritionGoals, photoMeals, selectedMealDate, validatedProfile, weights],
+  )
+  const centralWeightStats = useMemo(
+    () => getWeightStats(healthSnapshot.weight.dailyWeights, { startWeight: validatedProfile.startWeight }),
+    [healthSnapshot.weight.dailyWeights, validatedProfile.startWeight],
+  )
+  const latestWeight = healthSnapshot.weight.dailyWeights.at(-1) || { value: healthSnapshot.weight.current }
+  const centralCurrentWeight = healthSnapshot.weight.current
   const aiUserContext = useMemo(
     () =>
       buildAiUserContext({
@@ -953,10 +971,13 @@ function App() {
         checkIn,
         currentWeight: centralCurrentWeight,
         foods,
+        healthSnapshot,
         latestWeeklyReport: weeklyReportData,
         mealHistory: photoMeals,
         meals,
-        profile: makeValidatedProfile(profile),
+        nutritionGoals,
+        profile: validatedProfile,
+        today: selectedMealDate,
         weights,
       }),
     [
@@ -965,9 +986,12 @@ function App() {
       checkIn,
       centralCurrentWeight,
       foods,
+      healthSnapshot,
       meals,
+      nutritionGoals,
       photoMeals,
-      profile,
+      selectedMealDate,
+      validatedProfile,
       weeklyReportData,
       weights,
     ],
@@ -978,12 +1002,12 @@ function App() {
   )
   const foodScore = foods.filter((item) => item.done).length
   const progressAnalysis = useMemo(
-    () => analyzeWeights(weights, makeValidatedProfile(profile)),
-    [profile, weights],
+    () => analyzeWeights(healthSnapshot.weight.dailyWeights, validatedProfile),
+    [healthSnapshot.weight.dailyWeights, validatedProfile],
   )
   const progressProjection = useMemo(
-    () => createWeightProjection(weights, makeValidatedProfile(profile)),
-    [profile, weights],
+    () => createWeightProjection(healthSnapshot.weight.dailyWeights, validatedProfile),
+    [healthSnapshot.weight.dailyWeights, validatedProfile],
   )
   const bodyMeasurementAnalysis = useMemo(
     () => analyzeBodyMeasurements(bodyMeasurements),
@@ -993,10 +1017,10 @@ function App() {
     () =>
       createProgressInsights({
         bodyMeasurements,
-        profile: makeValidatedProfile(profile),
-        weights,
+        profile: validatedProfile,
+        weights: healthSnapshot.weight.dailyWeights,
       }),
-    [bodyMeasurements, profile, weights],
+    [bodyMeasurements, healthSnapshot.weight.dailyWeights, validatedProfile],
   )
   const beforePhoto =
     progressPhotos.find((photo) => String(photo.id) === beforePhotoId) ??
@@ -1173,11 +1197,12 @@ function App() {
   const monthlyReport = useMemo(
     () =>
       createMonthlyHealthReport({
+        healthSnapshot,
         mealHistory: photoMeals,
         meals,
         weights,
       }),
-    [meals, photoMeals, weights],
+    [healthSnapshot, meals, photoMeals, weights],
   )
   const weeklyReportLines = useMemo(
     () =>
@@ -1195,11 +1220,11 @@ function App() {
     () =>
       makeCoachMessage(
         profile,
-        checkIn,
+        healthSnapshot.checkIn.latestToday || checkIn,
         foods,
-        meals,
+        healthSnapshot.nutrition.mealsToday,
       ),
-    [checkIn, foods, meals, profile],
+    [checkIn, foods, healthSnapshot.checkIn.latestToday, healthSnapshot.nutrition.mealsToday, profile],
   )
   const dailyCoachKey = useMemo(
     () =>
@@ -1207,11 +1232,14 @@ function App() {
         checkIn,
         currentWeight: centralCurrentWeight,
         foods,
+        healthSnapshot,
         meals,
+        nutritionGoals,
         profile,
+        selectedMealDate,
         weights,
       }),
-    [centralCurrentWeight, checkIn, foods, meals, profile, weights],
+    [centralCurrentWeight, checkIn, foods, healthSnapshot, meals, nutritionGoals, profile, selectedMealDate, weights],
   )
   const [dailyCoachResult, setDailyCoachResult] = useState(null)
   const hasFreshDailyCoach = dailyCoachResult?.key === dailyCoachKey
@@ -1230,6 +1258,7 @@ function App() {
     () =>
       createAiCoachV2Report({
         checkIn,
+        healthSnapshot,
         mealHistory: photoMeals,
         meals,
         nutritionGoals,
@@ -1239,7 +1268,7 @@ function App() {
         progressAnalysis,
         progressInsights,
         progressProjection,
-        profile: makeValidatedProfile(profile),
+        profile: validatedProfile,
         today: selectedMealDate,
         bodyMeasurementAnalysis,
         bodyMeasurements,
@@ -1250,11 +1279,12 @@ function App() {
       checkIn,
       coachReports,
       dailyNutritionSummary,
+      healthSnapshot,
       meals,
       nutritionGoals,
       nutritionInsights,
       photoMeals,
-      profile,
+      validatedProfile,
       progressAnalysis,
       progressInsights,
       progressProjection,
@@ -1272,20 +1302,23 @@ function App() {
         checkIn,
         meals,
         photoMeals,
+        selectedMealDate,
         weights,
       }),
-    [checkIn, meals, photoMeals, weights],
+    [checkIn, meals, photoMeals, selectedMealDate, weights],
   )
   const fallbackProactiveCoachInsights = useMemo(
     () =>
       makeProactiveCoachInsights({
         bodyAnalysisHistory,
         checkIn,
+        healthSnapshot,
         mealHistory: photoMeals,
         meals,
+        today: selectedMealDate,
         weights,
       }),
-    [bodyAnalysisHistory, checkIn, meals, photoMeals, weights],
+    [bodyAnalysisHistory, checkIn, healthSnapshot, meals, photoMeals, selectedMealDate, weights],
   )
   const proactiveCoachInsights =
     proactiveCoachResult?.key === proactiveCoachKey
@@ -1299,10 +1332,13 @@ function App() {
       checkIn,
       currentWeight: centralCurrentWeight,
       foods,
+      healthSnapshot,
       mealHistory: photoMeals,
       meals,
+      nutritionGoals,
       proactiveCoach: proactiveCoachInsights,
-      profile: makeValidatedProfile(profile),
+      profile: validatedProfile,
+      today: selectedMealDate,
       weights,
     })
 
@@ -1318,10 +1354,13 @@ function App() {
     bodyAnalysisHistory,
     centralCurrentWeight,
     foods,
+    healthSnapshot,
     meals,
+    nutritionGoals,
     photoMeals,
     proactiveCoachInsights,
-    profile,
+    selectedMealDate,
+    validatedProfile,
     weights,
   ])
   const createCoachReport = useCallback(() => {
@@ -1330,6 +1369,7 @@ function App() {
     window.setTimeout(() => {
       const report = createAiCoachV2Report({
         checkIn,
+        healthSnapshot,
         mealHistory: photoMeals,
         meals,
         nutritionGoals,
@@ -1339,7 +1379,7 @@ function App() {
         progressAnalysis,
         progressInsights,
         progressProjection,
-        profile: makeValidatedProfile(profile),
+        profile: validatedProfile,
         today: selectedMealDate,
         bodyMeasurementAnalysis,
         bodyMeasurements,
@@ -1354,11 +1394,12 @@ function App() {
     checkIn,
     coachReports,
     dailyNutritionSummary,
+    healthSnapshot,
     meals,
     nutritionGoals,
     nutritionInsights,
     photoMeals,
-    profile,
+    validatedProfile,
     progressAnalysis,
     progressInsights,
     progressProjection,
@@ -1385,10 +1426,13 @@ function App() {
         bodyAnalysisHistory,
         checkIn,
         foods,
+        healthSnapshot,
         mealHistory: photoMeals,
         meals,
-        profile,
+        nutritionGoals,
+        profile: validatedProfile,
         proactiveCoach: proactiveCoachInsights,
+        today: selectedMealDate,
         weights,
         weeklyReportData,
         weeklyReportLines,
@@ -1398,10 +1442,13 @@ function App() {
       chatMessages,
       checkIn,
       foods,
+      healthSnapshot,
       meals,
+      nutritionGoals,
       photoMeals,
-      profile,
       proactiveCoachInsights,
+      selectedMealDate,
+      validatedProfile,
       weeklyReportData,
       weeklyReportLines,
       weights,
@@ -1663,11 +1710,15 @@ function App() {
     async function loadDailyCoach() {
       const result = await requestAiEndpoint({
         action: 'daily-coach',
-        profile: makeValidatedProfile(profile),
         checkIn,
         foods,
+        healthSnapshot,
+        mealHistory: photoMeals,
         meals,
-        weights,
+        nutritionGoals,
+        profile: validatedProfile,
+        today: selectedMealDate,
+        weights: healthSnapshot.weight.dailyWeights,
         currentWeight: centralCurrentWeight,
       })
       const data = result.data || {}
@@ -1701,10 +1752,13 @@ function App() {
     dailyCoachKey,
     authSession,
     foods,
+    healthSnapshot,
     meals,
-    profile,
+    nutritionGoals,
+    photoMeals,
+    selectedMealDate,
     showOnboarding,
-    weights,
+    validatedProfile,
   ])
 
   useEffect(() => {
@@ -1712,8 +1766,10 @@ function App() {
     const coachData = {
       bodyAnalysisHistory,
       checkIn,
+      healthSnapshot,
       mealHistory: photoMeals,
       meals,
+      today: selectedMealDate,
       weights,
     }
 
@@ -1733,7 +1789,52 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [bodyAnalysisHistory, checkIn, meals, photoMeals, proactiveCoachKey, weights])
+  }, [bodyAnalysisHistory, checkIn, healthSnapshot, meals, photoMeals, proactiveCoachKey, selectedMealDate, weights])
+
+  const refreshAppStateFromStorage = useCallback(() => {
+    const nextProfile = userDataRepository.getProfile(null, isStoredProfile)
+    const storedMealHistory = getMealHistory()
+    const nextPhotoMeals = storedMealHistory.length > 0
+      ? storedMealHistory
+      : setMealHistory(
+        userDataRepository.getLegacyPhotoMeals(
+          initialPhotoMeals,
+          isStoredPhotoMeals,
+        ),
+      )
+
+    setProfile(nextProfile)
+    setProfileForm({ ...initialProfile, ...(nextProfile ?? {}) })
+    setShowOnboarding(!nextProfile)
+    setCheckIn(userDataRepository.getCheckIn(initialCheckIn, isStoredCheckIn))
+    setWeights(readInitialWeights())
+    setBodyMeasurements(normalizeBodyMeasurements(userDataRepository.getBodyMeasurements([], Array.isArray)))
+    setProgressGoalSettings(
+      normalizeGoalSettings(
+        userDataRepository.getProgressGoalSettings({}, (value) =>
+          value && typeof value === 'object' && !Array.isArray(value),
+        ),
+      ),
+    )
+    setProgressReports(userDataRepository.getProgressReports([], Array.isArray))
+    setFoods(readStoredFoods())
+    setMeals(normalizeMeals(userDataRepository.getMeals(initialMeals, isStoredMeals)))
+    setNutritionGoals(
+      normalizeNutritionGoals(
+        userDataRepository.getNutritionGoals({}, (value) =>
+          value && typeof value === 'object' && !Array.isArray(value),
+        ),
+      ),
+    )
+    setFavoriteMeals(normalizeFavoriteMeals(userDataRepository.getFavoriteMeals([], Array.isArray)))
+    setPhotoMeals(nextPhotoMeals)
+    setScannedProducts(userDataRepository.getScannedProducts(initialScannedProducts, isStoredScannedProducts))
+    setProgressPhotos(userDataRepository.getProgressPhotos(initialProgressPhotos, isStoredProgressPhotos))
+    setReminderSettings(userDataRepository.getReminderSettings(initialReminderSettings, isStoredReminderSettings))
+    setChatMessages(userDataRepository.getCoachChat(initialChatMessages, isStoredChatMessages))
+    setCoachReports(userDataRepository.getAiCoachReports([], Array.isArray))
+    setBodyAnalysisHistory(getAnalysisHistory())
+  }, [])
 
   function updateProfileForm(key, value) {
     setProfileForm((current) => ({ ...current, [key]: value }))
@@ -2113,7 +2214,7 @@ function App() {
   }
 
   function getValidatedProfile() {
-    return makeValidatedProfile(profile)
+    return validatedProfile
   }
 
   function buildCurrentAiCoachContext(chatHistory) {
@@ -2122,12 +2223,14 @@ function App() {
       chatHistory,
       checkIn,
       foods,
+      healthSnapshot,
       latestWeeklyReport: weeklyReportData,
       mealHistory: photoMeals,
       meals,
       nutritionGoals,
       progressGoalSettings,
-      profile: getValidatedProfile(),
+      profile: validatedProfile,
+      today: selectedMealDate,
       weights,
     })
   }
@@ -2153,8 +2256,8 @@ function App() {
           foods,
           centralCurrentWeight,
           chatHistory,
-          weights,
-          meals,
+          healthSnapshot.weight.dailyWeights,
+          healthSnapshot.nutrition.mealsToday,
         ),
         source: 'mock',
       }
@@ -2572,6 +2675,7 @@ function App() {
       <CloudStatusPanel isAuthenticated={Boolean(authSession)} />
       <CloudSyncPanel
         isAuthenticated={Boolean(authSession)}
+        onDataChanged={refreshAppStateFromStorage}
         userId={authSession?.user?.id || ''}
       />
 
@@ -2586,7 +2690,7 @@ function App() {
             setProgressGoalSettings(normalizeGoalSettings(nextSettings))}
           onProgressReportsChange={setProgressReports}
           onWeightsChange={(nextWeights) => setWeights(normalizeWeights(nextWeights))}
-          profile={makeValidatedProfile(profile)}
+          profile={validatedProfile}
           progressPhotos={progressPhotos}
           progressReports={progressReports}
           weights={weights}
@@ -2655,6 +2759,7 @@ function App() {
           handleFoodPhotoChange={handleFoodPhotoChange}
           importSummary={mealHistoryImportSummary}
           meals={meals}
+          healthSnapshot={healthSnapshot}
           onAnalyzePhotoMeal={analyzePhotoMeal}
           onCancelClearMealHistory={() => setShowClearMealHistoryConfirm(false)}
           onClearMealHistory={clearLocalMealHistory}
@@ -2724,7 +2829,10 @@ function App() {
           reminderStatus={reminderStatus}
         />
 
-        <CloudBackupPanel isAuthenticated={Boolean(authSession)} />
+        <CloudBackupPanel
+          isAuthenticated={Boolean(authSession)}
+          onDataRestored={refreshAppStateFromStorage}
+        />
 
         <MonthlyReport report={monthlyReport} />
 
@@ -2732,9 +2840,11 @@ function App() {
           checkIn={checkIn}
           checkIns={[]}
           foods={foods}
+          healthSnapshot={healthSnapshot}
           meals={meals}
           nutritionGoals={nutritionGoals}
-          profile={makeValidatedProfile(profile)}
+          profile={validatedProfile}
+          today={selectedMealDate}
           weights={centralWeightStats.weights}
           weeklyReportData={weeklyReportData}
           weeklyReportLines={weeklyReportLines}

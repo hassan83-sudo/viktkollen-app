@@ -138,6 +138,7 @@ function MealLogger({
   favoriteMeals,
   foodPhotoPreview,
   handleFoodPhotoChange,
+  healthSnapshot,
   importSummary,
   meals,
   nutritionGoals,
@@ -179,22 +180,23 @@ function MealLogger({
 
   const normalizedMeals = useMemo(() => normalizeMeals(meals), [meals])
   const normalizedGoals = useMemo(() => normalizeNutritionGoals(nutritionGoals), [nutritionGoals])
+  const nutritionMeals = healthSnapshot?.nutrition?.actualMeals || normalizedMeals
   const dailySummary = useMemo(
-    () => summarizeDay(normalizedMeals, selectedMealDate, normalizedGoals),
-    [normalizedGoals, normalizedMeals, selectedMealDate],
+    () => summarizeDay(nutritionMeals, selectedMealDate, normalizedGoals),
+    [normalizedGoals, nutritionMeals, selectedMealDate],
   )
   const weekAnalysis = useMemo(
-    () => summarizeWeek(normalizedMeals, weekStart, normalizedGoals),
-    [normalizedGoals, normalizedMeals, weekStart],
+    () => summarizeWeek(nutritionMeals, weekStart, normalizedGoals),
+    [normalizedGoals, nutritionMeals, weekStart],
   )
   const insights = useMemo(
     () =>
       buildNutritionInsights({
         goals: normalizedGoals,
-        meals: normalizedMeals,
+        meals: nutritionMeals,
         weekStart,
       }),
-    [normalizedGoals, normalizedMeals, weekStart],
+    [normalizedGoals, nutritionMeals, weekStart],
   )
   const suggestedProteinGoal = useMemo(
     () => calculateSuggestedProteinGoal(profile || {}, { weights: weights || [] }),
@@ -205,8 +207,8 @@ function MealLogger({
     [profile, weights],
   )
   const proteinDistributionPlan = useMemo(
-    () => buildProteinDistributionPlan(normalizedGoals.protein, normalizedMeals, { date: selectedMealDate }),
-    [normalizedGoals.protein, normalizedMeals, selectedMealDate],
+    () => buildProteinDistributionPlan(normalizedGoals.protein, nutritionMeals, { date: selectedMealDate }),
+    [normalizedGoals.protein, nutritionMeals, selectedMealDate],
   )
   const visibleMeals = useMemo(
     () => filterAndSortMeals(normalizedMeals, filters),
@@ -632,20 +634,20 @@ function MealLogger({
       {nutritionViewMode === 'day' ? (
         <NutritionDashboard
           date={selectedMealDate}
-          meals={normalizedMeals}
+          meals={nutritionMeals}
           nutritionGoals={normalizedGoals}
         />
       ) : nutritionViewMode === 'week' ? (
         <WeeklyNutritionDashboard
           date={selectedMealDate}
-          meals={normalizedMeals}
+          meals={nutritionMeals}
           nutritionGoals={normalizedGoals}
           onDateChange={changeSelectedDate}
         />
       ) : nutritionViewMode === 'month' ? (
         <MonthlyNutritionDashboard
           date={selectedMealDate}
-          meals={normalizedMeals}
+          meals={nutritionMeals}
           nutritionGoals={normalizedGoals}
           weights={weights}
           onDateChange={changeSelectedDate}
@@ -678,7 +680,7 @@ function MealLogger({
       <NutritionActionPlan
         date={selectedMealDate}
         dietaryPreferences={dietaryPreferences}
-        meals={normalizedMeals}
+        meals={nutritionMeals}
         nutritionGoals={normalizedGoals}
         templates={mealTemplates}
         weights={weights}

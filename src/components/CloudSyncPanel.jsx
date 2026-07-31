@@ -22,7 +22,7 @@ function shortDeviceId(deviceId) {
   return `${deviceId.slice(0, 12)}...`
 }
 
-function CloudSyncPanel({ isAuthenticated, userId }) {
+function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
   const [status, setStatus] = useState(() => getCloudSyncStatusModel())
   const [isSyncing, setIsSyncing] = useState(false)
   const [message, setMessage] = useState('')
@@ -39,10 +39,13 @@ function CloudSyncPanel({ isAuthenticated, userId }) {
     setMessage('')
     const result = await runCloudSync({ force: true, userId })
 
+    if (result.ok && (result.downloaded?.length || result.merged?.length)) {
+      onDataChanged?.()
+    }
     setMessage(result.ok ? 'Sync klar.' : result.error || 'Sync kunde inte slutföras.')
     refreshStatus()
     setIsSyncing(false)
-  }, [isAuthenticated, refreshStatus, userId])
+  }, [isAuthenticated, onDataChanged, refreshStatus, userId])
 
   const toggleEnabled = useCallback(async () => {
     const next = !status.enabled
@@ -52,6 +55,9 @@ function CloudSyncPanel({ isAuthenticated, userId }) {
     if (next && isAuthenticated) {
       setIsSyncing(true)
       const result = await runCloudSync({ force: true, userId })
+      if (result.ok && (result.downloaded?.length || result.merged?.length)) {
+        onDataChanged?.()
+      }
       setMessage(result.ok ? 'Automatisk sync är på.' : result.error || 'Sync kunde inte startas.')
       refreshStatus()
       setIsSyncing(false)
@@ -59,16 +65,19 @@ function CloudSyncPanel({ isAuthenticated, userId }) {
     }
 
     setMessage('Automatisk sync är av.')
-  }, [isAuthenticated, refreshStatus, status.enabled, userId])
+  }, [isAuthenticated, onDataChanged, refreshStatus, status.enabled, userId])
 
   const resolveConflict = useCallback(async (storageKey, choice) => {
     setIsSyncing(true)
     const result = await resolveStoredSyncConflict(storageKey, choice, { userId })
 
+    if (result.ok && result.downloaded?.length) {
+      onDataChanged?.()
+    }
     setMessage(result.ok ? 'Konflikten är löst.' : result.error || 'Konflikten kunde inte lösas.')
     refreshStatus()
     setIsSyncing(false)
-  }, [refreshStatus, userId])
+  }, [onDataChanged, refreshStatus, userId])
 
   useEffect(() => {
     if (!isAuthenticated || !status.enabled) return undefined

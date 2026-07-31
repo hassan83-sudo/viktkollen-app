@@ -74,7 +74,7 @@ function downloadJsonFile(filename, payload) {
   URL.revokeObjectURL(url)
 }
 
-function CloudBackupPanel({ isAuthenticated }) {
+function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
   const fileInputRef = useRef(null)
   const [backupStatus, setBackupStatus] = useState(null)
   const [backups, setBackups] = useState([])
@@ -341,6 +341,7 @@ function CloudBackupPanel({ isAuthenticated }) {
     setUndoRestore(getUndoRestoreStatus())
 
     if (restoreResult.ok) {
+      onDataRestored?.()
       window.setTimeout(() => {
         window.location.reload()
       }, 900)
@@ -466,6 +467,7 @@ function CloudBackupPanel({ isAuthenticated }) {
       })
 
       if (restoreResult.ok) {
+        onDataRestored?.()
         window.setTimeout(() => {
           window.location.reload()
         }, 900)
@@ -505,6 +507,7 @@ function CloudBackupPanel({ isAuthenticated }) {
     setIsRestoringId('')
 
     if (result.ok) {
+      onDataRestored?.()
       window.setTimeout(() => {
         window.location.reload()
       }, 900)

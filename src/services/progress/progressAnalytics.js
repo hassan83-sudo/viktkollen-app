@@ -346,25 +346,31 @@ function buildProgressInsights(analysis) {
 }
 
 function buildCoreAnalysis(data = {}, range) {
-  const weight = analyzeWeightProgress(data.weights, data.profile, range, data.today)
-  const nutrition = analyzeNutritionProgress(data.meals, data.nutritionGoals, range)
+  const snapshot = data.healthSnapshot || null
+  const weights = snapshot?.weight?.dailyWeights || data.weights
+  const meals = snapshot?.nutrition?.actualMeals || data.meals
+  const checkIn = snapshot?.checkIn?.latestToday || data.checkIn
+  const checkIns = snapshot?.checkIn?.dailyEntries || data.checkIns
+  const nutritionGoals = snapshot?.nutrition?.goals || data.nutritionGoals
+  const weight = analyzeWeightProgress(weights, data.profile, range, data.today)
+  const nutrition = analyzeNutritionProgress(meals, nutritionGoals, range)
   const habits = analyzeHabitProgress({
-    checkIn: data.checkIn,
-    checkIns: data.checkIns,
+    checkIn,
+    checkIns,
     foods: data.foods,
     range,
   })
   const planning = analyzePlanningProgress({
     generatedMealPlans: data.generatedMealPlans,
     mealPlans: data.mealPlans,
-    nutritionGoals: data.nutritionGoals,
+    nutritionGoals,
     range,
   })
   const forecast = forecastGoalProgress({
     currentWeight: weight.currentWeight,
     goalWeight: weight.goalWeight,
     today: data.today,
-    weights: data.weights,
+    weights,
   })
 
   return {

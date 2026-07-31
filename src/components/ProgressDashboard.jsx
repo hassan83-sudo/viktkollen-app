@@ -38,6 +38,7 @@ function ProgressDashboard({
   checkIn,
   checkIns,
   foods,
+  healthSnapshot,
   meals,
   nutritionGoals,
   onCreateWeeklyReport,
@@ -45,6 +46,7 @@ function ProgressDashboard({
   weeklyReportData,
   weeklyReportLines,
   weeklyReportStatus,
+  today,
   weights,
 }) {
   const [period, setPeriod] = useState(readStoredPeriod)
@@ -56,14 +58,16 @@ function ProgressDashboard({
       checkIns,
       foods,
       generatedMealPlans,
+      healthSnapshot,
       mealPlans,
       meals,
       nutritionGoals,
       profile,
+      today,
       weeklyReportData,
       weights,
     }, { period }),
-    [checkIn, checkIns, foods, generatedMealPlans, mealPlans, meals, nutritionGoals, period, profile, weeklyReportData, weights],
+    [checkIn, checkIns, foods, generatedMealPlans, healthSnapshot, mealPlans, meals, nutritionGoals, period, profile, today, weeklyReportData, weights],
   )
 
   function changePeriod(nextPeriod) {

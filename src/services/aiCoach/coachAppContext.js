@@ -238,7 +238,7 @@ export function buildAiCoachAppContextFromData(data = {}, options = {}) {
   const mealHistory = Array.isArray(data.mealHistory) ? data.mealHistory.filter(Boolean) : []
   const nutritionGoals = normalizeNutritionGoals(data.nutritionGoals)
   const checkIns = Array.isArray(data.checkIns) ? data.checkIns.map(normalizeCheckIn).filter(Boolean) : []
-  const healthSnapshot = buildHealthSnapshot({
+  const healthSnapshot = data.healthSnapshot || buildHealthSnapshot({
     checkIn,
     checkIns,
     mealHistory,

@@ -338,9 +338,12 @@ export function makeNutritionGoalProgress(value, goal, unit = 'g', label = '') {
 
   if (!Number.isFinite(target) || target <= 0) {
     return {
+      goal: null,
+      goalText: 'Inget mål satt',
       hasGoal: false,
       label,
-      remaining: 0,
+      percent: null,
+      remaining: null,
       status: 'missing',
       text: 'Inget mål satt',
       unit,

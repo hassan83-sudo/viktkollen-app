@@ -1,7 +1,10 @@
+import { readFileSync } from 'node:fs'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import NutritionDashboard from './NutritionDashboard.jsx'
+import DailyNutritionSummary from './nutrition/DailyNutritionSummary.jsx'
 import { createNutritionDashboardModel } from './nutritionDashboard/nutritionDashboardViewModel.js'
+import { makeNutritionGoalProgress } from '../services/nutrition/nutritionEngine.js'
 
 const today = '2026-07-28'
 
@@ -43,6 +46,30 @@ function html(props = {}) {
       {...props}
     />,
   )
+}
+
+function dailySummaryHtml(overrides = {}) {
+  const summary = {
+    byType: [],
+    highestProteinMeal: null,
+    largestMeal: null,
+    mealCount: 0,
+    progress: {
+      calories: makeNutritionGoalProgress(0, null, 'kcal', 'Kalorier'),
+      fiber: makeNutritionGoalProgress(0, null, 'g', 'Fibrer'),
+      protein: makeNutritionGoalProgress(0, null, 'g', 'Protein'),
+    },
+    totals: {
+      calories: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+      protein: 0,
+    },
+    ...overrides,
+  }
+
+  return renderToStaticMarkup(<DailyNutritionSummary summary={summary} />)
 }
 
 describe('Nutrition Dashboard V1 view model', () => {
@@ -405,7 +432,7 @@ describe('Nutrition Dashboard V1 view model', () => {
       nutritionGoals: goals,
     })
 
-    expect(JSON.stringify(model)).not.toMatch(/NaN|undefined|null|Infinity|\[object Object\]/)
+    expect(JSON.stringify(model)).not.toMatch(/NaN|undefined|Infinity|\[object Object\]/)
   })
 
   it('updates when a meal is added', () => {
@@ -448,6 +475,48 @@ describe('Nutrition Dashboard V1 view model', () => {
 
     expect(calls).toEqual([])
   })
+
+  it('returns a neutral progress contract when a goal is missing', () => {
+    const progress = makeNutritionGoalProgress(42, null, 'g', 'Protein')
+
+    expect(progress.hasGoal).toBe(false)
+    expect(progress.percent).toBeNull()
+    expect(progress.goalText).toBe('Inget mål satt')
+    expect(progress.text).toBe('Inget mål satt')
+    expect(progress.visualPercent).toBe(0)
+  })
+
+  it('treats zero goals as missing instead of dividing by zero', () => {
+    const progress = makeNutritionGoalProgress(42, 0, 'kcal', 'Kalorier')
+
+    expect(progress.hasGoal).toBe(false)
+    expect(progress.percent).toBeNull()
+    expect(progress.visualPercent).toBe(0)
+    expect(JSON.stringify(progress)).not.toMatch(/NaN|Infinity/)
+  })
+
+  it('shows zero percent when intake is zero and a goal exists', () => {
+    const progress = makeNutritionGoalProgress(0, 120, 'g', 'Protein')
+
+    expect(progress.hasGoal).toBe(true)
+    expect(progress.percent).toBe(0)
+    expect(progress.visualPercent).toBe(0)
+  })
+
+  it('rounds progress below goal', () => {
+    const progress = makeNutritionGoalProgress(55, 110, 'g', 'Protein')
+
+    expect(progress.percent).toBe(50)
+    expect(progress.text).toBe('55 g kvar')
+  })
+
+  it('keeps text percent above goal but clamps visual progress', () => {
+    const progress = makeNutritionGoalProgress(150, 100, 'g', 'Protein')
+
+    expect(progress.percent).toBe(150)
+    expect(progress.visualPercent).toBe(100)
+    expect(progress.text).toBe('Målet uppnått')
+  })
 })
 
 describe('Nutrition Dashboard V1 render', () => {
@@ -477,5 +546,58 @@ describe('Nutrition Dashboard V1 render', () => {
 
   it('does not render unsafe placeholder values', () => {
     expect(html()).not.toMatch(/NaN|undefined|null|Infinity|\[object Object\]/)
+  })
+
+  it('renders missing daily nutrition goals as neutral fallback text', () => {
+    const markup = dailySummaryHtml()
+
+    expect(markup).toContain('Inget mål satt')
+    expect(markup).not.toMatch(/undefined%|NaN%|Infinity%/)
+  })
+
+  it('renders zero percent for zero intake with valid goals', () => {
+    const markup = dailySummaryHtml({
+      progress: {
+        calories: makeNutritionGoalProgress(0, 2000, 'kcal', 'Kalorier'),
+        fiber: makeNutritionGoalProgress(0, 30, 'g', 'Fibrer'),
+        protein: makeNutritionGoalProgress(0, 120, 'g', 'Protein'),
+      },
+    })
+
+    expect(markup).toContain('0% - Kalorier')
+    expect(markup).toContain('0% - Protein')
+    expect(markup).toContain('0% - Fibrer')
+  })
+
+  it('does not leak null undefined NaN or Infinity from daily nutrition values', () => {
+    const markup = dailySummaryHtml({
+      progress: {
+        calories: makeNutritionGoalProgress(Number.NaN, undefined, 'kcal', 'Kalorier'),
+        fiber: makeNutritionGoalProgress(undefined, undefined, 'g', 'Fibrer'),
+        protein: makeNutritionGoalProgress(null, undefined, 'g', 'Protein'),
+      },
+      totals: {
+        calories: Number.NaN,
+        carbs: undefined,
+        fat: null,
+        fiber: Number.POSITIVE_INFINITY,
+        protein: undefined,
+      },
+    })
+
+    expect(markup).not.toMatch(/undefined%|NaN%|Infinity%|null%|\[object Object\]/)
+  })
+
+  it('keeps the meal center month label correctly encoded', () => {
+    const source = readFileSync(new URL('./MealLogger.jsx', import.meta.url), 'utf8')
+
+    expect(source).toContain('Månad')
+    expect(source).not.toContain('MÃ¥nad')
+  })
+
+  it('does not render known mojibake patterns in nutrition UI', () => {
+    const markup = `${html()} ${dailySummaryHtml()}`
+
+    expect(markup).not.toMatch(/MÃ|Ã¥|Ã¤|Ã¶|Â|â/)
   })
 })

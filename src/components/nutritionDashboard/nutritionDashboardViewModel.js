@@ -33,51 +33,8 @@ function formatDateLabel(dateText) {
   return label.charAt(0).toLocaleUpperCase('sv-SE') + label.slice(1)
 }
 
-function getGoalTarget(goal) {
-  if (!goal) return null
-
-  if (Number.isFinite(goal.target)) return goal.target
-  if (Number.isFinite(goal)) return goal
-
-  return null
-}
-
 export function makeLegacyNutritionDashboardProgress({ goal, label, unit, value }) {
-  const target = getGoalTarget(goal)
-  const safeValue = safeNumber(value)
-
-  if (!Number.isFinite(target) || target <= 0) {
-    return {
-      hasGoal: false,
-      label,
-      status: 'missing',
-      text: 'Inget mål satt',
-      unit,
-      value: safeValue,
-      valueText: formatInteger(safeValue, unit),
-      visualPercent: 0,
-    }
-  }
-
-  const percent = Math.round((safeValue / target) * 100)
-  const remaining = Math.round(target - safeValue)
-  const reached = safeValue >= target
-
-  return {
-    goal: target,
-    goalText: formatInteger(target, unit),
-    hasGoal: true,
-    label,
-    percent,
-    status: reached ? 'reached' : 'active',
-    text: reached
-      ? 'Målet uppnått'
-      : `${Math.max(0, remaining).toLocaleString('sv-SE')} ${unit} kvar`,
-    unit,
-    value: safeValue,
-    valueText: formatInteger(safeValue, unit),
-    visualPercent: Math.max(0, Math.min(percent, 100)),
-  }
+  return makeNutritionGoalProgress(value, goal, unit, label)
 }
 
 function getMealLabel(entry) {

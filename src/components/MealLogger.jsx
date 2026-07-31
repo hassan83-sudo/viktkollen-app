@@ -616,7 +616,7 @@ function MealLogger({
           Vecka
         </button>
         <button aria-pressed={nutritionViewMode === 'month'} className={nutritionViewMode === 'month' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('month')}>
-          MÃ¥nad
+          Månad
         </button>
         <button aria-pressed={nutritionViewMode === 'planner'} className={nutritionViewMode === 'planner' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('planner')}>
           Planera

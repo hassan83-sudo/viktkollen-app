@@ -1,18 +1,27 @@
 function formatNumber(value, unit) {
-  return `${Math.round(value || 0).toLocaleString('sv-SE')} ${unit}`
+  const safeValue = Number.isFinite(value) && value >= 0 ? value : 0
+
+  return `${Math.round(safeValue).toLocaleString('sv-SE')} ${unit}`
 }
 
 function ProgressRow({ label, progress, unit, value }) {
+  const percent = Number.isFinite(progress?.percent) ? progress.percent : null
+  const visualPercent = Number.isFinite(progress?.visualPercent)
+    ? Math.max(0, Math.min(progress.visualPercent, 100))
+    : 0
+  const status = progress?.status || 'missing'
+  const progressLabel = percent === null ? 'Inget mål satt' : `${percent} procent`
+
   return (
-    <div className={`nutrition-progress is-${progress.status}`}>
+    <div className={`nutrition-progress is-${status}`}>
       <div>
         <span>{label}</span>
         <strong>{formatNumber(value, unit)}</strong>
       </div>
-      <div className="nutrition-progress-bar" aria-label={`${label}: ${progress.label}`}>
-        <span style={{ width: `${Math.min(progress.percent || 0, 140)}%` }}></span>
+      <div className="nutrition-progress-bar" aria-label={`${label}: ${progressLabel}`}>
+        <span style={{ width: `${visualPercent}%` }}></span>
       </div>
-      <small>{progress.percent === null ? 'Inget mål satt' : `${progress.percent}% - ${progress.label}`}</small>
+      <small>{percent === null ? 'Inget mål satt' : `${percent}% - ${label}`}</small>
     </div>
   )
 }

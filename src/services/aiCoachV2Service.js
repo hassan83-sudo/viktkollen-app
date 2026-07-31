@@ -18,6 +18,7 @@ import {
   formatSteps,
   parseDisplayNumber,
 } from './healthFormatting.js'
+import { buildHealthSnapshot } from './healthSnapshot.js'
 import { analyzeWeights } from './progressService.js'
 
 function safeArray(value) {
@@ -451,11 +452,12 @@ function buildProgressSummary({
 }
 
 export function createAiCoachV2Report(data = {}) {
+  const snapshot = data.healthSnapshot || buildHealthSnapshot(data)
   const profile = data.profile || {}
-  const weights = safeArray(data.weights)
-  const mealHistory = safeArray(data.mealHistory)
-  const meals = safeArray(data.meals)
-  const checkIn = data.checkIn || {}
+  const weights = snapshot.weight.dailyWeights
+  const mealHistory = []
+  const meals = snapshot.nutrition.actualMeals
+  const checkIn = snapshot.checkIn.latestToday || data.checkIn || {}
   const nutritionGoals = data.nutritionGoals || {}
   const nutritionInsights = safeArray(data.nutritionInsights)
   const nutritionSummary = data.nutritionSummary || null
@@ -473,9 +475,9 @@ export function createAiCoachV2Report(data = {}) {
     mealHistory,
     meals,
     nutritionGoals,
-    nutritionSummary,
+    nutritionSummary: nutritionSummary || snapshot.nutrition.summary,
     profile,
-    today: data.today,
+    today: snapshot.date,
     weights,
   })
   const weeklySummary = buildWeeklySummary({ checkIn, mealHistory, meals, profile, weeklyNutrition, weights })

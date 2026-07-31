@@ -39,8 +39,8 @@ import {
 import { normalizeAiCoachText } from './coachText.js'
 import { buildProgressDashboardAnalytics } from '../progress/progressAnalytics.js'
 import { normalizeCheckInMetrics } from '../checkInNormalization.js'
+import { buildHealthSnapshot } from '../healthSnapshot.js'
 import {
-  getEntryLocalDate,
   getLocalDateString,
   parseDateValue,
 } from '../localDate.js'
@@ -108,16 +108,6 @@ function getDateString(value) {
 
 function getTodayDateString() {
   return getDateString(new Date())
-}
-
-function getMealDate(meal) {
-  return getEntryLocalDate(meal)
-}
-
-function getTodayMeals(meals = []) {
-  const today = getTodayDateString()
-
-  return (Array.isArray(meals) ? meals : []).filter((meal) => getMealDate(meal) === today)
 }
 
 function getRecentMeals(meals = []) {
@@ -317,9 +307,13 @@ export function buildAiCoachFacts(context = {}) {
   const nestedWeight = context.weight || {}
   const profile = context.profile || {}
   const goalSettings = context.progressGoalSettings || context.goalSettings || {}
-  const weights = Array.isArray(context.weights) ? context.weights : nestedWeight.history || []
+  const snapshot = context.healthSnapshot || buildHealthSnapshot({
+    ...context,
+    weights: Array.isArray(context.weights) ? context.weights : nestedWeight.history || [],
+  })
+  const weights = snapshot.weight.dailyWeights
   const weightHistory = getSortedWeightValues(weights)
-  const unifiedWeight = getUnifiedWeightFacts({
+  const unifiedWeight = snapshot.weight.facts || getUnifiedWeightFacts({
     currentWeight: firstNumber(context.currentWeight, nestedWeight.currentWeight),
     goalWeight: firstNumber(profile.goalWeight, nestedWeight.goalWeight, goalSettings.goalWeight, goalSettings.targetWeight),
     profile,
@@ -336,17 +330,13 @@ export function buildAiCoachFacts(context = {}) {
   })
   const todayMeals = Array.isArray(context.todayMeals)
     ? context.todayMeals
-    : getTodayMeals(context.meals?.loggedMealsToday || context.meals || [])
-  const allMealsForNutrition = Array.isArray(context.meals)
-    ? context.meals
-    : Array.isArray(context.meals?.loggedMealsToday)
-      ? context.meals.loggedMealsToday
-      : todayMeals
+    : snapshot.nutrition.mealsToday
+  const allMealsForNutrition = snapshot.nutrition.actualMeals
   const loggedTodayProtein = todayMeals.reduce(
     (sum, meal) => sum + (Number.isFinite(parseNumber(meal?.protein)) ? parseNumber(meal.protein) : 0),
     0,
   )
-  const todayCheckin = context.todayCheckin || context.checkIn || {}
+  const todayCheckin = snapshot.checkIn.latestToday || context.todayCheckin || context.checkIn || {}
   const checkInMetrics = normalizeCheckInMetrics(todayCheckin)
   const nutritionGoals = normalizeNutritionGoals(context.nutritionGoals)
   const dietaryPreferences = normalizeDietaryPreferences(context.dietaryPreferences || readDietaryPreferences())
@@ -360,9 +350,9 @@ export function buildAiCoachFacts(context = {}) {
   const plannedWeekSummary = buildPlannedWeekSummary(currentPlanWeek, nutritionGoals)
   const currentShoppingList = getShoppingList(shoppingLists, currentPlanWeek.weekStart)
   const proteinGoal = getNumericGoal(nutritionGoals, 'protein')
-  const todayNutrition = calculateDailyNutritionSummary(
+  const todayNutrition = snapshot.nutrition.summary || calculateDailyNutritionSummary(
     allMealsForNutrition,
-    getTodayDateString(),
+    snapshot.date || getTodayDateString(),
     {
       ...profile,
       nutritionGoals,
@@ -401,8 +391,8 @@ export function buildAiCoachFacts(context = {}) {
     ? todayNutrition.totals.protein
     : loggedTodayProtein
   const proteinNeed = calculateProteinNeed(latestWeight)
-  const change7 = getChangeSinceDays(weights, 7)
-  const change30 = getChangeSinceDays(weights, 30)
+  const change7 = snapshot.weight.change7 ?? getChangeSinceDays(weights, 7)
+  const change30 = snapshot.weight.change30 ?? getChangeSinceDays(weights, 30)
   const recentChange = weightHistory.length >= 2
     ? Number((weightHistory.at(-1).value - weightHistory.at(-2).value).toFixed(1))
     : null

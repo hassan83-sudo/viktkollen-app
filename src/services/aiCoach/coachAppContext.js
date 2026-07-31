@@ -1,6 +1,7 @@
 import { userDataKeys } from '../userDataRepository.js'
 import { normalizeNutritionGoals as normalizeNutritionGoalsModel } from '../nutrition/nutritionGoals.js'
 import { normalizeCheckInMetrics } from '../checkInNormalization.js'
+import { buildHealthSnapshot } from '../healthSnapshot.js'
 import {
   getEntryLocalDate,
   getEntrySortTime as getLocalEntrySortTime,
@@ -234,21 +235,35 @@ export function buildAiCoachAppContextFromData(data = {}, options = {}) {
   const meals = normalizeMeals(data.meals, today)
   const checkIn = normalizeCheckIn(data.checkIn)
   const chatHistory = normalizeChatHistory(data.chatHistory || data.coachChat)
+  const mealHistory = Array.isArray(data.mealHistory) ? data.mealHistory.filter(Boolean) : []
+  const nutritionGoals = normalizeNutritionGoals(data.nutritionGoals)
+  const checkIns = Array.isArray(data.checkIns) ? data.checkIns.map(normalizeCheckIn).filter(Boolean) : []
+  const healthSnapshot = buildHealthSnapshot({
+    checkIn,
+    checkIns,
+    mealHistory,
+    meals: meals.all,
+    nutritionGoals,
+    profile,
+    today,
+    weights,
+  })
 
   return {
     bodyAnalysisHistory: Array.isArray(data.bodyAnalysisHistory) ? data.bodyAnalysisHistory.filter(Boolean) : [],
     chatHistory,
     checkIn,
-    checkIns: Array.isArray(data.checkIns) ? data.checkIns.map(normalizeCheckIn).filter(Boolean) : [],
+    checkIns,
     currentWeight: weights.at(-1)?.value,
     foods: Array.isArray(data.foods) ? data.foods.filter(Boolean) : [],
     latestWeeklyReport: data.latestWeeklyReport || data.weeklyReportData || null,
-    mealHistory: Array.isArray(data.mealHistory) ? data.mealHistory.filter(Boolean) : [],
+    healthSnapshot,
+    mealHistory,
     meals: meals.all,
-    nutritionGoals: normalizeNutritionGoals(data.nutritionGoals),
+    nutritionGoals,
     profile,
     progressGoalSettings: isObject(data.progressGoalSettings) ? data.progressGoalSettings : {},
-    todayMeals: meals.today,
+    todayMeals: healthSnapshot.nutrition.mealsToday,
     weights,
   }
 }

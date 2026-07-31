@@ -9,6 +9,7 @@ import {
 import { getMealHistory } from './mealHistory.js'
 import { normalizeCheckInMetrics } from './checkInNormalization.js'
 import { formatPercentage, parseDisplayNumber } from './healthFormatting.js'
+import { buildHealthSnapshot } from './healthSnapshot.js'
 
 const DEFAULT_CHECK_IN = {
   energy: null,
@@ -26,6 +27,7 @@ const dashboardInputKeys = [
   'meals',
   'profile',
   'proactiveCoach',
+  'healthSnapshot',
   'weights',
   'weeklyReportData',
   'weeklyReportLines',
@@ -585,13 +587,19 @@ function createDashboardContext(data) {
   const coachMemory = safeArray(
     data.aiCoachMemory ?? safeReadHistory(getRecentAiConversation),
   )
-  const checkIn = normalizeCheckIn(data.checkIn)
   const foods = safeArray(data.foods)
   const meals = safeArray(data.meals)
-  const weightStats = getWeightStats(data.weights, {
+  const snapshot = data.healthSnapshot || buildHealthSnapshot({
+    ...data,
+    mealHistory,
+    meals,
+    profile,
+  })
+  const checkIn = normalizeCheckIn(snapshot.checkIn.latestToday || data.checkIn)
+  const weightStats = getWeightStats(snapshot.weight.dailyWeights, {
     startWeight: profile.startWeight,
   })
-  const nutrition = getNutritionSignals({ foods, mealHistory, meals })
+  const nutrition = getNutritionSignals({ foods, mealHistory: snapshot.nutrition.actualMeals, meals: [] })
   const healthScore = calculateAiHealthScoreFromContext({
     checkIn,
     foods,
@@ -609,6 +617,7 @@ function createDashboardContext(data) {
     meals,
     nutrition,
     profile,
+    snapshot,
     weightStats,
   }
 }
@@ -633,6 +642,7 @@ export function createDashboardData(data = {}) {
     healthScore,
     mealHistory,
     profile,
+    snapshot,
     weightStats,
   } = context
   const activity = makeActivityItems({
@@ -644,12 +654,7 @@ export function createDashboardData(data = {}) {
     weeklyReportData: data.weeklyReportData,
   })
   const latestActivity = activity[0]
-  const weightFacts = getUnifiedWeightFacts({
-    currentWeight: weightStats.current,
-    profile,
-    startWeight: weightStats.first,
-    weights: weightStats.weights,
-  })
+  const weightFacts = snapshot.weight.facts
   const bestFactor = [...healthScore.factors].sort(
     (first, second) => second.points - first.points,
   )[0]
@@ -698,7 +703,7 @@ export function createDashboardData(data = {}) {
       habitTotal: foods.length,
       mood: checkIn.mood,
       steps: checkIn.steps,
-      stepsLabel: checkIn.stepsLabel || formatInteger(checkIn.steps),
+      stepsLabel: snapshot.checkIn.display.steps,
       workout: checkIn.workout,
     },
   }

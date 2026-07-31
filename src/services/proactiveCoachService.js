@@ -4,6 +4,7 @@ import { requestAiEndpoint } from './aiApiService.js'
 import { buildAiUserContext } from './aiUserContext.js'
 import { getWeightStats } from './healthCalculations.js'
 import { normalizeCheckInMetrics } from './checkInNormalization.js'
+import { buildHealthSnapshot } from './healthSnapshot.js'
 
 
 function getWeightTrend(weights = []) {
@@ -40,17 +41,18 @@ function hasVegetables(mealHistory = []) {
  * @returns {{budgetMealIdea: string, dailyRisk: string, dailyStrength: string, nextBestAction: string, recoveryAdvice: string, source: string}}
  */
 export function makeProactiveCoachInsights(data) {
+  const snapshot = data.healthSnapshot || buildHealthSnapshot(data)
   const userContext = buildAiUserContext(data)
   const aiFallback = createAiFallback({
     feature: 'proactiveCoach',
     userContext,
   })
-  const checkInMetrics = normalizeCheckInMetrics(data.checkIn)
+  const checkInMetrics = snapshot.checkIn.metrics || normalizeCheckInMetrics(data.checkIn)
   const steps = checkInMetrics.steps
   const energy = checkInMetrics.energy.value
-  const mealHistory = data.mealHistory || []
-  const meals = data.meals || []
-  const weightTrend = getWeightTrend(data.weights)
+  const mealHistory = snapshot.nutrition.actualMeals || data.mealHistory || []
+  const meals = snapshot.nutrition.actualMeals || data.meals || []
+  const weightTrend = getWeightTrend(snapshot.weight.dailyWeights)
   const proteinLogged = hasProtein(meals, mealHistory)
   const vegetablesLogged = hasVegetables(mealHistory)
   const hasBodyHistory = (data.bodyAnalysisHistory || []).length > 0

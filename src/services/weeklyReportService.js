@@ -4,6 +4,8 @@ import { requestAiEndpoint } from './aiApiService.js'
 import { buildAiUserContext } from './aiUserContext.js'
 import { formatKg, getUnifiedWeightFacts, getWeightStats } from './healthCalculations.js'
 import { normalizeCheckInMetrics } from './checkInNormalization.js'
+import { formatSteps } from './healthFormatting.js'
+import { buildHealthSnapshot } from './healthSnapshot.js'
 
 
 function getWeightTrend(weights = [], profile = {}) {
@@ -58,15 +60,16 @@ function hasStatus(history = [], key, keywords) {
  * @returns {object}
  */
 export function makeWeeklyReportFallback(data) {
+  const snapshot = data.healthSnapshot || buildHealthSnapshot(data)
   const userContext = buildAiUserContext(data)
   const aiFallback = createAiFallback({
     feature: 'weeklyReport',
     userContext,
   })
-  const checkInMetrics = normalizeCheckInMetrics(data.checkIn)
+  const checkInMetrics = snapshot.checkIn.metrics || normalizeCheckInMetrics(data.checkIn)
   const steps = checkInMetrics.steps
   const energy = checkInMetrics.energy.value
-  const mealHistory = data.mealHistory || []
+  const mealHistory = snapshot.nutrition.actualMeals || data.mealHistory || []
   const hasProtein = hasStatus(mealHistory, 'proteinStatus', ['protein'])
   const hasVegetables = hasStatus(mealHistory, 'vegetableStatus', [
     'grön',
@@ -90,7 +93,7 @@ export function makeWeeklyReportFallback(data) {
       proactiveAction || 'Välj en liten vana att upprepa varje dag.',
     movement:
       Number.isFinite(steps)
-        ? `${steps.toLocaleString('sv-SE')} steg i senaste check-in.`
+        ? `${formatSteps(steps)} i senaste check-in.`
         : 'Stegdata saknas i senaste check-in.',
     nextSteps: [
       hasProtein ? 'Behåll protein i nästa måltid.' : 'Lägg till protein i en måltid per dag.',
@@ -110,8 +113,10 @@ export function makeWeeklyReportFallback(data) {
     source: 'mock',
     summary:
       'Veckan visar framför allt värdet av enkel loggning: vikt, check-in och matdata ger riktning utan att behöva vara perfekt.',
-    weightTrend: getWeightTrend(data.weights, data.profile),
-    mealPattern: getMealPattern(mealHistory, data.meals),
+    weightTrend: snapshot.weight.facts?.weightChange !== null
+      ? getWeightTrend(snapshot.weight.dailyWeights, data.profile)
+      : getWeightTrend(data.weights, data.profile),
+    mealPattern: getMealPattern(mealHistory, snapshot.nutrition.mealsToday),
   }
 }
 

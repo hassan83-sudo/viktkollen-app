@@ -1,4 +1,5 @@
 import { getUnifiedWeightContext } from './healthCalculations.js'
+import { buildHealthSnapshot } from './healthSnapshot.js'
 
 let lastContextKey = ''
 let lastContextValue = null
@@ -37,8 +38,8 @@ function getWeightContext(weights = [], currentWeight, profile = {}) {
   }
 }
 
-function getMealsContext(meals = [], mealHistory = []) {
-  const loggedMealsToday = safeArray(meals).slice(-10)
+function getMealsContext(meals = [], mealHistory = [], loggedMealsToday = meals) {
+  const todayMeals = safeArray(loggedMealsToday).slice(-10)
   const history = safeArray(mealHistory).slice(0, 10)
 
   return {
@@ -46,7 +47,7 @@ function getMealsContext(meals = [], mealHistory = []) {
     latestMealAnalysis: history[0] || null,
     latestAnalysis: history[0] || null,
     mealAnalysisCount: safeArray(mealHistory).length,
-    loggedMealsToday,
+    loggedMealsToday: todayMeals,
     totalAnalyses: safeArray(mealHistory).length,
   }
 }
@@ -87,7 +88,9 @@ export function buildAiUserContext(data = {}) {
     latestWeeklyReport: data.latestWeeklyReport,
     mealHistory: data.mealHistory,
     meals: data.meals,
+    nutritionGoals: data.nutritionGoals,
     profile: data.profile,
+    today: data.today,
     weights: data.weights,
   })
 
@@ -95,6 +98,7 @@ export function buildAiUserContext(data = {}) {
     return lastContextValue
   }
 
+  const snapshot = data.healthSnapshot || buildHealthSnapshot(data)
   lastContextKey = cacheKey
   lastContextValue = {
     bodyAnalysis: getBodyContext(data.bodyAnalysisHistory),
@@ -107,9 +111,10 @@ export function buildAiUserContext(data = {}) {
     })),
     generatedAt: new Date().toISOString(),
     latestWeeklyReport: data.latestWeeklyReport || null,
-    meals: getMealsContext(data.meals, data.mealHistory),
+    healthSnapshot: snapshot,
+    meals: getMealsContext(snapshot.nutrition.actualMeals, data.mealHistory, snapshot.nutrition.mealsToday),
     profile: compactProfile(data.profile),
-    weight: getWeightContext(data.weights, data.currentWeight, data.profile),
+    weight: getWeightContext(snapshot.weight.dailyWeights, data.currentWeight ?? snapshot.weight.current, data.profile),
   }
 
   return lastContextValue

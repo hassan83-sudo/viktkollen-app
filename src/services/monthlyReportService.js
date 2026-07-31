@@ -7,6 +7,7 @@ import {
   isLocalDateInRange,
   parseDateValue,
 } from './localDate.js'
+import { buildHealthSnapshot } from './healthSnapshot.js'
 
 const DAYS_IN_REPORT = 30
 
@@ -194,7 +195,8 @@ function makeImprovements(report) {
  * @returns {object}
  */
 export function createMonthlyHealthReport(data = {}) {
-  const recentWeights = normalizeDailyWeightEntries(data.weights)
+  const snapshot = data.healthSnapshot || buildHealthSnapshot(data)
+  const recentWeights = normalizeDailyWeightEntries(snapshot.weight.dailyWeights)
     .filter((entry) => isWithinLastDays(entry?.date, DAYS_IN_REPORT))
     .sort((first, second) => new Date(first.date) - new Date(second.date))
   const firstWeight = recentWeights[0]?.value
@@ -207,17 +209,16 @@ export function createMonthlyHealthReport(data = {}) {
   const averageWeight = recentWeights.length
     ? recentWeights.reduce((sum, entry) => sum + entry.value, 0) / recentWeights.length
     : null
-  const recentMealAnalyses = safeArray(data.mealHistory).filter((entry) =>
+  const actualMeals = snapshot.nutrition.actualMeals
+  const recentMeals = safeArray(actualMeals).filter((entry) =>
     isWithinLastDays(getMealDate(entry), DAYS_IN_REPORT),
   )
-  const manualMeals = safeArray(data.meals).filter((entry) =>
-    isWithinLastDays(entry, DAYS_IN_REPORT),
-  )
-  const totalMeals = recentMealAnalyses.length + manualMeals.length
-  const proteinScores = recentMealAnalyses
+  const recentMealAnalyses = recentMeals.filter((entry) => entry.analysis || entry.proteinStatus || entry.vegetableStatus)
+  const totalMeals = recentMeals.length
+  const proteinScores = recentMeals
     .map((entry) => getProteinScore(entry.proteinStatus || entry.analysis?.proteinStatus))
     .filter((score) => score > 0)
-  const vegetableScores = recentMealAnalyses
+  const vegetableScores = recentMeals
     .map((entry) => getVegetableScore(entry.vegetableStatus || entry.analysis?.vegetableStatus))
     .filter((score) => score > 0)
   const averageProteinScore = proteinScores.length
@@ -243,7 +244,7 @@ export function createMonthlyHealthReport(data = {}) {
     commonMealType: getMostCommon(
       [
         ...recentMealAnalyses.map(getMealType),
-        ...manualMeals.map((meal) => meal.type),
+        ...recentMeals.map((meal) => meal.type),
       ],
       'Saknas ännu',
     ),
@@ -271,7 +272,7 @@ export function createMonthlyHealthReport(data = {}) {
       'Du är på rätt väg. Små förbättringar varje vecka ger stora resultat över tid.',
     monthlyAchievement:
       totalMeals > 0
-        ? `Du loggade mat ${getMealDays([...recentMealAnalyses, ...manualMeals])} dagar denna månad.`
+        ? `Du loggade mat ${getMealDays(recentMeals)} dagar denna månad.`
         : 'Du har startat månaden. Första loggade måltiden gör rapporten mer personlig.',
     strengths: makeStrengths(report),
   }

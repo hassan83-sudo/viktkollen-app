@@ -314,6 +314,69 @@ describe('weight module regression flow', () => {
     expect(coachFacts.goalRemaining).toBe(12.1)
   })
 
+  it('dashboard progress trend uses total change since start instead of goal remaining', () => {
+    const dashboard = createDashboardData({
+      checkIn: {},
+      foods: [],
+      mealHistory: [],
+      meals: [],
+      profile: { goalWeight: '78 kg', startWeight: '78 kg' },
+      weights: [
+        { date: '2026-07-01', id: 'start', source: 'Manuell', time: '08:00', value: 91.8 },
+        { date: '2026-07-31', id: 'latest', source: 'Manuell', time: '04:09', value: 89.6 },
+      ],
+    })
+
+    expect(dashboard.progress.weightTrend).toContain('2,2 kg ned sedan start')
+    expect(dashboard.progress.weightTrend).not.toContain('11,6 kg upp sedan start')
+    expect(dashboard.goals.remaining).toBe(11.6)
+  })
+
+  it('dashboard progress trend shows weight gain since start', () => {
+    const dashboard = createDashboardData({
+      checkIn: {},
+      foods: [],
+      mealHistory: [],
+      meals: [],
+      profile: { goalWeight: '78 kg', startWeight: '78 kg' },
+      weights: [
+        { date: '2026-07-01', id: 'start', source: 'Manuell', time: '08:00', value: 91.8 },
+        { date: '2026-07-31', id: 'latest', source: 'Manuell', time: '04:09', value: 92.3 },
+      ],
+    })
+
+    expect(dashboard.progress.weightTrend).toContain('0,5 kg upp sedan start')
+  })
+
+  it('dashboard progress trend shows unchanged weight since start', () => {
+    const dashboard = createDashboardData({
+      checkIn: {},
+      foods: [],
+      mealHistory: [],
+      meals: [],
+      profile: { goalWeight: '78 kg', startWeight: '78 kg' },
+      weights: [
+        { date: '2026-07-01', id: 'start', source: 'Manuell', time: '08:00', value: 91.8 },
+        { date: '2026-07-31', id: 'latest', source: 'Manuell', time: '04:09', value: 91.8 },
+      ],
+    })
+
+    expect(dashboard.progress.weightTrend).toContain('Oförändrat sedan start')
+  })
+
+  it('dashboard progress trend has a neutral fallback when weight data is missing', () => {
+    const dashboard = createDashboardData({
+      checkIn: {},
+      foods: [],
+      mealHistory: [],
+      meals: [],
+      profile: { goalWeight: '78 kg', startWeight: '78 kg' },
+      weights: [],
+    })
+
+    expect(dashboard.progress.weightTrend).toBe('Logga vikt för att se trend')
+  })
+
   it('migrated duplicates do not inflate dashboard, progress analytics or reports', () => {
     const profile = { goalWeight: '78 kg', startWeight: '91,8 kg' }
     const migrated = migrateDuplicateWeightEntries([

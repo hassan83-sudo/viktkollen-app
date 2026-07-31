@@ -503,6 +503,7 @@ function makeGoals({ profile, weightStats }) {
   const weightContext = getUnifiedWeightFacts({
     currentWeight: weightStats.current,
     profile,
+    startWeight: weightStats.first,
     weights: weightStats.weights,
   })
   const currentWeight = weightContext.latestWeight
@@ -546,6 +547,22 @@ function makeGoals({ profile, weightStats }) {
     targetLabel: goalWeight === null ? 'Inte satt' : formatKg(goalWeight),
     trendDirection: weightStats.hasWeights ? weightStats.trend : 'Viktdata saknas',
   }
+}
+
+function formatWeightChangeSinceStart(weightFacts) {
+  if (!weightFacts || weightFacts.weightChange === null) {
+    return 'Viktdata saknas'
+  }
+
+  if (weightFacts.weightChange < -0.05) {
+    return `${formatKg(Math.abs(weightFacts.weightChange))} ned sedan start`
+  }
+
+  if (weightFacts.weightChange > 0.05) {
+    return `${formatKg(weightFacts.weightChange)} upp sedan start`
+  }
+
+  return 'Oförändrat sedan start'
 }
 
 function getSafeProfile(profile) {
@@ -623,6 +640,7 @@ export function createDashboardData(data = {}) {
   const weightFacts = getUnifiedWeightFacts({
     currentWeight: weightStats.current,
     profile,
+    startWeight: weightStats.first,
     weights: weightStats.weights,
   })
   const bestFactor = [...healthScore.factors].sort(
@@ -663,15 +681,7 @@ export function createDashboardData(data = {}) {
       weeklyReportCount:
         data.weeklyReportData || safeArray(data.weeklyReportLines).length > 0 ? 1 : 0,
       weightTrend: weightStats.hasWeights
-        ? `${weightFacts.trend}${
-          weightFacts.weightChange === null
-            ? ''
-            : weightFacts.weightLost > 0
-              ? ` · ${formatKg(weightFacts.weightLost)} ned sedan start`
-              : weightFacts.weightGained > 0
-                ? ` · ${formatKg(weightFacts.weightGained)} upp sedan start`
-                : ' · stabil sedan start'
-        }`
+        ? `${weightFacts.trend} · ${formatWeightChangeSinceStart(weightFacts)}`
         : 'Logga vikt för att se trend',
     },
     today: {

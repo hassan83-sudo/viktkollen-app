@@ -10,6 +10,9 @@ import {
 import { createAiCoachV2Report } from './aiCoachV2Service.js'
 import { createMonthlyHealthReport } from './monthlyReportService.js'
 import { buildAiCoachFacts } from './aiCoach/coachFacts.js'
+import { buildAiCoachAppContextFromData } from './aiCoach/coachAppContext.js'
+import { filterActualMealsForDate } from './nutrition/mealDateUtils.js'
+import { createNutritionDashboardModel } from '../components/nutritionDashboard/nutritionDashboardViewModel.js'
 import { buildProgressDashboardAnalytics } from './progress/progressAnalytics.js'
 import { makePersonalCoachReply } from '../lib/coachReply.js'
 import {
@@ -662,5 +665,83 @@ describe('weight module regression flow', () => {
     expect(coachReport.weeklySummary.weightChangeLabel).toBe('Saknas')
     expect(monthlyReport.weightChangeLabel).toBe('Stabil')
     expect(JSON.stringify({ coachReport, monthlyReport })).not.toMatch(/NaN|undefined/)
+  })
+
+  it('AI Coach V2 and nutrition dashboard show zero meals today when meals are historical', () => {
+    const today = '2026-07-31'
+    const meals = [
+      { calories: 400, date: '2026-07-26', fiber: 4, id: 'old-1', name: 'Frukost', protein: 20, time: '08:00' },
+      { calories: 650, date: '2026-07-26', fiber: 6, id: 'old-2', name: 'Lunch', protein: 35, time: '12:00' },
+      { calories: 500, date: '2026-07-26', fiber: 5, id: 'old-3', name: 'Middag', protein: 30, time: '18:00' },
+    ]
+    const nutritionModel = createNutritionDashboardModel({ date: today, meals, nutritionGoals: {} })
+    const coachReport = createAiCoachV2Report({
+      checkIn: {},
+      meals,
+      nutritionGoals: {},
+      profile: {},
+      today,
+      weights: [],
+    })
+    const coachContext = buildAiCoachAppContextFromData({ meals }, { today })
+    const coachFacts = buildAiCoachFacts(coachContext)
+
+    expect(meals).toHaveLength(3)
+    expect(nutritionModel.summary.mealCount).toBe(0)
+    expect(nutritionModel.summary.calories).toBe('0 kcal')
+    expect(nutritionModel.summary.protein).toBe('0 g')
+    expect(coachReport.dailyAnalysis.mealCount).toBe(0)
+    expect(coachReport.dailyAnalysis.caloriesLabel).toBe('0 kcal idag')
+    expect(coachReport.dailyAnalysis.proteinLabel).toBe('0 g idag')
+    expect(coachReport.dailyAnalysis.fiberLabel).toBe('0 g')
+    expect(coachReport.dailyAnalysis.summary).not.toContain('3 loggade måltider')
+    expect(coachFacts.todayMeals).toHaveLength(0)
+  })
+
+  it('today meal filtering counts one or several actual meals for the selected local date', () => {
+    const today = '2026-07-31'
+    const meals = [
+      { calories: 300, date: today, id: 'today-1', name: 'Ägg', protein: 18, time: '08:00' },
+      { calories: 500, date: today, id: 'today-2', name: 'Kyckling', protein: 35, time: '12:00' },
+      { calories: 400, date: '2026-07-30', id: 'old', name: 'Pizza', protein: 20, time: '18:00' },
+    ]
+
+    expect(createAiCoachV2Report({ meals: meals.slice(0, 1), today }).dailyAnalysis.mealCount).toBe(1)
+    expect(createAiCoachV2Report({ meals, today }).dailyAnalysis.mealCount).toBe(2)
+    expect(createNutritionDashboardModel({ date: today, meals }).summary.mealCount).toBe(2)
+  })
+
+  it('today meal filtering handles local midnight and future calendar days', () => {
+    const meals = [
+      { createdAt: '2026-07-30T22:30:00.000Z', id: 'local-july-31', name: 'Kvarg', protein: 25 },
+      { date: '2026-08-01', id: 'future', name: 'Framtidsmål', protein: 99 },
+    ]
+
+    expect(filterActualMealsForDate(meals, '2026-07-31').map((meal) => meal.id)).toEqual(['local-july-31'])
+    expect(createNutritionDashboardModel({ date: '2026-07-31', meals }).summary.mealCount).toBe(1)
+    expect(createNutritionDashboardModel({ date: '2026-07-30', meals }).summary.mealCount).toBe(0)
+  })
+
+  it('planned meals are not counted as actual intake today', () => {
+    const today = '2026-07-31'
+    const meals = [
+      { date: today, id: 'planned-meal-1', protein: 40, title: 'Planerad lunch' },
+      { date: today, id: 'actual-1', name: 'Faktisk lunch', protein: 30 },
+    ]
+
+    expect(filterActualMealsForDate(meals, today).map((meal) => meal.id)).toEqual(['actual-1'])
+    expect(createNutritionDashboardModel({ date: today, meals }).summary.mealCount).toBe(1)
+    expect(createAiCoachV2Report({ meals, today }).dailyAnalysis.mealCount).toBe(1)
+  })
+
+  it('same today value gives deterministic meal counts regardless of runtime date', () => {
+    const meals = [
+      { date: '2026-07-26', id: 'old', name: 'Historisk måltid', protein: 20 },
+      { date: '2026-07-31', id: 'today', name: 'Dagens måltid', protein: 25 },
+    ]
+
+    expect(createAiCoachV2Report({ meals, today: '2026-07-31' }).dailyAnalysis.mealCount).toBe(1)
+    expect(createAiCoachV2Report({ meals, today: '2026-07-31' }).dailyAnalysis.mealCount).toBe(1)
+    expect(createNutritionDashboardModel({ date: '2026-07-31', meals }).summary.mealCount).toBe(1)
   })
 })

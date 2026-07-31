@@ -1,41 +1,15 @@
 import { getEffectiveMealNutrition, normalizeMealRecord } from './mealCorrections.js'
+import {
+  filterActualMealsForDate,
+  getLocalMealDateString,
+  getMealLocalDate,
+  parseMealDateValue,
+} from './mealDateUtils.js'
 import { sumMealNutrition } from './nutritionCalculator.js'
 
-function parseDate(value) {
-  if (!value) return null
-
-  const date = new Date(value)
-
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
-function getLocalDateString(date = new Date()) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-
-  return `${year}-${month}-${day}`
-}
-
-function getMealDate(meal) {
-  const rawDate = String(meal?.date || '')
-
-  if (rawDate.includes('T')) {
-    const parsed = parseDate(rawDate)
-
-    return parsed ? getLocalDateString(parsed) : ''
-  }
-
-  const dateText = rawDate.slice(0, 10)
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateText)) {
-    return dateText
-  }
-
-  const fallback = parseDate(meal?.createdAt || meal?.timestamp)
-
-  return fallback ? getLocalDateString(fallback) : ''
-}
+const parseDate = parseMealDateValue
+const getLocalDateString = getLocalMealDateString
+const getMealDate = getMealLocalDate
 
 function getMealText(meal) {
   return [
@@ -111,7 +85,7 @@ function getLoggedNutrition(meal) {
 
 export function buildMealTimeline(meals = [], date = getLocalDateString(), options = {}) {
   const seen = new Set()
-  const safeMeals = Array.isArray(meals) ? meals : []
+  const safeMeals = filterActualMealsForDate(meals, date)
   const entries = []
 
   safeMeals.forEach((meal, index) => {

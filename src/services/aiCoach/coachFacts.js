@@ -99,11 +99,17 @@ function getWeightLossFacts({ currentWeight, profile = {}, weights = [] }) {
 function getDateString(value) {
   const date = new Date(value)
 
-  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10)
+  return Number.isNaN(date.getTime())
+    ? ''
+    : [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, '0'),
+      String(date.getDate()).padStart(2, '0'),
+    ].join('-')
 }
 
 function getTodayDateString() {
-  return new Date().toISOString().slice(0, 10)
+  return getDateString(new Date())
 }
 
 function getMealDate(meal) {

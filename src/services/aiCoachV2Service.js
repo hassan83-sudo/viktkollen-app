@@ -5,6 +5,11 @@ import {
   getWeightStats,
   parseWeightValue,
 } from './healthCalculations.js'
+import { calculateDailyNutritionSummary } from './nutrition/dailyNutritionSummary.js'
+import {
+  filterActualMealsForDate,
+  getLocalMealDateString,
+} from './nutrition/mealDateUtils.js'
 import { analyzeWeights } from './progressService.js'
 
 function safeArray(value) {
@@ -228,19 +233,25 @@ function buildDailyAnalysis({
   nutritionGoals,
   nutritionSummary,
   profile,
+  today,
   weights,
 }) {
-  const todayMeals = getRecentEntries([...safeArray(mealHistory), ...safeArray(meals)], 1)
+  const todayDate = today || nutritionSummary?.date || getLocalMealDateString()
+  const allMeals = [...safeArray(mealHistory), ...safeArray(meals)]
+  const todayMeals = filterActualMealsForDate(allMeals, todayDate)
   const weightStats = getWeightStats(weights, { startWeight: profile?.startWeight })
-  const hasNutritionSummary = nutritionSummary && typeof nutritionSummary === 'object'
+  const summary = nutritionSummary?.date === todayDate
+    ? nutritionSummary
+    : calculateDailyNutritionSummary(allMeals, todayDate, { nutritionGoals })
+  const hasNutritionSummary = summary && typeof summary === 'object'
   const calories = hasNutritionSummary
-    ? safeNumber(nutritionSummary.totals?.calories)
+    ? safeNumber(summary.totals?.calories)
     : average(todayMeals.map(getMealCalories))
   const protein = hasNutritionSummary
-    ? safeNumber(nutritionSummary.totals?.protein)
+    ? safeNumber(summary.totals?.protein)
     : average(todayMeals.map(getMealProtein))
-  const fiber = hasNutritionSummary ? safeNumber(nutritionSummary.totals?.fiber) : null
-  const mealCount = hasNutritionSummary ? safeNumber(nutritionSummary.mealCount, 0) : todayMeals.length
+  const fiber = hasNutritionSummary ? safeNumber(summary.totals?.fiber) : null
+  const mealCount = hasNutritionSummary ? safeNumber(summary.mealCount, 0) : todayMeals.length
   const proteinStatuses = todayMeals.map(getMealProteinStatus).map(getProteinScore).filter(Boolean)
   const proteinGoal = safeNumber(nutritionGoals?.protein)
   const proteinStatus = proteinGoal && protein !== null
@@ -472,6 +483,7 @@ export function createAiCoachV2Report(data = {}) {
     nutritionGoals,
     nutritionSummary,
     profile,
+    today: data.today,
     weights,
   })
   const weeklySummary = buildWeeklySummary({ checkIn, mealHistory, meals, profile, weeklyNutrition, weights })

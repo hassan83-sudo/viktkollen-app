@@ -6,48 +6,20 @@ import {
   sumMealNutrition,
 } from './nutritionCalculator.js'
 import { normalizeNutritionGoals, parseProteinGoal } from './nutritionGoals.js'
+import {
+  filterActualMealsForDate,
+  getLocalMealDateString,
+  getMealLocalDate,
+} from './mealDateUtils.js'
+
+const getLocalDateString = getLocalMealDateString
+const getMealDate = getMealLocalDate
 
 function parseNumber(value) {
   const match = String(value ?? '').replace(',', '.').match(/\d+(?:\.\d+)?/)
   const parsed = match ? Number(match[0]) : NaN
 
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null
-}
-
-function getLocalDateString(date = new Date()) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-
-  return `${year}-${month}-${day}`
-}
-
-function parseDate(value) {
-  if (!value) return null
-
-  const date = new Date(value)
-
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
-function getMealDate(meal) {
-  const rawDate = String(meal?.date || '')
-
-  if (rawDate.includes('T')) {
-    const parsed = parseDate(rawDate)
-
-    return parsed ? getLocalDateString(parsed) : ''
-  }
-
-  const dateText = rawDate.slice(0, 10)
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateText)) {
-    return dateText
-  }
-
-  const fallback = parseDate(meal?.createdAt || meal?.time || meal?.timestamp)
-
-  return fallback ? getLocalDateString(fallback) : ''
 }
 
 function getMealText(meal) {
@@ -106,7 +78,7 @@ export function calculateDailyNutritionSummary(meals = [], date = getLocalDateSt
   const seen = new Set()
   const analyses = []
   const unknownFoods = []
-  const safeMeals = Array.isArray(meals) ? meals : []
+  const safeMeals = filterActualMealsForDate(meals, today)
 
   safeMeals.forEach((meal, index) => {
     const mealDate = getMealDate(meal)

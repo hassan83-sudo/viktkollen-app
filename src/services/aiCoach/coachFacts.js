@@ -2,6 +2,7 @@ import {
   calculateProteinNeed,
   formatKg,
   getUnifiedWeightFacts,
+  normalizeWeightEntries,
   parseWeightValue,
 } from '../healthCalculations.js'
 import {
@@ -72,14 +73,12 @@ function getWeightEntryTime(entry) {
 }
 
 function getSortedWeightValues(weights = []) {
-  return (Array.isArray(weights) ? weights : [])
+  return normalizeWeightEntries(weights)
     .map((entry) => ({
-      date: entry?.date || '',
+      date: entry.date || '',
       time: getWeightEntryTime(entry),
       value: getWeightEntryValue(entry),
     }))
-    .filter((entry) => Number.isFinite(entry.value))
-    .sort((first, second) => first.time - second.time)
 }
 
 function getWeightLossFacts({ currentWeight, profile = {}, weights = [] }) {

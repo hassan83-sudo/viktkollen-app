@@ -1,4 +1,4 @@
-import { formatKg, getUnifiedWeightFacts } from '../healthCalculations.js'
+import { formatKg, getUnifiedWeightFacts, getWeightStats } from '../healthCalculations.js'
 import {
   buildPlannedWeekSummary,
   getMealPlanWeek,
@@ -116,27 +116,37 @@ function analyzeWeightProgress(weights = [], profile = {}, range, today = new Da
   const periodWeights = normalized.filter((entry) => isInRange(entry.date, range))
   const first = periodWeights[0] || null
   const latest = periodWeights.at(-1) || null
-  const changeKg = first && latest ? round(latest.value - first.value) : null
-  const percentChange = first && changeKg !== null ? round((changeKg / first.value) * 100, 1) : null
+  const periodChangeKg = first && latest ? round(latest.value - first.value) : null
+  const percentChange = first && periodChangeKg !== null ? round((periodChangeKg / first.value) * 100, 1) : null
   const daysBetween = first && latest ? Math.max(1, (latest.time - first.time) / 86400000) : 0
-  const weeklyAverageChange = changeKg !== null && daysBetween > 0 ? round((changeKg / daysBetween) * 7, 2) : null
+  const weeklyAverageChange = periodChangeKg !== null && periodWeights.length >= 2 && daysBetween >= 7
+    ? round((periodChangeKg / daysBetween) * 7, 2)
+    : null
+  const totalStats = getWeightStats(normalized.map((entry) => ({ date: entry.date, value: entry.value })))
+  const totalStart = totalStats.weights[0]?.value ?? null
   const unified = getUnifiedWeightFacts({
+    currentWeight: totalStats.current,
     profile,
+    startWeight: totalStart,
     weights: normalized.map((entry) => ({ date: entry.date, value: entry.value })),
   })
+  const totalChangeKg = unified.weightChange
 
   return {
     bestLoggingStreak: bestLoggingStreak(periodWeights),
-    changeKg,
-    currentWeight: latest?.value ?? unified.currentWeight,
+    changeKg: periodChangeKg,
+    currentWeight: unified.latestWeight,
     firstWeight: first?.value ?? null,
-    goalRemaining: unified.remainingKg,
+    goalRemaining: unified.goalRemaining,
     goalWeight: unified.goalWeight,
     latestWeight: latest?.value ?? null,
     percentChange,
+    periodChangeKg,
     registrationCount: periodWeights.length,
     startWeight: unified.startWeight,
-    trendDirection: changeKg === null ? 'insufficient' : changeKg < -0.1 ? 'down' : changeKg > 0.1 ? 'up' : 'stable',
+    totalChangeKg,
+    totalTrendDirection: totalChangeKg === null ? 'insufficient' : totalChangeKg < -0.1 ? 'down' : totalChangeKg > 0.1 ? 'up' : 'stable',
+    trendDirection: periodChangeKg === null ? 'insufficient' : periodChangeKg < -0.1 ? 'down' : periodChangeKg > 0.1 ? 'up' : 'stable',
     weeklyAverageChange,
     weights: periodWeights,
   }
@@ -373,8 +383,10 @@ function buildCoreAnalysis(data = {}, range) {
 }
 
 export function buildProgressDashboardAnalytics(data = {}, options = {}) {
-  const range = getProgressPeriodRange(options.period || data.period || '30d', options.today || data.today || new Date())
-  const current = buildCoreAnalysis(data, range)
+  const today = options.today || data.today || new Date()
+  const dataWithToday = { ...data, today }
+  const range = getProgressPeriodRange(options.period || data.period || '30d', today)
+  const current = buildCoreAnalysis(dataWithToday, range)
   const previousRange = range.days
     ? {
       ...range,
@@ -382,7 +394,7 @@ export function buildProgressDashboardAnalytics(data = {}, options = {}) {
       start: range.previousStart,
     }
     : null
-  const previous = previousRange ? buildCoreAnalysis(data, previousRange) : null
+  const previous = previousRange ? buildCoreAnalysis(dataWithToday, previousRange) : null
   const comparison = comparePeriods(current, previous)
   const analysis = {
     ...current,

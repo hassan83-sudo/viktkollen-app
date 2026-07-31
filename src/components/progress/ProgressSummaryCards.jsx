@@ -21,7 +21,7 @@ function ProgressSummaryCards({ analysis }) {
       <SummaryCard label="Nuvarande vikt" value={formatKg(weight.currentWeight, { fallback: 'Saknas' })} />
       <SummaryCard label="Startvikt" value={formatKg(weight.startWeight, { fallback: 'Saknas' })} />
       <SummaryCard label="Viktmål" value={formatKg(weight.goalWeight, { fallback: 'Saknas' })} />
-      <SummaryCard label="Total förändring" status={weight.trendDirection === 'down' ? 'positive' : 'neutral'} value={formatProgressChange(weight.changeKg)} />
+      <SummaryCard label="Total förändring" status={weight.totalTrendDirection === 'down' ? 'positive' : 'neutral'} value={formatProgressChange(weight.totalChangeKg ?? weight.changeKg)} />
       <SummaryCard label="Kvar till mål" value={formatKg(weight.goalRemaining, { fallback: 'Saknas' })} />
       <SummaryCard label="Veckosnitt" value={weight.weeklyAverageChange === null ? 'Saknas' : formatProgressChange(weight.weeklyAverageChange)} />
       <SummaryCard label="Kalorimål" value={`${nutrition.calorieGoalPercent}%`} />

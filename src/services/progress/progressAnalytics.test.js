@@ -132,6 +132,55 @@ describe('weight progress analytics', () => {
   it('handles duplicate same-day weights', () => {
     expect(analytics({ weights: [...weights, { date: '2026-03-31T09:00:00', value: 89.4 }] }, '7d').weight.registrationCount).toBe(2)
   })
+
+  it('uses central total weight facts separately from period trend', () => {
+    const result = buildProgressDashboardAnalytics({
+      checkIn: {},
+      foods: [],
+      meals: [],
+      nutritionGoals: {},
+      profile: { goalWeight: '78 kg', startWeight: '78 kg' },
+      weights: [
+        { date: '2026-07-01', source: 'Manuell', time: '08:00', value: 91.8 },
+        { date: '2026-07-10', source: 'Manuell', time: '08:00', value: 90.6 },
+        { date: '2026-07-31', source: 'Manuell', time: '08:00', value: 89.6 },
+        { date: '2026-07-31', source: 'Manuell', time: '08:04', value: 89.6 },
+      ],
+    }, { period: '30d', today: new Date('2026-07-31T12:00:00.000Z') })
+
+    expect(result.weight.startWeight).toBe(91.8)
+    expect(result.weight.currentWeight).toBe(89.6)
+    expect(result.weight.totalChangeKg).toBe(-2.2)
+    expect(result.weight.goalRemaining).toBe(11.6)
+    expect(result.weight.periodChangeKg).toBe(-1)
+    expect(result.weight.changeKg).toBe(-1)
+    expect(result.weight.weeklyAverageChange).toBeCloseTo(-0.33)
+    expect(result.weight.weeklyAverageChange).not.toBe(7)
+  })
+
+  it('keeps central current weight when latest same-day entry is later than the analysis clock', () => {
+    const result = buildProgressDashboardAnalytics({
+      checkIn: {},
+      foods: [],
+      meals: [],
+      nutritionGoals: {},
+      profile: { goalWeight: '78 kg', startWeight: '91,8 kg' },
+      weights: [
+        { date: '2026-07-01', source: 'Manuell', time: '08:00', value: 91.8 },
+        { date: '2026-07-10', source: 'Manuell', time: '08:00', value: 88.6 },
+        { date: '2026-07-27', source: 'Manuell', time: '04:09', value: 90.1 },
+        { date: '2026-07-31', source: 'Manuell', time: '04:09', value: 89.6 },
+      ],
+    }, { period: '30d', today: new Date('2026-07-31T01:00:00.000Z') })
+
+    expect(result.weight.currentWeight).toBe(89.6)
+    expect(result.weight.startWeight).toBe(91.8)
+    expect(result.weight.totalChangeKg).toBe(-2.2)
+    expect(result.weight.goalWeight).toBe(78)
+    expect(result.weight.goalRemaining).toBe(11.6)
+    expect(result.weight.periodChangeKg).toBe(1)
+    expect(result.weight.latestWeight).toBe(89.6)
+  })
 })
 
 describe('nutrition progress analytics', () => {

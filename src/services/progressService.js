@@ -168,6 +168,47 @@ export function getWeightEntrySignature(entry) {
   ].join('|')
 }
 
+function getWeightMigrationGroupSignature(entry) {
+  const normalized = normalizeWeightEntry(entry)
+
+  if (!normalized) {
+    return ''
+  }
+
+  return [
+    normalized.date,
+    normalized.value.toFixed(1),
+    normalized.source,
+    normalized.note.trim().toLocaleLowerCase('sv-SE'),
+  ].join('|')
+}
+
+function getWeightTimeMinutes(entry) {
+  const [, hours = '0', minutes = '0'] = /^(\d{2}):(\d{2})$/.exec(String(entry?.time || '')) || []
+
+  return Number(hours) * 60 + Number(minutes)
+}
+
+function getWeightRecencyTime(entry) {
+  return Math.max(
+    parseDate(entry?.updatedAt)?.getTime() || 0,
+    parseDate(entry?.createdAt)?.getTime() || 0,
+    new Date(`${entry?.date || '1970-01-01'}T${entry?.time || '00:00'}`).getTime() || 0,
+  )
+}
+
+function getLatestWeightEntry(entries) {
+  return [...entries].sort((first, second) => {
+    const timeDifference = getWeightTimeMinutes(second) - getWeightTimeMinutes(first)
+
+    if (timeDifference !== 0) {
+      return timeDifference
+    }
+
+    return getWeightRecencyTime(second) - getWeightRecencyTime(first)
+  })[0]
+}
+
 export function normalizeWeights(weights) {
   const seenIds = new Set()
   const seenSignatures = new Set()
@@ -187,6 +228,50 @@ export function normalizeWeights(weights) {
       return true
     })
     .sort(compareProgressOldest)
+}
+
+export function migrateDuplicateWeightEntries(weights = []) {
+  const validWeights = (Array.isArray(weights) ? weights : [])
+    .map(normalizeWeightEntry)
+    .filter(Boolean)
+  const byGroup = validWeights.reduce((groups, entry) => {
+    const signature = getWeightMigrationGroupSignature(entry)
+
+    groups.set(signature, [...(groups.get(signature) || []), entry])
+    return groups
+  }, new Map())
+  const clusteredWeights = []
+
+  byGroup.forEach((entries) => {
+    const sortedEntries = [...entries].sort(compareProgressOldest)
+    let currentCluster = []
+    let previousMinutes = null
+
+    sortedEntries.forEach((entry) => {
+      const minutes = getWeightTimeMinutes(entry)
+
+      if (previousMinutes !== null && minutes - previousMinutes > 5) {
+        clusteredWeights.push(getLatestWeightEntry(currentCluster))
+        currentCluster = []
+      }
+
+      currentCluster.push(entry)
+      previousMinutes = minutes
+    })
+
+    if (currentCluster.length > 0) {
+      clusteredWeights.push(getLatestWeightEntry(currentCluster))
+    }
+  })
+
+  const migratedWeights = normalizeWeights(clusteredWeights)
+  const removedCount = Math.max(0, validWeights.length - migratedWeights.length)
+
+  return {
+    changed: removedCount > 0,
+    removedCount,
+    weights: migratedWeights,
+  }
 }
 
 export function getEmptyWeightDraft(latestWeight = null) {
@@ -768,9 +853,9 @@ export function buildProgressTimeline({ bodyAnalysisHistory = [], bodyMeasuremen
   ].sort((first, second) => second.date.localeCompare(first.date))
 }
 
-export function createProgressReport({ bodyMeasurements = [], period = 'week', profile = {}, progressPhotos = [], weights = [] } = {}) {
+export function createProgressReport({ bodyMeasurements = [], period = 'week', profile = {}, progressPhotos = [], today = new Date(), weights = [] } = {}) {
   const normalizedWeights = normalizeWeights(weights)
-  const now = new Date()
+  const now = parseDate(today) || new Date()
   const days = period === 'month' ? 30 : 7
   const cutoff = new Date(now.getTime() - days * dayMs)
   const periodWeights = normalizedWeights.filter((entry) => parseDate(entry.date) >= cutoff)

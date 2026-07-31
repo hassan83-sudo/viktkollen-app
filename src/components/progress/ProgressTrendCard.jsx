@@ -15,7 +15,7 @@ function ProgressTrendCard({ weight }) {
         <dl className="progress-detail-grid">
           <div><dt>Första i perioden</dt><dd>{formatKg(weight.firstWeight, { fallback: 'Saknas' })}</dd></div>
           <div><dt>Senaste i perioden</dt><dd>{formatKg(weight.latestWeight, { fallback: 'Saknas' })}</dd></div>
-          <div><dt>Förändring</dt><dd>{formatProgressChange(weight.changeKg)}</dd></div>
+          <div><dt>Förändring</dt><dd>{formatProgressChange(weight.periodChangeKg ?? weight.changeKg)}</dd></div>
           <div><dt>Procent</dt><dd>{Number.isFinite(weight.percentChange) ? `${weight.percentChange.toLocaleString('sv-SE')}%` : 'Saknas'}</dd></div>
           <div><dt>Veckogenomsnitt</dt><dd>{weight.weeklyAverageChange === null ? 'Saknas' : formatProgressChange(weight.weeklyAverageChange)}</dd></div>
           <div><dt>Registreringar</dt><dd>{weight.registrationCount}</dd></div>

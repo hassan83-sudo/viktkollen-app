@@ -40,34 +40,113 @@ export function formatKg(value, options = {}) {
   return `${formattedNumber} kg`
 }
 
+function safeDate(value) {
+  const date = new Date(value)
+
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function getLocalDateString(date = new Date()) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-')
+}
+
+function getWeightEntryDateTime(entry = {}) {
+  if (String(entry.date || '').includes('T') && !/^\d{2}:\d{2}$/.test(String(entry.time || ''))) {
+    return safeDate(entry.date)
+  }
+
+  const dateText = String(entry.date || '').slice(0, 10)
+  const timeText = /^\d{2}:\d{2}$/.test(String(entry.time || '')) ? entry.time : ''
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateText)) {
+    return safeDate(`${dateText}T${timeText || '12:00'}:00`)
+  }
+
+  return safeDate(entry.date || entry.createdAt || entry.timestamp)
+}
+
+function getWeightEntrySource(entry = {}) {
+  return String(entry.source || 'Manuell').trim().toLocaleLowerCase('sv-SE')
+}
+
+function getWeightEntryNote(entry = {}) {
+  return String(entry.note || '').trim().toLocaleLowerCase('sv-SE')
+}
+
+function getWeightMigrationKey(entry) {
+  return [
+    entry.localDate,
+    entry.value.toFixed(1),
+    entry.source,
+    entry.note,
+  ].join('|')
+}
+
+function getLatestCentralWeightEntry(entries = []) {
+  return [...entries].sort((first, second) =>
+    second.minutes - first.minutes ||
+    second.time - first.time ||
+    String(second.id).localeCompare(String(first.id), 'sv-SE'),
+  )[0]
+}
+
 export function normalizeWeightEntries(weights = []) {
-  const seen = new Set()
-
-  return (Array.isArray(weights) ? weights : [])
+  const rawEntries = (Array.isArray(weights) ? weights : [])
     .map((entry) => {
-      const value = parseWeightValue(entry?.value)
-      const date = new Date(entry?.date)
+      const value = parseWeightValue(entry?.value ?? entry?.weight)
+      const date = getWeightEntryDateTime(entry)
 
-      if (value === null || Number.isNaN(date.getTime())) {
+      if (value === null || !date || Number.isNaN(date.getTime())) {
         return null
       }
+      const localDate = getLocalDateString(date)
 
       return {
         date: date.toISOString(),
+        id: String(entry?.id || ''),
+        localDate,
+        minutes: date.getHours() * 60 + date.getMinutes(),
+        note: getWeightEntryNote(entry),
+        source: getWeightEntrySource(entry),
+        time: date.getTime(),
         value,
       }
     })
     .filter(Boolean)
-    .filter((entry) => {
-      const signature = `${entry.date}|${entry.value.toFixed(1)}`
+    .sort((first, second) => first.time - second.time || first.value - second.value)
+  const groups = rawEntries.reduce((map, entry) => {
+    const key = getWeightMigrationKey(entry)
 
-      if (seen.has(signature)) {
-        return false
+    map.set(key, [...(map.get(key) || []), entry])
+    return map
+  }, new Map())
+  const migratedEntries = []
+
+  groups.forEach((entries) => {
+    let cluster = []
+    let previousMinutes = null
+
+    entries.forEach((entry) => {
+      if (previousMinutes !== null && entry.minutes - previousMinutes > 5) {
+        migratedEntries.push(getLatestCentralWeightEntry(cluster))
+        cluster = []
       }
 
-      seen.add(signature)
-      return true
+      cluster.push(entry)
+      previousMinutes = entry.minutes
     })
+
+    if (cluster.length) {
+      migratedEntries.push(getLatestCentralWeightEntry(cluster))
+    }
+  })
+
+  return migratedEntries
+    .map(({ date, value }) => ({ date, value }))
     .sort((first, second) => new Date(first.date) - new Date(second.date))
 }
 

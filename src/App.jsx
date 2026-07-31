@@ -43,6 +43,7 @@ import { createDashboardData } from './services/dashboardService.js'
 import {
   formatKg as formatHealthKg,
   getProteinNeedForContext,
+  getWeightStats,
   parseWeightValue,
 } from './services/healthCalculations.js'
 import {
@@ -75,6 +76,7 @@ import {
   analyzeWeights,
   createProgressInsights,
   createWeightProjection,
+  migrateDuplicateWeightEntries,
   normalizeBodyMeasurements,
   normalizeGoalSettings,
   normalizeWeights,
@@ -89,6 +91,17 @@ const starterWeights = [
   { date: '2026-05-26', value: 90.4 },
   { date: '2026-05-27', value: 90.1 },
 ]
+
+function readInitialWeights() {
+  const storedWeights = userDataRepository.getWeights(starterWeights, Array.isArray)
+  const migration = migrateDuplicateWeightEntries(storedWeights)
+
+  if (migration.changed) {
+    userDataRepository.saveWeights(migration.weights)
+  }
+
+  return migration.weights
+}
 
 const initialFoods = [
   { id: 'protein', label: 'Protein till varje måltid (20-30 g)', done: true },
@@ -838,9 +851,7 @@ function App() {
   const [checkIn, setCheckIn] = useState(() =>
     userDataRepository.getCheckIn(initialCheckIn, isStoredCheckIn),
   )
-  const [weights, setWeights] = useState(() =>
-    normalizeWeights(userDataRepository.getWeights(starterWeights, Array.isArray)),
-  )
+  const [weights, setWeights] = useState(readInitialWeights)
   const [bodyMeasurements, setBodyMeasurements] = useState(() =>
     normalizeBodyMeasurements(userDataRepository.getBodyMeasurements([], Array.isArray)),
   )
@@ -931,14 +942,16 @@ function App() {
     getAnalysisHistory(),
   )
 
-  const latestWeight = weights.at(-1)
+  const centralWeightStats = useMemo(() => getWeightStats(weights), [weights])
+  const latestWeight = weights.at(-1) || { value: centralWeightStats.current }
+  const centralCurrentWeight = centralWeightStats.current
   const aiUserContext = useMemo(
     () =>
       buildAiUserContext({
         bodyAnalysisHistory,
         chatHistory: chatMessages,
         checkIn,
-        currentWeight: latestWeight.value,
+        currentWeight: centralCurrentWeight,
         foods,
         latestWeeklyReport: weeklyReportData,
         mealHistory: photoMeals,
@@ -950,8 +963,8 @@ function App() {
       bodyAnalysisHistory,
       chatMessages,
       checkIn,
+      centralCurrentWeight,
       foods,
-      latestWeight.value,
       meals,
       photoMeals,
       profile,
@@ -1192,13 +1205,13 @@ function App() {
     () =>
       JSON.stringify({
         checkIn,
-        currentWeight: latestWeight.value,
+        currentWeight: centralCurrentWeight,
         foods,
         meals,
         profile,
         weights,
       }),
-    [checkIn, foods, latestWeight.value, meals, profile, weights],
+    [centralCurrentWeight, checkIn, foods, meals, profile, weights],
   )
   const [dailyCoachResult, setDailyCoachResult] = useState(null)
   const hasFreshDailyCoach = dailyCoachResult?.key === dailyCoachKey
@@ -1282,7 +1295,7 @@ function App() {
     const report = await createAiWeeklyReport({
       bodyAnalysisHistory,
       checkIn,
-      currentWeight: latestWeight.value,
+      currentWeight: centralCurrentWeight,
       foods,
       mealHistory: photoMeals,
       meals,
@@ -1301,8 +1314,8 @@ function App() {
   }, [
     checkIn,
     bodyAnalysisHistory,
+    centralCurrentWeight,
     foods,
-    latestWeight.value,
     meals,
     photoMeals,
     proactiveCoachInsights,
@@ -1651,7 +1664,7 @@ function App() {
         foods,
         meals,
         weights,
-        currentWeight: latestWeight.value,
+        currentWeight: centralCurrentWeight,
       })
       const data = result.data || {}
 
@@ -1680,10 +1693,10 @@ function App() {
     }
   }, [
     checkIn,
+    centralCurrentWeight,
     dailyCoachKey,
     authSession,
     foods,
-    latestWeight.value,
     meals,
     profile,
     showOnboarding,
@@ -2134,7 +2147,7 @@ function App() {
           profile,
           checkIn,
           foods,
-          latestWeight.value,
+          centralCurrentWeight,
           chatHistory,
           weights,
           meals,
@@ -2718,7 +2731,7 @@ function App() {
           meals={meals}
           nutritionGoals={nutritionGoals}
           profile={makeValidatedProfile(profile)}
-          weights={weights}
+          weights={centralWeightStats.weights}
           weeklyReportData={weeklyReportData}
           weeklyReportLines={weeklyReportLines}
           weeklyReportStatus={weeklyReportStatus}

@@ -14,6 +14,8 @@ import { createDashboardData } from './dashboardService.js'
 import { getUnifiedWeightFacts } from './healthCalculations.js'
 import { userDataKeys } from './userDataRepository.js'
 
+const todayString = coachAppContextInternals.getLocalDateString()
+
 const coachContext = {
   checkIn: {
     energy: 6,
@@ -22,13 +24,13 @@ const coachContext = {
   },
   meals: [
     {
-      date: new Date().toISOString().slice(0, 10),
+      date: todayString,
       id: 'meal-1',
       name: 'Kyckling med ris',
       protein: 35,
     },
     {
-      date: new Date().toISOString().slice(0, 10),
+      date: todayString,
       id: 'meal-2',
       name: 'Kvarg och havregryn',
       protein: 25,
@@ -488,7 +490,7 @@ const localStorageLikeData = {
     { createdAt: '2026-07-27T08:02:00', role: 'assistant', text: 'En pizza förstör inte dina framsteg.' },
   ],
   [userDataKeys.checkIn]: {
-    date: new Date().toISOString().slice(0, 10),
+    date: todayString,
     energy: 6,
     mood: 'Fokuserad',
     sleep: 7,
@@ -497,7 +499,7 @@ const localStorageLikeData = {
   },
   [userDataKeys.meals]: [
     {
-      date: new Date().toISOString().slice(0, 10),
+      date: todayString,
       id: 'today-meal',
       name: 'Kyckling med ris',
       protein: 35,
@@ -554,7 +556,7 @@ describe('AI Coach Pro V5 app integration', () => {
       weights: [
         ...localStorageLikeData[userDataKeys.weights].slice(0, 2),
         {
-          date: new Date().toISOString().slice(0, 10),
+          date: todayString,
           id: 'w3',
           time: '23:00',
           value: 89.9,
@@ -716,7 +718,7 @@ describe('AI Coach Pro V5 app integration', () => {
   it('creates daily priority advice from real data', () => {
     const advice = createDailyPriorityCoachAdvice(buildAiCoachAppContextFromData({
       checkIn: { energy: 2, sleep: 5, steps: 3200 },
-      meals: [{ date: new Date().toISOString().slice(0, 10), name: 'Ris', protein: 10 }],
+      meals: [{ date: todayString, name: 'Ris', protein: 10 }],
       nutritionGoals: { protein: '108–144 g' },
     }))
 
@@ -727,7 +729,7 @@ describe('AI Coach Pro V5 app integration', () => {
   it('daily advice does not invent goals', () => {
     const advice = createDailyPriorityCoachAdvice(buildAiCoachAppContextFromData({
       checkIn: { steps: 3200 },
-      meals: [{ date: new Date().toISOString().slice(0, 10), name: 'Ris', protein: 10 }],
+      meals: [{ date: todayString, name: 'Ris', protein: 10 }],
       nutritionGoals: {},
     }))
 
@@ -802,7 +804,7 @@ describe('AI Coach Pro V5 app integration', () => {
       profile: { goalWeight: '78 kg', startWeight: '91,8 kg' },
       weights: [
         { date: '2026-07-01', id: 'w1', value: 91.8 },
-        { date: new Date().toISOString().slice(0, 10), id: 'fresh', value: 89.7 },
+        { date: todayString, id: 'fresh', value: 89.7 },
       ],
     })
 

@@ -1,9 +1,17 @@
-import { formatKg, parseWeightValue } from '../healthCalculations.js'
+import { formatKg, normalizeWeightEntries, parseWeightValue } from '../healthCalculations.js'
 
 function safeDate(value) {
   const date = new Date(value)
 
   return Number.isNaN(date.getTime()) ? null : date
+}
+
+function localDateString(date = new Date()) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-')
 }
 
 function safeNumber(value) {
@@ -20,16 +28,18 @@ function round(value, digits = 1) {
 
 export function normalizeForecastWeights(weights = [], today = new Date()) {
   const now = safeDate(today) || new Date()
+  const todayDate = localDateString(now)
 
-  return (Array.isArray(weights) ? weights : [])
+  return normalizeWeightEntries(weights)
     .map((entry) => {
-      const value = safeNumber(entry?.value ?? entry?.weight)
-      const date = safeDate(entry?.date || entry?.createdAt)
+      const date = safeDate(entry.date)
+      const value = safeNumber(entry.value)
+      const entryDate = date ? localDateString(date) : ''
 
-      if (value === null || !date || date > now || value < 25 || value > 350) return null
+      if (value === null || !date || entryDate > todayDate || value < 25 || value > 350) return null
 
       return {
-        date: date.toISOString().slice(0, 10),
+        date: entryDate,
         time: date.getTime(),
         value,
       }

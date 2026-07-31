@@ -1,3 +1,5 @@
+import { formatCalories, formatGrams } from '../healthFormatting.js'
+
 const round = (value) => Math.round((value + Number.EPSILON) * 10) / 10
 
 export function multiplyFoodNutrition(food, quantity = 1) {
@@ -61,25 +63,13 @@ export function buildMealFlags(items, totals) {
 }
 
 export function formatNutritionValue(value, unit = 'g') {
-  if (!Number.isFinite(value)) return ''
-
-  return `${Math.round(value).toLocaleString('sv-SE')} ${unit}`
+  return formatGrams(value, { fallback: '', unit })
 }
 
 export function formatApproxCalories(value) {
-  if (!Number.isFinite(value)) return ''
-
-  const rounded = value >= 100 ? Math.round(value / 5) * 5 : Math.round(value)
-
-  return `cirka ${rounded.toLocaleString('sv-SE')} kcal`
+  return formatCalories(value, { approx: true, fallback: '' })
 }
 
 export function formatApproxGrams(value, label = 'g') {
-  if (!Number.isFinite(value)) return ''
-
-  const rounded = value < 10 && value % 1 !== 0
-    ? Math.round(value * 10) / 10
-    : Math.round(value)
-
-  return `${rounded.toLocaleString('sv-SE')} ${label}`
+  return formatGrams(value, { fallback: '', unit: label })
 }

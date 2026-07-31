@@ -8,6 +8,7 @@ import {
 } from './healthCalculations.js'
 import { getMealHistory } from './mealHistory.js'
 import { normalizeCheckInMetrics } from './checkInNormalization.js'
+import { formatPercentage, parseDisplayNumber } from './healthFormatting.js'
 
 const DEFAULT_CHECK_IN = {
   energy: null,
@@ -62,16 +63,7 @@ export function safeArray(value) {
  * @returns {number | null}
  */
 export function safeNumber(value, fallback = null) {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : fallback
-  }
-
-  const normalized = String(value ?? '')
-    .replace(',', '.')
-    .replace(/[^\d.-]/g, '')
-  const parsed = Number(normalized)
-
-  return Number.isFinite(parsed) ? parsed : fallback
+  return parseDisplayNumber(value, fallback)
 }
 
 /**
@@ -125,11 +117,7 @@ function formatInteger(value) {
 }
 
 function formatPercent(value) {
-  const number = safeNumber(value)
-
-  return number === null
-    ? 'Saknas'
-    : `${number.toLocaleString('sv-SE', { maximumFractionDigits: 1 })}%`
+  return formatPercentage(value, { fallback: 'Saknas', maximumFractionDigits: 1 })
 }
 
 function includesAny(value, terms) {

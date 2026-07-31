@@ -1,4 +1,5 @@
 import { formatKg, getUnifiedWeightFacts, getWeightStats } from '../healthCalculations.js'
+import { normalizeNegativeZero } from '../healthFormatting.js'
 import {
   buildPlannedWeekSummary,
   getMealPlanWeek,
@@ -403,7 +404,8 @@ export function buildProgressDashboardAnalytics(data = {}, options = {}) {
 }
 
 export function formatProgressChange(value) {
-  if (!Number.isFinite(value)) return 'Saknas'
+  const number = normalizeNegativeZero(value, 1)
+  if (number === null) return 'Saknas'
   if (Math.abs(value) < 0.05) return 'Oförändrat'
 
   return value < 0 ? `${formatKg(Math.abs(value))} ned` : `${formatKg(value)} upp`

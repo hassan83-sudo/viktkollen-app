@@ -1,7 +1,7 @@
-function formatNumber(value, unit) {
-  const safeValue = Number.isFinite(value) && value >= 0 ? value : 0
+import { formatCalories, formatGrams } from '../../services/healthFormatting.js'
 
-  return `${Math.round(safeValue).toLocaleString('sv-SE')} ${unit}`
+function formatNumber(value, unit) {
+  return unit === 'kcal' ? formatCalories(value, { fallback: '0 kcal' }) : formatGrams(value, { fallback: `0 ${unit}`, unit })
 }
 
 function ProgressRow({ label, progress, unit, value }) {

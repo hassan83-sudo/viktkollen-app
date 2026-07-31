@@ -1,5 +1,7 @@
+import { formatCalories, formatGrams } from '../../services/healthFormatting.js'
+
 function formatNumber(value, unit) {
-  return `${Math.round(Number.isFinite(value) ? value : 0).toLocaleString('sv-SE')} ${unit}`
+  return unit === 'kcal' ? formatCalories(value, { fallback: '0 kcal' }) : formatGrams(value, { fallback: `0 ${unit}`, unit })
 }
 
 function MonthlySummaryCards({ summary }) {

@@ -1,3 +1,5 @@
+import { formatSleepDuration as formatCentralSleepDuration } from './healthFormatting.js'
+
 const technicalText = new Set(['true', 'false', 'undefined', 'null', '[object object]', 'nan', 'infinity'])
 
 function cleanText(value) {
@@ -296,11 +298,7 @@ function parseSleepValue(value) {
 }
 
 export function formatSleepDuration(hours) {
-  const totalMinutes = Math.round(hours * 60)
-  const wholeHours = Math.floor(totalMinutes / 60)
-  const minutes = totalMinutes % 60
-
-  return minutes > 0 ? `${wholeHours} h ${minutes} min` : `${wholeHours} h`
+  return formatCentralSleepDuration(hours)
 }
 
 export function normalizeSleepMetrics(value) {

@@ -1,7 +1,7 @@
+import { formatWeight, formatWeightChange } from '../../services/healthFormatting.js'
+
 function formatChange(change) {
-  if (!Number.isFinite(change)) return ''
-  if (change > 0) return `+${change.toLocaleString('sv-SE')} kg`
-  return `${change.toLocaleString('sv-SE')} kg`
+  return Number.isFinite(change) ? formatWeightChange(change, { showPlus: true }) : ''
 }
 
 function MonthlyWeightRelation({ relation }) {
@@ -19,11 +19,11 @@ function MonthlyWeightRelation({ relation }) {
         <div className="monthly-weight-relation">
           <article>
             <span>Start</span>
-            <strong>{relation.startWeight.toLocaleString('sv-SE')} kg</strong>
+            <strong>{formatWeight(relation.startWeight)}</strong>
           </article>
           <article>
             <span>Slut</span>
-            <strong>{relation.endWeight.toLocaleString('sv-SE')} kg</strong>
+            <strong>{formatWeight(relation.endWeight)}</strong>
           </article>
           <article>
             <span>Förändring</span>

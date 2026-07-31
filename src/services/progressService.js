@@ -1,4 +1,5 @@
 import { getUnifiedWeightFacts, normalizeDailyWeightEntries } from './healthCalculations.js'
+import { formatWeight, formatWeightChange } from './healthFormatting.js'
 
 export const weightSources = ['Manuell', 'Importerad', 'Check-in', 'Kroppsanalys', 'Annat']
 
@@ -67,24 +68,11 @@ export function parsePositiveNumber(value, fallback = null, max = 500) {
 }
 
 export function formatKg(value, fallback = 'Saknas') {
-  const number = parsePositiveNumber(value, null, 500)
-
-  return number === null
-    ? fallback
-    : `${number.toLocaleString('sv-SE', { maximumFractionDigits: 1, minimumFractionDigits: 1 })} kg`
+  return formatWeight(value, { fallback })
 }
 
 export function formatSignedKg(value, fallback = 'Saknas') {
-  const number = Number(value)
-
-  if (!Number.isFinite(number)) {
-    return fallback
-  }
-
-  return `${number > 0 ? '+' : ''}${number.toLocaleString('sv-SE', {
-    maximumFractionDigits: 1,
-    minimumFractionDigits: 1,
-  })} kg`
+  return formatWeightChange(value, { fallback, showPlus: true })
 }
 
 function normalizeSource(value) {

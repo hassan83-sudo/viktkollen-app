@@ -13,9 +13,11 @@ import {
   writeMealPlans,
   writeShoppingLists,
 } from '../services/nutrition/nutritionEngine.js'
+import { formatCalories, formatGrams } from '../services/healthFormatting.js'
 
 function formatNumber(value, unit) {
-  return Number.isFinite(value) && value > 0 ? `${Math.round(value).toLocaleString('sv-SE')} ${unit}` : 'Saknas'
+  if (unit === 'kcal') return formatCalories(value)
+  return formatGrams(value, { unit })
 }
 
 function GeneratedMealPlanPreview({ plan }) {

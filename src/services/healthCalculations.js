@@ -37,10 +37,13 @@ export function formatKg(value, options = {}) {
     return options.fallback ?? 'saknas'
   }
 
-  const formattedNumber = number.toLocaleString('sv-SE', {
-    maximumFractionDigits: options.maximumFractionDigits ?? 1,
+  const digits = options.maximumFractionDigits ?? 1
+  const rounded = roundNumber(number, digits)
+  const displayNumber = Object.is(rounded, -0) || Math.abs(rounded) < 0.05 ? 0 : rounded
+  const formattedNumber = displayNumber.toLocaleString('sv-SE', {
+    maximumFractionDigits: digits,
     minimumFractionDigits:
-      options.minimumFractionDigits ?? (Number.isInteger(number) ? 0 : 1),
+      options.minimumFractionDigits ?? (Number.isInteger(displayNumber) ? 0 : 1),
   }).replace('−', '-')
 
   return `${formattedNumber} kg`

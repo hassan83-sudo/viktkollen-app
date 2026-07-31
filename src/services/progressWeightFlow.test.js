@@ -425,7 +425,7 @@ describe('weight module regression flow', () => {
     expect(report.goalCenter.latestMilestone).not.toContain('88 kg')
     expect(report.goalCenter.nextMilestone).toBe('88,4 kg är nästa.')
     expect(report.goalCenter.nextMilestone).not.toContain('Målet 78 kg är nästa')
-    expect(report.goalCenter.percentRemainingLabel).toBe('84,1% kvar')
+    expect(report.goalCenter.percentRemainingLabel).toBe('84,1 % kvar')
     expect(report.goalCenter.remainingKgLabel).toBe('11,6 kg kvar')
   })
 

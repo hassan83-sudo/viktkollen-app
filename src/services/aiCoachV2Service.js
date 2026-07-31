@@ -11,6 +11,13 @@ import {
   getLocalMealDateString,
 } from './nutrition/mealDateUtils.js'
 import { normalizeCheckInMetrics } from './checkInNormalization.js'
+import {
+  formatCalories,
+  formatGrams,
+  formatPercentage,
+  formatSteps,
+  parseDisplayNumber,
+} from './healthFormatting.js'
 import { analyzeWeights } from './progressService.js'
 
 function safeArray(value) {
@@ -22,13 +29,7 @@ function safeText(value, fallback = '') {
 }
 
 function safeNumber(value, fallback = null) {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : fallback
-  }
-
-  const parsed = Number(String(value ?? '').replace(',', '.').replace(/[^\d.-]/g, ''))
-
-  return Number.isFinite(parsed) ? parsed : fallback
+  return parseDisplayNumber(value, fallback)
 }
 
 function getDate(value) {
@@ -43,18 +44,8 @@ function formatDate(value) {
   return date ? date.toLocaleDateString('sv-SE') : 'Tidpunkt saknas'
 }
 
-function formatInteger(value, fallback = 'Saknas') {
-  const number = safeNumber(value)
-
-  return number === null ? fallback : Math.round(number).toLocaleString('sv-SE')
-}
-
 function formatPercent(value, fallback = 'Saknas') {
-  const number = safeNumber(value)
-
-  return number === null
-    ? fallback
-    : `${number.toLocaleString('sv-SE', { maximumFractionDigits: 1 })}%`
+  return formatPercentage(value, { fallback, maximumFractionDigits: 1 })
 }
 
 function average(values) {
@@ -122,9 +113,8 @@ function getMealProteinStatus(entry) {
 }
 
 function formatNutritionValue(value, unit, fallback = 'Saknas') {
-  const number = safeNumber(value)
-
-  return number === null ? fallback : `${Math.round(number)} ${unit}`
+  if (unit === 'kcal') return formatCalories(value, { fallback })
+  return formatGrams(value, { fallback, unit })
 }
 
 function getLastActivityDate({ checkIn, mealHistory, meals, weights }) {
@@ -252,7 +242,7 @@ function buildDailyAnalysis({
   const protein = hasNutritionSummary
     ? safeNumber(summary.totals?.protein)
     : average(todayMeals.map(getMealProtein))
-  const fiber = hasNutritionSummary ? safeNumber(summary.totals?.fiber) : null
+  const fiber = hasNutritionSummary ? safeNumber(summary.totals?.fiber, 0) : null
   const mealCount = hasNutritionSummary ? safeNumber(summary.mealCount, 0) : todayMeals.length
   const proteinStatuses = todayMeals.map(getMealProteinStatus).map(getProteinScore).filter(Boolean)
   const proteinGoal = safeNumber(nutritionGoals?.protein)
@@ -268,7 +258,7 @@ function buildDailyAnalysis({
   const workout = metrics.workout
   const summaryParts = [
     weightStats.trend !== 'För lite data' ? `vikttrenden är ${weightStats.trend.toLocaleLowerCase('sv-SE')}` : '',
-    steps !== null ? `${formatInteger(steps)} steg` : '',
+    steps !== null ? formatSteps(steps) : '',
     mealCount > 0 ? `${mealCount} loggade måltider` : '',
     proteinStatus !== 'Saknas' ? `protein ser ${proteinStatus.toLocaleLowerCase('sv-SE')} ut` : '',
     energy !== null ? `energi ${energy}/10` : '',

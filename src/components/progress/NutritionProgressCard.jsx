@@ -1,5 +1,8 @@
+import { formatCalories, formatGrams } from '../../services/healthFormatting.js'
+
 function formatNumber(value, unit) {
-  return Number.isFinite(value) && value > 0 ? `${Math.round(value).toLocaleString('sv-SE')} ${unit}` : 'Saknas'
+  if (unit.startsWith('kcal')) return formatCalories(value, { fallback: 'Saknas' }).replace(' kcal', ` ${unit}`)
+  return formatGrams(value, { fallback: 'Saknas', unit })
 }
 
 function NutritionProgressCard({ nutrition, planning }) {

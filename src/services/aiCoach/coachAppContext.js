@@ -4,8 +4,8 @@ import { normalizeCheckInMetrics } from '../checkInNormalization.js'
 import { buildHealthSnapshot } from '../healthSnapshot.js'
 import {
   getEntryLocalDate,
-  getEntrySortTime as getLocalEntrySortTime,
-  getLocalDateString as getCentralLocalDateString,
+  getEntrySortTime,
+  getLocalDateString,
   parseDateValue,
 } from '../localDate.js'
 
@@ -44,22 +44,6 @@ function parseFiniteNumber(value, { min = -Infinity, max = Infinity } = {}) {
   return Number.isFinite(parsed) && parsed >= min && parsed <= max ? parsed : null
 }
 
-function getLocalDateString(date = new Date()) {
-  return getCentralLocalDateString(date)
-}
-
-function parseDateTime(value) {
-  return parseDateValue(value)
-}
-
-function getEntryDate(entry) {
-  return getEntryLocalDate(entry)
-}
-
-function getSortTime(entry) {
-  return getLocalEntrySortTime(entry)
-}
-
 function normalizeProfile(profile) {
   if (!isObject(profile)) {
     return {}
@@ -83,7 +67,7 @@ function normalizeWeight(entry) {
   }
 
   const value = parseFiniteNumber(entry.value ?? entry.weight, { min: 1, max: 500 })
-  const date = getEntryDate(entry)
+  const date = getEntryLocalDate(entry)
 
   if (!Number.isFinite(value) || !date) {
     return null
@@ -103,7 +87,7 @@ function normalizeWeights(weights, today = getLocalDateString()) {
     .map(normalizeWeight)
     .filter(Boolean)
     .filter((entry) => entry.date <= today)
-    .sort((first, second) => getSortTime(first) - getSortTime(second))
+    .sort((first, second) => getEntrySortTime(first) - getEntrySortTime(second))
 }
 
 function normalizeCheckIn(checkIn) {
@@ -114,7 +98,7 @@ function normalizeCheckIn(checkIn) {
   const metrics = normalizeCheckInMetrics(checkIn)
 
   return {
-    date: getEntryDate(checkIn) || getLocalDateString(),
+    date: getEntryLocalDate(checkIn) || getLocalDateString(),
     energy: metrics.energy.value,
     energyLabel: metrics.energy.displayLabel,
     energyLevel: metrics.energy.level,
@@ -137,7 +121,7 @@ function normalizeMeal(meal) {
     return null
   }
 
-  const date = getEntryDate(meal)
+  const date = getEntryLocalDate(meal)
 
   if (!date) {
     return null
@@ -161,7 +145,7 @@ function normalizeMeals(meals, today = getLocalDateString()) {
     .map(normalizeMeal)
     .filter(Boolean)
     .filter((meal) => meal.date <= today)
-    .sort((first, second) => getSortTime(first) - getSortTime(second))
+    .sort((first, second) => getEntrySortTime(first) - getEntrySortTime(second))
 
   return {
     all: normalized,
@@ -192,8 +176,8 @@ function normalizeChatHistory(chatHistory) {
     .map(normalizeChatMessage)
     .filter(Boolean)
     .sort((first, second) => {
-      const firstTime = parseDateTime(first.createdAt)?.getTime() ?? 0
-      const secondTime = parseDateTime(second.createdAt)?.getTime() ?? 0
+      const firstTime = parseDateValue(first.createdAt)?.getTime() ?? 0
+      const secondTime = parseDateValue(second.createdAt)?.getTime() ?? 0
 
       return firstTime - secondTime
     })

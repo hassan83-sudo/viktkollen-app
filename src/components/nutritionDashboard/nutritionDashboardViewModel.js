@@ -33,10 +33,6 @@ function formatDateLabel(dateText) {
   return label.charAt(0).toLocaleUpperCase('sv-SE') + label.slice(1)
 }
 
-export function makeLegacyNutritionDashboardProgress({ goal, label, unit, value }) {
-  return makeNutritionGoalProgress(value, goal, unit, label)
-}
-
 function getMealLabel(entry) {
   const label = entry.mealType || 'måltid'
 

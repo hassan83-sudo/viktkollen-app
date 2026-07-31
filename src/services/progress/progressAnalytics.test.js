@@ -5,6 +5,8 @@ import {
   normalizeCheckInMetrics,
   normalizeEnergy,
   normalizeMood,
+  normalizeSleepMetrics,
+  normalizeStepMetrics,
   normalizeWorkout,
 } from '../checkInNormalization.js'
 import {
@@ -378,13 +380,41 @@ describe('habit progress analytics', () => {
     expect(metrics.energy.value).toBe(4)
     expect(metrics.mood.displayLabel).toBe('Låg')
     expect(metrics.sleep).toBe(5.5)
+    expect(metrics.sleepLabel).toBe('5 h 30 min')
     expect(metrics.steps).toBe(7200)
+    expect(metrics.stepsLabel).toContain('200 steg')
     expect(metrics.workout.displayLabel).toBe('Gym')
   })
 
   it('returns neutral fallback for invalid energy and mood values', () => {
     expect(normalizeEnergy({ value: 'nope' }).displayLabel).toBe('Saknas')
     expect(normalizeMood({ value: true }).displayLabel).toBe('Saknas')
+  })
+
+  it('normalizes steps from numbers strings with spaces and objects', () => {
+    expect(normalizeStepMetrics(7200).value).toBe(7200)
+    expect(normalizeStepMetrics('10 250').value).toBe(10250)
+    expect(normalizeStepMetrics({ count: '8 100' }).value).toBe(8100)
+  })
+
+  it('rejects negative invalid and extreme step values', () => {
+    expect(normalizeStepMetrics(-1).value).toBeNull()
+    expect(normalizeStepMetrics(Number.NaN).value).toBeNull()
+    expect(normalizeStepMetrics(Number.POSITIVE_INFINITY).value).toBeNull()
+    expect(normalizeStepMetrics(200000).value).toBeNull()
+  })
+
+  it('normalizes sleep decimal time text and objects', () => {
+    expect(normalizeSleepMetrics(7.5)).toMatchObject({ displayLabel: '7 h 30 min', hours: 7.5, minutes: 450 })
+    expect(normalizeSleepMetrics('7:30')).toMatchObject({ displayLabel: '7 h 30 min', hours: 7.5, minutes: 450 })
+    expect(normalizeSleepMetrics('7 timmar 30 minuter')).toMatchObject({ displayLabel: '7 h 30 min', hours: 7.5, minutes: 450 })
+    expect(normalizeSleepMetrics({ hours: 6, minutes: 45 })).toMatchObject({ displayLabel: '6 h 45 min', hours: 6.75, minutes: 405 })
+  })
+
+  it('rejects invalid sleep values', () => {
+    expect(normalizeSleepMetrics(-1).hours).toBeNull()
+    expect(normalizeSleepMetrics(Number.POSITIVE_INFINITY).hours).toBeNull()
+    expect(normalizeSleepMetrics(30).hours).toBeNull()
   })
 
   it('uses normalized numeric energy for averages and trend data', () => {
@@ -415,14 +445,16 @@ describe('habit progress analytics', () => {
   it('uses local same-day latest check-in consistently', () => {
     const result = analytics({
       checkIns: [
-        { date: '2026-03-25', energy: 2, mood: 'low', time: '08:00' },
-        { date: '2026-03-25', energy: 8, mood: 'good', time: '20:00' },
+        { date: '2026-03-25', energy: 2, mood: 'low', sleep: '5 h', steps: '1 000', time: '08:00' },
+        { date: '2026-03-25', energy: 8, mood: 'good', sleep: '7:30', steps: '10 250', time: '20:00' },
       ],
     })
 
     expect(result.habits.checkInCount).toBe(1)
     expect(result.habits.averageEnergy).toBe(8)
     expect(result.habits.averageMood).toBe('Positiv')
+    expect(result.habits.averageSteps).toBe(10250)
+    expect(result.habits.averageSleep).toBe(7.5)
   })
 
   it('keeps today check-ins even when the time is later than the analysis clock', () => {
@@ -450,6 +482,46 @@ describe('habit progress analytics', () => {
 
     expect(result.habits.checkInCount).toBe(1)
     expect(result.habits.averageEnergy).toBe(7)
+  })
+
+  it('uses one representative day value for weekly step totals and averages', () => {
+    const result = analytics({
+      checkIns: [
+        { date: '2026-03-25', steps: '1 000', time: '08:00' },
+        { date: '2026-03-25', steps: '4 000', time: '20:00' },
+        { date: '2026-03-26', steps: { count: '6 000' } },
+      ],
+    })
+
+    expect(result.habits.checkInCount).toBe(2)
+    expect(result.habits.totalSteps).toBe(10000)
+    expect(result.habits.averageSteps).toBe(5000)
+  })
+
+  it('uses one representative day value for average sleep', () => {
+    const result = analytics({
+      checkIns: [
+        { date: '2026-03-25', sleep: '5 h', time: '08:00' },
+        { date: '2026-03-25', sleep: '7:30', time: '20:00' },
+        { date: '2026-03-26', sleepHours: 6.5 },
+      ],
+    })
+
+    expect(result.habits.checkInCount).toBe(2)
+    expect(result.habits.averageSleep).toBe(7)
+    expect(result.habits.averageSleepLabel).toBe('7 h')
+  })
+
+  it('keeps AI Coach facts and Progress Dashboard aligned on steps and sleep', () => {
+    const checkInData = { date: '2026-03-31', sleep: '7:30', steps: '10 250' }
+    const progress = analytics({ checkIn: checkInData, checkIns: [] }).habits
+    const facts = buildAiCoachFacts({ checkIn: checkInData, checkIns: [], meals: [], profile: {}, weights: [] })
+
+    expect(progress.averageSteps).toBe(10250)
+    expect(facts.steps).toBe(10250)
+    expect(progress.averageSleep).toBe(7.5)
+    expect(facts.sleepHours).toBe(7.5)
+    expect(facts.sleepLabel).toBe('7 h 30 min')
   })
 })
 

@@ -264,7 +264,6 @@ function buildDailyAnalysis({
   const metrics = normalizeCheckInMetrics(checkIn)
   const steps = metrics.steps
   const energy = metrics.energy.value
-  const sleep = metrics.sleep
   const mood = metrics.mood.displayLabel === 'Saknas' ? 'Ej loggat' : metrics.mood.displayLabel
   const workout = metrics.workout
   const summaryParts = [
@@ -298,9 +297,9 @@ function buildDailyAnalysis({
           ? `${Math.round(protein)} g idag`
           : `${Math.round(protein)} g i snitt`,
     proteinStatus,
-    sleepLabel: sleep === null ? 'Saknas' : `${sleep} timmar`,
+    sleepLabel: metrics.sleepLabel,
     steps,
-    stepsLabel: formatInteger(steps),
+    stepsLabel: metrics.stepsLabel,
     summary:
       summaryParts.length > 0
         ? `Dagens bild: ${summaryParts.join(', ')}.`
@@ -319,7 +318,6 @@ function buildWeeklySummary({ checkIn, mealHistory, meals, profile, weeklyNutrit
   const fiberAverage = safeNumber(weeklyNutrition?.averageFiber)
   const proteinScore = average(weekMeals.map(getMealProteinStatus).map(getProteinScore))
   const metrics = normalizeCheckInMetrics(checkIn)
-  const steps = metrics.steps
   const checkInCount = checkIn && Object.keys(checkIn).length > 0 ? 1 : 0
   const trainingDays = metrics.workout.completed ? 1 : 0
   const bestDay =
@@ -350,7 +348,7 @@ function buildWeeklySummary({ checkIn, mealHistory, meals, profile, weeklyNutrit
     calorieAverageLabel: calorieAverage === null ? 'Saknas' : `${Math.round(calorieAverage)} kcal`,
     fiberAverageLabel: fiberAverage === null ? 'Saknas' : `${Math.round(fiberAverage)} g`,
     registeredNutritionDays: weeklyNutrition?.registeredDays ?? null,
-    stepsAverageLabel: steps === null ? 'Saknas' : formatInteger(steps),
+    stepsAverageLabel: metrics.stepsLabel,
     trainingDays,
     weightChangeLabel: weightChange === null ? 'Saknas' : formatKg(weightChange),
   }

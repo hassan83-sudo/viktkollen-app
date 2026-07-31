@@ -3,6 +3,7 @@ import {
   formatKg,
   getProteinNeedForContext,
 } from './healthCalculations.js'
+import { normalizeCheckInMetrics } from './checkInNormalization.js'
 
 const responseTemplates = {
   bodyAnalysis: [
@@ -112,7 +113,7 @@ const responseTemplates = {
   ],
   training: [
     ({ context }) => {
-      const steps = Number(context.checkIn?.steps)
+      const steps = normalizeCheckInMetrics(context.checkIn).steps
 
       return Number.isFinite(steps)
         ? `Du har ${steps.toLocaleString('sv-SE')} steg i senaste check-in. Om du vill träna idag räcker ett kort pass eller en promenad bra.`

@@ -341,7 +341,7 @@ export function calculateAiHealthScore(payload = {}) {
 
 function makeDailyFocus({ checkIn, foods, proactiveCoach }) {
   const missingFood = safeArray(foods).find((food) => !food?.done)
-  const steps = safeNumber(checkIn?.steps)
+  const steps = checkIn?.steps ?? null
   const coachAction = safeText(proactiveCoach?.nextBestAction)
 
   if (coachAction) {
@@ -710,7 +710,7 @@ export function createDashboardData(data = {}) {
       habitTotal: foods.length,
       mood: checkIn.mood,
       steps: checkIn.steps,
-      stepsLabel: formatInteger(checkIn.steps),
+      stepsLabel: checkIn.stepsLabel || formatInteger(checkIn.steps),
       workout: checkIn.workout,
     },
   }

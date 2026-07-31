@@ -208,27 +208,144 @@ export function normalizeMood(value) {
 }
 
 export function normalizeSteps(value) {
-  const parsed = parseNumber(value)
+  return normalizeStepMetrics(value).value
+}
 
-  return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed) : null
+function parseStepValue(value) {
+  const raw = typeof value === 'object' && value !== null
+    ? firstDefined(value.value, value.steps, value.stepCount, value.dailySteps, value.count, value.total)
+    : value
+
+  if (typeof raw === 'string') {
+    const compact = raw.replace(/\s+/g, '').replace(',', '.')
+    const parsed = Number(compact.match(/-?\d+(?:\.\d+)?/)?.[0])
+
+    return Number.isFinite(parsed) ? parsed : null
+  }
+
+  const parsed = Number(raw)
+
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+export function normalizeStepMetrics(value, { goal = null } = {}) {
+  const parsed = parseStepValue(value)
+  const safeGoal = parseStepValue(goal)
+
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100000) {
+    return {
+      displayLabel: 'Saknas',
+      goalProgress: null,
+      status: 'missing',
+      value: null,
+    }
+  }
+
+  const rounded = Math.round(parsed)
+  const goalProgress = Number.isFinite(safeGoal) && safeGoal > 0
+    ? {
+      percent: Math.round((rounded / safeGoal) * 100),
+      remaining: Math.max(0, Math.round(safeGoal - rounded)),
+      visualPercent: Math.max(0, Math.min(Math.round((rounded / safeGoal) * 100), 100)),
+    }
+    : null
+
+  return {
+    displayLabel: `${rounded.toLocaleString('sv-SE')} steg`,
+    goalProgress,
+    status: 'valid',
+    value: rounded,
+  }
 }
 
 export function normalizeSleep(value) {
-  const parsed = parseNumber(value)
+  return normalizeSleepMetrics(value).hours
+}
 
-  return Number.isFinite(parsed) && parsed >= 0 && parsed <= 24 ? parsed : null
+function parseSleepValue(value) {
+  const raw = typeof value === 'object' && value !== null
+    ? firstDefined(value.hours, value.sleepHours, value.value, value.duration, value.sleep)
+    : value
+  const objectMinutes = typeof value === 'object' && value !== null
+    ? parseNumber(value.minutes)
+    : null
+
+  if (typeof raw === 'string') {
+    const text = raw.trim().toLocaleLowerCase('sv-SE').replace(',', '.')
+    const timeMatch = text.match(/^(\d{1,2}):(\d{1,2})$/)
+
+    if (timeMatch) {
+      return Number(timeMatch[1]) + Number(timeMatch[2]) / 60
+    }
+
+    const hourMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:h|tim|timmar|hour|hours)/)
+    const minuteMatch = text.match(/(\d+)\s*(?:m|min|minuter|minutes)/)
+
+    if (hourMatch || minuteMatch) {
+      return (hourMatch ? Number(hourMatch[1]) : 0) + (minuteMatch ? Number(minuteMatch[1]) / 60 : 0)
+    }
+  }
+
+  const parsed = parseNumber(raw)
+
+  if (Number.isFinite(parsed) && Number.isFinite(objectMinutes)) {
+    return parsed + objectMinutes / 60
+  }
+
+  return parsed
+}
+
+export function formatSleepDuration(hours) {
+  const totalMinutes = Math.round(hours * 60)
+  const wholeHours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+
+  return minutes > 0 ? `${wholeHours} h ${minutes} min` : `${wholeHours} h`
+}
+
+export function normalizeSleepMetrics(value) {
+  const parsed = parseSleepValue(value)
+
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 24) {
+    return {
+      displayLabel: 'Saknas',
+      hours: null,
+      level: 'missing',
+      minutes: null,
+      status: 'missing',
+    }
+  }
+
+  const minutes = Math.round(parsed * 60)
+  const hours = Number((minutes / 60).toFixed(2))
+  const level = hours < 6 ? 'low' : hours <= 9 ? 'normal' : 'high'
+
+  return {
+    displayLabel: formatSleepDuration(hours),
+    hours,
+    level,
+    minutes,
+    status: 'valid',
+  }
 }
 
 export function normalizeCheckInMetrics(checkIn = {}) {
   const energy = normalizeEnergy(checkIn?.energy ?? getObjectField(checkIn, ['energyLevel']))
   const mood = normalizeMood(checkIn?.mood ?? checkIn?.feeling)
+  const sleep = normalizeSleepMetrics(checkIn?.sleep ?? checkIn?.sleepHours ?? checkIn?.sleepDuration)
+  const steps = normalizeStepMetrics(checkIn?.steps ?? checkIn?.stepCount ?? checkIn?.dailySteps)
   const workout = normalizeWorkout(checkIn)
 
   return {
     energy,
     mood,
-    sleep: normalizeSleep(checkIn?.sleep ?? checkIn?.sleepHours),
-    steps: normalizeSteps(checkIn?.steps),
+    sleep: sleep.hours,
+    sleepLabel: sleep.displayLabel,
+    sleepLevel: sleep.level,
+    sleepMetrics: sleep,
+    steps: steps.value,
+    stepsLabel: steps.displayLabel,
+    stepMetrics: steps,
     workout,
   }
 }

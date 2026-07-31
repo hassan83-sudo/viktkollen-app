@@ -117,6 +117,17 @@ describe('ProgressDashboard UI', () => {
     expect(markup).not.toMatch(/<dd>good<\/dd>|<dd>low<\/dd>|<dd>neutral<\/dd>|<dd>true<\/dd>|<dd>false<\/dd>|<dd>undefined<\/dd>|<dd>null<\/dd>|NaN|\[object Object\]/)
   })
 
+  it('renders normalized step labels without raw storage values', () => {
+    const markup = html({
+      checkIn: { date: '2026-07-31', steps: { count: '10 250' } },
+      checkIns: [],
+    })
+
+    expect(markup).toContain('10')
+    expect(markup).toContain('250 steg/dag')
+    expect(markup).not.toMatch(/undefined|null|NaN|Infinity|\[object Object\]/)
+  })
+
   it('renders empty weight state', () => {
     const markup = renderToStaticMarkup(<ProgressTrendCard weight={{ ...analysis.weight, registrationCount: 0 }} />)
 

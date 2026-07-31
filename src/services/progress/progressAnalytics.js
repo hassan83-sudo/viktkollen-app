@@ -8,7 +8,7 @@ import {
   normalizeNutritionGoals,
 } from '../nutrition/nutritionEngine.js'
 import { normalizeMeals } from '../nutritionService.js'
-import { normalizeCheckInMetrics } from '../checkInNormalization.js'
+import { formatSleepDuration, normalizeCheckInMetrics } from '../checkInNormalization.js'
 import { forecastGoalProgress, normalizeForecastWeights } from './progressForecast.js'
 
 export const progressPeriods = [
@@ -246,7 +246,11 @@ function normalizeCheckIns(checkIn = {}, checkIns = [], range) {
         mood: metrics.mood.displayLabel === 'Saknas' ? '' : metrics.mood.displayLabel,
         moodKey: metrics.mood.key,
         moodScore: metrics.mood.score,
+        sleep: metrics.sleep,
+        sleepLabel: metrics.sleepLabel,
+        sleepLevel: metrics.sleepLevel,
         steps: metrics.steps,
+        stepsLabel: metrics.stepsLabel,
         training: metrics.workout.displayLabel,
         workout: metrics.workout.completed,
         sortTime: getCheckInSortTime(entry),
@@ -279,6 +283,7 @@ function getCheckInSortTime(entry) {
 function analyzeHabitProgress({ checkIn = {}, checkIns = [], foods = [], range }) {
   const entries = normalizeCheckIns(checkIn, checkIns, range)
   const energyValues = entries.map((entry) => entry.energy).filter(Number.isFinite)
+  const sleepValues = entries.map((entry) => entry.sleep).filter(Number.isFinite)
   const stepValues = entries.map((entry) => entry.steps).filter(Number.isFinite)
   const moods = new Map()
   const trainings = new Map()
@@ -290,12 +295,16 @@ function analyzeHabitProgress({ checkIn = {}, checkIns = [], foods = [], range }
   const activeHabits = (Array.isArray(foods) ? foods : []).filter(Boolean)
   const completedHabits = activeHabits.filter((habit) => habit.done).length
   const averageEnergy = energyValues.length ? round(energyValues.reduce((sum, value) => sum + value, 0) / energyValues.length, 1) : null
+  const averageSleep = sleepValues.length ? round(sleepValues.reduce((sum, value) => sum + value, 0) / sleepValues.length, 1) : null
+  const totalSteps = stepValues.reduce((sum, value) => sum + value, 0)
 
   return {
     activeHabits: activeHabits.length,
     averageEnergy,
     averageEnergyLabel: averageEnergy === null ? 'Saknas' : `${averageEnergy.toLocaleString('sv-SE')} av 10`,
     averageMood: [...moods.entries()].sort((first, second) => second[1] - first[1] || first[0].localeCompare(second[0], 'sv-SE'))[0]?.[0] || '',
+    averageSleep,
+    averageSleepLabel: averageSleep === null ? 'Saknas' : formatSleepDuration(averageSleep),
     averageSteps: stepValues.length ? Math.round(stepValues.reduce((sum, value) => sum + value, 0) / stepValues.length) : null,
     bestStreak: bestLoggingStreak(entries),
     checkInCount: entries.length,
@@ -303,6 +312,9 @@ function analyzeHabitProgress({ checkIn = {}, checkIns = [], foods = [], range }
     currentStreak: bestLoggingStreak(entries.filter((entry) => entry.date >= (range.start || '0000-00-00'))),
     entries,
     moodTrend: chronologicalEntries.map((entry) => entry.moodScore).filter(Number.isFinite),
+    sleepTrend: chronologicalEntries.map((entry) => entry.sleep).filter(Number.isFinite),
+    stepTrend: chronologicalEntries.map((entry) => entry.steps).filter(Number.isFinite),
+    totalSteps,
     trainingDays: entries.filter((entry) => entry.workout).length,
     trainingForm: [...trainings.entries()].sort((first, second) => second[1] - first[1] || first[0].localeCompare(second[0], 'sv-SE'))[0]?.[0] || '',
   }

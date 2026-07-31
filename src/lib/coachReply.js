@@ -3,6 +3,7 @@ import {
   getUnifiedWeightContext,
   getProteinNeedForContext,
 } from '../services/healthCalculations.js'
+import { normalizeCheckInMetrics } from '../services/checkInNormalization.js'
 
 function normalizeText(value) {
   return String(value || '')
@@ -755,25 +756,24 @@ function getPersonalContext({
     profile,
     weights,
   })
-  const steps = Number(checkIn.steps)
-  const energy = Number(checkIn.energy)
+  const checkInMetrics = normalizeCheckInMetrics(checkIn)
   const completedFoods = foods.filter((item) => item?.done).length
 
   return {
     completedFoods,
-    energy: Number.isFinite(energy) ? energy : null,
+    energy: checkInMetrics.energy.value,
     foodTotal: foods.length,
     goal: profile.goal || 'hållbara vanor',
     goalWeight: weightContext.goalWeight,
-    mood: String(checkIn.mood || '').trim(),
+    mood: checkInMetrics.mood.displayLabel === 'Saknas' ? '' : checkInMetrics.mood.displayLabel,
     name: sanitizeName(profile.name),
     changeSinceStart: weightContext.changeSinceStart,
     percentRemaining: weightContext.percentRemaining,
     remainingKg: weightContext.remainingKg,
     startWeight: weightContext.startWeight,
-    steps: Number.isFinite(steps) ? steps : null,
+    steps: checkInMetrics.steps,
     weight: weightContext.currentWeight,
-    workout: Boolean(checkIn.workout),
+    workout: checkInMetrics.workout.completed,
   }
 }
 

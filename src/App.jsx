@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import AICoach from './components/AICoach.jsx'
+import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import AuthPanel from './components/AuthPanel.jsx'
 import BarcodeScanner from './components/BarcodeScanner.jsx'
 import ChatPanel from './components/ChatPanel.jsx'
@@ -47,6 +48,7 @@ import {
   parseWeightValue,
 } from './services/healthCalculations.js'
 import { buildHealthSnapshot } from './services/healthSnapshot.js'
+import { getSafeErrorMessage } from './services/appErrorService.js'
 import {
   addMealAnalysis,
   clearMealHistory,
@@ -1327,28 +1329,32 @@ function App() {
   const createWeeklyReport = useCallback(async () => {
     setWeeklyReportStatus('Skapar AI-veckorapport...')
 
-    const report = await createAiWeeklyReport({
-      bodyAnalysisHistory,
-      checkIn,
-      currentWeight: centralCurrentWeight,
-      foods,
-      healthSnapshot,
-      mealHistory: photoMeals,
-      meals,
-      nutritionGoals,
-      proactiveCoach: proactiveCoachInsights,
-      profile: validatedProfile,
-      today: selectedMealDate,
-      weights,
-    })
+    try {
+      const report = await createAiWeeklyReport({
+        bodyAnalysisHistory,
+        checkIn,
+        currentWeight: centralCurrentWeight,
+        foods,
+        healthSnapshot,
+        mealHistory: photoMeals,
+        meals,
+        nutritionGoals,
+        proactiveCoach: proactiveCoachInsights,
+        profile: validatedProfile,
+        today: selectedMealDate,
+        weights,
+      })
 
-    setWeeklyReportData(report)
-    setWeeklyReport('')
-    setWeeklyReportStatus(
-      report.source === 'openai'
-        ? 'AI-genererad veckorapport.'
-        : 'Smart fallback används just nu.',
-    )
+      setWeeklyReportData(report)
+      setWeeklyReport('')
+      setWeeklyReportStatus(
+        report.source === 'openai'
+          ? 'AI-genererad veckorapport.'
+          : 'Smart fallback används just nu.',
+      )
+    } catch (error) {
+      setWeeklyReportStatus(getSafeErrorMessage(error, { area: 'network' }))
+    }
   }, [
     checkIn,
     bodyAnalysisHistory,
@@ -1774,13 +1780,22 @@ function App() {
     }
 
     async function loadProactiveCoach() {
-      const insights = await getProactiveCoachInsights(coachData)
+      try {
+        const insights = await getProactiveCoachInsights(coachData)
 
-      if (!cancelled) {
-        setProactiveCoachResult({
-          insights,
-          key: proactiveCoachKey,
-        })
+        if (!cancelled) {
+          setProactiveCoachResult({
+            insights,
+            key: proactiveCoachKey,
+          })
+        }
+      } catch {
+        if (!cancelled) {
+          setProactiveCoachResult({
+            insights: fallbackProactiveCoachInsights,
+            key: proactiveCoachKey,
+          })
+        }
       }
     }
 
@@ -1789,7 +1804,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [bodyAnalysisHistory, checkIn, healthSnapshot, meals, photoMeals, proactiveCoachKey, selectedMealDate, weights])
+  }, [bodyAnalysisHistory, checkIn, fallbackProactiveCoachInsights, healthSnapshot, meals, photoMeals, proactiveCoachKey, selectedMealDate, weights])
 
   const refreshAppStateFromStorage = useCallback(() => {
     const nextProfile = userDataRepository.getProfile(null, isStoredProfile)
@@ -1972,39 +1987,44 @@ function App() {
     }
 
     setPhotoAnalysisStatus('Analyserar måltid...')
-    const analysis = await requestMealAnalysis(foodPhotoPreview)
-    const createdAt = new Date().toISOString()
-    const nextEntry = {
-      analysis,
-      createdAt,
-      id: new Date(createdAt).getTime(),
-      image: foodPhotoPreview,
-      source: analysis.source || 'mock',
-    }
-    const photoMeal = mealDraftToMeal({
-      calories: analysis.calories,
-      carbs: analysis.carbs,
-      date: getNutritionTodayDateString(),
-      description:
-        analysis.summary ||
-        `Fotoanalys: ${Array.isArray(analysis.foods) ? analysis.foods.join(', ') : 'måltid'}`,
-      fat: analysis.fat,
-      fiber: analysis.fiber,
-      name: analysis.mealType ? `${analysis.mealType} från foto` : 'Måltid från foto',
-      note: analysis.coachSummary || analysis.improvement || analysis.improvementSuggestion || '',
-      portionSize: analysis.portionSize || analysis.portionEstimate || '',
-      protein: analysis.protein,
-      source: 'Fotoanalys',
-      time: new Date(createdAt).toLocaleTimeString('sv-SE', {
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-      type: analysis.mealType || 'Lunch',
-    })
 
-    setPhotoMeals(addMealAnalysis(nextEntry))
-    setMeals((current) => upsertMeal(current, photoMeal))
-    setPhotoAnalysisStatus('')
+    try {
+      const analysis = await requestMealAnalysis(foodPhotoPreview)
+      const createdAt = new Date().toISOString()
+      const nextEntry = {
+        analysis,
+        createdAt,
+        id: new Date(createdAt).getTime(),
+        image: foodPhotoPreview,
+        source: analysis.source || 'mock',
+      }
+      const photoMeal = mealDraftToMeal({
+        calories: analysis.calories,
+        carbs: analysis.carbs,
+        date: getNutritionTodayDateString(),
+        description:
+          analysis.summary ||
+          `Fotoanalys: ${Array.isArray(analysis.foods) ? analysis.foods.join(', ') : 'måltid'}`,
+        fat: analysis.fat,
+        fiber: analysis.fiber,
+        name: analysis.mealType ? `${analysis.mealType} från foto` : 'Måltid från foto',
+        note: analysis.coachSummary || analysis.improvement || analysis.improvementSuggestion || '',
+        portionSize: analysis.portionSize || analysis.portionEstimate || '',
+        protein: analysis.protein,
+        source: 'Fotoanalys',
+        time: new Date(createdAt).toLocaleTimeString('sv-SE', {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+        type: analysis.mealType || 'Lunch',
+      })
+
+      setPhotoMeals(addMealAnalysis(nextEntry))
+      setMeals((current) => upsertMeal(current, photoMeal))
+      setPhotoAnalysisStatus('')
+    } catch (error) {
+      setPhotoAnalysisStatus(getSafeErrorMessage(error, { area: 'network' }))
+    }
   }
 
   function exportMealAnalysisHistory() {
@@ -2325,20 +2345,28 @@ function App() {
       role: 'user',
       text,
     })
-    const result = await requestChatReply(text, pendingChatHistory)
-    const isLocalFallback = result.source !== 'openai'
 
-    setChatEngineStatus(
-      isLocalFallback
-        ? 'AI-coachen använder lokal fallback just nu.'
-        : '',
-    )
-    appendChatMessage('assistant', result.reply, result.source)
-    addAiConversationMemory({
-      feature: 'ai-coach',
-      role: 'assistant',
-      text: result.reply,
-    })
+    try {
+      const result = await requestChatReply(text, pendingChatHistory)
+      const isLocalFallback = result.source !== 'openai'
+
+      setChatEngineStatus(
+        isLocalFallback
+          ? 'AI-coachen använder lokal fallback just nu.'
+          : '',
+      )
+      appendChatMessage('assistant', result.reply, result.source)
+      addAiConversationMemory({
+        feature: 'ai-coach',
+        role: 'assistant',
+        text: result.reply,
+      })
+    } catch (error) {
+      const reply = getSafeErrorMessage(error, { area: 'ai' })
+
+      setChatEngineStatus('AI-coachen kunde inte svara just nu.')
+      appendChatMessage('assistant', reply, 'mock')
+    }
   }
 
   function submitChatText(text) {
@@ -2670,59 +2698,67 @@ function App() {
         </div>
       </header>
 
-      <Dashboard actions={dashboardActions} dashboard={dashboardData} />
+      <AppErrorBoundary area="dashboard" resetKey={healthSnapshot.date} title="Översikten kunde inte visas">
+        <Dashboard actions={dashboardActions} dashboard={dashboardData} />
+      </AppErrorBoundary>
 
-      <CloudStatusPanel isAuthenticated={Boolean(authSession)} />
-      <CloudSyncPanel
-        isAuthenticated={Boolean(authSession)}
-        onDataChanged={refreshAppStateFromStorage}
-        userId={authSession?.user?.id || ''}
-      />
+      <AppErrorBoundary area="cloud" resetKey={authSession?.user?.id || ''} title="Molnstatus kunde inte visas">
+        <CloudStatusPanel isAuthenticated={Boolean(authSession)} />
+        <CloudSyncPanel
+          isAuthenticated={Boolean(authSession)}
+          onDataChanged={refreshAppStateFromStorage}
+          userId={authSession?.user?.id || ''}
+        />
+      </AppErrorBoundary>
 
       <section className="content-grid">
-        <ProgressCenter
-          bodyAnalysisHistory={bodyAnalysisHistory}
-          bodyMeasurements={bodyMeasurements}
-          goalSettings={progressGoalSettings}
-          onBodyMeasurementsChange={(nextMeasurements) =>
-            setBodyMeasurements(normalizeBodyMeasurements(nextMeasurements))}
-          onGoalSettingsChange={(nextSettings) =>
-            setProgressGoalSettings(normalizeGoalSettings(nextSettings))}
-          onProgressReportsChange={setProgressReports}
-          onWeightsChange={(nextWeights) => setWeights(normalizeWeights(nextWeights))}
-          profile={validatedProfile}
-          progressPhotos={progressPhotos}
-          progressReports={progressReports}
-          weights={weights}
-        />
+        <AppErrorBoundary area="progress" resetKey={`${healthSnapshot.date}-${weights.length}`} title="Framsteg kunde inte visas">
+          <ProgressCenter
+            bodyAnalysisHistory={bodyAnalysisHistory}
+            bodyMeasurements={bodyMeasurements}
+            goalSettings={progressGoalSettings}
+            onBodyMeasurementsChange={(nextMeasurements) =>
+              setBodyMeasurements(normalizeBodyMeasurements(nextMeasurements))}
+            onGoalSettingsChange={(nextSettings) =>
+              setProgressGoalSettings(normalizeGoalSettings(nextSettings))}
+            onProgressReportsChange={setProgressReports}
+            onWeightsChange={(nextWeights) => setWeights(normalizeWeights(nextWeights))}
+            profile={validatedProfile}
+            progressPhotos={progressPhotos}
+            progressReports={progressReports}
+            weights={weights}
+          />
+        </AppErrorBoundary>
 
-        <ChatPanel
-          canClearChat={chatMessages.length > initialChatMessages.length}
-          chatInput={chatInput}
-          chatMessages={chatMessages}
-          chatThreadRef={chatThreadRef}
-          isListening={isListening}
-          messagesEndRef={messagesEndRef}
-          onChatInputChange={setChatInput}
-          onClearChat={clearChat}
-          onSendChatMessage={sendChatMessage}
-          onStartVoiceInput={startVoiceInput}
-          onStarterPrompt={handleStarterPrompt}
-          starterPrompts={aiStarterPrompts}
-          chatEngineStatus={chatEngineStatus}
-          voiceStatus={voiceStatus}
-        />
+        <AppErrorBoundary area="ai" resetKey={chatMessages.length} title="AI-coachen kunde inte visas">
+          <ChatPanel
+            canClearChat={chatMessages.length > initialChatMessages.length}
+            chatInput={chatInput}
+            chatMessages={chatMessages}
+            chatThreadRef={chatThreadRef}
+            isListening={isListening}
+            messagesEndRef={messagesEndRef}
+            onChatInputChange={setChatInput}
+            onClearChat={clearChat}
+            onSendChatMessage={sendChatMessage}
+            onStartVoiceInput={startVoiceInput}
+            onStarterPrompt={handleStarterPrompt}
+            starterPrompts={aiStarterPrompts}
+            chatEngineStatus={chatEngineStatus}
+            voiceStatus={voiceStatus}
+          />
 
-        <AICoach
-          coachMessage={coachMessage}
-          coachReport={latestCoachReport || currentCoachPreview}
-          coachReports={coachReports}
-          coachStatus={coachStatus}
-          isGeneratingReport={isGeneratingCoachReport}
-          onClearCoachReports={clearCoachReports}
-          onCreateCoachReport={createCoachReport}
-          onDeleteCoachReport={deleteCoachReport}
-        />
+          <AICoach
+            coachMessage={coachMessage}
+            coachReport={latestCoachReport || currentCoachPreview}
+            coachReports={coachReports}
+            coachStatus={coachStatus}
+            isGeneratingReport={isGeneratingCoachReport}
+            onClearCoachReports={clearCoachReports}
+            onCreateCoachReport={createCoachReport}
+            onDeleteCoachReport={deleteCoachReport}
+          />
+        </AppErrorBoundary>
 
         <article className="panel" id="mat">
           <div className="panel-heading">
@@ -2752,35 +2788,37 @@ function App() {
           onUpdateCheckIn={updateCheckIn}
         />
 
-        <MealLogger
-          displayPhotoMeals={displayPhotoMeals}
-          favoriteMeals={favoriteMeals}
-          foodPhotoPreview={foodPhotoPreview}
-          handleFoodPhotoChange={handleFoodPhotoChange}
-          importSummary={mealHistoryImportSummary}
-          meals={meals}
-          healthSnapshot={healthSnapshot}
-          onAnalyzePhotoMeal={analyzePhotoMeal}
-          onCancelClearMealHistory={() => setShowClearMealHistoryConfirm(false)}
-          onClearMealHistory={clearLocalMealHistory}
-          onCreateDemoMealDay={createDemoMealAnalysisDay}
-          onExportMealHistory={exportMealAnalysisHistory}
-          onFavoriteMealsChange={(nextFavorites) =>
-            setFavoriteMeals(normalizeFavoriteMeals(nextFavorites))}
-          onImportMealHistory={importMealAnalysisHistory}
-          onMealsChange={(nextMeals) => setMeals(normalizeMeals(nextMeals))}
-          onNutritionGoalsChange={(nextGoals) =>
-            setNutritionGoals(normalizeNutritionGoals(nextGoals))}
-          onSelectedMealDateChange={setSelectedMealDate}
-          onShowClearMealHistory={() => setShowClearMealHistoryConfirm(true)}
-          nutritionGoals={nutritionGoals}
-          photoAnalysisStatus={photoAnalysisStatus}
-          profile={profile}
-          selectedMealDate={selectedMealDate}
-          showClearMealHistoryConfirm={showClearMealHistoryConfirm}
-          weights={weights}
-          weekSummary={mealWeekSummary}
-        />
+        <AppErrorBoundary area="nutrition" resetKey={`${selectedMealDate}-${meals.length}-${photoMeals.length}`} title="Måltidscentret kunde inte visas">
+          <MealLogger
+            displayPhotoMeals={displayPhotoMeals}
+            favoriteMeals={favoriteMeals}
+            foodPhotoPreview={foodPhotoPreview}
+            handleFoodPhotoChange={handleFoodPhotoChange}
+            importSummary={mealHistoryImportSummary}
+            meals={meals}
+            healthSnapshot={healthSnapshot}
+            onAnalyzePhotoMeal={analyzePhotoMeal}
+            onCancelClearMealHistory={() => setShowClearMealHistoryConfirm(false)}
+            onClearMealHistory={clearLocalMealHistory}
+            onCreateDemoMealDay={createDemoMealAnalysisDay}
+            onExportMealHistory={exportMealAnalysisHistory}
+            onFavoriteMealsChange={(nextFavorites) =>
+              setFavoriteMeals(normalizeFavoriteMeals(nextFavorites))}
+            onImportMealHistory={importMealAnalysisHistory}
+            onMealsChange={(nextMeals) => setMeals(normalizeMeals(nextMeals))}
+            onNutritionGoalsChange={(nextGoals) =>
+              setNutritionGoals(normalizeNutritionGoals(nextGoals))}
+            onSelectedMealDateChange={setSelectedMealDate}
+            onShowClearMealHistory={() => setShowClearMealHistoryConfirm(true)}
+            nutritionGoals={nutritionGoals}
+            photoAnalysisStatus={photoAnalysisStatus}
+            profile={profile}
+            selectedMealDate={selectedMealDate}
+            showClearMealHistoryConfirm={showClearMealHistoryConfirm}
+            weights={weights}
+            weekSummary={mealWeekSummary}
+          />
+        </AppErrorBoundary>
 
         <BarcodeScanner
           barcodeInput={barcodeInput}
@@ -2829,28 +2867,32 @@ function App() {
           reminderStatus={reminderStatus}
         />
 
-        <CloudBackupPanel
-          isAuthenticated={Boolean(authSession)}
-          onDataRestored={refreshAppStateFromStorage}
-        />
+        <AppErrorBoundary area="cloud" resetKey={authSession?.user?.id || ''} title="Molnbackup kunde inte visas">
+          <CloudBackupPanel
+            isAuthenticated={Boolean(authSession)}
+            onDataRestored={refreshAppStateFromStorage}
+          />
+        </AppErrorBoundary>
 
         <MonthlyReport report={monthlyReport} />
 
-        <ProgressDashboard
-          checkIn={checkIn}
-          checkIns={[]}
-          foods={foods}
-          healthSnapshot={healthSnapshot}
-          meals={meals}
-          nutritionGoals={nutritionGoals}
-          profile={validatedProfile}
-          today={selectedMealDate}
-          weights={centralWeightStats.weights}
-          weeklyReportData={weeklyReportData}
-          weeklyReportLines={weeklyReportLines}
-          weeklyReportStatus={weeklyReportStatus}
-          onCreateWeeklyReport={createWeeklyReport}
-        />
+        <AppErrorBoundary area="progress-dashboard" resetKey={`${selectedMealDate}-${weights.length}-${meals.length}`} title="Smart Progress Dashboard kunde inte visas">
+          <ProgressDashboard
+            checkIn={checkIn}
+            checkIns={[]}
+            foods={foods}
+            healthSnapshot={healthSnapshot}
+            meals={meals}
+            nutritionGoals={nutritionGoals}
+            profile={validatedProfile}
+            today={selectedMealDate}
+            weights={centralWeightStats.weights}
+            weeklyReportData={weeklyReportData}
+            weeklyReportLines={weeklyReportLines}
+            weeklyReportStatus={weeklyReportStatus}
+            onCreateWeeklyReport={createWeeklyReport}
+          />
+        </AppErrorBoundary>
       </section>
 
       <nav className="bottom-nav" aria-label="Huvudnavigation">

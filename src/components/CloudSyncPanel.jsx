@@ -5,6 +5,7 @@ import {
   runCloudSync,
   setCloudSyncEnabled,
 } from '../services/sync/cloudSyncEngine.js'
+import { getSafeErrorMessage } from '../services/appErrorService.js'
 
 function formatDateTime(value) {
   if (!value) return 'Aldrig'
@@ -37,14 +38,20 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
 
     setIsSyncing(true)
     setMessage('')
-    const result = await runCloudSync({ force: true, userId })
 
-    if (result.ok && (result.downloaded?.length || result.merged?.length)) {
-      onDataChanged?.()
+    try {
+      const result = await runCloudSync({ force: true, userId })
+
+      if (result.ok && (result.downloaded?.length || result.merged?.length)) {
+        onDataChanged?.()
+      }
+      setMessage(result.ok ? 'Sync klar.' : result.error || 'Sync kunde inte slutföras.')
+    } catch (error) {
+      setMessage(getSafeErrorMessage(error, { area: 'network' }))
+    } finally {
+      refreshStatus()
+      setIsSyncing(false)
     }
-    setMessage(result.ok ? 'Sync klar.' : result.error || 'Sync kunde inte slutföras.')
-    refreshStatus()
-    setIsSyncing(false)
   }, [isAuthenticated, onDataChanged, refreshStatus, userId])
 
   const toggleEnabled = useCallback(async () => {
@@ -54,13 +61,18 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
 
     if (next && isAuthenticated) {
       setIsSyncing(true)
-      const result = await runCloudSync({ force: true, userId })
-      if (result.ok && (result.downloaded?.length || result.merged?.length)) {
-        onDataChanged?.()
+      try {
+        const result = await runCloudSync({ force: true, userId })
+        if (result.ok && (result.downloaded?.length || result.merged?.length)) {
+          onDataChanged?.()
+        }
+        setMessage(result.ok ? 'Automatisk sync är på.' : result.error || 'Sync kunde inte startas.')
+      } catch (error) {
+        setMessage(getSafeErrorMessage(error, { area: 'network' }))
+      } finally {
+        refreshStatus()
+        setIsSyncing(false)
       }
-      setMessage(result.ok ? 'Automatisk sync är på.' : result.error || 'Sync kunde inte startas.')
-      refreshStatus()
-      setIsSyncing(false)
       return
     }
 
@@ -69,14 +81,20 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
 
   const resolveConflict = useCallback(async (storageKey, choice) => {
     setIsSyncing(true)
-    const result = await resolveStoredSyncConflict(storageKey, choice, { userId })
 
-    if (result.ok && result.downloaded?.length) {
-      onDataChanged?.()
+    try {
+      const result = await resolveStoredSyncConflict(storageKey, choice, { userId })
+
+      if (result.ok && result.downloaded?.length) {
+        onDataChanged?.()
+      }
+      setMessage(result.ok ? 'Konflikten är löst.' : result.error || 'Konflikten kunde inte lösas.')
+    } catch (error) {
+      setMessage(getSafeErrorMessage(error, { area: 'network' }))
+    } finally {
+      refreshStatus()
+      setIsSyncing(false)
     }
-    setMessage(result.ok ? 'Konflikten är löst.' : result.error || 'Konflikten kunde inte lösas.')
-    refreshStatus()
-    setIsSyncing(false)
   }, [onDataChanged, refreshStatus, userId])
 
   useEffect(() => {

@@ -15,6 +15,7 @@ import {
   restoreCloudBackupPayload,
   validateCloudBackupPayload,
 } from '../services/cloudBackupSchema.js'
+import { getSafeErrorMessage } from '../services/appErrorService.js'
 
 function formatBackupDate(value) {
   if (!value) {
@@ -101,28 +102,37 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
     }
 
     setIsLoadingBackups(true)
-    const result = await listUserBackups()
-    const eventResult = await getSyncEvents()
 
-    if (result.ok) {
-      setBackups(result.backups)
-      setTotalBackupCount(result.backupCount ?? result.backups.length)
-      setRenameDrafts((current) =>
-        result.backups.reduce((drafts, backup) => ({
-          ...drafts,
-          [backup.id]: current[backup.id] ?? backup.name,
-        }), {}),
-      )
-    } else {
+    try {
+      const result = await listUserBackups()
+      const eventResult = await getSyncEvents()
+
+      if (result.ok) {
+        setBackups(result.backups)
+        setTotalBackupCount(result.backupCount ?? result.backups.length)
+        setRenameDrafts((current) =>
+          result.backups.reduce((drafts, backup) => ({
+            ...drafts,
+            [backup.id]: current[backup.id] ?? backup.name,
+          }), {}),
+        )
+      } else {
+        setBackupStatus({
+          ok: false,
+          message: result.reason || 'Kunde inte hämta säkerhetskopior.',
+        })
+        setTotalBackupCount(0)
+      }
+
+      if (eventResult.events) {
+        setSyncEvents(eventResult.events)
+      }
+    } catch (error) {
       setBackupStatus({
         ok: false,
-        message: result.reason || 'Kunde inte hämta säkerhetskopior.',
+        message: getSafeErrorMessage(error, { area: 'network' }),
       })
       setTotalBackupCount(0)
-    }
-
-    if (eventResult.events) {
-      setSyncEvents(eventResult.events)
     }
 
     setIsLoadingBackups(false)
@@ -287,7 +297,12 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
     setIsPreviewing(true)
     setBackupStatus(null)
 
-    const result = await previewCloudRestore(backup?.id || '')
+    let result
+    try {
+      result = await previewCloudRestore(backup?.id || '')
+    } catch (error) {
+      result = { ok: false, reason: getSafeErrorMessage(error, { area: 'network' }) }
+    }
 
     if (result.ok) {
       setLastPreview(result)
@@ -306,10 +321,15 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
   }
 
   async function handleRestore(backup = null) {
-    const preview =
-      backup && lastPreview?.backup?.id === backup.id
-        ? lastPreview
-        : await previewCloudRestore(backup?.id || lastPreview?.backup?.id || '')
+    let preview
+    try {
+      preview =
+        backup && lastPreview?.backup?.id === backup.id
+          ? lastPreview
+          : await previewCloudRestore(backup?.id || lastPreview?.backup?.id || '')
+    } catch (error) {
+      preview = { ok: false, reason: getSafeErrorMessage(error, { area: 'network' }) }
+    }
 
     if (!preview.ok) {
       setBackupStatus({
@@ -328,7 +348,12 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
     setIsRestoringId(preview.backup.id)
     setBackupStatus(null)
 
-    const restoreResult = await restoreCloudBackup(preview.backup.id)
+    let restoreResult
+    try {
+      restoreResult = await restoreCloudBackup(preview.backup.id)
+    } catch (error) {
+      restoreResult = { ok: false, reason: getSafeErrorMessage(error, { area: 'network' }) }
+    }
 
     setBackupStatus({
       ok: Boolean(restoreResult.ok),
@@ -495,7 +520,12 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
     setIsRestoringId('undo')
     setBackupStatus(null)
 
-    const result = await undoLatestRestore()
+    let result
+    try {
+      result = await undoLatestRestore()
+    } catch (error) {
+      result = { ok: false, reason: getSafeErrorMessage(error, { area: 'storage' }) }
+    }
 
     setBackupStatus({
       ok: Boolean(result.ok),

@@ -1,4 +1,4 @@
-import { getUnifiedWeightFacts } from './healthCalculations.js'
+import { getUnifiedWeightFacts, normalizeDailyWeightEntries } from './healthCalculations.js'
 
 export const weightSources = ['Manuell', 'Importerad', 'Check-in', 'Kroppsanalys', 'Annat']
 
@@ -344,17 +344,7 @@ export function copyWeightToDate(entry, date, time = getTimeString()) {
 }
 
 export function getDailyWeights(weights) {
-  const byDate = normalizeWeights(weights).reduce((groups, entry) => {
-    const current = groups.get(entry.date) || []
-
-    current.push(entry)
-    groups.set(entry.date, current)
-    return groups
-  }, new Map())
-
-  return [...byDate.entries()]
-    .map(([, entries]) => [...entries].sort(compareProgressNewest)[0])
-    .sort(compareProgressOldest)
+  return normalizeDailyWeightEntries(weights)
 }
 
 function average(values) {
@@ -854,7 +844,7 @@ export function buildProgressTimeline({ bodyAnalysisHistory = [], bodyMeasuremen
 }
 
 export function createProgressReport({ bodyMeasurements = [], period = 'week', profile = {}, progressPhotos = [], today = new Date(), weights = [] } = {}) {
-  const normalizedWeights = normalizeWeights(weights)
+  const normalizedWeights = getDailyWeights(weights)
   const now = parseDate(today) || new Date()
   const days = period === 'month' ? 30 : 7
   const cutoff = new Date(now.getTime() - days * dayMs)

@@ -1,4 +1,4 @@
-import { formatKg, normalizeWeightEntries, parseWeightValue } from '../healthCalculations.js'
+import { formatKg, normalizeDailyWeightEntries, parseWeightValue } from '../healthCalculations.js'
 
 function safeDate(value) {
   const date = new Date(value)
@@ -30,7 +30,7 @@ export function normalizeForecastWeights(weights = [], today = new Date()) {
   const now = safeDate(today) || new Date()
   const todayDate = localDateString(now)
 
-  return normalizeWeightEntries(weights)
+  return normalizeDailyWeightEntries(weights, { today: now })
     .map((entry) => {
       const date = safeDate(entry.date)
       const value = safeNumber(entry.value)

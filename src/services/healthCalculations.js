@@ -156,6 +156,35 @@ export function normalizeWeightEntries(weights = []) {
     .sort((first, second) => new Date(first.date) - new Date(second.date))
 }
 
+export function normalizeDailyWeightEntries(weights = [], options = {}) {
+  const todayDate = options.today ? getLocalDateString(safeDate(options.today) || new Date()) : null
+  const byDate = normalizeWeightEntries(weights).reduce((groups, entry) => {
+    const date = safeDate(entry.date)
+    const localDate = date ? getLocalDateString(date) : ''
+
+    if (!date || !localDate || (todayDate && localDate > todayDate)) {
+      return groups
+    }
+
+    const current = groups.get(localDate)
+    const normalized = {
+      date: localDate,
+      time: date.getTime(),
+      value: entry.value,
+    }
+
+    if (!current || normalized.time >= current.time) {
+      groups.set(localDate, normalized)
+    }
+
+    return groups
+  }, new Map())
+
+  return [...byDate.values()]
+    .sort((first, second) => first.time - second.time || first.value - second.value)
+    .map(({ date, value }) => ({ date, value }))
+}
+
 export function calculateWeightChange(currentWeight, startWeight) {
   const current = parseWeightValue(currentWeight)
   const start = parseWeightValue(startWeight)

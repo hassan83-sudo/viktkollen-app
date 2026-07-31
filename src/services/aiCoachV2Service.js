@@ -5,6 +5,7 @@ import {
   getWeightStats,
   parseWeightValue,
 } from './healthCalculations.js'
+import { analyzeWeights } from './progressService.js'
 
 function safeArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : []
@@ -295,15 +296,10 @@ function buildDailyAnalysis({
   }
 }
 
-function buildWeeklySummary({ checkIn, mealHistory, meals, weeklyNutrition, weights }) {
-  const weekWeights = getRecentEntries(weights, 7)
+function buildWeeklySummary({ checkIn, mealHistory, meals, profile, weeklyNutrition, weights }) {
+  const weightAnalysis = analyzeWeights(weights, profile)
   const weekMeals = getRecentEntries([...safeArray(mealHistory), ...safeArray(meals)], 7)
-  const firstWeight = weekWeights[0]?.value
-  const lastWeight = weekWeights.at(-1)?.value
-  const weightChange =
-    firstWeight !== undefined && lastWeight !== undefined
-      ? Number((lastWeight - firstWeight).toFixed(1))
-      : null
+  const weightChange = weightAnalysis.change7
   const proteinAverage = safeNumber(weeklyNutrition?.averageProtein) ?? average(weekMeals.map(getMealProtein))
   const calorieAverage = safeNumber(weeklyNutrition?.averageCalories)
   const fiberAverage = safeNumber(weeklyNutrition?.averageFiber)
@@ -312,8 +308,8 @@ function buildWeeklySummary({ checkIn, mealHistory, meals, weeklyNutrition, weig
   const checkInCount = checkIn && Object.keys(checkIn).length > 0 ? 1 : 0
   const trainingDays = checkIn?.workout ? 1 : 0
   const bestDay =
-    weekWeights.length > 0 || weekMeals.length > 0
-      ? formatDate((weekWeights.at(-1) || weekMeals.at(-1))?.date || weekMeals.at(-1)?.createdAt)
+    weightAnalysis.latest || weekMeals.length > 0
+      ? formatDate(weightAnalysis.latest?.date || weekMeals.at(-1)?.date || weekMeals.at(-1)?.createdAt)
       : 'Saknas'
   const hardestDay =
     safeNumber(checkIn?.energy) !== null && safeNumber(checkIn?.energy) <= 3
@@ -478,7 +474,7 @@ export function createAiCoachV2Report(data = {}) {
     profile,
     weights,
   })
-  const weeklySummary = buildWeeklySummary({ checkIn, mealHistory, meals, weeklyNutrition, weights })
+  const weeklySummary = buildWeeklySummary({ checkIn, mealHistory, meals, profile, weeklyNutrition, weights })
   const goalCenter = buildGoalCenter(coachProfile)
   const motivation = buildMotivation({
     checkIn,

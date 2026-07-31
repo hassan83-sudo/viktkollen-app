@@ -2,7 +2,7 @@ import {
   calculateProteinNeed,
   formatKg,
   getUnifiedWeightFacts,
-  normalizeWeightEntries,
+  normalizeDailyWeightEntries,
   parseWeightValue,
 } from '../healthCalculations.js'
 import {
@@ -73,7 +73,7 @@ function getWeightEntryTime(entry) {
 }
 
 function getSortedWeightValues(weights = []) {
-  return normalizeWeightEntries(weights)
+  return normalizeDailyWeightEntries(weights)
     .map((entry) => ({
       date: entry.date || '',
       time: getWeightEntryTime(entry),

@@ -130,7 +130,7 @@ describe('weight progress analytics', () => {
   })
 
   it('handles duplicate same-day weights', () => {
-    expect(analytics({ weights: [...weights, { date: '2026-03-31T09:00:00', value: 89.4 }] }, '7d').weight.registrationCount).toBe(2)
+    expect(analytics({ weights: [...weights, { date: '2026-03-31T09:00:00', value: 89.4 }] }, '7d').weight.registrationCount).toBe(1)
   })
 
   it('uses central total weight facts separately from period trend', () => {

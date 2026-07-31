@@ -1,4 +1,4 @@
-import { formatKg, getWeightStats } from './healthCalculations.js'
+import { formatKg, getWeightStats, normalizeDailyWeightEntries } from './healthCalculations.js'
 
 const DAYS_IN_REPORT = 30
 
@@ -186,7 +186,7 @@ function makeImprovements(report) {
  * @returns {object}
  */
 export function createMonthlyHealthReport(data = {}) {
-  const recentWeights = safeArray(data.weights)
+  const recentWeights = normalizeDailyWeightEntries(data.weights)
     .filter((entry) => isWithinLastDays(entry?.date, DAYS_IN_REPORT))
     .sort((first, second) => new Date(first.date) - new Date(second.date))
   const firstWeight = recentWeights[0]?.value

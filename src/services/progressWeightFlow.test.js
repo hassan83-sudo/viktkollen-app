@@ -4,9 +4,11 @@ import {
   calculateGoalProgress,
   getUnifiedWeightFacts,
   getWeightStats,
+  normalizeDailyWeightEntries,
   normalizeWeightEntries,
 } from './healthCalculations.js'
 import { createAiCoachV2Report } from './aiCoachV2Service.js'
+import { createMonthlyHealthReport } from './monthlyReportService.js'
 import { buildAiCoachFacts } from './aiCoach/coachFacts.js'
 import { buildProgressDashboardAnalytics } from './progress/progressAnalytics.js'
 import { makePersonalCoachReply } from '../lib/coachReply.js'
@@ -532,5 +534,133 @@ describe('weight module regression flow', () => {
     expect(central).toBe(89.6)
     expect(reply).toContain('89,6 kg')
     expect(reply).not.toContain('90,1 kg')
+  })
+
+  it('central daily weights keep the latest weighing per calendar day for analytics', () => {
+    const weights = [
+      { date: '2026-07-23', id: 'previous', source: 'Manuell', time: '08:00', value: 90.1 },
+      { date: '2026-07-30', id: 'early-low', source: 'Manuell', time: '04:08', value: 88.6 },
+      { date: '2026-07-30', id: 'early-high', source: 'Manuell', time: '04:09', value: 90.1 },
+      { date: '2026-07-30', id: 'evening-a', source: 'Manuell', time: '19:05', value: 89.7 },
+      { date: '2026-07-30', id: 'evening-b', source: 'Manuell', time: '19:25', value: 89.6 },
+    ]
+
+    expect(normalizeWeights(weights)).toHaveLength(5)
+    expect(normalizeDailyWeightEntries(weights)).toEqual([
+      { date: '2026-07-23', value: 90.1 },
+      { date: '2026-07-30', value: 89.6 },
+    ])
+  })
+
+  it('one calendar day with many weighings does not create a false period change', () => {
+    const weights = [
+      { date: '2026-07-30', id: 'early-low', source: 'Manuell', time: '04:08', value: 88.6 },
+      { date: '2026-07-30', id: 'early-high', source: 'Manuell', time: '04:09', value: 90.1 },
+      { date: '2026-07-30', id: 'evening-b', source: 'Manuell', time: '19:25', value: 89.6 },
+    ]
+    const analysis = analyzeWeights(weights, {})
+    const dashboard = buildProgressDashboardAnalytics({
+      checkIn: {},
+      foods: [],
+      meals: [],
+      nutritionGoals: {},
+      profile: {},
+      weights,
+    }, { period: '7d', today: new Date('2026-07-30T08:00:00.000Z') })
+
+    expect(normalizeWeights(weights)).toHaveLength(3)
+    expect(analysis.change7).toBeNull()
+    expect(dashboard.weight.periodChangeKg).toBe(0)
+    expect(dashboard.weight.latestWeight).toBe(89.6)
+  })
+
+  it('AI Coach V2 weekly summary uses the same 7-day daily weight change as weight analysis', () => {
+    const weights = [
+      { date: '2026-07-23', id: 'previous', source: 'Manuell', time: '08:00', value: 90.1 },
+      { date: '2026-07-30', id: 'early-low', source: 'Manuell', time: '04:08', value: 88.6 },
+      { date: '2026-07-30', id: 'early-high', source: 'Manuell', time: '04:09', value: 90.1 },
+      { date: '2026-07-30', id: 'evening-b', source: 'Manuell', time: '19:25', value: 89.6 },
+    ]
+    const expected = analyzeWeights(weights, {}).change7
+    const report = createAiCoachV2Report({
+      checkIn: {},
+      foods: [],
+      meals: [],
+      nutritionGoals: {},
+      profile: {},
+      weights,
+    })
+
+    expect(expected).toBe(-0.5)
+    expect(report.weeklySummary.weightChangeLabel).toBe('-0,5 kg')
+    expect(report.weeklySummary.weightChangeLabel).not.toContain('1 kg')
+  })
+
+  it('monthly report uses the same 30-day daily weight change as weight analysis', () => {
+    const weights = [
+      { date: '2026-07-23', id: 'previous', source: 'Manuell', time: '08:00', value: 90.1 },
+      { date: '2026-07-30', id: 'early-low', source: 'Manuell', time: '04:08', value: 88.6 },
+      { date: '2026-07-30', id: 'early-high', source: 'Manuell', time: '04:09', value: 90.1 },
+      { date: '2026-07-30', id: 'evening-b', source: 'Manuell', time: '19:25', value: 89.6 },
+    ]
+    const expected = analyzeWeights(weights, {}).change30
+    const report = createMonthlyHealthReport({ mealHistory: [], meals: [], weights })
+
+    expect(expected).toBe(-0.5)
+    expect(report.weightChange).toBe(expected)
+    expect(report.weightChangeLabel).toBe('Ned 0,5 kg')
+    expect(report.weightChangeLabel).not.toBe('Upp 1 kg')
+  })
+
+  it('daily weight normalization uses local dates near midnight', () => {
+    const weights = [
+      { createdAt: '2026-07-29T23:30:00.000Z', id: 'late-utc', source: 'Manuell', value: 90.1 },
+      { createdAt: '2026-07-30T22:30:00.000Z', id: 'next-local-day', source: 'Manuell', value: 89.6 },
+    ]
+
+    expect(normalizeDailyWeightEntries(weights)).toEqual([
+      { date: '2026-07-30', value: 90.1 },
+      { date: '2026-07-31', value: 89.6 },
+    ])
+  })
+
+  it('daily weight normalization excludes future calendar days but keeps later times today', () => {
+    const weights = [
+      { date: '2026-07-30', id: 'today-later', source: 'Manuell', time: '19:25', value: 89.6 },
+      { date: '2026-07-31', id: 'future-day', source: 'Manuell', time: '08:00', value: 88.8 },
+    ]
+    const daily = normalizeDailyWeightEntries(weights, { today: new Date('2026-07-30T08:00:00.000Z') })
+    const dashboard = buildProgressDashboardAnalytics({
+      checkIn: {},
+      foods: [],
+      meals: [],
+      nutritionGoals: {},
+      profile: {},
+      weights,
+    }, { period: '7d', today: new Date('2026-07-30T08:00:00.000Z') })
+
+    expect(daily).toEqual([{ date: '2026-07-30', value: 89.6 }])
+    expect(dashboard.weight.currentWeight).toBe(89.6)
+    expect(dashboard.weight.currentWeight).not.toBe(88.8)
+  })
+
+  it('reports avoid NaN and misleading direction text when period weight data is insufficient', () => {
+    const coachReport = createAiCoachV2Report({
+      checkIn: {},
+      foods: [],
+      meals: [],
+      nutritionGoals: {},
+      profile: {},
+      weights: [{ date: '2026-07-30', id: 'only', source: 'Manuell', time: '19:25', value: 89.6 }],
+    })
+    const monthlyReport = createMonthlyHealthReport({
+      mealHistory: [],
+      meals: [],
+      weights: [{ date: '2026-07-30', id: 'only', source: 'Manuell', time: '19:25', value: 89.6 }],
+    })
+
+    expect(coachReport.weeklySummary.weightChangeLabel).toBe('Saknas')
+    expect(monthlyReport.weightChangeLabel).toBe('Stabil')
+    expect(JSON.stringify({ coachReport, monthlyReport })).not.toMatch(/NaN|undefined/)
   })
 })

@@ -187,7 +187,11 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
       </div>
 
       {(message || status.lastError) && (
-        <p className={status.lastError ? 'form-error' : 'form-success'} role="status">
+        <p
+          aria-live={status.lastError ? 'assertive' : 'polite'}
+          className={status.lastError ? 'form-error' : 'form-success'}
+          role="status"
+        >
           {message || status.lastError}
         </p>
       )}

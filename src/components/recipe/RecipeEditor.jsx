@@ -10,6 +10,8 @@ function RecipeEditor({
   onChange,
   onSubmit,
 }) {
+  const errorId = (field) => `recipe-${field}-error`
+
   return (
     <form className="recipe-editor nutrition-card" onSubmit={onSubmit}>
       <div className="nutrition-card-heading">
@@ -22,8 +24,13 @@ function RecipeEditor({
       <div className="meal-template-form-grid">
         <label className="field">
           <span>Namn</span>
-          <input value={draft.name} onChange={(event) => onChange('name', event.target.value)} />
-          {errors.name && <small className="form-error">{errors.name}</small>}
+          <input
+            aria-describedby={errors.name ? errorId('name') : undefined}
+            aria-invalid={errors.name ? 'true' : undefined}
+            value={draft.name}
+            onChange={(event) => onChange('name', event.target.value)}
+          />
+          {errors.name && <small className="form-error" id={errorId('name')}>{errors.name}</small>}
         </label>
         <label className="field">
           <span>Kategori</span>
@@ -33,8 +40,15 @@ function RecipeEditor({
         </label>
         <label className="field">
           <span>Portioner</span>
-          <input min="1" type="number" value={draft.servings} onChange={(event) => onChange('servings', event.target.value)} />
-          {errors.servings && <small className="form-error">{errors.servings}</small>}
+          <input
+            aria-describedby={errors.servings ? errorId('servings') : undefined}
+            aria-invalid={errors.servings ? 'true' : undefined}
+            min="1"
+            type="number"
+            value={draft.servings}
+            onChange={(event) => onChange('servings', event.target.value)}
+          />
+          {errors.servings && <small className="form-error" id={errorId('servings')}>{errors.servings}</small>}
         </label>
         <label className="field">
           <span>Tillagningstid</span>
@@ -48,7 +62,7 @@ function RecipeEditor({
       </label>
 
       <RecipeIngredientEditor ingredients={draft.ingredients} onChange={(ingredients) => onChange('ingredients', ingredients)} />
-      {errors.ingredients && <small className="form-error">{errors.ingredients}</small>}
+      {errors.ingredients && <small className="form-error" id={errorId('ingredients')}>{errors.ingredients}</small>}
 
       <label className="field">
         <span>Instruktioner</span>

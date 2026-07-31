@@ -131,6 +131,8 @@ function makeChartPoints(entries, width, height, padding, minValue, maxValue) {
 }
 
 function WeightEditor({ draft, errors, isEditing, onCancel, onChange, onReset, onSubmit }) {
+  const errorId = (field) => `weight-editor-${field}-error`
+
   return (
     <form className="progress-card weight-editor" onSubmit={onSubmit}>
       <div className="progress-card-heading">
@@ -142,24 +144,38 @@ function WeightEditor({ draft, errors, isEditing, onCancel, onChange, onReset, o
       <div className="progress-form-grid">
         <label className="field">
           <span>Datum</span>
-          <input type="date" value={draft.date} onChange={(event) => onChange('date', event.target.value)} />
-          {errors.date && <small className="field-error">{errors.date}</small>}
+          <input
+            aria-describedby={errors.date ? errorId('date') : undefined}
+            aria-invalid={errors.date ? 'true' : undefined}
+            type="date"
+            value={draft.date}
+            onChange={(event) => onChange('date', event.target.value)}
+          />
+          {errors.date && <small className="field-error" id={errorId('date')}>{errors.date}</small>}
         </label>
         <label className="field">
           <span>Tid</span>
-          <input type="time" value={draft.time} onChange={(event) => onChange('time', event.target.value)} />
-          {errors.time && <small className="field-error">{errors.time}</small>}
+          <input
+            aria-describedby={errors.time ? errorId('time') : undefined}
+            aria-invalid={errors.time ? 'true' : undefined}
+            type="time"
+            value={draft.time}
+            onChange={(event) => onChange('time', event.target.value)}
+          />
+          {errors.time && <small className="field-error" id={errorId('time')}>{errors.time}</small>}
         </label>
         <label className="field">
           <span>Vikt i kg</span>
           <input
+            aria-describedby={errors.value ? errorId('value') : undefined}
+            aria-invalid={errors.value ? 'true' : undefined}
             type="text"
             inputMode="decimal"
             value={draft.value}
             onChange={(event) => onChange('value', event.target.value)}
             placeholder="Till exempel 90,1"
           />
-          {errors.value && <small className="field-error">{errors.value}</small>}
+          {errors.value && <small className="field-error" id={errorId('value')}>{errors.value}</small>}
         </label>
         <label className="field">
           <span>Källa</span>
@@ -673,9 +689,16 @@ function ProgressImportExport({
       <div className="progress-actions">
         <button type="button" onClick={onExport}>Exportera framstegsdata</button>
         <button className="secondary-button" type="button" onClick={onOpenImport}>Importera JSON</button>
-        <input ref={fileInputRef} className="sr-only" type="file" accept="application/json,.json" onChange={onFileChange} />
+        <input
+          ref={fileInputRef}
+          aria-label="Importera framstegsdata från JSON-fil"
+          className="sr-only"
+          type="file"
+          accept="application/json,.json"
+          onChange={onFileChange}
+        />
       </div>
-      {importStatus && <p className="analysis-status">{importStatus}</p>}
+      {importStatus && <p className="analysis-status" role="status" aria-live="polite">{importStatus}</p>}
     </section>
   )
 }

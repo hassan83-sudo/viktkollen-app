@@ -121,20 +121,32 @@ function PlannedMealForm({
   onSubmit,
   weekDates,
 }) {
+  const errorId = (field) => `planned-meal-${field}-error`
+
   return (
     <form className="meal-planner-form" onSubmit={onSubmit}>
       <div className="meal-template-form-grid">
         <label className="field">
           <span>Titel</span>
-          <input value={draft.title} onChange={(event) => onChange('title', event.target.value)} />
-          {errors.title && <small className="form-error">{errors.title}</small>}
+          <input
+            aria-describedby={errors.title ? errorId('title') : undefined}
+            aria-invalid={errors.title ? 'true' : undefined}
+            value={draft.title}
+            onChange={(event) => onChange('title', event.target.value)}
+          />
+          {errors.title && <small className="form-error" id={errorId('title')}>{errors.title}</small>}
         </label>
         <label className="field">
           <span>Datum</span>
-          <select value={draft.date} onChange={(event) => onChange('date', event.target.value)}>
+          <select
+            aria-describedby={errors.date ? errorId('date') : undefined}
+            aria-invalid={errors.date ? 'true' : undefined}
+            value={draft.date}
+            onChange={(event) => onChange('date', event.target.value)}
+          >
             {weekDates.map((date) => <option key={date} value={date}>{date}</option>)}
           </select>
-          {errors.date && <small className="form-error">{errors.date}</small>}
+          {errors.date && <small className="form-error" id={errorId('date')}>{errors.date}</small>}
         </label>
         <label className="field">
           <span>Måltidstyp</span>
@@ -144,8 +156,14 @@ function PlannedMealForm({
         </label>
         <label className="field">
           <span>Tid</span>
-          <input type="time" value={draft.scheduledTime} onChange={(event) => onChange('scheduledTime', event.target.value)} />
-          {errors.scheduledTime && <small className="form-error">{errors.scheduledTime}</small>}
+          <input
+            aria-describedby={errors.scheduledTime ? errorId('scheduledTime') : undefined}
+            aria-invalid={errors.scheduledTime ? 'true' : undefined}
+            type="time"
+            value={draft.scheduledTime}
+            onChange={(event) => onChange('scheduledTime', event.target.value)}
+          />
+          {errors.scheduledTime && <small className="form-error" id={errorId('scheduledTime')}>{errors.scheduledTime}</small>}
         </label>
       </div>
       <label className="field">
@@ -194,7 +212,7 @@ function ShoppingListPanel({
           <button className="secondary-button" type="button" onClick={onCopy}>Kopiera inköpslista</button>
         </div>
       </div>
-      {status && <p className="nutrition-edit-status" role="status">{status}</p>}
+      {status && <p className="nutrition-edit-status" role="status" aria-live="polite">{status}</p>}
       <form
         className="shopping-list-manual-form"
         onSubmit={(event) => {

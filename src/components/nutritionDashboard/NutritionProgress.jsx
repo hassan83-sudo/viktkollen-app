@@ -3,6 +3,7 @@ function NutritionProgress({ progress }) {
     return null
   }
 
+  const progressId = `nutrition-dashboard-${String(progress.label || 'mal').toLocaleLowerCase('sv-SE')}`
   const percent = Number.isFinite(progress.percent) ? progress.percent : null
   const visualPercent = Number.isFinite(progress.visualPercent)
     ? Math.max(0, Math.min(progress.visualPercent, 100))
@@ -12,13 +13,17 @@ function NutritionProgress({ progress }) {
   return (
     <div className={`nutrition-dashboard-progress is-${progress.status}`}>
       <div>
-        <span>{progress.label}</span>
+        <span id={`${progressId}-label`}>{progress.label}</span>
         <strong>{progress.valueText} av {progress.goalText}</strong>
       </div>
       <div
-        aria-label={`${progress.label}: ${progress.valueText} av ${progress.goalText}, ${progress.status === 'reached' ? 'målet uppnått' : progressText}`}
+        aria-labelledby={`${progressId}-label`}
+        aria-valuemax={100}
+        aria-valuemin={0}
+        aria-valuenow={visualPercent}
+        aria-valuetext={`${progress.valueText} av ${progress.goalText}, ${progress.status === 'reached' ? 'målet uppnått' : progressText}`}
         className="nutrition-dashboard-progress-bar"
-        role="img"
+        role="progressbar"
       >
         <span style={{ width: `${visualPercent}%` }}></span>
       </div>

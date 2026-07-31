@@ -101,7 +101,7 @@ function MonthlyNutritionDashboard({
             Exportera JSON
           </button>
         </div>
-        {copyStatus && <p className="nutrition-edit-status" role="status">{copyStatus}</p>}
+        {copyStatus && <p className="nutrition-edit-status" role="status" aria-live="polite">{copyStatus}</p>}
         <MonthlySummaryCards summary={summary} />
       </div>
 

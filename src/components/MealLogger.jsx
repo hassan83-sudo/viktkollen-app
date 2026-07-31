@@ -611,71 +611,73 @@ function MealLogger({
       </nav>
 
       <div className="segmented-control nutrition-view-toggle" aria-label="Välj kostvy">
-        <button aria-pressed={nutritionViewMode === 'day'} className={nutritionViewMode === 'day' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('day')}>
+        <button aria-controls="nutrition-view-panel" aria-pressed={nutritionViewMode === 'day'} className={nutritionViewMode === 'day' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('day')}>
           Dag
         </button>
-        <button aria-pressed={nutritionViewMode === 'week'} className={nutritionViewMode === 'week' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('week')}>
+        <button aria-controls="nutrition-view-panel" aria-pressed={nutritionViewMode === 'week'} className={nutritionViewMode === 'week' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('week')}>
           Vecka
         </button>
-        <button aria-pressed={nutritionViewMode === 'month'} className={nutritionViewMode === 'month' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('month')}>
+        <button aria-controls="nutrition-view-panel" aria-pressed={nutritionViewMode === 'month'} className={nutritionViewMode === 'month' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('month')}>
           Månad
         </button>
-        <button aria-pressed={nutritionViewMode === 'planner'} className={nutritionViewMode === 'planner' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('planner')}>
+        <button aria-controls="nutrition-view-panel" aria-pressed={nutritionViewMode === 'planner'} className={nutritionViewMode === 'planner' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('planner')}>
           Planera
         </button>
-        <button aria-pressed={nutritionViewMode === 'generator'} className={nutritionViewMode === 'generator' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('generator')}>
+        <button aria-controls="nutrition-view-panel" aria-pressed={nutritionViewMode === 'generator'} className={nutritionViewMode === 'generator' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('generator')}>
           AI-plan
         </button>
-        <button aria-pressed={nutritionViewMode === 'recipes'} className={nutritionViewMode === 'recipes' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('recipes')}>
+        <button aria-controls="nutrition-view-panel" aria-pressed={nutritionViewMode === 'recipes'} className={nutritionViewMode === 'recipes' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('recipes')}>
           Recept
         </button>
       </div>
 
-      {nutritionViewMode === 'day' ? (
-        <NutritionDashboard
-          date={selectedMealDate}
-          meals={nutritionMeals}
-          nutritionGoals={normalizedGoals}
-        />
-      ) : nutritionViewMode === 'week' ? (
-        <WeeklyNutritionDashboard
-          date={selectedMealDate}
-          meals={nutritionMeals}
-          nutritionGoals={normalizedGoals}
-          onDateChange={changeSelectedDate}
-        />
-      ) : nutritionViewMode === 'month' ? (
-        <MonthlyNutritionDashboard
-          date={selectedMealDate}
-          meals={nutritionMeals}
-          nutritionGoals={normalizedGoals}
-          weights={weights}
-          onDateChange={changeSelectedDate}
-        />
-      ) : nutritionViewMode === 'planner' ? (
-        <WeeklyMealPlanner
-          dietaryPreferences={dietaryPreferences}
-          meals={normalizedMeals}
-          nutritionGoals={normalizedGoals}
-          recipes={recipes}
-          templates={mealTemplates}
-          onMealsChange={onMealsChange}
-        />
-      ) : nutritionViewMode === 'generator' ? (
-        <AIMealGenerator
-          dietaryPreferences={dietaryPreferences}
-          nutritionGoals={normalizedGoals}
-          recipes={recipes}
-          templates={mealTemplates}
-        />
-      ) : (
-        <RecipeManager
-          dietaryPreferences={dietaryPreferences}
-          recipes={recipes}
-          onRecipesChange={changeRecipes}
-          onTemplateCreate={createTemplateFromRecipe}
-        />
-      )}
+      <section id="nutrition-view-panel" aria-label="Aktiv kostvy">
+        {nutritionViewMode === 'day' ? (
+          <NutritionDashboard
+            date={selectedMealDate}
+            meals={nutritionMeals}
+            nutritionGoals={normalizedGoals}
+          />
+        ) : nutritionViewMode === 'week' ? (
+          <WeeklyNutritionDashboard
+            date={selectedMealDate}
+            meals={nutritionMeals}
+            nutritionGoals={normalizedGoals}
+            onDateChange={changeSelectedDate}
+          />
+        ) : nutritionViewMode === 'month' ? (
+          <MonthlyNutritionDashboard
+            date={selectedMealDate}
+            meals={nutritionMeals}
+            nutritionGoals={normalizedGoals}
+            weights={weights}
+            onDateChange={changeSelectedDate}
+          />
+        ) : nutritionViewMode === 'planner' ? (
+          <WeeklyMealPlanner
+            dietaryPreferences={dietaryPreferences}
+            meals={normalizedMeals}
+            nutritionGoals={normalizedGoals}
+            recipes={recipes}
+            templates={mealTemplates}
+            onMealsChange={onMealsChange}
+          />
+        ) : nutritionViewMode === 'generator' ? (
+          <AIMealGenerator
+            dietaryPreferences={dietaryPreferences}
+            nutritionGoals={normalizedGoals}
+            recipes={recipes}
+            templates={mealTemplates}
+          />
+        ) : (
+          <RecipeManager
+            dietaryPreferences={dietaryPreferences}
+            recipes={recipes}
+            onRecipesChange={changeRecipes}
+            onTemplateCreate={createTemplateFromRecipe}
+          />
+        )}
+      </section>
 
       <NutritionActionPlan
         date={selectedMealDate}
@@ -708,13 +710,13 @@ function MealLogger({
       />
 
       {mealTemplateStatus && (
-        <div className="nutrition-edit-status" role="status">
+        <div className="nutrition-edit-status" role="status" aria-live="polite">
           <span>{mealTemplateStatus}</span>
         </div>
       )}
 
       {lastMealEdit && (
-        <div className="nutrition-edit-status" role="status">
+        <div className="nutrition-edit-status" role="status" aria-live="polite">
           <span>Måltiden har uppdaterats.</span>
           <button className="secondary-button" type="button" onClick={undoLastMealEdit}>
             Ångra

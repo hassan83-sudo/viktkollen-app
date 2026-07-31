@@ -528,11 +528,13 @@ describe('Nutrition Dashboard V1 render', () => {
     expect(markup).toContain('Insikter')
   })
 
-  it('renders progress aria labels', () => {
+  it('renders progressbars with accessible names and values', () => {
     const markup = html()
 
-    expect(markup).toContain('aria-label="Protein:')
-    expect(markup).toContain('aria-label="Kalorier:')
+    expect(markup).toContain('role="progressbar"')
+    expect(markup).toContain('aria-labelledby="nutrition-dashboard-protein-label"')
+    expect(markup).toContain('aria-labelledby="nutrition-dashboard-kalorier-label"')
+    expect(markup).toContain('aria-valuetext=')
   })
 
   it('renders partial analysis detail', () => {

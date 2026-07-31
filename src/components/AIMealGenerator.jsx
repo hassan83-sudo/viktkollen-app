@@ -126,7 +126,7 @@ function AIMealGenerator({
         </div>
       </div>
 
-      {status && <p className="nutrition-edit-status" role="status">{status}</p>}
+      {status && <p className="nutrition-edit-status" role="status" aria-live="polite">{status}</p>}
 
       <div className="nutrition-actions">
         <button type="button" onClick={() => generate('day')}>Generera dag</button>

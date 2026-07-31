@@ -134,7 +134,7 @@ function RecipeManager({
         </div>
       </div>
 
-      {status && <p className="nutrition-edit-status" role="status">{status}</p>}
+      {status && <p className="nutrition-edit-status" role="status" aria-live="polite">{status}</p>}
 
       <div className="recipe-manager-layout">
         <RecipeEditor

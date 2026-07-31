@@ -5,6 +5,7 @@ function formatNumber(value, unit) {
 }
 
 function ProgressRow({ label, progress, unit, value }) {
+  const progressId = `daily-nutrition-${label.toLocaleLowerCase('sv-SE')}`
   const percent = Number.isFinite(progress?.percent) ? progress.percent : null
   const visualPercent = Number.isFinite(progress?.visualPercent)
     ? Math.max(0, Math.min(progress.visualPercent, 100))
@@ -15,10 +16,18 @@ function ProgressRow({ label, progress, unit, value }) {
   return (
     <div className={`nutrition-progress is-${status}`}>
       <div>
-        <span>{label}</span>
+        <span id={`${progressId}-label`}>{label}</span>
         <strong>{formatNumber(value, unit)}</strong>
       </div>
-      <div className="nutrition-progress-bar" aria-label={`${label}: ${progressLabel}`}>
+      <div
+        aria-labelledby={`${progressId}-label`}
+        aria-valuemax={100}
+        aria-valuemin={0}
+        aria-valuenow={visualPercent}
+        aria-valuetext={progressLabel}
+        className="nutrition-progress-bar"
+        role="progressbar"
+      >
         <span style={{ width: `${visualPercent}%` }}></span>
       </div>
       <small>{percent === null ? 'Inget mål satt' : `${percent}% - ${label}`}</small>

@@ -108,6 +108,7 @@ function NutritionGoalsPanel({
             <span>{label} ({unit})</span>
             <input
               aria-describedby={errors[key] ? `${key}-goal-error` : undefined}
+              aria-invalid={errors[key] ? 'true' : undefined}
               type="number"
               min="0"
               max="100000"

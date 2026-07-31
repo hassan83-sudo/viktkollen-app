@@ -15,13 +15,14 @@ function NutritionImportExport({ fileInputRef, importStatus, onExport, onFileCha
         <button className="secondary-button" type="button" onClick={onOpenImport}>Importera JSON</button>
         <input
           ref={fileInputRef}
+          aria-label="Importera kostdata från JSON-fil"
           className="sr-only"
           type="file"
           accept="application/json,.json"
           onChange={onFileChange}
         />
       </div>
-      {importStatus && <p className="analysis-status">{importStatus}</p>}
+      {importStatus && <p className="analysis-status" role="status" aria-live="polite">{importStatus}</p>}
     </section>
   )
 }

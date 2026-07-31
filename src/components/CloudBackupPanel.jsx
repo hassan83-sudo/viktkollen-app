@@ -611,6 +611,7 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
         </button>
         <input
           ref={fileInputRef}
+          aria-label="Importera molnbackup från JSON-fil"
           className="sr-only"
           type="file"
           accept="application/json,.json"
@@ -662,7 +663,11 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
       )}
 
       {backupStatus && (
-        <p className={backupStatus.ok ? 'success-message' : 'form-error'} role="status">
+        <p
+          aria-live={backupStatus.ok ? 'polite' : 'assertive'}
+          className={backupStatus.ok ? 'success-message' : 'form-error'}
+          role="status"
+        >
           {backupStatus.message}
           {backupStatus.updatedAt
             ? ` Tidpunkt: ${formatBackupDate(backupStatus.updatedAt)} ${formatBackupTime(backupStatus.updatedAt)}.`

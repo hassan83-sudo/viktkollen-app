@@ -1,6 +1,8 @@
-const APP_SHELL_CACHE = 'viktkollen-app-shell-v1'
-const STATIC_CACHE = 'viktkollen-static-v1'
-const CACHE_NAMES = [APP_SHELL_CACHE, STATIC_CACHE]
+const CACHE_VERSION = 'v2'
+const APP_SHELL_CACHE = `viktkollen-app-shell-${CACHE_VERSION}`
+const ASSET_CACHE = `viktkollen-assets-${CACHE_VERSION}`
+const IMAGE_CACHE = `viktkollen-images-${CACHE_VERSION}`
+const CACHE_NAMES = [APP_SHELL_CACHE, ASSET_CACHE, IMAGE_CACHE]
 
 const APP_SHELL_URLS = [
   '/',
@@ -12,18 +14,71 @@ const APP_SHELL_URLS = [
   '/pwa-maskable-512.png',
 ]
 
-function isStaticAppAsset(requestUrl) {
-  return requestUrl.origin === self.location.origin && (
-    requestUrl.pathname.startsWith('/assets/') ||
-    requestUrl.pathname === '/favicon.svg' ||
-    requestUrl.pathname === '/manifest.webmanifest' ||
-    requestUrl.pathname.startsWith('/pwa-icon-') ||
-    requestUrl.pathname.startsWith('/pwa-maskable-')
+function isSameOrigin(requestUrl) {
+  return requestUrl.origin === self.location.origin
+}
+
+function shouldBypassCache(requestUrl) {
+  const path = requestUrl.pathname.toLowerCase()
+
+  return (
+    !isSameOrigin(requestUrl) ||
+    path.startsWith('/api/') ||
+    path.includes('/auth') ||
+    path.includes('/supabase') ||
+    path.includes('/openai')
   )
 }
 
 function isAppShellNavigation(request) {
   return request.mode === 'navigate'
+}
+
+function isAppAsset(requestUrl) {
+  return isSameOrigin(requestUrl) && requestUrl.pathname.startsWith('/assets/')
+}
+
+function isAppImage(request) {
+  const requestUrl = new URL(request.url)
+
+  return isSameOrigin(requestUrl) && (
+    request.destination === 'image' ||
+    requestUrl.pathname.endsWith('.svg') ||
+    requestUrl.pathname.endsWith('.png') ||
+    requestUrl.pathname.endsWith('.jpg') ||
+    requestUrl.pathname.endsWith('.jpeg') ||
+    requestUrl.pathname.endsWith('.webp')
+  )
+}
+
+async function staleWhileRevalidate(request, cacheName) {
+  const cache = await caches.open(cacheName)
+  const cached = await cache.match(request)
+  const fetched = fetch(request).then((response) => {
+    if (response.ok) {
+      cache.put(request, response.clone())
+    }
+
+    return response
+  }).catch(() => cached)
+
+  return cached || fetched
+}
+
+async function networkFirstAppShell(request) {
+  const cache = await caches.open(APP_SHELL_CACHE)
+
+  try {
+    const response = await fetch(request)
+
+    if (response.ok) {
+      await cache.put('/index.html', response.clone())
+    }
+
+    return response
+  } catch {
+    return (await cache.match('/index.html')) || cache.match('/')
+  }
 }
 
 self.addEventListener('install', (event) => {
@@ -39,11 +94,17 @@ self.addEventListener('activate', (event) => {
     caches.keys()
       .then((keys) => Promise.all(
         keys
-          .filter((key) => !CACHE_NAMES.includes(key))
+          .filter((key) => key.startsWith('viktkollen-') && !CACHE_NAMES.includes(key))
           .map((key) => caches.delete(key)),
       ))
       .then(() => self.clients.claim()),
   )
+})
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting()
+  }
 })
 
 self.addEventListener('fetch', (event) => {
@@ -53,36 +114,19 @@ self.addEventListener('fetch', (event) => {
 
   const requestUrl = new URL(request.url)
 
-  if (requestUrl.origin !== self.location.origin) return
-  if (requestUrl.pathname.startsWith('/api/')) return
+  if (shouldBypassCache(requestUrl)) return
 
   if (isAppShellNavigation(request)) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone()
-          caches.open(APP_SHELL_CACHE).then((cache) => cache.put('/index.html', copy))
-          return response
-        })
-        .catch(() => caches.match('/index.html').then((cached) => cached || caches.match('/'))),
-    )
+    event.respondWith(networkFirstAppShell(request))
     return
   }
 
-  if (isStaticAppAsset(requestUrl)) {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached
+  if (isAppAsset(requestUrl)) {
+    event.respondWith(staleWhileRevalidate(request, ASSET_CACHE))
+    return
+  }
 
-        return fetch(request).then((response) => {
-          if (response.ok) {
-            const copy = response.clone()
-            caches.open(STATIC_CACHE).then((cache) => cache.put(request, copy))
-          }
-
-          return response
-        })
-      }),
-    )
+  if (isAppImage(request)) {
+    event.respondWith(staleWhileRevalidate(request, IMAGE_CACHE))
   }
 })

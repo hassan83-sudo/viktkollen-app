@@ -1,6 +1,13 @@
 import { readFileSync, statSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
-import { registerServiceWorker, shouldRegisterServiceWorker } from './registerServiceWorker.js'
+import {
+  applyServiceWorkerUpdate,
+  isStandaloneDisplayMode,
+  PWA_CACHE_VERSION,
+  registerServiceWorker,
+  shouldRegisterServiceWorker,
+  watchForServiceWorkerUpdate,
+} from './registerServiceWorker.js'
 
 function rootFile(path) {
   return readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
@@ -10,7 +17,19 @@ function rootStat(path) {
   return statSync(new URL(`../${path}`, import.meta.url))
 }
 
-describe('PWA V1 contract', () => {
+function makeEventTarget() {
+  const listeners = new Map()
+
+  return {
+    addEventListener: vi.fn((type, listener) => listeners.set(type, listener)),
+    dispatch(type) {
+      listeners.get(type)?.()
+    },
+    removeEventListener: vi.fn((type) => listeners.delete(type)),
+  }
+}
+
+describe('PWA V2 contract', () => {
   it('defines an installable Swedish manifest', () => {
     const manifest = JSON.parse(rootFile('public/manifest.webmanifest'))
 
@@ -50,16 +69,37 @@ describe('PWA V1 contract', () => {
     expect(html).toContain('<link rel="apple-touch-icon" href="/pwa-icon-192.png" />')
   })
 
-  it('keeps service worker caching limited to app shell and static same-origin assets', () => {
+  it('separates service worker caches and avoids dynamic data', () => {
     const serviceWorker = rootFile('public/sw.js')
 
-    expect(serviceWorker).toContain('viktkollen-app-shell-v1')
-    expect(serviceWorker).toContain('viktkollen-static-v1')
-    expect(serviceWorker).toContain("requestUrl.pathname.startsWith('/api/')")
-    expect(serviceWorker).toContain("requestUrl.origin !== self.location.origin")
-    expect(serviceWorker).toContain("request.mode === 'navigate'")
-    expect(serviceWorker).toContain("caches.match('/index.html')")
-    expect(serviceWorker).not.toMatch(/supabase|auth|localStorage|indexedDB/i)
+    expect(serviceWorker).toContain("const CACHE_VERSION = 'v2'")
+    expect(serviceWorker).toContain('viktkollen-app-shell-')
+    expect(serviceWorker).toContain('viktkollen-assets-')
+    expect(serviceWorker).toContain('viktkollen-images-')
+    expect(serviceWorker).toContain("path.startsWith('/api/')")
+    expect(serviceWorker).toContain("path.includes('/auth')")
+    expect(serviceWorker).toContain("path.includes('/supabase')")
+    expect(serviceWorker).toContain("path.includes('/openai')")
+    expect(serviceWorker).not.toMatch(/localStorage|indexedDB/i)
+  })
+
+  it('uses stale-while-revalidate for assets and images with offline navigation fallback', () => {
+    const serviceWorker = rootFile('public/sw.js')
+
+    expect(serviceWorker).toContain('staleWhileRevalidate(request, ASSET_CACHE)')
+    expect(serviceWorker).toContain('staleWhileRevalidate(request, IMAGE_CACHE)')
+    expect(serviceWorker).toContain('networkFirstAppShell(request)')
+    expect(serviceWorker).toContain("cache.match('/index.html')")
+  })
+
+  it('supports update activation via skipWaiting message', () => {
+    const serviceWorker = rootFile('public/sw.js')
+    const postMessage = vi.fn()
+
+    expect(serviceWorker).toContain("event.data?.type === 'SKIP_WAITING'")
+    expect(applyServiceWorkerUpdate({ waiting: { postMessage } })).toBe(true)
+    expect(postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' })
+    expect(applyServiceWorkerUpdate({})).toBe(false)
   })
 
   it('does not register the service worker outside production', async () => {
@@ -73,16 +113,36 @@ describe('PWA V1 contract', () => {
     expect(register).not.toHaveBeenCalled()
   })
 
-  it('registers the service worker in production when supported', async () => {
-    const registration = { scope: '/' }
+  it('registers and watches the service worker in production when supported', async () => {
+    const registration = makeEventTarget()
     const register = vi.fn().mockResolvedValue(registration)
+    const onStatusChange = vi.fn()
     const result = await registerServiceWorker({
       isProduction: true,
+      onStatusChange,
       serviceWorker: { register },
     })
 
     expect(register).toHaveBeenCalledWith('/sw.js')
-    expect(result).toEqual({ registered: true, registration })
+    expect(result).toMatchObject({ registered: true, registration })
+    expect(onStatusChange).toHaveBeenCalledWith('registered')
+    expect(registration.addEventListener).toHaveBeenCalledWith('updatefound', expect.any(Function))
+  })
+
+  it('detects waiting service worker updates', () => {
+    const registration = makeEventTarget()
+    registration.waiting = { state: 'installed' }
+    const onStatusChange = vi.fn()
+    const onUpdateAvailable = vi.fn()
+
+    watchForServiceWorkerUpdate(registration, {
+      hasController: true,
+      onStatusChange,
+      onUpdateAvailable,
+    })
+
+    expect(onStatusChange).toHaveBeenCalledWith('update-ready')
+    expect(onUpdateAvailable).toHaveBeenCalledWith(registration)
   })
 
   it('handles service worker registration failures without throwing', async () => {
@@ -99,5 +159,30 @@ describe('PWA V1 contract', () => {
     expect(shouldRegisterServiceWorker({ hasServiceWorker: true, isProduction: true })).toBe(true)
     expect(shouldRegisterServiceWorker({ hasServiceWorker: true, isProduction: false })).toBe(false)
     expect(shouldRegisterServiceWorker({ hasServiceWorker: false, isProduction: true })).toBe(false)
+  })
+
+  it('detects standalone display mode', () => {
+    expect(isStandaloneDisplayMode({
+      matchMedia: vi.fn(() => ({ matches: true })),
+      navigatorRef: {},
+    })).toBe(true)
+    expect(isStandaloneDisplayMode({
+      matchMedia: vi.fn(() => ({ matches: false })),
+      navigatorRef: { standalone: true },
+    })).toBe(true)
+  })
+
+  it('keeps install, update, offline and diagnostics UI accessible', () => {
+    const source = rootFile('src/components/PwaExperience.jsx')
+
+    expect(source).toContain('beforeinstallprompt')
+    expect(source).toContain('appinstalled')
+    expect(source).toContain('Ny version finns')
+    expect(source).toContain('Uppdatera nu')
+    expect(source).toContain('Offline')
+    expect(source).toContain('role="status"')
+    expect(source).toContain('aria-live="polite"')
+    expect(source).toContain('PWA diagnostics')
+    expect(PWA_CACHE_VERSION).toBe('v2')
   })
 })

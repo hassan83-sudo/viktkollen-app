@@ -64,6 +64,126 @@
   box-shadow: var(--shadow);
 }
 
+.pwa-experience {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.pwa-banner,
+.pwa-install-card,
+.pwa-status-message,
+.pwa-diagnostics {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.pwa-banner,
+.pwa-install-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+}
+
+.pwa-banner div {
+  display: grid;
+  gap: 3px;
+}
+
+.pwa-banner span,
+.pwa-install-card span,
+.pwa-status-message {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.pwa-banner strong {
+  color: var(--text-h);
+}
+
+.pwa-banner.is-offline {
+  border-color: var(--warning-border);
+  background: var(--warning-bg);
+}
+
+.pwa-banner.is-update {
+  border-color: rgba(22, 139, 156, 0.3);
+  background: var(--coach-surface);
+}
+
+.pwa-status-message {
+  margin: 0;
+  padding: 10px 12px;
+}
+
+.pwa-network-pill {
+  justify-self: start;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pwa-network-pill.is-online {
+  border-color: rgba(111, 152, 69, 0.35);
+  color: var(--green);
+}
+
+.pwa-network-pill.is-offline {
+  border-color: var(--warning-border);
+  color: var(--warning-text);
+}
+
+.pwa-diagnostics {
+  padding: 10px 12px;
+}
+
+.pwa-diagnostics summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pwa-diagnostics dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin: 10px 0 0;
+}
+
+.pwa-diagnostics div {
+  display: grid;
+  gap: 3px;
+}
+
+.pwa-diagnostics dt {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.pwa-diagnostics dd {
+  margin: 0;
+  color: var(--text-h);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.lazy-section-fallback {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 750;
+}
+
 .dashboard-summary-heading {
   display: flex;
   align-items: center;

@@ -1,21 +1,13 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
-import AICoach from './components/AICoach.jsx'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import AuthPanel from './components/AuthPanel.jsx'
-import BarcodeScanner from './components/BarcodeScanner.jsx'
 import ChatPanel from './components/ChatPanel.jsx'
 import CheckIn from './components/CheckIn.jsx'
-import CloudBackupPanel from './components/CloudBackupPanel.jsx'
 import CloudSyncPanel from './components/CloudSyncPanel.jsx'
 import CloudStatusPanel from './components/CloudStatusPanel.jsx'
 import Dashboard from './components/Dashboard.jsx'
-import MealLogger from './components/MealLogger.jsx'
-import MonthlyReport from './components/MonthlyReport.jsx'
-import ProgressDashboard from './components/ProgressDashboard.jsx'
-import ProgressCenter from './components/ProgressCenter.jsx'
-import ProgressPhotos from './components/ProgressPhotos.jsx'
-import ReminderSettings from './components/ReminderSettings.jsx'
+import PwaExperience from './components/PwaExperience.jsx'
 import { makePersonalCoachReply } from './lib/coachReply.js'
 import {
   bodyAnalysisHistoryChangedEvent,
@@ -86,6 +78,16 @@ import {
 } from './services/progressService.js'
 import * as userDataRepository from './services/userDataRepository.js'
 import { createWeeklyReport as createAiWeeklyReport } from './services/weeklyReportService.js'
+
+const AICoach = lazy(() => import('./components/AICoach.jsx'))
+const BarcodeScanner = lazy(() => import('./components/BarcodeScanner.jsx'))
+const CloudBackupPanel = lazy(() => import('./components/CloudBackupPanel.jsx'))
+const MealLogger = lazy(() => import('./components/MealLogger.jsx'))
+const MonthlyReport = lazy(() => import('./components/MonthlyReport.jsx'))
+const ProgressCenter = lazy(() => import('./components/ProgressCenter.jsx'))
+const ProgressDashboard = lazy(() => import('./components/ProgressDashboard.jsx'))
+const ProgressPhotos = lazy(() => import('./components/ProgressPhotos.jsx'))
+const ReminderSettings = lazy(() => import('./components/ReminderSettings.jsx'))
 
 const starterWeights = [
   { date: '2026-05-23', value: 91.8 },
@@ -2540,6 +2542,7 @@ function App() {
   if (authLoading) {
     return (
       <main className="app-shell welcome-shell">
+        <PwaExperience />
         <section className="welcome-card">
           <p className="eyebrow">Viktkollen Auth</p>
           <h1>Kontrollerar inloggning</h1>
@@ -2553,20 +2556,24 @@ function App() {
 
   if (!authSession) {
     return (
-      <AuthPanel
-        authError={authError}
-        authLoading={authLoading}
-        authNotice={authNotice}
-        authStatus={authStatus}
-        onSignIn={handleSignIn}
-        onSignUp={handleSignUp}
-      />
+      <>
+        <PwaExperience />
+        <AuthPanel
+          authError={authError}
+          authLoading={authLoading}
+          authNotice={authNotice}
+          authStatus={authStatus}
+          onSignIn={handleSignIn}
+          onSignUp={handleSignUp}
+        />
+      </>
     )
   }
 
   if (showOnboarding) {
     return (
       <main className="app-shell onboarding-shell">
+        <PwaExperience />
         <section className="onboarding-card">
           <p className="eyebrow">Välkommen till Viktkollen</p>
           <h1>Skapa din profil</h1>
@@ -2662,6 +2669,7 @@ function App() {
 
   return (
     <main className="app-shell">
+      <PwaExperience />
       <header className="topbar" id="hem">
         <div>
           <p className="eyebrow">Viktkollen MVP</p>
@@ -2711,6 +2719,7 @@ function App() {
         />
       </AppErrorBoundary>
 
+      <Suspense fallback={<section className="panel lazy-section-fallback" role="status" aria-live="polite">Laddar appsektioner...</section>}>
       <section className="content-grid">
         <AppErrorBoundary area="progress" resetKey={`${healthSnapshot.date}-${weights.length}`} title="Framsteg kunde inte visas">
           <ProgressCenter
@@ -2894,6 +2903,7 @@ function App() {
           />
         </AppErrorBoundary>
       </section>
+      </Suspense>
 
       <nav className="bottom-nav" aria-label="Huvudnavigation">
         <a href="#hem" aria-label="Gå till översikt">

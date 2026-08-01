@@ -2,6 +2,18 @@ import { readSyncMetadata } from './syncMetadata.js'
 import { readSyncQueue } from './syncQueue.js'
 
 const listeners = new Set()
+const defaultCoordinationStatus = {
+  activeTabCount: 0,
+  hasLeader: false,
+  latestTrigger: '',
+  leaderLastSeenAt: '',
+  role: 'unknown',
+  schedulerActive: false,
+  tabId: '',
+  transportType: 'none',
+}
+
+let coordinationStatus = { ...defaultCoordinationStatus }
 
 function getOnlineState() {
   if (typeof navigator === 'undefined') return true
@@ -56,6 +68,7 @@ function buildStatus(overrides = {}) {
     running,
     statusCode,
     statusLabel,
+    syncCoordination: { ...coordinationStatus },
     userId: overrides.userId || '',
   }
 }
@@ -89,7 +102,24 @@ export function refreshSyncStatus(overrides = {}) {
 }
 
 export function resetSyncStatus() {
+  coordinationStatus = { ...defaultCoordinationStatus }
   snapshot = buildStatus({ currentTrigger: '', running: false, userId: '' })
+  emit()
+
+  return snapshot
+}
+
+export function updateSyncCoordinationStatus(patch = {}) {
+  coordinationStatus = {
+    ...coordinationStatus,
+    ...Object.fromEntries(Object.entries(patch)
+      .filter(([, value]) => ['boolean', 'number', 'string'].includes(typeof value))),
+  }
+  snapshot = buildStatus({
+    currentTrigger: snapshot.currentTrigger,
+    running: snapshot.running,
+    userId: snapshot.userId,
+  })
   emit()
 
   return snapshot

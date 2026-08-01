@@ -1,22 +1,22 @@
 import { useEffect } from 'react'
-import { globalSyncScheduler } from './globalSyncScheduler.js'
+import { globalSyncCoordinator } from './crossTabSyncCoordinator.js'
 
 export function useGlobalSyncScheduler(userId, options = {}) {
   const { onDataChanged } = options
 
   useEffect(() => {
-    globalSyncScheduler.setOnDataChanged(onDataChanged)
+    globalSyncCoordinator.setOnDataChanged(onDataChanged)
 
     if (!userId) {
-      globalSyncScheduler.stop()
+      globalSyncCoordinator.stop()
       return undefined
     }
 
-    globalSyncScheduler.start(userId)
+    globalSyncCoordinator.start(userId)
 
     return () => {
-      globalSyncScheduler.stop()
-      globalSyncScheduler.setOnDataChanged(null)
+      globalSyncCoordinator.stop()
+      globalSyncCoordinator.setOnDataChanged(null)
     }
   }, [onDataChanged, userId])
 }

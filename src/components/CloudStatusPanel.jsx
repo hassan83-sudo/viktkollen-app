@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useSyncExternalStore, useState } from 'react'
 import { loadCloudSyncService } from '../services/cloudRuntimeLoader.js'
+import { getSyncStatusSnapshot, subscribeSyncStatus } from '../services/sync/syncStatusStore.js'
 
 function formatDateTime(value) {
   if (!value) {
@@ -10,6 +11,11 @@ function formatDateTime(value) {
 }
 
 function CloudStatusPanel({ isAuthenticated }) {
+  const syncStatusSnapshot = useSyncExternalStore(
+    subscribeSyncStatus,
+    getSyncStatusSnapshot,
+    getSyncStatusSnapshot,
+  )
   const [cloudStatus, setCloudStatus] = useState({
     backupCount: 0,
     databaseStatus: 'Väntar',
@@ -96,7 +102,7 @@ function CloudStatusPanel({ isAuthenticated }) {
         </div>
         <div>
           <span>Synkstatus</span>
-          <strong>{cloudStatus.syncStatus}</strong>
+          <strong>{syncStatusSnapshot.statusLabel || cloudStatus.syncStatus}</strong>
         </div>
         <div>
           <span>Databasstatus</span>

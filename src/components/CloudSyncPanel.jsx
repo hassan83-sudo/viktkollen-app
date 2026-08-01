@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useSyncExternalStore, useState } from 'react'
 import { getSafeErrorMessage } from '../services/appErrorService.js'
 import { loadCloudSyncEngine } from '../services/cloudRuntimeLoader.js'
-import { globalSyncScheduler } from '../services/sync/globalSyncScheduler.js'
+import { globalSyncCoordinator } from '../services/sync/crossTabSyncCoordinator.js'
 import { readSyncMetadata } from '../services/sync/syncMetadata.js'
+import { getSyncStatusSnapshot, subscribeSyncStatus } from '../services/sync/syncStatusStore.js'
 
 const defaultCloudSyncStatus = {
   conflicts: [],
@@ -53,6 +54,11 @@ function shortDeviceId(deviceId) {
 }
 
 function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
+  const syncStatusSnapshot = useSyncExternalStore(
+    subscribeSyncStatus,
+    getSyncStatusSnapshot,
+    getSyncStatusSnapshot,
+  )
   const [status, setStatus] = useState(() => getInitialCloudSyncStatus())
   const [isSyncing, setIsSyncing] = useState(false)
   const [message, setMessage] = useState('')
@@ -69,7 +75,7 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
     setMessage('')
 
     try {
-      const result = await globalSyncScheduler.syncNow('manual')
+      const result = await globalSyncCoordinator.syncNow('manual')
 
       if (result.ok && (result.downloaded?.length || result.merged?.length)) {
         onDataChanged?.()
@@ -197,7 +203,7 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
         </div>
         <div>
           <span>Status</span>
-          <strong>{status.statusLabel || status.status}</strong>
+          <strong>{syncStatusSnapshot.statusLabel || status.statusLabel || status.status}</strong>
         </div>
         <div>
           <span>Senast klar</span>

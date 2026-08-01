@@ -80,6 +80,7 @@ function aiReply(message) {
       meals: allMeals,
       nutritionGoals: goals,
       profile: { goalWeight: '78 kg', startWeight: '91,8 kg' },
+      today,
       weights,
     },
     message,

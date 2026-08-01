@@ -346,13 +346,14 @@ export function buildAiCoachFacts(context = {}) {
   const latestGeneratedMealPlan = context.latestGeneratedMealPlan || getLatestGeneratedMealPlan(generatedMealPlans)
   const mealPlans = context.mealPlans || readMealPlans()
   const shoppingLists = context.shoppingLists || readShoppingLists()
-  const currentPlanWeek = getMealPlanWeek(mealPlans, getMealPlanWeekStart())
+  const todayDate = snapshot.date || getTodayDateString()
+  const currentPlanWeek = getMealPlanWeek(mealPlans, getMealPlanWeekStart(todayDate))
   const plannedWeekSummary = buildPlannedWeekSummary(currentPlanWeek, nutritionGoals)
   const currentShoppingList = getShoppingList(shoppingLists, currentPlanWeek.weekStart)
   const proteinGoal = getNumericGoal(nutritionGoals, 'protein')
   const todayNutrition = snapshot.nutrition.summary || calculateDailyNutritionSummary(
     allMealsForNutrition,
-    snapshot.date || getTodayDateString(),
+    todayDate,
     {
       ...profile,
       nutritionGoals,
@@ -360,7 +361,7 @@ export function buildAiCoachFacts(context = {}) {
   )
   const todayMealTimeline = buildMealTimeline(
     allMealsForNutrition,
-    getTodayDateString(),
+    todayDate,
     {
       proteinGoal: nutritionGoals.protein,
     },
@@ -369,18 +370,18 @@ export function buildAiCoachFacts(context = {}) {
     proteinGoal: nutritionGoals.protein,
   })
   const weeklyNutritionReport = buildWeeklyNutritionReport({
-    date: getTodayDateString(),
+    date: todayDate,
     meals: allMealsForNutrition,
     nutritionGoals,
   })
   const monthlyNutritionReport = buildMonthlyNutritionReport({
-    date: getTodayDateString(),
+    date: todayDate,
     meals: allMealsForNutrition,
     nutritionGoals,
     weights,
   })
   const nutritionActionPlan = buildNutritionActionPlan({
-    date: getTodayDateString(),
+    date: todayDate,
     dietaryPreferences,
     meals: allMealsForNutrition,
     nutritionGoals,

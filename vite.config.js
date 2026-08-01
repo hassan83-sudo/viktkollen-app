@@ -12,20 +12,11 @@ function manualChunks(id) {
     return 'supabase-vendor'
   }
 
-  if (normalized.includes('/src/services/nutrition')) {
-    return 'nutrition-services'
-  }
-
   if (
-    normalized.includes('/src/services/progress') ||
-    normalized.includes('/src/services/health') ||
-    normalized.includes('/src/services/checkIn')
+    normalized.includes('/src/services/nutrition/mealCorrections.js') ||
+    normalized.includes('/src/services/nutrition/nutritionGoals.js')
   ) {
-    return 'health-progress-services'
-  }
-
-  if (normalized.includes('/src/services/sync') || normalized.includes('/src/services/cloud')) {
-    return 'cloud-services'
+    return 'nutrition-core-services'
   }
 
   return undefined

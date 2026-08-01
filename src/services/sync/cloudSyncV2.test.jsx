@@ -45,6 +45,14 @@ import {
   syncQueueStorageKey,
   writeSyncQueue,
 } from './syncQueue.js'
+import {
+  applyIncomingSyncRecordSafely,
+  createSyncRestoreSnapshot,
+  readSyncRestoreSnapshots,
+  rollbackSyncRestoreSnapshot,
+  syncRestoreSnapshotStorageKey,
+  validateIncomingSyncRecord,
+} from './syncRestoreSafety.js'
 
 function createMemoryStorage(initial = {}) {
   const data = new Map(Object.entries(initial))
@@ -222,6 +230,16 @@ describe('Cloud Sync V2 allowlist and metadata', () => {
       enabled: true,
       pendingKeys: ['viktkollen.profile'],
     })
+  })
+
+  it('creates a stable anonymous device id without sensitive data', () => {
+    const storage = createMemoryStorage()
+    const first = readSyncMetadata(storage).deviceId
+    const second = readSyncMetadata(storage).deviceId
+
+    expect(first).toMatch(/^device-/)
+    expect(second).toBe(first)
+    expect(first).not.toMatch(/@|token|session|auth/i)
   })
 
   it('marks allowlisted keys dirty', () => {
@@ -637,7 +655,64 @@ describe('Cloud Sync V2 engine', () => {
     const result = await runCloudSync({ client: createFakeClient([], { upsertError: 'write failed' }), force: true, storage, userId: 'user-1' })
 
     expect(result).toMatchObject({ ok: false, status: 'error' })
-    expect(readSyncMetadata(storage).lastError).toBe('write failed')
+    expect(readSyncMetadata(storage).lastError).toBe('Molnåtgärden misslyckades. Din lokala data påverkas inte.')
+    expect(readSyncQueue(storage).items[0]).toMatchObject({
+      attempts: 1,
+      status: 'pending',
+      storageKey: 'viktkollen.profile',
+    })
+    expect(readSyncQueue(storage).items[0].nextAttemptAt).toBeTruthy()
+  })
+
+  it('classifies rate limited failures as retry waiting', async () => {
+    const storage = createMemoryStorage({ 'viktkollen.profile': JSON.stringify({ name: 'Anna' }) })
+    const result = await runCloudSync({
+      client: createFakeClient([], { upsertError: 'rate limit 429' }),
+      force: true,
+      storage,
+      userId: 'user-1',
+    })
+
+    expect(result.status).toBe('retry_waiting')
+    expect(result.error).toBe('För många försök på kort tid. Försök igen senare.')
+  })
+
+  it('snapshots before applying remote records', async () => {
+    const storage = createMemoryStorage()
+    const client = createFakeClient([createRemoteRow('viktkollen.profile', { name: 'Remote' })])
+
+    await runCloudSync({ client, force: true, storage, userId: 'user-1' })
+
+    expect(readSyncRestoreSnapshots(storage)[0].entries).toHaveProperty('viktkollen.profile')
+  })
+
+  it('rolls back when a safe remote apply fails', () => {
+    const storage = createMemoryStorage({ 'viktkollen.profile': JSON.stringify({ name: 'Local' }) })
+    const remoteRecord = normalizeRemoteSyncRow(createRemoteRow('viktkollen.profile', { name: 'Remote' }))
+    const result = applyIncomingSyncRecordSafely(remoteRecord, storage, () => {
+      storage.setItem('viktkollen.profile', JSON.stringify({ name: 'Broken' }))
+      throw new Error('write failed')
+    })
+
+    expect(result.ok).toBe(false)
+    expect(JSON.parse(storage.getItem('viktkollen.profile'))).toEqual({ name: 'Local' })
+  })
+
+  it('rejects oversized incoming records before restore', () => {
+    const remoteRecord = normalizeRemoteSyncRow(createRemoteRow('viktkollen.profile', { text: 'x'.repeat(800000) }))
+
+    expect(validateIncomingSyncRecord(remoteRecord)).toMatchObject({ ok: false })
+  })
+
+  it('can restore a saved sync snapshot manually', () => {
+    const storage = createMemoryStorage({ 'viktkollen.profile': JSON.stringify({ name: 'Local' }) })
+    const snapshot = createSyncRestoreSnapshot(storage, ['viktkollen.profile'])
+
+    storage.setItem('viktkollen.profile', JSON.stringify({ name: 'Remote' }))
+
+    expect(rollbackSyncRestoreSnapshot(snapshot, storage)).toBe(true)
+    expect(JSON.parse(storage.getItem('viktkollen.profile'))).toEqual({ name: 'Local' })
+    expect(storage.getItem(syncRestoreSnapshotStorageKey)).toBeTruthy()
   })
 
   it('scans local changes into a persistent queue', () => {
@@ -666,7 +741,23 @@ describe('Cloud Sync V2 engine', () => {
     setCloudSyncEnabled(true, storage)
     markSyncKeyDirty('viktkollen.profile', storage)
 
-    expect(getCloudSyncStatusModel(storage, true)).toMatchObject({ enabled: true, isOnline: true })
+    expect(getCloudSyncStatusModel(storage, true)).toMatchObject({
+      enabled: true,
+      isOnline: true,
+      statusCode: 'pending',
+      statusLabel: 'Osynkade ändringar',
+    })
+  })
+
+  it('reports conflict and offline states from the shared status model', () => {
+    const storage = createMemoryStorage()
+    writeSyncMetadata({
+      conflicts: [{ storageKey: 'viktkollen.profile' }],
+      enabled: true,
+    }, storage)
+
+    expect(getCloudSyncStatusModel(storage, true)).toMatchObject({ statusCode: 'conflict', statusLabel: 'Konflikt' })
+    expect(getCloudSyncStatusModel(storage, false)).toMatchObject({ statusCode: 'offline', statusLabel: 'Offline' })
   })
 
   it('normalizes a single remote row', () => {

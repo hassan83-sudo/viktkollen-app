@@ -14,10 +14,13 @@ import {
 import {
   enqueueSyncAction,
   markSyncQueueOffline,
+  markSyncQueueItemFailed,
   readSyncQueue,
   writeSyncQueue,
 } from './syncQueue.js'
 import { applyConflictChoice, resolveSyncConflict } from './syncConflictResolver.js'
+import { applyIncomingSyncRecordSafely } from './syncRestoreSafety.js'
+import { classifyCloudError, cloudErrorCodes, getCloudErrorMessage } from '../cloudSyncErrors.js'
 
 export const cloudSyncTable = 'user_sync_items'
 
@@ -66,6 +69,18 @@ function makeResult(overrides = {}) {
     uploaded: [],
     ...overrides,
   }
+}
+
+function statusFromCloudError(error, online = true) {
+  const code = classifyCloudError(error)
+
+  if (!online || code === cloudErrorCodes.NETWORK_ERROR) return 'retry_waiting'
+  if (code === cloudErrorCodes.NOT_AUTHENTICATED) return 'not_authenticated'
+  if (code === cloudErrorCodes.PERMISSION_DENIED) return 'permission_denied'
+  if (code === cloudErrorCodes.RATE_LIMITED) return 'retry_waiting'
+  if (code === cloudErrorCodes.TABLE_MISSING) return 'not_configured'
+
+  return 'error'
 }
 
 export function buildLocalSyncSnapshot(storage, now = new Date()) {
@@ -314,7 +329,26 @@ export async function runCloudSync(options = {}) {
       }
 
       if (decision.action === 'download' || decision.action === 'apply_remote_delete') {
-        const applied = applyRemoteRecordToLocal(remoteRecord, resolvedStorage)
+        const safeApply = applyIncomingSyncRecordSafely(
+          remoteRecord,
+          resolvedStorage,
+          (record) => applyRemoteRecordToLocal(record, resolvedStorage),
+          { now },
+        )
+
+        if (!safeApply.ok) {
+          result.skipped.push({ reason: safeApply.reason, storageKey })
+          metadata = addConflict(metadata, storageKey, {
+            action: 'conflict',
+            localRecord,
+            reason: safeApply.reason || 'Molndata kunde inte appliceras säkert.',
+            remoteRecord,
+          }, timestamp)
+          result.conflicts.push(storageKey)
+          continue
+        }
+
+        const applied = safeApply.applied
         metadata.keys[storageKey] = buildKeyMeta(applied || remoteRecord, remoteRecord.remoteRevision)
         result.downloaded.push(storageKey)
         continue
@@ -363,18 +397,30 @@ export async function runCloudSync(options = {}) {
       status: result.conflicts.length ? 'conflict' : 'synced',
     }
   } catch (error) {
+    const queue = readSyncQueue(resolvedStorage)
+    const dueItems = queue.items.filter((item) => item.status !== 'failed')
+    const failedQueue = dueItems.reduce(
+      (currentQueue, item) => markSyncQueueItemFailed(currentQueue, item.id, error?.message || 'Sync misslyckades.', now),
+      queue,
+    )
+    writeSyncQueue(failedQueue, resolvedStorage)
+
+    const errorCode = classifyCloudError(error)
+    const status = statusFromCloudError(error, getOnlineState(online))
+    const safeMessage = getCloudErrorMessage(errorCode)
+
     writeSyncMetadata({
       ...metadata,
       deviceId,
       lastAttemptAt: timestamp,
-      lastError: normalizeText(error?.message || 'Sync misslyckades.'),
+      lastError: safeMessage,
     }, resolvedStorage)
 
     return makeResult({
       ok: false,
-      pendingCount: metadata.pendingKeys.length,
-      status: 'error',
-      error: normalizeText(error?.message || 'Sync misslyckades.'),
+      pendingCount: failedQueue.items.length || metadata.pendingKeys.length,
+      status,
+      error: safeMessage,
     })
   } finally {
     syncRunning = false
@@ -404,7 +450,18 @@ export async function resolveStoredSyncConflict(storageKey, choice, options = {}
   }
 
   if (decision.action === 'download') {
-    const applied = applyRemoteRecordToLocal(decision.record, storage)
+    const safeApply = applyIncomingSyncRecordSafely(
+      decision.record,
+      storage,
+      (record) => applyRemoteRecordToLocal(record, storage),
+      { now },
+    )
+
+    if (!safeApply.ok) {
+      return makeResult({ ok: false, status: 'restore_error', error: safeApply.reason })
+    }
+
+    const applied = safeApply.applied
     writeSyncMetadata({
       ...metadata,
       conflicts: metadata.conflicts.filter((item) => item.storageKey !== storageKey),
@@ -440,18 +497,47 @@ export async function resolveStoredSyncConflict(storageKey, choice, options = {}
 export function getCloudSyncStatusModel(storage, online) {
   const metadata = readSyncMetadata(storage)
   const queue = readSyncQueue(storage)
+  const isOnline = getOnlineState(online)
   const pendingCount = metadata.pendingKeys.length + queue.items.filter((item) => item.status !== 'failed').length
+  const failedCount = queue.items.filter((item) => item.status === 'failed').length
+  const waitingRetryCount = queue.items.filter((item) => item.nextAttemptAt && item.status === 'pending').length
+  let statusCode = 'synced'
+  let statusLabel = 'Synkad'
+
+  if (!metadata.enabled) {
+    statusCode = 'disabled'
+    statusLabel = 'Av'
+  } else if (!isOnline) {
+    statusCode = 'offline'
+    statusLabel = 'Offline'
+  } else if (metadata.conflicts.length > 0) {
+    statusCode = 'conflict'
+    statusLabel = 'Konflikt'
+  } else if (metadata.lastError || failedCount > 0) {
+    statusCode = 'error'
+    statusLabel = 'Synkfel'
+  } else if (waitingRetryCount > 0) {
+    statusCode = 'retry_waiting'
+    statusLabel = 'Väntar på återförsök'
+  } else if (pendingCount > 0) {
+    statusCode = 'pending'
+    statusLabel = 'Osynkade ändringar'
+  }
 
   return {
     conflicts: metadata.conflicts,
     deviceId: metadata.deviceId,
     enabled: metadata.enabled,
-    isOnline: getOnlineState(online),
+    failedCount,
+    isOnline,
     lastError: metadata.lastError,
     lastSuccessfulSyncAt: metadata.lastSuccessfulSyncAt,
     pendingCount,
     queue,
-    status: metadata.enabled ? 'På' : 'Av',
+    status: statusLabel,
+    statusCode,
+    statusLabel,
+    waitingRetryCount,
   }
 }
 

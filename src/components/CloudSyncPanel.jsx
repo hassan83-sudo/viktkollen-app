@@ -1,11 +1,39 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  getCloudSyncStatusModel,
-  resolveStoredSyncConflict,
-  runCloudSync,
-  setCloudSyncEnabled,
-} from '../services/sync/cloudSyncEngine.js'
 import { getSafeErrorMessage } from '../services/appErrorService.js'
+import { loadCloudSyncEngine } from '../services/cloudRuntimeLoader.js'
+import { readSyncMetadata } from '../services/sync/syncMetadata.js'
+
+const defaultCloudSyncStatus = {
+  conflicts: [],
+  deviceId: '',
+  enabled: false,
+  isOnline: typeof navigator === 'undefined' ? true : navigator.onLine !== false,
+  lastError: '',
+  lastSuccessfulSyncAt: '',
+  pendingCount: 0,
+  queue: { items: [] },
+  status: 'Av',
+  statusCode: 'disabled',
+  statusLabel: 'Av',
+  waitingRetryCount: 0,
+}
+
+function getInitialCloudSyncStatus() {
+  const metadata = readSyncMetadata()
+
+  return {
+    ...defaultCloudSyncStatus,
+    conflicts: metadata.conflicts,
+    deviceId: metadata.deviceId,
+    enabled: metadata.enabled,
+    lastError: metadata.lastError,
+    lastSuccessfulSyncAt: metadata.lastSuccessfulSyncAt,
+    pendingCount: metadata.pendingKeys.length,
+    status: metadata.enabled ? 'Osynkade ändringar' : 'Av',
+    statusCode: metadata.enabled ? 'pending' : 'disabled',
+    statusLabel: metadata.enabled ? 'Osynkade ändringar' : 'Av',
+  }
+}
 
 function formatDateTime(value) {
   if (!value) return 'Aldrig'
@@ -24,12 +52,13 @@ function shortDeviceId(deviceId) {
 }
 
 function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
-  const [status, setStatus] = useState(() => getCloudSyncStatusModel())
+  const [status, setStatus] = useState(() => getInitialCloudSyncStatus())
   const [isSyncing, setIsSyncing] = useState(false)
   const [message, setMessage] = useState('')
   const hasAutoSyncedRef = useRef(false)
 
-  const refreshStatus = useCallback(() => {
+  const refreshStatus = useCallback(async () => {
+    const { getCloudSyncStatusModel } = await loadCloudSyncEngine()
     setStatus(getCloudSyncStatusModel())
   }, [])
 
@@ -40,6 +69,7 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
     setMessage('')
 
     try {
+      const { runCloudSync } = await loadCloudSyncEngine()
       const result = await runCloudSync({ force: true, userId })
 
       if (result.ok && (result.downloaded?.length || result.merged?.length)) {
@@ -49,40 +79,44 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
     } catch (error) {
       setMessage(getSafeErrorMessage(error, { area: 'network' }))
     } finally {
-      refreshStatus()
+      void refreshStatus().catch(() => {})
       setIsSyncing(false)
     }
   }, [isAuthenticated, onDataChanged, refreshStatus, userId])
 
   const toggleEnabled = useCallback(async () => {
     const next = !status.enabled
-    setCloudSyncEnabled(next)
-    refreshStatus()
 
-    if (next && isAuthenticated) {
-      setIsSyncing(true)
-      try {
+    try {
+      const { runCloudSync, setCloudSyncEnabled } = await loadCloudSyncEngine()
+
+      setCloudSyncEnabled(next)
+      await refreshStatus()
+
+      if (next && isAuthenticated) {
+        setIsSyncing(true)
         const result = await runCloudSync({ force: true, userId })
         if (result.ok && (result.downloaded?.length || result.merged?.length)) {
           onDataChanged?.()
         }
         setMessage(result.ok ? 'Automatisk sync är på.' : result.error || 'Sync kunde inte startas.')
-      } catch (error) {
-        setMessage(getSafeErrorMessage(error, { area: 'network' }))
-      } finally {
-        refreshStatus()
-        setIsSyncing(false)
+        return
       }
-      return
-    }
 
-    setMessage('Automatisk sync är av.')
+      setMessage('Automatisk sync är av.')
+    } catch (error) {
+      setMessage(getSafeErrorMessage(error, { area: 'network' }))
+    } finally {
+      void refreshStatus().catch(() => {})
+      setIsSyncing(false)
+    }
   }, [isAuthenticated, onDataChanged, refreshStatus, status.enabled, userId])
 
   const resolveConflict = useCallback(async (storageKey, choice) => {
     setIsSyncing(true)
 
     try {
+      const { resolveStoredSyncConflict } = await loadCloudSyncEngine()
       const result = await resolveStoredSyncConflict(storageKey, choice, { userId })
 
       if (result.ok && result.downloaded?.length) {
@@ -92,10 +126,34 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
     } catch (error) {
       setMessage(getSafeErrorMessage(error, { area: 'network' }))
     } finally {
-      refreshStatus()
+      void refreshStatus().catch(() => {})
       setIsSyncing(false)
     }
   }, [onDataChanged, refreshStatus, userId])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadStatus() {
+      try {
+        const { getCloudSyncStatusModel } = await loadCloudSyncEngine()
+
+        if (!cancelled) {
+          setStatus(getCloudSyncStatusModel())
+        }
+      } catch {
+        if (!cancelled) {
+          setStatus(defaultCloudSyncStatus)
+        }
+      }
+    }
+
+    void loadStatus()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (!isAuthenticated || !status.enabled) return undefined
@@ -163,6 +221,10 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
         <div>
           <span>Autosync</span>
           <strong>{status.enabled ? 'På' : 'Av'}</strong>
+        </div>
+        <div>
+          <span>Status</span>
+          <strong>{status.statusLabel || status.status}</strong>
         </div>
         <div>
           <span>Senast klar</span>

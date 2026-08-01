@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getCloudDashboardStatus } from '../services/cloudSyncService.js'
+import { loadCloudSyncService } from '../services/cloudRuntimeLoader.js'
 
 function formatDateTime(value) {
   if (!value) {
@@ -33,10 +33,21 @@ function CloudStatusPanel({ isAuthenticated }) {
     }
 
     setIsLoading(true)
-    const result = await getCloudDashboardStatus()
+    try {
+      const { getCloudDashboardStatus } = await loadCloudSyncService()
+      const result = await getCloudDashboardStatus()
 
-    setCloudStatus(result)
-    setIsLoading(false)
+      setCloudStatus(result)
+    } catch {
+      setCloudStatus((current) => ({
+        ...current,
+        databaseStatus: 'Okänt',
+        reason: 'Molnstatus kunde inte kontrolleras just nu.',
+        syncStatus: 'Okänt',
+      }))
+    } finally {
+      setIsLoading(false)
+    }
   }, [isAuthenticated])
 
   useEffect(() => {

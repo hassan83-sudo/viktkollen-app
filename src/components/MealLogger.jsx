@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useMemo, useRef, useState } from 'react'
 import {
   addDays,
   favoriteToMeal,
@@ -30,15 +30,10 @@ import MealHistoryTools from './MealHistoryTools.jsx'
 import MealEditForm from './mealEditor/MealEditForm.jsx'
 import MealQuickAdd from './mealTemplates/MealQuickAdd.jsx'
 import MealWeeklyReport from './MealWeeklyReport.jsx'
-import MonthlyNutritionDashboard from './MonthlyNutritionDashboard.jsx'
 import NutritionActionPlan from './NutritionActionPlan.jsx'
 import MealReviewPanel from './nutritionDataQuality/MealReviewPanel.jsx'
 import NutritionDashboard from './NutritionDashboard.jsx'
 import PhotoAnalysis from './PhotoAnalysis.jsx'
-import WeeklyNutritionDashboard from './WeeklyNutritionDashboard.jsx'
-import WeeklyMealPlanner from './WeeklyMealPlanner.jsx'
-import RecipeManager from './RecipeManager.jsx'
-import AIMealGenerator from './AIMealGenerator.jsx'
 import {
   createMealEditDraft,
   createMealTemplate,
@@ -60,6 +55,12 @@ import {
   writeMealTemplates,
   writeRecipes,
 } from '../services/nutrition/nutritionEngine.js'
+
+const AIMealGenerator = lazy(() => import('./AIMealGenerator.jsx'))
+const MonthlyNutritionDashboard = lazy(() => import('./MonthlyNutritionDashboard.jsx'))
+const RecipeManager = lazy(() => import('./RecipeManager.jsx'))
+const WeeklyMealPlanner = lazy(() => import('./WeeklyMealPlanner.jsx'))
+const WeeklyNutritionDashboard = lazy(() => import('./WeeklyNutritionDashboard.jsx'))
 
 const defaultFilters = {
   from: '',
@@ -632,51 +633,53 @@ function MealLogger({
       </div>
 
       <section id="nutrition-view-panel" aria-label="Aktiv kostvy">
-        {nutritionViewMode === 'day' ? (
-          <NutritionDashboard
-            date={selectedMealDate}
-            meals={nutritionMeals}
-            nutritionGoals={normalizedGoals}
-          />
-        ) : nutritionViewMode === 'week' ? (
-          <WeeklyNutritionDashboard
-            date={selectedMealDate}
-            meals={nutritionMeals}
-            nutritionGoals={normalizedGoals}
-            onDateChange={changeSelectedDate}
-          />
-        ) : nutritionViewMode === 'month' ? (
-          <MonthlyNutritionDashboard
-            date={selectedMealDate}
-            meals={nutritionMeals}
-            nutritionGoals={normalizedGoals}
-            weights={weights}
-            onDateChange={changeSelectedDate}
-          />
-        ) : nutritionViewMode === 'planner' ? (
-          <WeeklyMealPlanner
-            dietaryPreferences={dietaryPreferences}
-            meals={normalizedMeals}
-            nutritionGoals={normalizedGoals}
-            recipes={recipes}
-            templates={mealTemplates}
-            onMealsChange={onMealsChange}
-          />
-        ) : nutritionViewMode === 'generator' ? (
-          <AIMealGenerator
-            dietaryPreferences={dietaryPreferences}
-            nutritionGoals={normalizedGoals}
-            recipes={recipes}
-            templates={mealTemplates}
-          />
-        ) : (
-          <RecipeManager
-            dietaryPreferences={dietaryPreferences}
-            recipes={recipes}
-            onRecipesChange={changeRecipes}
-            onTemplateCreate={createTemplateFromRecipe}
-          />
-        )}
+        <Suspense fallback={<div className="lazy-section-fallback" role="status">Laddar kostvy...</div>}>
+          {nutritionViewMode === 'day' ? (
+            <NutritionDashboard
+              date={selectedMealDate}
+              meals={nutritionMeals}
+              nutritionGoals={normalizedGoals}
+            />
+          ) : nutritionViewMode === 'week' ? (
+            <WeeklyNutritionDashboard
+              date={selectedMealDate}
+              meals={nutritionMeals}
+              nutritionGoals={normalizedGoals}
+              onDateChange={changeSelectedDate}
+            />
+          ) : nutritionViewMode === 'month' ? (
+            <MonthlyNutritionDashboard
+              date={selectedMealDate}
+              meals={nutritionMeals}
+              nutritionGoals={normalizedGoals}
+              weights={weights}
+              onDateChange={changeSelectedDate}
+            />
+          ) : nutritionViewMode === 'planner' ? (
+            <WeeklyMealPlanner
+              dietaryPreferences={dietaryPreferences}
+              meals={normalizedMeals}
+              nutritionGoals={normalizedGoals}
+              recipes={recipes}
+              templates={mealTemplates}
+              onMealsChange={onMealsChange}
+            />
+          ) : nutritionViewMode === 'generator' ? (
+            <AIMealGenerator
+              dietaryPreferences={dietaryPreferences}
+              nutritionGoals={normalizedGoals}
+              recipes={recipes}
+              templates={mealTemplates}
+            />
+          ) : (
+            <RecipeManager
+              dietaryPreferences={dietaryPreferences}
+              recipes={recipes}
+              onRecipesChange={changeRecipes}
+              onTemplateCreate={createTemplateFromRecipe}
+            />
+          )}
+        </Suspense>
       </section>
 
       <NutritionActionPlan

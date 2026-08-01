@@ -1,0 +1,30 @@
+{
+  "name": "Viktkollen",
+  "short_name": "Viktkollen",
+  "lang": "sv",
+  "display": "standalone",
+  "start_url": "/",
+  "scope": "/",
+  "orientation": "portrait",
+  "theme_color": "#168b9c",
+  "background_color": "#eaf0f6",
+  "description": "Viktkollen hjälper dig följa vikt, måltider, vanor och progression lokalt i appen.",
+  "icons": [
+    {
+      "src": "/pwa-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/pwa-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -4,6 +4,11 @@ import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import AuthPanel from './components/AuthPanel.jsx'
 import ChatPanel from './components/ChatPanel.jsx'
 import CheckIn from './components/CheckIn.jsx'
+import AppLoadingScreen from './components/app/AppLoadingScreen.jsx'
+import AppTopbar from './components/app/AppTopbar.jsx'
+import BottomNavigation from './components/app/BottomNavigation.jsx'
+import LazySectionFallback from './components/app/LazySectionFallback.jsx'
+import OnboardingScreen from './components/app/OnboardingScreen.jsx'
 import CloudSyncPanel from './components/CloudSyncPanel.jsx'
 import CloudStatusPanel from './components/CloudStatusPanel.jsx'
 import Dashboard from './components/Dashboard.jsx'
@@ -2540,18 +2545,7 @@ function App() {
   }
 
   if (authLoading) {
-    return (
-      <main className="app-shell welcome-shell">
-        <PwaExperience />
-        <section className="welcome-card">
-          <p className="eyebrow">Viktkollen Auth</p>
-          <h1>Kontrollerar inloggning</h1>
-          <p className="welcome-subtitle">
-            Väntar på Supabase-session...
-          </p>
-        </section>
-      </main>
-    )
+    return <AppLoadingScreen />
   }
 
   if (!authSession) {
@@ -2572,139 +2566,28 @@ function App() {
 
   if (showOnboarding) {
     return (
-      <main className="app-shell onboarding-shell">
-        <PwaExperience />
-        <section className="onboarding-card">
-          <p className="eyebrow">Välkommen till Viktkollen</p>
-          <h1>Skapa din profil</h1>
-          <p className="onboarding-copy">
-            Svara på några snabba frågor så anpassar vi dashboarden efter ditt
-            mål. All data sparas bara lokalt i din webbläsare.
-          </p>
-
-          <form className="onboarding-form" onSubmit={saveProfile}>
-            <label className="field">
-              <span>Namn</span>
-              <input
-                type="text"
-                value={profileForm.name}
-                onChange={(event) =>
-                  updateProfileForm('name', event.target.value)
-                }
-                placeholder="Ditt namn"
-                required
-              />
-            </label>
-
-            <label className="field">
-              <span>Mål</span>
-              <select
-                value={profileForm.goal}
-                onChange={(event) =>
-                  updateProfileForm('goal', event.target.value)
-                }
-              >
-                {goalOptions.map((option) => (
-                  <option key={option}>{option}</option>
-                ))}
-              </select>
-            </label>
-
-            <div className="onboarding-row">
-              <label className="field">
-                <span>Startvikt</span>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={profileForm.startWeight}
-                  onChange={(event) =>
-                    updateProfileForm('startWeight', event.target.value)
-                  }
-                  placeholder="Ex. 91,8"
-                  required
-                />
-              </label>
-
-              <label className="field">
-                <span>Målvikt</span>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={profileForm.goalWeight}
-                  onChange={(event) =>
-                    updateProfileForm('goalWeight', event.target.value)
-                  }
-                  placeholder="Ex. 84,0"
-                  required
-                />
-              </label>
-            </div>
-
-            <label className="field">
-              <span>Aktivitetsnivå</span>
-              <select
-                value={profileForm.activityLevel}
-                onChange={(event) =>
-                  updateProfileForm('activityLevel', event.target.value)
-                }
-              >
-                {activityOptions.map((option) => (
-                  <option key={option}>{option}</option>
-                ))}
-              </select>
-            </label>
-
-            {profileError && (
-              <p className="form-error" role="alert">
-                {profileError}
-              </p>
-            )}
-
-            <button type="submit">Spara och fortsätt</button>
-          </form>
-        </section>
-      </main>
+      <OnboardingScreen
+        activityOptions={activityOptions}
+        goalOptions={goalOptions}
+        onProfileFormChange={updateProfileForm}
+        onSubmit={saveProfile}
+        profileError={profileError}
+        profileForm={profileForm}
+      />
     )
   }
 
   return (
     <main className="app-shell">
       <PwaExperience />
-      <header className="topbar" id="hem">
-        <div>
-          <p className="eyebrow">Viktkollen MVP</p>
-          <h1>
-            {profile?.name ? `Hej ${profile.name}` : 'Coach för träning, mat och vanor'}
-          </h1>
-          <p className="profile-summary">
-            {profileSummaryParts.join(' · ')}
-          </p>
-        </div>
-        <div className="topbar-actions">
-          <p className="welcome-note">
-            Inloggad som {authSession.user?.email || 'okänd e-post'}
-          </p>
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={() => setShowOnboarding(true)}
-          >
-            Ändra profil
-          </button>
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={handleSignOut}
-            disabled={authLoading}
-          >
-            Logga ut
-          </button>
-          <p className="disclaimer">
-            Den här appen ger endast allmänt stöd för hälsa och välmående. Den är
-            inte medicinsk rådgivning, diagnos eller behandling.
-          </p>
-        </div>
-      </header>
+      <AppTopbar
+        authLoading={authLoading}
+        email={authSession.user?.email}
+        onEditProfile={() => setShowOnboarding(true)}
+        onSignOut={handleSignOut}
+        profile={profile}
+        profileSummaryParts={profileSummaryParts}
+      />
 
       <AppErrorBoundary area="dashboard" resetKey={healthSnapshot.date} title="Översikten kunde inte visas">
         <Dashboard actions={dashboardActions} dashboard={dashboardData} />
@@ -2719,7 +2602,7 @@ function App() {
         />
       </AppErrorBoundary>
 
-      <Suspense fallback={<section className="panel lazy-section-fallback" role="status" aria-live="polite">Laddar appsektioner...</section>}>
+      <Suspense fallback={<LazySectionFallback />}>
       <section className="content-grid">
         <AppErrorBoundary area="progress" resetKey={`${healthSnapshot.date}-${weights.length}`} title="Framsteg kunde inte visas">
           <ProgressCenter
@@ -2905,36 +2788,7 @@ function App() {
       </section>
       </Suspense>
 
-      <nav className="bottom-nav" aria-label="Huvudnavigation">
-        <a href="#hem" aria-label="Gå till översikt">
-          <span>⌂</span>
-          <strong>Hem</strong>
-        </a>
-        <a href="#checkin" aria-label="Gå till dagens check-in">
-          <span>✓</span>
-          <strong>Check</strong>
-        </a>
-        <a href="#vikt" aria-label="Gå till viktloggen">
-          <span>↗</span>
-          <strong>Vikt</strong>
-        </a>
-        <a href="#mat" aria-label="Gå till matchecklistan">
-          <span>+</span>
-          <strong>Mat</strong>
-        </a>
-        <a href="#framstegsbilder" aria-label="Gå till framstegsbilder">
-          <span>□</span>
-          <strong>Foto</strong>
-        </a>
-        <a href="#manadsrapport" aria-label="Gå till månadsrapport">
-          <span>30</span>
-          <strong>Rapport</strong>
-        </a>
-        <a href="#installningar" aria-label="Gå till inställningar">
-          <span>⚙</span>
-          <strong>Mer</strong>
-        </a>
-      </nav>
+      <BottomNavigation />
     </main>
   )
 }

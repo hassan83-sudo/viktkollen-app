@@ -12,6 +12,7 @@ import OnboardingScreen from './components/app/OnboardingScreen.jsx'
 import CloudSyncPanel from './components/CloudSyncPanel.jsx'
 import CloudStatusPanel from './components/CloudStatusPanel.jsx'
 import Dashboard from './components/Dashboard.jsx'
+import GlobalSyncStatus from './components/GlobalSyncStatus.jsx'
 import PwaExperience from './components/PwaExperience.jsx'
 import {
   bodyAnalysisHistoryChangedEvent,
@@ -71,6 +72,7 @@ import {
 import * as userDataRepository from './services/userDataRepository.js'
 import { loadAiApiService, loadAiCoachV2Service, loadAiSuggestions, loadAiUserContext, loadProactiveCoachService, loadWeeklyReportService } from './services/ai/aiRuntimeLoader.js'
 import { prepareCoachChatSubmission, requestCoachChatReply } from './services/ai/aiChatController.js'
+import { useGlobalSyncScheduler } from './services/sync/useGlobalSyncScheduler.js'
 
 const AICoach = lazy(() => import('./components/AICoach.jsx'))
 const BarcodeScanner = lazy(() => import('./components/BarcodeScanner.jsx'))
@@ -1897,6 +1899,10 @@ function App() {
     setBodyAnalysisHistory(getAnalysisHistory())
   }, [])
 
+  useGlobalSyncScheduler(authSession?.user?.id || '', {
+    onDataChanged: refreshAppStateFromStorage,
+  })
+
   function updateProfileForm(key, value) {
     setProfileForm((current) => ({ ...current, [key]: value }))
   }
@@ -2591,6 +2597,7 @@ function App() {
   return (
     <main className="app-shell">
       <PwaExperience />
+      <GlobalSyncStatus />
       <AppTopbar
         authLoading={authLoading}
         email={authSession.user?.email}

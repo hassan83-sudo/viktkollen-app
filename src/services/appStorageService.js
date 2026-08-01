@@ -1,8 +1,21 @@
 import { markSyncKeyDirty } from './sync/syncMetadata.js'
 import { normalizeAppError } from './appErrorService.js'
 
+export const appStorageChangedEvent = 'viktkollen:app-storage-changed'
+
 function canUseLocalStorage() {
   return typeof window !== 'undefined' && Boolean(window.localStorage)
+}
+
+function notifyStorageChanged(key) {
+  if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return
+
+  const EventConstructor = window.CustomEvent || (typeof CustomEvent === 'function' ? CustomEvent : null)
+  if (!EventConstructor) return
+
+  window.dispatchEvent(new EventConstructor(appStorageChangedEvent, {
+    detail: { key },
+  }))
 }
 
 export function readStorage(key, fallbackValue) {
@@ -70,6 +83,7 @@ export function writeStorageResult(key, value) {
   try {
     window.localStorage.setItem(key, JSON.stringify(value))
     markSyncKeyDirty(key, window.localStorage)
+    notifyStorageChanged(key)
     return {
       error: null,
       ok: true,
@@ -105,6 +119,7 @@ export function removeStorageResult(key) {
   try {
     window.localStorage.removeItem(key)
     markSyncKeyDirty(key, window.localStorage)
+    notifyStorageChanged(key)
     return {
       error: null,
       ok: true,

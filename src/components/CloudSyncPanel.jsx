@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getSafeErrorMessage } from '../services/appErrorService.js'
 import { loadCloudSyncEngine } from '../services/cloudRuntimeLoader.js'
+import { globalSyncScheduler } from '../services/sync/globalSyncScheduler.js'
 import { readSyncMetadata } from '../services/sync/syncMetadata.js'
 
 const defaultCloudSyncStatus = {
@@ -55,7 +56,6 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
   const [status, setStatus] = useState(() => getInitialCloudSyncStatus())
   const [isSyncing, setIsSyncing] = useState(false)
   const [message, setMessage] = useState('')
-  const hasAutoSyncedRef = useRef(false)
 
   const refreshStatus = useCallback(async () => {
     const { getCloudSyncStatusModel } = await loadCloudSyncEngine()
@@ -69,8 +69,7 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
     setMessage('')
 
     try {
-      const { runCloudSync } = await loadCloudSyncEngine()
-      const result = await runCloudSync({ force: true, userId })
+      const result = await globalSyncScheduler.syncNow('manual')
 
       if (result.ok && (result.downloaded?.length || result.merged?.length)) {
         onDataChanged?.()
@@ -82,7 +81,7 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
       void refreshStatus().catch(() => {})
       setIsSyncing(false)
     }
-  }, [isAuthenticated, onDataChanged, refreshStatus, userId])
+  }, [isAuthenticated, onDataChanged, refreshStatus])
 
   const toggleEnabled = useCallback(async () => {
     const next = !status.enabled
@@ -154,32 +153,6 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
       cancelled = true
     }
   }, [])
-
-  useEffect(() => {
-    if (!isAuthenticated || !status.enabled) return undefined
-
-    const handleOnline = () => {
-      syncNow()
-    }
-
-    window.addEventListener('online', handleOnline)
-    return () => window.removeEventListener('online', handleOnline)
-  }, [isAuthenticated, status.enabled, syncNow])
-
-  useEffect(() => {
-    if (!status.enabled) {
-      hasAutoSyncedRef.current = false
-      return undefined
-    }
-    if (!isAuthenticated || isSyncing || hasAutoSyncedRef.current) return undefined
-
-    const timeoutId = window.setTimeout(() => {
-      hasAutoSyncedRef.current = true
-      syncNow()
-    }, 0)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [isAuthenticated, isSyncing, status.enabled, syncNow])
 
   const conflicts = useMemo(() => status.conflicts || [], [status.conflicts])
 

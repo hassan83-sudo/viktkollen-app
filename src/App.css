@@ -142,6 +142,37 @@
   color: var(--warning-text);
 }
 
+.global-sync-status {
+  justify-self: start;
+  margin: -4px 0 12px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.global-sync-status a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.global-sync-status.is-conflict,
+.global-sync-status.is-error,
+.global-sync-status.is-offline,
+.global-sync-status.is-retry_waiting {
+  border-color: var(--warning-border);
+  color: var(--warning-text);
+}
+
+.global-sync-status.is-running,
+.global-sync-status.is-dirty {
+  border-color: rgba(22, 139, 156, 0.3);
+  color: var(--accent);
+}
+
 .pwa-diagnostics {
   padding: 10px 12px;
 }

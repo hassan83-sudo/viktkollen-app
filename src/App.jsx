@@ -13,20 +13,10 @@ import CloudSyncPanel from './components/CloudSyncPanel.jsx'
 import CloudStatusPanel from './components/CloudStatusPanel.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import PwaExperience from './components/PwaExperience.jsx'
-import { makePersonalCoachReply } from './lib/coachReply.js'
 import {
   bodyAnalysisHistoryChangedEvent,
   getAnalysisHistory,
 } from './services/bodyAnalysisHistory.js'
-import { requestAiEndpoint } from './services/aiApiService.js'
-import { addAiConversationMemory } from './services/aiConversationMemory.js'
-import {
-  buildAiCoachAppContextFromData,
-  makePendingCoachChatHistory,
-} from './services/aiCoach/coachAppContext.js'
-import { createDeterministicAiCoachReply } from './services/aiCoachDeterministicReplies.js'
-import { createAiCoachV2Report } from './services/aiCoachV2Service.js'
-import { createAiSuggestions } from './services/aiSuggestions.js'
 import {
   getAuthErrorMessage,
   getAuthStatus,
@@ -36,7 +26,6 @@ import {
   signUpWithEmail,
   subscribeToAuthChanges,
 } from './services/authService.js'
-import { buildAiUserContext } from './services/aiUserContext.js'
 import { createDashboardData } from './services/dashboardService.js'
 import {
   formatKg as formatHealthKg,
@@ -56,7 +45,6 @@ import {
   importMealHistory,
   setMealHistory,
 } from './services/mealHistory.js'
-import { analyzeMealPhoto } from './services/mealAnalysisService.js'
 import { createMonthlyHealthReport } from './services/monthlyReportService.js'
 import {
   getTodayDateString as getNutritionTodayDateString,
@@ -70,7 +58,6 @@ import {
   upsertMeal,
   buildNutritionInsights,
 } from './services/nutritionService.js'
-import { getProactiveCoachInsights, makeProactiveCoachInsights } from './services/proactiveCoachService.js'
 import {
   analyzeBodyMeasurements,
   analyzeWeights,
@@ -82,7 +69,8 @@ import {
   normalizeWeights,
 } from './services/progressService.js'
 import * as userDataRepository from './services/userDataRepository.js'
-import { createWeeklyReport as createAiWeeklyReport } from './services/weeklyReportService.js'
+import { loadAiApiService, loadAiCoachV2Service, loadAiSuggestions, loadAiUserContext, loadProactiveCoachService, loadWeeklyReportService } from './services/ai/aiRuntimeLoader.js'
+import { prepareCoachChatSubmission, requestCoachChatReply } from './services/ai/aiChatController.js'
 
 const AICoach = lazy(() => import('./components/AICoach.jsx'))
 const BarcodeScanner = lazy(() => import('./components/BarcodeScanner.jsx'))
@@ -95,11 +83,16 @@ const ProgressPhotos = lazy(() => import('./components/ProgressPhotos.jsx'))
 const ReminderSettings = lazy(() => import('./components/ReminderSettings.jsx'))
 
 const starterWeights = [
-  { date: '2026-05-23', value: 91.8 },
-  { date: '2026-05-24', value: 91.2 },
-  { date: '2026-05-25', value: 90.9 },
-  { date: '2026-05-26', value: 90.4 },
+  { date: '2026-05-23', value: 91.8 }, { date: '2026-05-24', value: 91.2 },
+  { date: '2026-05-25', value: 90.9 }, { date: '2026-05-26', value: 90.4 },
   { date: '2026-05-27', value: 90.1 },
+]
+
+const defaultAiStarterPrompts = [
+  'Hur mycket väger jag nu?',
+  'Hur mycket har jag gått ner?',
+  'Vad ska jag äta ikväll?',
+  'Hur kan jag hålla motivationen?',
 ]
 
 function readInitialWeights() {
@@ -647,7 +640,7 @@ function makeMultiPartReply(message, chatHistory = []) {
   return parts.length > 1 ? parts.join('\n\n') : ''
 }
 
-function makeChatResponse(
+async function makeChatResponse(
   message,
   profile,
   checkIn,
@@ -710,6 +703,7 @@ Handla: ägg, kyckling/tonfisk, linser/bönor, potatis/ris och frysta grönsaker
     return 'Hej! Hur kan jag hjälpa dig idag?'
   }
 
+  const { makePersonalCoachReply } = await import('./lib/coachReply.js')
   const personalReply = makePersonalCoachReply({
     checkIn,
     currentWeight,
@@ -842,6 +836,7 @@ function App() {
   const barcodeTimerRef = useRef(null)
   const chatThreadRef = useRef(null)
   const messagesEndRef = useRef(null)
+  const chatRequestInFlightRef = useRef(false)
   const recognitionRef = useRef(null)
   const [authError, setAuthError] = useState('')
   const [authLoading, setAuthLoading] = useState(true)
@@ -972,43 +967,7 @@ function App() {
   )
   const latestWeight = healthSnapshot.weight.dailyWeights.at(-1) || { value: healthSnapshot.weight.current }
   const centralCurrentWeight = healthSnapshot.weight.current
-  const aiUserContext = useMemo(
-    () =>
-      buildAiUserContext({
-        bodyAnalysisHistory,
-        chatHistory: chatMessages,
-        checkIn,
-        currentWeight: centralCurrentWeight,
-        foods,
-        healthSnapshot,
-        latestWeeklyReport: weeklyReportData,
-        mealHistory: photoMeals,
-        meals,
-        nutritionGoals,
-        profile: validatedProfile,
-        today: selectedMealDate,
-        weights,
-      }),
-    [
-      bodyAnalysisHistory,
-      chatMessages,
-      checkIn,
-      centralCurrentWeight,
-      foods,
-      healthSnapshot,
-      meals,
-      nutritionGoals,
-      photoMeals,
-      selectedMealDate,
-      validatedProfile,
-      weeklyReportData,
-      weights,
-    ],
-  )
-  const aiStarterPrompts = useMemo(
-    () => createAiSuggestions(aiUserContext).slice(0, 4),
-    [aiUserContext],
-  )
+  const [aiStarterPrompts, setAiStarterPrompts] = useState(defaultAiStarterPrompts)
   const foodScore = foods.filter((item) => item.done).length
   const progressAnalysis = useMemo(
     () => analyzeWeights(healthSnapshot.weight.dailyWeights, validatedProfile),
@@ -1263,9 +1222,14 @@ function App() {
       ? 'Uppdaterar AI-coach...'
       : ''
   const latestCoachReport = coachReports[0] || null
-  const currentCoachPreview = useMemo(
-    () =>
-      createAiCoachV2Report({
+  const [currentCoachPreview, setCurrentCoachPreview] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadCoachPreview() {
+      const { createAiCoachV2Report } = await loadAiCoachV2Service()
+      const report = createAiCoachV2Report({
         checkIn,
         healthSnapshot,
         mealHistory: photoMeals,
@@ -1283,27 +1247,41 @@ function App() {
         bodyMeasurements,
         weeklyNutrition: weeklyNutritionSummary,
         weights,
-      }),
-    [
-      checkIn,
-      coachReports,
-      dailyNutritionSummary,
-      healthSnapshot,
-      meals,
-      nutritionGoals,
-      nutritionInsights,
-      photoMeals,
-      validatedProfile,
-      progressAnalysis,
-      progressInsights,
-      progressProjection,
-      selectedMealDate,
-      bodyMeasurementAnalysis,
-      bodyMeasurements,
-      weeklyNutritionSummary,
-      weights,
-    ],
-  )
+      })
+
+      if (!cancelled) {
+        setCurrentCoachPreview(report)
+      }
+    }
+
+    void loadCoachPreview().catch(() => {
+      if (!cancelled) {
+        setCurrentCoachPreview(null)
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    bodyMeasurementAnalysis,
+    bodyMeasurements,
+    checkIn,
+    coachReports,
+    dailyNutritionSummary,
+    healthSnapshot,
+    meals,
+    nutritionGoals,
+    nutritionInsights,
+    photoMeals,
+    progressAnalysis,
+    progressInsights,
+    progressProjection,
+    selectedMealDate,
+    validatedProfile,
+    weeklyNutritionSummary,
+    weights,
+  ])
 
   const proactiveCoachKey = useMemo(
     () =>
@@ -1316,19 +1294,7 @@ function App() {
       }),
     [checkIn, meals, photoMeals, selectedMealDate, weights],
   )
-  const fallbackProactiveCoachInsights = useMemo(
-    () =>
-      makeProactiveCoachInsights({
-        bodyAnalysisHistory,
-        checkIn,
-        healthSnapshot,
-        mealHistory: photoMeals,
-        meals,
-        today: selectedMealDate,
-        weights,
-      }),
-    [bodyAnalysisHistory, checkIn, healthSnapshot, meals, photoMeals, selectedMealDate, weights],
-  )
+  const [fallbackProactiveCoachInsights, setFallbackProactiveCoachInsights] = useState([])
   const proactiveCoachInsights =
     proactiveCoachResult?.key === proactiveCoachKey
       ? proactiveCoachResult.insights
@@ -1337,6 +1303,7 @@ function App() {
     setWeeklyReportStatus('Skapar AI-veckorapport...')
 
     try {
+      const { createWeeklyReport: createAiWeeklyReport } = await loadWeeklyReportService()
       const report = await createAiWeeklyReport({
         bodyAnalysisHistory,
         checkIn,
@@ -1380,28 +1347,31 @@ function App() {
     setIsGeneratingCoachReport(true)
 
     window.setTimeout(() => {
-      const report = createAiCoachV2Report({
-        checkIn,
-        healthSnapshot,
-        mealHistory: photoMeals,
-        meals,
-        nutritionGoals,
-        nutritionInsights,
-        nutritionSummary: dailyNutritionSummary,
-        previousReports: coachReports,
-        progressAnalysis,
-        progressInsights,
-        progressProjection,
-        profile: validatedProfile,
-        today: selectedMealDate,
-        bodyMeasurementAnalysis,
-        bodyMeasurements,
-        weeklyNutrition: weeklyNutritionSummary,
-        weights,
-      })
+      void loadAiCoachV2Service()
+        .then(({ createAiCoachV2Report }) => {
+          const report = createAiCoachV2Report({
+            checkIn,
+            healthSnapshot,
+            mealHistory: photoMeals,
+            meals,
+            nutritionGoals,
+            nutritionInsights,
+            nutritionSummary: dailyNutritionSummary,
+            previousReports: coachReports,
+            progressAnalysis,
+            progressInsights,
+            progressProjection,
+            profile: validatedProfile,
+            today: selectedMealDate,
+            bodyMeasurementAnalysis,
+            bodyMeasurements,
+            weeklyNutrition: weeklyNutritionSummary,
+            weights,
+          })
 
-      setCoachReports((current) => [report, ...current].slice(0, 20))
-      setIsGeneratingCoachReport(false)
+          setCoachReports((current) => [report, ...current].slice(0, 20))
+        })
+        .finally(() => setIsGeneratingCoachReport(false))
     }, 350)
   }, [
     checkIn,
@@ -1714,6 +1684,61 @@ function App() {
   useEffect(() => {
     let cancelled = false
 
+    async function loadStarterPrompts() {
+      try {
+        const [{ buildAiUserContext }, { createAiSuggestions }] = await Promise.all([
+          loadAiUserContext(),
+          loadAiSuggestions(),
+        ])
+        const context = buildAiUserContext({
+          bodyAnalysisHistory,
+          chatHistory: chatMessages,
+          checkIn,
+          currentWeight: centralCurrentWeight,
+          foods,
+          healthSnapshot,
+          latestWeeklyReport: weeklyReportData,
+          mealHistory: photoMeals,
+          meals,
+          nutritionGoals,
+          profile: validatedProfile,
+          today: selectedMealDate,
+          weights,
+        })
+        const prompts = createAiSuggestions(context).slice(0, 4)
+
+        if (!cancelled && prompts.length > 0) {
+          setAiStarterPrompts(prompts)
+        }
+      } catch {
+        // Keep the static starter prompts when the optional AI suggestion chunk fails.
+      }
+    }
+
+    void loadStarterPrompts()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    bodyAnalysisHistory,
+    centralCurrentWeight,
+    chatMessages,
+    checkIn,
+    foods,
+    healthSnapshot,
+    meals,
+    nutritionGoals,
+    photoMeals,
+    selectedMealDate,
+    validatedProfile,
+    weeklyReportData,
+    weights,
+  ])
+
+  useEffect(() => {
+    let cancelled = false
+
     if (!authSession || showOnboarding) {
       return () => {
         cancelled = true
@@ -1721,28 +1746,33 @@ function App() {
     }
 
     async function loadDailyCoach() {
-      const result = await requestAiEndpoint({
-        action: 'daily-coach',
-        checkIn,
-        foods,
-        healthSnapshot,
-        mealHistory: photoMeals,
-        meals,
-        nutritionGoals,
-        profile: validatedProfile,
-        today: selectedMealDate,
-        weights: healthSnapshot.weight.dailyWeights,
-        currentWeight: centralCurrentWeight,
-      })
-      const data = result.data || {}
-
-      if (!cancelled && result.ok && typeof data.summary === 'string' && data.summary.trim()) {
-        setDailyCoachResult({
-          key: dailyCoachKey,
-          source: data.source === 'openai' ? 'openai' : 'mock',
-          summary: data.summary.trim(),
+      try {
+        const { requestAiEndpoint } = await loadAiApiService()
+        const result = await requestAiEndpoint({
+          action: 'daily-coach',
+          checkIn,
+          foods,
+          healthSnapshot,
+          mealHistory: photoMeals,
+          meals,
+          nutritionGoals,
+          profile: validatedProfile,
+          today: selectedMealDate,
+          weights: healthSnapshot.weight.dailyWeights,
+          currentWeight: centralCurrentWeight,
         })
-        return
+        const data = result.data || {}
+
+        if (!cancelled && result.ok && typeof data.summary === 'string' && data.summary.trim()) {
+          setDailyCoachResult({
+            key: dailyCoachKey,
+            source: data.source === 'openai' ? 'openai' : 'mock',
+            summary: data.summary.trim(),
+          })
+          return
+        }
+      } catch {
+        // Daily coach falls back to the deterministic local summary below.
       }
 
       if (!cancelled) {
@@ -1787,7 +1817,16 @@ function App() {
     }
 
     async function loadProactiveCoach() {
+      let fallbackInsights = []
+
       try {
+        const { getProactiveCoachInsights, makeProactiveCoachInsights } = await loadProactiveCoachService()
+        fallbackInsights = makeProactiveCoachInsights(coachData)
+
+        if (!cancelled) {
+          setFallbackProactiveCoachInsights(fallbackInsights)
+        }
+
         const insights = await getProactiveCoachInsights(coachData)
 
         if (!cancelled) {
@@ -1799,7 +1838,7 @@ function App() {
       } catch {
         if (!cancelled) {
           setProactiveCoachResult({
-            insights: fallbackProactiveCoachInsights,
+            insights: fallbackInsights,
             key: proactiveCoachKey,
           })
         }
@@ -1811,7 +1850,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [bodyAnalysisHistory, checkIn, fallbackProactiveCoachInsights, healthSnapshot, meals, photoMeals, proactiveCoachKey, selectedMealDate, weights])
+  }, [bodyAnalysisHistory, checkIn, healthSnapshot, meals, photoMeals, proactiveCoachKey, selectedMealDate, weights])
 
   const refreshAppStateFromStorage = useCallback(() => {
     const nextProfile = userDataRepository.getProfile(null, isStoredProfile)
@@ -1979,6 +2018,8 @@ function App() {
   }
 
   async function requestMealAnalysis(image) {
+    const { analyzeMealPhoto } = await import('./services/mealAnalysisService.js')
+
     return analyzeMealPhoto({
       checkIn,
       foods,
@@ -2244,10 +2285,9 @@ function App() {
     return validatedProfile
   }
 
-  function buildCurrentAiCoachContext(chatHistory) {
-    return buildAiCoachAppContextFromData({
+  function getAiCoachAppData() {
+    return {
       bodyAnalysisHistory,
-      chatHistory,
       checkIn,
       foods,
       healthSnapshot,
@@ -2259,67 +2299,27 @@ function App() {
       profile: validatedProfile,
       today: selectedMealDate,
       weights,
-    })
-  }
-
-  function createLocalSmartChatReply(message, chatHistory) {
-    try {
-      const context = buildCurrentAiCoachContext(chatHistory)
-
-      return {
-        reply: createDeterministicAiCoachReply({
-          chatHistory: context.chatHistory,
-          context,
-          message,
-        }),
-        source: 'mock',
-      }
-    } catch {
-      return {
-        reply: makeChatResponse(
-          message,
-          profile,
-          checkIn,
-          foods,
-          centralCurrentWeight,
-          chatHistory,
-          healthSnapshot.weight.dailyWeights,
-          healthSnapshot.nutrition.mealsToday,
-        ),
-        source: 'mock',
-      }
-    }
-  }
-
-  function createDeterministicChatReply(message, chatHistory) {
-    try {
-      const context = buildCurrentAiCoachContext(chatHistory)
-      const reply = createDeterministicAiCoachReply({
-        chatHistory: context.chatHistory,
-        context,
-        message,
-      })
-
-      return reply
-        ? {
-          reply,
-          source: 'mock',
-        }
-        : null
-    } catch {
-      return null
     }
   }
 
   async function requestChatReply(message, chatHistoryOverride = null) {
     const sourceChatHistory = chatHistoryOverride || chatMessages
-    const recentChatHistory = sourceChatHistory.slice(-10).map((chatMessage) => ({
-      createdAt: chatMessage.createdAt,
-      role: chatMessage.role,
-      text: chatMessage.text,
-    }))
-    return createDeterministicChatReply(message, recentChatHistory) ||
-      createLocalSmartChatReply(message, recentChatHistory)
+
+    return requestCoachChatReply({
+      appData: getAiCoachAppData(),
+      chatHistory: sourceChatHistory,
+      fallbackReply: () => makeChatResponse(
+        message,
+        profile,
+        checkIn,
+        foods,
+        centralCurrentWeight,
+        sourceChatHistory,
+        healthSnapshot.weight.dailyWeights,
+        healthSnapshot.nutrition.mealsToday,
+      ),
+      message,
+    })
   }
 
   function appendChatMessage(role, text, source = '', createdAt = new Date().toISOString()) {
@@ -2343,11 +2343,20 @@ function App() {
   }
 
   async function sendChatText(text) {
+    if (chatRequestInFlightRef.current) {
+      return
+    }
+
+    chatRequestInFlightRef.current = true
     const createdAt = new Date().toISOString()
-    const pendingChatHistory = makePendingCoachChatHistory(chatMessages, text, createdAt)
+    const { addMemory, pendingChatHistory } = await prepareCoachChatSubmission({
+      chatMessages,
+      createdAt,
+      text,
+    })
 
     appendChatMessage('user', text, '', createdAt)
-    addAiConversationMemory({
+    addMemory({
       feature: 'ai-coach',
       role: 'user',
       text,
@@ -2363,7 +2372,7 @@ function App() {
           : '',
       )
       appendChatMessage('assistant', result.reply, result.source)
-      addAiConversationMemory({
+      addMemory({
         feature: 'ai-coach',
         role: 'assistant',
         text: result.reply,
@@ -2373,6 +2382,8 @@ function App() {
 
       setChatEngineStatus('AI-coachen kunde inte svara just nu.')
       appendChatMessage('assistant', reply, 'mock')
+    } finally {
+      chatRequestInFlightRef.current = false
     }
   }
 

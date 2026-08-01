@@ -12,10 +12,6 @@ function manualChunks(id) {
     return 'supabase-vendor'
   }
 
-  if (normalized.includes('/src/services/ai') || normalized.includes('/src/lib/coachReply')) {
-    return 'ai-services'
-  }
-
   if (normalized.includes('/src/services/nutrition')) {
     return 'nutrition-services'
   }

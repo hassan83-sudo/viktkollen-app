@@ -1,4 +1,3 @@
-﻿import { getRecentAiConversation } from './aiConversationMemory.js'
 import { getAnalysisHistory } from './bodyAnalysisHistory.js'
 import {
   formatKg,
@@ -584,9 +583,7 @@ function createDashboardContext(data) {
     data.bodyAnalysisHistory ?? safeReadHistory(getAnalysisHistory),
   )
   const mealHistory = safeArray(data.mealHistory ?? safeReadHistory(getMealHistory))
-  const coachMemory = safeArray(
-    data.aiCoachMemory ?? safeReadHistory(getRecentAiConversation),
-  )
+  const coachMemory = safeArray(data.aiCoachMemory ?? [])
   const foods = safeArray(data.foods)
   const meals = safeArray(data.meals)
   const snapshot = data.healthSnapshot || buildHealthSnapshot({

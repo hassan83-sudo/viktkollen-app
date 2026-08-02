@@ -5,6 +5,7 @@ import { addLocalDays, getEntryLocalDate, getLocalDateString, getLocalDateRange 
 import { calculateDailyNutritionSummary } from './nutrition/dailyNutritionSummary.js'
 import { filterActualMealsForDate, getMealLocalDate, isPlannedMealRecord } from './nutrition/mealDateUtils.js'
 import { normalizeNutritionGoals, parseProteinGoal } from './nutrition/nutritionGoals.js'
+import { buildSharedAnalytics } from './sharedAnalyticsEngine.js'
 
 export const aiNutritionInsightModelVersion = 2
 export const maxPersonalInsightCount = 6
@@ -466,6 +467,7 @@ export function buildAiNutritionCoachInsights(input = {}, options = {}) {
   const checkIns = safeArray(input.checkIns?.length ? input.checkIns : input.checkIn ? [input.checkIn] : [])
   const weights = safeArray(input.weights)
   const nutritionGoals = normalizeNutritionGoals(input.nutritionGoals)
+  const sharedAnalytics = buildSharedAnalytics(input, { analysisDate, period: '7d' })
   const rawInsights = [
     ...buildWeightInsights({ analysisDate, generatedAt, period, profile, weights }),
     ...buildNutritionInsights({ analysisDate, generatedAt, meals, nutritionGoals, period }),
@@ -478,11 +480,18 @@ export function buildAiNutritionCoachInsights(input = {}, options = {}) {
   return {
     actionPlan: buildPersonalInsightActionPlan(insights),
     analysisDate,
-    dataCoverage: coverage,
+    dataCoverage: {
+      ...coverage,
+      shared: sharedAnalytics.coverage,
+    },
     generatedAt,
     insights,
     modelVersion: aiNutritionInsightModelVersion,
-    overview,
+    overview: {
+      ...overview,
+      sharedSummary: sharedAnalytics.summaries,
+    },
+    sharedAnalytics: sharedAnalytics.reportModel,
   }
 }
 

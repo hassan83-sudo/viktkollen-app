@@ -3,26 +3,15 @@ import {
   addLocalDays,
   getEntryLocalDate,
   getLocalDateString,
-  getLocalDateRange,
   isLocalDateInRange,
   parseDateValue,
 } from './localDate.js'
 import { buildHealthSnapshot } from './healthSnapshot.js'
 import { buildGoalsHabitsLiteSummary } from './goalsHabitsSummary.js'
-
-const DAYS_IN_REPORT = 30
+import { buildSharedMonthlyReportModel } from './sharedAnalyticsEngine.js'
 
 function safeArray(value) {
   return Array.isArray(value) ? value : []
-}
-
-function isWithinLastDays(date, days) {
-  const range = getLocalDateRange(days)
-  const localDate = typeof date === 'object'
-    ? getEntryLocalDate(date)
-    : getEntryLocalDate({ date })
-
-  return isLocalDateInRange(localDate, range)
 }
 
 function getMostCommon(values, fallback = 'Saknas') {
@@ -197,8 +186,13 @@ function makeImprovements(report) {
  */
 export function createMonthlyHealthReport(data = {}) {
   const snapshot = data.healthSnapshot || buildHealthSnapshot(data)
+  const sharedReport = buildSharedMonthlyReportModel({
+    ...data,
+    healthSnapshot: snapshot,
+  }, { analysisDate: data.today })
+  const reportRange = sharedReport.period
   const recentWeights = normalizeDailyWeightEntries(snapshot.weight.dailyWeights)
-    .filter((entry) => isWithinLastDays(entry?.date, DAYS_IN_REPORT))
+    .filter((entry) => isLocalDateInRange(getEntryLocalDate(entry), reportRange))
     .sort((first, second) => new Date(first.date) - new Date(second.date))
   const firstWeight = recentWeights[0]?.value
   const lastWeight = recentWeights.at(-1)?.value
@@ -212,7 +206,7 @@ export function createMonthlyHealthReport(data = {}) {
     : null
   const actualMeals = snapshot.nutrition.actualMeals
   const recentMeals = safeArray(actualMeals).filter((entry) =>
-    isWithinLastDays(getMealDate(entry), DAYS_IN_REPORT),
+    isLocalDateInRange(getMealDate(entry), reportRange),
   )
   const recentMealAnalyses = recentMeals.filter((entry) => entry.analysis || entry.proteinStatus || entry.vegetableStatus)
   const totalMeals = recentMeals.length
@@ -250,7 +244,9 @@ export function createMonthlyHealthReport(data = {}) {
       'Saknas ännu',
     ),
     generatedAt: new Date().toISOString(),
+    period: sharedReport.period,
     source: 'local_ai',
+    sharedAnalytics: sharedReport,
     totalMeals,
     weighInCount: recentWeights.length,
     weightChange,
@@ -269,7 +265,7 @@ export function createMonthlyHealthReport(data = {}) {
   return {
     ...report,
     aiSummary: makeAiSummary(report),
-    improvements: makeImprovements(report),
+    improvements: sharedReport.attentionItems.map((item) => item.action).filter(Boolean).slice(0, 3).concat(makeImprovements(report)).slice(0, 3),
     goalsHabits,
     motivation:
       'Du är på rätt väg. Små förbättringar varje vecka ger stora resultat över tid.',
@@ -277,6 +273,6 @@ export function createMonthlyHealthReport(data = {}) {
       totalMeals > 0
         ? `Du loggade mat ${getMealDays(recentMeals)} dagar denna månad.`
         : 'Du har startat månaden. Första loggade måltiden gör rapporten mer personlig.',
-    strengths: makeStrengths(report),
+    strengths: sharedReport.highlights.map((item) => item.text).slice(0, 3).concat(makeStrengths(report)).slice(0, 3),
   }
 }

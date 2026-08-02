@@ -1,16 +1,14 @@
 import { formatKg } from './healthCalculations.js'
-import { buildHealthSnapshot } from './healthSnapshot.js'
-import { formatProgressChange, buildProgressDashboardAnalytics } from './progress/progressAnalytics.js'
-import { buildGoalsHabitsLiteSummary } from './goalsHabitsSummary.js'
+import { formatProgressChange } from './progress/progressAnalytics.js'
 import { buildAiNutritionCoachInsights } from './aiNutritionInsights.js'
 import { getEntryLocalDate, getLocalDateString } from './localDate.js'
 import {
-  buildHealthDashboardPeriod,
   buildTrendSeries,
   collectAvailableDates,
   compareMetricPeriods,
   healthDashboardPeriodDefinitions,
 } from './healthDashboardPeriodEngine.js'
+import { buildSharedAnalytics } from './sharedAnalyticsEngine.js'
 
 export const healthDashboardV2ModelVersion = 2
 export const healthDashboardPeriods = healthDashboardPeriodDefinitions
@@ -328,91 +326,42 @@ function buildTrendSeriesSummary(analysis) {
   }
 }
 
-function buildExportSummary(model) {
-  return {
-    activity: model.activitySummary.textAlternative,
-    comparison: model.comparisons.text,
-    coverage: model.dataCoverage.text,
-    generatedFor: model.analysisDate,
-    highlights: model.progressHighlights.map((item) => item.text),
-    nutrition: model.nutritionSummary.textAlternative,
-    period: model.period.periodLabel,
-    version: model.modelVersion,
-    weight: model.weightSummary.textAlternative,
-  }
-}
-
 export function buildHealthDashboardV2Model(data = {}, options = {}) {
   const analysisDate = getLocalDateString(options.analysisDate || data.today || new Date())
-  const selectedPeriod = getPeriod(options.period || data.period || '30d')
-  const snapshot = data.healthSnapshot || buildHealthSnapshot({ ...data, today: analysisDate })
-  const period = buildHealthDashboardPeriod(selectedPeriod.id, {
-    analysisDate,
-    availableDates: {
-      checkIns: data.checkIns || snapshot.checkIn?.dailyEntries,
-      meals: data.meals || snapshot.nutrition?.actualMeals,
-      weights: data.weights || snapshot.weight?.dailyWeights,
-    },
-  })
-  const analysis = buildProgressDashboardAnalytics({
-    ...data,
-    healthSnapshot: snapshot,
-    today: analysisDate,
-  }, { period: selectedPeriod.id, today: analysisDate })
-  analysis.period = {
-    ...analysis.period,
-    ...period,
-  }
   const insightReport = buildAiNutritionCoachInsights(data, { analysisDate })
-  const coverage = buildCoverage({ analysis, insightReport, snapshot })
-  const weightSummary = buildWeightSummary(analysis, snapshot)
-  const nutritionSummary = buildNutritionSummary(analysis, coverage)
-  const activitySummary = buildActivitySummary(analysis)
-  const goalsSummary = buildGoalsHabitsLiteSummary(data.goalsHabits)
-  const insightSummary = buildInsightSummary(insightReport)
-  const highlights = buildHighlights({ activity: activitySummary, goals: goalsSummary, insightSummary, nutrition: nutritionSummary, weight: weightSummary })
-  const attentionItems = buildAttentionItems({ activity: activitySummary, coverage, goals: goalsSummary, nutrition: nutritionSummary, weight: weightSummary })
-  const nextActions = buildNextActions({ attentionItems, goals: goalsSummary, insightSummary })
-  const comparisons = buildComparisons(analysis)
-  const trendSeries = buildTrendSeriesSummary(analysis)
-
-  const model = {
-    activitySummary,
+  const shared = buildSharedAnalytics(data, {
     analysisDate,
-    attentionItems,
-    checkInSummary: {
-      energyLabel: activitySummary.averageEnergyLabel,
-      mood: activitySummary.averageMood,
-      text: activitySummary.textAlternative,
-    },
-    comparisons,
-    dataCoverage: coverage,
-    display: {
-      title: 'Health Dashboard',
-      subtitle: `${selectedPeriod.label} till ${analysisDate}`,
-    },
-    goalsSummary,
-    habitsSummary: goalsSummary,
-    insightsSummary: insightSummary,
-    modelVersion: healthDashboardV2ModelVersion,
-    nextActions,
-    nutritionSummary,
-    period,
-    periods: healthDashboardPeriods,
-    progressHighlights: highlights,
-    selectedPeriod,
-    sourceStatus: {
-      aiInsights: insightSummary.sourceStatus,
-      nutrition: nutritionSummary.sourceStatus,
-      weight: weightSummary.sourceStatus,
-    },
-    trendSeries,
-    weightSummary,
-  }
+    period: options.period || data.period || '30d',
+  })
+  const model = shared.dashboardModel
+  const insightSummary = buildInsightSummary(insightReport)
 
   return {
     ...model,
-    exportSummary: buildExportSummary(model),
+    exportSummary: {
+      ...model.exportSummary,
+      highlights: [
+        ...model.exportSummary.highlights,
+        insightSummary.positive,
+      ].filter(Boolean).slice(0, 5),
+    },
+    insightsSummary: insightSummary,
+    modelVersion: healthDashboardV2ModelVersion,
+    nextActions: buildNextActions({
+      attentionItems: model.attentionItems,
+      goals: model.goalsSummary,
+      insightSummary,
+    }),
+    progressHighlights: uniqueByText([
+      ...model.progressHighlights,
+      insightSummary.positive
+        ? { tone: 'positive', title: 'Personlig insikt', text: insightSummary.positive }
+        : null,
+    ].filter(Boolean)).slice(0, 5),
+    sourceStatus: {
+      ...model.sourceStatus,
+      aiInsights: insightSummary.sourceStatus,
+    },
   }
 }
 

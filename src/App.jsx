@@ -46,7 +46,6 @@ import {
   importMealHistory,
   setMealHistory,
 } from './services/mealHistory.js'
-import { createMonthlyHealthReport } from './services/monthlyReportService.js'
 import {
   getTodayDateString as getNutritionTodayDateString,
   getWeekStart,
@@ -1175,17 +1174,30 @@ function App() {
       }),
     [meals, nutritionGoals, selectedNutritionWeekStart],
   )
-  const monthlyReport = useMemo(
-    () =>
-      createMonthlyHealthReport({
-        goalsHabits,
-        healthSnapshot,
-        mealHistory: photoMeals,
-        meals,
-        weights,
-      }),
-    [goalsHabits, healthSnapshot, meals, photoMeals, weights],
-  )
+  const [monthlyReport, setMonthlyReport] = useState(null)
+  useEffect(() => {
+    let cancelled = false
+
+    import('./services/monthlyReportService.js')
+      .then(({ createMonthlyHealthReport }) => {
+        if (cancelled) return
+        setMonthlyReport(createMonthlyHealthReport({
+          goalsHabits,
+          healthSnapshot,
+          mealHistory: photoMeals,
+          meals,
+          weights,
+        }))
+      })
+      .catch(() => {
+        if (!cancelled) setMonthlyReport(null)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [goalsHabits, healthSnapshot, meals, photoMeals, weights])
+
   const weeklyReportLines = useMemo(
     () =>
       weeklyReport

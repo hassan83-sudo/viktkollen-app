@@ -2,36 +2,11 @@
 import { createAiFallback } from './aiFallbackEngine.js'
 import { requestAiEndpoint } from './aiApiService.js'
 import { buildAiUserContext } from './aiUserContext.js'
-import { formatKg, getUnifiedWeightFacts, getWeightStats } from './healthCalculations.js'
 import { normalizeCheckInMetrics } from './checkInNormalization.js'
 import { formatSteps } from './healthFormatting.js'
 import { buildHealthSnapshot } from './healthSnapshot.js'
 import { buildGoalsHabitsLiteSummary } from './goalsHabitsSummary.js'
-
-
-function getWeightTrend(weights = [], profile = {}) {
-  const weightStats = getWeightStats(weights)
-  const weightFacts = getUnifiedWeightFacts({
-    currentWeight: weightStats.current,
-    profile,
-    weights: weightStats.weights,
-  })
-  const change = weightFacts.weightChange
-
-  if (!weightStats.hasWeights || !Number.isFinite(change)) {
-    return 'Inte tillräckligt med viktdata ännu.'
-  }
-
-  if (weightFacts.weightLost > 0) {
-    return `Vikten är ned ${formatKg(weightFacts.weightLost)} sedan start.`
-  }
-
-  if (weightFacts.weightGained > 0) {
-    return `Vikten är upp ${formatKg(weightFacts.weightGained)} sedan start.`
-  }
-
-  return 'Vikten är stabil sedan start.'
-}
+import { buildSharedWeeklyReportModel } from './sharedAnalyticsEngine.js'
 
 function getMealPattern(mealHistory = [], meals = []) {
   if (mealHistory.length > 0) {
@@ -62,6 +37,10 @@ function hasStatus(history = [], key, keywords) {
  */
 export function makeWeeklyReportFallback(data) {
   const snapshot = data.healthSnapshot || buildHealthSnapshot(data)
+  const sharedReport = buildSharedWeeklyReportModel({
+    ...data,
+    healthSnapshot: snapshot,
+  }, { analysisDate: data.today })
   const userContext = buildAiUserContext(data)
   const aiFallback = createAiFallback({
     feature: 'weeklyReport',
@@ -83,21 +62,24 @@ export function makeWeeklyReportFallback(data) {
 
   return {
     biggestProgress:
-      mealHistory.length > 0
+      sharedReport.highlights[0]?.text ||
+      (mealHistory.length > 0
         ? 'Du har börjat skapa tydligare matdata med fotoanalyser.'
-        : 'Du har samlat data som gör nästa vecka lättare att styra.',
+        : 'Du har samlat data som gör nästa vecka lättare att styra.'),
     biggestRisk:
+      sharedReport.attentionItems[0]?.text ||
       proactiveRisk ||
       (energy <= 3
         ? 'Låg energi kan göra kvällsrutinen svårare.'
         : 'Risken är att nästa steg blir för stort i stället för upprepbart.'),
     focusNextWeek:
-      goalsHabitsSummary?.nextStep || proactiveAction || 'Välj en liten vana att upprepa varje dag.',
+      sharedReport.attentionItems[0]?.action || goalsHabitsSummary?.nextStep || proactiveAction || 'Välj en liten vana att upprepa varje dag.',
     goalsHabits: goalsHabitsSummary,
     movement:
-      Number.isFinite(steps)
+      sharedReport.summaries.activity ||
+      (Number.isFinite(steps)
         ? `${formatSteps(steps)} i senaste check-in.`
-        : 'Stegdata saknas i senaste check-in.',
+        : 'Stegdata saknas i senaste check-in.'),
     nextSteps: [
       hasProtein ? 'Behåll protein i nästa måltid.' : 'Lägg till protein i en måltid per dag.',
       hasVegetables ? 'Fortsätt med grönsaker/frukt.' : 'Lägg till frukt eller grönsaker dagligen.',
@@ -116,12 +98,13 @@ export function makeWeeklyReportFallback(data) {
     source: 'mock',
     summary:
       !goalsHabitsSummary
-        ? 'Veckan visar framför allt värdet av enkel loggning: vikt, check-in och matdata ger riktning utan att behöva vara perfekt.'
+        ? `${sharedReport.summaries.coverage} ${sharedReport.summaries.weight}`
         : `Veckan visar mål och vanor: ${goalsHabitsSummary.summary}`,
-    weightTrend: snapshot.weight.facts?.weightChange !== null
-      ? getWeightTrend(snapshot.weight.dailyWeights, data.profile)
-      : getWeightTrend(data.weights, data.profile),
-    mealPattern: getMealPattern(mealHistory, snapshot.nutrition.mealsToday),
+    weightTrend: sharedReport.weightSummary.changeLabel === 'Saknas'
+      ? sharedReport.summaries.weight
+      : `Vikten är ${sharedReport.weightSummary.changeLabel} sedan start.`,
+    mealPattern: sharedReport.summaries.nutrition || getMealPattern(mealHistory, snapshot.nutrition.mealsToday),
+    sharedAnalytics: sharedReport,
   }
 }
 

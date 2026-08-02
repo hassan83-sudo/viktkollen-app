@@ -75,6 +75,7 @@ import { prepareCoachChatSubmission, requestCoachChatReply } from './services/ai
 import { useGlobalSyncScheduler } from './services/sync/useGlobalSyncScheduler.js'
 
 const AICoach = lazy(() => import('./components/AICoach.jsx'))
+const AINutritionInsights = lazy(() => import('./components/AINutritionInsights.jsx'))
 const BarcodeScanner = lazy(() => import('./components/BarcodeScanner.jsx'))
 const CloudBackupPanel = lazy(() => import('./components/CloudBackupPanel.jsx'))
 const MealLogger = lazy(() => import('./components/MealLogger.jsx'))
@@ -2673,6 +2674,18 @@ function App() {
             onClearCoachReports={clearCoachReports}
             onCreateCoachReport={createCoachReport}
             onDeleteCoachReport={deleteCoachReport}
+          />
+
+          <AINutritionInsights
+            analysisDate={selectedMealDate}
+            checkIn={checkIn}
+            meals={meals}
+            nutritionGoals={nutritionGoals}
+            onCoachQuestion={(question) => {
+              void sendChatText(question)
+            }}
+            profile={validatedProfile}
+            weights={centralWeightStats.weights}
           />
         </AppErrorBoundary>
 

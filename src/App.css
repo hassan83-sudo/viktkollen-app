@@ -271,6 +271,145 @@
   gap: 2px;
 }
 
+.ai-nutrition-insights {
+  display: grid;
+  gap: 16px;
+}
+
+.insight-coverage {
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.insight-overview {
+  display: grid;
+  gap: 12px;
+}
+
+.insight-overview dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.insight-overview div,
+.insight-card,
+.insight-plan li {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.insight-overview div {
+  padding: 12px;
+}
+
+.insight-overview dt,
+.insight-card-heading span,
+.insight-action span,
+.coach-question-box label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.insight-overview dd {
+  margin: 4px 0 0;
+  color: var(--text-h);
+  font-weight: 750;
+}
+
+.insight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.insight-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.insight-card:focus {
+  outline: 3px solid rgba(22, 139, 156, 0.25);
+  outline-offset: 2px;
+}
+
+.insight-card-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.insight-card-heading strong {
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.insight-card h3,
+.insight-plan h3 {
+  margin: 0;
+}
+
+.insight-card p,
+.insight-action p,
+.insight-plan p {
+  margin: 0;
+}
+
+.insight-card details summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.insight-card ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.insight-action {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(22, 139, 156, 0.06);
+}
+
+.insight-plan {
+  display: grid;
+  gap: 10px;
+}
+
+.insight-plan ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.insight-plan li {
+  padding: 10px;
+}
+
+.insight-plan span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.coach-question-box {
+  display: grid;
+  gap: 8px;
+}
+
 .lazy-section-fallback {
   margin: 0;
   color: var(--muted);

@@ -86,6 +86,7 @@ import { syncLegacyReminderSettingsToV2 } from './services/reminders/reminderLeg
 
 const AICoach = lazy(() => import('./components/AICoach.jsx'))
 const AINutritionInsights = lazy(() => import('./components/AINutritionInsights.jsx'))
+const AdaptiveCoachPanel = lazy(() => import('./components/AdaptiveCoachPanel.jsx'))
 const BarcodeScanner = lazy(() => import('./components/BarcodeScanner.jsx'))
 const CloudBackupPanel = lazy(() => import('./components/CloudBackupPanel.jsx'))
 const GoalsHabitsPanel = lazy(() => import('./components/GoalsHabitsPanel.jsx'))
@@ -2842,6 +2843,18 @@ function App() {
               void sendChatText(question)
             }}
             profile={validatedProfile}
+            weights={centralWeightStats.weights}
+          />
+
+          <AdaptiveCoachPanel
+            analysisDate={selectedMealDate}
+            checkIn={checkIn}
+            goalsHabits={goalsHabits}
+            healthSnapshot={healthSnapshot}
+            meals={meals}
+            nutritionGoals={nutritionGoals}
+            profile={validatedProfile}
+            reminderState={reminderState}
             weights={centralWeightStats.weights}
           />
 

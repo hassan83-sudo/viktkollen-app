@@ -20,6 +20,7 @@ export const userDataKeys = {
   demoMode: 'viktkollen.demoMode',
   foods: 'viktkollen.foods',
   goalsHabits: 'viktkollen.goalsHabits.v2',
+  healthDashboardPeriod: 'viktkollen.healthDashboard.v2.period',
   favoriteMeals: 'viktkollen.favoriteMeals',
   mealHistory: 'viktkollen.mealAnalysisHistory',
   meals: 'viktkollen.meals',
@@ -106,6 +107,14 @@ export function getGoalsHabits(fallbackValue = {}, isValid) {
 
 export function saveGoalsHabits(value) {
   return saveValue(userDataKeys.goalsHabits, value)
+}
+
+export function getHealthDashboardPeriod(fallbackValue = '30d', isValid) {
+  return readValidated(userDataKeys.healthDashboardPeriod, fallbackValue, isValid)
+}
+
+export function saveHealthDashboardPeriod(value) {
+  return saveValue(userDataKeys.healthDashboardPeriod, value)
 }
 
 export function getMeals(fallbackValue = [], isValid) {

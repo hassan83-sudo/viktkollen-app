@@ -79,6 +79,7 @@ const AINutritionInsights = lazy(() => import('./components/AINutritionInsights.
 const BarcodeScanner = lazy(() => import('./components/BarcodeScanner.jsx'))
 const CloudBackupPanel = lazy(() => import('./components/CloudBackupPanel.jsx'))
 const GoalsHabitsPanel = lazy(() => import('./components/GoalsHabitsPanel.jsx'))
+const HealthDashboardV2 = lazy(() => import('./components/HealthDashboardV2.jsx'))
 const MealLogger = lazy(() => import('./components/MealLogger.jsx'))
 const MonthlyReport = lazy(() => import('./components/MonthlyReport.jsx'))
 const ProgressCenter = lazy(() => import('./components/ProgressCenter.jsx'))
@@ -879,6 +880,10 @@ function App() {
   const [goalsHabits, setGoalsHabits] = useState(() =>
     userDataRepository.getGoalsHabits({}, (value) => value && typeof value === 'object' && !Array.isArray(value)),
   )
+  const [healthDashboardPeriod, setHealthDashboardPeriod] = useState(() =>
+    userDataRepository.getHealthDashboardPeriod('30d', (value) =>
+      ['7d', '30d', '90d', '180d', '365d', 'all'].includes(value)),
+  )
   const [meals, setMeals] = useState(() =>
     normalizeMeals(userDataRepository.getMeals(initialMeals, isStoredMeals)),
   )
@@ -1546,6 +1551,10 @@ function App() {
   }, [goalsHabits])
 
   useEffect(() => {
+    userDataRepository.saveHealthDashboardPeriod(healthDashboardPeriod)
+  }, [healthDashboardPeriod])
+
+  useEffect(() => {
     userDataRepository.saveMeals(meals)
   }, [meals])
 
@@ -1898,6 +1907,8 @@ function App() {
     setProgressReports(userDataRepository.getProgressReports([], Array.isArray))
     setFoods(readStoredFoods())
     setGoalsHabits(userDataRepository.getGoalsHabits({}, (value) => value && typeof value === 'object' && !Array.isArray(value)))
+    setHealthDashboardPeriod(userDataRepository.getHealthDashboardPeriod('30d', (value) =>
+      ['7d', '30d', '90d', '180d', '365d', 'all'].includes(value)))
     setMeals(normalizeMeals(userDataRepository.getMeals(initialMeals, isStoredMeals)))
     setNutritionGoals(
       normalizeNutritionGoals(
@@ -2633,6 +2644,23 @@ function App() {
       <AppErrorBoundary area="dashboard" resetKey={healthSnapshot.date} title="Översikten kunde inte visas">
         <Dashboard actions={dashboardActions} dashboard={dashboardData} />
       </AppErrorBoundary>
+
+      <Suspense fallback={<LazySectionFallback />}>
+        <AppErrorBoundary area="health-dashboard" resetKey={`${healthSnapshot.date}-${healthDashboardPeriod}`} title="Hälsodashboarden kunde inte visas">
+          <HealthDashboardV2
+            checkIn={checkIn}
+            goalsHabits={goalsHabits}
+            healthSnapshot={healthSnapshot}
+            meals={meals}
+            nutritionGoals={nutritionGoals}
+            onPeriodChange={setHealthDashboardPeriod}
+            period={healthDashboardPeriod}
+            profile={validatedProfile}
+            today={selectedMealDate}
+            weights={centralWeightStats.weights}
+          />
+        </AppErrorBoundary>
+      </Suspense>
 
       <AppErrorBoundary area="cloud" resetKey={authSession?.user?.id || ''} title="Molnstatus kunde inte visas">
         <CloudStatusPanel isAuthenticated={Boolean(authSession)} />

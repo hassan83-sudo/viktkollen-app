@@ -1,19 +1,19 @@
 import { formatKg } from './healthCalculations.js'
 import { buildHealthSnapshot } from './healthSnapshot.js'
-import { formatProgressChange, getProgressPeriodRange, buildProgressDashboardAnalytics } from './progress/progressAnalytics.js'
+import { formatProgressChange, buildProgressDashboardAnalytics } from './progress/progressAnalytics.js'
 import { buildGoalsHabitsLiteSummary } from './goalsHabitsSummary.js'
 import { buildAiNutritionCoachInsights } from './aiNutritionInsights.js'
-import { addLocalDays, getLocalDateString } from './localDate.js'
+import { getEntryLocalDate, getLocalDateString } from './localDate.js'
+import {
+  buildHealthDashboardPeriod,
+  buildTrendSeries,
+  collectAvailableDates,
+  compareMetricPeriods,
+  healthDashboardPeriodDefinitions,
+} from './healthDashboardPeriodEngine.js'
 
-export const healthDashboardV2ModelVersion = 1
-export const healthDashboardPeriods = [
-  { days: 7, id: '7d', label: '7 dagar' },
-  { days: 30, id: '30d', label: '30 dagar' },
-  { days: 90, id: '90d', label: '3 månader' },
-  { days: 180, id: '180d', label: '6 månader' },
-  { days: 365, id: '365d', label: '12 månader' },
-  { days: null, id: 'all', label: 'Hela perioden' },
-]
+export const healthDashboardV2ModelVersion = 2
+export const healthDashboardPeriods = healthDashboardPeriodDefinitions
 
 function safeArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : []
@@ -34,7 +34,7 @@ function formatNumber(value, unit = '') {
 }
 
 function buildCoverage({ analysis, insightReport, snapshot }) {
-  const periodDays = analysis.period.days || Math.max(1, safeArray(analysis.weight.weights).length)
+  const periodDays = analysis.period.calendarDays || analysis.period.days || Math.max(1, safeArray(analysis.weight.weights).length)
   const mealDays = analysis.nutrition.loggedDayCount
   const weightDays = analysis.weight.registrationCount
   const checkInDays = analysis.habits.checkInCount
@@ -42,9 +42,11 @@ function buildCoverage({ analysis, insightReport, snapshot }) {
 
   return {
     checkInDays,
+    expectedDataPoints: analysis.period.expectedDataPoints || periodDays,
     level: available >= 3 ? 'good' : available > 0 ? 'partial' : 'missing',
     mealDays,
     periodDays,
+    ratio: periodDays ? Number(((mealDays + weightDays + checkInDays) / (periodDays * 3)).toFixed(2)) : 0,
     text: available >= 3
       ? 'Bra datatäckning för vald period.'
       : available > 0
@@ -57,6 +59,7 @@ function buildCoverage({ analysis, insightReport, snapshot }) {
 
 function buildWeightSummary(analysis, snapshot) {
   const weight = analysis.weight
+  const longRangeMode = analysis.period.bucketStrategy === 'week' || analysis.period.bucketStrategy === 'month'
   return {
     changeLabel: formatProgressChange(weight.totalChangeKg),
     currentWeight: weight.currentWeight,
@@ -69,9 +72,13 @@ function buildWeightSummary(analysis, snapshot) {
     periodChange: weight.periodChangeKg,
     periodChangeLabel: formatProgressChange(weight.periodChangeKg),
     plateau: weight.registrationCount >= 4 && Math.abs(weight.periodChangeKg || 0) <= 0.2,
+    plateauText: weight.registrationCount >= 4 && Math.abs(weight.periodChangeKg || 0) <= 0.2
+      ? 'Vikten är relativt stabil i vald period.'
+      : 'Platåbedömning visas först när datan räcker.',
     startWeight: weight.startWeight,
     startWeightLabel: weight.startWeight === null ? 'Saknas' : formatKg(weight.startWeight),
     trend: weight.trendDirection,
+    trendGranularity: longRangeMode ? `Visar ${analysis.period.bucketStrategy === 'month' ? 'månadssnitt' : 'veckosnitt'} för längre period.` : 'Visar dagsvärden för kort period.',
     weeklyAverageChange: weight.weeklyAverageChange,
     weeklyAverageLabel: weight.weeklyAverageChange === null ? 'Saknas' : formatProgressChange(weight.weeklyAverageChange),
     textAlternative: `Start ${weight.startWeight ?? 'saknas'} kg, nu ${weight.currentWeight ?? 'saknas'} kg, period ${formatProgressChange(weight.periodChangeKg)}.`,
@@ -156,6 +163,7 @@ function uniqueByText(items) {
 }
 
 function buildHighlights({ activity, goals, insightSummary, nutrition, weight }) {
+  const periodTone = weight.trendGranularity?.includes('månad') ? 'Årsöversikt' : weight.trendGranularity?.includes('vecko') ? 'Långsiktigt mönster' : 'Aktuell konsekvens'
   return uniqueByText([
     weight.periodChange !== null && weight.periodChange < -0.1
       ? { tone: 'positive', title: 'Vikttrend', text: 'Vikten rör sig nedåt i vald period.' }
@@ -169,6 +177,7 @@ function buildHighlights({ activity, goals, insightSummary, nutrition, weight })
     goals?.activeFocus?.length
       ? { tone: 'positive', title: 'Veckofokus', text: goals.activeFocus[0] }
       : null,
+    { tone: 'neutral', title: periodTone, text: weight.trendGranularity },
     insightSummary.positive
       ? { tone: 'positive', title: 'Personlig insikt', text: insightSummary.positive }
       : null,
@@ -192,6 +201,9 @@ function buildAttentionItems({ activity, coverage, goals, nutrition, weight }) {
     coverage.level === 'missing'
       ? { title: 'Datatäckning', text: 'Dashboarden behöver mer underlag.', action: 'Börja med en registrering.' }
       : null,
+    coverage.level === 'partial' && coverage.periodDays >= 180
+      ? { title: 'Lång period', text: 'Längre perioder kan ha luckor utan att det betyder något negativt.', action: 'Titta på vilka veckor eller månader som faktiskt har data.' }
+      : null,
   ].filter(Boolean)).slice(0, 4)
 }
 
@@ -214,6 +226,24 @@ function buildComparisons(analysis) {
 
   return {
     hasComparison: true,
+    items: [
+      compareMetricPeriods({
+        currentCoverage: analysis.nutrition.loggedDayCount / Math.max(analysis.period.calendarDays || analysis.period.days || 1, 1),
+        currentValue: analysis.nutrition.mealCount,
+        label: 'Måltider',
+        previousCoverage: 1,
+        previousValue: analysis.nutrition.mealCount - comparison.mealCountDelta,
+        unit: 'måltider',
+      }),
+      compareMetricPeriods({
+        currentCoverage: analysis.habits.checkInCount / Math.max(analysis.period.calendarDays || analysis.period.days || 1, 1),
+        currentValue: analysis.habits.trainingDays,
+        label: 'Träning',
+        previousCoverage: 1,
+        previousValue: analysis.habits.trainingDays - comparison.trainingDaysDelta,
+        unit: 'dagar',
+      }),
+    ],
     mealCountDelta: comparison.mealCountDelta,
     proteinGoalPercentDelta: comparison.proteinGoalPercentDelta,
     text: `${comparison.mealCountDelta} måltider, ${comparison.trainingDaysDelta} träningsdagar och ${comparison.checkInDelta} check-ins jämfört med föregående period.`,
@@ -222,27 +252,117 @@ function buildComparisons(analysis) {
   }
 }
 
+function getMealDate(meal) {
+  return getEntryLocalDate(meal) || getLocalDateString(meal?.date || meal?.createdAt)
+}
+
+function buildTrendSeriesSummary(analysis) {
+  const period = analysis.period
+  const weightEntries = safeArray(analysis.weight.weights).map((entry) => ({
+    date: entry.date,
+    value: entry.value,
+  }))
+  const nutritionDays = safeArray(analysis.nutrition.days).map((day) => ({
+    calories: day.totals?.calories,
+    date: day.date,
+    mealCount: day.mealCount,
+    protein: day.totals?.protein,
+  }))
+  const habitEntries = safeArray(analysis.habits.entries)
+
+  return {
+    activity: [
+      buildTrendSeries({
+        aggregation: 'average',
+        entries: habitEntries,
+        getDate: (entry) => entry.date,
+        getValue: (entry) => entry.steps,
+        id: 'steps',
+        label: 'Steg',
+        period,
+        unit: 'steg',
+      }),
+      buildTrendSeries({
+        aggregation: 'average',
+        entries: habitEntries,
+        getDate: (entry) => entry.date,
+        getValue: (entry) => entry.energy,
+        id: 'energy',
+        label: 'Energi',
+        period,
+        unit: 'av 10',
+      }),
+    ],
+    nutrition: [
+      buildTrendSeries({
+        aggregation: 'average',
+        entries: nutritionDays,
+        getDate: (entry) => entry.date,
+        getValue: (entry) => entry.calories,
+        id: 'calories',
+        label: 'Energi från mat',
+        period,
+        unit: 'kcal',
+      }),
+      buildTrendSeries({
+        aggregation: 'average',
+        entries: nutritionDays,
+        getDate: (entry) => entry.date,
+        getValue: (entry) => entry.protein,
+        id: 'protein',
+        label: 'Protein',
+        period,
+        unit: 'g',
+      }),
+    ],
+    weight: buildTrendSeries({
+      aggregation: 'average',
+      entries: weightEntries,
+      getDate: (entry) => entry.date,
+      getValue: (entry) => entry.value,
+      id: 'weight',
+      label: 'Vikt',
+      period,
+      unit: 'kg',
+    }),
+  }
+}
+
+function buildExportSummary(model) {
+  return {
+    activity: model.activitySummary.textAlternative,
+    comparison: model.comparisons.text,
+    coverage: model.dataCoverage.text,
+    generatedFor: model.analysisDate,
+    highlights: model.progressHighlights.map((item) => item.text),
+    nutrition: model.nutritionSummary.textAlternative,
+    period: model.period.periodLabel,
+    version: model.modelVersion,
+    weight: model.weightSummary.textAlternative,
+  }
+}
+
 export function buildHealthDashboardV2Model(data = {}, options = {}) {
   const analysisDate = getLocalDateString(options.analysisDate || data.today || new Date())
   const selectedPeriod = getPeriod(options.period || data.period || '30d')
-  const range = selectedPeriod.id === 'all'
-    ? getProgressPeriodRange('all', analysisDate)
-    : {
-      ...getProgressPeriodRange('30d', analysisDate),
-      days: selectedPeriod.days,
-      end: analysisDate,
-      id: selectedPeriod.id,
-      label: selectedPeriod.label,
-      previousEnd: selectedPeriod.days ? getLocalDateString(addLocalDays(getLocalDateString(addLocalDays(analysisDate, -selectedPeriod.days + 1)), -1)) : '',
-      previousStart: selectedPeriod.days ? getLocalDateString(addLocalDays(analysisDate, -(selectedPeriod.days * 2) + 1)) : '',
-      start: selectedPeriod.days ? getLocalDateString(addLocalDays(analysisDate, -selectedPeriod.days + 1)) : '',
-    }
   const snapshot = data.healthSnapshot || buildHealthSnapshot({ ...data, today: analysisDate })
+  const period = buildHealthDashboardPeriod(selectedPeriod.id, {
+    analysisDate,
+    availableDates: {
+      checkIns: data.checkIns || snapshot.checkIn?.dailyEntries,
+      meals: data.meals || snapshot.nutrition?.actualMeals,
+      weights: data.weights || snapshot.weight?.dailyWeights,
+    },
+  })
   const analysis = buildProgressDashboardAnalytics({
     ...data,
     healthSnapshot: snapshot,
     today: analysisDate,
-  }, { period: selectedPeriod.id === '180d' || selectedPeriod.id === '365d' ? 'all' : selectedPeriod.id, today: analysisDate })
+  }, { period: selectedPeriod.id, today: analysisDate })
+  analysis.period = {
+    ...analysis.period,
+    ...period,
+  }
   const insightReport = buildAiNutritionCoachInsights(data, { analysisDate })
   const coverage = buildCoverage({ analysis, insightReport, snapshot })
   const weightSummary = buildWeightSummary(analysis, snapshot)
@@ -254,8 +374,9 @@ export function buildHealthDashboardV2Model(data = {}, options = {}) {
   const attentionItems = buildAttentionItems({ activity: activitySummary, coverage, goals: goalsSummary, nutrition: nutritionSummary, weight: weightSummary })
   const nextActions = buildNextActions({ attentionItems, goals: goalsSummary, insightSummary })
   const comparisons = buildComparisons(analysis)
+  const trendSeries = buildTrendSeriesSummary(analysis)
 
-  return {
+  const model = {
     activitySummary,
     analysisDate,
     attentionItems,
@@ -276,7 +397,7 @@ export function buildHealthDashboardV2Model(data = {}, options = {}) {
     modelVersion: healthDashboardV2ModelVersion,
     nextActions,
     nutritionSummary,
-    period: range,
+    period,
     periods: healthDashboardPeriods,
     progressHighlights: highlights,
     selectedPeriod,
@@ -285,7 +406,13 @@ export function buildHealthDashboardV2Model(data = {}, options = {}) {
       nutrition: nutritionSummary.sourceStatus,
       weight: weightSummary.sourceStatus,
     },
+    trendSeries,
     weightSummary,
+  }
+
+  return {
+    ...model,
+    exportSummary: buildExportSummary(model),
   }
 }
 
@@ -298,6 +425,9 @@ export const healthDashboardV2Internals = {
   buildInsightSummary,
   buildNextActions,
   buildNutritionSummary,
+  buildTrendSeriesSummary,
   buildWeightSummary,
+  collectAvailableDates,
+  getMealDate,
   getPeriod,
 }

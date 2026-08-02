@@ -1,5 +1,7 @@
-import { useMemo } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { buildHealthDashboardV2Model } from '../services/healthDashboardV2.js'
+
+const HealthDashboardDrilldown = lazy(() => import('./HealthDashboardDrilldown.jsx'))
 
 function Metric({ label, value, note }) {
   return (
@@ -22,6 +24,55 @@ function Card({ actionHref, actionText, children, heading, text }) {
       {actionHref && <a className="secondary-button" href={actionHref}>{actionText || 'Öppna'}</a>}
     </article>
   )
+}
+
+function TrendMiniChart({ series }) {
+  const width = 320
+  const height = 120
+  const padding = 16
+  const values = series?.points?.map((point) => point.value).filter(Number.isFinite) || []
+  const min = values.length ? Math.min(...values) : 0
+  const max = values.length ? Math.max(...values) : 1
+  const range = Math.max(max - min, 1)
+  const dataPoints = series?.points?.filter((point) => Number.isFinite(point.value)) || []
+  const points = dataPoints.map((point, index) => {
+    const x = dataPoints.length === 1 ? width / 2 : padding + (index / Math.max(dataPoints.length - 1, 1)) * (width - padding * 2)
+    const y = padding + ((max - point.value) / range) * (height - padding * 2)
+
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  })
+
+  return (
+    <div className="health-trend-chart">
+      <p>{series?.textualSummary}</p>
+      {points.length >= 2 ? (
+        <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={series.textualSummary}>
+          <title>{series.label}</title>
+          <desc>{series.textualSummary}. Tomma perioder räknas inte som noll.</desc>
+          <polyline points={points.join(' ')} />
+        </svg>
+      ) : (
+        <div className="health-chart-empty">Fler datapunkter behövs för diagram.</div>
+      )}
+    </div>
+  )
+}
+
+function buildExportText(summary) {
+  return [
+    'Viktkollen Health Dashboard',
+    `Period: ${summary.period}`,
+    `Datum: ${summary.generatedFor}`,
+    '',
+    `Vikt: ${summary.weight}`,
+    `Nutrition: ${summary.nutrition}`,
+    `Aktivitet: ${summary.activity}`,
+    `Jämförelse: ${summary.comparison}`,
+    `Datatäckning: ${summary.coverage}`,
+    '',
+    'Highlights:',
+    ...summary.highlights.map((item) => `- ${item}`),
+  ].join('\n')
 }
 
 function ItemList({ emptyText, items }) {
@@ -53,6 +104,8 @@ function HealthDashboardV2({
   today,
   weights = [],
 }) {
+  const [showDrilldown, setShowDrilldown] = useState(false)
+  const drilldownButtonRef = useRef(null)
   const data = useMemo(() => ({
     checkIn,
     checkIns,
@@ -69,6 +122,38 @@ function HealthDashboardV2({
     [data, period, today],
   )
 
+  useEffect(() => {
+    if (!showDrilldown) return undefined
+
+    function onKeyDown(event) {
+      if (event.key === 'Escape') {
+        setShowDrilldown(false)
+        drilldownButtonRef.current?.focus()
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [showDrilldown])
+
+  function closeDrilldown() {
+    setShowDrilldown(false)
+    drilldownButtonRef.current?.focus()
+  }
+
+  function exportSummary() {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return
+
+    const blob = new Blob([buildExportText(model.exportSummary)], { type: 'text/plain;charset=utf-8' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+
+    link.href = url
+    link.download = `viktkollen-health-dashboard-${model.analysisDate}.txt`
+    link.click()
+    window.URL.revokeObjectURL(url)
+  }
+
   return (
     <section className="panel health-dashboard-v2" id="health-dashboard" aria-labelledby="health-dashboard-heading">
       <div className="panel-heading">
@@ -77,6 +162,19 @@ function HealthDashboardV2({
           <h2 id="health-dashboard-heading">Trender, insikter och nästa steg</h2>
           <span>{model.display.subtitle}. {model.dataCoverage.text}</span>
         </div>
+        <button
+          aria-controls="health-dashboard-drilldown"
+          aria-expanded={showDrilldown}
+          className="secondary-button"
+          ref={drilldownButtonRef}
+          type="button"
+          onClick={() => setShowDrilldown((current) => !current)}
+        >
+          {showDrilldown ? 'Dölj detaljer' : 'Visa detaljer'}
+        </button>
+        <button className="secondary-button" type="button" onClick={exportSummary}>
+          Exportera översikt
+        </button>
       </div>
 
       <div className="segmented-control health-period-toggle" aria-label="Välj period för hälsodashboard" role="group">
@@ -93,11 +191,12 @@ function HealthDashboardV2({
         ))}
       </div>
       <p className="sr-only" aria-live="polite">
-        Vald period är {model.selectedPeriod.label}. {model.weightSummary.textAlternative}
+        Vald period är {model.selectedPeriod.label}. Bucket: {model.period.bucketStrategy}. {model.weightSummary.textAlternative}
       </p>
 
       <div className="health-dashboard-grid">
         <Card actionHref="#vikt" actionText="Visa vikt" heading="Vikt" text={model.weightSummary.textAlternative}>
+          <TrendMiniChart series={model.trendSeries.weight} />
           <div className="health-dashboard-metrics">
             <Metric label="Start" value={model.weightSummary.startWeightLabel} />
             <Metric label="Nu" value={model.weightSummary.currentWeightLabel} />
@@ -106,6 +205,7 @@ function HealthDashboardV2({
             <Metric label="Veckosnitt" value={model.weightSummary.weeklyAverageLabel} />
             <Metric label="Kvar" value={model.weightSummary.goalRemainingLabel} />
           </div>
+          <p>{model.weightSummary.trendGranularity}</p>
         </Card>
 
         <Card actionHref="#nutrition-dashboard" actionText="Visa nutrition" heading="Nutrition" text={model.nutritionSummary.textAlternative}>
@@ -116,6 +216,7 @@ function HealthDashboardV2({
             <Metric label="Energi" value={model.nutritionSummary.averageCaloriesLabel} />
           </div>
           <p>{model.nutritionSummary.proteinGoalText}</p>
+          <TrendMiniChart series={model.trendSeries.nutrition[1]} />
         </Card>
 
         <Card actionHref="#checkin" actionText="Gå till check-in" heading="Aktivitet & check-in" text={model.activitySummary.textAlternative}>
@@ -126,6 +227,7 @@ function HealthDashboardV2({
             <Metric label="Energi" value={model.activitySummary.averageEnergyLabel} />
           </div>
           <p>{model.activitySummary.comparisonText}</p>
+          <TrendMiniChart series={model.trendSeries.activity[0]} />
         </Card>
 
         {model.goalsSummary && (
@@ -160,6 +262,14 @@ function HealthDashboardV2({
           <ItemList emptyText="Logga en vanlig dag så kan nästa steg bli tydligare." items={model.nextActions} />
         </Card>
       </div>
+
+      {showDrilldown && (
+        <div id="health-dashboard-drilldown">
+          <Suspense fallback={<div className="health-drilldown" role="status">Laddar detaljer...</div>}>
+            <HealthDashboardDrilldown model={model} onClose={closeDrilldown} />
+          </Suspense>
+        </div>
+      )}
     </section>
   )
 }

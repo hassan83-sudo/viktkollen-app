@@ -63,6 +63,48 @@ describe('Health Dashboard V2 model', () => {
     expect(dashboard.comparisons).toHaveProperty('hasComparison')
   })
 
+  it('uses native long range periods instead of all-period fallback', () => {
+    const longWeights = [
+      { date: '2025-10-03', value: 92.2 },
+      { date: '2025-12-31', value: 92 },
+      ...weights,
+    ]
+    const halfYear = model({ weights: longWeights }, { period: '180d' })
+    const fullYear = model({ weights: longWeights }, { period: '365d' })
+
+    expect(halfYear.period).toMatchObject({ bucketStrategy: 'week', days: 180, id: '180d' })
+    expect(fullYear.period).toMatchObject({ bucketStrategy: 'month', days: 365, id: '365d' })
+    expect(halfYear.period.start).not.toBe('')
+    expect(fullYear.period.start).not.toBe('')
+    expect(halfYear.selectedPeriod.id).toBe('180d')
+    expect(fullYear.selectedPeriod.id).toBe('365d')
+  })
+
+  it('builds reusable trend series with missing buckets separated from zero', () => {
+    const dashboard = model({
+      weights: [
+        { date: '2025-10-03', value: 92.2 },
+        { date: '2025-12-31', value: 92 },
+        ...weights,
+      ],
+    }, { period: '365d' })
+
+    expect(dashboard.trendSeries.weight.bucketType).toBe('month')
+    expect(dashboard.trendSeries.weight.points.length).toBeGreaterThan(1)
+    expect(dashboard.trendSeries.weight.points.some((point) => point.hasData === false && point.value === null)).toBe(true)
+    expect(dashboard.trendSeries.nutrition.map((series) => series.id)).toEqual(['calories', 'protein'])
+    expect(dashboard.trendSeries.activity.map((series) => series.id)).toEqual(['steps', 'energy'])
+  })
+
+  it('creates a safe user initiated export summary without auth or session fields', () => {
+    const dashboard = model({}, { period: '180d' })
+    const serialized = JSON.stringify(dashboard.exportSummary)
+
+    expect(dashboard.exportSummary.period).toContain('6 månader')
+    expect(serialized).not.toMatch(/auth|session|token|localStorage/i)
+    expect(serialized).not.toMatch(/NaN|Infinity|undefined|null|\[object Object\]/)
+  })
+
   it('uses central weight facts and does not mix goal remaining with total change', () => {
     const dashboard = model()
 
@@ -116,6 +158,8 @@ describe('HealthDashboardV2 component', () => {
 
     expect(markup).toContain('Hälsodashboard')
     expect(markup).toContain('aria-pressed="true"')
+    expect(markup).toContain('aria-expanded="false"')
+    expect(markup).toContain('Exportera översikt')
     expect(markup).toContain('Vikt')
     expect(markup).toContain('Nutrition')
     expect(markup).toContain('Mål &amp; vanor')

@@ -605,6 +605,83 @@
   border-radius: 8px;
 }
 
+.health-dashboard-metrics.compact {
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+}
+
+.health-dashboard-list.compact {
+  gap: 6px;
+}
+
+.health-trend-chart {
+  display: grid;
+  gap: 8px;
+}
+
+.health-trend-chart p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.health-trend-chart svg {
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--accent);
+}
+
+.health-trend-chart polyline {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+
+.health-chart-empty {
+  display: flex;
+  align-items: center;
+  min-height: 96px;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+}
+
+.health-drilldown {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.health-drilldown-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.health-drilldown-section {
+  display: grid;
+  gap: 10px;
+}
+
+.health-drilldown-section h4,
+.health-drilldown-section p {
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .health-trend-chart polyline {
+    transition: none;
+  }
+}
+
 .dashboard-summary-heading {
   display: flex;
   align-items: center;

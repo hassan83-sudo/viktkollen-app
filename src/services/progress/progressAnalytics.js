@@ -27,6 +27,8 @@ export const progressPeriods = [
   { days: 7, id: '7d', label: '7 dagar' },
   { days: 30, id: '30d', label: '30 dagar' },
   { days: 90, id: '90d', label: '90 dagar' },
+  { days: 180, id: '180d', label: '180 dagar' },
+  { days: 365, id: '365d', label: '365 dagar' },
   { days: null, id: 'all', label: 'Hela perioden' },
 ]
 

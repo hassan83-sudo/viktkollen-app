@@ -92,6 +92,8 @@ describe('progress period ranges', () => {
     ['7d', '2026-03-25', '2026-03-31'],
     ['30d', '2026-03-02', '2026-03-31'],
     ['90d', '2026-01-01', '2026-03-31'],
+    ['180d', '2025-10-03', '2026-03-31'],
+    ['365d', '2025-04-01', '2026-03-31'],
     ['all', '', '2026-03-31'],
     ['bad', '2026-03-02', '2026-03-31'],
   ])('builds %s range', (period, start, end) => {
@@ -102,7 +104,7 @@ describe('progress period ranges', () => {
   })
 
   it('defines selectable periods', () => {
-    expect(progressPeriods.map((period) => period.id)).toEqual(['7d', '30d', '90d', 'all'])
+    expect(progressPeriods.map((period) => period.id)).toEqual(['7d', '30d', '90d', '180d', '365d', 'all'])
   })
 })
 
@@ -111,6 +113,8 @@ describe('weight progress analytics', () => {
     ['7 day first weight', '7d', (result) => result.weight.firstWeight === 89.5],
     ['30 day latest weight', '30d', (result) => result.weight.latestWeight === 89.5],
     ['90 day start weight', '90d', (result) => result.weight.startWeight === 92],
+    ['180 day native period', '180d', (result) => result.period.days === 180 && result.period.start === '2025-10-03'],
+    ['365 day native period', '365d', (result) => result.period.days === 365 && result.period.start === '2025-04-01'],
     ['all period goal weight', 'all', (result) => result.weight.goalWeight === 78],
     ['future date excluded', 'all', (result) => result.weight.currentWeight === 89.5],
     ['invalid entry excluded', 'all', (result) => result.weight.registrationCount === 6],
@@ -595,6 +599,8 @@ describe('progress analytics additional regressions', () => {
     ['7d label', '7d', '7 dagar'],
     ['30d label', '30d', '30 dagar'],
     ['90d label', '90d', '90 dagar'],
+    ['180d label', '180d', '180 dagar'],
+    ['365d label', '365d', '365 dagar'],
     ['all label', 'all', 'Hela perioden'],
   ])('keeps %s', (_, period, label) => {
     expect(getProgressPeriodRange(period, today).label).toBe(label)

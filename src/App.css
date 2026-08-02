@@ -410,6 +410,79 @@
   gap: 8px;
 }
 
+.goals-habits-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.weekly-focus-band,
+.goals-habits-grid,
+.goals-habits-forms {
+  display: grid;
+  gap: 12px;
+}
+
+.weekly-focus-band {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(22, 139, 156, 0.06);
+}
+
+.weekly-focus-band h3,
+.weekly-focus-band p {
+  margin: 0;
+}
+
+.goals-habits-grid,
+.goals-habits-forms {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.goals-habits-grid > article,
+.goals-habits-forms form {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.goals-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.goals-list li {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.goals-list progress {
+  width: 100%;
+  height: 8px;
+}
+
+.habit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.goals-habits-forms label {
+  display: grid;
+  gap: 6px;
+}
+
 .lazy-section-fallback {
   margin: 0;
   color: var(--muted);

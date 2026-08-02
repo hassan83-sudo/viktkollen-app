@@ -8,6 +8,7 @@ export const syncStorageAllowlist = [
   'viktkollen.weights',
   'viktkollen.meals',
   'viktkollen.foods',
+  'viktkollen.goalsHabits.v2',
   'viktkollen.checkIn',
   'viktkollen.photoMeals',
   'viktkollen.chat',

@@ -78,6 +78,7 @@ const AICoach = lazy(() => import('./components/AICoach.jsx'))
 const AINutritionInsights = lazy(() => import('./components/AINutritionInsights.jsx'))
 const BarcodeScanner = lazy(() => import('./components/BarcodeScanner.jsx'))
 const CloudBackupPanel = lazy(() => import('./components/CloudBackupPanel.jsx'))
+const GoalsHabitsPanel = lazy(() => import('./components/GoalsHabitsPanel.jsx'))
 const MealLogger = lazy(() => import('./components/MealLogger.jsx'))
 const MonthlyReport = lazy(() => import('./components/MonthlyReport.jsx'))
 const ProgressCenter = lazy(() => import('./components/ProgressCenter.jsx'))
@@ -875,6 +876,9 @@ function App() {
     userDataRepository.getProgressReports([], Array.isArray),
   )
   const [foods, setFoods] = useState(readStoredFoods)
+  const [goalsHabits, setGoalsHabits] = useState(() =>
+    userDataRepository.getGoalsHabits({}, (value) => value && typeof value === 'object' && !Array.isArray(value)),
+  )
   const [meals, setMeals] = useState(() =>
     normalizeMeals(userDataRepository.getMeals(initialMeals, isStoredMeals)),
   )
@@ -1532,6 +1536,10 @@ function App() {
   }, [foods])
 
   useEffect(() => {
+    userDataRepository.saveGoalsHabits(goalsHabits)
+  }, [goalsHabits])
+
+  useEffect(() => {
     userDataRepository.saveMeals(meals)
   }, [meals])
 
@@ -1883,6 +1891,7 @@ function App() {
     )
     setProgressReports(userDataRepository.getProgressReports([], Array.isArray))
     setFoods(readStoredFoods())
+    setGoalsHabits(userDataRepository.getGoalsHabits({}, (value) => value && typeof value === 'object' && !Array.isArray(value)))
     setMeals(normalizeMeals(userDataRepository.getMeals(initialMeals, isStoredMeals)))
     setNutritionGoals(
       normalizeNutritionGoals(
@@ -2684,6 +2693,17 @@ function App() {
             onCoachQuestion={(question) => {
               void sendChatText(question)
             }}
+            profile={validatedProfile}
+            weights={centralWeightStats.weights}
+          />
+
+          <GoalsHabitsPanel
+            analysisDate={selectedMealDate}
+            checkIn={checkIn}
+            goalsHabits={goalsHabits}
+            meals={meals}
+            nutritionGoals={nutritionGoals}
+            onGoalsHabitsChange={setGoalsHabits}
             profile={validatedProfile}
             weights={centralWeightStats.weights}
           />

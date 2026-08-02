@@ -4250,6 +4250,171 @@ a:focus-visible {
   margin-top: 0;
 }
 
+.shared-report-v3 {
+  display: grid;
+  gap: 12px;
+}
+
+.report-v3-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.report-v3-grid.compact {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.report-v3-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.report-v3-card h3,
+.report-v3-card h4,
+.report-v3-card p {
+  margin: 0;
+}
+
+.report-v3-card p,
+.report-v3-card small,
+.report-v3-list span,
+.report-v3-list small {
+  color: var(--muted);
+}
+
+.report-v3-overview {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.report-v3-overview .report-v3-summary {
+  grid-column: 1 / -1;
+}
+
+.report-v3-summary,
+.report-v3-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.report-v3-summary div,
+.report-v3-metrics div {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--soft-bg);
+}
+
+.report-v3-summary dt,
+.report-v3-metrics dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.report-v3-summary dd,
+.report-v3-metrics dd {
+  margin: 0;
+  color: var(--text-h);
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+
+.report-v3-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.report-v3-card-heading span {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.report-v3-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style-position: inside;
+}
+
+.report-v3-list li {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.report-progressbar {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--soft-bg);
+}
+
+.report-progressbar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.report-trend-chart svg {
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--accent);
+}
+
+.report-trend-chart polyline {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+
+.report-chart-empty {
+  display: flex;
+  align-items: center;
+  min-height: 96px;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+}
+
+@media print {
+  .bottom-nav,
+  .topbar,
+  .secondary-button {
+    display: none !important;
+  }
+
+  .report-v3-card,
+  .report-card {
+    break-inside: avoid;
+  }
+}
+
 .bottom-nav {
   position: fixed;
   bottom: max(8px, env(safe-area-inset-bottom));

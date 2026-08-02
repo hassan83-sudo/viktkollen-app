@@ -1,3 +1,13 @@
+import { buildSharedReportUiModel } from '../services/sharedReportUiModel.js'
+import ReportAttentionItems from './reports/ReportAttentionItems.jsx'
+import ReportComparisonCard from './reports/ReportComparisonCard.jsx'
+import ReportCoverage from './reports/ReportCoverage.jsx'
+import ReportGoalsHabits from './reports/ReportGoalsHabits.jsx'
+import ReportHighlights from './reports/ReportHighlights.jsx'
+import ReportNextActions from './reports/ReportNextActions.jsx'
+import ReportOverview from './reports/ReportOverview.jsx'
+import ReportTrendCard from './reports/ReportTrendCard.jsx'
+
 function MetricCard({ label, value }) {
   return (
     <div className="stat-card">
@@ -11,6 +21,12 @@ function MonthlyReport({ report }) {
   if (!report) {
     return null
   }
+  const reportModel = report.sharedAnalytics
+    ? buildSharedReportUiModel(report, { reportType: 'monthly' })
+    : null
+  const printReport = () => {
+    if (typeof window !== 'undefined') window.print()
+  }
 
   return (
     <article className="panel report-panel" id="manadsrapport">
@@ -20,6 +36,26 @@ function MonthlyReport({ report }) {
           <h2>Månadsrapport</h2>
         </div>
       </div>
+
+      {reportModel && (
+        <div className="shared-report-v3" aria-live="polite">
+          <ReportOverview model={reportModel} onPrint={printReport} />
+          <ReportCoverage coverage={reportModel.coverage} dataQuality={reportModel.dataQuality} />
+          <div className="report-v3-grid">
+            {reportModel.trendCards.slice(0, 5).map((card) => <ReportTrendCard card={card} key={card.id} />)}
+          </div>
+          <h3>Jämförelse</h3>
+          <div className="report-v3-grid compact">
+            {reportModel.comparisonCards.map((card) => <ReportComparisonCard card={card} key={card.id} />)}
+          </div>
+          <div className="report-v3-grid compact">
+            <ReportHighlights items={reportModel.highlights} />
+            <ReportAttentionItems items={reportModel.attentionItems} />
+            <ReportGoalsHabits goalsHabits={reportModel.goalsHabits} />
+            <ReportNextActions items={reportModel.nextActions} />
+          </div>
+        </div>
+      )}
 
       <div className="stats-grid">
         <MetricCard

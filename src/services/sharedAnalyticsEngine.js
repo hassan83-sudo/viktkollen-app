@@ -375,11 +375,13 @@ function buildDashboardModel(shared) {
 
 function buildReportModel(shared) {
   return {
+    analysisDate: shared.analysisDate,
     attentionItems: shared.attentionItems,
     comparisons: shared.comparisons,
     coverage: shared.coverage,
     goalsHabits: shared.goalsSummary,
     highlights: shared.highlights,
+    nextActions: shared.nextActions,
     period: shared.period,
     source: 'sharedAnalyticsEngine',
     summaries: shared.summaries,

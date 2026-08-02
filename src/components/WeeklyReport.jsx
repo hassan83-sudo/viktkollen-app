@@ -1,3 +1,13 @@
+import { buildSharedReportUiModel } from '../services/sharedReportUiModel.js'
+import ReportAttentionItems from './reports/ReportAttentionItems.jsx'
+import ReportComparisonCard from './reports/ReportComparisonCard.jsx'
+import ReportCoverage from './reports/ReportCoverage.jsx'
+import ReportGoalsHabits from './reports/ReportGoalsHabits.jsx'
+import ReportHighlights from './reports/ReportHighlights.jsx'
+import ReportNextActions from './reports/ReportNextActions.jsx'
+import ReportOverview from './reports/ReportOverview.jsx'
+import ReportTrendCard from './reports/ReportTrendCard.jsx'
+
 const reportSections = [
   ['summary', 'Veckans sammanfattning'],
   ['weightTrend', 'Vikttrend'],
@@ -33,6 +43,12 @@ function WeeklyReport({
   weeklyReportStatus,
 }) {
   const hasStructuredReport = Boolean(weeklyReportData)
+  const reportModel = hasStructuredReport && weeklyReportData.sharedAnalytics
+    ? buildSharedReportUiModel(weeklyReportData, { reportType: 'weekly' })
+    : null
+  const printReport = () => {
+    if (typeof window !== 'undefined') window.print()
+  }
 
   return (
     <div className="weekly-report">
@@ -46,6 +62,25 @@ function WeeklyReport({
         <div className="report-card">
           {hasStructuredReport ? (
             <>
+              {reportModel && (
+                <div className="shared-report-v3" aria-live="polite">
+                  <ReportOverview model={reportModel} onPrint={printReport} />
+                  <ReportCoverage coverage={reportModel.coverage} dataQuality={reportModel.dataQuality} />
+                  <div className="report-v3-grid">
+                    {reportModel.trendCards.slice(0, 4).map((card) => <ReportTrendCard card={card} key={card.id} />)}
+                  </div>
+                  <h3>Jämförelse</h3>
+                  <div className="report-v3-grid compact">
+                    {reportModel.comparisonCards.map((card) => <ReportComparisonCard card={card} key={card.id} />)}
+                  </div>
+                  <div className="report-v3-grid compact">
+                    <ReportHighlights items={reportModel.highlights} />
+                    <ReportAttentionItems items={reportModel.attentionItems} />
+                    <ReportGoalsHabits goalsHabits={reportModel.goalsHabits} />
+                    <ReportNextActions items={reportModel.nextActions} />
+                  </div>
+                </div>
+              )}
               {reportSections.map(([key, heading]) => (
                 <div key={key}>
                   <p className="report-heading">{heading}</p>

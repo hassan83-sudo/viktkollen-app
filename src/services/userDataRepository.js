@@ -33,6 +33,8 @@ export const userDataKeys = {
   progressReports: 'viktkollen.progress.reports.v1',
   bodyMeasurements: 'viktkollen.bodyMeasurements',
   reminderLog: 'viktkollen.reminderLog',
+  reminderSchedulerLock: 'viktkollen.reminders.v2.schedulerLock',
+  remindersV2: 'viktkollen.reminders.v2',
   reminders: 'viktkollen.reminders',
   scannedProducts: 'viktkollen.scannedProducts',
   weights: 'viktkollen.weights',
@@ -48,6 +50,7 @@ const sensitiveBackupKeyPatterns = [
   /token/i,
 ]
 const backupStorageKeys = Object.values(userDataKeys).filter((key) =>
+  key !== userDataKeys.reminderSchedulerLock &&
   sensitiveBackupKeyPatterns.every((pattern) => !pattern.test(key)),
 )
 
@@ -259,6 +262,14 @@ export function getReminderLog(fallbackValue = {}, isValid) {
 
 export function saveReminderLog(log) {
   return saveValue(userDataKeys.reminderLog, log)
+}
+
+export function getRemindersV2(fallbackValue = {}, isValid) {
+  return readValidated(userDataKeys.remindersV2, fallbackValue, isValid)
+}
+
+export function saveRemindersV2(value) {
+  return saveValue(userDataKeys.remindersV2, value)
 }
 
 export function getAiConversationMemory(fallbackValue = []) {

@@ -23,6 +23,7 @@ export const syncStorageAllowlist = [
   'viktkollen.bodyMeasurements',
   'viktkollen.reminders',
   'viktkollen.reminderLog',
+  'viktkollen.reminders.v2',
   'viktkollen.scannedProducts',
   'viktkollen.aiConversationMemory',
   'viktkollen.aiCoach.reports.v1',

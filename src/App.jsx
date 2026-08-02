@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import './App.css'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import AuthPanel from './components/AuthPanel.jsx'
@@ -14,6 +14,7 @@ import CloudStatusPanel from './components/CloudStatusPanel.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import GlobalSyncStatus from './components/GlobalSyncStatus.jsx'
 import PwaExperience from './components/PwaExperience.jsx'
+import ReminderBanner from './components/ReminderBanner.jsx'
 import {
   bodyAnalysisHistoryChangedEvent,
   getAnalysisHistory,
@@ -72,6 +73,16 @@ import * as userDataRepository from './services/userDataRepository.js'
 import { loadAiApiService, loadAiCoachV2Service, loadAiSuggestions, loadAiUserContext, loadProactiveCoachService, loadWeeklyReportService } from './services/ai/aiRuntimeLoader.js'
 import { prepareCoachChatSubmission, requestCoachChatReply } from './services/ai/aiChatController.js'
 import { useGlobalSyncScheduler } from './services/sync/useGlobalSyncScheduler.js'
+import {
+  readReminderState,
+  saveReminderState,
+  claimReminderSchedulerLeadership,
+  releaseReminderSchedulerLeadership,
+} from './services/reminders/reminderRepository.js'
+import { completeReminder, skipReminder, snoozeReminder } from './services/reminders/reminderActions.js'
+import { buildReminderStatus, createReminderScheduler, getDueReminders } from './services/reminders/reminderScheduler.js'
+import { showReminderNotification } from './services/reminders/reminderNotifications.js'
+import { syncLegacyReminderSettingsToV2 } from './services/reminders/reminderLegacyAdapter.js'
 
 const AICoach = lazy(() => import('./components/AICoach.jsx'))
 const AINutritionInsights = lazy(() => import('./components/AINutritionInsights.jsx'))
@@ -85,6 +96,7 @@ const ProgressCenter = lazy(() => import('./components/ProgressCenter.jsx'))
 const ProgressDashboard = lazy(() => import('./components/ProgressDashboard.jsx'))
 const ProgressPhotos = lazy(() => import('./components/ProgressPhotos.jsx'))
 const ReminderSettings = lazy(() => import('./components/ReminderSettings.jsx'))
+const ReminderCenter = lazy(() => import('./components/ReminderCenter.jsx'))
 const SyncDiagnosticsPanel = lazy(() => import('./components/SyncDiagnosticsPanel.jsx'))
 
 const starterWeights = [
@@ -940,6 +952,9 @@ function App() {
       isStoredReminderSettings,
     ),
   )
+  const [reminderState, setReminderState] = useState(() => readReminderState())
+  const reminderStateRef = useRef(reminderState)
+  const reminderTabId = useId()
   const [reminderStatus, setReminderStatus] = useState('')
   const [chatInput, setChatInput] = useState('')
   const [chatEngineStatus, setChatEngineStatus] = useState('')
@@ -977,6 +992,8 @@ function App() {
     () => getWeightStats(healthSnapshot.weight.dailyWeights, { startWeight: validatedProfile.startWeight }),
     [healthSnapshot.weight.dailyWeights, validatedProfile.startWeight],
   )
+  const reminderSchedulerStatus = useMemo(() => buildReminderStatus(reminderState), [reminderState])
+  const dueReminders = useMemo(() => getDueReminders(reminderState), [reminderState])
   const latestWeight = healthSnapshot.weight.dailyWeights.at(-1) || { value: healthSnapshot.weight.current }
   const centralCurrentWeight = healthSnapshot.weight.current
   const [aiStarterPrompts, setAiStarterPrompts] = useState(defaultAiStarterPrompts)
@@ -1595,6 +1612,53 @@ function App() {
   }, [reminderSettings])
 
   useEffect(() => {
+    const tabId = `reminder-${reminderTabId}`
+    const hasLeadership = claimReminderSchedulerLeadership(tabId)
+    if (!hasLeadership) return undefined
+
+    const scheduler = createReminderScheduler({
+      getState: () => reminderStateRef.current,
+      onDue: (due, now) => {
+        due.slice(0, 3).forEach((reminder) => showReminderNotification(reminder))
+        setReminderState((current) => ({
+          ...current,
+          reminders: current.reminders.map((reminder) =>
+            due.some((entry) => entry.id === reminder.id)
+              ? { ...reminder, lastTriggeredAt: now.toISOString(), updatedAt: now.toISOString() }
+              : reminder),
+          updatedAt: now.toISOString(),
+        }))
+      },
+    })
+
+    function refreshLeadership() {
+      if (claimReminderSchedulerLeadership(tabId)) scheduler.recalculate()
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') refreshLeadership()
+    }
+
+    scheduler.start()
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('online', refreshLeadership)
+    window.addEventListener('focus', refreshLeadership)
+
+    return () => {
+      scheduler.stop()
+      releaseReminderSchedulerLeadership(tabId)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('online', refreshLeadership)
+      window.removeEventListener('focus', refreshLeadership)
+    }
+  }, [reminderTabId])
+
+  useEffect(() => {
+    reminderStateRef.current = reminderState
+    saveReminderState(reminderState)
+  }, [reminderState])
+
+  useEffect(() => {
     userDataRepository.saveCoachChat(chatMessages)
   }, [chatMessages])
 
@@ -1662,7 +1726,7 @@ function App() {
   )
 
   useEffect(() => {
-    if (!reminderSettings.enabled || !('Notification' in window)) {
+    if (!reminderSettings.enabled || !('Notification' in window) || reminderSettings.enabled) {
       return undefined
     }
 
@@ -1934,6 +1998,7 @@ function App() {
     setScannedProducts(userDataRepository.getScannedProducts(initialScannedProducts, isStoredScannedProducts))
     setProgressPhotos(userDataRepository.getProgressPhotos(initialProgressPhotos, isStoredProgressPhotos))
     setReminderSettings(userDataRepository.getReminderSettings(initialReminderSettings, isStoredReminderSettings))
+    setReminderState(readReminderState())
     setChatMessages(userDataRepository.getCoachChat(initialChatMessages, isStoredChatMessages))
     setCoachReports(userDataRepository.getAiCoachReports([], Array.isArray))
     setBodyAnalysisHistory(getAnalysisHistory())
@@ -2307,7 +2372,9 @@ function App() {
   }
 
   function updateReminderSetting(key, value) {
-    setReminderSettings((current) => ({ ...current, [key]: value }))
+    const nextSettings = { ...reminderSettings, [key]: value }
+    setReminderSettings(nextSettings)
+    setReminderState((currentState) => syncLegacyReminderSettingsToV2(currentState, nextSettings))
   }
 
   async function requestNotificationPermission() {
@@ -2325,6 +2392,26 @@ function App() {
     }
 
     setReminderStatus('Notiser är inte aktiverade. Inställningarna sparas ändå.')
+  }
+
+  function handleReminderStateChange(nextState) {
+    setReminderState(nextState)
+  }
+
+  function handleReminderComplete(reminderId) {
+    setReminderState((current) => completeReminder(current, reminderId))
+  }
+
+  function handleReminderSnooze(reminderId, minutes) {
+    setReminderState((current) => snoozeReminder(current, reminderId, minutes))
+  }
+
+  function handleReminderSkip(reminderId) {
+    setReminderState((current) => skipReminder(current, reminderId))
+  }
+
+  function openReminderCenter() {
+    document.getElementById('reminder-center')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   function getValidatedProfile() {
@@ -2639,6 +2726,13 @@ function App() {
     <main className="app-shell">
       <PwaExperience />
       <GlobalSyncStatus />
+      <ReminderBanner
+        dueReminders={dueReminders}
+        onComplete={handleReminderComplete}
+        onOpenCenter={openReminderCenter}
+        onSkip={handleReminderSkip}
+        onSnooze={handleReminderSnooze}
+      />
       {import.meta.env.DEV && (
         <Suspense fallback={null}>
           <SyncDiagnosticsPanel />
@@ -2862,6 +2956,15 @@ function App() {
           reminderSettings={reminderSettings}
           reminderStatus={reminderStatus}
         />
+
+        <AppErrorBoundary area="reminders" resetKey={reminderState.updatedAt} title="Reminder Center kunde inte visas">
+          <ReminderCenter
+            goalsHabits={goalsHabits}
+            onRemindersChange={handleReminderStateChange}
+            reminderState={reminderState}
+            schedulerStatus={reminderSchedulerStatus}
+          />
+        </AppErrorBoundary>
 
         <AppErrorBoundary area="cloud" resetKey={authSession?.user?.id || ''} title="Molnbackup kunde inte visas">
           <CloudBackupPanel

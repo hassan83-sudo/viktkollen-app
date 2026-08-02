@@ -1,3 +1,5 @@
+import { addSyncDiagnosticEvent, recordCrossTabRejectedMessage } from './syncDiagnostics.js'
+
 export const crossTabProtocolVersion = 1
 export const crossTabChannelName = 'viktkollen.sync.crossTab.v1'
 export const crossTabStorageSignalKey = 'viktkollen.sync.crossTab.signal.v1'
@@ -129,6 +131,7 @@ export function createCrossTabTransport(options = {}) {
   let closed = false
   const listeners = new Set()
   const diagnostics = {
+    lastRejectedReason: '',
     received: 0,
     rejected: 0,
     sent: 0,
@@ -139,6 +142,8 @@ export function createCrossTabTransport(options = {}) {
     const validation = validateCrossTabMessage(message, { ownTabId: tabId, userScope })
     if (!validation.ok) {
       diagnostics.rejected += 1
+      diagnostics.lastRejectedReason = validation.reason
+      recordCrossTabRejectedMessage(validation.reason)
       return
     }
 
@@ -153,6 +158,8 @@ export function createCrossTabTransport(options = {}) {
       notify(JSON.parse(event.newValue))
     } catch {
       diagnostics.rejected += 1
+      diagnostics.lastRejectedReason = 'invalid_json'
+      recordCrossTabRejectedMessage('invalid_json')
     }
   }
 
@@ -164,6 +171,7 @@ export function createCrossTabTransport(options = {}) {
       channel = new BroadcastChannelRef(crossTabChannelName)
       channel.onmessage = (event) => notify(event.data)
     } else {
+      addSyncDiagnosticEvent('transport', 'Storage fallback transport activated.')
       windowRef?.addEventListener?.('storage', handleStorageEvent)
     }
   }
@@ -184,6 +192,7 @@ export function createCrossTabTransport(options = {}) {
     if (estimateMessageBytes(message) > maxCrossTabMessageBytes) return false
 
     diagnostics.sent += 1
+    addSyncDiagnosticEvent('transport', 'Cross-tab message sent.', { type })
     if (channel) {
       channel.postMessage(message)
       return true

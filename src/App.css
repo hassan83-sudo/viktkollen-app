@@ -209,6 +209,68 @@
   font-weight: 750;
 }
 
+.sync-diagnostics-panel {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.sync-diagnostics-panel summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.sync-diagnostics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.sync-diagnostics-grid div {
+  display: grid;
+  gap: 3px;
+}
+
+.sync-diagnostics-grid dt {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.sync-diagnostics-grid dd {
+  margin: 0;
+  color: var(--text-h);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.sync-diagnostics-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sync-diagnostics-events {
+  display: grid;
+  gap: 6px;
+  max-height: 220px;
+  margin: 12px 0 0;
+  padding-left: 18px;
+  overflow: auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.sync-diagnostics-events li {
+  display: grid;
+  gap: 2px;
+}
+
 .lazy-section-fallback {
   margin: 0;
   color: var(--muted);

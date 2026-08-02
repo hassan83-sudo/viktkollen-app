@@ -2,6 +2,7 @@ import { appStorageChangedEvent } from '../appStorageService.js'
 import { globalSyncScheduler } from './globalSyncScheduler.js'
 import { isAllowedSyncStorageKey } from './syncMetadata.js'
 import { refreshSyncStatus, updateSyncCoordinationStatus } from './syncStatusStore.js'
+import { addSyncDiagnosticEvent, recordSyncResult } from './syncDiagnostics.js'
 import {
   createCrossTabTransport,
   createTabId,
@@ -138,6 +139,7 @@ export function createCrossTabSyncCoordinator(options = {}) {
       hasLeader: role === 'leader' || Boolean(readLease(storage)),
       leaderLastSeenAt,
       latestTrigger,
+      leaseExpiry: readLease(storage)?.expiresAt || '',
       role,
       schedulerActive: role === 'leader',
       tabId,
@@ -149,9 +151,11 @@ export function createCrossTabSyncCoordinator(options = {}) {
   function becomeFollower(reason = 'follower') {
     if (role === 'leader') {
       scheduler.stop()
+      addSyncDiagnosticEvent('leader', 'Leadership released.', { reason, tabId })
     }
     role = 'follower'
     latestTrigger = reason
+    addSyncDiagnosticEvent('leader', 'Tab is follower.', { reason, tabId })
     updateStatus()
   }
 
@@ -168,6 +172,12 @@ export function createCrossTabSyncCoordinator(options = {}) {
     writeLease(storage, lease)
     scheduler.setOnDataChanged(onDataChanged)
     scheduler.start(userScope)
+    addSyncDiagnosticEvent('leader', 'Leadership claimed.', {
+      expiresAt: lease.expiresAt,
+      reason,
+      tabId,
+      userScope,
+    })
     transport.post(crossTabMessageTypes.leaderClaim, {
       expiresAt: lease.expiresAt,
       reason,
@@ -211,6 +221,7 @@ export function createCrossTabSyncCoordinator(options = {}) {
       expiresAt: lease.expiresAt,
       role,
     })
+    addSyncDiagnosticEvent('leader', 'Leader heartbeat renewed.', { expiresAt: lease.expiresAt, tabId })
     updateStatus({ hasLeader: true, leaderLastSeenAt: nowIso() })
   }
 
@@ -220,6 +231,7 @@ export function createCrossTabSyncCoordinator(options = {}) {
 
     latestTrigger = 'local-change'
     transport.post(crossTabMessageTypes.localDataDirty, { storageKey })
+    addSyncDiagnosticEvent('dirty', 'Local dirty signal observed.', { storageKey })
     if (role === 'leader') {
       scheduler.schedule('local-change')
     } else {
@@ -228,6 +240,7 @@ export function createCrossTabSyncCoordinator(options = {}) {
   }
 
   function handleVisibilityChange() {
+    addSyncDiagnosticEvent('lifecycle', 'Visibility changed.', { visibility: getVisibilityState(documentRef) })
     evaluateLeadership('visibilitychange')
   }
 
@@ -235,6 +248,7 @@ export function createCrossTabSyncCoordinator(options = {}) {
     if (role === 'leader') {
       transport.post(crossTabMessageTypes.leaderRelease, { reason: 'pagehide' })
       removeOwnLease(storage, tabId)
+      addSyncDiagnosticEvent('lifecycle', 'Leader pagehide release sent.', { tabId })
     }
   }
 
@@ -288,6 +302,7 @@ export function createCrossTabSyncCoordinator(options = {}) {
       latestTrigger = 'manual-request'
       if (role === 'leader') {
         void scheduler.syncNow('manual-cross-tab').then((result) => {
+          recordSyncResult(result)
           transport.post(result?.ok ? crossTabMessageTypes.syncCompleted : crossTabMessageTypes.syncFailed, {
             requestId: message.payload.requestId || '',
             statusCode: result?.status || 'unknown',
@@ -343,6 +358,7 @@ export function createCrossTabSyncCoordinator(options = {}) {
     activeTabs = new Map()
     transport.open(userScope)
     unsubscribeTransport = transport.subscribe(handleMessage)
+    addSyncDiagnosticEvent('coordinator', 'Cross-tab coordinator started.', { tabId, userScope })
     windowRef?.addEventListener?.(appStorageChangedEvent, handleLocalDataChanged)
     windowRef?.addEventListener?.('pagehide', handlePageHide)
     windowRef?.addEventListener?.('beforeunload', handlePageHide)
@@ -356,6 +372,7 @@ export function createCrossTabSyncCoordinator(options = {}) {
   function stop() {
     if (started) {
       transport.post(crossTabMessageTypes.tabGoodbye, { role })
+      addSyncDiagnosticEvent('coordinator', 'Cross-tab coordinator stopped.', { role, tabId })
     }
     if (role === 'leader') {
       transport.post(crossTabMessageTypes.leaderRelease, { reason: 'stop' })
@@ -387,14 +404,20 @@ export function createCrossTabSyncCoordinator(options = {}) {
     }
 
     if (role === 'leader') {
-      return scheduler.syncNow(reason)
+      return scheduler.syncNow(reason).then((result) => {
+        recordSyncResult(result)
+        return result
+      })
     }
 
     if (manualSyncPromise) return manualSyncPromise.promise
 
     evaluateLeadership('manual-sync')
     if (role === 'leader') {
-      return scheduler.syncNow(reason)
+      return scheduler.syncNow(reason).then((result) => {
+        recordSyncResult(result)
+        return result
+      })
     }
 
     const requestId = `${tabId}-${Date.now().toString(36)}`
@@ -405,7 +428,11 @@ export function createCrossTabSyncCoordinator(options = {}) {
         manualSyncTimer = null
         evaluateLeadership('manual-timeout')
         if (role === 'leader') {
-          void scheduler.syncNow('manual-takeover').then(resolve)
+          addSyncDiagnosticEvent('leader', 'Follower takeover after manual sync timeout.', { tabId })
+          void scheduler.syncNow('manual-takeover').then((result) => {
+            recordSyncResult(result)
+            resolve(result)
+          })
         } else {
           resolve({ ok: false, status: 'leader_timeout', error: 'Sync kunde inte startas just nu.' })
         }
@@ -414,6 +441,7 @@ export function createCrossTabSyncCoordinator(options = {}) {
 
     manualSyncPromise.promise = promise
     latestTrigger = 'manual-follower'
+    addSyncDiagnosticEvent('sync', 'Follower requested manual sync.', { requestId })
     transport.post(crossTabMessageTypes.syncRequest, { reason, requestId })
     updateStatus({ latestTrigger })
 

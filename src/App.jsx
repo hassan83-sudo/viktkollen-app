@@ -83,6 +83,7 @@ const ProgressCenter = lazy(() => import('./components/ProgressCenter.jsx'))
 const ProgressDashboard = lazy(() => import('./components/ProgressDashboard.jsx'))
 const ProgressPhotos = lazy(() => import('./components/ProgressPhotos.jsx'))
 const ReminderSettings = lazy(() => import('./components/ReminderSettings.jsx'))
+const SyncDiagnosticsPanel = lazy(() => import('./components/SyncDiagnosticsPanel.jsx'))
 
 const starterWeights = [
   { date: '2026-05-23', value: 91.8 }, { date: '2026-05-24', value: 91.2 },
@@ -2598,6 +2599,11 @@ function App() {
     <main className="app-shell">
       <PwaExperience />
       <GlobalSyncStatus />
+      {import.meta.env.DEV && (
+        <Suspense fallback={null}>
+          <SyncDiagnosticsPanel />
+        </Suspense>
+      )}
       <AppTopbar
         authLoading={authLoading}
         email={authSession.user?.email}

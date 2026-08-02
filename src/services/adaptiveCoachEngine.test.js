@@ -71,4 +71,29 @@ describe('adaptiveCoachEngine', () => {
     expect(model.signals.reminders.dueCount).toBe(1)
     expect(model.recommendations.some((item) => item.area === 'reminders')).toBe(true)
   })
+
+  it('adds stable ids and feedback status to recommendations', () => {
+    const model = buildAdaptiveCoach(baseData(), { analysisDate, now: `${analysisDate}T12:00:00.000Z` })
+
+    expect(model.recommendations[0].id).toMatch(/^coach-/)
+    expect(model.recommendations[0].feedbackStatus).toBe('new')
+    expect(model.feedbackSummary.weeklyStatus).toBe('Ingen feedback ännu')
+  })
+
+  it('does not repeat a dismissed recommendation as the top advice', () => {
+    const initial = buildAdaptiveCoach(baseData(), { analysisDate, now: `${analysisDate}T12:00:00.000Z` })
+    const dismissedTop = initial.recommendations[0]
+    const model = buildAdaptiveCoach(baseData({
+      adaptiveCoachFeedback: {
+        recommendations: [{
+          ...dismissedTop,
+          status: 'dismissed',
+          updatedAt: `${analysisDate}T12:00:00.000Z`,
+        }],
+      },
+    }), { analysisDate, now: `${analysisDate}T13:00:00.000Z` })
+
+    expect(model.recommendations[0].id).not.toBe(dismissedTop.id)
+    expect(model.feedbackSummary.dismissed).toBe(1)
+  })
 })

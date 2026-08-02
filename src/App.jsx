@@ -893,6 +893,9 @@ function App() {
   const [goalsHabits, setGoalsHabits] = useState(() =>
     userDataRepository.getGoalsHabits({}, (value) => value && typeof value === 'object' && !Array.isArray(value)),
   )
+  const [adaptiveCoachFeedback, setAdaptiveCoachFeedback] = useState(() =>
+    userDataRepository.getAdaptiveCoachFeedback({}, (value) => value && typeof value === 'object' && !Array.isArray(value)),
+  )
   const [healthDashboardPeriod, setHealthDashboardPeriod] = useState(() =>
     userDataRepository.getHealthDashboardPeriod('30d', (value) =>
       ['7d', '30d', '90d', '180d', '365d', 'all'].includes(value)),
@@ -1201,6 +1204,7 @@ function App() {
       .then(({ createMonthlyHealthReport }) => {
         if (cancelled) return
         setMonthlyReport(createMonthlyHealthReport({
+          adaptiveCoachFeedback,
           goalsHabits,
           healthSnapshot,
           mealHistory: photoMeals,
@@ -1215,7 +1219,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [goalsHabits, healthSnapshot, meals, photoMeals, weights])
+  }, [adaptiveCoachFeedback, goalsHabits, healthSnapshot, meals, photoMeals, weights])
 
   const weeklyReportLines = useMemo(
     () =>
@@ -1352,6 +1356,7 @@ function App() {
       const { createWeeklyReport: createAiWeeklyReport } = await loadWeeklyReportService()
       const report = await createAiWeeklyReport({
         bodyAnalysisHistory,
+        adaptiveCoachFeedback,
         checkIn,
         currentWeight: centralCurrentWeight,
         foods,
@@ -1378,6 +1383,7 @@ function App() {
     }
   }, [
     checkIn,
+    adaptiveCoachFeedback,
     bodyAnalysisHistory,
     centralCurrentWeight,
     foods,
@@ -1580,6 +1586,10 @@ function App() {
   useEffect(() => {
     userDataRepository.saveGoalsHabits(goalsHabits)
   }, [goalsHabits])
+
+  useEffect(() => {
+    userDataRepository.saveAdaptiveCoachFeedback(adaptiveCoachFeedback)
+  }, [adaptiveCoachFeedback])
 
   useEffect(() => {
     userDataRepository.saveHealthDashboardPeriod(healthDashboardPeriod)
@@ -1985,6 +1995,7 @@ function App() {
     setProgressReports(userDataRepository.getProgressReports([], Array.isArray))
     setFoods(readStoredFoods())
     setGoalsHabits(userDataRepository.getGoalsHabits({}, (value) => value && typeof value === 'object' && !Array.isArray(value)))
+    setAdaptiveCoachFeedback(userDataRepository.getAdaptiveCoachFeedback({}, (value) => value && typeof value === 'object' && !Array.isArray(value)))
     setHealthDashboardPeriod(userDataRepository.getHealthDashboardPeriod('30d', (value) =>
       ['7d', '30d', '90d', '180d', '365d', 'all'].includes(value)))
     setMeals(normalizeMeals(userDataRepository.getMeals(initialMeals, isStoredMeals)))
@@ -2762,6 +2773,7 @@ function App() {
       <Suspense fallback={<LazySectionFallback />}>
         <AppErrorBoundary area="health-dashboard" resetKey={`${healthSnapshot.date}-${healthDashboardPeriod}`} title="Hälsodashboarden kunde inte visas">
           <HealthDashboardV2
+            adaptiveCoachFeedback={adaptiveCoachFeedback}
             checkIn={checkIn}
             goalsHabits={goalsHabits}
             healthSnapshot={healthSnapshot}
@@ -2847,6 +2859,7 @@ function App() {
           />
 
           <AdaptiveCoachPanel
+            adaptiveCoachFeedback={adaptiveCoachFeedback}
             analysisDate={selectedMealDate}
             checkIn={checkIn}
             goalsHabits={goalsHabits}
@@ -2855,6 +2868,7 @@ function App() {
             nutritionGoals={nutritionGoals}
             profile={validatedProfile}
             reminderState={reminderState}
+            onAdaptiveCoachFeedbackChange={setAdaptiveCoachFeedback}
             weights={centralWeightStats.weights}
           />
 
@@ -2997,6 +3011,7 @@ function App() {
 
         <AppErrorBoundary area="progress-dashboard" resetKey={`${selectedMealDate}-${weights.length}-${meals.length}`} title="Smart Progress Dashboard kunde inte visas">
           <ProgressDashboard
+            adaptiveCoachFeedback={adaptiveCoachFeedback}
             checkIn={checkIn}
             checkIns={[]}
             foods={foods}

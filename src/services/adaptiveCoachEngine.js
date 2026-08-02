@@ -1,4 +1,10 @@
 import { buildAiNutritionCoachInsights } from './aiNutritionInsights.js'
+import {
+  applyFeedbackToRecommendations,
+  buildAdaptiveCoachFeedbackSummary,
+  getCoachRecommendationId,
+  normalizeAdaptiveCoachFeedback,
+} from './adaptiveCoachFeedback.js'
 import { buildGoalsHabitsLiteSummary } from './goalsHabitsSummary.js'
 import { buildSharedAnalytics } from './sharedAnalyticsEngine.js'
 import { buildReminderStatus } from './reminders/reminderScheduler.js'
@@ -40,13 +46,18 @@ function isUnsafeAdvice(item) {
 }
 
 function createRecommendation({ action, area, evidence = [], priority, text, title }) {
-  return {
+  const recommendation = {
     action: safeText(action),
     area,
     evidence: safeArray(evidence).map((entry) => safeText(entry)).filter(Boolean).slice(0, 3),
     priority,
     text: safeText(text),
     title: safeText(title),
+  }
+
+  return {
+    ...recommendation,
+    id: getCoachRecommendationId(recommendation),
   }
 }
 
@@ -320,6 +331,9 @@ export function buildAdaptiveCoach(input = {}, options = {}) {
   const nutritionReport = buildAiNutritionCoachInsights(input, { analysisDate: shared.analysisDate })
   const goalsSummary = buildGoalsHabitsLiteSummary(input.goalsHabits)
   const reminderStatus = buildReminderStatus(input.reminderState || {}, { now: options.now || `${shared.analysisDate}T12:00:00.000Z` })
+  const feedback = normalizeAdaptiveCoachFeedback(input.adaptiveCoachFeedback || input.coachFeedback || {}, {
+    now: options.now || `${shared.analysisDate}T12:00:00.000Z`,
+  })
   const candidates = [
     buildNutritionRecommendation(shared, nutritionReport),
     buildGoalsRecommendation(goalsSummary),
@@ -327,12 +341,32 @@ export function buildAdaptiveCoach(input = {}, options = {}) {
     buildActivityRecommendation(shared),
     buildReminderRecommendation(reminderStatus),
   ]
-  const recommendations = uniqueByArea(candidates)
+  const recommendations = applyFeedbackToRecommendations(
+    uniqueByArea(candidates)
+      .filter((item) => !isUnsafeAdvice(item)),
+    feedback,
+    { now: options.now || `${shared.analysisDate}T12:00:00.000Z` },
+  )
     .filter((item) => !isUnsafeAdvice(item))
-    .sort((first, second) => second.priority - first.priority)
     .slice(0, 3)
+    .map((item) => ({
+      action: item.action,
+      adjustedPriority: item.adjustedPriority,
+      area: item.area,
+      evidence: item.evidence,
+      feedbackStatus: item.feedbackStatus,
+      feedbackStatusLabel: item.feedbackStatusLabel,
+      id: item.id,
+      lastFeedbackAt: item.lastFeedbackAt,
+      priority: item.priority,
+      text: item.text,
+      title: item.title,
+    }))
   const coverage = buildCoverage(shared, nutritionReport)
   const confidence = buildConfidence(coverage, recommendations)
+  const feedbackSummary = buildAdaptiveCoachFeedbackSummary(feedback, {
+    now: options.now || `${shared.analysisDate}T12:00:00.000Z`,
+  })
   const positives = safeArray(shared.highlights)
     .filter((item) => item.tone === 'positive')
     .map((item) => ({
@@ -346,6 +380,7 @@ export function buildAdaptiveCoach(input = {}, options = {}) {
     analysisDate: shared.analysisDate,
     confidence,
     coverage,
+    feedbackSummary,
     modelVersion: adaptiveCoachEngineVersion,
     recommendations,
     riskAreas: buildRiskAreas(shared, recommendations),

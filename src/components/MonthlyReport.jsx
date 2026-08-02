@@ -174,6 +174,20 @@ function MonthlyReport({ report }) {
         </div>
       )}
 
+      {report.coachEffectiveness && (
+        <div className="report-card">
+          <p className="report-heading">Coach effectiveness</p>
+          <p>{report.coachEffectiveness.effectivenessLabel}</p>
+          <p>
+            Hjälpte mest: {report.coachEffectiveness.helpedMost}. Ignorerades mest: {report.coachEffectiveness.ignoredMost}.
+          </p>
+          <p>
+            Coverage: {Math.round(report.coachEffectiveness.coverage * 100).toLocaleString('sv-SE')}%.
+            Confidence: {Math.round(report.coachEffectiveness.confidence * 100).toLocaleString('sv-SE')}%.
+          </p>
+        </div>
+      )}
+
       <p className="estimate-note">
         Rapporten skapas lokalt från sparad data och är allmänt stöd för vanor,
         inte medicinsk rådgivning.

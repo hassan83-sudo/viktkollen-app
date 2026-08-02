@@ -159,6 +159,16 @@ function WeeklyReport({
                   <p>{weeklyReportData.goalsHabits.positiveProgress}</p>
                 </div>
               )}
+              {weeklyReportData.coachFeedback && (
+                <div>
+                  <p className="report-heading">Coachens genomförandegrad</p>
+                  <p>{weeklyReportData.coachFeedback.completionRateLabel}</p>
+                  <p>
+                    Accepterade: {weeklyReportData.coachFeedback.accepted}. Klara: {weeklyReportData.coachFeedback.completed}.
+                    Uppskjutna: {weeklyReportData.coachFeedback.postponed}. Avfärdade: {weeklyReportData.coachFeedback.dismissed}.
+                  </p>
+                </div>
+              )}
               <p className="estimate-note">
                 Rapporten är allmänt stöd för hälsa och vanor, inte medicinsk
                 rådgivning.

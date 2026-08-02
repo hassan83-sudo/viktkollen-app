@@ -9,6 +9,7 @@ import {
 import { buildHealthSnapshot } from './healthSnapshot.js'
 import { buildGoalsHabitsLiteSummary } from './goalsHabitsSummary.js'
 import { buildSharedMonthlyReportModel } from './sharedAnalyticsEngine.js'
+import { buildAdaptiveCoachFeedbackSummary } from './adaptiveCoachFeedback.js'
 
 function safeArray(value) {
   return Array.isArray(value) ? value : []
@@ -205,6 +206,9 @@ export function createMonthlyHealthReport(data = {}) {
     ? recentWeights.reduce((sum, entry) => sum + entry.value, 0) / recentWeights.length
     : null
   const actualMeals = snapshot.nutrition.actualMeals
+  const coachEffectiveness = buildAdaptiveCoachFeedbackSummary(data.adaptiveCoachFeedback, {
+    now: data.today ? `${data.today}T12:00:00.000Z` : undefined,
+  })
   const recentMeals = safeArray(actualMeals).filter((entry) =>
     isLocalDateInRange(getMealDate(entry), reportRange),
   )
@@ -246,7 +250,11 @@ export function createMonthlyHealthReport(data = {}) {
     generatedAt: new Date().toISOString(),
     period: sharedReport.period,
     source: 'local_ai',
-    sharedAnalytics: sharedReport,
+    coachEffectiveness,
+    sharedAnalytics: {
+      ...sharedReport,
+      coachFeedback: coachEffectiveness,
+    },
     totalMeals,
     weighInCount: recentWeights.length,
     weightChange,

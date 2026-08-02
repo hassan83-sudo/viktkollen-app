@@ -7,6 +7,7 @@ import { formatSteps } from './healthFormatting.js'
 import { buildHealthSnapshot } from './healthSnapshot.js'
 import { buildGoalsHabitsLiteSummary } from './goalsHabitsSummary.js'
 import { buildSharedWeeklyReportModel } from './sharedAnalyticsEngine.js'
+import { buildAdaptiveCoachFeedbackSummary } from './adaptiveCoachFeedback.js'
 
 function getMealPattern(mealHistory = [], meals = []) {
   if (mealHistory.length > 0) {
@@ -59,6 +60,9 @@ export function makeWeeklyReportFallback(data) {
   const proactiveRisk = data.proactiveCoach?.dailyRisk
   const proactiveAction = data.proactiveCoach?.nextBestAction
   const goalsHabitsSummary = buildGoalsHabitsLiteSummary(data.goalsHabits)
+  const coachFeedback = buildAdaptiveCoachFeedbackSummary(data.adaptiveCoachFeedback, {
+    now: data.today ? `${data.today}T12:00:00.000Z` : undefined,
+  })
 
   return {
     biggestProgress:
@@ -74,6 +78,7 @@ export function makeWeeklyReportFallback(data) {
         : 'Risken är att nästa steg blir för stort i stället för upprepbart.'),
     focusNextWeek:
       sharedReport.attentionItems[0]?.action || goalsHabitsSummary?.nextStep || proactiveAction || 'Välj en liten vana att upprepa varje dag.',
+    coachFeedback,
     goalsHabits: goalsHabitsSummary,
     movement:
       sharedReport.summaries.activity ||
@@ -104,7 +109,10 @@ export function makeWeeklyReportFallback(data) {
       ? sharedReport.summaries.weight
       : `Vikten är ${sharedReport.weightSummary.changeLabel} sedan start.`,
     mealPattern: sharedReport.summaries.nutrition || getMealPattern(mealHistory, snapshot.nutrition.mealsToday),
-    sharedAnalytics: sharedReport,
+    sharedAnalytics: {
+      ...sharedReport,
+      coachFeedback,
+    },
   }
 }
 

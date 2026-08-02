@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { buildHealthDashboardV2Model } from '../services/healthDashboardV2.js'
+import { buildAdaptiveCoachFeedbackSummary } from '../services/adaptiveCoachFeedback.js'
 
 const HealthDashboardDrilldown = lazy(() => import('./HealthDashboardDrilldown.jsx'))
 
@@ -92,6 +93,7 @@ function ItemList({ emptyText, items }) {
 }
 
 function HealthDashboardV2({
+  adaptiveCoachFeedback = {},
   checkIn,
   checkIns = [],
   goalsHabits,
@@ -120,6 +122,12 @@ function HealthDashboardV2({
   const model = useMemo(
     () => buildHealthDashboardV2Model(data, { analysisDate: today, period }),
     [data, period, today],
+  )
+  const coachFeedbackSummary = useMemo(
+    () => buildAdaptiveCoachFeedbackSummary(adaptiveCoachFeedback, {
+      now: today ? `${today}T12:00:00.000Z` : undefined,
+    }),
+    [adaptiveCoachFeedback, today],
   )
 
   useEffect(() => {
@@ -236,6 +244,18 @@ function HealthDashboardV2({
             <p>{model.goalsSummary.nextStep}</p>
           </Card>
         )}
+
+        <Card actionHref="#adaptive-coach" actionText="Visa coach" heading="Coach status" text={coachFeedbackSummary.weeklyStatus}>
+          <div className="health-dashboard-metrics">
+            <Metric label="Coach score" value={coachFeedbackSummary.completionRateLabel} />
+            <Metric label="Aktiva" value={coachFeedbackSummary.activeCount} />
+            <Metric
+              label="Senaste"
+              note={coachFeedbackSummary.latestAction?.title}
+              value={coachFeedbackSummary.latestAction?.statusLabel || 'Ingen feedback'}
+            />
+          </div>
+        </Card>
 
         <Card actionHref="#ai-insights" actionText="Visa insikter" heading="Personliga insikter" text={model.insightsSummary.positive}>
           <p>{model.insightsSummary.improvement}</p>

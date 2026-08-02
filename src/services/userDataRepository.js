@@ -11,6 +11,7 @@ import {
 export const userDataKeys = {
   aiConversationMemory: 'viktkollen.aiConversationMemory',
   aiCoachReports: 'viktkollen.aiCoach.reports.v1',
+  adaptiveCoachFeedback: 'viktkollen.adaptiveCoach.v1',
   bodyAnalysisHistory: 'viktkollen.bodyAnalysis.history.v1',
   bodyAnalysisLegacyHistory: 'viktkollen.bodyAnalysis.history',
   bodyAnalysisLatest: 'viktkollen.bodyAnalysis.latest',
@@ -110,6 +111,14 @@ export function getGoalsHabits(fallbackValue = {}, isValid) {
 
 export function saveGoalsHabits(value) {
   return saveValue(userDataKeys.goalsHabits, value)
+}
+
+export function getAdaptiveCoachFeedback(fallbackValue = {}, isValid) {
+  return readValidated(userDataKeys.adaptiveCoachFeedback, fallbackValue, isValid)
+}
+
+export function saveAdaptiveCoachFeedback(value) {
+  return saveValue(userDataKeys.adaptiveCoachFeedback, value)
 }
 
 export function getHealthDashboardPeriod(fallbackValue = '30d', isValid) {

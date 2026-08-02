@@ -144,6 +144,9 @@ describe('HealthDashboardV2 component', () => {
   it('renders period controls cards and accessible text fallback', () => {
     const markup = renderToStaticMarkup(
       <HealthDashboardV2
+        adaptiveCoachFeedback={{
+          recommendations: [{ id: 'coach-demo', status: 'completed', title: 'Logga lunch', updatedAt: `${analysisDate}T10:00:00.000Z` }],
+        }}
         checkIn={checkIn}
         goalsHabits={goalsHabits}
         meals={meals}
@@ -163,6 +166,8 @@ describe('HealthDashboardV2 component', () => {
     expect(markup).toContain('Vikt')
     expect(markup).toContain('Nutrition')
     expect(markup).toContain('Mål &amp; vanor')
+    expect(markup).toContain('Coach status')
+    expect(markup).toContain('Coach score')
     expect(markup).not.toMatch(/NaN|Infinity|undefined|null|\[object Object\]/)
   })
 })

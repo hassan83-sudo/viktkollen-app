@@ -1,0 +1,92 @@
+{
+  "schema": "viktkollen.manual-release-acceptance.v1",
+  "version": "0.0.0",
+  "commit": "<short-commit>",
+  "date": "YYYY-MM-DD",
+  "environment": {
+    "kind": "local-preview | vercel-preview | production",
+    "urlLabel": "<anonymized-url-or-domain-label>",
+    "supabaseProjectLabel": "<anonymized-project-label>",
+    "buildSource": "npm run build | vercel"
+  },
+  "tester": {
+    "nameOrInitials": "<optional>",
+    "role": "<optional>",
+    "comment": "<no email, password, token, session, raw payload or health data>"
+  },
+  "devices": [
+    {
+      "browser": "Chrome",
+      "browserVersion": "<major-version>",
+      "device": "Desktop",
+      "viewport": "1440x900",
+      "os": "Windows"
+    }
+  ],
+  "checks": [
+    {
+      "id": "auth-login",
+      "area": "auth",
+      "title": "Login with test user",
+      "status": "not_tested",
+      "blocking": true,
+      "comment": "",
+      "evidence": {
+        "screenshotStored": false,
+        "anonymizedNote": ""
+      }
+    },
+    {
+      "id": "cloud-backup-restore",
+      "area": "backup",
+      "title": "Cloud Backup and Restore",
+      "status": "not_tested",
+      "blocking": true,
+      "comment": "",
+      "evidence": {
+        "screenshotStored": false,
+        "anonymizedNote": ""
+      }
+    },
+    {
+      "id": "cross-tab-leader-takeover",
+      "area": "sync",
+      "title": "Two-tab leader takeover",
+      "status": "not_tested",
+      "blocking": true,
+      "comment": "",
+      "evidence": {
+        "screenshotStored": false,
+        "anonymizedNote": ""
+      }
+    },
+    {
+      "id": "pwa-offline-update",
+      "area": "pwa",
+      "title": "PWA offline and update",
+      "status": "not_tested",
+      "blocking": true,
+      "comment": "",
+      "evidence": {
+        "screenshotStored": false,
+        "anonymizedNote": ""
+      }
+    }
+  ],
+  "decision": {
+    "status": "not_ready",
+    "reason": "Manual acceptance not completed yet.",
+    "blockers": [],
+    "nonBlockingRisks": []
+  },
+  "privacyChecklist": {
+    "containsEmail": false,
+    "containsPassword": false,
+    "containsToken": false,
+    "containsSession": false,
+    "containsRawLocalStorage": false,
+    "containsRawSupabasePayload": false,
+    "containsHealthData": false,
+    "containsFullUserId": false
+  }
+}

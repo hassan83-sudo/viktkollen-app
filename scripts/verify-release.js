@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
-import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { join, resolve } from 'node:path'
 import process from 'node:process'
 
 const requiredDistFiles = [
@@ -20,19 +21,46 @@ const commands = [
   ['git', ['diff', '--check'], 'git diff whitespace check'],
 ]
 
-function run(command, args, label) {
+export function getSpawnTarget(command, args, {
+  env = process.env,
+  nodePath = process.execPath,
+  platform = process.platform,
+} = {}) {
+  if (command === 'npm' && env.npm_execpath) {
+    return {
+      args: [env.npm_execpath, ...args],
+      command: nodePath,
+    }
+  }
+
+  if (platform === 'win32' && command === 'npm') {
+    return {
+      args,
+      command: 'npm.cmd',
+    }
+  }
+
+  return { args, command }
+}
+
+export function run(command, args, label) {
   console.log(`\n[release] ${label}`)
-  const result = spawnSync(command, args, {
-    shell: process.platform === 'win32',
+  const target = getSpawnTarget(command, args)
+  const result = spawnSync(target.command, target.args, {
     stdio: 'inherit',
   })
+
+  if (result.error) {
+    console.error(`[release] ${label} failed to start: ${result.error.message}`)
+    process.exit(1)
+  }
 
   if (result.status !== 0) {
     process.exit(result.status || 1)
   }
 }
 
-function assertDistContract() {
+export function assertDistContract() {
   requiredDistFiles.forEach((file) => {
     if (!existsSync(file)) {
       throw new Error(`Missing release artifact: ${file}`)
@@ -47,7 +75,7 @@ function assertDistContract() {
   }
 }
 
-function writeReleaseMarker() {
+export function writeReleaseMarker() {
   const marker = {
     at: new Date().toISOString(),
     checks: commands.map(([, , label]) => label),
@@ -57,11 +85,21 @@ function writeReleaseMarker() {
   writeFileSync(join('docs', 'release-report.json'), `${JSON.stringify(marker, null, 2)}\n`)
 }
 
-for (const [command, args, label] of commands) {
-  run(command, args, label)
+export function runReleaseGate() {
+  for (const [command, args, label] of commands) {
+    run(command, args, label)
+  }
+
+  console.log('\n[release] dist/PWA contract')
+  assertDistContract()
+  writeReleaseMarker()
+  console.log('\n[release] release gate passed')
 }
 
-console.log('\n[release] dist/PWA contract')
-assertDistContract()
-writeReleaseMarker()
-console.log('\n[release] release gate passed')
+const isDirectRun = process.argv[1]
+  ? resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+  : false
+
+if (isDirectRun) {
+  runReleaseGate()
+}

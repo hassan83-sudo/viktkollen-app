@@ -46,6 +46,8 @@ Offline-smoke-testet hittade att service workern bypassade `/assets/supabase-ven
 - Service Worker update mellan två deployade versioner.
 - Lighthouse PWA-kontroll i Chrome DevTools.
 
+Se `docs/manual-release-acceptance-v1.md` för stegvis acceptance-guide och `docs/manual-release-acceptance-template.json` för anonymiserad rapportmall.
+
 ## Release-status
 
 Automatiserad releasevalidering är avsedd att köras med:
@@ -55,3 +57,5 @@ npm run verify:release
 ```
 
 Scriptet skriver `docs/release-report.json` när hela gaten passerar.
+
+DEP0190-varningen från Windows-körning är borttagen genom att release-scriptet startar `npm.cmd` direkt i stället för att använda `spawnSync(..., shell: true)`.

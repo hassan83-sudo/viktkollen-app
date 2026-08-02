@@ -4,10 +4,35 @@ import {
   supabase,
 } from './supabaseClient.js'
 
+const AUTH_SESSION_TIMEOUT_MS = 5000
+
+function createAuthTimeoutResult() {
+  return {
+    data: { session: null },
+    error: new Error('Kunde inte bekräfta sessionen just nu.'),
+  }
+}
+
 function getAuthUnavailableResult() {
   return {
     data: null,
     error: new Error('Supabase Auth är inte konfigurerat ännu.'),
+  }
+}
+
+async function withTimeout(promise, timeoutMs) {
+  let timeoutId
+
+  const timeout = new Promise((resolve) => {
+    timeoutId = window.setTimeout(() => {
+      resolve(createAuthTimeoutResult())
+    }, timeoutMs)
+  })
+
+  try {
+    return await Promise.race([promise, timeout])
+  } finally {
+    window.clearTimeout(timeoutId)
   }
 }
 
@@ -57,7 +82,11 @@ export async function getCurrentAuthSession() {
     return getAuthUnavailableResult()
   }
 
-  return supabase.auth.getSession()
+  if (typeof window === 'undefined') {
+    return supabase.auth.getSession()
+  }
+
+  return withTimeout(supabase.auth.getSession(), AUTH_SESSION_TIMEOUT_MS)
 }
 
 export function subscribeToAuthChanges(onChange) {

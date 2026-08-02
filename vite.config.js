@@ -32,4 +32,7 @@ export default defineConfig({
     },
   },
   plugins: [react()],
+  test: {
+    exclude: ['dist/**', 'node_modules/**', 'tests/e2e/**'],
+  },
 })

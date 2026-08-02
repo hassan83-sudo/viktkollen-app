@@ -21,6 +21,8 @@ function isSameOrigin(requestUrl) {
 function shouldBypassCache(requestUrl) {
   const path = requestUrl.pathname.toLowerCase()
 
+  if (path.startsWith('/assets/')) return false
+
   return (
     !isSameOrigin(requestUrl) ||
     path.startsWith('/api/') ||
@@ -51,6 +53,18 @@ function isAppImage(request) {
   )
 }
 
+async function cacheAppAssetsFromHtml(response) {
+  const html = await response.clone().text().catch(() => '')
+  const assetPaths = [...html.matchAll(/(?:href|src)="([^"]+)"/g)]
+    .map((match) => match[1])
+    .filter((path) => path.startsWith('/assets/'))
+
+  if (assetPaths.length === 0) return
+
+  const cache = await caches.open(ASSET_CACHE)
+  await Promise.allSettled([...new Set(assetPaths)].map((path) => cache.add(path)))
+}
+
 async function staleWhileRevalidate(request, cacheName) {
   const cache = await caches.open(cacheName)
   const cached = await cache.match(request)
@@ -73,6 +87,7 @@ async function networkFirstAppShell(request) {
 
     if (response.ok) {
       await cache.put('/index.html', response.clone())
+      await cacheAppAssetsFromHtml(response)
     }
 
     return response
@@ -85,6 +100,15 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(APP_SHELL_CACHE)
       .then((cache) => cache.addAll(APP_SHELL_URLS))
+      .then(() => fetch('/index.html'))
+      .then((response) => {
+        if (response.ok) {
+          return cacheAppAssetsFromHtml(response)
+        }
+
+        return undefined
+      })
+      .catch(() => undefined)
       .then(() => self.skipWaiting()),
   )
 })

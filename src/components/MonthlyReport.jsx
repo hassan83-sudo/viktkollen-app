@@ -1,3 +1,4 @@
+import { lazy, Suspense, useRef, useState } from 'react'
 import { buildSharedReportUiModel } from '../services/sharedReportUiModel.js'
 import ReportAttentionItems from './reports/ReportAttentionItems.jsx'
 import ReportComparisonCard from './reports/ReportComparisonCard.jsx'
@@ -7,6 +8,8 @@ import ReportHighlights from './reports/ReportHighlights.jsx'
 import ReportNextActions from './reports/ReportNextActions.jsx'
 import ReportOverview from './reports/ReportOverview.jsx'
 import ReportTrendCard from './reports/ReportTrendCard.jsx'
+
+const ReportDrilldown = lazy(() => import('./reports/ReportDrilldown.jsx'))
 
 function MetricCard({ label, value }) {
   return (
@@ -18,6 +21,9 @@ function MetricCard({ label, value }) {
 }
 
 function MonthlyReport({ report }) {
+  const [activeDrilldown, setActiveDrilldown] = useState('')
+  const [exportStatus, setExportStatus] = useState('')
+  const triggerRef = useRef(null)
   if (!report) {
     return null
   }
@@ -26,6 +32,23 @@ function MonthlyReport({ report }) {
     : null
   const printReport = () => {
     if (typeof window !== 'undefined') window.print()
+  }
+  const openDrilldown = (sectionId, event) => {
+    triggerRef.current = event.currentTarget
+    setActiveDrilldown(sectionId)
+  }
+  const closeDrilldown = () => {
+    setActiveDrilldown('')
+    triggerRef.current?.focus()
+  }
+  const exportText = async () => {
+    try {
+      const { exportReportText } = await import('../services/reportExportService.js')
+      const result = exportReportText(report, { reportType: 'monthly' })
+      setExportStatus(`Exporterade ${result.filename}.`)
+    } catch (error) {
+      setExportStatus(error instanceof Error ? error.message : 'Exporten misslyckades.')
+    }
   }
 
   return (
@@ -39,7 +62,42 @@ function MonthlyReport({ report }) {
 
       {reportModel && (
         <div className="shared-report-v3" aria-live="polite">
+          <div className="report-v3-actions">
+            {[
+              ['weight', 'Vikt'],
+              ['nutrition', 'Nutrition'],
+              ['activity', 'Aktivitet'],
+              ['goals', 'Mål & vanor'],
+              ['attention', 'Highlights'],
+              ['coverage', 'Datakvalitet'],
+            ].map(([sectionId, label]) => (
+              <button
+                aria-controls="monthly-report-drilldown"
+                aria-expanded={activeDrilldown === sectionId}
+                className="secondary-button"
+                key={sectionId}
+                type="button"
+                onClick={(event) => openDrilldown(sectionId, event)}
+              >
+                {label}
+              </button>
+            ))}
+            <button className="secondary-button" type="button" onClick={exportText}>Exportera text</button>
+          </div>
+          {exportStatus && <p className="analysis-status" aria-live="polite">{exportStatus}</p>}
           <ReportOverview model={reportModel} onPrint={printReport} />
+          {activeDrilldown && (
+            <div id="monthly-report-drilldown">
+              <Suspense fallback={<div className="report-v3-card" role="status">Laddar detaljvy...</div>}>
+                <ReportDrilldown
+                  onClose={closeDrilldown}
+                  report={report}
+                  reportType="monthly"
+                  sectionId={activeDrilldown}
+                />
+              </Suspense>
+            </div>
+          )}
           <ReportCoverage coverage={reportModel.coverage} dataQuality={reportModel.dataQuality} />
           <div className="report-v3-grid">
             {reportModel.trendCards.slice(0, 5).map((card) => <ReportTrendCard card={card} key={card.id} />)}

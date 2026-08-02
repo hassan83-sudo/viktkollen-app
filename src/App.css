@@ -4255,6 +4255,12 @@ a:focus-visible {
   gap: 12px;
 }
 
+.report-v3-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .report-v3-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -4402,6 +4408,26 @@ a:focus-visible {
   color: var(--muted);
 }
 
+.report-drilldown {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.report-drilldown-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.report-drilldown-heading p {
+  margin: 0;
+}
+
 @media print {
   .bottom-nav,
   .topbar,
@@ -4409,8 +4435,14 @@ a:focus-visible {
     display: none !important;
   }
 
+  .report-v3-actions,
+  .report-drilldown-heading button {
+    display: none !important;
+  }
+
   .report-v3-card,
-  .report-card {
+  .report-card,
+  .report-drilldown {
     break-inside: avoid;
   }
 }

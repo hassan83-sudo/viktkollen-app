@@ -1,3 +1,5 @@
+import { safeLogger } from './safeLogger.js'
+
 const aiEndpoint = '/api/ai'
 
 let endpointUnavailableReason = ''
@@ -66,11 +68,9 @@ export async function requestAiEndpoint(payload) {
   } catch (error) {
     endpointUnavailableReason = 'Lokal AI används just nu.'
 
-    if (import.meta.env.DEV) {
-      console.info('[Viktkollen AI] /api/ai är inte tillgänglig, använder lokal fallback.', {
-        message: error?.message,
-      })
-    }
+    safeLogger.info('/api/ai är inte tillgänglig, använder lokal fallback.', {
+      message: error?.message,
+    })
 
     return makeUnavailableResult(endpointUnavailableReason)
   }

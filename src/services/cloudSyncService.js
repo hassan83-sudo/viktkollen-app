@@ -25,6 +25,7 @@ import {
   getCloudBackupMeta,
   saveCloudBackupMeta,
 } from './userDataRepository.js'
+import { safeLogger } from './safeLogger.js'
 
 const disabledReason = 'Automatisk molnsynk är avstängd'
 const backupTable = 'user_backups'
@@ -179,7 +180,7 @@ async function createCloudEvent(eventType, status, message, metadata = {}) {
       })
 
     if (error) {
-      console.warn('[Viktkollen molnbackup] Synkhändelsen kunde inte sparas.', {
+      safeLogger.warn('Synkhändelsen kunde inte sparas.', {
         eventType,
         status,
       })
@@ -187,7 +188,7 @@ async function createCloudEvent(eventType, status, message, metadata = {}) {
       return null
     }
   } catch {
-    console.warn('[Viktkollen molnbackup] Synkhändelsen kunde inte sparas.', {
+    safeLogger.warn('Synkhändelsen kunde inte sparas.', {
       eventType,
       status,
     })

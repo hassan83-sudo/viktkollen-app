@@ -14,24 +14,17 @@ import ProgressInsights from './progress/ProgressInsights.jsx'
 import ProgressSummaryCards from './progress/ProgressSummaryCards.jsx'
 import ProgressTrendCard from './progress/ProgressTrendCard.jsx'
 import WeeklyReport from './WeeklyReport.jsx'
+import { readStorage, writeStorage } from '../services/appStorageService.js'
 
 const periodStorageKey = 'viktkollen.progressDashboard.period'
 
 function readStoredPeriod() {
-  try {
-    const stored = window.localStorage.getItem(periodStorageKey)
-    return progressPeriods.some((period) => period.id === stored) ? stored : '30d'
-  } catch {
-    return '30d'
-  }
+  const stored = readStorage(periodStorageKey, '30d')
+  return progressPeriods.some((period) => period.id === stored) ? stored : '30d'
 }
 
 function writeStoredPeriod(period) {
-  try {
-    window.localStorage.setItem(periodStorageKey, period)
-  } catch {
-    // Period choice is only a UI preference.
-  }
+  writeStorage(periodStorageKey, period)
 }
 
 function ProgressDashboard({

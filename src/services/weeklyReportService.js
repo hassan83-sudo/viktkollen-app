@@ -6,6 +6,7 @@ import { formatKg, getUnifiedWeightFacts, getWeightStats } from './healthCalcula
 import { normalizeCheckInMetrics } from './checkInNormalization.js'
 import { formatSteps } from './healthFormatting.js'
 import { buildHealthSnapshot } from './healthSnapshot.js'
+import { buildGoalsHabitsLiteSummary } from './goalsHabitsSummary.js'
 
 
 function getWeightTrend(weights = [], profile = {}) {
@@ -78,6 +79,7 @@ export function makeWeeklyReportFallback(data) {
   ])
   const proactiveRisk = data.proactiveCoach?.dailyRisk
   const proactiveAction = data.proactiveCoach?.nextBestAction
+  const goalsHabitsSummary = buildGoalsHabitsLiteSummary(data.goalsHabits)
 
   return {
     biggestProgress:
@@ -90,7 +92,8 @@ export function makeWeeklyReportFallback(data) {
         ? 'Låg energi kan göra kvällsrutinen svårare.'
         : 'Risken är att nästa steg blir för stort i stället för upprepbart.'),
     focusNextWeek:
-      proactiveAction || 'Välj en liten vana att upprepa varje dag.',
+      goalsHabitsSummary?.nextStep || proactiveAction || 'Välj en liten vana att upprepa varje dag.',
+    goalsHabits: goalsHabitsSummary,
     movement:
       Number.isFinite(steps)
         ? `${formatSteps(steps)} i senaste check-in.`
@@ -112,7 +115,9 @@ export function makeWeeklyReportFallback(data) {
     ...aiFallback,
     source: 'mock',
     summary:
-      'Veckan visar framför allt värdet av enkel loggning: vikt, check-in och matdata ger riktning utan att behöva vara perfekt.',
+      !goalsHabitsSummary
+        ? 'Veckan visar framför allt värdet av enkel loggning: vikt, check-in och matdata ger riktning utan att behöva vara perfekt.'
+        : `Veckan visar mål och vanor: ${goalsHabitsSummary.summary}`,
     weightTrend: snapshot.weight.facts?.weightChange !== null
       ? getWeightTrend(snapshot.weight.dailyWeights, data.profile)
       : getWeightTrend(data.weights, data.profile),

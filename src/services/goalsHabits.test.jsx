@@ -3,21 +3,32 @@ import { describe, expect, it, vi } from 'vitest'
 import GoalsHabitsPanel from '../components/GoalsHabitsPanel.jsx'
 import { userDataKeys } from './userDataRepository.js'
 import { syncStorageAllowlist } from './sync/syncMetadata.js'
+import { buildGoalsHabitsLiteSummary } from './goalsHabitsSummary.js'
 import {
   acceptWeeklyFocus,
+  buildGoalsHabitsDashboardSummary,
+  buildGoalsHabitsReportSummary,
   buildGoalsHabitsViewModel,
   calculateGoalProgress,
   calculateHabitDayStatus,
   calculateHabitStreak,
+  configureGoalsHabitsReminder,
   createGoal,
   createHabit,
+  deleteArchivedGoalsHabitsItem,
   goalsHabitsSchemaVersion,
   goalsHabitsStorageKey,
   markManualHabitDone,
+  moveWeeklyFocusToNextWeek,
   normalizeGoal,
   normalizeGoalsHabitsState,
   normalizeHabit,
+  restoreGoalsHabitsItem,
+  undoManualHabitDone,
+  updateGoal,
   updateGoalsHabitsItemStatus,
+  updateHabit,
+  updateWeeklyFocus,
 } from './goalsHabits.js'
 
 const analysisDate = '2026-07-31'
@@ -138,6 +149,108 @@ describe('Goals Habits Streaks V2 service', () => {
   it('adds the new technical key to repository and sync allowlist', () => {
     expect(userDataKeys.goalsHabits).toBe(goalsHabitsStorageKey)
     expect(syncStorageAllowlist).toContain(goalsHabitsStorageKey)
+  })
+
+  it('edits goals while keeping id and createdAt and writing history', () => {
+    const goal = createGoal({ category: 'protein', target: 100, title: 'Protein' }, { now: '2026-07-01T08:00:00.000Z' })
+    const result = updateGoal({ goals: [goal] }, goal.id, { target: 120, title: 'Protein varje dag' }, { now: '2026-07-31T08:00:00.000Z' })
+
+    expect(result.error).toBe('')
+    expect(result.state.goals[0]).toMatchObject({
+      createdAt: '2026-07-01T08:00:00.000Z',
+      id: goal.id,
+      target: 120,
+      title: 'Protein varje dag',
+      updatedAt: '2026-07-31T08:00:00.000Z',
+    })
+    expect(result.state.history.at(-1).type).toBe('edited')
+  })
+
+  it('rejects unsafe edits without deleting legacy objects', () => {
+    const goal = createGoal({ category: 'steps', target: 8000, title: 'Steg' }, { now: '2026-07-01T08:00:00.000Z' })
+    const result = updateGoal({ goals: [goal] }, goal.id, { target: 999999 }, { now: '2026-07-31T08:00:00.000Z' })
+
+    expect(result.error).toContain('stegmål')
+    expect(result.state.goals[0].id).toBe(goal.id)
+  })
+
+  it('edits habits frequency without rewriting previous completions', () => {
+    const habit = createHabit({ category: 'custom', title: 'Promenad', trackingMode: 'manual' }, { now: '2026-07-01T08:00:00.000Z' })
+    const withCompletion = markManualHabitDone({ habits: [habit] }, habit.id, '2026-07-30')
+    const result = updateHabit(withCompletion, habit.id, { frequency: 'weekly', targetCount: 2 }, { now: '2026-07-31T08:00:00.000Z' })
+
+    expect(result.state.habits[0].frequency).toBe('weekly')
+    expect(result.state.completions).toHaveLength(1)
+    expect(result.state.history.at(-1).field).toBe('frequency')
+  })
+
+  it('supports undo for manual habit completion on the same day', () => {
+    const habit = createHabit({ category: 'custom', title: 'Promenad', trackingMode: 'manual' })
+    const done = markManualHabitDone({ habits: [habit] }, habit.id, analysisDate)
+    const undone = undoManualHabitDone(done, habit.id, analysisDate)
+
+    expect(done.completions).toHaveLength(1)
+    expect(undone.completions).toHaveLength(0)
+    expect(undone.history.at(-1).type).toBe('manual_completion_undone')
+  })
+
+  it('archives restores and permanently deletes only archived items', () => {
+    const habit = createHabit({ category: 'custom', title: 'Promenad', trackingMode: 'manual' })
+    const archived = updateGoalsHabitsItemStatus({ habits: [habit] }, 'habit', habit.id, 'archived')
+    const restored = restoreGoalsHabitsItem(archived, 'habit', habit.id)
+    const deletedWhileActive = deleteArchivedGoalsHabitsItem(restored, 'habit', habit.id)
+    const deleted = deleteArchivedGoalsHabitsItem(archived, 'habit', habit.id)
+
+    expect(restored.habits[0].status).toBe('active')
+    expect(deletedWhileActive.habits).toHaveLength(1)
+    expect(deleted.habits).toHaveLength(0)
+  })
+
+  it('links reminders and pauses them with habit lifecycle', () => {
+    const habit = createHabit({ category: 'custom', title: 'Promenad', trackingMode: 'manual' })
+    const withReminder = configureGoalsHabitsReminder({ habits: [habit] }, 'habit', habit.id, { enabled: true, time: '18:30' })
+    const paused = updateGoalsHabitsItemStatus(withReminder, 'habit', habit.id, 'paused')
+
+    expect(withReminder.habits[0].reminder).toMatchObject({ enabled: true, time: '18:30' })
+    expect(paused.habits[0].reminder).toMatchObject({ enabled: false, paused: true })
+    expect(paused.reminders[0]).toMatchObject({ enabled: false, paused: true })
+  })
+
+  it('supports weekly focus edit complete decline and move', () => {
+    const base = acceptWeeklyFocus({}, { action: 'Ta en promenad', title: 'Rörelse' }, { analysisDate, now: '2026-07-31T08:00:00.000Z' })
+    const focus = base.weeklyFocus[0]
+    const edited = updateWeeklyFocus(base, focus.id, { action: 'Gå 10 minuter', title: 'Kort rörelse' })
+    const completed = updateWeeklyFocus(edited, focus.id, { status: 'completed' })
+    const moved = moveWeeklyFocusToNextWeek(edited, focus.id, { now: '2026-07-31T09:00:00.000Z' })
+
+    expect(edited.weeklyFocus[0]).toMatchObject({ action: 'Gå 10 minuter', title: 'Kort rörelse' })
+    expect(completed.weeklyFocus[0].status).toBe('completed')
+    expect(moved.weeklyFocus.filter((item) => item.status === 'active')).toHaveLength(1)
+    expect(moved.weeklyFocus.find((item) => item.movedFromWeekStart)).toBeTruthy()
+  })
+
+  it('builds report and dashboard summaries without duplicating calculations', () => {
+    const habit = createHabit({ category: 'meal_logging', title: 'Logga mat' })
+    const goal = createGoal({ category: 'protein', target: 90, title: 'Protein' })
+    const state = normalizeGoalsHabitsState({ goals: [goal], habits: [habit] })
+    const report = buildGoalsHabitsReportSummary(state, { meals, nutritionGoals }, { analysisDate })
+    const dashboard = buildGoalsHabitsDashboardSummary(state, { meals, nutritionGoals }, { analysisDate })
+
+    expect(report.summary).toContain('aktiva mål')
+    expect(report.positiveProgress).toContain('%')
+    expect(dashboard).toMatchObject({ title: 'Mål & vanor' })
+  })
+  it('builds a lightweight goals habits summary for dashboard and reports', () => {
+    const habit = createHabit({ category: 'custom', title: 'Promenad', trackingMode: 'manual' })
+    const focus = acceptWeeklyFocus({}, { action: 'Gå 10 minuter', title: 'Kort rörelse' }, { analysisDate })
+    const state = normalizeGoalsHabitsState({ habits: [habit], weeklyFocus: focus.weeklyFocus })
+    const summary = buildGoalsHabitsLiteSummary(state)
+
+    expect(summary).toMatchObject({
+      focusTitle: 'Kort rörelse',
+      pendingHabits: 1,
+      title: 'Mål & vanor',
+    })
   })
 })
 

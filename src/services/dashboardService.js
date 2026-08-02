@@ -9,6 +9,7 @@ import { getMealHistory } from './mealHistory.js'
 import { normalizeCheckInMetrics } from './checkInNormalization.js'
 import { formatPercentage, parseDisplayNumber } from './healthFormatting.js'
 import { buildHealthSnapshot } from './healthSnapshot.js'
+import { buildGoalsHabitsLiteSummary } from './goalsHabitsSummary.js'
 
 const DEFAULT_CHECK_IN = {
   energy: null,
@@ -22,6 +23,7 @@ const dashboardInputKeys = [
   'bodyAnalysisHistory',
   'checkIn',
   'foods',
+  'goalsHabits',
   'mealHistory',
   'meals',
   'profile',
@@ -418,6 +420,7 @@ function makeActivityItems({
   checkIn,
   coachMemory,
   mealHistory,
+  goalsHabitsSummary,
   weights,
   weeklyReportData,
 }) {
@@ -478,6 +481,17 @@ function makeActivityItems({
       }),
     ]
     : []
+  const goalsHabitsItems = goalsHabitsSummary
+    ? [
+      makeActivityItem({
+        description: goalsHabitsSummary.focusTitle || goalsHabitsSummary.nearestGoal || `${goalsHabitsSummary.completionRate}% av dagens vanor klara.`,
+        icon: '✓',
+        time: new Date().toISOString(),
+        title: 'Mål & vanor',
+        type: 'goals-habits',
+      }),
+    ]
+    : []
   const checkInItem =
     checkIn.energy !== null || checkIn.steps !== null || checkIn.mood !== 'Ej satt'
       ? makeActivityItem({
@@ -497,6 +511,7 @@ function makeActivityItems({
     ...coachItems,
     ...bodyItems,
     ...weeklyItems,
+    ...goalsHabitsItems,
     checkInItem,
   ]
     .filter(Boolean)
@@ -646,6 +661,7 @@ export function createDashboardData(data = {}) {
     bodyAnalysisHistory,
     checkIn,
     coachMemory,
+    goalsHabitsSummary: buildGoalsHabitsLiteSummary(data.goalsHabits),
     mealHistory,
     weights: data.weights,
     weeklyReportData: data.weeklyReportData,

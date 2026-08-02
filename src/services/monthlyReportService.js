@@ -8,6 +8,7 @@ import {
   parseDateValue,
 } from './localDate.js'
 import { buildHealthSnapshot } from './healthSnapshot.js'
+import { buildGoalsHabitsLiteSummary } from './goalsHabitsSummary.js'
 
 const DAYS_IN_REPORT = 30
 
@@ -263,11 +264,13 @@ export function createMonthlyHealthReport(data = {}) {
             : 'Stabil',
     weightTrend: weightStats.trend,
   }
+  const goalsHabits = buildGoalsHabitsLiteSummary(data.goalsHabits)
 
   return {
     ...report,
     aiSummary: makeAiSummary(report),
     improvements: makeImprovements(report),
+    goalsHabits,
     motivation:
       'Du är på rätt väg. Små förbättringar varje vecka ger stora resultat över tid.',
     monthlyAchievement:

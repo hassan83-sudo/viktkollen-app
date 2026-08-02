@@ -58,6 +58,13 @@ function WeeklyReport({
                   <p key={step}>• {step}</p>
                 ))}
               </div>
+              {weeklyReportData.goalsHabits && (
+                <div>
+                  <p className="report-heading">Mål & vanor</p>
+                  <p>{weeklyReportData.goalsHabits.summary}</p>
+                  <p>{weeklyReportData.goalsHabits.positiveProgress}</p>
+                </div>
+              )}
               <p className="estimate-note">
                 Rapporten är allmänt stöd för hälsa och vanor, inte medicinsk
                 rådgivning.

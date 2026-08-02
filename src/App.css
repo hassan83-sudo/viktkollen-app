@@ -483,6 +483,40 @@
   gap: 6px;
 }
 
+.inline-edit-form,
+.goals-habits-archive,
+.goals-habits-focus-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--soft-bg);
+}
+
+.inline-edit-form h3,
+.goals-habits-archive h3,
+.goals-habits-archive h4,
+.goals-habits-focus-list h3 {
+  margin: 0;
+}
+
+.archive-toggle-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.compact-history-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .lazy-section-fallback {
   margin: 0;
   color: var(--muted);

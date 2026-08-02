@@ -72,6 +72,14 @@ function MonthlyReport({ report }) {
         <p>{report.motivation}</p>
       </div>
 
+      {report.goalsHabits && (
+        <div className="report-card">
+          <p className="report-heading">Mål & vanor</p>
+          <p>{report.goalsHabits.summary}</p>
+          <p>{report.goalsHabits.positiveProgress}</p>
+        </div>
+      )}
+
       <p className="estimate-note">
         Rapporten skapas lokalt från sparad data och är allmänt stöd för vanor,
         inte medicinsk rådgivning.

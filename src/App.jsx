@@ -1173,12 +1173,13 @@ function App() {
   const monthlyReport = useMemo(
     () =>
       createMonthlyHealthReport({
+        goalsHabits,
         healthSnapshot,
         mealHistory: photoMeals,
         meals,
         weights,
       }),
-    [healthSnapshot, meals, photoMeals, weights],
+    [goalsHabits, healthSnapshot, meals, photoMeals, weights],
   )
   const weeklyReportLines = useMemo(
     () =>
@@ -1208,6 +1209,7 @@ function App() {
         checkIn,
         currentWeight: centralCurrentWeight,
         foods,
+        goalsHabits,
         healthSnapshot,
         meals,
         nutritionGoals,
@@ -1215,7 +1217,7 @@ function App() {
         selectedMealDate,
         weights,
       }),
-    [centralCurrentWeight, checkIn, foods, healthSnapshot, meals, nutritionGoals, profile, selectedMealDate, weights],
+    [centralCurrentWeight, checkIn, foods, goalsHabits, healthSnapshot, meals, nutritionGoals, profile, selectedMealDate, weights],
   )
   const [dailyCoachResult, setDailyCoachResult] = useState(null)
   const hasFreshDailyCoach = dailyCoachResult?.key === dailyCoachKey
@@ -1317,6 +1319,7 @@ function App() {
         checkIn,
         currentWeight: centralCurrentWeight,
         foods,
+        goalsHabits,
         healthSnapshot,
         mealHistory: photoMeals,
         meals,
@@ -1342,6 +1345,7 @@ function App() {
     bodyAnalysisHistory,
     centralCurrentWeight,
     foods,
+    goalsHabits,
     healthSnapshot,
     meals,
     nutritionGoals,
@@ -1417,6 +1421,7 @@ function App() {
         bodyAnalysisHistory,
         checkIn,
         foods,
+        goalsHabits,
         healthSnapshot,
         mealHistory: photoMeals,
         meals,
@@ -1433,6 +1438,7 @@ function App() {
       chatMessages,
       checkIn,
       foods,
+      goalsHabits,
       healthSnapshot,
       meals,
       nutritionGoals,
@@ -2307,6 +2313,7 @@ function App() {
       bodyAnalysisHistory,
       checkIn,
       foods,
+      goalsHabits,
       healthSnapshot,
       latestWeeklyReport: weeklyReportData,
       mealHistory: photoMeals,

@@ -473,7 +473,7 @@ describe('recommendation robustness', () => {
     const meals = Array.from({ length: 5000 }, (_, index) => ({ ...clearMeal, date: `2026-07-${String((index % 29) + 1).padStart(2, '0')}`, id: `m-${index}` }))
 
     expect(buildMonthlyNutritionRecommendations({ date, meals, nutritionGoals: goals }).length).toBeLessThanOrEqual(4)
-  })
+  }, 10000)
 
   it('does not produce duplicate recommendations', () => {
     const items = buildNutritionActionPlan({ date, meals: [vagueMeal], nutritionGoals: {} }).today

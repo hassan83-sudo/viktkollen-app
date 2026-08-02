@@ -1,0 +1,19 @@
+import { describe, expect, it } from 'vitest'
+import { buildLaunchReadinessReport } from './launchReadiness.js'
+
+describe('launchReadiness', () => {
+  it('builds a masked development readiness report', () => {
+    const report = buildLaunchReadinessReport({
+      authSession: { user: { id: 'user-1234567890', email: 'person@example.com' } },
+      healthSnapshot: { availability: { weight: true }, date: '2026-07-31', nutrition: { mealCount: 2 } },
+      reminderState: { reminders: [{ id: 'r1', title: 'Check-in', time: '09:00' }] },
+      syncStatus: { status: 'ok', userId: 'user-1234567890' },
+    })
+
+    expect(report.auth.signedIn).toBe(true)
+    expect(report.healthSnapshot.mealsToday).toBe(2)
+    expect(report.reminders.enabledCount).toBe(1)
+    expect(JSON.stringify(report)).not.toContain('person@example.com')
+    expect(JSON.stringify(report)).not.toContain('user-1234567890')
+  })
+})

@@ -1,5 +1,5 @@
 import { Component } from 'react'
-import { getSafeErrorMessage, logAppError } from '../services/appErrorService.js'
+import { getSafeErrorMessage, logAppError, normalizeAppError } from '../services/appErrorService.js'
 
 function goHome() {
   if (typeof window === 'undefined') return
@@ -59,7 +59,8 @@ class AppErrorBoundary extends Component {
     }
 
     const title = this.props.title || 'Något gick fel'
-    const message = getSafeErrorMessage(this.state.error, { area: this.props.area || 'app' })
+    const normalized = normalizeAppError(this.state.error, { area: this.props.area || 'render' })
+    const message = getSafeErrorMessage(this.state.error, { area: this.props.area || 'render' })
 
     return (
       <section className="panel app-error-boundary" role="alert" aria-live="assertive">
@@ -70,6 +71,10 @@ class AppErrorBoundary extends Component {
           </div>
         </div>
         <p className="settings-note">{message}</p>
+        <p className="estimate-note">Fel-id: {normalized.technicalCode}</p>
+        {import.meta.env.DEV && normalized.diagnosticMessage && (
+          <p className="estimate-note">Utvecklingsdetalj: {normalized.diagnosticMessage}</p>
+        )}
         <div className="button-row">
           <button type="button" onClick={this.reset}>
             Försök igen

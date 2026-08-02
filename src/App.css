@@ -2719,6 +2719,23 @@ a:focus-visible {
   color: var(--muted);
 }
 
+.launch-readiness-panel {
+  width: min(1180px, calc(100% - 32px));
+  margin: 12px auto;
+}
+
+.diagnostics-output {
+  max-height: 280px;
+  overflow: auto;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--soft-bg);
+  color: var(--text);
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .settings-note {
   margin: 12px 0 0;
   color: var(--muted);

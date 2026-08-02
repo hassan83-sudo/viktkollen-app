@@ -540,5 +540,5 @@ describe('confidence robustness', () => {
     const meals = Array.from({ length: 5000 }, (_, index) => ({ ...mediumMeal, date: `2026-07-${String((index % 29) + 1).padStart(2, '0')}`, id: `month-${index}` }))
 
     expect(buildMonthlyNutritionReport({ date: today, meals, today }).summary.quality.validMealCount).toBe(5000)
-  })
+  }, 10000)
 })

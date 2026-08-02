@@ -1,0 +1,116 @@
+# Production Launch Checklist V1
+
+## Automatiskt verifierat
+
+- `npm test -- --run` passerar.
+- `npm run lint` passerar.
+- `npm run build` passerar.
+- `git diff --check` passerar.
+- PWA-filer ska finnas i `dist`: manifest, service worker och ikoner.
+- `dist/index.html` ska inte modulepreloada stora lazy featurevyer som Reminder Center, rapportdrilldown eller cloud backup-panelen.
+- Error boundary visar säkert fel-id och inte stack trace.
+- Logger maskerar token, session, e-post, lösenord, base64/bilder och rå payload.
+- `viktkollen.reminders.v2` är sync-/backup-nyckel.
+- `viktkollen.reminders.v2.schedulerLock` är teknisk nyckel och ska inte syncas eller backupas.
+
+## Environment
+
+- `VITE_SUPABASE_URL` finns i production.
+- `VITE_SUPABASE_ANON_KEY` finns i production.
+- Ingen service-role-key finns i klientmiljö.
+- `VITE_APP_VERSION` sätts vid release om versionsmärkning används.
+- Vercel project settings använder rätt branch och build command.
+
+## Supabase
+
+- RLS är aktiverat på relevanta tabeller.
+- SQL-migrationer är körda i rätt miljö.
+- Anon key har endast förväntade rättigheter.
+- Auth redirect URLs matchar production-domänen.
+- Testa expired session och session refresh manuellt.
+
+## Auth
+
+- Utloggad appstart fungerar.
+- Login fungerar.
+- Logout under pågående sync/AI/export kraschar inte appen.
+- Användarbyte i annan flik visar inte gammal användares molnstatus.
+- Inga tokens visas i UI eller loggar.
+
+## Backup och Sync
+
+- Cloud Backup kan skapa backup.
+- Restore skapar skydd före riskfylld återställning.
+- Sync now fungerar online.
+- Offline queue återhämtar sig när nätet återkommer.
+- Konflikter visas utan silent overwrite.
+- Cross-tab leader takeover fungerar efter stängd leader.
+- Stora payloads stoppas med begripligt fel.
+
+## PWA
+
+- `manifest.webmanifest` är nåbart.
+- 192/512/maskable-ikoner laddas.
+- Installation fungerar i Chrome/Edge.
+- Offline app shell öppnas efter tidigare besök.
+- Service worker uppdateringsbanner visas vid ny version.
+- `skipWaiting` ger säker reload utan dataradering.
+- Supabase/API/auth-anrop cacheas inte.
+- Gamla caches rensas.
+
+## Reminders
+
+- Ingen reminder skapas utan användarval.
+- Skapa, redigera, snooza, hoppa över, markera klar och arkivera fungerar.
+- Notification permission begärs endast via knapp.
+- Permission denied ger in-app fallback.
+- Två flikar ger normalt bara en scheduler-leader.
+- Reminder Center är lazy-loaded.
+
+## Reports och Export
+
+- Veckorapport renderar utan tekniska värden.
+- Månadsrapport renderar utan tekniska värden.
+- Export/print/drill-down fungerar utan raw stack traces.
+- Export innehåller inte auth/session/token.
+
+## AI fallback
+
+- AI Coach fungerar utan OpenAI/API.
+- AI-fel ger lokal fallback.
+- Inga tokens eller rå payloads loggas.
+- Chatten visar inte `NaN`, `undefined`, `null` eller `[object Object]`.
+
+## Accessibility
+
+- Tangentbord fungerar för reminders, modaler, reports och PWA banners.
+- Focus return fungerar i modaler där det är implementerat.
+- `aria-live` används för status/fel.
+- Formfel har `aria-invalid`/`aria-describedby` där det är relevant.
+- Färg är inte enda signal för kritiska statusar.
+
+## Security och Privacy
+
+- Ingen `dangerouslySetInnerHTML` utan separat granskning.
+- Ingen `eval` eller dynamisk kodkörning.
+- Object URLs revokas efter användning.
+- Importerade filer valideras.
+- Diagnostics maskerar URL/id där det behövs.
+- LocalStorage-korruption raderar inte användardata automatiskt.
+
+## Rollback
+
+- Spara senaste fungerande Vercel deployment-id.
+- Rollbacka via Vercel dashboard eller CLI.
+- Be användare hårdladda och vid PWA-problem avregistrera service worker enligt runbook.
+- Radera inte localStorage som första åtgärd.
+
+## Post-release
+
+- Kontrollera appstart i clean browser profile.
+- Kontrollera install/offline/update i Chrome och Edge.
+- Kontrollera login/logout.
+- Kontrollera backup/restore med testkonto.
+- Kontrollera sync mellan två flikar och två enheter.
+- Kontrollera reminders i vanlig flik och installerad PWA.
+- Kontrollera rapport/export/print.

@@ -2869,6 +2869,8 @@ function App() {
             profile={validatedProfile}
             reminderState={reminderState}
             onAdaptiveCoachFeedbackChange={setAdaptiveCoachFeedback}
+            onGoalsHabitsChange={setGoalsHabits}
+            onReminderStateChange={handleReminderStateChange}
             weights={centralWeightStats.weights}
           />
 

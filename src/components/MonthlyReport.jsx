@@ -188,6 +188,18 @@ function MonthlyReport({ report }) {
         </div>
       )}
 
+      {report.coachActions && (
+        <div className="report-card">
+          <p className="report-heading">Coach action conversion</p>
+          <p>
+            Actions: {report.coachActions.total}. Completion rate: {report.coachActions.completionRate === null ? 'Saknas' : `${report.coachActions.completionRate}%`}.
+          </p>
+          <p>
+            Goal: {report.coachActions.byType.goal || 0}. Habit: {report.coachActions.byType.habit || 0}. Reminder: {report.coachActions.byType.reminder || 0}. Veckofokus: {report.coachActions.byType.weeklyFocus || 0}.
+          </p>
+        </div>
+      )}
+
       <p className="estimate-note">
         Rapporten skapas lokalt från sparad data och är allmänt stöd för vanor,
         inte medicinsk rådgivning.

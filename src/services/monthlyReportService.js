@@ -10,6 +10,7 @@ import { buildHealthSnapshot } from './healthSnapshot.js'
 import { buildGoalsHabitsLiteSummary } from './goalsHabitsSummary.js'
 import { buildSharedMonthlyReportModel } from './sharedAnalyticsEngine.js'
 import { buildAdaptiveCoachFeedbackSummary } from './adaptiveCoachFeedback.js'
+import { buildCoachActionSummary } from './adaptiveCoachActions.js'
 
 function safeArray(value) {
   return Array.isArray(value) ? value : []
@@ -209,6 +210,7 @@ export function createMonthlyHealthReport(data = {}) {
   const coachEffectiveness = buildAdaptiveCoachFeedbackSummary(data.adaptiveCoachFeedback, {
     now: data.today ? `${data.today}T12:00:00.000Z` : undefined,
   })
+  const coachActions = buildCoachActionSummary(data.adaptiveCoachFeedback)
   const recentMeals = safeArray(actualMeals).filter((entry) =>
     isLocalDateInRange(getMealDate(entry), reportRange),
   )
@@ -251,6 +253,7 @@ export function createMonthlyHealthReport(data = {}) {
     period: sharedReport.period,
     source: 'local_ai',
     coachEffectiveness,
+    coachActions,
     sharedAnalytics: {
       ...sharedReport,
       coachFeedback: coachEffectiveness,

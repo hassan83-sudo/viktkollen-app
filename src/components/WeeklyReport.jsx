@@ -169,6 +169,16 @@ function WeeklyReport({
                   </p>
                 </div>
               )}
+              {weeklyReportData.coachActions && (
+                <div>
+                  <p className="report-heading">Skapade coach actions</p>
+                  <p>
+                    Skapade: {weeklyReportData.coachActions.total}. Klara: {weeklyReportData.coachActions.completed}.
+                    Conversion: {weeklyReportData.coachActions.conversionRate === null ? 'Saknas' : `${weeklyReportData.coachActions.conversionRate}%`}.
+                  </p>
+                  <p>Nästa rekommenderade action: {weeklyReportData.nextSteps?.[0] || weeklyReportData.focusNextWeek}</p>
+                </div>
+              )}
               <p className="estimate-note">
                 Rapporten är allmänt stöd för hälsa och vanor, inte medicinsk
                 rådgivning.

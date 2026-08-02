@@ -5,6 +5,7 @@ import {
   getCoachRecommendationId,
   normalizeAdaptiveCoachFeedback,
 } from './adaptiveCoachFeedback.js'
+import { buildCoachActionSummary } from './adaptiveCoachActions.js'
 import { buildGoalsHabitsLiteSummary } from './goalsHabitsSummary.js'
 import { buildSharedAnalytics } from './sharedAnalyticsEngine.js'
 import { buildReminderStatus } from './reminders/reminderScheduler.js'
@@ -341,9 +342,12 @@ export function buildAdaptiveCoach(input = {}, options = {}) {
     buildActivityRecommendation(shared),
     buildReminderRecommendation(reminderStatus),
   ]
+  const actionSummary = buildCoachActionSummary(feedback)
+  const activeActionRecommendationIds = new Set(actionSummary.activeActions.map((entry) => entry.recommendationId || entry.id))
   const recommendations = applyFeedbackToRecommendations(
     uniqueByArea(candidates)
-      .filter((item) => !isUnsafeAdvice(item)),
+      .filter((item) => !isUnsafeAdvice(item))
+      .filter((item) => !activeActionRecommendationIds.has(item.id)),
     feedback,
     { now: options.now || `${shared.analysisDate}T12:00:00.000Z` },
   )
@@ -380,6 +384,7 @@ export function buildAdaptiveCoach(input = {}, options = {}) {
     analysisDate: shared.analysisDate,
     confidence,
     coverage,
+    actionSummary,
     feedbackSummary,
     modelVersion: adaptiveCoachEngineVersion,
     recommendations,

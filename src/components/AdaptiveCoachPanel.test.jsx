@@ -40,6 +40,7 @@ describe('AdaptiveCoachPanel', () => {
     expect(markup).toContain('Vad som fungerar bra')
     expect(markup).toContain('Riskområden')
     expect(markup).toContain('Rekommenderade nästa steg')
+    expect(markup).toContain('Gör detta')
     expect(markup).toContain('Acceptera')
     expect(markup).toContain('Skjut upp')
     expect(markup).toContain('Klar')

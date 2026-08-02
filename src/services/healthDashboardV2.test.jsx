@@ -145,7 +145,16 @@ describe('HealthDashboardV2 component', () => {
     const markup = renderToStaticMarkup(
       <HealthDashboardV2
         adaptiveCoachFeedback={{
-          recommendations: [{ id: 'coach-demo', status: 'completed', title: 'Logga lunch', updatedAt: `${analysisDate}T10:00:00.000Z` }],
+          recommendations: [{
+            id: 'coach-demo',
+            lastActionStatus: 'active',
+            linkedEntityId: 'habit-1',
+            linkedEntityType: 'habit',
+            recommendationId: 'coach-demo',
+            status: 'completed',
+            title: 'Logga lunch',
+            updatedAt: `${analysisDate}T10:00:00.000Z`,
+          }],
         }}
         checkIn={checkIn}
         goalsHabits={goalsHabits}
@@ -168,6 +177,8 @@ describe('HealthDashboardV2 component', () => {
     expect(markup).toContain('Mål &amp; vanor')
     expect(markup).toContain('Coach status')
     expect(markup).toContain('Coach score')
+    expect(markup).toContain('Aktiva actions')
+    expect(markup).toContain('habit')
     expect(markup).not.toMatch(/NaN|Infinity|undefined|null|\[object Object\]/)
   })
 })

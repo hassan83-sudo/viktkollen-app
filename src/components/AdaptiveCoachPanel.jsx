@@ -1,9 +1,17 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildAdaptiveCoach } from '../services/adaptiveCoachEngine.js'
 import {
   buildAdaptiveCoachFeedbackSummary,
   updateAdaptiveCoachFeedback,
 } from '../services/adaptiveCoachFeedback.js'
+import {
+  buildCoachActionDraft,
+  coachActionTypes,
+  commitCoachActionDraft,
+  findCoachActionDuplicate,
+  getCoachActionEligibility,
+  validateCoachActionDraft,
+} from '../services/adaptiveCoachActions.js'
 
 function MetricBadge({ label, value }) {
   return (
@@ -21,7 +29,14 @@ function addDaysIso(days) {
   return date.toISOString()
 }
 
-function RecommendationList({ onFeedback, recommendations }) {
+const actionTypeLabels = {
+  goal: 'Mål',
+  habit: 'Vana',
+  reminder: 'Reminder',
+  weeklyFocus: 'Veckofokus',
+}
+
+function RecommendationList({ onAction, onFeedback, recommendations }) {
   if (!recommendations.length) {
     return (
       <div className="empty-state">
@@ -40,6 +55,7 @@ function RecommendationList({ onFeedback, recommendations }) {
           <small>{item.action}</small>
           <small>Senaste status: {item.feedbackStatusLabel || 'Ny'}</small>
           <div className="report-v3-actions adaptive-coach-actions">
+            <button type="button" onClick={() => onAction(item)}>Gör detta</button>
             <button type="button" onClick={() => onFeedback(item, 'accepted')}>Acceptera</button>
             <button type="button" onClick={() => onFeedback(item, 'postponed', { postponedUntil: addDaysIso(1) })}>Skjut upp</button>
             <button type="button" onClick={() => onFeedback(item, 'completed')}>Klar</button>
@@ -92,10 +108,19 @@ function AdaptiveCoachPanel({
   meals = [],
   nutritionGoals = {},
   onAdaptiveCoachFeedbackChange,
+  onGoalsHabitsChange,
+  onReminderStateChange,
   profile = {},
   reminderState = {},
   weights = [],
 }) {
+  const actionFormRef = useRef(null)
+  const lastActionTriggerRef = useRef(null)
+  const [actionDraft, setActionDraft] = useState(null)
+  const [actionRecommendation, setActionRecommendation] = useState(null)
+  const [actionStatus, setActionStatus] = useState('')
+  const [actionError, setActionError] = useState('')
+  const [isSavingAction, setIsSavingAction] = useState(false)
   const data = useMemo(() => ({
     adaptiveCoachFeedback,
     checkIn,
@@ -119,6 +144,31 @@ function AdaptiveCoachPanel({
     [adaptiveCoachFeedback, analysisDate],
   )
   const nextAction = model.recommendations[0]?.action || model.summary.todayFocus
+  const duplicate = useMemo(
+    () => actionDraft
+      ? findCoachActionDuplicate(actionDraft, { adaptiveCoachFeedback, goalsHabits, reminderState })
+      : { duplicate: false, message: '' },
+    [actionDraft, adaptiveCoachFeedback, goalsHabits, reminderState],
+  )
+  const draftValidation = useMemo(
+    () => actionDraft ? validateCoachActionDraft(actionDraft) : { errors: [], ok: true },
+    [actionDraft],
+  )
+
+  useEffect(() => {
+    if (actionDraft) actionFormRef.current?.focus()
+  }, [actionDraft])
+
+  useEffect(() => {
+    if (!actionDraft) return undefined
+
+    function onKeyDown(event) {
+      if (event.key === 'Escape') closeActionDraft()
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [actionDraft])
 
   function handleFeedback(recommendation, status, options = {}) {
     if (!onAdaptiveCoachFeedbackChange) return
@@ -129,6 +179,73 @@ function AdaptiveCoachPanel({
       status,
       options,
     ))
+  }
+
+  function openActionDraft(recommendation, event) {
+    const eligibility = getCoachActionEligibility(recommendation, {
+      confidence: model.confidence.value,
+      coverage: model.coverage.ratio,
+    })
+    lastActionTriggerRef.current = event?.currentTarget || null
+    setActionRecommendation(recommendation)
+    setActionDraft(buildCoachActionDraft(recommendation, {
+      actionType: eligibility.actionTypes[0],
+      analysisDate,
+      confidence: model.confidence.value,
+      coverage: model.coverage.ratio,
+    }))
+    setActionError(eligibility.blockReason)
+    setActionStatus('')
+  }
+
+  function closeActionDraft() {
+    setActionDraft(null)
+    setActionRecommendation(null)
+    setActionError('')
+    setActionStatus('')
+    setIsSavingAction(false)
+    lastActionTriggerRef.current?.focus?.()
+  }
+
+  function updateActionDraft(patch) {
+    setActionDraft((current) => current ? { ...current, ...patch } : current)
+    setActionStatus('')
+    setActionError('')
+  }
+
+  function saveCoachAction(event) {
+    event.preventDefault()
+    if (!actionDraft || !actionRecommendation || isSavingAction) return
+    if (duplicate.duplicate) {
+      setActionError(duplicate.message)
+      return
+    }
+    if (!draftValidation.ok) {
+      setActionError(draftValidation.errors.join(' '))
+      return
+    }
+
+    setIsSavingAction(true)
+    const result = commitCoachActionDraft(actionDraft, {
+      adaptiveCoachFeedback,
+      goalsHabits,
+      reminderState,
+    }, {
+      recommendation: actionRecommendation,
+    })
+
+    if (!result.ok) {
+      setActionError(result.error || 'Action kunde inte skapas.')
+      setIsSavingAction(false)
+      return
+    }
+
+    onGoalsHabitsChange?.(result.goalsHabits)
+    onReminderStateChange?.(result.reminderState)
+    onAdaptiveCoachFeedbackChange?.(result.feedback)
+    setActionStatus(`${actionTypeLabels[actionDraft.actionType]} skapad.`)
+    setIsSavingAction(false)
+    window.setTimeout(closeActionDraft, 0)
   }
 
   return (
@@ -184,8 +301,98 @@ function AdaptiveCoachPanel({
       <div className="insight-plan">
         <h3>Rekommenderade nästa steg</h3>
         <p>Nästa rekommenderade åtgärd: {nextAction}</p>
-        <RecommendationList onFeedback={handleFeedback} recommendations={model.recommendations} />
+        <RecommendationList onAction={openActionDraft} onFeedback={handleFeedback} recommendations={model.recommendations} />
       </div>
+
+      {actionDraft && (
+        <form
+          aria-describedby={actionError ? 'coach-action-error' : 'coach-action-help'}
+          className="inline-edit-form coach-action-form"
+          onSubmit={saveCoachAction}
+        >
+          <h3 tabIndex={-1} ref={actionFormRef}>Skapa coachaction</h3>
+          <p id="coach-action-help">
+            Redigera förslaget innan du sparar. Inget sparas förrän du bekräftar.
+          </p>
+          {actionStatus && <p className="form-success" role="status" aria-live="polite">{actionStatus}</p>}
+          {(actionError || duplicate.duplicate || !draftValidation.ok) && (
+            <p className="analysis-status" id="coach-action-error" role="alert">
+              {actionError || duplicate.message || draftValidation.errors.join(' ')}
+            </p>
+          )}
+          <label>
+            <span>Actiontyp</span>
+            <select
+              value={actionDraft.actionType}
+              onChange={(event) => updateActionDraft(buildCoachActionDraft(actionRecommendation, {
+                ...actionDraft,
+                actionType: event.target.value,
+                analysisDate,
+              }))}
+            >
+              {coachActionTypes.map((type) => (
+                <option key={type} value={type}>{actionTypeLabels[type]}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Titel</span>
+            <input
+              aria-invalid={!actionDraft.title}
+              value={actionDraft.title}
+              onChange={(event) => updateActionDraft({ title: event.target.value })}
+              required
+            />
+          </label>
+          <label>
+            <span>Konkret handling</span>
+            <textarea
+              aria-invalid={!actionDraft.description}
+              value={actionDraft.description}
+              onChange={(event) => updateActionDraft({ description: event.target.value })}
+              required
+            />
+          </label>
+          {actionDraft.actionType !== 'weeklyFocus' && (
+            <label>
+              <span>Mål/antal</span>
+              <input
+                inputMode="decimal"
+                value={actionDraft.target}
+                onChange={(event) => updateActionDraft({ target: event.target.value })}
+              />
+            </label>
+          )}
+          {(actionDraft.actionType === 'reminder' || actionDraft.actionType === 'habit') && (
+            <label>
+              <span>Tid</span>
+              <input
+                type="time"
+                value={actionDraft.reminderTime}
+                onChange={(event) => updateActionDraft({ reminderTime: event.target.value })}
+              />
+            </label>
+          )}
+          <p>
+            Rekommenderas eftersom: {actionRecommendation?.text}
+          </p>
+          <p>
+            Confidence {Math.round(actionDraft.confidence * 100).toLocaleString('sv-SE')}% · Coverage {Math.round(actionDraft.coverage * 100).toLocaleString('sv-SE')}%.
+          </p>
+          <p className="estimate-note">Säkerhetsnotis: bara neutrala och realistiska actions kan sparas.</p>
+          <div className="habit-actions">
+            <button type="submit" className="primary-button" disabled={isSavingAction || duplicate.duplicate || !draftValidation.ok}>
+              {isSavingAction ? 'Sparar...' : 'Bekräfta och spara'}
+            </button>
+            <button type="button" onClick={closeActionDraft}>Avbryt</button>
+            {duplicate.duplicate && duplicate.entityId && (
+              <a className="secondary-button" href={duplicate.entityType === 'reminder' ? '#reminder-center' : '#mal-vanor'}>
+                Öppna befintligt objekt
+              </a>
+            )}
+          </div>
+        </form>
+      )}
 
       <div className="insight-plan">
         <h3>Senaste coachåtgärder</h3>

@@ -96,4 +96,25 @@ describe('adaptiveCoachEngine', () => {
     expect(model.recommendations[0].id).not.toBe(dismissedTop.id)
     expect(model.feedbackSummary.dismissed).toBe(1)
   })
+
+  it('does not suggest an identical active coach action again', () => {
+    const initial = buildAdaptiveCoach(baseData(), { analysisDate, now: `${analysisDate}T12:00:00.000Z` })
+    const active = initial.recommendations[0]
+    const model = buildAdaptiveCoach(baseData({
+      adaptiveCoachFeedback: {
+        recommendations: [{
+          ...active,
+          lastActionStatus: 'active',
+          linkedEntityId: 'habit-1',
+          linkedEntityType: 'habit',
+          recommendationId: active.id,
+          status: 'accepted',
+          updatedAt: `${analysisDate}T12:00:00.000Z`,
+        }],
+      },
+    }), { analysisDate, now: `${analysisDate}T13:00:00.000Z` })
+
+    expect(model.recommendations.map((item) => item.id)).not.toContain(active.id)
+    expect(model.actionSummary.total).toBe(1)
+  })
 })

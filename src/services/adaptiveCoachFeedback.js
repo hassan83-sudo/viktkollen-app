@@ -1,5 +1,28 @@
 export const adaptiveCoachFeedbackStorageKey = 'viktkollen.adaptiveCoach.v1'
 export const adaptiveCoachFeedbackVersion = 1
+export const adaptiveCoachTimelineHistoryLimit = 140
+
+export const adaptiveCoachTimelineEventTypes = [
+  'recommendationCreated',
+  'recommendationAccepted',
+  'recommendationPostponed',
+  'recommendationDismissed',
+  'recommendationCompleted',
+  'actionDraftOpened',
+  'actionCreated',
+  'actionDuplicatePrevented',
+  'goalCreated',
+  'habitCreated',
+  'reminderCreated',
+  'weeklyFocusCreated',
+  'linkedActionProgressed',
+  'linkedActionCompleted',
+  'linkedActionPaused',
+  'linkedActionArchived',
+  'coachPriorityChanged',
+  'positiveOutcome',
+  'insufficientData',
+]
 
 const statusLabels = {
   accepted: 'Accepterad',
@@ -10,6 +33,7 @@ const statusLabels = {
 }
 
 const validStatuses = new Set(Object.keys(statusLabels))
+const validTimelineEventTypes = new Set(adaptiveCoachTimelineEventTypes)
 
 function safeArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : []
@@ -61,6 +85,17 @@ function hashText(value) {
   }
 
   return (hash >>> 0).toString(36)
+}
+
+function createTimelineEventId(event) {
+  return `coach-event-${hashText([
+    event.eventType,
+    event.recommendationId,
+    event.occurredAt,
+    event.linkedEntityType,
+    event.linkedEntityId,
+    event.nextStatus,
+  ].join('|'))}`
 }
 
 function normalizeStatus(value) {
@@ -138,6 +173,41 @@ function normalizeHistoryEntry(entry = {}) {
   }
 }
 
+function normalizeTimelineEvent(event = {}, options = {}) {
+  const source = safeObject(event)
+  const eventType = safeText(source.eventType)
+  if (!validTimelineEventTypes.has(eventType)) return null
+
+  const occurredAt = safeDateText(source.occurredAt || source.at || source.updatedAt, options.now || new Date().toISOString())
+  const normalized = {
+    actionType: safeText(source.actionType),
+    category: normalizeArea(source.category || source.area),
+    confidence: Number.isFinite(Number(source.confidence)) ? Number(source.confidence) : null,
+    coverage: Number.isFinite(Number(source.coverage)) ? Number(source.coverage) : null,
+    eventType,
+    isDerived: source.isDerived === true,
+    isHistorical: source.isHistorical === true,
+    linkedEntityId: safeText(source.linkedEntityId),
+    linkedEntityType: safeText(source.linkedEntityType),
+    nextStatus: safeText(source.nextStatus),
+    occurredAt,
+    outcome: safeText(source.outcome),
+    previousStatus: safeText(source.previousStatus),
+    reason: safeText(source.reason, '', 240),
+    recommendationId: safeText(source.recommendationId),
+    safetyCategory: safeText(source.safetyCategory || 'standard'),
+    source: safeText(source.source || 'adaptiveCoach'),
+    status: safeText(source.status),
+    summary: safeText(source.summary, '', 280),
+    title: safeText(source.title, 'Coachhändelse'),
+  }
+
+  return {
+    ...normalized,
+    id: safeText(source.id) || createTimelineEventId(normalized),
+  }
+}
+
 export function normalizeAdaptiveCoachFeedback(value = {}, options = {}) {
   const source = safeObject(value)
   const now = safeDateText(options.now, source.updatedAt || new Date().toISOString())
@@ -175,13 +245,36 @@ export function normalizeAdaptiveCoachFeedback(value = {}, options = {}) {
         item.status === entry.status &&
         item.at === entry.at) === index)
     .slice(0, 100)
+  const events = safeArray(source.events)
+    .map((event) => normalizeTimelineEvent(event, { now }))
+    .filter(Boolean)
+    .sort((first, second) => second.occurredAt.localeCompare(first.occurredAt) || first.id.localeCompare(second.id))
+    .filter((event, index, list) => list.findIndex((item) => item.id === event.id) === index)
+    .slice(0, adaptiveCoachTimelineHistoryLimit)
 
   return {
+    events,
     history,
     recommendations: entries,
-    updatedAt: entries[0]?.updatedAt || now,
+    updatedAt: [entries[0]?.updatedAt, events[0]?.occurredAt, now].filter(Boolean).sort().at(-1) || now,
     version: adaptiveCoachFeedbackVersion,
   }
+}
+
+export function appendCoachTimelineEvent(feedback, event, options = {}) {
+  const now = safeDateText(options.now, new Date().toISOString())
+  const normalized = normalizeAdaptiveCoachFeedback(feedback, { now })
+  const nextEvent = normalizeTimelineEvent(event, { now })
+  if (!nextEvent) return normalized
+
+  return normalizeAdaptiveCoachFeedback({
+    ...normalized,
+    events: [
+      nextEvent,
+      ...normalized.events.filter((entry) => entry.id !== nextEvent.id),
+    ].slice(0, adaptiveCoachTimelineHistoryLimit),
+    updatedAt: now,
+  }, { now })
 }
 
 export function getAdaptiveCoachStatusLabel(status) {
@@ -226,6 +319,34 @@ export function updateAdaptiveCoachFeedback(feedback, recommendation, status, op
   })
 
   return normalizeAdaptiveCoachFeedback({
+    events: [
+      {
+        eventType: status === 'accepted'
+          ? 'recommendationAccepted'
+          : status === 'postponed'
+            ? 'recommendationPostponed'
+            : status === 'dismissed'
+              ? 'recommendationDismissed'
+              : status === 'completed'
+                ? 'recommendationCompleted'
+                : 'recommendationCreated',
+        nextStatus: status,
+        occurredAt: now,
+        previousStatus: previous?.status || '',
+        reason: status === 'dismissed'
+          ? safeText(options.dismissedReason, 'Inte relevant')
+          : status === 'postponed'
+            ? 'Användaren sköt upp rådet.'
+            : status === 'completed'
+              ? 'Användaren markerade rådet som klart.'
+              : 'Användaren accepterade rådet.',
+        recommendationId: nextEntry.recommendationId,
+        status,
+        summary: nextEntry.action || nextEntry.title,
+        title: nextEntry.title,
+      },
+      ...normalized.events,
+    ],
     history: [historyEntry, ...normalized.history],
     recommendations: entries,
     updatedAt: now,

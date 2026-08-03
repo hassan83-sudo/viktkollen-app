@@ -9,6 +9,7 @@ import { buildGoalsHabitsLiteSummary } from './goalsHabitsSummary.js'
 import { buildSharedWeeklyReportModel } from './sharedAnalyticsEngine.js'
 import { buildAdaptiveCoachFeedbackSummary } from './adaptiveCoachFeedback.js'
 import { buildCoachActionSummary } from './adaptiveCoachActions.js'
+import { buildAdaptiveCoachTimelineSummary } from './adaptiveCoachTimeline.js'
 
 function getMealPattern(mealHistory = [], meals = []) {
   if (mealHistory.length > 0) {
@@ -65,6 +66,11 @@ export function makeWeeklyReportFallback(data) {
     now: data.today ? `${data.today}T12:00:00.000Z` : undefined,
   })
   const coachActions = buildCoachActionSummary(data.adaptiveCoachFeedback)
+  const coachTimeline = buildAdaptiveCoachTimelineSummary(data, {
+    analysisDate: data.today,
+    filter: { period: '7d' },
+    now: data.today ? `${data.today}T12:00:00.000Z` : undefined,
+  })
 
   return {
     biggestProgress:
@@ -82,6 +88,7 @@ export function makeWeeklyReportFallback(data) {
       sharedReport.attentionItems[0]?.action || goalsHabitsSummary?.nextStep || proactiveAction || 'Välj en liten vana att upprepa varje dag.',
     coachFeedback,
     coachActions,
+    coachTimeline,
     goalsHabits: goalsHabitsSummary,
     movement:
       sharedReport.summaries.activity ||

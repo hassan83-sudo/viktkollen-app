@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { buildHealthDashboardV2Model } from '../services/healthDashboardV2.js'
 import { buildAdaptiveCoachFeedbackSummary } from '../services/adaptiveCoachFeedback.js'
 import { buildCoachActionSummary } from '../services/adaptiveCoachActions.js'
+import { buildAdaptiveCoachTimelineSummary } from '../services/adaptiveCoachTimeline.js'
 
 const HealthDashboardDrilldown = lazy(() => import('./HealthDashboardDrilldown.jsx'))
 
@@ -134,6 +135,13 @@ function HealthDashboardV2({
     () => buildCoachActionSummary(adaptiveCoachFeedback),
     [adaptiveCoachFeedback],
   )
+  const coachTimelineSummary = useMemo(
+    () => buildAdaptiveCoachTimelineSummary({ adaptiveCoachFeedback, goalsHabits }, {
+      analysisDate: today,
+      now: today ? `${today}T12:00:00.000Z` : undefined,
+    }),
+    [adaptiveCoachFeedback, goalsHabits, today],
+  )
 
   useEffect(() => {
     if (!showDrilldown) return undefined
@@ -254,6 +262,8 @@ function HealthDashboardV2({
           <div className="health-dashboard-metrics">
             <Metric label="Coach score" value={coachFeedbackSummary.completionRateLabel} />
             <Metric label="Aktiva actions" value={coachActionSummary.total} />
+            <Metric label="Klara 30 dagar" value={coachTimelineSummary.completed} />
+            <Metric label="Senaste händelse" value={coachTimelineSummary.latestEvent?.title || 'Saknas'} />
             <Metric label="Actiontyp" value={coachActionSummary.latestAction?.linkedEntityType || 'Saknas'} />
             <Metric
               label="Senaste"

@@ -7,6 +7,7 @@ import {
 } from './goalsHabits.js'
 import {
   adaptiveCoachFeedbackVersion,
+  appendCoachTimelineEvent,
   getCoachRecommendationId,
   updateAdaptiveCoachFeedback,
 } from './adaptiveCoachFeedback.js'
@@ -347,7 +348,7 @@ function createFeedbackAfterAction(feedback, recommendation, status, entity, opt
   const next = updateAdaptiveCoachFeedback(feedback, recommendation, status, { now })
   const recommendationId = safeText(recommendation?.id) || getCoachRecommendationId(recommendation)
 
-  return {
+  const linkedFeedback = {
     ...next,
     recommendations: next.recommendations.map((entry) =>
       entry.recommendationId === recommendationId || entry.id === recommendationId
@@ -361,6 +362,26 @@ function createFeedbackAfterAction(feedback, recommendation, status, entity, opt
         : entry),
     version: adaptiveCoachFeedbackVersion,
   }
+
+  return appendCoachTimelineEvent(linkedFeedback, {
+    actionType: entity.type,
+    eventType: entity.type === 'goal'
+      ? 'goalCreated'
+      : entity.type === 'habit'
+        ? 'habitCreated'
+        : entity.type === 'reminder'
+          ? 'reminderCreated'
+          : entity.type === 'weeklyFocus'
+            ? 'weeklyFocusCreated'
+            : 'actionCreated',
+    linkedEntityId: entity.id,
+    linkedEntityType: entity.type,
+    nextStatus: 'active',
+    occurredAt: now,
+    recommendationId,
+    summary: `${entity.type} skapades från coachrådet.`,
+    title: safeText(recommendation?.title, 'Coachaction skapad'),
+  }, { now })
 }
 
 export function commitCoachActionDraft(draft = {}, context = {}, options = {}) {

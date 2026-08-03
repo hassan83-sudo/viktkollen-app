@@ -200,6 +200,16 @@ function MonthlyReport({ report }) {
         </div>
       )}
 
+      {report.coachTimeline && (
+        <div className="report-card">
+          <p className="report-heading">Coachens förändrade fokus</p>
+          <p>{report.coachTimeline.latestEvent?.summary || 'Ingen tydlig fokusförändring i perioden.'}</p>
+          <p>
+            Pågående actions: {report.coachTimeline.activeActions}. Vanligaste actiontyp: {report.coachTimeline.topActionType}.
+          </p>
+        </div>
+      )}
+
       <p className="estimate-note">
         Rapporten skapas lokalt från sparad data och är allmänt stöd för vanor,
         inte medicinsk rådgivning.

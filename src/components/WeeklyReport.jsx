@@ -179,6 +179,13 @@ function WeeklyReport({
                   <p>Nästa rekommenderade action: {weeklyReportData.nextSteps?.[0] || weeklyReportData.focusNextWeek}</p>
                 </div>
               )}
+              {weeklyReportData.coachTimeline && (
+                <div>
+                  <p className="report-heading">Coachens fokusförändring</p>
+                  <p>{weeklyReportData.coachTimeline.latestEvent?.summary || 'Ingen tydlig coachhändelse i perioden.'}</p>
+                  <p>Uppskjutna: {weeklyReportData.coachTimeline.postponed}. Avfärdade: {weeklyReportData.coachTimeline.dismissed}.</p>
+                </div>
+              )}
               <p className="estimate-note">
                 Rapporten är allmänt stöd för hälsa och vanor, inte medicinsk
                 rådgivning.

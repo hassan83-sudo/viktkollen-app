@@ -178,6 +178,7 @@ describe('HealthDashboardV2 component', () => {
     expect(markup).toContain('Coach status')
     expect(markup).toContain('Coach score')
     expect(markup).toContain('Aktiva actions')
+    expect(markup).toContain('Senaste händelse')
     expect(markup).toContain('habit')
     expect(markup).not.toMatch(/NaN|Infinity|undefined|null|\[object Object\]/)
   })

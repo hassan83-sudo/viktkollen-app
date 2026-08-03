@@ -45,6 +45,11 @@ function weeklyReport() {
       conversionRate: 50,
       total: 1,
     },
+    coachTimeline: {
+      dismissed: 0,
+      latestEvent: { summary: 'Coachens fokus flyttades till protein.', title: 'Fokus ändrades' },
+      postponed: 1,
+    },
     focusNextWeek: sharedAnalytics.nextActions[0]?.text || '',
     goalsHabits: sharedAnalytics.goalsHabits,
     mealPattern: sharedAnalytics.summaries.nutrition,
@@ -79,6 +84,11 @@ function monthlyReport() {
       completed: 1,
       completionRate: 50,
       total: 2,
+    },
+    coachTimeline: {
+      activeActions: 2,
+      latestEvent: { summary: 'Coachens fokus följdes upp.', title: 'Fokus följdes upp' },
+      topActionType: 'habit',
     },
     commonMealType: 'Lunch',
     goalsHabits: sharedAnalytics.goalsHabits,
@@ -136,6 +146,7 @@ describe('Shared Report UI V3 model', () => {
     expect(markup).toContain('Jämförelse')
     expect(markup).toContain('Coachens genomförandegrad')
     expect(markup).toContain('Skapade coach actions')
+    expect(markup).toContain('Coachens fokusförändring')
     expect(markup).toContain('Accepterade:')
     expect(markup).toContain('role="progressbar"')
     expect(markup).not.toMatch(/NaN|Infinity|undefined|null|\[object Object\]/)
@@ -148,6 +159,7 @@ describe('Shared Report UI V3 model', () => {
     expect(markup).toContain('Datatäckning')
     expect(markup).toContain('Coach effectiveness')
     expect(markup).toContain('Coach action conversion')
+    expect(markup).toContain('Coachens förändrade fokus')
     expect(markup).toContain('Hjälpte mest:')
     expect(markup).toContain('Skriv ut rapport')
     expect(markup).toContain('Öppna mål &amp; vanor')

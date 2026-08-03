@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { buildAdaptiveCoach } from '../services/adaptiveCoachEngine.js'
 import {
   buildAdaptiveCoachFeedbackSummary,
@@ -12,6 +12,13 @@ import {
   getCoachActionEligibility,
   validateCoachActionDraft,
 } from '../services/adaptiveCoachActions.js'
+import {
+  appendAdaptiveCoachTimelineEvent,
+  buildAdaptiveCoachTimelineSummary,
+  explainCoachAdaptation,
+} from '../services/adaptiveCoachTimeline.js'
+
+const AdaptiveCoachTimeline = lazy(() => import('./AdaptiveCoachTimeline.jsx'))
 
 function MetricBadge({ label, value }) {
   return (
@@ -121,6 +128,7 @@ function AdaptiveCoachPanel({
   const [actionStatus, setActionStatus] = useState('')
   const [actionError, setActionError] = useState('')
   const [isSavingAction, setIsSavingAction] = useState(false)
+  const [showTimeline, setShowTimeline] = useState(false)
   const data = useMemo(() => ({
     adaptiveCoachFeedback,
     checkIn,
@@ -144,6 +152,18 @@ function AdaptiveCoachPanel({
     [adaptiveCoachFeedback, analysisDate],
   )
   const nextAction = model.recommendations[0]?.action || model.summary.todayFocus
+  const timelineSummary = useMemo(
+    () => buildAdaptiveCoachTimelineSummary({
+      adaptiveCoachFeedback,
+      coachModel: model,
+      goalsHabits,
+      reminderState,
+    }, {
+      analysisDate,
+      now: analysisDate ? `${analysisDate}T12:00:00.000Z` : undefined,
+    }),
+    [adaptiveCoachFeedback, analysisDate, goalsHabits, model, reminderState],
+  )
   const duplicate = useMemo(
     () => actionDraft
       ? findCoachActionDuplicate(actionDraft, { adaptiveCoachFeedback, goalsHabits, reminderState })
@@ -218,6 +238,15 @@ function AdaptiveCoachPanel({
     if (!actionDraft || !actionRecommendation || isSavingAction) return
     if (duplicate.duplicate) {
       setActionError(duplicate.message)
+      onAdaptiveCoachFeedbackChange?.(appendAdaptiveCoachTimelineEvent(adaptiveCoachFeedback, {
+        eventType: 'actionDuplicatePrevented',
+        linkedEntityId: duplicate.entityId,
+        linkedEntityType: duplicate.entityType,
+        occurredAt: new Date().toISOString(),
+        recommendationId: actionDraft.sourceRecommendationId,
+        summary: duplicate.message,
+        title: actionDraft.title,
+      }))
       return
     }
     if (!draftValidation.ok) {
@@ -266,6 +295,7 @@ function AdaptiveCoachPanel({
         <MetricBadge label="Viktdata" value={`${model.coverage.weightDays} dagar`} />
         <MetricBadge label="Måltider" value={`${model.coverage.mealDays} dagar`} />
         <MetricBadge label="Check-ins" value={`${model.coverage.checkInDays} dagar`} />
+        <MetricBadge label="Aktiva actions" value={timelineSummary.activeActions} />
       </div>
 
       <div className="health-dashboard-grid">
@@ -302,6 +332,9 @@ function AdaptiveCoachPanel({
         <h3>Rekommenderade nästa steg</h3>
         <p>Nästa rekommenderade åtgärd: {nextAction}</p>
         <RecommendationList onAction={openActionDraft} onFeedback={handleFeedback} recommendations={model.recommendations} />
+        {model.recommendations[0] && (
+          <p className="estimate-note">Varför detta prioriteras: {explainCoachAdaptation(model.recommendations[0], model)}</p>
+        )}
       </div>
 
       {actionDraft && (
@@ -396,8 +429,34 @@ function AdaptiveCoachPanel({
 
       <div className="insight-plan">
         <h3>Senaste coachåtgärder</h3>
+        <p>Senaste tidslinjehändelse: {timelineSummary.latestEvent?.title || 'Ingen historik ännu'}.</p>
+        <p>Senaste positiva outcome: {timelineSummary.positiveOutcome?.title || 'Saknas ännu'}.</p>
+        <button
+          aria-controls="adaptive-coach-timeline"
+          aria-expanded={showTimeline}
+          className="secondary-button"
+          type="button"
+          onClick={() => setShowTimeline((current) => !current)}
+        >
+          {showTimeline ? 'Dölj coachhistorik' : 'Visa coachhistorik'}
+        </button>
         <FeedbackHistory recentActions={feedbackSummary.recentActions} />
       </div>
+
+      {showTimeline && (
+        <div id="adaptive-coach-timeline">
+          <Suspense fallback={<div className="report-v3-card" role="status">Laddar coachhistorik...</div>}>
+            <AdaptiveCoachTimeline
+              adaptiveCoachFeedback={adaptiveCoachFeedback}
+              analysisDate={analysisDate}
+              coachModel={model}
+              goalsHabits={goalsHabits}
+              onClose={() => setShowTimeline(false)}
+              reminderState={reminderState}
+            />
+          </Suspense>
+        </div>
+      )}
 
       <p className="estimate-note">{model.safetyNote}</p>
     </section>

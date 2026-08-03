@@ -22,6 +22,16 @@ export const adaptiveCoachTimelineEventTypes = [
   'coachPriorityChanged',
   'positiveOutcome',
   'insufficientData',
+  'patternDetected',
+  'patternBecameInsufficient',
+  'strategyChanged',
+  'weeklyPlanDraftOpened',
+  'weeklyPlanConfirmed',
+  'weeklyPlanPartiallyApplied',
+  'weeklyPlanCancelled',
+  'planActionCreated',
+  'duplicatePrevented',
+  'planOutcomeObserved',
 ]
 
 const statusLabels = {

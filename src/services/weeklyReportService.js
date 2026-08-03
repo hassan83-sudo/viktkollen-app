@@ -10,6 +10,8 @@ import { buildSharedWeeklyReportModel } from './sharedAnalyticsEngine.js'
 import { buildAdaptiveCoachFeedbackSummary } from './adaptiveCoachFeedback.js'
 import { buildCoachActionSummary } from './adaptiveCoachActions.js'
 import { buildAdaptiveCoachTimelineSummary } from './adaptiveCoachTimeline.js'
+import { buildAdaptiveCoachPatternSummary } from './adaptiveCoachPatterns.js'
+import { buildAdaptiveCoachStrategy } from './adaptiveCoachStrategy.js'
 
 function getMealPattern(mealHistory = [], meals = []) {
   if (mealHistory.length > 0) {
@@ -71,6 +73,19 @@ export function makeWeeklyReportFallback(data) {
     filter: { period: '7d' },
     now: data.today ? `${data.today}T12:00:00.000Z` : undefined,
   })
+  const coachPatterns = buildAdaptiveCoachPatternSummary(data, {
+    analysisDate: data.today,
+    days: 7,
+    now: data.today ? `${data.today}T12:00:00.000Z` : undefined,
+  })
+  const coachStrategy = buildAdaptiveCoachStrategy({
+    ...data,
+    patternSummary: coachPatterns,
+  }, {
+    analysisDate: data.today,
+    period: '7d',
+    now: data.today ? `${data.today}T12:00:00.000Z` : undefined,
+  })
 
   return {
     biggestProgress:
@@ -89,6 +104,14 @@ export function makeWeeklyReportFallback(data) {
     coachFeedback,
     coachActions,
     coachTimeline,
+    coachPatterns,
+    coachStrategy,
+    coachWeeklyPlan: {
+      confidence: coachStrategy.confidence,
+      coverage: coachStrategy.coverage,
+      nextStep: coachStrategy.recommendations[0]?.action || 'Samla mer underlag innan veckoplanen blir personlig.',
+      status: 'Utkast skapas i Adaptive Coach efter bekräftelse.',
+    },
     goalsHabits: goalsHabitsSummary,
     movement:
       sharedReport.summaries.activity ||

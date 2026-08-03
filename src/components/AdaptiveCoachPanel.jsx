@@ -17,8 +17,11 @@ import {
   buildAdaptiveCoachTimelineSummary,
   explainCoachAdaptation,
 } from '../services/adaptiveCoachTimeline.js'
+import { buildAdaptiveCoachPatternSummary } from '../services/adaptiveCoachPatterns.js'
+import { buildAdaptiveCoachStrategy } from '../services/adaptiveCoachStrategy.js'
 
 const AdaptiveCoachTimeline = lazy(() => import('./AdaptiveCoachTimeline.jsx'))
+const AdaptiveCoachWeeklyPlan = lazy(() => import('./AdaptiveCoachWeeklyPlan.jsx'))
 
 function MetricBadge({ label, value }) {
   return (
@@ -129,6 +132,7 @@ function AdaptiveCoachPanel({
   const [actionError, setActionError] = useState('')
   const [isSavingAction, setIsSavingAction] = useState(false)
   const [showTimeline, setShowTimeline] = useState(false)
+  const [showWeeklyPlan, setShowWeeklyPlan] = useState(false)
   const data = useMemo(() => ({
     adaptiveCoachFeedback,
     checkIn,
@@ -163,6 +167,25 @@ function AdaptiveCoachPanel({
       now: analysisDate ? `${analysisDate}T12:00:00.000Z` : undefined,
     }),
     [adaptiveCoachFeedback, analysisDate, goalsHabits, model, reminderState],
+  )
+  const patternSummary = useMemo(
+    () => buildAdaptiveCoachPatternSummary(data, {
+      analysisDate,
+      days: 30,
+      now: analysisDate ? `${analysisDate}T12:00:00.000Z` : undefined,
+    }),
+    [analysisDate, data],
+  )
+  const strategy = useMemo(
+    () => buildAdaptiveCoachStrategy({
+      ...data,
+      coachModel: model,
+      patternSummary,
+    }, {
+      analysisDate,
+      now: analysisDate ? `${analysisDate}T12:00:00.000Z` : undefined,
+    }),
+    [analysisDate, data, model, patternSummary],
   )
   const duplicate = useMemo(
     () => actionDraft
@@ -281,7 +304,7 @@ function AdaptiveCoachPanel({
     <section className="panel health-dashboard-v2 adaptive-coach-panel" id="adaptive-coach" aria-labelledby="adaptive-coach-heading">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Smart Coach V4</p>
+          <p className="eyebrow">Smart Coach V7</p>
           <h2 id="adaptive-coach-heading">Adaptiv coachning</h2>
           <span>{model.analysisDate}. {model.coverage.text}</span>
         </div>
@@ -296,6 +319,7 @@ function AdaptiveCoachPanel({
         <MetricBadge label="Måltider" value={`${model.coverage.mealDays} dagar`} />
         <MetricBadge label="Check-ins" value={`${model.coverage.checkInDays} dagar`} />
         <MetricBadge label="Aktiva actions" value={timelineSummary.activeActions} />
+        <MetricBadge label="Strategi" value={strategy.title} />
       </div>
 
       <div className="health-dashboard-grid">
@@ -327,6 +351,47 @@ function AdaptiveCoachPanel({
           <CompactList emptyText="Inga tydliga riskområden i underlaget." items={model.riskAreas} />
         </article>
       </div>
+
+      <div className="insight-plan">
+        <h3>Observerat mönster</h3>
+        <p>{patternSummary.text}</p>
+        <p>Aktuell coachstrategi: {strategy.title}. {strategy.explanation}</p>
+        <div className="report-v3-actions">
+          <button
+            aria-controls="adaptive-coach-weekly-plan"
+            aria-expanded={showWeeklyPlan}
+            className="primary-button"
+            type="button"
+            onClick={() => setShowWeeklyPlan((current) => !current)}
+          >
+            {showWeeklyPlan ? 'Dölj veckoplan' : 'Skapa veckoplan'}
+          </button>
+        </div>
+      </div>
+
+      {showWeeklyPlan && (
+        <div id="adaptive-coach-weekly-plan">
+          <Suspense fallback={<div className="report-v3-card" role="status">Laddar veckoplan...</div>}>
+            <AdaptiveCoachWeeklyPlan
+              adaptiveCoachFeedback={adaptiveCoachFeedback}
+              analysisDate={analysisDate}
+              checkIn={checkIn}
+              checkIns={checkIns}
+              goalsHabits={goalsHabits}
+              healthSnapshot={healthSnapshot}
+              meals={meals}
+              nutritionGoals={nutritionGoals}
+              onAdaptiveCoachFeedbackChange={onAdaptiveCoachFeedbackChange}
+              onCancel={() => setShowWeeklyPlan(false)}
+              onGoalsHabitsChange={onGoalsHabitsChange}
+              onReminderStateChange={onReminderStateChange}
+              profile={profile}
+              reminderState={reminderState}
+              weights={weights}
+            />
+          </Suspense>
+        </div>
+      )}
 
       <div className="insight-plan">
         <h3>Rekommenderade nästa steg</h3>

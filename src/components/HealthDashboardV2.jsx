@@ -3,6 +3,8 @@ import { buildHealthDashboardV2Model } from '../services/healthDashboardV2.js'
 import { buildAdaptiveCoachFeedbackSummary } from '../services/adaptiveCoachFeedback.js'
 import { buildCoachActionSummary } from '../services/adaptiveCoachActions.js'
 import { buildAdaptiveCoachTimelineSummary } from '../services/adaptiveCoachTimeline.js'
+import { buildAdaptiveCoachPatternSummary } from '../services/adaptiveCoachPatterns.js'
+import { buildAdaptiveCoachStrategy } from '../services/adaptiveCoachStrategy.js'
 
 const HealthDashboardDrilldown = lazy(() => import('./HealthDashboardDrilldown.jsx'))
 
@@ -142,6 +144,25 @@ function HealthDashboardV2({
     }),
     [adaptiveCoachFeedback, goalsHabits, today],
   )
+  const coachPatternSummary = useMemo(
+    () => buildAdaptiveCoachPatternSummary({ ...data, adaptiveCoachFeedback }, {
+      analysisDate: today,
+      days: 30,
+      now: today ? `${today}T12:00:00.000Z` : undefined,
+    }),
+    [adaptiveCoachFeedback, data, today],
+  )
+  const coachStrategy = useMemo(
+    () => buildAdaptiveCoachStrategy({
+      ...data,
+      adaptiveCoachFeedback,
+      patternSummary: coachPatternSummary,
+    }, {
+      analysisDate: today,
+      now: today ? `${today}T12:00:00.000Z` : undefined,
+    }),
+    [adaptiveCoachFeedback, coachPatternSummary, data, today],
+  )
 
   useEffect(() => {
     if (!showDrilldown) return undefined
@@ -264,6 +285,8 @@ function HealthDashboardV2({
             <Metric label="Aktiva actions" value={coachActionSummary.total} />
             <Metric label="Klara 30 dagar" value={coachTimelineSummary.completed} />
             <Metric label="Senaste händelse" value={coachTimelineSummary.latestEvent?.title || 'Saknas'} />
+            <Metric label="Strategi" value={coachStrategy.title} />
+            <Metric label="Mönster" value={coachPatternSummary.primaryPattern?.eligibility || 'insufficient'} />
             <Metric label="Actiontyp" value={coachActionSummary.latestAction?.linkedEntityType || 'Saknas'} />
             <Metric
               label="Senaste"
@@ -271,6 +294,8 @@ function HealthDashboardV2({
               value={coachActionSummary.latestAction?.lastActionStatus || coachFeedbackSummary.latestAction?.statusLabel || 'Ingen feedback'}
             />
           </div>
+          <p>{coachPatternSummary.text}</p>
+          <p>{coachStrategy.explanation}</p>
         </Card>
 
         <Card actionHref="#ai-insights" actionText="Visa insikter" heading="Personliga insikter" text={model.insightsSummary.positive}>

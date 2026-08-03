@@ -334,6 +334,7 @@ describe('AI Coach meal planner replies', () => {
     mealPlans: addPlannedMeal({}, weekStart, planned()),
     nutritionGoals: goals,
     shoppingLists: {},
+    today: weekStart,
   }
 
   it('answers plan summary', () => {

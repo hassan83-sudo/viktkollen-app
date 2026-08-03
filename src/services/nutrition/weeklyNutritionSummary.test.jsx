@@ -68,6 +68,7 @@ function coach(message) {
     context: {
       meals: [...weekMeals, ...previousWeekMeals],
       nutritionGoals: goals,
+      today: '2026-08-02',
     },
     message,
   })

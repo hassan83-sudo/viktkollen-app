@@ -210,6 +210,22 @@ function MonthlyReport({ report }) {
         </div>
       )}
 
+      {report.coachPatterns && (
+        <div className="report-card">
+          <p className="report-heading">Återkommande coachmönster</p>
+          <p>{report.coachPatterns.text}</p>
+          <p>Supported: {report.coachPatterns.supportedCount}. Tentative: {report.coachPatterns.tentativeCount}.</p>
+        </div>
+      )}
+
+      {report.coachStrategy && (
+        <div className="report-card">
+          <p className="report-heading">Coachstrategi</p>
+          <p>{report.coachStrategy.title}</p>
+          <p>{report.coachStrategy.explanation}</p>
+        </div>
+      )}
+
       <p className="estimate-note">
         Rapporten skapas lokalt från sparad data och är allmänt stöd för vanor,
         inte medicinsk rådgivning.

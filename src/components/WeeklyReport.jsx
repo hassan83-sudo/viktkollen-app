@@ -186,6 +186,20 @@ function WeeklyReport({
                   <p>Uppskjutna: {weeklyReportData.coachTimeline.postponed}. Avfärdade: {weeklyReportData.coachTimeline.dismissed}.</p>
                 </div>
               )}
+              {weeklyReportData.coachPatterns && (
+                <div>
+                  <p className="report-heading">Observerade coachmönster</p>
+                  <p>{weeklyReportData.coachPatterns.text}</p>
+                  <p>Supported: {weeklyReportData.coachPatterns.supportedCount}. Tentative: {weeklyReportData.coachPatterns.tentativeCount}.</p>
+                </div>
+              )}
+              {weeklyReportData.coachStrategy && (
+                <div>
+                  <p className="report-heading">Coachstrategi</p>
+                  <p>{weeklyReportData.coachStrategy.title}</p>
+                  <p>{weeklyReportData.coachStrategy.explanation}</p>
+                </div>
+              )}
               <p className="estimate-note">
                 Rapporten är allmänt stöd för hälsa och vanor, inte medicinsk
                 rådgivning.

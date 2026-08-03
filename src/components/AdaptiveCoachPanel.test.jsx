@@ -34,7 +34,7 @@ describe('AdaptiveCoachPanel', () => {
   it('renders the adaptive coach sections and feedback actions', () => {
     const markup = renderPanel()
 
-    expect(markup).toContain('Smart Coach V4')
+    expect(markup).toContain('Smart Coach V7')
     expect(markup).toContain('Dagens fokus')
     expect(markup).toContain('Veckans viktigaste förbättring')
     expect(markup).toContain('Vad som fungerar bra')
@@ -51,6 +51,9 @@ describe('AdaptiveCoachPanel', () => {
     expect(markup).toContain('Aktiva actions')
     expect(markup).toContain('Confidence')
     expect(markup).toContain('Coverage')
+    expect(markup).toContain('Observerat mönster')
+    expect(markup).toContain('Aktuell coachstrategi')
+    expect(markup).toContain('Skapa veckoplan')
   })
 
   it('does not render technical placeholder values', () => {

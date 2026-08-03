@@ -12,6 +12,8 @@ import { buildSharedMonthlyReportModel } from './sharedAnalyticsEngine.js'
 import { buildAdaptiveCoachFeedbackSummary } from './adaptiveCoachFeedback.js'
 import { buildCoachActionSummary } from './adaptiveCoachActions.js'
 import { buildAdaptiveCoachTimelineSummary } from './adaptiveCoachTimeline.js'
+import { buildAdaptiveCoachPatternSummary } from './adaptiveCoachPatterns.js'
+import { buildAdaptiveCoachStrategy } from './adaptiveCoachStrategy.js'
 
 function safeArray(value) {
   return Array.isArray(value) ? value : []
@@ -217,6 +219,19 @@ export function createMonthlyHealthReport(data = {}) {
     filter: { period: '30d' },
     now: data.today ? `${data.today}T12:00:00.000Z` : undefined,
   })
+  const coachPatterns = buildAdaptiveCoachPatternSummary(data, {
+    analysisDate: data.today,
+    days: 30,
+    now: data.today ? `${data.today}T12:00:00.000Z` : undefined,
+  })
+  const coachStrategy = buildAdaptiveCoachStrategy({
+    ...data,
+    patternSummary: coachPatterns,
+  }, {
+    analysisDate: data.today,
+    period: '30d',
+    now: data.today ? `${data.today}T12:00:00.000Z` : undefined,
+  })
   const recentMeals = safeArray(actualMeals).filter((entry) =>
     isLocalDateInRange(getMealDate(entry), reportRange),
   )
@@ -261,6 +276,8 @@ export function createMonthlyHealthReport(data = {}) {
     coachEffectiveness,
     coachActions,
     coachTimeline,
+    coachPatterns,
+    coachStrategy,
     sharedAnalytics: {
       ...sharedReport,
       coachFeedback: coachEffectiveness,

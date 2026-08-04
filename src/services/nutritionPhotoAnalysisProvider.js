@@ -1,10 +1,10 @@
-import { requestAiEndpoint } from './aiApiService.js'
 import { normalizeNutritionPhotoAnalysis } from './nutritionPhotoAnalysis.js'
 
 export const nutritionPhotoProviderTypes = ['mock', 'remote']
 export const nutritionPhotoAnalysisTimeoutMs = 12000
 
 let activeRequestId = 0
+let transientClientId = ''
 
 function safeText(value, fallback = '', max = 220) {
   return String(value || fallback).replace(/\s+/g, ' ').trim().slice(0, max)
@@ -14,6 +14,14 @@ function isAbortError(error) {
   return error?.name === 'AbortError' || /abort/i.test(String(error?.message || ''))
 }
 
+function getTransientClientId() {
+  if (!transientClientId) {
+    transientClientId = `scanner-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+  }
+
+  return transientClientId
+}
+
 function createMockAnalysis(input = {}, options = {}) {
   const mealType = safeText(input.mealType, 'Lunch')
   const name = mealType === 'Frukost' ? 'ägg och bröd' : mealType === 'Mellanmål' ? 'kvarg och frukt' : 'kyckling, ris och grönsaker'
@@ -21,9 +29,9 @@ function createMockAnalysis(input = {}, options = {}) {
   return normalizeNutritionPhotoAnalysis({
     analysisDate: options.analysisDate,
     detectedItems: [
-      { calories: 240, carbohydrates: 18, confidence: 'medium', estimatedAmount: 160, fat: 7, name: name.split(',')[0], protein: 28, unit: 'g' },
-      { calories: 180, carbohydrates: 38, confidence: 'low', estimatedAmount: 140, fat: 1, name: 'kolhydratkälla', protein: 4, unit: 'g' },
-      { calories: 60, carbohydrates: 8, confidence: 'low', estimatedAmount: 100, fat: 3, name: 'grönsaker eller sås', protein: 2, unit: 'g' },
+      { calories: 240, carbohydrates: 18, confidence: 'medium', dataSource: 'aiEstimate', estimatedAmount: 160, fat: 7, name: name.split(',')[0], protein: 28, unit: 'g' },
+      { calories: 180, carbohydrates: 38, confidence: 'low', dataSource: 'aiEstimate', estimatedAmount: 140, fat: 1, name: 'kolhydratkälla', protein: 4, unit: 'g' },
+      { calories: 60, carbohydrates: 8, confidence: 'low', dataSource: 'aiEstimate', estimatedAmount: 100, fat: 3, name: 'grönsaker eller sås', protein: 2, unit: 'g' },
     ],
     estimatedNutrition: { calories: 480, carbs: 64, fat: 11, protein: 34 },
     estimatedServing: 'En normal tallrik',
@@ -39,15 +47,42 @@ function createMockAnalysis(input = {}, options = {}) {
   }, options)
 }
 
-function timeoutSignal(ms) {
+function timeoutSignal(ms, upstreamSignal) {
   if (typeof AbortController === 'undefined') return { cleanup: () => {}, signal: undefined }
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), ms)
+  const abortFromUpstream = () => controller.abort()
+  if (upstreamSignal?.aborted) controller.abort()
+  upstreamSignal?.addEventListener?.('abort', abortFromUpstream, { once: true })
 
   return {
-    cleanup: () => clearTimeout(timer),
+    cleanup: () => {
+      clearTimeout(timer)
+      upstreamSignal?.removeEventListener?.('abort', abortFromUpstream)
+    },
     signal: controller.signal,
   }
+}
+
+function createRemoteFormData(input = {}) {
+  if (typeof FormData === 'undefined') {
+    throw new Error('form_data_unavailable')
+  }
+  const formData = new FormData()
+  formData.append('mealType', safeText(input.mealType, 'Lunch', 40))
+  formData.append('schema', 'nutritionPhotoAnalysis.v3')
+  formData.append('image', input.preprocessedImage, 'meal-image.jpg')
+
+  return formData
+}
+
+function safeRemoteWarning(status, errorCode) {
+  if (status === 429 || errorCode === 'rateLimit') return 'För många bildanalyser just nu. Vänta en stund och försök igen manuellt.'
+  if (status === 503 || errorCode === 'serverConfiguration') return 'Remote bildanalys är inte konfigurerad på servern.'
+  if (status === 504 || errorCode === 'timeout') return 'Bildanalysen tog för lång tid. Försök igen med en tydligare bild.'
+  if (status >= 500) return 'Remote bildanalys är tillfälligt otillgänglig.'
+
+  return 'Remote bildanalys kunde inte slutföras.'
 }
 
 export async function analyzeNutritionPhoto(input = {}, options = {}) {
@@ -57,10 +92,10 @@ export async function analyzeNutritionPhoto(input = {}, options = {}) {
 
   if (options.offline || (typeof navigator !== 'undefined' && navigator.onLine === false && providerType === 'remote')) {
     return {
-      analysis: createMockAnalysis(input, options),
+      analysis: null,
       ok: providerType !== 'remote',
-      providerType: 'mock',
-      warning: 'Du är offline. Remote analys är inte tillgänglig, men du kan registrera manuellt.',
+      providerType: 'remote',
+      warning: 'Du är offline. Remote analys är inte tillgänglig, men du kan registrera manuellt eller skapa en lokal uppskattning.',
     }
   }
 
@@ -72,16 +107,28 @@ export async function analyzeNutritionPhoto(input = {}, options = {}) {
     }
   }
 
-  const timeout = timeoutSignal(options.timeoutMs || nutritionPhotoAnalysisTimeoutMs)
+  const timeout = timeoutSignal(options.timeoutMs || nutritionPhotoAnalysisTimeoutMs, options.signal)
 
   try {
-    const response = await requestAiEndpoint({
-      action: 'nutrition-photo-analysis',
-      image: input.preprocessedImage,
-      language: 'sv',
-      mealType: safeText(input.mealType),
-      schema: 'nutritionPhotoAnalysis.v2',
-      signal: options.signal || timeout.signal,
+    if (timeout.signal?.aborted) {
+      return { analysis: null, aborted: true, ok: false, providerType, warning: 'Analysen avbröts.' }
+    }
+    if (!input.preprocessedImage) {
+      return {
+        analysis: null,
+        ok: false,
+        providerType,
+        warning: 'Bild saknas för remote analys.',
+      }
+    }
+
+    const response = await fetch('/api/nutrition-photo-analysis', {
+      body: createRemoteFormData(input),
+      headers: {
+        'x-viktkollen-client-id': getTransientClientId(),
+      },
+      method: 'POST',
+      signal: timeout.signal,
     })
     if (requestId !== activeRequestId) {
       return {
@@ -91,30 +138,46 @@ export async function analyzeNutritionPhoto(input = {}, options = {}) {
         warning: 'Ett nyare analysförsök finns redan.',
       }
     }
-    const payload = response.data?.analysis || response.data || {}
+
+    let payload
+    try {
+      payload = await response.json()
+    } catch {
+      return {
+        analysis: null,
+        ok: false,
+        providerType,
+        warning: 'Remote bildanalys gav ett ogiltigt svar.',
+      }
+    }
+
+    const errorCode = payload?.error?.code
+    if (!response.ok || payload?.ok === false) {
+      return {
+        analysis: null,
+        ok: false,
+        providerType,
+        retryable: payload?.error?.retryable === true || response.status >= 500 || response.status === 429,
+        warning: safeRemoteWarning(response.status, errorCode),
+      }
+    }
+
     const analysis = normalizeNutritionPhotoAnalysis({
-      ...payload,
+      ...(payload.analysis || {}),
       provider: { label: 'Remote AI-analys', type: 'remote' },
     }, options)
 
-    return response.ok
-      ? { analysis, ok: true, providerType }
-      : {
-        analysis: createMockAnalysis(input, options),
-        ok: false,
-        providerType: 'mock',
-        warning: 'Remote analys kunde inte användas. Lokal fallback visas utan att låtsas vara AI.',
-      }
+    return { analysis, ok: true, providerType }
   } catch (error) {
     if (isAbortError(error)) {
-      return { analysis: null, aborted: true, ok: false, warning: 'Analysen avbröts.' }
+      return { analysis: null, aborted: true, ok: false, providerType, warning: 'Analysen avbröts.' }
     }
 
     return {
-      analysis: createMockAnalysis(input, options),
+      analysis: null,
       ok: false,
-      providerType: 'mock',
-      warning: 'Analysen kunde inte slutföras. Lokal fallback visas utan rått felmeddelande.',
+      providerType,
+      warning: 'Remote bildanalys kunde inte slutföras. Ingen kostnadsbärande retry kördes automatiskt.',
     }
   } finally {
     timeout.cleanup()
@@ -123,4 +186,6 @@ export async function analyzeNutritionPhoto(input = {}, options = {}) {
 
 export const nutritionPhotoProviderInternals = {
   createMockAnalysis,
+  createRemoteFormData,
+  safeRemoteWarning,
 }

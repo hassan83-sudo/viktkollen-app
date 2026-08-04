@@ -265,6 +265,9 @@ function HealthDashboardV2({
           <div className="health-dashboard-metrics">
             <Metric label="Fotoanalyser" value={model.photoAnalysisSummary?.photoMealCount ?? 0} />
             <Metric label="Redigerade" value={model.photoAnalysisSummary?.editedCount ?? 0} />
+            <Metric label="Remote" value={model.photoAnalysisSummary?.providerCounts?.remote ?? 0} />
+            <Metric label="Lokal" value={(model.photoAnalysisSummary?.providerCounts?.mock ?? 0) + (model.photoAnalysisSummary?.providerCounts?.local ?? 0)} />
+            <Metric label="Matdatabas" value={model.photoAnalysisSummary?.dataSourceCounts?.nutritionDatabase ?? 0} />
             <Metric label="Låg confidence" value={model.photoAnalysisSummary?.lowConfidenceCount ?? 0} />
           </div>
           <p>Bilddata sparas inte i rapporter, sync eller backup.</p>

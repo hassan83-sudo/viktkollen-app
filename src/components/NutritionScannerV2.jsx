@@ -10,6 +10,10 @@ import {
   revokeNutritionPhotoObjectUrl,
   validateNutritionPhotoFile,
 } from '../services/nutritionPhotoPreprocessing.js'
+import {
+  applyPhotoIngredientDatabaseSuggestion,
+  buildPhotoIngredientMatchSummary,
+} from '../services/nutritionPhotoIngredientMatching.js'
 import { getCurrentTimeString, getTodayDateString, mealTypes } from '../services/nutritionService.js'
 
 function safeArray(value) {
@@ -20,7 +24,27 @@ function numericPatch(value) {
   return value === '' ? '' : Number(value)
 }
 
-function IngredientEditor({ disabled, item, onChange, onRemove }) {
+function dataSourceLabel(source) {
+  return {
+    aiEstimate: 'AI-uppskattning',
+    barcode: 'Streckkod',
+    manual: 'Manuellt värde',
+    nutritionDatabase: 'Matdatabas',
+  }[source] || 'AI-uppskattning'
+}
+
+function calculateIngredientTotals(items = []) {
+  return safeArray(items)
+    .filter((item) => item.selected !== false)
+    .reduce((totals, item) => ({
+      calories: Number((totals.calories + (Number(item.calories) || 0)).toFixed(1)),
+      carbs: Number((totals.carbs + (Number(item.carbohydrates) || 0)).toFixed(1)),
+      fat: Number((totals.fat + (Number(item.fat) || 0)).toFixed(1)),
+      protein: Number((totals.protein + (Number(item.protein) || 0)).toFixed(1)),
+    }), { calories: 0, carbs: 0, fat: 0, protein: 0 })
+}
+
+function IngredientEditor({ disabled, item, match, onApplySuggestion, onChange, onRemove }) {
   return (
     <li>
       <label>
@@ -59,7 +83,27 @@ function IngredientEditor({ disabled, item, onChange, onRemove }) {
           />
         </label>
       ))}
-      <small>Confidence: {item.confidence}</small>
+      <label>
+        <span>Osäker</span>
+        <input
+          checked={item.uncertain === true}
+          disabled={disabled}
+          type="checkbox"
+          onChange={(event) => onChange(item.id, { uncertain: event.target.checked, userEdited: true })}
+        />
+      </label>
+      <small>Confidence: {item.confidence}. Datakälla: {dataSourceLabel(item.dataSource)}</small>
+      {match?.status === 'exactMatch' || match?.status === 'normalizedMatch' ? (
+        <button disabled={disabled || item.userEdited} type="button" onClick={() => onApplySuggestion(item.id, match.matchedFood)}>
+          Använd matdatabas: {match.matchedFood.name}
+        </button>
+      ) : null}
+      {match?.status === 'multipleMatches' && (
+        <small>Flera databasförslag finns. Välj manuellt innan något ersätts.</small>
+      )}
+      {match?.status === 'noMatch' && (
+        <small>Ingen säker databasmatchning hittades.</small>
+      )}
       <button disabled={disabled} type="button" onClick={() => onRemove(item.id)}>Ta bort</button>
     </li>
   )
@@ -76,6 +120,7 @@ function NutritionScannerV2({
   const headingRef = useRef(null)
   const fileInputRef = useRef(null)
   const currentImageRef = useRef(null)
+  const activeAnalysisControllerRef = useRef(null)
   const [status, setStatus] = useState('Välj eller ta en matbild för att börja.')
   const [error, setError] = useState('')
   const [fileName, setFileName] = useState('')
@@ -87,12 +132,28 @@ function NutritionScannerV2({
   const [isSaving, setIsSaving] = useState(false)
   const [savedMealId, setSavedMealId] = useState('')
   const [allowDuplicate, setAllowDuplicate] = useState(false)
+  const [remoteConsent, setRemoteConsent] = useState(false)
+  const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine !== false)
   const today = analysisDate || selectedMealDate || getTodayDateString()
 
   useEffect(() => {
     headingRef.current?.focus()
     return () => {
+      activeAnalysisControllerRef.current?.abort()
       currentImageRef.current?.revoke?.()
+    }
+  }, [])
+
+  useEffect(() => {
+    function updateOnlineState() {
+      setIsOnline(typeof navigator === 'undefined' ? true : navigator.onLine !== false)
+    }
+
+    window.addEventListener('online', updateOnlineState)
+    window.addEventListener('offline', updateOnlineState)
+    return () => {
+      window.removeEventListener('online', updateOnlineState)
+      window.removeEventListener('offline', updateOnlineState)
     }
   }, [])
 
@@ -113,14 +174,35 @@ function NutritionScannerV2({
     () => reviewDraft ? detectPhotoMealDuplicate(reviewDraft, meals) : { status: 'noDuplicate', message: '' },
     [meals, reviewDraft],
   )
+  const ingredientMatches = useMemo(
+    () => reviewDraft ? buildPhotoIngredientMatchSummary(reviewDraft.detectedItems) : { counts: {}, matches: [] },
+    [reviewDraft],
+  )
+  const ingredientTotals = useMemo(
+    () => reviewDraft ? calculateIngredientTotals(reviewDraft.detectedItems) : { calories: 0, carbs: 0, fat: 0, protein: 0 },
+    [reviewDraft],
+  )
+  const nutritionDifference = useMemo(() => {
+    if (!reviewDraft) return { calories: 0, carbs: 0, fat: 0, protein: 0 }
+    return {
+      calories: Number(((reviewDraft.nutrition.calories || 0) - ingredientTotals.calories).toFixed(1)),
+      carbs: Number(((reviewDraft.nutrition.carbs || 0) - ingredientTotals.carbs).toFixed(1)),
+      fat: Number(((reviewDraft.nutrition.fat || 0) - ingredientTotals.fat).toFixed(1)),
+      protein: Number(((reviewDraft.nutrition.protein || 0) - ingredientTotals.protein).toFixed(1)),
+    }
+  }, [ingredientTotals, reviewDraft])
 
   function clearTemporaryImage() {
+    activeAnalysisControllerRef.current?.abort()
+    activeAnalysisControllerRef.current = null
     currentImageRef.current?.revoke?.()
     currentImageRef.current = null
     if (previewUrl) revokeNutritionPhotoObjectUrl(previewUrl)
     setPreviewUrl('')
     setImagePayload(null)
     setFileName('')
+    setRemoteConsent(false)
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   async function handleFileChange(event) {
@@ -158,6 +240,17 @@ function NutritionScannerV2({
 
   async function analyzeImage(providerType = 'mock') {
     if (!imagePayload || isAnalyzing) return
+    if (providerType === 'remote' && !remoteConsent) {
+      setError('Bekräfta först att bilden får skickas till tillfällig AI-analys.')
+      return
+    }
+    if (providerType === 'remote' && !isOnline) {
+      setError('Du är offline. Remote analys är inte tillgänglig just nu.')
+      return
+    }
+    activeAnalysisControllerRef.current?.abort()
+    const controller = new AbortController()
+    activeAnalysisControllerRef.current = controller
     setIsAnalyzing(true)
     setError('')
     setStatus(providerType === 'remote' ? 'Analyserar bild...' : 'Skapar lokal uppskattning...')
@@ -170,7 +263,14 @@ function NutritionScannerV2({
     }, {
       analysisDate: today,
       providerType,
+      signal: controller.signal,
     })
+
+    if (controller.signal.aborted) {
+      setIsAnalyzing(false)
+      return
+    }
+    if (activeAnalysisControllerRef.current === controller) activeAnalysisControllerRef.current = null
 
     if (!result.analysis) {
       setError(result.warning || 'Analysen kunde inte slutföras.')
@@ -209,11 +309,19 @@ function NutritionScannerV2({
 
   function updateIngredient(id, patch) {
     updateReview({
-      detectedItems: reviewDraft.detectedItems.map((item) => item.id === id ? { ...item, ...patch } : item),
+      detectedItems: reviewDraft.detectedItems.map((item) => item.id === id ? { ...item, dataSource: 'manual', ...patch } : item),
     })
   }
 
-  function addIngredient() {
+  function applyDatabaseSuggestion(id, suggestion) {
+    updateReview({
+      detectedItems: reviewDraft.detectedItems.map((item) =>
+        item.id === id ? applyPhotoIngredientDatabaseSuggestion(item, suggestion) : item),
+    })
+  }
+
+  function addIngredient(overrides = {}) {
+    const safeOverrides = overrides?.preventDefault ? {} : overrides
     updateReview({
       detectedItems: [
         ...safeArray(reviewDraft.detectedItems),
@@ -229,6 +337,8 @@ function NutritionScannerV2({
           selected: true,
           unit: 'g',
           userEdited: true,
+          dataSource: 'manual',
+          ...safeOverrides,
         },
       ],
     })
@@ -262,6 +372,7 @@ function NutritionScannerV2({
 
     onMealsChange?.(result.meals)
     onMealSaved?.(result.meal)
+    clearTemporaryImage()
     setSavedMealId(result.meal.id)
     setStatus('Måltiden sparades i måltidsloggen utan bilddata.')
     setIsSaving(false)
@@ -279,7 +390,7 @@ function NutritionScannerV2({
   return (
     <section className="photo-meal-tool scanner-tool nutrition-scanner-v2" aria-labelledby="nutrition-scanner-v2-heading">
       <div>
-        <p className="eyebrow">Nutrition Scanner V2</p>
+        <p className="eyebrow">Nutrition Scanner V3</p>
         <h3 id="nutrition-scanner-v2-heading" ref={headingRef} tabIndex={-1}>Analysera matfoto säkert</h3>
         <p>
           Bildanalys är en uppskattning. Ingen måltid sparas förrän du har granskat och bekräftat resultatet.
@@ -305,11 +416,20 @@ function NutritionScannerV2({
       </label>
       {fileName && <p>Vald bild: {fileName}</p>}
       {previewUrl && <img className="food-preview" src={previewUrl} alt="Temporär förhandsvisning av vald matbild" />}
+      <label className="checkbox-row">
+        <input
+          checked={remoteConsent}
+          disabled={!imagePayload || isAnalyzing}
+          type="checkbox"
+          onChange={(event) => setRemoteConsent(event.target.checked)}
+        />
+        <span>Jag godkänner att bilden skickas till tillfällig AI-analys. Originalbilden sparas inte av Viktkollen och jag granskar resultatet innan sparning.</span>
+      </label>
       <div className="scanner-actions">
         <button type="button" disabled={!imagePayload || isAnalyzing} onClick={() => analyzeImage('mock')}>
           {isAnalyzing ? 'Analyserar...' : 'Skapa lokal uppskattning'}
         </button>
-        <button type="button" disabled={!imagePayload || isAnalyzing || typeof navigator !== 'undefined' && navigator.onLine === false} onClick={() => analyzeImage('remote')}>
+        <button type="button" disabled={!imagePayload || isAnalyzing || !isOnline || !remoteConsent} onClick={() => analyzeImage('remote')}>
           Remote analys
         </button>
         <button type="button" onClick={clearTemporaryImage}>Ta bort bild</button>
@@ -318,6 +438,7 @@ function NutritionScannerV2({
       <p className="estimate-note">
         Remote analys skickar bara temporärt förberedd bild och schema. Ingen profil, historik, auth/session eller localStorage-data skickas.
       </p>
+      <p className="estimate-note">Status: {isOnline ? 'Online' : 'Offline'}</p>
       <div aria-live="polite">
         {status && <p className="form-success">{status}</p>}
         {error && <p className="analysis-status" role="alert">{error}</p>}
@@ -354,20 +475,37 @@ function NutritionScannerV2({
           </label>
 
           <h4>Ingredienser</h4>
+          <p className="estimate-note">
+            Databasmatchning: {ingredientMatches.counts.exactMatch || 0} exakta, {ingredientMatches.counts.normalizedMatch || 0} normaliserade, {ingredientMatches.counts.multipleMatches || 0} behöver val.
+          </p>
           <ul className="health-dashboard-list">
             {reviewDraft.detectedItems.map((item) => (
               <IngredientEditor
                 disabled={isSaving}
                 item={item}
                 key={item.id}
+                match={ingredientMatches.matches.find((match) => match.id === item.id)}
+                onApplySuggestion={applyDatabaseSuggestion}
                 onChange={updateIngredient}
                 onRemove={removeIngredient}
               />
             ))}
+            <li className="scanner-actions">
+              <button type="button" onClick={() => addIngredient({ calories: 120, fat: 14, name: 'Olivolja', unit: 'msk' })}>Lägg till olja</button>
+              <button type="button" onClick={() => addIngredient({ calories: 60, carbs: 8, fat: 3, name: 'Sås', unit: 'msk' })}>Lägg till sås</button>
+              <button type="button" onClick={() => addIngredient({ calories: 0, name: 'Dryck', unit: 'glas' })}>Lägg till dryck</button>
+            </li>
           </ul>
           <button type="button" onClick={addIngredient}>Lägg till ingrediens</button>
 
           <h4>Näring att spara</h4>
+          <p className="estimate-note">
+            Ingredienssumma: {ingredientTotals.calories} kcal, {ingredientTotals.protein} g protein.
+            Skillnad mot sparvärde: {nutritionDifference.calories} kcal, {nutritionDifference.protein} g protein.
+          </p>
+          {Math.abs(nutritionDifference.calories) > 80 && (
+            <p className="analysis-status">Kontrollera totalen: ingredienserna och sparvärdet skiljer sig tydligt.</p>
+          )}
           {['calories', 'protein', 'carbs', 'fat'].map((field) => (
             <label key={field}>
               <span>{field === 'calories' ? 'Kalorier' : field === 'carbs' ? 'Kolhydrater' : field}</span>

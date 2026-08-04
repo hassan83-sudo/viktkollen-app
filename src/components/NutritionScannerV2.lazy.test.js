@@ -15,5 +15,7 @@ describe('NutritionScannerV2 lazy loading contract', () => {
 
     expect(scannerSource).toContain("await import('../services/nutritionPhotoAnalysisProvider.js')")
     expect(scannerSource).not.toMatch(/import\s+\{\s*analyzeNutritionPhoto/)
+    expect(scannerSource).toContain('remoteConsent')
+    expect(scannerSource).toContain("analyzeImage('remote')")
   })
 })

@@ -259,7 +259,7 @@ describe('weight module regression flow', () => {
       weights: migration.weights,
     })
     const analysis = analyzeWeights(migration.weights, {})
-    const report = createProgressReport({ period: 'week', weights: migration.weights })
+    const report = createProgressReport({ period: 'week', today: '2026-07-30', weights: migration.weights })
 
     expect(migration.weights).toHaveLength(2)
     expect(timeline.filter((item) => item.type === 'Vikt')).toHaveLength(2)

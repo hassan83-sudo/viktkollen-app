@@ -204,6 +204,7 @@ function WeeklyReport({
                 <div>
                   <p className="report-heading">Fotoanalyserad mat</p>
                   <p>{weeklyReportData.photoAnalysis.text}</p>
+                  <p>Remote: {weeklyReportData.photoAnalysis.providerCounts?.remote ?? 0}. Lokal: {(weeklyReportData.photoAnalysis.providerCounts?.mock ?? 0) + (weeklyReportData.photoAnalysis.providerCounts?.local ?? 0)}. Matdatabas: {weeklyReportData.photoAnalysis.dataSourceCounts?.nutritionDatabase ?? 0}.</p>
                   <p>Låg confidence: {weeklyReportData.photoAnalysis.lowConfidenceCount}. Bilddata sparas inte i rapporten.</p>
                 </div>
               )}

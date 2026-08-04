@@ -6,6 +6,7 @@ export const maxPhotoDetectedItems = 12
 export const maxPhotoAnalysisPayloadBytes = 24000
 export const nutritionPhotoConfidenceLevels = ['high', 'medium', 'low', 'insufficient']
 export const nutritionPhotoDuplicateStatuses = ['exactDuplicate', 'likelyDuplicate', 'possibleDuplicate', 'noDuplicate']
+export const nutritionPhotoDataSources = ['aiEstimate', 'barcode', 'nutritionDatabase', 'manual']
 
 const allowedAnalysisKeys = new Set([
   'analysisDate',
@@ -96,6 +97,12 @@ function normalizeConfidence(value, fallback = 'low') {
   return fallback
 }
 
+function normalizeDataSource(value, fallback = 'aiEstimate') {
+  const text = safeText(value, fallback, 40)
+
+  return nutritionPhotoDataSources.includes(text) ? text : fallback
+}
+
 function confidenceScore(level) {
   return {
     high: 0.82,
@@ -114,6 +121,7 @@ function normalizeDetectedItem(item = {}, index = 0) {
     calories: safeNumber(item.calories),
     carbohydrates: safeNumber(item.carbohydrates ?? item.carbs),
     confidence,
+    dataSource: normalizeDataSource(item.dataSource || item.source),
     fat: safeNumber(item.fat),
     id: safeText(item.id) || `photo-item-${hashText(`${name}-${index}`)}`,
     name,
@@ -312,6 +320,7 @@ export function commitPhotoAnalysisMeal(draft = {}, meals = [], options = {}) {
 
   const now = options.now || new Date().toISOString()
   const selectedItems = safeArray(draft.detectedItems).filter((item) => item.selected !== false)
+  const dataSources = [...new Set(selectedItems.map((item) => normalizeDataSource(item.dataSource)).filter(Boolean))]
   const description = selectedItems.map((item) => `${item.estimatedAmount || ''} ${item.unit || ''} ${item.name}`.trim()).join(', ')
   const meal = mealDraftToMeal({
     calories: draft.nutrition.calories,
@@ -333,7 +342,10 @@ export function commitPhotoAnalysisMeal(draft = {}, meals = [], options = {}) {
       analysisId: draft.analysis.analysisId,
       analyzedAt: draft.analysis.createdAt,
       confidence: draft.analysis.confidence.level,
+      dataSources,
+      itemCount: selectedItems.length,
       providerType: draft.analysis.provider.type,
+      reviewCompleted: true,
       source: 'photoAnalysis',
       userEdited: draft.userEdited === true || draft.analysis.userEdited === true,
     },
@@ -372,12 +384,25 @@ export function buildPhotoAnalysisUsageSummary(meals = [], range = {}) {
     [meal.photoAnalysis.confidence || 'low']: (counts[meal.photoAnalysis.confidence || 'low'] || 0) + 1,
   }), { high: 0, insufficient: 0, low: 0, medium: 0 })
   const editedCount = photoMeals.filter((meal) => meal.photoAnalysis.userEdited).length
+  const providerCounts = photoMeals.reduce((counts, meal) => {
+    const providerType = meal.photoAnalysis.providerType || 'unknown'
+    counts[providerType] = (counts[providerType] || 0) + 1
+    return counts
+  }, { local: 0, mock: 0, remote: 0 })
+  const dataSourceCounts = photoMeals.reduce((counts, meal) => {
+    safeArray(meal.photoAnalysis.dataSources).forEach((source) => {
+      counts[source] = (counts[source] || 0) + 1
+    })
+    return counts
+  }, { aiEstimate: 0, barcode: 0, manual: 0, nutritionDatabase: 0 })
 
   return {
     confidenceCounts,
+    dataSourceCounts,
     editedCount,
     lowConfidenceCount: confidenceCounts.low + confidenceCounts.insufficient,
     photoMealCount: photoMeals.length,
+    providerCounts,
     text: photoMeals.length
       ? `${photoMeals.length} fotoanalyserade måltider, varav ${editedCount} redigerade.`
       : 'Inga fotoanalyserade måltider i perioden.',

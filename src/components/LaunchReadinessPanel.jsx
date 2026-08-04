@@ -32,6 +32,8 @@ function LaunchReadinessPanel({ authSession, healthSnapshot, reminderState, sync
         <span>Reminders: {report.reminders.enabledCount} aktiva</span>
         <span>Sync reminders: {report.diagnostics.syncAllowedReminders ? 'Ja' : 'Nej'}</span>
         <span>Snapshot: {report.healthSnapshot.date}</span>
+        <span>Photo AI: {report.photoAnalysis.remoteAnalysisEnabled ? 'Aktiv' : 'Av'}</span>
+        <span>Photo route: {report.photoAnalysis.routeConfigured}</span>
       </div>
       <pre className="diagnostics-output">{reportText}</pre>
       <button type="button" className="secondary-button" onClick={copyReport}>

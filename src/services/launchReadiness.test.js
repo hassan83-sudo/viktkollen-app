@@ -12,6 +12,8 @@ describe('launchReadiness', () => {
 
     expect(report.auth.signedIn).toBe(true)
     expect(report.healthSnapshot.mealsToday).toBe(2)
+    expect(report.photoAnalysis.routeConfigured).toBe('api/nutrition-photo-analysis')
+    expect(report.photoAnalysis.maxFileSizeMb).toBe(8)
     expect(report.reminders.enabledCount).toBe(1)
     expect(JSON.stringify(report)).not.toContain('person@example.com')
     expect(JSON.stringify(report)).not.toContain('user-1234567890')

@@ -81,6 +81,19 @@
 - Inga tokens eller rå payloads loggas.
 - Chatten visar inte `NaN`, `undefined`, `null` eller `[object Object]`.
 
+## Nutrition Scanner
+
+- `OPENAI_API_KEY` finns endast server-side om remote bildanalys ska vara aktiv.
+- `NUTRITION_PHOTO_MODEL`, maxstorlek, timeout och rate limit ar satta i production.
+- `VITE_NUTRITION_PHOTO_REMOTE_ENABLED` speglar om remote analys ska visas som aktiv i readiness.
+- `/api/nutrition-photo-analysis` svarar sakert utan config och lacker inte stack trace, nyckel eller bilddata.
+- Remote analys kraver aktivt samtycke och startar inte automatiskt vid bildval.
+- Offline blockerar remote analys utan retry-ko eller bakgrundsuppladdning.
+- Invalid MIME, spoofad filsignatur och for stor bild blockeras.
+- Review sparar endast granskad maltid och minimal `photoAnalysis`-metadata.
+- LocalStorage, sync, backup, diagnostics och rapporter innehaller ingen bild, blob URL eller base64.
+- Dashboard, veckorapport och manadsrapport visar endast sakra fotoanalysfacts.
+
 ## Accessibility
 
 - Tangentbord fungerar för reminders, modaler, reports och PWA banners.

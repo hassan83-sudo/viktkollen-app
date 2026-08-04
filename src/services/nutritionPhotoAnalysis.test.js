@@ -52,7 +52,10 @@ describe('nutritionPhotoAnalysis model', () => {
     expect(result.meal.source).toBe('Fotoanalys')
     expect(result.meal.photoAnalysis).toMatchObject({
       analysisId: analysis.analysisId,
+      dataSources: ['aiEstimate'],
+      itemCount: 2,
       providerType: 'mock',
+      reviewCompleted: true,
       source: 'photoAnalysis',
     })
     expect(JSON.stringify(result.meal)).not.toMatch(/base64|blob:|data:image/)
@@ -79,5 +82,7 @@ describe('nutritionPhotoAnalysis model', () => {
     expect(summary.photoMealCount).toBe(1)
     expect(summary.editedCount).toBe(1)
     expect(summary.lowConfidenceCount).toBe(1)
+    expect(summary.providerCounts.mock).toBe(1)
+    expect(summary.dataSourceCounts.aiEstimate).toBe(1)
   })
 })

@@ -230,6 +230,7 @@ function MonthlyReport({ report }) {
         <div className="report-card">
           <p className="report-heading">Fotoanalys och datakvalitet</p>
           <p>{report.photoAnalysis.text}</p>
+          <p>Remote: {report.photoAnalysis.providerCounts?.remote ?? 0}. Lokal: {(report.photoAnalysis.providerCounts?.mock ?? 0) + (report.photoAnalysis.providerCounts?.local ?? 0)}. Matdatabas: {report.photoAnalysis.dataSourceCounts?.nutritionDatabase ?? 0}.</p>
           <p>
             Hög: {report.photoAnalysis.confidenceCounts.high}. Medel: {report.photoAnalysis.confidenceCounts.medium}.
             Låg/otillräcklig: {report.photoAnalysis.lowConfidenceCount}.

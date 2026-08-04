@@ -18,6 +18,12 @@ function hasStorage() {
   }
 }
 
+function numberFromEnv(name, fallback) {
+  const value = Number(import.meta.env[name])
+
+  return Number.isFinite(value) && value > 0 ? value : fallback
+}
+
 export function buildLaunchReadinessReport({
   authSession = null,
   healthSnapshot = null,
@@ -56,6 +62,15 @@ export function buildLaunchReadinessReport({
       cacheVersion: PWA_CACHE_VERSION,
       manifest: 'public/manifest.webmanifest',
       serviceWorker: typeof navigator !== 'undefined' && 'serviceWorker' in navigator ? 'Stöds' : 'Saknas',
+    },
+    photoAnalysis: {
+      maxFileSizeMb: numberFromEnv('VITE_NUTRITION_PHOTO_MAX_FILE_MB', 8),
+      mockMode: import.meta.env.MODE !== 'production',
+      providerConfigured: import.meta.env.VITE_NUTRITION_PHOTO_REMOTE_ENABLED === 'true',
+      rateLimitMax: numberFromEnv('VITE_NUTRITION_PHOTO_RATE_LIMIT_MAX', 12),
+      remoteAnalysisEnabled: import.meta.env.VITE_NUTRITION_PHOTO_REMOTE_ENABLED === 'true',
+      routeConfigured: 'api/nutrition-photo-analysis',
+      timeoutMs: numberFromEnv('VITE_NUTRITION_PHOTO_TIMEOUT_MS', 15000),
     },
     reminders: {
       dueCount: reminderStatus.dueCount,

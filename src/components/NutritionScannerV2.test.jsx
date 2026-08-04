@@ -14,12 +14,14 @@ describe('NutritionScannerV2', () => {
       />,
     )
 
-    expect(markup).toContain('Nutrition Scanner V2')
+    expect(markup).toContain('Nutrition Scanner V3')
     expect(markup).toContain('Välj bild')
     expect(markup).toContain('Starta analys')
     expect(markup).toContain('Granska och redigera')
     expect(markup).toContain('Ingen måltid sparas')
     expect(markup).toContain('Remote analys skickar bara')
+    expect(markup).toContain('Jag godk')
+    expect(markup).toContain('Status:')
     expect(markup).not.toMatch(/\b(undefined|null|NaN|Infinity)\b|\[object Object\]|base64|data:image/)
   })
 })

@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "validate:staging": "node scripts/validate-staging-environment.js",
+    "verify:coach-route": "node scripts/verify-coach-route.js",
     "verify:photo-route": "node scripts/verify-photo-route.js",
     "verify:preview": "node scripts/verify-preview.js",
     "verify:release": "node scripts/verify-release.js"

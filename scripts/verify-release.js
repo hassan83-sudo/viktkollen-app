@@ -76,6 +76,7 @@ export function assertDistContract() {
 
   const requiredEnablementFiles = [
     'scripts/validate-staging-environment.js',
+    'scripts/verify-coach-route.js',
     'scripts/verify-photo-route.js',
     'scripts/verify-preview.js',
     'supabase/release_acceptance_checks.sql',

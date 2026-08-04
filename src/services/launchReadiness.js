@@ -66,6 +66,13 @@ export function buildLaunchReadinessReport({
     buildMode: import.meta.env.MODE,
     diagnostics: {
       analyticsHealth: insights.coverage > 0 ? 'Tillganglig' : 'Begransad',
+      aiCoachRoute: 'api/adaptive-coach',
+      aiCoachRemoteEnabled: 'Krav: aktivt samtycke och knapptryck',
+      aiCostRetryPolicy: 'Ingen automatisk kostnadsretry',
+      aiOutputLimit: 'Max 3 coachforslag',
+      aiRequestDeduplication: 'Single-flight per sammanfattning',
+      aiSafetyValidator: 'Aktiv',
+      aiTimeoutMs: numberFromEnv('VITE_OPENAI_COACH_TIMEOUT_MS', 15000),
       achievementEngineHealth: 'Aktiv',
       achievementLevel: achievements.levelTitle,
       achievementCoverage: `${achievements.coverage}%`,

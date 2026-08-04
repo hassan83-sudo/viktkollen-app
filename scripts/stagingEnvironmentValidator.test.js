@@ -13,6 +13,7 @@ function fakeFiles(existing = [], contents = {}) {
 
 describe('staging environment validator', () => {
   const requiredFiles = [
+    'api/adaptive-coach/index.js',
     'api/nutrition-photo-analysis/index.js',
     'public/manifest.webmanifest',
     'public/sw.js',

@@ -146,6 +146,31 @@ npm run verify:photo-route -- --url https://preview-url
 
 Do not run paid provider analysis unless server config exists, the user explicitly approves it and the image is synthetic food without personal data.
 
+## 6b. Coach Route
+
+Default:
+
+```bash
+npm run verify:coach-route
+```
+
+Remote preflight:
+
+```bash
+npm run verify:coach-route -- --url https://preview-url
+```
+
+In appen:
+
+1. Oppna Adaptive Coach.
+2. Kontrollera att regelbaserade rad visas utan provider.
+3. Läs datapreview for remote AI.
+4. Avbryt utan samtycke och verifiera att inget anrop kors.
+5. Aktivera remote AI.
+6. Klicka `Skapa AI-forslag`.
+7. Vid missing config/rate limit/timeout ska regelbaserad fallback visas.
+8. Bekrafta att AI-forslag aldrig sparas som goal/habit/reminder utan granskning.
+
 ## 7. Preview Verification
 
 ```bash

@@ -28,6 +28,7 @@ Lagg aldrig server-side nycklar med `VITE_`-prefix.
 ```bash
 npm run validate:staging
 npm run verify:photo-route
+npm run verify:coach-route
 npm run verify:preview -- https://din-preview-url
 npm run verify:release
 ```
@@ -47,6 +48,7 @@ Kontrollera i Vercel dashboard:
 
 - Supabase client env finns endast som `VITE_`
 - `OPENAI_API_KEY` finns endast server-side
+- `/api/adaptive-coach` deployas
 - `/api/nutrition-photo-analysis` deployas
 - HTTPS anvands
 - PWA-filer finns i production build

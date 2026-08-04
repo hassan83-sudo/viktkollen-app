@@ -66,6 +66,7 @@ export async function verifyPreviewDeployment({
     ['service-worker', '/sw.js'],
     ['icon-192', '/pwa-icon-192.png'],
     ['icon-512', '/pwa-icon-512.png'],
+    ['api-coach-route', '/api/adaptive-coach'],
     ['api-photo-route', '/api/nutrition-photo-analysis'],
   ]) {
     try {

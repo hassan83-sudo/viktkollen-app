@@ -1,4 +1,8 @@
-const OPENAI_API_URL = 'https://api.openai.com/v1/responses'
+import {
+  callOpenAiJson,
+  getAiGatewayConfig,
+} from '../_shared/openaiGateway.js'
+
 const DEFAULT_MODEL = 'gpt-4.1-mini'
 const MAX_IMAGE_SIZE_BYTES = Number(process.env.NUTRITION_PHOTO_MAX_FILE_BYTES || 8 * 1024 * 1024)
 const REQUEST_TIMEOUT_MS = Number(process.env.NUTRITION_PHOTO_TIMEOUT_MS || 15000)
@@ -162,20 +166,6 @@ function createPrompt(mealType) {
   ].join(' ')
 }
 
-function extractResponseText(data) {
-  if (typeof data.output_text === 'string') return data.output_text.trim()
-  return data.output
-    ?.flatMap((item) => item.content || [])
-    ?.map((content) => content.text)
-    ?.filter(Boolean)
-    ?.join('\n')
-    ?.trim() || ''
-}
-
-function parseJsonText(text) {
-  return JSON.parse(String(text || '').replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim())
-}
-
 function normalizeConfidence(value) {
   const text = safeText(value?.level || value).toLowerCase()
   if (['high', 'medium', 'low', 'insufficient'].includes(text)) return text
@@ -240,39 +230,30 @@ async function callOpenAi(image, mealType) {
     error.code = 'serverConfiguration'
     throw error
   }
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
-  try {
-    const imageUrl = `data:${image.contentType};base64,${image.data.toString('base64')}`
-    const openaiResponse = await fetch(OPENAI_API_URL, {
-      body: JSON.stringify({
-        input: [{
+
+  const imageUrl = `data:${image.contentType};base64,${image.data.toString('base64')}`
+  const config = getAiGatewayConfig('photo')
+  const result = await callOpenAiJson({
+    input: [{
           content: [
             { text: createPrompt(mealType), type: 'input_text' },
             { image_url: imageUrl, type: 'input_image' },
           ],
           role: 'user',
-        }],
-        max_output_tokens: 900,
-        model: process.env.NUTRITION_PHOTO_MODEL || process.env.OPENAI_VISION_MODEL || process.env.OPENAI_MODEL || DEFAULT_MODEL,
-      }),
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      method: 'POST',
-      signal: controller.signal,
-    })
-    if (!openaiResponse.ok) {
-      const error = new Error(`provider_${openaiResponse.status}`)
-      error.code = openaiResponse.status === 429 ? 'rateLimit' : 'providerUnavailable'
-      throw error
-    }
-    const data = await openaiResponse.json()
-    return validateProviderPayload(parseJsonText(extractResponseText(data)))
-  } finally {
-    clearTimeout(timer)
+    }],
+    maxOutputTokens: 900,
+    model: config.model || DEFAULT_MODEL,
+    timeoutMs: REQUEST_TIMEOUT_MS,
+    type: 'photo',
+  })
+
+  if (!result.ok) {
+    const error = new Error(result.error?.code || 'providerUnavailable')
+    error.code = result.error?.code === 'rateLimited' ? 'rateLimit' : result.error?.code
+    throw error
   }
+
+  return validateProviderPayload(result.value)
 }
 
 export default async function handler(request, response) {

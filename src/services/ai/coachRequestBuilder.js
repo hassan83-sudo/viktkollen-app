@@ -1,0 +1,98 @@
+import { buildAdaptiveCoach } from '../adaptiveCoachEngine.js'
+import { buildAdaptiveCoachFeedbackSummary } from '../adaptiveCoachFeedback.js'
+import { buildSharedAnalytics } from '../sharedAnalyticsEngine.js'
+
+function safeText(value, fallback = '', max = 180) {
+  return String(value || fallback)
+    .replace(/[<>]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max)
+}
+
+function safeArray(value) {
+  return Array.isArray(value) ? value.filter(Boolean) : []
+}
+
+function stripUnsafeText(value) {
+  return safeText(value)
+    .replace(/\b[\w.%+-]+@[\w.-]+\.[a-z]{2,}\b/gi, '[redacted]')
+    .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, '[redacted]')
+    .replace(/token|session|auth|deviceId/gi, '[redacted]')
+}
+
+function metricText(label, value) {
+  const text = stripUnsafeText(value, '', 160)
+  return text ? `${label}: ${text}` : ''
+}
+
+export function buildCoachRemoteRequestPayload(input = {}, options = {}) {
+  const analysisDate = safeText(options.analysisDate || input.analysisDate || input.healthSnapshot?.date, '', 20)
+  const coachModel = options.coachModel || buildAdaptiveCoach(input, { analysisDate, period: options.period || '30d' })
+  const shared = options.sharedAnalytics || buildSharedAnalytics(input, { endDate: analysisDate, period: options.period || '30d' })
+  const feedbackSummary = buildAdaptiveCoachFeedbackSummary(input.adaptiveCoachFeedback, {
+    now: analysisDate ? `${analysisDate}T12:00:00.000Z` : undefined,
+  })
+  const coverage = Number(coachModel.coverage?.ratio ?? shared.coverage?.ratio ?? 0)
+  const confidence = Number(coachModel.confidence?.value ?? 0)
+
+  const payload = {
+    activeGoals: safeArray(input.goalsHabits?.goals).slice(0, 4).map((goal) => stripUnsafeText(goal.name || goal.title, '', 80)).filter(Boolean),
+    analysisDate,
+    attentionItems: safeArray(coachModel.riskAreas).map((item) => stripUnsafeText(item.text || item.title, '', 140)).slice(0, 5),
+    confidence,
+    consent: options.consent === true,
+    coverage,
+    highlights: safeArray(coachModel.summary?.workingWell).map((item) => stripUnsafeText(item.text || item.title, '', 140)).slice(0, 5),
+    locale: 'sv-SE',
+    metrics: {
+      activity: metricText('aktivitet', shared.activitySummary?.text || shared.activitySummary?.averageStepsLabel),
+      goals: metricText('mål', feedbackSummary.completionRateLabel),
+      nutrition: metricText('nutrition', shared.nutritionSummary?.proteinGoalText || shared.nutritionSummary?.regularityText),
+      reminders: metricText('reminders', shared.reminderSummary?.text || coachModel.recommendations?.find((item) => item.area === 'reminders')?.text),
+      weight: metricText('vikttrend', shared.weightSummary?.periodChangeLabel || shared.weightSummary?.dataText),
+    },
+    period: options.period || '30d',
+    question: stripUnsafeText(options.question, '', 180),
+    weeklyFocus: stripUnsafeText(coachModel.summary?.todayFocus, '', 140),
+  }
+
+  return {
+    limitations: [
+      coverage < 0.4 ? 'Begränsat dataunderlag.' : '',
+      'Rå historik, bilder, e-post, session och device-ID skickas inte.',
+    ].filter(Boolean),
+    payload,
+    preview: {
+      activity: payload.metrics.activity || 'Saknas',
+      confidence: `${Math.round(confidence * 100)}%`,
+      coverage: `${Math.round(coverage * 100)}%`,
+      goals: payload.activeGoals.length ? `${payload.activeGoals.length} säkra mål/vanor` : 'Saknas',
+      nutrition: payload.metrics.nutrition || 'Saknas',
+      weight: payload.metrics.weight || 'Saknas',
+    },
+  }
+}
+
+export function fingerprintCoachPayload(payload = {}) {
+  const text = JSON.stringify({
+    analysisDate: payload.analysisDate,
+    attentionItems: payload.attentionItems,
+    confidence: payload.confidence,
+    coverage: payload.coverage,
+    highlights: payload.highlights,
+    metrics: payload.metrics,
+    period: payload.period,
+    question: payload.question,
+  })
+  let hash = 2166136261
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return `coach-${(hash >>> 0).toString(36)}`
+}
+
+export const coachRequestBuilderInternals = {
+  stripUnsafeText,
+}

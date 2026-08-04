@@ -163,3 +163,14 @@ Vid RC-blocker:
 5. Gor minimal fix och regressionstest.
 6. Kor `npm run verify:release`.
 7. Uppdatera RC-resultatet innan ny acceptance-passning.
+
+## AI Provider Incident
+
+Vid AI-providerfel:
+
+1. Stang av remote AI i staging/production config om kostnad eller felrisk finns.
+2. Kontrollera att regelbaserad fallback visas.
+3. Kontrollera rate limit, timeout och providerstatus utan nyckelvarden.
+4. Logga endast saker felkod och request-id.
+5. Exportera inte prompt eller providerresponse.
+6. Markera release `NOT READY` om nyckel exponeras, raa halsodata skickas eller providerresponse sparas.

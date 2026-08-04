@@ -5,7 +5,7 @@ import process from 'node:process'
 const placeholderPattern = /^(|changeme|change-me|placeholder|todo|example|your-|xxx|test)$/i
 const requiredClientVariables = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']
 const serverOnlyVariables = ['OPENAI_API_KEY']
-const requiredRoutes = ['api/nutrition-photo-analysis/index.js']
+const requiredRoutes = ['api/nutrition-photo-analysis/index.js', 'api/adaptive-coach/index.js']
 const requiredPublicFiles = [
   'public/manifest.webmanifest',
   'public/sw.js',

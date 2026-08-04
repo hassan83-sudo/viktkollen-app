@@ -220,3 +220,12 @@
 - Uppdatera RC-resultatet utan credentials.
 - READY kraver manuellt verifierad RLS, Test User A/B, multi-device, backup/restore och PWA.
 - NOT READY vid data leakage, exposed secret, silent overwrite, felaktig restore, data loss, PWA reload-loop eller testverktyg i production bundle.
+
+## OpenAI Production Integration V1
+
+- `OPENAI_API_KEY` ska bara finnas server-side.
+- `VITE_OPENAI_API_KEY` far aldrig finnas.
+- Kor `npm run verify:coach-route` och `npm run verify:photo-route`.
+- Remote coach ska krava aktivt samtycke och knapptryck.
+- Regelbaserad fallback ska fungera vid missing config, timeout, rate limit, invalid response och safety block.
+- Export/backup/sync far inte innehalla prompt, providerresponse, bild/base64 eller request headers.

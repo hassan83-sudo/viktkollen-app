@@ -66,6 +66,10 @@ Se `docs/manual-release-acceptance-v1.md` for stegvis acceptance-guide och `docs
 
 `docs/release-candidate-v1.md` och `docs/release-candidate-user-runbook-v1.md` sammanstaller RC-passningen. Aktuell RC-status ar CONDITIONAL: lokal release-gate ar gron, men real Supabase/RLS, multi-device, backup/restore, notifications, PWA install/update och Vercel preview acceptance aterstar.
 
+## OpenAI Production Integration V1
+
+OpenAI-anrop ar server-side via gemensam gateway. Adaptive Coach ar hybrid: regelbaserade fakta och fallback ar grund, medan remote AI kraver aktivt samtycke och knapptryck. Nutrition photo route ateranvander gatewayen. Release-status forblir CONDITIONAL tills providerconfig, abuse protection och stagingfloden verifierats externt.
+
 ## Release-status
 
 Automatiserad releasevalidering ar avsedd att koras med:

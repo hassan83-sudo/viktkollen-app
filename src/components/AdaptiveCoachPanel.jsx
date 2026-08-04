@@ -19,6 +19,11 @@ import {
 } from '../services/adaptiveCoachTimeline.js'
 import { buildAdaptiveCoachPatternSummary } from '../services/adaptiveCoachPatterns.js'
 import { buildAdaptiveCoachStrategy } from '../services/adaptiveCoachStrategy.js'
+import {
+  buildRemoteCoachPreview,
+  requestRemoteCoachSuggestions,
+} from '../services/ai/remoteCoachService.js'
+import { makeRuleBasedFallbackResult } from '../services/ai/aiResponseSafety.js'
 
 const AdaptiveCoachTimeline = lazy(() => import('./AdaptiveCoachTimeline.jsx'))
 const AdaptiveCoachWeeklyPlan = lazy(() => import('./AdaptiveCoachWeeklyPlan.jsx'))
@@ -133,6 +138,11 @@ function AdaptiveCoachPanel({
   const [isSavingAction, setIsSavingAction] = useState(false)
   const [showTimeline, setShowTimeline] = useState(false)
   const [showWeeklyPlan, setShowWeeklyPlan] = useState(false)
+  const [remoteCoachResult, setRemoteCoachResult] = useState(null)
+  const [remoteCoachStatus, setRemoteCoachStatus] = useState('')
+  const [remoteCoachError, setRemoteCoachError] = useState('')
+  const [remoteCoachLoading, setRemoteCoachLoading] = useState(false)
+  const remoteCoachAbortRef = useRef(null)
   const data = useMemo(() => ({
     adaptiveCoachFeedback,
     checkIn,
@@ -156,6 +166,7 @@ function AdaptiveCoachPanel({
     [adaptiveCoachFeedback, analysisDate],
   )
   const nextAction = model.recommendations[0]?.action || model.summary.todayFocus
+  const remoteConsent = adaptiveCoachFeedback?.remoteAiConsent?.coachRemoteEnabled === true
   const timelineSummary = useMemo(
     () => buildAdaptiveCoachTimelineSummary({
       adaptiveCoachFeedback,
@@ -197,10 +208,38 @@ function AdaptiveCoachPanel({
     () => actionDraft ? validateCoachActionDraft(actionDraft) : { errors: [], ok: true },
     [actionDraft],
   )
+  const remotePreview = useMemo(
+    () => buildRemoteCoachPreview(data, {
+      analysisDate,
+      coachModel: model,
+      consent: remoteConsent,
+      period: '30d',
+    }),
+    [analysisDate, data, model, remoteConsent],
+  )
+  const remoteRecommendations = useMemo(
+    () => (remoteCoachResult?.coach?.recommendations || []).map((item) => ({
+      action: item.description,
+      aiGenerated: true,
+      area: item.category,
+      confidence: { value: item.confidence },
+      evidence: item.sourceFacts,
+      id: `ai-${item.id}`,
+      priority: item.priority,
+      source: 'remoteAi',
+      text: item.reason,
+      title: item.title,
+    })),
+    [remoteCoachResult],
+  )
 
   useEffect(() => {
     if (actionDraft) actionFormRef.current?.focus()
   }, [actionDraft])
+
+  useEffect(() => () => {
+    remoteCoachAbortRef.current?.abort?.()
+  }, [])
 
   useEffect(() => {
     if (!actionDraft) return undefined
@@ -222,6 +261,66 @@ function AdaptiveCoachPanel({
       status,
       options,
     ))
+  }
+
+  function updateRemoteConsent(enabled) {
+    if (!onAdaptiveCoachFeedbackChange) return
+    onAdaptiveCoachFeedbackChange({
+      ...adaptiveCoachFeedback,
+      remoteAiConsent: {
+        ...(adaptiveCoachFeedback.remoteAiConsent || {}),
+        coachRemoteEnabled: enabled,
+        policyVersion: 'openai-production-integration-v1',
+        updatedAt: new Date().toISOString(),
+        ...(enabled
+          ? { consentedAt: adaptiveCoachFeedback.remoteAiConsent?.consentedAt || new Date().toISOString() }
+          : {}),
+      },
+    })
+    setRemoteCoachError('')
+    setRemoteCoachStatus(enabled ? 'Remote AI ar aktiverad for coachforslag.' : 'Remote AI ar avstangd. Regelbaserad coach anvands.')
+  }
+
+  async function requestRemoteCoach() {
+    if (remoteCoachLoading) return
+    if (!remoteConsent) {
+      setRemoteCoachError('Aktivt samtycke kravs innan remote AI anvands.')
+      return
+    }
+
+    setRemoteCoachLoading(true)
+    setRemoteCoachError('')
+    setRemoteCoachStatus('Skickar minimerad sammanfattning till extern AI...')
+    const controller = new AbortController()
+    remoteCoachAbortRef.current = controller
+    const result = await requestRemoteCoachSuggestions(data, {
+      analysisDate,
+      coachModel: model,
+      consent: remoteConsent,
+      period: '30d',
+      signal: controller.signal,
+    })
+    remoteCoachAbortRef.current = null
+    setRemoteCoachLoading(false)
+
+    if (!result.ok) {
+      setRemoteCoachResult({
+        coach: makeRuleBasedFallbackResult(model, result.warning),
+        providerType: 'ruleBased',
+      })
+      setRemoteCoachError(result.warning || 'Remote AI kunde inte anvandas. Regelbaserad coach visas.')
+      setRemoteCoachStatus('Regelbaserad fallback anvands.')
+      return
+    }
+
+    setRemoteCoachResult(result)
+    setRemoteCoachStatus('AI-genererat forslag mottaget och sakerhetsgranskat.')
+  }
+
+  function cancelRemoteCoachRequest() {
+    remoteCoachAbortRef.current?.abort?.()
+    setRemoteCoachLoading(false)
+    setRemoteCoachStatus('AI-anropet avbrots.')
   }
 
   function openActionDraft(recommendation, event) {
@@ -392,6 +491,61 @@ function AdaptiveCoachPanel({
           </Suspense>
         </div>
       )}
+
+      <div className="insight-plan" aria-live="polite">
+        <h3>AI-förslag</h3>
+        <p>
+          Regelbaserade råd visas alltid direkt. Remote AI kan formulera upp till tre förslag från en minimerad sammanfattning, men ändrar aldrig verifierade fakta.
+        </p>
+        <dl className="metric-list" id="remote-coach-data-preview">
+          <div><dt>Vikttrend</dt><dd>{remotePreview.weight}</dd></div>
+          <div><dt>Nutrition</dt><dd>{remotePreview.nutrition}</dd></div>
+          <div><dt>Aktivitet</dt><dd>{remotePreview.activity}</dd></div>
+          <div><dt>Mål</dt><dd>{remotePreview.goals}</dd></div>
+          <div><dt>Coverage</dt><dd>{remotePreview.coverage}</dd></div>
+          <div><dt>Confidence</dt><dd>{remotePreview.confidence}</dd></div>
+        </dl>
+        <p className="estimate-note">
+          Skickas inte: e-post, session, device-ID, rå måltidshistorik, full viktlogg, bilder, localStorage eller exportdata.
+        </p>
+        <div className="report-v3-actions">
+          <button
+            className={remoteConsent ? 'secondary-button' : 'primary-button'}
+            type="button"
+            onClick={() => updateRemoteConsent(!remoteConsent)}
+          >
+            {remoteConsent ? 'Stäng av remote AI' : 'Aktivera remote AI'}
+          </button>
+          <button
+            aria-busy={remoteCoachLoading}
+            aria-describedby="remote-coach-data-preview"
+            className="primary-button"
+            disabled={!remoteConsent || remoteCoachLoading}
+            type="button"
+            onClick={requestRemoteCoach}
+          >
+            {remoteCoachLoading ? 'Analyserar...' : 'Skapa AI-förslag'}
+          </button>
+          {remoteCoachLoading && (
+            <button type="button" onClick={cancelRemoteCoachRequest}>Avbryt</button>
+          )}
+        </div>
+        {remoteCoachStatus && <p className="form-success" role="status">{remoteCoachStatus}</p>}
+        {remoteCoachError && <p className="analysis-status" role="alert">{remoteCoachError}</p>}
+        {remoteCoachResult?.coach && (
+          <div className="report-v3-card">
+            <h4>{remoteCoachResult.providerType === 'ruleBased' ? 'Regelbaserad fallback' : 'AI-genererat förslag'}</h4>
+            <p>{remoteCoachResult.coach.summary}</p>
+            <p className="estimate-note">
+              Provider: {remoteCoachResult.providerType || remoteCoachResult.coach.providerType}. Genererad: {remoteCoachResult.coach.generatedAt || remoteCoachResult.generatedAt || 'nyss'}.
+            </p>
+            {remoteRecommendations.length > 0 && (
+              <RecommendationList onAction={openActionDraft} onFeedback={handleFeedback} recommendations={remoteRecommendations} />
+            )}
+            <p className="estimate-note">{remoteCoachResult.coach.safetyNote}</p>
+          </div>
+        )}
+      </div>
 
       <div className="insight-plan">
         <h3>Rekommenderade nästa steg</h3>

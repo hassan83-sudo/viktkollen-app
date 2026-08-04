@@ -40,6 +40,8 @@ function LaunchReadinessPanel({ authSession, healthSnapshot, reminderState, sync
         <span>Sync queue: {report.sync.queueHealth}</span>
         <span>Analytics: {report.diagnostics.analyticsHealth}</span>
         <span>Trend coverage: {report.diagnostics.trendCoverage}</span>
+        <span>Achievements: {report.diagnostics.achievementEngineHealth}</span>
+        <span>Achievement coverage: {report.diagnostics.achievementCoverage}</span>
         <span>Import: {report.diagnostics.importEngineHealth}</span>
         <span>Import rollback: {report.diagnostics.importRollbackHealth}</span>
         <span>Export: {report.diagnostics.exportEngineHealth}</span>

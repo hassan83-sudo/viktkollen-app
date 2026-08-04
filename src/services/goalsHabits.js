@@ -4,6 +4,7 @@ import { calculateDailyNutritionSummary } from './nutrition/dailyNutritionSummar
 import { filterActualMealsForDate } from './nutrition/mealDateUtils.js'
 import { normalizeNutritionGoals, parseProteinGoal } from './nutrition/nutritionGoals.js'
 import { normalizeCheckInMetrics } from './checkInNormalization.js'
+import { normalizeAchievementState } from './achievements/achievementLedger.js'
 
 export const goalsHabitsStorageKey = 'viktkollen.goalsHabits.v2'
 export const goalsHabitsSchemaVersion = 2
@@ -205,6 +206,7 @@ export function normalizeGoalsHabitsState(value = {}) {
   const source = isObject(value) ? value : {}
 
   return {
+    achievements: normalizeAchievementState(source.achievements),
     completions: safeArray(source.completions)
       .filter(isObject)
       .map((completion) => ({

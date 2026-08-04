@@ -247,6 +247,15 @@ function MonthlyReport({ report }) {
         </div>
       )}
 
+      {report.achievements && (
+        <div className="report-card">
+          <p className="report-heading">Achievements och delmål</p>
+          <p>Nivå {report.achievements.level}: {report.achievements.levelTitle}. {report.achievements.totalXp} XP totalt.</p>
+          <p>{report.achievements.unlockedCount} upplåsta och {report.achievements.activeChallengeCount} aktiva små utmaningar.</p>
+          <p>Coverage: {report.achievements.coverage}%. Confidence: {report.achievements.confidence}%.</p>
+        </div>
+      )}
+
       <p className="estimate-note">
         Rapporten skapas lokalt från sparad data och är allmänt stöd för vanor,
         inte medicinsk rådgivning.

@@ -179,3 +179,12 @@
 - Filnamn saneras mot path traversal.
 - User switch fore download blockerar exporten.
 - DataExportCenter ar lazy-loaded och ska inte modulepreloadas.
+
+## Smart Goals & Achievements V2
+
+- Achievement Center ar lazy-loaded och ska inte modulepreloadas.
+- Achievements lagras endast som metadata i `viktkollen.goalsHabits.v2`.
+- Inga nya auth-, databas-, backup- eller syncmodeller finns.
+- Safety-filter blockerar skuld, straff, extrem viktminskning och lag kalorikonsumtion.
+- XP ar capped och anvands inte som valuta, ranking eller leaderboard.
+- Challenges sparas forst nar anvandaren aktivt startar eller avfardar dem.

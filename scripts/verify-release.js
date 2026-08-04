@@ -68,7 +68,7 @@ export function assertDistContract() {
   })
 
   const indexHtml = readFileSync('dist/index.html', 'utf8')
-  const forbiddenPreloads = ['ReminderCenter', 'LaunchReadinessPanel', 'CloudBackupPanel', 'DataImportCenter', 'DataExportCenter', 'ReportDrilldown', 'SyncHealthDashboard', 'NotificationCenter', 'InsightsCenter']
+  const forbiddenPreloads = ['ReminderCenter', 'LaunchReadinessPanel', 'CloudBackupPanel', 'DataImportCenter', 'DataExportCenter', 'ReportDrilldown', 'SyncHealthDashboard', 'NotificationCenter', 'InsightsCenter', 'AchievementCenter']
   const badPreload = forbiddenPreloads.find((name) => indexHtml.includes(name))
   if (badPreload) {
     throw new Error(`Lazy chunk was modulepreloaded unexpectedly: ${badPreload}`)

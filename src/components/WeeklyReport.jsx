@@ -216,6 +216,14 @@ function WeeklyReport({
                   <p>{weeklyReportData.insights.regressionSignals[0]?.text || 'Inga tydliga regressionssignaler just nu.'}</p>
                 </div>
               )}
+              {weeklyReportData.achievements && (
+                <div>
+                  <p className="report-heading">Achievements</p>
+                  <p>Nivå {weeklyReportData.achievements.level}: {weeklyReportData.achievements.levelTitle}.</p>
+                  <p>{weeklyReportData.achievements.unlockedCount} upplåsta. {weeklyReportData.achievements.milestoneCount} delmål passerade.</p>
+                  <p>Coverage: {weeklyReportData.achievements.coverage}%. Confidence: {weeklyReportData.achievements.confidence}%.</p>
+                </div>
+              )}
               <p className="estimate-note">
                 Rapporten är allmänt stöd för hälsa och vanor, inte medicinsk
                 rådgivning.

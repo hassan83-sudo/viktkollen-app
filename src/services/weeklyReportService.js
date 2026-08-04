@@ -14,6 +14,7 @@ import { buildAdaptiveCoachPatternSummary } from './adaptiveCoachPatterns.js'
 import { buildAdaptiveCoachStrategy } from './adaptiveCoachStrategy.js'
 import { buildPhotoAnalysisUsageSummary } from './nutritionPhotoAnalysis.js'
 import { buildInsightsEngine } from './insights/insightsEngine.js'
+import { buildAchievementSummary } from './achievements/achievementEngine.js'
 
 function getMealPattern(mealHistory = [], meals = []) {
   if (mealHistory.length > 0) {
@@ -93,6 +94,10 @@ export function makeWeeklyReportFallback(data) {
     ...data,
     healthSnapshot: snapshot,
   }, { analysisDate: data.today, period: '7d' })
+  const achievements = buildAchievementSummary({
+    ...data,
+    healthSnapshot: snapshot,
+  }, { analysisDate: data.today })
 
   return {
     biggestProgress:
@@ -121,6 +126,7 @@ export function makeWeeklyReportFallback(data) {
     },
     photoAnalysis,
     insights,
+    achievements,
     goalsHabits: goalsHabitsSummary,
     movement:
       sharedReport.summaries.activity ||
@@ -155,6 +161,7 @@ export function makeWeeklyReportFallback(data) {
       ...sharedReport,
       coachFeedback,
       insights,
+      achievements,
     },
   }
 }

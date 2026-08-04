@@ -84,6 +84,13 @@ export const exportSections = Object.freeze([
     storageKeys: [userDataKeys.goalsHabits],
   },
   {
+    defaultSelected: false,
+    dependencies: ['goalsHabits'],
+    id: 'achievements',
+    label: 'Achievements och delmål',
+    storageKeys: [userDataKeys.goalsHabits],
+  },
+  {
     defaultSelected: true,
     dependencies: ['goalsHabits'],
     id: 'reminders',

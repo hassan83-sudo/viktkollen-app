@@ -34,8 +34,10 @@ describe('Data Export & Portability V2', () => {
     const sections = getExportableSections()
 
     expect(sections.length).toBeGreaterThan(5)
+    expect(sections.map((section) => section.id)).toContain('achievements')
     expect(getExportStorageKeys(getDefaultExportSectionIds())).toContain('viktkollen.weights')
     expect(getExportStorageKeys(getDefaultExportSectionIds())).not.toContain('viktkollen.syncMetadata')
+    expect(getExportStorageKeys(['achievements'])).toEqual(['viktkollen.goalsHabits.v2'])
   })
 
   it('blocks auth, session, tokens, diagnostics and image fields', () => {

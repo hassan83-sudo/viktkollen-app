@@ -315,6 +315,9 @@ function HealthDashboardV2({
             <Metric label="Insight Score" value={model.longTermInsights?.score ?? 'Saknas'} />
             <Metric label="Momentum" value={model.longTermInsights?.momentum ?? 'Saknas'} />
             <Metric label="Consistency" value={model.longTermInsights?.consistency ?? 'Saknas'} />
+            <Metric label="Achievement score" value={model.achievements?.totalXp ?? 0} />
+            <Metric label="Nivå" value={model.achievements?.levelTitle || 'Saknas'} />
+            <Metric label="Delmål" value={model.achievements?.milestoneCount ?? 0} />
           </div>
         </Card>
 

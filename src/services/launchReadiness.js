@@ -4,6 +4,7 @@ import { isAllowedSyncStorageKey } from './sync/syncMetadata.js'
 import { buildReminderStatus } from './reminders/reminderScheduler.js'
 import { buildNotificationPlan } from './notifications/notificationEngine.js'
 import { buildInsightsEngine } from './insights/insightsEngine.js'
+import { buildAchievementSummary } from './achievements/achievementEngine.js'
 
 function mask(value) {
   const text = String(value || '')
@@ -43,6 +44,11 @@ export function buildLaunchReadinessReport({
     healthSnapshot,
     reminderState,
   })
+  const achievements = buildAchievementSummary({
+    goalsHabits: {},
+    healthSnapshot,
+    reminderState,
+  })
 
   return {
     appVersion: PWA_APP_VERSION,
@@ -55,6 +61,9 @@ export function buildLaunchReadinessReport({
     buildMode: import.meta.env.MODE,
     diagnostics: {
       analyticsHealth: insights.coverage > 0 ? 'Tillganglig' : 'Begransad',
+      achievementEngineHealth: 'Aktiv',
+      achievementLevel: achievements.levelTitle,
+      achievementCoverage: `${achievements.coverage}%`,
       backupSchemaHealth: 'Backup schema v2',
       binaryExclusion: 'Raa bilder/base64 exporteras inte',
       csvSerializerHealth: 'Meals, weight, check-ins',

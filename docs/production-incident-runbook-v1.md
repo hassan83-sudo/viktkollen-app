@@ -151,3 +151,15 @@ Om staging acceptance-testdata syns i fel konto eller inte kan rensas sakert:
 4. Bekrafta Test User A/B scope i Supabase.
 5. Anvand cleanup-guiden och read-only SQL-checks fore mutation.
 6. Markera release `NOT READY` om cross-user visibility bekraftas.
+
+## Release Candidate Blocker
+
+Vid RC-blocker:
+
+1. Stoppa go-live.
+2. Klassificera enligt `docs/release-candidate-v1.md`.
+3. Spara endast saker evidens utan credentials.
+4. Reproducera med TESTDATA om mojligt.
+5. Gor minimal fix och regressionstest.
+6. Kor `npm run verify:release`.
+7. Uppdatera RC-resultatet innan ny acceptance-passning.

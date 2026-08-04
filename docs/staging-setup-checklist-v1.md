@@ -52,3 +52,16 @@ Kontrollera i Vercel dashboard:
 - PWA-filer finns i production build
 
 READY far endast sattas efter att Manual Release Acceptance V2 ar kord mot riktig staging/preview.
+
+## Release Candidate V1
+
+For RC V1:
+
+1. Kor `npm run validate:staging`.
+2. Kor `npm run verify:photo-route`.
+3. Kor `npm run verify:preview -- https://preview-url` om URL finns.
+4. Kor `supabase/release_acceptance_checks.sql` i Supabase SQL Editor.
+5. Folj `docs/release-candidate-user-runbook-v1.md`.
+6. Dokumentera resultat i `docs/release-candidate-v1-result.json` eller en saker kopia.
+
+Blockerade externa steg ar inte PASS. De ska sta som `blockedByEnvironment` tills de faktiskt ar korda.

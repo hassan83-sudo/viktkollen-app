@@ -35,3 +35,14 @@ Rekommenderat:
 - Ingen dubbelnotis.
 - Ingen full deviceId eller ra payload i UI.
 - Backup/restore paverkar inte auth-sessionen.
+
+## RC V1 Stop-kriterier
+
+Markera release `NOT READY` direkt vid:
+
+- User A ser User B-data eller tvartom.
+- Sync skriver over konflikt utan att visa konflikt eller val.
+- Backup fran fel user visas.
+- Restore paverkar auth/session.
+- Notification skickas efter logout eller for fel user.
+- Queue fastnar utan tydlig recoverystatus.

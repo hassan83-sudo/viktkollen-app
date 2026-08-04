@@ -62,6 +62,10 @@ Se `docs/manual-release-acceptance-v1.md` for stegvis acceptance-guide och `docs
 - Deterministiska development-only TESTDATA fixtures och ManualAcceptanceRunner ar tillagda.
 - Release-status forblir CONDITIONAL tills anvandaren kor riktig extern Manual Release Acceptance V2.
 
+## Release Candidate V1
+
+`docs/release-candidate-v1.md` och `docs/release-candidate-user-runbook-v1.md` sammanstaller RC-passningen. Aktuell RC-status ar CONDITIONAL: lokal release-gate ar gron, men real Supabase/RLS, multi-device, backup/restore, notifications, PWA install/update och Vercel preview acceptance aterstar.
+
 ## Release-status
 
 Automatiserad releasevalidering ar avsedd att koras med:

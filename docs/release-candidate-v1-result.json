@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "release": "Release Candidate V1",
+  "status": "CONDITIONAL",
+  "generatedAt": "2026-08-04T00:00:00.000Z",
+  "environment": {
+    "branch": "main",
+    "startCommit": "446e905",
+    "previewUrl": "not_provided",
+    "credentialsStoredInRepo": false
+  },
+  "checks": [
+    {
+      "id": "RCV1-ENV",
+      "area": "environment",
+      "status": "automatedPass",
+      "verifiedAt": "2026-08-04T00:00:00.000Z",
+      "environment": "local-codex-workspace",
+      "safeEvidence": "validate:staging completed with no FAIL",
+      "blocker": "",
+      "notes": "OPENAI_API_KEY and vercel.json remain SKIP in local environment."
+    },
+    {
+      "id": "RCV1-SECRETS",
+      "area": "secrets",
+      "status": "automatedPass",
+      "verifiedAt": "2026-08-04T00:00:00.000Z",
+      "environment": "local-codex-workspace",
+      "safeEvidence": "Secret-pattern audit found only env names, server-side references and redaction tests.",
+      "blocker": "",
+      "notes": "No values recorded."
+    },
+    {
+      "id": "RCV1-RLS",
+      "area": "RLS",
+      "status": "blockedByEnvironment",
+      "verifiedAt": null,
+      "environment": "Supabase SQL Editor",
+      "safeEvidence": "Read-only SQL checklist exists.",
+      "blocker": "Manual Supabase SQL execution required.",
+      "notes": "Do not mark PASS before real SQL results are reviewed."
+    },
+    {
+      "id": "RCV1-VERCEL",
+      "area": "Vercel",
+      "status": "blockedByEnvironment",
+      "verifiedAt": null,
+      "environment": "staging-preview",
+      "safeEvidence": "Preview verifier command is available.",
+      "blocker": "No preview URL provided.",
+      "notes": "Run npm run verify:preview -- https://preview-url."
+    },
+    {
+      "id": "RCV1-BUNDLE",
+      "area": "production bundle",
+      "status": "automatedPass",
+      "verifiedAt": "2026-08-04T00:00:00.000Z",
+      "environment": "local-production-build",
+      "safeEvidence": "ManualAcceptanceRunner/testfixtures absent from production bundle and forbidden modulepreloads absent.",
+      "blocker": "",
+      "notes": ""
+    },
+    {
+      "id": "RCV1-RELEASE-GATE",
+      "area": "release gate",
+      "status": "automatedPass",
+      "verifiedAt": "2026-08-04T00:00:00.000Z",
+      "environment": "local-codex-workspace",
+      "safeEvidence": "npm run verify:release passed.",
+      "blocker": "",
+      "notes": ""
+    }
+  ],
+  "manualStepsRemaining": [
+    "Supabase Auth with Test User A/B",
+    "RLS user isolation",
+    "multi-device sync and conflicts",
+    "Cloud Backup/Restore",
+    "notifications permission/system notification",
+    "PWA install/update/offline in preview",
+    "nutrition photo provider if release requirement",
+    "Vercel preview verification"
+  ],
+  "releaseDecision": {
+    "status": "CONDITIONAL",
+    "reason": "Automated local release candidate checks pass, but required external staging/preview checks remain blocked by environment."
+  }
+}

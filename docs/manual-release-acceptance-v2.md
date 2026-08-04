@@ -304,3 +304,13 @@ Anvand dessa hjalpmedel innan den riktiga externa passningen:
 - `docs/test-data-cleanup-guide-v1.md`
 
 Hjalpmedlen rapporterar endast sakra statusar. De markerar inte riktig Supabase, RLS, multi-device, notification, photo-provider eller Vercel som manuellt verifierade.
+
+## Release Candidate V1
+
+Nar staging enablement ar pa plats, anvand:
+
+- `docs/release-candidate-v1.md`
+- `docs/release-candidate-user-runbook-v1.md`
+- `docs/release-candidate-v1-result.json`
+
+RC V1 ar `CONDITIONAL` tills Test User A/B, RLS, multi-device, backup/restore, notifications, PWA och eventuell photo-provider ar verifierade i riktig staging/preview.

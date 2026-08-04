@@ -85,3 +85,7 @@ Motivering: lokal automation kan vara gron, men sprintens huvudkrav ar verkliga 
 ## Enablement Update
 
 Staging & Real Acceptance Enablement V1 lade till sakra lokala validators, read-only Supabase checks, deterministiska TESTDATA-fixtures, development-only ManualAcceptanceRunner, preview verification och cleanup-guide. Dessa verktyg forbereder den manuella passningen men ersatter den inte.
+
+## Release Candidate V1 Update
+
+Release Candidate V1-resultatet ar dokumenterat separat i `docs/release-candidate-v1-result.md` och `docs/release-candidate-v1-result.json`. Status ar fortsatt `CONDITIONAL` tills externa staging/preview-steg ar manuellt verifierade.

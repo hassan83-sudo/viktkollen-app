@@ -212,3 +212,11 @@
 - Kor `npm run verify:preview -- https://preview-url` mot vald Vercel preview.
 - Anvand `ManualAcceptanceRunner` endast i development for PASS/FAIL/BLOCKED/NOT RUN pa externa floden.
 - Skapa och rensa endast markerad `TESTDATA_RELEASE_ACCEPTANCE_V1`.
+
+## Release Candidate V1
+
+- Las `docs/release-candidate-v1.md`.
+- Kor `docs/release-candidate-user-runbook-v1.md` i staging/preview.
+- Uppdatera RC-resultatet utan credentials.
+- READY kraver manuellt verifierad RLS, Test User A/B, multi-device, backup/restore och PWA.
+- NOT READY vid data leakage, exposed secret, silent overwrite, felaktig restore, data loss, PWA reload-loop eller testverktyg i production bundle.

@@ -40,6 +40,8 @@ function LaunchReadinessPanel({ authSession, healthSnapshot, reminderState, sync
         <span>Sync queue: {report.sync.queueHealth}</span>
         <span>Analytics: {report.diagnostics.analyticsHealth}</span>
         <span>Trend coverage: {report.diagnostics.trendCoverage}</span>
+        <span>Import: {report.diagnostics.importEngineHealth}</span>
+        <span>Import rollback: {report.diagnostics.importRollbackHealth}</span>
       </div>
       <pre className="diagnostics-output">{reportText}</pre>
       <button type="button" className="secondary-button" onClick={copyReport}>

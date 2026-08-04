@@ -89,6 +89,7 @@ const AINutritionInsights = lazy(() => import('./components/AINutritionInsights.
 const AdaptiveCoachPanel = lazy(() => import('./components/AdaptiveCoachPanel.jsx'))
 const BarcodeScanner = lazy(() => import('./components/BarcodeScanner.jsx'))
 const CloudBackupPanel = lazy(() => import('./components/CloudBackupPanel.jsx'))
+const DataImportCenter = lazy(() => import('./components/DataImportCenter.jsx'))
 const GoalsHabitsPanel = lazy(() => import('./components/GoalsHabitsPanel.jsx'))
 const HealthDashboardV2 = lazy(() => import('./components/HealthDashboardV2.jsx'))
 const InsightsCenter = lazy(() => import('./components/InsightsCenter.jsx'))
@@ -2825,6 +2826,12 @@ function App() {
           onDataChanged={refreshAppStateFromStorage}
           userId={authSession?.user?.id || ''}
         />
+        <Suspense fallback={<LazySectionFallback />}>
+          <DataImportCenter
+            onDataImported={refreshAppStateFromStorage}
+            userId={authSession?.user?.id || ''}
+          />
+        </Suspense>
         {import.meta.env.DEV && (
           <Suspense fallback={null}>
             <SyncHealthDashboard

@@ -153,3 +153,16 @@
 - Kontrollera sync mellan två flikar och två enheter.
 - Kontrollera reminders i vanlig flik och installerad PWA.
 - Kontrollera rapport/export/print.
+
+## Data Import & Migration V2
+
+- Data Import V2 visar preview innan nagon lokal data skrivs.
+- Aktuell Viktkollen-backup kan importeras via safe merge.
+- Legacy backup kan importeras med migrationsvarning.
+- CSV meals, CSV weight och CSV check-ins identifieras korrekt.
+- Ogiltig importfil blockeras med begriplig svensk text.
+- Dubbletter visas i preview innan import.
+- Replace kraver uttrycklig bekraftelse.
+- Rollback aterstaller berorda nycklar vid simulerat skrivfel.
+- Import pa ny enhet markerar berorda keys dirty for sync.
+- User switch fore apply avbryter importen.

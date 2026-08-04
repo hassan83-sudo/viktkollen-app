@@ -30,6 +30,8 @@ function LaunchReadinessPanel({ authSession, healthSnapshot, reminderState, sync
         <span>Storage: {report.diagnostics.storageHealth}</span>
         <span>SW: {report.pwa.serviceWorker}</span>
         <span>Reminders: {report.reminders.enabledCount} aktiva</span>
+        <span>Notifications: {report.notifications.pendingCount} kommande</span>
+        <span>Quiet hours: {report.notifications.quietHours}</span>
         <span>Sync reminders: {report.diagnostics.syncAllowedReminders ? 'Ja' : 'Nej'}</span>
         <span>Snapshot: {report.healthSnapshot.date}</span>
         <span>Photo AI: {report.photoAnalysis.remoteAnalysisEnabled ? 'Aktiv' : 'Av'}</span>

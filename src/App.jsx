@@ -82,7 +82,6 @@ import {
 } from './services/reminders/reminderRepository.js'
 import { completeReminder, skipReminder, snoozeReminder } from './services/reminders/reminderActions.js'
 import { buildReminderStatus, createReminderScheduler, getDueReminders } from './services/reminders/reminderScheduler.js'
-import { showReminderNotification } from './services/reminders/reminderNotifications.js'
 import { syncLegacyReminderSettingsToV2 } from './services/reminders/reminderLegacyAdapter.js'
 
 const AICoach = lazy(() => import('./components/AICoach.jsx'))
@@ -95,6 +94,7 @@ const HealthDashboardV2 = lazy(() => import('./components/HealthDashboardV2.jsx'
 const LaunchReadinessPanel = lazy(() => import('./components/LaunchReadinessPanel.jsx'))
 const MealLogger = lazy(() => import('./components/MealLogger.jsx'))
 const MonthlyReport = lazy(() => import('./components/MonthlyReport.jsx'))
+const NotificationCenter = lazy(() => import('./components/NotificationCenter.jsx'))
 const ProgressCenter = lazy(() => import('./components/ProgressCenter.jsx'))
 const ProgressDashboard = lazy(() => import('./components/ProgressDashboard.jsx'))
 const ProgressPhotos = lazy(() => import('./components/ProgressPhotos.jsx'))
@@ -898,6 +898,7 @@ function App() {
   const [adaptiveCoachFeedback, setAdaptiveCoachFeedback] = useState(() =>
     userDataRepository.getAdaptiveCoachFeedback({}, (value) => value && typeof value === 'object' && !Array.isArray(value)),
   )
+  const adaptiveCoachFeedbackRef = useRef(adaptiveCoachFeedback)
   const [healthDashboardPeriod, setHealthDashboardPeriod] = useState(() =>
     userDataRepository.getHealthDashboardPeriod('30d', (value) =>
       ['7d', '30d', '90d', '180d', '365d', 'all'].includes(value)),
@@ -1633,15 +1634,37 @@ function App() {
     const scheduler = createReminderScheduler({
       getState: () => reminderStateRef.current,
       onDue: (due, now) => {
-        due.slice(0, 3).forEach((reminder) => showReminderNotification(reminder))
-        setReminderState((current) => ({
-          ...current,
-          reminders: current.reminders.map((reminder) =>
-            due.some((entry) => entry.id === reminder.id)
-              ? { ...reminder, lastTriggeredAt: now.toISOString(), updatedAt: now.toISOString() }
-              : reminder),
-          updatedAt: now.toISOString(),
-        }))
+        void import('./services/notifications/notificationEngine.js')
+          .then(({ buildNotificationPlan, recordNotificationEvent, showNotificationDelivery }) => {
+            const plan = buildNotificationPlan({
+              adaptiveCoachFeedback: adaptiveCoachFeedbackRef.current,
+              dueReminders: due,
+              reminderState: reminderStateRef.current,
+              syncStatus: getSyncStatusSnapshot(),
+            }, { now: now.toISOString() })
+            const delivered = plan.deliveries.slice(0, 3).map((delivery) => showNotificationDelivery(delivery)).some(Boolean)
+            setReminderState((current) => ({
+              ...recordNotificationEvent(current, {
+                items: plan.deliveries.flatMap((delivery) => delivery.items),
+                status: delivered ? 'delivered' : 'suppressed',
+              }, { now: now.toISOString() }),
+              reminders: current.reminders.map((reminder) =>
+                due.some((entry) => entry.id === reminder.id)
+                  ? { ...reminder, lastTriggeredAt: now.toISOString(), updatedAt: now.toISOString() }
+                  : reminder),
+              updatedAt: now.toISOString(),
+            }))
+          })
+          .catch(() => {
+            setReminderState((current) => ({
+              ...current,
+              reminders: current.reminders.map((reminder) =>
+                due.some((entry) => entry.id === reminder.id)
+                  ? { ...reminder, lastTriggeredAt: now.toISOString(), updatedAt: now.toISOString() }
+                  : reminder),
+              updatedAt: now.toISOString(),
+            }))
+          })
       },
     })
 
@@ -1671,6 +1694,10 @@ function App() {
     reminderStateRef.current = reminderState
     saveReminderState(reminderState)
   }, [reminderState])
+
+  useEffect(() => {
+    adaptiveCoachFeedbackRef.current = adaptiveCoachFeedback
+  }, [adaptiveCoachFeedback])
 
   useEffect(() => {
     userDataRepository.saveCoachChat(chatMessages)
@@ -3010,6 +3037,15 @@ function App() {
             onRemindersChange={handleReminderStateChange}
             reminderState={reminderState}
             schedulerStatus={reminderSchedulerStatus}
+          />
+        </AppErrorBoundary>
+
+        <AppErrorBoundary area="notifications" resetKey={reminderState.updatedAt} title="Notification Center kunde inte visas">
+          <NotificationCenter
+            adaptiveCoachFeedback={adaptiveCoachFeedback}
+            onReminderStateChange={handleReminderStateChange}
+            reminderState={reminderState}
+            syncStatus={getSyncStatusSnapshot()}
           />
         </AppErrorBoundary>
 

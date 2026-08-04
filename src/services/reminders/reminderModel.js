@@ -2,6 +2,7 @@ export const reminderSchemaVersion = 2
 export const reminderStorageKey = 'viktkollen.reminders.v2'
 export const reminderMaxCount = 100
 export const reminderHistoryLimit = 100
+export const reminderNotificationHistoryLimit = 120
 
 export const reminderTypes = [
   'habit',
@@ -154,10 +155,44 @@ export function normalizeReminderState(value = {}, options = {}) {
       id: normalizeReminderText(entry.id, `history-${entry.reminderId || entry.at || Date.now()}`, 90),
       reminderId: normalizeReminderText(entry.reminderId, '', 90),
     })).slice(-reminderHistoryLimit),
+    notificationsV3: normalizeReminderNotificationsV3(source.notificationsV3, options),
     reminders: [...byId.values()],
     schemaVersion: reminderSchemaVersion,
     smartCategories: isObject(source.smartCategories) ? { ...source.smartCategories } : {},
     updatedAt: source.updatedAt || options.now || new Date().toISOString(),
+  }
+}
+
+function normalizeReminderNotificationsV3(value = {}, options = {}) {
+  const source = isObject(value) ? value : {}
+  const settings = isObject(source.settings) ? source.settings : {}
+  const quietHours = isObject(settings.quietHours) ? settings.quietHours : {}
+  const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/
+
+  return {
+    history: safeArray(source.history).filter(isObject).map((entry) => ({
+      at: entry.at || options.now || new Date().toISOString(),
+      batchId: normalizeReminderText(entry.batchId, '', 120),
+      id: normalizeReminderText(entry.id, `notification-${entry.at || Date.now()}`, 120),
+      notificationId: normalizeReminderText(entry.notificationId, '', 120),
+      reason: normalizeReminderText(entry.reason, '', 220),
+      sourceIdMasked: normalizeReminderText(entry.sourceIdMasked, '', 80),
+      sourceType: normalizeReminderText(entry.sourceType, 'reminder', 50),
+      status: normalizeReminderText(entry.status, 'scheduled', 40),
+      statusLabel: normalizeReminderText(entry.statusLabel, '', 80),
+      title: normalizeReminderText(entry.title, 'Viktkollen', 90),
+    })).slice(-reminderNotificationHistoryLimit),
+    lastDeliveredAtBySource: isObject(source.lastDeliveredAtBySource) ? { ...source.lastDeliveredAtBySource } : {},
+    settings: {
+      batchingWindowMinutes: Math.max(5, Math.min(120, Math.round(Number(settings.batchingWindowMinutes) || 30))),
+      enabled: settings.enabled !== false,
+      quietHours: {
+        enabled: quietHours.enabled !== false,
+        end: timePattern.test(quietHours.end) ? quietHours.end : '07:00',
+        start: timePattern.test(quietHours.start) ? quietHours.start : '22:00',
+      },
+    },
+    version: 3,
   }
 }
 

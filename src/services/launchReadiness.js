@@ -2,6 +2,7 @@ import { PWA_APP_VERSION, PWA_CACHE_VERSION } from '../registerServiceWorker.js'
 import { getBackupStorageKeys, userDataKeys } from './userDataRepository.js'
 import { isAllowedSyncStorageKey } from './sync/syncMetadata.js'
 import { buildReminderStatus } from './reminders/reminderScheduler.js'
+import { buildNotificationPlan } from './notifications/notificationEngine.js'
 
 function mask(value) {
   const text = String(value || '')
@@ -33,6 +34,10 @@ export function buildLaunchReadinessReport({
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
   const reminderStatus = buildReminderStatus(reminderState)
+  const notificationPlan = buildNotificationPlan({
+    reminderState,
+    syncStatus,
+  })
 
   return {
     appVersion: PWA_APP_VERSION,
@@ -66,6 +71,15 @@ export function buildLaunchReadinessReport({
       remoteAnalysisEnabled: import.meta.env.VITE_NUTRITION_PHOTO_REMOTE_ENABLED === 'true',
       routeConfigured: 'api/nutrition-photo-analysis',
       timeoutMs: numberFromEnv('VITE_NUTRITION_PHOTO_TIMEOUT_MS', 15000),
+    },
+    notifications: {
+      batchingWindowMinutes: notificationPlan.settings.batchingWindowMinutes,
+      pendingCount: notificationPlan.upcoming.length,
+      permissionState: notificationPlan.permission,
+      quietHours: `${notificationPlan.settings.quietHours.start}-${notificationPlan.settings.quietHours.end}`,
+      quietHoursActive: notificationPlan.quietHoursActive,
+      scheduler: reminderStatus.schedulerRunning ? 'running' : 'ready',
+      syncHealth: syncStatus?.syncHealth || syncStatus?.statusCode || 'unknown',
     },
     pwa: {
       cacheVersion: PWA_CACHE_VERSION,

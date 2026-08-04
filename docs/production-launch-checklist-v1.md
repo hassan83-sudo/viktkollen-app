@@ -82,6 +82,17 @@
 - Två flikar ger normalt bara en scheduler-leader.
 - Reminder Center är lazy-loaded.
 
+## Notifications V3
+
+- Notification Center är lazy-loaded och ska inte modulepreloadas i production.
+- Quiet hours stoppar browsernotiser under valt intervall.
+- Flera närliggande notiser batchas till en neutral samlad notis.
+- Completed, postponed och dismissed syns i säker historik.
+- Notishistorik innehåller inte rå payload, tokens, bilder eller fullständiga source-id:n.
+- Synckonflikter kan visas som notissignal utan att rå konfliktdata exponeras.
+- Två flikar ska inte skapa dubbla notiser när scheduler leader-lock fungerar.
+- `viktkollen.reminders.v2.notificationsV3` följer Cloud Sync V3 och backup/restore.
+
 ## Reports och Export
 
 - Veckorapport renderar utan tekniska värden.

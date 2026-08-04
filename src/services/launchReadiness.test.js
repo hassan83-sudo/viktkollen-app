@@ -16,6 +16,8 @@ describe('launchReadiness', () => {
     expect(report.photoAnalysis.maxFileSizeMb).toBe(8)
     expect(report.sync.syncHealth).toBe('unknown')
     expect(report.sync.queueHealth).toBe('unknown')
+    expect(report.diagnostics.analyticsHealth).toBeTruthy()
+    expect(report.diagnostics.trendCoverage).toMatch(/%/)
     expect(report.reminders.enabledCount).toBe(1)
     expect(JSON.stringify(report)).not.toContain('person@example.com')
     expect(JSON.stringify(report)).not.toContain('user-1234567890')

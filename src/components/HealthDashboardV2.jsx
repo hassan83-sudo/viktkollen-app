@@ -310,6 +310,14 @@ function HealthDashboardV2({
           <p>{coachStrategy.explanation}</p>
         </Card>
 
+        <Card actionHref="#insights-center" actionText="Visa insights" heading="Insights" text="Långsiktiga signaler från befintlig data.">
+          <div className="health-dashboard-metrics">
+            <Metric label="Insight Score" value={model.longTermInsights?.score ?? 'Saknas'} />
+            <Metric label="Momentum" value={model.longTermInsights?.momentum ?? 'Saknas'} />
+            <Metric label="Consistency" value={model.longTermInsights?.consistency ?? 'Saknas'} />
+          </div>
+        </Card>
+
         <Card actionHref="#ai-insights" actionText="Visa insikter" heading="Personliga insikter" text={model.insightsSummary.positive}>
           <p>{model.insightsSummary.improvement}</p>
           <p>{model.insightsSummary.nextStep}</p>

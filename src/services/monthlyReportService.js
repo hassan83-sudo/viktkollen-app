@@ -15,6 +15,7 @@ import { buildAdaptiveCoachTimelineSummary } from './adaptiveCoachTimeline.js'
 import { buildAdaptiveCoachPatternSummary } from './adaptiveCoachPatterns.js'
 import { buildAdaptiveCoachStrategy } from './adaptiveCoachStrategy.js'
 import { buildPhotoAnalysisUsageSummary } from './nutritionPhotoAnalysis.js'
+import { buildInsightsEngine } from './insights/insightsEngine.js'
 
 function safeArray(value) {
   return Array.isArray(value) ? value : []
@@ -234,6 +235,10 @@ export function createMonthlyHealthReport(data = {}) {
     now: data.today ? `${data.today}T12:00:00.000Z` : undefined,
   })
   const photoAnalysis = buildPhotoAnalysisUsageSummary(actualMeals, reportRange)
+  const insights = buildInsightsEngine({
+    ...data,
+    healthSnapshot: snapshot,
+  }, { analysisDate: data.today, period: '90d' })
   const recentMeals = safeArray(actualMeals).filter((entry) =>
     isLocalDateInRange(getMealDate(entry), reportRange),
   )
@@ -281,6 +286,7 @@ export function createMonthlyHealthReport(data = {}) {
     coachPatterns,
     coachStrategy,
     photoAnalysis,
+    insights,
     sharedAnalytics: {
       ...sharedReport,
       coachFeedback: coachEffectiveness,

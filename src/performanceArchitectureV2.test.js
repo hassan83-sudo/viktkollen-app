@@ -15,6 +15,7 @@ describe('Performance Architecture V2 contracts', () => {
     expect(source).not.toContain("from './services/sync/cloudSyncEngine.js'")
     expect(source).toContain("const SyncHealthDashboard = lazy(() => import('./components/SyncHealthDashboard.jsx'))")
     expect(source).toContain("const NotificationCenter = lazy(() => import('./components/NotificationCenter.jsx'))")
+    expect(source).toContain("const InsightsCenter = lazy(() => import('./components/InsightsCenter.jsx'))")
     expect(source).not.toContain("from './services/notifications/notificationEngine.js'")
   })
 

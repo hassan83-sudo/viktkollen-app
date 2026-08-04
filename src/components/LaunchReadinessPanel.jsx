@@ -38,6 +38,8 @@ function LaunchReadinessPanel({ authSession, healthSnapshot, reminderState, sync
         <span>Photo route: {report.photoAnalysis.routeConfigured}</span>
         <span>Sync health: {report.sync.syncHealth}</span>
         <span>Sync queue: {report.sync.queueHealth}</span>
+        <span>Analytics: {report.diagnostics.analyticsHealth}</span>
+        <span>Trend coverage: {report.diagnostics.trendCoverage}</span>
       </div>
       <pre className="diagnostics-output">{reportText}</pre>
       <button type="button" className="secondary-button" onClick={copyReport}>

@@ -238,6 +238,15 @@ function MonthlyReport({ report }) {
         </div>
       )}
 
+      {report.insights && (
+        <div className="report-card">
+          <p className="report-heading">Långtidstrender och milestones</p>
+          <p>Insight Score: {report.insights.score}. Momentum: {report.insights.momentum}. Consistency: {report.insights.consistency}.</p>
+          <p>{report.insights.milestones[0]?.text || 'Milstolpar visas när underlaget räcker.'}</p>
+          <p>{report.insights.improvementSignals[0]?.text || 'Inga tydliga förbättringssignaler ännu.'}</p>
+        </div>
+      )}
+
       <p className="estimate-note">
         Rapporten skapas lokalt från sparad data och är allmänt stöd för vanor,
         inte medicinsk rådgivning.

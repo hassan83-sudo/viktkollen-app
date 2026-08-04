@@ -3,6 +3,7 @@ import { getBackupStorageKeys, userDataKeys } from './userDataRepository.js'
 import { isAllowedSyncStorageKey } from './sync/syncMetadata.js'
 import { buildReminderStatus } from './reminders/reminderScheduler.js'
 import { buildNotificationPlan } from './notifications/notificationEngine.js'
+import { buildInsightsEngine } from './insights/insightsEngine.js'
 
 function mask(value) {
   const text = String(value || '')
@@ -38,6 +39,10 @@ export function buildLaunchReadinessReport({
     reminderState,
     syncStatus,
   })
+  const insights = buildInsightsEngine({
+    healthSnapshot,
+    reminderState,
+  })
 
   return {
     appVersion: PWA_APP_VERSION,
@@ -49,9 +54,12 @@ export function buildLaunchReadinessReport({
     },
     buildMode: import.meta.env.MODE,
     diagnostics: {
+      analyticsHealth: insights.coverage > 0 ? 'Tillgänglig' : 'Begränsad',
+      insightGeneration: insights.insights.length > 0 ? 'Aktiv' : 'Väntar på data',
       storageHealth: hasStorage() ? 'Tillgänglig' : 'Saknas',
       syncAllowedReminders: isAllowedSyncStorageKey(userDataKeys.remindersV2),
       syncedBackupKeys: getBackupStorageKeys().length,
+      trendCoverage: `${insights.coverage}%`,
     },
     healthSnapshot: {
       date: healthSnapshot?.date || 'Saknas',

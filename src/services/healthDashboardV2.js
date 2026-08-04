@@ -10,6 +10,7 @@ import {
 } from './healthDashboardPeriodEngine.js'
 import { buildSharedAnalytics } from './sharedAnalyticsEngine.js'
 import { buildPhotoAnalysisUsageSummary } from './nutritionPhotoAnalysis.js'
+import { buildInsightsEngine } from './insights/insightsEngine.js'
 
 export const healthDashboardV2ModelVersion = 2
 export const healthDashboardPeriods = healthDashboardPeriodDefinitions
@@ -337,6 +338,7 @@ export function buildHealthDashboardV2Model(data = {}, options = {}) {
   const model = shared.dashboardModel
   const insightSummary = buildInsightSummary(insightReport)
   const photoAnalysisSummary = buildPhotoAnalysisUsageSummary(shared.analysis.nutrition?.meals || data.meals || [], shared.period)
+  const insights = buildInsightsEngine(data, { analysisDate, period: options.period || data.period || '30d' })
 
   return {
     ...model,
@@ -348,6 +350,11 @@ export function buildHealthDashboardV2Model(data = {}, options = {}) {
       ].filter(Boolean).slice(0, 5),
     },
     insightsSummary: insightSummary,
+    longTermInsights: {
+      consistency: insights.consistency,
+      momentum: insights.momentum,
+      score: insights.score,
+    },
     modelVersion: healthDashboardV2ModelVersion,
     photoAnalysisSummary,
     nextActions: buildNextActions({

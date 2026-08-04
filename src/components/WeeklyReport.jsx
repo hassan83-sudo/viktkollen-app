@@ -208,6 +208,14 @@ function WeeklyReport({
                   <p>Låg confidence: {weeklyReportData.photoAnalysis.lowConfidenceCount}. Bilddata sparas inte i rapporten.</p>
                 </div>
               )}
+              {weeklyReportData.insights && (
+                <div>
+                  <p className="report-heading">Insights & consistency</p>
+                  <p>Insight Score: {weeklyReportData.insights.score}. Momentum: {weeklyReportData.insights.momentum}. Consistency: {weeklyReportData.insights.consistency}.</p>
+                  <p>{weeklyReportData.insights.improvementSignals[0]?.text || 'Inga tydliga förbättringssignaler ännu.'}</p>
+                  <p>{weeklyReportData.insights.regressionSignals[0]?.text || 'Inga tydliga regressionssignaler just nu.'}</p>
+                </div>
+              )}
               <p className="estimate-note">
                 Rapporten är allmänt stöd för hälsa och vanor, inte medicinsk
                 rådgivning.

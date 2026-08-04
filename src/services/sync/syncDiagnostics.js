@@ -157,12 +157,21 @@ export function buildSyncDiagnosticsSnapshot(syncStatus = {}) {
     sync: {
       conflict: syncStatus.conflict === true,
       dirty: syncStatus.dirty === true,
+      failedItems: syncStatus.failedItems || 0,
+      historySize: syncStatus.historySize || 0,
       lastSuccessfulSyncAt: syncStatus.lastSuccessfulSyncAt || '',
+      nextRetryAt: syncStatus.nextRetryAt || syncStatus.retryAt || '',
       pendingCount: syncStatus.pendingCount || 0,
+      pendingDownloads: syncStatus.pendingDownloads || 0,
+      pendingUploads: syncStatus.pendingUploads || 0,
+      queueHealth: syncStatus.queueStatus?.queueHealth || 'unknown',
+      recoveryStatus: syncStatus.recoveryStatus || 'ready',
       retryAt: syncStatus.retryAt || '',
       running: syncStatus.running === true,
+      staleDeviceCount: syncStatus.multiDevice?.staleDeviceCount || 0,
       statusCode: syncStatus.statusCode || 'unknown',
       statusLabel: syncStatus.statusLabel || '',
+      syncHealth: syncStatus.syncHealth || syncStatus.statusCode || 'unknown',
     },
   }
 }

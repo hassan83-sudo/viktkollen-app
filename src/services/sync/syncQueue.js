@@ -53,11 +53,15 @@ export function normalizeSyncQueue(value = {}) {
   const deduped = new Map()
 
   items.map(normalizeSyncQueueItem).filter(Boolean).forEach((item) => {
-    deduped.set(`${item.action}|${item.storageKey}`, item)
+    const key = ['upload', 'delete', 'download'].includes(item.action)
+      ? `state|${item.storageKey}`
+      : `${item.action}|${item.storageKey}`
+    deduped.set(key, item)
   })
 
   return {
-    items: [...deduped.values()],
+    items: [...deduped.values()].sort((first, second) =>
+      new Date(first.createdAt).getTime() - new Date(second.createdAt).getTime()),
     version: 1,
   }
 }
@@ -91,9 +95,18 @@ export function enqueueSyncAction(queue = {}, item = {}, options = {}) {
   const normalized = normalizeSyncQueue(queue)
   const nextItem = normalizeSyncQueueItem({ ...item, status: 'pending' }, options)
   if (!nextItem) return normalized
+  const collapseStateAction = ['upload', 'delete', 'download'].includes(nextItem.action)
 
   return normalizeSyncQueue({
-    items: [nextItem, ...normalized.items.filter((entry) => !(entry.action === nextItem.action && entry.storageKey === nextItem.storageKey))],
+    items: [
+      ...normalized.items.filter((entry) => {
+        if (collapseStateAction && ['upload', 'delete', 'download'].includes(entry.action)) {
+          return entry.storageKey !== nextItem.storageKey
+        }
+        return !(entry.action === nextItem.action && entry.storageKey === nextItem.storageKey)
+      }),
+      nextItem,
+    ],
   })
 }
 
@@ -148,6 +161,26 @@ export function markSyncQueueOffline(queue = {}, now = new Date().toISOString())
       updatedAt: now,
     })),
   })
+}
+
+export function getSyncQueueStatus(queue = {}, now = new Date(), online = true) {
+  const normalized = normalizeSyncQueue(queue)
+  const pending = normalized.items.filter((item) => item.status === 'pending')
+  const failed = normalized.items.filter((item) => item.status === 'failed')
+  const running = normalized.items.filter((item) => item.status === 'running')
+  const offline = normalized.items.filter((item) => item.status === 'waiting_offline')
+  const due = getDueSyncQueueItems(normalized, now, online)
+
+  return {
+    dueCount: due.length,
+    failedCount: failed.length,
+    nextRetryAt: normalized.items.map((item) => item.nextAttemptAt).filter(Boolean).sort()[0] || '',
+    offlineCount: offline.length,
+    pendingCount: pending.length,
+    queueHealth: failed.length ? 'failed' : !online ? 'offline' : running.length ? 'running' : pending.length ? 'pending' : 'empty',
+    runningCount: running.length,
+    totalCount: normalized.items.length,
+  }
 }
 
 export const syncQueueInternals = {

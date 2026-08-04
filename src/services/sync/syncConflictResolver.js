@@ -1,4 +1,8 @@
-import { calculateChecksum, stableSerialize } from './syncMetadata.js'
+import {
+  canSafelyMergeSyncPayload,
+  resolveCloudSyncConflict,
+  toLegacySyncDecision,
+} from './cloudConflictResolver.js'
 
 function isObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -17,19 +21,8 @@ function updatedTime(value) {
 }
 
 function mergeById(local = [], remote = []) {
-  const merged = new Map()
-  ;[...local, ...remote].filter(isObject).filter((item) => !hasUnsafeKey(item)).forEach((item) => {
-    const id = String(item.id || '')
-    if (!id) return
-    const existing = merged.get(id)
-    merged.set(id, !existing || updatedTime(item) >= updatedTime(existing) ? item : existing)
-  })
-
-  return [...merged.values()]
-}
-
-function canMergeArray(value) {
-  return Array.isArray(value) && value.every((item) => isObject(item) && item.id)
+  const merged = canSafelyMergeSyncPayload('viktkollen.meals', local, remote)
+  return merged.ok ? merged.payload : []
 }
 
 function mergeNestedDays(local = {}, remote = {}) {
@@ -44,110 +37,79 @@ function mergeNestedDays(local = {}, remote = {}) {
 }
 
 function mergeWeeks(local = {}, remote = {}) {
-  const weeks = {}
-  const keys = new Set([...Object.keys(local?.weeks || {}), ...Object.keys(remote?.weeks || {})])
+  const merged = canSafelyMergeSyncPayload('viktkollen.mealPlans', local, remote)
+  return merged.ok ? merged.payload : { ...local, ...remote }
+}
 
-  keys.forEach((weekStart) => {
-    const localWeek = local.weeks?.[weekStart] || {}
-    const remoteWeek = remote.weeks?.[weekStart] || {}
-    weeks[weekStart] = {
-      ...localWeek,
-      ...remoteWeek,
-      days: mergeNestedDays(localWeek.days || {}, remoteWeek.days || {}),
-      items: mergeById(localWeek.items || [], remoteWeek.items || []),
-      weekStart,
-    }
-  })
+function looksLikeWeekPayload(localPayload, remotePayload) {
+  return Boolean(localPayload?.weeks || remotePayload?.weeks)
+}
 
-  return { ...local, ...remote, weeks }
+function mergeLegacySimpleObject(localPayload, remotePayload) {
+  if (!isObject(localPayload) || !isObject(remotePayload)) return null
+  if (hasUnsafeKey(localPayload) || hasUnsafeKey(remotePayload)) return null
+
+  const localTime = updatedTime(localPayload)
+  const remoteTime = updatedTime(remotePayload)
+  if (!localTime && !remoteTime) return null
+
+  return remoteTime >= localTime ? remotePayload : localPayload
 }
 
 export function classifySyncChange({ localRecord, metadata = {}, remoteRecord } = {}) {
-  const localChecksum = localRecord?.checksum || ''
-  const remoteChecksum = remoteRecord?.checksum || ''
-  const previousChecksum = metadata?.checksum || ''
+  if (localRecord?.deleted && !remoteRecord) return 'local_deleted'
 
-  if (localRecord?.deleted && remoteRecord?.deleted_at) return 'identical'
-  if (localChecksum && remoteChecksum && localChecksum === remoteChecksum) return 'identical'
+  const decision = resolveCloudSyncConflict({
+    localRecord,
+    previousMetadata: metadata,
+    remoteRecord,
+    storageKey: localRecord?.storageKey || remoteRecord?.storageKey,
+  })
 
-  const localChanged = localChecksum && localChecksum !== previousChecksum && !(localRecord?.deleted && !previousChecksum)
-  const remoteChanged = remoteChecksum && remoteChecksum !== previousChecksum
-
-  if (localRecord?.deleted && !remoteChanged) return 'local_deleted'
-  if (remoteRecord?.deleted_at && !localChanged) return 'remote_deleted'
-  if (localChanged && !remoteChanged) return 'local_changed'
-  if (!localChanged && remoteChanged) return 'remote_changed'
-  if (localChanged && remoteChanged) return 'conflict'
+  if (decision.decision === 'identical') return 'identical'
+  if (decision.decision === 'localWins') return localRecord?.deleted ? 'local_deleted' : 'local_changed'
+  if (decision.decision === 'remoteWins') return remoteRecord?.deleted_at ? 'remote_deleted' : 'remote_changed'
+  if (decision.decision === 'safeMerge' || decision.decision === 'manualConflict') return 'conflict'
 
   return 'unchanged'
 }
 
-export function safeMergeSyncPayload(localPayload, remotePayload) {
-  if (hasUnsafeKey(localPayload) || hasUnsafeKey(remotePayload)) {
-    return { conflict: true, reason: 'Payload innehåller osäkra objektfält.' }
-  }
+export function safeMergeSyncPayload(localPayload, remotePayload, storageKey = 'viktkollen.meals') {
+  const resolvedStorageKey = storageKey === 'viktkollen.meals' && looksLikeWeekPayload(localPayload, remotePayload)
+    ? 'viktkollen.mealPlans'
+    : storageKey
+  const legacySimpleObject = resolvedStorageKey === 'viktkollen.meals'
+    ? mergeLegacySimpleObject(localPayload, remotePayload)
+    : null
+  if (legacySimpleObject) return { conflict: false, payload: legacySimpleObject, strategy: 'latestTimestamp' }
 
-  if (canMergeArray(localPayload) && canMergeArray(remotePayload)) {
-    return { conflict: false, payload: mergeById(localPayload, remotePayload), strategy: 'merge_by_id' }
-  }
+  const merged = canSafelyMergeSyncPayload(resolvedStorageKey, localPayload, remotePayload)
 
-  if (isObject(localPayload) && isObject(remotePayload) && (isObject(localPayload.weeks) || isObject(remotePayload.weeks))) {
-    return { conflict: false, payload: mergeWeeks(localPayload, remotePayload), strategy: 'merge_weeks' }
-  }
-
-  if (isObject(localPayload) && isObject(remotePayload)) {
-    const localTime = updatedTime(localPayload)
-    const remoteTime = updatedTime(remotePayload)
-
-    if (localTime || remoteTime) {
-      return {
-        conflict: false,
-        payload: localTime >= remoteTime ? localPayload : remotePayload,
-        strategy: 'last_write_wins',
-      }
-    }
-  }
-
-  return { conflict: true, reason: 'Automatisk merge är inte säker för denna datatyp.' }
+  return merged.ok
+    ? { conflict: false, payload: merged.payload, strategy: merged.strategy }
+    : { conflict: true, reason: merged.reason }
 }
 
 export function resolveSyncConflict({ localRecord, metadata = {}, remoteRecord } = {}) {
-  const status = classifySyncChange({ localRecord, metadata, remoteRecord })
-
-  if (status === 'identical' || status === 'unchanged') {
-    return { action: 'none', status }
-  }
-  if (status === 'local_changed') return { action: 'upload', status }
-  if (status === 'remote_changed') return { action: 'download', status }
-  if (status === 'local_deleted') return { action: 'upload_tombstone', status }
-  if (status === 'remote_deleted') return { action: 'apply_remote_delete', status }
-
-  const merged = safeMergeSyncPayload(localRecord?.payload, remoteRecord?.payload)
-  if (!merged.conflict) {
-    return {
-      action: 'merge_upload',
-      checksum: calculateChecksum(stableSerialize(merged.payload)),
-      payload: merged.payload,
-      status,
-      strategy: merged.strategy,
-    }
-  }
-
-  return {
-    action: 'conflict',
+  const decision = resolveCloudSyncConflict({
     localRecord,
-    reason: merged.reason,
+    previousMetadata: metadata,
     remoteRecord,
-    status,
-  }
+    storageKey: localRecord?.storageKey || remoteRecord?.storageKey,
+  })
+
+  return toLegacySyncDecision(decision, localRecord, remoteRecord)
 }
 
 export function applyConflictChoice(conflict, choice) {
   if (!conflict || conflict.action !== 'conflict') return { ok: false, reason: 'Ingen konflikt att lösa.' }
   if (choice === 'local') return { ok: true, action: 'upload', record: conflict.localRecord }
   if (choice === 'remote') return { ok: true, action: 'download', record: conflict.remoteRecord }
+  if (choice === 'merge' && conflict.v3Decision?.mergePayload) {
+    return { ok: true, action: 'merge_upload', record: { ...conflict.localRecord, payload: conflict.v3Decision.mergePayload } }
+  }
 
-  return { ok: false, reason: 'Välj lokal eller molnversion.' }
+  return { ok: false, reason: 'Välj lokal, molnversion eller säker merge.' }
 }
 
 export const syncConflictResolverInternals = {

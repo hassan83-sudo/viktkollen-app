@@ -13,6 +13,7 @@ import {
 } from './syncMetadata.js'
 import {
   enqueueSyncAction,
+  getSyncQueueStatus,
   markSyncQueueOffline,
   markSyncQueueItemFailed,
   readSyncQueue,
@@ -21,6 +22,9 @@ import {
 import { applyConflictChoice, resolveSyncConflict } from './syncConflictResolver.js'
 import { applyIncomingSyncRecordSafely } from './syncRestoreSafety.js'
 import { classifyCloudError, cloudErrorCodes, getCloudErrorMessage } from '../cloudSyncErrors.js'
+import { appendCloudSyncHistoryEvent } from './cloudSyncHistory.js'
+import { buildMultiDeviceRegistry, summarizeMultiDeviceRegistry } from './multiDeviceRegistry.js'
+import { getCloudRecoveryStatus } from './cloudRecoveryEngine.js'
 
 export const cloudSyncTable = 'user_sync_items'
 
@@ -226,15 +230,26 @@ export function scanLocalSyncChanges(storage, now = new Date()) {
 }
 
 function addConflict(metadata, storageKey, conflict, timestamp) {
+  const v3Decision = conflict.v3Decision || {}
   return {
     ...metadata,
     conflicts: [
       {
         action: conflict.action,
+        v3Decision,
+        conflictId: v3Decision.conflictId || `sync-conflict-${storageKey}`,
+        conflictReason: v3Decision.conflictReason || conflict.reason || 'Lokal data och molndata har ändrats.',
         createdAt: timestamp,
+        dataType: storageKey,
         localRecord: conflict.localRecord,
+        localUpdatedAt: v3Decision.localUpdatedAt || conflict.localRecord?.clientUpdatedAt || '',
+        mergeEligibility: v3Decision.mergeEligibility || 'manual',
+        recommendedChoice: v3Decision.recommendedChoice || '',
         reason: conflict.reason || 'Både lokal data och molndata har ändrats.',
         remoteRecord: conflict.remoteRecord,
+        remoteUpdatedAt: v3Decision.remoteUpdatedAt || conflict.remoteRecord?.clientUpdatedAt || conflict.remoteRecord?.serverUpdatedAt || '',
+        resolvedAt: '',
+        resolution: '',
         storageKey,
       },
       ...metadata.conflicts.filter((item) => item.storageKey !== storageKey),
@@ -287,6 +302,10 @@ export async function runCloudSync(options = {}) {
   }
 
   syncRunning = true
+  appendCloudSyncHistoryEvent({
+    eventType: 'syncStarted',
+    safeSummary: 'Cloud sync startade.',
+  }, { now })
 
   try {
     const scan = scanLocalSyncChanges(resolvedStorage, now)
@@ -325,6 +344,7 @@ export async function runCloudSync(options = {}) {
         const uploaded = await uploadLocalRecord({ client, deviceId, record: localRecord, userId })
         metadata.keys[storageKey] = buildKeyMeta(localRecord, uploaded.remoteRevision)
         result.uploaded.push(storageKey)
+        appendCloudSyncHistoryEvent({ dataType: storageKey, deviceId, eventType: 'upload', safeSummary: 'Lokal ändring laddades upp.' }, { now })
         continue
       }
 
@@ -351,6 +371,7 @@ export async function runCloudSync(options = {}) {
         const applied = safeApply.applied
         metadata.keys[storageKey] = buildKeyMeta(applied || remoteRecord, remoteRecord.remoteRevision)
         result.downloaded.push(storageKey)
+        appendCloudSyncHistoryEvent({ dataType: storageKey, deviceId: remoteRecord.deviceId, eventType: 'download', safeSummary: 'Molnändring applicerades lokalt.' }, { now })
         continue
       }
 
@@ -372,11 +393,13 @@ export async function runCloudSync(options = {}) {
         const uploaded = await uploadLocalRecord({ client, deviceId, record: mergedRecord, userId })
         metadata.keys[storageKey] = buildKeyMeta(mergedRecord, uploaded.remoteRevision)
         result.uploaded.push(storageKey)
+        appendCloudSyncHistoryEvent({ dataType: storageKey, deviceId, eventType: 'safeMerge', safeSummary: 'Säker merge laddades upp.' }, { now })
         continue
       }
 
       metadata = addConflict(metadata, storageKey, decision, timestamp)
       result.conflicts.push(storageKey)
+      appendCloudSyncHistoryEvent({ dataType: storageKey, deviceId, eventType: 'manualConflict', safeSummary: decision.reason || 'Konflikt kräver användarval.' }, { now })
     }
 
     const pendingKeys = metadata.pendingKeys.filter((key) => result.conflicts.includes(key))
@@ -390,12 +413,18 @@ export async function runCloudSync(options = {}) {
     }, resolvedStorage)
     writeSyncQueue({ items: readSyncQueue(resolvedStorage).items.filter((item) => pendingKeys.includes(item.storageKey)) }, resolvedStorage)
 
-    return {
+    const finalResult = {
       ...result,
       ok: result.conflicts.length === 0,
       pendingCount: pendingKeys.length,
       status: result.conflicts.length ? 'conflict' : 'synced',
     }
+    appendCloudSyncHistoryEvent({
+      eventType: finalResult.ok ? 'syncSucceeded' : 'syncFailed',
+      result: finalResult.status,
+      safeSummary: finalResult.ok ? 'Cloud sync slutfördes.' : 'Cloud sync stoppades av konflikt.',
+    }, { now })
+    return finalResult
   } catch (error) {
     const queue = readSyncQueue(resolvedStorage)
     const dueItems = queue.items.filter((item) => item.status !== 'failed')
@@ -416,12 +445,19 @@ export async function runCloudSync(options = {}) {
       lastError: safeMessage,
     }, resolvedStorage)
 
-    return makeResult({
+    const failedResult = makeResult({
       ok: false,
       pendingCount: failedQueue.items.length || metadata.pendingKeys.length,
       status,
       error: safeMessage,
     })
+    appendCloudSyncHistoryEvent({
+      eventType: 'syncFailed',
+      result: status,
+      safeSummary: safeMessage,
+      technicalCode: errorCode,
+    }, { now })
+    return failedResult
   } finally {
     syncRunning = false
   }
@@ -475,6 +511,34 @@ export async function resolveStoredSyncConflict(storageKey, choice, options = {}
   }
 
   if (!userId) return makeResult({ ok: false, status: 'not_authenticated', error: 'Logga in för att lösa konflikten.' })
+  if (decision.action === 'merge_upload') {
+    const mergedRecord = {
+      ...decision.record,
+      checksum: calculateChecksum(stableSerialize(decision.record.payload ?? null)),
+      clientUpdatedAt: timestamp,
+      raw: stableSerialize(decision.record.payload ?? null),
+      sizeBytes: stableSerialize(decision.record.payload ?? null).length,
+    }
+    const resolvedStorage = getStorage(storage)
+    resolvedStorage?.setItem?.(storageKey, JSON.stringify(mergedRecord.payload ?? null))
+    const uploaded = await uploadLocalRecord({
+      client,
+      deviceId: metadata.deviceId || getOrCreateSyncDeviceId(storage),
+      record: mergedRecord,
+      userId,
+    })
+    writeSyncMetadata({
+      ...metadata,
+      conflicts: metadata.conflicts.filter((item) => item.storageKey !== storageKey),
+      keys: {
+        ...metadata.keys,
+        [storageKey]: buildKeyMeta(mergedRecord, uploaded.remoteRevision || timestamp),
+      },
+      pendingKeys: metadata.pendingKeys.filter((key) => key !== storageKey),
+    }, storage)
+    appendCloudSyncHistoryEvent({ dataType: storageKey, eventType: 'conflictResolved', safeSummary: 'Konflikt löstes med säker merge.' }, { now })
+    return makeResult({ status: 'resolved', uploaded: [storageKey] })
+  }
   const uploaded = await uploadLocalRecord({
     client,
     deviceId: metadata.deviceId || getOrCreateSyncDeviceId(storage),
@@ -497,6 +561,9 @@ export async function resolveStoredSyncConflict(storageKey, choice, options = {}
 export function getCloudSyncStatusModel(storage, online) {
   const metadata = readSyncMetadata(storage)
   const queue = readSyncQueue(storage)
+  const queueStatus = getSyncQueueStatus(queue, new Date(), getOnlineState(online))
+  const recovery = getCloudRecoveryStatus(storage)
+  const devices = summarizeMultiDeviceRegistry(buildMultiDeviceRegistry({ currentDeviceId: metadata.deviceId, metadata }))
   const isOnline = getOnlineState(online)
   const pendingCount = metadata.pendingKeys.length + queue.items.filter((item) => item.status !== 'failed').length
   const failedCount = queue.items.filter((item) => item.status === 'failed').length
@@ -525,18 +592,30 @@ export function getCloudSyncStatusModel(storage, online) {
   }
 
   return {
+    activeDeviceCount: devices.activeDeviceCount,
     conflicts: metadata.conflicts,
+    currentDevice: devices.currentDevice,
     deviceId: metadata.deviceId,
     enabled: metadata.enabled,
     failedCount,
+    failedItems: failedCount,
     isOnline,
     lastError: metadata.lastError,
+    lastRemoteDevice: '',
     lastSuccessfulSyncAt: metadata.lastSuccessfulSyncAt,
+    multiDevice: devices,
+    nextRetryAt: queueStatus.nextRetryAt,
+    pendingDownloads: queue.items.filter((item) => item.action === 'download' && item.status !== 'failed').length,
+    pendingUploads: queue.items.filter((item) => ['upload', 'delete'].includes(item.action) && item.status !== 'failed').length,
     pendingCount,
     queue,
+    queueStatus,
+    recoveryStatus: recovery.recoveryStatus,
     status: statusLabel,
     statusCode,
     statusLabel,
+    staleDeviceCount: devices.staleDeviceCount,
+    syncHealth: statusCode === 'synced' ? 'healthy' : statusCode === 'pending' ? 'pending' : statusCode === 'retry_waiting' ? 'retrying' : statusCode,
     waitingRetryCount,
   }
 }

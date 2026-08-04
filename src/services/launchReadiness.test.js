@@ -14,6 +14,8 @@ describe('launchReadiness', () => {
     expect(report.healthSnapshot.mealsToday).toBe(2)
     expect(report.photoAnalysis.routeConfigured).toBe('api/nutrition-photo-analysis')
     expect(report.photoAnalysis.maxFileSizeMb).toBe(8)
+    expect(report.sync.syncHealth).toBe('unknown')
+    expect(report.sync.queueHealth).toBe('unknown')
     expect(report.reminders.enabledCount).toBe(1)
     expect(JSON.stringify(report)).not.toContain('person@example.com')
     expect(JSON.stringify(report)).not.toContain('user-1234567890')

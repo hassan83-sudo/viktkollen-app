@@ -73,6 +73,7 @@ import * as userDataRepository from './services/userDataRepository.js'
 import { loadAiApiService, loadAiCoachV2Service, loadAiSuggestions, loadAiUserContext, loadProactiveCoachService, loadWeeklyReportService } from './services/ai/aiRuntimeLoader.js'
 import { prepareCoachChatSubmission, requestCoachChatReply } from './services/ai/aiChatController.js'
 import { useGlobalSyncScheduler } from './services/sync/useGlobalSyncScheduler.js'
+import { getSyncStatusSnapshot } from './services/sync/syncStatusStore.js'
 import {
   readReminderState,
   saveReminderState,
@@ -99,6 +100,7 @@ const ProgressDashboard = lazy(() => import('./components/ProgressDashboard.jsx'
 const ProgressPhotos = lazy(() => import('./components/ProgressPhotos.jsx'))
 const ReminderSettings = lazy(() => import('./components/ReminderSettings.jsx'))
 const ReminderCenter = lazy(() => import('./components/ReminderCenter.jsx'))
+const SyncHealthDashboard = lazy(() => import('./components/SyncHealthDashboard.jsx'))
 const SyncDiagnosticsPanel = lazy(() => import('./components/SyncDiagnosticsPanel.jsx'))
 
 const starterWeights = [
@@ -2753,7 +2755,7 @@ function App() {
             authSession={authSession}
             healthSnapshot={healthSnapshot}
             reminderState={reminderState}
-            syncStatus={{ status: authSession ? 'Auth aktiv' : 'Utloggad', userId: authSession?.user?.id || '' }}
+            syncStatus={{ ...getSyncStatusSnapshot(), userId: authSession?.user?.id || '' }}
           />
         </Suspense>
       )}
@@ -2795,6 +2797,15 @@ function App() {
           onDataChanged={refreshAppStateFromStorage}
           userId={authSession?.user?.id || ''}
         />
+        {import.meta.env.DEV && (
+          <Suspense fallback={null}>
+            <SyncHealthDashboard
+              isAuthenticated={Boolean(authSession)}
+              onDataChanged={refreshAppStateFromStorage}
+              userId={authSession?.user?.id || ''}
+            />
+          </Suspense>
+        )}
       </AppErrorBoundary>
 
       <Suspense fallback={<LazySectionFallback />}>

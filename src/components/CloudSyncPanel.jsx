@@ -168,7 +168,7 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
     <article className="panel cloud-sync-panel" id="cloud-sync">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Cloud Sync V2</p>
+          <p className="eyebrow">Cloud Sync V2/V3</p>
           <h2>Automatisk sync</h2>
         </div>
         <div className="cloud-sync-actions">
@@ -225,6 +225,14 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
           <span>Konflikter</span>
           <strong>{conflicts.length}</strong>
         </div>
+        <div>
+          <span>Sync health</span>
+          <strong>{status.syncHealth || status.statusCode}</strong>
+        </div>
+        <div>
+          <span>Enheter</span>
+          <strong>{status.activeDeviceCount ?? 1}</strong>
+        </div>
       </div>
 
       {(message || status.lastError) && (
@@ -243,8 +251,9 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
           {conflicts.map((conflict) => (
             <div className="cloud-sync-conflict" key={conflict.storageKey}>
               <div>
-                <strong>{conflict.storageKey}</strong>
-                <span>{conflict.reason || 'Lokal data och molndata skiljer sig.'}</span>
+                <strong>{conflict.dataType || conflict.storageKey}</strong>
+                <span>{conflict.conflictReason || conflict.reason || 'Lokal data och molndata skiljer sig.'}</span>
+                <span>Lokalt: {formatDateTime(conflict.localUpdatedAt)}. Moln: {formatDateTime(conflict.remoteUpdatedAt)}.</span>
               </div>
               <div className="cloud-sync-conflict-actions">
                 <button
@@ -263,6 +272,16 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
                 >
                   Använd moln
                 </button>
+                {conflict.mergeEligibility === 'safe' && (
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={() => resolveConflict(conflict.storageKey, 'merge')}
+                    disabled={isSyncing}
+                  >
+                    Säker merge
+                  </button>
+                )}
               </div>
             </div>
           ))}

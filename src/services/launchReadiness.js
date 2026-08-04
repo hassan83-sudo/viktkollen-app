@@ -58,11 +58,6 @@ export function buildLaunchReadinessReport({
       'Ingen extern observability är konfigurerad i klienten.',
       'Manuell Supabase/RLS-verifiering krävs före release.',
     ],
-    pwa: {
-      cacheVersion: PWA_CACHE_VERSION,
-      manifest: 'public/manifest.webmanifest',
-      serviceWorker: typeof navigator !== 'undefined' && 'serviceWorker' in navigator ? 'Stöds' : 'Saknas',
-    },
     photoAnalysis: {
       maxFileSizeMb: numberFromEnv('VITE_NUTRITION_PHOTO_MAX_FILE_MB', 8),
       mockMode: import.meta.env.MODE !== 'production',
@@ -72,6 +67,11 @@ export function buildLaunchReadinessReport({
       routeConfigured: 'api/nutrition-photo-analysis',
       timeoutMs: numberFromEnv('VITE_NUTRITION_PHOTO_TIMEOUT_MS', 15000),
     },
+    pwa: {
+      cacheVersion: PWA_CACHE_VERSION,
+      manifest: 'public/manifest.webmanifest',
+      serviceWorker: typeof navigator !== 'undefined' && 'serviceWorker' in navigator ? 'Stöds' : 'Saknas',
+    },
     reminders: {
       dueCount: reminderStatus.dueCount,
       enabledCount: reminderStatus.enabledCount,
@@ -79,7 +79,22 @@ export function buildLaunchReadinessReport({
       permissionState: reminderStatus.permissionState,
     },
     sync: {
-      status: syncStatus?.status || 'Okänt',
+      activeDeviceCount: syncStatus?.multiDevice?.activeDeviceCount || 0,
+      conflictCount: syncStatus?.conflicts?.length || 0,
+      failedItems: syncStatus?.failedItems || 0,
+      historySize: syncStatus?.historySize || 0,
+      lastRecovery: syncStatus?.recoveryStatus || 'ready',
+      lastSuccessfulSyncAt: syncStatus?.lastSuccessfulSyncAt || '',
+      multiDeviceHealth: syncStatus?.multiDevice?.staleDeviceCount ? 'stale-devices' : 'ok',
+      offlineReconnect: syncStatus?.online === false ? 'offline' : 'ready',
+      pendingDownloads: syncStatus?.pendingDownloads || 0,
+      pendingUploads: syncStatus?.pendingUploads || 0,
+      queueHealth: syncStatus?.queueStatus?.queueHealth || 'unknown',
+      recoveryHealth: syncStatus?.recoveryStatus || 'ready',
+      retryBacklog: syncStatus?.queueStatus?.dueCount || 0,
+      staleDeviceCount: syncStatus?.multiDevice?.staleDeviceCount || 0,
+      status: syncStatus?.status || syncStatus?.statusLabel || 'Okänt',
+      syncHealth: syncStatus?.syncHealth || syncStatus?.statusCode || 'unknown',
       userId: syncStatus?.userId ? mask(syncStatus.userId) : 'Saknas',
     },
   }

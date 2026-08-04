@@ -1,5 +1,8 @@
 import { readSyncMetadata } from './syncMetadata.js'
-import { readSyncQueue } from './syncQueue.js'
+import { getSyncQueueStatus, readSyncQueue } from './syncQueue.js'
+import { summarizeCloudSyncHistory } from './cloudSyncHistory.js'
+import { buildMultiDeviceRegistry, summarizeMultiDeviceRegistry } from './multiDeviceRegistry.js'
+import { getCloudRecoveryStatus } from './cloudRecoveryEngine.js'
 
 const listeners = new Set()
 const defaultCoordinationStatus = {
@@ -23,6 +26,10 @@ function getOnlineState() {
 function buildStatus(overrides = {}) {
   const metadata = readSyncMetadata()
   const queue = readSyncQueue()
+  const queueStatus = getSyncQueueStatus(queue, new Date(), getOnlineState())
+  const historySummary = summarizeCloudSyncHistory()
+  const multiDevice = summarizeMultiDeviceRegistry(buildMultiDeviceRegistry({ currentDeviceId: metadata.deviceId, metadata }))
+  const recovery = getCloudRecoveryStatus(typeof localStorage !== 'undefined' ? localStorage : null)
   const pendingQueueItems = queue.items.filter((item) => item.status !== 'failed')
   const retryAt = pendingQueueItems
     .map((item) => item.nextAttemptAt)
@@ -57,17 +64,28 @@ function buildStatus(overrides = {}) {
 
   return {
     conflict,
+    conflicts: metadata.conflicts,
+    currentDevice: multiDevice.currentDevice,
     currentTrigger: overrides.currentTrigger || '',
     dirty,
     enabled: metadata.enabled,
     error: metadata.lastError,
+    failedItems: queueStatus.failedCount,
+    historySize: historySummary.size,
     lastSuccessfulSyncAt: metadata.lastSuccessfulSyncAt,
+    multiDevice,
+    nextRetryAt: queueStatus.nextRetryAt,
     online,
+    pendingDownloads: queue.items.filter((item) => item.action === 'download' && item.status !== 'failed').length,
+    pendingUploads: queue.items.filter((item) => ['upload', 'delete'].includes(item.action) && item.status !== 'failed').length,
     pendingCount: metadata.pendingKeys.length + pendingQueueItems.length,
+    queueStatus,
+    recoveryStatus: recovery.recoveryStatus,
     retryAt,
     running,
     statusCode,
     statusLabel,
+    syncHealth: statusCode === 'synced' ? 'healthy' : statusCode === 'dirty' ? 'pending' : statusCode === 'retry_waiting' ? 'retrying' : statusCode,
     syncCoordination: { ...coordinationStatus },
     userId: overrides.userId || '',
   }

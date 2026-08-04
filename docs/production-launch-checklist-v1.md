@@ -47,6 +47,21 @@
 - Cross-tab leader takeover fungerar efter stängd leader.
 - Stora payloads stoppas med begripligt fel.
 
+## Cloud Sync V3
+
+- Två riktiga enheter med samma konto kan synka utan dubbla uploads.
+- Lokal ändring på enhet A och remote ändring på enhet B får rätt beslut: lokal vinner, moln vinner, säker merge eller manuell konflikt.
+- Säker merge används bara när olika stabila objekt kan slås ihop deterministiskt.
+- Samma objekt ändrat på två enheter visas som manuell konflikt.
+- Manuell konflikt kan lösas med lokal version, molnversion eller säker merge när den är tillåten.
+- Offlineändringar köas och skickas efter reconnect utan syncstorm.
+- Tombstone/radering skrivs inte över tyst av äldre aktiv data.
+- Stale enheter visas som gamla utan att full user agent, IP eller rå device-id exponeras.
+- Restore på ny enhet skapar skydd och kan återhämta sig vid fel.
+- Logout eller användarbyte under väntande sync visar inte tidigare användares status eller data.
+- Sync History och diagnostics innehåller inte rå payload, token, session, e-post, bilder eller hälsodata.
+- Development-panelen Sync Health är lazy-loaded och ska inte modulepreloadas i production.
+
 ## PWA
 
 - `manifest.webmanifest` är nåbart.

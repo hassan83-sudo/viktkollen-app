@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "status": "CONDITIONAL",
+  "generatedAt": "2026-08-04T00:00:00.000Z",
+  "environment": {
+    "kind": "local-codex-workspace",
+    "externalDeploymentUrl": "not_recorded",
+    "supabaseUrl": "configured",
+    "supabaseAnonKey": "configured",
+    "serverOpenAiKey": "configured",
+    "credentialsStoredInRepo": false
+  },
+  "accounts": {
+    "testUserA": "not_tested",
+    "testUserB": "not_tested",
+    "credentialsRedacted": true
+  },
+  "results": {
+    "realSupabaseAuth": "not_tested",
+    "rlsUserIsolation": "not_tested",
+    "multiDeviceSync": "not_tested",
+    "conflictResolution": "not_tested",
+    "crossTabCoordination": "not_tested",
+    "cloudBackup": "not_tested",
+    "cloudRestore": "not_tested",
+    "importV2": "not_tested",
+    "exportV2": "not_tested",
+    "nutritionPhotoRoute": "not_tested",
+    "notificationsV3": "not_tested",
+    "pwaInstallOfflineUpdate": "not_tested",
+    "featureReachability": "automated_local_covered",
+    "socialPrivacy": "automated_local_covered",
+    "achievements": "automated_local_covered",
+    "dashboardCoachReports": "automated_local_covered",
+    "accessibilitySmoke": "automated_local_covered",
+    "consoleNetworkSmoke": "automated_local_covered",
+    "vercelAcceptance": "not_tested"
+  },
+  "findings": [
+    {
+      "id": "MRA-V2-001",
+      "area": "External acceptance",
+      "severity": "accepted_limitation",
+      "status": "open",
+      "expected": "Real staging or production-like acceptance is executed with two dedicated test users.",
+      "actual": "External credentials, test accounts and deployment were not available in this Codex session.",
+      "fix": "Run docs/manual-release-acceptance-v2.md in staging or production preview.",
+      "verification": "Pending manual acceptance."
+    },
+    {
+      "id": "MRA-V2-002",
+      "area": "Documentation",
+      "severity": "documentation_only",
+      "status": "fixed",
+      "expected": "V2 acceptance guide and safe result files exist.",
+      "actual": "Guide and result files were created without credentials.",
+      "fix": "Documentation added.",
+      "verification": "Automated release gate to be run after documentation changes."
+    }
+  ],
+  "releaseDecision": {
+    "status": "CONDITIONAL",
+    "reason": "Automated local checks can verify regression safety, but real Supabase, RLS, multi-device sync, backup/restore, notifications, photo route and Vercel acceptance remain manual."
+  }
+}

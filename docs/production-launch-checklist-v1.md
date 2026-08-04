@@ -196,3 +196,11 @@
 - Invite tokens ar lokala modeller och skickas inte automatiskt.
 - Leaderboard ar endast opt-in och far inte anvanda vikt eller medicinsk data.
 - Social readiness, privacy readiness och sharing readiness syns i Launch Readiness.
+
+## Manual Release Acceptance V2
+
+- `docs/manual-release-acceptance-v2.md` ska koras med Test User A och Test User B innan READY.
+- Riktig Supabase Auth, RLS, Cloud Sync V3, Backup/Restore och Vercel acceptance ska verifieras i staging eller production preview.
+- Nutrition photo route ska verifieras med syntetisk matbild utan persondata om remote photo analysis ar releasekrav.
+- Notifications ska verifieras enligt browserstod och far inte skicka kanslig text.
+- Nuvarande dokumenterat lage ar CONDITIONAL tills externa acceptance-steg ar genomforda.

@@ -52,6 +52,10 @@ Atgard: `/assets/...` undantas nu fran API/auth-bypass innan Supabase/API-regler
 
 Se `docs/manual-release-acceptance-v1.md` for stegvis acceptance-guide och `docs/manual-release-acceptance-template.json` for anonymiserad rapportmall.
 
+## Manual Release Acceptance V2
+
+`docs/manual-release-acceptance-v2.md` ar skapad for den sista externa acceptance-korningen med Test User A och Test User B. Aktuellt V2-resultat ar CONDITIONAL eftersom riktig Supabase, RLS, multi-device sync, backup/restore, notifications, nutrition photo route och Vercel acceptance inte kan bevisas i lokal Codex-session utan externa testkonton och deployment.
+
 ## Release-status
 
 Automatiserad releasevalidering ar avsedd att koras med:

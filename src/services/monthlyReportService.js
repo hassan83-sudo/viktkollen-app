@@ -17,6 +17,7 @@ import { buildAdaptiveCoachStrategy } from './adaptiveCoachStrategy.js'
 import { buildPhotoAnalysisUsageSummary } from './nutritionPhotoAnalysis.js'
 import { buildInsightsEngine } from './insights/insightsEngine.js'
 import { buildAchievementSummary } from './achievements/achievementEngine.js'
+import { buildSocialSummary } from './social/socialEngine.js'
 
 function safeArray(value) {
   return Array.isArray(value) ? value : []
@@ -244,6 +245,10 @@ export function createMonthlyHealthReport(data = {}) {
     ...data,
     healthSnapshot: snapshot,
   }, { analysisDate: data.today })
+  const social = buildSocialSummary({
+    ...data,
+    healthSnapshot: snapshot,
+  }, { analysisDate: data.today })
   const recentMeals = safeArray(actualMeals).filter((entry) =>
     isLocalDateInRange(getMealDate(entry), reportRange),
   )
@@ -293,10 +298,12 @@ export function createMonthlyHealthReport(data = {}) {
     photoAnalysis,
     insights,
     achievements,
+    social,
     sharedAnalytics: {
       ...sharedReport,
       coachFeedback: coachEffectiveness,
       achievements,
+      social,
     },
     totalMeals,
     weighInCount: recentWeights.length,

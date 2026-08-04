@@ -15,6 +15,7 @@ import { buildAdaptiveCoachStrategy } from './adaptiveCoachStrategy.js'
 import { buildPhotoAnalysisUsageSummary } from './nutritionPhotoAnalysis.js'
 import { buildInsightsEngine } from './insights/insightsEngine.js'
 import { buildAchievementSummary } from './achievements/achievementEngine.js'
+import { buildSocialSummary } from './social/socialEngine.js'
 
 function getMealPattern(mealHistory = [], meals = []) {
   if (mealHistory.length > 0) {
@@ -98,6 +99,10 @@ export function makeWeeklyReportFallback(data) {
     ...data,
     healthSnapshot: snapshot,
   }, { analysisDate: data.today })
+  const social = buildSocialSummary({
+    ...data,
+    healthSnapshot: snapshot,
+  }, { analysisDate: data.today })
 
   return {
     biggestProgress:
@@ -127,6 +132,7 @@ export function makeWeeklyReportFallback(data) {
     photoAnalysis,
     insights,
     achievements,
+    social,
     goalsHabits: goalsHabitsSummary,
     movement:
       sharedReport.summaries.activity ||
@@ -162,6 +168,7 @@ export function makeWeeklyReportFallback(data) {
       coachFeedback,
       insights,
       achievements,
+      social,
     },
   }
 }

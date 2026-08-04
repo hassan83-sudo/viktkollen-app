@@ -318,6 +318,9 @@ function HealthDashboardV2({
             <Metric label="Achievement score" value={model.achievements?.totalXp ?? 0} />
             <Metric label="Nivå" value={model.achievements?.levelTitle || 'Saknas'} />
             <Metric label="Delmål" value={model.achievements?.milestoneCount ?? 0} />
+            <Metric label="Social" value={model.social?.friendCount ?? 0} />
+            <Metric label="Delade mål" value={model.social?.sharedGoalCount ?? 0} />
+            <Metric label="Sharing" value={model.social?.sharingReady ? 'Redo' : 'Privat'} />
           </div>
         </Card>
 

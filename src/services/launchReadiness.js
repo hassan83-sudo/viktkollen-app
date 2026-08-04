@@ -5,6 +5,7 @@ import { buildReminderStatus } from './reminders/reminderScheduler.js'
 import { buildNotificationPlan } from './notifications/notificationEngine.js'
 import { buildInsightsEngine } from './insights/insightsEngine.js'
 import { buildAchievementSummary } from './achievements/achievementEngine.js'
+import { buildSocialSummary } from './social/socialEngine.js'
 
 function mask(value) {
   const text = String(value || '')
@@ -49,6 +50,10 @@ export function buildLaunchReadinessReport({
     healthSnapshot,
     reminderState,
   })
+  const social = buildSocialSummary({
+    healthSnapshot,
+    reminderState,
+  })
 
   return {
     appVersion: PWA_APP_VERSION,
@@ -81,6 +86,9 @@ export function buildLaunchReadinessReport({
       lastSafeImportResult: 'Sessionsbaserad',
       pendingImport: 'Ingen persistent importko',
       storageHealth: hasStorage() ? 'Tillganglig' : 'Saknas',
+      socialReadiness: social.friendCount >= 0 ? 'Redo' : 'Begransad',
+      privacyReadiness: social.privacyLabel,
+      sharingReadiness: social.sharingReady ? 'Aktiv' : 'Private first',
       syncAllowedReminders: isAllowedSyncStorageKey(userDataKeys.remindersV2),
       syncedBackupKeys: getBackupStorageKeys().length,
       trendCoverage: `${insights.coverage}%`,

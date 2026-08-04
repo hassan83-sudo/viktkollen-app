@@ -256,6 +256,15 @@ function MonthlyReport({ report }) {
         </div>
       )}
 
+      {report.social && (
+        <div className="report-card">
+          <p className="report-heading">Social & accountability</p>
+          <p>{report.social.friendCount} vänner och {report.social.partnerCount} accountability partners.</p>
+          <p>Delade mål: {report.social.sharedGoalCount}. Delade challenges: {report.social.sharedChallengeCount}.</p>
+          <p>Privacy: {report.social.privacyLabel}. Sharing: {report.social.sharingReady ? 'redo' : 'privat'}.</p>
+        </div>
+      )}
+
       <p className="estimate-note">
         Rapporten skapas lokalt från sparad data och är allmänt stöd för vanor,
         inte medicinsk rådgivning.

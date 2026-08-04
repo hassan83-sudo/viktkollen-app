@@ -17,11 +17,13 @@ describe('Performance Architecture V2 contracts', () => {
     expect(source).toContain("const NotificationCenter = lazy(() => import('./components/NotificationCenter.jsx'))")
     expect(source).toContain("const InsightsCenter = lazy(() => import('./components/InsightsCenter.jsx'))")
     expect(source).toContain("const AchievementCenter = lazy(() => import('./components/AchievementCenter.jsx'))")
+    expect(source).toContain("const SocialCenter = lazy(() => import('./components/SocialCenter.jsx'))")
     expect(source).toContain("const DataImportCenter = lazy(() => import('./components/DataImportCenter.jsx'))")
     expect(source).toContain("const DataExportCenter = lazy(() => import('./components/DataExportCenter.jsx'))")
     expect(source).not.toContain("from './services/import/")
     expect(source).not.toContain("from './services/export/")
     expect(source).not.toContain("from './services/achievements/")
+    expect(source).not.toContain("from './services/social/")
     expect(source).not.toContain("from './services/notifications/notificationEngine.js'")
   })
 

@@ -188,3 +188,11 @@
 - Safety-filter blockerar skuld, straff, extrem viktminskning och lag kalorikonsumtion.
 - XP ar capped och anvands inte som valuta, ranking eller leaderboard.
 - Challenges sparas forst nar anvandaren aktivt startar eller avfardar dem.
+
+## Social & Accountability V1
+
+- SocialCenter ar lazy-loaded och ska inte modulepreloadas.
+- Progressdelning ar private-first och share preview anonymiserar kansliga falt.
+- Invite tokens ar lokala modeller och skickas inte automatiskt.
+- Leaderboard ar endast opt-in och far inte anvanda vikt eller medicinsk data.
+- Social readiness, privacy readiness och sharing readiness syns i Launch Readiness.

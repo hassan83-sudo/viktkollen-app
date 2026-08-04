@@ -224,6 +224,13 @@ function WeeklyReport({
                   <p>Coverage: {weeklyReportData.achievements.coverage}%. Confidence: {weeklyReportData.achievements.confidence}%.</p>
                 </div>
               )}
+              {weeklyReportData.social && (
+                <div>
+                  <p className="report-heading">Social delning</p>
+                  <p>{weeklyReportData.social.friendCount} vänner och {weeklyReportData.social.partnerCount} accountability partners.</p>
+                  <p>Delade mål: {weeklyReportData.social.sharedGoalCount}. Sharing: {weeklyReportData.social.sharingReady ? 'redo' : 'privat'}.</p>
+                </div>
+              )}
               <p className="estimate-note">
                 Rapporten är allmänt stöd för hälsa och vanor, inte medicinsk
                 rådgivning.

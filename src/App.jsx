@@ -104,6 +104,7 @@ const ProgressDashboard = lazy(() => import('./components/ProgressDashboard.jsx'
 const ProgressPhotos = lazy(() => import('./components/ProgressPhotos.jsx'))
 const ReminderSettings = lazy(() => import('./components/ReminderSettings.jsx'))
 const ReminderCenter = lazy(() => import('./components/ReminderCenter.jsx'))
+const SocialCenter = lazy(() => import('./components/SocialCenter.jsx'))
 const SyncHealthDashboard = lazy(() => import('./components/SyncHealthDashboard.jsx'))
 const SyncDiagnosticsPanel = lazy(() => import('./components/SyncDiagnosticsPanel.jsx'))
 
@@ -2955,6 +2956,18 @@ function App() {
             healthSnapshot={healthSnapshot}
             meals={meals}
             onGoalsHabitsChange={setGoalsHabits}
+            profile={validatedProfile}
+            reminderState={reminderState}
+            weights={centralWeightStats.weights}
+          />
+
+          <SocialCenter
+            adaptiveCoachFeedback={adaptiveCoachFeedback}
+            analysisDate={selectedMealDate}
+            checkIn={checkIn}
+            goalsHabits={goalsHabits}
+            healthSnapshot={healthSnapshot}
+            meals={meals}
             profile={validatedProfile}
             reminderState={reminderState}
             weights={centralWeightStats.weights}

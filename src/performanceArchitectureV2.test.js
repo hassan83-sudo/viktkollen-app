@@ -14,6 +14,8 @@ describe('Performance Architecture V2 contracts', () => {
     expect(source).not.toContain("from './services/cloudBackupSchema.js'")
     expect(source).not.toContain("from './services/sync/cloudSyncEngine.js'")
     expect(source).toContain("const SyncHealthDashboard = lazy(() => import('./components/SyncHealthDashboard.jsx'))")
+    expect(source).toContain("const NotificationCenter = lazy(() => import('./components/NotificationCenter.jsx'))")
+    expect(source).not.toContain("from './services/notifications/notificationEngine.js'")
   })
 
   it('loads cloud status and sync services through the runtime loader', () => {

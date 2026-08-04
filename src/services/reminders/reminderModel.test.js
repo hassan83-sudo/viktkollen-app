@@ -35,4 +35,17 @@ describe('reminderModel', () => {
 
     expect(normalizeReminderState({ reminders }).reminders).toHaveLength(reminderMaxCount)
   })
+
+  it('preserves Notifications V3 data inside the synced reminder state', () => {
+    const state = normalizeReminderState({
+      notificationsV3: {
+        history: [{ at: '2026-08-04T10:00:00.000Z', id: 'n1', sourceIdMasked: 'ref-1', status: 'delivered', title: 'Måltid' }],
+        settings: { batchingWindowMinutes: 45, quietHours: { end: '06:30', start: '21:30' } },
+      },
+    })
+
+    expect(state.notificationsV3.version).toBe(3)
+    expect(state.notificationsV3.history).toHaveLength(1)
+    expect(state.notificationsV3.settings.quietHours.start).toBe('21:30')
+  })
 })

@@ -61,5 +61,15 @@
   "releaseDecision": {
     "status": "CONDITIONAL",
     "reason": "Automated local checks can verify regression safety, but real Supabase, RLS, multi-device sync, backup/restore, notifications, photo route and Vercel acceptance remain manual."
+  },
+  "enablement": {
+    "status": "prepared",
+    "stagingValidator": "available",
+    "supabaseReadOnlyChecks": "available",
+    "photoRoutePreflight": "available",
+    "previewVerifier": "available",
+    "manualRunner": "development_only",
+    "fixtures": "TESTDATA_RELEASE_ACCEPTANCE_V1",
+    "externalManualVerification": "still_required"
   }
 }

@@ -56,6 +56,12 @@ Se `docs/manual-release-acceptance-v1.md` for stegvis acceptance-guide och `docs
 
 `docs/manual-release-acceptance-v2.md` ar skapad for den sista externa acceptance-korningen med Test User A och Test User B. Aktuellt V2-resultat ar CONDITIONAL eftersom riktig Supabase, RLS, multi-device sync, backup/restore, notifications, nutrition photo route och Vercel acceptance inte kan bevisas i lokal Codex-session utan externa testkonton och deployment.
 
+## Staging & Real Acceptance Enablement V1
+
+- Staging validator, preview verifier, photo route preflight och read-only Supabase checks ar tillagda.
+- Deterministiska development-only TESTDATA fixtures och ManualAcceptanceRunner ar tillagda.
+- Release-status forblir CONDITIONAL tills anvandaren kor riktig extern Manual Release Acceptance V2.
+
 ## Release-status
 
 Automatiserad releasevalidering ar avsedd att koras med:

@@ -204,3 +204,11 @@
 - Nutrition photo route ska verifieras med syntetisk matbild utan persondata om remote photo analysis ar releasekrav.
 - Notifications ska verifieras enligt browserstod och far inte skicka kanslig text.
 - Nuvarande dokumenterat lage ar CONDITIONAL tills externa acceptance-steg ar genomforda.
+
+## Staging & Real Acceptance Enablement V1
+
+- Kor `npm run validate:staging` utan att exponera env-varden.
+- Kor `supabase/release_acceptance_checks.sql` i Supabase SQL Editor och bekrafta RLS/user ownership manuellt.
+- Kor `npm run verify:preview -- https://preview-url` mot vald Vercel preview.
+- Anvand `ManualAcceptanceRunner` endast i development for PASS/FAIL/BLOCKED/NOT RUN pa externa floden.
+- Skapa och rensa endast markerad `TESTDATA_RELEASE_ACCEPTANCE_V1`.

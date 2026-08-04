@@ -140,3 +140,14 @@
 - Skapa manuell backup/export dar UI stoder det.
 - Avregistrera service worker och ladda om online.
 - Undvika restore tills problemet ar forstatt.
+
+## Acceptance Test Data Incident
+
+Om staging acceptance-testdata syns i fel konto eller inte kan rensas sakert:
+
+1. Stoppa acceptance-korningen.
+2. Kor ingen bred cleanup-query.
+3. Identifiera endast poster markerade `TESTDATA_RELEASE_ACCEPTANCE_V1`.
+4. Bekrafta Test User A/B scope i Supabase.
+5. Anvand cleanup-guiden och read-only SQL-checks fore mutation.
+6. Markera release `NOT READY` om cross-user visibility bekraftas.

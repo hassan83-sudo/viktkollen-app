@@ -289,3 +289,18 @@ NOT READY:
 - silent sync overwrite
 - exposed secret
 - production crash
+
+## Staging Enablement
+
+Anvand dessa hjalpmedel innan den riktiga externa passningen:
+
+- `npm run validate:staging`
+- `npm run verify:photo-route`
+- `npm run verify:preview -- https://preview-url`
+- `supabase/release_acceptance_checks.sql`
+- `docs/staging-real-acceptance-enablement-v1.md`
+- `docs/staging-setup-checklist-v1.md`
+- `docs/two-user-two-device-test-guide-v1.md`
+- `docs/test-data-cleanup-guide-v1.md`
+
+Hjalpmedlen rapporterar endast sakra statusar. De markerar inte riktig Supabase, RLS, multi-device, notification, photo-provider eller Vercel som manuellt verifierade.

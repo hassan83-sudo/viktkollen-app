@@ -81,3 +81,7 @@ Motivering: lokal automation kan vara gron, men sprintens huvudkrav ar verkliga 
 3. Dokumentera resultat i en kopia av `docs/manual-release-acceptance-v2-result.json`.
 4. Markera NOT READY vid cross-user access, data loss, exposed secret, silent overwrite eller restore blocker.
 5. Markera READY endast nar auth, RLS, sync, backup/restore, PWA, notifications och photo route ar verifierade eller explicit ej releasekrav.
+
+## Enablement Update
+
+Staging & Real Acceptance Enablement V1 lade till sakra lokala validators, read-only Supabase checks, deterministiska TESTDATA-fixtures, development-only ManualAcceptanceRunner, preview verification och cleanup-guide. Dessa verktyg forbereder den manuella passningen men ersatter den inte.

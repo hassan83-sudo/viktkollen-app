@@ -96,6 +96,9 @@ const GoalsHabitsPanel = lazy(() => import('./components/GoalsHabitsPanel.jsx'))
 const HealthDashboardV2 = lazy(() => import('./components/HealthDashboardV2.jsx'))
 const InsightsCenter = lazy(() => import('./components/InsightsCenter.jsx'))
 const LaunchReadinessPanel = lazy(() => import('./components/LaunchReadinessPanel.jsx'))
+const ManualAcceptanceRunner = import.meta.env.DEV
+  ? lazy(() => import('./components/ManualAcceptanceRunner.jsx'))
+  : null
 const MealLogger = lazy(() => import('./components/MealLogger.jsx'))
 const MonthlyReport = lazy(() => import('./components/MonthlyReport.jsx'))
 const NotificationCenter = lazy(() => import('./components/NotificationCenter.jsx'))
@@ -2787,6 +2790,9 @@ function App() {
             authSession={authSession}
             healthSnapshot={healthSnapshot}
             reminderState={reminderState}
+            syncStatus={{ ...getSyncStatusSnapshot(), userId: authSession?.user?.id || '' }}
+          />
+          <ManualAcceptanceRunner
             syncStatus={{ ...getSyncStatusSnapshot(), userId: authSession?.user?.id || '' }}
           />
         </Suspense>

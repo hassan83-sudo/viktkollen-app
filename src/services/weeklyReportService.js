@@ -12,6 +12,7 @@ import { buildCoachActionSummary } from './adaptiveCoachActions.js'
 import { buildAdaptiveCoachTimelineSummary } from './adaptiveCoachTimeline.js'
 import { buildAdaptiveCoachPatternSummary } from './adaptiveCoachPatterns.js'
 import { buildAdaptiveCoachStrategy } from './adaptiveCoachStrategy.js'
+import { buildPhotoAnalysisUsageSummary } from './nutritionPhotoAnalysis.js'
 
 function getMealPattern(mealHistory = [], meals = []) {
   if (mealHistory.length > 0) {
@@ -86,6 +87,7 @@ export function makeWeeklyReportFallback(data) {
     period: '7d',
     now: data.today ? `${data.today}T12:00:00.000Z` : undefined,
   })
+  const photoAnalysis = buildPhotoAnalysisUsageSummary(snapshot.nutrition.actualMeals || data.meals, sharedReport.period)
 
   return {
     biggestProgress:
@@ -112,6 +114,7 @@ export function makeWeeklyReportFallback(data) {
       nextStep: coachStrategy.recommendations[0]?.action || 'Samla mer underlag innan veckoplanen blir personlig.',
       status: 'Utkast skapas i Adaptive Coach efter bekräftelse.',
     },
+    photoAnalysis,
     goalsHabits: goalsHabitsSummary,
     movement:
       sharedReport.summaries.activity ||

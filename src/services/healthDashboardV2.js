@@ -9,6 +9,7 @@ import {
   healthDashboardPeriodDefinitions,
 } from './healthDashboardPeriodEngine.js'
 import { buildSharedAnalytics } from './sharedAnalyticsEngine.js'
+import { buildPhotoAnalysisUsageSummary } from './nutritionPhotoAnalysis.js'
 
 export const healthDashboardV2ModelVersion = 2
 export const healthDashboardPeriods = healthDashboardPeriodDefinitions
@@ -335,6 +336,7 @@ export function buildHealthDashboardV2Model(data = {}, options = {}) {
   })
   const model = shared.dashboardModel
   const insightSummary = buildInsightSummary(insightReport)
+  const photoAnalysisSummary = buildPhotoAnalysisUsageSummary(shared.analysis.nutrition?.meals || data.meals || [], shared.period)
 
   return {
     ...model,
@@ -347,6 +349,7 @@ export function buildHealthDashboardV2Model(data = {}, options = {}) {
     },
     insightsSummary: insightSummary,
     modelVersion: healthDashboardV2ModelVersion,
+    photoAnalysisSummary,
     nextActions: buildNextActions({
       attentionItems: model.attentionItems,
       goals: model.goalsSummary,

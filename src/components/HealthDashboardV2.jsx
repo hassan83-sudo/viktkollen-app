@@ -261,6 +261,15 @@ function HealthDashboardV2({
           <TrendMiniChart series={model.trendSeries.nutrition[1]} />
         </Card>
 
+        <Card actionHref="#nutrition-scanner-v2" actionText="Öppna scanner" heading="Fotoanalys" text={model.photoAnalysisSummary?.text || 'Inga fotoanalyserade måltider i perioden.'}>
+          <div className="health-dashboard-metrics">
+            <Metric label="Fotoanalyser" value={model.photoAnalysisSummary?.photoMealCount ?? 0} />
+            <Metric label="Redigerade" value={model.photoAnalysisSummary?.editedCount ?? 0} />
+            <Metric label="Låg confidence" value={model.photoAnalysisSummary?.lowConfidenceCount ?? 0} />
+          </div>
+          <p>Bilddata sparas inte i rapporter, sync eller backup.</p>
+        </Card>
+
         <Card actionHref="#checkin" actionText="Gå till check-in" heading="Aktivitet & check-in" text={model.activitySummary.textAlternative}>
           <div className="health-dashboard-metrics">
             <Metric label="Check-ins" value={model.activitySummary.checkInCount} />

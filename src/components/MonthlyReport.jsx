@@ -226,6 +226,17 @@ function MonthlyReport({ report }) {
         </div>
       )}
 
+      {report.photoAnalysis && (
+        <div className="report-card">
+          <p className="report-heading">Fotoanalys och datakvalitet</p>
+          <p>{report.photoAnalysis.text}</p>
+          <p>
+            Hög: {report.photoAnalysis.confidenceCounts.high}. Medel: {report.photoAnalysis.confidenceCounts.medium}.
+            Låg/otillräcklig: {report.photoAnalysis.lowConfidenceCount}.
+          </p>
+        </div>
+      )}
+
       <p className="estimate-note">
         Rapporten skapas lokalt från sparad data och är allmänt stöd för vanor,
         inte medicinsk rådgivning.

@@ -58,6 +58,7 @@ import {
 
 const AIMealGenerator = lazy(() => import('./AIMealGenerator.jsx'))
 const MonthlyNutritionDashboard = lazy(() => import('./MonthlyNutritionDashboard.jsx'))
+const NutritionScannerV2 = lazy(() => import('./NutritionScannerV2.jsx'))
 const RecipeManager = lazy(() => import('./RecipeManager.jsx'))
 const WeeklyMealPlanner = lazy(() => import('./WeeklyMealPlanner.jsx'))
 const WeeklyNutritionDashboard = lazy(() => import('./WeeklyNutritionDashboard.jsx'))
@@ -177,6 +178,7 @@ function MealLogger({
   const [mealTemplates, setMealTemplates] = useState(() => readMealTemplates())
   const [nutritionViewMode, setNutritionViewMode] = useState('day')
   const [recipes, setRecipes] = useState(() => readRecipes())
+  const [scannerOpen, setScannerOpen] = useState(false)
   const [weekStart, setWeekStart] = useState(() => getWeekStart(selectedMealDate))
 
   const normalizedMeals = useMemo(() => normalizeMeals(meals), [meals])
@@ -455,6 +457,11 @@ function MealLogger({
     onMealsChange([meal, ...normalizedMeals])
     changeSelectedDate(meal.date)
     return true
+  }
+
+  function handleScannerMealSaved(meal) {
+    setLastMealEdit({ after: meal, before: null })
+    changeSelectedDate(meal.date)
   }
 
   function editFavorite(favorite) {
@@ -798,6 +805,40 @@ function MealLogger({
         onFileChange={importNutrition}
         onOpenImport={() => fileInputRef.current?.click()}
       />
+
+      <div className="photo-meal-tool scanner-tool">
+        <div>
+          <p className="eyebrow">Ny scanner</p>
+          <h3>Nutrition Scanner V2</h3>
+          <p>
+            Välj eller ta ett matfoto, granska uppskattningen och spara först när du har bekräftat värdena.
+          </p>
+        </div>
+        <button
+          aria-controls="nutrition-scanner-v2"
+          aria-expanded={scannerOpen}
+          className="secondary-button"
+          type="button"
+          onClick={() => setScannerOpen((current) => !current)}
+        >
+          {scannerOpen ? 'Dölj Nutrition Scanner' : 'Analysera matfoto'}
+        </button>
+      </div>
+
+      {scannerOpen && (
+        <div id="nutrition-scanner-v2">
+          <Suspense fallback={<div className="photo-meal-tool" role="status">Laddar Nutrition Scanner...</div>}>
+            <NutritionScannerV2
+              analysisDate={selectedMealDate}
+              meals={normalizedMeals}
+              onClose={() => setScannerOpen(false)}
+              onMealSaved={handleScannerMealSaved}
+              onMealsChange={onMealsChange}
+              selectedMealDate={selectedMealDate}
+            />
+          </Suspense>
+        </div>
+      )}
 
       <PhotoAnalysis
         displayPhotoMeals={displayPhotoMeals}

@@ -200,6 +200,13 @@ function WeeklyReport({
                   <p>{weeklyReportData.coachStrategy.explanation}</p>
                 </div>
               )}
+              {weeklyReportData.photoAnalysis && (
+                <div>
+                  <p className="report-heading">Fotoanalyserad mat</p>
+                  <p>{weeklyReportData.photoAnalysis.text}</p>
+                  <p>Låg confidence: {weeklyReportData.photoAnalysis.lowConfidenceCount}. Bilddata sparas inte i rapporten.</p>
+                </div>
+              )}
               <p className="estimate-note">
                 Rapporten är allmänt stöd för hälsa och vanor, inte medicinsk
                 rådgivning.

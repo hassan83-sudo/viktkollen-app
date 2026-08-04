@@ -2,11 +2,11 @@
 
 ## Appen startar inte
 
-1. Kontrollera senaste deploy och browser console i development/testmiljö.
-2. Be användaren ladda om sidan.
+1. Kontrollera senaste deploy och browser console i development/testmiljo.
+2. Be anvandaren ladda om sidan.
 3. Testa i inkognito eller annan browser.
 4. Kontrollera service worker: DevTools > Application > Service Workers > Unregister.
-5. Radera inte localStorage innan backup/export har försökts.
+5. Radera inte localStorage innan backup/export har forsokts.
 
 ## Auth fungerar inte
 
@@ -14,44 +14,44 @@
 2. Kontrollera Supabase Auth status och redirect URLs.
 3. Testa logout/login igen.
 4. Kontrollera att inga tokens visas i logs eller screenshots.
-5. Vid fortsatt fel: be användaren fortsätta lokalt offline tills auth är tillbaka.
+5. Vid fortsatt fel: be anvandaren fortsatta lokalt offline tills auth ar tillbaka.
 
 ## Supabase nere
 
-1. Bekräfta incident i Supabase dashboard.
-2. Appen ska fortsätta lokalt.
-3. Be användaren undvika restore under driftstörning.
-4. Kör sync igen efter återhämtning.
+1. Bekrafta incident i Supabase dashboard.
+2. Appen ska fortsatta lokalt.
+3. Be anvandaren undvika restore under driftstorning.
+4. Kor sync igen efter aterhamtning.
 
 ## Sync conflict
 
-1. Öppna Sync Diagnostics i development.
-2. Kontrollera konfliktstatus utan att kopiera rå payload.
-3. Välj manuell konfliktlösning enligt UI.
+1. Oppna Sync Diagnostics i development.
+2. Kontrollera konfliktstatus utan att kopiera ra payload.
+3. Valj manuell konfliktlosning enligt UI.
 4. Undvik silent overwrite.
 5. Spara anonymiserad diagnosticsrapport.
 
 ## Sync stuck
 
-1. Kontrollera nätstatus.
-2. Kontrollera cross-tab leader: stäng extra flikar och öppna en ny.
-3. Kör Sync now.
+1. Kontrollera natstatus.
+2. Kontrollera cross-tab leader: stang extra flikar och oppna en ny.
+3. Kor Sync now.
 4. Om lease verkar stale: ladda om appen.
 5. Radera inte syncmetadata utan backup.
 
 ## Offlineproblem
 
-1. Kontrollera att appen tidigare öppnats online.
+1. Kontrollera att appen tidigare oppnats online.
 2. Kontrollera service worker cache i DevTools.
 3. Kontrollera att API/Supabase inte cacheas.
 4. Testa production build lokalt med `npm run build` och `npm run preview`.
 
 ## Service worker gammal
 
-1. Klicka på uppdateringsbanner om den finns.
-2. Hårdladda sidan.
+1. Klicka pa uppdateringsbanner om den finns.
+2. Hardladda sidan.
 3. Avregistrera service worker i DevTools.
-4. Rensa Cache Storage för Viktkollen.
+4. Rensa Cache Storage for Viktkollen.
 5. Ladda om online.
 
 ## Update loop
@@ -63,61 +63,80 @@
 
 ## Korrupt localStorage
 
-1. Exportera/backup så mycket som går.
+1. Exportera/backup sa mycket som gar.
 2. Identifiera vilken feature som faller.
-3. Använd feature-fallback i appen.
-4. Kopiera anonymiserad nyckellista, inte rå data.
-5. Radera aldrig all localStorage som första åtgärd.
+3. Anvand feature-fallback i appen.
+4. Kopiera anonymiserad nyckellista, inte ra data.
+5. Radera aldrig all localStorage som forsta atgard.
 
 ## Backup/restore-fel
 
 1. Kontrollera att pre-restore backup finns.
 2. Kontrollera payloadstorlek och JSON-validering.
-3. Restore endast från känd Viktkollen-backup.
-4. Vid fel: behåll befintlig lokal data och visa säkert felmeddelande.
+3. Restore endast fran kand Viktkollen-backup.
+4. Vid fel: behall befintlig lokal data och visa sakert felmeddelande.
 
 ## Reminders dubbleras
 
-1. Kontrollera om flera flikar är öppna.
+1. Kontrollera om flera flikar ar oppna.
 2. Ladda om den aktiva fliken.
 3. Kontrollera `viktkollen.reminders.v2.schedulerLock` i development.
-4. Arkivera dubblettreminders, radera inte historik automatiskt.
-5. Notification body ska aldrig innehålla känslig hälsodata.
+4. Kontrollera Notification Center och Reminder Center i samma browserprofil.
+5. Kontrollera cross-tab leader innan en ny scheduler startas.
+6. Kontrollera quiet hours och batching innan manuell resend.
+7. Arkivera dubblettreminders, radera inte historik automatiskt.
+8. Notification body ska aldrig innehalla kanslig halsodata.
+9. Logga endast anonymiserad reminder-id/status, inte anvandartext.
+
+## Social sharing eller privacyfel
+
+1. Stang av leaderboard om den inte uttryckligen ar opt-in.
+2. Kontrollera share preview innan nagot kopieras eller delas.
+3. Dela inte ra payload, token, e-post, viktvarden eller kroppsjämförelser i felsokning.
+4. Be anvandaren ladda om appen om lokal preview-state verkar stale.
+5. Verifiera att Social Center fortfarande ar local-only i V1.
+
+## Release acceptance av nya feature centers
+
+1. Kor `npm run verify:release`.
+2. Kontrollera att Data Import, Data Export, Achievement Center och Social Center inte modulepreloadas.
+3. Oppna appen i desktop och mobilviewport.
+4. Slutfor lokal onboarding och verifiera att lazy centers ar synliga utan console errors.
 
 ## Rapportfel
 
 1. Testa byta period.
 2. Ladda om appen.
-3. Kontrollera att vikt/måltidsdata normaliseras via centrala tjänster.
-4. Exportera inte rå stack trace till användaren.
+3. Kontrollera att vikt/maltidsdata normaliseras via centrala tjanster.
+4. Exportera inte ra stack trace till anvandaren.
 
 ## AI nere
 
-1. Appen ska använda lokal fallback.
+1. Appen ska anvanda lokal fallback.
 2. Kontrollera att AI Coach inte visar tekniska fel.
 3. Kontrollera att ingen API-payload loggas.
-4. Kör om när nät/API är tillbaka.
+4. Kor om nar nat/API ar tillbaka.
 
 ## Rollback till tidigare Vercel-deploy
 
-1. Öppna Vercel deployments.
-2. Välj senast verifierad deploy.
+1. Oppna Vercel deployments.
+2. Valj senast verifierad deploy.
 3. Promote to production.
-4. Be användare uppdatera appen och service worker.
+4. Be anvandare uppdatera appen och service worker.
 5. Verifiera auth, sync och PWA efter rollback.
 
 ## Samla anonymiserad diagnostics
 
-1. Använd Launch Readiness i development.
+1. Anvand Launch Readiness i development.
 2. Kopiera rapporten.
 3. Kontrollera att e-post, token, session och payload inte finns med.
-4. Bifoga endast anonymiserad rapport i ärendet.
+4. Bifoga endast anonymiserad rapport i arendet.
 
-## Användaren kan göra utan dataförlust
+## Anvandaren kan gora utan dataforlust
 
 - Ladda om appen.
 - Logga ut/in.
-- Vänta tills nätet är tillbaka.
-- Skapa manuell backup/export där UI stöder det.
+- Vanta tills natet ar tillbaka.
+- Skapa manuell backup/export dar UI stoder det.
 - Avregistrera service worker och ladda om online.
-- Undvika restore tills problemet är förstått.
+- Undvika restore tills problemet ar forstatt.

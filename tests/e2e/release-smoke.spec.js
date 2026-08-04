@@ -122,6 +122,36 @@ test.describe('release candidate smoke', () => {
     await expectReleaseHealthy(page, failures)
   })
 
+  test('lazy feature centers are reachable after local onboarding', async ({ page }) => {
+    const failures = []
+    attachRuntimeGuards(page, failures)
+
+    await page.goto('/')
+    await page.waitForLoadState('networkidle')
+
+    if (await page.getByText(/Skapa din profil/i).isVisible().catch(() => false)) {
+      await page.getByLabel(/Namn/i).fill('Release Test')
+      await page.getByLabel(/Startvikt/i).fill('91,8')
+      await page.getByLabel(/MÃ¥lvikt/i).fill('78')
+      await page.getByRole('button', { name: /spara|kom igÃ¥ng|skapa/i }).first().click()
+    }
+
+    if (await page.getByText(/Logga in/i).first().isVisible().catch(() => false)) {
+      await expectReleaseHealthy(page, failures)
+      return
+    }
+
+    await expect(page.getByText(/Dataexport/i).first()).toBeVisible()
+    await expect(page.getByText(/Data Import|Import/i).first()).toBeVisible()
+    await expect(page.getByText(/Sync Health|Sync health/i).first()).toBeVisible()
+    await expect(page.getByText(/Insights & consistency|Insights/i).first()).toBeVisible()
+    await expect(page.getByText(/Smart Goals & Achievements V2/i).first()).toBeVisible()
+    await expect(page.getByText(/Social & Accountability V1/i).first()).toBeVisible()
+    await expect(page.getByText(/Notification Center|Notifieringar/i).first()).toBeVisible()
+    await expect(page.getByText(/Cloud Backup|Backup/i).first()).toBeVisible()
+    await expectReleaseHealthy(page, failures)
+  })
+
   test('offline reload keeps the PWA app shell available after first visit', async ({ page, context }) => {
     const failures = []
     attachRuntimeGuards(page, failures)

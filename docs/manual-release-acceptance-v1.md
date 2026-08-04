@@ -189,6 +189,20 @@ Förväntat: installation/offline/update fungerar där plattformen stöder det, 
 
 Förväntat: production-deploy beter sig som lokal production-preview, utan console errors, brutna imports eller PWA-regressioner.
 
+## 8b. Feature Centers och Social Privacy
+
+1. Slutfor lokal onboarding i desktop och mobilviewport.
+2. Verifiera att Data Import Center, Data Export Center, Achievement Center, Social Center, Notification Center, Insights Center, Sync Health och Cloud Backup ar synliga eller nabar fran appflodet.
+3. Kontrollera att lazy centers inte modulepreloadas i `dist/index.html`.
+4. Oppna Social Center och verifiera:
+   - progress sharing ar private-first
+   - share preview maskerar e-post/id och visar ingen ra vikt
+   - invite token ar lokal modell
+   - leaderboard ar av tills opt-in
+   - inga medicinska eller kroppsliga jamforelser visas
+
+Forvantat: alla feature centers ar nabar utan console errors och social delning ar privacy-first.
+
 ## 9. Release Decision
 
 READY:

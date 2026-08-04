@@ -166,3 +166,16 @@
 - Rollback aterstaller berorda nycklar vid simulerat skrivfel.
 - Import pa ny enhet markerar berorda keys dirty for sync.
 - User switch fore apply avbryter importen.
+
+## Data Export & Portability V2
+
+- Data Export Center visar preview innan nagon fil skapas.
+- Full Viktkollen-backup verifieras med Data Import V2 innan download.
+- Selektiv JSON-export visar valda sektioner och record counts.
+- CSV meals, CSV weight och CSV check-ins kan laddas ned efter bekraftelse.
+- Auth, session, tokens, diagnostics, raw sync payload, base64 och Blob URL saknas i exportpayload.
+- Progressbilder exporteras endast som saker metadata eller exkluderas.
+- Formula injection neutraliseras i CSV.
+- Filnamn saneras mot path traversal.
+- User switch fore download blockerar exporten.
+- DataExportCenter ar lazy-loaded och ska inte modulepreloadas.

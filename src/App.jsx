@@ -90,6 +90,7 @@ const AdaptiveCoachPanel = lazy(() => import('./components/AdaptiveCoachPanel.js
 const BarcodeScanner = lazy(() => import('./components/BarcodeScanner.jsx'))
 const CloudBackupPanel = lazy(() => import('./components/CloudBackupPanel.jsx'))
 const DataImportCenter = lazy(() => import('./components/DataImportCenter.jsx'))
+const DataExportCenter = lazy(() => import('./components/DataExportCenter.jsx'))
 const GoalsHabitsPanel = lazy(() => import('./components/GoalsHabitsPanel.jsx'))
 const HealthDashboardV2 = lazy(() => import('./components/HealthDashboardV2.jsx'))
 const InsightsCenter = lazy(() => import('./components/InsightsCenter.jsx'))
@@ -2827,6 +2828,7 @@ function App() {
           userId={authSession?.user?.id || ''}
         />
         <Suspense fallback={<LazySectionFallback />}>
+          <DataExportCenter userId={authSession?.user?.id || ''} />
           <DataImportCenter
             onDataImported={refreshAppStateFromStorage}
             userId={authSession?.user?.id || ''}

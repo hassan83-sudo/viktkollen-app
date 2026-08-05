@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+﻿import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import HomeSection from './components/sections/HomeSection.jsx'
 import MoreSection from './components/sections/MoreSection.jsx'
 import ProgressSection from './components/sections/ProgressSection.jsx'
@@ -95,7 +95,7 @@ const ManualAcceptanceRunner = import.meta.env.DEV
   : null
 const ProgressCenter = lazy(() => import('./components/ProgressCenter.jsx'))
 const SyncHealthDashboard = lazy(() => import('./components/SyncHealthDashboard.jsx'))
-const SyncDiagnosticsPanel = lazy(() => import('./components/SyncDiagnosticsPanel.jsx'))
+
 
 const starterWeights = [
   { date: '2026-05-23', value: 91.8 }, { date: '2026-05-24', value: 91.2 },
@@ -2796,7 +2796,7 @@ function App() {
       />
       {import.meta.env.DEV && (
         <Suspense fallback={null}>
-          <SyncDiagnosticsPanel />
+          
           <LaunchReadinessPanel
             authSession={authSession}
             healthSnapshot={healthSnapshot}

@@ -9,10 +9,12 @@ describe('AdaptiveCoachPanel lazy loading contract', () => {
     expect(appSource).toContain("const CoachPlanCenter = lazy(() => import('./components/CoachPlanCenter.jsx'))")
     expect(appSource).toContain("const NutritionCoachCenter = lazy(() => import('./components/NutritionCoachCenter.jsx'))")
     expect(appSource).toContain("const PredictionCenter = lazy(() => import('./components/PredictionCenter.jsx'))")
+    expect(appSource).toContain("const HealthJourneyCenter = lazy(() => import('./components/HealthJourneyCenter.jsx'))")
     expect(appSource).not.toMatch(/import\s+AdaptiveCoachPanel\s+from/)
     expect(appSource).not.toMatch(/import\s+CoachPlanCenter\s+from/)
     expect(appSource).not.toMatch(/import\s+NutritionCoachCenter\s+from/)
     expect(appSource).not.toMatch(/import\s+PredictionCenter\s+from/)
+    expect(appSource).not.toMatch(/import\s+HealthJourneyCenter\s+from/)
   })
 
   it('keeps the V7 weekly plan UI lazy-loaded from the coach panel', () => {

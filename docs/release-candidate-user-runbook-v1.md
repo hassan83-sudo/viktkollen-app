@@ -185,3 +185,13 @@ Standardpreflight mot preview ska ge 401 vid saknad auth och aldrig gora provide
 ## Coach Memory
 
 Testa med lokal testdata: oppna Adaptive Coach, oppna memory review, andra coachton/actionstorlek, visa preview, stang av personalization och kontrollera att remote AI inte startar automatiskt.
+
+## Health Journey
+
+1. Oppna Health Journey.
+2. Kontrollera att timeline visas utan raw JSON.
+3. Filtrera pa tema, period och signal.
+4. Expandera "Varfor detta visas".
+5. Kontrollera att prognoser ar markerade som prognos.
+6. Testa AI-knappen utan samtycke och bekrafta att inget remote-anrop kravs.
+7. Bekrafta att `HealthJourneyCenter` inte modulepreloadas i preview verifiering.

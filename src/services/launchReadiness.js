@@ -9,6 +9,8 @@ import { buildSocialSummary } from './social/socialEngine.js'
 import { buildCoachPlanCenterModel } from './coachActionPlanEngine.js'
 import { buildNutritionCoachModel } from './nutrition/nutritionCoachEngine.js'
 import { buildHealthPredictionModel } from './prediction/healthPredictionEngine.js'
+import { buildHealthJourney } from './healthJourney/healthJourneyBuilder.js'
+import { buildHealthJourneySummary } from './healthJourney/healthJourneySummary.js'
 import { buildRuntimePerformanceSummary } from './performanceDiagnostics.js'
 
 function mask(value) {
@@ -71,6 +73,11 @@ export function buildLaunchReadinessReport({
     healthSnapshot,
     reminderState,
   })
+  const journey = buildHealthJourney({
+    healthSnapshot,
+    reminderState,
+  })
+  const journeySummary = buildHealthJourneySummary(journey)
   const performance = buildRuntimePerformanceSummary({
     lazyChunkCount: 18,
     largestLazyChunks: ['nutritionEngine', 'MealLogger', 'aiCoachDeterministicReplies', 'insightsEngine', 'ProgressPhotos'],
@@ -128,6 +135,16 @@ export function buildLaunchReadinessReport({
       predictionEngine: predictions.modelVersion === 1 ? 'pass' : 'fail',
       predictionUi: 'lazy-loaded',
       predictionAiIntegration: 'consent-gated-aggregate-summary',
+      journeyBuilder: journey.modelVersion === 1 ? 'pass' : 'fail',
+      journeySummary: journeySummary.eventCount >= 0 ? 'pass' : 'fail',
+      journeyTimelineUi: 'lazy-loaded',
+      journeyPredictionIntegration: journey.sourceStatus.predictions === 'separate-prediction-events' ? 'pass' : 'fail',
+      journeyNutritionIntegration: journey.sourceStatus.nutrition === 'nutritionCoachEngine' ? 'pass' : 'fail',
+      journeyCoachIntegration: journey.sourceStatus.coach === 'adaptiveCoach' ? 'pass' : 'fail',
+      journeyAiMinimization: 'consent-gated-summary-only',
+      journeyExportCompatibility: 'summary-only-derived',
+      journeyPersistence: journey.sourceStatus.storage === 'no-new-key' ? 'derived-only' : 'fail',
+      journeyModulepreload: 'release-gated',
       performanceDiagnostics: 'read-only',
       runtimeAnalyticsCache: `${performance.analyticsCache.size}/${performance.analyticsCache.limit}`,
       storagePressureBand: performance.storagePressure.totalBand,

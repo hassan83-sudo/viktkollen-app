@@ -225,6 +225,16 @@ function WeeklyReport({
                   <p>{weeklyReportData.predictions.cautionSignals[0]?.support || 'Inga försiktiga varningssignaler just nu.'}</p>
                 </div>
               )}
+              {weeklyReportData.journey && (
+                <div>
+                  <p className="report-heading">Veckans health journey</p>
+                  <p>{weeklyReportData.journey.summary}</p>
+                  <p>Viktigaste event: {weeklyReportData.journey.keyEvent}</p>
+                  <p>Milstolpe: {weeklyReportData.journey.milestone}</p>
+                  <p>Opportunity: {weeklyReportData.journey.opportunity}</p>
+                  <p>Caution: {weeklyReportData.journey.caution || weeklyReportData.journey.limitations?.[0]}</p>
+                </div>
+              )}
               {weeklyReportData.achievements && (
                 <div>
                   <p className="report-heading">Achievements</p>

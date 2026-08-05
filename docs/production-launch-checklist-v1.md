@@ -269,3 +269,11 @@
 - Remote memory ska vara opt-in.
 - Preview ska visa minimerad AI-context utan ra historik.
 - Forget/reset ska fungera utan att andra vikt, maltider eller mal.
+
+## AI Health Journey V1
+
+- `HealthJourneyCenter` ar lazy-loaded och ska inte modulepreloadas.
+- `healthJourneyBuilder` ar release-gated mot initial modulepreload.
+- Journey events ar derived-only och ska inte skapa ny storage, sync, backup eller authmodell.
+- AI-refinement kraver aktivt samtycke och far endast anvanda minimal journey-summary.
+- Full timeline, raw history, prompts, providerresponses, auth/session, bilder och base64 far inte skickas eller exporteras.

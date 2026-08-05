@@ -147,6 +147,8 @@ test.describe('release candidate smoke', () => {
     await expect(page.getByText(/Insights & consistency|Insights/i).first()).toBeVisible()
     await expect(page.getByText(/Nutrition Coach Center/i).first()).toBeVisible()
     await expect(page.getByText(/Prediction Center/i).first()).toBeVisible()
+    await expect(page.getByText(/Health Journey/i).first()).toBeVisible()
+    await expect(page.getByText(/VarfÃ¶r detta visas|Varför detta visas/i).first()).toBeVisible()
     await expect(page.getByText(/Coach Plan Center/i).first()).toBeVisible()
     await expect(page.getByText(/Smart Goals & Achievements V2/i).first()).toBeVisible()
     await expect(page.getByText(/Social & Accountability V1/i).first()).toBeVisible()

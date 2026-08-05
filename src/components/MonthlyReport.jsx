@@ -257,6 +257,17 @@ function MonthlyReport({ report }) {
         </div>
       )}
 
+      {report.journey && (
+        <div className="report-card">
+          <p className="report-heading">MÃ¥nadens health journey</p>
+          <p>{report.journey.summary}</p>
+          <p>Viktigaste fÃ¶rÃ¤ndring: {report.journey.keyEvent}</p>
+          <p>Milstolpe: {report.journey.milestone}</p>
+          <p>NÃ¤sta fokus: {report.journey.opportunity}</p>
+          <p>Confidence: {report.journey.confidence}%. Coverage: {report.journey.coverage}%.</p>
+        </div>
+      )}
+
       {report.achievements && (
         <div className="report-card">
           <p className="report-heading">Achievements och delmål</p>

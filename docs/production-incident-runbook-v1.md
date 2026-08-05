@@ -199,3 +199,13 @@ Ateraktivera forst nar route-preflight och release-gate passerar.
 ## Coach Memory Privacy Incident
 
 Stoppa remote memory om prompts, providerresponses, raw history, auth/session eller identifierare misstanks ha inkluderats i memory context. Bevara lokal regelbaserad fallback, rensa berord derived memory och verifiera `coachMemory` allowlisten innan remote memory aktiveras igen.
+
+## Health Journey Privacy Incident
+
+Om Health Journey visar raw history, prompt, providerresponse, auth/session, e-post, device ID, bild/base64 eller om prognos blandas ihop med faktiskt event:
+
+1. Stang av eventuell remote AI-refinement i config eller UI-flode.
+2. Bevara regelbaserad journey fallback.
+3. Kontrollera `buildMinimalHealthJourneyAiPayload`.
+4. Kor `npm run verify:release`.
+5. Markera release `NOT READY` tills privacy- och modulepreload-gate passerar.

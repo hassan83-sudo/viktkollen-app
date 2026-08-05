@@ -5,6 +5,7 @@ import { buildCoachActionSummary } from '../services/adaptiveCoachActions.js'
 import { buildAdaptiveCoachTimelineSummary } from '../services/adaptiveCoachTimeline.js'
 import { buildAdaptiveCoachPatternSummary } from '../services/adaptiveCoachPatterns.js'
 import { buildAdaptiveCoachStrategy } from '../services/adaptiveCoachStrategy.js'
+import { buildHealthJourneyReportSummary } from '../services/healthJourney/healthJourneySummary.js'
 
 const HealthDashboardDrilldown = lazy(() => import('./HealthDashboardDrilldown.jsx'))
 
@@ -162,6 +163,13 @@ function HealthDashboardV2({
       now: today ? `${today}T12:00:00.000Z` : undefined,
     }),
     [adaptiveCoachFeedback, coachPatternSummary, data, today],
+  )
+  const journeySummary = useMemo(
+    () => buildHealthJourneyReportSummary({ ...data, adaptiveCoachFeedback }, {
+      analysisDate: today,
+      period,
+    }),
+    [adaptiveCoachFeedback, data, period, today],
   )
 
   useEffect(() => {
@@ -321,6 +329,17 @@ function HealthDashboardV2({
             <Metric label="Social" value={model.social?.friendCount ?? 0} />
             <Metric label="Delade mål" value={model.social?.sharedGoalCount ?? 0} />
             <Metric label="Sharing" value={model.social?.sharingReady ? 'Redo' : 'Privat'} />
+          </div>
+        </Card>
+
+        <Card actionHref="#health-journey-center" actionText="Visa resa" heading="Health Journey" text={journeySummary.summary}>
+          <div className="health-dashboard-metrics">
+            <Metric label="Fas" value={journeySummary.currentPhase} />
+            <Metric label="Milstolpe" value={journeySummary.milestone} />
+            <Metric label="Opportunity" value={journeySummary.opportunity} />
+            <Metric label="Caution" value={journeySummary.caution} />
+            <Metric label="Coverage" value={`${journeySummary.coverage}%`} />
+            <Metric label="Confidence" value={`${journeySummary.confidence}%`} />
           </div>
         </Card>
 

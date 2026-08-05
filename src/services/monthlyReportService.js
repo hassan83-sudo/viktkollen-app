@@ -19,6 +19,7 @@ import { buildInsightsEngine } from './insights/insightsEngine.js'
 import { buildAchievementSummary } from './achievements/achievementEngine.js'
 import { buildSocialSummary } from './social/socialEngine.js'
 import { buildPredictionReportSummary } from './prediction/healthPredictionEngine.js'
+import { buildHealthJourneyReportSummary } from './healthJourney/healthJourneySummary.js'
 
 function safeArray(value) {
   return Array.isArray(value) ? value : []
@@ -254,6 +255,10 @@ export function createMonthlyHealthReport(data = {}) {
     ...data,
     healthSnapshot: snapshot,
   }, { analysisDate: data.today, period: '30d' })
+  const journey = buildHealthJourneyReportSummary({
+    ...data,
+    healthSnapshot: snapshot,
+  }, { analysisDate: data.today, period: '30d' })
   const recentMeals = safeArray(actualMeals).filter((entry) =>
     isLocalDateInRange(getMealDate(entry), reportRange),
   )
@@ -305,10 +310,12 @@ export function createMonthlyHealthReport(data = {}) {
     achievements,
     social,
     predictions,
+    journey,
     sharedAnalytics: {
       ...sharedReport,
       coachFeedback: coachEffectiveness,
       achievements,
+      journey,
       predictions,
       social,
     },

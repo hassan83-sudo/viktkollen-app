@@ -98,3 +98,7 @@ Prediction engine och Prediction Center ar dokumenterade i `docs/predictive-heal
 ## Production Performance & Stability V3
 
 Runtime-auditen ar dokumenterad i `docs/runtime-lifecycle-audit-v1.md`. Performance- och stability-fixarna ar dokumenterade i `docs/production-performance-stability-v3.md`. Lokal resursguide finns i `docs/local-development-resource-guide-v1.md`. Fokus var bounded shared analytics cache, chunk-load recovery och read-only Launch Readiness diagnostics utan nya storage keys.
+
+## AI Health Journey V1
+
+Health Journey ar dokumenterad i `docs/ai-health-journey-v1.md`, `docs/health-journey-privacy-v1.md` och `docs/health-journey-user-guide-v1.md`. Funktionen ar derived-only ovanpa shared analytics, insights, nutrition coach, prediction, achievements och adaptive coach. `HealthJourneyCenter` ar lazy-loaded och release-gaten kontrollerar att varken centret eller `healthJourneyBuilder` modulepreloadas initialt.

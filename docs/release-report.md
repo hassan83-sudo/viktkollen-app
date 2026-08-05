@@ -82,3 +82,7 @@ Scriptet skriver `docs/release-report.json` nar hela gaten passerar.
 ## AI Route Security V2
 
 AI-routes kraver verifierad Supabase-session, user-scoped process-local rate limit, kortlivad user-scoped dedup och `no-store`. Release-status ar fortsatt conditional tills verklig staging med giltig testsession och server-side OpenAI key verifierats.
+
+## Adaptive Coach Personalization V8
+
+Coach memory ar implementerat som ett sakert, regelbaserat lager under befintlig adaptive coach state. Remote memory ar opt-in och skickar endast minimerad context. Release-status ar fortsatt conditional tills stagingfloden med riktig inloggad testanvandare verifierats.

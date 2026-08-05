@@ -11,6 +11,9 @@ const requiredSecurityFiles = [
   'api/_shared/aiRateLimiter.js',
   'api/_shared/aiRequestDeduper.js',
   'api/_shared/aiRouteErrors.js',
+  'src/services/coachMemory/coachMemoryModel.js',
+  'src/services/coachMemory/coachMemoryBuilder.js',
+  'src/services/coachMemory/coachContextSelector.js',
 ]
 const requiredPublicFiles = [
   'public/manifest.webmanifest',

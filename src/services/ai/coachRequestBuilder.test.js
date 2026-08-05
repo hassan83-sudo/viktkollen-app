@@ -28,4 +28,25 @@ describe('coachRequestBuilder', () => {
   it('redacts unsafe text tokens', () => {
     expect(coachRequestBuilderInternals.stripUnsafeText('email a@b.com token abc')).not.toMatch(/a@b.com|token/)
   })
+
+  it('adds only safe memory context when remote memory is enabled', () => {
+    const result = buildCoachRemoteRequestPayload({
+      adaptiveCoachFeedback: {
+        coachMemory: {
+          consent: { personalizationEnabled: true, remoteAiMemoryEnabled: true },
+          preferences: { preferredActionSize: 'liten', preferredCoachTone: 'lugn', preferredFocusAreas: ['nutrition'] },
+          recentContext: { currentCoverage: 0.8, currentMomentum: 'reinforceSuccess', safeWeeklySummary: 'Stabil sammanfattning utan rådata.' },
+          successfulStrategies: [{ category: 'nutrition', confidence: 0.8, evidenceCount: 3, id: 'private-id', staleAfter: '2026-09-01T12:00:00.000Z' }],
+        },
+      },
+    }, { analysisDate: '2026-08-04', consent: true, intents: ['nutrition'] })
+
+    expect(result.payload.memoryContext).toMatchObject({
+      actionSize: 'liten',
+      coachStyle: 'lugn',
+      remoteAllowed: true,
+    })
+    expect(result.preview.memory).toContain('lugn')
+    expect(JSON.stringify(result.payload.memoryContext)).not.toMatch(/private-id|auth|session|token|raw|meal|weight|prompt|provider/i)
+  })
 })

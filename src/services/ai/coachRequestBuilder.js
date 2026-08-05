@@ -1,5 +1,7 @@
 import { buildAdaptiveCoach } from '../adaptiveCoachEngine.js'
 import { buildAdaptiveCoachFeedbackSummary } from '../adaptiveCoachFeedback.js'
+import { buildCoachMemory } from '../coachMemory/coachMemoryBuilder.js'
+import { selectCoachMemoryContext } from '../coachMemory/coachContextSelector.js'
 import { buildSharedAnalytics } from '../sharedAnalyticsEngine.js'
 
 function safeText(value, fallback = '', max = 180) {
@@ -26,6 +28,49 @@ function metricText(label, value) {
   return text ? `${label}: ${text}` : ''
 }
 
+function buildSafeMemoryContext(input, options, coachModel) {
+  const memory = options.coachMemory || input.adaptiveCoachFeedback?.coachMemory || buildCoachMemory(input, {
+    analysisDate: options.analysisDate,
+    coachModel,
+    period: options.period || '30d',
+  })
+  const selected = selectCoachMemoryContext(memory, {
+    categories: options.memoryCategories || [],
+    intents: options.intents || [],
+    now: options.analysisDate ? `${options.analysisDate}T12:00:00.000Z` : undefined,
+  })
+  if (!selected.memoryEnabled || !selected.remoteAllowed) {
+    return {
+      enabled: selected.memoryEnabled,
+      limitations: selected.limitations,
+      remoteAllowed: false,
+    }
+  }
+
+  return {
+    activePriorityCategories: selected.activePriorityCategories,
+    actionSize: selected.explicitPreferences.actionSize,
+    coachStyle: selected.explicitPreferences.coachStyle,
+    declinedStrategyCategories: selected.items
+      .filter((item) => item.kind === 'declinedStrategy')
+      .map((item) => item.category)
+      .slice(0, 2),
+    excludedFocusAreas: selected.explicitPreferences.excludedFocusAreas,
+    limitations: selected.limitations,
+    recentContext: selected.recentContext,
+    recurringBarrierCategories: selected.items
+      .filter((item) => item.kind === 'recurringBarrier')
+      .map((item) => item.category)
+      .slice(0, 2),
+    remoteAllowed: true,
+    selectedFocusAreas: selected.explicitPreferences.selectedFocusAreas,
+    successfulStrategyCategories: selected.items
+      .filter((item) => item.kind === 'successfulStrategy')
+      .map((item) => item.category)
+      .slice(0, 3),
+  }
+}
+
 export function buildCoachRemoteRequestPayload(input = {}, options = {}) {
   const analysisDate = safeText(options.analysisDate || input.analysisDate || input.healthSnapshot?.date, '', 20)
   const coachModel = options.coachModel || buildAdaptiveCoach(input, { analysisDate, period: options.period || '30d' })
@@ -35,6 +80,7 @@ export function buildCoachRemoteRequestPayload(input = {}, options = {}) {
   })
   const coverage = Number(coachModel.coverage?.ratio ?? shared.coverage?.ratio ?? 0)
   const confidence = Number(coachModel.confidence?.value ?? 0)
+  const memoryContext = buildSafeMemoryContext(input, { ...options, analysisDate }, coachModel)
 
   const payload = {
     activeGoals: safeArray(input.goalsHabits?.goals).slice(0, 4).map((goal) => stripUnsafeText(goal.name || goal.title, '', 80)).filter(Boolean),
@@ -52,6 +98,7 @@ export function buildCoachRemoteRequestPayload(input = {}, options = {}) {
       reminders: metricText('reminders', shared.reminderSummary?.text || coachModel.recommendations?.find((item) => item.area === 'reminders')?.text),
       weight: metricText('vikttrend', shared.weightSummary?.periodChangeLabel || shared.weightSummary?.dataText),
     },
+    memoryContext,
     period: options.period || '30d',
     question: stripUnsafeText(options.question, '', 180),
     weeklyFocus: stripUnsafeText(coachModel.summary?.todayFocus, '', 140),
@@ -68,6 +115,9 @@ export function buildCoachRemoteRequestPayload(input = {}, options = {}) {
       confidence: `${Math.round(confidence * 100)}%`,
       coverage: `${Math.round(coverage * 100)}%`,
       goals: payload.activeGoals.length ? `${payload.activeGoals.length} säkra mål/vanor` : 'Saknas',
+      memory: memoryContext.remoteAllowed
+        ? `${memoryContext.coachStyle}, ${memoryContext.actionSize}, ${memoryContext.activePriorityCategories?.length || 0} prioriteringar`
+        : 'Av',
       nutrition: payload.metrics.nutrition || 'Saknas',
       weight: payload.metrics.weight || 'Saknas',
     },
@@ -81,6 +131,7 @@ export function fingerprintCoachPayload(payload = {}) {
     confidence: payload.confidence,
     coverage: payload.coverage,
     highlights: payload.highlights,
+    memoryContext: payload.memoryContext,
     metrics: payload.metrics,
     period: payload.period,
     question: payload.question,

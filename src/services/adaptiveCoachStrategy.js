@@ -3,6 +3,7 @@ import { buildAdaptiveCoachPatternSummary, sanitizeCoachPatternText } from './ad
 import { buildCoachActionSummary } from './adaptiveCoachActions.js'
 import { buildAdaptiveCoachFeedbackSummary } from './adaptiveCoachFeedback.js'
 import { buildAdaptiveCoachTimelineSummary } from './adaptiveCoachTimeline.js'
+import { normalizeCoachMemory } from './coachMemory/coachMemoryModel.js'
 
 export const adaptiveCoachStrategyTypes = [
   'reinforceSuccess',
@@ -53,6 +54,31 @@ function createStrategyRecommendation(source = {}) {
     reason: sanitizeCoachPatternText(source.reason || source.text || 'Valt från registrerad data.'),
     title: sanitizeCoachPatternText(source.title || 'Nästa steg'),
   }
+}
+
+function applyMemoryToRecommendations(recommendations = [], memory = {}) {
+  const normalized = normalizeCoachMemory(memory)
+  const excluded = new Set(normalized.preferences.excludedFocusAreas)
+  const preferred = new Set(normalized.preferences.preferredFocusAreas)
+  const size = normalized.preferences.preferredActionSize
+
+  return safeArray(recommendations)
+    .filter((item) => !excluded.has(item.category))
+    .map((item) => ({
+      ...item,
+      action: size === 'mycket liten'
+        ? `Gör detta som ett mycket litet steg: ${item.action}`
+        : size === 'liten'
+          ? `Gör detta som ett litet steg: ${item.action}`
+          : item.action,
+      memoryReason: preferred.has(item.category)
+        ? 'Prioriteras eftersom fokusområdet är valt i coachminnet.'
+        : normalized.successfulStrategies.some((memoryItem) => memoryItem.category === item.category)
+          ? 'Prioriteras eftersom liknande strategi har verifierat outcome.'
+          : '',
+      priorityBoost: preferred.has(item.category) ? 4 : normalized.successfulStrategies.some((memoryItem) => memoryItem.category === item.category) ? 3 : 0,
+    }))
+    .sort((first, second) => (second.priorityBoost || 0) - (first.priorityBoost || 0) || first.title.localeCompare(second.title, 'sv-SE'))
 }
 
 function selectStrategy({ actionSummary, coachModel, feedbackSummary, patternSummary, timelineSummary }) {
@@ -114,7 +140,8 @@ export function buildAdaptiveCoachStrategy(input = {}, options = {}) {
     now,
   })
   const strategy = selectStrategy({ actionSummary, coachModel, feedbackSummary, patternSummary, timelineSummary })
-  const recommendations = uniqueRecommendations([
+  const memory = input.coachMemory || input.adaptiveCoachFeedback?.coachMemory
+  const recommendations = applyMemoryToRecommendations(uniqueRecommendations([
     strategy === 'continueActiveAction' && actionSummary.latestAction
       ? createStrategyRecommendation({
         action: 'Följ upp den aktiva actionen innan du lägger till fler.',
@@ -139,7 +166,7 @@ export function buildAdaptiveCoachStrategy(input = {}, options = {}) {
       id: `strategy-coach-${item.id}`,
       reason: item.text,
     })),
-  ])
+  ]), memory)
   const confidence = clamp((coachModel.confidence.value + (patternSummary.primaryPattern?.confidence || 0.2)) / 2, 0, 0.95)
   const coverage = clamp((coachModel.coverage.ratio + patternSummary.coverage.ratio) / 2, 0, 1)
 

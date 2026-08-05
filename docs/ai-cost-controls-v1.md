@@ -48,3 +48,5 @@ In-memory rate limiting är inte ett komplett produktions-abuse-skydd för distr
 Rate limiting sker efter verifierad Supabase-session och ar user-scoped for coach respektive photo analysis. Nuvarande adapter ar `process-local`, vilket ar ett grundskydd per serverprocess men inte en global kvot over alla serverless-instanser.
 
 Preflight gor som standard inga kostnadsbarande provideranrop. Riktig providerverifiering kraver staging-URL, giltig anvandarsession och explicit manuell acceptans.
+
+Memory context skapar inga automatiska AI-anrop. Det paverkar bara payloaden for ett redan anvandarinitierat remote coachanrop.

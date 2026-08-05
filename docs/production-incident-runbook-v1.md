@@ -195,3 +195,7 @@ Kontrollera sedan:
 - inga tokens, user IDs eller provider bodies finns i loggar
 
 Ateraktivera forst nar route-preflight och release-gate passerar.
+
+## Coach Memory Privacy Incident
+
+Stoppa remote memory om prompts, providerresponses, raw history, auth/session eller identifierare misstanks ha inkluderats i memory context. Bevara lokal regelbaserad fallback, rensa berord derived memory och verifiera `coachMemory` allowlisten innan remote memory aktiveras igen.

@@ -110,6 +110,38 @@ describe('adaptive coach API route', () => {
     expect(adaptiveCoachRouteInternals.hasBlockedFields({ coverage: 0.7 })).toBe(false)
   })
 
+  it('sanitizes memory context with allowlisted style action size and categories', () => {
+    const facts = adaptiveCoachRouteInternals.sanitizeFacts({
+      confidence: 0.8,
+      coverage: 0.8,
+      memoryContext: {
+        actionSize: 'liten',
+        activePriorityCategories: ['nutrition', 'diagnosis'],
+        coachStyle: 'lugn',
+        declinedStrategyCategories: ['activity', 'unknown'],
+        recentContext: {
+          activeActionCount: 99,
+          currentCoverage: 2,
+          currentMomentum: '<script>x</script>',
+          safeWeeklySummary: 'Säker kort sammanfattning.',
+        },
+        remoteAllowed: true,
+        successfulStrategyCategories: ['nutrition', 'weight', 'bad'],
+      },
+    })
+
+    expect(facts.memoryContext).toMatchObject({
+      actionSize: 'liten',
+      activePriorityCategories: ['nutrition'],
+      coachStyle: 'lugn',
+      declinedStrategyCategories: ['activity'],
+      successfulStrategyCategories: ['nutrition', 'weight'],
+    })
+    expect(facts.memoryContext.recentContext.activeActionCount).toBe(12)
+    expect(facts.memoryContext.recentContext.currentCoverage).toBe(1)
+    expect(JSON.stringify(facts)).not.toMatch(/script|diagnosis|unknown|bad/)
+  })
+
   it('returns low coverage before provider call', async () => {
     process.env.OPENAI_API_KEY = 'test-key'
     const response = await callRoute(createRequest({ body: { consent: true, confidence: 0.1, coverage: 0.1 } }))

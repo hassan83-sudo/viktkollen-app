@@ -27,6 +27,7 @@ import { makeRuleBasedFallbackResult } from '../services/ai/aiResponseSafety.js'
 
 const AdaptiveCoachTimeline = lazy(() => import('./AdaptiveCoachTimeline.jsx'))
 const AdaptiveCoachWeeklyPlan = lazy(() => import('./AdaptiveCoachWeeklyPlan.jsx'))
+const CoachMemoryReview = lazy(() => import('./CoachMemoryReview.jsx'))
 
 function MetricBadge({ label, value }) {
   return (
@@ -138,6 +139,7 @@ function AdaptiveCoachPanel({
   const [isSavingAction, setIsSavingAction] = useState(false)
   const [showTimeline, setShowTimeline] = useState(false)
   const [showWeeklyPlan, setShowWeeklyPlan] = useState(false)
+  const [showMemoryReview, setShowMemoryReview] = useState(false)
   const [remoteCoachResult, setRemoteCoachResult] = useState(null)
   const [remoteCoachStatus, setRemoteCoachStatus] = useState('')
   const [remoteCoachError, setRemoteCoachError] = useState('')
@@ -457,6 +459,15 @@ function AdaptiveCoachPanel({
         <p>Aktuell coachstrategi: {strategy.title}. {strategy.explanation}</p>
         <div className="report-v3-actions">
           <button
+            aria-controls="coach-memory-review"
+            aria-expanded={showMemoryReview}
+            className="secondary-button"
+            type="button"
+            onClick={() => setShowMemoryReview((current) => !current)}
+          >
+            {showMemoryReview ? 'Dölj coachminne' : 'Granska coachminne'}
+          </button>
+          <button
             aria-controls="adaptive-coach-weekly-plan"
             aria-expanded={showWeeklyPlan}
             className="primary-button"
@@ -467,6 +478,20 @@ function AdaptiveCoachPanel({
           </button>
         </div>
       </div>
+
+      {showMemoryReview && (
+        <div id="coach-memory-review">
+          <Suspense fallback={<div className="report-v3-card" role="status">Laddar coachminne...</div>}>
+            <CoachMemoryReview
+              adaptiveCoachFeedback={adaptiveCoachFeedback}
+              analysisDate={analysisDate}
+              context={data}
+              onClose={() => setShowMemoryReview(false)}
+              onFeedbackChange={onAdaptiveCoachFeedbackChange}
+            />
+          </Suspense>
+        </div>
+      )}
 
       {showWeeklyPlan && (
         <div id="adaptive-coach-weekly-plan">
@@ -502,6 +527,7 @@ function AdaptiveCoachPanel({
           <div><dt>Nutrition</dt><dd>{remotePreview.nutrition}</dd></div>
           <div><dt>Aktivitet</dt><dd>{remotePreview.activity}</dd></div>
           <div><dt>Mål</dt><dd>{remotePreview.goals}</dd></div>
+          <div><dt>Coachminne</dt><dd>{remotePreview.memory}</dd></div>
           <div><dt>Coverage</dt><dd>{remotePreview.coverage}</dd></div>
           <div><dt>Confidence</dt><dd>{remotePreview.confidence}</dd></div>
         </dl>

@@ -69,3 +69,7 @@ Implementation använder OpenAI Responses API med server-side fetch och struktur
 `/api/adaptive-coach` och `/api/nutrition-photo-analysis` kraver nu verifierad Supabase-session via `Authorization: Bearer ...` innan kostnadsbarande provideranrop. Client-provided `userId` anvands aldrig som identitet.
 
 Routes anvander `no-store`, user-scoped process-local rate limiting och kortlivad dedup per verifierad anvandare. Regelbaserad coachfallback sker fortsatt i klienten vid sakra routefel.
+
+## Adaptive Coach Personalization V8
+
+Remote coach kan fa en minimerad `memoryContext` nar anvandaren separat aktiverat personalization och remote memory. Contexten innehaller bara sakra kategorier, preferenser och confidence, aldrig ra historik, prompts, providerresponses eller identifierare.

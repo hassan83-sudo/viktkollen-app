@@ -152,6 +152,37 @@ test.describe('release candidate smoke', () => {
     await expectReleaseHealthy(page, failures)
   })
 
+  test('adaptive coach memory review opens without unsafe runtime output', async ({ page }) => {
+    const failures = []
+    attachRuntimeGuards(page, failures)
+
+    await page.goto('/')
+    await page.waitForLoadState('networkidle')
+
+    if (await page.getByText(/Skapa din profil/i).isVisible().catch(() => false)) {
+      await page.getByLabel(/Namn/i).fill('Release Test')
+      await page.getByLabel(/Startvikt/i).fill('91,8')
+      await page.getByLabel(/MÃ¥lvikt|MÃƒÂ¥lvikt/i).fill('78')
+      await page.getByRole('button', { name: /spara|kom igÃ¥ng|kom igÃƒÂ¥ng|skapa/i }).first().click()
+    }
+
+    if (await page.getByText(/Logga in/i).first().isVisible().catch(() => false)) {
+      await expectReleaseHealthy(page, failures)
+      return
+    }
+
+    await expect(page.getByRole('heading', { name: /Adaptiv coachning/i })).toBeVisible()
+    await page.getByRole('button', { name: /Granska coachminne/i }).click()
+    await expect(page.getByRole('heading', { name: /Vad coachen kommer ihÃ¥g|Vad coachen kommer ihåg/i })).toBeVisible()
+    await expect(page.getByLabel(/Coachstil/i)).toHaveValue('neutral')
+    await page.getByLabel(/Actionstorlek/i).selectOption('liten')
+    await page.getByRole('button', { name: /SlÃ¥ pÃ¥ personlig anpassning|Slå på personlig anpassning/i }).click()
+    await expect(page.getByText(/AI-kontext som kan skickas/i)).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('heading', { name: /Vad coachen kommer ihÃ¥g|Vad coachen kommer ihåg/i })).toBeHidden()
+    await expectReleaseHealthy(page, failures)
+  })
+
   test('offline reload keeps the PWA app shell available after first visit', async ({ page, context }) => {
     const failures = []
     attachRuntimeGuards(page, failures)

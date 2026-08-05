@@ -13,6 +13,9 @@ import { createAiRequestFingerprint, runDedupedAiRequest } from '../_shared/aiRe
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 
 const MAX_PAYLOAD_BYTES = 12000
+const allowedMemoryCategories = ['weight', 'nutrition', 'activity', 'goals', 'reminders', 'recovery', 'planning']
+const allowedCoachStyles = ['neutral', 'lugn', 'uppmuntrande', 'rak', 'coachande']
+const allowedActionSizes = ['mycket liten', 'liten', 'normal']
 
 function getHeader(request, name) {
   const headers = request.headers || {}
@@ -20,11 +23,14 @@ function getHeader(request, name) {
 }
 
 function safeText(value, fallback = '', max = 400) {
-  return String(value || fallback)
+  const text = String(value || fallback)
     .replace(/[<>]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
-    .slice(0, max)
+  if (/script|javascript:|auth|session|token|userId|deviceId|prompt|providerresponse|base64|localStorage/i.test(text)) {
+    return ''
+  }
+  return text.slice(0, max)
 }
 
 async function readJsonBody(request) {
@@ -44,6 +50,42 @@ async function readJsonBody(request) {
 }
 
 function sanitizeFacts(payload = {}) {
+  const memory = payload.memoryContext && typeof payload.memoryContext === 'object' && !Array.isArray(payload.memoryContext)
+    ? {
+        actionSize: allowedActionSizes.includes(payload.memoryContext.actionSize) ? payload.memoryContext.actionSize : 'normal',
+        activePriorityCategories: Array.isArray(payload.memoryContext.activePriorityCategories)
+          ? payload.memoryContext.activePriorityCategories.filter((item) => allowedMemoryCategories.includes(item)).slice(0, 4)
+          : [],
+        coachStyle: allowedCoachStyles.includes(payload.memoryContext.coachStyle) ? payload.memoryContext.coachStyle : 'neutral',
+        declinedStrategyCategories: Array.isArray(payload.memoryContext.declinedStrategyCategories)
+          ? payload.memoryContext.declinedStrategyCategories.filter((item) => allowedMemoryCategories.includes(item)).slice(0, 2)
+          : [],
+        excludedFocusAreas: Array.isArray(payload.memoryContext.excludedFocusAreas)
+          ? payload.memoryContext.excludedFocusAreas.filter((item) => allowedMemoryCategories.includes(item)).slice(0, 4)
+          : [],
+        limitations: Array.isArray(payload.memoryContext.limitations)
+          ? payload.memoryContext.limitations.map((item) => safeText(item, '', 120)).filter(Boolean).slice(0, 3)
+          : [],
+        recentContext: payload.memoryContext.recentContext && typeof payload.memoryContext.recentContext === 'object'
+          ? {
+              activeActionCount: Number.isFinite(Number(payload.memoryContext.recentContext.activeActionCount)) ? Math.max(0, Math.min(12, Number(payload.memoryContext.recentContext.activeActionCount))) : 0,
+              currentCoverage: Number.isFinite(Number(payload.memoryContext.recentContext.currentCoverage)) ? Math.max(0, Math.min(1, Number(payload.memoryContext.recentContext.currentCoverage))) : 0,
+              currentMomentum: safeText(payload.memoryContext.recentContext.currentMomentum, 'insufficient', 40),
+              safeWeeklySummary: safeText(payload.memoryContext.recentContext.safeWeeklySummary, '', 160),
+            }
+          : {},
+        recurringBarrierCategories: Array.isArray(payload.memoryContext.recurringBarrierCategories)
+          ? payload.memoryContext.recurringBarrierCategories.filter((item) => allowedMemoryCategories.includes(item)).slice(0, 2)
+          : [],
+        remoteAllowed: payload.memoryContext.remoteAllowed === true,
+        selectedFocusAreas: Array.isArray(payload.memoryContext.selectedFocusAreas)
+          ? payload.memoryContext.selectedFocusAreas.filter((item) => allowedMemoryCategories.includes(item)).slice(0, 4)
+          : [],
+        successfulStrategyCategories: Array.isArray(payload.memoryContext.successfulStrategyCategories)
+          ? payload.memoryContext.successfulStrategyCategories.filter((item) => allowedMemoryCategories.includes(item)).slice(0, 3)
+          : [],
+      }
+    : null
   const allowed = {
     activeGoals: Array.isArray(payload.activeGoals) ? payload.activeGoals.map((item) => safeText(item, '', 120)).filter(Boolean).slice(0, 6) : [],
     analysisDate: safeText(payload.analysisDate, '', 20),
@@ -61,6 +103,7 @@ function sanitizeFacts(payload = {}) {
           weight: safeText(payload.metrics.weight, '', 160),
         }
       : {},
+    memoryContext: memory?.remoteAllowed ? memory : null,
     period: safeText(payload.period, '30d', 12),
     question: safeText(payload.question, '', 220),
     weeklyFocus: safeText(payload.weeklyFocus, '', 160),
@@ -82,6 +125,8 @@ function buildCoachPrompt(facts, requestId) {
           text: [
             'Du ar Viktkollens coachformulerare. Returnera endast JSON.',
             'Anvand bara facts i payloaden. Hitta inte pa vikt, kalorier, diagnoser eller prognoser.',
+            'Memory ar osaker sammanfattad kontext: anvand bara hog-confidence preferenser och observationer, och ignorera low confidence eller begransat underlag.',
+            'Skriv inte att du minns allt om anvandaren. Harled inte personlighet, diagnos eller medicinska behov.',
             'Ge max tre korta, neutrala och konstruktiva rekommendationer.',
             'Ingen medicinsk radgivning, ingen diagnos, ingen extrem viktminskning, ingen skuld.',
             'Schema: summary, recommendations, rationale, limitations, safetyNote, confidence, dataUsed.',

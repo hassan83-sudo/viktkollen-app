@@ -236,3 +236,10 @@
 - Alla AI-route-svar ska ha `Cache-Control: no-store`.
 - Rate limiting ska vara user-scoped och markeras som `process-local` tills global adapter finns.
 - Client far inte skicka token i body, URL eller storage.
+
+## Adaptive Coach Personalization V8
+
+- Coach memory ska ligga under befintlig adaptive coach state.
+- Remote memory ska vara opt-in.
+- Preview ska visa minimerad AI-context utan ra historik.
+- Forget/reset ska fungera utan att andra vikt, maltider eller mal.

@@ -124,4 +124,19 @@ describe('adaptiveCoachFeedback', () => {
     expect(getBackupStorageKeys()).toContain(adaptiveCoachFeedbackStorageKey)
     expect(isAllowedSyncStorageKey(adaptiveCoachFeedbackStorageKey)).toBe(true)
   })
+
+  it('stores safe coach memory inside the existing adaptive coach key', () => {
+    const normalized = normalizeAdaptiveCoachFeedback({
+      coachMemory: {
+        consent: { personalizationEnabled: true, remoteAiMemoryEnabled: true },
+        preferences: { preferredCoachTone: 'lugn', preferredFocusAreas: ['nutrition'], userId: 'bad' },
+        successfulStrategies: [{ category: 'nutrition', confidence: 0.8, evidenceCount: 3, rawEvidence: 'access_token=secret' }],
+      },
+    }, { now })
+
+    expect(normalized.coachMemory.preferences.preferredCoachTone).toBe('lugn')
+    expect(normalized.coachMemory.successfulStrategies[0].category).toBe('nutrition')
+    expect(JSON.stringify(normalized.coachMemory)).not.toMatch(/access_token|secret|userId|rawEvidence/)
+    expect(userDataKeys.adaptiveCoachFeedback).toBe(adaptiveCoachFeedbackStorageKey)
+  })
 })

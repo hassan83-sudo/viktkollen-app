@@ -1,3 +1,5 @@
+import { normalizeCoachMemory } from './coachMemory/coachMemoryModel.js'
+
 export const adaptiveCoachFeedbackStorageKey = 'viktkollen.adaptiveCoach.v1'
 export const adaptiveCoachFeedbackVersion = 1
 export const adaptiveCoachTimelineHistoryLimit = 140
@@ -263,6 +265,7 @@ export function normalizeAdaptiveCoachFeedback(value = {}, options = {}) {
     .slice(0, adaptiveCoachTimelineHistoryLimit)
 
   return {
+    coachMemory: normalizeCoachMemory(source.coachMemory, { now }),
     events,
     history,
     recommendations: entries,

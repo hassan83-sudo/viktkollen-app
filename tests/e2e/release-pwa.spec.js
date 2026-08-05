@@ -34,6 +34,6 @@ test.describe('release PWA contract', () => {
       links.map((link) => link.getAttribute('href') || ''),
     )
 
-    expect(preloadHrefs.join('\n')).not.toMatch(/ReminderCenter|LaunchReadinessPanel|ManualAcceptanceRunner|CloudBackupPanel|DataImportCenter|DataExportCenter|ReportDrilldown|NotificationCenter|InsightsCenter|AchievementCenter|SocialCenter/)
+    expect(preloadHrefs.join('\n')).not.toMatch(/AdaptiveCoachPanel|CoachMemoryReview|coachContextSelector|ReminderCenter|LaunchReadinessPanel|ManualAcceptanceRunner|CloudBackupPanel|DataImportCenter|DataExportCenter|ReportDrilldown|NotificationCenter|InsightsCenter|AchievementCenter|SocialCenter/)
   })
 })

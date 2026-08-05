@@ -73,3 +73,9 @@ Blockerade externa steg ar inte PASS. De ska sta som `blockedByEnvironment` till
 - `SUPABASE_URL`/`SUPABASE_ANON_KEY` kan anvandas som serveralias; service-role behovs inte.
 - Standardpreflight utan token ska ge 401 pa AI-routes.
 - `npm run validate:staging` kontrollerar authverifierare, limiter, no-store och Authorization-transport.
+
+## Coach Memory
+
+- Kontrollera att `Granska coachminne` kan oppnas i Adaptive Coach.
+- Verifiera att remote memory default ar av.
+- Verifiera att preview inte visar ra historik, user ID, auth/session, prompts eller providerresponses.

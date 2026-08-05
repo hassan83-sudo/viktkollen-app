@@ -181,3 +181,7 @@ PASS only if HTTPS, index, manifest, service worker, icons, API route, SPA reloa
 ## AI Route Security V2
 
 Standardpreflight mot preview ska ge 401 vid saknad auth och aldrig gora provideranrop. Riktig authenticated providerkontroll gors bara manuellt med testkonto och uttryckligt godkannande. Token far inte skrivas ut eller sparas i trace/screenshots.
+
+## Coach Memory
+
+Testa med lokal testdata: oppna Adaptive Coach, oppna memory review, andra coachton/actionstorlek, visa preview, stang av personalization och kontrollera att remote AI inte startar automatiskt.

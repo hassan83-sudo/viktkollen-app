@@ -29,6 +29,7 @@ import {
   subscribeToAuthChanges,
 } from './services/authService.js'
 import { createDashboardData } from './services/dashboardService.js'
+import { clearSharedAnalyticsCache } from './services/sharedAnalyticsCache.js'
 import {
   formatKg as formatHealthKg,
   getProteinNeedForContext,
@@ -2008,6 +2009,7 @@ function App() {
   }, [bodyAnalysisHistory, checkIn, healthSnapshot, meals, photoMeals, proactiveCoachKey, selectedMealDate, weights])
 
   const refreshAppStateFromStorage = useCallback(() => {
+    clearSharedAnalyticsCache()
     const nextProfile = userDataRepository.getProfile(null, isStoredProfile)
     const storedMealHistory = getMealHistory()
     const nextPhotoMeals = storedMealHistory.length > 0
@@ -2104,6 +2106,7 @@ function App() {
     setAuthError('')
     setAuthNotice('')
     setAuthLoading(true)
+    clearSharedAnalyticsCache()
 
     const { data, error } = await signInWithEmail(credentials)
 
@@ -2120,6 +2123,7 @@ function App() {
     setAuthError('')
     setAuthNotice('')
     setAuthLoading(true)
+    clearSharedAnalyticsCache()
 
     const { data, error } = await signUpWithEmail(credentials)
 
@@ -2141,6 +2145,7 @@ function App() {
     setAuthError('')
     setAuthNotice('')
     setAuthLoading(true)
+    clearSharedAnalyticsCache()
 
     const { error } = await signOut()
 

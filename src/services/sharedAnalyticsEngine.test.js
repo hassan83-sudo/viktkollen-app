@@ -4,6 +4,8 @@ import { buildHealthDashboardV2Model } from './healthDashboardV2.js'
 import { createMonthlyHealthReport } from './monthlyReportService.js'
 import {
   buildSharedAnalytics,
+  clearSharedAnalyticsCache,
+  getSharedAnalyticsCacheStats,
   buildSharedMonthlyReportModel,
   buildSharedWeeklyReportModel,
   sharedAnalyticsEngineVersion,
@@ -45,6 +47,19 @@ function data(overrides = {}) {
 }
 
 describe('Shared Analytics Engine V2', () => {
+  it('caches repeated analytics in a bounded session cache and invalidates on input change', () => {
+    clearSharedAnalyticsCache()
+    const first = buildSharedAnalytics(data(), { analysisDate, period: '30d' })
+    const second = buildSharedAnalytics(data(), { analysisDate, period: '30d' })
+    const changed = buildSharedAnalytics(data({ weights: [...weights, { date: '2026-08-01', value: 89.2 }] }), { analysisDate, period: '30d' })
+
+    expect(second).toBe(first)
+    expect(changed).not.toBe(first)
+    expect(getSharedAnalyticsCacheStats()).toMatchObject({ limit: 24, size: 2 })
+    clearSharedAnalyticsCache()
+    expect(getSharedAnalyticsCacheStats().size).toBe(0)
+  })
+
   it('builds a deterministic shared analytics model', () => {
     const first = buildSharedAnalytics(data(), { analysisDate, period: '30d' })
     const second = buildSharedAnalytics(data(), { analysisDate, period: '30d' })

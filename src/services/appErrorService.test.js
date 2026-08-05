@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeAppError } from './appErrorService.js'
+import { isChunkLoadError, normalizeAppError } from './appErrorService.js'
 
 describe('appErrorService', () => {
   it('classifies storage quota errors without leaking raw details', () => {
@@ -31,5 +31,15 @@ describe('appErrorService', () => {
 
     expect(error.safeUserMessage).not.toMatch(/Object\.render|secret|file\.js/)
     expect(error.safeCategory).toBe('render')
+  })
+
+  it('classifies chunk load failures for controlled lazy recovery', () => {
+    const error = new TypeError('Failed to fetch dynamically imported module: /assets/OldCenter.js')
+    const normalized = normalizeAppError(error, { area: 'lazy' })
+
+    expect(isChunkLoadError(error)).toBe(true)
+    expect(normalized.safeCategory).toBe('chunkLoad')
+    expect(normalized.safeUserMessage).toContain('appdel')
+    expect(normalized.safeUserMessage).not.toContain('/assets/OldCenter.js')
   })
 })

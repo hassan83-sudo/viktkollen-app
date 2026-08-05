@@ -1,5 +1,7 @@
 import { Component } from 'react'
-import { getSafeErrorMessage, logAppError, normalizeAppError } from '../services/appErrorService.js'
+import { getSafeErrorMessage, isChunkLoadError, logAppError, normalizeAppError } from '../services/appErrorService.js'
+
+const chunkRecoveryPrefix = 'viktkollen.chunkRecovery'
 
 function goHome() {
   if (typeof window === 'undefined') return
@@ -26,6 +28,9 @@ class AppErrorBoundary extends Component {
       area: this.props.area || 'app',
       componentStack: errorInfo?.componentStack || '',
     })
+    if (this.props.enableChunkRecovery !== false && isChunkLoadError(error)) {
+      this.tryChunkRecovery()
+    }
   }
 
   componentDidUpdate(previousProps) {
@@ -44,6 +49,20 @@ class AppErrorBoundary extends Component {
   reload = () => {
     if (typeof window !== 'undefined') {
       window.location.reload()
+    }
+  }
+
+  tryChunkRecovery = () => {
+    if (typeof window === 'undefined') return
+    const version = import.meta.env.VITE_APP_VERSION || '0.0.0'
+    const key = `${chunkRecoveryPrefix}.${version}`
+
+    try {
+      if (window.sessionStorage?.getItem(key)) return
+      window.sessionStorage?.setItem(key, new Date().toISOString())
+      window.setTimeout(() => window.location.reload(), 50)
+    } catch {
+      // If sessionStorage is unavailable, keep the safe fallback visible.
     }
   }
 
@@ -71,6 +90,11 @@ class AppErrorBoundary extends Component {
           </div>
         </div>
         <p className="settings-note">{message}</p>
+        {normalized.safeCategory === 'chunkLoad' && (
+          <p className="estimate-note">
+            Om appen nyligen uppdaterades försöker Viktkollen återhämta den här vyn en gång utan att radera data.
+          </p>
+        )}
         <p className="estimate-note">Fel-id: {normalized.technicalCode}</p>
         {import.meta.env.DEV && normalized.diagnosticMessage && (
           <p className="estimate-note">Utvecklingsdetalj: {normalized.diagnosticMessage}</p>

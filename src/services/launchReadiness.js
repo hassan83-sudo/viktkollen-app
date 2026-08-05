@@ -9,6 +9,7 @@ import { buildSocialSummary } from './social/socialEngine.js'
 import { buildCoachPlanCenterModel } from './coachActionPlanEngine.js'
 import { buildNutritionCoachModel } from './nutrition/nutritionCoachEngine.js'
 import { buildHealthPredictionModel } from './prediction/healthPredictionEngine.js'
+import { buildRuntimePerformanceSummary } from './performanceDiagnostics.js'
 
 function mask(value) {
   const text = String(value || '')
@@ -70,6 +71,12 @@ export function buildLaunchReadinessReport({
     healthSnapshot,
     reminderState,
   })
+  const performance = buildRuntimePerformanceSummary({
+    lazyChunkCount: 18,
+    largestLazyChunks: ['nutritionEngine', 'MealLogger', 'aiCoachDeterministicReplies', 'insightsEngine', 'ProgressPhotos'],
+    listenerCategories: ['auth', 'online', 'visibilitychange', 'focus', 'storage', 'service-worker'],
+    schedulerTypes: ['global-sync', 'reminders', 'notifications', 'service-worker-update'],
+  })
 
   return {
     appVersion: PWA_APP_VERSION,
@@ -121,6 +128,9 @@ export function buildLaunchReadinessReport({
       predictionEngine: predictions.modelVersion === 1 ? 'pass' : 'fail',
       predictionUi: 'lazy-loaded',
       predictionAiIntegration: 'consent-gated-aggregate-summary',
+      performanceDiagnostics: 'read-only',
+      runtimeAnalyticsCache: `${performance.analyticsCache.size}/${performance.analyticsCache.limit}`,
+      storagePressureBand: performance.storagePressure.totalBand,
       logoutAbortSupport: 'pass',
       achievementEngineHealth: 'Aktiv',
       achievementLevel: achievements.levelTitle,
@@ -182,6 +192,7 @@ export function buildLaunchReadinessReport({
       manifest: 'public/manifest.webmanifest',
       serviceWorker: typeof navigator !== 'undefined' && 'serviceWorker' in navigator ? 'Stods' : 'Saknas',
     },
+    performance,
     reminders: {
       dueCount: reminderStatus.dueCount,
       enabledCount: reminderStatus.enabledCount,

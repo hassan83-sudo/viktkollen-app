@@ -3,6 +3,7 @@ import { safeLogger, sanitizeLogValue } from './safeLogger.js'
 const sensitivePattern = /(token|apikey|api[_-]?key|authorization|bearer|supabase|password|session|secret)[\s:=/"']+[^\s,;)"']+/gi
 const stackPattern = /\s+at\s+[\w$.<>()]+\s+\([^)]*\)/g
 const technicalValuePattern = /\b(undefined|null|nan|infinity)\b|\[object object\]/gi
+const chunkErrorPattern = /(loading chunk|failed to fetch dynamically imported module|importing a module script failed|dynamically imported module|chunkloaderror|modulepreload)/i
 
 function cleanText(value) {
   return String(value ?? '')
@@ -36,7 +37,11 @@ export function normalizeAppError(error, context = {}) {
   let retryable = true
   let severity = 'medium'
 
-  if (lower.includes('quota') || name === 'QuotaExceededError') {
+  if (chunkErrorPattern.test(`${name} ${rawMessage}`)) {
+    safeCategory = 'chunkLoad'
+    safeUserMessage = 'En appdel kunde inte laddas. Försök igen, eller ladda om appen om problemet kvarstår.'
+    severity = 'high'
+  } else if (lower.includes('quota') || name === 'QuotaExceededError') {
     safeCategory = 'storage'
     safeUserMessage = 'Lagringsutrymmet verkar vara fullt. Din befintliga data har inte raderats.'
     severity = 'high'
@@ -98,6 +103,10 @@ export function normalizeAppError(error, context = {}) {
     type: safeCategory,
     userMessage: safeUserMessage,
   }
+}
+
+export function isChunkLoadError(error) {
+  return chunkErrorPattern.test(`${getErrorName(error)} ${error?.message || error || ''}`)
 }
 
 export function getSafeErrorMessage(error, context = {}) {

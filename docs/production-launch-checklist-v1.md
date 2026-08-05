@@ -137,6 +137,15 @@
 - Early warnings ska vara stödjande och får inte uttryckas som diagnos eller medicinsk bedömning.
 - Remote AI får endast se aggregerade prediction summaries, confidence och kategorier när befintligt samtycke finns.
 
+## Production Performance & Stability V3
+
+- `docs/production-performance-stability-v3.md` dokumenterar bundle-baslinje, cachepolicy, chunk recovery och runtime diagnostics.
+- `docs/runtime-lifecycle-audit-v1.md` dokumenterar listener-, timer-, async- och object URL-audit.
+- `docs/local-development-resource-guide-v1.md` dokumenterar säkra lokala PowerShell-kommandon och release command efficiency.
+- Shared analytics cache ska vara sessionsbaserad, bounded och rensas vid auth-/state-refresh.
+- Lazy chunk recovery får högst göra en kontrollerad reload per appversion/session.
+- Launch Readiness får bara visa storage size bands och runtime-kategorier, inte rå användardata.
+
 ## Accessibility
 
 - Tangentbord fungerar för reminders, modaler, reports och PWA banners.

@@ -9,9 +9,16 @@ import {
 } from './healthDashboardPeriodEngine.js'
 import { getLocalDateString } from './localDate.js'
 import { buildProgressDashboardAnalytics, formatProgressChange } from './progress/progressAnalytics.js'
+import {
+  clearSharedAnalyticsCache,
+  getSharedAnalyticsCacheStats,
+  readSharedAnalyticsCache,
+  writeSharedAnalyticsCache,
+} from './sharedAnalyticsCache.js'
 
 export const sharedAnalyticsEngineVersion = 2
 export const sharedAnalyticsPeriods = healthDashboardPeriodDefinitions
+export { clearSharedAnalyticsCache, getSharedAnalyticsCacheStats }
 
 function safeArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : []
@@ -28,6 +35,60 @@ function round(value, digits = 1) {
   const factor = 10 ** digits
 
   return Math.round((value + Number.EPSILON) * factor) / factor
+}
+
+function hashText(text) {
+  let hash = 2166136261
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return (hash >>> 0).toString(36)
+}
+
+function compactEntries(entries, pickValue) {
+  return safeArray(entries).map((entry) => pickValue(entry)).filter(Boolean)
+}
+
+function buildAnalyticsCacheKey(data, { analysisDate, period }) {
+  const fingerprint = {
+    checkIns: compactEntries(data.checkIns || data.healthSnapshot?.checkIn?.dailyEntries, (entry) => [
+      entry.date,
+      entry.updatedAt,
+      entry.energy,
+      entry.steps,
+      entry.mood,
+      entry.workout,
+    ]),
+    goalsHabits: {
+      goals: safeArray(data.goalsHabits?.goals).map((goal) => [goal.id, goal.status, goal.updatedAt, goal.progress]),
+      habits: safeArray(data.goalsHabits?.habits).map((habit) => [habit.id, habit.status, habit.updatedAt, habit.streak, habit.completedAt]),
+      weeklyFocus: safeArray(data.goalsHabits?.weeklyFocus).map((focus) => [focus.id, focus.status, focus.updatedAt]),
+    },
+    meals: compactEntries(data.meals || data.healthSnapshot?.nutrition?.actualMeals, (meal) => [
+      meal.id,
+      meal.date || meal.createdAt || meal.timestamp,
+      meal.updatedAt,
+      meal.calories,
+      meal.protein,
+      meal.fiber,
+      meal.isPlanned === true,
+    ]),
+    nutritionGoals: data.nutritionGoals,
+    profile: {
+      goal: data.profile?.goal,
+      goalWeight: data.profile?.goalWeight,
+      startWeight: data.profile?.startWeight,
+    },
+    weights: compactEntries(data.weights || data.healthSnapshot?.weight?.dailyWeights, (entry) => [
+      entry.id,
+      entry.date || entry.createdAt || entry.timestamp,
+      entry.updatedAt,
+      entry.value ?? entry.weight,
+    ]),
+  }
+
+  return `${analysisDate}|${period}|${hashText(JSON.stringify(fingerprint))}`
 }
 
 function formatNumber(value, unit = '') {
@@ -393,6 +454,9 @@ function buildReportModel(shared) {
 export function buildSharedAnalytics(data = {}, options = {}) {
   const analysisDate = getLocalDateString(options.analysisDate || options.today || data.today || new Date())
   const selectedPeriod = sharedAnalyticsPeriods.find((period) => period.id === (options.period || data.period || '30d')) || sharedAnalyticsPeriods[1]
+  const cacheKey = options.cache === false ? null : buildAnalyticsCacheKey(data, { analysisDate, period: selectedPeriod.id })
+  const cached = cacheKey ? readSharedAnalyticsCache(cacheKey) : null
+  if (cached) return cached
   const snapshot = data.healthSnapshot || buildHealthSnapshot({ ...data, today: analysisDate })
   const period = buildHealthDashboardPeriod(selectedPeriod.id, {
     analysisDate,
@@ -446,11 +510,14 @@ export function buildSharedAnalytics(data = {}, options = {}) {
     weightSummary,
   }
 
-  return {
+  const result = {
     ...shared,
     dashboardModel: buildDashboardModel(shared),
     reportModel: buildReportModel(shared),
   }
+  if (cacheKey) writeSharedAnalyticsCache(cacheKey, result)
+
+  return result
 }
 
 export function buildSharedWeeklyReportModel(data = {}, options = {}) {

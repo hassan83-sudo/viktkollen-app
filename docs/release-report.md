@@ -94,3 +94,7 @@ Meal quality, daily nutrition timeline, nutrition gaps och smart food suggestion
 ## Predictive Health Intelligence V1
 
 Prediction engine och Prediction Center ar dokumenterade i `docs/predictive-health-intelligence-v1.md`. Funktionen ateranvander shared analytics, insights, nutrition coach och adaptive coach feedback utan ny lagring. Release-gaten kontrollerar att Prediction Center inte modulepreloadas initialt.
+
+## Production Performance & Stability V3
+
+Runtime-auditen ar dokumenterad i `docs/runtime-lifecycle-audit-v1.md`. Performance- och stability-fixarna ar dokumenterade i `docs/production-performance-stability-v3.md`. Lokal resursguide finns i `docs/local-development-resource-guide-v1.md`. Fokus var bounded shared analytics cache, chunk-load recovery och read-only Launch Readiness diagnostics utan nya storage keys.

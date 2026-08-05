@@ -145,6 +145,7 @@ test.describe('release candidate smoke', () => {
     await expect(page.getByText(/Data Import|Import/i).first()).toBeVisible()
     await expect(page.getByText(/Sync Health|Sync health/i).first()).toBeVisible()
     await expect(page.getByText(/Insights & consistency|Insights/i).first()).toBeVisible()
+    await expect(page.getByText(/Coach Plan Center/i).first()).toBeVisible()
     await expect(page.getByText(/Smart Goals & Achievements V2/i).first()).toBeVisible()
     await expect(page.getByText(/Social & Accountability V1/i).first()).toBeVisible()
     await expect(page.getByText(/Notification Center|Notifieringar/i).first()).toBeVisible()

@@ -49,4 +49,35 @@ describe('coachRequestBuilder', () => {
     expect(result.preview.memory).toContain('lugn')
     expect(JSON.stringify(result.payload.memoryContext)).not.toMatch(/private-id|auth|session|token|raw|meal|weight|prompt|provider/i)
   })
+
+  it('adds minimized action plan context only with remote consent', () => {
+    const input = {
+      adaptiveCoachFeedback: {
+        actionPlans: [{
+          adaptiveChange: 'Planen kortades ned.',
+          confidence: 0.72,
+          days: [{
+            actions: [
+              { category: 'nutrition', id: 'private-action-1', status: 'completed', title: 'Protein', description: 'raw detail' },
+              { category: 'activity', id: 'private-action-2', status: 'skipped', title: 'Promenad', description: 'raw detail' },
+            ],
+            date: '2026-08-04',
+          }],
+          generatedAt: '2026-08-04T12:00:00.000Z',
+        }],
+      },
+    }
+    const enabled = buildCoachRemoteRequestPayload(input, { analysisDate: '2026-08-04', consent: true })
+    const disabled = buildCoachRemoteRequestPayload(input, { analysisDate: '2026-08-04', consent: false })
+
+    expect(enabled.payload.actionPlanContext).toMatchObject({
+      categories: ['nutrition', 'activity'],
+      completed: 1,
+      remoteAllowed: true,
+      skipped: 1,
+    })
+    expect(enabled.preview.actionPlan).toContain('1 klara')
+    expect(JSON.stringify(enabled.payload.actionPlanContext)).not.toMatch(/private-action|raw detail/)
+    expect(disabled.payload.actionPlanContext.remoteAllowed).toBe(false)
+  })
 })

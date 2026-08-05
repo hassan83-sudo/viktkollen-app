@@ -34,6 +34,10 @@ export const adaptiveCoachTimelineEventTypes = [
   'planActionCreated',
   'duplicatePrevented',
   'planOutcomeObserved',
+  'coachActionPlanGenerated',
+  'coachActionPlanRegenerated',
+  'coachActionPlanActionCompleted',
+  'coachActionPlanActionSkipped',
 ]
 
 const statusLabels = {
@@ -81,6 +85,74 @@ function normalizeNumber(value, fallback = 0) {
   const number = Number(value)
 
   return Number.isFinite(number) ? number : fallback
+}
+
+function normalizeActionPlans(value = [], options = {}) {
+  return safeArray(value)
+    .map((plan) => normalizeActionPlan(plan, options))
+    .filter(Boolean)
+    .slice(0, 8)
+}
+
+function normalizeActionPlan(plan = {}, options = {}) {
+  const source = safeObject(plan)
+  const generatedAt = safeDateText(source.generatedAt || source.createdAt || source.updatedAt, options.now || new Date().toISOString())
+  const weekStart = safeText(source.weekStart || source.startDate)
+  const days = safeArray(source.days)
+    .map((day) => ({
+      actions: safeArray(day.actions).map((action) => normalizePlanAction(action, { generatedAt })).filter(Boolean).slice(0, 6),
+      date: safeText(day.date),
+      label: safeText(day.label || day.date),
+    }))
+    .filter((day) => day.date)
+    .slice(0, 7)
+
+  if (!days.length) return null
+
+  return {
+    adaptiveChange: safeText(source.adaptiveChange),
+    confidence: Math.max(0, Math.min(1, normalizeNumber(source.confidence, 0.35))),
+    generatedAt,
+    id: safeText(source.id, `coach-action-plan-${weekStart || generatedAt.slice(0, 10)}`),
+    rationale: safeArray(source.rationale).map((entry) => safeText(entry)).filter(Boolean).slice(0, 5),
+    safetyNote: safeText(source.safetyNote, 'Planen är frivillig, neutral och kan ändras när som helst.'),
+    sourceStatus: safeText(source.sourceStatus, 'ruleBased'),
+    updatedAt: safeDateText(source.updatedAt, generatedAt),
+    version: normalizeNumber(source.version, 1),
+    weekEnd: safeText(source.weekEnd),
+    weekStart,
+    days,
+  }
+}
+
+function normalizePlanAction(action = {}, options = {}) {
+  const source = safeObject(action)
+  const status = ['pending', 'completed', 'skipped'].includes(source.status) ? source.status : 'pending'
+  const category = normalizeArea(source.category)
+  const dayPart = ['morning', 'afternoon', 'evening'].includes(source.dayPart) ? source.dayPart : 'morning'
+  const title = safeText(source.title, 'Coachsteg')
+  const id = safeText(source.id, `plan-action-${hashText(`${dayPart}|${category}|${title}`)}`)
+
+  return {
+    category,
+    completedAt: status === 'completed' ? safeDateText(source.completedAt || source.updatedAt || options.generatedAt) : '',
+    dayPart,
+    description: safeText(source.description || source.action, 'Ett litet nästa steg.', 240),
+    durationMinutes: Math.max(2, Math.min(45, normalizeNumber(source.durationMinutes, 10))),
+    id,
+    optionalReminder: source.optionalReminder && typeof source.optionalReminder === 'object'
+      ? {
+        enabled: source.optionalReminder.enabled === true,
+        time: /^\d{2}:\d{2}$/.test(String(source.optionalReminder.time || '')) ? source.optionalReminder.time : '',
+        title: safeText(source.optionalReminder.title, title, 90),
+      }
+      : null,
+    priority: Math.max(1, Math.min(100, normalizeNumber(source.priority, 50))),
+    reason: safeText(source.reason, '', 220),
+    skippedAt: status === 'skipped' ? safeDateText(source.skippedAt || source.updatedAt || options.generatedAt) : '',
+    status,
+    title,
+  }
 }
 
 function normalizeArea(value) {
@@ -265,6 +337,7 @@ export function normalizeAdaptiveCoachFeedback(value = {}, options = {}) {
     .slice(0, adaptiveCoachTimelineHistoryLimit)
 
   return {
+    actionPlans: normalizeActionPlans(source.actionPlans, { now }),
     coachMemory: normalizeCoachMemory(source.coachMemory, { now }),
     events,
     history,
@@ -286,6 +359,80 @@ export function appendCoachTimelineEvent(feedback, event, options = {}) {
       nextEvent,
       ...normalized.events.filter((entry) => entry.id !== nextEvent.id),
     ].slice(0, adaptiveCoachTimelineHistoryLimit),
+    updatedAt: now,
+  }, { now })
+}
+
+export function mergeAdaptiveCoachActionPlan(feedback, plan, options = {}) {
+  const now = safeDateText(options.now, new Date().toISOString())
+  const normalized = normalizeAdaptiveCoachFeedback(feedback, { now })
+  const nextPlan = normalizeActionPlan(plan, { now })
+  if (!nextPlan) return normalized
+
+  return normalizeAdaptiveCoachFeedback({
+    ...normalized,
+    actionPlans: [
+      nextPlan,
+      ...normalized.actionPlans.filter((entry) => entry.id !== nextPlan.id),
+    ],
+    events: [
+      {
+        eventType: normalized.actionPlans.some((entry) => entry.id === nextPlan.id)
+          ? 'coachActionPlanRegenerated'
+          : 'coachActionPlanGenerated',
+        occurredAt: now,
+        source: 'coachActionPlan',
+        summary: 'En sjudagars coachplan skapades.',
+        title: 'Coachplan skapad',
+      },
+      ...normalized.events,
+    ],
+    updatedAt: now,
+  }, { now })
+}
+
+export function updateAdaptiveCoachPlanActionStatus(feedback, planId, actionId, status, options = {}) {
+  const now = safeDateText(options.now, new Date().toISOString())
+  const normalized = normalizeAdaptiveCoachFeedback(feedback, { now })
+  const nextStatus = ['pending', 'completed', 'skipped'].includes(status) ? status : 'pending'
+  let changedAction = null
+  const actionPlans = normalized.actionPlans.map((plan) => {
+    if (plan.id !== planId) return plan
+    return {
+      ...plan,
+      days: plan.days.map((day) => ({
+        ...day,
+        actions: day.actions.map((action) => {
+          if (action.id !== actionId) return action
+          changedAction = {
+            ...action,
+            completedAt: nextStatus === 'completed' ? now : '',
+            skippedAt: nextStatus === 'skipped' ? now : '',
+            status: nextStatus,
+          }
+          return changedAction
+        }),
+      })),
+      updatedAt: now,
+    }
+  })
+  if (!changedAction) return normalized
+
+  return normalizeAdaptiveCoachFeedback({
+    ...normalized,
+    actionPlans,
+    events: [
+      {
+        category: changedAction.category,
+        eventType: nextStatus === 'completed' ? 'coachActionPlanActionCompleted' : nextStatus === 'skipped' ? 'coachActionPlanActionSkipped' : 'planOutcomeObserved',
+        occurredAt: now,
+        source: 'coachActionPlan',
+        status: nextStatus,
+        summary: changedAction.title,
+        title: nextStatus === 'completed' ? 'Plansteg klart' : nextStatus === 'skipped' ? 'Plansteg hoppades över' : 'Plansteg återställt',
+      },
+      ...normalized.events,
+    ],
     updatedAt: now,
   }, { now })
 }
@@ -332,6 +479,7 @@ export function updateAdaptiveCoachFeedback(feedback, recommendation, status, op
   })
 
   return normalizeAdaptiveCoachFeedback({
+    actionPlans: normalized.actionPlans,
     events: [
       {
         eventType: status === 'accepted'

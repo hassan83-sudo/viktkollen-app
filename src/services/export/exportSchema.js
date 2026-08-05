@@ -101,7 +101,7 @@ export const exportSections = Object.freeze([
     defaultSelected: true,
     dependencies: ['goalsHabits', 'reminders'],
     id: 'adaptiveCoach',
-    label: 'Adaptive Coach',
+    label: 'Adaptive Coach, coachminne och action plans',
     storageKeys: [userDataKeys.adaptiveCoachFeedback, userDataKeys.aiConversationMemory, userDataKeys.aiCoachReports, userDataKeys.chat],
   },
   {

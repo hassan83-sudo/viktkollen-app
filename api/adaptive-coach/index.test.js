@@ -142,6 +142,33 @@ describe('adaptive coach API route', () => {
     expect(JSON.stringify(facts)).not.toMatch(/script|diagnosis|unknown|bad/)
   })
 
+  it('sanitizes minimized action plan context without raw plan details', () => {
+    const facts = adaptiveCoachRouteInternals.sanitizeFacts({
+      actionPlanContext: {
+        categories: ['nutrition', 'activity', 'diagnosis'],
+        completed: 40,
+        confidence: 2,
+        pending: 4,
+        remoteAllowed: true,
+        skipped: 2,
+        weekStatus: 'Planen kortades ned <script>x</script>',
+        rawActions: [{ id: 'private' }],
+      },
+      confidence: 0.8,
+      coverage: 0.8,
+    })
+
+    expect(facts.actionPlanContext).toMatchObject({
+      categories: ['nutrition', 'activity'],
+      completed: 21,
+      confidence: 1,
+      pending: 4,
+      remoteAllowed: true,
+      skipped: 2,
+    })
+    expect(JSON.stringify(facts)).not.toMatch(/diagnosis|rawActions|private|script/)
+  })
+
   it('returns low coverage before provider call', async () => {
     process.env.OPENAI_API_KEY = 'test-key'
     const response = await callRoute(createRequest({ body: { consent: true, confidence: 0.1, coverage: 0.1 } }))

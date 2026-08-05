@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 import { getSpawnTarget } from './verify-release.js'
@@ -32,5 +33,11 @@ describe('verify-release script contract', () => {
       args: ['diff', '--check'],
       command: 'git',
     })
+  })
+
+  it('keeps CoachPlanCenter out of initial release preloads', () => {
+    const source = readFileSync(new URL('./verify-release.js', import.meta.url), 'utf8')
+
+    expect(source).toContain('CoachPlanCenter')
   })
 })

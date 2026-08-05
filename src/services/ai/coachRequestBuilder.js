@@ -71,6 +71,29 @@ function buildSafeMemoryContext(input, options, coachModel) {
   }
 }
 
+function buildSafeActionPlanContext(input, options = {}) {
+  if (options.consent !== true) return { enabled: false, remoteAllowed: false }
+  const plans = safeArray(input.adaptiveCoachFeedback?.actionPlans)
+    .slice()
+    .sort((first, second) => String(second.generatedAt || '').localeCompare(String(first.generatedAt || '')))
+  const plan = plans[0]
+  if (!plan) return { enabled: false, remoteAllowed: false }
+
+  const actions = safeArray(plan.days).flatMap((day) => safeArray(day.actions))
+  const categories = [...new Set(actions.map((action) => safeText(action.category, 'general', 40)).filter(Boolean))].slice(0, 5)
+
+  return {
+    categories,
+    completed: actions.filter((action) => action.status === 'completed').length,
+    confidence: Number.isFinite(Number(plan.confidence)) ? Number(plan.confidence) : null,
+    enabled: true,
+    pending: actions.filter((action) => !action.status || action.status === 'pending').length,
+    remoteAllowed: true,
+    skipped: actions.filter((action) => action.status === 'skipped').length,
+    weekStatus: safeText(plan.adaptiveChange || 'Regelbaserad plan', '', 140),
+  }
+}
+
 export function buildCoachRemoteRequestPayload(input = {}, options = {}) {
   const analysisDate = safeText(options.analysisDate || input.analysisDate || input.healthSnapshot?.date, '', 20)
   const coachModel = options.coachModel || buildAdaptiveCoach(input, { analysisDate, period: options.period || '30d' })
@@ -81,6 +104,7 @@ export function buildCoachRemoteRequestPayload(input = {}, options = {}) {
   const coverage = Number(coachModel.coverage?.ratio ?? shared.coverage?.ratio ?? 0)
   const confidence = Number(coachModel.confidence?.value ?? 0)
   const memoryContext = buildSafeMemoryContext(input, { ...options, analysisDate }, coachModel)
+  const actionPlanContext = buildSafeActionPlanContext(input, options)
 
   const payload = {
     activeGoals: safeArray(input.goalsHabits?.goals).slice(0, 4).map((goal) => stripUnsafeText(goal.name || goal.title, '', 80)).filter(Boolean),
@@ -98,6 +122,7 @@ export function buildCoachRemoteRequestPayload(input = {}, options = {}) {
       reminders: metricText('reminders', shared.reminderSummary?.text || coachModel.recommendations?.find((item) => item.area === 'reminders')?.text),
       weight: metricText('vikttrend', shared.weightSummary?.periodChangeLabel || shared.weightSummary?.dataText),
     },
+    actionPlanContext,
     memoryContext,
     period: options.period || '30d',
     question: stripUnsafeText(options.question, '', 180),
@@ -115,6 +140,9 @@ export function buildCoachRemoteRequestPayload(input = {}, options = {}) {
       confidence: `${Math.round(confidence * 100)}%`,
       coverage: `${Math.round(coverage * 100)}%`,
       goals: payload.activeGoals.length ? `${payload.activeGoals.length} säkra mål/vanor` : 'Saknas',
+      actionPlan: actionPlanContext.remoteAllowed
+        ? `${actionPlanContext.pending} planerade, ${actionPlanContext.completed} klara, ${actionPlanContext.skipped} hoppade`
+        : 'Av',
       memory: memoryContext.remoteAllowed
         ? `${memoryContext.coachStyle}, ${memoryContext.actionSize}, ${memoryContext.activePriorityCategories?.length || 0} prioriteringar`
         : 'Av',
@@ -131,6 +159,7 @@ export function fingerprintCoachPayload(payload = {}) {
     confidence: payload.confidence,
     coverage: payload.coverage,
     highlights: payload.highlights,
+    actionPlanContext: payload.actionPlanContext,
     memoryContext: payload.memoryContext,
     metrics: payload.metrics,
     period: payload.period,

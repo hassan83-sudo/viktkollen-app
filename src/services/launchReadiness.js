@@ -6,6 +6,7 @@ import { buildNotificationPlan } from './notifications/notificationEngine.js'
 import { buildInsightsEngine } from './insights/insightsEngine.js'
 import { buildAchievementSummary } from './achievements/achievementEngine.js'
 import { buildSocialSummary } from './social/socialEngine.js'
+import { buildCoachPlanCenterModel } from './coachActionPlanEngine.js'
 
 function mask(value) {
   const text = String(value || '')
@@ -54,6 +55,11 @@ export function buildLaunchReadinessReport({
     healthSnapshot,
     reminderState,
   })
+  const coachPlan = buildCoachPlanCenterModel({
+    adaptiveCoachFeedback: {},
+    healthSnapshot,
+    reminderState,
+  })
 
   return {
     appVersion: PWA_APP_VERSION,
@@ -93,6 +99,11 @@ export function buildLaunchReadinessReport({
       coachMemorySyncAdapter: 'existing-adaptive-coach-key',
       coachMemoryUserIsolation: 'conditional',
       personalizationState: 'user-controlled',
+      coachPlanningEngine: coachPlan.plan?.days?.length === 7 ? 'pass' : 'fail',
+      coachPlannerAiIntegration: 'consent-gated',
+      coachPlannerExport: 'existing-adaptive-coach-section',
+      coachPlannerPersistence: 'existing-adaptive-coach-key',
+      coachPlannerSync: isAllowedSyncStorageKey(userDataKeys.adaptiveCoachFeedback) ? 'pass' : 'fail',
       logoutAbortSupport: 'pass',
       achievementEngineHealth: 'Aktiv',
       achievementLevel: achievements.levelTitle,

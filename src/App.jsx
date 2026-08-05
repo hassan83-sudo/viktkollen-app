@@ -90,6 +90,7 @@ const AdaptiveCoachPanel = lazy(() => import('./components/AdaptiveCoachPanel.js
 const AchievementCenter = lazy(() => import('./components/AchievementCenter.jsx'))
 const BarcodeScanner = lazy(() => import('./components/BarcodeScanner.jsx'))
 const CloudBackupPanel = lazy(() => import('./components/CloudBackupPanel.jsx'))
+const CoachPlanCenter = lazy(() => import('./components/CoachPlanCenter.jsx'))
 const DataImportCenter = lazy(() => import('./components/DataImportCenter.jsx'))
 const DataExportCenter = lazy(() => import('./components/DataExportCenter.jsx'))
 const GoalsHabitsPanel = lazy(() => import('./components/GoalsHabitsPanel.jsx'))
@@ -2927,6 +2928,20 @@ function App() {
             onAdaptiveCoachFeedbackChange={setAdaptiveCoachFeedback}
             onGoalsHabitsChange={setGoalsHabits}
             onReminderStateChange={handleReminderStateChange}
+            weights={centralWeightStats.weights}
+          />
+
+          <CoachPlanCenter
+            adaptiveCoachFeedback={adaptiveCoachFeedback}
+            analysisDate={selectedMealDate}
+            checkIn={checkIn}
+            goalsHabits={goalsHabits}
+            healthSnapshot={healthSnapshot}
+            meals={meals}
+            nutritionGoals={nutritionGoals}
+            onAdaptiveCoachFeedbackChange={setAdaptiveCoachFeedback}
+            profile={validatedProfile}
+            reminderState={reminderState}
             weights={centralWeightStats.weights}
           />
 

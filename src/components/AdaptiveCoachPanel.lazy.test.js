@@ -6,7 +6,9 @@ describe('AdaptiveCoachPanel lazy loading contract', () => {
     const appSource = readFileSync(new URL('../App.jsx', import.meta.url), 'utf8')
 
     expect(appSource).toContain("const AdaptiveCoachPanel = lazy(() => import('./components/AdaptiveCoachPanel.jsx'))")
+    expect(appSource).toContain("const CoachPlanCenter = lazy(() => import('./components/CoachPlanCenter.jsx'))")
     expect(appSource).not.toMatch(/import\s+AdaptiveCoachPanel\s+from/)
+    expect(appSource).not.toMatch(/import\s+CoachPlanCenter\s+from/)
   })
 
   it('keeps the V7 weekly plan UI lazy-loaded from the coach panel', () => {

@@ -16,6 +16,7 @@ const MAX_PAYLOAD_BYTES = 12000
 const allowedMemoryCategories = ['weight', 'nutrition', 'activity', 'goals', 'reminders', 'recovery', 'planning']
 const allowedCoachStyles = ['neutral', 'lugn', 'uppmuntrande', 'rak', 'coachande']
 const allowedActionSizes = ['mycket liten', 'liten', 'normal']
+const allowedPlanCategories = ['weight', 'nutrition', 'activity', 'goals', 'reminders', 'recovery', 'planning', 'general']
 
 function getHeader(request, name) {
   const headers = request.headers || {}
@@ -86,6 +87,19 @@ function sanitizeFacts(payload = {}) {
           : [],
       }
     : null
+  const actionPlan = payload.actionPlanContext && typeof payload.actionPlanContext === 'object' && !Array.isArray(payload.actionPlanContext)
+    ? {
+        categories: Array.isArray(payload.actionPlanContext.categories)
+          ? payload.actionPlanContext.categories.filter((item) => allowedPlanCategories.includes(item)).slice(0, 5)
+          : [],
+        completed: Number.isFinite(Number(payload.actionPlanContext.completed)) ? Math.max(0, Math.min(21, Number(payload.actionPlanContext.completed))) : 0,
+        confidence: Number.isFinite(Number(payload.actionPlanContext.confidence)) ? Math.max(0, Math.min(1, Number(payload.actionPlanContext.confidence))) : null,
+        pending: Number.isFinite(Number(payload.actionPlanContext.pending)) ? Math.max(0, Math.min(21, Number(payload.actionPlanContext.pending))) : 0,
+        remoteAllowed: payload.actionPlanContext.remoteAllowed === true,
+        skipped: Number.isFinite(Number(payload.actionPlanContext.skipped)) ? Math.max(0, Math.min(21, Number(payload.actionPlanContext.skipped))) : 0,
+        weekStatus: safeText(payload.actionPlanContext.weekStatus, '', 140),
+      }
+    : null
   const allowed = {
     activeGoals: Array.isArray(payload.activeGoals) ? payload.activeGoals.map((item) => safeText(item, '', 120)).filter(Boolean).slice(0, 6) : [],
     analysisDate: safeText(payload.analysisDate, '', 20),
@@ -93,6 +107,7 @@ function sanitizeFacts(payload = {}) {
     confidence: Number.isFinite(Number(payload.confidence)) ? Math.max(0, Math.min(1, Number(payload.confidence))) : 0,
     coverage: Number.isFinite(Number(payload.coverage)) ? Math.max(0, Math.min(1, Number(payload.coverage))) : 0,
     highlights: Array.isArray(payload.highlights) ? payload.highlights.map((item) => safeText(item, '', 160)).filter(Boolean).slice(0, 6) : [],
+    actionPlanContext: actionPlan?.remoteAllowed ? actionPlan : null,
     locale: safeText(payload.locale, 'sv-SE', 12),
     metrics: payload.metrics && typeof payload.metrics === 'object' && !Array.isArray(payload.metrics)
       ? {
@@ -126,6 +141,7 @@ function buildCoachPrompt(facts, requestId) {
             'Du ar Viktkollens coachformulerare. Returnera endast JSON.',
             'Anvand bara facts i payloaden. Hitta inte pa vikt, kalorier, diagnoser eller prognoser.',
             'Memory ar osaker sammanfattad kontext: anvand bara hog-confidence preferenser och observationer, och ignorera low confidence eller begransat underlag.',
+            'Action plan context ar endast minimerade counts och kategorier. Be om bekraftelse innan du formulerar om planen.',
             'Skriv inte att du minns allt om anvandaren. Harled inte personlighet, diagnos eller medicinska behov.',
             'Ge max tre korta, neutrala och konstruktiva rekommendationer.',
             'Ingen medicinsk radgivning, ingen diagnos, ingen extrem viktminskning, ingen skuld.',

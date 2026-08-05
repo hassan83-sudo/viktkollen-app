@@ -2,11 +2,11 @@ import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useStat
 import HomeSection from './components/sections/HomeSection.jsx'
 import MoreSection from './components/sections/MoreSection.jsx'
 import ProgressSection from './components/sections/ProgressSection.jsx'
+import NutritionSection from './components/sections/NutritionSection.jsx'
 import './App.css'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import AuthPanel from './components/AuthPanel.jsx'
 import ChatPanel from './components/ChatPanel.jsx'
-import CheckIn from './components/CheckIn.jsx'
 import AppLoadingScreen from './components/app/AppLoadingScreen.jsx'
 import AppSection from './components/app/AppSection.jsx'
 import AppTopbar from './components/app/AppTopbar.jsx'
@@ -94,7 +94,6 @@ const NutritionCoachCenter = lazy(() => import('./components/NutritionCoachCente
 const PredictionCenter = lazy(() => import('./components/PredictionCenter.jsx'))
 const AdaptiveCoachPanel = lazy(() => import('./components/AdaptiveCoachPanel.jsx'))
 const AchievementCenter = lazy(() => import('./components/AchievementCenter.jsx'))
-const BarcodeScanner = lazy(() => import('./components/BarcodeScanner.jsx'))
 const CoachPlanCenter = lazy(() => import('./components/CoachPlanCenter.jsx'))
 const DataImportCenter = lazy(() => import('./components/DataImportCenter.jsx'))
 const DataExportCenter = lazy(() => import('./components/DataExportCenter.jsx'))
@@ -106,7 +105,6 @@ const LaunchReadinessPanel = lazy(() => import('./components/LaunchReadinessPane
 const ManualAcceptanceRunner = import.meta.env.DEV
   ? lazy(() => import('./components/ManualAcceptanceRunner.jsx'))
   : null
-const MealLogger = lazy(() => import('./components/MealLogger.jsx'))
 const MonthlyReport = lazy(() => import('./components/MonthlyReport.jsx'))
 const ProgressCenter = lazy(() => import('./components/ProgressCenter.jsx'))
 const ProgressDashboard = lazy(() => import('./components/ProgressDashboard.jsx'))
@@ -3077,83 +3075,59 @@ function App() {
         </AppErrorBoundary>
         </AppSection>
 
-        <AppSection
+
+        <NutritionSection
           activeSection={activeAppSection}
-          id="nutrition"
-          label="Mat och nutrition"
-        >
-        <article className="panel" id="mat">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Matchecklista</p>
-              <h2>Grunder för maten</h2>
-            </div>
-          </div>
-          <div className="checklist">
-            {foods.map((item) => (
-              <label className="toggle-row" key={item.id}>
-                <input
-                  type="checkbox"
-                  checked={item.done}
-                  onChange={() => toggleFood(item.id)}
-                />
-                <span>{item.label}</span>
-              </label>
-            ))}
-          </div>
-        </article>
-
-        <CheckIn
-          checkIn={checkIn}
-          foodScore={foodScore}
-          foodTotal={foods.length}
-          onUpdateCheckIn={updateCheckIn}
-        />
-
-        <AppErrorBoundary area="nutrition" resetKey={`${selectedMealDate}-${meals.length}-${photoMeals.length}`} title="Måltidscentret kunde inte visas">
-          <MealLogger
-            displayPhotoMeals={displayPhotoMeals}
-            favoriteMeals={favoriteMeals}
-            foodPhotoPreview={foodPhotoPreview}
-            handleFoodPhotoChange={handleFoodPhotoChange}
-            importSummary={mealHistoryImportSummary}
-            meals={meals}
-            healthSnapshot={healthSnapshot}
-            onAnalyzePhotoMeal={analyzePhotoMeal}
-            onCancelClearMealHistory={() => setShowClearMealHistoryConfirm(false)}
-            onClearMealHistory={clearLocalMealHistory}
-            onCreateDemoMealDay={createDemoMealAnalysisDay}
-            onExportMealHistory={exportMealAnalysisHistory}
-            onFavoriteMealsChange={(nextFavorites) =>
-              setFavoriteMeals(normalizeFavoriteMeals(nextFavorites))}
-            onImportMealHistory={importMealAnalysisHistory}
-            onMealsChange={(nextMeals) => setMeals(normalizeMeals(nextMeals))}
-            onNutritionGoalsChange={(nextGoals) =>
-              setNutritionGoals(normalizeNutritionGoals(nextGoals))}
-            onSelectedMealDateChange={setSelectedMealDate}
-            onShowClearMealHistory={() => setShowClearMealHistoryConfirm(true)}
-            nutritionGoals={nutritionGoals}
-            photoAnalysisStatus={photoAnalysisStatus}
-            profile={profile}
-            selectedMealDate={selectedMealDate}
-            showClearMealHistoryConfirm={showClearMealHistoryConfirm}
-            weights={weights}
-            weekSummary={mealWeekSummary}
-          />
-        </AppErrorBoundary>
-
-        <BarcodeScanner
           barcodeInput={barcodeInput}
           barcodeScannerActive={barcodeScannerActive}
           barcodeStatus={barcodeStatus}
           barcodeVideoRef={barcodeVideoRef}
+          checkIn={checkIn}
+          displayPhotoMeals={displayPhotoMeals}
+          favoriteMeals={favoriteMeals}
+          foodPhotoPreview={foodPhotoPreview}
+          foods={foods}
+          foodScore={foodScore}
+          handleFoodPhotoChange={handleFoodPhotoChange}
+          healthSnapshot={healthSnapshot}
+          mealHistoryImportSummary={mealHistoryImportSummary}
+          meals={meals}
+          nutritionGoals={nutritionGoals}
+          onAnalyzePhotoMeal={analyzePhotoMeal}
           onBarcodeInputChange={setBarcodeInput}
+          onCancelClearMealHistory={() =>
+            setShowClearMealHistoryConfirm(false)
+          }
+          onClearMealHistory={clearLocalMealHistory}
+          onCreateDemoMealDay={createDemoMealAnalysisDay}
+          onExportMealHistory={exportMealAnalysisHistory}
+          onFavoriteMealsChange={(nextFavorites) =>
+            setFavoriteMeals(normalizeFavoriteMeals(nextFavorites))
+          }
+          onFoodToggle={toggleFood}
+          onImportMealHistory={importMealAnalysisHistory}
+          onMealsChange={(nextMeals) =>
+            setMeals(normalizeMeals(nextMeals))
+          }
+          onNutritionGoalsChange={(nextGoals) =>
+            setNutritionGoals(normalizeNutritionGoals(nextGoals))
+          }
+          onSelectedMealDateChange={setSelectedMealDate}
+          onShowClearMealHistory={() =>
+            setShowClearMealHistoryConfirm(true)
+          }
           onStartBarcodeScanner={startBarcodeScanner}
           onStopBarcodeScanner={stopBarcodeScanner}
           onSubmitManualBarcode={submitManualBarcode}
+          onUpdateCheckIn={updateCheckIn}
+          photoAnalysisStatus={photoAnalysisStatus}
+          profile={profile}
           scannedProducts={scannedProducts}
+          selectedMealDate={selectedMealDate}
+          showClearMealHistoryConfirm={showClearMealHistoryConfirm}
+          weights={weights}
+          weekSummary={mealWeekSummary}
         />
-        </AppSection>
 
         <ProgressSection
           activeSection={activeAppSection}

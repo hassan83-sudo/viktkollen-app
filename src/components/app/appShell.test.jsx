@@ -1,5 +1,5 @@
-import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it } from 'vitest'
+﻿import { renderToStaticMarkup } from 'react-dom/server'
+import { describe, expect, it, vi } from 'vitest'
 import AppLoadingScreen from './AppLoadingScreen.jsx'
 import AppTopbar from './AppTopbar.jsx'
 import BottomNavigation from './BottomNavigation.jsx'
@@ -56,13 +56,31 @@ describe('Performance Architecture app shell components', () => {
     expect(markup).toContain('inte medicinsk rådgivning')
   })
 
-  it('keeps bottom navigation anchors stable', () => {
-    const markup = renderToStaticMarkup(<BottomNavigation />)
+  it('renders five stable application sections', () => {
+    const markup = renderToStaticMarkup(<BottomNavigation activeSection="coach" />)
 
-    expect(markup).toContain('href="#hem"')
-    expect(markup).toContain('href="#vikt"')
-    expect(markup).toContain('href="#installningar"')
+    expect(markup).toContain('href="#app-section-home"')
+    expect(markup).toContain('href="#app-section-coach"')
+    expect(markup).toContain('href="#app-section-nutrition"')
+    expect(markup).toContain('href="#app-section-progress"')
+    expect(markup).toContain('href="#app-section-more"')
     expect(markup).toContain('aria-label="Huvudnavigation"')
+    expect(markup).toContain('aria-current="page"')
+    expect(markup).toContain('Coach')
+  })
+
+  it('supports controlled navigation callbacks', () => {
+    const onSectionChange = vi.fn()
+    const markup = renderToStaticMarkup(
+      <BottomNavigation
+        activeSection="unknown"
+        onSectionChange={onSectionChange}
+      />,
+    )
+
+    expect(markup).toContain('href="#app-section-home"')
+    expect(markup).toContain('aria-current="page"')
+    expect(onSectionChange).not.toHaveBeenCalled()
   })
 
   it('renders an accessible lazy fallback', () => {

@@ -1,22 +1,39 @@
-const navigationItems = [
-  ['#hem', 'Gå till översikt', '⌂', 'Hem'],
-  ['#checkin', 'Gå till dagens check-in', '✓', 'Check'],
-  ['#vikt', 'Gå till viktloggen', '↗', 'Vikt'],
-  ['#mat', 'Gå till matchecklistan', '+', 'Mat'],
-  ['#framstegsbilder', 'Gå till framstegsbilder', '□', 'Foto'],
-  ['#manadsrapport', 'Gå till månadsrapport', '30', 'Rapport'],
-  ['#installningar', 'Gå till inställningar', '⚙', 'Mer'],
-]
+﻿import { appSections, normalizeAppSectionId } from '../../services/navigation/appSections.js'
 
-function BottomNavigation() {
+function BottomNavigation({
+  activeSection = 'home',
+  onSectionChange,
+}) {
+  const normalizedActiveSection = normalizeAppSectionId(activeSection)
+
+  function handleNavigation(event, sectionId) {
+    if (!onSectionChange) {
+      return
+    }
+
+    event.preventDefault()
+    onSectionChange(sectionId)
+  }
+
   return (
     <nav className="bottom-nav" aria-label="Huvudnavigation">
-      {navigationItems.map(([href, ariaLabel, icon, label]) => (
-        <a href={href} aria-label={ariaLabel} key={href}>
-          <span>{icon}</span>
-          <strong>{label}</strong>
-        </a>
-      ))}
+      {appSections.map((section) => {
+        const isActive = section.id === normalizedActiveSection
+
+        return (
+          <a
+            aria-current={isActive ? 'page' : undefined}
+            aria-label={section.ariaLabel}
+            className={isActive ? 'is-active' : ''}
+            href={`#app-section-${section.id}`}
+            key={section.id}
+            onClick={(event) => handleNavigation(event, section.id)}
+          >
+            <span aria-hidden="true">{section.icon}</span>
+            <strong>{section.label}</strong>
+          </a>
+        )
+      })}
     </nav>
   )
 }

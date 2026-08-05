@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+﻿import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import './App.css'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import AuthPanel from './components/AuthPanel.jsx'
@@ -888,6 +888,7 @@ function App() {
   const [profileError, setProfileError] = useState('')
   const [proactiveCoachResult, setProactiveCoachResult] = useState(null)
   const [showOnboarding, setShowOnboarding] = useState(() => !profile)
+  const [activeAppSection, setActiveAppSection] = useState('home')
   const [checkIn, setCheckIn] = useState(() =>
     userDataRepository.getCheckIn(initialCheckIn, isStoredCheckIn),
   )
@@ -2749,6 +2750,26 @@ function App() {
     void sendChatText(prompt)
   }
 
+  function handleAppSectionChange(sectionId) {
+    const sectionTargets = {
+      coach: 'chat',
+      home: 'hem',
+      more: 'installningar',
+      nutrition: 'mat',
+      progress: 'vikt',
+    }
+    const targetId = sectionTargets[sectionId] || sectionTargets.home
+
+    setActiveAppSection(sectionId)
+
+    window.requestAnimationFrame(() => {
+      document.getElementById(targetId)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    })
+  }
+
   if (authLoading) {
     return <AppLoadingScreen />
   }
@@ -3211,9 +3232,14 @@ function App() {
       </section>
       </Suspense>
 
-      <BottomNavigation />
+      <BottomNavigation
+        activeSection={activeAppSection}
+        onSectionChange={handleAppSectionChange}
+      />
     </main>
   )
 }
 
 export default App
+
+

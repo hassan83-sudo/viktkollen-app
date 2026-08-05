@@ -1,6 +1,7 @@
-﻿import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import HomeSection from './components/sections/HomeSection.jsx'
 import MoreSection from './components/sections/MoreSection.jsx'
+import ProgressSection from './components/sections/ProgressSection.jsx'
 import './App.css'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import AuthPanel from './components/AuthPanel.jsx'
@@ -3153,21 +3154,27 @@ function App() {
           scannedProducts={scannedProducts}
         />
         </AppSection>
-        <AppSection
+
+        <ProgressSection
           activeSection={activeAppSection}
-          id="progress"
-          label="Framsteg och statistik"
-        >
-        <ProgressPhotos
-          afterPhotoId={afterPhoto ? String(afterPhoto.id) : ''}
+          adaptiveCoachFeedback={adaptiveCoachFeedback}
+          afterPhoto={afterPhoto}
           beforeAfterPhotos={beforeAfterPhotos}
-          beforePhotoId={beforePhoto ? String(beforePhoto.id) : ''}
-          hasProgressPhotos={progressPhotos.length > 0}
+          beforePhoto={beforePhoto}
+          checkIn={checkIn}
+          createWeeklyReport={createWeeklyReport}
+          foods={foods}
+          healthSnapshot={healthSnapshot}
+          meals={meals}
+          monthlyReport={monthlyReport}
+          nutritionGoals={nutritionGoals}
           onAfterPhotoIdChange={setAfterPhotoId}
           onBeforePhotoIdChange={setBeforePhotoId}
           onDeleteProgressPhoto={(photoId) => {
             if (window.confirm('Vill du ta bort den här framstegsbilden?')) {
-              setProgressPhotos((current) => current.filter((photo) => photo.id !== photoId))
+              setProgressPhotos((current) =>
+                current.filter((photo) => photo.id !== photoId),
+              )
             }
           }}
           onProgressPhotoChange={handleProgressPhotoChange}
@@ -3175,37 +3182,28 @@ function App() {
           onUpdateProgressPhoto={(photoId, updates) =>
             setProgressPhotos((current) =>
               current.map((photo) =>
-                photo.id === photoId ? { ...photo, ...updates, updatedAt: new Date().toISOString() } : photo,
-              ))}
+                photo.id === photoId
+                  ? {
+                      ...photo,
+                      ...updates,
+                      updatedAt: new Date().toISOString(),
+                    }
+                  : photo,
+              ),
+            )}
+          profile={validatedProfile}
           progressPhotoComparison={progressPhotoComparison}
           progressPhotoComparisonImages={progressPhotoComparisonImages}
-          progressPhotoCountLabel={`${progressPhotos.length} sparade bilder`}
           progressPhotoItems={progressPhotoItems}
           progressPhotoNote={progressPhotoNote}
           progressPhotoOptions={progressPhotoOptions}
+          progressPhotos={progressPhotos}
+          selectedMealDate={selectedMealDate}
+          weights={centralWeightStats.weights}
+          weeklyReportData={weeklyReportData}
+          weeklyReportLines={weeklyReportLines}
+          weeklyReportStatus={weeklyReportStatus}
         />
-
-        <MonthlyReport report={monthlyReport} />
-
-        <AppErrorBoundary area="progress-dashboard" resetKey={`${selectedMealDate}-${weights.length}-${meals.length}`} title="Smart Progress Dashboard kunde inte visas">
-          <ProgressDashboard
-            adaptiveCoachFeedback={adaptiveCoachFeedback}
-            checkIn={checkIn}
-            checkIns={[]}
-            foods={foods}
-            healthSnapshot={healthSnapshot}
-            meals={meals}
-            nutritionGoals={nutritionGoals}
-            profile={validatedProfile}
-            today={selectedMealDate}
-            weights={centralWeightStats.weights}
-            weeklyReportData={weeklyReportData}
-            weeklyReportLines={weeklyReportLines}
-            weeklyReportStatus={weeklyReportStatus}
-            onCreateWeeklyReport={createWeeklyReport}
-          />
-        </AppErrorBoundary>
-        </AppSection>
 
         <MoreSection
           activeSection={activeAppSection}

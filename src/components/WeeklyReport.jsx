@@ -216,6 +216,15 @@ function WeeklyReport({
                   <p>{weeklyReportData.insights.regressionSignals[0]?.text || 'Inga tydliga regressionssignaler just nu.'}</p>
                 </div>
               )}
+              {weeklyReportData.predictions && (
+                <div>
+                  <p className="report-heading">Predictive health</p>
+                  <p>{weeklyReportData.predictions.predictedTrajectory}</p>
+                  <p>Confidence: {weeklyReportData.predictions.confidence}%.</p>
+                  <p>{weeklyReportData.predictions.opportunities[0]?.explanation || 'Inga tydliga möjligheter ännu.'}</p>
+                  <p>{weeklyReportData.predictions.cautionSignals[0]?.support || 'Inga försiktiga varningssignaler just nu.'}</p>
+                </div>
+              )}
               {weeklyReportData.achievements && (
                 <div>
                   <p className="report-heading">Achievements</p>

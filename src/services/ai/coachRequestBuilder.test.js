@@ -80,4 +80,33 @@ describe('coachRequestBuilder', () => {
     expect(JSON.stringify(enabled.payload.actionPlanContext)).not.toMatch(/private-action|raw detail/)
     expect(disabled.payload.actionPlanContext.remoteAllowed).toBe(false)
   })
+
+  it('adds minimized prediction context only with remote consent', () => {
+    const coachModel = {
+      confidence: { value: 0.7 },
+      coverage: { ratio: 0.6 },
+      recommendations: [],
+      remotePredictionContext: {
+        categories: ['weight', 'nutrition'],
+        confidence: 66,
+        opportunities: ['momentum'],
+        predictionCount: 2,
+        warningSignals: ['adherence'],
+      },
+      riskAreas: [],
+      summary: { todayFocus: 'Litet steg', workingWell: [] },
+    }
+    const enabled = buildCoachRemoteRequestPayload({}, { analysisDate: '2026-08-04', coachModel, consent: true })
+    const disabled = buildCoachRemoteRequestPayload({}, { analysisDate: '2026-08-04', coachModel, consent: false })
+
+    expect(enabled.payload.predictionContext).toMatchObject({
+      categories: ['weight', 'nutrition'],
+      confidence: 66,
+      predictionCount: 2,
+      warningCategories: ['adherence'],
+    })
+    expect(enabled.preview.predictions).toContain('2 aggregerade prognoser')
+    expect(JSON.stringify(enabled.payload.predictionContext)).not.toMatch(/history|raw|image|meal|weight-id|auth|token/i)
+    expect(disabled.payload.predictionContext.remoteAllowed).toBe(false)
+  })
 })

@@ -24,6 +24,7 @@ import {
   requestRemoteCoachSuggestions,
 } from '../services/ai/remoteCoachService.js'
 import { makeRuleBasedFallbackResult } from '../services/ai/aiResponseSafety.js'
+import { buildMinimalPredictionAiContext, buildPredictionReportSummary } from '../services/prediction/healthPredictionEngine.js'
 
 const AdaptiveCoachTimeline = lazy(() => import('./AdaptiveCoachTimeline.jsx'))
 const AdaptiveCoachWeeklyPlan = lazy(() => import('./AdaptiveCoachWeeklyPlan.jsx'))
@@ -145,7 +146,8 @@ function AdaptiveCoachPanel({
   const [remoteCoachError, setRemoteCoachError] = useState('')
   const [remoteCoachLoading, setRemoteCoachLoading] = useState(false)
   const remoteCoachAbortRef = useRef(null)
-  const data = useMemo(() => ({
+  const remoteConsent = adaptiveCoachFeedback?.remoteAiConsent?.coachRemoteEnabled === true
+  const baseData = useMemo(() => ({
     adaptiveCoachFeedback,
     checkIn,
     checkIns,
@@ -157,6 +159,27 @@ function AdaptiveCoachPanel({
     reminderState,
     weights,
   }), [adaptiveCoachFeedback, checkIn, checkIns, goalsHabits, healthSnapshot, meals, nutritionGoals, profile, reminderState, weights])
+  const predictionSummary = useMemo(
+    () => buildPredictionReportSummary(baseData, {
+      analysisDate,
+      now: analysisDate ? `${analysisDate}T12:00:00.000Z` : undefined,
+    }),
+    [analysisDate, baseData],
+  )
+  const predictionAiContext = useMemo(
+    () => remoteConsent ? buildMinimalPredictionAiContext({
+      confidence: predictionSummary.confidence,
+      opportunities: predictionSummary.opportunities,
+      predictions: predictionSummary.summary?.categories?.map((category) => ({ category })) || [],
+      warningSignals: predictionSummary.cautionSignals,
+    }) : null,
+    [predictionSummary, remoteConsent],
+  )
+  const data = useMemo(() => ({
+    ...baseData,
+    predictionAiContext,
+    predictionSummary,
+  }), [baseData, predictionAiContext, predictionSummary])
   const model = useMemo(
     () => buildAdaptiveCoach(data, { analysisDate, period: '30d' }),
     [analysisDate, data],
@@ -168,7 +191,6 @@ function AdaptiveCoachPanel({
     [adaptiveCoachFeedback, analysisDate],
   )
   const nextAction = model.recommendations[0]?.action || model.summary.todayFocus
-  const remoteConsent = adaptiveCoachFeedback?.remoteAiConsent?.coachRemoteEnabled === true
   const timelineSummary = useMemo(
     () => buildAdaptiveCoachTimelineSummary({
       adaptiveCoachFeedback,

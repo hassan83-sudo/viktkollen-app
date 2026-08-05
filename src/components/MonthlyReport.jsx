@@ -247,6 +247,16 @@ function MonthlyReport({ report }) {
         </div>
       )}
 
+      {report.predictions && (
+        <div className="report-card">
+          <p className="report-heading">Predicted trajectory</p>
+          <p>{report.predictions.predictedTrajectory}</p>
+          <p>Confidence: {report.predictions.confidence}%.</p>
+          <p>{report.predictions.opportunities[0]?.nextStep || 'Möjligheter visas när underlaget räcker.'}</p>
+          <p>{report.predictions.cautionSignals[0]?.support || 'Inga försiktiga varningssignaler just nu.'}</p>
+        </div>
+      )}
+
       {report.achievements && (
         <div className="report-card">
           <p className="report-heading">Achievements och delmål</p>

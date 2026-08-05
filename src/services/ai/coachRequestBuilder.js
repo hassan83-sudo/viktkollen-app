@@ -105,6 +105,15 @@ export function buildCoachRemoteRequestPayload(input = {}, options = {}) {
   const confidence = Number(coachModel.confidence?.value ?? 0)
   const memoryContext = buildSafeMemoryContext(input, { ...options, analysisDate }, coachModel)
   const actionPlanContext = buildSafeActionPlanContext(input, options)
+  const predictionContext = options.consent === true && coachModel.remotePredictionContext
+    ? {
+      categories: safeArray(coachModel.remotePredictionContext.categories).map((item) => safeText(item, '', 40)).filter(Boolean).slice(0, 6),
+      confidence: Number.isFinite(Number(coachModel.remotePredictionContext.confidence)) ? Number(coachModel.remotePredictionContext.confidence) : null,
+      opportunityCategories: safeArray(coachModel.remotePredictionContext.opportunities).map((item) => safeText(item, '', 40)).filter(Boolean).slice(0, 4),
+      predictionCount: Number(coachModel.remotePredictionContext.predictionCount || 0),
+      warningCategories: safeArray(coachModel.remotePredictionContext.warningSignals).map((item) => safeText(item, '', 40)).filter(Boolean).slice(0, 4),
+    }
+    : { enabled: false, remoteAllowed: false }
 
   const payload = {
     activeGoals: safeArray(input.goalsHabits?.goals).slice(0, 4).map((goal) => stripUnsafeText(goal.name || goal.title, '', 80)).filter(Boolean),
@@ -124,6 +133,7 @@ export function buildCoachRemoteRequestPayload(input = {}, options = {}) {
     },
     actionPlanContext,
     memoryContext,
+    predictionContext,
     period: options.period || '30d',
     question: stripUnsafeText(options.question, '', 180),
     weeklyFocus: stripUnsafeText(coachModel.summary?.todayFocus, '', 140),
@@ -147,6 +157,7 @@ export function buildCoachRemoteRequestPayload(input = {}, options = {}) {
         ? `${memoryContext.coachStyle}, ${memoryContext.actionSize}, ${memoryContext.activePriorityCategories?.length || 0} prioriteringar`
         : 'Av',
       nutrition: payload.metrics.nutrition || 'Saknas',
+      predictions: predictionContext.predictionCount ? `${predictionContext.predictionCount} aggregerade prognoser` : 'Av',
       weight: payload.metrics.weight || 'Saknas',
     },
   }
@@ -161,6 +172,7 @@ export function fingerprintCoachPayload(payload = {}) {
     highlights: payload.highlights,
     actionPlanContext: payload.actionPlanContext,
     memoryContext: payload.memoryContext,
+    predictionContext: payload.predictionContext,
     metrics: payload.metrics,
     period: payload.period,
     question: payload.question,

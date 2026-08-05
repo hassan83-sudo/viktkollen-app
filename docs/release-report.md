@@ -90,3 +90,7 @@ Coach memory ar implementerat som ett sakert, regelbaserat lager under befintlig
 ## Nutrition Coach Engine V2
 
 Meal quality, daily nutrition timeline, nutrition gaps och smart food suggestions ar dokumenterade i `docs/nutrition-coach-engine-v2.md`. Den tidigare Personal Insights-arkitekturen ligger kvar i `docs/ai-nutrition-coach-v2.md`. Nutrition Coach Center ar lazy-loaded och release-gaten kontrollerar att varken panelen eller motorn modulepreloadas initialt.
+
+## Predictive Health Intelligence V1
+
+Prediction engine och Prediction Center ar dokumenterade i `docs/predictive-health-intelligence-v1.md`. Funktionen ateranvander shared analytics, insights, nutrition coach och adaptive coach feedback utan ny lagring. Release-gaten kontrollerar att Prediction Center inte modulepreloadas initialt.

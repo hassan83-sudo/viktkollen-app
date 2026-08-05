@@ -8,6 +8,7 @@ import { buildAchievementSummary } from './achievements/achievementEngine.js'
 import { buildSocialSummary } from './social/socialEngine.js'
 import { buildCoachPlanCenterModel } from './coachActionPlanEngine.js'
 import { buildNutritionCoachModel } from './nutrition/nutritionCoachEngine.js'
+import { buildHealthPredictionModel } from './prediction/healthPredictionEngine.js'
 
 function mask(value) {
   const text = String(value || '')
@@ -65,6 +66,10 @@ export function buildLaunchReadinessReport({
     healthSnapshot,
     reminderState,
   })
+  const predictions = buildHealthPredictionModel({
+    healthSnapshot,
+    reminderState,
+  })
 
   return {
     appVersion: PWA_APP_VERSION,
@@ -113,6 +118,9 @@ export function buildLaunchReadinessReport({
       nutritionCoachEngine: nutritionCoach.version === 2 ? 'pass' : 'fail',
       nutritionCoachExportCompatibility: 'existing-nutrition-and-adaptive-coach-sections',
       nutritionCoachSyncCompatibility: isAllowedSyncStorageKey(userDataKeys.meals) && isAllowedSyncStorageKey(userDataKeys.adaptiveCoachFeedback) ? 'pass' : 'fail',
+      predictionEngine: predictions.modelVersion === 1 ? 'pass' : 'fail',
+      predictionUi: 'lazy-loaded',
+      predictionAiIntegration: 'consent-gated-aggregate-summary',
       logoutAbortSupport: 'pass',
       achievementEngineHealth: 'Aktiv',
       achievementLevel: achievements.levelTitle,

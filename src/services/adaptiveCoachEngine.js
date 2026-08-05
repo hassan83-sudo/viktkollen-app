@@ -331,6 +331,7 @@ export function buildAdaptiveCoach(input = {}, options = {}) {
   const shared = buildSharedAnalytics(input, { analysisDate, period })
   const nutritionReport = buildAiNutritionCoachInsights(input, { analysisDate: shared.analysisDate })
   const goalsSummary = buildGoalsHabitsLiteSummary(input.goalsHabits)
+  const predictionSummary = input.predictionSummary || null
   const reminderStatus = buildReminderStatus(input.reminderState || {}, { now: options.now || `${shared.analysisDate}T12:00:00.000Z` })
   const feedback = normalizeAdaptiveCoachFeedback(input.adaptiveCoachFeedback || input.coachFeedback || {}, {
     now: options.now || `${shared.analysisDate}T12:00:00.000Z`,
@@ -384,6 +385,10 @@ export function buildAdaptiveCoach(input = {}, options = {}) {
     analysisDate: shared.analysisDate,
     confidence,
     coverage,
+    predictionSummary,
+    remotePredictionContext: input.adaptiveCoachFeedback?.remoteAiConsent?.coachRemoteEnabled === true
+      ? input.predictionAiContext || null
+      : null,
     actionSummary,
     feedbackSummary,
     modelVersion: adaptiveCoachEngineVersion,
@@ -394,6 +399,7 @@ export function buildAdaptiveCoach(input = {}, options = {}) {
       activity: shared.activitySummary,
       goals: goalsSummary,
       nutrition: shared.nutritionSummary,
+      predictions: predictionSummary?.summary || null,
       reminders: reminderStatus,
       weight: shared.weightSummary,
     },
@@ -401,6 +407,7 @@ export function buildAdaptiveCoach(input = {}, options = {}) {
       analytics: 'sharedAnalyticsEngine',
       goals: goalsSummary ? 'goalsHabitsSummary' : 'missing',
       nutrition: 'aiNutritionInsights',
+      predictions: predictionSummary ? 'healthPredictionEngine' : 'notProvided',
       reminders: 'reminderEngineV2',
       weight: 'sharedAnalyticsEngine',
     },

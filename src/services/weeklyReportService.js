@@ -16,6 +16,7 @@ import { buildPhotoAnalysisUsageSummary } from './nutritionPhotoAnalysis.js'
 import { buildInsightsEngine } from './insights/insightsEngine.js'
 import { buildAchievementSummary } from './achievements/achievementEngine.js'
 import { buildSocialSummary } from './social/socialEngine.js'
+import { buildPredictionReportSummary } from './prediction/healthPredictionEngine.js'
 
 function getMealPattern(mealHistory = [], meals = []) {
   if (mealHistory.length > 0) {
@@ -103,6 +104,10 @@ export function makeWeeklyReportFallback(data) {
     ...data,
     healthSnapshot: snapshot,
   }, { analysisDate: data.today })
+  const predictions = buildPredictionReportSummary({
+    ...data,
+    healthSnapshot: snapshot,
+  }, { analysisDate: data.today, period: '7d' })
 
   return {
     biggestProgress:
@@ -133,6 +138,7 @@ export function makeWeeklyReportFallback(data) {
     insights,
     achievements,
     social,
+    predictions,
     goalsHabits: goalsHabitsSummary,
     movement:
       sharedReport.summaries.activity ||
@@ -168,6 +174,7 @@ export function makeWeeklyReportFallback(data) {
       coachFeedback,
       insights,
       achievements,
+      predictions,
       social,
     },
   }

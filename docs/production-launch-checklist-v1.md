@@ -129,6 +129,14 @@
 - Råbilder, råhistorik, authdata, tokens och komplett användardata får inte skickas i nutrition coach-payloaden.
 - Nutrition Coach Engine använder befintlig nutrition, scannerhistorik, coach memory, action plans, insights och dietary preferences utan ny sync-, auth- eller backupmodell.
 
+## Predictive Health Intelligence V1
+
+- `docs/predictive-health-intelligence-v1.md` dokumenterar prediction engine, early warnings, opportunities och AI-gränser.
+- Prediction Center är lazy-loaded och ska inte modulepreloadas i production.
+- Prediction engine får endast använda befintliga aggregerade data och ska aldrig skapa ny auth, sync, backup, storage key eller databastabell.
+- Early warnings ska vara stödjande och får inte uttryckas som diagnos eller medicinsk bedömning.
+- Remote AI får endast se aggregerade prediction summaries, confidence och kategorier när befintligt samtycke finns.
+
 ## Accessibility
 
 - Tangentbord fungerar för reminders, modaler, reports och PWA banners.

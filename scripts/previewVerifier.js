@@ -1,6 +1,6 @@
 import process from 'node:process'
 
-const forbiddenPreloadPattern = /DataImportCenter|DataExportCenter|AchievementCenter|SocialCenter|NotificationCenter|InsightsCenter|CoachPlanCenter|NutritionCoachCenter|PredictionCenter|HealthJourneyCenter|healthJourneyBuilder|CloudBackupPanel|ReminderCenter/
+const forbiddenPreloadPattern = /DataImportCenter|DataExportCenter|AchievementCenter|SocialCenter|NotificationCenter|InsightsCenter|CoachPlanCenter|NutritionCoachCenter|PredictionCenter|HealthJourneyCenter|healthJourneyBuilder|HabitGoalCenter|CloudBackupPanel|ReminderCenter/
 const secretPattern = /sk-[A-Za-z0-9_-]{8,}|service[_-]?role|SUPABASE_SERVICE_ROLE|OPENAI_API_KEY/i
 
 function makeCheck(id, status, message) {

@@ -18,6 +18,7 @@ import { buildAchievementSummary } from './achievements/achievementEngine.js'
 import { buildSocialSummary } from './social/socialEngine.js'
 import { buildPredictionReportSummary } from './prediction/healthPredictionEngine.js'
 import { buildHealthJourneyReportSummary } from './healthJourney/healthJourneySummary.js'
+import { buildSmartHabitGoalReportSummary } from './smartHabitGoalEngine.js'
 
 function getMealPattern(mealHistory = [], meals = []) {
   if (mealHistory.length > 0) {
@@ -113,6 +114,10 @@ export function makeWeeklyReportFallback(data) {
     ...data,
     healthSnapshot: snapshot,
   }, { analysisDate: data.today, period: '7d' })
+  const smartGoals = buildSmartHabitGoalReportSummary({
+    ...data,
+    healthSnapshot: snapshot,
+  }, { analysisDate: data.today })
 
   return {
     biggestProgress:
@@ -145,6 +150,7 @@ export function makeWeeklyReportFallback(data) {
     social,
     predictions,
     journey,
+    smartGoals,
     goalsHabits: goalsHabitsSummary,
     movement:
       sharedReport.summaries.activity ||
@@ -182,6 +188,7 @@ export function makeWeeklyReportFallback(data) {
       achievements,
       journey,
       predictions,
+      smartGoals,
       social,
     },
   }

@@ -97,6 +97,7 @@ const CoachPlanCenter = lazy(() => import('./components/CoachPlanCenter.jsx'))
 const DataImportCenter = lazy(() => import('./components/DataImportCenter.jsx'))
 const DataExportCenter = lazy(() => import('./components/DataExportCenter.jsx'))
 const GoalsHabitsPanel = lazy(() => import('./components/GoalsHabitsPanel.jsx'))
+const HabitGoalCenter = lazy(() => import('./components/HabitGoalCenter.jsx'))
 const HealthDashboardV2 = lazy(() => import('./components/HealthDashboardV2.jsx'))
 const HealthJourneyCenter = lazy(() => import('./components/HealthJourneyCenter.jsx'))
 const InsightsCenter = lazy(() => import('./components/InsightsCenter.jsx'))
@@ -3013,6 +3014,19 @@ function App() {
             nutritionGoals={nutritionGoals}
             onGoalsHabitsChange={setGoalsHabits}
             profile={validatedProfile}
+            weights={centralWeightStats.weights}
+          />
+
+          <HabitGoalCenter
+            adaptiveCoachFeedback={adaptiveCoachFeedback}
+            checkIn={checkIn}
+            goalsHabits={goalsHabits}
+            healthSnapshot={healthSnapshot}
+            meals={meals}
+            nutritionGoals={nutritionGoals}
+            profile={validatedProfile}
+            reminderState={reminderState}
+            today={selectedMealDate}
             weights={centralWeightStats.weights}
           />
 

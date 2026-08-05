@@ -235,6 +235,16 @@ function WeeklyReport({
                   <p>Caution: {weeklyReportData.journey.caution || weeklyReportData.journey.limitations?.[0]}</p>
                 </div>
               )}
+              {weeklyReportData.smartGoals && (
+                <div>
+                  <p className="report-heading">Smarta mÃ¥l och vanor</p>
+                  <p>{weeklyReportData.smartGoals.summary}</p>
+                  <p>Rekommenderat mÃ¥l: {weeklyReportData.smartGoals.recommendedWeeklyGoal}</p>
+                  <p>Rekommenderad vana: {weeklyReportData.smartGoals.recommendedHabit}</p>
+                  <p>Sannolikhet: {weeklyReportData.smartGoals.probability}</p>
+                  <p>NÃ¤sta steg: {weeklyReportData.smartGoals.nextStep}</p>
+                </div>
+              )}
               {weeklyReportData.achievements && (
                 <div>
                   <p className="report-heading">Achievements</p>

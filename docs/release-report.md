@@ -102,3 +102,7 @@ Runtime-auditen ar dokumenterad i `docs/runtime-lifecycle-audit-v1.md`. Performa
 ## AI Health Journey V1
 
 Health Journey ar dokumenterad i `docs/ai-health-journey-v1.md`, `docs/health-journey-privacy-v1.md` och `docs/health-journey-user-guide-v1.md`. Funktionen ar derived-only ovanpa shared analytics, insights, nutrition coach, prediction, achievements och adaptive coach. `HealthJourneyCenter` ar lazy-loaded och release-gaten kontrollerar att varken centret eller `healthJourneyBuilder` modulepreloadas initialt.
+
+## Smart Habit & Goal System V2
+
+Smart Habit & Goal System V2 ar dokumenterat i `docs/smart-habit-goal-system-v2.md`. Funktionen ateranvander befintliga goals/habits, Health Journey, Prediction Engine, Nutrition Coach och Coach Action Plans utan ny storage, auth, sync eller backupmodell. `HabitGoalCenter` ar lazy-loaded och release-gaten kontrollerar att centret inte modulepreloadas.

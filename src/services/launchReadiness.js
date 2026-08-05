@@ -11,6 +11,7 @@ import { buildNutritionCoachModel } from './nutrition/nutritionCoachEngine.js'
 import { buildHealthPredictionModel } from './prediction/healthPredictionEngine.js'
 import { buildHealthJourney } from './healthJourney/healthJourneyBuilder.js'
 import { buildHealthJourneySummary } from './healthJourney/healthJourneySummary.js'
+import { buildSmartHabitGoalModel } from './smartHabitGoalEngine.js'
 import { buildRuntimePerformanceSummary } from './performanceDiagnostics.js'
 
 function mask(value) {
@@ -78,6 +79,10 @@ export function buildLaunchReadinessReport({
     reminderState,
   })
   const journeySummary = buildHealthJourneySummary(journey)
+  const smartGoals = buildSmartHabitGoalModel({
+    healthSnapshot,
+    reminderState,
+  })
   const performance = buildRuntimePerformanceSummary({
     lazyChunkCount: 18,
     largestLazyChunks: ['nutritionEngine', 'MealLogger', 'aiCoachDeterministicReplies', 'insightsEngine', 'ProgressPhotos'],
@@ -145,6 +150,11 @@ export function buildLaunchReadinessReport({
       journeyExportCompatibility: 'summary-only-derived',
       journeyPersistence: journey.sourceStatus.storage === 'no-new-key' ? 'derived-only' : 'fail',
       journeyModulepreload: 'release-gated',
+      smartHabitGoalEngine: smartGoals.version === 1 ? 'pass' : 'fail',
+      smartHabitGoalUi: 'lazy-loaded',
+      smartHabitGoalAiMinimization: 'consent-gated-summary-only',
+      smartHabitGoalPersistence: 'existing-goals-habits-state',
+      smartHabitGoalSync: isAllowedSyncStorageKey(userDataKeys.goalsHabits) ? 'pass' : 'fail',
       performanceDiagnostics: 'read-only',
       runtimeAnalyticsCache: `${performance.analyticsCache.size}/${performance.analyticsCache.limit}`,
       storagePressureBand: performance.storagePressure.totalBand,

@@ -43,5 +43,6 @@ describe('verify-release script contract', () => {
     expect(source).toContain('PredictionCenter')
     expect(source).toContain('HealthJourneyCenter')
     expect(source).toContain('healthJourneyBuilder')
+    expect(source).toContain('HabitGoalCenter')
   })
 })

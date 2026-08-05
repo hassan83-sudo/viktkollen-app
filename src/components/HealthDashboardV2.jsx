@@ -6,6 +6,7 @@ import { buildAdaptiveCoachTimelineSummary } from '../services/adaptiveCoachTime
 import { buildAdaptiveCoachPatternSummary } from '../services/adaptiveCoachPatterns.js'
 import { buildAdaptiveCoachStrategy } from '../services/adaptiveCoachStrategy.js'
 import { buildHealthJourneyReportSummary } from '../services/healthJourney/healthJourneySummary.js'
+import { buildSmartHabitGoalReportSummary } from '../services/smartHabitGoalEngine.js'
 
 const HealthDashboardDrilldown = lazy(() => import('./HealthDashboardDrilldown.jsx'))
 
@@ -171,6 +172,12 @@ function HealthDashboardV2({
     }),
     [adaptiveCoachFeedback, data, period, today],
   )
+  const smartHabitGoalSummary = useMemo(
+    () => buildSmartHabitGoalReportSummary({ ...data, adaptiveCoachFeedback }, {
+      analysisDate: today,
+    }),
+    [adaptiveCoachFeedback, data, today],
+  )
 
   useEffect(() => {
     if (!showDrilldown) return undefined
@@ -298,6 +305,15 @@ function HealthDashboardV2({
             <p>{model.goalsSummary.nextStep}</p>
           </Card>
         )}
+
+        <Card actionHref="#habit-goal-center" actionText="Visa smarta mÃ¥l" heading="Smart mÃ¥lstatus" text={smartHabitGoalSummary.summary}>
+          <div className="health-dashboard-metrics">
+            <Metric label="Vana idag" value={smartHabitGoalSummary.recommendedHabit} />
+            <Metric label="VeckomÃ¥l" value={smartHabitGoalSummary.recommendedWeeklyGoal} />
+            <Metric label="Sannolikhet" value={smartHabitGoalSummary.probability} />
+            <Metric label="NÃ¤sta steg" value={smartHabitGoalSummary.nextStep} />
+          </div>
+        </Card>
 
         <Card actionHref="#adaptive-coach" actionText="Visa coach" heading="Coach status" text={coachFeedbackSummary.weeklyStatus}>
           <div className="health-dashboard-metrics">

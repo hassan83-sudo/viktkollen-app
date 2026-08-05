@@ -277,3 +277,10 @@
 - Journey events ar derived-only och ska inte skapa ny storage, sync, backup eller authmodell.
 - AI-refinement kraver aktivt samtycke och far endast anvanda minimal journey-summary.
 - Full timeline, raw history, prompts, providerresponses, auth/session, bilder och base64 far inte skickas eller exporteras.
+
+## Smart Habit & Goal System V2
+
+- `HabitGoalCenter` ar lazy-loaded och ska inte modulepreloadas.
+- Motorn anvander befintlig `viktkollen.goalsHabits.v2` state och skapar ingen ny storage key.
+- AI-formuleringar kraver aktivt samtycke och minimal payload.
+- Dashboard och rapporter visar endast summary, inte duplicerad analys eller raw history.

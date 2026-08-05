@@ -268,6 +268,17 @@ function MonthlyReport({ report }) {
         </div>
       )}
 
+      {report.smartGoals && (
+        <div className="report-card">
+          <p className="report-heading">Smart habit & goal trend</p>
+          <p>{report.smartGoals.summary}</p>
+          <p>VeckomÃ¥l: {report.smartGoals.recommendedWeeklyGoal}</p>
+          <p>Vana: {report.smartGoals.recommendedHabit}</p>
+          <p>Sannolikhet: {report.smartGoals.probability}</p>
+          <p>NÃ¤sta steg: {report.smartGoals.nextStep}</p>
+        </div>
+      )}
+
       {report.achievements && (
         <div className="report-card">
           <p className="report-heading">Achievements och delmål</p>

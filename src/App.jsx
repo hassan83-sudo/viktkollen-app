@@ -3167,6 +3167,11 @@ function App() {
           scannedProducts={scannedProducts}
         />
         </AppSection>
+        <AppSection
+          activeSection={activeAppSection}
+          id="progress"
+          label="Framsteg och statistik"
+        >
         <ProgressPhotos
           afterPhotoId={afterPhoto ? String(afterPhoto.id) : ''}
           beforeAfterPhotos={beforeAfterPhotos}
@@ -3194,6 +3199,27 @@ function App() {
           progressPhotoOptions={progressPhotoOptions}
         />
 
+        <MonthlyReport report={monthlyReport} />
+
+        <AppErrorBoundary area="progress-dashboard" resetKey={`${selectedMealDate}-${weights.length}-${meals.length}`} title="Smart Progress Dashboard kunde inte visas">
+          <ProgressDashboard
+            adaptiveCoachFeedback={adaptiveCoachFeedback}
+            checkIn={checkIn}
+            checkIns={[]}
+            foods={foods}
+            healthSnapshot={healthSnapshot}
+            meals={meals}
+            nutritionGoals={nutritionGoals}
+            profile={validatedProfile}
+            today={selectedMealDate}
+            weights={centralWeightStats.weights}
+            weeklyReportData={weeklyReportData}
+            weeklyReportLines={weeklyReportLines}
+            weeklyReportStatus={weeklyReportStatus}
+            onCreateWeeklyReport={createWeeklyReport}
+          />
+        </AppErrorBoundary>
+        </AppSection>
         <AppSection
           activeSection={activeAppSection}
           id="more"
@@ -3232,26 +3258,6 @@ function App() {
           />
         </AppErrorBoundary>
         </AppSection>
-        <MonthlyReport report={monthlyReport} />
-
-        <AppErrorBoundary area="progress-dashboard" resetKey={`${selectedMealDate}-${weights.length}-${meals.length}`} title="Smart Progress Dashboard kunde inte visas">
-          <ProgressDashboard
-            adaptiveCoachFeedback={adaptiveCoachFeedback}
-            checkIn={checkIn}
-            checkIns={[]}
-            foods={foods}
-            healthSnapshot={healthSnapshot}
-            meals={meals}
-            nutritionGoals={nutritionGoals}
-            profile={validatedProfile}
-            today={selectedMealDate}
-            weights={centralWeightStats.weights}
-            weeklyReportData={weeklyReportData}
-            weeklyReportLines={weeklyReportLines}
-            weeklyReportStatus={weeklyReportStatus}
-            onCreateWeeklyReport={createWeeklyReport}
-          />
-        </AppErrorBoundary>
       </section>
       </Suspense>
 

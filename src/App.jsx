@@ -3,10 +3,10 @@ import HomeSection from './components/sections/HomeSection.jsx'
 import MoreSection from './components/sections/MoreSection.jsx'
 import ProgressSection from './components/sections/ProgressSection.jsx'
 import NutritionSection from './components/sections/NutritionSection.jsx'
+import CoachSection from './components/sections/CoachSection.jsx'
 import './App.css'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import AuthPanel from './components/AuthPanel.jsx'
-import ChatPanel from './components/ChatPanel.jsx'
 import AppLoadingScreen from './components/app/AppLoadingScreen.jsx'
 import AppSection from './components/app/AppSection.jsx'
 import AppTopbar from './components/app/AppTopbar.jsx'
@@ -88,28 +88,13 @@ import { completeReminder, skipReminder, snoozeReminder } from './services/remin
 import { buildReminderStatus, createReminderScheduler, getDueReminders } from './services/reminders/reminderScheduler.js'
 import { syncLegacyReminderSettingsToV2 } from './services/reminders/reminderLegacyAdapter.js'
 
-const AICoach = lazy(() => import('./components/AICoach.jsx'))
-const AINutritionInsights = lazy(() => import('./components/AINutritionInsights.jsx'))
-const NutritionCoachCenter = lazy(() => import('./components/NutritionCoachCenter.jsx'))
-const PredictionCenter = lazy(() => import('./components/PredictionCenter.jsx'))
-const AdaptiveCoachPanel = lazy(() => import('./components/AdaptiveCoachPanel.jsx'))
-const AchievementCenter = lazy(() => import('./components/AchievementCenter.jsx'))
-const CoachPlanCenter = lazy(() => import('./components/CoachPlanCenter.jsx'))
 const DataImportCenter = lazy(() => import('./components/DataImportCenter.jsx'))
 const DataExportCenter = lazy(() => import('./components/DataExportCenter.jsx'))
-const GoalsHabitsPanel = lazy(() => import('./components/GoalsHabitsPanel.jsx'))
-const HabitGoalCenter = lazy(() => import('./components/HabitGoalCenter.jsx'))
-const HealthJourneyCenter = lazy(() => import('./components/HealthJourneyCenter.jsx'))
-const InsightsCenter = lazy(() => import('./components/InsightsCenter.jsx'))
 const LaunchReadinessPanel = lazy(() => import('./components/LaunchReadinessPanel.jsx'))
 const ManualAcceptanceRunner = import.meta.env.DEV
   ? lazy(() => import('./components/ManualAcceptanceRunner.jsx'))
   : null
-const MonthlyReport = lazy(() => import('./components/MonthlyReport.jsx'))
 const ProgressCenter = lazy(() => import('./components/ProgressCenter.jsx'))
-const ProgressDashboard = lazy(() => import('./components/ProgressDashboard.jsx'))
-const ProgressPhotos = lazy(() => import('./components/ProgressPhotos.jsx'))
-const SocialCenter = lazy(() => import('./components/SocialCenter.jsx'))
 const SyncHealthDashboard = lazy(() => import('./components/SyncHealthDashboard.jsx'))
 const SyncDiagnosticsPanel = lazy(() => import('./components/SyncDiagnosticsPanel.jsx'))
 
@@ -2896,184 +2881,48 @@ function App() {
           />
         </AppErrorBoundary>
 
-        <AppSection
+
+        <CoachSection
           activeSection={activeAppSection}
-          id="coach"
-          label="Coach och insikter"
-        >
-        <AppErrorBoundary area="ai" resetKey={chatMessages.length} title="AI-coachen kunde inte visas">
-          <ChatPanel
-            canClearChat={chatMessages.length > initialChatMessages.length}
-            chatInput={chatInput}
-            chatMessages={chatMessages}
-            chatThreadRef={chatThreadRef}
-            isListening={isListening}
-            messagesEndRef={messagesEndRef}
-            onChatInputChange={setChatInput}
-            onClearChat={clearChat}
-            onSendChatMessage={sendChatMessage}
-            onStartVoiceInput={startVoiceInput}
-            onStarterPrompt={handleStarterPrompt}
-            starterPrompts={aiStarterPrompts}
-            chatEngineStatus={chatEngineStatus}
-            voiceStatus={voiceStatus}
-          />
-
-          <AICoach
-            coachMessage={coachMessage}
-            coachReport={latestCoachReport || currentCoachPreview}
-            coachReports={coachReports}
-            coachStatus={coachStatus}
-            isGeneratingReport={isGeneratingCoachReport}
-            onClearCoachReports={clearCoachReports}
-            onCreateCoachReport={createCoachReport}
-            onDeleteCoachReport={deleteCoachReport}
-          />
-
-          <AINutritionInsights
-            analysisDate={selectedMealDate}
-            checkIn={checkIn}
-            meals={meals}
-            nutritionGoals={nutritionGoals}
-            onCoachQuestion={(question) => {
-              void sendChatText(question)
-            }}
-            profile={validatedProfile}
-            weights={centralWeightStats.weights}
-          />
-
-          <NutritionCoachCenter
-            adaptiveCoachFeedback={adaptiveCoachFeedback}
-            analysisDate={selectedMealDate}
-            checkIn={checkIn}
-            goalsHabits={goalsHabits}
-            healthSnapshot={healthSnapshot}
-            meals={meals}
-            nutritionGoals={nutritionGoals}
-            profile={validatedProfile}
-            reminderState={reminderState}
-            weights={centralWeightStats.weights}
-          />
-
-          <PredictionCenter
-            adaptiveCoachFeedback={adaptiveCoachFeedback}
-            checkIn={checkIn}
-            goalsHabits={goalsHabits}
-            healthSnapshot={healthSnapshot}
-            meals={meals}
-            nutritionGoals={nutritionGoals}
-            profile={validatedProfile}
-            reminderState={reminderState}
-            today={selectedMealDate}
-            weights={centralWeightStats.weights}
-          />
-
-          <AdaptiveCoachPanel
-            adaptiveCoachFeedback={adaptiveCoachFeedback}
-            analysisDate={selectedMealDate}
-            checkIn={checkIn}
-            goalsHabits={goalsHabits}
-            healthSnapshot={healthSnapshot}
-            meals={meals}
-            nutritionGoals={nutritionGoals}
-            profile={validatedProfile}
-            reminderState={reminderState}
-            onAdaptiveCoachFeedbackChange={setAdaptiveCoachFeedback}
-            onGoalsHabitsChange={setGoalsHabits}
-            onReminderStateChange={handleReminderStateChange}
-            weights={centralWeightStats.weights}
-          />
-
-          <CoachPlanCenter
-            adaptiveCoachFeedback={adaptiveCoachFeedback}
-            analysisDate={selectedMealDate}
-            checkIn={checkIn}
-            goalsHabits={goalsHabits}
-            healthSnapshot={healthSnapshot}
-            meals={meals}
-            nutritionGoals={nutritionGoals}
-            onAdaptiveCoachFeedbackChange={setAdaptiveCoachFeedback}
-            profile={validatedProfile}
-            reminderState={reminderState}
-            weights={centralWeightStats.weights}
-          />
-
-          <InsightsCenter
-            adaptiveCoachFeedback={adaptiveCoachFeedback}
-            checkIn={checkIn}
-            goalsHabits={goalsHabits}
-            healthSnapshot={healthSnapshot}
-            meals={meals}
-            nutritionGoals={nutritionGoals}
-            profile={validatedProfile}
-            reminderState={reminderState}
-            today={selectedMealDate}
-            weights={centralWeightStats.weights}
-          />
-
-          <HealthJourneyCenter
-            adaptiveCoachFeedback={adaptiveCoachFeedback}
-            checkIn={checkIn}
-            goalsHabits={goalsHabits}
-            healthSnapshot={healthSnapshot}
-            meals={meals}
-            nutritionGoals={nutritionGoals}
-            profile={validatedProfile}
-            reminderState={reminderState}
-            today={selectedMealDate}
-            weights={centralWeightStats.weights}
-          />
-
-          <GoalsHabitsPanel
-            analysisDate={selectedMealDate}
-            checkIn={checkIn}
-            goalsHabits={goalsHabits}
-            meals={meals}
-            nutritionGoals={nutritionGoals}
-            onGoalsHabitsChange={setGoalsHabits}
-            profile={validatedProfile}
-            weights={centralWeightStats.weights}
-          />
-
-          <HabitGoalCenter
-            adaptiveCoachFeedback={adaptiveCoachFeedback}
-            checkIn={checkIn}
-            goalsHabits={goalsHabits}
-            healthSnapshot={healthSnapshot}
-            meals={meals}
-            nutritionGoals={nutritionGoals}
-            profile={validatedProfile}
-            reminderState={reminderState}
-            today={selectedMealDate}
-            weights={centralWeightStats.weights}
-          />
-
-          <AchievementCenter
-            adaptiveCoachFeedback={adaptiveCoachFeedback}
-            analysisDate={selectedMealDate}
-            checkIn={checkIn}
-            goalsHabits={goalsHabits}
-            healthSnapshot={healthSnapshot}
-            meals={meals}
-            onGoalsHabitsChange={setGoalsHabits}
-            profile={validatedProfile}
-            reminderState={reminderState}
-            weights={centralWeightStats.weights}
-          />
-
-          <SocialCenter
-            adaptiveCoachFeedback={adaptiveCoachFeedback}
-            analysisDate={selectedMealDate}
-            checkIn={checkIn}
-            goalsHabits={goalsHabits}
-            healthSnapshot={healthSnapshot}
-            meals={meals}
-            profile={validatedProfile}
-            reminderState={reminderState}
-            weights={centralWeightStats.weights}
-          />
-        </AppErrorBoundary>
-        </AppSection>
+          adaptiveCoachFeedback={adaptiveCoachFeedback}
+          aiStarterPrompts={aiStarterPrompts}
+          canClearChat={chatMessages.length > initialChatMessages.length}
+          chatEngineStatus={chatEngineStatus}
+          chatInput={chatInput}
+          chatMessages={chatMessages}
+          chatThreadRef={chatThreadRef}
+          checkIn={checkIn}
+          coachMessage={coachMessage}
+          coachReport={latestCoachReport || currentCoachPreview}
+          coachReports={coachReports}
+          coachStatus={coachStatus}
+          goalsHabits={goalsHabits}
+          healthSnapshot={healthSnapshot}
+          isGeneratingCoachReport={isGeneratingCoachReport}
+          isListening={isListening}
+          meals={meals}
+          messagesEndRef={messagesEndRef}
+          nutritionGoals={nutritionGoals}
+          onAdaptiveCoachFeedbackChange={setAdaptiveCoachFeedback}
+          onChatInputChange={setChatInput}
+          onClearChat={clearChat}
+          onClearCoachReports={clearCoachReports}
+          onCoachQuestion={(question) => {
+            void sendChatText(question)
+          }}
+          onCreateCoachReport={createCoachReport}
+          onDeleteCoachReport={deleteCoachReport}
+          onGoalsHabitsChange={setGoalsHabits}
+          onReminderStateChange={handleReminderStateChange}
+          onSendChatMessage={sendChatMessage}
+          onStartVoiceInput={startVoiceInput}
+          onStarterPrompt={handleStarterPrompt}
+          profile={validatedProfile}
+          reminderState={reminderState}
+          selectedMealDate={selectedMealDate}
+          voiceStatus={voiceStatus}
+          weights={centralWeightStats.weights}
+        />
 
 
         <NutritionSection

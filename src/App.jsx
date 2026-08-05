@@ -1,5 +1,6 @@
-import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+﻿import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import HomeSection from './components/sections/HomeSection.jsx'
+import MoreSection from './components/sections/MoreSection.jsx'
 import './App.css'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import AuthPanel from './components/AuthPanel.jsx'
@@ -13,7 +14,6 @@ import LazySectionFallback from './components/app/LazySectionFallback.jsx'
 import OnboardingScreen from './components/app/OnboardingScreen.jsx'
 import CloudSyncPanel from './components/CloudSyncPanel.jsx'
 import CloudStatusPanel from './components/CloudStatusPanel.jsx'
-import Dashboard from './components/Dashboard.jsx'
 import GlobalSyncStatus from './components/GlobalSyncStatus.jsx'
 import PwaExperience from './components/PwaExperience.jsx'
 import ReminderBanner from './components/ReminderBanner.jsx'
@@ -94,13 +94,11 @@ const PredictionCenter = lazy(() => import('./components/PredictionCenter.jsx'))
 const AdaptiveCoachPanel = lazy(() => import('./components/AdaptiveCoachPanel.jsx'))
 const AchievementCenter = lazy(() => import('./components/AchievementCenter.jsx'))
 const BarcodeScanner = lazy(() => import('./components/BarcodeScanner.jsx'))
-const CloudBackupPanel = lazy(() => import('./components/CloudBackupPanel.jsx'))
 const CoachPlanCenter = lazy(() => import('./components/CoachPlanCenter.jsx'))
 const DataImportCenter = lazy(() => import('./components/DataImportCenter.jsx'))
 const DataExportCenter = lazy(() => import('./components/DataExportCenter.jsx'))
 const GoalsHabitsPanel = lazy(() => import('./components/GoalsHabitsPanel.jsx'))
 const HabitGoalCenter = lazy(() => import('./components/HabitGoalCenter.jsx'))
-const HealthDashboardV2 = lazy(() => import('./components/HealthDashboardV2.jsx'))
 const HealthJourneyCenter = lazy(() => import('./components/HealthJourneyCenter.jsx'))
 const InsightsCenter = lazy(() => import('./components/InsightsCenter.jsx'))
 const LaunchReadinessPanel = lazy(() => import('./components/LaunchReadinessPanel.jsx'))
@@ -109,12 +107,9 @@ const ManualAcceptanceRunner = import.meta.env.DEV
   : null
 const MealLogger = lazy(() => import('./components/MealLogger.jsx'))
 const MonthlyReport = lazy(() => import('./components/MonthlyReport.jsx'))
-const NotificationCenter = lazy(() => import('./components/NotificationCenter.jsx'))
 const ProgressCenter = lazy(() => import('./components/ProgressCenter.jsx'))
 const ProgressDashboard = lazy(() => import('./components/ProgressDashboard.jsx'))
 const ProgressPhotos = lazy(() => import('./components/ProgressPhotos.jsx'))
-const ReminderSettings = lazy(() => import('./components/ReminderSettings.jsx'))
-const ReminderCenter = lazy(() => import('./components/ReminderCenter.jsx'))
 const SocialCenter = lazy(() => import('./components/SocialCenter.jsx'))
 const SyncHealthDashboard = lazy(() => import('./components/SyncHealthDashboard.jsx'))
 const SyncDiagnosticsPanel = lazy(() => import('./components/SyncDiagnosticsPanel.jsx'))
@@ -3211,44 +3206,24 @@ function App() {
           />
         </AppErrorBoundary>
         </AppSection>
-        <AppSection
+
+        <MoreSection
           activeSection={activeAppSection}
-          id="more"
-          label="Fler funktioner och inställningar"
-        >
-        <ReminderSettings
+          adaptiveCoachFeedback={adaptiveCoachFeedback}
+          goalsHabits={goalsHabits}
+          isAuthenticated={Boolean(authSession)}
+          onDataRestored={refreshAppStateFromStorage}
           onReminderSettingChange={updateReminderSetting}
+          onReminderStateChange={handleReminderStateChange}
           onRequestNotificationPermission={requestNotificationPermission}
           reminderOptions={reminderOptions}
           reminderSettings={reminderSettings}
+          reminderState={reminderState}
           reminderStatus={reminderStatus}
+          schedulerStatus={reminderSchedulerStatus}
+          syncStatus={getSyncStatusSnapshot()}
+          userId={authSession?.user?.id || ''}
         />
-
-        <AppErrorBoundary area="reminders" resetKey={reminderState.updatedAt} title="Reminder Center kunde inte visas">
-          <ReminderCenter
-            goalsHabits={goalsHabits}
-            onRemindersChange={handleReminderStateChange}
-            reminderState={reminderState}
-            schedulerStatus={reminderSchedulerStatus}
-          />
-        </AppErrorBoundary>
-
-        <AppErrorBoundary area="notifications" resetKey={reminderState.updatedAt} title="Notification Center kunde inte visas">
-          <NotificationCenter
-            adaptiveCoachFeedback={adaptiveCoachFeedback}
-            onReminderStateChange={handleReminderStateChange}
-            reminderState={reminderState}
-            syncStatus={getSyncStatusSnapshot()}
-          />
-        </AppErrorBoundary>
-
-        <AppErrorBoundary area="cloud" resetKey={authSession?.user?.id || ''} title="Molnbackup kunde inte visas">
-          <CloudBackupPanel
-            isAuthenticated={Boolean(authSession)}
-            onDataRestored={refreshAppStateFromStorage}
-          />
-        </AppErrorBoundary>
-        </AppSection>
       </section>
       </Suspense>
 

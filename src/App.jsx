@@ -1,10 +1,11 @@
-﻿import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import './App.css'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import AuthPanel from './components/AuthPanel.jsx'
 import ChatPanel from './components/ChatPanel.jsx'
 import CheckIn from './components/CheckIn.jsx'
 import AppLoadingScreen from './components/app/AppLoadingScreen.jsx'
+import AppSection from './components/app/AppSection.jsx'
 import AppTopbar from './components/app/AppTopbar.jsx'
 import BottomNavigation from './components/app/BottomNavigation.jsx'
 import LazySectionFallback from './components/app/LazySectionFallback.jsx'
@@ -2837,27 +2838,33 @@ function App() {
         profileSummaryParts={profileSummaryParts}
       />
 
-      <AppErrorBoundary area="dashboard" resetKey={healthSnapshot.date} title="Översikten kunde inte visas">
-        <Dashboard actions={dashboardActions} dashboard={dashboardData} />
-      </AppErrorBoundary>
-
-      <Suspense fallback={<LazySectionFallback />}>
-        <AppErrorBoundary area="health-dashboard" resetKey={`${healthSnapshot.date}-${healthDashboardPeriod}`} title="Hälsodashboarden kunde inte visas">
-          <HealthDashboardV2
-            adaptiveCoachFeedback={adaptiveCoachFeedback}
-            checkIn={checkIn}
-            goalsHabits={goalsHabits}
-            healthSnapshot={healthSnapshot}
-            meals={meals}
-            nutritionGoals={nutritionGoals}
-            onPeriodChange={setHealthDashboardPeriod}
-            period={healthDashboardPeriod}
-            profile={validatedProfile}
-            today={selectedMealDate}
-            weights={centralWeightStats.weights}
-          />
+      <AppSection
+        activeSection={activeAppSection}
+        id="home"
+        label="Hem och översikt"
+      >
+        <AppErrorBoundary area="dashboard" resetKey={healthSnapshot.date} title="Översikten kunde inte visas">
+          <Dashboard actions={dashboardActions} dashboard={dashboardData} />
         </AppErrorBoundary>
-      </Suspense>
+
+        <Suspense fallback={<LazySectionFallback />}>
+          <AppErrorBoundary area="health-dashboard" resetKey={`${healthSnapshot.date}-${healthDashboardPeriod}`} title="Hälsodashboarden kunde inte visas">
+            <HealthDashboardV2
+              adaptiveCoachFeedback={adaptiveCoachFeedback}
+              checkIn={checkIn}
+              goalsHabits={goalsHabits}
+              healthSnapshot={healthSnapshot}
+              meals={meals}
+              nutritionGoals={nutritionGoals}
+              onPeriodChange={setHealthDashboardPeriod}
+              period={healthDashboardPeriod}
+              profile={validatedProfile}
+              today={selectedMealDate}
+              weights={centralWeightStats.weights}
+            />
+          </AppErrorBoundary>
+        </Suspense>
+      </AppSection>
 
       <AppErrorBoundary area="cloud" resetKey={authSession?.user?.id || ''} title="Molnstatus kunde inte visas">
         <CloudStatusPanel isAuthenticated={Boolean(authSession)} />
@@ -3241,5 +3248,3 @@ function App() {
 }
 
 export default App
-
-

@@ -3090,6 +3090,11 @@ function App() {
         </AppErrorBoundary>
         </AppSection>
 
+        <AppSection
+          activeSection={activeAppSection}
+          id="nutrition"
+          label="Mat och nutrition"
+        >
         <article className="panel" id="mat">
           <div className="panel-heading">
             <div>
@@ -3161,7 +3166,7 @@ function App() {
           onSubmitManualBarcode={submitManualBarcode}
           scannedProducts={scannedProducts}
         />
-
+        </AppSection>
         <ProgressPhotos
           afterPhotoId={afterPhoto ? String(afterPhoto.id) : ''}
           beforeAfterPhotos={beforeAfterPhotos}

@@ -2911,6 +2911,11 @@ function App() {
           />
         </AppErrorBoundary>
 
+        <AppSection
+          activeSection={activeAppSection}
+          id="coach"
+          label="Coach och insikter"
+        >
         <AppErrorBoundary area="ai" resetKey={chatMessages.length} title="AI-coachen kunde inte visas">
           <ChatPanel
             canClearChat={chatMessages.length > initialChatMessages.length}
@@ -3083,6 +3088,7 @@ function App() {
             weights={centralWeightStats.weights}
           />
         </AppErrorBoundary>
+        </AppSection>
 
         <article className="panel" id="mat">
           <div className="panel-heading">

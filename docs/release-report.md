@@ -86,3 +86,7 @@ AI-routes kraver verifierad Supabase-session, user-scoped process-local rate lim
 ## Adaptive Coach Personalization V8
 
 Coach memory ar implementerat som ett sakert, regelbaserat lager under befintlig adaptive coach state. Remote memory ar opt-in och skickar endast minimerad context. Release-status ar fortsatt conditional tills stagingfloden med riktig inloggad testanvandare verifierats.
+
+## Nutrition Coach Engine V2
+
+Meal quality, daily nutrition timeline, nutrition gaps och smart food suggestions ar dokumenterade i `docs/nutrition-coach-engine-v2.md`. Den tidigare Personal Insights-arkitekturen ligger kvar i `docs/ai-nutrition-coach-v2.md`. Nutrition Coach Center ar lazy-loaded och release-gaten kontrollerar att varken panelen eller motorn modulepreloadas initialt.

@@ -120,6 +120,15 @@
 - LocalStorage, sync, backup, diagnostics och rapporter innehaller ingen bild, blob URL eller base64.
 - Dashboard, veckorapport och manadsrapport visar endast sakra fotoanalysfacts.
 
+## Nutrition Coach Engine V2
+
+- `docs/ai-nutrition-coach-v2.md` dokumenterar den äldre AI Nutrition Coach V2 + Personal Insights-arkitekturen.
+- `docs/nutrition-coach-engine-v2.md` dokumenterar den nya måltidskvalitetsmotorn, Nutrition Coach Center och consent-gated AI refinement.
+- Nutrition Coach Center är lazy-loaded och ska inte modulepreloadas i production.
+- Remote nutrition coach refinement får endast skicka aggregerade metrics, kategorier och counts.
+- Råbilder, råhistorik, authdata, tokens och komplett användardata får inte skickas i nutrition coach-payloaden.
+- Nutrition Coach Engine använder befintlig nutrition, scannerhistorik, coach memory, action plans, insights och dietary preferences utan ny sync-, auth- eller backupmodell.
+
 ## Accessibility
 
 - Tangentbord fungerar för reminders, modaler, reports och PWA banners.

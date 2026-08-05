@@ -7,6 +7,7 @@ import { buildInsightsEngine } from './insights/insightsEngine.js'
 import { buildAchievementSummary } from './achievements/achievementEngine.js'
 import { buildSocialSummary } from './social/socialEngine.js'
 import { buildCoachPlanCenterModel } from './coachActionPlanEngine.js'
+import { buildNutritionCoachModel } from './nutrition/nutritionCoachEngine.js'
 
 function mask(value) {
   const text = String(value || '')
@@ -60,6 +61,10 @@ export function buildLaunchReadinessReport({
     healthSnapshot,
     reminderState,
   })
+  const nutritionCoach = buildNutritionCoachModel({
+    healthSnapshot,
+    reminderState,
+  })
 
   return {
     appVersion: PWA_APP_VERSION,
@@ -104,6 +109,10 @@ export function buildLaunchReadinessReport({
       coachPlannerExport: 'existing-adaptive-coach-section',
       coachPlannerPersistence: 'existing-adaptive-coach-key',
       coachPlannerSync: isAllowedSyncStorageKey(userDataKeys.adaptiveCoachFeedback) ? 'pass' : 'fail',
+      aiNutritionCoaching: 'consent-gated',
+      nutritionCoachEngine: nutritionCoach.version === 2 ? 'pass' : 'fail',
+      nutritionCoachExportCompatibility: 'existing-nutrition-and-adaptive-coach-sections',
+      nutritionCoachSyncCompatibility: isAllowedSyncStorageKey(userDataKeys.meals) && isAllowedSyncStorageKey(userDataKeys.adaptiveCoachFeedback) ? 'pass' : 'fail',
       logoutAbortSupport: 'pass',
       achievementEngineHealth: 'Aktiv',
       achievementLevel: achievements.levelTitle,

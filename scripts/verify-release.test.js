@@ -39,5 +39,6 @@ describe('verify-release script contract', () => {
     const source = readFileSync(new URL('./verify-release.js', import.meta.url), 'utf8')
 
     expect(source).toContain('CoachPlanCenter')
+    expect(source).toContain('NutritionCoachCenter')
   })
 })

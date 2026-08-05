@@ -43,3 +43,8 @@ Preflight kör ingen riktig kostnadsbärande AI som standard.
 ## Begränsning
 
 In-memory rate limiting är inte ett komplett produktions-abuse-skydd för distribuerad serverless. Det är ett grundskydd och ska kompletteras med deployment-/providerbaserade limits vid go-live.
+## AI Route Security V2
+
+Rate limiting sker efter verifierad Supabase-session och ar user-scoped for coach respektive photo analysis. Nuvarande adapter ar `process-local`, vilket ar ett grundskydd per serverprocess men inte en global kvot over alla serverless-instanser.
+
+Preflight gor som standard inga kostnadsbarande provideranrop. Riktig providerverifiering kraver staging-URL, giltig anvandarsession och explicit manuell acceptans.

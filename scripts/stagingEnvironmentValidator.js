@@ -6,6 +6,12 @@ const placeholderPattern = /^(|changeme|change-me|placeholder|todo|example|your-
 const requiredClientVariables = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']
 const serverOnlyVariables = ['OPENAI_API_KEY']
 const requiredRoutes = ['api/nutrition-photo-analysis/index.js', 'api/adaptive-coach/index.js']
+const requiredSecurityFiles = [
+  'api/_shared/verifySupabaseUser.js',
+  'api/_shared/aiRateLimiter.js',
+  'api/_shared/aiRequestDeduper.js',
+  'api/_shared/aiRouteErrors.js',
+]
 const requiredPublicFiles = [
   'public/manifest.webmanifest',
   'public/sw.js',
@@ -108,6 +114,49 @@ export function validateStagingEnvironment({
       ? makeCheck(file, 'PASS', `${file} finns.`, false)
       : makeCheck(file, 'FAIL', `${file} saknas.`))
   })
+
+  requiredSecurityFiles.forEach((file) => {
+    checks.push(files.exists(file)
+      ? makeCheck(file, 'PASS', `${file} finns.`, false)
+      : makeCheck(file, 'FAIL', `${file} saknas.`))
+  })
+
+  if (files.exists('api/adaptive-coach/index.js')) {
+    const route = files.read('api/adaptive-coach/index.js')
+    checks.push(route.includes('verifySupabaseUser')
+      ? makeCheck('coach-auth-required', 'PASS', 'Coachroute verifierar Supabase-session server-side.', false)
+      : makeCheck('coach-auth-required', 'FAIL', 'Coachroute saknar server-side authverifiering.'))
+    checks.push(route.includes('setNoStoreHeaders') || route.includes('sendSafeAiError')
+      ? makeCheck('coach-no-store', 'PASS', 'Coachroute har no-store-kontrakt.', false)
+      : makeCheck('coach-no-store', 'FAIL', 'Coachroute saknar no-store-kontrakt.'))
+    checks.push(/userId/.test(route) && /hasBlockedFields/.test(route)
+      ? makeCheck('coach-body-userid-block', 'PASS', 'Coachroute blockerar client userId i AI-payload.', false)
+      : makeCheck('coach-body-userid-block', 'FAIL', 'Coachroute blockerar inte tydligt body-userId.'))
+  }
+
+  if (files.exists('api/nutrition-photo-analysis/index.js')) {
+    const route = files.read('api/nutrition-photo-analysis/index.js')
+    checks.push(route.includes('verifySupabaseUser')
+      ? makeCheck('photo-auth-required', 'PASS', 'Photoroute verifierar Supabase-session server-side.', false)
+      : makeCheck('photo-auth-required', 'FAIL', 'Photoroute saknar server-side authverifiering.'))
+    checks.push(route.includes('checkAiRouteRateLimit')
+      ? makeCheck('photo-user-rate-limit', 'PASS', 'Photoroute använder gemensam user-scoped rate limit.', false)
+      : makeCheck('photo-user-rate-limit', 'FAIL', 'Photoroute saknar gemensam user-scoped rate limit.'))
+  }
+
+  if (files.exists('src/services/ai/remoteCoachService.js')) {
+    const client = files.read('src/services/ai/remoteCoachService.js')
+    checks.push(/Authorization/.test(client) && /getCurrentAiAuthorization/.test(client)
+      ? makeCheck('coach-client-authorization', 'PASS', 'Coachklient skickar Authorization-header från aktuell session.', false)
+      : makeCheck('coach-client-authorization', 'FAIL', 'Coachklient saknar Authorization-header.'))
+  }
+
+  if (files.exists('src/services/nutritionPhotoAnalysisProvider.js')) {
+    const client = files.read('src/services/nutritionPhotoAnalysisProvider.js')
+    checks.push(/Authorization/.test(client) && /getCurrentAiAuthorization/.test(client)
+      ? makeCheck('photo-client-authorization', 'PASS', 'Fotoklient skickar Authorization-header från aktuell session.', false)
+      : makeCheck('photo-client-authorization', 'FAIL', 'Fotoklient saknar Authorization-header.'))
+  }
 
   requiredPublicFiles.forEach((file) => {
     checks.push(files.exists(file)

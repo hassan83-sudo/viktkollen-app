@@ -1,5 +1,11 @@
 import { validateAiCoachSafety } from './aiResponseSafety.js'
 import {
+  aiAuthErrorCode,
+  getAiAuthSafeMessage,
+  getCurrentAiAuthorization,
+  hasSameAiAuthUser,
+} from './aiAuthTransport.js'
+import {
   buildCoachRemoteRequestPayload,
   fingerprintCoachPayload,
 } from './coachRequestBuilder.js'
@@ -11,6 +17,17 @@ let latestRequestToken = ''
 
 function safeErrorMessage(code) {
   const messages = {
+    AUTH_EXPIRED: 'Sessionen har gått ut. Logga in igen och försök på nytt.',
+    AUTH_INVALID: 'Du behöver logga in igen innan remote AI kan användas.',
+    AUTH_REQUIRED: 'Logga in för att använda remote AI.',
+    AUTH_UNAVAILABLE: 'Inloggningen kunde inte verifieras just nu. Försök igen senare.',
+    CONSENT_REQUIRED: 'Samtycke krävs innan remote AI används.',
+    INVALID_REQUEST: 'AI-underlaget kunde inte skickas säkert.',
+    PROVIDER_INVALID_RESPONSE: 'AI-svaret kunde inte valideras. Regelbaserad coach används.',
+    PROVIDER_NOT_CONFIGURED: 'Remote AI är inte konfigurerad på servern. Regelbaserad coach används.',
+    PROVIDER_TIMEOUT: 'AI-anropet tog för lång tid. Regelbaserad coach används.',
+    PROVIDER_UNAVAILABLE: 'AI-tjänsten är tillfälligt otillgänglig. Regelbaserad coach används.',
+    RATE_LIMITED: 'För många AI-anrop just nu. Försök igen senare.',
     aiNotConfigured: 'Remote AI är inte konfigurerad på servern. Regelbaserad coach används.',
     consentRequired: 'Samtycke krävs innan remote AI används.',
     invalidProviderResponse: 'AI-svaret kunde inte valideras. Regelbaserad coach används.',
@@ -24,8 +41,19 @@ function safeErrorMessage(code) {
 }
 
 export async function requestRemoteCoachSuggestions(input = {}, options = {}) {
+  const auth = await getCurrentAiAuthorization()
+  if (!auth.ok) {
+    return {
+      errorCode: auth.errorCode || aiAuthErrorCode.AUTH_REQUIRED,
+      ok: false,
+      retryable: false,
+      warning: auth.warning || getAiAuthSafeMessage(auth.errorCode),
+    }
+  }
+
   const built = buildCoachRemoteRequestPayload(input, options)
-  const fingerprint = fingerprintCoachPayload(built.payload)
+  const payloadFingerprint = fingerprintCoachPayload(built.payload)
+  const fingerprint = `${auth.userScope || 'signed-in'}:${payloadFingerprint}`
 
   if (activeRequests.has(fingerprint)) {
     return activeRequests.get(fingerprint)
@@ -40,8 +68,9 @@ export async function requestRemoteCoachSuggestions(input = {}, options = {}) {
       const response = await fetch(coachEndpoint, {
         body: JSON.stringify(built.payload),
         headers: {
+          Authorization: auth.authorizationHeader,
           'Content-Type': 'application/json',
-          'x-viktkollen-client-id': fingerprint,
+          'x-viktkollen-client-id': payloadFingerprint,
         },
         method: 'POST',
         signal: options.signal || controller.signal,
@@ -52,7 +81,16 @@ export async function requestRemoteCoachSuggestions(input = {}, options = {}) {
         return {
           ok: false,
           stale: true,
-          warning: safeErrorMessage('staleResponse'),
+          warning: safeErrorMessage('STALE_REQUEST'),
+        }
+      }
+
+      if (!await hasSameAiAuthUser(auth.userScope)) {
+        return {
+          errorCode: aiAuthErrorCode.AUTH_STALE,
+          ok: false,
+          stale: true,
+          warning: getAiAuthSafeMessage(aiAuthErrorCode.AUTH_STALE),
         }
       }
 

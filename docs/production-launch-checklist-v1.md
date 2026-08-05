@@ -229,3 +229,10 @@
 - Remote coach ska krava aktivt samtycke och knapptryck.
 - Regelbaserad fallback ska fungera vid missing config, timeout, rate limit, invalid response och safety block.
 - Export/backup/sync far inte innehalla prompt, providerresponse, bild/base64 eller request headers.
+## AI Route Security V2
+
+- `/api/adaptive-coach` och `/api/nutrition-photo-analysis` ska krava Supabase-session.
+- Saknad auth ska ge 401 och aldrig trigga OpenAI.
+- Alla AI-route-svar ska ha `Cache-Control: no-store`.
+- Rate limiting ska vara user-scoped och markeras som `process-local` tills global adapter finns.
+- Client far inte skicka token i body, URL eller storage.

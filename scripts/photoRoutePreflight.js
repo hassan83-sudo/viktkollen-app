@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import process from 'node:process'
 
@@ -15,9 +15,19 @@ export async function verifyPhotoRoute({
 } = {}) {
   const checks = []
   const routePath = 'api/nutrition-photo-analysis/index.js'
-  checks.push(existsSync(resolve(cwd, routePath))
+  const routeFile = resolve(cwd, routePath)
+  checks.push(existsSync(routeFile)
     ? makeCheck('route-file', 'PASS', 'Nutrition photo route finns.')
     : makeCheck('route-file', 'FAIL', 'Nutrition photo route saknas.'))
+  if (existsSync(routeFile)) {
+    const source = readFileSync(routeFile, 'utf8')
+    checks.push(source.includes('verifySupabaseUser')
+      ? makeCheck('auth-required', 'PASS', 'Route kräver server-side authverifiering.')
+      : makeCheck('auth-required', 'FAIL', 'Route saknar server-side authverifiering.'))
+    checks.push(source.includes('setNoStoreHeaders') || source.includes('sendSafeAiError')
+      ? makeCheck('no-store-contract', 'PASS', 'Route har no-store-kontrakt.')
+      : makeCheck('no-store-contract', 'FAIL', 'Route saknar no-store-kontrakt.'))
+  }
 
   if (!baseUrl) {
     checks.push(makeCheck('remote-contract', 'SKIP', 'Ingen URL angavs. Kör med --url för remote preflight.'))
@@ -35,9 +45,15 @@ export async function verifyPhotoRoute({
       })
       const text = await response.text()
       const leakedSecret = /sk-[A-Za-z0-9_-]{8,}|Bearer\s+[A-Za-z0-9._-]+/i.test(text)
-      checks.push([400, 415].includes(response.status)
-        ? makeCheck('missing-image-contract', 'PASS', 'Tom POST ger säkert klientfel.')
+      checks.push(response.status === 401
+        ? makeCheck('missing-auth-contract', 'PASS', 'Saknad auth ger 401 utan bild/providerkörning.')
         : makeCheck('missing-image-contract', 'FAIL', `Tom POST gav oväntad status ${response.status}.`))
+      checks.push(/no-store/i.test(response.headers.get('cache-control') || '')
+        ? makeCheck('no-store-header', 'PASS', 'Route svarar med no-store.')
+        : makeCheck('no-store-header', 'FAIL', 'Route saknar no-store-header.'))
+      checks.push(/"code"|"safeMessage"|"requestId"/.test(text)
+        ? makeCheck('safe-error-schema', 'PASS', 'Route använder säkert felschema.')
+        : makeCheck('safe-error-schema', 'FAIL', 'Route svarar inte med väntat felschema.'))
       checks.push(leakedSecret
         ? makeCheck('secret-leak', 'FAIL', 'Response innehåller ett secret-liknande mönster.')
         : makeCheck('secret-leak', 'PASS', 'Response läcker inga uppenbara secrets.'))

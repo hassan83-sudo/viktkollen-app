@@ -1,10 +1,14 @@
 import { Readable } from 'node:stream'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import handler, { adaptiveCoachRouteInternals } from './index.js'
+import { setAiRateLimitAdapterForTests } from '../_shared/aiRateLimiter.js'
+import { resetAiRequestDeduperForTests } from '../_shared/aiRequestDeduper.js'
+import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
 
-function createRequest({ body = {}, contentType = 'application/json', headers = {}, method = 'POST' } = {}) {
+function createRequest({ body = {}, contentType = 'application/json', headers = {}, method = 'POST', token = 'valid-token' } = {}) {
   const request = Readable.from([JSON.stringify(body)])
   request.headers = {
+    ...(token ? { authorization: `Bearer ${token}` } : {}),
     'content-type': contentType,
     'x-viktkollen-client-id': 'test-client',
     ...headers,
@@ -46,18 +50,29 @@ describe('adaptive coach API route', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     process.env = { ...originalEnv }
+    resetAiRequestDeduperForTests()
+    setAiRateLimitAdapterForTests()
+    setSupabaseAuthVerifierForTests(async (token) => (
+      token === 'valid-token'
+        ? { user: { id: 'user-a' } }
+        : { error: { message: token === 'expired-token' ? 'JWT expired' : 'invalid' } }
+    ))
   })
 
   afterEach(() => {
     process.env = { ...originalEnv }
     vi.unstubAllGlobals()
+    setSupabaseAuthVerifierForTests(null)
+    setAiRateLimitAdapterForTests()
+    resetAiRequestDeduperForTests()
   })
 
   it('is POST only', async () => {
     const response = await callRoute(createRequest({ method: 'GET' }))
 
     expect(response.statusCode).toBe(405)
-    expect(response.body.error.code).toBe('invalidRequest')
+    expect(response.body.error.code).toBe('INVALID_REQUEST')
+    expect(response.headers['Cache-Control']).toContain('no-store')
   })
 
   it('requires json content type and consent', async () => {
@@ -66,12 +81,32 @@ describe('adaptive coach API route', () => {
 
     expect(invalidType.statusCode).toBe(415)
     expect(noConsent.statusCode).toBe(403)
-    expect(noConsent.body.error.code).toBe('consentRequired')
+    expect(noConsent.body.error.code).toBe('CONSENT_REQUIRED')
+  })
+
+  it('requires verified Supabase auth before provider or consent handling', async () => {
+    process.env.OPENAI_API_KEY = 'test-key'
+    const fetchImpl = vi.fn()
+    vi.stubGlobal('fetch', fetchImpl)
+
+    const missing = await callRoute(createRequest({ body: { consent: true, confidence: 0.8, coverage: 0.8 }, token: '' }))
+    const invalid = await callRoute(createRequest({ body: { consent: true, confidence: 0.8, coverage: 0.8 }, token: 'bad-token' }))
+    const expired = await callRoute(createRequest({ body: { consent: true, confidence: 0.8, coverage: 0.8 }, token: 'expired-token' }))
+
+    expect(missing.statusCode).toBe(401)
+    expect(missing.body.error.code).toBe('AUTH_REQUIRED')
+    expect(invalid.statusCode).toBe(401)
+    expect(invalid.body.error.code).toBe('AUTH_INVALID')
+    expect(expired.statusCode).toBe(401)
+    expect(expired.body.error.code).toBe('AUTH_EXPIRED')
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(JSON.stringify(missing.body)).not.toMatch(/valid-token|user-a|Bearer/)
   })
 
   it('blocks raw sensitive fields', () => {
     expect(adaptiveCoachRouteInternals.hasBlockedFields({ session: 'x' })).toBe(true)
     expect(adaptiveCoachRouteInternals.hasBlockedFields({ rawMeals: [] })).toBe(true)
+    expect(adaptiveCoachRouteInternals.hasBlockedFields({ userId: 'forged' })).toBe(true)
     expect(adaptiveCoachRouteInternals.hasBlockedFields({ coverage: 0.7 })).toBe(false)
   })
 
@@ -80,7 +115,7 @@ describe('adaptive coach API route', () => {
     const response = await callRoute(createRequest({ body: { consent: true, confidence: 0.1, coverage: 0.1 } }))
 
     expect(response.statusCode).toBe(422)
-    expect(response.body.error.code).toBe('lowCoverage')
+    expect(response.body.error.code).toBe('INVALID_REQUEST')
   })
 
   it('returns safe missing provider config', async () => {
@@ -88,7 +123,7 @@ describe('adaptive coach API route', () => {
     const response = await callRoute(createRequest({ body: { consent: true, confidence: 0.8, coverage: 0.8 } }))
 
     expect(response.statusCode).toBe(503)
-    expect(response.body.error.code).toBe('aiNotConfigured')
+    expect(response.body.error.code).toBe('PROVIDER_NOT_CONFIGURED')
     expect(JSON.stringify(response.body)).not.toMatch(/OPENAI_API_KEY|Bearer|test-key/)
   })
 
@@ -121,5 +156,26 @@ describe('adaptive coach API route', () => {
     expect(response.statusCode).toBe(200)
     expect(response.body.coach.recommendations).toHaveLength(1)
     expect(JSON.stringify(response.body)).not.toMatch(/test-key|Bearer|output_text/)
+    expect(response.headers['Cache-Control']).toContain('no-store')
+  })
+
+  it('rate limits by verified user scope and keeps different users separate', async () => {
+    setAiRateLimitAdapterForTests({
+      consume: vi.fn(({ scope }) => ({
+        limited: scope.includes('anonymous'),
+        remaining: 1,
+        resetAt: Date.now() + 1000,
+      })),
+      type: 'process-local',
+    })
+    setSupabaseAuthVerifierForTests(async (token) => ({ user: { id: token } }))
+    delete process.env.OPENAI_API_KEY
+
+    const first = await callRoute(createRequest({ body: { consent: true, confidence: 0.8, coverage: 0.8 }, token: 'user-a' }))
+    const second = await callRoute(createRequest({ body: { consent: true, confidence: 0.8, coverage: 0.8 }, token: 'user-b' }))
+
+    expect(first.statusCode).toBe(503)
+    expect(second.statusCode).toBe(503)
+    expect(JSON.stringify(first.body)).not.toMatch(/user-a|user-b/)
   })
 })

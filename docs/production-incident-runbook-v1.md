@@ -174,3 +174,24 @@ Vid AI-providerfel:
 4. Logga endast saker felkod och request-id.
 5. Exportera inte prompt eller providerresponse.
 6. Markera release `NOT READY` om nyckel exponeras, raa halsodata skickas eller providerresponse sparas.
+## AI Route Security Incident
+
+Prioritet hog om en kostnadsbarande route kan nas utan verifierad auth.
+
+Stoppa forst:
+
+1. Stang av remote coach och remote photo analysis i hostingmiljon.
+2. Rotera OpenAI-nyckeln om providertrafik kan ha missbrukats.
+3. Aterkalla relevanta Supabase-sessioner vid misstankt sessionslacka.
+4. Rulla tillbaka till senaste sakra commit om authkravet regressat.
+
+Kontrollera sedan:
+
+- `npm run verify:coach-route -- --url <preview>`
+- `npm run verify:photo-route -- --url <preview>`
+- saknad auth ger 401
+- `no-store` finns
+- rate-limit anvander inte clientvalda scope
+- inga tokens, user IDs eller provider bodies finns i loggar
+
+Ateraktivera forst nar route-preflight och release-gate passerar.

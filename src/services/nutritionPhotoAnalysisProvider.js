@@ -1,4 +1,10 @@
 import { normalizeNutritionPhotoAnalysis } from './nutritionPhotoAnalysis.js'
+import {
+  aiAuthErrorCode,
+  getAiAuthSafeMessage,
+  getCurrentAiAuthorization,
+  hasSameAiAuthUser,
+} from './ai/aiAuthTransport.js'
 
 export const nutritionPhotoProviderTypes = ['mock', 'remote']
 export const nutritionPhotoAnalysisTimeoutMs = 12000
@@ -77,6 +83,14 @@ function createRemoteFormData(input = {}) {
 }
 
 function safeRemoteWarning(status, errorCode) {
+  if ([aiAuthErrorCode.AUTH_REQUIRED, 'AUTH_REQUIRED', 'AUTH_INVALID', 'AUTH_EXPIRED'].includes(errorCode) || status === 401) {
+    return 'Logga in igen för att använda remote bildanalys.'
+  }
+  if (errorCode === 'AUTH_UNAVAILABLE') return 'Inloggningen kunde inte verifieras just nu. Försök igen senare.'
+  if (errorCode === 'RATE_LIMITED') return 'För många bildanalyser just nu. Vänta en stund och försök igen manuellt.'
+  if (errorCode === 'PROVIDER_NOT_CONFIGURED') return 'Remote bildanalys är inte konfigurerad på servern.'
+  if (errorCode === 'PROVIDER_TIMEOUT') return 'Bildanalysen tog för lång tid. Försök igen med en tydligare bild.'
+  if (errorCode === 'PROVIDER_UNAVAILABLE') return 'Remote bildanalys är tillfälligt otillgänglig.'
   if (status === 429 || errorCode === 'rateLimit') return 'För många bildanalyser just nu. Vänta en stund och försök igen manuellt.'
   if (status === 503 || errorCode === 'serverConfiguration') return 'Remote bildanalys är inte konfigurerad på servern.'
   if (status === 504 || errorCode === 'timeout') return 'Bildanalysen tog för lång tid. Försök igen med en tydligare bild.'
@@ -122,9 +136,21 @@ export async function analyzeNutritionPhoto(input = {}, options = {}) {
       }
     }
 
+    const auth = await getCurrentAiAuthorization()
+    if (!auth.ok) {
+      return {
+        analysis: null,
+        errorCode: auth.errorCode,
+        ok: false,
+        providerType,
+        warning: auth.warning || getAiAuthSafeMessage(auth.errorCode),
+      }
+    }
+
     const response = await fetch('/api/nutrition-photo-analysis', {
       body: createRemoteFormData(input),
       headers: {
+        Authorization: auth.authorizationHeader,
         'x-viktkollen-client-id': getTransientClientId(),
       },
       method: 'POST',
@@ -136,6 +162,17 @@ export async function analyzeNutritionPhoto(input = {}, options = {}) {
         ok: false,
         stale: true,
         warning: 'Ett nyare analysförsök finns redan.',
+      }
+    }
+
+    if (!await hasSameAiAuthUser(auth.userScope)) {
+      return {
+        analysis: null,
+        errorCode: aiAuthErrorCode.AUTH_STALE,
+        ok: false,
+        providerType,
+        stale: true,
+        warning: getAiAuthSafeMessage(aiAuthErrorCode.AUTH_STALE),
       }
     }
 

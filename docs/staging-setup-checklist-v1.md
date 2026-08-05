@@ -67,3 +67,9 @@ For RC V1:
 6. Dokumentera resultat i `docs/release-candidate-v1-result.json` eller en saker kopia.
 
 Blockerade externa steg ar inte PASS. De ska sta som `blockedByEnvironment` tills de faktiskt ar korda.
+## AI Route Security V2
+
+- Supabase URL och anon key maste finnas for server-side authverifiering.
+- `SUPABASE_URL`/`SUPABASE_ANON_KEY` kan anvandas som serveralias; service-role behovs inte.
+- Standardpreflight utan token ska ge 401 pa AI-routes.
+- `npm run validate:staging` kontrollerar authverifierare, limiter, no-store och Authorization-transport.

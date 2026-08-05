@@ -64,3 +64,8 @@ Bilden skickas bara när användaren aktivt analyserar. Rå bild, prompt och pro
 ## OpenAI Docs
 
 Implementation använder OpenAI Responses API med server-side fetch och strukturerade JSON-svar. Officiell modelldokumentation anger att Responses API och structured outputs stöds för moderna modeller, men Viktkollen låter servermiljön välja modell via env och exponerar inga modellval i klienten.
+## AI Route Security V2
+
+`/api/adaptive-coach` och `/api/nutrition-photo-analysis` kraver nu verifierad Supabase-session via `Authorization: Bearer ...` innan kostnadsbarande provideranrop. Client-provided `userId` anvands aldrig som identitet.
+
+Routes anvander `no-store`, user-scoped process-local rate limiting och kortlivad dedup per verifierad anvandare. Regelbaserad coachfallback sker fortsatt i klienten vid sakra routefel.

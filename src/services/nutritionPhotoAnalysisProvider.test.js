@@ -1,6 +1,22 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('./ai/aiAuthTransport.js', () => ({
+  aiAuthErrorCode: {
+    AUTH_REQUIRED: 'AUTH_REQUIRED',
+    AUTH_STALE: 'AUTH_STALE',
+    AUTH_UNAVAILABLE: 'AUTH_UNAVAILABLE',
+  },
+  getAiAuthSafeMessage: (code) => code === 'AUTH_REQUIRED' ? 'Logga in för att använda remote AI.' : 'Sessionen ändrades under AI-anropet. Försök igen.',
+  getCurrentAiAuthorization: vi.fn(async () => ({
+    authorizationHeader: 'Bearer photo-access-token',
+    ok: true,
+    userScope: 'photo-user-a',
+  })),
+  hasSameAiAuthUser: vi.fn(async () => true),
+}))
+
 import { analyzeNutritionPhoto } from './nutritionPhotoAnalysisProvider.js'
+import { getCurrentAiAuthorization, hasSameAiAuthUser } from './ai/aiAuthTransport.js'
 
 describe('nutritionPhotoAnalysisProvider', () => {
   afterEach(() => {
@@ -49,9 +65,13 @@ describe('nutritionPhotoAnalysisProvider', () => {
     expect(result.analysis.provider.type).toBe('remote')
     expect(fetchMock).toHaveBeenCalledWith('/api/nutrition-photo-analysis', expect.objectContaining({
       body: expect.any(FormData),
+      headers: expect.objectContaining({
+        Authorization: 'Bearer photo-access-token',
+      }),
       method: 'POST',
     }))
     expect(JSON.stringify(result)).not.toMatch(/base64|data:image/)
+    expect([...fetchMock.mock.calls[0][1].body.entries()].map(([key]) => key)).not.toContain('Authorization')
   })
 
   it('surfaces rate limit without automatic local fallback', async () => {
@@ -67,6 +87,38 @@ describe('nutritionPhotoAnalysisProvider', () => {
     expect(result.analysis).toBeNull()
     expect(result.providerType).toBe('remote')
     expect(result.warning).toContain('För många')
+  })
+
+  it('does not call the photo route when session is missing', async () => {
+    getCurrentAiAuthorization.mockResolvedValueOnce({
+      errorCode: 'AUTH_REQUIRED',
+      ok: false,
+      warning: 'Logga in för att använda remote AI.',
+    })
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await analyzeNutritionPhoto({ preprocessedImage: new Blob(['image']) }, { providerType: 'remote' })
+
+    expect(result.ok).toBe(false)
+    expect(result.errorCode).toBe('AUTH_REQUIRED')
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(JSON.stringify(result)).not.toMatch(/photo-access-token|Bearer/)
+  })
+
+  it('ignores remote result after user switch', async () => {
+    hasSameAiAuthUser.mockResolvedValueOnce(false)
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      json: async () => ({ analysis: {}, ok: true }),
+      ok: true,
+      status: 200,
+    })))
+
+    const result = await analyzeNutritionPhoto({ preprocessedImage: new Blob(['image']) }, { providerType: 'remote' })
+
+    expect(result.ok).toBe(false)
+    expect(result.errorCode).toBe('AUTH_STALE')
+    expect(result.stale).toBe(true)
   })
 
   it('marks aborted remote analysis without retrying', async () => {

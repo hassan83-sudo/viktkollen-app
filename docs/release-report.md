@@ -79,3 +79,6 @@ npm run verify:release
 ```
 
 Scriptet skriver `docs/release-report.json` nar hela gaten passerar.
+## AI Route Security V2
+
+AI-routes kraver verifierad Supabase-session, user-scoped process-local rate limit, kortlivad user-scoped dedup och `no-store`. Release-status ar fortsatt conditional tills verklig staging med giltig testsession och server-side OpenAI key verifierats.

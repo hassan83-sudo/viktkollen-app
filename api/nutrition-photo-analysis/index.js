@@ -2,14 +2,15 @@ import {
   callOpenAiJson,
   getAiGatewayConfig,
 } from '../_shared/openaiGateway.js'
+import { aiRouteErrorCodes, mapGatewayErrorCode, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
+import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
+import { createImageFingerprint, runDedupedAiRequest } from '../_shared/aiRequestDeduper.js'
+import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 
 const DEFAULT_MODEL = 'gpt-4.1-mini'
 const MAX_IMAGE_SIZE_BYTES = Number(process.env.NUTRITION_PHOTO_MAX_FILE_BYTES || 8 * 1024 * 1024)
 const REQUEST_TIMEOUT_MS = Number(process.env.NUTRITION_PHOTO_TIMEOUT_MS || 15000)
-const RATE_LIMIT_WINDOW_MS = Number(process.env.NUTRITION_PHOTO_RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000)
-const RATE_LIMIT_MAX = Number(process.env.NUTRITION_PHOTO_RATE_LIMIT_MAX || 12)
 const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp']
-const rateLimitBuckets = new Map()
 
 export const config = {
   api: {
@@ -37,14 +38,25 @@ function safeNumber(value, fallback = null, max = 100000) {
   return Math.min(number, max)
 }
 
-function safeError(response, status, code, message, retryable = false) {
-  return response.status(status).json({
-    error: {
-      code,
-      message,
-      retryable,
-    },
-    ok: false,
+function safeError(response, status, code, message, retryable = false, requestId = '') {
+  const mapping = {
+    corsBlocked: aiRouteErrorCodes.INVALID_REQUEST,
+    invalidContentType: aiRouteErrorCodes.INVALID_REQUEST,
+    invalidProviderResponse: aiRouteErrorCodes.PROVIDER_INVALID_RESPONSE,
+    methodNotAllowed: aiRouteErrorCodes.INVALID_REQUEST,
+    missingImage: aiRouteErrorCodes.INVALID_REQUEST,
+    oversizedImage: aiRouteErrorCodes.REQUEST_TOO_LARGE,
+    rateLimit: aiRouteErrorCodes.RATE_LIMITED,
+    serverConfiguration: aiRouteErrorCodes.PROVIDER_NOT_CONFIGURED,
+    timeout: aiRouteErrorCodes.PROVIDER_TIMEOUT,
+    unsupportedFormat: aiRouteErrorCodes.INVALID_REQUEST,
+  }
+  return sendSafeAiError(response, {
+    code: mapping[code] || aiRouteErrorCodes.PROVIDER_UNAVAILABLE,
+    requestId,
+    retryable,
+    safeMessage: message,
+    status,
   })
 }
 
@@ -125,33 +137,6 @@ function validateImage(image) {
   const isWebp = image.contentType === 'image/webp' && header.subarray(0, 4).toString('ascii') === 'RIFF' && header.subarray(8, 12).toString('ascii') === 'WEBP'
   if (!isJpeg && !isPng && !isWebp) return { code: 'unsupportedFormat', message: 'Bildens filsignatur matchar inte formatet.', status: 415 }
   return null
-}
-
-function getClientKey(request) {
-  return safeText(
-    getHeader(request, 'x-viktkollen-client-id') ||
-    getHeader(request, 'x-forwarded-for').split(',')[0] ||
-    request.socket?.remoteAddress ||
-    'anonymous',
-    'anonymous',
-    120,
-  )
-}
-
-function checkRateLimit(request) {
-  const key = getClientKey(request)
-  const now = Date.now()
-  const bucket = rateLimitBuckets.get(key) || { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS }
-  if (bucket.resetAt <= now) {
-    rateLimitBuckets.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
-    return { limited: false, remaining: RATE_LIMIT_MAX - 1 }
-  }
-  if (bucket.count >= RATE_LIMIT_MAX) {
-    return { limited: true, retryAfterSeconds: Math.ceil((bucket.resetAt - now) / 1000) }
-  }
-  bucket.count += 1
-  rateLimitBuckets.set(key, bucket)
-  return { limited: false, remaining: RATE_LIMIT_MAX - bucket.count }
 }
 
 function createPrompt(mealType) {
@@ -257,35 +242,63 @@ async function callOpenAi(image, mealType) {
 }
 
 export default async function handler(request, response) {
+  const requestId = `photo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+  setNoStoreHeaders(response)
+
   if (request.method !== 'POST') {
     response.setHeader('Allow', 'POST')
-    return safeError(response, 405, 'methodNotAllowed', 'Endast POST stöds.')
+    return safeError(response, 405, 'methodNotAllowed', 'Endast POST stöds.', false, requestId)
   }
   const contentType = getHeader(request, 'content-type')
   const origin = getHeader(request, 'origin')
   if (origin && process.env.VERCEL_URL && !origin.includes(process.env.VERCEL_URL)) {
-    return safeError(response, 403, 'corsBlocked', 'Ursprunget är inte tillåtet.')
+    return safeError(response, 403, 'corsBlocked', 'Ursprunget är inte tillåtet.', false, requestId)
   }
+
+  const auth = await verifySupabaseUser(request, { requestId })
+  if (!auth.authenticated) {
+    return response.status(auth.status).json({
+      error: auth.error,
+      ok: false,
+    })
+  }
+
   if (!contentType.includes('multipart/form-data')) {
-    return safeError(response, 415, 'invalidContentType', 'Skicka bilden som multipart/form-data.')
+    return safeError(response, 415, 'invalidContentType', 'Skicka bilden som multipart/form-data.', false, requestId)
   }
-  const rateLimit = checkRateLimit(request)
+  const config = getAiGatewayConfig('photo')
+  const rateLimit = checkAiRouteRateLimit({
+    limit: config.rateLimitMax,
+    route: 'nutritionPhoto',
+    userId: auth.user.id,
+  })
   if (rateLimit.limited) {
     response.setHeader('Retry-After', String(rateLimit.retryAfterSeconds))
-    return safeError(response, 429, 'rateLimit', 'För många analyser just nu. Försök igen senare.', true)
+    return sendSafeAiError(response, {
+      code: aiRouteErrorCodes.RATE_LIMITED,
+      requestId,
+      retryable: true,
+      retryAfterSeconds: rateLimit.retryAfterSeconds,
+      status: 429,
+    })
   }
 
   try {
     const parsedRequest = await parseRequest(request)
     if (parsedRequest.error) {
-      return safeError(response, parsedRequest.error.status, parsedRequest.error.code, parsedRequest.error.message)
+      return safeError(response, parsedRequest.error.status, parsedRequest.error.code, parsedRequest.error.message, false, requestId)
     }
     const image = parsedRequest.parsed.files.image
     const imageError = validateImage(image)
-    if (imageError) return safeError(response, imageError.status, imageError.code, imageError.message)
-    const providerResult = await callOpenAi(image, parsedRequest.parsed.fields.mealType)
+    if (imageError) return safeError(response, imageError.status, imageError.code, imageError.message, false, requestId)
+    const { promise: providerPromise } = runDedupedAiRequest({
+      fingerprint: createImageFingerprint(image),
+      route: 'nutritionPhoto',
+      userId: auth.user.id,
+    }, () => callOpenAi(image, parsedRequest.parsed.fields.mealType))
+    const providerResult = await providerPromise
     if (!providerResult.ok) {
-      return safeError(response, 502, 'invalidProviderResponse', 'AI-svaret kunde inte valideras.', true)
+      return safeError(response, 502, 'invalidProviderResponse', 'AI-svaret kunde inte valideras.', true, requestId)
     }
     console.info('[api/nutrition-photo-analysis] Analysis completed', {
       itemCount: providerResult.analysis.detectedItems.length,
@@ -294,26 +307,32 @@ export default async function handler(request, response) {
     return response.status(200).json({
       analysis: providerResult.analysis,
       ok: true,
+      requestId,
       source: 'remote',
     })
   } catch (error) {
-    const code = error?.code === 'serverConfiguration'
-      ? 'serverConfiguration'
+    const rawCode = error?.code === 'serverConfiguration'
+      ? 'aiNotConfigured'
       : error?.name === 'AbortError'
         ? 'timeout'
         : error?.code === 'rateLimit'
-          ? 'rateLimit'
+          ? 'rateLimited'
           : 'providerUnavailable'
-    const status = code === 'serverConfiguration' ? 503 : code === 'timeout' ? 504 : code === 'rateLimit' ? 429 : 502
+    const code = mapGatewayErrorCode(rawCode)
+    const status = code === aiRouteErrorCodes.PROVIDER_NOT_CONFIGURED ? 503
+      : code === aiRouteErrorCodes.PROVIDER_TIMEOUT ? 504
+        : code === aiRouteErrorCodes.RATE_LIMITED ? 429
+          : 502
     console.warn('[api/nutrition-photo-analysis] Safe failure', {
       code,
       source: 'remote',
     })
-    return safeError(response, status, code, code === 'serverConfiguration'
-      ? 'Bildanalys är inte konfigurerad på servern.'
-      : code === 'timeout'
-        ? 'Bildanalysen tog för lång tid.'
-        : 'Bildanalysen är tillfälligt otillgänglig.', code !== 'serverConfiguration')
+    return sendSafeAiError(response, {
+      code,
+      requestId,
+      retryable: code !== aiRouteErrorCodes.PROVIDER_NOT_CONFIGURED,
+      status,
+    })
   }
 }
 

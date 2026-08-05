@@ -178,3 +178,6 @@ npm run verify:preview -- https://preview-url
 ```
 
 PASS only if HTTPS, index, manifest, service worker, icons, API route, SPA reload, forbidden modulepreload and client secret scan are all clean.
+## AI Route Security V2
+
+Standardpreflight mot preview ska ge 401 vid saknad auth och aldrig gora provideranrop. Riktig authenticated providerkontroll gors bara manuellt med testkonto och uttryckligt godkannande. Token far inte skrivas ut eller sparas i trace/screenshots.

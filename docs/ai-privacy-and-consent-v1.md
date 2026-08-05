@@ -51,3 +51,8 @@ Adaptive Coach visar en sammanfattning av vilken datatyp som skickas. Rå JSON v
 ## Återkallelse
 
 Användaren kan stänga av remote AI. Då fortsätter regelbaserad coach att fungera.
+## AI Route Security V2
+
+Remote AI kraver bade anvandarens aktiva consent och verifierad Supabase-session. Consent ar inte auth och kan inte kringga server-side verifiering.
+
+Access token skickas endast i `Authorization`-headern. Den sparas inte i Viktkollens egna storage, sync, backup, export eller diagnostics. Coach och fotoanalys har separata consentfloden och sena svar ignoreras efter logout eller user switch.

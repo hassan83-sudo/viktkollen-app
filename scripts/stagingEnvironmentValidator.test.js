@@ -2,6 +2,7 @@ import process from 'node:process'
 import { describe, expect, it } from 'vitest'
 import { formatStagingValidation, validateStagingEnvironment } from './stagingEnvironmentValidator.js'
 import { formatPhotoRoutePreflight, verifyPhotoRoute } from './photoRoutePreflight.js'
+import { formatCoachRoutePreflight, verifyCoachRoute } from './coachRoutePreflight.js'
 import { formatPreviewVerification, verifyPreviewDeployment } from './previewVerifier.js'
 
 function fakeFiles(existing = [], contents = {}) {
@@ -14,6 +15,10 @@ function fakeFiles(existing = [], contents = {}) {
 describe('staging environment validator', () => {
   const requiredFiles = [
     'api/adaptive-coach/index.js',
+    'api/_shared/aiRateLimiter.js',
+    'api/_shared/aiRequestDeduper.js',
+    'api/_shared/aiRouteErrors.js',
+    'api/_shared/verifySupabaseUser.js',
     'api/nutrition-photo-analysis/index.js',
     'public/manifest.webmanifest',
     'public/sw.js',
@@ -24,13 +29,24 @@ describe('staging environment validator', () => {
   ]
 
   it('passes with configured safe client variables and server-only OpenAI key', () => {
+    const contents = {
+      '.env.example': 'OPENAI_API_KEY=\nVITE_SUPABASE_URL=\n',
+      'api/adaptive-coach/index.js': 'verifySupabaseUser setNoStoreHeaders hasBlockedFields userId checkAiRouteRateLimit',
+      'api/nutrition-photo-analysis/index.js': 'verifySupabaseUser checkAiRouteRateLimit setNoStoreHeaders',
+      'src/services/ai/remoteCoachService.js': 'getCurrentAiAuthorization Authorization',
+      'src/services/nutritionPhotoAnalysisProvider.js': 'getCurrentAiAuthorization Authorization',
+    }
     const result = validateStagingEnvironment({
       env: {
         OPENAI_API_KEY: 'configured-server-value',
         VITE_SUPABASE_ANON_KEY: 'configured-anon-key',
         VITE_SUPABASE_URL: 'https://project.supabase.co',
       },
-      files: fakeFiles(requiredFiles, { '.env.example': 'OPENAI_API_KEY=\nVITE_SUPABASE_URL=\n' }),
+      files: fakeFiles([
+        ...requiredFiles,
+        'src/services/ai/remoteCoachService.js',
+        'src/services/nutritionPhotoAnalysisProvider.js',
+      ], contents),
     })
 
     expect(result.ok).toBe(true)
@@ -78,11 +94,35 @@ describe('photo route preflight', () => {
   it('accepts safe missing-image errors and rejects secret-like responses', async () => {
     const result = await verifyPhotoRoute({
       baseUrl: 'https://preview.example',
-      fetchImpl: async () => new Response(JSON.stringify({ error: { code: 'invalidContentType' } }), { status: 415 }),
+      fetchImpl: async () => new Response(JSON.stringify({
+        error: { code: 'AUTH_REQUIRED', requestId: 'req', safeMessage: 'Logga in' },
+        ok: false,
+      }), {
+        headers: { 'Cache-Control': 'no-store' },
+        status: 401,
+      }),
     })
 
     expect(result.ok).toBe(true)
     expect(formatPhotoRoutePreflight(result)).not.toMatch(/Bearer|sk-/)
+  })
+})
+
+describe('coach route preflight', () => {
+  it('checks missing auth without provider traffic', async () => {
+    const result = await verifyCoachRoute({
+      baseUrl: 'https://preview.example',
+      fetchImpl: async () => new Response(JSON.stringify({
+        error: { code: 'AUTH_REQUIRED', requestId: 'req', safeMessage: 'Logga in' },
+        ok: false,
+      }), {
+        headers: { 'Cache-Control': 'no-store' },
+        status: 401,
+      }),
+    })
+
+    expect(result.ok).toBe(true)
+    expect(formatCoachRoutePreflight(result)).not.toMatch(/Bearer|sk-/)
   })
 })
 

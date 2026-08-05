@@ -2,6 +2,9 @@ import { Readable } from 'node:stream'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import handler, { nutritionPhotoRouteInternals } from './index.js'
+import { setAiRateLimitAdapterForTests } from '../_shared/aiRateLimiter.js'
+import { resetAiRequestDeduperForTests } from '../_shared/aiRequestDeduper.js'
+import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
 
 const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4])
 
@@ -14,10 +17,11 @@ function multipartBody({ boundary = 'test-boundary', contentType = 'image/png', 
   ])
 }
 
-function createRequest({ body, contentType = 'multipart/form-data; boundary=test-boundary', headers = {}, method = 'POST' } = {}) {
+function createRequest({ body, contentType = 'multipart/form-data; boundary=test-boundary', headers = {}, method = 'POST', token = 'valid-token' } = {}) {
   const request = Readable.from(body ? [body] : [])
   request.method = method
   request.headers = {
+    ...(token ? { authorization: `Bearer ${token}` } : {}),
     'content-type': contentType,
     'x-viktkollen-client-id': `test-${Math.random()}`,
     ...headers,
@@ -60,25 +64,63 @@ describe('nutrition photo analysis API route', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     process.env = { ...originalEnv }
+    resetAiRequestDeduperForTests()
+    setAiRateLimitAdapterForTests()
+    setSupabaseAuthVerifierForTests(async (token) => (
+      token === 'valid-token'
+        ? { user: { id: 'photo-user-a' } }
+        : { error: { message: token === 'expired-token' ? 'JWT expired' : 'invalid' } }
+    ))
   })
 
   afterEach(() => {
     process.env = { ...originalEnv }
     vi.unstubAllGlobals()
+    setSupabaseAuthVerifierForTests(null)
+    setAiRateLimitAdapterForTests()
+    resetAiRequestDeduperForTests()
   })
 
   it('accepts POST only', async () => {
     const response = await callRoute(createRequest({ method: 'GET' }))
 
     expect(response.statusCode).toBe(405)
-    expect(response.body.error.code).toBe('methodNotAllowed')
+    expect(response.body.error.code).toBe('INVALID_REQUEST')
+    expect(response.headers['Cache-Control']).toContain('no-store')
+  })
+
+  it('requires auth before reading or sending image data', async () => {
+    process.env.OPENAI_API_KEY = 'test-key'
+    const fetchImpl = vi.fn()
+    vi.stubGlobal('fetch', fetchImpl)
+    const response = await callRoute(createRequest({ body: multipartBody(), token: '' }))
+
+    expect(response.statusCode).toBe(401)
+    expect(response.body.error.code).toBe('AUTH_REQUIRED')
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(JSON.stringify(response.body)).not.toMatch(/test-key|Bearer|photo-user-a|base64/)
+  })
+
+  it('rejects invalid and expired auth without provider calls', async () => {
+    process.env.OPENAI_API_KEY = 'test-key'
+    const fetchImpl = vi.fn()
+    vi.stubGlobal('fetch', fetchImpl)
+
+    const invalid = await callRoute(createRequest({ body: multipartBody(), token: 'bad-token' }))
+    const expired = await callRoute(createRequest({ body: multipartBody(), token: 'expired-token' }))
+
+    expect(invalid.statusCode).toBe(401)
+    expect(invalid.body.error.code).toBe('AUTH_INVALID')
+    expect(expired.statusCode).toBe(401)
+    expect(expired.body.error.code).toBe('AUTH_EXPIRED')
+    expect(fetchImpl).not.toHaveBeenCalled()
   })
 
   it('rejects invalid content type before reading image data', async () => {
     const response = await callRoute(createRequest({ contentType: 'application/json' }))
 
     expect(response.statusCode).toBe(415)
-    expect(response.body.error.code).toBe('invalidContentType')
+    expect(response.body.error.code).toBe('INVALID_REQUEST')
     expect(JSON.stringify(response.body)).not.toMatch(/base64|OPENAI|stack/)
   })
 
@@ -86,7 +128,7 @@ describe('nutrition photo analysis API route', () => {
     const response = await callRoute(createRequest({ body: multipartBody({ fieldName: 'other' }) }))
 
     expect(response.statusCode).toBe(400)
-    expect(response.body.error.code).toBe('missingImage')
+    expect(response.body.error.code).toBe('INVALID_REQUEST')
   })
 
   it('rejects MIME spoofing through file signature validation', () => {
@@ -104,7 +146,7 @@ describe('nutrition photo analysis API route', () => {
     const response = await callRoute(createRequest({ body: multipartBody() }))
 
     expect(response.statusCode).toBe(503)
-    expect(response.body.error.code).toBe('serverConfiguration')
+    expect(response.body.error.code).toBe('PROVIDER_NOT_CONFIGURED')
     expect(JSON.stringify(response.body)).not.toMatch(/OPENAI_API_KEY|Bearer|base64/)
   })
 
@@ -145,5 +187,21 @@ describe('nutrition photo analysis API route', () => {
     expect(response.body.analysis.providerType).toBe('remote')
     expect(response.body.analysis.detectedItems[0].name).toBe('Pizza')
     expect(JSON.stringify(response.body)).not.toMatch(/test-key|Bearer|output_text|data:image/)
+    expect(response.headers['Cache-Control']).toContain('no-store')
+  })
+
+  it('uses separate rate-limit buckets for verified users', async () => {
+    setSupabaseAuthVerifierForTests(async (token) => ({ user: { id: token } }))
+    setAiRateLimitAdapterForTests({
+      consume: vi.fn(() => ({ limited: true, retryAfterSeconds: 12, resetAt: Date.now() + 12000 })),
+      type: 'process-local',
+    })
+
+    const response = await callRoute(createRequest({ body: multipartBody(), token: 'user-a' }))
+
+    expect(response.statusCode).toBe(429)
+    expect(response.body.error.code).toBe('RATE_LIMITED')
+    expect(response.body.error.retryAfterSeconds).toBe(12)
+    expect(JSON.stringify(response.body)).not.toMatch(/user-a/)
   })
 })

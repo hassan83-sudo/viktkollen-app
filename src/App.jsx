@@ -8,7 +8,6 @@ import './App.css'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import AuthPanel from './components/AuthPanel.jsx'
 import AppLoadingScreen from './components/app/AppLoadingScreen.jsx'
-import AppSection from './components/app/AppSection.jsx'
 import AppTopbar from './components/app/AppTopbar.jsx'
 import BottomNavigation from './components/app/BottomNavigation.jsx'
 import LazySectionFallback from './components/app/LazySectionFallback.jsx'
@@ -1763,7 +1762,7 @@ function App() {
   )
 
   useEffect(() => {
-    if (!reminderSettings.enabled || !('Notification' in window) || reminderSettings.enabled) {
+    if (!reminderSettings.enabled || !('Notification' in window)) {
       return undefined
     }
 

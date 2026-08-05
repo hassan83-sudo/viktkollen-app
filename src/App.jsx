@@ -3194,6 +3194,11 @@ function App() {
           progressPhotoOptions={progressPhotoOptions}
         />
 
+        <AppSection
+          activeSection={activeAppSection}
+          id="more"
+          label="Fler funktioner och inställningar"
+        >
         <ReminderSettings
           onReminderSettingChange={updateReminderSetting}
           onRequestNotificationPermission={requestNotificationPermission}
@@ -3226,7 +3231,7 @@ function App() {
             onDataRestored={refreshAppStateFromStorage}
           />
         </AppErrorBoundary>
-
+        </AppSection>
         <MonthlyReport report={monthlyReport} />
 
         <AppErrorBoundary area="progress-dashboard" resetKey={`${selectedMealDate}-${weights.length}-${meals.length}`} title="Smart Progress Dashboard kunde inte visas">

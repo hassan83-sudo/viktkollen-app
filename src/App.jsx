@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import HomeSection from './components/sections/HomeSection.jsx'
 import './App.css'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import AuthPanel from './components/AuthPanel.jsx'
@@ -2838,33 +2839,23 @@ function App() {
         profileSummaryParts={profileSummaryParts}
       />
 
-      <AppSection
-        activeSection={activeAppSection}
-        id="home"
-        label="Hem och översikt"
-      >
-        <AppErrorBoundary area="dashboard" resetKey={healthSnapshot.date} title="Översikten kunde inte visas">
-          <Dashboard actions={dashboardActions} dashboard={dashboardData} />
-        </AppErrorBoundary>
 
-        <Suspense fallback={<LazySectionFallback />}>
-          <AppErrorBoundary area="health-dashboard" resetKey={`${healthSnapshot.date}-${healthDashboardPeriod}`} title="Hälsodashboarden kunde inte visas">
-            <HealthDashboardV2
-              adaptiveCoachFeedback={adaptiveCoachFeedback}
-              checkIn={checkIn}
-              goalsHabits={goalsHabits}
-              healthSnapshot={healthSnapshot}
-              meals={meals}
-              nutritionGoals={nutritionGoals}
-              onPeriodChange={setHealthDashboardPeriod}
-              period={healthDashboardPeriod}
-              profile={validatedProfile}
-              today={selectedMealDate}
-              weights={centralWeightStats.weights}
-            />
-          </AppErrorBoundary>
-        </Suspense>
-      </AppSection>
+      <HomeSection
+        activeSection={activeAppSection}
+        adaptiveCoachFeedback={adaptiveCoachFeedback}
+        checkIn={checkIn}
+        dashboardActions={dashboardActions}
+        dashboardData={dashboardData}
+        goalsHabits={goalsHabits}
+        healthDashboardPeriod={healthDashboardPeriod}
+        healthSnapshot={healthSnapshot}
+        meals={meals}
+        nutritionGoals={nutritionGoals}
+        onHealthDashboardPeriodChange={setHealthDashboardPeriod}
+        profile={validatedProfile}
+        selectedMealDate={selectedMealDate}
+        weights={centralWeightStats.weights}
+      />
 
       <AppErrorBoundary area="cloud" resetKey={authSession?.user?.id || ''} title="Molnstatus kunde inte visas">
         <CloudStatusPanel isAuthenticated={Boolean(authSession)} />

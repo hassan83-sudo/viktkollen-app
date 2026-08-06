@@ -5762,6 +5762,11 @@ button.secondary-button:focus-visible,
     gap: 8px;
   }
 
+  .field {
+    gap: 9px;
+    margin-bottom: 14px;
+  }
+
   .topbar,
   .dashboard-summary-card,
   .dashboard-hero,

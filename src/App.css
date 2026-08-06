@@ -1,8 +1,32 @@
 .app-shell {
+  display: grid;
+  gap: 12px;
   width: min(1180px, calc(100% - 32px));
   overflow-x: clip;
   margin: 0 auto;
   padding: 20px 0 calc(104px + env(safe-area-inset-bottom));
+}
+
+.app-section {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.app-section[hidden] {
+  display: none;
+}
+
+.app-shell,
+.app-shell * {
+  min-width: 0;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
 }
 
 .topbar {
@@ -518,7 +542,12 @@
 }
 
 .lazy-section-fallback {
+  min-height: 88px;
   margin: 0;
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: var(--surface);
   color: var(--muted);
   font-weight: 750;
 }
@@ -1185,6 +1214,16 @@
   padding: 18px;
 }
 
+.panel > :last-child,
+.metric > :last-child,
+.dashboard-card > :last-child,
+.health-dashboard-card > :last-child,
+.nutrition-card > :last-child,
+.progress-card > :last-child,
+.report-v3-card > :last-child {
+  margin-bottom: 0;
+}
+
 .check-in-panel,
 .chat-panel,
 .coach-panel,
@@ -1279,13 +1318,16 @@ input,
 select,
 button {
   min-height: 44px;
+  min-width: 0;
   box-sizing: border-box;
   border-radius: 8px;
   font: inherit;
+  line-height: 1.2;
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   border: 1px solid var(--field-border);
   color: var(--text-h);
@@ -1293,13 +1335,18 @@ select {
   padding: 10px 14px;
 }
 
+textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
 select {
   cursor: pointer;
 }
 
 input[type='checkbox'] {
-  width: 19px;
-  min-height: 19px;
+  width: 22px;
+  min-height: 22px;
   accent-color: var(--accent);
 }
 
@@ -1317,6 +1364,8 @@ button {
   font-weight: 800;
   cursor: pointer;
   box-shadow: 0 8px 20px var(--accent-shadow);
+  touch-action: manipulation;
+  overflow-wrap: anywhere;
 }
 
 button:hover {
@@ -4647,9 +4696,10 @@ a:focus-visible {
   border-radius: 8px;
   color: var(--muted);
   text-decoration: none;
+  touch-action: manipulation;
 }
 
-.bottom-nav a:first-child {
+.bottom-nav a.is-active {
   color: #ffffff;
   background: var(--accent);
 }
@@ -5125,6 +5175,8 @@ a:focus-visible {
   .dashboard-v3,
   .summary-grid,
   .content-grid,
+  .health-dashboard-grid,
+  .health-dashboard-grid.secondary,
   .meal-form {
     grid-template-columns: 1fr;
   }
@@ -5164,7 +5216,11 @@ a:focus-visible {
   .nutrition-mini-grid,
   .nutrition-dashboard-timeline article,
   .nutrition-meal-card,
-  .nutrition-meal-card dl {
+  .nutrition-meal-card dl,
+  .insight-grid,
+  .insight-overview dl,
+  .goals-habits-grid,
+  .goals-habits-forms {
     grid-template-columns: 1fr;
   }
 
@@ -5260,7 +5316,9 @@ a:focus-visible {
   .backup-bulk-actions button,
   .backup-rename-row button,
   .coach-v2-report button,
-  .cloud-backup-actions button {
+  .cloud-backup-actions button,
+  .cloud-sync-actions button,
+  .cloud-sync-conflict-actions button {
     width: 100%;
   }
 
@@ -5306,12 +5364,35 @@ a:focus-visible {
 @media (max-width: 560px) {
   .app-shell {
     width: min(100% - 16px, 480px);
-    padding: 8px 0 calc(94px + env(safe-area-inset-bottom));
+    gap: 10px;
+    padding: 8px 0 calc(98px + env(safe-area-inset-bottom));
   }
 
   .topbar {
     gap: 12px;
     padding: 15px;
+  }
+
+  .pwa-banner,
+  .pwa-install-card,
+  .panel-heading,
+  .dashboard-summary-heading,
+  .dashboard-card-heading,
+  .weekly-focus-band,
+  .health-drilldown-heading,
+  .report-drilldown-heading,
+  .backup-history-heading,
+  .cloud-sync-conflict {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .weekly-focus-band,
+  .health-drilldown-heading,
+  .report-drilldown-heading,
+  .cloud-sync-conflict {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .topbar-actions,
@@ -5483,7 +5564,25 @@ a:focus-visible {
   input,
   select,
   button {
-    min-height: 42px;
+    min-height: 44px;
+  }
+
+  .secondary-button,
+  .clear-chat-button,
+  .prompt-chip,
+  .segmented-control button {
+    min-height: 44px;
+  }
+
+  .sync-diagnostics-actions button,
+  .habit-actions button,
+  .scanner-actions button,
+  .nutrition-actions button,
+  .progress-photo-actions button,
+  .backup-history-actions button,
+  .cloud-sync-actions button,
+  .cloud-sync-conflict-actions button {
+    flex: 1 1 100%;
   }
 
   .dietary-food-tag-grid {
@@ -5523,12 +5622,12 @@ a:focus-visible {
   }
 
   .chat-form {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) 48px 64px;
   }
 
   .chat-thread {
-    height: min(300px, 42vh);
-    max-height: 300px;
+    height: min(280px, 38svh);
+    max-height: 280px;
     min-height: 220px;
   }
 
@@ -5585,7 +5684,7 @@ a:focus-visible {
   }
 
   .bottom-nav a {
-    min-height: 50px;
+    min-height: 54px;
     padding: 5px 1px;
   }
 
@@ -5608,6 +5707,184 @@ a:focus-visible {
   }
 
   .onboarding-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 430px) {
+  .app-shell {
+    width: min(100% - 12px, 430px);
+    gap: 8px;
+    padding-top: 6px;
+    padding-bottom: calc(90px + env(safe-area-inset-bottom));
+  }
+
+  .app-section,
+  .content-grid,
+  .summary-grid,
+  .dashboard-v3,
+  .health-dashboard-v2,
+  .coach-v2-panel,
+  .nutrition-panel,
+  .progress-center-panel,
+  .cloud-status-panel,
+  .cloud-sync-panel,
+  .backup-history,
+  .reminder-center {
+    gap: 8px;
+  }
+
+  .topbar,
+  .dashboard-summary-card,
+  .dashboard-hero,
+  .dashboard-card,
+  .health-dashboard-card,
+  .panel,
+  .coach-v2-card,
+  .coach-v2-empty,
+  .coach-v2-report,
+  .nutrition-card,
+  .nutrition-meal-card,
+  .progress-card,
+  .progress-stat-grid > div,
+  .progress-empty,
+  .progress-list-card,
+  .progress-timeline article,
+  .report-v3-card,
+  .report-drilldown,
+  .cloud-conflict-card,
+  .backup-empty-card,
+  .backup-history-item,
+  .welcome-card,
+  .onboarding-card {
+    padding: 12px;
+  }
+
+  .dashboard-hero h2,
+  h1 {
+    font-size: 30px;
+    line-height: 1.05;
+  }
+
+  h2,
+  .chat-title {
+    font-size: 19px;
+    line-height: 1.15;
+  }
+
+  .dashboard-hero p,
+  .welcome-subtitle,
+  .onboarding-copy {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .dashboard-card,
+  .health-dashboard-card,
+  .panel,
+  .nutrition-card,
+  .progress-card {
+    gap: 10px;
+  }
+
+  .dashboard-hero-score strong {
+    font-size: 36px;
+  }
+
+  .health-dashboard-metrics,
+  .health-dashboard-metrics.compact,
+  .coach-v2-stats,
+  .coach-v2-stats.is-compact,
+  .photo-meal-list dl,
+  .product-list dl,
+  .nutrition-quality-grid,
+  .progress-stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .segmented-control {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .chart-toolbar,
+  .chart-footer,
+  .progress-card-heading,
+  .progress-actions,
+  .nutrition-card-heading,
+  .nutrition-actions,
+  .nutrition-date-nav,
+  .reminder-master {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .chart-toolbar button,
+  .chart-footer button,
+  .progress-actions button,
+  .nutrition-actions button,
+  .reminder-master button {
+    width: 100%;
+  }
+
+  .meal-form,
+  .inline-form,
+  .backup-toolbar,
+  .backup-rename-row {
+    grid-template-columns: 1fr;
+  }
+
+  .photo-timeline article,
+  .progress-timeline article,
+  .body-analysis-timeline-images,
+  .body-analysis-timeline-heading {
+    grid-template-columns: 1fr;
+  }
+
+  .progress-list-card {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .bottom-nav {
+    width: calc(100% - 8px);
+    padding: 4px;
+  }
+
+  .bottom-nav a {
+    min-height: 54px;
+    gap: 2px;
+  }
+}
+
+@media (max-width: 360px) {
+  .app-shell {
+    width: calc(100% - 8px);
+  }
+
+  .topbar,
+  .dashboard-summary-card,
+  .dashboard-hero,
+  .dashboard-card,
+  .health-dashboard-card,
+  .panel,
+  .nutrition-card,
+  .progress-card,
+  .report-v3-card,
+  .welcome-card,
+  .onboarding-card {
+    padding: 10px;
+  }
+
+  .bottom-nav strong {
+    font-size: 8px;
+  }
+
+  .bottom-nav span {
+    font-size: 15px;
+  }
+
+  .chat-form {
     grid-template-columns: 1fr;
   }
 }

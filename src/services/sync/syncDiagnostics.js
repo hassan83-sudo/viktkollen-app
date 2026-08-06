@@ -29,6 +29,18 @@ let lastRejectedMessageReason = ''
 let latestSyncResult = ''
 let latestErrorCategory = ''
 
+function createDiagnosticsSnapshot() {
+  return {
+    events: eventHistory,
+    lastRejectedMessageReason,
+    latestErrorCategory,
+    latestSyncResult,
+    runtimeState: { ...runtimeState },
+  }
+}
+
+let diagnosticsSnapshot = createDiagnosticsSnapshot()
+
 function getOnlineState() {
   if (typeof navigator === 'undefined') return true
   return navigator.onLine !== false
@@ -76,6 +88,7 @@ function sanitizeDetail(detail = {}) {
 }
 
 function emit() {
+  diagnosticsSnapshot = createDiagnosticsSnapshot()
   listeners.forEach((listener) => listener())
 }
 
@@ -113,7 +126,6 @@ export function recordCloudRuntimeLoaded(moduleName) {
     cloudSyncServiceLoaded: runtimeState.cloudSyncServiceLoaded || moduleName === 'service',
   }
   addSyncDiagnosticEvent('runtime', 'Cloud runtime module loaded.', { moduleName })
-  emit()
 }
 
 export function recordSyncResult(result = {}) {
@@ -183,7 +195,7 @@ export function exportSyncDiagnosticsReport(syncStatus = {}) {
   if (forbiddenReportPatterns.some((pattern) => pattern.test(text))) {
     return JSON.stringify({
       appVersion: report.appVersion,
-      error: 'Diagnosticsrapporten stoppades eftersom den innehöll förbjudna fält.',
+      error: 'Diagnosticsrapporten stoppades eftersom den inneholl forbjudna falt.',
     }, null, 2)
   }
 
@@ -191,13 +203,7 @@ export function exportSyncDiagnosticsReport(syncStatus = {}) {
 }
 
 export function getSyncDiagnosticsSnapshot() {
-  return {
-    events: eventHistory,
-    lastRejectedMessageReason,
-    latestErrorCategory,
-    latestSyncResult,
-    runtimeState: { ...runtimeState },
-  }
+  return diagnosticsSnapshot
 }
 
 export function subscribeSyncDiagnostics(listener) {

@@ -5793,6 +5793,53 @@ button.secondary-button:focus-visible,
     padding: 12px;
   }
 
+  .dashboard-summary-card,
+  .dashboard-hero,
+  .dashboard-card,
+  .health-dashboard-card,
+  .panel,
+  .insight-card,
+  .goals-habits-grid > article,
+  .goals-habits-forms form,
+  .health-dashboard-list li,
+  .dashboard-mini-stat,
+  .dashboard-insight,
+  .dashboard-factor,
+  .dashboard-progress-list div,
+  .dashboard-goal-stack div,
+  .coach-v2-card,
+  .coach-v2-empty,
+  .coach-v2-report,
+  .nutrition-card,
+  .nutrition-meal-card,
+  .nutrition-stat-grid > div,
+  .nutrition-empty,
+  .nutrition-insight-list article,
+  .favorite-meal-list article,
+  .progress-card,
+  .progress-stat-grid > div,
+  .progress-empty,
+  .progress-list-card,
+  .report-card,
+  .report-v3-card,
+  .cloud-conflict-card,
+  .backup-empty-card,
+  .backup-history-item,
+  .reminder-row {
+    border-radius: 8px;
+  }
+
+  .dashboard-card *,
+  .health-dashboard-card *,
+  .panel *,
+  .insight-card *,
+  .nutrition-card *,
+  .progress-card *,
+  .report-v3-card *,
+  .backup-history-item * {
+    overflow-wrap: anywhere;
+  }
+
   .dashboard-hero h2,
   h1 {
     font-size: 30px;
@@ -5815,8 +5862,13 @@ button.secondary-button:focus-visible,
   .dashboard-card,
   .health-dashboard-card,
   .panel,
+  .insight-card,
+  .coach-v2-card,
+  .coach-v2-empty,
+  .coach-v2-report,
   .nutrition-card,
-  .progress-card {
+  .progress-card,
+  .report-v3-card {
     gap: 10px;
   }
 
@@ -5826,12 +5878,16 @@ button.secondary-button:focus-visible,
 
   .health-dashboard-metrics,
   .health-dashboard-metrics.compact,
+  .dashboard-actions,
   .coach-v2-stats,
   .coach-v2-stats.is-compact,
+  .coach-v2-report,
   .photo-meal-list dl,
   .product-list dl,
   .nutrition-quality-grid,
-  .progress-stat-grid {
+  .progress-stat-grid,
+  .report-v3-summary,
+  .report-v3-metrics {
     grid-template-columns: 1fr;
   }
 
@@ -5854,8 +5910,18 @@ button.secondary-button:focus-visible,
 
   .chart-toolbar button,
   .chart-footer button,
+  .dashboard-actions button,
+  .sync-diagnostics-actions button,
+  .habit-actions button,
+  .scanner-actions button,
   .progress-actions button,
   .nutrition-actions button,
+  .progress-photo-actions button,
+  .backup-history-actions button,
+  .backup-bulk-actions button,
+  .cloud-backup-actions button,
+  .cloud-sync-actions button,
+  .cloud-sync-conflict-actions button,
   .reminder-master button {
     width: 100%;
   }

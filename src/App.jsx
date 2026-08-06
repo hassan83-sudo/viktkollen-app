@@ -3027,23 +3027,27 @@ function App() {
           weeklyReportStatus={weeklyReportStatus}
         />
 
-        <MoreSection
-          activeSection={activeAppSection}
-          adaptiveCoachFeedback={adaptiveCoachFeedback}
-          goalsHabits={goalsHabits}
-          isAuthenticated={Boolean(authSession)}
-          onDataRestored={refreshAppStateFromStorage}
-          onReminderSettingChange={updateReminderSetting}
-          onReminderStateChange={handleReminderStateChange}
-          onRequestNotificationPermission={requestNotificationPermission}
-          reminderOptions={reminderOptions}
-          reminderSettings={reminderSettings}
-          reminderState={reminderState}
-          reminderStatus={reminderStatus}
-          schedulerStatus={reminderSchedulerStatus}
-          syncStatus={getSyncStatusSnapshot()}
-          userId={authSession?.user?.id || ''}
-        />
+<MoreSection
+  activeSection={activeAppSection}
+  adaptiveCoachFeedback={adaptiveCoachFeedback}
+  authLoading={authLoading}
+  email={authSession?.user?.email || ''}
+  goalsHabits={goalsHabits}
+  isAuthenticated={Boolean(authSession)}
+  onDataRestored={refreshAppStateFromStorage}
+  onEditProfile={() => setShowOnboarding(true)}
+  onReminderSettingChange={updateReminderSetting}
+  onReminderStateChange={handleReminderStateChange}
+  onRequestNotificationPermission={requestNotificationPermission}
+  onSignOut={handleSignOut}
+  reminderOptions={reminderOptions}
+  reminderSettings={reminderSettings}
+  reminderState={reminderState}
+  reminderStatus={reminderStatus}
+  schedulerStatus={reminderSchedulerStatus}
+  syncStatus={getSyncStatusSnapshot()}
+  userId={authSession?.user?.id || ''}
+/>
       </section>
       </Suspense>
 

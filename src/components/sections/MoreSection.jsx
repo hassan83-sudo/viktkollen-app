@@ -8,12 +8,16 @@ import AppSection from '../app/AppSection.jsx'
 function MoreSection({
   activeSection,
   adaptiveCoachFeedback,
+  authLoading,
+  email,
   goalsHabits,
   isAuthenticated,
   onDataRestored,
+  onEditProfile,
   onReminderSettingChange,
   onReminderStateChange,
   onRequestNotificationPermission,
+  onSignOut,
   reminderOptions,
   reminderSettings,
   reminderState,
@@ -72,6 +76,46 @@ function MoreSection({
           onDataRestored={onDataRestored}
         />
       </AppErrorBoundary>
+
+      <article className="panel account-settings-panel">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">Konto</p>
+            <h2>Profil och konto</h2>
+          </div>
+        </div>
+
+        <p className="account-email">
+          Inloggad som <strong>{email || 'okänd e-post'}</strong>
+        </p>
+
+        <div className="account-settings-actions">
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={onEditProfile}
+          >
+            Ändra profil
+          </button>
+
+          <button
+            className="secondary-button account-signout-button"
+            type="button"
+            onClick={onSignOut}
+            disabled={authLoading}
+          >
+            {authLoading ? 'Loggar ut…' : 'Logga ut'}
+          </button>
+        </div>
+
+        <div className="app-information">
+          <h3>Om Viktkollen</h3>
+          <p>
+            Viktkollen ger allmänt stöd för hälsa och välmående. Informationen
+            är inte medicinsk rådgivning, diagnos eller behandling.
+          </p>
+        </div>
+      </article>
     </AppSection>
   )
 }

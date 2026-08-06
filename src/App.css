@@ -5988,3 +5988,76 @@ button.secondary-button:focus-visible,
     grid-template-columns: 1fr;
   }
 }
+  
+
+
+
+.home-topbar {
+  align-items: center;
+}
+
+.home-topbar-intro {
+  min-width: 0;
+}
+
+.home-topbar h1 {
+  margin: 0;
+}
+
+.topbar-button-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.topbar-button-row .secondary-button {
+  justify-self: auto;
+}
+
+.compact-disclaimer {
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+@media (max-width: 560px) {
+  .home-topbar {
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .home-topbar .eyebrow {
+    margin-bottom: 4px;
+  }
+
+  .home-topbar h1 {
+    font-size: 24px;
+    line-height: 1.15;
+  }
+
+  .home-topbar .profile-summary {
+    margin-top: 7px;
+    font-size: 13px;
+  }
+
+  .home-topbar .welcome-note {
+    margin: 0;
+    font-size: 12px;
+  }
+
+  .topbar-button-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .topbar-button-row .secondary-button {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 8px;
+  }
+
+  .compact-disclaimer {
+    margin: 0;
+  }
+}

@@ -6,39 +6,52 @@ function AppTopbar({
   profile,
   profileSummaryParts,
 }) {
+  const displayName = profile?.name?.trim()
+
   return (
-    <header className="topbar" id="hem">
-      <div>
-        <p className="eyebrow">Viktkollen MVP</p>
+    <header className="topbar home-topbar" id="hem">
+      <div className="home-topbar-intro">
+        <p className="eyebrow">Din översikt</p>
+
         <h1>
-          {profile?.name ? `Hej ${profile.name}` : 'Coach för träning, mat och vanor'}
+          {displayName
+            ? `Hej ${displayName} 👋`
+            : 'Hej! 👋'}
         </h1>
-        <p className="profile-summary">
-          {profileSummaryParts.join(' · ')}
-        </p>
+
+        {profileSummaryParts?.length > 0 && (
+          <p className="profile-summary">
+            {profileSummaryParts.join(' · ')}
+          </p>
+        )}
       </div>
+
       <div className="topbar-actions">
         <p className="welcome-note">
           Inloggad som {email || 'okänd e-post'}
         </p>
-        <button
-          className="secondary-button"
-          type="button"
-          onClick={onEditProfile}
-        >
-          Ändra profil
-        </button>
-        <button
-          className="secondary-button"
-          type="button"
-          onClick={onSignOut}
-          disabled={authLoading}
-        >
-          Logga ut
-        </button>
-        <p className="disclaimer">
-          Den här appen ger endast allmänt stöd för hälsa och välmående. Den är
-          inte medicinsk rådgivning, diagnos eller behandling.
+
+        <div className="topbar-button-row">
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={onEditProfile}
+          >
+            Ändra profil
+          </button>
+
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={onSignOut}
+            disabled={authLoading}
+          >
+            {authLoading ? 'Loggar ut…' : 'Logga ut'}
+          </button>
+        </div>
+
+        <p className="disclaimer compact-disclaimer">
+          Viktkollen ger allmänt stöd och ersätter inte medicinsk rådgivning.
         </p>
       </div>
     </header>

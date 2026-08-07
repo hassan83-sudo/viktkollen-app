@@ -6111,3 +6111,52 @@ button.secondary-button:focus-visible,
     font-size: 16px;
   }
 }
+@media (max-width: 560px) {
+  .topbar-health-stats {
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .topbar-health-stat {
+    min-height: 78px;
+    padding: 11px 12px;
+    align-content: center;
+    border-radius: 14px;
+  }
+
+  .topbar-health-stat span {
+    font-size: 10px;
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+  }
+
+  .topbar-health-stat strong {
+    margin-top: 2px;
+    font-size: 19px;
+    line-height: 1.1;
+  }
+
+  .topbar-health-stat-primary {
+    grid-column: span 2;
+    min-height: 88px;
+  }
+
+  .topbar-health-stat-primary strong {
+    font-size: 26px;
+  }
+}
+
+@media (max-width: 360px) {
+  .topbar-health-stat {
+    min-height: 72px;
+    padding: 9px 10px;
+  }
+
+  .topbar-health-stat strong {
+    font-size: 17px;
+  }
+
+  .topbar-health-stat-primary strong {
+    font-size: 23px;
+  }
+}

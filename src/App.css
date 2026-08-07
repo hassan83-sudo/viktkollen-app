@@ -6160,3 +6160,54 @@ button.secondary-button:focus-visible,
     font-size: 23px;
   }
 }
+.topbar-health-stat {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+}
+
+.topbar-health-stat::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.14),
+    transparent 55%
+  );
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .topbar-health-stat:hover {
+    transform: translateY(-2px);
+    border-color: rgba(22, 139, 156, 0.32);
+    box-shadow: 0 8px 20px rgba(22, 70, 82, 0.1);
+  }
+
+  .topbar-health-stat:hover::after {
+    opacity: 1;
+  }
+}
+
+.topbar-health-stat:active {
+  transform: scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topbar-health-stat,
+  .topbar-health-stat::after {
+    transition: none;
+  }
+
+  .topbar-health-stat:hover,
+  .topbar-health-stat:active {
+    transform: none;
+  }
+}

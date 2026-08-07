@@ -6211,3 +6211,94 @@ button.secondary-button:focus-visible,
     transform: none;
   }
 }
+/* ===== Compact mobile topbar ===== */
+
+@media (max-width: 560px) {
+  .home-topbar {
+    gap: 10px;
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .home-topbar h1 {
+    margin-bottom: 2px;
+    font-size: 22px;
+  }
+
+  .profile-summary {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .topbar-health-stats {
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .topbar-health-stat {
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .topbar-health-stat span {
+    font-size: 10px;
+    opacity: 0.75;
+  }
+
+  .topbar-health-stat strong {
+    margin-top: 3px;
+    font-size: 18px;
+    font-weight: 800;
+  }
+
+  .topbar-health-stat-primary {
+    padding: 14px;
+  }
+
+  .topbar-health-stat-primary strong {
+    font-size: 28px;
+  }
+
+  .topbar-button-row {
+    margin-top: 4px;
+    gap: 6px;
+  }
+
+  .topbar-button-row button {
+    min-height: 40px;
+    font-size: 13px;
+    border-radius: 10px;
+  }
+
+  .welcome-note {
+    margin-bottom: 6px;
+    font-size: 11px;
+  }
+
+  .compact-disclaimer {
+    margin-top: 8px;
+    padding: 7px 10px;
+    border-radius: 10px;
+    font-size: 10px;
+    line-height: 1.35;
+  }
+}
+
+@media (max-width: 360px) {
+  .home-topbar h1 {
+    font-size: 20px;
+  }
+
+  .topbar-health-stat strong {
+    font-size: 16px;
+  }
+
+  .topbar-health-stat-primary strong {
+    font-size: 24px;
+  }
+
+  .topbar-button-row button {
+    min-height: 38px;
+    font-size: 12px;
+  }
+}

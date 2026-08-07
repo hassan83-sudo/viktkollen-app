@@ -6061,3 +6061,53 @@ button.secondary-button:focus-visible,
     margin: 0;
   }
 }
+.topbar-health-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.topbar-health-stat {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--soft-bg);
+}
+
+.topbar-health-stat-primary {
+  border-color: rgba(22, 139, 156, 0.3);
+  background: var(--accent-soft);
+}
+
+.topbar-health-stat span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.topbar-health-stat strong {
+  overflow-wrap: anywhere;
+  color: var(--text-h);
+  font-size: 18px;
+  line-height: 1.15;
+}
+
+@media (max-width: 700px) {
+  .topbar-health-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 360px) {
+  .topbar-health-stat {
+    padding: 10px;
+  }
+
+  .topbar-health-stat strong {
+    font-size: 16px;
+  }
+}

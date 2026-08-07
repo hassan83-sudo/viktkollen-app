@@ -2809,13 +2809,17 @@ function App() {
         </Suspense>
       )}
       <AppTopbar
-        authLoading={authLoading}
-        email={authSession.user?.email}
-        onEditProfile={() => setShowOnboarding(true)}
-        onSignOut={handleSignOut}
-        profile={profile}
-        profileSummaryParts={profileSummaryParts}
-      />
+  authLoading={authLoading}
+  calorieGoal={nutritionGoals?.calories}
+  currentWeight={centralCurrentWeight}
+  email={authSession?.user?.email || ''}
+  goalWeight={validatedProfile?.goalWeight}
+  onEditProfile={() => setShowOnboarding(true)}
+  onSignOut={handleSignOut}
+  profile={profile}
+  profileSummaryParts={profileSummaryParts}
+  steps={checkIn?.steps}
+/>
 
 
       <HomeSection

@@ -6390,3 +6390,51 @@ button.secondary-button:focus-visible,
     transition: none;
   }
 }
+/* ===== Mobile card typography polish ===== */
+
+@media (max-width: 560px) {
+  .panel-heading {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .panel-heading h2,
+  .dashboard-card h2,
+  .nutrition-card h2,
+  .progress-card h2 {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+
+  .eyebrow {
+    margin-bottom: 3px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .panel p,
+  .dashboard-card p,
+  .nutrition-card p,
+  .progress-card p {
+    line-height: 1.5;
+  }
+
+  .muted,
+  .helper-text {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+}
+
+@media (max-width: 360px) {
+  .panel-heading h2,
+  .dashboard-card h2,
+  .nutrition-card h2,
+  .progress-card h2 {
+    font-size: 17px;
+  }
+}

@@ -48,6 +48,15 @@ function AppTopbar({
 
         <div className="topbar-health-stats" aria-label="Din hälsöversikt">
           <div className="topbar-health-stat topbar-health-stat-primary">
+            <span>Health Score</span>
+            <strong>
+              {Number.isFinite(Number(healthScore))
+                ? `${healthScore}/100`
+                : '–'}
+            </strong>
+          </div>
+
+          <div className="topbar-health-stat">
             <span>Aktuell vikt</span>
             <strong>{formatWeight(currentWeight)}</strong>
           </div>
@@ -67,15 +76,6 @@ function AppTopbar({
             <strong>
               {Number.isFinite(Number(calorieGoal))
                 ? `${formatNumber(calorieGoal)} kcal`
-                : '–'}
-            </strong>
-          </div>
-
-          <div className="topbar-health-stat">
-            <span>Health Score</span>
-            <strong>
-              {Number.isFinite(Number(healthScore))
-                ? `${healthScore}/100`
                 : '–'}
             </strong>
           </div>

@@ -6480,3 +6480,50 @@ button.secondary-button:focus-visible,
     gap: 8px;
   }
 }
+/* ===== Mobile visual hierarchy polish ===== */
+
+@media (max-width: 560px) {
+  .panel,
+  .dashboard-card,
+  .nutrition-card,
+  .progress-card,
+  .health-dashboard-card {
+    border-radius: 16px;
+  }
+
+  .panel-heading {
+    align-items: flex-start;
+  }
+
+  .panel-heading h2 {
+    text-wrap: balance;
+  }
+
+  .panel-heading .eyebrow {
+    opacity: 0.78;
+  }
+
+  .app-section > h2,
+  .app-section > .section-title {
+    margin: 6px 2px 2px;
+    font-size: 19px;
+    line-height: 1.2;
+  }
+
+  hr,
+  .section-divider {
+    margin: 8px 0;
+    border: 0;
+    border-top: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 360px) {
+  .panel,
+  .dashboard-card,
+  .nutrition-card,
+  .progress-card,
+  .health-dashboard-card {
+    border-radius: 14px;
+  }
+}

@@ -6302,3 +6302,48 @@ button.secondary-button:focus-visible,
     font-size: 12px;
   }
 }
+/* Mobile button polish */
+
+@media (max-width: 560px) {
+  button,
+  .primary-button,
+  .secondary-button {
+    border-radius: 12px;
+    font-weight: 750;
+    letter-spacing: 0.01em;
+    transition:
+      transform 140ms ease,
+      box-shadow 140ms ease,
+      background-color 140ms ease,
+      border-color 140ms ease;
+  }
+
+  button:not(:disabled):active,
+  .primary-button:not(:disabled):active,
+  .secondary-button:not(:disabled):active {
+    transform: scale(0.975);
+  }
+
+  .primary-button {
+    box-shadow: 0 6px 16px rgba(15, 113, 130, 0.18);
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button,
+  .primary-button,
+  .secondary-button {
+    transition: none;
+  }
+
+  button:not(:disabled):active,
+  .primary-button:not(:disabled):active,
+  .secondary-button:not(:disabled):active {
+    transform: none;
+  }
+}

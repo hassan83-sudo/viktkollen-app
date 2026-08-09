@@ -6347,3 +6347,46 @@ button.secondary-button:focus-visible,
     transform: none;
   }
 }
+/* ===== Mobile form controls polish ===== */
+
+@media (max-width: 560px) {
+  input,
+  select,
+  textarea {
+    min-height: 48px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 16px;
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease,
+      background-color 150ms ease;
+  }
+
+  textarea {
+    min-height: 110px;
+    resize: vertical;
+  }
+
+  label {
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .field {
+    gap: 8px;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    opacity: 0.7;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  input,
+  select,
+  textarea {
+    transition: none;
+  }
+}

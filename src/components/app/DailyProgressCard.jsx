@@ -20,6 +20,17 @@ function formatWeightChange(value) {
   return `${prefix}${number.toFixed(1).replace('.', ',')} kg`
 }
 
+function getProgress(value, goal) {
+  const current = Number(value)
+  const target = Number(goal)
+
+  if (!Number.isFinite(current) || !Number.isFinite(target) || target <= 0) {
+    return 0
+  }
+
+  return Math.min((current / target) * 100, 100)
+}
+
 function DailyProgressCard({
   caloriesToday,
   calorieGoal,
@@ -50,11 +61,21 @@ function DailyProgressCard({
       <div className="daily-progress-grid">
         <div className="daily-progress-item">
           <span>🔥 Kalorier</span>
+
           <strong>
             {Number.isFinite(Number(caloriesToday))
               ? `${formatNumber(caloriesToday)} kcal`
               : '–'}
           </strong>
+
+          <div className="progress-bar">
+            <div
+              className="progress-bar-fill"
+              style={{
+                width: `${getProgress(caloriesToday, calorieGoal)}%`,
+              }}
+            />
+          </div>
 
           {Number.isFinite(Number(calorieGoal)) && (
             <small>av {formatNumber(calorieGoal)} kcal</small>
@@ -63,11 +84,21 @@ function DailyProgressCard({
 
         <div className="daily-progress-item">
           <span>🥩 Protein</span>
+
           <strong>
             {Number.isFinite(Number(proteinToday))
               ? `${formatNumber(proteinToday)} g`
               : '–'}
           </strong>
+
+          <div className="progress-bar">
+            <div
+              className="progress-bar-fill"
+              style={{
+                width: `${getProgress(proteinToday, proteinGoal)}%`,
+              }}
+            />
+          </div>
 
           {Number.isFinite(Number(proteinGoal)) && (
             <small>av {formatNumber(proteinGoal)} g</small>

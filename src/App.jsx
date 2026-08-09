@@ -2814,6 +2814,7 @@ function App() {
   currentWeight={centralCurrentWeight}
   email={authSession?.user?.email || ''}
   goalWeight={validatedProfile?.goalWeight}
+  healthScore={dashboardData?.healthScore?.score}
   onEditProfile={() => setShowOnboarding(true)}
   onSignOut={handleSignOut}
   profile={profile}

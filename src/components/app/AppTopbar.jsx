@@ -24,6 +24,7 @@ function AppTopbar({
   currentWeight,
   email,
   goalWeight,
+  healthScore,
   onEditProfile,
   onSignOut,
   profile,
@@ -66,6 +67,15 @@ function AppTopbar({
             <strong>
               {Number.isFinite(Number(calorieGoal))
                 ? `${formatNumber(calorieGoal)} kcal`
+                : '–'}
+            </strong>
+          </div>
+
+          <div className="topbar-health-stat">
+            <span>Health Score</span>
+            <strong>
+              {Number.isFinite(Number(healthScore))
+                ? `${healthScore}/100`
                 : '–'}
             </strong>
           </div>

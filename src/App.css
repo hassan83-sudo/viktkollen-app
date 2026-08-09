@@ -6527,3 +6527,42 @@ button.secondary-button:focus-visible,
     border-radius: 14px;
   }
 }
+/* ===== Mobile scroll & section polish ===== */
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (max-width: 560px) {
+  .app-shell {
+    scroll-padding-top: 12px;
+  }
+
+  .app-section,
+  .panel,
+  .dashboard-card,
+  .nutrition-card,
+  .progress-card {
+    scroll-margin-top: 12px;
+  }
+
+  .panel-heading,
+  .dashboard-card,
+  .nutrition-card,
+  .progress-card {
+    overflow-wrap: anywhere;
+  }
+
+  .panel-heading > *,
+  .dashboard-card > *,
+  .nutrition-card > *,
+  .progress-card > * {
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

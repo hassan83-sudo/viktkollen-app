@@ -30,6 +30,8 @@ function AppTopbar({
   onSignOut,
   profile,
   profileSummaryParts,
+  proteinGoal,
+  proteinToday,
   steps,
 }) {
   const displayName = profile?.name?.trim()
@@ -82,6 +84,19 @@ function AppTopbar({
 
             {Number.isFinite(Number(calorieGoal)) && (
               <small>mål {formatNumber(calorieGoal)} kcal</small>
+            )}
+          </div>
+
+          <div className="topbar-health-stat">
+            <span>Protein idag</span>
+            <strong>
+              {Number.isFinite(Number(proteinToday))
+                ? `${formatNumber(proteinToday)} g`
+                : '–'}
+            </strong>
+
+            {Number.isFinite(Number(proteinGoal)) && (
+              <small>mål {formatNumber(proteinGoal)} g</small>
             )}
           </div>
         </div>

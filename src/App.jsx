@@ -2816,6 +2816,8 @@ function App() {
   email={authSession?.user?.email || ''}
   goalWeight={validatedProfile?.goalWeight}
   healthScore={dashboardData?.healthScore?.score}
+  proteinToday={dailyNutritionSummary?.totals?.protein}
+  proteinGoal={dailyNutritionSummary?.proteinGoal ?? nutritionGoals?.protein}
   onEditProfile={() => setShowOnboarding(true)}
   onSignOut={handleSignOut}
   profile={profile}

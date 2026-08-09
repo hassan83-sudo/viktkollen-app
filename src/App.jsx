@@ -9,6 +9,7 @@ import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import AuthPanel from './components/AuthPanel.jsx'
 import AppLoadingScreen from './components/app/AppLoadingScreen.jsx'
 import AppTopbar from './components/app/AppTopbar.jsx'
+import DailyProgressCard from './components/app/DailyProgressCard.jsx'
 import BottomNavigation from './components/app/BottomNavigation.jsx'
 import LazySectionFallback from './components/app/LazySectionFallback.jsx'
 import OnboardingScreen from './components/app/OnboardingScreen.jsx'
@@ -2824,7 +2825,15 @@ function App() {
   profileSummaryParts={profileSummaryParts}
   steps={checkIn?.steps}
 />
-
+<DailyProgressCard
+  calorieGoal={nutritionGoals?.calories}
+  caloriesToday={dailyNutritionSummary?.totals?.calories}
+  healthScore={dashboardData?.healthScore?.score}
+  proteinGoal={dailyNutritionSummary?.proteinGoal ?? nutritionGoals?.protein}
+  proteinToday={dailyNutritionSummary?.totals?.protein}
+  steps={checkIn?.steps}
+  weeklyWeightChange={dashboardData?.weeklyWeightChange}
+/>
 
       <HomeSection
         activeSection={activeAppSection}

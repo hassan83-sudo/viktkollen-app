@@ -6566,3 +6566,47 @@ html {
     scroll-behavior: auto;
   }
 }
+/* ===== Mobile overflow safety ===== */
+
+@media (max-width: 560px) {
+  .app-shell,
+  .app-section,
+  .panel,
+  .dashboard-card,
+  .nutrition-card,
+  .progress-card,
+  .health-dashboard-card {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  h1,
+  h2,
+  h3,
+  p,
+  span,
+  strong,
+  small,
+  label {
+    overflow-wrap: anywhere;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+  }
+
+  button {
+    white-space: normal;
+    line-height: 1.25;
+  }
+
+  .topbar-button-row,
+  .account-settings-actions,
+  .actions,
+  .button-row {
+    min-width: 0;
+  }
+}

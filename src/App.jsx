@@ -2811,6 +2811,7 @@ function App() {
       <AppTopbar
   authLoading={authLoading}
   calorieGoal={nutritionGoals?.calories}
+  caloriesToday={dailyNutritionSummary?.totals?.calories}
   currentWeight={centralCurrentWeight}
   email={authSession?.user?.email || ''}
   goalWeight={validatedProfile?.goalWeight}

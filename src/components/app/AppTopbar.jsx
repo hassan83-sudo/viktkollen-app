@@ -5,7 +5,7 @@ function formatNumber(value) {
     return '–'
   }
 
-  return new Intl.NumberFormat('sv-SE').format(number)
+  return new Intl.NumberFormat('sv-SE').format(Math.round(number))
 }
 
 function formatWeight(value) {
@@ -21,6 +21,7 @@ function formatWeight(value) {
 function AppTopbar({
   authLoading,
   calorieGoal,
+  caloriesToday,
   currentWeight,
   email,
   goalWeight,
@@ -51,7 +52,7 @@ function AppTopbar({
             <span>Health Score</span>
             <strong>
               {Number.isFinite(Number(healthScore))
-                ? `${healthScore}/100`
+                ? `${Math.round(Number(healthScore))}/100`
                 : '–'}
             </strong>
           </div>
@@ -72,12 +73,16 @@ function AppTopbar({
           </div>
 
           <div className="topbar-health-stat">
-            <span>Kalorimål</span>
+            <span>Kalorier idag</span>
             <strong>
-              {Number.isFinite(Number(calorieGoal))
-                ? `${formatNumber(calorieGoal)} kcal`
+              {Number.isFinite(Number(caloriesToday))
+                ? `${formatNumber(caloriesToday)} kcal`
                 : '–'}
             </strong>
+
+            {Number.isFinite(Number(calorieGoal)) && (
+              <small>mål {formatNumber(calorieGoal)} kcal</small>
+            )}
           </div>
         </div>
       </div>

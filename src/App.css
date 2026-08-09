@@ -6438,3 +6438,45 @@ button.secondary-button:focus-visible,
     font-size: 17px;
   }
 }
+/* ===== Mobile section spacing polish ===== */
+
+@media (max-width: 560px) {
+  .app-section {
+    gap: 10px;
+  }
+
+  .panel,
+  .dashboard-card,
+  .nutrition-card,
+  .progress-card,
+  .health-dashboard-card {
+    margin: 0;
+  }
+
+  .panel + .panel,
+  .dashboard-card + .dashboard-card,
+  .nutrition-card + .nutrition-card,
+  .progress-card + .progress-card {
+    margin-top: 2px;
+  }
+
+  .panel-heading + p,
+  .panel-heading + .muted,
+  .panel-heading + .helper-text {
+    margin-top: 0;
+  }
+
+  .panel > :first-child {
+    margin-top: 0;
+  }
+
+  .panel > :last-child {
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 360px) {
+  .app-section {
+    gap: 8px;
+  }
+}

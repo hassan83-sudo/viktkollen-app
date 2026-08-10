@@ -39,6 +39,7 @@ export const userDataKeys = {
   progressReports: 'viktkollen.progress.reports.v1',
   recipes: 'viktkollen.recipes',
   bodyMeasurements: 'viktkollen.bodyMeasurements',
+  voiceConversationSettings: 'viktkollen.voiceConversation.settings.v1',
   reminderLog: 'viktkollen.reminderLog',
   reminderSchedulerLock: 'viktkollen.reminders.v2.schedulerLock',
   remindersV2: 'viktkollen.reminders.v2',
@@ -254,6 +255,14 @@ export function getCoachChat(fallbackValue = [], isValid) {
 
 export function saveCoachChat(messages) {
   return saveValue(userDataKeys.chat, messages)
+}
+
+export function getVoiceConversationSettings(fallbackValue = { aiVoiceEnabled: true }) {
+  return readStorage(userDataKeys.voiceConversationSettings, fallbackValue)
+}
+
+export function saveVoiceConversationSettings(settings) {
+  return saveValue(userDataKeys.voiceConversationSettings, settings)
 }
 
 export function getScannedProducts(fallbackValue = [], isValid) {

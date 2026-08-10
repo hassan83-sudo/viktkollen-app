@@ -8,12 +8,16 @@ function ChatPanel({
   chatInput,
   chatMessages,
   chatThreadRef,
+  isAiSpeaking,
+  isAiVoiceEnabled,
   isListening,
   isVoiceConversationActive,
   messagesEndRef,
+  onAiVoiceEnabledChange,
   onChatInputChange,
   onClearChat,
   onSendChatMessage,
+  onStopAiVoiceResponse,
   onStartVoiceInput,
   onStarterPrompt,
   starterPrompts,
@@ -49,10 +53,14 @@ function ChatPanel({
 
       <ChatInput
         chatInput={chatInput}
+        isAiSpeaking={isAiSpeaking}
+        isAiVoiceEnabled={isAiVoiceEnabled}
         isListening={isListening}
         isVoiceConversationActive={isVoiceConversationActive}
+        onAiVoiceEnabledChange={onAiVoiceEnabledChange}
         onChatInputChange={onChatInputChange}
         onSendChatMessage={onSendChatMessage}
+        onStopAiVoiceResponse={onStopAiVoiceResponse}
         onStartVoiceInput={onStartVoiceInput}
       />
       {voiceStatus && (

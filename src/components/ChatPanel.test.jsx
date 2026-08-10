@@ -10,21 +10,25 @@ describe('ChatPanel voice conversation status', () => {
         chatInput=""
         chatMessages={[]}
         chatThreadRef={{ current: null }}
+        isAiSpeaking
+        isAiVoiceEnabled
         isListening
         isVoiceConversationActive
         messagesEndRef={{ current: null }}
+        onAiVoiceEnabledChange={() => {}}
         onChatInputChange={() => {}}
         onClearChat={() => {}}
         onSendChatMessage={() => {}}
+        onStopAiVoiceResponse={() => {}}
         onStartVoiceInput={() => {}}
         onStarterPrompt={() => {}}
         starterPrompts={[]}
-        voiceStatus="Lyssnar..."
+        voiceStatus="🎤 Lyssnar..."
       />,
     )
 
     expect(markup).toContain('aria-live="polite"')
-    expect(markup).toContain('Lyssnar...')
+    expect(markup).toContain('🎤 Lyssnar...')
     expect(markup).toContain('Tryck för att avsluta')
   })
 })

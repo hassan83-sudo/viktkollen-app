@@ -872,6 +872,7 @@ function App() {
   const messagesEndRef = useRef(null)
   const chatRequestInFlightRef = useRef(false)
   const chatMessagesRef = useRef(initialChatMessages)
+  const isAiVoiceEnabledRef = useRef(true)
   const voiceConversationRef = useRef(null)
   const [authError, setAuthError] = useState('')
   const [authLoading, setAuthLoading] = useState(true)
@@ -983,7 +984,11 @@ function App() {
   const [chatEngineStatus, setChatEngineStatus] = useState('')
   const [voiceStatus, setVoiceStatus] = useState('')
   const [isListening, setIsListening] = useState(false)
+  const [isAiSpeaking, setIsAiSpeaking] = useState(false)
   const [isVoiceConversationActive, setIsVoiceConversationActive] = useState(false)
+  const [isAiVoiceEnabled, setIsAiVoiceEnabled] = useState(() =>
+    userDataRepository.getVoiceConversationSettings({ aiVoiceEnabled: true })?.aiVoiceEnabled !== false,
+  )
   const [chatMessages, setChatMessages] = useState(() =>
     userDataRepository.getCoachChat(initialChatMessages, isStoredChatMessages),
   )
@@ -1696,6 +1701,11 @@ function App() {
     chatMessagesRef.current = chatMessages
     userDataRepository.saveCoachChat(chatMessages)
   }, [chatMessages])
+
+  useEffect(() => {
+    isAiVoiceEnabledRef.current = isAiVoiceEnabled
+    userDataRepository.saveVoiceConversationSettings({ aiVoiceEnabled: isAiVoiceEnabled })
+  }, [isAiVoiceEnabled])
 
   useEffect(() => {
     userDataRepository.saveAiCoachReports(coachReports)
@@ -2517,7 +2527,7 @@ function App() {
 
   async function sendChatText(text) {
     if (chatRequestInFlightRef.current) {
-      return
+      return ''
     }
 
     chatRequestInFlightRef.current = true
@@ -2550,11 +2560,13 @@ function App() {
         role: 'assistant',
         text: result.reply,
       })
+      return result.reply
     } catch (error) {
       const reply = getSafeErrorMessage(error, { area: 'ai' })
 
       setChatEngineStatus('AI-coachen kunde inte svara just nu.')
       appendChatMessage('assistant', reply, 'mock')
+      return reply
     } finally {
       chatRequestInFlightRef.current = false
     }
@@ -2586,14 +2598,27 @@ function App() {
       onTranscript: async (transcript) => {
         setChatInput(transcript)
         setChatInput('')
-        await sendChatText(transcript)
+        return sendChatText(transcript)
       },
+      isSpeechEnabled: () => isAiVoiceEnabledRef.current,
       setActive: setIsVoiceConversationActive,
       setListening: setIsListening,
+      setSpeaking: setIsAiSpeaking,
       setStatus: setVoiceStatus,
     })
 
     await voiceConversationRef.current.start()
+  }
+
+  function stopAiVoiceResponse() {
+    voiceConversationRef.current?.stopSpeakingAndResume?.()
+  }
+
+  function handleAiVoiceEnabledChange(enabled) {
+    setIsAiVoiceEnabled(enabled)
+    if (!enabled) {
+      voiceConversationRef.current?.stopSpeakingAndResume?.()
+    }
   }
 
   function handleStarterPrompt(prompt) {
@@ -2878,6 +2903,8 @@ function App() {
           goalsHabits={goalsHabits}
           healthSnapshot={healthSnapshot}
           isGeneratingCoachReport={isGeneratingCoachReport}
+          isAiSpeaking={isAiSpeaking}
+          isAiVoiceEnabled={isAiVoiceEnabled}
           isListening={isListening}
           isVoiceConversationActive={isVoiceConversationActive}
           meals={meals}
@@ -2893,6 +2920,8 @@ function App() {
           onCreateCoachReport={createCoachReport}
           onDeleteCoachReport={deleteCoachReport}
           onGoalsHabitsChange={setGoalsHabits}
+          onAiVoiceEnabledChange={handleAiVoiceEnabledChange}
+          onStopAiVoiceResponse={stopAiVoiceResponse}
           onReminderStateChange={handleReminderStateChange}
           onSendChatMessage={sendChatMessage}
           onStartVoiceInput={startVoiceInput}

@@ -33,6 +33,8 @@ function CoachSection({
   goalsHabits,
   healthSnapshot,
   isGeneratingCoachReport,
+  isAiSpeaking,
+  isAiVoiceEnabled,
   isListening,
   isVoiceConversationActive,
   meals,
@@ -46,6 +48,8 @@ function CoachSection({
   onCreateCoachReport,
   onDeleteCoachReport,
   onGoalsHabitsChange,
+  onAiVoiceEnabledChange,
+  onStopAiVoiceResponse,
   onReminderStateChange,
   onSendChatMessage,
   onStartVoiceInput,
@@ -74,11 +78,15 @@ function CoachSection({
           chatMessages={chatMessages}
           chatThreadRef={chatThreadRef}
           isListening={isListening}
+          isAiSpeaking={isAiSpeaking}
+          isAiVoiceEnabled={isAiVoiceEnabled}
           isVoiceConversationActive={isVoiceConversationActive}
           messagesEndRef={messagesEndRef}
           onChatInputChange={onChatInputChange}
           onClearChat={onClearChat}
           onSendChatMessage={onSendChatMessage}
+          onAiVoiceEnabledChange={onAiVoiceEnabledChange}
+          onStopAiVoiceResponse={onStopAiVoiceResponse}
           onStartVoiceInput={onStartVoiceInput}
           onStarterPrompt={onStarterPrompt}
           starterPrompts={aiStarterPrompts}

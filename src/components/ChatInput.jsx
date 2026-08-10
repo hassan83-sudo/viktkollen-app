@@ -1,9 +1,13 @@
 function ChatInput({
   chatInput,
+  isAiSpeaking,
+  isAiVoiceEnabled,
   isListening,
   isVoiceConversationActive,
+  onAiVoiceEnabledChange,
   onChatInputChange,
   onSendChatMessage,
+  onStopAiVoiceResponse,
   onStartVoiceInput,
 }) {
   const voiceButtonLabel = isVoiceConversationActive
@@ -29,6 +33,26 @@ function ChatInput({
         {isVoiceConversationActive ? 'Avsluta samtal' : '🎙️'}
       </button>
       <button className="send-button" type="submit">Skicka</button>
+      {isVoiceConversationActive && (
+        <div className="voice-conversation-controls">
+          <label className="voice-toggle">
+            <input
+              type="checkbox"
+              checked={isAiVoiceEnabled}
+              onChange={(event) => onAiVoiceEnabledChange(event.target.checked)}
+            />
+            <span>AI-röst</span>
+          </label>
+          <button
+            className="voice-secondary-button"
+            type="button"
+            onClick={onStopAiVoiceResponse}
+            disabled={!isAiSpeaking}
+          >
+            Avbryt svar
+          </button>
+        </div>
+      )}
     </form>
   )
 }

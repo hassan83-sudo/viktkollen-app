@@ -44,6 +44,7 @@ import {
   getLocalDateString,
   parseDateValue,
 } from '../localDate.js'
+import { buildSmartNotificationCoachContext } from '../notifications/notificationEngine.js'
 
 function firstNumber(...values) {
   for (const value of values) {
@@ -494,6 +495,19 @@ export function buildAiCoachFacts(context = {}) {
   facts.lastDiscussedTopic = getLastDiscussedTopic(context.chatHistory)
   facts.proactiveInsights = createProactiveInsights(facts)
   facts.weightPrognosis = createWeightPrognosis(facts)
+  facts.smartNotification = buildSmartNotificationCoachContext({
+    adaptiveCoachFeedback: context.adaptiveCoachFeedback,
+    checkIn: todayCheckin,
+    goalsHabits: context.goalsHabits,
+    healthSnapshot: snapshot,
+    mealPlans,
+    meals: allMealsForNutrition,
+    nutritionGoals,
+    profile,
+    reminderState: context.reminderState,
+    today: todayDate,
+    weights,
+  }, { now: `${todayDate}T12:00:00.000Z`, today: todayDate })
 
   return facts
 }

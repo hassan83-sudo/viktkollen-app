@@ -1,0 +1,74 @@
+import { useMemo } from 'react'
+import { buildNotificationCenterModel } from '../../services/notifications/notificationEngine.js'
+import { readMealPlans } from '../../services/nutrition/nutritionEngine.js'
+
+const priorityIcons = {
+  high: '!',
+  low: 'i',
+  medium: '*',
+}
+
+function SmartNotificationsCard({
+  adaptiveCoachFeedback = {},
+  checkIn,
+  goalsHabits = {},
+  healthSnapshot,
+  meals = [],
+  nutritionGoals = {},
+  profile = {},
+  reminderState = {},
+  syncStatus = {},
+  today,
+  weights = [],
+}) {
+  const mealPlans = useMemo(() => readMealPlans(), [])
+  const model = useMemo(() => buildNotificationCenterModel({
+    adaptiveCoachFeedback,
+    checkIn,
+    goalsHabits,
+    healthSnapshot,
+    mealPlans,
+    meals,
+    nutritionGoals,
+    profile,
+    reminderState,
+    syncStatus,
+    today,
+    weights,
+  }), [
+    adaptiveCoachFeedback,
+    checkIn,
+    goalsHabits,
+    healthSnapshot,
+    mealPlans,
+    meals,
+    nutritionGoals,
+    profile,
+    reminderState,
+    syncStatus,
+    today,
+    weights,
+  ])
+  const top = model.smartRecommendations[0]
+  const priority = top?.priorityLevel || 'low'
+
+  return (
+    <section className={`smart-notifications-card is-${priority}`} aria-label="Smart Notifications">
+      <div className="smart-notifications-icon" aria-hidden="true">
+        {priorityIcons[priority]}
+      </div>
+      <div className="smart-notifications-content">
+        <p className="eyebrow">Smart Notifications</p>
+        <h2>{top?.title || 'Inga smarta notiser just nu'}</h2>
+        <span>{top?.body || 'Viktkollen säger till när något behöver din uppmärksamhet.'}</span>
+      </div>
+      <div className="smart-notifications-meta">
+        <strong>{model.smartRecommendations.length}</strong>
+        <span>väntande</span>
+        <a className="secondary-button" href="#notification-center">Visa alla</a>
+      </div>
+    </section>
+  )
+}
+
+export default SmartNotificationsCard

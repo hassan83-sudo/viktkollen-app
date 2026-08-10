@@ -394,6 +394,10 @@ function flattenActionPlan(plan) {
 
 function makeNutritionRecommendationReply(facts, message) {
   const normalized = normalizeAiCoachText(message)
+  if (facts.smartNotification && includesAny(normalized.plain, ['rekommendation', 'rekommendationer', 'prioritet'])) {
+    return `${facts.smartNotification.recommendation} ${facts.smartNotification.body}`
+  }
+
   const allRecommendations = flattenActionPlan(facts.nutritionActionPlan)
   const scoped = includesAny(normalized.plain, ['vecka', 'veckans'])
     ? facts.nutritionActionPlan?.thisWeek || []

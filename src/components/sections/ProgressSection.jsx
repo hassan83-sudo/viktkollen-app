@@ -5,6 +5,7 @@ import AppSection from '../app/AppSection.jsx'
 const MonthlyReport = lazy(() => import('../MonthlyReport.jsx'))
 const ProgressDashboard = lazy(() => import('../ProgressDashboard.jsx'))
 const ProgressPhotos = lazy(() => import('../ProgressPhotos.jsx'))
+const ReportCenter = lazy(() => import('../ReportCenter.jsx'))
 
 function ProgressSection({
   activeSection,
@@ -15,6 +16,7 @@ function ProgressSection({
   checkIn,
   createWeeklyReport,
   foods,
+  goalsHabits,
   healthSnapshot,
   meals,
   monthlyReport,
@@ -64,6 +66,23 @@ function ProgressSection({
       />
 
       <MonthlyReport report={monthlyReport} />
+
+      <ReportCenter
+        adaptiveCoachFeedback={adaptiveCoachFeedback}
+        checkIn={checkIn}
+        foods={foods}
+        goalsHabits={goalsHabits}
+        healthSnapshot={healthSnapshot}
+        meals={meals}
+        monthlyReport={monthlyReport}
+        nutritionGoals={nutritionGoals}
+        profile={profile}
+        progressPhotoItems={progressPhotoItems}
+        progressPhotos={progressPhotos}
+        selectedMealDate={selectedMealDate}
+        weeklyReportData={weeklyReportData}
+        weights={weights}
+      />
 
       <AppErrorBoundary
         area="progress-dashboard"

@@ -642,6 +642,8 @@ function isNutritionRecommendationQuestion(normalized) {
     'vad återstår av mina mål',
     'behöver jag registrera mer data',
     'vilka rekommendationer har högst prioritet',
+    'vilken rekommendation har högst prioritet',
+    'rekommendation',
     'rekommendationer',
     'handlingsplan',
   ], [
@@ -654,6 +656,8 @@ function isNutritionRecommendationQuestion(normalized) {
     'vad aterstar av mina mal',
     'behover jag registrera mer data',
     'vilka rekommendationer har hogst prioritet',
+    'vilken rekommendation har hogst prioritet',
+    'rekommendation',
     'rekommendationer',
     'handlingsplan',
   ])

@@ -243,10 +243,12 @@ export function buildAiCoachAppContextFromData(data = {}, options = {}) {
     latestWeeklyReport: data.latestWeeklyReport || data.weeklyReportData || null,
     healthSnapshot,
     mealHistory,
+    mealPlans: data.mealPlans || null,
     meals: meals.all,
     nutritionGoals,
     profile,
     progressGoalSettings: isObject(data.progressGoalSettings) ? data.progressGoalSettings : {},
+    reminderState: isObject(data.reminderState) ? data.reminderState : {},
     todayMeals: healthSnapshot.nutrition.mealsToday,
     weights,
   }

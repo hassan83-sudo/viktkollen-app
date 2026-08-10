@@ -4,9 +4,12 @@ import {
   buildAdaptiveDeliveryProfile,
   buildNotificationCenterModel,
   buildNotificationPlan,
+  buildSmartNotificationCandidates,
+  buildSmartNotificationCoachContext,
   isWithinQuietHours,
   normalizeNotificationsV3,
   recordNotificationEvent,
+  updateSmartNotificationStatus,
 } from './notificationEngine.js'
 
 const now = '2026-08-04T10:00:00.000Z'
@@ -168,5 +171,84 @@ describe('notificationEngine', () => {
 
     expect(plan.permission).toBe('unsupported')
     vi.unstubAllGlobals()
+  })
+
+  it('prioritizes at most three smart recommendations', () => {
+    const candidates = buildSmartNotificationCandidates({
+      checkIn: {},
+      goalsHabits: { achievements: {} },
+      mealPlans: { weeks: {} },
+      meals: [{ calories: 500, date: '2026-08-04', id: 'm1', protein: 20 }],
+      nutritionGoals: { protein: 100 },
+      profile: { goalWeight: 80, startWeight: 90 },
+      weights: [{ date: '2026-07-20', value: 90 }],
+    }, { now })
+
+    expect(candidates).toHaveLength(3)
+    expect(candidates[0].priorityLabel).toBe('High')
+    expect(candidates.map((item) => item.priority)).toEqual([...candidates.map((item) => item.priority)].sort((a, b) => b - a))
+  })
+
+  it('groups similar smart protein notifications', () => {
+    const candidates = buildSmartNotificationCandidates({
+      checkIn: { date: '2026-08-04', steps: 8000 },
+      mealPlans: { weeks: {} },
+      meals: [
+        { date: '2026-08-02', id: 'm1', protein: 20 },
+        { date: '2026-08-03', id: 'm2', protein: 25 },
+        { date: '2026-08-04', id: 'm3', protein: 30 },
+      ],
+      nutritionGoals: { protein: 100 },
+      weights: [{ date: '2026-08-04', value: 88 }],
+    }, { now })
+
+    expect(candidates.filter((item) => item.group === 'protein')).toHaveLength(1)
+    expect(candidates.find((item) => item.group === 'protein')?.body).toContain('3')
+  })
+
+  it('marks smart notifications completed and snoozes them through existing history', () => {
+    const [candidate] = buildSmartNotificationCandidates({
+      checkIn: {},
+      mealPlans: { weeks: {} },
+      meals: [],
+      weights: [],
+    }, { now })
+    const completed = updateSmartNotificationStatus({ notificationsV3: {} }, candidate, 'completed', { now })
+    const snoozed = updateSmartNotificationStatus({ notificationsV3: {} }, candidate, 'postponed', { now, snoozeMinutes: 60 })
+
+    expect(completed.notificationsV3.history[0].status).toBe('completed')
+    expect(snoozed.notificationsV3.history[0].status).toBe('postponed')
+    expect(snoozed.notificationsV3.history[0].reason).toContain('snooze_until:')
+  })
+
+  it('suppresses snoozed smart notifications until later', () => {
+    const [candidate] = buildSmartNotificationCandidates({
+      checkIn: {},
+      mealPlans: { weeks: {} },
+      meals: [],
+      weights: [],
+    }, { now })
+    const reminderState = updateSmartNotificationStatus({ notificationsV3: {} }, candidate, 'postponed', { now, snoozeMinutes: 60 })
+    const candidates = buildSmartNotificationCandidates({
+      checkIn: {},
+      mealPlans: { weeks: {} },
+      meals: [],
+      reminderState,
+      weights: [],
+    }, { now: '2026-08-04T10:30:00.000Z' })
+
+    expect(candidates.some((item) => item.sourceIdMasked === candidate.sourceIdMasked)).toBe(false)
+  })
+
+  it('exposes the highest smart notification for AI Coach', () => {
+    const context = buildSmartNotificationCoachContext({
+      checkIn: {},
+      mealPlans: { weeks: {} },
+      meals: [],
+      weights: [],
+    }, { now })
+
+    expect(context.recommendation).toContain('I dag rekommenderar jag')
+    expect(context.priority).toBe('High')
   })
 })

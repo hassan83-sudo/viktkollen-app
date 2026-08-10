@@ -9,9 +9,13 @@ function MoreSection({
   activeSection,
   adaptiveCoachFeedback,
   authLoading,
+  checkIn,
   email,
   goalsHabits,
+  healthSnapshot,
   isAuthenticated,
+  meals,
+  nutritionGoals,
   onDataRestored,
   onEditProfile,
   onReminderSettingChange,
@@ -23,8 +27,11 @@ function MoreSection({
   reminderState,
   reminderStatus,
   schedulerStatus,
+  selectedMealDate,
   syncStatus,
   userId,
+  profile,
+  weights,
 }) {
   return (
     <AppSection
@@ -60,9 +67,17 @@ function MoreSection({
       >
         <NotificationCenter
           adaptiveCoachFeedback={adaptiveCoachFeedback}
+          checkIn={checkIn}
+          goalsHabits={goalsHabits}
+          healthSnapshot={healthSnapshot}
+          meals={meals}
+          nutritionGoals={nutritionGoals}
           onReminderStateChange={onReminderStateChange}
+          profile={profile}
           reminderState={reminderState}
           syncStatus={syncStatus}
+          today={selectedMealDate}
+          weights={weights}
         />
       </AppErrorBoundary>
 

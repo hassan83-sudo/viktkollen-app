@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react'
 import {
   buildNotificationCenterModel,
   normalizeNotificationsV3,
+  updateSmartNotificationStatus,
 } from '../services/notifications/notificationEngine.js'
+import { readMealPlans } from '../services/nutrition/nutritionEngine.js'
 
 function formatDateTime(value) {
   if (!value) return 'Saknas'
@@ -15,20 +17,38 @@ function formatDateTime(value) {
 
 function NotificationCenter({
   adaptiveCoachFeedback = {},
+  checkIn,
+  goalsHabits = {},
+  healthSnapshot,
+  meals = [],
+  nutritionGoals = {},
   onReminderStateChange,
+  profile = {},
   reminderState = {},
   syncStatus = {},
+  today,
+  weights = [],
   weeklyPlan = {},
 }) {
   const [message, setMessage] = useState('')
+  const mealPlans = useMemo(() => readMealPlans(), [])
   const model = useMemo(
     () => buildNotificationCenterModel({
       adaptiveCoachFeedback,
+      checkIn,
+      goalsHabits,
+      healthSnapshot,
+      mealPlans,
+      meals,
+      nutritionGoals,
+      profile,
       reminderState,
       syncStatus,
+      today,
+      weights,
       weeklyPlan,
     }),
-    [adaptiveCoachFeedback, reminderState, syncStatus, weeklyPlan],
+    [adaptiveCoachFeedback, checkIn, goalsHabits, healthSnapshot, mealPlans, meals, nutritionGoals, profile, reminderState, syncStatus, today, weights, weeklyPlan],
   )
   const notifications = normalizeNotificationsV3(reminderState.notificationsV3)
 
@@ -49,6 +69,17 @@ function NotificationCenter({
       updatedAt: new Date().toISOString(),
     })
     setMessage('Notisinställningarna sparades.')
+  }
+
+  function updateNotificationStatus(item, status) {
+    onReminderStateChange?.(updateSmartNotificationStatus(reminderState, item, status))
+    setMessage(
+      status === 'completed'
+        ? 'Notisen markerades som klar.'
+        : status === 'postponed'
+          ? 'Notisen visas igen senare.'
+          : 'Notisen ignorerades för idag.',
+    )
   }
 
   return (
@@ -79,6 +110,16 @@ function NotificationCenter({
             statusLabel: batch.items.length > 1 ? 'Samlad' : 'Planerad',
             title: batch.title,
           }))} />
+        </article>
+        <article>
+          <h3>Smart Notifications</h3>
+          <NotificationList
+            emptyText="Inga smarta rekommendationer just nu."
+            items={model.smartRecommendations}
+            onComplete={(item) => updateNotificationStatus(item, 'completed')}
+            onDismiss={(item) => updateNotificationStatus(item, 'dismissed')}
+            onSnooze={(item) => updateNotificationStatus(item, 'postponed')}
+          />
         </article>
         <article>
           <h3>Historik</h3>
@@ -135,7 +176,7 @@ function NotificationCenter({
   )
 }
 
-function NotificationList({ emptyText, items }) {
+function NotificationList({ emptyText, items, onComplete, onDismiss, onSnooze }) {
   if (!items.length) return <p className="estimate-note">{emptyText}</p>
 
   return (
@@ -143,8 +184,21 @@ function NotificationList({ emptyText, items }) {
       {items.map((item) => (
         <li key={item.id}>
           <strong>{item.title}</strong>
-          <span>{item.statusLabel || 'Planerad'}</span>
+          <span>{item.priorityLabel || item.statusLabel || 'Planerad'}</span>
           <span>{formatDateTime(item.at || item.scheduledAt)}</span>
+          {(onComplete || onDismiss || onSnooze) && (
+            <div className="notification-actions" aria-label={`Åtgärder för ${item.title}`}>
+              <button type="button" className="secondary-button" onClick={() => onComplete?.(item)}>
+                Klar
+              </button>
+              <button type="button" className="secondary-button" onClick={() => onSnooze?.(item)}>
+                Visa senare
+              </button>
+              <button type="button" className="secondary-button" onClick={() => onDismiss?.(item)}>
+                Ignorera
+              </button>
+            </div>
+          )}
         </li>
       ))}
     </ul>

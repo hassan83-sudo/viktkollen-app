@@ -44,4 +44,20 @@ describe('NotificationCenter', () => {
     expect(html).toContain('type="time"')
     expect(nextState).toBeNull()
   })
+
+  it('renders smart notification actions', () => {
+    const html = renderToStaticMarkup(
+      <NotificationCenter
+        checkIn={{}}
+        meals={[]}
+        reminderState={{ notificationsV3: {} }}
+        weights={[]}
+      />,
+    )
+
+    expect(html).toContain('Smart Notifications')
+    expect(html).toContain('Klar')
+    expect(html).toContain('Visa senare')
+    expect(html).toContain('Ignorera')
+  })
 })

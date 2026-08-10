@@ -86,6 +86,22 @@ describe('AI Coach deterministic V3 regression', () => {
     expect(facts.goalRemaining).toBe(12.1)
   })
 
+  it('can reuse the highest smart notification in recommendations', () => {
+    const text = createDeterministicAiCoachReply({
+      context: {
+        checkIn: {},
+        meals: [],
+        nutritionGoals: {},
+        profile: {},
+        reminderState: {},
+        weights: [],
+      },
+      message: 'Vilken rekommendation har högst prioritet idag?',
+    })
+
+    expect(text).toContain('I dag rekommenderar jag')
+  })
+
   it('answers current weight from latest logged weight', () => {
     expect(reply('Hur mycket väger jag nu?')).toContain(
       'Din senaste registrerade vikt är 90,1 kg.',

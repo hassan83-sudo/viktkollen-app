@@ -14,6 +14,7 @@ import DailyCoachCard from './components/app/DailyCoachCard.jsx'
 import DailyProgressCard from './components/app/DailyProgressCard.jsx'
 import DailyMealPlannerCard from './components/app/DailyMealPlannerCard.jsx'
 import HealthPredictionCard from './components/app/HealthPredictionCard.jsx'
+import SmartNotificationsCard from './components/app/SmartNotificationsCard.jsx'
 import WeeklyProgressSection from './components/app/WeeklyProgressSection.jsx'
 import BottomNavigation from './components/app/BottomNavigation.jsx'
 import LazySectionFallback from './components/app/LazySectionFallback.jsx'
@@ -2480,6 +2481,7 @@ function App() {
       nutritionGoals,
       progressGoalSettings,
       profile: validatedProfile,
+      reminderState,
       today: selectedMealDate,
       weights,
     }
@@ -2871,6 +2873,19 @@ function App() {
   proteinToday={dailyNutritionSummary?.totals?.protein}
   steps={checkIn?.steps}
 />
+<SmartNotificationsCard
+  adaptiveCoachFeedback={adaptiveCoachFeedback}
+  checkIn={checkIn}
+  goalsHabits={goalsHabits}
+  healthSnapshot={healthSnapshot}
+  meals={meals}
+  nutritionGoals={nutritionGoals}
+  profile={validatedProfile}
+  reminderState={reminderState}
+  syncStatus={getSyncStatusSnapshot()}
+  today={selectedMealDate}
+  weights={centralWeightStats.weights}
+/>
 <WeeklyProgressSection
   checkIn={checkIn}
   foods={foods}
@@ -3078,6 +3093,7 @@ function App() {
           checkIn={checkIn}
           createWeeklyReport={createWeeklyReport}
           foods={foods}
+          goalsHabits={goalsHabits}
           healthSnapshot={healthSnapshot}
           meals={meals}
           monthlyReport={monthlyReport}
@@ -3123,9 +3139,13 @@ function App() {
   activeSection={activeAppSection}
   adaptiveCoachFeedback={adaptiveCoachFeedback}
   authLoading={authLoading}
+  checkIn={checkIn}
   email={authSession?.user?.email || ''}
   goalsHabits={goalsHabits}
+  healthSnapshot={healthSnapshot}
   isAuthenticated={Boolean(authSession)}
+  meals={meals}
+  nutritionGoals={nutritionGoals}
   onDataRestored={refreshAppStateFromStorage}
   onEditProfile={() => setShowOnboarding(true)}
   onReminderSettingChange={updateReminderSetting}
@@ -3137,8 +3157,11 @@ function App() {
   reminderState={reminderState}
   reminderStatus={reminderStatus}
   schedulerStatus={reminderSchedulerStatus}
+  selectedMealDate={selectedMealDate}
   syncStatus={getSyncStatusSnapshot()}
   userId={authSession?.user?.id || ''}
+  profile={validatedProfile}
+  weights={centralWeightStats.weights}
 />
       </section>
       </Suspense>

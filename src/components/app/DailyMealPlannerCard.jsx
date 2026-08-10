@@ -81,6 +81,12 @@ function DailyMealPlannerCard({
     setStatus(mode === 'append' ? 'Planen sparades och befintliga måltider behölls.' : 'Planen sparades till veckoplanen.')
   }
 
+  function generateNextPlan() {
+    setVariant((current) => current + 1)
+    setStatus('En ny dagsplan har genererats lokalt.')
+    setPendingSave(false)
+  }
+
   function requestSave() {
     if (saveState.dayHasPlan && !saveState.saved) {
       setPendingSave(true)
@@ -107,7 +113,7 @@ function DailyMealPlannerCard({
           <span className={saveState.saved ? 'is-saved' : 'is-unsaved'}>
             {saveState.saved ? 'Dagens plan sparad' : 'Inte sparad'}
           </span>
-          <button type="button" onClick={() => setVariant((current) => current + 1)}>
+          <button type="button" onClick={generateNextPlan}>
             Generera ny plan
           </button>
           <button className="secondary-button" type="button" onClick={requestSave}>

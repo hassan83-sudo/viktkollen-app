@@ -7629,6 +7629,11 @@ html {
   text-align: right;
 }
 
+.smart-notifications-meta button {
+  min-height: 44px;
+  padding: 0 14px;
+}
+
 .smart-notifications-meta strong {
   color: var(--text-h);
   font-size: 1.7rem;
@@ -8011,6 +8016,33 @@ html {
   overflow-wrap: anywhere;
 }
 
+.daily-coach-card,
+.weekly-progress-card,
+.achievement-preview-card,
+.smart-notifications-card,
+.health-prediction-card,
+.daily-meal-planner-card,
+.nutrition-coach-daily-card,
+.nutrition-coach-week-card {
+  border-radius: 18px;
+}
+
+.daily-coach-callout,
+.daily-progress-item,
+.weekly-progress-summary div,
+.weekly-progress-days li,
+.weekly-progress-empty,
+.health-prediction-metrics div,
+.health-prediction-callout,
+.health-prediction-insights li,
+.daily-meal-card,
+.daily-shopping-list,
+.daily-meal-planner-summary div,
+.nutrition-coach-progress,
+.nutrition-coach-week-grid > div {
+  border-radius: 14px;
+}
+
 @media (max-width:700px){
 
 .daily-progress-card{
@@ -8231,11 +8263,22 @@ html {
     flex-direction: column;
   }
 
+  .smart-notifications-card {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .smart-notifications-meta {
+    justify-items: stretch;
+    text-align: left;
+  }
+
   .daily-meal-planner-actions,
   .daily-meal-planner-heading button {
     width: 100%;
   }
 
+  .smart-notifications-meta button,
   .daily-meal-planner-actions button,
   .daily-meal-planner-actions > span,
   .daily-meal-save-choice button {
@@ -8273,7 +8316,9 @@ html {
   .daily-meal-card,
   .daily-shopping-list,
   .daily-meal-save-choice,
-  .daily-meal-week-summary {
+  .daily-meal-week-summary,
+  .nutrition-coach-progress,
+  .nutrition-coach-week-grid > div {
     border-radius: 14px;
   }
 }
@@ -8286,10 +8331,14 @@ html {
   .daily-coach-card,
   .weekly-progress-card,
   .achievement-preview-card,
+  .smart-notifications-card,
   .health-prediction-card,
   .daily-meal-planner-card,
+  .nutrition-coach-daily-card,
+  .nutrition-coach-week-card,
   .achievement-card-new,
-  .progress-bar-fill {
+  .progress-bar-fill,
+  .nutrition-coach-progress-bar span {
     animation: none;
     transition: none;
   }

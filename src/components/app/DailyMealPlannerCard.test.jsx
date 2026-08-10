@@ -21,6 +21,7 @@ describe('DailyMealPlannerCard', () => {
     expect(html).toContain('Generera ny plan')
     expect(html).toContain('Spara till veckoplan')
     expect(html).toContain('Inte sparad')
+    expect(html).not.toContain('En ny dagsplan har genererats lokalt.')
     expect(html).not.toMatch(/undefined|NaN|\[object Object\]/)
   })
 })

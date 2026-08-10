@@ -53,7 +53,7 @@ function HealthPredictionCard({
         <div>
           <p className="eyebrow">Health Prediction</p>
           <h2>Logga några dagar till</h2>
-          <span>Logga några dagar till så börjar vi göra personliga prognoser.</span>
+          <span>Logga vikt, mat eller check-in några dagar till så börjar vi göra personliga prognoser.</span>
         </div>
         <strong>{prediction.confidence.label}</strong>
       </section>

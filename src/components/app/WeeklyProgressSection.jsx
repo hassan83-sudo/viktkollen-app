@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { calculateAiHealthScore } from '../../services/dashboardService.js'
 import { getEntryLocalDate } from '../../services/localDate.js'
 import { addDays, getTodayDateString, summarizeDay } from '../../services/nutritionService.js'
@@ -270,4 +270,4 @@ function WeeklyProgressSection({
   )
 }
 
-export default WeeklyProgressSection
+export default memo(WeeklyProgressSection)

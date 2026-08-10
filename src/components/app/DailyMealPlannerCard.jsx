@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import {
   readDietaryPreferences,
   readMealPlans,
@@ -182,4 +182,4 @@ function DailyMealPlannerCard({
   )
 }
 
-export default DailyMealPlannerCard
+export default memo(DailyMealPlannerCard)

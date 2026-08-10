@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 
 function getPercent(value, goal) {
   const current = Number(value)
@@ -67,14 +67,14 @@ function DailyCoachCard({
   proteinGoal,
   steps,
 }) {
-  const adviceList = buildCoachAdviceList({
+  const adviceList = useMemo(() => buildCoachAdviceList({
     caloriesToday,
     calorieGoal,
     healthScore,
     proteinToday,
     proteinGoal,
     steps,
-  })
+  }), [caloriesToday, calorieGoal, healthScore, proteinToday, proteinGoal, steps])
   const [adviceIndex, setAdviceIndex] = useState(0)
   const visibleAdvice = adviceList[adviceIndex % adviceList.length]
 
@@ -115,4 +115,4 @@ function DailyCoachCard({
   )
 }
 
-export default DailyCoachCard
+export default memo(DailyCoachCard)

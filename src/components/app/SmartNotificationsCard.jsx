@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import { buildNotificationCenterModel } from '../../services/notifications/notificationEngine.js'
 import { readMealPlans } from '../../services/nutrition/nutritionEngine.js'
 
@@ -65,10 +65,11 @@ function SmartNotificationsCard({
       <div className="smart-notifications-meta">
         <strong>{model.smartRecommendations.length}</strong>
         <span>väntande</span>
+        {top && <small>Prioritet: {top.priorityLabel}</small>}
         <a className="secondary-button" href="#notification-center">Visa alla</a>
       </div>
     </section>
   )
 }
 
-export default SmartNotificationsCard
+export default memo(SmartNotificationsCard)

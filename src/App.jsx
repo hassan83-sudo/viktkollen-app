@@ -93,6 +93,7 @@ import {
 import { completeReminder, skipReminder, snoozeReminder } from './services/reminders/reminderActions.js'
 import { buildReminderStatus, createReminderScheduler, getDueReminders } from './services/reminders/reminderScheduler.js'
 import { syncLegacyReminderSettingsToV2 } from './services/reminders/reminderLegacyAdapter.js'
+import { applyDueNotificationPlan } from './services/notifications/notificationSchedulerBridge.js'
 
 const DataImportCenter = lazy(() => import('./components/DataImportCenter.jsx'))
 const DataExportCenter = lazy(() => import('./components/DataExportCenter.jsx'))
@@ -1638,37 +1639,12 @@ function App() {
     const scheduler = createReminderScheduler({
       getState: () => reminderStateRef.current,
       onDue: (due, now) => {
-        void import('./services/notifications/notificationEngine.js')
-          .then(({ buildNotificationPlan, recordNotificationEvent, showNotificationDelivery }) => {
-            const plan = buildNotificationPlan({
-              adaptiveCoachFeedback: adaptiveCoachFeedbackRef.current,
-              dueReminders: due,
-              reminderState: reminderStateRef.current,
-              syncStatus: getSyncStatusSnapshot(),
-            }, { now: now.toISOString() })
-            const delivered = plan.deliveries.slice(0, 3).map((delivery) => showNotificationDelivery(delivery)).some(Boolean)
-            setReminderState((current) => ({
-              ...recordNotificationEvent(current, {
-                items: plan.deliveries.flatMap((delivery) => delivery.items),
-                status: delivered ? 'delivered' : 'suppressed',
-              }, { now: now.toISOString() }),
-              reminders: current.reminders.map((reminder) =>
-                due.some((entry) => entry.id === reminder.id)
-                  ? { ...reminder, lastTriggeredAt: now.toISOString(), updatedAt: now.toISOString() }
-                  : reminder),
-              updatedAt: now.toISOString(),
-            }))
-          })
-          .catch(() => {
-            setReminderState((current) => ({
-              ...current,
-              reminders: current.reminders.map((reminder) =>
-                due.some((entry) => entry.id === reminder.id)
-                  ? { ...reminder, lastTriggeredAt: now.toISOString(), updatedAt: now.toISOString() }
-                  : reminder),
-              updatedAt: now.toISOString(),
-            }))
-          })
+        setReminderState((current) => applyDueNotificationPlan(current, {
+          adaptiveCoachFeedback: adaptiveCoachFeedbackRef.current,
+          due,
+          now,
+          syncStatus: getSyncStatusSnapshot(),
+        }))
       },
     })
 
@@ -2760,7 +2736,7 @@ function App() {
     })
   }
 
-  function handleDailyCoachAction(sectionId, targetId) {
+  const handleDailyCoachAction = useCallback((sectionId, targetId) => {
     setActiveAppSection(sectionId)
 
     window.requestAnimationFrame(() => {
@@ -2769,7 +2745,15 @@ function App() {
         block: 'start',
       })
     })
-  }
+  }, [])
+
+  const handleDailyCoachAddMeal = useCallback(() => {
+    handleDailyCoachAction('nutrition', 'mat')
+  }, [handleDailyCoachAction])
+
+  const handleDailyCoachLogWeight = useCallback(() => {
+    handleDailyCoachAction('progress', 'vikt')
+  }, [handleDailyCoachAction])
 
   function handleDailyCoachScanFood() {
     handleDailyCoachAction('nutrition', 'streckkod')
@@ -2777,6 +2761,11 @@ function App() {
     window.requestAnimationFrame(() => {
       startBarcodeScanner()
     })
+  }
+  const syncStatusSnapshot = getSyncStatusSnapshot()
+  const syncStatusWithUser = {
+    ...syncStatusSnapshot,
+    userId: authSession?.user?.id || '',
   }
 
   if (authLoading) {
@@ -2830,10 +2819,10 @@ function App() {
             authSession={authSession}
             healthSnapshot={healthSnapshot}
             reminderState={reminderState}
-            syncStatus={{ ...getSyncStatusSnapshot(), userId: authSession?.user?.id || '' }}
+            syncStatus={syncStatusWithUser}
           />
           <ManualAcceptanceRunner
-            syncStatus={{ ...getSyncStatusSnapshot(), userId: authSession?.user?.id || '' }}
+            syncStatus={syncStatusWithUser}
           />
         </Suspense>
       )}
@@ -2866,8 +2855,8 @@ function App() {
   calorieGoal={nutritionGoals?.calories}
   caloriesToday={dailyNutritionSummary?.totals?.calories}
   healthScore={dashboardData?.healthScore?.score}
-  onAddMeal={() => handleDailyCoachAction('nutrition', 'mat')}
-  onLogWeight={() => handleDailyCoachAction('progress', 'vikt')}
+  onAddMeal={handleDailyCoachAddMeal}
+  onLogWeight={handleDailyCoachLogWeight}
   onScanFood={handleDailyCoachScanFood}
   proteinGoal={dailyNutritionSummary?.proteinGoal ?? nutritionGoals?.protein}
   proteinToday={dailyNutritionSummary?.totals?.protein}
@@ -2882,7 +2871,7 @@ function App() {
   nutritionGoals={nutritionGoals}
   profile={validatedProfile}
   reminderState={reminderState}
-  syncStatus={getSyncStatusSnapshot()}
+  syncStatus={syncStatusSnapshot}
   today={selectedMealDate}
   weights={centralWeightStats.weights}
 />
@@ -3158,7 +3147,7 @@ function App() {
   reminderStatus={reminderStatus}
   schedulerStatus={reminderSchedulerStatus}
   selectedMealDate={selectedMealDate}
-  syncStatus={getSyncStatusSnapshot()}
+  syncStatus={syncStatusSnapshot}
   userId={authSession?.user?.id || ''}
   profile={validatedProfile}
   weights={centralWeightStats.weights}

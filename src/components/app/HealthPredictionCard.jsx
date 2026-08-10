@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import { buildHealthPredictionModel } from '../../services/prediction/healthPredictionEngine.js'
 
 function formatValue(value, suffix = '') {
@@ -100,4 +100,4 @@ function HealthPredictionCard({
   )
 }
 
-export default HealthPredictionCard
+export default memo(HealthPredictionCard)

@@ -1,17 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  deleteUserBackups,
-  getSyncEvents,
-  getUndoRestoreStatus,
-  listUserBackups,
-  previewCloudRestore,
-  pushLocalDataToCloud,
-  restoreCloudBackup,
-  undoLatestRestore,
-  updateUserBackup,
-} from '../services/cloudSyncService.js'
+import { loadCloudSyncService } from '../services/cloudRuntimeLoader.js'
 import {
   createPreRestoreBackup,
+  getUndoRestorePreview,
   restoreCloudBackupPayload,
   validateCloudBackupPayload,
 } from '../services/cloudBackupSchema.js'
@@ -93,7 +84,7 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
   const [sortMode, setSortMode] = useState('favorit-nyast')
   const [syncEvents, setSyncEvents] = useState([])
   const [totalBackupCount, setTotalBackupCount] = useState(0)
-  const [undoRestore, setUndoRestore] = useState(() => getUndoRestoreStatus())
+  const [undoRestore, setUndoRestore] = useState(() => getUndoRestorePreview())
 
   const refreshBackups = useCallback(async () => {
     if (!isAuthenticated) {
@@ -104,6 +95,7 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
     setIsLoadingBackups(true)
 
     try {
+      const { getSyncEvents, listUserBackups } = await loadCloudSyncService()
       const result = await listUserBackups()
       const eventResult = await getSyncEvents()
 
@@ -216,6 +208,7 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
     setBackupStatus(null)
 
     try {
+      const { pushLocalDataToCloud } = await loadCloudSyncService()
       const result = await pushLocalDataToCloud()
 
       setBackupStatus({
@@ -240,6 +233,7 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
   }
 
   async function handleRename(backup) {
+    const { updateUserBackup } = await loadCloudSyncService()
     const result = await updateUserBackup(backup.id, {
       name: renameDrafts[backup.id] || '',
     })
@@ -257,6 +251,7 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
   }
 
   async function handleToggleFavorite(backup) {
+    const { updateUserBackup } = await loadCloudSyncService()
     const result = await updateUserBackup(backup.id, {
       isFavorite: !backup.isFavorite,
     })
@@ -299,6 +294,7 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
 
     let result
     try {
+      const { previewCloudRestore } = await loadCloudSyncService()
       result = await previewCloudRestore(backup?.id || '')
     } catch (error) {
       result = { ok: false, reason: getSafeErrorMessage(error, { area: 'network' }) }
@@ -323,6 +319,7 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
   async function handleRestore(backup = null) {
     let preview
     try {
+      const { previewCloudRestore } = await loadCloudSyncService()
       preview =
         backup && lastPreview?.backup?.id === backup.id
           ? lastPreview
@@ -350,6 +347,7 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
 
     let restoreResult
     try {
+      const { restoreCloudBackup } = await loadCloudSyncService()
       restoreResult = await restoreCloudBackup(preview.backup.id)
     } catch (error) {
       restoreResult = { ok: false, reason: getSafeErrorMessage(error, { area: 'network' }) }
@@ -363,7 +361,7 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
       updatedAt: preview.backup.createdAt || preview.backup.updatedAt,
     })
     setIsRestoringId('')
-    setUndoRestore(getUndoRestoreStatus())
+    setUndoRestore(getUndoRestorePreview())
 
     if (restoreResult.ok) {
       onDataRestored?.()
@@ -397,6 +395,7 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
     setIsDeletingId(uniqueIds.join(','))
     setBackupStatus(null)
 
+    const { deleteUserBackups } = await loadCloudSyncService()
     const result = await deleteUserBackups(uniqueIds)
 
     setBackupStatus({
@@ -482,7 +481,7 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
 
       createPreRestoreBackup()
       const restoreResult = restoreCloudBackupPayload(validation.payload)
-      setUndoRestore(getUndoRestoreStatus())
+      setUndoRestore(getUndoRestorePreview())
 
       setBackupStatus({
         ok: Boolean(restoreResult.ok),
@@ -522,6 +521,7 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
 
     let result
     try {
+      const { undoLatestRestore } = await loadCloudSyncService()
       result = await undoLatestRestore()
     } catch (error) {
       result = { ok: false, reason: getSafeErrorMessage(error, { area: 'storage' }) }
@@ -533,7 +533,7 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
         ? 'Senaste återställning ångrades. Appen laddas om...'
         : result.reason || 'Kunde inte ångra återställningen.',
     })
-    setUndoRestore(getUndoRestoreStatus())
+    setUndoRestore(getUndoRestorePreview())
     setIsRestoringId('')
 
     if (result.ok) {

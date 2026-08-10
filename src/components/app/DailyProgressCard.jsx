@@ -1,3 +1,5 @@
+import { memo } from 'react'
+
 function formatNumber(value) {
   const number = Number(value)
 
@@ -136,4 +138,4 @@ function DailyProgressCard({
   )
 }
 
-export default DailyProgressCard
+export default memo(DailyProgressCard)

@@ -1,8 +1,12 @@
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import { buildAchievementEngine } from '../../services/achievements/achievementEngine.js'
 
 function safePercent(value) {
   return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0
+}
+
+function progressBucket(value) {
+  return String(Math.round(safePercent(value) / 10) * 10)
 }
 
 function formatDate(value) {
@@ -71,8 +75,15 @@ function AchievementPreviewCard({
             ? `${nextAchievement.progress} av ${nextAchievement.target} ${nextAchievement.unit}`
             : `${model.summary.unlockedCount} badges klara`}
         </span>
-        <div className="achievement-preview-progress" aria-label={`Progress mot nästa achievement: ${progressPercent}%`}>
-          <span style={{ width: `${progressPercent}%` }} />
+        <div
+          aria-label={`Progress mot nästa achievement: ${progressPercent}%`}
+          aria-valuemax="100"
+          aria-valuemin="0"
+          aria-valuenow={progressPercent}
+          className="achievement-preview-progress"
+          role="progressbar"
+        >
+          <span className={`achievement-progress-${progressBucket(progressPercent)}`} />
         </div>
       </div>
       <div className="achievement-preview-meta">
@@ -84,4 +95,4 @@ function AchievementPreviewCard({
   )
 }
 
-export default AchievementPreviewCard
+export default memo(AchievementPreviewCard)

@@ -1,6 +1,9 @@
 import { buildInsightsEngine } from '../insights/insightsEngine.js'
 import { buildSharedAnalytics } from '../sharedAnalyticsEngine.js'
 import { buildNutritionCoachModel } from '../nutrition/nutritionCoachEngine.js'
+import { calculateAiHealthScore } from '../dashboardService.js'
+import { getEntryLocalDate } from '../localDate.js'
+import { createWeightProjection } from '../progressService.js'
 
 export const healthPredictionEngineVersion = 1
 
@@ -20,6 +23,22 @@ function round(value, digits = 1) {
   return Math.round((value + Number.EPSILON) * factor) / factor
 }
 
+function formatSignedKg(value) {
+  if (!Number.isFinite(value)) return 'Saknas'
+
+  const rounded = round(value, 1)
+  const prefix = rounded > 0 ? '+' : ''
+
+  return `${prefix}${rounded.toLocaleString('sv-SE', {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 1,
+  })} kg`
+}
+
+function safeDateKey(value) {
+  return getEntryLocalDate(value) || String(value?.date || value?.createdAt || '').slice(0, 10)
+}
+
 function trendLabel(direction) {
   if (direction === 'up') return 'stigande'
   if (direction === 'down') return 'sjunkande'
@@ -29,6 +48,12 @@ function trendLabel(direction) {
 
 function predictionConfidence({ coverage = 0, sampleSize = 0, signalCount = 0 }) {
   return Math.round(clamp((coverage * 55) + Math.min(sampleSize, 14) * 2.2 + signalCount * 6, 10, 88))
+}
+
+function confidenceLabel(historyDays = 0) {
+  if (historyDays >= 60) return 'Hög'
+  if (historyDays >= 14) return 'Medel'
+  return 'Låg'
 }
 
 function uncertaintyText(confidence, sampleSize) {
@@ -258,11 +283,152 @@ function summarizeActionPlan(feedback = {}) {
   }
 }
 
+function getHistoryDates(input = {}) {
+  const dates = [
+    ...safeArray(input.weights || input.healthSnapshot?.weight?.dailyWeights).map(safeDateKey),
+    ...safeArray(input.meals || input.healthSnapshot?.nutrition?.actualMeals).map(safeDateKey),
+    ...safeArray(input.checkIns || input.healthSnapshot?.checkIn?.dailyEntries).map(safeDateKey),
+    safeDateKey(input.checkIn),
+  ].filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+
+  return [...new Set(dates)].sort((first, second) => first.localeCompare(second, 'sv-SE'))
+}
+
+function buildHealthScoreForecast(input = {}, shared30) {
+  const currentScore = calculateAiHealthScore({
+    checkIn: input.checkIn,
+    foods: input.foods,
+    mealHistory: input.healthSnapshot?.nutrition?.actualMeals,
+    meals: input.meals,
+    weights: input.weights || input.healthSnapshot?.weight?.dailyWeights,
+  }).score
+  const nutritionLift = Number(shared30.nutritionSummary.proteinGoalPercent) >= 70 ? 2 : 0
+  const activityLift = Number(shared30.activitySummary.averageSteps) >= 8000 ? 2 : 0
+  const coveragePenalty = shared30.coverage.level === 'missing' ? -4 : shared30.coverage.level === 'partial' ? -1 : 0
+  const projected = Number.isFinite(currentScore)
+    ? clamp(Math.round(currentScore + nutritionLift + activityLift + coveragePenalty), 0, 100)
+    : null
+
+  return {
+    current: Number.isFinite(currentScore) ? currentScore : null,
+    projected,
+  }
+}
+
+function trendStatus(value) {
+  if (!Number.isFinite(value) || Math.abs(value) <= 0.2) {
+    return { color: 'yellow', direction: 'stable', label: 'stabil', symbol: '→' }
+  }
+
+  return value < 0
+    ? { color: 'green', direction: 'improving', label: 'förbättras', symbol: '↘' }
+    : { color: 'red', direction: 'declining', label: 'försämras', symbol: '↗' }
+}
+
+function buildInsightCards({ input, shared30 }) {
+  const insights = []
+  const nutrition = shared30.nutritionSummary
+  const activity = shared30.activitySummary
+  const checkIns = safeArray(input.checkIns || input.healthSnapshot?.checkIn?.dailyEntries)
+  const stepByWeekday = checkIns
+    .map((entry) => ({ date: safeDateKey(entry), steps: Number(entry.steps) }))
+    .filter((entry) => entry.date && Number.isFinite(entry.steps))
+    .reduce((map, entry) => {
+      const weekday = new Intl.DateTimeFormat('sv-SE', { weekday: 'long' }).format(new Date(`${entry.date}T12:00:00`))
+      const current = map.get(weekday) || { count: 0, steps: 0, weekday }
+
+      map.set(weekday, { ...current, count: current.count + 1, steps: current.steps + entry.steps })
+      return map
+    }, new Map())
+  const bestWeekday = [...stepByWeekday.values()]
+    .filter((entry) => entry.count >= 1)
+    .sort((first, second) => (second.steps / second.count) - (first.steps / first.count))[0]
+
+  if (nutrition.loggedDays > 0 && Number.isFinite(nutrition.proteinGoalPercent)) {
+    insights.push(`Du når proteinmålet ${Math.round(nutrition.proteinGoalPercent).toLocaleString('sv-SE')} % av loggade dagar.`)
+  }
+
+  if (bestWeekday) {
+    insights.push(`Du går längst på ${bestWeekday.weekday}.`)
+  }
+
+  if (Number.isFinite(activity.averageSteps) && activity.averageSteps >= 8000) {
+    insights.push(`Health Score får stöd av att ditt stegsnitt ligger över 8000 steg.`)
+  }
+
+  if (Number.isFinite(nutrition.proteinGoalPercent) && nutrition.proteinGoalPercent >= 70 && Number.isFinite(shared30.weightSummary.weeklyAverageChange)) {
+    insights.push('Vikttrenden kan jämföras bättre eftersom proteinmålet ofta nås i perioden.')
+  }
+
+  return insights.slice(0, 4)
+}
+
+function buildRecommendation({ healthScoreForecast, shared30 }) {
+  const averageSteps = Number(shared30.activitySummary.averageSteps)
+  const averageProtein = Number(shared30.nutritionSummary.averageProtein)
+  const proteinGoal = Number(shared30.analysis?.nutrition?.goalComparison?.proteinGoal)
+
+  if (Number.isFinite(averageSteps) && averageSteps < 8000) {
+    return '+1200 steg idag'
+  }
+
+  if (Number.isFinite(proteinGoal) && Number.isFinite(averageProtein) && averageProtein < proteinGoal) {
+    return `${Math.ceil(proteinGoal - averageProtein).toLocaleString('sv-SE')} g protein kvar`
+  }
+
+  if (shared30.coverage.weightDays < 3) {
+    return 'Väg dig imorgon för bättre prognoser.'
+  }
+
+  if (Number.isFinite(healthScoreForecast.projected) && healthScoreForecast.projected < 70) {
+    return 'En kort check-in idag förbättrar prognosen.'
+  }
+
+  return 'Behåll dagens rutin och logga nästa måltid.'
+}
+
+function buildDashboardPrediction(input, { historyDays, shared7, shared30 }) {
+  const weights = input.weights || input.healthSnapshot?.weight?.dailyWeights || []
+  const projection = createWeightProjection(weights, input.profile || {})
+  const healthScoreForecast = buildHealthScoreForecast(input, shared30)
+  const trend7 = Number(shared7.weightSummary.periodChange)
+  const trend30 = Number(shared30.weightSummary.periodChange)
+  const kgPerWeek = Number(shared30.weightSummary.weeklyAverageChange)
+  const nextWeekWeightChange = Number.isFinite(kgPerWeek) ? round(kgPerWeek, 1) : null
+  const status = trendStatus(kgPerWeek)
+  const insights = buildInsightCards({ input, shared30 })
+  const hasEnoughHistory = historyDays >= 3 || shared30.coverage.ratio > 0
+
+  return {
+    confidence: {
+      historyDays,
+      label: confidenceLabel(historyDays),
+    },
+    empty: !hasEnoughHistory,
+    estimatedGoalDate: projection.estimatedGoalDate,
+    healthScoreNextWeek: healthScoreForecast.projected,
+    insights,
+    kgPerWeek,
+    nextWeekWeightChange,
+    recommendation: buildRecommendation({ healthScoreForecast, shared30 }),
+    text: 'Om nuvarande trend fortsätter visas en försiktig prognos baserad på din lokala historik.',
+    trend7,
+    trend7Label: formatSignedKg(trend7),
+    trend30,
+    trend30Label: formatSignedKg(trend30),
+    trendStatus: status,
+    weightTrendLabel: Number.isFinite(nextWeekWeightChange)
+      ? `Om nuvarande trend fortsätter: ${formatSignedKg(nextWeekWeightChange)} nästa vecka.`
+      : 'Fler viktvärden behövs för nästa veckas viktprognos.',
+  }
+}
+
 export function buildHealthPredictionModel(input = {}, options = {}) {
   const analysisDate = options.analysisDate || input.analysisDate || input.today
   const now = options.now || (analysisDate ? `${analysisDate}T12:00:00.000Z` : undefined)
   const shared7 = buildSharedAnalytics(input, { analysisDate, period: '7d' })
   const shared30 = buildSharedAnalytics(input, { analysisDate, period: '30d' })
+  const historyDays = getHistoryDates(input).length
   const insights = buildInsightsEngine(input, { analysisDate, now, period: '90d' })
   const actionPlan = summarizeActionPlan(input.adaptiveCoachFeedback)
   const nutritionCoach = buildNutritionCoachModel(input, { analysisDate: shared30.analysisDate, now })
@@ -327,6 +493,7 @@ export function buildHealthPredictionModel(input = {}, options = {}) {
       ratio: shared30.coverage.ratio,
       text: shared30.coverage.text,
     },
+    dashboard: buildDashboardPrediction(input, { historyDays, shared7, shared30 }),
     modelVersion: healthPredictionEngineVersion,
     opportunities,
     predictions,

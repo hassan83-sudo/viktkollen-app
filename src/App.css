@@ -7297,6 +7297,157 @@ html {
   overflow-wrap: anywhere;
 }
 
+.health-prediction-card {
+  display: grid;
+  gap: 16px;
+  margin: -4px 0 20px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(22, 139, 156, 0.08), rgba(255, 255, 255, 0.42)),
+    var(--surface);
+  box-shadow: 0 12px 32px rgba(0,0,0,.08);
+  animation: dashboard-fade-up 640ms ease both;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.health-prediction-card:hover {
+  border-color: rgba(22, 139, 156, 0.28);
+  box-shadow: 0 16px 38px rgba(55, 75, 96, 0.13);
+  transform: translateY(-2px);
+}
+
+.health-prediction-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.health-prediction-heading h2 {
+  margin: 4px 0 0;
+  color: var(--text-h);
+  font-size: 1.35rem;
+}
+
+.health-prediction-trend {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.health-prediction-trend.is-green {
+  background: rgba(34, 197, 94, 0.13);
+  color: #15803d;
+}
+
+.health-prediction-trend.is-yellow {
+  background: rgba(245, 158, 11, 0.14);
+  color: #a16207;
+}
+
+.health-prediction-trend.is-red {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
+.health-prediction-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.health-prediction-metrics div,
+.health-prediction-callout,
+.health-prediction-card.is-empty {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--soft-bg);
+}
+
+.health-prediction-metrics div {
+  min-width: 0;
+  padding: 12px;
+}
+
+.health-prediction-metrics span,
+.health-prediction-callout span,
+.health-prediction-footer,
+.health-prediction-card.is-empty span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.health-prediction-metrics strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-h);
+  font-size: 1.1rem;
+  overflow-wrap: anywhere;
+}
+
+.health-prediction-callout {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border-color: rgba(22, 139, 156, 0.2);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.health-prediction-callout strong {
+  color: var(--text-h);
+  font-size: 1.08rem;
+}
+
+.health-prediction-insights {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.health-prediction-insights li {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(22, 139, 156, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.health-prediction-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  justify-content: space-between;
+}
+
+.health-prediction-card.is-empty {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.health-prediction-card.is-empty h2 {
+  margin: 4px 0;
+  color: var(--text-h);
+}
+
+.health-prediction-card.is-empty strong {
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 @media (max-width:700px){
 
 .daily-progress-card{
@@ -7315,6 +7466,15 @@ html {
 .achievement-preview-card {
   grid-template-columns: auto minmax(0, 1fr);
   padding: 16px;
+}
+
+.health-prediction-card {
+  padding: 16px;
+}
+
+.health-prediction-metrics,
+.health-prediction-insights {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .achievement-preview-meta {
@@ -7437,7 +7597,8 @@ html {
   .daily-progress-card,
   .daily-coach-card,
   .weekly-progress-card,
-  .achievement-preview-card {
+  .achievement-preview-card,
+  .health-prediction-card {
     border-radius: 18px;
   }
 
@@ -7466,6 +7627,20 @@ html {
     grid-template-columns: 1fr;
   }
 
+  .health-prediction-heading,
+  .health-prediction-card.is-empty {
+    grid-template-columns: 1fr;
+  }
+
+  .health-prediction-heading {
+    flex-direction: column;
+  }
+
+  .health-prediction-metrics,
+  .health-prediction-insights {
+    grid-template-columns: 1fr;
+  }
+
   .achievement-preview-icon {
     width: 44px;
     height: 44px;
@@ -7481,7 +7656,10 @@ html {
   .weekly-progress-chart,
   .weekly-progress-days li,
   .weekly-progress-empty,
-  .achievement-preview-icon {
+  .achievement-preview-icon,
+  .health-prediction-metrics div,
+  .health-prediction-callout,
+  .health-prediction-insights li {
     border-radius: 14px;
   }
 }
@@ -7494,6 +7672,7 @@ html {
   .daily-coach-card,
   .weekly-progress-card,
   .achievement-preview-card,
+  .health-prediction-card,
   .achievement-card-new,
   .progress-bar-fill {
     animation: none;
@@ -7505,6 +7684,7 @@ html {
   .daily-progress-card:hover,
   .daily-coach-card:hover,
   .weekly-progress-card:hover,
+  .health-prediction-card:hover,
   .achievement-card:hover,
   .achievement-challenge:hover {
     transform: none;

@@ -12,6 +12,7 @@ import AppTopbar from './components/app/AppTopbar.jsx'
 import AchievementPreviewCard from './components/app/AchievementPreviewCard.jsx'
 import DailyCoachCard from './components/app/DailyCoachCard.jsx'
 import DailyProgressCard from './components/app/DailyProgressCard.jsx'
+import HealthPredictionCard from './components/app/HealthPredictionCard.jsx'
 import WeeklyProgressSection from './components/app/WeeklyProgressSection.jsx'
 import BottomNavigation from './components/app/BottomNavigation.jsx'
 import LazySectionFallback from './components/app/LazySectionFallback.jsx'
@@ -2879,6 +2880,19 @@ function App() {
   adaptiveCoachFeedback={adaptiveCoachFeedback}
   analysisDate={selectedMealDate}
   checkIn={checkIn}
+  goalsHabits={goalsHabits}
+  healthSnapshot={healthSnapshot}
+  meals={meals}
+  nutritionGoals={nutritionGoals}
+  profile={validatedProfile}
+  reminderState={reminderState}
+  weights={centralWeightStats.weights}
+/>
+<HealthPredictionCard
+  adaptiveCoachFeedback={adaptiveCoachFeedback}
+  analysisDate={selectedMealDate}
+  checkIn={checkIn}
+  foods={foods}
   goalsHabits={goalsHabits}
   healthSnapshot={healthSnapshot}
   meals={meals}

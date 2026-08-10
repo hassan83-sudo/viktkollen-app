@@ -69,6 +69,24 @@ describe('healthPredictionEngine', () => {
     expect(model.predictions.every((item) => Number.isFinite(item.confidence))).toBe(true)
     expect(model.predictions.every((item) => item.explanation && item.uncertainty)).toBe(true)
     expect(model.predictions.every((item) => Array.isArray(item.contributingFactors))).toBe(true)
+    expect(model.dashboard.estimatedGoalDate).toBeTruthy()
+    expect(model.dashboard.weightTrendLabel).toMatch(/Om nuvarande trend fortsätter|Fler viktvärden/)
+    expect(['Hög', 'Medel', 'Låg']).toContain(model.dashboard.confidence.label)
+    expect(model.dashboard.recommendation).toBeTruthy()
+    expect(model.dashboard.insights.length).toBeLessThanOrEqual(4)
+  })
+
+  it('returns a low confidence empty dashboard state when history is missing', () => {
+    const model = buildHealthPredictionModel(data({
+      checkIn: null,
+      checkIns: [],
+      meals: [],
+      weights: [],
+    }), { analysisDate: today })
+
+    expect(model.dashboard.empty).toBe(true)
+    expect(model.dashboard.confidence.label).toBe('Låg')
+    expect(model.dashboard.insights).toEqual([])
   })
 
   it('detects supportive warnings without diagnoses', () => {

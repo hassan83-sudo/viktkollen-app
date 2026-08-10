@@ -26,6 +26,8 @@ describe('NutritionCoachCenter', () => {
     )
 
     expect(html).toContain('Nutrition Coach Center')
+    expect(html).toContain('Dagens huvudr')
+    expect(html).toContain('Veckans nutritionstatus')
     expect(html).toContain('Meal quality')
     expect(html).toContain('Daily nutrition timeline')
     expect(html).toContain('Nutrition gaps')

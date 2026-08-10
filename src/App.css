@@ -642,6 +642,92 @@ canvas {
   gap: 6px;
 }
 
+.nutrition-coach-daily-card,
+.nutrition-coach-week-card {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background:
+    linear-gradient(135deg, rgba(34, 211, 238, 0.1), transparent 38%),
+    rgba(2, 6, 23, 0.26);
+}
+
+.nutrition-coach-advice {
+  display: flex;
+  align-items: start;
+  gap: 12px;
+}
+
+.nutrition-coach-advice > span {
+  display: grid;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(34, 211, 238, 0.14);
+  font-size: 22px;
+}
+
+.nutrition-coach-advice h3,
+.nutrition-coach-week-card h3,
+.nutrition-coach-week-card p {
+  margin: 0;
+}
+
+.nutrition-coach-advice small,
+.nutrition-coach-week-card p,
+.nutrition-coach-week-grid span,
+.nutrition-coach-progress small {
+  color: var(--muted);
+}
+
+.nutrition-coach-progress-grid,
+.nutrition-coach-week-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.nutrition-coach-progress,
+.nutrition-coach-week-grid > div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.28);
+}
+
+.nutrition-coach-progress > div:first-child,
+.nutrition-coach-week-grid > div {
+  display: grid;
+  gap: 4px;
+}
+
+.nutrition-coach-progress strong,
+.nutrition-coach-week-grid strong {
+  overflow-wrap: anywhere;
+  color: var(--text-h);
+}
+
+.nutrition-coach-progress-bar {
+  overflow: hidden;
+  height: 9px;
+  margin: 8px 0 6px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.nutrition-coach-progress-bar span {
+  display: block;
+  height: 100%;
+  max-width: 100%;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #22d3ee, #8b5cf6);
+}
+
 .health-trend-chart {
   display: grid;
   gap: 8px;
@@ -5537,6 +5623,8 @@ button.secondary-button:focus-visible,
   .weekly-nutrition-insight-grid,
   .weekly-nutrition-day-list article,
   .weekly-nutrition-day-list dl,
+  .nutrition-coach-progress-grid,
+  .nutrition-coach-week-grid,
   .nutrition-filter-grid,
   .nutrition-stat-grid,
   .nutrition-dashboard-stat-grid,

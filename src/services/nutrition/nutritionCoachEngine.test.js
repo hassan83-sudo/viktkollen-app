@@ -96,4 +96,84 @@ describe('nutritionCoachEngine', () => {
     })
     expect(JSON.stringify(aiContext)).not.toMatch(/Havregryn|Pizza|raw|image|base64/)
   })
+
+  it('builds one prioritized daily protein advice from real gaps', () => {
+    const model = buildNutritionCoachModel({
+      meals: [{ calories: 430, date: '2026-07-31', id: 'm1', name: 'Lunch', protein: 34, type: 'Lunch' }],
+      nutritionGoals: { calories: 2100, protein: 120 },
+    }, { analysisDate: '2026-07-31' })
+
+    expect(model.dailyCoach.primaryAdvice).toMatchObject({
+      category: 'protein',
+      priority: 'high',
+    })
+    expect(model.dailyCoach.primaryAdvice.text).toContain('86 g protein kvar')
+    expect(model.dailyCoach.protein.remaining).toBe(86)
+    expect(model.suggestions).toHaveLength(3)
+  })
+
+  it('reports calorie status without aggressive restriction language', () => {
+    const model = buildNutritionCoachModel({
+      meals: [{ calories: 1900, date: '2026-07-31', id: 'm1', name: 'Dag', protein: 120, type: 'Middag' }],
+      nutritionGoals: { calories: 2100, protein: 120 },
+    }, { analysisDate: '2026-07-31' })
+
+    expect(model.dailyCoach.calories.percent).toBe(90)
+    expect(model.dailyCoach.primaryAdvice.text).not.toMatch(/svält|kompensera|extrem/i)
+  })
+
+  it('keeps the no-data state cautious', () => {
+    const model = buildNutritionCoachModel({
+      meals: [],
+      nutritionGoals: { calories: 2100, protein: 120 },
+    }, { analysisDate: '2026-07-31' })
+
+    expect(model.dailyCoach.primaryAdvice.category).toBe('data')
+    expect(model.dailyCoach.primaryAdvice.text).toMatch(/saknar|data/i)
+    expect(model.weeklyNutrition.registeredDays).toBe(0)
+  })
+
+  it('uses saved meal planner nutrition when it can cover remaining protein', () => {
+    const date = '2026-07-31'
+    const mealPlans = {
+      weeks: {
+        '2026-07-27': {
+          days: {
+            [date]: [{
+              date,
+              id: 'planned-dinner',
+              mealType: 'Middag',
+              nutritionPreview: { calories: 620, protein: 34 },
+              title: 'Planerad middag',
+            }],
+          },
+          weekStart: '2026-07-27',
+        },
+      },
+    }
+    const model = buildNutritionCoachModel({
+      mealPlans,
+      meals: [{ calories: 600, date, id: 'breakfast', protein: 44, type: 'Frukost' }],
+      nutritionGoals: { calories: 2100, protein: 120 },
+    }, { analysisDate: date })
+
+    expect(model.mealPlanner.hasSavedPlan).toBe(true)
+    expect(model.mealPlanner.plannedDinnerInsight).toContain('34 g')
+  })
+
+  it('summarizes the last seven days with factual weekly nutrition stats', () => {
+    const model = buildNutritionCoachModel({
+      meals: [
+        { calories: 2000, date: '2026-07-28', id: 'm1', protein: 121, type: 'Lunch' },
+        { calories: 1900, date: '2026-07-29', id: 'm2', protein: 110, type: 'Lunch' },
+        { calories: 2100, date: '2026-07-31', id: 'm3', protein: 130, type: 'Middag' },
+      ],
+      nutritionGoals: { calories: 2100, protein: 120 },
+    }, { analysisDate: '2026-07-31' })
+
+    expect(model.weeklyNutrition.averageCalories).toBeGreaterThan(1900)
+    expect(model.weeklyNutrition.averageProtein).toBeGreaterThan(110)
+    expect(model.weeklyNutrition.proteinGoalDays).toBe(2)
+    expect(model.weeklyNutrition.mostConsistentDay).not.toBe('Saknas')
+  })
 })

@@ -4,6 +4,7 @@ import { getNextReminderAt } from '../reminders/reminderScheduler.js'
 import { buildAchievementEngine } from '../achievements/achievementEngine.js'
 import { getEntryLocalDate, getLocalDateString, addLocalDays } from '../localDate.js'
 import { buildDailyMealPlannerSaveState } from '../nutrition/dailyMealPlanner.js'
+import { buildNutritionCoachModel } from '../nutrition/nutritionCoachEngine.js'
 import { summarizeDay } from '../nutritionService.js'
 import { buildHealthPredictionModel } from '../prediction/healthPredictionEngine.js'
 
@@ -437,6 +438,7 @@ export function buildSmartNotificationCandidates(input = {}, options = {}) {
   const mealPlan = getMealPlanSignal(input, today)
   const achievements = buildAchievementEngine(input, { analysisDate: today })
   const prediction = buildHealthPredictionModel(input, { analysisDate: today }).dashboard
+  const nutritionCoach = buildNutritionCoachModel(input, { analysisDate: today })
   const raw = []
 
   if (!getTodayWeight(weights, today) && (!latestWeight || daysBetween(latestWeight.localDate, today) >= 3)) {
@@ -513,6 +515,19 @@ export function buildSmartNotificationCandidates(input = {}, options = {}) {
       group: 'achievement',
       priorityLevel: 'low',
       title: 'Du ar nara nasta achievement',
+    }, { now }))
+  }
+
+  if (
+    nutritionCoach.dailyCoach?.primaryAdvice?.category &&
+    !['data', 'balance'].includes(nutritionCoach.dailyCoach.primaryAdvice.category) &&
+    !raw.some((candidate) => ['protein', 'meal-plan'].includes(candidate.group))
+  ) {
+    raw.push(createSmartCandidate({
+      body: nutritionCoach.dailyCoach.primaryAdvice.text,
+      group: 'nutrition',
+      priorityLevel: nutritionCoach.dailyCoach.primaryAdvice.priority,
+      title: 'Nutrition Coach har ett råd',
     }, { now }))
   }
 

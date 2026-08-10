@@ -1,6 +1,11 @@
 import { useMemo, useState } from 'react'
 import { requestRemoteCoachSuggestions } from '../services/ai/remoteCoachService.js'
-import { readDietaryPreferences } from '../services/nutrition/dietaryPreferences.js'
+import {
+  readDietaryPreferences,
+  readMealPlans,
+  readMealTemplates,
+  readRecipes,
+} from '../services/nutrition/nutritionEngine.js'
 import {
   buildMinimalNutritionCoachAiContext,
   buildNutritionCoachModel,
@@ -11,6 +16,36 @@ function ScoreBadge({ label, value }) {
     <div className="health-dashboard-metric">
       <span>{label}</span>
       <strong>{value === null || value === undefined ? 'Saknas' : `${value}/100`}</strong>
+    </div>
+  )
+}
+
+function formatMacro(value, unit) {
+  return Number.isFinite(value)
+    ? `${Math.round(value).toLocaleString('sv-SE')} ${unit}`
+    : 'Saknas'
+}
+
+function ProgressMetric({ label, metric, unit }) {
+  const percent = Number.isFinite(metric.percent) ? metric.percent : null
+
+  return (
+    <div className="nutrition-coach-progress">
+      <div>
+        <span>{label}</span>
+        <strong>{formatMacro(metric.value, unit)}</strong>
+      </div>
+      <div
+        aria-label={`${label}: ${percent ?? 0} procent`}
+        aria-valuemax="100"
+        aria-valuemin="0"
+        aria-valuenow={percent ?? 0}
+        className="nutrition-coach-progress-bar"
+        role="progressbar"
+      >
+        <span style={{ width: `${Math.max(0, Math.min(100, percent ?? 0))}%` }} />
+      </div>
+      <small>{metric.text}</small>
     </div>
   )
 }
@@ -66,20 +101,28 @@ export default function NutritionCoachCenter({
 }) {
   const [remoteStatus, setRemoteStatus] = useState('')
   const [remoteResult, setRemoteResult] = useState(null)
-  const dietaryPreferences = useMemo(() => readDietaryPreferences(), [])
+  const localNutritionData = useMemo(() => ({
+    dietaryPreferences: readDietaryPreferences(),
+    mealPlans: readMealPlans(),
+    recipes: readRecipes(),
+    templates: readMealTemplates(),
+  }), [])
   const context = useMemo(() => ({
     adaptiveCoachFeedback,
     checkIn,
     checkIns,
-    dietaryPreferences,
+    dietaryPreferences: localNutritionData.dietaryPreferences,
     goalsHabits,
     healthSnapshot,
+    mealPlans: localNutritionData.mealPlans,
     meals,
     nutritionGoals,
     profile,
     reminderState,
+    recipes: localNutritionData.recipes,
+    templates: localNutritionData.templates,
     weights,
-  }), [adaptiveCoachFeedback, checkIn, checkIns, dietaryPreferences, goalsHabits, healthSnapshot, meals, nutritionGoals, profile, reminderState, weights])
+  }), [adaptiveCoachFeedback, checkIn, checkIns, goalsHabits, healthSnapshot, localNutritionData, meals, nutritionGoals, profile, reminderState, weights])
   const model = useMemo(
     () => buildNutritionCoachModel(context, { analysisDate }),
     [analysisDate, context],
@@ -122,6 +165,51 @@ export default function NutritionCoachCenter({
         <div className="health-dashboard-metric"><span>Måltider idag</span><strong>{model.dailyTimeline.mealCount}</strong></div>
         <div className="health-dashboard-metric"><span>Scanner</span><strong>{model.scannerSummary.photoMealCount}</strong></div>
       </div>
+
+      <article className="nutrition-coach-daily-card">
+        <div className="nutrition-coach-advice">
+          <span aria-hidden="true">🥗</span>
+          <div>
+            <p className="eyebrow">Dagens huvudråd</p>
+            <h3>{model.dailyCoach.primaryAdvice.text}</h3>
+            <small>{model.dailyCoach.balanced ? 'Dagen ser balanserad ut.' : `Saknade måltidstyper: ${model.dailyCoach.missingMeals}`}</small>
+          </div>
+        </div>
+        <div className="nutrition-coach-progress-grid">
+          <ProgressMetric label="Kalorier" metric={model.dailyCoach.calories} unit="kcal" />
+          <ProgressMetric label="Protein" metric={model.dailyCoach.protein} unit="g" />
+        </div>
+      </article>
+
+      <article className="nutrition-coach-week-card">
+        <div className="nutrition-card-heading">
+          <div>
+            <p className="eyebrow">Senaste 7 dagarna</p>
+            <h3>Veckans nutritionstatus</h3>
+          </div>
+          <span className="nutrition-pill">{model.weeklyNutrition.registeredDays}/7 dagar</span>
+        </div>
+        <div className="nutrition-coach-week-grid">
+          <div><span>Snitt kalorier</span><strong>{formatMacro(model.weeklyNutrition.averageCalories, 'kcal')}</strong></div>
+          <div><span>Snitt protein</span><strong>{formatMacro(model.weeklyNutrition.averageProtein, 'g')}</strong></div>
+          <div><span>Proteinmål nått</span><strong>{model.weeklyNutrition.proteinGoalDays} dagar</strong></div>
+          <div><span>Mest konsekvent</span><strong>{model.weeklyNutrition.mostConsistentDay}</strong></div>
+        </div>
+        <p>{model.weeklyNutrition.trend}</p>
+        {model.weeklyNutrition.insights.length ? (
+          <ul className="health-dashboard-list compact">
+            {model.weeklyNutrition.insights.map((insight) => <li key={insight}><span>{insight}</span></li>)}
+          </ul>
+        ) : <p>Logga några dagar till så visas veckans nutritionmönster här.</p>}
+      </article>
+
+      {model.mealPlanner.plannedDinnerInsight && (
+        <article className="insight-plan">
+          <h3>Planerad mat</h3>
+          <p>{model.mealPlanner.plannedDinnerInsight}</p>
+          <small>{model.mealPlanner.hasSavedPlan ? 'Bygger på sparad veckoplan.' : 'Bygger på dagens genererade plan.'}</small>
+        </article>
+      )}
 
       <div className="health-dashboard-grid">
         <article className="health-dashboard-card">

@@ -251,4 +251,28 @@ describe('notificationEngine', () => {
     expect(context.recommendation).toContain('I dag rekommenderar jag')
     expect(context.priority).toBe('High')
   })
+
+  it('reuses clear nutrition coach advice when it does not duplicate protein or meal plan alerts', () => {
+    const candidates = buildSmartNotificationCandidates({
+      checkIn: { date: '2026-08-04' },
+      mealPlanner: {
+        saveState: {
+          dayHasPlan: true,
+          saved: true,
+          week: {
+            days: {
+              '2026-08-04': [{ date: '2026-08-04', id: 'planned', mealType: 'Middag', nutritionPreview: { calories: 700, protein: 35 } }],
+            },
+            weekStart: '2026-08-04',
+          },
+        },
+      },
+      meals: [{ calories: 900, date: '2026-08-04', id: 'm1', protein: 50 }],
+      nutritionGoals: { calories: 2200, protein: 120 },
+      weights: [{ date: '2026-08-04', value: 88 }],
+    }, { now })
+
+    expect(candidates.some((item) => item.group === 'nutrition')).toBe(true)
+    expect(candidates.find((item) => item.group === 'nutrition')?.body).toContain('70 g protein kvar')
+  })
 })

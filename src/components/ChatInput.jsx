@@ -1,10 +1,15 @@
 function ChatInput({
   chatInput,
   isListening,
+  isVoiceConversationActive,
   onChatInputChange,
   onSendChatMessage,
   onStartVoiceInput,
 }) {
+  const voiceButtonLabel = isVoiceConversationActive
+    ? 'Avsluta samtal'
+    : 'Starta röstsamtal'
+
   return (
     <form className="chat-form" onSubmit={onSendChatMessage}>
       <input
@@ -15,13 +20,13 @@ function ChatInput({
         enterKeyHint="send"
       />
       <button
-        className={`mic-button ${isListening ? 'listening' : ''}`}
+        className={`mic-button ${isListening ? 'listening' : ''} ${isVoiceConversationActive ? 'conversation-active' : ''}`}
         type="button"
         onClick={onStartVoiceInput}
-        aria-label="Starta röstinmatning"
-        title="Starta röstinmatning"
+        aria-label={voiceButtonLabel}
+        title={voiceButtonLabel}
       >
-        {isListening ? 'Lyssnar' : '🎙️'}
+        {isVoiceConversationActive ? 'Avsluta samtal' : '🎙️'}
       </button>
       <button className="send-button" type="submit">Skicka</button>
     </form>

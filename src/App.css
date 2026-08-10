@@ -1833,6 +1833,10 @@ button.secondary-button:focus-visible,
   background: var(--green);
 }
 
+.mic-button.conversation-active {
+  min-width: 132px;
+}
+
 .send-button {
   min-width: 84px;
   padding: 0 16px;

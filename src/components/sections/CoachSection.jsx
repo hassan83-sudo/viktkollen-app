@@ -34,6 +34,7 @@ function CoachSection({
   healthSnapshot,
   isGeneratingCoachReport,
   isListening,
+  isVoiceConversationActive,
   meals,
   messagesEndRef,
   nutritionGoals,
@@ -73,6 +74,7 @@ function CoachSection({
           chatMessages={chatMessages}
           chatThreadRef={chatThreadRef}
           isListening={isListening}
+          isVoiceConversationActive={isVoiceConversationActive}
           messagesEndRef={messagesEndRef}
           onChatInputChange={onChatInputChange}
           onClearChat={onClearChat}

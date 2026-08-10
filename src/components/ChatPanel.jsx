@@ -9,6 +9,7 @@ function ChatPanel({
   chatMessages,
   chatThreadRef,
   isListening,
+  isVoiceConversationActive,
   messagesEndRef,
   onChatInputChange,
   onClearChat,
@@ -49,6 +50,7 @@ function ChatPanel({
       <ChatInput
         chatInput={chatInput}
         isListening={isListening}
+        isVoiceConversationActive={isVoiceConversationActive}
         onChatInputChange={onChatInputChange}
         onSendChatMessage={onSendChatMessage}
         onStartVoiceInput={onStartVoiceInput}
@@ -56,6 +58,11 @@ function ChatPanel({
       {voiceStatus && (
         <p className="voice-status" aria-live="polite">
           {voiceStatus}
+        </p>
+      )}
+      {isVoiceConversationActive && (
+        <p className="voice-status" aria-live="polite">
+          Tryck för att avsluta
         </p>
       )}
       {chatEngineStatus && (

@@ -82,6 +82,7 @@ import {
 import * as userDataRepository from './services/userDataRepository.js'
 import { loadAiApiService, loadAiCoachV2Service, loadAiSuggestions, loadAiUserContext, loadProactiveCoachService, loadWeeklyReportService } from './services/ai/aiRuntimeLoader.js'
 import { prepareCoachChatSubmission, requestCoachChatReply } from './services/ai/aiChatController.js'
+import { createVoiceConversationController } from './services/voiceConversationController.js'
 import { useGlobalSyncScheduler } from './services/sync/useGlobalSyncScheduler.js'
 import { getSyncStatusSnapshot } from './services/sync/syncStatusStore.js'
 import {
@@ -860,7 +861,8 @@ function App() {
   const chatThreadRef = useRef(null)
   const messagesEndRef = useRef(null)
   const chatRequestInFlightRef = useRef(false)
-  const recognitionRef = useRef(null)
+  const chatMessagesRef = useRef(initialChatMessages)
+  const voiceConversationRef = useRef(null)
   const [authError, setAuthError] = useState('')
   const [authLoading, setAuthLoading] = useState(true)
   const [authNotice, setAuthNotice] = useState('')
@@ -971,6 +973,7 @@ function App() {
   const [chatEngineStatus, setChatEngineStatus] = useState('')
   const [voiceStatus, setVoiceStatus] = useState('')
   const [isListening, setIsListening] = useState(false)
+  const [isVoiceConversationActive, setIsVoiceConversationActive] = useState(false)
   const [chatMessages, setChatMessages] = useState(() =>
     userDataRepository.getCoachChat(initialChatMessages, isStoredChatMessages),
   )
@@ -1680,6 +1683,7 @@ function App() {
   }, [adaptiveCoachFeedback])
 
   useEffect(() => {
+    chatMessagesRef.current = chatMessages
     userDataRepository.saveCoachChat(chatMessages)
   }, [chatMessages])
 
@@ -1731,9 +1735,7 @@ function App() {
 
   useEffect(
     () => () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.abort()
-      }
+      voiceConversationRef.current?.dispose()
 
       if (barcodeTimerRef.current) {
         window.clearInterval(barcodeTimerRef.current)
@@ -2511,7 +2513,7 @@ function App() {
     chatRequestInFlightRef.current = true
     const createdAt = new Date().toISOString()
     const { addMemory, pendingChatHistory } = await prepareCoachChatSubmission({
-      chatMessages,
+      chatMessages: chatMessagesRef.current,
       createdAt,
       text,
     })
@@ -2565,151 +2567,22 @@ function App() {
   }
 
   async function startVoiceInput() {
-    if (isListening) {
-      recognitionRef.current?.stop()
-      setIsListening(false)
-      setVoiceStatus('Lyssningen stoppades.')
+    if (voiceConversationRef.current?.isActive()) {
+      voiceConversationRef.current.stop()
       return
     }
 
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition
-
-    if (!SpeechRecognition) {
-      setVoiceStatus(
-        'Röstinmatning stöds inte i den här webbläsaren. Skriv frågan i stället.',
-      )
-      return
-    }
-
-    if (!window.isSecureContext && window.location.hostname !== 'localhost') {
-      setVoiceStatus(
-        'Mikrofonen kräver oftast HTTPS. Testa i en säker webbläsarsession.',
-      )
-      return
-    }
-
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setVoiceStatus('Mikrofonen är inte tillgänglig i den här webbläsaren.')
-      return
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      stream.getTracks().forEach((track) => track.stop())
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'NotAllowedError') {
-        setVoiceStatus(
-          'Mikrofonbehörighet nekades. Tillåt mikrofon i webbläsaren och försök igen.',
-        )
-        return
-      }
-
-      if (
-        error instanceof DOMException &&
-        (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError')
-      ) {
-        setVoiceStatus('Ingen mikrofon hittades. Kontrollera mikrofonen eller skriv frågan.')
-        return
-      }
-
-      setVoiceStatus('Mikrofonen kunde inte starta. Försök igen eller skriv frågan.')
-      return
-    }
-
-    const recognition = new SpeechRecognition()
-    let hasTranscript = false
-    let hasSubmittedTranscript = false
-
-    recognitionRef.current?.abort()
-    recognitionRef.current = recognition
-
-    recognition.lang = 'sv-SE'
-    recognition.continuous = false
-    recognition.interimResults = false
-    recognition.maxAlternatives = 1
-
-    recognition.addEventListener('start', () => {
-      setIsListening(true)
-      setVoiceStatus('Lyssnar...')
-    })
-
-    recognition.addEventListener('result', (event) => {
-      const transcript = Array.from(event.results)
-        .map((result) => result[0]?.transcript ?? '')
-        .join(' ')
-        .trim()
-
-      if (transcript) {
-        if (hasSubmittedTranscript) {
-          return
-        }
-
-        hasTranscript = true
-        hasSubmittedTranscript = true
+    voiceConversationRef.current = createVoiceConversationController({
+      onTranscript: async (transcript) => {
         setChatInput(transcript)
-        setVoiceStatus('Skickar meddelandet...')
-
-        window.requestAnimationFrame(() => {
-          submitChatText(transcript)
-        })
-      }
+        await sendChatText(transcript)
+      },
+      setActive: setIsVoiceConversationActive,
+      setListening: setIsListening,
+      setStatus: setVoiceStatus,
     })
 
-    recognition.addEventListener('error', (event) => {
-      setIsListening(false)
-
-      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-        setVoiceStatus(
-          'Mikrofonbehörighet nekades. Tillåt mikrofon i webbläsaren och försök igen.',
-        )
-        return
-      }
-
-      if (event.error === 'no-speech') {
-        setVoiceStatus('Jag hörde inget. Tryck på mikrofonen och försök igen.')
-        return
-      }
-
-      if (event.error === 'audio-capture') {
-        setVoiceStatus('Ingen mikrofon hittades. Kontrollera mikrofonen eller skriv frågan.')
-        return
-      }
-
-      setVoiceStatus('Kunde inte lyssna just nu. Försök igen eller skriv frågan.')
-    })
-
-    recognition.addEventListener('end', () => {
-      setIsListening(false)
-
-      if (recognitionRef.current === recognition) {
-        recognitionRef.current = null
-      }
-
-      setVoiceStatus((current) => {
-        if (current !== 'Lyssnar...') {
-          return current
-        }
-
-        return hasTranscript
-          ? 'Texten är ifylld. Du kan redigera innan du skickar.'
-          : 'Jag hörde inget. Tryck på mikrofonen och försök igen.'
-      })
-    })
-
-    try {
-      recognition.start()
-      setIsListening(true)
-      setVoiceStatus('Lyssnar...')
-    } catch (error) {
-      recognitionRef.current = null
-      setIsListening(false)
-      setVoiceStatus(
-        error instanceof Error
-          ? `Mikrofonen kunde inte starta: ${error.message}`
-          : 'Mikrofonen kunde inte starta. Försök igen eller skriv frågan.',
-      )
-    }
+    await voiceConversationRef.current.start()
   }
 
   function handleStarterPrompt(prompt) {
@@ -2995,6 +2868,7 @@ function App() {
           healthSnapshot={healthSnapshot}
           isGeneratingCoachReport={isGeneratingCoachReport}
           isListening={isListening}
+          isVoiceConversationActive={isVoiceConversationActive}
           meals={meals}
           messagesEndRef={messagesEndRef}
           nutritionGoals={nutritionGoals}

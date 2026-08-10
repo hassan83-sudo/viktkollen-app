@@ -805,6 +805,7 @@ canvas {
   gap: 12px;
   margin-bottom: 12px;
   isolation: isolate;
+  animation: dashboard-fade-up 420ms ease both;
 }
 
 .dashboard-hero,
@@ -815,6 +816,17 @@ canvas {
   border-radius: 8px;
   background: var(--surface);
   box-shadow: var(--shadow);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.dashboard-hero:hover,
+.dashboard-card:hover {
+  border-color: rgba(22, 139, 156, 0.28);
+  box-shadow: 0 16px 38px rgba(55, 75, 96, 0.13);
+  transform: translateY(-2px);
 }
 
 .dashboard-hero {
@@ -904,6 +916,58 @@ canvas {
 
 .dashboard-health {
   grid-row: span 2;
+}
+
+.health-score-orb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(190px, 100%);
+  aspect-ratio: 1;
+  justify-self: center;
+  margin: 2px 0;
+}
+
+.health-score-orb svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.health-score-track,
+.health-score-progress {
+  fill: none;
+  stroke-width: 11;
+}
+
+.health-score-track {
+  stroke: var(--soft-bg);
+}
+
+.health-score-progress {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 700ms ease;
+  filter: drop-shadow(0 8px 12px var(--accent-shadow));
+}
+
+.health-score-orb > div {
+  position: absolute;
+  display: grid;
+  justify-items: center;
+  color: var(--text-h);
+}
+
+.health-score-orb strong {
+  color: var(--accent);
+  font-size: 44px;
+  line-height: 0.95;
+}
+
+.health-score-orb span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 850;
 }
 
 .dashboard-card-heading {
@@ -1044,6 +1108,11 @@ canvas {
 .dashboard-actions button:hover {
   border-color: var(--accent);
   background: var(--accent-soft);
+  transform: translateY(-1px);
+}
+
+.dashboard-actions button:active {
+  transform: translateY(0);
 }
 
 .dashboard-actions button.primary {
@@ -6714,6 +6783,18 @@ html {
   background: var(--surface);
   border: 1px solid var(--border);
   box-shadow: 0 12px 32px rgba(0,0,0,.08);
+  animation: dashboard-fade-up 460ms ease both;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.daily-progress-card:hover,
+.daily-coach-card:hover {
+  border-color: rgba(22, 139, 156, 0.28);
+  box-shadow: 0 16px 38px rgba(55, 75, 96, 0.13);
+  transform: translateY(-2px);
 }
 
 .daily-progress-heading {
@@ -6753,8 +6834,9 @@ html {
 .daily-progress-item{
   padding:16px;
   border-radius:18px;
-  background:rgba(255,255,255,.04);
-  border:1px solid rgba(255,255,255,.08);
+  background: var(--soft-bg);
+  border:1px solid var(--border);
+  overflow: hidden;
 }
 
 .daily-progress-item span{
@@ -6770,9 +6852,16 @@ html {
 }
 
 .daily-progress-item small{
-  display:block;
+  display:flex;
+  flex-wrap: wrap;
+  gap: 6px;
   margin-top:6px;
   color:var(--muted);
+}
+
+.daily-progress-item small span {
+  color: var(--accent);
+  font-weight: 900;
 }
 
 .daily-coach-card {
@@ -6786,6 +6875,11 @@ html {
     linear-gradient(135deg, rgba(22, 139, 156, 0.1), rgba(111, 152, 69, 0.08)),
     var(--surface);
   box-shadow: 0 12px 32px rgba(0,0,0,.08);
+  animation: dashboard-fade-up 520ms ease both;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 }
 
 .daily-coach-heading {
@@ -6820,6 +6914,37 @@ html {
   line-height: 1.55;
 }
 
+.daily-coach-callout {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid rgba(22, 139, 156, 0.22);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.daily-coach-callout > span {
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.daily-coach-more {
+  justify-self: start;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  color: var(--text-h);
+  background: var(--soft-bg);
+  box-shadow: none;
+}
+
+.daily-coach-more:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
 .daily-coach-actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -6830,6 +6955,11 @@ html {
   min-width: 0;
   padding: 0 14px;
   white-space: normal;
+}
+
+.daily-coach-actions button:active,
+.daily-coach-more:active {
+  transform: translateY(1px);
 }
 
 @media (max-width:700px){
@@ -6843,12 +6973,26 @@ html {
   padding: 16px;
 }
 
+.daily-coach-heading {
+  align-items: flex-start;
+}
+
 .daily-progress-grid{
   gap:10px;
 }
 
 .daily-coach-actions {
   grid-template-columns: 1fr;
+}
+
+.daily-coach-actions button,
+.daily-coach-more {
+  width: 100%;
+  min-height: 46px;
+}
+
+.daily-coach-callout {
+  padding: 14px;
 }
 
 .daily-progress-item{
@@ -6868,16 +7012,99 @@ html {
   margin:10px 0 6px;
   border-radius:999px;
   overflow:hidden;
-  background:rgba(255,255,255,.08);
+  background: var(--field-border);
 }
 
 .progress-bar-fill{
   height:100%;
   border-radius:999px;
-  background:linear-gradient(
-    90deg,
-    #38bdf8,
-    #22c55e
-  );
-  transition:width .45s ease;
+  transform-origin: left;
+  animation: progress-fill-in 700ms ease both;
+  transition: width .45s ease, background 180ms ease;
+}
+
+.progress-bar.is-low .progress-bar-fill {
+  background: linear-gradient(90deg, var(--warning-text), var(--warning-border));
+}
+
+.progress-bar.is-steady .progress-bar-fill {
+  background: linear-gradient(90deg, var(--accent), #38bdf8);
+}
+
+.progress-bar.is-strong .progress-bar-fill {
+  background: linear-gradient(90deg, var(--accent), var(--green));
+}
+
+@keyframes dashboard-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes progress-fill-in {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (max-width: 430px) {
+  .health-score-orb {
+    width: min(168px, 100%);
+  }
+
+  .health-score-orb strong {
+    font-size: 38px;
+  }
+
+  .daily-progress-heading,
+  .daily-coach-heading {
+    gap: 12px;
+  }
+
+  .daily-progress-card,
+  .daily-coach-card {
+    border-radius: 18px;
+  }
+
+  .daily-progress-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .daily-progress-score {
+    min-width: 82px;
+  }
+
+  .daily-progress-item,
+  .daily-coach-callout {
+    border-radius: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-v3,
+  .dashboard-hero,
+  .dashboard-card,
+  .daily-progress-card,
+  .daily-coach-card,
+  .progress-bar-fill {
+    animation: none;
+    transition: none;
+  }
+
+  .dashboard-hero:hover,
+  .dashboard-card:hover,
+  .daily-progress-card:hover,
+  .daily-coach-card:hover {
+    transform: none;
+  }
 }

@@ -31,6 +31,12 @@ function getProgress(value, goal) {
   return Math.min((current / target) * 100, 100)
 }
 
+function getProgressTone(progress) {
+  if (progress >= 90) return 'is-strong'
+  if (progress >= 65) return 'is-steady'
+  return 'is-low'
+}
+
 function DailyProgressCard({
   caloriesToday,
   calorieGoal,
@@ -40,6 +46,9 @@ function DailyProgressCard({
   steps,
   weeklyWeightChange,
 }) {
+  const calorieProgress = getProgress(caloriesToday, calorieGoal)
+  const proteinProgress = getProgress(proteinToday, proteinGoal)
+
   return (
     <section className="daily-progress-card" aria-label="Dagens framsteg">
       <div className="daily-progress-heading">
@@ -68,17 +77,20 @@ function DailyProgressCard({
               : '–'}
           </strong>
 
-          <div className="progress-bar">
+          <div className={`progress-bar ${getProgressTone(calorieProgress)}`}>
             <div
               className="progress-bar-fill"
               style={{
-                width: `${getProgress(caloriesToday, calorieGoal)}%`,
+                width: `${calorieProgress}%`,
               }}
             />
           </div>
 
           {Number.isFinite(Number(calorieGoal)) && (
-            <small>av {formatNumber(calorieGoal)} kcal</small>
+            <small>
+              <span>{Math.round(calorieProgress)} %</span>
+              av {formatNumber(calorieGoal)} kcal
+            </small>
           )}
         </div>
 
@@ -91,17 +103,20 @@ function DailyProgressCard({
               : '–'}
           </strong>
 
-          <div className="progress-bar">
+          <div className={`progress-bar ${getProgressTone(proteinProgress)}`}>
             <div
               className="progress-bar-fill"
               style={{
-                width: `${getProgress(proteinToday, proteinGoal)}%`,
+                width: `${proteinProgress}%`,
               }}
             />
           </div>
 
           {Number.isFinite(Number(proteinGoal)) && (
-            <small>av {formatNumber(proteinGoal)} g</small>
+            <small>
+              <span>{Math.round(proteinProgress)} %</span>
+              av {formatNumber(proteinGoal)} g
+            </small>
           )}
         </div>
 

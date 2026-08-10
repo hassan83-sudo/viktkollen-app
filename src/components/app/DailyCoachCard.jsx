@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 function getPercent(value, goal) {
   const current = Number(value)
   const target = Number(goal)
@@ -9,7 +11,7 @@ function getPercent(value, goal) {
   return Math.round(Math.min((current / target) * 100, 140))
 }
 
-function buildCoachAdvice({
+function buildCoachAdviceList({
   caloriesToday,
   calorieGoal,
   healthScore,
@@ -21,28 +23,37 @@ function buildCoachAdvice({
   const proteinPercent = getPercent(proteinToday, proteinGoal)
   const safeHealthScore = Number(healthScore)
   const safeSteps = Number(steps)
+  const advice = []
 
-  if (proteinPercent !== null && proteinPercent >= 80) {
-    return `Bra jobbat! Du har nått ${proteinPercent} % av proteinmålet.`
+  if (proteinPercent !== null) {
+    advice.push(
+      proteinPercent >= 80
+        ? `Bra jobbat! Du har nått ${proteinPercent} % av proteinmålet.`
+        : `Du har nått ${proteinPercent} % av proteinmålet. En proteinrik måltid kan hjälpa dig vidare.`,
+    )
   }
 
   if (Number.isFinite(safeSteps) && safeSteps < 6500) {
-    return 'En promenad på 20 minuter kan förbättra dagens resultat.'
+    advice.push('En promenad på 20 minuter kan förbättra dagens resultat.')
+  } else if (Number.isFinite(safeSteps)) {
+    advice.push('Stegen ligger bra till idag. Håll tempot lugnt och jämnt.')
   }
 
   if (caloriePercent !== null && caloriePercent < 55) {
-    return 'Planera en enkel måltid med protein innan kvällen.'
+    advice.push('Planera en enkel måltid med protein innan kvällen.')
   }
 
   if (caloriePercent !== null && caloriePercent > 105) {
-    return 'Du ligger lite över kalorimålet idag. Fokusera på nästa lugna, balanserade val.'
+    advice.push('Du ligger lite över kalorimålet idag. Fokusera på nästa lugna, balanserade val.')
   }
 
   if (Number.isFinite(safeHealthScore) && safeHealthScore >= 75) {
-    return 'Du ligger bra till idag - fortsätt så.'
+    advice.push('Du ligger bra till idag - fortsätt så.')
   }
 
-  return 'Drick lite mer vatten innan kvällen och välj ett litet nästa steg.'
+  advice.push('Drick lite mer vatten innan kvällen och välj ett litet nästa steg.')
+
+  return [...new Set(advice)].slice(0, 4)
 }
 
 function DailyCoachCard({
@@ -56,7 +67,7 @@ function DailyCoachCard({
   proteinGoal,
   steps,
 }) {
-  const advice = buildCoachAdvice({
+  const adviceList = buildCoachAdviceList({
     caloriesToday,
     calorieGoal,
     healthScore,
@@ -64,6 +75,8 @@ function DailyCoachCard({
     proteinGoal,
     steps,
   })
+  const [adviceIndex, setAdviceIndex] = useState(0)
+  const visibleAdvice = adviceList[adviceIndex % adviceList.length]
 
   return (
     <section className="daily-coach-card" aria-label="AI Coach">
@@ -75,7 +88,17 @@ function DailyCoachCard({
         </div>
       </div>
 
-      <p className="daily-coach-advice">{advice}</p>
+      <div className="daily-coach-callout">
+        <span>Just nu</span>
+        <p className="daily-coach-advice">{visibleAdvice}</p>
+        <button
+          className="daily-coach-more"
+          type="button"
+          onClick={() => setAdviceIndex((current) => current + 1)}
+        >
+          Visa fler råd
+        </button>
+      </div>
 
       <div className="daily-coach-actions" aria-label="Snabbåtgärder">
         <button type="button" onClick={onAddMeal}>

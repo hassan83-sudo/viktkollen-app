@@ -3,6 +3,13 @@ import BodyAnalysisCard from './BodyAnalysisCard.jsx'
 import ProgressPhotoEmptyState from './ProgressPhotoEmptyState.jsx'
 import ProgressPhotoUpload from './ProgressPhotoUpload.jsx'
 import { readStorage } from '../services/appStorageService.js'
+import {
+  buildProgressPhotoComparison,
+  buildProgressPhotoInsights,
+  filterProgressPhotos,
+  progressPhotoFilters,
+  sortProgressPhotosChronologically,
+} from '../services/progressPhotos.js'
 
 const bodyAnalysisHistoryKey = 'viktkollen.bodyAnalysis.history'
 const bodyAnalysisLegacyKey = 'viktkollen.bodyAnalysis.latest'
@@ -113,7 +120,6 @@ function hasStoredBodyAnalyses() {
 
 function ProgressPhotos({
   afterPhotoId,
-  beforeAfterPhotos,
   beforePhotoId,
   hasProgressPhotos,
   onAfterPhotoIdChange,
@@ -132,12 +138,21 @@ function ProgressPhotos({
   const [showSameOccasionComparison, setShowSameOccasionComparison] =
     useState(false)
   const [photoFilter, setPhotoFilter] = useState('Alla')
+  const [periodFilter, setPeriodFilter] = useState('all')
   const [photoSearch, setPhotoSearch] = useState('')
+  const [sliderPosition, setSliderPosition] = useState(50)
   const [hasBodyAnalysisHistory, setHasBodyAnalysisHistory] = useState(() =>
     hasStoredBodyAnalyses(),
   )
   const sameOccasionComparison = getSameOccasionComparison(progressPhotoItems)
-  const visiblePhotos = progressPhotoItems.filter((photo) => {
+  const comparison = buildProgressPhotoComparison({
+    afterPhotoId,
+    beforePhotoId,
+    photos: progressPhotoItems,
+  })
+  const insights = buildProgressPhotoInsights(progressPhotoItems, comparison)
+  const visiblePhotos = sortProgressPhotosChronologically(filterProgressPhotos(progressPhotoItems, periodFilter))
+    .filter((photo) => {
     const matchesView = photoFilter === 'Alla' || photo.viewLabel === photoFilter
     const matchesSearch = [photo.note, photo.createdAtLabel, photo.weightLabel]
       .join(' ')
@@ -219,7 +234,31 @@ function ProgressPhotos({
             <span className="progress-photo-local-badge">Endast lokalt</span>
           </div>
 
+          <section className="progress-photo-v2-summary" aria-label="Progress photo-insikter">
+            <div><span>Antal bilder</span><strong>{insights.photoCount}</strong></div>
+            <div><span>Tidsperiod</span><strong>{insights.periodLabel}</strong></div>
+            <div><span>Vald viktförändring</span><strong>{insights.selectedWeightChangeLabel}</strong></div>
+          </section>
+
+          <p className="progress-photo-safety">
+            Bilderna hanteras enligt appens befintliga lokala lagringsflöde.
+            Inga externa bild-API:er används för den här jämförelsen.
+          </p>
+
           <div className="progress-photo-filters">
+            <div className="progress-photo-period-filter" aria-label="Filtrera tidsperiod">
+              {progressPhotoFilters.map((filter) => (
+                <button
+                  aria-pressed={periodFilter === filter.id}
+                  className={periodFilter === filter.id ? 'active' : ''}
+                  key={filter.id}
+                  type="button"
+                  onClick={() => setPeriodFilter(filter.id)}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
             <label className="field">
               <span>Filtrera vy</span>
               <select value={photoFilter} onChange={(event) => setPhotoFilter(event.target.value)}>
@@ -329,11 +368,10 @@ function ProgressPhotos({
           )}
 
           <details className="progress-photo-compare-preview">
-            <summary>Manuell före/efter-visning</summary>
+            <summary>Progress Photos V2 före/efter</summary>
             <p>
-              Välj två bilder själv om du vill se dem bredvid varandra.
-              AI V2 ovan jämför automatiskt nyaste bilden med föregående
-              bild från samma perspektiv när det finns.
+              Välj två befintliga bilder och jämför datum, vikt och anteckning.
+              Sammanfattningen bygger bara på sparad metadata.
             </p>
             <div className="comparison-controls">
               <label className="field">
@@ -364,13 +402,39 @@ function ProgressPhotos({
               </label>
             </div>
             <div className="before-after">
-              {beforeAfterPhotos.map((photo) => (
-                <figure key={photo.id}>
+              {[comparison.before, comparison.after].filter(Boolean).map((photo, index) => (
+                <figure key={`${photo.id}-${index}`}>
                   <img src={photo.image} alt={photo.alt} />
-                  <figcaption>{photo.caption}</figcaption>
+                  <figcaption>
+                    {index === 0 ? 'Före' : 'Efter'} · {photo.createdAtLabel}
+                    <span>{photo.weightLabel}</span>
+                    <span>{photo.note}</span>
+                  </figcaption>
                 </figure>
               ))}
             </div>
+            {comparison.hasBoth && (
+              <div className="progress-photo-slider">
+                <div
+                  className="progress-photo-slider-frame"
+                  style={{ '--progress-photo-slider': `${sliderPosition}%` }}
+                >
+                  <img src={comparison.before.image} alt="Förebild i slider" />
+                  <img src={comparison.after.image} alt="Efterbild i slider" />
+                </div>
+                <label className="field">
+                  <span>Jämförelseläge</span>
+                  <input
+                    aria-label="Justera före efter-slider"
+                    max="100"
+                    min="0"
+                    type="range"
+                    value={sliderPosition}
+                    onChange={(event) => setSliderPosition(Number(event.target.value))}
+                  />
+                </label>
+              </div>
+            )}
           </details>
         </>
       )}

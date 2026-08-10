@@ -2348,6 +2348,58 @@ button.secondary-button:focus-visible,
   border-radius: 12px;
 }
 
+.progress-photo-v2-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.progress-photo-v2-summary div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--soft-bg);
+}
+
+.progress-photo-v2-summary span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.progress-photo-v2-summary strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-h);
+  overflow-wrap: anywhere;
+}
+
+.progress-photo-period-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.progress-photo-period-filter button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--soft-bg);
+  color: var(--text);
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.progress-photo-period-filter button.active {
+  border-color: rgba(22, 139, 156, 0.42);
+  background: var(--accent);
+  color: #fff;
+}
+
 .comparison-controls {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 16px;
@@ -2379,9 +2431,38 @@ button.secondary-button:focus-visible,
 }
 
 .before-after figcaption {
+  display: grid;
+  gap: 3px;
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
+}
+
+.progress-photo-slider {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.progress-photo-slider-frame {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--soft-bg);
+}
+
+.progress-photo-slider-frame img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+}
+
+.progress-photo-slider-frame img + img {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(0 0 0 var(--progress-photo-slider, 50%));
 }
 
 .photo-timeline {
@@ -5437,9 +5518,14 @@ button.secondary-button:focus-visible,
   .progress-form-grid,
   .progress-stat-grid,
   .progress-list-card,
+  .progress-photo-v2-summary,
   .progress-photo-filters,
   .progress-timeline article {
     grid-template-columns: 1fr;
+  }
+
+  .progress-photo-period-filter button {
+    flex: 1 1 160px;
   }
 
   .progress-range-control {

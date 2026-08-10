@@ -1074,6 +1074,7 @@ function App() {
             ? 'Framstegsbild bakifrån'
             : 'Framstegsbild annan vy',
     createdAtLabel: formatFullDate(photo.createdAt),
+    createdAt: photo.createdAt,
     id: photo.id,
     image: photo.image,
     note: photo.note || 'Ingen anteckning',
@@ -1085,6 +1086,7 @@ function App() {
           : photo.view === 'back'
             ? 'Bakifrån'
             : 'Annan vy',
+    weight: photo.weight,
     weightLabel: photo.weight ? formatWeight(photo.weight) : 'Vikt saknas',
   }))
   const progressPhotoOptions = progressPhotos.map((photo) => ({

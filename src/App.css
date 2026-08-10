@@ -7448,6 +7448,180 @@ html {
   color: var(--accent);
 }
 
+.daily-meal-planner-card {
+  display: grid;
+  gap: 16px;
+  margin: -4px 0 20px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: 0 12px 32px rgba(0,0,0,.08);
+  animation: dashboard-fade-up 680ms ease both;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.daily-meal-planner-card:hover {
+  border-color: rgba(22, 139, 156, 0.28);
+  box-shadow: 0 16px 38px rgba(55, 75, 96, 0.13);
+  transform: translateY(-2px);
+}
+
+.daily-meal-planner-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.daily-meal-planner-heading h2 {
+  margin: 4px 0;
+  color: var(--text-h);
+  font-size: 1.35rem;
+}
+
+.daily-meal-planner-heading span {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.daily-meal-planner-heading button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 14px;
+}
+
+.daily-meal-planner-summary,
+.daily-meal-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.daily-meal-planner-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.daily-meal-planner-summary div,
+.daily-meal-card,
+.daily-shopping-list {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--soft-bg);
+}
+
+.daily-meal-planner-summary div {
+  min-width: 0;
+  padding: 12px;
+}
+
+.daily-meal-planner-summary span,
+.daily-meal-card p,
+.daily-meal-card dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.daily-meal-planner-summary strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-h);
+  font-size: 1.12rem;
+}
+
+.daily-meal-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.daily-meal-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+}
+
+.daily-meal-card > div:first-child {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.daily-meal-card > div:first-child > span {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border-radius: 14px;
+  background: rgba(22, 139, 156, 0.1);
+}
+
+.daily-meal-card h3 {
+  margin: 2px 0 0;
+  color: var(--text-h);
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.daily-meal-card p {
+  margin: 0;
+  font-weight: 900;
+}
+
+.daily-meal-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.daily-meal-card dl div {
+  min-width: 0;
+}
+
+.daily-meal-card dd {
+  margin: 2px 0 0;
+  color: var(--text-h);
+  font-weight: 850;
+}
+
+.daily-shopping-list {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.daily-shopping-list h3,
+.daily-shopping-list h4 {
+  margin: 0;
+  color: var(--text-h);
+}
+
+.daily-shopping-groups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.daily-shopping-groups section {
+  min-width: 0;
+}
+
+.daily-shopping-groups ul {
+  display: grid;
+  gap: 5px;
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--text);
+}
+
+.daily-shopping-groups li {
+  overflow-wrap: anywhere;
+}
+
 @media (max-width:700px){
 
 .daily-progress-card{
@@ -7472,8 +7646,18 @@ html {
   padding: 16px;
 }
 
+.daily-meal-planner-card {
+  padding: 16px;
+}
+
 .health-prediction-metrics,
 .health-prediction-insights {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.daily-meal-planner-summary,
+.daily-meal-grid,
+.daily-shopping-groups {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -7598,7 +7782,8 @@ html {
   .daily-coach-card,
   .weekly-progress-card,
   .achievement-preview-card,
-  .health-prediction-card {
+  .health-prediction-card,
+  .daily-meal-planner-card {
     border-radius: 18px;
   }
 
@@ -7641,6 +7826,21 @@ html {
     grid-template-columns: 1fr;
   }
 
+  .daily-meal-planner-heading {
+    flex-direction: column;
+  }
+
+  .daily-meal-planner-heading button {
+    width: 100%;
+  }
+
+  .daily-meal-planner-summary,
+  .daily-meal-grid,
+  .daily-meal-card dl,
+  .daily-shopping-groups {
+    grid-template-columns: 1fr;
+  }
+
   .achievement-preview-icon {
     width: 44px;
     height: 44px;
@@ -7659,7 +7859,10 @@ html {
   .achievement-preview-icon,
   .health-prediction-metrics div,
   .health-prediction-callout,
-  .health-prediction-insights li {
+  .health-prediction-insights li,
+  .daily-meal-planner-summary div,
+  .daily-meal-card,
+  .daily-shopping-list {
     border-radius: 14px;
   }
 }
@@ -7673,6 +7876,7 @@ html {
   .weekly-progress-card,
   .achievement-preview-card,
   .health-prediction-card,
+  .daily-meal-planner-card,
   .achievement-card-new,
   .progress-bar-fill {
     animation: none;
@@ -7685,6 +7889,7 @@ html {
   .daily-coach-card:hover,
   .weekly-progress-card:hover,
   .health-prediction-card:hover,
+  .daily-meal-planner-card:hover,
   .achievement-card:hover,
   .achievement-challenge:hover {
     transform: none;

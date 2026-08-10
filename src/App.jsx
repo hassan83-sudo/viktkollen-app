@@ -12,6 +12,7 @@ import AppTopbar from './components/app/AppTopbar.jsx'
 import AchievementPreviewCard from './components/app/AchievementPreviewCard.jsx'
 import DailyCoachCard from './components/app/DailyCoachCard.jsx'
 import DailyProgressCard from './components/app/DailyProgressCard.jsx'
+import DailyMealPlannerCard from './components/app/DailyMealPlannerCard.jsx'
 import HealthPredictionCard from './components/app/HealthPredictionCard.jsx'
 import WeeklyProgressSection from './components/app/WeeklyProgressSection.jsx'
 import BottomNavigation from './components/app/BottomNavigation.jsx'
@@ -2900,6 +2901,11 @@ function App() {
   profile={validatedProfile}
   reminderState={reminderState}
   weights={centralWeightStats.weights}
+/>
+<DailyMealPlannerCard
+  date={selectedMealDate}
+  meals={meals}
+  nutritionGoals={nutritionGoals}
 />
 
       <HomeSection

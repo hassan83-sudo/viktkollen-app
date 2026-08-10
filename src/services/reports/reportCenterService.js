@@ -18,7 +18,7 @@ export const reportCenterVersion = 1
 
 export const reportCenterTypes = [
   { id: 'weekly', label: 'Veckorapport' },
-  { id: 'monthly', label: 'Manadsrapport' },
+  { id: 'monthly', label: 'Månadsrapport' },
   { id: 'progress', label: 'Framstegsrapport' },
 ]
 
@@ -32,7 +32,7 @@ export const reportCenterPeriods = [
 export const reportPhotoModes = [
   { id: 'none', label: 'Inga bilder' },
   { id: 'latest', label: 'Senaste bilden' },
-  { id: 'beforeAfter', label: 'Fore/efter' },
+  { id: 'beforeAfter', label: 'Före/efter' },
 ]
 
 function safeArray(value) {
@@ -111,7 +111,7 @@ function getBestStepDay(entries = []) {
 
 function buildPhotoSelection(photos = [], mode = 'none', shareable = false) {
   if (shareable || mode === 'none') {
-    return { included: false, items: [], mode: 'none', summary: 'Progressbilder ingar inte automatiskt.' }
+    return { included: false, items: [], mode: 'none', summary: 'Progressbilder ingår inte automatiskt.' }
   }
 
   const chronological = sortProgressPhotosChronologically(photos)
@@ -142,8 +142,8 @@ function buildPhotoSelection(photos = [], mode = 'none', shareable = false) {
     items: [comparison.before, comparison.after].filter(Boolean),
     mode: 'beforeAfter',
     summary: comparison.hasBoth
-      ? `Fore/efter: ${comparison.daysBetween} dagar, ${comparison.weightChangeLabel}.`
-      : 'Minst tva bilder behovs for fore/efter.',
+      ? `Före/efter: ${comparison.daysBetween} dagar, ${comparison.weightChangeLabel}.`
+      : 'Minst två bilder behövs för före/efter.',
   }
 }
 
@@ -244,11 +244,11 @@ function buildProgressReportModel(input = {}, options = {}) {
       weightTrendLabel: prediction.dashboard.weightTrendLabel,
     },
     privacy: {
-      excludes: ['E-post', 'anvandar-id', 'privata anteckningar', 'progressbilder utan aktivt val'],
+      excludes: ['E-post', 'användar-id', 'privata anteckningar', 'progressbilder utan aktivt val'],
       shareable: Boolean(options.shareable),
       text: options.shareable
-        ? 'Delbar rapport ar rensad fran identifierare, privata anteckningar och bilder.'
-        : 'Rapporten skapas lokalt. Progressbilder ingar bara nar du valjer det.',
+        ? 'Delbar rapport är rensad från identifierare, privata anteckningar och bilder.'
+        : 'Rapporten skapas lokalt. Progressbilder ingår bara när du väljer det.',
     },
     reportType: 'progress',
     sharedAnalytics: shared,
@@ -302,9 +302,9 @@ export function buildReportCenterModel(input = {}, options = {}) {
       period,
       photos: buildPhotoSelection(input.progressPhotoItems || input.progressPhotos, 'none', true),
       privacy: {
-        excludes: ['E-post', 'anvandar-id', 'privata anteckningar', 'progressbilder'],
+        excludes: ['E-post', 'användar-id', 'privata anteckningar', 'progressbilder'],
         shareable: true,
-        text: 'Vecko- och manadsrapportens preview anvander privacy-safe rapportdata utan bilder.',
+        text: 'Vecko- och månadsrapportens preview använder privacy-safe rapportdata utan bilder.',
       },
       reportType,
       sharedReport: uiModel,
@@ -331,7 +331,7 @@ export function buildReportCenterExportText(model = {}) {
     `Skapad: ${model.generatedAt || model.period?.end || 'Saknas'}`,
     '',
     'Privacy',
-    model.privacy?.text || 'Rapporten ar privacy-safe.',
+    model.privacy?.text || 'Rapporten är privacy-safe.',
     `Exkluderar: ${safeArray(model.privacy?.excludes).join(', ')}`,
   ]
 
@@ -340,32 +340,32 @@ export function buildReportCenterExportText(model = {}) {
   } else {
     lines.push(
       '',
-      'Oversikt',
+      'Översikt',
       `Vikt: ${model.overview.currentWeightLabel}`,
-      `Malvikt: ${model.overview.goalWeightLabel}`,
-      `Viktforandring: ${model.overview.weightChangeLabel}`,
+      `Målvikt: ${model.overview.goalWeightLabel}`,
+      `Viktförändring: ${model.overview.weightChangeLabel}`,
       `Health Score: ${model.overview.healthScoreLabel}`,
       '',
       'Nutrition',
       `Snitt kalorier: ${model.nutrition.averageCaloriesLabel}`,
       `Snitt protein: ${model.nutrition.averageProteinLabel}`,
-      `Proteinmal: ${model.nutrition.proteinGoalLabel}`,
+      `Proteinmål: ${model.nutrition.proteinGoalLabel}`,
       '',
       'Aktivitet',
       `Snittsteg: ${model.activity.averageStepsLabel}`,
-      `Basta stegdag: ${model.activity.bestDayLabel}`,
+      `Bästa stegdag: ${model.activity.bestDayLabel}`,
       `Check-ins: ${model.activity.checkInConsistencyLabel}`,
       '',
       'Prediction',
-      `Beraknad maldag: ${model.prediction.estimatedGoalDate}`,
+      `Beräknad måldag: ${model.prediction.estimatedGoalDate}`,
       `Trend: ${model.prediction.weightTrendLabel}`,
-      `Health Score nasta vecka: ${model.prediction.healthScoreNextWeekLabel}`,
+      `Health Score nästa vecka: ${model.prediction.healthScoreNextWeekLabel}`,
       `Confidence: ${model.prediction.confidence}`,
       '',
       'Achievements',
       `Senaste: ${model.achievements.latest}`,
-      `Upplasta: ${model.achievements.unlockedCount}`,
-      `Nasta: ${model.achievements.next}`,
+      `Upplåsta: ${model.achievements.unlockedCount}`,
+      `Nästa: ${model.achievements.next}`,
       '',
       'Progressbilder',
       model.photos.summary,

@@ -154,7 +154,7 @@ export async function callOpenAiJson({
 } = {}) {
   if (!env.OPENAI_API_KEY) {
     return {
-      error: makeAiError('aiNotConfigured', 'AI-tjansten ar inte konfigurerad pa servern.', 503, false, requestId).error,
+      error: makeAiError('aiNotConfigured', 'AI-tjänsten är inte konfigurerad på servern.', 503, false, requestId).error,
       ok: false,
       requestId,
     }
@@ -190,7 +190,7 @@ export async function callOpenAiJson({
       return {
         error: makeAiError(code, code === 'rateLimited'
           ? 'For manga AI-anrop just nu.'
-          : 'AI-tjansten svarade inte som vantat.', response.status, response.status === 429 || response.status >= 500, requestId).error,
+          : 'AI-tjänsten svarade inte som väntat.', response.status, response.status === 429 || response.status >= 500, requestId).error,
         ok: false,
         requestId,
       }
@@ -216,7 +216,7 @@ export async function callOpenAiJson({
     return {
       error: makeAiError(code, code === 'timeout'
         ? 'AI-anropet tog for lang tid.'
-        : 'AI-tjansten ar tillfalligt otillganglig.', code === 'timeout' ? 504 : 502, code !== 'timeout', requestId).error,
+        : 'AI-tjänsten är tillfälligt otillgänglig.', code === 'timeout' ? 504 : 502, code !== 'timeout', requestId).error,
       ok: false,
       requestId,
     }

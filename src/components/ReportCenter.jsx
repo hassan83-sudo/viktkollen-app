@@ -10,7 +10,7 @@ import {
 import ReportTrendCard from './reports/ReportTrendCard.jsx'
 
 const reportTypeDescriptions = {
-  monthly: 'Samlad manadsrapport med befintlig shared analytics.',
+  monthly: 'Samlad månadsrapport med befintlig shared analytics.',
   progress: 'Progressrapport med vikt, nutrition, aktivitet, prediction och achievements.',
   weekly: 'Samlad veckorapport med befintlig shared analytics.',
 }
@@ -70,8 +70,8 @@ function ProgressReportPreview({ model }) {
   if (model.empty) {
     return (
       <div className="report-v3-card report-center-empty" role="status">
-        <h3>Rapporten fylls pa nar historik finns</h3>
-        <p>Logga vikt, mat eller check-ins i vald period sa kan Viktkollen skapa en tryggare progressrapport.</p>
+        <h3>Rapporten fylls på när historik finns</h3>
+        <p>Logga vikt, mat eller check-ins i vald period så kan Viktkollen skapa en tryggare progressrapport.</p>
       </div>
     )
   }
@@ -86,8 +86,8 @@ function ProgressReportPreview({ model }) {
         </div>
         <dl className="report-v3-summary">
           <Metric label="Nuvarande vikt" value={model.overview.currentWeightLabel} />
-          <Metric label="Malvikt" value={model.overview.goalWeightLabel} />
-          <Metric label="Viktforandring" value={model.overview.weightChangeLabel} />
+          <Metric label="Målvikt" value={model.overview.goalWeightLabel} />
+          <Metric label="Viktförändring" value={model.overview.weightChangeLabel} />
           <Metric label="Health Score" value={model.overview.healthScoreLabel} />
         </dl>
       </div>
@@ -98,23 +98,23 @@ function ProgressReportPreview({ model }) {
           <dl className="report-v3-metrics">
             <Metric label="Snitt kalorier" value={model.nutrition.averageCaloriesLabel} />
             <Metric label="Snitt protein" value={model.nutrition.averageProteinLabel} />
-            <Metric label="Proteinmal natt" value={model.nutrition.proteinGoalLabel} />
+            <Metric label="Proteinmål nått" value={model.nutrition.proteinGoalLabel} />
           </dl>
         </article>
         <article className="report-v3-card">
           <h4>Aktivitet</h4>
           <dl className="report-v3-metrics">
             <Metric label="Snittsteg" value={model.activity.averageStepsLabel} />
-            <Metric label="Basta stegdag" value={model.activity.bestDayLabel} />
+            <Metric label="Bästa stegdag" value={model.activity.bestDayLabel} />
             <Metric label="Check-ins" value={model.activity.checkInConsistencyLabel} />
           </dl>
         </article>
         <article className="report-v3-card">
           <h4>Health Prediction</h4>
           <dl className="report-v3-metrics">
-            <Metric label="Beraknad maldag" value={model.prediction.estimatedGoalDate} />
+            <Metric label="Beräknad måldag" value={model.prediction.estimatedGoalDate} />
             <Metric label="kg/vecka" value={model.prediction.kgPerWeekLabel} />
-            <Metric label="Health Score nasta vecka" value={model.prediction.healthScoreNextWeekLabel} />
+            <Metric label="Health Score nästa vecka" value={model.prediction.healthScoreNextWeekLabel} />
             <Metric label="Confidence" value={model.prediction.confidence} />
           </dl>
           <p>{model.prediction.weightTrendLabel}</p>
@@ -123,10 +123,10 @@ function ProgressReportPreview({ model }) {
           <h4>Achievements</h4>
           <dl className="report-v3-metrics">
             <Metric label="Senaste badge" value={model.achievements.latest} />
-            <Metric label="Upplasta" value={model.achievements.unlockedCount} />
-            <Metric label="Nasta badge" value={model.achievements.next} />
+            <Metric label="Upplåsta" value={model.achievements.unlockedCount} />
+            <Metric label="Nästa badge" value={model.achievements.next} />
           </dl>
-          <div className="report-progressbar" aria-label="Progress mot nasta achievement" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={model.achievements.nextProgressPercent}>
+          <div className="report-progressbar" aria-label="Progress mot nästa achievement" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={model.achievements.nextProgressPercent}>
             <span className={`report-progress-${progressBucket(model.achievements.nextProgressPercent)}`} />
           </div>
         </article>
@@ -152,7 +152,7 @@ function ProgressReportPreview({ model }) {
           <div className="report-photo-preview">
             {model.photos.items.filter((photo) => photo.dataUrl || photo.url || photo.src).map((photo) => (
               <figure key={photo.id}>
-                <img alt={`Progressbild fran ${photo.createdAt || photo.date || 'okant datum'}`} src={photo.dataUrl || photo.url || photo.src} />
+                <img alt={`Progressbild från ${photo.createdAt || photo.date || 'okänt datum'}`} src={photo.dataUrl || photo.url || photo.src} />
                 <figcaption>{photo.createdAt || photo.date || 'Datum saknas'} · {photo.weightLabel || 'Vikt saknas'}</figcaption>
               </figure>
             ))}
@@ -311,7 +311,7 @@ function ReportCenter({
       </div>
 
       <div className="report-v3-card report-center-privacy">
-        <h3>Privacy fore export</h3>
+        <h3>Integritet före export</h3>
         <p>{model.privacy.text}</p>
         <ul className="report-v3-list">
           {model.privacy.excludes.map((item) => <li key={item}>{item}</li>)}

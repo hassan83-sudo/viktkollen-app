@@ -472,7 +472,7 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
       }
 
       const shouldImport = window.confirm(
-        `Backupen innehåller ${validation.payload.metadata.storageKeyCount} datadelar och är cirka ${formatBackupSize(validation.payload.metadata.sizeBytes)}. Detta kommer att ers?tta din lokala data med innehållet i JSON-filen. En lokal ångra-backup skapas först. Vill du fortsätta?`,
+        `Backupen innehåller ${validation.payload.metadata.storageKeyCount} datadelar och är cirka ${formatBackupSize(validation.payload.metadata.sizeBytes)}. Detta kommer att ersätta din lokala data med innehållet i JSON-filen. En lokal ångra-backup skapas först. Vill du fortsätta?`,
       )
 
       if (!shouldImport) {

@@ -43,9 +43,9 @@ function Login({ authError, authProvider, onLogin }) {
     <main className="login-shell">
       <section className="login-card">
         <p className="eyebrow">Version 2</p>
-        <h1>PluggArena</h1>
+        <h1>Viktkollen</h1>
         <p className="subtitle">
-          Logga in med e-post, samla XP och plugga med ditt squad.
+          Logga in med e-post och fortsätt följa din vikt, nutrition och vardagsprogress.
         </p>
         <div className="auth-tabs" aria-label="Välj auth-läge">
           <button
@@ -105,7 +105,7 @@ function Login({ authError, authProvider, onLogin }) {
         <p className="auth-note">
           {authProvider === 'supabase'
             ? 'Supabase Auth är aktivt.'
-            : 'Supabase-nycklar saknas, så PluggArena sparar lokalt i den här webbläsaren.'}
+            : 'Supabase-nycklar saknas, så Viktkollen sparar lokalt i den här webbläsaren.'}
         </p>
         {(formError || authError) && (
           <p className="auth-error">{formError || authError}</p>

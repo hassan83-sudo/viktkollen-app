@@ -6962,6 +6962,185 @@ html {
   transform: translateY(1px);
 }
 
+.weekly-progress-card {
+  display: grid;
+  gap: 16px;
+  margin: -4px 0 20px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: 0 12px 32px rgba(0,0,0,.08);
+  animation: dashboard-fade-up 560ms ease both;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.weekly-progress-card:hover {
+  border-color: rgba(22, 139, 156, 0.28);
+  box-shadow: 0 16px 38px rgba(55, 75, 96, 0.13);
+  transform: translateY(-2px);
+}
+
+.weekly-progress-heading,
+.weekly-progress-summary,
+.weekly-progress-days {
+  min-width: 0;
+}
+
+.weekly-progress-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.weekly-progress-heading h2 {
+  margin: 4px 0 0;
+  font-size: 1.35rem;
+}
+
+.weekly-progress-heading > span {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border: 1px solid rgba(22, 139, 156, 0.18);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.weekly-progress-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.weekly-progress-summary div,
+.weekly-progress-days li,
+.weekly-progress-empty {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--soft-bg);
+}
+
+.weekly-progress-summary div {
+  min-width: 0;
+  padding: 12px;
+}
+
+.weekly-progress-summary span,
+.weekly-progress-days span,
+.weekly-progress-empty span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.weekly-progress-summary strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-h);
+  font-size: 1.2rem;
+  overflow-wrap: anywhere;
+}
+
+.weekly-progress-toggle {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.weekly-progress-toggle button {
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--soft-bg);
+  color: var(--text);
+  box-shadow: none;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.weekly-progress-toggle button.is-active {
+  border-color: rgba(22, 139, 156, 0.42);
+  background: var(--accent);
+  color: #fff;
+}
+
+.weekly-progress-chart {
+  min-height: 150px;
+  padding: 14px;
+  border: 1px solid rgba(22, 139, 156, 0.18);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(22, 139, 156, 0.08), transparent),
+    var(--surface);
+}
+
+.weekly-progress-chart svg {
+  display: block;
+  width: 100%;
+  height: 126px;
+  overflow: visible;
+}
+
+.weekly-progress-chart polyline {
+  fill: none;
+  stroke: var(--accent);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 4;
+}
+
+.weekly-progress-chart circle {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
+.weekly-progress-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.weekly-progress-days li {
+  min-width: 0;
+  padding: 10px 8px;
+  text-align: center;
+}
+
+.weekly-progress-days strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-h);
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
+.weekly-progress-empty {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+}
+
+.weekly-progress-empty strong {
+  color: var(--text-h);
+}
+
+.weekly-progress-empty.compact {
+  min-height: 118px;
+  align-content: center;
+}
+
 @media (max-width:700px){
 
 .daily-progress-card{
@@ -6970,6 +7149,10 @@ html {
 
 .daily-coach-card {
   margin-top: -4px;
+  padding: 16px;
+}
+
+.weekly-progress-card {
   padding: 16px;
 }
 
@@ -6993,6 +7176,18 @@ html {
 
 .daily-coach-callout {
   padding: 14px;
+}
+
+.weekly-progress-summary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.weekly-progress-toggle {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.weekly-progress-days {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .daily-progress-item{
@@ -7067,17 +7262,36 @@ html {
   }
 
   .daily-progress-heading,
-  .daily-coach-heading {
+  .daily-coach-heading,
+  .weekly-progress-heading {
     gap: 12px;
   }
 
   .daily-progress-card,
-  .daily-coach-card {
+  .daily-coach-card,
+  .weekly-progress-card {
     border-radius: 18px;
+  }
+
+  .weekly-progress-heading {
+    flex-direction: column;
+  }
+
+  .weekly-progress-heading > span {
+    align-self: flex-start;
   }
 
   .daily-progress-grid {
     grid-template-columns: 1fr;
+  }
+
+  .weekly-progress-summary,
+  .weekly-progress-toggle {
+    grid-template-columns: 1fr;
+  }
+
+  .weekly-progress-days {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .daily-progress-score {
@@ -7085,7 +7299,11 @@ html {
   }
 
   .daily-progress-item,
-  .daily-coach-callout {
+  .daily-coach-callout,
+  .weekly-progress-summary div,
+  .weekly-progress-chart,
+  .weekly-progress-days li,
+  .weekly-progress-empty {
     border-radius: 14px;
   }
 }
@@ -7096,6 +7314,7 @@ html {
   .dashboard-card,
   .daily-progress-card,
   .daily-coach-card,
+  .weekly-progress-card,
   .progress-bar-fill {
     animation: none;
     transition: none;
@@ -7104,7 +7323,8 @@ html {
   .dashboard-hero:hover,
   .dashboard-card:hover,
   .daily-progress-card:hover,
-  .daily-coach-card:hover {
+  .daily-coach-card:hover,
+  .weekly-progress-card:hover {
     transform: none;
   }
 }

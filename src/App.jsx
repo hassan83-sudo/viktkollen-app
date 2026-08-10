@@ -11,6 +11,7 @@ import AppLoadingScreen from './components/app/AppLoadingScreen.jsx'
 import AppTopbar from './components/app/AppTopbar.jsx'
 import DailyCoachCard from './components/app/DailyCoachCard.jsx'
 import DailyProgressCard from './components/app/DailyProgressCard.jsx'
+import WeeklyProgressSection from './components/app/WeeklyProgressSection.jsx'
 import BottomNavigation from './components/app/BottomNavigation.jsx'
 import LazySectionFallback from './components/app/LazySectionFallback.jsx'
 import OnboardingScreen from './components/app/OnboardingScreen.jsx'
@@ -2864,6 +2865,14 @@ function App() {
   proteinGoal={dailyNutritionSummary?.proteinGoal ?? nutritionGoals?.protein}
   proteinToday={dailyNutritionSummary?.totals?.protein}
   steps={checkIn?.steps}
+/>
+<WeeklyProgressSection
+  checkIn={checkIn}
+  foods={foods}
+  healthSnapshot={healthSnapshot}
+  meals={meals}
+  nutritionGoals={nutritionGoals}
+  selectedDate={selectedMealDate}
 />
 
       <HomeSection

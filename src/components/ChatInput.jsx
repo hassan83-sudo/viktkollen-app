@@ -11,7 +11,7 @@ function ChatInput({
     : 'Starta röstsamtal'
 
   return (
-    <form className="chat-form" onSubmit={onSendChatMessage}>
+    <form className={`chat-form ${isVoiceConversationActive ? 'voice-conversation-active' : ''}`} onSubmit={onSendChatMessage}>
       <input
         type="text"
         value={chatInput}

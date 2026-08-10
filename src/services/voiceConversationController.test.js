@@ -54,9 +54,11 @@ function makeController(overrides = {}) {
     })),
   }
   const onTranscript = overrides.onTranscript || vi.fn(async () => {})
+  const speechSynthesis = overrides.speechSynthesis || { cancel: vi.fn() }
   const controller = createVoiceConversationController({
     getMediaDevices: () => mediaDevices,
     getScope: () => overrides.scope || { SpeechRecognition: Recognition },
+    getSpeechSynthesis: () => speechSynthesis,
     hostname: () => overrides.hostname || 'localhost',
     isSecureContext: () => overrides.secureContext ?? true,
     onTranscript,
@@ -73,6 +75,7 @@ function makeController(overrides = {}) {
     mediaDevices,
     onTranscript,
     Recognition,
+    speechSynthesis,
     status,
   }
 }
@@ -114,7 +117,7 @@ describe('voiceConversationController', () => {
     expect(status).toContain('AI svarar...')
 
     response.resolve()
-    await vi.advanceTimersByTimeAsync(260)
+    await vi.advanceTimersByTimeAsync(510)
 
     expect(Recognition.instances).toHaveLength(2)
     expect(status.at(-1)).toBe('Lyssnar...')
@@ -125,7 +128,7 @@ describe('voiceConversationController', () => {
 
     await controller.start()
     await vi.advanceTimersByTimeAsync(15000)
-    await vi.advanceTimersByTimeAsync(360)
+    await vi.advanceTimersByTimeAsync(460)
 
     expect(status).toContain('Jag hör inget. Vill du fortsätta?')
     expect(Recognition.instances).toHaveLength(2)
@@ -163,21 +166,52 @@ describe('voiceConversationController', () => {
 
     await controller.start()
     Recognition.instances[0].emit('error', { error: 'network' })
-    await vi.advanceTimersByTimeAsync(510)
+    await vi.advanceTimersByTimeAsync(610)
 
     expect(status).toContain('Röstinmatningen startas om automatiskt.')
     expect(Recognition.instances).toHaveLength(2)
   })
 
   it('stops the conversation without restarting', async () => {
-    const { active, controller, Recognition, status } = makeController()
+    const { active, controller, Recognition, speechSynthesis, status } = makeController()
 
     await controller.start()
     controller.stop()
     await vi.advanceTimersByTimeAsync(16000)
 
     expect(active).toEqual([true, false])
-    expect(status.at(-1)).toBe('Samtalet avslutades.')
+    expect(status.at(-1)).toBe('')
+    expect(Recognition.instances).toHaveLength(1)
+    expect(speechSynthesis.cancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps AI status visible before restarting after a very fast response', async () => {
+    const { controller, Recognition, status } = makeController()
+
+    await controller.start()
+    Recognition.instances[0].emitResult('Hej')
+    await vi.advanceTimersByTimeAsync(90)
+    await vi.advanceTimersByTimeAsync(180)
+    await vi.advanceTimersByTimeAsync(320)
+
+    expect(status).toEqual(expect.arrayContaining(['Bearbetar...', 'AI svarar...', 'Lyssnar...']))
+    expect(Recognition.instances).toHaveLength(2)
+  })
+
+  it('clears pending callbacks when stopped during response handling', async () => {
+    const response = deferred()
+    const { controller, Recognition, status } = makeController({
+      onTranscript: vi.fn(() => response.promise),
+    })
+
+    await controller.start()
+    Recognition.instances[0].emitResult('Protein?')
+    await vi.advanceTimersByTimeAsync(90)
+    controller.stop()
+    response.resolve()
+    await vi.advanceTimersByTimeAsync(1000)
+
+    expect(status.at(-1)).toBe('')
     expect(Recognition.instances).toHaveLength(1)
   })
 

@@ -27,7 +27,7 @@ import {
   listGeneratedPlanRecipeNames,
   categorizeShoppingListItems,
 } from '../nutrition/nutritionEngine.js'
-import { getIntentSourceText } from './coachConversation.js'
+import { getLastAssistantMessage, getLastDiscussedTopic, getRecentConversationText, getIntentSourceText } from './coachConversation.js'
 import { buildAiCoachFacts, hasRecentAdvice } from './coachFacts.js'
 import { identifyAiCoachIntents } from './coachIntentDetector.js'
 import { hasUnsafeOutput, includesAny, normalizeAiCoachText } from './coachText.js'
@@ -1106,6 +1106,7 @@ function makeFocusReply(facts) {
 
 function makeSmalltalkReply(facts, message) {
   const normalized = normalizeAiCoachText(message)
+  const latestReply = normalizeAiCoachText(facts.latestCoachReply || '').plain
 
   if (normalized.plain === 'tack' || normalized.plain === 'tackar') {
     return 'Varsågod. Jag håller mig kort och hjälper dig ta nästa rimliga steg.'
@@ -1131,7 +1132,11 @@ function makeSmalltalkReply(facts, message) {
     return 'Bra. Då tar vi nästa steg när du vill.'
   }
 
-  return 'Hej. Vad vill du kolla först: vikt, mat, träning eller motivation?'
+  if (latestReply.includes('hur kan jag hjalpa') || latestReply.includes('vad vill du kolla')) {
+    return 'Jag är kvar. Vad vill du ta nästa?'
+  }
+
+  return 'Hej! Hur kan jag hjälpa dig idag?'
 }
 
 function makeClarifyReply(facts, message) {
@@ -1269,6 +1274,47 @@ function limitIntents(intents) {
   return intents.slice(0, 9)
 }
 
+function isGreeting(message) {
+  const text = normalizeAiCoachText(message).plain
+
+  return ['hej', 'hejsan', 'hallå', 'halla', 'god morgon', 'god kväll', 'god kvall'].includes(text)
+}
+
+function historyHasGreeting(chatHistory = []) {
+  const history = Array.isArray(chatHistory) ? chatHistory : []
+  const userGreetingCount = history
+    .filter((entry) => entry?.role === 'user' && isGreeting(entry.text || ''))
+    .length
+  const assistantHasGreeted = history
+    .some((entry) => entry?.role === 'assistant' && normalizeAiCoachText(entry.text || '').plain.includes('hur kan jag hjalpa'))
+
+  return userGreetingCount > 1 || assistantHasGreeted
+}
+
+function makeConversationFallback(message, chatHistory = []) {
+  const lastAssistant = getLastAssistantMessage(chatHistory)
+  const repeatedIntro = normalizeAiCoachText(lastAssistant || '').plain.includes('vill du att vi fokuserar')
+  const topic = getLastDiscussedTopic(chatHistory)
+
+  if (isGreeting(message)) {
+    return historyHasGreeting(chatHistory)
+      ? 'Jag är kvar. Vad vill du ta nästa?'
+      : 'Hej! Hur kan jag hjälpa dig idag?'
+  }
+
+  if (topic === 'food') return 'Jag följer med. Vill du att jag kopplar svaret till senaste måltiden eller dagens mål?'
+  if (topic === 'weight') return 'Jag följer viktspåret. Säg om du vill titta på nuläge, trend eller nästa steg.'
+  if (topic === 'training') return 'Jag följer träningsspåret. Vill du ha ett kort råd för steg, pass eller återhämtning?'
+  if (topic === 'sleep') return 'Jag följer sömnspåret. Vill du ha ett konkret nästa steg för ikväll?'
+  if (topic === 'motivation') return 'Jag följer motivationen. Vill du ha en liten åtgärd för idag?'
+
+  if (repeatedIntro || getRecentConversationText(chatHistory, 4)) {
+    return 'Jag är med. Säg vad du vill ta nästa så svarar jag direkt.'
+  }
+
+  return 'Jag är med. Vill du att vi fokuserar på mat, vikt, träning, sömn eller motivation just nu?'
+}
+
 export function createDeterministicAiCoachReply({
   context = {},
   intent = {},
@@ -1289,7 +1335,7 @@ export function createDeterministicAiCoachReply({
       : []
 
   if (resolvedIntents.length === 0) {
-    return 'Jag är med. Vill du att vi fokuserar på mat, vikt, träning, sömn eller motivation just nu?'
+    return makeConversationFallback(message, chatHistory)
   }
 
   const facts = buildAiCoachFacts({
@@ -1301,5 +1347,5 @@ export function createDeterministicAiCoachReply({
   )
 
   return mergeReplies(replies) ||
-    'Jag är med. Kan du skriva frågan lite mer konkret så svarar jag kort?'
+    makeConversationFallback(message, chatHistory)
 }

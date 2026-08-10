@@ -18,6 +18,7 @@ describe('ChatInput voice conversation UI', () => {
     expect(markup).toContain('type="button"')
     expect(markup).toContain('aria-label="Avsluta samtal"')
     expect(markup).toContain('Avsluta samtal')
+    expect(markup).toContain('voice-conversation-active')
     expect(markup).toContain('conversation-active')
   })
 

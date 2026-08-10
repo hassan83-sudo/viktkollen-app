@@ -6047,7 +6047,32 @@ button.secondary-button:focus-visible,
   }
 
   .chat-form {
-    grid-template-columns: minmax(0, 1fr) 48px 64px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .chat-form input {
+    flex: 1 1 150px;
+    min-width: 0;
+  }
+
+  .chat-form .mic-button {
+    flex: 0 0 48px;
+  }
+
+  .chat-form .send-button {
+    flex: 0 0 84px;
+  }
+
+  .chat-form.voice-conversation-active input {
+    flex-basis: 100%;
+  }
+
+  .chat-form.voice-conversation-active .mic-button,
+  .chat-form.voice-conversation-active .send-button {
+    flex: 1 1 120px;
   }
 
   .chat-thread {
@@ -6385,7 +6410,7 @@ button.secondary-button:focus-visible,
   }
 
   .chat-form {
-    grid-template-columns: 1fr;
+    display: flex;
   }
 }
   

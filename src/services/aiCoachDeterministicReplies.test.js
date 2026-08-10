@@ -76,6 +76,38 @@ function sentences(text) {
 }
 
 describe('AI Coach deterministic V3 regression', () => {
+  it('uses conversation history so greeting fallback is not repeated', () => {
+    const first = reply('Hej')
+    const history = [
+      { role: 'user', text: 'Hej' },
+      { role: 'assistant', text: first },
+    ]
+    const second = reply('Hej', history)
+
+    expect(first).toContain('Hur kan jag hjälpa dig idag?')
+    expect(second).not.toContain('Hur kan jag hjälpa dig idag?')
+    expect(second).toContain('Jag är kvar')
+  })
+
+  it('does not treat the pending greeting as a previous greeting', () => {
+    const response = reply('Hej', [{ role: 'user', text: 'Hej' }])
+
+    expect(response).toContain('Hur kan jag hjälpa dig idag?')
+  })
+
+  it('answers follow-up nutrition questions without repeating the greeting intro', () => {
+    const greeting = reply('Hej')
+    const response = reply('Hur mycket protein behöver jag?', [
+      { role: 'user', text: 'Hej' },
+      { role: 'assistant', text: greeting },
+      { role: 'user', text: 'Hur mycket protein behöver jag?' },
+    ])
+
+    expect(response.toLocaleLowerCase('sv-SE')).toContain('protein')
+    expect(response).not.toContain('Hur kan jag hjälpa dig idag?')
+    expect(response).not.toContain('Vill du att vi fokuserar')
+  })
+
   it('builds shared weight facts from app data', () => {
     const facts = buildAiCoachFacts(coachContext)
 
@@ -185,7 +217,7 @@ describe('AI Coach deterministic V3 regression', () => {
   })
 
   it('handles hello as smalltalk', () => {
-    expect(reply('hej')).toContain('Hej.')
+    expect(reply('hej')).toContain('Hej! Hur kan jag hjälpa dig idag?')
   })
 
   it('handles thanks as smalltalk', () => {

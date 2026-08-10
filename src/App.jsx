@@ -724,7 +724,17 @@ Handla: ägg, kyckling/tonfisk, linser/bönor, potatis/ris och frysta grönsaker
   }
 
   if (/^(hej|hejsan|hallå|tjena|god morgon|god kväll)[!.\s]*$/i.test(message.trim())) {
-    return 'Hej! Hur kan jag hjälpa dig idag?'
+    const greetingCount = chatHistory.filter((entry) =>
+      entry?.role === 'user' &&
+      /^(hej|hejsan|hallå|tjena|god morgon|god kväll)[!.\s]*$/i.test(String(entry.text || '').trim()),
+    ).length
+    const assistantHasGreeted = chatHistory.some((entry) =>
+      entry?.role === 'assistant' &&
+      String(entry.text || '').toLocaleLowerCase('sv-SE').includes('hur kan jag hjälpa'),
+    )
+    const hasGreeted = greetingCount > 1 || assistantHasGreeted
+
+    return hasGreeted ? 'Jag är kvar. Vad vill du ta nästa?' : 'Hej! Hur kan jag hjälpa dig idag?'
   }
 
   const { makePersonalCoachReply } = await import('./lib/coachReply.js')
@@ -2575,6 +2585,7 @@ function App() {
     voiceConversationRef.current = createVoiceConversationController({
       onTranscript: async (transcript) => {
         setChatInput(transcript)
+        setChatInput('')
         await sendChatText(transcript)
       },
       setActive: setIsVoiceConversationActive,

@@ -1,10 +1,18 @@
 import { useMemo, useState } from 'react'
 import {
   readDietaryPreferences,
+  readMealPlans,
   readMealTemplates,
   readRecipes,
+  readShoppingLists,
 } from '../../services/nutrition/nutritionEngine.js'
-import { buildDailyMealPlannerModel } from '../../services/nutrition/dailyMealPlanner.js'
+import {
+  buildDailyMealPlannerModel,
+  buildDailyMealPlannerSaveState,
+  buildWeeklyShoppingGroups,
+  saveDailyMealPlanToWeek,
+  updateWeeklyShoppingListFromPlan,
+} from '../../services/nutrition/dailyMealPlanner.js'
 
 const mealIcons = {
   Frukost: '🥣',
@@ -23,6 +31,10 @@ function DailyMealPlannerCard({
   nutritionGoals = {},
 }) {
   const [variant, setVariant] = useState(0)
+  const [mealPlans, setMealPlans] = useState(() => readMealPlans())
+  const [shoppingLists, setShoppingLists] = useState(() => readShoppingLists())
+  const [pendingSave, setPendingSave] = useState(false)
+  const [status, setStatus] = useState('')
   const localNutritionData = useMemo(() => ({
     dietaryPreferences: readDietaryPreferences(),
     recipes: readRecipes(),
@@ -37,6 +49,47 @@ function DailyMealPlannerCard({
     templates: localNutritionData.templates,
     variant,
   }), [date, localNutritionData, meals, nutritionGoals, variant])
+  const saveState = useMemo(() => buildDailyMealPlannerSaveState({
+    date,
+    mealPlans,
+    nutritionGoals,
+  }), [date, mealPlans, nutritionGoals])
+  const shoppingGroups = useMemo(
+    () => buildWeeklyShoppingGroups({
+      shoppingLists,
+      week: saveState.week,
+    }),
+    [saveState.week, shoppingLists],
+  )
+  const displayShoppingGroups = saveState.weekSummary.mealCount ? shoppingGroups : model.shoppingGroups
+
+  function persistPlan(mode = 'replace') {
+    const saved = saveDailyMealPlanToWeek({
+      date,
+      mealPlans,
+      mode,
+      model,
+    })
+    const shopping = updateWeeklyShoppingListFromPlan({
+      shoppingLists,
+      week: saved.week,
+    })
+
+    setMealPlans(saved.plans)
+    setShoppingLists(shopping.lists)
+    setPendingSave(false)
+    setStatus(mode === 'append' ? 'Planen sparades och befintliga måltider behölls.' : 'Planen sparades till veckoplanen.')
+  }
+
+  function requestSave() {
+    if (saveState.dayHasPlan && !saveState.saved) {
+      setPendingSave(true)
+      setStatus('Det finns redan en plan för dagen. Välj om den ska ersättas eller behållas.')
+      return
+    }
+
+    persistPlan('replace')
+  }
 
   return (
     <section className="daily-meal-planner-card" aria-labelledby="daily-meal-planner-title">
@@ -50,16 +103,39 @@ function DailyMealPlannerCard({
               : 'Balanserad standardplan tills mer historik finns.'}
           </span>
         </div>
-        <button type="button" onClick={() => setVariant((current) => current + 1)}>
-          Generera ny plan
-        </button>
+        <div className="daily-meal-planner-actions">
+          <span className={saveState.saved ? 'is-saved' : 'is-unsaved'}>
+            {saveState.saved ? 'Dagens plan sparad' : 'Inte sparad'}
+          </span>
+          <button type="button" onClick={() => setVariant((current) => current + 1)}>
+            Generera ny plan
+          </button>
+          <button className="secondary-button" type="button" onClick={requestSave}>
+            Spara till veckoplan
+          </button>
+        </div>
       </div>
 
+      {status && <p className="nutrition-edit-status" role="status" aria-live="polite">{status}</p>}
+
+      {pendingSave && (
+        <div className="daily-meal-save-choice" role="group" aria-label="Spara AI-plan">
+          <span>Dagen har redan planerade måltider.</span>
+          <button type="button" onClick={() => persistPlan('replace')}>Ersätt</button>
+          <button className="secondary-button" type="button" onClick={() => persistPlan('append')}>Behåll</button>
+        </div>
+      )}
+
       <div className="daily-meal-planner-summary" aria-label="Planens totalsumma">
-        <div><span>Kalorier</span><strong>{formatMacro(model.summary.calories, 'kcal')}</strong></div>
-        <div><span>Protein</span><strong>{formatMacro(model.summary.protein, 'g')}</strong></div>
-        <div><span>Kolhydrater</span><strong>{formatMacro(model.summary.carbs, 'g')}</strong></div>
-        <div><span>Fett</span><strong>{formatMacro(model.summary.fat, 'g')}</strong></div>
+        <div><span>Kalorier per dag</span><strong>{formatMacro(model.summary.calories, 'kcal')}</strong></div>
+        <div><span>Protein per dag</span><strong>{formatMacro(model.summary.protein, 'g')}</strong></div>
+        <div><span>Kalorier vecka</span><strong>{formatMacro(saveState.weekTotals.calories, 'kcal')}</strong></div>
+        <div><span>Protein vecka</span><strong>{formatMacro(saveState.weekTotals.protein, 'g')}</strong></div>
+      </div>
+
+      <div className="daily-meal-week-summary">
+        <span>{saveState.weekSummary.plannedDayCount}/7 dagar planerade</span>
+        <span>{saveState.weekSummary.proteinGoalDays}/{saveState.weekSummary.plannedDayCount || 0} dagar når proteinmålet</span>
       </div>
 
       <div className="daily-meal-grid">
@@ -88,7 +164,7 @@ function DailyMealPlannerCard({
           <h3>Inköpslista</h3>
         </div>
         <div className="daily-shopping-groups">
-          {model.shoppingGroups.map((group) => (
+          {displayShoppingGroups.map((group) => (
             <section key={group.category}>
               <h4>{group.category}</h4>
               <ul>

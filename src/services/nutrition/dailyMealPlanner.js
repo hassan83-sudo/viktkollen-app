@@ -1,9 +1,17 @@
 import {
+  buildPlannedDaySummary,
+  buildPlannedWeekSummary,
+  buildShoppingListFromMealPlan,
   categorizeShoppingListItems,
   generateDayMealPlan,
   generatedMealTypes,
   generatedPlanToShoppingList,
+  getMealPlanWeek,
+  getMealPlanWeekStart,
   normalizeNutritionGoals,
+  updateShoppingListFromMealPlan,
+  writeMealPlans,
+  writeShoppingLists,
 } from './nutritionEngine.js'
 
 const defaultMealTemplates = [
@@ -155,6 +163,132 @@ function buildShoppingGroups(plan) {
   return categorizeShoppingListItems(items)
 }
 
+function dashboardMealToPlannedMeal(meal, date, now = new Date().toISOString()) {
+  return {
+    createdAt: now,
+    date,
+    id: `ai-daily-${date}-${meal.mealType}-${now}`.replace(/[^\w-]/g, '-'),
+    ingredients: meal.ingredients,
+    mealType: meal.mealType,
+    notes: 'Sparad från AI Meal Planner.',
+    nutritionPreview: {
+      calories: meal.calories,
+      carbs: meal.carbs,
+      fat: meal.fat,
+      protein: meal.protein,
+    },
+    scheduledTime: meal.mealType === 'Frukost'
+      ? '08:00'
+      : meal.mealType === 'Lunch'
+        ? '12:00'
+        : meal.mealType === 'Middag'
+          ? '18:00'
+          : '15:00',
+    sourceId: `ai-daily-plan-${date}`,
+    sourceType: 'custom',
+    text: meal.ingredients.join(', '),
+    title: meal.name,
+    updatedAt: now,
+  }
+}
+
+function replaceDay(week, date, meals) {
+  return {
+    ...week,
+    days: {
+      ...week.days,
+      [date]: meals,
+    },
+  }
+}
+
+function appendDay(week, date, meals) {
+  return {
+    ...week,
+    days: {
+      ...week.days,
+      [date]: [...(week.days[date] || []), ...meals],
+    },
+  }
+}
+
+export function saveDailyMealPlanToWeek({
+  date,
+  mealPlans = {},
+  model,
+  mode = 'replace',
+  now = new Date().toISOString(),
+} = {}) {
+  const weekStart = getMealPlanWeekStart(date)
+  const week = getMealPlanWeek(mealPlans, weekStart)
+  const plannedMeals = safeArray(model?.meals).map((meal) => dashboardMealToPlannedMeal(meal, date, now))
+  const nextWeek = mode === 'append'
+    ? appendDay(week, date, plannedMeals)
+    : replaceDay(week, date, plannedMeals)
+  const savedPlans = writeMealPlans({
+    ...mealPlans,
+    weeks: {
+      ...(mealPlans.weeks || {}),
+      [weekStart]: nextWeek,
+    },
+  })
+
+  return {
+    plans: savedPlans,
+    week: getMealPlanWeek(savedPlans, weekStart),
+    weekStart,
+  }
+}
+
+export function updateWeeklyShoppingListFromPlan({
+  shoppingLists = {},
+  week,
+  now = new Date().toISOString(),
+} = {}) {
+  const result = updateShoppingListFromMealPlan(shoppingLists, week, now)
+  const lists = writeShoppingLists(result.lists)
+
+  return {
+    ...result,
+    groups: categorizeShoppingListItems(result.list.items),
+    lists,
+  }
+}
+
+export function buildWeeklyShoppingGroups({ shoppingLists = {}, week } = {}) {
+  const weekStart = week?.weekStart || getMealPlanWeekStart()
+  const previous = shoppingLists.weeks?.[weekStart] || null
+  const list = buildShoppingListFromMealPlan(week, previous)
+
+  return categorizeShoppingListItems(list.items)
+}
+
+export function buildDailyMealPlannerSaveState({ date, mealPlans = {}, nutritionGoals = {} } = {}) {
+  const weekStart = getMealPlanWeekStart(date)
+  const week = getMealPlanWeek(mealPlans, weekStart)
+  const dayMeals = week.days[date] || []
+  const savedSourceId = `ai-daily-plan-${date}`
+  const daySummary = buildPlannedDaySummary(dayMeals, nutritionGoals)
+  const weekSummary = buildPlannedWeekSummary(week, nutritionGoals)
+  const weekTotals = weekSummary.days.reduce(
+    (sum, day) => ({
+      calories: round(sum.calories + safeNumber(day.totals?.calories)),
+      protein: round(sum.protein + safeNumber(day.totals?.protein)),
+    }),
+    { calories: 0, protein: 0 },
+  )
+
+  return {
+    dayHasPlan: dayMeals.length > 0,
+    daySummary,
+    saved: dayMeals.some((meal) => meal.sourceId === savedSourceId),
+    week,
+    weekStart,
+    weekSummary,
+    weekTotals,
+  }
+}
+
 export function buildDailyMealPlannerModel({
   date,
   dietaryPreferences = {},
@@ -202,6 +336,7 @@ export function buildDailyMealPlannerModel({
   }
 
   return {
+    dashboardPlan,
     generatedFromHistory: safeArray(meals).length > 0 || safeArray(recipes).length > 0 || safeArray(templates).length > 0,
     meals: dashboardMeals,
     shoppingGroups: buildShoppingGroups(dashboardPlan),

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { buildDailyMealPlannerModel } from './dailyMealPlanner.js'
+import {
+  buildDailyMealPlannerModel,
+  buildDailyMealPlannerSaveState,
+  buildWeeklyShoppingGroups,
+  saveDailyMealPlanToWeek,
+  updateWeeklyShoppingListFromPlan,
+} from './dailyMealPlanner.js'
+import { getMealPlanWeek } from './nutritionEngine.js'
 
 describe('dailyMealPlanner', () => {
   it('builds a four meal fallback plan from nutrition goals', () => {
@@ -26,5 +33,49 @@ describe('dailyMealPlanner', () => {
     expect(model.generatedFromHistory).toBe(true)
     expect(model.meals).toHaveLength(4)
     expect(model.shoppingGroups.flatMap((group) => group.items).length).toBeGreaterThan(0)
+  })
+
+  it('saves and replaces the selected day in existing weekly meal plans', () => {
+    const date = '2026-08-10'
+    const model = buildDailyMealPlannerModel({ date, nutritionGoals: { calories: 2100, protein: 130 } })
+    const first = saveDailyMealPlanToWeek({ date, model, now: '2026-08-10T08:00:00.000Z' })
+    const replaced = saveDailyMealPlanToWeek({
+      date,
+      mealPlans: first.plans,
+      model,
+      mode: 'replace',
+      now: '2026-08-10T09:00:00.000Z',
+    })
+    const dayMeals = getMealPlanWeek(replaced.plans, replaced.weekStart).days[date]
+
+    expect(dayMeals).toHaveLength(4)
+    expect(dayMeals.every((meal) => meal.sourceId === `ai-daily-plan-${date}`)).toBe(true)
+  })
+
+  it('can keep existing meals by appending and builds weekly shopping groups', () => {
+    const date = '2026-08-10'
+    const model = buildDailyMealPlannerModel({ date, nutritionGoals: { calories: 2100, protein: 130 } })
+    const first = saveDailyMealPlanToWeek({ date, model, now: '2026-08-10T08:00:00.000Z' })
+    const appended = saveDailyMealPlanToWeek({
+      date,
+      mealPlans: first.plans,
+      model,
+      mode: 'append',
+      now: '2026-08-10T09:00:00.000Z',
+    })
+    const groups = buildWeeklyShoppingGroups({ week: appended.week })
+    const shopping = updateWeeklyShoppingListFromPlan({ week: appended.week })
+    const state = buildDailyMealPlannerSaveState({
+      date,
+      mealPlans: appended.plans,
+      nutritionGoals: { calories: 2100, protein: 130 },
+    })
+
+    expect(appended.week.days[date]).toHaveLength(8)
+    expect(groups.flatMap((group) => group.items).length).toBeGreaterThan(0)
+    expect(shopping.list.items.length).toBeGreaterThan(0)
+    expect(state.saved).toBe(true)
+    expect(state.weekTotals.calories).toBeGreaterThan(0)
+    expect(state.weekTotals.protein).toBeGreaterThan(0)
   })
 })

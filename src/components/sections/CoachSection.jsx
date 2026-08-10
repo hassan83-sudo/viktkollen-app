@@ -217,6 +217,7 @@ function CoachSection({
           goalsHabits={goalsHabits}
           healthSnapshot={healthSnapshot}
           meals={meals}
+          nutritionGoals={nutritionGoals}
           onGoalsHabitsChange={onGoalsHabitsChange}
           profile={profile}
           reminderState={reminderState}

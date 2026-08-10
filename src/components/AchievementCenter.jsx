@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { appendAchievementEvents, normalizeAchievementState } from '../services/achievements/achievementLedger.js'
 import { buildAchievementEngine } from '../services/achievements/achievementEngine.js'
 import { normalizeGoalsHabitsState } from '../services/goalsHabits.js'
@@ -17,21 +17,70 @@ function ProgressBar({ label, value }) {
   )
 }
 
+const achievementFilters = [
+  { id: 'all', label: 'Alla' },
+  { id: 'weightProgress', label: 'Vikt' },
+  { id: 'consistency', label: 'Konsekvens' },
+  { id: 'nutrition', label: 'Nutrition' },
+  { id: 'activity', label: 'Aktivitet' },
+]
+
+const categoryLabels = {
+  activity: 'Aktivitet',
+  appMilestones: 'App',
+  checkIns: 'Check-in',
+  coaching: 'Coach',
+  consistency: 'Konsekvens',
+  dataQuality: 'Data',
+  goals: 'Mål',
+  habits: 'Vanor',
+  nutrition: 'Nutrition',
+  planning: 'Planering',
+  weightProgress: 'Vikt',
+}
+
+function formatAchievementDate(value) {
+  if (!value) return ''
+
+  const date = new Date(value.includes('T') ? value : `${value}T12:00:00`)
+
+  if (Number.isNaN(date.getTime())) return ''
+
+  return new Intl.DateTimeFormat('sv-SE', {
+    day: 'numeric',
+    month: 'short',
+  }).format(date)
+}
+
 function AchievementCard({ achievement, onAcknowledge }) {
+  const locked = achievement.status === 'locked'
+  const newlyUnlocked = achievement.status === 'unlocked' && !achievement.acknowledged
+
   return (
-    <article className={`achievement-card achievement-card-${achievement.status}`}>
+    <article
+      aria-label={`${achievement.title}, ${locked ? 'låst' : 'upplåst'}`}
+      className={`achievement-card achievement-card-${achievement.status}${newlyUnlocked ? ' achievement-card-new' : ''}`}
+    >
       <div>
-        <p className="eyebrow">{achievement.category}</p>
+        <p className="eyebrow">{categoryLabels[achievement.category] || achievement.category}</p>
         <h3>{achievement.title}</h3>
         <p>{achievement.description}</p>
       </div>
       <ProgressBar label={achievement.title} value={achievement.progressPercent} />
       <div className="achievement-card-footer">
         <span>{achievement.progress} av {achievement.target} {achievement.unit}</span>
-        <strong>{achievement.xp} XP</strong>
+        <strong>{locked ? 'Låst' : `${achievement.xp} XP`}</strong>
       </div>
+      {achievement.unlockedAt && (
+        <small>Upplåst {formatAchievementDate(achievement.unlockedAt)}</small>
+      )}
       {achievement.status === 'unlocked' && !achievement.acknowledged && (
-        <button className="secondary-button" type="button" onClick={() => onAcknowledge(achievement.definitionId)}>
+        <button
+          aria-label={`Markera ${achievement.title} som sedd`}
+          className="secondary-button"
+          type="button"
+          onClick={() => onAcknowledge(achievement.definitionId)}
+        >
           Markera sedd
         </button>
       )}
@@ -101,11 +150,13 @@ export default function AchievementCenter({
   goalsHabits = {},
   healthSnapshot,
   meals = [],
+  nutritionGoals = {},
   onGoalsHabitsChange,
   profile = {},
   reminderState = {},
   weights = [],
 }) {
+  const [activeFilter, setActiveFilter] = useState('all')
   const model = useMemo(() => buildAchievementEngine({
     adaptiveCoachFeedback,
     checkIn,
@@ -113,6 +164,7 @@ export default function AchievementCenter({
     goalsHabits,
     healthSnapshot,
     meals,
+    nutritionGoals,
     profile,
     reminderState,
     weights,
@@ -124,14 +176,19 @@ export default function AchievementCenter({
     goalsHabits,
     healthSnapshot,
     meals,
+    nutritionGoals,
     profile,
     reminderState,
     weights,
   ])
-  const highlighted = model.achievements
-    .filter((achievement) => achievement.status !== 'locked')
-    .slice(0, 6)
-  const visibleAchievements = highlighted.length ? highlighted : model.achievements.slice(0, 6)
+  const visibleAchievements = model.achievements.filter((achievement) =>
+    activeFilter === 'all' || achievement.category === activeFilter)
+  const latestUnlocked = [...model.achievements]
+    .filter((achievement) => achievement.status === 'unlocked')
+    .sort((first, second) =>
+      String(second.unlockedAt || '').localeCompare(String(first.unlockedAt || ''), 'sv-SE'),
+    )[0] || null
+  const nextAchievement = model.nextAchievement
 
   function updateAchievementState(nextAchievements) {
     if (!onGoalsHabitsChange) return
@@ -167,7 +224,7 @@ export default function AchievementCenter({
         <div>
           <p className="eyebrow">Smart Goals & Achievements V2</p>
           <h2 id="achievement-center-heading">Achievements och delmål</h2>
-          <span>Trygg motivation baserad på din faktiska data.</span>
+          <span>Trygg motivation baserad på vikt, loggning, protein, steg och konsekvens.</span>
         </div>
       </div>
 
@@ -180,24 +237,40 @@ export default function AchievementCenter({
         </div>
         <div className="metric">
           <span>Upplåsta</span>
-          <strong>{model.summary.unlockedCount}</strong>
-          <small>{model.summary.latestAchievementTitle}</small>
+          <strong>{model.summary.unlockedCount} av {model.achievements.length}</strong>
+          <small>{latestUnlocked ? latestUnlocked.title : model.summary.latestAchievementTitle}</small>
         </div>
         <div className="metric">
-          <span>Delmål</span>
-          <strong>{model.summary.milestoneCount}</strong>
-          <small>{model.milestones.next ? `${model.milestones.next.title} är nästa` : 'Inget nästa delmål'}</small>
+          <span>Nästa badge</span>
+          <strong>{nextAchievement?.title || 'Alla upplåsta'}</strong>
+          <small>{nextAchievement ? `${nextAchievement.progress} av ${nextAchievement.target} ${nextAchievement.unit}` : 'Bra jobbat'}</small>
+          <ProgressBar label="Nästa achievement" value={nextAchievement?.progressPercent ?? 100} />
         </div>
         <div className="metric">
-          <span>Confidence</span>
-          <strong>{model.confidence}%</strong>
-          <small>Coverage {model.coverage}%</small>
+          <span>Senaste badge</span>
+          <strong>{latestUnlocked?.title || 'Ingen ännu'}</strong>
+          <small>{latestUnlocked?.unlockedAt ? `Upplåst ${formatAchievementDate(latestUnlocked.unlockedAt)}` : 'Fortsätt logga så visas den här'}</small>
         </div>
       </div>
 
       <div className="content-grid">
         <article className="achievement-section">
-          <h3>Achievements</h3>
+          <div className="achievement-section-heading">
+            <h3>Badges</h3>
+            <div className="achievement-filter" aria-label="Filtrera achievements">
+              {achievementFilters.map((filter) => (
+                <button
+                  aria-pressed={activeFilter === filter.id}
+                  className={activeFilter === filter.id ? 'is-active' : ''}
+                  key={filter.id}
+                  type="button"
+                  onClick={() => setActiveFilter(filter.id)}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="achievement-grid">
             {visibleAchievements.map((achievement) => (
               <AchievementCard
@@ -207,6 +280,7 @@ export default function AchievementCenter({
               />
             ))}
           </div>
+          {!visibleAchievements.length && <p>Inga badges i den här kategorin ännu.</p>}
         </article>
 
         <article className="achievement-section">

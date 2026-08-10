@@ -9,6 +9,7 @@ import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import AuthPanel from './components/AuthPanel.jsx'
 import AppLoadingScreen from './components/app/AppLoadingScreen.jsx'
 import AppTopbar from './components/app/AppTopbar.jsx'
+import AchievementPreviewCard from './components/app/AchievementPreviewCard.jsx'
 import DailyCoachCard from './components/app/DailyCoachCard.jsx'
 import DailyProgressCard from './components/app/DailyProgressCard.jsx'
 import WeeklyProgressSection from './components/app/WeeklyProgressSection.jsx'
@@ -2873,6 +2874,18 @@ function App() {
   meals={meals}
   nutritionGoals={nutritionGoals}
   selectedDate={selectedMealDate}
+/>
+<AchievementPreviewCard
+  adaptiveCoachFeedback={adaptiveCoachFeedback}
+  analysisDate={selectedMealDate}
+  checkIn={checkIn}
+  goalsHabits={goalsHabits}
+  healthSnapshot={healthSnapshot}
+  meals={meals}
+  nutritionGoals={nutritionGoals}
+  profile={validatedProfile}
+  reminderState={reminderState}
+  weights={centralWeightStats.weights}
 />
 
       <HomeSection

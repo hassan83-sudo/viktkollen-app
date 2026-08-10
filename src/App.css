@@ -4461,36 +4461,69 @@ button.secondary-button:focus-visible,
 .achievement-grid,
 .achievement-challenge-grid {
   display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
 }
 
 .achievement-section,
 .achievement-card,
 .achievement-challenge {
-  border: 1px solid rgba(15, 118, 110, 0.16);
-  border-radius: 8px;
-  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px;
 }
 
 .achievement-section {
+  display: grid;
+  gap: 14px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.achievement-section-heading {
+  align-items: start;
   display: grid;
   gap: 12px;
 }
 
 .achievement-card,
 .achievement-challenge {
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--surface);
   display: grid;
-  gap: 10px;
+  gap: 12px;
+  min-width: 0;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 }
 
 .achievement-card-unlocked {
-  border-color: rgba(34, 197, 94, 0.32);
+  border-color: rgba(34, 197, 94, 0.34);
+  box-shadow: 0 12px 30px rgba(34, 197, 94, 0.09);
 }
 
 .achievement-card-inProgress {
   border-color: rgba(14, 165, 233, 0.28);
+}
+
+.achievement-card-locked {
+  opacity: 0.72;
+}
+
+.achievement-card-new {
+  animation: achievement-badge-pop 520ms ease both;
+}
+
+.achievement-card:hover,
+.achievement-challenge:hover {
+  border-color: rgba(22, 139, 156, 0.28);
+  box-shadow: 0 14px 32px rgba(55, 75, 96, 0.12);
+  transform: translateY(-2px);
+}
+
+.achievement-card h3,
+.achievement-challenge h3 {
+  overflow-wrap: anywhere;
 }
 
 .achievement-progress {
@@ -4509,8 +4542,36 @@ button.secondary-button:focus-visible,
 .achievement-card-footer {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   justify-content: space-between;
+}
+
+.achievement-card small {
+  color: var(--muted);
+}
+
+.achievement-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.achievement-filter button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--soft-bg);
+  color: var(--text);
+  box-shadow: none;
+  font-weight: 850;
+}
+
+.achievement-filter button.is-active {
+  border-color: rgba(22, 139, 156, 0.42);
+  background: var(--accent);
+  color: #fff;
 }
 
 .achievement-list {
@@ -4528,6 +4589,18 @@ button.secondary-button:focus-visible,
   gap: 10px;
   justify-content: space-between;
   padding: 8px 0;
+}
+
+@keyframes achievement-badge-pop {
+  from {
+    box-shadow: 0 0 0 rgba(34, 197, 94, 0);
+    transform: translateY(6px) scale(0.98);
+  }
+
+  to {
+    box-shadow: 0 12px 30px rgba(34, 197, 94, 0.11);
+    transform: translateY(0) scale(1);
+  }
 }
 
 .social-card {
@@ -7141,6 +7214,89 @@ html {
   align-content: center;
 }
 
+.achievement-preview-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  margin: -4px 0 20px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(22, 139, 156, 0.08), rgba(34, 197, 94, 0.07)),
+    var(--surface);
+  box-shadow: 0 12px 32px rgba(0,0,0,.08);
+  animation: dashboard-fade-up 600ms ease both;
+}
+
+.achievement-preview-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(22, 139, 156, 0.22);
+  border-radius: 16px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.achievement-preview-content,
+.achievement-preview-meta {
+  min-width: 0;
+}
+
+.achievement-preview-content h2 {
+  margin: 4px 0;
+  color: var(--text-h);
+  font-size: 1.25rem;
+  overflow-wrap: anywhere;
+}
+
+.achievement-preview-content > span,
+.achievement-preview-meta span,
+.achievement-preview-meta small {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.achievement-preview-progress {
+  width: 100%;
+  height: 8px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.achievement-preview-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--green));
+  transition: width 420ms ease;
+}
+
+.achievement-preview-meta {
+  display: grid;
+  gap: 2px;
+  justify-items: end;
+  text-align: right;
+}
+
+.achievement-preview-meta strong {
+  color: var(--text-h);
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.achievement-preview-meta small {
+  max-width: 180px;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width:700px){
 
 .daily-progress-card{
@@ -7154,6 +7310,17 @@ html {
 
 .weekly-progress-card {
   padding: 16px;
+}
+
+.achievement-preview-card {
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 16px;
+}
+
+.achievement-preview-meta {
+  grid-column: 1 / -1;
+  justify-items: start;
+  text-align: left;
 }
 
 .daily-coach-heading {
@@ -7269,7 +7436,8 @@ html {
 
   .daily-progress-card,
   .daily-coach-card,
-  .weekly-progress-card {
+  .weekly-progress-card,
+  .achievement-preview-card {
     border-radius: 18px;
   }
 
@@ -7294,6 +7462,15 @@ html {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .achievement-preview-card {
+    grid-template-columns: 1fr;
+  }
+
+  .achievement-preview-icon {
+    width: 44px;
+    height: 44px;
+  }
+
   .daily-progress-score {
     min-width: 82px;
   }
@@ -7303,7 +7480,8 @@ html {
   .weekly-progress-summary div,
   .weekly-progress-chart,
   .weekly-progress-days li,
-  .weekly-progress-empty {
+  .weekly-progress-empty,
+  .achievement-preview-icon {
     border-radius: 14px;
   }
 }
@@ -7315,6 +7493,8 @@ html {
   .daily-progress-card,
   .daily-coach-card,
   .weekly-progress-card,
+  .achievement-preview-card,
+  .achievement-card-new,
   .progress-bar-fill {
     animation: none;
     transition: none;
@@ -7324,7 +7504,9 @@ html {
   .dashboard-card:hover,
   .daily-progress-card:hover,
   .daily-coach-card:hover,
-  .weekly-progress-card:hover {
+  .weekly-progress-card:hover,
+  .achievement-card:hover,
+  .achievement-challenge:hover {
     transform: none;
   }
 }

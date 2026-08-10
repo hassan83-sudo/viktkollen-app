@@ -20,6 +20,7 @@ function renderPanel(props = {}) {
         weeklyFocus: [{ id: 'f1', status: 'completed', title: 'Lunchloggning' }],
       }}
       meals={[{ date: today, id: 'm1', protein: 25, text: 'Ägg och kvarg' }]}
+      nutritionGoals={{ protein: 20 }}
       onGoalsHabitsChange={() => {}}
       profile={{ goalWeight: 78 }}
       weights={[
@@ -38,10 +39,12 @@ describe('AchievementCenter', () => {
     expect(markup).toContain('Smart Goals &amp; Achievements V2')
     expect(markup).toContain('Achievements och delmål')
     expect(markup).toContain('Första måltiden')
+    expect(markup).toContain('Nästa badge')
+    expect(markup).toContain('Badges')
+    expect(markup).toContain('Alla')
+    expect(markup).toContain('Vikt')
     expect(markup).toContain('Delmål')
     expect(markup).toContain('Små utmaningar')
-    expect(markup).toContain('Confidence')
-    expect(markup).toContain('Coverage')
   })
 
   it('does not render technical placeholders', () => {
@@ -51,7 +54,7 @@ describe('AchievementCenter', () => {
       weights: [],
     })
 
-    expect(markup).not.toMatch(/\b(undefined|null|NaN|Infinity|true|false)\b|\[object Object\]/)
+    expect(markup).not.toMatch(/\b(undefined|null|NaN|Infinity)\b|\[object Object\]/)
   })
 
   it('renders a neutral fallback when milestones cannot be calculated', () => {

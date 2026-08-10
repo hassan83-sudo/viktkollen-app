@@ -9,6 +9,7 @@ import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import AuthPanel from './components/AuthPanel.jsx'
 import AppLoadingScreen from './components/app/AppLoadingScreen.jsx'
 import AppTopbar from './components/app/AppTopbar.jsx'
+import DailyCoachCard from './components/app/DailyCoachCard.jsx'
 import DailyProgressCard from './components/app/DailyProgressCard.jsx'
 import BottomNavigation from './components/app/BottomNavigation.jsx'
 import LazySectionFallback from './components/app/LazySectionFallback.jsx'
@@ -2751,6 +2752,25 @@ function App() {
     })
   }
 
+  function handleDailyCoachAction(sectionId, targetId) {
+    setActiveAppSection(sectionId)
+
+    window.requestAnimationFrame(() => {
+      document.getElementById(targetId)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    })
+  }
+
+  function handleDailyCoachScanFood() {
+    handleDailyCoachAction('nutrition', 'streckkod')
+
+    window.requestAnimationFrame(() => {
+      startBarcodeScanner()
+    })
+  }
+
   if (authLoading) {
     return <AppLoadingScreen />
   }
@@ -2833,6 +2853,17 @@ function App() {
   proteinToday={dailyNutritionSummary?.totals?.protein}
   steps={checkIn?.steps}
   weeklyWeightChange={dashboardData?.weeklyWeightChange}
+/>
+<DailyCoachCard
+  calorieGoal={nutritionGoals?.calories}
+  caloriesToday={dailyNutritionSummary?.totals?.calories}
+  healthScore={dashboardData?.healthScore?.score}
+  onAddMeal={() => handleDailyCoachAction('nutrition', 'mat')}
+  onLogWeight={() => handleDailyCoachAction('progress', 'vikt')}
+  onScanFood={handleDailyCoachScanFood}
+  proteinGoal={dailyNutritionSummary?.proteinGoal ?? nutritionGoals?.protein}
+  proteinToday={dailyNutritionSummary?.totals?.protein}
+  steps={checkIn?.steps}
 />
 
       <HomeSection

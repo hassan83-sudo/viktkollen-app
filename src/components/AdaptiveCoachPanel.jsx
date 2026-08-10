@@ -302,13 +302,13 @@ function AdaptiveCoachPanel({
       },
     })
     setRemoteCoachError('')
-    setRemoteCoachStatus(enabled ? 'Remote AI ar aktiverad for coachforslag.' : 'Remote AI ar avstangd. Regelbaserad coach anvands.')
+    setRemoteCoachStatus(enabled ? 'Remote AI är aktiverad för coachförslag.' : 'Remote AI är avstängd. Regelbaserad coach används.')
   }
 
   async function requestRemoteCoach() {
     if (remoteCoachLoading) return
     if (!remoteConsent) {
-      setRemoteCoachError('Aktivt samtycke kravs innan remote AI anvands.')
+      setRemoteCoachError('Aktivt samtycke krävs innan remote AI används.')
       return
     }
 
@@ -332,19 +332,19 @@ function AdaptiveCoachPanel({
         coach: makeRuleBasedFallbackResult(model, result.warning),
         providerType: 'ruleBased',
       })
-      setRemoteCoachError(result.warning || 'Remote AI kunde inte anvandas. Regelbaserad coach visas.')
-      setRemoteCoachStatus('Regelbaserad fallback anvands.')
+      setRemoteCoachError(result.warning || 'Remote AI kunde inte användas. Regelbaserad coach visas.')
+      setRemoteCoachStatus('Regelbaserad fallback används.')
       return
     }
 
     setRemoteCoachResult(result)
-    setRemoteCoachStatus('AI-genererat forslag mottaget och sakerhetsgranskat.')
+    setRemoteCoachStatus('AI-genererat förslag mottaget och säkerhetsgranskat.')
   }
 
   function cancelRemoteCoachRequest() {
     remoteCoachAbortRef.current?.abort?.()
     setRemoteCoachLoading(false)
-    setRemoteCoachStatus('AI-anropet avbrots.')
+    setRemoteCoachStatus('AI-anropet avbröts.')
   }
 
   function openActionDraft(recommendation, event) {

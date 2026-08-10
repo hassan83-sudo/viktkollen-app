@@ -173,7 +173,7 @@ function getResultSections(result) {
 }
 
 function getResultSourceLabel(result) {
-  return result.source === 'ai' ? 'AI-resultat' : 'Mock-resultat'
+  return result.source === 'ai' ? 'AI-resultat' : 'Lokal demo'
 }
 
 function getLatestAiStatus(analysis) {
@@ -254,7 +254,7 @@ function createDemoBodyAnalysisResult(previousAnalysis) {
     sourceReason: 'demo',
     status: 'completed',
     strengths: ['Du har en tydlig startpunkt för framtida jämförelser.'],
-    summary: 'Demoanalysen är skapad och visas som ett mock-resultat.',
+    summary: 'Demoanalysen är skapad och visas som en lokal uppskattning.',
     visualConsistency: 'Samma ljus, avstånd och vinkel ger bättre jämförelser.',
   }
 }
@@ -415,7 +415,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
           : 'Ingen analys än',
     },
     { label: 'AI-resultat', value: historyStats.ai },
-    { label: 'Mock-resultat', value: historyStats.mock },
+    { label: 'Lokala demoresultat', value: historyStats.mock },
     {
       label: 'Genomsnittligt intervall',
       value:

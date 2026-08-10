@@ -464,7 +464,7 @@ export function buildSmartNotificationCandidates(input = {}, options = {}) {
       body: `${protein.remaining} g protein kvar till dagens mal.`,
       group: 'protein',
       priorityLevel: 'medium',
-      title: 'Du ligger nara proteinmalet',
+      title: 'Du ligger nära proteinmålet',
     }, { now }))
   } else if (protein.missingDays >= 2) {
     raw.push(createSmartCandidate({
@@ -486,26 +486,26 @@ export function buildSmartNotificationCandidates(input = {}, options = {}) {
 
   if (!mealPlan.saveState.dayHasPlan) {
     raw.push(createSmartCandidate({
-      body: 'Skapa en lokal dagsplan utifran dina mal.',
+      body: 'Skapa en lokal dagsplan utifrån dina mål.',
       group: 'meal-plan',
       priorityLevel: 'medium',
-      title: 'Ingen maltidsplan for idag',
+      title: 'Ingen måltidsplan för idag',
     }, { now }))
   } else if (!mealPlan.saveState.saved) {
     raw.push(createSmartCandidate({
-      body: 'Spara dagens AI-plan sa den kan ateranvandas i veckoplanen.',
+      body: 'Spara dagens AI-plan så den kan återanvändas i veckoplanen.',
       group: 'meal-plan',
       priorityLevel: 'medium',
-      title: 'Dagens maltidsplan ar inte sparad',
+      title: 'Dagens måltidsplan är inte sparad',
     }, { now }))
   }
 
   if (!mealPlan.tomorrowState.dayHasPlan) {
     raw.push(createSmartCandidate({
-      body: 'Planera morgondagen i veckoplanen nar det passar.',
+      body: 'Planera morgondagen i veckoplanen när det passar.',
       group: 'weekly-plan',
       priorityLevel: 'low',
-      title: 'Ingen veckoplan for imorgon',
+      title: 'Ingen veckoplan för imorgon',
     }, { now }))
   }
 
@@ -514,7 +514,7 @@ export function buildSmartNotificationCandidates(input = {}, options = {}) {
       body: `${achievements.nextAchievement.progressPercent}% klart mot ${achievements.nextAchievement.title}.`,
       group: 'achievement',
       priorityLevel: 'low',
-      title: 'Du ar nara nasta achievement',
+      title: 'Du är nära nästa achievement',
     }, { now }))
   }
 

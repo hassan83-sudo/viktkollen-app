@@ -237,12 +237,12 @@ function WeeklyReport({
               )}
               {weeklyReportData.smartGoals && (
                 <div>
-                  <p className="report-heading">Smarta mÃ¥l och vanor</p>
+                  <p className="report-heading">Smarta mål och vanor</p>
                   <p>{weeklyReportData.smartGoals.summary}</p>
-                  <p>Rekommenderat mÃ¥l: {weeklyReportData.smartGoals.recommendedWeeklyGoal}</p>
+                  <p>Rekommenderat mål: {weeklyReportData.smartGoals.recommendedWeeklyGoal}</p>
                   <p>Rekommenderad vana: {weeklyReportData.smartGoals.recommendedHabit}</p>
                   <p>Sannolikhet: {weeklyReportData.smartGoals.probability}</p>
-                  <p>NÃ¤sta steg: {weeklyReportData.smartGoals.nextStep}</p>
+                  <p>Nästa steg: {weeklyReportData.smartGoals.nextStep}</p>
                 </div>
               )}
               {weeklyReportData.achievements && (

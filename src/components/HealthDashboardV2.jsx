@@ -306,12 +306,12 @@ function HealthDashboardV2({
           </Card>
         )}
 
-        <Card actionHref="#habit-goal-center" actionText="Visa smarta mÃ¥l" heading="Smart mÃ¥lstatus" text={smartHabitGoalSummary.summary}>
+        <Card actionHref="#habit-goal-center" actionText="Visa smarta mål" heading="Smart målstatus" text={smartHabitGoalSummary.summary}>
           <div className="health-dashboard-metrics">
             <Metric label="Vana idag" value={smartHabitGoalSummary.recommendedHabit} />
-            <Metric label="VeckomÃ¥l" value={smartHabitGoalSummary.recommendedWeeklyGoal} />
+            <Metric label="Veckomål" value={smartHabitGoalSummary.recommendedWeeklyGoal} />
             <Metric label="Sannolikhet" value={smartHabitGoalSummary.probability} />
-            <Metric label="NÃ¤sta steg" value={smartHabitGoalSummary.nextStep} />
+            <Metric label="Nästa steg" value={smartHabitGoalSummary.nextStep} />
           </div>
         </Card>
 

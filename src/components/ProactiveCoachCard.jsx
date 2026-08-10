@@ -10,7 +10,7 @@ function ProactiveCoachCard({ insights }) {
           <p className="eyebrow">AI Coach V3</p>
           <h2>Proaktiv coach</h2>
         </div>
-        <span>{insights.source === 'openai' ? 'AI' : 'Smart mock'}</span>
+        <span>{insights.source === 'openai' ? 'AI' : 'Lokal coach'}</span>
       </div>
       <div className="dashboard-stat-grid">
         <div className="dashboard-stat">

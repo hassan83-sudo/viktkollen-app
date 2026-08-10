@@ -259,11 +259,11 @@ function MonthlyReport({ report }) {
 
       {report.journey && (
         <div className="report-card">
-          <p className="report-heading">MÃ¥nadens health journey</p>
+          <p className="report-heading">Månadens health journey</p>
           <p>{report.journey.summary}</p>
-          <p>Viktigaste fÃ¶rÃ¤ndring: {report.journey.keyEvent}</p>
+          <p>Viktigaste förändring: {report.journey.keyEvent}</p>
           <p>Milstolpe: {report.journey.milestone}</p>
-          <p>NÃ¤sta fokus: {report.journey.opportunity}</p>
+          <p>Nästa fokus: {report.journey.opportunity}</p>
           <p>Confidence: {report.journey.confidence}%. Coverage: {report.journey.coverage}%.</p>
         </div>
       )}
@@ -272,10 +272,10 @@ function MonthlyReport({ report }) {
         <div className="report-card">
           <p className="report-heading">Smart habit & goal trend</p>
           <p>{report.smartGoals.summary}</p>
-          <p>VeckomÃ¥l: {report.smartGoals.recommendedWeeklyGoal}</p>
+          <p>Veckomål: {report.smartGoals.recommendedWeeklyGoal}</p>
           <p>Vana: {report.smartGoals.recommendedHabit}</p>
           <p>Sannolikhet: {report.smartGoals.probability}</p>
-          <p>NÃ¤sta steg: {report.smartGoals.nextStep}</p>
+          <p>Nästa steg: {report.smartGoals.nextStep}</p>
         </div>
       )}
 

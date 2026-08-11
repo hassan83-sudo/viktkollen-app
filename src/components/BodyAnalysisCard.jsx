@@ -715,7 +715,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   }
 
   return (
-    <div className="progress-upload">
+    <div className="progress-upload" id="body-analysis">
       <div className="panel-heading">
         <div>
           <p className="eyebrow">AI-kroppsanalys</p>

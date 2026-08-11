@@ -1,3 +1,5 @@
+import GlobalSearch from './GlobalSearch.jsx'
+
 function formatNumber(value) {
   const number = Number(value)
 
@@ -27,6 +29,7 @@ function AppTopbar({
   goalWeight,
   healthScore,
   onEditProfile,
+  onSearchNavigate,
   onSignOut,
   profile,
   profileSummaryParts,
@@ -108,6 +111,8 @@ function AppTopbar({
         </p>
 
         <div className="topbar-button-row">
+          <GlobalSearch onNavigate={onSearchNavigate} />
+
           <button
             className="secondary-button"
             type="button"

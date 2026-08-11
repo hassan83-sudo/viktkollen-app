@@ -2645,6 +2645,27 @@ function App() {
     })
   }
 
+  function handleGlobalSearchNavigate(result) {
+    const sectionId = result?.section || 'home'
+    const targetId = result?.targetId || `app-section-${sectionId}`
+
+    setActiveAppSection(sectionId)
+
+    window.requestAnimationFrame(() => {
+      const target = document.getElementById(targetId) || document.getElementById(`app-section-${sectionId}`)
+
+      target?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+
+      if (target && !target.hasAttribute('tabindex')) {
+        target.setAttribute('tabindex', '-1')
+      }
+      target?.focus?.({ preventScroll: true })
+    })
+  }
+
   const handleDailyCoachAction = useCallback((sectionId, targetId) => {
     setActiveAppSection(sectionId)
 
@@ -2746,6 +2767,7 @@ function App() {
   proteinToday={dailyNutritionSummary?.totals?.protein}
   proteinGoal={dailyNutritionSummary?.proteinGoal ?? nutritionGoals?.protein}
   onEditProfile={() => setShowOnboarding(true)}
+  onSearchNavigate={handleGlobalSearchNavigate}
   onSignOut={handleSignOut}
   profile={profile}
   profileSummaryParts={profileSummaryParts}
@@ -2771,6 +2793,7 @@ function App() {
   proteinToday={dailyNutritionSummary?.totals?.protein}
   steps={checkIn?.steps}
 />
+<div id="smart-notifications">
 <SmartNotificationsCard
   adaptiveCoachFeedback={adaptiveCoachFeedback}
   checkIn={checkIn}
@@ -2784,6 +2807,8 @@ function App() {
   today={selectedMealDate}
   weights={centralWeightStats.weights}
 />
+</div>
+<div id="weekly-progress">
 <WeeklyProgressSection
   checkIn={checkIn}
   foods={foods}
@@ -2792,6 +2817,8 @@ function App() {
   nutritionGoals={nutritionGoals}
   selectedDate={selectedMealDate}
 />
+</div>
+<div id="achievements">
 <AchievementPreviewCard
   adaptiveCoachFeedback={adaptiveCoachFeedback}
   analysisDate={selectedMealDate}
@@ -2804,6 +2831,8 @@ function App() {
   reminderState={reminderState}
   weights={centralWeightStats.weights}
 />
+</div>
+<div id="health-prediction">
 <HealthPredictionCard
   adaptiveCoachFeedback={adaptiveCoachFeedback}
   analysisDate={selectedMealDate}
@@ -2817,11 +2846,14 @@ function App() {
   reminderState={reminderState}
   weights={centralWeightStats.weights}
 />
+</div>
+<div id="meal-planner">
 <DailyMealPlannerCard
   date={selectedMealDate}
   meals={meals}
   nutritionGoals={nutritionGoals}
 />
+</div>
 
       <HomeSection
         activeSection={activeAppSection}

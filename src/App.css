@@ -2349,6 +2349,154 @@ button.secondary-button:focus-visible,
   margin-top: 8px;
 }
 
+.body-scan-flow {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.body-scan-step-heading,
+.body-scan-steps,
+.body-scan-guide,
+.body-analysis-angle-row {
+  display: grid;
+  gap: 10px;
+}
+
+.body-scan-step-heading {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.body-scan-step-heading h3 {
+  margin: 0;
+}
+
+.body-scan-step-heading > span,
+.body-scan-light {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.body-scan-steps {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.body-scan-steps button {
+  min-height: 72px;
+  padding: 10px;
+  background: var(--soft-bg);
+  box-shadow: none;
+}
+
+.body-scan-steps button.is-active {
+  outline: 3px solid var(--accent-shadow);
+  background: var(--accent-soft);
+}
+
+.body-scan-steps span,
+.body-scan-steps small {
+  display: block;
+  font-size: 11px;
+}
+
+.body-scan-guide {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--soft-bg);
+}
+
+.body-scan-guide ul,
+.body-scan-guide p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.body-scan-camera {
+  position: relative;
+  overflow: hidden;
+  min-height: 180px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  background: var(--soft-bg);
+}
+
+.body-scan-camera video {
+  display: block;
+  width: 100%;
+  max-height: 360px;
+  object-fit: cover;
+}
+
+.body-scan-camera canvas {
+  display: none;
+}
+
+.body-scan-countdown {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--surface) 64%, transparent);
+  color: var(--text-h);
+  font-size: 56px;
+  font-weight: 950;
+}
+
+.body-scan-light {
+  width: fit-content;
+  margin: 0;
+}
+
+.body-scan-light.is-positive {
+  color: var(--green);
+}
+
+.body-scan-light.is-warning {
+  color: var(--warning-text);
+}
+
+.progress-photo-ai-images.is-three-angle,
+.body-analysis-angle-comparison {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.body-analysis-angle-comparison {
+  display: grid;
+  gap: 10px;
+}
+
+.body-analysis-angle-row {
+  grid-template-columns: 72px repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.body-analysis-angle-row figure {
+  margin: 0;
+}
+
+.body-analysis-angle-row img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.body-analysis-angle-row figcaption {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .progress-photo-safety {
   margin: 0;
   padding: 12px 14px;
@@ -6162,9 +6310,24 @@ button.secondary-button:focus-visible,
 
   .comparison-controls,
   .before-after,
+  .body-analysis-angle-comparison,
+  .body-analysis-angle-row,
+  .body-scan-guide,
+  .body-scan-step-heading,
+  .body-scan-steps,
   .progress-photo-ai-images,
   .progress-photo-upload-grid {
     grid-template-columns: 1fr;
+  }
+
+  .progress-photo-ai-images.is-three-angle {
+    grid-template-columns: 1fr;
+  }
+
+  .body-scan-flow .body-analysis-filter > button,
+  .body-scan-flow .body-analysis-filter > label {
+    flex: 1 1 132px;
+    min-height: 44px;
   }
 
   .photo-timeline article {

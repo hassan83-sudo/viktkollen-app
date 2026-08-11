@@ -155,6 +155,12 @@ function BodyAnalysisTimeline({
                             alt="Miniatyr från sidan"
                           />
                         )}
+                        {analysis.backPhoto?.preview && (
+                          <img
+                            src={analysis.backPhoto.preview}
+                            alt="Miniatyr bakifrån"
+                          />
+                        )}
                       </div>
                       {isExpanded && (
                         <div className="body-analysis-timeline-details">

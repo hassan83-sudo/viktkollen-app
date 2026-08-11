@@ -2,6 +2,10 @@ import { useState } from 'react'
 
 import { getAnalysisComparison } from '../services/bodyAnalysisComparison'
 import {
+  canCompleteBodyAnalysisScan,
+  getAngleMatchedComparison,
+} from '../services/bodyAnalysisGuidedScan'
+import {
   addAnalysis,
   clearAnalysisHistory,
   deleteAnalysis,
@@ -267,6 +271,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   const [analysisError, setAnalysisError] = useState('')
   const [analysisStatus, setAnalysisStatus] = useState('Väntar på bilder')
   const [expandedAnalysisIds, setExpandedAnalysisIds] = useState([])
+  const [backPhoto, setBackPhoto] = useState(null)
   const [frontPhoto, setFrontPhoto] = useState(null)
   const [hasApprovedAnalysis, setHasApprovedAnalysis] = useState(false)
   const [importSummary, setImportSummary] = useState(null)
@@ -281,8 +286,13 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   const analysisCount = analysisHistory.length
   const isFreeLimitReached =
     !isPremiumPreviewEnabled && analysisCount >= FREE_ANALYSIS_LIMIT
+  const scanPhotos = {
+    back: backPhoto,
+    front: frontPhoto,
+    side: sidePhoto,
+  }
   const canAnalyze =
-    Boolean(frontPhoto && sidePhoto) && !isAnalyzing && !isFreeLimitReached
+    canCompleteBodyAnalysisScan(scanPhotos) && !isAnalyzing && !isFreeLimitReached
   const analyzeDisabledReason = isFreeLimitReached
     ? 'Gratisgränsen på tre lokala analyser är nådd. Premium kan låsas upp senare.'
     : ''
@@ -304,7 +314,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
         ? 'Analys klar'
         : canAnalyze
           ? 'Redo att analysera'
-          : 'Väntar på bilder'
+          : 'Väntar på tre vinklar'
   const summaryText = latestAnalysisDate
     ? `Senaste analysen sparades ${formatAnalysisDate(
         latestAnalysisDate,
@@ -314,13 +324,13 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
     analysisCount === 0
       ? [
           'Skapa din första analys.',
-          'Välj både framifrån- och sidobild.',
+          'Ta bilder framifrån, från sidan och bakifrån.',
           'Använd samma plats och ljus från start.',
         ]
       : analysisCount === 1
         ? [
             'Skapa en till analys för jämförelse.',
-            'Ta nästa bilder med samma vinkel.',
+            'Ta nästa tre vinklar med samma ljus och avstånd.',
             'Spara nästa analys inom 7 dagar.',
           ]
         : [
@@ -343,6 +353,11 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
       label: 'Sidobild vald',
       status: sidePhoto ? 'positive' : 'neutral',
       value: sidePhoto ? 'Klar' : 'Väntar',
+    },
+    {
+      label: 'Bakbild vald',
+      status: backPhoto ? 'positive' : 'neutral',
+      value: backPhoto ? 'Klar' : 'Väntar',
     },
     {
       label: 'Samma ljus rekommenderas',
@@ -437,6 +452,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
           )
           .slice(0, 10)
   const selectedComparison = getAnalysisComparison(savedAnalysis, analysisHistory)
+  const angleComparison = getAngleMatchedComparison(savedAnalysis, analysisHistory)
   const progressOverviewStats = getBodyAnalysisProgressStats(analysisHistory)
   const progressGraphItems = analysisHistory.slice(0, 5).map((analysis) => ({
     analysisNumber: analysis.analysisNumber,
@@ -446,30 +462,46 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   }))
   const latestAiStatus = getLatestAiStatus(savedAnalysis)
 
-  function handlePhotoChange(event, view) {
-    const file = event.target.files?.[0]
+  function handlePhotoChange(fileOrEvent, view, previewOverride = '') {
+    const file = fileOrEvent?.target?.files?.[0] || fileOrEvent
 
     if (!file) {
+      return
+    }
+
+    function setPhoto(photo) {
+      if (view === 'front') {
+        setFrontPhoto(photo)
+      } else if (view === 'back') {
+        setBackPhoto(photo)
+      } else {
+        setSidePhoto(photo)
+      }
+
+      const nextPhotos = {
+        ...scanPhotos,
+        [view]: photo,
+      }
+      setAnalysisStatus(canCompleteBodyAnalysisScan(nextPhotos) ? 'Redo att analysera' : 'Väntar på tre vinklar')
+    }
+
+    if (previewOverride) {
+      setPhoto({
+        file,
+        name: file.name,
+        preview: previewOverride,
+      })
       return
     }
 
     const reader = new FileReader()
 
     reader.addEventListener('load', () => {
-      const photo = {
+      setPhoto({
         file,
         name: file.name,
         preview: typeof reader.result === 'string' ? reader.result : '',
-      }
-
-      if (view === 'front') {
-        setFrontPhoto(photo)
-        setAnalysisStatus(sidePhoto ? 'Redo att analysera' : 'Väntar på bilder')
-        return
-      }
-
-      setSidePhoto(photo)
-      setAnalysisStatus(frontPhoto ? 'Redo att analysera' : 'Väntar på bilder')
+      })
     })
     reader.readAsDataURL(file)
   }
@@ -477,6 +509,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
   function storeCompletedAnalysis(result, photos = {}) {
     const nextAnalysis = {
       analysisNumber: analysisHistory.length + 1,
+      backPhoto: photos.backPhoto || { name: 'Demo bakifrån', preview: '' },
       createdAt: new Date().toISOString(),
       frontPhoto: photos.frontPhoto || { name: 'Demo framifrån', preview: '' },
       result,
@@ -504,7 +537,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
       return
     }
 
-    if (!frontPhoto || !sidePhoto || isAnalyzing) {
+    if (!frontPhoto || !sidePhoto || !backPhoto || isAnalyzing) {
       return
     }
 
@@ -529,13 +562,19 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
         name: sidePhoto.name,
         preview: sidePhoto.preview,
       }
+      const storedBackPhoto = {
+        name: backPhoto.name,
+        preview: backPhoto.preview,
+      }
       const result = await analyzeBodyWithAI({
+        backPhoto,
         frontPhoto,
         previousAnalysis: getLatestAnalysis()?.result,
         sidePhoto,
       })
 
       storeCompletedAnalysis(result, {
+        backPhoto: storedBackPhoto,
         frontPhoto: storedFrontPhoto,
         sidePhoto: storedSidePhoto,
       })
@@ -560,7 +599,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
       return
     }
 
-    if (!frontPhoto || !sidePhoto || isAnalyzing) {
+    if (!frontPhoto || !sidePhoto || !backPhoto || isAnalyzing) {
       return
     }
 
@@ -701,8 +740,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
         canAnalyze={canAnalyze}
         currentAnalysisStatus={currentAnalysisStatus}
         disabledReason={analyzeDisabledReason}
-        frontPhoto={frontPhoto}
-        sidePhoto={sidePhoto}
+        photos={scanPhotos}
         onAnalyze={handleAnalyzeBody}
         onPhotoChange={handlePhotoChange}
       />
@@ -750,6 +788,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
           getResultSourceLabel={getResultSourceLabel}
           renderResultValue={renderResultValue}
           savedAnalysis={savedAnalysis}
+          angleComparison={angleComparison}
           onMarkerChange={setActiveBodyMarker}
         />
       )}

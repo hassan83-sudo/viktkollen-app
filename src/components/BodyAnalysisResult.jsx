@@ -1,5 +1,6 @@
 function BodyAnalysisResult({
   activeBodyMarker,
+  angleComparison = [],
   bodyOverviewMarkers,
   formatAnalysisDate,
   getResultSections,
@@ -54,26 +55,42 @@ function BodyAnalysisResult({
           Demoresultat visas eftersom AI inte kunde användas just nu.
         </p>
       )}
-      {(savedAnalysis.frontPhoto?.preview || savedAnalysis.sidePhoto?.preview) && (
-        <div className="progress-photo-ai-images">
-          {savedAnalysis.frontPhoto?.preview && (
-            <figure>
-              <img
-                src={savedAnalysis.frontPhoto.preview}
-                alt="Sparad bild framifrån"
-              />
-              <figcaption>{savedAnalysis.frontPhoto.name}</figcaption>
-            </figure>
-          )}
-          {savedAnalysis.sidePhoto?.preview && (
-            <figure>
-              <img
-                src={savedAnalysis.sidePhoto.preview}
-                alt="Sparad bild från sidan"
-              />
-              <figcaption>{savedAnalysis.sidePhoto.name}</figcaption>
-            </figure>
-          )}
+      {(savedAnalysis.frontPhoto?.preview || savedAnalysis.sidePhoto?.preview || savedAnalysis.backPhoto?.preview) && (
+        <div className="progress-photo-ai-images is-three-angle">
+          {[
+            ['frontPhoto', 'Sparad bild framifrån'],
+            ['sidePhoto', 'Sparad bild från sidan'],
+            ['backPhoto', 'Sparad bild bakifrån'],
+          ].map(([photoKey, alt]) => {
+            const photo = savedAnalysis[photoKey]
+
+            if (!photo?.preview) return null
+
+            return (
+              <figure key={photoKey}>
+                <img src={photo.preview} alt={alt} />
+                <figcaption>{photo.name}</figcaption>
+              </figure>
+            )
+          })}
+        </div>
+      )}
+      {angleComparison.length > 0 && (
+        <div className="body-analysis-angle-comparison">
+          <p className="report-heading">Före/efter per vinkel</p>
+          {angleComparison.map((item) => (
+            <div className="body-analysis-angle-row" key={item.view}>
+              <strong>{item.label}</strong>
+              <figure>
+                <img src={item.before.preview} alt={`${item.label} före`} />
+                <figcaption>Före</figcaption>
+              </figure>
+              <figure>
+                <img src={item.after.preview} alt={`${item.label} efter`} />
+                <figcaption>Efter</figcaption>
+              </figure>
+            </div>
+          ))}
         </div>
       )}
       <div className="body-analysis-recommended-steps">

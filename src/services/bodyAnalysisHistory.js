@@ -131,6 +131,27 @@ function getImportSummary(currentHistory, incomingHistory) {
   }
 }
 
+function sanitizePhotoForExport(photo) {
+  if (!isObject(photo)) return null
+
+  return {
+    name: typeof photo.name === 'string' ? photo.name : '',
+  }
+}
+
+export function sanitizeAnalysisForExport(analysis) {
+  const normalizedAnalysis = normalizeAnalysis(analysis)
+
+  if (!normalizedAnalysis) return null
+
+  return {
+    ...normalizedAnalysis,
+    backPhoto: sanitizePhotoForExport(normalizedAnalysis.backPhoto),
+    frontPhoto: sanitizePhotoForExport(normalizedAnalysis.frontPhoto),
+    sidePhoto: sanitizePhotoForExport(normalizedAnalysis.sidePhoto),
+  }
+}
+
 /**
  * Adds a body analysis to local history with newest item first.
  *
@@ -232,7 +253,7 @@ export function getHistoryStats(history = readStoredHistory()) {
  */
 export function exportHistory() {
   return {
-    analyses: readStoredHistory(),
+    analyses: readStoredHistory().map(sanitizeAnalysisForExport).filter(Boolean),
     app: 'Viktkollen',
     exportedAt: new Date().toISOString(),
     feature: 'AI Body Analysis',

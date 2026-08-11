@@ -127,6 +127,7 @@ async function parseImages(request) {
 
   if (!contentType.includes('multipart/form-data') || !boundary) {
     return {
+      backImage: null,
       frontImage: null,
       previousAnalysis: null,
       sideImage: null,
@@ -137,6 +138,7 @@ async function parseImages(request) {
   const parsed = parseMultipartImages(rawBodyBuffer, boundary)
 
   return {
+    backImage: parsed.images.backImage ?? null,
     frontImage: parsed.images.frontImage ?? null,
     previousAnalysis: parsePreviousAnalysis(parsed.fields.previousAnalysis),
     sideImage: parsed.images.sideImage ?? null,
@@ -145,7 +147,7 @@ async function parseImages(request) {
 
 function validateImage(image, label) {
   if (!image) {
-    return `${label} saknas. Ladda upp både bild framifrån och från sidan.`
+    return `${label} saknas. Ladda upp bilder framifrån, från sidan och bakifrån.`
   }
 
   if (!allowedImageTypes.includes(image.contentType)) {
@@ -181,6 +183,15 @@ function validateRequest(request, images) {
   if (sideImageError) {
     return {
       error: sideImageError,
+      status: 400,
+    }
+  }
+
+  const backImageError = validateImage(images.backImage, 'Bild bakifrån')
+
+  if (backImageError) {
+    return {
+      error: backImageError,
       status: 400,
     }
   }
@@ -239,7 +250,7 @@ function createMockAnalysis(previousAnalysis = null, sourceReason = 'api_error')
     sourceReason,
     status: 'completed',
     strengths: [
-      'Du har laddat upp bilder från två vinklar.',
+      'Du har laddat upp bilder från tre vinklar.',
       'Det ger en bättre grund för jämförelser över tid.',
     ],
     summary:
@@ -285,6 +296,7 @@ async function runBodyAnalysis(images) {
     const analysis = await analyzeBodyImages(
       images.frontImage,
       images.sideImage,
+      images.backImage,
       prompt,
       images.previousAnalysis,
     )

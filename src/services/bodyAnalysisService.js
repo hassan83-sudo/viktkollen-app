@@ -27,12 +27,12 @@ const mockBodyResult = {
   source: 'mock',
   sourceReason: 'demo',
   status: 'completed',
-  strengths: ['Du har valt bilder från två vinklar.'],
+  strengths: ['Du har valt bilder från tre vinklar.'],
   summary: 'Demoanalysen är klar och visas som en försiktig uppskattning.',
   visualConsistency: 'Försök använda samma ljus, avstånd och vinkel.',
 }
 
-function buildBodyAnalysisPayload(frontImage, sideImage, previousAnalysis) {
+export function buildBodyAnalysisPayload(frontImage, sideImage, backImage, previousAnalysis) {
   const requestMetadata = {
     createdAt: new Date().toISOString(),
     requestId: `body-analysis-${Date.now()}`,
@@ -44,6 +44,7 @@ function buildBodyAnalysisPayload(frontImage, sideImage, previousAnalysis) {
 
   return {
     createdAt: new Date().toISOString(),
+    backImage: backImage.file,
     frontImage: frontImage.file,
     previousAnalysis,
     sideImage: sideImage.file,
@@ -87,6 +88,7 @@ async function callBodyAnalysisApi(payload) {
 
     formData.append('frontImage', payload.frontImage)
     formData.append('sideImage', payload.sideImage)
+    formData.append('backImage', payload.backImage)
 
     if (payload.previousAnalysis) {
       formData.append('previousAnalysis', JSON.stringify(payload.previousAnalysis))
@@ -125,10 +127,11 @@ async function callBodyAnalysisApi(payload) {
 /**
  * Sends selected body analysis images to the backend route.
  *
- * @param {{frontPhoto: {file?: File}, previousAnalysis?: object, sidePhoto: {file?: File}}} params
+ * @param {{backPhoto: {file?: File}, frontPhoto: {file?: File}, previousAnalysis?: object, sidePhoto: {file?: File}}} params
  * @returns {Promise<Record<string, unknown>>}
  */
 export async function analyzeBodyWithAI({
+  backPhoto,
   frontPhoto,
   previousAnalysis,
   sidePhoto,
@@ -141,14 +144,17 @@ export async function analyzeBodyWithAI({
     throw new Error('Välj en bild från sidan innan du startar analysen.')
   }
 
+  if (!backPhoto?.file) {
+    throw new Error('Välj en bild bakifrån innan du startar analysen.')
+  }
+
   const payload = buildBodyAnalysisPayload(
     frontPhoto,
     sidePhoto,
+    backPhoto,
     previousAnalysis,
   )
 
-  // TODO: Send the selected front-facing image as one parameter.
-  // TODO: Send the selected side-facing image as one parameter.
   // TODO: Return the AI result from the backend instead of the mock result.
   const response = USE_MOCK_BODY_ANALYSIS
     ? await callMockBodyAnalysis(payload)

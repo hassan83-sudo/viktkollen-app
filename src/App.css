@@ -5270,7 +5270,7 @@ button.secondary-button:focus-visible,
   left: 50%;
   z-index: 20;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 3px;
   width: min(540px, calc(100% - 16px));
   margin: 0;
@@ -8002,6 +8002,15 @@ html {
   overflow-wrap: anywhere;
 }
 
+.weekly-progress-summary small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
 .weekly-progress-toggle {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -8506,6 +8515,7 @@ html {
 
 .daily-meal-save-choice span,
 .daily-meal-week-summary span {
+  flex: 1 1 180px;
   color: var(--muted);
   font-size: 0.84rem;
   font-weight: 800;

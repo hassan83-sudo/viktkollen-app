@@ -185,7 +185,7 @@ describe('notificationEngine', () => {
     }, { now })
 
     expect(candidates).toHaveLength(3)
-    expect(candidates[0].priorityLabel).toBe('High')
+    expect(candidates[0].priorityLabel).toBe('Hög prioritet')
     expect(candidates.map((item) => item.priority)).toEqual([...candidates.map((item) => item.priority)].sort((a, b) => b - a))
   })
 
@@ -249,7 +249,7 @@ describe('notificationEngine', () => {
     }, { now })
 
     expect(context.recommendation).toContain('I dag rekommenderar jag')
-    expect(context.priority).toBe('High')
+    expect(context.priority).toBe('Hög prioritet')
   })
 
   it('reuses clear nutrition coach advice when it does not duplicate protein or meal plan alerts', () => {

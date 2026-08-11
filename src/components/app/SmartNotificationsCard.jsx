@@ -51,6 +51,9 @@ function SmartNotificationsCard({
   ])
   const top = model.smartRecommendations[0]
   const priority = top?.priorityLevel || 'low'
+  const pendingLabel = model.smartRecommendations.length === 1
+    ? '1 notis väntar'
+    : `${model.smartRecommendations.length} notiser väntar`
 
   function showAllNotifications() {
     const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -72,8 +75,8 @@ function SmartNotificationsCard({
       </div>
       <div className="smart-notifications-meta">
         <strong>{model.smartRecommendations.length}</strong>
-        <span>väntande</span>
-        {top && <small>Prioritet: {top.priorityLabel}</small>}
+        <span>{pendingLabel}</span>
+        {top && <small>{top.priorityLabel}</small>}
         <button className="secondary-button" type="button" onClick={showAllNotifications}>Visa alla</button>
       </div>
     </section>

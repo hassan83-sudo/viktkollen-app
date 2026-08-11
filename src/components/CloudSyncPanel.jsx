@@ -14,9 +14,9 @@ const defaultCloudSyncStatus = {
   lastSuccessfulSyncAt: '',
   pendingCount: 0,
   queue: { items: [] },
-  status: 'Av',
+  status: 'Automatisk synk är av',
   statusCode: 'disabled',
-  statusLabel: 'Av',
+  statusLabel: 'Automatisk synk är av',
   waitingRetryCount: 0,
 }
 
@@ -31,9 +31,9 @@ function getInitialCloudSyncStatus() {
     lastError: metadata.lastError,
     lastSuccessfulSyncAt: metadata.lastSuccessfulSyncAt,
     pendingCount: metadata.pendingKeys.length,
-    status: metadata.enabled ? 'Osynkade ändringar' : 'Av',
+    status: metadata.enabled ? 'Synkar...' : 'Automatisk synk är av',
     statusCode: metadata.enabled ? 'pending' : 'disabled',
-    statusLabel: metadata.enabled ? 'Osynkade ändringar' : 'Av',
+    statusLabel: metadata.enabled ? 'Synkar...' : 'Automatisk synk är av',
   }
 }
 
@@ -210,8 +210,8 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
           <strong>{formatDateTime(status.lastSuccessfulSyncAt)}</strong>
         </div>
         <div>
-          <span>Väntande</span>
-          <strong>{status.pendingCount}</strong>
+          <span>Ändringar i kö</span>
+          <strong>{status.pendingCount ? `${status.pendingCount} väntar på synk` : 'Inga'}</strong>
         </div>
         <div>
           <span>Nätverk</span>
@@ -226,8 +226,8 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
           <strong>{conflicts.length}</strong>
         </div>
         <div>
-          <span>Sync health</span>
-          <strong>{status.syncHealth || status.statusCode}</strong>
+          <span>Synkstatus</span>
+          <strong>{status.statusCode === 'pending' || status.statusCode === 'dirty' ? 'På väg' : syncStatusSnapshot.statusLabel || status.statusLabel || status.status}</strong>
         </div>
         <div>
           <span>Enheter</span>

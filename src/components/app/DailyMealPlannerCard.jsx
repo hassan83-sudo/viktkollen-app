@@ -62,6 +62,18 @@ function DailyMealPlannerCard({
     [saveState.week, shoppingLists],
   )
   const displayShoppingGroups = saveState.weekSummary.mealCount ? shoppingGroups : model.shoppingGroups
+  const hasSavedWeekPlan = saveState.weekSummary.plannedDayCount > 0
+  const hasProteinGoal = Number(nutritionGoals?.protein) > 0
+  const planStatusText = saveState.saved
+    ? 'Dagens AI-plan är sparad i veckoplanen.'
+    : saveState.dayHasPlan
+      ? 'Dagen har sparade måltider, men den här AI-planen är inte sparad.'
+      : 'Dagens plan är genererad men inte sparad.'
+  const proteinPlanText = hasSavedWeekPlan && hasProteinGoal
+    ? `${saveState.weekSummary.proteinGoalDays}/${saveState.weekSummary.plannedDayCount} dagar når proteinmålet`
+    : hasProteinGoal
+      ? 'Proteinmål kan räknas när minst en planerad dag är sparad.'
+      : 'Sätt ett proteinmål för att se om veckoplanen når målet.'
 
   function persistPlan(mode = 'replace') {
     const saved = saveDailyMealPlanToWeek({
@@ -140,8 +152,9 @@ function DailyMealPlannerCard({
       </div>
 
       <div className="daily-meal-week-summary">
-        <span>{saveState.weekSummary.plannedDayCount}/7 dagar planerade</span>
-        <span>{saveState.weekSummary.proteinGoalDays}/{saveState.weekSummary.plannedDayCount || 0} dagar når proteinmålet</span>
+        <span>{planStatusText}</span>
+        <span>{hasSavedWeekPlan ? `${saveState.weekSummary.plannedDayCount}/7 dagar planerade` : 'Ingen sparad veckoplan ännu'}</span>
+        <span>{proteinPlanText}</span>
       </div>
 
       <div className="daily-meal-grid">

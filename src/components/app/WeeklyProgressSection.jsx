@@ -1,7 +1,5 @@
 import { memo, useMemo, useState } from 'react'
-import { calculateAiHealthScore } from '../../services/dashboardService.js'
-import { getEntryLocalDate } from '../../services/localDate.js'
-import { addDays, getTodayDateString, summarizeDay } from '../../services/nutritionService.js'
+import { buildWeeklyProgress, isFiniteValue } from '../../services/dashboard/weeklyProgressModel.js'
 
 const chartOptions = [
   { id: 'weight', label: 'Vikt', unit: 'kg' },
@@ -10,10 +8,6 @@ const chartOptions = [
   { id: 'protein', label: 'Protein', unit: 'g' },
   { id: 'steps', label: 'Steg', unit: '' },
 ]
-
-function isFiniteValue(value) {
-  return Number.isFinite(Number(value))
-}
 
 function formatDecimal(value, unit = '') {
   if (!isFiniteValue(value)) return 'Saknas'
@@ -27,53 +21,12 @@ function formatDecimal(value, unit = '') {
 }
 
 function formatSignedKg(value) {
-  if (!isFiniteValue(value)) return 'Saknas'
+  if (!isFiniteValue(value)) return 'För lite data'
 
   const number = Number(value)
   const prefix = number > 0 ? '+' : ''
 
   return `${prefix}${number.toFixed(1).replace('.', ',')} kg`
-}
-
-function getDateLabel(date) {
-  return new Intl.DateTimeFormat('sv-SE', {
-    day: 'numeric',
-    weekday: 'short',
-  }).format(new Date(`${date}T12:00:00`))
-}
-
-function getLatestWeightByDate(dailyWeights = []) {
-  return new Map(
-    (Array.isArray(dailyWeights) ? dailyWeights : [])
-      .filter((entry) => entry?.date && isFiniteValue(entry.value))
-      .map((entry) => [entry.date, Number(entry.value)]),
-  )
-}
-
-function getCheckInByDate(entries = [], fallbackCheckIn = {}, todayDate = '') {
-  const map = new Map(
-    (Array.isArray(entries) ? entries : [])
-      .filter(Boolean)
-      .map((entry) => [getEntryLocalDate(entry), entry])
-      .filter(([date]) => date),
-  )
-
-  if (todayDate && fallbackCheckIn && typeof fallbackCheckIn === 'object') {
-    map.set(todayDate, {
-      ...fallbackCheckIn,
-      date: fallbackCheckIn.date || todayDate,
-    })
-  }
-
-  return map
-}
-
-function getAverage(values) {
-  const finiteValues = values.filter(isFiniteValue).map(Number)
-
-  if (!finiteValues.length) return null
-
-  return finiteValues.reduce((sum, value) => sum + value, 0) / finiteValues.length
 }
 
 function getChartSeries(days, key) {
@@ -101,72 +54,6 @@ function getChartSeries(days, key) {
   return {
     points,
     polyline: points.map((point) => `${point.x},${point.y}`).join(' '),
-  }
-}
-
-function buildWeeklyProgress({
-  checkIn,
-  foods,
-  healthSnapshot,
-  meals,
-  nutritionGoals,
-  selectedDate,
-}) {
-  const endDate = healthSnapshot?.date || selectedDate || getTodayDateString()
-  const dates = Array.from({ length: 7 }, (_, index) => addDays(endDate, index - 6))
-  const weightsByDate = getLatestWeightByDate(healthSnapshot?.weight?.dailyWeights)
-  const checkInsByDate = getCheckInByDate(
-    healthSnapshot?.checkIn?.dailyEntries,
-    checkIn,
-    healthSnapshot?.date,
-  )
-
-  const days = dates.map((date) => {
-    const nutrition = summarizeDay(meals, date, nutritionGoals)
-    const dayMeals = nutrition.meals || []
-    const dayCheckIn = checkInsByDate.get(date) || null
-    const weight = weightsByDate.get(date) ?? null
-    const hasHealthSignals = Boolean(dayCheckIn || dayMeals.length || weight !== null)
-    const healthScore = hasHealthSignals
-      ? calculateAiHealthScore({
-        checkIn: dayCheckIn || {},
-        foods: date === healthSnapshot?.date ? foods : [],
-        meals: dayMeals,
-        weights: (healthSnapshot?.weight?.dailyWeights || [])
-          .filter((entry) => entry.date <= date),
-      }).score
-      : null
-    const proteinGoal = Number(nutrition.goals?.protein)
-
-    return {
-      calories: isFiniteValue(nutrition.totals?.calories)
-        ? Number(nutrition.totals.calories)
-        : null,
-      date,
-      healthScore,
-      label: getDateLabel(date),
-      protein: isFiniteValue(nutrition.totals?.protein)
-        ? Number(nutrition.totals.protein)
-        : null,
-      proteinGoalReached:
-        Number.isFinite(proteinGoal) &&
-        proteinGoal > 0 &&
-        Number(nutrition.totals?.protein || 0) >= proteinGoal,
-      steps: isFiniteValue(dayCheckIn?.steps) ? Number(dayCheckIn.steps) : null,
-      weight,
-    }
-  })
-  const weights = days.map((day) => day.weight).filter(isFiniteValue).map(Number)
-  const weightTrend = weights.length >= 2
-    ? Number((weights.at(-1) - weights[0]).toFixed(1))
-    : null
-
-  return {
-    averageHealthScore: getAverage(days.map((day) => day.healthScore)),
-    averageSteps: getAverage(days.map((day) => day.steps)),
-    days,
-    proteinGoalDays: days.filter((day) => day.proteinGoalReached).length,
-    weightTrend,
   }
 }
 
@@ -204,7 +91,7 @@ function WeeklyProgressSection({
           <p className="eyebrow">Senaste 7 dagarna</p>
           <h2>Den här veckan</h2>
         </div>
-        <span>{model.proteinGoalDays}/7 proteinmål</span>
+        <span>{model.coverage.protein ? `${model.proteinGoalDays} dagar proteinmål` : 'Proteinmål saknas'}</span>
       </div>
 
       {!hasAnyHistory ? (
@@ -216,9 +103,16 @@ function WeeklyProgressSection({
         <>
           <div className="weekly-progress-summary">
             <div><span>Vikttrend</span><strong>{formatSignedKg(model.weightTrend)}</strong></div>
-            <div><span>Health Score snitt</span><strong>{formatDecimal(model.averageHealthScore)}</strong></div>
+            <div>
+              <span>Health Score snitt</span>
+              <strong>{model.coverage.healthScore ? `${formatDecimal(model.averageHealthScore)}/100` : 'För lite data'}</strong>
+              <small>{model.coverage.healthScore} av 7 dagar med data</small>
+            </div>
             <div><span>Steg snitt</span><strong>{formatDecimal(model.averageSteps)}</strong></div>
-            <div><span>Proteinmål</span><strong>{model.proteinGoalDays} dagar</strong></div>
+            <div>
+              <span>Proteinmål</span>
+              <strong>{model.coverage.protein ? `${model.proteinGoalDays} dagar` : 'För lite data'}</strong>
+            </div>
           </div>
 
           <div className="weekly-progress-toggle" aria-label="Välj trendgraf">
@@ -250,7 +144,7 @@ function WeeklyProgressSection({
               </svg>
             ) : (
               <div className="weekly-progress-empty compact">
-                <strong>Ingen data för {activeOption.label.toLocaleLowerCase('sv-SE')}.</strong>
+                <strong>För lite data för {activeOption.label.toLocaleLowerCase('sv-SE')}.</strong>
                 <span>Välj en annan trend eller fyll på data under veckan.</span>
               </div>
             )}

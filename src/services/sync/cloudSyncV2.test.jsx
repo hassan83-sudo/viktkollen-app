@@ -745,7 +745,7 @@ describe('Cloud Sync V2 engine', () => {
       enabled: true,
       isOnline: true,
       statusCode: 'pending',
-      statusLabel: 'Osynkade ändringar',
+      statusLabel: 'Synkar...',
     })
   })
 
@@ -756,8 +756,8 @@ describe('Cloud Sync V2 engine', () => {
       enabled: true,
     }, storage)
 
-    expect(getCloudSyncStatusModel(storage, true)).toMatchObject({ statusCode: 'conflict', statusLabel: 'Konflikt' })
-    expect(getCloudSyncStatusModel(storage, false)).toMatchObject({ statusCode: 'offline', statusLabel: 'Offline' })
+    expect(getCloudSyncStatusModel(storage, true)).toMatchObject({ statusCode: 'conflict', statusLabel: 'Konflikt kräver åtgärd' })
+    expect(getCloudSyncStatusModel(storage, false)).toMatchObject({ statusCode: 'offline', statusLabel: 'Offline - synkar när anslutningen återkommer' })
   })
 
   it('normalizes a single remote row', () => {
@@ -783,7 +783,7 @@ describe('Cloud Sync V2 UI', () => {
     'Synca nu',
     'Autosync',
     'Senast klar',
-    'Väntande',
+    'Ändringar i kö',
     'Nätverk',
     'Enhet',
     'Konflikter',

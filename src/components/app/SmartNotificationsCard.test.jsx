@@ -15,6 +15,8 @@ describe('SmartNotificationsCard', () => {
     expect(html).toContain('Smart Notifications')
     expect(html).toContain('Visa alla')
     expect(html).toContain('type="button"')
+    expect(html).toMatch(/notis(?:er)? väntar/)
+    expect(html).not.toMatch(/Prioritet:|Priority:|High|Medium|Low/)
     expect(html).not.toContain('href="#notification-center"')
     expect(html).not.toMatch(/undefined|NaN|\[object Object\]/)
   })

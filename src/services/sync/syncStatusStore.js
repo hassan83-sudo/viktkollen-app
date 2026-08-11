@@ -44,7 +44,7 @@ function buildStatus(overrides = {}) {
 
   if (!metadata.enabled) {
     statusCode = 'disabled'
-    statusLabel = 'Synk av'
+    statusLabel = 'Automatisk synk är av'
   } else if (running) {
     statusCode = 'running'
     statusLabel = 'Synkar...'
@@ -56,10 +56,10 @@ function buildStatus(overrides = {}) {
     statusLabel = 'Konflikt kräver åtgärd'
   } else if (metadata.lastError) {
     statusCode = retryAt ? 'retry_waiting' : 'error'
-    statusLabel = retryAt ? 'Synk pausad till nästa försök' : 'Synkfel'
+    statusLabel = retryAt ? 'Synkar snart igen' : 'Synkproblem'
   } else if (dirty) {
     statusCode = 'dirty'
-    statusLabel = 'Ändringar väntar på synk'
+    statusLabel = 'Synkar...'
   }
 
   return {

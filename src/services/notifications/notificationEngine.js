@@ -35,9 +35,9 @@ const smartPriorityScores = {
 }
 
 const smartPriorityLabels = {
-  high: 'High',
-  low: 'Low',
-  medium: 'Medium',
+  high: 'Hög prioritet',
+  low: 'Låg prioritet',
+  medium: 'Normal prioritet',
 }
 
 function isObject(value) {

@@ -573,22 +573,22 @@ export function getCloudSyncStatusModel(storage, online) {
 
   if (!metadata.enabled) {
     statusCode = 'disabled'
-    statusLabel = 'Av'
+    statusLabel = 'Automatisk synk är av'
   } else if (!isOnline) {
     statusCode = 'offline'
-    statusLabel = 'Offline'
+    statusLabel = 'Offline - synkar när anslutningen återkommer'
   } else if (metadata.conflicts.length > 0) {
     statusCode = 'conflict'
-    statusLabel = 'Konflikt'
+    statusLabel = 'Konflikt kräver åtgärd'
   } else if (metadata.lastError || failedCount > 0) {
     statusCode = 'error'
-    statusLabel = 'Synkfel'
+    statusLabel = 'Synkproblem'
   } else if (waitingRetryCount > 0) {
     statusCode = 'retry_waiting'
-    statusLabel = 'Väntar på återförsök'
+    statusLabel = 'Synkar snart igen'
   } else if (pendingCount > 0) {
     statusCode = 'pending'
-    statusLabel = 'Osynkade ändringar'
+    statusLabel = 'Synkar...'
   }
 
   return {

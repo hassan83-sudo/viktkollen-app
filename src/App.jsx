@@ -83,6 +83,10 @@ import * as userDataRepository from './services/userDataRepository.js'
 import { loadAiApiService, loadAiCoachV2Service, loadAiSuggestions, loadAiUserContext, loadProactiveCoachService, loadWeeklyReportService } from './services/ai/aiRuntimeLoader.js'
 import { prepareCoachChatSubmission, requestCoachChatReply } from './services/ai/aiChatController.js'
 import { createVoiceConversationController } from './services/voiceConversationController.js'
+import {
+  incrementPremiumAnalyticsCounter,
+  premiumAnalyticsCounters,
+} from './services/premiumAnalytics.js'
 import { useGlobalSyncScheduler } from './services/sync/useGlobalSyncScheduler.js'
 import { getSyncStatusSnapshot } from './services/sync/syncStatusStore.js'
 import {
@@ -101,6 +105,9 @@ const DataExportCenter = lazy(() => import('./components/DataExportCenter.jsx'))
 const LaunchReadinessPanel = lazy(() => import('./components/LaunchReadinessPanel.jsx'))
 const ManualAcceptanceRunner = import.meta.env.DEV
   ? lazy(() => import('./components/ManualAcceptanceRunner.jsx'))
+  : null
+const PremiumAnalyticsPanel = import.meta.env.DEV
+  ? lazy(() => import('./components/PremiumAnalyticsPanel.jsx'))
   : null
 const ProgressCenter = lazy(() => import('./components/ProgressCenter.jsx'))
 const SyncHealthDashboard = lazy(() => import('./components/SyncHealthDashboard.jsx'))
@@ -2188,6 +2195,12 @@ function App() {
     })
   }
 
+  function trackPremiumCounter(counter) {
+    incrementPremiumAnalyticsCounter(counter, {
+      userId: authSession?.user?.id || authSession?.user?.email || 'local-user',
+    })
+  }
+
   async function analyzePhotoMeal() {
     if (!foodPhotoPreview) {
       return
@@ -2228,6 +2241,7 @@ function App() {
 
       setPhotoMeals(addMealAnalysis(nextEntry))
       setMeals((current) => upsertMeal(current, photoMeal))
+      trackPremiumCounter(premiumAnalyticsCounters.nutritionAnalyses)
       setPhotoAnalysisStatus('')
     } catch (error) {
       setPhotoAnalysisStatus(getSafeErrorMessage(error, { area: 'network' }))
@@ -2560,12 +2574,14 @@ function App() {
         role: 'assistant',
         text: result.reply,
       })
+      trackPremiumCounter(premiumAnalyticsCounters.aiCoachMessages)
       return result.reply
     } catch (error) {
       const reply = getSafeErrorMessage(error, { area: 'ai' })
 
       setChatEngineStatus('AI-coachen kunde inte svara just nu.')
       appendChatMessage('assistant', reply, 'mock')
+      trackPremiumCounter(premiumAnalyticsCounters.aiCoachMessages)
       return reply
     } finally {
       chatRequestInFlightRef.current = false
@@ -2601,13 +2617,17 @@ function App() {
         return sendChatText(transcript)
       },
       isSpeechEnabled: () => isAiVoiceEnabledRef.current,
+      onSpeechStart: () => trackPremiumCounter(premiumAnalyticsCounters.aiVoiceReplies),
       setActive: setIsVoiceConversationActive,
       setListening: setIsListening,
       setSpeaking: setIsAiSpeaking,
       setStatus: setVoiceStatus,
     })
 
-    await voiceConversationRef.current.start()
+    const started = await voiceConversationRef.current.start()
+    if (started) {
+      trackPremiumCounter(premiumAnalyticsCounters.voiceSessions)
+    }
   }
 
   function stopAiVoiceResponse() {
@@ -2753,6 +2773,9 @@ function App() {
           />
           <ManualAcceptanceRunner
             syncStatus={syncStatusWithUser}
+          />
+          <PremiumAnalyticsPanel
+            userId={authSession?.user?.id || authSession?.user?.email || 'local-user'}
           />
         </Suspense>
       )}
@@ -3064,6 +3087,7 @@ function App() {
           progressPhotoOptions={progressPhotoOptions}
           progressPhotos={progressPhotos}
           selectedMealDate={selectedMealDate}
+          userId={authSession?.user?.id || authSession?.user?.email || 'local-user'}
           weights={centralWeightStats.weights}
           weeklyReportData={weeklyReportData}
           weeklyReportLines={weeklyReportLines}

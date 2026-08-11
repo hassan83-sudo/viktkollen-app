@@ -103,6 +103,7 @@ function makeController(overrides = {}) {
     hostname: () => overrides.hostname || 'localhost',
     isSecureContext: () => overrides.secureContext ?? true,
     isSpeechEnabled: () => overrides.speechEnabled ?? true,
+    onSpeechStart: overrides.onSpeechStart,
     onTranscript,
     setActive: (value) => active.push(value),
     setListening: (value) => listening.push(value),
@@ -188,6 +189,20 @@ describe('voiceConversationController', () => {
     expect(selectSpeechSynthesisVoice([fallbackVoice, swedishVoice])).toBe(swedishVoice)
     expect(createSpeechSynthesis.lastUtterance.voice).toBe(swedishVoice)
     expect(createSpeechSynthesis.lastUtterance.lang).toBe('sv-SE')
+  })
+
+  it('notifies when AI speech output starts', async () => {
+    const onSpeechStart = vi.fn()
+    const { controller, Recognition, speechSynthesis } = makeController({
+      onSpeechStart,
+    })
+
+    await controller.start()
+    Recognition.instances[0].emitResult('Hej')
+    await vi.advanceTimersByTimeAsync(100)
+
+    expect(speechSynthesis.speak).toHaveBeenCalledTimes(1)
+    expect(onSpeechStart).toHaveBeenCalledTimes(1)
   })
 
   it('uses browser fallback voice when no voices are loaded yet', async () => {

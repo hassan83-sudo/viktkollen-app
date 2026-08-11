@@ -35,6 +35,7 @@ function ProgressSection({
   progressPhotoOptions,
   progressPhotos,
   selectedMealDate,
+  userId,
   weights,
   weeklyReportData,
   weeklyReportLines,
@@ -63,6 +64,7 @@ function ProgressSection({
         progressPhotoItems={progressPhotoItems}
         progressPhotoNote={progressPhotoNote}
         progressPhotoOptions={progressPhotoOptions}
+        userId={userId}
       />
 
       <MonthlyReport report={monthlyReport} />

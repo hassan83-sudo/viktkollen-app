@@ -26,6 +26,7 @@ export function createVoiceConversationController({
   hostname = () => globalThis.window?.location?.hostname || '',
   isSecureContext = () => Boolean((globalThis.window || globalThis).isSecureContext),
   isSpeechEnabled = () => true,
+  onSpeechStart,
   onTranscript,
   setActive,
   setListening,
@@ -197,6 +198,7 @@ export function createVoiceConversationController({
 
       try {
         speechSynthesis.cancel?.()
+        onSpeechStart?.()
         speechSynthesis.speak(utterance)
       } catch {
         settle()

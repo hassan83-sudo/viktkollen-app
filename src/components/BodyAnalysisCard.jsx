@@ -17,6 +17,10 @@ import {
 } from '../services/bodyAnalysisHistory'
 import { analyzeBodyWithAI } from '../services/bodyAnalysisService'
 import { getBodyAnalysisProgressStats } from '../services/bodyAnalysisStats'
+import {
+  incrementPremiumAnalyticsCounter,
+  premiumAnalyticsCounters,
+} from '../services/premiumAnalytics'
 import BodyAnalysisDevChecklist from './BodyAnalysisDevChecklist'
 import BodyAnalysisOnboarding from './BodyAnalysisOnboarding'
 import BodyAnalysisPrivacy from './BodyAnalysisPrivacy'
@@ -263,7 +267,7 @@ function createDemoBodyAnalysisResult(previousAnalysis) {
   }
 }
 
-function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
+function BodyAnalysisCard({ onAnalysisHistoryChange = () => {}, userId = 'local-user' }) {
   const [activeBodyMarker, setActiveBodyMarker] = useState(bodyOverviewMarkers[0])
   const [analysisHistory, setAnalysisHistory] = useState(() =>
     getAnalysisHistory(),
@@ -527,6 +531,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {} }) {
     setImportSummary(null)
     onAnalysisHistoryChange(true)
     setAnalysisStatus('Analys klar')
+    incrementPremiumAnalyticsCounter(premiumAnalyticsCounters.bodyScans, { userId })
   }
 
   async function runBodyAnalysis() {

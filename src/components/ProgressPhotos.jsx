@@ -134,6 +134,7 @@ function ProgressPhotos({
   progressPhotoItems,
   progressPhotoNote,
   progressPhotoOptions,
+  userId,
 }) {
   const [showSameOccasionComparison, setShowSameOccasionComparison] =
     useState(false)
@@ -182,6 +183,7 @@ function ProgressPhotos({
 
       <BodyAnalysisCard
         onAnalysisHistoryChange={setHasBodyAnalysisHistory}
+        userId={userId}
       />
 
       {hasProgressPhotos && (

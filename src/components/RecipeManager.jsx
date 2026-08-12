@@ -53,6 +53,7 @@ function RecipeManager({
   const [editingId, setEditingId] = useState('')
   const [errors, setErrors] = useState({})
   const [filters, setFilters] = useState({ category: 'Alla', search: '', sort: 'updated' })
+  const [isDirty, setIsDirty] = useState(false)
   const [status, setStatus] = useState('')
   const visibleRecipes = useMemo(() => filterRecipes(recipes, filters), [filters, recipes])
 
@@ -60,10 +61,13 @@ function RecipeManager({
     setDraft(emptyDraft())
     setEditingId('')
     setErrors({})
+    setIsDirty(false)
   }
 
   function changeDraft(key, value) {
     setDraft((current) => ({ ...current, [key]: value }))
+    setIsDirty(true)
+    setStatus('Ändringar inte sparade.')
   }
 
   function submitRecipe(event) {
@@ -76,6 +80,7 @@ function RecipeManager({
       if (!updated) {
         const result = createRecipe(draft)
         setErrors(result.errors)
+        setStatus('Receptet kunde inte sparas. Kontrollera fälten.')
         return
       }
 
@@ -87,7 +92,10 @@ function RecipeManager({
 
     const result = createRecipe(draft)
     setErrors(result.errors)
-    if (!result.recipe) return
+    if (!result.recipe) {
+      setStatus('Receptet kunde inte sparas. Kontrollera fälten.')
+      return
+    }
 
     onRecipesChange([result.recipe, ...recipes])
     setStatus(`${result.recipe.name} skapades.`)
@@ -98,6 +106,8 @@ function RecipeManager({
     setDraft(recipeToDraft(recipe))
     setEditingId(recipe.id)
     setErrors({})
+    setIsDirty(false)
+    setStatus(`${recipe.name} öppnades för redigering.`)
   }
 
   function removeRecipe(recipeId) {
@@ -119,7 +129,11 @@ function RecipeManager({
 
   function createTemplate(recipe) {
     const draftTemplate = recipeToMealTemplateDraft(recipe)
-    if (!draftTemplate || !onTemplateCreate) return
+    if (!draftTemplate || !onTemplateCreate) {
+      setStatus('Måltidsmallar är under utveckling för detta receptflöde.')
+      return
+    }
+
     onTemplateCreate(draftTemplate)
     setStatus(`${recipe.name} skickades till måltidsmallar.`)
   }
@@ -130,8 +144,9 @@ function RecipeManager({
         <div>
           <p className="eyebrow">Receptmotor</p>
           <h3 id="recipe-manager-title">Recept</h3>
-          <span>Recept sparas separat från måltider och mallar.</span>
+          <span>{recipes.length} recept sparade. Recept sparas separat från måltider och mallar.</span>
         </div>
+        {isDirty && <span className="nutrition-pill">Ändringar inte sparade</span>}
       </div>
 
       {status && <p className="nutrition-edit-status" role="status" aria-live="polite">{status}</p>}

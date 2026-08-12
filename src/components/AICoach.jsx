@@ -95,12 +95,14 @@ function AICoach({
       <CoachSuggestions
         coachMessage={coachMessage}
         coachStatus={resolvedCoachStatus}
+        isLoading={isGeneratingReport}
       />
 
       {!coachReport ? (
         <div className="coach-v2-empty">
           <strong>Redo för din första V2-rapport.</strong>
-          <span>Coachen använder profil, vikttrend, mat, check-in och mål när du skapar rapporten.</span>
+          <span>Skapa rapporten när du vill samla dagens konkreta råd, risker och nästa steg på ett ställe.</span>
+          <small>Om remote AI inte svarar visas en trygg lokal fallback baserad på din sparade data.</small>
         </div>
       ) : (
         <div className="coach-v2-grid">

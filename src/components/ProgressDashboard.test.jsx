@@ -8,6 +8,7 @@ import ProgressInsights from './progress/ProgressInsights.jsx'
 import ProgressSummaryCards from './progress/ProgressSummaryCards.jsx'
 import ProgressTrendCard from './progress/ProgressTrendCard.jsx'
 import { buildProgressDashboardAnalytics } from '../services/progress/progressAnalytics.js'
+import { buildProgressInsightsModel } from '../services/progressInsights/progressInsightsEngine.js'
 
 const weights = [
   { date: '2026-03-01', value: 91 },
@@ -22,6 +23,15 @@ const foods = [{ done: true, id: 'protein', label: 'Protein' }, { done: false, i
 const nutritionGoals = { calories: 1800, protein: 100 }
 const profile = { goalWeight: '78 kg', startWeight: '91 kg' }
 const analysis = buildProgressDashboardAnalytics({
+  checkIn,
+  foods,
+  meals,
+  nutritionGoals,
+  profile,
+  today: new Date('2026-03-31T12:00:00.000Z'),
+  weights,
+}, { period: '30d', today: new Date('2026-03-31T12:00:00.000Z') })
+const progressInsights = buildProgressInsightsModel({
   checkIn,
   foods,
   meals,
@@ -64,7 +74,8 @@ describe('ProgressDashboard UI', () => {
     ['nutrition card', 'Faktiskt intag'],
     ['habit card', 'Rutiner'],
     ['forecast card', 'Försiktig riktning'],
-    ['insights card', 'Prioriterat'],
+    ['insights card', 'AI Progress Insights V1'],
+    ['progress insights title', 'Framstegsinsikter'],
     ['weekly report', 'Veckans sammanfattning'],
   ])('renders %s', (_, expected) => {
     expect(html()).toContain(expected)
@@ -140,7 +151,7 @@ describe('ProgressDashboard UI', () => {
     ['nutrition card', <NutritionProgressCard nutrition={analysis.nutrition} planning={analysis.planning} />, 'Planerade måltider'],
     ['habit card', <HabitProgressCard habits={analysis.habits} />, 'Träningsdagar'],
     ['forecast card', <GoalForecastCard forecast={analysis.forecast} />, 'Trend per vecka'],
-    ['insights card', <ProgressInsights comparison={analysis.comparison} insights={analysis.insights} weeklySummary={analysis.weeklySummary} />, 'Föregående period'],
+    ['insights card', <ProgressInsights model={progressInsights} weeklySummary={analysis.weeklySummary} />, 'Nästa steg'],
   ])('renders %s standalone', (_, element, expected) => {
     expect(renderToStaticMarkup(element)).toContain(expected)
   })

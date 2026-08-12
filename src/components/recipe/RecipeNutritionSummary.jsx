@@ -7,14 +7,20 @@ function formatNumber(value, unit) {
 
 function RecipeNutritionSummary({ recipe }) {
   const nutrition = calculateRecipeNutrition(recipe)
-  const valueOrMissing = (value, unit) => (recipe ? formatNumber(value, unit) : 'Saknas')
+  const hasManualField = (field) =>
+    Object.prototype.hasOwnProperty.call(recipe?.nutritionOverride || {}, field) &&
+    recipe.nutritionOverride[field] !== '' &&
+    recipe.nutritionOverride[field] !== null &&
+    recipe.nutritionOverride[field] !== undefined
+  const valueOrMissing = (field, value, unit) =>
+    recipe && (nutrition.known || hasManualField(field)) ? formatNumber(value, unit) : 'Saknas'
 
   return (
     <dl className="recipe-nutrition-summary">
-      <div><dt>Per portion</dt><dd>{valueOrMissing(nutrition.perServing.calories, 'kcal')}</dd></div>
-      <div><dt>Protein</dt><dd>{valueOrMissing(nutrition.perServing.protein, 'g')}</dd></div>
-      <div><dt>Kolhydrater</dt><dd>{valueOrMissing(nutrition.perServing.carbs, 'g')}</dd></div>
-      <div><dt>Fett</dt><dd>{valueOrMissing(nutrition.perServing.fat, 'g')}</dd></div>
+      <div><dt>Per portion</dt><dd>{valueOrMissing('calories', nutrition.perServing.calories, 'kcal')}</dd></div>
+      <div><dt>Protein</dt><dd>{valueOrMissing('protein', nutrition.perServing.protein, 'g')}</dd></div>
+      <div><dt>Kolhydrater</dt><dd>{valueOrMissing('carbs', nutrition.perServing.carbs, 'g')}</dd></div>
+      <div><dt>Fett</dt><dd>{valueOrMissing('fat', nutrition.perServing.fat, 'g')}</dd></div>
     </dl>
   )
 }

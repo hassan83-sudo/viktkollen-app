@@ -336,9 +336,11 @@ function MealQuickAdd({
             Alla mallar
           </button>
           <button
+            aria-label={!hasDietaryPreferences(dietaryPreferences) ? 'Matchande mallar kräver sparade matpreferenser' : undefined}
             aria-pressed={templateCompatibilityFilter === 'matching'}
             className={templateCompatibilityFilter === 'matching' ? 'active' : ''}
             disabled={!hasDietaryPreferences(dietaryPreferences)}
+            title={!hasDietaryPreferences(dietaryPreferences) ? 'Spara matpreferenser för att filtrera matchande mallar.' : undefined}
             type="button"
             onClick={() => setTemplateCompatibilityFilter('matching')}
           >

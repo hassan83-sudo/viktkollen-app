@@ -305,6 +305,10 @@ function comparePeriods(current, previous) {
     hasComparison: true,
     mealCountDelta: current.nutrition.mealCount - previous.nutrition.mealCount,
     proteinGoalPercentDelta: current.nutrition.proteinGoalPercent - previous.nutrition.proteinGoalPercent,
+    stepAverageDelta:
+      current.habits.averageSteps !== null && previous.habits.averageSteps !== null
+        ? round(current.habits.averageSteps - previous.habits.averageSteps)
+        : null,
     trainingDaysDelta: current.habits.trainingDays - previous.habits.trainingDays,
     weightChangeDelta:
       current.weight.changeKg !== null && previous.weight.changeKg !== null

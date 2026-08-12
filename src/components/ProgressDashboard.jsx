@@ -7,6 +7,7 @@ import {
   buildProgressDashboardAnalytics,
   progressPeriods,
 } from '../services/progress/progressAnalytics.js'
+import { buildProgressInsightsModel } from '../services/progressInsights/progressInsightsEngine.js'
 import GoalForecastCard from './progress/GoalForecastCard.jsx'
 import HabitProgressCard from './progress/HabitProgressCard.jsx'
 import NutritionProgressCard from './progress/NutritionProgressCard.jsx'
@@ -30,12 +31,14 @@ function writeStoredPeriod(period) {
 function ProgressDashboard({
   checkIn,
   checkIns,
+  bodyAnalysisHistory,
   foods,
   healthSnapshot,
   meals,
   nutritionGoals,
   onCreateWeeklyReport,
   profile,
+  progressPhotoItems,
   weeklyReportData,
   weeklyReportLines,
   weeklyReportStatus,
@@ -61,6 +64,25 @@ function ProgressDashboard({
       weights,
     }, { period }),
     [checkIn, checkIns, foods, generatedMealPlans, healthSnapshot, mealPlans, meals, nutritionGoals, period, profile, today, weeklyReportData, weights],
+  )
+  const progressInsights = useMemo(
+    () => buildProgressInsightsModel({
+      bodyAnalysisHistory,
+      checkIn,
+      checkIns,
+      foods,
+      generatedMealPlans,
+      healthSnapshot,
+      mealPlans,
+      meals,
+      nutritionGoals,
+      profile,
+      progressPhotoItems,
+      today,
+      weeklyReportData,
+      weights,
+    }, { period, today }),
+    [bodyAnalysisHistory, checkIn, checkIns, foods, generatedMealPlans, healthSnapshot, mealPlans, meals, nutritionGoals, period, profile, progressPhotoItems, today, weeklyReportData, weights],
   )
 
   function changePeriod(nextPeriod) {
@@ -100,8 +122,7 @@ function ProgressDashboard({
         <HabitProgressCard habits={analysis.habits} />
         <GoalForecastCard forecast={analysis.forecast} />
         <ProgressInsights
-          comparison={analysis.comparison}
-          insights={analysis.insights}
+          model={progressInsights}
           weeklySummary={analysis.weeklySummary}
         />
       </div>

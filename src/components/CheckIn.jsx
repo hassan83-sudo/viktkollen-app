@@ -1,3 +1,5 @@
+import { memo, useEffect, useMemo, useState } from 'react'
+
 function makeCheckInSummary({ checkIn, foodScore, foodTotal }) {
   const hasCheckIn =
     Number.isFinite(checkIn.energy) &&
@@ -52,7 +54,26 @@ function makeCheckInSummary({ checkIn, foodScore, foodTotal }) {
 }
 
 function CheckIn({ checkIn, foodScore, foodTotal, onUpdateCheckIn }) {
-  const checkInSummary = makeCheckInSummary({ checkIn, foodScore, foodTotal })
+  const [localCheckIn, setLocalCheckIn] = useState(checkIn)
+  const checkInSummary = useMemo(
+    () => makeCheckInSummary({ checkIn: localCheckIn, foodScore, foodTotal }),
+    [foodScore, foodTotal, localCheckIn],
+  )
+
+  function updateLocalCheckIn(key, value) {
+    setLocalCheckIn((current) => ({ ...current, [key]: value }))
+  }
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      if (localCheckIn.energy !== checkIn.energy) onUpdateCheckIn('energy', localCheckIn.energy)
+      if (localCheckIn.steps !== checkIn.steps) onUpdateCheckIn('steps', localCheckIn.steps)
+      if (localCheckIn.mood !== checkIn.mood) onUpdateCheckIn('mood', localCheckIn.mood)
+      if (localCheckIn.workout !== checkIn.workout) onUpdateCheckIn('workout', localCheckIn.workout)
+    }, 140)
+
+    return () => window.clearTimeout(timeout)
+  }, [checkIn, localCheckIn, onUpdateCheckIn])
 
   return (
     <article className="panel check-in-panel" id="checkin">
@@ -69,12 +90,12 @@ function CheckIn({ checkIn, foodScore, foodTotal, onUpdateCheckIn }) {
           type="range"
           min="1"
           max="10"
-          value={checkIn.energy}
+          value={localCheckIn.energy}
           onChange={(event) =>
-            onUpdateCheckIn('energy', Number(event.target.value))
+            updateLocalCheckIn('energy', Number(event.target.value))
           }
         />
-        <strong>{checkIn.energy}/10</strong>
+        <strong>{localCheckIn.energy}/10</strong>
       </label>
 
       <label className="field">
@@ -83,9 +104,9 @@ function CheckIn({ checkIn, foodScore, foodTotal, onUpdateCheckIn }) {
           type="number"
           min="0"
           step="100"
-          value={checkIn.steps}
+          value={localCheckIn.steps}
           onChange={(event) =>
-            onUpdateCheckIn('steps', Number(event.target.value))
+            updateLocalCheckIn('steps', Number(event.target.value))
           }
         />
       </label>
@@ -93,8 +114,8 @@ function CheckIn({ checkIn, foodScore, foodTotal, onUpdateCheckIn }) {
       <label className="field">
         <span>Humör</span>
         <select
-          value={checkIn.mood}
-          onChange={(event) => onUpdateCheckIn('mood', event.target.value)}
+          value={localCheckIn.mood}
+          onChange={(event) => updateLocalCheckIn('mood', event.target.value)}
         >
           <option>Fokuserad</option>
           <option>Lugn</option>
@@ -106,9 +127,9 @@ function CheckIn({ checkIn, foodScore, foodTotal, onUpdateCheckIn }) {
       <label className="toggle-row">
         <input
           type="checkbox"
-          checked={checkIn.workout}
+          checked={localCheckIn.workout}
           onChange={(event) =>
-            onUpdateCheckIn('workout', event.target.checked)
+            updateLocalCheckIn('workout', event.target.checked)
           }
         />
         <span>Träning eller medveten rörelse genomförd</span>
@@ -121,4 +142,4 @@ function CheckIn({ checkIn, foodScore, foodTotal, onUpdateCheckIn }) {
   )
 }
 
-export default CheckIn
+export default memo(CheckIn)

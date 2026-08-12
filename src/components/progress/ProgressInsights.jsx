@@ -1,28 +1,74 @@
-function ProgressInsights({ comparison, insights, weeklySummary }) {
+import { useState } from 'react'
+
+const typeLabels = {
+  INSUFFICIENT_DATA: 'För lite data',
+  NEEDS_ATTENTION: 'Följ upp',
+  POSITIVE_TREND: 'Positiv trend',
+  STABLE: 'Stabilt',
+}
+
+function ProgressInsightItem({ insight }) {
   return (
-    <section className="nutrition-card progress-card" aria-labelledby="progress-insights-title">
+    <li className={`is-${insight.type.toLocaleLowerCase('sv-SE').replace(/_/g, '-')}`}>
+      <div>
+        <strong>{typeLabels[insight.type] || 'Insikt'}</strong>
+        <span>{insight.title}</span>
+      </div>
+      <details>
+        <summary>Varför?</summary>
+        <p>{insight.why}</p>
+        {insight.evidence.length > 0 && (
+          <ul>
+            {insight.evidence.map((item) => <li key={item}>{item}</li>)}
+          </ul>
+        )}
+      </details>
+    </li>
+  )
+}
+
+function ProgressInsights({ model, weeklySummary }) {
+  const [showAll, setShowAll] = useState(false)
+  const visibleInsights = showAll ? model.allInsights : model.mainInsights
+
+  return (
+    <section className="nutrition-card progress-card ai-progress-insights-card" id="progress-insights" aria-labelledby="progress-insights-title">
       <div className="nutrition-card-heading">
         <div>
-          <p className="eyebrow">Smarta insikter</p>
-          <h3 id="progress-insights-title">Prioriterat</h3>
+          <p className="eyebrow">AI Progress Insights V1</p>
+          <h3 id="progress-insights-title">Framstegsinsikter</h3>
         </div>
+        <span className="insight-coverage">{model.confidence.text}</span>
       </div>
-      {insights.length ? (
-        <ul className="progress-insight-list">
-          {insights.map((insight) => (
-            <li className={`is-${insight.tone}`} key={insight.text}>
-              <strong>{insight.tone === 'positive' ? 'Styrka' : 'Notering'}</strong>
-              <span>{insight.text}</span>
-            </li>
+
+      {visibleInsights.length ? (
+        <ul className="progress-insight-list ai-progress-insight-list">
+          {visibleInsights.map((insight) => (
+            <ProgressInsightItem insight={insight} key={insight.id} />
           ))}
         </ul>
       ) : (
-        <div className="nutrition-empty"><span>Mer data behövs för tydliga insikter.</span></div>
+        <div className="nutrition-empty">
+          <span>Fler registrerade dagar behövs för tydliga framstegsinsikter.</span>
+        </div>
       )}
+
+      <article className="insight-plan ai-progress-next-action">
+        <span>Nästa steg</span>
+        <p>{model.nextBestAction}</p>
+      </article>
+
       <div className="coach-note">
-        Föregående period: {comparison.hasComparison ? `${comparison.mealCountDelta} måltider, ${comparison.trainingDaysDelta} träningsdagar, ${comparison.checkInDelta} check-ins.` : 'Jämförelse visas för 7, 30 och 90 dagar när data finns.'}
+        Datatäckning: {model.coverage.weightDays} viktdagar, {model.coverage.mealDays} måltidsdagar och {model.coverage.checkInDays} check-ins.
       </div>
+
       {weeklySummary && <div className="coach-note">Veckans sammanfattning: {weeklySummary}</div>}
+
+      {model.allInsights.length > model.mainInsights.length && (
+        <button className="secondary-button" type="button" onClick={() => setShowAll((current) => !current)}>
+          {showAll ? 'Visa färre insikter' : 'Visa alla insikter'}
+        </button>
+      )}
     </section>
   )
 }

@@ -37,7 +37,7 @@ function RecommendationCard({ onAddTemplate, onDismiss, recommendation }) {
       <MealSuggestionCard suggestion={recommendation.suggestion} />
       <div className="nutrition-actions">
         <button aria-expanded={expanded} className="secondary-button" type="button" onClick={() => setExpanded((current) => !current)}>
-          {expanded ? 'Dölj varför' : 'Visa varför'}
+          {expanded ? 'Dölj varför' : 'Varför rekommenderas detta?'}
         </button>
         {recommendation.template && (
           <button
@@ -54,7 +54,7 @@ function RecommendationCard({ onAddTemplate, onDismiss, recommendation }) {
           </button>
         )}
       </div>
-      {expanded && <p className="nutrition-recommendation-explanation">{explanation}</p>}
+      {expanded && <p className="nutrition-recommendation-explanation"><strong>Varför rekommenderas detta?</strong> {explanation}</p>}
     </article>
   )
 }

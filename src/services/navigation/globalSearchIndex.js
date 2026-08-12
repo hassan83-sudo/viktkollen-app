@@ -63,6 +63,14 @@ export const globalSearchItems = [
     title: 'Registrera vikt',
   }),
   createItem({
+    description: 'Personliga framstegsinsikter, trend, platå och nästa steg',
+    id: 'progress-insights',
+    keywords: ['progress insights', 'framstegsinsikter', 'utveckling', 'trend', 'platå', 'plata', 'progress', 'ai progress insights'],
+    section: 'progress',
+    targetId: 'progress-insights',
+    title: 'AI Progress Insights',
+  }),
+  createItem({
     description: 'Progressbilder och före/efter-jämförelse',
     id: 'progress-photos',
     keywords: ['progress photos', 'progressbilder', 'bilder', 'före efter', 'before after', 'foto'],

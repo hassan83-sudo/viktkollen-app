@@ -17,6 +17,12 @@ import {
   buildNutritionInsights,
   exportNutritionData,
 } from '../services/nutritionService.js'
+import {
+  filterAndSortMeals,
+  getHistoryRangeBounds,
+  historyRangeOptions,
+  summarizeMeals,
+} from '../services/nutrition/mealHistoryRange.js'
 import DailyNutritionSummary from './nutrition/DailyNutritionSummary.jsx'
 import DietaryPreferencesPanel from './nutrition/DietaryPreferencesPanel.jsx'
 import FavoriteMeals from './nutrition/FavoriteMeals.jsx'
@@ -84,57 +90,6 @@ function downloadJson(filename, payload) {
   window.URL.revokeObjectURL(url)
 }
 
-function filterAndSortMeals(meals, filters) {
-  const search = filters.search.trim().toLocaleLowerCase('sv-SE')
-
-  return normalizeMeals(meals)
-    .filter((meal) => {
-      if (filters.type !== 'Alla' && meal.type !== filters.type) {
-        return false
-      }
-
-      if (filters.from && meal.date < filters.from) {
-        return false
-      }
-
-      if (filters.to && meal.date > filters.to) {
-        return false
-      }
-
-      if (!search) {
-        return true
-      }
-
-      return [meal.name, meal.description, meal.note]
-        .join(' ')
-        .toLocaleLowerCase('sv-SE')
-        .includes(search)
-    })
-    .sort((first, second) => {
-      if (filters.sort === 'oldest') {
-        return `${first.date}T${first.time}`.localeCompare(`${second.date}T${second.time}`)
-      }
-
-      if (filters.sort === 'caloriesHigh') {
-        return (second.calories || 0) - (first.calories || 0)
-      }
-
-      if (filters.sort === 'caloriesLow') {
-        return (first.calories || 0) - (second.calories || 0)
-      }
-
-      if (filters.sort === 'proteinHigh') {
-        return (second.protein || 0) - (first.protein || 0)
-      }
-
-      if (filters.sort === 'proteinLow') {
-        return (first.protein || 0) - (second.protein || 0)
-      }
-
-      return `${second.date}T${second.time}`.localeCompare(`${first.date}T${first.time}`)
-    })
-}
-
 function MealLogger({
   displayPhotoMeals,
   favoriteMeals,
@@ -170,6 +125,7 @@ function MealLogger({
   const [favoriteSearch, setFavoriteSearch] = useState('')
   const [filters, setFilters] = useState(defaultFilters)
   const [goalDraft, setGoalDraft] = useState(() => normalizeNutritionGoals(nutritionGoals))
+  const [historyRange, setHistoryRange] = useState('today')
   const [goalErrors, setGoalErrors] = useState({})
   const [importStatus, setImportStatus] = useState('')
   const [lastMealEdit, setLastMealEdit] = useState(null)
@@ -214,8 +170,20 @@ function MealLogger({
     [normalizedGoals.protein, nutritionMeals, selectedMealDate],
   )
   const visibleMeals = useMemo(
-    () => filterAndSortMeals(normalizedMeals, filters),
-    [filters, normalizedMeals],
+    () => {
+      const range = getHistoryRangeBounds(selectedMealDate, historyRange)
+
+      return filterAndSortMeals(normalizedMeals, {
+        ...filters,
+        from: filters.from || range.from,
+        to: filters.to || range.to,
+      })
+    },
+    [filters, historyRange, normalizedMeals, selectedMealDate],
+  )
+  const mealHistorySummary = useMemo(
+    () => summarizeMeals(visibleMeals),
+    [visibleMeals],
   )
   const mealQualityReview = useMemo(
     () => buildMealQualityReviewModel(normalizedMeals, { limit: 5, proteinGoal: normalizedGoals.protein }),
@@ -863,12 +831,16 @@ function MealLogger({
 
       <MealHistory
         filters={filters}
+        historyRange={historyRange}
+        historySummary={mealHistorySummary}
+        historyRangeOptions={historyRangeOptions}
         meals={visibleMeals}
         onClearFilters={() => setFilters(defaultFilters)}
         onCopyMeal={copyMeal}
         onDeleteMeal={deleteMeal}
         onEditMeal={editMeal}
         onFilterChange={(key, value) => setFilters((current) => ({ ...current, [key]: value }))}
+        onHistoryRangeChange={setHistoryRange}
         onSaveFavorite={saveFavorite}
         onSaveTemplate={saveMealTemplate}
       />

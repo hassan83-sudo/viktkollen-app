@@ -113,6 +113,28 @@ describe('Recipe Manager UI', () => {
     expect(renderToStaticMarkup(<RecipeNutritionSummary recipe={null} />)).toContain('Saknas')
   })
 
+  it('does not turn missing recipe nutrition into zeroes', () => {
+    const markup = renderToStaticMarkup(<RecipeNutritionSummary recipe={{ name: 'Eget recept', servings: 2 }} />)
+
+    expect(markup).toContain('Saknas')
+    expect(markup).not.toContain('0 kcal')
+  })
+
+  it('keeps real manual zero values visible', () => {
+    const markup = renderToStaticMarkup(
+      <RecipeNutritionSummary
+        recipe={{
+          name: 'Makrotest',
+          nutritionOverride: { calories: '0', protein: '0' },
+          servings: 1,
+        }}
+      />,
+    )
+
+    expect(markup).toContain('0 kcal')
+    expect(markup).toContain('0 g')
+  })
+
   it('renders ingredient rows', () => {
     const markup = renderToStaticMarkup(
       <RecipeIngredientEditor ingredients={recipes[0].ingredients} onChange={vi.fn()} />,
@@ -129,6 +151,15 @@ describe('Recipe Manager UI', () => {
 
   it('keeps accessible pressed state for favorite recipe', () => {
     expect(managerHtml()).toContain('aria-pressed="true"')
+  })
+
+  it('shows manual recipe nutrition fields and unsaved state copy', () => {
+    expect(managerHtml()).toContain('Manuella näringsvärden')
+    expect(managerHtml()).toContain('Tomt = saknas')
+  })
+
+  it('keeps template action visible when the flow is partial', () => {
+    expect(managerHtml({ onTemplateCreate: undefined })).toContain('Skapa mall')
   })
 })
 

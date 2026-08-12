@@ -26,6 +26,12 @@ describe('globalSearchIndex', () => {
     expect(titles('RÖST')).toContain('AI Coach')
   })
 
+  it('finds AI Progress Insights by trend and plateau aliases', () => {
+    expect(titles('progress insights')).toContain('AI Progress Insights')
+    expect(titles('framstegsinsikter')).toContain('AI Progress Insights')
+    expect(titles('platå')).toContain('AI Progress Insights')
+  })
+
   it('normalizes case, diacritics, whitespace and hyphens', () => {
     expect(normalizeSearchText('  MÅLTIDS-plan  ')).toBe('maltids plan')
     expect(titles('SÄKERHETSKOPIA')).toContain('Cloud Backup')

@@ -59,6 +59,7 @@ describe('Performance Architecture app shell components', () => {
   it('renders five stable application sections', () => {
     const markup = renderToStaticMarkup(<BottomNavigation activeSection="coach" />)
 
+    expect(markup).toContain('class="bottom-nav"')
     expect(markup).toContain('href="#app-section-home"')
     expect(markup).toContain('href="#app-section-coach"')
     expect(markup).toContain('href="#app-section-nutrition"')

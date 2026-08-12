@@ -2,6 +2,13 @@ import { recipeCategories } from '../../services/nutrition/nutritionEngine.js'
 import RecipeIngredientEditor from './RecipeIngredientEditor.jsx'
 import RecipeNutritionSummary from './RecipeNutritionSummary.jsx'
 
+const nutritionFields = [
+  ['calories', 'Kalorier', 'kcal'],
+  ['protein', 'Protein', 'g'],
+  ['carbs', 'Kolhydrater', 'g'],
+  ['fat', 'Fett', 'g'],
+]
+
 function RecipeEditor({
   draft,
   errors,
@@ -63,6 +70,27 @@ function RecipeEditor({
 
       <RecipeIngredientEditor ingredients={draft.ingredients} onChange={(ingredients) => onChange('ingredients', ingredients)} />
       {errors.ingredients && <small className="form-error" id={errorId('ingredients')}>{errors.ingredients}</small>}
+
+      <details className="nutrition-details">
+        <summary>Manuella näringsvärden</summary>
+        <div className="meal-editor-grid">
+          {nutritionFields.map(([key, label, unit]) => (
+            <label className="field" key={key}>
+              <span>{label} ({unit})</span>
+              <input
+                inputMode="decimal"
+                type="text"
+                value={draft.nutritionOverride?.[key] ?? ''}
+                onChange={(event) => onChange('nutritionOverride', {
+                  ...(draft.nutritionOverride || {}),
+                  [key]: event.target.value,
+                })}
+                placeholder="Tomt = saknas"
+              />
+            </label>
+          ))}
+        </div>
+      </details>
 
       <label className="field">
         <span>Instruktioner</span>

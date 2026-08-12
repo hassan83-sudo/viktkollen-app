@@ -9,15 +9,21 @@ function formatMacro(value, unit) {
 
 function MealHistory({
   filters,
+  historyRange,
+  historyRangeOptions = [],
+  historySummary,
   meals,
   onClearFilters,
   onCopyMeal,
   onDeleteMeal,
   onEditMeal,
   onFilterChange,
+  onHistoryRangeChange,
   onSaveFavorite,
   onSaveTemplate,
 }) {
+  const summary = historySummary || { calories: 0, mealCount: meals.length, protein: 0 }
+
   return (
     <section className="nutrition-card">
       <div className="nutrition-card-heading">
@@ -28,6 +34,27 @@ function MealHistory({
         <button className="secondary-button" type="button" onClick={onClearFilters}>
           Rensa filter
         </button>
+      </div>
+
+      <div className="segmented-control meal-history-range" aria-label="Välj period för måltidshistorik">
+        {historyRangeOptions.map((option) => (
+          <button
+            aria-pressed={historyRange === option.id}
+            className={historyRange === option.id ? 'active' : ''}
+            key={option.id}
+            type="button"
+            onClick={() => onHistoryRangeChange(option.id)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="meal-history-summary" aria-label="Måltidshistorik i valt intervall">
+        <div><span>Måltider</span><strong>{summary.mealCount.toLocaleString('sv-SE')}</strong></div>
+        <div><span>Kalorier</span><strong>{formatMacro(summary.calories, 'kcal')}</strong></div>
+        <div><span>Protein</span><strong>{formatMacro(summary.protein, 'g')}</strong></div>
+        <div><span>Registreringar</span><strong>{meals.length.toLocaleString('sv-SE')}</strong></div>
       </div>
 
       <div className="nutrition-filter-grid">

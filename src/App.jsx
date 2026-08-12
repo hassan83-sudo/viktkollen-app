@@ -9,13 +9,6 @@ import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import AuthPanel from './components/AuthPanel.jsx'
 import AppLoadingScreen from './components/app/AppLoadingScreen.jsx'
 import AppTopbar from './components/app/AppTopbar.jsx'
-import AchievementPreviewCard from './components/app/AchievementPreviewCard.jsx'
-import DailyCoachCard from './components/app/DailyCoachCard.jsx'
-import DailyProgressCard from './components/app/DailyProgressCard.jsx'
-import DailyMealPlannerCard from './components/app/DailyMealPlannerCard.jsx'
-import HealthPredictionCard from './components/app/HealthPredictionCard.jsx'
-import SmartNotificationsCard from './components/app/SmartNotificationsCard.jsx'
-import WeeklyProgressSection from './components/app/WeeklyProgressSection.jsx'
 import BottomNavigation from './components/app/BottomNavigation.jsx'
 import LazySectionFallback from './components/app/LazySectionFallback.jsx'
 import OnboardingScreen from './components/app/OnboardingScreen.jsx'
@@ -442,6 +435,8 @@ function makeCoachMessage(profile, checkIn, foods, meals) {
   const completedFoods = foods.filter((item) => item.done).length
   const name = profile?.name || 'du'
   const goal = profile?.goal || 'hålla en stabil rutin'
+  const steps = Number(checkIn?.steps)
+  const mealCount = meals.length
   const canDiscussWeightLoss = goal === 'gå ner i vikt'
   const canDiscussMuscleGain = goal === 'bygga muskler'
   const focusHint = canDiscussMuscleGain
@@ -460,15 +455,32 @@ function makeCoachMessage(profile, checkIn, foods, meals) {
       ? 'Matchecklistan ser stark ut.'
       : 'Lägg till protein eller grönsaker i nästa måltid.'
   const mealHint =
-    meals.length > 0
-      ? `${meals.length} måltider loggade i dag.`
+    mealCount > 0
+      ? `${mealCount} måltider loggade i dag.`
       : 'Logga en snabb måltid när du kan.'
+  const stepsHint = Number.isFinite(steps)
+    ? steps >= 9000
+      ? `Stegen är starka: ${steps.toLocaleString('sv-SE')} idag.`
+      : steps >= 5000
+        ? `Stegen är på väg: ${steps.toLocaleString('sv-SE')} idag.`
+        : `Stegen är låga än så länge: ${steps.toLocaleString('sv-SE')} idag.`
+    : 'Steg saknas i dagens check-in.'
+  const nextStep =
+    completedFoods < 2
+      ? 'Konkreta nästa steg: välj en proteinrik måltid och lägg till grönsaker.'
+      : mealCount === 0
+        ? 'Konkreta nästa steg: logga första måltiden så blir coachingen skarpare.'
+        : Number.isFinite(steps) && steps < 5000
+          ? 'Konkreta nästa steg: ta 10 minuter lugn promenad om kroppen känns okej.'
+          : 'Konkreta nästa steg: behåll tempot och gör kvällens val enkelt.'
 
   return `${name}, dagens riktning:
 • ${focusHint}
 • ${energyHint}
 • ${nutritionHint}
-• ${mealHint}`
+• ${mealHint}
+• ${stepsHint}
+• ${nextStep}`
 }
 
 function hasBedtimeEatingContext(message, chatHistory = []) {
@@ -2155,9 +2167,9 @@ function App() {
     setAuthLoading(false)
   }
 
-  function updateCheckIn(key, value) {
+  const updateCheckIn = useCallback((key, value) => {
     setCheckIn((current) => ({ ...current, [key]: value }))
-  }
+  }, [])
 
   function toggleFood(id) {
     setFoods((current) =>
@@ -2796,102 +2808,34 @@ function App() {
   profileSummaryParts={profileSummaryParts}
   steps={checkIn?.steps}
 />
-<DailyProgressCard
-  calorieGoal={nutritionGoals?.calories}
-  caloriesToday={dailyNutritionSummary?.totals?.calories}
-  healthScore={dashboardData?.healthScore?.score}
-  proteinGoal={dailyNutritionSummary?.proteinGoal ?? nutritionGoals?.protein}
-  proteinToday={dailyNutritionSummary?.totals?.protein}
-  steps={checkIn?.steps}
-  weeklyWeightChange={dashboardData?.weeklyWeightChange}
-/>
-<DailyCoachCard
-  calorieGoal={nutritionGoals?.calories}
-  caloriesToday={dailyNutritionSummary?.totals?.calories}
-  healthScore={dashboardData?.healthScore?.score}
-  onAddMeal={handleDailyCoachAddMeal}
-  onLogWeight={handleDailyCoachLogWeight}
-  onScanFood={handleDailyCoachScanFood}
-  proteinGoal={dailyNutritionSummary?.proteinGoal ?? nutritionGoals?.protein}
-  proteinToday={dailyNutritionSummary?.totals?.protein}
-  steps={checkIn?.steps}
-/>
-<div id="smart-notifications">
-<SmartNotificationsCard
-  adaptiveCoachFeedback={adaptiveCoachFeedback}
-  checkIn={checkIn}
-  goalsHabits={goalsHabits}
-  healthSnapshot={healthSnapshot}
-  meals={meals}
-  nutritionGoals={nutritionGoals}
-  profile={validatedProfile}
-  reminderState={reminderState}
-  syncStatus={syncStatusSnapshot}
-  today={selectedMealDate}
-  weights={centralWeightStats.weights}
-/>
-</div>
-<div id="weekly-progress">
-<WeeklyProgressSection
-  checkIn={checkIn}
-  foods={foods}
-  healthSnapshot={healthSnapshot}
-  meals={meals}
-  nutritionGoals={nutritionGoals}
-  selectedDate={selectedMealDate}
-/>
-</div>
-<div id="achievements">
-<AchievementPreviewCard
-  adaptiveCoachFeedback={adaptiveCoachFeedback}
-  analysisDate={selectedMealDate}
-  checkIn={checkIn}
-  goalsHabits={goalsHabits}
-  healthSnapshot={healthSnapshot}
-  meals={meals}
-  nutritionGoals={nutritionGoals}
-  profile={validatedProfile}
-  reminderState={reminderState}
-  weights={centralWeightStats.weights}
-/>
-</div>
-<div id="health-prediction">
-<HealthPredictionCard
-  adaptiveCoachFeedback={adaptiveCoachFeedback}
-  analysisDate={selectedMealDate}
-  checkIn={checkIn}
-  foods={foods}
-  goalsHabits={goalsHabits}
-  healthSnapshot={healthSnapshot}
-  meals={meals}
-  nutritionGoals={nutritionGoals}
-  profile={validatedProfile}
-  reminderState={reminderState}
-  weights={centralWeightStats.weights}
-/>
-</div>
-<div id="meal-planner">
-<DailyMealPlannerCard
-  date={selectedMealDate}
-  meals={meals}
-  nutritionGoals={nutritionGoals}
-/>
-</div>
-
       <HomeSection
         activeSection={activeAppSection}
         adaptiveCoachFeedback={adaptiveCoachFeedback}
+        calorieGoal={nutritionGoals?.calories}
+        caloriesToday={dailyNutritionSummary?.totals?.calories}
         checkIn={checkIn}
+        currentWeight={centralCurrentWeight}
         dashboardActions={dashboardActions}
         dashboardData={dashboardData}
+        email={authSession?.user?.email || ''}
+        foods={foods}
         goalsHabits={goalsHabits}
         healthDashboardPeriod={healthDashboardPeriod}
         healthSnapshot={healthSnapshot}
         meals={meals}
         nutritionGoals={nutritionGoals}
+        onAddMeal={handleDailyCoachAddMeal}
+        onEditProfile={() => setShowOnboarding(true)}
         onHealthDashboardPeriodChange={setHealthDashboardPeriod}
+        onLogWeight={handleDailyCoachLogWeight}
+        onScanFood={handleDailyCoachScanFood}
         profile={validatedProfile}
+        progressInsights={progressInsights}
+        proteinGoal={dailyNutritionSummary?.proteinGoal ?? nutritionGoals?.protein}
+        proteinToday={dailyNutritionSummary?.totals?.protein}
+        reminderState={reminderState}
         selectedMealDate={selectedMealDate}
+        syncStatus={syncStatusSnapshot}
         weights={centralWeightStats.weights}
       />
 
@@ -3048,6 +2992,7 @@ function App() {
           afterPhoto={afterPhoto}
           beforeAfterPhotos={beforeAfterPhotos}
           beforePhoto={beforePhoto}
+          bodyAnalysisHistory={bodyAnalysisHistory}
           checkIn={checkIn}
           createWeeklyReport={createWeeklyReport}
           foods={foods}

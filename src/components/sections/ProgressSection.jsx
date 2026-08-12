@@ -13,6 +13,7 @@ function ProgressSection({
   afterPhoto,
   beforeAfterPhotos,
   beforePhoto,
+  bodyAnalysisHistory,
   checkIn,
   createWeeklyReport,
   foods,
@@ -93,6 +94,7 @@ function ProgressSection({
       >
         <ProgressDashboard
           adaptiveCoachFeedback={adaptiveCoachFeedback}
+          bodyAnalysisHistory={bodyAnalysisHistory}
           checkIn={checkIn}
           checkIns={[]}
           foods={foods}
@@ -101,6 +103,7 @@ function ProgressSection({
           nutritionGoals={nutritionGoals}
           onCreateWeeklyReport={createWeeklyReport}
           profile={profile}
+          progressPhotoItems={progressPhotoItems}
           today={selectedMealDate}
           weights={weights}
           weeklyReportData={weeklyReportData}

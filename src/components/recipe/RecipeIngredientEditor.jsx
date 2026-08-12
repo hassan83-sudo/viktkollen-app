@@ -17,7 +17,9 @@ function RecipeIngredientEditor({ ingredients, onChange }) {
   }
 
   function removeRow(index) {
-    onChange(rows.filter((_, rowIndex) => rowIndex !== index))
+    const nextRows = rows.filter((_, rowIndex) => rowIndex !== index)
+
+    onChange(nextRows.length ? nextRows : [emptyIngredient()])
   }
 
   return (
@@ -50,7 +52,7 @@ function RecipeIngredientEditor({ ingredients, onChange }) {
             <input value={ingredient.comment} onChange={(event) => updateRow(index, 'comment', event.target.value)} />
           </label>
           <button className="secondary-button danger-button" type="button" onClick={() => removeRow(index)}>
-            Ta bort
+            {rows.length > 1 ? 'Ta bort' : 'Rensa'}
           </button>
         </div>
       ))}

@@ -367,7 +367,7 @@ describe('recommendation UI', () => {
   })
 
   it('renders show why button', () => {
-    expect(renderPlan()).toContain('Visa varför')
+    expect(renderPlan()).toContain('Varför rekommenderas detta?')
   })
 
   it('renders hide session button', () => {

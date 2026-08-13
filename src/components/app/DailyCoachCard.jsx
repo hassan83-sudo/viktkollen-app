@@ -81,7 +81,18 @@ function DailyCoachCard({
   return (
     <section className="daily-coach-card" aria-label="AI Coach">
       <div className="daily-coach-heading">
-        <div className="daily-coach-icon" aria-hidden="true">AI</div>
+        <img
+          alt="Viktkollens AI Coach-robot med synlig hjärna"
+          className="daily-coach-robot"
+          src="/viktkollen-ai-coach-robot.webp"
+          style={{
+            width: '96px',
+            height: '88px',
+            objectFit: 'contain',
+            flex: '0 0 auto',
+            filter: 'drop-shadow(0 10px 22px rgba(45, 212, 255, 0.24))',
+          }}
+        />
         <div>
           <p className="eyebrow">Personligt råd</p>
           <h2>AI Coach</h2>

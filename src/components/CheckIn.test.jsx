@@ -18,4 +18,20 @@ describe('CheckIn', () => {
     expect(markup).toContain('Fokuserad')
     expect(markup).toContain('Nästa steg')
   })
+
+  it('renders empty defaults without turning missing values into zero', () => {
+    const markup = renderToStaticMarkup(
+      <CheckIn
+        checkIn={{ energy: null, mood: '', steps: null, workout: false }}
+        foodScore={0}
+        foodTotal={0}
+        onUpdateCheckIn={vi.fn()}
+      />,
+    )
+
+    expect(markup).toContain('Inte valt')
+    expect(markup).toContain('placeholder="Ange steg"')
+    expect(markup).toContain('Välj humör')
+    expect(markup).not.toContain('value="0"')
+  })
 })

@@ -20,22 +20,30 @@ function compact(value) {
 
 function createItem({
   description,
+  group = 'Förslag',
   icon,
   id,
   keywords = [],
+  priority = 50,
   section,
+  suggestionGroup = 'Förslag för dig',
   targetId,
+  timeHints = [],
   title,
 }) {
   const sectionConfig = getAppSection(section)
 
   return {
     description,
+    group,
     icon: icon || sectionConfig.icon,
     id,
     keywords,
+    priority,
     section,
+    suggestionGroup,
     targetId,
+    timeHints,
     title,
   }
 }
@@ -49,18 +57,23 @@ export const globalSearchItems = [
   createItem({
     description: 'Dashboard, daglig progress och smarta rekommendationer',
     id: 'home-dashboard',
-    keywords: ['hem', 'dashboard', 'översikt', 'start', 'daily progress', 'health score'],
+    keywords: ['hem', 'dashboard', 'översikt', 'start', 'daily progress', 'health score', 'viktkollen live'],
+    priority: 2,
     section: 'home',
+    suggestionGroup: 'Populärt',
     targetId: 'hem',
     title: 'Hem / Dashboard',
   }),
   createItem({
     description: 'Logga vikt, se viktutveckling och framsteg',
     id: 'weight-progress',
-    keywords: ['vikt', 'registrera vikt', 'logga vikt', 'viktutveckling', 'weight', 'progress'],
+    keywords: ['vikt', 'registrera vikt', 'logga vikt', 'aktuell vikt', 'målvikt', 'viktgraf', 'viktkurva', 'viktutveckling', 'weight', 'progress'],
+    priority: 3,
     section: 'progress',
+    suggestionGroup: 'Snabbåtgärder',
     targetId: 'vikt',
-    title: 'Registrera vikt',
+    timeHints: ['morning'],
+    title: 'Logga vikt',
   }),
   createItem({
     description: 'Personliga framstegsinsikter, trend, platå och nästa steg',
@@ -73,7 +86,7 @@ export const globalSearchItems = [
   createItem({
     description: 'Progressbilder och före/efter-jämförelse',
     id: 'progress-photos',
-    keywords: ['progress photos', 'progressbilder', 'bilder', 'före efter', 'before after', 'foto'],
+    keywords: ['progress photos', 'progressbilder', 'bilder', 'före efter', 'before after', 'foto', 'kroppsfoto', 'framstegsbilder'],
     section: 'progress',
     targetId: 'framstegsbilder',
     title: 'Progress Photos',
@@ -81,10 +94,12 @@ export const globalSearchItems = [
   createItem({
     description: 'Guidad Body Scan med fram-, sido- och bakbild',
     id: 'body-scan',
-    keywords: ['body scan', 'bodyscan', 'body-scan', 'body', 'kropp', 'kroppsanalys', 'kroppsscanning', 'scanna kroppen', 'progressbild', 'ai kroppsanalys'],
+    keywords: ['body scan', 'bodyscan', 'body-scan', 'body', 'kropp', 'kroppsanalys', 'kroppsscanning', 'scanna kroppen', 'scan', 'scanner', 'foto', 'progressbild', 'ai kroppsanalys'],
+    priority: 7,
     section: 'progress',
+    suggestionGroup: 'Populärt',
     targetId: 'body-analysis',
-    title: 'AI Kroppsanalys',
+    title: 'Kroppsscanning',
   }),
   createItem({
     description: 'Rapporter, trender, integritet och export',
@@ -97,15 +112,18 @@ export const globalSearchItems = [
   createItem({
     description: 'Måltider, kalorier, protein och snabb loggning',
     id: 'meals',
-    keywords: ['mat', 'måltider', 'lägg till måltid', 'logga mat', 'meal', 'meals', 'nutrition', 'kalorier', 'protein'],
+    keywords: ['mat', 'måltider', 'lägg till måltid', 'lägg till mat', 'logga mat', 'meal', 'meals', 'nutrition', 'kalorier', 'protein', 'mat historik', 'mat-historik'],
+    priority: 4,
     section: 'nutrition',
+    suggestionGroup: 'Snabbåtgärder',
     targetId: 'maltider',
-    title: 'Måltider',
+    timeHints: ['lunch', 'evening'],
+    title: 'Lägg till måltid',
   }),
   createItem({
     description: 'Kalorier, protein och smarta råd',
     id: 'nutrition-dashboard',
-    keywords: ['nutrition dashboard', 'kostråd', 'protein', 'kalorier', 'näring', 'food score'],
+    keywords: ['nutrition dashboard', 'kostråd', 'protein', 'kalorier', 'näring', 'food score', 'nutrition goals', 'mål näring', 'kostmål'],
     section: 'nutrition',
     targetId: 'nutrition-view-panel',
     title: 'Nutrition Dashboard',
@@ -121,7 +139,8 @@ export const globalSearchItems = [
   createItem({
     description: 'Dagens plan, veckomeny och inköpslista',
     id: 'meal-planner',
-    keywords: ['matplan', 'meal planner', 'matplanering', 'veckomeny', 'måltidsplan', 'weekly meal planner', 'inköpslista'],
+    keywords: ['matplan', 'meal planner', 'matplanering', 'veckomeny', 'måltidsplan', 'maltidsplan', 'weekly meal planner', 'inköpslista'],
+    priority: 12,
     section: 'nutrition',
     targetId: 'meal-planner',
     title: 'Meal Planner',
@@ -137,23 +156,58 @@ export const globalSearchItems = [
   createItem({
     description: 'Skanna streckkod eller analysera matbild',
     id: 'scanner',
-    keywords: ['skanna mat', 'scanner', 'streckkod', 'barcode', 'nutrition scanner', 'matbild', 'foto mat'],
+    keywords: ['skanna mat', 'matscanning', 'mat scan', 'scan mat', 'scanner', 'scan', 'streckkod', 'barcode', 'nutrition scanner', 'matbild', 'foto mat', 'kamera mat'],
+    priority: 5,
     section: 'nutrition',
+    suggestionGroup: 'Populärt',
     targetId: 'nutrition-scanner-v2',
-    title: 'Nutrition Scanner',
+    timeHints: ['lunch', 'evening'],
+    title: 'Matscanning',
+  }),
+  createItem({
+    description: 'Recept, idéer och sparade måltider',
+    id: 'recipes',
+    keywords: ['recept', 'recipe', 'recipes', 'matidéer', 'middag', 'lunch', 'favoritrecept'],
+    priority: 16,
+    section: 'nutrition',
+    targetId: 'recipe-manager-title',
+    title: 'Recept',
   }),
   createItem({
     description: 'Prata eller chatta med din coach',
     id: 'ai-coach',
     keywords: ['ai', 'coach', 'chat', 'chatt', 'röst', 'voice', 'prata med ai', 'voice conversation', 'ai coach'],
+    priority: 1,
     section: 'coach',
+    suggestionGroup: 'Populärt',
     targetId: 'chat',
     title: 'AI Coach',
   }),
   createItem({
+    description: 'Dagens check-in för energi, steg, humör och rörelse',
+    id: 'daily-checkin',
+    keywords: ['check in', 'check-in', 'checkin', 'dagens check-in', 'dagens checkin', 'humör', 'energi', 'rörelse', 'steg'],
+    priority: 6,
+    section: 'nutrition',
+    suggestionGroup: 'Snabbåtgärder',
+    targetId: 'checkin',
+    timeHints: ['morning', 'evening'],
+    title: 'Dagens check-in',
+  }),
+  createItem({
+    description: 'Smart Feed med tid, fallback-väder, tips och framtida stilcoach',
+    id: 'viktkollen-live',
+    keywords: ['viktkollen live', 'smart feed', 'feed', 'live', 'väder', 'tips', 'fakta', 'stilcoach', 'mode', 'tråkigt', 'aktivitet'],
+    priority: 8,
+    section: 'home',
+    suggestionGroup: 'Förslag för dig',
+    targetId: 'viktkollen-live',
+    title: 'Viktkollen Live',
+  }),
+  createItem({
     description: 'Prognoser, trend och nästa steg',
     id: 'health-prediction',
-    keywords: ['health prediction', 'prediction', 'prognos', 'trend', 'målvikt', 'health score'],
+    keywords: ['health prediction', 'prediction', 'prognos', 'trend', 'målvikt', 'viktprognos', 'health score'],
     section: 'home',
     targetId: 'health-prediction',
     title: 'Health Prediction',
@@ -161,7 +215,7 @@ export const globalSearchItems = [
   createItem({
     description: 'Senaste 7 dagarna för vikt, score, kalorier, protein och steg',
     id: 'weekly-progress',
-    keywords: ['weekly progress', 'den här veckan', 'veckoprogress', '7 dagar', 'steg', 'proteinmål'],
+    keywords: ['weekly progress', 'den här veckan', 'veckoprogress', '7 dagar', 'steg', 'proteinmål', 'veckorapport'],
     section: 'home',
     targetId: 'weekly-progress',
     title: 'Weekly Progress',
@@ -177,7 +231,7 @@ export const globalSearchItems = [
   createItem({
     description: 'Smart Notifications och notiscenter',
     id: 'notifications',
-    keywords: ['smart notifications', 'smarta notiser', 'rekommendationer', 'pending', 'visa alla'],
+    keywords: ['smart notifications', 'smarta notiser', 'rekommendationer', 'pending', 'visa alla', 'notifications'],
     section: 'home',
     targetId: 'smart-notifications',
     title: 'Smart Notifications',
@@ -193,7 +247,8 @@ export const globalSearchItems = [
   createItem({
     description: 'Påminnelser, snooze och schemaläggning',
     id: 'reminders',
-    keywords: ['reminders', 'påminnelser', 'reminder center', 'snooze', 'check in', 'checkins'],
+    keywords: ['reminders', 'påminnelser', 'påminnelse', 'reminder center', 'snooze', 'check in', 'checkins'],
+    priority: 13,
     section: 'more',
     targetId: 'reminder-center',
     title: 'Reminders',
@@ -209,7 +264,7 @@ export const globalSearchItems = [
   createItem({
     description: 'Importera data från säkerhetskopia',
     id: 'import',
-    keywords: ['import', 'importera', 'restore', 'återställ', 'dataimport'],
+    keywords: ['import', 'importera', 'restore', 'återställ', 'dataimport', 'import export', 'import/export'],
     section: 'more',
     targetId: 'data-import',
     title: 'Import',
@@ -217,7 +272,7 @@ export const globalSearchItems = [
   createItem({
     description: 'Exportera rapporter och data',
     id: 'export',
-    keywords: ['export', 'exportera', 'dataexport', 'download', 'ladda ned', 'rapport export'],
+    keywords: ['export', 'exportera', 'dataexport', 'download', 'ladda ned', 'rapport export', 'import export', 'import/export'],
     section: 'more',
     targetId: 'data-export',
     title: 'Export',
@@ -225,7 +280,8 @@ export const globalSearchItems = [
   createItem({
     description: 'Profil, mål och konto',
     id: 'profile-settings',
-    keywords: ['profil', 'inställningar', 'settings', 'konto', 'mål', 'ändra profil'],
+    keywords: ['profil', 'inställningar', 'settings', 'konto', 'mål', 'ändra profil', 'preferences'],
+    priority: 18,
     section: 'more',
     targetId: 'installningar',
     title: 'Profil / Inställningar',
@@ -248,18 +304,53 @@ export function searchGlobalNavigation(query, items = globalSearchItems) {
       const exact = haystack.some((entry) => entry === normalizedQuery)
       const startsWith = haystack.some((entry) => entry.startsWith(normalizedQuery))
       const includes = haystack.some((entry) => entry.includes(normalizedQuery))
+      const tokenMatch = normalizedQuery
+        .split(' ')
+        .filter(Boolean)
+        .every((token) => haystack.some((entry) => entry.includes(token)))
       const compactIncludes = compactQuery.length > 1 && compactHaystack.some((entry) => entry.includes(compactQuery))
 
-      if (!exact && !startsWith && !includes && !compactIncludes) return null
+      if (!exact && !startsWith && !includes && !tokenMatch && !compactIncludes) return null
 
       return {
         ...item,
-        score: exact ? 0 : startsWith ? 1 : compactIncludes ? 2 : 3,
+        score: exact ? 0 : startsWith ? 1 : compactIncludes ? 2 : tokenMatch ? 3 : 4,
       }
     })
     .filter(Boolean)
-    .sort((first, second) => first.score - second.score || first.title.localeCompare(second.title, 'sv-SE'))
-    .slice(0, 8)
+    .sort((first, second) => first.score - second.score || first.priority - second.priority || first.title.localeCompare(second.title, 'sv-SE'))
+    .slice(0, 10)
+}
+
+export function getDefaultGlobalSearchGroups(items = globalSearchItems) {
+  const groups = ['Populärt', 'Snabbåtgärder', 'Förslag för dig', 'Senast använda']
+  const grouped = new Map(groups.map((group) => [group, []]))
+
+  items
+    .slice()
+    .sort((first, second) => first.priority - second.priority || first.title.localeCompare(second.title, 'sv-SE'))
+    .forEach((item) => {
+      const group = grouped.has(item.suggestionGroup) ? item.suggestionGroup : 'Förslag för dig'
+      if (grouped.get(group).length < 5) grouped.get(group).push(item)
+    })
+
+  if (grouped.get('Senast använda').length === 0) {
+    grouped.set('Senast använda', items
+      .filter((item) => ['weight-progress', 'meals', 'ai-coach', 'viktkollen-live'].includes(item.id))
+      .sort((first, second) => first.priority - second.priority))
+  }
+
+  return [...grouped.entries()]
+    .map(([title, groupItems]) => ({ items: groupItems.slice(0, 5), title }))
+    .filter((group) => group.items.length > 0)
+}
+
+export function getGlobalSearchItemsById(ids = [], items = globalSearchItems) {
+  const itemById = new Map(items.map((item) => [item.id, item]))
+
+  return ids
+    .map((id) => itemById.get(id))
+    .filter(Boolean)
 }
 
 export function getNextSearchSelection(currentIndex, resultCount, direction) {

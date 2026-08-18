@@ -7,6 +7,13 @@ function goHome() {
   if (typeof window === 'undefined') return
 
   window.location.hash = '#hem'
+  const scrollContainer = document.querySelector('.app-scroll-container')
+
+  if (scrollContainer) {
+    scrollContainer.scrollTo({ behavior: 'smooth', top: 0 })
+    return
+  }
+
   window.scrollTo?.({ behavior: 'smooth', top: 0 })
 }
 

@@ -25,9 +25,10 @@ describe('NotificationCenter', () => {
       />,
     )
 
-    expect(html).toContain('Notification Center')
-    expect(html).toContain('Quiet hours')
-    expect(html).toContain('Completed')
+    expect(html).toContain('Notiscenter')
+    expect(html).toContain('Tysta timmar')
+    expect(html).toContain('Klara')
+    expect(html).toContain('Behörighet: Stöds inte')
     expect(html).not.toContain('undefined')
     expect(html).not.toContain('[object Object]')
   })
@@ -55,7 +56,7 @@ describe('NotificationCenter', () => {
       />,
     )
 
-    expect(html).toContain('Smart Notifications')
+    expect(html).toContain('Smarta notiser')
     expect(html).toContain('Klar')
     expect(html).toContain('Visa senare')
     expect(html).toContain('Ignorera')

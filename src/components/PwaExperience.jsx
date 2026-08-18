@@ -15,9 +15,10 @@ function PwaDiagnostics({
   installed,
   online,
   serviceWorkerStatus,
+  showDiagnostics = false,
   updateAvailable,
 }) {
-  if (!import.meta.env.DEV) return null
+  if (!import.meta.env.DEV || !showDiagnostics) return null
 
   return (
     <details className="pwa-diagnostics">
@@ -34,7 +35,7 @@ function PwaDiagnostics({
   )
 }
 
-function PwaExperience() {
+function PwaExperience({ showDiagnostics = false }) {
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [installed, setInstalled] = useState(() => isStandaloneDisplayMode())
   const [installStatus, setInstallStatus] = useState('')
@@ -195,6 +196,7 @@ function PwaExperience() {
         installed={installed}
         online={online}
         serviceWorkerStatus={serviceWorkerStatus}
+        showDiagnostics={showDiagnostics}
         updateAvailable={Boolean(updateRegistration)}
       />
     </aside>

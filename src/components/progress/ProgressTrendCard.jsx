@@ -1,6 +1,13 @@
 import { formatKg } from '../../services/healthCalculations.js'
 import { formatProgressChange } from '../../services/progress/progressAnalytics.js'
 
+const trendLabels = {
+  down: 'Minskar',
+  flat: 'Stabil',
+  insufficient: 'Mer data behövs',
+  up: 'Ökar',
+}
+
 function ProgressTrendCard({ weight }) {
   return (
     <section className="nutrition-card progress-card" aria-labelledby="progress-trend-title">
@@ -9,7 +16,7 @@ function ProgressTrendCard({ weight }) {
           <p className="eyebrow">Viktutveckling</p>
           <h3 id="progress-trend-title">Trend</h3>
         </div>
-        <span className="nutrition-pill">{weight.trendDirection === 'insufficient' ? 'Mer data behövs' : weight.trendDirection}</span>
+        <span className="nutrition-pill">{trendLabels[weight.trendDirection] || 'Saknas'}</span>
       </div>
       {weight.registrationCount ? (
         <dl className="progress-detail-grid">

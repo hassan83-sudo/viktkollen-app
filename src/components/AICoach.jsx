@@ -79,7 +79,7 @@ function AICoach({
     <article className="panel coach-panel coach-v2-panel" id="coach">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">AI-coach V2</p>
+          <p className="eyebrow">AI Coach</p>
           <h2>Personlig coach</h2>
         </div>
         <button
@@ -100,9 +100,9 @@ function AICoach({
 
       {!coachReport ? (
         <div className="coach-v2-empty">
-          <strong>Redo för din första V2-rapport.</strong>
+          <strong>Redo för din första coachrapport.</strong>
           <span>Skapa rapporten när du vill samla dagens konkreta råd, risker och nästa steg på ett ställe.</span>
-          <small>Om remote AI inte svarar visas en trygg lokal fallback baserad på din sparade data.</small>
+          <small>Om AI-tjänsten inte är tillgänglig visas ett lokalt svar baserat på din sparade data.</small>
         </div>
       ) : (
         <div className="coach-v2-grid">
@@ -115,10 +115,10 @@ function AICoach({
               <span className="coach-v2-pill">{coachReport.coachProfile.activityLevel}</span>
             </div>
             <div className="coach-v2-stats">
-              <StatCard icon="⚖" label="Nuvarande vikt" value={coachReport.coachProfile.currentWeight ? `${coachReport.coachProfile.currentWeight} kg` : 'Saknas'} />
-              <StatCard icon="🎯" label="Målvikt" value={coachReport.coachProfile.goalWeight ? `${coachReport.coachProfile.goalWeight} kg` : 'Saknas'} />
-              <StatCard icon="🥚" label="Proteinmål" value={coachReport.coachProfile.proteinTarget} />
-              <StatCard icon="📏" label="Längd" value={coachReport.coachProfile.height ? `${coachReport.coachProfile.height} cm` : 'Saknas'} />
+              <StatCard icon="kg" label="Nuvarande vikt" value={coachReport.coachProfile.currentWeight ? `${coachReport.coachProfile.currentWeight} kg` : 'Saknas'} />
+              <StatCard icon="mål" label="Målvikt" value={coachReport.coachProfile.goalWeight ? `${coachReport.coachProfile.goalWeight} kg` : 'Saknas'} />
+              <StatCard icon="g" label="Proteinmål" value={coachReport.coachProfile.proteinTarget} />
+              <StatCard icon="cm" label="Längd" value={coachReport.coachProfile.height ? `${coachReport.coachProfile.height} cm` : 'Saknas'} />
             </div>
           </section>
 
@@ -154,7 +154,7 @@ function AICoach({
           </section>
 
           <section className="coach-v2-card">
-            <p className="eyebrow">Framsteg V3</p>
+            <p className="eyebrow">Framsteg</p>
             <h3>Vikt och kroppsmått</h3>
             <ul className="coach-v2-list">
               <li>Vikttrend: {coachReport.progressSummary?.trendLabel || 'Saknas'}</li>
@@ -169,7 +169,7 @@ function AICoach({
           </section>
 
           <section className="coach-v2-card">
-            <p className="eyebrow">Veckosammanfattning V2</p>
+            <p className="eyebrow">Veckosammanfattning</p>
             <h3>Senaste 7 dagarna</h3>
             <ul className="coach-v2-list">
               <li>Viktförändring: {coachReport.weeklySummary.weightChangeLabel}</li>

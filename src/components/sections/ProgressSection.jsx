@@ -1,5 +1,6 @@
 ﻿import { lazy } from 'react'
 import AppErrorBoundary from '../AppErrorBoundary.jsx'
+import { useEffect } from 'react'
 import AppSection from '../app/AppSection.jsx'
 
 const MonthlyReport = lazy(() => import('../MonthlyReport.jsx'))
@@ -21,12 +22,14 @@ function ProgressSection({
   healthSnapshot,
   meals,
   monthlyReport,
+  navigationIntent,
   nutritionGoals,
   onAfterPhotoIdChange,
   onBeforePhotoIdChange,
   onDeleteProgressPhoto,
   onProgressPhotoChange,
   onProgressPhotoNoteChange,
+  onScrollToTarget,
   onUpdateProgressPhoto,
   profile,
   progressPhotoComparison,
@@ -42,6 +45,26 @@ function ProgressSection({
   weeklyReportLines,
   weeklyReportStatus,
 }) {
+  useEffect(() => {
+    if (activeSection !== 'progress' || navigationIntent?.targetId !== 'body-analysis') return
+
+    const scrollToBodyAnalysis = () => {
+      const target = document.getElementById('body-analysis')
+      if (onScrollToTarget) {
+        onScrollToTarget(target)
+      } else {
+        target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+      target?.focus?.({ preventScroll: true })
+    }
+
+    const scrollTimers = [120, 420, 820].map((delay) => window.setTimeout(scrollToBodyAnalysis, delay))
+
+    return () => {
+      scrollTimers.forEach((timer) => window.clearTimeout(timer))
+    }
+  }, [activeSection, navigationIntent, onScrollToTarget])
+
   return (
     <AppSection
       activeSection={activeSection}
@@ -90,7 +113,7 @@ function ProgressSection({
       <AppErrorBoundary
         area="progress-dashboard"
         resetKey={`${selectedMealDate}-${weights.length}-${meals.length}`}
-        title="Smart Progress Dashboard kunde inte visas"
+        title="Din utveckling kunde inte visas"
       >
         <ProgressDashboard
           adaptiveCoachFeedback={adaptiveCoachFeedback}

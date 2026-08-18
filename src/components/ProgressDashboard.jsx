@@ -95,7 +95,7 @@ function ProgressDashboard({
       <div className="panel-heading">
         <div>
           <p className="eyebrow">Framsteg</p>
-          <h2>Smart Progress Dashboard</h2>
+          <h2>Din utveckling</h2>
           <span>Faktiskt intag, planering, vanor och vikttrend hålls separerade.</span>
         </div>
       </div>

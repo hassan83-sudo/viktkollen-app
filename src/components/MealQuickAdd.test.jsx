@@ -52,6 +52,13 @@ function html(props = {}) {
 }
 
 describe('Meal Quick Add V1 render', () => {
+  it('renders coming soon support for photo or free text templates', () => {
+    const markup = html()
+
+    expect(markup).toContain('Skapa mall med foto eller fri text')
+    expect(markup).toContain('Denna funktion kommer i en kommande uppdatering.')
+  })
+
   it('renders quick add heading', () => {
     expect(html()).toContain('Mallar och senaste måltider')
   })

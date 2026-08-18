@@ -94,7 +94,7 @@ describe('Accessibility & Keyboard Navigation V1', () => {
       />,
     )
 
-    expect(markup).toContain('aria-label="Importera kostdata från JSON-fil"')
+    expect(markup).toContain('aria-label="Välj säkerhetskopia med kostdata"')
     expect(markup).toContain('role="status"')
     expect(markup).toContain('aria-live="polite"')
   })

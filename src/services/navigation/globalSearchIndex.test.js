@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  getDefaultGlobalSearchGroups,
   getGlobalSearchKeyboardAction,
   getNextSearchSelection,
   isGlobalSearchOpenShortcut,
@@ -13,10 +14,10 @@ function titles(query) {
 
 describe('globalSearchIndex', () => {
   it('finds AI Kroppsanalys with body scan aliases', () => {
-    expect(titles('bodyscan')).toContain('AI Kroppsanalys')
-    expect(titles('body scan')).toContain('AI Kroppsanalys')
-    expect(titles('body-scan')).toContain('AI Kroppsanalys')
-    expect(titles('kropp')).toContain('AI Kroppsanalys')
+    expect(titles('bodyscan')).toContain('Kroppsscanning')
+    expect(titles('body scan')).toContain('Kroppsscanning')
+    expect(titles('body-scan')).toContain('Kroppsscanning')
+    expect(titles('kropp')).toContain('Kroppsscanning')
   })
 
   it('finds key release features by Swedish and English aliases', () => {
@@ -40,6 +41,24 @@ describe('globalSearchIndex', () => {
   it('returns no results for empty or unknown queries', () => {
     expect(searchGlobalNavigation('')).toEqual([])
     expect(searchGlobalNavigation('zzzzzz')).toEqual([])
+  })
+
+  it('provides grouped default suggestions before typing', () => {
+    const groups = getDefaultGlobalSearchGroups()
+    const groupedTitles = groups.flatMap((group) => group.items.map((item) => item.title))
+
+    expect(groups.map((group) => group.title)).toContain('Populärt')
+    expect(groups.map((group) => group.title)).toContain('Snabbåtgärder')
+    expect(groupedTitles).toContain('AI Coach')
+    expect(groupedTitles).toContain('Logga vikt')
+    expect(groupedTitles).toContain('Viktkollen Live')
+  })
+
+  it('matches typed app terms, synonyms and related words', () => {
+    expect(titles('mat')).toEqual(expect.arrayContaining(['Lägg till måltid', 'Matscanning', 'Recept']))
+    expect(titles('vikt')).toEqual(expect.arrayContaining(['Logga vikt', 'Health Prediction']))
+    expect(titles('foto')).toEqual(expect.arrayContaining(['Progress Photos', 'Kroppsscanning', 'Matscanning']))
+    expect(titles('scan')).toEqual(expect.arrayContaining(['Kroppsscanning', 'Matscanning']))
   })
 
   it('supports keyboard selection wrapping', () => {

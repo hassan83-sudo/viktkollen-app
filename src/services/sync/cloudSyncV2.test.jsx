@@ -1,4 +1,4 @@
-import { renderToStaticMarkup } from 'react-dom/server'
+﻿import { renderToStaticMarkup } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CloudSyncPanel from '../../components/CloudSyncPanel.jsx'
 import { removeStorage, writeStorage } from '../appStorageService.js'
@@ -135,7 +135,7 @@ beforeEach(() => {
   delete globalThis.navigator
 })
 
-describe('Cloud Sync V2 allowlist and metadata', () => {
+describe('Molnsynk allowlist and metadata', () => {
   it.each(syncStorageAllowlist)('allows %s', (storageKey) => {
     expect(isAllowedSyncStorageKey(storageKey)).toBe(true)
   })
@@ -305,7 +305,7 @@ describe('Cloud Sync V2 allowlist and metadata', () => {
   })
 })
 
-describe('Cloud Sync V2 queue', () => {
+describe('Molnsynk queue', () => {
   it.each([
     ['upload', 'viktkollen.profile'],
     ['download', 'viktkollen.weights'],
@@ -413,7 +413,7 @@ describe('Cloud Sync V2 queue', () => {
   })
 })
 
-describe('Cloud Sync V2 conflicts', () => {
+describe('Molnsynk conflicts', () => {
   const localProfile = { storageKey: 'viktkollen.profile', payload: { name: 'Local' }, checksum: calculateChecksum({ name: 'Local' }) }
   const remoteProfile = { storageKey: 'viktkollen.profile', payload: { name: 'Remote' }, checksum: calculateChecksum({ name: 'Remote' }) }
 
@@ -496,7 +496,7 @@ describe('Cloud Sync V2 conflicts', () => {
   })
 })
 
-describe('Cloud Sync V2 engine', () => {
+describe('Molnsynk engine', () => {
   it('uses the dedicated sync item table', async () => {
     const storage = createMemoryStorage({ 'viktkollen.profile': JSON.stringify({ name: 'Anna' }) })
     const client = createFakeClient([])
@@ -772,13 +772,13 @@ describe('Cloud Sync V2 engine', () => {
   })
 })
 
-describe('Cloud Sync V2 UI', () => {
+describe('Molnsynk UI', () => {
   it('does not render for signed-out users', () => {
     expect(renderToStaticMarkup(<CloudSyncPanel isAuthenticated={false} userId="" />)).toBe('')
   })
 
   it.each([
-    'Cloud Sync V2',
+    'Molnsynk',
     'Automatisk sync',
     'Synca nu',
     'Autosync',

@@ -111,7 +111,7 @@ function DataImportCenter({ onDataImported, userId = '' }) {
     <section className="panel data-import-center" id="data-import">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Import och migration V2</p>
+          <p className="eyebrow">Import och återställning</p>
           <h2 tabIndex="-1" ref={headingRef}>Dataimport</h2>
         </div>
         <button type="button" className="secondary-button" onClick={() => fileInputRef.current?.click()}>

@@ -34,7 +34,7 @@ function SuggestedGoalCard({ children, disabled, explanation, missingFields = []
           <small>Saknas: {missingFields.join(', ')}.</small>
         )}
       </div>
-      {children}
+      <div className="nutrition-goal-pill">{children}</div>
       <button className="secondary-button" disabled={disabled} type="button" onClick={onUse}>
         Använd förslag
       </button>
@@ -88,7 +88,7 @@ function NutritionGoalsPanel({
       <div className="nutrition-card-heading">
         <div>
           <p className="eyebrow">Kostmål</p>
-          <h3>Nutrition Goals & Smart Targets</h3>
+          <h3>Kostmål och smarta förslag</h3>
         </div>
       </div>
 
@@ -132,7 +132,7 @@ function NutritionGoalsPanel({
           title="Föreslaget proteinmål"
         >
           {suggestedProteinGoal && (
-            <strong>{suggestedProteinGoal.minimumGrams}–{suggestedProteinGoal.maximumGrams} g per dag</strong>
+            <strong>{suggestedProteinGoal.minimumGrams}-{suggestedProteinGoal.maximumGrams} g per dag</strong>
           )}
         </SuggestedGoalCard>
         <SuggestedGoalCard

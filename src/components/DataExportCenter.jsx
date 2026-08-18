@@ -84,7 +84,7 @@ function DataExportCenter({ userId = '' }) {
     <section className="panel data-export-center" id="data-export">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Export och dataportabilitet V2</p>
+          <p className="eyebrow">Export och dataportabilitet</p>
           <h2 tabIndex="-1" ref={headingRef}>Dataexport</h2>
         </div>
       </div>

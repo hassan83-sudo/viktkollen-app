@@ -1,11 +1,37 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  getDefaultGlobalSearchGroups,
   getGlobalSearchKeyboardAction,
+  getGlobalSearchItemsById,
   isGlobalSearchOpenShortcut,
   searchGlobalNavigation,
 } from '../../services/navigation/globalSearchIndex.js'
 
-const emptySuggestions = ['AI Coach', 'Body Scan', 'Måltider']
+const recentSearchStorageKey = 'viktkollen.globalSearch.recentIds'
+
+function readRecentSearchIds() {
+  if (typeof window === 'undefined') return []
+
+  try {
+    const value = window.localStorage?.getItem(recentSearchStorageKey)
+    const parsed = JSON.parse(value || '[]')
+
+    return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string').slice(0, 6) : []
+  } catch {
+    return []
+  }
+}
+
+function saveRecentSearchId(id) {
+  if (typeof window === 'undefined' || !id) return
+
+  try {
+    const nextIds = [id, ...readRecentSearchIds().filter((recentId) => recentId !== id)].slice(0, 6)
+    window.localStorage?.setItem(recentSearchStorageKey, JSON.stringify(nextIds))
+  } catch {
+    // Search remains fully usable even when storage is unavailable.
+  }
+}
 
 function GlobalSearch({ onNavigate }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -14,9 +40,26 @@ function GlobalSearch({ onNavigate }) {
   const inputRef = useRef(null)
   const openerRef = useRef(null)
   const previousFocusRef = useRef(null)
+  const [recentIds, setRecentIds] = useState(() => readRecentSearchIds())
   const results = useMemo(() => searchGlobalNavigation(query), [query])
+  const defaultGroups = useMemo(() => {
+    const groups = getDefaultGlobalSearchGroups()
+    const recentItems = getGlobalSearchItemsById(recentIds)
+
+    if (recentItems.length === 0) return groups
+
+    return [
+      ...groups.filter((group) => group.title !== 'Senast använda'),
+      { items: recentItems, title: 'Senast använda' },
+    ]
+  }, [recentIds])
+  const defaultResults = useMemo(() => defaultGroups.flatMap((group) => group.items), [defaultGroups])
   const hasQuery = query.trim().length > 0
-  const hasResults = results.length > 0
+  const hasTypedResults = results.length > 0
+  const visibleResults = hasQuery ? results : defaultResults
+  const fallbackResults = useMemo(() => searchGlobalNavigation('hem').slice(0, 4), [])
+  const navigationResults = visibleResults.length > 0 ? visibleResults : hasQuery ? fallbackResults : []
+  const hasResults = navigationResults.length > 0
 
   const openSearch = useCallback(() => {
     previousFocusRef.current = document.activeElement
@@ -35,6 +78,8 @@ function GlobalSearch({ onNavigate }) {
 
   function navigateToResult(result) {
     if (!result) return
+    saveRecentSearchId(result.id)
+    setRecentIds(readRecentSearchIds())
     onNavigate?.(result)
     closeSearch()
   }
@@ -56,7 +101,7 @@ function GlobalSearch({ onNavigate }) {
   }, [isOpen])
 
   function handleInputKeyDown(event) {
-    const action = getGlobalSearchKeyboardAction(event, selectedIndex, results.length)
+    const action = getGlobalSearchKeyboardAction(event, selectedIndex, navigationResults.length)
 
     if (action.type === 'none') {
       return
@@ -74,7 +119,28 @@ function GlobalSearch({ onNavigate }) {
       return
     }
 
-    navigateToResult(results[action.index])
+    navigateToResult(navigationResults[action.index])
+  }
+
+  function renderResult(result, index) {
+    return (
+      <button
+        aria-selected={index === selectedIndex}
+        className={index === selectedIndex ? 'is-selected' : ''}
+        id={`global-search-result-${result.id}`}
+        key={result.id}
+        role="option"
+        type="button"
+        onClick={() => navigateToResult(result)}
+        onMouseEnter={() => setSelectedIndex(index)}
+      >
+        <span aria-hidden="true">{result.icon}</span>
+        <span>
+          <strong>{result.title}</strong>
+          <small>{result.description}</small>
+        </span>
+      </button>
+    )
   }
 
   return (
@@ -103,7 +169,7 @@ function GlobalSearch({ onNavigate }) {
               <span aria-hidden="true">⌕</span>
               <input
                 aria-activedescendant={
-                  hasResults && selectedIndex >= 0 ? `global-search-result-${results[selectedIndex]?.id}` : undefined
+                  hasResults && selectedIndex >= 0 ? `global-search-result-${navigationResults[selectedIndex]?.id}` : undefined
                 }
                 aria-controls="global-search-results"
                 aria-label="Sök i Viktkollen"
@@ -130,46 +196,29 @@ function GlobalSearch({ onNavigate }) {
               role="listbox"
               aria-label="Sökresultat"
             >
-              {hasResults && results.map((result, index) => (
-                <button
-                  aria-selected={index === selectedIndex}
-                  className={index === selectedIndex ? 'is-selected' : ''}
-                  id={`global-search-result-${result.id}`}
-                  key={result.id}
-                  role="option"
-                  type="button"
-                  onClick={() => navigateToResult(result)}
-                  onMouseEnter={() => setSelectedIndex(index)}
-                >
-                  <span aria-hidden="true">{result.icon}</span>
-                  <span>
-                    <strong>{result.title}</strong>
-                    <small>{result.description}</small>
-                  </span>
-                </button>
-              ))}
+              {!hasQuery && defaultGroups.map((group) => {
+                let startIndex = 0
+                for (const previousGroup of defaultGroups) {
+                  if (previousGroup.title === group.title) break
+                  startIndex += previousGroup.items.length
+                }
 
-              {hasQuery && !hasResults && (
+                return (
+                  <section className="global-search-group" key={group.title} aria-label={group.title}>
+                    <h3>{group.title}</h3>
+                    {group.items.map((result, index) => renderResult(result, startIndex + index))}
+                  </section>
+                )
+              })}
+
+              {hasQuery && hasTypedResults && results.map((result, index) => renderResult(result, index))}
+
+              {hasQuery && !hasTypedResults && (
                 <div className="global-search-empty">
-                  <p>Inga funktioner hittades för "{query}".</p>
-                  <div>
-                    {emptySuggestions.map((suggestion) => (
-                      <button
-                        className="secondary-button"
-                        key={suggestion}
-                        type="button"
-                        onClick={() => setQuery(suggestion)}
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
+                  <p>Inga exakta träffar för "{query}". Här är närliggande alternativ.</p>
+                  <div className="global-search-related">
+                    {fallbackResults.map((result, index) => renderResult(result, index))}
                   </div>
-                </div>
-              )}
-
-              {!hasQuery && (
-                <div className="global-search-empty">
-                  <p>Sök efter funktioner, till exempel AI Coach, Body Scan eller Måltider.</p>
                 </div>
               )}
             </div>

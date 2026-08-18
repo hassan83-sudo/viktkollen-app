@@ -1,10 +1,13 @@
 import { memo, useEffect, useMemo, useState } from 'react'
 
+function hasNumber(value) {
+  return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value))
+}
+
 function makeCheckInSummary({ checkIn, foodScore, foodTotal }) {
-  const hasCheckIn =
-    Number.isFinite(checkIn.energy) &&
-    Number.isFinite(checkIn.steps) &&
-    Boolean(checkIn.mood)
+  const energy = Number(checkIn.energy)
+  const steps = Number(checkIn.steps)
+  const hasCheckIn = hasNumber(checkIn.energy) && hasNumber(checkIn.steps) && Boolean(checkIn.mood)
 
   if (!hasCheckIn) {
     return ''
@@ -14,15 +17,15 @@ function makeCheckInSummary({ checkIn, foodScore, foodTotal }) {
   const foodProgress = foodTotal > 0 ? foodScore / foodTotal : 0
   const positives = []
 
-  if (checkIn.energy >= 7) {
+  if (energy >= 7) {
     positives.push('Energin ser stark ut i dag')
-  } else if (checkIn.energy >= 4) {
+  } else if (energy >= 4) {
     positives.push('Energin verkar ganska stabil')
   }
 
-  if (checkIn.steps >= 7000) {
+  if (steps >= 7000) {
     positives.push('du har fått in bra vardagsrörelse')
-  } else if (checkIn.steps >= 4000) {
+  } else if (steps >= 4000) {
     positives.push('du har redan kommit en bit med stegen')
   }
 
@@ -38,13 +41,13 @@ function makeCheckInSummary({ checkIn, foodScore, foodTotal }) {
     ? `${positives.slice(0, 2).join(' och ')}.`
     : `Det verkar vara en ${mood} dag, så det är klokt att hålla nivån enkel.`
   const moodSentence =
-    checkIn.energy <= 3
+    energy <= 3
       ? `Med humöret ${mood} och låg energi behöver resten av dagen inte vara perfekt.`
       : `Humöret är ${mood}, vilket ger en bra signal om hur hårt du ska trycka på.`
   const nextStep =
     foodProgress < 0.5
       ? 'Nästa steg: ta vatten och välj ett enkelt proteinrikt mellanmål.'
-      : checkIn.steps < 7000
+      : steps < 7000
         ? 'Nästa steg: ta en kort promenad om kroppen känns okej.'
         : checkIn.workout
           ? 'Nästa steg: prioritera återhämtning och en lugn kväll.'
@@ -55,6 +58,8 @@ function makeCheckInSummary({ checkIn, foodScore, foodTotal }) {
 
 function CheckIn({ checkIn, foodScore, foodTotal, onUpdateCheckIn }) {
   const [localCheckIn, setLocalCheckIn] = useState(checkIn)
+  const selectedEnergy = hasNumber(localCheckIn.energy) ? Number(localCheckIn.energy) : null
+  const selectedSteps = hasNumber(localCheckIn.steps) ? Number(localCheckIn.steps) : null
   const checkInSummary = useMemo(
     () => makeCheckInSummary({ checkIn: localCheckIn, foodScore, foodTotal }),
     [foodScore, foodTotal, localCheckIn],
@@ -87,15 +92,16 @@ function CheckIn({ checkIn, foodScore, foodTotal, onUpdateCheckIn }) {
       <label className="field">
         <span>Energi</span>
         <input
+          aria-valuetext={selectedEnergy === null ? 'Inte valt' : `${selectedEnergy} av 10`}
           type="range"
           min="1"
           max="10"
-          value={localCheckIn.energy}
+          value={selectedEnergy ?? 5}
           onChange={(event) =>
             updateLocalCheckIn('energy', Number(event.target.value))
           }
         />
-        <strong>{localCheckIn.energy}/10</strong>
+        <strong>{selectedEnergy === null ? 'Inte valt' : `${selectedEnergy}/10`}</strong>
       </label>
 
       <label className="field">
@@ -104,9 +110,10 @@ function CheckIn({ checkIn, foodScore, foodTotal, onUpdateCheckIn }) {
           type="number"
           min="0"
           step="100"
-          value={localCheckIn.steps}
+          placeholder="Ange steg"
+          value={selectedSteps === null ? '' : selectedSteps}
           onChange={(event) =>
-            updateLocalCheckIn('steps', Number(event.target.value))
+            updateLocalCheckIn('steps', event.target.value === '' ? null : Number(event.target.value))
           }
         />
       </label>
@@ -117,17 +124,18 @@ function CheckIn({ checkIn, foodScore, foodTotal, onUpdateCheckIn }) {
           value={localCheckIn.mood}
           onChange={(event) => updateLocalCheckIn('mood', event.target.value)}
         >
-          <option>Fokuserad</option>
-          <option>Lugn</option>
-          <option>Trött</option>
-          <option>Stressad</option>
+          <option value="">Välj humör</option>
+          <option value="Fokuserad">Fokuserad</option>
+          <option value="Lugn">Lugn</option>
+          <option value="Trött">Trött</option>
+          <option value="Stressad">Stressad</option>
         </select>
       </label>
 
       <label className="toggle-row">
         <input
           type="checkbox"
-          checked={localCheckIn.workout}
+          checked={Boolean(localCheckIn.workout)}
           onChange={(event) =>
             updateLocalCheckIn('workout', event.target.checked)
           }

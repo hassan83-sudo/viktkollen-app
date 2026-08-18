@@ -39,11 +39,28 @@ function updateAppHash(targetId) {
   window.dispatchEvent(new HashChangeEvent('hashchange'))
 }
 
+function scrollTargetInAppContainer(target) {
+  const scrollContainer = document.querySelector('.app-scroll-container')
+
+  if (!target || !scrollContainer) {
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    return
+  }
+
+  const containerRect = scrollContainer.getBoundingClientRect()
+  const targetRect = target.getBoundingClientRect()
+
+  scrollContainer.scrollTo({
+    top: Math.max(0, targetRect.top - containerRect.top + scrollContainer.scrollTop),
+    behavior: 'smooth',
+  })
+}
+
 function navigateToDashboardTarget({ fallbackHash, targets }) {
   const target = findTarget(targets)
 
   if (target) {
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    scrollTargetInAppContainer(target)
     updateAppHash(target.id)
     return
   }
@@ -54,7 +71,7 @@ function navigateToDashboardTarget({ fallbackHash, targets }) {
     const delayedTarget = findTarget([fallbackHash, ...targets])
 
     if (delayedTarget) {
-      delayedTarget.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      scrollTargetInAppContainer(delayedTarget)
     }
   })
 }

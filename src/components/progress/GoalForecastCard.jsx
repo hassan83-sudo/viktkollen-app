@@ -1,5 +1,12 @@
 import { formatKg } from '../../services/healthCalculations.js'
 
+const confidenceLabels = {
+  high: 'Hög',
+  insufficient: 'Osäkert',
+  low: 'Låg',
+  medium: 'Medel',
+}
+
 function GoalForecastCard({ forecast }) {
   return (
     <section className="nutrition-card progress-card" aria-labelledby="progress-forecast-title">
@@ -8,7 +15,7 @@ function GoalForecastCard({ forecast }) {
           <p className="eyebrow">Målprognos</p>
           <h3 id="progress-forecast-title">Försiktig riktning</h3>
         </div>
-        <span className="nutrition-pill">{forecast.confidence === 'insufficient' ? 'Osäkert' : forecast.confidence}</span>
+        <span className="nutrition-pill">{confidenceLabels[forecast.confidence] || 'Osäkert'}</span>
       </div>
       <p>{forecast.text}</p>
       <dl className="progress-detail-grid">

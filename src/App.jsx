@@ -8,12 +8,9 @@ import './App.css'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import AuthPanel from './components/AuthPanel.jsx'
 import AppLoadingScreen from './components/app/AppLoadingScreen.jsx'
-import AppTopbar from './components/app/AppTopbar.jsx'
 import BottomNavigation from './components/app/BottomNavigation.jsx'
 import LazySectionFallback from './components/app/LazySectionFallback.jsx'
 import OnboardingScreen from './components/app/OnboardingScreen.jsx'
-import CloudSyncPanel from './components/CloudSyncPanel.jsx'
-import CloudStatusPanel from './components/CloudStatusPanel.jsx'
 import GlobalSyncStatus from './components/GlobalSyncStatus.jsx'
 import PwaExperience from './components/PwaExperience.jsx'
 import ReminderBanner from './components/ReminderBanner.jsx'
@@ -93,9 +90,9 @@ import { buildReminderStatus, createReminderScheduler, getDueReminders } from '.
 import { syncLegacyReminderSettingsToV2 } from './services/reminders/reminderLegacyAdapter.js'
 import { applyDueNotificationPlan } from './services/notifications/notificationSchedulerBridge.js'
 
+const LaunchReadinessPanel = lazy(() => import('./components/LaunchReadinessPanel.jsx'))
 const DataImportCenter = lazy(() => import('./components/DataImportCenter.jsx'))
 const DataExportCenter = lazy(() => import('./components/DataExportCenter.jsx'))
-const LaunchReadinessPanel = lazy(() => import('./components/LaunchReadinessPanel.jsx'))
 const ManualAcceptanceRunner = import.meta.env.DEV
   ? lazy(() => import('./components/ManualAcceptanceRunner.jsx'))
   : null
@@ -105,12 +102,17 @@ const PremiumAnalyticsPanel = import.meta.env.DEV
 const ProgressCenter = lazy(() => import('./components/ProgressCenter.jsx'))
 const SyncHealthDashboard = lazy(() => import('./components/SyncHealthDashboard.jsx'))
 
+function isInternalToolsEnabled() {
+  if (!import.meta.env.DEV || typeof window === 'undefined') return false
 
-const starterWeights = [
-  { date: '2026-05-23', value: 91.8 }, { date: '2026-05-24', value: 91.2 },
-  { date: '2026-05-25', value: 90.9 }, { date: '2026-05-26', value: 90.4 },
-  { date: '2026-05-27', value: 90.1 },
-]
+  const params = new URLSearchParams(window.location.search)
+  const explicitFlag = params.get('internalTools') === '1' || params.get('devtools') === '1'
+
+  return explicitFlag || window.localStorage?.getItem('viktkollen.internalTools') === '1'
+}
+
+
+const starterWeights = []
 
 const defaultAiStarterPrompts = [
   'Hur mycket väger jag nu?',
@@ -131,16 +133,13 @@ function readInitialWeights() {
 }
 
 const initialFoods = [
-  { id: 'protein', label: 'Protein till varje måltid (20-30 g)', done: true },
-  { id: 'veg', label: 'Frukt eller grönsaker', done: true },
+  { id: 'protein', label: 'Protein till varje måltid (20-30 g)', done: false },
+  { id: 'veg', label: 'Frukt eller grönsaker', done: false },
   { id: 'water', label: 'Vattenmål', done: false },
   { id: 'snack', label: 'Planerat mellanmål', done: false },
 ]
 
-const initialMeals = [
-  { id: 1, type: 'Frukost', text: 'Grekisk yoghurt, bär och havre' },
-  { id: 2, type: 'Lunch', text: 'Kycklingwrap med sallad' },
-]
+const initialMeals = []
 
 const initialPhotoMeals = []
 
@@ -150,27 +149,21 @@ const initialProgressPhotos = []
 
 const initialReminderSettings = {
   enabled: false,
-  weight: true,
+  weight: false,
   weightTime: '08:00',
-  meal: true,
+  meal: false,
   mealTime: '12:00',
-  water: true,
+  water: false,
   waterTime: '15:00',
 }
 
-const initialChatMessages = [
-  {
-    id: 1,
-    role: 'assistant',
-    text: 'Hej! Fråga mig om mat, vanor eller motivation så håller jag svaret kort och konkret.',
-  },
-]
+const initialChatMessages = []
 
 const initialCheckIn = {
-  energy: 6,
-  steps: 7200,
-  mood: 'Fokuserad',
-  workout: true,
+  energy: null,
+  steps: null,
+  mood: '',
+  workout: false,
 }
 
 const initialProfile = {
@@ -272,8 +265,8 @@ function isStoredChatMessages(value) {
 function isStoredCheckIn(value) {
   return (
     value &&
-    Number.isFinite(value.energy) &&
-    Number.isFinite(value.steps) &&
+    (value.energy === null || Number.isFinite(value.energy)) &&
+    (value.steps === null || Number.isFinite(value.steps)) &&
     typeof value.mood === 'string' &&
     typeof value.workout === 'boolean'
   )
@@ -284,10 +277,20 @@ function isStoredProfile(value) {
     value &&
     typeof value.name === 'string' &&
     typeof value.goal === 'string' &&
-    typeof value.startWeight === 'string' &&
-    typeof value.goalWeight === 'string' &&
+    (typeof value.startWeight === 'string' || Number.isFinite(value.startWeight)) &&
+    (typeof value.goalWeight === 'string' || Number.isFinite(value.goalWeight)) &&
     typeof value.activityLevel === 'string'
   )
+}
+
+function normalizeStoredProfile(value) {
+  if (!value) return null
+
+  return {
+    ...value,
+    goalWeight: value.goalWeight === null || value.goalWeight === undefined ? '' : String(value.goalWeight),
+    startWeight: value.startWeight === null || value.startWeight === undefined ? '' : String(value.startWeight),
+  }
 }
 
 function isStoredReminderSettings(value) {
@@ -395,7 +398,7 @@ function makeProgressPhotoComparison(latestPhoto, previousPhoto) {
       latestPhoto,
       previousPhoto: null,
       viewLabel,
-      summary: `Lägg till en till bild ${viewLabel} för att skapa en försiktig V2-jämförelse.`,
+      summary: `Lägg till en till bild ${viewLabel} för att skapa en försiktig jämförelse.`,
       observations: [
         'När två bilder med samma perspektiv finns kan små visuella förändringar jämföras mer rättvist.',
         'Försök gärna använda liknande ljus, avstånd och hållning nästa gång.',
@@ -884,6 +887,7 @@ function makeProductFromBarcode(barcode) {
 }
 
 function App() {
+  const appScrollRef = useRef(null)
   const barcodeVideoRef = useRef(null)
   const barcodeStreamRef = useRef(null)
   const barcodeTimerRef = useRef(null)
@@ -899,16 +903,19 @@ function App() {
   const [authSession, setAuthSession] = useState(null)
   const authStatus = useMemo(() => getAuthStatus(), [])
   const [profile, setProfile] = useState(() =>
-    userDataRepository.getProfile(null, isStoredProfile),
+    normalizeStoredProfile(userDataRepository.getProfile(null, isStoredProfile)),
   )
   const [profileForm, setProfileForm] = useState(() => ({
     ...initialProfile,
-    ...(userDataRepository.getProfile(null, isStoredProfile) ?? {}),
+    ...(normalizeStoredProfile(userDataRepository.getProfile(null, isStoredProfile)) ?? {}),
   }))
   const [profileError, setProfileError] = useState('')
   const [proactiveCoachResult, setProactiveCoachResult] = useState(null)
   const [showOnboarding, setShowOnboarding] = useState(() => !profile)
   const [activeAppSection, setActiveAppSection] = useState('home')
+  const [nutritionIntent, setNutritionIntent] = useState(null)
+  const [progressIntent, setProgressIntent] = useState(null)
+  const [showInternalTools] = useState(isInternalToolsEnabled)
   const [checkIn, setCheckIn] = useState(() =>
     userDataRepository.getCheckIn(initialCheckIn, isStoredCheckIn),
   )
@@ -1157,15 +1164,6 @@ function App() {
       timeKey: 'waterTime',
     },
   ]
-  const safeProfileGoalWeight =
-    profile?.goal === 'gå ner i vikt'
-      ? formatOptionalWeight(profile?.goalWeight)
-      : ''
-  const profileSummaryParts = [
-    profile?.goal,
-    safeProfileGoalWeight ? `mål ${safeProfileGoalWeight}` : '',
-    profile?.activityLevel ? `aktivitet ${profile.activityLevel}` : '',
-  ].filter(Boolean)
   const displayPhotoMeals = photoMeals.map((entry) => ({
     ...entry,
     likelyProtein:
@@ -1538,13 +1536,6 @@ function App() {
       weights,
     ],
   )
-  const dashboardActions = useMemo(
-    () => ({
-      onCreateWeeklyReport: createWeeklyReport,
-    }),
-    [createWeeklyReport],
-  )
-
   function scrollChatToBottom(behavior = 'smooth') {
     const chatThread = chatThreadRef.current
     const messagesEnd = messagesEndRef.current
@@ -2019,7 +2010,7 @@ function App() {
 
   const refreshAppStateFromStorage = useCallback(() => {
     clearSharedAnalyticsCache()
-    const nextProfile = userDataRepository.getProfile(null, isStoredProfile)
+    const nextProfile = normalizeStoredProfile(userDataRepository.getProfile(null, isStoredProfile))
     const storedMealHistory = getMealHistory()
     const nextPhotoMeals = storedMealHistory.length > 0
       ? storedMealHistory
@@ -2485,7 +2476,7 @@ function App() {
   }
 
   function openReminderCenter() {
-    document.getElementById('reminder-center')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    scrollTargetInApp(document.getElementById('reminder-center'))
   }
 
   function getValidatedProfile() {
@@ -2657,23 +2648,53 @@ function App() {
     void sendChatText(prompt)
   }
 
-  function handleAppSectionChange(sectionId) {
-    const sectionTargets = {
-      coach: 'chat',
-      home: 'hem',
-      more: 'installningar',
-      nutrition: 'mat',
-      progress: 'vikt',
-    }
-    const targetId = sectionTargets[sectionId] || sectionTargets.home
+  const getScrollBehavior = useCallback(() => {
+    return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+  }, [])
 
+  const scrollAppToTop = useCallback(() => {
+    const scrollContainer = appScrollRef.current
+
+    if (!scrollContainer) {
+      window.scrollTo({ top: 0, behavior: getScrollBehavior() })
+      return
+    }
+
+    scrollContainer.scrollTo({ top: 0, behavior: getScrollBehavior() })
+  }, [getScrollBehavior])
+
+  const scrollTargetInApp = useCallback((target, options = {}) => {
+    const scrollContainer = appScrollRef.current
+
+    if (!target) {
+      scrollAppToTop()
+      return
+    }
+
+    if (!scrollContainer) {
+      target.scrollIntoView({
+        behavior: getScrollBehavior(),
+        block: options.block || 'start',
+      })
+      return
+    }
+
+    const containerRect = scrollContainer.getBoundingClientRect()
+    const targetRect = target.getBoundingClientRect()
+    const offset = Number(options.offset || 0)
+    const top = targetRect.top - containerRect.top + scrollContainer.scrollTop - offset
+
+    scrollContainer.scrollTo({
+      top: Math.max(0, top),
+      behavior: getScrollBehavior(),
+    })
+  }, [getScrollBehavior, scrollAppToTop])
+
+  function handleAppSectionChange(sectionId) {
     setActiveAppSection(sectionId)
 
     window.requestAnimationFrame(() => {
-      document.getElementById(targetId)?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      })
+      scrollAppToTop()
     })
   }
 
@@ -2686,10 +2707,7 @@ function App() {
     window.requestAnimationFrame(() => {
       const target = document.getElementById(targetId) || document.getElementById(`app-section-${sectionId}`)
 
-      target?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      })
+      scrollTargetInApp(target)
 
       if (target && !target.hasAttribute('tabindex')) {
         target.setAttribute('tabindex', '-1')
@@ -2699,15 +2717,36 @@ function App() {
   }
 
   const handleDailyCoachAction = useCallback((sectionId, targetId) => {
+    if (sectionId === 'nutrition' && (targetId === 'nutrition-scanner-v2' || targetId === 'scanner')) {
+      setNutritionIntent({ id: Date.now(), panel: 'scanner' })
+    }
+
+    if (sectionId === 'progress' && (targetId === 'body-analysis' || targetId === 'framstegsbilder')) {
+      setProgressIntent({ id: Date.now(), targetId: 'body-analysis' })
+    }
+
     setActiveAppSection(sectionId)
 
     window.requestAnimationFrame(() => {
-      document.getElementById(targetId)?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      })
+      const target = targetId ? document.getElementById(targetId) : null
+
+      if (target) {
+        scrollTargetInApp(target)
+      } else {
+        scrollAppToTop()
+      }
+
+      if (sectionId === 'progress' && (targetId === 'body-analysis' || targetId === 'framstegsbilder')) {
+        window.requestAnimationFrame(() => {
+          const bodyScanner = document.getElementById('body-analysis')
+
+          scrollTargetInApp(bodyScanner)
+          bodyScanner?.setAttribute('tabindex', '-1')
+          bodyScanner?.focus?.({ preventScroll: true })
+        })
+      }
     })
-  }, [])
+  }, [scrollAppToTop, scrollTargetInApp])
 
   const handleDailyCoachAddMeal = useCallback(() => {
     handleDailyCoachAction('nutrition', 'mat')
@@ -2718,11 +2757,8 @@ function App() {
   }, [handleDailyCoachAction])
 
   function handleDailyCoachScanFood() {
-    handleDailyCoachAction('nutrition', 'streckkod')
-
-    window.requestAnimationFrame(() => {
-      startBarcodeScanner()
-    })
+    setNutritionIntent({ id: Date.now(), panel: 'scanner' })
+    handleDailyCoachAction('nutrition', 'nutrition-scanner-v2')
   }
   const syncStatusSnapshot = getSyncStatusSnapshot()
   const syncStatusWithUser = {
@@ -2765,127 +2801,69 @@ function App() {
 
   return (
     <main className="app-shell">
-      <PwaExperience />
-      <GlobalSyncStatus />
-      <ReminderBanner
-        dueReminders={dueReminders}
-        onComplete={handleReminderComplete}
-        onOpenCenter={openReminderCenter}
-        onSkip={handleReminderSkip}
-        onSnooze={handleReminderSnooze}
-      />
-      {import.meta.env.DEV && (
-        <Suspense fallback={null}>
-          
-          <LaunchReadinessPanel
-            authSession={authSession}
-            healthSnapshot={healthSnapshot}
-            reminderState={reminderState}
-            syncStatus={syncStatusWithUser}
-          />
-          <ManualAcceptanceRunner
-            syncStatus={syncStatusWithUser}
-          />
-          <PremiumAnalyticsPanel
-            userId={authSession?.user?.id || authSession?.user?.email || 'local-user'}
-          />
-        </Suspense>
-      )}
-      <AppTopbar
-  authLoading={authLoading}
-  calorieGoal={nutritionGoals?.calories}
-  caloriesToday={dailyNutritionSummary?.totals?.calories}
-  currentWeight={centralCurrentWeight}
-  email={authSession?.user?.email || ''}
-  goalWeight={validatedProfile?.goalWeight}
-  healthScore={dashboardData?.healthScore?.score}
-  proteinToday={dailyNutritionSummary?.totals?.protein}
-  proteinGoal={dailyNutritionSummary?.proteinGoal ?? nutritionGoals?.protein}
-  onEditProfile={() => setShowOnboarding(true)}
-  onSearchNavigate={handleGlobalSearchNavigate}
-  onSignOut={handleSignOut}
-  profile={profile}
-  profileSummaryParts={profileSummaryParts}
-  steps={checkIn?.steps}
-/>
-      <HomeSection
-        activeSection={activeAppSection}
-        adaptiveCoachFeedback={adaptiveCoachFeedback}
-        calorieGoal={nutritionGoals?.calories}
-        caloriesToday={dailyNutritionSummary?.totals?.calories}
-        checkIn={checkIn}
-        currentWeight={centralCurrentWeight}
-        dashboardActions={dashboardActions}
-        dashboardData={dashboardData}
-        email={authSession?.user?.email || ''}
-        foods={foods}
-        goalsHabits={goalsHabits}
-        healthDashboardPeriod={healthDashboardPeriod}
-        healthSnapshot={healthSnapshot}
-        meals={meals}
-        nutritionGoals={nutritionGoals}
-        onAddMeal={handleDailyCoachAddMeal}
-        onEditProfile={() => setShowOnboarding(true)}
-        onHealthDashboardPeriodChange={setHealthDashboardPeriod}
-        onLogWeight={handleDailyCoachLogWeight}
-        onScanFood={handleDailyCoachScanFood}
-        profile={validatedProfile}
-        progressInsights={progressInsights}
-        proteinGoal={dailyNutritionSummary?.proteinGoal ?? nutritionGoals?.protein}
-        proteinToday={dailyNutritionSummary?.totals?.protein}
-        reminderState={reminderState}
-        selectedMealDate={selectedMealDate}
-        syncStatus={syncStatusSnapshot}
-        weights={centralWeightStats.weights}
-      />
-
-      <AppErrorBoundary area="cloud" resetKey={authSession?.user?.id || ''} title="Molnstatus kunde inte visas">
-        <CloudStatusPanel isAuthenticated={Boolean(authSession)} />
-        <CloudSyncPanel
-          isAuthenticated={Boolean(authSession)}
-          onDataChanged={refreshAppStateFromStorage}
-          userId={authSession?.user?.id || ''}
+        <PwaExperience showDiagnostics={showInternalTools} />
+        <GlobalSyncStatus />
+        <ReminderBanner
+          dueReminders={dueReminders}
+          onComplete={handleReminderComplete}
+          onOpenCenter={openReminderCenter}
+          onSkip={handleReminderSkip}
+          onSnooze={handleReminderSnooze}
         />
-        <Suspense fallback={<LazySectionFallback />}>
-          <DataExportCenter userId={authSession?.user?.id || ''} />
-          <DataImportCenter
-            onDataImported={refreshAppStateFromStorage}
-            userId={authSession?.user?.id || ''}
-          />
-        </Suspense>
-        {import.meta.env.DEV && (
+        {showInternalTools && (
           <Suspense fallback={null}>
-            <SyncHealthDashboard
-              isAuthenticated={Boolean(authSession)}
-              onDataChanged={refreshAppStateFromStorage}
-              userId={authSession?.user?.id || ''}
+            <LaunchReadinessPanel
+              authSession={authSession}
+              healthSnapshot={healthSnapshot}
+              reminderState={reminderState}
+              syncStatus={syncStatusWithUser}
+            />
+            <ManualAcceptanceRunner
+              syncStatus={syncStatusWithUser}
+            />
+            <PremiumAnalyticsPanel
+              userId={authSession?.user?.id || authSession?.user?.email || 'local-user'}
             />
           </Suspense>
         )}
-      </AppErrorBoundary>
-
-      <Suspense fallback={<LazySectionFallback />}>
-      <section className="content-grid">
-        <AppErrorBoundary area="progress" resetKey={`${healthSnapshot.date}-${weights.length}`} title="Framsteg kunde inte visas">
-          <ProgressCenter
-            bodyAnalysisHistory={bodyAnalysisHistory}
-            bodyMeasurements={bodyMeasurements}
-            goalSettings={progressGoalSettings}
-            onBodyMeasurementsChange={(nextMeasurements) =>
-              setBodyMeasurements(normalizeBodyMeasurements(nextMeasurements))}
-            onGoalSettingsChange={(nextSettings) =>
-              setProgressGoalSettings(normalizeGoalSettings(nextSettings))}
-            onProgressReportsChange={setProgressReports}
-            onWeightsChange={(nextWeights) => setWeights(normalizeWeights(nextWeights))}
+        {activeAppSection === 'home' && (
+          <HomeSection
+            activeSection={activeAppSection}
+            adaptiveCoachFeedback={adaptiveCoachFeedback}
+            calorieGoal={nutritionGoals?.calories}
+            caloriesToday={dailyNutritionSummary?.mealCount > 0 ? dailyNutritionSummary.totals.calories : null}
+            checkIn={checkIn}
+            currentWeight={centralCurrentWeight}
+            dashboardData={dashboardData}
+            email={authSession?.user?.email || ''}
+            foods={foods}
+            goalsHabits={goalsHabits}
+            healthDashboardPeriod={healthDashboardPeriod}
+            healthSnapshot={healthSnapshot}
+            meals={meals}
+            nutritionGoals={nutritionGoals}
+            onAddMeal={handleDailyCoachAddMeal}
+            onEditProfile={() => setShowOnboarding(true)}
+            onHealthDashboardPeriodChange={setHealthDashboardPeriod}
+            onLogWeight={handleDailyCoachLogWeight}
+            onNavigateSection={handleDailyCoachAction}
+            onScanFood={handleDailyCoachScanFood}
             profile={validatedProfile}
-            progressPhotos={progressPhotos}
-            progressReports={progressReports}
-            weights={weights}
+            progressInsights={progressInsights}
+            proteinGoal={dailyNutritionSummary?.proteinGoal ?? nutritionGoals?.protein}
+            proteinToday={dailyNutritionSummary?.mealCount > 0 ? dailyNutritionSummary.totals.protein : null}
+            reminderState={reminderState}
+            selectedMealDate={selectedMealDate}
+            syncStatus={syncStatusSnapshot}
+            weights={centralWeightStats.weights}
           />
-        </AppErrorBoundary>
+        )}
 
-
-        <CoachSection
+        {activeAppSection !== 'home' && (
+          <Suspense fallback={<LazySectionFallback />}>
+          <section className="content-grid">
+        {activeAppSection === 'coach' && (
+          <CoachSection
           activeSection={activeAppSection}
           adaptiveCoachFeedback={adaptiveCoachFeedback}
           aiStarterPrompts={aiStarterPrompts}
@@ -2931,9 +2909,11 @@ function App() {
           voiceStatus={voiceStatus}
           weights={centralWeightStats.weights}
         />
+        )}
 
 
-        <NutritionSection
+        {activeAppSection === 'nutrition' && (
+          <NutritionSection
           activeSection={activeAppSection}
           barcodeInput={barcodeInput}
           barcodeScannerActive={barcodeScannerActive}
@@ -2950,6 +2930,8 @@ function App() {
           mealHistoryImportSummary={mealHistoryImportSummary}
           meals={meals}
           nutritionGoals={nutritionGoals}
+          navigationIntent={nutritionIntent}
+          onScrollToTarget={scrollTargetInApp}
           onAnalyzePhotoMeal={analyzePhotoMeal}
           onBarcodeInputChange={setBarcodeInput}
           onCancelClearMealHistory={() =>
@@ -2985,8 +2967,29 @@ function App() {
           weights={weights}
           weekSummary={mealWeekSummary}
         />
+        )}
 
-        <ProgressSection
+        {activeAppSection === 'progress' && (
+          <>
+            <AppErrorBoundary area="progress" resetKey={`${healthSnapshot.date}-${weights.length}`} title="Framsteg kunde inte visas">
+            <ProgressCenter
+                bodyAnalysisHistory={bodyAnalysisHistory}
+                bodyMeasurements={bodyMeasurements}
+                goalSettings={progressGoalSettings}
+                onBodyMeasurementsChange={(nextMeasurements) =>
+                  setBodyMeasurements(normalizeBodyMeasurements(nextMeasurements))}
+                onGoalSettingsChange={(nextSettings) =>
+                  setProgressGoalSettings(normalizeGoalSettings(nextSettings))}
+                onProgressReportsChange={setProgressReports}
+                onWeightsChange={(nextWeights) => setWeights(normalizeWeights(nextWeights))}
+                profile={validatedProfile}
+                progressPhotos={progressPhotos}
+                progressReports={progressReports}
+                weights={weights}
+              />
+            </AppErrorBoundary>
+
+            <ProgressSection
           activeSection={activeAppSection}
           adaptiveCoachFeedback={adaptiveCoachFeedback}
           afterPhoto={afterPhoto}
@@ -3000,6 +3003,8 @@ function App() {
           healthSnapshot={healthSnapshot}
           meals={meals}
           monthlyReport={monthlyReport}
+          navigationIntent={progressIntent}
+          onScrollToTarget={scrollTargetInApp}
           nutritionGoals={nutritionGoals}
           onAfterPhotoIdChange={setAfterPhotoId}
           onBeforePhotoIdChange={setBeforePhotoId}
@@ -3038,8 +3043,11 @@ function App() {
           weeklyReportLines={weeklyReportLines}
           weeklyReportStatus={weeklyReportStatus}
         />
+          </>
+        )}
 
-<MoreSection
+        {activeAppSection === 'more' && (
+          <MoreSection
   activeSection={activeAppSection}
   adaptiveCoachFeedback={adaptiveCoachFeedback}
   authLoading={authLoading}
@@ -3054,7 +3062,8 @@ function App() {
   onEditProfile={() => setShowOnboarding(true)}
   onReminderSettingChange={updateReminderSetting}
   onReminderStateChange={handleReminderStateChange}
-  onRequestNotificationPermission={requestNotificationPermission}
+   onRequestNotificationPermission={requestNotificationPermission}
+  onSearchNavigate={handleGlobalSearchNavigate}
   onSignOut={handleSignOut}
   reminderOptions={reminderOptions}
   reminderSettings={reminderSettings}
@@ -3062,14 +3071,19 @@ function App() {
   reminderStatus={reminderStatus}
   schedulerStatus={reminderSchedulerStatus}
   selectedMealDate={selectedMealDate}
+  DataExportCenterComponent={DataExportCenter}
+  DataImportCenterComponent={DataImportCenter}
+  SyncHealthDashboardComponent={SyncHealthDashboard}
   syncStatus={syncStatusSnapshot}
+  showInternalTools={showInternalTools}
   userId={authSession?.user?.id || ''}
   profile={validatedProfile}
   weights={centralWeightStats.weights}
 />
-      </section>
-      </Suspense>
-
+        )}
+          </section>
+          </Suspense>
+        )}
       <BottomNavigation
         activeSection={activeAppSection}
         onSectionChange={handleAppSectionChange}

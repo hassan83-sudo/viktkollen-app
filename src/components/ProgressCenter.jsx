@@ -283,7 +283,7 @@ function WeightChartV3({
     <section className="progress-card progress-chart-card">
       <div className="progress-card-heading">
         <div>
-          <p className="eyebrow">Viktgraf V3</p>
+          <p className="eyebrow">Viktgraf</p>
           <h3>Daglig vikt, trend och mål</h3>
         </div>
       </div>
@@ -336,7 +336,7 @@ function WeightChartV3({
           </div>
         ) : (
           <svg viewBox={`0 0 ${width} ${height}`} role="img">
-            <title>Viktgraf V3</title>
+            <title>Viktgraf</title>
             <desc>Dagsvärde använder senaste vägningen per datum. Linjer visar rå vikt, glidande medelvärde och veckosnitt när de är aktiva.</desc>
             <line x1={padding} y1={padding} x2={padding} y2={height - padding} />
             <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} />
@@ -368,7 +368,7 @@ function WeightGoalCenter({ analysis, goalDraft, onChange, onSave, projection })
     <section className="progress-card">
       <div className="progress-card-heading">
         <div>
-          <p className="eyebrow">Målcenter V3</p>
+          <p className="eyebrow">Målcenter</p>
           <h3>Viktmål och milstolpar</h3>
         </div>
         <button type="button" onClick={onSave}>Spara mål</button>
@@ -1054,7 +1054,7 @@ function ProgressCenter({
     <article className="panel progress-center-panel" id="vikt">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Vikt, kroppsmått och framsteg V3</p>
+          <p className="eyebrow">Vikt, kroppsmått och framsteg</p>
           <h2>Framstegscenter</h2>
         </div>
       </div>

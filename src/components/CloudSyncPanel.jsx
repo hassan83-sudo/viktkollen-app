@@ -168,7 +168,7 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
     <article className="panel cloud-sync-panel" id="cloud-sync">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Cloud Sync V2/V3</p>
+          <p className="eyebrow">Molnsynk</p>
           <h2>Automatisk sync</h2>
         </div>
         <div className="cloud-sync-actions">

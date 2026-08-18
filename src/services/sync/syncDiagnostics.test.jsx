@@ -87,7 +87,7 @@ describe('sync diagnostics', () => {
 
     const report = exportSyncDiagnosticsReport(refreshSyncStatus({ userId: 'user-1234567890' }))
 
-    expect(report).not.toMatch(/secret-session|person@example|accessToken|Bearer|viktdata|mÃ¥ltid/i)
+    expect(report).not.toMatch(/secret-session|person@example|accessToken|Bearer|viktdata|måltid/i)
     expect(report).toContain('appVersion')
   })
 

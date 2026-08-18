@@ -105,7 +105,7 @@ function ReminderCenter({ goalsHabits = {}, onRemindersChange, reminderState = {
 
   async function requestPermission() {
     const result = await requestReminderNotificationPermission()
-    setStatusMessage(result.ok ? 'Browsernotiser är aktiverade.' : 'Browsernotiser är inte aktiverade. In-app-påminnelser fungerar ändå.')
+    setStatusMessage(result.ok ? 'Webbläsarnotiser är aktiverade.' : 'Webbläsarnotiser är inte aktiverade. Påminnelser i appen fungerar ändå.')
   }
 
   function updateByAction(action, reminderId, message, ...args) {
@@ -116,7 +116,7 @@ function ReminderCenter({ goalsHabits = {}, onRemindersChange, reminderState = {
     <section className="panel reminder-center" id="reminder-center" aria-labelledby="reminder-center-heading">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Reminder Center</p>
+          <p className="eyebrow">Påminnelser</p>
           <h2 id="reminder-center-heading">Smarta påminnelser</h2>
         </div>
         <span className="insight-coverage">{status.dueCount} förfallna</span>
@@ -128,7 +128,7 @@ function ReminderCenter({ goalsHabits = {}, onRemindersChange, reminderState = {
       <div className="reminder-summary-grid">
         <span>Nästa: {status.nextReminderAt ? new Date(status.nextReminderAt).toLocaleString('sv-SE') : 'Ingen planerad'}</span>
         <span>Aktiva: {status.enabledCount}</span>
-        <span>Snoozade: {status.snoozedCount}</span>
+        <span>Uppskjutna: {status.snoozedCount}</span>
         <span>Notiser: {status.permissionState}</span>
       </div>
 
@@ -155,7 +155,7 @@ function ReminderCenter({ goalsHabits = {}, onRemindersChange, reminderState = {
         <div className="habit-actions">
           <button type="submit" className="primary-button">{editingId ? 'Spara' : 'Skapa'}</button>
           {editingId && <button type="button" onClick={resetDraft}>Avbryt</button>}
-          <button type="button" className="secondary-button" onClick={requestPermission}>Aktivera browsernotiser</button>
+          <button type="button" className="secondary-button" onClick={requestPermission}>Aktivera webbläsarnotiser</button>
         </div>
       </form>
 
@@ -173,7 +173,7 @@ function ReminderCenter({ goalsHabits = {}, onRemindersChange, reminderState = {
       <details>
         <summary>Arkiv och historik</summary>
         <ReminderList reminders={archivedReminders} onArchive={updateByAction} onComplete={updateByAction} onEdit={editReminder} onPause={updateByAction} onRestore={updateByAction} onResume={updateByAction} onSkip={updateByAction} onSnooze={updateByAction} />
-        <p className="estimate-note">{state.history.length} historikhändelser. {linkedGoalsHabitsCount} kopplade mål/vanor har reminderfält.</p>
+        <p className="estimate-note">{state.history.length} historikhändelser. {linkedGoalsHabitsCount} kopplade mål/vanor har påminnelser.</p>
       </details>
     </section>
   )
@@ -192,7 +192,7 @@ function ReminderList({ reminders, onArchive, onComplete, onEdit, onPause, onRes
           <div className="habit-actions">
             <button type="button" onClick={() => onEdit(reminder)}>Redigera</button>
             <button type="button" onClick={() => onComplete(completeReminder, reminder.id, 'Markerad klar.')}>Klar</button>
-            <button type="button" onClick={() => onSnooze(snoozeReminder, reminder.id, 'Snoozad i 30 minuter.', 30)}>Snooza</button>
+            <button type="button" onClick={() => onSnooze(snoozeReminder, reminder.id, 'Visas igen om 30 minuter.', 30)}>Visa senare</button>
             <button type="button" onClick={() => onSkip(skipReminder, reminder.id, 'Påminnelsen hoppades över.')}>Hoppa över</button>
             {reminder.pausedAt
               ? <button type="button" onClick={() => onResume(resumeReminder, reminder.id, 'Påminnelsen återupptogs.')}>Återuppta</button>

@@ -16,14 +16,14 @@ function ReminderBanner({ dueReminders = [], onComplete, onOpenCenter, onSkip, o
             <span>{reminder.description}</span>
             <div className="habit-actions">
               <button type="button" onClick={() => onComplete(reminder.id)}>Klar</button>
-              <button type="button" onClick={() => onSnooze(reminder.id, 30)}>Snooza 30 min</button>
+              <button type="button" onClick={() => onSnooze(reminder.id, 30)}>Visa senare</button>
               <button type="button" onClick={() => onSkip(reminder.id)}>Hoppa över</button>
             </div>
           </article>
         ))}
-        {extraCount > 0 && <p className="estimate-note">+{extraCount} fler i Reminder Center.</p>}
+        {extraCount > 0 && <p className="estimate-note">+{extraCount} fler i Påminnelser.</p>}
       </div>
-      <button type="button" className="secondary-button" onClick={onOpenCenter}>Öppna Reminder Center</button>
+      <button type="button" className="secondary-button" onClick={onOpenCenter}>Öppna påminnelser</button>
     </section>
   )
 }

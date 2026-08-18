@@ -23,7 +23,8 @@ describe('AICoach', () => {
     const markup = html()
 
     expect(markup).toContain('Coachen saknar tillräckligt med data just nu')
-    expect(markup).toContain('trygg lokal fallback')
+    expect(markup).toContain('AI-tjänsten inte är tillgänglig')
+    expect(markup).toContain('första coachrapport')
   })
 
   it('announces loading while generating a report', () => {

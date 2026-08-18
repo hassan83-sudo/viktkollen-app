@@ -10,11 +10,18 @@ function SummaryCard({ label, status = 'neutral', value }) {
   )
 }
 
+function goalPercentLabel(value, hasData) {
+  if (!hasData || !Number.isFinite(value)) return 'Inga data ännu'
+
+  return `${value}%`
+}
+
 function ProgressSummaryCards({ analysis }) {
   const weight = analysis.weight
   const nutrition = analysis.nutrition
   const habits = analysis.habits
   const planning = analysis.planning
+  const hasNutritionGoalData = nutrition.loggedDayCount > 0
 
   return (
     <section className="progress-summary-grid" aria-label="Framsteg i korthet">
@@ -24,8 +31,8 @@ function ProgressSummaryCards({ analysis }) {
       <SummaryCard label="Total förändring" status={weight.totalTrendDirection === 'down' ? 'positive' : 'neutral'} value={formatProgressChange(weight.totalChangeKg ?? weight.changeKg)} />
       <SummaryCard label="Kvar till mål" value={formatKg(weight.goalRemaining, { fallback: 'Saknas' })} />
       <SummaryCard label="Veckosnitt" value={weight.weeklyAverageChange === null ? 'Saknas' : formatProgressChange(weight.weeklyAverageChange)} />
-      <SummaryCard label="Kalorimål" value={`${nutrition.calorieGoalPercent}%`} />
-      <SummaryCard label="Proteinmål" status={nutrition.proteinGoalPercent >= 70 ? 'positive' : 'neutral'} value={`${nutrition.proteinGoalPercent}%`} />
+      <SummaryCard label="Kalorimål" value={goalPercentLabel(nutrition.calorieGoalPercent, hasNutritionGoalData)} />
+      <SummaryCard label="Proteinmål" status={nutrition.proteinGoalPercent >= 70 ? 'positive' : 'neutral'} value={goalPercentLabel(nutrition.proteinGoalPercent, hasNutritionGoalData)} />
       <SummaryCard label="Loggade måltider" value={nutrition.mealCount.toLocaleString('sv-SE')} />
       <SummaryCard label="Planerade måltider" value={planning.plannedMealCount.toLocaleString('sv-SE')} />
       <SummaryCard label="Check-ins" value={habits.checkInCount.toLocaleString('sv-SE')} />

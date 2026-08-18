@@ -42,6 +42,14 @@ function RecipeCard({
           </ul>
         </details>
       )}
+      {recipe.instructions ? (
+        <details>
+          <summary>Tillagning</summary>
+          <p>{recipe.instructions}</p>
+        </details>
+      ) : (
+        <small>Tillagning: Saknas</small>
+      )}
       {recipe.tags.length > 0 && <small>Taggar: {recipe.tags.join(', ')}</small>}
       <small>{compatibility.compatible ? 'Matchar matval' : compatibility.explanation}</small>
       <div className="nutrition-actions">

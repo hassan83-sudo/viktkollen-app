@@ -285,6 +285,17 @@ function MealQuickAdd({
         </button>
       </div>
 
+      <div className="meal-template-coming-soon" aria-label="Kommande mallhjälp">
+        <div>
+          <strong>Skapa mall med foto eller fri text</strong>
+          <span>Denna funktion kommer i en kommande uppdatering.</span>
+        </div>
+        <div className="meal-template-coming-soon-chips" aria-hidden="true">
+          <span>Foto</span>
+          <span>Skriv själv</span>
+        </div>
+      </div>
+
       <div className="meal-template-toolbar">
         <label className="field">
           <span>Sök mall</span>

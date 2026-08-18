@@ -1,4 +1,4 @@
-import { renderToStaticMarkup } from 'react-dom/server'
+﻿import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import ProgressDashboard from './ProgressDashboard.jsx'
 import GoalForecastCard from './progress/GoalForecastCard.jsx'
@@ -62,7 +62,7 @@ function html(props = {}) {
 
 describe('ProgressDashboard UI', () => {
   it.each([
-    ['heading', 'Smart Progress Dashboard'],
+    ['heading', 'Din utveckling'],
     ['eyebrow', 'Framsteg'],
     ['period control', 'Välj period för framsteg'],
     ['7 days', '7 dagar'],
@@ -157,7 +157,7 @@ describe('ProgressDashboard UI', () => {
   })
 
   it('renders safely with empty props', () => {
-    expect(html({ checkIn: {}, foods: [], meals: [], nutritionGoals: {}, profile: {}, weights: [] })).toContain('Smart Progress Dashboard')
+    expect(html({ checkIn: {}, foods: [], meals: [], nutritionGoals: {}, profile: {}, weights: [] })).toContain('Din utveckling')
   })
 
   it('keeps actual and planned nutrition separated in copy', () => {

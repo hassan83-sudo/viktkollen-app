@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import {
   addDays,
   favoriteToMeal,
@@ -90,6 +90,26 @@ function downloadJson(filename, payload) {
   window.URL.revokeObjectURL(url)
 }
 
+function scrollTargetInAppContainer(target) {
+  const scrollContainer = document.querySelector('.app-scroll-container')
+
+  if (!target || !scrollContainer) {
+    target?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+    return
+  }
+
+  const containerRect = scrollContainer.getBoundingClientRect()
+  const targetRect = target.getBoundingClientRect()
+
+  scrollContainer.scrollTo({
+    top: Math.max(0, targetRect.top - containerRect.top + scrollContainer.scrollTop),
+    behavior: 'smooth',
+  })
+}
+
 function MealLogger({
   displayPhotoMeals,
   favoriteMeals,
@@ -97,6 +117,8 @@ function MealLogger({
   handleFoodPhotoChange,
   healthSnapshot,
   importSummary,
+  initialPanel = 'overview',
+  navigationIntent,
   meals,
   nutritionGoals,
   onAnalyzePhotoMeal,
@@ -136,6 +158,33 @@ function MealLogger({
   const [recipes, setRecipes] = useState(() => readRecipes())
   const [scannerOpen, setScannerOpen] = useState(false)
   const [weekStart, setWeekStart] = useState(() => getWeekStart(selectedMealDate))
+
+  useEffect(() => {
+    window.requestAnimationFrame(() => {
+      if (initialPanel === 'recipes') {
+        setNutritionViewMode('recipes')
+      }
+
+      if (initialPanel === 'plan') {
+        setNutritionViewMode('planner')
+      }
+
+      if (initialPanel === 'scanner') {
+        setScannerOpen(true)
+        scrollTargetInAppContainer(document.getElementById('nutrition-scanner-v2'))
+      }
+    })
+  }, [initialPanel])
+
+  useEffect(() => {
+    if (navigationIntent?.panel !== 'scanner') return
+
+    window.requestAnimationFrame(() => {
+      setScannerOpen(true)
+      setNutritionViewMode('day')
+      scrollTargetInAppContainer(document.getElementById('nutrition-scanner-v2'))
+    })
+  }, [navigationIntent])
 
   const normalizedMeals = useMemo(() => normalizeMeals(meals), [meals])
   const normalizedGoals = useMemo(() => normalizeNutritionGoals(nutritionGoals), [nutritionGoals])
@@ -562,7 +611,7 @@ function MealLogger({
   }
 
   return (
-    <article className="panel meals-panel nutrition-panel" id="maltider">
+    <article className={`panel meals-panel nutrition-panel is-panel-${initialPanel}`} id="maltider">
       <div className="panel-heading">
         <div>
           <p className="eyebrow">Kost, måltider och näring</p>
@@ -702,77 +751,91 @@ function MealLogger({
         </div>
       )}
 
-      {editingMealId ? (
-        <MealEditForm
-          draft={draft}
-          errors={errors}
-          onCancel={() => resetDraft()}
-          onChange={handleDraftChange}
-          onNutritionChange={handleNutritionOverrideChange}
-          onResetAutomatic={resetAutomaticAnalysis}
-          onSubmit={(event) => {
-            event.preventDefault()
-            const nextErrors = validateMealEditDraft(draft)
+      <div id="nutrition-meal-editor" className="nutrition-meal-editor-panel">
+        {editingMealId ? (
+          <MealEditForm
+            draft={draft}
+            errors={errors}
+            onCancel={() => resetDraft()}
+            onChange={handleDraftChange}
+            onNutritionChange={handleNutritionOverrideChange}
+            onResetAutomatic={resetAutomaticAnalysis}
+            onSubmit={(event) => {
+              event.preventDefault()
+              const nextErrors = validateMealEditDraft(draft)
 
-            setErrors(nextErrors)
+              setErrors(nextErrors)
 
-            if (Object.keys(nextErrors).length === 0) {
-              handleSubmitMeal(event)
-            }
-          }}
+              if (Object.keys(nextErrors).length === 0) {
+                handleSubmitMeal(event)
+              }
+            }}
+          />
+        ) : (
+          <MealEditor
+            draft={draft}
+            errors={errors}
+            isEditing={Boolean(editingFavoriteId)}
+            onCancel={() => resetDraft()}
+            onChange={handleDraftChange}
+            onReset={() => resetDraft()}
+            onSubmit={handleSubmitMeal}
+          />
+        )}
+      </div>
+
+      <div className="nutrition-panel-daily-summary">
+        <DailyNutritionSummary summary={dailySummary} />
+      </div>
+
+      <div className="nutrition-panel-goals">
+        <NutritionGoalsPanel
+          draft={goalDraft}
+          errors={goalErrors}
+          proteinDistributionPlan={proteinDistributionPlan}
+          suggestedCalorieGoal={suggestedCalorieGoal}
+          suggestedProteinGoal={suggestedProteinGoal}
+          onChange={(key, value) => setGoalDraft((current) => ({ ...current, [key]: value }))}
+          onClear={clearGoals}
+          onCancel={() => setGoalDraft(normalizedGoals)}
+          onSave={saveGoals}
+          onUseSuggestedCalorieGoal={() => applySuggestedGoal('calories', suggestedCalorieGoal?.suggestedGoal)}
+          onUseSuggestedProteinGoal={() => applySuggestedGoal('protein', suggestedProteinGoal?.recommendedGrams)}
         />
-      ) : (
-        <MealEditor
-          draft={draft}
-          errors={errors}
-          isEditing={Boolean(editingFavoriteId)}
-          onCancel={() => resetDraft()}
-          onChange={handleDraftChange}
-          onReset={() => resetDraft()}
-          onSubmit={handleSubmitMeal}
+      </div>
+
+      <div className="nutrition-panel-weekly-analysis">
+        <WeeklyNutritionAnalysis
+          week={weekAnalysis}
+          weekStart={weekStart}
+          onWeekChange={setWeekStart}
         />
-      )}
+      </div>
 
-      <DailyNutritionSummary summary={dailySummary} />
+      <div className="nutrition-panel-insights">
+        <NutritionInsights insights={insights} />
+      </div>
 
-      <NutritionGoalsPanel
-        draft={goalDraft}
-        errors={goalErrors}
-        proteinDistributionPlan={proteinDistributionPlan}
-        suggestedCalorieGoal={suggestedCalorieGoal}
-        suggestedProteinGoal={suggestedProteinGoal}
-        onChange={(key, value) => setGoalDraft((current) => ({ ...current, [key]: value }))}
-        onClear={clearGoals}
-        onCancel={() => setGoalDraft(normalizedGoals)}
-        onSave={saveGoals}
-        onUseSuggestedCalorieGoal={() => applySuggestedGoal('calories', suggestedCalorieGoal?.suggestedGoal)}
-        onUseSuggestedProteinGoal={() => applySuggestedGoal('protein', suggestedProteinGoal?.recommendedGrams)}
-      />
+      <div className="nutrition-panel-favorites">
+        <FavoriteMeals
+          favorites={visibleFavorites}
+          search={favoriteSearch}
+          onAddFavorite={addFavoriteAsMeal}
+          onDeleteFavorite={deleteFavorite}
+          onEditFavorite={editFavorite}
+          onSearchChange={setFavoriteSearch}
+        />
+      </div>
 
-      <WeeklyNutritionAnalysis
-        week={weekAnalysis}
-        weekStart={weekStart}
-        onWeekChange={setWeekStart}
-      />
-
-      <NutritionInsights insights={insights} />
-
-      <FavoriteMeals
-        favorites={visibleFavorites}
-        search={favoriteSearch}
-        onAddFavorite={addFavoriteAsMeal}
-        onDeleteFavorite={deleteFavorite}
-        onEditFavorite={editFavorite}
-        onSearchChange={setFavoriteSearch}
-      />
-
-      <NutritionImportExport
-        fileInputRef={fileInputRef}
-        importStatus={importStatus}
-        onExport={exportNutrition}
-        onFileChange={importNutrition}
-        onOpenImport={() => fileInputRef.current?.click()}
-      />
+      <div className="nutrition-panel-import-export">
+        <NutritionImportExport
+          fileInputRef={fileInputRef}
+          importStatus={importStatus}
+          onExport={exportNutrition}
+          onFileChange={importNutrition}
+          onOpenImport={() => fileInputRef.current?.click()}
+        />
+      </div>
 
       <div className="photo-meal-tool scanner-tool">
         <div>
@@ -808,42 +871,50 @@ function MealLogger({
         </div>
       )}
 
-      <PhotoAnalysis
-        displayPhotoMeals={displayPhotoMeals}
-        foodPhotoPreview={foodPhotoPreview}
-        handleFoodPhotoChange={handleFoodPhotoChange}
-        onAnalyzePhotoMeal={onAnalyzePhotoMeal}
-        photoAnalysisStatus={photoAnalysisStatus}
-      />
+      <div className="nutrition-panel-photo-analysis">
+        <PhotoAnalysis
+          displayPhotoMeals={displayPhotoMeals}
+          foodPhotoPreview={foodPhotoPreview}
+          handleFoodPhotoChange={handleFoodPhotoChange}
+          onAnalyzePhotoMeal={onAnalyzePhotoMeal}
+          photoAnalysisStatus={photoAnalysisStatus}
+        />
+      </div>
 
-      <MealWeeklyReport weekSummary={weekSummary} />
+      <div className="nutrition-panel-weekly-report">
+        <MealWeeklyReport weekSummary={weekSummary} />
+      </div>
 
-      <MealHistoryTools
-        importSummary={importSummary}
-        showClearHistoryConfirm={showClearMealHistoryConfirm}
-        onCancelClearHistory={onCancelClearMealHistory}
-        onClearHistory={onClearMealHistory}
-        onCreateDemoMealDay={onCreateDemoMealDay}
-        onExportHistory={onExportMealHistory}
-        onImportHistory={onImportMealHistory}
-        onShowClearHistory={onShowClearMealHistory}
-      />
+      <div className="nutrition-panel-history-tools">
+        <MealHistoryTools
+          importSummary={importSummary}
+          showClearHistoryConfirm={showClearMealHistoryConfirm}
+          onCancelClearHistory={onCancelClearMealHistory}
+          onClearHistory={onClearMealHistory}
+          onCreateDemoMealDay={onCreateDemoMealDay}
+          onExportHistory={onExportMealHistory}
+          onImportHistory={onImportMealHistory}
+          onShowClearHistory={onShowClearMealHistory}
+        />
+      </div>
 
-      <MealHistory
-        filters={filters}
-        historyRange={historyRange}
-        historySummary={mealHistorySummary}
-        historyRangeOptions={historyRangeOptions}
-        meals={visibleMeals}
-        onClearFilters={() => setFilters(defaultFilters)}
-        onCopyMeal={copyMeal}
-        onDeleteMeal={deleteMeal}
-        onEditMeal={editMeal}
-        onFilterChange={(key, value) => setFilters((current) => ({ ...current, [key]: value }))}
-        onHistoryRangeChange={setHistoryRange}
-        onSaveFavorite={saveFavorite}
-        onSaveTemplate={saveMealTemplate}
-      />
+      <div className="nutrition-panel-history">
+        <MealHistory
+          filters={filters}
+          historyRange={historyRange}
+          historySummary={mealHistorySummary}
+          historyRangeOptions={historyRangeOptions}
+          meals={visibleMeals}
+          onClearFilters={() => setFilters(defaultFilters)}
+          onCopyMeal={copyMeal}
+          onDeleteMeal={deleteMeal}
+          onEditMeal={editMeal}
+          onFilterChange={(key, value) => setFilters((current) => ({ ...current, [key]: value }))}
+          onHistoryRangeChange={setHistoryRange}
+          onSaveFavorite={saveFavorite}
+          onSaveTemplate={saveMealTemplate}
+        />
+      </div>
     </article>
   )
 }

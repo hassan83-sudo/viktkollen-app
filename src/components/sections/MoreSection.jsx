@@ -1,9 +1,14 @@
-﻿import AppErrorBoundary from '../AppErrorBoundary.jsx'
+import { Suspense } from 'react'
+import AppErrorBoundary from '../AppErrorBoundary.jsx'
 import CloudBackupPanel from '../CloudBackupPanel.jsx'
+import CloudStatusPanel from '../CloudStatusPanel.jsx'
+import CloudSyncPanel from '../CloudSyncPanel.jsx'
 import NotificationCenter from '../NotificationCenter.jsx'
 import ReminderCenter from '../ReminderCenter.jsx'
 import ReminderSettings from '../ReminderSettings.jsx'
 import AppSection from '../app/AppSection.jsx'
+import GlobalSearch from '../app/GlobalSearch.jsx'
+import LazySectionFallback from '../app/LazySectionFallback.jsx'
 
 function MoreSection({
   activeSection,
@@ -21,6 +26,7 @@ function MoreSection({
   onReminderSettingChange,
   onReminderStateChange,
   onRequestNotificationPermission,
+  onSearchNavigate,
   onSignOut,
   reminderOptions,
   reminderSettings,
@@ -28,11 +34,19 @@ function MoreSection({
   reminderStatus,
   schedulerStatus,
   selectedMealDate,
+  DataExportCenterComponent,
+  DataImportCenterComponent,
+  SyncHealthDashboardComponent,
+  showInternalTools = false,
   syncStatus,
   userId,
   profile,
   weights,
 }) {
+  const DataExportCenter = DataExportCenterComponent
+  const DataImportCenter = DataImportCenterComponent
+  const SyncHealthDashboard = SyncHealthDashboardComponent
+
   return (
     <AppSection
       activeSection={activeSection}
@@ -50,7 +64,7 @@ function MoreSection({
       <AppErrorBoundary
         area="reminders"
         resetKey={reminderState.updatedAt}
-        title="Reminder Center kunde inte visas"
+        title="Påminnelser kunde inte visas"
       >
         <ReminderCenter
           goalsHabits={goalsHabits}
@@ -63,7 +77,7 @@ function MoreSection({
       <AppErrorBoundary
         area="notifications"
         resetKey={reminderState.updatedAt}
-        title="Notification Center kunde inte visas"
+        title="Notiscenter kunde inte visas"
       >
         <NotificationCenter
           adaptiveCoachFeedback={adaptiveCoachFeedback}
@@ -84,8 +98,32 @@ function MoreSection({
       <AppErrorBoundary
         area="cloud"
         resetKey={userId}
-        title="Molnbackup kunde inte visas"
+        title="Molnstatus kunde inte visas"
       >
+        <CloudStatusPanel isAuthenticated={isAuthenticated} />
+        <CloudSyncPanel
+          isAuthenticated={isAuthenticated}
+          onDataChanged={onDataRestored}
+          userId={userId}
+        />
+        {DataExportCenter && DataImportCenter && (
+          <Suspense fallback={<LazySectionFallback />}>
+            <DataExportCenter userId={userId} />
+            <DataImportCenter
+              onDataImported={onDataRestored}
+              userId={userId}
+            />
+          </Suspense>
+        )}
+        {showInternalTools && SyncHealthDashboard && (
+          <Suspense fallback={null}>
+            <SyncHealthDashboard
+              isAuthenticated={isAuthenticated}
+              onDataChanged={onDataRestored}
+              userId={userId}
+            />
+          </Suspense>
+        )}
         <CloudBackupPanel
           isAuthenticated={isAuthenticated}
           onDataRestored={onDataRestored}
@@ -105,6 +143,8 @@ function MoreSection({
         </p>
 
         <div className="account-settings-actions">
+          <GlobalSearch onNavigate={onSearchNavigate} />
+
           <button
             className="secondary-button"
             type="button"
@@ -119,7 +159,7 @@ function MoreSection({
             onClick={onSignOut}
             disabled={authLoading}
           >
-            {authLoading ? 'Loggar ut…' : 'Logga ut'}
+            {authLoading ? 'Loggar ut...' : 'Logga ut'}
           </button>
         </div>
 

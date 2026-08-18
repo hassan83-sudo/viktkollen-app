@@ -6,6 +6,26 @@ import {
 } from '../services/notifications/notificationEngine.js'
 import { readMealPlans } from '../services/nutrition/nutritionEngine.js'
 
+const permissionLabels = {
+  default: 'Inte vald',
+  denied: 'Nekad',
+  granted: 'Tillåten',
+  unsupported: 'Stöds inte',
+}
+
+const cadenceLabels = {
+  adaptive: 'Anpassad',
+  batched: 'Samlad',
+  daily: 'Daglig',
+  immediate: 'Direkt',
+  low: 'Lugn',
+  normal: 'Normal',
+}
+
+function labelValue(map, value) {
+  return map[value] || value || 'Saknas'
+}
+
 function formatDateTime(value) {
   if (!value) return 'Saknas'
   try {
@@ -86,8 +106,8 @@ function NotificationCenter({
     <section className="panel reminder-center" id="notification-center" aria-labelledby="notification-center-heading">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Notifications V3</p>
-          <h2 id="notification-center-heading">Notification Center</h2>
+          <p className="eyebrow">Notiser</p>
+          <h2 id="notification-center-heading">Notiscenter</h2>
         </div>
         <span className="insight-coverage">{model.upcoming.length} kommande</span>
       </div>
@@ -95,10 +115,10 @@ function NotificationCenter({
       {message && <p className="form-success" role="status" aria-live="polite">{message}</p>}
 
       <div className="reminder-summary-grid">
-        <span>Permission: {model.permission}</span>
-        <span>Leverans: {model.adaptiveProfile.cadence}</span>
-        <span>Quiet hours: {model.settings.quietHours.start}-{model.settings.quietHours.end}</span>
-        <span>Batchning: {model.settings.batchingWindowMinutes} min</span>
+        <span>Behörighet: {labelValue(permissionLabels, model.permission)}</span>
+        <span>Leverans: {labelValue(cadenceLabels, model.adaptiveProfile.cadence)}</span>
+        <span>Tysta timmar: {model.settings.quietHours.start}-{model.settings.quietHours.end}</span>
+        <span>Samling av notiser: {model.settings.batchingWindowMinutes} min</span>
       </div>
 
       <div className="reminder-columns">
@@ -112,7 +132,7 @@ function NotificationCenter({
           }))} />
         </article>
         <article>
-          <h3>Smart Notifications</h3>
+          <h3>Smarta notiser</h3>
           <NotificationList
             emptyText="Inga smarta rekommendationer just nu."
             items={model.smartRecommendations}
@@ -128,27 +148,27 @@ function NotificationCenter({
       </div>
 
       <details>
-        <summary>Completed, postponed och dismissed</summary>
+        <summary>Klara, uppskjutna och ignorerade</summary>
         <div className="reminder-columns">
           <article>
-            <h3>Completed</h3>
+            <h3>Klara</h3>
             <NotificationList emptyText="Inga klara notiser." items={model.completed.slice(0, 5)} />
           </article>
           <article>
-            <h3>Postponed</h3>
+            <h3>Uppskjutna</h3>
             <NotificationList emptyText="Inga uppskjutna notiser." items={model.postponed.slice(0, 5)} />
           </article>
           <article>
-            <h3>Dismissed</h3>
-            <NotificationList emptyText="Inga avfärdade notiser." items={model.dismissed.slice(0, 5)} />
+            <h3>Ignorerade</h3>
+            <NotificationList emptyText="Inga ignorerade notiser." items={model.dismissed.slice(0, 5)} />
           </article>
         </div>
       </details>
 
       <form className="inline-edit-form" onSubmit={(event) => event.preventDefault()} aria-label="Notisinställningar">
-        <h3>Quiet hours</h3>
+        <h3>Tysta timmar</h3>
         <label className="toggle-row">
-          <span>Aktivera quiet hours</span>
+          <span>Aktivera tysta timmar</span>
           <input
             type="checkbox"
             checked={model.settings.quietHours.enabled}

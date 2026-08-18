@@ -15,11 +15,16 @@ function fakeFiles(existing = [], contents = {}) {
 describe('staging environment validator', () => {
   const requiredFiles = [
     'api/adaptive-coach/index.js',
+    'api/ai/index.js',
+    'api/body-analysis/index.js',
+    'api/meal-analysis/index.js',
     'api/_shared/aiRateLimiter.js',
     'api/_shared/aiRequestDeduper.js',
     'api/_shared/aiRouteErrors.js',
     'api/_shared/verifySupabaseUser.js',
     'api/nutrition-photo-analysis/index.js',
+    'src/services/accountDeletionReadiness.js',
+    'src/services/entitlements.js',
     'src/services/coachMemory/coachContextSelector.js',
     'src/services/coachMemory/coachMemoryBuilder.js',
     'src/services/coachMemory/coachMemoryModel.js',
@@ -35,7 +40,13 @@ describe('staging environment validator', () => {
     const contents = {
       '.env.example': 'OPENAI_API_KEY=\nVITE_SUPABASE_URL=\n',
       'api/adaptive-coach/index.js': 'verifySupabaseUser setNoStoreHeaders hasBlockedFields userId checkAiRouteRateLimit',
+      'api/ai/index.js': 'verifySupabaseUser setNoStoreHeaders sendSafeAiError checkAiRouteRateLimit',
+      'api/body-analysis/index.js': 'verifySupabaseUser setNoStoreHeaders sendSafeAiError checkAiRouteRateLimit',
+      'api/meal-analysis/index.js': 'verifySupabaseUser setNoStoreHeaders sendSafeAiError checkAiRouteRateLimit',
       'api/nutrition-photo-analysis/index.js': 'verifySupabaseUser checkAiRouteRateLimit setNoStoreHeaders',
+      'src/services/aiApiService.js': 'getCurrentAiAuthorization Authorization',
+      'src/services/bodyAnalysisService.js': 'getCurrentAiAuthorization Authorization',
+      'src/services/mealAnalysisService.js': 'getCurrentAiAuthorization Authorization',
       'src/services/ai/remoteCoachService.js': 'getCurrentAiAuthorization Authorization',
       'src/services/nutritionPhotoAnalysisProvider.js': 'getCurrentAiAuthorization Authorization',
     }
@@ -47,6 +58,9 @@ describe('staging environment validator', () => {
       },
       files: fakeFiles([
         ...requiredFiles,
+        'src/services/aiApiService.js',
+        'src/services/bodyAnalysisService.js',
+        'src/services/mealAnalysisService.js',
         'src/services/ai/remoteCoachService.js',
         'src/services/nutritionPhotoAnalysisProvider.js',
       ], contents),

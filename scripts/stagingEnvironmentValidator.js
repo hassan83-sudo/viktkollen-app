@@ -5,12 +5,20 @@ import process from 'node:process'
 const placeholderPattern = /^(|changeme|change-me|placeholder|todo|example|your-|xxx|test)$/i
 const requiredClientVariables = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']
 const serverOnlyVariables = ['OPENAI_API_KEY']
-const requiredRoutes = ['api/nutrition-photo-analysis/index.js', 'api/adaptive-coach/index.js']
+const requiredRoutes = [
+  'api/adaptive-coach/index.js',
+  'api/ai/index.js',
+  'api/body-analysis/index.js',
+  'api/meal-analysis/index.js',
+  'api/nutrition-photo-analysis/index.js',
+]
 const requiredSecurityFiles = [
   'api/_shared/verifySupabaseUser.js',
   'api/_shared/aiRateLimiter.js',
   'api/_shared/aiRequestDeduper.js',
   'api/_shared/aiRouteErrors.js',
+  'src/services/accountDeletionReadiness.js',
+  'src/services/entitlements.js',
   'src/services/coachMemory/coachMemoryModel.js',
   'src/services/coachMemory/coachMemoryBuilder.js',
   'src/services/coachMemory/coachContextSelector.js',
@@ -147,6 +155,25 @@ export function validateStagingEnvironment({
       : makeCheck('photo-user-rate-limit', 'FAIL', 'Photoroute saknar gemensam user-scoped rate limit.'))
   }
 
+  const protectedAiRoutes = [
+    ['api/ai/index.js', 'legacy-ai'],
+    ['api/body-analysis/index.js', 'body-analysis'],
+    ['api/meal-analysis/index.js', 'meal-analysis'],
+  ]
+  protectedAiRoutes.forEach(([file, id]) => {
+    if (!files.exists(file)) return
+    const route = files.read(file)
+    checks.push(route.includes('verifySupabaseUser')
+      ? makeCheck(`${id}-auth-required`, 'PASS', `${file} verifierar Supabase-session server-side.`, false)
+      : makeCheck(`${id}-auth-required`, 'FAIL', `${file} saknar server-side authverifiering.`))
+    checks.push(route.includes('setNoStoreHeaders') || route.includes('sendSafeAiError')
+      ? makeCheck(`${id}-no-store`, 'PASS', `${file} har no-store-kontrakt.`, false)
+      : makeCheck(`${id}-no-store`, 'FAIL', `${file} saknar no-store-kontrakt.`))
+    checks.push(route.includes('checkAiRouteRateLimit')
+      ? makeCheck(`${id}-user-rate-limit`, 'PASS', `${file} har user-scoped rate limit.`, false)
+      : makeCheck(`${id}-user-rate-limit`, 'FAIL', `${file} saknar user-scoped rate limit.`))
+  })
+
   if (files.exists('src/services/ai/remoteCoachService.js')) {
     const client = files.read('src/services/ai/remoteCoachService.js')
     checks.push(/Authorization/.test(client) && /getCurrentAiAuthorization/.test(client)
@@ -159,6 +186,27 @@ export function validateStagingEnvironment({
     checks.push(/Authorization/.test(client) && /getCurrentAiAuthorization/.test(client)
       ? makeCheck('photo-client-authorization', 'PASS', 'Fotoklient skickar Authorization-header från aktuell session.', false)
       : makeCheck('photo-client-authorization', 'FAIL', 'Fotoklient saknar Authorization-header.'))
+  }
+
+  if (files.exists('src/services/aiApiService.js')) {
+    const client = files.read('src/services/aiApiService.js')
+    checks.push(/Authorization/.test(client) && /getCurrentAiAuthorization/.test(client)
+      ? makeCheck('legacy-ai-client-authorization', 'PASS', 'Legacy AI-klient skickar Authorization-header från aktuell session.', false)
+      : makeCheck('legacy-ai-client-authorization', 'FAIL', 'Legacy AI-klient saknar Authorization-header.'))
+  }
+
+  if (files.exists('src/services/mealAnalysisService.js')) {
+    const client = files.read('src/services/mealAnalysisService.js')
+    checks.push(/Authorization/.test(client) && /getCurrentAiAuthorization/.test(client)
+      ? makeCheck('meal-analysis-client-authorization', 'PASS', 'Legacy matscannerklient skickar Authorization-header från aktuell session.', false)
+      : makeCheck('meal-analysis-client-authorization', 'FAIL', 'Legacy matscannerklient saknar Authorization-header.'))
+  }
+
+  if (files.exists('src/services/bodyAnalysisService.js')) {
+    const client = files.read('src/services/bodyAnalysisService.js')
+    checks.push(/Authorization/.test(client) && /getCurrentAiAuthorization/.test(client)
+      ? makeCheck('body-analysis-client-authorization', 'PASS', 'Kroppsscannerklient skickar Authorization-header från aktuell session.', false)
+      : makeCheck('body-analysis-client-authorization', 'FAIL', 'Kroppsscannerklient saknar Authorization-header.'))
   }
 
   requiredPublicFiles.forEach((file) => {

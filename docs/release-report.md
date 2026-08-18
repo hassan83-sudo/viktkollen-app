@@ -36,7 +36,7 @@ Verifierade floden:
 
 Offline-smoke-testet hittade tidigare att service workern bypassade `/assets/supabase-vendor-*.js` eftersom bypassregeln matchade ordet `supabase` i filnamnet. Filen lag i cachen men anvandes inte offline, vilket gjorde att React-runtime aldrig startade vid offline reload.
 
-Atgard: `/assets/...` undantas nu fran API/auth-bypass innan Supabase/API-reglerna utvarderas.
+Atgard: `/assets/...` undantas nu fran API/auth-undantag innan Supabase/API-reglerna utvarderas.
 
 ## Aterstaende manuella kontroller
 

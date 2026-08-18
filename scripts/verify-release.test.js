@@ -38,6 +38,8 @@ describe('verify-release script contract', () => {
   it('keeps coach and prediction centers out of initial release preloads', () => {
     const source = readFileSync(new URL('./verify-release.js', import.meta.url), 'utf8')
 
+    expect(source).toContain('src/services/entitlements.js')
+    expect(source).toContain('src/services/accountDeletionReadiness.js')
     expect(source).toContain('CoachPlanCenter')
     expect(source).toContain('NutritionCoachCenter')
     expect(source).toContain('PredictionCenter')

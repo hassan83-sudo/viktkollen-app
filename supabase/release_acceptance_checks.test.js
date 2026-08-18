@@ -12,6 +12,8 @@ describe('release acceptance Supabase checks', () => {
     expect(sql).toContain('user_backups')
     expect(sql).toContain('user_sync_state')
     expect(sql).toContain('user_sync_events')
+    expect(sql).toContain('user_sync_items')
+    expect(sql).toContain('storage_key')
     expect(sql).toContain('pg_policies')
     expect(sql).toContain('relrowsecurity')
     expect(sql).toContain('auth.uid()')

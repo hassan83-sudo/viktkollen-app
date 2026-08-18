@@ -79,6 +79,8 @@ export function assertDistContract() {
     'scripts/verify-coach-route.js',
     'scripts/verify-photo-route.js',
     'scripts/verify-preview.js',
+    'src/services/accountDeletionReadiness.js',
+    'src/services/entitlements.js',
     'supabase/release_acceptance_checks.sql',
   ]
   requiredEnablementFiles.forEach((file) => {

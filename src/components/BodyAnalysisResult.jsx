@@ -34,7 +34,7 @@ function BodyAnalysisResult({
           <span>Väntar</span>
         </div>
         <p>
-          Resultatet visas här efter att du valt två bilder och klickat på
+          Resultatet visas här efter att du valt tre bilder och klickat på
           Analysera kroppen.
         </p>
       </div>

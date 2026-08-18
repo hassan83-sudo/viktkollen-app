@@ -134,6 +134,7 @@ function NutritionScannerV2({
   const [allowDuplicate, setAllowDuplicate] = useState(false)
   const [remoteConsent, setRemoteConsent] = useState(false)
   const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine !== false)
+  const canUseLiveCamera = typeof window !== 'undefined' && window.isSecureContext && Boolean(navigator.mediaDevices?.getUserMedia)
   const today = analysisDate || selectedMealDate || getTodayDateString()
 
   useEffect(() => {
@@ -222,9 +223,15 @@ function NutritionScannerV2({
     }
 
     clearTemporaryImage()
-    const result = await preprocessNutritionPhoto(file)
-    if (!result.ok) {
-      setError(result.errors.join(' '))
+    let result
+    try {
+      result = await preprocessNutritionPhoto(file)
+      if (!result.ok) {
+        setError(result.errors.join(' ') || 'Bilden kunde inte förberedas.')
+        return
+      }
+    } catch {
+      setError('Bilden kunde inte förberedas. Välj en annan bild och försök igen.')
       return
     }
 
@@ -255,37 +262,41 @@ function NutritionScannerV2({
     setError('')
     setStatus(providerType === 'remote' ? 'Analyserar bild...' : 'Skapar lokal uppskattning...')
 
-    const { analyzeNutritionPhoto } = await import('../services/nutritionPhotoAnalysisProvider.js')
-    const result = await analyzeNutritionPhoto({
-      imageMetadata: imagePayload.imageMetadata,
-      mealType: reviewDraft?.mealType || 'Lunch',
-      preprocessedImage: providerType === 'remote' ? imagePayload.processedBlob : null,
-    }, {
-      analysisDate: today,
-      providerType,
-      signal: controller.signal,
-    })
+    try {
+      const { analyzeNutritionPhoto } = await import('../services/nutritionPhotoAnalysisProvider.js')
+      const result = await analyzeNutritionPhoto({
+        imageMetadata: imagePayload.imageMetadata,
+        mealType: reviewDraft?.mealType || 'Lunch',
+        preprocessedImage: providerType === 'remote' ? imagePayload.processedBlob : null,
+      }, {
+        analysisDate: today,
+        providerType,
+        signal: controller.signal,
+      })
 
-    if (controller.signal.aborted) {
+      if (controller.signal.aborted) return
+      if (activeAnalysisControllerRef.current === controller) activeAnalysisControllerRef.current = null
+
+      if (!result.analysis) {
+        setError(result.warning || 'Analysen kunde inte slutföras.')
+        return
+      }
+
+      setAnalysis(result.analysis)
+      setReviewDraft(createPhotoAnalysisReviewDraft(result.analysis, {
+        analysisDate: today,
+        mealType: 'Lunch',
+        time: getCurrentTimeString(),
+      }))
+      setStatus(result.warning || 'Analysförslaget är klart. Granska och redigera innan du sparar.')
+    } catch {
+      if (!controller.signal.aborted) {
+        setError('Analysen kunde inte startas. Försök igen eller välj en annan bild.')
+      }
+    } finally {
+      if (activeAnalysisControllerRef.current === controller) activeAnalysisControllerRef.current = null
       setIsAnalyzing(false)
-      return
     }
-    if (activeAnalysisControllerRef.current === controller) activeAnalysisControllerRef.current = null
-
-    if (!result.analysis) {
-      setError(result.warning || 'Analysen kunde inte slutföras.')
-      setIsAnalyzing(false)
-      return
-    }
-
-    setAnalysis(result.analysis)
-    setReviewDraft(createPhotoAnalysisReviewDraft(result.analysis, {
-      analysisDate: today,
-      mealType: 'Lunch',
-      time: getCurrentTimeString(),
-    }))
-    setStatus(result.warning || 'Analysförslaget är klart. Granska och redigera innan du sparar.')
-    setIsAnalyzing(false)
   }
 
   function updateReview(patch) {
@@ -363,19 +374,23 @@ function NutritionScannerV2({
     }
 
     setIsSaving(true)
-    const result = commitPhotoAnalysisMeal(reviewDraft, meals, { allowDuplicate })
-    if (!result.ok) {
-      setError(Object.values(result.errors).join(' '))
-      setIsSaving(false)
-      return
-    }
+    try {
+      const result = commitPhotoAnalysisMeal(reviewDraft, meals, { allowDuplicate })
+      if (!result.ok) {
+        setError(Object.values(result.errors).join(' '))
+        return
+      }
 
-    onMealsChange?.(result.meals)
-    onMealSaved?.(result.meal)
-    clearTemporaryImage()
-    setSavedMealId(result.meal.id)
-    setStatus('Måltiden sparades i måltidsloggen utan bilddata.')
-    setIsSaving(false)
+      onMealsChange?.(result.meals)
+      onMealSaved?.(result.meal)
+      clearTemporaryImage()
+      setSavedMealId(result.meal.id)
+      setStatus('Måltiden sparades i måltidsloggen utan bilddata.')
+    } catch {
+      setError('Måltiden kunde inte sparas. Kontrollera uppgifterna och försök igen.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   function handleCancel() {
@@ -403,12 +418,14 @@ function NutritionScannerV2({
         <li>4. Bekräfta måltid</li>
       </ol>
 
-      <label className="photo-input">
+      <label className="photo-input scanner-file-picker" htmlFor="nutrition-scanner-photo-input">
         <span>Välj eller ta bild</span>
+        <small>{canUseLiveCamera ? 'Kamera eller bildbibliotek kan öppnas av webbläsaren.' : 'Livekamera kan blockeras på HTTP-LAN. Använd iPhone-dialogen för kamera eller bildbibliotek.'}</small>
         <input
+          id="nutrition-scanner-photo-input"
           ref={fileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/*"
           capture="environment"
           aria-label="Välj eller ta en matbild för Nutrition Scanner"
           onChange={handleFileChange}
@@ -416,10 +433,11 @@ function NutritionScannerV2({
       </label>
       {fileName && <p>Vald bild: {fileName}</p>}
       {previewUrl && <img className="food-preview" src={previewUrl} alt="Temporär förhandsvisning av vald matbild" />}
-      <label className="checkbox-row">
+      <label className="checkbox-row scanner-consent-row" htmlFor="nutrition-scanner-remote-consent">
         <input
+          id="nutrition-scanner-remote-consent"
           checked={remoteConsent}
-          disabled={!imagePayload || isAnalyzing}
+          disabled={isAnalyzing}
           type="checkbox"
           onChange={(event) => setRemoteConsent(event.target.checked)}
         />
@@ -438,6 +456,11 @@ function NutritionScannerV2({
       <p className="estimate-note">
         Remote analys skickar bara temporärt förberedd bild och schema. Ingen profil, historik, auth/session eller localStorage-data skickas.
       </p>
+      {!canUseLiveCamera && (
+        <p className="estimate-note">
+          Livekamera kräver normalt HTTPS eller localhost i Safari. På HTTP-LAN används filväljaren med kamera/bildbibliotek som fallback.
+        </p>
+      )}
       <p className="estimate-note">Status: {isOnline ? 'Online' : 'Offline'}</p>
       <div aria-live="polite">
         {status && <p className="form-success">{status}</p>}

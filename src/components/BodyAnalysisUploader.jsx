@@ -19,6 +19,7 @@ function BodyAnalysisUploader({
 }) {
   const [activeViewKey, setActiveViewKey] = useState('front')
   const [cameraStatus, setCameraStatus] = useState('')
+  const [cameraActive, setCameraActive] = useState(false)
   const [countdown, setCountdown] = useState(null)
   const [lightQuality, setLightQuality] = useState(null)
   const countdownTimerRef = useRef(null)
@@ -29,6 +30,8 @@ function BodyAnalysisUploader({
   const completedViews = getCompletedBodyAnalysisViews(photos)
   const hasCameraApi =
     typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia)
+  const isSecureCameraContext = typeof window !== 'undefined' && window.isSecureContext === true
+  const canUseLiveCamera = hasCameraApi && isSecureCameraContext
   const canFinishScan = canCompleteBodyAnalysisScan(photos)
   const isCountingDown = countdown !== null
 
@@ -36,6 +39,17 @@ function BodyAnalysisUploader({
     window.clearTimeout(countdownTimerRef.current)
     streamRef.current?.getTracks?.().forEach((track) => track.stop())
   }, [])
+
+  function stopCamera(message = 'Kameran är stoppad.') {
+    window.clearTimeout(countdownTimerRef.current)
+    countdownTimerRef.current = null
+    setCountdown(null)
+    streamRef.current?.getTracks?.().forEach((track) => track.stop())
+    streamRef.current = null
+    if (videoRef.current) videoRef.current.srcObject = null
+    setCameraActive(false)
+    setCameraStatus(message)
+  }
 
   function stopCountdown() {
     window.clearTimeout(countdownTimerRef.current)
@@ -59,8 +73,8 @@ function BodyAnalysisUploader({
   }
 
   async function startCamera() {
-    if (!hasCameraApi) {
-      setCameraStatus('Kameran stöds inte i den här webbläsaren. Välj bild från mobilen i stället.')
+    if (!canUseLiveCamera) {
+      setCameraStatus(hasCameraApi ? 'Livekamera kräver normalt HTTPS eller localhost i Safari. Tryck Ta eller välj bild för kamera/bildbibliotek.' : 'Livekamera stöds inte här. Tryck Ta eller välj bild för kamera/bildbibliotek.')
       return
     }
 
@@ -71,6 +85,7 @@ function BodyAnalysisUploader({
       })
       streamRef.current?.getTracks?.().forEach((track) => track.stop())
       streamRef.current = stream
+      setCameraActive(true)
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream
@@ -79,6 +94,7 @@ function BodyAnalysisUploader({
 
       setCameraStatus('Kameran är redo.')
     } catch {
+      setCameraActive(false)
       setCameraStatus('Kameran kunde inte starta. Kontrollera behörighet eller välj bild från mobilen.')
     }
   }
@@ -213,23 +229,34 @@ function BodyAnalysisUploader({
           <button type="button" onClick={startCountdown} disabled={isCountingDown}>
             Ta bild
           </button>
+          {cameraActive && (
+            <button className="secondary-button" type="button" onClick={() => stopCamera()}>
+              Stoppa kamera
+            </button>
+          )}
           {isCountingDown && (
             <button className="secondary-button" type="button" onClick={stopCountdown}>
               Avbryt nedräkning
             </button>
           )}
-          <label className="secondary-button">
+          <label className="secondary-button body-scan-file-picker" htmlFor={`body-scan-file-${activeViewKey}`}>
             Välj bild
             <input
+              id={`body-scan-file-${activeViewKey}`}
               type="file"
               accept="image/*"
-              capture="user"
+              capture="environment"
               aria-label={`Välj bild ${activeView.label.toLowerCase()} för AI-kroppsanalys`}
               onChange={(event) => handleFileChange(event, activeViewKey)}
-              style={{ display: 'none' }}
             />
           </label>
         </div>
+
+        {!canUseLiveCamera && (
+          <p className="progress-photo-safety">
+            Livekamera är inte tillgänglig i den här kontexten. iPhone kan fortfarande ta eller välja bild via filknappen ovan.
+          </p>
+        )}
 
         {cameraStatus && <p className="analysis-status" aria-live="polite">{cameraStatus}</p>}
         {lightQuality && (

@@ -1,7 +1,14 @@
 import { createAiResponseModel } from './aiFallbackEngine.js'
+import {
+  aiAuthErrorCode,
+  getAiAuthSafeMessage,
+  getCurrentAiAuthorization,
+  hasSameAiAuthUser,
+} from './ai/aiAuthTransport.js'
 
 const BODY_ANALYSIS_ENDPOINT = '/api/body-analysis'
 const USE_MOCK_BODY_ANALYSIS = false
+const BODY_ANALYSIS_TIMEOUT_MS = 15000
 
 const mockBodyResult = {
   bodyComposition:
@@ -76,6 +83,22 @@ function handleBodyAnalysisError(error) {
   throw error
 }
 
+function getBodyAnalysisApiErrorMessage(body = {}, status = 0) {
+  const code = body?.error?.code
+  const safeMessage = body?.error?.safeMessage
+
+  if (safeMessage) return safeMessage
+  if (code === 'AUTH_REQUIRED') return 'Logga in för att använda AI-kroppsanalys.'
+  if (code === 'AUTH_EXPIRED') return 'Sessionen har gått ut. Logga in igen och försök på nytt.'
+  if (code === 'AUTH_INVALID') return 'Du behöver logga in igen innan AI-kroppsanalys kan användas.'
+  if (code === 'AUTH_UNAVAILABLE') return 'Inloggningen kunde inte verifieras just nu. Försök igen senare.'
+  if (code === 'REQUEST_TOO_LARGE' || status === 413) return 'Bilderna är för stora. Välj mindre bilder och försök igen.'
+  if (code === 'INVALID_REQUEST') return 'Bilderna kunde inte valideras säkert. Välj nya bilder och försök igen.'
+  if (typeof body?.error === 'string') return body.error
+
+  return 'Kunde inte analysera bilderna just nu.'
+}
+
 async function callMockBodyAnalysis(payload) {
   void payload
 
@@ -83,7 +106,17 @@ async function callMockBodyAnalysis(payload) {
 }
 
 async function callBodyAnalysisApi(payload) {
+  const controller = typeof AbortController === 'undefined' ? null : new AbortController()
+  const timeoutId = controller
+    ? globalThis.setTimeout(() => controller.abort(), BODY_ANALYSIS_TIMEOUT_MS)
+    : null
+
   try {
+    const auth = await getCurrentAiAuthorization()
+    if (!auth.ok) {
+      throw new Error(auth.warning || getAiAuthSafeMessage(auth.errorCode || aiAuthErrorCode.AUTH_REQUIRED))
+    }
+
     const formData = new FormData()
 
     formData.append('frontImage', payload.frontImage)
@@ -96,7 +129,11 @@ async function callBodyAnalysisApi(payload) {
 
     const response = await fetch(BODY_ANALYSIS_ENDPOINT, {
       body: formData,
+      headers: {
+        Authorization: auth.authorizationHeader,
+      },
       method: 'POST',
+      signal: controller?.signal,
     })
 
     let body = {}
@@ -108,11 +145,22 @@ async function callBodyAnalysisApi(payload) {
     }
 
     if (!response.ok) {
-      throw new Error(body?.error || 'Kunde inte analysera bilderna just nu.')
+      throw new Error(getBodyAnalysisApiErrorMessage(body, response.status))
+    }
+
+    if (!await hasSameAiAuthUser(auth.userScope)) {
+      throw new Error(getAiAuthSafeMessage(aiAuthErrorCode.AUTH_STALE))
     }
 
     return body
   } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error(
+        'Analysen tog för lång tid. Försök igen med tydligare bilder eller kontrollera anslutningen.',
+        { cause: error },
+      )
+    }
+
     if (error instanceof TypeError) {
       throw new Error(
         'Kunde inte nå analysservern. Kontrollera anslutningen och försök igen.',
@@ -121,6 +169,8 @@ async function callBodyAnalysisApi(payload) {
     }
 
     handleBodyAnalysisError(error)
+  } finally {
+    if (timeoutId) globalThis.clearTimeout(timeoutId)
   }
 }
 

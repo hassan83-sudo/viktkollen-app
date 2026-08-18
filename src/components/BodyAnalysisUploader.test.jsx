@@ -3,51 +3,53 @@ import { describe, expect, it } from 'vitest'
 
 import BodyAnalysisUploader from './BodyAnalysisUploader.jsx'
 
-const photo = (name) => ({
-  name,
-  preview: `data:image/jpeg;base64,${name}`,
-})
+const completePhotos = {
+  back: { name: 'back.jpg', preview: '/back.jpg' },
+  front: { name: 'front.jpg', preview: '/front.jpg' },
+  side: { name: 'side.jpg', preview: '/side.jpg' },
+}
 
 describe('BodyAnalysisUploader', () => {
-  it('renders the guided three-angle flow and keeps analysis disabled until all views exist', () => {
-    const markup = renderToStaticMarkup(
+  it('renders iPhone-safe file capture fallback for the active body scan step', () => {
+    const html = renderToStaticMarkup(
       <BodyAnalysisUploader
         canAnalyze={false}
         currentAnalysisStatus="Väntar på tre vinklar"
         disabledReason=""
-        photos={{ front: photo('front.jpg'), side: null, back: null }}
+        photos={{}}
         onAnalyze={() => {}}
         onPhotoChange={() => {}}
       />,
     )
 
-    expect(markup).toContain('Steg 1 av 3')
-    expect(markup).toContain('Framifrån')
-    expect(markup).toContain('Från sidan')
-    expect(markup).toContain('Bakifrån')
-    expect(markup).toContain('✓ Fram klar')
-    expect(markup).toContain('disabled=""')
+    expect(html).toContain('Steg 1 av 3')
+    expect(html).toContain('class="secondary-button body-scan-file-picker"')
+    expect(html).toContain('for="body-scan-file-front"')
+    expect(html).toContain('id="body-scan-file-front"')
+    expect(html).toContain('type="file"')
+    expect(html).toContain('accept="image/*"')
+    expect(html).toContain('capture="environment"')
+    expect(html).toContain('iPhone kan fortfarande ta eller välja bild')
+    expect(html).not.toContain('display: none')
   })
 
-  it('renders retake controls and enables analysis when front, side and back photos exist', () => {
-    const markup = renderToStaticMarkup(
+  it('marks all three body scan angles complete and enables analysis when photos exist', () => {
+    const html = renderToStaticMarkup(
       <BodyAnalysisUploader
         canAnalyze
         currentAnalysisStatus="Redo att analysera"
         disabledReason=""
-        photos={{
-          back: photo('back.jpg'),
-          front: photo('front.jpg'),
-          side: photo('side.jpg'),
-        }}
+        photos={completePhotos}
         onAnalyze={() => {}}
         onPhotoChange={() => {}}
       />,
     )
 
-    expect(markup).toContain('3/3 klara')
-    expect(markup).toContain('Ta om')
-    expect(markup).toContain('Starta AI-kroppsanalys med tre valda vinklar')
-    expect(markup).not.toContain('disabled=""')
+    expect(html).toContain('3/3 klara')
+    expect(html).toContain('front.jpg')
+    expect(html).toContain('side.jpg')
+    expect(html).toContain('back.jpg')
+    expect(html).toContain('Analysera kroppen')
+    expect(html).not.toContain('disabled=""')
   })
 })

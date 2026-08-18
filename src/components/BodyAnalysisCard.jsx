@@ -18,6 +18,12 @@ import {
 import { analyzeBodyWithAI } from '../services/bodyAnalysisService'
 import { getBodyAnalysisProgressStats } from '../services/bodyAnalysisStats'
 import {
+  createDefaultEntitlementSnapshot,
+  entitlementFeatures,
+  freeFeatureLimits,
+  getFeatureAccess,
+} from '../services/entitlements'
+import {
   incrementPremiumAnalyticsCounter,
   premiumAnalyticsCounters,
 } from '../services/premiumAnalytics'
@@ -31,8 +37,6 @@ import BodyAnalysisStats from './BodyAnalysisStats'
 import BodyAnalysisTimeline from './BodyAnalysisTimeline'
 import BodyAnalysisUnlockCard from './BodyAnalysisUnlockCard'
 import BodyAnalysisUploader from './BodyAnalysisUploader'
-
-const FREE_ANALYSIS_LIMIT = 3
 
 const timelineFilters = [
   { label: 'Alla', value: 'all' },
@@ -288,8 +292,12 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {}, userId = 'local-
   const [sidePhoto, setSidePhoto] = useState(null)
   const [timelineFilter, setTimelineFilter] = useState('all')
   const analysisCount = analysisHistory.length
-  const isFreeLimitReached =
-    !isPremiumPreviewEnabled && analysisCount >= FREE_ANALYSIS_LIMIT
+  const entitlementSnapshot = createDefaultEntitlementSnapshot({ userId })
+  const bodyAnalysisAccess = getFeatureAccess(entitlementSnapshot, entitlementFeatures.bodyAnalysis, {
+    devPreviewEnabled: isPremiumPreviewEnabled,
+    usage: { bodyAnalysisScans: analysisCount },
+  })
+  const isFreeLimitReached = !bodyAnalysisAccess.allowed
   const scanPhotos = {
     back: backPhoto,
     front: frontPhoto,
@@ -507,6 +515,14 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {}, userId = 'local-
         preview: typeof reader.result === 'string' ? reader.result : '',
       })
     })
+    reader.addEventListener('error', () => {
+      setAnalysisError('Bilden kunde inte läsas. Välj en annan bild och försök igen.')
+      setAnalysisStatus('Väntar på bilder')
+    })
+    reader.addEventListener('abort', () => {
+      setAnalysisError('Bildläsningen avbröts. Välj bilden igen om du vill fortsätta.')
+      setAnalysisStatus('Väntar på bilder')
+    })
     reader.readAsDataURL(file)
   }
 
@@ -537,7 +553,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {}, userId = 'local-
   async function runBodyAnalysis() {
     if (isFreeLimitReached) {
       setAnalysisError(
-        'Gratisgränsen är nådd. Du kan behålla historiken, radera en analys eller förhandsvisa premiumläge utan betalning.',
+        'Gratisgränsen är nådd. Du kan behålla historiken eller radera en analys. Betalning kopplas senare via verifierad backend.',
       )
       return
     }
@@ -599,7 +615,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {}, userId = 'local-
   function handleAnalyzeBody() {
     if (isFreeLimitReached) {
       setAnalysisError(
-        'Gratisgränsen är nådd. Radera en analys eller testa premiumförhandsvisning för att skapa fler.',
+        'Gratisgränsen är nådd. Radera en analys eller invänta verifierad premiumåtkomst.',
       )
       return
     }
@@ -625,7 +641,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {}, userId = 'local-
   function handleCreateDemoAnalysis() {
     if (isFreeLimitReached) {
       setAnalysisError(
-        'Gratisgränsen är nådd. Aktivera premiumförhandsvisning i dev-läget för att testa fler demoanalyser.',
+        'Gratisgränsen är nådd. Dev-förhandsvisning kan bara användas i utvecklingsläge.',
       )
       return
     }
@@ -698,6 +714,14 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {}, userId = 'local-
         event.target.value = ''
       }
     })
+    reader.addEventListener('error', () => {
+      setAnalysisError('Importfilen kunde inte läsas. Välj en annan JSON-fil och försök igen.')
+      event.target.value = ''
+    })
+    reader.addEventListener('abort', () => {
+      setAnalysisError('Importen avbröts. Välj filen igen om du vill fortsätta.')
+      event.target.value = ''
+    })
     reader.readAsText(file)
   }
 
@@ -731,16 +755,6 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {}, userId = 'local-
         AI kommer att uppskatta kroppssammansättning och följa förändringar
         över tid.
       </p>
-      <BodyAnalysisOnboarding />
-      <BodyAnalysisPremiumPreview
-        analysisCount={analysisCount}
-        isPremiumPreviewEnabled={isPremiumPreviewEnabled}
-        localLimit={FREE_ANALYSIS_LIMIT}
-        onTogglePremiumPreview={() => {
-          setAnalysisError('')
-          setIsPremiumPreviewEnabled((currentValue) => !currentValue)
-        }}
-      />
       <BodyAnalysisUploader
         canAnalyze={canAnalyze}
         currentAnalysisStatus={currentAnalysisStatus}
@@ -749,12 +763,29 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {}, userId = 'local-
         onAnalyze={handleAnalyzeBody}
         onPhotoChange={handlePhotoChange}
       />
+      <details className="body-analysis-more-info">
+        <summary>Mer information</summary>
+        <BodyAnalysisOnboarding />
+        {import.meta.env.DEV && (
+          <BodyAnalysisPremiumPreview
+            analysisCount={analysisCount}
+            isPremiumPreviewEnabled={isPremiumPreviewEnabled}
+            localLimit={freeFeatureLimits[entitlementFeatures.bodyAnalysis]}
+            onTogglePremiumPreview={() => {
+              setAnalysisError('')
+              setIsPremiumPreviewEnabled((currentValue) => !currentValue)
+            }}
+          />
+        )}
+        <BodyAnalysisQuality items={analysisQualityItems} />
+      </details>
       <BodyAnalysisUnlockCard
         isLimitReached={isFreeLimitReached}
         isPremiumPreviewEnabled={isPremiumPreviewEnabled}
       />
       {import.meta.env.DEV && (
-        <>
+        <details className="body-analysis-more-info">
+          <summary>Dev-testverktyg</summary>
           <button
             className="secondary-button"
             type="button"
@@ -764,9 +795,8 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {}, userId = 'local-
             Skapa demoanalys
           </button>
           <BodyAnalysisDevChecklist />
-        </>
+        </details>
       )}
-      <BodyAnalysisQuality items={analysisQualityItems} />
       <BodyAnalysisPrivacy
         showConsent={showAnalysisConsent}
         onApprove={handleApproveAnalysis}
@@ -784,7 +814,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {}, userId = 'local-
           <p>{analysisError}</p>
         </div>
       )}
-      {!analysisError && (
+      {!analysisError && savedAnalysis && (
         <BodyAnalysisResult
           activeBodyMarker={activeBodyMarker}
           bodyOverviewMarkers={bodyOverviewMarkers}
@@ -817,46 +847,51 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {}, userId = 'local-
           )}
         </div>
       )}
-      <BodyAnalysisStats
-        aiStatus={latestAiStatus}
-        analysisCount={analysisCount}
-        latestAnalysisDate={latestAnalysisDate}
-        latestInsights={getLatestInsights(savedAnalysis)}
-        nextAnalysisRecommendation={nextAnalysisRecommendation}
-        nextRecommendedSteps={nextRecommendedSteps}
-        progressGraphItems={progressGraphItems}
-        progressIndicators={progressIndicators}
-        progressStats={progressStats}
-        progressOverviewStats={progressOverviewStats}
-        summaryText={summaryText}
-        weeklyFocus={weeklyFocus}
-      />
-      <BodyAnalysisTimeline
-        analysisHistory={analysisHistory}
-        expandedAnalysisIds={expandedAnalysisIds}
-        formatAnalysisDate={formatAnalysisDate}
-        getResultSections={getResultSections}
-        getResultSourceLabel={getResultSourceLabel}
-        getTimelineSummary={getTimelineSummary}
-        importSummary={importSummary}
-        pendingDeleteAnalysisId={pendingDeleteAnalysisId}
-        renderResultValue={renderResultValue}
-        showClearHistoryConfirm={showClearHistoryConfirm}
-        timelineFilter={timelineFilter}
-        timelineFilters={timelineFilters}
-        visibleAnalysisHistory={visibleAnalysisHistory}
-        onAskDeleteAnalysis={setPendingDeleteAnalysisId}
-        onCancelClearHistory={() => setShowClearHistoryConfirm(false)}
-        onCancelDeleteAnalysis={() => setPendingDeleteAnalysisId('')}
-        onClearHistory={handleClearHistory}
-        onDeleteAnalysis={handleDeleteAnalysis}
-        onExportHistory={handleExportHistory}
-        onImportHistory={handleImportHistory}
-        onSelectAnalysis={setSavedAnalysis}
-        onShowClearHistoryConfirm={() => setShowClearHistoryConfirm(true)}
-        onTimelineFilterChange={setTimelineFilter}
-        onToggleExpandedAnalysis={toggleExpandedAnalysis}
-      />
+      {savedAnalysis && (
+        <BodyAnalysisStats
+          aiStatus={latestAiStatus}
+          analysisCount={analysisCount}
+          latestAnalysisDate={latestAnalysisDate}
+          latestInsights={getLatestInsights(savedAnalysis)}
+          nextAnalysisRecommendation={nextAnalysisRecommendation}
+          nextRecommendedSteps={nextRecommendedSteps}
+          progressGraphItems={progressGraphItems}
+          progressIndicators={progressIndicators}
+          progressStats={progressStats}
+          progressOverviewStats={progressOverviewStats}
+          summaryText={summaryText}
+          weeklyFocus={weeklyFocus}
+        />
+      )}
+      <details className="body-analysis-more-info">
+        <summary>Historik och verktyg</summary>
+        <BodyAnalysisTimeline
+          analysisHistory={analysisHistory}
+          expandedAnalysisIds={expandedAnalysisIds}
+          formatAnalysisDate={formatAnalysisDate}
+          getResultSections={getResultSections}
+          getResultSourceLabel={getResultSourceLabel}
+          getTimelineSummary={getTimelineSummary}
+          importSummary={importSummary}
+          pendingDeleteAnalysisId={pendingDeleteAnalysisId}
+          renderResultValue={renderResultValue}
+          showClearHistoryConfirm={showClearHistoryConfirm}
+          timelineFilter={timelineFilter}
+          timelineFilters={timelineFilters}
+          visibleAnalysisHistory={visibleAnalysisHistory}
+          onAskDeleteAnalysis={setPendingDeleteAnalysisId}
+          onCancelClearHistory={() => setShowClearHistoryConfirm(false)}
+          onCancelDeleteAnalysis={() => setPendingDeleteAnalysisId('')}
+          onClearHistory={handleClearHistory}
+          onDeleteAnalysis={handleDeleteAnalysis}
+          onExportHistory={handleExportHistory}
+          onImportHistory={handleImportHistory}
+          onSelectAnalysis={setSavedAnalysis}
+          onShowClearHistoryConfirm={() => setShowClearHistoryConfirm(true)}
+          onTimelineFilterChange={setTimelineFilter}
+          onToggleExpandedAnalysis={toggleExpandedAnalysis}
+        />
+      </details>
     </div>
   )
 }

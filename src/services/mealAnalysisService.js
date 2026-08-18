@@ -1,4 +1,8 @@
 import { createAiResponseModel } from './aiFallbackEngine.js'
+import {
+  getCurrentAiAuthorization,
+  hasSameAiAuthUser,
+} from './ai/aiAuthTransport.js'
 
 const MEAL_ANALYSIS_ENDPOINT = '/api/meal-analysis'
 
@@ -284,16 +288,28 @@ export function normalizeMealAnalysis(analysis = {}) {
  */
 export async function analyzeMealPhoto(payload) {
   try {
+    const auth = await getCurrentAiAuthorization()
+    if (!auth.ok) {
+      return normalizeMealAnalysis(fallbackMealAnalysis)
+    }
+
     const response = await fetch(MEAL_ANALYSIS_ENDPOINT, {
       body: JSON.stringify(payload),
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        Authorization: auth.authorizationHeader,
+        'Content-Type': 'application/json',
+      },
       method: 'POST',
     })
 
     const data = await response.json().catch(() => ({}))
 
     if (!response.ok) {
-      throw new Error(data.error || 'Kunde inte analysera måltiden just nu.')
+      throw new Error(data.error?.safeMessage || data.error || 'Kunde inte analysera måltiden just nu.')
+    }
+
+    if (!(await hasSameAiAuthUser(auth.userScope))) {
+      return normalizeMealAnalysis(fallbackMealAnalysis)
     }
 
     return normalizeMealAnalysis({

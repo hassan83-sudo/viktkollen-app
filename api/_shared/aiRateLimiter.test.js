@@ -31,4 +31,13 @@ describe('aiRateLimiter', () => {
     expect(keys).not.toContain('sensitive-user-id')
     expect(keys).toMatch(/adaptiveCoach:user:/)
   })
+
+  it('supports all production AI route buckets', () => {
+    const routes = ['adaptiveCoach', 'bodyAnalysis', 'legacyAi', 'mealAnalysis', 'nutritionPhoto']
+
+    routes.forEach((route) => {
+      const result = checkAiRouteRateLimit({ route, userId: 'user-a' })
+      expect(result.limited).toBe(false)
+    })
+  })
 })

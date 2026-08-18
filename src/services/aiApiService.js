@@ -1,4 +1,10 @@
 import { safeLogger } from './safeLogger.js'
+import {
+  aiAuthErrorCode,
+  getAiAuthSafeMessage,
+  getCurrentAiAuthorization,
+  hasSameAiAuthUser,
+} from './ai/aiAuthTransport.js'
 
 const aiEndpoint = '/api/ai'
 
@@ -33,9 +39,17 @@ export async function requestAiEndpoint(payload) {
   }
 
   try {
+    const auth = await getCurrentAiAuthorization()
+    if (!auth.ok) {
+      return makeUnavailableResult(auth.warning || getAiAuthSafeMessage(auth.errorCode))
+    }
+
     const response = await fetch(aiEndpoint, {
       body: JSON.stringify(payload),
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        Authorization: auth.authorizationHeader,
+        'Content-Type': 'application/json',
+      },
       method: 'POST',
     })
 
@@ -47,11 +61,23 @@ export async function requestAiEndpoint(payload) {
     }
 
     if (!response.ok) {
+      const safeMessage = data.error?.safeMessage || data.error || `AI-anrop misslyckades med status ${response.status}`
       return {
         data,
-        error: new Error(data.error || `AI-anrop misslyckades med status ${response.status}`),
+        error: new Error(safeMessage),
         ok: false,
-        reason: data.error || 'AI-tjänsten svarade inte som väntat.',
+        reason: safeMessage || 'AI-tjänsten svarade inte som väntat.',
+        skipped: false,
+        source: 'error',
+      }
+    }
+
+    if (!(await hasSameAiAuthUser(auth.userScope))) {
+      return {
+        data: null,
+        error: new Error(getAiAuthSafeMessage(aiAuthErrorCode.AUTH_STALE)),
+        ok: false,
+        reason: getAiAuthSafeMessage(aiAuthErrorCode.AUTH_STALE),
         skipped: false,
         source: 'error',
       }

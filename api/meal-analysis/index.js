@@ -1,13 +1,27 @@
 import { fallbackMealAnalysis } from '../../src/services/mealAnalysisService.js'
 import { createMealAnalysisPrompt } from '../../src/services/mealAnalysisPrompt.js'
+import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
+import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
+import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/responses'
 const DEFAULT_VISION_MODEL = 'gpt-4.1-mini'
+const MAX_IMAGE_DATA_URL_BYTES = 8 * 1024 * 1024
 
 function sanitizeImage(value) {
-  return typeof value === 'string' && value.startsWith('data:image/')
+  const image = typeof value === 'string' && value.startsWith('data:image/')
     ? value
     : ''
+
+  if (!image || Buffer.byteLength(image, 'utf8') > MAX_IMAGE_DATA_URL_BYTES) {
+    return ''
+  }
+
+  if (!/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(image)) {
+    return ''
+  }
+
+  return image
 }
 
 function parseRequestBody(request) {
@@ -61,9 +75,40 @@ function fallbackPayload(reason) {
 }
 
 export default async function handler(request, response) {
+  const requestId = `meal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+  setNoStoreHeaders(response)
+
   if (request.method !== 'POST') {
     response.setHeader('Allow', 'POST')
-    return response.status(405).json({ error: 'Method not allowed' })
+    return sendSafeAiError(response, {
+      code: aiRouteErrorCodes.INVALID_REQUEST,
+      requestId,
+      safeMessage: 'Endast POST stöds.',
+      status: 405,
+    })
+  }
+
+  const auth = await verifySupabaseUser(request, { requestId })
+  if (!auth.authenticated) {
+    return response.status(auth.status).json({
+      error: auth.error,
+      ok: false,
+    })
+  }
+  const rateLimit = checkAiRouteRateLimit({
+    limit: process.env.MEAL_ANALYSIS_RATE_LIMIT_MAX,
+    route: 'mealAnalysis',
+    userId: auth.user.id,
+  })
+  if (rateLimit.limited) {
+    response.setHeader('Retry-After', String(rateLimit.retryAfterSeconds))
+    return sendSafeAiError(response, {
+      code: aiRouteErrorCodes.RATE_LIMITED,
+      requestId,
+      retryable: true,
+      retryAfterSeconds: rateLimit.retryAfterSeconds,
+      status: 429,
+    })
   }
 
   let body
@@ -71,13 +116,23 @@ export default async function handler(request, response) {
   try {
     body = parseRequestBody(request)
   } catch {
-    return response.status(400).json({ error: 'Ogiltig JSON i förfrågan.' })
+    return sendSafeAiError(response, {
+      code: aiRouteErrorCodes.INVALID_REQUEST,
+      requestId,
+      safeMessage: 'Ogiltig JSON i förfrågan.',
+      status: 400,
+    })
   }
 
   const image = sanitizeImage(body.image)
 
   if (!image) {
-    return response.status(400).json({ error: 'En måltidsbild krävs.' })
+    return sendSafeAiError(response, {
+      code: aiRouteErrorCodes.INVALID_REQUEST,
+      requestId,
+      safeMessage: 'En måltidsbild krävs.',
+      status: 400,
+    })
   }
 
   if (!process.env.OPENAI_API_KEY) {

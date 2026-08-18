@@ -6,6 +6,9 @@ import {
   createLocalAiCoachReply,
 } from '../../src/services/aiCoachPrompt.js'
 import { routeAiResponse } from '../../src/services/aiResponseRouter.js'
+import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
+import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
+import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/responses'
 const DEFAULT_MODEL = 'gpt-4.1-mini'
@@ -422,9 +425,40 @@ async function handleWeeklyReport(data, response) {
 }
 
 export default async function handler(request, response) {
+  const requestId = `ai-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+  setNoStoreHeaders(response)
+
   if (request.method !== 'POST') {
     response.setHeader('Allow', 'POST')
-    return response.status(405).json({ error: 'Method not allowed' })
+    return sendSafeAiError(response, {
+      code: aiRouteErrorCodes.INVALID_REQUEST,
+      requestId,
+      safeMessage: 'Endast POST stöds.',
+      status: 405,
+    })
+  }
+
+  const auth = await verifySupabaseUser(request, { requestId })
+  if (!auth.authenticated) {
+    return response.status(auth.status).json({
+      error: auth.error,
+      ok: false,
+    })
+  }
+  const rateLimit = checkAiRouteRateLimit({
+    limit: process.env.OPENAI_LEGACY_AI_RATE_LIMIT_MAX,
+    route: 'legacyAi',
+    userId: auth.user.id,
+  })
+  if (rateLimit.limited) {
+    response.setHeader('Retry-After', String(rateLimit.retryAfterSeconds))
+    return sendSafeAiError(response, {
+      code: aiRouteErrorCodes.RATE_LIMITED,
+      requestId,
+      retryable: true,
+      retryAfterSeconds: rateLimit.retryAfterSeconds,
+      status: 429,
+    })
   }
 
   let body
@@ -432,7 +466,12 @@ export default async function handler(request, response) {
   try {
     body = parseBody(request)
   } catch {
-    return response.status(400).json({ error: 'Invalid JSON request body' })
+    return sendSafeAiError(response, {
+      code: aiRouteErrorCodes.INVALID_REQUEST,
+      requestId,
+      safeMessage: 'Ogiltig JSON i förfrågan.',
+      status: 400,
+    })
   }
 
   if (body.action === 'proactive-coach') {
@@ -455,5 +494,10 @@ export default async function handler(request, response) {
     return handleStudyBuddy(body, response)
   }
 
-  return response.status(400).json({ error: 'Unknown AI action' })
+  return sendSafeAiError(response, {
+    code: aiRouteErrorCodes.INVALID_REQUEST,
+    requestId,
+    safeMessage: 'Okänd AI-åtgärd.',
+    status: 400,
+  })
 }

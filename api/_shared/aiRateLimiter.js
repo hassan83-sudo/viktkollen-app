@@ -3,6 +3,9 @@ import { createHash } from 'node:crypto'
 const DEFAULT_WINDOW_MS = 10 * 60 * 1000
 const DEFAULT_LIMITS = {
   adaptiveCoach: 8,
+  bodyAnalysis: 4,
+  legacyAi: 20,
+  mealAnalysis: 10,
   nutritionPhoto: 12,
   unauthenticated: 24,
 }
@@ -61,7 +64,14 @@ export function checkAiRouteRateLimit({
   userId,
   windowMs = DEFAULT_WINDOW_MS,
 } = {}) {
-  const routeName = ['adaptiveCoach', 'nutritionPhoto', 'unauthenticated'].includes(route) ? route : 'adaptiveCoach'
+  const routeName = [
+    'adaptiveCoach',
+    'bodyAnalysis',
+    'legacyAi',
+    'mealAnalysis',
+    'nutritionPhoto',
+    'unauthenticated',
+  ].includes(route) ? route : 'adaptiveCoach'
   const safeLimit = Number(limit || DEFAULT_LIMITS[routeName] || DEFAULT_LIMITS.adaptiveCoach)
   const scope = userId ? `user:${hashScope(userId)}` : 'anonymous'
   const key = `${routeName}:${scope}`

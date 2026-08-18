@@ -1,5 +1,8 @@
 import { analyzeBodyImages } from '../../src/services/bodyAnalysisAi.js'
 import { createBodyAnalysisPrompt } from '../../src/services/bodyAnalysisPrompt.js'
+import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
+import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
+import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
 const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png']
@@ -44,6 +47,15 @@ function getMultipartBoundary(contentType) {
     .map((part) => part.trim())
     .find((part) => part.startsWith('boundary='))
     ?.replace('boundary=', '')
+}
+
+function safeText(value, fallback = '', max = 120) {
+  return String(value || fallback)
+    .replace(/[<>]/g, '')
+    .replace(/https?:\/\/\S+/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max)
 }
 
 async function readRequestBody(request) {
@@ -104,13 +116,13 @@ function parseMultipartImages(rawBodyBuffer, boundary) {
       return
     }
 
+    const data = Buffer.from(content, 'latin1')
+
     images[fieldName] = {
       contentType: contentType?.toLowerCase() || '',
-      dataUrl: `data:${contentType};base64,${Buffer.from(
-        content,
-        'latin1',
-      ).toString('base64')}`,
-      name: fileName,
+      data,
+      dataUrl: `data:${contentType};base64,${data.toString('base64')}`,
+      name: safeText(fileName, 'body-scan-image', 80),
       size: Buffer.byteLength(content, 'latin1'),
     }
   })
@@ -156,6 +168,14 @@ function validateImage(image, label) {
 
   if (image.size > MAX_IMAGE_SIZE_BYTES) {
     return `${label} är för stor. Maxstorlek är 10 MB.`
+  }
+
+  const header = image.data?.subarray?.(0, 12)
+  const isJpeg = ['image/jpeg', 'image/jpg'].includes(image.contentType) && header?.[0] === 0xff && header?.[1] === 0xd8
+  const isPng = image.contentType === 'image/png' && header?.subarray?.(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+
+  if (!isJpeg && !isPng) {
+    return `${label} har ett filformat som inte kunde verifieras.`
   }
 
   return ''
@@ -328,13 +348,64 @@ async function runBodyAnalysis(images) {
 }
 
 export default async function handler(request, response) {
+  const requestId = `body-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   let images
+  setNoStoreHeaders(response)
+
+  if (request.method !== 'POST') {
+    response.setHeader('Allow', 'POST')
+    return sendSafeAiError(response, {
+      code: aiRouteErrorCodes.INVALID_REQUEST,
+      requestId,
+      safeMessage: 'Endast POST stöds.',
+      status: 405,
+    })
+  }
+
+  const contentType = getRequestHeader(request, 'content-type')
+  if (!contentType.includes('multipart/form-data')) {
+    return sendSafeAiError(response, {
+      code: aiRouteErrorCodes.INVALID_REQUEST,
+      requestId,
+      safeMessage: 'Skicka bilderna som multipart/form-data.',
+      status: 415,
+    })
+  }
+
+  const auth = await verifySupabaseUser(request, { requestId })
+  if (!auth.authenticated) {
+    return response.status(auth.status).json({
+      error: auth.error,
+      ok: false,
+    })
+  }
+  const rateLimit = checkAiRouteRateLimit({
+    limit: process.env.BODY_ANALYSIS_RATE_LIMIT_MAX,
+    route: 'bodyAnalysis',
+    userId: auth.user.id,
+  })
+  if (rateLimit.limited) {
+    response.setHeader('Retry-After', String(rateLimit.retryAfterSeconds))
+    return sendSafeAiError(response, {
+      code: aiRouteErrorCodes.RATE_LIMITED,
+      requestId,
+      retryable: true,
+      retryAfterSeconds: rateLimit.retryAfterSeconds,
+      status: 429,
+    })
+  }
 
   try {
     images = await parseImages(request)
   } catch {
     return response.status(400).json({
-      error: 'Kunde inte läsa bilderna.',
+      error: {
+        code: aiRouteErrorCodes.INVALID_REQUEST,
+        requestId,
+        retryable: false,
+        safeMessage: 'Kunde inte läsa bilderna.',
+      },
+      ok: false,
     })
   }
 
@@ -346,7 +417,13 @@ export default async function handler(request, response) {
     }
 
     return response.status(validationError.status).json({
-      error: validationError.error,
+      error: {
+        code: aiRouteErrorCodes.INVALID_REQUEST,
+        requestId,
+        retryable: false,
+        safeMessage: validationError.error,
+      },
+      ok: false,
     })
   }
 
@@ -367,7 +444,18 @@ export default async function handler(request, response) {
     })
 
     return response.status(500).json({
-      error: 'Internal server error.',
+      error: {
+        code: aiRouteErrorCodes.PROVIDER_UNAVAILABLE,
+        requestId,
+        retryable: true,
+        safeMessage: 'AI-kroppsanalys är tillfälligt otillgänglig.',
+      },
+      ok: false,
     })
   }
+}
+
+export const bodyAnalysisRouteInternals = {
+  parseMultipartImages,
+  validateImage,
 }

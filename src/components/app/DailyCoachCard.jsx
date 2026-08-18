@@ -65,7 +65,9 @@ function DailyCoachCard({
   onScanFood,
   proteinToday,
   proteinGoal,
+  showActions = true,
   steps,
+  title = 'AI Coach',
 }) {
   const adviceList = useMemo(() => buildCoachAdviceList({
     caloriesToday,
@@ -81,10 +83,18 @@ function DailyCoachCard({
   return (
     <section className="daily-coach-card" aria-label="AI Coach">
       <div className="daily-coach-heading">
-        <div className="daily-coach-icon" aria-hidden="true">AI</div>
+        <img
+          className="daily-coach-robot"
+          src="/viktkollen-ai-coach-robot.png"
+          alt="Viktkollens AI Coach-robot med synlig hjärna"
+          width="1312"
+          height="1199"
+          loading="lazy"
+          decoding="async"
+        />
         <div>
           <p className="eyebrow">Personligt råd</p>
-          <h2>AI Coach</h2>
+          <h2>{title}</h2>
         </div>
       </div>
 
@@ -100,17 +110,19 @@ function DailyCoachCard({
         </button>
       </div>
 
-      <div className="daily-coach-actions" aria-label="Snabbåtgärder">
-        <button type="button" onClick={onAddMeal}>
-          + Lägg till måltid
-        </button>
-        <button type="button" onClick={onLogWeight}>
-          + Logga vikt
-        </button>
-        <button type="button" onClick={onScanFood}>
-          + Skanna mat
-        </button>
-      </div>
+      {showActions && (
+        <div className="daily-coach-actions" aria-label="Snabbåtgärder">
+          <button type="button" onClick={onAddMeal}>
+            + Lägg till måltid
+          </button>
+          <button type="button" onClick={onLogWeight}>
+            + Logga vikt
+          </button>
+          <button type="button" onClick={onScanFood}>
+            + Skanna mat
+          </button>
+        </div>
+      )}
     </section>
   )
 }

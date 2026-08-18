@@ -57,19 +57,34 @@ function SmartNotificationsCard({
 
   function showAllNotifications() {
     const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    document.getElementById('notification-center')?.scrollIntoView({
+    const target = document.getElementById('notification-center')
+    const scrollContainer = document.querySelector('.app-scroll-container')
+
+    if (target && scrollContainer) {
+      const containerRect = scrollContainer.getBoundingClientRect()
+      const targetRect = target.getBoundingClientRect()
+      const top = targetRect.top - containerRect.top + scrollContainer.scrollTop
+
+      scrollContainer.scrollTo({
+        top: Math.max(0, top),
+        behavior: reduceMotion ? 'auto' : 'smooth',
+      })
+      return
+    }
+
+    target?.scrollIntoView({
       behavior: reduceMotion ? 'auto' : 'smooth',
       block: 'start',
     })
   }
 
   return (
-    <section className={`smart-notifications-card is-${priority}`} aria-label="Smart Notifications">
+    <section className={`smart-notifications-card is-${priority}`} aria-label="Smarta notiser">
       <div className="smart-notifications-icon" aria-hidden="true">
         {priorityIcons[priority]}
       </div>
       <div className="smart-notifications-content">
-        <p className="eyebrow">Smart Notifications</p>
+        <p className="eyebrow">Smarta notiser</p>
         <h2>{top?.title || 'Inga smarta notiser just nu'}</h2>
         <span>{top?.body || 'Viktkollen säger till när något behöver din uppmärksamhet.'}</span>
       </div>

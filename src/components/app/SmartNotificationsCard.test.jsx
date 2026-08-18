@@ -1,4 +1,4 @@
-import { renderToStaticMarkup } from 'react-dom/server'
+﻿import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import SmartNotificationsCard from './SmartNotificationsCard.jsx'
 
@@ -12,7 +12,7 @@ describe('SmartNotificationsCard', () => {
       />,
     )
 
-    expect(html).toContain('Smart Notifications')
+    expect(html).toContain('Smarta notiser')
     expect(html).toContain('Visa alla')
     expect(html).toContain('type="button"')
     expect(html).toMatch(/notis(?:er)? väntar/)

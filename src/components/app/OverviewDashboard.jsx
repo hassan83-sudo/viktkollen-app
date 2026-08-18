@@ -1,20 +1,25 @@
-import { memo, useMemo } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import AchievementPreviewCard from './AchievementPreviewCard.jsx'
 import DailyCoachCard from './DailyCoachCard.jsx'
 import DailyMealPlannerCard from './DailyMealPlannerCard.jsx'
-import DailyProgressCard from './DailyProgressCard.jsx'
 import HealthPredictionCard from './HealthPredictionCard.jsx'
 import SmartNotificationsCard from './SmartNotificationsCard.jsx'
 import WeeklyProgressSection from './WeeklyProgressSection.jsx'
+import {
+  createFallbackWeatherContext,
+  createOverviewLiveContext,
+  formatWeatherValue,
+  getWeatherPermissionState,
+} from '../../services/overviewLiveContext.js'
 
 function isFiniteNumber(value) {
-  return Number.isFinite(Number(value))
+  return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value))
 }
 
 function formatNumber(value, options = {}) {
   const number = Number(value)
 
-  if (!Number.isFinite(number)) return 'Saknas'
+  if (!Number.isFinite(number)) return 'Inga data'
 
   return new Intl.NumberFormat('sv-SE', options).format(number)
 }
@@ -22,21 +27,9 @@ function formatNumber(value, options = {}) {
 function formatWeight(value) {
   const number = Number(value)
 
-  if (!Number.isFinite(number) || number <= 0) return 'Saknas'
+  if (!Number.isFinite(number) || number <= 0) return 'Ingen vikt'
 
   return `${number.toFixed(1).replace('.', ',')} kg`
-}
-
-function formatDashboardDate(value) {
-  const date = value ? new Date(`${value}T12:00:00`) : new Date()
-
-  if (Number.isNaN(date.getTime())) return ''
-
-  return new Intl.DateTimeFormat('sv-SE', {
-    day: 'numeric',
-    month: 'short',
-    weekday: 'long',
-  }).format(date)
 }
 
 function getInitials(profile, email = '') {
@@ -62,23 +55,596 @@ function getProgressPercent(value, goal) {
   return Math.max(0, Math.min(100, Math.round((current / target) * 100)))
 }
 
-function navigateToTarget(targetId) {
+function getProgressBucket(value) {
+  if (!Number.isFinite(Number(value))) return 0
+
+  return Math.max(0, Math.min(100, Math.round(Number(value) / 10) * 10))
+}
+
+function getSparklinePoints(weights = []) {
+  const values = weights
+    .map((entry) => Number(entry?.value ?? entry?.weight))
+    .filter((value) => Number.isFinite(value) && value > 0)
+    .slice(-7)
+
+  if (values.length < 2) return ''
+
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const range = max - min || 1
+
+  return values
+    .map((value, index) => {
+      const x = Math.round((index / (values.length - 1)) * 72)
+      const y = Math.round(24 - ((value - min) / range) * 20)
+
+      return `${x},${y}`
+    })
+    .join(' ')
+}
+
+function usePrefersReducedMotion() {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined
+
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const updatePreference = () => setPrefersReducedMotion(mediaQuery.matches)
+
+    updatePreference()
+    mediaQuery.addEventListener?.('change', updatePreference)
+
+    return () => mediaQuery.removeEventListener?.('change', updatePreference)
+  }, [])
+
+  return prefersReducedMotion
+}
+
+function buildSmartFeedItems(liveContext) {
+  const weather = liveContext.weather
+  return [
+    {
+      id: 'live-clock',
+      category: 'Nu',
+      title: `${liveContext.weekday}, ${liveContext.dateLabel}`,
+      body: `Lokal tid ${liveContext.timeLabel}. Dagens feed är redo att kopplas till riktiga livekällor när API:er finns.`,
+      sourceLabel: 'Live från enheten',
+      kind: 'time',
+      personalization: ['timeOfDay', 'ageGroup', 'interests'],
+    },
+    {
+      id: 'weather-fallback',
+      category: 'Väder',
+      title: weather.hasLiveWeather ? `${weather.condition} i ${weather.city}` : 'Väder väntar på källa',
+      body: weather.hasLiveWeather
+        ? `${formatWeatherValue(weather.temperatureC, '°C')}, ${formatWeatherValue(weather.windSpeedMs, ' m/s')} och ${formatWeatherValue(weather.precipitationRiskPercent, ' %')} regnrisk.`
+        : 'Ingen väder-API är kopplad ännu. När den finns kan feeden visa temperatur, vind, regnrisk och soluppgång utan att låtsasdata visas.',
+      sourceLabel: weather.sourceLabel,
+      kind: 'weather',
+      personalization: ['location', 'activityLevel', 'preferences'],
+    },
+    {
+      id: 'style-coach-ready',
+      category: 'Stilcoach',
+      title: 'Klädråd kan bli kontextstyrda',
+      body: 'Stilcoach-strukturen kan senare väga ihop väder, årstid, aktivitet, garderob och preferenser med rak men respektfull feedback.',
+      sourceLabel: 'Förberett',
+      kind: 'style',
+      personalization: ['weather', 'season', 'ownedClothes', 'preferences'],
+    },
+    {
+      id: 'useful-idea',
+      category: 'Visste du att',
+      title: 'Små beslut slår ofta stora ryck',
+      body: 'Ett kort nästa steg är lättare att upprepa än en perfekt plan. Feed-kort kan senare anpassas efter mål, ålder och tid på dagen.',
+      sourceLabel: 'Demoinsikt',
+      kind: 'knowledge',
+      personalization: ['goals', 'ageGroup', 'timeOfDay'],
+    },
+    {
+      id: 'activity-ready',
+      category: 'Aktivitet',
+      title: 'När du vill göra något',
+      body: 'Feed-modellen stödjer framtida förslag som promenad, recept, quiz, hjärngympa, musik, film eller ett litet projekt utifrån väder och tid.',
+      sourceLabel: 'Förberett',
+      kind: 'activity',
+      personalization: ['interests', 'weather', 'timeOfDay', 'activityLevel'],
+    },
+    {
+      id: 'quote-ready',
+      category: 'Citat',
+      title: 'Kvalitet före kvantitet',
+      body: 'Feed-kort för citat är förberedda, men visar inte påhittade citat som äkta. Varje framtida citat behöver källa eller tydlig sammanfattningsmarkering.',
+      sourceLabel: 'Källkrav',
+      kind: 'quote',
+      personalization: ['interests', 'language', 'ageGroup'],
+    },
+  ]
+}
+
+function SmartFeedCard({ liveContext }) {
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [favoriteIds, setFavoriteIds] = useState(() => new Set())
+  const [isPaused, setIsPaused] = useState(false)
+  const prefersReducedMotion = usePrefersReducedMotion()
+  const items = useMemo(() => buildSmartFeedItems(liveContext), [liveContext])
+  const activeItem = items[activeIndex % items.length]
+  const isFavorite = favoriteIds.has(activeItem.id)
+  const autoRotate = !isPaused && !prefersReducedMotion
+
+  useEffect(() => {
+    if (!autoRotate) return undefined
+
+    const rotation = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % items.length)
+    }, 10_000)
+
+    return () => window.clearInterval(rotation)
+  }, [autoRotate, items.length])
+
+  const showPrevious = () => setActiveIndex((current) => (current - 1 + items.length) % items.length)
+  const showNext = () => setActiveIndex((current) => (current + 1) % items.length)
+  const toggleFavorite = () => {
+    setFavoriteIds((current) => {
+      const next = new Set(current)
+      if (next.has(activeItem.id)) {
+        next.delete(activeItem.id)
+      } else {
+        next.add(activeItem.id)
+      }
+
+      return next
+    })
+  }
+
+  return (
+    <section className="smart-feed-card" id="viktkollen-live" aria-label="Viktkollen Live">
+      <div className="smart-feed-intro">
+        <div className="smart-feed-title">
+          <span className="smart-feed-live-dot" aria-hidden="true" />
+          <div>
+            <p className="eyebrow">Viktkollen Live</p>
+            <h2>{activeItem.title}</h2>
+          </div>
+        </div>
+        <small>{activeItem.sourceLabel}</small>
+      </div>
+      <div className="smart-feed-reference-controls" aria-label="Styr Viktkollen Live">
+        <button type="button" onClick={showPrevious} aria-label="Visa föregående feed-kort">&lt;</button>
+        <button
+          className="is-playback"
+          type="button"
+          aria-pressed={isPaused}
+          onClick={() => setIsPaused((current) => !current)}
+          aria-label={isPaused || prefersReducedMotion ? 'Spela Viktkollen Live' : 'Pausa Viktkollen Live'}
+        >
+          {isPaused || prefersReducedMotion ? '>' : 'II'}
+        </button>
+        <button type="button" onClick={showNext} aria-label="Visa nästa feed-kort">&gt;</button>
+      </div>
+      <svg className="smart-feed-wave" viewBox="0 0 360 74" role="img" aria-label={`Live-diagram för ${activeItem.category}`}>
+        <defs>
+          <linearGradient id="smart-feed-wave-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#14ff73" />
+            <stop offset="21%" stopColor="#22f6ff" />
+            <stop offset="42%" stopColor="#178dff" />
+            <stop offset="58%" stopColor="#814bff" />
+            <stop offset="73%" stopColor="#ff3bb7" />
+            <stop offset="86%" stopColor="#ff7a42" />
+            <stop offset="100%" stopColor="#ffe242" />
+          </linearGradient>
+          <linearGradient id="smart-feed-wave-fill" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#14ff73" stopOpacity="0.18" />
+            <stop offset="48%" stopColor="#178dff" stopOpacity="0.2" />
+            <stop offset="76%" stopColor="#ff3bb7" stopOpacity="0.18" />
+            <stop offset="100%" stopColor="#ffe242" stopOpacity="0.16" />
+          </linearGradient>
+        </defs>
+        <path className="smart-feed-wave-grid" d="M0 50H360M0 32H360" />
+        <path className="smart-feed-wave-fill" d="M0 52 C18 53 27 46 43 47 C62 48 78 21 100 20 C126 20 139 48 164 47 C188 46 198 17 222 15 C248 13 258 50 286 49 C311 48 316 27 339 29 C350 30 355 37 360 36 L360 74 L0 74 Z" />
+        <path className="smart-feed-wave-line" d="M0 52 C18 53 27 46 43 47 C62 48 78 21 100 20 C126 20 139 48 164 47 C188 46 198 17 222 15 C248 13 258 50 286 49 C311 48 316 27 339 29 C350 30 355 37 360 36" />
+        <g className="smart-feed-wave-dots">
+          <circle cx="16" cy="51" r="2.4" />
+          <circle cx="80" cy="24" r="2.4" />
+          <circle cx="150" cy="47" r="2.4" />
+          <circle cx="224" cy="15" r="2.4" />
+          <circle cx="294" cy="47" r="2.4" />
+          <circle cx="344" cy="31" r="2.4" />
+        </g>
+      </svg>
+      <article className="smart-feed-active-card" aria-live="polite">
+        <span className={`smart-feed-thumbnail is-${activeItem.kind}`} aria-hidden="true">{activeItem.category.slice(0, 1)}</span>
+        <span>
+          <small>{activeItem.category}</small>
+          <strong>{activeItem.title}</strong>
+          <em>{activeItem.body}</em>
+        </span>
+        <button type="button" onClick={showNext} aria-label="Visa nästa feed-kort">›</button>
+      </article>
+      <div className="smart-feed-footer">
+        <span>{activeItem.sourceLabel}</span>
+        <div className="smart-feed-dots" aria-hidden="true">
+          {items.map((item, index) => (
+            <span className={index === activeIndex % items.length ? 'is-active' : ''} key={item.id} />
+          ))}
+        </div>
+        <div className="smart-feed-controls" aria-label="Styr Viktkollen Live">
+          <button type="button" onClick={showPrevious} aria-label="Visa föregående feed-kort">‹</button>
+          <button
+            type="button"
+            aria-pressed={isFavorite}
+            onClick={toggleFavorite}
+            aria-label={isFavorite ? 'Ta bort feed-kort från favoriter' : 'Spara feed-kort som favorit'}
+          >
+            {isFavorite ? 'Sparad' : 'Spara'}
+          </button>
+          <button
+            type="button"
+            aria-pressed={isPaused}
+            onClick={() => setIsPaused((current) => !current)}
+          >
+            {isPaused || prefersReducedMotion ? 'Spela' : 'Pausa'}
+          </button>
+          <button type="button" onClick={showNext} aria-label="Visa nästa feed-kort">›</button>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function OverviewLiveMeta({ liveContext }) {
+  const weather = liveContext.weather
+  const hasWeatherDetails = Boolean(weather.hasLiveWeather)
+
+  return (
+    <div className="overview-live-meta" aria-label="Datum, tid och väder">
+      <p>
+        <span><OverviewIcon name="calendar" /> {liveContext.weekday} {liveContext.dateLabel}</span>
+        <span><OverviewIcon name="clock" /> {liveContext.timeLabel}</span>
+        {hasWeatherDetails ? (
+          <>
+            <span aria-label={weather.condition}>{weather.icon} {formatWeatherValue(weather.temperatureC, '°C')}</span>
+            <span><OverviewIcon name="wind" /> {formatWeatherValue(weather.windSpeedMs, ' m/s')}</span>
+            <span><OverviewIcon name="drop" /> {formatWeatherValue(weather.precipitationRiskPercent, ' %')}</span>
+          </>
+        ) : (
+          <span className="overview-weather-empty" aria-label="Väder ej anslutet">Väder ej anslutet</span>
+        )}
+      </p>
+      {hasWeatherDetails && (
+        <p>
+          <span><OverviewIcon name="sunrise" /> {weather.sunriseLabel}</span>
+          <span><OverviewIcon name="sunset" /> {weather.sunsetLabel}</span>
+          <span className="overview-weather-source">{weather.sourceLabel}</span>
+        </p>
+      )}
+    </div>
+  )
+}
+
+function OverviewIcon({ name }) {
+  const common = {
+    'aria-hidden': 'true',
+    className: `overview-svg-icon is-${name}`,
+    fill: 'none',
+    viewBox: '0 0 48 48',
+  }
+
+  if (name === 'robot') {
+    return (
+      <svg {...common}>
+        <rect x="10" y="17" width="28" height="22" rx="10" />
+        <path d="M24 17V10M18 10h12" />
+        <circle cx="19" cy="28" r="2.8" />
+        <circle cx="29" cy="28" r="2.8" />
+        <path d="M16 39v3M32 39v3M7 27h3M38 27h3" />
+      </svg>
+    )
+  }
+
+  if (name === 'bodyScan') {
+    return (
+      <svg {...common}>
+        <circle cx="24" cy="10" r="5" />
+        <path d="M24 15v18M15 24l9-5 9 5M18 38l6-5 6 5" />
+        <path d="M8 18v-7h7M40 18v-7h-7M8 30v7h7M40 30v7h-7" />
+        <path d="M13 24h22" />
+      </svg>
+    )
+  }
+
+  if (name === 'foodCamera') {
+    return (
+      <svg {...common}>
+        <rect x="9" y="14" width="30" height="24" rx="8" />
+        <path d="M17 14l3-5h8l3 5" />
+        <circle cx="24" cy="26" r="7" />
+        <path d="M17 31c4-4 9-5 14-1M33 19h2" />
+      </svg>
+    )
+  }
+
+  if (name === 'scale') {
+    return (
+      <svg {...common}>
+        <rect x="9" y="11" width="30" height="28" rx="9" />
+        <path d="M17 22a8 8 0 0 1 14 0M24 17v6" />
+        <path d="M17 32h14" />
+      </svg>
+    )
+  }
+
+  if (name === 'flame') {
+    return (
+      <svg {...common}>
+        <path d="M25 42c8-3 12-8 12-15 0-7-5-12-9-17-1 6-5 9-8 12-2-3-2-6-1-10-5 4-8 10-8 16 0 7 5 12 14 14Z" />
+        <path d="M24 38c4-2 6-5 6-9 0-3-2-6-5-9-1 4-4 6-6 9 0 4 2 7 5 9Z" />
+      </svg>
+    )
+  }
+
+  if (name === 'heart') {
+    return (
+      <svg {...common}>
+        <path d="M24 39S9 30 9 18c0-5 4-9 9-9 3 0 5 1 6 4 1-3 4-4 6-4 5 0 9 4 9 9 0 12-15 21-15 21Z" />
+      </svg>
+    )
+  }
+
+  if (name === 'shoe') {
+    return (
+      <svg {...common}>
+        <path d="M9 29c7 3 14 4 25 3 4 0 6 2 6 5H17c-5 0-8-3-8-8Z" />
+        <path d="M18 29c0-5 2-10 6-15l10 13M24 27l5-5M29 29l4-4" />
+      </svg>
+    )
+  }
+
+  if (name === 'protein') {
+    return (
+      <svg {...common}>
+        <circle cx="16" cy="17" r="5" />
+        <circle cx="32" cy="17" r="5" />
+        <circle cx="24" cy="33" r="6" />
+        <path d="M20 19l4 8M28 27l4-8M21 33H13c-3 0-5-2-5-5s2-5 5-5h2" />
+        <path d="M27 33h8c3 0 5-2 5-5s-2-5-5-5h-2" />
+        <path d="M20 36c-3 3-6 4-10 3M28 36c3 3 6 4 10 3" />
+      </svg>
+    )
+  }
+
+  if (name === 'clock') {
+    return (
+      <svg {...common}>
+        <circle cx="24" cy="24" r="15" />
+        <path d="M24 14v11l7 4" />
+      </svg>
+    )
+  }
+
+  if (name === 'wind') {
+    return (
+      <svg {...common}>
+        <path d="M8 18h24c5 0 5-7 0-7-2 0-4 1-5 3M10 25h28M8 32h22c5 0 5 7 0 7-2 0-4-1-5-3" />
+      </svg>
+    )
+  }
+
+  if (name === 'drop') {
+    return (
+      <svg {...common}>
+        <path d="M24 7c8 10 13 17 13 24a13 13 0 0 1-26 0c0-7 5-14 13-24Z" />
+      </svg>
+    )
+  }
+
+  if (name === 'sunrise' || name === 'sunset') {
+    return (
+      <svg {...common}>
+        <path d="M8 35h32M13 28a11 11 0 0 1 22 0" />
+        <path d="M24 8v9M12 17l5 5M36 17l-5 5" />
+        {name === 'sunrise' ? <path d="M20 14l4-4 4 4" /> : <path d="M20 12l4 4 4-4" />}
+      </svg>
+    )
+  }
+
+  if (name === 'check') {
+    return (
+      <svg {...common}>
+        <path d="M10 25l9 9 19-22" />
+      </svg>
+    )
+  }
+
+  if (name === 'bell') {
+    return (
+      <svg {...common}>
+        <path d="M14 35h20l-3-5v-8c0-5-3-9-7-9s-7 4-7 9v8l-3 5Z" />
+        <path d="M21 38c1 2 5 2 6 0M24 13V9" />
+      </svg>
+    )
+  }
+
+  if (name === 'calendar') {
+    return (
+      <svg {...common}>
+        <rect x="10" y="12" width="28" height="27" rx="7" />
+        <path d="M16 9v7M32 9v7M10 21h28" />
+      </svg>
+    )
+  }
+
+  if (name === 'arrow') {
+    return (
+      <svg {...common}>
+        <path d="M18 12l12 12-12 12M30 24H10" />
+      </svg>
+    )
+  }
+
+  if (name === 'mealPlan') {
+    return (
+      <svg {...common}>
+        <path d="M14 10v28M22 10v28M32 10v28" />
+        <path d="M10 20h28M10 31h28" />
+      </svg>
+    )
+  }
+
+  if (name === 'trend') {
+    return (
+      <svg {...common}>
+        <path d="M9 36h30M12 30l8-8 6 5 10-14" />
+        <path d="M31 13h5v5" />
+      </svg>
+    )
+  }
+
+  if (name === 'trophy') {
+    return (
+      <svg {...common}>
+        <path d="M17 11h14v9c0 6-3 11-7 11s-7-5-7-11v-9Z" />
+        <path d="M17 15h-6c0 7 3 11 8 11M31 15h6c0 7-3 11-8 11M20 39h8M24 31v8" />
+      </svg>
+    )
+  }
+
+  if (name === 'prediction') {
+    return (
+      <svg {...common}>
+        <circle cx="24" cy="24" r="14" />
+        <path d="M24 14v10l7 5M14 38l5-6M34 38l-5-6" />
+      </svg>
+    )
+  }
+
+  return (
+    <svg {...common}>
+      <path d="M12 24h24M24 12v24" />
+    </svg>
+  )
+}
+
+function scrollToTarget(targetId) {
   const target = document.getElementById(targetId)
 
   if (target) {
     const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    const scrollContainer = document.querySelector('.app-scroll-container')
 
-    target.scrollIntoView({
-      behavior: reduceMotion ? 'auto' : 'smooth',
-      block: 'start',
-    })
+    if (scrollContainer) {
+      const containerRect = scrollContainer.getBoundingClientRect()
+      const targetRect = target.getBoundingClientRect()
+      const top = targetRect.top - containerRect.top + scrollContainer.scrollTop
+
+      scrollContainer.scrollTo({
+        top: Math.max(0, top),
+        behavior: reduceMotion ? 'auto' : 'smooth',
+      })
+    } else {
+      target.scrollIntoView({
+        behavior: reduceMotion ? 'auto' : 'smooth',
+        block: 'start',
+      })
+    }
   }
 
   window.history.replaceState(null, '', `#${targetId}`)
   window.dispatchEvent(new HashChangeEvent('hashchange'))
 }
 
-function OverviewStatsGrid({
+function OverviewPrimaryActions({ onNavigateSection, onScanFood }) {
+  const goTo = (sectionId, targetId) => {
+    if (onNavigateSection) {
+      onNavigateSection(sectionId, targetId)
+      return
+    }
+
+    scrollToTarget(targetId)
+  }
+
+  const actions = [
+    {
+      accent: 'coach',
+      actionIcon: 'arrow',
+      alt: 'Viktkollens AI Coach-robot med synlig hjärna',
+      art: 'robot',
+      description: 'Personliga råd från din data',
+      image: '/viktkollen-ai-coach-robot.png',
+      imageHeight: 1199,
+      imageWidth: 1312,
+      icon: 'robot',
+      label: 'AI Coach',
+      onClick: () => goTo('coach', 'chat'),
+    },
+    {
+      accent: 'body',
+      actionIcon: 'foodCamera',
+      alt: 'Kroppsscanning med person och AI-scan-interface',
+      art: 'body',
+      description: 'Följ synliga förändringar över tid',
+      image: '/viktkollen-body-scan.png',
+      imageHeight: 1537,
+      imageWidth: 1023,
+      icon: 'bodyScan',
+      label: 'Kroppsscanning',
+      onClick: () => goTo('progress', 'body-analysis'),
+    },
+    {
+      accent: 'food',
+      actionIcon: 'foodCamera',
+      alt: 'AI-matscanning av måltid',
+      art: 'meal',
+      description: 'Skanna maten och uppskatta näringen',
+      image: '/viktkollen-meal-scan.png',
+      imageHeight: 1536,
+      imageWidth: 1024,
+      icon: 'foodCamera',
+      label: 'Matscanning',
+      onClick: onScanFood || (() => goTo('nutrition', 'streckkod')),
+    },
+  ]
+
+  return (
+    <section className="overview-primary-actions" aria-label="Primära funktioner">
+      {actions.map((action) => (
+        <button
+          className={`overview-primary-action is-${action.accent}`}
+          key={action.label}
+          type="button"
+          onClick={action.onClick}
+        >
+          <span className="overview-primary-visual">
+            <span className="overview-primary-orbit" />
+            <span className={`overview-primary-art is-${action.art}`}>
+              <img
+                alt={action.alt}
+                decoding="async"
+                height={action.imageHeight}
+                loading="lazy"
+                src={action.image}
+                width={action.imageWidth}
+              />
+            </span>
+            <span className="overview-primary-action-icon">
+              <OverviewIcon name={action.icon} />
+            </span>
+          </span>
+          <span className="overview-primary-action-copy">
+            <strong>{action.label}</strong>
+            <small>{action.description}</small>
+          </span>
+          <span className="overview-primary-action-chevron" aria-hidden="true">
+            <OverviewIcon name={action.actionIcon} />
+          </span>
+        </button>
+      ))}
+    </section>
+  )
+}
+
+function OverviewHeroStats({
   caloriesToday,
   calorieGoal,
   currentWeight,
@@ -86,163 +652,136 @@ function OverviewStatsGrid({
   proteinToday,
   proteinGoal,
   steps,
+  weights,
 }) {
-  const stats = [
-    isFiniteNumber(steps) && {
-      accent: 'steps',
-      label: 'Antal steg',
-      time: 'Idag',
-      value: formatNumber(Math.round(Number(steps))),
-    },
-    isFiniteNumber(proteinToday) && {
-      accent: 'protein',
-      label: 'Protein',
-      time: isFiniteNumber(proteinGoal) ? `${getProgressPercent(proteinToday, proteinGoal)} % av mål` : 'Idag',
-      value: `${formatNumber(Math.round(Number(proteinToday)))} g`,
-    },
-    isFiniteNumber(caloriesToday) && {
-      accent: 'calories',
-      label: 'Kalorier',
-      time: isFiniteNumber(calorieGoal) ? `${getProgressPercent(caloriesToday, calorieGoal)} % av mål` : 'Idag',
-      value: `${formatNumber(Math.round(Number(caloriesToday)))} kcal`,
-    },
-    isFiniteNumber(currentWeight) && {
-      accent: 'weight',
-      label: 'Vikt',
-      time: 'Senast loggad',
-      value: formatWeight(currentWeight),
-    },
-    isFiniteNumber(healthScore) && {
+  const caloriePercent = getProgressPercent(caloriesToday, calorieGoal)
+  const hasCurrentWeight = isFiniteNumber(currentWeight) && Number(currentWeight) > 0
+  const weightSparklinePoints = getSparklinePoints(weights)
+  const compactStats = [
+    {
       accent: 'health',
+      icon: 'heart',
       label: 'Health Score',
-      time: 'Idag',
-      value: `${Math.round(Number(healthScore))}/100`,
+      secondary: 'Dagens läge',
+      value: isFiniteNumber(healthScore) ? `${Math.round(Number(healthScore))}` : 'Inga data',
     },
-  ].filter(Boolean)
-
-  if (!stats.length) {
-    return (
-      <section className="overview-stats-empty dashboard-card-modern" aria-label="Dagens statistik">
-        <p className="eyebrow">Dagens statistik</p>
-        <h2>Inga värden loggade ännu</h2>
-        <span>Logga vikt, mat eller check-in så fylls översikten med riktiga värden.</span>
-      </section>
-    )
-  }
-
-  return (
-    <section className="overview-stats-grid" aria-label="Dagens statistik">
-      {stats.map((stat) => (
-        <article className={`overview-stat-card is-${stat.accent}`} key={stat.label}>
-          <div>
-            <span>{stat.label}</span>
-            <small>{stat.time}</small>
-          </div>
-          <strong>{stat.value}</strong>
-          <svg aria-hidden="true" className="overview-stat-sparkline" viewBox="0 0 90 28">
-            <polyline points="2,22 18,16 34,19 50,9 66,13 88,4" />
-          </svg>
-        </article>
-      ))}
-    </section>
-  )
-}
-
-function ProgressInsightsHero({ insights = [] }) {
-  const visibleInsights = insights.slice(0, 3)
-
-  return (
-    <section className="overview-insights-hero dashboard-card-modern" aria-labelledby="overview-insights-title">
-      <div className="overview-card-heading">
-        <div>
-          <p className="eyebrow">AI Progress Insights</p>
-          <h2 id="overview-insights-title">Din utveckling sammanfattad av AI</h2>
-        </div>
-        <button type="button" onClick={() => navigateToTarget('framsteg')}>
-          Visa alla insikter
-        </button>
-      </div>
-
-      {visibleInsights.length > 0 ? (
-        <div className="overview-insight-list">
-          {visibleInsights.map((insight) => (
-            <article key={insight.type || insight.text}>
-              <span>{insight.type === 'low-weight-data' ? 'Nästa steg' : 'Insikt'}</span>
-              <strong>{insight.text}</strong>
-              {insight.basis && <small>{insight.basis}</small>}
-            </article>
-          ))}
-        </div>
-      ) : (
-        <div className="overview-empty-state">
-          <strong>Insikter visas när mer historik finns.</strong>
-          <span>Vikt, mått och progressdata används bara när de faktiskt är loggade.</span>
-        </div>
-      )}
-    </section>
-  )
-}
-
-function ActivityRingCard({
-  healthScore,
-  steps,
-}) {
-  const hasHealthScore = isFiniteNumber(healthScore)
-  const score = hasHealthScore ? Math.round(Number(healthScore)) : null
-  const stepsValue = isFiniteNumber(steps) ? Math.round(Number(steps)) : null
-  const ringPercent = hasHealthScore ? score : getProgressPercent(stepsValue, 8000)
-  const safePercent = ringPercent ?? 0
-  const label = hasHealthScore ? 'Health Score' : 'Steg'
-  const value = hasHealthScore ? `${score} / 100` : stepsValue ? `${formatNumber(stepsValue)} steg` : 'Saknas'
-
-  return (
-    <section
-      aria-label={`Dagens aktivitet: ${label} ${value}`}
-      className="overview-activity-ring-card dashboard-card-modern"
-    >
-      <div>
-        <p className="eyebrow">Dagens aktivitet</p>
-        <h2>{label}</h2>
-        <span>{hasHealthScore ? 'Samlad signal från dagens data.' : 'Steg används när Health Score saknas.'}</span>
-      </div>
-
-      <div
-        aria-label={`${label}: ${value}`}
-        aria-valuemax="100"
-        aria-valuemin="0"
-        aria-valuenow={safePercent}
-        className="overview-activity-ring"
-        role="progressbar"
-        style={{ '--overview-ring-progress': `${safePercent}%` }}
-      >
-        <strong>{value}</strong>
-        <span>{safePercent}%</span>
-      </div>
-    </section>
-  )
-}
-
-function OverviewQuickActions({
-  onAddMeal,
-  onLogWeight,
-  onScanFood,
-}) {
-  const actions = [
-    { label: 'Logga vikt', onClick: onLogWeight },
-    { label: 'Lägg till måltid', onClick: onAddMeal },
-    { label: 'Body Scan', onClick: () => navigateToTarget('framstegsbilder') },
-    { label: 'AI Coach', onClick: () => navigateToTarget('coach') },
-    { label: 'Skanna mat', onClick: onScanFood },
+    {
+      accent: 'steps',
+      icon: 'shoe',
+      label: 'Steg idag',
+      secondary: 'Mål saknas',
+      value: isFiniteNumber(steps) ? formatNumber(Math.round(Number(steps))) : 'Inga data',
+    },
+    {
+      accent: 'protein',
+      icon: 'protein',
+      label: 'Protein idag',
+      secondary: isFiniteNumber(proteinGoal) ? `Mål ${formatNumber(Math.round(Number(proteinGoal)))} g` : 'Mål saknas',
+      value: isFiniteNumber(proteinToday) ? `${formatNumber(Math.round(Number(proteinToday)))} g` : '—',
+      suffix: isFiniteNumber(proteinToday) && isFiniteNumber(proteinGoal)
+        ? `${getProgressPercent(proteinToday, proteinGoal)} %`
+        : null,
+    },
   ]
 
   return (
-    <section className="overview-quick-actions" aria-label="Snabbåtgärder">
-      {actions.map((action) => (
-        <button key={action.label} type="button" onClick={action.onClick}>
-          {action.label}
-        </button>
-      ))}
+    <section className="overview-hero-stats" aria-label="Dagens viktigaste värden">
+      <div className="overview-main-stats" aria-label="Aktuell vikt och kalorier">
+        <article className="overview-main-stat is-weight">
+          <div className="overview-main-stat-top">
+            <span className="overview-metric-icon" aria-hidden="true"><OverviewIcon name="scale" /></span>
+            <span>Aktuell vikt</span>
+          </div>
+          <strong>{formatWeight(currentWeight)}</strong>
+          <small>{hasCurrentWeight ? 'Senast registrerad vikt' : 'Registrera vikt'}</small>
+          {weightSparklinePoints && (
+            <svg className="overview-weight-sparkline" viewBox="0 0 72 28" role="img" aria-label="Vikttrend senaste registreringar">
+              <polyline points={weightSparklinePoints} />
+            </svg>
+          )}
+        </article>
+        <article className="overview-main-stat is-calories">
+          <div className="overview-main-stat-top">
+            <span className="overview-metric-icon" aria-hidden="true"><OverviewIcon name="flame" /></span>
+            <span>Kalorier idag</span>
+          </div>
+          <strong>
+            {isFiniteNumber(caloriesToday) ? `${formatNumber(Math.round(Number(caloriesToday)))} kcal` : 'Inga data ännu'}
+          </strong>
+          <small>
+            {caloriePercent !== null
+              ? `${caloriePercent} % av mål`
+              : 'Logga måltider för dagens status'}
+          </small>
+          {caloriePercent !== null && (
+            <span className="overview-calorie-progress" aria-hidden="true">
+              <span className={`overview-progress-${getProgressBucket(caloriePercent)}`} />
+            </span>
+          )}
+        </article>
+      </div>
+
+      <div className="overview-compact-tabs" aria-label="Kompakta dagliga stats">
+        {compactStats.map((stat) => (
+          <article className={`overview-compact-tab is-${stat.accent}`} key={stat.label}>
+            <span className="overview-compact-icon" aria-hidden="true"><OverviewIcon name={stat.icon} /></span>
+            <strong>{stat.value}</strong>
+            <span>{stat.label}</span>
+            <small>{stat.suffix || stat.secondary}</small>
+          </article>
+        ))}
+      </div>
     </section>
+  )
+}
+
+function OverviewCheckInAction({ onNavigateSection }) {
+  const goToCheckIn = () => {
+    if (onNavigateSection) {
+      onNavigateSection('nutrition', 'checkin')
+      return
+    }
+
+    scrollToTarget('checkin')
+  }
+
+  return (
+    <button className="overview-checkin-action" type="button" onClick={goToCheckIn}>
+      <span className="overview-checkin-icon" aria-hidden="true"><OverviewIcon name="check" /></span>
+      <span>
+        <strong>Dagens check-in</strong>
+        <small>Energi, steg, humör och rörelse</small>
+      </span>
+      <span aria-hidden="true">›</span>
+    </button>
+  )
+}
+
+const secondarySectionIcons = {
+  'Dagens måltidsplan': 'mealPlan',
+  'Senaste 7 dagarna': 'trend',
+  Achievements: 'trophy',
+  'Health Prediction': 'prediction',
+}
+
+function CollapsibleDashboardSection({ children, id, title }) {
+  const [isOpen, setIsOpen] = useState(false)
+
+  return (
+    <details
+      className="overview-secondary-details"
+      id={id}
+      onToggle={(event) => setIsOpen(event.currentTarget.open)}
+      open={isOpen}
+    >
+      <summary>
+        <span className="overview-secondary-icon" aria-hidden="true"><OverviewIcon name={secondarySectionIcons[title] || 'arrow'} /></span>
+        <span>{title}</span>
+      </summary>
+      {isOpen && (
+        <div className="overview-secondary-content">{children}</div>
+      )}
+    </details>
   )
 }
 
@@ -262,139 +801,180 @@ function OverviewDashboard({
   onAddMeal,
   onEditProfile,
   onLogWeight,
+  onNavigateSection,
   onScanFood,
   profile,
-  progressInsights,
   proteinGoal,
   proteinToday,
   reminderState,
   selectedDate,
   syncStatus,
-  weeklyWeightChange,
   weights,
 }) {
-  const formattedDate = useMemo(() => formatDashboardDate(selectedDate), [selectedDate])
+  const [now, setNow] = useState(() => new Date())
+  const [weather, setWeather] = useState(() => createFallbackWeatherContext())
+  const liveContext = useMemo(() => createOverviewLiveContext(now, weather), [now, weather])
   const initials = getInitials(profile, email)
+  const hasPendingNotifications = Boolean(
+    reminderState?.reminders?.some((reminder) => !reminder.completed && !reminder.dismissed)
+      || reminderState?.notificationsV3?.items?.some((notification) => !notification.completed && !notification.dismissed),
+  )
+
+  const goToNotifications = () => {
+    scrollToTarget('smart-notifications')
+  }
+
+  useEffect(() => {
+    const clock = window.setInterval(() => setNow(new Date()), 30_000)
+
+    return () => window.clearInterval(clock)
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    getWeatherPermissionState().then((permissionState) => {
+      if (cancelled) return
+
+      setWeather((current) => ({
+        ...current,
+        permissionState,
+        sourceLabel: permissionState === 'granted' ? 'Väderkälla saknas' : 'Fallback',
+      }))
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return (
     <div className="home-overview-shell">
       <header className="overview-app-header">
         <div>
           <h1>Översikt</h1>
-          <p>{formattedDate}</p>
+          <OverviewLiveMeta liveContext={liveContext} />
         </div>
-        <button
-          aria-label="Öppna profilinställningar"
-          className="overview-avatar-button"
-          type="button"
-          onClick={onEditProfile}
-        >
-          {initials}
-        </button>
+        <div className="overview-header-actions">
+          <button
+            aria-label="Visa smarta notiser"
+            className={hasPendingNotifications ? 'overview-notification-button has-pending' : 'overview-notification-button'}
+            type="button"
+            onClick={goToNotifications}
+          >
+            <OverviewIcon name="bell" />
+          </button>
+          <button
+            aria-label="Öppna profilinställningar"
+            className="overview-avatar-button"
+            type="button"
+            onClick={onEditProfile}
+          >
+            {initials}
+          </button>
+        </div>
       </header>
 
-      <ProgressInsightsHero insights={progressInsights} />
+      <OverviewPrimaryActions
+        onNavigateSection={onNavigateSection}
+        onScanFood={onScanFood}
+      />
 
-      <div className="overview-top-grid">
-        <ActivityRingCard healthScore={healthScore} steps={checkIn?.steps} />
-        <OverviewStatsGrid
+      <OverviewHeroStats
+        calorieGoal={calorieGoal}
+        caloriesToday={caloriesToday}
+        currentWeight={currentWeight}
+        healthScore={healthScore}
+        proteinGoal={proteinGoal}
+        proteinToday={proteinToday}
+        steps={checkIn?.steps}
+        weights={weights}
+      />
+
+      <SmartFeedCard liveContext={liveContext} />
+
+      <OverviewCheckInAction onNavigateSection={onNavigateSection} />
+
+      <div className="overview-attention-grid">
+        <DailyCoachCard
           calorieGoal={calorieGoal}
           caloriesToday={caloriesToday}
-          currentWeight={currentWeight}
           healthScore={healthScore}
+          onAddMeal={onAddMeal}
+          onLogWeight={onLogWeight}
+          onScanFood={onScanFood}
           proteinGoal={proteinGoal}
           proteinToday={proteinToday}
+          showActions={false}
           steps={checkIn?.steps}
+          title="Dagens råd"
         />
+        <div className="overview-smart-notifications" id="smart-notifications">
+          <SmartNotificationsCard
+            adaptiveCoachFeedback={adaptiveCoachFeedback}
+            checkIn={checkIn}
+            goalsHabits={goalsHabits}
+            healthSnapshot={healthSnapshot}
+            meals={meals}
+            nutritionGoals={nutritionGoals}
+            profile={profile}
+            reminderState={reminderState}
+            syncStatus={syncStatus}
+            today={selectedDate}
+            weights={weights}
+          />
+        </div>
       </div>
 
-      <OverviewQuickActions
-        onAddMeal={onAddMeal}
-        onLogWeight={onLogWeight}
-        onScanFood={onScanFood}
-      />
-
-      <DailyProgressCard
-        calorieGoal={calorieGoal}
-        caloriesToday={caloriesToday}
-        healthScore={healthScore}
-        proteinGoal={proteinGoal}
-        proteinToday={proteinToday}
-        steps={checkIn?.steps}
-        weeklyWeightChange={weeklyWeightChange}
-      />
-      <DailyCoachCard
-        calorieGoal={calorieGoal}
-        caloriesToday={caloriesToday}
-        healthScore={healthScore}
-        onAddMeal={onAddMeal}
-        onLogWeight={onLogWeight}
-        onScanFood={onScanFood}
-        proteinGoal={proteinGoal}
-        proteinToday={proteinToday}
-        steps={checkIn?.steps}
-      />
-      <div id="smart-notifications">
-        <SmartNotificationsCard
-          adaptiveCoachFeedback={adaptiveCoachFeedback}
-          checkIn={checkIn}
-          goalsHabits={goalsHabits}
-          healthSnapshot={healthSnapshot}
-          meals={meals}
-          nutritionGoals={nutritionGoals}
-          profile={profile}
-          reminderState={reminderState}
-          syncStatus={syncStatus}
-          today={selectedDate}
-          weights={weights}
-        />
-      </div>
-      <div id="weekly-progress">
-        <WeeklyProgressSection
-          checkIn={checkIn}
-          foods={foods}
-          healthSnapshot={healthSnapshot}
-          meals={meals}
-          nutritionGoals={nutritionGoals}
-          selectedDate={selectedDate}
-        />
-      </div>
-      <div id="achievements">
-        <AchievementPreviewCard
-          adaptiveCoachFeedback={adaptiveCoachFeedback}
-          analysisDate={selectedDate}
-          checkIn={checkIn}
-          goalsHabits={goalsHabits}
-          healthSnapshot={healthSnapshot}
-          meals={meals}
-          nutritionGoals={nutritionGoals}
-          profile={profile}
-          reminderState={reminderState}
-          weights={weights}
-        />
-      </div>
-      <div id="health-prediction">
-        <HealthPredictionCard
-          adaptiveCoachFeedback={adaptiveCoachFeedback}
-          analysisDate={selectedDate}
-          checkIn={checkIn}
-          foods={foods}
-          goalsHabits={goalsHabits}
-          healthSnapshot={healthSnapshot}
-          meals={meals}
-          nutritionGoals={nutritionGoals}
-          profile={profile}
-          reminderState={reminderState}
-          weights={weights}
-        />
-      </div>
-      <div id="meal-planner">
-        <DailyMealPlannerCard
-          date={selectedDate}
-          meals={meals}
-          nutritionGoals={nutritionGoals}
-        />
-      </div>
+      <section className="overview-more-section home-last-content" aria-labelledby="overview-more-title">
+        <h2 id="overview-more-title">Mer för idag</h2>
+        <CollapsibleDashboardSection id="meal-planner" title="Dagens måltidsplan">
+          <DailyMealPlannerCard
+            date={selectedDate}
+            meals={meals}
+            nutritionGoals={nutritionGoals}
+          />
+        </CollapsibleDashboardSection>
+        <CollapsibleDashboardSection id="weekly-progress" title="Senaste 7 dagarna">
+          <WeeklyProgressSection
+            checkIn={checkIn}
+            foods={foods}
+            healthSnapshot={healthSnapshot}
+            meals={meals}
+            nutritionGoals={nutritionGoals}
+            selectedDate={selectedDate}
+          />
+        </CollapsibleDashboardSection>
+        <CollapsibleDashboardSection id="achievements" title="Achievements">
+          <AchievementPreviewCard
+            adaptiveCoachFeedback={adaptiveCoachFeedback}
+            analysisDate={selectedDate}
+            checkIn={checkIn}
+            goalsHabits={goalsHabits}
+            healthSnapshot={healthSnapshot}
+            meals={meals}
+            nutritionGoals={nutritionGoals}
+            profile={profile}
+            reminderState={reminderState}
+            weights={weights}
+          />
+        </CollapsibleDashboardSection>
+        <CollapsibleDashboardSection id="health-prediction" title="Health Prediction">
+          <HealthPredictionCard
+            adaptiveCoachFeedback={adaptiveCoachFeedback}
+            analysisDate={selectedDate}
+            checkIn={checkIn}
+            foods={foods}
+            goalsHabits={goalsHabits}
+            healthSnapshot={healthSnapshot}
+            meals={meals}
+            nutritionGoals={nutritionGoals}
+            profile={profile}
+            reminderState={reminderState}
+            weights={weights}
+          />
+        </CollapsibleDashboardSection>
+      </section>
     </div>
   )
 }

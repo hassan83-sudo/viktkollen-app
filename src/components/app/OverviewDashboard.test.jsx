@@ -16,69 +16,130 @@ function renderOverview(overrides = {}) {
       healthScore={81}
       healthSnapshot={{
         date: '2026-08-11',
-        weight: { current: 78.4, dailyWeights: [{ date: '2026-08-11', value: 78.4 }] },
+        weight: {
+          current: 78.4,
+          dailyWeights: [
+            { date: '2026-08-10', value: 78.9 },
+            { date: '2026-08-11', value: 78.4 },
+          ],
+        },
       }}
       meals={[]}
       nutritionGoals={{ calories: 2200, protein: 135 }}
       onAddMeal={vi.fn()}
       onEditProfile={vi.fn()}
       onLogWeight={vi.fn()}
+      onNavigateSection={vi.fn()}
       onScanFood={vi.fn()}
       profile={{ name: 'Hassan Kayed', goalWeight: 74 }}
-      progressInsights={[
-        {
-          basis: 'Senaste 30 dagarna.',
-          text: 'Vikttrenden går nedåt.',
-          type: 'weight-down',
-        },
-      ]}
       proteinGoal={135}
       proteinToday={112}
       reminderState={{ reminders: [] }}
       selectedDate="2026-08-11"
       syncStatus={{}}
-      weeklyWeightChange={-0.4}
-      weights={[{ date: '2026-08-11', value: 78.4 }]}
+      weights={[
+        { date: '2026-08-10', value: 78.9 },
+        { date: '2026-08-11', value: 78.4 },
+      ]}
       {...overrides}
     />,
   )
 }
 
 describe('OverviewDashboard', () => {
-  it('renders the overview app header with date and avatar initials', () => {
+  it('renders Översikt as the primary header with date and avatar', () => {
     const markup = renderOverview()
 
+    expect(markup).toContain('class="overview-live-meta"')
+    expect(markup).toContain('Väder ej anslutet')
+    expect(markup).not.toContain('--°C')
+    expect(markup).not.toContain('-- m/s')
+    expect(markup).not.toContain('-- %')
+    expect(markup).not.toContain('--:--')
     expect(markup).toContain('<h1>Översikt</h1>')
-    expect(markup).toContain('tisdag 11 aug.')
+    expect(markup).not.toContain('Fallback')
+    expect(markup).toContain('aria-label="Visa smarta notiser"')
     expect(markup).toContain('aria-label="Öppna profilinställningar"')
     expect(markup).toContain('HK')
+    expect(markup).not.toContain('Din översikt')
   })
 
-  it('renders real stat values without production placeholders', () => {
+  it('orders primary actions before secondary content', () => {
+    const markup = renderOverview()
+    const coachIndex = markup.indexOf('AI Coach')
+    const bodyIndex = markup.indexOf('Kroppsscanning')
+    const foodIndex = markup.indexOf('Matscanning')
+    const moreIndex = markup.indexOf('Mer för idag')
+
+    expect(coachIndex).toBeGreaterThan(-1)
+    expect(bodyIndex).toBeGreaterThan(coachIndex)
+    expect(foodIndex).toBeGreaterThan(bodyIndex)
+    expect(moreIndex).toBeGreaterThan(foodIndex)
+    expect(markup).toContain('class="overview-primary-visual"')
+    expect(markup).toContain('overview-primary-art is-robot')
+    expect(markup).toContain('overview-primary-art is-body')
+    expect(markup).toContain('overview-primary-art is-meal')
+    expect(markup).toContain('is-robot')
+    expect(markup).toContain('is-bodyScan')
+    expect(markup).toContain('is-foodCamera')
+    expect(markup).toContain('Personliga råd från din data')
+    expect(markup).toContain('Följ synliga förändringar över tid')
+    expect(markup).toContain('Skanna maten och uppskatta näringen')
+    expect(markup).toContain('/viktkollen-ai-coach-robot.png')
+    expect(markup).toContain('/viktkollen-body-scan.png')
+    expect(markup).toContain('/viktkollen-meal-scan.png')
+    expect(markup).not.toContain('>AI<')
+    expect(markup).not.toContain('>SCAN<')
+    expect(markup).not.toContain('>CAM<')
+  })
+
+  it('renders weight and calories as main stats without a duplicated goal weight card', () => {
     const markup = renderOverview().replaceAll('\u00a0', ' ')
 
+    expect(markup).toContain('Aktuell vikt')
+    expect(markup).toContain('78,4 kg')
+    expect(markup).toContain('Kalorier idag')
+    expect(markup).toContain('1 840 kcal')
+    expect(markup).toContain('is-scale')
+    expect(markup).toContain('is-flame')
+    expect(markup).toContain('class="overview-weight-sparkline"')
+    expect(markup).toContain('class="overview-calorie-progress"')
+    expect(markup).not.toContain('Målvikt</span>')
+  })
+
+  it('keeps health score, steps and protein inside the compact stats container', () => {
+    const markup = renderOverview().replaceAll('\u00a0', ' ')
+
+    expect(markup).toContain('class="overview-compact-tabs"')
+    expect(markup).toContain('Health Score')
+    expect(markup).toContain('Steg idag')
+    expect(markup).toContain('Protein idag')
     expect(markup).toContain('13 956')
     expect(markup).toContain('112 g')
-    expect(markup).toContain('1 840 kcal')
-    expect(markup).not.toContain('placeholder')
+    expect(markup).toContain('is-heart')
+    expect(markup).toContain('is-shoe')
+    expect(markup).toContain('is-protein')
+    expect(markup).not.toContain('>H<')
+    expect(markup).not.toContain('>S<')
+    expect(markup).not.toContain('>P<')
   })
 
-  it('uses a textual fallback for the activity ring value', () => {
+  it('keeps check-in, advice, smart notifications and more for today reachable', () => {
     const markup = renderOverview()
 
-    expect(markup).toContain('role="progressbar"')
-    expect(markup).toContain('aria-label="Health Score: 81 / 100"')
+    expect(markup).toContain('Dagens check-in')
+    expect(markup).toContain('Energi, steg, humör och rörelse')
+    expect(markup).toContain('Viktkollen Live')
+    expect(markup).toContain('Dagens råd')
+    expect(markup).toContain('Smarta notiser')
+    expect(markup).toContain('class="overview-attention-grid"')
+    expect(markup).toContain('Mer för idag')
+    expect(markup).toContain('Dagens måltidsplan')
+    expect(markup).toContain('Senaste 7 dagarna')
+    expect(markup).toContain('class="overview-secondary-icon"')
   })
 
-  it('keeps quick actions available as compact buttons', () => {
-    const markup = renderOverview()
-
-    expect(markup).toContain('Logga vikt')
-    expect(markup).toContain('Lägg till måltid')
-    expect(markup).toContain('AI Coach')
-  })
-
-  it('shows an empty state instead of fake stats when data is missing', () => {
+  it('uses text fallbacks instead of fake zero values when data is missing', () => {
     const markup = renderOverview({
       calorieGoal: undefined,
       caloriesToday: undefined,
@@ -87,10 +148,23 @@ describe('OverviewDashboard', () => {
       healthScore: undefined,
       proteinGoal: undefined,
       proteinToday: undefined,
-      progressInsights: [],
     })
 
-    expect(markup).toContain('Inga värden loggade ännu')
-    expect(markup).toContain('Insikter visas när mer historik finns.')
+    expect(markup).toContain('Ingen vikt')
+    expect(markup).toContain('Registrera vikt')
+    expect(markup).toContain('Inga data ännu')
+    expect(markup).toContain('—')
+    expect(markup).toContain('<strong>Inga data ännu</strong>')
+  })
+
+  it('keeps the more-for-today rows closed without rendering child panels initially', () => {
+    const markup = renderOverview()
+
+    expect(markup).toContain('Dagens måltidsplan')
+    expect(markup).toContain('Senaste 7 dagarna')
+    expect(markup).toContain('Achievements')
+    expect(markup).toContain('Health Prediction')
+    expect(markup).not.toContain('overview-secondary-content')
+    expect(markup).not.toContain('weekly-progress-list')
   })
 })

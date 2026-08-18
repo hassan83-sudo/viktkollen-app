@@ -113,7 +113,7 @@ function DailyMealPlannerCard({
     <section className="daily-meal-planner-card" aria-labelledby="daily-meal-planner-title">
       <div className="daily-meal-planner-heading">
         <div>
-          <p className="eyebrow">AI Meal Planner V1</p>
+          <p className="eyebrow">AI Meal Planner</p>
           <h2 id="daily-meal-planner-title">Dagens måltidsplan</h2>
           <span>
             {model.generatedFromHistory

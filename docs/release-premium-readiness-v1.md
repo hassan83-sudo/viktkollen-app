@@ -51,10 +51,24 @@ Webbbetalning kräver checkout, customer portal, webhook-signaturverifiering och
 server-side entitlement-sync. App Store och Google Play kräver separat kvitto-
 eller purchase-token-verifiering på servern samt restore purchase-flöde.
 
+## Server-side entitlement readiness
+
+Den här sprinten lägger till `supabase/entitlements_and_account_deletion.sql`
+och `GET /api/entitlements`. Klienten kan hämta verifierad entitlement från
+servern och faller säkert till `free` vid saknad rad, saknad server-admin-env,
+utgången period, nätverksfel eller user switch.
+
+Nästa steg:
+
+1. Kör SQL-filen i Supabase.
+2. Sätt server-only `SUPABASE_SERVICE_ROLE_KEY` i Vercel.
+3. Verifiera `GET /api/entitlements` i staging med Test User A/B.
+4. Koppla framtida betalprovider till server-side skrivflöde/webhook.
+
 ## Release-blockers
 
 - Ingen riktig betalprovider är vald.
-- Ingen server-side entitlement-tabell/API finns ännu.
+- Ingen riktig betalprovider/webhook skriver entitlement ännu.
 - Ingen webhook-verifiering finns ännu.
 - Premiumstatus får därför inte marknadsföras som live i produktion.
 

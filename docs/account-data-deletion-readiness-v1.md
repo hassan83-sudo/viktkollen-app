@@ -1,7 +1,8 @@
 # Account och dataradering readiness V1
 
-Viktkollen kan hantera lokal dataradering och export/import i klienten, men
-full kontoradering är inte releaseklar förrän en privileged backend finns.
+Viktkollen kan hantera lokal dataradering och export/import i klienten. Den här
+sprinten lägger även till ett server-side account deletion-kontrakt, men riktig
+produktion kräver att Supabase admin-env sätts i hostingmiljön.
 
 ## Kan göras i klienten
 
@@ -18,9 +19,9 @@ full kontoradering är inte releaseklar förrän en privileged backend finns.
 
 ## Krävs före riktig release med konto
 
-- Authenticated account-deletion API.
+- Authenticated account-deletion API finns som `api/account-deletion/index.js`.
 - Server-only Supabase admin/service credentials.
-- Server-side deletion av `user_backups`, `user_sync_state`,
+- Server-side deletion av `user_entitlements`, `user_backups`, `user_sync_state`,
   `user_sync_events` och `user_sync_items`.
 - Audit/logg utan känslig payload.
 - Tydlig användarbekräftelse och exportrekommendation före radering.

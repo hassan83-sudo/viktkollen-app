@@ -11,6 +11,7 @@ export const entitlementStatus = Object.freeze({
   GRACE_PERIOD: 'grace_period',
   NONE: 'none',
   PAST_DUE: 'past_due',
+  TRIALING: 'trialing',
 })
 
 export const entitlementFeatures = Object.freeze({
@@ -61,7 +62,9 @@ function normalizeStatus(value, plan) {
 function hasActivePaidStatus(status) {
   return [
     entitlementStatus.ACTIVE,
+    entitlementStatus.CANCELED,
     entitlementStatus.GRACE_PERIOD,
+    entitlementStatus.TRIALING,
   ].includes(status)
 }
 
@@ -73,6 +76,7 @@ function normalizeNumber(value) {
 export function createDefaultEntitlementSnapshot({ userId = '' } = {}) {
   return {
     cancelAt: '',
+    cancelAtPeriodEnd: false,
     currentPeriodEnd: '',
     currentPeriodStart: '',
     featureOverrides: {},
@@ -96,6 +100,7 @@ export function normalizeEntitlementSnapshot(value = {}, options = {}) {
   return {
     ...createDefaultEntitlementSnapshot(options),
     cancelAt: typeof source.cancelAt === 'string' ? source.cancelAt : '',
+    cancelAtPeriodEnd: source.cancelAtPeriodEnd === true,
     currentPeriodEnd: typeof source.currentPeriodEnd === 'string' ? source.currentPeriodEnd : '',
     currentPeriodStart: typeof source.currentPeriodStart === 'string' ? source.currentPeriodStart : '',
     featureOverrides: source.featureOverrides && typeof source.featureOverrides === 'object'
@@ -110,6 +115,92 @@ export function normalizeEntitlementSnapshot(value = {}, options = {}) {
     syncedAt: typeof source.syncedAt === 'string' ? source.syncedAt : '',
     userId: String(source.userId || options.userId || ''),
     version: 1,
+  }
+}
+
+export async function fetchVerifiedEntitlementSnapshot({
+  fetchImpl = fetch,
+  getAuthorization,
+  now = new Date(),
+  timeoutMs = 5000,
+  userId = '',
+} = {}) {
+  const fallback = createDefaultEntitlementSnapshot({ userId })
+
+  try {
+    const auth = await getAuthorization?.()
+    if (!auth?.ok || !auth.authorizationHeader) {
+      return {
+        entitlement: {
+          ...fallback,
+          source: 'client-auth-unavailable',
+          syncedAt: new Date(now).toISOString(),
+        },
+        ok: false,
+        reason: auth?.errorCode || 'AUTH_REQUIRED',
+      }
+    }
+
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
+    const timeoutId = controller
+      ? setTimeout(() => controller.abort(), timeoutMs)
+      : null
+    let response
+    try {
+      response = await fetchImpl('/api/entitlements', {
+        headers: {
+          Authorization: auth.authorizationHeader,
+        },
+        method: 'GET',
+        ...(controller ? { signal: controller.signal } : {}),
+      })
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+    const payload = await response.json().catch(() => ({}))
+
+    if (!response.ok || payload?.ok === false) {
+      return {
+        entitlement: {
+          ...fallback,
+          source: 'server-fetch-failed',
+          syncedAt: new Date(now).toISOString(),
+        },
+        ok: false,
+        reason: payload?.error?.code || `HTTP_${response.status}`,
+      }
+    }
+
+    const entitlement = normalizeEntitlementSnapshot(payload.entitlement, {
+      userId: auth.userScope || userId,
+    })
+    if (auth.userScope && entitlement.userId && entitlement.userId !== auth.userScope) {
+      return {
+        entitlement: {
+          ...fallback,
+          source: 'stale-user-scope',
+          syncedAt: new Date(now).toISOString(),
+        },
+        ok: false,
+        reason: 'STALE_USER_SCOPE',
+      }
+    }
+
+    return {
+      entitlement,
+      ok: true,
+      verification: payload.verification || 'server_verified',
+    }
+  } catch (error) {
+    return {
+      entitlement: {
+        ...fallback,
+        source: 'network-fallback-free',
+        syncedAt: new Date(now).toISOString(),
+      },
+      ok: false,
+      reason: error?.name === 'AbortError' ? 'FETCH_TIMEOUT' : 'NETWORK_FAILURE',
+    }
   }
 }
 

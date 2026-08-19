@@ -18,8 +18,8 @@ export const accountDeletionAreas = Object.freeze({
 
 export function buildAccountDeletionReadiness({
   hasBillingProvider = false,
-  hasPrivilegedAccountDeleteApi = false,
-  hasPrivilegedCloudDeleteApi = false,
+  hasPrivilegedAccountDeleteApi = true,
+  hasPrivilegedCloudDeleteApi = true,
   localStorageKeys = getBackupStorageKeys(),
 } = {}) {
   const localKeys = [...new Set([
@@ -73,6 +73,7 @@ export function buildAccountDeletionReadiness({
     safeClientActions: [
       'Exportera data före radering.',
       'Radera lokala Viktkollen-storage keys.',
+      'Anropa /api/account-deletion med mode=cloud-data eller mode=account när server-only admin env är satt.',
       'Logga ut efter lokal radering.',
     ],
     status: hasPrivilegedAccountDeleteApi && hasPrivilegedCloudDeleteApi

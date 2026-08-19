@@ -6,6 +6,7 @@ const executableSql = sql
   .split(/\r?\n/)
   .filter((line) => !line.trim().startsWith('--'))
   .join('\n')
+  .replace(/'[^']*'/g, "''")
 
 describe('release acceptance Supabase checks', () => {
   it('documents required tables and RLS policy checks', () => {
@@ -13,10 +14,12 @@ describe('release acceptance Supabase checks', () => {
     expect(sql).toContain('user_sync_state')
     expect(sql).toContain('user_sync_events')
     expect(sql).toContain('user_sync_items')
+    expect(sql).toContain('user_entitlements')
     expect(sql).toContain('storage_key')
     expect(sql).toContain('pg_policies')
     expect(sql).toContain('relrowsecurity')
     expect(sql).toContain('auth.uid()')
+    expect(sql).toContain('entitlement client write policy absent')
   })
 
   it('is read-only by default', () => {

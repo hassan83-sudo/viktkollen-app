@@ -6,6 +6,7 @@ import {
   entitlementFeatures,
   entitlementPlans,
   entitlementStatus,
+  fetchVerifiedEntitlementSnapshot,
   getFeatureAccess,
   normalizeEntitlementSnapshot,
 } from './entitlements.js'
@@ -60,6 +61,93 @@ describe('entitlements', () => {
 
     expect(getFeatureAccess(premium, entitlementFeatures.cloudSync).allowed).toBe(true)
     expect(getFeatureAccess(expired, entitlementFeatures.cloudSync).allowed).toBe(false)
+  })
+
+  it('treats canceled paid access as active until the verified period ends', () => {
+    const canceledButActive = normalizeEntitlementSnapshot({
+      currentPeriodEnd: '2099-01-01T00:00:00.000Z',
+      plan: entitlementPlans.PREMIUM,
+      status: entitlementStatus.CANCELED,
+    })
+
+    expect(getFeatureAccess(canceledButActive, entitlementFeatures.cloudSync).allowed).toBe(true)
+  })
+
+  it('fetches server-verified entitlement and falls back to free on network failure', async () => {
+    const premium = await fetchVerifiedEntitlementSnapshot({
+      fetchImpl: async () => new Response(JSON.stringify({
+        entitlement: {
+          currentPeriodEnd: '2099-01-01T00:00:00.000Z',
+          plan: 'premium',
+          status: 'active',
+          userId: 'user-a',
+        },
+        ok: true,
+      })),
+      getAuthorization: async () => ({
+        authorizationHeader: 'Bearer test-token',
+        ok: true,
+        userScope: 'user-a',
+      }),
+    })
+    const fallback = await fetchVerifiedEntitlementSnapshot({
+      fetchImpl: async () => {
+        throw new Error('offline')
+      },
+      getAuthorization: async () => ({
+        authorizationHeader: 'Bearer test-token',
+        ok: true,
+        userScope: 'user-a',
+      }),
+      userId: 'user-a',
+    })
+
+    expect(premium.entitlement.plan).toBe('premium')
+    expect(fallback.entitlement.plan).toBe('free')
+    expect(fallback.reason).toBe('NETWORK_FAILURE')
+  })
+
+  it('times out entitlement fetches without activating premium', async () => {
+    const result = await fetchVerifiedEntitlementSnapshot({
+      fetchImpl: async (url, { signal } = {}) => new Promise((resolve, reject) => {
+        signal?.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })))
+      }),
+      getAuthorization: async () => ({
+        authorizationHeader: 'Bearer test-token',
+        ok: true,
+        userScope: 'user-a',
+      }),
+      timeoutMs: 1,
+      userId: 'user-a',
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.reason).toBe('FETCH_TIMEOUT')
+    expect(result.entitlement.plan).toBe('free')
+  })
+
+  it('downgrades stale entitlement payloads after user switch', async () => {
+    const result = await fetchVerifiedEntitlementSnapshot({
+      fetchImpl: async () => new Response(JSON.stringify({
+        entitlement: {
+          currentPeriodEnd: '2099-01-01T00:00:00.000Z',
+          plan: 'premium',
+          status: 'active',
+          userId: 'user-b',
+        },
+        ok: true,
+      })),
+      getAuthorization: async () => ({
+        authorizationHeader: 'Bearer test-token',
+        ok: true,
+        userScope: 'user-a',
+      }),
+      userId: 'user-a',
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.entitlement.plan).toBe('free')
+    expect(result.reason).toBe('STALE_USER_SCOPE')
   })
 
   it('documents a balanced recommended product model', () => {

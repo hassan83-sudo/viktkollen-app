@@ -1,7 +1,16 @@
 import { mealDraftToMeal, normalizeMeals, parseNutritionNumber } from './nutritionService.js'
 import { getEntryLocalDate, getLocalDateString } from './localDate.js'
+import {
+  buildNutritionPhotoTrendSummary,
+  normalizeAnalysisQuality,
+  normalizeEstimatedIngredients,
+  normalizeEstimatedNutrition,
+  normalizePortionEstimate,
+  normalizeUncertainIngredients,
+  nutritionMidpointsFromEstimate,
+} from './nutritionPhotoEstimates.js'
 
-export const nutritionPhotoAnalysisVersion = 2
+export const nutritionPhotoAnalysisVersion = 3
 export const maxPhotoDetectedItems = 12
 export const maxPhotoAnalysisPayloadBytes = 24000
 export const nutritionPhotoConfidenceLevels = ['high', 'medium', 'low', 'insufficient']
@@ -14,15 +23,19 @@ const allowedAnalysisKeys = new Set([
   'confidence',
   'createdAt',
   'detectedItems',
+  'analysisQuality',
   'estimatedNutrition',
   'estimatedServing',
   'imageMetadata',
+  'ingredients',
   'limitations',
   'modelVersion',
+  'portionEstimate',
   'provider',
   'safeSummary',
   'sourceType',
   'status',
+  'uncertainIngredients',
   'userEdited',
   'validationErrors',
   'warnings',
@@ -126,9 +139,11 @@ function normalizeDetectedItem(item = {}, index = 0) {
     id: safeText(item.id) || `photo-item-${hashText(`${name}-${index}`)}`,
     name,
     estimatedAmount: safeNumber(item.estimatedAmount ?? item.amount, null, 10000),
+    notes: safeText(item.notes || item.note || item.reason, '', 140),
     protein: safeNumber(item.protein),
     selected: item.selected !== false,
     unit: safeText(item.unit, 'g', 24),
+    uncertain: item.uncertain === true || confidence === 'low' || confidence === 'insufficient',
     userEdited: item.userEdited === true,
   }
 }
@@ -165,20 +180,36 @@ export function normalizeNutritionPhotoAnalysis(value = {}, options = {}) {
     .slice(0, maxPhotoDetectedItems)
     .map(normalizeDetectedItem)
   const confidenceLevel = normalizeConfidence(source.confidence, detectedItems.length ? 'medium' : 'insufficient')
-  const estimatedNutrition = normalizeNutrition(source.estimatedNutrition || source, detectedItems)
+  const estimatedNutrition = normalizeEstimatedNutrition(source.estimatedNutrition || source, { confidence: confidenceLevel })
+  const nutritionMidpoints = nutritionMidpointsFromEstimate(estimatedNutrition)
+  const legacyNutrition = normalizeNutrition(nutritionMidpoints, detectedItems)
+  const ingredients = normalizeEstimatedIngredients(source.ingredients?.length ? source.ingredients : detectedItems)
+  const portionEstimate = normalizePortionEstimate(source.portionEstimate || source.estimatedServing, {
+    confidence: confidenceLevel,
+    fallbackDescription: source.estimatedServing,
+  })
+  const uncertainIngredients = normalizeUncertainIngredients(source.uncertainIngredients || source.warnings, {
+    ingredients: detectedItems,
+  })
+  const analysisQuality = normalizeAnalysisQuality(source.analysisQuality, {
+    confidence: confidenceLevel,
+    limitations: source.limitations,
+    summary: source.safeSummary || source.summary,
+  })
   const validationErrors = validateNutritionPhotoAnalysis({
     ...source,
     analysisDate,
     confidence: { level: confidenceLevel, score: confidenceScore(confidenceLevel) },
     detectedItems,
     estimatedNutrition,
+    nutrition: legacyNutrition,
   }).errors
   const idSeed = [
     analysisDate,
     safeText(source.provider?.type || source.provider || 'mock'),
     detectedItems.map((item) => `${item.name}:${item.estimatedAmount}:${item.unit}`).join('|'),
-    estimatedNutrition.calories,
-    estimatedNutrition.protein,
+    legacyNutrition.calories,
+    legacyNutrition.protein,
   ].join('|')
 
   return {
@@ -197,8 +228,10 @@ export function normalizeNutritionPhotoAnalysis(value = {}, options = {}) {
     },
     createdAt,
     detectedItems,
+    ingredients,
+    analysisQuality,
     estimatedNutrition,
-    estimatedServing: safeText(source.estimatedServing, 'Okänd portion', 80),
+    estimatedServing: portionEstimate.description,
     imageMetadata: {
       dimensions: safeText(source.imageMetadata?.dimensions || source.imageMetadata?.size, '', 60),
       fileType: safeText(source.imageMetadata?.fileType || source.imageMetadata?.type, '', 40),
@@ -210,9 +243,12 @@ export function normalizeNutritionPhotoAnalysis(value = {}, options = {}) {
       type: safeText(source.provider?.type || source.provider || 'mock', 'mock', 40),
       label: safeText(source.provider?.label, 'Lokal uppskattning', 80),
     },
+    nutrition: legacyNutrition,
+    portionEstimate,
     safeSummary: safeText(source.safeSummary || source.summary, 'Bildanalys är en uppskattning och behöver granskas.', 220),
     sourceType: safeText(source.sourceType, 'photo', 40),
     status: validationErrors.length ? 'needsReview' : safeText(source.status, 'readyForReview', 40),
+    uncertainIngredients,
     userEdited: source.userEdited === true,
     validationErrors,
     warnings: [
@@ -227,7 +263,7 @@ export function normalizeNutritionPhotoAnalysis(value = {}, options = {}) {
 export function validateNutritionPhotoAnalysis(value = {}) {
   const errors = []
   const detectedItems = safeArray(value.detectedItems)
-  const nutrition = value.estimatedNutrition || {}
+  const nutrition = value.nutrition || nutritionMidpointsFromEstimate(value.estimatedNutrition || {})
   const confidence = normalizeConfidence(value.confidence)
 
   if (!getLocalDateString(value.analysisDate)) errors.push('Analysdatum saknas.')
@@ -252,8 +288,9 @@ export function createPhotoAnalysisReviewDraft(analysis = {}, options = {}) {
     mealName: normalized.detectedItems[0]?.name ? `Foto: ${normalized.detectedItems[0].name}` : 'Måltid från foto',
     mealType: options.mealType || 'Lunch',
     note: 'Näring uppskattad från foto och granskad före sparning.',
-    nutrition: normalized.estimatedNutrition,
-    portionSize: normalized.estimatedServing,
+    nutrition: normalized.nutrition,
+    nutritionProvenance: 'ai_estimate',
+    portionSize: normalized.portionEstimate.description,
     time: options.time || '12:00',
     userEdited: false,
   }
@@ -339,14 +376,21 @@ export function commitPhotoAnalysisMeal(draft = {}, meals = [], options = {}) {
       protein: draft.nutrition.protein,
     },
     photoAnalysis: {
+      analysisQuality: draft.analysis.analysisQuality,
       analysisId: draft.analysis.analysisId,
       analyzedAt: draft.analysis.createdAt,
       confidence: draft.analysis.confidence.level,
       dataSources,
+      estimatedNutrition: draft.analysis.estimatedNutrition,
+      ingredients: draft.analysis.ingredients,
       itemCount: selectedItems.length,
+      portionEstimate: draft.analysis.portionEstimate,
+      provenance: draft.userEdited || draft.nutritionProvenance === 'user_confirmed' ? 'user_confirmed' : 'ai_estimate',
       providerType: draft.analysis.provider.type,
       reviewCompleted: true,
+      schemaVersion: nutritionPhotoAnalysisVersion,
       source: 'photoAnalysis',
+      uncertainIngredients: draft.analysis.uncertainIngredients,
       userEdited: draft.userEdited === true || draft.analysis.userEdited === true,
     },
     portionSize: draft.portionSize,
@@ -397,6 +441,7 @@ export function buildPhotoAnalysisUsageSummary(meals = [], range = {}) {
   }, { aiEstimate: 0, barcode: 0, manual: 0, nutritionDatabase: 0 })
 
   return {
+    cautiousPatterns: buildNutritionPhotoTrendSummary(photoMeals),
     confidenceCounts,
     dataSourceCounts,
     editedCount,

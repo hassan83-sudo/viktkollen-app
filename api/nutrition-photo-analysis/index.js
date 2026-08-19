@@ -6,6 +6,14 @@ import { aiRouteErrorCodes, mapGatewayErrorCode, sendSafeAiError, setNoStoreHead
 import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { createImageFingerprint, runDedupedAiRequest } from '../_shared/aiRequestDeduper.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
+import {
+  normalizeAnalysisQuality,
+  normalizeEstimatedIngredients,
+  normalizeEstimatedNutrition,
+  normalizePortionEstimate,
+  normalizeUncertainIngredients,
+  nutritionMidpointsFromEstimate,
+} from '../../src/services/nutritionPhotoEstimates.js'
 
 const DEFAULT_MODEL = 'gpt-4.1-mini'
 const MAX_IMAGE_SIZE_BYTES = Number(process.env.NUTRITION_PHOTO_MAX_FILE_BYTES || 8 * 1024 * 1024)
@@ -142,9 +150,11 @@ function validateImage(image) {
 function createPrompt(mealType) {
   return [
     'Du analyserar en matbild för Viktkollen.',
-    'Returnera endast JSON enligt schemat: detectedItems, estimatedServing, estimatedNutrition, confidence, limitations, warnings, safeSummary.',
-    'Identifiera bara synliga livsmedel och uppskatta portioner försiktigt.',
-    'Kommentera dolda osäkerheter som olja, sås, dryck och tillagning.',
+    'Returnera endast JSON enligt schemat: detectedItems, portionEstimate, estimatedNutrition, ingredients, uncertainIngredients, analysisQuality, confidence, limitations, warnings, safeSummary.',
+    'estimatedNutrition måste innehålla calories, proteinG, carbsG, fatG och fiberG som objekt med min, max, midpoint och confidence, eller null om underlaget inte räcker.',
+    'portionEstimate ska vara description, gramsMin, gramsMax och confidence, eller null för gram om portionen inte kan bedömas.',
+    'Identifiera bara synliga livsmedel och uppskatta portioner som breda intervall utan falsk precision.',
+    'Kommentera dolda osäkerheter som olja, sås, dryck, tillagning och skymda ingredienser.',
     'Ge ingen medicinsk rådgivning, ingen diagnos, ingen bedömning av kropp, vikt eller om maten är bra/dålig.',
     'Ange låg confidence när ingredienser eller portion är osäkra.',
     `Måltidstyp om användaren valt den: ${safeText(mealType, 'okänd', 40)}.`,
@@ -182,26 +192,49 @@ function validateProviderPayload(payload = {}) {
     ? payload.detectedItems.slice(0, 12).map(normalizeItem)
     : []
   const estimatedNutrition = {
-    calories: safeNumber(payload.estimatedNutrition?.calories, null, 10000),
-    carbs: safeNumber(payload.estimatedNutrition?.carbs ?? payload.estimatedNutrition?.carbohydrates, null, 2000),
-    fat: safeNumber(payload.estimatedNutrition?.fat, null, 1000),
-    protein: safeNumber(payload.estimatedNutrition?.protein, null, 1000),
+    ...normalizeEstimatedNutrition(payload.estimatedNutrition || payload, { confidence: payload.confidence }),
   }
+  const nutritionMidpoints = nutritionMidpointsFromEstimate(estimatedNutrition)
+  const ingredients = normalizeEstimatedIngredients(payload.ingredients?.length ? payload.ingredients : detectedItems)
+  const portionEstimate = normalizePortionEstimate(payload.portionEstimate || payload.estimatedServing, {
+    confidence: payload.confidence,
+    fallbackDescription: payload.estimatedServing,
+  })
+  const uncertainIngredients = normalizeUncertainIngredients(payload.uncertainIngredients || payload.warnings, {
+    ingredients,
+  })
+  const analysisQuality = normalizeAnalysisQuality(payload.analysisQuality, {
+    confidence: payload.confidence,
+    limitations: payload.limitations,
+    summary: payload.safeSummary,
+  })
   const errors = []
   if (!detectedItems.length) errors.push('detectedItems')
-  if (Object.values(estimatedNutrition).some((value) => value === null)) errors.push('estimatedNutrition')
+  if (!estimatedNutrition.calories || !estimatedNutrition.proteinG || !estimatedNutrition.carbsG || !estimatedNutrition.fatG) {
+    errors.push('estimatedNutrition')
+  }
   const confidence = normalizeConfidence(payload.confidence || 'low')
 
   return {
     analysis: {
+      analysisQuality,
       confidence,
       detectedItems,
       estimatedNutrition,
-      estimatedServing: safeText(payload.estimatedServing, 'Okänd portion', 80),
+      estimatedServing: portionEstimate.description,
+      ingredients,
       limitations: Array.isArray(payload.limitations) ? payload.limitations.map((item) => safeText(item, '', 160)).filter(Boolean).slice(0, 6) : [],
       modelVersion: 3,
+      nutrition: {
+        calories: nutritionMidpoints.calories,
+        carbs: nutritionMidpoints.carbs,
+        fat: nutritionMidpoints.fat,
+        protein: nutritionMidpoints.protein,
+      },
+      portionEstimate,
       providerType: 'remote',
       safeSummary: safeText(payload.safeSummary, 'Remote bildanalys gav ett granskningsbart uppskattningsförslag.', 220),
+      uncertainIngredients,
       warnings: Array.isArray(payload.warnings) ? payload.warnings.map((item) => safeText(item, '', 160)).filter(Boolean).slice(0, 6) : [],
     },
     ok: errors.length === 0,

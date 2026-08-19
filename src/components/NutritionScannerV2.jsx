@@ -33,6 +33,30 @@ function dataSourceLabel(source) {
   }[source] || 'AI-uppskattning'
 }
 
+function confidenceLabel(level) {
+  return {
+    high: 'Hög',
+    insufficient: 'Otillräcklig',
+    low: 'Låg',
+    medium: 'Medel',
+  }[level] || 'Låg'
+}
+
+function nutritionRangeLabel(range, unit) {
+  if (!range) return 'Saknas'
+  const decimals = unit === 'kcal' ? 0 : 1
+  return `${Number(range.min).toFixed(decimals)}-${Number(range.max).toFixed(decimals)} ${unit}`
+}
+
+function portionRangeLabel(portion) {
+  if (!portion) return 'Okänd portion'
+  const grams = portion.gramsMin !== null && portion.gramsMax !== null
+    ? `, ca ${portion.gramsMin}-${portion.gramsMax} g`
+    : ''
+
+  return `${portion.description}${grams}`
+}
+
 function calculateIngredientTotals(items = []) {
   return safeArray(items)
     .filter((item) => item.selected !== false)
@@ -315,6 +339,7 @@ function NutritionScannerV2({
         ...reviewDraft.nutrition,
         [field]: numericPatch(value),
       },
+      nutritionProvenance: 'user_confirmed',
     })
   }
 
@@ -474,6 +499,66 @@ function NutritionScannerV2({
           <p>Confidence: {analysis.confidence.level}. {analysis.confidence.text}</p>
           {analysis.limitations.map((item) => <p className="estimate-note" key={item}>{item}</p>)}
 
+          <h4>AI-estimat att granska</h4>
+          <p className="estimate-note">
+            Portion: {portionRangeLabel(analysis.portionEstimate)}. Confidence: {confidenceLabel(analysis.portionEstimate?.confidence)}.
+          </p>
+          <dl className="dashboard-mini-grid">
+            <div>
+              <dt>Kalorier</dt>
+              <dd>{nutritionRangeLabel(analysis.estimatedNutrition.calories, 'kcal')}</dd>
+            </div>
+            <div>
+              <dt>Protein</dt>
+              <dd>{nutritionRangeLabel(analysis.estimatedNutrition.proteinG, 'g')}</dd>
+            </div>
+            <div>
+              <dt>Kolhydrater</dt>
+              <dd>{nutritionRangeLabel(analysis.estimatedNutrition.carbsG, 'g')}</dd>
+            </div>
+            <div>
+              <dt>Fett</dt>
+              <dd>{nutritionRangeLabel(analysis.estimatedNutrition.fatG, 'g')}</dd>
+            </div>
+            <div>
+              <dt>Fiber</dt>
+              <dd>{nutritionRangeLabel(analysis.estimatedNutrition.fiberG, 'g')}</dd>
+            </div>
+          </dl>
+          <p className="estimate-note">
+            Dessa intervall är AI-uppskattningar, inte exakta näringsvärden. Siffrorna som sparas nedan blir dina bekräftade värden.
+          </p>
+          {analysis.ingredients.length > 0 && (
+            <>
+              <h4>Identifierade ingredienser</h4>
+              <ul className="health-dashboard-list">
+                {analysis.ingredients.map((item) => (
+                  <li key={`${item.name}-${item.estimatedAmount}`}>
+                    <strong>{item.name}</strong>
+                    <span>{item.estimatedAmount || 'Mängd osäker'} · {confidenceLabel(item.confidence)}</span>
+                    {item.notes && <small>{item.notes}</small>}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {analysis.uncertainIngredients.length > 0 && (
+            <>
+              <h4>Osäkert eller dolt</h4>
+              <ul className="health-dashboard-list">
+                {analysis.uncertainIngredients.map((item) => (
+                  <li key={`${item.name}-${item.reason}`}>
+                    <strong>{item.name}</strong>
+                    <span>{item.reason}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {analysis.analysisQuality.limitations.map((item) => (
+            <p className="estimate-note" key={`quality-${item}`}>{item}</p>
+          ))}
+
           <label>
             <span>Måltidsnamn</span>
             <input aria-invalid={Boolean(validation.errors.mealName)} value={reviewDraft.mealName} onChange={(event) => updateReview({ mealName: event.target.value })} />
@@ -515,7 +600,7 @@ function NutritionScannerV2({
             ))}
             <li className="scanner-actions">
               <button type="button" onClick={() => addIngredient({ calories: 120, fat: 14, name: 'Olivolja', unit: 'msk' })}>Lägg till olja</button>
-              <button type="button" onClick={() => addIngredient({ calories: 60, carbs: 8, fat: 3, name: 'Sås', unit: 'msk' })}>Lägg till sås</button>
+              <button type="button" onClick={() => addIngredient({ calories: 60, carbohydrates: 8, fat: 3, name: 'Sås', unit: 'msk' })}>Lägg till sås</button>
               <button type="button" onClick={() => addIngredient({ calories: 0, name: 'Dryck', unit: 'glas' })}>Lägg till dryck</button>
             </li>
           </ul>

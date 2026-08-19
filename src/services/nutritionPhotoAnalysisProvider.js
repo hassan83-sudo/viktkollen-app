@@ -39,8 +39,33 @@ function createMockAnalysis(input = {}, options = {}) {
       { calories: 180, carbohydrates: 38, confidence: 'low', dataSource: 'aiEstimate', estimatedAmount: 140, fat: 1, name: 'kolhydratkälla', protein: 4, unit: 'g' },
       { calories: 60, carbohydrates: 8, confidence: 'low', dataSource: 'aiEstimate', estimatedAmount: 100, fat: 3, name: 'grönsaker eller sås', protein: 2, unit: 'g' },
     ],
-    estimatedNutrition: { calories: 480, carbs: 64, fat: 11, protein: 34 },
+    estimatedNutrition: {
+      calories: { confidence: 'medium', max: 560, midpoint: 480, min: 410 },
+      carbsG: { confidence: 'medium', max: 76, midpoint: 64, min: 52 },
+      fatG: { confidence: 'low', max: 17, midpoint: 11, min: 7 },
+      fiberG: { confidence: 'low', max: 9, midpoint: 5, min: 2 },
+      proteinG: { confidence: 'medium', max: 42, midpoint: 34, min: 26 },
+    },
+    portionEstimate: {
+      confidence: 'medium',
+      description: 'En normal tallrik',
+      gramsMax: 520,
+      gramsMin: 380,
+    },
+    ingredients: [
+      { confidence: 'medium', estimatedAmount: 'ca 130-180 g', name: 'Kyckling', notes: 'Synlig proteinkälla.' },
+      { confidence: 'low', estimatedAmount: 'ca 140-220 g', name: 'Ris eller liknande kolhydrat', notes: 'Mängden är svår att avgöra från vinkel.' },
+      { confidence: 'low', estimatedAmount: 'okänd', name: 'Sås eller olja', notes: 'Kan vara dold i tillagningen.' },
+    ],
+    uncertainIngredients: [
+      { confidence: 'low', name: 'Sås eller olja', reason: 'Dolda fetter kan påverka kalorier och fett.' },
+    ],
     estimatedServing: 'En normal tallrik',
+    analysisQuality: {
+      confidence: 'medium',
+      limitations: ['Portion och dolda fetter är osäkra i en enskild bild.'],
+      summary: 'Lokal försiktig uppskattning med breda intervall.',
+    },
     imageMetadata: input.imageMetadata,
     limitations: [
       'Portionsstorlek och dolda ingredienser kan inte avgöras exakt från bilden.',

@@ -157,14 +157,33 @@ describe('nutrition photo analysis API route', () => {
         name: index === 0 ? '<script>Pizza</script>' : `Mat ${index}`,
         protein: 8,
       })),
-      estimatedNutrition: { calories: 500, carbohydrates: 55, fat: 18, protein: 24 },
+      estimatedNutrition: {
+        calories: { confidence: 'medium', max: 620, midpoint: 500, min: 420 },
+        carbsG: { confidence: 'medium', max: 68, midpoint: 55, min: 42 },
+        fatG: { confidence: 'low', max: 28, midpoint: 18, min: 11 },
+        proteinG: { confidence: 'medium', max: 32, midpoint: 24, min: 18 },
+      },
+      portionEstimate: { confidence: 'medium', description: 'Normal tallrik', gramsMax: 520, gramsMin: 360 },
       safeSummary: 'Se https://example.com <b>test</b>',
     })
 
     expect(result.ok).toBe(true)
     expect(result.analysis.detectedItems).toHaveLength(12)
     expect(result.analysis.detectedItems[0].calories).toBeNull()
+    expect(result.analysis.estimatedNutrition.calories).toMatchObject({ max: 620, midpoint: 500, min: 420 })
+    expect(result.analysis.nutrition.protein).toBe(24)
+    expect(result.analysis.portionEstimate.gramsMin).toBe(360)
     expect(JSON.stringify(result.analysis)).not.toMatch(/<script|https?:\/\//)
+  })
+
+  it('rejects provider payloads without usable nutrition ranges', () => {
+    const result = nutritionPhotoRouteInternals.validateProviderPayload({
+      detectedItems: [{ confidence: 'medium', name: 'Pizza' }],
+      estimatedNutrition: { calories: null, proteinG: null },
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.errors).toContain('estimatedNutrition')
   })
 
   it('returns validated remote analysis without raw provider response', async () => {
@@ -173,7 +192,13 @@ describe('nutrition photo analysis API route', () => {
       json: async () => ({
         output_text: JSON.stringify({
           detectedItems: [{ calories: 260, carbohydrates: 32, confidence: 'medium', fat: 10, name: 'Pizza', protein: 12 }],
-          estimatedNutrition: { calories: 260, carbohydrates: 32, fat: 10, protein: 12 },
+          estimatedNutrition: {
+            calories: { confidence: 'medium', max: 340, midpoint: 260, min: 210 },
+            carbsG: { confidence: 'medium', max: 40, midpoint: 32, min: 24 },
+            fatG: { confidence: 'medium', max: 16, midpoint: 10, min: 7 },
+            proteinG: { confidence: 'medium', max: 18, midpoint: 12, min: 8 },
+          },
+          portionEstimate: { confidence: 'medium', description: 'Slice', gramsMax: 180, gramsMin: 110 },
           safeSummary: 'Uppskattad portion.',
         }),
       }),

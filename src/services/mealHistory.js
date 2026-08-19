@@ -3,7 +3,7 @@ import {
   saveMealHistory,
 } from './userDataRepository.js'
 
-const MEAL_HISTORY_VERSION = 1
+const MEAL_HISTORY_VERSION = 2
 const MAX_MEAL_ANALYSES = 20
 
 function isObject(value) {
@@ -94,6 +94,13 @@ function getAnalysisPortionSize(analysis = {}) {
   )
 }
 
+function stripImageData(value) {
+  if (typeof value !== 'string') return ''
+  if (/^(data:image|blob:)/i.test(value) || /base64/i.test(value)) return ''
+
+  return value
+}
+
 /**
  * Normalizes a stored meal analysis entry.
  *
@@ -134,13 +141,14 @@ export function normalizeMealEntry(entry) {
     createdAt: createdAt.toISOString(),
     date: createdAt.toISOString(),
     id: entry.id || createdAt.getTime(),
-    image: typeof entry.image === 'string' ? entry.image : '',
+    image: stripImageData(entry.image),
     improvement,
     mealType: analysis.mealType,
     portionSize: analysis.portionSize,
     proteinStatus: analysis.proteinStatus,
     source: entry.source || entry.analysis.source || 'mock',
     vegetableStatus: analysis.vegetableStatus,
+    schemaVersion: entry.schemaVersion || MEAL_HISTORY_VERSION,
   }
 }
 

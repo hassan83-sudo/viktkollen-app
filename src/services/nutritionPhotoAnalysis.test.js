@@ -31,8 +31,32 @@ describe('nutritionPhotoAnalysis model', () => {
 
     expect(analysis.analysisId).toMatch(/^photo-analysis-/)
     expect(analysis.detectedItems).toHaveLength(2)
-    expect(analysis.estimatedNutrition.protein).toBe(36)
+    expect(analysis.estimatedNutrition.proteinG).toMatchObject({
+      confidence: 'medium',
+      midpoint: 36,
+    })
+    expect(analysis.nutrition.protein).toBe(36)
+    expect(analysis.portionEstimate.description).toBe('Okänd portion')
     expect(JSON.stringify(analysis)).not.toMatch(/base64|data:image|<script/)
+  })
+
+  it('keeps nutrition estimates as defensive ranges and drops impossible precision', () => {
+    const analysis = normalizeNutritionPhotoAnalysis(rawAnalysis({
+      estimatedNutrition: {
+        calories: { confidence: 'medium', max: 620, midpoint: 520, min: 420 },
+        carbsG: { confidence: 'medium', max: 70, midpoint: 55, min: 40 },
+        fatG: { confidence: 'low', max: 30, midpoint: 20, min: 12 },
+        fiberG: null,
+        proteinG: { confidence: 'medium', max: 42, midpoint: 32, min: 24 },
+      },
+      portionEstimate: { confidence: 'low', description: 'Skål eller tallrik', gramsMax: 520, gramsMin: 330 },
+      uncertainIngredients: [{ name: 'Olja', reason: 'Kan vara dold i tillagningen.' }],
+    }), { analysisDate })
+
+    expect(analysis.estimatedNutrition.calories).toMatchObject({ max: 620, midpoint: 520, min: 420 })
+    expect(analysis.estimatedNutrition.fiberG).toBeNull()
+    expect(analysis.portionEstimate).toMatchObject({ gramsMax: 520, gramsMin: 330 })
+    expect(analysis.uncertainIngredients[0].name).toBe('Olja')
   })
 
   it('rejects insufficient analysis and unsafe payloads', () => {
@@ -54,10 +78,13 @@ describe('nutritionPhotoAnalysis model', () => {
       analysisId: analysis.analysisId,
       dataSources: ['aiEstimate'],
       itemCount: 2,
+      provenance: 'ai_estimate',
       providerType: 'mock',
       reviewCompleted: true,
+      schemaVersion: 3,
       source: 'photoAnalysis',
     })
+    expect(result.meal.photoAnalysis.estimatedNutrition.proteinG.midpoint).toBe(36)
     expect(JSON.stringify(result.meal)).not.toMatch(/base64|blob:|data:image/)
   })
 
@@ -84,5 +111,6 @@ describe('nutritionPhotoAnalysis model', () => {
     expect(summary.lowConfidenceCount).toBe(1)
     expect(summary.providerCounts.mock).toBe(1)
     expect(summary.dataSourceCounts.aiEstimate).toBe(1)
+    expect(summary.cautiousPatterns.correctionFrequency).toBe(1)
   })
 })

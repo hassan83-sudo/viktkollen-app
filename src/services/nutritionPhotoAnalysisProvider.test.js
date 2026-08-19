@@ -48,7 +48,13 @@ describe('nutritionPhotoAnalysisProvider', () => {
       json: async () => ({
         analysis: {
           detectedItems: [{ calories: 240, carbohydrates: 30, confidence: 'medium', fat: 9, name: 'Pizza', protein: 12 }],
-          estimatedNutrition: { calories: 240, carbs: 30, fat: 9, protein: 12 },
+          estimatedNutrition: {
+            calories: { confidence: 'medium', max: 320, midpoint: 240, min: 190 },
+            carbsG: { confidence: 'medium', max: 38, midpoint: 30, min: 22 },
+            fatG: { confidence: 'medium', max: 14, midpoint: 9, min: 6 },
+            proteinG: { confidence: 'medium', max: 18, midpoint: 12, min: 8 },
+          },
+          portionEstimate: { confidence: 'medium', description: 'En bit', gramsMax: 180, gramsMin: 100 },
           providerType: 'remote',
           safeSummary: 'Remote uppskattning.',
         },
@@ -63,6 +69,8 @@ describe('nutritionPhotoAnalysisProvider', () => {
 
     expect(result.ok).toBe(true)
     expect(result.analysis.provider.type).toBe('remote')
+    expect(result.analysis.estimatedNutrition.calories.midpoint).toBe(240)
+    expect(result.analysis.portionEstimate.description).toBe('En bit')
     expect(fetchMock).toHaveBeenCalledWith('/api/nutrition-photo-analysis', expect.objectContaining({
       body: expect.any(FormData),
       headers: expect.objectContaining({

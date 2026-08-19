@@ -3,6 +3,11 @@ import {
   getCurrentAiAuthorization,
   hasSameAiAuthUser,
 } from './ai/aiAuthTransport.js'
+import {
+  normalizeAnalysisQuality,
+  normalizeEstimatedNutrition,
+  normalizePortionEstimate,
+} from './nutritionPhotoEstimates.js'
 
 const MEAL_ANALYSIS_ENDPOINT = '/api/meal-analysis'
 
@@ -238,6 +243,11 @@ export function normalizeMealAnalysis(analysis = {}) {
     ['Liten', 'Lagom', 'Stor'],
     inferPortionSize(baseAnalysis),
   )
+  const normalizedConfidence = String(baseAnalysis.confidence || 'låg').toLocaleLowerCase('sv-SE').includes('hög')
+    ? 'high'
+    : String(baseAnalysis.confidence || 'låg').toLocaleLowerCase('sv-SE').includes('medel')
+      ? 'medium'
+      : 'low'
   const improvement = makeSingleImprovement({
     portionSize,
     proteinStatus,
@@ -245,6 +255,11 @@ export function normalizeMealAnalysis(analysis = {}) {
   })
   const normalizedAnalysis = {
     ...baseAnalysis,
+    analysisQuality: normalizeAnalysisQuality(analysis.analysisQuality, {
+      confidence: normalizedConfidence,
+      limitations: [baseAnalysis.explanation],
+      summary: baseAnalysis.summary,
+    }),
     cheapNextMealSuggestion: makeCheapAlternative(baseAnalysis),
     coachSummary: makeCoachSummary({
       portionSize,
@@ -254,7 +269,14 @@ export function normalizeMealAnalysis(analysis = {}) {
     improvement,
     improvementSuggestion: improvement,
     mealType,
+    estimatedNutrition: normalizeEstimatedNutrition(analysis.estimatedNutrition || baseAnalysis, {
+      confidence: normalizedConfidence,
+    }),
     portionEstimate: portionSize,
+    portionEstimateRange: normalizePortionEstimate(analysis.portionEstimateRange || analysis.portionEstimate || portionSize, {
+      confidence: normalizedConfidence,
+      fallbackDescription: portionSize,
+    }),
     portionSize,
     proteinStatus,
     vegetableStatus,

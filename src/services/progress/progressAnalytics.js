@@ -7,6 +7,7 @@ import {
   normalizeGeneratedMealPlans,
   normalizeMealPlans,
   normalizeNutritionGoals,
+  getMealProvenance,
 } from '../nutrition/nutritionEngine.js'
 import { normalizeMeals } from '../nutritionService.js'
 import { formatSleepDuration, normalizeCheckInMetrics } from '../checkInNormalization.js'
@@ -163,13 +164,7 @@ function sumMealField(meals, field) {
 }
 
 function isUserConfirmedMeal(meal) {
-  const provenance = meal?.photoAnalysis?.provenance || meal?.nutritionProvenance || meal?.nutritionSource || meal?.source
-
-  if (meal?.photoAnalysis?.source === 'photoAnalysis') {
-    return meal.photoAnalysis.provenance === 'user_confirmed' || meal.photoAnalysis.userEdited === true
-  }
-
-  return !['ai_estimate', 'ai_estimated'].includes(String(provenance || '').toLocaleLowerCase('sv-SE'))
+  return getMealProvenance(meal).isUserVerified
 }
 
 function analyzeNutritionProgress(meals = [], nutritionGoals = {}, range) {
@@ -177,7 +172,6 @@ function analyzeNutritionProgress(meals = [], nutritionGoals = {}, range) {
   const mealsByDate = groupMealsByDate(meals, range)
   const normalizedMeals = [...mealsByDate.values()].flat()
   const userConfirmedMeals = normalizedMeals.filter(isUserConfirmedMeal)
-  const aiEstimatedMeals = normalizedMeals.filter((meal) => !isUserConfirmedMeal(meal))
   const days = [...mealsByDate.entries()].map(([date, dayMeals]) => {
     const totals = {
       calories: sumMealField(dayMeals, 'calories'),
@@ -196,6 +190,7 @@ function analyzeNutritionProgress(meals = [], nutritionGoals = {}, range) {
     }
   })
   const loggedDayCount = days.length
+  const aiEstimatedMealCount = normalizedMeals.filter((meal) => getMealProvenance(meal).isAiEstimated).length
   const totals = days.reduce((sum, day) => ({
     calories: sum.calories + day.totals.calories,
     carbs: sum.carbs + day.totals.carbs,
@@ -212,7 +207,7 @@ function analyzeNutritionProgress(meals = [], nutritionGoals = {}, range) {
   return {
     averageCalories: loggedDayCount ? round(totals.calories / loggedDayCount) : 0,
     averageProtein: loggedDayCount ? round(totals.protein / loggedDayCount) : 0,
-    aiEstimatedMealCount: aiEstimatedMeals.length,
+    aiEstimatedMealCount,
     calorieGoalDays: days.filter((day) => day.calorieGoalReached).length,
     calorieGoalPercent: loggedDayCount && goals.calories ? Math.round((days.filter((day) => day.calorieGoalReached).length / loggedDayCount) * 100) : 0,
     days,

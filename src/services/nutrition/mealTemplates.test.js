@@ -398,6 +398,8 @@ describe('Meal Templates V1 quick add meals', () => {
     const meal = createMealFromTemplate(baseTemplate, { date: '2026-07-28' })
 
     expect(meal.nutritionOverride.protein).toBe(42)
+    expect(meal.sourceCategory).toBe('template')
+    expect(meal.nutritionProvenance).toBe('derived')
   })
 
   it('uses requested time over default time', () => {

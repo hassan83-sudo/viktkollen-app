@@ -5,6 +5,7 @@ import {
   calculateDailyNutritionSummary,
   formatApproxCalories,
   formatApproxGrams,
+  getMealProvenance,
   makeNutritionGoalProgress,
   normalizeNutritionGoals,
 } from '../../services/nutrition/nutritionEngine.js'
@@ -40,6 +41,22 @@ function getMealLabel(entry) {
 }
 
 function getMealStatus(entry) {
+  const provenance = getMealProvenance(entry.meal)
+
+  if (provenance.nutritionProvenance === 'ai_estimated') {
+    return {
+      detail: provenance.sourceLabel,
+      label: provenance.nutritionProvenanceLabel,
+    }
+  }
+
+  if (provenance.nutritionProvenance === 'user_confirmed') {
+    return {
+      detail: provenance.sourceLabel,
+      label: provenance.nutritionProvenanceLabel,
+    }
+  }
+
   if (entry.effectiveNutrition?.source === 'manual') {
     return {
       detail: '',

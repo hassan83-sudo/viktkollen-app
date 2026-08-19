@@ -26,6 +26,7 @@ function WeeklyNutritionAnalysis({ onWeekChange, week, weekStart }) {
         <>
           <div className="nutrition-stat-grid">
             <div><span>Kalorier/dag</span><strong>{formatAverage(week.averageCalories, 'kcal')}</strong></div>
+            <div><span>Bekräftade kcal/dag</span><strong>{formatAverage(week.averageUserVerifiedCalories, 'kcal')}</strong></div>
             <div><span>Protein/dag</span><strong>{formatAverage(week.averageProtein, 'g')}</strong></div>
             <div><span>Fibrer/dag</span><strong>{formatAverage(week.averageFiber, 'g')}</strong></div>
             <div><span>Registrerade dagar</span><strong>{week.registeredDays}</strong></div>
@@ -36,6 +37,7 @@ function WeeklyNutritionAnalysis({ onWeekChange, week, weekStart }) {
             <span>Mest konsekventa dag: {week.mostConsistentDay}</span>
             <span>Högst protein: {week.highestProteinDay}</span>
             <span>Flest registreringar: {week.mostLoggedDay}</span>
+            {week.provenance?.summaryText && <span>Underlag: {week.provenance.summaryText}</span>}
             <span>Kalorimål nära/uppnått: {week.calorieGoalDays} dagar</span>
             <span>Fibermål nära/uppnått: {week.fiberGoalDays} dagar</span>
           </div>

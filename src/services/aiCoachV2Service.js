@@ -19,6 +19,7 @@ import {
   parseDisplayNumber,
 } from './healthFormatting.js'
 import { buildHealthSnapshot } from './healthSnapshot.js'
+import { describeMealProvenanceSummary, summarizeMealProvenance } from './nutrition/nutritionProvenance.js'
 import { analyzeWeights } from './progressService.js'
 import { buildRoutineCoachContext } from './routines/dailyRoutinePlan.js'
 
@@ -528,6 +529,7 @@ function buildCoachContextV2({
     nutritionGoals,
     weights,
   })
+  const mealProvenance = summarizeMealProvenance(filterActualMealsForDate(meals, snapshot.date))
 
   return {
     activity: {
@@ -567,6 +569,8 @@ function buildCoachContextV2({
       calorieLabel: dailyAnalysis.caloriesLabel,
       confidence: contextQuality.level,
       mealCountToday: dailyAnalysis.mealCount,
+      provenance: mealProvenance,
+      provenanceSummary: describeMealProvenanceSummary(mealProvenance),
       proteinLabel: dailyAnalysis.proteinLabel,
       recentMeals: safeArray(meals).slice(-5).map((meal) => meal.name || meal.text || meal.type || 'Måltid'),
       source: 'estimated_or_user_entered',

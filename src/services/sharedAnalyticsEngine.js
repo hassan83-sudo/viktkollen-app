@@ -8,6 +8,7 @@ import {
   healthDashboardPeriodDefinitions,
 } from './healthDashboardPeriodEngine.js'
 import { getLocalDateString } from './localDate.js'
+import { describeMealProvenanceSummary, summarizeMealProvenance } from './nutrition/nutritionProvenance.js'
 import { buildProgressDashboardAnalytics, formatProgressChange } from './progress/progressAnalytics.js'
 import {
   clearSharedAnalyticsCache,
@@ -164,6 +165,8 @@ function buildWeightSummary(analysis) {
 
 function buildNutritionSummary(analysis) {
   const nutrition = analysis.nutrition
+  const periodMeals = safeArray(nutrition.days).flatMap((day) => safeArray(day.meals))
+  const provenance = summarizeMealProvenance(periodMeals)
 
   return {
     averageCalories: nutrition.averageCalories,
@@ -174,6 +177,8 @@ function buildNutritionSummary(analysis) {
     loggedDays: nutrition.loggedDayCount,
     mealCount: nutrition.mealCount,
     mostCommonMealType: nutrition.mostCommonMealType,
+    provenance,
+    provenanceText: describeMealProvenanceSummary(provenance),
     proteinGoalPercent: nutrition.proteinGoalPercent,
     proteinGoalText: nutrition.goalComparison.proteinGoal
       ? `${Math.round(nutrition.proteinGoalPercent).toLocaleString('sv-SE')}% av loggade dagar når proteinmålet.`
@@ -443,6 +448,7 @@ function buildReportModel(shared) {
     goalsHabits: shared.goalsSummary,
     highlights: shared.highlights,
     nextActions: shared.nextActions,
+    nutritionSummary: shared.nutritionSummary,
     period: shared.period,
     source: 'sharedAnalyticsEngine',
     summaries: shared.summaries,

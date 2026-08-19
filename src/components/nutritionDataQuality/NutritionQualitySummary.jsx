@@ -5,7 +5,8 @@ function NutritionQualitySummary({ quality, title = 'Datakvalitet' }) {
     ['Analyserbart', quality.analyzedCoverage],
     ['Protein', quality.macroCoverage?.protein?.label],
     ['Kalorier', quality.macroCoverage?.calories?.label],
-    ['Manuellt angivet', `${quality.manualMealCount || 0} måltider`],
+    ['Bekräftat/användarangivet', `${quality.userVerifiedMealCount ?? quality.manualMealCount ?? 0} måltider`],
+    ['AI-estimat', `${quality.aiEstimatedMealCount || 0} måltider`],
     ['Behöver granskas', `${quality.reviewMealCount || 0} måltider`],
   ]
 

@@ -51,6 +51,7 @@ describe('MealHistory', () => {
     expect(markup).toContain('600 kcal')
     expect(markup).toContain('42 g')
     expect(markup).toContain('Registreringar')
+    expect(markup).toContain('Användarangivet')
   })
 
   it('keeps the empty state helpful', () => {

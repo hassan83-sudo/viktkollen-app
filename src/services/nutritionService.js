@@ -14,6 +14,14 @@ import {
   getLocalDateString,
   parseDateValue,
 } from './localDate.js'
+import {
+  describeMealProvenanceSummary,
+  getMealProvenance,
+  summarizeMealProvenance,
+} from './nutrition/nutritionProvenance.js'
+import { normalizeDietaryPreferences } from './nutrition/dietaryPreferences.js'
+import { normalizeMealTemplates } from './nutrition/mealTemplates.js'
+import { normalizeRecipes } from './nutrition/recipeService.js'
 
 export const mealTypes = ['Frukost', 'Lunch', 'Middag', 'Mellanmål', 'Dryck', 'Annat']
 export const mealSources = ['Manuell', 'Fotoanalys', 'Snabbval', 'Importerad']
@@ -129,6 +137,11 @@ export function normalizeMeal(entry, options = {}) {
     return result
   }, {})
   const hasOverride = Object.keys(nutritionOverride).length > 0
+  const provenance = getMealProvenance({
+    ...entry,
+    nutritionOverride,
+    nutritionSource: hasOverride ? 'manual' : entry.nutritionSource || 'automatic',
+  })
 
   return {
     ...entry,
@@ -145,11 +158,15 @@ export function normalizeMeal(entry, options = {}) {
     correctionNote: typeof entry.correctionNote === 'string' ? entry.correctionNote.trim() : '',
     mealType: entry.mealType || entry.type || '',
     nutritionOverride,
+    nutritionProvenance: provenance.nutritionProvenance,
+    nutritionProvenanceLabel: provenance.nutritionProvenanceLabel,
     nutritionSource: hasOverride ? 'manual' : entry.nutritionSource || 'automatic',
     portionCount: parseNutritionNumber(entry.portionCount, 1) || 1,
     portionSize: typeof entry.portionSize === 'string' ? entry.portionSize : '',
     protein: parseNutritionNumber(entry.protein),
     source: normalizeMealSource(options.source || entry.source),
+    sourceCategory: provenance.sourceCategory,
+    sourceLabel: provenance.sourceLabel,
     text: description,
     time,
     type: normalizeMealType(entry.type || entry.mealType),
@@ -371,6 +388,7 @@ export function summarizeDay(meals, date, goals = {}) {
   const highestProteinMeal = [...dayMeals].sort(
     (first, second) => (getEffectiveMealNutrition(second).totals.protein || 0) - (getEffectiveMealNutrition(first).totals.protein || 0),
   )[0]
+  const provenanceSummary = summarizeMealProvenance(dayMeals)
 
   return {
     byType,
@@ -385,6 +403,10 @@ export function summarizeDay(meals, date, goals = {}) {
       fat: makeNutritionGoalProgress(totals.fat, normalizedGoals.fat, 'g', 'Fett'),
       fiber: makeNutritionGoalProgress(totals.fiber, normalizedGoals.fiber, 'g', 'Fibrer'),
       protein: makeNutritionGoalProgress(totals.protein, normalizedGoals.protein, 'g', 'Protein'),
+    },
+    provenance: {
+      ...provenanceSummary,
+      summaryText: describeMealProvenanceSummary(provenanceSummary),
     },
     totals,
     highestProteinMeal: highestProteinMeal || null,
@@ -410,6 +432,10 @@ export function summarizeWeek(meals, weekStart, goals = {}) {
   const registeredDays = summaries.filter((summary) => summary.mealCount > 0)
   const dayCount = registeredDays.length
   const totalMeals = registeredDays.reduce((sum, summary) => sum + summary.mealCount, 0)
+  const registeredMeals = registeredDays.flatMap((summary) => summary.meals || [])
+  const provenanceSummary = summarizeMealProvenance(registeredMeals)
+  const userVerifiedMeals = registeredMeals.filter((meal) => getMealProvenance(meal).isUserVerified)
+  const userVerifiedCalories = userVerifiedMeals.reduce((sum, meal) => sum + (getEffectiveMealNutrition(meal).totals.calories || 0), 0)
 
   function averageDaily(field) {
     return dayCount
@@ -425,6 +451,7 @@ export function summarizeWeek(meals, weekStart, goals = {}) {
     averageCalories: averageDaily('calories'),
     averageFiber: averageDaily('fiber'),
     averageProtein: averageDaily('protein'),
+    averageUserVerifiedCalories: dayCount ? userVerifiedCalories / dayCount : null,
     calorieGoalDays: registeredDays.filter((summary) => summary.progress.calories.status === 'near').length,
     dates,
     highestProteinDay: bestBy((summary) => summary.totals.protein)?.date || 'Saknas',
@@ -435,6 +462,10 @@ export function summarizeWeek(meals, weekStart, goals = {}) {
     mostLoggedDay: bestBy((summary) => summary.mealCount)?.date || 'Saknas',
     proteinGoalDays: registeredDays.filter((summary) => summary.progress.protein.status === 'near').length,
     fiberGoalDays: registeredDays.filter((summary) => summary.progress.fiber.status === 'near').length,
+    provenance: {
+      ...provenanceSummary,
+      summaryText: describeMealProvenanceSummary(provenanceSummary),
+    },
     registeredDays: dayCount,
     totalMeals,
   }
@@ -522,7 +553,14 @@ export function favoriteToMeal(favorite, date, time) {
   })
 }
 
-export function exportNutritionData({ favorites, goals, meals }) {
+export function exportNutritionData({
+  dietaryPreferences,
+  favorites,
+  goals,
+  mealTemplates,
+  meals,
+  recipes,
+}) {
   return {
     app: 'Viktkollen',
     exportedAt: new Date().toISOString(),
@@ -532,7 +570,10 @@ export function exportNutritionData({ favorites, goals, meals }) {
     data: {
       favoriteMeals: normalizeFavoriteMeals(favorites),
       goals: normalizeNutritionGoals(goals),
+      dietaryPreferences: normalizeDietaryPreferences(dietaryPreferences),
+      mealTemplates: normalizeMealTemplates(mealTemplates),
       meals: normalizeMeals(meals),
+      recipes: normalizeRecipes(recipes),
     },
   }
 }
@@ -548,17 +589,27 @@ export function parseNutritionImport(payload) {
   const meals = normalizeMeals(payload.data?.meals || [])
   const favoriteMeals = normalizeFavoriteMeals(payload.data?.favoriteMeals || [])
   const goals = normalizeNutritionGoals(payload.data?.goals || {})
+  const dietaryPreferences = normalizeDietaryPreferences(payload.data?.dietaryPreferences || {})
+  const mealTemplates = normalizeMealTemplates(payload.data?.mealTemplates || [])
+  const recipes = normalizeRecipes(payload.data?.recipes || [])
 
   return {
+    dietaryPreferences,
     favoriteMeals,
     goals,
     hasGoals: Object.values(goals).some(Boolean),
+    hasDietaryPreferences: Object.values(dietaryPreferences).some((value) => Array.isArray(value) ? value.length > 0 : Boolean(value)),
+    mealTemplates,
     meals,
     ok: true,
+    recipes,
     summary: {
+      dietaryPreferenceCount: Object.values(dietaryPreferences).filter((value) => Array.isArray(value) ? value.length > 0 : Boolean(value)).length,
       favoriteCount: favoriteMeals.length,
       hasGoals: Object.values(goals).some(Boolean),
+      mealTemplateCount: mealTemplates.length,
       mealCount: meals.length,
+      recipeCount: recipes.length,
     },
   }
 }

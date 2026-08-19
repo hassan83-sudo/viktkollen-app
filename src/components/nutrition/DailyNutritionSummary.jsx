@@ -59,6 +59,7 @@ function DailyNutritionSummary({ summary }) {
       <div className="nutrition-mini-list">
         <span>Största måltid: {summary.largestMeal?.name || 'Saknas'}</span>
         <span>Proteinrikast: {summary.highestProteinMeal?.name || 'Saknas'}</span>
+        {summary.provenance?.summaryText && <span>Underlag: {summary.provenance.summaryText}</span>}
         <span>Fördelning: {summary.byType.filter((item) => item.count > 0).map((item) => `${item.type} ${item.count}`).join(', ') || 'Inga måltider'}</span>
       </div>
     </section>

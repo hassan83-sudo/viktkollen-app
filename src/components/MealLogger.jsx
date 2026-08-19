@@ -71,8 +71,10 @@ const WeeklyNutritionDashboard = lazy(() => import('./WeeklyNutritionDashboard.j
 
 const defaultFilters = {
   from: '',
+  provenance: 'Alla',
   search: '',
   sort: 'newest',
+  source: 'Alla',
   to: '',
   type: 'Alla',
 }
@@ -537,11 +539,22 @@ function MealLogger({
     downloadJson(
       `viktkollen-kostdata-${new Date().toISOString().slice(0, 10)}.json`,
       exportNutritionData({
+        dietaryPreferences,
         favorites: favoriteMeals,
         goals: normalizedGoals,
+        mealTemplates,
         meals: normalizedMeals,
+        recipes,
       }),
     )
+  }
+
+  function mergeById(imported, current) {
+    const currentIds = new Set(current.map((item) => item.id))
+    return [
+      ...imported.filter((item) => !currentIds.has(item.id)),
+      ...current,
+    ]
   }
 
   function importNutrition(event) {
@@ -564,7 +577,7 @@ function MealLogger({
         }
 
         const mode = window.prompt(
-          `Importen innehåller ${parsed.summary.mealCount} måltider, ${parsed.summary.favoriteCount} favoriter och ${parsed.summary.hasGoals ? 'kostmål' : 'inga kostmål'}.\nSkriv "slå ihop" eller "ersätt".`,
+          `Importen innehåller ${parsed.summary.mealCount} måltider, ${parsed.summary.favoriteCount} favoriter, ${parsed.summary.mealTemplateCount} mallar, ${parsed.summary.recipeCount} recept och ${parsed.summary.hasGoals ? 'kostmål' : 'inga kostmål'}.\nSkriv "slå ihop" eller "ersätt".`,
           'slå ihop',
         )
 
@@ -583,6 +596,9 @@ function MealLogger({
 
           onMealsChange(parsed.meals)
           onFavoriteMealsChange(parsed.favoriteMeals)
+          changeMealTemplates(parsed.mealTemplates)
+          changeRecipes(parsed.recipes)
+          saveDietaryPreferences(parsed.dietaryPreferences)
         } else {
           const currentIds = new Set(normalizedMeals.map((meal) => meal.id))
           const importedMeals = parsed.meals.map((meal) =>
@@ -592,7 +608,13 @@ function MealLogger({
           )
 
           onMealsChange([...importedMeals, ...normalizedMeals])
-          onFavoriteMealsChange([...parsed.favoriteMeals, ...favoriteMeals])
+          onFavoriteMealsChange(mergeById(parsed.favoriteMeals, favoriteMeals))
+          changeMealTemplates(mergeById(parsed.mealTemplates, mealTemplates))
+          changeRecipes(mergeById(parsed.recipes, recipes))
+          saveDietaryPreferences({
+            ...dietaryPreferences,
+            ...parsed.dietaryPreferences,
+          })
         }
 
         if (parsed.hasGoals) {

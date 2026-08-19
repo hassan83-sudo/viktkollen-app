@@ -86,6 +86,8 @@ function buildWeeklyReportV2(sharedReport, snapshot) {
       averageCalories: nutritionSummary.averageCalories ?? null,
       averageProtein: nutritionSummary.averageProtein ?? null,
       loggedDays: nutritionSummary.loggedDays ?? null,
+      provenance: nutritionSummary.provenance || null,
+      provenanceSummary: nutritionSummary.provenanceText || '',
       summary: sharedReport.summaries.nutrition,
     },
     previousWeekComparison: {

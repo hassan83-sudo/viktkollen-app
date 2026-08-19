@@ -155,6 +155,15 @@ export {
   parseQuantityTokens,
 } from './nutritionUnits.js'
 export {
+  describeMealProvenanceSummary,
+  getMealProvenance,
+  inferMealSourceCategory,
+  inferNutritionProvenance,
+  mealSourceCategories,
+  nutritionProvenanceKinds,
+  summarizeMealProvenance,
+} from './nutritionProvenance.js'
+export {
   buildMealsNeedingReview,
   buildNutritionConfidenceExplanation,
   buildNutritionDataQualitySummary,

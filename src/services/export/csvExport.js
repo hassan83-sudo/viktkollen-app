@@ -1,3 +1,5 @@
+import { getMealProvenance } from '../nutrition/nutritionProvenance.js'
+
 const formulaPrefixPattern = /^[=+\-@\t\r]/
 
 function safeText(value) {
@@ -36,22 +38,28 @@ function isObject(value) {
 }
 
 function mealRows(meals = [], options = {}) {
-  return (Array.isArray(meals) ? meals : []).filter(isObject).map((meal) => ({
-    calories: formatNumber(meal.calories, options.decimalSeparator),
-    carbohydrates: formatNumber(meal.carbohydrates ?? meal.carbs, options.decimalSeparator),
-    date: meal.date || '',
-    fat: formatNumber(meal.fat, options.decimalSeparator),
-    id: meal.id || '',
-    mealType: meal.type || meal.mealType || '',
-    name: meal.text || meal.name || meal.title || '',
-    photoAnalysisConfidence: meal.photoAnalysis?.confidence?.level || meal.photoAnalysis?.confidence || '',
-    photoAnalysisProvider: meal.photoAnalysis?.provider?.type || meal.photoAnalysis?.provider || '',
-    photoAnalysisUserEdited: meal.photoAnalysis?.userEdited === true ? 'ja' : meal.photoAnalysis ? 'nej' : '',
-    plannedActual: meal.planned === true || meal.status === 'planned' ? 'planned' : 'actual',
-    protein: formatNumber(meal.protein, options.decimalSeparator),
-    source: meal.source || '',
-    time: meal.time || '',
-  }))
+  return (Array.isArray(meals) ? meals : []).filter(isObject).map((meal) => {
+    const provenance = getMealProvenance(meal)
+
+    return {
+      calories: formatNumber(meal.calories, options.decimalSeparator),
+      carbohydrates: formatNumber(meal.carbohydrates ?? meal.carbs, options.decimalSeparator),
+      date: meal.date || '',
+      fat: formatNumber(meal.fat, options.decimalSeparator),
+      id: meal.id || '',
+      mealType: meal.type || meal.mealType || '',
+      name: meal.text || meal.name || meal.title || '',
+      nutritionProvenance: provenance.nutritionProvenance,
+      photoAnalysisConfidence: meal.photoAnalysis?.confidence?.level || meal.photoAnalysis?.confidence || '',
+      photoAnalysisProvider: meal.photoAnalysis?.provider?.type || meal.photoAnalysis?.provider || '',
+      photoAnalysisUserEdited: meal.photoAnalysis?.userEdited === true ? 'ja' : meal.photoAnalysis ? 'nej' : '',
+      plannedActual: meal.planned === true || meal.status === 'planned' ? 'planned' : 'actual',
+      protein: formatNumber(meal.protein, options.decimalSeparator),
+      source: meal.source || '',
+      sourceCategory: provenance.sourceCategory,
+      time: meal.time || '',
+    }
+  })
 }
 
 function weightRows(weights = [], options = {}) {
@@ -88,6 +96,8 @@ export function buildMealsCsv(meals = [], options = {}) {
     'fat',
     'plannedActual',
     'source',
+    'sourceCategory',
+    'nutritionProvenance',
     'photoAnalysisConfidence',
     'photoAnalysisProvider',
     'photoAnalysisUserEdited',

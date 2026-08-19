@@ -28,6 +28,7 @@ import {
   isPlannedMealRecord,
 } from './nutrition/mealDateUtils.js'
 import { normalizeNutritionGoals } from './nutrition/nutritionGoals.js'
+import { summarizeMealProvenance } from './nutrition/nutritionProvenance.js'
 import { analyzeWeights } from './progressService.js'
 import { buildWeightProvenanceSummary } from './weightProvenance.js'
 
@@ -471,6 +472,7 @@ function buildNutritionSnapshot({ mealHistory, meals, nutritionGoals, profile, t
     nutritionGoals: goals,
   })
   const totals = summary.totals || {}
+  const provenance = summarizeMealProvenance(mealsToday)
 
   return {
     actualMeals,
@@ -487,6 +489,7 @@ function buildNutritionSnapshot({ mealHistory, meals, nutritionGoals, profile, t
     mealCountToday: summary.mealCount || 0,
     progress: summary.progress || {},
     proteinToday: totals.protein || 0,
+    provenance,
     summary,
   }
 }

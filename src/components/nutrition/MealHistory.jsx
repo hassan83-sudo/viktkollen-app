@@ -1,5 +1,26 @@
 import { mealTypes } from '../../services/nutritionService.js'
-import { getEffectiveMealNutrition } from '../../services/nutrition/nutritionEngine.js'
+import { getEffectiveMealNutrition, getMealProvenance } from '../../services/nutrition/nutritionEngine.js'
+
+const sourceFilterOptions = [
+  ['Alla', 'Alla källor'],
+  ['manual', 'Manuell'],
+  ['photo_analysis', 'Fotoanalys'],
+  ['quick_add', 'Snabbval'],
+  ['template', 'Mall'],
+  ['recipe', 'Recept'],
+  ['planned', 'Planerad'],
+  ['imported', 'Importerad'],
+]
+
+const provenanceFilterOptions = [
+  ['Alla', 'All näring'],
+  ['user_entered', 'Användarangivet'],
+  ['user_confirmed', 'Bekräftat AI-estimat'],
+  ['ai_estimated', 'AI-estimat'],
+  ['derived', 'Beräknat'],
+  ['imported', 'Importerad'],
+  ['missing', 'Saknas'],
+]
 
 function formatMacro(value, unit) {
   return value === null || value === undefined
@@ -75,6 +96,18 @@ function MealHistory({
           </select>
         </label>
         <label className="field">
+          <span>Källa</span>
+          <select value={filters.source || 'Alla'} onChange={(event) => onFilterChange('source', event.target.value)}>
+            {sourceFilterOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
+        <label className="field">
+          <span>Näringskälla</span>
+          <select value={filters.provenance || 'Alla'} onChange={(event) => onFilterChange('provenance', event.target.value)}>
+            {provenanceFilterOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
+        <label className="field">
           <span>Från datum</span>
           <input type="date" value={filters.from} onChange={(event) => onFilterChange('from', event.target.value)} />
         </label>
@@ -107,9 +140,10 @@ function MealHistory({
               <div>
                 <span className="nutrition-pill">{meal.type}</span>
                 <span className="nutrition-pill">{getEffectiveMealNutrition(meal).confidence.label}</span>
+                <span className="nutrition-pill">{getMealProvenance(meal).nutritionProvenanceLabel}</span>
                 <h4>{meal.name}</h4>
                 <p>{meal.description || 'Ingen beskrivning.'}</p>
-                <small>{meal.date} kl. {meal.time} · {meal.source}</small>
+                <small>{meal.date} kl. {meal.time} · {getMealProvenance(meal).sourceLabel}</small>
               </div>
               <dl>
                 <div><dt>Kalorier</dt><dd>{formatMacro(meal.calories, 'kcal')}</dd></div>

@@ -4,6 +4,7 @@ import {
   isLocalDateInRange,
 } from '../localDate.js'
 import { normalizeMeals } from '../nutritionService.js'
+import { getMealProvenance } from './nutritionProvenance.js'
 
 export const historyRangeOptions = [
   { days: 1, id: 'today', label: 'Idag' },
@@ -29,6 +30,16 @@ export function filterAndSortMeals(meals, filters) {
       const localDate = getEntryLocalDate(meal)
 
       if (filters.type !== 'Alla' && meal.type !== filters.type) {
+        return false
+      }
+
+      const provenance = getMealProvenance(meal)
+
+      if (filters.source && filters.source !== 'Alla' && provenance.sourceCategory !== filters.source) {
+        return false
+      }
+
+      if (filters.provenance && filters.provenance !== 'Alla' && provenance.nutritionProvenance !== filters.provenance) {
         return false
       }
 

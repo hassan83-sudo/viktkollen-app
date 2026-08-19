@@ -415,6 +415,7 @@ export function createMealFromTemplate(template, options = {}, now = new Date().
     nutritionSource: Object.keys(normalizedTemplate.nutritionOverride).length > 0 ? 'manual' : 'automatic',
     correctionNote: normalizedTemplate.correctionNote,
     source: 'Snabbval',
+    sourceCategory: 'template',
     text: normalizedTemplate.text,
     time: isValidTime(options.time)
       ? options.time
@@ -445,6 +446,7 @@ export function createMealCopy(meal, options = {}, now = new Date().toISOString(
     id: createId('meal', now),
     nutritionOverride: cloneOverride(normalizedMeal.nutritionOverride),
     source: normalizedMeal.source || 'Snabbval',
+    sourceCategory: normalizedMeal.photoAnalysis ? 'photo_analysis' : 'quick_add',
     time: isValidTime(options.time) ? options.time : formatTime(parseDate(now) || new Date()),
     updatedAt: now,
   })

@@ -1,5 +1,6 @@
 import { analyzeMealText } from './mealAnalyzer.js'
 import { evaluateMealNutritionConfidence } from './nutritionConfidence.js'
+import { getMealProvenance } from './nutritionProvenance.js'
 
 const macroFields = ['calories', 'protein', 'carbs', 'fat', 'fiber']
 const coreMacroFields = ['calories', 'protein', 'carbs', 'fat']
@@ -115,6 +116,11 @@ export function normalizeMealRecord(meal) {
   const createdAt = parseDate(meal.createdAt)?.toISOString() || new Date().toISOString()
   const updatedAt = parseDate(meal.updatedAt)?.toISOString() || createdAt
   const override = normalizeOverride(meal.nutritionOverride)
+  const provenance = getMealProvenance({
+    ...meal,
+    nutritionOverride: override,
+    nutritionSource: meal.nutritionSource || (Object.keys(override).length > 0 ? 'manual' : 'automatic'),
+  })
 
   return {
     ...meal,
@@ -124,7 +130,11 @@ export function normalizeMealRecord(meal) {
     id: String(meal.id || `meal-${createdAt}`),
     mealType: normalizeMealType(meal.mealType || meal.type),
     nutritionOverride: override,
+    nutritionProvenance: provenance.nutritionProvenance,
+    nutritionProvenanceLabel: provenance.nutritionProvenanceLabel,
     nutritionSource: Object.keys(override).length > 0 ? 'manual' : 'automatic',
+    sourceCategory: provenance.sourceCategory,
+    sourceLabel: provenance.sourceLabel,
     text: getMealText(meal),
     time,
     updatedAt,

@@ -467,12 +467,14 @@ export function buildMonthlyExportPayload(report) {
       ? {
           analyzedCoverage: quality.analyzedCoverage,
           analyzedMealCount: quality.analyzedMealCount,
+          aiEstimatedMealCount: quality.aiEstimatedMealCount,
           calorieCoverage: quality.macroCoverage.calories.label,
           lowConfidenceMeals: quality.lowConfidenceMeals,
           manualMealCount: quality.manualMealCount,
           proteinCoverage: quality.macroCoverage.protein.label,
           reviewMealCount: quality.reviewMealCount,
           unanalyzedMealCount: quality.unanalyzedMealCount,
+          userVerifiedMealCount: quality.userVerifiedMealCount,
           validMealCount: quality.validMealCount,
         }
       : null,

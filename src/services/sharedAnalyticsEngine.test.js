@@ -112,6 +112,10 @@ describe('Shared Analytics Engine V2', () => {
     expect(report.sharedAnalytics.source).toBe('sharedAnalyticsEngine')
     expect(report.weightTrend).toContain('sedan start')
     expect(report.mealPattern).toContain('faktiska måltider')
+    expect(report.weeklyReportV2.nutrition.loggedDays).toBe(1)
+    expect(report.weeklyReportV2.nutrition.provenance).toMatchObject({
+      userVerifiedMealCount: 1,
+    })
     expect(report.nextSteps).toHaveLength(3)
   })
 

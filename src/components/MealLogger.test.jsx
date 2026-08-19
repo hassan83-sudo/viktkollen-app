@@ -39,4 +39,32 @@ describe('MealLogger history helpers', () => {
     expect(filtered.map((meal) => meal.id)).toEqual(['today-zero', 'range-start'])
     expect(summary).toEqual({ calories: 400, mealCount: 2, protein: 20 })
   })
+
+  it('filters meal history by source and nutrition provenance', () => {
+    const meals = [
+      { calories: 400, date: '2026-03-01', id: 'manual', name: 'Lunch', nutritionSource: 'manual', protein: 20, source: 'Manuell', type: 'Lunch' },
+      { calories: 500, date: '2026-03-01', id: 'photo', name: 'Foto', photoAnalysis: { provenance: 'ai_estimate', source: 'photoAnalysis' }, protein: 30, source: 'Fotoanalys', type: 'Lunch' },
+      { calories: 350, date: '2026-03-01', id: 'template', name: 'Mall', nutritionProvenance: 'derived', protein: 25, sourceCategory: 'template', type: 'Lunch' },
+    ]
+
+    expect(filterAndSortMeals(meals, {
+      from: '2026-03-01',
+      provenance: 'ai_estimated',
+      search: '',
+      sort: 'newest',
+      source: 'photo_analysis',
+      to: '2026-03-01',
+      type: 'Alla',
+    }).map((meal) => meal.id)).toEqual(['photo'])
+
+    expect(filterAndSortMeals(meals, {
+      from: '2026-03-01',
+      provenance: 'derived',
+      search: '',
+      sort: 'newest',
+      source: 'template',
+      to: '2026-03-01',
+      type: 'Alla',
+    }).map((meal) => meal.id)).toEqual(['template'])
+  })
 })

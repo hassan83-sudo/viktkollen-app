@@ -673,6 +673,16 @@ describe('Nutrition Engine V2 daily summary', () => {
 
     expect(summary.mealCount).toBe(1)
   })
+
+  it('includes provenance in daily data quality without mixing AI estimates into confirmed meals', () => {
+    const summary = calculateDailyNutritionSummary([
+      { calories: 400, date: today, id: 'manual', name: 'Lunch', nutritionSource: 'manual', protein: 30, source: 'Manuell' },
+      { calories: 520, date: today, id: 'photo', name: 'Foto', photoAnalysis: { provenance: 'ai_estimate', source: 'photoAnalysis' }, protein: 36, source: 'Fotoanalys' },
+    ], today)
+
+    expect(summary.quality.userVerifiedMealCount).toBe(1)
+    expect(summary.quality.aiEstimatedMealCount).toBe(1)
+  })
 })
 
 describe('Nutrition Engine V2 AI Coach replies', () => {

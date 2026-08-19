@@ -131,6 +131,7 @@ describe('Data Export & Portability V2', () => {
 
     expect(csv.charCodeAt(0)).toBe(0xFEFF)
     expect(csv).toContain('id;date;time')
+    expect(csv).toContain('sourceCategory;nutritionProvenance')
     expect(csv).toContain("'=Pizza")
   })
 
@@ -197,9 +198,16 @@ describe('Data Export & Portability V2', () => {
   })
 
   it('does not include raw JSON in CSV cells', () => {
-    const row = csvExportInternals.mealRows([{ id: 'm1', text: 'Kyckling', photoAnalysis: { provider: { type: 'mock' } } }])[0]
+    const row = csvExportInternals.mealRows([{
+      calories: 420,
+      id: 'm1',
+      photoAnalysis: { provenance: 'ai_estimate', provider: { type: 'mock' }, source: 'photoAnalysis' },
+      text: 'Kyckling',
+    }])[0]
 
     expect(Object.values(row).join(' ')).not.toContain('[object Object]')
+    expect(row.sourceCategory).toBe('photo_analysis')
+    expect(row.nutritionProvenance).toBe('ai_estimated')
   })
 
   it('limits oversized arrays without exporting the full history', () => {

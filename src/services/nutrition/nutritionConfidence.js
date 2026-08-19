@@ -1,3 +1,5 @@
+import { getMealProvenance, summarizeMealProvenance } from './nutritionProvenance.js'
+
 const macroFields = ['calories', 'protein', 'carbs', 'fat', 'fiber']
 const coreMacroFields = ['calories', 'protein', 'carbs', 'fat']
 const vagueTexts = new Set(['mat', 'måltid', 'maltid', 'middag', 'lunch', 'frukost', 'mellanmål', 'mellanmal', 'kvällsmål', 'kvallsmal'])
@@ -258,12 +260,14 @@ function normalizeEntry(entry) {
 
   const effectiveNutrition = entry.effectiveNutrition || entry
   const confidence = effectiveNutrition.confidence || entry.confidence || evaluateMealNutritionConfidence(entry.meal || entry, effectiveNutrition)
+  const provenance = getMealProvenance(entry.meal || entry)
 
   return {
     confidence,
     date: entry.date || entry.meal?.date || '',
     id: String(entry.id || entry.meal?.id || ''),
     meal: entry.meal || entry,
+    provenance,
     text: entry.text || getMealText(entry.meal || entry),
     time: entry.time || entry.meal?.time || '',
   }
@@ -301,6 +305,7 @@ export function buildMealsNeedingReview(entries = [], options = {}) {
 export function buildNutritionDataQualitySummary(entries = []) {
   const normalized = (Array.isArray(entries) ? entries : []).map(normalizeEntry).filter(Boolean)
   const mealCount = normalized.length
+  const provenance = summarizeMealProvenance(normalized.map((entry) => entry.meal))
   const levelCount = (level) => normalized.filter((entry) => entry.confidence.level === level).length
   const manualMealCount = normalized.filter((entry) => entry.confidence.manualFields.length > 0).length
   const macroCoverage = macroFields.reduce((result, field) => {
@@ -332,16 +337,23 @@ export function buildNutritionDataQualitySummary(entries = []) {
       ? `${analyzedMealCount + partiallyAnalyzedMealCount} av ${mealCount} måltider kunde analyseras helt eller delvis`
       : 'Inga måltider att analysera',
     analyzedMealCount,
+    aiEstimatedMealCount: provenance.aiEstimatedMealCount,
+    derivedMealCount: provenance.derivedMealCount,
     highConfidenceMeals: levelCount('high'),
+    importedMealCount: provenance.importedMealCount,
     lowConfidenceMeals: levelCount('low'),
     macroCoverage,
     manualMealCount,
     mediumConfidenceMeals: levelCount('medium'),
     partiallyAnalyzedMealCount,
+    provenance,
     reviewMealCount: normalized.filter((entry) => entry.confidence.reviewRecommended).length,
     reviewMeals,
     unanalyzedMealCount,
     unknownConfidenceMeals: levelCount('unknown'),
+    userConfirmedMealCount: provenance.userConfirmedMealCount,
+    userEnteredMealCount: provenance.userEnteredMealCount,
+    userVerifiedMealCount: provenance.userVerifiedMealCount,
     validMealCount: mealCount,
   }
 }
@@ -351,11 +363,14 @@ export function describeNutritionDataQuality(summary = {}) {
 
   const calorieText = summary.macroCoverage?.calories?.label || 'kalorier saknar underlag'
   const proteinText = summary.macroCoverage?.protein?.label || 'protein saknar underlag'
+  const provenanceText = summary.aiEstimatedMealCount > 0
+    ? ` ${summary.aiEstimatedMealCount} måltider bygger på AI-estimat.`
+    : ''
   const reviewText = summary.reviewMealCount > 0
     ? ` ${summary.reviewMealCount} måltider kan behöva granskas.`
     : ' Inga måltider sticker ut för granskning.'
 
-  return `${summary.analyzedCoverage}. Protein: ${proteinText}. Kalorier: ${calorieText}.${reviewText}`
+  return `${summary.analyzedCoverage}. Protein: ${proteinText}. Kalorier: ${calorieText}.${provenanceText}${reviewText}`
 }
 
 export const nutritionConfidenceFields = macroFields

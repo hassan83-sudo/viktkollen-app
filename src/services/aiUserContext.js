@@ -1,5 +1,6 @@
 import { getUnifiedWeightContext } from './healthCalculations.js'
 import { buildHealthSnapshot } from './healthSnapshot.js'
+import { describeMealProvenanceSummary, summarizeMealProvenance } from './nutrition/nutritionProvenance.js'
 import { buildRoutineCoachContext } from './routines/dailyRoutinePlan.js'
 import { getLatestBodyScanEstimatedWeight } from './weightProvenance.js'
 
@@ -44,6 +45,7 @@ function getWeightContext(weights = [], currentWeight, profile = {}) {
 function getMealsContext(meals = [], mealHistory = [], loggedMealsToday = meals) {
   const todayMeals = safeArray(loggedMealsToday).slice(-10)
   const history = safeArray(mealHistory).slice(0, 10)
+  const provenance = summarizeMealProvenance(todayMeals)
 
   return {
     history,
@@ -51,6 +53,8 @@ function getMealsContext(meals = [], mealHistory = [], loggedMealsToday = meals)
     latestAnalysis: history[0] || null,
     mealAnalysisCount: safeArray(mealHistory).length,
     loggedMealsToday: todayMeals,
+    provenance,
+    provenanceSummary: describeMealProvenanceSummary(provenance),
     totalAnalyses: safeArray(mealHistory).length,
   }
 }

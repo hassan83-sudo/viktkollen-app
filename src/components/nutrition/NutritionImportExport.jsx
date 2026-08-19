@@ -8,7 +8,7 @@ function NutritionImportExport({ fileInputRef, importStatus, onExport, onFileCha
         </div>
       </div>
       <p className="settings-note">
-        Skapa en säkerhetskopia av måltider, kostmål och favoriter, eller återställ från en tidigare sparad fil.
+        Skapa en säkerhetskopia av måltider, kostmål, favoriter, mallar, recept och matpreferenser, eller återställ från en tidigare sparad fil.
       </p>
       <div className="nutrition-actions">
         <button type="button" onClick={onExport}>Spara kostdata</button>
@@ -24,7 +24,7 @@ function NutritionImportExport({ fileInputRef, importStatus, onExport, onFileCha
       </div>
       <details className="nutrition-technical-details">
         <summary>Teknisk information</summary>
-        <p>Filen innehåller måltider, kostmål och favoriter. Auth, sessioner och tokens ingår aldrig.</p>
+        <p>Filen innehåller kostdata utan auth, sessioner, tokens, blobbar eller bild-base64.</p>
       </details>
       {importStatus && <p className="analysis-status" role="status" aria-live="polite">{importStatus}</p>}
     </section>

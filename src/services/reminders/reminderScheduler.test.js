@@ -39,6 +39,29 @@ describe('reminderScheduler', () => {
     expect(status.nextReminderAt).toBeTruthy()
   })
 
+  it('supports weekday weekend and selected weekday recurrence', () => {
+    const state = normalizeReminderState({
+      reminders: [
+        { id: 'weekday', scheduleType: 'weekdays', time: '09:00', title: 'Vardag' },
+        { id: 'weekend', scheduleType: 'weekends', time: '09:00', title: 'Helg' },
+        { daysOfWeek: ['friday'], id: 'selected', scheduleType: 'selected_weekdays', time: '09:00', title: 'Fredag' },
+      ],
+    }, { now })
+
+    expect(getDueReminders(state, { now: afterDue }).map((reminder) => reminder.id)).toEqual(['weekday', 'selected'])
+  })
+
+  it('keeps DST boundary reminders on local calendar days', () => {
+    const state = normalizeReminderState({
+      reminders: [{ daysOfWeek: ['sunday'], id: 'dst', scheduleType: 'selected_weekdays', time: '02:30', title: 'Söndag' }],
+    }, { now: '2026-03-28T12:00:00.000Z' })
+
+    const next = getNextReminderAt(state.reminders[0], { now: '2026-03-28T12:00:00.000Z' })
+
+    expect(new Date(next).getDay()).toBe(0)
+    expect(Number.isNaN(new Date(next).getTime())).toBe(false)
+  })
+
   it('does not throw when interval reminder history contains a corrupt timestamp', () => {
     const state = normalizeReminderState({
       reminders: [{ id: 'r1', intervalMinutes: 90, lastTriggeredAt: 'trasigt-datum', scheduleType: 'interval', title: 'Vatten' }],

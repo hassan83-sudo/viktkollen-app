@@ -48,4 +48,27 @@ describe('reminderModel', () => {
     expect(state.notificationsV3.history).toHaveLength(1)
     expect(state.notificationsV3.settings.quietHours.start).toBe('21:30')
   })
+
+  it('normalizes routine plan history and selected weekday schedules compatibly', () => {
+    const state = normalizeReminderState({
+      reminders: [{ daysOfWeek: ['friday'], id: 'r1', scheduleType: 'selected_weekdays', title: 'Fredag' }],
+      routinePlan: {
+        checklist: [{ id: 'sb12', title: 'SB12' }],
+        history: [{
+          action: 'completed',
+          at: '2026-07-31T08:05:00.000Z',
+          routineId: 'checklist:sb12',
+          scheduledAt: '2026-07-31T08:00:00.000Z',
+        }],
+      },
+    }, { now: '2026-07-31T08:00:00.000Z' })
+
+    expect(state.reminders[0].scheduleType).toBe('selected_weekdays')
+    expect(state.routinePlan.checklist[0].title).toBe('SB12')
+    expect(state.routinePlan.history[0]).toMatchObject({
+      action: 'completed',
+      date: '2026-07-31',
+      routineId: 'checklist:sb12',
+    })
+  })
 })

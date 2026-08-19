@@ -108,10 +108,15 @@ function MoreSection({
         title="Påminnelser kunde inte visas"
       >
         <ReminderCenter
+          checkIn={checkIn}
+          checkIns={healthSnapshot?.checkIn?.dailyEntries}
           goalsHabits={goalsHabits}
+          meals={meals}
           onRemindersChange={onReminderStateChange}
           reminderState={reminderState}
           schedulerStatus={schedulerStatus}
+          today={selectedMealDate}
+          weights={weights}
         />
       </AppErrorBoundary>
 

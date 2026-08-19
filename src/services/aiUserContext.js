@@ -1,5 +1,6 @@
 import { getUnifiedWeightContext } from './healthCalculations.js'
 import { buildHealthSnapshot } from './healthSnapshot.js'
+import { buildRoutineCoachContext } from './routines/dailyRoutinePlan.js'
 import { getLatestBodyScanEstimatedWeight } from './weightProvenance.js'
 
 let lastContextKey = ''
@@ -89,11 +90,13 @@ export function buildAiUserContext(data = {}) {
     checkIn: data.checkIn,
     currentWeight: data.currentWeight,
     foods: data.foods,
+    goalsHabits: data.goalsHabits,
     latestWeeklyReport: data.latestWeeklyReport,
     mealHistory: data.mealHistory,
     meals: data.meals,
     nutritionGoals: data.nutritionGoals,
     profile: data.profile,
+    reminderState: data.reminderState,
     today: data.today,
     weights: data.weights,
   })
@@ -118,6 +121,10 @@ export function buildAiUserContext(data = {}) {
     healthSnapshot: snapshot,
     meals: getMealsContext(snapshot.nutrition.actualMeals, data.mealHistory, snapshot.nutrition.mealsToday),
     profile: compactProfile(data.profile),
+    routines: buildRoutineCoachContext({
+      goalsHabits: data.goalsHabits,
+      reminderState: data.reminderState,
+    }, { today: snapshot.date, now: `${snapshot.date}T12:00:00.000Z` }),
     weight: getWeightContext(snapshot.weight.dailyWeights, data.currentWeight ?? snapshot.weight.current, {
       ...data.profile,
       weightProvenance: snapshot.weight.provenance,
@@ -142,7 +149,7 @@ export function pickAiUserContextForIntent(userContext, intent) {
     food: ['profile', 'meals', 'checkIn', 'foods', 'coachConversation'],
     lateMeal: ['profile', 'meals', 'checkIn', 'foods', 'coachConversation'],
     goalWeight: ['profile', 'weight', 'coachConversation'],
-    habits: ['profile', 'checkIn', 'foods', 'coachConversation'],
+    habits: ['profile', 'checkIn', 'foods', 'routines', 'coachConversation'],
     mealAnalysis: ['profile', 'meals', 'checkIn', 'coachConversation'],
     motivation: ['profile', 'weight', 'checkIn', 'foods', 'coachConversation'],
     protein: ['profile', 'weight', 'meals', 'coachConversation'],
@@ -157,6 +164,7 @@ export function pickAiUserContextForIntent(userContext, intent) {
       'bodyAnalysis',
       'latestWeeklyReport',
       'coachConversation',
+      'routines',
     ],
     weight: ['profile', 'weight', 'coachConversation'],
   }

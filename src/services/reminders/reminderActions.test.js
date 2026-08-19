@@ -8,10 +8,27 @@ function state() {
 
 describe('reminderActions', () => {
   it('marks a reminder complete without creating domain data', () => {
-    const next = completeReminder(state(), 'r1', { now: '2026-07-31T12:05:00.000Z' })
+    const next = completeReminder(state(), 'r1', { now: '2026-07-31T12:05:00.000Z', scheduledAt: '2026-07-31T12:00:00.000Z' })
 
     expect(next.reminders[0].lastCompletedAt).toBe('2026-07-31T12:05:00.000Z')
     expect(next.history.at(-1).action).toBe('completed')
+    expect(next.history.at(-1)).toMatchObject({
+      completedAt: '2026-07-31T12:05:00.000Z',
+      date: '2026-07-31',
+      scheduledAt: '2026-07-31T12:00:00.000Z',
+    })
+    expect(next.routinePlan.history.at(-1)).toMatchObject({
+      action: 'completed',
+      routineId: 'reminder:r1',
+    })
+  })
+
+  it('does not duplicate completion history for the same scheduled day', () => {
+    const first = completeReminder(state(), 'r1', { now: '2026-07-31T12:05:00.000Z', scheduledAt: '2026-07-31T12:00:00.000Z' })
+    const second = completeReminder(first, 'r1', { now: '2026-07-31T12:07:00.000Z', scheduledAt: '2026-07-31T12:00:00.000Z' })
+
+    expect(second.history.filter((entry) => entry.action === 'completed')).toHaveLength(1)
+    expect(second.routinePlan.history.filter((entry) => entry.action === 'completed')).toHaveLength(1)
   })
 
   it('snoozes without duplicate reminders', () => {
@@ -19,6 +36,7 @@ describe('reminderActions', () => {
 
     expect(next.reminders).toHaveLength(1)
     expect(next.reminders[0].snoozedUntil).toBe('2026-07-31T12:30:00.000Z')
+    expect(next.routinePlan.history.at(-1).snoozedUntil).toBe('2026-07-31T12:30:00.000Z')
   })
 
   it('skips neutrally', () => {

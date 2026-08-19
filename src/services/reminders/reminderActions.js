@@ -1,7 +1,28 @@
 import { normalizeReminderState, reminderHistoryLimit } from './reminderModel.js'
+import { recordRoutineAction } from '../routines/dailyRoutinePlan.js'
+
+function getLocalDate(value) {
+  const date = new Date(value || Date.now())
+  if (Number.isNaN(date.getTime())) return ''
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-')
+}
+
+function hasHistoryAction(state, reminderId, action, date) {
+  return state.history.some((entry) =>
+    entry.reminderId === reminderId && entry.action === action && entry.date === date)
+}
 
 function withHistory(state, reminderId, action, options = {}) {
   const now = options.now || new Date().toISOString()
+  const scheduledAt = options.scheduledAt || now
+  const date = options.date || getLocalDate(scheduledAt || now)
+  if ((action === 'completed' || action === 'skipped') && hasHistoryAction(state, reminderId, action, date)) {
+    return state
+  }
 
   return {
     ...state,
@@ -10,8 +31,14 @@ function withHistory(state, reminderId, action, options = {}) {
       {
         action,
         at: now,
+        completedAt: action === 'completed' ? now : '',
+        date,
         id: `${action}-${reminderId}-${now}`,
         reminderId,
+        scheduledAt,
+        skippedAt: action === 'skipped' ? now : '',
+        snoozedUntil: options.snoozedUntil || '',
+        source: options.source || 'reminder',
       },
     ].slice(-reminderHistoryLimit),
     updatedAt: now,
@@ -36,21 +63,35 @@ function updateReminder(state, reminderId, updater, action, options = {}) {
 
 export function completeReminder(state, reminderId, options = {}) {
   const now = options.now || new Date().toISOString()
-  return updateReminder(state, reminderId, (reminder) => ({
+  const next = updateReminder(state, reminderId, (reminder) => ({
     ...reminder,
     lastCompletedAt: reminder.lastCompletedAt === now ? reminder.lastCompletedAt : now,
     snoozedUntil: '',
   }), 'completed', options)
+  return recordRoutineAction(next, {
+    action: 'completed',
+    reminderId,
+    routineId: `reminder:${reminderId}`,
+    scheduledAt: options.scheduledAt || now,
+    source: options.source || 'reminder',
+  }, { now })
 }
 
 export function skipReminder(state, reminderId, options = {}) {
   const now = options.now || new Date().toISOString()
-  return updateReminder(state, reminderId, (reminder) => ({
+  const next = updateReminder(state, reminderId, (reminder) => ({
     ...reminder,
     lastSkippedAt: now,
     lastTriggeredAt: reminder.lastTriggeredAt || now,
     snoozedUntil: '',
   }), 'skipped', options)
+  return recordRoutineAction(next, {
+    action: 'skipped',
+    reminderId,
+    routineId: `reminder:${reminderId}`,
+    scheduledAt: options.scheduledAt || now,
+    source: options.source || 'reminder',
+  }, { now })
 }
 
 export function snoozeReminder(state, reminderId, minutes = 30, options = {}) {
@@ -58,10 +99,18 @@ export function snoozeReminder(state, reminderId, minutes = 30, options = {}) {
   const safeMinutes = Math.max(5, Math.min(240, Math.round(Number(minutes) || 30)))
   const snoozedUntil = new Date(nowDate.getTime() + safeMinutes * 60000).toISOString()
 
-  return updateReminder(state, reminderId, (reminder) => ({
+  const next = updateReminder(state, reminderId, (reminder) => ({
     ...reminder,
     snoozedUntil,
-  }), 'snoozed', { ...options, now: nowDate.toISOString() })
+  }), 'snoozed', { ...options, now: nowDate.toISOString(), snoozedUntil })
+  return recordRoutineAction(next, {
+    action: 'snoozed',
+    reminderId,
+    routineId: `reminder:${reminderId}`,
+    scheduledAt: options.scheduledAt || nowDate.toISOString(),
+    snoozedUntil,
+    source: options.source || 'reminder',
+  }, { now: nowDate.toISOString() })
 }
 
 export function archiveReminder(state, reminderId, options = {}) {

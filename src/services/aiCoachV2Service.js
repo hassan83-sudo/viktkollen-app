@@ -20,6 +20,7 @@ import {
 } from './healthFormatting.js'
 import { buildHealthSnapshot } from './healthSnapshot.js'
 import { analyzeWeights } from './progressService.js'
+import { buildRoutineCoachContext } from './routines/dailyRoutinePlan.js'
 
 export const coachRecommendationSchemaVersion = 2
 
@@ -516,6 +517,7 @@ function buildCoachContextV2({
   snapshot,
   weeklySummary,
   weights,
+  routineContext,
 }) {
   const bodyScan = snapshot.weight.provenance?.latestBodyScanEstimate || null
   const contextQuality = buildContextQuality({
@@ -583,6 +585,7 @@ function buildCoachContextV2({
       trend: weights.length >= 2 ? 'derived' : 'missing',
       weight: coachProfile.currentWeight === null ? 'missing' : 'measured',
     },
+    routines: routineContext,
     weight: {
       latestMeasuredWeight: coachProfile.currentWeight,
       measuredHistoryDays: weights.length,
@@ -602,6 +605,7 @@ function buildDailyRecommendations({
   contextQuality,
   dailyAnalysis,
   previousReports,
+  routineContext,
   snapshot,
   weeklySummary,
 }) {
@@ -675,6 +679,21 @@ function buildDailyRecommendations({
       priority: 'high',
       reasoningSummary: 'När underlaget är tunt blir bättre datainsamling mer värdefullt än fler gissningar.',
       title: 'Förbättra underlaget',
+    }))
+  }
+
+  if (routineContext?.today?.total > 0 && routineContext.today.done < routineContext.today.total && routineContext.today.pending > 0) {
+    recommendations.push(makeRecommendation({
+      action: 'Välj en kvarvarande punkt i dagens plan och gör den så liten att den passar nuläget.',
+      category: 'consistency',
+      confidence: 'medium',
+      evidence: [
+        makeEvidence(`Dagens plan: ${routineContext.today.done}/${routineContext.today.total} klara.`, 'derived'),
+        makeEvidence(`Väntande punkter: ${routineContext.today.pending}.`, 'missing'),
+      ],
+      priority: 'medium',
+      reasoningSummary: 'Rutindata används som lätt stöd för nästa steg, inte som betyg på prestationen.',
+      title: 'Gör dagens plan lättare',
     }))
   }
 
@@ -915,6 +934,10 @@ export function createAiCoachV2Report(data = {}) {
   const mealHistory = []
   const meals = snapshot.nutrition.actualMeals
   const checkIn = snapshot.checkIn.latestToday || data.checkIn || {}
+  const routineContext = buildRoutineCoachContext({
+    goalsHabits: data.goalsHabits,
+    reminderState: data.reminderState,
+  }, { today: snapshot.date, now: `${snapshot.date}T12:00:00.000Z` })
   const nutritionGoals = data.nutritionGoals || {}
   const nutritionInsights = safeArray(data.nutritionInsights)
   const nutritionSummary = data.nutritionSummary || null
@@ -956,6 +979,7 @@ export function createAiCoachV2Report(data = {}) {
     snapshot,
     weeklySummary,
     weights,
+    routineContext,
   })
   const recommendations = buildDailyRecommendations({
     bodyAnalysisHistory,
@@ -963,6 +987,7 @@ export function createAiCoachV2Report(data = {}) {
     contextQuality: context.contextQuality,
     dailyAnalysis,
     previousReports: data.previousReports,
+    routineContext,
     snapshot,
     weeklySummary,
   })

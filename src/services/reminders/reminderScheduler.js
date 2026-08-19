@@ -26,6 +26,16 @@ function isDateAllowed(reminder, candidate) {
   return true
 }
 
+function isWeekdayAllowed(reminder, candidate) {
+  const weekday = weekdayFromDate(candidate)
+  if (reminder.scheduleType === 'weekdays') return !['saturday', 'sunday'].includes(weekday)
+  if (reminder.scheduleType === 'weekends') return ['saturday', 'sunday'].includes(weekday)
+  if (reminder.scheduleType === 'weekly' || reminder.scheduleType === 'selected_weekdays') {
+    return reminder.daysOfWeek.includes(weekday)
+  }
+  return true
+}
+
 export function getNextReminderAt(reminder, options = {}) {
   if (!reminder || !reminder.enabled || reminder.archivedAt || reminder.pausedAt || reminder.needsReview) return null
   const now = new Date(options.now || Date.now())
@@ -49,7 +59,7 @@ export function getNextReminderAt(reminder, options = {}) {
     const date = new Date(now.getTime() + offset * dayMs)
     const candidate = atLocalTime(date, reminder.time)
     if (candidate <= now) continue
-    if (reminder.scheduleType === 'weekly' && !reminder.daysOfWeek.includes(weekdayFromDate(candidate))) continue
+    if (!isWeekdayAllowed(reminder, candidate)) continue
     if (!isDateAllowed(reminder, candidate)) continue
     return candidate.toISOString()
   }
@@ -75,7 +85,7 @@ export function getDueReminders(state, options = {}) {
 
     const candidate = atLocalTime(now, reminder.time)
     if (candidate > now || !isDateAllowed(reminder, candidate)) return false
-    if (reminder.scheduleType === 'weekly' && !reminder.daysOfWeek.includes(weekdayFromDate(candidate))) return false
+    if (!isWeekdayAllowed(reminder, candidate)) return false
     return true
   })
 }

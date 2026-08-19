@@ -17,7 +17,7 @@ export const reminderTypes = [
   'custom',
 ]
 
-export const scheduleTypes = ['once', 'daily', 'weekly', 'interval']
+export const scheduleTypes = ['once', 'daily', 'weekly', 'interval', 'weekdays', 'weekends', 'selected_weekdays']
 export const weekDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 
 const unsafeTextPatterns = [
@@ -139,6 +139,44 @@ export function validateReminder(reminder = {}) {
   return { errors, ok: errors.length === 0, reminder: normalized }
 }
 
+function normalizeRoutinePlanLite(value = {}, options = {}) {
+  const source = isObject(value) ? value : {}
+
+  return {
+    checklist: safeArray(source.checklist).filter(isObject).map((item, index) => ({
+      category: normalizeReminderText(item.category, 'custom', 40),
+      createdAt: item.createdAt || options.now || new Date().toISOString(),
+      enabled: item.enabled !== false,
+      id: normalizeReminderText(item.id, `checklist-${index}`, 120),
+      order: Math.max(0, Math.min(99, Math.round(Number(item.order) || index))),
+      source: normalizeReminderText(item.source, 'user', 50),
+      title: normalizeReminderText(item.title, 'Checklistpunkt', 90),
+      updatedAt: item.updatedAt || item.createdAt || options.now || new Date().toISOString(),
+    })).slice(0, 40),
+    history: safeArray(source.history).filter(isObject).map((entry) => {
+      const at = entry.at || entry.completedAt || entry.skippedAt || entry.snoozedAt || options.now || new Date().toISOString()
+      const scheduledAt = normalizeReminderText(entry.scheduledAt, '', 40)
+      const date = normalizeReminderText(entry.date || scheduledAt.slice(0, 10) || String(at).slice(0, 10), '', 20)
+      const action = normalizeReminderText(entry.action, 'updated', 40)
+
+      return {
+        action,
+        at,
+        completedAt: action === 'completed' ? normalizeReminderText(entry.completedAt || at, '', 40) : '',
+        date,
+        id: normalizeReminderText(entry.id, `routine-${action}-${entry.routineId || entry.reminderId || date}`, 140),
+        reminderId: normalizeReminderText(entry.reminderId, '', 120),
+        routineId: normalizeReminderText(entry.routineId || entry.reminderId, '', 120),
+        scheduledAt,
+        skippedAt: action === 'skipped' ? normalizeReminderText(entry.skippedAt || at, '', 40) : '',
+        snoozedUntil: action === 'snoozed' ? normalizeReminderText(entry.snoozedUntil, '', 40) : '',
+        source: normalizeReminderText(entry.source, 'user', 60),
+      }
+    }).filter((entry) => entry.routineId && entry.date).slice(-reminderHistoryLimit),
+    version: 1,
+  }
+}
+
 export function normalizeReminderState(value = {}, options = {}) {
   const source = isObject(value) ? value : {}
   const reminders = safeArray(source.reminders)
@@ -152,11 +190,18 @@ export function normalizeReminderState(value = {}, options = {}) {
     history: safeArray(source.history).filter(isObject).map((entry) => ({
       action: normalizeReminderText(entry.action, 'updated', 50),
       at: entry.at || options.now || new Date().toISOString(),
+      completedAt: normalizeReminderText(entry.completedAt, '', 40),
+      date: normalizeReminderText(entry.date || String(entry.scheduledAt || entry.at || '').slice(0, 10), '', 20),
       id: normalizeReminderText(entry.id, `history-${entry.reminderId || entry.at || Date.now()}`, 90),
       reminderId: normalizeReminderText(entry.reminderId, '', 90),
+      scheduledAt: normalizeReminderText(entry.scheduledAt, '', 40),
+      skippedAt: normalizeReminderText(entry.skippedAt, '', 40),
+      snoozedUntil: normalizeReminderText(entry.snoozedUntil, '', 40),
+      source: normalizeReminderText(entry.source, 'reminder', 50),
     })).slice(-reminderHistoryLimit),
     notificationsV3: normalizeReminderNotificationsV3(source.notificationsV3, options),
     reminders: [...byId.values()],
+    routinePlan: normalizeRoutinePlanLite(source.routinePlan, options),
     schemaVersion: reminderSchemaVersion,
     smartCategories: isObject(source.smartCategories) ? { ...source.smartCategories } : {},
     updatedAt: source.updatedAt || options.now || new Date().toISOString(),

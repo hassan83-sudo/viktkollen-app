@@ -11,6 +11,12 @@ import {
 import { normalizeReminder, normalizeReminderState, reminderTypes, validateReminder } from '../services/reminders/reminderModel.js'
 import { buildReminderStatus, getDueReminders, getNextReminderAt } from '../services/reminders/reminderScheduler.js'
 import { requestReminderNotificationPermission } from '../services/reminders/reminderNotifications.js'
+import {
+  buildDailyRoutinePlan,
+  recordRoutineAction,
+  toggleChecklistItem,
+  upsertChecklistItem,
+} from '../services/routines/dailyRoutinePlan.js'
 
 const typeLabels = {
   check_in: 'Check-in',
@@ -33,15 +39,34 @@ const initialDraft = {
   type: 'custom',
 }
 
-function ReminderCenter({ goalsHabits = {}, onRemindersChange, reminderState = {}, schedulerStatus = {} }) {
+function ReminderCenter({
+  checkIn,
+  checkIns = [],
+  goalsHabits = {},
+  meals = [],
+  onRemindersChange,
+  reminderState = {},
+  schedulerStatus = {},
+  today,
+  weights = [],
+}) {
   const titleRef = useRef(null)
   const [draft, setDraft] = useState(initialDraft)
+  const [checklistDraft, setChecklistDraft] = useState('')
   const [editingId, setEditingId] = useState('')
   const [error, setError] = useState('')
   const [statusMessage, setStatusMessage] = useState('')
   const state = useMemo(() => normalizeReminderState(reminderState), [reminderState])
   const due = useMemo(() => getDueReminders(state), [state])
   const status = useMemo(() => ({ ...buildReminderStatus(state), ...schedulerStatus }), [schedulerStatus, state])
+  const dailyPlan = useMemo(() => buildDailyRoutinePlan({
+    checkIn,
+    checkIns,
+    goalsHabits,
+    meals,
+    reminderState: state,
+    weights,
+  }, { today }), [checkIn, checkIns, goalsHabits, meals, state, today, weights])
   const activeReminders = state.reminders.filter((reminder) => !reminder.archivedAt)
   const archivedReminders = state.reminders.filter((reminder) => reminder.archivedAt)
   const linkedGoalsHabitsCount = [
@@ -112,6 +137,56 @@ function ReminderCenter({ goalsHabits = {}, onRemindersChange, reminderState = {
     persist(action(state, reminderId, ...args), message)
   }
 
+  function completePlanItem(item) {
+    const nextState = item.reminderId
+      ? completeReminder(state, item.reminderId, { scheduledAt: item.scheduledAt, source: 'daily_plan' })
+      : recordRoutineAction(state, {
+        action: 'completed',
+        routineId: item.routineId,
+        scheduledAt: item.scheduledAt,
+        source: 'daily_plan',
+      })
+    persist(nextState, 'Planpunkten markerades klar.')
+  }
+
+  function skipPlanItem(item) {
+    const nextState = item.reminderId
+      ? skipReminder(state, item.reminderId, { scheduledAt: item.scheduledAt, source: 'daily_plan' })
+      : recordRoutineAction(state, {
+        action: 'skipped',
+        routineId: item.routineId,
+        scheduledAt: item.scheduledAt,
+        source: 'daily_plan',
+      })
+    persist(nextState, 'Planpunkten hoppades över.')
+  }
+
+  function snoozePlanItem(item) {
+    const snoozedUntil = new Date(Date.now() + 30 * 60000).toISOString()
+    const nextState = item.reminderId
+      ? snoozeReminder(state, item.reminderId, 30, { scheduledAt: item.scheduledAt, source: 'daily_plan' })
+      : recordRoutineAction(state, {
+        action: 'snoozed',
+        routineId: item.routineId,
+        scheduledAt: item.scheduledAt,
+        snoozedUntil,
+        source: 'daily_plan',
+      })
+    persist(nextState, 'Planpunkten visas igen senare.')
+  }
+
+  function submitChecklistItem(event) {
+    event.preventDefault()
+    const title = checklistDraft.trim()
+    if (!title) return
+    persist(upsertChecklistItem(state, {
+      category: 'custom',
+      order: dailyPlan.planState.checklist.length,
+      title,
+    }), 'Checklistpunkten skapades.')
+    setChecklistDraft('')
+  }
+
   return (
     <section className="panel reminder-center" id="reminder-center" aria-labelledby="reminder-center-heading">
       <div className="panel-heading">
@@ -131,6 +206,33 @@ function ReminderCenter({ goalsHabits = {}, onRemindersChange, reminderState = {
         <span>Uppskjutna: {status.snoozedCount}</span>
         <span>Notiser: {status.permissionState}</span>
       </div>
+
+      <section className="daily-plan-panel" aria-labelledby="daily-plan-heading">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">Dagens plan</p>
+            <h3 id="daily-plan-heading">{dailyPlan.summary}</h3>
+          </div>
+          <span className="insight-coverage">{dailyPlan.counts.pending} kvar</span>
+        </div>
+        {dailyPlan.items.length === 0 ? (
+          <p className="estimate-note">Skapa en påminnelse eller checklistpunkt för att bygga dagens plan.</p>
+        ) : (
+          <ul className="goals-list daily-plan-list">
+            {dailyPlan.items.map((item) => (
+              <li key={item.id}>
+                <strong>{item.targetTime} {item.title}</strong>
+                <span>{item.categoryLabel} · {statusLabel(item.status)}</span>
+                <div className="habit-actions">
+                  <button type="button" disabled={item.status === 'done'} onClick={() => completePlanItem(item)}>Klar</button>
+                  <button type="button" disabled={item.status === 'done'} onClick={() => snoozePlanItem(item)}>Visa senare</button>
+                  <button type="button" disabled={item.status === 'done'} onClick={() => skipPlanItem(item)}>Hoppa över</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <form className="inline-edit-form" onSubmit={submitReminder} aria-describedby={error ? 'reminder-error' : undefined}>
         <h3>{editingId ? 'Redigera påminnelse' : 'Skapa påminnelse'}</h3>
@@ -159,6 +261,34 @@ function ReminderCenter({ goalsHabits = {}, onRemindersChange, reminderState = {
         </div>
       </form>
 
+      <form className="inline-edit-form" onSubmit={submitChecklistItem}>
+        <h3>Smart checklista</h3>
+        <label>
+          <span>Ny punkt</span>
+          <input value={checklistDraft} onChange={(event) => setChecklistDraft(event.target.value)} placeholder="Till exempel promenad, SB12 eller packa servetter" />
+        </label>
+        <div className="habit-actions">
+          <button type="submit" className="primary-button">Lägg till</button>
+        </div>
+        {dailyPlan.planState.checklist.length > 0 && (
+          <ul className="goals-list daily-plan-list">
+            {dailyPlan.planState.checklist.map((item) => (
+              <li key={item.id}>
+                <strong>{item.title}</strong>
+                <label className="toggle-row">
+                  <input
+                    type="checkbox"
+                    checked={item.enabled}
+                    onChange={(event) => persist(toggleChecklistItem(state, item.id, event.target.checked), event.target.checked ? 'Checklistpunkten aktiverades.' : 'Checklistpunkten pausades.')}
+                  />
+                  <span>{item.enabled ? 'Aktiv' : 'Pausad'}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
+      </form>
+
       <div className="reminder-columns">
         <article>
           <h3>Förfallna</h3>
@@ -177,6 +307,18 @@ function ReminderCenter({ goalsHabits = {}, onRemindersChange, reminderState = {
       </details>
     </section>
   )
+}
+
+function statusLabel(status) {
+  const labels = {
+    done: 'Klar',
+    missed: 'Missad',
+    overdue: 'Förfallen',
+    pending: 'Kvar',
+    skipped: 'Hoppad över',
+    snoozed: 'Snoozad',
+  }
+  return labels[status] || 'Kvar'
 }
 
 function ReminderList({ reminders, onArchive, onComplete, onEdit, onPause, onRestore, onResume, onSkip, onSnooze }) {

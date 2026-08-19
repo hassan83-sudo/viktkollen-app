@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { appStorageChangedEvent } from '../appStorageService.js'
-import { createGlobalSyncScheduler } from './globalSyncScheduler.js'
+import { createGlobalSyncScheduler, globalSyncSchedulerInternals } from './globalSyncScheduler.js'
 import { refreshSyncStatus } from './syncStatusStore.js'
 import { enqueueSyncAction, writeSyncQueue } from './syncQueue.js'
 import { markSyncKeyDirty, readSyncMetadata, writeSyncMetadata } from './syncMetadata.js'
@@ -79,6 +79,14 @@ afterEach(() => {
 })
 
 describe('global sync scheduler', () => {
+  it('treats corrupt retry timestamps as due so sync can recover', () => {
+    const now = new Date('2026-07-31T10:00:00.000Z')
+
+    expect(globalSyncSchedulerInternals.retryIsDue('inte-ett-datum', now)).toBe(true)
+    expect(globalSyncSchedulerInternals.retryIsDue('2026-07-31T09:00:00.000Z', now)).toBe(true)
+    expect(globalSyncSchedulerInternals.retryIsDue('2026-07-31T11:00:00.000Z', now)).toBe(false)
+  })
+
   it('does not run while signed out', async () => {
     const { scheduler, sync } = createSchedulerHarness()
 

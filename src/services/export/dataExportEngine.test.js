@@ -91,6 +91,19 @@ describe('Data Export & Portability V2', () => {
     expect(verification.importSession.sections[0].key).toBe('viktkollen.weights')
   })
 
+  it('returns a safe invalid result for malformed JSON instead of throwing', () => {
+    const verification = verifyExportDraft({
+      estimatedSize: 20,
+      exportDate,
+      filename: 'broken.json',
+      format: 'viktkollenBackup',
+      payloadText: '{"broken":',
+    })
+
+    expect(verification.status).toBe('invalid')
+    expect(verification.errors[0]).toContain('JSON')
+  })
+
   it('roundtrips exported weight into an import plan without writes', () => {
     const draft = buildDataExportDraft({ currentData, exportDate, selectedSections: ['weightLog'] })
     const session = parseDataImportText({

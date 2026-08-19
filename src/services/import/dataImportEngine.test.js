@@ -28,6 +28,18 @@ describe('Data Import & Migration V2', () => {
     expect(validateImportFileMetadata({ name: 'data.json', size: 6 * 1024 * 1024, type: 'application/json' }).ok).toBe(false)
   })
 
+  it('rejects oversized import text even when file metadata is wrong', () => {
+    const session = parseDataImportText({
+      file: jsonFile('backup.json', 128),
+      importDate: '2026-07-31T10:00:00.000Z',
+      text: `{"notes":"${'x'.repeat(5 * 1024 * 1024 + 1)}"}`,
+    })
+
+    expect(session.status).toBe('invalid')
+    expect(session.errors.join(' ')).toContain('för stor')
+    expect(session.sections).toHaveLength(0)
+  })
+
   it('accepts safe JSON and strips sensitive keys', () => {
     const parsed = safeParseJson(JSON.stringify({
       session: { access_token: 'secret' },

@@ -26,7 +26,10 @@ function getRetryAt(storage) {
 }
 
 function retryIsDue(retryAt, now = new Date()) {
-  return !retryAt || new Date(retryAt).getTime() <= now.getTime()
+  if (!retryAt) return true
+  const retryTime = new Date(retryAt).getTime()
+
+  return !Number.isFinite(retryTime) || retryTime <= now.getTime()
 }
 
 function shouldAutoRun({ force = false, storage, windowRef }) {
@@ -251,3 +254,7 @@ export function createGlobalSyncScheduler(options = {}) {
 }
 
 export const globalSyncScheduler = createGlobalSyncScheduler()
+
+export const globalSyncSchedulerInternals = {
+  retryIsDue,
+}

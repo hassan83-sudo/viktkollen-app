@@ -200,7 +200,14 @@ export function verifyExportDraft(draft) {
     return { errors: [], status: 'verified', warnings: ['Textsamanfattning är inte ett importformat.'] }
   }
 
-  const normalized = normalizeCloudBackupPayload(JSON.parse(draft.payloadText))
+  let parsedPayload
+  try {
+    parsedPayload = JSON.parse(draft.payloadText)
+  } catch {
+    return { errors: ['Exportens JSON kunde inte tolkas.'], status: 'invalid', warnings: [] }
+  }
+
+  const normalized = normalizeCloudBackupPayload(parsedPayload)
   if (!normalized) return { errors: ['Backupen kunde inte verifieras.'], status: 'invalid', warnings: [] }
 
   const parsed = parseDataImportText({

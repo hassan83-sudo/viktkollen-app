@@ -10,6 +10,14 @@ export const maxImportFileBytes = 5 * 1024 * 1024
 
 let activeApplyId = ''
 
+function getTextSizeBytes(text) {
+  if (typeof TextEncoder !== 'undefined') {
+    return new TextEncoder().encode(String(text || '')).length
+  }
+
+  return String(text || '').length
+}
+
 function nowIso(now = new Date()) {
   return now instanceof Date ? now.toISOString() : new Date(now).toISOString()
 }
@@ -90,6 +98,17 @@ export function parseDataImportText({ file = {}, importDate = new Date(), text =
   if (!fileValidation.ok) {
     return createImportSession({
       errors: fileValidation.errors,
+      fileMetadata: fileValidation.metadata,
+      format: { detectedFormat: 'invalidFile', sourceType: 'unknown' },
+      importDate,
+      sections: [],
+      warnings: [],
+    })
+  }
+
+  if (getTextSizeBytes(text) > maxImportFileBytes) {
+    return createImportSession({
+      errors: ['Filen är för stor för säker import.'],
       fileMetadata: fileValidation.metadata,
       format: { detectedFormat: 'invalidFile', sourceType: 'unknown' },
       importDate,
@@ -231,6 +250,7 @@ export function buildPreviewImportPlan(importSession, options = {}) {
 export const dataImportEngineInternals = {
   buildSummary,
   getStorage,
+  getTextSizeBytes,
   stableImportId,
   writeValue,
 }

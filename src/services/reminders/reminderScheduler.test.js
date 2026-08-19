@@ -39,6 +39,15 @@ describe('reminderScheduler', () => {
     expect(status.nextReminderAt).toBeTruthy()
   })
 
+  it('does not throw when interval reminder history contains a corrupt timestamp', () => {
+    const state = normalizeReminderState({
+      reminders: [{ id: 'r1', intervalMinutes: 90, lastTriggeredAt: 'trasigt-datum', scheduleType: 'interval', title: 'Vatten' }],
+    }, { now })
+
+    expect(() => buildReminderStatus(state, { now })).not.toThrow()
+    expect(getDueReminders(state, { now })).toHaveLength(0)
+  })
+
   it('uses a single timer and cleans up', () => {
     const setTimer = vi.fn(() => 7)
     const clearTimer = vi.fn()

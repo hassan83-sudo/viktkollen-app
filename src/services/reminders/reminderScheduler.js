@@ -2,6 +2,7 @@ import { normalizeReminderState, weekDays } from './reminderModel.js'
 
 const dayMs = 86400000
 const weekdayFromDate = (date) => weekDays[(date.getDay() + 6) % 7]
+const isValidDate = (date) => date instanceof Date && Number.isFinite(date.getTime())
 
 function atLocalTime(date, time) {
   const [hours, minutes] = String(time || '09:00').split(':').map(Number)
@@ -11,6 +12,7 @@ function atLocalTime(date, time) {
 }
 
 function dateText(date) {
+  if (!isValidDate(date)) return ''
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
@@ -37,9 +39,10 @@ export function getNextReminderAt(reminder, options = {}) {
 
   if (reminder.scheduleType === 'interval') {
     const base = reminder.lastTriggeredAt ? new Date(reminder.lastTriggeredAt) : now
+    const safeBase = isValidDate(base) ? base : now
     const interval = Math.max(60, reminder.intervalMinutes || 60) * 60000
-    const candidate = new Date(base.getTime() + interval)
-    return isDateAllowed(reminder, candidate) ? candidate.toISOString() : null
+    const candidate = new Date(safeBase.getTime() + interval)
+    return isValidDate(candidate) && isDateAllowed(reminder, candidate) ? candidate.toISOString() : null
   }
 
   for (let offset = 0; offset < 370; offset += 1) {
@@ -65,7 +68,9 @@ export function getDueReminders(state, options = {}) {
     if (reminder.lastTriggeredAt && dateText(new Date(reminder.lastTriggeredAt)) === dateText(now)) return false
     if (reminder.scheduleType === 'interval') {
       if (!reminder.lastTriggeredAt) return false
-      return new Date(reminder.lastTriggeredAt).getTime() + Math.max(60, reminder.intervalMinutes || 60) * 60000 <= now.getTime()
+      const lastTriggeredAt = new Date(reminder.lastTriggeredAt).getTime()
+      if (!Number.isFinite(lastTriggeredAt)) return false
+      return lastTriggeredAt + Math.max(60, reminder.intervalMinutes || 60) * 60000 <= now.getTime()
     }
 
     const candidate = atLocalTime(now, reminder.time)

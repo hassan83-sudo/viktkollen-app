@@ -18,6 +18,55 @@ function StatCard({ icon, label, value }) {
   )
 }
 
+const priorityLabels = {
+  high: 'Hög',
+  low: 'Låg',
+  medium: 'Medel',
+}
+
+const confidenceLabels = {
+  high: 'Hög confidence',
+  low: 'Låg confidence',
+  medium: 'Medel confidence',
+}
+
+function RecommendationCard({ onFeedback, recommendation }) {
+  if (!recommendation) return null
+
+  return (
+    <article className="coach-v2-recommendation">
+      <div className="coach-v2-section-heading">
+        <div>
+          <p className="eyebrow">{recommendation.category}</p>
+          <h4>{recommendation.title}</h4>
+        </div>
+        <span className="coach-v2-pill">{priorityLabels[recommendation.priority] || 'Medel'}</span>
+      </div>
+      <p>{recommendation.action}</p>
+      <details>
+        <summary>Varför detta råd?</summary>
+        <p>{recommendation.reasoningSummary}</p>
+        <ul className="coach-v2-list">
+          {(recommendation.evidence || []).map((item) => (
+            <li key={`${recommendation.id}-${item.text}`}>{item.text} <small>({item.provenance})</small></li>
+          ))}
+        </ul>
+      </details>
+      <div className="coach-v2-feedback" aria-label={`Feedback för ${recommendation.title}`}>
+        <span>{confidenceLabels[recommendation.confidence] || 'Medel confidence'}</span>
+        {recommendation.feedback ? (
+          <small>{recommendation.feedback.value === 'helpful' ? 'Markerat som hjälpsamt' : 'Markerat som inte relevant'}</small>
+        ) : (
+          <>
+            <button className="secondary-button" type="button" onClick={() => onFeedback?.(recommendation.id, 'helpful')}>Hjälpsamt</button>
+            <button className="secondary-button" type="button" onClick={() => onFeedback?.(recommendation.id, 'not_relevant')}>Inte relevant</button>
+          </>
+        )}
+      </div>
+    </article>
+  )
+}
+
 function ReportHistory({ reports, onClearReports, onDeleteReport }) {
   if (reports.length === 0) {
     return (
@@ -71,6 +120,7 @@ function AICoach({
   onClearCoachReports,
   onCreateCoachReport,
   onDeleteCoachReport,
+  onRecommendationFeedback,
 }) {
   const resolvedCoachStatus =
     coachStatus || 'AI-coachen använder dagens profil, vanor och loggar.'
@@ -106,6 +156,20 @@ function AICoach({
         </div>
       ) : (
         <div className="coach-v2-grid">
+          {coachReport.dailyAdvice && (
+            <section className="coach-v2-card coach-v2-wide">
+              <div className="coach-v2-section-heading">
+                <div>
+                  <p className="eyebrow">Dagens råd</p>
+                  <h3>{coachReport.dailyAdvice.title}</h3>
+                </div>
+                <span className="coach-v2-pill">{coachReport.contextQuality?.summary || 'Underlag saknas'}</span>
+              </div>
+              <p>{coachReport.dailyAdvice.action}</p>
+              <div className="coach-note">{coachReport.dailyAdvice.reasoningSummary}</div>
+            </section>
+          )}
+
           <section className="coach-v2-card coach-v2-wide">
             <div className="coach-v2-section-heading">
               <div>
@@ -121,6 +185,28 @@ function AICoach({
               <StatCard icon="cm" label="Längd" value={coachReport.coachProfile.height ? `${coachReport.coachProfile.height} cm` : 'Saknas'} />
             </div>
           </section>
+
+          {coachReport.recommendations?.length > 0 && (
+            <section className="coach-v2-card coach-v2-wide">
+              <div className="coach-v2-section-heading">
+                <div>
+                  <p className="eyebrow">Rekommendationer</p>
+                  <h3>Varför och nästa steg</h3>
+                </div>
+                <span className="coach-v2-pill">{coachReport.dataQuality?.summary || 'Underlag saknas'}</span>
+              </div>
+              <div className="coach-v2-recommendations">
+                {coachReport.recommendations.map((recommendation) => (
+                  <RecommendationCard
+                    key={recommendation.id}
+                    recommendation={recommendation}
+                    onFeedback={(recommendationId, feedback) =>
+                      onRecommendationFeedback?.(coachReport.id, recommendationId, feedback)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
 
           <section className="coach-v2-card">
             <p className="eyebrow">Daglig analys</p>
@@ -184,6 +270,19 @@ function AICoach({
               <li>Svåraste dag: {coachReport.weeklySummary.hardestDay}</li>
             </ul>
           </section>
+
+          {coachReport.weeklyReportV2 && (
+            <section className="coach-v2-card">
+              <p className="eyebrow">Veckorapport V2</p>
+              <h3>Veckan i korthet</h3>
+              <p>{coachReport.weeklyReportV2.summary}</p>
+              <ul className="coach-v2-list">
+                <li>Rapportunderlag: {coachReport.weeklyReportV2.quality}</li>
+                <li>Förra veckan: {coachReport.weeklyReportV2.previousWeekComparison?.summary}</li>
+                <li>Body Scan: {coachReport.weeklyReportV2.bodyScan?.weightEstimate ? `${coachReport.weeklyReportV2.bodyScan.weightEstimate.minKg}-${coachReport.weeklyReportV2.bodyScan.weightEstimate.maxKg} kg AI-estimat` : 'Saknas'}</li>
+              </ul>
+            </section>
+          )}
 
           <section className="coach-v2-card">
             <p className="eyebrow">Motivation</p>

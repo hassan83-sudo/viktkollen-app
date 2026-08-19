@@ -1716,6 +1716,41 @@ button.secondary-button:focus-visible,
   color: var(--muted);
 }
 
+.coach-v2-recommendations {
+  display: grid;
+  gap: 10px;
+}
+
+.coach-v2-recommendation {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.26);
+}
+
+.coach-v2-recommendation h4,
+.coach-v2-recommendation p {
+  margin: 0;
+}
+
+.coach-v2-recommendation summary {
+  cursor: pointer;
+  color: var(--text-h);
+  font-weight: 800;
+}
+
+.coach-v2-feedback {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .coach-v2-history {
   display: grid;
   gap: 12px;

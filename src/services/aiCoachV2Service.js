@@ -21,6 +21,23 @@ import {
 import { buildHealthSnapshot } from './healthSnapshot.js'
 import { analyzeWeights } from './progressService.js'
 
+export const coachRecommendationSchemaVersion = 2
+
+const validRecommendationCategories = new Set([
+  'activity',
+  'consistency',
+  'general',
+  'goal',
+  'logging',
+  'nutrition',
+  'protein',
+  'recovery',
+  'weight',
+])
+const validPriorities = new Set(['low', 'medium', 'high'])
+const validConfidence = new Set(['low', 'medium', 'high'])
+const unsafeCoachPattern = /diagnos|läkemedel|medicin|svält|straff|förbjud|måste gå ner|crash|extrem|garanterat|exakt kroppsfett/i
+
 function safeArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : []
 }
@@ -55,6 +72,131 @@ function average(values) {
   return numbers.length
     ? numbers.reduce((sum, value) => sum + value, 0) / numbers.length
     : null
+}
+
+function clampText(value, fallback = '', maxLength = 180) {
+  const text = safeText(value, fallback).replace(/\s+/g, ' ').trim()
+
+  return text.length > maxLength ? `${text.slice(0, maxLength - 1).trim()}…` : text
+}
+
+function makeEvidence(text, provenance = 'derived') {
+  return {
+    provenance,
+    text: clampText(text, '', 140),
+  }
+}
+
+function normalizePriority(value, fallback = 'medium') {
+  return validPriorities.has(value) ? value : fallback
+}
+
+function normalizeConfidence(value, fallback = 'medium') {
+  return validConfidence.has(value) ? value : fallback
+}
+
+function normalizeCategory(value, fallback = 'general') {
+  return validRecommendationCategories.has(value) ? value : fallback
+}
+
+function getRecommendationKey(recommendation = {}) {
+  return [
+    recommendation.category,
+    recommendation.title,
+    recommendation.action,
+  ]
+    .map((value) => safeText(value).toLocaleLowerCase('sv-SE'))
+    .join('|')
+}
+
+function getRecentRecommendationKeys(previousReports = []) {
+  return new Set(
+    safeArray(previousReports)
+      .slice(0, 5)
+      .flatMap((report) => safeArray(report.recommendations))
+      .map(getRecommendationKey),
+  )
+}
+
+export function normalizeCoachRecommendation(recommendation = {}, options = {}) {
+  const category = normalizeCategory(recommendation.category)
+  const title = clampText(recommendation.title, 'Nästa steg', 72)
+  const action = clampText(recommendation.action, '', 180)
+  const reasoningSummary = clampText(recommendation.reasoningSummary, 'Bygger på din senaste registrerade data.', 180)
+  const evidence = safeArray(recommendation.evidence)
+    .map((item) => (typeof item === 'string' ? makeEvidence(item) : makeEvidence(item.text, item.provenance)))
+    .filter((item) => item.text)
+    .slice(0, 3)
+
+  if (!action || unsafeCoachPattern.test(`${title} ${action} ${reasoningSummary}`)) {
+    return null
+  }
+
+  return {
+    action,
+    category,
+    confidence: normalizeConfidence(recommendation.confidence, options.defaultConfidence || 'medium'),
+    createdAt: recommendation.createdAt || options.now || new Date().toISOString(),
+    evidence,
+    feedback: recommendation.feedback || null,
+    id: safeText(recommendation.id) || `coach-rec-${category}-${Math.abs(getRecommendationKey({ action, category, title }).split('').reduce((sum, char) => sum + char.charCodeAt(0), 0))}`,
+    priority: normalizePriority(recommendation.priority),
+    reasoningSummary,
+    schemaVersion: coachRecommendationSchemaVersion,
+    title,
+  }
+}
+
+export function normalizeCoachRecommendations(recommendations = [], options = {}) {
+  const seen = new Set()
+
+  return safeArray(recommendations)
+    .map((recommendation) => normalizeCoachRecommendation(recommendation, options))
+    .filter(Boolean)
+    .filter((recommendation) => {
+      const key = getRecommendationKey(recommendation)
+
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .slice(0, 4)
+}
+
+function buildContextQuality({ bodyAnalysisHistory = [], checkIn, goals, meals = [], nutritionGoals = {}, weights = [] }) {
+  const measuredWeightDays = safeArray(weights).length
+  const mealDays = new Set(safeArray(meals).map((meal) => meal.date || meal.createdAt?.slice?.(0, 10)).filter(Boolean)).size
+  const hasCheckIn = checkIn && Object.keys(checkIn).length > 0
+  const goalCount = [
+    Number.isFinite(safeNumber(goals?.goalWeight)),
+    Number.isFinite(safeNumber(nutritionGoals?.calories)),
+    Number.isFinite(safeNumber(nutritionGoals?.protein)),
+  ].filter(Boolean).length
+  const score =
+    Math.min(measuredWeightDays, 6) * 8 +
+    Math.min(mealDays, 7) * 6 +
+    (hasCheckIn ? 18 : 0) +
+    goalCount * 8 +
+    (safeArray(bodyAnalysisHistory).length ? 6 : 0)
+  const level = score >= 75 ? 'high' : score >= 42 ? 'medium' : 'low'
+  const missing = [
+    measuredWeightDays < 2 ? 'fler uppmätta vikter' : '',
+    mealDays < 2 ? 'fler loggade måltidsdagar' : '',
+    !hasCheckIn ? 'dagens check-in' : '',
+    goalCount === 0 ? 'mål' : '',
+  ].filter(Boolean)
+
+  return {
+    level,
+    missing,
+    score: Math.max(0, Math.min(100, score)),
+    summary:
+      level === 'high'
+        ? 'Bra underlag'
+        : level === 'medium'
+          ? 'Medelstarkt underlag'
+          : 'Begränsat underlag',
+  }
 }
 
 function getRecentEntries(entries, days) {
@@ -364,6 +506,320 @@ function buildGoalCenter(coachProfile) {
   }
 }
 
+function buildCoachContextV2({
+  bodyAnalysisHistory,
+  checkIn,
+  coachProfile,
+  dailyAnalysis,
+  meals,
+  nutritionGoals,
+  snapshot,
+  weeklySummary,
+  weights,
+}) {
+  const bodyScan = snapshot.weight.provenance?.latestBodyScanEstimate || null
+  const contextQuality = buildContextQuality({
+    bodyAnalysisHistory,
+    checkIn,
+    goals: { goalWeight: coachProfile.goalWeight },
+    meals,
+    nutritionGoals,
+    weights,
+  })
+
+  return {
+    activity: {
+      activityGoal: null,
+      steps: dailyAnalysis.steps,
+      stepsLabel: dailyAnalysis.stepsLabel,
+      training: dailyAnalysis.trainingLabel,
+    },
+    bodyScan: bodyScan
+      ? {
+        confidence: bodyScan.confidence,
+        date: bodyScan.date,
+        estimatedWeight: {
+          maxKg: bodyScan.maxKg,
+          minKg: bodyScan.minKg,
+          provenance: 'ai_estimated',
+        },
+      }
+      : {
+        estimatedWeight: null,
+        provenance: 'missing',
+      },
+    checkIn: {
+      energy: normalizeCheckInMetrics(checkIn).energy.value,
+      mood: dailyAnalysis.mood,
+      movementCompleted: dailyAnalysis.trainingLabel !== 'Ingen träning markerad',
+      provenance: checkIn && Object.keys(checkIn).length ? 'user_entered' : 'missing',
+    },
+    contextQuality,
+    goals: {
+      calorieGoal: safeNumber(nutritionGoals?.calories),
+      goalWeight: coachProfile.goalWeight,
+      proteinGoal: safeNumber(nutritionGoals?.protein),
+      provenance: 'user_entered',
+    },
+    nutrition: {
+      calorieLabel: dailyAnalysis.caloriesLabel,
+      confidence: contextQuality.level,
+      mealCountToday: dailyAnalysis.mealCount,
+      proteinLabel: dailyAnalysis.proteinLabel,
+      recentMeals: safeArray(meals).slice(-5).map((meal) => meal.name || meal.text || meal.type || 'Måltid'),
+      source: 'estimated_or_user_entered',
+    },
+    profile: {
+      activityLevel: coachProfile.activityLevel,
+      age: coachProfile.age,
+      height: coachProfile.height,
+    },
+    provenance: {
+      bodyScanWeight: bodyScan ? 'ai_estimated' : 'missing',
+      calories: 'ai_estimated',
+      checkIn: checkIn && Object.keys(checkIn).length ? 'user_entered' : 'missing',
+      goals: 'user_entered',
+      protein: 'ai_estimated',
+      trend: weights.length >= 2 ? 'derived' : 'missing',
+      weight: coachProfile.currentWeight === null ? 'missing' : 'measured',
+    },
+    weight: {
+      latestMeasuredWeight: coachProfile.currentWeight,
+      measuredHistoryDays: weights.length,
+      targetProgress: coachProfile.weightContext.goalProgress,
+      trend: weeklySummary.weightChangeLabel,
+    },
+  }
+}
+
+function makeRecommendation(seed, options = {}) {
+  return normalizeCoachRecommendation(seed, options)
+}
+
+function buildDailyRecommendations({
+  bodyAnalysisHistory,
+  coachProfile,
+  contextQuality,
+  dailyAnalysis,
+  previousReports,
+  snapshot,
+  weeklySummary,
+}) {
+  const recommendations = []
+  const recentKeys = getRecentRecommendationKeys(previousReports)
+  const proteinGoal = safeNumber(snapshot.nutrition.goals?.protein)
+  const proteinToday = safeNumber(snapshot.nutrition.proteinToday)
+  const metrics = snapshot.checkIn.metrics || normalizeCheckInMetrics(snapshot.checkIn.latestToday || {})
+
+  if (proteinGoal && proteinToday !== null && proteinToday < proteinGoal * 0.75) {
+    recommendations.push(makeRecommendation({
+      action: 'Lägg till en enkel proteinkälla i nästa måltid, till exempel ägg, kvarg, tofu, bönor eller fisk.',
+      category: 'protein',
+      confidence: dailyAnalysis.mealCount > 0 ? 'medium' : 'low',
+      evidence: [
+        makeEvidence(`Protein idag: ${Math.round(proteinToday)} g av mål ${Math.round(proteinGoal)} g.`, 'ai_estimated'),
+        makeEvidence(`${dailyAnalysis.mealCount} måltider är loggade idag.`, 'user_entered'),
+      ],
+      priority: 'high',
+      reasoningSummary: 'Protein ligger under dagens mål och nästa måltid är ett konkret tillfälle att jämna ut dagen.',
+      title: 'Stärk nästa måltid',
+    }))
+  }
+
+  if (metrics.steps !== null && metrics.steps < 6000) {
+    recommendations.push(makeRecommendation({
+      action: 'Ta en kort promenad på 10-20 minuter när det passar idag.',
+      category: 'activity',
+      confidence: 'medium',
+      evidence: [makeEvidence(`Senaste check-in visar ${metrics.steps.toLocaleString('sv-SE')} steg.`, 'user_entered')],
+      priority: metrics.steps < 3000 ? 'high' : 'medium',
+      reasoningSummary: 'Aktiviteten ligger lågt hittills och en kort promenad är ett litet, mätbart nästa steg.',
+      title: 'Få in vardagsrörelse',
+    }))
+  }
+
+  if (metrics.energy.value !== null && metrics.energy.value <= 4) {
+    recommendations.push(makeRecommendation({
+      action: 'Gör kvällen enklare: vanlig måltid, vatten och en lugn nedvarvning före sömn.',
+      category: 'recovery',
+      confidence: 'medium',
+      evidence: [makeEvidence(`Energi i senaste check-in: ${metrics.energy.value}/10.`, 'user_entered')],
+      priority: 'medium',
+      reasoningSummary: 'Låg energi gör hårda planer mindre hållbara; ett mjukt nästa steg är mer realistiskt.',
+      title: 'Prioritera återhämtning',
+    }))
+  }
+
+  if (coachProfile.goalWeight !== null && coachProfile.currentWeight !== null && snapshot.weight.dailyWeights.length >= 2) {
+    recommendations.push(makeRecommendation({
+      action: 'Följ veckosnittet och välj en vana att upprepa innan du ändrar planen.',
+      category: 'goal',
+      confidence: snapshot.weight.dailyWeights.length >= 6 ? 'medium' : 'low',
+      evidence: [
+        makeEvidence(`Senaste uppmätta vikt: ${formatKg(coachProfile.currentWeight)}.`, 'measured'),
+        makeEvidence(`Målvikt: ${formatKg(coachProfile.goalWeight)}.`, 'user_entered'),
+        makeEvidence(`Veckoförändring: ${weeklySummary.weightChangeLabel}.`, 'derived'),
+      ],
+      priority: 'medium',
+      reasoningSummary: 'Målrådet bygger på uppmätt vikt och trend, inte på kroppsscannerns AI-estimat.',
+      title: 'Håll målspåret lugnt',
+    }))
+  }
+
+  if (contextQuality.level === 'low') {
+    recommendations.push(makeRecommendation({
+      action: `Samla mer underlag: ${contextQuality.missing.slice(0, 2).join(' och ') || 'en vikt eller check-in'}.`,
+      category: 'logging',
+      confidence: 'high',
+      evidence: [makeEvidence(contextQuality.summary, 'derived')],
+      priority: 'high',
+      reasoningSummary: 'När underlaget är tunt blir bättre datainsamling mer värdefullt än fler gissningar.',
+      title: 'Förbättra underlaget',
+    }))
+  }
+
+  const bodyEstimate = snapshot.weight.provenance?.latestBodyScanEstimate
+  if (bodyEstimate && bodyAnalysisHistory.length > 0) {
+    recommendations.push(makeRecommendation({
+      action: 'Använd kroppsscanningen som stöd för bildjämförelse, men låt vågen eller manuell vikt vara viktkällan.',
+      category: 'weight',
+      confidence: bodyEstimate.confidence || 'low',
+      evidence: [
+        makeEvidence(`Body Scan uppskattade ${bodyEstimate.minKg}-${bodyEstimate.maxKg} kg.`, 'ai_estimated'),
+        makeEvidence(coachProfile.currentWeight === null ? 'Senast uppmätt vikt saknas.' : `Senast uppmätt vikt är ${formatKg(coachProfile.currentWeight)}.`, coachProfile.currentWeight === null ? 'missing' : 'measured'),
+      ],
+      priority: 'low',
+      reasoningSummary: 'Kroppsscanning är sekundärt underlag och ska inte blandas ihop med faktisk vägning.',
+      title: 'Tolka Body Scan försiktigt',
+    }))
+  }
+
+  const normalized = normalizeCoachRecommendations(recommendations)
+  const fresh = normalized.filter((recommendation) => !recentKeys.has(getRecommendationKey(recommendation)))
+  const sorted = (fresh.length ? fresh : normalized).sort((first, second) => {
+    const priorityScore = { high: 3, medium: 2, low: 1 }
+
+    return priorityScore[second.priority] - priorityScore[first.priority]
+  })
+
+  return sorted.slice(0, 3)
+}
+
+function compareWithPreviousWeek({ currentMeals, previousMeals, currentCheckIns, previousCheckIns, currentWeights, previousWeights }) {
+  const currentMealDays = new Set(currentMeals.map((meal) => meal.date || meal.createdAt?.slice?.(0, 10)).filter(Boolean)).size
+  const previousMealDays = new Set(previousMeals.map((meal) => meal.date || meal.createdAt?.slice?.(0, 10)).filter(Boolean)).size
+  const currentCheckInDays = new Set(currentCheckIns.map((entry) => entry.date || entry.createdAt?.slice?.(0, 10)).filter(Boolean)).size
+  const previousCheckInDays = new Set(previousCheckIns.map((entry) => entry.date || entry.createdAt?.slice?.(0, 10)).filter(Boolean)).size
+  const currentWeightChange = currentWeights.length >= 2 ? Number((currentWeights.at(-1).value - currentWeights[0].value).toFixed(1)) : null
+  const previousWeightChange = previousWeights.length >= 2 ? Number((previousWeights.at(-1).value - previousWeights[0].value).toFixed(1)) : null
+
+  return {
+    checkInDaysDelta: currentCheckInDays - previousCheckInDays,
+    comparisonAvailable: previousMealDays + previousCheckInDays + previousWeights.length > 0,
+    mealDaysDelta: currentMealDays - previousMealDays,
+    summary:
+      previousMealDays + previousCheckInDays + previousWeights.length > 0
+        ? `${currentMealDays - previousMealDays >= 0 ? 'Fler eller lika många' : 'Färre'} måltidsdagar och ${currentCheckInDays - previousCheckInDays >= 0 ? 'fler eller lika många' : 'färre'} check-ins än veckan innan.`
+        : 'Förra veckan har för lite data för en rättvis jämförelse.',
+    weightChangeDelta:
+      currentWeightChange !== null && previousWeightChange !== null
+        ? Number((currentWeightChange - previousWeightChange).toFixed(1))
+        : null,
+  }
+}
+
+function buildWeeklyReportV2({ bodyAnalysisHistory, recommendations, snapshot, weights }) {
+  const anchorDate = getDate(snapshot.date) || new Date()
+  const anchorTime = anchorDate.getTime()
+  const currentWeekStart = anchorTime - 7 * 24 * 60 * 60 * 1000
+  const previousWeekStart = anchorTime - 14 * 24 * 60 * 60 * 1000
+  const latestBody = safeArray(bodyAnalysisHistory)[0] || null
+  const currentMeals = safeArray(snapshot.nutrition.actualMeals).filter((meal) => {
+    const date = getDate(meal.date || meal.createdAt)
+
+    return date && date.getTime() >= currentWeekStart && date.getTime() <= anchorTime
+  })
+  const previousMeals = safeArray(snapshot.nutrition.actualMeals).filter((meal) => {
+    const date = getDate(meal.date || meal.createdAt)
+
+    return date && date.getTime() >= previousWeekStart && date.getTime() < currentWeekStart
+  })
+  const currentWeights = safeArray(weights).slice(-7)
+  const previousWeights = safeArray(weights).slice(-14, -7)
+  const currentCheckIns = safeArray(snapshot.checkIn.dailyEntries).slice(-7)
+  const previousCheckIns = safeArray(snapshot.checkIn.dailyEntries).slice(-14, -7)
+  const comparison = compareWithPreviousWeek({
+    currentCheckIns,
+    currentMeals,
+    currentWeights,
+    previousCheckIns,
+    previousMeals,
+    previousWeights,
+  })
+  const strengths = [
+    currentMeals.length > 0 ? `Du loggade ${currentMeals.length} måltider den senaste veckan.` : '',
+    snapshot.weight.dailyWeights.length >= 2 ? `Vikttrenden bygger på ${snapshot.weight.dailyWeights.length} uppmätta viktdagar.` : '',
+    snapshot.checkIn.dailyEntries.length > 0 ? `Du har ${snapshot.checkIn.dailyEntries.length} check-ins i underlaget.` : '',
+  ].filter(Boolean).slice(0, 3)
+  const focus = recommendations
+    .filter((recommendation) => recommendation.priority !== 'low')
+    .map((recommendation) => recommendation.action)
+    .slice(0, 3)
+
+  return {
+    activity: {
+      steps: snapshot.checkIn.display.steps,
+      training: snapshot.checkIn.workout?.displayLabel || 'Saknas',
+    },
+    bodyScan: latestBody
+      ? {
+        date: latestBody.createdAt || latestBody.date || null,
+        summary: latestBody.result?.summary || 'Kroppsscanning finns som sekundärt underlag.',
+        weightEstimate: snapshot.weight.provenance?.latestBodyScanEstimate || null,
+      }
+      : null,
+    checkIn: {
+      energy: snapshot.checkIn.display.energy,
+      mood: snapshot.checkIn.display.mood,
+    },
+    focus: focus.length ? focus : ['Logga en vikt, en måltid och en check-in för bättre nästa rapport.'],
+    nextWeek: recommendations[0]?.action || 'Välj en liten vana att upprepa nästa vecka.',
+    previousWeekComparison: comparison,
+    quality: snapshot.weight.provenance?.status === 'missing' && currentMeals.length === 0 ? 'low' : currentMeals.length >= 3 ? 'high' : 'medium',
+    strengths: strengths.length ? strengths : ['Inga tydliga styrkor visas utan faktisk registrerad data ännu.'],
+    summary: 'Veckorapporten bygger på registrerad vikt, måltider, check-ins och separat markerade AI-estimat.',
+    weight: {
+      latestMeasured: snapshot.weight.current,
+      trend: snapshot.weight.trend,
+      weeklyChange: snapshot.weight.change7,
+    },
+  }
+}
+
+export function updateCoachRecommendationFeedback(report = {}, recommendationId, feedbackValue, options = {}) {
+  const allowed = feedbackValue === 'helpful' || feedbackValue === 'not_relevant'
+
+  if (!report || !allowed) return report
+
+  const feedback = {
+    at: options.now || new Date().toISOString(),
+    value: feedbackValue,
+  }
+
+  return {
+    ...report,
+    recommendations: safeArray(report.recommendations).map((recommendation) =>
+      recommendation.id === recommendationId
+        ? {
+          ...recommendation,
+          feedback,
+          status: feedbackValue === 'not_relevant' ? 'dismissed' : 'helpful',
+        }
+        : recommendation,
+    ),
+  }
+}
+
 function getMotivationKind({ checkIn, dailyAnalysis, weights }) {
   const lastActivity = getLastActivityDate({
     checkIn,
@@ -455,6 +911,7 @@ export function createAiCoachV2Report(data = {}) {
   const snapshot = data.healthSnapshot || buildHealthSnapshot(data)
   const profile = data.profile || {}
   const weights = snapshot.weight.dailyWeights
+  const bodyAnalysisHistory = safeArray(data.bodyAnalysisHistory)
   const mealHistory = []
   const meals = snapshot.nutrition.actualMeals
   const checkIn = snapshot.checkIn.latestToday || data.checkIn || {}
@@ -489,17 +946,51 @@ export function createAiCoachV2Report(data = {}) {
     profile,
     weights,
   })
+  const context = buildCoachContextV2({
+    bodyAnalysisHistory,
+    checkIn,
+    coachProfile,
+    dailyAnalysis,
+    meals,
+    nutritionGoals: snapshot.nutrition.goals || nutritionGoals,
+    snapshot,
+    weeklySummary,
+    weights,
+  })
+  const recommendations = buildDailyRecommendations({
+    bodyAnalysisHistory,
+    coachProfile,
+    contextQuality: context.contextQuality,
+    dailyAnalysis,
+    previousReports: data.previousReports,
+    snapshot,
+    weeklySummary,
+  })
+  const weeklyReportV2 = buildWeeklyReportV2({
+    bodyAnalysisHistory,
+    recommendations,
+    snapshot,
+    weights,
+  })
 
   return {
     coachConclusion: `${coachProfile.name}, ${dailyAnalysis.summary} ${weeklySummary.conclusion}`,
     coachProfile,
+    context,
+    contextQuality: context.contextQuality,
     createdAt: new Date().toISOString(),
     dailyAnalysis,
+    dailyAdvice: recommendations[0] || null,
+    dataQuality: context.contextQuality,
     goalCenter,
     id: `coach-report-${Date.now()}`,
     motivation,
+    nextBestAction: recommendations[0]?.action || motivation.message,
     nutritionInsights,
     progressSummary,
+    recommendations,
+    schemaVersion: coachRecommendationSchemaVersion,
+    weeklyReportV2,
     weeklySummary,
   }
 }

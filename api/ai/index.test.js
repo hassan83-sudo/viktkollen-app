@@ -1,7 +1,7 @@
 import { Readable } from 'node:stream'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import handler from './index.js'
+import handler, { sanitizeCoachRecommendations } from './index.js'
 import { setAiRateLimitAdapterForTests } from '../_shared/aiRateLimiter.js'
 import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
 
@@ -110,5 +110,43 @@ describe('legacy AI API route', () => {
     expect(response.statusCode).toBe(429)
     expect(response.body.error.code).toBe('RATE_LIMITED')
     expect(response.headers['Retry-After']).toBe('30')
+  })
+
+  it('sanitizes structured coach recommendations before returning provider output', () => {
+    const recommendations = sanitizeCoachRecommendations([
+      {
+        action: 'Lägg till protein i nästa måltid.',
+        category: 'protein',
+        confidence: 'certain',
+        evidence: [
+          { provenance: 'ai_estimated', text: 'Protein idag är under mål.' },
+          { provenance: 'unknown', text: 'Måltider finns i dagens logg.' },
+        ],
+        id: 'rec-1',
+        priority: 'urgent',
+        reasoningSummary: 'Rådet bygger på registrerad matdata.',
+        title: 'Stärk måltiden',
+      },
+      {
+        action: 'Du måste gå ner exakt kroppsfett snabbt.',
+        category: 'weight',
+        reasoningSummary: 'Garanterat resultat.',
+        title: 'Extrem plan',
+      },
+    ])
+
+    expect(recommendations).toHaveLength(1)
+    expect(recommendations[0]).toMatchObject({
+      action: 'Lägg till protein i nästa måltid.',
+      category: 'protein',
+      confidence: 'medium',
+      priority: 'medium',
+      title: 'Stärk måltiden',
+    })
+    expect(recommendations[0].evidence).toEqual([
+      { provenance: 'ai_estimated', text: 'Protein idag är under mål.' },
+      { provenance: 'derived', text: 'Måltider finns i dagens logg.' },
+    ])
+    expect(JSON.stringify(recommendations)).not.toMatch(/garanterat|exakt kroppsfett/i)
   })
 })

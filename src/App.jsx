@@ -1323,6 +1323,7 @@ function App() {
       const { createAiCoachV2Report } = await loadAiCoachV2Service()
       const report = createAiCoachV2Report({
         checkIn,
+        bodyAnalysisHistory,
         healthSnapshot,
         mealHistory: photoMeals,
         meals,
@@ -1358,6 +1359,7 @@ function App() {
   }, [
     bodyMeasurementAnalysis,
     bodyMeasurements,
+    bodyAnalysisHistory,
     checkIn,
     coachReports,
     dailyNutritionSummary,
@@ -1447,6 +1449,7 @@ function App() {
         .then(({ createAiCoachV2Report }) => {
           const report = createAiCoachV2Report({
             checkIn,
+            bodyAnalysisHistory,
             healthSnapshot,
             mealHistory: photoMeals,
             meals,
@@ -1471,6 +1474,7 @@ function App() {
     }, 350)
   }, [
     checkIn,
+    bodyAnalysisHistory,
     coachReports,
     dailyNutritionSummary,
     healthSnapshot,
@@ -1490,6 +1494,31 @@ function App() {
   ])
   const deleteCoachReport = useCallback((reportId) => {
     setCoachReports((current) => current.filter((report) => report.id !== reportId))
+  }, [])
+  const handleCoachRecommendationFeedback = useCallback((reportId, recommendationId, feedback) => {
+    if (!['helpful', 'not_relevant'].includes(feedback)) return
+
+    setCoachReports((current) =>
+      current.map((report) =>
+        report.id === reportId
+          ? {
+            ...report,
+            recommendations: (report.recommendations || []).map((recommendation) =>
+              recommendation.id === recommendationId
+                ? {
+                  ...recommendation,
+                  feedback: {
+                    at: new Date().toISOString(),
+                    value: feedback,
+                  },
+                  status: feedback === 'helpful' ? 'helpful' : 'dismissed',
+                }
+                : recommendation,
+            ),
+          }
+          : report,
+      ),
+    )
   }, [])
   const clearCoachReports = useCallback(() => {
     const shouldClear = window.confirm('Vill du rensa all coachhistorik?')
@@ -2873,6 +2902,7 @@ function App() {
           }}
           onCreateCoachReport={createCoachReport}
           onDeleteCoachReport={deleteCoachReport}
+          onRecommendationFeedback={handleCoachRecommendationFeedback}
           onGoalsHabitsChange={setGoalsHabits}
           onAiVoiceEnabledChange={handleAiVoiceEnabledChange}
           onStopAiVoiceResponse={stopAiVoiceResponse}

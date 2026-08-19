@@ -48,6 +48,7 @@ function CoachSection({
   onCreateCoachReport,
   onDeleteCoachReport,
   onGoalsHabitsChange,
+  onRecommendationFeedback,
   onAiVoiceEnabledChange,
   onStopAiVoiceResponse,
   onReminderStateChange,
@@ -102,6 +103,7 @@ function CoachSection({
           onClearCoachReports={onClearCoachReports}
           onCreateCoachReport={onCreateCoachReport}
           onDeleteCoachReport={onDeleteCoachReport}
+          onRecommendationFeedback={onRecommendationFeedback}
         />
 
         <AINutritionInsights

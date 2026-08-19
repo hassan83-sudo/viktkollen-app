@@ -60,6 +60,15 @@ function weeklyReport() {
     sharedAnalytics,
     summary: sharedAnalytics.summaries.coverage,
     weightTrend: sharedAnalytics.weightSummary.changeLabel,
+    weeklyReportV2: {
+      bodyScan: { estimatedWeight: { maxKg: 91, minKg: 88 }, provenance: 'ai_estimated' },
+      focus: ['Behåll protein i nästa måltid.'],
+      previousWeekComparison: { summary: 'Fler måltidsdagar än veckan innan.' },
+      quality: 'bra',
+      reportQuality: { level: 'bra', summary: 'Bra datatäckning.' },
+      strengths: ['Du loggade faktiska måltider.'],
+      summary: 'Veckan i korthet bygger på Viktkollen-data.',
+    },
   }
 }
 
@@ -142,6 +151,9 @@ describe('Shared Report UI V3 model', () => {
     )
 
     expect(markup).toContain('Veckorapport V3')
+    expect(markup).toContain('Veckorapport V2')
+    expect(markup).toContain('Veckans styrkor')
+    expect(markup).toContain('88-91 kg AI-estimat')
     expect(markup).toContain('Datatäckning')
     expect(markup).toContain('Jämförelse')
     expect(markup).toContain('Coachens genomförandegrad')

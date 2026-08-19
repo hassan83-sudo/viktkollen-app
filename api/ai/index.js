@@ -12,6 +12,10 @@ import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/responses'
 const DEFAULT_MODEL = 'gpt-4.1-mini'
+const validRecommendationCategories = new Set(['nutrition', 'protein', 'weight', 'activity', 'recovery', 'consistency', 'logging', 'goal', 'general'])
+const validRecommendationPriorities = new Set(['low', 'medium', 'high'])
+const validRecommendationConfidence = new Set(['low', 'medium', 'high'])
+const unsafeCoachPattern = /diagnos|läkemedel|medicin|svält|straff|förbjud|crash|extrem|garanterat|exakt kroppsfett/i
 
 function parseBody(request) {
   if (typeof request.body === 'string') {
@@ -43,6 +47,61 @@ function parseJson(text) {
       .replace(/```$/i, '')
       .trim(),
   )
+}
+
+function clampText(value, fallback = '', maxLength = 220) {
+  const text = typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : ''
+  const safe = text || fallback
+
+  return safe.length > maxLength ? `${safe.slice(0, maxLength - 1).trim()}…` : safe
+}
+
+function sanitizeEvidence(value) {
+  return (Array.isArray(value) ? value : [])
+    .map((item) => {
+      const source = typeof item === 'string' ? { text: item } : item || {}
+      const text = clampText(source.text, '', 140)
+      const provenance = ['measured', 'user_entered', 'ai_estimated', 'derived', 'missing'].includes(source.provenance)
+        ? source.provenance
+        : 'derived'
+
+      return text ? { provenance, text } : null
+    })
+    .filter(Boolean)
+    .slice(0, 3)
+}
+
+export function sanitizeCoachRecommendations(value = []) {
+  const seen = new Set()
+
+  return (Array.isArray(value) ? value : [])
+    .map((recommendation) => {
+      const source = recommendation && typeof recommendation === 'object' ? recommendation : {}
+      const title = clampText(source.title, '', 72)
+      const action = clampText(source.action, '', 180)
+      const reasoningSummary = clampText(source.reasoningSummary, 'Bygger på aktuell Viktkollen-data.', 180)
+
+      if (!title || !action || unsafeCoachPattern.test(`${title} ${action} ${reasoningSummary}`)) return null
+
+      return {
+        action,
+        category: validRecommendationCategories.has(source.category) ? source.category : 'general',
+        confidence: validRecommendationConfidence.has(source.confidence) ? source.confidence : 'medium',
+        evidence: sanitizeEvidence(source.evidence),
+        id: clampText(source.id, `server-rec-${title}`, 90),
+        priority: validRecommendationPriorities.has(source.priority) ? source.priority : 'medium',
+        reasoningSummary,
+        title,
+      }
+    })
+    .filter(Boolean)
+    .filter((recommendation) => {
+      const key = `${recommendation.category}|${recommendation.title}|${recommendation.action}`.toLocaleLowerCase('sv-SE')
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .slice(0, 4)
 }
 
 function getModel() {
@@ -406,6 +465,7 @@ async function handleWeeklyReport(data, response) {
       report: {
         ...makeFallbackReport(data),
         ...report,
+        recommendations: sanitizeCoachRecommendations(report.recommendations),
         nextSteps: Array.isArray(report.nextSteps)
           ? report.nextSteps.slice(0, 3)
           : makeFallbackReport(data).nextSteps,

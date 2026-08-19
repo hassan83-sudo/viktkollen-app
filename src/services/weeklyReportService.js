@@ -41,6 +41,76 @@ function hasStatus(history = [], key, keywords) {
   return keywords.some((keyword) => text.includes(keyword))
 }
 
+function buildWeeklyReportV2(sharedReport, snapshot) {
+  const activitySummary = sharedReport.activitySummary || {}
+  const nutritionSummary = sharedReport.nutritionSummary || {}
+  const comparisons = sharedReport.comparisons || {}
+  const coverage = sharedReport.coverage || { level: 'missing', text: 'Underlag saknas.' }
+  const quality =
+    coverage.level === 'good'
+      ? 'bra'
+      : coverage.level === 'partial'
+        ? 'medel'
+        : 'begränsat'
+  const strengths = (sharedReport.highlights || [])
+    .filter((item) => item.tone === 'positive' || item.tone === 'neutral')
+    .map((item) => item.text)
+    .slice(0, 3)
+  const focus = [
+    ...(sharedReport.attentionItems || []).map((item) => item.action || item.text),
+    ...(sharedReport.nextActions || []).map((item) => item.text),
+  ]
+    .filter(Boolean)
+    .slice(0, 3)
+
+  return {
+    activity: {
+      checkInDays: activitySummary.checkInCount ?? null,
+      stepsAverage: activitySummary.averageSteps ?? null,
+      summary: sharedReport.summaries.activity,
+      trainingDays: activitySummary.trainingDays ?? null,
+    },
+    bodyScan: snapshot.weight.provenance?.latestBodyScanEstimate
+      ? {
+        estimatedWeight: snapshot.weight.provenance.latestBodyScanEstimate,
+        provenance: 'ai_estimated',
+      }
+      : null,
+    checkIn: {
+      energy: activitySummary.averageEnergy ?? null,
+      mood: activitySummary.averageMood ?? null,
+      provenance: (activitySummary.checkInCount || 0) > 0 ? 'user_entered' : 'missing',
+    },
+    focus: focus.length ? focus : ['Samla mer data innan rapporten väljer ett skarpt fokus.'],
+    nutrition: {
+      averageCalories: nutritionSummary.averageCalories ?? null,
+      averageProtein: nutritionSummary.averageProtein ?? null,
+      loggedDays: nutritionSummary.loggedDays ?? null,
+      summary: sharedReport.summaries.nutrition,
+    },
+    previousWeekComparison: {
+      available: comparisons.hasComparison || false,
+      confidence: comparisons.confidence || 'low',
+      summary: comparisons.text || 'Jämförelse saknas.',
+    },
+    quality,
+    reportQuality: {
+      level: quality,
+      summary: coverage.text,
+    },
+    strengths: strengths.length ? strengths : ['Inga datastyrda styrkor visas förrän veckan har fler registreringar.'],
+    summary: 'Veckan i korthet bygger bara på sparad Viktkollen-data och tydligt separerade AI-estimat.',
+    weight: {
+      change: sharedReport.weightSummary.periodChange,
+      current: sharedReport.weightSummary.currentWeight,
+      goalRemaining: sharedReport.weightSummary.goalRemaining,
+      provenance: sharedReport.weightSummary.currentWeight === null ? 'missing' : 'measured',
+      summary: sharedReport.summaries.weight,
+      trend: sharedReport.weightSummary.trend,
+    },
+  }
+}
+
 /**
  * Builds a local weekly report fallback from app data.
  *
@@ -53,6 +123,7 @@ export function makeWeeklyReportFallback(data) {
     ...data,
     healthSnapshot: snapshot,
   }, { analysisDate: data.today })
+  const reportV2 = buildWeeklyReportV2(sharedReport, snapshot)
   const userContext = buildAiUserContext(data)
   const aiFallback = createAiFallback({
     feature: 'weeklyReport',
@@ -121,6 +192,7 @@ export function makeWeeklyReportFallback(data) {
 
   return {
     biggestProgress:
+      reportV2.strengths[0] ||
       sharedReport.highlights[0]?.text ||
       (mealHistory.length > 0
         ? 'Du har börjat skapa tydligare matdata med fotoanalyser.'
@@ -132,7 +204,7 @@ export function makeWeeklyReportFallback(data) {
         ? 'Låg energi kan göra kvällsrutinen svårare.'
         : 'Risken är att nästa steg blir för stort i stället för upprepbart.'),
     focusNextWeek:
-      sharedReport.attentionItems[0]?.action || goalsHabitsSummary?.nextStep || proactiveAction || 'Välj en liten vana att upprepa varje dag.',
+      reportV2.focus[0] || sharedReport.attentionItems[0]?.action || goalsHabitsSummary?.nextStep || proactiveAction || 'Välj en liten vana att upprepa varje dag.',
     coachFeedback,
     coachActions,
     coachTimeline,
@@ -158,10 +230,11 @@ export function makeWeeklyReportFallback(data) {
         ? `${formatSteps(steps)} i senaste check-in.`
         : 'Stegdata saknas i senaste check-in.'),
     nextSteps: [
+      ...reportV2.focus,
       hasProtein ? 'Behåll protein i nästa måltid.' : 'Lägg till protein i en måltid per dag.',
       hasVegetables ? 'Fortsätt med grönsaker/frukt.' : 'Lägg till frukt eller grönsaker dagligen.',
       energy <= 4 ? 'Planera återhämtning före hårdare träning.' : 'Ta en kort promenad på en fast tid.',
-    ],
+    ].slice(0, 3),
     nutritionStatus: hasProtein && hasVegetables
       ? 'Protein och grönsaker syns i matdata.'
       : hasProtein
@@ -191,6 +264,7 @@ export function makeWeeklyReportFallback(data) {
       smartGoals,
       social,
     },
+    weeklyReportV2: reportV2,
   }
 }
 

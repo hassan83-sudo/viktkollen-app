@@ -140,6 +140,36 @@ function WeeklyReport({
                   </div>
                 </div>
               )}
+              {weeklyReportData.weeklyReportV2 && (
+                <section className="coach-v2-card">
+                  <div className="coach-v2-section-heading">
+                    <div>
+                      <p className="eyebrow">Veckorapport V2</p>
+                      <h3>Veckan i korthet</h3>
+                    </div>
+                    <span className="coach-v2-pill">{weeklyReportData.weeklyReportV2.reportQuality?.level || weeklyReportData.weeklyReportV2.quality}</span>
+                  </div>
+                  <p>{weeklyReportData.weeklyReportV2.reportQuality?.summary || weeklyReportData.weeklyReportV2.summary}</p>
+                  <div className="report-v3-grid compact">
+                    <div>
+                      <p className="report-heading">Veckans styrkor</p>
+                      {(weeklyReportData.weeklyReportV2.strengths || []).slice(0, 3).map((item) => <p key={item}>{item}</p>)}
+                    </div>
+                    <div>
+                      <p className="report-heading">Veckans fokus</p>
+                      {(weeklyReportData.weeklyReportV2.focus || []).slice(0, 3).map((item) => <p key={item}>{item}</p>)}
+                    </div>
+                    <div>
+                      <p className="report-heading">Jämfört med förra veckan</p>
+                      <p>{weeklyReportData.weeklyReportV2.previousWeekComparison?.summary || 'Jämförelse saknas.'}</p>
+                    </div>
+                    <div>
+                      <p className="report-heading">Body Scan</p>
+                      <p>{weeklyReportData.weeklyReportV2.bodyScan?.estimatedWeight ? `${weeklyReportData.weeklyReportV2.bodyScan.estimatedWeight.minKg}-${weeklyReportData.weeklyReportV2.bodyScan.estimatedWeight.maxKg} kg AI-estimat` : 'Ingen body-scan-vikt används som verklig vägning.'}</p>
+                    </div>
+                  </div>
+                </section>
+              )}
               {reportSections.map(([key, heading]) => (
                 <div key={key}>
                   <p className="report-heading">{heading}</p>

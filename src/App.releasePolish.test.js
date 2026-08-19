@@ -28,6 +28,8 @@ describe('Release polish shell gating', () => {
     expect(moreSectionSource).toContain('<GlobalSearch')
     expect(moreSectionSource).toContain('Ändra profil')
     expect(moreSectionSource).toContain('Logga ut')
+    expect(moreSectionSource).toContain('Radera konto och data')
+    expect(moreSectionSource).toContain("requestAccountDeletion({ mode: 'account' })")
   })
 
   it('requires an explicit internal tools flag for dev/admin panels', () => {

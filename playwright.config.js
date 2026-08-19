@@ -1,4 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
+import process from 'node:process'
+
+const externalServer = process.env.VIKTKOLLEN_E2E_EXTERNAL_SERVER === '1'
 
 export default defineConfig({
   expect: {
@@ -13,8 +16,8 @@ export default defineConfig({
     baseURL: 'http://127.0.0.1:4173',
     trace: 'retain-on-failure',
   },
-  webServer: {
-    command: 'npm run preview -- --host 127.0.0.1 --port 4173 --strictPort',
+  webServer: externalServer ? undefined : {
+    command: 'node ./node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4173 --strictPort',
     reuseExistingServer: true,
     timeout: 30000,
     url: 'http://127.0.0.1:4173',

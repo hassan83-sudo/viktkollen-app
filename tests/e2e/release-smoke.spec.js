@@ -189,6 +189,33 @@ test.describe('release candidate smoke', () => {
     await expectReleaseHealthy(page, failures)
   })
 
+  test('More exposes account deletion readiness only after app access', async ({ page }) => {
+    const failures = []
+    attachRuntimeGuards(page, failures)
+
+    await page.goto('/')
+    await page.waitForLoadState('networkidle')
+
+    if (await page.getByText(/Skapa din profil/i).isVisible().catch(() => false)) {
+      await page.getByLabel(/Namn/i).fill('Release Test')
+      await page.getByLabel(/Startvikt/i).fill('91,8')
+      await page.getByLabel(/Målvikt|MÃ¥lvikt/i).fill('78')
+      await page.getByRole('button', { name: /spara|kom igång|kom igÃ¥ng|skapa/i }).first().click()
+    }
+
+    if (await page.getByText(/Logga in/i).first().isVisible().catch(() => false)) {
+      await expectReleaseHealthy(page, failures)
+      return
+    }
+
+    await page.getByRole('button', { name: /Mer|More|Fler/i }).click()
+    await expect(page.getByText(/Profil och konto/i)).toBeVisible()
+    await page.getByText(/Radera konto och data/i).click()
+    await expect(page.getByRole('button', { name: /Kontrollera raderingsstatus/i })).toBeVisible()
+    await expect(page.getByText(/Bekräfta med texten radera konto/i)).toBeVisible()
+    await expectReleaseHealthy(page, failures)
+  })
+
   test('offline reload keeps the PWA app shell available after first visit', async ({ page, context }) => {
     const failures = []
     attachRuntimeGuards(page, failures)

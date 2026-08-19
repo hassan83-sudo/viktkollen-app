@@ -79,8 +79,17 @@ export function assertDistContract() {
     'scripts/verify-coach-route.js',
     'scripts/verify-photo-route.js',
     'scripts/verify-preview.js',
+    'api/account-deletion/index.js',
+    'api/entitlements/index.js',
+    'api/_shared/supabaseServer.js',
+    'docs/privacy-data-inventory-v1.md',
+    'docs/staging-test-user-ab-acceptance.md',
+    'docs/supabase-staging-runbook.md',
+    'docs/vercel-staging-env-runbook.md',
     'src/services/accountDeletionReadiness.js',
+    'src/services/accountDeletionClient.js',
     'src/services/entitlements.js',
+    'supabase/entitlements_and_account_deletion.sql',
     'supabase/release_acceptance_checks.sql',
   ]
   requiredEnablementFiles.forEach((file) => {

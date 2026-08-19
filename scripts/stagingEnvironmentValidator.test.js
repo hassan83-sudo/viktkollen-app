@@ -16,16 +16,24 @@ describe('staging environment validator', () => {
   const requiredFiles = [
     'api/adaptive-coach/index.js',
     'api/ai/index.js',
+    'api/account-deletion/index.js',
     'api/body-analysis/index.js',
+    'api/entitlements/index.js',
     'api/meal-analysis/index.js',
+    'api/_shared/entitlementMapper.js',
     'api/_shared/aiRateLimiter.js',
     'api/_shared/aiRequestDeduper.js',
     'api/_shared/aiRouteErrors.js',
+    'api/_shared/supabaseServer.js',
     'api/_shared/verifySupabaseUser.js',
     'api/nutrition-photo-analysis/index.js',
+    'src/services/accountDeletionClient.js',
     'src/services/accountDeletionReadiness.js',
     'src/services/entitlements.js',
     'src/services/coachMemory/coachContextSelector.js',
+    'docs/supabase-staging-runbook.md',
+    'docs/vercel-staging-env-runbook.md',
+    'docs/staging-test-user-ab-acceptance.md',
     'src/services/coachMemory/coachMemoryBuilder.js',
     'src/services/coachMemory/coachMemoryModel.js',
     'public/manifest.webmanifest',
@@ -39,11 +47,14 @@ describe('staging environment validator', () => {
   it('passes with configured safe client variables and server-only OpenAI key', () => {
     const contents = {
       '.env.example': 'OPENAI_API_KEY=\nVITE_SUPABASE_URL=\n',
+      'api/account-deletion/index.js': 'verifySupabaseUser createSupabaseAdminClient deleteAuthUser',
       'api/adaptive-coach/index.js': 'verifySupabaseUser setNoStoreHeaders hasBlockedFields userId checkAiRouteRateLimit',
       'api/ai/index.js': 'verifySupabaseUser setNoStoreHeaders sendSafeAiError checkAiRouteRateLimit',
       'api/body-analysis/index.js': 'verifySupabaseUser setNoStoreHeaders sendSafeAiError checkAiRouteRateLimit',
+      'api/entitlements/index.js': 'verifySupabaseUser setNoStoreHeaders mapEntitlementRowToSnapshot',
       'api/meal-analysis/index.js': 'verifySupabaseUser setNoStoreHeaders sendSafeAiError checkAiRouteRateLimit',
       'api/nutrition-photo-analysis/index.js': 'verifySupabaseUser checkAiRouteRateLimit setNoStoreHeaders',
+      'src/services/entitlements.js': '/api/entitlements Authorization import.meta.env.DEV',
       'src/services/aiApiService.js': 'getCurrentAiAuthorization Authorization',
       'src/services/bodyAnalysisService.js': 'getCurrentAiAuthorization Authorization',
       'src/services/mealAnalysisService.js': 'getCurrentAiAuthorization Authorization',
@@ -53,6 +64,7 @@ describe('staging environment validator', () => {
     const result = validateStagingEnvironment({
       env: {
         OPENAI_API_KEY: 'configured-server-value',
+        SUPABASE_SERVICE_ROLE_KEY: 'configured-service-role',
         VITE_SUPABASE_ANON_KEY: 'configured-anon-key',
         VITE_SUPABASE_URL: 'https://project.supabase.co',
       },
@@ -74,6 +86,7 @@ describe('staging environment validator', () => {
     const result = validateStagingEnvironment({
       env: {
         OPENAI_API_KEY: 'placeholder',
+        VITE_SUPABASE_SERVICE_ROLE_KEY: 'client-admin-secret',
         VITE_OPENAI_API_KEY: 'client-secret',
         VITE_SUPABASE_ANON_KEY: 'todo',
         VITE_SUPABASE_URL: 'not-a-url',
@@ -83,6 +96,7 @@ describe('staging environment validator', () => {
 
     expect(result.ok).toBe(false)
     expect(result.checks.some((check) => check.id === 'VITE_OPENAI_API_KEY' && check.status === 'FAIL')).toBe(true)
+    expect(result.checks.some((check) => check.id === 'VITE_SUPABASE_SERVICE_ROLE_KEY' && check.status === 'FAIL')).toBe(true)
   })
 
   it('does not print variable values', () => {

@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 
 import { getSpawnTarget } from './verify-release.js'
 
+const releaseCandidateSource = readFileSync(new URL('./validate-release-candidate.js', import.meta.url), 'utf8')
+
 describe('verify-release script contract', () => {
   it('uses the npm cli entrypoint when the script is launched by npm', () => {
     expect(getSpawnTarget('npm', ['run', 'build'], {
@@ -39,6 +41,11 @@ describe('verify-release script contract', () => {
     const source = readFileSync(new URL('./verify-release.js', import.meta.url), 'utf8')
 
     expect(source).toContain('src/services/entitlements.js')
+    expect(source).toContain('api/entitlements/index.js')
+    expect(source).toContain('api/account-deletion/index.js')
+    expect(source).toContain('supabase/entitlements_and_account_deletion.sql')
+    expect(source).toContain('docs/supabase-staging-runbook.md')
+    expect(source).toContain('docs/vercel-staging-env-runbook.md')
     expect(source).toContain('src/services/accountDeletionReadiness.js')
     expect(source).toContain('CoachPlanCenter')
     expect(source).toContain('NutritionCoachCenter')
@@ -46,5 +53,19 @@ describe('verify-release script contract', () => {
     expect(source).toContain('HealthJourneyCenter')
     expect(source).toContain('healthJourneyBuilder')
     expect(source).toContain('HabitGoalCenter')
+  })
+
+  it('provides a non-mutating release candidate validator', () => {
+    expect(releaseCandidateSource).toContain("['npm', ['run', 'validate:staging']")
+    expect(releaseCandidateSource).toContain("['npm', ['run', 'test:e2e']")
+    expect(releaseCandidateSource).toContain('assertDistContract()')
+    expect(releaseCandidateSource).not.toContain('writeReleaseMarker')
+  })
+
+  it('runs E2E through the controlled list reporter runner', () => {
+    const e2eRunnerSource = readFileSync(new URL('./run-e2e.js', import.meta.url), 'utf8')
+
+    expect(e2eRunnerSource).toContain("'--reporter=list'")
+    expect(e2eRunnerSource).toContain('stopProcessTree(preview)')
   })
 })

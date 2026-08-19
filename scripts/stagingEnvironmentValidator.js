@@ -5,23 +5,32 @@ import process from 'node:process'
 const placeholderPattern = /^(|changeme|change-me|placeholder|todo|example|your-|xxx|test)$/i
 const requiredClientVariables = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']
 const serverOnlyVariables = ['OPENAI_API_KEY']
+const serverOnlySupabaseVariables = ['SUPABASE_SERVICE_ROLE_KEY']
 const requiredRoutes = [
   'api/adaptive-coach/index.js',
   'api/ai/index.js',
+  'api/account-deletion/index.js',
   'api/body-analysis/index.js',
+  'api/entitlements/index.js',
   'api/meal-analysis/index.js',
   'api/nutrition-photo-analysis/index.js',
 ]
 const requiredSecurityFiles = [
+  'api/_shared/entitlementMapper.js',
+  'api/_shared/supabaseServer.js',
   'api/_shared/verifySupabaseUser.js',
   'api/_shared/aiRateLimiter.js',
   'api/_shared/aiRequestDeduper.js',
   'api/_shared/aiRouteErrors.js',
   'src/services/accountDeletionReadiness.js',
+  'src/services/accountDeletionClient.js',
   'src/services/entitlements.js',
   'src/services/coachMemory/coachMemoryModel.js',
   'src/services/coachMemory/coachMemoryBuilder.js',
   'src/services/coachMemory/coachContextSelector.js',
+  'docs/supabase-staging-runbook.md',
+  'docs/vercel-staging-env-runbook.md',
+  'docs/staging-test-user-ab-acceptance.md',
 ]
 const requiredPublicFiles = [
   'public/manifest.webmanifest',
@@ -120,6 +129,24 @@ export function validateStagingEnvironment({
     checks.push(makeCheck(name, 'PASS', `${name} är konfigurerad server-side.`, false))
   })
 
+  serverOnlySupabaseVariables.forEach((name) => {
+    const value = envValue(env, name)
+    const viteName = `VITE_${name}`
+    if (envValue(env, viteName)) {
+      checks.push(makeCheck(viteName, 'FAIL', `${viteName} får inte exponera Supabase admin credentials i klienten.`))
+      return
+    }
+    if (!value) {
+      checks.push(makeCheck(name, 'SKIP', `${name} saknas. Entitlement/deletion routes faller säkert till free/blockerad deletion.`, false))
+      return
+    }
+    if (isPlaceholder(value)) {
+      checks.push(makeCheck(name, 'FAIL', `${name} verkar vara ett placeholdervärde.`))
+      return
+    }
+    checks.push(makeCheck(name, 'PASS', `${name} är konfigurerad server-side.`, false))
+  })
+
   requiredRoutes.forEach((file) => {
     checks.push(files.exists(file)
       ? makeCheck(file, 'PASS', `${file} finns.`, false)
@@ -174,6 +201,26 @@ export function validateStagingEnvironment({
       : makeCheck(`${id}-user-rate-limit`, 'FAIL', `${file} saknar user-scoped rate limit.`))
   })
 
+  if (files.exists('api/entitlements/index.js')) {
+    const route = files.read('api/entitlements/index.js')
+    checks.push(route.includes('verifySupabaseUser')
+      ? makeCheck('entitlement-auth-required', 'PASS', 'Entitlement route verifierar Supabase-session server-side.', false)
+      : makeCheck('entitlement-auth-required', 'FAIL', 'Entitlement route saknar server-side authverifiering.'))
+    checks.push(route.includes('setNoStoreHeaders') && route.includes('mapEntitlementRowToSnapshot')
+      ? makeCheck('entitlement-safe-free-fallback', 'PASS', 'Entitlement route har no-store och safe free fallback.', false)
+      : makeCheck('entitlement-safe-free-fallback', 'FAIL', 'Entitlement route saknar no-store eller safe free fallback.'))
+  }
+
+  if (files.exists('api/account-deletion/index.js')) {
+    const route = files.read('api/account-deletion/index.js')
+    checks.push(route.includes('verifySupabaseUser')
+      ? makeCheck('account-deletion-auth-required', 'PASS', 'Account deletion route verifierar Supabase-session server-side.', false)
+      : makeCheck('account-deletion-auth-required', 'FAIL', 'Account deletion route saknar server-side authverifiering.'))
+    checks.push(route.includes('createSupabaseAdminClient') && route.includes('deleteAuthUser')
+      ? makeCheck('account-deletion-admin-server-only', 'PASS', 'Account deletion route använder server-only admin-kontrakt.', false)
+      : makeCheck('account-deletion-admin-server-only', 'FAIL', 'Account deletion route saknar tydligt server-only admin-kontrakt.'))
+  }
+
   if (files.exists('src/services/ai/remoteCoachService.js')) {
     const client = files.read('src/services/ai/remoteCoachService.js')
     checks.push(/Authorization/.test(client) && /getCurrentAiAuthorization/.test(client)
@@ -209,6 +256,16 @@ export function validateStagingEnvironment({
       : makeCheck('body-analysis-client-authorization', 'FAIL', 'Kroppsscannerklient saknar Authorization-header.'))
   }
 
+  if (files.exists('src/services/entitlements.js')) {
+    const client = files.read('src/services/entitlements.js')
+    checks.push(/\/api\/entitlements/.test(client) && /Authorization/.test(client)
+      ? makeCheck('entitlement-client-server-verified', 'PASS', 'Entitlement-klienten använder server-verifierad read-path.', false)
+      : makeCheck('entitlement-client-server-verified', 'FAIL', 'Entitlement-klienten saknar server-verifierad read-path.'))
+    checks.push(/import\.meta\.env\.DEV/.test(client) && !/import\.meta\.env\.PROD[\s\S]{0,80}dev_preview/.test(client)
+      ? makeCheck('dev-premium-production-safe', 'PASS', 'Dev premium preview är begränsad till DEV.', false)
+      : makeCheck('dev-premium-production-safe', 'FAIL', 'Dev premium preview är inte tydligt DEV-begränsad.'))
+  }
+
   requiredPublicFiles.forEach((file) => {
     checks.push(files.exists(file)
       ? makeCheck(file, 'PASS', `${file} finns.`, false)
@@ -223,7 +280,9 @@ export function validateStagingEnvironment({
   if (files.exists('.env.example')) {
     const example = files.read('.env.example')
     const exposedServerSecret = serverOnlyVariables.some((name) =>
-      new RegExp(`^VITE_${name}=`, 'm').test(example))
+      new RegExp(`^VITE_${name}=`, 'm').test(example)) ||
+      serverOnlySupabaseVariables.some((name) =>
+        new RegExp(`^VITE_${name}=`, 'm').test(example))
     checks.push(exposedServerSecret
       ? makeCheck('.env.example', 'FAIL', '.env.example exponerar server-only variabel med VITE_.')
       : makeCheck('.env.example', 'PASS', '.env.example exponerar inte server-only nycklar som VITE_.', false))

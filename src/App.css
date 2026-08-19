@@ -11008,10 +11008,10 @@ body:has(#app-section-home.is-active) {
 .app-shell:has(#app-section-more.is-active) {
   width: min(760px, 100%);
   max-width: 760px;
-  height: 100vh;
-  height: 100dvh;
-  padding: 0 14px;
-  overflow: hidden;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 0 14px calc(104px + env(safe-area-inset-bottom));
+  overflow: visible;
   background: var(--vk-bg);
 }
 
@@ -11021,7 +11021,7 @@ body:has(#app-section-progress.is-active),
 body:has(#app-section-more.is-active) {
   min-width: 0;
   overflow-x: hidden;
-  overflow-y: hidden;
+  overflow-y: auto;
   background: var(--vk-bg);
 }
 

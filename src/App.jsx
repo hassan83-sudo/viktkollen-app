@@ -887,7 +887,6 @@ function makeProductFromBarcode(barcode) {
 }
 
 function App() {
-  const appScrollRef = useRef(null)
   const barcodeVideoRef = useRef(null)
   const barcodeStreamRef = useRef(null)
   const barcodeTimerRef = useRef(null)
@@ -2653,40 +2652,18 @@ function App() {
   }, [])
 
   const scrollAppToTop = useCallback(() => {
-    const scrollContainer = appScrollRef.current
-
-    if (!scrollContainer) {
-      window.scrollTo({ top: 0, behavior: getScrollBehavior() })
-      return
-    }
-
-    scrollContainer.scrollTo({ top: 0, behavior: getScrollBehavior() })
+    window.scrollTo({ top: 0, behavior: getScrollBehavior() })
   }, [getScrollBehavior])
 
   const scrollTargetInApp = useCallback((target, options = {}) => {
-    const scrollContainer = appScrollRef.current
-
     if (!target) {
       scrollAppToTop()
       return
     }
 
-    if (!scrollContainer) {
-      target.scrollIntoView({
-        behavior: getScrollBehavior(),
-        block: options.block || 'start',
-      })
-      return
-    }
-
-    const containerRect = scrollContainer.getBoundingClientRect()
-    const targetRect = target.getBoundingClientRect()
-    const offset = Number(options.offset || 0)
-    const top = targetRect.top - containerRect.top + scrollContainer.scrollTop - offset
-
-    scrollContainer.scrollTo({
-      top: Math.max(0, top),
+    target.scrollIntoView({
       behavior: getScrollBehavior(),
+      block: options.block || 'start',
     })
   }, [getScrollBehavior, scrollAppToTop])
 

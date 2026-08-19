@@ -29,6 +29,7 @@ import {
 } from './nutrition/mealDateUtils.js'
 import { normalizeNutritionGoals } from './nutrition/nutritionGoals.js'
 import { analyzeWeights } from './progressService.js'
+import { buildWeightProvenanceSummary } from './weightProvenance.js'
 
 const technicalDisplayPattern = /\b(undefined|null|nan|infinity|true|false)\b|\[object object\]/i
 
@@ -417,7 +418,7 @@ function getPeriodWeightChange(dailyWeights, range) {
   return first && latest ? Number((latest.value - first.value).toFixed(1)) : null
 }
 
-function buildWeightSnapshot({ profile, today, weights }) {
+function buildWeightSnapshot({ bodyAnalysisHistory, profile, today, weights }) {
   const todayDate = getLocalDateString(today)
   const dailyWeights = normalizeDailyWeightEntries(weights, { today: parseLocalDate(todayDate) || today })
   const weightStats = getWeightStats(dailyWeights, { startWeight: profile?.startWeight })
@@ -452,6 +453,7 @@ function buildWeightSnapshot({ profile, today, weights }) {
     facts,
     goal: facts.goalWeight,
     goalProgress: facts.goalProgress,
+    provenance: buildWeightProvenanceSummary({ bodyAnalysisHistory, weights }),
     start: facts.startWeight,
     totalChange: facts.weightChange,
     trend: facts.trend,
@@ -516,7 +518,12 @@ export function buildHealthSnapshot(data = {}) {
   const today = parseLocalDate(getLocalDateString(data.today || new Date())) || new Date()
   const date = getLocalDateString(today)
   const profile = data.profile && typeof data.profile === 'object' ? { ...data.profile } : {}
-  const weight = buildWeightSnapshot({ profile, today, weights: safeArray(data.weights) })
+  const weight = buildWeightSnapshot({
+    bodyAnalysisHistory: safeArray(data.bodyAnalysisHistory),
+    profile,
+    today,
+    weights: safeArray(data.weights),
+  })
   const nutrition = buildNutritionSnapshot({
     mealHistory: data.mealHistory,
     meals: data.meals,

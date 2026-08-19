@@ -1,5 +1,6 @@
 import { getUnifiedWeightContext } from './healthCalculations.js'
 import { buildHealthSnapshot } from './healthSnapshot.js'
+import { getLatestBodyScanEstimatedWeight } from './weightProvenance.js'
 
 let lastContextKey = ''
 let lastContextValue = null
@@ -32,6 +33,7 @@ function getWeightContext(weights = [], currentWeight, profile = {}) {
     history: weightContext.history.slice(-10),
     latestWeight: weightContext.latestWeight,
     percentRemaining: weightContext.percentRemaining,
+    provenance: profile.weightProvenance || null,
     remainingKg: weightContext.remainingKg,
     startWeight: weightContext.startWeight,
     trend: weightContext.trend,
@@ -54,11 +56,13 @@ function getMealsContext(meals = [], mealHistory = [], loggedMealsToday = meals)
 
 function getBodyContext(bodyAnalysisHistory = []) {
   const history = safeArray(bodyAnalysisHistory).slice(0, 10)
+  const latestEstimatedWeight = getLatestBodyScanEstimatedWeight(bodyAnalysisHistory)
 
   return {
     analysisCount: safeArray(bodyAnalysisHistory).length,
     history,
     latestAnalysis: history[0] || null,
+    latestEstimatedWeight,
     totalAnalyses: safeArray(bodyAnalysisHistory).length,
   }
 }
@@ -114,7 +118,10 @@ export function buildAiUserContext(data = {}) {
     healthSnapshot: snapshot,
     meals: getMealsContext(snapshot.nutrition.actualMeals, data.mealHistory, snapshot.nutrition.mealsToday),
     profile: compactProfile(data.profile),
-    weight: getWeightContext(snapshot.weight.dailyWeights, data.currentWeight ?? snapshot.weight.current, data.profile),
+    weight: getWeightContext(snapshot.weight.dailyWeights, data.currentWeight ?? snapshot.weight.current, {
+      ...data.profile,
+      weightProvenance: snapshot.weight.provenance,
+    }),
   }
 
   return lastContextValue

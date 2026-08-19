@@ -312,6 +312,11 @@ export function buildAiCoachFacts(context = {}) {
     ...context,
     weights: Array.isArray(context.weights) ? context.weights : nestedWeight.history || [],
   })
+  const weightProvenance = snapshot.weight.provenance || nestedWeight.provenance || null
+  const bodyScanEstimatedWeight =
+    context.bodyAnalysis?.latestEstimatedWeight ||
+    weightProvenance?.latestBodyScanEstimate ||
+    null
   const weights = snapshot.weight.dailyWeights
   const weightHistory = getSortedWeightValues(weights)
   const unifiedWeight = snapshot.weight.facts || getUnifiedWeightFacts({
@@ -407,6 +412,7 @@ export function buildAiCoachFacts(context = {}) {
     age: parseNumber(profile.age),
     averageSteps: getAverageStepData(context),
     bedtimeMealCount: 0,
+    bodyScanEstimatedWeight,
     caloriesGoal: getNumericGoal(nutritionGoals, 'calories'),
     caloriesGoalSource: nutritionGoals.caloriesGoalSource || '',
     change30,
@@ -474,6 +480,7 @@ export function buildAiCoachFacts(context = {}) {
     weightLost: lossFacts.weightLost,
     weeklyNutritionReport,
     weightPlateau,
+    weightProvenance,
     weightRegistrationCount: weightHistory.length,
     weightTrend: unifiedWeight.trend,
     weightVariation,

@@ -1,4 +1,6 @@
-﻿export function parseWeightValue(value, fallback = null) {
+﻿import { isMeasuredWeightEntry } from './weightProvenance.js'
+
+export function parseWeightValue(value, fallback = null) {
   if (typeof value === 'number') {
     return Number.isFinite(value) && value > 0 ? value : fallback
   }
@@ -105,6 +107,7 @@ function getLatestCentralWeightEntry(entries = []) {
 
 export function normalizeWeightEntries(weights = []) {
   const rawEntries = (Array.isArray(weights) ? weights : [])
+    .filter(isMeasuredWeightEntry)
     .map((entry) => {
       const value = parseWeightValue(entry?.value ?? entry?.weight)
       const date = getWeightEntryDateTime(entry)

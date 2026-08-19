@@ -1,7 +1,8 @@
 import { getUnifiedWeightFacts, normalizeDailyWeightEntries } from './healthCalculations.js'
 import { formatWeight, formatWeightChange } from './healthFormatting.js'
+import { isMeasuredWeightEntry } from './weightProvenance.js'
 
-export const weightSources = ['Manuell', 'Importerad', 'Check-in', 'Kroppsanalys', 'Annat']
+export const weightSources = ['Manuell', 'Importerad', 'Check-in', 'Annat']
 
 export const bodyMeasurementTypes = [
   'Midja',
@@ -106,6 +107,10 @@ function splitDateTime(entry) {
 
 export function normalizeWeightEntry(entry) {
   if (!isObject(entry)) {
+    return null
+  }
+
+  if (!isMeasuredWeightEntry(entry)) {
     return null
   }
 

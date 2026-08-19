@@ -24,8 +24,11 @@ import {
   migrateDuplicateWeightEntries,
   normalizeWeights,
   upsertWeight,
+  weightSources,
   weightDraftToEntry,
 } from './progressService.js'
+import { buildHealthSnapshot } from './healthSnapshot.js'
+import { buildAiUserContext } from './aiUserContext.js'
 
 const oldWeight = {
   createdAt: '2026-07-28T08:00:00.000Z',
@@ -294,6 +297,59 @@ describe('weight module regression flow', () => {
     expect(dashboard.goals.currentWeight).toBe(90.1)
     expect(smartProgress.weight.currentWeight).toBe(90.1)
     expect(coachFacts.latestWeight).toBe(90.1)
+  })
+
+  it('keeps AI body scan estimates out of the central measured weight source', () => {
+    const profile = { goalWeight: '78 kg', startWeight: '91,8 kg' }
+    const rawWeights = [
+      { date: '2026-07-01', id: 'start', source: 'Manuell', time: '08:00', value: 91.8 },
+      { date: '2026-07-31', id: 'measured-latest', source: 'Manuell', time: '08:00', value: 89.6 },
+      { date: '2026-08-01', id: 'ai-estimate', source: 'Kroppsanalys', time: '08:00', value: 84.2 },
+      { date: '2026-08-02', id: 'ai-provenance', provenance: 'ai_estimated', time: '08:00', value: 83.8 },
+    ]
+    const bodyAnalysisHistory = [
+      {
+        createdAt: '2026-08-02T10:00:00.000Z',
+        result: {
+          estimatedWeight: {
+            confidence: 'low',
+            maxKg: 85,
+            minKg: 82,
+          },
+        },
+      },
+    ]
+    const snapshot = buildHealthSnapshot({
+      bodyAnalysisHistory,
+      profile,
+      today: '2026-08-02',
+      weights: rawWeights,
+    })
+    const dashboard = createDashboardData({ bodyAnalysisHistory, checkIn: {}, foods: [], mealHistory: [], meals: [], profile, weights: rawWeights })
+    const coachFacts = buildAiCoachFacts({ bodyAnalysisHistory, profile, weights: rawWeights })
+    const aiContext = buildAiUserContext({ bodyAnalysisHistory, profile, today: '2026-08-02', weights: rawWeights })
+
+    expect(weightSources).not.toContain('Kroppsanalys')
+    expect(normalizeWeights(rawWeights).map((entry) => entry.id)).toEqual(['start', 'measured-latest'])
+    expect(normalizeWeightEntries(rawWeights).map((entry) => entry.value)).toEqual([91.8, 89.6])
+    expect(snapshot.weight.current).toBe(89.6)
+    expect(snapshot.weight.provenance).toMatchObject({
+      aiEstimatedCount: 2,
+      excludedFromMeasuredSeriesCount: 2,
+      measuredCount: 2,
+      status: 'measured',
+    })
+    expect(snapshot.weight.provenance.latestBodyScanEstimate).toMatchObject({
+      confidence: 'low',
+      maxKg: 85,
+      minKg: 82,
+      provenance: 'ai_estimated',
+    })
+    expect(dashboard.goals.currentWeight).toBe(89.6)
+    expect(coachFacts.latestWeight).toBe(89.6)
+    expect(coachFacts.bodyScanEstimatedWeight).toMatchObject({ minKg: 82, maxKg: 85 })
+    expect(aiContext.weight.currentWeight).toBe(89.6)
+    expect(aiContext.bodyAnalysis.latestEstimatedWeight).toMatchObject({ minKg: 82, maxKg: 85 })
   })
 
   it('central weight source calculates start, total change and goal remaining consistently', () => {

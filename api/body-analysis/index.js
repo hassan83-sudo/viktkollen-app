@@ -1,4 +1,9 @@
 import { analyzeBodyImages } from '../../src/services/bodyAnalysisAi.js'
+import {
+  buildBodyAnalysisContext,
+  normalizeBodyAnalysisResultModel,
+  normalizeScanInput,
+} from '../../src/services/bodyAnalysisEstimates.js'
 import { createBodyAnalysisPrompt } from '../../src/services/bodyAnalysisPrompt.js'
 import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
@@ -27,6 +32,13 @@ const resultKeys = [
   'sourceReason',
   'confidence',
   'safetyNote',
+  'schemaVersion',
+  'scanInput',
+  'measuredWeight',
+  'estimatedWeight',
+  'estimatedMeasurements',
+  'bodyFatEstimate',
+  'dataQuality',
 ]
 
 export const config = {
@@ -75,6 +87,20 @@ async function readRequestBody(request) {
 }
 
 function parsePreviousAnalysis(value) {
+  if (!value) {
+    return null
+  }
+
+  try {
+    const parsedValue = JSON.parse(value)
+
+    return parsedValue && typeof parsedValue === 'object' ? parsedValue : null
+  } catch {
+    return null
+  }
+}
+
+function parseJsonField(value) {
   if (!value) {
     return null
   }
@@ -140,8 +166,10 @@ async function parseImages(request) {
   if (!contentType.includes('multipart/form-data') || !boundary) {
     return {
       backImage: null,
+      context: null,
       frontImage: null,
       previousAnalysis: null,
+      scanInput: normalizeScanInput(),
       sideImage: null,
     }
   }
@@ -151,8 +179,10 @@ async function parseImages(request) {
 
   return {
     backImage: parsed.images.backImage ?? null,
+    context: parseJsonField(parsed.fields.context),
     frontImage: parsed.images.frontImage ?? null,
     previousAnalysis: parsePreviousAnalysis(parsed.fields.previousAnalysis),
+    scanInput: normalizeScanInput(parseJsonField(parsed.fields.scanInput)),
     sideImage: parsed.images.sideImage ?? null,
   }
 }
@@ -219,7 +249,8 @@ function validateRequest(request, images) {
   return null
 }
 
-function createMockAnalysis(previousAnalysis = null, sourceReason = 'api_error') {
+function createMockAnalysis(previousAnalysis = null, sourceReason = 'api_error', context = buildBodyAnalysisContext(), scanInput = normalizeScanInput()) {
+
   return {
     bodyComposition:
       'Visuell kroppssammansättning ser stabil ut. Bedömningen är försiktig och följer inte exakta medicinska värden.',
@@ -239,6 +270,15 @@ function createMockAnalysis(previousAnalysis = null, sourceReason = 'api_error')
         },
     confidence: 'Medel',
     confidenceLevel: 'Medel',
+    dataQuality: 'low',
+    estimatedMeasurements: {
+      chestCm: null,
+      hipCm: null,
+      shoulderWidthCm: null,
+      waistCm: null,
+    },
+    estimatedWeight: null,
+    bodyFatEstimate: null,
     generatedAt: new Date().toISOString(),
     improvementAreas: [
       'Fortsätt ta bilder med samma ljus och avstånd.',
@@ -265,7 +305,10 @@ function createMockAnalysis(previousAnalysis = null, sourceReason = 'api_error')
     routineFeedback:
       'Din rutin blir mer användbar om bilderna tas regelbundet och på samma sätt.',
     safetyNote:
-      'Detta är en visuell uppskattning och inte medicinsk rådgivning, diagnos eller behandling.',
+      'Bildanalysen är en AI-uppskattning och ersätter inte våg, måttband eller medicinsk bedömning.',
+    measuredWeight: context.latestMeasuredWeight || null,
+    scanInput,
+    schemaVersion: 2,
     source: 'mock',
     sourceReason,
     status: 'completed',
@@ -281,9 +324,17 @@ function createMockAnalysis(previousAnalysis = null, sourceReason = 'api_error')
 }
 
 function formatBodyAnalysisResult(analysis) {
+  const normalizedModel = normalizeBodyAnalysisResultModel(analysis, {
+    scanInput: analysis.scanInput,
+  })
+  const safeAnalysis = {
+    ...analysis,
+    ...normalizedModel,
+  }
+
   return resultKeys.reduce((result, key) => {
-    if (analysis[key] !== undefined && analysis[key] !== null) {
-      result[key] = analysis[key]
+    if (safeAnalysis[key] !== undefined && safeAnalysis[key] !== null) {
+      result[key] = safeAnalysis[key]
     }
 
     return result
@@ -309,7 +360,12 @@ function getFallbackReason(error) {
 }
 
 async function runBodyAnalysis(images) {
-  const prompt = createBodyAnalysisPrompt(images.previousAnalysis)
+  const context = images.context || buildBodyAnalysisContext()
+  const scanInput = normalizeScanInput(images.scanInput)
+  const prompt = createBodyAnalysisPrompt(images.previousAnalysis, {
+    ...context,
+    scanInput,
+  })
   const startedAt = Date.now()
 
   try {
@@ -322,6 +378,8 @@ async function runBodyAnalysis(images) {
     )
     const result = {
       ...analysis,
+      measuredWeight: context.latestMeasuredWeight || null,
+      scanInput,
       source: 'ai',
       sourceReason: analysis.sourceReason || 'ai_success',
     }
@@ -343,7 +401,7 @@ async function runBodyAnalysis(images) {
       sourceReason,
     })
 
-    return createMockAnalysis(images.previousAnalysis, sourceReason)
+    return createMockAnalysis(images.previousAnalysis, sourceReason, context, scanInput)
   }
 }
 
@@ -456,6 +514,9 @@ export default async function handler(request, response) {
 }
 
 export const bodyAnalysisRouteInternals = {
+  createMockAnalysis,
+  formatBodyAnalysisResult,
   parseMultipartImages,
+  parseJsonField,
   validateImage,
 }

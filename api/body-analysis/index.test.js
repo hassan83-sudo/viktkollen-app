@@ -7,15 +7,20 @@ import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.j
 
 const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4])
 
-function multipartBody({ boundary = 'body-boundary', contentType = 'image/png', image = pngBytes } = {}) {
+function multipartBody({ boundary = 'body-boundary', contentType = 'image/png', fields = {}, image = pngBytes } = {}) {
   const parts = ['frontImage', 'sideImage', 'backImage'].map((fieldName) => Buffer.concat([
     Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${fieldName}"; filename="${fieldName}.png"\r\nContent-Type: ${contentType}\r\n\r\n`, 'latin1'),
     image,
     Buffer.from('\r\n', 'latin1'),
   ]))
+  const fieldParts = Object.entries(fields).map(([fieldName, value]) => Buffer.from(
+    `--${boundary}\r\nContent-Disposition: form-data; name="${fieldName}"\r\n\r\n${value}\r\n`,
+    'latin1',
+  ))
 
   return Buffer.concat([
     ...parts,
+    ...fieldParts,
     Buffer.from(`--${boundary}--\r\n`, 'latin1'),
   ])
 }
@@ -124,12 +129,87 @@ describe('body analysis API route', () => {
 
   it('falls back to clearly marked mock output when provider key is missing', async () => {
     delete process.env.OPENAI_API_KEY
-    const response = await callRoute(createRequest({ body: multipartBody() }))
+    const response = await callRoute(createRequest({ body: multipartBody({
+      fields: {
+        context: JSON.stringify({
+          latestMeasuredWeight: { date: '2026-08-12', source: 'Våg', valueKg: 78 },
+        }),
+      },
+    }) }))
 
     expect(response.statusCode).toBe(200)
     expect(response.body.source).toBe('mock')
     expect(response.body.sourceReason).toBe('missing_api_key')
+    expect(response.body.estimatedWeight).toBeUndefined()
+    expect(response.body.measuredWeight).toEqual({ date: '2026-08-12', source: 'Våg', valueKg: 78 })
     expect(JSON.stringify(response.body)).not.toMatch(/OPENAI_API_KEY|Bearer|body-user-a|data:image/)
+  })
+
+  it('sanitizes valid AI estimates and keeps measured weight separate', async () => {
+    process.env.OPENAI_API_KEY = 'test-key'
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      json: async () => ({
+        output_text: JSON.stringify({
+          confidence: 'medium',
+          dataQuality: 'medium',
+          estimatedMeasurements: {
+            hipCm: { confidence: 'low', max: 105, min: 98 },
+            waistCm: { confidence: 'medium', max: 94, min: 88 },
+          },
+          estimatedWeight: {
+            basis: 'Tre vinklar, längd och registrerad vikt.',
+            confidence: 'medium',
+            maxKg: 82,
+            midpointKg: 79,
+            minKg: 76,
+          },
+          limitations: ['Bildanalys är osäker.'],
+          summary: 'Försiktig analys.',
+        }),
+      }),
+      ok: true,
+    })))
+
+    const response = await callRoute(createRequest({ body: multipartBody({
+      fields: {
+        context: JSON.stringify({
+          latestMeasuredWeight: { date: '2026-08-12', source: 'Våg', valueKg: 78 },
+          profile: { height: 180 },
+        }),
+      },
+    }) }))
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body.source).toBe('ai')
+    expect(response.body.measuredWeight).toEqual({ date: '2026-08-12', source: 'Våg', valueKg: 78 })
+    expect(response.body.estimatedWeight).toEqual({
+      basis: 'Tre vinklar, längd och registrerad vikt.',
+      confidence: 'medium',
+      maxKg: 82,
+      midpointKg: 79,
+      minKg: 76,
+    })
+    expect(response.body.estimatedMeasurements.waistCm).toEqual({ confidence: 'medium', max: 94, min: 88 })
+    expect(response.body.estimatedMeasurements.chestCm).toBeNull()
+  })
+
+  it('drops malformed AI estimate fields instead of returning unsafe precision', () => {
+    const result = bodyAnalysisRouteInternals.formatBodyAnalysisResult({
+      confidence: 'high',
+      estimatedMeasurements: {
+        chestCm: { confidence: 'medium', max: 20, min: -4 },
+        waistCm: { confidence: 'medium', max: 94, min: 88 },
+      },
+      estimatedWeight: { confidence: 'high', maxKg: 78.5, minKg: 78.4 },
+      generatedAt: '2026-08-12T10:00:00.000Z',
+      source: 'ai',
+      summary: 'Klar',
+    })
+
+    expect(result.estimatedWeight).toBeUndefined()
+    expect(result.estimatedMeasurements.waistCm).toEqual({ confidence: 'medium', max: 94, min: 88 })
+    expect(result.estimatedMeasurements.chestCm).toBeNull()
+    expect(result.confidence).toBe('high')
   })
 
   it('applies server-side rate limiting after auth', async () => {

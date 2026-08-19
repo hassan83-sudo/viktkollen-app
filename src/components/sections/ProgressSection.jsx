@@ -75,6 +75,7 @@ function ProgressSection({
         afterPhotoId={afterPhoto ? String(afterPhoto.id) : ''}
         beforeAfterPhotos={beforeAfterPhotos}
         beforePhotoId={beforePhoto ? String(beforePhoto.id) : ''}
+        bodyAnalysisHistory={bodyAnalysisHistory}
         hasProgressPhotos={progressPhotos.length > 0}
         onAfterPhotoIdChange={onAfterPhotoIdChange}
         onBeforePhotoIdChange={onBeforePhotoIdChange}
@@ -88,7 +89,9 @@ function ProgressSection({
         progressPhotoItems={progressPhotoItems}
         progressPhotoNote={progressPhotoNote}
         progressPhotoOptions={progressPhotoOptions}
+        profile={profile}
         userId={userId}
+        weights={weights}
       />
 
       <MonthlyReport report={monthlyReport} />

@@ -121,6 +121,7 @@ function hasStoredBodyAnalyses() {
 function ProgressPhotos({
   afterPhotoId,
   beforePhotoId,
+  bodyAnalysisHistory = [],
   hasProgressPhotos,
   onAfterPhotoIdChange,
   onDeleteProgressPhoto,
@@ -134,7 +135,9 @@ function ProgressPhotos({
   progressPhotoItems,
   progressPhotoNote,
   progressPhotoOptions,
+  profile = {},
   userId,
+  weights = [],
 }) {
   const [showSameOccasionComparison, setShowSameOccasionComparison] =
     useState(false)
@@ -182,8 +185,11 @@ function ProgressPhotos({
       />
 
       <BodyAnalysisCard
+        bodyAnalysisHistoryContext={bodyAnalysisHistory}
         onAnalysisHistoryChange={setHasBodyAnalysisHistory}
+        profile={profile}
         userId={userId}
+        weights={weights}
       />
 
       {hasProgressPhotos && (

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { getAnalysisComparison } from '../services/bodyAnalysisComparison'
 import {
@@ -15,14 +15,17 @@ import {
   getLatestAnalysis,
   importHistory,
 } from '../services/bodyAnalysisHistory'
+import { buildBodyAnalysisContext } from '../services/bodyAnalysisEstimates'
 import { analyzeBodyWithAI } from '../services/bodyAnalysisService'
 import { getBodyAnalysisProgressStats } from '../services/bodyAnalysisStats'
 import {
   createDefaultEntitlementSnapshot,
   entitlementFeatures,
+  fetchVerifiedEntitlementSnapshot,
   freeFeatureLimits,
   getFeatureAccess,
 } from '../services/entitlements'
+import { getCurrentAiAuthorization } from '../services/ai/aiAuthTransport'
 import {
   incrementPremiumAnalyticsCounter,
   premiumAnalyticsCounters,
@@ -232,7 +235,7 @@ function getLatestInsights(analysis) {
     .slice(0, 3)
 }
 
-function createDemoBodyAnalysisResult(previousAnalysis) {
+function createDemoBodyAnalysisResult(previousAnalysis, context = null) {
   return {
     bodyComposition:
       'Demoanalysen visar en stabil visuell helhetsbild utan medicinska exakta värden.',
@@ -249,6 +252,14 @@ function createDemoBodyAnalysisResult(previousAnalysis) {
         },
     confidence: 'Medel',
     confidenceLevel: 'Medel',
+    dataQuality: 'low',
+    estimatedMeasurements: {
+      chestCm: null,
+      hipCm: null,
+      shoulderWidthCm: null,
+      waistCm: null,
+    },
+    estimatedWeight: null,
     generatedAt: new Date().toISOString(),
     improvementAreas: ['Fortsätt hålla bildrutinen enkel och konsekvent.'],
     limitations: ['Demoanalysen använder inte riktig bildtolkning.'],
@@ -261,7 +272,14 @@ function createDemoBodyAnalysisResult(previousAnalysis) {
     routineFeedback:
       'Regelbundenhet gör tidslinjen mer användbar när riktig analys kopplas in.',
     safetyNote:
-      'Detta är en allmän uppskattning och inte medicinsk rådgivning.',
+      'Bildanalysen är en AI-uppskattning och ersätter inte våg, måttband eller medicinsk bedömning.',
+    measuredWeight: context?.latestMeasuredWeight || null,
+    scanInput: {
+      angles: ['front', 'side', 'back'],
+      imageCount: 3,
+      requiredAngles: ['front', 'side', 'back'],
+    },
+    schemaVersion: 2,
     source: 'mock',
     sourceReason: 'demo',
     status: 'completed',
@@ -271,7 +289,13 @@ function createDemoBodyAnalysisResult(previousAnalysis) {
   }
 }
 
-function BodyAnalysisCard({ onAnalysisHistoryChange = () => {}, userId = 'local-user' }) {
+function BodyAnalysisCard({
+  bodyAnalysisHistoryContext = [],
+  onAnalysisHistoryChange = () => {},
+  profile = {},
+  userId = 'local-user',
+  weights = [],
+}) {
   const [activeBodyMarker, setActiveBodyMarker] = useState(bodyOverviewMarkers[0])
   const [analysisHistory, setAnalysisHistory] = useState(() =>
     getAnalysisHistory(),
@@ -292,7 +316,26 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {}, userId = 'local-
   const [sidePhoto, setSidePhoto] = useState(null)
   const [timelineFilter, setTimelineFilter] = useState('all')
   const analysisCount = analysisHistory.length
-  const entitlementSnapshot = createDefaultEntitlementSnapshot({ userId })
+  const [entitlementSnapshot, setEntitlementSnapshot] = useState(() =>
+    createDefaultEntitlementSnapshot({ userId }))
+
+  useEffect(() => {
+    let active = true
+
+    fetchVerifiedEntitlementSnapshot({
+      getAuthorization: getCurrentAiAuthorization,
+      userId,
+    }).then((result) => {
+      if (active) {
+        setEntitlementSnapshot(result.entitlement)
+      }
+    })
+
+    return () => {
+      active = false
+    }
+  }, [userId])
+
   const bodyAnalysisAccess = getFeatureAccess(entitlementSnapshot, entitlementFeatures.bodyAnalysis, {
     devPreviewEnabled: isPremiumPreviewEnabled,
     usage: { bodyAnalysisScans: analysisCount },
@@ -303,6 +346,11 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {}, userId = 'local-
     front: frontPhoto,
     side: sidePhoto,
   }
+  const analysisContext = buildBodyAnalysisContext({
+    bodyAnalysisHistory: bodyAnalysisHistoryContext.length ? bodyAnalysisHistoryContext : analysisHistory,
+    profile,
+    weights,
+  })
   const canAnalyze =
     canCompleteBodyAnalysisScan(scanPhotos) && !isAnalyzing && !isFreeLimitReached
   const analyzeDisabledReason = isFreeLimitReached
@@ -533,7 +581,12 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {}, userId = 'local-
       createdAt: new Date().toISOString(),
       frontPhoto: photos.frontPhoto || { name: 'Demo framifrån', preview: '' },
       result,
-      schemaVersion: 1,
+      scanInput: result.scanInput || {
+        angles: ['front', 'side', 'back'],
+        imageCount: 3,
+        requiredAngles: ['front', 'side', 'back'],
+      },
+      schemaVersion: result.schemaVersion || 2,
       sidePhoto: photos.sidePhoto || { name: 'Demo från sidan', preview: '' },
       status: 'Analys klar',
       syncStatus: 'local',
@@ -589,6 +642,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {}, userId = 'local-
       }
       const result = await analyzeBodyWithAI({
         backPhoto,
+        context: analysisContext,
         frontPhoto,
         previousAnalysis: getLatestAnalysis()?.result,
         sidePhoto,
@@ -647,7 +701,7 @@ function BodyAnalysisCard({ onAnalysisHistoryChange = () => {}, userId = 'local-
     }
 
     setAnalysisError('')
-    storeCompletedAnalysis(createDemoBodyAnalysisResult(getLatestAnalysis()?.result))
+    storeCompletedAnalysis(createDemoBodyAnalysisResult(getLatestAnalysis()?.result, analysisContext))
   }
 
   function handleExportHistory() {

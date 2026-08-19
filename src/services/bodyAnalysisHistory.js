@@ -1,7 +1,11 @@
 import { getBodyAnalysisStorage } from './bodyAnalysisStorage'
+import {
+  bodyAnalysisSchemaVersion,
+  normalizeBodyAnalysisResultModel,
+} from './bodyAnalysisEstimates'
 
 const HISTORY_VERSION = 1
-const ANALYSIS_SCHEMA_VERSION = 1
+const ANALYSIS_SCHEMA_VERSION = bodyAnalysisSchemaVersion
 const MAX_ANALYSES = 10
 const HISTORY_CHANGED_EVENT = 'viktkollen:body-analysis-history-changed'
 
@@ -68,14 +72,24 @@ export function normalizeAnalysis(analysis) {
 
   const updatedAt = new Date(analysis.updatedAt || analysis.createdAt)
 
+  const normalizedResult = {
+    ...analysis.result,
+    ...normalizeBodyAnalysisResultModel(analysis.result, {
+      generatedAt: analysis.result.generatedAt || createdAt.toISOString(),
+      scanInput: analysis.result.scanInput || analysis.scanInput,
+    }),
+  }
+
   return {
     ...analysis,
     analysisNumber: Number.isFinite(Number(analysis.analysisNumber))
       ? Number(analysis.analysisNumber)
       : 1,
     createdAt: createdAt.toISOString(),
+    result: normalizedResult,
+    scanInput: normalizedResult.scanInput,
     schemaVersion: Number.isFinite(Number(analysis.schemaVersion))
-      ? Number(analysis.schemaVersion)
+      ? Math.max(Number(analysis.schemaVersion), ANALYSIS_SCHEMA_VERSION)
       : ANALYSIS_SCHEMA_VERSION,
     status: typeof analysis.status === 'string' ? analysis.status : 'Analys klar',
     syncStatus:

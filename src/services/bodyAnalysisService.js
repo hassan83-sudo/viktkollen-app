@@ -39,7 +39,7 @@ const mockBodyResult = {
   visualConsistency: 'Försök använda samma ljus, avstånd och vinkel.',
 }
 
-export function buildBodyAnalysisPayload(frontImage, sideImage, backImage, previousAnalysis) {
+export function buildBodyAnalysisPayload(frontImage, sideImage, backImage, previousAnalysis, context = null) {
   const requestMetadata = {
     createdAt: new Date().toISOString(),
     requestId: `body-analysis-${Date.now()}`,
@@ -52,8 +52,14 @@ export function buildBodyAnalysisPayload(frontImage, sideImage, backImage, previ
   return {
     createdAt: new Date().toISOString(),
     backImage: backImage.file,
+    context,
     frontImage: frontImage.file,
     previousAnalysis,
+    scanInput: {
+      angles: ['front', 'side', 'back'],
+      imageCount: 3,
+      requiredAngles: ['front', 'side', 'back'],
+    },
     sideImage: sideImage.file,
   }
 }
@@ -127,6 +133,12 @@ async function callBodyAnalysisApi(payload) {
       formData.append('previousAnalysis', JSON.stringify(payload.previousAnalysis))
     }
 
+    if (payload.context) {
+      formData.append('context', JSON.stringify(payload.context))
+    }
+
+    formData.append('scanInput', JSON.stringify(payload.scanInput))
+
     const response = await fetch(BODY_ANALYSIS_ENDPOINT, {
       body: formData,
       headers: {
@@ -182,6 +194,7 @@ async function callBodyAnalysisApi(payload) {
  */
 export async function analyzeBodyWithAI({
   backPhoto,
+  context,
   frontPhoto,
   previousAnalysis,
   sidePhoto,
@@ -203,6 +216,7 @@ export async function analyzeBodyWithAI({
     sidePhoto,
     backPhoto,
     previousAnalysis,
+    context,
   )
 
   // TODO: Return the AI result from the backend instead of the mock result.

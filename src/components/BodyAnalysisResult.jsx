@@ -1,3 +1,32 @@
+import {
+  getConfidenceLabel,
+  getScanInputLabel,
+} from '../services/bodyAnalysisEstimates'
+
+function formatKg(value) {
+  if (!Number.isFinite(Number(value))) return ''
+  return Number(value).toLocaleString('sv-SE', { maximumFractionDigits: 1, minimumFractionDigits: Number.isInteger(Number(value)) ? 0 : 1 })
+}
+
+function formatRange(min, max, unit) {
+  if (!Number.isFinite(Number(min)) || !Number.isFinite(Number(max))) return ''
+  return `${formatKg(min)}-${formatKg(max)} ${unit}`
+}
+
+function formatMeasuredWeightDate(date) {
+  if (!date) return ''
+  const parsed = new Date(date)
+  if (Number.isNaN(parsed.getTime())) return date
+  return new Intl.DateTimeFormat('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' }).format(parsed)
+}
+
+const measurementLabels = {
+  chestCm: 'Bröst',
+  hipCm: 'Höft',
+  shoulderWidthCm: 'Axelbredd',
+  waistCm: 'Midja',
+}
+
 function BodyAnalysisResult({
   activeBodyMarker,
   angleComparison = [],
@@ -22,6 +51,14 @@ function BodyAnalysisResult({
     result?.limitations?.[0] ||
     result?.safetyNote ||
     'Analysen kan inte avgöra medicinska tillstånd, exakt vikt eller exakt kroppsfett.'
+  const estimatedMeasurements = result?.estimatedMeasurements || {}
+  const visibleMeasurements = Object.entries(measurementLabels)
+    .map(([key, label]) => ({
+      estimate: estimatedMeasurements[key],
+      key,
+      label,
+    }))
+    .filter((item) => item.estimate)
 
   if (!savedAnalysis) {
     return (
@@ -103,6 +140,81 @@ function BodyAnalysisResult({
         <p>{nextActionText}</p>
         <p className="report-heading">Vad analysen inte kan avgöra</p>
         <p>{limitationText}</p>
+      </div>
+      <div className="body-analysis-recommended-steps">
+        <div>
+          <p className="eyebrow">AI-kroppsanalys</p>
+          <h3>Underlag och uppskattningar</h3>
+        </div>
+        <div className="progress-stat-grid">
+          <div>
+            <span>Underlag</span>
+            <strong>{getScanInputLabel(result?.scanInput)}</strong>
+          </div>
+          <div>
+            <span>Datakvalitet</span>
+            <strong>{getConfidenceLabel(result?.dataQuality || result?.confidence)}</strong>
+          </div>
+          <div>
+            <span>Senast registrerad vikt</span>
+            <strong>{result?.measuredWeight ? `${formatKg(result.measuredWeight.valueKg)} kg` : 'Saknas'}</strong>
+          </div>
+          <div>
+            <span>Registrerad</span>
+            <strong>{result?.measuredWeight ? formatMeasuredWeightDate(result.measuredWeight.date) : 'Inte angivet'}</strong>
+          </div>
+          <div>
+            <span>AI-uppskattad vikt</span>
+            <strong>{result?.estimatedWeight ? formatRange(result.estimatedWeight.minKg, result.estimatedWeight.maxKg, 'kg') : 'Otillräckligt underlag'}</strong>
+          </div>
+          <div>
+            <span>Säkerhet</span>
+            <strong>{result?.estimatedWeight ? getConfidenceLabel(result.estimatedWeight.confidence) : 'Låg'}</strong>
+          </div>
+        </div>
+        {result?.estimatedWeight && (
+          <p className="settings-note">
+            Mittpunkt cirka {formatKg(result.estimatedWeight.midpointKg)} kg. {result.estimatedWeight.basis} AI-uppskattning - inte en vägning.
+          </p>
+        )}
+        {!result?.estimatedWeight && (
+          <p className="settings-note">
+            AI:n hittade inte tillräckligt underlag för en ansvarsfull viktuppskattning.
+          </p>
+        )}
+      </div>
+      <div className="body-analysis-recommended-steps">
+        <div>
+          <p className="eyebrow">Försiktiga estimat</p>
+          <h3>Kroppsmått och sammansättning</h3>
+        </div>
+        {visibleMeasurements.length > 0 ? (
+          <div className="progress-stat-grid">
+            {visibleMeasurements.map(({ estimate, key, label }) => (
+              <div key={key}>
+                <span>{label}</span>
+                <strong>{formatRange(estimate.min, estimate.max, 'cm')}</strong>
+                <small>Säkerhet: {getConfidenceLabel(estimate.confidence)}</small>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="settings-note">
+            Måttuppskattningar visas bara när längd/skala och bildkvalitet räcker.
+          </p>
+        )}
+        {result?.bodyFatEstimate ? (
+          <p className="settings-note">
+            Möjligt visuellt intervall: {formatRange(result.bodyFatEstimate.minPercent, result.bodyFatEstimate.maxPercent, '%')}. Säkerhet: {getConfidenceLabel(result.bodyFatEstimate.confidence)}. Detta är inte en kroppsfettmätning.
+          </p>
+        ) : (
+          <p className="settings-note">
+            Kroppssammansättning visas utan kroppsfettstal när underlaget inte är defensibelt.
+          </p>
+        )}
+        <p className="progress-photo-safety">
+          Bildanalysen är en AI-uppskattning och ersätter inte våg, måttband eller medicinsk bedömning.
+        </p>
       </div>
       {getResultSections(savedAnalysis.result).map((section) => (
         <div key={section.key}>

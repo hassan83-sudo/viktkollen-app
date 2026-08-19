@@ -93,7 +93,7 @@ export async function analyzeBodyImages(
             role: 'user',
           },
         ],
-        max_output_tokens: 900,
+        max_output_tokens: 1600,
         model,
       }),
       headers: {

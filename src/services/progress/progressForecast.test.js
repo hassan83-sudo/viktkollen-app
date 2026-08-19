@@ -89,6 +89,13 @@ describe('goal progress forecast', () => {
     expect(forecastGoalProgress({ currentWeight: 90, goalWeight: 80, today, weights }).weeksRemaining).toBeGreaterThan(0)
   })
 
+  it('returns a cautious week interval for projected goals', () => {
+    const forecast = forecastGoalProgress({ currentWeight: 90, goalWeight: 80, today, weights })
+
+    expect(forecast.weekIntervalLabel).toMatch(/veckor/)
+    expect(forecast.text).toContain(forecast.weekIntervalLabel)
+  })
+
   it('includes uncertainty language', () => {
     expect(forecastGoalProgress({ currentWeight: 90, goalWeight: 80, today, weights }).text).toContain('inte ett löfte')
   })

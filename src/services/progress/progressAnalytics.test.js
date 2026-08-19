@@ -598,10 +598,10 @@ describe('progress analytics additional regressions', () => {
   it.each([
     ['7d label', '7d', '7 dagar'],
     ['30d label', '30d', '30 dagar'],
-    ['90d label', '90d', '90 dagar'],
-    ['180d label', '180d', '180 dagar'],
-    ['365d label', '365d', '365 dagar'],
-    ['all label', 'all', 'Hela perioden'],
+    ['90d label', '90d', '3 månader'],
+    ['180d label', '180d', '6 månader'],
+    ['365d label', '365d', '1 år'],
+    ['all label', 'all', 'Alla'],
   ])('keeps %s', (_, period, label) => {
     expect(getProgressPeriodRange(period, today).label).toBe(label)
   })
@@ -617,6 +617,93 @@ describe('progress analytics additional regressions', () => {
     ['comparison checkin delta numeric', (result) => Number.isFinite(result.comparison.checkInDelta)],
   ])('keeps %s', (_, assertion) => {
     expect(assertion(analytics())).toBe(true)
+  })
+})
+
+describe('progress V2 provenance and quality', () => {
+  it('keeps ai estimated body scan weights out of measured weight trend', () => {
+    const result = analytics({
+      weights: [
+        { date: '2026-03-01', id: 'measured-start', source: 'Manuell', time: '08:00', value: 91 },
+        { date: '2026-03-31', id: 'measured-latest', source: 'Manuell', time: '08:00', value: 90 },
+        { date: '2026-03-31', id: 'ai-estimate', provenance: 'ai_estimated', time: '09:00', value: 84 },
+      ],
+    }, '30d')
+
+    expect(result.weight.currentWeight).toBe(90)
+    expect(result.weight.latestWeight).toBe(90)
+    expect(result.weight.weights.map((entry) => entry.value)).toEqual([90])
+    expect(result.weight.sourceLabel).toBe('Endast uppmätt vikt')
+  })
+
+  it('marks nutrition photo estimates separately from user confirmed meals', () => {
+    const result = analytics({
+      meals: [
+        { calories: 400, date: '2026-03-30', id: 'confirmed', name: 'Lunch', photoAnalysis: { provenance: 'user_confirmed', source: 'photoAnalysis' }, protein: 35 },
+        { calories: 450, date: '2026-03-31', id: 'ai', name: 'Middag', photoAnalysis: { provenance: 'ai_estimate', source: 'photoAnalysis' }, protein: 30 },
+      ],
+    }, '7d')
+
+    expect(result.nutrition.mealCount).toBe(2)
+    expect(result.nutrition.userConfirmedMealCount).toBe(1)
+    expect(result.nutrition.aiEstimatedMealCount).toBe(1)
+  })
+
+  it('builds data quality from measured weights meals check-ins and scan data', () => {
+    const result = analytics({
+      bodyAnalysisHistory: [{
+        createdAt: '2026-03-31T08:00:00.000Z',
+        result: {
+          estimatedWeight: { confidence: 'low', maxKg: 91, minKg: 88 },
+          scanInput: { imageCount: 3, views: ['front', 'side', 'back'] },
+        },
+      }],
+    }, '7d')
+
+    expect(result.dataQuality.score).toBeGreaterThan(0)
+    expect(result.dataQuality.signals.join(' ')).toContain('uppmätta viktdagar')
+    expect(result.bodyScan.latestEstimatedWeightLabel).toBe('88–91 kg')
+    expect(result.bodyScan.latest.imageCount).toBe(3)
+  })
+
+  it('compares latest and previous body scans without treating image weight as measured weight', () => {
+    const result = analytics({
+      bodyAnalysisHistory: [
+        {
+          createdAt: '2026-03-31T08:00:00.000Z',
+          result: {
+            estimatedMeasurements: { waist: { maxCm: 84, minCm: 80 } },
+            estimatedWeight: { confidence: 'medium', maxKg: 90, minKg: 87 },
+          },
+        },
+        {
+          createdAt: '2026-03-20T08:00:00.000Z',
+          result: {
+            estimatedMeasurements: { waist: { maxCm: 88, minCm: 84 } },
+            estimatedWeight: { confidence: 'low', maxKg: 91, minKg: 88 },
+          },
+        },
+      ],
+      weights: [
+        { date: '2026-03-01', source: 'Manuell', time: '08:00', value: 91 },
+        { date: '2026-03-31', source: 'Manuell', time: '08:00', value: 90 },
+      ],
+    }, '30d')
+
+    expect(result.bodyScan.hasComparison).toBe(true)
+    expect(result.bodyScan.comparisonText).toContain('lägre')
+    expect(result.weight.currentWeight).toBe(90)
+  })
+
+  it('does not create a comparison when the previous period has no data', () => {
+    const result = analytics({
+      checkIns: [{ date: '2026-03-31', energy: 7 }],
+      meals: [{ calories: 400, date: '2026-03-31', id: 'm', name: 'Lunch', protein: 20 }],
+      weights: [{ date: '2026-03-31', source: 'Manuell', time: '08:00', value: 90 }],
+    }, '7d')
+
+    expect(result.comparison.hasComparison).toBe(false)
+    expect(result.comparison.reason).toContain('Föregående period')
   })
 })
 
@@ -645,7 +732,7 @@ describe('AI Coach progress dashboard integration', () => {
     ['Hur ofta har jag tränat?', 'träningsdagar'],
     ['Hur ser mina check-ins ut?', 'check-ins'],
     ['Hur går mina vanor?', 'aktiva vanor'],
-    ['Skillnaden mot föregående period?', 'Jämfört'],
+    ['Skillnaden mot föregående period?', 'Föregående period'],
     ['Vilken framstegsinsikt är viktigast?', 'viktdata'],
   ])('answers "%s"', (message, expected) => {
     expect(coach(message)).toContain(expected)

@@ -1,6 +1,7 @@
 import { getUnifiedWeightFacts, normalizeDailyWeightEntries } from './healthCalculations.js'
 import { formatWeight, formatWeightChange } from './healthFormatting.js'
 import { isMeasuredWeightEntry } from './weightProvenance.js'
+import { sanitizeAnalysisForExport } from './bodyAnalysisHistory.js'
 
 export const weightSources = ['Manuell', 'Importerad', 'Check-in', 'Annat']
 
@@ -867,6 +868,7 @@ export function createProgressReport({ bodyMeasurements = [], period = 'week', p
 }
 
 export function exportProgressData({
+  bodyAnalysisHistory = [],
   bodyMeasurements,
   goalSettings,
   includeImages = false,
@@ -886,12 +888,14 @@ export function exportProgressData({
     format: 'viktkollen-progress',
     version: progressExportVersion,
     counts: {
+      bodyAnalysisHistory: (Array.isArray(bodyAnalysisHistory) ? bodyAnalysisHistory : []).map(sanitizeAnalysisForExport).filter(Boolean).length,
       bodyMeasurements: normalizeBodyMeasurements(bodyMeasurements).length,
       progressPhotos: photoPayload.length,
       progressReports: Array.isArray(progressReports) ? progressReports.length : 0,
       weights: normalizeWeights(weights).length,
     },
     data: {
+      bodyAnalysisHistory: (Array.isArray(bodyAnalysisHistory) ? bodyAnalysisHistory : []).map(sanitizeAnalysisForExport).filter(Boolean),
       bodyMeasurements: normalizeBodyMeasurements(bodyMeasurements),
       goalSettings: normalizeGoalSettings(goalSettings),
       progressPhotos: photoPayload,

@@ -19,6 +19,7 @@ import {
   analyzeWeights,
   buildProgressTimeline,
   createProgressReport,
+  exportProgressData,
   getEmptyWeightDraft,
   getWeightEntrySignature,
   migrateDuplicateWeightEntries,
@@ -752,6 +753,30 @@ describe('weight module regression flow', () => {
     expect(coachReport.dailyAnalysis.fiberLabel).toBe('0 g')
     expect(coachReport.dailyAnalysis.summary).not.toContain('3 loggade måltider')
     expect(coachFacts.todayMeals).toHaveLength(0)
+  })
+
+  it('progress export includes sanitized body scan history without image previews', () => {
+    const payload = exportProgressData({
+      bodyAnalysisHistory: [{
+        backPhoto: { name: 'back.png', preview: 'data:image/png;base64,back' },
+        createdAt: '2026-08-01T10:00:00.000Z',
+        frontPhoto: { name: 'front.png', preview: 'data:image/png;base64,front' },
+        result: {
+          estimatedWeight: { confidence: 'low', maxKg: 91, minKg: 88 },
+          scanInput: { imageCount: 3, views: ['front', 'side', 'back'] },
+        },
+        sidePhoto: { name: 'side.png', preview: 'data:image/png;base64,side' },
+      }],
+      bodyMeasurements: [],
+      goalSettings: {},
+      progressPhotos: [],
+      progressReports: [],
+      weights: [],
+    })
+
+    expect(payload.counts.bodyAnalysisHistory).toBe(1)
+    expect(payload.data.bodyAnalysisHistory[0].frontPhoto).toEqual({ name: 'front.png' })
+    expect(JSON.stringify(payload)).not.toMatch(/data:image|base64/)
   })
 
   it('today meal filtering counts one or several actual meals for the selected local date', () => {

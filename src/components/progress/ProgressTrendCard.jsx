@@ -15,6 +15,7 @@ function ProgressTrendCard({ weight }) {
         <div>
           <p className="eyebrow">Viktutveckling</p>
           <h3 id="progress-trend-title">Trend</h3>
+          <span>{weight.sourceLabel || 'Endast uppmätt vikt visas som huvudtrend.'}</span>
         </div>
         <span className="nutrition-pill">{trendLabels[weight.trendDirection] || 'Saknas'}</span>
       </div>
@@ -27,6 +28,7 @@ function ProgressTrendCard({ weight }) {
           <div><dt>Veckogenomsnitt</dt><dd>{weight.weeklyAverageChange === null ? 'Saknas' : formatProgressChange(weight.weeklyAverageChange)}</dd></div>
           <div><dt>Registreringar</dt><dd>{weight.registrationCount}</dd></div>
           <div><dt>Bästa loggstreak</dt><dd>{weight.bestLoggingStreak} dagar</dd></div>
+          <div><dt>Provenance</dt><dd>measured/user_entered</dd></div>
         </dl>
       ) : (
         <div className="nutrition-empty">

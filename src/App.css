@@ -4095,6 +4095,14 @@ button.secondary-button:focus-visible,
   padding: 10px;
 }
 
+.progress-quality-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
 .meal-template-favorite-toggle {
   align-self: center;
   margin: 0;

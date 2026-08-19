@@ -39,6 +39,7 @@ function ProgressSummaryCards({ analysis }) {
       <SummaryCard label="Träningsdagar" value={habits.trainingDays.toLocaleString('sv-SE')} />
       <SummaryCard label="Aktiva vanor" value={habits.activeHabits.toLocaleString('sv-SE')} />
       <SummaryCard label="Aktuell streak" value={`${habits.currentStreak} dagar`} />
+      <SummaryCard label="Datakvalitet" status={analysis.dataQuality.confidence === 'high' ? 'positive' : 'neutral'} value={`${analysis.dataQuality.label} · ${analysis.dataQuality.score}/100`} />
     </section>
   )
 }

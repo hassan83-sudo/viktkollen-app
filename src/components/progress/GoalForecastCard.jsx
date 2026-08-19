@@ -20,7 +20,7 @@ function GoalForecastCard({ forecast }) {
       <p>{forecast.text}</p>
       <dl className="progress-detail-grid">
         <div><dt>Trend per vecka</dt><dd>{Number.isFinite(forecast.weeklyRate) ? formatKg(forecast.weeklyRate) : 'Saknas'}</dd></div>
-        <div><dt>Veckor kvar</dt><dd>{Number.isFinite(forecast.weeksRemaining) ? `${forecast.weeksRemaining} veckor` : 'Saknas'}</dd></div>
+        <div><dt>Intervall</dt><dd>{forecast.weekIntervalLabel || (Number.isFinite(forecast.weeksRemaining) ? `${forecast.weeksRemaining} veckor` : 'Saknas')}</dd></div>
         <div><dt>Uppskattad månad</dt><dd>{forecast.estimatedMonth || 'Saknas'}</dd></div>
       </dl>
     </section>

@@ -26,10 +26,10 @@ import { forecastGoalProgress, normalizeForecastWeights } from './progressForeca
 export const progressPeriods = [
   { days: 7, id: '7d', label: '7 dagar' },
   { days: 30, id: '30d', label: '30 dagar' },
-  { days: 90, id: '90d', label: '90 dagar' },
-  { days: 180, id: '180d', label: '180 dagar' },
-  { days: 365, id: '365d', label: '365 dagar' },
-  { days: null, id: 'all', label: 'Hela perioden' },
+  { days: 90, id: '90d', label: '3 månader' },
+  { days: 180, id: '180d', label: '6 månader' },
+  { days: 365, id: '365d', label: '1 år' },
+  { days: null, id: 'all', label: 'Alla' },
 ]
 
 function safeNumber(value, fallback = null) {
@@ -73,6 +73,18 @@ function isInRange(dateString, range) {
 
 function normalizeProgressWeights(weights = [], today = new Date()) {
   return normalizeForecastWeights(weights, today)
+}
+
+function confidenceFromCoverage(score) {
+  if (score >= 75) return 'high'
+  if (score >= 45) return 'medium'
+  return 'low'
+}
+
+function qualityLabel(level) {
+  if (level === 'high') return 'Bra'
+  if (level === 'medium') return 'Medel'
+  return 'Begränsad'
 }
 
 function bestLoggingStreak(entries = []) {
@@ -125,6 +137,7 @@ function analyzeWeightProgress(weights = [], profile = {}, range, today = new Da
     percentChange,
     periodChangeKg,
     registrationCount: periodWeights.length,
+    sourceLabel: 'Endast uppmätt vikt',
     startWeight: unified.startWeight,
     totalChangeKg,
     totalTrendDirection: totalChangeKg === null ? 'insufficient' : totalChangeKg < -0.1 ? 'down' : totalChangeKg > 0.1 ? 'up' : 'stable',
@@ -149,9 +162,22 @@ function sumMealField(meals, field) {
   return meals.reduce((sum, meal) => sum + Math.max(0, safeNumber(meal[field], 0) || 0), 0)
 }
 
+function isUserConfirmedMeal(meal) {
+  const provenance = meal?.photoAnalysis?.provenance || meal?.nutritionProvenance || meal?.nutritionSource || meal?.source
+
+  if (meal?.photoAnalysis?.source === 'photoAnalysis') {
+    return meal.photoAnalysis.provenance === 'user_confirmed' || meal.photoAnalysis.userEdited === true
+  }
+
+  return !['ai_estimate', 'ai_estimated'].includes(String(provenance || '').toLocaleLowerCase('sv-SE'))
+}
+
 function analyzeNutritionProgress(meals = [], nutritionGoals = {}, range) {
   const goals = normalizeNutritionGoals(nutritionGoals)
   const mealsByDate = groupMealsByDate(meals, range)
+  const normalizedMeals = [...mealsByDate.values()].flat()
+  const userConfirmedMeals = normalizedMeals.filter(isUserConfirmedMeal)
+  const aiEstimatedMeals = normalizedMeals.filter((meal) => !isUserConfirmedMeal(meal))
   const days = [...mealsByDate.entries()].map(([date, dayMeals]) => {
     const totals = {
       calories: sumMealField(dayMeals, 'calories'),
@@ -186,6 +212,7 @@ function analyzeNutritionProgress(meals = [], nutritionGoals = {}, range) {
   return {
     averageCalories: loggedDayCount ? round(totals.calories / loggedDayCount) : 0,
     averageProtein: loggedDayCount ? round(totals.protein / loggedDayCount) : 0,
+    aiEstimatedMealCount: aiEstimatedMeals.length,
     calorieGoalDays: days.filter((day) => day.calorieGoalReached).length,
     calorieGoalPercent: loggedDayCount && goals.calories ? Math.round((days.filter((day) => day.calorieGoalReached).length / loggedDayCount) * 100) : 0,
     days,
@@ -198,6 +225,7 @@ function analyzeNutritionProgress(meals = [], nutritionGoals = {}, range) {
     mostCommonMealType,
     proteinGoalDays: days.filter((day) => day.proteinGoalReached).length,
     proteinGoalPercent: loggedDayCount && goals.protein ? Math.round((days.filter((day) => day.proteinGoalReached).length / loggedDayCount) * 100) : 0,
+    userConfirmedMealCount: userConfirmedMeals.length,
     totals,
   }
 }
@@ -274,9 +302,120 @@ function analyzeHabitProgress({ checkIn = {}, checkIns = [], foods = [], range }
     moodTrend: chronologicalEntries.map((entry) => entry.moodScore).filter(Number.isFinite),
     sleepTrend: chronologicalEntries.map((entry) => entry.sleep).filter(Number.isFinite),
     stepTrend: chronologicalEntries.map((entry) => entry.steps).filter(Number.isFinite),
+    stepDays: stepValues.length,
     totalSteps,
     trainingDays: entries.filter((entry) => entry.workout).length,
     trainingForm: [...trainings.entries()].sort((first, second) => second[1] - first[1] || first[0].localeCompare(second[0], 'sv-SE'))[0]?.[0] || '',
+  }
+}
+
+function getMeasurementIntervalMidpoint(value) {
+  if (!value || typeof value !== 'object') return null
+  const min = safeNumber(value.minCm)
+  const max = safeNumber(value.maxCm)
+  if (min === null || max === null || max < min) return null
+  return round((min + max) / 2, 1)
+}
+
+function formatEstimatedWeightRange(estimate) {
+  const min = safeNumber(estimate?.minKg)
+  const max = safeNumber(estimate?.maxKg)
+
+  if (min === null || max === null || max < min) return 'Saknas'
+  return `${min.toLocaleString('sv-SE')}–${max.toLocaleString('sv-SE')} kg`
+}
+
+function getBodyScanDate(analysis) {
+  const date = parseDateValue(analysis?.createdAt || analysis?.date || analysis?.result?.generatedAt)
+  return date ? getLocalDateString(date) : ''
+}
+
+function normalizeBodyScanHistory(history = [], range) {
+  return (Array.isArray(history) ? history : [])
+    .map((analysis) => {
+      const result = analysis?.result || {}
+      const date = getBodyScanDate(analysis)
+      const scanInput = result.scanInput || analysis?.scanInput || {}
+      return {
+        confidence: result.estimatedWeight?.confidence || 'low',
+        date,
+        estimatedMeasurements: result.estimatedMeasurements || {},
+        estimatedWeight: result.estimatedWeight || null,
+        id: String(analysis?.id || analysis?.createdAt || date),
+        imageCount: Number(scanInput.imageCount || scanInput.images || 0) || 0,
+        source: result.source || 'unknown',
+        summary: result.summary || result.observation || 'AI-kroppsanalys sparad.',
+        viewCount: Array.isArray(scanInput.views) ? scanInput.views.length : 0,
+      }
+    })
+    .filter((analysis) => analysis.date && isInRange(analysis.date, range))
+    .sort((first, second) => second.date.localeCompare(first.date))
+}
+
+function compareBodyScanMeasurements(latest, previous) {
+  if (!latest || !previous) return 'Gör en ny kroppsscanning för jämförelse.'
+
+  const latestWaist = getMeasurementIntervalMidpoint(latest.estimatedMeasurements?.waist)
+  const previousWaist = getMeasurementIntervalMidpoint(previous.estimatedMeasurements?.waist)
+
+  if (latestWaist === null || previousWaist === null) {
+    return 'Måttintervall saknas för en tydlig scan-jämförelse.'
+  }
+
+  const delta = round(latestWaist - previousWaist, 1)
+  if (Math.abs(delta) < 0.5) return 'Midjeintervallet verkar ungefär oförändrat jämfört med föregående scan.'
+  return delta < 0
+    ? 'Midjeintervallet är något lägre än vid föregående scan.'
+    : 'Midjeintervallet är något högre än vid föregående scan.'
+}
+
+function analyzeBodyScanProgress(history = [], range) {
+  const scans = normalizeBodyScanHistory(history, range)
+  const latest = scans[0] || null
+  const previous = scans[1] || null
+
+  return {
+    comparisonText: compareBodyScanMeasurements(latest, previous),
+    hasComparison: scans.length >= 2,
+    latest,
+    latestEstimatedWeightLabel: formatEstimatedWeightRange(latest?.estimatedWeight),
+    scanCount: scans.length,
+    scans,
+  }
+}
+
+function buildDataQuality({ bodyScan, habits, nutrition, period, weight }) {
+  const expectedDays = period.days || Math.max(weight.registrationCount, nutrition.loggedDayCount, habits.checkInCount, 1)
+  const weightScore = expectedDays ? Math.min(1, weight.registrationCount / Math.min(expectedDays, 8)) : 0
+  const nutritionScore = expectedDays ? Math.min(1, nutrition.loggedDayCount / Math.min(expectedDays, 10)) : 0
+  const checkInScore = expectedDays ? Math.min(1, habits.checkInCount / Math.min(expectedDays, 10)) : 0
+  const aiPenalty = nutrition.mealCount
+    ? Math.min(20, Math.round((nutrition.aiEstimatedMealCount / nutrition.mealCount) * 20))
+    : 0
+  const score = Math.max(0, Math.min(100, Math.round(
+    (weightScore * 35) +
+    (nutritionScore * 25) +
+    (checkInScore * 25) +
+    (bodyScan.scanCount ? 15 : 0) -
+    aiPenalty,
+  )))
+  const level = confidenceFromCoverage(score)
+
+  return {
+    confidence: level,
+    label: qualityLabel(level),
+    score,
+    signals: [
+      `${weight.registrationCount} uppmätta viktdagar`,
+      `${nutrition.loggedDayCount} dagar med måltider`,
+      `${habits.checkInCount} check-ins`,
+      nutrition.aiEstimatedMealCount
+        ? `${nutrition.aiEstimatedMealCount} AI-estimerade måltider hålls markerade`
+        : 'Ingen AI-estimerad nutrition i perioden',
+      bodyScan.scanCount
+        ? `${bodyScan.scanCount} kroppsscanningar som separat AI-underlag`
+        : 'Ingen kroppsscanning i perioden',
+    ],
   }
 }
 
@@ -298,6 +437,15 @@ function analyzePlanningProgress({ generatedMealPlans = {}, mealPlans = {}, nutr
 
 function comparePeriods(current, previous) {
   if (!previous) return { hasComparison: false }
+
+  const previousHasData =
+    previous.weight.registrationCount > 0 ||
+    previous.nutrition.mealCount > 0 ||
+    previous.habits.checkInCount > 0
+
+  if (!previousHasData) {
+    return { hasComparison: false, reason: 'Föregående period saknar jämförbar data.' }
+  }
 
   return {
     calorieGoalPercentDelta: current.nutrition.calorieGoalPercent - previous.nutrition.calorieGoalPercent,
@@ -378,8 +526,12 @@ function buildCoreAnalysis(data = {}, range) {
     today: data.today,
     weights,
   })
+  const bodyScan = analyzeBodyScanProgress(data.bodyAnalysisHistory, range)
+  const dataQuality = buildDataQuality({ bodyScan, habits, nutrition, period: range, weight })
 
   return {
+    bodyScan,
+    dataQuality,
     forecast,
     habits,
     nutrition,

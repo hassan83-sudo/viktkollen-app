@@ -12,7 +12,7 @@ function NutritionProgressCard({ nutrition, planning }) {
         <div>
           <p className="eyebrow">Nutrition</p>
           <h3 id="progress-nutrition-title">Faktiskt intag</h3>
-          <span>Planerade måltider visas separat och räknas inte som faktiskt intag.</span>
+          <span>Planerade måltider och AI-estimat hålls markerade separat.</span>
         </div>
       </div>
       <dl className="progress-detail-grid">
@@ -21,6 +21,8 @@ function NutritionProgressCard({ nutrition, planning }) {
         <div><dt>Kalorimål nåddes</dt><dd>{nutrition.calorieGoalDays} dagar · {nutrition.calorieGoalPercent}%</dd></div>
         <div><dt>Proteinmål nåddes</dt><dd>{nutrition.proteinGoalDays} dagar · {nutrition.proteinGoalPercent}%</dd></div>
         <div><dt>Loggade måltider</dt><dd>{nutrition.mealCount}</dd></div>
+        <div><dt>Bekräftade måltider</dt><dd>{nutrition.userConfirmedMealCount}</dd></div>
+        <div><dt>AI-estimat</dt><dd>{nutrition.aiEstimatedMealCount}</dd></div>
         <div><dt>Vanligaste måltidstyp</dt><dd>{nutrition.mostCommonMealType || 'Saknas'}</dd></div>
       </dl>
       <div className="coach-note">

@@ -125,13 +125,23 @@ export function forecastGoalProgress({ currentWeight, goalWeight, today = new Da
     month: 'long',
     year: 'numeric',
   }).format(date)
+  const intervalPadding = weeksRemaining <= 12 ? 2 : weeksRemaining <= 52 ? 4 : 8
+  const weekInterval = {
+    max: weeksRemaining + intervalPadding,
+    min: Math.max(1, weeksRemaining - intervalPadding),
+  }
+  const weekIntervalLabel = weekInterval.min === weekInterval.max
+    ? `${weekInterval.min} veckor`
+    : `${weekInterval.min}-${weekInterval.max} veckor`
 
   return {
     confidence: weeksRemaining <= 52 ? 'medium' : 'low',
     estimatedMonth,
     remainingKg: remaining,
     status: 'projected',
-    text: `Med nuvarande försiktiga trend, ${formatKg(trend.weeklyRate)} per vecka, kan målet nås ungefär ${estimatedMonth}. Se det som en riktning, inte ett löfte.`,
+    text: `Med nuvarande försiktiga trend, ${formatKg(trend.weeklyRate)} per vecka, kan målet ungefär nås om ${weekIntervalLabel}. Se det som en riktning, inte ett löfte.`,
+    weekInterval,
+    weekIntervalLabel,
     weeklyRate: trend.weeklyRate,
     weeksRemaining,
   }

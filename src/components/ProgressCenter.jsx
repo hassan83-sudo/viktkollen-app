@@ -33,7 +33,7 @@ import {
 const chartRanges = [
   { label: '7 dagar', value: '7' },
   { label: '30 dagar', value: '30' },
-  { label: '90 dagar', value: '90' },
+  { label: '3 mån', value: '90' },
   { label: '6 mån', value: '180' },
   { label: '1 år', value: '365' },
   { label: 'Allt', value: 'all' },
@@ -284,7 +284,7 @@ function WeightChartV3({
       <div className="progress-card-heading">
         <div>
           <p className="eyebrow">Viktgraf</p>
-          <h3>Daglig vikt, trend och mål</h3>
+          <h3>Uppmätt daglig vikt, trend och mål</h3>
         </div>
       </div>
 
@@ -328,7 +328,7 @@ function WeightChartV3({
         ))}
       </div>
 
-      <div className="progress-weight-chart" aria-label="Viktgraf. Dagsvärde använder senaste vägningen per datum.">
+      <div className="progress-weight-chart" aria-label="Viktgraf med endast uppmätt eller användarinmatad vikt. Dagsvärde använder senaste vägningen per datum.">
         {chartData.raw.length === 0 ? (
           <div className="progress-empty">
             <strong>Ingen viktdata för valt intervall.</strong>
@@ -337,7 +337,7 @@ function WeightChartV3({
         ) : (
           <svg viewBox={`0 0 ${width} ${height}`} role="img">
             <title>Viktgraf</title>
-            <desc>Dagsvärde använder senaste vägningen per datum. Linjer visar rå vikt, glidande medelvärde och veckosnitt när de är aktiva.</desc>
+            <desc>Viktgrafen använder endast uppmätt eller användarinmatad vikt. AI-estimat från kroppsscanning blandas inte in i huvudserien.</desc>
             <line x1={padding} y1={padding} x2={padding} y2={height - padding} />
             <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} />
             {showGoal && goalY !== null && <line className="goal-line" x1={padding} y1={goalY} x2={width - padding} y2={goalY} />}
@@ -354,7 +354,7 @@ function WeightChartV3({
         )}
       </div>
       <p className="settings-note">
-        Regel: om flera vägningar finns samma dag används den senaste vägningen som dagsvärde.
+        Regel: huvudgrafen använder endast verklig measured/user-entered vikt. Om flera vägningar finns samma dag används den senaste vägningen som dagsvärde.
       </p>
     </section>
   )
@@ -828,6 +828,7 @@ function ProgressCenter({
   )
   const estimatedExport = useMemo(() => {
     const payload = exportProgressData({
+      bodyAnalysisHistory,
       bodyMeasurements: normalizedMeasurements,
       goalSettings,
       includeImages,
@@ -837,7 +838,7 @@ function ProgressCenter({
     })
 
     return `${Math.ceil(JSON.stringify(payload).length / 1024).toLocaleString('sv-SE')} kB`
-  }, [goalSettings, includeImages, normalizedMeasurements, normalizedWeights, progressPhotos, progressReports])
+  }, [bodyAnalysisHistory, goalSettings, includeImages, normalizedMeasurements, normalizedWeights, progressPhotos, progressReports])
 
   function resetWeightDraft() {
     setWeightDraft(getEmptyWeightDraft(normalizedWeights.at(-1)))
@@ -984,6 +985,7 @@ function ProgressCenter({
     downloadJson(
       `viktkollen-framsteg-${new Date().toISOString().slice(0, 10)}.json`,
       exportProgressData({
+        bodyAnalysisHistory,
         bodyMeasurements: normalizedMeasurements,
         goalSettings,
         includeImages,

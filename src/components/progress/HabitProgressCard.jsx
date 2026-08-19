@@ -30,6 +30,7 @@ function HabitProgressCard({ habits }) {
         <div><dt>Energi</dt><dd>{formatEnergy(habits)}</dd></div>
         <div><dt>Humör</dt><dd>{safeDisplay(habits.averageMood)}</dd></div>
         <div><dt>Steg</dt><dd>{habits.averageSteps ? `${habits.averageSteps.toLocaleString('sv-SE')} steg/dag` : 'Saknas'}</dd></div>
+        <div><dt>Stegdagar</dt><dd>{habits.stepDays || 0}</dd></div>
         <div><dt>Träningsdagar</dt><dd>{habits.trainingDays}</dd></div>
         <div><dt>Vanligaste träning</dt><dd>{safeDisplay(habits.trainingForm)}</dd></div>
         <div><dt>Slutförda vanor</dt><dd>{habits.completedHabits}/{habits.activeHabits}</dd></div>

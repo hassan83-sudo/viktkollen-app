@@ -40,12 +40,31 @@ const progressInsights = buildProgressInsightsModel({
   today: new Date('2026-03-31T12:00:00.000Z'),
   weights,
 }, { period: '30d', today: new Date('2026-03-31T12:00:00.000Z') })
+const bodyAnalysisHistory = [
+  {
+    createdAt: '2026-03-31T08:00:00.000Z',
+    result: {
+      estimatedMeasurements: { waist: { maxCm: 84, minCm: 80 } },
+      estimatedWeight: { confidence: 'medium', maxKg: 91, minKg: 88 },
+      scanInput: { imageCount: 3, views: ['front', 'side', 'back'] },
+      summary: 'Stabil hållning.',
+    },
+  },
+  {
+    createdAt: '2026-03-20T08:00:00.000Z',
+    result: {
+      estimatedMeasurements: { waist: { maxCm: 88, minCm: 84 } },
+      estimatedWeight: { confidence: 'low', maxKg: 92, minKg: 89 },
+    },
+  },
+]
 
 function html(props = {}) {
   return renderToStaticMarkup(
     <ProgressDashboard
       checkIn={checkIn}
       checkIns={[]}
+      bodyAnalysisHistory={bodyAnalysisHistory}
       foods={foods}
       meals={meals}
       nutritionGoals={nutritionGoals}
@@ -53,6 +72,7 @@ function html(props = {}) {
       weeklyReportData={{ summary: 'Veckan var stabil.' }}
       weeklyReportLines={[]}
       weeklyReportStatus=""
+      today={new Date('2026-03-31T12:00:00.000Z')}
       weights={weights}
       onCreateWeeklyReport={() => {}}
       {...props}
@@ -67,8 +87,8 @@ describe('ProgressDashboard UI', () => {
     ['period control', 'Välj period för framsteg'],
     ['7 days', '7 dagar'],
     ['30 days', '30 dagar'],
-    ['90 days', '90 dagar'],
-    ['all period', 'Hela perioden'],
+    ['3 months', '3 månader'],
+    ['all period', 'Alla'],
     ['summary label', 'Nuvarande vikt'],
     ['trend card', 'Viktutveckling'],
     ['nutrition card', 'Faktiskt intag'],
@@ -77,6 +97,10 @@ describe('ProgressDashboard UI', () => {
     ['insights card', 'AI Progress Insights V1'],
     ['progress insights title', 'Framstegsinsikter'],
     ['weekly report', 'Veckans sammanfattning'],
+    ['period comparison', 'Period mot period'],
+    ['body scan history', 'Body Scan-historik'],
+    ['data quality', 'Datakvalitet'],
+    ['measured provenance', 'Endast uppmätt vikt'],
   ])('renders %s', (_, expected) => {
     expect(html()).toContain(expected)
   })
@@ -93,6 +117,7 @@ describe('ProgressDashboard UI', () => {
     const markup = html({
       checkIn: { date: '2026-07-31', energy: 6, mood: 'Fokuserad', steps: 7200, workout: true },
       checkIns: [],
+      today: new Date('2026-07-31T12:00:00.000Z'),
     })
 
     expect(markup).toContain('Träning markerad')
@@ -121,6 +146,7 @@ describe('ProgressDashboard UI', () => {
     const markup = html({
       checkIn: { date: '2026-07-31', energy: { scale: 5, value: 4 }, mood: 'good', steps: '7200' },
       checkIns: [],
+      today: new Date('2026-07-31T12:00:00.000Z'),
     })
 
     expect(markup).toContain('8 av 10')
@@ -132,6 +158,7 @@ describe('ProgressDashboard UI', () => {
     const markup = html({
       checkIn: { date: '2026-07-31', steps: { count: '10 250' } },
       checkIns: [],
+      today: new Date('2026-07-31T12:00:00.000Z'),
     })
 
     expect(markup).toContain('10')
@@ -161,6 +188,14 @@ describe('ProgressDashboard UI', () => {
   })
 
   it('keeps actual and planned nutrition separated in copy', () => {
-    expect(html()).toContain('Planerade måltider visas separat')
+    expect(html()).toContain('Planerade måltider och AI-estimat hålls markerade separat')
+  })
+
+  it('renders body scan estimates separately from measured weight', () => {
+    const markup = html()
+
+    expect(markup).toContain('AI-viktintervall')
+    expect(markup).toContain('88–91 kg')
+    expect(markup).toContain('AI-estimat separat')
   })
 })

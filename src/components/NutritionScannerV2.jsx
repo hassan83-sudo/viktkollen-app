@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   commitPhotoAnalysisMeal,
   createPhotoAnalysisReviewDraft,
@@ -10,6 +10,16 @@ import {
   revokeNutritionPhotoObjectUrl,
   validateNutritionPhotoFile,
 } from '../services/nutritionPhotoPreprocessing.js'
+import {
+  createAnalysisController,
+  getNutritionAnalysisBlocker,
+} from '../services/nutritionScannerFlow.js'
+import { createLocalNutritionPhotoEstimate } from '../services/nutritionPhotoLocalAnalysis.js'
+import {
+  grantNutritionRemoteConsent,
+  readNutritionRemoteConsent,
+  revokeNutritionRemoteConsent,
+} from '../services/nutritionRemoteConsent.js'
 import {
   applyPhotoIngredientDatabaseSuggestion,
   buildPhotoIngredientMatchSummary,
@@ -55,6 +65,14 @@ function portionRangeLabel(portion) {
     : ''
 
   return `${portion.description}${grams}`
+}
+
+function componentPortionLabel(component) {
+  const portion = component?.portionEstimate
+  if (!portion || portion.gramsMin === null || portion.gramsMax === null) return 'Mängd osäker'
+  const midpoint = Math.round((portion.gramsMin + portion.gramsMax) / 2)
+
+  return `ca ${midpoint} g (${portion.gramsMin}-${portion.gramsMax} g)`
 }
 
 function calculateIngredientTotals(items = []) {
@@ -140,11 +158,14 @@ function NutritionScannerV2({
   onMealSaved,
   onMealsChange,
   selectedMealDate,
+  userId = 'local-user',
 }) {
   const headingRef = useRef(null)
   const fileInputRef = useRef(null)
+  const reviewRef = useRef(null)
   const currentImageRef = useRef(null)
   const activeAnalysisControllerRef = useRef(null)
+  const lastAnalysisActionRef = useRef(0)
   const [status, setStatus] = useState('Välj eller ta en matbild för att börja.')
   const [error, setError] = useState('')
   const [fileName, setFileName] = useState('')
@@ -156,10 +177,69 @@ function NutritionScannerV2({
   const [isSaving, setIsSaving] = useState(false)
   const [savedMealId, setSavedMealId] = useState('')
   const [allowDuplicate, setAllowDuplicate] = useState(false)
-  const [remoteConsent, setRemoteConsent] = useState(false)
+  const [remoteConsentDraft, setRemoteConsentDraft] = useState({ checked: false, userId })
+  const [storedRemoteConsent, setStoredRemoteConsent] = useState(() => ({
+    consent: readNutritionRemoteConsent(userId),
+    userId,
+  }))
   const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine !== false)
   const canUseLiveCamera = typeof window !== 'undefined' && window.isSecureContext && Boolean(navigator.mediaDevices?.getUserMedia)
   const today = analysisDate || selectedMealDate || getTodayDateString()
+  const remoteConsentRecord = storedRemoteConsent.userId === userId
+    ? storedRemoteConsent.consent
+    : readNutritionRemoteConsent(userId)
+  const remoteConsent = remoteConsentDraft.userId === userId ? remoteConsentDraft.checked : false
+  const hasRemoteConsent = remoteConsentRecord.granted === true || remoteConsent
+
+  const scheduleResultScroll = useCallback(() => {
+    const target = reviewRef.current
+    if (!target || typeof window === 'undefined' || typeof document === 'undefined') return
+    const behavior = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 'auto'
+      : 'smooth'
+
+    try {
+      target.scrollIntoView({ behavior, block: 'start', inline: 'start' })
+    } catch {
+      // Safari fallback if scrollIntoView is missing or restricted.
+    }
+
+    const nav = document.querySelector('.bottom-nav')
+    if (typeof window.scrollTo !== 'function' || !nav || !Number.isFinite(target.getBoundingClientRect?.().top)) return
+    if (typeof window.scrollY !== 'number') return
+
+    const targetY = Math.max(
+      0,
+      window.scrollY + target.getBoundingClientRect().top - nav.offsetHeight - 16,
+    )
+    const maxY = Math.max(
+      0,
+      (document.documentElement?.scrollHeight || document.body?.scrollHeight || targetY) - (window.innerHeight || 0),
+    )
+    const clampedY = Math.min(maxY, targetY)
+
+    try {
+      window.scrollTo({ top: clampedY, behavior })
+    } catch {
+      window.scrollTo(0, clampedY)
+    }
+  }, [])
+
+  function handleAnalysisAction(providerType, event) {
+    const now = typeof performance !== 'undefined' && Number.isFinite(performance.now())
+      ? performance.now()
+      : Date.now()
+
+    if (now - lastAnalysisActionRef.current < 420) return
+    lastAnalysisActionRef.current = now
+
+    if (event && typeof event.preventDefault === 'function' && event.type === 'touchend') {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+
+    return analyzeImage(providerType)
+  }
 
   useEffect(() => {
     headingRef.current?.focus()
@@ -190,6 +270,14 @@ function NutritionScannerV2({
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   })
+
+  useEffect(() => {
+    if (!reviewDraft) return
+
+    window.requestAnimationFrame(() => {
+      scheduleResultScroll()
+    })
+  }, [reviewDraft, scheduleResultScroll])
 
   const validation = useMemo(
     () => reviewDraft ? validatePhotoAnalysisReviewDraft(reviewDraft) : { errors: {}, ok: false },
@@ -226,7 +314,6 @@ function NutritionScannerV2({
     setPreviewUrl('')
     setImagePayload(null)
     setFileName('')
-    setRemoteConsent(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -269,40 +356,68 @@ function NutritionScannerV2({
     setStatus('Bilden är förberedd lokalt. Klicka på analysera när du vill fortsätta.')
   }
 
-  async function analyzeImage(providerType = 'mock') {
-    if (!imagePayload || isAnalyzing) return
-    if (providerType === 'remote' && !remoteConsent) {
-      setError('Bekräfta först att bilden får skickas till tillfällig AI-analys.')
+  async function analyzeImage(providerType = 'local') {
+    const blocker = getNutritionAnalysisBlocker({
+      imagePayload,
+      isAnalyzing,
+      isOnline,
+      providerType,
+      remoteConsent: hasRemoteConsent,
+    })
+
+    if (blocker) {
+      setError(blocker)
+      setStatus('')
       return
     }
-    if (providerType === 'remote' && !isOnline) {
-      setError('Du är offline. Remote analys är inte tillgänglig just nu.')
-      return
-    }
-    activeAnalysisControllerRef.current?.abort()
-    const controller = new AbortController()
-    activeAnalysisControllerRef.current = controller
+
+    let controller = null
     setIsAnalyzing(true)
     setError('')
     setStatus(providerType === 'remote' ? 'Analyserar bild...' : 'Skapar lokal uppskattning...')
 
     try {
-      const { analyzeNutritionPhoto } = await import('../services/nutritionPhotoAnalysisProvider.js')
-      const result = await analyzeNutritionPhoto({
+      activeAnalysisControllerRef.current?.abort()
+      controller = createAnalysisController()
+      activeAnalysisControllerRef.current = controller
+
+      let result
+      if (providerType === 'local') {
+        result = {
+          analysis: createLocalNutritionPhotoEstimate({
+            imageMetadata: imagePayload.imageMetadata,
+            mealType: reviewDraft?.mealType || 'Lunch',
+          }, {
+            analysisDate: today,
+          }),
+          ok: true,
+          providerType: 'local',
+        }
+      } else {
+        if (remoteConsent && !remoteConsentRecord.granted) {
+          setStoredRemoteConsent({
+            consent: grantNutritionRemoteConsent(userId),
+            userId,
+          })
+        }
+        const { analyzeNutritionPhoto } = await import('../services/nutritionPhotoAnalysisProvider.js')
+        result = await analyzeNutritionPhoto({
         imageMetadata: imagePayload.imageMetadata,
         mealType: reviewDraft?.mealType || 'Lunch',
         preprocessedImage: providerType === 'remote' ? imagePayload.processedBlob : null,
-      }, {
+        }, {
         analysisDate: today,
         providerType,
         signal: controller.signal,
-      })
+        })
+      }
 
       if (controller.signal.aborted) return
       if (activeAnalysisControllerRef.current === controller) activeAnalysisControllerRef.current = null
 
       if (!result.analysis) {
         setError(result.warning || 'Analysen kunde inte slutföras.')
+        setStatus('')
         return
       }
 
@@ -314,8 +429,9 @@ function NutritionScannerV2({
       }))
       setStatus(result.warning || 'Analysförslaget är klart. Granska och redigera innan du sparar.')
     } catch {
-      if (!controller.signal.aborted) {
+      if (!controller?.signal?.aborted) {
         setError('Analysen kunde inte startas. Försök igen eller välj en annan bild.')
+        setStatus('')
       }
     } finally {
       if (activeAnalysisControllerRef.current === controller) activeAnalysisControllerRef.current = null
@@ -427,6 +543,35 @@ function NutritionScannerV2({
     onClose?.()
   }
 
+  function handleRemoteConsentChange(checked) {
+    setRemoteConsentDraft({ checked, userId })
+    setError('')
+    if (checked) {
+      setStoredRemoteConsent({
+        consent: grantNutritionRemoteConsent(userId),
+        userId,
+      })
+      setStatus('Remote bildanalys är godkänd för den här användaren.')
+      return
+    }
+
+    setStoredRemoteConsent({
+      consent: revokeNutritionRemoteConsent(userId),
+      userId,
+    })
+    setStatus('Remote bildanalys är avstängd för den här användaren.')
+  }
+
+  function handleRevokeRemoteConsent() {
+    setRemoteConsentDraft({ checked: false, userId })
+    setStoredRemoteConsent({
+      consent: revokeNutritionRemoteConsent(userId),
+      userId,
+    })
+    setError('')
+    setStatus('Remote bildanalys är återkallad. Du behöver godkänna igen innan nästa remote analys.')
+  }
+
   return (
     <section className="photo-meal-tool scanner-tool nutrition-scanner-v2" aria-labelledby="nutrition-scanner-v2-heading">
       <div>
@@ -447,6 +592,7 @@ function NutritionScannerV2({
         <span>Välj eller ta bild</span>
         <small>{canUseLiveCamera ? 'Kamera eller bildbibliotek kan öppnas av webbläsaren.' : 'Livekamera kan blockeras på HTTP-LAN. Använd iPhone-dialogen för kamera eller bildbibliotek.'}</small>
         <input
+          className="scanner-file-picker-input"
           id="nutrition-scanner-photo-input"
           ref={fileInputRef}
           type="file"
@@ -458,21 +604,30 @@ function NutritionScannerV2({
       </label>
       {fileName && <p>Vald bild: {fileName}</p>}
       {previewUrl && <img className="food-preview" src={previewUrl} alt="Temporär förhandsvisning av vald matbild" />}
-      <label className="checkbox-row scanner-consent-row" htmlFor="nutrition-scanner-remote-consent">
-        <input
-          id="nutrition-scanner-remote-consent"
-          checked={remoteConsent}
-          disabled={isAnalyzing}
-          type="checkbox"
-          onChange={(event) => setRemoteConsent(event.target.checked)}
-        />
-        <span>Jag godkänner att bilden skickas till tillfällig AI-analys. Originalbilden sparas inte av Viktkollen och jag granskar resultatet innan sparning.</span>
-      </label>
+      {remoteConsentRecord.granted ? (
+        <div className="scanner-consent-row">
+          <p className="estimate-note">Du har tidigare godkänt remote bildanalys för den här användaren.</p>
+          <button type="button" className="secondary-button" disabled={isAnalyzing} onClick={handleRevokeRemoteConsent}>
+            Återkalla samtycke
+          </button>
+        </div>
+      ) : (
+        <label className="checkbox-row scanner-consent-row" htmlFor="nutrition-scanner-remote-consent">
+          <input
+            id="nutrition-scanner-remote-consent"
+            checked={remoteConsent}
+            disabled={isAnalyzing}
+            type="checkbox"
+            onChange={(event) => handleRemoteConsentChange(event.target.checked)}
+          />
+          <span>Jag godkänner att bilden skickas till tillfällig AI-analys. Originalbilden sparas inte av Viktkollen och jag granskar resultatet innan sparning.</span>
+        </label>
+      )}
       <div className="scanner-actions">
-        <button type="button" disabled={!imagePayload || isAnalyzing} onClick={() => analyzeImage('mock')}>
+        <button type="button" disabled={!imagePayload || isAnalyzing} onClick={(event) => handleAnalysisAction('local', event)} onTouchEnd={(event) => handleAnalysisAction('local', event)}>
           {isAnalyzing ? 'Analyserar...' : 'Skapa lokal uppskattning'}
         </button>
-        <button type="button" disabled={!imagePayload || isAnalyzing || !isOnline || !remoteConsent} onClick={() => analyzeImage('remote')}>
+        <button type="button" disabled={!imagePayload || isAnalyzing || !isOnline} onClick={(event) => handleAnalysisAction('remote', event)} onTouchEnd={(event) => handleAnalysisAction('remote', event)}>
           Remote analys
         </button>
         <button type="button" onClick={clearTemporaryImage}>Ta bort bild</button>
@@ -493,13 +648,13 @@ function NutritionScannerV2({
       </div>
 
       {analysis && reviewDraft && (
-        <form className="inline-edit-form nutrition-scanner-review" onSubmit={saveMeal}>
+        <form ref={reviewRef} className="inline-edit-form nutrition-scanner-review" onSubmit={saveMeal}>
           <h4>Granska analysförslag</h4>
           <p>{analysis.safeSummary}</p>
           <p>Confidence: {analysis.confidence.level}. {analysis.confidence.text}</p>
           {analysis.limitations.map((item) => <p className="estimate-note" key={item}>{item}</p>)}
 
-          <h4>AI-estimat att granska</h4>
+          <h4>{analysis.provider.type === 'local' ? 'Lokal uppskattning att granska' : 'AI-analys att granska'}</h4>
           <p className="estimate-note">
             Portion: {portionRangeLabel(analysis.portionEstimate)}. Confidence: {confidenceLabel(analysis.portionEstimate?.confidence)}.
           </p>
@@ -528,6 +683,29 @@ function NutritionScannerV2({
           <p className="estimate-note">
             Dessa intervall är AI-uppskattningar, inte exakta näringsvärden. Siffrorna som sparas nedan blir dina bekräftade värden.
           </p>
+          {analysis.components?.length > 0 && (
+            <>
+              <h4>Identifierade komponenter</h4>
+              <ul className="health-dashboard-list nutrition-component-list">
+                {analysis.components.map((component) => (
+                  <li key={component.id}>
+                    <strong>{component.name}</strong>
+                    <span>{componentPortionLabel(component)} · {confidenceLabel(component.confidence)}</span>
+                    {component.visualEvidence && <small>{component.visualEvidence}</small>}
+                    {component.cookingMethods?.length > 0 && <small>Tillagning: {component.cookingMethods.join(', ')}</small>}
+                    {component.alternatives?.length > 0 && <small>Alternativ: {component.alternatives.join(', ')}</small>}
+                    {component.uncertainty?.reason && <small>{component.uncertainty.reason}</small>}
+                  </li>
+                ))}
+              </ul>
+              <p className="estimate-note">
+                Komponenterna är sparklara som AI-estimat och kan senare driva redigering per del av måltiden.
+              </p>
+            </>
+          )}
+          {analysis.imageQuality && (
+            <p className="estimate-note">Bildkvalitet: {analysis.imageQuality}.</p>
+          )}
           {analysis.ingredients.length > 0 && (
             <>
               <h4>Identifierade ingredienser</h4>

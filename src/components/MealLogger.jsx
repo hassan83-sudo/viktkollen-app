@@ -138,6 +138,7 @@ function MealLogger({
   profile,
   selectedMealDate,
   showClearMealHistoryConfirm,
+  userId = 'local-user',
   weights,
   weekSummary,
 }) {
@@ -888,6 +889,7 @@ function MealLogger({
               onMealSaved={handleScannerMealSaved}
               onMealsChange={onMealsChange}
               selectedMealDate={selectedMealDate}
+              userId={userId}
             />
           </Suspense>
         </div>

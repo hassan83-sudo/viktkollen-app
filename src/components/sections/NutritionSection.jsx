@@ -60,6 +60,7 @@ function NutritionSection({
   scannedProducts,
   selectedMealDate,
   showClearMealHistoryConfirm,
+  userId,
   weights,
   weekSummary,
 }) {
@@ -259,6 +260,7 @@ function NutritionSection({
             profile={profile}
             selectedMealDate={selectedMealDate}
             showClearMealHistoryConfirm={showClearMealHistoryConfirm}
+            userId={userId}
             weights={weights}
             weekSummary={weekSummary}
           />

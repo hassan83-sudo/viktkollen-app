@@ -13,6 +13,10 @@ import {
   clearLocalViktkollenData,
   requestAccountDeletion,
 } from '../../services/accountDeletionClient.js'
+import {
+  readNutritionRemoteConsent,
+  revokeNutritionRemoteConsent,
+} from '../../services/nutritionRemoteConsent.js'
 
 function MoreSection({
   activeSection,
@@ -32,6 +36,7 @@ function MoreSection({
   onRequestNotificationPermission,
   onSearchNavigate,
   onSignOut,
+  profileCompleteness,
   reminderOptions,
   reminderSettings,
   reminderState,
@@ -53,6 +58,13 @@ function MoreSection({
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
   const [deleteStatus, setDeleteStatus] = useState('')
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+  const [storedNutritionConsent, setStoredNutritionConsent] = useState(() => ({
+    consent: readNutritionRemoteConsent(userId),
+    userId,
+  }))
+  const nutritionRemoteConsent = storedNutritionConsent.userId === userId
+    ? storedNutritionConsent.consent
+    : readNutritionRemoteConsent(userId)
 
   async function handleCheckDeletionReadiness() {
     setIsDeletingAccount(true)
@@ -86,6 +98,13 @@ function MoreSection({
       ? 'Kontodata raderades. Du loggas ut.'
       : 'Servern raderade kontodata, men lokal rensning blev delvis ofullständig.')
     await onSignOut?.()
+  }
+
+  function handleRevokeNutritionRemoteConsent() {
+    setStoredNutritionConsent({
+      consent: revokeNutritionRemoteConsent(userId),
+      userId,
+    })
   }
 
   return (
@@ -187,6 +206,33 @@ function MoreSection({
         <p className="account-email">
           Inloggad som <strong>{email || 'okänd e-post'}</strong>
         </p>
+
+        <div className="app-information">
+          <h3>Profilunderlag</h3>
+          <p>
+            {profile?.displayName || profile?.name || 'Profil utan namn'} · {profile?.weightDirectionLabel || 'Mål saknas'} · {profile?.activityLevelLabel || 'Aktivitet saknas'}
+          </p>
+          <p>
+            {profileCompleteness?.nextBestAction || 'Profilen kan kompletteras när som helst.'}
+          </p>
+        </div>
+
+        <div className="app-information">
+          <h3>Remote bildanalys</h3>
+          <p>
+            {nutritionRemoteConsent.granted
+              ? `Godkänd för den här användaren sedan ${nutritionRemoteConsent.grantedAt.slice(0, 10)}.`
+              : 'Remote bildanalys är inte godkänd för den här användaren.'}
+          </p>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={handleRevokeNutritionRemoteConsent}
+            disabled={!nutritionRemoteConsent.granted}
+          >
+            Återkalla samtycke för bildanalys
+          </button>
+        </div>
 
         <div className="account-settings-actions">
           <GlobalSearch onNavigate={onSearchNavigate} />

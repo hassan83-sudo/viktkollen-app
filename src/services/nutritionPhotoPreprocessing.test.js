@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   allowedPhotoMimeTypes,
+  preprocessNutritionPhoto,
   nutritionPhotoPreprocessingInternals,
   revokeNutritionPhotoObjectUrl,
   validateNutritionPhotoFile,
@@ -12,6 +13,10 @@ function file({ name = 'meal.jpg', size = 1000, type = 'image/jpeg' } = {}) {
 }
 
 describe('nutritionPhotoPreprocessing', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('accepts jpg png and webp', () => {
     expect(allowedPhotoMimeTypes).toEqual(['image/jpeg', 'image/png', 'image/webp'])
     expect(validateNutritionPhotoFile(file()).ok).toBe(true)
@@ -39,5 +44,26 @@ describe('nutritionPhotoPreprocessing', () => {
 
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:test')
     globalThis.URL = original
+  })
+
+  it('returns a clear failure when iPhone image decode fails after file selection', async () => {
+    const revokeObjectURL = vi.fn()
+
+    vi.stubGlobal('URL', {
+      createObjectURL: () => 'blob:meal',
+      revokeObjectURL,
+    })
+    vi.stubGlobal('Image', class {
+      set src(value) {
+        this._src = value
+        queueMicrotask(() => this.onerror?.())
+      }
+    })
+
+    const result = await preprocessNutritionPhoto(file())
+
+    expect(result.ok).toBe(false)
+    expect(result.errors.join(' ')).toContain('Bilden kunde inte läsas')
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:meal')
   })
 })

@@ -33,7 +33,6 @@ import {
   formatKg as formatHealthKg,
   getProteinNeedForContext,
   getWeightStats,
-  parseWeightValue,
 } from './services/healthCalculations.js'
 import { buildHealthSnapshot } from './services/healthSnapshot.js'
 import { getSafeErrorMessage } from './services/appErrorService.js'
@@ -69,6 +68,13 @@ import {
   normalizeGoalSettings,
   normalizeWeights,
 } from './services/progressService.js'
+import {
+  createProfileForm,
+  getProfileCompleteness,
+  hasUsableProfile,
+  normalizeProfile,
+  profileDraftToProfile,
+} from './services/profileService.js'
 import * as userDataRepository from './services/userDataRepository.js'
 import { loadAiApiService, loadAiCoachV2Service, loadAiSuggestions, loadAiUserContext, loadProactiveCoachService, loadWeeklyReportService } from './services/ai/aiRuntimeLoader.js'
 import { prepareCoachChatSubmission, requestCoachChatReply } from './services/ai/aiChatController.js'
@@ -166,17 +172,18 @@ const initialCheckIn = {
   workout: false,
 }
 
-const initialProfile = {
-  name: '',
-  goal: 'gå ner i vikt',
-  startWeight: '',
-  goalWeight: '',
-  activityLevel: 'Medel',
-}
+const goalOptions = [
+  { label: 'Gå ner i vikt', value: 'loss' },
+  { label: 'Hålla vikten', value: 'maintain' },
+  { label: 'Gå upp i vikt', value: 'gain' },
+]
 
-const goalOptions = ['gå ner i vikt', 'hålla vikten', 'bygga muskler']
-
-const activityOptions = ['Låg', 'Medel', 'Hög']
+const activityOptions = [
+  { label: 'Låg', value: 'low' },
+  { label: 'Lätt', value: 'light' },
+  { label: 'Medel', value: 'moderate' },
+  { label: 'Hög', value: 'high' },
+]
 
 function isStoredMeals(value) {
   return (
@@ -275,22 +282,13 @@ function isStoredCheckIn(value) {
 function isStoredProfile(value) {
   return (
     value &&
-    typeof value.name === 'string' &&
-    typeof value.goal === 'string' &&
-    (typeof value.startWeight === 'string' || Number.isFinite(value.startWeight)) &&
-    (typeof value.goalWeight === 'string' || Number.isFinite(value.goalWeight)) &&
-    typeof value.activityLevel === 'string'
+    typeof value === 'object' &&
+    !Array.isArray(value)
   )
 }
 
 function normalizeStoredProfile(value) {
-  if (!value) return null
-
-  return {
-    ...value,
-    goalWeight: value.goalWeight === null || value.goalWeight === undefined ? '' : String(value.goalWeight),
-    startWeight: value.startWeight === null || value.startWeight === undefined ? '' : String(value.startWeight),
-  }
+  return value ? normalizeProfile(value) : null
 }
 
 function isStoredReminderSettings(value) {
@@ -320,42 +318,12 @@ function readStoredFoods() {
   })
 }
 
-function formatDecimal(value) {
-  return value.toLocaleString('sv-SE', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  })
-}
-
 function formatWeight(value) {
   return formatHealthKg(value, {
     fallback: '',
     maximumFractionDigits: 1,
     minimumFractionDigits: 1,
   })
-}
-
-function formatOptionalWeight(value) {
-  const numericValue = parseWeight(String(value ?? ''))
-
-  return Number.isFinite(numericValue) && numericValue > 0
-    ? formatWeight(numericValue)
-    : ''
-}
-
-function makeValidatedProfile(profile) {
-  const startWeight = formatOptionalWeight(profile?.startWeight)
-  const goalWeight = formatOptionalWeight(profile?.goalWeight)
-
-  return {
-    ...(profile?.name?.trim() && { name: profile.name.trim() }),
-    ...(profile?.goal?.trim() && { goal: profile.goal.trim() }),
-    ...(startWeight && { startWeight }),
-    ...(goalWeight && { goalWeight }),
-    ...(profile?.activityLevel?.trim() && {
-      activityLevel: profile.activityLevel.trim(),
-    }),
-  }
 }
 
 function formatFullDate(date) {
@@ -422,16 +390,6 @@ function makeProgressPhotoComparison(latestPhoto, previousPhoto) {
       'Små visuella förändringar kan anas, men bilden räcker inte för att dra säkra slutsatser.',
     ],
   }
-}
-
-function parseWeight(value) {
-  return parseWeightValue(value)
-}
-
-function isValidWeightInput(value) {
-  const numericValue = parseWeight(value)
-
-  return Number.isFinite(numericValue) && numericValue > 0
 }
 
 function makeCoachMessage(profile, checkIn, foods, meals) {
@@ -904,13 +862,12 @@ function App() {
   const [profile, setProfile] = useState(() =>
     normalizeStoredProfile(userDataRepository.getProfile(null, isStoredProfile)),
   )
-  const [profileForm, setProfileForm] = useState(() => ({
-    ...initialProfile,
-    ...(normalizeStoredProfile(userDataRepository.getProfile(null, isStoredProfile)) ?? {}),
-  }))
+  const [profileForm, setProfileForm] = useState(() =>
+    createProfileForm(normalizeStoredProfile(userDataRepository.getProfile(null, isStoredProfile)) ?? {}),
+  )
   const [profileError, setProfileError] = useState('')
   const [proactiveCoachResult, setProactiveCoachResult] = useState(null)
-  const [showOnboarding, setShowOnboarding] = useState(() => !profile)
+  const [showOnboarding, setShowOnboarding] = useState(() => !hasUsableProfile(profile))
   const [activeAppSection, setActiveAppSection] = useState('home')
   const [nutritionIntent, setNutritionIntent] = useState(null)
   const [progressIntent, setProgressIntent] = useState(null)
@@ -1028,7 +985,9 @@ function App() {
     getAnalysisHistory(),
   )
 
-  const validatedProfile = useMemo(() => makeValidatedProfile(profile), [profile])
+  const validatedProfile = useMemo(() => normalizeProfile(profile || {}), [profile])
+  const profileCompleteness = useMemo(() => getProfileCompleteness(validatedProfile), [validatedProfile])
+  const profileFormCompleteness = useMemo(() => getProfileCompleteness(profileForm), [profileForm])
   const healthSnapshot = useMemo(
     () =>
       buildHealthSnapshot({
@@ -2055,11 +2014,11 @@ function App() {
           initialPhotoMeals,
           isStoredPhotoMeals,
         ),
-      )
+    )
 
     setProfile(nextProfile)
-    setProfileForm({ ...initialProfile, ...(nextProfile ?? {}) })
-    setShowOnboarding(!nextProfile)
+    setProfileForm(createProfileForm(nextProfile ?? {}))
+    setShowOnboarding(!hasUsableProfile(nextProfile))
     setCheckIn(userDataRepository.getCheckIn(initialCheckIn, isStoredCheckIn))
     setWeights(readInitialWeights())
     setBodyMeasurements(normalizeBodyMeasurements(userDataRepository.getBodyMeasurements([], Array.isArray)))
@@ -2103,38 +2062,25 @@ function App() {
     setProfileForm((current) => ({ ...current, [key]: value }))
   }
 
+  function cancelProfileEdit() {
+    setProfileForm(createProfileForm(validatedProfile))
+    setProfileError('')
+    setShowOnboarding(!hasUsableProfile(validatedProfile))
+  }
+
   function saveProfile(event) {
     event.preventDefault()
     setProfileError('')
 
-    const nextProfile = {
-      ...profileForm,
-      name: profileForm.name.trim(),
-      startWeight: profileForm.startWeight.trim(),
-      goalWeight: profileForm.goalWeight.trim(),
-    }
+    const result = profileDraftToProfile(profileForm)
 
-    if (!nextProfile.name) {
-      setProfileError('Ange ditt namn.')
+    if (!result.profile) {
+      setProfileError(Object.values(result.errors)[0] || 'Profilen kunde inte sparas.')
       return
     }
 
-    if (
-      !isValidWeightInput(nextProfile.startWeight) ||
-      !isValidWeightInput(nextProfile.goalWeight)
-    ) {
-      setProfileError('Startvikt och målvikt måste vara giltiga siffror.')
-      return
-    }
-
-    const normalizedProfile = {
-      ...nextProfile,
-      startWeight: formatDecimal(parseWeight(nextProfile.startWeight)),
-      goalWeight: formatDecimal(parseWeight(nextProfile.goalWeight)),
-    }
-
-    setProfile(normalizedProfile)
-    setProfileForm(normalizedProfile)
+    setProfile(result.profile)
+    setProfileForm(createProfileForm(result.profile))
     setShowOnboarding(false)
   }
 
@@ -2805,8 +2751,10 @@ function App() {
       <OnboardingScreen
         activityOptions={activityOptions}
         goalOptions={goalOptions}
+        onCancel={hasUsableProfile(validatedProfile) ? cancelProfileEdit : null}
         onProfileFormChange={updateProfileForm}
         onSubmit={saveProfile}
+        profileCompleteness={profileFormCompleteness}
         profileError={profileError}
         profileForm={profileForm}
       />
@@ -2979,6 +2927,7 @@ function App() {
           scannedProducts={scannedProducts}
           selectedMealDate={selectedMealDate}
           showClearMealHistoryConfirm={showClearMealHistoryConfirm}
+          userId={authSession?.user?.id || authSession?.user?.email || 'local-user'}
           weights={weights}
           weekSummary={mealWeekSummary}
         />
@@ -3080,6 +3029,7 @@ function App() {
    onRequestNotificationPermission={requestNotificationPermission}
   onSearchNavigate={handleGlobalSearchNavigate}
   onSignOut={handleSignOut}
+  profileCompleteness={profileCompleteness}
   reminderOptions={reminderOptions}
   reminderSettings={reminderSettings}
   reminderState={reminderState}

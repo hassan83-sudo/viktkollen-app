@@ -228,6 +228,36 @@ describe('Data Import & Migration V2', () => {
     expect(plan.requiresManualConfirmation).toBe(true)
   })
 
+  it('normalizes imported legacy profile without importing auth identity fields', () => {
+    const session = parseDataImportText({
+      file: jsonFile(),
+      importDate: '2026-07-31T10:00:00.000Z',
+      text: JSON.stringify({
+        app: 'Viktkollen',
+        schemaVersion: 2,
+        userData: {
+          'viktkollen.profile': {
+            activityLevel: 'Hög',
+            authUserId: 'imported-user',
+            goal: 'hålla vikten',
+            height: '181',
+            name: 'Ali',
+            session: { access_token: 'secret' },
+          },
+        },
+      }),
+    })
+    const profileSection = session.sections.find((section) => section.key === 'viktkollen.profile')
+
+    expect(profileSection.value).toMatchObject({
+      activityLevel: 'high',
+      displayName: 'Ali',
+      heightCm: 181,
+      weightDirection: 'maintain',
+    })
+    expect(JSON.stringify(profileSection.value)).not.toMatch(/imported-user|access_token|session/)
+  })
+
   it('applies a successful plan with snapshot and dirty metadata', () => {
     const storage = createMemoryStorage({
       'viktkollen.weights': JSON.stringify([{ date: '2026-07-30', id: 'w0', value: 90.1 }]),

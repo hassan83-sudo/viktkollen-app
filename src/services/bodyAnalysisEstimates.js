@@ -157,6 +157,7 @@ export function normalizeMeasuredWeight(value) {
 
 export function buildBodyAnalysisContext({ bodyAnalysisHistory = [], profile = {}, weights = [] } = {}) {
   const latestMeasuredWeight = getLatestMeasuredWeight(weights)
+  const height = Number(profile.heightCm ?? profile.height)
 
   return {
     latestMeasuredWeight,
@@ -172,7 +173,8 @@ export function buildBodyAnalysisContext({ bodyAnalysisHistory = [], profile = {
     profile: {
       age: Number.isFinite(Number(profile.age)) ? Number(profile.age) : null,
       gender: typeof profile.gender === 'string' ? profile.gender : '',
-      height: Number.isFinite(Number(profile.height)) ? Number(profile.height) : null,
+      height: Number.isFinite(height) ? height : null,
+      heightProvenance: profile.provenance?.height || (Number.isFinite(height) ? 'user_entered' : 'missing'),
     },
   }
 }

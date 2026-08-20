@@ -2,6 +2,8 @@ import { createStableChecksum, getApproximatePayloadSize, normalizeCloudBackupPa
 import { readStorage } from '../appStorageService.js'
 import { parseDataImportText } from '../import/dataImportEngine.js'
 import { buildImportPlan } from '../import/importPlanBuilder.js'
+import { normalizeProfile } from '../profileService.js'
+import { userDataKeys } from '../userDataRepository.js'
 import { buildCheckInsCsv, buildMealsCsv, buildWeightCsv } from './csvExport.js'
 import {
   dataExportSchemaVersion,
@@ -91,6 +93,14 @@ function readExportData(storageKeys, currentData = {}) {
     const value = readStorage(key, null)
     return value === null || value === undefined ? data : { ...data, [key]: value }
   }, {})
+}
+
+function normalizeExportStorageValue(storageKey, value) {
+  if (storageKey === userDataKeys.profile) {
+    return normalizeProfile(value)
+  }
+
+  return value
 }
 
 function sectionSummary(section, data) {
@@ -244,7 +254,7 @@ export function buildDataExportDraft(options = {}) {
   const rawData = readExportData(storageKeys, options.currentData || {})
   const excludedFields = new Set(exportExcludedFields)
   const sanitizedData = Object.fromEntries(Object.entries(rawData)
-    .map(([key, value]) => [key, sanitizeValue(value, excludedFields)])
+    .map(([key, value]) => [key, sanitizeValue(normalizeExportStorageValue(key, value), excludedFields)])
     .filter(([, value]) => value !== undefined && value !== null))
   const selectedSectionSummaries = sections.map((section) => sectionSummary(section, sanitizedData))
   const csvSection = findExportSectionById(

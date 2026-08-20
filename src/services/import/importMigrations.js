@@ -1,6 +1,7 @@
 import { normalizeCloudBackupPayload } from '../cloudBackupSchema.js'
 import { normalizeMeals } from '../nutritionService.js'
 import { normalizeWeights } from '../progressService.js'
+import { normalizeProfile } from '../profileService.js'
 import { isAllowedSyncStorageKey } from '../sync/syncMetadata.js'
 import { getBackupStorageKeys, userDataKeys } from '../userDataRepository.js'
 import { parseCsv } from './csvParser.js'
@@ -47,6 +48,14 @@ function makeGeneratedId(prefix, row, importDate) {
   return `${prefix}-${importDate.slice(0, 10)}-${row.index}`
 }
 
+function normalizeImportedStorageValue(storageKey, value) {
+  if (storageKey === userDataKeys.profile) {
+    return normalizeProfile(value)
+  }
+
+  return value
+}
+
 export function migrateBackupPayloadToSections(payload) {
   const backup = normalizeCloudBackupPayload(payload)
   if (!backup) {
@@ -62,7 +71,7 @@ export function migrateBackupPayloadToSections(payload) {
       key: storageKey,
       label: storageKey.replace('viktkollen.', ''),
       source: backup.metadata?.migratedFromSchemaVersion ? 'legacyBackup' : 'backup',
-      value,
+      value: normalizeImportedStorageValue(storageKey, value),
     }))
 
   return {

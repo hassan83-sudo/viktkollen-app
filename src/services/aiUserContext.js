@@ -1,6 +1,7 @@
 import { getUnifiedWeightContext } from './healthCalculations.js'
 import { buildHealthSnapshot } from './healthSnapshot.js'
 import { describeMealProvenanceSummary, summarizeMealProvenance } from './nutrition/nutritionProvenance.js'
+import { buildCompactProfileContext } from './profileService.js'
 import { buildRoutineCoachContext } from './routines/dailyRoutinePlan.js'
 import { getLatestBodyScanEstimatedWeight } from './weightProvenance.js'
 
@@ -12,11 +13,19 @@ function safeArray(value) {
 }
 
 function compactProfile(profile = {}) {
+  const compact = buildCompactProfileContext(profile)
+
   return {
-    activityLevel: profile.activityLevel || '',
-    goal: profile.goal || '',
-    goalWeight: profile.goalWeight || '',
-    name: profile.name || '',
+    activityLevel: compact.activityLevel,
+    activityLevelLabel: compact.activityLevelLabel,
+    dietaryPreferences: compact.dietaryPreferences,
+    displayName: compact.displayName,
+    goalWeight: compact.goalWeight,
+    heightCm: compact.heightCm,
+    name: compact.displayName,
+    provenance: compact.provenance,
+    units: compact.units,
+    weightDirection: compact.weightDirection,
   }
 }
 

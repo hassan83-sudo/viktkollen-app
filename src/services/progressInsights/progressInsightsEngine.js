@@ -51,8 +51,14 @@ function formatSteps(value) {
 }
 
 function getGoalDirection(profile = {}) {
+  const direction = String(profile.weightDirection || profile.goalDirection || '').toLocaleLowerCase('sv-SE')
+  if (direction === 'maintain') return 'stable'
+  if (direction === 'gain') return 'up'
+  if (direction === 'loss') return 'down'
+
   const goal = String(profile.goal || '').toLocaleLowerCase('sv-SE')
   if (/bygga|upp|muskel/.test(goal)) return 'up'
+  if (/håll|hall|maintain|stabil/.test(goal)) return 'stable'
 
   return 'down'
 }
@@ -61,6 +67,7 @@ function isWeightTrendTowardGoal(changeKg, profile) {
   const goalDirection = getGoalDirection(profile)
 
   if (!Number.isFinite(changeKg) || Math.abs(changeKg) < 0.1) return false
+  if (goalDirection === 'stable') return Math.abs(changeKg) <= 0.3
   return goalDirection === 'down' ? changeKg < 0 : changeKg > 0
 }
 

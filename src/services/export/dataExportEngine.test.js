@@ -56,6 +56,10 @@ describe('Data Export & Portability V2', () => {
     expect(draft.validation.ok).toBe(true)
     expect(payload.schemaVersion).toBe(2)
     expect(payload.userData['viktkollen.profile'].access_token).toBeUndefined()
+    expect(payload.userData['viktkollen.profile']).toMatchObject({
+      displayName: 'Test',
+      schemaVersion: 2,
+    })
     expect(payload.userData['viktkollen.meals'][0].photoAnalysis.image).toBeUndefined()
     expect(JSON.stringify(payload.userData)).not.toMatch(/access_token|data:image|base64|refresh_token|Supabase/i)
   })

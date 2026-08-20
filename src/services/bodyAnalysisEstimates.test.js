@@ -71,7 +71,12 @@ describe('bodyAnalysisEstimates', () => {
       source: 'Registrerad vikt',
       valueKg: 78,
     })
-    expect(context.profile).toEqual({ age: 42, gender: 'man', height: 180 })
+    expect(context.profile).toEqual({
+      age: 42,
+      gender: 'man',
+      height: 180,
+      heightProvenance: 'user_entered',
+    })
     expect(context.previousScans[0].estimatedWeight).toEqual({ confidence: 'low', maxKg: 82, minKg: 76 })
   })
 

@@ -29,6 +29,7 @@ import {
 } from './nutrition/mealDateUtils.js'
 import { normalizeNutritionGoals } from './nutrition/nutritionGoals.js'
 import { summarizeMealProvenance } from './nutrition/nutritionProvenance.js'
+import { normalizeProfile } from './profileService.js'
 import { analyzeWeights } from './progressService.js'
 import { buildWeightProvenanceSummary } from './weightProvenance.js'
 
@@ -520,7 +521,7 @@ function buildCheckInSnapshot({ checkIn, checkIns, today }) {
 export function buildHealthSnapshot(data = {}) {
   const today = parseLocalDate(getLocalDateString(data.today || new Date())) || new Date()
   const date = getLocalDateString(today)
-  const profile = data.profile && typeof data.profile === 'object' ? { ...data.profile } : {}
+  const profile = normalizeProfile(data.profile || {})
   const weight = buildWeightSnapshot({
     bodyAnalysisHistory: safeArray(data.bodyAnalysisHistory),
     profile,

@@ -7,6 +7,7 @@ import {
   createUpdatedNutritionGoals,
   normalizeNutritionGoals,
 } from './nutrition/nutritionGoals.js'
+import { normalizeProfile } from './profileService.js'
 
 export const userDataKeys = {
   aiConversationMemory: 'viktkollen.aiConversationMemory',
@@ -90,11 +91,13 @@ export function saveDemoMode(value) {
 }
 
 export function getProfile(fallbackValue = null, isValid) {
-  return readValidated(userDataKeys.profile, fallbackValue, isValid)
+  const value = readValidated(userDataKeys.profile, fallbackValue, isValid)
+
+  return value ? normalizeProfile(value) : value
 }
 
 export function saveProfile(profile) {
-  return saveValue(userDataKeys.profile, profile)
+  return saveValue(userDataKeys.profile, normalizeProfile(profile, { markCompleted: true }))
 }
 
 export function getWeights(fallbackValue = [], isValid) {

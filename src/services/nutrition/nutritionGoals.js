@@ -108,7 +108,8 @@ function parseActivityLevel(value) {
   const text = String(value || '').toLocaleLowerCase('sv-SE')
 
   if (/mycket|hög|hog|aktiv|gym|träna|trana|sport|5/.test(text)) return 'high'
-  if (/låg|lag|stillasittande|lite|1/.test(text)) return 'low'
+  if (/lätt|latt|light|promenad|2/.test(text)) return 'moderate'
+  if (/låg|lag|low|stillasittande|lite|1/.test(text)) return 'low'
   if (/medel|normal|måttlig|mattlig|promenad|3/.test(text)) return 'moderate'
 
   return 'moderate'

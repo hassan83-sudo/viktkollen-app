@@ -20,6 +20,7 @@ import {
 } from './healthFormatting.js'
 import { buildHealthSnapshot } from './healthSnapshot.js'
 import { describeMealProvenanceSummary, summarizeMealProvenance } from './nutrition/nutritionProvenance.js'
+import { buildCompactProfileContext } from './profileService.js'
 import { analyzeWeights } from './progressService.js'
 import { buildRoutineCoachContext } from './routines/dailyRoutinePlan.js'
 
@@ -337,6 +338,7 @@ function estimateGoalDate(weightContext) {
 }
 
 function buildCoachProfile({ checkIn, profile, weights }) {
+  const compactProfile = buildCompactProfileContext(profile)
   const weightContext = getUnifiedWeightFacts({
     currentWeight: weights.at(-1)?.value,
     profile,
@@ -346,13 +348,14 @@ function buildCoachProfile({ checkIn, profile, weights }) {
   const metrics = normalizeCheckInMetrics(checkIn)
 
   return {
-    activityLevel: safeText(profile?.activity || profile?.activityLevel, 'Inte angiven'),
+    activityLevel: compactProfile.activityLevelLabel || safeText(profile?.activity || profile?.activityLevel, 'Inte angiven'),
     age: safeNumber(profile?.age),
     currentWeight: weightContext.currentWeight,
     gender: safeText(profile?.gender || profile?.sex, 'Inte angivet'),
     goalWeight: weightContext.goalWeight,
-    height: safeNumber(profile?.height),
-    name: safeText(profile?.name, 'du'),
+    height: compactProfile.heightCm,
+    name: safeText(compactProfile.displayName || profile?.name, 'du'),
+    profileProvenance: compactProfile.provenance,
     proteinTarget:
       proteinNeed === null
         ? 'Saknas'

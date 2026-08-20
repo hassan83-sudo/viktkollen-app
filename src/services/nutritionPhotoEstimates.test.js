@@ -2,9 +2,13 @@ import { describe, expect, it } from 'vitest'
 
 import {
   buildNutritionPhotoTrendSummary,
+  calculateTotalsFromComponents,
+  compareNutritionRanges,
   normalizeAnalysisQuality,
   normalizeEstimatedIngredients,
   normalizeEstimatedNutrition,
+  normalizePhotoAnalysisImageQuality,
+  normalizePhotoComponents,
   normalizePortionEstimate,
   normalizeUncertainIngredients,
   nutritionMidpointsFromEstimate,
@@ -77,5 +81,85 @@ describe('nutritionPhotoEstimates', () => {
     expect(summary.proteinRichCount).toBe(1)
     expect(summary.correctionFrequency).toBe(1)
     expect(summary.commonUncertaintyFactor).toBe('Sås')
+  })
+
+  it('normalizes component-based photo analysis with confidence, portion and nutrition ranges', () => {
+    const components = normalizePhotoComponents([
+      {
+        category: 'protein',
+        confidence: 'high',
+        cookingMethods: ['fried', 'breaded'],
+        name: 'Friterad kyckling',
+        nutritionEstimate: {
+          calories: { confidence: 'medium', max: 380, midpoint: 310, min: 250 },
+          fatG: { confidence: 'medium', max: 22, midpoint: 16, min: 10 },
+          proteinG: { confidence: 'medium', max: 36, midpoint: 28, min: 22 },
+        },
+        portionEstimate: { confidence: 'medium', gramsMax: 150, gramsMin: 100 },
+        visualEvidence: 'Panerad yta.',
+      },
+      {
+        category: 'carbohydrate',
+        confidence: 'high',
+        name: 'French fries',
+        nutritionEstimate: {
+          calories: { confidence: 'medium', max: 520, midpoint: 430, min: 340 },
+          carbsG: { confidence: 'medium', max: 70, midpoint: 55, min: 42 },
+          fatG: { confidence: 'medium', max: 25, midpoint: 18, min: 12 },
+        },
+        portionEstimate: { confidence: 'medium', gramsMax: 180, gramsMin: 120 },
+      },
+      {
+        alternatives: ['vitlökssås', 'majonnäsbaserad dressing'],
+        category: 'sauce',
+        confidence: 'medium',
+        name: 'Sås eller dressing',
+        uncertainty: 'low',
+      },
+    ])
+
+    expect(components).toHaveLength(3)
+    expect(components[0]).toMatchObject({ category: 'protein', confidence: 'high' })
+    expect(components[0].portionEstimate).toMatchObject({ gramsMax: 150, gramsMin: 100 })
+    expect(components[0].cookingMethods).toContain('fried')
+    expect(components[2].alternatives).toHaveLength(2)
+  })
+
+  it('aggregates component nutrition ranges and detects large total mismatches', () => {
+    const components = normalizePhotoComponents([
+      {
+        category: 'protein',
+        name: 'Kyckling',
+        nutritionEstimate: {
+          calories: { max: 320, midpoint: 260, min: 210 },
+          proteinG: { max: 35, midpoint: 28, min: 22 },
+        },
+      },
+      {
+        category: 'carbohydrate',
+        name: 'Pommes',
+        nutritionEstimate: {
+          calories: { max: 500, midpoint: 410, min: 330 },
+          carbsG: { max: 68, midpoint: 52, min: 40 },
+        },
+      },
+    ])
+    const totals = calculateTotalsFromComponents(components)
+
+    expect(totals.calories).toMatchObject({ min: 540, max: 820 })
+    expect(compareNutritionRanges({ calories: { min: 250, midpoint: 300, max: 360 } }, totals).isConsistent).toBe(false)
+    expect(normalizePhotoAnalysisImageQuality('poor')).toBe('poor')
+  })
+
+  it('merges obvious duplicate components without merging different foods aggressively', () => {
+    const components = normalizePhotoComponents([
+      { category: 'carbohydrate', confidence: 'medium', name: 'Pommes frites', portionEstimate: { gramsMax: 100, gramsMin: 80 } },
+      { category: 'carbohydrate', confidence: 'high', name: 'French fries', portionEstimate: { gramsMax: 70, gramsMin: 50 } },
+      { category: 'vegetables', confidence: 'high', name: 'Sallad', portionEstimate: { gramsMax: 60, gramsMin: 30 } },
+    ])
+
+    expect(components).toHaveLength(2)
+    expect(components.find((item) => item.name === 'Pommes frites').confidence).toBe('high')
+    expect(components.find((item) => item.name === 'Sallad')).toBeTruthy()
   })
 })

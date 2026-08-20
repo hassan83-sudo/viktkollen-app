@@ -1,5 +1,15 @@
 export const nutritionEstimateConfidenceLevels = ['high', 'medium', 'low', 'insufficient']
 export const nutritionEstimateNutrients = ['calories', 'proteinG', 'carbsG', 'fatG', 'fiberG']
+export const nutritionPhotoComponentConfidenceLevels = ['high', 'medium', 'low', 'insufficient']
+export const nutritionPhotoImageQualityLevels = ['good', 'usable', 'poor']
+export const nutritionPhotoComponentCategories = [
+  'carbohydrate',
+  'fat',
+  'protein',
+  'sauce',
+  'vegetables',
+  'unknown',
+]
 
 const nutrientAliases = {
   calories: ['calories', 'kcal', 'energyKcal'],
@@ -17,12 +27,299 @@ const nutrientLimits = {
   proteinG: { max: 800, minWidth: 5, ratio: 0.22 },
 }
 
+const componentCategoryAliases = {
+  carbohydrate: ['carbohydrate', 'carb', 'kolhydrater', 'ris', 'potatis', 'potatisar', 'nudlar', 'bröd', 'pasta'],
+  protein: ['protein', 'kött', 'fågel', 'kyckling', 'fisk', 'ägg'],
+  sauce: ['sauce', 'sås', 'dressing', 'majonnas', 'majonnäs', 'yoghurtbaserat', 'yoghurtdressing'],
+  fat: ['fett', 'olja', 'bärande', 'margarin'],
+  vegetables: ['vegetables', 'vegetable', 'grönsak', 'gronsak', 'gurka', 'tomat', 'sallad', 'grönsaker', 'gronsaker'],
+  unknown: ['okänd', 'okant', 'unknown'],
+}
+
+const componentNameMergeAliases = [
+  { canonical: 'friterad kyckling', synonyms: ['friterad kyckling', 'kyckling', 'kycklingfilé', 'kycklingbröst'] },
+  { canonical: 'pommes frites', synonyms: ['pommes', 'friterade potatis', 'potatis', 'french fries', 'franska frites'] },
+  { canonical: 'grönsaker', synonyms: ['gurka', 'gurka och tomat', 'tomat', 'grönsak', 'grönsaker', 'blandade grönsaker'] },
+  { canonical: 'sås', synonyms: ['sås', 'dressing', 'salladsdressing', 'grönsaksås', 'majonäs', 'majonnäs'] },
+]
+
+const confidenceOrder = {
+  insufficient: 0,
+  low: 1,
+  medium: 2,
+  high: 3,
+}
+
 function isObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
 function safeArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : []
+}
+
+function normalizeComponentCategory(value = 'unknown') {
+  const candidate = safeText(value, 'unknown', 60).toLocaleLowerCase('sv-SE')
+
+  return Object.entries(componentCategoryAliases).find(([, aliases]) =>
+    aliases.some((alias) => candidate.includes(alias)))?.[0] || 'unknown'
+}
+
+function normalizeComponentName(value = '', fallback = 'Okänd komponent') {
+  return safeText(value, fallback, 120)
+}
+
+function mergeConfidence(first, second) {
+  const firstScore = confidenceOrder[safeText(first, 'low')] ?? confidenceOrder.low
+  const secondScore = confidenceOrder[safeText(second, 'low')] ?? confidenceOrder.low
+
+  return firstScore >= secondScore ? first : second
+}
+
+function isFiniteRange(range) {
+  return Number.isFinite(range?.min)
+    && Number.isFinite(range?.midpoint)
+    && Number.isFinite(range?.max)
+    && range.max >= range.min
+    && range.midpoint >= range.min
+    && range.midpoint <= range.max
+}
+
+function toRangeBounds(range) {
+  if (!isObject(range)) return { min: null, midpoint: null, max: null, confidence: null }
+  const normalized = {
+    confidence: normalizeNutritionEstimateConfidence(range.confidence, 'low'),
+    min: safeNumber(range.min ?? range.minG ?? range.minKg ?? range.midpoint ?? null, null, 100000),
+    midpoint: safeNumber(range.midpoint ?? range.midpointG ?? range.midpointKg ?? null, null, 100000),
+    max: safeNumber(range.max ?? range.maxG ?? range.maxKg ?? range.midpoint ?? null, null, 100000),
+  }
+
+  if (!isFiniteRange(normalized)) return {
+    confidence: normalized.confidence,
+    min: null,
+    midpoint: null,
+    max: null,
+  }
+
+  return normalized
+}
+
+function mergeRange(first, second) {
+  if (!isObject(first) && !isObject(second)) return null
+  if (!isObject(first)) return second
+  if (!isObject(second)) return first
+  const firstRange = toRangeBounds(first)
+  const secondRange = toRangeBounds(second)
+
+  if (!firstRange.min && !firstRange.midpoint && !firstRange.max) return second
+  if (!secondRange.min && !secondRange.midpoint && !secondRange.max) return first
+
+  const result = {
+    confidence: mergeConfidence(first.confidence, second.confidence),
+    min: null,
+    midpoint: null,
+    max: null,
+  }
+  result.min = Number(((firstRange.min || firstRange.midpoint || 0) + (secondRange.min || secondRange.midpoint || 0)).toFixed(0))
+  result.max = Number(((firstRange.max || firstRange.midpoint || 0) + (secondRange.max || secondRange.midpoint || 0)).toFixed(0))
+  result.midpoint = Number(((result.min + result.max) / 2).toFixed(firstRange.midpoint === null || secondRange.midpoint === null ? 0 : 1))
+
+  return result
+}
+
+function sumNutritionRanges(values = []) {
+  return values.reduce((accumulator, current) => {
+    if (!isObject(current)) return accumulator
+    const merged = { ...accumulator }
+
+    nutritionEstimateNutrients.forEach((nutrient) => {
+      merged[nutrient] = mergeRange(merged[nutrient], current[nutrient])
+      if (!merged[nutrient]) return
+      merged[nutrient].min = Number((merged[nutrient].min || 0))
+      merged[nutrient].max = Number((merged[nutrient].max || 0))
+      merged[nutrient].midpoint = Number(((merged[nutrient].min + merged[nutrient].max) / 2).toFixed(nutrient === 'calories' ? 0 : 1))
+    })
+
+    return merged
+  }, {})
+}
+
+function mergePortionEstimate(first = {}, second = {}) {
+  const firstRange = normalizePortionEstimate(first)
+  const secondRange = normalizePortionEstimate(second)
+  if (!firstRange && !secondRange) return null
+  const merged = normalizePortionEstimate({
+    confidence: mergeConfidence(firstRange?.confidence || secondRange?.confidence || 'low', firstRange?.confidence || secondRange?.confidence || 'low'),
+    description: `${safeText(firstRange?.description, '') || ''}${firstRange?.description && secondRange?.description ? ' + ' : ''}${safeText(secondRange?.description, '') || ''}` || 'Sammanlagd portion',
+    gramsMin: Number(((firstRange?.gramsMin || 0) + (secondRange?.gramsMin || 0)).toFixed(0)),
+    gramsMax: Number(((firstRange?.gramsMax || 0) + (secondRange?.gramsMax || 0)).toFixed(0)),
+  }, {
+    confidence: mergeConfidence(firstRange?.confidence || secondRange?.confidence || 'low', firstRange?.confidence || secondRange?.confidence || 'low'),
+  })
+
+  return merged
+}
+
+export function normalizePhotoComponent(raw = {}, index = 0) {
+  const source = isObject(raw) ? raw : {}
+  const baseConfidence = normalizeNutritionEstimateConfidence(source.confidence || 'low')
+  const category = normalizeComponentCategory(source.category || source.type)
+  const confidence = source.confidence ? normalizeNutritionEstimateConfidence(source.confidence, 'low') : baseConfidence
+  const alternatives = safeArray(source.alternatives).map((entry) => safeText(entry, '', 60)).filter(Boolean).slice(0, 3)
+  const portionEstimate = normalizePortionEstimate(source.portionEstimate || source.portion, { confidence, fallbackDescription: 'Ospecificerad komponentportion' })
+  const nutritionEstimate = normalizeEstimatedNutrition(source.nutritionEstimate || source.nutrition || source.estimatedNutrition, {
+    confidence,
+  })
+  const cookingMethods = safeArray(source.cookingMethods)
+    .map((entry) => safeText(entry, '', 50))
+    .filter(Boolean)
+    .slice(0, 4)
+
+  return {
+    id: safeText(source.id, `photo-component-${index}`),
+    alternatives,
+    category,
+    confidence,
+    cookingMethods,
+    visualEvidence: safeText(source.visualEvidence, '', 160),
+    cookingMethodHints: safeArray(source.cookingMethodHints).map((entry) => safeText(entry, '', 50)).filter(Boolean).slice(0, 4),
+    imageQuality: normalizePhotoAnalysisImageQuality(source.imageQuality || source.imageQualityOverall || source.image_quality, 'usable'),
+    name: normalizeComponentName(source.name || source.label, `Komponent ${index + 1}`),
+    nutritionEstimate,
+    portionEstimate,
+    uncertainty: {
+      confidence: normalizeNutritionEstimateConfidence(source.uncertainty || source.certainty || 'low'),
+      reason: safeText(source.uncertaintyReason || source.reason || source.notes || '', 'Komponenten kan vara osäker.', 140),
+    },
+    sourceEvidence: safeText(source.sourceEvidence, '', 80),
+    nutritionIsUsable: ['calories', 'proteinG', 'carbsG', 'fatG']
+      .some((nutrient) => {
+        const bounds = toRangeBounds(nutritionEstimate?.[nutrient])
+        return isFiniteRange(bounds)
+      }),
+  }
+}
+
+export function normalizePhotoAnalysisImageQuality(value, fallback = 'usable') {
+  const candidate = safeText(value || fallback, fallback, 20).toLocaleLowerCase('sv-SE')
+  return nutritionPhotoImageQualityLevels.includes(candidate) ? candidate : fallback
+}
+
+function normalizeComponentMergeName(value = '') {
+  const candidate = safeText(value, '', 120).toLocaleLowerCase('sv-SE').replace(/[^a-zåäöéè0-9\s]/g, ' ')
+
+  for (const alias of componentNameMergeAliases) {
+    const hit = alias.synonyms.some((entry) => candidate.includes(entry))
+    if (hit) return alias.canonical
+  }
+
+  return candidate
+}
+
+export function normalizePhotoComponents(rawComponents = []) {
+  const safe = safeArray(rawComponents).map((entry, index) => {
+    const normalized = normalizePhotoComponent(entry, index)
+    const mergedName = normalizeComponentMergeName(normalized.name)
+
+    return { ...normalized, normalizedName: mergedName }
+  }).filter((entry) => entry.name)
+
+  const bySignature = new Map()
+
+  safe.forEach((component) => {
+    const key = `${component.category}:${component.normalizedName}`
+    if (!bySignature.has(key)) {
+      bySignature.set(key, { ...component, alternatives: [...component.alternatives] })
+      return
+    }
+
+    const existing = bySignature.get(key)
+    bySignature.set(key, {
+      ...existing,
+      confidence: mergeConfidence(existing.confidence, component.confidence),
+      id: existing.id,
+      name: existing.name,
+      nutritionEstimate: mergeNutritionEstimates(existing.nutritionEstimate, component.nutritionEstimate),
+      portionEstimate: mergePortionEstimate(existing.portionEstimate, component.portionEstimate),
+      visualEvidence: `${safeText(existing.visualEvidence, '', 100)} ${safeText(component.visualEvidence, '', 100)}`.trim() || 'Komponentsammanslagning.',
+      uncertainty: {
+        confidence: mergeConfidence(existing.uncertainty.confidence, component.uncertainty.confidence),
+        reason: [existing.uncertainty.reason, component.uncertainty.reason]
+          .filter(Boolean).map((entry) => safeText(entry, '', 140)).slice(0, 1).join(' '),
+      },
+      alternatives: [...new Set([...existing.alternatives, ...component.alternatives])].slice(0, 3),
+      cookingMethods: [...new Set([...existing.cookingMethods, ...component.cookingMethods])].slice(0, 4),
+    })
+  })
+
+  return Array.from(bySignature.values()).map((component) => {
+    const rest = { ...component }
+    delete rest.normalizedName
+
+    return {
+      ...rest,
+      nutritionEstimate: normalizeEstimatedNutrition(rest.nutritionEstimate || {}, {
+        confidence: rest.confidence,
+      }),
+    }
+  }).slice(0, 12)
+}
+
+export function calculateTotalsFromComponents(components = []) {
+  const componentNutrition = safeArray(components)
+    .map((component) => component.nutritionEstimate)
+    .filter(Boolean)
+
+  return sumNutritionRanges(componentNutrition)
+}
+
+export function compareNutritionRanges(base = {}, candidate = {}) {
+  const tolerances = ['calories', 'proteinG', 'carbsG', 'fatG', 'fiberG']
+  const mismatches = []
+
+  tolerances.forEach((nutrient) => {
+    const a = toRangeBounds(base?.[nutrient])
+    const b = toRangeBounds(candidate?.[nutrient])
+    if (!isFiniteRange(a) || !isFiniteRange(b)) return
+    const midpointA = a.midpoint
+    const midpointB = b.midpoint
+    const avg = (midpointA + midpointB) / 2 || midpointA || midpointB
+    const delta = avg > 0 ? Math.abs(midpointA - midpointB) / avg : 0
+    if (delta > 0.35) mismatches.push(nutrient)
+  })
+
+  return {
+    isConsistent: mismatches.length === 0,
+    mismatches,
+  }
+}
+
+export function normalizeMealPortionFromComponents(components = []) {
+  const portions = safeArray(components)
+    .map((component) => component.portionEstimate)
+    .filter(Boolean)
+  const totals = portions.length
+    ? portions.slice(1).reduce((acc, next) => mergePortionEstimate(acc, next), portions[0])
+    : null
+
+  return Number.isFinite(Number(totals?.gramsMin)) && Number.isFinite(Number(totals?.gramsMax))
+    ? totals
+    : null
+}
+
+function mergeNutritionEstimates(first = {}, second = {}) {
+  const merged = { ...sumNutritionRanges([first, second]) }
+  Object.keys(merged).forEach((key) => {
+    if (merged[key]) {
+      merged[key].confidence = mergeConfidence(first?.[key]?.confidence, second?.[key]?.confidence)
+    }
+  })
+
+  return merged
+}
+
+export function componentNeedsReview(component = {}) {
+  return component.confidence === 'low' || component.confidence === 'insufficient' || component.uncertainty?.confidence === 'low' || component.uncertainty?.confidence === 'insufficient'
 }
 
 export function safeText(value, fallback = '', max = 220) {

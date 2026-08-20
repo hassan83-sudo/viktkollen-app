@@ -47,6 +47,20 @@ describe('nutritionPhotoAnalysisProvider', () => {
     const fetchMock = vi.fn(async () => ({
       json: async () => ({
         analysis: {
+          components: [
+            {
+              category: 'protein',
+              confidence: 'high',
+              name: 'Friterad kyckling',
+              nutritionEstimate: {
+                calories: { confidence: 'medium', max: 320, midpoint: 240, min: 190 },
+                fatG: { confidence: 'medium', max: 14, midpoint: 9, min: 6 },
+                proteinG: { confidence: 'medium', max: 18, midpoint: 12, min: 8 },
+              },
+              portionEstimate: { confidence: 'medium', gramsMax: 180, gramsMin: 100 },
+              visualEvidence: 'Panerad yta.',
+            },
+          ],
           detectedItems: [{ calories: 240, carbohydrates: 30, confidence: 'medium', fat: 9, name: 'Pizza', protein: 12 }],
           estimatedNutrition: {
             calories: { confidence: 'medium', max: 320, midpoint: 240, min: 190 },
@@ -69,7 +83,9 @@ describe('nutritionPhotoAnalysisProvider', () => {
 
     expect(result.ok).toBe(true)
     expect(result.analysis.provider.type).toBe('remote')
+    expect(result.analysis.components[0].name).toBe('Friterad kyckling')
     expect(result.analysis.estimatedNutrition.calories.midpoint).toBe(240)
+    expect(result.analysis.safeSummary).not.toContain('Lokal uppskattning')
     expect(result.analysis.portionEstimate.description).toBe('En bit')
     expect(fetchMock).toHaveBeenCalledWith('/api/nutrition-photo-analysis', expect.objectContaining({
       body: expect.any(FormData),
@@ -95,6 +111,27 @@ describe('nutritionPhotoAnalysisProvider', () => {
     expect(result.analysis).toBeNull()
     expect(result.providerType).toBe('remote')
     expect(result.warning).toContain('För många')
+  })
+
+  it('surfaces provider or network failure without leaving the caller waiting', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      throw new TypeError('Network request failed')
+    }))
+
+    const result = await analyzeNutritionPhoto({ preprocessedImage: new Blob(['image']) }, { providerType: 'remote' })
+
+    expect(result.ok).toBe(false)
+    expect(result.analysis).toBeNull()
+    expect(result.providerType).toBe('remote')
+    expect(result.warning).toContain('Remote bildanalys kunde inte slutföras')
+  })
+
+  it('surfaces missing remote image payload as a user-facing warning', async () => {
+    const result = await analyzeNutritionPhoto({}, { providerType: 'remote' })
+
+    expect(result.ok).toBe(false)
+    expect(result.analysis).toBeNull()
+    expect(result.warning).toContain('Bild saknas')
   })
 
   it('does not call the photo route when session is missing', async () => {

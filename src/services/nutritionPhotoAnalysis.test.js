@@ -78,7 +78,7 @@ describe('nutritionPhotoAnalysis model', () => {
       analysisId: analysis.analysisId,
       dataSources: ['aiEstimate'],
       itemCount: 2,
-      provenance: 'ai_estimate',
+      provenance: 'ai_estimated',
       providerType: 'mock',
       reviewCompleted: true,
       schemaVersion: 3,
@@ -112,5 +112,111 @@ describe('nutritionPhotoAnalysis model', () => {
     expect(summary.providerCounts.mock).toBe(1)
     expect(summary.dataSourceCounts.aiEstimate).toBe(1)
     expect(summary.cautiousPatterns.correctionFrequency).toBe(1)
+  })
+
+  it('keeps V3 remote components through normalization, review and save as ai_estimated until user confirmation', () => {
+    const analysis = normalizeNutritionPhotoAnalysis({
+      analysisDate,
+      components: [
+        {
+          category: 'protein',
+          confidence: 'high',
+          cookingMethods: ['fried', 'breaded'],
+          name: 'Friterad kyckling',
+          nutritionEstimate: {
+            calories: { confidence: 'medium', max: 380, midpoint: 310, min: 250 },
+            fatG: { confidence: 'medium', max: 22, midpoint: 16, min: 10 },
+            proteinG: { confidence: 'medium', max: 36, midpoint: 28, min: 22 },
+          },
+          portionEstimate: { confidence: 'medium', gramsMax: 150, gramsMin: 100 },
+          visualEvidence: 'Panerad/friterad yta.',
+        },
+        {
+          category: 'carbohydrate',
+          confidence: 'high',
+          name: 'Pommes frites',
+          nutritionEstimate: {
+            calories: { confidence: 'medium', max: 520, midpoint: 430, min: 340 },
+            carbsG: { confidence: 'medium', max: 70, midpoint: 55, min: 42 },
+            fatG: { confidence: 'medium', max: 25, midpoint: 18, min: 12 },
+          },
+          portionEstimate: { confidence: 'medium', gramsMax: 180, gramsMin: 120 },
+        },
+        {
+          category: 'vegetables',
+          confidence: 'high',
+          name: 'Gurka och tomat',
+          nutritionEstimate: {
+            calories: { confidence: 'medium', max: 35, midpoint: 22, min: 12 },
+            carbsG: { confidence: 'medium', max: 7, midpoint: 4, min: 2 },
+            fiberG: { confidence: 'medium', max: 3, midpoint: 1.5, min: 0.5 },
+          },
+          portionEstimate: { confidence: 'medium', gramsMax: 60, gramsMin: 30 },
+        },
+        {
+          alternatives: ['vitlökssås', 'majonnäsbaserad dressing'],
+          category: 'sauce',
+          confidence: 'medium',
+          name: 'Sås eller dressing',
+          nutritionEstimate: {
+            calories: { confidence: 'low', max: 180, midpoint: 105, min: 50 },
+            fatG: { confidence: 'low', max: 18, midpoint: 10, min: 4 },
+          },
+          portionEstimate: { confidence: 'low', gramsMax: 40, gramsMin: 20 },
+          uncertainty: { confidence: 'low', reason: 'Exakt typ och mängd syns inte säkert.' },
+        },
+      ],
+      confidence: 'medium',
+      imageQuality: 'usable',
+      mealTotals: {
+        calories: { confidence: 'medium', max: 1115, midpoint: 867, min: 652 },
+        carbsG: { confidence: 'medium', max: 77, midpoint: 59, min: 44 },
+        fatG: { confidence: 'medium', max: 65, midpoint: 44, min: 26 },
+        proteinG: { confidence: 'medium', max: 36, midpoint: 28, min: 22 },
+      },
+      provider: { type: 'remote' },
+      safeSummary: 'Remote komponentanalys.',
+    }, { analysisDate })
+    const draft = createPhotoAnalysisReviewDraft(analysis, { analysisDate, mealType: 'Lunch', time: '12:30' })
+    const saved = commitPhotoAnalysisMeal(draft, [], { now: '2026-07-31T12:31:00.000Z' }).meal
+
+    expect(analysis.components).toHaveLength(4)
+    expect(analysis.detectedItems.map((item) => item.name)).toContain('Pommes frites')
+    expect(analysis.mealTotals.calories.midpoint).toBe(867)
+    expect(draft.components).toHaveLength(4)
+    expect(saved.photoAnalysis.components).toHaveLength(4)
+    expect(saved.photoAnalysis.imageQuality).toBe('usable')
+    expect(saved.photoAnalysis.provenance).toBe('ai_estimated')
+    expect(JSON.stringify(saved)).not.toMatch(/data:image|base64/)
+  })
+
+  it('recalculates meal totals from components when provider totals are inconsistent', () => {
+    const analysis = normalizeNutritionPhotoAnalysis({
+      analysisDate,
+      components: [
+        {
+          category: 'carbohydrate',
+          confidence: 'high',
+          name: 'Pommes frites',
+          nutritionEstimate: {
+            calories: { max: 520, midpoint: 430, min: 340 },
+            carbsG: { max: 70, midpoint: 55, min: 42 },
+            fatG: { max: 25, midpoint: 18, min: 12 },
+            proteinG: { max: 7, midpoint: 5, min: 3 },
+          },
+        },
+      ],
+      confidence: 'medium',
+      mealTotals: {
+        calories: { max: 180, midpoint: 150, min: 120 },
+        carbsG: { max: 20, midpoint: 15, min: 10 },
+        fatG: { max: 3, midpoint: 2, min: 1 },
+        proteinG: { max: 3, midpoint: 2, min: 1 },
+      },
+    }, { analysisDate })
+
+    expect(analysis.totalsValidation.isConsistent).toBe(false)
+    expect(analysis.estimatedNutrition.calories.midpoint).toBe(430)
+    expect(analysis.analysisQuality.limitations.join(' ')).toContain('komponentintervall')
   })
 })

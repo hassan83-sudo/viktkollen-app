@@ -5,6 +5,11 @@ import {
   normalizeAnalysisQuality,
   normalizeEstimatedIngredients,
   normalizeEstimatedNutrition,
+  normalizeMealPortionFromComponents,
+  calculateTotalsFromComponents,
+  compareNutritionRanges,
+  normalizePhotoAnalysisImageQuality,
+  normalizePhotoComponents,
   normalizePortionEstimate,
   normalizeUncertainIngredients,
   nutritionMidpointsFromEstimate,
@@ -22,14 +27,19 @@ const allowedAnalysisKeys = new Set([
   'analysisId',
   'confidence',
   'createdAt',
+  'components',
+  'cookingMethods',
   'detectedItems',
   'analysisQuality',
   'estimatedNutrition',
   'estimatedServing',
+  'imageQuality',
   'imageMetadata',
   'ingredients',
   'limitations',
+  'mealTotals',
   'modelVersion',
+  'nutrition',
   'portionEstimate',
   'provider',
   'safeSummary',
@@ -170,36 +180,83 @@ function normalizeNutrition(nutrition = {}, detectedItems = []) {
   }
 }
 
+function componentToDetectedItem(component = {}, index = 0) {
+  const nutrition = nutritionMidpointsFromEstimate(component.nutritionEstimate || {})
+
+  return normalizeDetectedItem({
+    alternatives: component.alternatives,
+    calories: nutrition.calories,
+    carbohydrates: nutrition.carbs,
+    confidence: component.confidence,
+    dataSource: 'aiEstimate',
+    estimatedAmount: component.portionEstimate?.gramsMin !== null && component.portionEstimate?.gramsMax !== null
+      ? Math.round((component.portionEstimate.gramsMin + component.portionEstimate.gramsMax) / 2)
+      : null,
+    fat: nutrition.fat,
+    id: component.id || `photo-component-item-${index}`,
+    name: component.name,
+    notes: component.visualEvidence || component.uncertainty?.reason,
+    protein: nutrition.protein,
+    unit: 'g',
+    uncertain: component.confidence === 'low' || component.confidence === 'insufficient',
+  }, index)
+}
+
+function buildIngredientsFromComponents(components = []) {
+  return components.map((component) => ({
+    confidence: component.confidence,
+    estimatedAmount: component.portionEstimate?.gramsMin !== null && component.portionEstimate?.gramsMax !== null
+      ? `${component.portionEstimate.gramsMin}-${component.portionEstimate.gramsMax} g`
+      : '',
+    name: component.name,
+    notes: [component.visualEvidence, component.uncertainty?.reason].filter(Boolean).join(' '),
+  }))
+}
+
 export function normalizeNutritionPhotoAnalysis(value = {}, options = {}) {
   const source = isObject(value) && !payloadTooLarge(value)
     ? Object.fromEntries(Object.entries(value).filter(([key]) => allowedAnalysisKeys.has(key)))
     : {}
   const analysisDate = getLocalDateString(options.analysisDate || source.analysisDate || options.today || new Date())
   const createdAt = safeText(source.createdAt) || (options.now || `${analysisDate}T12:00:00.000Z`)
-  const detectedItems = safeArray(source.detectedItems)
+  const components = normalizePhotoComponents(source.components || [])
+  const componentDetectedItems = components.map(componentToDetectedItem)
+  const detectedItems = safeArray(source.detectedItems?.length ? source.detectedItems : componentDetectedItems)
     .slice(0, maxPhotoDetectedItems)
     .map(normalizeDetectedItem)
   const confidenceLevel = normalizeConfidence(source.confidence, detectedItems.length ? 'medium' : 'insufficient')
-  const estimatedNutrition = normalizeEstimatedNutrition(source.estimatedNutrition || source, { confidence: confidenceLevel })
+  const componentTotals = calculateTotalsFromComponents(components)
+  const modelTotals = normalizeEstimatedNutrition(source.mealTotals || source.estimatedNutrition || source.nutrition || source, { confidence: confidenceLevel })
+  const totalsComparison = compareNutritionRanges(modelTotals, componentTotals)
+  const estimatedNutrition = components.length && (!totalsComparison.isConsistent || !modelTotals.calories)
+    ? componentTotals
+    : modelTotals
   const nutritionMidpoints = nutritionMidpointsFromEstimate(estimatedNutrition)
   const legacyNutrition = normalizeNutrition(nutritionMidpoints, detectedItems)
-  const ingredients = normalizeEstimatedIngredients(source.ingredients?.length ? source.ingredients : detectedItems)
-  const portionEstimate = normalizePortionEstimate(source.portionEstimate || source.estimatedServing, {
+  const componentPortion = normalizeMealPortionFromComponents(components)
+  const ingredients = normalizeEstimatedIngredients(source.ingredients?.length ? source.ingredients : buildIngredientsFromComponents(components).length ? buildIngredientsFromComponents(components) : detectedItems)
+  const portionEstimate = normalizePortionEstimate(source.portionEstimate || componentPortion || source.estimatedServing, {
     confidence: confidenceLevel,
     fallbackDescription: source.estimatedServing,
   })
   const uncertainIngredients = normalizeUncertainIngredients(source.uncertainIngredients || source.warnings, {
     ingredients: detectedItems,
   })
+  const imageQuality = normalizePhotoAnalysisImageQuality(source.imageQuality || source.analysisQuality?.imageQuality, 'usable')
   const analysisQuality = normalizeAnalysisQuality(source.analysisQuality, {
-    confidence: confidenceLevel,
-    limitations: source.limitations,
+    confidence: imageQuality === 'poor' && confidenceLevel === 'high' ? 'medium' : confidenceLevel,
+    limitations: [
+      ...safeArray(source.limitations),
+      ...(!totalsComparison.isConsistent && components.length ? ['Meal totals räknades om från validerade komponentintervall.'] : []),
+      ...(imageQuality === 'poor' ? ['Bildkvaliteten sänker säkerheten i analysen.'] : []),
+    ],
     summary: source.safeSummary || source.summary,
   })
   const validationErrors = validateNutritionPhotoAnalysis({
     ...source,
     analysisDate,
     confidence: { level: confidenceLevel, score: confidenceScore(confidenceLevel) },
+    components,
     detectedItems,
     estimatedNutrition,
     nutrition: legacyNutrition,
@@ -227,6 +284,7 @@ export function normalizeNutritionPhotoAnalysis(value = {}, options = {}) {
             : 'Otillräcklig confidence. Komplettera manuellt innan sparning.',
     },
     createdAt,
+    components,
     detectedItems,
     ingredients,
     analysisQuality,
@@ -238,6 +296,10 @@ export function normalizeNutritionPhotoAnalysis(value = {}, options = {}) {
       sizeBytes: safeNumber(source.imageMetadata?.sizeBytes, null, 20000000),
     },
     limitations: safeArray(source.limitations).map((item) => safeText(item, '', 180)).filter(Boolean).slice(0, 6),
+    imageQuality,
+    mealTotals: estimatedNutrition,
+    componentTotals,
+    totalsValidation: totalsComparison,
     modelVersion: nutritionPhotoAnalysisVersion,
     provider: {
       type: safeText(source.provider?.type || source.provider || 'mock', 'mock', 40),
@@ -283,13 +345,14 @@ export function createPhotoAnalysisReviewDraft(analysis = {}, options = {}) {
 
   return {
     analysis: normalized,
+    components: normalized.components,
     date: normalized.analysisDate,
     detectedItems: normalized.detectedItems,
     mealName: normalized.detectedItems[0]?.name ? `Foto: ${normalized.detectedItems[0].name}` : 'Måltid från foto',
     mealType: options.mealType || 'Lunch',
     note: 'Näring uppskattad från foto och granskad före sparning.',
     nutrition: normalized.nutrition,
-    nutritionProvenance: 'ai_estimate',
+    nutritionProvenance: 'ai_estimated',
     portionSize: normalized.portionEstimate.description,
     time: options.time || '12:00',
     userEdited: false,
@@ -380,17 +443,22 @@ export function commitPhotoAnalysisMeal(draft = {}, meals = [], options = {}) {
       analysisId: draft.analysis.analysisId,
       analyzedAt: draft.analysis.createdAt,
       confidence: draft.analysis.confidence.level,
+      components: draft.analysis.components,
+      componentTotals: draft.analysis.componentTotals,
       dataSources,
       estimatedNutrition: draft.analysis.estimatedNutrition,
       ingredients: draft.analysis.ingredients,
+      imageQuality: draft.analysis.imageQuality,
       itemCount: selectedItems.length,
+      mealTotals: draft.analysis.mealTotals,
       portionEstimate: draft.analysis.portionEstimate,
-      provenance: draft.userEdited || draft.nutritionProvenance === 'user_confirmed' ? 'user_confirmed' : 'ai_estimate',
+      provenance: draft.userEdited || draft.nutritionProvenance === 'user_confirmed' ? 'user_confirmed' : 'ai_estimated',
       providerType: draft.analysis.provider.type,
       reviewCompleted: true,
       schemaVersion: nutritionPhotoAnalysisVersion,
       source: 'photoAnalysis',
       uncertainIngredients: draft.analysis.uncertainIngredients,
+      totalsValidation: draft.analysis.totalsValidation,
       userEdited: draft.userEdited === true || draft.analysis.userEdited === true,
     },
     portionSize: draft.portionSize,

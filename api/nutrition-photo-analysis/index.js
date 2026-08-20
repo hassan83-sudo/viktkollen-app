@@ -7,9 +7,14 @@ import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { createImageFingerprint, runDedupedAiRequest } from '../_shared/aiRequestDeduper.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 import {
+  calculateTotalsFromComponents,
+  compareNutritionRanges,
   normalizeAnalysisQuality,
   normalizeEstimatedIngredients,
   normalizeEstimatedNutrition,
+  normalizeMealPortionFromComponents,
+  normalizePhotoAnalysisImageQuality,
+  normalizePhotoComponents,
   normalizePortionEstimate,
   normalizeUncertainIngredients,
   nutritionMidpointsFromEstimate,
@@ -150,13 +155,22 @@ function validateImage(image) {
 function createPrompt(mealType) {
   return [
     'Du analyserar en matbild för Viktkollen.',
-    'Returnera endast JSON enligt schemat: detectedItems, portionEstimate, estimatedNutrition, ingredients, uncertainIngredients, analysisQuality, confidence, limitations, warnings, safeSummary.',
-    'estimatedNutrition måste innehålla calories, proteinG, carbsG, fatG och fiberG som objekt med min, max, midpoint och confidence, eller null om underlaget inte räcker.',
-    'portionEstimate ska vara description, gramsMin, gramsMax och confidence, eller null för gram om portionen inte kan bedömas.',
-    'Identifiera bara synliga livsmedel och uppskatta portioner som breda intervall utan falsk precision.',
-    'Kommentera dolda osäkerheter som olja, sås, dryck, tillagning och skymda ingredienser.',
+    'Identifiera först synliga måltidskomponenter innan du summerar måltiden.',
+    'Returnera endast strikt JSON enligt schemat: components, mealTotals, portionEstimate, ingredients, uncertainIngredients, imageQuality, analysisQuality, confidence, limitations, warnings, safeSummary.',
+    'components är en array med objekt: id, name, category, confidence, visualEvidence, portionEstimate, nutritionEstimate, uncertainty, alternatives, cookingMethods.',
+    'category ska vara protein, carbohydrate, vegetables, sauce, fat eller unknown.',
+    'confidence ska vara high, medium eller low för varje komponent. Använd high där bilden tydligt visar maten, medium när förekomst syns men typ/mängd är osäker, low när identifieringen är svag.',
+    'visualEvidence ska vara kort och användbar, inte intern chain-of-thought.',
+    'portionEstimate per komponent ska innehålla description, gramsMin, gramsMax och confidence, eller null för gram om portionen inte kan bedömas.',
+    'nutritionEstimate per komponent måste innehålla calories, proteinG, carbsG, fatG och fiberG som objekt med min, max, midpoint och confidence, eller null om underlaget inte räcker.',
+    'mealTotals ska vara summan av komponenternas validerade nutritionintervall. Låt inte mealTotals avvika kraftigt från komponenterna.',
+    'Identifiera sås/dressing som egen komponent när den syns. Var försiktig med exakt typ och mängd och bredda kalorier/fett vid osäkerhet.',
+    'Ange cookingMethods bara när bilden ger stöd, t.ex. fried, breaded, grilled, boiled, baked eller raw.',
+    'Om synlig mat inte kan identifieras säkert, behåll den som Okänd komponent med low confidence och högst tre relevanta alternatives.',
+    'imageQuality ska vara good, usable eller poor baserat på ljus, blur, occlusion, vinkel, plate coverage och om bilden verkar vara fotograferad från skärm.',
+    'Behåll legacy-fält ingredients/detectedItems om möjligt för kompatibilitet, men components är primärt schema.',
+    'Var specifik där visuell evidens är stark. Var försiktig där bilden inte ger stöd. Returnera null när något inte kan avgöras.',
     'Ge ingen medicinsk rådgivning, ingen diagnos, ingen bedömning av kropp, vikt eller om maten är bra/dålig.',
-    'Ange låg confidence när ingredienser eller portion är osäkra.',
     `Måltidstyp om användaren valt den: ${safeText(mealType, 'okänd', 40)}.`,
   ].join(' ')
 }
@@ -188,15 +202,35 @@ function normalizeItem(item = {}, index = 0) {
 }
 
 function validateProviderPayload(payload = {}) {
+  const components = normalizePhotoComponents(payload.components || [])
+  const componentTotals = calculateTotalsFromComponents(components)
+  const componentPortion = normalizeMealPortionFromComponents(components)
   const detectedItems = Array.isArray(payload.detectedItems)
     ? payload.detectedItems.slice(0, 12).map(normalizeItem)
-    : []
-  const estimatedNutrition = {
-    ...normalizeEstimatedNutrition(payload.estimatedNutrition || payload, { confidence: payload.confidence }),
-  }
+    : components.map((component, index) => {
+      const nutrition = nutritionMidpointsFromEstimate(component.nutritionEstimate || {})
+      return normalizeItem({
+        alternatives: component.alternatives,
+        calories: nutrition.calories,
+        carbohydrates: nutrition.carbs,
+        confidence: component.confidence,
+        estimatedAmount: component.portionEstimate?.gramsMin !== null && component.portionEstimate?.gramsMax !== null
+          ? Math.round((component.portionEstimate.gramsMin + component.portionEstimate.gramsMax) / 2)
+          : null,
+        fat: nutrition.fat,
+        name: component.name,
+        protein: nutrition.protein,
+        unit: 'g',
+      }, index)
+    })
+  const modelNutrition = normalizeEstimatedNutrition(payload.mealTotals || payload.estimatedNutrition || payload, { confidence: payload.confidence })
+  const totalsComparison = compareNutritionRanges(modelNutrition, componentTotals)
+  const estimatedNutrition = components.length && (!totalsComparison.isConsistent || !modelNutrition.calories)
+    ? componentTotals
+    : modelNutrition
   const nutritionMidpoints = nutritionMidpointsFromEstimate(estimatedNutrition)
   const ingredients = normalizeEstimatedIngredients(payload.ingredients?.length ? payload.ingredients : detectedItems)
-  const portionEstimate = normalizePortionEstimate(payload.portionEstimate || payload.estimatedServing, {
+  const portionEstimate = normalizePortionEstimate(payload.portionEstimate || componentPortion || payload.estimatedServing, {
     confidence: payload.confidence,
     fallbackDescription: payload.estimatedServing,
   })
@@ -205,9 +239,13 @@ function validateProviderPayload(payload = {}) {
   })
   const analysisQuality = normalizeAnalysisQuality(payload.analysisQuality, {
     confidence: payload.confidence,
-    limitations: payload.limitations,
+    limitations: [
+      ...(Array.isArray(payload.limitations) ? payload.limitations : []),
+      ...(!totalsComparison.isConsistent && components.length ? ['Meal totals räknades om från validerade komponentintervall.'] : []),
+    ],
     summary: payload.safeSummary,
   })
+  const imageQuality = normalizePhotoAnalysisImageQuality(payload.imageQuality || payload.analysisQuality?.imageQuality, 'usable')
   const errors = []
   if (!detectedItems.length) errors.push('detectedItems')
   if (!estimatedNutrition.calories || !estimatedNutrition.proteinG || !estimatedNutrition.carbsG || !estimatedNutrition.fatG) {
@@ -218,13 +256,17 @@ function validateProviderPayload(payload = {}) {
   return {
     analysis: {
       analysisQuality,
+      componentTotals,
+      components,
       confidence,
       detectedItems,
       estimatedNutrition,
       estimatedServing: portionEstimate.description,
+      imageQuality,
       ingredients,
       limitations: Array.isArray(payload.limitations) ? payload.limitations.map((item) => safeText(item, '', 160)).filter(Boolean).slice(0, 6) : [],
       modelVersion: 3,
+      mealTotals: estimatedNutrition,
       nutrition: {
         calories: nutritionMidpoints.calories,
         carbs: nutritionMidpoints.carbs,
@@ -234,6 +276,7 @@ function validateProviderPayload(payload = {}) {
       portionEstimate,
       providerType: 'remote',
       safeSummary: safeText(payload.safeSummary, 'Remote bildanalys gav ett granskningsbart uppskattningsförslag.', 220),
+      totalsValidation: totalsComparison,
       uncertainIngredients,
       warnings: Array.isArray(payload.warnings) ? payload.warnings.map((item) => safeText(item, '', 160)).filter(Boolean).slice(0, 6) : [],
     },
@@ -259,7 +302,7 @@ async function callOpenAi(image, mealType) {
           ],
           role: 'user',
     }],
-    maxOutputTokens: 900,
+    maxOutputTokens: 1600,
     model: config.model || DEFAULT_MODEL,
     timeoutMs: REQUEST_TIMEOUT_MS,
     type: 'photo',

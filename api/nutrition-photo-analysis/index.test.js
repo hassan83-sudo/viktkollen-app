@@ -186,6 +186,111 @@ describe('nutrition photo analysis API route', () => {
     expect(result.errors).toContain('estimatedNutrition')
   })
 
+  it('sanitizes V3 component payloads for fried chicken, fries, vegetables and sauce', () => {
+    const result = nutritionPhotoRouteInternals.validateProviderPayload({
+      components: [
+        {
+          category: 'protein',
+          confidence: 'high',
+          cookingMethods: ['fried', 'breaded'],
+          name: 'Friterad kyckling',
+          nutritionEstimate: {
+            calories: { confidence: 'medium', max: 380, midpoint: 310, min: 250 },
+            fatG: { confidence: 'medium', max: 22, midpoint: 16, min: 10 },
+            proteinG: { confidence: 'medium', max: 36, midpoint: 28, min: 22 },
+          },
+          portionEstimate: { confidence: 'medium', gramsMax: 150, gramsMin: 100 },
+          visualEvidence: 'Panerad/friterad yta.',
+        },
+        {
+          category: 'carbohydrate',
+          confidence: 'high',
+          name: 'French fries',
+          nutritionEstimate: {
+            calories: { confidence: 'medium', max: 520, midpoint: 430, min: 340 },
+            carbsG: { confidence: 'medium', max: 70, midpoint: 55, min: 42 },
+            fatG: { confidence: 'medium', max: 25, midpoint: 18, min: 12 },
+            proteinG: { confidence: 'low', max: 7, midpoint: 5, min: 3 },
+          },
+          portionEstimate: { confidence: 'medium', gramsMax: 180, gramsMin: 120 },
+        },
+        {
+          category: 'vegetables',
+          confidence: 'high',
+          name: 'Gurka och tomat',
+          nutritionEstimate: {
+            calories: { confidence: 'medium', max: 35, midpoint: 22, min: 12 },
+            carbsG: { confidence: 'medium', max: 7, midpoint: 4, min: 2 },
+            fiberG: { confidence: 'medium', max: 3, midpoint: 1.5, min: 0.5 },
+            proteinG: { confidence: 'low', max: 2, midpoint: 1, min: 0.2 },
+          },
+          portionEstimate: { confidence: 'medium', gramsMax: 60, gramsMin: 30 },
+        },
+        {
+          alternatives: ['vitlökssås', 'majonnäsbaserad dressing', 'yoghurtsås', 'för många ignoreras'],
+          category: 'sauce',
+          confidence: 'medium',
+          name: 'Sås eller dressing',
+          nutritionEstimate: {
+            calories: { confidence: 'low', max: 180, midpoint: 105, min: 50 },
+            fatG: { confidence: 'low', max: 18, midpoint: 10, min: 4 },
+          },
+          portionEstimate: { confidence: 'low', gramsMax: 40, gramsMin: 20 },
+          uncertainty: { confidence: 'low', reason: 'Exakt typ och mängd är osäker.' },
+        },
+      ],
+      confidence: 'medium',
+      imageQuality: 'usable',
+      mealTotals: {
+        calories: { confidence: 'medium', max: 1115, midpoint: 867, min: 652 },
+        carbsG: { confidence: 'medium', max: 77, midpoint: 59, min: 44 },
+        fatG: { confidence: 'medium', max: 65, midpoint: 44, min: 26 },
+        proteinG: { confidence: 'medium', max: 45, midpoint: 34, min: 25 },
+      },
+      safeSummary: 'Fyra synliga komponenter med osäker sås.',
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.analysis.components).toHaveLength(4)
+    expect(result.analysis.components[1]).toMatchObject({ category: 'carbohydrate', confidence: 'high', name: 'French fries' })
+    expect(result.analysis.components[3].alternatives).toHaveLength(3)
+    expect(result.analysis.imageQuality).toBe('usable')
+    expect(result.analysis.estimatedNutrition.calories.midpoint).toBe(867)
+    expect(JSON.stringify(result.analysis)).not.toMatch(/data:image|base64|OPENAI/)
+  })
+
+  it('drops unusable component totals and recalculates mismatched meal totals from components', () => {
+    const result = nutritionPhotoRouteInternals.validateProviderPayload({
+      components: [
+        {
+          category: 'unknown',
+          confidence: 'low',
+          name: '<script>Okänd komponent</script>',
+          nutritionEstimate: {
+            calories: { max: 620, midpoint: 520, min: 420 },
+            carbsG: { max: 60, midpoint: 45, min: 30 },
+            fatG: { max: 22, midpoint: 14, min: 8 },
+            proteinG: { max: 30, midpoint: 20, min: 10 },
+          },
+        },
+      ],
+      confidence: 'medium',
+      imageQuality: 'screen',
+      mealTotals: {
+        calories: { max: 160, midpoint: 120, min: 80 },
+        carbsG: { max: 10, midpoint: 6, min: 3 },
+        fatG: { max: 5, midpoint: 3, min: 1 },
+        proteinG: { max: 4, midpoint: 2, min: 1 },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.analysis.estimatedNutrition.calories.midpoint).toBe(520)
+    expect(result.analysis.totalsValidation.isConsistent).toBe(false)
+    expect(result.analysis.imageQuality).toBe('usable')
+    expect(JSON.stringify(result.analysis)).not.toMatch(/<script/)
+  })
+
   it('returns validated remote analysis without raw provider response', async () => {
     process.env.OPENAI_API_KEY = 'test-key'
     vi.stubGlobal('fetch', vi.fn(async () => ({

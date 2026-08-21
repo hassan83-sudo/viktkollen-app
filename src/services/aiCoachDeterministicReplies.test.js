@@ -217,7 +217,11 @@ describe('AI Coach deterministic V3 regression', () => {
   })
 
   it('handles hello as smalltalk', () => {
-    expect(reply('hej')).toContain('Hej! Hur kan jag hjälpa dig idag?')
+    const response = reply('hej')
+
+    expect(response).toContain('Hej!')
+    expect(response).toContain('Hur kan jag hjälpa dig idag?')
+    expect(response).toContain('90,1')
   })
 
   it('handles thanks as smalltalk', () => {

@@ -1,3 +1,4 @@
+import { requestAiEndpoint } from '../aiApiService.js'
 import {
   loadAiCoachAppContext,
   loadAiConversationMemory,
@@ -12,6 +13,38 @@ export function makeRecentCoachChatHistory(chatHistory = []) {
     role: chatMessage.role,
     text: chatMessage.text,
   }))
+}
+
+export function buildCoachChatRemotePayload(appData = {}, message, chatHistory = []) {
+  const snapshot = appData.healthSnapshot || {}
+  const latestCoachReply = [...chatHistory]
+    .reverse()
+    .find((entry) => entry?.role === 'assistant')?.text || ''
+
+  return {
+    action: 'chat',
+    bodyAnalysisHistory: Array.isArray(appData.bodyAnalysisHistory)
+      ? appData.bodyAnalysisHistory.slice(0, 2)
+      : [],
+    chatHistory,
+    checkIn: appData.checkIn || {},
+    currentWeight: snapshot.weight?.current ?? appData.currentWeight,
+    foods: Array.isArray(appData.foods) ? appData.foods.slice(0, 12) : [],
+    latestCoachReply,
+    latestWeeklyReport: appData.latestWeeklyReport || null,
+    mealHistory: Array.isArray(appData.mealHistory) ? appData.mealHistory.slice(0, 5) : [],
+    meals: Array.isArray(appData.meals) ? appData.meals.slice(-10) : [],
+    message,
+    nutritionGoals: appData.nutritionGoals || {},
+    profile: {
+      goal: appData.profile?.goal,
+      goalWeight: appData.profile?.goalWeight,
+      name: appData.profile?.name || appData.profile?.displayName,
+      startWeight: appData.profile?.startWeight,
+      weightDirection: appData.profile?.weightDirection,
+    },
+    weights: Array.isArray(appData.weights) ? appData.weights.slice(-14) : [],
+  }
 }
 
 export async function prepareCoachChatSubmission({
@@ -114,6 +147,19 @@ export async function requestCoachChatReply({
   message,
 }) {
   const recentChatHistory = makeRecentCoachChatHistory(chatHistory)
+  const remote = await requestAiEndpoint(
+    buildCoachChatRemotePayload(appData, message, recentChatHistory),
+  )
+  const remoteReply = remote.ok && typeof remote.data?.reply === 'string'
+    ? remote.data.reply.trim()
+    : ''
+
+  if (remoteReply) {
+    return {
+      reply: remoteReply,
+      source: remote.source === 'openai' ? 'openai' : 'mock',
+    }
+  }
 
   return (await createDeterministicChatReply({
     appData,

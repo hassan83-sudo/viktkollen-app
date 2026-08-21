@@ -1104,9 +1104,33 @@ function makeFocusReply(facts) {
   return 'Fokus idag: håll det enkelt med vanlig mat, lite rörelse och en rimlig kvällsrutin.'
 }
 
+function makeStatusSnippet(facts) {
+  const parts = []
+
+  if (Number.isFinite(facts.latestWeight)) {
+    parts.push(`senaste vikten är ${formatKg(facts.latestWeight)}`)
+  }
+
+  const calories = Number(facts.todayNutrition?.totals?.calories)
+  if (Number.isFinite(calories)) {
+    parts.push(`${Math.round(calories)} kcal idag`)
+  }
+
+  if (Number.isFinite(facts.todayProtein) && Number.isFinite(facts.proteinGoal)) {
+    parts.push(`protein ${Math.round(facts.todayProtein)} av ${Math.round(facts.proteinGoal)} g`)
+  }
+
+  if (Number.isFinite(facts.steps)) {
+    parts.push(`${facts.steps.toLocaleString('sv-SE')} steg`)
+  }
+
+  return parts.length ? ` ${parts.join(', ')}.` : ''
+}
+
 function makeSmalltalkReply(facts, message) {
   const normalized = normalizeAiCoachText(message)
   const latestReply = normalizeAiCoachText(facts.latestCoachReply || '').plain
+  const status = makeStatusSnippet(facts)
 
   if (normalized.plain === 'tack' || normalized.plain === 'tackar') {
     return 'Varsågod. Jag håller mig kort och hjälper dig ta nästa rimliga steg.'
@@ -1121,7 +1145,7 @@ function makeSmalltalkReply(facts, message) {
       ? ` Senaste energin var ${facts.energy}/10, så välj en start som matchar dagsformen.`
       : ''
 
-    return `God morgon.${energyText} Vad vill du börja med idag: mat, vikt eller rörelse?`
+    return `God morgon.${status || energyText} Vad vill du börja med idag: mat, vikt eller rörelse?`
   }
 
   if (normalized.plain === 'hur mar du') {
@@ -1133,10 +1157,10 @@ function makeSmalltalkReply(facts, message) {
   }
 
   if (latestReply.includes('hur kan jag hjalpa') || latestReply.includes('vad vill du kolla')) {
-    return 'Jag är kvar. Vad vill du ta nästa?'
+    return `Jag är kvar.${status} Vill du kolla mat, vikt eller nästa steg?`
   }
 
-  return 'Hej! Hur kan jag hjälpa dig idag?'
+  return `Hej!${status} Hur kan jag hjälpa dig idag?`
 }
 
 function makeClarifyReply(facts, message) {
@@ -1298,7 +1322,7 @@ function makeConversationFallback(message, chatHistory = []) {
 
   if (isGreeting(message)) {
     return historyHasGreeting(chatHistory)
-      ? 'Jag är kvar. Vad vill du ta nästa?'
+      ? 'Jag är kvar. Vill du kolla mat, vikt eller nästa steg?'
       : 'Hej! Hur kan jag hjälpa dig idag?'
   }
 

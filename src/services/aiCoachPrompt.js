@@ -91,7 +91,7 @@ const responseTemplates = {
         return `Med ${weightSource} blir ett enkelt riktmärke ungefär ${lower}-${upper} g protein per dag. Fördela det över måltiderna så blir det lättare att nå.`
       }
 
-      return 'Ett vanligt riktmärke är protein i varje måltid, till exempel ägg, kvarg, fisk, kyckling, tofu eller bönor.'
+      return 'Ett vanligt riktmärke är protein i varje måltid. Enkla val: kyckling, nötkött eller ägg, plus kvarg, fisk, tofu eller bönor.'
     },
   ],
   recipe: [
@@ -187,12 +187,12 @@ function getRepeatedQuestionCount(message, context = {}) {
 function getSafetyRules() {
   return [
     'Svara på svenska.',
-    'Var vänlig, konkret och motiverande.',
-    'Undvik upprepningar och standardsvar.',
-    'Ge bara allmän wellness-coaching, inte medicinska diagnoser.',
-    'Hitta inte på data som saknas.',
-    'Om data saknas, säg det naturligt och föreslå nästa rimliga steg.',
-    'Håll svaret kort om frågan är kort.',
+    'Prata som en skarp, varm coach – inte som en FAQ-bot eller en kundtjänstfras.',
+    'Svara på det användaren just skrev. Hälsa inte om det inte är en hälsning.',
+    'Använd siffror från kontexten: vikt, kalorier, protein, steg, mål.',
+    'Hitta inte på data som saknas. Om något saknas, säg det och föreslå nästa loggning.',
+    'Ge ett konkret nästa steg, gärna med kyckling, nötkött eller ägg när protein saknas.',
+    '2–6 meningar. Ingen medicinsk diagnos, inga läkemedel, ingen svält.',
   ].join('\n')
 }
 
@@ -205,7 +205,7 @@ function getSafetyRules() {
  * @returns {string}
  */
 export function createAiCoachPrompt({ context, intent }) {
-  return `Du är Viktkollens smarta AI-coach.
+  return `Du är Viktkollens personliga AI-coach.
 
 Regler:
 ${getSafetyRules()}
@@ -213,12 +213,12 @@ ${getSafetyRules()}
 Identifierad intent:
 ${JSON.stringify(intent)}
 
-Relevant appkontext:
+Användarens data:
 ${JSON.stringify(context)}
 
 Svara endast med giltig JSON:
 {
-  "reply": "kort naturligt svar på svenska"
+  "reply": "naturligt, konkret svar på svenska"
 }`
 }
 

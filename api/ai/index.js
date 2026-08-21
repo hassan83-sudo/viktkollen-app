@@ -5,7 +5,6 @@ import {
   createAiCoachPrompt,
   createLocalAiCoachReply,
 } from '../../src/services/aiCoachPrompt.js'
-import { routeAiResponse } from '../../src/services/aiResponseRouter.js'
 import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
@@ -201,11 +200,13 @@ function getChatEngineData(data = {}) {
     checkIn: data.checkIn,
     currentWeight: data.currentWeight,
     foods: data.foods,
+    healthSnapshot: data.healthSnapshot,
     intent: intent.intent,
     latestCoachReply: data.latestCoachReply,
     latestWeeklyReport: data.latestWeeklyReport,
     mealHistory: data.mealHistory,
     meals: data.meals,
+    nutritionGoals: data.nutritionGoals,
     profile: data.profile,
     weights: data.weights,
   })
@@ -296,65 +297,55 @@ async function handleDailyCoach(data, response) {
 
 async function handleChat(data, response) {
   const chatEngine = getChatEngineData(data)
-  const shouldUseLocalAi =
-    chatEngine.intent.intent !== 'general' && chatEngine.intent.confidence >= 0.55
+  const unsafeMessage = unsafeCoachPattern.test(String(data.message || ''))
 
-  try {
-    const routedResponse = await routeAiResponse({
-      deterministic: () =>
-        createDeterministicAiCoachReply({
+  if (process.env.OPENAI_API_KEY && !unsafeMessage) {
+    try {
+      const result = await callOpenAI({
+        maxOutputTokens: 800,
+        prompt: createAiCoachPrompt({
           context: chatEngine.context,
           intent: chatEngine.intent,
-          message: data.message,
         }),
-      local: () => (shouldUseLocalAi ? chatEngine.fallbackReply : null),
-      openai: async () => {
-        if (!process.env.OPENAI_API_KEY) {
-          return {
-            source: 'mock',
-            sourceReason: 'missing_api_key',
-            summary: chatEngine.fallbackReply,
-          }
-        }
+        userData: {
+          context: chatEngine.context,
+          message: data.message,
+          recentConversation: chatEngine.context.conversation?.recentMessages || [],
+        },
+      })
 
-        const result = await callOpenAI({
-          maxOutputTokens: 700,
-          prompt: createAiCoachPrompt({
-            context: chatEngine.context,
-            intent: chatEngine.intent,
-          }),
-          userData: {
-            message: data.message,
-            recentConversation: chatEngine.context.conversation?.recentMessages || [],
-          },
-        })
-
-        return {
+      if (result?.reply) {
+        return response.status(200).json({
+          intent: chatEngine.intent.intent,
+          reply: result.reply,
           source: 'openai',
           sourceReason: 'openai',
-          summary: result.reply || chatEngine.fallbackReply,
-        }
-      },
-    })
-
-    return response.status(200).json({
-      intent: chatEngine.intent.intent,
-      reply: routedResponse.summary,
-      source: routedResponse.source,
-      sourceReason: routedResponse.sourceReason,
-    })
-  } catch (error) {
-    console.warn('[api/ai] chat OpenAI failed, using mock', {
-      error: error instanceof Error ? error.message : String(error),
-    })
-
-    return response.status(200).json({
-      fallbackReason: 'api_error',
-      intent: chatEngine.intent.intent,
-      reply: chatEngine.fallbackReply,
-      source: 'mock',
-    })
+        })
+      }
+    } catch (error) {
+      console.warn('[api/ai] chat OpenAI failed, using mock', {
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
   }
+
+  const reply = createDeterministicAiCoachReply({
+    chatHistory: data.chatHistory,
+    context: chatEngine.context,
+    intent: chatEngine.intent,
+    message: data.message,
+  }) || chatEngine.fallbackReply
+
+  return response.status(200).json({
+    intent: chatEngine.intent.intent,
+    reply,
+    source: 'mock',
+    sourceReason: unsafeMessage
+      ? 'safety'
+      : process.env.OPENAI_API_KEY
+        ? 'openai_fallback'
+        : 'missing_api_key',
+  })
 }
 
 async function handleStudyBuddy(data, response) {

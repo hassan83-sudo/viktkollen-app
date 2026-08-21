@@ -133,6 +133,13 @@ export function buildAiUserContext(data = {}) {
     latestWeeklyReport: data.latestWeeklyReport || null,
     healthSnapshot: snapshot,
     meals: getMealsContext(snapshot.nutrition.actualMeals, data.mealHistory, snapshot.nutrition.mealsToday),
+    nutrition: {
+      caloriesToday: snapshot.nutrition.caloriesToday,
+      goals: snapshot.nutrition.goals,
+      mealCountToday: snapshot.nutrition.mealCountToday,
+      proteinToday: snapshot.nutrition.proteinToday,
+    },
+    nutritionGoals: data.nutritionGoals || snapshot.nutrition.goals,
     profile: compactProfile(data.profile),
     routines: buildRoutineCoachContext({
       goalsHabits: data.goalsHabits,
@@ -157,15 +164,15 @@ export function buildAiUserContext(data = {}) {
 export function pickAiUserContextForIntent(userContext, intent) {
   const map = {
     bodyAnalysis: ['profile', 'bodyAnalysis', 'weight', 'coachConversation'],
-    calories: ['profile', 'meals', 'checkIn', 'coachConversation'],
+    calories: ['profile', 'meals', 'nutrition', 'checkIn', 'coachConversation'],
     checkIn: ['profile', 'checkIn', 'foods', 'coachConversation'],
-    food: ['profile', 'meals', 'checkIn', 'foods', 'coachConversation'],
+    food: ['profile', 'meals', 'nutrition', 'checkIn', 'foods', 'coachConversation'],
     lateMeal: ['profile', 'meals', 'checkIn', 'foods', 'coachConversation'],
     goalWeight: ['profile', 'weight', 'coachConversation'],
     habits: ['profile', 'checkIn', 'foods', 'routines', 'coachConversation'],
     mealAnalysis: ['profile', 'meals', 'checkIn', 'coachConversation'],
     motivation: ['profile', 'weight', 'checkIn', 'foods', 'coachConversation'],
-    protein: ['profile', 'weight', 'meals', 'coachConversation'],
+    protein: ['profile', 'weight', 'meals', 'nutrition', 'coachConversation'],
     recipe: ['profile', 'meals', 'coachConversation'],
     sleep: ['profile', 'checkIn', 'coachConversation'],
     stress: ['profile', 'checkIn', 'coachConversation'],
@@ -181,7 +188,14 @@ export function pickAiUserContextForIntent(userContext, intent) {
     ],
     weight: ['profile', 'weight', 'coachConversation'],
   }
-  const keys = map[intent] || ['profile', 'checkIn', 'coachConversation']
+  const keys = map[intent] || [
+    'profile',
+    'checkIn',
+    'weight',
+    'meals',
+    'nutrition',
+    'coachConversation',
+  ]
 
   return keys.reduce(
     (context, key) => ({

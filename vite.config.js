@@ -1,4 +1,5 @@
 import process from 'node:process'
+import { Buffer } from 'node:buffer'
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -78,6 +79,48 @@ function withVercelResponseHelpers(response) {
   return response
 }
 
+async function readDevRequestBody(request) {
+  if (typeof request.body === 'string' || (request.body && typeof request.body === 'object')) {
+    return request.body
+  }
+
+  const chunks = []
+  for await (const chunk of request) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  }
+
+  return Buffer.concat(chunks).toString('utf8')
+}
+
+function legacyAiApiDevMiddleware() {
+  return {
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use('/api/ai', async (request, response) => {
+        try {
+          request.body = await readDevRequestBody(request)
+          const route = await import('./api/ai/index.js')
+          await route.default(request, withVercelResponseHelpers(response))
+        } catch {
+          if (!response.headersSent) {
+            response.statusCode = 500
+            response.setHeader('Content-Type', 'application/json; charset=utf-8')
+          }
+          response.end(JSON.stringify({
+            error: {
+              code: 'DEV_API_ROUTE_FAILED',
+              retryable: true,
+              safeMessage: 'Lokal dev-server kunde inte köra AI-coachen.',
+            },
+            ok: false,
+          }))
+        }
+      })
+    },
+    name: 'viktkollen-legacy-ai-api-dev-middleware',
+  }
+}
+
 function nutritionPhotoApiDevMiddleware() {
   return {
     apply: 'serve',
@@ -139,7 +182,7 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
-    plugins: [react(), nutritionPhotoApiDevMiddleware()],
+    plugins: [react(), legacyAiApiDevMiddleware(), nutritionPhotoApiDevMiddleware()],
     server: {
       allowedHosts: ['.trycloudflare.com'],
     },

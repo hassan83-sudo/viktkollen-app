@@ -149,4 +149,30 @@ describe('legacy AI API route', () => {
     ])
     expect(JSON.stringify(recommendations)).not.toMatch(/garanterat|exakt kroppsfett/i)
   })
+
+  it('prefers OpenAI for chat instead of a canned greeting', async () => {
+    process.env.OPENAI_API_KEY = 'test-key'
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: JSON.stringify({
+          reply: 'Hej Hassan. Senaste vikten är 83,8 kg. Vill du kolla protein eller middag?',
+        }),
+      }),
+    }))
+
+    const response = await callRoute(createRequest({
+      body: {
+        action: 'chat',
+        message: 'Hej',
+        profile: { name: 'Hassan', goalWeight: '78' },
+        weights: [{ date: '2026-08-21', value: 83.8 }],
+      },
+    }))
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body.source).toBe('openai')
+    expect(response.body.reply).toContain('83,8')
+    expect(fetch).toHaveBeenCalled()
+  })
 })

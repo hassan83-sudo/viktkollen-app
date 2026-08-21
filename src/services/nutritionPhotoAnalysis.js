@@ -2,6 +2,7 @@ import { mealDraftToMeal, normalizeMeals, parseNutritionNumber } from './nutriti
 import { getEntryLocalDate, getLocalDateString } from './localDate.js'
 import {
   buildNutritionPhotoTrendSummary,
+  buildPlateConsistencyNotes,
   normalizeAnalysisQuality,
   normalizeEstimatedIngredients,
   normalizeEstimatedNutrition,
@@ -14,13 +15,17 @@ import {
   normalizeUncertainIngredients,
   nutritionMidpointsFromEstimate,
 } from './nutritionPhotoEstimates.js'
+import {
+  getNutritionPhotoFoodDisplayName,
+  getNutritionPhotoPortionDisplayName,
+} from './nutritionPhotoDisplay.js'
 
 export const nutritionPhotoAnalysisVersion = 3
 export const maxPhotoDetectedItems = 12
 export const maxPhotoAnalysisPayloadBytes = 24000
 export const nutritionPhotoConfidenceLevels = ['high', 'medium', 'low', 'insufficient']
 export const nutritionPhotoDuplicateStatuses = ['exactDuplicate', 'likelyDuplicate', 'possibleDuplicate', 'noDuplicate']
-export const nutritionPhotoDataSources = ['aiEstimate', 'barcode', 'nutritionDatabase', 'manual']
+export const nutritionPhotoDataSources = ['aiEstimate', 'barcode', 'databaseDerived', 'nutritionDatabase', 'manual']
 
 const allowedAnalysisKeys = new Set([
   'analysisDate',
@@ -188,7 +193,7 @@ function componentToDetectedItem(component = {}, index = 0) {
     calories: nutrition.calories,
     carbohydrates: nutrition.carbs,
     confidence: component.confidence,
-    dataSource: 'aiEstimate',
+    dataSource: component.nutritionSource === 'databaseDerived' ? 'databaseDerived' : 'aiEstimate',
     estimatedAmount: component.portionEstimate?.gramsMin !== null && component.portionEstimate?.gramsMax !== null
       ? Math.round((component.portionEstimate.gramsMin + component.portionEstimate.gramsMax) / 2)
       : null,
@@ -228,7 +233,7 @@ export function normalizeNutritionPhotoAnalysis(value = {}, options = {}) {
   const componentTotals = calculateTotalsFromComponents(components)
   const modelTotals = normalizeEstimatedNutrition(source.mealTotals || source.estimatedNutrition || source.nutrition || source, { confidence: confidenceLevel })
   const totalsComparison = compareNutritionRanges(modelTotals, componentTotals)
-  const estimatedNutrition = components.length && (!totalsComparison.isConsistent || !modelTotals.calories)
+  const estimatedNutrition = components.length && componentTotals.calories
     ? componentTotals
     : modelTotals
   const nutritionMidpoints = nutritionMidpointsFromEstimate(estimatedNutrition)
@@ -249,6 +254,7 @@ export function normalizeNutritionPhotoAnalysis(value = {}, options = {}) {
       ...safeArray(source.limitations),
       ...(!totalsComparison.isConsistent && components.length ? ['Meal totals räknades om från validerade komponentintervall.'] : []),
       ...(imageQuality === 'poor' ? ['Bildkvaliteten sänker säkerheten i analysen.'] : []),
+      ...buildPlateConsistencyNotes(components),
     ],
     summary: source.safeSummary || source.summary,
   })
@@ -348,12 +354,12 @@ export function createPhotoAnalysisReviewDraft(analysis = {}, options = {}) {
     components: normalized.components,
     date: normalized.analysisDate,
     detectedItems: normalized.detectedItems,
-    mealName: normalized.detectedItems[0]?.name ? `Foto: ${normalized.detectedItems[0].name}` : 'Måltid från foto',
+    mealName: normalized.detectedItems[0]?.name ? `Foto: ${getNutritionPhotoFoodDisplayName(normalized.detectedItems[0].name)}` : 'Måltid från foto',
     mealType: options.mealType || 'Lunch',
     note: 'Näring uppskattad från foto och granskad före sparning.',
     nutrition: normalized.nutrition,
     nutritionProvenance: 'ai_estimated',
-    portionSize: normalized.portionEstimate.description,
+    portionSize: getNutritionPhotoPortionDisplayName(normalized.portionEstimate.description),
     time: options.time || '12:00',
     userEdited: false,
   }

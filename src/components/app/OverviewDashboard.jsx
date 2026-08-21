@@ -765,7 +765,7 @@ const secondarySectionIcons = {
 }
 
 function CollapsibleDashboardSection({ children, id, title }) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(true)
 
   return (
     <details

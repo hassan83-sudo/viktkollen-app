@@ -159,7 +159,6 @@ function MealLogger({
   const [mealTemplates, setMealTemplates] = useState(() => readMealTemplates())
   const [nutritionViewMode, setNutritionViewMode] = useState('day')
   const [recipes, setRecipes] = useState(() => readRecipes())
-  const [scannerOpen, setScannerOpen] = useState(false)
   const [weekStart, setWeekStart] = useState(() => getWeekStart(selectedMealDate))
 
   useEffect(() => {
@@ -173,7 +172,6 @@ function MealLogger({
       }
 
       if (initialPanel === 'scanner') {
-        setScannerOpen(true)
         scrollTargetInAppContainer(document.getElementById('nutrition-scanner-v2'))
       }
     })
@@ -183,7 +181,6 @@ function MealLogger({
     if (navigationIntent?.panel !== 'scanner') return
 
     window.requestAnimationFrame(() => {
-      setScannerOpen(true)
       setNutritionViewMode('day')
       scrollTargetInAppContainer(document.getElementById('nutrition-scanner-v2'))
     })
@@ -860,50 +857,33 @@ function MealLogger({
         />
       </div>
 
-      <div className="photo-meal-tool scanner-tool">
-        <div>
-          <p className="eyebrow">Ny scanner</p>
-          <h3>Nutrition Scanner V2</h3>
-          <p>
-            Välj eller ta ett matfoto, granska uppskattningen och spara först när du har bekräftat värdena.
-          </p>
-        </div>
-        <button
-          aria-controls="nutrition-scanner-v2"
-          aria-expanded={scannerOpen}
-          className="secondary-button"
-          type="button"
-          onClick={() => setScannerOpen((current) => !current)}
-        >
-          {scannerOpen ? 'Dölj Nutrition Scanner' : 'Analysera matfoto'}
-        </button>
+      <div id="nutrition-scanner-v2" className="scanner-tool">
+        <Suspense fallback={<div className="photo-meal-tool" role="status">Laddar skannern...</div>}>
+          <NutritionScannerV2
+            analysisDate={selectedMealDate}
+            meals={normalizedMeals}
+            onMealSaved={handleScannerMealSaved}
+            onMealsChange={onMealsChange}
+            selectedMealDate={selectedMealDate}
+            userId={userId}
+          />
+        </Suspense>
       </div>
 
-      {scannerOpen && (
-        <div id="nutrition-scanner-v2">
-          <Suspense fallback={<div className="photo-meal-tool" role="status">Laddar Nutrition Scanner...</div>}>
-            <NutritionScannerV2
-              analysisDate={selectedMealDate}
-              meals={normalizedMeals}
-              onClose={() => setScannerOpen(false)}
-              onMealSaved={handleScannerMealSaved}
-              onMealsChange={onMealsChange}
-              selectedMealDate={selectedMealDate}
-              userId={userId}
+      {import.meta.env.DEV && (
+        <details className="legacy-photo-analysis">
+          <summary>Äldre fotoanalys</summary>
+          <div className="nutrition-panel-photo-analysis">
+            <PhotoAnalysis
+              displayPhotoMeals={displayPhotoMeals}
+              foodPhotoPreview={foodPhotoPreview}
+              handleFoodPhotoChange={handleFoodPhotoChange}
+              onAnalyzePhotoMeal={onAnalyzePhotoMeal}
+              photoAnalysisStatus={photoAnalysisStatus}
             />
-          </Suspense>
-        </div>
+          </div>
+        </details>
       )}
-
-      <div className="nutrition-panel-photo-analysis">
-        <PhotoAnalysis
-          displayPhotoMeals={displayPhotoMeals}
-          foodPhotoPreview={foodPhotoPreview}
-          handleFoodPhotoChange={handleFoodPhotoChange}
-          onAnalyzePhotoMeal={onAnalyzePhotoMeal}
-          photoAnalysisStatus={photoAnalysisStatus}
-        />
-      </div>
 
       <div className="nutrition-panel-weekly-report">
         <MealWeeklyReport weekSummary={weekSummary} />

@@ -4,10 +4,13 @@ import {
   buildNutritionPhotoTrendSummary,
   calculateTotalsFromComponents,
   compareNutritionRanges,
+  derivePhotoComponentNutrition,
+  matchPhotoComponentToNutritionDatabase,
   normalizeAnalysisQuality,
   normalizeEstimatedIngredients,
   normalizeEstimatedNutrition,
   normalizePhotoAnalysisImageQuality,
+  buildPlateConsistencyNotes,
   normalizePhotoComponents,
   normalizePortionEstimate,
   normalizeUncertainIngredients,
@@ -151,6 +154,111 @@ describe('nutritionPhotoEstimates', () => {
     expect(normalizePhotoAnalysisImageQuality('poor')).toBe('poor')
   })
 
+  it('derives component nutrition ranges from database values and vision gram ranges', () => {
+    const components = normalizePhotoComponents([
+      {
+        category: 'protein',
+        confidence: 'high',
+        name: 'Kyckling',
+        portionEstimate: { confidence: 'high', gramsMax: 100, gramsMin: 100 },
+      },
+      {
+        category: 'carbohydrate',
+        confidence: 'high',
+        name: 'Ris',
+        portionEstimate: { confidence: 'medium', gramsMax: 200, gramsMin: 100 },
+      },
+    ])
+    const totals = calculateTotalsFromComponents(components)
+
+    expect(components[0]).toMatchObject({
+      matchedFood: { id: 'kyckling', name: 'Kyckling' },
+      nutritionSource: 'databaseDerived',
+    })
+    expect(components[0].nutritionEstimate.calories).toMatchObject({ max: 165, midpoint: 165, min: 165 })
+    expect(components[0].nutritionEstimate.proteinG).toMatchObject({ max: 31, midpoint: 31, min: 31 })
+    expect(components[1].nutritionEstimate.calories).toMatchObject({ max: 274, min: 137 })
+    expect(totals.calories).toMatchObject({ max: 439, min: 302 })
+    expect(totals.proteinG.min).toBe(34)
+  })
+
+  it('keeps mixed database-derived and AI fallback totals component-derived', () => {
+    const components = normalizePhotoComponents([
+      {
+        category: 'carbohydrate',
+        confidence: 'high',
+        name: 'Pommes frites',
+        portionEstimate: { gramsMax: 150, gramsMin: 100 },
+      },
+      {
+        category: 'sauce',
+        confidence: 'medium',
+        name: 'Krämig sås',
+        nutritionEstimate: {
+          calories: { max: 180, midpoint: 110, min: 50 },
+          fatG: { max: 18, midpoint: 11, min: 4 },
+          proteinG: { max: 3, midpoint: 1, min: 0 },
+          carbsG: { max: 6, midpoint: 3, min: 0 },
+        },
+        portionEstimate: { gramsMax: 40, gramsMin: 20 },
+      },
+    ])
+    const totals = calculateTotalsFromComponents(components)
+
+    expect(components[0].nutritionSource).toBe('databaseDerived')
+    expect(components[1]).toMatchObject({
+      nutritionSource: 'aiEstimate',
+      nutritionSourceReason: 'no_safe_database_match',
+    })
+    expect(totals.calories.min).toBe(303)
+    expect(totals.calories.max).toBe(560)
+  })
+
+  it('blocks unsafe cooking-method database matches instead of using plain chicken', () => {
+    const friedChicken = normalizePhotoComponents([
+      {
+        category: 'protein',
+        confidence: 'high',
+        cookingMethods: ['fried', 'breaded'],
+        name: 'Kyckling',
+        nutritionEstimate: {
+          calories: { max: 430, midpoint: 340, min: 260 },
+          fatG: { max: 26, midpoint: 18, min: 11 },
+          proteinG: { max: 38, midpoint: 30, min: 22 },
+        },
+        portionEstimate: { gramsMax: 160, gramsMin: 105 },
+      },
+    ])[0]
+
+    expect(matchPhotoComponentToNutritionDatabase(friedChicken)).toMatchObject({
+      food: null,
+      reason: 'cooking_method_requires_review',
+      status: 'blockedByCookingMethod',
+    })
+    expect(friedChicken.nutritionSource).toBe('aiEstimate')
+    expect(friedChicken.nutritionEstimate.calories.midpoint).toBe(340)
+  })
+
+  it('does not merge plain potatoes with fries or plain chicken with fried chicken', () => {
+    const components = normalizePhotoComponents([
+      { category: 'carbohydrate', confidence: 'high', name: 'Potatis', portionEstimate: { gramsMax: 100, gramsMin: 80 } },
+      { category: 'carbohydrate', confidence: 'high', name: 'Pommes frites', portionEstimate: { gramsMax: 100, gramsMin: 80 } },
+      { category: 'protein', confidence: 'high', name: 'Kyckling', portionEstimate: { gramsMax: 100, gramsMin: 80 } },
+      { category: 'protein', confidence: 'high', name: 'Friterad kyckling', portionEstimate: { gramsMax: 100, gramsMin: 80 } },
+    ])
+
+    expect(components.map((component) => component.name).sort()).toEqual([
+      'Friterad kyckling',
+      'Kyckling',
+      'Pommes frites',
+      'Potatis',
+    ].sort())
+    expect(derivePhotoComponentNutrition(components.find((component) => component.name === 'Potatis')).matchedFood.id).toBe('potatis')
+    expect(derivePhotoComponentNutrition(components.find((component) => component.name === 'Pommes frites')).matchedFood.id).toBe('pommes')
+    expect(derivePhotoComponentNutrition(components.find((component) => component.name === 'Kyckling')).matchedFood.id).toBe('kyckling')
+    expect(derivePhotoComponentNutrition(components.find((component) => component.name === 'Friterad kyckling')).matchedFood).toBeNull()
+  })
+
   it('merges obvious duplicate components without merging different foods aggressively', () => {
     const components = normalizePhotoComponents([
       { category: 'carbohydrate', confidence: 'medium', name: 'Pommes frites', portionEstimate: { gramsMax: 100, gramsMin: 80 } },
@@ -161,5 +269,67 @@ describe('nutritionPhotoEstimates', () => {
     expect(components).toHaveLength(2)
     expect(components.find((item) => item.name === 'Pommes frites').confidence).toBe('high')
     expect(components.find((item) => item.name === 'Sallad')).toBeTruthy()
+  })
+
+  it('keeps identityConfidence separate from portionConfidence', () => {
+    const [component] = normalizePhotoComponents([{
+      category: 'carbohydrate',
+      confidence: 'high',
+      identityConfidence: 'high',
+      name: 'Pommes frites',
+      portionEstimate: { gramsMax: 190, gramsMin: 120 },
+      visualEvidence: 'Gyllene stavformad kolhydrat.',
+    }])
+
+    expect(component.identityConfidence).toBe('high')
+    expect(component.confidence).toBe('high')
+    expect(component.portionEstimate.confidence).toBe('medium')
+  })
+
+  it('uses visible piece counts to inform gram ranges without inventing a fake precise weight', () => {
+    const [component] = normalizePhotoComponents([{
+      category: 'protein',
+      confidence: 'high',
+      name: 'Kycklingnuggets',
+      portionEstimate: {
+        confidence: 'medium',
+        gramsMax: 40,
+        gramsMin: 30,
+        pieceCount: 6,
+        pieceCountConfidence: 'high',
+      },
+    }])
+
+    expect(component.portionEstimate.pieceCount).toBe(6)
+    expect(component.portionEstimate.pieceCountConfidence).toBe('high')
+    expect(component.portionEstimate.gramsMin).toBeLessThanOrEqual(30)
+    expect(component.portionEstimate.gramsMax).toBeGreaterThanOrEqual(40)
+    expect(component.portionEstimate.evidence).toMatch(/bitar/)
+  })
+
+  it('widens implausibly narrow low-confidence gram ranges instead of keeping fake precision', () => {
+    const [component] = normalizePhotoComponents([{
+      category: 'carbohydrate',
+      confidence: 'low',
+      name: 'Ris',
+      portionEstimate: { confidence: 'low', gramsMax: 152, gramsMin: 148 },
+    }])
+
+    expect(component.portionEstimate.gramsMin).toBeLessThan(148)
+    expect(component.portionEstimate.gramsMax).toBeGreaterThan(152)
+  })
+
+  it('flags missing sauce evidence without inventing a sauce type', () => {
+    const notes = buildPlateConsistencyNotes([
+      {
+        category: 'sauce',
+        identityConfidence: 'high',
+        name: 'Sås',
+        portionEstimate: { gramsMax: 30, gramsMin: 10 },
+        visualEvidence: '',
+      },
+    ])
+
+    expect(notes.some((note) => /Såstypen är osäker/.test(note))).toBe(true)
   })
 })

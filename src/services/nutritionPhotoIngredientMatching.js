@@ -2,6 +2,36 @@ import { getNutritionAliases } from './nutrition/nutritionDatabase.js'
 
 export const photoIngredientMatchStatuses = ['exactMatch', 'normalizedMatch', 'multipleMatches', 'noMatch']
 
+const conservativeAliases = [
+  { alias: 'french fries', foodAlias: 'pommes' },
+  { alias: 'fries', foodAlias: 'pommes' },
+  { alias: 'pommes frites', foodAlias: 'pommes' },
+]
+
+const ambiguousSauceTerms = [
+  'aioli',
+  'creme fraiche',
+  'creme fraîche',
+  'crème fraiche',
+  'crème fraîche',
+  'dressing',
+  'hummus',
+  'majonnas',
+  'majonnäs',
+  'sas',
+  'sås',
+  'tahini',
+  'vitlokssas',
+  'vitlökssås',
+]
+
+const cookingSpecificChickenTerms = [
+  'breaded',
+  'fried',
+  'friterad',
+  'panerad',
+]
+
 function stripDiacritics(value) {
   return String(value || '')
     .normalize('NFD')
@@ -45,6 +75,45 @@ function uniqueFoods(entries) {
     })
 }
 
+function hasAmbiguousSauceAlternatives(item = {}, normalizedName = '') {
+  const candidates = [
+    normalizedName,
+    ...(Array.isArray(item.alternatives) ? item.alternatives.map(normalizePhotoIngredientName) : []),
+    normalizePhotoIngredientName(item.uncertainty?.reason),
+  ].filter(Boolean)
+  const hits = new Set(candidates.flatMap((candidate) =>
+    ambiguousSauceTerms.filter((term) => candidate.includes(normalizePhotoIngredientName(term)))))
+
+  return hits.size > 1 || (hits.size > 0 && normalizePhotoIngredientName(item.category).includes('sauce'))
+}
+
+function addConservativeAliases(aliases) {
+  const byAlias = new Map(aliases.map((entry) => [entry.normalizedAlias, entry.food]))
+  const additions = conservativeAliases
+    .map((entry) => {
+      const food = byAlias.get(normalizePhotoIngredientName(entry.foodAlias))
+      return food ? {
+        alias: entry.alias,
+        food,
+        normalizedAlias: normalizePhotoIngredientName(entry.alias),
+      } : null
+    })
+    .filter(Boolean)
+
+  return [...aliases, ...additions]
+}
+
+function isUnsafePlainChickenMatch(item = {}, normalizedName = '', food = {}) {
+  if (food.id !== 'kyckling') return false
+  const candidates = [
+    normalizedName,
+    ...(Array.isArray(item.alternatives) ? item.alternatives.map(normalizePhotoIngredientName) : []),
+    normalizePhotoIngredientName(item.uncertainty?.reason),
+  ].filter(Boolean).join(' ')
+
+  return cookingSpecificChickenTerms.some((term) => candidates.includes(normalizePhotoIngredientName(term)))
+}
+
 export function matchPhotoIngredientToDatabase(item = {}, options = {}) {
   const maxSuggestions = options.maxSuggestions || 4
   const name = String(item.name || '')
@@ -53,11 +122,19 @@ export function matchPhotoIngredientToDatabase(item = {}, options = {}) {
     return { matchedFood: null, status: 'noMatch', suggestions: [] }
   }
 
-  const aliases = getNutritionAliases().map((entry) => ({
+  const baseAliases = getNutritionAliases().map((entry) => ({
     ...entry,
     normalizedAlias: normalizePhotoIngredientName(entry.alias),
   }))
-  const exact = uniqueFoods(aliases.filter((entry) => entry.alias.toLocaleLowerCase('sv-SE') === name.toLocaleLowerCase('sv-SE')))
+  const aliases = addConservativeAliases(baseAliases)
+  if (hasAmbiguousSauceAlternatives(item, normalizedName)) {
+    const suggestions = uniqueFoods(aliases.filter((entry) =>
+      normalizedName.includes(entry.normalizedAlias) || entry.normalizedAlias.includes(normalizedName)))
+    return suggestions.length
+      ? { matchedFood: null, status: 'multipleMatches', suggestions: suggestions.map(toSuggestion).slice(0, maxSuggestions) }
+      : { matchedFood: null, status: 'noMatch', suggestions: [] }
+  }
+  const exact = uniqueFoods(baseAliases.filter((entry) => entry.alias.toLocaleLowerCase('sv-SE') === name.toLocaleLowerCase('sv-SE')))
   if (exact.length === 1) {
     return { matchedFood: toSuggestion(exact[0]), status: 'exactMatch', suggestions: [toSuggestion(exact[0])] }
   }
@@ -74,10 +151,13 @@ export function matchPhotoIngredientToDatabase(item = {}, options = {}) {
   }
 
   const contained = uniqueFoods(aliases.filter((entry) =>
-    normalizedName.includes(entry.normalizedAlias) || entry.normalizedAlias.includes(normalizedName)))
+    (normalizedName.includes(entry.normalizedAlias) || entry.normalizedAlias.includes(normalizedName))
+      && !isUnsafePlainChickenMatch(item, normalizedName, entry.food)))
 
-  return contained.length
-    ? { matchedFood: null, status: 'multipleMatches', suggestions: contained.map(toSuggestion).slice(0, maxSuggestions) }
+  return contained.length === 1
+    ? { matchedFood: toSuggestion(contained[0]), status: 'normalizedMatch', suggestions: contained.map(toSuggestion) }
+    : contained.length > 1
+      ? { matchedFood: null, status: 'multipleMatches', suggestions: contained.map(toSuggestion).slice(0, maxSuggestions) }
     : { matchedFood: null, status: 'noMatch', suggestions: [] }
 }
 
@@ -93,6 +173,26 @@ export function buildPhotoIngredientMatchSummary(items = []) {
   }, { exactMatch: 0, multipleMatches: 0, noMatch: 0, normalizedMatch: 0 })
 
   return { counts, matches }
+}
+
+export function buildPhotoIngredientMatchStatusCounts(items = [], matches = []) {
+  return items.filter(Boolean).reduce((counts, item) => {
+    const match = matches.find((entry) => entry.id === item.id)
+    if (item.dataSource === 'nutritionDatabase') counts.manualDatabase += 1
+    else if (match?.status === 'exactMatch') counts.exactMatch += 1
+    else if (match?.status === 'normalizedMatch') counts.normalizedMatch += 1
+    else if (match?.status === 'multipleMatches') counts.needsSelection += 1
+    else counts.aiEstimate += 1
+    counts.total += 1
+    return counts
+  }, {
+    aiEstimate: 0,
+    exactMatch: 0,
+    manualDatabase: 0,
+    needsSelection: 0,
+    normalizedMatch: 0,
+    total: 0,
+  })
 }
 
 export function applyPhotoIngredientDatabaseSuggestion(item = {}, suggestion = {}) {

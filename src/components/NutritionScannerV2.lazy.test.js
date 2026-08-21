@@ -17,6 +17,7 @@ describe('NutritionScannerV2 lazy loading contract', () => {
     expect(scannerSource).not.toMatch(/import\s+\{\s*analyzeNutritionPhoto/)
     expect(scannerSource).toContain('remoteConsent')
     expect(scannerSource).toContain("handleAnalysisAction('remote'")
-    expect(scannerSource).toContain('onTouchEnd={(event) => handleAnalysisAction(\'remote\', event)}')
+    expect(scannerSource).toContain("onClick={(event) => handleAnalysisAction('remote', event)}")
+    expect(scannerSource).not.toContain("onTouchEnd={(event) => handleAnalysisAction('remote', event)}")
   })
 })

@@ -95,6 +95,7 @@ import { completeReminder, skipReminder, snoozeReminder } from './services/remin
 import { buildReminderStatus, createReminderScheduler, getDueReminders } from './services/reminders/reminderScheduler.js'
 import { syncLegacyReminderSettingsToV2 } from './services/reminders/reminderLegacyAdapter.js'
 import { applyDueNotificationPlan } from './services/notifications/notificationSchedulerBridge.js'
+import { logNavigationOrigin } from './services/navigation/navigationOriginDiagnostics.js'
 
 const LaunchReadinessPanel = lazy(() => import('./components/LaunchReadinessPanel.jsx'))
 const DataImportCenter = lazy(() => import('./components/DataImportCenter.jsx'))
@@ -2651,10 +2652,12 @@ function App() {
   }, [getScrollBehavior, scrollAppToTop])
 
   function handleAppSectionChange(sectionId) {
+    logNavigationOrigin('app-section-change:before', { sectionId })
     setActiveAppSection(sectionId)
 
     window.requestAnimationFrame(() => {
       scrollAppToTop()
+      logNavigationOrigin('app-section-change:after-frame', { sectionId })
     })
   }
 
@@ -2662,6 +2665,11 @@ function App() {
     const sectionId = result?.section || 'home'
     const targetId = result?.targetId || `app-section-${sectionId}`
 
+    logNavigationOrigin('global-search-navigate:before', {
+      resultId: result?.id || '',
+      sectionId,
+      targetId,
+    })
     setActiveAppSection(sectionId)
 
     window.requestAnimationFrame(() => {
@@ -2673,10 +2681,18 @@ function App() {
         target.setAttribute('tabindex', '-1')
       }
       target?.focus?.({ preventScroll: true })
+      logNavigationOrigin('global-search-navigate:after-frame', {
+        resultId: result?.id || '',
+        sectionId,
+        targetFound: Boolean(target),
+        targetId,
+      })
     })
   }
 
   const handleDailyCoachAction = useCallback((sectionId, targetId) => {
+    logNavigationOrigin('section-target-navigation:before', { sectionId, targetId: targetId || '' })
+
     if (sectionId === 'nutrition' && (targetId === 'nutrition-scanner-v2' || targetId === 'scanner')) {
       setNutritionIntent({ id: Date.now(), panel: 'scanner' })
     }
@@ -2695,6 +2711,12 @@ function App() {
       } else {
         scrollAppToTop()
       }
+
+      logNavigationOrigin('section-target-navigation:after-frame', {
+        sectionId,
+        targetFound: Boolean(target),
+        targetId: targetId || '',
+      })
 
       if (sectionId === 'progress' && (targetId === 'body-analysis' || targetId === 'framstegsbilder')) {
         window.requestAnimationFrame(() => {
@@ -2717,6 +2739,7 @@ function App() {
   }, [handleDailyCoachAction])
 
   function handleDailyCoachScanFood() {
+    logNavigationOrigin('home-scan-food:before', { sectionId: 'nutrition', targetId: 'nutrition-scanner-v2' })
     setNutritionIntent({ id: Date.now(), panel: 'scanner' })
     handleDailyCoachAction('nutrition', 'nutrition-scanner-v2')
   }

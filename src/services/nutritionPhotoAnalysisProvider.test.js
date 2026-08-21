@@ -15,12 +15,13 @@ vi.mock('./ai/aiAuthTransport.js', () => ({
   hasSameAiAuthUser: vi.fn(async () => true),
 }))
 
-import { analyzeNutritionPhoto } from './nutritionPhotoAnalysisProvider.js'
+import { analyzeNutritionPhoto, nutritionPhotoAnalysisTimeoutMs } from './nutritionPhotoAnalysisProvider.js'
 import { getCurrentAiAuthorization, hasSameAiAuthUser } from './ai/aiAuthTransport.js'
 
 describe('nutritionPhotoAnalysisProvider', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.useRealTimers()
     vi.unstubAllGlobals()
   })
 
@@ -39,7 +40,7 @@ describe('nutritionPhotoAnalysisProvider', () => {
     expect(result.analysis).toBeNull()
     expect(result.providerType).toBe('remote')
     expect(result.warning).toContain('offline')
-    expect(JSON.stringify(result)).not.toMatch(/auth|session|token|base64/)
+    expect(JSON.stringify(result)).not.toMatch(/session|token|Bearer|OPENAI_API_KEY|base64|data:image/)
   })
 
   it('posts remote analysis to the secure server route as multipart form data', async () => {
@@ -83,6 +84,16 @@ describe('nutritionPhotoAnalysisProvider', () => {
 
     expect(result.ok).toBe(true)
     expect(result.analysis.provider.type).toBe('remote')
+    expect(result.debug).toEqual(expect.objectContaining({
+      authPresent: true,
+      clientAttemptId: expect.stringMatching(/^photo-attempt-/),
+      finalProviderType: 'remote',
+      normalizationSucceeded: true,
+      providerAttempted: true,
+      providerSucceeded: true,
+      requestStarted: true,
+      responseStatus: 200,
+    }))
     expect(result.analysis.components[0].name).toBe('Friterad kyckling')
     expect(result.analysis.estimatedNutrition.calories.midpoint).toBe(240)
     expect(result.analysis.safeSummary).not.toContain('Lokal uppskattning')
@@ -91,11 +102,80 @@ describe('nutritionPhotoAnalysisProvider', () => {
       body: expect.any(FormData),
       headers: expect.objectContaining({
         Authorization: 'Bearer photo-access-token',
+        'x-viktkollen-request-id': expect.stringMatching(/^photo-attempt-/),
       }),
       method: 'POST',
     }))
+    expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(JSON.stringify(result)).not.toMatch(/base64|data:image/)
     expect([...fetchMock.mock.calls[0][1].body.entries()].map(([key]) => key)).not.toContain('Authorization')
+  })
+
+  it('uses a client timeout longer than the 45s server nutrition timeout', () => {
+    expect(nutritionPhotoAnalysisTimeoutMs).toBeGreaterThan(45000)
+  })
+
+  it('accepts a server response after the previous 12s client timeout', async () => {
+    vi.useFakeTimers()
+    const blob = new Blob(['image'], { type: 'image/png' })
+    vi.stubGlobal('fetch', vi.fn(() => new Promise((resolve) => {
+      setTimeout(() => resolve({
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: async () => ({
+          analysis: {
+            detectedItems: [{ calories: 240, carbohydrates: 30, confidence: 'medium', fat: 9, name: 'Pizza', protein: 12 }],
+            estimatedNutrition: {
+              calories: { confidence: 'medium', max: 320, midpoint: 240, min: 190 },
+              carbsG: { confidence: 'medium', max: 38, midpoint: 30, min: 22 },
+              fatG: { confidence: 'medium', max: 14, midpoint: 9, min: 6 },
+              proteinG: { confidence: 'medium', max: 18, midpoint: 12, min: 8 },
+            },
+            providerType: 'remote',
+            safeSummary: 'Remote uppskattning.',
+          },
+          ok: true,
+        }),
+        ok: true,
+        status: 200,
+      }), 20000)
+    })))
+
+    const resultPromise = analyzeNutritionPhoto({ mealType: 'Lunch', preprocessedImage: blob }, { providerType: 'remote' })
+    await vi.advanceTimersByTimeAsync(20000)
+    const result = await resultPromise
+
+    expect(result.ok).toBe(true)
+    expect(result.debug).toEqual(expect.objectContaining({
+      clientTimeoutMs: nutritionPhotoAnalysisTimeoutMs,
+      providerSucceeded: true,
+      responseStatus: 200,
+    }))
+  })
+
+  it('lets a server 504 after 45s reach the client without client abort', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('fetch', vi.fn(() => new Promise((resolve) => {
+      setTimeout(() => resolve({
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: async () => ({ error: { code: 'PROVIDER_TIMEOUT', retryable: true }, ok: false }),
+        ok: false,
+        status: 504,
+      }), 46000)
+    })))
+
+    const resultPromise = analyzeNutritionPhoto({ preprocessedImage: new Blob(['image']) }, { providerType: 'remote' })
+    await vi.advanceTimersByTimeAsync(46000)
+    const result = await resultPromise
+
+    expect(result.ok).toBe(false)
+    expect(result.aborted).not.toBe(true)
+    expect(result.debug).toEqual(expect.objectContaining({
+      fallbackReason: 'PROVIDER_TIMEOUT',
+      clientTimeoutMs: nutritionPhotoAnalysisTimeoutMs,
+      providerAttempted: true,
+      responseStatus: 504,
+    }))
+    expect(result.warning).toContain('för lång tid')
   })
 
   it('surfaces rate limit without automatic local fallback', async () => {
@@ -123,7 +203,68 @@ describe('nutritionPhotoAnalysisProvider', () => {
     expect(result.ok).toBe(false)
     expect(result.analysis).toBeNull()
     expect(result.providerType).toBe('remote')
-    expect(result.warning).toContain('Remote bildanalys kunde inte slutföras')
+    expect(result.warning).toContain('kunde inte nå servern')
+    expect(JSON.stringify(result)).not.toContain('Lokal uppskattning')
+  })
+
+  it('surfaces remote server failure without automatic local fallback', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => ({ error: { code: 'PROVIDER_UNAVAILABLE', retryable: true }, ok: false }),
+      ok: false,
+      status: 500,
+    })))
+
+    const result = await analyzeNutritionPhoto({ preprocessedImage: new Blob(['image']) }, { providerType: 'remote' })
+
+    expect(result.ok).toBe(false)
+    expect(result.analysis).toBeNull()
+    expect(result.providerType).toBe('remote')
+    expect(result.debug).toEqual(expect.objectContaining({
+      fallbackUsed: false,
+      providerAttempted: true,
+      providerSucceeded: false,
+      requestStarted: true,
+    }))
+    expect(result.warning).toContain('tillfälligt otillgänglig')
+    expect(JSON.stringify(result)).not.toContain('Lokal uppskattning')
+  })
+
+  it('keeps HTTP 502 provider failures distinct from aborted requests', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => ({ error: { code: 'PROVIDER_UNAVAILABLE', retryable: true }, ok: false }),
+      ok: false,
+      status: 502,
+    })))
+
+    const result = await analyzeNutritionPhoto({ preprocessedImage: new Blob(['image']) }, { providerType: 'remote' })
+
+    expect(result.ok).toBe(false)
+    expect(result.aborted).not.toBe(true)
+    expect(result.debug).toEqual(expect.objectContaining({
+      fallbackReason: 'PROVIDER_UNAVAILABLE',
+      providerAttempted: true,
+      requestStarted: true,
+      responseStatus: 502,
+    }))
+    expect(result.warning).toContain('tillfälligt otillgänglig')
+  })
+
+  it('surfaces missing remote route without automatic local fallback', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      json: async () => ({ error: { code: 'notFound', retryable: false }, ok: false }),
+      ok: false,
+      status: 404,
+    })))
+
+    const result = await analyzeNutritionPhoto({ preprocessedImage: new Blob(['image']) }, { providerType: 'remote' })
+
+    expect(result.ok).toBe(false)
+    expect(result.analysis).toBeNull()
+    expect(result.providerType).toBe('remote')
+    expect(result.warning).toContain('Remote AI-routen hittades inte')
+    expect(JSON.stringify(result)).not.toContain('Lokal uppskattning')
   })
 
   it('surfaces missing remote image payload as a user-facing warning', async () => {
@@ -147,8 +288,15 @@ describe('nutritionPhotoAnalysisProvider', () => {
 
     expect(result.ok).toBe(false)
     expect(result.errorCode).toBe('AUTH_REQUIRED')
+    expect(result.debug).toEqual(expect.objectContaining({
+      apiErrorCode: 'AUTH_REQUIRED',
+      authPresent: false,
+      fallbackUsed: false,
+      providerAttempted: false,
+      requestStarted: false,
+    }))
     expect(fetchMock).not.toHaveBeenCalled()
-    expect(JSON.stringify(result)).not.toMatch(/photo-access-token|Bearer/)
+    expect(JSON.stringify(result)).not.toMatch(/photo-access-token|Bearer|Lokal uppskattning/)
   })
 
   it('ignores remote result after user switch', async () => {
@@ -175,5 +323,63 @@ describe('nutritionPhotoAnalysisProvider', () => {
     expect(result.ok).toBe(false)
     expect(result.aborted).toBe(true)
     expect(result.analysis).toBeNull()
+  })
+
+  it('reports client timeout as the abort source', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('fetch', vi.fn((url, options) => new Promise((resolve, reject) => {
+      options.signal.addEventListener('abort', () => {
+        const error = new Error('aborted')
+        error.name = 'AbortError'
+        reject(error)
+      })
+    })))
+
+    const resultPromise = analyzeNutritionPhoto(
+      { preprocessedImage: new Blob(['image']) },
+      { providerType: 'remote', timeoutMs: 100 },
+    )
+    await vi.advanceTimersByTimeAsync(100)
+    const result = await resultPromise
+
+    expect(result.ok).toBe(false)
+    expect(result.aborted).toBe(true)
+    expect(result.debug).toEqual(expect.objectContaining({
+      abortSource: 'clientTimeout',
+      clientTimeoutMs: 100,
+      fallbackReason: 'client_timeout',
+    }))
+  })
+
+  it('reports upstream component cleanup as the abort source', async () => {
+    const controller = new AbortController()
+    vi.stubGlobal('fetch', vi.fn((url, options) => new Promise((resolve, reject) => {
+      const rejectAbort = () => {
+        const error = new Error('aborted')
+        error.name = 'AbortError'
+        reject(error)
+      }
+      if (options.signal.aborted) {
+        rejectAbort()
+        return
+      }
+      options.signal.addEventListener('abort', () => {
+        rejectAbort()
+      })
+    })))
+
+    const resultPromise = analyzeNutritionPhoto(
+      { preprocessedImage: new Blob(['image']) },
+      { providerType: 'remote', signal: controller.signal },
+    )
+    controller.abort('componentCleanup')
+    const result = await resultPromise
+
+    expect(result.ok).toBe(false)
+    expect(result.aborted).toBe(true)
+    expect(result.debug).toEqual(expect.objectContaining({
+      abortSource: 'componentCleanup',
+      fallbackReason: 'aborted',
+    }))
   })
 })

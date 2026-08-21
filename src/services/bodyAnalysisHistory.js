@@ -1,8 +1,8 @@
-import { getBodyAnalysisStorage } from './bodyAnalysisStorage'
+import { getBodyAnalysisStorage } from './bodyAnalysisStorage.js'
 import {
   bodyAnalysisSchemaVersion,
   normalizeBodyAnalysisResultModel,
-} from './bodyAnalysisEstimates'
+} from './bodyAnalysisEstimates.js'
 
 const HISTORY_VERSION = 1
 const ANALYSIS_SCHEMA_VERSION = bodyAnalysisSchemaVersion

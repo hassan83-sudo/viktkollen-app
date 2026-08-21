@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest'
 
 const appSource = readFileSync(new URL('./App.jsx', import.meta.url), 'utf8')
 const moreSectionSource = readFileSync(new URL('./components/sections/MoreSection.jsx', import.meta.url), 'utf8')
+const nutritionSectionSource = readFileSync(new URL('./components/sections/NutritionSection.jsx', import.meta.url), 'utf8')
 const overviewDashboardSource = readFileSync(new URL('./components/app/OverviewDashboard.jsx', import.meta.url), 'utf8')
 const pwaExperienceSource = readFileSync(new URL('./components/PwaExperience.jsx', import.meta.url), 'utf8')
+const navigationOriginDiagnosticsSource = readFileSync(new URL('./services/navigation/navigationOriginDiagnostics.js', import.meta.url), 'utf8')
 
 describe('app section routing isolation', () => {
   it('mounts HomeSection only when home is the active app section', () => {
@@ -45,6 +47,25 @@ describe('app section routing isolation', () => {
     expect(pwaExperienceSource).toContain('showDiagnostics = false')
     expect(pwaExperienceSource).toContain('!showDiagnostics')
     expect(pwaExperienceSource).toContain('PWA diagnostics')
+  })
+
+  it('keeps internal navigation same-origin and logs dev-only origin diagnostics', () => {
+    const combinedSource = [
+      appSource,
+      nutritionSectionSource,
+      overviewDashboardSource,
+      navigationOriginDiagnosticsSource,
+    ].join('\n')
+
+    expect(combinedSource).not.toContain('viktkollen-app.vercel.app')
+    expect(appSource).toContain("handleDailyCoachAction('nutrition', 'nutrition-scanner-v2')")
+    expect(nutritionSectionSource).toContain("showPanel('scanner', 'nutrition-scanner-v2')")
+    expect(navigationOriginDiagnosticsSource).toContain('!import.meta.env.DEV')
+    expect(navigationOriginDiagnosticsSource).toContain('Navigation origin diagnostic')
+    expect(navigationOriginDiagnosticsSource).toContain('__viktkollenNavigationDiagnostics')
+    expect(navigationOriginDiagnosticsSource).not.toContain('location.href =')
+    expect(navigationOriginDiagnosticsSource).not.toContain('location.assign')
+    expect(navigationOriginDiagnosticsSource).not.toContain('location.replace')
   })
 })
 

@@ -9,6 +9,7 @@ import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 import {
   calculateTotalsFromComponents,
   compareNutritionRanges,
+  buildPlateConsistencyNotes,
   normalizeAnalysisQuality,
   normalizeEstimatedIngredients,
   normalizeEstimatedNutrition,
@@ -21,8 +22,9 @@ import {
 } from '../../src/services/nutritionPhotoEstimates.js'
 
 const DEFAULT_MODEL = 'gpt-4.1-mini'
+export const NUTRITION_PHOTO_ANALYSIS_TIMEOUT_MS = 45000
 const MAX_IMAGE_SIZE_BYTES = Number(process.env.NUTRITION_PHOTO_MAX_FILE_BYTES || 8 * 1024 * 1024)
-const REQUEST_TIMEOUT_MS = Number(process.env.NUTRITION_PHOTO_TIMEOUT_MS || 15000)
+const REQUEST_TIMEOUT_MS = Number(process.env.NUTRITION_PHOTO_TIMEOUT_MS || NUTRITION_PHOTO_ANALYSIS_TIMEOUT_MS)
 const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp']
 
 export const config = {
@@ -155,18 +157,26 @@ function validateImage(image) {
 function createPrompt(mealType) {
   return [
     'Du analyserar en matbild för Viktkollen.',
-    'Identifiera först synliga måltidskomponenter innan du summerar måltiden.',
-    'Returnera endast strikt JSON enligt schemat: components, mealTotals, portionEstimate, ingredients, uncertainIngredients, imageQuality, analysisQuality, confidence, limitations, warnings, safeSummary.',
-    'components är en array med objekt: id, name, category, confidence, visualEvidence, portionEstimate, nutritionEstimate, uncertainty, alternatives, cookingMethods.',
-    'category ska vara protein, carbohydrate, vegetables, sauce, fat eller unknown.',
-    'confidence ska vara high, medium eller low för varje komponent. Använd high där bilden tydligt visar maten, medium när förekomst syns men typ/mängd är osäker, low när identifieringen är svag.',
-    'visualEvidence ska vara kort och användbar, inte intern chain-of-thought.',
-    'portionEstimate per komponent ska innehålla description, gramsMin, gramsMax och confidence, eller null för gram om portionen inte kan bedömas.',
-    'nutritionEstimate per komponent måste innehålla calories, proteinG, carbsG, fatG och fiberG som objekt med min, max, midpoint och confidence, eller null om underlaget inte räcker.',
-    'mealTotals ska vara summan av komponenternas validerade nutritionintervall. Låt inte mealTotals avvika kraftigt från komponenterna.',
-    'Identifiera sås/dressing som egen komponent när den syns. Var försiktig med exakt typ och mängd och bredda kalorier/fett vid osäkerhet.',
-    'Ange cookingMethods bara när bilden ger stöd, t.ex. fried, breaded, grilled, boiled, baked eller raw.',
+    'Arbeta component-first: inventera synliga separata måltidskomponenter före total näring.',
+    'Pass 1 visuell inventering: lista varje visuellt distinkt del för sig (protein/kött/fisk, ris, potatis, pommes, grönsaker, bröd, synlig sås/dipp/dressing, garnish/citron, räkningsbara bitar). Slå inte ihop visuellt separata livsmedel bara för att de är relaterade. Inferera inte dolda ingredienser som synliga fakta.',
+    'Returnera endast strikt JSON: components, mealTotals, portionEstimate, ingredients, uncertainIngredients, imageQuality, analysisQuality, confidence, limitations, warnings, safeSummary.',
+    'components är en array med objekt: id, name, category, confidence, identityConfidence, visualEvidence, portionEstimate, nutritionEstimate, uncertainty, alternatives, cookingMethods.',
+    'Inventera protein, kolhydrat/stärkelse, grönsaker, sås/dressing/dipp, synligt fett/olja, bröd/panering, dryck, garnish/tillbehör och unknown. category ska vara protein, carbohydrate, vegetables, sauce, fat eller unknown.',
+    'identityConfidence är säkerhet i vad maten är. portionEstimate.confidence är säkerhet i mängden. De får skilja sig: high identityConfidence och medium/low portionConfidence är normalt när typen syns men skalan är osäker. confidence ska spegla identityConfidence.',
+    'visualEvidence ska vara kort och maskinläsbar, inte intern chain-of-thought.',
+    'portionEstimate per komponent: description, gramsMin, gramsMax, confidence, pieceCount, pieceCountConfidence, relativePlateShare, evidence. pieceCount är heltal eller null. relativePlateShare är ungefärlig andel av synlig tallriksyta 0-100 eller null. evidence är en kort visuell anledning till gramintervallet (yta, volym, höjd, antal, jämförelse mot grannar).',
+    'Uppskatta gram med relativ tallriksyta, footprint, synlig höjd/volym, om maten ligger platt eller i hög, livsmedelsdensitet, styckantal när det är räkningsbart och jämförelse mot grannkomponenter. Hitta inte på exakt tallriksdiameter om skala saknas. Vid svag skala: bredda gramsMin/gramsMax i stället för att låtsas precision. använd null för gram om portionen inte kan bedömas.',
+    'När maten är räkningsbar (nuggets, köttbullar, ägg, brödskivor, sushibitar, kycklingbitar, dumplings) ange pieceCount bara för synliga bitar och pieceCountConfidence. Gissa inte dolda bitar. Använd antal plus typisk bitstorlek för gramintervallet. Bilden skickas med hög visuell detail; använd den för portion, såsglans och panering.',
+    'nutritionEstimate per komponent: calories, proteinG, carbsG, fatG, fiberG som {min,max,midpoint,confidence}, eller null om underlaget inte räcker. nutritionEstimate är endast reserv; gram och identitet är primära.',
+    'Gör en intern second visual pass innan JSON slutförs: kontrollera missad sås/dipp/dressing, glans eller olja/fett, panering/fritering, topping/garnish, delvis dold komponent, dubbelräkning och om gram är rimliga relativt varandra.',
+    'mealTotals ska härledas från komponentintervallen; gissa inte måltidstotal först och låt inte mealTotals avvika kraftigt från komponenterna.',
+    'Synlig separat sås/dressing/dipp ska alltid vara egen komponent. Vid osäker typ: använd neutral etikett som Krämig sås och lägg möjliga typer i alternatives.',
+    'Hög confidence på att sås finns kan kombineras med medium/low confidence eller uncertainty för exakt typ/mängd. Låt nutritionintervallet spegla möjliga såstyper.',
+    'För fried, breaded, battered eller oil-coated komponenter ska nutritionintervallet ta hänsyn till tillagningsfett/panering när bilden stöder det.',
+    'Undvik dubbelräkning: ingen separat oljekomponent om fettet redan ingår i friterad/panerad komponent, om inte separat synligt fett/olja finns eller anges som osäker möjlig bidragare.',
+    'Ange cookingMethods bara när bilden ger stöd, t.ex. fried, breaded, grilled, boiled, baked eller raw. Håll pommes skild från kokt/ugnsbakad potatis och friterad kyckling skild från grillad/kokt kyckling.',
     'Om synlig mat inte kan identifieras säkert, behåll den som Okänd komponent med low confidence och högst tre relevanta alternatives.',
+    'Hallucinera inte dolda ingredienser som fakta. Om något kan bidra men inte syns säkert ska det markeras som uncertainty eller possible hidden contributor, inte som säker komponent.',
     'imageQuality ska vara good, usable eller poor baserat på ljus, blur, occlusion, vinkel, plate coverage och om bilden verkar vara fotograferad från skärm.',
     'Behåll legacy-fält ingredients/detectedItems om möjligt för kompatibilitet, men components är primärt schema.',
     'Var specifik där visuell evidens är stark. Var försiktig där bilden inte ger stöd. Returnera null när något inte kan avgöras.',
@@ -193,6 +203,7 @@ function normalizeItem(item = {}, index = 0) {
     calories: safeNumber(item.calories, null, 5000),
     carbohydrates: safeNumber(item.carbohydrates ?? item.carbs, null, 1000),
     confidence: normalizeConfidence(item.confidence || 'low'),
+    dataSource: safeText(item.dataSource, 'aiEstimate', 40),
     estimatedAmount: safeNumber(item.estimatedAmount ?? item.amount, null, 10000),
     fat: safeNumber(item.fat, null, 1000),
     name: safeText(item.name || `Ingrediens ${index + 1}`, `Ingrediens ${index + 1}`, 80),
@@ -214,6 +225,7 @@ function validateProviderPayload(payload = {}) {
         calories: nutrition.calories,
         carbohydrates: nutrition.carbs,
         confidence: component.confidence,
+        dataSource: component.nutritionSource === 'databaseDerived' ? 'databaseDerived' : 'aiEstimate',
         estimatedAmount: component.portionEstimate?.gramsMin !== null && component.portionEstimate?.gramsMax !== null
           ? Math.round((component.portionEstimate.gramsMin + component.portionEstimate.gramsMax) / 2)
           : null,
@@ -225,7 +237,7 @@ function validateProviderPayload(payload = {}) {
     })
   const modelNutrition = normalizeEstimatedNutrition(payload.mealTotals || payload.estimatedNutrition || payload, { confidence: payload.confidence })
   const totalsComparison = compareNutritionRanges(modelNutrition, componentTotals)
-  const estimatedNutrition = components.length && (!totalsComparison.isConsistent || !modelNutrition.calories)
+  const estimatedNutrition = components.length && componentTotals.calories
     ? componentTotals
     : modelNutrition
   const nutritionMidpoints = nutritionMidpointsFromEstimate(estimatedNutrition)
@@ -242,6 +254,7 @@ function validateProviderPayload(payload = {}) {
     limitations: [
       ...(Array.isArray(payload.limitations) ? payload.limitations : []),
       ...(!totalsComparison.isConsistent && components.length ? ['Meal totals räknades om från validerade komponentintervall.'] : []),
+      ...buildPlateConsistencyNotes(components),
     ],
     summary: payload.safeSummary,
   })
@@ -298,11 +311,11 @@ async function callOpenAi(image, mealType) {
     input: [{
           content: [
             { text: createPrompt(mealType), type: 'input_text' },
-            { image_url: imageUrl, type: 'input_image' },
+            { detail: 'high', image_url: imageUrl, type: 'input_image' },
           ],
           role: 'user',
     }],
-    maxOutputTokens: 1600,
+    maxOutputTokens: 3400,
     model: config.model || DEFAULT_MODEL,
     timeoutMs: REQUEST_TIMEOUT_MS,
     type: 'photo',
@@ -311,6 +324,31 @@ async function callOpenAi(image, mealType) {
   if (!result.ok) {
     const error = new Error(result.error?.code || 'providerUnavailable')
     error.code = result.error?.code === 'rateLimited' ? 'rateLimit' : result.error?.code
+    error.upstreamStatus = result.error?.upstreamStatus
+    error.upstreamStatusText = result.error?.upstreamStatusText
+    error.upstreamErrorCode = result.error?.upstreamErrorCode
+    error.timeout = result.error?.timeout === true
+    error.aborted = result.error?.aborted === true
+    error.networkError = result.error?.networkError === true
+    error.parseError = result.error?.parseError === true
+    error.parseErrorCode = result.error?.parseErrorCode
+    error.parseErrorName = result.error?.parseErrorName
+    error.containsCodeFence = result.error?.containsCodeFence
+    error.endsWithBrace = result.error?.endsWithBrace
+    error.outputChunkCount = result.error?.outputChunkCount
+    error.outputTextLength = result.error?.outputTextLength
+    error.outputTextPresent = result.error?.outputTextPresent
+    error.providerIncompleteReason = result.error?.providerIncompleteReason
+    error.providerResponseStatus = result.error?.providerResponseStatus
+    error.startsWithBrace = result.error?.startsWithBrace
+    error.startsWithCodeFence = result.error?.startsWithCodeFence
+    error.truncatedLikely = result.error?.truncatedLikely
+    error.fetchErrorName = result.error?.fetchErrorName
+    error.fetchErrorCode = result.error?.fetchErrorCode
+    error.fetchErrorMessage = result.error?.fetchErrorMessage
+    error.fetchErrorCauseName = result.error?.fetchErrorCauseName
+    error.fetchErrorCauseCode = result.error?.fetchErrorCauseCode
+    error.fetchErrorCauseMessage = result.error?.fetchErrorCauseMessage
     throw error
   }
 
@@ -320,6 +358,7 @@ async function callOpenAi(image, mealType) {
 export default async function handler(request, response) {
   const requestId = `photo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   setNoStoreHeaders(response)
+  const clientAttemptId = safeText(getHeader(request, 'x-viktkollen-request-id'), '', 80)
 
   if (request.method !== 'POST') {
     response.setHeader('Allow', 'POST')
@@ -372,12 +411,21 @@ export default async function handler(request, response) {
       route: 'nutritionPhoto',
       userId: auth.user.id,
     }, () => callOpenAi(image, parsedRequest.parsed.fields.mealType))
+    console.info('[api/nutrition-photo-analysis] Provider request started', {
+      clientAttemptId,
+      modelName: getAiGatewayConfig('photo').model || DEFAULT_MODEL,
+      requestId,
+      upstreamRequestStarted: true,
+    })
     const providerResult = await providerPromise
     if (!providerResult.ok) {
       return safeError(response, 502, 'invalidProviderResponse', 'AI-svaret kunde inte valideras.', true, requestId)
     }
     console.info('[api/nutrition-photo-analysis] Analysis completed', {
+      clientAttemptId,
       itemCount: providerResult.analysis.detectedItems.length,
+      requestCompleted: true,
+      requestId,
       source: 'remote',
     })
     return response.status(200).json({
@@ -389,19 +437,52 @@ export default async function handler(request, response) {
   } catch (error) {
     const rawCode = error?.code === 'serverConfiguration'
       ? 'aiNotConfigured'
-      : error?.name === 'AbortError'
+      : error?.code === 'timeout' || error?.name === 'AbortError'
         ? 'timeout'
-        : error?.code === 'rateLimit'
-          ? 'rateLimited'
-          : 'providerUnavailable'
+        : error?.code === 'requestAborted'
+          ? 'requestAborted'
+          : error?.code === 'rateLimit'
+            ? 'rateLimited'
+            : 'providerUnavailable'
     const code = mapGatewayErrorCode(rawCode)
     const status = code === aiRouteErrorCodes.PROVIDER_NOT_CONFIGURED ? 503
       : code === aiRouteErrorCodes.PROVIDER_TIMEOUT ? 504
+        : code === aiRouteErrorCodes.REQUEST_ABORTED ? 499
         : code === aiRouteErrorCodes.RATE_LIMITED ? 429
           : 502
     console.warn('[api/nutrition-photo-analysis] Safe failure', {
+      aborted: error?.aborted === true,
+      clientAttemptId,
       code,
+      modelName: getAiGatewayConfig('photo').model || DEFAULT_MODEL,
+      networkError: error?.networkError === true,
+      fetchErrorCauseCode: safeText(error?.fetchErrorCauseCode, '', 80),
+      fetchErrorCauseMessage: safeText(error?.fetchErrorCauseMessage, '', 180),
+      fetchErrorCauseName: safeText(error?.fetchErrorCauseName, '', 80),
+      fetchErrorCode: safeText(error?.fetchErrorCode, '', 80),
+      fetchErrorMessage: safeText(error?.fetchErrorMessage, '', 180),
+      fetchErrorName: safeText(error?.fetchErrorName, '', 80),
+      parseError: error?.parseError === true,
+      parseErrorCode: safeText(error?.parseErrorCode, '', 80),
+      parseErrorName: safeText(error?.parseErrorName, '', 80),
+      containsCodeFence: error?.containsCodeFence === true,
+      endsWithBrace: error?.endsWithBrace === true,
+      outputChunkCount: Number.isFinite(Number(error?.outputChunkCount)) ? Number(error.outputChunkCount) : '',
+      outputTextLength: Number.isFinite(Number(error?.outputTextLength)) ? Number(error.outputTextLength) : '',
+      outputTextPresent: error?.outputTextPresent === true,
+      providerIncompleteReason: safeText(error?.providerIncompleteReason, '', 80),
+      providerResponseStatus: safeText(error?.providerResponseStatus, '', 80),
+      startsWithBrace: error?.startsWithBrace === true,
+      startsWithCodeFence: error?.startsWithCodeFence === true,
+      truncatedLikely: error?.truncatedLikely === true,
+      requestCompleted: false,
+      requestId,
       source: 'remote',
+      timeout: error?.timeout === true || code === aiRouteErrorCodes.PROVIDER_TIMEOUT,
+      upstreamErrorCode: safeText(error?.upstreamErrorCode, '', 80),
+      upstreamRequestStarted: code !== aiRouteErrorCodes.PROVIDER_NOT_CONFIGURED,
+      upstreamStatus: Number.isFinite(Number(error?.upstreamStatus)) ? Number(error.upstreamStatus) : '',
+      upstreamStatusText: safeText(error?.upstreamStatusText, '', 80),
     })
     return sendSafeAiError(response, {
       code,
@@ -413,6 +494,7 @@ export default async function handler(request, response) {
 }
 
 export const nutritionPhotoRouteInternals = {
+  createPrompt,
   parseMultipart,
   validateProviderPayload,
   validateImage,

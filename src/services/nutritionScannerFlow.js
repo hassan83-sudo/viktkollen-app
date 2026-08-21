@@ -1,3 +1,28 @@
+export function hasUsableNutritionImageBlob(blob) {
+  if (!blob) return false
+  return !Number.isFinite(blob.size) || blob.size > 0
+}
+
+export function getNutritionImagePayloadSnapshot(payload = null, fallbackRef = null) {
+  const source = hasUsableNutritionImageBlob(fallbackRef?.processedBlob)
+    ? fallbackRef
+    : hasUsableNutritionImageBlob(payload?.processedBlob)
+      ? payload
+      : null
+
+  return source
+    ? {
+      imageMetadata: source.imageMetadata || source.metadata || null,
+      processedBlob: source.processedBlob,
+      previewUrl: source.previewUrl || '',
+    }
+    : null
+}
+
+export function shouldIgnoreEmptyNutritionImageSelection(file, currentPayload = null) {
+  return !file && Boolean(getNutritionImagePayloadSnapshot(currentPayload))
+}
+
 export function getNutritionAnalysisBlocker({
   imagePayload,
   isAnalyzing,
@@ -5,7 +30,7 @@ export function getNutritionAnalysisBlocker({
   providerType = 'local',
   remoteConsent,
 } = {}) {
-  if (!imagePayload) {
+  if (!hasUsableNutritionImageBlob(imagePayload?.processedBlob)) {
     return 'Välj eller ta en bild innan analysen startas.'
   }
 

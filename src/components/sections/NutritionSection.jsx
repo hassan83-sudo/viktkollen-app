@@ -15,6 +15,7 @@ import {
   normalizeNutritionGoals,
   summarizeDay,
 } from '../../services/nutritionService.js'
+import { logNavigationOrigin } from '../../services/navigation/navigationOriginDiagnostics.js'
 
 const BarcodeScanner = lazy(() => import('../BarcodeScanner.jsx'))
 const MealLogger = lazy(() => import('../MealLogger.jsx'))
@@ -79,6 +80,7 @@ function NutritionSection({
   const proteinProgress = proteinGoal > 0 ? (Number(totals.protein || 0) / proteinGoal) * 100 : null
 
   const showPanel = useCallback((panel, targetId) => {
+    logNavigationOrigin('nutrition-show-panel:before', { panel, targetId: targetId || '' })
     setActivePanel(panel)
     window.requestAnimationFrame(() => {
       const target = targetId
@@ -87,10 +89,20 @@ function NutritionSection({
 
       if (onScrollToTarget) {
         onScrollToTarget(target)
+        logNavigationOrigin('nutrition-show-panel:after-frame', {
+          panel,
+          targetFound: Boolean(target),
+          targetId: targetId || '',
+        })
         return
       }
 
       target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      logNavigationOrigin('nutrition-show-panel:after-frame', {
+        panel,
+        targetFound: Boolean(target),
+        targetId: targetId || '',
+      })
     })
   }, [onScrollToTarget])
 

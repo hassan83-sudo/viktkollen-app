@@ -1,3 +1,5 @@
+import { getNutritionAliases } from './nutrition/nutritionDatabase.js'
+
 export const nutritionEstimateConfidenceLevels = ['high', 'medium', 'low', 'insufficient']
 export const nutritionEstimateNutrients = ['calories', 'proteinG', 'carbsG', 'fatG', 'fiberG']
 export const nutritionPhotoComponentConfidenceLevels = ['high', 'medium', 'low', 'insufficient']
@@ -37,8 +39,10 @@ const componentCategoryAliases = {
 }
 
 const componentNameMergeAliases = [
-  { canonical: 'friterad kyckling', synonyms: ['friterad kyckling', 'kyckling', 'kycklingfilé', 'kycklingbröst'] },
-  { canonical: 'pommes frites', synonyms: ['pommes', 'friterade potatis', 'potatis', 'french fries', 'franska frites'] },
+  { canonical: 'friterad kyckling', synonyms: ['friterad kyckling', 'fried chicken'] },
+  { canonical: 'kyckling', synonyms: ['kyckling', 'kycklingfilé', 'kycklingbröst'] },
+  { canonical: 'pommes frites', synonyms: ['pommes', 'pommes frites', 'friterade potatis', 'french fries', 'franska frites'] },
+  { canonical: 'potatis', synonyms: ['potatis', 'potatisar'] },
   { canonical: 'grönsaker', synonyms: ['gurka', 'gurka och tomat', 'tomat', 'grönsak', 'grönsaker', 'blandade grönsaker'] },
   { canonical: 'sås', synonyms: ['sås', 'dressing', 'salladsdressing', 'grönsaksås', 'majonäs', 'majonnäs'] },
 ]
@@ -50,12 +54,329 @@ const confidenceOrder = {
   high: 3,
 }
 
+const visualDatabaseAliases = [
+  { alias: 'french fries', foodAlias: 'pommes' },
+  { alias: 'fries', foodAlias: 'pommes' },
+  { alias: 'pommes frites', foodAlias: 'pommes' },
+]
+
+const cookingMethodRiskTerms = [
+  'battered',
+  'breaded',
+  'creamy',
+  'deep fried',
+  'dressing',
+  'fried',
+  'friterad',
+  'gräddig',
+  'kramig',
+  'krämig',
+  'oil',
+  'oil-coated',
+  'olja',
+  'panerad',
+  'sauce',
+  'sås',
+]
+
+const plainFoodIdsUnsafeForHeavyCooking = new Set(['kyckling', 'potatis'])
+
 function isObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
 function safeArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : []
+}
+
+function normalizeMatchText(value = '') {
+  return safeText(value, '', 120)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('sv-SE')
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function hasCookingRisk(component = {}) {
+  const text = [
+    component.name,
+    component.category,
+    component.uncertainty?.reason,
+    ...safeArray(component.cookingMethods),
+    ...safeArray(component.alternatives),
+  ].map(normalizeMatchText).join(' ')
+
+  return cookingMethodRiskTerms.some((term) => text.includes(normalizeMatchText(term)))
+}
+
+const cookingMethodAliases = [
+  { canonical: 'baked', aliases: ['baked', 'ugnsbakad', 'ugn'] },
+  { canonical: 'boiled', aliases: ['boiled', 'kokt', 'kokta'] },
+  { canonical: 'breaded', aliases: ['breaded', 'panerad', 'panering', 'battered'] },
+  { canonical: 'fried', aliases: ['fried', 'friterad', 'fritering', 'deep fried', 'olja', 'oil-coated'] },
+  { canonical: 'grilled', aliases: ['grilled', 'grillad', 'grill'] },
+  { canonical: 'raw', aliases: ['raw', 'ra', 'rå'] },
+  { canonical: 'roasted', aliases: ['roasted', 'rostad'] },
+  { canonical: 'steamed', aliases: ['steamed', 'angkokt', 'ångkokt'] },
+]
+
+const componentCategoryOrder = {
+  carbohydrate: 1,
+  fat: 4,
+  protein: 0,
+  sauce: 3,
+  unknown: 5,
+  vegetables: 2,
+}
+
+const countablePortionGuides = [
+  { max: 40, min: 20, pattern: /kottbull|meatball/ },
+  { max: 28, min: 15, pattern: /nugget/ },
+  { max: 40, min: 18, pattern: /sushi|maki|nigiri/ },
+  { max: 70, min: 50, pattern: /(^|\s)(agg|egg)(s|\s|$)/ },
+  { max: 45, min: 25, pattern: /skiva|toast|bread slice/ },
+  { max: 55, min: 25, pattern: /kycklingbit|chicken (piece|tender|wing)/ },
+  { max: 35, min: 18, pattern: /dumpling|gyoza|pirog/ },
+]
+
+function roundPortionGrams(value) {
+  const number = safeNumber(value, null, 5000)
+  if (number === null) return null
+  return Math.round(number / 5) * 5
+}
+
+function normalizeCookingMethods(value = []) {
+  return [...new Set(safeArray(value).flatMap((entry) => {
+    const text = normalizeMatchText(entry)
+    const match = cookingMethodAliases.find((item) => item.aliases.some((alias) => text.includes(alias)))
+    return match ? [match.canonical] : []
+  }))].slice(0, 4)
+}
+
+function cookingSignature(methods = []) {
+  return normalizeCookingMethods(methods).slice().sort().join(',')
+}
+
+function typicalCountableGrams(name = '') {
+  const text = normalizeMatchText(name)
+  return countablePortionGuides.find((guide) => guide.pattern.test(text)) || null
+}
+
+function applyCountablePortion(portion = {}, name = '') {
+  const pieceCount = safeNumber(portion.pieceCount, null, 40)
+  const guide = typicalCountableGrams(name)
+  if (!pieceCount || pieceCount < 1 || !guide) return portion
+
+  const countMin = roundPortionGrams(pieceCount * guide.min)
+  const countMax = roundPortionGrams(pieceCount * guide.max)
+  if (portion.gramsMin === null || portion.gramsMax === null) {
+    return {
+      ...portion,
+      evidence: portion.evidence || `${pieceCount} synliga bitar.`,
+      gramsMax: countMax,
+      gramsMin: countMin,
+    }
+  }
+
+  const modelMid = (portion.gramsMin + portion.gramsMax) / 2
+  const countMid = (countMin + countMax) / 2
+  if (modelMid < countMid * 0.5 || modelMid > countMid * 2) {
+    return {
+      ...portion,
+      evidence: portion.evidence || `${pieceCount} synliga bitar stämmer dåligt med gramintervallet.`,
+      gramsMax: Math.max(portion.gramsMax, countMax),
+      gramsMin: Math.min(portion.gramsMin, countMin),
+    }
+  }
+
+  return {
+    ...portion,
+    gramsMax: Math.max(portion.gramsMax, countMax),
+    gramsMin: Math.min(portion.gramsMin, countMin),
+  }
+}
+
+function widenWeakPortion(portion = {}) {
+  if (portion.gramsMin === null || portion.gramsMax === null) return portion
+  if (!['low', 'insufficient'].includes(portion.confidence)) return portion
+
+  return {
+    ...portion,
+    gramsMax: roundPortionGrams(portion.gramsMax * 1.2),
+    gramsMin: roundPortionGrams(Math.max(5, portion.gramsMin * 0.85)),
+  }
+}
+
+function widenNarrowLowConfidencePortion(portion = {}) {
+  if (portion.gramsMin === null || portion.gramsMax === null) return portion
+  if (!['low', 'insufficient'].includes(portion.confidence)) return portion
+  const midpoint = (portion.gramsMin + portion.gramsMax) / 2
+  if (midpoint <= 0) return portion
+  const span = portion.gramsMax - portion.gramsMin
+  if (span / midpoint >= 0.18) return portion
+
+  return {
+    ...portion,
+    evidence: portion.evidence || 'Gramintervallet breddades eftersom portionsäkerheten är låg.',
+    gramsMax: roundPortionGrams(midpoint * 1.25),
+    gramsMin: roundPortionGrams(Math.max(5, midpoint * 0.8)),
+  }
+}
+
+function stabilizePortionEstimate(portion = {}, name = '') {
+  const counted = applyCountablePortion(portion, name)
+  const widened = widenNarrowLowConfidencePortion(widenWeakPortion(counted))
+
+  return {
+    ...widened,
+    gramsMax: roundPortionGrams(widened.gramsMax),
+    gramsMin: roundPortionGrams(widened.gramsMin),
+  }
+}
+
+function neutralizeUncertainSauceName(component = {}) {
+  if (component.category !== 'sauce' || component.confidence === 'high' || !safeArray(component.alternatives).length) {
+    return component
+  }
+  const name = normalizeMatchText(component.name)
+  if (/kramig sas|sas eller|dressing|dipp/.test(name)) return component
+
+  return {
+    ...component,
+    name: 'Krämig sås',
+  }
+}
+
+export function buildPlateConsistencyNotes(components = []) {
+  const list = safeArray(components)
+  const notes = []
+  const names = list.map((component) => normalizeMatchText(component.name)).join(' ')
+  const hasSauceOrFat = list.some((component) => component.category === 'sauce' || component.category === 'fat')
+  const looksFried = list.some((component) => hasCookingRisk(component) || /pommes|frites|friterad/.test(normalizeMatchText(component.name)))
+  const grams = list
+    .map((component) => component.portionEstimate)
+    .filter((portion) => Number.isFinite(portion?.gramsMin) && Number.isFinite(portion?.gramsMax))
+  const totalMax = grams.reduce((sum, portion) => sum + portion.gramsMax, 0)
+  const totalMin = grams.reduce((sum, portion) => sum + portion.gramsMin, 0)
+
+  if (looksFried && !hasSauceOrFat) notes.push('Synlig sås/dipp kan saknas.')
+  if (totalMax > 1800) notes.push('Den samlade mängden ser ovanligt stor ut för en tallrik.')
+  if (list.length >= 3 && totalMax > 0 && totalMax < 90) notes.push('Portionsstorleken är osäker.')
+  if (totalMin > 0 && totalMax >= totalMin * 4) notes.push('Portionsstorleken är osäker.')
+  if (/potatis/.test(names) && /pommes|frites/.test(names)) notes.push('Kokt potatis och pommes hålls isär.')
+  if (/kyckling/.test(names) && /friterad kyckling|fried chicken/.test(names)) notes.push('Kycklingen kan vara panerad eller friterad.')
+  if (list.some((component) => component.category === 'sauce' && component.identityConfidence === 'high' && !component.visualEvidence && !component.portionEstimate?.evidence)) {
+    notes.push('Såstypen är osäker.')
+  }
+  list.forEach((component) => {
+    const portion = component.portionEstimate || {}
+    const guide = typicalCountableGrams(component.name)
+    if (!portion.pieceCount || !guide || portion.gramsMin === null || portion.gramsMax === null) return
+    const countMid = portion.pieceCount * ((guide.min + guide.max) / 2)
+    const gramMid = (portion.gramsMin + portion.gramsMax) / 2
+    if (gramMid < countMid * 0.45 || gramMid > countMid * 2.2) {
+      notes.push('Antalet bitar stämmer dåligt med den uppskattade vikten.')
+    }
+  })
+
+  return [...new Set(notes)].slice(0, 4)
+}
+
+function withVisualDatabaseAliases(aliases) {
+  const byAlias = new Map(aliases.map((entry) => [normalizeMatchText(entry.alias), entry.food]))
+  const additions = visualDatabaseAliases
+    .map((entry) => {
+      const food = byAlias.get(normalizeMatchText(entry.foodAlias))
+      return food ? { alias: entry.alias, food } : null
+    })
+    .filter(Boolean)
+
+  return [...aliases, ...additions]
+}
+
+function createNutritionRangeFromFood(food, portionEstimate, confidence = 'medium') {
+  const gramsMin = safeNumber(portionEstimate?.gramsMin, null, 5000)
+  const gramsMax = safeNumber(portionEstimate?.gramsMax, null, 5000)
+  if (gramsMin === null || gramsMax === null) return null
+
+  const orderedMin = Math.min(gramsMin, gramsMax)
+  const orderedMax = Math.max(gramsMin, gramsMax)
+  const per100 = {
+    calories: food.caloriesPer100g,
+    carbsG: food.carbsPer100g,
+    fatG: food.fatPer100g,
+    fiberG: food.fiberPer100g,
+    proteinG: food.proteinPer100g,
+  }
+
+  return Object.fromEntries(nutritionEstimateNutrients.map((nutrient) => {
+    const value = safeNumber(per100[nutrient], null, nutrientLimits[nutrient].max)
+    if (value === null) return [nutrient, null]
+    const min = value * orderedMin / 100
+    const max = value * orderedMax / 100
+
+    return [nutrient, {
+      confidence,
+      max: Number(max.toFixed(nutrient === 'calories' ? 0 : 1)),
+      midpoint: Number(((min + max) / 2).toFixed(nutrient === 'calories' ? 0 : 1)),
+      min: Number(min.toFixed(nutrient === 'calories' ? 0 : 1)),
+    }]
+  }))
+}
+
+export function matchPhotoComponentToNutritionDatabase(component = {}) {
+  const componentName = normalizeMatchText(component.name)
+  if (!componentName) {
+    return { food: null, reason: 'missing_component_name', status: 'noMatch' }
+  }
+
+  const aliases = withVisualDatabaseAliases(getNutritionAliases())
+  const exact = aliases.filter((entry) => normalizeMatchText(entry.alias) === componentName)
+  const uniqueFoods = [...new Map(exact.map((entry) => [entry.food.id, entry.food])).values()]
+  if (uniqueFoods.length !== 1) {
+    return {
+      food: null,
+      reason: uniqueFoods.length > 1 ? 'ambiguous_database_match' : 'no_safe_database_match',
+      status: uniqueFoods.length > 1 ? 'ambiguous' : 'noMatch',
+    }
+  }
+
+  const food = uniqueFoods[0]
+  if (plainFoodIdsUnsafeForHeavyCooking.has(food.id) && hasCookingRisk(component)) {
+    return { food: null, reason: 'cooking_method_requires_review', status: 'blockedByCookingMethod' }
+  }
+
+  return { food, reason: '', status: 'matched' }
+}
+
+export function derivePhotoComponentNutrition(component = {}) {
+  const match = matchPhotoComponentToNutritionDatabase(component)
+  if (match.food) {
+    const derivedNutrition = createNutritionRangeFromFood(match.food, component.portionEstimate, component.confidence === 'high' ? 'high' : 'medium')
+    if (derivedNutrition?.calories && derivedNutrition?.proteinG && derivedNutrition?.carbsG && derivedNutrition?.fatG) {
+      return {
+        nutritionEstimate: derivedNutrition,
+        nutritionSource: 'databaseDerived',
+        nutritionSourceReason: 'matched_database_per_100g_and_vision_grams',
+        matchedFood: {
+          category: match.food.category,
+          id: match.food.id,
+          name: match.food.name,
+        },
+      }
+    }
+  }
+
+  return {
+    nutritionEstimate: normalizeEstimatedNutrition(component.nutritionEstimate || {}, {
+      confidence: component.confidence || 'low',
+    }),
+    nutritionSource: 'aiEstimate',
+    nutritionSourceReason: match.reason || 'database_match_unavailable',
+    matchedFood: null,
+  }
 }
 
 function normalizeComponentCategory(value = 'unknown') {
@@ -151,8 +472,14 @@ function mergePortionEstimate(first = {}, second = {}) {
   const merged = normalizePortionEstimate({
     confidence: mergeConfidence(firstRange?.confidence || secondRange?.confidence || 'low', firstRange?.confidence || secondRange?.confidence || 'low'),
     description: `${safeText(firstRange?.description, '') || ''}${firstRange?.description && secondRange?.description ? ' + ' : ''}${safeText(secondRange?.description, '') || ''}` || 'Sammanlagd portion',
+    evidence: [firstRange?.evidence, secondRange?.evidence].filter(Boolean).join(' '),
     gramsMin: Number(((firstRange?.gramsMin || 0) + (secondRange?.gramsMin || 0)).toFixed(0)),
     gramsMax: Number(((firstRange?.gramsMax || 0) + (secondRange?.gramsMax || 0)).toFixed(0)),
+    pieceCount: (firstRange?.pieceCount || 0) + (secondRange?.pieceCount || 0) || null,
+    pieceCountConfidence: mergeConfidence(firstRange?.pieceCountConfidence, secondRange?.pieceCountConfidence),
+    relativePlateShare: [firstRange?.relativePlateShare, secondRange?.relativePlateShare]
+      .filter((value) => Number.isFinite(value))
+      .reduce((sum, value, _, values) => sum + value / values.length, 0) || null,
   }, {
     confidence: mergeConfidence(firstRange?.confidence || secondRange?.confidence || 'low', firstRange?.confidence || secondRange?.confidence || 'low'),
   })
@@ -164,22 +491,28 @@ export function normalizePhotoComponent(raw = {}, index = 0) {
   const source = isObject(raw) ? raw : {}
   const baseConfidence = normalizeNutritionEstimateConfidence(source.confidence || 'low')
   const category = normalizeComponentCategory(source.category || source.type)
-  const confidence = source.confidence ? normalizeNutritionEstimateConfidence(source.confidence, 'low') : baseConfidence
+  const identityConfidence = normalizeNutritionEstimateConfidence(source.identityConfidence || source.confidence, 'low')
+  const confidence = source.confidence || source.identityConfidence
+    ? identityConfidence
+    : baseConfidence
   const alternatives = safeArray(source.alternatives).map((entry) => safeText(entry, '', 60)).filter(Boolean).slice(0, 3)
-  const portionEstimate = normalizePortionEstimate(source.portionEstimate || source.portion, { confidence, fallbackDescription: 'Ospecificerad komponentportion' })
+  const rawPortion = source.portionEstimate || source.portion || {}
+  const hasPortionGrams = Number.isFinite(Number(rawPortion.gramsMin ?? rawPortion.minGrams ?? rawPortion.min))
+    || Number.isFinite(Number(rawPortion.gramsMax ?? rawPortion.maxGrams ?? rawPortion.max))
+  const portionEstimate = normalizePortionEstimate(rawPortion, {
+    confidence: hasPortionGrams ? 'medium' : 'low',
+    fallbackDescription: 'Ospecificerad komponentportion',
+  })
   const nutritionEstimate = normalizeEstimatedNutrition(source.nutritionEstimate || source.nutrition || source.estimatedNutrition, {
     confidence,
   })
-  const cookingMethods = safeArray(source.cookingMethods)
-    .map((entry) => safeText(entry, '', 50))
-    .filter(Boolean)
-    .slice(0, 4)
-
-  return {
+  const cookingMethods = normalizeCookingMethods(source.cookingMethods)
+  const component = {
     id: safeText(source.id, `photo-component-${index}`),
     alternatives,
     category,
     confidence,
+    identityConfidence,
     cookingMethods,
     visualEvidence: safeText(source.visualEvidence, '', 160),
     cookingMethodHints: safeArray(source.cookingMethodHints).map((entry) => safeText(entry, '', 50)).filter(Boolean).slice(0, 4),
@@ -198,6 +531,8 @@ export function normalizePhotoComponent(raw = {}, index = 0) {
         return isFiniteRange(bounds)
       }),
   }
+
+  return neutralizeUncertainSauceName(component)
 }
 
 export function normalizePhotoAnalysisImageQuality(value, fallback = 'usable') {
@@ -227,7 +562,7 @@ export function normalizePhotoComponents(rawComponents = []) {
   const bySignature = new Map()
 
   safe.forEach((component) => {
-    const key = `${component.category}:${component.normalizedName}`
+    const key = `${component.category}:${component.normalizedName}:${cookingSignature(component.cookingMethods)}`
     if (!bySignature.has(key)) {
       bySignature.set(key, { ...component, alternatives: [...component.alternatives] })
       return
@@ -237,6 +572,7 @@ export function normalizePhotoComponents(rawComponents = []) {
     bySignature.set(key, {
       ...existing,
       confidence: mergeConfidence(existing.confidence, component.confidence),
+      identityConfidence: mergeConfidence(existing.identityConfidence, component.identityConfidence),
       id: existing.id,
       name: existing.name,
       nutritionEstimate: mergeNutritionEstimates(existing.nutritionEstimate, component.nutritionEstimate),
@@ -252,17 +588,33 @@ export function normalizePhotoComponents(rawComponents = []) {
     })
   })
 
-  return Array.from(bySignature.values()).map((component) => {
-    const rest = { ...component }
-    delete rest.normalizedName
+  return Array.from(bySignature.values())
+    .map((component) => {
+      const rest = { ...component }
+      delete rest.normalizedName
+      const portionEstimate = stabilizePortionEstimate(rest.portionEstimate, rest.name)
+      const finalized = { ...rest, cookingMethods: normalizeCookingMethods(rest.cookingMethods), portionEstimate }
+      const derived = derivePhotoComponentNutrition(finalized)
 
-    return {
-      ...rest,
-      nutritionEstimate: normalizeEstimatedNutrition(rest.nutritionEstimate || {}, {
-        confidence: rest.confidence,
-      }),
-    }
-  }).slice(0, 12)
+      return {
+        ...finalized,
+        matchedFood: derived.matchedFood,
+        nutritionEstimate: derived.nutritionEstimate,
+        nutritionIsUsable: ['calories', 'proteinG', 'carbsG', 'fatG']
+          .some((nutrient) => {
+            const bounds = toRangeBounds(derived.nutritionEstimate?.[nutrient])
+            return isFiniteRange(bounds)
+          }),
+        nutritionSource: derived.nutritionSource,
+        nutritionSourceReason: derived.nutritionSourceReason,
+      }
+    })
+    .sort((first, second) => {
+      const categoryDelta = (componentCategoryOrder[first.category] ?? 9) - (componentCategoryOrder[second.category] ?? 9)
+      if (categoryDelta !== 0) return categoryDelta
+      return first.name.localeCompare(second.name, 'sv-SE')
+    })
+    .slice(0, 12)
 }
 
 export function calculateTotalsFromComponents(components = []) {
@@ -417,12 +769,21 @@ export function normalizePortionEstimate(value, options = {}) {
   const gramsMax = safeNumber(source.gramsMax ?? source.maxGrams ?? source.max, null, 5000)
   const orderedMin = gramsMin !== null && gramsMax !== null ? Math.min(gramsMin, gramsMax) : gramsMin
   const orderedMax = gramsMin !== null && gramsMax !== null ? Math.max(gramsMin, gramsMax) : gramsMax
+  const pieceCount = safeNumber(source.pieceCount ?? source.count ?? source.pieces, null, 40)
+  const relativePlateShare = safeNumber(source.relativePlateShare ?? source.plateShare ?? source.relativeArea, null, 100)
+  const pieceCountConfidence = pieceCount
+    ? normalizeNutritionEstimateConfidence(source.pieceCountConfidence, 'medium')
+    : null
 
   return {
     confidence: normalizeNutritionEstimateConfidence(source.confidence, options.confidence || 'low'),
     description: safeText(source.description || source.label || options.fallbackDescription, 'Okänd portion', 100),
+    evidence: safeText(source.evidence || source.reason || source.visualEvidence, '', 140),
     gramsMax: orderedMax === null ? null : Number(orderedMax.toFixed(0)),
     gramsMin: orderedMin === null ? null : Number(orderedMin.toFixed(0)),
+    pieceCount: pieceCount && pieceCount >= 1 ? Math.round(pieceCount) : null,
+    pieceCountConfidence,
+    relativePlateShare: relativePlateShare === null ? null : Number(relativePlateShare.toFixed(0)),
   }
 }
 

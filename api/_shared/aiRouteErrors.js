@@ -79,6 +79,7 @@ export function mapGatewayErrorCode(code) {
     invalidRequest: aiRouteErrorCodes.INVALID_REQUEST,
     providerUnavailable: aiRouteErrorCodes.PROVIDER_UNAVAILABLE,
     rateLimited: aiRouteErrorCodes.RATE_LIMITED,
+    requestAborted: aiRouteErrorCodes.REQUEST_ABORTED,
     timeout: aiRouteErrorCodes.PROVIDER_TIMEOUT,
   }
 

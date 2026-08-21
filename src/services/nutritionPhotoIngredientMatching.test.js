@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   applyPhotoIngredientDatabaseSuggestion,
+  buildPhotoIngredientMatchStatusCounts,
   buildPhotoIngredientMatchSummary,
   matchPhotoIngredientToDatabase,
   normalizePhotoIngredientName,
@@ -24,6 +25,36 @@ describe('nutritionPhotoIngredientMatching', () => {
 
     expect(['exactMatch', 'normalizedMatch']).toContain(match.status)
     expect(match.suggestions[0].source).toBe('nutritionDatabase')
+  })
+
+  it('does not auto-match fried chicken to plain chicken', () => {
+    const match = matchPhotoIngredientToDatabase({ name: 'Friterad kyckling' })
+
+    expect(match.status).toBe('noMatch')
+    expect(match.matchedFood).toBeNull()
+  })
+
+  it('matches pommes aliases conservatively', () => {
+    const match = matchPhotoIngredientToDatabase({ name: 'french fries' })
+
+    expect(['exactMatch', 'normalizedMatch']).toContain(match.status)
+    expect(match.matchedFood.name).toBe('Pommes')
+  })
+
+  it('does not auto-apply ambiguous sauce alternatives', () => {
+    const mayo = matchPhotoIngredientToDatabase({
+      alternatives: ['aioli', 'crème fraîche'],
+      name: 'Majonnäs',
+    })
+    const hummus = matchPhotoIngredientToDatabase({
+      alternatives: ['tahini', 'vitlökssås'],
+      name: 'Hummus eller liknande sås',
+    })
+
+    expect(mayo.status).toBe('multipleMatches')
+    expect(mayo.matchedFood).toBeNull()
+    expect(hummus.status).not.toMatch(/exactMatch|normalizedMatch/)
+    expect(hummus.matchedFood).toBeNull()
   })
 
   it('returns multiple matches when the safe text match is ambiguous', () => {
@@ -49,6 +80,28 @@ describe('nutritionPhotoIngredientMatching', () => {
     expect(summary.matches).toHaveLength(2)
     expect(summary.counts.exactMatch + summary.counts.normalizedMatch).toBe(1)
     expect(summary.counts.noMatch).toBe(1)
+  })
+
+  it('counts every ingredient in an explainable database status bucket', () => {
+    const items = [
+      { dataSource: 'aiEstimate', id: 'exact', name: 'pizza' },
+      { dataSource: 'aiEstimate', id: 'normalized', name: 'kyckling file' },
+      { dataSource: 'nutritionDatabase', id: 'manual', name: 'Egen vald mat' },
+      { alternatives: ['aioli', 'crème fraîche'], dataSource: 'aiEstimate', id: 'choice', name: 'Majonnäs' },
+      { dataSource: 'aiEstimate', id: 'ai', name: 'okänd rätt' },
+    ]
+    const summary = buildPhotoIngredientMatchSummary(items)
+    const counts = buildPhotoIngredientMatchStatusCounts(items, summary.matches)
+
+    expect(counts).toEqual({
+      aiEstimate: 1,
+      exactMatch: 1,
+      manualDatabase: 1,
+      needsSelection: 1,
+      normalizedMatch: 1,
+      total: 5,
+    })
+    expect(counts.exactMatch + counts.normalizedMatch + counts.manualDatabase + counts.needsSelection + counts.aiEstimate).toBe(items.length)
   })
 
   it('applies database suggestion only when the user has not edited the value', () => {

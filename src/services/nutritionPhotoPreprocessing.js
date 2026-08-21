@@ -1,7 +1,7 @@
 export const allowedPhotoMimeTypes = ['image/jpeg', 'image/png', 'image/webp']
 export const allowedPhotoExtensions = ['.jpg', '.jpeg', '.png', '.webp']
 export const maxNutritionPhotoFileBytes = 8 * 1024 * 1024
-export const maxNutritionPhotoDimension = 1600
+export const maxNutritionPhotoDimension = 1920
 
 function safeText(value, fallback = '') {
   return String(value || fallback).replace(/\s+/g, ' ').trim()
@@ -132,7 +132,7 @@ export async function preprocessNutritionPhoto(file, options = {}) {
     const context = canvas.getContext('2d')
     if (!context) throw new Error('Canvas kunde inte skapas.')
     context.drawImage(image, 0, 0, dimensions.width, dimensions.height)
-    const processedBlob = await canvasToBlob(canvas, file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.82)
+    const processedBlob = await canvasToBlob(canvas, file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.88)
 
     return {
       errors: [],

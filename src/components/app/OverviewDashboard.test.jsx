@@ -157,14 +157,15 @@ describe('OverviewDashboard', () => {
     expect(markup).toContain('<strong>Inga data ännu</strong>')
   })
 
-  it('keeps the more-for-today rows closed without rendering child panels initially', () => {
+  it('keeps the more-for-today rows open while preserving collapsible details', () => {
     const markup = renderOverview()
 
     expect(markup).toContain('Dagens måltidsplan')
     expect(markup).toContain('Senaste 7 dagarna')
     expect(markup).toContain('Achievements')
     expect(markup).toContain('Health Prediction')
-    expect(markup).not.toContain('overview-secondary-content')
-    expect(markup).not.toContain('weekly-progress-list')
+    expect(markup).toContain('open=""')
+    expect(markup).toContain('overview-secondary-content')
+    expect(markup).toContain('weekly-progress-card')
   })
 })

@@ -182,12 +182,69 @@ describe('nutritionPhotoAnalysis model', () => {
 
     expect(analysis.components).toHaveLength(4)
     expect(analysis.detectedItems.map((item) => item.name)).toContain('Pommes frites')
-    expect(analysis.mealTotals.calories.midpoint).toBe(867)
+    expect(analysis.mealTotals.calories.midpoint).not.toBe(867)
     expect(draft.components).toHaveLength(4)
     expect(saved.photoAnalysis.components).toHaveLength(4)
     expect(saved.photoAnalysis.imageQuality).toBe('usable')
     expect(saved.photoAnalysis.provenance).toBe('ai_estimated')
+    expect(saved.photoAnalysis.dataSources).toContain('databaseDerived')
+    expect(saved.photoAnalysis.dataSources).toContain('aiEstimate')
     expect(JSON.stringify(saved)).not.toMatch(/data:image|base64/)
+  })
+
+  it('uses database-derived component totals instead of separate model mealTotals when safe matches exist', () => {
+    const analysis = normalizeNutritionPhotoAnalysis({
+      analysisDate,
+      components: [
+        {
+          category: 'protein',
+          confidence: 'high',
+          name: 'Kyckling',
+          portionEstimate: { confidence: 'high', gramsMax: 100, gramsMin: 100 },
+        },
+        {
+          category: 'carbohydrate',
+          confidence: 'high',
+          name: 'Ris',
+          portionEstimate: { confidence: 'medium', gramsMax: 200, gramsMin: 100 },
+        },
+      ],
+      confidence: 'high',
+      mealTotals: {
+        calories: { max: 1200, midpoint: 1000, min: 800 },
+        carbsG: { max: 160, midpoint: 140, min: 120 },
+        fatG: { max: 80, midpoint: 60, min: 40 },
+        proteinG: { max: 90, midpoint: 80, min: 70 },
+      },
+      provider: { type: 'remote' },
+    }, { analysisDate })
+    const draft = createPhotoAnalysisReviewDraft(analysis, { analysisDate, mealType: 'Lunch', time: '12:30' })
+
+    expect(analysis.components.every((component) => component.nutritionSource === 'databaseDerived')).toBe(true)
+    expect(analysis.estimatedNutrition.calories).toMatchObject({ max: 439, min: 302 })
+    expect(analysis.estimatedNutrition.calories.midpoint).not.toBe(1000)
+    expect(draft.detectedItems.every((item) => item.dataSource === 'databaseDerived')).toBe(true)
+  })
+
+  it('uses Swedish display names in the review draft without mutating raw analysis names', () => {
+    const analysis = normalizeNutritionPhotoAnalysis({
+      detectedItems: [{ calories: 420, carbohydrates: 35, confidence: 'high', fat: 18, name: 'fried chicken', protein: 28 }],
+      estimatedNutrition: {
+        calories: { max: 500, midpoint: 420, min: 360 },
+        carbsG: { max: 45, midpoint: 35, min: 25 },
+        fatG: { max: 24, midpoint: 18, min: 12 },
+        proteinG: { max: 34, midpoint: 28, min: 22 },
+      },
+      portionEstimate: { confidence: 'medium', description: 'medium lunch portion', gramsMax: 460, gramsMin: 320 },
+      provider: { type: 'remote' },
+    }, { analysisDate })
+    const draft = createPhotoAnalysisReviewDraft(analysis, { analysisDate, mealType: 'Lunch', time: '12:30' })
+
+    expect(analysis.detectedItems[0].name).toBe('fried chicken')
+    expect(analysis.portionEstimate.description).toBe('medium lunch portion')
+    expect(draft.mealName).toBe('Foto: Friterad kyckling')
+    expect(draft.portionSize).toBe('Normal lunchportion')
+    expect(draft.analysis.detectedItems[0].name).toBe('fried chicken')
   })
 
   it('recalculates meal totals from components when provider totals are inconsistent', () => {

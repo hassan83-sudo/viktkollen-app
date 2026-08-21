@@ -10095,6 +10095,12 @@ body:has(#app-section-home.is-active) {
   content: "";
 }
 
+#app-section-home.is-active .overview-avatar-wrap {
+  position: relative;
+  width: 58px;
+  height: 58px;
+}
+
 #app-section-home.is-active .overview-avatar-button {
   position: relative;
   width: 58px;
@@ -10103,11 +10109,40 @@ body:has(#app-section-home.is-active) {
   min-height: 58px;
   overflow: hidden;
   border: 2px solid rgba(255, 255, 255, 0.18);
-  color: transparent;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.04)),
-    radial-gradient(circle at 50% 31%, #eda97a 0 20%, #252a39 21% 40%, #cfd6e2 41% 60%, #141827 61%);
+    linear-gradient(160deg, rgba(86, 118, 255, 0.55), rgba(12, 18, 38, 0.96));
   box-shadow: 0 16px 30px rgba(0, 0, 0, 0.36);
+}
+
+#app-section-home.is-active .overview-avatar-button img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#app-section-home.is-active .overview-avatar-photo {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  overflow: hidden;
+  border: 2px solid #050914;
+  border-radius: 999px;
+  background: #38f7ff;
+  cursor: pointer;
+}
+
+#app-section-home.is-active .overview-avatar-photo input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 #app-section-home.is-active .overview-avatar-button::after {
@@ -10321,11 +10356,12 @@ body:has(#app-section-home.is-active) {
 
 #app-section-home.is-active .overview-main-stat {
   display: flex;
-  height: 126px;
-  min-height: 126px;
+  height: auto;
+  min-height: 148px;
   min-width: 0;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 6px;
   padding: 14px;
   border: 1px solid var(--home-border);
   border-radius: 18px;
@@ -10385,13 +10421,17 @@ body:has(#app-section-home.is-active) {
   display: block;
   width: 100%;
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
   color: #fff;
-  font-size: 1.96rem;
+  font-size: 1.55rem;
   font-weight: 950;
-  line-height: 1;
-  text-overflow: clip;
-  white-space: normal;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+#app-section-home.is-active .overview-weight-value {
+  letter-spacing: -0.03em;
 }
 
 #app-section-home.is-active .overview-main-stat.is-calories strong {
@@ -10413,7 +10453,8 @@ body:has(#app-section-home.is-active) {
 
 #app-section-home.is-active .overview-weight-sparkline {
   width: 100%;
-  height: 27px;
+  height: 18px;
+  margin-top: 2px;
   overflow: visible;
 }
 
@@ -11299,8 +11340,8 @@ body:has(#app-section-home.is-active) {
   }
 
   #app-section-home.is-active .overview-main-stat {
-    height: 126px;
-    min-height: 126px;
+    height: auto;
+    min-height: 148px;
     padding: 13px 10px;
   }
 
@@ -11878,4 +11919,90 @@ html:has(#app-section-more.is-active),
   min-height: 48px;
   width: 100%;
 }
+
+#app-section-home.is-active .overview-home-section {
+  display: grid;
+  gap: 10px;
+}
+
+#app-section-home.is-active .overview-home-section > h2 {
+  margin: 8px 2px 0;
+  color: #fff;
+  font-size: 1.28rem;
+  font-weight: 920;
+}
+
+#app-section-home.is-active .overview-weather-empty {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+#app-section-home.is-active .overview-stat-link {
+  align-self: start;
+  margin-top: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #8fd9ff;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+#app-section-home.is-active .overview-protein-foods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+#app-section-home.is-active .overview-protein-foods span {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(167, 123, 255, 0.16);
+  color: #e8dcff;
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.overview-home-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  grid-template-rows: minmax(260px, 42vh) minmax(0, 1fr);
+  background: #050914;
+  color: #fff;
+}
+
+.overview-home-stage-hero {
+  position: relative;
+  overflow: hidden;
+  background: #07111f;
+}
+
+.overview-home-stage-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.overview-home-stage.is-coach .overview-home-stage-hero {
+  background:
+    radial-gradient(circle at 50% 20%, rgba(120, 92, 255, 0.28), transparent 46%),
+    #0b1024;
+}
+
+.overview-home-stage.is-food .overview-home-stage-hero {
+  background:
+    radial-gradient(circle at 50% 20%, rgba(255, 92, 168, 0.24), transparent 46%),
+    #140814;
+}
+
 

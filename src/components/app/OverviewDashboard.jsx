@@ -6,12 +6,16 @@ import HealthPredictionCard from './HealthPredictionCard.jsx'
 import SmartNotificationsCard from './SmartNotificationsCard.jsx'
 import WeeklyProgressSection from './WeeklyProgressSection.jsx'
 import OverviewBodyScanStage from './OverviewBodyScanStage.jsx'
+import OverviewCoachStage from './OverviewCoachStage.jsx'
+import OverviewFoodScanStage from './OverviewFoodScanStage.jsx'
 import {
   createFallbackWeatherContext,
   createOverviewLiveContext,
   formatWeatherValue,
   getWeatherPermissionState,
 } from '../../services/overviewLiveContext.js'
+import { fetchOpenMeteoWeather, requestDeviceLocation } from '../../services/overviewWeather.js'
+import { createProfilePhotoFromFile, readProfilePhoto, writeProfilePhoto } from '../../services/profilePhotoStorage.js'
 
 function isFiniteNumber(value) {
   return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value))
@@ -30,7 +34,7 @@ function formatWeight(value) {
 
   if (!Number.isFinite(number) || number <= 0) return 'Ingen vikt'
 
-  return `${number.toFixed(1).replace('.', ',')} kg`
+  return `${number.toLocaleString('sv-SE', { maximumFractionDigits: 1, minimumFractionDigits: 1 })}\u00a0kg`
 }
 
 function getInitials(profile, email = '') {
@@ -77,7 +81,7 @@ function getSparklinePoints(weights = []) {
   return values
     .map((value, index) => {
       const x = Math.round((index / (values.length - 1)) * 72)
-      const y = Math.round(24 - ((value - min) / range) * 20)
+      const y = Math.round(14 - ((value - min) / range) * 10)
 
       return `${x},${y}`
     })
@@ -294,7 +298,7 @@ function SmartFeedCard({ liveContext }) {
   )
 }
 
-function OverviewLiveMeta({ liveContext }) {
+function OverviewLiveMeta({ liveContext, onConnectWeather, weatherStatus = '' }) {
   const weather = liveContext.weather
   const hasWeatherDetails = Boolean(weather.hasLiveWeather)
 
@@ -310,7 +314,9 @@ function OverviewLiveMeta({ liveContext }) {
             <span><OverviewIcon name="drop" /> {formatWeatherValue(weather.precipitationRiskPercent, ' %')}</span>
           </>
         ) : (
-          <span className="overview-weather-empty" aria-label="Väder ej anslutet">Väder ej anslutet</span>
+          <button className="overview-weather-empty" type="button" onClick={onConnectWeather}>
+            {weatherStatus || 'Väder ej anslutet'}
+          </button>
         )}
       </p>
       {hasWeatherDetails && (
@@ -555,7 +561,7 @@ function scrollToTarget(targetId) {
   window.dispatchEvent(new HashChangeEvent('hashchange'))
 }
 
-function OverviewPrimaryActions({ onNavigateSection, onOpenBodyScan, onScanFood }) {
+function OverviewPrimaryActions({ onNavigateSection, onOpenBodyScan, onOpenCoach, onOpenFoodScan, onScanFood }) {
   const goTo = (sectionId, targetId) => {
     if (onNavigateSection) {
       onNavigateSection(sectionId, targetId)
@@ -577,7 +583,7 @@ function OverviewPrimaryActions({ onNavigateSection, onOpenBodyScan, onScanFood 
       imageWidth: 1312,
       icon: 'robot',
       label: 'AI Coach',
-      onClick: () => goTo('coach', 'chat'),
+      onClick: () => (onOpenCoach ? onOpenCoach() : goTo('coach', 'chat')),
     },
     {
       accent: 'body',
@@ -603,7 +609,7 @@ function OverviewPrimaryActions({ onNavigateSection, onOpenBodyScan, onScanFood 
       imageWidth: 1024,
       icon: 'foodCamera',
       label: 'Matscanning',
-      onClick: onScanFood || (() => goTo('nutrition', 'streckkod')),
+      onClick: onOpenFoodScan || onScanFood || (() => goTo('nutrition', 'streckkod')),
     },
   ]
 
@@ -614,7 +620,7 @@ function OverviewPrimaryActions({ onNavigateSection, onOpenBodyScan, onScanFood 
           className={`overview-primary-action is-${action.accent}`}
           key={action.label}
           type="button"
-          aria-label={action.accent === 'body' ? 'Öppna kroppsscanning i helskärm' : undefined}
+          aria-label={action.accent === 'body' ? 'Öppna kroppsscanning i helskärm' : action.accent === 'coach' ? 'Öppna AI Coach' : action.accent === 'food' ? 'Öppna matscanning' : undefined}
           onClick={action.onClick}
         >
           <span className="overview-primary-visual">
@@ -651,6 +657,8 @@ function OverviewHeroStats({
   calorieGoal,
   currentWeight,
   healthScore,
+  onLogWeight,
+  onScanFood,
   proteinToday,
   proteinGoal,
   steps,
@@ -658,7 +666,13 @@ function OverviewHeroStats({
 }) {
   const caloriePercent = getProgressPercent(caloriesToday, calorieGoal)
   const hasCurrentWeight = isFiniteNumber(currentWeight) && Number(currentWeight) > 0
+  const hasCalories = isFiniteNumber(caloriesToday)
   const weightSparklinePoints = getSparklinePoints(weights)
+  const proteinFoods = [
+    { id: 'chicken', label: 'Kyckling' },
+    { id: 'beef', label: 'Nötkött' },
+    { id: 'egg', label: 'Ägg' },
+  ]
   const compactStats = [
     {
       accent: 'health',
@@ -694,12 +708,15 @@ function OverviewHeroStats({
             <span className="overview-metric-icon" aria-hidden="true"><OverviewIcon name="scale" /></span>
             <span>Aktuell vikt</span>
           </div>
-          <strong>{formatWeight(currentWeight)}</strong>
+          <strong className="overview-weight-value">{formatWeight(currentWeight)}</strong>
           <small>{hasCurrentWeight ? 'Senast registrerad vikt' : 'Registrera vikt'}</small>
           {weightSparklinePoints && (
-            <svg className="overview-weight-sparkline" viewBox="0 0 72 28" role="img" aria-label="Vikttrend senaste registreringar">
+            <svg className="overview-weight-sparkline" viewBox="0 0 72 18" role="img" aria-label="Vikttrend senaste registreringar">
               <polyline points={weightSparklinePoints} />
             </svg>
+          )}
+          {onLogWeight && (
+            <button className="overview-stat-link" type="button" onClick={onLogWeight}>Logga vikt</button>
           )}
         </article>
         <article className="overview-main-stat is-calories">
@@ -708,17 +725,20 @@ function OverviewHeroStats({
             <span>Kalorier idag</span>
           </div>
           <strong>
-            {isFiniteNumber(caloriesToday) ? `${formatNumber(Math.round(Number(caloriesToday)))} kcal` : 'Inga data ännu'}
+            {hasCalories ? `${formatNumber(Math.round(Number(caloriesToday)))} kcal` : 'Inga data ännu'}
           </strong>
           <small>
             {caloriePercent !== null
-              ? `${caloriePercent} % av mål`
-              : 'Logga måltider för dagens status'}
+              ? `${caloriePercent} % av dagens mål`
+              : 'Logga en måltid för dagens status'}
           </small>
           {caloriePercent !== null && (
             <span className="overview-calorie-progress" aria-hidden="true">
               <span className={`overview-progress-${getProgressBucket(caloriePercent)}`} />
             </span>
+          )}
+          {onScanFood && (
+            <button className="overview-stat-link" type="button" onClick={onScanFood}>Logga mat</button>
           )}
         </article>
       </div>
@@ -730,6 +750,13 @@ function OverviewHeroStats({
             <strong>{stat.value}</strong>
             <span>{stat.label}</span>
             <small>{stat.suffix || stat.secondary}</small>
+            {stat.accent === 'protein' && (
+              <div className="overview-protein-foods" aria-label="Bra proteinkällor">
+                {proteinFoods.map((food) => (
+                  <span key={food.id}>{food.label}</span>
+                ))}
+              </div>
+            )}
           </article>
         ))}
       </div>
@@ -815,6 +842,10 @@ function OverviewDashboard({
 }) {
   const [now, setNow] = useState(() => new Date())
   const [bodyScanOpen, setBodyScanOpen] = useState(false)
+  const [coachOpen, setCoachOpen] = useState(false)
+  const [foodScanOpen, setFoodScanOpen] = useState(false)
+  const [weatherStatus, setWeatherStatus] = useState('')
+  const [profilePhoto, setProfilePhoto] = useState(() => readProfilePhoto())
   const [weather, setWeather] = useState(() => createFallbackWeatherContext())
   const liveContext = useMemo(() => createOverviewLiveContext(now, weather), [now, weather])
   const initials = getInitials(profile, email)
@@ -822,9 +853,36 @@ function OverviewDashboard({
     reminderState?.reminders?.some((reminder) => !reminder.completed && !reminder.dismissed)
       || reminderState?.notificationsV3?.items?.some((notification) => !notification.completed && !notification.dismissed),
   )
+  const coachAdvice = isFiniteNumber(proteinToday) && isFiniteNumber(proteinGoal) && Number(proteinGoal) > 0
+    ? `JUST NU. Du har nått ${getProgressPercent(proteinToday, proteinGoal)} % av proteinmålet. Kyckling, nötkött eller ägg kan hjälpa dig vidare.`
+    : 'Coach tar dina mål, måltider och vanor och ger ett konkret nästa steg.'
 
   const goToNotifications = () => {
     scrollToTarget('smart-notifications')
+  }
+
+  async function connectWeather() {
+    setWeatherStatus('Hämtar väder…')
+    try {
+      const coords = await requestDeviceLocation()
+      const nextWeather = await fetchOpenMeteoWeather(coords)
+      setWeather(nextWeather)
+      setWeatherStatus('')
+    } catch {
+      setWeatherStatus('Väder ej anslutet')
+    }
+  }
+
+  async function handleProfilePhotoChange(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    try {
+      const dataUrl = await createProfilePhotoFromFile(file)
+      setProfilePhoto(writeProfilePhoto(dataUrl))
+    } catch {
+      setProfilePhoto(readProfilePhoto())
+    }
   }
 
   useEffect(() => {
@@ -836,14 +894,30 @@ function OverviewDashboard({
   useEffect(() => {
     let cancelled = false
 
-    getWeatherPermissionState().then((permissionState) => {
+    getWeatherPermissionState().then(async (permissionState) => {
       if (cancelled) return
+      if (permissionState !== 'granted') {
+        setWeather((current) => ({
+          ...current,
+          permissionState,
+          sourceLabel: 'Fallback',
+        }))
+        return
+      }
 
-      setWeather((current) => ({
-        ...current,
-        permissionState,
-        sourceLabel: permissionState === 'granted' ? 'Väderkälla saknas' : 'Fallback',
-      }))
+      try {
+        const coords = await requestDeviceLocation()
+        const nextWeather = await fetchOpenMeteoWeather(coords)
+        if (!cancelled) setWeather(nextWeather)
+      } catch {
+        if (!cancelled) {
+          setWeather((current) => ({
+            ...current,
+            permissionState,
+            sourceLabel: 'Open-Meteo',
+          }))
+        }
+      }
     })
 
     return () => {
@@ -856,7 +930,11 @@ function OverviewDashboard({
       <header className="overview-app-header">
         <div>
           <h1>Översikt</h1>
-          <OverviewLiveMeta liveContext={liveContext} />
+          <OverviewLiveMeta
+            liveContext={liveContext}
+            onConnectWeather={connectWeather}
+            weatherStatus={weatherStatus}
+          />
         </div>
         <div className="overview-header-actions">
           <button
@@ -867,39 +945,58 @@ function OverviewDashboard({
           >
             <OverviewIcon name="bell" />
           </button>
-          <button
-            aria-label="Öppna profilinställningar"
-            className="overview-avatar-button"
-            type="button"
-            onClick={onEditProfile}
-          >
-            {initials}
-          </button>
+          <div className="overview-avatar-wrap">
+            <button
+              aria-label="Öppna profilinställningar"
+              className="overview-avatar-button"
+              type="button"
+              onClick={onEditProfile}
+            >
+              {profilePhoto ? <img alt="" src={profilePhoto} /> : initials}
+            </button>
+            <label className="overview-avatar-photo" htmlFor="overview-profile-photo-input">
+              <span className="sr-only">Lägg till profilbild</span>
+              <input
+                accept="image/*"
+                id="overview-profile-photo-input"
+                type="file"
+                onChange={handleProfilePhotoChange}
+              />
+            </label>
+          </div>
         </div>
       </header>
 
-      <OverviewPrimaryActions
-        onNavigateSection={onNavigateSection}
-        onOpenBodyScan={() => setBodyScanOpen(true)}
-        onScanFood={onScanFood}
-      />
+      <section className="overview-home-section" aria-label="Starta">
+        <OverviewPrimaryActions
+          onNavigateSection={onNavigateSection}
+          onOpenBodyScan={() => setBodyScanOpen(true)}
+          onOpenCoach={() => setCoachOpen(true)}
+          onOpenFoodScan={() => setFoodScanOpen(true)}
+          onScanFood={onScanFood}
+        />
+      </section>
 
-      <OverviewHeroStats
-        calorieGoal={calorieGoal}
-        caloriesToday={caloriesToday}
-        currentWeight={currentWeight}
-        healthScore={healthScore}
-        proteinGoal={proteinGoal}
-        proteinToday={proteinToday}
-        steps={checkIn?.steps}
-        weights={weights}
-      />
+      <section className="overview-home-section" aria-labelledby="overview-today-title">
+        <h2 id="overview-today-title">Dagens läge</h2>
+        <OverviewHeroStats
+          calorieGoal={calorieGoal}
+          caloriesToday={caloriesToday}
+          currentWeight={currentWeight}
+          healthScore={healthScore}
+          onLogWeight={onLogWeight}
+          onScanFood={() => setFoodScanOpen(true)}
+          proteinGoal={proteinGoal}
+          proteinToday={proteinToday}
+          steps={checkIn?.steps}
+          weights={weights}
+        />
+        <OverviewCheckInAction onNavigateSection={onNavigateSection} />
+      </section>
 
-      <SmartFeedCard liveContext={liveContext} />
-
-      <OverviewCheckInAction onNavigateSection={onNavigateSection} />
-
-      <div className="overview-attention-grid">
+      <section className="overview-home-section" aria-labelledby="overview-advice-title">
+        <h2 id="overview-advice-title">Råd och notiser</h2>
+        <div className="overview-attention-grid">
         <DailyCoachCard
           calorieGoal={calorieGoal}
           caloriesToday={caloriesToday}
@@ -929,6 +1026,11 @@ function OverviewDashboard({
           />
         </div>
       </div>
+      </section>
+
+      <section className="overview-home-section" aria-label="Viktkollen Live">
+        <SmartFeedCard liveContext={liveContext} />
+      </section>
 
       {bodyScanOpen && (
         <OverviewBodyScanStage
@@ -937,6 +1039,27 @@ function OverviewDashboard({
             setBodyScanOpen(false)
             if (onNavigateSection) onNavigateSection('progress', 'body-analysis')
             else scrollToTarget('body-analysis')
+          }}
+        />
+      )}
+      {coachOpen && (
+        <OverviewCoachStage
+          advice={coachAdvice}
+          onClose={() => setCoachOpen(false)}
+          onOpenCoach={() => {
+            setCoachOpen(false)
+            if (onNavigateSection) onNavigateSection('coach', 'chat')
+            else scrollToTarget('chat')
+          }}
+        />
+      )}
+      {foodScanOpen && (
+        <OverviewFoodScanStage
+          onClose={() => setFoodScanOpen(false)}
+          onScanFood={() => {
+            setFoodScanOpen(false)
+            if (onScanFood) onScanFood()
+            else if (onNavigateSection) onNavigateSection('nutrition', 'nutrition-scanner-v2')
           }}
         />
       )}

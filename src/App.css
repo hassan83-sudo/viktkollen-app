@@ -10109,19 +10109,19 @@ body:has(#app-section-home.is-active) {
   min-height: 58px;
   overflow: hidden;
   border: 2px solid rgba(255, 255, 255, 0.18);
-  color: #fff;
+  color: transparent;
   font-size: 0.82rem;
   font-weight: 900;
   letter-spacing: 0.02em;
   background:
-    linear-gradient(160deg, rgba(86, 118, 255, 0.55), rgba(12, 18, 38, 0.96));
+    linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.04)),
+    radial-gradient(circle at 50% 31%, #eda97a 0 20%, #252a39 21% 40%, #cfd6e2 41% 60%, #141827 61%);
   box-shadow: 0 16px 30px rgba(0, 0, 0, 0.36);
 }
 
-#app-section-home.is-active .overview-avatar-button img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+#app-section-home.is-active .overview-avatar-button.has-photo {
+  color: #fff;
+  background: #12182c;
 }
 
 #app-section-home.is-active .overview-avatar-photo {
@@ -10129,13 +10129,19 @@ body:has(#app-section-home.is-active) {
   right: -2px;
   bottom: -2px;
   z-index: 2;
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   overflow: hidden;
   border: 2px solid #050914;
   border-radius: 999px;
   background: #38f7ff;
   cursor: pointer;
+}
+
+#app-section-home.is-active .overview-avatar-button img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 #app-section-home.is-active .overview-avatar-photo input {
@@ -10435,26 +10441,35 @@ body:has(#app-section-home.is-active) {
 }
 
 #app-section-home.is-active .overview-main-stat.is-calories strong {
-  font-size: 1.56rem;
-  line-height: 1.03;
+  font-size: 1.4rem;
+  line-height: 1.08;
+}
+
+#app-section-home.is-active .overview-main-stat.is-calories strong.is-empty {
+  white-space: normal;
+  font-size: 1.12rem;
+  line-height: 1.15;
 }
 
 #app-section-home.is-active .overview-main-stat small {
   display: block;
   width: 100%;
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
   color: var(--home-muted);
   font-size: 0.74rem;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+#app-section-home.is-active .overview-weight-chart {
+  margin-top: auto;
+  min-height: 18px;
 }
 
 #app-section-home.is-active .overview-weight-sparkline {
   width: 100%;
   height: 18px;
-  margin-top: 2px;
   overflow: visible;
 }
 
@@ -11939,6 +11954,16 @@ html:has(#app-section-more.is-active),
   background: transparent;
   color: inherit;
   font: inherit;
+}
+
+#app-section-home.is-active .overview-weather-connect {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #8fd9ff;
+  font: inherit;
+  font-weight: 800;
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
@@ -11959,15 +11984,34 @@ html:has(#app-section-more.is-active),
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
-#app-section-home.is-active .overview-protein-foods span {
-  padding: 2px 6px;
+#app-section-home.is-active .overview-protein-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--home-border);
+  border-radius: 16px;
+  background: linear-gradient(150deg, var(--home-card-2), rgba(7, 11, 23, 0.98));
+}
+
+#app-section-home.is-active .overview-protein-strip > strong {
+  margin-right: 4px;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+#app-section-home.is-active .overview-protein-foods span,
+#app-section-home.is-active .overview-protein-strip span {
+  padding: 4px 8px;
   border-radius: 999px;
   background: rgba(167, 123, 255, 0.16);
   color: #e8dcff;
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   font-weight: 800;
 }
 

@@ -22,7 +22,17 @@ describe('overviewWeather', () => {
       sourceLabel: 'Open-Meteo',
       temperatureC: 17.4,
     })
+    expect(weather.city).toBe('Din plats')
     expect(weather.sunriseLabel).toMatch(/\d{2}:\d{2}/)
+  })
+
+  it('keeps a named city when mapping live weather', () => {
+    const weather = mapOpenMeteoWeather({
+      current: { temperature_2m: 12, weather_code: 0, wind_speed_10m: 2 },
+    }, 'Stockholm')
+
+    expect(weather.city).toBe('Stockholm')
+    expect(weather.hasLiveWeather).toBe(true)
   })
 
   it('keeps disconnected weather when temperature is missing', () => {

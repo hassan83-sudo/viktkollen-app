@@ -2816,7 +2816,7 @@ function App() {
             activeSection={activeAppSection}
             adaptiveCoachFeedback={adaptiveCoachFeedback}
             calorieGoal={nutritionGoals?.calories}
-            caloriesToday={dailyNutritionSummary?.mealCount > 0 ? dailyNutritionSummary.totals.calories : null}
+            caloriesToday={dailyNutritionSummary?.totals.calories ?? 0}
             checkIn={checkIn}
             currentWeight={centralCurrentWeight}
             dashboardData={dashboardData}
@@ -2836,7 +2836,7 @@ function App() {
             profile={validatedProfile}
             progressInsights={progressInsights}
             proteinGoal={dailyNutritionSummary?.proteinGoal ?? nutritionGoals?.protein}
-            proteinToday={dailyNutritionSummary?.mealCount > 0 ? dailyNutritionSummary.totals.protein : null}
+            proteinToday={dailyNutritionSummary?.totals.protein ?? 0}
             reminderState={reminderState}
             selectedMealDate={selectedMealDate}
             syncStatus={syncStatusSnapshot}

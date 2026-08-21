@@ -1,6 +1,8 @@
 import { memo, useMemo, useState } from 'react'
 
 function getPercent(value, goal) {
+  if (value === null || value === undefined || value === '') return null
+
   const current = Number(value)
   const target = Number(goal)
 
@@ -29,7 +31,7 @@ function buildCoachAdviceList({
     advice.push(
       proteinPercent >= 80
         ? `Bra jobbat! Du har nått ${proteinPercent} % av proteinmålet.`
-        : `Du har nått ${proteinPercent} % av proteinmålet. En proteinrik måltid kan hjälpa dig vidare.`,
+        : `Du har nått ${proteinPercent} % av proteinmålet. Kyckling, nötkött eller ägg kan hjälpa dig vidare.`,
     )
   }
 
@@ -101,6 +103,13 @@ function DailyCoachCard({
       <div className="daily-coach-callout">
         <span>Just nu</span>
         <p className="daily-coach-advice">{visibleAdvice}</p>
+        {visibleAdvice.includes('proteinmålet') && (
+          <div className="overview-protein-foods" aria-label="Bra proteinkällor">
+            <span>Kyckling</span>
+            <span>Nötkött</span>
+            <span>Ägg</span>
+          </div>
+        )}
         <button
           className="daily-coach-more"
           type="button"

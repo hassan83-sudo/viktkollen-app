@@ -52,6 +52,7 @@ describe('OverviewDashboard', () => {
 
     expect(markup).toContain('class="overview-live-meta"')
     expect(markup).toContain('Väder ej anslutet')
+    expect(markup).toContain('Koppla väder')
     expect(markup).not.toContain('--°C')
     expect(markup).not.toContain('-- m/s')
     expect(markup).not.toContain('-- %')
@@ -59,7 +60,7 @@ describe('OverviewDashboard', () => {
     expect(markup).toContain('<h1>Översikt</h1>')
     expect(markup).not.toContain('Fallback')
     expect(markup).toContain('aria-label="Visa smarta notiser"')
-    expect(markup).toContain('aria-label="Öppna profilinställningar"')
+    expect(markup).toContain('aria-label="Lägg till profilbild"')
     expect(markup).toContain('HK')
     expect(markup).not.toContain('Din översikt')
   })
@@ -118,6 +119,7 @@ describe('OverviewDashboard', () => {
     expect(markup).toContain('Health Score')
     expect(markup).toContain('Steg idag')
     expect(markup).toContain('Protein idag')
+    expect(markup).toContain('Protein att välja')
     expect(markup).toContain('Kyckling')
     expect(markup).toContain('Nötkött')
     expect(markup).toContain('Ägg')
@@ -164,7 +166,7 @@ describe('OverviewDashboard', () => {
     expect(markup).toContain('Registrera vikt')
     expect(markup).toContain('Inga data ännu')
     expect(markup).toContain('—')
-    expect(markup).toContain('<strong>Inga data ännu</strong>')
+    expect(markup).toContain('class="is-empty">Inga data ännu</strong>')
   })
 
   it('keeps the more-for-today rows open while preserving collapsible details', () => {

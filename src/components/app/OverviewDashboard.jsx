@@ -14,7 +14,7 @@ import {
   formatWeatherValue,
   getWeatherPermissionState,
 } from '../../services/overviewLiveContext.js'
-import { fetchOpenMeteoWeather, requestDeviceLocation } from '../../services/overviewWeather.js'
+import { loadOverviewWeather } from '../../services/overviewWeather.js'
 import { createProfilePhotoFromFile, readProfilePhoto, writeProfilePhoto } from '../../services/profilePhotoStorage.js'
 
 function isFiniteNumber(value) {
@@ -34,7 +34,8 @@ function formatWeight(value) {
 
   if (!Number.isFinite(number) || number <= 0) return 'Ingen vikt'
 
-  return `${number.toLocaleString('sv-SE', { maximumFractionDigits: 1, minimumFractionDigits: 1 })}\u00a0kg`
+  const [whole, fraction = '0'] = number.toFixed(1).split('.')
+  return `${whole},${fraction} kg`
 }
 
 function getInitials(profile, email = '') {
@@ -309,15 +310,20 @@ function OverviewLiveMeta({ liveContext, onConnectWeather, weatherStatus = '' })
         <span><OverviewIcon name="clock" /> {liveContext.timeLabel}</span>
         {hasWeatherDetails ? (
           <>
-            <span aria-label={weather.condition}>{weather.icon} {formatWeatherValue(weather.temperatureC, '°C')}</span>
+            <span aria-label={`${weather.condition} i ${weather.city}`}>
+              {weather.icon} {formatWeatherValue(weather.temperatureC, '°C')} {weather.city}
+            </span>
             <span><OverviewIcon name="wind" /> {formatWeatherValue(weather.windSpeedMs, ' m/s')}</span>
             <span><OverviewIcon name="drop" /> {formatWeatherValue(weather.precipitationRiskPercent, ' %')}</span>
           </>
         ) : (
-          <button className="overview-weather-empty" type="button" onClick={onConnectWeather}>
+          <span className="overview-weather-empty" aria-label="Väder ej anslutet">
             {weatherStatus || 'Väder ej anslutet'}
-          </button>
+          </span>
         )}
+        <button className="overview-weather-connect" type="button" onClick={onConnectWeather}>
+          {hasWeatherDetails ? 'Min plats' : 'Koppla väder'}
+        </button>
       </p>
       {hasWeatherDetails && (
         <p>
@@ -411,12 +417,10 @@ function OverviewIcon({ name }) {
   if (name === 'protein') {
     return (
       <svg {...common}>
-        <circle cx="16" cy="17" r="5" />
-        <circle cx="32" cy="17" r="5" />
-        <circle cx="24" cy="33" r="6" />
-        <path d="M20 19l4 8M28 27l4-8M21 33H13c-3 0-5-2-5-5s2-5 5-5h2" />
-        <path d="M27 33h8c3 0 5-2 5-5s-2-5-5-5h-2" />
-        <path d="M20 36c-3 3-6 4-10 3M28 36c3 3 6 4 10 3" />
+        <ellipse cx="18" cy="24" rx="8" ry="11" />
+        <path d="M18 13c3 0 5 2 5 4" />
+        <path d="M29 18c7 2 10 8 8 14-2 5-8 7-14 6" />
+        <path d="M31 22c2 1 4 4 3 7" />
       </svg>
     )
   }
@@ -710,11 +714,13 @@ function OverviewHeroStats({
           </div>
           <strong className="overview-weight-value">{formatWeight(currentWeight)}</strong>
           <small>{hasCurrentWeight ? 'Senast registrerad vikt' : 'Registrera vikt'}</small>
-          {weightSparklinePoints && (
-            <svg className="overview-weight-sparkline" viewBox="0 0 72 18" role="img" aria-label="Vikttrend senaste registreringar">
-              <polyline points={weightSparklinePoints} />
-            </svg>
-          )}
+          <div className="overview-weight-chart">
+            {weightSparklinePoints && (
+              <svg className="overview-weight-sparkline" viewBox="0 0 72 18" role="img" aria-label="Vikttrend senaste registreringar">
+                <polyline points={weightSparklinePoints} />
+              </svg>
+            )}
+          </div>
           {onLogWeight && (
             <button className="overview-stat-link" type="button" onClick={onLogWeight}>Logga vikt</button>
           )}
@@ -724,13 +730,15 @@ function OverviewHeroStats({
             <span className="overview-metric-icon" aria-hidden="true"><OverviewIcon name="flame" /></span>
             <span>Kalorier idag</span>
           </div>
-          <strong>
+          <strong className={hasCalories ? undefined : 'is-empty'}>
             {hasCalories ? `${formatNumber(Math.round(Number(caloriesToday)))} kcal` : 'Inga data ännu'}
           </strong>
           <small>
             {caloriePercent !== null
               ? `${caloriePercent} % av dagens mål`
-              : 'Logga en måltid för dagens status'}
+              : isFiniteNumber(calorieGoal)
+                ? `Mål ${formatNumber(Math.round(Number(calorieGoal)))} kcal`
+                : 'Logga en måltid för dagens status'}
           </small>
           {caloriePercent !== null && (
             <span className="overview-calorie-progress" aria-hidden="true">
@@ -750,14 +758,13 @@ function OverviewHeroStats({
             <strong>{stat.value}</strong>
             <span>{stat.label}</span>
             <small>{stat.suffix || stat.secondary}</small>
-            {stat.accent === 'protein' && (
-              <div className="overview-protein-foods" aria-label="Bra proteinkällor">
-                {proteinFoods.map((food) => (
-                  <span key={food.id}>{food.label}</span>
-                ))}
-              </div>
-            )}
           </article>
+        ))}
+      </div>
+      <div className="overview-protein-strip" aria-label="Bra proteinkällor">
+        <strong>Protein att välja</strong>
+        {proteinFoods.map((food) => (
+          <span key={food.id}>{food.label}</span>
         ))}
       </div>
     </section>
@@ -864,13 +871,20 @@ function OverviewDashboard({
   async function connectWeather() {
     setWeatherStatus('Hämtar väder…')
     try {
-      const coords = await requestDeviceLocation()
-      const nextWeather = await fetchOpenMeteoWeather(coords)
+      const nextWeather = await loadOverviewWeather({ preferDevice: true })
       setWeather(nextWeather)
       setWeatherStatus('')
     } catch {
       setWeatherStatus('Väder ej anslutet')
     }
+  }
+
+  function onAvatarClick() {
+    if (!profilePhoto) {
+      document.getElementById('overview-profile-photo-input')?.click()
+      return
+    }
+    onEditProfile()
   }
 
   async function handleProfilePhotoChange(event) {
@@ -894,29 +908,22 @@ function OverviewDashboard({
   useEffect(() => {
     let cancelled = false
 
-    getWeatherPermissionState().then(async (permissionState) => {
-      if (cancelled) return
-      if (permissionState !== 'granted') {
-        setWeather((current) => ({
-          ...current,
-          permissionState,
-          sourceLabel: 'Fallback',
-        }))
-        return
+    loadOverviewWeather({ preferDevice: false }).then((nextWeather) => {
+      if (!cancelled) {
+        setWeather(nextWeather)
+        setWeatherStatus('')
       }
+    }).catch(() => {
+      if (!cancelled) setWeatherStatus('Väder ej anslutet')
+    })
 
+    getWeatherPermissionState().then(async (permissionState) => {
+      if (cancelled || permissionState !== 'granted') return
       try {
-        const coords = await requestDeviceLocation()
-        const nextWeather = await fetchOpenMeteoWeather(coords)
+        const nextWeather = await loadOverviewWeather({ preferDevice: true })
         if (!cancelled) setWeather(nextWeather)
       } catch {
-        if (!cancelled) {
-          setWeather((current) => ({
-            ...current,
-            permissionState,
-            sourceLabel: 'Open-Meteo',
-          }))
-        }
+        // Keep the city forecast already loaded.
       }
     })
 
@@ -947,10 +954,10 @@ function OverviewDashboard({
           </button>
           <div className="overview-avatar-wrap">
             <button
-              aria-label="Öppna profilinställningar"
-              className="overview-avatar-button"
+              aria-label={profilePhoto ? 'Öppna profilinställningar' : 'Lägg till profilbild'}
+              className={profilePhoto ? 'overview-avatar-button has-photo' : 'overview-avatar-button'}
               type="button"
-              onClick={onEditProfile}
+              onClick={onAvatarClick}
             >
               {profilePhoto ? <img alt="" src={profilePhoto} /> : initials}
             </button>
@@ -1051,16 +1058,22 @@ function OverviewDashboard({
             if (onNavigateSection) onNavigateSection('coach', 'chat')
             else scrollToTarget('chat')
           }}
+          proteinGoal={proteinGoal}
+          proteinToday={proteinToday}
         />
       )}
       {foodScanOpen && (
         <OverviewFoodScanStage
+          calorieGoal={calorieGoal}
+          caloriesToday={caloriesToday}
           onClose={() => setFoodScanOpen(false)}
           onScanFood={() => {
             setFoodScanOpen(false)
             if (onScanFood) onScanFood()
             else if (onNavigateSection) onNavigateSection('nutrition', 'nutrition-scanner-v2')
           }}
+          proteinGoal={proteinGoal}
+          proteinToday={proteinToday}
         />
       )}
 

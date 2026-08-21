@@ -1,3 +1,9 @@
+export const defaultWeatherLocation = {
+  city: 'Stockholm',
+  latitude: 59.3293,
+  longitude: 18.0686,
+}
+
 const weatherByCode = {
   0: { condition: 'Klart', icon: '☀️' },
   1: { condition: 'Mestadels klart', icon: '🌤' },
@@ -75,9 +81,24 @@ export async function fetchOpenMeteoWeather(coords, fetchImpl = fetch) {
   url.searchParams.set('timezone', 'auto')
   url.searchParams.set('forecast_days', '1')
 
+  url.searchParams.set('wind_speed_unit', 'ms')
+
   const response = await fetchImpl(url)
   if (!response.ok) throw new Error('weather_unavailable')
-  return mapOpenMeteoWeather(await response.json())
+  return mapOpenMeteoWeather(await response.json(), coords.city || 'Din plats')
+}
+
+export async function loadOverviewWeather({ preferDevice = false, fetchImpl = fetch, geolocation } = {}) {
+  if (preferDevice) {
+    try {
+      const coords = await requestDeviceLocation(geolocation)
+      return fetchOpenMeteoWeather({ ...coords, city: 'Din plats' }, fetchImpl)
+    } catch {
+      // Fall back to a real city forecast instead of leaving weather disconnected.
+    }
+  }
+
+  return fetchOpenMeteoWeather(defaultWeatherLocation, fetchImpl)
 }
 
 export function requestDeviceLocation(geolocation = typeof navigator === 'undefined' ? null : navigator.geolocation) {

@@ -11738,3 +11738,144 @@ html:has(#app-section-more.is-active),
     font-size: 2.35rem;
   }
 }
+
+.overview-body-scan-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  grid-template-rows: minmax(280px, 46vh) minmax(0, 1fr);
+  background: #050914;
+  color: #fff;
+  overflow: hidden;
+}
+
+.overview-body-scan-hero {
+  position: relative;
+  min-height: 280px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(56, 247, 255, 0.22), transparent 42%),
+    #07111f;
+}
+
+.overview-body-scan-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center 12%;
+}
+
+.overview-body-scan-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: grid;
+  gap: 2px;
+  min-width: 72px;
+  padding: 6px 8px;
+  border: 1px solid rgba(56, 247, 255, 0.35);
+  border-radius: 10px;
+  background: rgba(5, 12, 24, 0.78);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+}
+
+.overview-body-scan-marker strong,
+.overview-body-scan-marker small {
+  display: block;
+  line-height: 1.2;
+}
+
+.overview-body-scan-marker strong {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.overview-body-scan-marker small {
+  color: rgba(214, 226, 255, 0.78);
+  font-size: 10px;
+}
+
+.overview-body-scan-close {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  right: 14px;
+  z-index: 2;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(8, 14, 28, 0.82);
+  color: #fff;
+  font-weight: 800;
+}
+
+.overview-body-scan-panel {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-height: 0;
+  padding: 16px 16px calc(24px + env(safe-area-inset-bottom));
+  overflow: auto;
+  background:
+    linear-gradient(180deg, rgba(8, 18, 34, 0.2), rgba(5, 9, 20, 1) 28px);
+}
+
+.overview-body-scan-panel h2,
+.overview-body-scan-panel h3,
+.overview-body-scan-panel p,
+.overview-body-scan-panel ul {
+  margin: 0;
+}
+
+.overview-body-scan-meta,
+.overview-body-scan-note {
+  color: rgba(214, 226, 255, 0.78);
+  font-size: 0.92rem;
+}
+
+.overview-body-scan-facts {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.overview-body-scan-facts div {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid rgba(56, 247, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(8, 16, 34, 0.72);
+}
+
+.overview-body-scan-facts dt {
+  color: rgba(171, 187, 240, 0.82);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.overview-body-scan-facts dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.overview-body-scan-panel ul {
+  display: grid;
+  gap: 6px;
+  padding-left: 1.1rem;
+}
+
+.overview-body-scan-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.overview-body-scan-actions .primary-button,
+.overview-body-scan-actions .secondary-button {
+  min-height: 48px;
+  width: 100%;
+}
+

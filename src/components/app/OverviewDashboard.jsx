@@ -5,6 +5,7 @@ import DailyMealPlannerCard from './DailyMealPlannerCard.jsx'
 import HealthPredictionCard from './HealthPredictionCard.jsx'
 import SmartNotificationsCard from './SmartNotificationsCard.jsx'
 import WeeklyProgressSection from './WeeklyProgressSection.jsx'
+import OverviewBodyScanStage from './OverviewBodyScanStage.jsx'
 import {
   createFallbackWeatherContext,
   createOverviewLiveContext,
@@ -554,7 +555,7 @@ function scrollToTarget(targetId) {
   window.dispatchEvent(new HashChangeEvent('hashchange'))
 }
 
-function OverviewPrimaryActions({ onNavigateSection, onScanFood }) {
+function OverviewPrimaryActions({ onNavigateSection, onOpenBodyScan, onScanFood }) {
   const goTo = (sectionId, targetId) => {
     if (onNavigateSection) {
       onNavigateSection(sectionId, targetId)
@@ -589,7 +590,7 @@ function OverviewPrimaryActions({ onNavigateSection, onScanFood }) {
       imageWidth: 1023,
       icon: 'bodyScan',
       label: 'Kroppsscanning',
-      onClick: () => goTo('progress', 'body-analysis'),
+      onClick: () => (onOpenBodyScan ? onOpenBodyScan() : goTo('progress', 'body-analysis')),
     },
     {
       accent: 'food',
@@ -613,6 +614,7 @@ function OverviewPrimaryActions({ onNavigateSection, onScanFood }) {
           className={`overview-primary-action is-${action.accent}`}
           key={action.label}
           type="button"
+          aria-label={action.accent === 'body' ? 'Öppna kroppsscanning i helskärm' : undefined}
           onClick={action.onClick}
         >
           <span className="overview-primary-visual">
@@ -812,6 +814,7 @@ function OverviewDashboard({
   weights,
 }) {
   const [now, setNow] = useState(() => new Date())
+  const [bodyScanOpen, setBodyScanOpen] = useState(false)
   const [weather, setWeather] = useState(() => createFallbackWeatherContext())
   const liveContext = useMemo(() => createOverviewLiveContext(now, weather), [now, weather])
   const initials = getInitials(profile, email)
@@ -877,6 +880,7 @@ function OverviewDashboard({
 
       <OverviewPrimaryActions
         onNavigateSection={onNavigateSection}
+        onOpenBodyScan={() => setBodyScanOpen(true)}
         onScanFood={onScanFood}
       />
 
@@ -925,6 +929,17 @@ function OverviewDashboard({
           />
         </div>
       </div>
+
+      {bodyScanOpen && (
+        <OverviewBodyScanStage
+          onClose={() => setBodyScanOpen(false)}
+          onStartScan={() => {
+            setBodyScanOpen(false)
+            if (onNavigateSection) onNavigateSection('progress', 'body-analysis')
+            else scrollToTarget('body-analysis')
+          }}
+        />
+      )}
 
       <section className="overview-more-section home-last-content" aria-labelledby="overview-more-title">
         <h2 id="overview-more-title">Mer för idag</h2>

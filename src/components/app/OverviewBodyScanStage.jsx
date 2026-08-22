@@ -9,14 +9,6 @@ import { getLatestAnalysis } from '../../services/bodyAnalysisHistory.js'
 
 const bodyScanImage = '/viktkollen-body-scan.png'
 
-const bodyOverviewMarkers = [
-  { label: 'Axlar', key: 'shoulderWidthCm', x: 50, y: 18 },
-  { label: 'Armar', key: null, x: 18, y: 38 },
-  { label: 'Midja', key: 'waistCm', x: 78, y: 46 },
-  { label: 'Höfter', key: 'hipCm', x: 22, y: 60 },
-  { label: 'Bröst', key: 'chestCm', x: 76, y: 30 },
-]
-
 function formatKg(value) {
   if (!Number.isFinite(Number(value))) return ''
   return Number(value).toLocaleString('sv-SE', {
@@ -121,27 +113,8 @@ function OverviewBodyScanStage({ onClose, onStartScan }) {
 
   return createPortal(
     <div className="overview-body-scan-stage" role="dialog" aria-labelledby="overview-body-scan-title" aria-modal="true">
-      <div className="overview-body-scan-hero">
-        <img alt="Kroppsscanning" src={bodyScanImage} />
-        <span className="overview-body-scan-float-rings" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </span>
-        {bodyOverviewMarkers.map((marker, index) => {
-          const estimate = marker.key ? result?.estimatedMeasurements?.[marker.key] : null
-          const range = estimate ? formatRange(estimate.min, estimate.max, 'cm') : ''
-          return (
-            <span
-              className={`overview-body-scan-marker is-float-${index + 1}`}
-              key={marker.label}
-              style={{ left: `${marker.x}%`, top: `${marker.y}%` }}
-            >
-              <strong>{marker.label}</strong>
-              <small>{range || 'Följs över tid'}</small>
-            </span>
-          )
-        })}
+      <div className="overview-body-scan-hero is-full-art">
+        <img alt="Kroppsscanning med ansikte och sidopaneler" src={bodyScanImage} />
         <button className="overview-body-scan-close" type="button" onClick={onClose}>
           Stäng
         </button>
@@ -208,7 +181,3 @@ function OverviewBodyScanStage({ onClose, onStartScan }) {
 }
 
 export default OverviewBodyScanStage
-export const overviewBodyScanStageInternals = {
-  bodyOverviewMarkers,
-  formatRange,
-}

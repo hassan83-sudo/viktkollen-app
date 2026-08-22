@@ -20,6 +20,7 @@ function NutritionActionPlan({
   weights,
 }) {
   const [collapsed, setCollapsed] = useState(false)
+  const [showAll, setShowAll] = useState(false)
   const [dismissedIds, setDismissedIds] = useState([])
   const [status, setStatus] = useState('')
   const plan = useMemo(
@@ -27,6 +28,7 @@ function NutritionActionPlan({
     [date, dietaryPreferences, meals, nutritionGoals, templates, weights],
   )
   const recommendations = flattenPlan(plan).filter((item) => !dismissedIds.includes(item.id)).slice(0, 8)
+  const visibleRecommendations = showAll ? recommendations : recommendations.slice(0, 2)
 
   function addTemplate(template) {
     const added = onAddTemplate?.(template)
@@ -41,15 +43,15 @@ function NutritionActionPlan({
           <p className="eyebrow">Handlingsplan</p>
           <h3 id="nutrition-action-plan-title">Rekommendationer</h3>
         </div>
-        <button aria-expanded={!collapsed} className="secondary-button" type="button" onClick={() => setCollapsed((current) => !current)}>
-          {collapsed ? 'Visa plan' : 'Dölj plan'}
+        <button aria-expanded={!collapsed} className="nutrition-text-link" type="button" onClick={() => setCollapsed((current) => !current)}>
+          {collapsed ? 'Visa' : 'Dölj'}
         </button>
       </div>
       {status && <p className="nutrition-edit-status" role="status">{status}</p>}
       {!collapsed && (
         recommendations.length ? (
           <div className="nutrition-recommendation-grid">
-            {recommendations.map((recommendation) => (
+            {visibleRecommendations.map((recommendation) => (
               <RecommendationCard
                 key={recommendation.id}
                 recommendation={recommendation}
@@ -57,6 +59,11 @@ function NutritionActionPlan({
                 onDismiss={(id) => setDismissedIds((current) => [...current, id])}
               />
             ))}
+            {recommendations.length > 2 && (
+              <button className="nutrition-text-link" type="button" onClick={() => setShowAll((current) => !current)}>
+                {showAll ? 'Visa färre' : 'Visa alla'}
+              </button>
+            )}
           </div>
         ) : (
           <div className="nutrition-empty">

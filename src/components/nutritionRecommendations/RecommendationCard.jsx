@@ -36,8 +36,8 @@ function RecommendationCard({ onAddTemplate, onDismiss, recommendation }) {
       <strong>Nästa steg: {recommendation.action}</strong>
       <MealSuggestionCard suggestion={recommendation.suggestion} />
       <div className="nutrition-actions">
-        <button aria-expanded={expanded} className="secondary-button" type="button" onClick={() => setExpanded((current) => !current)}>
-          {expanded ? 'Dölj varför' : 'Varför rekommenderas detta?'}
+        <button aria-expanded={expanded} className="nutrition-why-button" type="button" onClick={() => setExpanded((current) => !current)}>
+          {expanded ? 'Dölj' : 'Varför?'}
         </button>
         {recommendation.template && (
           <button

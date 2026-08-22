@@ -11639,6 +11639,17 @@ body:has(#app-section-more.is-active) {
   background: var(--vk-bg);
 }
 
+html:has(#app-section-nutrition.is-active),
+#root:has(#app-section-nutrition.is-active),
+.app-shell:has(#app-section-nutrition.is-active),
+.app-shell:has(#app-section-nutrition.is-active) .content-grid,
+#app-section-nutrition.is-active {
+  height: auto;
+  max-height: none;
+  overflow: visible;
+  contain: none;
+}
+
 html:has(#app-section-more.is-active),
 #root:has(#app-section-more.is-active),
 .app-shell:has(#app-section-more.is-active),
@@ -11662,88 +11673,286 @@ html:has(#app-section-more.is-active),
 
 .nutrition-premium-shell {
   display: grid;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
-  max-width: 430px;
+  max-width: 390px;
   margin: 0 auto;
+  height: auto;
+  max-height: none;
+  overflow: visible;
 }
 
-.nutrition-metric-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+.nutrition-page-header h1 {
+  margin: 0;
+  color: #fff;
+  font-size: 2.1rem;
+  font-weight: 950;
+  line-height: 0.9;
 }
 
-.nutrition-quick-actions {
+.nutrition-kicker {
+  grid-column: 1 / -1;
+  margin: 0 0 2px;
+  color: rgba(186, 201, 232, 0.72);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.nutrition-ring-grid,
+.nutrition-quick-tiles {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
-.nutrition-quick-actions .vk-button {
-  min-height: 46px;
-  padding-inline: 8px;
-  font-size: 0.72rem;
-}
-
-.nutrition-today-card {
+.nutrition-ring {
   display: grid;
-  gap: 10px;
+  justify-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px 2px 2px;
+  text-align: center;
 }
 
-.nutrition-today-card .vk-section-header h2 {
-  font-size: 1.35rem;
+.nutrition-ring svg {
+  width: 52px;
+  height: 52px;
+  transform: rotate(-90deg);
+}
+
+.nutrition-ring-track,
+.nutrition-ring-value {
+  fill: none;
+  stroke-width: 3.6;
+}
+
+.nutrition-ring-track { stroke: rgba(255, 255, 255, 0.1); }
+.nutrition-ring-value {
+  stroke-linecap: round;
+  transform-origin: 24px 24px;
+}
+
+.nutrition-ring path {
+  transform: rotate(90deg);
+  transform-origin: 24px 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+}
+
+.nutrition-ring.is-orange { color: #ff9a3d; }
+.nutrition-ring.is-orange .nutrition-ring-value { stroke: #ff9a3d; }
+.nutrition-ring.is-green { color: #5ee08a; }
+.nutrition-ring.is-green .nutrition-ring-value { stroke: #5ee08a; }
+.nutrition-ring.is-cyan { color: #38f7ff; }
+.nutrition-ring.is-cyan .nutrition-ring-value { stroke: #38f7ff; }
+.nutrition-ring.is-purple { color: #c08bff; }
+.nutrition-ring.is-purple .nutrition-ring-value { stroke: #c08bff; }
+
+.nutrition-ring strong {
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 950;
   line-height: 1.05;
 }
 
-.nutrition-meal-card-list {
+.nutrition-ring span,
+.nutrition-ring small {
+  color: rgba(186, 201, 232, 0.78);
+  font-size: 0.62rem;
+  line-height: 1.1;
+}
+
+.nutrition-quick-tile {
   display: grid;
+  gap: 6px;
+  min-height: 78px;
+  place-items: center;
+  padding: 10px 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  color: #fff;
+  background: linear-gradient(160deg, rgba(14, 22, 44, 0.96), rgba(7, 11, 24, 0.98));
+  font-size: 0.68rem;
+  font-weight: 850;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.nutrition-quick-tile svg {
+  width: 22px;
+  height: 22px;
+}
+
+.nutrition-quick-tile.is-scan { color: #7ad7ff; }
+.nutrition-quick-tile.is-add { color: #8dffb0; }
+.nutrition-quick-tile.is-recipe { color: #ffb057; }
+.nutrition-quick-tile.is-plan { color: #c4a6ff; }
+
+.nutrition-today-rows,
+.nutrition-ai-panel,
+.nutrition-checkin-compact {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 18px;
+  background: linear-gradient(160deg, rgba(12, 18, 38, 0.94), rgba(6, 10, 22, 0.98));
+}
+
+.nutrition-section-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
-.nutrition-meal-card {
+.nutrition-meal-row {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
+  grid-template-columns: 10px minmax(0, 1fr) 32px;
   gap: 10px;
   align-items: center;
+  min-height: 44px;
+}
+
+.nutrition-meal-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #38f7ff;
+}
+
+.nutrition-meal-row strong,
+.nutrition-ai-panel p,
+.nutrition-checkin-compact strong {
+  color: #fff;
+}
+
+.nutrition-meal-row small {
+  display: block;
+  color: rgba(186, 201, 232, 0.72);
+  font-size: 0.72rem;
+}
+
+.nutrition-meal-add {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  color: #07111d;
+  background: #38f7ff;
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+.nutrition-text-link,
+.nutrition-why-button,
+.nutrition-premium-shell .nutrition-text-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #8fd9ff;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.nutrition-ai-panel p,
+.nutrition-checkin-compact p {
+  margin: 0;
+  color: rgba(220, 228, 255, 0.88);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.nutrition-checkin-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.nutrition-checkin-grid div {
+  display: grid;
+  gap: 3px;
+}
+
+.nutrition-checkin-grid span {
+  color: rgba(186, 201, 232, 0.7);
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.nutrition-checkin-grid strong {
+  font-size: 0.82rem;
+}
+
+.nutrition-fold {
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  background: rgba(8, 13, 28, 0.72);
+}
+
+.nutrition-fold > summary {
+  padding: 12px 14px;
+  cursor: pointer;
+  color: #fff;
+  font-weight: 850;
+}
+
+.nutrition-fold > :not(summary) {
+  margin: 0 14px 12px;
+}
+
+.nutrition-tool-links {
+  display: grid;
+  gap: 6px;
+}
+
+.nutrition-tool-links button {
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 12px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+  text-align: left;
+}
+
+.nutrition-premium-shell .check-in-panel {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.nutrition-premium-shell .check-in-panel .panel-heading {
+  display: none;
+}
+
+.nutrition-premium-shell .nutrition-action-plan,
+.nutrition-premium-shell .nutrition-card {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 18px;
+  background: linear-gradient(160deg, rgba(12, 18, 38, 0.94), rgba(6, 10, 22, 0.98));
+}
+
+.nutrition-premium-shell .nutrition-recommendation-grid {
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.nutrition-premium-shell .nutrition-recommendation-card {
   padding: 10px;
 }
 
-.nutrition-meal-thumb {
-  display: grid;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  border-radius: 14px;
-  color: #07111d;
-  background: linear-gradient(145deg, #38f7ff, #66ffae);
-  font-weight: 950;
-}
-
-.nutrition-meal-card strong,
-.nutrition-ai-card strong {
-  color: #fff;
-  font-weight: 950;
-}
-
-.nutrition-meal-card small,
-.nutrition-ai-card p {
-  display: block;
-  overflow: hidden;
-  color: var(--vk-text-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.nutrition-ai-card {
-  display: grid;
-  gap: 7px;
-  padding: 14px;
-}
-
-.nutrition-ai-card p {
-  margin: 0;
-  white-space: normal;
+.nutrition-premium-shell .nutrition-card-heading .secondary-button {
+  min-height: 32px;
+  padding: 4px 8px;
 }
 
 .nutrition-premium-shell .nutrition-panel {
@@ -11786,12 +11995,14 @@ html:has(#app-section-more.is-active),
 }
 
 @media (max-width: 360px) {
-  .nutrition-quick-actions {
+  .nutrition-quick-tiles,
+  .nutrition-checkin-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .vk-section-header h2 {
-    font-size: 2.35rem;
+  .nutrition-ring-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
   }
 }
 

@@ -123,12 +123,19 @@ function OverviewBodyScanStage({ onClose, onStartScan }) {
     <div className="overview-body-scan-stage" role="dialog" aria-labelledby="overview-body-scan-title" aria-modal="true">
       <div className="overview-body-scan-hero">
         <img alt="Kroppsscanning" src={bodyScanImage} />
-        {bodyOverviewMarkers.map((marker) => {
+        <span className="overview-body-scan-float-rings" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+          <span />
+          <span />
+        </span>
+        {bodyOverviewMarkers.map((marker, index) => {
           const estimate = marker.key ? result?.estimatedMeasurements?.[marker.key] : null
           const range = estimate ? formatRange(estimate.min, estimate.max, 'cm') : ''
           return (
             <span
-              className="overview-body-scan-marker"
+              className={`overview-body-scan-marker is-float-${index + 1}`}
               key={marker.label}
               style={{ left: `${marker.x}%`, top: `${marker.y}%` }}
             >

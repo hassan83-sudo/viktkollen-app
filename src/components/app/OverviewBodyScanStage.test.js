@@ -16,5 +16,7 @@ describe('OverviewBodyScanStage', () => {
     expect(stageSource).toContain('Starta scanning')
     expect(stageSource).toContain('Ny scanning')
     expect(stageSource).toContain('overview-body-scan-stage')
+    expect(stageSource).toContain('overview-body-scan-float-rings')
+    expect(stageSource).toContain('is-float-')
   })
 })

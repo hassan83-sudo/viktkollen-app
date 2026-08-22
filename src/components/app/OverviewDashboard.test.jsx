@@ -89,6 +89,8 @@ describe('OverviewDashboard', () => {
     expect(markup).toContain('/viktkollen-ai-coach-robot.png')
     expect(markup).toContain('/viktkollen-body-scan.png')
     expect(markup).toContain('Öppna kroppsscanning i helskärm')
+    expect(markup).toContain('tap me')
+    expect(markup).toContain('overview-body-float-rings')
     expect(markup).toContain('Öppna AI Coach')
     expect(markup).toContain('Öppna matscanning')
     expect(markup).not.toContain('overview-body-scan-stage')

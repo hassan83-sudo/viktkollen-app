@@ -642,14 +642,27 @@ function OverviewPrimaryActions({ onNavigateSection, onOpenBodyScan, onOpenCoach
             <span className="overview-primary-action-icon">
               <OverviewIcon name={action.icon} />
             </span>
+            {action.accent === 'body' && (
+              <span className="overview-body-float-rings" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+                <span />
+                <span />
+              </span>
+            )}
           </span>
           <span className="overview-primary-action-copy">
             <strong>{action.label}</strong>
             <small>{action.description}</small>
           </span>
-          <span className="overview-primary-action-chevron" aria-hidden="true">
-            <OverviewIcon name={action.actionIcon} />
-          </span>
+          {action.accent === 'body' ? (
+            <span className="overview-tap-me">tap me</span>
+          ) : (
+            <span className="overview-primary-action-chevron" aria-hidden="true">
+              <OverviewIcon name={action.actionIcon} />
+            </span>
+          )}
         </button>
       ))}
     </section>

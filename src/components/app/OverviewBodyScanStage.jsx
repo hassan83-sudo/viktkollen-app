@@ -127,8 +127,6 @@ function OverviewBodyScanStage({ onClose, onStartScan }) {
           <span />
           <span />
           <span />
-          <span />
-          <span />
         </span>
         {bodyOverviewMarkers.map((marker, index) => {
           const estimate = marker.key ? result?.estimatedMeasurements?.[marker.key] : null

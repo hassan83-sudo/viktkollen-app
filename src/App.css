@@ -10206,9 +10206,6 @@ body:has(#app-section-home.is-active) {
 }
 
 #app-section-home.is-active .overview-primary-action.is-body {
-  height: clamp(128px, 34vw, 148px);
-  min-height: clamp(128px, 34vw, 148px);
-  padding: 8px;
   background:
     radial-gradient(circle at 52% 58%, rgba(45, 255, 231, 0.22), transparent 43%),
     linear-gradient(150deg, #0e3f3e 0%, #102d39 58%, #0b1424 100%);
@@ -10273,7 +10270,7 @@ body:has(#app-section-home.is-active) {
 }
 
 #app-section-home.is-active .overview-primary-action.is-body .overview-primary-visual {
-  inset: 28px -18px -28px;
+  inset: 72px -10px 8px;
 }
 
 #app-section-home.is-active .overview-primary-action.is-food .overview-primary-visual {
@@ -10299,7 +10296,7 @@ body:has(#app-section-home.is-active) {
 }
 
 #app-section-home.is-active .overview-primary-art.is-body {
-  inset: -8% -22% -18%;
+  inset: 0;
   overflow: hidden;
   border-radius: 10px;
   box-shadow:
@@ -10309,9 +10306,9 @@ body:has(#app-section-home.is-active) {
 
 #app-section-home.is-active .overview-primary-art.is-body img {
   object-fit: cover;
-  object-position: 50% 4%;
-  transform: scale(1.68);
-  transform-origin: 50% 4%;
+  object-position: 50% 42%;
+  transform: scale(2.05);
+  transform-origin: 50% 42%;
 }
 
 #app-section-home.is-active .overview-primary-art.is-meal {
@@ -10346,13 +10343,9 @@ body:has(#app-section-home.is-active) {
 }
 
 #app-section-home.is-active .overview-primary-action.is-body .overview-primary-action-copy {
-  top: 8px;
-  left: 8px;
-  right: 8px;
-}
-
-#app-section-home.is-active .overview-primary-action.is-body .overview-primary-action-copy small {
-  display: none;
+  top: 16px;
+  left: 12px;
+  right: 10px;
 }
 
 #app-section-home.is-active .overview-tap-me {
@@ -10382,64 +10375,53 @@ body:has(#app-section-home.is-active) {
 #app-section-home.is-active .overview-body-float-rings span,
 .overview-body-scan-float-rings span {
   position: absolute;
-  border: 1.5px solid rgba(56, 247, 255, 0.55);
-  border-radius: 999px;
-  box-shadow: 0 0 12px rgba(56, 247, 255, 0.28);
+  left: 50%;
+  width: 62%;
+  height: 16px;
+  border: 1.5px solid rgba(56, 247, 255, 0.72);
+  border-radius: 50%;
+  box-shadow: 0 0 14px rgba(56, 247, 255, 0.32);
+  transform: translateX(-50%);
   animation: overview-body-float 2.6s ease-in-out infinite;
 }
 
 #app-section-home.is-active .overview-body-float-rings span:nth-child(1),
 .overview-body-scan-float-rings span:nth-child(1) {
-  width: 18px;
-  height: 18px;
-  left: 12%;
-  top: 22%;
+  top: 26%;
 }
 
 #app-section-home.is-active .overview-body-float-rings span:nth-child(2),
 .overview-body-scan-float-rings span:nth-child(2) {
-  width: 12px;
-  height: 12px;
-  right: 14%;
-  top: 18%;
+  top: 44%;
+  width: 70%;
   animation-delay: 0.35s;
 }
 
 #app-section-home.is-active .overview-body-float-rings span:nth-child(3),
 .overview-body-scan-float-rings span:nth-child(3) {
-  width: 22px;
-  height: 22px;
-  left: 8%;
-  top: 52%;
+  top: 62%;
+  width: 58%;
   animation-delay: 0.7s;
 }
 
 #app-section-home.is-active .overview-body-float-rings span:nth-child(4),
 .overview-body-scan-float-rings span:nth-child(4) {
-  width: 14px;
-  height: 14px;
-  right: 10%;
-  top: 48%;
-  animation-delay: 1s;
+  display: none;
 }
 
 #app-section-home.is-active .overview-body-float-rings span:nth-child(5),
 .overview-body-scan-float-rings span:nth-child(5) {
-  width: 10px;
-  height: 10px;
-  left: 46%;
-  top: 12%;
-  animation-delay: 1.3s;
+  display: none;
 }
 
 @keyframes overview-body-float {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translateX(-50%) translateY(0);
   }
 
   50% {
-    transform: translateY(-10px);
+    transform: translateX(-50%) translateY(-12px);
   }
 }
 
@@ -11451,13 +11433,8 @@ body:has(#app-section-home.is-active) {
     line-height: 1.18;
   }
 
-  #app-section-home.is-active .overview-primary-action.is-body {
-    height: 128px;
-    min-height: 128px;
-  }
-
   #app-section-home.is-active .overview-primary-action.is-body .overview-primary-visual {
-    inset: 26px -16px -24px;
+    inset: 68px -8px 10px;
   }
 
   #app-section-home.is-active .overview-primary-action.is-food .overview-primary-visual {
@@ -12134,7 +12111,7 @@ html:has(#app-section-more.is-active),
   inset: 0;
   z-index: 80;
   display: grid;
-  grid-template-rows: minmax(420px, 68vh) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
   background: #050914;
   color: #fff;
   overflow: hidden;
@@ -12142,7 +12119,7 @@ html:has(#app-section-more.is-active),
 
 .overview-body-scan-hero {
   position: relative;
-  min-height: 420px;
+  min-height: 0;
   overflow: hidden;
   background:
     radial-gradient(circle at 50% 18%, rgba(56, 247, 255, 0.22), transparent 42%),
@@ -12151,11 +12128,30 @@ html:has(#app-section-more.is-active),
 
 .overview-body-scan-hero img {
   width: 100%;
-  height: 128%;
+  height: 100%;
   object-fit: cover;
-  object-position: center 4%;
-  transform: scale(1.32);
-  transform-origin: center top;
+  object-position: 50% 40%;
+  transform: scale(1.72);
+  transform-origin: 50% 38%;
+}
+
+.overview-body-scan-float-rings span {
+  width: 48%;
+  height: 22px;
+}
+
+.overview-body-scan-float-rings span:nth-child(1) {
+  top: 22%;
+}
+
+.overview-body-scan-float-rings span:nth-child(2) {
+  top: 40%;
+  width: 56%;
+}
+
+.overview-body-scan-float-rings span:nth-child(3) {
+  top: 58%;
+  width: 50%;
 }
 
 .overview-body-scan-marker {
@@ -12211,12 +12207,27 @@ html:has(#app-section-more.is-active),
 .overview-body-scan-panel {
   display: grid;
   align-content: start;
-  gap: 12px;
+  gap: 4px;
+  max-height: 26vh;
   min-height: 0;
-  padding: 16px 16px calc(24px + env(safe-area-inset-bottom));
+  padding: 8px 12px calc(10px + env(safe-area-inset-bottom));
   overflow: auto;
   background:
-    linear-gradient(180deg, rgba(8, 18, 34, 0.2), rgba(5, 9, 20, 1) 28px);
+    linear-gradient(180deg, rgba(8, 18, 34, 0.2), rgba(5, 9, 20, 1) 16px);
+}
+
+.overview-body-scan-panel .eyebrow {
+  margin: 0;
+  font-size: 0.62rem;
+}
+
+.overview-body-scan-panel h2 {
+  font-size: 1.02rem;
+  line-height: 1.15;
+}
+
+.overview-body-scan-panel h3 {
+  font-size: 0.78rem;
 }
 
 .overview-body-scan-panel h2,
@@ -12229,21 +12240,26 @@ html:has(#app-section-more.is-active),
 .overview-body-scan-meta,
 .overview-body-scan-note {
   color: rgba(214, 226, 255, 0.78);
-  font-size: 0.92rem;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .overview-body-scan-facts {
   display: grid;
-  gap: 8px;
+  gap: 4px;
   margin: 0;
 }
 
 .overview-body-scan-facts div {
   display: grid;
-  gap: 2px;
-  padding: 10px 12px;
+  gap: 0;
+  padding: 6px 8px;
   border: 1px solid rgba(56, 247, 255, 0.14);
-  border-radius: 14px;
+  border-radius: 10px;
   background: rgba(8, 16, 34, 0.72);
 }
 
@@ -12268,13 +12284,17 @@ html:has(#app-section-more.is-active),
 
 .overview-body-scan-actions {
   display: grid;
-  gap: 8px;
+  grid-template-columns: 1.3fr 0.9fr;
+  gap: 6px;
+  margin-top: 4px;
 }
 
 .overview-body-scan-actions .primary-button,
 .overview-body-scan-actions .secondary-button {
-  min-height: 48px;
+  min-height: 36px;
   width: 100%;
+  padding: 0 10px;
+  font-size: 0.82rem;
 }
 
 #app-section-home.is-active .overview-home-section {

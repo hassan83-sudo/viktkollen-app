@@ -647,8 +647,6 @@ function OverviewPrimaryActions({ onNavigateSection, onOpenBodyScan, onOpenCoach
                 <span />
                 <span />
                 <span />
-                <span />
-                <span />
               </span>
             )}
           </span>

@@ -613,56 +613,89 @@ function OverviewPrimaryActions({ onNavigateSection, onOpenBodyScan, onOpenCoach
       imageWidth: 1024,
       icon: 'foodCamera',
       label: 'Matscanning',
-      onClick: onOpenFoodScan || onScanFood || (() => goTo('nutrition', 'streckkod')),
+      onClick: onOpenFoodScan || (() => goTo('nutrition', 'streckkod')),
+      onScanFood: onScanFood || (() => goTo('nutrition', 'nutrition-scanner-v2')),
     },
   ]
 
   return (
     <section className="overview-primary-actions" aria-label="Primära funktioner">
-      {actions.map((action) => (
-        <button
-          className={`overview-primary-action is-${action.accent}`}
-          key={action.label}
-          type="button"
-          aria-label={action.accent === 'body' ? 'Öppna kroppsscanning i helskärm' : action.accent === 'coach' ? 'Öppna AI Coach' : action.accent === 'food' ? 'Öppna matscanning' : undefined}
-          onClick={action.onClick}
-        >
-          <span className="overview-primary-visual">
-            <span className="overview-primary-orbit" />
-            <span className={`overview-primary-art is-${action.art}`}>
-              <img
-                alt={action.alt}
-                decoding="async"
-                height={action.imageHeight}
-                loading="lazy"
-                src={action.image}
-                width={action.imageWidth}
-              />
+      {actions.map((action) => {
+        const visual = (
+          <>
+            <span className="overview-primary-visual">
+              <span className="overview-primary-orbit" />
+              <span className={`overview-primary-art is-${action.art}`}>
+                <img
+                  alt={action.alt}
+                  decoding="async"
+                  height={action.imageHeight}
+                  loading="lazy"
+                  src={action.image}
+                  width={action.imageWidth}
+                />
+              </span>
+              <span className="overview-primary-action-icon">
+                <OverviewIcon name={action.icon} />
+              </span>
+              {action.accent === 'body' && (
+                <span className="overview-body-float-rings" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+              )}
             </span>
-            <span className="overview-primary-action-icon">
-              <OverviewIcon name={action.icon} />
+            <span className="overview-primary-action-copy">
+              <strong>{action.label}</strong>
+              <small>{action.description}</small>
             </span>
-            {action.accent === 'body' && (
-              <span className="overview-body-float-rings" aria-hidden="true">
-                <span />
-                <span />
-                <span />
+          </>
+        )
+
+        if (action.accent === 'food') {
+          return (
+            <div className="overview-primary-action is-food" key={action.label}>
+              <button
+                className="overview-primary-action-hit"
+                type="button"
+                aria-label="Läs ingredienser"
+                onClick={action.onClick}
+              >
+                {visual}
+                <span className="overview-tap-me">tap me</span>
+              </button>
+              <button
+                className="overview-primary-action-chevron"
+                type="button"
+                aria-label="Skanna mat med kamera"
+                onClick={action.onScanFood}
+              >
+                <OverviewIcon name={action.actionIcon} />
+              </button>
+            </div>
+          )
+        }
+
+        return (
+          <button
+            className={`overview-primary-action is-${action.accent}`}
+            key={action.label}
+            type="button"
+            aria-label={action.accent === 'body' ? 'Öppna kroppsscanning i helskärm' : 'Öppna AI Coach'}
+            onClick={action.onClick}
+          >
+            {visual}
+            {action.accent === 'body' ? (
+              <span className="overview-tap-me">tap me</span>
+            ) : (
+              <span className="overview-primary-action-chevron" aria-hidden="true">
+                <OverviewIcon name={action.actionIcon} />
               </span>
             )}
-          </span>
-          <span className="overview-primary-action-copy">
-            <strong>{action.label}</strong>
-            <small>{action.description}</small>
-          </span>
-          {action.accent === 'body' ? (
-            <span className="overview-tap-me">tap me</span>
-          ) : (
-            <span className="overview-primary-action-chevron" aria-hidden="true">
-              <OverviewIcon name={action.actionIcon} />
-            </span>
-          )}
-        </button>
-      ))}
+          </button>
+        )
+      })}
     </section>
   )
 }
@@ -1003,7 +1036,7 @@ function OverviewDashboard({
           currentWeight={currentWeight}
           healthScore={healthScore}
           onLogWeight={onLogWeight}
-          onScanFood={() => setFoodScanOpen(true)}
+          onScanFood={onScanFood}
           proteinGoal={proteinGoal}
           proteinToday={proteinToday}
           steps={checkIn?.steps}
@@ -1075,16 +1108,8 @@ function OverviewDashboard({
       )}
       {foodScanOpen && (
         <OverviewFoodScanStage
-          calorieGoal={calorieGoal}
-          caloriesToday={caloriesToday}
+          meals={meals}
           onClose={() => setFoodScanOpen(false)}
-          onScanFood={() => {
-            setFoodScanOpen(false)
-            if (onScanFood) onScanFood()
-            else if (onNavigateSection) onNavigateSection('nutrition', 'nutrition-scanner-v2')
-          }}
-          proteinGoal={proteinGoal}
-          proteinToday={proteinToday}
         />
       )}
 

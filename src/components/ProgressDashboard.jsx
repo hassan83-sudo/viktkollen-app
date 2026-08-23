@@ -123,6 +123,8 @@ function ProgressDashboard({
 
       <ProgressSummaryCards analysis={analysis} />
 
+      <details className="progress-hub-more">
+        <summary>Visa mer om utveckling</summary>
       <div className="progress-dashboard-grid">
         <ProgressTrendCard weight={analysis.weight} />
         <NutritionProgressCard nutrition={analysis.nutrition} planning={analysis.planning} />
@@ -197,13 +199,17 @@ function ProgressDashboard({
           weeklySummary={analysis.weeklySummary}
         />
       </div>
+      </details>
 
+      <details className="progress-hub-more">
+        <summary>Visa mer om veckorapport</summary>
       <WeeklyReport
         onCreateWeeklyReport={onCreateWeeklyReport}
         weeklyReportData={weeklyReportData}
         weeklyReportLines={weeklyReportLines}
         weeklyReportStatus={weeklyReportStatus}
       />
+      </details>
     </article>
   )
 }

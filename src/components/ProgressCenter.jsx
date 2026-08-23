@@ -766,6 +766,7 @@ function ProgressCenter({
   profile,
   progressPhotos,
   progressReports,
+  view = 'all',
   weights,
 }) {
   const importInputRef = useRef(null)
@@ -1052,15 +1053,28 @@ function ProgressCenter({
     reader.readAsText(file)
   }
 
-  return (
-    <article className="panel progress-center-panel" id="vikt">
-      <div className="panel-heading">
-        <div>
-          <p className="eyebrow">Vikt, kroppsmått och framsteg</p>
-          <h2>Framstegscenter</h2>
-        </div>
-      </div>
+  const show = (name) => view === 'all' || view === name
+  const panelId = view === 'tools'
+    ? 'progress-tools'
+    : view === 'insights'
+      ? 'progress-local-insights'
+      : view === 'measurements'
+        ? 'progress-measurements'
+        : 'vikt'
 
+  return (
+    <article className="panel progress-center-panel" id={panelId}>
+      {view === 'all' && (
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">Vikt, kroppsmått och framsteg</p>
+            <h2>Framstegscenter</h2>
+          </div>
+        </div>
+      )}
+
+      {show('weight') && (
+        <>
       <WeightEditor
         draft={weightDraft}
         errors={weightErrors}
@@ -1116,7 +1130,10 @@ function ProgressCenter({
           Baseras på {projection.basedOn}. Trenden per vecka är {formatSignedKg(projection.trendPerWeek)}. Prognosen visas bara när datan räcker och extrapolering begränsas.
         </p>
       </section>
+      </>
+      )}
 
+      {show('tools') && (
       <WeightHistory
         filters={weightFilters}
         onClearFilters={() => setWeightFilters(defaultWeightFilters)}
@@ -1134,7 +1151,9 @@ function ProgressCenter({
         selectedIds={selectedWeightIds}
         weights={visibleWeights}
       />
+      )}
 
+      {show('measurements') && (
       <BodyMeasurementsPanel
         analysis={measurementAnalysis}
         draft={measurementDraft}
@@ -1146,7 +1165,10 @@ function ProgressCenter({
         onReset={resetMeasurementDraft}
         onSubmit={submitMeasurement}
       />
+      )}
 
+      {show('insights') && (
+      <>
       <section className="progress-card">
         <div className="progress-card-heading">
           <div>
@@ -1177,7 +1199,11 @@ function ProgressCenter({
         onCreate={createReport}
         onDelete={deleteReport}
       />
+      </>
+      )}
 
+      {show('tools') && (
+      <>
       <ProgressTimeline
         filters={timelineFilters}
         onFilterChange={(key, value) => setTimelineFilters((current) => ({ ...current, [key]: value }))}
@@ -1194,6 +1220,8 @@ function ProgressCenter({
         onOpenImport={() => importInputRef.current?.click()}
         onToggleImages={() => setIncludeImages((current) => !current)}
       />
+      </>
+      )}
     </article>
   )
 }

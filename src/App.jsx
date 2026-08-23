@@ -106,7 +106,6 @@ const ManualAcceptanceRunner = import.meta.env.DEV
 const PremiumAnalyticsPanel = import.meta.env.DEV
   ? lazy(() => import('./components/PremiumAnalyticsPanel.jsx'))
   : null
-const ProgressCenter = lazy(() => import('./components/ProgressCenter.jsx'))
 const SyncHealthDashboard = lazy(() => import('./components/SyncHealthDashboard.jsx'))
 
 function isInternalToolsEnabled() {
@@ -2959,23 +2958,6 @@ function App() {
         {activeAppSection === 'progress' && (
           <>
             <AppErrorBoundary area="progress" resetKey={`${healthSnapshot.date}-${weights.length}`} title="Framsteg kunde inte visas">
-            <ProgressCenter
-                bodyAnalysisHistory={bodyAnalysisHistory}
-                bodyMeasurements={bodyMeasurements}
-                goalSettings={progressGoalSettings}
-                onBodyMeasurementsChange={(nextMeasurements) =>
-                  setBodyMeasurements(normalizeBodyMeasurements(nextMeasurements))}
-                onGoalSettingsChange={(nextSettings) =>
-                  setProgressGoalSettings(normalizeGoalSettings(nextSettings))}
-                onProgressReportsChange={setProgressReports}
-                onWeightsChange={(nextWeights) => setWeights(normalizeWeights(nextWeights))}
-                profile={validatedProfile}
-                progressPhotos={progressPhotos}
-                progressReports={progressReports}
-                weights={weights}
-              />
-            </AppErrorBoundary>
-
             <ProgressSection
           activeSection={activeAppSection}
           adaptiveCoachFeedback={adaptiveCoachFeedback}
@@ -2983,9 +2965,11 @@ function App() {
           beforeAfterPhotos={beforeAfterPhotos}
           beforePhoto={beforePhoto}
           bodyAnalysisHistory={bodyAnalysisHistory}
+          bodyMeasurements={bodyMeasurements}
           checkIn={checkIn}
           createWeeklyReport={createWeeklyReport}
           foods={foods}
+          goalSettings={progressGoalSettings}
           goalsHabits={goalsHabits}
           healthSnapshot={healthSnapshot}
           meals={meals}
@@ -2995,6 +2979,8 @@ function App() {
           nutritionGoals={nutritionGoals}
           onAfterPhotoIdChange={setAfterPhotoId}
           onBeforePhotoIdChange={setBeforePhotoId}
+          onBodyMeasurementsChange={(nextMeasurements) =>
+            setBodyMeasurements(normalizeBodyMeasurements(nextMeasurements))}
           onDeleteProgressPhoto={(photoId) => {
             if (window.confirm('Vill du ta bort den här framstegsbilden?')) {
               setProgressPhotos((current) =>
@@ -3002,8 +2988,11 @@ function App() {
               )
             }
           }}
+          onGoalSettingsChange={(nextSettings) =>
+            setProgressGoalSettings(normalizeGoalSettings(nextSettings))}
           onProgressPhotoChange={handleProgressPhotoChange}
           onProgressPhotoNoteChange={setProgressPhotoNote}
+          onProgressReportsChange={setProgressReports}
           onUpdateProgressPhoto={(photoId, updates) =>
             setProgressPhotos((current) =>
               current.map((photo) =>
@@ -3016,6 +3005,7 @@ function App() {
                   : photo,
               ),
             )}
+          onWeightsChange={(nextWeights) => setWeights(normalizeWeights(nextWeights))}
           profile={validatedProfile}
           progressPhotoComparison={progressPhotoComparison}
           progressPhotoComparisonImages={progressPhotoComparisonImages}
@@ -3023,6 +3013,7 @@ function App() {
           progressPhotoNote={progressPhotoNote}
           progressPhotoOptions={progressPhotoOptions}
           progressPhotos={progressPhotos}
+          progressReports={progressReports}
           selectedMealDate={selectedMealDate}
           userId={authSession?.user?.id || authSession?.user?.email || 'local-user'}
           weights={centralWeightStats.weights}
@@ -3030,6 +3021,7 @@ function App() {
           weeklyReportLines={weeklyReportLines}
           weeklyReportStatus={weeklyReportStatus}
         />
+            </AppErrorBoundary>
           </>
         )}
 

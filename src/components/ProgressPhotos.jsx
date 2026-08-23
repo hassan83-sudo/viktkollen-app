@@ -136,6 +136,7 @@ function ProgressPhotos({
   progressPhotoNote,
   progressPhotoOptions,
   profile = {},
+  showBodyAnalysis = true,
   userId,
   weights = [],
 }) {
@@ -184,6 +185,7 @@ function ProgressPhotos({
         progressPhotoNote={progressPhotoNote}
       />
 
+      {showBodyAnalysis && (
       <BodyAnalysisCard
         bodyAnalysisHistoryContext={bodyAnalysisHistory}
         onAnalysisHistoryChange={setHasBodyAnalysisHistory}
@@ -191,6 +193,7 @@ function ProgressPhotos({
         userId={userId}
         weights={weights}
       />
+      )}
 
       {hasProgressPhotos && (
         <>
@@ -447,7 +450,7 @@ function ProgressPhotos({
         </>
       )}
 
-      {!hasProgressPhotos && !hasBodyAnalysisHistory && (
+      {!hasProgressPhotos && (!showBodyAnalysis || !hasBodyAnalysisHistory) && (
         <ProgressPhotoEmptyState />
       )}
     </article>

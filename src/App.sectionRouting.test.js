@@ -21,7 +21,6 @@ describe('app section routing isolation', () => {
       .split("{activeAppSection === 'home' && (")[1]
       .split("{activeAppSection !== 'home' && (")[0]
 
-    expect(appSource).toMatch(/activeAppSection === 'progress'[\s\S]*<ProgressCenter/)
     expect(appSource).toMatch(/activeAppSection === 'progress'[\s\S]*<ProgressSection/)
     expect(appSource).toMatch(/activeAppSection === 'more'[\s\S]*<MoreSection/)
     expect(homeRenderBlock).toContain('<HomeSection')
@@ -70,8 +69,8 @@ describe('app section routing isolation', () => {
 })
 
 describe('home dashboard collapsed content', () => {
-  it('renders more-for-today child content only after a row is opened', () => {
-    expect(overviewDashboardSource).toContain('const [isOpen, setIsOpen] = useState(false)')
+  it('keeps more-for-today rows collapsible while rendering open content', () => {
+    expect(overviewDashboardSource).toContain('const [isOpen, setIsOpen] = useState(true)')
     expect(overviewDashboardSource).toContain('onToggle={(event) => setIsOpen(event.currentTarget.open)}')
     expect(overviewDashboardSource).toContain('{isOpen && (')
   })

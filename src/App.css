@@ -9968,35 +9968,21 @@ body:has(#app-section-home.is-active) {
 #app-section-home.is-active .overview-app-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px 12px;
+  gap: 6px 10px;
   align-items: start;
-  padding: 0 2px 0;
-}
-
-#app-section-home.is-active .overview-app-header > div:first-child {
-  display: contents;
-}
-
-#app-section-home.is-active .overview-app-header h1 {
-  grid-column: 1;
-  margin: 18px 0 0;
-  color: #fff;
-  font-size: 3.18rem;
-  font-weight: 950;
-  line-height: 0.84;
-  letter-spacing: 0;
+  padding: 0 2px;
 }
 
 #app-section-home.is-active .overview-live-meta {
-  grid-column: 1 / -1;
+  grid-column: 1;
   display: grid;
-  gap: 4px;
+  gap: 3px;
   width: 100%;
   margin: 0;
   color: rgba(226, 235, 255, 0.78);
-  font-size: 0.71rem;
+  font-size: 0.68rem;
   font-weight: 760;
-  line-height: 1.18;
+  line-height: 1.2;
   text-transform: none;
 }
 
@@ -10052,12 +10038,12 @@ body:has(#app-section-home.is-active) {
 
 #app-section-home.is-active .overview-header-actions {
   grid-column: 2;
-  grid-row: 1;
+  grid-row: 1 / span 3;
   display: grid;
-  grid-template-columns: 34px 58px;
-  gap: 10px;
-  align-items: center;
-  padding-top: 34px;
+  grid-template-columns: 28px 58px;
+  gap: 8px;
+  align-items: start;
+  padding-top: 0;
 }
 
 #app-section-home.is-active .overview-notification-button,
@@ -10069,10 +10055,12 @@ body:has(#app-section-home.is-active) {
 }
 
 #app-section-home.is-active .overview-notification-button {
-  width: 38px;
-  height: 38px;
-  min-width: 38px;
-  min-height: 38px;
+  position: relative;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  margin-top: 14px;
   border: 0;
   background: transparent;
   box-shadow: none;
@@ -10099,6 +10087,7 @@ body:has(#app-section-home.is-active) {
   position: relative;
   width: 58px;
   height: 58px;
+  flex: 0 0 58px;
 }
 
 #app-section-home.is-active .overview-avatar-button {
@@ -10125,17 +10114,7 @@ body:has(#app-section-home.is-active) {
 }
 
 #app-section-home.is-active .overview-avatar-photo {
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-  z-index: 2;
-  width: 26px;
-  height: 26px;
-  overflow: hidden;
-  border: 2px solid #050914;
-  border-radius: 999px;
-  background: #38f7ff;
-  cursor: pointer;
+  display: none;
 }
 
 #app-section-home.is-active .overview-avatar-button img {
@@ -10251,12 +10230,12 @@ body:has(#app-section-home.is-active) {
 
 #app-section-home.is-active .overview-primary-action-copy small {
   display: block;
-  max-width: 6.8rem;
-  margin-top: 7px;
+  max-width: 7.2rem;
+  margin-top: 6px;
   color: rgba(244, 248, 255, 0.78);
-  font-size: 0.67rem;
+  font-size: 0.64rem;
   font-weight: 650;
-  line-height: 1.32;
+  line-height: 1.28;
 }
 
 #app-section-home.is-active .overview-primary-visual {
@@ -10292,18 +10271,18 @@ body:has(#app-section-home.is-active) {
 }
 
 #app-section-home.is-active .overview-primary-art.is-robot {
-  inset: -6px -12px -14px -8px;
+  inset: 10px 2px 4px;
 }
 
 #app-section-home.is-active .overview-primary-art.is-body {
-  inset: -6px -8px -12px;
+  inset: 0;
   overflow: hidden;
   border-radius: 10px;
 }
 
 #app-section-home.is-active .overview-primary-art.is-body img {
   object-fit: contain;
-  object-position: 50% 78%;
+  object-position: 50% 46%;
 }
 
 #app-section-home.is-active .overview-primary-art.is-meal {
@@ -10345,18 +10324,23 @@ body:has(#app-section-home.is-active) {
 
 #app-section-home.is-active .overview-tap-me {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
+  right: 6px;
+  bottom: 6px;
   z-index: 5;
-  min-height: 24px;
-  padding: 3px 9px;
+  display: inline-grid;
+  height: 22px;
+  min-height: 20px;
+  max-height: 24px;
+  place-items: center;
+  padding: 0 7px;
   border-radius: 999px;
   color: #04120f;
-  background: #38f7ff;
-  box-shadow: 0 8px 16px rgba(40, 245, 199, 0.35);
-  font-size: 0.62rem;
-  font-weight: 900;
-  letter-spacing: 0.02em;
+  background: rgba(56, 247, 255, 0.82);
+  box-shadow: none;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  opacity: 0.88;
 }
 
 #app-section-home.is-active .overview-body-float-rings,
@@ -10454,18 +10438,30 @@ body:has(#app-section-home.is-active) {
   cursor: pointer;
 }
 
+#app-section-home.is-active .overview-primary-action.is-body .overview-primary-action-chevron,
 #app-section-home.is-active .overview-primary-action.is-food .overview-primary-action-chevron {
-  left: 10px;
+  left: 8px;
   transform: none;
   z-index: 6;
   pointer-events: auto;
+  width: 44px;
+  height: 44px;
+}
+
+#app-section-home.is-active .overview-primary-action.is-body .overview-primary-action-chevron {
+  background: linear-gradient(145deg, #38f7ff, #1287c9);
+  box-shadow: 0 10px 20px rgba(40, 180, 199, 0.38);
+}
+
+#app-section-home.is-active .overview-primary-action.is-food .overview-primary-action-chevron {
   background: linear-gradient(145deg, #ff5ab1, #ee288e);
+  box-shadow: 0 10px 20px rgba(238, 40, 142, 0.38);
 }
 
 #app-section-home.is-active .overview-primary-action.is-food .overview-tap-me {
   color: #1a0612;
-  background: #ff7ac4;
-  box-shadow: 0 8px 16px rgba(238, 40, 142, 0.35);
+  background: rgba(255, 122, 196, 0.82);
+  box-shadow: none;
 }
 
 #app-section-home.is-active .overview-primary-action-chevron .overview-svg-icon {
@@ -10477,7 +10473,7 @@ body:has(#app-section-home.is-active) {
 #app-section-home.is-active .overview-main-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 #app-section-home.is-active .overview-main-stat {
@@ -10632,7 +10628,7 @@ body:has(#app-section-home.is-active) {
 #app-section-home.is-active .overview-compact-tabs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 #app-section-home.is-active .overview-compact-tab {
@@ -11415,8 +11411,21 @@ body:has(#app-section-home.is-active) {
 }
 
 @media (max-width: 380px) {
-  #app-section-home.is-active .overview-app-header h1 {
-    font-size: 2.72rem;
+  #app-section-home.is-active .overview-live-meta {
+    font-size: 0.64rem;
+  }
+
+  #app-section-home.is-active .overview-header-actions {
+    grid-template-columns: 24px 54px;
+    gap: 6px;
+  }
+
+  #app-section-home.is-active .overview-avatar-wrap,
+  #app-section-home.is-active .overview-avatar-button {
+    width: 54px;
+    height: 54px;
+    min-width: 54px;
+    min-height: 54px;
   }
 
   #app-section-home.is-active .overview-primary-actions {
@@ -12317,7 +12326,7 @@ html:has(#app-section-more.is-active),
 
 #app-section-home.is-active .overview-home-section {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 #app-section-home.is-active .overview-home-section > h2 {

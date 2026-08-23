@@ -10,6 +10,7 @@ describe('OverviewFoodScanStage', () => {
 
     expect(dashboardSource).toContain("onOpenFoodScan={() => setFoodScanOpen(true)}")
     expect(dashboardSource).toContain('Läs ingredienser')
+    expect(dashboardSource).toContain('Skanna kropp med kamera')
     expect(dashboardSource).toContain('Skanna mat med kamera')
     expect(stageSource).toContain('På tallriken')
     expect(stageSource).toContain('is-full-art')

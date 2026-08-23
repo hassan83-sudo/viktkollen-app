@@ -47,7 +47,7 @@ function renderOverview(overrides = {}) {
 }
 
 describe('OverviewDashboard', () => {
-  it('renders Översikt as the primary header with date and avatar', () => {
+  it('starts Home compact with live info and a fixed profile circle', () => {
     const markup = renderOverview()
 
     expect(markup).toContain('class="overview-live-meta"')
@@ -57,12 +57,16 @@ describe('OverviewDashboard', () => {
     expect(markup).not.toContain('-- m/s')
     expect(markup).not.toContain('-- %')
     expect(markup).not.toContain('--:--')
-    expect(markup).toContain('<h1>Översikt</h1>')
+    expect(markup).toContain('<h1 class="sr-only">Hem</h1>')
+    expect(markup).not.toContain('<h1>Översikt</h1>')
     expect(markup).not.toContain('Fallback')
     expect(markup).toContain('aria-label="Visa smarta notiser"')
     expect(markup).toContain('aria-label="Lägg till profilbild"')
+    expect(markup).toContain('id="overview-profile-photo-input"')
+    expect(markup).toContain('overview-avatar-button')
     expect(markup).toContain('HK')
     expect(markup).not.toContain('Din översikt')
+    expect(markup).not.toContain('class="overview-avatar-photo"')
   })
 
   it('orders primary actions before secondary content', () => {
@@ -84,18 +88,19 @@ describe('OverviewDashboard', () => {
     expect(markup).toContain('is-bodyScan')
     expect(markup).toContain('is-foodCamera')
     expect(markup).toContain('Personliga råd från din data')
-    expect(markup).toContain('Följ synliga förändringar över tid')
+    expect(markup).toContain('Följ kroppens förändringar över tid')
     expect(markup).toContain('Skanna maten och uppskatta näringen')
     expect(markup).toContain('/viktkollen-ai-coach-robot.png')
     expect(markup).toContain('/viktkollen-body-scan.png')
     expect(markup).toContain('Öppna kroppsscanning i helskärm')
     expect(markup).toContain('tap me')
-    expect(markup).toContain('overview-body-float-rings')
     expect(markup).toContain('Öppna AI Coach')
     expect(markup).toContain('Läs ingredienser')
+    expect(markup).toContain('Skanna kropp med kamera')
     expect(markup).toContain('Skanna mat med kamera')
     expect(markup).not.toContain('Öppna matscanning')
     expect(markup).not.toContain('overview-body-scan-stage')
+    expect(markup).not.toContain('overview-body-float-rings')
     expect(markup).toContain('/viktkollen-meal-scan.png')
     expect(markup).not.toContain('>AI<')
     expect(markup).not.toContain('>SCAN<')

@@ -299,31 +299,44 @@ function SmartFeedCard({ liveContext }) {
   )
 }
 
+function shortWeekday(value) {
+  const text = String(value || '').trim()
+  if (!text) return ''
+  return `${text.slice(0, 1).toLocaleUpperCase('sv-SE')}${text.slice(1, 3)}`
+}
+
 function OverviewLiveMeta({ liveContext, onConnectWeather, weatherStatus = '' }) {
   const weather = liveContext.weather
   const hasWeatherDetails = Boolean(weather.hasLiveWeather)
+  const city = hasWeatherDetails && weather.city && weather.city !== 'Vald stad' ? weather.city : ''
 
   return (
     <div className="overview-live-meta" aria-label="Datum, tid och väder">
       <p>
-        <span><OverviewIcon name="calendar" /> {liveContext.weekday} {liveContext.dateLabel}</span>
+        <span><OverviewIcon name="calendar" /> {shortWeekday(liveContext.weekday)} {liveContext.dateLabel}</span>
         <span><OverviewIcon name="clock" /> {liveContext.timeLabel}</span>
+        {city ? <span>{city}</span> : null}
+      </p>
+      <p>
         {hasWeatherDetails ? (
           <>
-            <span aria-label={`${weather.condition} i ${weather.city}`}>
-              {weather.icon} {formatWeatherValue(weather.temperatureC, '°C')} {weather.city}
-            </span>
+            <span>{formatWeatherValue(weather.temperatureC, '°C')}</span>
             <span><OverviewIcon name="wind" /> {formatWeatherValue(weather.windSpeedMs, ' m/s')}</span>
             <span><OverviewIcon name="drop" /> {formatWeatherValue(weather.precipitationRiskPercent, ' %')}</span>
+            <button className="overview-weather-connect" type="button" onClick={onConnectWeather}>
+              Min plats
+            </button>
           </>
         ) : (
-          <span className="overview-weather-empty" aria-label="Väder ej anslutet">
-            {weatherStatus || 'Väder ej anslutet'}
-          </span>
+          <>
+            <span className="overview-weather-empty" aria-label="Väder ej anslutet">
+              {weatherStatus || 'Väder ej anslutet'}
+            </span>
+            <button className="overview-weather-connect" type="button" onClick={onConnectWeather}>
+              Koppla väder
+            </button>
+          </>
         )}
-        <button className="overview-weather-connect" type="button" onClick={onConnectWeather}>
-          {hasWeatherDetails ? 'Min plats' : 'Koppla väder'}
-        </button>
       </p>
       {hasWeatherDetails && (
         <p>
@@ -565,7 +578,14 @@ function scrollToTarget(targetId) {
   window.dispatchEvent(new HashChangeEvent('hashchange'))
 }
 
-function OverviewPrimaryActions({ onNavigateSection, onOpenBodyScan, onOpenCoach, onOpenFoodScan, onScanFood }) {
+function OverviewPrimaryActions({
+  onNavigateSection,
+  onOpenBodyScan,
+  onOpenCoach,
+  onOpenFoodScan,
+  onScanFood,
+  onStartBodyScan,
+}) {
   const goTo = (sectionId, targetId) => {
     if (onNavigateSection) {
       onNavigateSection(sectionId, targetId)
@@ -594,13 +614,14 @@ function OverviewPrimaryActions({ onNavigateSection, onOpenBodyScan, onOpenCoach
       actionIcon: 'foodCamera',
       alt: 'Kroppsscanning med person och AI-scan-interface',
       art: 'body',
-      description: 'Följ synliga förändringar över tid',
+      description: 'Följ kroppens förändringar över tid',
       image: '/viktkollen-body-scan.png',
       imageHeight: 1537,
       imageWidth: 1023,
       icon: 'bodyScan',
       label: 'Kroppsscanning',
       onClick: () => (onOpenBodyScan ? onOpenBodyScan() : goTo('progress', 'body-analysis')),
+      onScan: onStartBodyScan || (() => goTo('progress', 'body-analysis')),
     },
     {
       accent: 'food',
@@ -614,7 +635,7 @@ function OverviewPrimaryActions({ onNavigateSection, onOpenBodyScan, onOpenCoach
       icon: 'foodCamera',
       label: 'Matscanning',
       onClick: onOpenFoodScan || (() => goTo('nutrition', 'streckkod')),
-      onScanFood: onScanFood || (() => goTo('nutrition', 'nutrition-scanner-v2')),
+      onScan: onScanFood || (() => goTo('nutrition', 'nutrition-scanner-v2')),
     },
   ]
 
@@ -638,13 +659,6 @@ function OverviewPrimaryActions({ onNavigateSection, onOpenBodyScan, onOpenCoach
               <span className="overview-primary-action-icon">
                 <OverviewIcon name={action.icon} />
               </span>
-              {action.accent === 'body' && (
-                <span className="overview-body-float-rings" aria-hidden="true">
-                  <span />
-                  <span />
-                  <span />
-                </span>
-              )}
             </span>
             <span className="overview-primary-action-copy">
               <strong>{action.label}</strong>
@@ -653,13 +667,13 @@ function OverviewPrimaryActions({ onNavigateSection, onOpenBodyScan, onOpenCoach
           </>
         )
 
-        if (action.accent === 'food') {
+        if (action.accent === 'body' || action.accent === 'food') {
           return (
-            <div className="overview-primary-action is-food" key={action.label}>
+            <div className={`overview-primary-action is-${action.accent}`} key={action.label}>
               <button
                 className="overview-primary-action-hit"
                 type="button"
-                aria-label="Läs ingredienser"
+                aria-label={action.accent === 'body' ? 'Öppna kroppsscanning i helskärm' : 'Läs ingredienser'}
                 onClick={action.onClick}
               >
                 {visual}
@@ -668,10 +682,10 @@ function OverviewPrimaryActions({ onNavigateSection, onOpenBodyScan, onOpenCoach
               <button
                 className="overview-primary-action-chevron"
                 type="button"
-                aria-label="Skanna mat med kamera"
-                onClick={action.onScanFood}
+                aria-label={action.accent === 'body' ? 'Skanna kropp med kamera' : 'Skanna mat med kamera'}
+                onClick={action.onScan}
               >
-                <OverviewIcon name={action.actionIcon} />
+                <OverviewIcon name="foodCamera" />
               </button>
             </div>
           )
@@ -679,20 +693,16 @@ function OverviewPrimaryActions({ onNavigateSection, onOpenBodyScan, onOpenCoach
 
         return (
           <button
-            className={`overview-primary-action is-${action.accent}`}
+            className="overview-primary-action is-coach"
             key={action.label}
             type="button"
-            aria-label={action.accent === 'body' ? 'Öppna kroppsscanning i helskärm' : 'Öppna AI Coach'}
+            aria-label="Öppna AI Coach"
             onClick={action.onClick}
           >
             {visual}
-            {action.accent === 'body' ? (
-              <span className="overview-tap-me">tap me</span>
-            ) : (
-              <span className="overview-primary-action-chevron" aria-hidden="true">
-                <OverviewIcon name={action.actionIcon} />
-              </span>
-            )}
+            <span className="overview-primary-action-chevron" aria-hidden="true">
+              <OverviewIcon name={action.actionIcon} />
+            </span>
           </button>
         )
       })}
@@ -979,14 +989,12 @@ function OverviewDashboard({
   return (
     <div className="home-overview-shell">
       <header className="overview-app-header">
-        <div>
-          <h1>Översikt</h1>
-          <OverviewLiveMeta
-            liveContext={liveContext}
-            onConnectWeather={connectWeather}
-            weatherStatus={weatherStatus}
-          />
-        </div>
+        <h1 className="sr-only">Hem</h1>
+        <OverviewLiveMeta
+          liveContext={liveContext}
+          onConnectWeather={connectWeather}
+          weatherStatus={weatherStatus}
+        />
         <div className="overview-header-actions">
           <button
             aria-label="Visa smarta notiser"
@@ -1005,15 +1013,13 @@ function OverviewDashboard({
             >
               {profilePhoto ? <img alt="" src={profilePhoto} /> : initials}
             </button>
-            <label className="overview-avatar-photo" htmlFor="overview-profile-photo-input">
-              <span className="sr-only">Lägg till profilbild</span>
-              <input
-                accept="image/*"
-                id="overview-profile-photo-input"
-                type="file"
-                onChange={handleProfilePhotoChange}
-              />
-            </label>
+            <input
+              accept="image/*"
+              className="sr-only"
+              id="overview-profile-photo-input"
+              type="file"
+              onChange={handleProfilePhotoChange}
+            />
           </div>
         </div>
       </header>
@@ -1025,6 +1031,10 @@ function OverviewDashboard({
           onOpenCoach={() => setCoachOpen(true)}
           onOpenFoodScan={() => setFoodScanOpen(true)}
           onScanFood={onScanFood}
+          onStartBodyScan={() => {
+            if (onNavigateSection) onNavigateSection('progress', 'body-analysis')
+            else scrollToTarget('body-analysis')
+          }}
         />
       </section>
 

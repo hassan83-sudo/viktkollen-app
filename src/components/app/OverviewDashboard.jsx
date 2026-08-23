@@ -1107,10 +1107,7 @@ function OverviewDashboard({
         />
       )}
       {foodScanOpen && (
-        <OverviewFoodScanStage
-          meals={meals}
-          onClose={() => setFoodScanOpen(false)}
-        />
+        <OverviewFoodScanStage onClose={() => setFoodScanOpen(false)} />
       )}
 
       <section className="overview-more-section home-last-content" aria-labelledby="overview-more-title">

@@ -5,8 +5,12 @@ import {
   canCompleteBodyAnalysisScan,
   estimateLightQualityFromImageData,
   getBodyAnalysisView,
+  getBodyScanProgress,
+  getBodyScanStepState,
+  getCameraPermissionMessage,
   getCompletedBodyAnalysisViews,
   getNextBodyAnalysisViewKey,
+  stopMediaStream,
 } from '../services/bodyAnalysisGuidedScan'
 
 function BodyAnalysisUploader({
@@ -22,12 +26,15 @@ function BodyAnalysisUploader({
   const [cameraActive, setCameraActive] = useState(false)
   const [countdown, setCountdown] = useState(null)
   const [lightQuality, setLightQuality] = useState(null)
+  const cameraBoxRef = useRef(null)
   const countdownTimerRef = useRef(null)
+  const fileInputRef = useRef(null)
   const streamRef = useRef(null)
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const activeView = getBodyAnalysisView(activeViewKey)
   const completedViews = getCompletedBodyAnalysisViews(photos)
+  const progress = getBodyScanProgress(photos)
   const hasCameraApi =
     typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia)
   const isSecureCameraContext = typeof window !== 'undefined' && window.isSecureContext === true
@@ -37,14 +44,24 @@ function BodyAnalysisUploader({
 
   useEffect(() => () => {
     window.clearTimeout(countdownTimerRef.current)
-    streamRef.current?.getTracks?.().forEach((track) => track.stop())
+    stopMediaStream(streamRef.current)
   }, [])
+
+  useEffect(() => {
+    const video = videoRef.current
+    const stream = streamRef.current
+    if (!video || !stream || !cameraActive) return
+    if (video.srcObject !== stream) {
+      video.srcObject = stream
+    }
+    video.play?.().catch(() => {})
+  }, [activeViewKey, cameraActive])
 
   function stopCamera(message = 'Kameran är stoppad.') {
     window.clearTimeout(countdownTimerRef.current)
     countdownTimerRef.current = null
     setCountdown(null)
-    streamRef.current?.getTracks?.().forEach((track) => track.stop())
+    stopMediaStream(streamRef.current)
     streamRef.current = null
     if (videoRef.current) videoRef.current.srcObject = null
     setCameraActive(false)
@@ -62,28 +79,25 @@ function BodyAnalysisUploader({
     setActiveViewKey(getNextBodyAnalysisViewKey(activeViewKey, nextPhotos))
   }
 
-  function handleFileChange(event, viewKey) {
-    const file = event.target.files?.[0]
-
-    if (!file) return
-
-    onPhotoChange(file, viewKey)
-    moveToNextView({ ...photos, [viewKey]: true })
-    event.target.value = ''
+  function focusCaptureArea() {
+    cameraBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }
 
-  async function startCamera() {
+  async function startCamera(viewKey = activeViewKey) {
+    const view = getBodyAnalysisView(viewKey)
     if (!canUseLiveCamera) {
-      setCameraStatus(hasCameraApi ? 'Livekamera kräver normalt HTTPS eller localhost i Safari. Tryck Ta eller välj bild för kamera/bildbibliotek.' : 'Livekamera stöds inte här. Tryck Ta eller välj bild för kamera/bildbibliotek.')
-      return
+      setCameraStatus(hasCameraApi
+        ? 'Livekamera kräver normalt HTTPS eller localhost i Safari. Tryck Ta bild eller Välj bild för kamera/bildbibliotek.'
+        : 'Livekamera stöds inte här. Tryck Ta bild eller Välj bild för kamera/bildbibliotek.')
+      return false
     }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
-        video: { facingMode: 'user' },
+        video: { facingMode: { ideal: 'environment' } },
       })
-      streamRef.current?.getTracks?.().forEach((track) => track.stop())
+      stopMediaStream(streamRef.current)
       streamRef.current = stream
       setCameraActive(true)
 
@@ -92,11 +106,39 @@ function BodyAnalysisUploader({
         await videoRef.current.play?.()
       }
 
-      setCameraStatus('Kameran är redo.')
-    } catch {
+      setCameraStatus(`Kameran är redo för ${view.label.toLowerCase()}.`)
+      return true
+    } catch (error) {
       setCameraActive(false)
-      setCameraStatus('Kameran kunde inte starta. Kontrollera behörighet eller välj bild från mobilen.')
+      setCameraStatus(getCameraPermissionMessage(error))
+      return false
     }
+  }
+
+  function activateAngle(viewKey, { retake = false } = {}) {
+    const view = getBodyAnalysisView(viewKey)
+    setActiveViewKey(viewKey)
+    if (retake) {
+      onPhotoChange(null, viewKey)
+    }
+    setCameraStatus(retake ? `Ta om ${view.label.toLowerCase()}.` : `Vald vinkel: ${view.label}.`)
+    focusCaptureArea()
+
+    if (canUseLiveCamera) {
+      startCamera(viewKey)
+      return
+    }
+
+    fileInputRef.current?.click()
+  }
+
+  function handleFileChange(event, viewKey) {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    onPhotoChange(file, viewKey)
+    moveToNextView({ ...photos, [viewKey]: true })
+    event.target.value = ''
   }
 
   function updateLightQuality() {
@@ -126,7 +168,7 @@ function BodyAnalysisUploader({
     const video = videoRef.current
     const canvas = canvasRef.current
     const capturedViewKey = activeViewKey
-    const capturedView = activeView
+    const capturedView = getBodyAnalysisView(capturedViewKey)
 
     if (!video || !canvas || !video.videoWidth || !video.videoHeight) {
       setCameraStatus('Kamerabilden är inte redo ännu.')
@@ -149,7 +191,7 @@ function BodyAnalysisUploader({
       onPhotoChange(file, capturedViewKey, canvas.toDataURL('image/jpeg', 0.88))
       moveToNextView({ ...photos, [capturedViewKey]: true })
       setCountdown(null)
-      setCameraStatus(`${capturedView.doneLabel}.`)
+      setCameraStatus(`${capturedView.doneLabel}. Nästa steg är redo.`)
     }, 'image/jpeg', 0.88)
   }
 
@@ -166,6 +208,10 @@ function BodyAnalysisUploader({
 
   function startCountdown() {
     if (isCountingDown) return
+    if (!cameraActive) {
+      setCameraStatus('Starta kameran eller välj bild för den valda vinkeln.')
+      return
+    }
     updateLightQuality()
     setCameraStatus(`Ta plats för ${activeView.label.toLowerCase()}.`)
     tickCountdown(3)
@@ -179,22 +225,34 @@ function BodyAnalysisUploader({
             <p className="eyebrow">Steg {bodyAnalysisViews.findIndex((view) => view.key === activeViewKey) + 1} av 3</p>
             <h3 id="body-scan-step-title">{activeView.label}</h3>
           </div>
-          <span>{completedViews.length}/3 klara</span>
+          <span>{progress.label} klara</span>
         </div>
 
         <div className="body-scan-steps" aria-label="Bildvinklar">
-          {bodyAnalysisViews.map((view, index) => (
-            <button
-              className={view.key === activeViewKey ? 'is-active' : ''}
-              key={view.key}
-              type="button"
-              onClick={() => setActiveViewKey(view.key)}
-            >
-              <span>Steg {index + 1}</span>
-              <strong>{view.label}</strong>
-              <small>{photos[view.key] ? `✓ ${view.doneLabel}` : 'Väntar'}</small>
-            </button>
-          ))}
+          {bodyAnalysisViews.map((view, index) => {
+            const stepState = getBodyScanStepState(view.key, activeViewKey, photos)
+            return (
+              <button
+                aria-current={view.key === activeViewKey ? 'step' : undefined}
+                aria-label={`Öppna scanning för ${view.label}`}
+                className={view.key === activeViewKey ? 'is-active' : ''}
+                data-state={stepState}
+                key={view.key}
+                type="button"
+                onClick={() => activateAngle(view.key)}
+              >
+                <span>Steg {index + 1}</span>
+                <strong>{view.label}</strong>
+                <small>
+                  {photos[view.key]
+                    ? `✓ ${view.doneLabel}`
+                    : view.key === activeViewKey
+                      ? 'Aktiv'
+                      : 'Väntar'}
+                </small>
+              </button>
+            )
+          })}
         </div>
 
         <div className="body-scan-guide">
@@ -212,7 +270,7 @@ function BodyAnalysisUploader({
           </p>
         </div>
 
-        <div className="body-scan-camera">
+        <div className="body-scan-camera" id="body-scan-camera" ref={cameraBoxRef}>
           <video ref={videoRef} playsInline muted aria-label="Kameraförhandsvisning för body scan" />
           <canvas ref={canvasRef} aria-hidden="true" />
           {countdown !== null && (
@@ -243,6 +301,7 @@ function BodyAnalysisUploader({
             Välj bild
             <input
               id={`body-scan-file-${activeViewKey}`}
+              ref={fileInputRef}
               type="file"
               accept="image/*"
               capture="environment"
@@ -279,9 +338,10 @@ function BodyAnalysisUploader({
                 <figcaption>
                   {view.doneLabel}: {photo.name}
                   <button
+                    aria-label={`Ta om ${view.label}`}
                     className="secondary-button"
                     type="button"
-                    onClick={() => setActiveViewKey(view.key)}
+                    onClick={() => activateAngle(view.key, { retake: true })}
                   >
                     Ta om
                   </button>
@@ -293,6 +353,7 @@ function BodyAnalysisUploader({
       )}
 
       <button
+        className="body-scan-analyze"
         type="button"
         aria-label="Starta AI-kroppsanalys med tre valda vinklar"
         onClick={onAnalyze}

@@ -1,13 +1,18 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
   bodyAnalysisViews,
   canCompleteBodyAnalysisScan,
   estimateLightQualityFromImageData,
   getAngleMatchedComparison,
+  getCameraPermissionMessage,
   getCompletedBodyAnalysisViews,
   getLightQualityFromLuminance,
   getNextBodyAnalysisViewKey,
+  recordBodyScanPhoto,
+  revokeBodyScanPreview,
+  selectBodyScanAngle,
+  stopMediaStream,
 } from './bodyAnalysisGuidedScan.js'
 
 const photo = (name) => ({ name, preview: `data:image/jpeg;base64,${name}` })
@@ -17,6 +22,44 @@ describe('bodyAnalysisGuidedScan', () => {
     expect(bodyAnalysisViews.map((view) => view.key)).toEqual(['front', 'side', 'back'])
     expect(bodyAnalysisViews[0].label).toBe('Framifrån')
     expect(bodyAnalysisViews[2].poseTips.join(' ')).toContain('ryggen')
+  })
+
+  it('selects an angle, records photos in the right slot, and retakes one angle only', () => {
+    const front = photo('front')
+    const side = photo('side')
+    const back = photo('back')
+
+    expect(selectBodyScanAngle({}, 'side').activeViewKey).toBe('side')
+    expect(recordBodyScanPhoto({}, 'front', front).progress.label).toBe('1/3')
+    expect(recordBodyScanPhoto({ front }, 'side', side).progress.label).toBe('2/3')
+
+    const complete = recordBodyScanPhoto({ front, side }, 'back', back)
+    expect(complete.progress.label).toBe('3/3')
+    expect(complete.canAnalyze).toBe(true)
+
+    const retakeFront = selectBodyScanAngle(complete.photos, 'front', { retake: true })
+    expect(retakeFront.activeViewKey).toBe('front')
+    expect(retakeFront.photos.front).toBeUndefined()
+    expect(retakeFront.photos.side).toEqual(side)
+    expect(retakeFront.photos.back).toEqual(back)
+    expect(retakeFront.canAnalyze).toBe(false)
+    expect(retakeFront.progress.label).toBe('2/3')
+  })
+
+  it('stops media tracks and revokes blob previews', () => {
+    const stop = vi.fn()
+    stopMediaStream({ getTracks: () => [{ stop }, { stop }] })
+    expect(stop).toHaveBeenCalledTimes(2)
+
+    const revoke = vi.spyOn(URL, 'revokeObjectURL')
+    revokeBodyScanPreview({ preview: 'blob:http://localhost/scan' })
+    expect(revoke).toHaveBeenCalledWith('blob:http://localhost/scan')
+    revoke.mockRestore()
+  })
+
+  it('explains camera permission denials', () => {
+    expect(getCameraPermissionMessage({ name: 'NotAllowedError' })).toContain('nekades')
+    expect(getCameraPermissionMessage({ name: 'NotFoundError' })).toContain('kamera')
   })
 
   it('walks front to side to back and requires all angles before completion', () => {

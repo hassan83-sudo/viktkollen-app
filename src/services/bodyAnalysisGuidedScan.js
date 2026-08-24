@@ -43,8 +43,73 @@ export function getNextBodyAnalysisViewKey(currentKey, photos = {}) {
   const nextMissingView = bodyAnalysisViews
     .slice(Math.max(0, currentIndex + 1))
     .find((view) => !photos[view.key])
+    || bodyAnalysisViews.find((view) => !photos[view.key])
 
   return nextMissingView?.key || currentKey
+}
+
+export function getBodyScanProgress(photos = {}) {
+  const completed = getCompletedBodyAnalysisViews(photos).length
+  return {
+    completed,
+    label: `${completed}/3`,
+    total: bodyAnalysisViews.length,
+  }
+}
+
+export function getBodyScanStepState(viewKey, activeViewKey, photos = {}) {
+  if (photos[viewKey]) return 'done'
+  if (viewKey === activeViewKey) return 'active'
+  return 'waiting'
+}
+
+export function selectBodyScanAngle(photos = {}, viewKey, { retake = false } = {}) {
+  const nextPhotos = retake ? { ...photos, [viewKey]: null } : { ...photos }
+  if (retake) {
+    delete nextPhotos[viewKey]
+  }
+
+  return {
+    activeViewKey: viewKey,
+    canAnalyze: canCompleteBodyAnalysisScan(nextPhotos),
+    photos: nextPhotos,
+    progress: getBodyScanProgress(nextPhotos),
+  }
+}
+
+export function recordBodyScanPhoto(photos = {}, viewKey, photo) {
+  const nextPhotos = { ...photos, [viewKey]: photo }
+
+  return {
+    activeViewKey: getNextBodyAnalysisViewKey(viewKey, nextPhotos),
+    canAnalyze: canCompleteBodyAnalysisScan(nextPhotos),
+    photos: nextPhotos,
+    progress: getBodyScanProgress(nextPhotos),
+  }
+}
+
+export function revokeBodyScanPreview(photo) {
+  const preview = photo?.preview
+  if (typeof preview === 'string' && preview.startsWith('blob:')) {
+    URL.revokeObjectURL(preview)
+  }
+}
+
+export function stopMediaStream(stream) {
+  stream?.getTracks?.().forEach((track) => {
+    track.stop()
+  })
+}
+
+export function getCameraPermissionMessage(error) {
+  const name = error?.name || ''
+  if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+    return 'Kamerabehörighet nekades. Tillåt kamera eller välj bild från mobilen.'
+  }
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+    return 'Ingen bakre kamera hittades. Välj bild från mobilen i stället.'
+  }
+  return 'Kameran kunde inte starta. Kontrollera behörighet eller välj bild från mobilen.'
 }
 
 export function getCompletedBodyAnalysisViews(photos = {}) {

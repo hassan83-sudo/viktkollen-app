@@ -4,6 +4,7 @@ import { getAnalysisComparison } from '../services/bodyAnalysisComparison'
 import {
   canCompleteBodyAnalysisScan,
   getAngleMatchedComparison,
+  revokeBodyScanPreview,
 } from '../services/bodyAnalysisGuidedScan'
 import {
   addAnalysis,
@@ -523,13 +524,16 @@ function BodyAnalysisCard({
   const latestAiStatus = getLatestAiStatus(savedAnalysis)
 
   function handlePhotoChange(fileOrEvent, view, previewOverride = '') {
-    const file = fileOrEvent?.target?.files?.[0] || fileOrEvent
+    const file = fileOrEvent === null || fileOrEvent === undefined
+      ? null
+      : fileOrEvent?.target?.files?.[0] || fileOrEvent
 
-    if (!file) {
-      return
-    }
+    function applyPhoto(photo) {
+      const currentPhoto = view === 'front' ? frontPhoto : view === 'back' ? backPhoto : sidePhoto
+      if (currentPhoto && currentPhoto !== photo) {
+        revokeBodyScanPreview(currentPhoto)
+      }
 
-    function setPhoto(photo) {
       if (view === 'front') {
         setFrontPhoto(photo)
       } else if (view === 'back') {
@@ -545,8 +549,13 @@ function BodyAnalysisCard({
       setAnalysisStatus(canCompleteBodyAnalysisScan(nextPhotos) ? 'Redo att analysera' : 'Väntar på tre vinklar')
     }
 
+    if (!file) {
+      applyPhoto(null)
+      return
+    }
+
     if (previewOverride) {
-      setPhoto({
+      applyPhoto({
         file,
         name: file.name,
         preview: previewOverride,
@@ -557,7 +566,7 @@ function BodyAnalysisCard({
     const reader = new FileReader()
 
     reader.addEventListener('load', () => {
-      setPhoto({
+      applyPhoto({
         file,
         name: file.name,
         preview: typeof reader.result === 'string' ? reader.result : '',

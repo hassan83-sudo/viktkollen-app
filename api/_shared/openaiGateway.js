@@ -319,6 +319,111 @@ function timeoutSignal(ms, upstreamSignal) {
   }
 }
 
+export const DEFAULT_VOICE_AI_MODEL = 'gpt-4o-mini-realtime-preview'
+export const DEFAULT_VOICE_IDLE_TIMEOUT_MS = 45000
+export const DEFAULT_VOICE_MAX_SESSION_MS = 180000
+const OPENAI_REALTIME_SESSIONS_URL = 'https://api.openai.com/v1/realtime/sessions'
+
+export function getVoiceAiGatewayConfig(env = process.env) {
+  const idleTimeoutMs = Number(env.VOICE_IDLE_TIMEOUT_MS || DEFAULT_VOICE_IDLE_TIMEOUT_MS)
+  const maxSessionMs = Number(env.VOICE_MAX_SESSION_MS || DEFAULT_VOICE_MAX_SESSION_MS)
+
+  return {
+    configured: Boolean(env.OPENAI_API_KEY),
+    idleTimeoutMs: Number.isFinite(idleTimeoutMs) ? idleTimeoutMs : DEFAULT_VOICE_IDLE_TIMEOUT_MS,
+    maxSessionMs: Number.isFinite(maxSessionMs) ? maxSessionMs : DEFAULT_VOICE_MAX_SESSION_MS,
+    model: env.VOICE_AI_MODEL || env.OPENAI_VOICE_MODEL || DEFAULT_VOICE_AI_MODEL,
+    voice: env.VOICE_AI_VOICE || 'alloy',
+  }
+}
+
+export async function createRealtimeVoiceSession({
+  env = process.env,
+  fetchImpl = fetch,
+  instructions,
+  requestId = createSafeRequestId('voice'),
+} = {}) {
+  const config = getVoiceAiGatewayConfig(env)
+
+  if (!env.OPENAI_API_KEY) {
+    return {
+      available: false,
+      error: makeAiError(
+        'aiNotConfigured',
+        'Röstsamtal är inte tillgängligt just nu.',
+        503,
+        false,
+        requestId,
+      ).error,
+      ok: false,
+      requestId,
+    }
+  }
+
+  try {
+    const response = await fetchImpl(OPENAI_REALTIME_SESSIONS_URL, {
+      body: JSON.stringify({
+        instructions,
+        model: config.model,
+        turn_detection: {
+          create_response: true,
+          interrupt_response: true,
+          type: 'server_vad',
+        },
+        voice: config.voice,
+      }),
+      headers: {
+        Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+        'OpenAI-Beta': 'realtime=v1',
+      },
+      method: 'POST',
+    })
+
+    const data = await response.json().catch(() => ({}))
+    const clientSecret = data?.client_secret?.value || data?.client_secret || ''
+
+    if (!response.ok || !clientSecret || String(clientSecret).startsWith('sk-')) {
+      return {
+        available: false,
+        error: makeAiError(
+          'providerUnavailable',
+          'Röstsamtal är inte tillgängligt just nu.',
+          response.status >= 400 ? response.status : 502,
+          true,
+          requestId,
+        ).error,
+        ok: false,
+        requestId,
+      }
+    }
+
+    return {
+      available: true,
+      clientSecret: String(clientSecret),
+      expiresAt: data.client_secret?.expires_at || data.expires_at || null,
+      idleTimeoutMs: config.idleTimeoutMs,
+      maxSessionMs: config.maxSessionMs,
+      model: data.model || config.model,
+      ok: true,
+      requestId,
+    }
+  } catch {
+    return {
+      available: false,
+      error: makeAiError(
+        'providerUnavailable',
+        'Röstsamtal är inte tillgängligt just nu.',
+        502,
+        true,
+        requestId,
+      ).error,
+      ok: false,
+      requestId,
+    }
+  }
+}
+
 export function getAiGatewayConfig(type = 'coach', env = process.env) {
   return {
     configured: Boolean(env.OPENAI_API_KEY),

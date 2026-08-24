@@ -140,6 +140,41 @@ export async function createLocalSmartChatReply({
   }
 }
 
+export function buildCoachRealtimeSessionPayload(appData = {}, chatHistory = []) {
+  return {
+    ...buildCoachChatRemotePayload(appData, 'starta röstsamtal', chatHistory),
+    action: 'realtime-session',
+  }
+}
+
+export async function requestCoachRealtimeSession({
+  appData,
+  chatHistory = [],
+} = {}) {
+  const remote = await requestAiEndpoint(
+    buildCoachRealtimeSessionPayload(appData, makeRecentCoachChatHistory(chatHistory)),
+  )
+  const clientSecret = remote.ok && typeof remote.data?.clientSecret === 'string'
+    ? remote.data.clientSecret.trim()
+    : ''
+
+  if (!remote.ok || remote.data?.available === false || !clientSecret) {
+    return {
+      available: false,
+      message: remote.data?.message || remote.reason || 'Röstsamtal är inte tillgängligt just nu.',
+    }
+  }
+
+  return {
+    available: true,
+    clientSecret,
+    expiresAt: remote.data.expiresAt || null,
+    idleTimeoutMs: Number(remote.data.idleTimeoutMs) || 45000,
+    maxSessionMs: Number(remote.data.maxSessionMs) || 180000,
+    model: remote.data.model || '',
+  }
+}
+
 export async function requestCoachChatReply({
   appData,
   chatHistory,

@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   callOpenAiJson,
   checkRateLimit,
+  createRealtimeVoiceSession,
   getAiGatewayConfig,
+  getVoiceAiGatewayConfig,
   openAiGatewayInternals,
   parseJsonResponseText,
 } from './openaiGateway.js'
@@ -439,5 +441,31 @@ describe('openaiGateway', () => {
     expect(openAiGatewayInternals.safeThrownErrorText('Authorization Bearer secret')).toBe('')
     expect(openAiGatewayInternals.safeThrownErrorText('data:image/png;base64,abc')).toBe('')
     expect(openAiGatewayInternals.safeThrownErrorText('Socket closed safely')).toBe('Socket closed safely')
+  })
+
+  it('keeps the realtime voice model server-configurable without exposing the API key', async () => {
+    const config = getVoiceAiGatewayConfig({
+      OPENAI_API_KEY: 'secret-value',
+      VOICE_AI_MODEL: 'gpt-4o-mini-realtime-preview',
+    })
+
+    expect(config.model).toBe('gpt-4o-mini-realtime-preview')
+    expect(JSON.stringify(config)).not.toContain('secret-value')
+
+    const session = await createRealtimeVoiceSession({
+      env: { OPENAI_API_KEY: 'secret-value', VOICE_AI_MODEL: 'gpt-4o-mini-realtime-preview' },
+      fetchImpl: vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          client_secret: { expires_at: 1700000000, value: 'ek_test' },
+          model: 'gpt-4o-mini-realtime-preview',
+        }),
+      })),
+      instructions: 'Du är Viktkollens röstcoach.',
+    })
+
+    expect(session.ok).toBe(true)
+    expect(session.clientSecret).toBe('ek_test')
+    expect(JSON.stringify(session)).not.toMatch(/secret-value|OPENAI_API_KEY|Bearer/)
   })
 })

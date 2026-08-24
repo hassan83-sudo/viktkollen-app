@@ -8,6 +8,7 @@ function ChatPanel({
   chatInput,
   chatMessages,
   chatThreadRef,
+  compact = false,
   isAiSpeaking,
   isAiVoiceEnabled,
   isListening,
@@ -24,7 +25,7 @@ function ChatPanel({
   voiceStatus,
 }) {
   return (
-    <article className="panel chat-panel" id="chat">
+    <article className={`panel chat-panel ${compact ? 'is-compact' : ''}`} id="chat">
       <div className="panel-heading">
         <div>
           <p className="eyebrow">AI Coach</p>
@@ -38,6 +39,20 @@ function ChatPanel({
         >
           Rensa chatten
         </button>
+      </div>
+
+      <div className="coach-voice-dock">
+        <button
+          className={`coach-voice-mic ${isListening ? 'is-listening' : ''} ${isVoiceConversationActive ? 'is-active' : ''}`}
+          type="button"
+          aria-label={isVoiceConversationActive ? 'Avsluta samtal' : 'Tryck för att prata'}
+          onClick={onStartVoiceInput}
+        >
+          🎙️
+        </button>
+        <p className="coach-voice-mic-label">
+          {isVoiceConversationActive ? (voiceStatus || 'Lyssnar...') : 'Tryck för att prata'}
+        </p>
       </div>
 
       <QuickActions

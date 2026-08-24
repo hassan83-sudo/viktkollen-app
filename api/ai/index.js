@@ -4,7 +4,9 @@ import { classifyAiCoachIntent } from '../../src/services/aiCoachIntentService.j
 import {
   createAiCoachPrompt,
   createLocalAiCoachReply,
+  createVoiceCoachInstructions,
 } from '../../src/services/aiCoachPrompt.js'
+import { createRealtimeVoiceSession } from '../_shared/openaiGateway.js'
 import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
@@ -348,6 +350,39 @@ async function handleChat(data, response) {
   })
 }
 
+async function handleRealtimeSession(data, response) {
+  const chatEngine = getChatEngineData({
+    ...data,
+    message: data.message || 'starta röstsamtal',
+  })
+  const session = await createRealtimeVoiceSession({
+    instructions: createVoiceCoachInstructions({
+      context: chatEngine.context,
+      intent: chatEngine.intent,
+    }),
+  })
+
+  if (!session.ok || !session.available) {
+    return response.status(200).json({
+      available: false,
+      message: 'Röstsamtal är inte tillgängligt just nu.',
+      ok: true,
+      source: 'unavailable',
+    })
+  }
+
+  return response.status(200).json({
+    available: true,
+    clientSecret: session.clientSecret,
+    expiresAt: session.expiresAt,
+    idleTimeoutMs: session.idleTimeoutMs,
+    maxSessionMs: session.maxSessionMs,
+    model: session.model,
+    ok: true,
+    source: 'openai',
+  })
+}
+
 async function handleStudyBuddy(data, response) {
   if (!process.env.OPENAI_API_KEY) {
     return response.status(200).json({
@@ -539,6 +574,10 @@ export default async function handler(request, response) {
 
   if (body.action === 'chat') {
     return handleChat(body, response)
+  }
+
+  if (body.action === 'realtime-session') {
+    return handleRealtimeSession(body, response)
   }
 
   if (body.action === 'study-buddy') {

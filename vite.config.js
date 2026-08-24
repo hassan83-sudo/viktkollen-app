@@ -33,6 +33,9 @@ export function loadServerOnlyDevEnv(mode, envLoader = loadEnv) {
   const serverKeys = [
     'OPENAI_API_KEY',
     'OPENAI_COACH_MODEL',
+    'VOICE_AI_MODEL',
+    'VOICE_IDLE_TIMEOUT_MS',
+    'VOICE_MAX_SESSION_MS',
     'NUTRITION_PHOTO_MODEL',
     'OPENAI_MODEL',
     'OPENAI_PHOTO_MODEL',

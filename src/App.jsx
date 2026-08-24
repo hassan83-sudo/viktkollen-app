@@ -77,8 +77,13 @@ import {
 } from './services/profileService.js'
 import * as userDataRepository from './services/userDataRepository.js'
 import { loadAiApiService, loadAiCoachV2Service, loadAiSuggestions, loadAiUserContext, loadProactiveCoachService, loadWeeklyReportService } from './services/ai/aiRuntimeLoader.js'
-import { prepareCoachChatSubmission, requestCoachChatReply } from './services/ai/aiChatController.js'
+import { prepareCoachChatSubmission, requestCoachChatReply, requestCoachRealtimeSession } from './services/ai/aiChatController.js'
+import AiCoachOverlay from './components/AiCoachOverlay.jsx'
 import { createVoiceConversationController } from './services/voiceConversationController.js'
+import {
+  connectOpenAiRealtimeWebRtc,
+  createRealtimeVoiceController,
+} from './services/ai/realtimeVoiceController.js'
 import {
   incrementPremiumAnalyticsCounter,
   premiumAnalyticsCounters,
@@ -854,6 +859,9 @@ function App() {
   const chatMessagesRef = useRef(initialChatMessages)
   const isAiVoiceEnabledRef = useRef(true)
   const voiceConversationRef = useRef(null)
+  const realtimeVoiceRef = useRef(null)
+  const [aiCoachOverlayOpen, setAiCoachOverlayOpen] = useState(false)
+  const [isVoiceMuted, setIsVoiceMuted] = useState(false)
   const [authError, setAuthError] = useState('')
   const [authLoading, setAuthLoading] = useState(true)
   const [authNotice, setAuthNotice] = useState('')
@@ -1761,6 +1769,7 @@ function App() {
   useEffect(
     () => () => {
       voiceConversationRef.current?.dispose()
+      realtimeVoiceRef.current?.stop()
 
       if (barcodeTimerRef.current) {
         window.clearInterval(barcodeTimerRef.current)
@@ -2589,9 +2598,43 @@ function App() {
     submitChatText(chatInput)
   }
 
+  function stopAllVoiceSessions() {
+    realtimeVoiceRef.current?.stop()
+    voiceConversationRef.current?.stop()
+    setIsVoiceMuted(false)
+  }
+
   async function startVoiceInput() {
+    if (realtimeVoiceRef.current?.isActive()) {
+      realtimeVoiceRef.current.stop()
+      return
+    }
+
     if (voiceConversationRef.current?.isActive()) {
       voiceConversationRef.current.stop()
+      return
+    }
+
+    realtimeVoiceRef.current = createRealtimeVoiceController({
+      connectRealtime: connectOpenAiRealtimeWebRtc,
+      getUserMedia: (constraints) => navigator.mediaDevices.getUserMedia(constraints),
+      onStatus: setVoiceStatus,
+      requestSession: () => requestCoachRealtimeSession({
+        appData: getAiCoachAppData(),
+        chatHistory: chatMessagesRef.current,
+      }),
+      setActive: setIsVoiceConversationActive,
+      setListening: setIsListening,
+      setMuted: setIsVoiceMuted,
+      setSpeaking: setIsAiSpeaking,
+    })
+
+    const realtimeResult = await realtimeVoiceRef.current.start()
+    if (realtimeResult?.ok) {
+      trackPremiumCounter(premiumAnalyticsCounters.voiceSessions)
+      return
+    }
+    if (realtimeResult?.reason === 'denied') {
       return
     }
 
@@ -2617,6 +2660,18 @@ function App() {
 
   function stopAiVoiceResponse() {
     voiceConversationRef.current?.stopSpeakingAndResume?.()
+  }
+
+  function toggleVoiceMute() {
+    const nextMuted = !isVoiceMuted
+    realtimeVoiceRef.current?.setMicrophoneMuted?.(nextMuted)
+    setIsVoiceMuted(nextMuted)
+  }
+
+  function closeAiCoachOverlay() {
+    stopAllVoiceSessions()
+    setAiCoachOverlayOpen(false)
+    setVoiceStatus('')
   }
 
   function handleAiVoiceEnabledChange(enabled) {
@@ -2831,6 +2886,7 @@ function App() {
             onHealthDashboardPeriodChange={setHealthDashboardPeriod}
             onLogWeight={handleDailyCoachLogWeight}
             onNavigateSection={handleDailyCoachAction}
+            onOpenAiCoach={() => setAiCoachOverlayOpen(true)}
             onScanFood={handleDailyCoachScanFood}
             profile={validatedProfile}
             progressInsights={progressInsights}
@@ -2840,6 +2896,32 @@ function App() {
             selectedMealDate={selectedMealDate}
             syncStatus={syncStatusSnapshot}
             weights={centralWeightStats.weights}
+          />
+        )}
+        {aiCoachOverlayOpen && (
+          <AiCoachOverlay
+            canClearChat={chatMessages.length > initialChatMessages.length}
+            chatEngineStatus={chatEngineStatus}
+            chatInput={chatInput}
+            chatMessages={chatMessages}
+            chatThreadRef={chatThreadRef}
+            isAiSpeaking={isAiSpeaking}
+            isAiVoiceEnabled={isAiVoiceEnabled}
+            isListening={isListening}
+            isVoiceConversationActive={isVoiceConversationActive}
+            isVoiceMuted={isVoiceMuted}
+            messagesEndRef={messagesEndRef}
+            onAiVoiceEnabledChange={handleAiVoiceEnabledChange}
+            onChatInputChange={setChatInput}
+            onClearChat={clearChat}
+            onClose={closeAiCoachOverlay}
+            onSendChatMessage={sendChatMessage}
+            onStartVoiceInput={startVoiceInput}
+            onStarterPrompt={handleStarterPrompt}
+            onStopAiVoiceResponse={stopAiVoiceResponse}
+            onToggleVoiceMute={toggleVoiceMute}
+            starterPrompts={aiStarterPrompts}
+            voiceStatus={voiceStatus}
           />
         )}
 

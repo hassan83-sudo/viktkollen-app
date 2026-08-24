@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { requestAiEndpoint } from '../aiApiService.js'
 import {
   buildCoachChatRemotePayload,
+  buildCoachRealtimeSessionPayload,
   requestCoachChatReply,
+  requestCoachRealtimeSession,
 } from './aiChatController.js'
 
 vi.mock('../aiApiService.js', () => ({
@@ -60,5 +62,38 @@ describe('aiChatController', () => {
       reply: 'Du ligger på 83,8 kg. Sikta på kyckling, nötkött eller ägg till middag.',
       source: 'openai',
     })
+  })
+
+  it('requests a realtime session through /api/ai without exposing secrets in the payload', () => {
+    const payload = buildCoachRealtimeSessionPayload(
+      {
+        checkIn: { steps: 7200 },
+        healthSnapshot: { weight: { current: 83.8 } },
+        nutritionGoals: { protein: 145 },
+        profile: { name: 'Hassan' },
+      },
+      [{ role: 'user', text: 'Hej' }],
+    )
+
+    expect(payload.action).toBe('realtime-session')
+    expect(payload.currentWeight).toBe(83.8)
+    expect(JSON.stringify(payload)).not.toMatch(/OPENAI_API_KEY|sk-/)
+  })
+
+  it('treats a missing realtime session as unavailable', async () => {
+    requestAiEndpoint.mockResolvedValue({
+      data: { available: false, message: 'Röstsamtal är inte tillgängligt just nu.' },
+      ok: true,
+      source: 'unavailable',
+    })
+
+    const result = await requestCoachRealtimeSession({
+      appData: { profile: { name: 'Hassan' } },
+      chatHistory: [],
+    })
+
+    expect(result.available).toBe(false)
+    expect(result.clientSecret).toBeUndefined()
+    expect(result.message).toMatch(/inte tillgängligt/i)
   })
 })

@@ -692,18 +692,26 @@ function OverviewPrimaryActions({
         }
 
         return (
-          <button
-            className="overview-primary-action is-coach"
-            key={action.label}
-            type="button"
-            aria-label="Öppna AI Coach"
-            onClick={action.onClick}
-          >
-            {visual}
-            <span className="overview-primary-action-chevron" aria-hidden="true">
+          <div className="overview-primary-action is-coach" key={action.label}>
+            <button
+              className="overview-primary-action-hit"
+              type="button"
+              aria-label="Öppna AI Coach"
+              onClick={action.onClick}
+            >
+              {visual}
+              <span className="overview-tap-me">tap me</span>
+            </button>
+            <button
+              className="overview-primary-action-chevron"
+              type="button"
+              aria-hidden="true"
+              tabIndex={-1}
+              onClick={action.onClick}
+            >
               <OverviewIcon name={action.actionIcon} />
-            </span>
-          </button>
+            </button>
+          </div>
         )
       })}
     </section>
@@ -892,6 +900,7 @@ function OverviewDashboard({
   onEditProfile,
   onLogWeight,
   onNavigateSection,
+  onOpenAiCoach,
   onScanFood,
   profile,
   proteinGoal,
@@ -1028,7 +1037,7 @@ function OverviewDashboard({
         <OverviewPrimaryActions
           onNavigateSection={onNavigateSection}
           onOpenBodyScan={() => setBodyScanOpen(true)}
-          onOpenCoach={() => setCoachOpen(true)}
+          onOpenCoach={() => (onOpenAiCoach ? onOpenAiCoach() : setCoachOpen(true))}
           onOpenFoodScan={() => setFoodScanOpen(true)}
           onScanFood={onScanFood}
           onStartBodyScan={() => {

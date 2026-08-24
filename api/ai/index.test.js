@@ -175,4 +175,45 @@ describe('legacy AI API route', () => {
     expect(response.body.reply).toContain('83,8')
     expect(fetch).toHaveBeenCalled()
   })
+
+  it('mints a realtime voice session without returning the API key', async () => {
+    process.env.OPENAI_API_KEY = 'sk-secret-test-key'
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        client_secret: { expires_at: 1700000000, value: 'ek_ephemeral_test' },
+        model: 'gpt-4o-mini-realtime-preview',
+      }),
+    }))
+
+    const response = await callRoute(createRequest({
+      body: {
+        action: 'realtime-session',
+        checkIn: { steps: 7200 },
+        currentWeight: 83.8,
+        message: 'starta röstsamtal',
+      },
+    }))
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body.available).toBe(true)
+    expect(response.body.clientSecret).toBe('ek_ephemeral_test')
+    expect(JSON.stringify(response.body)).not.toMatch(/sk-secret-test-key|OPENAI_API_KEY|Bearer/)
+    expect(fetch).toHaveBeenCalledWith(
+      'https://api.openai.com/v1/realtime/sessions',
+      expect.objectContaining({ method: 'POST' }),
+    )
+  })
+
+  it('keeps chat usable when realtime voice is not configured', async () => {
+    delete process.env.OPENAI_API_KEY
+    const response = await callRoute(createRequest({
+      body: { action: 'realtime-session' },
+    }))
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body.available).toBe(false)
+    expect(response.body.message).toMatch(/inte tillgängligt/i)
+    expect(response.body.clientSecret).toBeUndefined()
+  })
 })

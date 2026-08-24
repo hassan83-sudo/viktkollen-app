@@ -20,6 +20,7 @@ function HomeSection({
   onEditProfile,
   onLogWeight,
   onNavigateSection,
+  onOpenAiCoach,
   onScanFood,
   profile,
   progressInsights,
@@ -58,6 +59,7 @@ function HomeSection({
           onEditProfile={onEditProfile}
           onLogWeight={onLogWeight}
           onNavigateSection={onNavigateSection}
+          onOpenAiCoach={onOpenAiCoach}
           onScanFood={onScanFood}
           profile={profile}
           progressInsights={progressInsights}

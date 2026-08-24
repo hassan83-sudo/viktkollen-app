@@ -222,6 +222,22 @@ Svara endast med giltig JSON:
 }`
 }
 
+export function createVoiceCoachInstructions({ context, intent } = {}) {
+  return `Du är Viktkollens personliga AI-coach i ett röstsamtal.
+
+Regler:
+${getSafetyRules()}
+Svara kort nog för tal, ungefär 1–5 meningar.
+Ställ en följdfråga när nästa steg är oklart.
+Svara som tal, inte som JSON.
+
+Identifierad intent:
+${JSON.stringify(intent || { intent: 'general' })}
+
+Användarens data:
+${JSON.stringify(context || {})}`
+}
+
 /**
  * Creates a smart local fallback answer when OpenAI is unavailable.
  *

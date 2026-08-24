@@ -889,6 +889,7 @@ function OverviewDashboard({
   adaptiveCoachFeedback,
   calorieGoal,
   caloriesToday,
+  chatInput,
   checkIn,
   currentWeight,
   email,
@@ -896,6 +897,10 @@ function OverviewDashboard({
   goalsHabits,
   healthScore,
   healthSnapshot,
+  isAiSpeaking,
+  isListening,
+  isVoiceConversationActive,
+  isVoiceMuted,
   meals,
   nutritionGoals,
   onAddMeal,
@@ -904,12 +909,21 @@ function OverviewDashboard({
   onNavigateSection,
   onOpenAiCoach,
   onScanFood,
+  onSendChatMessage,
+  onStartVoiceInput,
+  onStopAiVoiceResponse,
+  onToggleVoiceMute,
+  onVoiceCleanup,
+  onAvatarLiveContextChange,
+  onAvatarSurfaceChange,
+  onChatInputChange,
   profile,
   proteinGoal,
   proteinToday,
   reminderState,
   selectedDate,
   syncStatus,
+  voiceStatus,
   weights,
 }) {
   const [now, setNow] = useState(() => new Date())
@@ -1106,15 +1120,30 @@ function OverviewDashboard({
 
       {bodyScanOpen && (
         <OverviewBodyScanStage
+          chatInput={chatInput}
           currentWeight={currentWeight}
+          isAiSpeaking={isAiSpeaking}
+          isListening={isListening}
+          isVoiceConversationActive={isVoiceConversationActive}
+          isVoiceMuted={isVoiceMuted}
+          profile={profile}
+          voiceStatus={voiceStatus}
           weather={weather}
           weights={weights}
+          onChatInputChange={onChatInputChange}
           onClose={() => setBodyScanOpen(false)}
+          onLiveContextChange={onAvatarLiveContextChange}
+          onSendChatMessage={onSendChatMessage}
           onStartScan={() => {
             setBodyScanOpen(false)
             if (onNavigateSection) onNavigateSection('progress', 'body-analysis')
             else scrollToTarget('body-analysis')
           }}
+          onStartVoiceInput={onStartVoiceInput}
+          onStopAiVoiceResponse={onStopAiVoiceResponse}
+          onSurfaceChange={onAvatarSurfaceChange}
+          onToggleVoiceMute={onToggleVoiceMute}
+          onVoiceCleanup={onVoiceCleanup}
         />
       )}
       {coachOpen && (

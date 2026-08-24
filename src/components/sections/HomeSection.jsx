@@ -7,6 +7,7 @@ function HomeSection({
   adaptiveCoachFeedback,
   calorieGoal,
   caloriesToday,
+  chatInput,
   checkIn,
   currentWeight,
   dashboardData,
@@ -14,14 +15,26 @@ function HomeSection({
   foods,
   goalsHabits,
   healthSnapshot,
+  isAiSpeaking,
+  isListening,
+  isVoiceConversationActive,
+  isVoiceMuted,
   meals,
   nutritionGoals,
   onAddMeal,
+  onAvatarLiveContextChange,
+  onAvatarSurfaceChange,
+  onChatInputChange,
   onEditProfile,
   onLogWeight,
   onNavigateSection,
   onOpenAiCoach,
   onScanFood,
+  onSendChatMessage,
+  onStartVoiceInput,
+  onStopAiVoiceResponse,
+  onToggleVoiceMute,
+  onVoiceCleanup,
   profile,
   progressInsights,
   proteinGoal,
@@ -29,6 +42,7 @@ function HomeSection({
   reminderState,
   selectedMealDate,
   syncStatus,
+  voiceStatus,
   weights,
 }) {
   return (
@@ -46,6 +60,7 @@ function HomeSection({
           adaptiveCoachFeedback={adaptiveCoachFeedback}
           calorieGoal={calorieGoal}
           caloriesToday={caloriesToday}
+          chatInput={chatInput}
           checkIn={checkIn}
           currentWeight={currentWeight}
           email={email}
@@ -53,14 +68,26 @@ function HomeSection({
           goalsHabits={goalsHabits}
           healthScore={dashboardData?.healthScore?.score}
           healthSnapshot={healthSnapshot}
+          isAiSpeaking={isAiSpeaking}
+          isListening={isListening}
+          isVoiceConversationActive={isVoiceConversationActive}
+          isVoiceMuted={isVoiceMuted}
           meals={meals}
           nutritionGoals={nutritionGoals}
           onAddMeal={onAddMeal}
+          onAvatarLiveContextChange={onAvatarLiveContextChange}
+          onAvatarSurfaceChange={onAvatarSurfaceChange}
+          onChatInputChange={onChatInputChange}
           onEditProfile={onEditProfile}
           onLogWeight={onLogWeight}
           onNavigateSection={onNavigateSection}
           onOpenAiCoach={onOpenAiCoach}
           onScanFood={onScanFood}
+          onSendChatMessage={onSendChatMessage}
+          onStartVoiceInput={onStartVoiceInput}
+          onStopAiVoiceResponse={onStopAiVoiceResponse}
+          onToggleVoiceMute={onToggleVoiceMute}
+          onVoiceCleanup={onVoiceCleanup}
           profile={profile}
           progressInsights={progressInsights}
           proteinGoal={proteinGoal}
@@ -68,6 +95,7 @@ function HomeSection({
           reminderState={reminderState}
           selectedDate={selectedMealDate}
           syncStatus={syncStatus}
+          voiceStatus={voiceStatus}
           weeklyWeightChange={dashboardData?.weeklyWeightChange}
           weights={weights}
         />

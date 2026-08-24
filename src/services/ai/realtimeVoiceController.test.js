@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
-  createRealtimeVoiceController,
-  getVoicePhaseLabel,
-  mapRealtimeEventToPhase,
   VOICE_PERMISSION_DENIED_MESSAGE,
   VOICE_UNAVAILABLE_MESSAGE,
+  createRealtimeVoiceController,
+  getAvatarVoicePhaseLabel,
+  getVoicePhaseLabel,
+  mapRealtimeEventToPhase,
 } from './realtimeVoiceController.js'
 
 function createTimers() {
@@ -26,6 +27,9 @@ describe('realtimeVoiceController', () => {
     expect(getVoicePhaseLabel({ isListening: true })).toBe('Lyssnar...')
     expect(getVoicePhaseLabel({ isAiSpeaking: true })).toBe('AI pratar...')
     expect(mapRealtimeEventToPhase({ type: 'response.created' })).toBe('thinking')
+    expect(getAvatarVoicePhaseLabel({})).toBe('● Redo')
+    expect(getAvatarVoicePhaseLabel({ isListening: true })).toBe('🎙 Lyssnar...')
+    expect(getAvatarVoicePhaseLabel({ isAiSpeaking: true })).toBe('🔊 AI pratar...')
   })
 
   it('starts a session with one tap after minting an ephemeral client secret', async () => {

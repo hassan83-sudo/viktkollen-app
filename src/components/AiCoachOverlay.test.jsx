@@ -30,6 +30,8 @@ describe('AI Coach tap me and realtime voice security', () => {
     expect(overlaySource).toContain('Tryck för att prata')
     expect(overlaySource).toContain('<ChatPanel')
     expect(appSource).toContain('function sendChatMessage')
+    expect(appSource).toContain('onStartVoiceInput={startVoiceInput}')
+    expect(appSource).toContain('<HomeSection')
   })
 
   it('starts voice on one tap and never ships the API key to the browser', () => {

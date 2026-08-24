@@ -7,6 +7,31 @@ import {
 
 const noopMemoryWriter = () => {}
 
+function compactLiveWeather(weather) {
+  if (!weather?.hasLiveWeather) return null
+  return {
+    city: weather.city || '',
+    condition: weather.condition || '',
+    feelsLikeC: Number.isFinite(Number(weather.feelsLikeC)) ? weather.feelsLikeC : null,
+    hasLiveWeather: true,
+    precipitationRiskPercent: Number.isFinite(Number(weather.precipitationRiskPercent))
+      ? weather.precipitationRiskPercent
+      : null,
+    sunriseLabel: weather.sunriseLabel || '',
+    sunsetLabel: weather.sunsetLabel || '',
+    temperatureC: Number.isFinite(Number(weather.temperatureC)) ? weather.temperatureC : null,
+    windSpeedMs: Number.isFinite(Number(weather.windSpeedMs)) ? weather.windSpeedMs : null,
+  }
+}
+
+function compactClothingAdvice(advice) {
+  if (!advice?.available || !Array.isArray(advice.lines)) return null
+  return {
+    available: true,
+    lines: advice.lines.slice(0, 4),
+  }
+}
+
 export function makeRecentCoachChatHistory(chatHistory = []) {
   return chatHistory.slice(-10).map((chatMessage) => ({
     createdAt: chatMessage.createdAt,
@@ -43,6 +68,9 @@ export function buildCoachChatRemotePayload(appData = {}, message, chatHistory =
       startWeight: appData.profile?.startWeight,
       weightDirection: appData.profile?.weightDirection,
     },
+    clothingAdvice: compactClothingAdvice(appData.clothingAdvice),
+    liveWeather: compactLiveWeather(appData.liveWeather),
+    surface: appData.surface || 'coach',
     weights: Array.isArray(appData.weights) ? appData.weights.slice(-14) : [],
   }
 }

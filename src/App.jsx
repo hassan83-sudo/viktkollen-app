@@ -860,6 +860,7 @@ function App() {
   const isAiVoiceEnabledRef = useRef(true)
   const voiceConversationRef = useRef(null)
   const realtimeVoiceRef = useRef(null)
+  const avatarLiveContextRef = useRef({ clothingAdvice: null, liveWeather: null, surface: 'coach' })
   const [aiCoachOverlayOpen, setAiCoachOverlayOpen] = useState(false)
   const [isVoiceMuted, setIsVoiceMuted] = useState(false)
   const [authError, setAuthError] = useState('')
@@ -2479,16 +2480,19 @@ function App() {
     return {
       bodyAnalysisHistory,
       checkIn,
+      clothingAdvice: avatarLiveContextRef.current.clothingAdvice,
       foods,
       goalsHabits,
       healthSnapshot,
       latestWeeklyReport: weeklyReportData,
+      liveWeather: avatarLiveContextRef.current.liveWeather,
       mealHistory: photoMeals,
       meals,
       nutritionGoals,
       progressGoalSettings,
       profile: validatedProfile,
       reminderState,
+      surface: avatarLiveContextRef.current.surface,
       today: selectedMealDate,
       weights,
     }
@@ -2881,6 +2885,7 @@ function App() {
             adaptiveCoachFeedback={adaptiveCoachFeedback}
             calorieGoal={nutritionGoals?.calories}
             caloriesToday={dailyNutritionSummary?.totals.calories ?? 0}
+            chatInput={chatInput}
             checkIn={checkIn}
             currentWeight={centralCurrentWeight}
             dashboardData={dashboardData}
@@ -2889,15 +2894,31 @@ function App() {
             goalsHabits={goalsHabits}
             healthDashboardPeriod={healthDashboardPeriod}
             healthSnapshot={healthSnapshot}
+            isAiSpeaking={isAiSpeaking}
+            isListening={isListening}
+            isVoiceConversationActive={isVoiceConversationActive}
+            isVoiceMuted={isVoiceMuted}
             meals={meals}
             nutritionGoals={nutritionGoals}
             onAddMeal={handleDailyCoachAddMeal}
+            onAvatarLiveContextChange={(next) => {
+              avatarLiveContextRef.current = { ...avatarLiveContextRef.current, ...next }
+            }}
+            onAvatarSurfaceChange={(surface) => {
+              avatarLiveContextRef.current.surface = surface || 'coach'
+            }}
+            onChatInputChange={setChatInput}
             onEditProfile={() => setShowOnboarding(true)}
             onHealthDashboardPeriodChange={setHealthDashboardPeriod}
             onLogWeight={handleDailyCoachLogWeight}
             onNavigateSection={handleDailyCoachAction}
             onOpenAiCoach={() => setAiCoachOverlayOpen(true)}
             onScanFood={handleDailyCoachScanFood}
+            onSendChatMessage={sendChatMessage}
+            onStartVoiceInput={startVoiceInput}
+            onStopAiVoiceResponse={stopAiVoiceResponse}
+            onToggleVoiceMute={toggleVoiceMute}
+            onVoiceCleanup={stopAllVoiceSessions}
             profile={validatedProfile}
             progressInsights={progressInsights}
             proteinGoal={dailyNutritionSummary?.proteinGoal ?? nutritionGoals?.protein}
@@ -2905,6 +2926,7 @@ function App() {
             reminderState={reminderState}
             selectedMealDate={selectedMealDate}
             syncStatus={syncStatusSnapshot}
+            voiceStatus={voiceStatus}
             weights={centralWeightStats.weights}
           />
         )}

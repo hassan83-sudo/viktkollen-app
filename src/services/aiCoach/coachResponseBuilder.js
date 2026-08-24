@@ -30,6 +30,7 @@ import {
 import { getLastAssistantMessage, getLastDiscussedTopic, getRecentConversationText, getIntentSourceText } from './coachConversation.js'
 import { buildAiCoachFacts, hasRecentAdvice } from './coachFacts.js'
 import { identifyAiCoachIntents } from './coachIntentDetector.js'
+import { makeLiveContextReply } from '../bodyAvatarCoachReplies.js'
 import { hasUnsafeOutput, includesAny, normalizeAiCoachText } from './coachText.js'
 import { formatProgressChange } from '../progress/progressAnalytics.js'
 
@@ -1345,11 +1346,12 @@ export function createDeterministicAiCoachReply({
   message,
   chatHistory = [],
 }) {
+  const liveReply = makeLiveContextReply(message, context)
   const intents = identifyAiCoachIntents({ chatHistory, message })
   const sourceMessage = getIntentSourceText(message, chatHistory)
 
   if (intents.includes('unclear')) {
-    return 'Jag hängde inte riktigt med. Kan du skriva lite mer?'
+    return liveReply || 'Jag hängde inte riktigt med. Kan du skriva lite mer?'
   }
 
   const resolvedIntents = intents.length > 0
@@ -1359,7 +1361,7 @@ export function createDeterministicAiCoachReply({
       : []
 
   if (resolvedIntents.length === 0) {
-    return makeConversationFallback(message, chatHistory)
+    return liveReply || makeConversationFallback(message, chatHistory)
   }
 
   const facts = buildAiCoachFacts({
@@ -1370,6 +1372,6 @@ export function createDeterministicAiCoachReply({
     buildReplyForIntent(resolvedIntent, facts, sourceMessage),
   )
 
-  return mergeReplies(replies) ||
+  return mergeReplies([liveReply, ...replies].filter(Boolean)) ||
     makeConversationFallback(message, chatHistory)
 }

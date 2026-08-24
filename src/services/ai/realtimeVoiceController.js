@@ -29,6 +29,23 @@ export function getVoicePhaseLabel({
   return 'Tryck för att prata'
 }
 
+export function getAvatarVoicePhaseLabel({
+  isAiSpeaking = false,
+  isListening = false,
+  isVoiceConversationActive = false,
+  voiceStatus = '',
+} = {}) {
+  const status = String(voiceStatus || '').trim()
+  if (status && !/^(redo|lyssnar|ai tänker|ai pratar)/i.test(status)) {
+    return status
+  }
+  if (isAiSpeaking) return '🔊 AI pratar...'
+  if (/tänk/i.test(status)) return 'AI tänker...'
+  if (isListening) return '🎙 Lyssnar...'
+  if (isVoiceConversationActive) return '● Redo'
+  return '● Redo'
+}
+
 function readEventType(payload) {
   return payload?.type || payload?.event || ''
 }

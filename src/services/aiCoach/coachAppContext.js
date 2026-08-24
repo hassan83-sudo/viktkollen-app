@@ -249,6 +249,9 @@ export function buildAiCoachAppContextFromData(data = {}, options = {}) {
     profile,
     progressGoalSettings: isObject(data.progressGoalSettings) ? data.progressGoalSettings : {},
     reminderState: isObject(data.reminderState) ? data.reminderState : {},
+    clothingAdvice: data.clothingAdvice || null,
+    liveWeather: data.liveWeather || data.weather || null,
+    surface: data.surface || 'coach',
     todayMeals: healthSnapshot.nutrition.mealsToday,
     weights,
   }

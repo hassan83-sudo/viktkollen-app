@@ -1,17 +1,30 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 
-import BodyScanRings from './BodyScanRings.jsx'
+import BodyAvatarTalkBar from './BodyAvatarTalkBar.jsx'
+import BodyAvatarViewer from './BodyAvatarViewer.jsx'
 import { getScanInputLabel } from '../../services/bodyAnalysisEstimates.js'
 import { getAnalysisHistory, getLatestAnalysis } from '../../services/bodyAnalysisHistory.js'
+import {
+  BODY_AVATAR_REGIONS,
+  VISUAL_SIMULATION_DISCLAIMER,
+  buildBodyTimeline,
+  createDefaultBodySimulationState,
+  getBodySimulationSliders,
+  isBodySimulationActive,
+  normalizeBodySimulationState,
+} from '../../services/bodyAvatarModel.js'
 import {
   buildHomeBodyToday,
   formatCmLabel,
   formatKgLabel,
   formatSignedChange,
 } from '../../services/homeBodyToday.js'
-
-const bodyScanImage = '/viktkollen-body-scan.png'
+import {
+  futureSmartCameraModes,
+  futureSmartCameraPrivacy,
+  getExistingCameraEntryPoints,
+} from '../../services/smartCameraIntent.js'
 
 function formatScanDateTime(value) {
   const parsed = new Date(value)
@@ -29,25 +42,59 @@ function listItems(value) {
 }
 
 function OverviewBodyScanStage({
+  chatInput = '',
   currentWeight = null,
+  isAiSpeaking = false,
+  isListening = false,
+  isVoiceConversationActive = false,
+  isVoiceMuted = false,
+  onChatInputChange,
   onClose,
+  onLiveContextChange,
+  onSendChatMessage,
   onStartScan,
+  onStartVoiceInput,
+  onStopAiVoiceResponse,
+  onSurfaceChange,
+  onToggleVoiceMute,
+  onVoiceCleanup,
+  profile = {},
+  voiceStatus = '',
   weather = null,
   weights = [],
 }) {
   const [history, setHistory] = useState(() => getAnalysisHistory())
+  const [view, setView] = useState('front')
+  const [compareMode, setCompareMode] = useState('simulation')
+  const [holdOriginal, setHoldOriginal] = useState(false)
+  const [showText, setShowText] = useState(false)
+  const [showEditor, setShowEditor] = useState(false)
+  const [showCameraHub, setShowCameraHub] = useState(false)
+  const [selectedRegion, setSelectedRegion] = useState('')
+  const [simulation, setSimulation] = useState(() => createDefaultBodySimulationState())
+
   const analysis = history[0] || getLatestAnalysis()
   const result = analysis?.result || null
   const today = useMemo(
     () => buildHomeBodyToday({ currentWeight, history, weather, weights }),
     [currentWeight, history, weather, weights],
   )
+  const timeline = useMemo(
+    () => buildBodyTimeline({
+      currentKg: currentWeight,
+      goalKg: profile?.goalWeight,
+      startKg: profile?.startWeight,
+    }),
+    [currentWeight, profile?.goalWeight, profile?.startWeight],
+  )
+  const sliders = getBodySimulationSliders()
+  const simulationActive = isBodySimulationActive(simulation)
+  const cameras = getExistingCameraEntryPoints()
 
   useEffect(() => {
     function refresh() {
       setHistory(getAnalysisHistory())
     }
-
     window.addEventListener('viktkollen:body-analysis-history-changed', refresh)
     return () => window.removeEventListener('viktkollen:body-analysis-history-changed', refresh)
   }, [])
@@ -55,6 +102,11 @@ function OverviewBodyScanStage({
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    onSurfaceChange?.('body-avatar')
+    onLiveContextChange?.({
+      clothingAdvice: today.clothing,
+      liveWeather: weather,
+    })
 
     function onKeyDown(event) {
       if (event.key === 'Escape') onClose?.()
@@ -64,8 +116,10 @@ function OverviewBodyScanStage({
     return () => {
       document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', onKeyDown)
+      onSurfaceChange?.('coach')
+      onVoiceCleanup?.()
     }
-  }, [onClose])
+  }, [onClose, onLiveContextChange, onSurfaceChange, onVoiceCleanup, today.clothing, weather])
 
   const overlay = typeof document === 'undefined' ? null : document.body
   if (!overlay) return null
@@ -74,20 +128,63 @@ function OverviewBodyScanStage({
   const strengths = listItems(result?.strengths).slice(0, 3)
   const improvements = listItems(result?.improvementAreas).slice(0, 3)
   const weatherReady = Boolean(weather?.hasLiveWeather)
+  const kg30Ago = weightTrend.currentKg !== null && weightTrend.change30dKg !== null
+    ? weightTrend.currentKg - weightTrend.change30dKg
+    : null
 
   return createPortal(
     <div className="overview-body-scan-stage" role="dialog" aria-labelledby="overview-body-today-title" aria-modal="true">
       <div className="overview-body-scan-hero is-full-art">
-        <img alt="Kroppsscanning" src={bodyScanImage} />
-        <BodyScanRings className="overview-body-scan-rings is-fullscreen" />
+        <p className="overview-body-scan-kicker">Din kropp idag</p>
         <button className="overview-body-scan-close" type="button" onClick={onClose}>
           Stäng
         </button>
+        <BodyAvatarViewer
+          compareMode={compareMode}
+          holdOriginal={holdOriginal}
+          onViewChange={setView}
+          selectedRegion={selectedRegion}
+          simulationActive={simulationActive}
+          view={view}
+        />
       </div>
 
       <div className="overview-body-scan-panel">
         <p className="eyebrow">Kroppsscanning</p>
         <h2 id="overview-body-today-title">Din kropp idag</h2>
+
+        <BodyAvatarTalkBar
+          chatInput={chatInput}
+          isAiSpeaking={isAiSpeaking}
+          isListening={isListening}
+          isVoiceConversationActive={isVoiceConversationActive}
+          isVoiceMuted={isVoiceMuted}
+          onChatInputChange={onChatInputChange}
+          onSendChatMessage={onSendChatMessage}
+          onStartVoiceInput={onStartVoiceInput}
+          onStopAiVoiceResponse={onStopAiVoiceResponse}
+          onToggleText={() => setShowText((current) => !current)}
+          onToggleVoiceMute={onToggleVoiceMute}
+          showText={showText}
+          voiceStatus={voiceStatus}
+        />
+
+        <div className="body-avatar-compare" role="group" aria-label="Original eller simulering">
+          <button className={compareMode === 'original' ? 'is-active' : ''} type="button" onClick={() => setCompareMode('original')}>
+            Original
+          </button>
+          <button className={compareMode === 'simulation' ? 'is-active' : ''} type="button" onClick={() => setCompareMode('simulation')}>
+            Simulering
+          </button>
+          <button
+            type="button"
+            onPointerDown={() => setHoldOriginal(true)}
+            onPointerUp={() => setHoldOriginal(false)}
+            onPointerLeave={() => setHoldOriginal(false)}
+          >
+            Visa original
+          </button>
+        </div>
 
         <section className="overview-body-today-card" aria-label="Din kropp idag">
           {weightTrend.currentKg !== null ? (
@@ -114,6 +211,21 @@ function OverviewBodyScanStage({
             </p>
           ) : (
             <p>Ingen tidigare scanning.</p>
+          )}
+        </section>
+
+        <section className="overview-body-today-card" aria-label="Kroppsförändring över tid">
+          <h3>Kroppsförändring</h3>
+          {timeline.startKg !== null && <p>Start {formatKgLabel(timeline.startKg)}</p>}
+          {timeline.currentKg !== null && <p>Nu {formatKgLabel(timeline.currentKg)}</p>}
+          {timeline.goalKg !== null && <p>Mål {formatKgLabel(timeline.goalKg)}</p>}
+          {kg30Ago !== null && (
+            <p>
+              För 30 dagar sedan {formatKgLabel(kg30Ago)} → nu {formatKgLabel(weightTrend.currentKg)}
+            </p>
+          )}
+          {timeline.startKg === null && timeline.goalKg === null && kg30Ago === null && (
+            <p>Ingen start-, mål- eller 30-dagarsvikt att visa ännu.</p>
           )}
         </section>
 
@@ -183,6 +295,74 @@ function OverviewBodyScanStage({
           {clothing.available ? clothing.lines.map((line) => <p key={line}>{line}</p>) : <p>{clothing.emptyLabel}</p>}
         </section>
 
+        {showEditor && (
+          <section className="overview-body-today-card" aria-label="Kroppsform">
+            <h3>KROPPSFORM</h3>
+            <p>VISUELL SIMULERING</p>
+            <p className="overview-body-scan-note">{VISUAL_SIMULATION_DISCLAIMER}</p>
+            <div className="body-avatar-regions">
+              {BODY_AVATAR_REGIONS.map((region) => (
+                <button
+                  className={selectedRegion === region.label ? 'is-active' : ''}
+                  key={region.id}
+                  type="button"
+                  onClick={() => setSelectedRegion(region.label)}
+                >
+                  {region.label}
+                </button>
+              ))}
+            </div>
+            {sliders.map((slider) => (
+              <label className="body-avatar-slider" key={slider.id}>
+                <span>{slider.label}</span>
+                <input
+                  max={100}
+                  min={-100}
+                  type="range"
+                  value={simulation[slider.id]}
+                  onChange={(event) => {
+                    setSimulation((current) => normalizeBodySimulationState({
+                      ...current,
+                      [slider.id]: event.target.value,
+                    }))
+                  }}
+                />
+                <span>{slider.less} · {slider.more}</span>
+              </label>
+            ))}
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => {
+                setSimulation(createDefaultBodySimulationState())
+                setSelectedRegion('')
+              }}
+            >
+              Återställ
+            </button>
+          </section>
+        )}
+
+        {showCameraHub && (
+          <section className="overview-body-today-card" aria-label="Smart kamera">
+            <h3>Smart kamera</h3>
+            <p className="overview-body-scan-note">
+              Ingen visuell detektion är aktiv. Live preview ska stanna lokalt.
+              {futureSmartCameraPrivacy.noHiddenRecording ? ' Ingen dold inspelning.' : ''}
+            </p>
+            {futureSmartCameraModes.map((mode) => (
+              <p key={mode}>
+                {mode === 'body-scan'
+                  ? `body-scan · tillgänglig via ${cameras.bodyVideo}`
+                  : `${mode} · inte implementerat`}
+              </p>
+            ))}
+            <button className="secondary-button" type="button" onClick={onStartScan}>
+              Öppna kroppsscanning
+            </button>
+          </section>
+        )}
+
         {strengths.length > 0 && (
           <section>
             <h3>Styrkor</h3>
@@ -204,6 +384,12 @@ function OverviewBodyScanStage({
         </p>
 
         <div className="overview-body-scan-actions">
+          <button className="secondary-button" type="button" onClick={() => setShowEditor((current) => !current)}>
+            Ändra kropp
+          </button>
+          <button className="secondary-button" type="button" onClick={() => setShowCameraHub((current) => !current)}>
+            Smart kamera
+          </button>
           <button className="primary-button" type="button" onClick={onStartScan}>
             {analysis ? 'Ny scanning' : 'Starta scanning'}
           </button>

@@ -41,6 +41,7 @@ import BodyAnalysisStats from './BodyAnalysisStats'
 import BodyAnalysisTimeline from './BodyAnalysisTimeline'
 import BodyAnalysisUnlockCard from './BodyAnalysisUnlockCard'
 import BodyAnalysisUploader from './BodyAnalysisUploader'
+import BodyAnalysisVideoScanner from './BodyAnalysisVideoScanner'
 
 const timelineFilters = [
   { label: 'Alla', value: 'all' },
@@ -818,14 +819,38 @@ function BodyAnalysisCard({
         AI kommer att uppskatta kroppssammansättning och följa förändringar
         över tid.
       </p>
-      <BodyAnalysisUploader
-        canAnalyze={canAnalyze}
-        currentAnalysisStatus={currentAnalysisStatus}
-        disabledReason={analyzeDisabledReason}
-        photos={scanPhotos}
-        onAnalyze={handleAnalyzeBody}
-        onPhotoChange={handlePhotoChange}
-      />
+      <div className="body-scan-hub">
+        <h3 className="body-scan-hub-title">Kroppsscanning</h3>
+        <BodyAnalysisVideoScanner
+          canAnalyze={canAnalyze}
+          disabledReason={analyzeDisabledReason}
+          photos={scanPhotos}
+          onAnalyze={handleAnalyzeBody}
+          onPhotoChange={handlePhotoChange}
+        />
+        <details className="body-scan-section" open={false}>
+          <summary>📷 Foto & kamera</summary>
+          <BodyAnalysisUploader
+            canAnalyze={canAnalyze}
+            currentAnalysisStatus={currentAnalysisStatus}
+            disabledReason={analyzeDisabledReason}
+            photos={scanPhotos}
+            onAnalyze={handleAnalyzeBody}
+            onPhotoChange={handlePhotoChange}
+          />
+        </details>
+        <details className="body-scan-section">
+          <summary>🔒 Integritet & lagring</summary>
+          <ul className="body-scan-privacy-list">
+            <li>Kameran körs lokalt i webbläsaren tills du analyserar.</li>
+            <li>Videoscanning sparar inte originalvideo. Den extraherar tre stillbilder.</li>
+            <li>När du trycker Analysera kroppen skickas tre bildfiler till Viktkollens `/api/body-analysis` via HTTPS med inloggning.</li>
+            <li>Servern skickar bilderna till OpenAI Vision för analys. API-nyckeln ligger inte i frontend.</li>
+            <li>Analysresultat och bildförhandsvisningar kan sparas i lokal historik på enheten. Molnlagring för kroppsbilder är inte implementerad.</li>
+            <li>Export tar bort bilddata och behåller bara filnamn. Radera scanning tar bort lokala previews; redan skickade AI-anrop kan inte återkallas.</li>
+          </ul>
+        </details>
+      </div>
       <details className="body-analysis-more-info">
         <summary>Mer information</summary>
         <BodyAnalysisOnboarding />
@@ -927,7 +952,7 @@ function BodyAnalysisCard({
         />
       )}
       <details className="body-analysis-more-info">
-        <summary>Historik och verktyg</summary>
+        <summary>🕘 Tidigare scanningar</summary>
         <BodyAnalysisTimeline
           analysisHistory={analysisHistory}
           expandedAnalysisIds={expandedAnalysisIds}

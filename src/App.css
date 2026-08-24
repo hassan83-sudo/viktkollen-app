@@ -3109,6 +3109,119 @@ button {
   box-shadow: none;
 }
 
+.body-scan-hub {
+  display: grid;
+  gap: 14px;
+}
+
+.body-scan-hub-title {
+  margin: 0;
+}
+
+.body-scan-section {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.body-scan-section > summary {
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 850;
+}
+
+.body-scan-privacy-list {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding-left: 1.1rem;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.body-scan-video-stage {
+  display: grid;
+  gap: 10px;
+  padding-bottom: calc(var(--vk-nav-height) + 20px + env(safe-area-inset-bottom, 0px));
+}
+
+.body-scan-video-frame {
+  position: relative;
+  overflow: hidden;
+  min-height: 280px;
+  border: 1px dashed var(--border);
+  border-radius: 16px;
+  background: #050814;
+}
+
+.body-scan-video-frame video {
+  display: block;
+  width: 100%;
+  max-height: 62vh;
+  object-fit: contain;
+  background: #050814;
+}
+
+.body-scan-video-frame canvas {
+  display: none;
+}
+
+.body-scan-silhouette {
+  pointer-events: none;
+  position: absolute;
+  inset: 8% 28%;
+  border: 2px dashed rgba(122, 247, 255, 0.45);
+  border-radius: 48% 48% 38% 38%;
+}
+
+.body-scan-countdown-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(5, 8, 20, 0.42);
+  color: #f7fbff;
+  font-size: 72px;
+  font-weight: 950;
+}
+
+.body-scan-camera-indicator {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.body-scan-camera-indicator.is-live { color: #66ffae; }
+.body-scan-camera-indicator.is-recording { color: #ff6b8a; }
+.body-scan-camera-indicator.is-off { color: var(--muted); }
+
+.body-scan-video-direction {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.body-scan-video-toolbar,
+.body-scan-zoom,
+.body-scan-face-protection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.body-scan-face-protection {
+  display: grid;
+  margin: 0;
+  padding: 10px 0 0;
+  border: 0;
+}
+
 .body-scan-guide {
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
   padding: 12px;

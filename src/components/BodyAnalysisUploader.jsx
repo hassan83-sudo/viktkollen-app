@@ -17,6 +17,7 @@ import {
   scrollBodyScanCameraIntoView,
   stopMediaStream,
 } from '../services/bodyAnalysisGuidedScan'
+import { canUseHardwareZoom, clampVideoScanZoom, getTrackZoomCapabilities, videoScanZoomStep } from '../services/bodyAnalysisVideoScan'
 
 function BodyAnalysisUploader({
   canAnalyze,
@@ -32,6 +33,8 @@ function BodyAnalysisUploader({
   const [countdown, setCountdown] = useState(null)
   const [facingMode, setFacingMode] = useState(defaultBodyScanFacingMode)
   const [lightQuality, setLightQuality] = useState(null)
+  const [zoom, setZoom] = useState(1)
+  const [zoomMode, setZoomMode] = useState('preview')
   const captureSectionRef = useRef(null)
   const cameraBoxRef = useRef(null)
   const countdownTimerRef = useRef(null)
@@ -82,6 +85,25 @@ function BodyAnalysisUploader({
     setCameraStatus('Nedräkningen avbröts.')
   }
 
+  async function changeZoom(nextZoom) {
+    const zoomValue = clampVideoScanZoom(nextZoom)
+    const track = streamRef.current?.getVideoTracks?.()[0]
+    if (canUseHardwareZoom(track)) {
+      try {
+        const capabilities = getTrackZoomCapabilities(track)
+        await track.applyConstraints({
+          advanced: [{ zoom: Math.min(capabilities.max, Math.max(capabilities.min, zoomValue)) }],
+        })
+        setZoomMode('hardware')
+      } catch {
+        setZoomMode('preview')
+      }
+    } else {
+      setZoomMode('preview')
+    }
+    setZoom(zoomValue)
+  }
+
   function moveToNextView(nextPhotos) {
     setActiveViewKey(getNextBodyAnalysisViewKey(activeViewKey, nextPhotos))
   }
@@ -118,6 +140,15 @@ function BodyAnalysisUploader({
       streamRef.current = stream
       setFacingMode(nextFacingMode)
       setCameraActive(true)
+      const track = stream.getVideoTracks?.()[0]
+      const nextZoomMode = canUseHardwareZoom(track) ? 'hardware' : 'preview'
+      setZoomMode(nextZoomMode)
+      if (nextZoomMode === 'hardware') {
+        const capabilities = getTrackZoomCapabilities(track)
+        await track.applyConstraints({
+          advanced: [{ zoom: Math.min(capabilities.max, Math.max(capabilities.min, zoom)) }],
+        }).catch(() => setZoomMode('preview'))
+      }
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream
@@ -295,7 +326,13 @@ function BodyAnalysisUploader({
           </div>
 
           <div className="body-scan-camera" id="body-scan-camera" ref={cameraBoxRef}>
-            <video ref={videoRef} playsInline muted aria-label="Kameraförhandsvisning för body scan" />
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              aria-label="Kameraförhandsvisning för body scan"
+              style={{ transform: zoomMode === 'preview' ? `scale(${zoom})` : undefined }}
+            />
             <canvas ref={canvasRef} aria-hidden="true" />
             {countdown !== null && (
               <div className="body-scan-countdown" aria-live="assertive">
@@ -347,6 +384,12 @@ function BodyAnalysisUploader({
             </button>
           )}
           <p className="body-scan-facing" aria-live="polite">{getBodyScanFacingLabel(facingMode)}</p>
+          <div className="body-scan-zoom" aria-label="Zoom">
+            <button className="secondary-button" type="button" onClick={() => changeZoom(zoom - videoScanZoomStep)}>-</button>
+            <span>{Number(zoom).toFixed(1)}×</span>
+            <button className="secondary-button" type="button" onClick={() => changeZoom(zoom + videoScanZoomStep)}>+</button>
+          </div>
+          <p className="progress-photo-safety">Hela kroppen måste vara synlig från huvud till fötter.</p>
         </div>
 
         {!canUseLiveCamera && (

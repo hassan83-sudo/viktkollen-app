@@ -3,12 +3,12 @@ function BodyAnalysisPrivacy({ showConsent, onApprove, onCancel }) {
     <>
       <p className="progress-photo-safety">
         Bilderna skickas till AI-analysen när du klickar på Analysera kroppen.
-        Bilderna sparas inte permanent i appen. Resultatet är endast en allmän
-        uppskattning och ingen medicinsk diagnos.
+        Originalvideo sparas inte. Analysen använder tre stillbilder.
+        Resultatet är endast en allmän uppskattning och ingen medicinsk diagnos.
       </p>
       <p className="progress-photo-safety">
-        Historiken sparas lokalt på denna enhet. Molnsynk kan läggas till
-        senare.
+        Historiken sparas lokalt på denna enhet och kan innehålla bildförhandsvisningar.
+        Molnlagring för kroppsbilder är inte implementerad.
       </p>
       {showConsent && (
         <div className="progress-photo-ai-comparison">
@@ -20,9 +20,9 @@ function BodyAnalysisPrivacy({ showConsent, onApprove, onCancel }) {
             <span>Integritet</span>
           </div>
           <p>
-            Bilderna används bara för att skapa analysresultatet i denna version
-            och sparas inte permanent i appen. Resultatet är en allmän
-            uppskattning och inte medicinsk rådgivning.
+            Bilderna används bara för att skapa analysresultatet i denna version.
+            Originalvideo sparas inte. Lokal historik kan innehålla stillbildsförhandsvisningar.
+            Resultatet är en allmän uppskattning och inte medicinsk rådgivning.
           </p>
           <button
             type="button"

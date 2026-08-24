@@ -14,7 +14,7 @@ function ReminderSettings({
   }
 
   return (
-    <article className="panel settings-panel" id="installningar">
+    <article className="panel settings-panel" id="dagliga-paminnelser">
       <div className="panel-heading">
         <div>
           <p className="eyebrow">Inställningar</p>
@@ -35,7 +35,7 @@ function ReminderSettings({
       <div className="reminder-list">
         {reminderOptions.map((reminder) => (
           <div className="reminder-row" key={reminder.enabledKey}>
-            <label className="toggle-row">
+            <label className="toggle-row checkbox-row">
               <input
                 type="checkbox"
                 checked={reminderSettings[reminder.enabledKey]}

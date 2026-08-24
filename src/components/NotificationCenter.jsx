@@ -165,15 +165,15 @@ function NotificationCenter({
         </div>
       </details>
 
-      <form className="inline-edit-form" onSubmit={(event) => event.preventDefault()} aria-label="Notisinställningar">
+      <form className="inline-edit-form" id="quiet-hours" onSubmit={(event) => event.preventDefault()} aria-label="Notisinställningar">
         <h3>Tysta timmar</h3>
-        <label className="toggle-row">
-          <span>Aktivera tysta timmar</span>
+        <label className="toggle-row quiet-hours-toggle quiet-hours-toggle">
           <input
             type="checkbox"
             checked={model.settings.quietHours.enabled}
             onChange={(event) => updateSettings({ quietHours: { enabled: event.target.checked } })}
           />
+          <span>Aktivera tysta timmar</span>
         </label>
         <label>
           <span>Start</span>

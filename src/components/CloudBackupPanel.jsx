@@ -66,7 +66,7 @@ function downloadJsonFile(filename, payload) {
   URL.revokeObjectURL(url)
 }
 
-function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
+function CloudBackupPanel({ isAuthenticated, onDataRestored, variant = 'security' }) {
   const fileInputRef = useRef(null)
   const [backupStatus, setBackupStatus] = useState(null)
   const [backups, setBackups] = useState([])
@@ -85,6 +85,8 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
   const [syncEvents, setSyncEvents] = useState([])
   const [totalBackupCount, setTotalBackupCount] = useState(0)
   const [undoRestore, setUndoRestore] = useState(() => getUndoRestorePreview())
+  const [expandedBackupId, setExpandedBackupId] = useState('')
+  const isArchive = variant === 'archive'
 
   const refreshBackups = useCallback(async () => {
     if (!isAuthenticated) {
@@ -545,11 +547,11 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
   }
 
   return (
-    <article className="panel settings-panel cloud-backup-panel" id="molnbackup">
+    <article className="panel settings-panel cloud-backup-panel" id={isArchive ? 'arkiv-historik' : 'molnbackup'}>
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Molnbackup</p>
-          <h2>Cloud Platform</h2>
+          <p className="eyebrow">{isArchive ? 'Arkiv' : 'Molnbackup'}</p>
+          <h2>{isArchive ? 'Backup-historik' : 'Cloud Platform'}</h2>
         </div>
       </div>
 
@@ -573,6 +575,7 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
         </div>
       </div>
 
+      {!isArchive && (
       <div className="cloud-backup-actions">
         <button type="button" onClick={handleBackup} disabled={hasBusyAction}>
           {isBackingUp ? 'Säkerhetskopierar...' : 'Spara lokal data i molnet'}
@@ -618,6 +621,7 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
           onChange={handleImportFile}
         />
       </div>
+      )}
 
       <div className="cloud-sync-overview">
         <div>
@@ -753,7 +757,7 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
           <div className="backup-history-list">
             {visibleBackups.map((backup) => (
               <div
-                className={`backup-history-item${backup.isFavorite ? ' is-favorite' : ''}`}
+                className={`backup-history-item is-compact${backup.isFavorite ? ' is-favorite' : ''}${expandedBackupId === backup.id ? ' is-expanded' : ''}`}
                 key={backup.id}
               >
                 <label className="backup-select">
@@ -762,18 +766,27 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
                     checked={selectedBackupIds.includes(backup.id)}
                     onChange={() => handleToggleSelected(backup.id)}
                   />
-                  <span>Välj</span>
+                  <span className="sr-only">Välj</span>
                 </label>
 
-                <div className="backup-history-meta">
+                <button
+                  className="backup-history-main"
+                  type="button"
+                  onClick={() => setExpandedBackupId((current) => current === backup.id ? '' : backup.id)}
+                >
                   <strong>{getBackupTitle(backup)}</strong>
-                  <span>Datum: {formatBackupDate(backup.createdAt)}</span>
-                  <span>Tid: {formatBackupTime(backup.createdAt)}</span>
-                  <span>Storlek: {formatBackupSize(backup.sizeBytes)}</span>
-                  <span>Schema: V{backup.schemaVersion || 1}</span>
+                  <small>
+                    {formatBackupSize(backup.sizeBytes)} · {backup.storageKeyCount} datadelar
+                  </small>
+                </button>
+                <span className="backup-history-chevron" aria-hidden="true">›</span>
+
+                {expandedBackupId === backup.id && (
+                <div className="backup-history-detail">
+                <div className="backup-history-meta">
+                  <span>ID: {backup.id}</span>
+                  <span>Datum: {formatBackupDate(backup.createdAt)} {formatBackupTime(backup.createdAt)}</span>
                   <span>Källa: {backup.clientId ? 'Registrerad enhet' : 'Äldre backup'}</span>
-                  <span>{backup.storageKeyCount} datadelar sparade</span>
-                  <code>{backup.id}</code>
                 </div>
 
                 <div className="backup-rename-row">
@@ -844,12 +857,15 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
                     {isDeletingId === backup.id ? 'Tar bort...' : 'Ta bort backup'}
                   </button>
                 </div>
+                </div>
+                )}
               </div>
             ))}
           </div>
         )}
       </section>
 
+      {isArchive && (
       <section className="backup-history" aria-label="Molnhändelser">
         <div className="backup-history-heading">
           <div>
@@ -866,16 +882,18 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored }) {
         ) : (
           <div className="cloud-event-list">
             {syncEvents.slice(0, 10).map((event) => (
-              <div className="cloud-event-item" key={event.id}>
-                <span>{event.eventType}</span>
-                <strong>{event.status}</strong>
-                <p>{event.message}</p>
-                <small>{formatBackupDate(event.createdAt)} {formatBackupTime(event.createdAt)}</small>
+              <div className="cloud-event-item is-compact" key={event.id}>
+                <strong>{event.message || 'Händelse'}</strong>
+                <small>
+                  {formatBackupDate(event.createdAt)} {formatBackupTime(event.createdAt)}
+                  {event.status ? ` · ${event.status}` : ''}
+                </small>
               </div>
             ))}
           </div>
         )}
       </section>
+      )}
     </article>
   )
 }

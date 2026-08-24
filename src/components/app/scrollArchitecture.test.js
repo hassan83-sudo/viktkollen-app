@@ -123,9 +123,10 @@ describe('app scroll architecture', () => {
     expect(moreShellBlock).toContain('min-height: 100dvh')
     expect(moreGridBlock).toContain('align-content: start')
     expect(moreSectionBlock).toContain('min-height: 100dvh')
-    expect(moreSectionSource).toMatch(
-      /<CloudBackupPanel[\s\S]*<\/AppErrorBoundary>\s*<article className="panel account-settings-panel"/,
-    )
+    expect(moreSectionSource).toContain('<CloudBackupPanel')
+    expect(moreSectionSource).toContain('account-settings-panel')
+    expect(moreSectionSource).toContain('<MoreHub')
+    expect(moreSectionSource).toContain('onBack={handleBackToHub}')
     expect(cloudBackupSource).not.toMatch(/maxHeight|overflowY|style=\{\{/)
   })
 })

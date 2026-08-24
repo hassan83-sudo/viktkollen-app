@@ -879,6 +879,7 @@ function App() {
   const [activeAppSection, setActiveAppSection] = useState('home')
   const [nutritionIntent, setNutritionIntent] = useState(null)
   const [progressIntent, setProgressIntent] = useState(null)
+  const [moreIntent, setMoreIntent] = useState(null)
   const [showInternalTools] = useState(isInternalToolsEnabled)
   const [checkIn, setCheckIn] = useState(() =>
     userDataRepository.getCheckIn(initialCheckIn, isStoredCheckIn),
@@ -2724,9 +2725,12 @@ function App() {
       sectionId,
       targetId,
     })
+    if (sectionId === 'more') {
+      setMoreIntent({ id: Date.now(), targetId })
+    }
     setActiveAppSection(sectionId)
 
-    window.requestAnimationFrame(() => {
+    const tryScrollToSearchTarget = () => {
       const target = document.getElementById(targetId) || document.getElementById(`app-section-${sectionId}`)
 
       scrollTargetInApp(target)
@@ -2741,7 +2745,13 @@ function App() {
         targetFound: Boolean(target),
         targetId,
       })
-    })
+    }
+
+    window.requestAnimationFrame(tryScrollToSearchTarget)
+    if (sectionId === 'more') {
+      window.setTimeout(tryScrollToSearchTarget, 120)
+      window.setTimeout(tryScrollToSearchTarget, 420)
+    }
   }
 
   const handleDailyCoachAction = useCallback((sectionId, targetId) => {
@@ -3118,6 +3128,7 @@ function App() {
   healthSnapshot={healthSnapshot}
   isAuthenticated={Boolean(authSession)}
   meals={meals}
+  navigationIntent={moreIntent}
   nutritionGoals={nutritionGoals}
   onDataRestored={refreshAppStateFromStorage}
   onEditProfile={() => setShowOnboarding(true)}

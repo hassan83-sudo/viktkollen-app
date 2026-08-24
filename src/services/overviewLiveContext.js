@@ -35,6 +35,7 @@ export function createFallbackWeatherContext() {
     condition: 'Väder ej kopplat',
     hasLiveWeather: false,
     icon: '☁',
+    feelsLikeC: null,
     precipitationRiskPercent: null,
     sourceLabel: 'Fallback',
     ...createPlaceholderSunTimes(),

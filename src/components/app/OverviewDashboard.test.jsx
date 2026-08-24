@@ -103,6 +103,7 @@ describe('OverviewDashboard', () => {
     expect(markup).toContain('Skanna mat med kamera')
     expect(markup).not.toContain('Öppna matscanning')
     expect(markup).not.toContain('overview-body-scan-stage')
+    expect(markup).toContain('overview-body-scan-rings')
     expect(markup).not.toContain('overview-body-float-rings')
     expect(markup).toContain('/viktkollen-meal-scan.png')
     expect(markup).not.toContain('>AI<')

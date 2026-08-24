@@ -5,6 +5,7 @@ import DailyMealPlannerCard from './DailyMealPlannerCard.jsx'
 import HealthPredictionCard from './HealthPredictionCard.jsx'
 import SmartNotificationsCard from './SmartNotificationsCard.jsx'
 import WeeklyProgressSection from './WeeklyProgressSection.jsx'
+import BodyScanRings from './BodyScanRings.jsx'
 import OverviewBodyScanStage from './OverviewBodyScanStage.jsx'
 import OverviewCoachStage from './OverviewCoachStage.jsx'
 import OverviewFoodScanStage from './OverviewFoodScanStage.jsx'
@@ -655,6 +656,7 @@ function OverviewPrimaryActions({
                   src={action.image}
                   width={action.imageWidth}
                 />
+                {action.art === 'body' ? <BodyScanRings /> : null}
               </span>
               <span className="overview-primary-action-icon">
                 <OverviewIcon name={action.icon} />
@@ -1104,6 +1106,9 @@ function OverviewDashboard({
 
       {bodyScanOpen && (
         <OverviewBodyScanStage
+          currentWeight={currentWeight}
+          weather={weather}
+          weights={weights}
           onClose={() => setBodyScanOpen(false)}
           onStartScan={() => {
             setBodyScanOpen(false)

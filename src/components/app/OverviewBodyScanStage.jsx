@@ -1,34 +1,26 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 
+import BodyScanRings from './BodyScanRings.jsx'
+import { getScanInputLabel } from '../../services/bodyAnalysisEstimates.js'
+import { getAnalysisHistory, getLatestAnalysis } from '../../services/bodyAnalysisHistory.js'
 import {
-  getConfidenceLabel,
-  getScanInputLabel,
-} from '../../services/bodyAnalysisEstimates.js'
-import { getLatestAnalysis } from '../../services/bodyAnalysisHistory.js'
+  buildHomeBodyToday,
+  formatCmLabel,
+  formatKgLabel,
+  formatSignedChange,
+} from '../../services/homeBodyToday.js'
 
 const bodyScanImage = '/viktkollen-body-scan.png'
 
-function formatKg(value) {
-  if (!Number.isFinite(Number(value))) return ''
-  return Number(value).toLocaleString('sv-SE', {
-    maximumFractionDigits: 1,
-    minimumFractionDigits: Number.isInteger(Number(value)) ? 0 : 1,
-  })
-}
-
-function formatRange(min, max, unit) {
-  if (!Number.isFinite(Number(min)) || !Number.isFinite(Number(max))) return ''
-  return `${formatKg(min)}–${formatKg(max)} ${unit}`
-}
-
-function formatScanDate(value) {
+function formatScanDateTime(value) {
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return ''
   return new Intl.DateTimeFormat('sv-SE', {
     day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
     month: 'short',
-    year: 'numeric',
   }).format(parsed)
 }
 
@@ -36,22 +28,24 @@ function listItems(value) {
   return (Array.isArray(value) ? value : [value]).map((item) => String(item || '').trim()).filter(Boolean)
 }
 
-function measurementLabel(key) {
-  return {
-    chestCm: 'Bröst',
-    hipCm: 'Höft',
-    shoulderWidthCm: 'Axlar',
-    waistCm: 'Midja',
-  }[key] || key
-}
-
-function OverviewBodyScanStage({ onClose, onStartScan }) {
-  const [analysis, setAnalysis] = useState(() => getLatestAnalysis())
+function OverviewBodyScanStage({
+  currentWeight = null,
+  onClose,
+  onStartScan,
+  weather = null,
+  weights = [],
+}) {
+  const [history, setHistory] = useState(() => getAnalysisHistory())
+  const analysis = history[0] || getLatestAnalysis()
   const result = analysis?.result || null
+  const today = useMemo(
+    () => buildHomeBodyToday({ currentWeight, history, weather, weights }),
+    [currentWeight, history, weather, weights],
+  )
 
   useEffect(() => {
     function refresh() {
-      setAnalysis(getLatestAnalysis())
+      setHistory(getAnalysisHistory())
     }
 
     window.addEventListener('viktkollen:body-analysis-history-changed', refresh)
@@ -73,48 +67,19 @@ function OverviewBodyScanStage({ onClose, onStartScan }) {
     }
   }, [onClose])
 
-  const facts = useMemo(() => {
-    if (!result) return []
-
-    const factsList = [
-      result.summary && { label: 'Sammanfattning', value: result.summary },
-      result.bodyComposition && { label: 'Kroppssammansättning', value: result.bodyComposition },
-      result.posture && { label: 'Hållning', value: result.posture },
-      result.estimatedWeight && {
-        label: 'Uppskattad vikt',
-        value: formatRange(result.estimatedWeight.minKg, result.estimatedWeight.maxKg, 'kg'),
-      },
-      result.measuredWeight?.valueKg && {
-        label: 'Registrerad vikt',
-        value: `${formatKg(result.measuredWeight.valueKg)} kg`,
-      },
-      (result.dataQuality || result.confidence) && {
-        label: 'Säkerhet',
-        value: getConfidenceLabel(result.dataQuality || result.confidence),
-      },
-      result.scanInput && { label: 'Underlag', value: getScanInputLabel(result.scanInput) },
-    ].filter(Boolean)
-
-    Object.entries(result.estimatedMeasurements || {}).forEach(([key, estimate]) => {
-      const range = formatRange(estimate?.min, estimate?.max, 'cm')
-      if (!range) return
-      factsList.push({ label: measurementLabel(key), value: range })
-    })
-
-    return factsList
-  }, [result])
-
-  const strengths = listItems(result?.strengths).slice(0, 4)
-  const improvements = listItems(result?.improvementAreas).slice(0, 4)
-  const nextSteps = listItems(result?.nextSteps).slice(0, 3)
   const overlay = typeof document === 'undefined' ? null : document.body
-
   if (!overlay) return null
 
+  const { clothing, scan, untilSunset, weightTrend, wind } = today
+  const strengths = listItems(result?.strengths).slice(0, 3)
+  const improvements = listItems(result?.improvementAreas).slice(0, 3)
+  const weatherReady = Boolean(weather?.hasLiveWeather)
+
   return createPortal(
-    <div className="overview-body-scan-stage" role="dialog" aria-labelledby="overview-body-scan-title" aria-modal="true">
+    <div className="overview-body-scan-stage" role="dialog" aria-labelledby="overview-body-today-title" aria-modal="true">
       <div className="overview-body-scan-hero is-full-art">
-        <img alt="Kroppsscanning med ansikte och sidopaneler" src={bodyScanImage} />
+        <img alt="Kroppsscanning" src={bodyScanImage} />
+        <BodyScanRings className="overview-body-scan-rings is-fullscreen" />
         <button className="overview-body-scan-close" type="button" onClick={onClose}>
           Stäng
         </button>
@@ -122,26 +87,101 @@ function OverviewBodyScanStage({ onClose, onStartScan }) {
 
       <div className="overview-body-scan-panel">
         <p className="eyebrow">Kroppsscanning</p>
-        <h2 id="overview-body-scan-title">Din kropp, i full bild</h2>
-        {analysis ? (
-          <p className="overview-body-scan-meta">
-            Senaste analys {formatScanDate(analysis.createdAt) || 'okänt datum'}
-            {result?.source === 'ai' ? ' · AI-analys' : result?.source === 'mock' ? ' · Demoresultat' : ''}
-          </p>
-        ) : (
-          <p className="overview-body-scan-meta">Ingen scanning sparad ännu. Ta tre vinklar för att se fakta här.</p>
-        )}
+        <h2 id="overview-body-today-title">Din kropp idag</h2>
 
-        {facts.length > 0 && (
-          <dl className="overview-body-scan-facts">
-            {facts.map((fact) => (
-              <div key={fact.label}>
-                <dt>{fact.label}</dt>
-                <dd>{fact.value}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
+        <section className="overview-body-today-card" aria-label="Din kropp idag">
+          {weightTrend.currentKg !== null ? (
+            <>
+              <p className="overview-body-today-weight">{formatKgLabel(weightTrend.currentKg)}</p>
+              {weightTrend.change7dKg !== null && (
+                <p>{formatSignedChange(weightTrend.change7dKg, 'kg')} senaste 7 dagarna</p>
+              )}
+              {weightTrend.change30dKg !== null && (
+                <p>{formatSignedChange(weightTrend.change30dKg, 'kg')} senaste 30 dagarna</p>
+              )}
+              {weightTrend.change7dKg === null && weightTrend.change30dKg === null && (
+                <p>Ingen viktförändring att jämföra ännu.</p>
+              )}
+              {weightTrend.trendLabel ? <p>{weightTrend.trendLabel}</p> : null}
+            </>
+          ) : (
+            <p>Ingen aktuell vikt registrerad.</p>
+          )}
+          {scan.latest ? (
+            <p>
+              Senaste scanning {formatScanDateTime(scan.latest.createdAt) || 'okänt datum'}
+              {scan.confidenceLabel ? ` · Säkerhet ${scan.confidenceLabel}` : ''}
+            </p>
+          ) : (
+            <p>Ingen tidigare scanning.</p>
+          )}
+        </section>
+
+        <section className="overview-body-today-card" aria-label="Din förändring">
+          <h3>Din förändring</h3>
+          {scan.previous ? (
+            <>
+              <p>Sedan förra scanningen</p>
+              {scan.weight?.change !== null && scan.weight?.previous != null && (
+                <p>
+                  Vikt {formatKgLabel(scan.weight.previous)} → {formatKgLabel(scan.weight.current)}
+                  {' '}
+                  ({formatSignedChange(scan.weight.change, 'kg')})
+                </p>
+              )}
+              {scan.measurements.map((item) => (
+                <p key={item.key}>
+                  {item.name}
+                  {item.previous !== null && item.current !== null
+                    ? ` ${formatCmLabel(item.previous)} → ${formatCmLabel(item.current)} · ${item.changeLabel}`
+                    : ` ${item.changeLabel}`}
+                </p>
+              ))}
+              <p className="overview-body-scan-note">
+                AI-uppskattade mått är ungefärliga, inte exakta medicinska mätningar.
+              </p>
+            </>
+          ) : (
+            <p>Ingen tidigare scanning att jämföra med.</p>
+          )}
+        </section>
+
+        <section className="overview-body-today-card" aria-label="Vädret idag">
+          <h3>{weatherReady ? `Vädret idag i ${weather.city}` : 'Vädret idag'}</h3>
+          {weatherReady ? (
+            <>
+              <p>{weather.icon} {Math.round(weather.temperatureC)}°C · {weather.condition}</p>
+              <p>
+                Känns som
+                {' '}
+                {Number.isFinite(weather.feelsLikeC) ? `${Math.round(weather.feelsLikeC)}°C` : 'saknas'}
+              </p>
+              <p>
+                Vind {Number.isFinite(weather.windSpeedMs) ? `${Math.round(weather.windSpeedMs)} m/s` : 'saknas'}
+                {wind.label ? ` · ${wind.label}` : ''}
+              </p>
+              <p>
+                Regnrisk
+                {' '}
+                {Number.isFinite(weather.precipitationRiskPercent)
+                  ? `${Math.round(weather.precipitationRiskPercent)} %`
+                  : 'saknas'}
+              </p>
+              <p>Soluppgång {weather.sunrise ? weather.sunriseLabel : 'saknas'}</p>
+              <p>
+                Solnedgång {weather.sunset ? weather.sunsetLabel : 'saknas'}
+                {untilSunset ? ` · ${untilSunset}` : ''}
+              </p>
+            </>
+          ) : (
+            <p>Ingen väderdata.</p>
+          )}
+        </section>
+
+        <section className="overview-body-today-card" aria-label="Vad passar att ha på sig">
+          <h3>Vad passar att ha på sig?</h3>
+          {clothing.available ? clothing.lines.map((line) => <p key={line}>{line}</p>) : <p>{clothing.emptyLabel}</p>}
+        </section>
 
         {strengths.length > 0 && (
           <section>
@@ -155,12 +195,9 @@ function OverviewBodyScanStage({ onClose, onStartScan }) {
             <ul>{improvements.map((item) => <li key={item}>{item}</li>)}</ul>
           </section>
         )}
-        {nextSteps.length > 0 && (
-          <section>
-            <h3>Nästa steg</h3>
-            <ul>{nextSteps.map((item) => <li key={item}>{item}</li>)}</ul>
-          </section>
-        )}
+        {result?.scanInput && <p>Underlag: {getScanInputLabel(result.scanInput)}</p>}
+        {result?.bodyComposition && <p>Kroppssammansättning: {result.bodyComposition}</p>}
+        {result?.posture && <p>Hållning: {result.posture}</p>}
 
         <p className="overview-body-scan-note">
           {result?.safetyNote || result?.limitations?.[0] || 'En bildanalys är en visuell uppskattning, inte en medicinsk mätning.'}

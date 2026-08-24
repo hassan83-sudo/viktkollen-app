@@ -30,6 +30,7 @@ export function mapOpenMeteoWeather(payload = {}, city = 'Din plats') {
   const daily = payload.daily || {}
   const mapped = weatherByCode[Number(current.weather_code)] || weatherByCode[3]
   const temperatureC = Number(current.temperature_2m)
+  const feelsLikeC = Number(current.apparent_temperature)
   const windSpeedMs = Number(current.wind_speed_10m)
   const precipitationRiskPercent = Number(current.precipitation_probability ?? daily.precipitation_probability_max?.[0])
 
@@ -37,6 +38,7 @@ export function mapOpenMeteoWeather(payload = {}, city = 'Din plats') {
     return {
       city,
       condition: 'Väder ej kopplat',
+      feelsLikeC: null,
       hasLiveWeather: false,
       icon: '☁',
       precipitationRiskPercent: null,
@@ -53,6 +55,7 @@ export function mapOpenMeteoWeather(payload = {}, city = 'Din plats') {
   return {
     city,
     condition: mapped.condition,
+    feelsLikeC: Number.isFinite(feelsLikeC) ? feelsLikeC : null,
     hasLiveWeather: true,
     icon: mapped.icon,
     precipitationRiskPercent: Number.isFinite(precipitationRiskPercent) ? precipitationRiskPercent : null,
@@ -76,7 +79,7 @@ export async function fetchOpenMeteoWeather(coords, fetchImpl = fetch) {
   const url = new URL('https://api.open-meteo.com/v1/forecast')
   url.searchParams.set('latitude', String(latitude))
   url.searchParams.set('longitude', String(longitude))
-  url.searchParams.set('current', 'temperature_2m,weather_code,wind_speed_10m,precipitation_probability')
+  url.searchParams.set('current', 'temperature_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation_probability')
   url.searchParams.set('daily', 'sunrise,sunset,precipitation_probability_max')
   url.searchParams.set('timezone', 'auto')
   url.searchParams.set('forecast_days', '1')

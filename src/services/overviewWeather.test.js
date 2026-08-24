@@ -24,6 +24,7 @@ describe('overviewWeather', () => {
     })
     expect(weather.city).toBe('Din plats')
     expect(weather.sunriseLabel).toMatch(/\d{2}:\d{2}/)
+    expect(weather.feelsLikeC).toBeNull()
   })
 
   it('keeps a named city when mapping live weather', () => {

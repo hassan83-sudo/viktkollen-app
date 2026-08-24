@@ -2994,27 +2994,112 @@ button {
 }
 
 .body-scan-steps {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
 }
 
-.body-scan-steps button {
-  min-height: 72px;
-  padding: 10px;
-  background: var(--soft-bg);
-  box-shadow: none;
+.body-scan-steps button.body-scan-step,
+.body-scan-steps button.body-scan-step span,
+.body-scan-steps button.body-scan-step strong,
+.body-scan-steps button.body-scan-step small {
+  color: inherit;
 }
 
-.body-scan-steps button.is-active {
-  outline: 3px solid var(--accent-shadow);
-  background: var(--accent-soft);
-}
-
-.body-scan-steps button {
+.body-scan-steps button.body-scan-step {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-height: 64px;
+  padding: 12px 16px;
+  border-radius: 999px;
+  text-align: left;
   cursor: pointer;
+  box-shadow: none;
+  filter: none;
+  transform: none;
 }
 
-.body-scan-steps button[data-state='done'] {
-  outline: 2px solid rgba(45, 212, 191, 0.55);
+.body-scan-steps button.body-scan-step span,
+.body-scan-steps button.body-scan-step small {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.body-scan-steps button.body-scan-step strong {
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.body-scan-steps button.body-scan-step.is-waiting,
+.body-scan-steps button.body-scan-step[data-state='waiting'] {
+  color: #eaf2ff;
+  background: rgba(36, 52, 86, 0.94);
+  border: 1px solid rgba(186, 208, 255, 0.42);
+}
+
+.body-scan-steps button.body-scan-step.is-active,
+.body-scan-steps button.body-scan-step[data-state='active'] {
+  color: #0b1224;
+  background: linear-gradient(90deg, #7af7ff 0%, #c9b8ff 100%);
+  border: 2px solid #f7fbff;
+  box-shadow:
+    0 0 0 3px rgba(122, 247, 255, 0.38),
+    0 10px 24px rgba(154, 101, 255, 0.32);
+}
+
+.body-scan-steps button.body-scan-step.is-done,
+.body-scan-steps button.body-scan-step[data-state='done'] {
+  color: #04241c;
+  background: linear-gradient(90deg, #66ffae 0%, #38f7ff 100%);
+  border: 2px solid rgba(102, 255, 174, 0.92);
+}
+
+.body-scan-steps button.body-scan-step:hover:not(:disabled),
+.body-scan-steps button.body-scan-step:active:not(:disabled) {
+  filter: none;
+  transform: none;
+}
+
+.body-scan-steps button.body-scan-step.is-waiting:hover:not(:disabled) {
+  color: #f7fbff;
+  background: rgba(48, 68, 110, 0.98);
+}
+
+.body-scan-capture {
+  display: grid;
+  gap: 12px;
+  scroll-margin-top: 10px;
+  scroll-margin-bottom: calc(var(--vk-nav-height) + 26px + env(safe-area-inset-bottom, 0px));
+}
+
+.body-scan-camera-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.body-scan-camera-controls > button,
+.body-scan-camera-controls > label {
+  width: 100%;
+  min-height: 48px;
+  justify-self: stretch;
+}
+
+.body-scan-capture-button {
+  color: #061018;
+  background: linear-gradient(90deg, #38f7ff, #9a65ff);
+  box-shadow: 0 10px 22px rgba(56, 247, 255, 0.22);
+}
+
+.body-scan-facing {
+  margin: 0;
+  color: var(--vk-cyan);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.body-scan-analyze {
+  margin-bottom: calc(var(--vk-nav-height) + 24px + env(safe-area-inset-bottom, 0px));
 }
 
 .body-scan-analyze:disabled {
@@ -3022,12 +3107,6 @@ button {
   color: #dbe7ff;
   background: rgba(20, 28, 48, 0.92);
   box-shadow: none;
-}
-
-.body-scan-steps span,
-.body-scan-steps small {
-  display: block;
-  font-size: 11px;
 }
 
 .body-scan-guide {
@@ -3049,6 +3128,8 @@ button {
   position: relative;
   overflow: hidden;
   min-height: 180px;
+  scroll-margin-top: 10px;
+  scroll-margin-bottom: calc(var(--vk-nav-height) + 26px + env(safe-area-inset-bottom, 0px));
   border: 1px dashed var(--border);
   border-radius: 14px;
   background: var(--soft-bg);
@@ -6990,9 +7071,11 @@ button {
   }
 
   .body-scan-flow .body-analysis-filter > button,
-  .body-scan-flow .body-analysis-filter > label {
+  .body-scan-flow .body-analysis-filter > label,
+  .body-scan-camera-controls > button,
+  .body-scan-camera-controls > label {
     flex: 1 1 132px;
-    min-height: 44px;
+    min-height: 48px;
   }
 
   .photo-timeline article {

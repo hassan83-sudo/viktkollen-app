@@ -1,15 +1,20 @@
-import { useEffect, useRef, useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 
 import {
   bodyAnalysisViews,
   canCompleteBodyAnalysisScan,
+  defaultBodyScanFacingMode,
   estimateLightQualityFromImageData,
   getBodyAnalysisView,
+  getBodyScanFacingLabel,
   getBodyScanProgress,
   getBodyScanStepState,
+  getBodyScanVideoConstraints,
   getCameraPermissionMessage,
   getCompletedBodyAnalysisViews,
   getNextBodyAnalysisViewKey,
+  getNextBodyScanFacingMode,
+  scrollBodyScanCameraIntoView,
   stopMediaStream,
 } from '../services/bodyAnalysisGuidedScan'
 
@@ -25,7 +30,9 @@ function BodyAnalysisUploader({
   const [cameraStatus, setCameraStatus] = useState('')
   const [cameraActive, setCameraActive] = useState(false)
   const [countdown, setCountdown] = useState(null)
+  const [facingMode, setFacingMode] = useState(defaultBodyScanFacingMode)
   const [lightQuality, setLightQuality] = useState(null)
+  const captureSectionRef = useRef(null)
   const cameraBoxRef = useRef(null)
   const countdownTimerRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -80,10 +87,18 @@ function BodyAnalysisUploader({
   }
 
   function focusCaptureArea() {
-    cameraBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    const scroll = () => {
+      const node = captureSectionRef.current || cameraBoxRef.current
+      scrollBodyScanCameraIntoView(node)
+    }
+
+    window.requestAnimationFrame(() => {
+      scroll()
+      window.setTimeout(scroll, 80)
+    })
   }
 
-  async function startCamera(viewKey = activeViewKey) {
+  async function startCamera(viewKey = activeViewKey, nextFacingMode = facingMode) {
     const view = getBodyAnalysisView(viewKey)
     if (!canUseLiveCamera) {
       setCameraStatus(hasCameraApi
@@ -93,12 +108,15 @@ function BodyAnalysisUploader({
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: { facingMode: { ideal: 'environment' } },
-      })
       stopMediaStream(streamRef.current)
+      streamRef.current = null
+      if (videoRef.current) videoRef.current.srcObject = null
+
+      const stream = await navigator.mediaDevices.getUserMedia(
+        getBodyScanVideoConstraints(nextFacingMode),
+      )
       streamRef.current = stream
+      setFacingMode(nextFacingMode)
       setCameraActive(true)
 
       if (videoRef.current) {
@@ -106,13 +124,18 @@ function BodyAnalysisUploader({
         await videoRef.current.play?.()
       }
 
-      setCameraStatus(`Kameran är redo för ${view.label.toLowerCase()}.`)
+      setCameraStatus(`Kameran är redo för ${view.label.toLowerCase()}. ${getBodyScanFacingLabel(nextFacingMode)}.`)
       return true
     } catch (error) {
       setCameraActive(false)
       setCameraStatus(getCameraPermissionMessage(error))
       return false
     }
+  }
+
+  async function flipCamera() {
+    const nextFacingMode = getNextBodyScanFacingMode(facingMode)
+    await startCamera(activeViewKey, nextFacingMode)
   }
 
   function activateAngle(viewKey, { retake = false } = {}) {
@@ -184,7 +207,7 @@ function BodyAnalysisUploader({
         return
       }
 
-      const file = new File([blob], `body-scan-${capturedViewKey}.jpg`, {
+      const file = new File([blob], 'body-scan-' + capturedViewKey + '.jpg', {
         type: 'image/jpeg',
       })
 
@@ -235,7 +258,7 @@ function BodyAnalysisUploader({
               <button
                 aria-current={view.key === activeViewKey ? 'step' : undefined}
                 aria-label={`Öppna scanning för ${view.label}`}
-                className={view.key === activeViewKey ? 'is-active' : ''}
+                className={'body-scan-step is-' + stepState + (view.key === activeViewKey ? ' is-active' : '')}
                 data-state={stepState}
                 key={view.key}
                 type="button"
@@ -245,7 +268,7 @@ function BodyAnalysisUploader({
                 <strong>{view.label}</strong>
                 <small>
                   {photos[view.key]
-                    ? `✓ ${view.doneLabel}`
+                    ? ('✓ ' + view.doneLabel)
                     : view.key === activeViewKey
                       ? 'Aktiv'
                       : 'Väntar'}
@@ -255,60 +278,75 @@ function BodyAnalysisUploader({
           })}
         </div>
 
-        <div className="body-scan-guide">
-          <div>
-            <p className="eyebrow">Pose-guide</p>
-            <ul>
-              {activeView.poseTips.map((tip) => (
-                <li key={tip}>{tip}</li>
-              ))}
-            </ul>
-          </div>
-          <p>
-            Placera mobilen så att hela kroppen syns från huvud till fötter.
-            Ställ kameran ungefär i midje-/brösthöjd, gärna 1,5-3 meter bort.
-          </p>
-        </div>
-
-        <div className="body-scan-camera" id="body-scan-camera" ref={cameraBoxRef}>
-          <video ref={videoRef} playsInline muted aria-label="Kameraförhandsvisning för body scan" />
-          <canvas ref={canvasRef} aria-hidden="true" />
-          {countdown !== null && (
-            <div className="body-scan-countdown" aria-live="assertive">
-              {countdown > 0 ? countdown : '📸'}
+        <div className="body-scan-capture" id="body-scan-capture" ref={captureSectionRef}>
+          <div className="body-scan-guide">
+            <div>
+              <p className="eyebrow">Pose-guide</p>
+              <ul>
+                {activeView.poseTips.map((tip) => (
+                  <li key={tip}>{tip}</li>
+                ))}
+              </ul>
             </div>
-          )}
-        </div>
+            <p>
+              Placera mobilen så att hela kroppen syns från huvud till fötter.
+              Ställ kameran ungefär i midje-/brösthöjd, gärna 1,5-3 meter bort.
+            </p>
+          </div>
 
-        <div className="body-analysis-filter">
-          <button className="secondary-button" type="button" onClick={startCamera}>
-            Starta kamera
-          </button>
-          <button type="button" onClick={startCountdown} disabled={isCountingDown}>
-            Ta bild
-          </button>
-          {cameraActive && (
-            <button className="secondary-button" type="button" onClick={() => stopCamera()}>
-              Stoppa kamera
+          <div className="body-scan-camera" id="body-scan-camera" ref={cameraBoxRef}>
+            <video ref={videoRef} playsInline muted aria-label="Kameraförhandsvisning för body scan" />
+            <canvas ref={canvasRef} aria-hidden="true" />
+            {countdown !== null && (
+              <div className="body-scan-countdown" aria-live="assertive">
+                {countdown > 0 ? countdown : '📸'}
+              </div>
+            )}
+          </div>
+
+          <div className="body-scan-camera-controls">
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => (cameraActive ? stopCamera() : startCamera())}
+            >
+              {cameraActive ? 'Stoppa kamera' : 'Starta kamera'}
             </button>
-          )}
+            <button
+              aria-label="Vänd kamera"
+              className="secondary-button"
+              type="button"
+              onClick={flipCamera}
+            >
+              Vänd kamera
+            </button>
+            <button
+              className="body-scan-capture-button"
+              type="button"
+              onClick={startCountdown}
+              disabled={isCountingDown}
+            >
+              Ta bild
+            </button>
+            <label className="secondary-button body-scan-file-picker" htmlFor={'body-scan-file-' + activeViewKey}>
+              Välj bild
+              <input
+                id={'body-scan-file-' + activeViewKey}
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                aria-label={`Välj bild ${activeView.label.toLowerCase()} för AI-kroppsanalys`}
+                onChange={(event) => handleFileChange(event, activeViewKey)}
+              />
+            </label>
+          </div>
           {isCountingDown && (
             <button className="secondary-button" type="button" onClick={stopCountdown}>
               Avbryt nedräkning
             </button>
           )}
-          <label className="secondary-button body-scan-file-picker" htmlFor={`body-scan-file-${activeViewKey}`}>
-            Välj bild
-            <input
-              id={`body-scan-file-${activeViewKey}`}
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              aria-label={`Välj bild ${activeView.label.toLowerCase()} för AI-kroppsanalys`}
-              onChange={(event) => handleFileChange(event, activeViewKey)}
-            />
-          </label>
+          <p className="body-scan-facing" aria-live="polite">{getBodyScanFacingLabel(facingMode)}</p>
         </div>
 
         {!canUseLiveCamera && (
@@ -319,7 +357,7 @@ function BodyAnalysisUploader({
 
         {cameraStatus && <p className="analysis-status" aria-live="polite">{cameraStatus}</p>}
         {lightQuality && (
-          <p className={`body-scan-light is-${lightQuality.status}`} aria-live="polite">
+          <p className={'body-scan-light is-' + lightQuality.status} aria-live="polite">
             {lightQuality.text}
           </p>
         )}
@@ -334,7 +372,7 @@ function BodyAnalysisUploader({
 
             return (
               <figure key={view.key}>
-                <img src={photo.preview} alt={`Vald bild ${view.label.toLowerCase()}`} />
+                <img src={photo.preview} alt={'Vald bild ' + view.label.toLowerCase()} />
                 <figcaption>
                   {view.doneLabel}: {photo.name}
                   <button

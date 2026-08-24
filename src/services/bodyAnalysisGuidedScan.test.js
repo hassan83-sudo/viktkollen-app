@@ -2,15 +2,23 @@ import { describe, expect, it, vi } from 'vitest'
 
 import {
   bodyAnalysisViews,
+  bodyScanCameraNavOffsetPx,
   canCompleteBodyAnalysisScan,
+  defaultBodyScanFacingMode,
   estimateLightQualityFromImageData,
   getAngleMatchedComparison,
+  getBodyScanCameraScrollY,
+  getBodyScanFacingLabel,
+  getBodyScanStepState,
+  getBodyScanVideoConstraints,
   getCameraPermissionMessage,
   getCompletedBodyAnalysisViews,
   getLightQualityFromLuminance,
   getNextBodyAnalysisViewKey,
+  getNextBodyScanFacingMode,
   recordBodyScanPhoto,
   revokeBodyScanPreview,
+  scrollBodyScanCameraIntoView,
   selectBodyScanAngle,
   stopMediaStream,
 } from './bodyAnalysisGuidedScan.js'
@@ -102,5 +110,57 @@ describe('bodyAnalysisGuidedScan', () => {
     }
 
     expect(getAngleMatchedComparison(latest, [latest, previous]).map((item) => item.view)).toEqual(['front', 'back'])
+  })
+
+  it('uses readable active, waiting and done step states', () => {
+    const photos = { front: photo('front') }
+
+    expect(getBodyScanStepState('front', 'front', photos)).toBe('active')
+    expect(getBodyScanStepState('side', 'front', photos)).toBe('waiting')
+    expect(getBodyScanStepState('front', 'side', photos)).toBe('done')
+  })
+
+  it('defaults to the back camera and flips environment to user and back', () => {
+    expect(defaultBodyScanFacingMode).toBe('environment')
+    expect(getBodyScanFacingLabel()).toBe('Bakre kamera')
+    expect(getBodyScanVideoConstraints().video.facingMode).toEqual({ ideal: 'environment' })
+    expect(getNextBodyScanFacingMode('environment')).toBe('user')
+    expect(getBodyScanFacingLabel('user')).toBe('Främre kamera')
+    expect(getBodyScanVideoConstraints('user').video.facingMode).toEqual({ ideal: 'user' })
+    expect(getNextBodyScanFacingMode('user')).toBe('environment')
+  })
+
+  it('scrolls the capture area to the start with a bottom-nav offset', () => {
+    const scrollTo = vi.fn()
+    const element = {
+      getBoundingClientRect: () => ({ top: 420 }),
+      scrollIntoView: vi.fn(),
+    }
+
+    const top = scrollBodyScanCameraIntoView(element, {
+      scrollTo,
+      scrollY: 80,
+    })
+
+    expect(bodyScanCameraNavOffsetPx).toBe(96)
+    expect(top).toBe(getBodyScanCameraScrollY(500))
+    expect(scrollTo).toHaveBeenCalledWith(top, 96)
+
+    const scrollIntoView = vi.fn()
+    const windowScrollTo = vi.fn()
+    vi.stubGlobal('window', { scrollTo: windowScrollTo, scrollY: 0 })
+
+    scrollBodyScanCameraIntoView({
+      getBoundingClientRect: () => ({ top: 240 }),
+      scrollIntoView,
+    })
+
+    expect(windowScrollTo).toHaveBeenCalledWith({ behavior: 'smooth', top: 232 })
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      block: 'start',
+      inline: 'nearest',
+    })
+    vi.unstubAllGlobals()
   })
 })

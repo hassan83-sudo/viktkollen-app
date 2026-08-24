@@ -48,6 +48,14 @@ export function getNextBodyAnalysisViewKey(currentKey, photos = {}) {
   return nextMissingView?.key || currentKey
 }
 
+export function getCompletedBodyAnalysisViews(photos = {}) {
+  return bodyAnalysisViews.filter((view) => Boolean(photos[view.key]))
+}
+
+export function canCompleteBodyAnalysisScan(photos = {}) {
+  return bodyAnalysisViews.every((view) => Boolean(photos[view.key]))
+}
+
 export function getBodyScanProgress(photos = {}) {
   const completed = getCompletedBodyAnalysisViews(photos).length
   return {
@@ -58,9 +66,47 @@ export function getBodyScanProgress(photos = {}) {
 }
 
 export function getBodyScanStepState(viewKey, activeViewKey, photos = {}) {
-  if (photos[viewKey]) return 'done'
   if (viewKey === activeViewKey) return 'active'
+  if (photos[viewKey]) return 'done'
   return 'waiting'
+}
+
+export const defaultBodyScanFacingMode = 'environment'
+export const bodyScanCameraNavOffsetPx = 96
+
+export function getNextBodyScanFacingMode(current = defaultBodyScanFacingMode) {
+  return current === 'user' ? 'environment' : 'user'
+}
+
+export function getBodyScanFacingLabel(mode = defaultBodyScanFacingMode) {
+  return mode === 'user' ? 'Främre kamera' : 'Bakre kamera'
+}
+
+export function getBodyScanVideoConstraints(facingMode = defaultBodyScanFacingMode) {
+  return {
+    audio: false,
+    video: { facingMode: { ideal: facingMode } },
+  }
+}
+
+export function getBodyScanCameraScrollY(documentTop) {
+  return Math.max(0, Number(documentTop) - 8)
+}
+
+export function scrollBodyScanCameraIntoView(element, options = {}) {
+  if (!element || typeof element.getBoundingClientRect !== 'function') return 0
+
+  const behavior = options.behavior || 'smooth'
+  const navOffset = options.navOffset ?? bodyScanCameraNavOffsetPx
+  const scrollY = options.scrollY ?? (typeof window !== 'undefined' ? window.scrollY : 0)
+  const top = getBodyScanCameraScrollY(scrollY + element.getBoundingClientRect().top)
+  const scrollTo = options.scrollTo || ((nextTop) => {
+    window.scrollTo({ behavior, top: nextTop })
+    element.scrollIntoView({ behavior, block: 'start', inline: 'nearest' })
+  })
+
+  scrollTo(top, navOffset)
+  return top
 }
 
 export function selectBodyScanAngle(photos = {}, viewKey, { retake = false } = {}) {
@@ -110,14 +156,6 @@ export function getCameraPermissionMessage(error) {
     return 'Ingen bakre kamera hittades. Välj bild från mobilen i stället.'
   }
   return 'Kameran kunde inte starta. Kontrollera behörighet eller välj bild från mobilen.'
-}
-
-export function getCompletedBodyAnalysisViews(photos = {}) {
-  return bodyAnalysisViews.filter((view) => Boolean(photos[view.key]))
-}
-
-export function canCompleteBodyAnalysisScan(photos = {}) {
-  return bodyAnalysisViews.every((view) => Boolean(photos[view.key]))
 }
 
 export function getLightQualityFromLuminance(luminance) {

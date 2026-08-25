@@ -64,4 +64,30 @@ describe('BodyAnalysisResult', () => {
     expect(markup).toContain('88-94 cm')
     expect(markup).toContain('ersätter inte våg')
   })
+
+  it('renders analysis text without crashing when photo previews are missing', () => {
+    const markup = renderToStaticMarkup(
+      <BodyAnalysisResult
+        activeBodyMarker={{ text: 'Midja följs över tid.' }}
+        angleComparison={[]}
+        bodyOverviewMarkers={[]}
+        formatAnalysisDate={() => '12 aug. 2026'}
+        getResultSections={() => []}
+        getResultSourceLabel={() => 'AI-resultat'}
+        onMarkerChange={vi.fn()}
+        renderResultValue={() => null}
+        savedAnalysis={{
+          ...savedAnalysis,
+          backPhoto: { name: 'back.jpg' },
+          frontPhoto: { name: 'front.jpg' },
+          sidePhoto: { name: 'side.jpg' },
+        }}
+      />,
+    )
+
+    expect(markup).toContain('Stabil visuell baslinje')
+    expect(markup).toContain('78 kg')
+    expect(markup).not.toContain('<img')
+    expect(markup).not.toContain('Före/efter per vinkel')
+  })
 })

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { normalizeAnalysis, sanitizeAnalysisForExport } from './bodyAnalysisHistory.js'
+import { normalizeAnalysis, restoreLocalBodyAnalysisPreviews, sanitizeAnalysisForExport, sanitizeValueForCloudTransfer } from './bodyAnalysisHistory.js'
 
 describe('bodyAnalysisHistory privacy', () => {
   it('removes raw image previews from exported analyses', () => {
@@ -57,6 +57,31 @@ describe('bodyAnalysisHistory privacy', () => {
       valueKg: 78,
     })
     expect(JSON.stringify(exported)).not.toContain('data:image')
+  })
+
+  it('reattaches local previews onto sanitized cloud history without copying remote image bytes', () => {
+    const cloud = sanitizeValueForCloudTransfer('viktkollen.bodyAnalysis.history.v1', {
+      analyses: [{
+        createdAt: '2026-08-11T10:00:00.000Z',
+        frontPhoto: { name: 'front.jpg', preview: 'data:image/jpeg;base64,remote' },
+        result: { source: 'ai', summary: 'Från molnet.' },
+        sidePhoto: { name: 'side.jpg', preview: 'data:image/jpeg;base64,remote-side' },
+        backPhoto: { name: 'back.jpg', preview: 'data:image/jpeg;base64,remote-back' },
+      }],
+      version: 1,
+    })
+    const merged = restoreLocalBodyAnalysisPreviews(cloud, {
+      analyses: [{
+        createdAt: '2026-08-11T10:00:00.000Z',
+        frontPhoto: { name: 'front.jpg', preview: 'data:image/jpeg;base64,local-front' },
+        result: { source: 'ai', summary: 'Lokalt.' },
+      }],
+    })
+
+    expect(cloud.analyses[0].frontPhoto.preview).toBeUndefined()
+    expect(merged.analyses[0].result.summary).toBe('Från molnet.')
+    expect(merged.analyses[0].frontPhoto.preview).toBe('data:image/jpeg;base64,local-front')
+    expect(JSON.stringify(merged)).not.toContain('remote')
   })
 
   it('normalizes older history entries to the current schema safely', () => {

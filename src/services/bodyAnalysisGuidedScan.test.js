@@ -112,6 +112,23 @@ describe('bodyAnalysisGuidedScan', () => {
     expect(getAngleMatchedComparison(latest, [latest, previous]).map((item) => item.view)).toEqual(['front', 'back'])
   })
 
+  it('skips before/after rows when a restored backup has no image previews', () => {
+    const latest = {
+      createdAt: '2026-08-11T10:00:00.000Z',
+      frontPhoto: { name: 'front-after.jpg' },
+      sidePhoto: { name: 'side-after.jpg' },
+      backPhoto: { name: 'back-after.jpg' },
+    }
+    const previous = {
+      createdAt: '2026-08-04T10:00:00.000Z',
+      frontPhoto: { name: 'front-before.jpg' },
+      sidePhoto: { name: 'side-before.jpg' },
+      backPhoto: { name: 'back-before.jpg' },
+    }
+
+    expect(getAngleMatchedComparison(latest, [latest, previous])).toEqual([])
+  })
+
   it('uses readable active, waiting and done step states', () => {
     const photos = { front: photo('front') }
 

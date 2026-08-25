@@ -111,18 +111,41 @@ describe('OverviewDashboard', () => {
     expect(markup).not.toContain('>CAM<')
   })
 
-  it('renders weight and calories as main stats without a duplicated goal weight card', () => {
+  it('renders Smart Camera in the old weight slot and keeps real weight with calories', () => {
     const markup = renderOverview().replaceAll('\u00a0', ' ')
 
-    expect(markup).toContain('Aktuell vikt')
+    expect(markup).toContain('Smart kamera')
+    expect(markup).toContain('AI-ögon')
+    expect(markup).toContain('IDAG')
     expect(markup).toContain('78,4 kg')
-    expect(markup).toContain('Kalorier idag')
-    expect(markup).toContain('1 840 kcal')
-    expect(markup).toContain('is-scale')
+    expect(markup).toContain('1 840')
+    expect(markup).toContain('2 200')
+    expect(markup).toContain('kcal')
     expect(markup).toContain('is-flame')
     expect(markup).toContain('class="overview-weight-sparkline"')
     expect(markup).toContain('class="overview-calorie-progress"')
     expect(markup).not.toContain('Målvikt</span>')
+    expect(markup).not.toContain('Family &amp; Safety')
+    expect(markup).not.toContain('Walkie')
+  })
+
+  it('hides Smart Camera and restores the weight card when the feature is off', () => {
+    const markup = renderOverview({
+      featureFlags: {
+        eyes: false,
+        familySafety: false,
+        memory: false,
+        mouth: false,
+        smartCamera: false,
+      },
+    }).replaceAll('\u00a0', ' ')
+
+    expect(markup).not.toContain('is-smart-camera')
+    expect(markup).toContain('Aktuell vikt')
+    expect(markup).toContain('Kalorier idag')
+    expect(markup).toContain('78,4 kg')
+    expect(markup).toContain('1 840 kcal')
+    expect(markup).not.toContain('Family &amp; Safety')
   })
 
   it('keeps health score, steps and protein inside the compact stats container', () => {

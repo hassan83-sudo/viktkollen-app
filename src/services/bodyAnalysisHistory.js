@@ -166,6 +166,102 @@ export function sanitizeAnalysisForExport(analysis) {
   }
 }
 
+export function sanitizeBodyAnalysisStorageValue(value) {
+  if (Array.isArray(value)) {
+    return value.map(sanitizeAnalysisForExport).filter(Boolean)
+  }
+
+  if (isObject(value) && Array.isArray(value.analyses)) {
+    return {
+      ...value,
+      analyses: value.analyses.map(sanitizeAnalysisForExport).filter(Boolean),
+    }
+  }
+
+  const sanitizedAnalysis = sanitizeAnalysisForExport(value)
+  return sanitizedAnalysis || value
+}
+
+export const bodyAnalysisCloudStorageKeys = Object.freeze([
+  'viktkollen.bodyAnalysis.history.v1',
+  'viktkollen.bodyAnalysis.history',
+  'viktkollen.bodyAnalysis.latest',
+])
+
+export function isBodyAnalysisCloudStorageKey(storageKey) {
+  return bodyAnalysisCloudStorageKeys.includes(storageKey)
+}
+
+export function sanitizeValueForCloudTransfer(storageKey, value) {
+  if (value == null || !isBodyAnalysisCloudStorageKey(storageKey)) return value
+  return sanitizeBodyAnalysisStorageValue(value)
+}
+
+function listAnalysesFromStorageValue(value) {
+  if (Array.isArray(value)) return value
+  if (isObject(value) && Array.isArray(value.analyses)) return value.analyses
+  if (isObject(value) && typeof value.createdAt === 'string') return [value]
+  return []
+}
+
+function localPhotoPreviewIndex(localValue) {
+  const index = new Map()
+
+  listAnalysesFromStorageValue(localValue).forEach((analysis) => {
+    if (typeof analysis?.createdAt !== 'string') return
+    index.set(analysis.createdAt, {
+      backPhoto: analysis.backPhoto,
+      frontPhoto: analysis.frontPhoto,
+      sidePhoto: analysis.sidePhoto,
+    })
+  })
+
+  return index
+}
+
+function withLocalPreview(photo, localPhoto) {
+  if (!isObject(photo)) return photo
+  const preview = localPhoto?.preview
+  if (typeof preview !== 'string' || !preview) return photo
+  return { ...photo, preview }
+}
+
+function attachLocalPreviewsToAnalysis(analysis, localPhotos) {
+  if (!isObject(analysis) || typeof analysis.createdAt !== 'string') return analysis
+  const local = localPhotos.get(analysis.createdAt)
+  if (!local) return analysis
+
+  return {
+    ...analysis,
+    backPhoto: withLocalPreview(analysis.backPhoto, local.backPhoto),
+    frontPhoto: withLocalPreview(analysis.frontPhoto, local.frontPhoto),
+    sidePhoto: withLocalPreview(analysis.sidePhoto, local.sidePhoto),
+  }
+}
+
+export function restoreLocalBodyAnalysisPreviews(cloudValue, localValue) {
+  const localPhotos = localPhotoPreviewIndex(localValue)
+
+  if (Array.isArray(cloudValue)) {
+    return cloudValue.map((analysis) => attachLocalPreviewsToAnalysis(analysis, localPhotos))
+  }
+
+  if (isObject(cloudValue) && Array.isArray(cloudValue.analyses)) {
+    return {
+      ...cloudValue,
+      analyses: cloudValue.analyses.map((analysis) => attachLocalPreviewsToAnalysis(analysis, localPhotos)),
+    }
+  }
+
+  return attachLocalPreviewsToAnalysis(cloudValue, localPhotos)
+}
+
+export function mergeBodyAnalysisCloudValueForLocalWrite(storageKey, incomingValue, existingLocalValue) {
+  const sanitized = sanitizeValueForCloudTransfer(storageKey, incomingValue)
+  if (!isBodyAnalysisCloudStorageKey(storageKey)) return sanitized
+  return restoreLocalBodyAnalysisPreviews(sanitized, existingLocalValue)
+}
+
 /**
  * Adds a body analysis to local history with newest item first.
  *

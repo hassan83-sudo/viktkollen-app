@@ -1,6 +1,6 @@
 import { getCurrentAiAuthorization } from './ai/aiAuthTransport.js'
 import {
-  getBackupStorageKeys,
+  getDeletionStorageKeys,
   removeUserData,
   userDataKeys,
 } from './userDataRepository.js'
@@ -9,9 +9,10 @@ const endpoint = '/api/account-deletion'
 
 export function getLocalDeletionKeys() {
   return [...new Set([
-    ...getBackupStorageKeys(),
+    ...getDeletionStorageKeys(),
     userDataKeys.cloudBackupMeta,
     userDataKeys.demoMode,
+    userDataKeys.profilePhoto,
   ])].filter(Boolean)
 }
 

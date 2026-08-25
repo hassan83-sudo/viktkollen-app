@@ -1,11 +1,14 @@
 import { supabase } from '../supabaseClient.js'
+import { mergeBodyAnalysisCloudValueForLocalWrite, sanitizeValueForCloudTransfer } from '../bodyAnalysisHistory.js'
 import {
   calculateChecksum,
   clearSyncUserState,
   createLocalSyncRecord,
   getOrCreateSyncDeviceId,
+  getPayloadSizeBytes,
   isAllowedSyncStorageKey,
   maxSyncPayloadBytes,
+  parseStoredSyncValue,
   readSyncMetadata,
   stableSerialize,
   syncStorageAllowlist,
@@ -124,7 +127,7 @@ export function normalizeRemoteSyncRow(row = {}) {
     dataVersion: Number(row.data_version || row.dataVersion) || 1,
     deleted_at: normalizeText(row.deleted_at || row.deletedAt, 80),
     deviceId: normalizeText(row.device_id || row.deviceId, 160),
-    payload: row.payload ?? null,
+    payload: sanitizeValueForCloudTransfer(storageKey, row.payload ?? null),
     remoteRevision: normalizeText(row.server_updated_at || row.updated_at || row.remoteRevision || row.id, 120),
     serverUpdatedAt: normalizeText(row.server_updated_at || row.updated_at || row.serverUpdatedAt, 80),
     storageKey,
@@ -136,13 +139,17 @@ export function normalizeRemoteSyncRows(rows = []) {
 }
 
 export function createRemoteSyncPayload(record, userId, deviceId) {
+  const payload = record.deleted
+    ? null
+    : sanitizeValueForCloudTransfer(record.storageKey, record.payload)
+
   return {
     checksum: record.checksum,
     client_updated_at: record.clientUpdatedAt || nowIso(),
     data_version: record.dataVersion || 1,
     deleted_at: record.deleted ? record.deletedAt || nowIso() : null,
     device_id: deviceId,
-    payload: record.deleted ? null : record.payload,
+    payload,
     storage_key: record.storageKey,
     user_id: userId,
   }
@@ -172,6 +179,31 @@ async function uploadLocalRecord({ client, deviceId, record, userId }) {
   }
 }
 
+function writeSyncedPayloadToLocal(storage, storageKey, payload) {
+  const existingLocal = parseStoredSyncValue(storage.getItem(storageKey)).payload
+  const forCloud = sanitizeValueForCloudTransfer(storageKey, payload)
+  const forLocal = mergeBodyAnalysisCloudValueForLocalWrite(storageKey, forCloud, existingLocal)
+  storage.setItem(storageKey, JSON.stringify(forLocal))
+  return forCloud
+}
+
+function prepareOutgoingSyncRecord(storageKey, record, timestamp) {
+  const payload = record.deleted
+    ? null
+    : sanitizeValueForCloudTransfer(storageKey, record.payload)
+  const raw = record.deleted ? null : stableSerialize(payload ?? null)
+
+  return {
+    ...record,
+    checksum: calculateChecksum(raw),
+    clientUpdatedAt: timestamp || record.clientUpdatedAt,
+    deleted: Boolean(record.deleted),
+    payload,
+    raw,
+    sizeBytes: getPayloadSizeBytes(raw || ''),
+    storageKey,
+  }
+}
 function applyRemoteRecordToLocal(record, storage) {
   const resolvedStorage = getStorage(storage)
   const normalizedRecord = record?.storageKey ? record : normalizeRemoteSyncRow(record)
@@ -187,14 +219,18 @@ function applyRemoteRecordToLocal(record, storage) {
     }
   }
 
-  resolvedStorage.setItem(normalizedRecord.storageKey, JSON.stringify(normalizedRecord.payload ?? null))
+  const incomingPayload = writeSyncedPayloadToLocal(
+    resolvedStorage,
+    normalizedRecord.storageKey,
+    normalizedRecord.payload ?? null,
+  )
 
   return {
-    checksum: normalizedRecord.checksum || calculateChecksum(stableSerialize(normalizedRecord.payload ?? null)),
+    checksum: normalizedRecord.checksum || calculateChecksum(stableSerialize(incomingPayload ?? null)),
     clientUpdatedAt: normalizedRecord.clientUpdatedAt || normalizedRecord.serverUpdatedAt || nowIso(),
     dataVersion: normalizedRecord.dataVersion || 1,
     deleted: false,
-    payload: normalizedRecord.payload ?? null,
+    payload: incomingPayload,
     storageKey: normalizedRecord.storageKey,
   }
 }
@@ -376,20 +412,16 @@ export async function runCloudSync(options = {}) {
       }
 
       if (decision.action === 'merge_upload') {
-        const mergedRecord = {
+        const mergedRecord = prepareOutgoingSyncRecord(storageKey, {
           ...localRecord,
-          checksum: decision.checksum,
-          clientUpdatedAt: timestamp,
           deleted: false,
           payload: decision.payload,
-          raw: stableSerialize(decision.payload),
-          sizeBytes: decision.payload ? stableSerialize(decision.payload).length : 0,
-        }
+        }, timestamp)
         if (mergedRecord.sizeBytes > maxSyncPayloadBytes) {
           result.skipped.push({ reason: 'Merge-resultatet blev för stort för automatisk sync.', storageKey })
           continue
         }
-        resolvedStorage.setItem(storageKey, JSON.stringify(decision.payload))
+        writeSyncedPayloadToLocal(resolvedStorage, storageKey, mergedRecord.payload)
         const uploaded = await uploadLocalRecord({ client, deviceId, record: mergedRecord, userId })
         metadata.keys[storageKey] = buildKeyMeta(mergedRecord, uploaded.remoteRevision)
         result.uploaded.push(storageKey)
@@ -512,15 +544,12 @@ export async function resolveStoredSyncConflict(storageKey, choice, options = {}
 
   if (!userId) return makeResult({ ok: false, status: 'not_authenticated', error: 'Logga in för att lösa konflikten.' })
   if (decision.action === 'merge_upload') {
-    const mergedRecord = {
+    const mergedRecord = prepareOutgoingSyncRecord(storageKey, {
       ...decision.record,
-      checksum: calculateChecksum(stableSerialize(decision.record.payload ?? null)),
-      clientUpdatedAt: timestamp,
-      raw: stableSerialize(decision.record.payload ?? null),
-      sizeBytes: stableSerialize(decision.record.payload ?? null).length,
-    }
+      deleted: false,
+    }, timestamp)
     const resolvedStorage = getStorage(storage)
-    resolvedStorage?.setItem?.(storageKey, JSON.stringify(mergedRecord.payload ?? null))
+    if (resolvedStorage) writeSyncedPayloadToLocal(resolvedStorage, storageKey, mergedRecord.payload)
     const uploaded = await uploadLocalRecord({
       client,
       deviceId: metadata.deviceId || getOrCreateSyncDeviceId(storage),

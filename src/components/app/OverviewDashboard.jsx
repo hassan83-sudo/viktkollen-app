@@ -17,6 +17,10 @@ import {
 } from '../../services/overviewLiveContext.js'
 import { loadOverviewWeather } from '../../services/overviewWeather.js'
 import { createProfilePhotoFromFile, readProfilePhoto, writeProfilePhoto } from '../../services/profilePhotoStorage.js'
+import { getFeatureFlags, isFeatureEnabled } from '../../features/featureRegistry.js'
+import { buildWeightTrend, formatSignedChange } from '../../services/homeBodyToday.js'
+import SmartCameraStage from '../../features/smart-camera/components/SmartCameraStage.jsx'
+import BodyAvatarTalkBar from './BodyAvatarTalkBar.jsx'
 
 function isFiniteNumber(value) {
   return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value))
@@ -720,16 +724,27 @@ function OverviewPrimaryActions({
   )
 }
 
+function formatTodayWeightDelta(change7d) {
+  if (!Number.isFinite(Number(change7d))) return ''
+  const value = Number(change7d)
+  if (Math.abs(value) < 0.05) return '→ 0 kg'
+  const formatted = formatSignedChange(value, 'kg')
+  return value < 0 ? formatted.replace('−', '↓ ') : formatted.replace('+', '↑ ')
+}
+
 function OverviewHeroStats({
   caloriesToday,
   calorieGoal,
   currentWeight,
+  featureFlags,
   healthScore,
   onLogWeight,
+  onOpenSmartCamera,
   onScanFood,
   proteinToday,
   proteinGoal,
   steps,
+  weightTrend,
   weights,
 }) {
   const caloriePercent = getProgressPercent(caloriesToday, calorieGoal)
@@ -768,51 +783,113 @@ function OverviewHeroStats({
     },
   ]
 
+  const smartCameraOn = isFeatureEnabled('smartCamera', featureFlags)
+  const change7d = Number.isFinite(Number(weightTrend?.change7dKg)) ? Number(weightTrend.change7dKg) : null
+  const changeLabel = change7d === null ? '' : formatTodayWeightDelta(change7d)
+  const calorieGoalLabel = isFiniteNumber(calorieGoal) ? formatNumber(Math.round(Number(calorieGoal))) : null
+
   return (
     <section className="overview-hero-stats" aria-label="Dagens viktigaste värden">
-      <div className="overview-main-stats" aria-label="Aktuell vikt och kalorier">
-        <article className="overview-main-stat is-weight">
-          <div className="overview-main-stat-top">
-            <span className="overview-metric-icon" aria-hidden="true"><OverviewIcon name="scale" /></span>
-            <span>Aktuell vikt</span>
-          </div>
-          <strong className="overview-weight-value">{formatWeight(currentWeight)}</strong>
-          <small>{hasCurrentWeight ? 'Senast registrerad vikt' : 'Registrera vikt'}</small>
-          <div className="overview-weight-chart">
-            {weightSparklinePoints && (
-              <svg className="overview-weight-sparkline" viewBox="0 0 72 18" role="img" aria-label="Vikttrend senaste registreringar">
-                <polyline points={weightSparklinePoints} />
-              </svg>
+      <div className="overview-main-stats" aria-label={smartCameraOn ? 'Smart kamera, vikt och kalorier' : 'Aktuell vikt och kalorier'}>
+        {smartCameraOn ? (
+          <article className="overview-main-stat is-smart-camera">
+            <div className="overview-main-stat-top">
+              <span className="overview-metric-icon is-camera" aria-hidden="true">⌾</span>
+              <span>Smart kamera</span>
+            </div>
+            <strong>AI-ögon</strong>
+            <small>Minne, kläder och sista kollen</small>
+            {onOpenSmartCamera && (
+              <button className="overview-stat-link" type="button" onClick={onOpenSmartCamera}>Öppna</button>
             )}
-          </div>
-          {onLogWeight && (
-            <button className="overview-stat-link" type="button" onClick={onLogWeight}>Logga vikt</button>
-          )}
-        </article>
-        <article className="overview-main-stat is-calories">
-          <div className="overview-main-stat-top">
-            <span className="overview-metric-icon" aria-hidden="true"><OverviewIcon name="flame" /></span>
-            <span>Kalorier idag</span>
-          </div>
-          <strong className={hasCalories ? undefined : 'is-empty'}>
-            {hasCalories ? `${formatNumber(Math.round(Number(caloriesToday)))} kcal` : 'Inga data ännu'}
-          </strong>
-          <small>
-            {caloriePercent !== null
-              ? `${caloriePercent} % av dagens mål`
-              : isFiniteNumber(calorieGoal)
-                ? `Mål ${formatNumber(Math.round(Number(calorieGoal)))} kcal`
-                : 'Logga en måltid för dagens status'}
-          </small>
-          {caloriePercent !== null && (
-            <span className="overview-calorie-progress" aria-hidden="true">
-              <span className={`overview-progress-${getProgressBucket(caloriePercent)}`} />
-            </span>
-          )}
-          {onScanFood && (
-            <button className="overview-stat-link" type="button" onClick={onScanFood}>Logga mat</button>
-          )}
-        </article>
+          </article>
+        ) : (
+          <article className="overview-main-stat is-weight">
+            <div className="overview-main-stat-top">
+              <span className="overview-metric-icon" aria-hidden="true"><OverviewIcon name="scale" /></span>
+              <span>Aktuell vikt</span>
+            </div>
+            <strong className="overview-weight-value">{formatWeight(currentWeight)}</strong>
+            <small>{hasCurrentWeight ? 'Senast registrerad vikt' : 'Registrera vikt'}</small>
+            <div className="overview-weight-chart">
+              {weightSparklinePoints && (
+                <svg className="overview-weight-sparkline" viewBox="0 0 72 18" role="img" aria-label="Vikttrend senaste registreringar">
+                  <polyline points={weightSparklinePoints} />
+                </svg>
+              )}
+            </div>
+            {onLogWeight && (
+              <button className="overview-stat-link" type="button" onClick={onLogWeight}>Logga vikt</button>
+            )}
+          </article>
+        )}
+        {smartCameraOn ? (
+          <article className="overview-main-stat is-today">
+            <div className="overview-main-stat-top">
+              <span>IDAG</span>
+            </div>
+            <div className="overview-today-weight">
+              <strong className="overview-weight-value">{formatWeight(currentWeight)}</strong>
+              {change7d !== null && hasCurrentWeight && (
+                <small className={`overview-weight-delta is-${weightTrend?.trend || 'stable'}`}>{changeLabel}</small>
+              )}
+            </div>
+            <div className="overview-today-calories">
+              <span className="overview-metric-icon is-inline" aria-hidden="true"><OverviewIcon name="flame" /></span>
+              <strong className={hasCalories ? undefined : 'is-empty'}>
+                {hasCalories
+                  ? `${formatNumber(Math.round(Number(caloriesToday)))}${calorieGoalLabel ? ` / ${calorieGoalLabel}` : ''} kcal`
+                  : 'Inga data ännu'}
+              </strong>
+            </div>
+            <small>{hasCurrentWeight ? 'Registrerad vikt' : 'Registrera vikt'}</small>
+            <div className="overview-weight-chart">
+              {weightSparklinePoints && (
+                <svg className="overview-weight-sparkline" viewBox="0 0 72 18" role="img" aria-label="Vikttrend senaste registreringar">
+                  <polyline points={weightSparklinePoints} />
+                </svg>
+              )}
+            </div>
+            {caloriePercent !== null && (
+              <span className="overview-calorie-progress" aria-hidden="true">
+                <span className={`overview-progress-${getProgressBucket(caloriePercent)}`} />
+              </span>
+            )}
+            <div className="overview-today-links">
+              {onLogWeight && (
+                <button className="overview-stat-link" type="button" onClick={onLogWeight}>Logga vikt</button>
+              )}
+              {onScanFood && (
+                <button className="overview-stat-link" type="button" onClick={onScanFood}>Logga mat</button>
+              )}
+            </div>
+          </article>
+        ) : (
+          <article className="overview-main-stat is-calories">
+            <div className="overview-main-stat-top">
+              <span className="overview-metric-icon" aria-hidden="true"><OverviewIcon name="flame" /></span>
+              <span>Kalorier idag</span>
+            </div>
+            <strong className={hasCalories ? undefined : 'is-empty'}>
+              {hasCalories ? `${formatNumber(Math.round(Number(caloriesToday)))} kcal` : 'Inga data ännu'}
+            </strong>
+            <small>
+              {caloriePercent !== null
+                ? `${caloriePercent} % av dagens mål`
+                : isFiniteNumber(calorieGoal)
+                  ? `Mål ${formatNumber(Math.round(Number(calorieGoal)))} kcal`
+                  : 'Logga en måltid för dagens status'}
+            </small>
+            {caloriePercent !== null && (
+              <span className="overview-calorie-progress" aria-hidden="true">
+                <span className={`overview-progress-${getProgressBucket(caloriePercent)}`} />
+              </span>
+            )}
+            {onScanFood && (
+              <button className="overview-stat-link" type="button" onClick={onScanFood}>Logga mat</button>
+            )}
+          </article>
+        )}
       </div>
 
       <div className="overview-compact-tabs" aria-label="Kompakta dagliga stats">
@@ -893,6 +970,7 @@ function OverviewDashboard({
   checkIn,
   currentWeight,
   email,
+  featureFlags,
   foods,
   goalsHabits,
   healthScore,
@@ -928,11 +1006,14 @@ function OverviewDashboard({
 }) {
   const [now, setNow] = useState(() => new Date())
   const [bodyScanOpen, setBodyScanOpen] = useState(false)
+  const [smartCameraOpen, setSmartCameraOpen] = useState(false)
   const [coachOpen, setCoachOpen] = useState(false)
   const [foodScanOpen, setFoodScanOpen] = useState(false)
   const [weatherStatus, setWeatherStatus] = useState('')
   const [profilePhoto, setProfilePhoto] = useState(() => readProfilePhoto())
   const [weather, setWeather] = useState(() => createFallbackWeatherContext())
+  const flags = featureFlags || getFeatureFlags()
+  const weightTrend = useMemo(() => buildWeightTrend(weights, currentWeight), [currentWeight, weights])
   const liveContext = useMemo(() => createOverviewLiveContext(now, weather), [now, weather])
   const initials = getInitials(profile, email)
   const hasPendingNotifications = Boolean(
@@ -1069,12 +1150,18 @@ function OverviewDashboard({
           calorieGoal={calorieGoal}
           caloriesToday={caloriesToday}
           currentWeight={currentWeight}
+          featureFlags={flags}
           healthScore={healthScore}
           onLogWeight={onLogWeight}
+          onOpenSmartCamera={() => {
+            setBodyScanOpen(false)
+            setSmartCameraOpen(true)
+          }}
           onScanFood={onScanFood}
           proteinGoal={proteinGoal}
           proteinToday={proteinToday}
           steps={checkIn?.steps}
+          weightTrend={weightTrend}
           weights={weights}
         />
         <OverviewCheckInAction onNavigateSection={onNavigateSection} />
@@ -1143,6 +1230,48 @@ function OverviewDashboard({
           onStopAiVoiceResponse={onStopAiVoiceResponse}
           onSurfaceChange={onAvatarSurfaceChange}
           onToggleVoiceMute={onToggleVoiceMute}
+          onVoiceCleanup={onVoiceCleanup}
+          onOpenSmartCamera={isFeatureEnabled('smartCamera', flags) ? () => {
+            setBodyScanOpen(false)
+            setSmartCameraOpen(true)
+          } : undefined}
+          smartCameraEnabled={isFeatureEnabled('smartCamera', flags)}
+        />
+      )}
+      {smartCameraOpen && isFeatureEnabled('smartCamera', flags) && (
+        <SmartCameraStage
+          adapters={{
+            onOpenBodyScan: () => {
+              setSmartCameraOpen(false)
+              if (onNavigateSection) onNavigateSection('progress', 'body-analysis')
+              else scrollToTarget('body-analysis')
+            },
+            onOpenFoodScan: () => {
+              setSmartCameraOpen(false)
+              setFoodScanOpen(true)
+            },
+            weather,
+          }}
+          featureFlags={flags}
+          isMicrophoneActive={Boolean(isVoiceConversationActive) && !isVoiceMuted}
+          voiceBar={(
+            <BodyAvatarTalkBar
+              chatInput={chatInput}
+              isAiSpeaking={isAiSpeaking}
+              isListening={isListening}
+              isVoiceConversationActive={isVoiceConversationActive}
+              isVoiceMuted={isVoiceMuted}
+              showText={false}
+              voiceStatus={voiceStatus}
+              onChatInputChange={onChatInputChange}
+              onSendChatMessage={onSendChatMessage}
+              onStartVoiceInput={onStartVoiceInput}
+              onStopAiVoiceResponse={onStopAiVoiceResponse}
+              onToggleVoiceMute={onToggleVoiceMute}
+            />
+          )}
+          onClose={() => setSmartCameraOpen(false)}
+          onSurfaceChange={onAvatarSurfaceChange}
           onVoiceCleanup={onVoiceCleanup}
         />
       )}

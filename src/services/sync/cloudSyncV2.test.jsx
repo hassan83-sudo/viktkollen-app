@@ -565,6 +565,85 @@ describe('Molnsynk engine', () => {
     expect(client.state.upserts[0].payload).toEqual({ name: 'Anna' })
   })
 
+  it('strips Body Scan previews from outgoing Sync V2 without touching local history', async () => {
+    const historyKey = 'viktkollen.bodyAnalysis.history.v1'
+    const localHistory = {
+      analyses: [{
+        analysisNumber: 1,
+        backPhoto: { name: 'back.jpg', preview: 'data:image/jpeg;base64,YmFjaw==' },
+        createdAt: '2026-08-11T10:00:00.000Z',
+        frontPhoto: { name: 'front.jpg', preview: 'data:image/jpeg;base64,ZnJvbnQ=' },
+        result: { source: 'ai', summary: 'Stabil visuell baslinje.' },
+        sidePhoto: { name: 'side.jpg', preview: 'data:image/jpeg;base64,c2lkZQ==' },
+        updatedAt: '2026-08-11T10:00:00.000Z',
+      }],
+      version: 1,
+    }
+    const storage = createMemoryStorage({ [historyKey]: JSON.stringify(localHistory) })
+    const record = createLocalSyncRecord(historyKey, storage, '2026-08-11T10:00:00.000Z')
+    const upload = createRemoteSyncPayload(record, 'user-1', 'device-1')
+    const serialized = JSON.stringify(upload)
+
+    expect(JSON.parse(storage.getItem(historyKey)).analyses[0].frontPhoto.preview).toContain('data:image/jpeg;base64')
+    expect(record.payload.analyses[0].result.summary).toBe('Stabil visuell baslinje.')
+    expect(record.payload.analyses[0].frontPhoto).toEqual({ name: 'front.jpg' })
+    expect(record.payload.analyses[0].sidePhoto.preview).toBeUndefined()
+    expect(record.payload.analyses[0].backPhoto.preview).toBeUndefined()
+    expect(serialized).not.toContain('data:image')
+    expect(serialized).not.toContain('base64,')
+    expect(upload.payload.analyses[0].frontPhoto.preview).toBeUndefined()
+
+    const client = createFakeClient([])
+    const result = await runCloudSync({ client, force: true, storage, userId: 'user-1' })
+    const uploadedHistory = client.state.upserts.find((row) => row.storage_key === historyKey)
+
+    expect(result.uploaded).toContain(historyKey)
+    expect(uploadedHistory.payload.analyses[0].result.summary).toBe('Stabil visuell baslinje.')
+    expect(JSON.stringify(uploadedHistory)).not.toContain('data:image')
+    expect(JSON.parse(storage.getItem(historyKey)).analyses[0].frontPhoto.preview).toContain('data:image/jpeg;base64,ZnJvbnQ=')
+  })
+
+  it('sanitizes incoming Body Scan sync data and keeps existing local previews', async () => {
+    const historyKey = 'viktkollen.bodyAnalysis.history.v1'
+    const localHistory = {
+      analyses: [{
+        createdAt: '2026-08-11T10:00:00.000Z',
+        frontPhoto: { name: 'front.jpg', preview: 'data:image/jpeg;base64,local-front' },
+        result: { source: 'ai', summary: 'Lokal sammanfattning.' },
+        sidePhoto: { name: 'side.jpg' },
+        backPhoto: { name: 'back.jpg' },
+      }],
+      version: 1,
+    }
+    const remoteHistory = {
+      analyses: [{
+        createdAt: '2026-08-11T10:00:00.000Z',
+        frontPhoto: { name: 'front.jpg', preview: 'data:image/jpeg;base64,remote-front' },
+        result: { source: 'ai', summary: 'Molnsammanfattning.' },
+        sidePhoto: { name: 'side.jpg', preview: 'data:image/jpeg;base64,remote-side' },
+        backPhoto: { name: 'back.jpg', preview: 'data:image/jpeg;base64,remote-back' },
+      }],
+      version: 1,
+    }
+    const storage = createMemoryStorage({ [historyKey]: JSON.stringify(localHistory) })
+    writeSyncMetadata({
+      keys: {
+        [historyKey]: {
+          checksum: calculateChecksum(stableSerialize(createLocalSyncRecord(historyKey, storage).payload)),
+        },
+      },
+    }, storage)
+    const client = createFakeClient([createRemoteRow(historyKey, remoteHistory)])
+    const result = await runCloudSync({ client, force: true, storage, userId: 'user-1' })
+    const stored = JSON.parse(storage.getItem(historyKey))
+
+    expect(result.downloaded).toContain(historyKey)
+    expect(stored.analyses[0].result.summary).toBe('Molnsammanfattning.')
+    expect(stored.analyses[0].frontPhoto.preview).toBe('data:image/jpeg;base64,local-front')
+    expect(JSON.stringify(stored)).not.toContain('remote-front')
+    expect(JSON.stringify(stored)).not.toContain('remote-side')
+  })
+
   it('does not upload tombstones for never-seen empty keys', async () => {
     const storage = createMemoryStorage()
     const client = createFakeClient([])

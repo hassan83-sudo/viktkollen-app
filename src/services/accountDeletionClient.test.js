@@ -16,10 +16,12 @@ vi.mock('./ai/aiAuthTransport.js', () => ({
 
 vi.mock('./userDataRepository.js', () => ({
   getBackupStorageKeys: () => ['viktkollen.profile', 'viktkollen.weights'],
+  getDeletionStorageKeys: () => ['viktkollen.profile', 'viktkollen.weights', 'viktkollen.profile-photo'],
   removeUserData: vi.fn((key) => key !== 'viktkollen.weights'),
   userDataKeys: {
     cloudBackupMeta: 'viktkollen.cloudBackup.meta',
     demoMode: 'viktkollen.demoMode',
+    profilePhoto: 'viktkollen.profile-photo',
   },
 }))
 
@@ -54,6 +56,7 @@ describe('accountDeletionClient', () => {
     const result = clearLocalViktkollenData()
 
     expect(getLocalDeletionKeys()).toContain('viktkollen.profile')
+    expect(getLocalDeletionKeys()).toContain('viktkollen.profile-photo')
     expect(result.ok).toBe(false)
     expect(result.failedKeys).toEqual(['viktkollen.weights'])
   })

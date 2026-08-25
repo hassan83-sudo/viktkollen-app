@@ -1,5 +1,5 @@
 import {
-  getBackupStorageKeys,
+  getDeletionStorageKeys,
   userDataKeys,
 } from './userDataRepository.js'
 
@@ -20,7 +20,7 @@ export function buildAccountDeletionReadiness({
   hasBillingProvider = false,
   hasPrivilegedAccountDeleteApi = true,
   hasPrivilegedCloudDeleteApi = true,
-  localStorageKeys = getBackupStorageKeys(),
+  localStorageKeys = getDeletionStorageKeys(),
 } = {}) {
   const localKeys = [...new Set([
     ...localStorageKeys,

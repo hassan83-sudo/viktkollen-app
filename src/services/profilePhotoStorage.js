@@ -1,9 +1,9 @@
-const STORAGE_KEY = 'viktkollen.profile-photo'
+export const PROFILE_PHOTO_STORAGE_KEY = 'viktkollen.profile-photo'
 const MAX_EDGE = 256
 
 export function readProfilePhoto(storage = typeof localStorage === 'undefined' ? null : localStorage) {
   try {
-    return storage?.getItem(STORAGE_KEY) || ''
+    return storage?.getItem(PROFILE_PHOTO_STORAGE_KEY) || ''
   } catch {
     return ''
   }
@@ -12,8 +12,8 @@ export function readProfilePhoto(storage = typeof localStorage === 'undefined' ?
 export function writeProfilePhoto(dataUrl, storage = typeof localStorage === 'undefined' ? null : localStorage) {
   const value = String(dataUrl || '').startsWith('data:image/') ? String(dataUrl) : ''
   try {
-    if (!value) storage?.removeItem(STORAGE_KEY)
-    else storage?.setItem(STORAGE_KEY, value)
+    if (!value) storage?.removeItem(PROFILE_PHOTO_STORAGE_KEY)
+    else storage?.setItem(PROFILE_PHOTO_STORAGE_KEY, value)
   } catch {
     return ''
   }

@@ -1,32 +1,9 @@
 /**
- * Future Smart Camera hub intent.
- * Do not wire clothes/hair detection here. Body scan still uses its own
- * existing camera flow in BodyAnalysisUploader / BodyAnalysisVideoScanner.
+ * Compatibility shim. Smart Camera hub lives in src/features/smart-camera.
+ * Body scan and food scanning still use their existing camera entry points.
  */
-export const futureSmartCameraModes = Object.freeze([
-  'body-scan',
-  'outfit-style',
-  'hair-appearance',
-  'front-side-back-check',
-  'weather-outfit',
-  'food',
-])
-
-export const futureSmartCameraPrivacy = Object.freeze({
-  analyzeMinimumFrames: true,
-  explicitAiSend: true,
-  faceProtectionOptional: true,
-  livePreviewLocalOnly: true,
-  noHiddenRecording: true,
-  noImagesInLogs: true,
-  persistVideoOnlyOnConsent: true,
-  visibleCameraIndicator: true,
-})
-
-export function getExistingCameraEntryPoints() {
-  return {
-    bodyPhoto: 'BodyAnalysisUploader',
-    bodyVideo: 'BodyAnalysisVideoScanner',
-    food: 'NutritionScannerV2',
-  }
-}
+export {
+  futureSmartCameraModes,
+  getExistingCameraEntryPoints,
+  smartCameraPrivacy as futureSmartCameraPrivacy,
+} from '../features/smart-camera/smartCameraModes.js'

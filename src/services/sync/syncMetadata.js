@@ -1,3 +1,5 @@
+import { isBodyAnalysisCloudStorageKey, sanitizeValueForCloudTransfer } from '../bodyAnalysisHistory.js'
+
 export const syncMetadataStorageKey = 'viktkollen.syncMetadata'
 export const syncDeviceIdStorageKey = 'viktkollen.syncDeviceId'
 export const syncDataVersion = 1
@@ -251,8 +253,30 @@ export function createLocalSyncRecord(storageKey, storage, now = new Date().toIS
   const resolvedStorage = getStorage(storage)
   if (!resolvedStorage) return null
   const parsed = parseStoredSyncValue(resolvedStorage.getItem(storageKey))
-  const checksum = calculateChecksum(parsed.deleted ? null : parsed.raw)
-  const sizeBytes = getPayloadSizeBytes(parsed.raw || '')
+  if (parsed.deleted || !parsed.ok) {
+    const checksum = calculateChecksum(parsed.deleted ? null : parsed.raw)
+    const sizeBytes = getPayloadSizeBytes(parsed.raw || '')
+    return {
+      checksum,
+      clientUpdatedAt: now,
+      dataVersion: syncDataVersion,
+      deleted: parsed.deleted,
+      deletedAt: parsed.deleted ? now : '',
+      ok: parsed.ok && sizeBytes <= maxSyncPayloadBytes,
+      payload: parsed.payload,
+      raw: parsed.raw,
+      sizeBytes,
+      storageKey,
+      warning: sizeBytes > maxSyncPayloadBytes ? 'För stor payload för automatisk synk.' : parsed.error || '',
+    }
+  }
+
+  const payload = sanitizeValueForCloudTransfer(storageKey, parsed.payload)
+  const syncRaw = isBodyAnalysisCloudStorageKey(storageKey)
+    ? stableSerialize(payload)
+    : parsed.raw
+  const checksum = calculateChecksum(syncRaw)
+  const sizeBytes = getPayloadSizeBytes(syncRaw || '')
 
   return {
     checksum,
@@ -261,8 +285,8 @@ export function createLocalSyncRecord(storageKey, storage, now = new Date().toIS
     deleted: parsed.deleted,
     deletedAt: parsed.deleted ? now : '',
     ok: parsed.ok && sizeBytes <= maxSyncPayloadBytes,
-    payload: parsed.payload,
-    raw: parsed.raw,
+    payload,
+    raw: syncRaw,
     sizeBytes,
     storageKey,
     warning: sizeBytes > maxSyncPayloadBytes ? 'För stor payload för automatisk synk.' : parsed.error || '',

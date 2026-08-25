@@ -13579,3 +13579,301 @@ html:has(#app-section-more.is-active),
   }
 }
 
+#app-section-home.is-active .overview-main-stat.is-smart-camera {
+  background:
+    radial-gradient(circle at 14% 18%, rgba(120, 92, 255, 0.18), transparent 32%),
+    linear-gradient(150deg, var(--home-card-2), rgba(7, 11, 23, 0.98));
+}
+
+#app-section-home.is-active .overview-main-stat.is-today {
+  background:
+    radial-gradient(circle at 15% 15%, rgba(255, 152, 47, 0.12), transparent 29%),
+    linear-gradient(150deg, var(--home-card-2), rgba(7, 11, 23, 0.98));
+}
+
+#app-section-home.is-active .overview-metric-icon.is-camera {
+  color: #c9b6ff;
+  background: rgba(120, 92, 255, 0.16);
+}
+
+#app-section-home.is-active .overview-today-weight,
+#app-section-home.is-active .overview-today-calories {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+#app-section-home.is-active .overview-today-calories {
+  align-items: center;
+}
+
+#app-section-home.is-active .overview-today-calories .overview-metric-icon.is-inline {
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+}
+
+#app-section-home.is-active .overview-today-calories strong {
+  font-size: 0.98rem;
+  line-height: 1.15;
+}
+
+#app-section-home.is-active .overview-today-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#app-section-home.is-active .overview-weight-delta {
+  color: var(--home-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.smart-camera-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 82;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  background: #050914;
+  color: #fff;
+  padding:
+    calc(10px + env(safe-area-inset-top, 0px))
+    12px
+    calc(18px + env(safe-area-inset-bottom, 0px));
+}
+
+.smart-camera-stage-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.smart-camera-stage-bar h1 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.smart-camera-hw-indicator {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  min-width: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.smart-camera-hw-indicator .is-camera {
+  color: #6bd6ff;
+}
+
+.smart-camera-hw-indicator .is-mic {
+  color: #ff9b6b;
+}
+
+.smart-camera-live.is-off {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(140, 168, 255, 0.16);
+  border-radius: 16px;
+  background: rgba(9, 14, 28, 0.86);
+}
+
+.smart-camera-stage-body {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding-bottom: 12px;
+}
+
+.smart-camera-hub-header h2,
+.smart-camera-mode-header h2 {
+  margin: 4px 0 0;
+  font-size: 1.28rem;
+}
+
+.smart-camera-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.smart-camera-mode-chip {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  min-height: 76px;
+  padding: 10px 8px;
+  border: 1px solid rgba(140, 168, 255, 0.16);
+  border-radius: 16px;
+  background: rgba(10, 16, 32, 0.88);
+  color: inherit;
+  text-align: left;
+}
+
+.smart-camera-mode-chip strong {
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.smart-camera-hub-more {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: rgba(226, 232, 255, 0.72);
+}
+
+.smart-camera-mode-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.smart-camera-back,
+.smart-camera-live-actions .secondary-button,
+.smart-camera-row .secondary-button,
+.smart-camera-row .primary-button {
+  flex: 0 0 auto;
+}
+
+.smart-camera-live-frame {
+  position: relative;
+  overflow: hidden;
+  min-height: 220px;
+  border-radius: 18px;
+  background: #0a1222;
+}
+
+.smart-camera-live-frame video {
+  display: block;
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+}
+
+.smart-camera-live-dot,
+.smart-camera-note,
+.smart-camera-privacy small {
+  color: rgba(214, 224, 255, 0.78);
+  font-size: 0.76rem;
+}
+
+.smart-camera-live-dot {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(5, 9, 20, 0.72);
+}
+
+.smart-camera-privacy {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.smart-camera-privacy article {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(140, 168, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(9, 14, 28, 0.86);
+}
+
+.smart-camera-privacy p,
+.smart-camera-checklist p,
+.smart-camera-compare p {
+  margin: 4px 0 0;
+  font-size: 0.74rem;
+}
+
+.smart-camera-checklist ul,
+.smart-camera-locations,
+.smart-camera-last-check,
+.smart-camera-prompts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.smart-camera-checklist li,
+.smart-camera-locations li,
+.smart-camera-last-check li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.smart-camera-add-row,
+.smart-camera-row,
+.smart-camera-live-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.smart-camera-add-row input,
+.smart-camera-mode textarea,
+.smart-camera-context select {
+  min-width: 0;
+  flex: 1 1 120px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(140, 168, 255, 0.2);
+  background: rgba(8, 12, 24, 0.9);
+  color: inherit;
+}
+
+.smart-camera-count,
+.smart-camera-pose {
+  margin: 8px 0;
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.smart-camera-hidden,
+.smart-camera-answer {
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(18, 24, 44, 0.9);
+}
+
+@media (max-width: 390px) {
+  .smart-camera-stage {
+    padding:
+      calc(8px + env(safe-area-inset-top, 0px))
+      10px
+      calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .smart-camera-mode-chip {
+    min-height: 70px;
+    padding: 8px 6px;
+  }
+
+  .smart-camera-privacy {
+    grid-template-columns: 1fr;
+  }
+
+  .smart-camera-live-frame,
+  .smart-camera-live-frame video {
+    min-height: 200px;
+    height: 200px;
+  }
+}
+

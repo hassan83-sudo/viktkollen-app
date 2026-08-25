@@ -7,6 +7,7 @@ import {
   createUpdatedNutritionGoals,
   normalizeNutritionGoals,
 } from './nutrition/nutritionGoals.js'
+import { PROFILE_PHOTO_STORAGE_KEY } from './profilePhotoStorage.js'
 import { normalizeProfile } from './profileService.js'
 
 export const userDataKeys = {
@@ -30,9 +31,11 @@ export const userDataKeys = {
   mealPlans: 'viktkollen.mealPlans',
   mealTemplates: 'viktkollen.mealTemplates',
   meals: 'viktkollen.meals',
+  memoryStore: 'viktkollen.memory.v1',
   nutritionGoals: 'viktkollen.nutritionGoals',
   photoMeals: 'viktkollen.photoMeals',
   profile: 'viktkollen.profile',
+  profilePhoto: PROFILE_PHOTO_STORAGE_KEY,
   progressGoalSettings: 'viktkollen.progress.goalSettings',
   progressInsightsSeen: 'viktkollen.progress.insightsSeen',
   progressPhotos: 'viktkollen.progressPhotos',
@@ -59,13 +62,25 @@ const sensitiveBackupKeyPatterns = [
   /supabase/i,
   /token/i,
 ]
-const backupStorageKeys = Object.values(userDataKeys).filter((key) =>
-  key !== userDataKeys.reminderSchedulerLock &&
-  sensitiveBackupKeyPatterns.every((pattern) => !pattern.test(key)),
-)
+const backupExcludedKeys = new Set([
+  userDataKeys.profilePhoto,
+  userDataKeys.reminderSchedulerLock,
+])
+
+function isBackupEligibleKey(key) {
+  return Boolean(key)
+    && !backupExcludedKeys.has(key)
+    && sensitiveBackupKeyPatterns.every((pattern) => !pattern.test(key))
+}
+
+const backupStorageKeys = Object.values(userDataKeys).filter(isBackupEligibleKey)
 
 export function getBackupStorageKeys() {
   return [...backupStorageKeys]
+}
+
+export function getDeletionStorageKeys() {
+  return [...new Set(Object.values(userDataKeys).filter(Boolean))]
 }
 
 function readValidated(key, fallbackValue, isValid = () => true) {

@@ -20,11 +20,6 @@ import {
   formatKgLabel,
   formatSignedChange,
 } from '../../services/homeBodyToday.js'
-import {
-  futureSmartCameraModes,
-  futureSmartCameraPrivacy,
-  getExistingCameraEntryPoints,
-} from '../../services/smartCameraIntent.js'
 
 function formatScanDateTime(value) {
   const parsed = new Date(value)
@@ -80,7 +75,9 @@ function OverviewBodyScanStage({
   onSurfaceChange,
   onToggleVoiceMute,
   onVoiceCleanup,
+  onOpenSmartCamera,
   profile = {},
+  smartCameraEnabled = false,
   voiceStatus = '',
   weather = null,
   weights = [],
@@ -110,7 +107,6 @@ function OverviewBodyScanStage({
   )
   const sliders = getBodySimulationSliders()
   const simulationActive = isBodySimulationActive(simulation)
-  const cameras = getExistingCameraEntryPoints()
 
   function toggleSection(section) {
     setOpenSection((current) => current === section ? '' : section)
@@ -389,6 +385,7 @@ function OverviewBodyScanStage({
             </button>
           </AvatarAccordion>
 
+          {smartCameraEnabled && (
           <AvatarAccordion
             icon="⌾"
             id="camera"
@@ -398,20 +395,19 @@ function OverviewBodyScanStage({
           >
             <h3>Smart kamera</h3>
             <p className="overview-body-scan-note">
-              Ingen visuell detektion är aktiv. Live preview ska stanna lokalt.
-              {futureSmartCameraPrivacy.noHiddenRecording ? ' Ingen dold inspelning.' : ''}
+              Smart kamera är en separat hubb för minne, outfit och sista kollen.
+              Live preview stannar lokalt. Ingen dold inspelning.
             </p>
-            {futureSmartCameraModes.map((mode) => (
-              <p key={mode}>
-                {mode === 'body-scan'
-                  ? `body-scan · tillgänglig via ${cameras.bodyVideo}`
-                  : `${mode} · inte implementerat`}
-              </p>
-            ))}
+            {onOpenSmartCamera && (
+              <button className="secondary-button" type="button" onClick={onOpenSmartCamera}>
+                Öppna Smart kamera
+              </button>
+            )}
             <button className="secondary-button" type="button" onClick={onStartScan}>
               Öppna kroppsscanning
             </button>
           </AvatarAccordion>
+          )}
         </div>
 
         <div className="overview-body-scan-actions">

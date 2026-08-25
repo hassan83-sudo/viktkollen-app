@@ -1,4 +1,5 @@
 import { readStorage, writeStorage } from './appStorageService.js'
+import { isBodyAnalysisCloudStorageKey, sanitizeValueForCloudTransfer } from './bodyAnalysisHistory.js'
 import {
   getBackupStorageKeys,
   getCloudClientId,
@@ -9,6 +10,19 @@ import {
 
 export const cloudBackupSchemaVersion = 2
 export const maxRecommendedBackupSizeBytes = 4.5 * 1024 * 1024
+
+export function sanitizeBackupUserData(userData = {}) {
+  if (!userData || typeof userData !== 'object' || Array.isArray(userData)) {
+    return {}
+  }
+
+  return Object.fromEntries(
+    Object.entries(userData).map(([key, value]) => [
+      key,
+      isBodyAnalysisCloudStorageKey(key) ? sanitizeValueForCloudTransfer(key, value) : value,
+    ]),
+  )
+}
 
 function stableSort(value) {
   if (Array.isArray(value)) {
@@ -57,7 +71,7 @@ function getAppVersion() {
 }
 
 function readAllowlistedUserData() {
-  return getBackupStorageKeys().reduce((data, key) => {
+  return sanitizeBackupUserData(getBackupStorageKeys().reduce((data, key) => {
     const value = readStorage(key, null)
 
     if (value === null || value === undefined) {
@@ -68,7 +82,7 @@ function readAllowlistedUserData() {
       ...data,
       [key]: value,
     }
-  }, {})
+  }, {}))
 }
 
 export function buildCloudBackupPayload({ name = '', source = 'manual' } = {}) {
@@ -82,7 +96,7 @@ export function buildCloudBackupPayload({ name = '', source = 'manual' } = {}) {
     clientId,
     exportedAt,
     metadata: {
-      containsLargeLocalImages: storageKeys.some((key) => key.toLocaleLowerCase('sv-SE').includes('photo')),
+      containsLargeLocalImages: /data:image\//i.test(stableStringify(userData)),
       name: name.trim(),
       source,
       storageKeyCount: storageKeys.length,
@@ -123,10 +137,10 @@ export function normalizeCloudBackupPayload(payload) {
     const storageKeys = Object.keys(payload.userData).filter((key) =>
       getBackupStorageKeys().includes(key),
     )
-    const userData = storageKeys.reduce((data, key) => ({
+    const userData = sanitizeBackupUserData(storageKeys.reduce((data, key) => ({
       ...data,
       [key]: payload.userData[key],
-    }), {})
+    }), {}))
     const normalized = {
       app: 'Viktkollen',
       appVersion: typeof payload.appVersion === 'string' ? payload.appVersion : '0.0.0',
@@ -165,7 +179,7 @@ export function normalizeCloudBackupPayload(payload) {
 
 export function migrateLegacySnapshotToV2(snapshot) {
   const allowedKeys = getBackupStorageKeys()
-  const userData = Object.entries(snapshot.data || {}).reduce((data, [key, value]) => {
+  const userData = sanitizeBackupUserData(Object.entries(snapshot.data || {}).reduce((data, [key, value]) => {
     if (!allowedKeys.includes(key) || value === undefined) {
       return data
     }
@@ -174,7 +188,7 @@ export function migrateLegacySnapshotToV2(snapshot) {
       ...data,
       [key]: value,
     }
-  }, {})
+  }, {}))
   const storageKeys = Object.keys(userData).sort()
   const migrated = {
     app: 'Viktkollen',

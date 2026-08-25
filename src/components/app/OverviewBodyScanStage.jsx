@@ -41,6 +41,28 @@ function listItems(value) {
   return (Array.isArray(value) ? value : [value]).map((item) => String(item || '').trim()).filter(Boolean)
 }
 
+function AvatarAccordion({ children, icon, id, isOpen, label, onToggle }) {
+  return (
+    <section className={`body-avatar-accordion ${isOpen ? 'is-open' : ''}`}>
+      <button
+        className="body-avatar-accordion-trigger"
+        type="button"
+        aria-controls={`body-avatar-section-${id}`}
+        aria-expanded={isOpen}
+        onClick={onToggle}
+      >
+        <span>{icon} {label}</span>
+        <span aria-hidden="true">{isOpen ? '⌃' : '›'}</span>
+      </button>
+      {isOpen && (
+        <div className="body-avatar-accordion-content" id={`body-avatar-section-${id}`}>
+          {children}
+        </div>
+      )}
+    </section>
+  )
+}
+
 function OverviewBodyScanStage({
   chatInput = '',
   currentWeight = null,
@@ -68,8 +90,7 @@ function OverviewBodyScanStage({
   const [compareMode, setCompareMode] = useState('simulation')
   const [holdOriginal, setHoldOriginal] = useState(false)
   const [showText, setShowText] = useState(false)
-  const [showEditor, setShowEditor] = useState(false)
-  const [showCameraHub, setShowCameraHub] = useState(false)
+  const [openSection, setOpenSection] = useState('')
   const [selectedRegion, setSelectedRegion] = useState('')
   const [simulation, setSimulation] = useState(() => createDefaultBodySimulationState())
 
@@ -90,6 +111,10 @@ function OverviewBodyScanStage({
   const sliders = getBodySimulationSliders()
   const simulationActive = isBodySimulationActive(simulation)
   const cameras = getExistingCameraEntryPoints()
+
+  function toggleSection(section) {
+    setOpenSection((current) => current === section ? '' : section)
+  }
 
   useEffect(() => {
     function refresh() {
@@ -150,9 +175,6 @@ function OverviewBodyScanStage({
       </div>
 
       <div className="overview-body-scan-panel">
-        <p className="eyebrow">Kroppsscanning</p>
-        <h2 id="overview-body-today-title">Din kropp idag</h2>
-
         <BodyAvatarTalkBar
           chatInput={chatInput}
           isAiSpeaking={isAiSpeaking}
@@ -186,117 +208,142 @@ function OverviewBodyScanStage({
           </button>
         </div>
 
-        <section className="overview-body-today-card" aria-label="Din kropp idag">
+        <section className="body-avatar-weight-summary" aria-label="Din kropp idag">
           {weightTrend.currentKg !== null ? (
             <>
               <p className="overview-body-today-weight">{formatKgLabel(weightTrend.currentKg)}</p>
-              {weightTrend.change7dKg !== null && (
-                <p>{formatSignedChange(weightTrend.change7dKg, 'kg')} senaste 7 dagarna</p>
-              )}
-              {weightTrend.change30dKg !== null && (
-                <p>{formatSignedChange(weightTrend.change30dKg, 'kg')} senaste 30 dagarna</p>
-              )}
+              <div className="body-avatar-weight-change">
+                {weightTrend.change7dKg !== null && (
+                  <p>{formatSignedChange(weightTrend.change7dKg, 'kg')} · 7 dagar</p>
+                )}
+                {weightTrend.change30dKg !== null && (
+                  <p>{formatSignedChange(weightTrend.change30dKg, 'kg')} · 30 dagar</p>
+                )}
+              </div>
               {weightTrend.change7dKg === null && weightTrend.change30dKg === null && (
-                <p>Ingen viktförändring att jämföra ännu.</p>
+                <p className="overview-body-scan-note">Ingen viktförändring att jämföra ännu.</p>
               )}
-              {weightTrend.trendLabel ? <p>{weightTrend.trendLabel}</p> : null}
             </>
           ) : (
             <p>Ingen aktuell vikt registrerad.</p>
           )}
-          {scan.latest ? (
-            <p>
-              Senaste scanning {formatScanDateTime(scan.latest.createdAt) || 'okänt datum'}
-              {scan.confidenceLabel ? ` · Säkerhet ${scan.confidenceLabel}` : ''}
-            </p>
-          ) : (
-            <p>Ingen tidigare scanning.</p>
-          )}
         </section>
 
-        <section className="overview-body-today-card" aria-label="Kroppsförändring över tid">
-          <h3>Kroppsförändring</h3>
-          {timeline.startKg !== null && <p>Start {formatKgLabel(timeline.startKg)}</p>}
-          {timeline.currentKg !== null && <p>Nu {formatKgLabel(timeline.currentKg)}</p>}
-          {timeline.goalKg !== null && <p>Mål {formatKgLabel(timeline.goalKg)}</p>}
-          {kg30Ago !== null && (
-            <p>
-              För 30 dagar sedan {formatKgLabel(kg30Ago)} → nu {formatKgLabel(weightTrend.currentKg)}
+        <div className="body-avatar-accordion-list">
+          <AvatarAccordion
+            icon="↘"
+            id="change"
+            isOpen={openSection === 'change'}
+            label="Kroppsförändring"
+            onToggle={() => toggleSection('change')}
+          >
+            {scan.latest ? (
+              <p>
+                Senaste scanning {formatScanDateTime(scan.latest.createdAt) || 'okänt datum'}
+                {scan.confidenceLabel ? ` · Säkerhet ${scan.confidenceLabel}` : ''}
+              </p>
+            ) : (
+              <p>Ingen tidigare scanning.</p>
+            )}
+            <div className="body-avatar-timeline">
+              {timeline.startKg !== null && <p>Start {formatKgLabel(timeline.startKg)}</p>}
+              {timeline.currentKg !== null && <p>Nu {formatKgLabel(timeline.currentKg)}</p>}
+              {timeline.goalKg !== null && <p>Mål {formatKgLabel(timeline.goalKg)}</p>}
+            </div>
+            {kg30Ago !== null && (
+              <p>
+                För 30 dagar sedan {formatKgLabel(kg30Ago)} → nu {formatKgLabel(weightTrend.currentKg)}
+              </p>
+            )}
+            {scan.previous ? (
+              <>
+                {scan.weight?.change !== null && scan.weight?.previous != null && (
+                  <p>
+                    Vikt {formatKgLabel(scan.weight.previous)} → {formatKgLabel(scan.weight.current)}
+                    {' '}
+                    ({formatSignedChange(scan.weight.change, 'kg')})
+                  </p>
+                )}
+                {scan.measurements.map((item) => (
+                  <p key={item.key}>
+                    {item.name}
+                    {item.previous !== null && item.current !== null
+                      ? ` ${formatCmLabel(item.previous)} → ${formatCmLabel(item.current)} · ${item.changeLabel}`
+                      : ` ${item.changeLabel}`}
+                  </p>
+                ))}
+                <p className="overview-body-scan-note">
+                  AI-uppskattade mått är ungefärliga, inte exakta medicinska mätningar.
+                </p>
+              </>
+            ) : (
+              <p>Ingen tidigare scanning att jämföra med.</p>
+            )}
+            {strengths.length > 0 && (
+              <>
+                <h3>Styrkor</h3>
+                <ul>{strengths.map((item) => <li key={item}>{item}</li>)}</ul>
+              </>
+            )}
+            {improvements.length > 0 && (
+              <>
+                <h3>Att följa</h3>
+                <ul>{improvements.map((item) => <li key={item}>{item}</li>)}</ul>
+              </>
+            )}
+            {result?.scanInput && <p>Underlag: {getScanInputLabel(result.scanInput)}</p>}
+            {result?.bodyComposition && <p>Kroppssammansättning: {result.bodyComposition}</p>}
+            {result?.posture && <p>Hållning: {result.posture}</p>}
+            <p className="overview-body-scan-note">
+              {result?.safetyNote || result?.limitations?.[0] || 'En bildanalys är en visuell uppskattning, inte en medicinsk mätning.'}
             </p>
-          )}
-          {timeline.startKg === null && timeline.goalKg === null && kg30Ago === null && (
-            <p>Ingen start-, mål- eller 30-dagarsvikt att visa ännu.</p>
-          )}
-        </section>
+          </AvatarAccordion>
 
-        <section className="overview-body-today-card" aria-label="Din förändring">
-          <h3>Din förändring</h3>
-          {scan.previous ? (
-            <>
-              <p>Sedan förra scanningen</p>
-              {scan.weight?.change !== null && scan.weight?.previous != null && (
+          <AvatarAccordion
+            icon="☀"
+            id="weather"
+            isOpen={openSection === 'weather'}
+            label="Väder & kläder"
+            onToggle={() => toggleSection('weather')}
+          >
+            <h3>{weatherReady ? `Vädret idag i ${weather.city}` : 'Vädret idag'}</h3>
+            {weatherReady ? (
+              <>
+                <p>{weather.icon} {Math.round(weather.temperatureC)}°C · {weather.condition}</p>
                 <p>
-                  Vikt {formatKgLabel(scan.weight.previous)} → {formatKgLabel(scan.weight.current)}
-                  {' '}
-                  ({formatSignedChange(scan.weight.change, 'kg')})
+                  Känns som {Number.isFinite(weather.feelsLikeC) ? `${Math.round(weather.feelsLikeC)}°C` : 'saknas'}
                 </p>
-              )}
-              {scan.measurements.map((item) => (
-                <p key={item.key}>
-                  {item.name}
-                  {item.previous !== null && item.current !== null
-                    ? ` ${formatCmLabel(item.previous)} → ${formatCmLabel(item.current)} · ${item.changeLabel}`
-                    : ` ${item.changeLabel}`}
+                <p>
+                  Vind {Number.isFinite(weather.windSpeedMs) ? `${Math.round(weather.windSpeedMs)} m/s` : 'saknas'}
+                  {wind.label ? ` · ${wind.label}` : ''}
                 </p>
-              ))}
-              <p className="overview-body-scan-note">
-                AI-uppskattade mått är ungefärliga, inte exakta medicinska mätningar.
-              </p>
-            </>
-          ) : (
-            <p>Ingen tidigare scanning att jämföra med.</p>
-          )}
-        </section>
+                <p>
+                  Regnrisk {Number.isFinite(weather.precipitationRiskPercent)
+                    ? `${Math.round(weather.precipitationRiskPercent)} %`
+                    : 'saknas'}
+                </p>
+                <p>Soluppgång {weather.sunrise ? weather.sunriseLabel : 'saknas'}</p>
+                <p>
+                  Solnedgång {weather.sunset ? weather.sunsetLabel : 'saknas'}
+                  {untilSunset ? ` · ${untilSunset}` : ''}
+                </p>
+              </>
+            ) : (
+              <p>Ingen väderdata.</p>
+            )}
+            <h3>Klädråd</h3>
+            {clothing.available
+              ? clothing.lines.map((line) => <p key={line}>{line}</p>)
+              : <p>{clothing.emptyLabel}</p>}
+          </AvatarAccordion>
 
-        <section className="overview-body-today-card" aria-label="Vädret idag">
-          <h3>{weatherReady ? `Vädret idag i ${weather.city}` : 'Vädret idag'}</h3>
-          {weatherReady ? (
-            <>
-              <p>{weather.icon} {Math.round(weather.temperatureC)}°C · {weather.condition}</p>
-              <p>
-                Känns som
-                {' '}
-                {Number.isFinite(weather.feelsLikeC) ? `${Math.round(weather.feelsLikeC)}°C` : 'saknas'}
-              </p>
-              <p>
-                Vind {Number.isFinite(weather.windSpeedMs) ? `${Math.round(weather.windSpeedMs)} m/s` : 'saknas'}
-                {wind.label ? ` · ${wind.label}` : ''}
-              </p>
-              <p>
-                Regnrisk
-                {' '}
-                {Number.isFinite(weather.precipitationRiskPercent)
-                  ? `${Math.round(weather.precipitationRiskPercent)} %`
-                  : 'saknas'}
-              </p>
-              <p>Soluppgång {weather.sunrise ? weather.sunriseLabel : 'saknas'}</p>
-              <p>
-                Solnedgång {weather.sunset ? weather.sunsetLabel : 'saknas'}
-                {untilSunset ? ` · ${untilSunset}` : ''}
-              </p>
-            </>
-          ) : (
-            <p>Ingen väderdata.</p>
-          )}
-        </section>
-
-        <section className="overview-body-today-card" aria-label="Vad passar att ha på sig">
-          <h3>Vad passar att ha på sig?</h3>
-          {clothing.available ? clothing.lines.map((line) => <p key={line}>{line}</p>) : <p>{clothing.emptyLabel}</p>}
-        </section>
-
-        {showEditor && (
-          <section className="overview-body-today-card" aria-label="Kroppsform">
+          <AvatarAccordion
+            icon="✨"
+            id="editor"
+            isOpen={openSection === 'editor'}
+            label="Ändra kropp"
+            onToggle={() => toggleSection('editor')}
+          >
             <h3>KROPPSFORM</h3>
             <p>VISUELL SIMULERING</p>
             <p className="overview-body-scan-note">{VISUAL_SIMULATION_DISCLAIMER}</p>
@@ -340,11 +387,15 @@ function OverviewBodyScanStage({
             >
               Återställ
             </button>
-          </section>
-        )}
+          </AvatarAccordion>
 
-        {showCameraHub && (
-          <section className="overview-body-today-card" aria-label="Smart kamera">
+          <AvatarAccordion
+            icon="⌾"
+            id="camera"
+            isOpen={openSection === 'camera'}
+            label="Smart kamera"
+            onToggle={() => toggleSection('camera')}
+          >
             <h3>Smart kamera</h3>
             <p className="overview-body-scan-note">
               Ingen visuell detektion är aktiv. Live preview ska stanna lokalt.
@@ -360,36 +411,10 @@ function OverviewBodyScanStage({
             <button className="secondary-button" type="button" onClick={onStartScan}>
               Öppna kroppsscanning
             </button>
-          </section>
-        )}
-
-        {strengths.length > 0 && (
-          <section>
-            <h3>Styrkor</h3>
-            <ul>{strengths.map((item) => <li key={item}>{item}</li>)}</ul>
-          </section>
-        )}
-        {improvements.length > 0 && (
-          <section>
-            <h3>Att följa</h3>
-            <ul>{improvements.map((item) => <li key={item}>{item}</li>)}</ul>
-          </section>
-        )}
-        {result?.scanInput && <p>Underlag: {getScanInputLabel(result.scanInput)}</p>}
-        {result?.bodyComposition && <p>Kroppssammansättning: {result.bodyComposition}</p>}
-        {result?.posture && <p>Hållning: {result.posture}</p>}
-
-        <p className="overview-body-scan-note">
-          {result?.safetyNote || result?.limitations?.[0] || 'En bildanalys är en visuell uppskattning, inte en medicinsk mätning.'}
-        </p>
+          </AvatarAccordion>
+        </div>
 
         <div className="overview-body-scan-actions">
-          <button className="secondary-button" type="button" onClick={() => setShowEditor((current) => !current)}>
-            Ändra kropp
-          </button>
-          <button className="secondary-button" type="button" onClick={() => setShowCameraHub((current) => !current)}>
-            Smart kamera
-          </button>
           <button className="primary-button" type="button" onClick={onStartScan}>
             {analysis ? 'Ny scanning' : 'Starta scanning'}
           </button>

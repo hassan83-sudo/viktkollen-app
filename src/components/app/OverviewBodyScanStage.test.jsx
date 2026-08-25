@@ -3,6 +3,8 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import process from 'node:process'
+import { act } from 'react'
+import { createRoot } from 'react-dom/client'
 import { describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 
@@ -15,6 +17,8 @@ vi.mock('react-dom', async () => {
 })
 
 import OverviewBodyScanStage from './OverviewBodyScanStage.jsx'
+
+globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
 describe('OverviewBodyScanStage', () => {
   it('opens from Home as a full-screen kroppsscanning summary with scan rings', () => {
@@ -39,7 +43,7 @@ describe('OverviewBodyScanStage', () => {
     expect(talkSource).toContain('🎙 Prata')
     expect(stageSource).toContain('BodyAvatarTalkBar')
     expect(stageSource).toContain('onStartVoiceInput')
-    expect(talkSource).toContain('Textalternativ')
+    expect(talkSource).toContain("showText ? 'Dölj text' : 'Text'")
     expect(stageSource).toContain('createDefaultBodySimulationState')
     expect(stageSource).toContain('VISUELL SIMULERING')
     expect(stageSource).toContain('Ändra kropp')
@@ -49,6 +53,9 @@ describe('OverviewBodyScanStage', () => {
     expect(cssSource).toContain('.overview-body-scan-rings')
     expect(cssSource).toContain('prefers-reduced-motion')
     expect(cssSource).toContain('max-width: 390px')
+    expect(cssSource).toContain('Do not shrink avatar to make controls fit.')
+    expect(cssSource).toContain('min-height: clamp(355px, 48svh, 430px)')
+    expect(cssSource).toContain('min-height: 52px')
     expect(cssSource).toMatch(/\.overview-body-scan-hero img \{[\s\S]*?object-fit:\s*contain;/)
     expect(cssSource).not.toContain('scale(2.05)')
   })
@@ -82,17 +89,73 @@ describe('OverviewBodyScanStage', () => {
 
     expect(html).toContain('Din kropp idag')
     expect(html).toContain('83,8 kg')
-    expect(html).toContain('Helsingborg')
-    expect(html).toContain('7 m/s')
-    expect(html).toContain('Måttlig vind')
-    expect(html).toContain('05:47')
-    expect(html).toContain('20:28')
-    expect(html).toContain('Känns som')
-    expect(html).toContain('saknas')
+    expect(html).not.toContain('Helsingborg')
+    expect(html).not.toContain('7 m/s')
     expect(html).not.toMatch(/UV-index|uv-index/i)
     expect(html).toContain('overview-body-scan-rings')
     expect(html).toContain('🎙 Prata')
     expect(html).toContain('Dra för att rotera')
-    expect(html).toContain('Vad passar att ha på sig')
+    expect(html).toContain('Väder &amp; kläder')
+    expect(html).not.toContain('VISUELL SIMULERING')
+  })
+
+  it('keeps secondary content closed initially and opens one compact section at a time', () => {
+    const container = document.createElement('div')
+    document.body.append(container)
+    const root = createRoot(container)
+
+    act(() => {
+      root.render(
+        <OverviewBodyScanStage
+          onClose={() => {}}
+          onStartScan={() => {}}
+          weather={{
+            city: 'Helsingborg',
+            condition: 'Halvklart',
+            feelsLikeC: 14,
+            hasLiveWeather: true,
+            icon: '⛅',
+            precipitationRiskPercent: 20,
+            sunrise: '2026-08-20T05:47:00',
+            sunriseLabel: '05:47',
+            sunset: '2026-08-20T20:28:00',
+            sunsetLabel: '20:28',
+            temperatureC: 16,
+            windSpeedMs: 7,
+          }}
+        />,
+      )
+    })
+
+    const editorButton = [...container.querySelectorAll('.body-avatar-accordion-trigger')]
+      .find((button) => button.textContent.includes('Ändra kropp'))
+    const weatherButton = [...container.querySelectorAll('.body-avatar-accordion-trigger')]
+      .find((button) => button.textContent.includes('Väder & kläder'))
+
+    expect(editorButton.getAttribute('aria-expanded')).toBe('false')
+    expect(container.textContent).not.toContain('VISUELL SIMULERING')
+
+    act(() => editorButton.click())
+    expect(editorButton.getAttribute('aria-expanded')).toBe('true')
+    expect(container.textContent).toContain('VISUELL SIMULERING')
+
+    const firstSlider = container.querySelector('.body-avatar-slider input')
+    act(() => {
+      firstSlider.value = '50'
+      firstSlider.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    const resetButton = [...container.querySelectorAll('button')]
+      .find((button) => button.textContent.includes('Återställ'))
+    act(() => resetButton.click())
+    expect(container.querySelector('.body-avatar-slider input').value).toBe('0')
+
+    act(() => weatherButton.click())
+    expect(container.textContent).not.toContain('VISUELL SIMULERING')
+    expect(container.textContent).toContain('Klädråd')
+    expect(container.textContent).toContain('Helsingborg')
+    expect(container.textContent).toContain('Måttlig vind')
+
+    act(() => root.unmount())
+    container.remove()
   })
 })

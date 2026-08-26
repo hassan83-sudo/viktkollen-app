@@ -8,6 +8,7 @@ import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import BodyAnalysisUploader from './BodyAnalysisUploader.jsx'
+import { changeAppLanguage } from '../i18n/index.js'
 
 const completePhotos = {
   back: { name: 'back.jpg', preview: '/back.jpg' },
@@ -71,7 +72,8 @@ describe('BodyAnalysisUploader', () => {
   let firstStream
   let secondStream
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    await changeAppLanguage('sv')
     firstStream = createStream()
     secondStream = createStream()
     getUserMedia = vi.fn()

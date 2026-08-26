@@ -10,7 +10,7 @@ describe('AI Coach tap me and realtime voice security', () => {
     const source = readSource('src/components/app/OverviewDashboard.jsx')
 
     expect(source).toContain('is-coach-hero')
-    expect(source).toContain('Öppna AI Coach')
+    expect(source).toContain("t('home:labels.openAiCoach')")
     expect(source).toContain('onOpenAiCoach')
     expect(source).toContain('<span className="overview-tap-me">tap me</span>')
   })
@@ -21,7 +21,7 @@ describe('AI Coach tap me and realtime voice security', () => {
 
     expect(appSource).toContain('onOpenAiCoach={() => setAiCoachOverlayOpen(true)}')
     expect(appSource).toContain('<AiCoachOverlay')
-    expect(overlaySource).toContain('Tryck för att prata')
+    expect(overlaySource).toContain("t('coach:overlay.startVoice')")
     expect(overlaySource).toContain('<ChatPanel')
     expect(appSource).toContain('function sendChatMessage')
     expect(appSource).toContain('onStartVoiceInput={startVoiceInput}')

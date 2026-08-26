@@ -1,4 +1,5 @@
 import PwaExperience from '../PwaExperience.jsx'
+import { useTranslation } from 'react-i18next'
 
 function OnboardingScreen({
   activityOptions,
@@ -10,6 +11,7 @@ function OnboardingScreen({
   profileError,
   profileForm,
 }) {
+  const { t } = useTranslation(['common', 'onboarding'])
   const dietaryOptions = [
     { label: 'Allätare', value: 'omnivore' },
     { label: 'Vegetarisk', value: 'vegetarian' },
@@ -22,8 +24,8 @@ function OnboardingScreen({
     <main className="app-shell onboarding-shell">
       <PwaExperience />
       <section className="onboarding-card">
-        <p className="eyebrow">Välkommen till Viktkollen</p>
-        <h1>Skapa din profil</h1>
+        <p className="eyebrow">{t('onboarding:welcome')}</p>
+        <h1>{t('onboarding:title')}</h1>
         <p className="onboarding-copy">
           Svara på några snabba frågor eller hoppa över sådant du vill fylla i
           senare. Profilen används bara för mer relevanta mål, råd och scannerkontext.
@@ -134,13 +136,13 @@ function OnboardingScreen({
           )}
 
           <div className="account-settings-actions">
-            <button type="submit">Spara och fortsätt</button>
+            <button type="submit">{t('common:actions.saveAndContinue')}</button>
             <button className="secondary-button" type="submit">
-              Hoppa över just nu
+              {t('common:actions.skipForNow')}
             </button>
             {onCancel && (
               <button className="secondary-button" type="button" onClick={onCancel}>
-                Avbryt
+                {t('common:actions.cancel')}
               </button>
             )}
           </div>

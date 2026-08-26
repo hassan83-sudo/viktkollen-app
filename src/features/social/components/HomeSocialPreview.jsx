@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 function initialsFor(profile) {
   const source = profile?.displayName || profile?.username || ''
   const parts = source.split(/\s+/).filter(Boolean)
@@ -14,25 +16,26 @@ function HomeSocialPreview({
   onAddFriend,
   onOpenChat,
 } = {}) {
+  const { t } = useTranslation(['social', 'common'])
   if (!enabled) return null
 
   const rows = Array.isArray(conversations) ? conversations.slice(0, 3) : []
   const hasFriendsChat = rows.length > 0
 
   return (
-    <section className="overview-social-card" aria-label="Vänner">
+    <section className="overview-social-card" aria-label={t('social:friends')}>
       <div className="overview-social-card-top">
-        <h3>Vänner</h3>
+        <h3>{t('social:friends')}</h3>
         {isAuthenticated && onOpenChat ? (
           <button className="overview-stat-link" type="button" onClick={() => onOpenChat()}>
-            Öppna chatten
+            {t('social:openChat')}
           </button>
         ) : null}
       </div>
       {!isAuthenticated ? (
-        <p className="overview-social-empty">Logga in för att träna och hålla kontakten tillsammans.</p>
+        <p className="overview-social-empty">{t('social:signInToUse')}</p>
       ) : loading ? (
-        <p className="overview-social-empty">Hämtar…</p>
+        <p className="overview-social-empty">{t('common:actions.loading')}</p>
       ) : error ? (
         <p className="overview-social-empty">{error}</p>
       ) : hasFriendsChat ? (
@@ -46,8 +49,8 @@ function HomeSocialPreview({
                     : initialsFor(row.other)}
                 </span>
                 <span className="overview-social-copy">
-                  <strong>{row.other?.displayName || row.other?.username || 'Vän'}</strong>
-                  <small>{row.lastMessage || 'Ingen konversation ännu'}</small>
+                  <strong>{row.other?.displayName || row.other?.username || t('social:friend', 'Friend')}</strong>
+                  <small>{row.lastMessage || t('social:noConversationYet', 'No conversation yet')}</small>
                 </span>
                 {row.unreadCount > 0 ? <span className="overview-social-unread">{row.unreadCount}</span> : null}
               </button>
@@ -55,13 +58,13 @@ function HomeSocialPreview({
           ))}
         </ul>
       ) : (
-        <p className="overview-social-empty">Träna och håll kontakten tillsammans.</p>
+        <p className="overview-social-empty">{t('social:trainingTogether')}</p>
       )}
       {isAuthenticated ? (
         <div className="overview-social-actions">
-          <button className="secondary-button" type="button" onClick={onAddFriend}>Lägg till vän</button>
+          <button className="secondary-button" type="button" onClick={onAddFriend}>{t('social:addFriend')}</button>
           {hasFriendsChat ? (
-            <button className="primary-button" type="button" onClick={() => onOpenChat()}>Öppna chatten</button>
+            <button className="primary-button" type="button" onClick={() => onOpenChat()}>{t('social:openChat')}</button>
           ) : null}
         </div>
       ) : null}

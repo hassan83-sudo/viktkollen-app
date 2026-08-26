@@ -193,6 +193,7 @@ export default defineConfig(({ mode }) => {
     },
     test: {
       exclude: ['dist/**', 'node_modules/**', 'tests/e2e/**'],
+      setupFiles: ['./src/test/setup.js'],
     },
   }
 })

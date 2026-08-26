@@ -1,4 +1,5 @@
 ﻿import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import {
   bodyAnalysisViews,
@@ -27,6 +28,7 @@ function BodyAnalysisUploader({
   onAnalyze,
   onPhotoChange,
 }) {
+  const { t } = useTranslation(['bodyScan', 'common'])
   const [activeViewKey, setActiveViewKey] = useState('front')
   const [cameraStatus, setCameraStatus] = useState('')
   const [cameraActive, setCameraActive] = useState(false)
@@ -285,18 +287,18 @@ function BodyAnalysisUploader({
             <p className="eyebrow">{bodyAnalysisViews.findIndex((view) => view.key === activeViewKey) + 1}/3</p>
             <h3 id="body-scan-step-title">{activeView.label}</h3>
           </div>
-          <span>{progress.label} klara</span>
+          <span>{progress.label} {t('doneSuffix')}</span>
         </div>
 
         <div className="body-scan-capture" id="body-scan-capture" ref={captureSectionRef}>
-          <p className="body-scan-live-hint">{activeView.poseTips[0]} Placera hela kroppen i ramen.</p>
+          <p className="body-scan-live-hint">{activeView.poseTips[0]} {t('frameHint')}</p>
           <div className="body-scan-camera" id="body-scan-camera" ref={cameraBoxRef}>
             <video
               ref={videoRef}
               playsInline
               muted
               autoPlay
-              aria-label="Kameraförhandsvisning för body scan"
+              aria-label={t('cameraPreviewAria')}
               style={{ transform: zoomMode === 'preview' ? `scale(${zoom})` : undefined }}
             />
             <canvas ref={canvasRef} aria-hidden="true" />
@@ -320,15 +322,15 @@ function BodyAnalysisUploader({
               type="button"
               onClick={() => (cameraActive ? stopCamera() : startCamera())}
             >
-              {cameraActive ? 'Stoppa kamera' : 'Starta kamera'}
+              {cameraActive ? t('stopCamera') : t('startCamera')}
             </button>
             <button
-              aria-label="Vänd kamera"
+              aria-label={t('flipCamera')}
               className="secondary-button"
               type="button"
               onClick={flipCamera}
             >
-              Vänd kamera
+              {t('flipCamera')}
             </button>
             <button
               className="body-scan-capture-button"
@@ -336,35 +338,35 @@ function BodyAnalysisUploader({
               onClick={startCountdown}
               disabled={isCountingDown}
             >
-              Jag står rätt i ramen
+              {t('standInFrame')}
             </button>
             <label className="secondary-button body-scan-file-picker" htmlFor={'body-scan-file-' + activeViewKey}>
-              Välj bild
+              {t('chooseImage')}
               <input
                 id={'body-scan-file-' + activeViewKey}
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
                 capture="environment"
-                aria-label={`Välj bild ${activeView.label.toLowerCase()} för AI-kroppsanalys`}
+                aria-label={t('chooseImageAria', { label: activeView.label.toLowerCase() })}
                 onChange={(event) => handleFileChange(event, activeViewKey)}
               />
             </label>
           </div>
           {isCountingDown && (
             <button className="secondary-button" type="button" onClick={stopCountdown}>
-              Avbryt nedräkning
+              {t('cancelCountdown')}
             </button>
           )}
           <p className="body-scan-facing" aria-live="polite">{getBodyScanFacingLabel(facingMode)}</p>
-          <div className="body-scan-zoom" aria-label="Zoom">
+          <div className="body-scan-zoom" aria-label={t('zoom')}>
             <button className="secondary-button" type="button" onClick={() => changeZoom(zoom - videoScanZoomStep)}>-</button>
             <span>{Number(zoom).toFixed(1)}×</span>
             <button className="secondary-button" type="button" onClick={() => changeZoom(zoom + videoScanZoomStep)}>+</button>
           </div>
         </div>
 
-        <div className="body-scan-steps" aria-label="Bildvinklar">
+        <div className="body-scan-steps" aria-label={t('anglesAria')}>
           {bodyAnalysisViews.map((view, index) => {
             const stepState = getBodyScanStepState(view.key, activeViewKey, photos)
             return (

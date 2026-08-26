@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 
 import useOverviewStageLock from '../../../components/app/useOverviewStageLock.js'
 import { isSupabaseConfigured, supabase } from '../../../services/supabaseClient.js'
@@ -10,11 +11,11 @@ import { subscribeConversationMessages } from '../services/socialRealtime.js'
 
 const api = createSocialApi({ client: supabase })
 
-function formatTime(value) {
+function formatTime(value, language) {
   if (!value) return ''
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return ''
-  return new Intl.DateTimeFormat('sv-SE', { hour: '2-digit', minute: '2-digit' }).format(date)
+  return new Intl.DateTimeFormat(language || 'sv-SE', { hour: '2-digit', minute: '2-digit' }).format(date)
 }
 
 function SocialStage({
@@ -25,6 +26,7 @@ function SocialStage({
   onClose,
 }) {
   useOverviewStageLock(onClose)
+  const { t, i18n } = useTranslation(['social', 'common'])
   const [view, setView] = useState(initialView)
   const [snapshot, setSnapshot] = useState({ conversations: [], friends: [], requests: { incoming: [], outgoing: [] }, blocks: [] })
   const [status, setStatus] = useState('loading')
@@ -58,13 +60,13 @@ function SocialStage({
       if (!profile) setView((current) => (current === 'inbox' ? 'profile' : current))
     }).catch((caught) => {
       if (cancelled) return
-      setError(caught?.message || 'Kunde inte hämta vänner.')
+      setError(caught?.message || t('loadFriendsError'))
       setStatus('error')
     })
     return () => {
       cancelled = true
     }
-  }, [canSubscribe, enabled])
+  }, [canSubscribe, enabled, t])
 
   useEffect(() => {
     if (!conversationId || !canSubscribe) return undefined
@@ -72,7 +74,7 @@ function SocialStage({
     api.listMessages(conversationId).then((rows) => {
       if (!cancelled) setMessages(rows)
     }).catch((caught) => {
-      if (!cancelled) setError(caught?.message || 'Kunde inte hämta chatten.')
+      if (!cancelled) setError(caught?.message || t('loadChatError'))
     })
     api.markRead(conversationId).catch(() => {})
     return subscribeConversationMessages({
@@ -86,7 +88,7 @@ function SocialStage({
       },
       supabaseConfigured: isSupabaseConfigured(),
     })
-  }, [canSubscribe, conversationId, enabled, isAuthenticated])
+  }, [canSubscribe, conversationId, enabled, isAuthenticated, t])
 
   async function refresh() {
     if (!canSubscribe) return
@@ -96,7 +98,7 @@ function SocialStage({
       setStatus('ready')
       setError('')
     } catch (caught) {
-      setError(caught?.message || 'Kunde inte hämta vänner.')
+      setError(caught?.message || t('loadFriendsError'))
       setStatus('error')
     }
   }
@@ -114,7 +116,7 @@ function SocialStage({
     try {
       setResults(await api.searchPeople(query))
     } catch (caught) {
-      setError(caught?.message || 'Sökningen misslyckades.')
+      setError(caught?.message || t('searchFailed'))
     }
   }
 
@@ -128,7 +130,7 @@ function SocialStage({
       setMessages((current) => [...current, sent])
     } catch (caught) {
       setDraft(text)
-      setError(caught?.message || 'Meddelandet kunde inte skickas.')
+      setError(caught?.message || t('sendFailed'))
     }
   }
 
@@ -139,7 +141,7 @@ function SocialStage({
       setView('thread')
       await refresh()
     } catch (caught) {
-      setError(caught?.message || 'Kunde inte öppna chatten.')
+      setError(caught?.message || t('openChatFailed'))
     }
   }
 
@@ -154,37 +156,37 @@ function SocialStage({
       setView('search')
       setError('')
     } catch (caught) {
-      setError(caught?.message || 'Kunde inte spara profilen.')
+      setError(caught?.message || t('saveProfileFailed'))
     }
   }
 
   return createPortal(
     <div className="social-stage" role="dialog" aria-labelledby="social-stage-title" aria-modal="true">
       <div className="social-stage-bar">
-        <h1 id="social-stage-title">{view === 'thread' ? (activeConversation?.other?.displayName || 'Chatt') : 'Vänner'}</h1>
-        <button className="overview-body-scan-close" type="button" onClick={onClose}>Stäng</button>
+        <h1 id="social-stage-title">{view === 'thread' ? (activeConversation?.other?.displayName || t('titleChat')) : t('titleFriends')}</h1>
+        <button className="overview-body-scan-close" type="button" onClick={onClose}>{t('close')}</button>
       </div>
-      <nav className="social-stage-tabs" aria-label="Social navigation">
-        <button className={view === 'inbox' ? 'is-active' : ''} type="button" onClick={() => setView('inbox')}>Chatt</button>
-        <button className={view === 'friends' ? 'is-active' : ''} type="button" onClick={() => setView('friends')}>Vänner</button>
-        <button className={view === 'requests' ? 'is-active' : ''} type="button" onClick={() => setView('requests')}>Förfrågningar</button>
-        <button className={view === 'search' ? 'is-active' : ''} type="button" onClick={() => setView('search')}>Sök</button>
-        <button className={view === 'profile' ? 'is-active' : ''} type="button" onClick={() => setView('profile')}>Profil</button>
+      <nav className="social-stage-tabs" aria-label={t('navAria')}>
+        <button className={view === 'inbox' ? 'is-active' : ''} type="button" onClick={() => setView('inbox')}>{t('tabs.chat')}</button>
+        <button className={view === 'friends' ? 'is-active' : ''} type="button" onClick={() => setView('friends')}>{t('tabs.friends')}</button>
+        <button className={view === 'requests' ? 'is-active' : ''} type="button" onClick={() => setView('requests')}>{t('tabs.requests')}</button>
+        <button className={view === 'search' ? 'is-active' : ''} type="button" onClick={() => setView('search')}>{t('tabs.search')}</button>
+        <button className={view === 'profile' ? 'is-active' : ''} type="button" onClick={() => setView('profile')}>{t('tabs.profile')}</button>
       </nav>
       {!isAuthenticated || !isSupabaseConfigured() ? (
-        <p className="overview-social-empty">Logga in med molnkonto för att använda vänner och chatt. Ingen fejkdata visas.</p>
+        <p className="overview-social-empty">{t('signInCloud')}</p>
       ) : (
         <div className="social-stage-body">
           {error ? <p className="overview-social-empty" role="alert">{error}</p> : null}
-          {status === 'loading' ? <p className="overview-social-empty">Hämtar…</p> : null}
+          {status === 'loading' ? <p className="overview-social-empty">{t('common:actions.loading')}</p> : null}
           {view === 'profile' ? (
             <form className="social-search" onSubmit={savePublicProfile}>
               <p className="overview-social-empty">
-                Skapa en publik socialprofil. E-post och telefon kopieras inte.
-                {myProfile ? ` Nuvarande: @${myProfile.username}` : ''}
+                {t('createPublicProfile')}
+                {myProfile ? ` ${t('currentUsername', { username: myProfile.username })}` : ''}
               </p>
               <label>
-                Användarnamn
+                {t('username')}
                 <input
                   autoComplete="off"
                   inputMode="text"
@@ -195,7 +197,7 @@ function SocialStage({
                 />
               </label>
               <label>
-                Visningsnamn
+                {t('displayName')}
                 <input
                   autoComplete="nickname"
                   maxLength={48}
@@ -204,7 +206,7 @@ function SocialStage({
                   onChange={(event) => setProfileDisplayName(event.target.value)}
                 />
               </label>
-              <button className="primary-button" type="submit">Spara profil</button>
+              <button className="primary-button" type="submit">{t('saveProfile')}</button>
             </form>
           ) : null}
           {view === 'inbox' ? (
@@ -221,8 +223,8 @@ function SocialStage({
                       }}
                     >
                       <span className="overview-social-copy">
-                        <strong>{row.other?.displayName || 'Vän'}</strong>
-                        <small>{row.lastMessage || 'Ingen konversation ännu'}</small>
+                        <strong>{row.other?.displayName || t('friend')}</strong>
+                        <small>{row.lastMessage || t('noConversationYet')}</small>
                       </span>
                       {row.unreadCount > 0 ? <span className="overview-social-unread">{row.unreadCount}</span> : null}
                     </button>
@@ -230,7 +232,7 @@ function SocialStage({
                 ))}
               </ul>
             ) : (
-              <p className="overview-social-empty">Inga chattar ännu. Lägg till en vän för att börja.</p>
+              <p className="overview-social-empty">{t('noChatsYet')}</p>
             )
           ) : null}
           {view === 'friends' ? (
@@ -241,15 +243,15 @@ function SocialStage({
                     <strong>{friend.displayName}</strong>
                     <small>@{friend.username}</small>
                     <div className="overview-social-actions">
-                      <button className="primary-button" type="button" onClick={() => openFriend(friend)}>Chatt</button>
-                      <button className="secondary-button" type="button" onClick={async () => { await api.removeFriend(friend.userId); refresh() }}>Ta bort</button>
-                      <button className="secondary-button" type="button" onClick={async () => { await api.blockUser(friend.userId); refresh() }}>Blockera</button>
+                      <button className="primary-button" type="button" onClick={() => openFriend(friend)}>{t('chat')}</button>
+                      <button className="secondary-button" type="button" onClick={async () => { await api.removeFriend(friend.userId); refresh() }}>{t('remove')}</button>
+                      <button className="secondary-button" type="button" onClick={async () => { await api.blockUser(friend.userId); refresh() }}>{t('block')}</button>
                     </div>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="overview-social-empty">Träna och håll kontakten tillsammans.</p>
+              <p className="overview-social-empty">{t('emptyFriends')}</p>
             )
           ) : null}
           {view === 'requests' ? (
@@ -257,44 +259,44 @@ function SocialStage({
               <div className="social-request-stack">
                 {snapshot.requests.incoming.map((request) => (
                   <article key={request.id}>
-                    <strong>{request.profile?.displayName || 'Förfrågan'}</strong>
+                    <strong>{request.profile?.displayName || t('request')}</strong>
                     <div className="overview-social-actions">
-                      <button className="primary-button" type="button" onClick={async () => { await api.respondToFriendRequest(request.id, 'accept'); refresh() }}>Acceptera</button>
-                      <button className="secondary-button" type="button" onClick={async () => { await api.respondToFriendRequest(request.id, 'decline'); refresh() }}>Neka</button>
+                      <button className="primary-button" type="button" onClick={async () => { await api.respondToFriendRequest(request.id, 'accept'); refresh() }}>{t('accept')}</button>
+                      <button className="secondary-button" type="button" onClick={async () => { await api.respondToFriendRequest(request.id, 'decline'); refresh() }}>{t('decline')}</button>
                     </div>
                   </article>
                 ))}
                 {snapshot.requests.outgoing.map((request) => (
                   <article key={request.id}>
-                    <strong>Skickad till {request.profile?.displayName || 'användare'}</strong>
-                    <small>Väntar</small>
+                    <strong>{t('sentTo', { name: request.profile?.displayName || t('friend') })}</strong>
+                    <small>{t('waiting')}</small>
                   </article>
                 ))}
               </div>
             ) : (
-              <p className="overview-social-empty">Inga vänförfrågningar.</p>
+              <p className="overview-social-empty">{t('noRequests')}</p>
             )
           ) : null}
           {view === 'search' ? (
             <form className="social-search" onSubmit={onSearch}>
               <label>
-                Sök användarnamn
+                {t('searchUsername')}
                 <input
                   autoComplete="off"
                   inputMode="text"
-                  placeholder="användarnamn"
+                  placeholder={t('searchPlaceholder')}
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                 />
               </label>
-              <button className="primary-button" type="submit">Sök</button>
+              <button className="primary-button" type="submit">{t('search')}</button>
               <ul className="overview-social-list">
                 {results.map((profile) => (
                   <li className="social-friend-row" key={profile.userId}>
                     <strong>{profile.displayName}</strong>
                     <small>@{profile.username}</small>
                     <button className="secondary-button" type="button" onClick={async () => { await api.sendFriendRequest(profile.userId); refresh(); setView('requests') }}>
-                      Skicka vänförfrågan
+                      {t('sendFriendRequest')}
                     </button>
                   </li>
                 ))}
@@ -308,22 +310,22 @@ function SocialStage({
                   {messages.map((message) => (
                     <li key={message.id}>
                       <p>{message.body}</p>
-                      <time>{formatTime(message.created_at)}</time>
+                      <time>{formatTime(message.created_at, i18n.language)}</time>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="overview-social-empty">Inga meddelanden ännu.</p>
+                <p className="overview-social-empty">{t('noMessages')}</p>
               )}
               <form className="social-compose" onSubmit={sendDraft}>
-                <label className="sr-only" htmlFor="social-compose-input">Meddelande</label>
+                <label className="sr-only" htmlFor="social-compose-input">{t('message')}</label>
                 <input
                   id="social-compose-input"
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
-                  placeholder="Skriv ett meddelande"
+                  placeholder={t('messagePlaceholder')}
                 />
-                <button className="primary-button" type="submit">Skicka</button>
+                <button className="primary-button" type="submit">{t('send')}</button>
               </form>
             </div>
           ) : null}

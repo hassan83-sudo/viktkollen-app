@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 
 import BodyAvatarTalkBar from './BodyAvatarTalkBar.jsx'
 import BodyAvatarViewer from './BodyAvatarViewer.jsx'
@@ -21,10 +22,10 @@ import {
   formatSignedChange,
 } from '../../services/homeBodyToday.js'
 
-function formatScanDateTime(value) {
+function formatScanDateTime(value, language) {
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return ''
-  return new Intl.DateTimeFormat('sv-SE', {
+  return new Intl.DateTimeFormat(language || 'sv-SE', {
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
@@ -82,6 +83,7 @@ function OverviewBodyScanStage({
   weather = null,
   weights = [],
 }) {
+  const { t, i18n } = useTranslation(['bodyScan', 'common'])
   const [history, setHistory] = useState(() => getAnalysisHistory())
   const [view, setView] = useState('front')
   const [compareMode, setCompareMode] = useState('simulation')
@@ -156,9 +158,9 @@ function OverviewBodyScanStage({
   return createPortal(
     <div className="overview-body-scan-stage" role="dialog" aria-labelledby="overview-body-today-title" aria-modal="true">
       <div className="overview-body-scan-hero is-full-art">
-        <p className="overview-body-scan-kicker">Din kropp idag</p>
+        <p className="overview-body-scan-kicker">{t('yourBodyToday')}</p>
         <button className="overview-body-scan-close" type="button" onClick={onClose}>
-          Stäng
+          {t('close')}
         </button>
         <BodyAvatarViewer
           compareMode={compareMode}
@@ -187,12 +189,12 @@ function OverviewBodyScanStage({
           voiceStatus={voiceStatus}
         />
 
-        <div className="body-avatar-compare" role="group" aria-label="Original eller simulering">
+        <div className="body-avatar-compare" role="group" aria-label={t('compareAria')}>
           <button className={compareMode === 'original' ? 'is-active' : ''} type="button" onClick={() => setCompareMode('original')}>
-            Original
+            {t('original')}
           </button>
           <button className={compareMode === 'simulation' ? 'is-active' : ''} type="button" onClick={() => setCompareMode('simulation')}>
-            Simulering
+            {t('simulation')}
           </button>
           <button
             type="button"
@@ -200,28 +202,28 @@ function OverviewBodyScanStage({
             onPointerUp={() => setHoldOriginal(false)}
             onPointerLeave={() => setHoldOriginal(false)}
           >
-            Visa original
+            {t('showOriginal')}
           </button>
         </div>
 
-        <section className="body-avatar-weight-summary" aria-label="Din kropp idag">
+        <section className="body-avatar-weight-summary" aria-label={t('yourBodyToday')}>
           {weightTrend.currentKg !== null ? (
             <>
               <p className="overview-body-today-weight">{formatKgLabel(weightTrend.currentKg)}</p>
               <div className="body-avatar-weight-change">
                 {weightTrend.change7dKg !== null && (
-                  <p>{formatSignedChange(weightTrend.change7dKg, 'kg')} · 7 dagar</p>
+                  <p>{formatSignedChange(weightTrend.change7dKg, 'kg')} · {t('days7')}</p>
                 )}
                 {weightTrend.change30dKg !== null && (
-                  <p>{formatSignedChange(weightTrend.change30dKg, 'kg')} · 30 dagar</p>
+                  <p>{formatSignedChange(weightTrend.change30dKg, 'kg')} · {t('days30')}</p>
                 )}
               </div>
               {weightTrend.change7dKg === null && weightTrend.change30dKg === null && (
-                <p className="overview-body-scan-note">Ingen viktförändring att jämföra ännu.</p>
+                <p className="overview-body-scan-note">{t('noWeightChangeYet')}</p>
               )}
             </>
           ) : (
-            <p>Ingen aktuell vikt registrerad.</p>
+            <p>{t('noCurrentWeight')}</p>
           )}
         </section>
 
@@ -230,32 +232,32 @@ function OverviewBodyScanStage({
             icon="↘"
             id="change"
             isOpen={openSection === 'change'}
-            label="Kroppsförändring"
+            label={t('bodyChange')}
             onToggle={() => toggleSection('change')}
           >
             {scan.latest ? (
               <p>
-                Senaste scanning {formatScanDateTime(scan.latest.createdAt) || 'okänt datum'}
-                {scan.confidenceLabel ? ` · Säkerhet ${scan.confidenceLabel}` : ''}
+                {t('latestScan')} {formatScanDateTime(scan.latest.createdAt, i18n.language) || t('unknownDate')}
+                {scan.confidenceLabel ? ` · ${t('confidence')} ${scan.confidenceLabel}` : ''}
               </p>
             ) : (
-              <p>Ingen tidigare scanning.</p>
+              <p>{t('noPreviousScan')}</p>
             )}
             <div className="body-avatar-timeline">
-              {timeline.startKg !== null && <p>Start {formatKgLabel(timeline.startKg)}</p>}
-              {timeline.currentKg !== null && <p>Nu {formatKgLabel(timeline.currentKg)}</p>}
-              {timeline.goalKg !== null && <p>Mål {formatKgLabel(timeline.goalKg)}</p>}
+              {timeline.startKg !== null && <p>{t('start')} {formatKgLabel(timeline.startKg)}</p>}
+              {timeline.currentKg !== null && <p>{t('now')} {formatKgLabel(timeline.currentKg)}</p>}
+              {timeline.goalKg !== null && <p>{t('goal')} {formatKgLabel(timeline.goalKg)}</p>}
             </div>
             {kg30Ago !== null && (
               <p>
-                För 30 dagar sedan {formatKgLabel(kg30Ago)} → nu {formatKgLabel(weightTrend.currentKg)}
+                {t('ago30')} {formatKgLabel(kg30Ago)} → {t('now').toLocaleLowerCase(i18n.language)} {formatKgLabel(weightTrend.currentKg)}
               </p>
             )}
             {scan.previous ? (
               <>
                 {scan.weight?.change !== null && scan.weight?.previous != null && (
                   <p>
-                    Vikt {formatKgLabel(scan.weight.previous)} → {formatKgLabel(scan.weight.current)}
+                    {t('weight')} {formatKgLabel(scan.weight.previous)} → {formatKgLabel(scan.weight.current)}
                     {' '}
                     ({formatSignedChange(scan.weight.change, 'kg')})
                   </p>
@@ -269,29 +271,29 @@ function OverviewBodyScanStage({
                   </p>
                 ))}
                 <p className="overview-body-scan-note">
-                  AI-uppskattade mått är ungefärliga, inte exakta medicinska mätningar.
+                  {t('aiEstimateNote')}
                 </p>
               </>
             ) : (
-              <p>Ingen tidigare scanning att jämföra med.</p>
+              <p>{t('noPreviousCompare')}</p>
             )}
             {strengths.length > 0 && (
               <>
-                <h3>Styrkor</h3>
+                <h3>{t('strengths')}</h3>
                 <ul>{strengths.map((item) => <li key={item}>{item}</li>)}</ul>
               </>
             )}
             {improvements.length > 0 && (
               <>
-                <h3>Att följa</h3>
+                <h3>{t('followUp')}</h3>
                 <ul>{improvements.map((item) => <li key={item}>{item}</li>)}</ul>
               </>
             )}
-            {result?.scanInput && <p>Underlag: {getScanInputLabel(result.scanInput)}</p>}
-            {result?.bodyComposition && <p>Kroppssammansättning: {result.bodyComposition}</p>}
-            {result?.posture && <p>Hållning: {result.posture}</p>}
+            {result?.scanInput && <p>{t('basis')}: {getScanInputLabel(result.scanInput)}</p>}
+            {result?.bodyComposition && <p>{t('bodyComposition')}: {result.bodyComposition}</p>}
+            {result?.posture && <p>{t('posture')}: {result.posture}</p>}
             <p className="overview-body-scan-note">
-              {result?.safetyNote || result?.limitations?.[0] || 'En bildanalys är en visuell uppskattning, inte en medicinsk mätning.'}
+              {result?.safetyNote || result?.limitations?.[0] || t('safetyFallback')}
             </p>
           </AvatarAccordion>
 
@@ -299,35 +301,35 @@ function OverviewBodyScanStage({
             icon="☀"
             id="weather"
             isOpen={openSection === 'weather'}
-            label="Väder & kläder"
+            label={t('weatherClothes')}
             onToggle={() => toggleSection('weather')}
           >
-            <h3>{weatherReady ? `Vädret idag i ${weather.city}` : 'Vädret idag'}</h3>
+            <h3>{weatherReady ? t('weatherTodayIn', { city: weather.city }) : t('weatherToday')}</h3>
             {weatherReady ? (
               <>
                 <p>{weather.icon} {Math.round(weather.temperatureC)}°C · {weather.condition}</p>
                 <p>
-                  Känns som {Number.isFinite(weather.feelsLikeC) ? `${Math.round(weather.feelsLikeC)}°C` : 'saknas'}
+                  {t('feelsLike')} {Number.isFinite(weather.feelsLikeC) ? `${Math.round(weather.feelsLikeC)}°C` : t('missing')}
                 </p>
                 <p>
-                  Vind {Number.isFinite(weather.windSpeedMs) ? `${Math.round(weather.windSpeedMs)} m/s` : 'saknas'}
+                  {t('wind')} {Number.isFinite(weather.windSpeedMs) ? `${Math.round(weather.windSpeedMs)} m/s` : t('missing')}
                   {wind.label ? ` · ${wind.label}` : ''}
                 </p>
                 <p>
-                  Regnrisk {Number.isFinite(weather.precipitationRiskPercent)
+                  {t('rainRisk')} {Number.isFinite(weather.precipitationRiskPercent)
                     ? `${Math.round(weather.precipitationRiskPercent)} %`
-                    : 'saknas'}
+                    : t('missing')}
                 </p>
-                <p>Soluppgång {weather.sunrise ? weather.sunriseLabel : 'saknas'}</p>
+                <p>{t('sunrise')} {weather.sunrise ? weather.sunriseLabel : t('missing')}</p>
                 <p>
-                  Solnedgång {weather.sunset ? weather.sunsetLabel : 'saknas'}
+                  {t('sunset')} {weather.sunset ? weather.sunsetLabel : t('missing')}
                   {untilSunset ? ` · ${untilSunset}` : ''}
                 </p>
               </>
             ) : (
-              <p>Ingen väderdata.</p>
+              <p>{t('noWeather')}</p>
             )}
-            <h3>Klädråd</h3>
+            <h3>{t('clothingAdvice')}</h3>
             {clothing.available
               ? clothing.lines.map((line) => <p key={line}>{line}</p>)
               : <p>{clothing.emptyLabel}</p>}
@@ -337,11 +339,11 @@ function OverviewBodyScanStage({
             icon="✨"
             id="editor"
             isOpen={openSection === 'editor'}
-            label="Ändra kropp"
+            label={t('changeBody')}
             onToggle={() => toggleSection('editor')}
           >
-            <h3>KROPPSFORM</h3>
-            <p>VISUELL SIMULERING</p>
+            <h3>{t('bodyShape')}</h3>
+            <p>{t('visualSimulation')}</p>
             <p className="overview-body-scan-note">{VISUAL_SIMULATION_DISCLAIMER}</p>
             <div className="body-avatar-regions">
               {BODY_AVATAR_REGIONS.map((region) => (
@@ -381,7 +383,7 @@ function OverviewBodyScanStage({
                 setSelectedRegion('')
               }}
             >
-              Återställ
+              {t('reset')}
             </button>
           </AvatarAccordion>
 
@@ -390,21 +392,20 @@ function OverviewBodyScanStage({
             icon="⌾"
             id="camera"
             isOpen={openSection === 'camera'}
-            label="Smart kamera"
+            label={t('smartCamera')}
             onToggle={() => toggleSection('camera')}
           >
-            <h3>Smart kamera</h3>
+            <h3>{t('smartCamera')}</h3>
             <p className="overview-body-scan-note">
-              Smart kamera är en separat hubb för minne, outfit och sista kollen.
-              Live preview stannar lokalt. Ingen dold inspelning.
+              {t('smartCameraNote')}
             </p>
             {onOpenSmartCamera && (
               <button className="secondary-button" type="button" onClick={onOpenSmartCamera}>
-                Öppna Smart kamera
+                {t('openSmartCamera')}
               </button>
             )}
             <button className="secondary-button" type="button" onClick={onStartScan}>
-              Öppna kroppsscanning
+              {t('openBodyScan')}
             </button>
           </AvatarAccordion>
           )}
@@ -412,10 +413,10 @@ function OverviewBodyScanStage({
 
         <div className="overview-body-scan-actions">
           <button className="primary-button" type="button" onClick={onStartScan}>
-            {analysis ? 'Ny scanning' : 'Starta scanning'}
+            {analysis ? t('newScan') : t('startScan')}
           </button>
           <button className="secondary-button" type="button" onClick={onClose}>
-            Tillbaka
+            {t('back')}
           </button>
         </div>
       </div>

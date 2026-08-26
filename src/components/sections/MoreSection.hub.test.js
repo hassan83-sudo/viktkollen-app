@@ -20,7 +20,7 @@ describe('More information architecture', () => {
     expect(moreSectionSource).toContain('<DataImportCenter')
     expect(moreSectionSource).toContain('<DataExportCenter')
     expect(moreSectionSource).toContain("activeFolder === 'installningar'")
-    expect(moreSectionSource).toContain('Profil och konto')
+    expect(moreSectionSource).toContain("t('accountTitle')")
     expect(moreSectionSource).toContain('<MoreGoalsFolder')
     expect(moreSectionSource).not.toContain('<ProgressCenter')
     expect(moreSectionSource).not.toContain('<WeightChart')

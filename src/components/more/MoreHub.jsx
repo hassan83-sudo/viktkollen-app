@@ -1,23 +1,44 @@
 import { moreHubFolders } from '../../services/more/moreFolders.js'
+import { useTranslation } from 'react-i18next'
+
+const FOLDER_I18N_KEYS = {
+  'sakerhet-backup': 'security',
+  notiser: 'notifications',
+  'import-export': 'importExport',
+  'mal-framsteg': 'goals',
+  'arkiv-historik': 'archive',
+  installningar: 'settings',
+}
+
+function folderCopy(t, folderId) {
+  const key = FOLDER_I18N_KEYS[folderId]
+  if (!key) return { description: '', title: '' }
+  return {
+    description: t(`folders.${key}.description`),
+    title: t(`folders.${key}.title`),
+  }
+}
 
 function MoreHub({ activeFolder, children, isAuthenticated, onBack, onOpen, syncStatus = {} }) {
+  const { t } = useTranslation('settings')
   const folder = moreHubFolders.find((entry) => entry.id === activeFolder) || null
   const online = syncStatus.online !== false
   const statusLabel = !isAuthenticated
-    ? 'Logga in för molnsynk'
+    ? t('more.signInForCloud')
     : syncStatus.statusCode === 'synced' || syncStatus.statusLabel === 'Synkad'
-      ? 'Allt är synkat'
-      : syncStatus.statusLabel || (online ? 'Online' : 'Offline')
+      ? t('more.synced')
+      : syncStatus.statusLabel || (online ? t('more.online') : t('more.offline'))
 
   if (folder) {
+    const { title } = folderCopy(t, folder.id)
     return (
       <div className="more-hub-view">
         <button className="more-hub-back" type="button" onClick={onBack}>
-          ← Tillbaka
+          ← {t('more.back')}
         </button>
         <header className="more-hub-view-heading">
-          <p className="eyebrow">Mer</p>
-          <h1>{folder.title}</h1>
+          <p className="eyebrow">{t('more.heading')}</p>
+          <h1>{title}</h1>
         </header>
         {children}
       </div>
@@ -29,31 +50,34 @@ function MoreHub({ activeFolder, children, isAuthenticated, onBack, onOpen, sync
       <header className="more-hub-heading">
         <div className="more-hub-status" role="status">
           <span className={`more-hub-online${online ? ' is-online' : ''}`}>
-            {online ? 'Online' : 'Offline'}
+            {online ? t('more.online') : t('more.offline')}
           </span>
           <span className="more-hub-status-copy" aria-hidden="true">☁</span>
           <span>{statusLabel}</span>
         </div>
-        <h1>Mer</h1>
-        <p className="more-hub-kategorier">Kategorier</p>
+        <h1>{t('more.heading')}</h1>
+        <p className="more-hub-kategorier">{t('more.categories')}</p>
       </header>
-      <nav className="more-hub-folders" aria-label="Mer-kategorier">
-        {moreHubFolders.map((entry) => (
-          <button
-            aria-label={`${entry.title}. ${entry.description}`}
-            className={`more-hub-folder accent-${entry.accent}`}
-            key={entry.id}
-            type="button"
-            onClick={() => onOpen(entry.id)}
-          >
-            <span className="more-hub-folder-icon" aria-hidden="true">{entry.icon}</span>
-            <span className="more-hub-folder-copy">
-              <strong>{entry.title}</strong>
-              <small>{entry.description}</small>
-            </span>
-            <span className="more-hub-folder-chevron" aria-hidden="true">›</span>
-          </button>
-        ))}
+      <nav className="more-hub-folders" aria-label={`${t('more.heading')} ${t('more.categories').toLocaleLowerCase()}`}>
+        {moreHubFolders.map((entry) => {
+          const { description, title } = folderCopy(t, entry.id)
+          return (
+            <button
+              aria-label={`${title}. ${description}`}
+              className={`more-hub-folder accent-${entry.accent}`}
+              key={entry.id}
+              type="button"
+              onClick={() => onOpen(entry.id)}
+            >
+              <span className="more-hub-folder-icon" aria-hidden="true">{entry.icon}</span>
+              <span className="more-hub-folder-copy">
+                <strong>{title}</strong>
+                <small>{description}</small>
+              </span>
+              <span className="more-hub-folder-chevron" aria-hidden="true">›</span>
+            </button>
+          )
+        })}
       </nav>
     </div>
   )

@@ -16,6 +16,15 @@ function safeArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : []
 }
 
+function normalizeCoachLocale(locale) {
+  const value = String(locale || '').trim()
+  if (!value) return 'sv'
+  if (/^zh-(tw|hk|mo)$/i.test(value)) return 'zh-TW'
+  if (/^zh(-cn|-sg)?$/i.test(value)) return 'zh-CN'
+  if (/^(nb|nn)(-|$)/i.test(value)) return 'no'
+  return value
+}
+
 function stripUnsafeText(value) {
   return safeText(value)
     .replace(/\b[\w.%+-]+@[\w.-]+\.[a-z]{2,}\b/gi, '[redacted]')
@@ -123,7 +132,7 @@ export function buildCoachRemoteRequestPayload(input = {}, options = {}) {
     consent: options.consent === true,
     coverage,
     highlights: safeArray(coachModel.summary?.workingWell).map((item) => stripUnsafeText(item.text || item.title, '', 140)).slice(0, 5),
-    locale: 'sv-SE',
+    locale: normalizeCoachLocale(options.locale || input.locale || input.profile?.locale),
     metrics: {
       activity: metricText('aktivitet', shared.activitySummary?.text || shared.activitySummary?.averageStepsLabel),
       goals: metricText('mål', feedbackSummary.completionRateLabel),

@@ -196,6 +196,31 @@ function getSafetyRules() {
   ].join('\n')
 }
 
+function getLocaleReplyInstruction(locale) {
+  switch (String(locale || '').trim()) {
+    case 'en':
+      return 'Answer in English.'
+    case 'ar':
+      return 'Svara på arabiska.'
+    case 'zh-CN':
+      return 'Svara på förenklad kinesiska.'
+    case 'zh-TW':
+      return 'Svara på traditionell kinesiska.'
+    case 'ja':
+      return 'Svara på japanska.'
+    case 'ko':
+      return 'Svara på koreanska.'
+    case 'da':
+      return 'Svara på danska.'
+    case 'no':
+      return 'Svara på norska.'
+    case 'fi':
+      return 'Svara på finska.'
+    default:
+      return 'Svara på svenska.'
+  }
+}
+
 /**
  * Creates the OpenAI prompt for the smart AI coach conversation engine.
  *
@@ -205,10 +230,12 @@ function getSafetyRules() {
  * @returns {string}
  */
 export function createAiCoachPrompt({ context, intent }) {
+  const localeInstruction = getLocaleReplyInstruction(context?.locale)
   return `Du är Viktkollens personliga AI-coach.
 
 Regler:
 ${getSafetyRules()}
+${localeInstruction}
 
 Identifierad intent:
 ${JSON.stringify(intent)}
@@ -223,10 +250,12 @@ Svara endast med giltig JSON:
 }
 
 export function createVoiceCoachInstructions({ context, intent } = {}) {
+  const localeInstruction = getLocaleReplyInstruction(context?.locale)
   return `Du är Viktkollens personliga AI-coach i ett röstsamtal.
 
 Regler:
 ${getSafetyRules()}
+${localeInstruction}
 Svara kort nog för tal, ungefär 1–5 meningar.
 Ställ en följdfråga när nästa steg är oklart.
 Svara som tal, inte som JSON.

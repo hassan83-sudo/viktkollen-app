@@ -133,6 +133,7 @@ export function normalizeProfile(rawProfile = {}, options = {}) {
   const updatedAt = typeof source.updatedAt === 'string' ? source.updatedAt : createdAt
   const provenance = isObject(source.provenance) ? source.provenance : {}
   const normalized = {
+    locale: typeof source.locale === 'string' ? source.locale.trim() : '',
     activityLevel,
     activityLevelLabel: activityLevel ? activityLabels[activityLevel] : '',
     createdAt,

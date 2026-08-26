@@ -251,6 +251,7 @@ export function buildAiCoachAppContextFromData(data = {}, options = {}) {
     reminderState: isObject(data.reminderState) ? data.reminderState : {},
     clothingAdvice: data.clothingAdvice || null,
     liveWeather: data.liveWeather || data.weather || null,
+    locale: typeof data.locale === 'string' && data.locale.trim() ? data.locale.trim() : profile.locale || 'sv',
     surface: data.surface || 'coach',
     todayMeals: healthSnapshot.nutrition.mealsToday,
     weights,
@@ -269,6 +270,7 @@ export function buildAiCoachAppContextFromStorage(storage, options = {}) {
     meals: read(userDataKeys.meals, []),
     nutritionGoals: read(userDataKeys.nutritionGoals, {}),
     profile: read(userDataKeys.profile, {}),
+    locale: read(userDataKeys.locale, ''),
     progressGoalSettings: read(userDataKeys.progressGoalSettings, {}),
     weights: read(userDataKeys.weights, []),
   }, options)

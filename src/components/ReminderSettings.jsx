@@ -1,4 +1,5 @@
 import ReminderMasterControls from './ReminderMasterControls.jsx'
+import { useTranslation } from 'react-i18next'
 
 function ReminderSettings({
   onReminderSettingChange,
@@ -7,22 +8,23 @@ function ReminderSettings({
   reminderSettings,
   reminderStatus,
 }) {
+  const { t } = useTranslation(['settings'])
   const reminderDescriptions = {
-    meal: 'Hjälper dig komma ihåg att logga dagens måltider.',
-    water: 'Påminner dig att dricka vatten under dagen.',
-    weight: 'Påminner dig att registrera vikten.',
+    meal: t('settings:reminders.descriptionMeal'),
+    water: t('settings:reminders.descriptionWater'),
+    weight: t('settings:reminders.descriptionWeight'),
   }
 
   return (
     <article className="panel settings-panel" id="dagliga-paminnelser">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Inställningar</p>
-          <h2>Dagliga påminnelser</h2>
+          <p className="eyebrow">{t('settings:profile.title')}</p>
+          <h2>{t('settings:reminders.title')}</h2>
         </div>
       </div>
       <p className="settings-note">
-        Små påminnelser kan göra det lättare att skapa hållbara vanor.
+        {t('settings:reminders.note')}
       </p>
 
       <ReminderMasterControls

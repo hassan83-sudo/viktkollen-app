@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AppErrorBoundary from '../AppErrorBoundary.jsx'
 import CheckIn from '../CheckIn.jsx'
 import AppSection from '../app/AppSection.jsx'
@@ -12,7 +13,12 @@ import { logNavigationOrigin } from '../../services/navigation/navigationOriginD
 const BarcodeScanner = lazy(() => import('../BarcodeScanner.jsx'))
 const MealLogger = lazy(() => import('../MealLogger.jsx'))
 
-const todayMealSlots = ['Frukost', 'Lunch', 'Middag', 'Mellanmål']
+const mealSlotDefs = [
+  { type: 'Frukost', labelKey: 'mealSlots.breakfast' },
+  { type: 'Lunch', labelKey: 'mealSlots.lunch' },
+  { type: 'Middag', labelKey: 'mealSlots.dinner' },
+  { type: 'Mellanmål', labelKey: 'mealSlots.snack' },
+]
 
 function goalNumber(value) {
   const number = Number(value)
@@ -25,8 +31,8 @@ function progressPercent(value, goal) {
   return Math.max(0, Math.min(100, Math.round((Number(value || 0) / target) * 100)))
 }
 
-function formatCount(value, unit) {
-  return `${Math.round(Number(value || 0)).toLocaleString('sv-SE')}${unit}`
+function formatCount(value, unit, locale) {
+  return `${Math.round(Number(value || 0)).toLocaleString(locale)}${unit}`
 }
 
 function NutritionRing({ accent, detail, icon, label, progress, value }) {
@@ -100,8 +106,10 @@ function NutritionSection({
   weights,
   weekSummary,
 }) {
+  const { t, i18n } = useTranslation(['nutrition', 'common'])
   const [activePanel, setActivePanel] = useState('overview')
   const [insightOpen, setInsightOpen] = useState(false)
+  const locale = i18n.language || 'sv-SE'
   const normalizedMeals = useMemo(() => normalizeMeals(meals), [meals])
   const normalizedGoals = useMemo(() => normalizeNutritionGoals(nutritionGoals), [nutritionGoals])
   const dailySummary = useMemo(
@@ -110,7 +118,7 @@ function NutritionSection({
   )
   const mealsByType = useMemo(
     () => Object.fromEntries(
-      todayMealSlots.map((type) => [
+      mealSlotDefs.map(({ type }) => [
         type,
         (dailySummary.meals || []).filter((meal) => meal.type === type),
       ]),
@@ -160,100 +168,101 @@ function NutritionSection({
   }, [navigationIntent, showPanel])
 
   const insightLead = todaysMeals.length
-    ? 'Dagens data är redo. Nästa steg: håll lunchen enkel med protein.'
-    : 'Du har inte loggat någon måltid ännu. Nästa steg: lägg till lunch eller skanna maten.'
+    ? t('insightWithMeals')
+    : t('insightEmpty')
 
   return (
     <AppSection
       activeSection={activeSection}
       id="nutrition"
-      label="Mat och nutrition"
+      label={t('sectionLabel')}
     >
       <div className="nutrition-premium-shell is-design-7" id="mat">
         <header className="nutrition-page-header">
-          <p className="eyebrow">Mat</p>
-          <h1>Mat</h1>
+          <p className="eyebrow">{t('eyebrow')}</p>
+          <h1>{t('title')}</h1>
         </header>
 
-        <section className="nutrition-ring-grid" aria-label="Dagens näring">
-          <p className="nutrition-kicker">Dagens näring</p>
+        <section className="nutrition-ring-grid" aria-label={t('todayNutrition')}>
+          <p className="nutrition-kicker">{t('todayNutrition')}</p>
           <NutritionRing
             accent="orange"
-            detail={calorieGoal ? `/ ${calorieGoal.toLocaleString('sv-SE')} kcal` : 'Mål saknas'}
+            detail={calorieGoal ? `/ ${calorieGoal.toLocaleString(locale)} kcal` : t('goalMissing')}
             icon={<path d="M24 36c6-2 9-6 9-12 0-5-4-9-7-13-1 4-4 7-6 9-1-2-1-5 0-8-4 3-7 8-7 13 0 6 4 10 11 11Z" />}
-            label="kcal"
+            label={t('labels.kcal')}
             progress={progressPercent(totals.calories, calorieGoal)}
-            value={formatCount(totals.calories, '')}
+            value={formatCount(totals.calories, '', locale)}
           />
           <NutritionRing
             accent="green"
-            detail={proteinGoal ? `/ ${proteinGoal.toLocaleString('sv-SE')} g` : 'Mål saknas'}
+            detail={proteinGoal ? `/ ${proteinGoal.toLocaleString(locale)} g` : t('goalMissing')}
             icon={<path d="M18 30c0-6 3-10 6-14 3 4 6 8 6 14 0 5-3 8-6 8s-6-3-6-8Z" />}
-            label="Protein"
+            label={t('labels.protein')}
             progress={progressPercent(totals.protein, proteinGoal)}
-            value={formatCount(totals.protein, ' g')}
+            value={formatCount(totals.protein, ' g', locale)}
           />
           <NutritionRing
             accent="cyan"
-            detail={carbGoal ? `/ ${carbGoal.toLocaleString('sv-SE')} g` : 'Idag'}
+            detail={carbGoal ? `/ ${carbGoal.toLocaleString(locale)} g` : t('today')}
             icon={<path d="M24 12c7 4 11 9 11 15a11 11 0 0 1-22 0c0-6 4-11 11-15Z" />}
-            label="Kolhydrater"
+            label={t('labels.carbs')}
             progress={progressPercent(totals.carbs, carbGoal)}
-            value={formatCount(totals.carbs, ' g')}
+            value={formatCount(totals.carbs, ' g', locale)}
           />
           <NutritionRing
             accent="purple"
-            detail={fatGoal ? `/ ${fatGoal.toLocaleString('sv-SE')} g` : 'Idag'}
+            detail={fatGoal ? `/ ${fatGoal.toLocaleString(locale)} g` : t('today')}
             icon={<path d="M24 11c7 8 11 13 11 20a11 11 0 0 1-22 0c0-7 4-12 11-20Z" />}
-            label="Fett"
+            label={t('labels.fat')}
             progress={progressPercent(totals.fat, fatGoal)}
-            value={formatCount(totals.fat, ' g')}
+            value={formatCount(totals.fat, ' g', locale)}
           />
         </section>
 
-        <section className="nutrition-quick-tiles" aria-label="Snabbval">
-          <p className="nutrition-kicker">Snabbval</p>
+        <section className="nutrition-quick-tiles" aria-label={t('quickActions')}>
+          <p className="nutrition-kicker">{t('quickActions')}</p>
           <button className="nutrition-quick-tile is-scan" type="button" onClick={() => showPanel('scanner', 'nutrition-scanner-v2')}>
             <svg aria-hidden="true" viewBox="0 0 48 48"><rect x="9" y="14" width="30" height="24" rx="8" fill="none" stroke="currentColor" strokeWidth="3" /><circle cx="24" cy="26" r="7" fill="none" stroke="currentColor" strokeWidth="3" /></svg>
-            Skanna mat
+            {t('scanFood')}
           </button>
           <button className="nutrition-quick-tile is-add" type="button" onClick={() => showPanel('meals', 'nutrition-meal-editor')}>
             <svg aria-hidden="true" viewBox="0 0 48 48"><path d="M24 12v24M12 24h24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" /></svg>
-            Lägg till måltid
+            {t('addMeal')}
           </button>
           <button className="nutrition-quick-tile is-recipe" type="button" onClick={() => showPanel('recipes')}>
             <svg aria-hidden="true" viewBox="0 0 48 48"><path d="M16 36V16c0-6 16-6 16 0v20M14 36h20" fill="none" stroke="currentColor" strokeWidth="3" /><path d="M20 16c0-4 8-4 8 0" fill="none" stroke="currentColor" strokeWidth="3" /></svg>
-            Recept
+            {t('recipes')}
           </button>
           <button className="nutrition-quick-tile is-plan" type="button" onClick={() => showPanel('plan')}>
             <svg aria-hidden="true" viewBox="0 0 48 48"><rect x="10" y="12" width="28" height="26" rx="6" fill="none" stroke="currentColor" strokeWidth="3" /><path d="M16 9v7M32 9v7M10 21h28" fill="none" stroke="currentColor" strokeWidth="3" /></svg>
-            Planera dagen
+            {t('planDay')}
           </button>
         </section>
 
-        <section className="nutrition-today-rows" aria-label="Dagens måltider">
+        <section className="nutrition-today-rows" aria-label={t('todayMeals')}>
           <div className="nutrition-section-row">
-            <p className="nutrition-kicker">Dagens måltider</p>
+            <p className="nutrition-kicker">{t('todayMeals')}</p>
             <button className="nutrition-text-link" type="button" onClick={() => showPanel('meals', 'nutrition-meal-editor')}>
-              Lägg till måltid
+              {t('addMeal')}
             </button>
           </div>
-          {todayMealSlots.map((type) => {
+          {mealSlotDefs.map(({ type, labelKey }) => {
             const slotMeals = mealsByType[type] || []
             const latest = slotMeals[0]
+            const label = t(labelKey)
             return (
               <div className="nutrition-meal-row" key={type}>
                 <span className="nutrition-meal-dot" aria-hidden="true" />
                 <span>
-                  <strong>{type}</strong>
+                  <strong>{label}</strong>
                   <small>
                     {latest
-                      ? `${latest.text || latest.name || 'Måltid'} · ${Math.round(Number(latest.calories || 0))} kcal`
-                      : 'Inget registrerat'}
+                      ? `${latest.text || latest.name || t('meal')} · ${Math.round(Number(latest.calories || 0))} kcal`
+                      : t('noMealLogged')}
                   </small>
                 </span>
                 <button
-                  aria-label={`Lägg till ${type.toLocaleLowerCase('sv-SE')}`}
+                  aria-label={t('addTypeAria', { type: label.toLocaleLowerCase(locale) })}
                   className="nutrition-meal-add"
                   type="button"
                   onClick={() => showPanel('meals', 'nutrition-meal-editor')}
@@ -265,45 +274,45 @@ function NutritionSection({
           })}
         </section>
 
-        <section className="nutrition-ai-panel" aria-label="AI-insikt">
-          <p className="nutrition-kicker">AI-insikt</p>
+        <section className="nutrition-ai-panel" aria-label={t('aiInsight')}>
+          <p className="nutrition-kicker">{t('aiInsight')}</p>
           <p>{insightLead}</p>
           {insightOpen && (
             <p>
               {todaysMeals.length
-                ? `${todaysMeals.length} måltider är loggade. Öppna scanner eller planen om du vill justera dagen.`
-                : 'Skanna tallriken eller lägg till frukost, lunch, middag eller mellanmål.'}
+                ? t('insightMoreWithMeals', { count: todaysMeals.length })
+                : t('insightMoreEmpty')}
             </p>
           )}
           <button className="nutrition-text-link" type="button" onClick={() => setInsightOpen((current) => !current)}>
-            {insightOpen ? 'Visa mindre' : 'Visa mer'}
+            {insightOpen ? t('common:showLess') : t('common:showMore')}
           </button>
         </section>
 
-        <section className="nutrition-checkin-compact" aria-label="Dagens check-in">
-          <p className="nutrition-kicker">Dagens check-in</p>
+        <section className="nutrition-checkin-compact" aria-label={t('todayCheckIn')}>
+          <p className="nutrition-kicker">{t('todayCheckIn')}</p>
           <div className="nutrition-checkin-grid">
             <div>
-              <span>Energi</span>
+              <span>{t('labels.energy')}</span>
               <strong>{Number.isFinite(Number(checkIn?.energy)) ? `${checkIn.energy}/10` : '—'}</strong>
             </div>
             <div>
-              <span>Steg</span>
-              <strong>{Number.isFinite(Number(checkIn?.steps)) ? Number(checkIn.steps).toLocaleString('sv-SE') : '—'}</strong>
+              <span>{t('labels.steps')}</span>
+              <strong>{Number.isFinite(Number(checkIn?.steps)) ? Number(checkIn.steps).toLocaleString(locale) : '—'}</strong>
             </div>
             <div>
-              <span>Humör</span>
+              <span>{t('labels.mood')}</span>
               <strong>{checkIn?.mood || '—'}</strong>
             </div>
             <div>
-              <span>Rörelse</span>
-              <strong>{checkIn?.workout ? 'Ja' : 'Nej'}</strong>
+              <span>{t('labels.movement')}</span>
+              <strong>{checkIn?.workout ? t('common:yes') : t('common:no')}</strong>
             </div>
           </div>
         </section>
 
         <details className="nutrition-fold" id="nutrition-panel-overview" open={activePanel === 'overview'}>
-          <summary>Ändra check-in och matchecklista</summary>
+          <summary>{t('changeCheckIn')}</summary>
           <div className="checklist">
             {foods.map((item) => (
               <label className="toggle-row" key={item.id}>
@@ -327,9 +336,9 @@ function NutritionSection({
         <AppErrorBoundary
           area="nutrition"
           resetKey={`${selectedMealDate}-${meals.length}-${displayPhotoMeals.length}`}
-          title="Måltidscentret kunde inte visas"
+          title={t('mealCenterError')}
         >
-          <Suspense fallback={<div className="lazy-section-fallback" role="status">Laddar måltidscenter...</div>}>
+          <Suspense fallback={<div className="lazy-section-fallback" role="status">{t('loadingMealCenter')}</div>}>
             <MealLogger
             displayPhotoMeals={displayPhotoMeals}
             favoriteMeals={favoriteMeals}
@@ -364,24 +373,24 @@ function NutritionSection({
         </AppErrorBoundary>
 
         <details className="nutrition-fold" id="nutrition-patterns">
-          <summary>Mönster & historik</summary>
+          <summary>{t('patternsHistory')}</summary>
           <button className="nutrition-text-link" type="button" onClick={() => showPanel('history')}>
-            Öppna historik och veckomönster
+            {t('openHistory')}
           </button>
         </details>
 
         <details className="nutrition-fold" id="nutrition-tools">
-          <summary>Verktyg</summary>
+          <summary>{t('tools')}</summary>
           <div className="nutrition-tool-links">
-            <button type="button" onClick={() => showPanel('favorites')}>Favoriter</button>
-            <button type="button" onClick={() => showPanel('barcode', 'streckkod')}>Streckkod</button>
-            <button type="button" onClick={() => showPanel('goals')}>Näringsmål</button>
-            <button type="button" onClick={() => showPanel('more')}>Import, recension och mer</button>
+            <button type="button" onClick={() => showPanel('favorites')}>{t('favorites')}</button>
+            <button type="button" onClick={() => showPanel('barcode', 'streckkod')}>{t('barcode')}</button>
+            <button type="button" onClick={() => showPanel('goals')}>{t('nutritionGoals')}</button>
+            <button type="button" onClick={() => showPanel('more')}>{t('importReviewMore')}</button>
           </div>
         </details>
 
         <details className="nutrition-fold" id="nutrition-panel-barcode" open={activePanel === 'barcode'}>
-          <summary>Streckkod</summary>
+          <summary>{t('barcode')}</summary>
           <Suspense fallback={null}>
           <BarcodeScanner
             barcodeInput={barcodeInput}

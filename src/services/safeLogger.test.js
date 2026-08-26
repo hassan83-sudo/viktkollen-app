@@ -6,6 +6,7 @@ describe('safeLogger', () => {
     const sanitized = sanitizeLogValue({
       email: 'user@example.com',
       nested: { ok: true },
+      lastMessage: 'hemlig chatt',
       password: 'secret',
       text: 'Bearer abc123',
       token: 'abc',
@@ -13,6 +14,7 @@ describe('safeLogger', () => {
 
     expect(sanitized.email).toBe('[doldes]')
     expect(sanitized.password).toBe('[doldes]')
+    expect(sanitized.lastMessage).toBe('[doldes]')
     expect(sanitized.token).toBe('[doldes]')
     expect(sanitized.text).not.toContain('abc123')
     expect(sanitized.nested.ok).toBe(true)

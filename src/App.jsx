@@ -2895,6 +2895,7 @@ function App() {
             healthDashboardPeriod={healthDashboardPeriod}
             healthSnapshot={healthSnapshot}
             isAiSpeaking={isAiSpeaking}
+            isAuthenticated={Boolean(authSession)}
             isListening={isListening}
             isVoiceConversationActive={isVoiceConversationActive}
             isVoiceMuted={isVoiceMuted}

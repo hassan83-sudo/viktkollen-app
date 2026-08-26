@@ -16,6 +16,7 @@ function HomeSection({
   goalsHabits,
   healthSnapshot,
   isAiSpeaking,
+  isAuthenticated,
   isListening,
   isVoiceConversationActive,
   isVoiceMuted,
@@ -69,6 +70,7 @@ function HomeSection({
           healthScore={dashboardData?.healthScore?.score}
           healthSnapshot={healthSnapshot}
           isAiSpeaking={isAiSpeaking}
+          isAuthenticated={isAuthenticated}
           isListening={isListening}
           isVoiceConversationActive={isVoiceConversationActive}
           isVoiceMuted={isVoiceMuted}

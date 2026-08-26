@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import AppErrorBoundary from '../AppErrorBoundary.jsx'
 import AppSection from '../app/AppSection.jsx'
 import OverviewDashboard from '../app/OverviewDashboard.jsx'
@@ -46,16 +47,18 @@ function HomeSection({
   voiceStatus,
   weights,
 }) {
+  const { t } = useTranslation('home')
+
   return (
     <AppSection
       activeSection={activeSection}
       id="home"
-      label="Hem och översikt"
+      label={t('sectionLabel')}
     >
       <AppErrorBoundary
         area="dashboard"
         resetKey={healthSnapshot.date}
-        title="Översikten kunde inte visas"
+        title={t('overviewError')}
       >
         <OverviewDashboard
           adaptiveCoachFeedback={adaptiveCoachFeedback}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   commitPhotoAnalysisMeal,
   createPhotoAnalysisReviewDraft,
@@ -35,6 +36,63 @@ import {
 import { getCurrentTimeString, getTodayDateString, mealTypes } from '../services/nutritionService.js'
 import { safeLogger } from '../services/safeLogger.js'
 
+const dataSourceKeys = {
+  aiEstimate: 'scanner.dataSources.aiEstimate',
+  barcode: 'scanner.dataSources.barcode',
+  databaseDerived: 'scanner.dataSources.databaseDerived',
+  manual: 'scanner.dataSources.manual',
+  nutritionDatabase: 'scanner.dataSources.nutritionDatabase',
+}
+
+const confidenceKeys = {
+  high: 'scanner.confidence.high',
+  insufficient: 'scanner.confidence.insufficient',
+  low: 'scanner.confidence.low',
+  medium: 'scanner.confidence.medium',
+}
+
+const imageQualityKeys = {
+  excellent: 'scanner.imageQuality.excellent',
+  good: 'scanner.imageQuality.good',
+  poor: 'scanner.imageQuality.poor',
+  screen: 'scanner.imageQuality.screen',
+  usable: 'scanner.imageQuality.usable',
+}
+
+const cookingMethodKeys = {
+  baked: 'scanner.cookingMethods.baked',
+  boiled: 'scanner.cookingMethods.boiled',
+  breaded: 'scanner.cookingMethods.breaded',
+  fried: 'scanner.cookingMethods.fried',
+  grilled: 'scanner.cookingMethods.grilled',
+  raw: 'scanner.cookingMethods.raw',
+  roasted: 'scanner.cookingMethods.roasted',
+  steamed: 'scanner.cookingMethods.steamed',
+}
+
+const componentCategoryKeys = {
+  carbohydrate: 'scanner.categories.carbohydrate',
+  fat: 'scanner.categories.fat',
+  protein: 'scanner.categories.protein',
+  sauce: 'scanner.categories.sauce',
+  unknown: 'scanner.categories.unknown',
+  vegetables: 'scanner.categories.vegetables',
+}
+
+const macroShortKeys = {
+  calories: 'scanner.macros.kcal',
+  carbsG: 'scanner.macros.carbsShort',
+  fatG: 'scanner.macros.fatShort',
+  fiberG: 'scanner.macros.fiber',
+  proteinG: 'scanner.macros.proteinShort',
+}
+
+const scannerAnalysisStageKeys = [
+  'scanner.stages.identifying',
+  'scanner.stages.portions',
+  'scanner.stages.nutrition',
+]
+
 function safeArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : []
 }
@@ -43,110 +101,76 @@ function numericPatch(value) {
   return value === '' ? '' : Number(value)
 }
 
-function dataSourceLabel(source) {
-  return {
-    aiEstimate: 'AI-uppskattning',
-    barcode: 'Streckkod',
-    databaseDerived: 'Databasberäknat',
-    manual: 'Manuellt värde',
-    nutritionDatabase: 'Matdatabas',
-  }[source] || 'AI-uppskattning'
+function dataSourceLabel(source, t) {
+  return t(dataSourceKeys[source] || dataSourceKeys.aiEstimate)
 }
 
-function providerBadgeLabel(type) {
-  return type === 'remote' ? 'AI-analys' : 'Lokal grov uppskattning'
+function providerBadgeLabel(type, t) {
+  return type === 'remote' ? t('scanner.provider.remote') : t('scanner.provider.local')
 }
 
-function confidenceLabel(level) {
-  return {
-    high: 'Hög',
-    insufficient: 'Otillräcklig',
-    low: 'Låg',
-    medium: 'Medel',
-  }[level] || 'Låg'
+function confidenceLabel(level, t) {
+  return t(confidenceKeys[level] || confidenceKeys.low)
 }
 
-function imageQualityLabel(level) {
-  return {
-    excellent: 'Mycket bra',
-    good: 'Bra',
-    poor: 'Dålig',
-    screen: 'Skärmbild',
-    usable: 'Användbar',
-  }[level] || confidenceLabel(level)
+function imageQualityLabel(level, t) {
+  return t(imageQualityKeys[level] || confidenceKeys[level] || confidenceKeys.low)
 }
 
-function cookingMethodLabel(method) {
-  return {
-    baked: 'Ugnsbakad',
-    boiled: 'Kokt',
-    breaded: 'Panerad',
-    fried: 'Friterad/stekt',
-    grilled: 'Grillad',
-    raw: 'Rå',
-    roasted: 'Rostad',
-    steamed: 'Ångkokt',
-  }[method] || method
+function cookingMethodLabel(method, t) {
+  return cookingMethodKeys[method] ? t(cookingMethodKeys[method]) : method
 }
 
-function componentCategoryLabel(category) {
-  return {
-    carbohydrate: 'Kolhydrat',
-    fat: 'Fettkälla',
-    protein: 'Protein',
-    sauce: 'Sås/dressing',
-    unknown: 'Okänd',
-    vegetables: 'Grönsaker',
-  }[category] || 'Komponent'
+function componentCategoryLabel(category, t) {
+  return t(componentCategoryKeys[category] || 'scanner.categories.fallback')
 }
 
-function macroLabel(field) {
-  return {
-    calories: 'kcal',
-    carbsG: 'kolh.',
-    fatG: 'fett',
-    fiberG: 'fiber',
-    proteinG: 'protein',
-  }[field] || field
+function macroLabel(field, t) {
+  return macroShortKeys[field] ? t(macroShortKeys[field]) : field
 }
 
-function nutritionRangeLabel(range, unit) {
-  if (!range) return 'Saknas'
+function nutritionRangeLabel(range, unit, t) {
+  if (!range) return t('scanner.missing')
   const decimals = unit === 'kcal' ? 0 : 1
   return `${Number(range.min).toFixed(decimals)}-${Number(range.max).toFixed(decimals)} ${unit}`
 }
 
-function nutritionMidpointLabel(value, unit) {
-  if (!Number.isFinite(Number(value))) return 'Saknas'
+function nutritionMidpointLabel(value, unit, t) {
+  if (!Number.isFinite(Number(value))) return t('scanner.missing')
   const decimals = unit === 'kcal' ? 0 : 1
   return `${Number(value).toFixed(decimals)} ${unit}`
 }
 
-function componentSummaryLine(component = {}) {
-  const category = componentCategoryLabel(component.category)
-  const confidence = confidenceLabel(component.confidence)
+function componentSummaryLine(component = {}, t, locale) {
+  const category = componentCategoryLabel(component.category, t).toLocaleLowerCase(locale || 'sv-SE')
+  const confidence = confidenceLabel(component.confidence, t)
   const alternatives = safeArray(component.alternatives)
   const reason = String(component.uncertainty?.reason || '').trim()
   const portionConfidence = component.portionEstimate?.confidence
   if (alternatives.length) {
-    return `${confidence} säkerhet: ${category.toLocaleLowerCase('sv-SE')}. Exakt typ behöver granskas.`
+    return t('scanner.component.summaryNeedsReview', { confidence, category })
   }
   if (reason && !isGenericUncertaintyText(reason)) {
-    return `${confidence} säkerhet: ${category.toLocaleLowerCase('sv-SE')}. ${reason}`
+    return t('scanner.component.summaryWithReason', { confidence, category, reason })
   }
   if (['low', 'insufficient'].includes(portionConfidence)) {
-    return `${confidence} säkerhet: ${category.toLocaleLowerCase('sv-SE')}. Portionsmängden är uppskattad.`
+    return t('scanner.component.summaryPortionEstimated', { confidence, category })
   }
-  return `${confidence} säkerhet: ${category.toLocaleLowerCase('sv-SE')}.`
+  return t('scanner.component.summaryBasic', { confidence, category })
 }
 
-function componentNutritionSummary(component = {}) {
+function componentNutritionSummary(component = {}, t) {
   const nutrition = component.nutritionEstimate || {}
   return ['calories', 'proteinG', 'carbsG', 'fatG']
     .map((field) => {
       const unit = field === 'calories' ? 'kcal' : 'g'
       const range = nutrition[field]
-      return range ? `${macroLabel(field)} ${nutritionRangeLabel(range, unit)}` : ''
+      return range
+        ? t('scanner.component.macroRange', {
+          macro: macroLabel(field, t),
+          range: nutritionRangeLabel(range, unit, t),
+        })
+        : ''
     })
     .filter(Boolean)
     .join(' · ')
@@ -196,28 +220,32 @@ function createScannerImageDebugState(payload = null) {
   }
 }
 
-function portionRangeLabel(portion) {
-  if (!portion) return 'Okänd portion'
+function portionRangeLabel(portion, t) {
+  if (!portion) return t('scanner.unknownPortion')
   const grams = portion.gramsMin !== null && portion.gramsMax !== null
-    ? `, ca ${portion.gramsMin}-${portion.gramsMax} g`
+    ? t('scanner.portionGramsRange', { min: portion.gramsMin, max: portion.gramsMax })
     : ''
 
   return `${getNutritionPhotoPortionDisplayName(portion.description)}${grams}`
 }
 
-function componentPortionLabel(component) {
+function componentPortionLabel(component, t) {
   const portion = component?.portionEstimate
-  if (!portion || portion.gramsMin === null || portion.gramsMax === null) return 'Mängd osäker'
+  if (!portion || portion.gramsMin === null || portion.gramsMax === null) return t('scanner.amountUncertain')
   const midpoint = Math.round((portion.gramsMin + portion.gramsMax) / 2)
 
-  return `ca ${midpoint} g (${portion.gramsMin}-${portion.gramsMax} g)`
+  return t('scanner.portionApproxMid', {
+    mid: midpoint,
+    min: portion.gramsMin,
+    max: portion.gramsMax,
+  })
 }
 
 function isGenericUncertaintyText(value = '') {
   return /komponenten kan vara osäker|component may be uncertain|kan vara osäker/i.test(String(value || ''))
 }
 
-function getConcreteComponentUncertainties(component = {}) {
+function getConcreteComponentUncertainties(component = {}, t) {
   const displayName = getNutritionPhotoFoodDisplayName(component.name)
   const items = []
   const alternatives = safeArray(component.alternatives).map(getNutritionPhotoFoodDisplayName)
@@ -226,22 +254,25 @@ function getConcreteComponentUncertainties(component = {}) {
   const portionConfidence = component.portionEstimate?.confidence
 
   if (alternatives.length) {
-    items.push(`${displayName}: exakt typ osäker (${alternatives.join(', ')}).`)
+    items.push(t('scanner.uncertainties.exactTypeUncertain', {
+      name: displayName,
+      alternatives: alternatives.join(', '),
+    }))
   }
   if (reason && !isGenericUncertaintyText(reason)) {
-    items.push(`${displayName}: ${reason}`)
+    items.push(t('scanner.uncertainties.namedReason', { name: displayName, reason }))
   }
   if (['low', 'insufficient'].includes(confidence)) {
-    items.push(`${displayName}: låg säkerhet i identifieringen.`)
+    items.push(t('scanner.uncertainties.lowConfidence', { name: displayName }))
   }
   if (confidence === 'medium' && !alternatives.length && !reason) {
-    items.push(`${displayName}: medelhög säkerhet, granska visuellt.`)
+    items.push(t('scanner.uncertainties.mediumConfidence', { name: displayName }))
   }
   if (['low', 'insufficient'].includes(portionConfidence)) {
-    items.push(`${displayName}: portionsstorleken är en uppskattning.`)
+    items.push(t('scanner.uncertainties.portionEstimate', { name: displayName }))
   }
   if (component.category === 'sauce' && !alternatives.length && !reason) {
-    items.push(`${displayName}: exakt typ behöver granskas.`)
+    items.push(t('scanner.uncertainties.sauceNeedsReview', { name: displayName }))
   }
 
   return items
@@ -258,20 +289,43 @@ function calculateIngredientTotals(items = []) {
     }), { calories: 0, carbs: 0, fat: 0, protein: 0 })
 }
 
+function ingredientFieldLabel(field, t) {
+  if (field === 'calories') return t('scanner.macros.kcal')
+  if (field === 'carbohydrates') return t('scanner.macros.carbohydrates')
+  if (field === 'fat') return t('scanner.macros.fatShort')
+  if (field === 'protein') return t('scanner.macros.proteinShort')
+  return field
+}
+
+function reviewMacroLabel(field, t) {
+  if (field === 'calories') return t('scanner.macros.calories')
+  if (field === 'carbs') return t('scanner.macros.carbs')
+  if (field === 'protein') return t('scanner.macros.protein')
+  return t('scanner.macros.fat')
+}
+
 function IngredientEditor({ disabled, item, match, onApplySuggestion, onChange, onRemove }) {
+  const { t } = useTranslation(['nutrition', 'common'])
+
   return (
     <li className="scanner-ingredient-edit-item">
       <details>
         <summary>
           <span>
             <strong>{getNutritionPhotoFoodDisplayName(item.name)}</strong>
-            <small>{item.estimatedAmount || 'Mängd osäker'} {item.unit || 'g'} · {confidenceLabel(item.confidence)} säkerhet</small>
+            <small>
+              {t('scanner.ingredient.summaryLine', {
+                amount: item.estimatedAmount || t('scanner.amountUncertain'),
+                unit: item.unit || 'g',
+                confidence: confidenceLabel(item.confidence, t),
+              })}
+            </small>
           </span>
-          <span>{dataSourceLabel(item.dataSource)}</span>
+          <span>{dataSourceLabel(item.dataSource, t)}</span>
         </summary>
         <div className="scanner-ingredient-edit-grid">
           <label>
-            <span>Ingrediens</span>
+            <span>{t('scanner.ingredient.name')}</span>
             <input
               disabled={disabled}
               value={item.name}
@@ -279,7 +333,7 @@ function IngredientEditor({ disabled, item, match, onApplySuggestion, onChange, 
             />
           </label>
           <label>
-            <span>Mängd</span>
+            <span>{t('scanner.ingredient.amount')}</span>
             <input
               disabled={disabled}
               inputMode="decimal"
@@ -288,7 +342,7 @@ function IngredientEditor({ disabled, item, match, onApplySuggestion, onChange, 
             />
           </label>
           <label>
-            <span>Enhet</span>
+            <span>{t('scanner.ingredient.unit')}</span>
             <input
               disabled={disabled}
               value={item.unit}
@@ -297,7 +351,7 @@ function IngredientEditor({ disabled, item, match, onApplySuggestion, onChange, 
           </label>
           {['calories', 'protein', 'carbohydrates', 'fat'].map((field) => (
             <label key={field}>
-              <span>{field === 'calories' ? 'kcal' : field === 'carbohydrates' ? 'kolhydrater' : field === 'fat' ? 'fett' : field}</span>
+              <span>{ingredientFieldLabel(field, t)}</span>
               <input
                 disabled={disabled}
                 inputMode="decimal"
@@ -307,7 +361,7 @@ function IngredientEditor({ disabled, item, match, onApplySuggestion, onChange, 
             </label>
           ))}
           <label>
-            <span>Osäker</span>
+            <span>{t('scanner.ingredient.uncertain')}</span>
             <input
               checked={item.uncertain === true}
               disabled={disabled}
@@ -316,34 +370,38 @@ function IngredientEditor({ disabled, item, match, onApplySuggestion, onChange, 
             />
           </label>
         </div>
-        <p className="estimate-note">Datakälla: {dataSourceLabel(item.dataSource)}. Ursprunglig säkerhet: {confidenceLabel(item.confidence)}.</p>
+        <p className="estimate-note">
+          {t('scanner.ingredient.dataSourceNote', {
+            source: dataSourceLabel(item.dataSource, t),
+            confidence: confidenceLabel(item.confidence, t),
+          })}
+        </p>
         {match?.status === 'exactMatch' || match?.status === 'normalizedMatch' ? (
           <button disabled={disabled || item.userEdited} type="button" onClick={() => onApplySuggestion(item.id, match.matchedFood)}>
-            Använd matdatabas: {match.matchedFood.name}
+            {t('scanner.ingredient.useDatabase', { name: match.matchedFood.name })}
           </button>
         ) : null}
         {match?.status === 'multipleMatches' && (
-          <small>Flera möjliga databasförslag finns. Välj manuellt så AI-estimatet inte ersätts fel.</small>
+          <small>{t('scanner.ingredient.multipleMatches')}</small>
         )}
         {match?.status === 'noMatch' && (
-          <small>Ingen säker databasmatchning hittades. AI-estimatet behålls tills du ändrar det.</small>
+          <small>{t('scanner.ingredient.noMatch')}</small>
         )}
-        <button disabled={disabled} type="button" onClick={() => onRemove(item.id)}>Ta bort</button>
+        <button disabled={disabled} type="button" onClick={() => onRemove(item.id)}>{t('common:remove')}</button>
       </details>
     </li>
   )
 }
 
-const scannerAnalysisStages = ['Identifierar maten', 'Uppskattar portioner', 'Beräknar näring']
-
 function ScannerAnalyzingStatus() {
-  const [stage, setStage] = useState(scannerAnalysisStages[0])
+  const { t } = useTranslation(['nutrition', 'common'])
+  const [stageIndex, setStageIndex] = useState(0)
 
   useEffect(() => {
     let index = 0
     const timer = window.setInterval(() => {
-      index = Math.min(index + 1, scannerAnalysisStages.length - 1)
-      setStage(scannerAnalysisStages[index])
+      index = Math.min(index + 1, scannerAnalysisStageKeys.length - 1)
+      setStageIndex(index)
     }, 1600)
 
     return () => window.clearInterval(timer)
@@ -351,8 +409,8 @@ function ScannerAnalyzingStatus() {
 
   return (
     <div className="scanner-analyzing-state" role="status">
-      <p><strong>Analyserar måltiden…</strong></p>
-      <p className="estimate-note">{stage}</p>
+      <p><strong>{t('scanner.analyzing')}</strong></p>
+      <p className="estimate-note">{t(scannerAnalysisStageKeys[stageIndex])}</p>
     </div>
   )
 }
@@ -367,6 +425,7 @@ function NutritionScannerV2({
   selectedMealDate,
   userId = 'local-user',
 }) {
+  const { t, i18n } = useTranslation(['nutrition', 'common'])
   const headingRef = useRef(null)
   const fileInputRef = useRef(null)
   const cameraInputRef = useRef(null)
@@ -376,7 +435,7 @@ function NutritionScannerV2({
   const activeAnalysisControllerRef = useRef(null)
   const analysisInFlightRef = useRef(false)
   const lastAnalysisActionRef = useRef(0)
-  const [status, setStatus] = useState('Välj eller ta en matbild för att börja.')
+  const [status, setStatus] = useState(() => t('scanner.status.idle'))
   const [error, setError] = useState('')
   const [fileName, setFileName] = useState('')
   const [previewUrl, setPreviewUrl] = useState('')
@@ -404,6 +463,7 @@ function NutritionScannerV2({
   const remoteConsent = remoteConsentDraft.userId === userId ? remoteConsentDraft.checked : false
   const hasRemoteConsent = remoteConsentRecord.granted === true || remoteConsent
   const resolveActiveImagePayload = () => getNutritionImagePayloadSnapshot(imagePayloadRef.current || imagePayload, currentImageRef.current)
+  const mealTypeLabel = (type) => t(`scanner.mealTypes.${type}`, { defaultValue: type })
 
   const scheduleResultScroll = useCallback(() => {
     const target = reviewRef.current
@@ -604,10 +664,13 @@ function NutritionScannerV2({
       ...safeArray(analysis.limitations).filter((item) => !isGenericUncertaintyText(item)),
       ...safeArray(analysis.analysisQuality?.limitations).filter((item) => !isGenericUncertaintyText(item)),
       ...safeArray(analysis.warnings).filter((item) => !isGenericUncertaintyText(item)),
-      ...safeArray(analysis.uncertainIngredients).map((item) => `${getNutritionPhotoFoodDisplayName(item.name)}: ${item.reason}`),
-      ...safeArray(analysis.components).flatMap(getConcreteComponentUncertainties),
+      ...safeArray(analysis.uncertainIngredients).map((item) => t('scanner.uncertainties.namedReason', {
+        name: getNutritionPhotoFoodDisplayName(item.name),
+        reason: item.reason,
+      })),
+      ...safeArray(analysis.components).flatMap((component) => getConcreteComponentUncertainties(component, t)),
     ].filter(Boolean).filter((item, index, items) => items.indexOf(item) === index).slice(0, 8)
-  }, [analysis])
+  }, [analysis, t])
   const nutritionDifference = useMemo(() => {
     if (!reviewDraft) return { calories: 0, carbs: 0, fat: 0, protein: 0 }
     return {
@@ -663,7 +726,7 @@ function NutritionScannerV2({
     if (import.meta.env.DEV) setRemoteDebug(null)
 
     if (shouldIgnoreEmptyNutritionImageSelection(file, resolveActiveImagePayload())) {
-      setStatus('Bilden är fortfarande vald. Klicka på analysera när du vill fortsätta.')
+      setStatus(t('scanner.status.stillSelected'))
       return
     }
 
@@ -679,11 +742,11 @@ function NutritionScannerV2({
     try {
       result = await preprocessNutritionPhoto(file)
       if (!result.ok) {
-        setError(result.errors.join(' ') || 'Bilden kunde inte förberedas.')
+        setError(result.errors.join(' ') || t('scanner.errors.prepareFailed'))
         return
       }
     } catch {
-      setError('Bilden kunde inte förberedas. Välj en annan bild och försök igen.')
+      setError(t('scanner.errors.prepareFailedRetry'))
       return
     }
 
@@ -697,7 +760,7 @@ function NutritionScannerV2({
       previewUrl: result.previewUrl,
     })
     setFileName(file.name)
-    setStatus('Bilden är förberedd lokalt. Klicka på analysera när du vill fortsätta.')
+    setStatus(t('scanner.status.prepared'))
   }
 
   async function analyzeImage(providerType = 'local', imagePayloadSnapshot = null) {
@@ -774,7 +837,7 @@ function NutritionScannerV2({
     clearAnalysisReviewState()
     setIsAnalyzing(true)
     setError('')
-    setStatus(providerType === 'remote' ? 'Analyserar måltiden…' : 'Skapar en grov uppskattning utan bildtolkning…')
+    setStatus(providerType === 'remote' ? t('scanner.status.analyzingRemote') : t('scanner.status.analyzingLocal'))
 
     try {
       activeAnalysisControllerRef.current?.abort('supersededRequest')
@@ -868,7 +931,7 @@ function NutritionScannerV2({
           finalProviderType: result.providerType || 'none',
           requestedMode,
         })
-        setError(result.warning || 'Analysen kunde inte slutföras.')
+        setError(result.warning || t('scanner.errors.analysisFailed'))
         setStatus('')
         return
       }
@@ -890,7 +953,7 @@ function NutritionScannerV2({
           finalProviderType,
           requestedMode,
         })
-        setError('AI-analysen gav inte ett giltigt resultat. Ingen lokal uppskattning visas automatiskt.')
+        setError(t('scanner.errors.remoteInvalid'))
         setStatus('')
         return
       }
@@ -919,12 +982,12 @@ function NutritionScannerV2({
         normalizationSucceeded: true,
         requestedMode,
       })
-      setStatus(result.warning || 'Analysförslaget är klart. Granska och redigera innan du sparar.')
+      setStatus(result.warning || t('scanner.status.reviewReady'))
     } catch {
       if (!controller?.signal?.aborted) {
         if (providerType === 'remote') {
           updateRemoteDebug({
-            apiErrorMessage: 'Analysen kunde inte startas.',
+            apiErrorMessage: t('scanner.errors.analysisStartFailedShort'),
             ...imageDebugState,
             consentPresent: hasRemoteConsent,
             fallbackReason: 'ui_exception',
@@ -936,7 +999,7 @@ function NutritionScannerV2({
           fallbackUsed: false,
           requestedMode,
         })
-        setError('Analysen kunde inte startas. Försök igen eller välj en annan bild.')
+        setError(t('scanner.errors.analysisStartFailed'))
         setStatus('')
       }
     } finally {
@@ -1033,9 +1096,9 @@ function NutritionScannerV2({
       onMealSaved?.(result.meal)
       clearTemporaryImage()
       setSavedMealId(result.meal.id)
-      setStatus('Måltiden sparades i måltidsloggen utan bilddata.')
+      setStatus(t('scanner.status.saved'))
     } catch {
-      setError('Måltiden kunde inte sparas. Kontrollera uppgifterna och försök igen.')
+      setError(t('scanner.errors.saveFailed'))
     } finally {
       setIsSaving(false)
     }
@@ -1046,7 +1109,7 @@ function NutritionScannerV2({
     setAnalysis(null)
     setReviewDraft(null)
     setError('')
-    setStatus('Scannern är rensad.')
+    setStatus(t('scanner.status.cleared'))
     onClose?.()
   }
 
@@ -1058,7 +1121,7 @@ function NutritionScannerV2({
         consent: grantNutritionRemoteConsent(userId),
         userId,
       })
-      setStatus('AI-analys är godkänd för den här användaren.')
+      setStatus(t('scanner.status.consentOn'))
       return
     }
 
@@ -1066,7 +1129,7 @@ function NutritionScannerV2({
       consent: revokeNutritionRemoteConsent(userId),
       userId,
     })
-    setStatus('AI-analys är avstängd för den här användaren.')
+    setStatus(t('scanner.status.consentOff'))
   }
 
   function handleRevokeRemoteConsent() {
@@ -1076,19 +1139,19 @@ function NutritionScannerV2({
       userId,
     })
     setError('')
-    setStatus('Samtycket är återkallat. Du behöver godkänna igen innan nästa AI-analys.')
+    setStatus(t('scanner.status.consentRevoked'))
   }
 
   return (
     <section className="photo-meal-tool scanner-tool nutrition-scanner-v2" aria-labelledby="nutrition-scanner-v2-heading">
       <div className="scanner-start-header">
-        <h3 id="nutrition-scanner-v2-heading" ref={headingRef} tabIndex={-1}>Skanna mat</h3>
-        <p>Ta eller välj en tydlig bild av måltiden.</p>
+        <h3 id="nutrition-scanner-v2-heading" ref={headingRef} tabIndex={-1}>{t('scanner.title')}</h3>
+        <p>{t('scanner.subtitle')}</p>
       </div>
 
-      <div className="scanner-file-picker-group" aria-label="Bildval för Nutrition Scanner">
+      <div className="scanner-file-picker-group" aria-label={t('scanner.imagePickerAria')}>
         <div className="photo-input scanner-file-picker scanner-camera-control">
-          <span>Ta bild</span>
+          <span>{t('scanner.takePhoto')}</span>
           <input
             className="scanner-camera-native-input"
             id="nutrition-scanner-photo-camera-input"
@@ -1096,7 +1159,7 @@ function NutritionScannerV2({
             type="file"
             accept="image/*"
             capture="environment"
-            aria-label="Ta en ny matbild med kameran"
+            aria-label={t('scanner.takePhotoAria')}
             onCancel={handleCameraInputEvent}
             onChange={handleCameraFileChange}
             onClick={handleCameraInputClick}
@@ -1104,14 +1167,14 @@ function NutritionScannerV2({
           />
         </div>
         <label className="photo-input scanner-file-picker" htmlFor="nutrition-scanner-photo-library-input">
-          <span>Välj bild</span>
+          <span>{t('scanner.chooseImage')}</span>
           <input
             className="scanner-file-picker-input"
             id="nutrition-scanner-photo-library-input"
            ref={fileInputRef}
             type="file"
             accept="image/*"
-            aria-label="Välj en matbild från bildbiblioteket"
+            aria-label={t('scanner.chooseImageAria')}
             onClick={(event) => { event.currentTarget.value = '' }}
             onChange={handleFileChange}
           />
@@ -1119,18 +1182,22 @@ function NutritionScannerV2({
       </div>
       {previewUrl && (
         <div className="scanner-preview-stage">
-          <img className="food-preview" src={previewUrl} alt={fileName ? `Förhandsvisning av ${fileName}` : 'Temporär förhandsvisning av vald matbild'} />
+          <img
+            className="food-preview"
+            src={previewUrl}
+            alt={fileName ? t('scanner.previewAltNamed', { fileName }) : t('scanner.previewAlt')}
+          />
           <div className="scanner-actions scanner-preview-actions">
-            <button type="button" className="secondary-button" onClick={() => fileInputRef.current?.click()}>Byt bild</button>
-            <button type="button" className="secondary-button" onClick={clearTemporaryImage}>Ta bort</button>
+            <button type="button" className="secondary-button" onClick={() => fileInputRef.current?.click()}>{t('scanner.changeImage')}</button>
+            <button type="button" className="secondary-button" onClick={clearTemporaryImage}>{t('common:remove')}</button>
           </div>
         </div>
       )}
       {remoteConsentRecord.granted ? (
         <div className="scanner-consent-row scanner-consent-status">
-          <p className="estimate-note">Du har tidigare godkänt att bilden får analyseras med AI.</p>
+          <p className="estimate-note">{t('scanner.consentGranted')}</p>
           <button type="button" className="secondary-button" disabled={isAnalyzing} onClick={handleRevokeRemoteConsent}>
-            Återkalla samtycke
+            {t('scanner.revokeConsent')}
           </button>
         </div>
       ) : (
@@ -1142,32 +1209,32 @@ function NutritionScannerV2({
             type="checkbox"
             onChange={(event) => handleRemoteConsentChange(event.target.checked)}
           />
-          <span>Jag godkänner att bilden skickas till tillfällig AI-analys. Originalbilden sparas inte och jag granskar resultatet innan sparning.</span>
+          <span>{t('scanner.consentLabel')}</span>
         </label>
       )}
       <div className="scanner-actions scanner-primary-actions">
           <button className="primary-button" type="button" disabled={!hasActiveImagePayload || isAnalyzing || !isOnline} onClick={(event) => handleAnalysisAction('remote', event)}>
-            {isAnalyzing ? 'Analyserar måltiden…' : 'Analysera maten'}
+            {isAnalyzing ? t('scanner.analyzing') : t('scanner.analyzeFood')}
           </button>
         </div>
       {isAnalyzing && <ScannerAnalyzingStatus />}
       <details className="scanner-secondary-analysis">
-        <summary>AI-analys fungerar inte?</summary>
-        <p className="estimate-note">Alternativ analys ger en grov uppskattning utan att tolka bilden med AI.</p>
+        <summary>{t('scanner.aiNotWorking')}</summary>
+        <p className="estimate-note">{t('scanner.localEstimateHint')}</p>
         <div className="scanner-actions">
           <button type="button" disabled={!hasActiveImagePayload || isAnalyzing} onClick={(event) => handleAnalysisAction('local', event)}>
-            {isAnalyzing ? 'Analyserar...' : 'Lokal grov uppskattning'}
+            {isAnalyzing ? t('scanner.analyzingShort') : t('scanner.localEstimate')}
           </button>
-          <button type="button" onClick={handleCancel}>Avbryt</button>
+          <button type="button" onClick={handleCancel}>{t('common:actions.cancel')}</button>
         </div>
         {!canUseLiveCamera && (
           <p className="estimate-note">
-            Livekamera kräver normalt HTTPS eller localhost i Safari. På HTTP-LAN används filväljaren med kamera/bildbibliotek som fallback.
+            {t('scanner.liveCameraNote')}
           </p>
         )}
       </details>
       <p className="estimate-note">
-        Bilden skickas bara tillfälligt för analys. Ingen profil, historik eller kontoinformation skickas med.
+        {t('scanner.privacyNote')}
       </p>
       <div aria-live="polite">
         {status && <p className="form-success">{status}</p>}
@@ -1175,10 +1242,10 @@ function NutritionScannerV2({
       </div>
       {import.meta.env.DEV && remoteDebugRows.length > 0 && (
         <details className="remote-debug-panel scanner-dev-info">
-          <summary>Utvecklarinfo</summary>
-          <section aria-label="Remote debug">
-            <h4>Utvecklarinfo</h4>
-            <p className="estimate-note">Status: {isOnline ? 'Online' : 'Offline'}</p>
+          <summary>{t('scanner.developerInfo')}</summary>
+          <section aria-label={t('scanner.remoteDebugAria')}>
+            <h4>{t('scanner.developerInfo')}</h4>
+            <p className="estimate-note">{t('scanner.connectionStatus', { status: isOnline ? t('scanner.online') : t('scanner.offline') })}</p>
             <dl>
               {remoteDebugRows.map(([key, value]) => (
                 <div key={key}>
@@ -1195,33 +1262,35 @@ function NutritionScannerV2({
         <form ref={reviewRef} className="inline-edit-form nutrition-scanner-review" onSubmit={saveMeal}>
           <div className="scanner-review-hero">
             <span className={`scanner-provider-badge ${analysis.provider.type === 'remote' ? 'is-remote' : 'is-local'}`}>
-              {providerBadgeLabel(analysis.provider.type)}
+              {providerBadgeLabel(analysis.provider.type, t)}
             </span>
-            <h4>{reviewDraft.mealName || 'Måltidsförslag'}</h4>
+            <h4>{reviewDraft.mealName || t('scanner.mealSuggestion')}</h4>
             {analysis.provider.type !== 'remote' && (
-              <p className="estimate-note">Bildens innehåll har inte AI-tolkats. Förslaget bygger på metadata och generella intervall. Lokal grov uppskattning att granska.</p>
+              <p className="estimate-note">{t('scanner.localNotAiInterpreted')}</p>
             )}
-            <p className="scanner-hero-calories">≈ {nutritionMidpointLabel(reviewDraft.nutrition.calories, 'kcal')}</p>
+            <p className="scanner-hero-calories">{t('scanner.approxCalories', { value: nutritionMidpointLabel(reviewDraft.nutrition.calories, 'kcal', t) })}</p>
             <dl className="scanner-summary-stats scanner-hero-macros">
               <div>
-                <dt>Protein</dt>
-                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.protein, 'g')}</dd>
+                <dt>{t('scanner.macros.protein')}</dt>
+                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.protein, 'g', t)}</dd>
               </div>
               <div>
-                <dt>Kolhydrater</dt>
-                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.carbs, 'g')}</dd>
+                <dt>{t('scanner.macros.carbs')}</dt>
+                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.carbs, 'g', t)}</dd>
               </div>
               <div>
-                <dt>Fett</dt>
-                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.fat, 'g')}</dd>
+                <dt>{t('scanner.macros.fat')}</dt>
+                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.fat, 'g', t)}</dd>
               </div>
             </dl>
             <p className="scanner-hero-meta">
-              Uppskattad portion: {reviewDraft.portionSize || portionRangeLabel(analysis.portionEstimate)}
+              {t('scanner.estimatedPortion', {
+                portion: reviewDraft.portionSize || portionRangeLabel(analysis.portionEstimate, t),
+              })}
             </p>
             <p className="scanner-hero-meta">
-              Säkerhet: {confidenceLabel(analysis.confidence.level)}
-              {analysis.imageQuality ? ` · Bild: ${imageQualityLabel(analysis.imageQuality)}` : ''}
+              {t('scanner.confidenceLine', { level: confidenceLabel(analysis.confidence.level, t) })}
+              {analysis.imageQuality ? t('scanner.imageQualitySuffix', { quality: imageQualityLabel(analysis.imageQuality, t) }) : ''}
             </p>
           </div>
           {getNutritionPhotoDisplayText(analysis.safeSummary) ? (
@@ -1230,7 +1299,7 @@ function NutritionScannerV2({
 
           {analysis.components?.length > 0 && (
             <section className="scanner-review-section">
-              <h4>Identifierade komponenter</h4>
+              <h4>{t('scanner.identifiedComponents')}</h4>
               <div className="nutrition-component-list">
                 {analysis.components.map((component) => (
                   <details className="scanner-component-card" key={component.id}>
@@ -1239,29 +1308,38 @@ function NutritionScannerV2({
                         <strong>{getNutritionPhotoFoodDisplayName(component.name)}</strong>
                         <small>
                           {component.portionEstimate?.gramsMin != null && component.portionEstimate?.gramsMax != null
-                            ? `${component.portionEstimate.gramsMin}–${component.portionEstimate.gramsMax} g`
-                            : componentPortionLabel(component)}
-                          {component.portionEstimate?.pieceCount ? ` · ${component.portionEstimate.pieceCount} st` : ''}
+                            ? t('scanner.gramsRange', {
+                              min: component.portionEstimate.gramsMin,
+                              max: component.portionEstimate.gramsMax,
+                            })
+                            : componentPortionLabel(component, t)}
+                          {component.portionEstimate?.pieceCount
+                            ? ` · ${t('scanner.piecesCount', { count: component.portionEstimate.pieceCount })}`
+                            : ''}
                         </small>
                       </span>
-                      <span>≈ {nutritionMidpointLabel(component.nutritionEstimate?.calories?.midpoint, 'kcal')}</span>
+                      <span>{t('scanner.approxCalories', { value: nutritionMidpointLabel(component.nutritionEstimate?.calories?.midpoint, 'kcal', t) })}</span>
                     </summary>
                     <div className="scanner-component-detail">
-                      {componentNutritionSummary(component) ? <p>{componentNutritionSummary(component)}</p> : null}
+                      {componentNutritionSummary(component, t) ? <p>{componentNutritionSummary(component, t)}</p> : null}
                       {component.nutritionEstimate?.proteinG && (
-                        <p>Protein {nutritionMidpointLabel(component.nutritionEstimate.proteinG.midpoint, 'g')}</p>
+                        <p>{t('scanner.proteinLine', { value: nutritionMidpointLabel(component.nutritionEstimate.proteinG.midpoint, 'g', t) })}</p>
                       )}
                       {component.cookingMethods?.length > 0 && (
-                        <p>Tillagning: {component.cookingMethods.map(cookingMethodLabel).join(', ')}</p>
+                        <p>{t('scanner.cookingMethodsLine', {
+                          methods: component.cookingMethods.map((method) => cookingMethodLabel(method, t)).join(', '),
+                        })}</p>
                       )}
-                      <p>Portionssäkerhet: {confidenceLabel(component.portionEstimate?.confidence)}</p>
-                      <p>Identitetssäkerhet: {confidenceLabel(component.identityConfidence || component.confidence)}</p>
+                      <p>{t('scanner.portionConfidenceLine', { level: confidenceLabel(component.portionEstimate?.confidence, t) })}</p>
+                      <p>{t('scanner.identityConfidenceLine', { level: confidenceLabel(component.identityConfidence || component.confidence, t) })}</p>
                       {component.alternatives?.length > 0 && (
-                        <p>Kan även vara: {component.alternatives.map(getNutritionPhotoFoodDisplayName).join(', ')}. Exakt typ osäker.</p>
+                        <p>{t('scanner.couldAlsoBe', {
+                          names: component.alternatives.map(getNutritionPhotoFoodDisplayName).join(', '),
+                        })}</p>
                       )}
                       {component.portionEstimate?.evidence && <p>{component.portionEstimate.evidence}</p>}
                       {component.uncertainty?.reason && !isGenericUncertaintyText(component.uncertainty.reason) && <p>{component.uncertainty.reason}</p>}
-                      <p className="estimate-note">{componentSummaryLine(component)}</p>
+                      <p className="estimate-note">{componentSummaryLine(component, t, i18n.language)}</p>
                     </div>
                   </details>
                 ))}
@@ -1270,7 +1348,7 @@ function NutritionScannerV2({
           )}
           {reviewUncertainties.length > 0 && (
             <section className="scanner-review-section">
-              <h4>Att kolla</h4>
+              <h4>{t('scanner.toCheck')}</h4>
               <ul className="health-dashboard-list">
                 {reviewUncertainties.map((item) => <li key={item}>{item}</li>)}
               </ul>
@@ -1278,33 +1356,42 @@ function NutritionScannerV2({
           )}
 
           <details className="scanner-advanced-edit">
-            <summary>Redigera detaljer</summary>
+            <summary>{t('scanner.editDetails')}</summary>
             <label>
-              <span>Måltidsnamn</span>
+              <span>{t('scanner.mealName')}</span>
               <input aria-invalid={Boolean(validation.errors.mealName)} value={reviewDraft.mealName} onChange={(event) => updateReview({ mealName: event.target.value })} />
             </label>
             <label>
-              <span>Måltidstyp</span>
+              <span>{t('scanner.mealType')}</span>
               <select value={reviewDraft.mealType} onChange={(event) => updateReview({ mealType: event.target.value })}>
-                {mealTypes.map((type) => <option key={type}>{type}</option>)}
+                {mealTypes.map((type) => (
+                  <option key={type} value={type}>{mealTypeLabel(type)}</option>
+                ))}
               </select>
             </label>
             <label>
-              <span>Datum</span>
+              <span>{t('scanner.date')}</span>
               <input type="date" value={reviewDraft.date} onChange={(event) => updateReview({ date: event.target.value })} />
             </label>
             <label>
-              <span>Tid</span>
+              <span>{t('scanner.time')}</span>
               <input type="time" value={reviewDraft.time} onChange={(event) => updateReview({ time: event.target.value })} />
             </label>
             <label>
-              <span>Portion</span>
+              <span>{t('scanner.portion')}</span>
               <input value={reviewDraft.portionSize} onChange={(event) => updateReview({ portionSize: event.target.value })} />
             </label>
 
-            <h4>Ingredienser</h4>
+            <h4>{t('scanner.ingredients')}</h4>
             <p className="estimate-note">
-              Databasmatchning: {ingredientMatchStatusCounts.exactMatch} exakta, {ingredientMatchStatusCounts.normalizedMatch} normaliserade, {ingredientMatchStatusCounts.manualDatabase} manuella/databas, {ingredientMatchStatusCounts.needsSelection} behöver val, {ingredientMatchStatusCounts.aiEstimate} AI-estimat. Totalt {ingredientMatchStatusCounts.total}.
+              {t('scanner.dbMatchSummary', {
+                exactMatch: ingredientMatchStatusCounts.exactMatch,
+                normalizedMatch: ingredientMatchStatusCounts.normalizedMatch,
+                manualDatabase: ingredientMatchStatusCounts.manualDatabase,
+                needsSelection: ingredientMatchStatusCounts.needsSelection,
+                aiEstimate: ingredientMatchStatusCounts.aiEstimate,
+                total: ingredientMatchStatusCounts.total,
+              })}
             </p>
             <ul className="health-dashboard-list">
               {reviewDraft.detectedItems.map((item) => (
@@ -1319,19 +1406,19 @@ function NutritionScannerV2({
                 />
               ))}
               <li className="scanner-actions">
-                <button type="button" onClick={() => addIngredient({ calories: 120, fat: 14, name: 'Olivolja', unit: 'msk' })}>Lägg till olja</button>
-                <button type="button" onClick={() => addIngredient({ calories: 60, carbohydrates: 8, fat: 3, name: 'Sås', unit: 'msk' })}>Lägg till sås</button>
-                <button type="button" onClick={() => addIngredient({ calories: 0, name: 'Dryck', unit: 'glas' })}>Lägg till dryck</button>
+                <button type="button" onClick={() => addIngredient({ calories: 120, fat: 14, name: 'Olivolja', unit: 'msk' })}>{t('scanner.addOil')}</button>
+                <button type="button" onClick={() => addIngredient({ calories: 60, carbohydrates: 8, fat: 3, name: 'Sås', unit: 'msk' })}>{t('scanner.addSauce')}</button>
+                <button type="button" onClick={() => addIngredient({ calories: 0, name: 'Dryck', unit: 'glas' })}>{t('scanner.addDrink')}</button>
               </li>
             </ul>
-            <button type="button" onClick={addIngredient}>Lägg till ingrediens</button>
+            <button type="button" onClick={addIngredient}>{t('scanner.addIngredient')}</button>
             <label>
-              <span>Anteckning</span>
+              <span>{t('scanner.note')}</span>
               <textarea value={reviewDraft.note} onChange={(event) => updateReview({ note: event.target.value })} />
             </label>
             {['calories', 'protein', 'carbs', 'fat'].map((field) => (
               <label key={field} className="scanner-save-field">
-                <span>{field === 'calories' ? 'Kalorier' : field === 'carbs' ? 'Kolhydrater' : field === 'protein' ? 'Protein' : 'Fett'}</span>
+                <span>{reviewMacroLabel(field, t)}</span>
                 <input
                   aria-invalid={Boolean(validation.errors[field])}
                   inputMode="decimal"
@@ -1343,37 +1430,37 @@ function NutritionScannerV2({
           </details>
 
           <section className="scanner-save-summary">
-            <h4>Det här sparas</h4>
+            <h4>{t('scanner.whatIsSaved')}</h4>
             <dl className="scanner-summary-stats">
               <div>
-                <dt>Kalorier</dt>
-                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.calories, 'kcal')}</dd>
+                <dt>{t('scanner.macros.calories')}</dt>
+                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.calories, 'kcal', t)}</dd>
               </div>
               <div>
-                <dt>Protein</dt>
-                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.protein, 'g')}</dd>
+                <dt>{t('scanner.macros.protein')}</dt>
+                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.protein, 'g', t)}</dd>
               </div>
               <div>
-                <dt>Kolhydrater</dt>
-                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.carbs, 'g')}</dd>
+                <dt>{t('scanner.macros.carbs')}</dt>
+                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.carbs, 'g', t)}</dd>
               </div>
               <div>
-                <dt>Fett</dt>
-                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.fat, 'g')}</dd>
+                <dt>{t('scanner.macros.fat')}</dt>
+                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.fat, 'g', t)}</dd>
               </div>
             </dl>
             {Math.abs(nutritionDifference.calories) > 80 && (
-              <p className="analysis-status">Kontrollera totalen: ingredienserna och sparvärdet skiljer sig tydligt.</p>
+              <p className="analysis-status">{t('scanner.totalMismatch')}</p>
             )}
           </section>
 
           {duplicate.status !== 'noDuplicate' && (
             <p className="analysis-status">
-              {duplicate.message} {duplicate.existingMealId && <a href="#meal-history">Öppna måltidshistorik</a>}
+              {duplicate.message} {duplicate.existingMealId && <a href="#meal-history">{t('scanner.openMealHistory')}</a>}
               {duplicate.status === 'possibleDuplicate' && (
                 <label className="checkbox-row">
                   <input checked={allowDuplicate} type="checkbox" onChange={() => setAllowDuplicate((current) => !current)} />
-                  <span>Spara ändå</span>
+                  <span>{t('scanner.saveAnyway')}</span>
                 </label>
               )}
             </p>
@@ -1381,10 +1468,10 @@ function NutritionScannerV2({
 
           <div className="habit-actions">
             <button className="primary-button" disabled={isSaving || !validation.ok || ((duplicate.status === 'exactDuplicate' || duplicate.status === 'likelyDuplicate') && !allowDuplicate)} type="submit">
-              {isSaving ? 'Sparar...' : 'Spara måltid'}
+              {isSaving ? t('scanner.saving') : t('scanner.saveMeal')}
             </button>
-            <button type="button" onClick={handleCancel}>Avbryt</button>
-            {savedMealId && <a className="secondary-button" href="#meal-history">Öppna sparad måltid</a>}
+            <button type="button" onClick={handleCancel}>{t('common:actions.cancel')}</button>
+            {savedMealId && <a className="secondary-button" href="#meal-history">{t('scanner.openSavedMeal')}</a>}
           </div>
         </form>
       )}

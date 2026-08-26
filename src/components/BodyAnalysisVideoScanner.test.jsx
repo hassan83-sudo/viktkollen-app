@@ -86,11 +86,11 @@ describe('BodyAnalysisVideoScanner', () => {
   })
 
   it('starts analysis with immediate feedback in the card chain', () => {
-    expect(cardSource).toContain("setAnalysisStatus('Analyserar kroppen...')")
+    expect(cardSource).toContain("setAnalysisStatus(t('card.status.analyzing'))")
     expect(cardSource).toContain('safeLogger.info')
-    expect(cardSource).toContain('Framifrån-bilden saknas.')
-    expect(cardSource).toContain('Godkänn AI-analysen först.')
-    expect(cardSource).toContain('Försök igen')
+    expect(cardSource).toContain("t('card.errors.missingFront')")
+    expect(cardSource).toContain("t('card.errors.approveFirst')")
+    expect(cardSource).toContain("t('card.heading.retry')")
     expect(cardSource).toContain('<BodyAnalysisUploader')
     expect(cardSource).not.toContain('BodyAnalysisVideoScanner')
     expect(readFileSync(resolve(process.cwd(), 'src/components/BodyAnalysisPrivacy.jsx'), 'utf8')).toContain('body-scan-consent-overlay')

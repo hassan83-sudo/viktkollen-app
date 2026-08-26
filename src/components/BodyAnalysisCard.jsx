@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
+import { formatDate } from '../i18n/format.js'
 import { getAnalysisComparison } from '../services/bodyAnalysisComparison'
 import {
   canCompleteBodyAnalysisScan,
@@ -43,65 +45,52 @@ import BodyAnalysisTimeline from './BodyAnalysisTimeline'
 import BodyAnalysisUnlockCard from './BodyAnalysisUnlockCard'
 import BodyAnalysisUploader from './BodyAnalysisUploader'
 
-const timelineFilters = [
-  { label: 'Alla', value: 'all' },
-  { label: 'Senaste 30 dagarna', value: '30' },
-  { label: 'Senaste 90 dagarna', value: '90' },
+const bodyOverviewMarkerDefs = [
+  { id: 'shoulders', x: 50, y: 25 },
+  { id: 'arms', x: 25, y: 42 },
+  { id: 'waist', x: 50, y: 47 },
+  { id: 'hips', x: 50, y: 61 },
+  { id: 'legs', x: 56, y: 80 },
 ]
 
-const bodyOverviewMarkers = [
-  { label: 'Axlar', text: 'Följs över tid.', x: 50, y: 25 },
-  { label: 'Armar', text: 'Ingen tydlig förändring ännu.', x: 25, y: 42 },
-  { label: 'Midja', text: 'Möjlig positiv utveckling.', x: 50, y: 47 },
-  { label: 'Höfter', text: 'Följs över tid.', x: 50, y: 61 },
-  { label: 'Ben', text: 'Ingen tydlig förändring ännu.', x: 56, y: 80 },
-]
-
-const resultModelFields = [
-  ['status', 'Status'],
-  ['source', 'Källa'],
-  ['generatedAt', 'Genererad'],
-  ['summary', 'Sammanfattning'],
-  ['bodyComposition', 'Kroppssammansättning'],
-  ['posture', 'Hållning'],
-  ['strengths', 'Styrkor'],
-  ['improvementAreas', 'Förbättringsområden'],
-  ['recommendations', 'Rekommendationer'],
-  ['nextSteps', 'Nästa steg'],
-  ['comparison', 'Förändring sedan senaste analys'],
-  ['progressSummary', 'Utveckling över tid'],
-  ['visualConsistency', 'Bildkonsekvens'],
-  ['routineFeedback', 'Rutinfeedback'],
-  ['monthlyFocus', 'Fokus denna månad'],
-  ['confidenceLevel', 'Tillförlitlighetsnivå'],
-  ['limitations', 'Begränsningar'],
-  ['sourceReason', 'Resultatkälla'],
-  ['confidence', 'Tillförlitlighet'],
-  ['safetyNote', 'Säkerhetsnotis'],
-]
-
-const mockNextAnalysisGoals = [
-  'Ta nästa bild inom 7 dagar.',
-  'Behåll samma fotograferingsvinkel.',
-  'Fortsätt registrera vikten regelbundet.',
-  'Fortsätt med dina nuvarande kost- och träningsvanor.',
+const resultModelFieldKeys = [
+  'status',
+  'source',
+  'generatedAt',
+  'summary',
+  'bodyComposition',
+  'posture',
+  'strengths',
+  'improvementAreas',
+  'recommendations',
+  'nextSteps',
+  'comparison',
+  'progressSummary',
+  'visualConsistency',
+  'routineFeedback',
+  'monthlyFocus',
+  'confidenceLevel',
+  'limitations',
+  'sourceReason',
+  'confidence',
+  'safetyNote',
 ]
 
 function formatAnalysisDate(date) {
-  return new Intl.DateTimeFormat('sv-SE', {
+  return formatDate(date, {
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
     month: 'short',
     year: 'numeric',
-  }).format(new Date(date))
+  })
 }
 
 function formatShortDate(date) {
-  return new Intl.DateTimeFormat('sv-SE', {
+  return formatDate(date, {
     day: 'numeric',
     month: 'short',
-  }).format(new Date(date))
+  })
 }
 
 function getDaysSince(date) {
@@ -137,8 +126,8 @@ function isAnalysisWithinDays(analysis, days) {
   return createdAt >= Date.now() - days * 24 * 60 * 60 * 1000
 }
 
-function getTimelineSummary(result) {
-  return result.summary || result.comparison?.unchanged || 'Analys klar.'
+function getTimelineSummary(result, t) {
+  return result.summary || result.comparison?.unchanged || t('card.timelineSummaryFallback')
 }
 
 function formatResultValue(key, value) {
@@ -173,11 +162,11 @@ function renderResultValue(key, value) {
   return <p>{formatResultValue(key, value)}</p>
 }
 
-function getResultSections(result) {
-  return resultModelFields
-    .map(([key, label]) => ({
+function getResultSections(result, t) {
+  return resultModelFieldKeys
+    .map((key) => ({
       key,
-      label,
+      label: t(`card.fields.${key}`),
       value: result[key],
     }))
     .filter(({ value }) => {
@@ -189,42 +178,45 @@ function getResultSections(result) {
     })
 }
 
-function getResultSourceLabel(result) {
-  return result.source === 'ai' ? 'AI-resultat' : 'Lokal demo'
+function getResultSourceLabel(result, t) {
+  return result.source === 'ai' ? t('card.sourceLabel.ai') : t('card.sourceLabel.mock')
 }
 
-function getLatestAiStatus(analysis) {
+function getLatestAiStatus(analysis, t) {
   if (!analysis?.result) {
     return {
-      label: 'Ingen analys ännu',
+      label: t('card.aiStatus.none'),
       reason: 'ingen_historik',
     }
   }
 
   return {
-    label: analysis.result.source === 'ai' ? 'AI fungerade' : 'Mock användes',
+    label:
+      analysis.result.source === 'ai'
+        ? t('card.aiStatus.aiOk')
+        : t('card.aiStatus.mockUsed'),
     reason: analysis.result.sourceReason || 'api_error',
   }
 }
 
-function getNextAnalysisRecommendation(daysSinceLatestAnalysis) {
+function getNextAnalysisRecommendation(daysSinceLatestAnalysis, t) {
   if (daysSinceLatestAnalysis === null) {
-    return 'Skapa första analys'
+    return t('card.nextRec.first')
   }
 
   if (daysSinceLatestAnalysis < 7) {
-    return 'Vänta några dagar'
+    return t('card.nextRec.wait')
   }
 
-  return 'Dags för ny analys'
+  return t('card.nextRec.due')
 }
 
-function getLatestInsights(analysis) {
+function getLatestInsights(analysis, t) {
   if (!analysis?.result) {
     return [
-      'Skapa en analys för att få personliga insikter.',
-      'Två bilder ger bättre underlag.',
-      'Konsekventa bilder gör jämförelser tydligare.',
+      t('card.emptyInsights.create'),
+      t('card.emptyInsights.twoPhotos'),
+      t('card.emptyInsights.consistent'),
     ]
   }
 
@@ -237,23 +229,22 @@ function getLatestInsights(analysis) {
     .slice(0, 3)
 }
 
-function createDemoBodyAnalysisResult(previousAnalysis, context = null) {
+function createDemoBodyAnalysisResult(previousAnalysis, context = null, t) {
   return {
-    bodyComposition:
-      'Demoanalysen visar en stabil visuell helhetsbild utan medicinska exakta värden.',
+    bodyComposition: t('card.demo.bodyComposition'),
     comparison: previousAnalysis
       ? {
-          better: 'Det finns en ny jämförelsepunkt i tidslinjen.',
-          nextFocus: 'Ta nästa demoanalys med samma tänkta ljus och avstånd.',
-          unchanged: 'Demoresultatet gör inga säkra visuella förändringspåståenden.',
+          better: t('card.demo.comparisonBetter'),
+          nextFocus: t('card.demo.comparisonNextFocus'),
+          unchanged: t('card.demo.comparisonUnchanged'),
         }
       : {
-          better: 'Det här är din första analys.',
-          nextFocus: 'Skapa en ny analys om ungefär en vecka.',
-          unchanged: 'Ingen tidigare analys finns att jämföra med ännu.',
+          better: t('card.demo.firstBetter'),
+          nextFocus: t('card.demo.firstNextFocus'),
+          unchanged: t('card.demo.firstUnchanged'),
         },
-    confidence: 'Medel',
-    confidenceLevel: 'Medel',
+    confidence: t('card.demo.confidenceMedium'),
+    confidenceLevel: t('card.demo.confidenceMedium'),
     dataQuality: 'low',
     estimatedMeasurements: {
       chestCm: null,
@@ -263,18 +254,20 @@ function createDemoBodyAnalysisResult(previousAnalysis, context = null) {
     },
     estimatedWeight: null,
     generatedAt: new Date().toISOString(),
-    improvementAreas: ['Fortsätt hålla bildrutinen enkel och konsekvent.'],
-    limitations: ['Demoanalysen använder inte riktig bildtolkning.'],
-    monthlyFocus: 'Bygg en jämn rutin med återkommande analyser.',
-    nextSteps: ['Ta nästa analys om ungefär 7 dagar.'],
-    posture: 'Hållningen bedöms som stabil i demoresultatet.',
-    progressSummary:
-      'Demoanalysen skapar en testpunkt för utvecklingen över tid.',
-    recommendations: mockNextAnalysisGoals,
-    routineFeedback:
-      'Regelbundenhet gör tidslinjen mer användbar när riktig analys kopplas in.',
-    safetyNote:
-      'Bildanalysen är en AI-uppskattning och ersätter inte våg, måttband eller medicinsk bedömning.',
+    improvementAreas: [t('card.demo.improvement')],
+    limitations: [t('card.demo.limitation')],
+    monthlyFocus: t('card.demo.monthlyFocus'),
+    nextSteps: [t('card.demo.nextStep')],
+    posture: t('card.demo.posture'),
+    progressSummary: t('card.demo.progressSummary'),
+    recommendations: [
+      t('card.goals.nextPhoto'),
+      t('card.goals.sameAngle'),
+      t('card.goals.logWeight'),
+      t('card.goals.keepHabits'),
+    ],
+    routineFeedback: t('card.demo.routineFeedback'),
+    safetyNote: t('card.demo.safetyNote'),
     measuredWeight: context?.latestMeasuredWeight || null,
     scanInput: {
       angles: ['front', 'side', 'back'],
@@ -285,9 +278,9 @@ function createDemoBodyAnalysisResult(previousAnalysis, context = null) {
     source: 'mock',
     sourceReason: 'demo',
     status: 'completed',
-    strengths: ['Du har en tydlig startpunkt för framtida jämförelser.'],
-    summary: 'Demoanalysen är skapad och visas som en lokal uppskattning.',
-    visualConsistency: 'Samma ljus, avstånd och vinkel ger bättre jämförelser.',
+    strengths: [t('card.demo.strength')],
+    summary: t('card.demo.summary'),
+    visualConsistency: t('card.demo.visualConsistency'),
   }
 }
 
@@ -298,12 +291,36 @@ function BodyAnalysisCard({
   userId = 'local-user',
   weights = [],
 }) {
-  const [activeBodyMarker, setActiveBodyMarker] = useState(bodyOverviewMarkers[0])
+  const { t } = useTranslation(['bodyScan', 'common'])
+  const timelineFilters = useMemo(
+    () => [
+      { label: t('card.timelineFilters.all'), value: 'all' },
+      { label: t('card.timelineFilters.days30'), value: '30' },
+      { label: t('card.timelineFilters.days90'), value: '90' },
+    ],
+    [t],
+  )
+  const bodyOverviewMarkers = useMemo(
+    () =>
+      bodyOverviewMarkerDefs.map(({ id, x, y }) => ({
+        id,
+        label: t(`card.markers.${id}.label`),
+        text: t(`card.markers.${id}.text`),
+        x,
+        y,
+      })),
+    [t],
+  )
+  const [activeBodyMarkerId, setActiveBodyMarkerId] = useState(
+    () => bodyOverviewMarkerDefs[0].id,
+  )
   const [analysisHistory, setAnalysisHistory] = useState(() =>
     getAnalysisHistory(),
   )
   const [analysisError, setAnalysisError] = useState('')
-  const [analysisStatus, setAnalysisStatus] = useState('Väntar på bilder')
+  const [analysisStatus, setAnalysisStatus] = useState(() =>
+    t('card.status.waitingPhotos'),
+  )
   const [expandedAnalysisIds, setExpandedAnalysisIds] = useState([])
   const [backPhoto, setBackPhoto] = useState(null)
   const [frontPhoto, setFrontPhoto] = useState(null)
@@ -356,7 +373,7 @@ function BodyAnalysisCard({
   const canAnalyze =
     canCompleteBodyAnalysisScan(scanPhotos) && !isAnalyzing && !isFreeLimitReached
   const analyzeDisabledReason = isFreeLimitReached
-    ? 'Gratisgränsen på tre lokala analyser är nådd. Premium kan låsas upp senare.'
+    ? t('card.freeLimitReason')
     : ''
   const latestAnalysisDate = analysisHistory[0]?.createdAt
   const historyStats = getHistoryStats(analysisHistory)
@@ -369,82 +386,79 @@ function BodyAnalysisCard({
   const currentAnalysisStatus = isAnalyzing
     ? analysisStatus
     : analysisError
-      ? 'Analys misslyckades'
+      ? t('card.status.failed')
       : isFreeLimitReached
-        ? 'Gratisgräns nådd'
-      : analysisStatus === 'Analys klar'
-        ? 'Analys klar'
+        ? t('card.status.freeLimit')
+      : analysisStatus === t('card.status.complete')
+        ? t('card.status.complete')
         : canAnalyze
-          ? 'Redo att analysera'
-          : 'Väntar på tre vinklar'
+          ? t('card.status.ready')
+          : t('card.status.waitingAngles')
   const summaryText = latestAnalysisDate
-    ? `Senaste analysen sparades ${formatAnalysisDate(
-        latestAnalysisDate,
-      )}. Jämförelser blir bättre när bilder tas regelbundet.`
-    : 'När du sparar din första analys visas den här tillsammans med historik och jämförelser över tid.'
+    ? t('card.summaryWithDate', { date: formatAnalysisDate(latestAnalysisDate) })
+    : t('card.summaryEmpty')
   const nextRecommendedSteps =
     analysisCount === 0
       ? [
-          'Skapa din första analys.',
-          'Ta bilder framifrån, från sidan och bakifrån.',
-          'Använd samma plats och ljus från start.',
+          t('card.nextSteps.first1'),
+          t('card.nextSteps.first2'),
+          t('card.nextSteps.first3'),
         ]
       : analysisCount === 1
         ? [
-            'Skapa en till analys för jämförelse.',
-            'Ta nästa tre vinklar med samma ljus och avstånd.',
-            'Spara nästa analys inom 7 dagar.',
+            t('card.nextSteps.second1'),
+            t('card.nextSteps.second2'),
+            t('card.nextSteps.second3'),
           ]
         : [
-            'Fortsätt följa utvecklingen veckovis.',
-            'Jämför bilder med samma ljus och avstånd.',
-            'Håll rutinen enkel och konsekvent.',
+            t('card.nextSteps.ongoing1'),
+            t('card.nextSteps.ongoing2'),
+            t('card.nextSteps.ongoing3'),
           ]
   const weeklyFocus =
-    savedAnalysis?.result?.monthlyFocus ||
-    'Fokusera på jämna förändringar, inte snabba resultat.'
+    savedAnalysis?.result?.monthlyFocus || t('card.weeklyFocusFallback')
   const nextAnalysisRecommendation =
-    getNextAnalysisRecommendation(daysSinceLatestAnalysis)
+    getNextAnalysisRecommendation(daysSinceLatestAnalysis, t)
   const analysisQualityItems = [
     {
-      label: 'Bild framifrån vald',
+      label: t('card.quality.frontLabel'),
       status: frontPhoto ? 'positive' : 'neutral',
-      value: frontPhoto ? 'Klar' : 'Väntar',
+      value: frontPhoto ? t('card.quality.done') : t('card.quality.waiting'),
     },
     {
-      label: 'Sidobild vald',
+      label: t('card.quality.sideLabel'),
       status: sidePhoto ? 'positive' : 'neutral',
-      value: sidePhoto ? 'Klar' : 'Väntar',
+      value: sidePhoto ? t('card.quality.done') : t('card.quality.waiting'),
     },
     {
-      label: 'Bakbild vald',
+      label: t('card.quality.backLabel'),
       status: backPhoto ? 'positive' : 'neutral',
-      value: backPhoto ? 'Klar' : 'Väntar',
+      value: backPhoto ? t('card.quality.done') : t('card.quality.waiting'),
     },
     {
-      label: 'Samma ljus rekommenderas',
+      label: t('card.quality.sameLightLabel'),
       status: 'warning',
-      value: 'För bättre jämförelser',
+      value: t('card.quality.sameLightValue'),
     },
     {
-      label: 'Samma avstånd rekommenderas',
+      label: t('card.quality.sameDistanceLabel'),
       status: 'warning',
-      value: 'För jämnare analys',
+      value: t('card.quality.sameDistanceValue'),
     },
     {
-      label: 'Liknande kläder rekommenderas',
+      label: t('card.quality.similarClothesLabel'),
       status: 'warning',
-      value: 'För tydligare förändring',
+      value: t('card.quality.similarClothesValue'),
     },
   ]
   const progressIndicators = [
     {
-      label: 'Vikttrend',
+      label: t('card.progress.weightTrend'),
       status: 'neutral',
-      value: 'Stabil trend',
+      value: t('card.progress.weightTrendValue'),
     },
     {
-      label: 'Analysfrekvens',
+      label: t('card.progress.frequency'),
       status:
         analysisCount === 0
           ? 'neutral'
@@ -453,18 +467,21 @@ function BodyAnalysisCard({
             : 'positive',
       value:
         analysisCount === 0
-          ? 'Ingen data än'
+          ? t('card.progress.noDataYet')
           : analysisCount === 1
-            ? 'Behöver en till'
-            : 'Bra rytm',
+            ? t('card.progress.needsAnother')
+            : t('card.progress.goodRhythm'),
     },
     {
-      label: 'Fotokonsekvens',
+      label: t('card.progress.photoConsistency'),
       status: analysisCount >= 2 ? 'positive' : 'warning',
-      value: analysisCount >= 2 ? 'Följs över tid' : 'Bygg rutin',
+      value:
+        analysisCount >= 2
+          ? t('card.progress.trackedOverTime')
+          : t('card.progress.buildRoutine'),
     },
     {
-      label: 'Nästa rekommenderade analys',
+      label: t('card.progress.nextRecommended'),
       status:
         daysSinceLatestAnalysis === null
           ? 'neutral'
@@ -473,36 +490,38 @@ function BodyAnalysisCard({
             : 'positive',
       value: nextAnalysisDate
         ? formatShortDate(nextAnalysisDate)
-        : 'Efter första analys',
+        : t('card.progress.afterFirst'),
     },
   ]
   const progressStats = [
-    { label: 'Totalt antal analyser', value: historyStats.total || '-' },
+    { label: t('card.progress.totalAnalyses'), value: historyStats.total || '-' },
     {
-      label: 'Senaste datum',
+      label: t('card.progress.latestDate'),
       value: historyStats.latestDate
         ? formatShortDate(historyStats.latestDate)
-        : 'Ingen analys',
+        : t('card.progress.noAnalysis'),
     },
     {
-      label: 'Dagar sedan senaste',
+      label: t('card.progress.daysSinceLatest'),
       value:
         historyStats.daysSinceLatest !== null
-          ? `${historyStats.daysSinceLatest} dagar`
-          : 'Ingen analys än',
+          ? t('card.progress.daysCount', { count: historyStats.daysSinceLatest })
+          : t('card.progress.noAnalysisYet'),
     },
-    { label: 'AI-resultat', value: historyStats.ai },
-    { label: 'Lokala demoresultat', value: historyStats.mock },
+    { label: t('card.progress.aiResults'), value: historyStats.ai },
+    { label: t('card.progress.mockResults'), value: historyStats.mock },
     {
-      label: 'Genomsnittligt intervall',
+      label: t('card.progress.averageInterval'),
       value:
         historyStats.averageIntervalDays !== null
-          ? `${historyStats.averageIntervalDays} dagar`
+          ? t('card.progress.daysCount', { count: historyStats.averageIntervalDays })
           : '-',
     },
     {
-      label: 'Nästa analys',
-      value: nextAnalysisDate ? formatShortDate(nextAnalysisDate) : 'Skapa första',
+      label: t('card.progress.nextAnalysis'),
+      value: nextAnalysisDate
+        ? formatShortDate(nextAnalysisDate)
+        : t('card.progress.createFirst'),
     },
   ]
   const visibleAnalysisHistory =
@@ -522,7 +541,10 @@ function BodyAnalysisCard({
     id: analysis.createdAt,
     status: analysis.result?.source === 'ai' ? 'positive' : 'warning',
   }))
-  const latestAiStatus = getLatestAiStatus(savedAnalysis)
+  const latestAiStatus = getLatestAiStatus(savedAnalysis, t)
+  const resolvedActiveBodyMarker =
+    bodyOverviewMarkers.find((marker) => marker.id === activeBodyMarkerId) ||
+    bodyOverviewMarkers[0]
 
   function handlePhotoChange(fileOrEvent, view, previewOverride = '') {
     const file = fileOrEvent === null || fileOrEvent === undefined
@@ -547,7 +569,11 @@ function BodyAnalysisCard({
         ...scanPhotos,
         [view]: photo,
       }
-      setAnalysisStatus(canCompleteBodyAnalysisScan(nextPhotos) ? 'Redo att analysera' : 'Väntar på tre vinklar')
+      setAnalysisStatus(
+        canCompleteBodyAnalysisScan(nextPhotos)
+          ? t('card.status.ready')
+          : t('card.status.waitingAngles'),
+      )
     }
 
     if (!file) {
@@ -574,12 +600,12 @@ function BodyAnalysisCard({
       })
     })
     reader.addEventListener('error', () => {
-      setAnalysisError('Bilden kunde inte läsas. Välj en annan bild och försök igen.')
-      setAnalysisStatus('Väntar på bilder')
+      setAnalysisError(t('card.errors.imageReadFailed'))
+      setAnalysisStatus(t('card.status.waitingPhotos'))
     })
     reader.addEventListener('abort', () => {
-      setAnalysisError('Bildläsningen avbröts. Välj bilden igen om du vill fortsätta.')
-      setAnalysisStatus('Väntar på bilder')
+      setAnalysisError(t('card.errors.imageReadAborted'))
+      setAnalysisStatus(t('card.status.waitingPhotos'))
     })
     reader.readAsDataURL(file)
   }
@@ -587,9 +613,9 @@ function BodyAnalysisCard({
   function storeCompletedAnalysis(result, photos = {}) {
     const nextAnalysis = {
       analysisNumber: analysisHistory.length + 1,
-      backPhoto: photos.backPhoto || { name: 'Demo bakifrån', preview: '' },
+      backPhoto: photos.backPhoto || { name: t('card.demoPhotos.back'), preview: '' },
       createdAt: new Date().toISOString(),
-      frontPhoto: photos.frontPhoto || { name: 'Demo framifrån', preview: '' },
+      frontPhoto: photos.frontPhoto || { name: t('card.demoPhotos.front'), preview: '' },
       result,
       scanInput: result.scanInput || {
         angles: ['front', 'side', 'back'],
@@ -597,7 +623,7 @@ function BodyAnalysisCard({
         requiredAngles: ['front', 'side', 'back'],
       },
       schemaVersion: result.schemaVersion || 2,
-      sidePhoto: photos.sidePhoto || { name: 'Demo från sidan', preview: '' },
+      sidePhoto: photos.sidePhoto || { name: t('card.demoPhotos.side'), preview: '' },
       status: 'Analys klar',
       syncStatus: 'local',
       updatedAt: new Date().toISOString(),
@@ -609,25 +635,23 @@ function BodyAnalysisCard({
     setAnalysisHistory(nextHistory)
     setImportSummary(null)
     onAnalysisHistoryChange(true)
-    setAnalysisStatus('Analys klar')
+    setAnalysisStatus(t('card.status.complete'))
     incrementPremiumAnalyticsCounter(premiumAnalyticsCounters.bodyScans, { userId })
   }
 
   async function runBodyAnalysis() {
     if (isFreeLimitReached) {
-      setAnalysisError(
-        'Gratisgränsen är nådd. Du kan behålla historiken eller radera en analys. Betalning kopplas senare via verifierad backend.',
-      )
+      setAnalysisError(t('card.errors.freeLimitKeep'))
       return
     }
 
     if (!frontPhoto || !sidePhoto || !backPhoto) {
       setAnalysisError(
         !frontPhoto
-          ? 'Framifrån-bilden saknas.'
+          ? t('card.errors.missingFront')
           : !sidePhoto
-            ? 'Sidan-bilden saknas.'
-            : 'Bakifrån-bilden saknas.',
+            ? t('card.errors.missingSide')
+            : t('card.errors.missingBack'),
       )
       return
     }
@@ -637,12 +661,12 @@ function BodyAnalysisCard({
 
     setIsAnalyzing(true)
     setAnalysisError('')
-    setAnalysisStatus('Analyserar kroppen...')
+    setAnalysisStatus(t('card.status.analyzing'))
 
     const statusTimers = [
-      window.setTimeout(() => setAnalysisStatus('AI analyserar...'), 700),
+      window.setTimeout(() => setAnalysisStatus(t('card.status.aiAnalyzing')), 700),
       window.setTimeout(
-        () => setAnalysisStatus('Resultat förbereds...'),
+        () => setAnalysisStatus(t('card.status.preparing')),
         1400,
       ),
     ]
@@ -676,10 +700,10 @@ function BodyAnalysisCard({
     } catch (error) {
       setAnalysisError(
         error instanceof Error
-          ? error.message || 'Analysen kunde inte slutföras.'
-          : 'Analysen kunde inte slutföras.',
+          ? error.message || t('card.status.couldNotComplete')
+          : t('card.status.couldNotComplete'),
       )
-      setAnalysisStatus('Analysen kunde inte slutföras.')
+      setAnalysisStatus(t('card.status.couldNotComplete'))
     } finally {
       statusTimers.forEach((timer) => window.clearTimeout(timer))
       setIsAnalyzing(false)
@@ -687,41 +711,39 @@ function BodyAnalysisCard({
   }
 
   function handleAnalyzeBody() {
-    setAnalysisStatus('Analyserar kroppen...')
+    setAnalysisStatus(t('card.status.analyzing'))
     setAnalysisError('')
 
     if (isFreeLimitReached) {
-      setAnalysisError(
-        'Gratisgränsen är nådd. Radera en analys eller invänta verifierad premiumåtkomst.',
-      )
+      setAnalysisError(t('card.errors.freeLimitDelete'))
       return
     }
 
     if (!frontPhoto) {
-      setAnalysisError('Framifrån-bilden saknas.')
+      setAnalysisError(t('card.errors.missingFront'))
       return
     }
     if (!sidePhoto) {
-      setAnalysisError('Sidan-bilden saknas.')
+      setAnalysisError(t('card.errors.missingSide'))
       return
     }
     if (!backPhoto) {
-      setAnalysisError('Bakifrån-bilden saknas.')
+      setAnalysisError(t('card.errors.missingBack'))
       return
     }
     if (isAnalyzing) {
-      setAnalysisStatus('Analyserar kroppen...')
+      setAnalysisStatus(t('card.status.analyzing'))
       return
     }
     if (!frontPhoto.file || !sidePhoto.file || !backPhoto.file) {
-      setAnalysisError('Analysen kunde inte startas.')
+      setAnalysisError(t('card.errors.couldNotStart'))
       safeLogger.info('body-scan-analyze', { guard: 'missing-file' })
       return
     }
 
     if (!hasApprovedAnalysis) {
       setShowAnalysisConsent(true)
-      setAnalysisError('Godkänn AI-analysen först.')
+      setAnalysisError(t('card.errors.approveFirst'))
       safeLogger.info('body-scan-analyze', { guard: 'consent' })
       return
     }
@@ -738,14 +760,14 @@ function BodyAnalysisCard({
 
   function handleCreateDemoAnalysis() {
     if (isFreeLimitReached) {
-      setAnalysisError(
-        'Gratisgränsen är nådd. Dev-förhandsvisning kan bara användas i utvecklingsläge.',
-      )
+      setAnalysisError(t('card.errors.freeLimitDev'))
       return
     }
 
     setAnalysisError('')
-    storeCompletedAnalysis(createDemoBodyAnalysisResult(getLatestAnalysis()?.result, analysisContext))
+    storeCompletedAnalysis(
+      createDemoBodyAnalysisResult(getLatestAnalysis()?.result, analysisContext, t),
+    )
   }
 
   function handleExportHistory() {
@@ -764,9 +786,7 @@ function BodyAnalysisCard({
       link.click()
       window.URL.revokeObjectURL(url)
     } catch {
-      setAnalysisError(
-        'Exporten misslyckades. Försök igen eller kontrollera webbläsarens nedladdningsinställningar.',
-      )
+      setAnalysisError(t('card.errors.exportFailed'))
     }
   }
 
@@ -790,7 +810,7 @@ function BodyAnalysisCard({
     const file = event.target.files?.[0]
 
     if (!file) {
-      setAnalysisError('Ingen importfil valdes.')
+      setAnalysisError(t('card.errors.noImportFile'))
       return
     }
 
@@ -805,19 +825,17 @@ function BodyAnalysisCard({
         setImportSummary(importResult.summary)
         onAnalysisHistoryChange(importResult.history.length > 0)
       } catch {
-        setAnalysisError(
-          'Importen misslyckades. Kontrollera att filen är en exporterad JSON-fil från Viktkollen.',
-        )
+        setAnalysisError(t('card.errors.importFailed'))
       } finally {
         event.target.value = ''
       }
     })
     reader.addEventListener('error', () => {
-      setAnalysisError('Importfilen kunde inte läsas. Välj en annan JSON-fil och försök igen.')
+      setAnalysisError(t('card.errors.importReadFailed'))
       event.target.value = ''
     })
     reader.addEventListener('abort', () => {
-      setAnalysisError('Importen avbröts. Välj filen igen om du vill fortsätta.')
+      setAnalysisError(t('card.errors.importAborted'))
       event.target.value = ''
     })
     reader.readAsText(file)
@@ -845,16 +863,13 @@ function BodyAnalysisCard({
     <div className="progress-upload" id="body-analysis">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">AI-kroppsanalys</p>
-          <h3>Första steget</h3>
+          <p className="eyebrow">{t('card.heading.eyebrow')}</p>
+          <h3>{t('card.heading.title')}</h3>
         </div>
       </div>
-      <p className="progress-photo-safety">
-        AI kommer att uppskatta kroppssammansättning och följa förändringar
-        över tid.
-      </p>
+      <p className="progress-photo-safety">{t('card.heading.intro')}</p>
       <div className="body-scan-hub">
-        <h3 className="body-scan-hub-title">Kroppsscanning</h3>
+        <h3 className="body-scan-hub-title">{t('card.heading.hubTitle')}</h3>
         <BodyAnalysisUploader
           canAnalyze={canAnalyze}
           currentAnalysisStatus={currentAnalysisStatus}
@@ -864,18 +879,18 @@ function BodyAnalysisCard({
           onPhotoChange={handlePhotoChange}
         />
         <details className="body-scan-section">
-          <summary>🔒 Integritet & lagring</summary>
+          <summary>{t('card.heading.privacySummary')}</summary>
           <ul className="body-scan-privacy-list">
-            <li>Livekameran körs lokalt. Appen sparar inte originalvideo; den tar tre stillbilder.</li>
-            <li>När du trycker Analysera kroppen skickas tre bildfiler till Viktkollens `/api/body-analysis` via HTTPS med inloggning.</li>
-            <li>Servern skickar bilderna till OpenAI Vision för analys. API-nyckeln ligger inte i frontend.</li>
-            <li>Analysresultat och bildförhandsvisningar kan sparas i lokal historik på enheten. Molnlagring för kroppsbilder är inte implementerad.</li>
-            <li>Export tar bort bilddata och behåller bara filnamn. Radera scanning tar bort lokala previews; redan skickade AI-anrop kan inte återkallas.</li>
+            <li>{t('card.privacy.localCamera')}</li>
+            <li>{t('card.privacy.sendImages')}</li>
+            <li>{t('card.privacy.openai')}</li>
+            <li>{t('card.privacy.localHistory')}</li>
+            <li>{t('card.privacy.exportDelete')}</li>
           </ul>
         </details>
       </div>
       <details className="body-analysis-more-info">
-        <summary>Mer information</summary>
+        <summary>{t('card.heading.moreInfo')}</summary>
         <BodyAnalysisOnboarding />
         {import.meta.env.DEV && (
           <BodyAnalysisPremiumPreview
@@ -896,14 +911,14 @@ function BodyAnalysisCard({
       />
       {import.meta.env.DEV && (
         <details className="body-analysis-more-info">
-          <summary>Dev-testverktyg</summary>
+          <summary>{t('card.heading.devTools')}</summary>
           <button
             className="secondary-button"
             type="button"
-            aria-label="Skapa demoanalys i utvecklarläge"
+            aria-label={t('card.heading.createDemoAria')}
             onClick={handleCreateDemoAnalysis}
           >
-            Skapa demoanalys
+            {t('card.heading.createDemo')}
           </button>
           <BodyAnalysisDevChecklist />
         </details>
@@ -917,38 +932,44 @@ function BodyAnalysisCard({
         <div className="progress-photo-ai-comparison">
           <div className="progress-photo-ai-heading">
             <div>
-              <p className="eyebrow">Resultat</p>
-              <h3>Analysen kunde inte slutföras</h3>
+              <p className="eyebrow">{t('card.heading.resultEyebrow')}</p>
+              <h3>{t('card.heading.resultFailedTitle')}</h3>
             </div>
-            <span>Fel</span>
+            <span>{t('card.heading.errorBadge')}</span>
           </div>
           <p>{analysisError}</p>
           <button type="button" onClick={handleAnalyzeBody}>
-            Försök igen
+            {t('card.heading.retry')}
           </button>
         </div>
       )}
       {!analysisError && savedAnalysis && (
         <BodyAnalysisResult
-          activeBodyMarker={activeBodyMarker}
+          activeBodyMarker={resolvedActiveBodyMarker}
           bodyOverviewMarkers={bodyOverviewMarkers}
           formatAnalysisDate={formatAnalysisDate}
-          getResultSections={getResultSections}
-          getResultSourceLabel={getResultSourceLabel}
+          getResultSections={(result) => getResultSections(result, t)}
+          getResultSourceLabel={(result) => getResultSourceLabel(result, t)}
           renderResultValue={renderResultValue}
           savedAnalysis={savedAnalysis}
           angleComparison={angleComparison}
-          onMarkerChange={setActiveBodyMarker}
+          onMarkerChange={(marker) =>
+            setActiveBodyMarkerId(marker?.id || bodyOverviewMarkerDefs[0].id)
+          }
         />
       )}
       {savedAnalysis && (
         <div className="progress-photo-ai-comparison">
           <div className="progress-photo-ai-heading">
             <div>
-              <p className="eyebrow">Jämförelse</p>
-              <h3>Förändring sedan senaste analys</h3>
+              <p className="eyebrow">{t('card.heading.compareEyebrow')}</p>
+              <h3>{t('card.heading.compareTitle')}</h3>
             </div>
-            <span>{analysisHistory.length > 1 ? 'Aktiv' : 'Första'}</span>
+            <span>
+              {analysisHistory.length > 1
+                ? t('card.heading.compareActive')
+                : t('card.heading.compareFirst')}
+            </span>
           </div>
           {analysisHistory.length > 1 ? (
             <ul>
@@ -957,7 +978,7 @@ function BodyAnalysisCard({
               <li>{selectedComparison.nextFocus}</li>
             </ul>
           ) : (
-            <p>Det här är din första analys.</p>
+            <p>{t('card.heading.firstAnalysis')}</p>
           )}
         </div>
       )}
@@ -966,7 +987,7 @@ function BodyAnalysisCard({
           aiStatus={latestAiStatus}
           analysisCount={analysisCount}
           latestAnalysisDate={latestAnalysisDate}
-          latestInsights={getLatestInsights(savedAnalysis)}
+          latestInsights={getLatestInsights(savedAnalysis, t)}
           nextAnalysisRecommendation={nextAnalysisRecommendation}
           nextRecommendedSteps={nextRecommendedSteps}
           progressGraphItems={progressGraphItems}
@@ -978,14 +999,14 @@ function BodyAnalysisCard({
         />
       )}
       <details className="body-analysis-more-info">
-        <summary>🕘 Tidigare scanningar</summary>
+        <summary>{t('card.heading.previousScans')}</summary>
         <BodyAnalysisTimeline
           analysisHistory={analysisHistory}
           expandedAnalysisIds={expandedAnalysisIds}
           formatAnalysisDate={formatAnalysisDate}
-          getResultSections={getResultSections}
-          getResultSourceLabel={getResultSourceLabel}
-          getTimelineSummary={getTimelineSummary}
+          getResultSections={(result) => getResultSections(result, t)}
+          getResultSourceLabel={(result) => getResultSourceLabel(result, t)}
+          getTimelineSummary={(result) => getTimelineSummary(result, t)}
           importSummary={importSummary}
           pendingDeleteAnalysisId={pendingDeleteAnalysisId}
           renderResultValue={renderResultValue}

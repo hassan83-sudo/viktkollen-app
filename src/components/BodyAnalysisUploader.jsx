@@ -1,5 +1,6 @@
 ﻿import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useCallback } from 'react'
 
 import {
   bodyAnalysisViews,
@@ -70,7 +71,7 @@ function BodyAnalysisUploader({
     video.play?.().catch(() => {})
   }, [activeViewKey, cameraActive])
 
-  function stopCamera(message = 'Kameran är stoppad.') {
+  function stopCamera(message = t('uploader.cameraStopped')) {
     window.clearTimeout(countdownTimerRef.current)
     countdownTimerRef.current = null
     setCountdown(null)
@@ -85,7 +86,7 @@ function BodyAnalysisUploader({
     window.clearTimeout(countdownTimerRef.current)
     countdownTimerRef.current = null
     setCountdown(null)
-    setCameraStatus('Nedräkningen avbröts.')
+    setCameraStatus(t('uploader.countdownCancelled'))
   }
 
   async function changeZoom(nextZoom) {
@@ -123,10 +124,10 @@ function BodyAnalysisUploader({
     })
   }
 
-  async function startCamera(viewKey = activeViewKey, nextFacingMode = facingMode) {
+  const startCamera = useCallback(async (viewKey = activeViewKey, nextFacingMode = facingMode) => {
     const view = getBodyAnalysisView(viewKey)
     if (!hasCameraApi) {
-      setCameraStatus('Livekamera stöds inte här. Använd Välj bild som backup.')
+      setCameraStatus(t('uploader.noLiveCamera'))
       return false
     }
 
@@ -162,21 +163,21 @@ function BodyAnalysisUploader({
         await videoRef.current.play?.()
       }
 
-      setCameraStatus(`Kameran är redo. Placera hela kroppen i ramen för ${view.label.toLowerCase()}.`)
+      setCameraStatus(t('uploader.cameraReady', { label: view.label.toLowerCase() }))
       return true
     } catch (error) {
       setCameraActive(false)
       setCameraStatus(getCameraPermissionMessage(error))
       return false
     }
-  }
+  }, [activeViewKey, facingMode, hasCameraApi, t, zoom])
 
   useEffect(() => {
     if (autoStartRef.current) return undefined
     autoStartRef.current = true
     startCamera()
     return undefined
-  }, [])
+  }, [startCamera])
 
   async function flipCamera() {
     const nextFacingMode = getNextBodyScanFacingMode(facingMode)
@@ -189,7 +190,11 @@ function BodyAnalysisUploader({
     if (retake) {
       onPhotoChange(null, viewKey)
     }
-    setCameraStatus(retake ? `Ta om ${view.label.toLowerCase()}.` : `Vald vinkel: ${view.label}.`)
+    setCameraStatus(
+      retake
+        ? t('uploader.retakeAngle', { label: view.label.toLowerCase() })
+        : t('uploader.selectedAngle', { label: view.label }),
+    )
     focusCaptureArea()
     startCamera(viewKey)
   }
@@ -211,7 +216,7 @@ function BodyAnalysisUploader({
       setLightQuality({
         level: 'unknown',
         status: 'neutral',
-        text: 'Ljuset mäts när kamerabilden är redo.',
+        text: t('uploader.lightPending'),
       })
       return
     }
@@ -233,7 +238,7 @@ function BodyAnalysisUploader({
     const capturedView = getBodyAnalysisView(capturedViewKey)
 
     if (!video || !canvas || !video.videoWidth || !video.videoHeight) {
-      setCameraStatus('Kamerabilden är inte redo ännu.')
+      setCameraStatus(t('uploader.frameNotReady'))
       return
     }
 
@@ -242,7 +247,7 @@ function BodyAnalysisUploader({
     canvas.getContext('2d').drawImage(video, 0, 0)
     canvas.toBlob((blob) => {
       if (!blob) {
-        setCameraStatus('Bilden kunde inte sparas. Försök igen.')
+        setCameraStatus(t('uploader.saveFailed'))
         return
       }
 
@@ -253,7 +258,7 @@ function BodyAnalysisUploader({
       onPhotoChange(file, capturedViewKey, canvas.toDataURL('image/jpeg', 0.88))
       moveToNextView({ ...photos, [capturedViewKey]: true })
       setCountdown(null)
-      setCameraStatus(`${capturedView.doneLabel}. Nästa steg är redo.`)
+      setCameraStatus(t('uploader.doneNextReady', { doneLabel: capturedView.doneLabel }))
     }, 'image/jpeg', 0.88)
   }
 
@@ -271,11 +276,11 @@ function BodyAnalysisUploader({
   function startCountdown() {
     if (isCountingDown) return
     if (!cameraActive) {
-      setCameraStatus('Starta kameran eller välj bild för den valda vinkeln.')
+      setCameraStatus(t('uploader.startOrChoose'))
       return
     }
     updateLightQuality()
-    setCameraStatus(`Ta plats för ${activeView.label.toLowerCase()}.`)
+    setCameraStatus(t('uploader.takePlace', { label: activeView.label.toLowerCase() }))
     tickCountdown(3)
   }
 
@@ -372,21 +377,21 @@ function BodyAnalysisUploader({
             return (
               <button
                 aria-current={view.key === activeViewKey ? 'step' : undefined}
-                aria-label={`Öppna scanning för ${view.label}`}
+                aria-label={t('uploader.openScanAria', { label: view.label })}
                 className={'body-scan-step is-' + stepState + (view.key === activeViewKey ? ' is-active' : '')}
                 data-state={stepState}
                 key={view.key}
                 type="button"
                 onClick={() => activateAngle(view.key)}
               >
-                <span>Steg {index + 1}</span>
+                <span>{t('uploader.step', { n: index + 1 })}</span>
                 <strong>{view.label}</strong>
                 <small>
                   {photos[view.key]
                     ? ('✓ ' + view.doneLabel)
                     : view.key === activeViewKey
-                      ? 'Aktiv'
-                      : 'Väntar'}
+                      ? t('uploader.active')
+                      : t('uploader.waiting')}
                 </small>
               </button>
             )
@@ -410,16 +415,19 @@ function BodyAnalysisUploader({
 
             return (
               <figure key={view.key}>
-                <img src={photo.preview} alt={'Vald bild ' + view.label.toLowerCase()} />
+                <img
+                  src={photo.preview}
+                  alt={t('uploader.selectedImageAlt', { label: view.label.toLowerCase() })}
+                />
                 <figcaption>
                   {view.doneLabel}: {photo.name}
                   <button
-                    aria-label={`Ta om ${view.label}`}
+                    aria-label={t('uploader.retakeAria', { label: view.label })}
                     className="secondary-button"
                     type="button"
                     onClick={() => activateAngle(view.key, { retake: true })}
                   >
-                    Ta om
+                    {t('uploader.retake')}
                   </button>
                 </figcaption>
               </figure>
@@ -431,11 +439,11 @@ function BodyAnalysisUploader({
       <button
         className="body-scan-analyze"
         type="button"
-        aria-label="Starta AI-kroppsanalys med tre valda vinklar"
+        aria-label={t('uploader.analyzeAria')}
         onClick={onAnalyze}
         disabled={!canAnalyze || !canFinishScan}
       >
-        Analysera kroppen
+        {t('uploader.analyze')}
       </button>
       <p className="analysis-status" aria-live="polite">{currentAnalysisStatus}</p>
       {disabledReason && (

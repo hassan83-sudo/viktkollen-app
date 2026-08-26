@@ -121,13 +121,14 @@ function MoreSection({
     const result = await requestAccountDeletion({ mode: 'dry-run' })
     setIsDeletingAccount(false)
     setDeleteStatus(result.ok
-      ? 'Serverkontraktet svarar. Molndata och kontoradering kräver fortsatt rätt serverkonfiguration.'
-      : result.error?.safeMessage || 'Kontoradering kunde inte kontrolleras.')
+      ? t('deletionDryRunOk')
+      : result.error?.safeMessage || t('deletionCheckFailed'))
   }
 
   async function handleDeleteAccount() {
-    if (deleteConfirmation.trim().toLocaleLowerCase('sv-SE') !== 'radera konto') {
-      setDeleteStatus('Skriv exakt: radera konto')
+    const confirmPhrase = t('deleteConfirmPhrase')
+    if (deleteConfirmation.trim().toLocaleLowerCase('sv-SE') !== confirmPhrase.toLocaleLowerCase('sv-SE')) {
+      setDeleteStatus(t('writeExactDeletePhrase', { phrase: confirmPhrase }))
       return
     }
 
@@ -137,14 +138,14 @@ function MoreSection({
     setIsDeletingAccount(false)
 
     if (!result.ok) {
-      setDeleteStatus(result.error?.safeMessage || 'Kontot kunde inte raderas säkert.')
+      setDeleteStatus(result.error?.safeMessage || t('deleteFailed'))
       return
     }
 
     const localResult = clearLocalViktkollenData()
     setDeleteStatus(localResult.ok
-      ? 'Kontodata raderades. Du loggas ut.'
-      : 'Servern raderade kontodata, men lokal rensning blev delvis ofullständig.')
+      ? t('deleteSuccess')
+      : t('deletePartialLocal'))
     await onSignOut?.()
   }
 

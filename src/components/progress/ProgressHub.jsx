@@ -1,32 +1,6 @@
 import { useTranslation } from 'react-i18next'
 
-export const progressHubFolders = [
-  {
-    id: 'weight',
-    title: 'Vikt',
-    description: 'Logga, statistik och trend',
-  },
-  {
-    id: 'body-scan',
-    title: 'Kroppsscanning',
-    description: 'Kamera, pose-guide och resultat',
-  },
-  {
-    id: 'photos',
-    title: 'Framstegsbilder',
-    description: 'Historik, filter och före/efter',
-  },
-  {
-    id: 'reports',
-    title: 'Rapporter & insikter',
-    description: 'Månadsrapport och AI-insikter',
-  },
-  {
-    id: 'tools',
-    title: 'Historik & verktyg',
-    description: 'Filter, export och övriga verktyg',
-  },
-]
+import { progressHubFolders } from './progressHubModel.js'
 
 const folderTranslationKeys = {
   weight: 'folders.weight',
@@ -34,16 +8,6 @@ const folderTranslationKeys = {
   photos: 'folders.photos',
   reports: 'folders.reports',
   tools: 'folders.tools',
-}
-
-export const progressHubTargetFolders = {
-  'body-analysis': 'body-scan',
-  framsteg: 'reports',
-  framstegsbilder: 'photos',
-  'progress-insights': 'reports',
-  'progress-tools': 'tools',
-  rapportcenter: 'reports',
-  vikt: 'weight',
 }
 
 function ProgressHub({ activeFolder, children, onBack, onOpen, summaries = {} }) {

@@ -26,9 +26,9 @@ describe('Release polish shell gating', () => {
 
   it('keeps profile, search and logout reachable from More', () => {
     expect(moreSectionSource).toContain('<GlobalSearch')
-    expect(moreSectionSource).toContain('Ändra profil')
-    expect(moreSectionSource).toContain('Logga ut')
-    expect(moreSectionSource).toContain('Radera konto och data')
+    expect(moreSectionSource).toContain("t('editProfile')")
+    expect(moreSectionSource).toContain("t('common:actions.signOut')")
+    expect(moreSectionSource).toContain("t('deleteAccountData')")
     expect(moreSectionSource).toContain("requestAccountDeletion({ mode: 'account' })")
   })
 
@@ -57,9 +57,10 @@ describe('Release polish user-facing headings', () => {
     expect(combined).toContain('Molnsynk')
     expect(combined).toContain('Export och dataportabilitet')
     expect(combined).toContain('Import och återställning')
-    expect(combined).toContain('Vikt, kroppsmått och framsteg')
-    expect(combined).toContain('Målcenter')
-    expect(combined).toContain('Viktgraf')
-    expect(combined).not.toMatch(/Cloud Sync V2\/V3|Export och dataportabilitet V2|Import och migration V2|Viktgraf V3|Målcenter V3|Vikt, kroppsmått och framsteg V3/)
+    expect(progressCenterSource).toContain("t('center.eyebrow')")
+    expect(progressCenterSource).toContain("t('center.goal.eyebrow')")
+    expect(progressCenterSource).toContain("t('center.chart.eyebrow')")
+    expect(progressCenterSource).not.toMatch(/Viktgraf V3|Målcenter V3|Vikt, kroppsmått och framsteg V3/)
+    expect(combined).not.toMatch(/Cloud Sync V2\/V3|Export och dataportabilitet V2|Import och migration V2/)
   })
 })

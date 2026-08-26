@@ -44,8 +44,8 @@ function AiCoachOverlay({
     <div className="ai-coach-overlay" role="dialog" aria-labelledby="ai-coach-overlay-title" aria-modal="true">
       <header className="ai-coach-overlay-header">
         <div>
-          <p className="eyebrow">{t('coach:overlay.title', 'AI Coach')}</p>
-          <h2 id="ai-coach-overlay-title">AI Coach</h2>
+          <p className="eyebrow">{t('coach:overlay.title')}</p>
+          <h2 id="ai-coach-overlay-title">{t('coach:overlay.title')}</h2>
           <p className="ai-coach-overlay-online">● {t('coach:overlay.online')}</p>
         </div>
         <button className="ai-coach-overlay-close" type="button" onClick={onClose} aria-label={t('coach:overlay.close')}>
@@ -54,7 +54,7 @@ function AiCoachOverlay({
       </header>
 
       <div className="ai-coach-overlay-hero">
-        <img alt="Viktkollens AI Coach" src="/viktkollen-ai-coach-robot.png" />
+        <img alt={t('coach:overlay.robotAlt')} src="/viktkollen-ai-coach-robot.png" />
       </div>
 
       <div className="ai-coach-overlay-voice">

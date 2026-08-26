@@ -2,7 +2,8 @@
 import { useTranslation } from 'react-i18next'
 import AppErrorBoundary from '../AppErrorBoundary.jsx'
 import AppSection from '../app/AppSection.jsx'
-import ProgressHub, { progressHubTargetFolders } from '../progress/ProgressHub.jsx'
+import ProgressHub from '../progress/ProgressHub.jsx'
+import { progressHubTargetFolders } from '../progress/progressHubModel.js'
 import { analyzeWeights, formatKg, formatSignedKg } from '../../services/progressService.js'
 import { getLatestAnalysis } from '../../services/bodyAnalysisHistory.js'
 

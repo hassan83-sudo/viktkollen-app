@@ -39,8 +39,18 @@ const allowExact = new Set([
   'Lunch',
   'Middag',
   'Mellanmål',
+  'Dryck',
+  'Annat',
+  'Kikärtor', // demo plate ingredient identifier
+  'Rödlök', // demo plate ingredient identifier
+  'Kroppsmått', // timeline type data id
+  'För lite data', // progressService trend/stability enum
+  'Normal variation',
+  'Stor variation',
   'sv-SE',
   'Återställ', // may still appear in services
+  'slå ihop', // meal import protocol token
+  'ersätt', // meal import protocol token
 ])
 
 const allowIncludes = [

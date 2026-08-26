@@ -9,9 +9,9 @@ describe('OverviewFoodScanStage', () => {
     const names = overviewFoodScanStageInternals.getPlateIngredients().map((food) => food.name)
 
     expect(dashboardSource).toContain("onOpenFoodScan={() => setFoodScanOpen(true)}")
-    expect(dashboardSource).toContain('Läs ingredienser')
-    expect(dashboardSource).toContain('Skanna kropp med kamera')
-    expect(dashboardSource).toContain('Skanna mat med kamera')
+    expect(dashboardSource).toContain("t('home:readIngredients')")
+    expect(dashboardSource).toContain("t('home:scanBodyWithCamera')")
+    expect(dashboardSource).toContain("t('home:scanFoodWithCamera')")
     expect(stageSource).toContain("t('foodScan.onPlate')")
     expect(stageSource).toContain('is-full-art')
     expect(stageSource).not.toContain('nutritionFoods')

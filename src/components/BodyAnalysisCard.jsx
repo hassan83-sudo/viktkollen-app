@@ -19,6 +19,7 @@ import {
 import { buildBodyAnalysisContext } from '../services/bodyAnalysisEstimates'
 import { analyzeBodyWithAI } from '../services/bodyAnalysisService'
 import { getBodyAnalysisProgressStats } from '../services/bodyAnalysisStats'
+import { safeLogger } from '../services/safeLogger'
 import {
   createDefaultEntitlementSnapshot,
   entitlementFeatures,
@@ -41,7 +42,6 @@ import BodyAnalysisStats from './BodyAnalysisStats'
 import BodyAnalysisTimeline from './BodyAnalysisTimeline'
 import BodyAnalysisUnlockCard from './BodyAnalysisUnlockCard'
 import BodyAnalysisUploader from './BodyAnalysisUploader'
-import BodyAnalysisVideoScanner from './BodyAnalysisVideoScanner'
 
 const timelineFilters = [
   { label: 'Alla', value: 'all' },
@@ -621,13 +621,23 @@ function BodyAnalysisCard({
       return
     }
 
-    if (!frontPhoto || !sidePhoto || !backPhoto || isAnalyzing) {
+    if (!frontPhoto || !sidePhoto || !backPhoto) {
+      setAnalysisError(
+        !frontPhoto
+          ? 'Framifrån-bilden saknas.'
+          : !sidePhoto
+            ? 'Sidan-bilden saknas.'
+            : 'Bakifrån-bilden saknas.',
+      )
+      return
+    }
+    if (isAnalyzing) {
       return
     }
 
     setIsAnalyzing(true)
     setAnalysisError('')
-    setAnalysisStatus('Bilder skickas säkert...')
+    setAnalysisStatus('Analyserar kroppen...')
 
     const statusTimers = [
       window.setTimeout(() => setAnalysisStatus('AI analyserar...'), 700),
@@ -666,10 +676,10 @@ function BodyAnalysisCard({
     } catch (error) {
       setAnalysisError(
         error instanceof Error
-          ? error.message
-          : 'Analysen kunde inte genomföras just nu. Försök igen om en stund.',
+          ? error.message || 'Analysen kunde inte slutföras.'
+          : 'Analysen kunde inte slutföras.',
       )
-      setAnalysisStatus('Analys misslyckades')
+      setAnalysisStatus('Analysen kunde inte slutföras.')
     } finally {
       statusTimers.forEach((timer) => window.clearTimeout(timer))
       setIsAnalyzing(false)
@@ -677,6 +687,9 @@ function BodyAnalysisCard({
   }
 
   function handleAnalyzeBody() {
+    setAnalysisStatus('Analyserar kroppen...')
+    setAnalysisError('')
+
     if (isFreeLimitReached) {
       setAnalysisError(
         'Gratisgränsen är nådd. Radera en analys eller invänta verifierad premiumåtkomst.',
@@ -684,15 +697,36 @@ function BodyAnalysisCard({
       return
     }
 
-    if (!frontPhoto || !sidePhoto || !backPhoto || isAnalyzing) {
+    if (!frontPhoto) {
+      setAnalysisError('Framifrån-bilden saknas.')
+      return
+    }
+    if (!sidePhoto) {
+      setAnalysisError('Sidan-bilden saknas.')
+      return
+    }
+    if (!backPhoto) {
+      setAnalysisError('Bakifrån-bilden saknas.')
+      return
+    }
+    if (isAnalyzing) {
+      setAnalysisStatus('Analyserar kroppen...')
+      return
+    }
+    if (!frontPhoto.file || !sidePhoto.file || !backPhoto.file) {
+      setAnalysisError('Analysen kunde inte startas.')
+      safeLogger.info('body-scan-analyze', { guard: 'missing-file' })
       return
     }
 
     if (!hasApprovedAnalysis) {
       setShowAnalysisConsent(true)
+      setAnalysisError('Godkänn AI-analysen först.')
+      safeLogger.info('body-scan-analyze', { guard: 'consent' })
       return
     }
 
+    safeLogger.info('body-scan-analyze', { guard: 'none' })
     runBodyAnalysis()
   }
 
@@ -821,29 +855,18 @@ function BodyAnalysisCard({
       </p>
       <div className="body-scan-hub">
         <h3 className="body-scan-hub-title">Kroppsscanning</h3>
-        <BodyAnalysisVideoScanner
+        <BodyAnalysisUploader
           canAnalyze={canAnalyze}
+          currentAnalysisStatus={currentAnalysisStatus}
           disabledReason={analyzeDisabledReason}
           photos={scanPhotos}
           onAnalyze={handleAnalyzeBody}
           onPhotoChange={handlePhotoChange}
         />
-        <details className="body-scan-section" open={false}>
-          <summary>📷 Foto & kamera</summary>
-          <BodyAnalysisUploader
-            canAnalyze={canAnalyze}
-            currentAnalysisStatus={currentAnalysisStatus}
-            disabledReason={analyzeDisabledReason}
-            photos={scanPhotos}
-            onAnalyze={handleAnalyzeBody}
-            onPhotoChange={handlePhotoChange}
-          />
-        </details>
         <details className="body-scan-section">
           <summary>🔒 Integritet & lagring</summary>
           <ul className="body-scan-privacy-list">
-            <li>Kameran körs lokalt i webbläsaren tills du analyserar.</li>
-            <li>Videoscanning sparar inte originalvideo. Den extraherar tre stillbilder.</li>
+            <li>Livekameran körs lokalt. Appen sparar inte originalvideo; den tar tre stillbilder.</li>
             <li>När du trycker Analysera kroppen skickas tre bildfiler till Viktkollens `/api/body-analysis` via HTTPS med inloggning.</li>
             <li>Servern skickar bilderna till OpenAI Vision för analys. API-nyckeln ligger inte i frontend.</li>
             <li>Analysresultat och bildförhandsvisningar kan sparas i lokal historik på enheten. Molnlagring för kroppsbilder är inte implementerad.</li>
@@ -895,11 +918,14 @@ function BodyAnalysisCard({
           <div className="progress-photo-ai-heading">
             <div>
               <p className="eyebrow">Resultat</p>
-              <h3>Analysen kunde inte genomföras</h3>
+              <h3>Analysen kunde inte slutföras</h3>
             </div>
             <span>Fel</span>
           </div>
           <p>{analysisError}</p>
+          <button type="button" onClick={handleAnalyzeBody}>
+            Försök igen
+          </button>
         </div>
       )}
       {!analysisError && savedAnalysis && (

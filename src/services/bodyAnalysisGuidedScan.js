@@ -5,7 +5,7 @@ export const bodyAnalysisViews = [
     label: 'Framifrån',
     shortLabel: 'Fram',
     poseTips: [
-      'Stå rakt mot kameran.',
+      'Stå rakt fram mot kameran.',
       'Håll armarna lätt från kroppen.',
       'Se till att hela kroppen syns från huvud till fötter.',
     ],
@@ -16,7 +16,7 @@ export const bodyAnalysisViews = [
     label: 'Från sidan',
     shortLabel: 'Sida',
     poseTips: [
-      'Vrid kroppen cirka 90° mot kameran.',
+      'Vänd höger sida mot kameran.',
       'Stå naturligt med rak hållning.',
       'Se till att hela kroppen syns från huvud till fötter.',
     ],
@@ -147,13 +147,19 @@ export function stopMediaStream(stream) {
   })
 }
 
-export function getCameraPermissionMessage(error) {
+export function getCameraPermissionMessage(error, globalObject = globalThis) {
   const name = error?.name || ''
   if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
     return 'Kamerabehörighet nekades. Tillåt kamera eller välj bild från mobilen.'
   }
   if (name === 'NotFoundError' || name === 'OverconstrainedError') {
     return 'Ingen bakre kamera hittades. Välj bild från mobilen i stället.'
+  }
+  const win = globalObject.window || globalObject
+  const host = String(win.location?.hostname || '')
+  const insecureLan = win.isSecureContext === false && host && host !== 'localhost' && host !== '127.0.0.1'
+  if (insecureLan || name === 'SecurityError' || name === 'NotSupportedError') {
+    return `Livekamera på iPhone kräver HTTPS. Öppna https://${host || 'din-adress'} och tillåt certifikatet första gången. Välj bild är bara backup.`
   }
   return 'Kameran kunde inte starta. Kontrollera behörighet eller välj bild från mobilen.'
 }

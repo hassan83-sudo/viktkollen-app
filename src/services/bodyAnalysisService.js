@@ -125,9 +125,9 @@ async function callBodyAnalysisApi(payload) {
 
     const formData = new FormData()
 
-    formData.append('frontImage', payload.frontImage)
-    formData.append('sideImage', payload.sideImage)
-    formData.append('backImage', payload.backImage)
+    formData.append('frontImage', payload.frontImage, payload.frontImage.name || 'front.jpg')
+    formData.append('sideImage', payload.sideImage, payload.sideImage.name || 'side.jpg')
+    formData.append('backImage', payload.backImage, payload.backImage.name || 'back.jpg')
 
     if (payload.previousAnalysis) {
       formData.append('previousAnalysis', JSON.stringify(payload.previousAnalysis))

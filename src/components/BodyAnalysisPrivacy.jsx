@@ -11,7 +11,7 @@ function BodyAnalysisPrivacy({ showConsent, onApprove, onCancel }) {
         Molnlagring för kroppsbilder är inte implementerad.
       </p>
       {showConsent && (
-        <div className="progress-photo-ai-comparison">
+        <div className="progress-photo-ai-comparison body-scan-consent-overlay">
           <div className="progress-photo-ai-heading">
             <div>
               <p className="eyebrow">Bekräfta analys</p>

@@ -112,7 +112,9 @@ describe('BodyAnalysisUploader', () => {
     expect(container.textContent).toContain('Vänd kamera')
     expect(container.textContent).toContain('Bakre kamera')
     expect(container.textContent).toContain('Starta kamera')
-    expect(container.textContent).toContain('Ta bild')
+    expect(container.textContent).toContain('Jag står rätt i ramen')
+    expect(container.querySelector('.body-scan-silhouette')).toBeTruthy()
+    expect(container.querySelector('video')).toBeTruthy()
     expect(container.textContent).toContain('Välj bild')
     unmount()
   })
@@ -125,16 +127,17 @@ describe('BodyAnalysisUploader', () => {
     const { container, unmount } = renderUploader()
     const html = container.innerHTML
 
-    expect(html).toContain('Steg 1 av 3')
+    expect(html).toContain('1/3')
     expect(html).toContain('class="secondary-button body-scan-file-picker"')
     expect(html).toContain('for="body-scan-file-front"')
     expect(html).toContain('id="body-scan-file-front"')
     expect(html).toContain('type="file"')
     expect(html).toContain('accept="image/*"')
     expect(html).toContain('capture="environment"')
-    expect(html).toContain('iPhone kan fortfarande ta eller välja bild')
+    expect(html).toContain('Starta kamera')
     expect(html).toContain('disabled=""')
     expect(html).not.toContain('display: none')
+    expect(html).not.toContain('Livekamera är inte tillgänglig i den här kontexten')
     unmount()
   })
 
@@ -204,22 +207,25 @@ describe('BodyAnalysisUploader', () => {
       onPhotoChange,
     })
 
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
     await clickAngle(container, 'Från sidan')
     expect(getUserMedia).toHaveBeenCalledWith({
       audio: false,
       video: { facingMode: { ideal: 'environment' } },
     })
     expect(container.querySelector('#body-scan-step-title').textContent).toBe('Från sidan')
-    expect(container.textContent).toContain('Bakre kamera')
     expect(container.textContent).toContain('front.jpg')
 
     const flip = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Vänd kamera')
     await act(async () => {
       flip.click()
       await Promise.resolve()
+      await Promise.resolve()
     })
 
-    expect(firstStream.getTracks()[0].stop).toHaveBeenCalled()
     expect(getUserMedia).toHaveBeenLastCalledWith({
       audio: false,
       video: { facingMode: { ideal: 'user' } },
@@ -228,29 +234,34 @@ describe('BodyAnalysisUploader', () => {
     expect(container.textContent).toContain('Främre kamera')
     expect(container.textContent).toContain('front.jpg')
     expect(onPhotoChange).not.toHaveBeenCalled()
+    expect(getUserMedia.mock.results.some((result) => result.value)).toBe(true)
 
     await act(async () => {
       flip.click()
       await Promise.resolve()
+      await Promise.resolve()
     })
 
-    expect(secondStream.getTracks()[0].stop).toHaveBeenCalled()
     expect(getUserMedia).toHaveBeenLastCalledWith({
       audio: false,
       video: { facingMode: { ideal: 'environment' } },
     })
     expect(container.textContent).toContain('Bakre kamera')
-    expect(container.querySelector('.body-scan-capture-button').textContent).toBe('Ta bild')
+    expect(container.querySelector('.body-scan-capture-button').textContent).toBe('Jag står rätt i ramen')
     expect(container.querySelector('.body-scan-capture-button').disabled).toBe(false)
     unmount()
   })
 
   it('stops the camera stream on unmount', async () => {
     const { container, unmount } = renderUploader()
-    await clickAngle(container, 'Framifrån')
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
     expect(getUserMedia).toHaveBeenCalled()
+    const activeStream = await getUserMedia.mock.results.at(-1).value
     unmount()
-    expect(firstStream.getTracks()[0].stop).toHaveBeenCalled()
+    expect(activeStream.getTracks()[0].stop).toHaveBeenCalled()
   })
 
   it('keeps high-contrast step colors and camera scroll margins in CSS', () => {
@@ -263,5 +274,81 @@ describe('BodyAnalysisUploader', () => {
     expect(css).toContain('.body-scan-capture {')
     expect(source).toContain('scrollBodyScanCameraIntoView')
     expect(css).toContain('scroll-margin-bottom: calc(var(--vk-nav-height) + 26px + env(safe-area-inset-bottom, 0px))')
+  })
+
+  it('starts the camera stream, confirms the frame, counts down and captures the front pose', async () => {
+    const onPhotoChange = vi.fn()
+    const { container, unmount } = renderUploader({ onPhotoChange })
+    await clickAngle(container, 'Framifrån')
+    const video = container.querySelector('video')
+    expect(video.srcObject).toBeTruthy()
+
+    Object.defineProperty(video, 'videoWidth', { configurable: true, value: 120 })
+    Object.defineProperty(video, 'videoHeight', { configurable: true, value: 160 })
+    const canvas = container.querySelector('canvas')
+    canvas.getContext = () => ({
+      drawImage: vi.fn(),
+      getImageData: () => ({ data: new Uint8ClampedArray(48 * 64 * 4) }),
+    })
+    canvas.toBlob = (callback) => callback(new Blob(['img'], { type: 'image/jpeg' }))
+    canvas.toDataURL = () => 'data:image/jpeg;base64,xx'
+
+    vi.useFakeTimers()
+    await act(async () => {
+      container.querySelector('.body-scan-capture-button').click()
+    })
+    expect(container.querySelector('.body-scan-countdown').textContent).toContain('3')
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000)
+    })
+    expect(container.querySelector('.body-scan-countdown').textContent).toContain('2')
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+    expect(onPhotoChange).toHaveBeenCalled()
+    expect(onPhotoChange.mock.calls[0][1]).toBe('front')
+    vi.useRealTimers()
+    unmount()
+  })
+
+  it('can cancel countdown and start the camera again without Auto detection', async () => {
+    const { container, unmount } = renderUploader()
+    await clickAngle(container, 'Framifrån')
+    vi.useFakeTimers()
+    await act(async () => {
+      container.querySelector('.body-scan-capture-button').click()
+    })
+    expect(container.textContent).toContain('Avbryt nedräkning')
+    await act(async () => {
+      [...container.querySelectorAll('button')].find((button) => button.textContent === 'Avbryt nedräkning').click()
+    })
+    expect(container.querySelector('.body-scan-countdown')).toBeNull()
+    vi.useRealTimers()
+
+    await act(async () => {
+      [...container.querySelectorAll('button')].find((button) => button.textContent === 'Stoppa kamera').click()
+    })
+    await act(async () => {
+      [...container.querySelectorAll('button')].find((button) => button.textContent === 'Starta kamera').click()
+      await Promise.resolve()
+    })
+    expect(container.querySelector('video').srcObject).toBe(secondStream)
+    unmount()
+  })
+
+  it('starts analysis from the stable three-angle capture flow', () => {
+    const onAnalyze = vi.fn()
+    const { container, unmount } = renderUploader({
+      canAnalyze: true,
+      photos: completePhotos,
+      onAnalyze,
+    })
+    act(() => {
+      [...container.querySelectorAll('button')].find((button) => button.textContent.includes('Analysera kroppen')).click()
+    })
+    expect(onAnalyze).toHaveBeenCalledTimes(1)
+    unmount()
   })
 })

@@ -2,6 +2,7 @@ import process from 'node:process'
 import { Buffer } from 'node:buffer'
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 
 function manualChunks(id) {
   const normalized = id.replace(/\\/g, '/')
@@ -185,9 +186,10 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
-    plugins: [react(), legacyAiApiDevMiddleware(), nutritionPhotoApiDevMiddleware()],
+    plugins: [react(), basicSsl(), legacyAiApiDevMiddleware(), nutritionPhotoApiDevMiddleware()],
     server: {
-      allowedHosts: ['.trycloudflare.com'],
+      allowedHosts: true,
+      host: true,
     },
     test: {
       exclude: ['dist/**', 'node_modules/**', 'tests/e2e/**'],

@@ -2975,6 +2975,13 @@ button {
   gap: 10px;
 }
 
+.body-scan-live-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .body-scan-step-heading {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -2994,7 +3001,8 @@ button {
 }
 
 .body-scan-steps {
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .body-scan-steps button.body-scan-step,
@@ -3008,10 +3016,10 @@ button {
   display: grid;
   gap: 2px;
   width: 100%;
-  min-height: 64px;
-  padding: 12px 16px;
-  border-radius: 999px;
-  text-align: left;
+  min-height: 44px;
+  padding: 8px 6px;
+  border-radius: 14px;
+  text-align: center;
   cursor: pointer;
   box-shadow: none;
   filter: none;
@@ -3146,10 +3154,123 @@ button {
   padding-bottom: calc(var(--vk-nav-height) + 20px + env(safe-area-inset-bottom, 0px));
 }
 
+html.vk-body-scan-session .bottom-nav,
+body.vk-body-scan-session .bottom-nav {
+  display: none !important;
+}
+
+#vk-body-scan-portal {
+  position: static;
+}
+
+.body-scan-idle {
+  display: grid;
+  gap: 10px;
+}
+
+.body-scan-idle-controls,
+.body-scan-mode-switch,
+.body-scan-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.body-scan-active-overlay {
+  position: fixed;
+  inset: 0;
+  width: auto;
+  height: auto;
+  z-index: 100;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  gap: 4px;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  padding:
+    calc(env(safe-area-inset-top, 0px) + 8px)
+    12px
+    calc(env(safe-area-inset-bottom, 0px) + 10px);
+  background: #050814;
+  color: #f7fbff;
+}
+
+.body-scan-active-overlay.is-review {
+  grid-template-rows: auto auto auto auto auto;
+  overflow: auto;
+  z-index: 101;
+}
+
+.body-scan-active-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.body-scan-active-top strong {
+  text-align: center;
+}
+
+.body-scan-active-top button {
+  justify-self: start;
+}
+
+.body-scan-voice-toggle {
+  justify-self: end;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.body-scan-position-status {
+  margin: 0;
+  min-height: 1.2em;
+  max-height: 2.4em;
+  overflow: hidden;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.body-scan-consent-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  margin: 0;
+  padding:
+    calc(env(safe-area-inset-top, 0px) + 24px)
+    16px
+    calc(env(safe-area-inset-bottom, 0px) + 24px);
+  background: color-mix(in srgb, var(--surface) 94%, #050814);
+  overflow: auto;
+}
+
+.body-scan-manual-mask {
+  position: absolute;
+  border: 2px solid rgba(255, 214, 102, 0.9);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 999px rgba(8, 12, 22, 0.18);
+  touch-action: none;
+}
+
+.body-scan-manual-mask-resize {
+  position: absolute;
+  right: -8px;
+  bottom: -8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffd666;
+}
+
 .body-scan-video-frame {
   position: relative;
   overflow: hidden;
-  min-height: 280px;
+  min-height: 0;
+  height: 100%;
+  touch-action: manipulation;
   border: 1px dashed var(--border);
   border-radius: 16px;
   background: #050814;
@@ -3158,9 +3279,33 @@ button {
 .body-scan-video-frame video {
   display: block;
   width: 100%;
-  max-height: 62vh;
+  height: 100%;
+  max-height: none;
   object-fit: contain;
   background: #050814;
+  pointer-events: none;
+  transform: translateZ(0);
+}
+
+.body-scan-video-frame video::-webkit-media-controls {
+  display: none !important;
+}
+
+.body-scan-video-zoom {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-origin: center center;
+}
+
+.body-scan-video-fit {
+  position: absolute;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.body-scan-video-fit .body-scan-manual-mask {
+  pointer-events: auto;
 }
 
 .body-scan-video-frame canvas {
@@ -3170,9 +3315,56 @@ button {
 .body-scan-silhouette {
   pointer-events: none;
   position: absolute;
-  inset: 8% 28%;
+  inset: 6% 22% 4%;
+}
+
+.body-scan-silhouette-head,
+.body-scan-silhouette-shoulders,
+.body-scan-silhouette-body,
+.body-scan-silhouette-feet,
+.body-scan-silhouette-center {
+  position: absolute;
   border: 2px dashed rgba(122, 247, 255, 0.45);
-  border-radius: 48% 48% 38% 38%;
+}
+
+.body-scan-silhouette-head {
+  top: 0;
+  left: 32%;
+  width: 36%;
+  height: 16%;
+  border-radius: 50%;
+}
+
+.body-scan-silhouette-shoulders {
+  top: 14%;
+  left: 12%;
+  width: 76%;
+  height: 10%;
+  border-radius: 18px;
+}
+
+.body-scan-silhouette-body {
+  top: 22%;
+  left: 22%;
+  width: 56%;
+  height: 52%;
+  border-radius: 40% 40% 28% 28%;
+}
+
+.body-scan-silhouette-feet {
+  bottom: 0;
+  left: 24%;
+  width: 52%;
+  height: 10%;
+  border-radius: 12px;
+}
+
+.body-scan-silhouette-center {
+  top: 4%;
+  left: 50%;
+  width: 0;
+  height: 92%;
+  border-left: 2px dashed rgba(122, 247, 255, 0.35);
 }
 
 .body-scan-countdown-overlay {
@@ -3184,6 +3376,35 @@ button {
   color: #f7fbff;
   font-size: 72px;
   font-weight: 950;
+}
+
+.body-scan-preview-error {
+  position: absolute;
+  inset: auto 10px 10px;
+  z-index: 3;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(255, 214, 102, 0.55);
+  border-radius: 8px;
+  background: rgba(5, 8, 20, 0.86);
+  color: #f7fbff;
+}
+
+.body-scan-preview-error p {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.body-scan-preview-error div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.body-scan-preview-error button {
+  min-height: 36px;
 }
 
 .body-scan-camera-indicator {
@@ -3215,6 +3436,25 @@ button {
   align-items: center;
 }
 
+.body-scan-video-toolbar {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
+}
+
+.body-scan-active-overlay button {
+  min-height: 40px;
+}
+
+.body-scan-active-overlay > header,
+.body-scan-active-overlay > button {
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
+}
+
 .body-scan-face-protection {
   display: grid;
   margin: 0;
@@ -3240,23 +3480,29 @@ button {
 .body-scan-camera {
   position: relative;
   overflow: hidden;
-  min-height: 180px;
+  min-height: 42vh;
   scroll-margin-top: 10px;
   scroll-margin-bottom: calc(var(--vk-nav-height) + 26px + env(safe-area-inset-bottom, 0px));
   border: 1px dashed var(--border);
   border-radius: 14px;
-  background: var(--soft-bg);
+  background: #050814;
 }
 
 .body-scan-camera video {
   display: block;
   width: 100%;
-  max-height: 360px;
-  object-fit: cover;
+  height: 42vh;
+  max-height: none;
+  object-fit: contain;
+  background: #050814;
 }
 
-.body-scan-camera canvas {
-  display: none;
+.body-scan-camera .body-scan-silhouette {
+  z-index: 1;
+}
+
+.body-scan-camera .body-scan-countdown {
+  z-index: 2;
 }
 
 .body-scan-countdown {
@@ -7173,7 +7419,6 @@ button {
   .body-analysis-angle-row,
   .body-scan-guide,
   .body-scan-step-heading,
-  .body-scan-steps,
   .progress-photo-ai-images,
   .progress-photo-upload-grid {
     grid-template-columns: 1fr;

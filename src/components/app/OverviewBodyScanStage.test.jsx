@@ -5,8 +5,9 @@ import { resolve } from 'node:path'
 import process from 'node:process'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { changeAppLanguage } from '../../i18n/index.js'
 
 vi.mock('react-dom', async () => {
   const actual = await vi.importActual('react-dom')
@@ -21,6 +22,10 @@ import OverviewBodyScanStage from './OverviewBodyScanStage.jsx'
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
 describe('OverviewBodyScanStage', () => {
+  beforeEach(async () => {
+    await changeAppLanguage('sv')
+  })
+
   it('opens from Home as a full-screen kroppsscanning summary with scan rings', () => {
     const dashboardSource = readFileSync(resolve(process.cwd(), 'src/components/app/OverviewDashboard.jsx'), 'utf8')
     const stageSource = readFileSync(resolve(process.cwd(), 'src/components/app/OverviewBodyScanStage.jsx'), 'utf8')
@@ -34,20 +39,20 @@ describe('OverviewBodyScanStage', () => {
     expect(dashboardSource).toContain('currentWeight={currentWeight}')
     expect(dashboardSource).toContain('weather={weather}')
     expect(stageSource).toContain('createPortal')
-    expect(stageSource).toContain('Din kropp idag')
+    expect(stageSource).toContain("t('yourBodyToday')")
     expect(stageSource).toContain('BodyAvatarViewer')
-    expect(stageSource).toContain('Starta scanning')
-    expect(stageSource).toContain('Ny scanning')
-    expect(stageSource).toContain('Kroppssammansättning')
-    expect(stageSource).toContain('Hållning')
+    expect(stageSource).toContain("t('startScan')")
+    expect(stageSource).toContain("t('newScan')")
+    expect(stageSource).toContain("t('bodyComposition')")
+    expect(stageSource).toContain("t('posture')")
     expect(talkSource).toContain('🎙 Prata')
     expect(stageSource).toContain('BodyAvatarTalkBar')
     expect(stageSource).toContain('onStartVoiceInput')
     expect(talkSource).toContain("showText ? 'Dölj text' : 'Text'")
     expect(stageSource).toContain('createDefaultBodySimulationState')
-    expect(stageSource).toContain('VISUELL SIMULERING')
-    expect(stageSource).toContain('Ändra kropp')
-    expect(stageSource).toContain('Smart kamera')
+    expect(stageSource).toContain("t('visualSimulation')")
+    expect(stageSource).toContain("t('changeBody')")
+    expect(stageSource).toContain("t('smartCamera')")
     expect(dashboardSource).toContain('onStartVoiceInput={onStartVoiceInput}')
     expect(dashboardSource).toContain('onVoiceCleanup={onVoiceCleanup}')
     expect(cssSource).toContain('.overview-body-scan-rings')

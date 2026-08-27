@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   addDays,
   favoriteToMeal,
@@ -142,6 +143,7 @@ function MealLogger({
   weights,
   weekSummary,
 }) {
+  const { t } = useTranslation(['nutrition', 'common'])
   const fileInputRef = useRef(null)
   const [draft, setDraft] = useState(() => getEmptyMeal(selectedMealDate))
   const [editingFavoriteId, setEditingFavoriteId] = useState('')
@@ -392,34 +394,34 @@ function MealLogger({
     const result = createMealTemplateFromMeal(meal, { isFavorite: true })
 
     if (!result.template) {
-      setMealTemplateStatus('Måltiden kunde inte sparas som mall.')
+      setMealTemplateStatus(t('logger.templateSaveFailed'))
       return
     }
 
     changeMealTemplates([result.template, ...mealTemplates])
-    setMealTemplateStatus(`${result.template.name} sparades som mall.`)
+    setMealTemplateStatus(t('logger.templateSaved', { name: result.template.name }))
   }
 
   function createTemplateFromRecipe(templateDraft) {
     const result = createMealTemplate(templateDraft)
 
     if (!result.template) {
-      setMealTemplateStatus('Receptet kunde inte sparas som mall.')
+      setMealTemplateStatus(t('logger.recipeTemplateSaveFailed'))
       return
     }
 
     changeMealTemplates([result.template, ...mealTemplates])
-    setMealTemplateStatus(`${result.template.name} sparades som mall.`)
+    setMealTemplateStatus(t('logger.templateSaved', { name: result.template.name }))
   }
 
   function copyMeal(meal) {
-    const date = window.prompt('Vilket datum ska kopian få? (ÅÅÅÅ-MM-DD)', selectedMealDate)
+    const date = window.prompt(t('logger.prompts.copyDate'), selectedMealDate)
 
     if (!date) {
       return
     }
 
-    const time = window.prompt('Vilken tid ska kopian få? (TT:MM)', getCurrentTimeString()) || getCurrentTimeString()
+    const time = window.prompt(t('logger.prompts.copyTime'), getCurrentTimeString()) || getCurrentTimeString()
     const copiedMeal = {
       ...meal,
       createdAt: new Date().toISOString(),
@@ -434,7 +436,7 @@ function MealLogger({
   }
 
   function deleteMeal(mealId) {
-    const shouldDelete = window.confirm('Vill du ta bort den här måltiden?')
+    const shouldDelete = window.confirm(t('logger.confirms.deleteMeal'))
 
     if (shouldDelete) {
       onMealsChange(normalizedMeals.filter((meal) => meal.id !== mealId))
@@ -455,13 +457,13 @@ function MealLogger({
   }
 
   function addFavoriteAsMeal(favorite) {
-    const date = window.prompt('Vilket datum ska favoriten läggas till?', selectedMealDate)
+    const date = window.prompt(t('logger.prompts.favoriteDate'), selectedMealDate)
 
     if (!date) {
       return
     }
 
-    const time = window.prompt('Vilken tid?', getCurrentTimeString()) || getCurrentTimeString()
+    const time = window.prompt(t('logger.prompts.favoriteTime'), getCurrentTimeString()) || getCurrentTimeString()
 
     onMealsChange([favoriteToMeal(favorite, date, time), ...normalizedMeals])
   }
@@ -489,7 +491,7 @@ function MealLogger({
   }
 
   function deleteFavorite(favoriteId) {
-    const shouldDelete = window.confirm('Vill du ta bort den här favoriten?')
+    const shouldDelete = window.confirm(t('logger.confirms.deleteFavorite'))
 
     if (shouldDelete) {
       onFavoriteMealsChange(favoriteMeals.filter((favorite) => favorite.id !== favoriteId))
@@ -525,7 +527,7 @@ function MealLogger({
   }
 
   function clearGoals() {
-    const shouldClear = window.confirm('Vill du rensa alla kostmål?')
+    const shouldClear = window.confirm(t('logger.confirms.clearGoals'))
 
     if (shouldClear) {
       setGoalDraft({})
@@ -559,7 +561,7 @@ function MealLogger({
     const file = event.target.files?.[0]
 
     if (!file) {
-      setImportStatus('Ingen fil valdes.')
+      setImportStatus(t('logger.importStatus.noFile'))
       return
     }
 
@@ -575,20 +577,28 @@ function MealLogger({
         }
 
         const mode = window.prompt(
-          `Importen innehåller ${parsed.summary.mealCount} måltider, ${parsed.summary.favoriteCount} favoriter, ${parsed.summary.mealTemplateCount} mallar, ${parsed.summary.recipeCount} recept och ${parsed.summary.hasGoals ? 'kostmål' : 'inga kostmål'}.\nSkriv "slå ihop" eller "ersätt".`,
-          'slå ihop',
+          t('logger.prompts.importMode', {
+            mealCount: parsed.summary.mealCount,
+            favoriteCount: parsed.summary.favoriteCount,
+            mealTemplateCount: parsed.summary.mealTemplateCount,
+            recipeCount: parsed.summary.recipeCount,
+            goalsLabel: parsed.summary.hasGoals
+              ? t('logger.prompts.hasGoals')
+              : t('logger.prompts.noGoals'),
+          }),
+          t('logger.prompts.importModeDefault'),
         )
 
         if (!mode) {
-          setImportStatus('Import avbröts.')
+          setImportStatus(t('logger.importStatus.cancelled'))
           return
         }
 
         if (mode.toLocaleLowerCase('sv-SE').includes('ers')) {
-          const shouldReplace = window.confirm('Detta ersätter endast kostdata lokalt. Vill du fortsätta?')
+          const shouldReplace = window.confirm(t('logger.confirms.replaceImport'))
 
           if (!shouldReplace) {
-            setImportStatus('Import avbröts.')
+            setImportStatus(t('logger.importStatus.cancelled'))
             return
           }
 
@@ -620,9 +630,9 @@ function MealLogger({
           onNutritionGoalsChange(parsed.goals)
         }
 
-        setImportStatus('Kostdata importerad.')
+        setImportStatus(t('logger.importStatus.success'))
       } catch {
-        setImportStatus('Importen misslyckades. Kontrollera JSON-filen.')
+        setImportStatus(t('logger.importStatus.failed'))
       } finally {
         event.target.value = ''
       }
@@ -634,50 +644,50 @@ function MealLogger({
     <article className={`panel meals-panel nutrition-panel is-panel-${initialPanel}`} id="maltider">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Kost, måltider och näring</p>
-          <h2>Måltidscenter</h2>
+          <p className="eyebrow">{t('logger.eyebrow')}</p>
+          <h2>{t('logger.title')}</h2>
         </div>
       </div>
 
-      <nav className="nutrition-date-nav" aria-label="Datum för kostöversikt">
+      <nav className="nutrition-date-nav" aria-label={t('logger.dateNavAria')}>
         <button className="secondary-button" type="button" onClick={() => changeSelectedDate(addDays(selectedMealDate, -1))}>
-          Föregående dag
+          {t('logger.previousDay')}
         </button>
         <button className="secondary-button" type="button" onClick={() => changeSelectedDate(getTodayDateString())}>
-          Idag
+          {t('today')}
         </button>
         <button className="secondary-button" type="button" onClick={() => changeSelectedDate(addDays(selectedMealDate, 1))}>
-          Nästa dag
+          {t('logger.nextDay')}
         </button>
         <label className="field">
-          <span>Valt datum</span>
+          <span>{t('logger.selectedDate')}</span>
           <input type="date" value={selectedMealDate} onChange={(event) => changeSelectedDate(event.target.value)} />
         </label>
       </nav>
 
-      <div className="segmented-control nutrition-view-toggle" aria-label="Välj kostvy">
+      <div className="segmented-control nutrition-view-toggle" aria-label={t('logger.viewToggleAria')}>
         <button aria-controls="nutrition-view-panel" aria-pressed={nutritionViewMode === 'day'} className={nutritionViewMode === 'day' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('day')}>
-          Dag
+          {t('logger.views.day')}
         </button>
         <button aria-controls="nutrition-view-panel" aria-pressed={nutritionViewMode === 'week'} className={nutritionViewMode === 'week' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('week')}>
-          Vecka
+          {t('logger.views.week')}
         </button>
         <button aria-controls="nutrition-view-panel" aria-pressed={nutritionViewMode === 'month'} className={nutritionViewMode === 'month' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('month')}>
-          Månad
+          {t('logger.views.month')}
         </button>
         <button aria-controls="nutrition-view-panel" aria-pressed={nutritionViewMode === 'planner'} className={nutritionViewMode === 'planner' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('planner')}>
-          Planera
+          {t('logger.views.planner')}
         </button>
         <button aria-controls="nutrition-view-panel" aria-pressed={nutritionViewMode === 'generator'} className={nutritionViewMode === 'generator' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('generator')}>
-          AI-plan
+          {t('logger.views.generator')}
         </button>
         <button aria-controls="nutrition-view-panel" aria-pressed={nutritionViewMode === 'recipes'} className={nutritionViewMode === 'recipes' ? 'active' : ''} type="button" onClick={() => setNutritionViewMode('recipes')}>
-          Recept
+          {t('recipes')}
         </button>
       </div>
 
-      <section id="nutrition-view-panel" aria-label="Aktiv kostvy">
-        <Suspense fallback={<div className="lazy-section-fallback" role="status">Laddar kostvy...</div>}>
+      <section id="nutrition-view-panel" aria-label={t('logger.activeViewAria')}>
+        <Suspense fallback={<div className="lazy-section-fallback" role="status">{t('logger.loadingView')}</div>}>
           {nutritionViewMode === 'day' ? (
             <NutritionDashboard
               date={selectedMealDate}
@@ -764,9 +774,9 @@ function MealLogger({
 
       {lastMealEdit && (
         <div className="nutrition-edit-status" role="status" aria-live="polite">
-          <span>Måltiden har uppdaterats.</span>
+          <span>{t('logger.mealUpdated')}</span>
           <button className="secondary-button" type="button" onClick={undoLastMealEdit}>
-            Ångra
+            {t('logger.undo')}
           </button>
         </div>
       )}
@@ -858,7 +868,7 @@ function MealLogger({
       </div>
 
       <div id="nutrition-scanner-v2" className="scanner-tool">
-        <Suspense fallback={<div className="photo-meal-tool" role="status">Laddar skannern...</div>}>
+        <Suspense fallback={<div className="photo-meal-tool" role="status">{t('logger.loadingScanner')}</div>}>
           <NutritionScannerV2
             analysisDate={selectedMealDate}
             meals={normalizedMeals}
@@ -872,7 +882,7 @@ function MealLogger({
 
       {import.meta.env.DEV && (
         <details className="legacy-photo-analysis">
-          <summary>Äldre fotoanalys</summary>
+          <summary>{t('logger.legacyPhotoAnalysis')}</summary>
           <div className="nutrition-panel-photo-analysis">
             <PhotoAnalysis
               displayPhotoMeals={displayPhotoMeals}

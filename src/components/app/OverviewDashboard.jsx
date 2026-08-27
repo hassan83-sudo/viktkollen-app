@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AchievementPreviewCard from './AchievementPreviewCard.jsx'
 import DailyCoachCard from './DailyCoachCard.jsx'
 import DailyMealPlannerCard from './DailyMealPlannerCard.jsx'
@@ -18,9 +19,20 @@ import {
 import { loadOverviewWeather } from '../../services/overviewWeather.js'
 import { createProfilePhotoFromFile, readProfilePhoto, writeProfilePhoto } from '../../services/profilePhotoStorage.js'
 import { getFeatureFlags, isFeatureEnabled } from '../../features/featureRegistry.js'
+import HomeSocialPreview from '../../features/social/components/HomeSocialPreview.jsx'
+import SocialStage from '../../features/social/components/SocialStage.jsx'
+import { createSocialApi } from '../../features/social/services/socialApi.js'
 import { buildWeightTrend, formatSignedChange } from '../../services/homeBodyToday.js'
+import {
+  formatHomeStepsLabel,
+  formatHomeWeightLabel,
+  measuredWeightsForSparkline,
+  resolveHomeSteps,
+  resolveHomeWeightKg,
+} from '../../services/homeTodayStats.js'
 import SmartCameraStage from '../../features/smart-camera/components/SmartCameraStage.jsx'
 import BodyAvatarTalkBar from './BodyAvatarTalkBar.jsx'
+import { formatNumber as formatLocaleNumber } from '../../i18n/format.js'
 
 function isFiniteNumber(value) {
   return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value))
@@ -31,16 +43,7 @@ function formatNumber(value, options = {}) {
 
   if (!Number.isFinite(number)) return 'Inga data'
 
-  return new Intl.NumberFormat('sv-SE', options).format(number)
-}
-
-function formatWeight(value) {
-  const number = Number(value)
-
-  if (!Number.isFinite(number) || number <= 0) return 'Ingen vikt'
-
-  const [whole, fraction = '0'] = number.toFixed(1).split('.')
-  return `${whole},${fraction} kg`
+  return formatLocaleNumber(number, options)
 }
 
 function getInitials(profile, email = '') {
@@ -112,62 +115,68 @@ function usePrefersReducedMotion() {
   return prefersReducedMotion
 }
 
-function buildSmartFeedItems(liveContext) {
+function buildSmartFeedItems(liveContext, t) {
   const weather = liveContext.weather
   return [
     {
       id: 'live-clock',
-      category: 'Nu',
+      category: t('feed.clock.category'),
       title: `${liveContext.weekday}, ${liveContext.dateLabel}`,
-      body: `Lokal tid ${liveContext.timeLabel}. Dagens feed är redo att kopplas till riktiga livekällor när API:er finns.`,
-      sourceLabel: 'Live från enheten',
+      body: t('feed.clock.body', { time: liveContext.timeLabel }),
+      sourceLabel: t('feed.clock.source'),
       kind: 'time',
       personalization: ['timeOfDay', 'ageGroup', 'interests'],
     },
     {
       id: 'weather-fallback',
-      category: 'Väder',
-      title: weather.hasLiveWeather ? `${weather.condition} i ${weather.city}` : 'Väder väntar på källa',
+      category: t('feed.weather.category'),
+      title: weather.hasLiveWeather
+        ? t('feed.weather.titleLive', { condition: weather.condition, city: weather.city })
+        : t('feed.weather.titleWaiting'),
       body: weather.hasLiveWeather
-        ? `${formatWeatherValue(weather.temperatureC, '°C')}, ${formatWeatherValue(weather.windSpeedMs, ' m/s')} och ${formatWeatherValue(weather.precipitationRiskPercent, ' %')} regnrisk.`
-        : 'Ingen väder-API är kopplad ännu. När den finns kan feeden visa temperatur, vind, regnrisk och soluppgång utan att låtsasdata visas.',
+        ? t('feed.weather.bodyLive', {
+            temperature: formatWeatherValue(weather.temperatureC, '°C'),
+            wind: formatWeatherValue(weather.windSpeedMs, ' m/s'),
+            rain: formatWeatherValue(weather.precipitationRiskPercent, ' %'),
+          })
+        : t('feed.weather.bodyWaiting'),
       sourceLabel: weather.sourceLabel,
       kind: 'weather',
       personalization: ['location', 'activityLevel', 'preferences'],
     },
     {
       id: 'style-coach-ready',
-      category: 'Stilcoach',
-      title: 'Klädråd kan bli kontextstyrda',
-      body: 'Stilcoach-strukturen kan senare väga ihop väder, årstid, aktivitet, garderob och preferenser med rak men respektfull feedback.',
-      sourceLabel: 'Förberett',
+      category: t('feed.style.category'),
+      title: t('feed.style.title'),
+      body: t('feed.style.body'),
+      sourceLabel: t('feed.style.source'),
       kind: 'style',
       personalization: ['weather', 'season', 'ownedClothes', 'preferences'],
     },
     {
       id: 'useful-idea',
-      category: 'Visste du att',
-      title: 'Små beslut slår ofta stora ryck',
-      body: 'Ett kort nästa steg är lättare att upprepa än en perfekt plan. Feed-kort kan senare anpassas efter mål, ålder och tid på dagen.',
-      sourceLabel: 'Demoinsikt',
+      category: t('feed.knowledge.category'),
+      title: t('feed.knowledge.title'),
+      body: t('feed.knowledge.body'),
+      sourceLabel: t('feed.knowledge.source'),
       kind: 'knowledge',
       personalization: ['goals', 'ageGroup', 'timeOfDay'],
     },
     {
       id: 'activity-ready',
-      category: 'Aktivitet',
-      title: 'När du vill göra något',
-      body: 'Feed-modellen stödjer framtida förslag som promenad, recept, quiz, hjärngympa, musik, film eller ett litet projekt utifrån väder och tid.',
-      sourceLabel: 'Förberett',
+      category: t('feed.activity.category'),
+      title: t('feed.activity.title'),
+      body: t('feed.activity.body'),
+      sourceLabel: t('feed.activity.source'),
       kind: 'activity',
       personalization: ['interests', 'weather', 'timeOfDay', 'activityLevel'],
     },
     {
       id: 'quote-ready',
-      category: 'Citat',
-      title: 'Kvalitet före kvantitet',
-      body: 'Feed-kort för citat är förberedda, men visar inte påhittade citat som äkta. Varje framtida citat behöver källa eller tydlig sammanfattningsmarkering.',
-      sourceLabel: 'Källkrav',
+      category: t('feed.quote.category'),
+      title: t('feed.quote.title'),
+      body: t('feed.quote.body'),
+      sourceLabel: t('feed.quote.source'),
       kind: 'quote',
       personalization: ['interests', 'language', 'ageGroup'],
     },
@@ -175,11 +184,12 @@ function buildSmartFeedItems(liveContext) {
 }
 
 function SmartFeedCard({ liveContext }) {
+  const { t } = useTranslation('home')
   const [activeIndex, setActiveIndex] = useState(0)
   const [favoriteIds, setFavoriteIds] = useState(() => new Set())
   const [isPaused, setIsPaused] = useState(false)
   const prefersReducedMotion = usePrefersReducedMotion()
-  const items = useMemo(() => buildSmartFeedItems(liveContext), [liveContext])
+  const items = useMemo(() => buildSmartFeedItems(liveContext, t), [liveContext, t])
   const activeItem = items[activeIndex % items.length]
   const isFavorite = favoriteIds.has(activeItem.id)
   const autoRotate = !isPaused && !prefersReducedMotion
@@ -210,31 +220,31 @@ function SmartFeedCard({ liveContext }) {
   }
 
   return (
-    <section className="smart-feed-card" id="viktkollen-live" aria-label="Viktkollen Live">
+    <section className="smart-feed-card" id="viktkollen-live" aria-label={t('labels.viktkollenLive')}>
       <div className="smart-feed-intro">
         <div className="smart-feed-title">
           <span className="smart-feed-live-dot" aria-hidden="true" />
           <div>
-            <p className="eyebrow">Viktkollen Live</p>
+            <p className="eyebrow">{t('labels.viktkollenLive')}</p>
             <h2>{activeItem.title}</h2>
           </div>
         </div>
         <small>{activeItem.sourceLabel}</small>
       </div>
-      <div className="smart-feed-reference-controls" aria-label="Styr Viktkollen Live">
-        <button type="button" onClick={showPrevious} aria-label="Visa föregående feed-kort">&lt;</button>
+      <div className="smart-feed-reference-controls" aria-label={t('live.controls')}>
+        <button type="button" onClick={showPrevious} aria-label={t('live.previous')}>&lt;</button>
         <button
           className="is-playback"
           type="button"
           aria-pressed={isPaused}
           onClick={() => setIsPaused((current) => !current)}
-          aria-label={isPaused || prefersReducedMotion ? 'Spela Viktkollen Live' : 'Pausa Viktkollen Live'}
+          aria-label={isPaused || prefersReducedMotion ? t('live.play') : t('live.pause')}
         >
           {isPaused || prefersReducedMotion ? '>' : 'II'}
         </button>
-        <button type="button" onClick={showNext} aria-label="Visa nästa feed-kort">&gt;</button>
+        <button type="button" onClick={showNext} aria-label={t('live.next')}>&gt;</button>
       </div>
-      <svg className="smart-feed-wave" viewBox="0 0 360 74" role="img" aria-label={`Live-diagram för ${activeItem.category}`}>
+      <svg className="smart-feed-wave" viewBox="0 0 360 74" role="img" aria-label={t('feed.diagramAria', { category: activeItem.category })}>
         <defs>
           <linearGradient id="smart-feed-wave-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#14ff73" />
@@ -271,7 +281,7 @@ function SmartFeedCard({ liveContext }) {
           <strong>{activeItem.title}</strong>
           <em>{activeItem.body}</em>
         </span>
-        <button type="button" onClick={showNext} aria-label="Visa nästa feed-kort">›</button>
+        <button type="button" onClick={showNext} aria-label={t('live.next')}>›</button>
       </article>
       <div className="smart-feed-footer">
         <span>{activeItem.sourceLabel}</span>
@@ -280,24 +290,24 @@ function SmartFeedCard({ liveContext }) {
             <span className={index === activeIndex % items.length ? 'is-active' : ''} key={item.id} />
           ))}
         </div>
-        <div className="smart-feed-controls" aria-label="Styr Viktkollen Live">
-          <button type="button" onClick={showPrevious} aria-label="Visa föregående feed-kort">‹</button>
+        <div className="smart-feed-controls" aria-label={t('live.controls')}>
+          <button type="button" onClick={showPrevious} aria-label={t('live.previous')}>‹</button>
           <button
             type="button"
             aria-pressed={isFavorite}
             onClick={toggleFavorite}
-            aria-label={isFavorite ? 'Ta bort feed-kort från favoriter' : 'Spara feed-kort som favorit'}
+            aria-label={isFavorite ? t('feed.removeFavorite') : t('feed.saveFavorite')}
           >
-            {isFavorite ? 'Sparad' : 'Spara'}
+            {isFavorite ? t('feed.saved') : t('feed.save')}
           </button>
           <button
             type="button"
             aria-pressed={isPaused}
             onClick={() => setIsPaused((current) => !current)}
           >
-            {isPaused || prefersReducedMotion ? 'Spela' : 'Pausa'}
+            {isPaused || prefersReducedMotion ? t('feed.play') : t('feed.pause')}
           </button>
-          <button type="button" onClick={showNext} aria-label="Visa nästa feed-kort">›</button>
+          <button type="button" onClick={showNext} aria-label={t('live.next')}>›</button>
         </div>
       </div>
     </section>
@@ -311,12 +321,13 @@ function shortWeekday(value) {
 }
 
 function OverviewLiveMeta({ liveContext, onConnectWeather, weatherStatus = '' }) {
+  const { t } = useTranslation('home')
   const weather = liveContext.weather
   const hasWeatherDetails = Boolean(weather.hasLiveWeather)
   const city = hasWeatherDetails && weather.city && weather.city !== 'Vald stad' ? weather.city : ''
 
   return (
-    <div className="overview-live-meta" aria-label="Datum, tid och väder">
+    <div className="overview-live-meta" aria-label={t('liveMetaAria')}>
       <p>
         <span><OverviewIcon name="calendar" /> {shortWeekday(liveContext.weekday)} {liveContext.dateLabel}</span>
         <span><OverviewIcon name="clock" /> {liveContext.timeLabel}</span>
@@ -329,16 +340,16 @@ function OverviewLiveMeta({ liveContext, onConnectWeather, weatherStatus = '' })
             <span><OverviewIcon name="wind" /> {formatWeatherValue(weather.windSpeedMs, ' m/s')}</span>
             <span><OverviewIcon name="drop" /> {formatWeatherValue(weather.precipitationRiskPercent, ' %')}</span>
             <button className="overview-weather-connect" type="button" onClick={onConnectWeather}>
-              Min plats
+              {t('myLocation')}
             </button>
           </>
         ) : (
           <>
-            <span className="overview-weather-empty" aria-label="Väder ej anslutet">
-              {weatherStatus || 'Väder ej anslutet'}
+            <span className="overview-weather-empty" aria-label={t('weatherNotConnected')}>
+              {weatherStatus || t('weatherNotConnected')}
             </span>
             <button className="overview-weather-connect" type="button" onClick={onConnectWeather}>
-              Koppla väder
+              {t('connectWeather')}
             </button>
           </>
         )}
@@ -370,6 +381,15 @@ function OverviewIcon({ name }) {
         <circle cx="19" cy="28" r="2.8" />
         <circle cx="29" cy="28" r="2.8" />
         <path d="M16 39v3M32 39v3M7 27h3M38 27h3" />
+      </svg>
+    )
+  }
+
+  if (name === 'eye') {
+    return (
+      <svg {...common}>
+        <path d="M6 24c6-10 12-14 18-14s12 4 18 14c-6 10-12 14-18 14S12 34 6 24Z" />
+        <circle cx="24" cy="24" r="6" />
       </svg>
     )
   }
@@ -584,13 +604,16 @@ function scrollToTarget(targetId) {
 }
 
 function OverviewPrimaryActions({
+  featureFlags,
   onNavigateSection,
   onOpenBodyScan,
   onOpenCoach,
   onOpenFoodScan,
+  onOpenSmartCamera,
   onScanFood,
   onStartBodyScan,
 }) {
+  const { t } = useTranslation(['bodyScan', 'home'])
   const goTo = (sectionId, targetId) => {
     if (onNavigateSection) {
       onNavigateSection(sectionId, targetId)
@@ -600,66 +623,82 @@ function OverviewPrimaryActions({
     scrollToTarget(targetId)
   }
 
+  const smartCameraOn = isFeatureEnabled('smartCamera', featureFlags)
+  const coachAction = {
+    accent: 'coach',
+    actionIcon: 'arrow',
+    alt: t('home:actionAlts.coach'),
+    art: 'robot',
+    description: t('home:actionDescriptions.coach'),
+    image: '/viktkollen-ai-coach-robot.png',
+    imageHeight: 1199,
+    imageWidth: 1312,
+    icon: 'robot',
+    label: t('home:labels.aiCoach'),
+    onClick: () => (onOpenCoach ? onOpenCoach() : goTo('coach', 'chat')),
+  }
+  const eyesAction = {
+    accent: 'eyes',
+    actionIcon: 'arrow',
+    alt: t('home:actionAlts.eyes'),
+    art: 'eyes',
+    description: t('home:actionDescriptions.smartCamera'),
+    icon: 'eye',
+    label: t('home:labels.aiEyes'),
+    onClick: () => onOpenSmartCamera?.(),
+  }
   const actions = [
-    {
-      accent: 'coach',
-      actionIcon: 'arrow',
-      alt: 'Viktkollens AI Coach-robot med synlig hjärna',
-      art: 'robot',
-      description: 'Personliga råd från din data',
-      image: '/viktkollen-ai-coach-robot.png',
-      imageHeight: 1199,
-      imageWidth: 1312,
-      icon: 'robot',
-      label: 'AI Coach',
-      onClick: () => (onOpenCoach ? onOpenCoach() : goTo('coach', 'chat')),
-    },
+    ...(smartCameraOn ? [eyesAction] : [coachAction]),
     {
       accent: 'body',
       actionIcon: 'foodCamera',
-      alt: 'Kroppsscanning med person och AI-scan-interface',
+      alt: t('home:actionAlts.body'),
       art: 'body',
-      description: 'Följ kroppens förändringar över tid',
+      description: t('home:actionDescriptions.body'),
       image: '/viktkollen-body-scan.png',
       imageHeight: 1537,
       imageWidth: 1023,
       icon: 'bodyScan',
-      label: 'Kroppsscanning',
+      label: t('home:labels.bodyScan'),
       onClick: () => (onOpenBodyScan ? onOpenBodyScan() : goTo('progress', 'body-analysis')),
       onScan: onStartBodyScan || (() => goTo('progress', 'body-analysis')),
     },
     {
       accent: 'food',
       actionIcon: 'foodCamera',
-      alt: 'AI-matscanning av måltid',
+      alt: t('home:actionAlts.food'),
       art: 'meal',
-      description: 'Skanna maten och uppskatta näringen',
+      description: t('home:actionDescriptions.food'),
       image: '/viktkollen-meal-scan.png',
       imageHeight: 1536,
       imageWidth: 1024,
       icon: 'foodCamera',
-      label: 'Matscanning',
+      label: t('home:foodScan.title'),
       onClick: onOpenFoodScan || (() => goTo('nutrition', 'streckkod')),
       onScan: onScanFood || (() => goTo('nutrition', 'nutrition-scanner-v2')),
     },
   ]
 
   return (
-    <section className="overview-primary-actions" aria-label="Primära funktioner">
+    <section className="overview-primary-actions" aria-label={t('home:labels.home')}>
       {actions.map((action) => {
         const visual = (
           <>
             <span className="overview-primary-visual">
               <span className="overview-primary-orbit" />
               <span className={`overview-primary-art is-${action.art}`}>
-                <img
-                  alt={action.alt}
-                  decoding="async"
-                  height={action.imageHeight}
-                  loading="lazy"
-                  src={action.image}
-                  width={action.imageWidth}
-                />
+                {action.image ? (
+                  <img
+                    alt={action.alt}
+                    decoding="async"
+                    height={action.imageHeight}
+                    loading="lazy"
+                    src={action.image}
+                    width={action.imageWidth}
+                  />
+                ) : (
+                  <OverviewIcon name={action.icon} />
+                )}
                 {action.art === 'body' ? <BodyScanRings /> : null}
               </span>
               <span className="overview-primary-action-icon">
@@ -679,7 +718,7 @@ function OverviewPrimaryActions({
               <button
                 className="overview-primary-action-hit"
                 type="button"
-                aria-label={action.accent === 'body' ? 'Öppna kroppsscanning i helskärm' : 'Läs ingredienser'}
+                aria-label={action.accent === 'body' ? t('home:openBodyScanFullscreen') : t('home:readIngredients')}
                 onClick={action.onClick}
               >
                 {visual}
@@ -688,7 +727,7 @@ function OverviewPrimaryActions({
               <button
                 className="overview-primary-action-chevron"
                 type="button"
-                aria-label={action.accent === 'body' ? 'Skanna kropp med kamera' : 'Skanna mat med kamera'}
+                aria-label={action.accent === 'body' ? t('home:scanBodyWithCamera') : t('home:scanFoodWithCamera')}
                 onClick={action.onScan}
               >
                 <OverviewIcon name="foodCamera" />
@@ -698,11 +737,11 @@ function OverviewPrimaryActions({
         }
 
         return (
-          <div className="overview-primary-action is-coach" key={action.label}>
+          <div className={`overview-primary-action is-${action.accent}`} key={action.label}>
             <button
               className="overview-primary-action-hit"
               type="button"
-              aria-label="Öppna AI Coach"
+              aria-label={action.accent === 'eyes' ? t('home:labels.openAiEyes') : t('home:labels.openAiCoach')}
               onClick={action.onClick}
             >
               {visual}
@@ -735,47 +774,44 @@ function formatTodayWeightDelta(change7d) {
 function OverviewHeroStats({
   caloriesToday,
   calorieGoal,
+  checkIn,
   currentWeight,
   featureFlags,
   healthScore,
   onLogWeight,
-  onOpenSmartCamera,
+  onOpenCoach,
   onScanFood,
   proteinToday,
   proteinGoal,
-  steps,
   weightTrend,
   weights,
 }) {
+  const { t } = useTranslation(['common', 'home'])
   const caloriePercent = getProgressPercent(caloriesToday, calorieGoal)
-  const hasCurrentWeight = isFiniteNumber(currentWeight) && Number(currentWeight) > 0
+  const displayWeight = resolveHomeWeightKg({ currentWeight, weights })
+  const hasCurrentWeight = isFiniteNumber(displayWeight) && Number(displayWeight) > 0
   const hasCalories = isFiniteNumber(caloriesToday)
-  const weightSparklinePoints = getSparklinePoints(weights)
+  const stepsState = resolveHomeSteps({ checkIn })
+  const stepsLabel = formatHomeStepsLabel(stepsState, (value) => formatNumber(Math.round(Number(value))))
+  const weightSparklinePoints = getSparklinePoints(measuredWeightsForSparkline(weights))
   const proteinFoods = [
-    { id: 'chicken', label: 'Kyckling' },
-    { id: 'beef', label: 'Nötkött' },
-    { id: 'egg', label: 'Ägg' },
+    { id: 'chicken', label: t('home:proteinFoods.chicken') },
+    { id: 'beef', label: t('home:proteinFoods.beef') },
+    { id: 'egg', label: t('home:proteinFoods.egg') },
   ]
   const compactStats = [
     {
       accent: 'health',
       icon: 'heart',
-      label: 'Health Score',
-      secondary: 'Dagens läge',
-      value: isFiniteNumber(healthScore) ? `${Math.round(Number(healthScore))}` : 'Inga data',
-    },
-    {
-      accent: 'steps',
-      icon: 'shoe',
-      label: 'Steg idag',
-      secondary: 'Mål saknas',
-      value: isFiniteNumber(steps) ? formatNumber(Math.round(Number(steps))) : 'Inga data',
+      label: t('home:labels.healthScore'),
+      secondary: t('home:labels.today'),
+      value: isFiniteNumber(healthScore) ? `${Math.round(Number(healthScore))}` : t('common:states.missingData'),
     },
     {
       accent: 'protein',
       icon: 'protein',
-      label: 'Protein idag',
-      secondary: isFiniteNumber(proteinGoal) ? `Mål ${formatNumber(Math.round(Number(proteinGoal)))} g` : 'Mål saknas',
+      label: t('home:labels.proteinToday'),
+      secondary: isFiniteNumber(proteinGoal) ? t('home:proteinGoalLabel', { grams: formatNumber(Math.round(Number(proteinGoal))) }) : t('common:states.missingData'),
       value: isFiniteNumber(proteinToday) ? `${formatNumber(Math.round(Number(proteinToday)))} g` : '—',
       suffix: isFiniteNumber(proteinToday) && isFiniteNumber(proteinGoal)
         ? `${getProgressPercent(proteinToday, proteinGoal)} %`
@@ -788,111 +824,79 @@ function OverviewHeroStats({
   const changeLabel = change7d === null ? '' : formatTodayWeightDelta(change7d)
   const calorieGoalLabel = isFiniteNumber(calorieGoal) ? formatNumber(Math.round(Number(calorieGoal))) : null
 
-  return (
-    <section className="overview-hero-stats" aria-label="Dagens viktigaste värden">
-      <div className="overview-main-stats" aria-label={smartCameraOn ? 'Smart kamera, vikt och kalorier' : 'Aktuell vikt och kalorier'}>
-        {smartCameraOn ? (
-          <article className="overview-main-stat is-smart-camera">
-            <div className="overview-main-stat-top">
-              <span className="overview-metric-icon is-camera" aria-hidden="true">⌾</span>
-              <span>Smart kamera</span>
-            </div>
-            <strong>AI-ögon</strong>
-            <small>Minne, kläder och sista kollen</small>
-            {onOpenSmartCamera && (
-              <button className="overview-stat-link" type="button" onClick={onOpenSmartCamera}>Öppna</button>
-            )}
-          </article>
-        ) : (
-          <article className="overview-main-stat is-weight">
-            <div className="overview-main-stat-top">
-              <span className="overview-metric-icon" aria-hidden="true"><OverviewIcon name="scale" /></span>
-              <span>Aktuell vikt</span>
-            </div>
-            <strong className="overview-weight-value">{formatWeight(currentWeight)}</strong>
-            <small>{hasCurrentWeight ? 'Senast registrerad vikt' : 'Registrera vikt'}</small>
-            <div className="overview-weight-chart">
-              {weightSparklinePoints && (
-                <svg className="overview-weight-sparkline" viewBox="0 0 72 18" role="img" aria-label="Vikttrend senaste registreringar">
-                  <polyline points={weightSparklinePoints} />
-                </svg>
-              )}
-            </div>
-            {onLogWeight && (
-              <button className="overview-stat-link" type="button" onClick={onLogWeight}>Logga vikt</button>
-            )}
-          </article>
-        )}
-        {smartCameraOn ? (
-          <article className="overview-main-stat is-today">
-            <div className="overview-main-stat-top">
-              <span>IDAG</span>
-            </div>
-            <div className="overview-today-weight">
-              <strong className="overview-weight-value">{formatWeight(currentWeight)}</strong>
-              {change7d !== null && hasCurrentWeight && (
-                <small className={`overview-weight-delta is-${weightTrend?.trend || 'stable'}`}>{changeLabel}</small>
-              )}
-            </div>
-            <div className="overview-today-calories">
-              <span className="overview-metric-icon is-inline" aria-hidden="true"><OverviewIcon name="flame" /></span>
-              <strong className={hasCalories ? undefined : 'is-empty'}>
-                {hasCalories
-                  ? `${formatNumber(Math.round(Number(caloriesToday)))}${calorieGoalLabel ? ` / ${calorieGoalLabel}` : ''} kcal`
-                  : 'Inga data ännu'}
-              </strong>
-            </div>
-            <small>{hasCurrentWeight ? 'Registrerad vikt' : 'Registrera vikt'}</small>
-            <div className="overview-weight-chart">
-              {weightSparklinePoints && (
-                <svg className="overview-weight-sparkline" viewBox="0 0 72 18" role="img" aria-label="Vikttrend senaste registreringar">
-                  <polyline points={weightSparklinePoints} />
-                </svg>
-              )}
-            </div>
-            {caloriePercent !== null && (
-              <span className="overview-calorie-progress" aria-hidden="true">
-                <span className={`overview-progress-${getProgressBucket(caloriePercent)}`} />
-              </span>
-            )}
-            <div className="overview-today-links">
-              {onLogWeight && (
-                <button className="overview-stat-link" type="button" onClick={onLogWeight}>Logga vikt</button>
-              )}
-              {onScanFood && (
-                <button className="overview-stat-link" type="button" onClick={onScanFood}>Logga mat</button>
-              )}
-            </div>
-          </article>
-        ) : (
-          <article className="overview-main-stat is-calories">
-            <div className="overview-main-stat-top">
-              <span className="overview-metric-icon" aria-hidden="true"><OverviewIcon name="flame" /></span>
-              <span>Kalorier idag</span>
-            </div>
-            <strong className={hasCalories ? undefined : 'is-empty'}>
-              {hasCalories ? `${formatNumber(Math.round(Number(caloriesToday)))} kcal` : 'Inga data ännu'}
-            </strong>
-            <small>
-              {caloriePercent !== null
-                ? `${caloriePercent} % av dagens mål`
-                : isFiniteNumber(calorieGoal)
-                  ? `Mål ${formatNumber(Math.round(Number(calorieGoal)))} kcal`
-                  : 'Logga en måltid för dagens status'}
-            </small>
-            {caloriePercent !== null && (
-              <span className="overview-calorie-progress" aria-hidden="true">
-                <span className={`overview-progress-${getProgressBucket(caloriePercent)}`} />
-              </span>
-            )}
-            {onScanFood && (
-              <button className="overview-stat-link" type="button" onClick={onScanFood}>Logga mat</button>
-            )}
-          </article>
+  const todayCard = (
+    <article className="overview-main-stat is-today">
+      <div className="overview-main-stat-top">
+        <span>{t('home:labels.today')}</span>
+      </div>
+      <div className="overview-today-pair">
+        <div className="overview-today-metric is-steps">
+          <span>{t('home:labels.stepsToday')}</span>
+          <strong className={stepsState.connected ? undefined : 'is-empty'}>{stepsLabel}</strong>
+        </div>
+        <div className="overview-today-metric is-weight">
+          <span>{t('home:labels.weight')}</span>
+          <strong className={hasCurrentWeight ? 'overview-weight-value' : 'overview-weight-value is-empty'}>
+            {formatHomeWeightLabel(displayWeight)}
+          </strong>
+          {change7d !== null && hasCurrentWeight ? (
+            <small className={`overview-weight-delta is-${weightTrend?.trend || 'stable'}`}>{changeLabel}</small>
+          ) : null}
+        </div>
+      </div>
+      <div className="overview-today-calories">
+        <span>{t('home:labels.calories')}</span>
+        <span className="overview-metric-icon is-inline" aria-hidden="true"><OverviewIcon name="flame" /></span>
+        <strong className={hasCalories ? undefined : 'is-empty'}>
+          {hasCalories
+            ? `${formatNumber(Math.round(Number(caloriesToday)))}${calorieGoalLabel ? ` / ${calorieGoalLabel}` : ''} kcal`
+            : t('common:states.noneYet')}
+        </strong>
+      </div>
+      <small>{hasCurrentWeight ? t('home:labels.weight') : t('home:states.registerWeight')}</small>
+      <div className="overview-weight-chart">
+        {weightSparklinePoints && (
+          <svg className="overview-weight-sparkline" viewBox="0 0 72 18" role="img" aria-label={t('home:weightTrendAria')}>
+            <polyline points={weightSparklinePoints} />
+          </svg>
         )}
       </div>
+      {caloriePercent !== null && (
+        <span className="overview-calorie-progress" aria-hidden="true">
+          <span className={`overview-progress-${getProgressBucket(caloriePercent)}`} />
+        </span>
+      )}
+      <div className="overview-today-links">
+        {onLogWeight && (
+          <button className="overview-stat-link" type="button" onClick={onLogWeight}>{t('home:states.registerWeight')}</button>
+        )}
+        {onScanFood && (
+          <button className="overview-stat-link" type="button" onClick={onScanFood}>{t('home:logFood')}</button>
+        )}
+      </div>
+    </article>
+  )
 
-      <div className="overview-compact-tabs" aria-label="Kompakta dagliga stats">
+  return (
+    <section className="overview-hero-stats" aria-label={t('home:labels.today')}>
+      <div className={`overview-main-stats${smartCameraOn ? ' has-coach-slot' : ' is-today-only'}`} aria-label={t('home:labels.aiCoach')}>
+        {smartCameraOn ? (
+          <article className="overview-main-stat is-coach-hero">
+            <div className="overview-main-stat-top">
+              <span className="overview-metric-icon" aria-hidden="true"><OverviewIcon name="robot" /></span>
+              <span>{t('home:labels.aiCoach')}</span>
+            </div>
+            <strong>{t('home:personalAdvice')}</strong>
+            <small>{t('home:fromYourData')}</small>
+            {onOpenCoach && (
+              <button className="overview-stat-link" type="button" onClick={onOpenCoach}>{t('home:labels.openAiCoach')}</button>
+            )}
+          </article>
+        ) : null}
+        {todayCard}
+      </div>
+
+      <div className="overview-compact-tabs" aria-label={t('home:compactStatsAria')}>
         {compactStats.map((stat) => (
           <article className={`overview-compact-tab is-${stat.accent}`} key={stat.label}>
             <span className="overview-compact-icon" aria-hidden="true"><OverviewIcon name={stat.icon} /></span>
@@ -902,8 +906,8 @@ function OverviewHeroStats({
           </article>
         ))}
       </div>
-      <div className="overview-protein-strip" aria-label="Bra proteinkällor">
-        <strong>Protein att välja</strong>
+      <div className="overview-protein-strip" aria-label={t('home:proteinSourcesAria')}>
+        <strong>{t('home:proteinPick')}</strong>
         {proteinFoods.map((food) => (
           <span key={food.id}>{food.label}</span>
         ))}
@@ -913,6 +917,7 @@ function OverviewHeroStats({
 }
 
 function OverviewCheckInAction({ onNavigateSection }) {
+  const { t } = useTranslation('home')
   const goToCheckIn = () => {
     if (onNavigateSection) {
       onNavigateSection('nutrition', 'checkin')
@@ -926,8 +931,8 @@ function OverviewCheckInAction({ onNavigateSection }) {
     <button className="overview-checkin-action" type="button" onClick={goToCheckIn}>
       <span className="overview-checkin-icon" aria-hidden="true"><OverviewIcon name="check" /></span>
       <span>
-        <strong>Dagens check-in</strong>
-        <small>Energi, steg, humör och rörelse</small>
+        <strong>{t('checkInTitle')}</strong>
+        <small>{t('checkInHint')}</small>
       </span>
       <span aria-hidden="true">›</span>
     </button>
@@ -935,10 +940,10 @@ function OverviewCheckInAction({ onNavigateSection }) {
 }
 
 const secondarySectionIcons = {
-  'Dagens måltidsplan': 'mealPlan',
-  'Senaste 7 dagarna': 'trend',
-  Achievements: 'trophy',
-  'Health Prediction': 'prediction',
+  'meal-planner': 'mealPlan',
+  'weekly-progress': 'trend',
+  achievements: 'trophy',
+  'health-prediction': 'prediction',
 }
 
 function CollapsibleDashboardSection({ children, id, title }) {
@@ -952,7 +957,7 @@ function CollapsibleDashboardSection({ children, id, title }) {
       open={isOpen}
     >
       <summary>
-        <span className="overview-secondary-icon" aria-hidden="true"><OverviewIcon name={secondarySectionIcons[title] || 'arrow'} /></span>
+        <span className="overview-secondary-icon" aria-hidden="true"><OverviewIcon name={secondarySectionIcons[id] || 'arrow'} /></span>
         <span>{title}</span>
       </summary>
       {isOpen && (
@@ -976,6 +981,7 @@ function OverviewDashboard({
   healthScore,
   healthSnapshot,
   isAiSpeaking,
+  isAuthenticated = false,
   isListening,
   isVoiceConversationActive,
   isVoiceMuted,
@@ -1004,15 +1010,24 @@ function OverviewDashboard({
   voiceStatus,
   weights,
 }) {
+  const { t } = useTranslation(['common', 'home', 'social'])
   const [now, setNow] = useState(() => new Date())
   const [bodyScanOpen, setBodyScanOpen] = useState(false)
   const [smartCameraOpen, setSmartCameraOpen] = useState(false)
   const [coachOpen, setCoachOpen] = useState(false)
   const [foodScanOpen, setFoodScanOpen] = useState(false)
+  const [socialOpen, setSocialOpen] = useState(false)
+  const [socialView, setSocialView] = useState('inbox')
+  const [socialConversationId, setSocialConversationId] = useState(null)
+  const [socialPreview, setSocialPreview] = useState([])
+  const [socialLoading, setSocialLoading] = useState(false)
+  const [socialError, setSocialError] = useState('')
   const [weatherStatus, setWeatherStatus] = useState('')
   const [profilePhoto, setProfilePhoto] = useState(() => readProfilePhoto())
   const [weather, setWeather] = useState(() => createFallbackWeatherContext())
-  const flags = featureFlags || getFeatureFlags()
+  const flags = getFeatureFlags(featureFlags)
+  const socialUiEnabled = isFeatureEnabled('socialUi', flags)
+  const socialLiveEnabled = isFeatureEnabled('socialLive', flags)
   const weightTrend = useMemo(() => buildWeightTrend(weights, currentWeight), [currentWeight, weights])
   const liveContext = useMemo(() => createOverviewLiveContext(now, weather), [now, weather])
   const initials = getInitials(profile, email)
@@ -1021,21 +1036,21 @@ function OverviewDashboard({
       || reminderState?.notificationsV3?.items?.some((notification) => !notification.completed && !notification.dismissed),
   )
   const coachAdvice = isFiniteNumber(proteinToday) && isFiniteNumber(proteinGoal) && Number(proteinGoal) > 0
-    ? `JUST NU. Du har nått ${getProgressPercent(proteinToday, proteinGoal)} % av proteinmålet. Kyckling, nötkött eller ägg kan hjälpa dig vidare.`
-    : 'Coach tar dina mål, måltider och vanor och ger ett konkret nästa steg.'
+    ? t('home:coachAdviceProtein', { percent: getProgressPercent(proteinToday, proteinGoal) })
+    : t('home:coachAdviceDefault')
 
   const goToNotifications = () => {
     scrollToTarget('smart-notifications')
   }
 
   async function connectWeather() {
-    setWeatherStatus('Hämtar väder…')
+    setWeatherStatus(t('home:fetchingWeather'))
     try {
       const nextWeather = await loadOverviewWeather({ preferDevice: true })
       setWeather(nextWeather)
       setWeatherStatus('')
     } catch {
-      setWeatherStatus('Väder ej anslutet')
+      setWeatherStatus(t('home:weatherNotConnected'))
     }
   }
 
@@ -1074,7 +1089,7 @@ function OverviewDashboard({
         setWeatherStatus('')
       }
     }).catch(() => {
-      if (!cancelled) setWeatherStatus('Väder ej anslutet')
+      if (!cancelled) setWeatherStatus(t('home:weatherNotConnected'))
     })
 
     getWeatherPermissionState().then(async (permissionState) => {
@@ -1090,12 +1105,38 @@ function OverviewDashboard({
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [t])
+
+  useEffect(() => {
+    if (!socialLiveEnabled || !isAuthenticated) {
+      return undefined
+    }
+
+    let cancelled = false
+    createSocialApi()
+      .listHomePreview()
+      .then((rows) => {
+        if (cancelled) return
+        setSocialPreview(rows)
+        setSocialError('')
+        setSocialLoading(false)
+      })
+      .catch((caught) => {
+        if (cancelled) return
+        setSocialPreview([])
+        setSocialError(caught?.message || t('social:loadFriendsError'))
+        setSocialLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, socialLiveEnabled, t])
 
   return (
     <div className="home-overview-shell">
       <header className="overview-app-header">
-        <h1 className="sr-only">Hem</h1>
+        <h1 className="sr-only">{t('home:labels.home')}</h1>
         <OverviewLiveMeta
           liveContext={liveContext}
           onConnectWeather={connectWeather}
@@ -1103,7 +1144,7 @@ function OverviewDashboard({
         />
         <div className="overview-header-actions">
           <button
-            aria-label="Visa smarta notiser"
+            aria-label={t('home:showSmartNotices')}
             className={hasPendingNotifications ? 'overview-notification-button has-pending' : 'overview-notification-button'}
             type="button"
             onClick={goToNotifications}
@@ -1112,7 +1153,7 @@ function OverviewDashboard({
           </button>
           <div className="overview-avatar-wrap">
             <button
-              aria-label={profilePhoto ? 'Öppna profilinställningar' : 'Lägg till profilbild'}
+              aria-label={profilePhoto ? t('home:openProfileSettings') : t('home:addProfilePhoto')}
               className={profilePhoto ? 'overview-avatar-button has-photo' : 'overview-avatar-button'}
               type="button"
               onClick={onAvatarClick}
@@ -1130,12 +1171,17 @@ function OverviewDashboard({
         </div>
       </header>
 
-      <section className="overview-home-section" aria-label="Starta">
+      <section className="overview-home-section" aria-label={t('home:startAria')}>
         <OverviewPrimaryActions
+          featureFlags={flags}
           onNavigateSection={onNavigateSection}
           onOpenBodyScan={() => setBodyScanOpen(true)}
           onOpenCoach={() => (onOpenAiCoach ? onOpenAiCoach() : setCoachOpen(true))}
           onOpenFoodScan={() => setFoodScanOpen(true)}
+          onOpenSmartCamera={() => {
+            setBodyScanOpen(false)
+            setSmartCameraOpen(true)
+          }}
           onScanFood={onScanFood}
           onStartBodyScan={() => {
             if (onNavigateSection) onNavigateSection('progress', 'body-analysis')
@@ -1145,30 +1191,44 @@ function OverviewDashboard({
       </section>
 
       <section className="overview-home-section" aria-labelledby="overview-today-title">
-        <h2 id="overview-today-title">Dagens läge</h2>
+        <h2 id="overview-today-title">{t('home:todayMood')}</h2>
         <OverviewHeroStats
           calorieGoal={calorieGoal}
           caloriesToday={caloriesToday}
+          checkIn={checkIn}
           currentWeight={currentWeight}
           featureFlags={flags}
           healthScore={healthScore}
           onLogWeight={onLogWeight}
-          onOpenSmartCamera={() => {
-            setBodyScanOpen(false)
-            setSmartCameraOpen(true)
-          }}
+          onOpenCoach={() => (onOpenAiCoach ? onOpenAiCoach() : setCoachOpen(true))}
           onScanFood={onScanFood}
           proteinGoal={proteinGoal}
           proteinToday={proteinToday}
-          steps={checkIn?.steps}
           weightTrend={weightTrend}
           weights={weights}
+        />
+        <HomeSocialPreview
+          conversations={socialLiveEnabled && isAuthenticated ? socialPreview : []}
+          enabled={socialUiEnabled}
+          error={socialLiveEnabled && isAuthenticated ? socialError : ''}
+          isAuthenticated={isAuthenticated}
+          liveEnabled={socialLiveEnabled}
+          loading={socialLiveEnabled && isAuthenticated ? socialLoading : false}
+          onAddFriend={() => {
+            setSocialView('search')
+            setSocialOpen(true)
+          }}
+          onOpenChat={(row) => {
+            setSocialView(row?.conversationId ? 'thread' : 'inbox')
+            setSocialConversationId(row?.conversationId || null)
+            setSocialOpen(true)
+          }}
         />
         <OverviewCheckInAction onNavigateSection={onNavigateSection} />
       </section>
 
       <section className="overview-home-section" aria-labelledby="overview-advice-title">
-        <h2 id="overview-advice-title">Råd och notiser</h2>
+        <h2 id="overview-advice-title">{t('home:adviceAndNotices')}</h2>
         <div className="overview-attention-grid">
         <DailyCoachCard
           calorieGoal={calorieGoal}
@@ -1181,7 +1241,7 @@ function OverviewDashboard({
           proteinToday={proteinToday}
           showActions={false}
           steps={checkIn?.steps}
-          title="Dagens råd"
+          title={t('home:dailyAdviceTitle')}
         />
         <div className="overview-smart-notifications" id="smart-notifications">
           <SmartNotificationsCard
@@ -1201,7 +1261,7 @@ function OverviewDashboard({
       </div>
       </section>
 
-      <section className="overview-home-section" aria-label="Viktkollen Live">
+      <section className="overview-home-section" aria-label={t('home:labels.viktkollenLive')}>
         <SmartFeedCard liveContext={liveContext} />
       </section>
 
@@ -1291,17 +1351,27 @@ function OverviewDashboard({
       {foodScanOpen && (
         <OverviewFoodScanStage onClose={() => setFoodScanOpen(false)} />
       )}
+      {socialOpen && socialUiEnabled && (
+        <SocialStage
+          enabled
+          initialConversationId={socialConversationId}
+          initialView={socialView}
+          isAuthenticated={isAuthenticated}
+          liveEnabled={socialLiveEnabled}
+          onClose={() => setSocialOpen(false)}
+        />
+      )}
 
       <section className="overview-more-section home-last-content" aria-labelledby="overview-more-title">
-        <h2 id="overview-more-title">Mer för idag</h2>
-        <CollapsibleDashboardSection id="meal-planner" title="Dagens måltidsplan">
+        <h2 id="overview-more-title">{t('home:moreForToday')}</h2>
+        <CollapsibleDashboardSection id="meal-planner" title={t('home:mealPlanTitle')}>
           <DailyMealPlannerCard
             date={selectedDate}
             meals={meals}
             nutritionGoals={nutritionGoals}
           />
         </CollapsibleDashboardSection>
-        <CollapsibleDashboardSection id="weekly-progress" title="Senaste 7 dagarna">
+        <CollapsibleDashboardSection id="weekly-progress" title={t('home:last7Days')}>
           <WeeklyProgressSection
             checkIn={checkIn}
             foods={foods}
@@ -1311,7 +1381,7 @@ function OverviewDashboard({
             selectedDate={selectedDate}
           />
         </CollapsibleDashboardSection>
-        <CollapsibleDashboardSection id="achievements" title="Achievements">
+        <CollapsibleDashboardSection id="achievements" title={t('home:achievementsTitle')}>
           <AchievementPreviewCard
             adaptiveCoachFeedback={adaptiveCoachFeedback}
             analysisDate={selectedDate}
@@ -1325,7 +1395,7 @@ function OverviewDashboard({
             weights={weights}
           />
         </CollapsibleDashboardSection>
-        <CollapsibleDashboardSection id="health-prediction" title="Health Prediction">
+        <CollapsibleDashboardSection id="health-prediction" title={t('home:healthPredictionTitle')}>
           <HealthPredictionCard
             adaptiveCoachFeedback={adaptiveCoachFeedback}
             analysisDate={selectedDate}

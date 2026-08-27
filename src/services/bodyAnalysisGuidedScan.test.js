@@ -29,7 +29,10 @@ describe('bodyAnalysisGuidedScan', () => {
   it('defines the guided front, side and back scan steps', () => {
     expect(bodyAnalysisViews.map((view) => view.key)).toEqual(['front', 'side', 'back'])
     expect(bodyAnalysisViews[0].label).toBe('Framifrån')
+    expect(bodyAnalysisViews[0].poseTips[0]).toBe('Stå rakt fram mot kameran.')
+    expect(bodyAnalysisViews[1].poseTips[0]).toBe('Vänd höger sida mot kameran.')
     expect(bodyAnalysisViews[2].poseTips.join(' ')).toContain('ryggen')
+    expect(bodyAnalysisViews.map((view) => view.poseTips.join(' ')).join(' ').toLowerCase()).not.toMatch(/vänd mot kameran/)
   })
 
   it('selects an angle, records photos in the right slot, and retakes one angle only', () => {
@@ -68,6 +71,10 @@ describe('bodyAnalysisGuidedScan', () => {
   it('explains camera permission denials', () => {
     expect(getCameraPermissionMessage({ name: 'NotAllowedError' })).toContain('nekades')
     expect(getCameraPermissionMessage({ name: 'NotFoundError' })).toContain('kamera')
+    expect(getCameraPermissionMessage({ name: 'SecurityError' }, {
+      isSecureContext: false,
+      location: { hostname: '192.168.0.24' },
+    })).toContain('HTTPS')
   })
 
   it('walks front to side to back and requires all angles before completion', () => {

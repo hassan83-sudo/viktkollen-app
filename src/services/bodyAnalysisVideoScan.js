@@ -30,21 +30,48 @@ export const minVideoScanZoom = 1
 export const maxVideoScanZoom = 2
 export const videoScanZoomStep = 0.1
 
+export const defaultManualFaceMask = { x: 0.28, y: 0.05, width: 0.44, height: 0.28 }
+
+export const videoScanPoseCopy = {
+  front: {
+    short: 'FRAM',
+    step: 'FRAM 1/3',
+    title: 'STÅ RAKT FRAM MOT KAMERAN',
+  },
+  side: {
+    short: 'SIDA',
+    step: 'SIDA 2/3',
+    title: 'VÄND HÖGER SIDA MOT KAMERAN',
+  },
+  back: {
+    short: 'BAK',
+    step: 'BAK 3/3',
+    title: 'VÄND RYGGEN MOT KAMERAN',
+  },
+}
+
 export const videoScanVoiceLines = {
-  back_done: 'Scanning klar.',
+  back_done: 'Bra.',
   back_prepare: 'Vänd ryggen mot kameran.',
   countdown1: 'Ett.',
   countdown2: 'Två.',
   countdown3: 'Tre.',
   capturing: 'Fångar.',
-  front_done: 'Framifrån klar.',
-  front_prepare: 'Stå framifrån mot kameran.',
-  hold: 'Håll positionen.',
-  side_done: 'Från sidan klar.',
-  side_prepare: 'Vänd dig åt höger.',
+  front_done: 'Bra.',
+  front_prepare: 'Ställ dig rakt fram mot kameran.',
+  front_prepare_manual: 'Placera hela kroppen i ramen.',
+  good_position: 'Bra position. Håll still.',
+  hold: 'Håll still.',
+  manual_confirm: 'När du är klar trycker du Jag står rätt i ramen.',
+  move_back: 'Flytta dig lite bakåt.',
+  side_done: 'Bra.',
+  side_prepare: 'Vänd höger sida mot kameran.',
 }
 
 export const initialVideoScanState = {
+  analysisError: '',
+  analysisStatus: '',
+  autoFramingAvailable: false,
   cameraActive: false,
   capturing: false,
   countdown: null,
@@ -52,8 +79,11 @@ export const initialVideoScanState = {
   faceMode: defaultFaceProtectionMode,
   faceStatus: 'pending',
   facingMode: defaultVideoScanFacingMode,
+  framingMode: 'manual',
   phase: 'idle',
   pose: null,
+  positionMessage: '',
+  positionStatus: 'idle',
   voiceEnabled: true,
   zoom: 1,
   zoomMode: 'unknown',
@@ -61,6 +91,14 @@ export const initialVideoScanState = {
 
 export function isVideoScanActive(phase) {
   return phase !== 'idle' && phase !== 'done' && phase !== 'error' && phase !== 'review' && phase !== 'analyzing'
+}
+
+export function isBodyScanSessionOpen(phase) {
+  return phase !== 'idle' && phase !== 'done' && phase !== 'error'
+}
+
+export function getVideoScanPoseCopy(pose = 'front') {
+  return videoScanPoseCopy[pose] || videoScanPoseCopy.front
 }
 
 export function isCountdownPhase(phase) {
@@ -109,19 +147,19 @@ export function getVideoScanInstruction(phase) {
     back_countdown: 'Håll ryggen mot kameran.',
     back_capture: 'Fångar bakifrån...',
     back_done: 'Bakifrån klar ✓',
-    back_prepare: 'Vänd ryggen mot kameran',
+    back_prepare: 'VÄND RYGGEN MOT KAMERAN',
     error: 'Scanningen kunde inte fortsätta.',
     front_countdown: 'Håll positionen framifrån.',
     front_capture: 'Fångar framifrån...',
     front_done: 'Framifrån klar ✓',
-    front_prepare: 'Stå rakt fram mot kameran',
+    front_prepare: 'STÅ RAKT FRAM MOT KAMERAN',
     idle: 'Starta en guidat videoscanning.',
     prepare: 'Placera hela kroppen i ramen. Huvud och fötter ska synas.',
-    review: 'Scanning klar ✓',
-    side_countdown: 'Håll positionen från sidan.',
+    review: 'KLAR FÖR ANALYS',
+    side_countdown: 'Håll höger sida mot kameran.',
     side_capture: 'Fångar från sidan...',
     side_done: 'Från sidan klar ✓',
-    side_prepare: 'Vänd dig åt höger',
+    side_prepare: 'VÄND HÖGER SIDA MOT KAMERAN',
   }
 
   return instructions[phase] || ''
@@ -129,13 +167,13 @@ export function getVideoScanInstruction(phase) {
 
 export function getVideoScanDirection(phase) {
   if (phase.startsWith('side')) {
-    return { arrow: '→', label: 'VÄND DIG ÅT HÖGER' }
+    return { arrow: '→', label: 'VÄND HÖGER SIDA MOT KAMERAN' }
   }
   if (phase.startsWith('back')) {
     return { arrow: '↻', label: 'VÄND RYGGEN MOT KAMERAN' }
   }
   if (phase.startsWith('front') || phase === 'prepare') {
-    return { arrow: '↑', label: 'STÅ RAKT FRAM' }
+    return { arrow: '↑', label: 'STÅ RAKT FRAM MOT KAMERAN' }
   }
   return null
 }
@@ -146,8 +184,16 @@ export function getVideoScanCameraIndicator(phase, cameraActive) {
   return { kind: 'live', label: 'Kamera aktiv' }
 }
 
-export function getFaceProtectionOutcome(mode, faces = []) {
+export function isFaceDetectorSupported(globalObject = globalThis) {
+  return typeof globalObject.FaceDetector === 'function'
+}
+
+export function getFaceProtectionOutcome(mode, faces = [], options = {}) {
   const detected = Array.isArray(faces) && faces.length > 0
+  const detectorSupported = options.faceDetectorSupported ?? isFaceDetectorSupported()
+  const hasManualMask = Boolean(options.hasManualMask)
+  const bakedLabel = 'Ansiktsskydd bakat in i bilden'
+  const unverifiedLabel = 'Ansiktsskydd kunde inte verifieras'
 
   if (mode === 'none') {
     return {
@@ -160,18 +206,27 @@ export function getFaceProtectionOutcome(mode, faces = []) {
   }
 
   if (mode === 'auto') {
+    if (!detectorSupported) {
+      return {
+        applied: false,
+        bakedIntoPixels: false,
+        label: 'Automatisk ansiktsdetektion stöds inte på den här enheten.',
+        method: 'none',
+        status: 'unavailable',
+      }
+    }
     return detected
       ? {
           applied: true,
           bakedIntoPixels: true,
-          label: 'Ansiktsskydd aktivt ✓',
+          label: bakedLabel,
           method: 'detected',
           status: 'applied',
         }
       : {
           applied: false,
           bakedIntoPixels: false,
-          label: 'Ansiktsskydd kunde inte appliceras.',
+          label: unverifiedLabel,
           method: 'none',
           status: 'unavailable',
         }
@@ -181,18 +236,28 @@ export function getFaceProtectionOutcome(mode, faces = []) {
     return {
       applied: true,
       bakedIntoPixels: true,
-      label: 'Ansiktsskydd aktivt ✓',
+      label: bakedLabel,
       method: 'detected',
       status: 'applied',
     }
   }
 
+  if (hasManualMask || mode === 'blur' || mode === 'pixelate' || mode === 'cover') {
+    return {
+      applied: true,
+      bakedIntoPixels: true,
+      label: bakedLabel,
+      method: hasManualMask ? 'manual' : 'upper-region',
+      status: 'applied',
+    }
+  }
+
   return {
-    applied: true,
-    bakedIntoPixels: true,
-    label: 'Ungefärlig huvudzon skyddas. Det är inte en säker ansiktsdetektering.',
-    method: 'upper-region',
-    status: 'approximate',
+    applied: false,
+    bakedIntoPixels: false,
+    label: unverifiedLabel,
+    method: 'none',
+    status: 'unavailable',
   }
 }
 
@@ -200,6 +265,186 @@ export function clampVideoScanZoom(value) {
   const zoom = Number(value)
   if (!Number.isFinite(zoom)) return minVideoScanZoom
   return Math.min(maxVideoScanZoom, Math.max(minVideoScanZoom, Math.round(zoom * 10) / 10))
+}
+
+export function getPointerDistance(a, b) {
+  if (!a || !b) return 0
+  return Math.hypot(Number(a.clientX) - Number(b.clientX), Number(a.clientY) - Number(b.clientY))
+}
+
+export function getPinchZoom(startDistance, currentDistance, startZoom) {
+  if (!startDistance || startDistance <= 0) return clampVideoScanZoom(startZoom)
+  return clampVideoScanZoom((Number(startZoom) || minVideoScanZoom) * (currentDistance / startDistance))
+}
+
+export function createPinchTracker() {
+  const pointers = new Map()
+  let pinch = null
+
+  return {
+    get activeCount() {
+      return pointers.size
+    },
+    get pinchActive() {
+      return Boolean(pinch)
+    },
+    down(pointerId, clientX, clientY, startZoom) {
+      pointers.set(pointerId, { clientX, clientY })
+      if (pointers.size === 2) {
+        const [a, b] = [...pointers.values()]
+        pinch = {
+          startDistance: getPointerDistance(a, b),
+          startZoom: Number(startZoom) || minVideoScanZoom,
+        }
+      }
+      return { capture: false, pinchActive: Boolean(pinch) }
+    },
+    move(pointerId, clientX, clientY) {
+      if (!pointers.has(pointerId)) {
+        return { preventDefault: false, zoom: null }
+      }
+      pointers.set(pointerId, { clientX, clientY })
+      if (pointers.size !== 2 || !pinch?.startDistance) {
+        return { preventDefault: false, zoom: null }
+      }
+      const [a, b] = [...pointers.values()]
+      return {
+        preventDefault: true,
+        zoom: getPinchZoom(pinch.startDistance, getPointerDistance(a, b), pinch.startZoom),
+      }
+    },
+    up(pointerId) {
+      pointers.delete(pointerId)
+      if (pointers.size < 2) pinch = null
+    },
+    clear() {
+      pointers.clear()
+      pinch = null
+    },
+  }
+}
+
+export function getDefaultFaceProtectionMode(globalObject = globalThis) {
+  return typeof globalObject.FaceDetector === 'function' ? defaultFaceProtectionMode : 'blur'
+}
+
+export function getVideoContainRect(frameWidth, frameHeight, videoWidth, videoHeight) {
+  const frameW = Math.max(0, Number(frameWidth) || 0)
+  const frameH = Math.max(0, Number(frameHeight) || 0)
+  const videoW = Math.max(1, Number(videoWidth) || 1)
+  const videoH = Math.max(1, Number(videoHeight) || 1)
+  if (!frameW || !frameH) {
+    return { height: 0, scale: 1, width: 0, x: 0, y: 0 }
+  }
+  const scale = Math.min(frameW / videoW, frameH / videoH)
+  const width = videoW * scale
+  const height = videoH * scale
+  return {
+    height: Math.round(height),
+    scale,
+    width: Math.round(width),
+    x: Math.round((frameW - width) / 2),
+    y: Math.round((frameH - height) / 2),
+  }
+}
+
+export function isSameContainRect(a, b) {
+  return Boolean(a)
+    && Boolean(b)
+    && a.x === b.x
+    && a.y === b.y
+    && a.width === b.width
+    && a.height === b.height
+    && a.scale === b.scale
+}
+
+export function mapMaskRectToCanvas(maskRect = defaultManualFaceMask, videoWidth, videoHeight) {
+  const rect = maskRect || defaultManualFaceMask
+  return {
+    height: Math.round(videoHeight * Number(rect.height || defaultManualFaceMask.height)),
+    width: Math.round(videoWidth * Number(rect.width || defaultManualFaceMask.width)),
+    x: Math.round(videoWidth * Number(rect.x || 0)),
+    y: Math.round(videoHeight * Number(rect.y || 0)),
+  }
+}
+
+export function clampMaskRect(rect = defaultManualFaceMask) {
+  const width = Math.min(0.8, Math.max(0.12, Number(rect.width) || defaultManualFaceMask.width))
+  const height = Math.min(0.6, Math.max(0.1, Number(rect.height) || defaultManualFaceMask.height))
+  return {
+    height,
+    width,
+    x: Math.min(1 - width, Math.max(0, Number(rect.x) || 0)),
+    y: Math.min(1 - height, Math.max(0, Number(rect.y) || 0)),
+  }
+}
+
+export function getManualMaskBox(width, height, maskRect = defaultManualFaceMask) {
+  return mapMaskRectToCanvas(maskRect, width, height)
+}
+
+export function pixelsDiffer(left = [], right = []) {
+  if (left.length !== right.length) return true
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) return true
+  }
+  return false
+}
+
+export function boxBlurRgba(data, width, height, radius = 6) {
+  const src = new Uint8ClampedArray(data)
+  const tmp = new Uint8ClampedArray(data.length)
+  const r = Math.max(1, Math.round(radius))
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      let red = 0
+      let green = 0
+      let blue = 0
+      let alpha = 0
+      let count = 0
+      for (let offset = -r; offset <= r; offset += 1) {
+        const xx = Math.min(width - 1, Math.max(0, x + offset))
+        const i = (y * width + xx) * 4
+        red += src[i]
+        green += src[i + 1]
+        blue += src[i + 2]
+        alpha += src[i + 3]
+        count += 1
+      }
+      const o = (y * width + x) * 4
+      tmp[o] = red / count
+      tmp[o + 1] = green / count
+      tmp[o + 2] = blue / count
+      tmp[o + 3] = alpha / count
+    }
+  }
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      let red = 0
+      let green = 0
+      let blue = 0
+      let alpha = 0
+      let count = 0
+      for (let offset = -r; offset <= r; offset += 1) {
+        const yy = Math.min(height - 1, Math.max(0, y + offset))
+        const i = (yy * width + x) * 4
+        red += tmp[i]
+        green += tmp[i + 1]
+        blue += tmp[i + 2]
+        alpha += tmp[i + 3]
+        count += 1
+      }
+      const o = (y * width + x) * 4
+      data[o] = red / count
+      data[o + 1] = green / count
+      data[o + 2] = blue / count
+      data[o + 3] = alpha / count
+    }
+  }
+
+  return data
 }
 
 export function getTrackZoomCapabilities(track) {
@@ -215,16 +460,29 @@ export function canUseHardwareZoom(track) {
   return Boolean(getTrackZoomCapabilities(track))
 }
 
-export function getVoiceLineForPhase(phase, countdown) {
+export function getVoiceLineForPhase(phase, countdown, options = {}) {
+  const framingMode = options.framingMode === 'manual' ? 'manual' : 'auto'
   if (isCountdownPhase(phase) && countdown === 3) return videoScanVoiceLines.countdown3
   if (isCountdownPhase(phase) && countdown === 2) return videoScanVoiceLines.countdown2
   if (isCountdownPhase(phase) && countdown === 1) return videoScanVoiceLines.countdown1
   if (isCapturePhase(phase)) return videoScanVoiceLines.capturing
-  if (phase === 'front_prepare' || phase === 'prepare') return videoScanVoiceLines.front_prepare
+  if (phase === 'front_prepare' || phase === 'prepare') {
+    return framingMode === 'manual'
+      ? `${videoScanVoiceLines.front_prepare_manual} ${videoScanVoiceLines.manual_confirm}`
+      : videoScanVoiceLines.front_prepare
+  }
   if (phase === 'front_done') return videoScanVoiceLines.front_done
-  if (phase === 'side_prepare') return videoScanVoiceLines.side_prepare
+  if (phase === 'side_prepare') {
+    return framingMode === 'manual'
+      ? `${videoScanVoiceLines.side_prepare} ${videoScanVoiceLines.front_prepare_manual}`
+      : videoScanVoiceLines.side_prepare
+  }
   if (phase === 'side_done') return videoScanVoiceLines.side_done
-  if (phase === 'back_prepare') return videoScanVoiceLines.back_prepare
+  if (phase === 'back_prepare') {
+    return framingMode === 'manual'
+      ? `${videoScanVoiceLines.back_prepare} ${videoScanVoiceLines.front_prepare_manual}`
+      : videoScanVoiceLines.back_prepare
+  }
   if (phase === 'back_done') return videoScanVoiceLines.back_done
   if (isCountdownPhase(phase)) return videoScanVoiceLines.hold
   return ''
@@ -254,12 +512,18 @@ export function reduceVideoScan(state, action) {
     case 'START':
       return {
         ...state,
+        analysisError: '',
+        analysisStatus: '',
+        autoFramingAvailable: Boolean(action.autoFramingAvailable),
         capturing: false,
         countdown: null,
         error: '',
         faceStatus: 'pending',
+        framingMode: action.framingMode === 'auto' ? 'auto' : action.framingMode === 'manual' ? 'manual' : state.framingMode,
         phase: 'prepare',
         pose: 'front',
+        positionMessage: '',
+        positionStatus: 'idle',
       }
     case 'CAMERA_READY':
       return {
@@ -281,6 +545,7 @@ export function reduceVideoScan(state, action) {
     case 'BEGIN_COUNTDOWN': {
       const pose = action.pose || state.pose || 'front'
       if (state.capturing) return state
+      if (!isPreparePhase(state.phase) && state.phase !== 'prepare') return state
       return {
         ...state,
         capturing: false,
@@ -288,8 +553,46 @@ export function reduceVideoScan(state, action) {
         error: '',
         phase: getCountdownPhase(pose),
         pose,
+        positionStatus: 'valid',
+        positionMessage: 'Bra position — håll still',
       }
     }
+    case 'CANCEL_COUNTDOWN':
+      if (!isCountdownPhase(state.phase)) return state
+      return {
+        ...state,
+        capturing: false,
+        countdown: null,
+        error: '',
+        phase: getPreparePhase(state.pose || 'front'),
+        positionMessage: 'Positionen ändrades — ställ dig i ramen igen.',
+        positionStatus: 'invalid',
+      }
+    case 'SET_FRAMING_MODE': {
+      const framingMode = action.mode === 'auto' ? 'auto' : 'manual'
+      const leaveCountdown = isCountdownPhase(state.phase) && framingMode !== state.framingMode
+      return {
+        ...state,
+        countdown: leaveCountdown ? null : state.countdown,
+        framingMode,
+        phase: leaveCountdown ? getPreparePhase(state.pose || 'front') : state.phase,
+      }
+    }
+    case 'SET_POSITION':
+      if (state.positionStatus === (action.status || state.positionStatus) && state.positionMessage === (action.message || '')) {
+        return state
+      }
+      return {
+        ...state,
+        positionMessage: action.message || '',
+        positionStatus: action.status || state.positionStatus,
+      }
+    case 'SET_ANALYSIS_STATUS':
+      return {
+        ...state,
+        analysisError: action.error || '',
+        analysisStatus: action.status || '',
+      }
     case 'TICK_COUNTDOWN': {
       if (!isCountdownPhase(state.phase)) return state
       if (state.countdown === null) return state
@@ -342,9 +645,11 @@ export function reduceVideoScan(state, action) {
     case 'RETAKE_ALL':
       return {
         ...initialVideoScanState,
+        autoFramingAvailable: state.autoFramingAvailable,
         cameraActive: state.cameraActive,
         faceMode: state.faceMode,
         facingMode: state.facingMode,
+        framingMode: state.framingMode,
         phase: 'front_prepare',
         pose: 'front',
         voiceEnabled: state.voiceEnabled,
@@ -363,16 +668,33 @@ export function reduceVideoScan(state, action) {
       return { ...state, faceMode: action.mode, faceStatus: 'pending' }
     case 'SET_FACE_STATUS':
       return { ...state, faceStatus: action.status }
-    case 'SET_ZOOM':
+    case 'SET_ZOOM': {
+      const zoom = clampVideoScanZoom(action.zoom)
+      const zoomMode = action.zoomMode || state.zoomMode
+      if (state.zoom === zoom && state.zoomMode === zoomMode) return state
+      return { ...state, zoom, zoomMode }
+    }
+    case 'SET_FACING': {
+      const facingMode = action.facingMode || defaultVideoScanFacingMode
+      if (state.facingMode === facingMode && !isCountdownPhase(state.phase)) return state
       return {
         ...state,
-        zoom: clampVideoScanZoom(action.zoom),
-        zoomMode: action.zoomMode || state.zoomMode,
+        countdown: isCountdownPhase(state.phase) ? null : state.countdown,
+        facingMode,
+        phase: isCountdownPhase(state.phase) ? getPreparePhase(state.pose || 'front') : state.phase,
       }
-    case 'SET_FACING':
-      return { ...state, facingMode: action.facingMode || defaultVideoScanFacingMode }
+    }
     case 'ANALYZING':
-      return { ...state, phase: 'analyzing' }
+      return { ...state, analysisError: '', analysisStatus: 'Analyserar kroppen...', phase: 'analyzing' }
+    case 'ANALYSIS_FINISHED':
+      return {
+        ...state,
+        cameraActive: false,
+        capturing: false,
+        analysisError: action.ok ? '' : (action.error || state.analysisError),
+        analysisStatus: action.ok ? '' : (action.error || state.analysisStatus),
+        phase: action.ok ? 'done' : 'review',
+      }
     case 'DONE':
       return { ...state, cameraActive: false, capturing: false, phase: 'done' }
     default:
@@ -402,51 +724,8 @@ export function getFaceBoxesFromDetector(faces = [], width, height) {
     .filter((box) => box.width > 8 && box.height > 8)
 }
 
-function fillMaskRegion(context, box, mode) {
-  if (mode === 'pixelate') {
-    const sample = Math.max(8, Math.round(box.width / 8))
-    context.imageSmoothingEnabled = false
-    context.drawImage(
-      context.canvas,
-      box.x,
-      box.y,
-      box.width,
-      box.height,
-      box.x,
-      box.y,
-      sample,
-      sample,
-    )
-    context.drawImage(
-      context.canvas,
-      box.x,
-      box.y,
-      sample,
-      sample,
-      box.x,
-      box.y,
-      box.width,
-      box.height,
-    )
-    context.imageSmoothingEnabled = true
-    return
-  }
-
-  context.save()
-  context.filter = 'blur(18px)'
-  context.drawImage(
-    context.canvas,
-    box.x,
-    box.y,
-    box.width,
-    box.height,
-    box.x,
-    box.y,
-    box.width,
-    box.height,
-  )
-  context.restore()
-  context.fillStyle = 'rgba(8, 12, 22, 0.55)'
+function fillCoverRegion(context, box) {
+  context.fillStyle = 'rgb(8, 12, 22)'
   context.beginPath()
   context.ellipse(
     box.x + box.width / 2,
@@ -460,23 +739,147 @@ function fillMaskRegion(context, box, mode) {
   context.fill()
 }
 
-export function applyFaceProtectionToCanvas(canvas, { faces = [], mode = defaultFaceProtectionMode } = {}) {
+function copyCanvasPixels(canvas) {
+  if (typeof document === 'undefined' || !canvas) return null
+  const source = document.createElement('canvas')
+  source.width = canvas.width
+  source.height = canvas.height
+  const sourceContext = source.getContext('2d')
+  if (!sourceContext) return null
+  sourceContext.drawImage(canvas, 0, 0)
+  return source
+}
+
+function clipEllipse(context, box) {
+  context.beginPath()
+  context.ellipse(
+    box.x + box.width / 2,
+    box.y + box.height / 2,
+    Math.max(1, box.width / 2),
+    Math.max(1, box.height / 2),
+    0,
+    0,
+    Math.PI * 2,
+  )
+}
+
+function applyPixelBufferBlur(context, source, box) {
+  const sourceContext = source.getContext('2d')
+  if (!sourceContext?.getImageData) return false
+  const imageData = sourceContext.getImageData(box.x, box.y, Math.max(1, box.width), Math.max(1, box.height))
+  const before = new Uint8ClampedArray(imageData.data)
+  boxBlurRgba(imageData.data, imageData.width, imageData.height, 7)
+  boxBlurRgba(imageData.data, imageData.width, imageData.height, 7)
+  if (!pixelsDiffer(before, imageData.data)) return false
+  sourceContext.putImageData(imageData, box.x, box.y)
+  context.save()
+  clipEllipse(context, box)
+  context.clip()
+  context.drawImage(source, box.x, box.y, box.width, box.height, box.x, box.y, box.width, box.height)
+  context.restore()
+  return true
+}
+
+function applyDownsampleBlur(context, source, box) {
+  const tiny = typeof document !== 'undefined' ? document.createElement('canvas') : null
+  const tinyContext = tiny?.getContext?.('2d')
+  const sampleW = Math.max(6, Math.round(box.width / 16))
+  const sampleH = Math.max(6, Math.round(box.height / 16))
+  context.save()
+  clipEllipse(context, box)
+  context.clip?.()
+  context.imageSmoothingEnabled = true
+  if (tinyContext) {
+    tiny.width = sampleW
+    tiny.height = sampleH
+    tinyContext.imageSmoothingEnabled = true
+    tinyContext.drawImage(source, box.x, box.y, box.width, box.height, 0, 0, sampleW, sampleH)
+    context.drawImage(tiny, 0, 0, sampleW, sampleH, box.x, box.y, box.width, box.height)
+  } else {
+    context.drawImage(source, box.x, box.y, box.width, box.height, box.x, box.y, sampleW, sampleH)
+    context.drawImage(context.canvas, box.x, box.y, sampleW, sampleH, box.x, box.y, box.width, box.height)
+  }
+  context.restore()
+  return true
+}
+
+function fillMaskRegion(context, box, mode) {
+  try {
+    if (mode === 'cover') {
+      fillCoverRegion(context, box)
+      return true
+    }
+
+    const source = copyCanvasPixels(context.canvas) || context.canvas
+
+    if (mode === 'pixelate') {
+      const tiny = typeof document !== 'undefined' ? document.createElement('canvas') : null
+      if (!tiny) return false
+      tiny.width = Math.max(4, Math.round(box.width / 8))
+      tiny.height = Math.max(4, Math.round(box.height / 8))
+      const tinyContext = tiny.getContext('2d')
+      tinyContext.imageSmoothingEnabled = false
+      tinyContext.drawImage(source, box.x, box.y, box.width, box.height, 0, 0, tiny.width, tiny.height)
+      context.save()
+      clipEllipse(context, box)
+      context.clip()
+      context.imageSmoothingEnabled = false
+      context.drawImage(tiny, 0, 0, tiny.width, tiny.height, box.x, box.y, box.width, box.height)
+      context.restore()
+      return true
+    }
+
+    try {
+      if (applyPixelBufferBlur(context, source, box)) return true
+    } catch {
+      // Safari can throw on getImageData; fall through to downsample.
+    }
+    if (applyDownsampleBlur(context, source, box)) return true
+    fillCoverRegion(context, box)
+    return true
+  } catch {
+    fillCoverRegion(context, box)
+    return true
+  }
+}
+
+export function applyFaceProtectionToCanvas(canvas, {
+  faces = [],
+  mode = defaultFaceProtectionMode,
+  maskBox,
+  faceDetectorSupported,
+} = {}) {
+  const outcome = getFaceProtectionOutcome(mode, faces, {
+    faceDetectorSupported,
+    hasManualMask: Boolean(maskBox),
+  })
+
   if (!canvas?.getContext) {
-    return getFaceProtectionOutcome(mode, faces)
+    return { ...outcome, pixelsChanged: false }
   }
 
-  const outcome = getFaceProtectionOutcome(mode, faces)
   if (!outcome.bakedIntoPixels) {
-    return outcome
+    return { ...outcome, pixelsChanged: false }
   }
 
   const context = canvas.getContext('2d')
   const boxes = outcome.method === 'detected'
     ? getFaceBoxesFromDetector(faces, canvas.width, canvas.height)
-    : [getUpperRegionBox(canvas.width, canvas.height)]
+    : [maskBox || getUpperRegionBox(canvas.width, canvas.height)]
+  const paintMode = mode === 'pixelate' ? 'pixelate' : mode === 'cover' ? 'cover' : 'blur'
 
-  boxes.forEach((box) => fillMaskRegion(context, box, mode === 'pixelate' ? 'pixelate' : 'blur'))
-  return outcome
+  const painted = boxes.some((box) => fillMaskRegion(context, box, paintMode))
+  if (!painted) {
+    return {
+      applied: false,
+      bakedIntoPixels: false,
+      label: 'Ansiktsskydd kunde inte verifieras',
+      method: outcome.method,
+      pixelsChanged: false,
+      status: 'unavailable',
+    }
+  }
+  return { ...outcome, pixelsChanged: true }
 }
 
 export async function detectFacesLocally(image) {
@@ -511,13 +914,42 @@ export function canvasToScanFile(canvas, pose) {
         reject(new Error('Bilden kunde inte sparas.'))
         return
       }
-      resolve(new File([blob], `video-scan-${pose}.jpg`, { type: 'image/jpeg' }))
+      const name = `video-scan-${pose}.jpg`
+      try {
+        resolve(new File([blob], name, { type: 'image/jpeg' }))
+      } catch {
+        blob.name = name
+        blob.lastModified = Date.now()
+        resolve(blob)
+      }
     }, 'image/jpeg', 0.9)
   })
 }
 
 export function shouldBlockAnalysisForFaceProtection(faceMode, faceStatus) {
   return faceMode === 'auto' && faceStatus === 'unavailable'
+}
+
+export function getBodyScanAnalysisBlockReason({
+  photos = {},
+  faceMode,
+  faceStatus,
+  hasApprovedAnalysis = true,
+  isAnalyzing = false,
+  isFreeLimitReached = false,
+} = {}) {
+  if (isAnalyzing) return null
+  if (!photos.front) return 'Framifrån-bilden saknas.'
+  if (!photos.side) return 'Sidan-bilden saknas.'
+  if (!photos.back) return 'Bakifrån-bilden saknas.'
+  if (shouldBlockAnalysisForFaceProtection(faceMode, faceStatus) && faceMode === 'auto') {
+    return 'Ansiktsmaskeringen kunde inte verifieras.'
+  }
+  if (!hasApprovedAnalysis) return 'Godkänn AI-analysen först.'
+  if (isFreeLimitReached) {
+    return 'Gratisgränsen är nådd. Radera en analys eller invänta verifierad premiumåtkomst.'
+  }
+  return null
 }
 
 export function revokePreviewUrls(urls = []) {

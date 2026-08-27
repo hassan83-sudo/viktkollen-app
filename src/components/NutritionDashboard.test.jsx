@@ -592,9 +592,12 @@ describe('Nutrition Dashboard V1 render', () => {
 
   it('keeps the meal center month label correctly encoded', () => {
     const source = readFileSync(new URL('./MealLogger.jsx', import.meta.url), 'utf8')
+    const resources = readFileSync(new URL('../i18n/resources.js', import.meta.url), 'utf8')
 
-    expect(source).toContain('Månad')
+    expect(source).toContain("t('logger.views.month')")
+    expect(resources).toContain("month: 'Månad'")
     expect(source).not.toContain('MÃ¥nad')
+    expect(resources).not.toContain('MÃ¥nad')
   })
 
   it('does not render known mojibake patterns in nutrition UI', () => {

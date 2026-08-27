@@ -26,6 +26,7 @@ export const userDataKeys = {
   generatedMealPlans: 'viktkollen.generatedMealPlans',
   goalsHabits: 'viktkollen.goalsHabits.v2',
   healthDashboardPeriod: 'viktkollen.healthDashboard.v2.period',
+  locale: 'viktkollen.locale',
   favoriteMeals: 'viktkollen.favoriteMeals',
   mealHistory: 'viktkollen.mealAnalysisHistory',
   mealPlans: 'viktkollen.mealPlans',
@@ -113,6 +114,28 @@ export function getProfile(fallbackValue = null, isValid) {
 
 export function saveProfile(profile) {
   return saveValue(userDataKeys.profile, normalizeProfile(profile, { markCompleted: true }))
+}
+
+export function getLocalePreference(fallbackValue = '') {
+  const profile = readValidated(userDataKeys.profile, null, (value) => value && typeof value === 'object' && !Array.isArray(value))
+  const profileLocale = typeof profile?.locale === 'string' ? profile.locale.trim() : ''
+  if (profileLocale) {
+    return profileLocale
+  }
+  return readStorage(userDataKeys.locale, fallbackValue)
+}
+
+export function saveLocalePreference(locale, profile = null) {
+  saveValue(userDataKeys.locale, locale)
+
+  if (profile && typeof profile === 'object' && !Array.isArray(profile)) {
+    saveValue(userDataKeys.profile, normalizeProfile({
+      ...profile,
+      locale,
+    }))
+  }
+
+  return locale
 }
 
 export function getWeights(fallbackValue = [], isValid) {

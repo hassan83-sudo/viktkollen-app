@@ -23,6 +23,9 @@ describe('featureRegistry', () => {
       memory: true,
       mouth: true,
       smartCamera: true,
+      social: false,
+      socialLive: false,
+      socialUi: true,
     })
     expect(getFeatureFlags().walkieTalkie).toBe(false)
     expect(getFeatureFlags().dayMap).toBe(false)
@@ -35,6 +38,7 @@ describe('featureRegistry', () => {
       memory: false,
       mouth: false,
       smartCamera: false,
+      socialUi: false,
     })
 
     expect(isFeatureEnabled('smartCamera', off)).toBe(false)
@@ -73,6 +77,7 @@ describe('featureRegistry', () => {
       memory: false,
       mouth: false,
       smartCamera: true,
+      social: true,
     })
   })
 

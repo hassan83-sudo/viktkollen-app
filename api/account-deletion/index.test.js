@@ -51,6 +51,7 @@ function createDeletionClient({ failTable = '', authError = null } = {}) {
         }),
       })),
     })),
+    rpc: vi.fn(async () => ({ error: null })),
   }
 }
 
@@ -111,6 +112,7 @@ describe('account deletion API route', () => {
     const response = await callRoute(createRequest({ body: { mode: 'cloud-data' } }))
 
     expect(response.statusCode).toBe(200)
+    expect(client.rpc).toHaveBeenCalledWith('social_purge_user_data', { p_user_id: 'user-a' })
     expect(client.deletedTables.length).toBeGreaterThan(1)
     expect(client.deletedTables.every((entry) => entry.column === 'user_id')).toBe(true)
     expect(client.deletedTables.every((entry) => entry.userId === 'user-a')).toBe(true)

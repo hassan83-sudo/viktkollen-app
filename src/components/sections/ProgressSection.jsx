@@ -1,7 +1,9 @@
 ﻿import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AppErrorBoundary from '../AppErrorBoundary.jsx'
 import AppSection from '../app/AppSection.jsx'
-import ProgressHub, { progressHubTargetFolders } from '../progress/ProgressHub.jsx'
+import ProgressHub from '../progress/ProgressHub.jsx'
+import { progressHubTargetFolders } from '../progress/progressHubModel.js'
 import { analyzeWeights, formatKg, formatSignedKg } from '../../services/progressService.js'
 import { getLatestAnalysis } from '../../services/bodyAnalysisHistory.js'
 
@@ -12,13 +14,13 @@ const ProgressDashboard = lazy(() => import('../ProgressDashboard.jsx'))
 const ProgressPhotos = lazy(() => import('../ProgressPhotos.jsx'))
 const ReportCenter = lazy(() => import('../ReportCenter.jsx'))
 
-function latestPhotoLabel(items = []) {
+function latestPhotoLabel(items = [], t) {
   const latest = items[0]
-  if (!latest) return 'Inga bilder ännu'
+  if (!latest) return t('summaries.noPhotosYet')
   if (latest.createdAtLabel?.includes('idag') || latest.createdAtLabel?.toLocaleLowerCase?.('sv-SE').includes('idag')) {
-    return 'Senast idag'
+    return t('summaries.latestToday')
   }
-  return latest.createdAtLabel || 'Senaste bild sparad'
+  return latest.createdAtLabel || t('summaries.latestPhotoSaved')
 }
 
 function ProgressSection({
@@ -65,6 +67,7 @@ function ProgressSection({
   weeklyReportLines,
   weeklyReportStatus,
 }) {
+  const { t } = useTranslation(['progress'])
   const [activeFolder, setActiveFolder] = useState(null)
   const weightAnalysis = useMemo(() => analyzeWeights(weights, profile), [profile, weights])
   const latestScan = useMemo(() => {
@@ -73,33 +76,41 @@ function ProgressSection({
   }, [bodyAnalysisHistory])
   const summaries = useMemo(() => ({
     weight: {
-      primary: formatKg(weightAnalysis.latest?.value, 'Ingen vikt'),
-      secondary: `${formatSignedKg(weightAnalysis.changeTotal, 'Ingen förändring')} totalt`,
+      primary: formatKg(weightAnalysis.latest?.value, t('summaries.noWeight')),
+      secondary: t('summaries.totalChange', {
+        change: formatSignedKg(weightAnalysis.changeTotal, t('summaries.noChange')),
+      }),
     },
     'body-scan': {
-      primary: latestScan ? 'Senaste scanning finns' : 'Ingen scanning ännu',
-      secondary: 'Starta ny',
+      primary: latestScan ? t('summaries.latestScanExists') : t('summaries.noScanYet'),
+      secondary: t('summaries.startNew'),
     },
     photos: {
-      primary: `${progressPhotos.length} ${progressPhotos.length === 1 ? 'bild' : 'bilder'}`,
-      secondary: latestPhotoLabel(progressPhotoItems),
+      primary: t('summaries.photoCount', { count: progressPhotos.length }),
+      secondary: latestPhotoLabel(progressPhotoItems, t),
     },
     reports: {
-      primary: 'Månadsrapport',
-      secondary: 'AI-insikter',
+      primary: t('summaries.monthlyReport'),
+      secondary: t('summaries.aiInsights'),
     },
     tools: {
-      primary: 'Filter, export m.m.',
-      secondary: 'Historik och övriga verktyg',
+      primary: t('summaries.filterExport'),
+      secondary: t('summaries.historyTools'),
     },
-  }), [latestScan, progressPhotoItems, progressPhotos.length, weightAnalysis.changeTotal, weightAnalysis.latest?.value])
+  }), [latestScan, progressPhotoItems, progressPhotos.length, t, weightAnalysis.changeTotal, weightAnalysis.latest?.value])
 
   useEffect(() => {
     if (activeSection !== 'progress') return
 
     const targetId = navigationIntent?.targetId || String(window.location.hash || '').replace(/^#/, '')
     const folder = progressHubTargetFolders[targetId]
-    if (folder) setActiveFolder(folder)
+    if (!folder) return
+
+    const timer = window.setTimeout(() => {
+      setActiveFolder(folder)
+    }, 0)
+
+    return () => window.clearTimeout(timer)
   }, [activeSection, navigationIntent])
 
   useEffect(() => {
@@ -144,7 +155,7 @@ function ProgressSection({
     <AppSection
       activeSection={activeSection}
       id="progress"
-      label="Framsteg och statistik"
+      label={t('sectionLabel')}
     >
       <ProgressHub
         activeFolder={activeFolder}
@@ -152,7 +163,7 @@ function ProgressSection({
         onBack={() => setActiveFolder(null)}
         onOpen={setActiveFolder}
       >
-        <Suspense fallback={<p className="progress-hub-loading">Laddar mappen…</p>}>
+        <Suspense fallback={<p className="progress-hub-loading">{t('loading')}</p>}>
         {activeFolder === 'weight' && progressCenter}
 
         {activeFolder === 'body-scan' && (
@@ -182,7 +193,7 @@ function ProgressSection({
             onUpdateProgressPhoto={onUpdateProgressPhoto}
             progressPhotoComparison={progressPhotoComparison}
             progressPhotoComparisonImages={progressPhotoComparisonImages}
-            progressPhotoCountLabel={`${progressPhotos.length} sparade bilder`}
+            progressPhotoCountLabel={t('photos.savedCount', { count: progressPhotos.length })}
             progressPhotoItems={progressPhotoItems}
             progressPhotoNote={progressPhotoNote}
             progressPhotoOptions={progressPhotoOptions}
@@ -197,11 +208,11 @@ function ProgressSection({
           <>
             {progressCenter}
             <details className="progress-hub-more" open>
-              <summary>Månadsrapport</summary>
+              <summary>{t('reports.monthlySummary')}</summary>
               <MonthlyReport report={monthlyReport} />
             </details>
             <details className="progress-hub-more">
-              <summary>Visa mer om rapportcenter</summary>
+              <summary>{t('reports.showMoreReportCenter')}</summary>
               <ReportCenter
                 adaptiveCoachFeedback={adaptiveCoachFeedback}
                 checkIn={checkIn}
@@ -222,7 +233,7 @@ function ProgressSection({
             <AppErrorBoundary
               area="progress-dashboard"
               resetKey={`${selectedMealDate}-${weights.length}-${meals.length}`}
-              title="Din utveckling kunde inte visas"
+              title={t('reports.dashboardError')}
             >
               <ProgressDashboard
                 adaptiveCoachFeedback={adaptiveCoachFeedback}

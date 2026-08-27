@@ -25,6 +25,15 @@ describe('coachRequestBuilder', () => {
     expect(fingerprintCoachPayload(result.payload)).toBe(fingerprintCoachPayload(result.payload))
   })
 
+  it('includes the selected app locale in the remote payload', () => {
+    const result = buildCoachRemoteRequestPayload({
+      locale: 'zh-HK',
+      profile: { locale: 'ar' },
+    }, { analysisDate: '2026-08-04', consent: true })
+
+    expect(result.payload.locale).toBe('zh-TW')
+  })
+
   it('redacts unsafe text tokens', () => {
     expect(coachRequestBuilderInternals.stripUnsafeText('email a@b.com token abc')).not.toMatch(/a@b.com|token/)
   })

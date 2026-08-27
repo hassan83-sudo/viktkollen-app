@@ -6,19 +6,13 @@ function readSource(relativePath) {
 }
 
 describe('AI Coach tap me and realtime voice security', () => {
-  it('puts tap me on the Home AI Coach card', () => {
+  it('puts the Home AI Coach card in the old AI-ögon slot', () => {
     const source = readSource('src/components/app/OverviewDashboard.jsx')
-    const coachStart = source.indexOf('className="overview-primary-action is-coach"')
-    const tapMeOnCoachCard = source.indexOf('<span className="overview-tap-me">tap me</span>', coachStart)
-    const coachCard = source.slice(coachStart, tapMeOnCoachCard + '<span className="overview-tap-me">tap me</span>'.length)
 
-    expect(coachStart).toBeGreaterThan(-1)
-    expect(source).toContain('className="overview-primary-action is-coach"')
-    expect(source).toContain('<span className="overview-tap-me">tap me</span>')
-    expect(tapMeOnCoachCard).toBeGreaterThan(coachStart)
-    expect(coachCard).toContain('overview-primary-action is-coach')
-    expect(coachCard).toContain('tap me')
+    expect(source).toContain('is-coach-hero')
+    expect(source).toContain("t('home:labels.openAiCoach')")
     expect(source).toContain('onOpenAiCoach')
+    expect(source).toContain('<span className="overview-tap-me">tap me</span>')
   })
 
   it('opens the AI Coach overlay from Home and keeps text chat available', () => {
@@ -27,7 +21,7 @@ describe('AI Coach tap me and realtime voice security', () => {
 
     expect(appSource).toContain('onOpenAiCoach={() => setAiCoachOverlayOpen(true)}')
     expect(appSource).toContain('<AiCoachOverlay')
-    expect(overlaySource).toContain('Tryck för att prata')
+    expect(overlaySource).toContain("t('coach:overlay.startVoice')")
     expect(overlaySource).toContain('<ChatPanel')
     expect(appSource).toContain('function sendChatMessage')
     expect(appSource).toContain('onStartVoiceInput={startVoiceInput}')

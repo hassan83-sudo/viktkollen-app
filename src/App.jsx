@@ -1,4 +1,5 @@
 ﻿import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import HomeSection from './components/sections/HomeSection.jsx'
 import MoreSection from './components/sections/MoreSection.jsx'
 import ProgressSection from './components/sections/ProgressSection.jsx'
@@ -101,6 +102,7 @@ import { buildReminderStatus, createReminderScheduler, getDueReminders } from '.
 import { syncLegacyReminderSettingsToV2 } from './services/reminders/reminderLegacyAdapter.js'
 import { applyDueNotificationPlan } from './services/notifications/notificationSchedulerBridge.js'
 import { logNavigationOrigin } from './services/navigation/navigationOriginDiagnostics.js'
+import i18n, { changeAppLanguage, getActiveLanguageCode } from './i18n/index.js'
 
 const LaunchReadinessPanel = lazy(() => import('./components/LaunchReadinessPanel.jsx'))
 const DataImportCenter = lazy(() => import('./components/DataImportCenter.jsx'))
@@ -850,6 +852,7 @@ function makeProductFromBarcode(barcode) {
 }
 
 function App() {
+  useTranslation()
   const barcodeVideoRef = useRef(null)
   const barcodeStreamRef = useRef(null)
   const barcodeTimerRef = useRef(null)
@@ -877,6 +880,7 @@ function App() {
   const [profileError, setProfileError] = useState('')
   const [proactiveCoachResult, setProactiveCoachResult] = useState(null)
   const [showOnboarding, setShowOnboarding] = useState(() => !hasUsableProfile(profile))
+  const [currentLanguage, setCurrentLanguage] = useState(() => getActiveLanguageCode())
   const [activeAppSection, setActiveAppSection] = useState('home')
   const [nutritionIntent, setNutritionIntent] = useState(null)
   const [progressIntent, setProgressIntent] = useState(null)
@@ -994,6 +998,19 @@ function App() {
   const [bodyAnalysisHistory, setBodyAnalysisHistory] = useState(() =>
     getAnalysisHistory(),
   )
+
+  useEffect(() => {
+    const handleLanguageChange = (languageCode) => {
+      setCurrentLanguage(languageCode)
+    }
+
+    i18n.on('languageChanged', handleLanguageChange)
+    return () => i18n.off('languageChanged', handleLanguageChange)
+  }, [])
+
+  useEffect(() => {
+    userDataRepository.saveLocalePreference(currentLanguage, profile)
+  }, [currentLanguage, profile])
 
   const validatedProfile = useMemo(() => normalizeProfile(profile || {}), [profile])
   const profileCompleteness = useMemo(() => getProfileCompleteness(validatedProfile), [validatedProfile])
@@ -2073,6 +2090,10 @@ function App() {
     setProfileForm((current) => ({ ...current, [key]: value }))
   }
 
+  function handleLanguageChange(nextLanguage) {
+    changeAppLanguage(nextLanguage)
+  }
+
   function cancelProfileEdit() {
     setProfileForm(createProfileForm(validatedProfile))
     setProfileError('')
@@ -2895,6 +2916,7 @@ function App() {
             healthDashboardPeriod={healthDashboardPeriod}
             healthSnapshot={healthSnapshot}
             isAiSpeaking={isAiSpeaking}
+            isAuthenticated={Boolean(authSession)}
             isListening={isListening}
             isVoiceConversationActive={isVoiceConversationActive}
             isVoiceMuted={isVoiceMuted}
@@ -3149,11 +3171,13 @@ function App() {
   goalsHabits={goalsHabits}
   healthSnapshot={healthSnapshot}
   isAuthenticated={Boolean(authSession)}
+  language={currentLanguage}
   meals={meals}
   navigationIntent={moreIntent}
   nutritionGoals={nutritionGoals}
   onDataRestored={refreshAppStateFromStorage}
   onEditProfile={() => setShowOnboarding(true)}
+  onLanguageChange={handleLanguageChange}
   onReminderSettingChange={updateReminderSetting}
   onReminderStateChange={handleReminderStateChange}
    onRequestNotificationPermission={requestNotificationPermission}

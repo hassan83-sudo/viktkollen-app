@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import ProgressHub, { progressHubFolders, progressHubTargetFolders } from './ProgressHub.jsx'
+import ProgressHub from './ProgressHub.jsx'
+import { progressHubTargetFolders } from './progressHubModel.js'
 
 describe('ProgressHub', () => {
   it('renders the compact Framstegscenter folders on the first level', () => {

@@ -1,4 +1,5 @@
 import { Suspense, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AppErrorBoundary from '../AppErrorBoundary.jsx'
 import CloudBackupPanel from '../CloudBackupPanel.jsx'
 import CloudStatusPanel from '../CloudStatusPanel.jsx'
@@ -6,6 +7,7 @@ import CloudSyncPanel from '../CloudSyncPanel.jsx'
 import MoreGoalsFolder from '../more/MoreGoalsFolder.jsx'
 import MoreHub from '../more/MoreHub.jsx'
 import NotificationCenter from '../NotificationCenter.jsx'
+import LanguageSettingsPanel from '../LanguageSettingsPanel.jsx'
 import ReminderCenter from '../ReminderCenter.jsx'
 import ReminderSettings from '../ReminderSettings.jsx'
 import AppSection from '../app/AppSection.jsx'
@@ -30,6 +32,7 @@ function MoreSection({
   goalsHabits,
   healthSnapshot,
   isAuthenticated,
+  language,
   meals,
   navigationIntent,
   nutritionGoals,
@@ -38,6 +41,7 @@ function MoreSection({
   onReminderSettingChange,
   onReminderStateChange,
   onRequestNotificationPermission,
+  onLanguageChange,
   onSearchNavigate,
   onSignOut,
   profileCompleteness,
@@ -56,6 +60,7 @@ function MoreSection({
   profile,
   weights,
 }) {
+  const { t } = useTranslation(['settings', 'common'])
   const DataExportCenter = DataExportCenterComponent
   const DataImportCenter = DataImportCenterComponent
   const SyncHealthDashboard = SyncHealthDashboardComponent
@@ -76,7 +81,13 @@ function MoreSection({
 
     const targetId = navigationIntent?.targetId || String(window.location.hash || '').replace(/^#/, '')
     const folder = resolveMoreFolderFromTarget(targetId)
-    if (folder) setActiveFolder(folder)
+    if (!folder) return
+
+    const timer = window.setTimeout(() => {
+      setActiveFolder(folder)
+    }, 0)
+
+    return () => window.clearTimeout(timer)
   }, [activeSection, navigationIntent])
 
   useEffect(() => {
@@ -110,13 +121,14 @@ function MoreSection({
     const result = await requestAccountDeletion({ mode: 'dry-run' })
     setIsDeletingAccount(false)
     setDeleteStatus(result.ok
-      ? 'Serverkontraktet svarar. Molndata och kontoradering kräver fortsatt rätt serverkonfiguration.'
-      : result.error?.safeMessage || 'Kontoradering kunde inte kontrolleras.')
+      ? t('deletionDryRunOk')
+      : result.error?.safeMessage || t('deletionCheckFailed'))
   }
 
   async function handleDeleteAccount() {
-    if (deleteConfirmation.trim().toLocaleLowerCase('sv-SE') !== 'radera konto') {
-      setDeleteStatus('Skriv exakt: radera konto')
+    const confirmPhrase = t('deleteConfirmPhrase')
+    if (deleteConfirmation.trim().toLocaleLowerCase('sv-SE') !== confirmPhrase.toLocaleLowerCase('sv-SE')) {
+      setDeleteStatus(t('writeExactDeletePhrase', { phrase: confirmPhrase }))
       return
     }
 
@@ -126,14 +138,14 @@ function MoreSection({
     setIsDeletingAccount(false)
 
     if (!result.ok) {
-      setDeleteStatus(result.error?.safeMessage || 'Kontot kunde inte raderas säkert.')
+      setDeleteStatus(result.error?.safeMessage || t('deleteFailed'))
       return
     }
 
     const localResult = clearLocalViktkollenData()
     setDeleteStatus(localResult.ok
-      ? 'Kontodata raderades. Du loggas ut.'
-      : 'Servern raderade kontodata, men lokal rensning blev delvis ofullständig.')
+      ? t('deleteSuccess')
+      : t('deletePartialLocal'))
     await onSignOut?.()
   }
 
@@ -160,7 +172,7 @@ function MoreSection({
     <AppSection
       activeSection={activeSection}
       id="more"
-      label="Fler funktioner och inställningar"
+      label={t('sectionLabel')}
     >
       <MoreHub
         activeFolder={activeFolder}
@@ -173,7 +185,7 @@ function MoreSection({
           <AppErrorBoundary
             area="cloud"
             resetKey={userId}
-            title="Molnstatus kunde inte visas"
+            title={t('cloudError')}
           >
             <CloudStatusPanel isAuthenticated={isAuthenticated} />
             <CloudSyncPanel
@@ -201,7 +213,7 @@ function MoreSection({
             <AppErrorBoundary
               area="reminders"
               resetKey={reminderState.updatedAt}
-              title="Påminnelser kunde inte visas"
+              title={t('remindersError')}
             >
               <ReminderCenter
                 checkIn={checkIn}
@@ -218,7 +230,7 @@ function MoreSection({
             <AppErrorBoundary
               area="notifications"
               resetKey={reminderState.updatedAt}
-              title="Notiscenter kunde inte visas"
+              title={t('notificationsError')}
             >
               <NotificationCenter
                 adaptiveCoachFeedback={adaptiveCoachFeedback}
@@ -259,7 +271,7 @@ function MoreSection({
           <AppErrorBoundary
             area="archive"
             resetKey={userId}
-            title="Arkiv kunde inte visas"
+            title={t('archiveError')}
           >
             <CloudBackupPanel
               isAuthenticated={isAuthenticated}
@@ -282,31 +294,31 @@ function MoreSection({
           <article className="panel account-settings-panel" id="installningar">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">Konto</p>
-                <h2>Profil och konto</h2>
+                <p className="eyebrow">{t('accountEyebrow')}</p>
+                <h2>{t('accountTitle')}</h2>
               </div>
             </div>
 
             <p className="account-email">
-              Inloggad som <strong>{email || 'okänd e-post'}</strong>
+              {t('signedInAs')} <strong>{email || t('unknownEmail')}</strong>
             </p>
 
             <div className="app-information">
-              <h3>Profilunderlag</h3>
+              <h3>{t('profileBasis')}</h3>
               <p>
-                {profile?.displayName || profile?.name || 'Profil utan namn'} · {profile?.weightDirectionLabel || 'Mål saknas'} · {profile?.activityLevelLabel || 'Aktivitet saknas'}
+                {profile?.displayName || profile?.name || t('unnamedProfile')} · {profile?.weightDirectionLabel || t('goalMissing')} · {profile?.activityLevelLabel || t('activityMissing')}
               </p>
               <p>
-                {profileCompleteness?.nextBestAction || 'Profilen kan kompletteras när som helst.'}
+                {profileCompleteness?.nextBestAction || t('profileAnytime')}
               </p>
             </div>
 
             <div className="app-information">
-              <h3>Remote bildanalys</h3>
+              <h3>{t('remoteImageAnalysis')}</h3>
               <p>
                 {nutritionRemoteConsent.granted
-                  ? `Godkänd för den här användaren sedan ${nutritionRemoteConsent.grantedAt.slice(0, 10)}.`
-                  : 'Remote bildanalys är inte godkänd för den här användaren.'}
+                  ? t('remoteGrantedSince', { date: nutritionRemoteConsent.grantedAt.slice(0, 10) })
+                  : t('remoteNotGranted')}
               </p>
               <button
                 className="secondary-button"
@@ -314,27 +326,34 @@ function MoreSection({
                 onClick={handleRevokeNutritionRemoteConsent}
                 disabled={!nutritionRemoteConsent.granted}
               >
-                Återkalla samtycke för bildanalys
+                {t('revokeConsent')}
               </button>
             </div>
 
             <div className="app-information">
-              <h3>Appinställningar och enheter</h3>
+              <LanguageSettingsPanel
+                language={language}
+                onLanguageChange={onLanguageChange}
+              />
+            </div>
+
+            <div className="app-information">
+              <h3>{t('appSettingsDevices')}</h3>
               <p>
-                {syncStatus?.currentDevice?.deviceLabel || 'Den här enheten'}
+                {syncStatus?.currentDevice?.deviceLabel || t('thisDevice')}
                 {syncStatus?.currentDevice?.platform ? ` · ${syncStatus.currentDevice.platform}` : ''}
                 {syncStatus?.currentDevice?.browser ? ` · ${syncStatus.currentDevice.browser}` : ''}
                 {syncStatus?.currentDevice?.appMode ? ` · ${syncStatus.currentDevice.appMode}` : ''}
               </p>
               <p>
                 {syncStatus?.enabled === false
-                  ? 'Lokallagring: data sparas bara på den här enheten.'
-                  : 'Lokallagring: data sparas här och synkas till molnet när du är inloggad.'}
+                  ? t('localOnly')
+                  : t('localAndCloud')}
               </p>
             </div>
 
             <div className="app-information">
-              <h3>Sök i appen</h3>
+              <h3>{t('searchInApp')}</h3>
               <GlobalSearch onNavigate={onSearchNavigate} />
             </div>
 
@@ -344,7 +363,7 @@ function MoreSection({
                 type="button"
                 onClick={onEditProfile}
               >
-                Ändra profil
+                {t('editProfile')}
               </button>
 
               <button
@@ -353,24 +372,22 @@ function MoreSection({
                 onClick={onSignOut}
                 disabled={authLoading}
               >
-                {authLoading ? 'Loggar ut...' : 'Logga ut'}
+                {authLoading ? t('common:loggingOut') : t('common:actions.signOut')}
               </button>
             </div>
 
             <div className="app-information">
-              <h3>Om Viktkollen</h3>
+              <h3>{t('aboutTitle')}</h3>
               <p>
-                Viktkollen ger allmänt stöd för hälsa och välmående. Informationen
-                är inte medicinsk rådgivning, diagnos eller behandling.
+                {t('aboutBody')}
               </p>
             </div>
 
             <details className="account-danger-zone">
-              <summary>Radera konto och data</summary>
+              <summary>{t('deleteAccountData')}</summary>
               <div className="account-deletion-panel">
                 <p>
-                  Radering kräver inloggning och serververifiering. Molndata raderas
-                  före auth-kontot, och appen loggar ut efter lyckad radering.
+                  {t('deleteAccountHelp')}
                 </p>
                 <button
                   className="secondary-button"
@@ -378,10 +395,10 @@ function MoreSection({
                   onClick={handleCheckDeletionReadiness}
                   disabled={authLoading || isDeletingAccount || !isAuthenticated}
                 >
-                  Kontrollera raderingsstatus
+                  {t('checkDeletionStatus')}
                 </button>
                 <label>
-                  Bekräfta med texten radera konto
+                  {t('confirmDeleteLabel')}
                   <input
                     value={deleteConfirmation}
                     onChange={(event) => setDeleteConfirmation(event.target.value)}
@@ -394,7 +411,7 @@ function MoreSection({
                   onClick={handleDeleteAccount}
                   disabled={authLoading || isDeletingAccount || !isAuthenticated}
                 >
-                  {isDeletingAccount ? 'Raderar...' : 'Radera konto'}
+                  {isDeletingAccount ? t('deleting') : t('deleteAccount')}
                 </button>
                 {deleteStatus && (
                   <p className="settings-confirmation" role="status">

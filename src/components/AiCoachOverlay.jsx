@@ -1,4 +1,5 @@
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import ChatPanel from './ChatPanel.jsx'
 import useOverviewStageLock from './app/useOverviewStageLock.js'
 import { getVoicePhaseLabel } from '../services/ai/realtimeVoiceController.js'
@@ -27,6 +28,7 @@ function AiCoachOverlay({
   starterPrompts,
   voiceStatus,
 }) {
+  const { t } = useTranslation(['coach'])
   useOverviewStageLock(onClose)
   const overlay = typeof document === 'undefined' ? null : document.body
   if (!overlay) return null
@@ -42,24 +44,24 @@ function AiCoachOverlay({
     <div className="ai-coach-overlay" role="dialog" aria-labelledby="ai-coach-overlay-title" aria-modal="true">
       <header className="ai-coach-overlay-header">
         <div>
-          <p className="eyebrow">AI Coach</p>
-          <h2 id="ai-coach-overlay-title">AI Coach</h2>
-          <p className="ai-coach-overlay-online">● Online</p>
+          <p className="eyebrow">{t('coach:overlay.title')}</p>
+          <h2 id="ai-coach-overlay-title">{t('coach:overlay.title')}</h2>
+          <p className="ai-coach-overlay-online">● {t('coach:overlay.online')}</p>
         </div>
-        <button className="ai-coach-overlay-close" type="button" onClick={onClose} aria-label="Stäng AI Coach">
+        <button className="ai-coach-overlay-close" type="button" onClick={onClose} aria-label={t('coach:overlay.close')}>
           X
         </button>
       </header>
 
       <div className="ai-coach-overlay-hero">
-        <img alt="Viktkollens AI Coach" src="/viktkollen-ai-coach-robot.png" />
+        <img alt={t('coach:overlay.robotAlt')} src="/viktkollen-ai-coach-robot.png" />
       </div>
 
       <div className="ai-coach-overlay-voice">
         <button
           className={`ai-coach-overlay-mic ${isListening ? 'is-listening' : ''} ${isAiSpeaking ? 'is-speaking' : ''}`}
           type="button"
-          aria-label={isVoiceConversationActive ? 'Avsluta samtal' : 'Tryck för att prata'}
+          aria-label={isVoiceConversationActive ? t('coach:overlay.endCall', 'End call') : t('coach:overlay.startVoice')}
           onClick={onStartVoiceInput}
         >
           🎙️
@@ -67,13 +69,13 @@ function AiCoachOverlay({
         <p className="ai-coach-overlay-status" aria-live="polite">{phaseLabel}</p>
         <div className="ai-coach-overlay-actions">
           <button className="secondary-button" type="button" onClick={onStartVoiceInput} disabled={!isVoiceConversationActive}>
-            Avsluta
+            {t('coach:overlay.end')}
           </button>
           <button className="secondary-button" type="button" onClick={onToggleVoiceMute} disabled={!isVoiceConversationActive}>
-            {isVoiceMuted ? 'Slå på mikrofon' : 'Mute'}
+            {isVoiceMuted ? t('coach:overlay.unmute') : t('coach:overlay.mute')}
           </button>
           <button className="secondary-button" type="button" onClick={onStopAiVoiceResponse} disabled={!isAiSpeaking}>
-            Avbryt svar
+            {t('coach:overlay.stopResponse')}
           </button>
         </div>
       </div>

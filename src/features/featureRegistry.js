@@ -9,6 +9,9 @@ export const defaultFeatureFlags = Object.freeze({
   dayMap: false,
   transportDetection: false,
   walkieTalkie: false,
+  social: false,
+  socialUi: true,
+  socialLive: false,
 })
 
 const knownFeatureIds = Object.freeze(Object.keys(defaultFeatureFlags))
@@ -81,5 +84,6 @@ export function getHubEntries(flags = getFeatureFlags()) {
     memory: isFeatureEnabled('memory', flags),
     mouth: isFeatureEnabled('mouth', flags),
     smartCamera: isFeatureEnabled('smartCamera', flags),
+    social: isFeatureEnabled('socialUi', flags),
   }
 }

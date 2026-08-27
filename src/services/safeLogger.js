@@ -1,4 +1,4 @@
-const forbiddenKeyPattern = /(token|session|password|secret|authorization|apikey|api[_-]?key|supabase|email|image|base64|payload|localstorage)/i
+const forbiddenKeyPattern = /(token|session|password|secret|authorization|apikey|api[_-]?key|supabase|email|image|base64|payload|localstorage|chat[_-]?body|message[_-]?body|message[_-]?text|last[_-]?message|access_token)/i
 const sensitiveTextPattern = /\b[\w.%+-]+@[\w.-]+\.[a-z]{2,}\b|(?:bearer|token|password|secret|apikey|api[_-]?key|authorization)[\s:=/"']+[^\s,;)"']+/gi
 const base64LikePattern = /data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=]+/gi
 const devBufferLimit = 80

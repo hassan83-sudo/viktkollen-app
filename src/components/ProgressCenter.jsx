@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   addDays,
   analyzeBodyMeasurements,
@@ -29,15 +30,16 @@ import {
   weightDraftToEntry,
   weightSources,
 } from '../services/progressService.js'
+import { formatDate, formatNumber as formatLocaleNumber } from '../i18n/format.js'
 
 const chartRanges = [
-  { label: '7 dagar', value: '7' },
-  { label: '30 dagar', value: '30' },
-  { label: '3 mån', value: '90' },
-  { label: '6 mån', value: '180' },
-  { label: '1 år', value: '365' },
-  { label: 'Allt', value: 'all' },
-  { label: 'Anpassat', value: 'custom' },
+  { value: '7' },
+  { value: '30' },
+  { value: '90' },
+  { value: '180' },
+  { value: '365' },
+  { value: 'all' },
+  { value: 'custom' },
 ]
 
 const defaultWeightFilters = {
@@ -55,6 +57,26 @@ const defaultTimelineFilters = {
   type: 'Alla',
 }
 
+const TREND_KEYS = {
+  Nedåt: 'down',
+  Uppåt: 'up',
+  Stabil: 'stable',
+  'För lite data': 'insufficient',
+}
+
+const STABILITY_KEYS = {
+  Stabil: 'stable',
+  'Normal variation': 'normal',
+  'Stor variation': 'high',
+  'För lite data': 'insufficient',
+}
+
+const UNCERTAINTY_KEYS = {
+  hög: 'high',
+  medel: 'medium',
+  låg: 'low',
+}
+
 function downloadJson(filename, payload) {
   const blob = new Blob([JSON.stringify(payload, null, 2)], {
     type: 'application/json',
@@ -68,12 +90,12 @@ function downloadJson(filename, payload) {
   window.URL.revokeObjectURL(url)
 }
 
-function formatNumber(value, unit = '') {
+function formatNumber(value, unit = '', missingLabel = '') {
   if (value === null || value === undefined || !Number.isFinite(Number(value))) {
-    return 'Saknas'
+    return missingLabel
   }
 
-  return `${Number(value).toLocaleString('sv-SE', {
+  return `${formatLocaleNumber(value, {
     maximumFractionDigits: 1,
     minimumFractionDigits: Number.isInteger(Number(value)) ? 0 : 1,
   })}${unit ? ` ${unit}` : ''}`
@@ -131,19 +153,20 @@ function makeChartPoints(entries, width, height, padding, minValue, maxValue) {
 }
 
 function WeightEditor({ draft, errors, isEditing, onCancel, onChange, onReset, onSubmit }) {
+  const { t } = useTranslation(['progress', 'common'])
   const errorId = (field) => `weight-editor-${field}-error`
 
   return (
     <form className="progress-card weight-editor" onSubmit={onSubmit}>
       <div className="progress-card-heading">
         <div>
-          <p className="eyebrow">Viktredaktör</p>
-          <h3>{isEditing ? 'Redigera viktpost' : 'Lägg till vikt'}</h3>
+          <p className="eyebrow">{t('center.weightEditor.eyebrow')}</p>
+          <h3>{isEditing ? t('center.weightEditor.editTitle') : t('center.weightEditor.addTitle')}</h3>
         </div>
       </div>
       <div className="progress-form-grid">
         <label className="field">
-          <span>Datum</span>
+          <span>{t('center.weightEditor.date')}</span>
           <input
             aria-describedby={errors.date ? errorId('date') : undefined}
             aria-invalid={errors.date ? 'true' : undefined}
@@ -154,7 +177,7 @@ function WeightEditor({ draft, errors, isEditing, onCancel, onChange, onReset, o
           {errors.date && <small className="field-error" id={errorId('date')}>{errors.date}</small>}
         </label>
         <label className="field">
-          <span>Tid</span>
+          <span>{t('center.weightEditor.time')}</span>
           <input
             aria-describedby={errors.time ? errorId('time') : undefined}
             aria-invalid={errors.time ? 'true' : undefined}
@@ -165,7 +188,7 @@ function WeightEditor({ draft, errors, isEditing, onCancel, onChange, onReset, o
           {errors.time && <small className="field-error" id={errorId('time')}>{errors.time}</small>}
         </label>
         <label className="field">
-          <span>Vikt i kg</span>
+          <span>{t('center.weightEditor.weightKg')}</span>
           <input
             aria-describedby={errors.value ? errorId('value') : undefined}
             aria-invalid={errors.value ? 'true' : undefined}
@@ -173,57 +196,70 @@ function WeightEditor({ draft, errors, isEditing, onCancel, onChange, onReset, o
             inputMode="decimal"
             value={draft.value}
             onChange={(event) => onChange('value', event.target.value)}
-            placeholder="Till exempel 90,1"
+            placeholder={t('center.weightEditor.weightPlaceholder')}
           />
           {errors.value && <small className="field-error" id={errorId('value')}>{errors.value}</small>}
         </label>
         <label className="field">
-          <span>Källa</span>
+          <span>{t('center.weightEditor.source')}</span>
           <select value={draft.source} onChange={(event) => onChange('source', event.target.value)}>
-            {weightSources.map((source) => <option key={source}>{source}</option>)}
+            {weightSources.map((source) => (
+              <option key={source} value={source}>{source}</option>
+            ))}
           </select>
         </label>
       </div>
       <label className="field">
-        <span>Anteckning</span>
+        <span>{t('center.weightEditor.note')}</span>
         <input
           type="text"
           value={draft.note}
           onChange={(event) => onChange('note', event.target.value)}
-          placeholder="Valfri notering"
+          placeholder={t('center.weightEditor.notePlaceholder')}
         />
       </label>
       <div className="progress-actions">
-        <button type="submit">{isEditing ? 'Spara ändringar' : 'Spara vikt'}</button>
-        <button className="secondary-button" type="button" onClick={onReset}>Återställ</button>
-        {isEditing && <button className="secondary-button" type="button" onClick={onCancel}>Avbryt</button>}
+        <button type="submit">
+          {isEditing ? t('center.weightEditor.saveChanges') : t('center.weightEditor.saveWeight')}
+        </button>
+        <button className="secondary-button" type="button" onClick={onReset}>{t('common:reset')}</button>
+        {isEditing && (
+          <button className="secondary-button" type="button" onClick={onCancel}>{t('common:actions.cancel')}</button>
+        )}
       </div>
     </form>
   )
 }
 
 function ProgressStatGrid({ analysis }) {
+  const { t } = useTranslation(['progress', 'common'])
+  const missing = t('center.missing')
+  const rangeLabel = analysis.start && analysis.latest
+    ? t('center.statGrid.dateRange', { from: analysis.start.date, to: analysis.latest.date })
+    : t('center.insufficientData')
+  const trendKey = TREND_KEYS[analysis.trend] || 'insufficient'
+  const stabilityKey = STABILITY_KEYS[analysis.stability] || 'insufficient'
   const stats = [
-    ['Senaste vikt', formatKg(analysis.latest?.value)],
-    ['Startvikt', formatKg(analysis.start?.value)],
-    ['Total förändring', formatSignedKg(analysis.changeTotal)],
-    ['Senaste 7 dagar', formatSignedKg(analysis.change7)],
-    ['Senaste 30 dagar', formatSignedKg(analysis.change30)],
-    ['Veckotakt', formatSignedKg(analysis.weeklyRate)],
-    ['Månadstakt', formatSignedKg(analysis.monthlyRate)],
-    ['Genomsnitt', formatKg(analysis.averageWeight)],
-    ['Högsta vikt', formatKg(analysis.highestWeight)],
-    ['Lägsta vikt', formatKg(analysis.lowestWeight)],
-    ['Vägningsdagar', `${analysis.registrationDays}`],
-    ['Nuvarande serie', `${analysis.currentStreak} dagar`],
+    [t('center.statGrid.latestWeight'), formatKg(analysis.latest?.value, missing)],
+    [t('center.statGrid.startWeight'), formatKg(analysis.start?.value, missing)],
+    [t('center.statGrid.totalChange'), formatSignedKg(analysis.changeTotal, missing)],
+    [t('center.statGrid.last7Days'), formatSignedKg(analysis.change7, missing)],
+    [t('center.statGrid.last30Days'), formatSignedKg(analysis.change30, missing)],
+    [t('center.statGrid.weeklyRate'), formatSignedKg(analysis.weeklyRate, missing)],
+    [t('center.statGrid.monthlyRate'), formatSignedKg(analysis.monthlyRate, missing)],
+    [t('center.statGrid.average'), formatKg(analysis.averageWeight, missing)],
+    [t('center.statGrid.highestWeight'), formatKg(analysis.highestWeight, missing)],
+    [t('center.statGrid.lowestWeight'), formatKg(analysis.lowestWeight, missing)],
+    [t('center.statGrid.registrationDays'), `${analysis.registrationDays}`],
+    [t('center.statGrid.currentStreak'), t('common:units.days', { count: analysis.currentStreak })],
   ]
 
   return (
     <section className="progress-card">
       <div className="progress-card-heading">
         <div>
-          <p className="eyebrow">Viktanalys</p>
-          <h3>Bygger på {analysis.dateRangeLabel}</h3>
+          <p className="eyebrow">{t('center.statGrid.eyebrow')}</p>
+          <h3>{t('center.statGrid.basedOn', { range: rangeLabel })}</h3>
         </div>
       </div>
       <div className="progress-stat-grid">
@@ -235,7 +271,10 @@ function ProgressStatGrid({ analysis }) {
         ))}
       </div>
       <p className="settings-note">
-        Trend: {analysis.trend}. Stabilitet: {analysis.stability}. Analysen skiljer på för lite data och verklig stabilitet.
+        {t('center.statGrid.trendNote', {
+          trend: t(`center.statGrid.trend.${trendKey}`),
+          stability: t(`center.statGrid.stability.${stabilityKey}`),
+        })}
       </p>
     </section>
   )
@@ -257,6 +296,7 @@ function WeightChartV3({
   showWeeklyAverage,
   startWeight,
 }) {
+  const { t } = useTranslation(['progress', 'common'])
   const width = 420
   const height = 220
   const padding = 28
@@ -283,12 +323,12 @@ function WeightChartV3({
     <section className="progress-card progress-chart-card">
       <div className="progress-card-heading">
         <div>
-          <p className="eyebrow">Viktgraf</p>
-          <h3>Uppmätt daglig vikt, trend och mål</h3>
+          <p className="eyebrow">{t('center.chart.eyebrow')}</p>
+          <h3>{t('center.chart.title')}</h3>
         </div>
       </div>
 
-      <div className="segmented-control progress-range-control" aria-label="Välj tidsperiod för viktgraf">
+      <div className="segmented-control progress-range-control" aria-label={t('center.chart.rangeAria')}>
         {chartRanges.map((option) => (
           <button
             className={range === option.value ? 'active' : ''}
@@ -296,7 +336,7 @@ function WeightChartV3({
             key={option.value}
             onClick={() => onRangeChange(option.value)}
           >
-            {option.label}
+            {t(`center.chartRanges.${option.value}`)}
           </button>
         ))}
       </div>
@@ -304,11 +344,11 @@ function WeightChartV3({
       {range === 'custom' && (
         <div className="progress-form-grid">
           <label className="field">
-            <span>Från datum</span>
+            <span>{t('center.chart.fromDate')}</span>
             <input type="date" value={customFrom} onChange={(event) => onCustomFromChange(event.target.value)} />
           </label>
           <label className="field">
-            <span>Till datum</span>
+            <span>{t('center.chart.toDate')}</span>
             <input type="date" value={customTo} onChange={(event) => onCustomToChange(event.target.value)} />
           </label>
         </div>
@@ -316,10 +356,10 @@ function WeightChartV3({
 
       <div className="progress-chart-toggles">
         {[
-          ['showRaw', 'Rå vikt', showRaw],
-          ['showMovingAverage', '7-dagars medel', showMovingAverage],
-          ['showWeeklyAverage', 'Veckosnitt', showWeeklyAverage],
-          ['showGoal', 'Mål/start', showGoal],
+          ['showRaw', t('center.chart.showRaw'), showRaw],
+          ['showMovingAverage', t('center.chart.showMovingAverage'), showMovingAverage],
+          ['showWeeklyAverage', t('center.chart.showWeeklyAverage'), showWeeklyAverage],
+          ['showGoal', t('center.chart.showGoal'), showGoal],
         ].map(([key, label, checked]) => (
           <label className="toggle-row" key={key}>
             <input type="checkbox" checked={checked} onChange={() => onToggle(key)} />
@@ -328,16 +368,16 @@ function WeightChartV3({
         ))}
       </div>
 
-      <div className="progress-weight-chart" aria-label="Viktgraf med endast uppmätt eller användarinmatad vikt. Dagsvärde använder senaste vägningen per datum.">
+      <div className="progress-weight-chart" aria-label={t('center.chart.chartAria')}>
         {chartData.raw.length === 0 ? (
           <div className="progress-empty">
-            <strong>Ingen viktdata för valt intervall.</strong>
-            <span>Välj ett annat intervall eller lägg till en viktpost.</span>
+            <strong>{t('center.chart.emptyTitle')}</strong>
+            <span>{t('center.chart.emptyHint')}</span>
           </div>
         ) : (
           <svg viewBox={`0 0 ${width} ${height}`} role="img">
-            <title>Viktgraf</title>
-            <desc>Viktgrafen använder endast uppmätt eller användarinmatad vikt. AI-estimat från kroppsscanning blandas inte in i huvudserien.</desc>
+            <title>{t('center.chart.svgTitle')}</title>
+            <desc>{t('center.chart.svgDesc')}</desc>
             <line x1={padding} y1={padding} x2={padding} y2={height - padding} />
             <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} />
             {showGoal && goalY !== null && <line className="goal-line" x1={padding} y1={goalY} x2={width - padding} y2={goalY} />}
@@ -354,13 +394,15 @@ function WeightChartV3({
         )}
       </div>
       <p className="settings-note">
-        Regel: huvudgrafen använder endast verklig measured/user-entered vikt. Om flera vägningar finns samma dag används den senaste vägningen som dagsvärde.
+        {t('center.chart.ruleNote')}
       </p>
     </section>
   )
 }
 
 function WeightGoalCenter({ analysis, goalDraft, onChange, onSave, projection }) {
+  const { t } = useTranslation(['progress', 'common'])
+  const missing = t('center.missing')
   const target = analysis.target
   const percent = target.completePercent
 
@@ -368,38 +410,41 @@ function WeightGoalCenter({ analysis, goalDraft, onChange, onSave, projection })
     <section className="progress-card">
       <div className="progress-card-heading">
         <div>
-          <p className="eyebrow">Målcenter</p>
-          <h3>Viktmål och milstolpar</h3>
+          <p className="eyebrow">{t('center.goal.eyebrow')}</p>
+          <h3>{t('center.goal.title')}</h3>
         </div>
-        <button type="button" onClick={onSave}>Spara mål</button>
+        <button type="button" onClick={onSave}>{t('center.goal.saveGoal')}</button>
       </div>
       <div className="progress-form-grid">
         <label className="field">
-          <span>Startdatum</span>
+          <span>{t('center.goal.startDate')}</span>
           <input type="date" value={goalDraft.startDate} onChange={(event) => onChange('startDate', event.target.value)} />
         </label>
         <label className="field">
-          <span>Måltakt per vecka (kg)</span>
+          <span>{t('center.goal.weeklyRate')}</span>
           <input type="text" inputMode="decimal" value={goalDraft.targetRatePerWeek ?? ''} onChange={(event) => onChange('targetRatePerWeek', event.target.value)} />
         </label>
         <label className="field">
-          <span>Önskat måldatum</span>
+          <span>{t('center.goal.desiredGoalDate')}</span>
           <input type="date" value={goalDraft.desiredGoalDate} onChange={(event) => onChange('desiredGoalDate', event.target.value)} />
         </label>
       </div>
       <div className="progress-stat-grid">
-        <div><span>Nuvarande vikt</span><strong>{formatKg(analysis.latest?.value)}</strong></div>
-        <div><span>Kilo förändrat</span><strong>{formatSignedKg(target.kilosChanged)}</strong></div>
-        <div><span>Kilo kvar</span><strong>{formatNumber(target.kilosRemaining, 'kg')}</strong></div>
-        <div><span>Vägen klar</span><strong>{percent === null ? 'Saknas' : `${percent}%`}</strong></div>
-        <div><span>Uppskattat måldatum</span><strong>{projection.estimatedGoalDate}</strong></div>
-        <div><span>Registreringskvalitet</span><strong>{analysis.registrationDays >= 4 ? 'Bra' : 'För lite data'}</strong></div>
+        <div><span>{t('center.goal.currentWeight')}</span><strong>{formatKg(analysis.latest?.value, missing)}</strong></div>
+        <div><span>{t('center.goal.kilosChanged')}</span><strong>{formatSignedKg(target.kilosChanged, missing)}</strong></div>
+        <div><span>{t('center.goal.kilosRemaining')}</span><strong>{formatNumber(target.kilosRemaining, 'kg', missing)}</strong></div>
+        <div><span>{t('center.goal.progressComplete')}</span><strong>{percent === null ? missing : `${percent}%`}</strong></div>
+        <div><span>{t('center.goal.estimatedGoalDate')}</span><strong>{projection.estimatedGoalDate}</strong></div>
+        <div>
+          <span>{t('center.goal.registrationQuality')}</span>
+          <strong>{analysis.registrationDays >= 4 ? t('center.goal.qualityGood') : t('center.goal.qualityLow')}</strong>
+        </div>
       </div>
       <div className="progress-bar-shell">
         <span style={{ width: `${Math.min(percent || 0, 100)}%` }}></span>
       </div>
       <p className="settings-note">
-        Milstolpar: 10%, 25%, 50%, 75%, 90%, 100%. Prognosen är en uppskattning och inget löfte om resultat.
+        {t('center.goal.milestonesNote')}
       </p>
     </section>
   )
@@ -420,46 +465,51 @@ function WeightHistory({
   selectedIds,
   weights,
 }) {
+  const { t } = useTranslation(['progress', 'common'])
+  const missing = t('center.missing')
+
   return (
     <section className="progress-card">
       <div className="progress-card-heading">
         <div>
-          <p className="eyebrow">Vikthistorik</p>
-          <h3>{weights.length} träffar</h3>
+          <p className="eyebrow">{t('center.history.eyebrow')}</p>
+          <h3>{t('center.history.hits', { count: weights.length })}</h3>
         </div>
-        <button className="secondary-button" type="button" onClick={onClearFilters}>Rensa filter</button>
+        <button className="secondary-button" type="button" onClick={onClearFilters}>{t('center.history.clearFilters')}</button>
       </div>
       <div className="progress-form-grid">
         <label className="field">
-          <span>Sök</span>
+          <span>{t('center.history.search')}</span>
           <input type="search" value={filters.search} onChange={(event) => onFilterChange('search', event.target.value)} />
         </label>
         <label className="field">
-          <span>Källa</span>
+          <span>{t('center.history.source')}</span>
           <select value={filters.source} onChange={(event) => onFilterChange('source', event.target.value)}>
-            <option>Alla</option>
-            {weightSources.map((source) => <option key={source}>{source}</option>)}
+            <option value="Alla">{t('center.filters.all')}</option>
+            {weightSources.map((source) => (
+              <option key={source} value={source}>{source}</option>
+            ))}
           </select>
         </label>
         <label className="field">
-          <span>Från datum</span>
+          <span>{t('center.history.fromDate')}</span>
           <input type="date" value={filters.from} onChange={(event) => onFilterChange('from', event.target.value)} />
         </label>
         <label className="field">
-          <span>Till datum</span>
+          <span>{t('center.history.toDate')}</span>
           <input type="date" value={filters.to} onChange={(event) => onFilterChange('to', event.target.value)} />
         </label>
       </div>
       <div className="progress-actions">
-        <button className="secondary-button" type="button" onClick={onSelectAll}>Markera alla synliga</button>
-        <button className="secondary-button" type="button" onClick={onUnselectAll}>Avmarkera alla</button>
-        <button className="secondary-button" type="button" onClick={onExportSelected} disabled={selectedIds.length === 0}>Exportera markerade</button>
-        <button className="secondary-button danger-button" type="button" onClick={onDeleteSelected} disabled={selectedIds.length === 0}>Ta bort markerade</button>
+        <button className="secondary-button" type="button" onClick={onSelectAll}>{t('center.history.selectAllVisible')}</button>
+        <button className="secondary-button" type="button" onClick={onUnselectAll}>{t('center.history.unselectAll')}</button>
+        <button className="secondary-button" type="button" onClick={onExportSelected} disabled={selectedIds.length === 0}>{t('center.history.exportSelected')}</button>
+        <button className="secondary-button danger-button" type="button" onClick={onDeleteSelected} disabled={selectedIds.length === 0}>{t('center.history.deleteSelected')}</button>
       </div>
       {weights.length === 0 ? (
         <div className="progress-empty">
-          <strong>Inga viktposter matchar filtren.</strong>
-          <span>Justera filtren eller lägg till en ny viktpost.</span>
+          <strong>{t('center.history.emptyTitle')}</strong>
+          <span>{t('center.history.emptyHint')}</span>
         </div>
       ) : (
         <div className="progress-list">
@@ -467,16 +517,16 @@ function WeightHistory({
             <article className="progress-list-card" key={entry.id}>
               <label className="toggle-row">
                 <input type="checkbox" checked={selectedIds.includes(entry.id)} onChange={() => onSelect(entry.id)} />
-                <span>{entry.date} kl. {entry.time}</span>
+                <span>{t('center.history.atTime', { date: entry.date, time: entry.time })}</span>
               </label>
               <div>
-                <strong>{formatKg(entry.value)}</strong>
+                <strong>{formatKg(entry.value, missing)}</strong>
                 <span>{entry.source}{entry.note ? ` - ${entry.note}` : ''}</span>
               </div>
               <div className="progress-actions">
-                <button className="secondary-button" type="button" onClick={() => onEdit(entry)}>Redigera</button>
-                <button className="secondary-button" type="button" onClick={() => onCopy(entry)}>Kopiera</button>
-                <button className="secondary-button danger-button" type="button" onClick={() => onDelete(entry.id)}>Ta bort</button>
+                <button className="secondary-button" type="button" onClick={() => onEdit(entry)}>{t('center.history.edit')}</button>
+                <button className="secondary-button" type="button" onClick={() => onCopy(entry)}>{t('center.history.copy')}</button>
+                <button className="secondary-button danger-button" type="button" onClick={() => onDelete(entry.id)}>{t('common:remove')}</button>
               </div>
             </article>
           ))}
@@ -487,46 +537,51 @@ function WeightHistory({
 }
 
 function BodyMeasurementsPanel({ analysis, draft, errors, measurements, onChange, onDelete, onEdit, onReset, onSubmit }) {
+  const { t } = useTranslation(['progress', 'common'])
+  const missing = t('center.missing')
+
   return (
     <section className="progress-card">
       <div className="progress-card-heading">
         <div>
-          <p className="eyebrow">Kroppsmått</p>
-          <h3>{analysis.totalEntries} mätningar</h3>
+          <p className="eyebrow">{t('center.measurements.eyebrow')}</p>
+          <h3>{t('center.measurements.count', { count: analysis.totalEntries })}</h3>
         </div>
       </div>
       <form onSubmit={onSubmit}>
         <div className="progress-form-grid">
           <label className="field">
-            <span>Datum</span>
+            <span>{t('center.measurements.date')}</span>
             <input type="date" value={draft.date} onChange={(event) => onChange('date', event.target.value)} />
             {errors.date && <small className="field-error">{errors.date}</small>}
           </label>
           <label className="field">
-            <span>Måttyp</span>
+            <span>{t('center.measurements.type')}</span>
             <select value={draft.type} onChange={(event) => onChange('type', event.target.value)}>
-              {bodyMeasurementTypes.map((type) => <option key={type}>{type}</option>)}
+              {bodyMeasurementTypes.map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
             </select>
           </label>
           <label className="field">
-            <span>Värde i cm</span>
+            <span>{t('center.measurements.valueCm')}</span>
             <input type="text" inputMode="decimal" value={draft.value} onChange={(event) => onChange('value', event.target.value)} />
             {errors.value && <small className="field-error">{errors.value}</small>}
           </label>
           <label className="field">
-            <span>Anteckning</span>
+            <span>{t('center.measurements.note')}</span>
             <input type="text" value={draft.note} onChange={(event) => onChange('note', event.target.value)} />
           </label>
         </div>
         <div className="progress-actions">
-          <button type="submit">Spara kroppsmått</button>
-          <button className="secondary-button" type="button" onClick={onReset}>Återställ</button>
+          <button type="submit">{t('center.measurements.save')}</button>
+          <button className="secondary-button" type="button" onClick={onReset}>{t('common:reset')}</button>
         </div>
       </form>
       {measurements.length === 0 ? (
         <div className="progress-empty">
-          <strong>Inga kroppsmått ännu.</strong>
-          <span>Lägg till ett mått för att se förändring över tid.</span>
+          <strong>{t('center.measurements.emptyTitle')}</strong>
+          <span>{t('center.measurements.emptyHint')}</span>
         </div>
       ) : (
         <div className="progress-list">
@@ -534,23 +589,36 @@ function BodyMeasurementsPanel({ analysis, draft, errors, measurements, onChange
             <article className="progress-list-card" key={item.type}>
               <div>
                 <strong>{item.type}</strong>
-                <span>Första: {formatNumber(item.first?.value, 'cm')} · Senaste: {formatNumber(item.latest?.value, 'cm')}</span>
+                <span>
+                  {t('center.measurements.firstLatest', {
+                    first: formatNumber(item.first?.value, 'cm', missing),
+                    latest: formatNumber(item.latest?.value, 'cm', missing),
+                  })}
+                </span>
               </div>
               <div>
-                <strong>{item.change === null ? 'Saknas' : `${item.change > 0 ? '+' : ''}${item.change.toLocaleString('sv-SE')} cm`}</strong>
-                <span>{item.percentChange === null ? 'För lite data' : `${item.percentChange}% förändring`}</span>
+                <strong>
+                  {item.change === null
+                    ? missing
+                    : `${item.change > 0 ? '+' : ''}${formatLocaleNumber(item.change)} cm`}
+                </strong>
+                <span>
+                  {item.percentChange === null
+                    ? t('center.insufficientData')
+                    : t('center.measurements.percentChange', { percent: item.percentChange })}
+                </span>
               </div>
             </article>
           ))}
           {measurements.slice().reverse().slice(0, 8).map((entry) => (
             <article className="progress-list-card" key={entry.id}>
               <div>
-                <strong>{entry.type}: {formatNumber(entry.value, 'cm')}</strong>
+                <strong>{entry.type}: {formatNumber(entry.value, 'cm', missing)}</strong>
                 <span>{entry.date}{entry.note ? ` - ${entry.note}` : ''}</span>
               </div>
               <div className="progress-actions">
-                <button className="secondary-button" type="button" onClick={() => onEdit(entry)}>Redigera</button>
-                <button className="secondary-button danger-button" type="button" onClick={() => onDelete(entry.id)}>Ta bort</button>
+                <button className="secondary-button" type="button" onClick={() => onEdit(entry)}>{t('center.measurements.edit')}</button>
+                <button className="secondary-button danger-button" type="button" onClick={() => onDelete(entry.id)}>{t('common:remove')}</button>
               </div>
             </article>
           ))}
@@ -561,39 +629,49 @@ function BodyMeasurementsPanel({ analysis, draft, errors, measurements, onChange
 }
 
 function ProgressReportsPanel({ onCreate, onDelete, onClear, reports }) {
+  const { t } = useTranslation(['progress', 'common'])
+  const missing = t('center.missing')
+
   return (
     <section className="progress-card">
       <div className="progress-card-heading">
         <div>
-          <p className="eyebrow">Rapporter</p>
-          <h3>Vecko- och månadsrapport</h3>
+          <p className="eyebrow">{t('center.reports.eyebrow')}</p>
+          <h3>{t('center.reports.title')}</h3>
         </div>
         <div className="progress-actions">
-          <button className="secondary-button" type="button" onClick={() => onCreate('week')}>Skapa vecka</button>
-          <button className="secondary-button" type="button" onClick={() => onCreate('month')}>Skapa månad</button>
-          <button className="secondary-button danger-button" type="button" onClick={onClear} disabled={reports.length === 0}>Rensa</button>
+          <button className="secondary-button" type="button" onClick={() => onCreate('week')}>{t('center.reports.createWeek')}</button>
+          <button className="secondary-button" type="button" onClick={() => onCreate('month')}>{t('center.reports.createMonth')}</button>
+          <button className="secondary-button danger-button" type="button" onClick={onClear} disabled={reports.length === 0}>{t('center.reports.clear')}</button>
         </div>
       </div>
       {reports.length === 0 ? (
         <div className="progress-empty">
-          <strong>Ingen rapporthistorik ännu.</strong>
-          <span>Skapa en rapport när du vill spara en lokal sammanfattning.</span>
+          <strong>{t('center.reports.emptyTitle')}</strong>
+          <span>{t('center.reports.emptyHint')}</span>
         </div>
       ) : (
         <div className="progress-list">
           {reports.slice(0, 8).map((report) => (
             <article className="progress-list-card" key={report.id}>
               <div>
-                <strong>{report.period === 'month' ? 'Månadsrapport' : 'Veckorapport'} · v{report.version}</strong>
-                <span>{new Date(report.createdAt).toLocaleString('sv-SE')}</span>
+                <strong>
+                  {report.period === 'month' ? t('center.reports.monthly') : t('center.reports.weekly')}
+                  {' · '}
+                  {t('center.reports.version', { version: report.version })}
+                </strong>
+                <span>{formatDate(report.createdAt, {
+                  dateStyle: 'short',
+                  timeStyle: 'short',
+                })}</span>
                 <p>{report.insight}</p>
               </div>
               <div>
-                <span>Viktförändring: {formatSignedKg(report.weightChange)}</span>
-                <span>Kroppsmått: {report.measurementCount}</span>
-                <span>Bilder: {report.photoCount}</span>
+                <span>{t('center.reports.weightChange', { value: formatSignedKg(report.weightChange, missing) })}</span>
+                <span>{t('center.reports.measurementCount', { count: report.measurementCount })}</span>
+                <span>{t('center.reports.photoCount', { count: report.photoCount })}</span>
               </div>
-              <button className="secondary-button danger-button" type="button" onClick={() => onDelete(report.id)}>Ta bort</button>
+              <button className="secondary-button danger-button" type="button" onClick={() => onDelete(report.id)}>{t('common:remove')}</button>
             </article>
           ))}
         </div>
@@ -603,45 +681,47 @@ function ProgressReportsPanel({ onCreate, onDelete, onClear, reports }) {
 }
 
 function ProgressTimeline({ filters, onFilterChange, timeline }) {
+  const { t } = useTranslation(['progress', 'common'])
+
   return (
     <section className="progress-card">
       <div className="progress-card-heading">
         <div>
-          <p className="eyebrow">Framstegstidslinje</p>
-          <h3>{timeline.length} händelser</h3>
+          <p className="eyebrow">{t('center.timeline.eyebrow')}</p>
+          <h3>{t('center.timeline.events', { count: timeline.length })}</h3>
         </div>
       </div>
       <div className="progress-form-grid">
         <label className="field">
-          <span>Datatyp</span>
+          <span>{t('center.timeline.dataType')}</span>
           <select value={filters.type} onChange={(event) => onFilterChange('type', event.target.value)}>
-            <option>Alla</option>
-            <option>Vikt</option>
-            <option>Kroppsmått</option>
-            <option>Bild</option>
-            <option>AI</option>
+            <option value="Alla">{t('center.filters.all')}</option>
+            <option value="Vikt">{t('center.timelineTypes.weight')}</option>
+            <option value="Kroppsmått">{t('center.timelineTypes.bodyMeasure')}</option>
+            <option value="Bild">{t('center.timelineTypes.photo')}</option>
+            <option value="AI">{t('center.timelineTypes.ai')}</option>
           </select>
         </label>
         <label className="field">
-          <span>Sortering</span>
+          <span>{t('center.timeline.sorting')}</span>
           <select value={filters.sort} onChange={(event) => onFilterChange('sort', event.target.value)}>
-            <option value="newest">Nyast först</option>
-            <option value="oldest">Äldst först</option>
+            <option value="newest">{t('center.timeline.newestFirst')}</option>
+            <option value="oldest">{t('center.timeline.oldestFirst')}</option>
           </select>
         </label>
         <label className="field">
-          <span>Från datum</span>
+          <span>{t('center.timeline.fromDate')}</span>
           <input type="date" value={filters.from} onChange={(event) => onFilterChange('from', event.target.value)} />
         </label>
         <label className="field">
-          <span>Till datum</span>
+          <span>{t('center.timeline.toDate')}</span>
           <input type="date" value={filters.to} onChange={(event) => onFilterChange('to', event.target.value)} />
         </label>
       </div>
       {timeline.length === 0 ? (
         <div className="progress-empty">
-          <strong>Inga händelser matchar filtren.</strong>
-          <span>Tidslinjen byggs dynamiskt från vikt, mått, bilder och AI-analyser.</span>
+          <strong>{t('center.timeline.emptyTitle')}</strong>
+          <span>{t('center.timeline.emptyHint')}</span>
         </div>
       ) : (
         <div className="progress-timeline">
@@ -671,27 +751,29 @@ function ProgressImportExport({
   includeImages,
   fileInputRef,
 }) {
+  const { t } = useTranslation(['progress', 'common'])
+
   return (
     <section className="progress-card">
       <div className="progress-card-heading">
         <div>
-          <p className="eyebrow">Import/export</p>
-          <h3>Framstegsdata JSON</h3>
+          <p className="eyebrow">{t('center.importExport.eyebrow')}</p>
+          <h3>{t('center.importExport.title')}</h3>
         </div>
       </div>
       <label className="toggle-row">
         <input type="checkbox" checked={includeImages} onChange={onToggleImages} />
-        <span>Exportera med bilder</span>
+        <span>{t('center.importExport.includeImages')}</span>
       </label>
       <p className="settings-note">
-        Uppskattad exportstorlek: {estimatedSizeLabel}. Auth, sessioner, tokens och Supabase-data exporteras aldrig.
+        {t('center.importExport.sizeNote', { size: estimatedSizeLabel })}
       </p>
       <div className="progress-actions">
-        <button type="button" onClick={onExport}>Exportera framstegsdata</button>
-        <button className="secondary-button" type="button" onClick={onOpenImport}>Importera JSON</button>
+        <button type="button" onClick={onExport}>{t('center.importExport.export')}</button>
+        <button className="secondary-button" type="button" onClick={onOpenImport}>{t('center.importExport.importJson')}</button>
         <input
           ref={fileInputRef}
-          aria-label="Importera framstegsdata från JSON-fil"
+          aria-label={t('center.importExport.importAria')}
           className="sr-only"
           type="file"
           accept="application/json,.json"
@@ -769,6 +851,7 @@ function ProgressCenter({
   view = 'all',
   weights,
 }) {
+  const { t } = useTranslation(['progress', 'common'])
   const importInputRef = useRef(null)
   const normalizedWeights = useMemo(() => normalizeWeights(weights), [weights])
   const normalizedMeasurements = useMemo(() => normalizeBodyMeasurements(bodyMeasurements), [bodyMeasurements])
@@ -838,8 +921,11 @@ function ProgressCenter({
       weights: normalizedWeights,
     })
 
-    return `${Math.ceil(JSON.stringify(payload).length / 1024).toLocaleString('sv-SE')} kB`
+    return `${formatLocaleNumber(Math.ceil(JSON.stringify(payload).length / 1024))} kB`
   }, [bodyAnalysisHistory, goalSettings, includeImages, normalizedMeasurements, normalizedWeights, progressPhotos, progressReports])
+
+  const uncertaintyKey = UNCERTAINTY_KEYS[projection.uncertainty] || 'high'
+  const missing = t('center.missing')
 
   function resetWeightDraft() {
     setWeightDraft(getEmptyWeightDraft(normalizedWeights.at(-1)))
@@ -873,20 +959,20 @@ function ProgressCenter({
   }
 
   function deleteWeight(id) {
-    if (window.confirm('Vill du ta bort den här viktposten?')) {
+    if (window.confirm(t('center.confirms.deleteWeight'))) {
       onWeightsChange(normalizedWeights.filter((entry) => entry.id !== id))
       setSelectedWeightIds((current) => current.filter((entryId) => entryId !== id))
     }
   }
 
   function copyWeight(entry) {
-    const date = window.prompt('Vilket datum ska kopian få? (ÅÅÅÅ-MM-DD)', entry.date)
+    const date = window.prompt(t('center.prompts.copyDate'), entry.date)
 
     if (!date) {
       return
     }
 
-    const time = window.prompt('Vilken tid ska kopian få? (TT:MM)', entry.time) || entry.time
+    const time = window.prompt(t('center.prompts.copyTime'), entry.time) || entry.time
 
     onWeightsChange(upsertWeight(normalizedWeights, copyWeightToDate(entry, date, time)))
   }
@@ -896,7 +982,7 @@ function ProgressCenter({
       return
     }
 
-    if (window.confirm(`Vill du ta bort ${selectedWeightIds.length} markerade viktposter?`)) {
+    if (window.confirm(t('center.confirms.deleteWeights', { count: selectedWeightIds.length }))) {
       onWeightsChange(normalizedWeights.filter((entry) => !selectedWeightIds.includes(entry.id)))
       setSelectedWeightIds([])
     }
@@ -942,7 +1028,7 @@ function ProgressCenter({
   }
 
   function deleteMeasurement(id) {
-    if (window.confirm('Vill du ta bort det här kroppsmåttet?')) {
+    if (window.confirm(t('center.confirms.deleteMeasurement'))) {
       onBodyMeasurementsChange(normalizedMeasurements.filter((entry) => entry.id !== id))
     }
   }
@@ -954,7 +1040,7 @@ function ProgressCenter({
   function createReport(period) {
     const duplicate = progressReports.find((report) => report.period === period && report.createdAt?.slice(0, 10) === new Date().toISOString().slice(0, 10))
 
-    if (duplicate && !window.confirm('Det finns redan en rapport för denna period idag. Skapa ändå?')) {
+    if (duplicate && !window.confirm(t('center.confirms.duplicateReport'))) {
       return
     }
 
@@ -971,13 +1057,13 @@ function ProgressCenter({
   }
 
   function deleteReport(id) {
-    if (window.confirm('Vill du ta bort rapporten?')) {
+    if (window.confirm(t('center.confirms.deleteReport'))) {
       onProgressReportsChange(progressReports.filter((report) => report.id !== id))
     }
   }
 
   function clearReports() {
-    if (window.confirm('Vill du rensa all lokal rapporthistorik?')) {
+    if (window.confirm(t('center.confirms.clearReports'))) {
       onProgressReportsChange([])
     }
   }
@@ -1001,7 +1087,7 @@ function ProgressCenter({
     const file = event.target.files?.[0]
 
     if (!file) {
-      setImportStatus('Ingen fil valdes.')
+      setImportStatus(t('center.importStatus.noFile'))
       return
     }
 
@@ -1017,18 +1103,22 @@ function ProgressCenter({
         }
 
         const mode = window.prompt(
-          `Importen innehåller ${parsed.summary.weightCount} viktposter, ${parsed.summary.bodyMeasurementCount} kroppsmått och ${parsed.summary.progressReportCount} rapporter.\nSkriv "slå ihop" eller "ersätt".`,
-          'slå ihop',
+          t('center.prompts.importMode', {
+            weights: parsed.summary.weightCount,
+            measurements: parsed.summary.bodyMeasurementCount,
+            reports: parsed.summary.progressReportCount,
+          }),
+          t('center.prompts.importModeDefault'),
         )
 
         if (!mode) {
-          setImportStatus('Import avbröts.')
+          setImportStatus(t('center.importStatus.cancelled'))
           return
         }
 
         if (mode.toLocaleLowerCase('sv-SE').includes('ers')) {
-          if (!window.confirm('Detta ersätter endast lokal vikt- och framstegsdata. Vill du fortsätta?')) {
-            setImportStatus('Import avbröts.')
+          if (!window.confirm(t('center.confirms.replaceImport'))) {
+            setImportStatus(t('center.importStatus.cancelled'))
             return
           }
 
@@ -1043,9 +1133,9 @@ function ProgressCenter({
 
         onGoalSettingsChange(parsed.goalSettings)
         setGoalDraft(parsed.goalSettings)
-        setImportStatus('Framstegsdata importerad.')
+        setImportStatus(t('center.importStatus.success'))
       } catch {
-        setImportStatus('Importen misslyckades. Kontrollera JSON-filen.')
+        setImportStatus(t('center.importStatus.failed'))
       } finally {
         event.target.value = ''
       }
@@ -1067,8 +1157,8 @@ function ProgressCenter({
       {view === 'all' && (
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">Vikt, kroppsmått och framsteg</p>
-            <h2>Framstegscenter</h2>
+            <p className="eyebrow">{t('center.eyebrow')}</p>
+            <h2>{t('center.title')}</h2>
           </div>
         </div>
       )}
@@ -1115,19 +1205,26 @@ function ProgressCenter({
       <section className="progress-card">
         <div className="progress-card-heading">
           <div>
-            <p className="eyebrow">Prognos</p>
-            <h3>Lokal uppskattning</h3>
+            <p className="eyebrow">{t('center.projection.eyebrow')}</p>
+            <h3>{t('center.projection.title')}</h3>
           </div>
-          <span className="progress-pill">Osäkerhet: {projection.uncertainty}</span>
+          <span className="progress-pill">
+            {t('center.projection.uncertainty', {
+              level: t(`center.projection.uncertaintyLevels.${uncertaintyKey}`),
+            })}
+          </span>
         </div>
         <div className="progress-stat-grid">
-          <div><span>Målvikt</span><strong>{projection.estimatedGoalDate}</strong></div>
-          <div><span>Om 4 veckor</span><strong>{formatKg(projection.weightIn4Weeks)}</strong></div>
-          <div><span>Om 8 veckor</span><strong>{formatKg(projection.weightIn8Weeks)}</strong></div>
-          <div><span>Om 12 veckor</span><strong>{formatKg(projection.weightIn12Weeks)}</strong></div>
+          <div><span>{t('center.goal.estimatedGoalDate')}</span><strong>{projection.estimatedGoalDate}</strong></div>
+          <div><span>{t('center.projection.in4Weeks')}</span><strong>{formatKg(projection.weightIn4Weeks, missing)}</strong></div>
+          <div><span>{t('center.projection.in8Weeks')}</span><strong>{formatKg(projection.weightIn8Weeks, missing)}</strong></div>
+          <div><span>{t('center.projection.in12Weeks')}</span><strong>{formatKg(projection.weightIn12Weeks, missing)}</strong></div>
         </div>
         <p className="settings-note">
-          Baseras på {projection.basedOn}. Trenden per vecka är {formatSignedKg(projection.trendPerWeek)}. Prognosen visas bara när datan räcker och extrapolering begränsas.
+          {t('center.projection.note', {
+            basedOn: projection.basedOn,
+            trend: formatSignedKg(projection.trendPerWeek, missing),
+          })}
         </p>
       </section>
       </>
@@ -1172,21 +1269,21 @@ function ProgressCenter({
       <section className="progress-card">
         <div className="progress-card-heading">
           <div>
-            <p className="eyebrow">Insikter</p>
-            <h3>Lokala framstegsmönster</h3>
+            <p className="eyebrow">{t('center.insights.eyebrow')}</p>
+            <h3>{t('center.insights.title')}</h3>
           </div>
         </div>
         {insights.length === 0 ? (
           <div className="progress-empty">
-            <strong>För lite ny data för tydliga insikter.</strong>
-            <span>Insikterna blir bättre när vikt, mått eller bilder loggas över tid.</span>
+            <strong>{t('center.insights.emptyTitle')}</strong>
+            <span>{t('center.insights.emptyHint')}</span>
           </div>
         ) : (
           <div className="progress-list">
             {insights.map((insight) => (
               <article className="progress-list-card" key={insight.type}>
                 <strong>{insight.text}</strong>
-                <span>Bygger på: {insight.basis}</span>
+                <span>{t('center.insights.basedOn', { basis: insight.basis })}</span>
               </article>
             ))}
           </div>

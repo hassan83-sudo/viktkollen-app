@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   getDefaultGlobalSearchGroups,
   getGlobalSearchKeyboardAction,
@@ -8,6 +9,15 @@ import {
 } from '../../services/navigation/globalSearchIndex.js'
 
 const recentSearchStorageKey = 'viktkollen.globalSearch.recentIds'
+/** Internal group title from globalSearchIndex until that corpus is migrated. */
+const RECENT_GROUP_TITLE = 'Senast använda'
+
+const searchGroupTitleKeys = {
+  Populärt: 'search.groups.popular',
+  Snabbåtgärder: 'search.groups.quickActions',
+  'Förslag för dig': 'search.groups.suggestions',
+  'Senast använda': 'search.groups.recent',
+}
 
 function readRecentSearchIds() {
   if (typeof window === 'undefined') return []
@@ -34,6 +44,7 @@ function saveRecentSearchId(id) {
 }
 
 function GlobalSearch({ onNavigate }) {
+  const { t } = useTranslation(['settings', 'common'])
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -49,8 +60,8 @@ function GlobalSearch({ onNavigate }) {
     if (recentItems.length === 0) return groups
 
     return [
-      ...groups.filter((group) => group.title !== 'Senast använda'),
-      { items: recentItems, title: 'Senast använda' },
+      ...groups.filter((group) => group.title !== RECENT_GROUP_TITLE),
+      { items: recentItems, title: RECENT_GROUP_TITLE },
     ]
   }, [recentIds])
   const defaultResults = useMemo(() => defaultGroups.flatMap((group) => group.items), [defaultGroups])
@@ -60,6 +71,11 @@ function GlobalSearch({ onNavigate }) {
   const fallbackResults = useMemo(() => searchGlobalNavigation('hem').slice(0, 4), [])
   const navigationResults = visibleResults.length > 0 ? visibleResults : hasQuery ? fallbackResults : []
   const hasResults = navigationResults.length > 0
+
+  const translateGroupTitle = (title) => {
+    const key = searchGroupTitleKeys[title]
+    return key ? t(key) : title
+  }
 
   const openSearch = useCallback(() => {
     previousFocusRef.current = document.activeElement
@@ -150,17 +166,17 @@ function GlobalSearch({ onNavigate }) {
         type="button"
         onClick={openSearch}
         ref={openerRef}
-        aria-label="Öppna global sökning"
+        aria-label={t('search.open')}
       >
         <span aria-hidden="true">⌕</span>
-        <strong>Sök</strong>
+        <strong>{t('common:search')}</strong>
         <kbd>Ctrl K</kbd>
       </button>
 
       {isOpen && (
         <div className="global-search-backdrop" role="presentation">
           <div
-            aria-label="Global sökning"
+            aria-label={t('search.dialog')}
             aria-modal="true"
             className="global-search-dialog"
             role="dialog"
@@ -172,21 +188,21 @@ function GlobalSearch({ onNavigate }) {
                   hasResults && selectedIndex >= 0 ? `global-search-result-${navigationResults[selectedIndex]?.id}` : undefined
                 }
                 aria-controls="global-search-results"
-                aria-label="Sök i Viktkollen"
+                aria-label={t('search.input')}
                 autoComplete="off"
                 onChange={(event) => {
                   setQuery(event.target.value)
                   setSelectedIndex(0)
                 }}
                 onKeyDown={handleInputKeyDown}
-                placeholder="Sök i Viktkollen..."
+                placeholder={t('search.placeholder')}
                 ref={inputRef}
                 role="searchbox"
                 type="search"
                 value={query}
               />
               <button className="secondary-button" type="button" onClick={closeSearch}>
-                Stäng
+                {t('common:actions.close')}
               </button>
             </div>
 
@@ -194,7 +210,7 @@ function GlobalSearch({ onNavigate }) {
               className="global-search-results"
               id="global-search-results"
               role="listbox"
-              aria-label="Sökresultat"
+              aria-label={t('search.results')}
             >
               {!hasQuery && defaultGroups.map((group) => {
                 let startIndex = 0
@@ -202,10 +218,11 @@ function GlobalSearch({ onNavigate }) {
                   if (previousGroup.title === group.title) break
                   startIndex += previousGroup.items.length
                 }
+                const groupTitle = translateGroupTitle(group.title)
 
                 return (
-                  <section className="global-search-group" key={group.title} aria-label={group.title}>
-                    <h3>{group.title}</h3>
+                  <section className="global-search-group" key={group.title} aria-label={groupTitle}>
+                    <h3>{groupTitle}</h3>
                     {group.items.map((result, index) => renderResult(result, startIndex + index))}
                   </section>
                 )
@@ -215,7 +232,7 @@ function GlobalSearch({ onNavigate }) {
 
               {hasQuery && !hasTypedResults && (
                 <div className="global-search-empty">
-                  <p>Inga exakta träffar för "{query}". Här är närliggande alternativ.</p>
+                  <p>{t('search.noExactMatches', { query })}</p>
                   <div className="global-search-related">
                     {fallbackResults.map((result, index) => renderResult(result, index))}
                   </div>

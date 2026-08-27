@@ -48,13 +48,14 @@ describe('profileService', () => {
 
   it('keeps empty and partial profiles usable without fake defaults', () => {
     const empty = normalizeProfile({}, { now: '2026-08-19T10:00:00.000Z' })
-    const partial = normalizeProfile({ displayName: 'Ali', onboardingCompleted: true })
+    const partial = normalizeProfile({ displayName: 'Ali', locale: 'ar', onboardingCompleted: true })
 
     expect(empty.displayName).toBe('')
     expect(empty.heightCm).toBeNull()
     expect(empty.weightDirection).toBe('missing')
     expect(empty.provenance.height).toBe('missing')
     expect(hasUsableProfile(empty)).toBe(false)
+    expect(partial.locale).toBe('ar')
     expect(hasUsableProfile(partial)).toBe(true)
   })
 

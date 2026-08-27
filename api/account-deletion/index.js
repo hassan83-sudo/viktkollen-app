@@ -10,6 +10,8 @@ const deletionTables = Object.freeze([
   { area: 'cloudData', name: 'user_backups' },
 ])
 
+const socialPurgeRpc = 'social_purge_user_data'
+
 function parseBody(request) {
   if (typeof request.body === 'string') return JSON.parse(request.body || '{}')
   return request.body || {}
@@ -23,8 +25,38 @@ function canDeleteAuthUser(env = process.env) {
   return env.ACCOUNT_DELETION_ENABLE_AUTH_DELETE === 'true'
 }
 
+async function purgeSocialDataForUser(client, userId) {
+  if (!client?.rpc) {
+    return {
+      area: 'social',
+      ok: false,
+      table: socialPurgeRpc,
+      errorCode: 'rpc_unavailable',
+    }
+  }
+
+  try {
+    const { error } = await client.rpc(socialPurgeRpc, { p_user_id: userId })
+    return {
+      area: 'social',
+      ok: !error,
+      table: socialPurgeRpc,
+      ...(error ? { errorCode: error.code || 'purge_failed' } : {}),
+    }
+  } catch (error) {
+    return {
+      area: 'social',
+      errorCode: error?.code || 'purge_failed',
+      ok: false,
+      table: socialPurgeRpc,
+    }
+  }
+}
+
 async function deleteRowsForUser(client, userId, tables = deletionTables) {
   const results = []
+
+  results.push(await purgeSocialDataForUser(client, userId))
 
   for (const table of tables) {
     try {
@@ -130,6 +162,7 @@ export default async function handler(request, response) {
     deletionTables: deletionTables.map((table) => table.name),
     mode,
     serviceRoleConfigured: Boolean(client),
+    socialPurgeRpc,
   }
 
   if (mode === 'dry-run') {
@@ -184,5 +217,7 @@ export const accountDeletionRouteInternals = {
   deleteRowsForUser,
   deletionTables,
   normalizeMode,
+  purgeSocialDataForUser,
+  socialPurgeRpc,
   summarizeDeletion,
 }

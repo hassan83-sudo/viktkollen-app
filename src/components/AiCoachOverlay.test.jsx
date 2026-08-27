@@ -6,13 +6,14 @@ function readSource(relativePath) {
 }
 
 describe('AI Coach tap me and realtime voice security', () => {
-  it('puts the Home AI Coach card in the old AI-ögon slot', () => {
+  it('opens AI Coach from Dagens läge mood card on Home', () => {
     const source = readSource('src/components/app/OverviewDashboard.jsx')
 
-    expect(source).toContain('is-coach-hero')
-    expect(source).toContain("t('home:labels.openAiCoach')")
+    expect(source).toContain('overview-mood-card is-coach')
+    expect(source).toContain("t('home:mood.openCoach')")
     expect(source).toContain('onOpenAiCoach')
-    expect(source).toContain('<span className="overview-tap-me">tap me</span>')
+    expect(source).toContain("t('home:tapImage')")
+    expect(source).not.toContain('is-coach-hero')
   })
 
   it('opens the AI Coach overlay from Home and keeps text chat available', () => {

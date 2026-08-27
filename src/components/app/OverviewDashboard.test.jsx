@@ -34,7 +34,17 @@ function renderOverview(overrides = {}) {
       profile={{ name: 'Hassan Kayed', goalWeight: 74 }}
       proteinGoal={135}
       proteinToday={112}
-      reminderState={{ reminders: [] }}
+      reminderState={{
+        reminders: [
+          {
+            enabled: true,
+            id: 'reminder-1',
+            scheduleType: 'daily',
+            time: '18:30',
+            title: 'Drick vatten',
+          },
+        ],
+      }}
       selectedDate="2026-08-11"
       syncStatus={{}}
       weights={[
@@ -51,6 +61,8 @@ describe('OverviewDashboard', () => {
     const markup = renderOverview()
 
     expect(markup).toContain('class="overview-live-meta"')
+    expect(markup).toMatch(/Online|Offline/)
+    expect(markup).toContain('overview-live-status')
     expect(markup).toContain('Väder ej anslutet')
     expect(markup).toContain('Koppla väder')
     expect(markup).not.toContain('--°C')
@@ -69,7 +81,7 @@ describe('OverviewDashboard', () => {
     expect(markup).not.toContain('class="overview-avatar-photo"')
   })
 
-  it('orders primary actions before secondary content', () => {
+  it('keeps three equal neon primary cards with Tryck på bilden', () => {
     const markup = renderOverview()
     const eyesIndex = markup.indexOf('AI Ögon')
     const bodyIndex = markup.indexOf('Kroppsscanning')
@@ -92,50 +104,17 @@ describe('OverviewDashboard', () => {
     expect(markup).toContain('Skanna maten och uppskatta näringen')
     expect(markup).toContain('/viktkollen-body-scan.png')
     expect(markup).toContain('Öppna kroppsscanning i helskärm')
-    expect(markup).toContain('tap me')
-    expect(markup).toContain('Öppna AI Ögon')
-    expect(markup).toContain('Öppna AI Coach')
-    expect(markup).toContain('is-coach-hero')
-    const eyesBlock = markup.slice(markup.indexOf('is-eyes'), markup.indexOf('is-body'))
-    expect(eyesBlock).toContain('tap me')
-    expect(eyesBlock).toContain('Öppna AI Ögon')
-    expect(markup).toContain('Läs ingredienser')
-    expect(markup).toContain('Skanna kropp med kamera')
-    expect(markup).toContain('Skanna mat med kamera')
-    expect(markup).not.toContain('Öppna matscanning')
-    expect(markup).not.toContain('overview-body-scan-stage')
-    expect(markup).toContain('overview-body-scan-rings')
-    expect(markup).not.toContain('overview-body-float-rings')
+    expect(markup).toContain('Tryck på bilden')
+    expect(markup).not.toContain('tap me')
+    expect(markup).toContain('Öppna kameran')
+    expect(markup).toContain('Starta scanning')
+    expect(markup).toContain('Skanna maten')
+    expect(markup).toContain('overview-primary-action-footer')
     expect(markup).toContain('/viktkollen-meal-scan.png')
-    expect(markup).not.toContain('>AI<')
-    expect(markup).not.toContain('>SCAN<')
-    expect(markup).not.toContain('>CAM<')
+    expect(markup).toContain('overview-body-scan-rings')
   })
 
-  it('renders AI Coach in the old AI-ögon slot and keeps real weight beside steps', () => {
-    const markup = renderOverview().replaceAll('\u00a0', ' ')
-
-    expect(markup).toContain('AI Ögon')
-    expect(markup).toContain('AI Coach')
-    expect(markup).toContain('is-coach-hero')
-    expect(markup).not.toContain('is-smart-camera')
-    expect(markup).toContain('IDAG')
-    expect(markup).toContain('Steg idag')
-    expect(markup).toContain('Vikt')
-    expect(markup).toContain('78,4 kg')
-    expect(markup).toContain('Kalorier')
-    expect(markup).toContain('1 840')
-    expect(markup).toContain('2 200')
-    expect(markup).toContain('kcal')
-    expect(markup).toContain('is-flame')
-    expect(markup).toContain('class="overview-weight-sparkline"')
-    expect(markup).toContain('class="overview-calorie-progress"')
-    expect(markup).not.toContain('Målvikt</span>')
-    expect(markup).not.toContain('Family &amp; Safety')
-    expect(markup).not.toContain('Walkie')
-  })
-
-  it('hides AI Ögon when Smart Camera is off and keeps compact IDAG weight beside steps', () => {
+  it('always shows AI Ögon even when Smart Camera is off', () => {
     const markup = renderOverview({
       featureFlags: {
         eyes: false,
@@ -144,18 +123,32 @@ describe('OverviewDashboard', () => {
         mouth: false,
         smartCamera: false,
       },
-    }).replaceAll('\u00a0', ' ')
+    })
 
-    expect(markup).not.toContain('is-smart-camera')
-    expect(markup).not.toContain('AI Ögon')
+    expect(markup).toContain('AI Ögon')
+    expect(markup).toContain('is-eyes')
+    expect(markup).toContain('Öppna kameran')
+    expect(markup).toContain('Kroppsscanning')
+    expect(markup).toContain('Matscanning')
+  })
+
+  it('renders Dagens läge as a 2x2 mood grid with real values', () => {
+    const markup = renderOverview().replaceAll('\u00a0', ' ')
+
+    expect(markup).toContain('Dagens läge')
+    expect(markup).toContain('class="overview-today-mood"')
+    expect(markup).toContain('Chatten')
+    expect(markup).toContain('Nästa påminnelse')
     expect(markup).toContain('AI Coach')
     expect(markup).toContain('IDAG')
-    expect(markup).toContain('Steg idag')
+    expect(markup).toContain('1 840 kcal')
     expect(markup).toContain('78,4 kg')
-    expect(markup).toContain('1 840')
-    expect(markup).toContain('kcal')
-    expect(markup).not.toContain('Aktuell vikt')
-    expect(markup).not.toContain('Family &amp; Safety')
+    expect(markup).toContain('Logga mat')
+    expect(markup).toContain('Registrera vikt')
+    expect(markup).toContain('Drick vatten')
+    expect(markup).not.toContain('class="overview-compact-tabs"')
+    expect(markup).not.toContain('Protein att välja')
+    expect(markup).not.toContain('is-coach-hero')
   })
 
   it('keeps the social card visible when callers provide partial feature flags', () => {
@@ -165,27 +158,6 @@ describe('OverviewDashboard', () => {
 
     expect(markup).toContain('Vänner')
     expect(markup).toContain('Logga in för att träna och hålla kontakten tillsammans.')
-  })
-
-  it('keeps health score and protein compact while steps live beside weight', () => {
-    const markup = renderOverview().replaceAll('\u00a0', ' ')
-
-    expect(markup).toContain('class="overview-compact-tabs"')
-    expect(markup).toContain('Health Score')
-    expect(markup).toContain('Steg idag')
-    expect(markup).toContain('overview-today-pair')
-    expect(markup).toContain('Protein idag')
-    expect(markup).toContain('Protein att välja')
-    expect(markup).toContain('Kyckling')
-    expect(markup).toContain('Nötkött')
-    expect(markup).toContain('Ägg')
-    expect(markup).toContain('13 956')
-    expect(markup).toContain('112 g')
-    expect(markup).toContain('is-heart')
-    expect(markup).toContain('is-protein')
-    expect(markup).not.toContain('>H<')
-    expect(markup).not.toContain('>S<')
-    expect(markup).not.toContain('>P<')
   })
 
   it('keeps check-in, advice, smart notifications and more for today reachable', () => {
@@ -219,15 +191,14 @@ describe('OverviewDashboard', () => {
       },
       proteinGoal: undefined,
       proteinToday: undefined,
+      reminderState: { reminders: [] },
       weights: [],
     })
 
     expect(markup).toContain('Ingen vikt')
     expect(markup).toContain('Registrera vikt')
-    expect(markup).toContain('Inga data ännu')
-    expect(markup).toContain('Inte anslutet')
-    expect(markup).toContain('—')
-    expect(markup).toContain('class="is-empty">Inga data ännu</strong>')
+    expect(markup).toContain('0 kcal')
+    expect(markup).toContain('Ingen påminnelse')
     expect(markup).toContain('Vänner')
   })
 
@@ -250,8 +221,6 @@ describe('OverviewDashboard', () => {
     expect(markup).toContain('Senaste 7 dagarna')
     expect(markup).toContain('Achievements')
     expect(markup).toContain('Health Prediction')
-    expect(markup).toContain('open=""')
-    expect(markup).toContain('overview-secondary-content')
-    expect(markup).toContain('weekly-progress-card')
+    expect(markup).toContain('<details')
   })
 })

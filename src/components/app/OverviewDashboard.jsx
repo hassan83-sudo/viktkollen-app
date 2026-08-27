@@ -10,6 +10,7 @@ import BodyScanRings from './BodyScanRings.jsx'
 import OverviewBodyScanStage from './OverviewBodyScanStage.jsx'
 import OverviewCoachStage from './OverviewCoachStage.jsx'
 import OverviewFoodScanStage from './OverviewFoodScanStage.jsx'
+import WeatherDayDetail from './WeatherDayDetail.jsx'
 import {
   createFallbackWeatherContext,
   createOverviewLiveContext,
@@ -22,14 +23,12 @@ import { getFeatureFlags, isFeatureEnabled } from '../../features/featureRegistr
 import HomeSocialPreview from '../../features/social/components/HomeSocialPreview.jsx'
 import SocialStage from '../../features/social/components/SocialStage.jsx'
 import { createSocialApi } from '../../features/social/services/socialApi.js'
-import { buildWeightTrend, formatSignedChange } from '../../services/homeBodyToday.js'
 import {
-  formatHomeStepsLabel,
   formatHomeWeightLabel,
-  measuredWeightsForSparkline,
-  resolveHomeSteps,
   resolveHomeWeightKg,
 } from '../../services/homeTodayStats.js'
+import { normalizeReminderState } from '../../services/reminders/reminderModel.js'
+import { buildReminderStatus, getNextReminderAt } from '../../services/reminders/reminderScheduler.js'
 import SmartCameraStage from '../../features/smart-camera/components/SmartCameraStage.jsx'
 import BodyAvatarTalkBar from './BodyAvatarTalkBar.jsx'
 import { formatNumber as formatLocaleNumber } from '../../i18n/format.js'
@@ -67,34 +66,6 @@ function getProgressPercent(value, goal) {
   if (!Number.isFinite(current) || !Number.isFinite(target) || target <= 0) return null
 
   return Math.max(0, Math.min(100, Math.round((current / target) * 100)))
-}
-
-function getProgressBucket(value) {
-  if (!Number.isFinite(Number(value))) return 0
-
-  return Math.max(0, Math.min(100, Math.round(Number(value) / 10) * 10))
-}
-
-function getSparklinePoints(weights = []) {
-  const values = weights
-    .map((entry) => Number(entry?.value ?? entry?.weight))
-    .filter((value) => Number.isFinite(value) && value > 0)
-    .slice(-7)
-
-  if (values.length < 2) return ''
-
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  const range = max - min || 1
-
-  return values
-    .map((value, index) => {
-      const x = Math.round((index / (values.length - 1)) * 72)
-      const y = Math.round(14 - ((value - min) / range) * 10)
-
-      return `${x},${y}`
-    })
-    .join(' ')
 }
 
 function usePrefersReducedMotion() {
@@ -320,27 +291,59 @@ function shortWeekday(value) {
   return `${text.slice(0, 1).toLocaleUpperCase('sv-SE')}${text.slice(1, 3)}`
 }
 
-function OverviewLiveMeta({ liveContext, onConnectWeather, weatherStatus = '' }) {
+function useOnlineStatus() {
+  const [isOnline, setIsOnline] = useState(() => (
+    typeof navigator === 'undefined' ? true : navigator.onLine
+  ))
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    const markOnline = () => setIsOnline(true)
+    const markOffline = () => setIsOnline(false)
+    window.addEventListener('online', markOnline)
+    window.addEventListener('offline', markOffline)
+    return () => {
+      window.removeEventListener('online', markOnline)
+      window.removeEventListener('offline', markOffline)
+    }
+  }, [])
+
+  return isOnline
+}
+
+function OverviewLiveMeta({
+  liveContext,
+  onConnectWeather,
+  onOpenWeatherDay,
+  weatherStatus = '',
+}) {
   const { t } = useTranslation('home')
+  const isOnline = useOnlineStatus()
   const weather = liveContext.weather
   const hasWeatherDetails = Boolean(weather.hasLiveWeather)
   const city = hasWeatherDetails && weather.city && weather.city !== 'Vald stad' ? weather.city : ''
 
   return (
     <div className="overview-live-meta" aria-label={t('liveMetaAria')}>
+      <p className="overview-live-status">
+        <span className={isOnline ? 'is-online' : 'is-offline'}>
+          <span className="overview-online-dot" aria-hidden="true" />
+          {isOnline ? t('online') : t('offline')}
+        </span>
+      </p>
       <p>
         <span><OverviewIcon name="calendar" /> {shortWeekday(liveContext.weekday)} {liveContext.dateLabel}</span>
         <span><OverviewIcon name="clock" /> {liveContext.timeLabel}</span>
         {city ? <span>{city}</span> : null}
       </p>
-      <p>
+      <p className="overview-weather-row">
         {hasWeatherDetails ? (
           <>
             <span>{formatWeatherValue(weather.temperatureC, '°C')}</span>
             <span><OverviewIcon name="wind" /> {formatWeatherValue(weather.windSpeedMs, ' m/s')}</span>
             <span><OverviewIcon name="drop" /> {formatWeatherValue(weather.precipitationRiskPercent, ' %')}</span>
-            <button className="overview-weather-connect" type="button" onClick={onConnectWeather}>
-              {t('myLocation')}
+            <button className="overview-weather-day-link" type="button" onClick={onOpenWeatherDay}>
+              {t('weatherDay.viewFullDay')}
             </button>
           </>
         ) : (
@@ -358,7 +361,9 @@ function OverviewLiveMeta({ liveContext, onConnectWeather, weatherStatus = '' })
         <p>
           <span><OverviewIcon name="sunrise" /> {weather.sunriseLabel}</span>
           <span><OverviewIcon name="sunset" /> {weather.sunsetLabel}</span>
-          <span className="overview-weather-source">{weather.sourceLabel}</span>
+          <button className="overview-weather-connect" type="button" onClick={onConnectWeather}>
+            {t('myLocation')}
+          </button>
         </p>
       )}
     </div>
@@ -515,6 +520,15 @@ function OverviewIcon({ name }) {
     )
   }
 
+  if (name === 'chat') {
+    return (
+      <svg {...common}>
+        <path d="M10 14h20a6 6 0 0 1 6 6v8a6 6 0 0 1-6 6H20l-8 6v-6h-2a6 6 0 0 1-6-6v-8a6 6 0 0 1 6-6Z" />
+        <path d="M16 22h12M16 27h8" />
+      </svg>
+    )
+  }
+
   if (name === 'calendar') {
     return (
       <svg {...common}>
@@ -607,13 +621,34 @@ function OverviewPrimaryActions({
   featureFlags,
   onNavigateSection,
   onOpenBodyScan,
-  onOpenCoach,
   onOpenFoodScan,
   onOpenSmartCamera,
   onScanFood,
-  onStartBodyScan,
 }) {
   const { t } = useTranslation(['bodyScan', 'home'])
+  const prefersReducedMotion = usePrefersReducedMotion()
+  const [showTapPulse, setShowTapPulse] = useState(() => {
+    if (typeof window === 'undefined') return false
+    try {
+      return window.sessionStorage.getItem('viktkollen.home.tapHintSeen') !== '1'
+    } catch {
+      return true
+    }
+  })
+
+  useEffect(() => {
+    if (!showTapPulse || prefersReducedMotion) return undefined
+    const timer = window.setTimeout(() => {
+      setShowTapPulse(false)
+      try {
+        window.sessionStorage.setItem('viktkollen.home.tapHintSeen', '1')
+      } catch {
+        // Ignore storage failures; pulse is optional.
+      }
+    }, 2400)
+    return () => window.clearTimeout(timer)
+  }, [prefersReducedMotion, showTapPulse])
+
   const goTo = (sectionId, targetId) => {
     if (onNavigateSection) {
       onNavigateSection(sectionId, targetId)
@@ -624,66 +659,75 @@ function OverviewPrimaryActions({
   }
 
   const smartCameraOn = isFeatureEnabled('smartCamera', featureFlags)
-  const coachAction = {
-    accent: 'coach',
-    actionIcon: 'arrow',
-    alt: t('home:actionAlts.coach'),
-    art: 'robot',
-    description: t('home:actionDescriptions.coach'),
-    image: '/viktkollen-ai-coach-robot.png',
-    imageHeight: 1199,
-    imageWidth: 1312,
-    icon: 'robot',
-    label: t('home:labels.aiCoach'),
-    onClick: () => (onOpenCoach ? onOpenCoach() : goTo('coach', 'chat')),
+  const openEyes = () => {
+    if (smartCameraOn) {
+      onOpenSmartCamera?.()
+      return
+    }
+    // Graceful fallback when Smart Camera flag is off: still open a camera path.
+    if (onOpenBodyScan) onOpenBodyScan()
+    else onOpenSmartCamera?.()
   }
-  const eyesAction = {
-    accent: 'eyes',
-    actionIcon: 'arrow',
-    alt: t('home:actionAlts.eyes'),
-    art: 'eyes',
-    description: t('home:actionDescriptions.smartCamera'),
-    icon: 'eye',
-    label: t('home:labels.aiEyes'),
-    onClick: () => onOpenSmartCamera?.(),
+
+  const openBody = () => (onOpenBodyScan ? onOpenBodyScan() : goTo('progress', 'body-analysis'))
+  const openFood = () => {
+    if (onOpenFoodScan) onOpenFoodScan()
+    else if (onScanFood) onScanFood()
+    else goTo('nutrition', 'streckkod')
   }
+
   const actions = [
-    ...(smartCameraOn ? [eyesAction] : [coachAction]),
+    {
+      accent: 'eyes',
+      alt: t('home:actionAlts.eyes'),
+      art: 'eyes',
+      description: t('home:actionDescriptions.smartCamera'),
+      footerLabel: t('home:cardActions.openCamera'),
+      hitLabel: t('home:labels.openAiEyes'),
+      icon: 'eye',
+      label: t('home:labels.aiEyes'),
+      onClick: openEyes,
+    },
     {
       accent: 'body',
-      actionIcon: 'foodCamera',
       alt: t('home:actionAlts.body'),
       art: 'body',
       description: t('home:actionDescriptions.body'),
+      footerLabel: t('bodyScan:startScan'),
+      hitLabel: t('home:openBodyScanFullscreen'),
       image: '/viktkollen-body-scan.png',
       imageHeight: 1537,
       imageWidth: 1023,
       icon: 'bodyScan',
       label: t('home:labels.bodyScan'),
-      onClick: () => (onOpenBodyScan ? onOpenBodyScan() : goTo('progress', 'body-analysis')),
-      onScan: onStartBodyScan || (() => goTo('progress', 'body-analysis')),
+      onClick: openBody,
     },
     {
       accent: 'food',
-      actionIcon: 'foodCamera',
       alt: t('home:actionAlts.food'),
       art: 'meal',
       description: t('home:actionDescriptions.food'),
+      footerLabel: t('home:cardActions.scanFood'),
+      hitLabel: t('home:scanFoodWithCamera'),
       image: '/viktkollen-meal-scan.png',
       imageHeight: 1536,
       imageWidth: 1024,
       icon: 'foodCamera',
       label: t('home:foodScan.title'),
-      onClick: onOpenFoodScan || (() => goTo('nutrition', 'streckkod')),
-      onScan: onScanFood || (() => goTo('nutrition', 'nutrition-scanner-v2')),
+      onClick: openFood,
     },
   ]
 
   return (
     <section className="overview-primary-actions" aria-label={t('home:labels.home')}>
-      {actions.map((action) => {
-        const visual = (
-          <>
+      {actions.map((action) => (
+        <div className={`overview-primary-action is-${action.accent}`} key={action.label}>
+          <button
+            className="overview-primary-action-hit"
+            type="button"
+            aria-label={action.hitLabel}
+            onClick={action.onClick}
+          >
             <span className="overview-primary-visual">
               <span className="overview-primary-orbit" />
               <span className={`overview-primary-art is-${action.art}`}>
@@ -709,209 +753,136 @@ function OverviewPrimaryActions({
               <strong>{action.label}</strong>
               <small>{action.description}</small>
             </span>
-          </>
-        )
-
-        if (action.accent === 'body' || action.accent === 'food') {
-          return (
-            <div className={`overview-primary-action is-${action.accent}`} key={action.label}>
-              <button
-                className="overview-primary-action-hit"
-                type="button"
-                aria-label={action.accent === 'body' ? t('home:openBodyScanFullscreen') : t('home:readIngredients')}
-                onClick={action.onClick}
-              >
-                {visual}
-                <span className="overview-tap-me">tap me</span>
-              </button>
-              <button
-                className="overview-primary-action-chevron"
-                type="button"
-                aria-label={action.accent === 'body' ? t('home:scanBodyWithCamera') : t('home:scanFoodWithCamera')}
-                onClick={action.onScan}
-              >
-                <OverviewIcon name="foodCamera" />
-              </button>
-            </div>
-          )
-        }
-
-        return (
-          <div className={`overview-primary-action is-${action.accent}`} key={action.label}>
-            <button
-              className="overview-primary-action-hit"
-              type="button"
-              aria-label={action.accent === 'eyes' ? t('home:labels.openAiEyes') : t('home:labels.openAiCoach')}
-              onClick={action.onClick}
-            >
-              {visual}
-              <span className="overview-tap-me">tap me</span>
-            </button>
-            <button
-              className="overview-primary-action-chevron"
-              type="button"
-              aria-hidden="true"
-              tabIndex={-1}
-              onClick={action.onClick}
-            >
-              <OverviewIcon name={action.actionIcon} />
-            </button>
-          </div>
-        )
-      })}
+            {showTapPulse && !prefersReducedMotion ? (
+              <span className="overview-tap-me is-pulse">{t('home:tapImage')}</span>
+            ) : (
+              <span className="overview-tap-me">{t('home:tapImage')}</span>
+            )}
+          </button>
+          <button
+            className="overview-primary-action-footer"
+            type="button"
+            aria-label={action.footerLabel}
+            onClick={action.onClick}
+          >
+            <OverviewIcon name="foodCamera" />
+            <span>{action.footerLabel}</span>
+          </button>
+        </div>
+      ))}
     </section>
   )
 }
 
-function formatTodayWeightDelta(change7d) {
-  if (!Number.isFinite(Number(change7d))) return ''
-  const value = Number(change7d)
-  if (Math.abs(value) < 0.05) return '→ 0 kg'
-  const formatted = formatSignedChange(value, 'kg')
-  return value < 0 ? formatted.replace('−', '↓ ') : formatted.replace('+', '↑ ')
+function resolveNextReminder(reminderState) {
+  const normalized = normalizeReminderState(reminderState || {})
+  const status = buildReminderStatus(normalized)
+  if (!status.nextReminderAt) {
+    return { at: null, title: '' }
+  }
+
+  const next = normalized.reminders
+    .map((reminder) => ({
+      reminder,
+      at: getNextReminderAt(reminder),
+    }))
+    .filter((entry) => entry.at)
+    .sort((left, right) => String(left.at).localeCompare(String(right.at)))[0]
+
+  return {
+    at: status.nextReminderAt,
+    title: next?.reminder?.title || '',
+  }
 }
 
-function OverviewHeroStats({
+function OverviewTodayMood({
   caloriesToday,
-  calorieGoal,
-  checkIn,
   currentWeight,
-  featureFlags,
-  healthScore,
   onLogWeight,
+  onOpenChat,
   onOpenCoach,
+  onOpenNotices,
   onScanFood,
-  proteinToday,
-  proteinGoal,
-  weightTrend,
+  reminderState,
   weights,
 }) {
-  const { t } = useTranslation(['common', 'home'])
-  const caloriePercent = getProgressPercent(caloriesToday, calorieGoal)
+  const { t, i18n } = useTranslation(['common', 'home'])
   const displayWeight = resolveHomeWeightKg({ currentWeight, weights })
   const hasCurrentWeight = isFiniteNumber(displayWeight) && Number(displayWeight) > 0
   const hasCalories = isFiniteNumber(caloriesToday)
-  const stepsState = resolveHomeSteps({ checkIn })
-  const stepsLabel = formatHomeStepsLabel(stepsState, (value) => formatNumber(Math.round(Number(value))))
-  const weightSparklinePoints = getSparklinePoints(measuredWeightsForSparkline(weights))
-  const proteinFoods = [
-    { id: 'chicken', label: t('home:proteinFoods.chicken') },
-    { id: 'beef', label: t('home:proteinFoods.beef') },
-    { id: 'egg', label: t('home:proteinFoods.egg') },
-  ]
-  const compactStats = [
-    {
-      accent: 'health',
-      icon: 'heart',
-      label: t('home:labels.healthScore'),
-      secondary: t('home:labels.today'),
-      value: isFiniteNumber(healthScore) ? `${Math.round(Number(healthScore))}` : t('common:states.missingData'),
-    },
-    {
-      accent: 'protein',
-      icon: 'protein',
-      label: t('home:labels.proteinToday'),
-      secondary: isFiniteNumber(proteinGoal) ? t('home:proteinGoalLabel', { grams: formatNumber(Math.round(Number(proteinGoal))) }) : t('common:states.missingData'),
-      value: isFiniteNumber(proteinToday) ? `${formatNumber(Math.round(Number(proteinToday)))} g` : '—',
-      suffix: isFiniteNumber(proteinToday) && isFiniteNumber(proteinGoal)
-        ? `${getProgressPercent(proteinToday, proteinGoal)} %`
-        : null,
-    },
-  ]
-
-  const smartCameraOn = isFeatureEnabled('smartCamera', featureFlags)
-  const change7d = Number.isFinite(Number(weightTrend?.change7dKg)) ? Number(weightTrend.change7dKg) : null
-  const changeLabel = change7d === null ? '' : formatTodayWeightDelta(change7d)
-  const calorieGoalLabel = isFiniteNumber(calorieGoal) ? formatNumber(Math.round(Number(calorieGoal))) : null
-
-  const todayCard = (
-    <article className="overview-main-stat is-today">
-      <div className="overview-main-stat-top">
-        <span>{t('home:labels.today')}</span>
-      </div>
-      <div className="overview-today-pair">
-        <div className="overview-today-metric is-steps">
-          <span>{t('home:labels.stepsToday')}</span>
-          <strong className={stepsState.connected ? undefined : 'is-empty'}>{stepsLabel}</strong>
-        </div>
-        <div className="overview-today-metric is-weight">
-          <span>{t('home:labels.weight')}</span>
-          <strong className={hasCurrentWeight ? 'overview-weight-value' : 'overview-weight-value is-empty'}>
-            {formatHomeWeightLabel(displayWeight)}
-          </strong>
-          {change7d !== null && hasCurrentWeight ? (
-            <small className={`overview-weight-delta is-${weightTrend?.trend || 'stable'}`}>{changeLabel}</small>
-          ) : null}
-        </div>
-      </div>
-      <div className="overview-today-calories">
-        <span>{t('home:labels.calories')}</span>
-        <span className="overview-metric-icon is-inline" aria-hidden="true"><OverviewIcon name="flame" /></span>
-        <strong className={hasCalories ? undefined : 'is-empty'}>
-          {hasCalories
-            ? `${formatNumber(Math.round(Number(caloriesToday)))}${calorieGoalLabel ? ` / ${calorieGoalLabel}` : ''} kcal`
-            : t('common:states.noneYet')}
-        </strong>
-      </div>
-      <small>{hasCurrentWeight ? t('home:labels.weight') : t('home:states.registerWeight')}</small>
-      <div className="overview-weight-chart">
-        {weightSparklinePoints && (
-          <svg className="overview-weight-sparkline" viewBox="0 0 72 18" role="img" aria-label={t('home:weightTrendAria')}>
-            <polyline points={weightSparklinePoints} />
-          </svg>
-        )}
-      </div>
-      {caloriePercent !== null && (
-        <span className="overview-calorie-progress" aria-hidden="true">
-          <span className={`overview-progress-${getProgressBucket(caloriePercent)}`} />
-        </span>
-      )}
-      <div className="overview-today-links">
-        {onLogWeight && (
-          <button className="overview-stat-link" type="button" onClick={onLogWeight}>{t('home:states.registerWeight')}</button>
-        )}
-        {onScanFood && (
-          <button className="overview-stat-link" type="button" onClick={onScanFood}>{t('home:logFood')}</button>
-        )}
-      </div>
-    </article>
-  )
+  const nextReminder = useMemo(() => resolveNextReminder(reminderState), [reminderState])
+  const nextReminderLabel = nextReminder.at
+    ? new Intl.DateTimeFormat(i18n.language || 'sv-SE', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(new Date(nextReminder.at))
+    : ''
 
   return (
-    <section className="overview-hero-stats" aria-label={t('home:labels.today')}>
-      <div className={`overview-main-stats${smartCameraOn ? ' has-coach-slot' : ' is-today-only'}`} aria-label={t('home:labels.aiCoach')}>
-        {smartCameraOn ? (
-          <article className="overview-main-stat is-coach-hero">
-            <div className="overview-main-stat-top">
-              <span className="overview-metric-icon" aria-hidden="true"><OverviewIcon name="robot" /></span>
-              <span>{t('home:labels.aiCoach')}</span>
-            </div>
-            <strong>{t('home:personalAdvice')}</strong>
-            <small>{t('home:fromYourData')}</small>
-            {onOpenCoach && (
-              <button className="overview-stat-link" type="button" onClick={onOpenCoach}>{t('home:labels.openAiCoach')}</button>
-            )}
-          </article>
-        ) : null}
-        {todayCard}
-      </div>
+    <section className="overview-today-mood" aria-label={t('home:todayMood')}>
+      <button className="overview-mood-card is-chat" type="button" onClick={onOpenChat} aria-label={t('home:mood.openChat')}>
+        <span className="overview-mood-card-top">
+          <OverviewIcon name="chat" />
+          <span className="overview-mood-label">{t('home:mood.chat')}</span>
+        </span>
+        <strong>{t('home:mood.chatHint')}</strong>
+        <span className="overview-mood-link">{t('home:mood.openChat')}</span>
+      </button>
 
-      <div className="overview-compact-tabs" aria-label={t('home:compactStatsAria')}>
-        {compactStats.map((stat) => (
-          <article className={`overview-compact-tab is-${stat.accent}`} key={stat.label}>
-            <span className="overview-compact-icon" aria-hidden="true"><OverviewIcon name={stat.icon} /></span>
-            <strong>{stat.value}</strong>
-            <span>{stat.label}</span>
-            <small>{stat.suffix || stat.secondary}</small>
-          </article>
-        ))}
-      </div>
-      <div className="overview-protein-strip" aria-label={t('home:proteinSourcesAria')}>
-        <strong>{t('home:proteinPick')}</strong>
-        {proteinFoods.map((food) => (
-          <span key={food.id}>{food.label}</span>
-        ))}
-      </div>
+      <button className="overview-mood-card is-coach" type="button" onClick={onOpenCoach} aria-label={t('home:mood.openCoach')}>
+        <span className="overview-mood-label">{t('home:labels.aiCoach')}</span>
+        <span className="overview-mood-coach-body">
+          <OverviewIcon name="robot" />
+          <span>
+            <strong>{t('home:mood.askCoach')}</strong>
+            <small>{t('home:mood.writeOrTalk')}</small>
+          </span>
+        </span>
+        <span className="overview-mood-link">{t('home:mood.openCoach')}</span>
+      </button>
+
+      <button className="overview-mood-card is-reminder" type="button" onClick={onOpenNotices} aria-label={t('home:mood.nextReminder')}>
+        <span className="overview-mood-card-top">
+          <OverviewIcon name="bell" />
+          <span className="overview-mood-label">{t('home:mood.nextReminder')}</span>
+        </span>
+        {nextReminder.at ? (
+          <>
+            <strong className="overview-mood-time">{nextReminderLabel}</strong>
+            <small>{nextReminder.title || t('home:mood.reminderReady')}</small>
+          </>
+        ) : (
+          <>
+            <strong className="is-empty">{t('home:mood.noReminder')}</strong>
+            <small className="is-empty">{t('home:mood.openNotices')}</small>
+          </>
+        )}
+        <span className="overview-mood-link">{t('home:mood.openLink')}</span>
+      </button>
+
+      <article className="overview-mood-card is-today">
+        <span className="overview-mood-label">{t('home:labels.today')}</span>
+        <div className="overview-mood-today-stats">
+          <span className={hasCalories ? undefined : 'is-empty'}>
+            <OverviewIcon name="flame" />
+            {hasCalories
+              ? `${formatNumber(Math.round(Number(caloriesToday)))} kcal`
+              : `0 kcal`}
+          </span>
+          <span className={hasCurrentWeight ? undefined : 'is-empty'}>
+            <OverviewIcon name="scale" />
+            {hasCurrentWeight ? formatHomeWeightLabel(displayWeight) : t('home:states.noWeight')}
+          </span>
+        </div>
+        <div className="overview-today-links">
+          {onScanFood && (
+            <button className="overview-stat-link" type="button" onClick={onScanFood}>{t('home:logFood')}</button>
+          )}
+          {onLogWeight && (
+            <button className="overview-stat-link" type="button" onClick={onLogWeight}>{t('home:states.registerWeight')}</button>
+          )}
+        </div>
+      </article>
     </section>
   )
 }
@@ -1025,10 +996,10 @@ function OverviewDashboard({
   const [weatherStatus, setWeatherStatus] = useState('')
   const [profilePhoto, setProfilePhoto] = useState(() => readProfilePhoto())
   const [weather, setWeather] = useState(() => createFallbackWeatherContext())
+  const [weatherDayOpen, setWeatherDayOpen] = useState(false)
   const flags = getFeatureFlags(featureFlags)
   const socialUiEnabled = isFeatureEnabled('socialUi', flags)
   const socialLiveEnabled = isFeatureEnabled('socialLive', flags)
-  const weightTrend = useMemo(() => buildWeightTrend(weights, currentWeight), [currentWeight, weights])
   const liveContext = useMemo(() => createOverviewLiveContext(now, weather), [now, weather])
   const initials = getInitials(profile, email)
   const hasPendingNotifications = Boolean(
@@ -1040,7 +1011,21 @@ function OverviewDashboard({
     : t('home:coachAdviceDefault')
 
   const goToNotifications = () => {
+    if (onNavigateSection) {
+      onNavigateSection('notices')
+      return
+    }
     scrollToTarget('smart-notifications')
+  }
+
+  const openSocialChat = () => {
+    if (socialUiEnabled) {
+      setSocialView('inbox')
+      setSocialConversationId(null)
+      setSocialOpen(true)
+      return
+    }
+    if (onNavigateSection) onNavigateSection('social')
   }
 
   async function connectWeather() {
@@ -1140,9 +1125,13 @@ function OverviewDashboard({
         <OverviewLiveMeta
           liveContext={liveContext}
           onConnectWeather={connectWeather}
+          onOpenWeatherDay={() => setWeatherDayOpen(true)}
           weatherStatus={weatherStatus}
         />
-        <div className="overview-header-actions">
+        <div className="overview-header-weather-art" aria-hidden="true">
+          <span className="overview-weather-hero-icon">{liveContext.weather?.icon || '☁'}</span>
+        </div>
+        <div className="overview-header-actions sr-only">
           <button
             aria-label={t('home:showSmartNotices')}
             className={hasPendingNotifications ? 'overview-notification-button has-pending' : 'overview-notification-button'}
@@ -1176,35 +1165,26 @@ function OverviewDashboard({
           featureFlags={flags}
           onNavigateSection={onNavigateSection}
           onOpenBodyScan={() => setBodyScanOpen(true)}
-          onOpenCoach={() => (onOpenAiCoach ? onOpenAiCoach() : setCoachOpen(true))}
           onOpenFoodScan={() => setFoodScanOpen(true)}
           onOpenSmartCamera={() => {
             setBodyScanOpen(false)
             setSmartCameraOpen(true)
           }}
           onScanFood={onScanFood}
-          onStartBodyScan={() => {
-            if (onNavigateSection) onNavigateSection('progress', 'body-analysis')
-            else scrollToTarget('body-analysis')
-          }}
         />
       </section>
 
       <section className="overview-home-section" aria-labelledby="overview-today-title">
         <h2 id="overview-today-title">{t('home:todayMood')}</h2>
-        <OverviewHeroStats
-          calorieGoal={calorieGoal}
+        <OverviewTodayMood
           caloriesToday={caloriesToday}
-          checkIn={checkIn}
           currentWeight={currentWeight}
-          featureFlags={flags}
-          healthScore={healthScore}
           onLogWeight={onLogWeight}
+          onOpenChat={openSocialChat}
           onOpenCoach={() => (onOpenAiCoach ? onOpenAiCoach() : setCoachOpen(true))}
+          onOpenNotices={goToNotifications}
           onScanFood={onScanFood}
-          proteinGoal={proteinGoal}
-          proteinToday={proteinToday}
-          weightTrend={weightTrend}
+          reminderState={reminderState}
           weights={weights}
         />
         <HomeSocialPreview
@@ -1265,6 +1245,13 @@ function OverviewDashboard({
         <SmartFeedCard liveContext={liveContext} />
       </section>
 
+      {weatherDayOpen && (
+        <WeatherDayDetail
+          initialWeather={weather}
+          preferDevice={Boolean(weather?.city === 'Din plats')}
+          onClose={() => setWeatherDayOpen(false)}
+        />
+      )}
       {bodyScanOpen && (
         <OverviewBodyScanStage
           chatInput={chatInput}

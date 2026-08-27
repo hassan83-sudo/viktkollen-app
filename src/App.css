@@ -10578,6 +10578,175 @@ body:has(#app-section-home.is-active) {
   text-transform: none;
 }
 
+#app-section-home.is-active .overview-live-status {
+  margin: 0;
+}
+
+#app-section-home.is-active .overview-live-status .is-online,
+#app-section-home.is-active .overview-live-status .is-offline {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.66rem;
+  font-weight: 850;
+  letter-spacing: 0.02em;
+}
+
+#app-section-home.is-active .overview-live-status .is-online {
+  color: #7dffb2;
+}
+
+#app-section-home.is-active .overview-live-status .is-offline {
+  color: rgba(255, 170, 170, 0.9);
+}
+
+#app-section-home.is-active .overview-online-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 10px currentColor;
+}
+
+#app-section-home.is-active .overview-weather-row {
+  align-items: center;
+}
+
+#app-section-home.is-active .overview-header-weather-art {
+  grid-column: 2;
+  grid-row: 1 / span 4;
+  display: grid;
+  place-items: start end;
+  padding-top: 18px;
+  min-width: 64px;
+}
+
+#app-section-home.is-active .overview-weather-hero-icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 999px;
+  font-size: 2rem;
+  line-height: 1;
+  background:
+    radial-gradient(circle at 40% 35%, rgba(255, 214, 92, 0.95), rgba(255, 140, 40, 0.35) 52%, transparent 70%);
+  filter: drop-shadow(0 0 18px rgba(255, 176, 48, 0.55));
+}
+
+#app-section-home.is-active .overview-header-actions.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+#app-section-home.is-active .overview-mood-card-top,
+#app-section-home.is-active .overview-mood-coach-body {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#app-section-home.is-active .overview-mood-coach-body {
+  align-items: flex-start;
+  margin-top: 2px;
+}
+
+#app-section-home.is-active .overview-mood-coach-body > span {
+  display: grid;
+  gap: 2px;
+}
+
+#app-section-home.is-active .overview-mood-coach-body .overview-svg-icon {
+  width: 28px;
+  height: 28px;
+  color: #7cf0ff;
+  flex: 0 0 auto;
+}
+
+#app-section-home.is-active .overview-mood-card-top .overview-svg-icon {
+  width: 16px;
+  height: 16px;
+  color: #9ec4ff;
+}
+
+#app-section-home.is-active .overview-mood-link {
+  margin-top: auto;
+  color: #6ec8ff;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+#app-section-home.is-active .overview-mood-link::after {
+  content: " ›";
+}
+
+#app-section-home.is-active .overview-mood-time {
+  color: #b48cff;
+  font-size: 1.55rem;
+  font-weight: 920;
+  letter-spacing: 0.02em;
+}
+
+#app-section-home.is-active .overview-mood-today-stats {
+  display: grid;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+#app-section-home.is-active .overview-mood-today-stats > span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 820;
+}
+
+#app-section-home.is-active .overview-mood-today-stats .overview-svg-icon {
+  width: 15px;
+  height: 15px;
+  color: #ffb45c;
+}
+
+#app-section-home.is-active .overview-mood-card .overview-today-links {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+#app-section-home.is-active .overview-mood-card .overview-stat-link {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #6ec8ff;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+#app-section-home.is-active .overview-weather-day-link-row {
+  margin-top: 1px;
+}
+
+#app-section-home.is-active .overview-weather-day-link {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #8fd9ff;
+  font: inherit;
+  font-weight: 850;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
 #app-section-home.is-active .overview-live-meta p {
   display: flex;
   flex-wrap: wrap;
@@ -10754,11 +10923,12 @@ body:has(#app-section-home.is-active) {
 #app-section-home.is-active .overview-primary-action {
   position: relative;
   isolation: isolate;
-  display: block;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
   width: 100%;
-  height: clamp(218px, 58vw, 250px);
-  min-height: clamp(218px, 58vw, 250px);
-  padding: 12px;
+  height: clamp(236px, 62vw, 268px);
+  min-height: clamp(236px, 62vw, 268px);
+  padding: 0;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 17px;
@@ -10798,7 +10968,7 @@ body:has(#app-section-home.is-active) {
   position: absolute;
   left: 12px;
   right: 10px;
-  top: 18px;
+  top: 14px;
   bottom: auto;
   z-index: 3;
   margin: 0;
@@ -10832,7 +11002,7 @@ body:has(#app-section-home.is-active) {
 
 #app-section-home.is-active .overview-primary-visual {
   position: absolute;
-  inset: 82px -1px 16px;
+  inset: 72px 4px 58px;
   z-index: 1;
   display: block;
   width: auto;
@@ -10841,11 +11011,11 @@ body:has(#app-section-home.is-active) {
 }
 
 #app-section-home.is-active .overview-primary-action.is-body .overview-primary-visual {
-  inset: 82px -1px 16px;
+  inset: 72px 4px 58px;
 }
 
 #app-section-home.is-active .overview-primary-action.is-food .overview-primary-visual {
-  inset: 82px 4px 16px;
+  inset: 72px 6px 58px;
 }
 
 #app-section-home.is-active .overview-primary-art {
@@ -11160,32 +11330,62 @@ body:has(#app-section-home.is-active) {
 }
 
 #app-section-home.is-active .overview-primary-action-chevron {
-  position: absolute;
-  left: 50%;
-  right: auto;
-  bottom: 12px;
+  display: none;
+}
+
+#app-section-home.is-active .overview-primary-action-footer {
+  position: relative;
   z-index: 4;
-  display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  border-radius: 999px;
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 0;
+  padding: 0 8px;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0;
   color: #fff;
-  background: linear-gradient(145deg, #214cff, #0f20c9);
-  box-shadow: 0 12px 24px rgba(34, 76, 255, 0.42);
-  transform: translateX(-50%);
+  background: rgba(5, 10, 24, 0.42);
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+}
+
+#app-section-home.is-active .overview-primary-action.is-eyes .overview-primary-action-footer {
+  background: linear-gradient(180deg, rgba(88, 64, 210, 0.28), rgba(55, 34, 150, 0.55));
+  box-shadow: inset 0 1px 0 rgba(190, 170, 255, 0.18);
+}
+
+#app-section-home.is-active .overview-primary-action.is-body .overview-primary-action-footer {
+  background: linear-gradient(180deg, rgba(40, 210, 220, 0.22), rgba(18, 110, 140, 0.5));
+  box-shadow: inset 0 1px 0 rgba(140, 250, 255, 0.16);
+}
+
+#app-section-home.is-active .overview-primary-action.is-food .overview-primary-action-footer {
+  background: linear-gradient(180deg, rgba(255, 80, 170, 0.22), rgba(160, 30, 110, 0.5));
+  box-shadow: inset 0 1px 0 rgba(255, 170, 220, 0.16);
+}
+
+#app-section-home.is-active .overview-primary-action-footer .overview-svg-icon {
+  width: 15px;
+  height: 15px;
+  stroke-width: 3.2;
 }
 
 #app-section-home.is-active .overview-primary-action.is-body .overview-primary-action-copy {
-  top: 16px;
+  top: 14px;
   left: 12px;
   right: 10px;
 }
 
 #app-section-home.is-active .overview-tap-me {
   position: absolute;
-  right: 6px;
-  bottom: 6px;
+  right: 8px;
+  bottom: 52px;
   z-index: 5;
   display: inline-grid;
   height: 22px;
@@ -11197,10 +11397,33 @@ body:has(#app-section-home.is-active) {
   color: #04120f;
   background: rgba(56, 247, 255, 0.82);
   box-shadow: none;
-  font-size: 0.58rem;
+  font-size: 0.55rem;
   font-weight: 800;
   letter-spacing: 0.01em;
   opacity: 0.88;
+}
+
+#app-section-home.is-active .overview-tap-me.is-pulse {
+  animation: overview-tap-hint-pulse 1.2s ease-in-out 2;
+}
+
+@keyframes overview-tap-hint-pulse {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #app-section-home.is-active .overview-tap-me.is-pulse {
+    animation: none;
+  }
 }
 
 #app-section-home.is-active .overview-body-float-rings,
@@ -11284,11 +11507,13 @@ body:has(#app-section-home.is-active) {
 }
 
 #app-section-home.is-active .overview-primary-action-hit {
+  position: relative;
   display: block;
   width: 100%;
   height: 100%;
+  min-height: 0;
   margin: 0;
-  padding: 0;
+  padding: 12px 12px 0;
   overflow: visible;
   border: 0;
   background: transparent;
@@ -11298,29 +11523,18 @@ body:has(#app-section-home.is-active) {
   cursor: pointer;
 }
 
+#app-section-home.is-active .overview-primary-action.is-eyes .overview-tap-me {
+  color: #12081f;
+  background: rgba(186, 164, 255, 0.88);
+}
+
 #app-section-home.is-active .overview-primary-action.is-body .overview-primary-action-chevron,
 #app-section-home.is-active .overview-primary-action.is-food .overview-primary-action-chevron {
-  left: 8px;
-  transform: none;
-  z-index: 6;
-  pointer-events: auto;
-  width: 44px;
-  height: 44px;
-}
-
-#app-section-home.is-active .overview-primary-action.is-body .overview-primary-action-chevron {
-  background: linear-gradient(145deg, #38f7ff, #1287c9);
-  box-shadow: 0 10px 20px rgba(40, 180, 199, 0.38);
-}
-
-#app-section-home.is-active .overview-primary-action.is-food .overview-primary-action-chevron {
-  background: linear-gradient(145deg, #ff5ab1, #ee288e);
-  box-shadow: 0 10px 20px rgba(238, 40, 142, 0.38);
+  display: none;
 }
 
 #app-section-home.is-active .overview-primary-action.is-coach .overview-primary-action-chevron {
-  left: 8px;
-  transform: none;
+  display: none;
 }
 
 #app-section-home.is-active .overview-primary-action.is-coach .overview-tap-me {
@@ -11343,6 +11557,218 @@ body:has(#app-section-home.is-active) {
   width: 20px;
   height: 20px;
   stroke-width: 3.4;
+}
+
+#app-section-home.is-active .overview-today-mood {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-areas:
+    "chat coach"
+    "reminder today";
+  gap: 8px;
+}
+
+#app-section-home.is-active .overview-mood-card {
+  display: flex;
+  min-height: 112px;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  color: #fff;
+  text-align: left;
+  background:
+    radial-gradient(circle at 14% 18%, rgba(100, 140, 255, 0.14), transparent 34%),
+    linear-gradient(150deg, var(--home-card-2), rgba(7, 11, 23, 0.98));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+}
+
+#app-section-home.is-active .overview-mood-card.is-chat {
+  grid-area: chat;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(90, 220, 255, 0.16), transparent 36%),
+    linear-gradient(150deg, #10263a, rgba(7, 11, 23, 0.98));
+}
+
+#app-section-home.is-active .overview-mood-card.is-coach {
+  grid-area: coach;
+  background:
+    radial-gradient(circle at 58% 52%, rgba(73, 109, 255, 0.28), transparent 38%),
+    linear-gradient(150deg, #15174d 0%, #261457 54%, #0d1329 100%);
+}
+
+#app-section-home.is-active .overview-mood-card.is-reminder {
+  grid-area: reminder;
+  background:
+    radial-gradient(circle at 16% 18%, rgba(255, 180, 90, 0.14), transparent 34%),
+    linear-gradient(150deg, #2a1c12, rgba(7, 11, 23, 0.98));
+}
+
+#app-section-home.is-active .overview-mood-card.is-today {
+  grid-area: today;
+  cursor: default;
+  background:
+    radial-gradient(circle at 15% 15%, rgba(255, 152, 47, 0.14), transparent 29%),
+    linear-gradient(150deg, var(--home-card-2), rgba(7, 11, 23, 0.98));
+}
+
+#app-section-home.is-active .overview-mood-label {
+  color: rgba(226, 235, 255, 0.72);
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+#app-section-home.is-active .overview-mood-card strong {
+  color: #fff;
+  font-size: 0.98rem;
+  font-weight: 920;
+  line-height: 1.15;
+}
+
+#app-section-home.is-active .overview-mood-card strong.is-empty,
+#app-section-home.is-active .overview-mood-card small.is-empty {
+  color: rgba(226, 235, 255, 0.62);
+}
+
+#app-section-home.is-active .overview-mood-card small {
+  color: rgba(226, 235, 255, 0.7);
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+#app-section-home.is-active .overview-mood-card .overview-today-links {
+  margin-top: auto;
+}
+
+.overview-weather-day-detail {
+  position: fixed;
+  inset: 0;
+  z-index: 84;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 12px;
+  overflow: hidden;
+  padding:
+    calc(12px + env(safe-area-inset-top, 0px))
+    14px
+    calc(18px + env(safe-area-inset-bottom, 0px));
+  color: #fff;
+  background:
+    radial-gradient(circle at top right, rgba(70, 140, 255, 0.18), transparent 36%),
+    linear-gradient(160deg, #07101f, #050914 62%);
+}
+
+.overview-weather-day-bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.overview-weather-day-bar h2 {
+  margin: 2px 0 0;
+  font-size: 1.2rem;
+}
+
+.overview-weather-day-status {
+  margin: 0;
+  color: rgba(226, 235, 255, 0.78);
+}
+
+.overview-weather-day-status.is-error {
+  color: #ffb4b4;
+}
+
+.overview-weather-day-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.overview-weather-day-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.overview-weather-day-summary strong {
+  display: block;
+  font-size: 1.4rem;
+}
+
+.overview-weather-day-summary small,
+.overview-weather-day-facts {
+  color: rgba(226, 235, 255, 0.72);
+}
+
+.overview-weather-day-facts {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: 0.78rem;
+}
+
+.overview-weather-hourly-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  display: grid;
+  gap: 6px;
+  min-height: 0;
+}
+
+.overview-weather-hourly-list li {
+  display: grid;
+  grid-template-columns: 48px 28px minmax(0, 1fr) auto auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 0.78rem;
+}
+
+.overview-weather-day-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  color: rgba(226, 235, 255, 0.62);
+  font-size: 0.72rem;
+}
+
+@media (max-width: 360px) {
+  #app-section-home.is-active .overview-primary-action {
+    height: clamp(220px, 68vw, 248px);
+    min-height: clamp(220px, 68vw, 248px);
+  }
+
+  #app-section-home.is-active .overview-primary-action-footer {
+    font-size: 0.56rem;
+    gap: 5px;
+  }
+
+  #app-section-home.is-active .overview-mood-card {
+    min-height: 104px;
+    padding: 10px;
+  }
+
+  .overview-weather-hourly-list li {
+    grid-template-columns: 42px 24px minmax(0, 1fr) auto auto;
+    font-size: 0.72rem;
+  }
 }
 
 #app-section-home.is-active .overview-main-stats {

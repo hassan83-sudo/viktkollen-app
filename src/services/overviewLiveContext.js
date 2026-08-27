@@ -34,12 +34,14 @@ export function createFallbackWeatherContext() {
     city: fallbackCity,
     condition: 'Väder ej kopplat',
     hasLiveWeather: false,
+    hourly: [],
     icon: '☁',
     feelsLikeC: null,
     precipitationRiskPercent: null,
     sourceLabel: 'Fallback',
     ...createPlaceholderSunTimes(),
     temperatureC: null,
+    updatedAt: null,
     windSpeedMs: null,
   }
 }

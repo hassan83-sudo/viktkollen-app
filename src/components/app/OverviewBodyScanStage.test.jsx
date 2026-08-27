@@ -34,7 +34,7 @@ describe('OverviewBodyScanStage', () => {
 
     expect(dashboardSource).toContain('OverviewBodyScanStage')
     expect(dashboardSource).toContain('onOpenBodyScan')
-    expect(dashboardSource).toContain('onStartBodyScan')
+    expect(dashboardSource).toContain('setBodyScanOpen(true)')
     expect(dashboardSource).toContain('BodyScanRings')
     expect(dashboardSource).toContain('currentWeight={currentWeight}')
     expect(dashboardSource).toContain('weather={weather}')

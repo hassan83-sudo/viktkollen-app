@@ -71,6 +71,14 @@ function SocialRoom({
     }
   }, [canLoadLiveData, t])
 
+  useEffect(() => {
+    const interruptAmbientAudio = (event) => {
+      if (event.detail?.active) setIsPlaying(false)
+    }
+    window.addEventListener('viktkollen:ambient-audio-interruption', interruptAmbientAudio)
+    return () => window.removeEventListener('viktkollen:ambient-audio-interruption', interruptAmbientAudio)
+  }, [])
+
   const liveSnapshot = canLoadLiveData ? snapshot : { conversations: [], friends: [] }
   const onlineFriends = useMemo(
     () => (Array.isArray(liveSnapshot.friends) ? liveSnapshot.friends : []).filter((friend) => friend?.online === true),

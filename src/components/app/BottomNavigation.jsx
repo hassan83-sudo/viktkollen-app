@@ -4,11 +4,14 @@ import { useTranslation } from 'react-i18next'
 function BottomNavigation({
   activeSection = 'home',
   onSectionChange,
+  showNotices = true,
   showSocial = true,
 }) {
   const { t } = useTranslation('navigation')
   const normalizedActiveSection = normalizeAppSectionId(activeSection)
-  const sections = appSections.filter((section) => section.id !== 'social' || showSocial)
+  const sections = appSections.filter((section) =>
+    (section.id !== 'social' || showSocial) &&
+    (section.id !== 'notices' || showNotices))
 
   function handleNavigation(event, sectionId) {
     if (!onSectionChange) {

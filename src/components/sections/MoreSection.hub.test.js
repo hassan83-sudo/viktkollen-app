@@ -9,20 +9,18 @@ const appSource = readFileSync(new URL('../../App.jsx', import.meta.url), 'utf8'
 const bottomNavSource = readFileSync(new URL('../app/BottomNavigation.jsx', import.meta.url), 'utf8')
 
 describe('More information architecture', () => {
-  it('keeps backup under security, notices under notices, import under import, account under settings', () => {
+  it('keeps backup under security, progress under More, import under import, account under settings', () => {
     expect(moreSectionSource).toContain("activeFolder === 'sakerhet-backup'")
     expect(moreSectionSource).toContain('<CloudBackupPanel')
     expect(moreSectionSource).toContain('variant="security"')
-    expect(moreSectionSource).toContain("activeFolder === 'notiser'")
-    expect(moreSectionSource).toContain('<ReminderSettings')
-    expect(moreSectionSource).toContain('<NotificationCenter')
+    expect(moreSectionSource).toContain("activeFolder === 'mal-framsteg'")
+    expect(moreSectionSource).toContain('<ProgressSectionComponent')
     expect(moreSectionSource).toContain("activeFolder === 'import-export'")
     expect(moreSectionSource).toContain('<DataImportCenter')
     expect(moreSectionSource).toContain('<DataExportCenter')
     expect(moreSectionSource).toContain("activeFolder === 'installningar'")
     expect(moreSectionSource).toContain("t('accountTitle')")
-    expect(moreSectionSource).toContain('<MoreGoalsFolder')
-    expect(moreSectionSource).not.toContain('<ProgressCenter')
+    expect(moreSectionSource).not.toContain('<MoreGoalsFolder')
     expect(moreSectionSource).not.toContain('<WeightChart')
   })
 

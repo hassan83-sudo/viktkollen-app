@@ -16,15 +16,17 @@ describe('app section routing isolation', () => {
     expect(appSource).toMatch(/activeAppSection !== 'home'[\s\S]*className="content-grid"/)
   })
 
-  it('does not keep progress or more panels in the home render path', () => {
+  it('keeps Notis and More panels outside the home render path and moves Progress under More', () => {
     const homeRenderBlock = appSource
       .split("{activeAppSection === 'home' && (")[1]
       .split("{activeAppSection !== 'home' && (")[0]
 
-    expect(appSource).toMatch(/activeAppSection === 'progress'[\s\S]*<ProgressSection/)
+    expect(appSource).toMatch(/activeAppSection === 'notices'[\s\S]*<NoticesSection/)
     expect(appSource).toMatch(/activeAppSection === 'more'[\s\S]*<MoreSection/)
+    expect(appSource).toContain('ProgressSectionComponent={ProgressSection}')
+    expect(appSource).toContain("sectionId === 'progress' || resolveMoreFolderFromTarget(targetId) === 'mal-framsteg'")
     expect(homeRenderBlock).toContain('<HomeSection')
-    expect(homeRenderBlock).not.toContain('<ProgressSection')
+    expect(homeRenderBlock).not.toContain('<NoticesSection')
     expect(homeRenderBlock).not.toContain('<MoreSection')
     expect(homeRenderBlock).not.toContain('Molnstatus')
     expect(homeRenderBlock).not.toContain('Framstegscenter')

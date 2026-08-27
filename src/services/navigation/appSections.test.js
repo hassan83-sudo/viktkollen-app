@@ -10,12 +10,12 @@ import {
 } from './appSections.js'
 
 describe('appSections', () => {
-  it('exposes Social Room directly before More', () => {
+  it('exposes Notices directly before Social Room and More', () => {
     expect(appSections.map((section) => section.id)).toEqual([
       'home',
       'coach',
       'nutrition',
-      'progress',
+      'notices',
       'social',
       'more',
     ])
@@ -31,9 +31,9 @@ describe('appSections', () => {
   })
 
   it('returns section metadata and indexes', () => {
-    expect(getAppSection('progress')).toMatchObject({
-      id: 'progress',
-      label: 'Framsteg',
+    expect(getAppSection('notices')).toMatchObject({
+      id: 'notices',
+      label: 'Notis',
     })
 
     expect(getAppSection('unknown').id).toBe('home')

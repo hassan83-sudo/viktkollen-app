@@ -2,6 +2,7 @@
 import { useTranslation } from 'react-i18next'
 import HomeSection from './components/sections/HomeSection.jsx'
 import MoreSection from './components/sections/MoreSection.jsx'
+import NoticesSection from './components/sections/NoticesSection.jsx'
 import ProgressSection from './components/sections/ProgressSection.jsx'
 import NutritionSection from './components/sections/NutritionSection.jsx'
 import CoachSection from './components/sections/CoachSection.jsx'
@@ -104,6 +105,7 @@ import { buildReminderStatus, createReminderScheduler, getDueReminders } from '.
 import { syncLegacyReminderSettingsToV2 } from './services/reminders/reminderLegacyAdapter.js'
 import { applyDueNotificationPlan } from './services/notifications/notificationSchedulerBridge.js'
 import { logNavigationOrigin } from './services/navigation/navigationOriginDiagnostics.js'
+import { resolveMoreFolderFromTarget } from './services/more/moreFolders.js'
 import i18n, { changeAppLanguage, getActiveLanguageCode } from './i18n/index.js'
 import { getFeatureFlags, isFeatureEnabled } from './features/featureRegistry.js'
 
@@ -886,6 +888,7 @@ function App() {
   const [currentLanguage, setCurrentLanguage] = useState(() => getActiveLanguageCode())
   const [activeAppSection, setActiveAppSection] = useState('home')
   const featureFlags = getFeatureFlags()
+  const reminderHubUiEnabled = isFeatureEnabled('reminderHubUi', featureFlags)
   const socialUiEnabled = isFeatureEnabled('socialUi', featureFlags)
   const [nutritionIntent, setNutritionIntent] = useState(null)
   const [progressIntent, setProgressIntent] = useState(null)
@@ -1003,6 +1006,28 @@ function App() {
   const [bodyAnalysisHistory, setBodyAnalysisHistory] = useState(() =>
     getAnalysisHistory(),
   )
+
+  useEffect(() => {
+    function routeHash() {
+      const targetId = String(window.location.hash || '').replace(/^#/, '')
+      if (!targetId) return
+      const sectionId = targetId.replace(/^app-section-/, '')
+
+      if (sectionId === 'progress' || resolveMoreFolderFromTarget(targetId) === 'mal-framsteg') {
+        setMoreIntent({ id: Date.now(), targetId })
+        setActiveAppSection('more')
+        return
+      }
+
+      if (sectionId === 'notices' && reminderHubUiEnabled) {
+        setActiveAppSection('notices')
+      }
+    }
+
+    routeHash()
+    window.addEventListener('hashchange', routeHash)
+    return () => window.removeEventListener('hashchange', routeHash)
+  }, [reminderHubUiEnabled])
 
   useEffect(() => {
     const handleLanguageChange = (languageCode) => {
@@ -2738,6 +2763,11 @@ function App() {
 
   function handleAppSectionChange(sectionId) {
     if (sectionId === 'social' && !socialUiEnabled) return
+    if (sectionId === 'progress') {
+      setMoreIntent({ id: Date.now(), targetId: 'mal-framsteg' })
+      setActiveAppSection('more')
+      return
+    }
 
     logNavigationOrigin('app-section-change:before', { sectionId })
     setActiveAppSection(sectionId)
@@ -2749,8 +2779,9 @@ function App() {
   }
 
   function handleGlobalSearchNavigate(result) {
-    const sectionId = result?.section || 'home'
-    const targetId = result?.targetId || `app-section-${sectionId}`
+    const requestedSection = result?.section || 'home'
+    const sectionId = requestedSection === 'progress' ? 'more' : requestedSection
+    const targetId = result?.targetId || `app-section-${requestedSection}`
 
     logNavigationOrigin('global-search-navigate:before', {
       resultId: result?.id || '',
@@ -2793,11 +2824,12 @@ function App() {
       setNutritionIntent({ id: Date.now(), panel: 'scanner' })
     }
 
-    if (sectionId === 'progress' && (targetId === 'body-analysis' || targetId === 'framstegsbilder')) {
+    if (sectionId === 'progress') {
       setProgressIntent({ id: Date.now(), targetId: 'body-analysis' })
+      setMoreIntent({ id: Date.now(), targetId: targetId || 'mal-framsteg' })
     }
 
-    setActiveAppSection(sectionId)
+    setActiveAppSection(sectionId === 'progress' ? 'more' : sectionId)
 
     window.requestAnimationFrame(() => {
       const target = targetId ? document.getElementById(targetId) : null
@@ -3098,6 +3130,15 @@ function App() {
         />
         )}
 
+        {activeAppSection === 'notices' && reminderHubUiEnabled && (
+          <NoticesSection
+            activeSection={activeAppSection}
+            onRemindersChange={handleReminderStateChange}
+            reminderState={reminderState}
+            t={t}
+          />
+        )}
+
         {activeAppSection === 'progress' && (
           <>
             <AppErrorBoundary area="progress" resetKey={`${healthSnapshot.date}-${weights.length}`} title="Framsteg kunde inte visas">
@@ -3205,6 +3246,54 @@ function App() {
   userId={authSession?.user?.id || ''}
   profile={validatedProfile}
   weights={centralWeightStats.weights}
+  ProgressSectionComponent={ProgressSection}
+  progressSectionProps={{
+    adaptiveCoachFeedback,
+    afterPhoto,
+    beforeAfterPhotos,
+    beforePhoto,
+    bodyAnalysisHistory,
+    bodyMeasurements,
+    checkIn,
+    createWeeklyReport,
+    foods,
+    goalSettings: progressGoalSettings,
+    goalsHabits,
+    healthSnapshot,
+    meals,
+    monthlyReport,
+    navigationIntent: progressIntent || moreIntent,
+    onScrollToTarget: scrollTargetInApp,
+    nutritionGoals,
+    onAfterPhotoIdChange: setAfterPhotoId,
+    onBeforePhotoIdChange: setBeforePhotoId,
+    onBodyMeasurementsChange: (nextMeasurements) => setBodyMeasurements(normalizeBodyMeasurements(nextMeasurements)),
+    onDeleteProgressPhoto: (photoId) => {
+      if (window.confirm('Vill du ta bort den här framstegsbilden?')) {
+        setProgressPhotos((current) => current.filter((photo) => photo.id !== photoId))
+      }
+    },
+    onGoalSettingsChange: (nextSettings) => setProgressGoalSettings(normalizeGoalSettings(nextSettings)),
+    onProgressPhotoChange: handleProgressPhotoChange,
+    onProgressPhotoNoteChange: setProgressPhotoNote,
+    onProgressReportsChange: setProgressReports,
+    onUpdateProgressPhoto: (photoId, updates) => setProgressPhotos((current) => current.map((photo) => photo.id === photoId ? { ...photo, ...updates, updatedAt: new Date().toISOString() } : photo)),
+    onWeightsChange: (nextWeights) => setWeights(normalizeWeights(nextWeights)),
+    profile: validatedProfile,
+    progressPhotoComparison,
+    progressPhotoComparisonImages,
+    progressPhotoItems,
+    progressPhotoNote,
+    progressPhotoOptions,
+    progressPhotos,
+    progressReports,
+    selectedMealDate,
+    userId: authSession?.user?.id || authSession?.user?.email || 'local-user',
+    weights: centralWeightStats.weights,
+    weeklyReportData,
+    weeklyReportLines,
+    weeklyReportStatus,
+  }}
 />
         )}
         {activeAppSection === 'social' && socialUiEnabled && (
@@ -3227,6 +3316,7 @@ function App() {
       <BottomNavigation
         activeSection={activeAppSection}
         onSectionChange={handleAppSectionChange}
+        showNotices={reminderHubUiEnabled}
         showSocial={socialUiEnabled}
       />
     </main>

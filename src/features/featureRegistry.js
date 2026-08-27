@@ -12,6 +12,7 @@ export const defaultFeatureFlags = Object.freeze({
   social: false,
   socialUi: true,
   socialLive: false,
+  reminderHubUi: true,
 })
 
 const knownFeatureIds = Object.freeze(Object.keys(defaultFeatureFlags))

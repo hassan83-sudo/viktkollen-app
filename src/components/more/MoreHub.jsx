@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 
 const FOLDER_I18N_KEYS = {
   'sakerhet-backup': 'security',
-  notiser: 'notifications',
   'import-export': 'importExport',
   'mal-framsteg': 'goals',
   'arkiv-historik': 'archive',

@@ -20,10 +20,10 @@ export const appSections = [
     label: 'Mat',
   },
   {
-    ariaLabel: 'Öppna vikt och framsteg',
-    icon: '↗',
-    id: 'progress',
-    label: 'Framsteg',
+    ariaLabel: 'Öppna notiser och minnesstöd',
+    icon: '🔔',
+    id: 'notices',
+    label: 'Notis',
   },
   {
     ariaLabel: 'Öppna Social Room',

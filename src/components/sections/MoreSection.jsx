@@ -4,12 +4,8 @@ import AppErrorBoundary from '../AppErrorBoundary.jsx'
 import CloudBackupPanel from '../CloudBackupPanel.jsx'
 import CloudStatusPanel from '../CloudStatusPanel.jsx'
 import CloudSyncPanel from '../CloudSyncPanel.jsx'
-import MoreGoalsFolder from '../more/MoreGoalsFolder.jsx'
 import MoreHub from '../more/MoreHub.jsx'
-import NotificationCenter from '../NotificationCenter.jsx'
 import LanguageSettingsPanel from '../LanguageSettingsPanel.jsx'
-import ReminderCenter from '../ReminderCenter.jsx'
-import ReminderSettings from '../ReminderSettings.jsx'
 import AppSection from '../app/AppSection.jsx'
 import GlobalSearch from '../app/GlobalSearch.jsx'
 import LazySectionFallback from '../app/LazySectionFallback.jsx'
@@ -25,32 +21,18 @@ import {
 
 function MoreSection({
   activeSection,
-  adaptiveCoachFeedback,
   authLoading,
-  checkIn,
   email,
-  goalsHabits,
   healthSnapshot,
   isAuthenticated,
   language,
-  meals,
   navigationIntent,
-  nutritionGoals,
   onDataRestored,
   onEditProfile,
-  onReminderSettingChange,
-  onReminderStateChange,
-  onRequestNotificationPermission,
   onLanguageChange,
   onSearchNavigate,
   onSignOut,
   profileCompleteness,
-  reminderOptions,
-  reminderSettings,
-  reminderState,
-  reminderStatus,
-  schedulerStatus,
-  selectedMealDate,
   DataExportCenterComponent,
   DataImportCenterComponent,
   SyncHealthDashboardComponent,
@@ -58,6 +40,8 @@ function MoreSection({
   syncStatus,
   userId,
   profile,
+  ProgressSectionComponent,
+  progressSectionProps,
   weights,
 }) {
   const { t } = useTranslation(['settings', 'common'])
@@ -201,55 +185,6 @@ function MoreSection({
           </AppErrorBoundary>
         )}
 
-        {activeFolder === 'notiser' && (
-          <>
-            <ReminderSettings
-              onReminderSettingChange={onReminderSettingChange}
-              onRequestNotificationPermission={onRequestNotificationPermission}
-              reminderOptions={reminderOptions}
-              reminderSettings={reminderSettings}
-              reminderStatus={reminderStatus}
-            />
-            <AppErrorBoundary
-              area="reminders"
-              resetKey={reminderState.updatedAt}
-              title={t('remindersError')}
-            >
-              <ReminderCenter
-                checkIn={checkIn}
-                checkIns={healthSnapshot?.checkIn?.dailyEntries}
-                goalsHabits={goalsHabits}
-                meals={meals}
-                onRemindersChange={onReminderStateChange}
-                reminderState={reminderState}
-                schedulerStatus={schedulerStatus}
-                today={selectedMealDate}
-                weights={weights}
-              />
-            </AppErrorBoundary>
-            <AppErrorBoundary
-              area="notifications"
-              resetKey={reminderState.updatedAt}
-              title={t('notificationsError')}
-            >
-              <NotificationCenter
-                adaptiveCoachFeedback={adaptiveCoachFeedback}
-                checkIn={checkIn}
-                goalsHabits={goalsHabits}
-                healthSnapshot={healthSnapshot}
-                meals={meals}
-                nutritionGoals={nutritionGoals}
-                onReminderStateChange={onReminderStateChange}
-                profile={profile}
-                reminderState={reminderState}
-                syncStatus={syncStatus}
-                today={selectedMealDate}
-                weights={weights}
-              />
-            </AppErrorBoundary>
-          </>
-        )}
-
         {activeFolder === 'import-export' && DataExportCenter && DataImportCenter && (
           <Suspense fallback={<LazySectionFallback />}>
             <DataImportCenter
@@ -261,10 +196,15 @@ function MoreSection({
         )}
 
         {activeFolder === 'mal-framsteg' && (
-          <MoreGoalsFolder
-            goalsHabits={goalsHabits}
-            profileCompleteness={profileCompleteness}
-          />
+          <AppErrorBoundary area="progress" resetKey={`${healthSnapshot?.date}-${weights.length}`} title={t('goalsProgressError')}>
+            {ProgressSectionComponent && (
+              <ProgressSectionComponent
+                {...progressSectionProps}
+                activeSection="progress"
+                navigationIntent={navigationIntent}
+              />
+            )}
+          </AppErrorBoundary>
         )}
 
         {activeFolder === 'arkiv-historik' && (

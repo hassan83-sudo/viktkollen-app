@@ -5,6 +5,8 @@ import MoreSection from './components/sections/MoreSection.jsx'
 import ProgressSection from './components/sections/ProgressSection.jsx'
 import NutritionSection from './components/sections/NutritionSection.jsx'
 import CoachSection from './components/sections/CoachSection.jsx'
+import AppSection from './components/app/AppSection.jsx'
+import SocialRoom from './features/social/components/SocialRoom.jsx'
 import './App.css'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import AuthPanel from './components/AuthPanel.jsx'
@@ -103,6 +105,7 @@ import { syncLegacyReminderSettingsToV2 } from './services/reminders/reminderLeg
 import { applyDueNotificationPlan } from './services/notifications/notificationSchedulerBridge.js'
 import { logNavigationOrigin } from './services/navigation/navigationOriginDiagnostics.js'
 import i18n, { changeAppLanguage, getActiveLanguageCode } from './i18n/index.js'
+import { getFeatureFlags, isFeatureEnabled } from './features/featureRegistry.js'
 
 const LaunchReadinessPanel = lazy(() => import('./components/LaunchReadinessPanel.jsx'))
 const DataImportCenter = lazy(() => import('./components/DataImportCenter.jsx'))
@@ -852,7 +855,7 @@ function makeProductFromBarcode(barcode) {
 }
 
 function App() {
-  useTranslation()
+  const { t } = useTranslation('navigation')
   const barcodeVideoRef = useRef(null)
   const barcodeStreamRef = useRef(null)
   const barcodeTimerRef = useRef(null)
@@ -882,6 +885,8 @@ function App() {
   const [showOnboarding, setShowOnboarding] = useState(() => !hasUsableProfile(profile))
   const [currentLanguage, setCurrentLanguage] = useState(() => getActiveLanguageCode())
   const [activeAppSection, setActiveAppSection] = useState('home')
+  const featureFlags = getFeatureFlags()
+  const socialUiEnabled = isFeatureEnabled('socialUi', featureFlags)
   const [nutritionIntent, setNutritionIntent] = useState(null)
   const [progressIntent, setProgressIntent] = useState(null)
   const [moreIntent, setMoreIntent] = useState(null)
@@ -2732,6 +2737,8 @@ function App() {
   }, [getScrollBehavior, scrollAppToTop])
 
   function handleAppSectionChange(sectionId) {
+    if (sectionId === 'social' && !socialUiEnabled) return
+
     logNavigationOrigin('app-section-change:before', { sectionId })
     setActiveAppSection(sectionId)
 
@@ -3200,12 +3207,27 @@ function App() {
   weights={centralWeightStats.weights}
 />
         )}
+        {activeAppSection === 'social' && socialUiEnabled && (
+          <AppSection
+            activeSection={activeAppSection}
+            id="social"
+            label={t('sections.social.aria')}
+          >
+            <SocialRoom
+              enabled={socialUiEnabled}
+              isAuthenticated={Boolean(authSession)}
+              liveEnabled={isFeatureEnabled('socialLive', featureFlags)}
+              mediaActive={isVoiceConversationActive}
+            />
+          </AppSection>
+        )}
           </section>
           </Suspense>
         )}
       <BottomNavigation
         activeSection={activeAppSection}
         onSectionChange={handleAppSectionChange}
+        showSocial={socialUiEnabled}
       />
     </main>
   )

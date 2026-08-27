@@ -56,7 +56,7 @@ describe('Performance Architecture app shell components', () => {
     expect(markup).toContain('inte medicinsk rådgivning')
   })
 
-  it('renders five stable application sections', () => {
+  it('renders the Social Room next to More when enabled', () => {
     const markup = renderToStaticMarkup(<BottomNavigation activeSection="coach" />)
 
     expect(markup).toContain('class="bottom-nav"')
@@ -64,10 +64,18 @@ describe('Performance Architecture app shell components', () => {
     expect(markup).toContain('href="#app-section-coach"')
     expect(markup).toContain('href="#app-section-nutrition"')
     expect(markup).toContain('href="#app-section-progress"')
+    expect(markup).toContain('href="#app-section-social"')
     expect(markup).toContain('href="#app-section-more"')
     expect(markup).toContain('aria-label="Huvudnavigation"')
     expect(markup).toContain('aria-current="page"')
     expect(markup).toContain('Coach')
+  })
+
+  it('hides the Social Room destination when social UI is disabled', () => {
+    const markup = renderToStaticMarkup(<BottomNavigation showSocial={false} />)
+
+    expect(markup).not.toContain('href="#app-section-social"')
+    expect(markup).toContain('--bottom-nav-count:5')
   })
 
   it('supports controlled navigation callbacks', () => {

@@ -10,12 +10,13 @@ import {
 } from './appSections.js'
 
 describe('appSections', () => {
-  it('exposes five stable main sections', () => {
+  it('exposes Social Room directly before More', () => {
     expect(appSections.map((section) => section.id)).toEqual([
       'home',
       'coach',
       'nutrition',
       'progress',
+      'social',
       'more',
     ])
 
@@ -37,6 +38,7 @@ describe('appSections', () => {
 
     expect(getAppSection('unknown').id).toBe('home')
     expect(getAppSectionIndex('coach')).toBe(1)
+    expect(getAppSectionIndex('social')).toBe(4)
     expect(getAppSectionIndex('unknown')).toBe(0)
   })
 
@@ -44,6 +46,7 @@ describe('appSections', () => {
     expect(getAdjacentAppSection('home', 1).id).toBe('coach')
     expect(getAdjacentAppSection('home', -1).id).toBe('more')
     expect(getAdjacentAppSection('more', 1).id).toBe('home')
+    expect(getAdjacentAppSection('social', 1).id).toBe('more')
     expect(getAdjacentAppSection('nutrition', -1).id).toBe('coach')
   })
 

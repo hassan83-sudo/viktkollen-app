@@ -4,9 +4,11 @@ import { useTranslation } from 'react-i18next'
 function BottomNavigation({
   activeSection = 'home',
   onSectionChange,
+  showSocial = true,
 }) {
   const { t } = useTranslation('navigation')
   const normalizedActiveSection = normalizeAppSectionId(activeSection)
+  const sections = appSections.filter((section) => section.id !== 'social' || showSocial)
 
   function handleNavigation(event, sectionId) {
     if (!onSectionChange) {
@@ -18,8 +20,12 @@ function BottomNavigation({
   }
 
   return (
-    <nav className="bottom-nav" aria-label={t('mainNavigation')}>
-      {appSections.map((section) => {
+    <nav
+      className="bottom-nav"
+      aria-label={t('mainNavigation')}
+      style={{ '--bottom-nav-count': sections.length }}
+    >
+      {sections.map((section) => {
         const isActive = section.id === normalizedActiveSection
 
         return (

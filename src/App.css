@@ -6362,7 +6362,7 @@ body.vk-body-scan-session .bottom-nav {
   left: 50%;
   z-index: 20;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--bottom-nav-count, 5), minmax(0, 1fr));
   gap: 3px;
   width: min(540px, calc(100% - 16px));
   margin: 0;
@@ -10803,6 +10803,207 @@ body:has(#app-section-home.is-active) {
   }
 }
 
+.social-room {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid rgba(174, 154, 111, 0.22);
+    border-radius: 20px;
+    color: #f7f1e5;
+    background:
+      radial-gradient(circle at top right, rgba(192, 150, 92, 0.12), transparent 34%),
+      linear-gradient(150deg, #111b35, #0a1022 65%, #080d1c);
+    box-shadow: 0 20px 48px rgba(2, 6, 23, 0.26);
+  }
+
+  .social-room-header,
+  .social-room-tablist,
+  .social-room-grid,
+  .social-room-player-controls,
+  .social-room-player-options,
+  .social-room-player-timers,
+  .social-room-card,
+  .social-room-chat-surface {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .social-room-header {
+    gap: 4px;
+  }
+
+  .social-room-eyebrow,
+  .social-room-card p,
+  .social-room-card small,
+  .social-room-chat-surface p,
+  .social-room-player p,
+  .social-room-status {
+    margin: 0;
+    color: rgba(247, 241, 229, 0.72);
+  }
+
+  .social-room-eyebrow {
+    color: #d7ba84;
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .social-room-header h1,
+  .social-room-card h2,
+  .social-room-card h3,
+  .social-room-player h2 {
+    margin: 0;
+    color: #fffaf0;
+  }
+
+  .social-room-header h1 {
+    font-size: clamp(1.6rem, 5vw, 2.25rem);
+  }
+
+  .social-room-tablist,
+  .social-room-player-options,
+  .social-room-player-timers {
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+  }
+
+  .social-room-tablist button,
+  .social-room-player-options button,
+  .social-room-player-timers button,
+  .social-room-rest-mode {
+    min-height: 42px;
+    padding: 0 13px;
+    border: 1px solid rgba(247, 241, 229, 0.14);
+    border-radius: 999px;
+    color: #f7f1e5;
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: none;
+  }
+
+  .social-room-tablist button[aria-selected='true'],
+  .social-room-player-options button[aria-pressed='true'],
+  .social-room-player-timers button[aria-pressed='true'],
+  .social-room-rest-mode[aria-pressed='true'] {
+    border-color: rgba(215, 186, 132, 0.7);
+    background: rgba(192, 150, 92, 0.24);
+  }
+
+  .social-room-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .social-room-card,
+  .social-room-chat-surface,
+  .social-room-player {
+    padding: 14px;
+    border: 1px solid rgba(247, 241, 229, 0.12);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.045);
+  }
+
+  .social-room-card.is-wide,
+  .social-room-player {
+    grid-column: 1 / -1;
+  }
+
+  .social-room-card h2,
+  .social-room-card h3,
+  .social-room-player h2 {
+    font-size: 1rem;
+  }
+
+  .social-room-shortcut {
+    justify-self: start;
+    min-height: 42px;
+    padding: 0 14px;
+    border-radius: 999px;
+    color: #111b35;
+    background: #e8c990;
+    box-shadow: none;
+  }
+
+  .social-room-rest-mode {
+    justify-self: start;
+  }
+
+  .social-room-chat-surface {
+    min-height: 170px;
+    align-content: center;
+  }
+
+  .social-room-chat-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .social-room-chat-actions button {
+    min-height: 40px;
+  }
+
+  .social-room-player {
+    display: grid;
+    gap: 12px;
+    position: sticky;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    background: rgba(10, 16, 34, 0.96);
+    backdrop-filter: blur(16px);
+  }
+
+  .social-room-player-controls {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .social-room-player-controls button {
+    min-width: 48px;
+    min-height: 48px;
+    padding: 0 12px;
+    border-radius: 999px;
+  }
+
+  .social-room-player-controls label {
+    display: grid;
+    gap: 4px;
+    color: rgba(247, 241, 229, 0.72);
+    font-size: 0.8rem;
+  }
+
+  .social-room-player-controls input {
+    width: 100%;
+  }
+
+@media (max-width: 430px) {
+  .social-room {
+    gap: 10px;
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .social-room-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .social-room-card.is-wide,
+  .social-room-player {
+    grid-column: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .social-room,
+  .social-room-player {
+    scroll-behavior: auto;
+  }
+}
+
 @keyframes overview-body-scan-ring {
   0%,
   100% {
@@ -14364,4 +14565,3 @@ html:has(#app-section-more.is-active),
     overflow: hidden;
   }
 }
-

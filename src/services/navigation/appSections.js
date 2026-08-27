@@ -26,6 +26,12 @@ export const appSections = [
     label: 'Framsteg',
   },
   {
+    ariaLabel: 'Öppna Social Room',
+    icon: '💬',
+    id: 'social',
+    label: 'Rummet',
+  },
+  {
     ariaLabel: 'Öppna fler funktioner och inställningar',
     icon: '⚙',
     id: 'more',

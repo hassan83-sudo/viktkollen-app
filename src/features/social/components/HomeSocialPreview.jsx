@@ -8,9 +8,11 @@ function initialsFor(profile) {
 }
 
 function HomeSocialPreview({
+  compact = false,
   conversations = [],
   enabled = false,
   error = '',
+  heading = '',
   isAuthenticated = false,
   liveEnabled = false,
   loading = false,
@@ -24,9 +26,9 @@ function HomeSocialPreview({
   const hasFriendsChat = liveEnabled && rows.length > 0
 
   return (
-    <section className="overview-social-card" aria-label={t('social:friends')}>
+    <section className={compact ? 'overview-social-card is-compact' : 'overview-social-card'} aria-label={heading || t('social:friends')}>
       <div className="overview-social-card-top">
-        <h3>{t('social:friends')}</h3>
+        <h3>{heading || t('social:friends')}</h3>
         {isAuthenticated && onOpenChat ? (
           <button className="overview-stat-link" type="button" onClick={() => onOpenChat()}>
             {t('social:openChat')}

@@ -184,6 +184,16 @@ export const globalSearchItems = [
     title: 'AI Coach',
   }),
   createItem({
+    description: 'Frivillig check-in, lugna övningar och trygghetsplan',
+    id: 'wellbeing',
+    keywords: ['må bra', 'mabra', 'välmående', 'maende', 'mående', 'oro', 'stress', 'trygghetsplan', 'andas', 'jordning', '112', 'wellbeing'],
+    priority: 9,
+    section: 'wellbeing',
+    suggestionGroup: 'Förslag för dig',
+    targetId: 'wellbeing-center',
+    title: 'Må bra',
+  }),
+  createItem({
     description: 'Dagens check-in för energi, steg, humör och rörelse',
     id: 'daily-checkin',
     keywords: ['check in', 'check-in', 'checkin', 'dagens check-in', 'dagens checkin', 'humör', 'energi', 'rörelse', 'steg'],

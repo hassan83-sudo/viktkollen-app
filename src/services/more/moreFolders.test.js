@@ -3,11 +3,12 @@ import { moreHubFolders, resolveMoreFolderFromTarget } from './moreFolders.js'
 
 describe('more hub folders', () => {
   it('lists Framsteg, Mat and AI Coach first', () => {
-    expect(moreHubFolders).toHaveLength(7)
+    expect(moreHubFolders).toHaveLength(8)
     expect(moreHubFolders.map((folder) => folder.id)).toEqual([
       'mal-framsteg',
       'mat',
       'ai-coach',
+      'ma-bra',
       'sakerhet-backup',
       'import-export',
       'arkiv-historik',
@@ -17,6 +18,7 @@ describe('more hub folders', () => {
       'Framsteg',
       'Mat',
       'AI Coach',
+      'Må bra',
       'Säkerhet & Backup',
       'Import & Export',
       'Arkiv & Historik',
@@ -31,6 +33,8 @@ describe('more hub folders', () => {
     expect(resolveMoreFolderFromTarget('app-section-nutrition')).toBe('mat')
     expect(resolveMoreFolderFromTarget('app-section-coach')).toBe('ai-coach')
     expect(resolveMoreFolderFromTarget('app-section-progress')).toBe('mal-framsteg')
+    expect(resolveMoreFolderFromTarget('app-section-wellbeing')).toBe('ma-bra')
+    expect(resolveMoreFolderFromTarget('wellbeing-center')).toBe('ma-bra')
     expect(resolveMoreFolderFromTarget('#quiet-hours')).toBe('mal-framsteg')
     expect(resolveMoreFolderFromTarget('nutrition-scanner-v2')).toBe('mat')
     expect(resolveMoreFolderFromTarget('data-export')).toBe('import-export')

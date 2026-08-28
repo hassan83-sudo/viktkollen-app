@@ -82,11 +82,12 @@ describe('Performance Architecture app shell components', () => {
     expect(resolveMoreFolderFromTarget('app-section-coach')).toBe('ai-coach')
     expect(resolveMoreFolderFromTarget('app-section-nutrition')).toBe('mat')
     expect(resolveMoreFolderFromTarget('app-section-progress')).toBe('mal-framsteg')
+    expect(resolveMoreFolderFromTarget('app-section-wellbeing')).toBe('ma-bra')
     expect(resolveMoreFolderFromTarget('body-analysis')).toBe('mal-framsteg')
   })
 
-  it('marks More active for secondary Coach, Mat and Framsteg routes', () => {
-    ;['coach', 'nutrition', 'progress'].forEach((activeSection) => {
+  it('marks More active for secondary Coach, Mat, Framsteg and Må bra routes', () => {
+    ;['coach', 'nutrition', 'progress', 'wellbeing'].forEach((activeSection) => {
       const markup = renderToStaticMarkup(<BottomNavigation activeSection={activeSection} />)
 
       expect(markup).toContain('href="#app-section-more"')

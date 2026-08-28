@@ -799,9 +799,9 @@ function OverviewTodayMood({
   caloriesToday,
   currentWeight,
   onLogWeight,
-  onOpenChat,
   onOpenCoach,
   onOpenNotices,
+  onOpenWellbeing,
   onScanFood,
   reminderState,
   weights,
@@ -820,13 +820,14 @@ function OverviewTodayMood({
 
   return (
     <section className="overview-today-mood" aria-label={t('home:todayMood')}>
-      <button className="overview-mood-card is-chat" type="button" onClick={onOpenChat} aria-label={t('home:mood.openChat')}>
+      <button className="overview-mood-card is-wellbeing" type="button" onClick={onOpenWellbeing} aria-label={t('home:mood.openWellbeing')}>
         <span className="overview-mood-card-top">
-          <OverviewIcon name="chat" />
-          <span className="overview-mood-label">{t('home:mood.chat')}</span>
+          <OverviewIcon name="heart" />
+          <span className="overview-mood-label">{t('home:mood.wellbeing')}</span>
         </span>
-        <strong>{t('home:mood.chatHint')}</strong>
-        <span className="overview-mood-link">{t('home:mood.openChat')}</span>
+        <strong>{t('home:mood.wellbeingQuestion')}</strong>
+        <small>{t('home:mood.wellbeingHint')}</small>
+        <span className="overview-mood-link">{t('home:mood.openWellbeing')}</span>
       </button>
 
       <button className="overview-mood-card is-coach" type="button" onClick={onOpenCoach} aria-label={t('home:mood.openCoach')}>
@@ -963,6 +964,7 @@ function OverviewDashboard({
   onLogWeight,
   onNavigateSection,
   onOpenAiCoach,
+  onOpenWellbeing,
   onScanFood,
   onSendChatMessage,
   onStartVoiceInput,
@@ -1180,17 +1182,19 @@ function OverviewDashboard({
           caloriesToday={caloriesToday}
           currentWeight={currentWeight}
           onLogWeight={onLogWeight}
-          onOpenChat={openSocialChat}
           onOpenCoach={() => (onOpenAiCoach ? onOpenAiCoach() : setCoachOpen(true))}
           onOpenNotices={goToNotifications}
+          onOpenWellbeing={onOpenWellbeing}
           onScanFood={onScanFood}
           reminderState={reminderState}
           weights={weights}
         />
         <HomeSocialPreview
+          compact
           conversations={socialLiveEnabled && isAuthenticated ? socialPreview : []}
           enabled={socialUiEnabled}
           error={socialLiveEnabled && isAuthenticated ? socialError : ''}
+          heading={t('home:mood.chat')}
           isAuthenticated={isAuthenticated}
           liveEnabled={socialLiveEnabled}
           loading={socialLiveEnabled && isAuthenticated ? socialLoading : false}
@@ -1199,6 +1203,10 @@ function OverviewDashboard({
             setSocialOpen(true)
           }}
           onOpenChat={(row) => {
+            if (!row) {
+              openSocialChat()
+              return
+            }
             setSocialView(row?.conversationId ? 'thread' : 'inbox')
             setSocialConversationId(row?.conversationId || null)
             setSocialOpen(true)

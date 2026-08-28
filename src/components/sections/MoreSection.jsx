@@ -48,6 +48,8 @@ function MoreSection({
   nutritionNavigationIntent,
   CoachSectionComponent,
   coachSectionProps,
+  WellbeingSectionComponent,
+  wellbeingSectionProps,
   weights,
 }) {
   const { t } = useTranslation(['settings', 'common'])
@@ -206,6 +208,16 @@ function MoreSection({
             </AppErrorBoundary>
           )}
           </>
+        )}
+
+        {activeFolder === 'ma-bra' && WellbeingSectionComponent && (
+          <AppErrorBoundary area="wellbeing" resetKey={userId} title={t('wellbeingError', { defaultValue: 'Må bra kunde inte visas' })}>
+            <WellbeingSectionComponent
+              {...wellbeingSectionProps}
+              activeSection="wellbeing"
+              t={t}
+            />
+          </AppErrorBoundary>
         )}
 
         {activeFolder === 'sakerhet-backup' && (

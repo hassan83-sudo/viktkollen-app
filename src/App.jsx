@@ -6,6 +6,7 @@ import NoticesSection from './components/sections/NoticesSection.jsx'
 import PlaceSection from './components/sections/PlaceSection.jsx'
 import ProgressSection from './components/sections/ProgressSection.jsx'
 import ReadySection from './components/sections/ReadySection.jsx'
+import WellbeingSection from './components/sections/WellbeingSection.jsx'
 import NutritionSection from './components/sections/NutritionSection.jsx'
 import CoachSection from './components/sections/CoachSection.jsx'
 import AppSection from './components/app/AppSection.jsx'
@@ -2781,6 +2782,11 @@ function App() {
       setActiveAppSection('more')
       return
     }
+    if (sectionId === 'wellbeing') {
+      setMoreIntent({ id: Date.now(), targetId: 'ma-bra' })
+      setActiveAppSection('more')
+      return
+    }
 
     logNavigationOrigin('app-section-change:before', { sectionId })
     setActiveAppSection(sectionId)
@@ -2793,10 +2799,10 @@ function App() {
 
   function handleGlobalSearchNavigate(result) {
     const requestedSection = result?.section || 'home'
-    const isMoreDestination = ['progress', 'nutrition', 'coach'].includes(requestedSection)
+    const isMoreDestination = ['progress', 'nutrition', 'coach', 'wellbeing'].includes(requestedSection)
     const sectionId = isMoreDestination ? 'more' : requestedSection
     const targetId = result?.targetId
-      || (requestedSection === 'nutrition' ? 'mat' : requestedSection === 'coach' ? 'ai-coach' : requestedSection === 'progress' ? 'mal-framsteg' : `app-section-${requestedSection}`)
+      || (requestedSection === 'nutrition' ? 'mat' : requestedSection === 'coach' ? 'ai-coach' : requestedSection === 'wellbeing' ? 'ma-bra' : requestedSection === 'progress' ? 'mal-framsteg' : `app-section-${requestedSection}`)
 
     logNavigationOrigin('global-search-navigate:before', {
       resultId: result?.id || '',
@@ -2848,6 +2854,9 @@ function App() {
       setActiveAppSection('more')
     } else if (sectionId === 'coach') {
       setMoreIntent({ id: Date.now(), targetId: targetId || 'ai-coach' })
+      setActiveAppSection('more')
+    } else if (sectionId === 'wellbeing') {
+      setMoreIntent({ id: Date.now(), targetId: targetId || 'ma-bra' })
       setActiveAppSection('more')
     } else {
       setActiveAppSection(sectionId)
@@ -2996,6 +3005,7 @@ function App() {
             onLogWeight={handleDailyCoachLogWeight}
             onNavigateSection={handleDailyCoachAction}
             onOpenAiCoach={() => setAiCoachOverlayOpen(true)}
+            onOpenWellbeing={() => handleDailyCoachAction('wellbeing', 'ma-bra')}
             onScanFood={handleDailyCoachScanFood}
             onSendChatMessage={sendChatMessage}
             onStartVoiceInput={startVoiceInput}
@@ -3083,6 +3093,8 @@ function App() {
   onEditProfile={() => setShowOnboarding(true)}
   onLanguageChange={handleLanguageChange}
   onOpenAiCoach={() => setAiCoachOverlayOpen(true)}
+  WellbeingSectionComponent={WellbeingSection}
+  wellbeingSectionProps={{ profile: validatedProfile }}
   onReminderSettingChange={updateReminderSetting}
   onReminderStateChange={handleReminderStateChange}
    onRequestNotificationPermission={requestNotificationPermission}

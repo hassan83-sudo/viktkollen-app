@@ -4,7 +4,7 @@ import MoreHub from './MoreHub.jsx'
 import { moreHubFolders } from '../../services/more/moreFolders.js'
 
 describe('MoreHub', () => {
-  it('renders a short hub with sync status and seven folders', () => {
+  it('renders a short hub with sync status and eight folders', () => {
     const html = renderToStaticMarkup(
       <MoreHub
         isAuthenticated
@@ -34,5 +34,18 @@ describe('MoreHub', () => {
     expect(html).toContain('Säkerhet &amp; Backup')
     expect(html).toContain('Backupinnehåll')
     expect(html).not.toContain('Kategorier')
+  })
+
+  it('includes the wellbeing folder', () => {
+    const html = renderToStaticMarkup(
+      <MoreHub
+        isAuthenticated
+        syncStatus={{ online: true, statusCode: 'synced', statusLabel: 'Synkad' }}
+        onOpen={() => {}}
+      />,
+    )
+
+    expect(html).toContain('Må bra')
+    expect(html).toContain('Lugna övningar och trygghetsplan')
   })
 })

@@ -31,6 +31,7 @@ function HomeSection({
   onLogWeight,
   onNavigateSection,
   onOpenAiCoach,
+  onOpenWellbeing,
   onScanFood,
   onSendChatMessage,
   onStartVoiceInput,
@@ -87,6 +88,7 @@ function HomeSection({
           onLogWeight={onLogWeight}
           onNavigateSection={onNavigateSection}
           onOpenAiCoach={onOpenAiCoach}
+          onOpenWellbeing={onOpenWellbeing}
           onScanFood={onScanFood}
           onSendChatMessage={onSendChatMessage}
           onStartVoiceInput={onStartVoiceInput}

@@ -11583,7 +11583,7 @@ body:has(#app-section-home.is-active) {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-areas:
-    "chat coach"
+    "wellbeing coach"
     "reminder today";
   gap: 8px;
 }
@@ -11607,11 +11607,12 @@ body:has(#app-section-home.is-active) {
   cursor: pointer;
 }
 
-#app-section-home.is-active .overview-mood-card.is-chat {
-  grid-area: chat;
+#app-section-home.is-active .overview-mood-card.is-wellbeing {
+  grid-area: wellbeing;
   background:
-    radial-gradient(circle at 18% 20%, rgba(90, 220, 255, 0.16), transparent 36%),
-    linear-gradient(150deg, #10263a, rgba(7, 11, 23, 0.98));
+    radial-gradient(circle at 18% 20%, rgba(174, 132, 255, 0.24), transparent 36%),
+    radial-gradient(circle at 82% 72%, rgba(255, 154, 88, 0.18), transparent 34%),
+    linear-gradient(150deg, #16142e 0%, #10263a 55%, rgba(7, 11, 23, 0.98) 100%);
 }
 
 #app-section-home.is-active .overview-mood-card.is-coach {
@@ -14958,6 +14959,141 @@ html:has(#app-section-more.is-active),
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 17px;
   background: linear-gradient(150deg, var(--home-card-2), rgba(7, 11, 23, 0.98));
+}
+
+#app-section-home.is-active .overview-social-card.is-compact {
+  margin-top: 8px;
+  padding: 10px 11px;
+  border-radius: 12px;
+  background: linear-gradient(150deg, rgba(16, 38, 58, 0.82), rgba(7, 11, 23, 0.96));
+}
+
+#app-section-home.is-active .overview-social-card.is-compact .overview-social-empty {
+  margin-top: 5px;
+  font-size: 0.78rem;
+}
+
+#app-section-home.is-active .overview-social-card.is-compact .overview-social-actions {
+  margin-top: 7px;
+}
+
+#app-section-home.is-active .overview-social-card.is-compact .overview-social-actions .secondary-button {
+  min-height: 36px;
+}
+
+.wellbeing-center {
+  display: grid;
+  gap: 14px;
+  width: min(900px, 100%);
+  margin: 0 auto;
+  padding-bottom: calc(var(--vk-nav-height) + 28px + env(safe-area-inset-bottom));
+  color: #f7f8ff;
+}
+
+.wellbeing-hero,
+.wellbeing-panel {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid rgba(190, 201, 255, 0.14);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(158, 119, 255, 0.18), transparent 34%),
+    radial-gradient(circle at 90% 20%, rgba(255, 152, 88, 0.12), transparent 34%),
+    linear-gradient(150deg, #080d1d, #121831 62%, #0b1023);
+}
+
+.wellbeing-hero h1,
+.wellbeing-panel h2 {
+  margin-top: 0;
+}
+
+.wellbeing-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.wellbeing-panel-heading,
+.wellbeing-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.wellbeing-choice-grid,
+.wellbeing-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.wellbeing-choice-grid button,
+.wellbeing-quick-grid button {
+  min-height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 10px;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.05);
+  text-align: left;
+}
+
+.wellbeing-choice-grid button.is-selected,
+.wellbeing-quick-grid button:focus-visible {
+  border-color: rgba(255, 178, 106, 0.78);
+  outline: 2px solid rgba(255, 178, 106, 0.28);
+}
+
+.wellbeing-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.wellbeing-reasons label,
+.wellbeing-panel label {
+  display: grid;
+  gap: 6px;
+}
+
+.wellbeing-reasons label {
+  display: flex;
+  align-items: center;
+}
+
+.wellbeing-panel textarea,
+.wellbeing-panel input {
+  width: 100%;
+}
+
+.wellbeing-steps {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.wellbeing-pill {
+  padding: 4px 9px;
+  border-radius: 999px;
+  color: #241106;
+  background: #ffb26a;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.wellbeing-urgent {
+  padding: 12px;
+  border: 1px solid rgba(255, 178, 106, 0.45);
+  border-radius: 12px;
+  background: rgba(255, 178, 106, 0.12);
+}
+
+@media (max-width: 430px) {
+  .wellbeing-choice-grid,
+  .wellbeing-quick-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 #app-section-home.is-active .overview-social-card-top,

@@ -132,12 +132,14 @@ describe('OverviewDashboard', () => {
     expect(markup).toContain('Matscanning')
   })
 
-  it('renders Dagens läge as a 2x2 mood grid with real values', () => {
+  it('renders Dagens läge with Må bra instead of sensitive mood data', () => {
     const markup = renderOverview().replaceAll('\u00a0', ' ')
 
     expect(markup).toContain('Dagens läge')
     expect(markup).toContain('class="overview-today-mood"')
-    expect(markup).toContain('Chatten')
+    expect(markup).toContain('Må bra')
+    expect(markup).toContain('Hur känns dagen?')
+    expect(markup).toContain('Frivilligt stöd utan att visa måendet här')
     expect(markup).toContain('Nästa påminnelse')
     expect(markup).toContain('AI Coach')
     expect(markup).toContain('IDAG')
@@ -146,6 +148,8 @@ describe('OverviewDashboard', () => {
     expect(markup).toContain('Logga mat')
     expect(markup).toContain('Registrera vikt')
     expect(markup).toContain('Drick vatten')
+    expect(markup).not.toContain('Jättebra')
+    expect(markup).not.toContain('Väldigt jobbigt')
     expect(markup).not.toContain('class="overview-compact-tabs"')
     expect(markup).not.toContain('Protein att välja')
     expect(markup).not.toContain('is-coach-hero')
@@ -156,7 +160,7 @@ describe('OverviewDashboard', () => {
       featureFlags: { smartCamera: false },
     })
 
-    expect(markup).toContain('Vänner')
+    expect(markup).toContain('Chatten')
     expect(markup).toContain('Logga in för att träna och hålla kontakten tillsammans.')
   })
 
@@ -199,7 +203,7 @@ describe('OverviewDashboard', () => {
     expect(markup).toContain('Registrera vikt')
     expect(markup).toContain('0 kcal')
     expect(markup).toContain('Ingen påminnelse')
-    expect(markup).toContain('Vänner')
+    expect(markup).toContain('Chatten')
   })
 
   it('shows social setup state while live backend is off', () => {
@@ -207,7 +211,7 @@ describe('OverviewDashboard', () => {
       featureFlags: { socialLive: false, socialUi: true },
       isAuthenticated: true,
     })
-    expect(markup).toContain('Vänner')
+    expect(markup).toContain('Chatten')
     expect(markup).toContain('Chatten är inte ansluten ännu. Ingen fejkdata visas.')
     expect(markup).toContain('Lägg till vän')
     expect(markup).toContain('Öppna chatten')

@@ -21,6 +21,13 @@ export const moreHubFolders = [
     title: 'AI Coach',
   },
   {
+    id: 'ma-bra',
+    accent: 'purple',
+    description: 'Lugna övningar och trygghetsplan',
+    icon: '♡',
+    title: 'Må bra',
+  },
+  {
     id: 'sakerhet-backup',
     accent: 'purple',
     description: 'Backup, återställ, synk, moln',
@@ -67,6 +74,7 @@ export const moreHubTargetFolders = {
   mat: 'mat',
   'mal-framsteg': 'mal-framsteg',
   'mal-framsteg-oversikt': 'mal-framsteg',
+  'ma-bra': 'ma-bra',
   molnbackup: 'sakerhet-backup',
   molnstatus: 'sakerhet-backup',
   'notification-center': 'mal-framsteg',
@@ -78,6 +86,9 @@ export const moreHubTargetFolders = {
   sakerhet: 'sakerhet-backup',
   scanner: 'mat',
   vikt: 'mal-framsteg',
+  wellbeing: 'ma-bra',
+  'wellbeing-center': 'ma-bra',
+  'app-section-wellbeing': 'ma-bra',
 }
 
 export function resolveMoreFolderFromTarget(targetId) {

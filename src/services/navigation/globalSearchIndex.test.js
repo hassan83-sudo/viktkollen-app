@@ -25,6 +25,8 @@ describe('globalSearchIndex', () => {
     expect(titles('matplan')).toContain('Meal Planner')
     expect(titles('röst')).toContain('AI Coach')
     expect(titles('RÖST')).toContain('AI Coach')
+    expect(titles('må bra')).toContain('Må bra')
+    expect(titles('trygghetsplan')).toContain('Må bra')
   })
 
   it('finds AI Progress Insights by trend and plateau aliases', () => {

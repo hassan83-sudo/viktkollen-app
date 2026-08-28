@@ -5,6 +5,7 @@ import AppTopbar from './AppTopbar.jsx'
 import BottomNavigation from './BottomNavigation.jsx'
 import LazySectionFallback from './LazySectionFallback.jsx'
 import OnboardingScreen from './OnboardingScreen.jsx'
+import { resolveMoreFolderFromTarget } from '../../services/more/moreFolders.js'
 
 describe('Performance Architecture app shell components', () => {
   it('renders the auth loading shell without pulling feature panels into App markup', () => {
@@ -56,19 +57,42 @@ describe('Performance Architecture app shell components', () => {
     expect(markup).toContain('inte medicinsk rådgivning')
   })
 
-  it('renders the Social Room next to More when enabled', () => {
+  it('renders the approved main navigation with Social Room next to More', () => {
     const markup = renderToStaticMarkup(<BottomNavigation activeSection="coach" />)
 
     expect(markup).toContain('class="bottom-nav"')
     expect(markup).toContain('href="#app-section-home"')
-    expect(markup).toContain('href="#app-section-coach"')
-    expect(markup).toContain('href="#app-section-nutrition"')
+    expect(markup).toContain('href="#app-section-redo"')
+    expect(markup).toContain('href="#app-section-place"')
     expect(markup).toContain('href="#app-section-notices"')
     expect(markup).toContain('href="#app-section-social"')
     expect(markup).toContain('href="#app-section-more"')
+    expect(markup).not.toContain('href="#app-section-coach"')
+    expect(markup).not.toContain('href="#app-section-nutrition"')
+    expect(markup).not.toContain('href="#app-section-progress"')
     expect(markup).toContain('aria-label="Huvudnavigation"')
+    expect(markup).toContain('href="#app-section-more"><span aria-hidden="true">⚙</span><strong>Mer</strong>')
     expect(markup).toContain('aria-current="page"')
-    expect(markup).toContain('Coach')
+    expect(markup).toContain('Redo!')
+    expect(markup).toContain('Plats')
+    expect(markup).toContain('Stället')
+  })
+
+  it('keeps Coach, Mat and Framsteg reachable through More destinations', () => {
+    expect(resolveMoreFolderFromTarget('app-section-coach')).toBe('ai-coach')
+    expect(resolveMoreFolderFromTarget('app-section-nutrition')).toBe('mat')
+    expect(resolveMoreFolderFromTarget('app-section-progress')).toBe('mal-framsteg')
+    expect(resolveMoreFolderFromTarget('body-analysis')).toBe('mal-framsteg')
+  })
+
+  it('marks More active for secondary Coach, Mat and Framsteg routes', () => {
+    ;['coach', 'nutrition', 'progress'].forEach((activeSection) => {
+      const markup = renderToStaticMarkup(<BottomNavigation activeSection={activeSection} />)
+
+      expect(markup).toContain('href="#app-section-more"')
+      expect(markup).toContain('href="#app-section-more"><span aria-hidden="true">⚙</span><strong>Mer</strong>')
+      expect(markup).toContain('aria-current="page"')
+    })
   })
 
   it('hides the Social Room destination when social UI is disabled', () => {

@@ -1,12 +1,18 @@
 /* @vitest-environment jsdom */
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import NoticeHub from './NoticeHub.jsx'
 import i18n from '../i18n/index.js'
+import { batteryNoticeStorageKey } from '../services/battery/batteryNoticeModel.js'
 
 describe('NoticeHub', () => {
   beforeEach(async () => {
+    window.localStorage.clear()
     await i18n.changeLanguage('sv')
+  })
+
+  afterEach(() => {
+    cleanup()
   })
 
   it('requires an explicit submit before a quick reminder is saved', () => {
@@ -41,5 +47,48 @@ describe('NoticeHub', () => {
     expect(onRemindersChange).toHaveBeenCalledTimes(4)
     expect(onRemindersChange.mock.calls[0][0].reminders[0].pausedAt).toBeTruthy()
     expect(onRemindersChange.mock.calls[3][0].reminders[0].archivedAt).toBeTruthy()
+  })
+
+  it('prepares a memory technique reminder without saving before submit', () => {
+    const onRemindersChange = vi.fn()
+    render(<NoticeHub onRemindersChange={onRemindersChange} reminderState={{ reminders: [] }} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Koppla ihop' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Skapa påminnelse från tekniken' }))
+
+    expect(onRemindersChange).not.toHaveBeenCalled()
+    expect(screen.getByLabelText('Text').value).toBe('Koppla ihop det viktiga med jackan')
+    expect(screen.getByLabelText('Beskrivning').value).toContain('Koppla det du vill minnas')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aktivera påminnelse' }))
+    expect(onRemindersChange).toHaveBeenCalledTimes(1)
+    expect(onRemindersChange.mock.calls[0][0].reminders[0]).toMatchObject({
+      description: expect.stringContaining('nycklar'),
+      source: 'reminder_hub',
+      title: 'Koppla ihop det viktiga med jackan',
+    })
+  })
+
+  it('stores battery readings locally and prepares a charge reminder through reminders v2', () => {
+    const onRemindersChange = vi.fn()
+    render(<NoticeHub onRemindersChange={onRemindersChange} reminderState={{ reminders: [] }} />)
+
+    fireEvent.click(screen.getByLabelText('Aktivera lokal batterihjälp'))
+    fireEvent.change(screen.getByLabelText('Batteri %'), { target: { value: '42' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Spara manuell nivå' }))
+
+    const stored = JSON.parse(window.localStorage.getItem(batteryNoticeStorageKey))
+    expect(stored).toMatchObject({ enabled: true, version: 1 })
+    expect(stored.history[0]).toMatchObject({ percent: 42, source: 'manual' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skapa Ladda mobilen' }))
+    expect(onRemindersChange).not.toHaveBeenCalled()
+    expect(screen.getByLabelText('Text').value).toBe('Ladda mobilen')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aktivera påminnelse' }))
+    expect(onRemindersChange.mock.calls[0][0].reminders[0]).toMatchObject({
+      description: expect.stringContaining('Batterihjälpen föreslår laddning'),
+      title: 'Ladda mobilen',
+    })
   })
 })

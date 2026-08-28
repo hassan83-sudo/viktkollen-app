@@ -1,10 +1,17 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { archiveReminder, completeReminder, pauseReminder, resumeReminder, snoozeReminder } from '../services/reminders/reminderActions.js'
 import { normalizeReminder, normalizeReminderState, weekDays } from '../services/reminders/reminderModel.js'
 import { getNextReminderAt } from '../services/reminders/reminderScheduler.js'
 import { getReminderCapabilities, readReminderSpeechSettings, saveReminderSpeechSettings } from '../services/reminders/reminderCapabilities.js'
 import { requestReminderNotificationPermission } from '../services/reminders/reminderNotifications.js'
+import {
+  addBatteryMeasurement,
+  createBatteryRecommendation,
+  getBatteryCapabilities,
+  readBatteryNoticeState,
+  saveBatteryNoticeState,
+} from '../services/battery/batteryNoticeModel.js'
 
 const suggestions = ['glasses', 'medicine', 'water', 'item', 'leave', 'call', 'laundry', 'pause', 'bed']
 
@@ -17,17 +24,33 @@ function currentWeekday() {
   return weekDays[(new Date().getDay() + 6) % 7]
 }
 
+function createEmptyDraft() {
+  return { daysOfWeek: [], description: '', scheduleType: 'once', startDate: localDate(), time: '09:00', title: '' }
+}
+
 function NoticeHub({ onRemindersChange, reminderState }) {
   const { t, i18n } = useTranslation('notices')
   const state = useMemo(() => normalizeReminderState(reminderState), [reminderState])
-  const [draft, setDraft] = useState({ daysOfWeek: [], scheduleType: 'once', startDate: localDate(), time: '09:00', title: '' })
+  const formRef = useRef(null)
+  const titleInputRef = useRef(null)
+  const [draft, setDraft] = useState(createEmptyDraft)
   const [selectedSuggestion, setSelectedSuggestion] = useState('')
   const [editingId, setEditingId] = useState('')
   const [deleteId, setDeleteId] = useState('')
   const [message, setMessage] = useState('')
   const [technique, setTechnique] = useState('')
   const [speechSettings, setSpeechSettings] = useState(readReminderSpeechSettings)
+  const [batteryState, setBatteryState] = useState(readBatteryNoticeState)
   const capabilities = getReminderCapabilities()
+  const batteryCapabilities = getBatteryCapabilities()
+  const batteryRecommendation = useMemo(() => createBatteryRecommendation(batteryState), [batteryState])
+
+  function focusForm() {
+    window.requestAnimationFrame?.(() => {
+      formRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      titleInputRef.current?.focus()
+    })
+  }
 
   function save(next, status) {
     onRemindersChange?.(normalizeReminderState(next))
@@ -41,7 +64,15 @@ function NoticeHub({ onRemindersChange, reminderState }) {
   function selectSuggestion(id) {
     setSelectedSuggestion(id)
     setEditingId('')
-    setDraft((current) => ({ ...current, title: t(`suggestions.${id}`) }))
+    setDraft((current) => ({ ...current, description: '', title: t(`suggestions.${id}`) }))
+  }
+
+  function prepareDraft(nextDraft, status) {
+    setSelectedSuggestion('')
+    setEditingId('')
+    setDraft((current) => ({ ...current, ...nextDraft }))
+    setMessage(status)
+    focusForm()
   }
 
   function submit(event) {
@@ -61,7 +92,7 @@ function NoticeHub({ onRemindersChange, reminderState }) {
     }, t(editingId ? 'status.saved' : 'status.created'))
     setSelectedSuggestion('')
     setEditingId('')
-    setDraft({ daysOfWeek: [], scheduleType: 'once', startDate: localDate(), time: '09:00', title: '' })
+    setDraft(createEmptyDraft())
   }
 
   function edit(reminder) {
@@ -69,11 +100,13 @@ function NoticeHub({ onRemindersChange, reminderState }) {
     setSelectedSuggestion('')
     setDraft({
       daysOfWeek: reminder.daysOfWeek,
+      description: reminder.description,
       scheduleType: reminder.scheduleType,
       startDate: reminder.startDate,
       time: reminder.time,
       title: reminder.title,
     })
+    focusForm()
   }
 
   async function requestPermission() {
@@ -97,6 +130,73 @@ function NoticeHub({ onRemindersChange, reminderState }) {
     window.speechSynthesis.speak(utterance)
   }
 
+  function updateBattery(next, status = '') {
+    setBatteryState(saveBatteryNoticeState(next))
+    if (status) setMessage(status)
+  }
+
+  function activateBattery(enabled) {
+    const now = new Date().toISOString()
+    updateBattery({
+      ...batteryState,
+      activatedAt: enabled && !batteryState.activatedAt ? now : batteryState.activatedAt,
+      enabled,
+      updatedAt: now,
+    }, t(enabled ? 'battery.status.enabled' : 'battery.status.disabled'))
+  }
+
+  function saveManualBattery() {
+    const percent = Number(batteryState.manualPercent)
+    if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
+      setMessage(t('battery.status.invalidPercent'))
+      return
+    }
+    updateBattery(addBatteryMeasurement(batteryState, {
+      charging: false,
+      measuredAt: new Date().toISOString(),
+      percent,
+      source: 'manual',
+    }), t('battery.status.savedManual'))
+  }
+
+  async function readBatteryApi() {
+    const navigatorObject = typeof window === 'undefined' ? null : window.navigator
+    if (!batteryCapabilities.batteryApi || typeof navigatorObject?.getBattery !== 'function') {
+      setMessage(t('battery.status.apiUnavailable'))
+      return
+    }
+    try {
+      const battery = await navigatorObject.getBattery()
+      updateBattery(addBatteryMeasurement(batteryState, {
+        charging: Boolean(battery.charging),
+        measuredAt: new Date().toISOString(),
+        percent: Math.round((Number(battery.level) || 0) * 100),
+        source: 'api',
+      }), t('battery.status.savedApi'))
+    } catch {
+      setMessage(t('battery.status.apiUnavailable'))
+    }
+  }
+
+  function prepareBatteryReminder() {
+    prepareDraft({
+      description: t('battery.reminder.description', { percent: batteryRecommendation.reminderPercent || 35 }),
+      scheduleType: 'once',
+      startDate: localDate(),
+      time: '20:00',
+      title: t('battery.reminder.title'),
+    }, t('battery.status.reminderPrepared'))
+  }
+
+  function prepareMemoryReminder(id) {
+    prepareDraft({
+      description: `${t(`memory.techniques.${id}.body`)} ${t(`memory.techniques.${id}.example`)}`,
+      scheduleType: 'once',
+      startDate: localDate(),
+      title: t(`memory.techniques.${id}.reminder`),
+    }, t('memory.reminderPrepared'))
+  }
+
   return (
     <section className="notice-hub" aria-labelledby="notice-hub-heading">
       <header className="notice-hub-heading">
@@ -115,9 +215,10 @@ function NoticeHub({ onRemindersChange, reminderState }) {
         {selectedSuggestion && <p className="notice-confirmation" role="status">{t('quick.confirmation', { date: draft.startDate, text: draft.title, time: draft.time, repeat: t(`repeat.${draft.scheduleType}`) })}</p>}
       </section>
 
-      <form className="notice-card notice-form" onSubmit={submit}>
+      <form className="notice-card notice-form" onSubmit={submit} ref={formRef}>
         <h2>{t(editingId ? 'form.editTitle' : 'form.title')}</h2>
-        <label>{t('form.text')}<input required value={draft.title} onChange={(event) => updateDraft('title', event.target.value)} /></label>
+        <label>{t('form.text')}<input ref={titleInputRef} required value={draft.title} onChange={(event) => updateDraft('title', event.target.value)} /></label>
+        <label>{t('form.description')}<textarea rows="3" value={draft.description} onChange={(event) => updateDraft('description', event.target.value)} /></label>
         <div className="notice-form-grid">
           <label>{t('form.date')}<input type="date" required value={draft.startDate} onChange={(event) => updateDraft('startDate', event.target.value)} /></label>
           <label>{t('form.time')}<input type="time" required value={draft.time} onChange={(event) => updateDraft('time', event.target.value)} /></label>
@@ -133,7 +234,10 @@ function NoticeHub({ onRemindersChange, reminderState }) {
           </select></label>
         </div>
         {['selected_weekdays', 'weekly'].includes(draft.scheduleType) && <fieldset><legend>{t('form.weekdays')}</legend><div className="notice-weekdays">{weekDays.map((day) => <label key={day}><input type="checkbox" checked={draft.daysOfWeek.includes(day)} onChange={(event) => updateDraft('daysOfWeek', event.target.checked ? [...draft.daysOfWeek, day] : draft.daysOfWeek.filter((item) => item !== day))} />{t(`weekdays.${day}`)}</label>)}</div></fieldset>}
-        <button className="primary-button" type="submit">{t(editingId ? 'form.save' : 'form.activate')}</button>
+        <div className="notice-actions">
+          <button className="primary-button" type="submit">{t(editingId ? 'form.save' : 'form.activate')}</button>
+          {(editingId || draft.title || draft.description) && <button type="button" onClick={() => { setEditingId(''); setSelectedSuggestion(''); setDraft(createEmptyDraft()) }}>{t('form.cancel')}</button>}
+        </div>
       </form>
 
       <section className="notice-card" aria-labelledby="saved-reminders-heading">
@@ -169,9 +273,43 @@ function NoticeHub({ onRemindersChange, reminderState }) {
         <p className="estimate-note">{t('speech.limits')}</p>
       </section>
 
+      <section className="notice-card" aria-labelledby="battery-heading">
+        <h2 id="battery-heading">{t('battery.title')}</h2>
+        <p>{t('battery.body')}</p>
+        <label><input type="checkbox" checked={batteryState.enabled} onChange={(event) => activateBattery(event.target.checked)} />{t('battery.enable')}</label>
+        <div className="notice-battery-grid">
+          <div>
+            <strong>{t('battery.latest')}</strong>
+            <p>{batteryRecommendation.latest ? t('battery.percentLine', { percent: batteryRecommendation.latest.percent, source: t(`battery.source.${batteryRecommendation.latest.source}`) }) : t('battery.noData')}</p>
+          </div>
+          <div>
+            <strong>{t('battery.average')}</strong>
+            <p>{batteryRecommendation.enoughData ? t('battery.averageValue', { value: batteryRecommendation.averageDrainPerHour.toFixed(1) }) : t('battery.averageLearning', { count: batteryRecommendation.sampleCount })}</p>
+          </div>
+          <div>
+            <strong>{t('battery.today')}</strong>
+            <p>{batteryRecommendation.todayConsumption === null ? t('battery.todayEmpty') : t('battery.todayValue', { value: batteryRecommendation.todayConsumption })}</p>
+          </div>
+        </div>
+        <p className="notice-confirmation" role="status">{t(`battery.recommendation.${batteryRecommendation.messageKey}`, { percent: batteryRecommendation.reminderPercent || 35 })}</p>
+        <div className="notice-form-grid">
+          <label>{t('battery.manualPercent')}<input min="0" max="100" type="number" value={batteryState.manualPercent} onChange={(event) => setBatteryState((current) => ({ ...current, manualPercent: event.target.value }))} /></label>
+          <label>{t('battery.targetReadyAt')}<input type="time" value={batteryState.targetReadyAt} onChange={(event) => updateBattery({ ...batteryState, targetReadyAt: event.target.value })} /></label>
+          <label>{t('battery.safetyMargin')}<input max="6" min="0" step="0.5" type="number" value={batteryState.safetyMarginHours} onChange={(event) => updateBattery({ ...batteryState, safetyMarginHours: event.target.value })} /></label>
+        </div>
+        <label><input type="checkbox" checked={batteryState.schoolMode} onChange={(event) => updateBattery({ ...batteryState, schoolMode: event.target.checked })} />{t('battery.schoolMode')}</label>
+        <div className="notice-actions">
+          <button type="button" onClick={saveManualBattery} disabled={!batteryState.enabled}>{t('battery.saveManual')}</button>
+          <button type="button" onClick={readBatteryApi} disabled={!batteryState.enabled || !batteryCapabilities.batteryApi}>{t('battery.readApi')}</button>
+          <button type="button" onClick={prepareBatteryReminder}>{t('battery.createReminder')}</button>
+        </div>
+        <p className="estimate-note">{t(batteryCapabilities.batteryApi ? 'battery.limits.api' : 'battery.limits.manual')}</p>
+        <p className="estimate-note">{t('battery.limits.background')}</p>
+      </section>
+
       <section className="notice-card" aria-labelledby="memory-heading">
         <h2 id="memory-heading">{t('memory.title')}</h2>
-        <div className="notice-techniques">{['associate', 'image', 'walk', 'repeat', 'steps', 'location', 'say', 'checklist'].map((id) => <article key={id}><button aria-expanded={technique === id} type="button" onClick={() => setTechnique(technique === id ? '' : id)}>{t(`memory.techniques.${id}.title`)}</button>{technique === id && <div><p>{t(`memory.techniques.${id}.body`)}</p><p>{t(`memory.techniques.${id}.example`)}</p><button type="button" onClick={() => { selectSuggestion('item'); updateDraft('title', t(`memory.techniques.${id}.reminder`)) }}>{t('memory.createReminder')}</button><button type="button" onClick={() => setTechnique('')}>{t('memory.back')}</button></div>}</article>)}</div>
+        <div className="notice-techniques">{['associate', 'image', 'walk', 'repeat', 'steps', 'location', 'say', 'checklist'].map((id) => <article key={id}><button aria-expanded={technique === id} type="button" onClick={() => setTechnique(technique === id ? '' : id)}>{t(`memory.techniques.${id}.title`)}</button>{technique === id && <div><p>{t(`memory.techniques.${id}.body`)}</p><p>{t(`memory.techniques.${id}.example`)}</p><button type="button" onClick={() => prepareMemoryReminder(id)}>{t('memory.createReminder')}</button><button type="button" onClick={() => setTechnique('')}>{t('memory.back')}</button></div>}</article>)}</div>
         <p className="estimate-note">{t('memory.locationSoon')}</p>
       </section>
       <p className="notice-privacy">{t('privacy')}</p>

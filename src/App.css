@@ -6478,6 +6478,25 @@ body.vk-body-scan-session .bottom-nav {
   gap: 10px;
 }
 
+.notice-form textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.notice-battery-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.notice-battery-grid > div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--soft-bg);
+}
+
 .notice-weekdays label {
   display: flex;
   align-items: center;
@@ -6528,7 +6547,8 @@ body.vk-body-scan-session .bottom-nav {
 }
 
 @media (max-width: 420px) {
-  .notice-form-grid {
+  .notice-form-grid,
+  .notice-battery-grid {
     grid-template-columns: 1fr;
   }
 }

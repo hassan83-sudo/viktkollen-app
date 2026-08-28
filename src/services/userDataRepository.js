@@ -33,6 +33,8 @@ export const userDataKeys = {
   mealTemplates: 'viktkollen.mealTemplates',
   meals: 'viktkollen.meals',
   memoryStore: 'viktkollen.memory.v1',
+  readyStore: 'viktkollen.ready.v1',
+  placeStore: 'viktkollen.place.v1',
   nutritionGoals: 'viktkollen.nutritionGoals',
   photoMeals: 'viktkollen.photoMeals',
   profile: 'viktkollen.profile',

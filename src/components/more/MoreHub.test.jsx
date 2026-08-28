@@ -4,7 +4,7 @@ import MoreHub from './MoreHub.jsx'
 import { moreHubFolders } from '../../services/more/moreFolders.js'
 
 describe('MoreHub', () => {
-  it('renders a short hub with sync status and six folders', () => {
+  it('renders a short hub with sync status and seven folders', () => {
     const html = renderToStaticMarkup(
       <MoreHub
         isAuthenticated

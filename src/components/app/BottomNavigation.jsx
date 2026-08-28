@@ -1,4 +1,4 @@
-﻿import { appSections, normalizeAppSectionId } from '../../services/navigation/appSections.js'
+﻿import { appSections, getBottomNavActiveSectionId } from '../../services/navigation/appSections.js'
 import { useTranslation } from 'react-i18next'
 
 function BottomNavigation({
@@ -8,7 +8,7 @@ function BottomNavigation({
   showSocial = true,
 }) {
   const { t } = useTranslation('navigation')
-  const normalizedActiveSection = normalizeAppSectionId(activeSection)
+  const normalizedActiveSection = getBottomNavActiveSectionId(activeSection)
   const sections = appSections.filter((section) =>
     (section.id !== 'social' || showSocial) &&
     (section.id !== 'notices' || showNotices))

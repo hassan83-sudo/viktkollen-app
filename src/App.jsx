@@ -3,13 +3,14 @@ import { useTranslation } from 'react-i18next'
 import HomeSection from './components/sections/HomeSection.jsx'
 import MoreSection from './components/sections/MoreSection.jsx'
 import NoticesSection from './components/sections/NoticesSection.jsx'
+import PlaceSection from './components/sections/PlaceSection.jsx'
 import ProgressSection from './components/sections/ProgressSection.jsx'
+import ReadySection from './components/sections/ReadySection.jsx'
 import NutritionSection from './components/sections/NutritionSection.jsx'
 import CoachSection from './components/sections/CoachSection.jsx'
 import AppSection from './components/app/AppSection.jsx'
 import SocialRoom from './features/social/components/SocialRoom.jsx'
 import './App.css'
-import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import AuthPanel from './components/AuthPanel.jsx'
 import AppLoadingScreen from './components/app/AppLoadingScreen.jsx'
 import BottomNavigation from './components/app/BottomNavigation.jsx'
@@ -1013,8 +1014,10 @@ function App() {
       if (!targetId) return
       const sectionId = targetId.replace(/^app-section-/, '')
 
-      if (sectionId === 'progress' || resolveMoreFolderFromTarget(targetId) === 'mal-framsteg') {
-        setMoreIntent({ id: Date.now(), targetId })
+      if (sectionId === 'progress' || sectionId === 'nutrition' || sectionId === 'coach' || resolveMoreFolderFromTarget(targetId)) {
+        const folder = resolveMoreFolderFromTarget(targetId)
+          || (sectionId === 'nutrition' ? 'mat' : sectionId === 'coach' ? 'ai-coach' : sectionId === 'progress' ? 'mal-framsteg' : null)
+        setMoreIntent({ id: Date.now(), targetId: folder || targetId })
         setActiveAppSection('more')
         return
       }
@@ -2768,6 +2771,16 @@ function App() {
       setActiveAppSection('more')
       return
     }
+    if (sectionId === 'nutrition') {
+      setMoreIntent({ id: Date.now(), targetId: 'mat' })
+      setActiveAppSection('more')
+      return
+    }
+    if (sectionId === 'coach') {
+      setMoreIntent({ id: Date.now(), targetId: 'ai-coach' })
+      setActiveAppSection('more')
+      return
+    }
 
     logNavigationOrigin('app-section-change:before', { sectionId })
     setActiveAppSection(sectionId)
@@ -2780,8 +2793,10 @@ function App() {
 
   function handleGlobalSearchNavigate(result) {
     const requestedSection = result?.section || 'home'
-    const sectionId = requestedSection === 'progress' ? 'more' : requestedSection
-    const targetId = result?.targetId || `app-section-${requestedSection}`
+    const isMoreDestination = ['progress', 'nutrition', 'coach'].includes(requestedSection)
+    const sectionId = isMoreDestination ? 'more' : requestedSection
+    const targetId = result?.targetId
+      || (requestedSection === 'nutrition' ? 'mat' : requestedSection === 'coach' ? 'ai-coach' : requestedSection === 'progress' ? 'mal-framsteg' : `app-section-${requestedSection}`)
 
     logNavigationOrigin('global-search-navigate:before', {
       resultId: result?.id || '',
@@ -2827,9 +2842,16 @@ function App() {
     if (sectionId === 'progress') {
       setProgressIntent({ id: Date.now(), targetId: 'body-analysis' })
       setMoreIntent({ id: Date.now(), targetId: targetId || 'mal-framsteg' })
+      setActiveAppSection('more')
+    } else if (sectionId === 'nutrition') {
+      setMoreIntent({ id: Date.now(), targetId: targetId || 'mat' })
+      setActiveAppSection('more')
+    } else if (sectionId === 'coach') {
+      setMoreIntent({ id: Date.now(), targetId: targetId || 'ai-coach' })
+      setActiveAppSection('more')
+    } else {
+      setActiveAppSection(sectionId)
     }
-
-    setActiveAppSection(sectionId === 'progress' ? 'more' : sectionId)
 
     window.requestAnimationFrame(() => {
       const target = targetId ? document.getElementById(targetId) : null
@@ -3021,113 +3043,17 @@ function App() {
         {activeAppSection !== 'home' && (
           <Suspense fallback={<LazySectionFallback />}>
           <section className="content-grid">
-        {activeAppSection === 'coach' && (
-          <CoachSection
-          activeSection={activeAppSection}
-          adaptiveCoachFeedback={adaptiveCoachFeedback}
-          aiStarterPrompts={aiStarterPrompts}
-          canClearChat={chatMessages.length > initialChatMessages.length}
-          chatEngineStatus={chatEngineStatus}
-          chatInput={chatInput}
-          chatMessages={chatMessages}
-          chatThreadRef={chatThreadRef}
-          checkIn={checkIn}
-          coachMessage={coachMessage}
-          coachReport={latestCoachReport || currentCoachPreview}
-          coachReports={coachReports}
-          coachStatus={coachStatus}
-          goalsHabits={goalsHabits}
-          healthSnapshot={healthSnapshot}
-          isGeneratingCoachReport={isGeneratingCoachReport}
-          isAiSpeaking={isAiSpeaking}
-          isAiVoiceEnabled={isAiVoiceEnabled}
-          isListening={isListening}
-          isVoiceConversationActive={isVoiceConversationActive}
-          meals={meals}
-          messagesEndRef={messagesEndRef}
-          nutritionGoals={nutritionGoals}
-          onAdaptiveCoachFeedbackChange={setAdaptiveCoachFeedback}
-          onChatInputChange={setChatInput}
-          onClearChat={clearChat}
-          onClearCoachReports={clearCoachReports}
-          onCoachQuestion={(question) => {
-            void sendChatText(question)
-          }}
-          onCreateCoachReport={createCoachReport}
-          onDeleteCoachReport={deleteCoachReport}
-          onRecommendationFeedback={handleCoachRecommendationFeedback}
-          onGoalsHabitsChange={setGoalsHabits}
-          onAiVoiceEnabledChange={handleAiVoiceEnabledChange}
-          onStopAiVoiceResponse={stopAiVoiceResponse}
-          onReminderStateChange={handleReminderStateChange}
-          onSendChatMessage={sendChatMessage}
-          onStartVoiceInput={startVoiceInput}
-          onStarterPrompt={handleStarterPrompt}
-          profile={validatedProfile}
-          reminderState={reminderState}
-          selectedMealDate={selectedMealDate}
-          voiceStatus={voiceStatus}
-          weights={centralWeightStats.weights}
-        />
+        {activeAppSection === 'redo' && (
+          <ReadySection
+            activeSection={activeAppSection}
+            onNavigateSection={handleAppSectionChange}
+            onOpenCompanion={() => setAiCoachOverlayOpen(true)}
+            reminderState={reminderState}
+          />
         )}
 
-
-        {activeAppSection === 'nutrition' && (
-          <NutritionSection
-          activeSection={activeAppSection}
-          barcodeInput={barcodeInput}
-          barcodeScannerActive={barcodeScannerActive}
-          barcodeStatus={barcodeStatus}
-          barcodeVideoRef={barcodeVideoRef}
-          checkIn={checkIn}
-          displayPhotoMeals={displayPhotoMeals}
-          favoriteMeals={favoriteMeals}
-          foodPhotoPreview={foodPhotoPreview}
-          foods={foods}
-          foodScore={foodScore}
-          handleFoodPhotoChange={handleFoodPhotoChange}
-          healthSnapshot={healthSnapshot}
-          mealHistoryImportSummary={mealHistoryImportSummary}
-          meals={meals}
-          nutritionGoals={nutritionGoals}
-          navigationIntent={nutritionIntent}
-          onScrollToTarget={scrollTargetInApp}
-          onAnalyzePhotoMeal={analyzePhotoMeal}
-          onBarcodeInputChange={setBarcodeInput}
-          onCancelClearMealHistory={() =>
-            setShowClearMealHistoryConfirm(false)
-          }
-          onClearMealHistory={clearLocalMealHistory}
-          onCreateDemoMealDay={createDemoMealAnalysisDay}
-          onExportMealHistory={exportMealAnalysisHistory}
-          onFavoriteMealsChange={(nextFavorites) =>
-            setFavoriteMeals(normalizeFavoriteMeals(nextFavorites))
-          }
-          onFoodToggle={toggleFood}
-          onImportMealHistory={importMealAnalysisHistory}
-          onMealsChange={(nextMeals) =>
-            setMeals(normalizeMeals(nextMeals))
-          }
-          onNutritionGoalsChange={(nextGoals) =>
-            setNutritionGoals(normalizeNutritionGoals(nextGoals))
-          }
-          onSelectedMealDateChange={setSelectedMealDate}
-          onShowClearMealHistory={() =>
-            setShowClearMealHistoryConfirm(true)
-          }
-          onStartBarcodeScanner={startBarcodeScanner}
-          onStopBarcodeScanner={stopBarcodeScanner}
-          onSubmitManualBarcode={submitManualBarcode}
-          onUpdateCheckIn={updateCheckIn}
-          photoAnalysisStatus={photoAnalysisStatus}
-          profile={profile}
-          scannedProducts={scannedProducts}
-          selectedMealDate={selectedMealDate}
-          showClearMealHistoryConfirm={showClearMealHistoryConfirm}
-          userId={authSession?.user?.id || authSession?.user?.email || 'local-user'}
-          weights={weights}
-          weekSummary={mealWeekSummary}
-        />
+        {activeAppSection === 'place' && (
+          <PlaceSection activeSection={activeAppSection} />
         )}
 
         {activeAppSection === 'notices' && reminderHubUiEnabled && (
@@ -3137,76 +3063,6 @@ function App() {
             reminderState={reminderState}
             t={t}
           />
-        )}
-
-        {activeAppSection === 'progress' && (
-          <>
-            <AppErrorBoundary area="progress" resetKey={`${healthSnapshot.date}-${weights.length}`} title="Framsteg kunde inte visas">
-            <ProgressSection
-          activeSection={activeAppSection}
-          adaptiveCoachFeedback={adaptiveCoachFeedback}
-          afterPhoto={afterPhoto}
-          beforeAfterPhotos={beforeAfterPhotos}
-          beforePhoto={beforePhoto}
-          bodyAnalysisHistory={bodyAnalysisHistory}
-          bodyMeasurements={bodyMeasurements}
-          checkIn={checkIn}
-          createWeeklyReport={createWeeklyReport}
-          foods={foods}
-          goalSettings={progressGoalSettings}
-          goalsHabits={goalsHabits}
-          healthSnapshot={healthSnapshot}
-          meals={meals}
-          monthlyReport={monthlyReport}
-          navigationIntent={progressIntent}
-          onScrollToTarget={scrollTargetInApp}
-          nutritionGoals={nutritionGoals}
-          onAfterPhotoIdChange={setAfterPhotoId}
-          onBeforePhotoIdChange={setBeforePhotoId}
-          onBodyMeasurementsChange={(nextMeasurements) =>
-            setBodyMeasurements(normalizeBodyMeasurements(nextMeasurements))}
-          onDeleteProgressPhoto={(photoId) => {
-            if (window.confirm('Vill du ta bort den här framstegsbilden?')) {
-              setProgressPhotos((current) =>
-                current.filter((photo) => photo.id !== photoId),
-              )
-            }
-          }}
-          onGoalSettingsChange={(nextSettings) =>
-            setProgressGoalSettings(normalizeGoalSettings(nextSettings))}
-          onProgressPhotoChange={handleProgressPhotoChange}
-          onProgressPhotoNoteChange={setProgressPhotoNote}
-          onProgressReportsChange={setProgressReports}
-          onUpdateProgressPhoto={(photoId, updates) =>
-            setProgressPhotos((current) =>
-              current.map((photo) =>
-                photo.id === photoId
-                  ? {
-                      ...photo,
-                      ...updates,
-                      updatedAt: new Date().toISOString(),
-                    }
-                  : photo,
-              ),
-            )}
-          onWeightsChange={(nextWeights) => setWeights(normalizeWeights(nextWeights))}
-          profile={validatedProfile}
-          progressPhotoComparison={progressPhotoComparison}
-          progressPhotoComparisonImages={progressPhotoComparisonImages}
-          progressPhotoItems={progressPhotoItems}
-          progressPhotoNote={progressPhotoNote}
-          progressPhotoOptions={progressPhotoOptions}
-          progressPhotos={progressPhotos}
-          progressReports={progressReports}
-          selectedMealDate={selectedMealDate}
-          userId={authSession?.user?.id || authSession?.user?.email || 'local-user'}
-          weights={centralWeightStats.weights}
-          weeklyReportData={weeklyReportData}
-          weeklyReportLines={weeklyReportLines}
-          weeklyReportStatus={weeklyReportStatus}
-        />
-            </AppErrorBoundary>
-          </>
         )}
 
         {activeAppSection === 'more' && (
@@ -3226,6 +3082,7 @@ function App() {
   onDataRestored={refreshAppStateFromStorage}
   onEditProfile={() => setShowOnboarding(true)}
   onLanguageChange={handleLanguageChange}
+  onOpenAiCoach={() => setAiCoachOverlayOpen(true)}
   onReminderSettingChange={updateReminderSetting}
   onReminderStateChange={handleReminderStateChange}
    onRequestNotificationPermission={requestNotificationPermission}
@@ -3247,6 +3104,96 @@ function App() {
   profile={validatedProfile}
   weights={centralWeightStats.weights}
   ProgressSectionComponent={ProgressSection}
+  NutritionSectionComponent={NutritionSection}
+  CoachSectionComponent={CoachSection}
+  nutritionNavigationIntent={nutritionIntent}
+  coachSectionProps={{
+    adaptiveCoachFeedback,
+    aiStarterPrompts,
+    canClearChat: chatMessages.length > initialChatMessages.length,
+    chatEngineStatus,
+    chatInput,
+    chatMessages,
+    chatThreadRef,
+    checkIn,
+    coachMessage,
+    coachReport: latestCoachReport || currentCoachPreview,
+    coachReports,
+    coachStatus,
+    goalsHabits,
+    healthSnapshot,
+    isGeneratingCoachReport,
+    isAiSpeaking,
+    isAiVoiceEnabled,
+    isListening,
+    isVoiceConversationActive,
+    meals,
+    messagesEndRef,
+    nutritionGoals,
+    onAdaptiveCoachFeedbackChange: setAdaptiveCoachFeedback,
+    onChatInputChange: setChatInput,
+    onClearChat: clearChat,
+    onClearCoachReports: clearCoachReports,
+    onCoachQuestion: (question) => { void sendChatText(question) },
+    onCreateCoachReport: createCoachReport,
+    onDeleteCoachReport: deleteCoachReport,
+    onRecommendationFeedback: handleCoachRecommendationFeedback,
+    onGoalsHabitsChange: setGoalsHabits,
+    onAiVoiceEnabledChange: handleAiVoiceEnabledChange,
+    onStopAiVoiceResponse: stopAiVoiceResponse,
+    onReminderStateChange: handleReminderStateChange,
+    onSendChatMessage: sendChatMessage,
+    onStartVoiceInput: startVoiceInput,
+    onStarterPrompt: handleStarterPrompt,
+    profile: validatedProfile,
+    reminderState,
+    selectedMealDate,
+    voiceStatus,
+    weights: centralWeightStats.weights,
+  }}
+  nutritionSectionProps={{
+    barcodeInput,
+    barcodeScannerActive,
+    barcodeStatus,
+    barcodeVideoRef,
+    checkIn,
+    displayPhotoMeals,
+    favoriteMeals,
+    foodPhotoPreview,
+    foods,
+    foodScore,
+    handleFoodPhotoChange,
+    healthSnapshot,
+    mealHistoryImportSummary,
+    meals,
+    nutritionGoals,
+    onScrollToTarget: scrollTargetInApp,
+    onAnalyzePhotoMeal: analyzePhotoMeal,
+    onBarcodeInputChange: setBarcodeInput,
+    onCancelClearMealHistory: () => setShowClearMealHistoryConfirm(false),
+    onClearMealHistory: clearLocalMealHistory,
+    onCreateDemoMealDay: createDemoMealAnalysisDay,
+    onExportMealHistory: exportMealAnalysisHistory,
+    onFavoriteMealsChange: (nextFavorites) => setFavoriteMeals(normalizeFavoriteMeals(nextFavorites)),
+    onFoodToggle: toggleFood,
+    onImportMealHistory: importMealAnalysisHistory,
+    onMealsChange: (nextMeals) => setMeals(normalizeMeals(nextMeals)),
+    onNutritionGoalsChange: (nextGoals) => setNutritionGoals(normalizeNutritionGoals(nextGoals)),
+    onSelectedMealDateChange: setSelectedMealDate,
+    onShowClearMealHistory: () => setShowClearMealHistoryConfirm(true),
+    onStartBarcodeScanner: startBarcodeScanner,
+    onStopBarcodeScanner: stopBarcodeScanner,
+    onSubmitManualBarcode: submitManualBarcode,
+    onUpdateCheckIn: updateCheckIn,
+    photoAnalysisStatus,
+    profile,
+    scannedProducts,
+    selectedMealDate,
+    showClearMealHistoryConfirm,
+    userId: authSession?.user?.id || authSession?.user?.email || 'local-user',
+    weights,
+    weekSummary: mealWeekSummary,
+  }}
   progressSectionProps={{
     adaptiveCoachFeedback,
     afterPhoto,

@@ -1,3 +1,5 @@
+import { placeEn, placeSv, readyEn, readySv } from './readyPlaceResources.js'
+
 const sv = {
   common: {
     appName: 'Viktkollen',
@@ -41,8 +43,10 @@ const sv = {
       more: { aria: 'Öppna fler funktioner och inställningar', label: 'Mer' },
       nutrition: { aria: 'Öppna mat och nutrition', label: 'Mat' },
       notices: { aria: 'Öppna notiser och minnesstöd', label: 'Notis' },
+      place: { aria: 'Öppna Plats', label: 'Plats' },
       progress: { aria: 'Öppna vikt och framsteg', label: 'Framsteg' },
-      social: { aria: 'Öppna Social Room', label: 'Rummet' },
+      redo: { aria: 'Öppna Redo!', label: 'Redo!' },
+      social: { aria: 'Öppna Stället', label: 'Stället' },
     },
   },
   home: {
@@ -297,8 +301,16 @@ const sv = {
         description: 'Dataimport, dataexport',
       },
       goals: {
-        title: 'Mål & Framsteg',
-        description: 'Viktmål, achievements',
+        title: 'Framsteg',
+        description: 'Vikt, mål, achievements och rapporter',
+      },
+      coach: {
+        title: 'AI Coach',
+        description: 'Fullständig AI Coach',
+      },
+      nutrition: {
+        title: 'Mat',
+        description: 'Mat, måltider och matscanning',
       },
       archive: {
         title: 'Arkiv & Historik',
@@ -386,10 +398,10 @@ const sv = {
   social: {
     room: {
       eyebrow: 'Lugn tillsammans',
-      title: 'Rummet',
+      title: 'Stället',
       intro: 'Ett lugnt kvällsrum för vänner, inte ett socialt flöde.',
       tabsAria: 'Rumsvyer',
-      tabs: { room: 'Rummet', chat: 'Chatt', watch: 'Titta', board: 'Tavlan', games: 'Spel' },
+      tabs: { room: 'Stället', chat: 'Chatt', watch: 'Titta', board: 'Tavlan', games: 'Spel' },
       loading: 'Hämtar ansluten social information.',
       welcome: {
         title: 'Välkommen in',
@@ -1428,6 +1440,8 @@ const sv = {
       },
     },
   },
+  ready: readySv,
+  place: placeSv,
 }
 
 const en = {
@@ -1473,8 +1487,10 @@ const en = {
       more: { aria: 'Open more features and settings', label: 'More' },
       nutrition: { aria: 'Open food and nutrition', label: 'Food' },
       notices: { aria: 'Open notices and memory support', label: 'Notices' },
+      place: { aria: 'Open Place', label: 'Place' },
       progress: { aria: 'Open weight and progress', label: 'Progress' },
-      social: { aria: 'Open Social Room', label: 'Room' },
+      redo: { aria: 'Open Ready!', label: 'Ready!' },
+      social: { aria: 'Open The Spot', label: 'The Spot' },
     },
   },
   home: {
@@ -1729,8 +1745,16 @@ const en = {
         description: 'Data import, data export',
       },
       goals: {
-        title: 'Goals & Progress',
-        description: 'Weight goals, achievements',
+        title: 'Progress',
+        description: 'Weight, goals, achievements and reports',
+      },
+      coach: {
+        title: 'AI Coach',
+        description: 'Full AI Coach',
+      },
+      nutrition: {
+        title: 'Food',
+        description: 'Meals and food scanning',
       },
       archive: {
         title: 'Archive & History',
@@ -2860,6 +2884,8 @@ const en = {
       },
     },
   },
+  ready: readyEn,
+  place: placeEn,
 }
 
 function clone(value) {

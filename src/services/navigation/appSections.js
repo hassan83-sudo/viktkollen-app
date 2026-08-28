@@ -1,5 +1,6 @@
 ﻿export const defaultAppSectionId = 'home'
 
+/** Primary bottom-nav sections: Hem · Redo! · Plats · Notis · Stället · Mer */
 export const appSections = [
   {
     ariaLabel: 'Öppna översikten',
@@ -8,16 +9,16 @@ export const appSections = [
     label: 'Hem',
   },
   {
-    ariaLabel: 'Öppna coach och insikter',
-    icon: '✦',
-    id: 'coach',
-    label: 'Coach',
+    ariaLabel: 'Öppna Redo!',
+    icon: '✓',
+    id: 'redo',
+    label: 'Redo!',
   },
   {
-    ariaLabel: 'Öppna mat och nutrition',
-    icon: '+',
-    id: 'nutrition',
-    label: 'Mat',
+    ariaLabel: 'Öppna Plats',
+    icon: '📍',
+    id: 'place',
+    label: 'Plats',
   },
   {
     ariaLabel: 'Öppna notiser och minnesstöd',
@@ -26,10 +27,10 @@ export const appSections = [
     label: 'Notis',
   },
   {
-    ariaLabel: 'Öppna Social Room',
-    icon: '💬',
+    ariaLabel: 'Öppna Stället',
+    icon: '🛋',
     id: 'social',
-    label: 'Rummet',
+    label: 'Stället',
   },
   {
     ariaLabel: 'Öppna fler funktioner och inställningar',
@@ -39,10 +40,26 @@ export const appSections = [
   },
 ]
 
-const appSectionIds = new Set(appSections.map((section) => section.id))
+/** Deep-link / Mer destinations kept routable without bottom-nav tabs. */
+export const secondaryAppSectionIds = Object.freeze(['coach', 'nutrition', 'progress'])
+
+const primaryAppSectionIds = new Set(appSections.map((section) => section.id))
+const secondaryIds = new Set(secondaryAppSectionIds)
+const appSectionIds = new Set([...primaryAppSectionIds, ...secondaryIds])
 
 export function isAppSectionId(value) {
   return appSectionIds.has(value)
+}
+
+export function isPrimaryAppSectionId(value) {
+  return primaryAppSectionIds.has(value)
+}
+
+export function getBottomNavActiveSectionId(activeSection) {
+  if (secondaryAppSectionIds.includes(activeSection)) {
+    return 'more'
+  }
+  return isPrimaryAppSectionId(activeSection) ? activeSection : defaultAppSectionId
 }
 
 export function normalizeAppSectionId(value) {
@@ -51,20 +68,19 @@ export function normalizeAppSectionId(value) {
 
 export function getAppSection(sectionId) {
   const normalizedId = normalizeAppSectionId(sectionId)
-
-  return appSections.find((section) => section.id === normalizedId) || appSections[0]
+  return appSections.find((section) => section.id === normalizedId)
+    || appSections[0]
 }
 
 export function getAppSectionIndex(sectionId) {
   const normalizedId = normalizeAppSectionId(sectionId)
-
-  return appSections.findIndex((section) => section.id === normalizedId)
+  const index = appSections.findIndex((section) => section.id === normalizedId)
+  return index >= 0 ? index : 0
 }
 
 export function getAdjacentAppSection(sectionId, direction = 1) {
   const currentIndex = getAppSectionIndex(sectionId)
   const offset = direction < 0 ? -1 : 1
   const nextIndex = (currentIndex + offset + appSections.length) % appSections.length
-
   return appSections[nextIndex]
 }

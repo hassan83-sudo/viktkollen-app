@@ -2,6 +2,8 @@ import { moreHubFolders } from '../../services/more/moreFolders.js'
 import { useTranslation } from 'react-i18next'
 
 const FOLDER_I18N_KEYS = {
+  'ai-coach': 'coach',
+  mat: 'nutrition',
   'sakerhet-backup': 'security',
   'import-export': 'importExport',
   'mal-framsteg': 'goals',
@@ -9,12 +11,14 @@ const FOLDER_I18N_KEYS = {
   installningar: 'settings',
 }
 
-function folderCopy(t, folderId) {
-  const key = FOLDER_I18N_KEYS[folderId]
-  if (!key) return { description: '', title: '' }
+function folderCopy(t, folder) {
+  const key = FOLDER_I18N_KEYS[folder.id]
+  if (!key) {
+    return { description: folder.description, title: folder.title }
+  }
   return {
-    description: t(`folders.${key}.description`),
-    title: t(`folders.${key}.title`),
+    description: t(`folders.${key}.description`, { defaultValue: folder.description }),
+    title: t(`folders.${key}.title`, { defaultValue: folder.title }),
   }
 }
 
@@ -29,7 +33,7 @@ function MoreHub({ activeFolder, children, isAuthenticated, onBack, onOpen, sync
       : syncStatus.statusLabel || (online ? t('more.online') : t('more.offline'))
 
   if (folder) {
-    const { title } = folderCopy(t, folder.id)
+    const { title } = folderCopy(t, folder)
     return (
       <div className="more-hub-view">
         <button className="more-hub-back" type="button" onClick={onBack}>
@@ -59,7 +63,7 @@ function MoreHub({ activeFolder, children, isAuthenticated, onBack, onOpen, sync
       </header>
       <nav className="more-hub-folders" aria-label={`${t('more.heading')} ${t('more.categories').toLocaleLowerCase()}`}>
         {moreHubFolders.map((entry) => {
-          const { description, title } = folderCopy(t, entry.id)
+          const { description, title } = folderCopy(t, entry)
           return (
             <button
               aria-label={`${title}. ${description}`}

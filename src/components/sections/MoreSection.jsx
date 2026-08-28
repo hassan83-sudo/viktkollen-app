@@ -30,6 +30,7 @@ function MoreSection({
   onDataRestored,
   onEditProfile,
   onLanguageChange,
+  onOpenAiCoach,
   onSearchNavigate,
   onSignOut,
   profileCompleteness,
@@ -42,6 +43,11 @@ function MoreSection({
   profile,
   ProgressSectionComponent,
   progressSectionProps,
+  NutritionSectionComponent,
+  nutritionSectionProps,
+  nutritionNavigationIntent,
+  CoachSectionComponent,
+  coachSectionProps,
   weights,
 }) {
   const { t } = useTranslation(['settings', 'common'])
@@ -165,6 +171,43 @@ function MoreSection({
         onBack={handleBackToHub}
         onOpen={setActiveFolder}
       >
+        {activeFolder === 'mat' && (
+          <AppErrorBoundary area="nutrition" resetKey={`${healthSnapshot?.date}-${weights.length}`} title={t('nutritionError', { defaultValue: 'Mat kunde inte visas' })}>
+            {NutritionSectionComponent && (
+              <NutritionSectionComponent
+                {...nutritionSectionProps}
+                activeSection="nutrition"
+                navigationIntent={nutritionNavigationIntent || navigationIntent}
+              />
+            )}
+          </AppErrorBoundary>
+        )}
+
+        {activeFolder === 'ai-coach' && (
+          <>
+          <article className="panel" id="ai-coach">
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">{t('folders.coach.eyebrow', { defaultValue: 'AI' })}</p>
+                <h2>{t('folders.coach.title', { defaultValue: 'AI Coach' })}</h2>
+              </div>
+            </div>
+            <p>{t('folders.coach.body', { defaultValue: 'Öppna den fullständiga AI Coach-ytan. Historik och state delas med Hem och Redo!.' })}</p>
+            <button className="primary-button" type="button" onClick={() => onOpenAiCoach?.()}>
+              {t('folders.coach.open', { defaultValue: 'Öppna AI Coach' })}
+            </button>
+          </article>
+          {CoachSectionComponent && (
+            <AppErrorBoundary area="coach" resetKey={userId} title={t('coachError', { defaultValue: 'AI Coach kunde inte visas' })}>
+              <CoachSectionComponent
+                {...coachSectionProps}
+                activeSection="coach"
+              />
+            </AppErrorBoundary>
+          )}
+          </>
+        )}
+
         {activeFolder === 'sakerhet-backup' && (
           <AppErrorBoundary
             area="cloud"

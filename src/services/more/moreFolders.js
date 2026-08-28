@@ -28,6 +28,13 @@ export const moreHubFolders = [
     title: 'Må bra',
   },
   {
+    id: 'ekonomi',
+    accent: 'green',
+    description: 'Utgifter, budget, skulder och sparande',
+    icon: '◌',
+    title: 'Ekonomi',
+  },
+  {
     id: 'sakerhet-backup',
     accent: 'purple',
     description: 'Backup, återställ, synk, moln',
@@ -62,6 +69,7 @@ export const moreHubTargetFolders = {
   'app-section-coach': 'ai-coach',
   'app-section-nutrition': 'mat',
   'app-section-progress': 'mal-framsteg',
+  'app-section-economy': 'ekonomi',
   'arkiv-historik': 'arkiv-historik',
   'backup-historik': 'arkiv-historik',
   'body-analysis': 'mal-framsteg',
@@ -71,6 +79,7 @@ export const moreHubTargetFolders = {
   'data-import': 'import-export',
   framstegsbilder: 'mal-framsteg',
   installningar: 'installningar',
+  ekonomi: 'ekonomi',
   mat: 'mat',
   'mal-framsteg': 'mal-framsteg',
   'mal-framsteg-oversikt': 'mal-framsteg',
@@ -89,6 +98,8 @@ export const moreHubTargetFolders = {
   wellbeing: 'ma-bra',
   'wellbeing-center': 'ma-bra',
   'app-section-wellbeing': 'ma-bra',
+  economy: 'ekonomi',
+  'economy-center': 'ekonomi',
 }
 
 export function resolveMoreFolderFromTarget(targetId) {

@@ -41,7 +41,7 @@ export const appSections = [
 ]
 
 /** Deep-link / Mer destinations kept routable without bottom-nav tabs. */
-export const secondaryAppSectionIds = Object.freeze(['coach', 'nutrition', 'progress', 'wellbeing'])
+export const secondaryAppSectionIds = Object.freeze(['coach', 'nutrition', 'progress', 'wellbeing', 'economy'])
 
 const primaryAppSectionIds = new Set(appSections.map((section) => section.id))
 const secondaryIds = new Set(secondaryAppSectionIds)

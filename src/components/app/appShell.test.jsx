@@ -78,16 +78,17 @@ describe('Performance Architecture app shell components', () => {
     expect(markup).toContain('Stället')
   })
 
-  it('keeps Coach, Mat and Framsteg reachable through More destinations', () => {
+  it('keeps Coach, Mat, Framsteg, Må bra and Ekonomi reachable through More destinations', () => {
     expect(resolveMoreFolderFromTarget('app-section-coach')).toBe('ai-coach')
     expect(resolveMoreFolderFromTarget('app-section-nutrition')).toBe('mat')
     expect(resolveMoreFolderFromTarget('app-section-progress')).toBe('mal-framsteg')
     expect(resolveMoreFolderFromTarget('app-section-wellbeing')).toBe('ma-bra')
+    expect(resolveMoreFolderFromTarget('app-section-economy')).toBe('ekonomi')
     expect(resolveMoreFolderFromTarget('body-analysis')).toBe('mal-framsteg')
   })
 
-  it('marks More active for secondary Coach, Mat, Framsteg and Må bra routes', () => {
-    ;['coach', 'nutrition', 'progress', 'wellbeing'].forEach((activeSection) => {
+  it('marks More active for secondary Coach, Mat, Framsteg, Må bra and Ekonomi routes', () => {
+    ;['coach', 'nutrition', 'progress', 'wellbeing', 'economy'].forEach((activeSection) => {
       const markup = renderToStaticMarkup(<BottomNavigation activeSection={activeSection} />)
 
       expect(markup).toContain('href="#app-section-more"')

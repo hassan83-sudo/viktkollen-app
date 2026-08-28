@@ -337,6 +337,30 @@ const sv = {
     status: { skipped: 'Check-in hoppades över. Ingenting sparades.', checkInSaved: 'Check-in sparades lokalt.', planCleared: 'Trygghetsplanen raderades.' },
     privacy: 'Lagring: {{key}}, schema v1, check-ins behålls i {{days}} dagar. Må bra-data ingår inte i cloud backup/export i denna sprint.',
   },
+  economy: {
+    sectionLabel: 'Ekonomi',
+    eyebrow: 'Local-first',
+    title: 'Ekonomi',
+    subtitle: 'Manuella utgifter, budgetar, skulder, räkningar och sparande utan bankkoppling.',
+    tabs: { aria: 'Ekonomiflikar', overview: 'Översikt', purchases: 'Köp', budget: 'Budget', debts: 'Skulder', bills: 'Räkningar', saving: 'Sparande' },
+    actions: { cancel: 'Avbryt', clearAll: 'Radera all Ekonomi-data', confirmClearAll: 'Ja, radera all Ekonomi-data', confirmPayment: 'Bekräfta betalning', confirmSavingTransaction: 'Bekräfta spartransaktion', delete: 'Radera', deleteConfirm: 'Radering kräver bekräftelse.', deleteYes: 'Ja, radera', hideAmounts: 'Dölj belopp', reminderDraft: 'Skapa påminnelseutkast', saveBill: 'Spara räkning', saveBudget: 'Spara budget', saveDebt: 'Spara skuld', saveGoal: 'Spara mål', saveIncome: 'Spara inkomst', savePurchase: 'Spara köp', saveSubscription: 'Spara abonnemang', showAmounts: 'Visa belopp' },
+    assistant: { placeholder: 'Ekonomi-assistenten är bara förberedd som policy/capability och kommer senare. Ingen AI, bank eller backend används här.' },
+    billStatus: { overdue: 'Förfallen', paid: 'Betald', soon: 'Förfaller snart', upcoming: 'Kommande' },
+    budget: { forecastMissing: 'Inte tillräckligt med data ännu för prognos.', inside: 'Inom budget.', over: 'Budgeten är överskriden, utan värderande språk.', used: 'Du har använt {{percent}}. {{remaining}} återstår.', zero: 'Budget 0 hanteras utan division.' },
+    categories: { housing: 'Boende', food: 'Mat', transport: 'Transport', shopping: 'Shopping', subscriptions: 'Abonnemang', health: 'Hälsa', fun: 'Nöjen', debt: 'Skulder och avbetalningar', other: 'Övrigt' },
+    debts: { avalanche: 'Lavinen', estimate: 'Uppskattad sluttid: {{months}} månader', monthly: 'Planerad månadsbetalning: {{amount}}', noEstimate: 'Ingen uppskattad sluttid utan betalningsunderlag.', payment: 'Registrera skuldbetalning', snowball: 'Snöboll', summary: 'Skuldöversikt', total: 'Kvarvarande skuld: {{amount}}' },
+    empty: { noBudgets: 'Ingen budget för vald månad ännu.', noDebts: 'Inga skulder registrerade.', noPurchases: 'Inga köp i kategorin ännu.', noRows: 'Inga manuella poster ännu.', noSaving: 'Inga sparmål ännu.', noWheel: 'Inga utgifter registrerade för vald månad. Tavlan visar ingen exempeldata.' },
+    fields: { amount: 'Belopp', amountHidden: 'Beloppen är dolda', category: 'Kategori', choose: 'Välj', confirmed: 'Bekräftad inkomst', date: 'Datum', debt: 'Skuld', description: 'Beskrivning eller butik', dueDate: 'Förfallodatum', dueDay: 'Förfallodag', goal: 'Sparmål', interest: 'Ränta procent', minimumPayment: 'Minsta månadsbetalning', monthlyPlan: 'Frivillig månadsplan', name: 'Namn', nextPayment: 'Nästa betalning', note: 'Anteckning', originalAmount: 'Ursprungligt belopp', paymentMethod: 'Betalsätt utan kortnummer', period: 'Period', plannedPayment: 'Planerad månadsbetalning', remainingAmount: 'Kvarvarande belopp', repeat: 'Upprepning', startDate: 'Startdatum', targetAmount: 'Målbelopp', targetDate: 'Måldatum', type: 'Typ', currentAmount: 'Nuvarande sparat' },
+    overview: { categoryDetail: '{{amount}}, {{percent}}, {{count}} köp.', emptyBasis: 'Tomt underlag. Positivt kvar-belopp visas inte utan registrerad inkomst.', expenses: 'Utgifter', income: 'Bekräftade inkomster', incomeForm: 'Manuell inkomst', manualPartial: 'Manuell local-first-data. Registreringen kan vara ofullständig.', month: 'Månad', remaining: 'Kvar denna månad', saved: 'Sparat denna månad', upcomingBills: 'Kommande räkningar' },
+    period: { monthly: 'Månadsvis', quarterly: 'Kvartalsvis', yearly: 'Årsvis' },
+    privacy: { activate: 'Aktivera Ekonomi lokalt', delete: 'Radering görs längst ned i Ekonomi.', eyebrow: 'Frivillig aktivering', intro: 'Innan du börjar: Ekonomi sparar bara det du själv registrerar.', local: 'Data lagras lokalt i den här webbläsaren.', noBank: 'Ingen bank, Open Banking, kortnummer eller konto kopplas.', noSecrets: 'Viktkollen ber aldrig om banklösenord eller BankID-koder.', storage: 'Lagring: {{key}}, schema v{{schema}}, retention: {{retention}}. Ingår inte i cloud backup, sync, import eller export.', storageTitle: 'Integritet och lagring' },
+    repeat: { none: 'Ingen', monthly: 'Månadsvis', quarterly: 'Kvartalsvis', yearly: 'Årsvis' },
+    saving: { deposit: 'Insättning', remaining: '{{amount}} kvar', transaction: 'Manuell spartransaktion', withdrawal: 'Uttag' },
+    status: { activated: 'Ekonomi aktiverades lokalt.', cleared: 'All Ekonomi-data raderades lokalt.', deleted: 'Posten raderades.', hidden: 'Belopp döljs i Ekonomi.', invalidAmount: 'Ange ett giltigt belopp.', paymentConfirmed: 'Manuell transaktion bekräftades.', saved: 'Sparat lokalt.', visible: 'Belopp visas igen.' },
+    subscriptions: { title: 'Abonnemang', year: 'per år' },
+    types: { purchase: 'Köp', refund: 'Återbetalning' },
+    wheel: { description: 'Rund tavla med månadens utgifter per kategori.', table: 'Textalternativ till utgiftstavlan', title: 'Rund utgiftstavla' },
+  },
   settings: {
     language: {
       description: 'Byt språk direkt utan att ladda om. Svenska är källspråk.',
@@ -391,6 +415,10 @@ const sv = {
       wellbeing: {
         title: 'Må bra',
         description: 'Lugna övningar och trygghetsplan',
+      },
+      economy: {
+        title: 'Ekonomi',
+        description: 'Utgifter, budget, skulder och sparande',
       },
       nutrition: {
         title: 'Mat',
@@ -1865,6 +1893,30 @@ const en = {
     status: { skipped: 'Check-in skipped. Nothing was saved.', checkInSaved: 'Check-in saved locally.', planCleared: 'Safety plan deleted.' },
     privacy: 'Storage: {{key}}, schema v1, check-ins are kept for {{days}} days. Wellbeing data is not included in cloud backup/export in this sprint.',
   },
+  economy: {
+    sectionLabel: 'Economy',
+    eyebrow: 'Local-first',
+    title: 'Economy',
+    subtitle: 'Manual expenses, budgets, debts, bills and saving without bank connection.',
+    tabs: { aria: 'Economy tabs', overview: 'Overview', purchases: 'Purchases', budget: 'Budget', debts: 'Debts', bills: 'Bills', saving: 'Saving' },
+    actions: { cancel: 'Cancel', clearAll: 'Delete all Economy data', confirmClearAll: 'Yes, delete all Economy data', confirmPayment: 'Confirm payment', confirmSavingTransaction: 'Confirm saving transaction', delete: 'Delete', deleteConfirm: 'Deletion requires confirmation.', deleteYes: 'Yes, delete', hideAmounts: 'Hide amounts', reminderDraft: 'Create reminder draft', saveBill: 'Save bill', saveBudget: 'Save budget', saveDebt: 'Save debt', saveGoal: 'Save goal', saveIncome: 'Save income', savePurchase: 'Save purchase', saveSubscription: 'Save subscription', showAmounts: 'Show amounts' },
+    assistant: { placeholder: 'The Economy assistant is only prepared as policy/capability and is coming later. No AI, bank or backend is used here.' },
+    billStatus: { overdue: 'Overdue', paid: 'Paid', soon: 'Due soon', upcoming: 'Upcoming' },
+    budget: { forecastMissing: 'Not enough data yet for a forecast.', inside: 'Inside budget.', over: 'The budget is exceeded, without judging language.', used: 'You have used {{percent}}. {{remaining}} remains.', zero: 'Budget 0 is handled without division.' },
+    categories: { housing: 'Housing', food: 'Food', transport: 'Transport', shopping: 'Shopping', subscriptions: 'Subscriptions', health: 'Health', fun: 'Fun', debt: 'Debt and repayments', other: 'Other' },
+    debts: { avalanche: 'Avalanche', estimate: 'Estimated finish: {{months}} months', monthly: 'Planned monthly payment: {{amount}}', noEstimate: 'No estimated finish without payment data.', payment: 'Register debt payment', snowball: 'Snowball', summary: 'Debt overview', total: 'Remaining debt: {{amount}}' },
+    empty: { noBudgets: 'No budget for the selected month yet.', noDebts: 'No debts registered.', noPurchases: 'No purchases in the category yet.', noRows: 'No manual entries yet.', noSaving: 'No saving goals yet.', noWheel: 'No expenses registered for the selected month. The board shows no example data.' },
+    fields: { amount: 'Amount', amountHidden: 'Amounts are hidden', category: 'Category', choose: 'Choose', confirmed: 'Confirmed income', date: 'Date', debt: 'Debt', description: 'Description or store', dueDate: 'Due date', dueDay: 'Due day', goal: 'Saving goal', interest: 'Interest percent', minimumPayment: 'Minimum monthly payment', monthlyPlan: 'Optional monthly plan', name: 'Name', nextPayment: 'Next payment', note: 'Note', originalAmount: 'Original amount', paymentMethod: 'Payment method without card number', period: 'Period', plannedPayment: 'Planned monthly payment', remainingAmount: 'Remaining amount', repeat: 'Repeat', startDate: 'Start date', targetAmount: 'Target amount', targetDate: 'Target date', type: 'Type', currentAmount: 'Current saved' },
+    overview: { categoryDetail: '{{amount}}, {{percent}}, {{count}} purchases.', emptyBasis: 'Empty basis. Positive remaining amount is not shown without registered income.', expenses: 'Expenses', income: 'Confirmed income', incomeForm: 'Manual income', manualPartial: 'Manual local-first data. Registration may be incomplete.', month: 'Month', remaining: 'Remaining this month', saved: 'Saved this month', upcomingBills: 'Upcoming bills' },
+    period: { monthly: 'Monthly', quarterly: 'Quarterly', yearly: 'Yearly' },
+    privacy: { activate: 'Activate Economy locally', delete: 'Deletion is at the bottom of Economy.', eyebrow: 'Voluntary activation', intro: 'Before you start: Economy only saves what you register yourself.', local: 'Data is stored locally in this browser.', noBank: 'No bank, Open Banking, card number or account is connected.', noSecrets: 'Viktkollen never asks for bank passwords or BankID codes.', storage: 'Storage: {{key}}, schema v{{schema}}, retention: {{retention}}. Not included in cloud backup, sync, import or export.', storageTitle: 'Privacy and storage' },
+    repeat: { none: 'None', monthly: 'Monthly', quarterly: 'Quarterly', yearly: 'Yearly' },
+    saving: { deposit: 'Deposit', remaining: '{{amount}} remaining', transaction: 'Manual saving transaction', withdrawal: 'Withdrawal' },
+    status: { activated: 'Economy activated locally.', cleared: 'All Economy data was deleted locally.', deleted: 'Entry deleted.', hidden: 'Amounts are hidden in Economy.', invalidAmount: 'Enter a valid amount.', paymentConfirmed: 'Manual transaction confirmed.', saved: 'Saved locally.', visible: 'Amounts are visible again.' },
+    subscriptions: { title: 'Subscriptions', year: 'per year' },
+    types: { purchase: 'Purchase', refund: 'Refund' },
+    wheel: { description: 'Round board with monthly expenses by category.', table: 'Text alternative for the expense board', title: 'Round expense board' },
+  },
   settings: {
     language: {
       description: 'Change language instantly without reloading. Swedish remains the source language.',
@@ -1919,6 +1971,10 @@ const en = {
       wellbeing: {
         title: 'Wellbeing',
         description: 'Calm exercises and safety plan',
+      },
+      economy: {
+        title: 'Economy',
+        description: 'Expenses, budget, debts and saving',
       },
       nutrition: {
         title: 'Food',

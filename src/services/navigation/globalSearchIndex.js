@@ -194,6 +194,16 @@ export const globalSearchItems = [
     title: 'Må bra',
   }),
   createItem({
+    description: 'Utgifter, budget, skulder, räkningar och sparande',
+    id: 'economy',
+    keywords: ['ekonomi', 'budget', 'utgifter', 'köp', 'skulder', 'räkningar', 'sparande', 'abonnemang', 'economy'],
+    priority: 10,
+    section: 'economy',
+    suggestionGroup: 'Förslag för dig',
+    targetId: 'economy-center',
+    title: 'Ekonomi',
+  }),
+  createItem({
     description: 'Dagens check-in för energi, steg, humör och rörelse',
     id: 'daily-checkin',
     keywords: ['check in', 'check-in', 'checkin', 'dagens check-in', 'dagens checkin', 'humör', 'energi', 'rörelse', 'steg'],

@@ -50,6 +50,8 @@ function MoreSection({
   coachSectionProps,
   WellbeingSectionComponent,
   wellbeingSectionProps,
+  EconomySectionComponent,
+  economySectionProps,
   weights,
 }) {
   const { t } = useTranslation(['settings', 'common'])
@@ -216,6 +218,15 @@ function MoreSection({
               {...wellbeingSectionProps}
               activeSection="wellbeing"
               t={t}
+            />
+          </AppErrorBoundary>
+        )}
+
+        {activeFolder === 'ekonomi' && EconomySectionComponent && (
+          <AppErrorBoundary area="economy" resetKey={userId} title={t('economyError', { defaultValue: 'Ekonomi kunde inte visas' })}>
+            <EconomySectionComponent
+              {...economySectionProps}
+              activeSection="economy"
             />
           </AppErrorBoundary>
         )}

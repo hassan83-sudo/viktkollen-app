@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 const FOLDER_I18N_KEYS = {
   'ai-coach': 'coach',
+  ekonomi: 'economy',
   'ma-bra': 'wellbeing',
   mat: 'nutrition',
   'sakerhet-backup': 'security',

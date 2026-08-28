@@ -26,14 +26,16 @@ describe('appSections', () => {
     expect(defaultAppSectionId).toBe('home')
   })
 
-  it('keeps coach, nutrition, progress and wellbeing routable as secondary sections', () => {
-    expect(secondaryAppSectionIds).toEqual(['coach', 'nutrition', 'progress', 'wellbeing'])
+  it('keeps coach, nutrition, progress, wellbeing and economy routable as secondary sections', () => {
+    expect(secondaryAppSectionIds).toEqual(['coach', 'nutrition', 'progress', 'wellbeing', 'economy'])
     expect(isAppSectionId('coach')).toBe(true)
     expect(isAppSectionId('nutrition')).toBe(true)
     expect(isAppSectionId('progress')).toBe(true)
     expect(isAppSectionId('wellbeing')).toBe(true)
+    expect(isAppSectionId('economy')).toBe(true)
     expect(isPrimaryAppSectionId('coach')).toBe(false)
     expect(isPrimaryAppSectionId('wellbeing')).toBe(false)
+    expect(isPrimaryAppSectionId('economy')).toBe(false)
     expect(isPrimaryAppSectionId('redo')).toBe(true)
   })
 
@@ -42,6 +44,7 @@ describe('appSections', () => {
     expect(getBottomNavActiveSectionId('nutrition')).toBe('more')
     expect(getBottomNavActiveSectionId('coach')).toBe('more')
     expect(getBottomNavActiveSectionId('wellbeing')).toBe('more')
+    expect(getBottomNavActiveSectionId('economy')).toBe('more')
     expect(getBottomNavActiveSectionId('place')).toBe('place')
   })
 

@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { moreHubFolders, resolveMoreFolderFromTarget } from './moreFolders.js'
 
 describe('more hub folders', () => {
-  it('lists Framsteg, Mat and AI Coach first', () => {
-    expect(moreHubFolders).toHaveLength(8)
+  it('lists Framsteg, Mat and AI Coach first while preserving the family hubs', () => {
+    expect(moreHubFolders).toHaveLength(9)
     expect(moreHubFolders.map((folder) => folder.id)).toEqual([
       'mal-framsteg',
       'mat',
       'ai-coach',
       'ma-bra',
+      'ekonomi',
       'sakerhet-backup',
       'import-export',
       'arkiv-historik',
@@ -19,6 +20,7 @@ describe('more hub folders', () => {
       'Mat',
       'AI Coach',
       'Må bra',
+      'Ekonomi',
       'Säkerhet & Backup',
       'Import & Export',
       'Arkiv & Historik',
@@ -35,6 +37,8 @@ describe('more hub folders', () => {
     expect(resolveMoreFolderFromTarget('app-section-progress')).toBe('mal-framsteg')
     expect(resolveMoreFolderFromTarget('app-section-wellbeing')).toBe('ma-bra')
     expect(resolveMoreFolderFromTarget('wellbeing-center')).toBe('ma-bra')
+    expect(resolveMoreFolderFromTarget('app-section-economy')).toBe('ekonomi')
+    expect(resolveMoreFolderFromTarget('economy-center')).toBe('ekonomi')
     expect(resolveMoreFolderFromTarget('#quiet-hours')).toBe('mal-framsteg')
     expect(resolveMoreFolderFromTarget('nutrition-scanner-v2')).toBe('mat')
     expect(resolveMoreFolderFromTarget('data-export')).toBe('import-export')

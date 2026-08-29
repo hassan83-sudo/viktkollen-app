@@ -68,6 +68,95 @@ export const videoScanVoiceLines = {
   side_prepare: 'Vänd höger sida mot kameran.',
 }
 
+/**
+ * Explicit turn instructions for step 9 and step 13 of the guided flow.
+ * Kept separate from getVideoScanInstruction so the existing pose titles
+ * (which describe the end position) stay unchanged.
+ */
+export const videoScanTurnInstructions = {
+  back: 'Vänd dig åt höger igen så att ryggen är mot kameran',
+  front: 'Ställ dig rakt fram mot kameran',
+  side: 'Vänd dig åt höger',
+}
+
+export function getVideoScanTurnInstruction(pose) {
+  return videoScanTurnInstructions[pose] || ''
+}
+
+/** Step 3: what the user needs to arrange before the camera preview starts. */
+export const videoScanPreparationTips = [
+  {
+    key: 'distance',
+    text: 'Ställ kameran cirka 2–3 meter bort så att hela kroppen får plats i bilden, från huvud till fötter.',
+    title: 'Avstånd',
+  },
+  {
+    key: 'light',
+    text: 'Använd jämnt ljus framifrån. Undvik att stå med ett fönster eller en lampa bakom dig.',
+    title: 'Ljus',
+  },
+  {
+    key: 'clothing',
+    text: 'Ha åtsittande kläder som kontrasterar mot bakgrunden. Vida kläder gör kroppsformen svårare att bedöma.',
+    title: 'Kläder',
+  },
+  {
+    key: 'placement',
+    text: 'Stå framför en lugn, enfärgad vägg med fri golvyta runt fötterna.',
+    title: 'Placering i rummet',
+  },
+]
+
+/** Step 1: what the user consents to before the camera is opened at all. */
+export const videoScanConsentPoints = [
+  'Kameran körs lokalt på din enhet. Videoströmmen lämnar aldrig telefonen.',
+  'Ingen video spelas in och ingen video sparas eller skickas.',
+  'Mikrofonen används aldrig. Kameran begärs alltid utan ljud.',
+  'Endast tre stillbilder – framifrån, från sidan och bakifrån – skapas.',
+  'Bilderna skickas till analysen först efter att du uttryckligen godkänt dem i granskningssteget.',
+  'Du kan avbryta och radera allt när som helst utan att något sparas eller skickas.',
+]
+
+export const videoScanSetupSteps = ['consent', 'camera', 'instructions']
+
+/**
+ * The 18 guided steps, used for the visible step indicator.
+ * setupStep is one of videoScanSetupSteps (before the camera phases start).
+ */
+export function getVideoScanStepNumber(phase, setupStep = null) {
+  if (setupStep === 'consent') return 1
+  if (setupStep === 'camera') return 2
+  if (setupStep === 'instructions') return 3
+  const byPhase = {
+    back_capture: 16,
+    back_countdown: 15,
+    back_done: 16,
+    back_prepare: 14,
+    front_capture: 8,
+    front_countdown: 7,
+    front_done: 8,
+    front_prepare: 6,
+    prepare: 4,
+    review: 17,
+    side_capture: 12,
+    side_countdown: 11,
+    side_done: 12,
+    side_prepare: 10,
+  }
+  if (phase === 'analyzing' || phase === 'done') return 18
+  return byPhase[phase] || 0
+}
+
+export const videoScanTotalSteps = 18
+
+export function prefersReducedMotion(globalObject = globalThis) {
+  try {
+    return Boolean(globalObject.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches)
+  } catch {
+    return false
+  }
+}
+
 export const initialVideoScanState = {
   analysisError: '',
   analysisStatus: '',
@@ -80,11 +169,13 @@ export const initialVideoScanState = {
   faceStatus: 'pending',
   facingMode: defaultVideoScanFacingMode,
   framingMode: 'manual',
+  paused: false,
   phase: 'idle',
   pose: null,
   positionMessage: '',
   positionStatus: 'idle',
-  voiceEnabled: true,
+  // Spoken guidance is opt-in: accessibility requirement is that voice is OFF by default.
+  voiceEnabled: false,
   zoom: 1,
   zoomMode: 'unknown',
 }
@@ -545,6 +636,7 @@ export function reduceVideoScan(state, action) {
     case 'BEGIN_COUNTDOWN': {
       const pose = action.pose || state.pose || 'front'
       if (state.capturing) return state
+      if (state.paused) return state
       if (!isPreparePhase(state.phase) && state.phase !== 'prepare') return state
       return {
         ...state,
@@ -565,9 +657,26 @@ export function reduceVideoScan(state, action) {
         countdown: null,
         error: '',
         phase: getPreparePhase(state.pose || 'front'),
-        positionMessage: 'Positionen ändrades — ställ dig i ramen igen.',
+        positionMessage: action.message || 'Positionen ändrades — ställ dig i ramen igen.',
         positionStatus: 'invalid',
       }
+    case 'PAUSE': {
+      if (state.paused) return state
+      // Pausing during a countdown must drop the countdown, never capture silently.
+      const wasCountingDown = isCountdownPhase(state.phase)
+      return {
+        ...state,
+        capturing: false,
+        countdown: wasCountingDown ? null : state.countdown,
+        paused: true,
+        phase: wasCountingDown ? getPreparePhase(state.pose || 'front') : state.phase,
+        positionMessage: wasCountingDown ? 'Pausad — nedräkningen avbröts.' : state.positionMessage,
+        positionStatus: wasCountingDown ? 'invalid' : state.positionStatus,
+      }
+    }
+    case 'RESUME':
+      if (!state.paused) return state
+      return { ...state, paused: false }
     case 'SET_FRAMING_MODE': {
       const framingMode = action.mode === 'auto' ? 'auto' : 'manual'
       const leaveCountdown = isCountdownPhase(state.phase) && framingMode !== state.framingMode
@@ -907,7 +1016,79 @@ export function drawVideoFrameToCanvas(video, canvas) {
   return true
 }
 
-export function canvasToScanFile(canvas, pose) {
+export const maxScanImageEdgePx = 1600
+export const allowedScanImageTypes = ['image/jpeg', 'image/jpg', 'image/png']
+
+export function getScaledScanDimensions(width, height, maxEdge = maxScanImageEdgePx) {
+  const sourceWidth = Math.max(1, Math.round(Number(width) || 0))
+  const sourceHeight = Math.max(1, Math.round(Number(height) || 0))
+  const longestEdge = Math.max(sourceWidth, sourceHeight)
+  if (!Number.isFinite(maxEdge) || maxEdge <= 0 || longestEdge <= maxEdge) {
+    return { height: sourceHeight, width: sourceWidth }
+  }
+  const scale = maxEdge / longestEdge
+  return {
+    height: Math.max(1, Math.round(sourceHeight * scale)),
+    width: Math.max(1, Math.round(sourceWidth * scale)),
+  }
+}
+
+export function isAllowedScanImageType(type) {
+  return allowedScanImageTypes.includes(String(type || '').toLowerCase())
+}
+
+/**
+ * Re-encodes a picked image through a canvas.
+ *
+ * Drawing to a canvas and reading it back with toBlob rebuilds the pixel data
+ * from scratch, so EXIF/GPS metadata from the original file is not carried
+ * over. This is the same pipeline the video capture path uses, so photo mode
+ * and video mode upload byte-equivalent kinds of files.
+ */
+export async function reencodeImageFileToScanFile(file, poseKey, {
+  documentRef = typeof document !== 'undefined' ? document : null,
+  maxEdge = maxScanImageEdgePx,
+  quality = 0.9,
+} = {}) {
+  if (!file || !documentRef?.createElement) {
+    throw new Error('Bilden kunde inte läsas om.')
+  }
+  if (!isAllowedScanImageType(file.type)) {
+    throw new Error('Bilden måste vara JPEG eller PNG.')
+  }
+
+  const objectUrl = URL.createObjectURL(file)
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const element = new Image()
+      element.onload = () => resolve(element)
+      element.onerror = () => reject(new Error('Bilden kunde inte läsas om.'))
+      element.src = objectUrl
+    })
+
+    const { height, width } = getScaledScanDimensions(
+      image.naturalWidth || image.width,
+      image.naturalHeight || image.height,
+      maxEdge,
+    )
+    const canvas = documentRef.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('Bilden kunde inte läsas om.')
+    context.drawImage(image, 0, 0, width, height)
+
+    const reencoded = await canvasToScanFile(canvas, poseKey, { quality })
+    return {
+      file: reencoded,
+      preview: canvas.toDataURL('image/jpeg', 0.88),
+    }
+  } finally {
+    URL.revokeObjectURL(objectUrl)
+  }
+}
+
+export function canvasToScanFile(canvas, pose, { quality = 0.9 } = {}) {
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (!blob) {
@@ -922,7 +1103,7 @@ export function canvasToScanFile(canvas, pose) {
         blob.lastModified = Date.now()
         resolve(blob)
       }
-    }, 'image/jpeg', 0.9)
+    }, 'image/jpeg', quality)
   })
 }
 

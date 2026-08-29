@@ -37,6 +37,7 @@ import {
 import BodyAnalysisDevChecklist from './BodyAnalysisDevChecklist'
 import BodyAnalysisOnboarding from './BodyAnalysisOnboarding'
 import BodyAnalysisPrivacy from './BodyAnalysisPrivacy'
+import BodyAnalysisVideoScanner from './BodyAnalysisVideoScanner'
 import BodyAnalysisPremiumPreview from './BodyAnalysisPremiumPreview'
 import BodyAnalysisQuality from './BodyAnalysisQuality'
 import BodyAnalysisResult from './BodyAnalysisResult'
@@ -178,8 +179,17 @@ function getResultSections(result, t) {
     })
 }
 
+/**
+ * One consistent provenance label per result, so an AI estimate is never
+ * presented as a measurement and demo data is never presented as a result.
+ */
 function getResultSourceLabel(result, t) {
-  return result.source === 'ai' ? t('card.sourceLabel.ai') : t('card.sourceLabel.mock')
+  const source = result?.source || ''
+  if (result?.status === 'failed' || source === 'error') return t('card.sourceLabel.failed')
+  if (source === 'ai') return t('card.sourceLabel.ai')
+  if (source === 'local') return t('card.sourceLabel.local')
+  if (source === 'measured') return t('card.sourceLabel.measured')
+  return t('card.sourceLabel.mock')
 }
 
 function getLatestAiStatus(analysis, t) {
@@ -331,6 +341,8 @@ function BodyAnalysisCard({
   const [pendingDeleteAnalysisId, setPendingDeleteAnalysisId] = useState('')
   const [savedAnalysis, setSavedAnalysis] = useState(() => getLatestAnalysis())
   const [showAnalysisConsent, setShowAnalysisConsent] = useState(false)
+  // Photo mode stays the default so the stabilized iPhone flow is unchanged.
+  const [scanMode, setScanMode] = useState('photo')
   const [showClearHistoryConfirm, setShowClearHistoryConfirm] = useState(false)
   const [sidePhoto, setSidePhoto] = useState(null)
   const [timelineFilter, setTimelineFilter] = useState('all')
@@ -870,14 +882,48 @@ function BodyAnalysisCard({
       <p className="progress-photo-safety">{t('card.heading.intro')}</p>
       <div className="body-scan-hub">
         <h3 className="body-scan-hub-title">{t('card.heading.hubTitle')}</h3>
-        <BodyAnalysisUploader
-          canAnalyze={canAnalyze}
-          currentAnalysisStatus={currentAnalysisStatus}
-          disabledReason={analyzeDisabledReason}
-          photos={scanPhotos}
-          onAnalyze={handleAnalyzeBody}
-          onPhotoChange={handlePhotoChange}
-        />
+        <div className="body-scan-mode-switch" role="group" aria-label={t('card.heading.modeLabel')}>
+          <button
+            aria-pressed={scanMode === 'photo'}
+            className={scanMode === 'photo' ? '' : 'secondary-button'}
+            type="button"
+            onClick={() => setScanMode('photo')}
+          >
+            {t('card.heading.modePhoto')}
+          </button>
+          <button
+            aria-pressed={scanMode === 'video'}
+            className={scanMode === 'video' ? '' : 'secondary-button'}
+            type="button"
+            onClick={() => setScanMode('video')}
+          >
+            {t('card.heading.modeVideo')}
+          </button>
+        </div>
+        <p className="progress-photo-safety">
+          {scanMode === 'video' ? t('card.heading.modeVideoHint') : t('card.heading.modePhotoHint')}
+        </p>
+        {scanMode === 'photo' ? (
+          <BodyAnalysisUploader
+            canAnalyze={canAnalyze}
+            currentAnalysisStatus={currentAnalysisStatus}
+            disabledReason={analyzeDisabledReason}
+            photos={scanPhotos}
+            onAnalyze={handleAnalyzeBody}
+            onPhotoChange={handlePhotoChange}
+          />
+        ) : (
+          <BodyAnalysisVideoScanner
+            analysisError={analysisError}
+            disabledReason={analyzeDisabledReason}
+            hasApprovedAnalysis={hasApprovedAnalysis}
+            isAnalyzing={isAnalyzing}
+            isFreeLimitReached={isFreeLimitReached}
+            photos={scanPhotos}
+            onAnalyze={handleAnalyzeBody}
+            onPhotoChange={handlePhotoChange}
+          />
+        )}
         <details className="body-scan-section">
           <summary>{t('card.heading.privacySummary')}</summary>
           <ul className="body-scan-privacy-list">

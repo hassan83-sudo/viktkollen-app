@@ -4,8 +4,11 @@ import { createPortal } from 'react-dom'
 import {
   defaultBodyScanFacingMode,
   getBodyScanVideoConstraints,
+  getBodyScanVideoConstraintsForDevice,
   getCameraPermissionMessage,
   getNextBodyScanFacingMode,
+  listBodyScanCameras,
+  shouldOfferCameraChoice,
   stopMediaStream,
 } from '../services/bodyAnalysisGuidedScan'
 import {
@@ -25,7 +28,12 @@ import {
   getManualMaskBox,
   getTrackZoomCapabilities,
   getVideoContainRect,
+  getVideoScanCameraIndicator,
+  getVideoScanDirection,
+  getVideoScanInstruction,
   getVideoScanPoseCopy,
+  getVideoScanStepNumber,
+  getVideoScanTurnInstruction,
   isSameContainRect,
   getVoiceLineForPhase,
   initialVideoScanState,
@@ -34,10 +42,15 @@ import {
   isCountdownPhase,
   isFaceDetectorSupported,
   isPreparePhase,
+  prefersReducedMotion,
   reduceVideoScan,
   speakVideoScanLine,
+  videoScanConsentPoints,
+  videoScanCountdownStart,
   videoScanCountdownStepMs,
   videoScanDoneDelayMs,
+  videoScanPreparationTips,
+  videoScanTotalSteps,
   videoScanZoomStep,
 } from '../services/bodyAnalysisVideoScan'
 import {
@@ -100,6 +113,12 @@ function BodyAnalysisVideoScanner({
   const [containRect, setContainRect] = useState({ height: 0, scale: 1, width: 0, x: 0, y: 0 })
   const [previewError, setPreviewError] = useState('')
   const [status, setStatus] = useState('')
+  // Steps 1-3 run before getUserMedia is ever called.
+  const [setupStep, setSetupStep] = useState(null)
+  const [consentAccepted, setConsentAccepted] = useState(false)
+  const [cameras, setCameras] = useState([])
+  const [selectedCameraId, setSelectedCameraId] = useState('')
+  const reducedMotion = prefersReducedMotion()
   const canvasRef = useRef(null)
   const capturingLockRef = useRef(false)
   const frameRef = useRef(null)
@@ -115,8 +134,23 @@ function BodyAnalysisVideoScanner({
   const zoomRef = useRef(state.zoom)
   const poseCopy = getVideoScanPoseCopy(state.pose || 'front')
   const previewScale = state.zoomMode === 'hardware' ? 1 : state.zoom
-  const sessionOpen = isBodyScanSessionOpen(state.phase)
-  const cameraActiveUi = sessionOpen && state.phase !== 'review' && state.phase !== 'analyzing'
+  const scanOpen = isBodyScanSessionOpen(state.phase)
+  const setupOpen = setupStep !== null
+  const sessionOpen = scanOpen || setupOpen
+  const cameraActiveUi = scanOpen && state.phase !== 'review' && state.phase !== 'analyzing'
+  const stepNumber = getVideoScanStepNumber(state.phase, setupStep)
+  const cameraIndicator = getVideoScanCameraIndicator(state.phase, cameraActiveUi && state.cameraActive)
+  const direction = getVideoScanDirection(state.phase)
+  const turnInstruction = getVideoScanTurnInstruction(state.pose || 'front')
+  // Screen readers get the countdown without a per-second flood when the user
+  // has asked for reduced motion: then it is announced once at the start.
+  const countdownAnnouncement = isCapturePhase(state.phase)
+    ? 'Bilden tas nu.'
+    : isCountdownPhase(state.phase)
+      ? reducedMotion
+        ? (state.countdown === videoScanCountdownStart ? 'Nedräkning startad. Bilden tas om tre sekunder.' : '')
+        : `Nedräkning ${state.countdown}.`
+      : ''
   const faceDetectorSupported = isFaceDetectorSupported()
   const showManualMask = state.faceMode === 'blur' || state.faceMode === 'pixelate' || state.faceMode === 'cover'
 
@@ -245,8 +279,11 @@ function BodyAnalysisVideoScanner({
       if (capturingLockRef.current) return false
       const previousStream = streamRef.current
 
+      // audio is always false: getBodyScanVideoConstraints* never request the microphone.
       const stream = await navigator.mediaDevices.getUserMedia(
-        getBodyScanVideoConstraints(nextFacingMode),
+        selectedCameraId
+          ? getBodyScanVideoConstraintsForDevice(selectedCameraId, nextFacingMode)
+          : getBodyScanVideoConstraints(nextFacingMode),
       )
       streamRef.current = stream
       dispatch({ type: 'SET_FACING', facingMode: nextFacingMode })
@@ -315,6 +352,30 @@ function BodyAnalysisVideoScanner({
   useEffect(() => {
     setBodyScanSessionActive(sessionOpen)
   }, [sessionOpen])
+
+  // Navigating away (tab close, bfcache, backgrounding) must release the camera.
+  useEffect(() => {
+    if (!cameraActiveUi) return undefined
+
+    function releaseCamera() {
+      clearTimers()
+      cancelVideoScanSpeech()
+      stopMediaStream(streamRef.current)
+      streamRef.current = null
+      if (videoRef.current) videoRef.current.srcObject = null
+    }
+
+    function onVisibilityChange() {
+      if (document.visibilityState === 'hidden') releaseCamera()
+    }
+
+    window.addEventListener('pagehide', releaseCamera)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => {
+      window.removeEventListener('pagehide', releaseCamera)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [cameraActiveUi])
 
   useEffect(() => {
     if (!sessionOpen) return undefined
@@ -496,11 +557,12 @@ function BodyAnalysisVideoScanner({
   }, [state.phase])
 
   useEffect(() => {
+    if (state.paused) return undefined
     if (!isCountdownPhase(state.phase) || state.countdown === null) return undefined
     speak(state.phase, state.countdown)
     timerRef.current = window.setTimeout(() => dispatch({ type: 'TICK_COUNTDOWN' }), videoScanCountdownStepMs)
     return clearTimers
-  }, [state.phase, state.countdown])
+  }, [state.phase, state.countdown, state.paused])
 
   useEffect(() => {
     if (!isCapturePhase(state.phase) || !state.pose) return undefined
@@ -512,7 +574,7 @@ function BodyAnalysisVideoScanner({
   }, [state.phase, state.pose])
 
   useEffect(() => {
-    if (!cameraActiveUi || state.framingMode !== 'auto' || !isPreparePhase(state.phase)) return undefined
+    if (!cameraActiveUi || state.paused || state.framingMode !== 'auto' || !isPreparePhase(state.phase)) return undefined
     if (!autoSupport.available) {
       dispatch({
         type: 'SET_POSITION',
@@ -551,9 +613,10 @@ function BodyAnalysisVideoScanner({
       cancelled = true
       window.clearTimeout(timeoutId)
     }
-  }, [cameraActiveUi, state.framingMode, state.phase, autoSupport.available, autoSupport.label, state.pose, state.voiceEnabled])
+  }, [cameraActiveUi, state.paused, state.framingMode, state.phase, autoSupport.available, autoSupport.label, state.pose, state.voiceEnabled])
 
   useEffect(() => {
+    if (state.paused) return undefined
     if (!isCountdownPhase(state.phase) || state.framingMode !== 'auto' || !autoSupport.available) return undefined
     let cancelled = false
     let timeoutId = 0
@@ -563,8 +626,12 @@ function BodyAnalysisVideoScanner({
       const result = await detectBodyPosition(videoRef.current)
       if (cancelled) return
       if (!result.valid) {
-        dispatch({ type: 'CANCEL_COUNTDOWN' })
-        speakVideoScanLine('Positionen ändrades — ställ dig i ramen igen.', { enabled: state.voiceEnabled })
+        // Position lost mid-countdown: abort, never capture a bad frame.
+        dispatch({
+          type: 'CANCEL_COUNTDOWN',
+          message: `Nedräkningen avbröts: ${result.message || 'positionen ändrades'}. Ingen bild togs.`,
+        })
+        speakVideoScanLine('Nedräkningen avbröts. Ställ dig i ramen igen.', { enabled: state.voiceEnabled })
         return
       }
       timeoutId = window.setTimeout(watchValidity, 350)
@@ -575,15 +642,37 @@ function BodyAnalysisVideoScanner({
       cancelled = true
       window.clearTimeout(timeoutId)
     }
-  }, [state.phase, state.framingMode, autoSupport.available, state.voiceEnabled])
+  }, [state.phase, state.paused, state.framingMode, autoSupport.available, state.voiceEnabled])
 
-  async function handleStart() {
+  /** Step 1: open consent. The camera is not touched until step 4. */
+  function handleStart() {
+    setStatus('')
+    setSetupStep('consent')
+    setBodyScanSessionActive(true)
+  }
+
+  /** Step 2: only offered when the browser actually exposes several cameras. */
+  async function handleConsentContinue() {
+    if (!consentAccepted) return
+    const found = await listBodyScanCameras()
+    setCameras(found)
+    if (shouldOfferCameraChoice(found)) {
+      setSelectedCameraId((current) => current || found[0].deviceId)
+      setSetupStep('camera')
+      return
+    }
+    setSetupStep('instructions')
+  }
+
+  /** Step 4: first point where getUserMedia is called. */
+  async function handleBeginCamera() {
     let framingMode = idleFramingMode
     if (framingMode === 'auto' && !autoSupport.available) {
       framingMode = 'manual'
       setIdleFramingMode('manual')
       setStatus(`${autoSupport.label} Använd manuell ram.`)
     }
+    setSetupStep(null)
     setBodyScanSessionActive(true)
     dispatch({
       type: 'START',
@@ -592,6 +681,31 @@ function BodyAnalysisVideoScanner({
     })
     speak('prepare')
     await startStream(state.facingMode || defaultBodyScanFacingMode)
+  }
+
+  function handleAbortSetup() {
+    setSetupStep(null)
+    setConsentAccepted(false)
+    setBodyScanSessionActive(false)
+    setStatus('Scanningen avbröts. Kameran startades aldrig.')
+  }
+
+  function handleTogglePause() {
+    if (state.paused) {
+      dispatch({ type: 'RESUME' })
+      setStatus('')
+      return
+    }
+    clearTimers()
+    cancelVideoScanSpeech()
+    dispatch({ type: 'PAUSE' })
+    setStatus('Pausad. Kameran är kvar på men ingen bild tas.')
+  }
+
+  function handleCancelCountdown() {
+    clearTimers()
+    cancelVideoScanSpeech()
+    dispatch({ type: 'CANCEL_COUNTDOWN', message: 'Nedräkningen avbröts. Ingen bild togs.' })
   }
 
   function handleReady() {
@@ -650,9 +764,11 @@ function BodyAnalysisVideoScanner({
     clearTimers()
     cancelVideoScanSpeech()
     stopStream()
+    setSetupStep(null)
+    setConsentAccepted(false)
     setBodyScanSessionActive(false)
     dispatch({ type: 'CANCEL' })
-    setStatus('Scanningen avbröts.')
+    setStatus('Scanningen avbröts. Kameran är avstängd och inget skickades.')
   }
 
   function handleRetakeAll() {
@@ -677,9 +793,11 @@ function BodyAnalysisVideoScanner({
     ;['front', 'side', 'back'].forEach((pose) => onPhotoChange(null, pose))
     revokePreviews()
     stopStream()
+    setSetupStep(null)
+    setConsentAccepted(false)
     setBodyScanSessionActive(false)
     dispatch({ type: 'CANCEL' })
-    setStatus('Scanningen raderades lokalt.')
+    setStatus('Allt raderades lokalt. Inga bilder sparades och inget skickades.')
   }
 
   function handleAnalyzeClick() {
@@ -747,9 +865,17 @@ function BodyAnalysisVideoScanner({
             </div>
             <span>Guidat fram → sida → bak</span>
           </div>
+          <p className="body-scan-camera-indicator is-off">
+            <span aria-hidden="true">●</span>
+            Kameran är avstängd
+          </p>
           <button type="button" onClick={handleStart}>
             Starta videoscanning
           </button>
+          <p className="progress-photo-safety">
+            Guidat flöde i {videoScanTotalSteps} steg. Du får först information och lämnar
+            samtycke — kameran startas inte förrän du godkänt.
+          </p>
           <div className="body-scan-idle-controls" role="group" aria-label="Position">
             <p>Position</p>
             <button
@@ -808,11 +934,106 @@ function BodyAnalysisVideoScanner({
       )}
 
       {sessionOpen && renderBodyScanPortal(
-        cameraActiveUi ? (
+        setupOpen ? (
+        <div
+          className="body-scan-active-overlay is-review body-scan-setup"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Förberedelser för videoscanning"
+        >
+          <header className="body-scan-active-top">
+            <button className="secondary-button" type="button" onClick={handleAbortSetup}>← Avbryt</button>
+            <strong>Förberedelser</strong>
+            <span />
+          </header>
+
+          {setupStep === 'consent' && (
+            <div className="body-scan-setup-step">
+              <p className="eyebrow">Steg 1 av {videoScanTotalSteps}</p>
+              <h3>Samtycke och integritet</h3>
+              <ul className="body-scan-consent-list">
+                {videoScanConsentPoints.map((point) => (
+                  <li key={point}>{point}</li>
+                ))}
+              </ul>
+              <label className="body-scan-consent-check">
+                <input
+                  checked={consentAccepted}
+                  type="checkbox"
+                  aria-label="Jag har läst och godkänner hur kameran används"
+                  onChange={(event) => setConsentAccepted(event.target.checked)}
+                />
+                Jag har läst informationen och godkänner att kameran används lokalt.
+              </label>
+              <button type="button" disabled={!consentAccepted} onClick={handleConsentContinue}>
+                Fortsätt
+              </button>
+              <p className="progress-photo-safety">
+                Kameran startas först i steg 4. Inget har begärts av webbläsaren ännu.
+              </p>
+            </div>
+          )}
+
+          {setupStep === 'camera' && (
+            <div className="body-scan-setup-step">
+              <p className="eyebrow">Steg 2 av {videoScanTotalSteps}</p>
+              <h3>Välj kamera</h3>
+              <p>Webbläsaren hittade flera kameror. Välj den som ska användas.</p>
+              <fieldset className="body-scan-camera-choice">
+                <legend>Tillgängliga kameror</legend>
+                {cameras.map((camera) => (
+                  <label key={camera.deviceId}>
+                    <input
+                      checked={selectedCameraId === camera.deviceId}
+                      name="body-scan-camera"
+                      type="radio"
+                      value={camera.deviceId}
+                      onChange={() => setSelectedCameraId(camera.deviceId)}
+                    />
+                    {camera.label}
+                  </label>
+                ))}
+              </fieldset>
+              <button type="button" onClick={() => setSetupStep('instructions')}>Fortsätt</button>
+              <button className="secondary-button" type="button" onClick={() => setSetupStep('consent')}>
+                Tillbaka
+              </button>
+            </div>
+          )}
+
+          {setupStep === 'instructions' && (
+            <div className="body-scan-setup-step">
+              <p className="eyebrow">Steg 3 av {videoScanTotalSteps}</p>
+              <h3>Så förbereder du rummet</h3>
+              <dl className="body-scan-prep-tips">
+                {videoScanPreparationTips.map((tip) => (
+                  <div key={tip.key}>
+                    <dt>{tip.title}</dt>
+                    <dd>{tip.text}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="progress-photo-safety">
+                {autoSupport.available
+                  ? 'Positionen kontrolleras automatiskt av enhetens pose-API.'
+                  : `${autoSupport.label} Du bekräftar därför själv när du står rätt i ramen.`}
+              </p>
+              <button type="button" onClick={handleBeginCamera}>Starta kameran</button>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => setSetupStep(cameras.length > 1 ? 'camera' : 'consent')}
+              >
+                Tillbaka
+              </button>
+            </div>
+          )}
+        </div>
+        ) : cameraActiveUi ? (
         <div className="body-scan-active-overlay" id="body-scan-video-stage" role="dialog" aria-modal="true" aria-label="Aktiv kroppsscanning">
           <header className="body-scan-active-top">
             <button className="secondary-button" type="button" onClick={handleCancel}>← Avbryt</button>
-            <strong>{poseCopy.step}</strong>
+            <strong>{poseCopy.step} · Steg {stepNumber} av {videoScanTotalSteps}</strong>
             <label className="body-scan-voice-toggle">
               <span aria-hidden="true">{state.voiceEnabled ? '🔊' : '🔇'}</span>
               <input
@@ -824,8 +1045,22 @@ function BodyAnalysisVideoScanner({
                   dispatch({ type: 'SET_VOICE', enabled: event.target.checked })
                 }}
               />
+              <span className="body-scan-voice-text">Röstguide {state.voiceEnabled ? 'på' : 'av'}</span>
             </label>
           </header>
+          <div className="body-scan-active-guide">
+            <p className={`body-scan-camera-indicator is-${cameraIndicator.kind}`}>
+              <span aria-hidden="true">●</span>
+              {cameraIndicator.label}
+            </p>
+            <p className="body-scan-video-direction">
+              <span aria-hidden="true">{direction?.arrow || ''}</span>
+              <span>{getVideoScanInstruction(state.phase) || direction?.label || ''}</span>
+            </p>
+            {isPreparePhase(state.phase) && turnInstruction && (
+              <p className="body-scan-turn-instruction">{turnInstruction}</p>
+            )}
+          </div>
           <div className="body-scan-video-frame" ref={frameRef}>
             <div className="body-scan-video-zoom" style={{ transform: `scale(${previewScale})` }}>
               <video
@@ -888,12 +1123,18 @@ function BodyAnalysisVideoScanner({
               </div>
             </div>
             {isCountdownPhase(state.phase) && (
-              <div className="body-scan-countdown-overlay" aria-live="assertive">
+              <div
+                className={`body-scan-countdown-overlay${reducedMotion ? ' is-reduced-motion' : ''}`}
+                aria-hidden="true"
+              >
                 {state.countdown > 0 ? state.countdown : 'FÅNGAR...'}
               </div>
             )}
             {isCapturePhase(state.phase) && (
-              <div className="body-scan-countdown-overlay is-capture" aria-live="assertive">
+              <div
+                className={`body-scan-countdown-overlay is-capture${reducedMotion ? ' is-reduced-motion' : ''}`}
+                aria-hidden="true"
+              >
                 FÅNGAR...
               </div>
             )}
@@ -915,6 +1156,7 @@ function BodyAnalysisVideoScanner({
             )}
           </div>
           <p className="body-scan-position-status" aria-live="polite">{positionText}</p>
+          <p className="sr-only" role="status" aria-live="polite">{countdownAnnouncement}</p>
           <div className="body-scan-video-toolbar">
             <button
               className={state.framingMode === 'auto' ? '' : 'secondary-button'}
@@ -938,17 +1180,51 @@ function BodyAnalysisVideoScanner({
             </div>
             <button className="secondary-button" type="button" onClick={handleFlip}>↻ Kamera</button>
           </div>
-          {state.framingMode === 'manual' && isPreparePhase(state.phase) && (
-            <button type="button" onClick={handleReady}>Jag står rätt i ramen</button>
-          )}
+          <div className="body-scan-flow-controls">
+            {state.framingMode === 'manual' && isPreparePhase(state.phase) && !state.paused && (
+              <button type="button" onClick={handleReady}>Jag står rätt i ramen</button>
+            )}
+            {isCountdownPhase(state.phase) && (
+              <button className="secondary-button" type="button" onClick={handleCancelCountdown}>
+                Avbryt nedräkningen
+              </button>
+            )}
+            <button
+              className="secondary-button"
+              type="button"
+              aria-pressed={state.paused}
+              onClick={handleTogglePause}
+            >
+              {state.paused ? 'Fortsätt' : 'Pausa'}
+            </button>
+            <button
+              className="secondary-button"
+              type="button"
+              aria-label="Ta om den här vyn"
+              onClick={() => handleRetakePose(state.pose || 'front')}
+            >
+              Ta om vyn
+            </button>
+            <button className="secondary-button" type="button" onClick={handleDeleteScan}>
+              Radera allt
+            </button>
+          </div>
         </div>
         ) : (
         <div className="body-scan-active-overlay is-review">
           <header className="body-scan-active-top">
             <button className="secondary-button" type="button" onClick={handleCancel}>← Avbryt</button>
-            <strong>KLAR FÖR ANALYS</strong>
+            <strong>KLAR FÖR ANALYS · Steg {stepNumber} av {videoScanTotalSteps}</strong>
             <span />
           </header>
+          <p className="body-scan-camera-indicator is-off">
+            <span aria-hidden="true">●</span>
+            Kameran är avstängd
+          </p>
+          <p className="progress-photo-safety">
+            Granska de tre bilderna. Ingenting har skickats ännu — bilderna lämnar enheten
+            först när du trycker på Analysera kroppen.
+          </p>
           <div className="progress-photo-ai-images is-three-angle body-scan-review-thumbs">
             {['front', 'side', 'back'].map((pose) => (
               <figure key={pose}>
@@ -980,7 +1256,14 @@ function BodyAnalysisVideoScanner({
             ))}
           </div>
           <button className="secondary-button" type="button" onClick={handleRetakeAll}>Ta om alla</button>
-          <button className="secondary-button" type="button" onClick={handleDeleteScan}>Radera scanning</button>
+          <button
+            className="secondary-button"
+            type="button"
+            aria-label="Radera allt utan att spara eller skicka något"
+            onClick={handleDeleteScan}
+          >
+            Radera allt utan att spara eller skicka
+          </button>
         </div>
         )
       )}

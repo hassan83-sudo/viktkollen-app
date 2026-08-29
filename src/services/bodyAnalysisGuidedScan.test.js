@@ -10,8 +10,12 @@ import {
   getBodyScanCameraScrollY,
   getBodyScanFacingLabel,
   getBodyScanStepState,
+  getBodyScanCameraLabel,
   getBodyScanVideoConstraints,
+  getBodyScanVideoConstraintsForDevice,
   getCameraPermissionMessage,
+  listBodyScanCameras,
+  shouldOfferCameraChoice,
   getCompletedBodyAnalysisViews,
   getLightQualityFromLuminance,
   getNextBodyAnalysisViewKey,
@@ -186,5 +190,45 @@ describe('bodyAnalysisGuidedScan', () => {
       inline: 'nearest',
     })
     vi.unstubAllGlobals()
+  })
+
+  it('never requests the microphone for any camera constraint', () => {
+    expect(getBodyScanVideoConstraints('user').audio).toBe(false)
+    expect(getBodyScanVideoConstraints('environment').audio).toBe(false)
+    expect(getBodyScanVideoConstraintsForDevice('cam-1').audio).toBe(false)
+    expect(getBodyScanVideoConstraintsForDevice('').audio).toBe(false)
+    const all = JSON.stringify([
+      getBodyScanVideoConstraints('user'),
+      getBodyScanVideoConstraintsForDevice('cam-1'),
+    ])
+    expect(all).not.toContain('"audio":true')
+  })
+
+  it('pins a chosen camera by deviceId and falls back to facingMode', () => {
+    expect(getBodyScanVideoConstraintsForDevice('cam-1').video).toEqual({ deviceId: { exact: 'cam-1' } })
+    expect(getBodyScanVideoConstraintsForDevice(null, 'user').video).toEqual({ facingMode: { ideal: 'user' } })
+  })
+
+  it('lists selectable cameras and only offers a choice when there are several', async () => {
+    const enumerateDevices = vi.fn().mockResolvedValue([
+      { deviceId: 'cam-1', kind: 'videoinput', label: 'Framkamera' },
+      { deviceId: 'cam-2', kind: 'videoinput', label: '' },
+      { deviceId: 'mic-1', kind: 'audioinput', label: 'Mikrofon' },
+      { deviceId: '', kind: 'videoinput', label: 'Okänd' },
+    ])
+    const cameras = await listBodyScanCameras({ enumerateDevices })
+    expect(cameras).toEqual([
+      { deviceId: 'cam-1', label: 'Framkamera' },
+      { deviceId: 'cam-2', label: 'Kamera 2' },
+    ])
+    expect(shouldOfferCameraChoice(cameras)).toBe(true)
+    expect(shouldOfferCameraChoice([cameras[0]])).toBe(false)
+    expect(shouldOfferCameraChoice([])).toBe(false)
+  })
+
+  it('skips the camera step cleanly when enumerateDevices is missing or throws', async () => {
+    expect(await listBodyScanCameras({})).toEqual([])
+    expect(await listBodyScanCameras({ enumerateDevices: () => { throw new Error('nope') } })).toEqual([])
+    expect(getBodyScanCameraLabel({ label: '' }, 0)).toBe('Kamera 1')
   })
 })

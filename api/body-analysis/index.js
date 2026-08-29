@@ -10,7 +10,10 @@ import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_share
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
+// Three images plus small text fields; anything larger is rejected before parsing.
+const MAX_REQUEST_BODY_BYTES = 3 * MAX_IMAGE_SIZE_BYTES + 1024 * 1024
 const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png']
+const requiredImageFields = ['frontImage', 'sideImage', 'backImage']
 const resultKeys = [
   'status',
   'source',
@@ -70,17 +73,30 @@ function safeText(value, fallback = '', max = 120) {
     .slice(0, max)
 }
 
+class RequestTooLargeError extends Error {}
+
 async function readRequestBody(request) {
   if (request.body) {
-    return Buffer.isBuffer(request.body)
+    const buffer = Buffer.isBuffer(request.body)
       ? request.body
       : Buffer.from(String(request.body), 'latin1')
+    if (buffer.length > MAX_REQUEST_BODY_BYTES) {
+      throw new RequestTooLargeError('Request body too large')
+    }
+    return buffer
   }
 
   const chunks = []
+  let total = 0
 
   for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+    total += buffer.length
+    // Stop reading instead of buffering an unbounded upload into memory.
+    if (total > MAX_REQUEST_BODY_BYTES) {
+      throw new RequestTooLargeError('Request body too large')
+    }
+    chunks.push(buffer)
   }
 
   return Buffer.concat(chunks)
@@ -181,10 +197,27 @@ async function parseImages(request) {
     backImage: parsed.images.backImage ?? null,
     context: parseJsonField(parsed.fields.context),
     frontImage: parsed.images.frontImage ?? null,
+    imageFieldNames: Object.keys(parsed.images),
     previousAnalysis: parsePreviousAnalysis(parsed.fields.previousAnalysis),
     scanInput: normalizeScanInput(parseJsonField(parsed.fields.scanInput)),
     sideImage: parsed.images.sideImage ?? null,
   }
+}
+
+/** The contract is exactly three images: front, side and back. */
+export function validateImageFieldNames(fieldNames = []) {
+  const names = Array.isArray(fieldNames) ? fieldNames : []
+  const unexpected = names.filter((name) => !requiredImageFields.includes(name))
+
+  if (unexpected.length > 0) {
+    return 'Endast bilderna framifrån, från sidan och bakifrån får skickas.'
+  }
+
+  if (new Set(names).size !== requiredImageFields.length) {
+    return 'Analysen kräver exakt tre bilder: framifrån, från sidan och bakifrån.'
+  }
+
+  return ''
 }
 
 function validateImage(image, label) {
@@ -216,6 +249,15 @@ function validateRequest(request, images) {
     return {
       error: 'Only POST requests are allowed for body analysis.',
       status: 405,
+    }
+  }
+
+  const fieldNameError = validateImageFieldNames(images.imageFieldNames)
+
+  if (fieldNameError) {
+    return {
+      error: fieldNameError,
+      status: 400,
     }
   }
 
@@ -359,6 +401,23 @@ function getFallbackReason(error) {
   return 'api_error'
 }
 
+/**
+ * Mock data must never be served silently in production.
+ *
+ * In production the route fails loudly with a provider error instead of
+ * returning invented analysis text. A deployment can opt back in explicitly
+ * with BODY_ANALYSIS_ALLOW_MOCK=true, and the response is then still tagged
+ * source: 'mock' so the client can label it as Demo/mock.
+ */
+export function isMockFallbackAllowed(env = process.env) {
+  if (String(env.BODY_ANALYSIS_ALLOW_MOCK || '').toLowerCase() === 'true') {
+    return true
+  }
+  return String(env.NODE_ENV || '').toLowerCase() !== 'production'
+}
+
+class MockNotAllowedError extends Error {}
+
 async function runBodyAnalysis(images) {
   const context = images.context || buildBodyAnalysisContext()
   const scanInput = normalizeScanInput(images.scanInput)
@@ -393,6 +452,14 @@ async function runBodyAnalysis(images) {
     return result
   } catch (error) {
     const sourceReason = getFallbackReason(error)
+
+    if (!isMockFallbackAllowed()) {
+      console.warn('[api/body-analysis] AI analysis failed, mock blocked in production', {
+        durationMs: Date.now() - startedAt,
+        sourceReason,
+      })
+      throw new MockNotAllowedError(sourceReason)
+    }
 
     console.warn('[api/body-analysis] AI analysis failed, using mock', {
       durationMs: Date.now() - startedAt,
@@ -455,13 +522,16 @@ export default async function handler(request, response) {
 
   try {
     images = await parseImages(request)
-  } catch {
-    return response.status(400).json({
+  } catch (error) {
+    const tooLarge = error instanceof RequestTooLargeError
+    return response.status(tooLarge ? 413 : 400).json({
       error: {
         code: aiRouteErrorCodes.INVALID_REQUEST,
         requestId,
         retryable: false,
-        safeMessage: 'Kunde inte läsa bilderna.',
+        safeMessage: tooLarge
+          ? 'Bilderna är för stora. Maxstorlek är 10 MB per bild.'
+          : 'Kunde inte läsa bilderna.',
       },
       ok: false,
     })
@@ -496,6 +566,19 @@ export default async function handler(request, response) {
 
     return response.status(200).json(result)
   } catch (error) {
+    if (error instanceof MockNotAllowedError) {
+      // Never invent analysis text in production - fail visibly instead.
+      return response.status(503).json({
+        error: {
+          code: aiRouteErrorCodes.PROVIDER_UNAVAILABLE,
+          requestId,
+          retryable: true,
+          safeMessage: 'AI-kroppsanalysen kunde inte nås. Inget demoresultat visas i produktion. Försök igen senare.',
+        },
+        ok: false,
+      })
+    }
+
     console.error('[api/body-analysis] Unexpected route error', {
       error: error instanceof Error ? error.message : String(error),
       source: 'error',
@@ -516,7 +599,9 @@ export default async function handler(request, response) {
 export const bodyAnalysisRouteInternals = {
   createMockAnalysis,
   formatBodyAnalysisResult,
+  isMockFallbackAllowed,
   parseMultipartImages,
   parseJsonField,
   validateImage,
+  validateImageFieldNames,
 }

@@ -89,6 +89,53 @@ export function getBodyScanVideoConstraints(facingMode = defaultBodyScanFacingMo
   }
 }
 
+/**
+ * Constraints for a specific camera picked in the camera-selection step.
+ * audio is always false - the body scan never requests the microphone.
+ */
+export function getBodyScanVideoConstraintsForDevice(deviceId, facingMode = defaultBodyScanFacingMode) {
+  if (!deviceId) {
+    return getBodyScanVideoConstraints(facingMode)
+  }
+
+  return {
+    audio: false,
+    video: { deviceId: { exact: deviceId } },
+  }
+}
+
+export function getBodyScanCameraLabel(device, index = 0) {
+  const label = String(device?.label || '').trim()
+  if (label) return label.slice(0, 60)
+  return `Kamera ${index + 1}`
+}
+
+/**
+ * Lists selectable video inputs. Returns an empty list when the browser does not
+ * expose enumerateDevices, so the camera-selection step can be skipped cleanly.
+ */
+export async function listBodyScanCameras(mediaDevices) {
+  const devices = mediaDevices || (typeof navigator !== 'undefined' ? navigator.mediaDevices : null)
+  if (!devices?.enumerateDevices) return []
+
+  try {
+    const all = await devices.enumerateDevices()
+    return (Array.isArray(all) ? all : [])
+      .filter((device) => device?.kind === 'videoinput')
+      .map((device, index) => ({
+        deviceId: device.deviceId || '',
+        label: getBodyScanCameraLabel(device, index),
+      }))
+      .filter((device) => device.deviceId)
+  } catch {
+    return []
+  }
+}
+
+export function shouldOfferCameraChoice(cameras = []) {
+  return Array.isArray(cameras) && cameras.length > 1
+}
+
 export function getBodyScanCameraScrollY(documentTop) {
   return Math.max(0, Number(documentTop) - 8)
 }

@@ -14,8 +14,13 @@ import {
   getPinchZoom,
   getPointerDistance,
   getPoseFromPhase,
+  getScaledScanDimensions,
   getUpperRegionBox,
   getVideoContainRect,
+  getVideoScanStepNumber,
+  getVideoScanTurnInstruction,
+  isAllowedScanImageType,
+  prefersReducedMotion,
   getVideoScanCameraIndicator,
   getVideoScanDirection,
   getVideoScanInstruction,
@@ -27,8 +32,11 @@ import {
   reduceVideoScan,
   shouldBlockAnalysisForFaceProtection,
   speakVideoScanLine,
+  videoScanConsentPoints,
   videoScanCountdownStart,
   videoScanPhases,
+  videoScanPreparationTips,
+  videoScanTotalSteps,
   videoScanVoiceLines,
 } from './bodyAnalysisVideoScan.js'
 
@@ -352,6 +360,96 @@ describe('bodyAnalysisVideoScan', () => {
       x: 25,
       y: 20,
     })
+  })
+
+  it('keeps spoken guidance off until the user turns it on', () => {
+    expect(initialVideoScanState.voiceEnabled).toBe(false)
+    expect(initialVideoScanState.paused).toBe(false)
+    expect(speakVideoScanLine('Tre.', { enabled: initialVideoScanState.voiceEnabled })).toBe(false)
+  })
+
+  it('pauses out of a countdown without capturing and resumes again', () => {
+    let state = reduceVideoScan(initialVideoScanState, { type: 'CAMERA_READY' })
+    state = reduceVideoScan(state, { type: 'BEGIN_COUNTDOWN', pose: 'front' })
+    expect(state.phase).toBe('front_countdown')
+
+    state = reduceVideoScan(state, { type: 'PAUSE' })
+    expect(state.paused).toBe(true)
+    expect(state.phase).toBe('front_prepare')
+    expect(state.countdown).toBeNull()
+    expect(state.capturing).toBe(false)
+
+    // A paused scan must not be able to start a new countdown.
+    expect(reduceVideoScan(state, { type: 'BEGIN_COUNTDOWN', pose: 'front' }).phase).toBe('front_prepare')
+
+    state = reduceVideoScan(state, { type: 'RESUME' })
+    expect(state.paused).toBe(false)
+    expect(reduceVideoScan(state, { type: 'BEGIN_COUNTDOWN', pose: 'front' }).phase).toBe('front_countdown')
+  })
+
+  it('carries an explicit reason when a countdown is cancelled', () => {
+    let state = reduceVideoScan(initialVideoScanState, { type: 'CAMERA_READY' })
+    state = reduceVideoScan(state, { type: 'BEGIN_COUNTDOWN', pose: 'front' })
+    const cancelled = reduceVideoScan(state, {
+      type: 'CANCEL_COUNTDOWN',
+      message: 'Nedräkningen avbröts: Flytta dig lite bakåt. Ingen bild togs.',
+    })
+    expect(cancelled.phase).toBe('front_prepare')
+    expect(cancelled.positionStatus).toBe('invalid')
+    expect(cancelled.positionMessage).toContain('Ingen bild togs')
+  })
+
+  it('gives explicit turn instructions for the side and back steps', () => {
+    expect(getVideoScanTurnInstruction('side')).toBe('Vänd dig åt höger')
+    expect(getVideoScanTurnInstruction('back')).toBe('Vänd dig åt höger igen så att ryggen är mot kameran')
+    expect(getVideoScanTurnInstruction('front')).toContain('rakt fram')
+    // The existing pose titles must stay untouched.
+    expect(getVideoScanInstruction('side_prepare')).toBe('VÄND HÖGER SIDA MOT KAMERAN')
+  })
+
+  it('numbers the guided steps from consent through analysis', () => {
+    expect(videoScanTotalSteps).toBe(18)
+    expect(getVideoScanStepNumber('idle', 'consent')).toBe(1)
+    expect(getVideoScanStepNumber('idle', 'camera')).toBe(2)
+    expect(getVideoScanStepNumber('idle', 'instructions')).toBe(3)
+    expect(getVideoScanStepNumber('front_prepare')).toBe(6)
+    expect(getVideoScanStepNumber('front_countdown')).toBe(7)
+    expect(getVideoScanStepNumber('side_countdown')).toBe(11)
+    expect(getVideoScanStepNumber('back_capture')).toBe(16)
+    expect(getVideoScanStepNumber('review')).toBe(17)
+    expect(getVideoScanStepNumber('analyzing')).toBe(18)
+  })
+
+  it('describes consent and preparation in text only, with no microphone claim', () => {
+    const consent = videoScanConsentPoints.join(' ').toLowerCase()
+    expect(consent).toContain('mikrofonen används aldrig')
+    expect(consent).toContain('ingen video spelas in')
+    expect(videoScanPreparationTips.map((tip) => tip.key)).toEqual([
+      'distance',
+      'light',
+      'clothing',
+      'placement',
+    ])
+    videoScanPreparationTips.forEach((tip) => {
+      expect(tip.title.length).toBeGreaterThan(0)
+      expect(tip.text.length).toBeGreaterThan(0)
+    })
+  })
+
+  it('scales picked images down and only accepts jpeg or png', () => {
+    expect(getScaledScanDimensions(3200, 1600)).toEqual({ height: 800, width: 1600 })
+    expect(getScaledScanDimensions(800, 600)).toEqual({ height: 600, width: 800 })
+    expect(getScaledScanDimensions(1000, 4000)).toEqual({ height: 1600, width: 400 })
+    expect(isAllowedScanImageType('image/jpeg')).toBe(true)
+    expect(isAllowedScanImageType('image/png')).toBe(true)
+    expect(isAllowedScanImageType('image/heic')).toBe(false)
+    expect(isAllowedScanImageType('')).toBe(false)
+  })
+
+  it('reports reduced-motion preference without throwing when matchMedia is missing', () => {
+    expect(prefersReducedMotion({})).toBe(false)
+    expect(prefersReducedMotion({ matchMedia: () => ({ matches: true }) })).toBe(true)
+    expect(prefersReducedMotion({ matchMedia: () => ({ matches: false }) })).toBe(false)
   })
 
   it('blurs pixel buffers instead of relying on canvas.filter', () => {

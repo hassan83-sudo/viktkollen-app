@@ -76,10 +76,34 @@ describe('BodyAnalysisVideoScanner runtime', () => {
     vi.restoreAllMocks()
   })
 
-  async function startScan(container) {
+  function findButton(scope, text) {
+    return [...scope.querySelectorAll('button')].find((button) => button.textContent.trim() === text)
+  }
+
+  /** Opens the consent step (step 1) without touching the camera. */
+  async function openSetup(container) {
     const start = [...container.querySelectorAll('button')].find((button) => button.textContent.includes('Starta videoscanning'))
     await act(async () => {
       start.click()
+      await Promise.resolve()
+    })
+  }
+
+  /** Walks steps 1-3 (consent -> instructions) and starts the camera at step 4. */
+  async function startScan(container) {
+    await openSetup(container)
+
+    const consentBox = document.querySelector('.body-scan-consent-check input')
+    await act(async () => {
+      consentBox.click()
+      await Promise.resolve()
+    })
+    await act(async () => {
+      findButton(document, 'Fortsätt').click()
+      await Promise.resolve()
+    })
+    await act(async () => {
+      findButton(document, 'Starta kameran').click()
       await Promise.resolve()
     })
   }
@@ -205,6 +229,104 @@ describe('BodyAnalysisVideoScanner runtime', () => {
     await waitFor(() => expect(document.querySelector('.body-scan-video-frame video')?.srcObject).toBe(secondStream))
     expect(firstStream.stop).toHaveBeenCalled()
     expect(secondStream.stop).not.toHaveBeenCalled()
+  })
+
+  it('does not touch the camera until consent is given in step 1', async () => {
+    const { container } = renderScanner()
+    await openSetup(container)
+
+    // Step 1 is on screen and getUserMedia has not been called at all.
+    expect(document.querySelector('.body-scan-setup')).not.toBeNull()
+    expect(document.body.textContent).toContain('Samtycke och integritet')
+    expect(document.body.textContent).toContain('Mikrofonen används aldrig')
+    expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled()
+
+    // Continue stays disabled until the checkbox is ticked.
+    const proceed = findButton(document, 'Fortsätt')
+    expect(proceed.disabled).toBe(true)
+    await act(async () => {
+      proceed.click()
+      await Promise.resolve()
+    })
+    expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled()
+
+    await act(async () => {
+      document.querySelector('.body-scan-consent-check input').click()
+      await Promise.resolve()
+    })
+    await act(async () => {
+      findButton(document, 'Fortsätt').click()
+      await Promise.resolve()
+    })
+
+    // Step 3 shows the preparation guidance, still without opening the camera.
+    expect(document.body.textContent).toContain('Så förbereder du rummet')
+    expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled()
+
+    await act(async () => {
+      findButton(document, 'Starta kameran').click()
+      await Promise.resolve()
+    })
+    expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalled()
+  })
+
+  it('always requests the camera without a microphone', async () => {
+    const { container } = renderScanner()
+    await startScan(container)
+
+    expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalled()
+    navigator.mediaDevices.getUserMedia.mock.calls.forEach(([constraints]) => {
+      expect(constraints.audio).toBe(false)
+    })
+  })
+
+  it('aborting the consent step never opens the camera and reports it', async () => {
+    const { container } = renderScanner()
+    await openSetup(container)
+    await act(async () => {
+      findButton(document, '← Avbryt').click()
+      await Promise.resolve()
+    })
+
+    expect(document.querySelector('.body-scan-setup')).toBeNull()
+    expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled()
+    expect(container.textContent).toContain('Kameran startades aldrig')
+  })
+
+  it('shows an off-state camera indicator before a scan starts', () => {
+    const { container } = renderScanner()
+    const indicator = container.querySelector('.body-scan-camera-indicator')
+    expect(indicator).not.toBeNull()
+    expect(indicator.className).toContain('is-off')
+    expect(indicator.textContent).toContain('Kameran är avstängd')
+  })
+
+  it('offers pause, cancel-countdown and delete controls during an active scan', async () => {
+    const { container } = renderScanner()
+    await startScan(container)
+
+    const overlay = document.querySelector('.body-scan-active-overlay')
+    const labels = [...overlay.querySelectorAll('.body-scan-flow-controls button')]
+      .map((button) => button.textContent.trim())
+    expect(labels).toContain('Pausa')
+    expect(labels).toContain('Ta om vyn')
+    expect(labels).toContain('Radera allt')
+  })
+
+  it('stops every camera track when the scan is cancelled', async () => {
+    const stream = createStream()
+    navigator.mediaDevices.getUserMedia = vi.fn().mockResolvedValue(stream)
+    const { container } = renderScanner()
+    await startScan(container)
+    await waitFor(() => expect(document.querySelector('.body-scan-video-frame video')?.srcObject).toBe(stream))
+
+    await act(async () => {
+      findButton(document, '← Avbryt').click()
+      await Promise.resolve()
+    })
+
+    expect(stream.getVideoTracks()[0].stop).toHaveBeenCalled()
+    expect(container.textContent).toContain('Kameran är avstängd')
   })
 
   it('cleans session chrome and does not leave intervals after unmount', async () => {

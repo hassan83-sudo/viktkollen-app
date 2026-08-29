@@ -92,7 +92,12 @@ describe('BodyAnalysisVideoScanner', () => {
     expect(cardSource).toContain("t('card.errors.approveFirst')")
     expect(cardSource).toContain("t('card.heading.retry')")
     expect(cardSource).toContain('<BodyAnalysisUploader')
-    expect(cardSource).not.toContain('BodyAnalysisVideoScanner')
+    // The guided video scan is reachable again, but only behind an explicit
+    // mode switch: photo mode stays the default so the stabilized iPhone
+    // capture flow is what users get unless they opt into video.
+    expect(cardSource).toContain('<BodyAnalysisVideoScanner')
+    expect(cardSource).toContain("useState('photo')")
+    expect(cardSource).toContain("scanMode === 'photo' ? (")
     expect(readFileSync(resolve(process.cwd(), 'src/components/BodyAnalysisPrivacy.jsx'), 'utf8')).toContain('body-scan-consent-overlay')
   })
 })

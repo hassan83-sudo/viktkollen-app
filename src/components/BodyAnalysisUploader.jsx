@@ -19,7 +19,13 @@ import {
   scrollBodyScanCameraIntoView,
   stopMediaStream,
 } from '../services/bodyAnalysisGuidedScan'
-import { canUseHardwareZoom, clampVideoScanZoom, getTrackZoomCapabilities, videoScanZoomStep } from '../services/bodyAnalysisVideoScan'
+import {
+  canUseHardwareZoom,
+  clampVideoScanZoom,
+  getTrackZoomCapabilities,
+  reencodeImageFileToScanFile,
+  videoScanZoomStep,
+} from '../services/bodyAnalysisVideoScan'
 
 function BodyAnalysisUploader({
   canAnalyze,
@@ -199,13 +205,21 @@ function BodyAnalysisUploader({
     startCamera(viewKey)
   }
 
-  function handleFileChange(event, viewKey) {
+  async function handleFileChange(event, viewKey) {
     const file = event.target.files?.[0]
+    event.target.value = ''
     if (!file) return
 
-    onPhotoChange(file, viewKey)
-    moveToNextView({ ...photos, [viewKey]: true })
-    event.target.value = ''
+    // Run picked files through the same canvas pipeline as live capture:
+    // re-encoding rebuilds the pixels, so EXIF/GPS metadata is dropped and the
+    // image is scaled to the same bounds the video path produces.
+    try {
+      const { file: reencoded, preview } = await reencodeImageFileToScanFile(file, viewKey)
+      onPhotoChange(reencoded, viewKey, preview)
+      moveToNextView({ ...photos, [viewKey]: true })
+    } catch {
+      setCameraStatus(t('uploader.reencodeFailed'))
+    }
   }
 
   function updateLightQuality() {

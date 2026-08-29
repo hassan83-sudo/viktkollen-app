@@ -3034,6 +3034,7 @@ function App() {
             reminderState={reminderState}
             selectedMealDate={selectedMealDate}
             syncStatus={syncStatusSnapshot}
+            userId={authSession?.user?.id || authSession?.user?.email || 'local-user'}
             voiceStatus={voiceStatus}
             weights={centralWeightStats.weights}
           />

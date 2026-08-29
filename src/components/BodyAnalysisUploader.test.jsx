@@ -254,16 +254,35 @@ describe('BodyAnalysisUploader', () => {
     unmount()
   })
 
-  it('stops the camera stream on unmount', async () => {
+  it('never requests the camera before a tap, then stops the stream on unmount', async () => {
     const { container, unmount } = renderUploader()
     await act(async () => {
       await Promise.resolve()
       await Promise.resolve()
     })
+    expect(getUserMedia).not.toHaveBeenCalled()
+    expect(container.textContent).toContain('Kameran är av. Tryck på Starta kamera eller välj en bild.')
+
+    await clickAngle(container, 'Framifrån')
     expect(getUserMedia).toHaveBeenCalled()
     const activeStream = await getUserMedia.mock.results.at(-1).value
     unmount()
     expect(activeStream.getTracks()[0].stop).toHaveBeenCalled()
+  })
+
+  it('hides the bottom nav only while the camera is actually live', async () => {
+    const { container, unmount } = renderUploader()
+    expect(document.body.classList.contains('vk-body-scan-session')).toBe(false)
+
+    await clickAngle(container, 'Framifrån')
+    expect(document.body.classList.contains('vk-body-scan-session')).toBe(true)
+
+    await act(async () => {
+      [...container.querySelectorAll('button')].find((button) => button.textContent === 'Stoppa kamera').click()
+    })
+    expect(document.body.classList.contains('vk-body-scan-session')).toBe(false)
+
+    unmount()
   })
 
   it('keeps high-contrast step colors and camera scroll margins in CSS', () => {

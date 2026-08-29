@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from 'react'
+import { lazy, memo, Suspense, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AchievementPreviewCard from './AchievementPreviewCard.jsx'
 import DailyCoachCard from './DailyCoachCard.jsx'
@@ -9,7 +9,6 @@ import WeeklyProgressSection from './WeeklyProgressSection.jsx'
 import BodyScanRings from './BodyScanRings.jsx'
 import OverviewBodyScanStage from './OverviewBodyScanStage.jsx'
 import OverviewCoachStage from './OverviewCoachStage.jsx'
-import OverviewFoodScanStage from './OverviewFoodScanStage.jsx'
 import WeatherDayDetail from './WeatherDayDetail.jsx'
 import {
   createFallbackWeatherContext,
@@ -32,6 +31,8 @@ import { buildReminderStatus, getNextReminderAt } from '../../services/reminders
 import SmartCameraStage from '../../features/smart-camera/components/SmartCameraStage.jsx'
 import BodyAvatarTalkBar from './BodyAvatarTalkBar.jsx'
 import { formatNumber as formatLocaleNumber } from '../../i18n/format.js'
+
+const HomeBodyScanStage = lazy(() => import('./HomeBodyScanStage.jsx'))
 
 function isFiniteNumber(value) {
   return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value))
@@ -980,15 +981,16 @@ function OverviewDashboard({
   reminderState,
   selectedDate,
   syncStatus,
+  userId = 'local-user',
   voiceStatus,
   weights,
 }) {
   const { t } = useTranslation(['common', 'home', 'social'])
   const [now, setNow] = useState(() => new Date())
   const [bodyScanOpen, setBodyScanOpen] = useState(false)
+  const [bodyCaptureOpen, setBodyCaptureOpen] = useState(false)
   const [smartCameraOpen, setSmartCameraOpen] = useState(false)
   const [coachOpen, setCoachOpen] = useState(false)
-  const [foodScanOpen, setFoodScanOpen] = useState(false)
   const [socialOpen, setSocialOpen] = useState(false)
   const [socialView, setSocialView] = useState('inbox')
   const [socialConversationId, setSocialConversationId] = useState(null)
@@ -1167,7 +1169,6 @@ function OverviewDashboard({
           featureFlags={flags}
           onNavigateSection={onNavigateSection}
           onOpenBodyScan={() => setBodyScanOpen(true)}
-          onOpenFoodScan={() => setFoodScanOpen(true)}
           onOpenSmartCamera={() => {
             setBodyScanOpen(false)
             setSmartCameraOpen(true)
@@ -1278,8 +1279,7 @@ function OverviewDashboard({
           onSendChatMessage={onSendChatMessage}
           onStartScan={() => {
             setBodyScanOpen(false)
-            if (onNavigateSection) onNavigateSection('progress', 'body-analysis')
-            else scrollToTarget('body-analysis')
+            setBodyCaptureOpen(true)
           }}
           onStartVoiceInput={onStartVoiceInput}
           onStopAiVoiceResponse={onStopAiVoiceResponse}
@@ -1293,17 +1293,26 @@ function OverviewDashboard({
           smartCameraEnabled={isFeatureEnabled('smartCamera', flags)}
         />
       )}
+      {bodyCaptureOpen && (
+        <Suspense fallback={null}>
+          <HomeBodyScanStage
+            profile={profile}
+            userId={userId}
+            weights={weights}
+            onClose={() => setBodyCaptureOpen(false)}
+          />
+        </Suspense>
+      )}
       {smartCameraOpen && isFeatureEnabled('smartCamera', flags) && (
         <SmartCameraStage
           adapters={{
             onOpenBodyScan: () => {
               setSmartCameraOpen(false)
-              if (onNavigateSection) onNavigateSection('progress', 'body-analysis')
-              else scrollToTarget('body-analysis')
+              setBodyCaptureOpen(true)
             },
             onOpenFoodScan: () => {
               setSmartCameraOpen(false)
-              setFoodScanOpen(true)
+              onScanFood?.()
             },
             weather,
           }}
@@ -1342,9 +1351,6 @@ function OverviewDashboard({
           proteinGoal={proteinGoal}
           proteinToday={proteinToday}
         />
-      )}
-      {foodScanOpen && (
-        <OverviewFoodScanStage onClose={() => setFoodScanOpen(false)} />
       )}
       {socialOpen && socialUiEnabled && (
         <SocialStage

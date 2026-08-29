@@ -14196,6 +14196,29 @@ html:has(#app-section-more.is-active),
   grid-template-columns: 1fr;
 }
 
+.overview-home-stage.is-body-scan {
+  grid-template-rows: 1fr;
+  background: #050914;
+}
+
+.home-body-scan-intro,
+.home-body-scan-capture {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  height: 100dvh;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-body-scan-intro,
+  .home-body-scan-capture {
+    scroll-behavior: auto;
+  }
+}
+
 .ai-coach-overlay {
   position: fixed;
   inset: 0;

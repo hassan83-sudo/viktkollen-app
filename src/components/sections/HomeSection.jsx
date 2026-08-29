@@ -45,6 +45,7 @@ function HomeSection({
   reminderState,
   selectedMealDate,
   syncStatus,
+  userId,
   voiceStatus,
   weights,
 }) {
@@ -102,6 +103,7 @@ function HomeSection({
           reminderState={reminderState}
           selectedDate={selectedMealDate}
           syncStatus={syncStatus}
+          userId={userId}
           voiceStatus={voiceStatus}
           weeklyWeightChange={dashboardData?.weeklyWeightChange}
           weights={weights}

@@ -26,6 +26,7 @@ import {
   reencodeImageFileToScanFile,
   videoScanZoomStep,
 } from '../services/bodyAnalysisVideoScan'
+import { setBodyScanSessionActive } from '../services/bodyScanSessionChrome'
 
 function BodyAnalysisUploader({
   canAnalyze,
@@ -37,7 +38,7 @@ function BodyAnalysisUploader({
 }) {
   const { t } = useTranslation(['bodyScan', 'common'])
   const [activeViewKey, setActiveViewKey] = useState('front')
-  const [cameraStatus, setCameraStatus] = useState('')
+  const [cameraStatus, setCameraStatus] = useState(() => t('uploader.cameraOffTapToStart'))
   const [cameraActive, setCameraActive] = useState(false)
   const [countdown, setCountdown] = useState(null)
   const [facingMode, setFacingMode] = useState(defaultBodyScanFacingMode)
@@ -58,14 +59,21 @@ function BodyAnalysisUploader({
     typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia)
   const canFinishScan = canCompleteBodyAnalysisScan(photos)
   const isCountingDown = countdown !== null
-  const autoStartRef = useRef(false)
   const cameraRequestRef = useRef(0)
 
   useEffect(() => () => {
     cameraRequestRef.current += 1
     window.clearTimeout(countdownTimerRef.current)
     stopMediaStream(streamRef.current)
+    setBodyScanSessionActive(false)
   }, [])
+
+  // Camera and mic access must only ever start from an explicit tap -
+  // never automatically on mount. Hide the bottom nav while the camera
+  // is live so the capture controls stay reachable on small screens.
+  useEffect(() => {
+    setBodyScanSessionActive(cameraActive)
+  }, [cameraActive])
 
   useEffect(() => {
     const video = videoRef.current
@@ -177,13 +185,6 @@ function BodyAnalysisUploader({
       return false
     }
   }, [activeViewKey, facingMode, hasCameraApi, t, zoom])
-
-  useEffect(() => {
-    if (autoStartRef.current) return undefined
-    autoStartRef.current = true
-    startCamera()
-    return undefined
-  }, [startCamera])
 
   async function flipCamera() {
     const nextFacingMode = getNextBodyScanFacingMode(facingMode)

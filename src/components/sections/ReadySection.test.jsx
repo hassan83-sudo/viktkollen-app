@@ -16,9 +16,10 @@ describe('Ready! section wiring', () => {
     expect(appSource).toContain('<PlaceSection')
   })
 
-  it('keeps Body Scan and food scan entry points on Home unchanged in source contracts', () => {
+  it('routes Home Body Scan and food scan entry points to the real components, not Ready', () => {
     expect(overviewSource).toContain('OverviewBodyScanStage')
-    expect(overviewSource).toContain('OverviewFoodScanStage')
+    expect(overviewSource).toContain('HomeBodyScanStage')
+    expect(overviewSource).not.toContain('OverviewFoodScanStage')
     expect(readySource).not.toContain('BodyAnalysis')
     expect(readySource).not.toContain('NutritionScanner')
   })

@@ -37,7 +37,6 @@ import {
 import BodyAnalysisDevChecklist from './BodyAnalysisDevChecklist'
 import BodyAnalysisOnboarding from './BodyAnalysisOnboarding'
 import BodyAnalysisPrivacy from './BodyAnalysisPrivacy'
-import BodyAnalysisVideoScanner from './BodyAnalysisVideoScanner'
 import BodyAnalysisPremiumPreview from './BodyAnalysisPremiumPreview'
 import BodyAnalysisQuality from './BodyAnalysisQuality'
 import BodyAnalysisResult from './BodyAnalysisResult'
@@ -401,8 +400,8 @@ function BodyAnalysisCard({
       ? t('card.status.failed')
       : isFreeLimitReached
         ? t('card.status.freeLimit')
-      : analysisStatus === t('card.status.complete')
-        ? t('card.status.complete')
+      : analysisStatus === t('card.status.resultReady')
+        ? t('card.status.resultReady')
         : canAnalyze
           ? t('card.status.ready')
           : t('card.status.waitingAngles')
@@ -647,7 +646,7 @@ function BodyAnalysisCard({
     setAnalysisHistory(nextHistory)
     setImportSummary(null)
     onAnalysisHistoryChange(true)
-    setAnalysisStatus(t('card.status.complete'))
+    setAnalysisStatus(t('card.status.resultReady'))
     incrementPremiumAnalyticsCounter(premiumAnalyticsCounters.bodyScans, { userId })
   }
 
@@ -675,12 +674,11 @@ function BodyAnalysisCard({
     setAnalysisError('')
     setAnalysisStatus(t('card.status.analyzing'))
 
+    setAnalysisStatus(t('card.status.preparing'))
+
     const statusTimers = [
-      window.setTimeout(() => setAnalysisStatus(t('card.status.aiAnalyzing')), 700),
-      window.setTimeout(
-        () => setAnalysisStatus(t('card.status.preparing')),
-        1400,
-      ),
+      window.setTimeout(() => setAnalysisStatus(t('card.status.sending')), 350),
+      window.setTimeout(() => setAnalysisStatus(t('card.status.aiAnalyzing')), 900),
     ]
 
     try {
@@ -913,16 +911,17 @@ function BodyAnalysisCard({
             onPhotoChange={handlePhotoChange}
           />
         ) : (
-          <BodyAnalysisVideoScanner
-            analysisError={analysisError}
-            disabledReason={analyzeDisabledReason}
-            hasApprovedAnalysis={hasApprovedAnalysis}
-            isAnalyzing={isAnalyzing}
-            isFreeLimitReached={isFreeLimitReached}
-            photos={scanPhotos}
-            onAnalyze={handleAnalyzeBody}
-            onPhotoChange={handlePhotoChange}
-          />
+          // Guided video scanning is not reliable enough to ship as a working
+          // mode yet. Selecting it must never start the camera or fabricate a
+          // result - show an honest placeholder instead of BodyAnalysisVideoScanner.
+          <div className="body-scan-coming-soon" role="status">
+            <p className="eyebrow">{t('card.heading.modeVideo')}</p>
+            <h3>{t('card.heading.modeVideoComingSoonTitle')}</h3>
+            <p>{t('card.heading.modeVideoComingSoonBody')}</p>
+            <button className="secondary-button" type="button" onClick={() => setScanMode('photo')}>
+              {t('card.heading.modeVideoBackToPhoto')}
+            </button>
+          </div>
         )}
         <details className="body-scan-section">
           <summary>{t('card.heading.privacySummary')}</summary>

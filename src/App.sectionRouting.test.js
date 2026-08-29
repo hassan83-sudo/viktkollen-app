@@ -72,6 +72,17 @@ describe('app section routing isolation', () => {
   })
 })
 
+describe('moreIntent is a one-shot signal', () => {
+  it('clears moreIntent after MoreSection consumes it, so a plain tap on Mer does not reopen a stale folder', () => {
+    expect(appSource).toContain('onNavigationIntentConsumed={() => setMoreIntent(null)}')
+    const consumeEffectBody = moreSectionSource
+      .split("if (activeSection !== 'more') return")[1]
+      .split('}, [activeSection, navigationIntent, onNavigationIntentConsumed])')[0]
+    expect(consumeEffectBody.indexOf('setActiveFolder(folder)'))
+      .toBeLessThan(consumeEffectBody.indexOf('onNavigationIntentConsumed?.()'))
+  })
+})
+
 describe('home dashboard collapsed content', () => {
   it('keeps more-for-today rows collapsible while rendering open content', () => {
     expect(overviewDashboardSource).toContain('const [isOpen, setIsOpen] = useState(true)')

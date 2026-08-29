@@ -122,14 +122,13 @@ function OverviewBodyScanStage({
     return () => window.removeEventListener('viktkollen:body-analysis-history-changed', refresh)
   }, [])
 
+  // Scroll-lock, Escape handling and voice cleanup must only run on actual
+  // mount/unmount of this stage - not on every weather/clothing refresh,
+  // which would otherwise stop an active voice conversation mid-sentence.
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     onSurfaceChange?.('body-avatar')
-    onLiveContextChange?.({
-      clothingAdvice: today.clothing,
-      liveWeather: weather,
-    })
 
     function onKeyDown(event) {
       if (event.key === 'Escape') onClose?.()
@@ -142,7 +141,14 @@ function OverviewBodyScanStage({
       onSurfaceChange?.('coach')
       onVoiceCleanup?.()
     }
-  }, [onClose, onLiveContextChange, onSurfaceChange, onVoiceCleanup, today.clothing, weather])
+  }, [onClose, onSurfaceChange, onVoiceCleanup])
+
+  useEffect(() => {
+    onLiveContextChange?.({
+      clothingAdvice: today.clothing,
+      liveWeather: weather,
+    })
+  }, [onLiveContextChange, today.clothing, weather])
 
   const overlay = typeof document === 'undefined' ? null : document.body
   if (!overlay) return null

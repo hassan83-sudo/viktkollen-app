@@ -163,4 +163,52 @@ describe('OverviewBodyScanStage', () => {
     act(() => root.unmount())
     container.remove()
   })
+
+  it('does not stop an active voice conversation when weather data refreshes', () => {
+    const container = document.createElement('div')
+    document.body.append(container)
+    const root = createRoot(container)
+    const onVoiceCleanup = vi.fn()
+    const onLiveContextChange = vi.fn()
+    // Stable references across both renders - only `weather` should change,
+    // so the fix under test is isolated from unrelated callback-identity churn.
+    const onClose = () => {}
+    const onStartScan = () => {}
+
+    act(() => {
+      root.render(
+        <OverviewBodyScanStage
+          currentWeight={83.8}
+          onClose={onClose}
+          onLiveContextChange={onLiveContextChange}
+          onStartScan={onStartScan}
+          onVoiceCleanup={onVoiceCleanup}
+          weather={{ city: 'Helsingborg', temperatureC: 16 }}
+        />,
+      )
+    })
+
+    expect(onVoiceCleanup).not.toHaveBeenCalled()
+    expect(onLiveContextChange).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      root.render(
+        <OverviewBodyScanStage
+          currentWeight={83.8}
+          onClose={onClose}
+          onLiveContextChange={onLiveContextChange}
+          onStartScan={onStartScan}
+          onVoiceCleanup={onVoiceCleanup}
+          weather={{ city: 'Helsingborg', temperatureC: 18 }}
+        />,
+      )
+    })
+
+    expect(onVoiceCleanup).not.toHaveBeenCalled()
+    expect(onLiveContextChange).toHaveBeenCalledTimes(2)
+
+    act(() => root.unmount())
+    expect(onVoiceCleanup).toHaveBeenCalledTimes(1)
+    container.remove()
+  })
 })

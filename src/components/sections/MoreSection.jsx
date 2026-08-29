@@ -31,6 +31,7 @@ function MoreSection({
   language,
   navigationIntent,
   onDataRestored,
+  onNavigationIntentConsumed,
   onEditProfile,
   onLanguageChange,
   onOpenAiCoach,
@@ -82,10 +83,13 @@ function MoreSection({
 
     const timer = window.setTimeout(() => {
       setActiveFolder(folder)
+      // Consume the intent so a later plain tap on Mer does not reopen this
+      // folder again - it should only fire once per explicit navigation.
+      onNavigationIntentConsumed?.()
     }, 0)
 
     return () => window.clearTimeout(timer)
-  }, [activeSection, navigationIntent])
+  }, [activeSection, navigationIntent, onNavigationIntentConsumed])
 
   useEffect(() => {
     function syncFolderFromHash() {

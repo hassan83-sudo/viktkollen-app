@@ -66,4 +66,22 @@ describe('HomeBodyScanStage', () => {
     act(() => root.unmount())
     container.remove()
   })
+
+  it('hides the bottom nav via the controlled session class for the whole overlay lifetime, then restores it', () => {
+    const container = document.createElement('div')
+    document.body.append(container)
+    const root = createRoot(container)
+
+    expect(document.body.classList.contains('vk-body-scan-session')).toBe(false)
+
+    act(() => {
+      root.render(<HomeBodyScanStage onClose={() => {}} profile={{}} userId="local-user" weights={[]} />)
+    })
+
+    expect(document.body.classList.contains('vk-body-scan-session')).toBe(true)
+
+    act(() => root.unmount())
+    expect(document.body.classList.contains('vk-body-scan-session')).toBe(false)
+    container.remove()
+  })
 })

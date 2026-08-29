@@ -43,7 +43,7 @@ import BodyAnalysisResult from './BodyAnalysisResult'
 import BodyAnalysisStats from './BodyAnalysisStats'
 import BodyAnalysisTimeline from './BodyAnalysisTimeline'
 import BodyAnalysisUnlockCard from './BodyAnalysisUnlockCard'
-import BodyAnalysisUploader from './BodyAnalysisUploader'
+import BodyScanGuidedCapture from './BodyScanGuidedCapture'
 
 const bodyOverviewMarkerDefs = [
   { id: 'shoulders', x: 50, y: 25 },
@@ -902,7 +902,7 @@ function BodyAnalysisCard({
           {scanMode === 'video' ? t('card.heading.modeVideoHint') : t('card.heading.modePhotoHint')}
         </p>
         {scanMode === 'photo' ? (
-          <BodyAnalysisUploader
+          <BodyScanGuidedCapture
             canAnalyze={canAnalyze}
             currentAnalysisStatus={currentAnalysisStatus}
             disabledReason={analyzeDisabledReason}

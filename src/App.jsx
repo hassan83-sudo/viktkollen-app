@@ -3106,6 +3106,7 @@ function App() {
   navigationIntent={moreIntent}
   nutritionGoals={nutritionGoals}
   onDataRestored={refreshAppStateFromStorage}
+  onNavigationIntentConsumed={() => setMoreIntent(null)}
   onEditProfile={() => setShowOnboarding(true)}
   onLanguageChange={handleLanguageChange}
   onOpenAiCoach={() => setAiCoachOverlayOpen(true)}

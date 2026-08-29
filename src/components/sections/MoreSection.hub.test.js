@@ -24,6 +24,14 @@ describe('More information architecture', () => {
     expect(moreSectionSource).not.toContain('<WeightChart')
   })
 
+  it('bridges the real top-level "more" section into the "progress" section ProgressSection expects', () => {
+    // ProgressSection's own internal AppSection/useEffect checks compare
+    // against activeSection === 'progress'. The real top-level app section
+    // when reached via Mer is 'more', so MoreSection must translate that
+    // for its nested ProgressSectionComponent instance.
+    expect(moreSectionSource).toMatch(/<ProgressSectionComponent[\s\S]{0,120}activeSection="progress"/)
+  })
+
   it('returns to the hub with Tillbaka and keeps bottom navigation in the app shell', () => {
     expect(moreSectionSource).toContain('onBack={handleBackToHub}')
     expect(moreSectionSource).toContain('setActiveFolder(null)')

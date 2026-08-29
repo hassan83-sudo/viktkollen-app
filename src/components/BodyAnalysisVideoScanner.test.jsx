@@ -91,7 +91,7 @@ describe('BodyAnalysisVideoScanner', () => {
     expect(cardSource).toContain("t('card.errors.missingFront')")
     expect(cardSource).toContain("t('card.errors.approveFirst')")
     expect(cardSource).toContain("t('card.heading.retry')")
-    expect(cardSource).toContain('<BodyAnalysisUploader')
+    expect(cardSource).toContain('<BodyScanGuidedCapture')
     // Photo mode is the only working scan mode in this sprint: it stays the
     // default, and selecting the video mode must not mount the camera-driven
     // BodyAnalysisVideoScanner or fabricate a result - it shows an honest

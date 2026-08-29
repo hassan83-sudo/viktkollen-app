@@ -3177,6 +3177,200 @@ body.vk-body-scan-session .bottom-nav {
   align-items: center;
 }
 
+/* Guided body scan capture (5-step flow: prepare, front, side, back, review) */
+.body-scan-guided {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 20px;
+  background: #050b18;
+  border: 1px solid rgba(122, 247, 255, 0.16);
+  color: #eaf2ff;
+}
+
+.body-scan-guided-step-pill {
+  justify-self: start;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(122, 247, 255, 0.12);
+  border: 1px solid rgba(122, 247, 255, 0.3);
+  color: #7af7ff;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.body-scan-guided-prepare,
+.body-scan-guided-capture,
+.body-scan-guided-review {
+  display: grid;
+  gap: 10px;
+}
+
+.body-scan-guided-voice-toggle {
+  justify-self: start;
+  background: rgba(201, 184, 255, 0.14);
+  border: 1px solid rgba(201, 184, 255, 0.35);
+  color: #c9b8ff;
+  box-shadow: none;
+}
+
+.body-scan-guided-tips {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 1.2rem;
+  color: #cdd8ee;
+  font-size: 14px;
+}
+
+.body-scan-guided-timer-select {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.body-scan-guided-timer-select button.is-active,
+.body-scan-guided-zoom button.is-active {
+  background: linear-gradient(90deg, #7af7ff 0%, #c9b8ff 100%);
+  color: #061018;
+  box-shadow: 0 8px 20px rgba(122, 247, 255, 0.25);
+}
+
+.body-scan-guided-cta {
+  background: linear-gradient(90deg, #7af7ff 0%, #c9b8ff 100%);
+  color: #061018;
+  min-height: 52px;
+  border-radius: 14px;
+  font-weight: 800;
+}
+
+.body-scan-guided-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.body-scan-guided-voice-banner {
+  display: grid;
+  gap: 2px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(122, 168, 255, 0.16);
+  border: 1px solid rgba(122, 168, 255, 0.32);
+  font-weight: 600;
+}
+
+.body-scan-guided-instruction {
+  margin: 0;
+  font-weight: 700;
+}
+
+.body-scan-guided-frame {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  width: 100%;
+  max-height: 60vh;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #07111f;
+}
+
+.body-scan-guided-frame video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.body-scan-guided-corner {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-color: #fff;
+  border-style: solid;
+  border-width: 0;
+  opacity: 0.85;
+}
+
+.body-scan-guided-corner.is-tl { top: 10px; left: 10px; border-top-width: 3px; border-left-width: 3px; border-top-left-radius: 8px; }
+.body-scan-guided-corner.is-tr { top: 10px; right: 10px; border-top-width: 3px; border-right-width: 3px; border-top-right-radius: 8px; }
+.body-scan-guided-corner.is-bl { bottom: 10px; left: 10px; border-bottom-width: 3px; border-left-width: 3px; border-bottom-left-radius: 8px; }
+.body-scan-guided-corner.is-br { bottom: 10px; right: 10px; border-bottom-width: 3px; border-right-width: 3px; border-bottom-right-radius: 8px; }
+
+.body-scan-guided-countdown {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 64px;
+  font-weight: 800;
+  color: #fff;
+  background: rgba(5, 11, 24, 0.35);
+  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.6);
+}
+
+.body-scan-guided-zoom {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.body-scan-guided-timer-pill {
+  justify-self: center;
+  margin: 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--soft-bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.body-scan-guided-thumbnails {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.body-scan-guided-thumbnails figure {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.body-scan-guided-thumbnails img,
+.body-scan-guided-thumb-missing {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 12px;
+  background: var(--soft-bg);
+  border: 1px solid var(--border);
+}
+
+.body-scan-guided-thumbnails figcaption {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .body-scan-guided-countdown {
+    transition: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .body-scan-guided {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .body-scan-guided-countdown {
+    font-size: 48px;
+  }
+}
+
 .body-scan-active-overlay {
   position: fixed;
   inset: 0;

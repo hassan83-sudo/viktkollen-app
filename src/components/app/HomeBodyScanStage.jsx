@@ -1,7 +1,8 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import useOverviewStageLock from './useOverviewStageLock.js'
+import { setBodyScanSessionActive } from '../../services/bodyScanSessionChrome.js'
 
 const BodyAnalysisCard = lazy(() => import('../BodyAnalysisCard.jsx'))
 
@@ -15,6 +16,15 @@ function HomeBodyScanStage({ onClose, profile, userId, weights }) {
   const { t } = useTranslation(['bodyScan', 'home', 'common'])
   const [started, setStarted] = useState(false)
   useOverviewStageLock(onClose)
+
+  // Hide the bottom nav for the whole overlay lifetime via the shared
+  // display:none session class - not just a higher z-index, which leaves the
+  // nav focusable/tappable underneath. Always restored on close/unmount.
+  useEffect(() => {
+    setBodyScanSessionActive(true)
+    return () => setBodyScanSessionActive(false)
+  }, [])
+
   const overlay = typeof document === 'undefined' ? null : document.body
   if (!overlay) return null
 

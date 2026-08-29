@@ -295,7 +295,9 @@ function createDemoBodyAnalysisResult(previousAnalysis, context = null, t) {
 
 function BodyAnalysisCard({
   bodyAnalysisHistoryContext = [],
+  hideChrome = false,
   onAnalysisHistoryChange = () => {},
+  onClose,
   profile = {},
   userId = 'local-user',
   weights = [],
@@ -871,43 +873,50 @@ function BodyAnalysisCard({
 
   return (
     <div className="progress-upload" id="body-analysis">
-      <div className="panel-heading">
-        <div>
-          <p className="eyebrow">{t('card.heading.eyebrow')}</p>
-          <h3>{t('card.heading.title')}</h3>
+      {!hideChrome && (
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">{t('card.heading.eyebrow')}</p>
+            <h3>{t('card.heading.title')}</h3>
+          </div>
         </div>
-      </div>
-      <p className="progress-photo-safety">{t('card.heading.intro')}</p>
+      )}
+      {!hideChrome && <p className="progress-photo-safety">{t('card.heading.intro')}</p>}
       <div className="body-scan-hub">
-        <h3 className="body-scan-hub-title">{t('card.heading.hubTitle')}</h3>
-        <div className="body-scan-mode-switch" role="group" aria-label={t('card.heading.modeLabel')}>
-          <button
-            aria-pressed={scanMode === 'photo'}
-            className={scanMode === 'photo' ? '' : 'secondary-button'}
-            type="button"
-            onClick={() => setScanMode('photo')}
-          >
-            {t('card.heading.modePhoto')}
-          </button>
-          <button
-            aria-pressed={scanMode === 'video'}
-            className={scanMode === 'video' ? '' : 'secondary-button'}
-            type="button"
-            onClick={() => setScanMode('video')}
-          >
-            {t('card.heading.modeVideo')}
-          </button>
-        </div>
-        <p className="progress-photo-safety">
-          {scanMode === 'video' ? t('card.heading.modeVideoHint') : t('card.heading.modePhotoHint')}
-        </p>
-        {scanMode === 'photo' ? (
+        {!hideChrome && <h3 className="body-scan-hub-title">{t('card.heading.hubTitle')}</h3>}
+        {!hideChrome && (
+          <div className="body-scan-mode-switch" role="group" aria-label={t('card.heading.modeLabel')}>
+            <button
+              aria-pressed={scanMode === 'photo'}
+              className={scanMode === 'photo' ? '' : 'secondary-button'}
+              type="button"
+              onClick={() => setScanMode('photo')}
+            >
+              {t('card.heading.modePhoto')}
+            </button>
+            <button
+              aria-pressed={scanMode === 'video'}
+              className={scanMode === 'video' ? '' : 'secondary-button'}
+              type="button"
+              onClick={() => setScanMode('video')}
+            >
+              {t('card.heading.modeVideo')}
+            </button>
+          </div>
+        )}
+        {!hideChrome && (
+          <p className="progress-photo-safety">
+            {scanMode === 'video' ? t('card.heading.modeVideoHint') : t('card.heading.modePhotoHint')}
+          </p>
+        )}
+        {scanMode === 'photo' || hideChrome ? (
           <BodyScanGuidedCapture
             canAnalyze={canAnalyze}
             currentAnalysisStatus={currentAnalysisStatus}
             disabledReason={analyzeDisabledReason}
             photos={scanPhotos}
             onAnalyze={handleAnalyzeBody}
+            onClose={onClose}
             onPhotoChange={handlePhotoChange}
           />
         ) : (
@@ -923,17 +932,21 @@ function BodyAnalysisCard({
             </button>
           </div>
         )}
-        <details className="body-scan-section">
-          <summary>{t('card.heading.privacySummary')}</summary>
-          <ul className="body-scan-privacy-list">
-            <li>{t('card.privacy.localCamera')}</li>
-            <li>{t('card.privacy.sendImages')}</li>
-            <li>{t('card.privacy.openai')}</li>
-            <li>{t('card.privacy.localHistory')}</li>
-            <li>{t('card.privacy.exportDelete')}</li>
-          </ul>
-        </details>
+        {!hideChrome && (
+          <details className="body-scan-section">
+            <summary>{t('card.heading.privacySummary')}</summary>
+            <ul className="body-scan-privacy-list">
+              <li>{t('card.privacy.localCamera')}</li>
+              <li>{t('card.privacy.sendImages')}</li>
+              <li>{t('card.privacy.openai')}</li>
+              <li>{t('card.privacy.localHistory')}</li>
+              <li>{t('card.privacy.exportDelete')}</li>
+            </ul>
+          </details>
+        )}
       </div>
+      {!hideChrome && (
+      <>
       <details className="body-analysis-more-info">
         <summary>{t('card.heading.moreInfo')}</summary>
         <BodyAnalysisOnboarding />
@@ -968,6 +981,7 @@ function BodyAnalysisCard({
           <BodyAnalysisDevChecklist />
         </details>
       )}
+      </>)}
       <BodyAnalysisPrivacy
         showConsent={showAnalysisConsent}
         onApprove={handleApproveAnalysis}
@@ -988,6 +1002,8 @@ function BodyAnalysisCard({
           </button>
         </div>
       )}
+      {!hideChrome && (
+      <>
       {!analysisError && savedAnalysis && (
         <BodyAnalysisResult
           activeBodyMarker={resolvedActiveBodyMarker}
@@ -1072,6 +1088,7 @@ function BodyAnalysisCard({
           onToggleExpandedAnalysis={toggleExpandedAnalysis}
         />
       </details>
+      </>)}
     </div>
   )
 }

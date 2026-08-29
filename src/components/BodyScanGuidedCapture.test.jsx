@@ -1,11 +1,16 @@
 /** @vitest-environment jsdom */
 
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import process from 'node:process'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import BodyScanGuidedCapture from './BodyScanGuidedCapture.jsx'
 import { changeAppLanguage } from '../i18n/index.js'
+
+const css = readFileSync(resolve(process.cwd(), 'src/App.css'), 'utf8')
 
 function createStream(zoomCapabilities) {
   const stop = vi.fn()
@@ -27,6 +32,7 @@ function renderCapture(props = {}) {
   const root = createRoot(container)
   const onPhotoChange = props.onPhotoChange || vi.fn()
   const onAnalyze = props.onAnalyze || vi.fn()
+  const onClose = props.onClose
 
   act(() => {
     root.render(
@@ -36,6 +42,7 @@ function renderCapture(props = {}) {
         disabledReason={props.disabledReason || ''}
         photos={props.photos ?? {}}
         onAnalyze={onAnalyze}
+        onClose={onClose}
         onPhotoChange={onPhotoChange}
       />,
     )
@@ -354,6 +361,72 @@ describe('BodyScanGuidedCapture', () => {
     vi.useRealTimers()
   })
 
+  it('Vänd kamera requests the real opposite facingMode and stops the old track first', async () => {
+    const firstStream = createStream()
+    const secondStream = createStream()
+    const flipGetUserMedia = vi.fn()
+      .mockResolvedValueOnce(firstStream)
+      .mockResolvedValueOnce(secondStream)
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { getUserMedia: flipGetUserMedia },
+    })
+
+    const { container, unmount } = renderCapture()
+    await act(async () => {
+      findButton(container, 'Starta kameran').click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(flipGetUserMedia).toHaveBeenLastCalledWith(
+      expect.objectContaining({ video: { facingMode: { ideal: 'environment' } } }),
+    )
+    const oldTrack = firstStream.getVideoTracks()[0]
+    expect(container.textContent).toContain('Vänd kamera')
+
+    await act(async () => {
+      findButton(container, 'Vänd kamera').click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(oldTrack.stop).toHaveBeenCalled()
+    expect(flipGetUserMedia).toHaveBeenLastCalledWith(
+      expect.objectContaining({ video: { facingMode: { ideal: 'user' } } }),
+    )
+    expect(container.querySelector('video').srcObject).toBe(secondStream)
+    // Flipping must never itself trigger a countdown or capture.
+    expect(container.querySelector('.body-scan-guided-countdown')).toBeNull()
+    unmount()
+  })
+
+  it('closing stops the camera, countdown and speech, and calls onClose', async () => {
+    const onClose = vi.fn()
+    const { container, unmount } = renderCapture({ onClose })
+    await act(async () => {
+      findButton(container, 'Starta kameran').click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    const track = stream.getVideoTracks()[0]
+
+    vi.useFakeTimers()
+    act(() => {
+      findButton(container, 'Starta första bilden').click()
+    })
+    act(() => {
+      findButton(container, 'Stäng').click()
+    })
+
+    expect(track.stop).toHaveBeenCalled()
+    expect(window.speechSynthesis.cancel).toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(document.body.classList.contains('vk-body-scan-session')).toBe(false)
+
+    vi.useRealTimers()
+    unmount()
+  })
+
   it('never asks for a microphone', async () => {
     const { container, unmount } = renderCapture()
     await act(async () => {
@@ -363,5 +436,16 @@ describe('BodyScanGuidedCapture', () => {
     })
     expect(getUserMedia).toHaveBeenCalledWith(expect.objectContaining({ audio: false }))
     unmount()
+  })
+
+  it('uses fluid widths and safe-area padding so nothing overflows at 320-430px', () => {
+    expect(css).toContain('.body-scan-guided {')
+    expect(css).toMatch(/\.body-scan-guided \{[\s\S]*?max-width:\s*100%/)
+    expect(css).toMatch(/\.body-scan-guided \{[\s\S]*?overflow-x:\s*hidden/)
+    expect(css).toMatch(/\.body-scan-guided-frame \{[\s\S]*?width:\s*100%/)
+    expect(css).toMatch(/\.body-scan-guided-thumbnails \{[\s\S]*?grid-template-columns:\s*repeat\(3, 1fr\)/)
+    expect(css).toContain('.home-body-scan-capture')
+    expect(css).toMatch(/\.home-body-scan-capture[\s\S]{0,200}env\(safe-area-inset-top/)
+    expect(css).toMatch(/\.home-body-scan-capture[\s\S]{0,200}env\(safe-area-inset-bottom/)
   })
 })

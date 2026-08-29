@@ -99,7 +99,31 @@ describe('BodyAnalysisVideoScanner', () => {
     expect(cardSource).not.toContain('<BodyAnalysisVideoScanner')
     expect(cardSource).toContain("t('card.heading.modeVideoComingSoonTitle')")
     expect(cardSource).toContain("useState('photo')")
-    expect(cardSource).toContain("scanMode === 'photo' ? (")
+    expect(cardSource).toContain("scanMode === 'photo' || hideChrome ? (")
+  })
+
+  it('lets Home mount only the guided capture flow, with none of the old card/hub chrome around it', () => {
+    // hideChrome must gate the header, hub title, mode switch, privacy
+    // summary, onboarding/premium/quality info, unlock card, dev tools,
+    // and the result/compare/stats/history sections - Home's fullscreen
+    // flow must render nothing but BodyScanGuidedCapture (plus the
+    // required consent modal and error feedback for the same button).
+    expect(cardSource).toContain('hideChrome = false')
+    expect(cardSource).toMatch(/\{!hideChrome && \(\s*<div className="panel-heading">/)
+    expect(cardSource).toMatch(/\{!hideChrome && <h3 className="body-scan-hub-title">/)
+    expect(cardSource).toMatch(/\{!hideChrome && \(\s*<div className="body-scan-mode-switch"/)
+    expect(cardSource).toContain("scanMode === 'photo' || hideChrome ? (")
+    expect(cardSource).toMatch(/\{!hideChrome && \(\s*<details className="body-scan-section">/)
+    expect(cardSource).toMatch(/\{!hideChrome && \(\s*<>\s*<details className="body-analysis-more-info">/)
+    expect(cardSource).toMatch(/\{!hideChrome && \(\s*<>\s*\{!analysisError && savedAnalysis/)
+    // The consent modal and error banner stay unconditional - they are the
+    // direct, functional consequence of the same Analysera-button press,
+    // not decorative header chrome, so hiding them would strand the user.
+    const beforeConsent = cardSource.slice(0, cardSource.indexOf('<BodyAnalysisPrivacy'))
+    expect(beforeConsent.trimEnd().endsWith('</>)}')).toBe(true)
+    const afterConsent = cardSource.slice(cardSource.indexOf('<BodyAnalysisPrivacy'))
+    expect(afterConsent.indexOf('{analysisError && (')).toBeGreaterThan(0)
+    expect(afterConsent.indexOf('{analysisError && (')).toBeLessThan(200)
     expect(readFileSync(resolve(process.cwd(), 'src/components/BodyAnalysisPrivacy.jsx'), 'utf8')).toContain('body-scan-consent-overlay')
   })
 })

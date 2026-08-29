@@ -41,30 +41,33 @@ describe('HomeBodyScanStage', () => {
     expect(dashboardSource).not.toContain("onNavigateSection('progress', 'body-analysis')")
   })
 
-  it('shows a short consent screen before mounting the real Body Scan component', async () => {
+  it('mounts the real five-step flow immediately - no intro/consent screen in front of it', async () => {
     await changeAppLanguage('sv')
     const container = document.createElement('div')
     document.body.append(container)
     const root = createRoot(container)
 
-    act(() => {
-      root.render(<HomeBodyScanStage onClose={() => {}} profile={{}} userId="local-user" weights={[]} />)
-    })
-
-    expect(container.querySelector('[data-testid="real-body-analysis-card"]')).toBeNull()
-    expect(container.textContent).toContain('Ta tre bilder')
-
-    const startButton = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Ta tre bilder')
     await act(async () => {
-      startButton.click()
+      root.render(<HomeBodyScanStage onClose={() => {}} profile={{}} userId="local-user" weights={[]} />)
       await Promise.resolve()
       await Promise.resolve()
     })
 
+    // The real card (mocked here) is present on first render - no separate
+    // "Ta tre bilder" screen, no old "Din kropp idag" hero, nothing to tap
+    // through first.
     expect(container.querySelector('[data-testid="real-body-analysis-card"]')).toBeTruthy()
+    expect(container.textContent).not.toContain('Din kropp idag')
+    expect(stageSource).not.toContain('home-body-scan-intro')
+    expect(stageSource).toContain('hideChrome')
 
     act(() => root.unmount())
     container.remove()
+  })
+
+  it('renders as a real fullscreen flow, not nested inside the old card/hub chrome', () => {
+    expect(stageSource).toContain('is-fullscreen-flow')
+    expect(stageSource).toContain('<BodyAnalysisCard hideChrome')
   })
 
   it('hides the bottom nav via the controlled session class for the whole overlay lifetime, then restores it', () => {

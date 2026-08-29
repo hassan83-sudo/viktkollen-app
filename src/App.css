@@ -3186,6 +3186,33 @@ body.vk-body-scan-session .bottom-nav {
   background: #050b18;
   border: 1px solid rgba(122, 247, 255, 0.16);
   color: #eaf2ff;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Home's fullscreen entry (no card chrome around it - flush with the frame). */
+.home-body-scan-capture .body-scan-guided {
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.body-scan-guided-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.body-scan-guided-close {
+  min-height: 40px;
+  padding: 0 14px;
+  color: var(--text-h);
+  background: var(--soft-bg);
+  box-shadow: none;
+  border: 1px solid var(--border);
 }
 
 .body-scan-guided-step-pill {
@@ -3197,6 +3224,14 @@ body.vk-body-scan-session .bottom-nav {
   color: #7af7ff;
   font-weight: 700;
   font-size: 13px;
+}
+
+.body-scan-guided-camera-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
 }
 
 .body-scan-guided-prepare,
@@ -3269,10 +3304,16 @@ body.vk-body-scan-session .bottom-nav {
   position: relative;
   aspect-ratio: 3 / 4;
   width: 100%;
-  max-height: 60vh;
+  max-height: 42dvh;
   border-radius: 18px;
   overflow: hidden;
   background: #07111f;
+}
+
+@media (max-height: 700px) {
+  .body-scan-guided-frame {
+    max-height: 36dvh;
+  }
 }
 
 .body-scan-guided-frame video {

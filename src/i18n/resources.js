@@ -1025,6 +1025,8 @@ const sv = {
       zoomAria: 'Zoom',
       cameraOff: 'Kameran är avstängd.',
       framePlacementAria: 'Placeringsram - se till att hela kroppen syns i bild',
+      flipCamera: 'Vänd kamera',
+      analysisVerifiedNextStep: 'Kroppsanalysen verifieras i nästa steg.',
     },
   },
   progress: {
@@ -2651,6 +2653,8 @@ const en = {
       zoomAria: 'Zoom',
       cameraOff: 'The camera is off.',
       framePlacementAria: 'Placement frame - make sure your whole body is in view',
+      flipCamera: 'Flip camera',
+      analysisVerifiedNextStep: 'Body analysis is verified in the next step.',
     },
   },
   progress: {

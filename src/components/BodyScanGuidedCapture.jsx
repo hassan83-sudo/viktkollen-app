@@ -40,6 +40,7 @@ function BodyScanGuidedCapture({
   disabledReason,
   photos,
   onAnalyze,
+  onClose,
   onPhotoChange,
 }) {
   const { t } = useTranslation(['bodyScan', 'common'])
@@ -53,6 +54,8 @@ function BodyScanGuidedCapture({
   const [zoom, setZoom] = useState(1)
   const [zoomLevels, setZoomLevels] = useState([1])
   const [zoomSupported, setZoomSupported] = useState(false)
+  const [facingMode, setFacingMode] = useState(defaultBodyScanFacingMode)
+  const [flipUnavailable, setFlipUnavailable] = useState(false)
 
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
@@ -152,9 +155,19 @@ function BodyScanGuidedCapture({
       tickCountdown(remainingSecondsRef.current, activePoseRef.current)
     } else {
       stopCountdown()
+      cancelVideoScanSpeech()
       pausedRef.current = true
       setPaused(true)
     }
+  }
+
+  function handleClose() {
+    stopCountdown()
+    stopMediaStream(streamRef.current)
+    streamRef.current = null
+    cancelVideoScanSpeech()
+    setBodyScanSessionActive(false)
+    onClose?.()
   }
 
   function enterFront(isRetake) {
@@ -203,31 +216,50 @@ function BodyScanGuidedCapture({
     setStep('review')
   }
 
+  async function openStream(mode) {
+    const requestId = cameraRequestRef.current + 1
+    cameraRequestRef.current = requestId
+    const stream = await navigator.mediaDevices.getUserMedia(getBodyScanVideoConstraints(mode))
+    if (requestId !== cameraRequestRef.current) {
+      stopMediaStream(stream)
+      return null
+    }
+    return stream
+  }
+
+  // Assign the stream to the <video> element directly at the point it
+  // becomes available, rather than through an effect keyed on cameraActive:
+  // a flip keeps cameraActive true throughout, so that effect would never
+  // re-run and the preview would keep showing the old camera's last frame.
+  function attachStreamToVideo(stream) {
+    if (!videoRef.current) return
+    videoRef.current.srcObject = stream
+    videoRef.current.play?.().catch(() => {})
+  }
+
+  function applyStreamZoomCapabilities(stream) {
+    const track = stream.getVideoTracks?.()[0]
+    const supported = canUseHardwareZoom(track)
+    const capabilities = getTrackZoomCapabilities(track)
+    const levels = supported
+      ? zoomLevelCandidates.filter((level) => level >= capabilities.min && level <= capabilities.max)
+      : []
+    setZoomSupported(supported)
+    setZoomLevels(levels.length ? levels : [1])
+    setZoom(1)
+  }
+
   async function startCamera(targetStep = 'front', { isRetake = false } = {}) {
     if (!hasCameraApi) {
       setCameraError(t('bodyScan:guided.cameraOff'))
       return false
     }
     try {
-      const requestId = cameraRequestRef.current + 1
-      cameraRequestRef.current = requestId
-      const stream = await navigator.mediaDevices.getUserMedia(
-        getBodyScanVideoConstraints(defaultBodyScanFacingMode),
-      )
-      if (requestId !== cameraRequestRef.current) {
-        stopMediaStream(stream)
-        return false
-      }
+      const stream = await openStream(facingMode)
+      if (!stream) return false
       streamRef.current = stream
-      const track = stream.getVideoTracks?.()[0]
-      const supported = canUseHardwareZoom(track)
-      const capabilities = getTrackZoomCapabilities(track)
-      const levels = supported
-        ? zoomLevelCandidates.filter((level) => level >= capabilities.min && level <= capabilities.max)
-        : []
-      setZoomSupported(supported)
-      setZoomLevels(levels.length ? levels : [1])
-      setZoom(1)
+      attachStreamToVideo(stream)
+      applyStreamZoomCapabilities(stream)
       setCameraError('')
       setCameraActive(true)
       if (targetStep === 'side') enterSide()
@@ -238,6 +270,34 @@ function BodyScanGuidedCapture({
       setCameraActive(false)
       setCameraError(getCameraPermissionMessage(error))
       return false
+    }
+  }
+
+  // Flip must swap the real facingMode via a fresh getUserMedia call, stop
+  // the previous track first, and never touch step/countdown/capture state -
+  // switching camera is not itself a capture action.
+  async function flipCamera() {
+    const nextMode = facingMode === 'user' ? 'environment' : 'user'
+    stopMediaStream(streamRef.current)
+    streamRef.current = null
+    try {
+      const stream = await openStream(nextMode)
+      if (!stream) return
+      streamRef.current = stream
+      attachStreamToVideo(stream)
+      applyStreamZoomCapabilities(stream)
+      setFacingMode(nextMode)
+      setCameraError('')
+      setCameraActive(true)
+    } catch (error) {
+      setCameraActive(false)
+      setCameraError(getCameraPermissionMessage(error))
+      const name = error?.name || ''
+      if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+        // Only hide the control once we have real proof the device has no
+        // alternative camera to switch to.
+        setFlipUnavailable(true)
+      }
     }
   }
 
@@ -280,7 +340,14 @@ function BodyScanGuidedCapture({
   return (
     <div className="body-scan-guided" aria-labelledby="body-scan-guided-title">
       <canvas ref={canvasRef} aria-hidden="true" style={{ display: 'none' }} />
-      <div className="body-scan-guided-step-pill">{stepLabel}</div>
+      <div className="body-scan-guided-topbar">
+        <div className="body-scan-guided-step-pill">{stepLabel}</div>
+        {onClose && (
+          <button className="body-scan-guided-close" type="button" onClick={handleClose}>
+            {t('common:actions.close')}
+          </button>
+        )}
+      </div>
 
       {step === 'prepare' && (
         <section className="body-scan-guided-prepare">
@@ -345,21 +412,28 @@ function BodyScanGuidedCapture({
             )}
           </div>
 
-          {zoomLevels.length > 1 && (
-            <div className="body-scan-guided-zoom" aria-label={t('bodyScan:guided.zoomAria')}>
-              {zoomLevels.map((level) => (
-                <button
-                  aria-pressed={zoom === level}
-                  className={zoom === level ? 'is-active' : 'secondary-button'}
-                  key={level}
-                  type="button"
-                  onClick={() => applyZoom(level)}
-                >
-                  {formatZoomLabel(level)}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="body-scan-guided-camera-controls">
+            {zoomLevels.length > 1 && (
+              <div className="body-scan-guided-zoom" aria-label={t('bodyScan:guided.zoomAria')}>
+                {zoomLevels.map((level) => (
+                  <button
+                    aria-pressed={zoom === level}
+                    className={zoom === level ? 'is-active' : 'secondary-button'}
+                    key={level}
+                    type="button"
+                    onClick={() => applyZoom(level)}
+                  >
+                    {formatZoomLabel(level)}
+                  </button>
+                ))}
+              </div>
+            )}
+            {!flipUnavailable && (
+              <button className="secondary-button" type="button" onClick={flipCamera}>
+                {t('bodyScan:guided.flipCamera')}
+              </button>
+            )}
+          </div>
 
           <p className="body-scan-guided-timer-pill">{t('bodyScan:guided.timerPill', { seconds: timerSeconds })}</p>
 
@@ -436,6 +510,7 @@ function BodyScanGuidedCapture({
           <button className="secondary-button" type="button" onClick={handleRetakeAll}>
             {t('bodyScan:guided.retakeAll')}
           </button>
+          <p className="body-scan-guided-hint">{t('bodyScan:guided.analysisVerifiedNextStep')}</p>
           <p className="body-scan-guided-hint">{t('bodyScan:guided.weightNote')}</p>
           {currentAnalysisStatus && <p className="analysis-status" aria-live="polite">{currentAnalysisStatus}</p>}
           {disabledReason && <p className="progress-photo-safety">{disabledReason}</p>}

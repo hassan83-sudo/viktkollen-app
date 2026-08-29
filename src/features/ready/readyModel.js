@@ -1,6 +1,9 @@
 export const readySchemaVersion = 1
 export const readyStorageKey = 'viktkollen.ready.v1'
 
+const signLanguageIds = new Set(['sts', 'asl', 'bsl', 'international-sign'])
+const communicationPreferences = new Set(['text', 'visual', 'text-and-verified-sign'])
+
 export const readyLevels = Object.freeze([
   { id: 'preschool', labelKey: 'levels.preschool' },
   { id: 'f3', labelKey: 'levels.f3' },
@@ -71,8 +74,11 @@ export function createEmptyReadyState(overrides = {}) {
     items: [],
     levelId: null,
     personality: 'calm',
+    prefersSpeech: false,
     pronouns: '',
     schemaVersion: readySchemaVersion,
+    selectedSignLanguage: 'sts',
+    communicationPreference: 'text',
     ...overrides,
   })
 }
@@ -92,8 +98,11 @@ export function normalizeReadyState(raw) {
     items,
     levelId,
     personality: asTrimmed(source.personality) || 'calm',
+    prefersSpeech: Boolean(source.prefersSpeech),
     pronouns: asTrimmed(source.pronouns),
     schemaVersion: readySchemaVersion,
+    selectedSignLanguage: signLanguageIds.has(source.selectedSignLanguage) ? source.selectedSignLanguage : 'sts',
+    communicationPreference: communicationPreferences.has(source.communicationPreference) ? source.communicationPreference : 'text',
   }
 }
 

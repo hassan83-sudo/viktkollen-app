@@ -1016,9 +1016,9 @@ function App() {
       if (!targetId) return
       const sectionId = targetId.replace(/^app-section-/, '')
 
-      if (sectionId === 'progress' || sectionId === 'nutrition' || sectionId === 'coach' || resolveMoreFolderFromTarget(targetId)) {
+      if (sectionId === 'progress' || sectionId === 'nutrition' || sectionId === 'coach' || sectionId === 'wellbeing' || sectionId === 'economy' || resolveMoreFolderFromTarget(targetId)) {
         const folder = resolveMoreFolderFromTarget(targetId)
-          || (sectionId === 'nutrition' ? 'mat' : sectionId === 'coach' ? 'ai-coach' : sectionId === 'progress' ? 'mal-framsteg' : null)
+          || (sectionId === 'nutrition' ? 'mat' : sectionId === 'coach' ? 'ai-coach' : sectionId === 'progress' ? 'mal-framsteg' : sectionId === 'wellbeing' ? 'ma-bra' : sectionId === 'economy' ? 'ekonomi' : null)
         setMoreIntent({ id: Date.now(), targetId: folder || targetId })
         setActiveAppSection('more')
         return
@@ -2790,6 +2790,12 @@ function App() {
     }
     if (sectionId === 'economy') {
       setMoreIntent({ id: Date.now(), targetId: 'ekonomi' })
+      setActiveAppSection('more')
+      return
+    }
+    const moreFolder = resolveMoreFolderFromTarget(sectionId)
+    if (moreFolder) {
+      setMoreIntent({ id: Date.now(), targetId: moreFolder })
       setActiveAppSection('more')
       return
     }

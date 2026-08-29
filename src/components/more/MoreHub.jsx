@@ -3,10 +3,13 @@ import { useTranslation } from 'react-i18next'
 
 const FOLDER_I18N_KEYS = {
   'ai-coach': 'coach',
+  'animal-world': 'animalWorld',
   ekonomi: 'economy',
+  'pregnancy-first-year': 'pregnancyFirstYear',
   'ma-bra': 'wellbeing',
   mat: 'nutrition',
   'sakerhet-backup': 'security',
+  'sign-language': 'signLanguage',
   'import-export': 'importExport',
   'mal-framsteg': 'goals',
   'arkiv-historik': 'archive',

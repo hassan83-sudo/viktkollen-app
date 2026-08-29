@@ -3,13 +3,16 @@ import { moreHubFolders, resolveMoreFolderFromTarget } from './moreFolders.js'
 
 describe('more hub folders', () => {
   it('lists Framsteg, Mat and AI Coach first while preserving the family hubs', () => {
-    expect(moreHubFolders).toHaveLength(9)
+    expect(moreHubFolders).toHaveLength(12)
     expect(moreHubFolders.map((folder) => folder.id)).toEqual([
       'mal-framsteg',
       'mat',
       'ai-coach',
       'ma-bra',
       'ekonomi',
+      'sign-language',
+      'animal-world',
+      'pregnancy-first-year',
       'sakerhet-backup',
       'import-export',
       'arkiv-historik',
@@ -21,6 +24,9 @@ describe('more hub folders', () => {
       'AI Coach',
       'Må bra',
       'Ekonomi',
+      'Teckenspråk',
+      'Djurvärlden',
+      'Graviditet & första året',
       'Säkerhet & Backup',
       'Import & Export',
       'Arkiv & Historik',
@@ -39,6 +45,10 @@ describe('more hub folders', () => {
     expect(resolveMoreFolderFromTarget('wellbeing-center')).toBe('ma-bra')
     expect(resolveMoreFolderFromTarget('app-section-economy')).toBe('ekonomi')
     expect(resolveMoreFolderFromTarget('economy-center')).toBe('ekonomi')
+    expect(resolveMoreFolderFromTarget('sign-language')).toBe('sign-language')
+    expect(resolveMoreFolderFromTarget('app-section-sign-language')).toBe('sign-language')
+    expect(resolveMoreFolderFromTarget('animal-world')).toBe('animal-world')
+    expect(resolveMoreFolderFromTarget('pregnancy-first-year')).toBe('pregnancy-first-year')
     expect(resolveMoreFolderFromTarget('#quiet-hours')).toBe('mal-framsteg')
     expect(resolveMoreFolderFromTarget('nutrition-scanner-v2')).toBe('mat')
     expect(resolveMoreFolderFromTarget('data-export')).toBe('import-export')

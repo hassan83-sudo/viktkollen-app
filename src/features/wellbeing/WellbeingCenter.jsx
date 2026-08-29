@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import CompanionProfilePanel from '../companion/CompanionProfilePanel.jsx'
 import {
   clearWellbeingPlan,
   createPreparedSupportMessage,
@@ -89,6 +90,8 @@ function WellbeingCenter({ profile = {}, readyState = {} }) {
       </header>
 
       {status && <p className="form-success" role="status" aria-live="polite">{status}</p>}
+
+      <CompanionProfilePanel mode="compact" surface="wellbeing" />
 
       <section className="wellbeing-panel" aria-labelledby="wellbeing-checkin-title">
         <div className="wellbeing-panel-heading">

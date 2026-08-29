@@ -17,6 +17,8 @@ import {
 } from '../../features/ready/readyModel.js'
 import { buildReadyNextEvents } from '../../features/ready/readyNextEvents.js'
 import { loadReadyState, saveReadyState } from '../../features/ready/readyStore.js'
+import CompanionProfilePanel from '../../features/companion/CompanionProfilePanel.jsx'
+import { loadCompanionProfile, saveCompanionProfile } from '../../features/companion/companionModel.js'
 import {
   getAllReadyTechniques,
   getPrimaryReadyTechniques,
@@ -58,6 +60,7 @@ function ReadySection({
   const [showEyeInfo, setShowEyeInfo] = useState(false)
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   const [showExamples, setShowExamples] = useState(false)
+  const [companionProfile, setCompanionProfile] = useState(() => loadCompanionProfile())
 
   useEffect(() => {
     saveReadyState(state)
@@ -66,7 +69,7 @@ function ReadySection({
   const policy = getReadyLevelPolicy(state.levelId)
   const progress = getChecklistProgress(state.items)
   const progressRatio = progress.total ? progress.done / progress.total : 0
-  const avatar = getReadyAvatar(state.avatarId)
+  const avatar = getReadyAvatar(companionProfile.avatarId)
   const nextEvents = useMemo(
     () => buildReadyNextEvents({
       demoMode: state.demoMode,
@@ -159,10 +162,10 @@ function ReadySection({
               {getReadyAvatars().map((entry) => (
                 <button
                   key={entry.id}
-                  className={`ready-avatar-choice${state.avatarId === entry.id ? ' is-active' : ''}`}
+                  className={`ready-avatar-choice${companionProfile.avatarId === entry.id ? ' is-active' : ''}`}
                   type="button"
                   onClick={() => {
-                    commitState((current) => ({ ...current, avatarId: entry.id }))
+                    setCompanionProfile((current) => saveCompanionProfile({ ...current, avatarId: entry.id }))
                     setShowAvatarPicker(false)
                   }}
                 >
@@ -298,6 +301,7 @@ function ReadySection({
         </section>
 
         <section className="ready-ai-grid" aria-label={t('ai.gridAria')}>
+          <CompanionProfilePanel onProfileChange={setCompanionProfile} surface="ready" />
           <article className="ready-ai-card is-eye">
             <h2>{t('eye.title')}</h2>
             <p>{t('eye.body')}</p>

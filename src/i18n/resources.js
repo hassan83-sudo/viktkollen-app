@@ -1,3 +1,5 @@
+import { companionEn, companionSv } from './companionResources.js'
+import { educationEn, educationSv } from './educationResources.js'
 import { placeEn, placeSv, readyEn, readySv } from './readyPlaceResources.js'
 
 const sv = {
@@ -35,6 +37,7 @@ const sv = {
     deleting: 'Raderar...',
     optional: 'Valfritt',
   },
+  companion: companionSv,
   navigation: {
     mainNavigation: 'Huvudnavigation',
     sections: {
@@ -361,6 +364,7 @@ const sv = {
     types: { purchase: 'Köp', refund: 'Återbetalning' },
     wheel: { description: 'Rund tavla med månadens utgifter per kategori.', table: 'Textalternativ till utgiftstavlan', title: 'Rund utgiftstavla' },
   },
+  education: educationSv,
   settings: {
     language: {
       description: 'Byt språk direkt utan att ladda om. Svenska är källspråk.',
@@ -419,6 +423,18 @@ const sv = {
       economy: {
         title: 'Ekonomi',
         description: 'Utgifter, budget, skulder och sparande',
+      },
+      signLanguage: {
+        title: 'Teckenspråk',
+        description: 'STS, fraser och säkra framtida teckenstöd',
+      },
+      animalWorld: {
+        title: 'Djurvärlden',
+        description: 'Djur, insekter och faktagranskade videospår',
+      },
+      pregnancyFirstYear: {
+        title: 'Graviditet & första året',
+        description: 'Graviditet, första året och vårdhänvisningar',
       },
       nutrition: {
         title: 'Mat',
@@ -1591,6 +1607,7 @@ const en = {
     deleting: 'Deleting...',
     optional: 'Optional',
   },
+  companion: companionEn,
   navigation: {
     mainNavigation: 'Main navigation',
     sections: {
@@ -1917,6 +1934,7 @@ const en = {
     types: { purchase: 'Purchase', refund: 'Refund' },
     wheel: { description: 'Round board with monthly expenses by category.', table: 'Text alternative for the expense board', title: 'Round expense board' },
   },
+  education: educationEn,
   settings: {
     language: {
       description: 'Change language instantly without reloading. Swedish remains the source language.',
@@ -1975,6 +1993,18 @@ const en = {
       economy: {
         title: 'Economy',
         description: 'Expenses, budget, debts and saving',
+      },
+      signLanguage: {
+        title: 'Sign language',
+        description: 'STS, phrases and safe future signing support',
+      },
+      animalWorld: {
+        title: 'Animal World',
+        description: 'Animals, insects and fact-checked video tracks',
+      },
+      pregnancyFirstYear: {
+        title: 'Pregnancy & the first year',
+        description: 'Pregnancy, the first year and care guidance',
       },
       nutrition: {
         title: 'Food',

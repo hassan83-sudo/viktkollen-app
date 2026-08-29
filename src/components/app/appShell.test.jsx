@@ -85,10 +85,13 @@ describe('Performance Architecture app shell components', () => {
     expect(resolveMoreFolderFromTarget('app-section-wellbeing')).toBe('ma-bra')
     expect(resolveMoreFolderFromTarget('app-section-economy')).toBe('ekonomi')
     expect(resolveMoreFolderFromTarget('body-analysis')).toBe('mal-framsteg')
+    expect(resolveMoreFolderFromTarget('sign-language')).toBe('sign-language')
+    expect(resolveMoreFolderFromTarget('animal-world')).toBe('animal-world')
+    expect(resolveMoreFolderFromTarget('pregnancy-first-year')).toBe('pregnancy-first-year')
   })
 
-  it('marks More active for secondary Coach, Mat, Framsteg, Må bra and Ekonomi routes', () => {
-    ;['coach', 'nutrition', 'progress', 'wellbeing', 'economy'].forEach((activeSection) => {
+  it('marks More active for secondary routes', () => {
+    ;['coach', 'nutrition', 'progress', 'wellbeing', 'economy', 'sign-language', 'animal-world', 'pregnancy-first-year'].forEach((activeSection) => {
       const markup = renderToStaticMarkup(<BottomNavigation activeSection={activeSection} />)
 
       expect(markup).toContain('href="#app-section-more"')

@@ -5,6 +5,9 @@ import CloudBackupPanel from '../CloudBackupPanel.jsx'
 import CloudStatusPanel from '../CloudStatusPanel.jsx'
 import CloudSyncPanel from '../CloudSyncPanel.jsx'
 import MoreHub from '../more/MoreHub.jsx'
+import AnimalWorldSection from '../../features/education/AnimalWorldSection.jsx'
+import PregnancyFirstYearSection from '../../features/education/PregnancyFirstYearSection.jsx'
+import SignLanguageSection from '../../features/education/SignLanguageSection.jsx'
 import LanguageSettingsPanel from '../LanguageSettingsPanel.jsx'
 import AppSection from '../app/AppSection.jsx'
 import GlobalSearch from '../app/GlobalSearch.jsx'
@@ -228,6 +231,24 @@ function MoreSection({
               {...economySectionProps}
               activeSection="economy"
             />
+          </AppErrorBoundary>
+        )}
+
+        {activeFolder === 'sign-language' && (
+          <AppErrorBoundary area="sign-language" resetKey={userId} title={t('signLanguageError', { defaultValue: 'Teckenspråk kunde inte visas' })}>
+            <SignLanguageSection onOpenAiCoach={onOpenAiCoach} />
+          </AppErrorBoundary>
+        )}
+
+        {activeFolder === 'animal-world' && (
+          <AppErrorBoundary area="animal-world" resetKey={userId} title={t('animalWorldError', { defaultValue: 'Djurvärlden kunde inte visas' })}>
+            <AnimalWorldSection />
+          </AppErrorBoundary>
+        )}
+
+        {activeFolder === 'pregnancy-first-year' && (
+          <AppErrorBoundary area="pregnancy-first-year" resetKey={userId} title={t('pregnancyFirstYearError', { defaultValue: 'Graviditet och första året kunde inte visas' })}>
+            <PregnancyFirstYearSection />
           </AppErrorBoundary>
         )}
 

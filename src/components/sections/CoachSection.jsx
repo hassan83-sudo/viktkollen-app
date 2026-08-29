@@ -2,6 +2,7 @@
 import AppErrorBoundary from '../AppErrorBoundary.jsx'
 import ChatPanel from '../ChatPanel.jsx'
 import AppSection from '../app/AppSection.jsx'
+import CompanionProfilePanel from '../../features/companion/CompanionProfilePanel.jsx'
 
 const AICoach = lazy(() => import('../AICoach.jsx'))
 const AINutritionInsights = lazy(() => import('../AINutritionInsights.jsx'))
@@ -72,6 +73,8 @@ function CoachSection({
         resetKey={chatMessages.length}
         title="AI-coachen kunde inte visas"
       >
+        <CompanionProfilePanel mode="compact" surface="coach" />
+
         <ChatPanel
           canClearChat={canClearChat}
           chatEngineStatus={chatEngineStatus}

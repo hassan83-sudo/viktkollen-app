@@ -26,16 +26,27 @@ describe('appSections', () => {
     expect(defaultAppSectionId).toBe('home')
   })
 
-  it('keeps coach, nutrition, progress, wellbeing and economy routable as secondary sections', () => {
-    expect(secondaryAppSectionIds).toEqual(['coach', 'nutrition', 'progress', 'wellbeing', 'economy'])
+  it('keeps More destinations routable as secondary sections', () => {
+    expect(secondaryAppSectionIds).toEqual([
+      'coach',
+      'nutrition',
+      'progress',
+      'wellbeing',
+      'economy',
+      'sign-language',
+      'animal-world',
+      'pregnancy-first-year',
+    ])
     expect(isAppSectionId('coach')).toBe(true)
     expect(isAppSectionId('nutrition')).toBe(true)
     expect(isAppSectionId('progress')).toBe(true)
     expect(isAppSectionId('wellbeing')).toBe(true)
     expect(isAppSectionId('economy')).toBe(true)
+    expect(isAppSectionId('sign-language')).toBe(true)
     expect(isPrimaryAppSectionId('coach')).toBe(false)
     expect(isPrimaryAppSectionId('wellbeing')).toBe(false)
     expect(isPrimaryAppSectionId('economy')).toBe(false)
+    expect(isPrimaryAppSectionId('pregnancy-first-year')).toBe(false)
     expect(isPrimaryAppSectionId('redo')).toBe(true)
   })
 
@@ -45,6 +56,9 @@ describe('appSections', () => {
     expect(getBottomNavActiveSectionId('coach')).toBe('more')
     expect(getBottomNavActiveSectionId('wellbeing')).toBe('more')
     expect(getBottomNavActiveSectionId('economy')).toBe('more')
+    expect(getBottomNavActiveSectionId('sign-language')).toBe('more')
+    expect(getBottomNavActiveSectionId('animal-world')).toBe('more')
+    expect(getBottomNavActiveSectionId('pregnancy-first-year')).toBe('more')
     expect(getBottomNavActiveSectionId('place')).toBe('place')
   })
 

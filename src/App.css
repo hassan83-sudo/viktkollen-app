@@ -16084,3 +16084,322 @@ html:has(#app-section-more.is-active),
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.education-center {
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.education-hero,
+.education-panel,
+.education-media-card {
+  min-width: 0;
+  border: 1px solid rgba(66, 232, 244, 0.24);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(14, 24, 38, 0.96), rgba(11, 16, 28, 0.98)),
+    rgba(8, 12, 20, 0.96);
+  box-shadow: 0 0 26px rgba(66, 232, 244, 0.08);
+}
+
+.education-hero,
+.education-panel {
+  padding: clamp(1rem, 3vw, 1.35rem);
+}
+
+.education-hero h1,
+.education-panel h2,
+.education-panel h3,
+.education-media-card h3 {
+  margin: 0 0 0.55rem;
+  letter-spacing: 0;
+}
+
+.education-hero p,
+.education-panel p,
+.education-media-card p {
+  color: #c8d7e8;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.education-entry-grid,
+.education-card-grid,
+.education-media-grid,
+.education-form-grid,
+.education-capabilities {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.education-entry-grid a,
+.education-mini-card,
+.education-media-card,
+.education-preview,
+.education-camera-box {
+  min-width: 0;
+  border: 1px solid rgba(157, 124, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+  color: #f5fbff;
+}
+
+.education-entry-grid a,
+.education-mini-card {
+  padding: 0.95rem;
+}
+
+.education-entry-grid a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 3.75rem;
+  text-decoration: none;
+}
+
+.education-entry-grid a::after {
+  content: ">";
+  color: #42e8f4;
+  font-size: 1.35rem;
+}
+
+.education-panel-heading,
+.education-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.education-form-grid label,
+.education-ai-box label,
+.pregnancy-center label {
+  display: grid;
+  gap: 0.35rem;
+  color: #dce8f5;
+  font-weight: 700;
+  min-width: 0;
+}
+
+.education-form-grid select,
+.education-ai-box textarea,
+.pregnancy-center select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(66, 232, 244, 0.26);
+  border-radius: 8px;
+  background: rgba(4, 10, 20, 0.92);
+  color: #f7fbff;
+  padding: 0.7rem 0.8rem;
+}
+
+.education-check-row {
+  display: flex !important;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.education-check-row input {
+  flex: 0 0 auto;
+}
+
+.education-ai-box {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+}
+
+.education-preview {
+  margin-top: 0.9rem;
+  padding: 1rem;
+}
+
+.education-capabilities,
+.education-list,
+.education-tag-list {
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.education-capabilities li,
+.education-list li,
+.education-tag-list li {
+  min-width: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.65rem 0;
+  color: #dce8f5;
+  overflow-wrap: anywhere;
+}
+
+.education-list li {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.education-list span {
+  color: #a8bad0;
+  font-size: 0.9rem;
+}
+
+.education-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.education-tag-list li,
+.education-status-pill {
+  border: 1px solid rgba(66, 232, 244, 0.2);
+  border-radius: 999px;
+  background: rgba(66, 232, 244, 0.08);
+  padding: 0.45rem 0.65rem;
+}
+
+.education-media-card {
+  display: grid;
+  gap: 0.85rem;
+  padding: 0.9rem;
+}
+
+.education-media-preview,
+.education-camera-box {
+  display: grid;
+  place-items: center;
+  min-height: 8rem;
+  text-align: center;
+}
+
+.education-media-preview span {
+  color: #42e8f4;
+  font-size: 1.8rem;
+}
+
+.education-media-meta {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.education-media-meta div {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, auto) minmax(0, 1fr);
+  gap: 0.5rem;
+}
+
+.education-media-meta dt {
+  color: #8fb0c8;
+  font-weight: 700;
+}
+
+.education-media-meta dd {
+  margin: 0;
+  color: #e7f5ff;
+  overflow-wrap: anywhere;
+}
+
+.education-status-pill {
+  display: inline-flex;
+  justify-self: start;
+  margin: 0;
+  color: #bff8ff !important;
+  font-size: 0.9rem;
+}
+
+.education-camera-box video {
+  display: block;
+  width: 100%;
+  max-height: 18rem;
+  border-radius: 8px;
+  background: #060b13;
+  object-fit: cover;
+}
+
+.education-safety-note {
+  border-left: 3px solid #ff61c7;
+  padding-left: 0.8rem;
+}
+
+.education-urgent {
+  border-color: rgba(255, 97, 117, 0.42);
+}
+
+.companion-panel {
+  background: rgba(248, 250, 252, 0.08);
+  border: 1px solid rgba(191, 248, 255, 0.28);
+  border-radius: 8px;
+  color: inherit;
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.companion-panel-heading {
+  align-items: center;
+  display: flex;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.companion-panel-heading h2,
+.companion-panel-heading p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.companion-form-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+}
+
+.companion-form-grid label {
+  display: grid;
+  font-size: 0.9rem;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.companion-form-grid input,
+.companion-form-grid select {
+  border: 1px solid rgba(203, 213, 225, 0.75);
+  border-radius: 8px;
+  font: inherit;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0.65rem 0.75rem;
+}
+
+.companion-avatar-grid {
+  margin-top: 0;
+}
+
+@media (max-width: 430px) {
+  .education-hero,
+  .education-panel,
+  .education-media-card {
+    padding: 0.85rem;
+  }
+
+  .education-panel-heading,
+  .education-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .education-actions .primary-button,
+  .education-actions .secondary-button,
+  .education-urgent .primary-button {
+    width: 100%;
+  }
+
+  .education-media-meta div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

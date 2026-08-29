@@ -29,6 +29,24 @@ describe('globalSearchIndex', () => {
     expect(titles('trygghetsplan')).toContain('Må bra')
     expect(titles('ekonomi')).toContain('Ekonomi')
     expect(titles('budget')).toContain('Ekonomi')
+    expect(titles('teckenspråk')).toContain('Teckenspråk')
+    expect(titles('djur')).toContain('Djurvärlden')
+    expect(titles('graviditet')).toContain('Graviditet & första året')
+  })
+
+  it('routes new education search hits to More folder targets', () => {
+    expect(searchGlobalNavigation('sts')[0]).toMatchObject({
+      section: 'more',
+      targetId: 'sign-language',
+    })
+    expect(searchGlobalNavigation('axolotl')[0]).toMatchObject({
+      section: 'more',
+      targetId: 'animal-world',
+    })
+    expect(searchGlobalNavigation('1177')[0]).toMatchObject({
+      section: 'more',
+      targetId: 'pregnancy-first-year',
+    })
   })
 
   it('finds AI Progress Insights by trend and plateau aliases', () => {

@@ -1,4 +1,4 @@
-﻿import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import HomeSection from './components/sections/HomeSection.jsx'
 import MoreSection from './components/sections/MoreSection.jsx'
@@ -29,7 +29,9 @@ import {
   getAuthErrorMessage,
   getAuthStatus,
   getCurrentAuthSession,
+  getUrlAuthError,
   signInWithEmail,
+  signInWithGoogle,
   signOut,
   signUpWithEmail,
   subscribeToAuthChanges,
@@ -1632,6 +1634,15 @@ function App() {
         return
       }
 
+      const urlAuthError = getUrlAuthError()
+      if (urlAuthError) {
+        setAuthError(getAuthErrorMessage(urlAuthError))
+        if (typeof window !== 'undefined' && window.history?.replaceState) {
+          const cleanUrl = `${window.location.origin}${window.location.pathname}`
+          window.history.replaceState({}, document.title, cleanUrl)
+        }
+      }
+
       const { data, error } = await getCurrentAuthSession()
 
       if (cancelled) {
@@ -1640,9 +1651,14 @@ function App() {
 
       if (error) {
         setAuthError(getAuthErrorMessage(error))
-      } else {
+      } else if (data?.session) {
         setAuthError('')
-        setAuthSession(data?.session ?? null)
+        setAuthSession(data.session)
+      } else {
+        if (!urlAuthError) {
+          setAuthError('')
+        }
+        setAuthSession(null)
       }
 
       setAuthLoading(false)
@@ -2227,6 +2243,20 @@ function App() {
     }
 
     setAuthLoading(false)
+  }
+
+  async function handleSignInWithGoogle() {
+    setAuthError('')
+    setAuthNotice('')
+    setAuthLoading(true)
+    clearSharedAnalyticsCache()
+
+    const { error } = await signInWithGoogle()
+
+    if (error) {
+      setAuthError(getAuthErrorMessage(error))
+      setAuthLoading(false)
+    }
   }
 
   async function handleSignUp(credentials) {
@@ -2998,6 +3028,7 @@ function App() {
           authNotice={authNotice}
           authStatus={authStatus}
           onSignIn={handleSignIn}
+          onSignInWithGoogle={handleSignInWithGoogle}
           onSignUp={handleSignUp}
         />
       </>

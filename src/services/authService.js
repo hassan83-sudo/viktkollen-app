@@ -43,8 +43,53 @@ export function getAuthStatus() {
   }
 }
 
+export function getOAuthRedirectUrl() {
+  if (typeof window === 'undefined') {
+    return undefined
+  }
+
+  return `${window.location.origin}${window.location.pathname || '/'}`
+}
+
+export function getUrlAuthError() {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    const searchParams = new URLSearchParams(window.location.search)
+    const hashParams = new URLSearchParams(
+      window.location.hash.startsWith('#')
+        ? window.location.hash.slice(1)
+        : window.location.hash,
+    )
+
+    const error = searchParams.get('error') || hashParams.get('error')
+    const errorDescription =
+      searchParams.get('error_description') || hashParams.get('error_description')
+    const errorCode =
+      searchParams.get('error_code') || hashParams.get('error_code')
+
+    if (error || errorDescription || errorCode) {
+      return {
+        code: errorCode || null,
+        error: error || 'oauth_error',
+        message: errorDescription
+          ? decodeURIComponent(errorDescription.replace(/\+/g, ' '))
+          : error || 'OAuth-fel',
+      }
+    }
+  } catch {
+    // Ignore URL parse errors
+  }
+
+  return null
+}
+
 export function getAuthErrorMessage(error) {
-  const message = String(error?.message || '').toLocaleLowerCase('sv-SE')
+  const message = String(
+    error?.message || error?.error_description || error?.error || error || '',
+  ).toLocaleLowerCase('sv-SE')
 
   if (!message) {
     return 'Något gick fel med autentiseringen.'
@@ -74,7 +119,33 @@ export function getAuthErrorMessage(error) {
     return 'Supabase Auth är inte konfigurerat ännu.'
   }
 
-  return error?.message || 'Något gick fel med autentiseringen.'
+  if (
+    message.includes('access_denied') ||
+    message.includes('user cancelled') ||
+    message.includes('cancelled') ||
+    message.includes('avbröts') ||
+    message.includes('avbruten')
+  ) {
+    return 'Inloggningen med Google avbröts.'
+  }
+
+  if (
+    message.includes('provider is not enabled') ||
+    message.includes('unsupported provider') ||
+    message.includes('google provider is not enabled')
+  ) {
+    return 'Google-inloggning är inte aktiverad i Supabase.'
+  }
+
+  if (message.includes('popup') || message.includes('blocked')) {
+    return 'Webbläsaren blockerade inloggningen. Tillåt omdirigering och försök igen.'
+  }
+
+  return (
+    error?.message ||
+    error?.error_description ||
+    (typeof error === 'string' ? error : 'Något gick fel med autentiseringen.')
+  )
 }
 
 export async function getCurrentAuthSession() {
@@ -122,6 +193,19 @@ export async function signInWithEmail({ email, password }) {
   return supabase.auth.signInWithPassword({
     email,
     password,
+  })
+}
+
+export async function signInWithGoogle({ redirectTo } = {}) {
+  if (!supabase) {
+    return getAuthUnavailableResult()
+  }
+
+  const targetRedirectTo = redirectTo || getOAuthRedirectUrl()
+
+  return supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: targetRedirectTo ? { redirectTo: targetRedirectTo } : {},
   })
 }
 

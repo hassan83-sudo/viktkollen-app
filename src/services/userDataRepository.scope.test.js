@@ -203,6 +203,26 @@ describe('scoped profile and weight repository', () => {
     expect(readSyncMetadata(localStorage).pendingKeys).toEqual([])
   })
 
+  it('reloads onboarding profile and start weight only for the same authenticated user scope', () => {
+    const accountA = createUserDataScopeFromAuth({ authLoading: false, userId: 'user-a' })
+    const accountB = createUserDataScopeFromAuth({ authLoading: false, userId: 'user-b' })
+
+    setActiveUserDataScope(accountA)
+    saveProfile({ displayName: 'A', height: 181, startWeight: '91,8' })
+    saveWeights([{ id: 'onboarding-start-weight', source: 'Manuell', value: 91.8 }])
+
+    setActiveUserDataScope(createUserDataScopeFromAuth({ authLoading: true }))
+    setActiveUserDataScope(accountA)
+    expect(getProfile(null)).toMatchObject({ displayName: 'A', heightCm: 181, startWeight: '91,8' })
+    expect(getWeights([])).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'onboarding-start-weight', value: 91.8 }),
+    ]))
+
+    setActiveUserDataScope(accountB)
+    expect(getProfile(null)).toBeNull()
+    expect(getWeights([])).toEqual([])
+  })
+
   it('treats direct account A to account B switch as unhydrated until B scope loads', () => {
     const accountA = createUserDataScopeFromAuth({ authLoading: false, userId: 'user-a' })
     const accountB = createUserDataScopeFromAuth({ authLoading: false, userId: 'user-b' })

@@ -82,6 +82,7 @@ import {
   normalizeProfile,
   profileDraftToProfile,
 } from './services/profileService.js'
+import { upsertOnboardingStartWeight } from './services/onboardingPersistence.js'
 import * as userDataRepository from './services/userDataRepository.js'
 import { loadAiApiService, loadAiCoachV2Service, loadAiSuggestions, loadAiUserContext, loadProactiveCoachService, loadWeeklyReportService } from './services/ai/aiRuntimeLoader.js'
 import { prepareCoachChatSubmission, requestCoachChatReply, requestCoachRealtimeSession } from './services/ai/aiChatController.js'
@@ -2196,8 +2197,18 @@ function App() {
       return
     }
 
+    if (!profileWeightsHydrated) {
+      setProfileError('Vänta tills kontodata har laddats och försök igen.')
+      return
+    }
+
+    const nextWeights = upsertOnboardingStartWeight(scopedWeights, result.profile)
+    userDataRepository.setActiveUserDataScope(userDataScope)
+    userDataRepository.saveProfile(result.profile)
+    userDataRepository.saveWeights(nextWeights)
     setProfile(result.profile)
     setProfileForm(createProfileForm(result.profile))
+    setWeights(nextWeights)
     setShowOnboarding(false)
   }
 

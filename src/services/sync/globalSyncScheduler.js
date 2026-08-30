@@ -3,6 +3,7 @@ import { loadCloudSyncEngine } from '../cloudRuntimeLoader.js'
 import { refreshSyncStatus, resetSyncStatus } from './syncStatusStore.js'
 import { getDueSyncQueueItems, readSyncQueue } from './syncQueue.js'
 import { isAllowedSyncStorageKey, readSyncMetadata } from './syncMetadata.js'
+import { createAuthenticatedUserSyncStorage } from '../userDataRepository.js'
 
 export const defaultSyncSchedulerOptions = {
   debounceMs: 1500,
@@ -65,6 +66,10 @@ export function createGlobalSyncScheduler(options = {}) {
   let currentReason = ''
   let onDataChanged = () => {}
 
+  function getActiveStorage() {
+    return storage || createAuthenticatedUserSyncStorage(userId)
+  }
+
   function clearTimers() {
     if (debounceTimer) clearTimeoutRef(debounceTimer)
     if (maxWaitTimer) clearTimeoutRef(maxWaitTimer)
@@ -93,7 +98,8 @@ export function createGlobalSyncScheduler(options = {}) {
     }
 
     const force = runOptions.force === true
-    if (!shouldAutoRun({ force, storage, windowRef })) {
+    const activeStorage = getActiveStorage()
+    if (!shouldAutoRun({ force, storage: activeStorage, windowRef })) {
       refreshSyncStatus({ currentTrigger: reason, running: false, userId })
       return { ok: true, status: 'skipped' }
     }
@@ -107,7 +113,7 @@ export function createGlobalSyncScheduler(options = {}) {
       .then(({ runCloudSync }) => runCloudSync({
         force,
         online: getOnlineState(windowRef),
-        storage,
+        storage: activeStorage,
         userId,
       }))
       .then((result) => {

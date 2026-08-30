@@ -3,6 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CloudSyncPanel from '../../components/CloudSyncPanel.jsx'
 import { removeStorage, writeStorage } from '../appStorageService.js'
 import {
+  createScopedSyncStorage,
+  createUserDataScopeFromAuth,
+  getScopedStorageKey,
+  userDataKeys,
+} from '../userDataRepository.js'
+import {
   buildLocalSyncSnapshot,
   clearCloudSyncLocalState,
   cloudSyncTable,
@@ -565,6 +571,121 @@ describe('Molnsynk engine', () => {
     expect(client.state.upserts[0].payload).toEqual({ name: 'Anna' })
   })
 
+  it('uses the authenticated account namespace for profile and weights when syncing production storage', async () => {
+    const storage = createMemoryStorage()
+    const accountA = createUserDataScopeFromAuth({ authLoading: false, userId: 'user-a' })
+    const accountB = createUserDataScopeFromAuth({ authLoading: false, userId: 'user-b' })
+    storage.setItem(getScopedStorageKey(userDataKeys.profile, accountA), JSON.stringify({ name: 'A' }))
+    storage.setItem(getScopedStorageKey(userDataKeys.weights, accountA), JSON.stringify([{ id: 'w-a', value: 90 }]))
+    storage.setItem(getScopedStorageKey(userDataKeys.profile, accountB), JSON.stringify({ name: 'B' }))
+    storage.setItem(getScopedStorageKey(userDataKeys.weights, accountB), JSON.stringify([{ id: 'w-b', value: 80 }]))
+    vi.stubGlobal('localStorage', storage)
+    vi.stubGlobal('window', { localStorage: storage })
+
+    const client = createFakeClient([])
+    const result = await runCloudSync({ client, force: true, userId: 'user-b' })
+
+    expect(result.uploaded).toEqual(expect.arrayContaining([userDataKeys.profile, userDataKeys.weights]))
+    expect(client.state.upserts).toEqual(expect.arrayContaining([
+      expect.objectContaining({ payload: { name: 'B' }, storage_key: userDataKeys.profile, user_id: 'user-b' }),
+      expect.objectContaining({ payload: [{ id: 'w-b', value: 80 }], storage_key: userDataKeys.weights, user_id: 'user-b' }),
+    ]))
+    expect(client.state.upserts).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ payload: { name: 'A' } }),
+      expect.objectContaining({ payload: [{ id: 'w-a', value: 90 }] }),
+    ]))
+  })
+
+  it('keeps account sync metadata, queue and device state isolated in production storage', () => {
+    const storage = createMemoryStorage()
+    vi.stubGlobal('localStorage', storage)
+    vi.stubGlobal('window', { localStorage: storage })
+
+    setCloudSyncEnabled(true, { userId: 'user-a' })
+    const storageA = createScopedSyncStorage(createUserDataScopeFromAuth({
+      authLoading: false,
+      userId: 'user-a',
+    }), storage)
+    markSyncKeyDirty(userDataKeys.profile, storageA)
+    writeSyncQueue(enqueueSyncAction(readSyncQueue(storageA), {
+      action: 'upload',
+      storageKey: userDataKeys.weights,
+    }), storageA)
+
+    expect(getCloudSyncStatusModel({ userId: 'user-a' })).toMatchObject({
+      enabled: true,
+      pendingCount: 2,
+      statusCode: 'pending',
+    })
+    expect(getCloudSyncStatusModel({ userId: 'user-b' })).toMatchObject({
+      enabled: false,
+      pendingCount: 0,
+      statusCode: 'disabled',
+    })
+    expect(storage.getItem(syncMetadataStorageKey)).toBeNull()
+    expect(storage.getItem(syncQueueStorageKey)).toBeNull()
+    expect(storage.getItem(syncDeviceIdStorageKey)).toBeNull()
+  })
+
+  it('resolves a downloaded conflict only into the authenticated account namespace', async () => {
+    const storage = createMemoryStorage()
+    vi.stubGlobal('localStorage', storage)
+    vi.stubGlobal('window', { localStorage: storage })
+
+    const accountA = createUserDataScopeFromAuth({ authLoading: false, userId: 'user-a' })
+    const accountB = createUserDataScopeFromAuth({ authLoading: false, userId: 'user-b' })
+    const storageA = createScopedSyncStorage(accountA, storage)
+    const storageB = createScopedSyncStorage(accountB, storage)
+    storageA.setItem(userDataKeys.profile, JSON.stringify({ name: 'A local' }))
+    storageB.setItem(userDataKeys.profile, JSON.stringify({ name: 'B local' }))
+    writeSyncMetadata({
+      conflicts: [{
+        remoteRecord: createRemoteRow(userDataKeys.profile, { name: 'B remote' }, { user_id: 'user-b' }),
+        storageKey: userDataKeys.profile,
+      }],
+    }, storageB)
+
+    const result = await resolveStoredSyncConflict(userDataKeys.profile, 'remote', {
+      client: createFakeClient([]),
+      userId: 'user-b',
+    })
+
+    expect(result).toMatchObject({ status: 'resolved' })
+    expect(JSON.parse(storageB.getItem(userDataKeys.profile))).toEqual({ name: 'B remote' })
+    expect(JSON.parse(storageA.getItem(userDataKeys.profile))).toEqual({ name: 'A local' })
+    expect(storage.getItem(userDataKeys.profile)).toBeNull()
+    expect(readSyncMetadata(storageB).conflicts).toEqual([])
+  })
+
+  it('does not touch sync storage when a guest attempts cloud sync', async () => {
+    const storage = createMemoryStorage()
+    const guest = createUserDataScopeFromAuth({ authLoading: false })
+    createScopedSyncStorage(guest, storage).setItem(userDataKeys.profile, JSON.stringify({ name: 'Guest' }))
+    writeSyncMetadata({ enabled: true, pendingKeys: [userDataKeys.profile] }, storage)
+    const existingGlobalDeviceId = storage.getItem(syncDeviceIdStorageKey)
+    vi.stubGlobal('localStorage', storage)
+    vi.stubGlobal('window', { localStorage: storage })
+    const client = createFakeClient([])
+
+    expect(getCloudSyncStatusModel({ userId: '' })).toMatchObject({
+      enabled: false,
+      pendingCount: 0,
+      statusCode: 'disabled',
+    })
+    expect(setCloudSyncEnabled(true, { userId: '' })).toMatchObject({
+      enabled: false,
+      lastError: 'Logga in för att använda automatisk sync.',
+    })
+
+    const result = await runCloudSync({ client, force: true, userId: '' })
+
+    expect(result).toMatchObject({ ok: false, status: 'not_authenticated' })
+    expect(client.state.upserts).toEqual([])
+    expect(JSON.parse(storage.getItem(syncMetadataStorageKey))).toMatchObject({ enabled: true })
+    expect(storage.getItem(syncQueueStorageKey)).toBeNull()
+    expect(storage.getItem(syncDeviceIdStorageKey)).toBe(existingGlobalDeviceId)
+  })
+
   it('strips Body Scan previews from outgoing Sync V2 without touching local history', async () => {
     const historyKey = 'viktkollen.bodyAnalysis.history.v1'
     const localHistory = {
@@ -873,10 +994,13 @@ describe('Molnsynk UI', () => {
 
   it('renders conflict actions', () => {
     const storage = createMemoryStorage()
-    globalThis.window = { localStorage: storage }
+    const account = createUserDataScopeFromAuth({ authLoading: false, userId: 'user-1' })
+    const syncStorage = createScopedSyncStorage(account, storage)
+    vi.stubGlobal('localStorage', storage)
+    vi.stubGlobal('window', { localStorage: storage })
     writeSyncMetadata({
       conflicts: [{ reason: 'Testkonflikt', storageKey: 'viktkollen.profile' }],
-    }, storage)
+    }, syncStorage)
 
     const html = renderToStaticMarkup(<CloudSyncPanel isAuthenticated userId="user-1" />)
 

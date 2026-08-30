@@ -28,10 +28,24 @@ import { classifyCloudError, cloudErrorCodes, getCloudErrorMessage } from '../cl
 import { appendCloudSyncHistoryEvent } from './cloudSyncHistory.js'
 import { buildMultiDeviceRegistry, summarizeMultiDeviceRegistry } from './multiDeviceRegistry.js'
 import { getCloudRecoveryStatus } from './cloudRecoveryEngine.js'
+import { createAuthenticatedUserSyncStorage } from '../userDataRepository.js'
 
 export const cloudSyncTable = 'user_sync_items'
 
 let syncRunning = false
+
+const emptySyncStorage = {
+  getItem: () => null,
+  removeItem: () => {},
+  setItem: () => {},
+}
+
+function getUserScopedSyncStorage(userId, storage) {
+  const baseStorage = getStorage(storage)
+  if (storage) return baseStorage
+
+  return createAuthenticatedUserSyncStorage(userId, baseStorage)
+}
 
 function getStorage(storage) {
   if (storage) return storage
@@ -302,14 +316,15 @@ export async function runCloudSync(options = {}) {
     storage,
     userId,
   } = options
-  const resolvedStorage = getStorage(storage)
   const timestamp = nowIso(now)
-  let metadata = readSyncMetadata(resolvedStorage)
-  const deviceId = metadata.deviceId || getOrCreateSyncDeviceId(resolvedStorage)
 
   if (!userId) {
     return makeResult({ ok: false, status: 'not_authenticated', error: 'Logga in för att använda automatisk sync.' })
   }
+
+  const resolvedStorage = getUserScopedSyncStorage(userId, storage)
+  let metadata = readSyncMetadata(resolvedStorage)
+  const deviceId = metadata.deviceId || getOrCreateSyncDeviceId(resolvedStorage)
 
   if (!client) {
     return makeResult({ ok: false, status: 'not_configured', error: 'Supabase är inte konfigurerat.' })
@@ -495,20 +510,38 @@ export async function runCloudSync(options = {}) {
   }
 }
 
-export function setCloudSyncEnabled(enabled, storage, now = new Date()) {
-  const metadata = readSyncMetadata(storage)
+export function setCloudSyncEnabled(enabled, storageOrOptions, now = new Date()) {
+  const scopedOptions = storageOrOptions && typeof storageOrOptions === 'object' && 'userId' in storageOrOptions
+  const options = scopedOptions
+    ? storageOrOptions
+    : { storage: storageOrOptions }
+  const resolvedStorage = getUserScopedSyncStorage(options.userId, options.storage)
+
+  if (scopedOptions && !resolvedStorage) {
+    return {
+      ...readSyncMetadata(emptySyncStorage),
+      enabled: false,
+      lastError: enabled ? 'Logga in för att använda automatisk sync.' : '',
+    }
+  }
+
+  const metadata = readSyncMetadata(resolvedStorage)
 
   return writeSyncMetadata({
     ...metadata,
     enabled: enabled === true,
-    lastAttemptAt: enabled ? metadata.lastAttemptAt : nowIso(now),
+    lastAttemptAt: enabled ? metadata.lastAttemptAt : nowIso(options.now || now),
     lastError: '',
-  }, storage)
+  }, resolvedStorage)
 }
 
 export async function resolveStoredSyncConflict(storageKey, choice, options = {}) {
   const { client = supabase, now = new Date(), storage, userId } = options
-  const metadata = readSyncMetadata(storage)
+  const resolvedStorage = getUserScopedSyncStorage(userId, storage)
+
+  if (!userId) return makeResult({ ok: false, status: 'not_authenticated', error: 'Logga in för att lösa konflikten.' })
+
+  const metadata = readSyncMetadata(resolvedStorage)
   const conflict = metadata.conflicts.find((item) => item.storageKey === storageKey)
   const decision = applyConflictChoice({ ...conflict, action: 'conflict' }, choice)
   const timestamp = nowIso(now)
@@ -520,8 +553,8 @@ export async function resolveStoredSyncConflict(storageKey, choice, options = {}
   if (decision.action === 'download') {
     const safeApply = applyIncomingSyncRecordSafely(
       decision.record,
-      storage,
-      (record) => applyRemoteRecordToLocal(record, storage),
+      resolvedStorage,
+      (record) => applyRemoteRecordToLocal(record, resolvedStorage),
       { now },
     )
 
@@ -538,21 +571,19 @@ export async function resolveStoredSyncConflict(storageKey, choice, options = {}
         [storageKey]: buildKeyMeta(applied || decision.record, decision.record?.remoteRevision),
       },
       pendingKeys: metadata.pendingKeys.filter((key) => key !== storageKey),
-    }, storage)
+    }, resolvedStorage)
     return makeResult({ downloaded: [storageKey], status: 'resolved' })
   }
 
-  if (!userId) return makeResult({ ok: false, status: 'not_authenticated', error: 'Logga in för att lösa konflikten.' })
   if (decision.action === 'merge_upload') {
     const mergedRecord = prepareOutgoingSyncRecord(storageKey, {
       ...decision.record,
       deleted: false,
     }, timestamp)
-    const resolvedStorage = getStorage(storage)
     if (resolvedStorage) writeSyncedPayloadToLocal(resolvedStorage, storageKey, mergedRecord.payload)
     const uploaded = await uploadLocalRecord({
       client,
-      deviceId: metadata.deviceId || getOrCreateSyncDeviceId(storage),
+      deviceId: metadata.deviceId || getOrCreateSyncDeviceId(resolvedStorage),
       record: mergedRecord,
       userId,
     })
@@ -564,13 +595,13 @@ export async function resolveStoredSyncConflict(storageKey, choice, options = {}
         [storageKey]: buildKeyMeta(mergedRecord, uploaded.remoteRevision || timestamp),
       },
       pendingKeys: metadata.pendingKeys.filter((key) => key !== storageKey),
-    }, storage)
+    }, resolvedStorage)
     appendCloudSyncHistoryEvent({ dataType: storageKey, eventType: 'conflictResolved', safeSummary: 'Konflikt löstes med säker merge.' }, { now })
     return makeResult({ status: 'resolved', uploaded: [storageKey] })
   }
   const uploaded = await uploadLocalRecord({
     client,
-    deviceId: metadata.deviceId || getOrCreateSyncDeviceId(storage),
+    deviceId: metadata.deviceId || getOrCreateSyncDeviceId(resolvedStorage),
     record: decision.record,
     userId,
   })
@@ -582,18 +613,23 @@ export async function resolveStoredSyncConflict(storageKey, choice, options = {}
       [storageKey]: buildKeyMeta(decision.record, uploaded.remoteRevision || timestamp),
     },
     pendingKeys: metadata.pendingKeys.filter((key) => key !== storageKey),
-  }, storage)
+  }, resolvedStorage)
 
   return makeResult({ status: 'resolved', uploaded: [storageKey] })
 }
 
-export function getCloudSyncStatusModel(storage, online) {
-  const metadata = readSyncMetadata(storage)
-  const queue = readSyncQueue(storage)
-  const queueStatus = getSyncQueueStatus(queue, new Date(), getOnlineState(online))
-  const recovery = getCloudRecoveryStatus(storage)
+export function getCloudSyncStatusModel(storageOrOptions, online) {
+  const scopedOptions = storageOrOptions && typeof storageOrOptions === 'object' && 'userId' in storageOrOptions
+  const options = scopedOptions
+    ? storageOrOptions
+    : { online, storage: storageOrOptions }
+  const resolvedStorage = getUserScopedSyncStorage(options.userId, options.storage) || (scopedOptions ? emptySyncStorage : null)
+  const metadata = readSyncMetadata(resolvedStorage)
+  const queue = readSyncQueue(resolvedStorage)
+  const queueStatus = getSyncQueueStatus(queue, new Date(), getOnlineState(options.online))
+  const recovery = getCloudRecoveryStatus(resolvedStorage)
   const devices = summarizeMultiDeviceRegistry(buildMultiDeviceRegistry({ currentDeviceId: metadata.deviceId, metadata }))
-  const isOnline = getOnlineState(online)
+  const isOnline = getOnlineState(options.online)
   const pendingCount = metadata.pendingKeys.length + queue.items.filter((item) => item.status !== 'failed').length
   const failedCount = queue.items.filter((item) => item.status === 'failed').length
   const waitingRetryCount = queue.items.filter((item) => item.nextAttemptAt && item.status === 'pending').length

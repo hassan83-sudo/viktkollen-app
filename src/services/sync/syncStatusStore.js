@@ -3,8 +3,14 @@ import { getSyncQueueStatus, readSyncQueue } from './syncQueue.js'
 import { summarizeCloudSyncHistory } from './cloudSyncHistory.js'
 import { buildMultiDeviceRegistry, summarizeMultiDeviceRegistry } from './multiDeviceRegistry.js'
 import { getCloudRecoveryStatus } from './cloudRecoveryEngine.js'
+import { createAuthenticatedUserSyncStorage } from '../userDataRepository.js'
 
 const listeners = new Set()
+const emptySyncStorage = {
+  getItem: () => null,
+  removeItem: () => {},
+  setItem: () => {},
+}
 const defaultCoordinationStatus = {
   activeTabCount: 0,
   hasLeader: false,
@@ -24,12 +30,14 @@ function getOnlineState() {
 }
 
 function buildStatus(overrides = {}) {
-  const metadata = readSyncMetadata()
-  const queue = readSyncQueue()
+  const scopedOptions = Object.prototype.hasOwnProperty.call(overrides, 'userId')
+  const storage = overrides.storage || createAuthenticatedUserSyncStorage(overrides.userId) || (scopedOptions ? emptySyncStorage : null)
+  const metadata = readSyncMetadata(storage)
+  const queue = readSyncQueue(storage)
   const queueStatus = getSyncQueueStatus(queue, new Date(), getOnlineState())
   const historySummary = summarizeCloudSyncHistory()
   const multiDevice = summarizeMultiDeviceRegistry(buildMultiDeviceRegistry({ currentDeviceId: metadata.deviceId, metadata }))
-  const recovery = getCloudRecoveryStatus(typeof localStorage !== 'undefined' ? localStorage : null)
+  const recovery = getCloudRecoveryStatus(storage || (typeof localStorage !== 'undefined' ? localStorage : null))
   const pendingQueueItems = queue.items.filter((item) => item.status !== 'failed')
   const retryAt = pendingQueueItems
     .map((item) => item.nextAttemptAt)

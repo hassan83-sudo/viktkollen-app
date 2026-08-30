@@ -3,7 +3,9 @@ import { getSafeErrorMessage } from '../services/appErrorService.js'
 import { loadCloudSyncEngine } from '../services/cloudRuntimeLoader.js'
 import { globalSyncCoordinator } from '../services/sync/crossTabSyncCoordinator.js'
 import { readSyncMetadata } from '../services/sync/syncMetadata.js'
+import { readSyncQueue } from '../services/sync/syncQueue.js'
 import { getSyncStatusSnapshot, subscribeSyncStatus } from '../services/sync/syncStatusStore.js'
+import { createAuthenticatedUserSyncStorage } from '../services/userDataRepository.js'
 
 const defaultCloudSyncStatus = {
   conflicts: [],
@@ -20,8 +22,16 @@ const defaultCloudSyncStatus = {
   waitingRetryCount: 0,
 }
 
-function getInitialCloudSyncStatus() {
-  const metadata = readSyncMetadata()
+function getInitialCloudSyncStatus(userId) {
+  const storage = createAuthenticatedUserSyncStorage(userId)
+  if (!storage) return defaultCloudSyncStatus
+
+  const metadata = readSyncMetadata(storage)
+  const queue = readSyncQueue(storage)
+  const pendingCount = metadata.pendingKeys.length + queue.items.filter((item) => item.status !== 'failed').length
+  const hasConflicts = metadata.conflicts.length > 0
+  const statusCode = hasConflicts ? 'conflict' : metadata.enabled ? 'pending' : 'disabled'
+  const statusLabel = hasConflicts ? 'Konflikt kräver åtgärd' : metadata.enabled ? 'Synkar...' : 'Automatisk synk är av'
 
   return {
     ...defaultCloudSyncStatus,
@@ -30,10 +40,10 @@ function getInitialCloudSyncStatus() {
     enabled: metadata.enabled,
     lastError: metadata.lastError,
     lastSuccessfulSyncAt: metadata.lastSuccessfulSyncAt,
-    pendingCount: metadata.pendingKeys.length,
-    status: metadata.enabled ? 'Synkar...' : 'Automatisk synk är av',
-    statusCode: metadata.enabled ? 'pending' : 'disabled',
-    statusLabel: metadata.enabled ? 'Synkar...' : 'Automatisk synk är av',
+    pendingCount,
+    status: statusLabel,
+    statusCode,
+    statusLabel,
   }
 }
 
@@ -59,14 +69,14 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
     getSyncStatusSnapshot,
     getSyncStatusSnapshot,
   )
-  const [status, setStatus] = useState(() => getInitialCloudSyncStatus())
+  const [status, setStatus] = useState(() => getInitialCloudSyncStatus(userId))
   const [isSyncing, setIsSyncing] = useState(false)
   const [message, setMessage] = useState('')
 
   const refreshStatus = useCallback(async () => {
     const { getCloudSyncStatusModel } = await loadCloudSyncEngine()
-    setStatus(getCloudSyncStatusModel())
-  }, [])
+    setStatus(getCloudSyncStatusModel({ userId }))
+  }, [userId])
 
   const syncNow = useCallback(async () => {
     if (!isAuthenticated) return
@@ -95,7 +105,7 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
     try {
       const { runCloudSync, setCloudSyncEnabled } = await loadCloudSyncEngine()
 
-      setCloudSyncEnabled(next)
+      setCloudSyncEnabled(next, { userId })
       await refreshStatus()
 
       if (next && isAuthenticated) {
@@ -144,7 +154,7 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
         const { getCloudSyncStatusModel } = await loadCloudSyncEngine()
 
         if (!cancelled) {
-          setStatus(getCloudSyncStatusModel())
+          setStatus(getCloudSyncStatusModel({ userId }))
         }
       } catch {
         if (!cancelled) {
@@ -158,7 +168,7 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [userId])
 
   const conflicts = useMemo(() => status.conflicts || [], [status.conflicts])
 
@@ -203,7 +213,7 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
         </div>
         <div>
           <span>Status</span>
-          <strong>{syncStatusSnapshot.statusLabel || status.statusLabel || status.status}</strong>
+          <strong>{status.statusLabel || syncStatusSnapshot.statusLabel || status.status}</strong>
         </div>
         <div>
           <span>Senast klar</span>
@@ -227,7 +237,7 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
         </div>
         <div>
           <span>Synkstatus</span>
-          <strong>{status.statusCode === 'pending' || status.statusCode === 'dirty' ? 'På väg' : syncStatusSnapshot.statusLabel || status.statusLabel || status.status}</strong>
+          <strong>{status.statusCode === 'pending' || status.statusCode === 'dirty' ? 'På väg' : status.statusLabel || syncStatusSnapshot.statusLabel || status.status}</strong>
         </div>
         <div>
           <span>Enheter</span>

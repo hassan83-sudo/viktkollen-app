@@ -153,6 +153,10 @@ function readInitialWeights() {
   return migration.weights
 }
 
+function getAuthSessionUserId(session) {
+  return session?.user?.id ? String(session.user.id) : ''
+}
+
 const initialFoods = [
   { id: 'protein', label: 'Protein till varje måltid (20-30 g)', done: false },
   { id: 'veg', label: 'Frukt eller grönsaker', done: false },
@@ -879,15 +883,17 @@ function App() {
   const [authNotice, setAuthNotice] = useState('')
   const [authSession, setAuthSession] = useState(null)
   const authStatus = useMemo(() => getAuthStatus(), [])
-  const [profile, setProfile] = useState(() =>
-    normalizeStoredProfile(userDataRepository.getProfile(null, isStoredProfile)),
-  )
-  const [profileForm, setProfileForm] = useState(() =>
-    createProfileForm(normalizeStoredProfile(userDataRepository.getProfile(null, isStoredProfile)) ?? {}),
-  )
+  const authUserId = getAuthSessionUserId(authSession)
+  const userDataScope = useMemo(() => userDataRepository.createUserDataScopeFromAuth({
+    authLoading,
+    userId: authUserId,
+  }), [authLoading, authUserId])
+  const [profile, setProfile] = useState(null)
+  const [profileForm, setProfileForm] = useState(() => createProfileForm({}))
   const [profileError, setProfileError] = useState('')
   const [proactiveCoachResult, setProactiveCoachResult] = useState(null)
-  const [showOnboarding, setShowOnboarding] = useState(() => !hasUsableProfile(profile))
+  const [hydratedScopeId, setHydratedScopeId] = useState('')
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const [currentLanguage, setCurrentLanguage] = useState(() => getActiveLanguageCode())
   const [activeAppSection, setActiveAppSection] = useState('home')
   const featureFlags = getFeatureFlags()
@@ -900,7 +906,7 @@ function App() {
   const [checkIn, setCheckIn] = useState(() =>
     userDataRepository.getCheckIn(initialCheckIn, isStoredCheckIn),
   )
-  const [weights, setWeights] = useState(readInitialWeights)
+  const [weights, setWeights] = useState(starterWeights)
   const [bodyMeasurements, setBodyMeasurements] = useState(() =>
     normalizeBodyMeasurements(userDataRepository.getBodyMeasurements([], Array.isArray)),
   )
@@ -1043,11 +1049,15 @@ function App() {
     return () => i18n.off('languageChanged', handleLanguageChange)
   }, [])
 
-  useEffect(() => {
-    userDataRepository.saveLocalePreference(currentLanguage, profile)
-  }, [currentLanguage, profile])
+  const profileWeightsHydrated = userDataRepository.isUserDataScopeHydrated(userDataScope, hydratedScopeId)
+  const scopedProfile = profileWeightsHydrated ? profile : null
+  const scopedWeights = profileWeightsHydrated ? weights : starterWeights
 
-  const validatedProfile = useMemo(() => normalizeProfile(profile || {}), [profile])
+  useEffect(() => {
+    userDataRepository.saveLocalePreference(currentLanguage, scopedProfile)
+  }, [currentLanguage, scopedProfile])
+
+  const validatedProfile = useMemo(() => normalizeProfile(scopedProfile || {}), [scopedProfile])
   const profileCompleteness = useMemo(() => getProfileCompleteness(validatedProfile), [validatedProfile])
   const profileFormCompleteness = useMemo(() => getProfileCompleteness(profileForm), [profileForm])
   const healthSnapshot = useMemo(
@@ -1059,9 +1069,9 @@ function App() {
         nutritionGoals,
         profile: validatedProfile,
         today: selectedMealDate,
-        weights,
+        weights: scopedWeights,
       }),
-    [checkIn, meals, nutritionGoals, photoMeals, selectedMealDate, validatedProfile, weights],
+    [checkIn, meals, nutritionGoals, photoMeals, scopedWeights, selectedMealDate, validatedProfile],
   )
   const centralWeightStats = useMemo(
     () => getWeightStats(healthSnapshot.weight.dailyWeights, { startWeight: validatedProfile.startWeight }),
@@ -1272,7 +1282,7 @@ function App() {
           healthSnapshot,
           mealHistory: photoMeals,
           meals,
-          weights,
+          weights: scopedWeights,
         }))
       })
       .catch(() => {
@@ -1282,7 +1292,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [adaptiveCoachFeedback, goalsHabits, healthSnapshot, meals, photoMeals, weights])
+  }, [adaptiveCoachFeedback, goalsHabits, healthSnapshot, meals, photoMeals, scopedWeights])
 
   const weeklyReportLines = useMemo(
     () =>
@@ -1299,12 +1309,12 @@ function App() {
   const fallbackCoachMessage = useMemo(
     () =>
       makeCoachMessage(
-        profile,
+        scopedProfile,
         healthSnapshot.checkIn.latestToday || checkIn,
         foods,
         healthSnapshot.nutrition.mealsToday,
       ),
-    [checkIn, foods, healthSnapshot.checkIn.latestToday, healthSnapshot.nutrition.mealsToday, profile],
+    [checkIn, foods, healthSnapshot.checkIn.latestToday, healthSnapshot.nutrition.mealsToday, scopedProfile],
   )
   const dailyCoachKey = useMemo(
     () =>
@@ -1316,11 +1326,11 @@ function App() {
         healthSnapshot,
         meals,
         nutritionGoals,
-        profile,
+        profile: scopedProfile,
         selectedMealDate,
-        weights,
+        weights: scopedWeights,
       }),
-    [centralCurrentWeight, checkIn, foods, goalsHabits, healthSnapshot, meals, nutritionGoals, profile, selectedMealDate, weights],
+    [centralCurrentWeight, checkIn, foods, goalsHabits, healthSnapshot, meals, nutritionGoals, scopedProfile, scopedWeights, selectedMealDate],
   )
   const [dailyCoachResult, setDailyCoachResult] = useState(null)
   const hasFreshDailyCoach = dailyCoachResult?.key === dailyCoachKey
@@ -1362,7 +1372,7 @@ function App() {
         bodyMeasurementAnalysis,
         bodyMeasurements,
         weeklyNutrition: weeklyNutritionSummary,
-        weights,
+        weights: scopedWeights,
       })
 
       if (!cancelled) {
@@ -1399,7 +1409,7 @@ function App() {
     reminderState,
     validatedProfile,
     weeklyNutritionSummary,
-    weights,
+    scopedWeights,
   ])
 
   const proactiveCoachKey = useMemo(
@@ -1409,9 +1419,9 @@ function App() {
         meals,
         photoMeals,
         selectedMealDate,
-        weights,
+        weights: scopedWeights,
       }),
-    [checkIn, meals, photoMeals, selectedMealDate, weights],
+    [checkIn, meals, photoMeals, scopedWeights, selectedMealDate],
   )
   const [fallbackProactiveCoachInsights, setFallbackProactiveCoachInsights] = useState([])
   const proactiveCoachInsights =
@@ -1437,7 +1447,7 @@ function App() {
         proactiveCoach: proactiveCoachInsights,
         profile: validatedProfile,
         today: selectedMealDate,
-        weights,
+        weights: scopedWeights,
       })
 
       setWeeklyReportData(report)
@@ -1462,9 +1472,9 @@ function App() {
     nutritionGoals,
     photoMeals,
     proactiveCoachInsights,
+    scopedWeights,
     selectedMealDate,
     validatedProfile,
-    weights,
   ])
   const createCoachReport = useCallback(() => {
     setIsGeneratingCoachReport(true)
@@ -1492,7 +1502,7 @@ function App() {
             bodyMeasurementAnalysis,
             bodyMeasurements,
             weeklyNutrition: weeklyNutritionSummary,
-            weights,
+            weights: scopedWeights,
           })
 
           setCoachReports((current) => [report, ...current].slice(0, 20))
@@ -1518,8 +1528,8 @@ function App() {
     selectedMealDate,
     bodyMeasurementAnalysis,
     bodyMeasurements,
+    scopedWeights,
     weeklyNutritionSummary,
-    weights,
   ])
   const deleteCoachReport = useCallback((reportId) => {
     setCoachReports((current) => current.filter((report) => report.id !== reportId))
@@ -1571,7 +1581,7 @@ function App() {
         profile: validatedProfile,
         proactiveCoach: proactiveCoachInsights,
         today: selectedMealDate,
-        weights,
+        weights: scopedWeights,
         weeklyReportData,
         weeklyReportLines,
       }),
@@ -1590,7 +1600,7 @@ function App() {
       validatedProfile,
       weeklyReportData,
       weeklyReportLines,
-      weights,
+      scopedWeights,
     ],
   )
   function scrollChatToBottom(behavior = 'smooth') {
@@ -1653,8 +1663,45 @@ function App() {
   }, [authStatus.authEnabled])
 
   useEffect(() => {
-    userDataRepository.saveWeights(weights)
-  }, [weights])
+    let cancelled = false
+
+    userDataRepository.setActiveUserDataScope(userDataScope)
+
+    queueMicrotask(() => {
+      if (cancelled) return
+
+      if (userDataScope.kind === 'loading') {
+        setProfile(null)
+        setProfileForm(createProfileForm({}))
+        setShowOnboarding(false)
+        setWeights(starterWeights)
+        setHydratedScopeId('')
+        return
+      }
+
+      userDataRepository.migrateLegacyProfileAndWeights(userDataScope, {
+        isProfile: isStoredProfile,
+        isWeights: Array.isArray,
+      })
+
+      const nextProfile = normalizeStoredProfile(userDataRepository.getProfile(null, isStoredProfile))
+      setProfile(nextProfile)
+      setProfileForm(createProfileForm(nextProfile ?? {}))
+      setShowOnboarding(!hasUsableProfile(nextProfile))
+      setWeights(readInitialWeights())
+      setHydratedScopeId(userDataScope.storageId)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [userDataScope])
+
+  useEffect(() => {
+    if (!profileWeightsHydrated) return
+
+    userDataRepository.saveWeights(scopedWeights)
+  }, [profileWeightsHydrated, scopedWeights])
 
   useEffect(() => {
     userDataRepository.saveBodyMeasurements(bodyMeasurements)
@@ -1815,10 +1862,10 @@ function App() {
   }, [checkIn])
 
   useEffect(() => {
-    if (profile) {
-      userDataRepository.saveProfile(profile)
+    if (profileWeightsHydrated && scopedProfile) {
+      userDataRepository.saveProfile(scopedProfile)
     }
-  }, [profile])
+  }, [profileWeightsHydrated, scopedProfile])
 
   useEffect(
     () => () => {
@@ -1917,7 +1964,7 @@ function App() {
           nutritionGoals,
           profile: validatedProfile,
           today: selectedMealDate,
-          weights,
+          weights: scopedWeights,
         })
         const prompts = createAiSuggestions(context).slice(0, 4)
 
@@ -1947,7 +1994,7 @@ function App() {
     selectedMealDate,
     validatedProfile,
     weeklyReportData,
-    weights,
+    scopedWeights,
   ])
 
   useEffect(() => {
@@ -2027,7 +2074,7 @@ function App() {
       mealHistory: photoMeals,
       meals,
       today: selectedMealDate,
-      weights,
+      weights: scopedWeights,
     }
 
     async function loadProactiveCoach() {
@@ -2064,9 +2111,12 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [bodyAnalysisHistory, checkIn, healthSnapshot, meals, photoMeals, proactiveCoachKey, selectedMealDate, weights])
+  }, [bodyAnalysisHistory, checkIn, healthSnapshot, meals, photoMeals, proactiveCoachKey, scopedWeights, selectedMealDate])
 
   const refreshAppStateFromStorage = useCallback(() => {
+    if (!profileWeightsHydrated) return
+
+    userDataRepository.setActiveUserDataScope(userDataScope)
     clearSharedAnalyticsCache()
     const nextProfile = normalizeStoredProfile(userDataRepository.getProfile(null, isStoredProfile))
     const storedMealHistory = getMealHistory()
@@ -2115,9 +2165,9 @@ function App() {
     setChatMessages(userDataRepository.getCoachChat(initialChatMessages, isStoredChatMessages))
     setCoachReports(userDataRepository.getAiCoachReports([], Array.isArray))
     setBodyAnalysisHistory(getAnalysisHistory())
-  }, [])
+  }, [profileWeightsHydrated, userDataScope])
 
-  useGlobalSyncScheduler(authSession?.user?.id || '', {
+  useGlobalSyncScheduler(authUserId, {
     onDataChanged: refreshAppStateFromStorage,
   })
 
@@ -2249,7 +2299,7 @@ function App() {
 
   function trackPremiumCounter(counter) {
     incrementPremiumAnalyticsCounter(counter, {
-      userId: authSession?.user?.id || authSession?.user?.email || 'local-user',
+      userId: authUserId || 'local-user',
     })
   }
 
@@ -2550,7 +2600,7 @@ function App() {
       reminderState,
       surface: avatarLiveContextRef.current.surface,
       today: selectedMealDate,
-      weights,
+      weights: scopedWeights,
     }
   }
 
@@ -2562,7 +2612,7 @@ function App() {
       chatHistory: sourceChatHistory,
       fallbackReply: () => makeChatResponse(
         message,
-        profile,
+        scopedProfile,
         checkIn,
         foods,
         centralCurrentWeight,
@@ -2981,7 +3031,7 @@ function App() {
               syncStatus={syncStatusWithUser}
             />
             <PremiumAnalyticsPanel
-              userId={authSession?.user?.id || authSession?.user?.email || 'local-user'}
+              userId={authUserId || 'local-user'}
             />
           </Suspense>
         )}
@@ -3034,7 +3084,7 @@ function App() {
             reminderState={reminderState}
             selectedMealDate={selectedMealDate}
             syncStatus={syncStatusSnapshot}
-            userId={authSession?.user?.id || authSession?.user?.email || 'local-user'}
+            userId={authUserId || 'local-user'}
             voiceStatus={voiceStatus}
             weights={centralWeightStats.weights}
           />
@@ -3216,12 +3266,12 @@ function App() {
     onSubmitManualBarcode: submitManualBarcode,
     onUpdateCheckIn: updateCheckIn,
     photoAnalysisStatus,
-    profile,
+    profile: scopedProfile,
     scannedProducts,
     selectedMealDate,
     showClearMealHistoryConfirm,
-    userId: authSession?.user?.id || authSession?.user?.email || 'local-user',
-    weights,
+    userId: authUserId || 'local-user',
+    weights: scopedWeights,
     weekSummary: mealWeekSummary,
   }}
   progressSectionProps={{
@@ -3265,7 +3315,7 @@ function App() {
     progressPhotos,
     progressReports,
     selectedMealDate,
-    userId: authSession?.user?.id || authSession?.user?.email || 'local-user',
+    userId: authUserId || 'local-user',
     weights: centralWeightStats.weights,
     weeklyReportData,
     weeklyReportLines,

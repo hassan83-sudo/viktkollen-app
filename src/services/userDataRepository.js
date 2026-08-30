@@ -1,4 +1,5 @@
 import {
+  appStorageChangedEvent,
   readStorage,
   removeStorage,
   writeStorage,
@@ -9,6 +10,11 @@ import {
 } from './nutrition/nutritionGoals.js'
 import { PROFILE_PHOTO_STORAGE_KEY } from './profilePhotoStorage.js'
 import { normalizeProfile } from './profileService.js'
+import { markSyncKeyDirty } from './sync/syncMetadata.js'
+
+export const userDataScopeVersion = 1
+export const userDataScopeMetadataKey = 'viktkollen.userDataScope.v1'
+export const userDataScopeGuestId = 'guest'
 
 export const userDataKeys = {
   aiConversationMemory: 'viktkollen.aiConversationMemory',
@@ -56,6 +62,30 @@ export const userDataKeys = {
   weights: 'viktkollen.weights',
 }
 
+const scopedLogicalKeys = new Set([
+  userDataKeys.profile,
+  userDataKeys.weights,
+])
+
+const scopedKeySuffixByLogicalKey = {
+  [userDataKeys.profile]: 'profile',
+  [userDataKeys.weights]: 'weights',
+}
+
+const scopedSyncKeySuffixByKey = {
+  'viktkollen.sync.crossTab.leader.v1': 'syncCrossTabLeader',
+  'viktkollen.syncDeviceId': 'syncDeviceId',
+  'viktkollen.syncMetadata': 'syncMetadata',
+  'viktkollen.syncQueue': 'syncQueue',
+  'viktkollen.syncRestoreSnapshots': 'syncRestoreSnapshots',
+}
+
+let activeUserDataScope = {
+  kind: 'loading',
+  storageId: '',
+  userId: '',
+}
+
 const backupSnapshotVersion = 1
 export const cloudClientIdKey = 'viktkollen.clientId'
 export const preRestoreBackupKey = 'viktkollen.preRestoreBackup'
@@ -98,6 +128,290 @@ function saveValue(key, value) {
   return value
 }
 
+function getStorage() {
+  if (typeof window !== 'undefined' && window.localStorage) return window.localStorage
+  if (typeof localStorage !== 'undefined') return localStorage
+  return null
+}
+
+function encodeScopePart(value) {
+  return encodeURIComponent(String(value || '')).replace(/[!'()*]/g, (char) =>
+    `%${char.charCodeAt(0).toString(16).toUpperCase()}`)
+}
+
+function createStorageId(scope) {
+  if (scope?.kind === 'authenticated' && scope.userId) {
+    return `user.${encodeScopePart(scope.userId)}`
+  }
+
+  if (scope?.kind === 'guest') return userDataScopeGuestId
+
+  return ''
+}
+
+function scopedStorageKey(logicalKey, scope = activeUserDataScope) {
+  if (!scopedLogicalKeys.has(logicalKey)) return logicalKey
+
+  const storageId = scope.storageId || createStorageId(scope)
+  const suffix = scopedKeySuffixByLogicalKey[logicalKey]
+  if (!storageId || !suffix) return ''
+
+  return `viktkollen.userData.v${userDataScopeVersion}.${storageId}.${suffix}`
+}
+
+function readJsonStorage(key, fallbackValue) {
+  if (!key) return fallbackValue
+  const storage = getStorage()
+  if (!storage) return fallbackValue
+
+  try {
+    const raw = storage.getItem(key)
+    if (raw === null) return fallbackValue
+    return JSON.parse(raw)
+  } catch {
+    return fallbackValue
+  }
+}
+
+function notifyScopedStorageChanged(logicalKey) {
+  if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return
+
+  const EventConstructor = window.CustomEvent || (typeof CustomEvent === 'function' ? CustomEvent : null)
+  if (!EventConstructor) return
+
+  window.dispatchEvent(new EventConstructor(appStorageChangedEvent, {
+    detail: { key: logicalKey },
+  }))
+}
+
+function writeJsonStorage(key, value, {
+  logicalKey = key,
+  markDirty = logicalKey !== key,
+  syncScope = activeUserDataScope,
+} = {}) {
+  if (!key) return false
+  const storage = getStorage()
+  if (!storage) return false
+
+  try {
+    storage.setItem(key, JSON.stringify(value))
+    if (markDirty && logicalKey !== key) {
+      markSyncKeyDirty(logicalKey, createScopedSyncStorage(syncScope, storage))
+      notifyScopedStorageChanged(logicalKey)
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
+function normalizeUserDataScope(scope = {}) {
+  if (scope.kind === 'authenticated' && scope.userId) {
+    const userId = String(scope.userId)
+    return {
+      kind: 'authenticated',
+      storageId: createStorageId({ kind: 'authenticated', userId }),
+      userId,
+    }
+  }
+
+  if (scope.kind === 'guest') {
+    return {
+      kind: 'guest',
+      storageId: userDataScopeGuestId,
+      userId: '',
+    }
+  }
+
+  return {
+    kind: 'loading',
+    storageId: '',
+    userId: '',
+  }
+}
+
+function readScopeMetadata() {
+  return readJsonStorage(userDataScopeMetadataKey, {
+    legacyClaim: null,
+    version: userDataScopeVersion,
+  })
+}
+
+function writeScopeMetadata(metadata) {
+  const storage = getStorage()
+  if (!storage) return false
+
+  try {
+    storage.setItem(userDataScopeMetadataKey, JSON.stringify({
+      legacyClaim: metadata?.legacyClaim || null,
+      version: userDataScopeVersion,
+    }))
+    return true
+  } catch {
+    return false
+  }
+}
+
+function claimLegacyScope(scope) {
+  const metadata = readScopeMetadata()
+  const owner = metadata?.legacyClaim?.storageId
+
+  if (owner && owner !== scope.storageId) {
+    return { claimed: false, metadata }
+  }
+
+  if (owner === scope.storageId) {
+    return { claimed: true, metadata }
+  }
+
+  const nextMetadata = {
+    ...metadata,
+    legacyClaim: {
+      claimedAt: new Date().toISOString(),
+      kind: scope.kind,
+      storageId: scope.storageId,
+      version: userDataScopeVersion,
+    },
+  }
+
+  return {
+    claimed: writeScopeMetadata(nextMetadata),
+    metadata: nextMetadata,
+  }
+}
+
+function copyLegacyValue({ isValid, logicalKey, normalize = (value) => value, scope }) {
+  const targetKey = scopedStorageKey(logicalKey, scope)
+  if (!targetKey || readJsonStorage(targetKey, null) !== null) return false
+
+  const legacyValue = readStorage(logicalKey, null)
+  if (legacyValue === null || legacyValue === undefined) return false
+  if (isValid && !isValid(legacyValue)) return false
+
+  const normalizedValue = normalize(legacyValue)
+  return writeJsonStorage(targetKey, normalizedValue, {
+    logicalKey,
+    markDirty: scope.kind === 'authenticated',
+    syncScope: scope,
+  })
+}
+
+export function createUserDataScopeFromAuth({ authLoading = false, userId = '' } = {}) {
+  if (authLoading) return normalizeUserDataScope({ kind: 'loading' })
+  if (userId) return normalizeUserDataScope({ kind: 'authenticated', userId })
+  return normalizeUserDataScope({ kind: 'guest' })
+}
+
+export function setActiveUserDataScope(scope = {}) {
+  activeUserDataScope = normalizeUserDataScope(scope)
+  return activeUserDataScope
+}
+
+export function getActiveUserDataScope() {
+  return { ...activeUserDataScope }
+}
+
+export function isUserDataScopeHydrated(scope = activeUserDataScope, hydratedScopeId = '') {
+  const normalizedScope = normalizeUserDataScope(scope)
+
+  return Boolean(normalizedScope.storageId && normalizedScope.storageId === hydratedScopeId)
+}
+
+export function getScopedStorageKey(logicalKey, scope = activeUserDataScope) {
+  return scopedStorageKey(logicalKey, normalizeUserDataScope(scope))
+}
+
+export function createScopedSyncStorage(scope = activeUserDataScope, storage = getStorage()) {
+  const normalizedScope = normalizeUserDataScope(scope)
+  const mapKey = (key) => {
+    const scopedKey = getScopedStorageKey(key, normalizedScope)
+    if (scopedKey !== key) return scopedKey
+
+    const suffix = scopedSyncKeySuffixByKey[key]
+    if (!suffix || !normalizedScope.storageId) return key
+
+    return `viktkollen.userData.v${userDataScopeVersion}.${normalizedScope.storageId}.${suffix}`
+  }
+
+  return {
+    getItem: (key) => storage?.getItem?.(mapKey(key)) ?? null,
+    removeItem: (key) => storage?.removeItem?.(mapKey(key)),
+    setItem: (key, value) => storage?.setItem?.(mapKey(key), String(value)),
+  }
+}
+
+export function createAuthenticatedUserSyncStorage(userId, storage = getStorage()) {
+  const normalizedUserId = String(userId || '').trim()
+
+  if (!normalizedUserId) return null
+
+  return createScopedSyncStorage({
+    kind: 'authenticated',
+    userId: normalizedUserId,
+  }, storage)
+}
+
+export function migrateLegacyProfileAndWeights(scope = activeUserDataScope, validators = {}) {
+  const normalizedScope = normalizeUserDataScope(scope)
+  if (!normalizedScope.storageId) {
+    return { migrated: [], ok: false, reason: 'Scope saknas.' }
+  }
+
+  const legacyProfile = readStorage(userDataKeys.profile, null)
+  const legacyWeights = readStorage(userDataKeys.weights, null)
+  const hasLegacyProfile = legacyProfile !== null && legacyProfile !== undefined &&
+    (!validators.isProfile || validators.isProfile(legacyProfile))
+  const hasLegacyWeights = legacyWeights !== null && legacyWeights !== undefined &&
+    (!validators.isWeights || validators.isWeights(legacyWeights))
+  if (!hasLegacyProfile && !hasLegacyWeights) {
+    return { migrated: [], ok: true, reason: '' }
+  }
+
+  const claim = claimLegacyScope(normalizedScope)
+  if (!claim.claimed) {
+    return { migrated: [], ok: true, reason: 'Legacy-data är redan kopplad till ett annat namespace.' }
+  }
+
+  const migrated = []
+  if (copyLegacyValue({
+    isValid: validators.isProfile,
+    logicalKey: userDataKeys.profile,
+    normalize: (value) => normalizeProfile(value),
+    scope: normalizedScope,
+  })) {
+    migrated.push(userDataKeys.profile)
+  }
+
+  if (copyLegacyValue({
+    isValid: validators.isWeights,
+    logicalKey: userDataKeys.weights,
+    scope: normalizedScope,
+  })) {
+    migrated.push(userDataKeys.weights)
+  }
+
+  return { migrated, ok: true, reason: '' }
+}
+
+function readScopedValidated(key, fallbackValue, isValid = () => true) {
+  const scopedKey = scopedStorageKey(key)
+  if (!scopedKey) return fallbackValue
+
+  const value = readJsonStorage(scopedKey, fallbackValue)
+  return isValid(value) ? value : fallbackValue
+}
+
+function saveScopedValue(key, value) {
+  const scopedKey = scopedStorageKey(key)
+  writeJsonStorage(scopedKey, value, {
+    logicalKey: key,
+    markDirty: activeUserDataScope.kind === 'authenticated',
+    syncScope: activeUserDataScope,
+  })
+
+  return value
+}
+
 // Local-first repository. Supabase/cloud sync can later be added behind this API
 // without forcing UI components to know where the data is stored.
 export function getDemoMode(fallbackValue = false, isValid) {
@@ -109,17 +423,17 @@ export function saveDemoMode(value) {
 }
 
 export function getProfile(fallbackValue = null, isValid) {
-  const value = readValidated(userDataKeys.profile, fallbackValue, isValid)
+  const value = readScopedValidated(userDataKeys.profile, fallbackValue, isValid)
 
   return value ? normalizeProfile(value) : value
 }
 
 export function saveProfile(profile) {
-  return saveValue(userDataKeys.profile, normalizeProfile(profile, { markCompleted: true }))
+  return saveScopedValue(userDataKeys.profile, normalizeProfile(profile, { markCompleted: true }))
 }
 
 export function getLocalePreference(fallbackValue = '') {
-  const profile = readValidated(userDataKeys.profile, null, (value) => value && typeof value === 'object' && !Array.isArray(value))
+  const profile = readScopedValidated(userDataKeys.profile, null, (value) => value && typeof value === 'object' && !Array.isArray(value))
   const profileLocale = typeof profile?.locale === 'string' ? profile.locale.trim() : ''
   if (profileLocale) {
     return profileLocale
@@ -131,7 +445,7 @@ export function saveLocalePreference(locale, profile = null) {
   saveValue(userDataKeys.locale, locale)
 
   if (profile && typeof profile === 'object' && !Array.isArray(profile)) {
-    saveValue(userDataKeys.profile, normalizeProfile({
+    saveScopedValue(userDataKeys.profile, normalizeProfile({
       ...profile,
       locale,
     }))
@@ -141,11 +455,11 @@ export function saveLocalePreference(locale, profile = null) {
 }
 
 export function getWeights(fallbackValue = [], isValid) {
-  return readValidated(userDataKeys.weights, fallbackValue, isValid)
+  return readScopedValidated(userDataKeys.weights, fallbackValue, isValid)
 }
 
 export function saveWeights(weights) {
-  return saveValue(userDataKeys.weights, weights)
+  return saveScopedValue(userDataKeys.weights, weights)
 }
 
 export function getFoods(fallbackValue = [], isValid) {

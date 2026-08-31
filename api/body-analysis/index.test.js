@@ -4,8 +4,28 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import handler, { bodyAnalysisRouteInternals } from './index.js'
 import { setAiRateLimitAdapterForTests } from '../_shared/aiRateLimiter.js'
 import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
+import { analysisConsentPurposes, computeCanonicalImageHash, issueAnalysisConsentToken } from '../_shared/analysisConsent.js'
 
+const TEST_SECRET = 'test-analysis-consent-secret-32-plus'
+const USER_ID = 'body-user-a'
 const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4])
+
+function consentHeadersForBodyImages(images = { backImage: pngBytes, frontImage: pngBytes, sideImage: pngBytes }) {
+  process.env.ANALYSIS_CONSENT_SECRET = TEST_SECRET
+  const issued = issueAnalysisConsentToken({
+    env: { ANALYSIS_CONSENT_SECRET: TEST_SECRET },
+    imageHash: computeCanonicalImageHash([
+      { bytes: images.frontImage, label: 'front' },
+      { bytes: images.sideImage, label: 'side' },
+      { bytes: images.backImage, label: 'back' },
+    ]),
+    purpose: analysisConsentPurposes.bodyAnalysis,
+    userId: USER_ID,
+  })
+
+  expect(issued.ok).toBe(true)
+  return { 'x-viktkollen-consent-token': issued.token }
+}
 
 function multipartBody({ boundary = 'body-boundary', contentType = 'image/png', fields = {}, image = pngBytes } = {}) {
   const parts = ['frontImage', 'sideImage', 'backImage'].map((fieldName) => Buffer.concat([
@@ -74,7 +94,7 @@ describe('body analysis API route', () => {
     setAiRateLimitAdapterForTests()
     setSupabaseAuthVerifierForTests(async (token) => (
       token === 'valid-token'
-        ? { user: { id: 'body-user-a' } }
+        ? { user: { id: USER_ID } }
         : { error: { message: token === 'expired-token' ? 'JWT expired' : 'invalid' } }
     ))
   })
@@ -129,13 +149,16 @@ describe('body analysis API route', () => {
 
   it('falls back to clearly marked mock output when provider key is missing', async () => {
     delete process.env.OPENAI_API_KEY
-    const response = await callRoute(createRequest({ body: multipartBody({
+    const response = await callRoute(createRequest({
+      body: multipartBody({
       fields: {
         context: JSON.stringify({
           latestMeasuredWeight: { date: '2026-08-12', source: 'Våg', valueKg: 78 },
         }),
       },
-    }) }))
+    }),
+      headers: consentHeadersForBodyImages(),
+    }))
 
     expect(response.statusCode).toBe(200)
     expect(response.body.source).toBe('mock')
@@ -170,14 +193,17 @@ describe('body analysis API route', () => {
       ok: true,
     })))
 
-    const response = await callRoute(createRequest({ body: multipartBody({
+    const response = await callRoute(createRequest({
+      body: multipartBody({
       fields: {
         context: JSON.stringify({
           latestMeasuredWeight: { date: '2026-08-12', source: 'Våg', valueKg: 78 },
           profile: { height: 180 },
         }),
       },
-    }) }))
+    }),
+      headers: consentHeadersForBodyImages(),
+    }))
 
     expect(response.statusCode).toBe(200)
     expect(response.body.source).toBe('ai')

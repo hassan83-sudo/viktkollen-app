@@ -6,6 +6,11 @@ import {
   hasSameAiAuthUser,
 } from './ai/aiAuthTransport.js'
 import { safeLogger } from './safeLogger.js'
+import {
+  analysisConsentPurposes,
+  requestAnalysisConsentToken,
+  withAnalysisConsentTokenHeader,
+} from './security/analysisConsentProof.js'
 
 export const nutritionPhotoProviderTypes = ['mock', 'remote']
 export const nutritionPhotoAnalysisTimeoutMs = 60000
@@ -140,7 +145,7 @@ function timeoutSignal(ms, upstreamSignal) {
   }
 }
 
-function createRemoteFormData(input = {}) {
+async function createRemoteFormData(input = {}) {
   if (typeof FormData === 'undefined') {
     throw new Error('form_data_unavailable')
   }
@@ -254,6 +259,28 @@ export async function analyzeNutritionPhoto(input = {}, options = {}) {
       }
     }
 
+    // Never request a consent token (and never fetch) without an explicit
+    // approval flag from the real UI event - see NutritionScannerV2.jsx's
+    // analyzeImage(), which only reaches this call once its own visible
+    // remote-consent gate (getNutritionAnalysisBlocker) has already passed.
+    if (options.consentApproved !== true) {
+      logRemoteDiagnostic('provider-missing-consent', {
+        fallbackReason: 'consent_not_approved',
+        fallbackUsed: false,
+        requestedMode: providerType,
+      })
+      return {
+        analysis: null,
+        debug: {
+          ...debug,
+          fallbackReason: 'consent_not_approved',
+        },
+        ok: false,
+        providerType,
+        warning: 'Bekräfta samtycket i det synliga godkännandesteget innan bilden skickas för analys.',
+      }
+    }
+
     const auth = await getCurrentAiAuthorization()
     debug = {
       ...debug,
@@ -297,13 +324,39 @@ export async function analyzeNutritionPhoto(input = {}, options = {}) {
       providerAttempted: true,
       requestStarted: true,
     }
+    let consentToken
+    try {
+      consentToken = await requestAnalysisConsentToken({
+        authorizationHeader: auth.authorizationHeader,
+        consentApproved: options.consentApproved,
+        images: input.preprocessedImage,
+        purpose: analysisConsentPurposes.nutritionPhotoAnalysis,
+        signal: timeout.signal,
+      })
+    } catch {
+      logRemoteDiagnostic('consent-token-denied', {
+        fallbackUsed: false,
+        requestedMode: providerType,
+      })
+      return {
+        analysis: null,
+        debug: {
+          ...debug,
+          fallbackReason: 'consent_token_denied',
+        },
+        ok: false,
+        providerType,
+        warning: 'Kunde inte få tillstånd för bildanalysen. Försök igen.',
+      }
+    }
+
     const response = await fetch('/api/nutrition-photo-analysis', {
-      body: createRemoteFormData(input),
-      headers: {
+      body: await createRemoteFormData(input),
+      headers: withAnalysisConsentTokenHeader({
         Authorization: auth.authorizationHeader,
         'x-viktkollen-client-id': getTransientClientId(),
         'x-viktkollen-request-id': clientAttemptId,
-      },
+      }, consentToken.token),
       method: 'POST',
       signal: timeout.signal,
     })

@@ -24,6 +24,10 @@ import {
   revokeNutritionRemoteConsent,
 } from '../services/nutritionRemoteConsent.js'
 import {
+  createAnalysisApprovalKey,
+  createOneShotAnalysisApproval,
+} from '../services/security/oneShotAnalysisApproval.js'
+import {
   applyPhotoIngredientDatabaseSuggestion,
   buildPhotoIngredientMatchSummary,
   buildPhotoIngredientMatchStatusCounts,
@@ -433,6 +437,7 @@ function NutritionScannerV2({
   const currentImageRef = useRef(null)
   const imagePayloadRef = useRef(null)
   const activeAnalysisControllerRef = useRef(null)
+  const remoteAnalysisApprovalRef = useRef(createOneShotAnalysisApproval())
   const analysisInFlightRef = useRef(false)
   const lastAnalysisActionRef = useRef(0)
   const [status, setStatus] = useState(() => t('scanner.status.idle'))
@@ -461,9 +466,23 @@ function NutritionScannerV2({
     ? storedRemoteConsent.consent
     : readNutritionRemoteConsent(userId)
   const remoteConsent = remoteConsentDraft.userId === userId ? remoteConsentDraft.checked : false
-  const hasRemoteConsent = remoteConsentRecord.granted === true || remoteConsent
   const resolveActiveImagePayload = () => getNutritionImagePayloadSnapshot(imagePayloadRef.current || imagePayload, currentImageRef.current)
   const mealTypeLabel = (type) => t(`scanner.mealTypes.${type}`, { defaultValue: type })
+
+  function getRemoteAnalysisApprovalKey(payload = resolveActiveImagePayload()) {
+    return createAnalysisApprovalKey([
+      {
+        label: 'nutrition-photo',
+        previewUrl: payload?.previewUrl,
+        source: payload?.processedBlob,
+      },
+    ])
+  }
+
+  function clearRemoteAnalysisApproval() {
+    remoteAnalysisApprovalRef.current.clear()
+    setRemoteConsentDraft({ checked: false, userId })
+  }
 
   const scheduleResultScroll = useCallback(() => {
     const target = reviewRef.current
@@ -568,6 +587,7 @@ function NutritionScannerV2({
   function clearImageState(clearInputs = false) {
     activeAnalysisControllerRef.current?.abort('explicitAbort')
     activeAnalysisControllerRef.current = null
+    clearRemoteAnalysisApproval()
     currentImageRef.current?.revoke?.()
     currentImageRef.current = null
     analysisInFlightRef.current = false
@@ -717,6 +737,7 @@ function NutritionScannerV2({
 
   async function handleFileChange(event) {
     const file = event.target.files?.[0]
+    clearRemoteAnalysisApproval()
     setError('')
     setStatus('')
     setAnalysis(null)
@@ -771,7 +792,7 @@ function NutritionScannerV2({
       if (requestedMode === 'remote') {
         updateRemoteDebug({
           ...imageDebugState,
-          consentPresent: hasRemoteConsent,
+          consentPresent: remoteAnalysisApprovalRef.current.has(getRemoteAnalysisApprovalKey(activeImagePayload)),
           duplicateAttemptBlocked: true,
           fallbackReason: 'duplicate_attempt_blocked',
           fallbackUsed: false,
@@ -785,12 +806,18 @@ function NutritionScannerV2({
       return
     }
 
+    const remoteConsentApprovedForAttempt = requestedMode === 'remote'
+      ? remoteAnalysisApprovalRef.current.consume(getRemoteAnalysisApprovalKey(activeImagePayload))
+      : false
+    if (requestedMode === 'remote') {
+      setRemoteConsentDraft({ checked: false, userId })
+    }
     analysisInFlightRef.current = true
     if (requestedMode === 'remote') {
       updateRemoteDebug({
         authPresent: '',
         ...imageDebugState,
-        consentPresent: hasRemoteConsent,
+        consentPresent: remoteConsentApprovedForAttempt,
         requestedMode,
         requestStarted: false,
       })
@@ -807,7 +834,7 @@ function NutritionScannerV2({
       isAnalyzing,
       isOnline,
       providerType,
-      remoteConsent: hasRemoteConsent,
+      remoteConsent: remoteConsentApprovedForAttempt,
     })
 
     if (blocker) {
@@ -816,7 +843,7 @@ function NutritionScannerV2({
         updateRemoteDebug({
           ...imageDebugState,
           apiErrorMessage: blocker,
-          consentPresent: hasRemoteConsent,
+          consentPresent: remoteConsentApprovedForAttempt,
           fallbackReason: 'ui_blocker',
           fallbackUsed: false,
           requestedMode,
@@ -867,7 +894,7 @@ function NutritionScannerV2({
           requestedMode,
         })
       } else {
-        if (remoteConsent && !remoteConsentRecord.granted) {
+        if (remoteConsentApprovedForAttempt && !remoteConsentRecord.granted) {
           setStoredRemoteConsent({
             consent: grantNutritionRemoteConsent(userId),
             userId,
@@ -884,7 +911,7 @@ function NutritionScannerV2({
           ...imageDebugState,
           requestStarted: true,
           requestedMode,
-          consentPresent: hasRemoteConsent,
+          consentPresent: remoteConsentApprovedForAttempt,
         })
         const { analyzeNutritionPhoto } = await import('../services/nutritionPhotoAnalysisProvider.js')
         result = await analyzeNutritionPhoto({
@@ -893,13 +920,14 @@ function NutritionScannerV2({
           preprocessedImage: providerType === 'remote' ? activeImagePayload?.processedBlob : null,
         }, {
           analysisDate: today,
+          consentApproved: remoteConsentApprovedForAttempt,
           providerType,
           signal: controller.signal,
         })
         updateRemoteDebug({
           ...(result.debug || {}),
           ...imageDebugState,
-          consentPresent: hasRemoteConsent,
+          consentPresent: remoteConsentApprovedForAttempt,
           requestedMode,
         })
         logAnalysisDiagnostic('remote-provider-after-call', {
@@ -920,7 +948,7 @@ function NutritionScannerV2({
             ...(result.debug || {}),
             ...imageDebugState,
             apiErrorMessage: result.warning || result.debug?.apiErrorMessage || '',
-            consentPresent: hasRemoteConsent,
+            consentPresent: remoteConsentApprovedForAttempt,
             fallbackUsed: false,
             requestedMode,
           })
@@ -941,7 +969,7 @@ function NutritionScannerV2({
         updateRemoteDebug({
           ...(result.debug || {}),
           ...imageDebugState,
-          consentPresent: hasRemoteConsent,
+          consentPresent: remoteConsentApprovedForAttempt,
           fallbackReason: 'non_remote_provider_type',
           fallbackUsed: finalProviderType === 'local',
           finalProviderType,
@@ -968,7 +996,7 @@ function NutritionScannerV2({
         updateRemoteDebug({
           ...(result.debug || {}),
           ...imageDebugState,
-          consentPresent: hasRemoteConsent,
+          consentPresent: remoteConsentApprovedForAttempt,
           fallbackUsed: false,
           finalProviderType,
           normalizationSucceeded: true,
@@ -989,7 +1017,7 @@ function NutritionScannerV2({
           updateRemoteDebug({
             apiErrorMessage: t('scanner.errors.analysisStartFailedShort'),
             ...imageDebugState,
-            consentPresent: hasRemoteConsent,
+            consentPresent: remoteConsentApprovedForAttempt,
             fallbackReason: 'ui_exception',
             fallbackUsed: false,
             requestedMode,
@@ -1117,6 +1145,7 @@ function NutritionScannerV2({
     setRemoteConsentDraft({ checked, userId })
     setError('')
     if (checked) {
+      remoteAnalysisApprovalRef.current.approve(getRemoteAnalysisApprovalKey())
       setStoredRemoteConsent({
         consent: grantNutritionRemoteConsent(userId),
         userId,
@@ -1125,6 +1154,7 @@ function NutritionScannerV2({
       return
     }
 
+    remoteAnalysisApprovalRef.current.clear()
     setStoredRemoteConsent({
       consent: revokeNutritionRemoteConsent(userId),
       userId,
@@ -1133,6 +1163,7 @@ function NutritionScannerV2({
   }
 
   function handleRevokeRemoteConsent() {
+    remoteAnalysisApprovalRef.current.clear()
     setRemoteConsentDraft({ checked: false, userId })
     setStoredRemoteConsent({
       consent: revokeNutritionRemoteConsent(userId),
@@ -1193,25 +1224,24 @@ function NutritionScannerV2({
           </div>
         </div>
       )}
-      {remoteConsentRecord.granted ? (
+      {remoteConsentRecord.granted && (
         <div className="scanner-consent-row scanner-consent-status">
           <p className="estimate-note">{t('scanner.consentGranted')}</p>
           <button type="button" className="secondary-button" disabled={isAnalyzing} onClick={handleRevokeRemoteConsent}>
             {t('scanner.revokeConsent')}
           </button>
         </div>
-      ) : (
-        <label className="checkbox-row scanner-consent-row" htmlFor="nutrition-scanner-remote-consent">
-          <input
-            id="nutrition-scanner-remote-consent"
-            checked={remoteConsent}
-            disabled={isAnalyzing}
-            type="checkbox"
-            onChange={(event) => handleRemoteConsentChange(event.target.checked)}
-          />
-          <span>{t('scanner.consentLabel')}</span>
-        </label>
       )}
+      <label className="checkbox-row scanner-consent-row" htmlFor="nutrition-scanner-remote-consent">
+        <input
+          id="nutrition-scanner-remote-consent"
+          checked={remoteConsent}
+          disabled={isAnalyzing}
+          type="checkbox"
+          onChange={(event) => handleRemoteConsentChange(event.target.checked)}
+        />
+        <span>{t('scanner.consentLabel')}</span>
+      </label>
       <div className="scanner-actions scanner-primary-actions">
           <button className="primary-button" type="button" disabled={!hasActiveImagePayload || isAnalyzing || !isOnline} onClick={(event) => handleAnalysisAction('remote', event)}>
             {isAnalyzing ? t('scanner.analyzing') : t('scanner.analyzeFood')}

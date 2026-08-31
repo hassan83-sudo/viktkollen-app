@@ -8,6 +8,7 @@ import { createBodyAnalysisPrompt } from '../../src/services/bodyAnalysisPrompt.
 import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
+import { analysisConsentPurposes, verifyAnalysisConsentToken } from '../_shared/analysisConsent.js'
 
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
 // Three images plus small text fields; anything larger is rejected before parsing.
@@ -182,6 +183,7 @@ async function parseImages(request) {
   if (!contentType.includes('multipart/form-data') || !boundary) {
     return {
       backImage: null,
+      fields: {},
       context: null,
       frontImage: null,
       previousAnalysis: null,
@@ -196,6 +198,7 @@ async function parseImages(request) {
   return {
     backImage: parsed.images.backImage ?? null,
     context: parseJsonField(parsed.fields.context),
+    fields: parsed.fields,
     frontImage: parsed.images.frontImage ?? null,
     imageFieldNames: Object.keys(parsed.images),
     previousAnalysis: parsePreviousAnalysis(parsed.fields.previousAnalysis),
@@ -552,6 +555,35 @@ export default async function handler(request, response) {
         safeMessage: validationError.error,
       },
       ok: false,
+    })
+  }
+
+  // Verified before any mock-fallback and before any OpenAI call, in every
+  // environment (no NODE_ENV bypass). The token is read from a dedicated
+  // header - never a form field, JSON field, URL or query parameter - and
+  // the images are hashed as a fixed-order, labelled manifest so a
+  // different front/side/back split can never collide with this one.
+  const consentToken = getRequestHeader(request, 'x-viktkollen-consent-token')
+  const consent = verifyAnalysisConsentToken({
+    env: process.env,
+    imageEntries: [
+      { bytes: images.frontImage?.data, label: 'front' },
+      { bytes: images.sideImage?.data, label: 'side' },
+      { bytes: images.backImage?.data, label: 'back' },
+    ],
+    purpose: analysisConsentPurposes.bodyAnalysis,
+    token: consentToken,
+    userId: auth.user.id,
+  })
+
+  if (!consent.ok) {
+    // consent.reason is a generic code (e.g. "expired", "user_mismatch") -
+    // never the token, the image hash or any image bytes.
+    console.warn('[api/body-analysis] Analysis consent rejected', { reason: consent.reason, requestId })
+    return sendSafeAiError(response, {
+      code: aiRouteErrorCodes.CONSENT_REQUIRED,
+      requestId,
+      status: 403,
     })
   }
 

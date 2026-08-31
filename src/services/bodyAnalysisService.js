@@ -5,6 +5,11 @@ import {
   getCurrentAiAuthorization,
   hasSameAiAuthUser,
 } from './ai/aiAuthTransport.js'
+import {
+  analysisConsentPurposes,
+  requestAnalysisConsentToken,
+  withAnalysisConsentTokenHeader,
+} from './security/analysisConsentProof.js'
 
 const BODY_ANALYSIS_ENDPOINT = '/api/body-analysis'
 const USE_MOCK_BODY_ANALYSIS = false
@@ -111,7 +116,7 @@ async function callMockBodyAnalysis(payload) {
   return mockBodyResult
 }
 
-async function callBodyAnalysisApi(payload) {
+async function callBodyAnalysisApi(payload, consentApproved) {
   const controller = typeof AbortController === 'undefined' ? null : new AbortController()
   const timeoutId = controller
     ? globalThis.setTimeout(() => controller.abort(), BODY_ANALYSIS_TIMEOUT_MS)
@@ -139,11 +144,28 @@ async function callBodyAnalysisApi(payload) {
 
     formData.append('scanInput', JSON.stringify(payload.scanInput))
 
+    let consentToken
+    try {
+      consentToken = await requestAnalysisConsentToken({
+        authorizationHeader: auth.authorizationHeader,
+        consentApproved,
+        images: [
+          { label: 'front', source: payload.frontImage },
+          { label: 'side', source: payload.sideImage },
+          { label: 'back', source: payload.backImage },
+        ],
+        purpose: analysisConsentPurposes.bodyAnalysis,
+        signal: controller?.signal,
+      })
+    } catch {
+      throw new Error('Kunde inte få tillstånd för AI-kroppsanalysen. Försök igen.')
+    }
+
     const response = await fetch(BODY_ANALYSIS_ENDPOINT, {
       body: formData,
-      headers: {
+      headers: withAnalysisConsentTokenHeader({
         Authorization: auth.authorizationHeader,
-      },
+      }, consentToken.token),
       method: 'POST',
       signal: controller?.signal,
     })
@@ -194,6 +216,7 @@ async function callBodyAnalysisApi(payload) {
  */
 export async function analyzeBodyWithAI({
   backPhoto,
+  consentApproved,
   context,
   frontPhoto,
   previousAnalysis,
@@ -211,6 +234,14 @@ export async function analyzeBodyWithAI({
     throw new Error('Välj en bild bakifrån innan du startar analysen.')
   }
 
+  // The consent-token request (and therefore this entire remote call) must
+  // never start without an explicit approval flag from the real UI event
+  // handler - see BodyAnalysisCard.jsx's handleApproveAnalysis. No fetch of
+  // any kind happens below this check when consent is missing.
+  if (consentApproved !== true) {
+    throw new Error('Bekräfta samtycket i det synliga godkännandesteget innan analysen kan starta.')
+  }
+
   const payload = buildBodyAnalysisPayload(
     frontPhoto,
     sidePhoto,
@@ -222,7 +253,7 @@ export async function analyzeBodyWithAI({
   // TODO: Return the AI result from the backend instead of the mock result.
   const response = USE_MOCK_BODY_ANALYSIS
     ? await callMockBodyAnalysis(payload)
-    : await callBodyAnalysisApi(payload)
+    : await callBodyAnalysisApi(payload, consentApproved)
 
   return normalizeBodyAnalysisResponse(response)
 }

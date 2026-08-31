@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 const DEFAULT_WINDOW_MS = 10 * 60 * 1000
 const DEFAULT_LIMITS = {
   adaptiveCoach: 8,
+  analysisConsent: 20,
   bodyAnalysis: 4,
   legacyAi: 20,
   mealAnalysis: 10,
@@ -66,6 +67,7 @@ export function checkAiRouteRateLimit({
 } = {}) {
   const routeName = [
     'adaptiveCoach',
+    'analysisConsent',
     'bodyAnalysis',
     'legacyAi',
     'mealAnalysis',

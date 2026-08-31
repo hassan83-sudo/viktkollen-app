@@ -1,78 +1,21 @@
 import { fallbackMealAnalysis } from '../../src/services/mealAnalysisService.js'
-import { createMealAnalysisPrompt } from '../../src/services/mealAnalysisPrompt.js'
 import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 
-const OPENAI_API_URL = 'https://api.openai.com/v1/responses'
-const DEFAULT_VISION_MODEL = 'gpt-4.1-mini'
-const MAX_IMAGE_DATA_URL_BYTES = 8 * 1024 * 1024
-
-function sanitizeImage(value) {
-  const image = typeof value === 'string' && value.startsWith('data:image/')
-    ? value
-    : ''
-
-  if (!image || Buffer.byteLength(image, 'utf8') > MAX_IMAGE_DATA_URL_BYTES) {
-    return ''
-  }
-
-  if (!/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(image)) {
-    return ''
-  }
-
-  return image
-}
-
-function parseRequestBody(request) {
-  if (typeof request.body === 'string') {
-    return JSON.parse(request.body)
-  }
-
-  return request.body ?? {}
-}
-
-function extractResponseText(data) {
-  if (typeof data.output_text === 'string' && data.output_text.trim()) {
-    return data.output_text.trim()
-  }
-
-  const textParts = data.output
-    ?.flatMap((item) => item.content ?? [])
-    ?.map((content) => content.text)
-    ?.filter(Boolean)
-
-  return textParts?.join('\n').trim() || ''
-}
-
-function parseAnalysisText(text) {
-  const parsed = JSON.parse(
-    text
-      .replace(/^```json\s*/i, '')
-      .replace(/^```\s*/i, '')
-      .replace(/```$/i, '')
-      .trim(),
-  )
-
-  return {
-    ...fallbackMealAnalysis,
-    ...parsed,
-    foods: Array.isArray(parsed.foods)
-      ? parsed.foods.map(String).slice(0, 8)
-      : fallbackMealAnalysis.foods,
-  }
-}
-
-function fallbackPayload(reason) {
-  return {
-    analysis: {
-      ...fallbackMealAnalysis,
-      source: 'mock',
-    },
-    fallbackReason: reason,
-    source: 'mock',
-  }
-}
+// Legacy meal-photo analysis has no visible, explicit consent step in the
+// current UI (see src/components/PhotoAnalysis.jsx - its "Uppskatta
+// måltiden" button has no privacy/consent confirmation step, unlike the
+// body-scan and nutrition-photo-scan flows). No purpose for this route
+// exists in api/_shared/analysisConsent.js's analysisConsentPurposes
+// allowlist, so no consent token can ever satisfy this route, and this
+// handler fails closed unconditionally right after authentication - it
+// never reads the request body, never calls OpenAI, and never produces a
+// real analysis. fallbackMealAnalysis is imported only so any legacy
+// caller still gets a valid-shaped mock result from the client-side
+// fallback path (src/services/mealAnalysisService.js's analyzeMealPhoto
+// never calls this route at all any more).
+void fallbackMealAnalysis
 
 export default async function handler(request, response) {
   const requestId = `meal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
@@ -95,6 +38,7 @@ export default async function handler(request, response) {
       ok: false,
     })
   }
+
   const rateLimit = checkAiRouteRateLimit({
     limit: process.env.MEAL_ANALYSIS_RATE_LIMIT_MAX,
     route: 'mealAnalysis',
@@ -111,92 +55,13 @@ export default async function handler(request, response) {
     })
   }
 
-  let body
-
-  try {
-    body = parseRequestBody(request)
-  } catch {
-    return sendSafeAiError(response, {
-      code: aiRouteErrorCodes.INVALID_REQUEST,
-      requestId,
-      safeMessage: 'Ogiltig JSON i förfrågan.',
-      status: 400,
-    })
-  }
-
-  const image = sanitizeImage(body.image)
-
-  if (!image) {
-    return sendSafeAiError(response, {
-      code: aiRouteErrorCodes.INVALID_REQUEST,
-      requestId,
-      safeMessage: 'En måltidsbild krävs.',
-      status: 400,
-    })
-  }
-
-  if (!process.env.OPENAI_API_KEY) {
-    console.info('[api/meal-analysis] OPENAI_API_KEY missing, using mock')
-    return response.status(200).json(fallbackPayload('missing_api_key'))
-  }
-
-  const model =
-    process.env.OPENAI_VISION_MODEL ||
-    process.env.OPENAI_MODEL ||
-    DEFAULT_VISION_MODEL
-  const startedAt = Date.now()
-
-  try {
-    const openaiResponse = await fetch(OPENAI_API_URL, {
-      body: JSON.stringify({
-        input: [
-          {
-            content: [
-              {
-                text: createMealAnalysisPrompt(),
-                type: 'input_text',
-              },
-              {
-                image_url: image,
-                type: 'input_image',
-              },
-            ],
-            role: 'user',
-          },
-        ],
-        max_output_tokens: 800,
-        model,
-      }),
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      method: 'POST',
-    })
-
-    if (!openaiResponse.ok) {
-      throw new Error(`OpenAI request failed: ${openaiResponse.status}`)
-    }
-
-    const data = await openaiResponse.json()
-    const analysis = parseAnalysisText(extractResponseText(data))
-
-    console.info('[api/meal-analysis] Analysis completed', {
-      durationMs: Date.now() - startedAt,
-      source: 'openai',
-    })
-
-    return response.status(200).json({
-      analysis,
-      source: 'openai',
-    })
-  } catch (error) {
-    console.warn('[api/meal-analysis] AI failed, using mock', {
-      durationMs: Date.now() - startedAt,
-      error: error instanceof Error ? error.message : String(error),
-      source: 'mock',
-    })
-
-    return response.status(200).json(fallbackPayload('api_error'))
-  }
+  // Fail closed unconditionally - see the module doc comment above. No
+  // image is parsed, no consent token is even looked for, and no OpenAI
+  // call is ever reachable from this route.
+  console.warn('[api/meal-analysis] Legacy flow has no UI consent step - request rejected unconditionally', { requestId })
+  return sendSafeAiError(response, {
+    code: aiRouteErrorCodes.CONSENT_REQUIRED,
+    requestId,
+    status: 403,
+  })
 }

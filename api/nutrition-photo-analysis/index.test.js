@@ -5,8 +5,24 @@ import handler, { NUTRITION_PHOTO_ANALYSIS_TIMEOUT_MS, nutritionPhotoRouteIntern
 import { setAiRateLimitAdapterForTests } from '../_shared/aiRateLimiter.js'
 import { resetAiRequestDeduperForTests } from '../_shared/aiRequestDeduper.js'
 import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
+import { analysisConsentPurposes, computeCanonicalImageHash, issueAnalysisConsentToken } from '../_shared/analysisConsent.js'
 
+const TEST_SECRET = 'test-analysis-consent-secret-32-plus'
+const USER_ID = 'photo-user-a'
 const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4])
+
+function consentHeadersForPhoto(image = pngBytes) {
+  process.env.ANALYSIS_CONSENT_SECRET = TEST_SECRET
+  const issued = issueAnalysisConsentToken({
+    env: { ANALYSIS_CONSENT_SECRET: TEST_SECRET },
+    imageHash: computeCanonicalImageHash([{ bytes: image, label: 'image' }]),
+    purpose: analysisConsentPurposes.nutritionPhotoAnalysis,
+    userId: USER_ID,
+  })
+
+  expect(issued.ok).toBe(true)
+  return { 'x-viktkollen-consent-token': issued.token }
+}
 
 function multipartBody({ boundary = 'test-boundary', contentType = 'image/png', fieldName = 'image', image = pngBytes } = {}) {
   return Buffer.concat([
@@ -68,7 +84,7 @@ describe('nutrition photo analysis API route', () => {
     setAiRateLimitAdapterForTests()
     setSupabaseAuthVerifierForTests(async (token) => (
       token === 'valid-token'
-        ? { user: { id: 'photo-user-a' } }
+        ? { user: { id: USER_ID } }
         : { error: { message: token === 'expired-token' ? 'JWT expired' : 'invalid' } }
     ))
   })
@@ -144,7 +160,10 @@ describe('nutrition photo analysis API route', () => {
 
   it('returns configuration error when provider key is missing', async () => {
     delete process.env.OPENAI_API_KEY
-    const response = await callRoute(createRequest({ body: multipartBody() }))
+    const response = await callRoute(createRequest({
+      body: multipartBody(),
+      headers: consentHeadersForPhoto(),
+    }))
 
     expect(response.statusCode).toBe(503)
     expect(response.body.error.code).toBe('PROVIDER_NOT_CONFIGURED')
@@ -153,7 +172,10 @@ describe('nutrition photo analysis API route', () => {
 
   it('treats an empty provider key as not configured', async () => {
     process.env.OPENAI_API_KEY = ''
-    const response = await callRoute(createRequest({ body: multipartBody() }))
+    const response = await callRoute(createRequest({
+      body: multipartBody(),
+      headers: consentHeadersForPhoto(),
+    }))
 
     expect(response.statusCode).toBe(503)
     expect(response.body.error.code).toBe('PROVIDER_NOT_CONFIGURED')
@@ -457,7 +479,10 @@ describe('nutrition photo analysis API route', () => {
       }), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
 
-    const response = await callRoute(createRequest({ body: multipartBody() }))
+    const response = await callRoute(createRequest({
+      body: multipartBody(),
+      headers: consentHeadersForPhoto(),
+    }))
     const providerBody = JSON.parse(fetchMock.mock.calls[0][1].body)
 
     expect(response.statusCode).toBe(200)
@@ -482,7 +507,10 @@ describe('nutrition photo analysis API route', () => {
 
     const response = await callRoute(createRequest({
       body: multipartBody(),
-      headers: { 'x-viktkollen-request-id': 'photo-attempt-test' },
+      headers: {
+        ...consentHeadersForPhoto(),
+        'x-viktkollen-request-id': 'photo-attempt-test',
+      },
     }))
 
     expect(response.statusCode).toBe(502)
@@ -508,7 +536,10 @@ describe('nutrition photo analysis API route', () => {
       error: { code: 'server_error' },
     }), { status: 500, statusText: 'Internal Server Error' })))
 
-    const response = await callRoute(createRequest({ body: multipartBody() }))
+    const response = await callRoute(createRequest({
+      body: multipartBody(),
+      headers: consentHeadersForPhoto(),
+    }))
 
     expect(response.statusCode).toBe(502)
     expect(warn).toHaveBeenCalledWith('[api/nutrition-photo-analysis] Safe failure', expect.objectContaining({
@@ -530,7 +561,10 @@ describe('nutrition photo analysis API route', () => {
       statusText: 'OK',
     })))
 
-    const response = await callRoute(createRequest({ body: multipartBody() }))
+    const response = await callRoute(createRequest({
+      body: multipartBody(),
+      headers: consentHeadersForPhoto(),
+    }))
 
     expect(response.statusCode).toBe(502)
     expect(response.body.error.code).toBe('PROVIDER_UNAVAILABLE')
@@ -558,7 +592,10 @@ describe('nutrition photo analysis API route', () => {
       status: 'incomplete',
     }), { status: 200, statusText: 'OK' })))
 
-    const response = await callRoute(createRequest({ body: multipartBody() }))
+    const response = await callRoute(createRequest({
+      body: multipartBody(),
+      headers: consentHeadersForPhoto(),
+    }))
 
     expect(response.statusCode).toBe(502)
     expect(warn).toHaveBeenCalledWith('[api/nutrition-photo-analysis] Safe failure', expect.objectContaining({
@@ -595,7 +632,10 @@ describe('nutrition photo analysis API route', () => {
       throw networkError
     }))
 
-    const response = await callRoute(createRequest({ body: multipartBody() }))
+    const response = await callRoute(createRequest({
+      body: multipartBody(),
+      headers: consentHeadersForPhoto(),
+    }))
 
     expect(response.statusCode).toBe(502)
     expect(response.body.error.code).toBe('PROVIDER_UNAVAILABLE')
@@ -629,7 +669,10 @@ describe('nutrition photo analysis API route', () => {
       }), { status: 200 })), NUTRITION_PHOTO_ANALYSIS_TIMEOUT_MS + 1000)
     })))
 
-    const responsePromise = callRoute(createRequest({ body: multipartBody() }))
+    const responsePromise = callRoute(createRequest({
+      body: multipartBody(),
+      headers: consentHeadersForPhoto(),
+    }))
     await vi.advanceTimersByTimeAsync(NUTRITION_PHOTO_ANALYSIS_TIMEOUT_MS)
     const response = await responsePromise
 

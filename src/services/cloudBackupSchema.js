@@ -1,5 +1,6 @@
 import { readStorage, writeStorage } from './appStorageService.js'
 import { isBodyAnalysisCloudStorageKey, sanitizeValueForCloudTransfer } from './bodyAnalysisHistory.js'
+import { sanitizeMediaPayloadMap } from './security/mediaSafeguard.js'
 import {
   getBackupStorageKeys,
   getCloudClientId,
@@ -70,8 +71,14 @@ function getAppVersion() {
   return import.meta.env?.VITE_APP_VERSION || '0.0.0'
 }
 
-function readAllowlistedUserData() {
-  return sanitizeBackupUserData(getBackupStorageKeys().reduce((data, key) => {
+// forCloudUpload controls whether the central deny-by-default media
+// guard is applied. It must stay OFF for the local pre-restore undo
+// snapshot (source: 'pre-restore'), which never leaves the device and
+// must keep full image fidelity so an undo can restore local images
+// exactly as they were. It is ON for every payload actually destined
+// for cloud upload or cloud comparison.
+function readAllowlistedUserData({ forCloudUpload = true } = {}) {
+  const sanitized = sanitizeBackupUserData(getBackupStorageKeys().reduce((data, key) => {
     const value = readStorage(key, null)
 
     if (value === null || value === undefined) {
@@ -83,10 +90,12 @@ function readAllowlistedUserData() {
       [key]: value,
     }
   }, {}))
+
+  return forCloudUpload ? sanitizeMediaPayloadMap(sanitized) : sanitized
 }
 
 export function buildCloudBackupPayload({ name = '', source = 'manual' } = {}) {
-  const userData = readAllowlistedUserData()
+  const userData = readAllowlistedUserData({ forCloudUpload: source !== 'pre-restore' })
   const storageKeys = Object.keys(userData).sort()
   const exportedAt = new Date().toISOString()
   const clientId = getCloudClientId()

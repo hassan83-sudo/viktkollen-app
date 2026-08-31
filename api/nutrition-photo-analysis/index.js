@@ -6,6 +6,7 @@ import { aiRouteErrorCodes, mapGatewayErrorCode, sendSafeAiError, setNoStoreHead
 import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { createImageFingerprint, runDedupedAiRequest } from '../_shared/aiRequestDeduper.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
+import { analysisConsentPurposes, verifyAnalysisConsentToken } from '../_shared/analysisConsent.js'
 import {
   calculateTotalsFromComponents,
   compareNutritionRanges,
@@ -55,6 +56,7 @@ function safeNumber(value, fallback = null, max = 100000) {
 
 function safeError(response, status, code, message, retryable = false, requestId = '') {
   const mapping = {
+    consentRequired: aiRouteErrorCodes.CONSENT_REQUIRED,
     corsBlocked: aiRouteErrorCodes.INVALID_REQUEST,
     invalidContentType: aiRouteErrorCodes.INVALID_REQUEST,
     invalidProviderResponse: aiRouteErrorCodes.PROVIDER_INVALID_RESPONSE,
@@ -406,6 +408,23 @@ export default async function handler(request, response) {
     const image = parsedRequest.parsed.files.image
     const imageError = validateImage(image)
     if (imageError) return safeError(response, imageError.status, imageError.code, imageError.message, false, requestId)
+    // Verified before any OpenAI call, in every environment (no NODE_ENV
+    // bypass). The token is read from a dedicated header - never a form
+    // field, JSON field, URL or query parameter.
+    const consentToken = getHeader(request, 'x-viktkollen-consent-token')
+    const consent = verifyAnalysisConsentToken({
+      env: process.env,
+      imageEntries: [{ bytes: image?.data, label: 'image' }],
+      purpose: analysisConsentPurposes.nutritionPhotoAnalysis,
+      token: consentToken,
+      userId: auth.user.id,
+    })
+    if (!consent.ok) {
+      // consent.reason is a generic code, never the token, image hash or
+      // image bytes.
+      console.warn('[api/nutrition-photo-analysis] Analysis consent rejected', { reason: consent.reason, requestId })
+      return safeError(response, 403, 'consentRequired', undefined, false, requestId)
+    }
     const { promise: providerPromise } = runDedupedAiRequest({
       fingerprint: createImageFingerprint(image),
       route: 'nutritionPhoto',

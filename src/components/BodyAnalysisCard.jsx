@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { formatDate } from '../i18n/format.js'
@@ -34,6 +34,10 @@ import {
   incrementPremiumAnalyticsCounter,
   premiumAnalyticsCounters,
 } from '../services/premiumAnalytics'
+import {
+  createAnalysisApprovalKey,
+  createOneShotAnalysisApproval,
+} from '../services/security/oneShotAnalysisApproval'
 import BodyAnalysisDevChecklist from './BodyAnalysisDevChecklist'
 import BodyAnalysisOnboarding from './BodyAnalysisOnboarding'
 import BodyAnalysisPrivacy from './BodyAnalysisPrivacy'
@@ -333,7 +337,6 @@ function BodyAnalysisCard({
   const [expandedAnalysisIds, setExpandedAnalysisIds] = useState([])
   const [backPhoto, setBackPhoto] = useState(null)
   const [frontPhoto, setFrontPhoto] = useState(null)
-  const [hasApprovedAnalysis, setHasApprovedAnalysis] = useState(false)
   const [importSummary, setImportSummary] = useState(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isPremiumPreviewEnabled, setIsPremiumPreviewEnabled] = useState(false)
@@ -345,6 +348,7 @@ function BodyAnalysisCard({
   const [showClearHistoryConfirm, setShowClearHistoryConfirm] = useState(false)
   const [sidePhoto, setSidePhoto] = useState(null)
   const [timelineFilter, setTimelineFilter] = useState('all')
+  const analysisApprovalRef = useRef(createOneShotAnalysisApproval())
   const analysisCount = analysisHistory.length
   const [entitlementSnapshot, setEntitlementSnapshot] = useState(() =>
     createDefaultEntitlementSnapshot({ userId }))
@@ -557,7 +561,20 @@ function BodyAnalysisCard({
     bodyOverviewMarkers.find((marker) => marker.id === activeBodyMarkerId) ||
     bodyOverviewMarkers[0]
 
+  function getBodyAnalysisApprovalKey(photos = scanPhotos) {
+    return createAnalysisApprovalKey([
+      { label: 'front', name: photos.front?.name, preview: photos.front?.preview, source: photos.front?.file },
+      { label: 'side', name: photos.side?.name, preview: photos.side?.preview, source: photos.side?.file },
+      { label: 'back', name: photos.back?.name, preview: photos.back?.preview, source: photos.back?.file },
+    ])
+  }
+
+  function clearBodyAnalysisApproval() {
+    analysisApprovalRef.current.clear()
+  }
+
   function handlePhotoChange(fileOrEvent, view, previewOverride = '') {
+    clearBodyAnalysisApproval()
     const file = fileOrEvent === null || fileOrEvent === undefined
       ? null
       : fileOrEvent?.target?.files?.[0] || fileOrEvent
@@ -694,8 +711,11 @@ function BodyAnalysisCard({
         name: backPhoto.name,
         preview: backPhoto.preview,
       }
+      const consentApproved = analysisApprovalRef.current.consume(getBodyAnalysisApprovalKey())
+
       const result = await analyzeBodyWithAI({
         backPhoto,
+        consentApproved,
         context: analysisContext,
         frontPhoto,
         previousAnalysis: getLatestAnalysis()?.result,
@@ -751,7 +771,7 @@ function BodyAnalysisCard({
       return
     }
 
-    if (!hasApprovedAnalysis) {
+    if (!analysisApprovalRef.current.has(getBodyAnalysisApprovalKey())) {
       setShowAnalysisConsent(true)
       setAnalysisError(t('card.errors.approveFirst'))
       safeLogger.info('body-scan-analyze', { guard: 'consent' })
@@ -763,7 +783,7 @@ function BodyAnalysisCard({
   }
 
   function handleApproveAnalysis() {
-    setHasApprovedAnalysis(true)
+    analysisApprovalRef.current.approve(getBodyAnalysisApprovalKey())
     setShowAnalysisConsent(false)
     runBodyAnalysis()
   }

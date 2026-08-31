@@ -1,5 +1,6 @@
 import { supabase } from '../supabaseClient.js'
 import { mergeBodyAnalysisCloudValueForLocalWrite, sanitizeValueForCloudTransfer } from '../bodyAnalysisHistory.js'
+import { sanitizeMediaPayload } from '../security/mediaSafeguard.js'
 import {
   calculateChecksum,
   clearSyncUserState,
@@ -155,7 +156,10 @@ export function normalizeRemoteSyncRows(rows = []) {
 export function createRemoteSyncPayload(record, userId, deviceId) {
   const payload = record.deleted
     ? null
-    : sanitizeValueForCloudTransfer(record.storageKey, record.payload)
+    // Central deny-by-default media guard: applied ONLY at this outgoing
+    // upload boundary, never on the download/local-write paths, so a
+    // user's own local images are never touched by sync.
+    : sanitizeMediaPayload(sanitizeValueForCloudTransfer(record.storageKey, record.payload))
 
   return {
     checksum: record.checksum,

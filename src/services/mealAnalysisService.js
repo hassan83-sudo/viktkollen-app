@@ -1,15 +1,15 @@
 import { createAiResponseModel } from './aiFallbackEngine.js'
 import {
-  getCurrentAiAuthorization,
-  hasSameAiAuthUser,
-} from './ai/aiAuthTransport.js'
-import {
   normalizeAnalysisQuality,
   normalizeEstimatedNutrition,
   normalizePortionEstimate,
 } from './nutritionPhotoEstimates.js'
 
-const MEAL_ANALYSIS_ENDPOINT = '/api/meal-analysis'
+// Legacy meal-photo analysis has no visible, explicit consent step in the
+// current UI (see src/components/PhotoAnalysis.jsx), so analyzeMealPhoto
+// below must never call the network or the consent-token flow - see its
+// own doc comment. This file intentionally does not import anything from
+// ./security/analysisConsentProof.js.
 
 export const fallbackMealAnalysis = {
   calories: 540,
@@ -303,42 +303,21 @@ export function normalizeMealAnalysis(analysis = {}) {
 }
 
 /**
- * Requests meal photo analysis from the backend.
+ * Legacy meal-photo analysis. The current UI (src/components/
+ * PhotoAnalysis.jsx) has no visible, explicit consent step before this is
+ * invoked, unlike the body-scan and nutrition-photo-scan flows. Per the
+ * analysis-consent architecture (api/_shared/analysisConsent.js), a flow
+ * without a proven visible consent step must fail closed: this function
+ * must never call the network, must never assume or fabricate consent,
+ * and must never attempt to build or send a consent token. It always
+ * returns the local fallback estimate. api/meal-analysis/index.js enforces
+ * the same fail-closed behaviour server-side, so this stays safe even if
+ * some other caller is added later.
  *
  * @param {{checkIn: object, foods: object[], image: string, meals: object[], profile: object | null}} payload
  * @returns {Promise<object>}
  */
 export async function analyzeMealPhoto(payload) {
-  try {
-    const auth = await getCurrentAiAuthorization()
-    if (!auth.ok) {
-      return normalizeMealAnalysis(fallbackMealAnalysis)
-    }
-
-    const response = await fetch(MEAL_ANALYSIS_ENDPOINT, {
-      body: JSON.stringify(payload),
-      headers: {
-        Authorization: auth.authorizationHeader,
-        'Content-Type': 'application/json',
-      },
-      method: 'POST',
-    })
-
-    const data = await response.json().catch(() => ({}))
-
-    if (!response.ok) {
-      throw new Error(data.error?.safeMessage || data.error || 'Kunde inte analysera måltiden just nu.')
-    }
-
-    if (!(await hasSameAiAuthUser(auth.userScope))) {
-      return normalizeMealAnalysis(fallbackMealAnalysis)
-    }
-
-    return normalizeMealAnalysis({
-      ...data.analysis,
-      source: data.source === 'openai' ? 'openai' : 'mock',
-    })
-  } catch {
-    return normalizeMealAnalysis(fallbackMealAnalysis)
-  }
+  void payload
+  return normalizeMealAnalysis(fallbackMealAnalysis)
 }

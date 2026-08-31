@@ -86,13 +86,19 @@ describe('legacy meal analysis API route', () => {
     expect(JSON.stringify(missing.body)).not.toMatch(/test-key|Bearer|meal-user-a|data:image/)
   })
 
-  it('keeps existing mock fallback when provider key is missing', async () => {
+  it('fails closed without mock fallback when provider key is missing', async () => {
     delete process.env.OPENAI_API_KEY
+    const fetchImpl = vi.fn()
+    vi.stubGlobal('fetch', fetchImpl)
     const response = await callRoute(createRequest({ body: { image: 'data:image/png;base64,abc' } }))
 
-    expect(response.statusCode).toBe(200)
-    expect(response.body.source).toBe('mock')
-    expect(response.body.fallbackReason).toBe('missing_api_key')
+    expect(response.statusCode).toBe(403)
+    expect(response.body.ok).toBe(false)
+    expect(response.body.error.code).toBe('CONSENT_REQUIRED')
+    expect(response.body.analysis).toBeUndefined()
+    expect(response.body.source).toBeUndefined()
+    expect(response.body.fallbackReason).toBeUndefined()
+    expect(fetchImpl).not.toHaveBeenCalled()
     expect(response.headers['Cache-Control']).toContain('no-store')
   })
 

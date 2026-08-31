@@ -18,6 +18,7 @@ import {
   maxExportTextLength,
 } from './exportSchema.js'
 import { exportMimeTypes, sanitizeExportFilename } from './downloadService.js'
+import { sanitizeMediaPayload } from '../security/mediaSafeguard.js'
 
 export const exportFormats = Object.freeze([
   'viktkollenBackup',
@@ -254,7 +255,7 @@ export function buildDataExportDraft(options = {}) {
   const rawData = readExportData(storageKeys, options.currentData || {})
   const excludedFields = new Set(exportExcludedFields)
   const sanitizedData = Object.fromEntries(Object.entries(rawData)
-    .map(([key, value]) => [key, sanitizeValue(normalizeExportStorageValue(key, value), excludedFields)])
+    .map(([key, value]) => [key, sanitizeMediaPayload(sanitizeValue(normalizeExportStorageValue(key, value), excludedFields))])
     .filter(([, value]) => value !== undefined && value !== null))
   const selectedSectionSummaries = sections.map((section) => sectionSummary(section, sanitizedData))
   const csvSection = findExportSectionById(

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import handler, { bodyAnalysisRouteInternals, validateImageFieldNames } from './index.js'
 import { setAiRateLimitAdapterForTests } from '../_shared/aiRateLimiter.js'
 import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
+import { analysisConsentPurposes, computeCanonicalImageHash, issueAnalysisConsentToken } from '../_shared/analysisConsent.js'
 
 const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4])
 
@@ -18,19 +19,48 @@ function imagePart(boundary, fieldName, image = pngBytes, contentType = 'image/p
   ])
 }
 
-function multipartBody({ boundary = 'body-boundary', fieldNames = ['frontImage', 'sideImage', 'backImage'] } = {}) {
+function fieldPart(boundary, fieldName, value) {
+  return Buffer.from(
+    `--${boundary}\r\nContent-Disposition: form-data; name="${fieldName}"\r\n\r\n${value}\r\n`,
+    'latin1',
+  )
+}
+
+function multipartBody({
+  boundary = 'body-boundary',
+  fieldNames = ['frontImage', 'sideImage', 'backImage'],
+  fields = {},
+  images = {},
+} = {}) {
   return Buffer.concat([
-    ...fieldNames.map((fieldName) => imagePart(boundary, fieldName)),
+    ...fieldNames.map((fieldName) => imagePart(boundary, fieldName, images[fieldName] ?? pngBytes)),
+    ...Object.entries(fields).map(([key, value]) => fieldPart(boundary, key, value)),
     Buffer.from(`--${boundary}--\r\n`, 'latin1'),
   ])
 }
 
-function createRequest({ body, contentType = 'multipart/form-data; boundary=body-boundary', method = 'POST', token = 'valid-token' } = {}) {
+const TEST_ANALYSIS_CONSENT_SECRET = 'a'.repeat(40)
+
+function issueValidBodyAnalysisToken(images = { backImage: pngBytes, frontImage: pngBytes, sideImage: pngBytes }, userId = 'body-hardening-user') {
+  return issueAnalysisConsentToken({
+    env: { ANALYSIS_CONSENT_SECRET: TEST_ANALYSIS_CONSENT_SECRET },
+    imageHash: computeCanonicalImageHash([
+      { bytes: images.frontImage, label: 'front' },
+      { bytes: images.sideImage, label: 'side' },
+      { bytes: images.backImage, label: 'back' },
+    ]),
+    purpose: analysisConsentPurposes.bodyAnalysis,
+    userId,
+  })
+}
+
+function createRequest({ body, consentToken, contentType = 'multipart/form-data; boundary=body-boundary', method = 'POST', token = 'valid-token' } = {}) {
   const request = Readable.from(body ? [body] : [])
   request.method = method
   request.headers = {
     ...(token ? { authorization: `Bearer ${token}` } : {}),
     'content-type': contentType,
+    ...(consentToken ? { 'x-viktkollen-consent-token': consentToken } : {}),
   }
   request.socket = { remoteAddress: '127.0.0.1' }
   return request
@@ -67,7 +97,7 @@ describe('body analysis API hardening', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks()
-    process.env = { ...originalEnv }
+    process.env = { ...originalEnv, ANALYSIS_CONSENT_SECRET: TEST_ANALYSIS_CONSENT_SECRET }
     setAiRateLimitAdapterForTests()
     setSupabaseAuthVerifierForTests(async (token) => (
       token === 'valid-token'
@@ -130,7 +160,11 @@ describe('body analysis API hardening', () => {
       process.env.NODE_ENV = 'production'
       delete process.env.OPENAI_API_KEY
 
-      const response = await callRoute(createRequest({ body: multipartBody() }))
+      const issued = issueValidBodyAnalysisToken()
+      const response = await callRoute(createRequest({
+        body: multipartBody(),
+        consentToken: issued.token,
+      }))
 
       expect(response.statusCode).toBe(503)
       expect(response.body.ok).toBe(false)
@@ -144,7 +178,8 @@ describe('body analysis API hardening', () => {
       process.env.NODE_ENV = 'development'
       delete process.env.OPENAI_API_KEY
 
-      const response = await callRoute(createRequest({ body: multipartBody() }))
+      const issued = issueValidBodyAnalysisToken()
+      const response = await callRoute(createRequest({ body: multipartBody(), consentToken: issued.token }))
 
       expect(response.statusCode).toBe(200)
       expect(response.body.source).toBe('mock')
@@ -170,7 +205,8 @@ describe('body analysis API hardening', () => {
       const info = vi.spyOn(console, 'info').mockImplementation(() => {})
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-      await callRoute(createRequest({ body: multipartBody() }))
+      const issued = issueValidBodyAnalysisToken()
+      await callRoute(createRequest({ body: multipartBody(), consentToken: issued.token }))
 
       const logged = JSON.stringify([...info.mock.calls, ...warn.mock.calls])
       expect(logged).not.toContain('data:image')

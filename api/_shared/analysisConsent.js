@@ -44,9 +44,16 @@ const HEX64_PATTERN = /^[a-f0-9]{64}$/i
  * flow (api/meal-analysis, src/services/mealAnalysisService.js) has no
  * visible, explicit UI consent step, so it must stay unable to obtain or
  * use a token at all rather than being wired to a hidden auto-approval.
+ *
+ * forgotten-items-analysis (Smart kamera -> "Har jag glömt något?") is the
+ * one narrow addition for this sprint: it identifies everyday carry items
+ * (mobile, keys, wallet, ...) against the user's own checklist. It never
+ * expands to "Ögat"/eye-recognition or to any body/face analysis - that
+ * remains permanently unlisted here.
  */
 export const analysisConsentPurposes = Object.freeze({
   bodyAnalysis: 'body-analysis',
+  forgottenItemsAnalysis: 'forgotten-items-analysis',
   nutritionPhotoAnalysis: 'nutrition-photo-analysis',
 })
 

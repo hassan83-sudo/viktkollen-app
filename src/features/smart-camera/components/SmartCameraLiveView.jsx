@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { createCameraSession, detachStreamFromVideo } from '../../shared/camera/cameraSession.js'
 
-export default function SmartCameraLiveView({ enabled, onActiveChange }) {
+const SmartCameraLiveView = forwardRef(function SmartCameraLiveView({ enabled, facingMode = 'user', onActiveChange }, ref) {
   const videoRef = useRef(null)
   const sessionRef = useRef(null)
   const onActiveChangeRef = useRef(onActiveChange)
@@ -14,10 +14,22 @@ export default function SmartCameraLiveView({ enabled, onActiveChange }) {
     onActiveChangeRef.current = onActiveChange
   }, [onActiveChange])
 
+  // Opt-in capture hook for callers that need one still frame from the
+  // live preview (today: ForgottenItemsCheck's "Kontrollera saker"
+  // button, via services/forgottenItemsAnalysis.js). Draws the current
+  // frame onto an internal canvas and hands the canvas element back -
+  // never a Blob/dataURL/base64 string - so this file itself never
+  // touches an upload format; only the caller decides what, if anything,
+  // happens to that canvas next. Returns null when there is no active
+  // session to capture from.
+  useImperativeHandle(ref, () => ({
+    captureFrame: () => (sessionRef.current ? sessionRef.current.captureFrame(videoRef.current) : null),
+  }), [])
+
   useEffect(() => {
     if (!enabled || !requested) return undefined
 
-    const session = createCameraSession({ facingMode: 'user' })
+    const session = createCameraSession({ facingMode })
     const videoEl = videoRef.current
     sessionRef.current = session
     let cancelled = false
@@ -40,7 +52,7 @@ export default function SmartCameraLiveView({ enabled, onActiveChange }) {
       sessionRef.current = null
       onActiveChangeRef.current?.(false)
     }
-  }, [enabled, requested])
+  }, [enabled, facingMode, requested])
 
   async function flip() {
     const session = sessionRef.current
@@ -91,4 +103,6 @@ export default function SmartCameraLiveView({ enabled, onActiveChange }) {
       </div>
     </section>
   )
-}
+})
+
+export default SmartCameraLiveView

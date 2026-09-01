@@ -39,6 +39,16 @@ function getHeader(request, name) {
   return headers[name] || headers[name.toLowerCase()] || ''
 }
 
+function isAllowedOrigin(origin, vercelUrl) {
+  if (!origin || !vercelUrl) return true
+
+  try {
+    return new URL(origin).hostname === vercelUrl
+  } catch {
+    return false
+  }
+}
+
 function safeText(value, fallback = '', max = 220) {
   return String(value || fallback)
     .replace(/[<>]/g, '')
@@ -368,7 +378,7 @@ export default async function handler(request, response) {
   }
   const contentType = getHeader(request, 'content-type')
   const origin = getHeader(request, 'origin')
-  if (origin && process.env.VERCEL_URL && !origin.includes(process.env.VERCEL_URL)) {
+  if (!isAllowedOrigin(origin, process.env.VERCEL_URL)) {
     return safeError(response, 403, 'corsBlocked', 'Ursprunget är inte tillåtet.', false, requestId)
   }
 
@@ -514,6 +524,7 @@ export default async function handler(request, response) {
 
 export const nutritionPhotoRouteInternals = {
   createPrompt,
+  isAllowedOrigin,
   parseMultipart,
   validateProviderPayload,
   validateImage,

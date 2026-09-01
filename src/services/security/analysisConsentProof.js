@@ -33,6 +33,7 @@
  */
 export const analysisConsentPurposes = Object.freeze({
   bodyAnalysis: 'body-analysis',
+  forgottenItemsAnalysis: 'forgotten-items-analysis',
   nutritionPhotoAnalysis: 'nutrition-photo-analysis',
 })
 
@@ -208,7 +209,7 @@ export async function requestAnalysisConsentToken({ authorizationHeader, consent
     throw new Error('consent_token_network_error')
   }
 
-  let json = null
+  let json
   try {
     json = await response.json()
   } catch {

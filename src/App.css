@@ -15190,6 +15190,32 @@ html:has(#app-section-more.is-active),
   background: rgba(18, 24, 44, 0.9);
 }
 
+.smart-camera-forgotten-guidance {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(107, 214, 255, 0.12);
+  border: 1px solid rgba(107, 214, 255, 0.28);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.smart-camera-forgotten-summary {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.smart-camera-forgotten-items .smart-camera-mode-chip small {
+  color: rgba(214, 224, 255, 0.66);
+  font-size: 0.66rem;
+}
+
+.smart-camera-forgotten-items .smart-camera-mode-chip.is-marked {
+  border-color: rgba(107, 214, 255, 0.6);
+  background: rgba(15, 46, 58, 0.9);
+}
+
 @media (max-width: 390px) {
   .smart-camera-stage {
     padding:

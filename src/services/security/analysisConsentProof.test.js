@@ -1,3 +1,4 @@
+/* global Buffer */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
@@ -18,7 +19,7 @@ afterEach(() => {
 })
 
 describe('analysisConsentPurposes', () => {
-  it('matches the server allowlist exactly - only body-analysis and nutrition-photo-analysis', () => {
+  it('matches the server allowlist exactly', () => {
     expect(Object.values(analysisConsentPurposes).sort()).toEqual(Object.values(serverAnalysisConsentPurposes).sort())
   })
 

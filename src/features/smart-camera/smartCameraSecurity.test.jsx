@@ -316,6 +316,8 @@ describe('no hidden capture paths in Smart Camera source', () => {
       'src/features/smart-camera/components/SmartCameraStage.jsx',
       'src/features/smart-camera/components/SmartCameraLiveView.jsx',
       'src/features/smart-camera/components/SmartCameraModeViews.jsx',
+      'src/features/smart-camera/components/ForgottenItemsCheck.jsx',
+      'src/features/smart-camera/forgottenCheckGuide.js',
       'src/features/shared/camera/cameraSession.js',
     ]
 

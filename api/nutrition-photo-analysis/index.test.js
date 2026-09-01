@@ -158,6 +158,55 @@ describe('nutrition photo analysis API route', () => {
     expect(error.code).toBe('unsupportedFormat')
   })
 
+  describe('origin gate - exact hostname check', () => {
+    it('allows the exact Vercel origin through to the consent gate', async () => {
+      process.env.VERCEL_URL = 'viktkollen.vercel.app'
+      const response = await callRoute(createRequest({
+        body: multipartBody(),
+        headers: { origin: 'https://viktkollen.vercel.app' },
+      }))
+      expect(response.statusCode).toBe(403)
+      expect(response.body.error.code).toBe('CONSENT_REQUIRED')
+    })
+
+    it('blocks a subdomain-suffix origin attack that the old includes() check would have allowed', async () => {
+      process.env.VERCEL_URL = 'viktkollen.vercel.app'
+      const response = await callRoute(createRequest({
+        body: multipartBody(),
+        headers: { origin: 'https://viktkollen.vercel.app.attacker.example' },
+      }))
+      expect(response.statusCode).toBe(403)
+      expect(response.body.error.code).toBe('INVALID_REQUEST')
+    })
+
+    it('blocks a malformed origin', async () => {
+      process.env.VERCEL_URL = 'viktkollen.vercel.app'
+      const response = await callRoute(createRequest({
+        body: multipartBody(),
+        headers: { origin: 'not-a-url' },
+      }))
+      expect(response.statusCode).toBe(403)
+      expect(response.body.error.code).toBe('INVALID_REQUEST')
+    })
+
+    it('keeps the current behavior: a missing Origin passes the origin gate', async () => {
+      process.env.VERCEL_URL = 'viktkollen.vercel.app'
+      const response = await callRoute(createRequest({ body: multipartBody() }))
+      expect(response.statusCode).toBe(403)
+      expect(response.body.error.code).toBe('CONSENT_REQUIRED')
+    })
+
+    it('keeps the current behavior: no VERCEL_URL means no origin enforcement', async () => {
+      delete process.env.VERCEL_URL
+      const response = await callRoute(createRequest({
+        body: multipartBody(),
+        headers: { origin: 'https://evil.example' },
+      }))
+      expect(response.statusCode).toBe(403)
+      expect(response.body.error.code).toBe('CONSENT_REQUIRED')
+    })
+  })
+
   it('returns configuration error when provider key is missing', async () => {
     delete process.env.OPENAI_API_KEY
     const response = await callRoute(createRequest({

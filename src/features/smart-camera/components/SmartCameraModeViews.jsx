@@ -27,6 +27,7 @@ import {
 import { compareChecklistToVisibleItems } from '../itemVisibility.js'
 import { getReadyPromptDisclaimer, lastCheckSteps } from '../lastCheckGuide.js'
 import { buildOutfitWeatherFacts, outfitFeedbackDisclaimer, outfitVisionReady } from '../outfitAdvice.js'
+import ForgottenItemsCheck from './ForgottenItemsCheck.jsx'
 import SmartCameraLiveView from './SmartCameraLiveView.jsx'
 
 function ModeHeader({ mode, onBack, title }) {
@@ -454,7 +455,7 @@ export default function SmartCameraModeViews({
         </>
       )}
       {selected.id === 'outfit' && <OutfitMode onCameraActive={onCameraActive} weather={adapters?.weather} />}
-      {(selected.id === 'items' || selected.id === 'forgotten' || selected.id === 'pack') && (
+      {(selected.id === 'items' || selected.id === 'pack') && (
         <ItemsMode
           list={selected.id === 'pack'
             ? memory.checklists.find((list) => list.contextId === 'travel') || createChecklist({
@@ -476,6 +477,9 @@ export default function SmartCameraModeViews({
           }}
           usesCamera={selected.usesCamera}
         />
+      )}
+      {selected.id === 'forgotten' && (
+        <ForgottenItemsCheck list={carryList} onBack={onBack} onCameraActive={onCameraActive} />
       )}
       {selected.id === 'get-ready' && <GetReadyMode memory={memory} onSave={persist} />}
       {selected.id === 'ask-ai' && (

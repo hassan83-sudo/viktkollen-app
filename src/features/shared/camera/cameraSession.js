@@ -48,11 +48,16 @@ export async function attachStreamToVideo(video, stream) {
   video.muted = true
   video.autoplay = true
   video.srcObject = stream
+  // Never block camera-start UI on play() resolving. Autoplay from a
+  // useEffect (Smart Camera autoStart) can leave the promise pending
+  // without user activation, which previously made LiveView look off
+  // even after the stream was attached.
   if (typeof video.play === 'function') {
     try {
-      await video.play()
+      const playResult = video.play()
+      if (playResult && typeof playResult.catch === 'function') playResult.catch(() => {})
     } catch {
-      return false
+      // Autoplay rejection is fine; the stream is already on the element.
     }
   }
   return true
@@ -100,7 +105,11 @@ export function createCameraSession(options = {}) {
       if (videoEl) videoElement = videoEl
       try {
         stream = await startCameraStream(facingMode)
-        if (videoElement) await attachStreamToVideo(videoElement, stream)
+        const target = videoEl || videoElement
+        if (target) {
+          videoElement = target
+          await attachStreamToVideo(target, stream)
+        }
         return { message: '', ok: true, stream }
       } catch (error) {
         releaseStream()

@@ -29,11 +29,14 @@ import SmartCameraLiveView from './SmartCameraLiveView.jsx'
  * "Hubb" header button in SmartCameraModeViews and to the "Avsluta
  * kontrollen" button below).
  *
- * The camera only starts on an explicit tap (SmartCameraLiveView's own
- * "Starta kamera" gate) and its MediaStream is torn down whenever this
+ * Opening this mode is the explicit camera request: SmartCameraLiveView
+ * auto-starts the local preview here (other Smart Camera modes keep the
+ * "Starta kamera" gate). The MediaStream is torn down whenever this
  * component stops rendering it - leaving the check step (stage becomes
  * "result") unmounts SmartCameraLiveView, which runs its own stop/cleanup
- * effect, exactly like closing the mode entirely does.
+ * effect, exactly like closing the mode entirely does. The browser still
+ * owns getUserMedia permission; optional remote AI still requires a
+ * separate per-photo consent tap.
  *
  * MANUAL CHECK (always available, always local): every "identifierad" tap
  * on a chip below marks that item as shown by the person themselves - the
@@ -187,7 +190,7 @@ export default function ForgottenItemsCheck({ list, onBack, onCameraActive }) {
   return (
     <div className="smart-camera-forgotten-check">
       <p className="smart-camera-note">{forgottenCheckIntro}</p>
-      <SmartCameraLiveView ref={liveViewRef} enabled facingMode="environment" onActiveChange={handleCameraActive} />
+      <SmartCameraLiveView ref={liveViewRef} autoStart enabled facingMode="environment" onActiveChange={handleCameraActive} />
       <p className="smart-camera-forgotten-guidance" aria-live="polite" data-voice-guidance="true">
         {guidance.phrase}
       </p>

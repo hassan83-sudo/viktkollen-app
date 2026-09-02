@@ -1,11 +1,16 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
-import { createCameraSession, detachStreamFromVideo } from '../../shared/camera/cameraSession.js'
+import { attachStreamToVideo, createCameraSession, detachStreamFromVideo } from '../../shared/camera/cameraSession.js'
 
-const SmartCameraLiveView = forwardRef(function SmartCameraLiveView({ enabled, facingMode = 'user', onActiveChange }, ref) {
+const SmartCameraLiveView = forwardRef(function SmartCameraLiveView({
+  autoStart = false,
+  enabled,
+  facingMode = 'user',
+  onActiveChange,
+}, ref) {
   const videoRef = useRef(null)
   const sessionRef = useRef(null)
   const onActiveChangeRef = useRef(onActiveChange)
-  const [requested, setRequested] = useState(false)
+  const [requested, setRequested] = useState(() => Boolean(autoStart))
   const [error, setError] = useState('')
   const [facingLabel, setFacingLabel] = useState('')
   const [active, setActive] = useState(false)
@@ -30,11 +35,17 @@ const SmartCameraLiveView = forwardRef(function SmartCameraLiveView({ enabled, f
     if (!enabled || !requested) return undefined
 
     const session = createCameraSession({ facingMode })
-    const videoEl = videoRef.current
     sessionRef.current = session
     let cancelled = false
 
-    session.start(videoEl).then((result) => {
+    session.start(videoRef.current).then(async (result) => {
+      if (cancelled) {
+        session.stop()
+        return
+      }
+      if (result.ok && videoRef.current && session.getStream()) {
+        await attachStreamToVideo(videoRef.current, session.getStream())
+      }
       if (cancelled) {
         session.stop()
         return
@@ -48,7 +59,7 @@ const SmartCameraLiveView = forwardRef(function SmartCameraLiveView({ enabled, f
     return () => {
       cancelled = true
       session.stop()
-      detachStreamFromVideo(videoEl)
+      detachStreamFromVideo(videoRef.current)
       sessionRef.current = null
       onActiveChangeRef.current?.(false)
     }

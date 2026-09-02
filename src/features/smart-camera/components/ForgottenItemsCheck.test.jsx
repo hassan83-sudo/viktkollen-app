@@ -120,14 +120,13 @@ describe('"Har jag glömt något?" guided camera flow', () => {
     stage.unmount()
   })
 
-  it('does not start the camera until the user taps Starta kamera, then defaults to the back camera', () => {
+  it('starts the camera immediately with the back camera and guidance, without a Starta kamera gate', () => {
     const stage = mountStage()
     stage.click('Har jag glömt något?')
 
-    expect(getUserMedia).not.toHaveBeenCalled()
-    expect(stage.container.textContent).toContain('Kameran är avstängd')
-
-    stage.click('Starta kamera')
+    expect(stage.container.textContent).not.toContain('Kameran är avstängd')
+    expect(stage.container.querySelector('video')).not.toBeNull()
+    expect(stage.container.querySelector('.smart-camera-forgotten-guidance')).not.toBeNull()
     expect(getUserMedia).toHaveBeenCalledTimes(1)
     expect(getUserMedia).toHaveBeenCalledWith({ audio: false, video: { facingMode: { ideal: 'environment' } } })
     stage.unmount()
@@ -136,7 +135,6 @@ describe('"Har jag glömt något?" guided camera flow', () => {
   it('never triggers a network request while checking or showing the result', async () => {
     const stage = mountStage()
     stage.click('Har jag glömt något?')
-    stage.click('Starta kamera')
     await act(async () => {})
     stage.click('Mobil')
     stage.click('Se resultat')
@@ -150,7 +148,6 @@ describe('"Har jag glömt något?" guided camera flow', () => {
   it('stops the MediaStream tracks when the check moves to the result', async () => {
     const stage = mountStage()
     stage.click('Har jag glömt något?')
-    stage.click('Starta kamera')
     await act(async () => {})
     const stream = await getUserMedia.mock.results[0].value
 
@@ -163,7 +160,6 @@ describe('"Har jag glömt något?" guided camera flow', () => {
   it('marks an item as identified only once the user showed it, and never claims an unconfirmed item is forgotten', async () => {
     const stage = mountStage()
     stage.click('Har jag glömt något?')
-    stage.click('Starta kamera')
     await act(async () => {})
 
     stage.click('Mobil')
@@ -184,7 +180,6 @@ describe('"Har jag glömt något?" guided camera flow', () => {
   it('"Kolla igen" returns to the same guided camera check, not the hub', async () => {
     const stage = mountStage()
     stage.click('Har jag glömt något?')
-    stage.click('Starta kamera')
     await act(async () => {})
     stage.click('Mobil')
     stage.click('Se resultat')
@@ -193,7 +188,8 @@ describe('"Har jag glömt något?" guided camera flow', () => {
 
     expect(stage.container.querySelector('.smart-camera-hub')).toBeNull()
     expect(stage.container.querySelector('.smart-camera-forgotten-check')).not.toBeNull()
-    expect(stage.container.textContent).toContain('Kameran är avstängd')
+    expect(stage.container.querySelector('video')).not.toBeNull()
+    expect(stage.container.textContent).not.toContain('Kameran är avstängd')
     stage.unmount()
   })
 })
@@ -223,7 +219,6 @@ describe('"Har jag glömt något?" optional remote AI check ("Kontrollera saker"
   async function openAndStartCamera() {
     const stage = mountStage()
     stage.click('Har jag glömt något?')
-    stage.click('Starta kamera')
     await act(async () => {})
     restoreCanvasStub = stubForgottenItemsCapture(stage.container)
     return stage

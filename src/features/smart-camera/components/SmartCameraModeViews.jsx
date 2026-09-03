@@ -505,7 +505,7 @@ export default function SmartCameraModeViews({
       {selected.id === 'routines' && <RoutinesMode memory={memory} onSave={persist} />}
       {selected.id === 'eyes' && (
         <>
-          <SmartCameraLiveView autoStart enabled onActiveChange={onCameraActive} />
+          <SmartCameraLiveView enabled onActiveChange={onCameraActive} />
           <p className="smart-camera-note">{eyesFeature.emptyState}</p>
         </>
       )}

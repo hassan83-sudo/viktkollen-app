@@ -670,6 +670,18 @@ function OverviewPrimaryActions({
     if (onOpenBodyScan) onOpenBodyScan()
     else onOpenSmartCamera?.()
   }
+  // Tapping the card image opens the Smart Camera hub (all functions), not the
+  // camera directly - the small camera-labeled footer button below still uses
+  // openEyes() unchanged for a direct camera shortcut. Eyes' own camera flow
+  // is untouched either way; it remains reachable from the hub as its own mode.
+  const openSmartCameraHub = () => {
+    if (smartCameraOn) {
+      onOpenSmartCamera?.()
+      return
+    }
+    if (onOpenBodyScan) onOpenBodyScan()
+    else onOpenSmartCamera?.()
+  }
 
   const openBody = () => (onOpenBodyScan ? onOpenBodyScan() : goTo('progress', 'body-analysis'))
   const openFood = () => {
@@ -687,6 +699,7 @@ function OverviewPrimaryActions({
       footerLabel: t('home:cardActions.openCamera'),
       hitLabel: t('home:labels.openAiEyes'),
       icon: 'eye',
+      imageOnClick: openSmartCameraHub,
       label: t('home:labels.aiEyes'),
       onClick: openEyes,
     },
@@ -728,7 +741,7 @@ function OverviewPrimaryActions({
             className="overview-primary-action-hit"
             type="button"
             aria-label={action.hitLabel}
-            onClick={action.onClick}
+            onClick={action.imageOnClick || action.onClick}
           >
             <span className="overview-primary-visual">
               <span className="overview-primary-orbit" />

@@ -10,6 +10,7 @@ import SmartCameraPrivacyCard from './SmartCameraPrivacyCard.jsx'
 export default function SmartCameraStage({
   adapters = {},
   featureFlags,
+  initialMode = '',
   isMicrophoneActive = false,
   onClose,
   onSurfaceChange,
@@ -17,7 +18,7 @@ export default function SmartCameraStage({
   voiceBar = null,
 }) {
   const flags = featureFlags || getFeatureFlags()
-  const [modeId, setModeId] = useState('')
+  const [modeId, setModeId] = useState(initialMode)
   const [cameraActive, setCameraActive] = useState(false)
   const mode = getSmartCameraMode(modeId, flags)
 

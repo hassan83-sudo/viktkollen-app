@@ -622,6 +622,7 @@ function OverviewPrimaryActions({
   featureFlags,
   onNavigateSection,
   onOpenBodyScan,
+  onOpenEyes,
   onOpenFoodScan,
   onOpenSmartCamera,
   onScanFood,
@@ -662,7 +663,7 @@ function OverviewPrimaryActions({
   const smartCameraOn = isFeatureEnabled('smartCamera', featureFlags)
   const openEyes = () => {
     if (smartCameraOn) {
-      onOpenSmartCamera?.()
+      onOpenEyes?.()
       return
     }
     // Graceful fallback when Smart Camera flag is off: still open a camera path.
@@ -990,6 +991,7 @@ function OverviewDashboard({
   const [bodyScanOpen, setBodyScanOpen] = useState(false)
   const [bodyCaptureOpen, setBodyCaptureOpen] = useState(false)
   const [smartCameraOpen, setSmartCameraOpen] = useState(false)
+  const [smartCameraInitialMode, setSmartCameraInitialMode] = useState('')
   const [coachOpen, setCoachOpen] = useState(false)
   const [socialOpen, setSocialOpen] = useState(false)
   const [socialView, setSocialView] = useState('inbox')
@@ -1169,8 +1171,14 @@ function OverviewDashboard({
           featureFlags={flags}
           onNavigateSection={onNavigateSection}
           onOpenBodyScan={() => setBodyScanOpen(true)}
+          onOpenEyes={() => {
+            setBodyScanOpen(false)
+            setSmartCameraInitialMode('eyes')
+            setSmartCameraOpen(true)
+          }}
           onOpenSmartCamera={() => {
             setBodyScanOpen(false)
+            setSmartCameraInitialMode('')
             setSmartCameraOpen(true)
           }}
           onScanFood={onScanFood}
@@ -1288,6 +1296,7 @@ function OverviewDashboard({
           onVoiceCleanup={onVoiceCleanup}
           onOpenSmartCamera={isFeatureEnabled('smartCamera', flags) ? () => {
             setBodyScanOpen(false)
+            setSmartCameraInitialMode('')
             setSmartCameraOpen(true)
           } : undefined}
           smartCameraEnabled={isFeatureEnabled('smartCamera', flags)}
@@ -1308,15 +1317,18 @@ function OverviewDashboard({
           adapters={{
             onOpenBodyScan: () => {
               setSmartCameraOpen(false)
+              setSmartCameraInitialMode('')
               setBodyCaptureOpen(true)
             },
             onOpenFoodScan: () => {
               setSmartCameraOpen(false)
+              setSmartCameraInitialMode('')
               onScanFood?.()
             },
             weather,
           }}
           featureFlags={flags}
+          initialMode={smartCameraInitialMode}
           isMicrophoneActive={Boolean(isVoiceConversationActive) && !isVoiceMuted}
           voiceBar={(
             <BodyAvatarTalkBar
@@ -1334,7 +1346,10 @@ function OverviewDashboard({
               onToggleVoiceMute={onToggleVoiceMute}
             />
           )}
-          onClose={() => setSmartCameraOpen(false)}
+          onClose={() => {
+            setSmartCameraOpen(false)
+            setSmartCameraInitialMode('')
+          }}
           onSurfaceChange={onAvatarSurfaceChange}
           onVoiceCleanup={onVoiceCleanup}
         />

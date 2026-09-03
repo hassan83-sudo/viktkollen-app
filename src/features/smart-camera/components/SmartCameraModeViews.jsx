@@ -503,7 +503,12 @@ export default function SmartCameraModeViews({
       {selected.id === 'where' && <WhereMode memory={memory} onSave={persist} />}
       {selected.id === 'recall' && <RecallMode memory={memory} />}
       {selected.id === 'routines' && <RoutinesMode memory={memory} onSave={persist} />}
-      {selected.id === 'eyes' && <p className="smart-camera-note">{eyesFeature.emptyState}</p>}
+      {selected.id === 'eyes' && (
+        <>
+          <SmartCameraLiveView autoStart enabled onActiveChange={onCameraActive} />
+          <p className="smart-camera-note">{eyesFeature.emptyState}</p>
+        </>
+      )}
       {selected.id === 'mouth' && <p className="smart-camera-note">{mouthFeature.emptyState}</p>}
     </div>
   )

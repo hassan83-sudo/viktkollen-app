@@ -482,6 +482,7 @@ export default function SmartCameraModeViews({
         <ForgottenItemsCheck list={carryList} onBack={onBack} onCameraActive={onCameraActive} />
       )}
       {selected.id === 'get-ready' && <GetReadyMode memory={memory} onSave={persist} />}
+      {selected.id === 'carry-lists' && <GetReadyMode memory={memory} onSave={persist} />}
       {selected.id === 'ask-ai' && (
         <>
           {voiceBar}

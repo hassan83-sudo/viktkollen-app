@@ -22,13 +22,33 @@ const defaultCloudSyncStatus = {
   waitingRetryCount: 0,
 }
 
+function countPendingKeys(metadata, queue) {
+  const keys = new Set(metadata.pendingKeys || [])
+
+  ;(queue.items || [])
+    .filter((item) => item.status !== 'failed' && item.storageKey)
+    .forEach((item) => keys.add(item.storageKey))
+
+  return keys.size
+}
+
+function getDisplayPendingCount(status) {
+  const keys = new Set((status.conflicts || []).map((item) => item.storageKey).filter(Boolean))
+
+  ;(status.queue?.items || [])
+    .filter((item) => item.status !== 'failed' && item.storageKey)
+    .forEach((item) => keys.add(item.storageKey))
+
+  return keys.size || status.pendingCount || 0
+}
+
 function getInitialCloudSyncStatus(userId) {
   const storage = createAuthenticatedUserSyncStorage(userId)
   if (!storage) return defaultCloudSyncStatus
 
   const metadata = readSyncMetadata(storage)
   const queue = readSyncQueue(storage)
-  const pendingCount = metadata.pendingKeys.length + queue.items.filter((item) => item.status !== 'failed').length
+  const pendingCount = countPendingKeys(metadata, queue)
   const hasConflicts = metadata.conflicts.length > 0
   const statusCode = hasConflicts ? 'conflict' : metadata.enabled ? 'pending' : 'disabled'
   const statusLabel = hasConflicts ? 'Konflikt kräver åtgärd' : metadata.enabled ? 'Synkar...' : 'Automatisk synk är av'
@@ -41,6 +61,7 @@ function getInitialCloudSyncStatus(userId) {
     lastError: metadata.lastError,
     lastSuccessfulSyncAt: metadata.lastSuccessfulSyncAt,
     pendingCount,
+    queue,
     status: statusLabel,
     statusCode,
     statusLabel,
@@ -94,7 +115,7 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
     } catch (error) {
       setMessage(getSafeErrorMessage(error, { area: 'network' }))
     } finally {
-      void refreshStatus().catch(() => {})
+      await refreshStatus().catch(() => {})
       setIsSyncing(false)
     }
   }, [isAuthenticated, onDataChanged, refreshStatus])
@@ -122,26 +143,42 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
     } catch (error) {
       setMessage(getSafeErrorMessage(error, { area: 'network' }))
     } finally {
-      void refreshStatus().catch(() => {})
+      await refreshStatus().catch(() => {})
       setIsSyncing(false)
     }
   }, [isAuthenticated, onDataChanged, refreshStatus, status.enabled, userId])
 
   const resolveConflict = useCallback(async (storageKey, choice) => {
     setIsSyncing(true)
+    setMessage('')
 
     try {
       const { resolveStoredSyncConflict } = await loadCloudSyncEngine()
       const result = await resolveStoredSyncConflict(storageKey, choice, { userId })
 
-      if (result.ok && result.downloaded?.length) {
+      if (!result.ok) {
+        setMessage(result.error || 'Konflikten kunde inte lösas.')
+        return
+      }
+
+      if (result.downloaded?.length) {
         onDataChanged?.()
       }
-      setMessage(result.ok ? 'Konflikten är löst.' : result.error || 'Konflikten kunde inte lösas.')
+
+      const followUp = await globalSyncCoordinator.syncNow('manual')
+      await refreshStatus()
+
+      if (followUp.ok) {
+        setMessage('Konflikten är löst och synken är klar.')
+      } else if (followUp.status === 'conflict' || followUp.conflicts?.length) {
+        setMessage('Konflikten är löst. Nästa konflikt behöver lösas.')
+      } else {
+        setMessage('Konflikten är löst.')
+      }
     } catch (error) {
       setMessage(getSafeErrorMessage(error, { area: 'network' }))
     } finally {
-      void refreshStatus().catch(() => {})
+      await refreshStatus().catch(() => {})
       setIsSyncing(false)
     }
   }, [onDataChanged, refreshStatus, userId])
@@ -171,6 +208,7 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
   }, [userId])
 
   const conflicts = useMemo(() => status.conflicts || [], [status.conflicts])
+  const pendingCount = useMemo(() => getDisplayPendingCount(status), [status])
 
   if (!isAuthenticated) return null
 
@@ -221,7 +259,7 @@ function CloudSyncPanel({ isAuthenticated, onDataChanged, userId }) {
         </div>
         <div>
           <span>Ändringar i kö</span>
-          <strong>{status.pendingCount ? `${status.pendingCount} väntar på synk` : 'Inga'}</strong>
+          <strong>{pendingCount ? `${pendingCount} väntar på synk` : 'Inga'}</strong>
         </div>
         <div>
           <span>Nätverk</span>

@@ -16,6 +16,7 @@ export const primarySmartCameraModes = Object.freeze([
 ])
 
 export const secondarySmartCameraModes = Object.freeze([
+  { icon: '📝', id: 'carry-lists', label: 'Mina ta-med-listor', needs: ['memory'], usesCamera: false },
   { icon: '✅', id: 'last-check', label: 'Sista kollen', needs: ['memory'], usesCamera: true },
   { icon: '📌', id: 'where', label: 'Var lade jag den?', needs: ['memory'], usesCamera: false },
   { icon: '🧳', id: 'pack', label: 'Packning', needs: ['memory'], usesCamera: true },

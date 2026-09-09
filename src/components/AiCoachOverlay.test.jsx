@@ -24,6 +24,7 @@ describe('AI Coach tap me and realtime voice security', () => {
     expect(appSource).toContain('<AiCoachOverlay')
     expect(overlaySource).toContain("t('coach:overlay.startVoice')")
     expect(overlaySource).toContain('<ChatPanel')
+    expect(overlaySource).toContain('showVoiceDock={false}')
     expect(appSource).toContain('function sendChatMessage')
     expect(appSource).toContain('onStartVoiceInput={startVoiceInput}')
     expect(appSource).toContain('<HomeSection')

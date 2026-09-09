@@ -21,6 +21,7 @@ function ChatPanel({
   onStopAiVoiceResponse,
   onStartVoiceInput,
   onStarterPrompt,
+  showVoiceDock = true,
   starterPrompts,
   voiceStatus,
 }) {
@@ -41,19 +42,21 @@ function ChatPanel({
         </button>
       </div>
 
-      <div className="coach-voice-dock">
-        <button
-          className={`coach-voice-mic ${isListening ? 'is-listening' : ''} ${isVoiceConversationActive ? 'is-active' : ''}`}
-          type="button"
-          aria-label={isVoiceConversationActive ? 'Avsluta samtal' : 'Tryck för att prata'}
-          onClick={onStartVoiceInput}
-        >
-          🎙️
-        </button>
-        <p className="coach-voice-mic-label">
-          {isVoiceConversationActive ? (voiceStatus || 'Lyssnar...') : 'Tryck för att prata'}
-        </p>
-      </div>
+      {showVoiceDock && (
+        <div className="coach-voice-dock">
+          <button
+            className={`coach-voice-mic ${isListening ? 'is-listening' : ''} ${isVoiceConversationActive ? 'is-active' : ''}`}
+            type="button"
+            aria-label={isVoiceConversationActive ? 'Avsluta samtal' : 'Tryck för att prata'}
+            onClick={onStartVoiceInput}
+          >
+            🎙️
+          </button>
+          <p className="coach-voice-mic-label">
+            {isVoiceConversationActive ? (voiceStatus || 'Lyssnar...') : 'Tryck för att prata'}
+          </p>
+        </div>
+      )}
 
       <QuickActions
         onStarterPrompt={onStarterPrompt}

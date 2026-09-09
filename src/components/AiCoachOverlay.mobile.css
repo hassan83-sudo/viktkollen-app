@@ -1,0 +1,96 @@
+/* Mobile-only guardrails for the AI Coach overlay.
+   Keep the coach inside the visible viewport and let the chat scroll internally. */
+@media (max-width: 640px) {
+  .ai-coach-overlay {
+    top: max(8px, env(safe-area-inset-top));
+    right: 8px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    left: 8px;
+    width: auto;
+    height: auto;
+    max-height: calc(100dvh - max(16px, env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+    grid-template-rows: auto minmax(96px, 20vh) auto minmax(0, 1fr);
+    overflow: hidden;
+    border-radius: 24px;
+  }
+
+  .ai-coach-overlay-header {
+    padding: 14px 16px 8px;
+  }
+
+  .ai-coach-overlay-header h2 {
+    font-size: clamp(24px, 7vw, 32px);
+  }
+
+  .ai-coach-overlay-close {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+  }
+
+  .ai-coach-overlay-hero {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .ai-coach-overlay-hero img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+  }
+
+  .ai-coach-overlay-voice {
+    gap: 8px;
+    padding: 8px 14px 10px;
+  }
+
+  .ai-coach-overlay-mic {
+    width: 72px;
+    height: 72px;
+    min-height: 72px;
+  }
+
+  .ai-coach-overlay-status {
+    margin: 0;
+  }
+
+  .ai-coach-overlay-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+
+  .ai-coach-overlay-actions .secondary-button {
+    min-width: 0;
+    min-height: 44px;
+    padding: 8px 6px;
+    white-space: normal;
+    line-height: 1.15;
+  }
+
+  .ai-coach-overlay-chat {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 380px), (max-height: 700px) {
+  .ai-coach-overlay {
+    grid-template-rows: auto minmax(72px, 15vh) auto minmax(0, 1fr);
+  }
+
+  .ai-coach-overlay-header {
+    padding-top: 10px;
+  }
+
+  .ai-coach-overlay-mic {
+    width: 60px;
+    height: 60px;
+    min-height: 60px;
+  }
+}

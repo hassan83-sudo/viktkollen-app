@@ -15,6 +15,13 @@ export const companionSv = {
     signLanguage: 'Teckenspråk',
     speech: 'Jag föredrar uppläst stöd när det finns',
   },
+  sections: {
+    personality: 'Personlighet',
+    responseStyle: 'Svarsstil',
+    communication: 'Kommunikation',
+    voice: 'AI-röst',
+    management: 'Profilhantering',
+  },
   tones: {
     calm: 'Lugn',
     directHonest: 'Rak och ärlig',
@@ -92,6 +99,13 @@ export const companionEn = {
     communication: 'Communication',
     signLanguage: 'Sign language',
     speech: 'I prefer spoken support when available',
+  },
+  sections: {
+    personality: 'Personality',
+    responseStyle: 'Response style',
+    communication: 'Communication',
+    voice: 'AI Voice',
+    management: 'Profile management',
   },
   tones: {
     calm: 'Calm',

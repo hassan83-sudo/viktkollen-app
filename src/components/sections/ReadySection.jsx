@@ -340,18 +340,29 @@ function ReadySection({
           )}
 
           {activeReadyTab === 'companion' && (
-            <section className="ready-ai-grid" aria-label={t('ai.gridAria')}>
-              <CompanionProfilePanel onProfileChange={setCompanionProfile} surface="ready" />
-              <article className="ready-ai-card is-companion">
-                <h2>{t('companion.title')}</h2>
-                <p>{t('companion.body')}</p>
-                <div className="ready-companion-art" aria-hidden="true">🤖</div>
-                <button type="button" onClick={() => onOpenCompanion?.({ source: 'ready', levelId: state.levelId })}>
+            <div className="ready-companion-tab" aria-label={t('ai.gridAria')}>
+              <article className="ready-ai-card is-companion ready-companion-hero">
+                <div className="ready-companion-hero-header">
+                  <span className={`ready-avatar-button is-${avatar.accent}`} aria-hidden="true">
+                    🤖
+                  </span>
+                  <div className="ready-companion-hero-info">
+                    <h2>{companionProfile.displayName || t('companion.title')}</h2>
+                    <p>{t('companion.body')}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="ready-companion-talk-btn"
+                  onClick={() => onOpenCompanion?.({ source: 'ready', levelId: state.levelId })}
+                >
                   {t('companion.talk')}
                 </button>
                 <p className="ready-ai-status">{t('companion.aiLabel')}</p>
               </article>
-            </section>
+
+              <CompanionProfilePanel onProfileChange={setCompanionProfile} surface="ready" />
+            </div>
           )}
 
           {activeReadyTab === 'memory' && (

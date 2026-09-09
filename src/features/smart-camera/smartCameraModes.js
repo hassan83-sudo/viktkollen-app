@@ -15,8 +15,16 @@ export const primarySmartCameraModes = Object.freeze([
   { icon: '🎙', id: 'ask-ai', label: 'Fråga AI', needs: [], usesCamera: false },
 ])
 
+export const carryListsSmartCameraMode = Object.freeze({
+  icon: '📝',
+  id: 'carry-lists',
+  label: 'Mina ta-med-listor',
+  needs: [],
+  usesCamera: false,
+})
+
 export const secondarySmartCameraModes = Object.freeze([
-  { icon: '📝', id: 'carry-lists', label: 'Mina ta-med-listor', needs: [], usesCamera: false },
+  carryListsSmartCameraMode,
   { icon: '✅', id: 'last-check', label: 'Sista kollen', needs: ['memory'], usesCamera: true },
   { icon: '📌', id: 'where', label: 'Var lade jag den?', needs: ['memory'], usesCamera: false },
   { icon: '🧳', id: 'pack', label: 'Packning', needs: ['memory'], usesCamera: true },
@@ -28,10 +36,16 @@ export const secondarySmartCameraModes = Object.freeze([
 
 export function getSmartCameraHubModes(flags) {
   const visible = (mode) => mode.needs.every((need) => isFeatureEnabled(need, flags))
-  return {
-    primary: primarySmartCameraModes.filter(visible),
-    secondary: secondarySmartCameraModes.filter(visible),
+  const primary = primarySmartCameraModes.filter(visible)
+  const secondary = secondarySmartCameraModes.filter(visible)
+
+  // Mina ta-med-listor ska alltid finnas i hubben. Den kräver varken kamera
+  // eller feature-flagga, så återlägg den defensivt om listan ändras senare.
+  if (!secondary.some((mode) => mode.id === carryListsSmartCameraMode.id)) {
+    secondary.unshift(carryListsSmartCameraMode)
   }
+
+  return { primary, secondary }
 }
 
 export function getSmartCameraMode(id, flags) {

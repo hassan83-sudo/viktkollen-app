@@ -425,12 +425,27 @@ function upsertCarryList(memory, nextList) {
 function CarryListsMode({ memory, onCameraActive, onSave }) {
   const [selectedId, setSelectedId] = useState('')
   const [cameraOpen, setCameraOpen] = useState(false)
+  const [customTitle, setCustomTitle] = useState('')
   const lists = collectCarryLists(memory)
   const selected = lists.find((list) => list.id === selectedId) || null
   const existingContextIds = new Set(lists.map((list) => list.contextId))
 
   function persistList(nextList) {
     onSave(upsertCarryList(memory, nextList))
+  }
+
+  function createCustomList() {
+    const title = customTitle.trim()
+    if (!title) return
+    const next = createChecklist({
+      contextId: 'custom',
+      items: [],
+      kind: 'carry',
+      title,
+    })
+    persistList(next)
+    setCustomTitle('')
+    setSelectedId(next.id)
   }
 
   if (cameraOpen && selected) {
@@ -477,6 +492,20 @@ function CarryListsMode({ memory, onCameraActive, onSave }) {
         </nav>
       )}
       <h3>Ny lista</h3>
+      <div className="smart-camera-add-row">
+        <input
+          aria-label="Namn på ny lista"
+          placeholder="Namn på egen lista"
+          value={customTitle}
+          onChange={(event) => setCustomTitle(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') createCustomList()
+          }}
+        />
+        <button className="primary-button" type="button" onClick={createCustomList} disabled={!customTitle.trim()}>
+          + Egen lista
+        </button>
+      </div>
       <nav className="smart-camera-mode-grid is-secondary" aria-label="Mallar för ta-med-listor">
         {carryListTemplates.filter((template) => !existingContextIds.has(template.contextId)).map((template) => (
           <button

@@ -6,6 +6,7 @@ import App from './App.jsx'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import './dark-theme.css'
 import './components/AiCoachOverlay.mobile.css'
+import './components/ReadySection.mobile.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

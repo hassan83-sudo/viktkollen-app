@@ -14417,8 +14417,11 @@ html:has(#app-section-more.is-active),
   position: fixed;
   inset: 0;
   z-index: 90;
-  display: grid;
-  grid-template-rows: auto minmax(120px, 28vh) auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   overflow: hidden;
   padding:
     calc(12px + env(safe-area-inset-top, 0px))
@@ -14431,6 +14434,7 @@ html:has(#app-section-more.is-active),
 }
 
 .ai-coach-overlay-header {
+  flex: 0 0 auto;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -14450,6 +14454,7 @@ html:has(#app-section-more.is-active),
 }
 
 .ai-coach-overlay-close {
+  flex: 0 0 auto;
   width: 44px;
   height: 44px;
   border: 0;
@@ -14459,18 +14464,37 @@ html:has(#app-section-more.is-active),
 }
 
 .ai-coach-overlay-hero {
+  flex: 0 0 auto;
   display: grid;
-  place-items: center;
+  justify-items: center;
+  gap: 4px;
   min-height: 0;
+  padding: 2px 0;
+  text-align: center;
 }
 
 .ai-coach-overlay-hero img {
   width: min(220px, 58vw);
-  height: 100%;
+  height: auto;
+  max-height: 24svh;
   object-fit: contain;
 }
 
+.ai-coach-overlay-intro {
+  margin: 0;
+  max-width: 340px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.86rem;
+}
+
+.ai-coach-overlay-ai-label {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.72rem;
+}
+
 .ai-coach-overlay-voice {
+  flex: 0 0 auto;
   display: grid;
   justify-items: center;
   gap: 8px;
@@ -14510,14 +14534,42 @@ html:has(#app-section-more.is-active),
   gap: 8px;
 }
 
-.ai-coach-overlay-chat {
+.ai-coach-overlay-body {
+  flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding-bottom: 8px;
 }
 
-.ai-coach-overlay-chat .chat-panel {
-  margin: 0;
+.ai-coach-overlay-suggestions {
+  flex: 0 0 auto;
+}
+
+.ai-coach-overlay-suggestions-title {
+  margin: 0 0 6px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.ai-coach-overlay-body .chat-thread {
+  flex: 1 1 auto;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+}
+
+.ai-coach-overlay-composer {
+  flex: 0 0 auto;
+  padding-top: 8px;
 }
 
 .coach-voice-dock {

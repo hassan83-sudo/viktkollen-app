@@ -15999,14 +15999,16 @@ html:has(#app-section-more.is-active),
 .ready-tab {
   flex: 0 0 auto;
   min-height: 44px;
-  padding: 0 16px;
+  padding: 0 12px;
   border-radius: 999px;
   border: 1px solid var(--ready-border);
   background: rgba(8, 12, 28, 0.85);
   color: rgba(235, 240, 255, 0.72);
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   font-weight: 600;
   white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: keep-all;
 }
 
 .ready-tab.is-active {
@@ -16019,6 +16021,18 @@ html:has(#app-section-more.is-active),
 .ready-tabpanel {
   display: grid;
   gap: 14px;
+}
+
+@media (max-width: 480px) {
+  .ready-tabs {
+    gap: 6px;
+    margin-top: -6px;
+  }
+
+  .ready-tab {
+    padding: 0 10px;
+    font-size: 0.78rem;
+  }
 }
 
 .ready-level-pill select,
@@ -16149,14 +16163,27 @@ html:has(#app-section-more.is-active),
   color: rgba(190, 200, 230, 0.75);
 }
 
-.ready-add-form,
-.ready-forgot-card form {
+.ready-add-form {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
   margin-top: 12px;
   color: var(--ready-cyan);
+}
+
+.ready-forgot-card form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+  color: var(--ready-cyan);
+}
+
+.ready-forgot-card form button[type='submit'] {
+  white-space: nowrap;
+  padding: 0 16px;
 }
 
 .ready-ai-grid {

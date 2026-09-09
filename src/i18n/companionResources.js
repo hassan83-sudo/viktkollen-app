@@ -22,6 +22,9 @@ export const companionSv = {
     voice: 'AI-röst',
     management: 'Profilhantering',
   },
+  placeholders: {
+    pronouns: 'Valfritt',
+  },
   tones: {
     calm: 'Lugn',
     directHonest: 'Rak och ärlig',
@@ -106,6 +109,9 @@ export const companionEn = {
     communication: 'Communication',
     voice: 'AI Voice',
     management: 'Profile management',
+  },
+  placeholders: {
+    pronouns: 'Optional',
   },
   tones: {
     calm: 'Calm',

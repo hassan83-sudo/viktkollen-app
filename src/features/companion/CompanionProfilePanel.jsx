@@ -78,6 +78,7 @@ function CompanionProfilePanel({ mode = 'full', onProfileChange, surface = 'coac
                 <span className="companion-field-label">{t('fields.pronouns')}</span>
                 <input
                   type="text"
+                  placeholder={t('placeholders.pronouns', t('common:optional', 'Valfritt'))}
                   value={profile.pronouns}
                   onChange={(event) => patchProfile({ pronouns: event.target.value })}
                 />

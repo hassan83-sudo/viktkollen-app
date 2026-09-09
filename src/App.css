@@ -16895,6 +16895,11 @@ html:has(#app-section-more.is-active),
   font-family: inherit;
 }
 
+.companion-card-fields input::placeholder {
+  color: rgba(180, 195, 225, 0.45);
+  font-style: italic;
+}
+
 .companion-check-row {
   display: flex !important;
   align-items: center;

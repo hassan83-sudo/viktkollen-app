@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import ChatPanel from './ChatPanel.jsx'
 import useOverviewStageLock from './app/useOverviewStageLock.js'
 import { getVoicePhaseLabel } from '../services/ai/realtimeVoiceController.js'
+import './AiCoachOverlay.mobile.css'
 
 function AiCoachOverlay({
   canClearChat,

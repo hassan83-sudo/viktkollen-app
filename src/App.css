@@ -15981,6 +15981,46 @@ html:has(#app-section-more.is-active),
   gap: 8px;
 }
 
+.ready-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.ready-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.ready-tab {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--ready-border);
+  background: rgba(8, 12, 28, 0.85);
+  color: rgba(235, 240, 255, 0.72);
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ready-tab.is-active {
+  color: #050914;
+  border-color: transparent;
+  background: linear-gradient(90deg, var(--ready-cyan), var(--ready-purple));
+  box-shadow: 0 0 18px rgba(56, 247, 255, 0.35);
+}
+
+.ready-tabpanel {
+  display: grid;
+  gap: 14px;
+}
+
 .ready-level-pill select,
 .ready-add-form input,
 .ready-forgot-card input,

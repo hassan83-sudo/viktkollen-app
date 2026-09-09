@@ -42,6 +42,17 @@ function itemIcon(icon) {
   return ITEM_ICONS[icon] || '✦'
 }
 
+// STEG 1 - flikuppdelning av Redo!. Rent layout-lager ovanpå det befintliga
+// innehållet: ingen av dessa ID:n påverkar readyModel/readyStore, de styr
+// bara vilken sektion som visas.
+const READY_TABS = [
+  { id: 'plan', labelKey: 'tabs.plan' },
+  { id: 'companion', labelKey: 'tabs.companion' },
+  { id: 'memory', labelKey: 'tabs.memory' },
+  { id: 'reminders', labelKey: 'tabs.reminders' },
+  { id: 'techniques', labelKey: 'tabs.techniques' },
+]
+
 function ReadySection({
   activeSection,
   onNavigateSection,
@@ -61,6 +72,7 @@ function ReadySection({
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   const [showExamples, setShowExamples] = useState(false)
   const [companionProfile, setCompanionProfile] = useState(() => loadCompanionProfile())
+  const [activeReadyTab, setActiveReadyTab] = useState('plan')
 
   useEffect(() => {
     saveReadyState(state)
@@ -177,189 +189,228 @@ function ReadySection({
           </section>
         )}
 
-        <section className="ready-checklist-card" aria-labelledby="ready-checklist-title">
-          <div className="ready-checklist-top">
-            <div>
-              <p className="ready-card-kicker" aria-hidden="true">☰</p>
-              <h2 id="ready-checklist-title">{t('checklist.title')}</h2>
-            </div>
-            <div
-              aria-label={t('checklist.progress', { done: progress.done, total: progress.total })}
-              className="ready-progress-ring"
-              style={{ '--ready-progress': progressRatio }}
+        <div className="ready-tabs" role="tablist" aria-label={t('tabs.ariaLabel')}>
+          {READY_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              id={`ready-tab-${tab.id}`}
+              aria-selected={activeReadyTab === tab.id}
+              aria-controls={`ready-tabpanel-${tab.id}`}
+              className={`ready-tab${activeReadyTab === tab.id ? ' is-active' : ''}`}
+              onClick={() => setActiveReadyTab(tab.id)}
             >
-              <strong>{t('checklist.progressShort', { done: progress.done, total: progress.total })}</strong>
-            </div>
-          </div>
+              {t(tab.labelKey)}
+            </button>
+          ))}
+        </div>
 
-          {state.items.length === 0 ? (
-            <div className="ready-empty">
-              <p>{t('checklist.empty')}</p>
-              <button className="ready-text-link" type="button" onClick={() => setShowExamples((open) => !open)}>
-                {t('checklist.showExamples')}
-              </button>
-              {showExamples && (
-                <ul className="ready-example-list">
-                  {examples.map((example) => (
-                    <li key={example.label}>
-                      <span aria-hidden="true">{itemIcon(example.icon)}</span>
-                      <span>{example.label}</span>
-                      <button type="button" onClick={() => handleAddItem(example.label)}>
-                        {t('checklist.useExample')}
-                      </button>
+        <div
+          className="ready-tabpanel"
+          role="tabpanel"
+          id={`ready-tabpanel-${activeReadyTab}`}
+          aria-labelledby={`ready-tab-${activeReadyTab}`}
+        >
+          {activeReadyTab === 'plan' && (
+            <>
+              <section className="ready-checklist-card" aria-labelledby="ready-checklist-title">
+                <div className="ready-checklist-top">
+                  <div>
+                    <p className="ready-card-kicker" aria-hidden="true">☰</p>
+                    <h2 id="ready-checklist-title">{t('checklist.title')}</h2>
+                  </div>
+                  <div
+                    aria-label={t('checklist.progress', { done: progress.done, total: progress.total })}
+                    className="ready-progress-ring"
+                    style={{ '--ready-progress': progressRatio }}
+                  >
+                    <strong>{t('checklist.progressShort', { done: progress.done, total: progress.total })}</strong>
+                  </div>
+                </div>
+
+                {state.items.length === 0 ? (
+                  <div className="ready-empty">
+                    <p>{t('checklist.empty')}</p>
+                    <button className="ready-text-link" type="button" onClick={() => setShowExamples((open) => !open)}>
+                      {t('checklist.showExamples')}
+                    </button>
+                    {showExamples && (
+                      <ul className="ready-example-list">
+                        {examples.map((example) => (
+                          <li key={example.label}>
+                            <span aria-hidden="true">{itemIcon(example.icon)}</span>
+                            <span>{example.label}</span>
+                            <button type="button" onClick={() => handleAddItem(example.label)}>
+                              {t('checklist.useExample')}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ) : (
+                  <ul className="ready-item-list">
+                    {state.items.map((item) => (
+                      <li key={item.id} className={item.done ? 'is-done' : ''}>
+                        <button
+                          aria-label={item.done ? t('checklist.markOpen', { label: item.label }) : t('checklist.markDone', { label: item.label })}
+                          className={`ready-check${item.done ? ' is-checked' : ''}`}
+                          type="button"
+                          onClick={() => commitState((current) => toggleItemDone(current, item.id))}
+                        >
+                          {item.done ? '✓' : ''}
+                        </button>
+                        <div className="ready-item-copy">
+                          <span className="ready-item-icon" aria-hidden="true">{itemIcon(item.icon)}</span>
+                          {editingId === item.id ? (
+                            <input
+                              aria-label={t('checklist.editLabel')}
+                              defaultValue={item.label}
+                              onBlur={(event) => {
+                                commitState((current) => updateItem(current, item.id, { label: event.target.value }))
+                                setEditingId('')
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter') event.currentTarget.blur()
+                              }}
+                            />
+                          ) : (
+                            <button className="ready-item-label" type="button" onClick={() => setEditingId(item.id)}>
+                              <strong>{item.label}</strong>
+                              {item.note ? <small>{item.note}</small> : null}
+                            </button>
+                          )}
+                        </div>
+                        <button
+                          aria-label={t('checklist.deleteAria', { label: item.label })}
+                          className="ready-item-delete"
+                          type="button"
+                          onClick={() => setDeleteId(item.id)}
+                        >
+                          ×
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <form
+                  className="ready-add-form"
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    handleAddItem(draftLabel)
+                  }}
+                >
+                  <span aria-hidden="true">+</span>
+                  <input
+                    aria-label={t('checklist.add')}
+                    placeholder={t('checklist.add')}
+                    value={draftLabel}
+                    onChange={(event) => setDraftLabel(event.target.value)}
+                  />
+                  <button type="submit">{t('common:actions.save')}</button>
+                </form>
+              </section>
+
+              <section className="ready-forgot-card" aria-labelledby="ready-forgot-title">
+                <h2 id="ready-forgot-title">{t('forgot.title')}</h2>
+                <form onSubmit={handleAskForgot}>
+                  <label>
+                    <span className="sr-only">{t('forgot.input')}</span>
+                    <input
+                      placeholder={t('forgot.placeholder')}
+                      value={forgotText}
+                      onChange={(event) => setForgotText(event.target.value)}
+                    />
+                  </label>
+                  <button type="submit">{t('forgot.ask')}</button>
+                </form>
+                {pendingForgotLabel ? (
+                  <div className="ready-confirm" role="dialog" aria-label={t('forgot.confirm', { label: pendingForgotLabel })}>
+                    <p>{t('forgot.confirm', { label: pendingForgotLabel })}</p>
+                    <div>
+                      <button type="button" onClick={handleConfirmForgot}>{t('common:yes')}</button>
+                      <button type="button" onClick={() => setPendingForgotLabel('')}>{t('common:no')}</button>
+                    </div>
+                  </div>
+                ) : null}
+              </section>
+            </>
+          )}
+
+          {activeReadyTab === 'companion' && (
+            <section className="ready-ai-grid" aria-label={t('ai.gridAria')}>
+              <CompanionProfilePanel onProfileChange={setCompanionProfile} surface="ready" />
+              <article className="ready-ai-card is-companion">
+                <h2>{t('companion.title')}</h2>
+                <p>{t('companion.body')}</p>
+                <div className="ready-companion-art" aria-hidden="true">🤖</div>
+                <button type="button" onClick={() => onOpenCompanion?.({ source: 'ready', levelId: state.levelId })}>
+                  {t('companion.talk')}
+                </button>
+                <p className="ready-ai-status">{t('companion.aiLabel')}</p>
+              </article>
+            </section>
+          )}
+
+          {activeReadyTab === 'memory' && (
+            <section className="ready-memory" aria-labelledby="ready-memory-title">
+              <div className="ready-memory-head">
+                <h2 id="ready-memory-title">{t('memory.title')}</h2>
+                <p>{t('memory.subtitle')}</p>
+              </div>
+              <div className="ready-memory-grid">
+                {primaryTechniques.map((technique) => (
+                  <button
+                    key={technique.id}
+                    type="button"
+                    onClick={() => setActiveTechniqueId(technique.id)}
+                  >
+                    <span aria-hidden="true">{technique.icon === 'image' ? '🖼' : technique.icon === 'book' ? '📖' : technique.icon === 'walk' ? '👣' : '🔁'}</span>
+                    <strong>{t(`memory.techniques.${technique.id}.title`)}</strong>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {activeReadyTab === 'reminders' && (
+            <section className="ready-next" aria-labelledby="ready-next-title">
+              <h2 id="ready-next-title">{t('next.title')}</h2>
+              {nextEvents.length === 0 ? (
+                <div className="ready-next-empty">
+                  <p>{t('next.empty')}</p>
+                  <button type="button" onClick={() => onNavigateSection?.('notices')}>{t('next.add')}</button>
+                </div>
+              ) : (
+                <ul>
+                  {nextEvents.map((event) => (
+                    <li key={event.id}>
+                      <strong className={event.source === 'demo' ? 'is-demo' : ''}>{event.timeLabel}</strong>
+                      <span>{event.title}{event.source === 'demo' ? ` (${t('next.demo')})` : ''}</span>
                     </li>
                   ))}
                 </ul>
               )}
-            </div>
-          ) : (
-            <ul className="ready-item-list">
-              {state.items.map((item) => (
-                <li key={item.id} className={item.done ? 'is-done' : ''}>
-                  <button
-                    aria-label={item.done ? t('checklist.markOpen', { label: item.label }) : t('checklist.markDone', { label: item.label })}
-                    className={`ready-check${item.done ? ' is-checked' : ''}`}
-                    type="button"
-                    onClick={() => commitState((current) => toggleItemDone(current, item.id))}
-                  >
-                    {item.done ? '✓' : ''}
-                  </button>
-                  <div className="ready-item-copy">
-                    <span className="ready-item-icon" aria-hidden="true">{itemIcon(item.icon)}</span>
-                    {editingId === item.id ? (
-                      <input
-                        aria-label={t('checklist.editLabel')}
-                        defaultValue={item.label}
-                        onBlur={(event) => {
-                          commitState((current) => updateItem(current, item.id, { label: event.target.value }))
-                          setEditingId('')
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') event.currentTarget.blur()
-                        }}
-                      />
-                    ) : (
-                      <button className="ready-item-label" type="button" onClick={() => setEditingId(item.id)}>
-                        <strong>{item.label}</strong>
-                        {item.note ? <small>{item.note}</small> : null}
-                      </button>
-                    )}
-                  </div>
-                  <button
-                    aria-label={t('checklist.deleteAria', { label: item.label })}
-                    className="ready-item-delete"
-                    type="button"
-                    onClick={() => setDeleteId(item.id)}
-                  >
-                    ×
-                  </button>
-                </li>
-              ))}
-            </ul>
+            </section>
           )}
 
-          <form
-            className="ready-add-form"
-            onSubmit={(event) => {
-              event.preventDefault()
-              handleAddItem(draftLabel)
-            }}
-          >
-            <span aria-hidden="true">+</span>
-            <input
-              aria-label={t('checklist.add')}
-              placeholder={t('checklist.add')}
-              value={draftLabel}
-              onChange={(event) => setDraftLabel(event.target.value)}
-            />
-            <button type="submit">{t('common:actions.save')}</button>
-          </form>
-        </section>
-
-        <section className="ready-forgot-card" aria-labelledby="ready-forgot-title">
-          <h2 id="ready-forgot-title">{t('forgot.title')}</h2>
-          <form onSubmit={handleAskForgot}>
-            <label>
-              <span className="sr-only">{t('forgot.input')}</span>
-              <input
-                placeholder={t('forgot.placeholder')}
-                value={forgotText}
-                onChange={(event) => setForgotText(event.target.value)}
-              />
-            </label>
-            <button type="submit">{t('forgot.ask')}</button>
-          </form>
-          {pendingForgotLabel ? (
-            <div className="ready-confirm" role="dialog" aria-label={t('forgot.confirm', { label: pendingForgotLabel })}>
-              <p>{t('forgot.confirm', { label: pendingForgotLabel })}</p>
-              <div>
-                <button type="button" onClick={handleConfirmForgot}>{t('common:yes')}</button>
-                <button type="button" onClick={() => setPendingForgotLabel('')}>{t('common:no')}</button>
-              </div>
-            </div>
-          ) : null}
-        </section>
-
-        <section className="ready-ai-grid" aria-label={t('ai.gridAria')}>
-          <CompanionProfilePanel onProfileChange={setCompanionProfile} surface="ready" />
-          <article className="ready-ai-card is-eye">
-            <h2>{t('eye.title')}</h2>
-            <p>{t('eye.body')}</p>
-            <div className="ready-eye-art" aria-hidden="true">◎</div>
-            <button type="button" onClick={() => setShowEyeInfo(true)}>{t('eye.start')}</button>
-            <p className="ready-ai-status">{t('eye.notConnected')}</p>
-          </article>
-          <article className="ready-ai-card is-companion">
-            <h2>{t('companion.title')}</h2>
-            <p>{t('companion.body')}</p>
-            <div className="ready-companion-art" aria-hidden="true">🤖</div>
-            <button type="button" onClick={() => onOpenCompanion?.({ source: 'ready', levelId: state.levelId })}>
-              {t('companion.talk')}
-            </button>
-            <p className="ready-ai-status">{t('companion.aiLabel')}</p>
-          </article>
-        </section>
-
-        <section className="ready-memory" aria-labelledby="ready-memory-title">
-          <div className="ready-memory-head">
-            <h2 id="ready-memory-title">{t('memory.title')}</h2>
-            <p>{t('memory.subtitle')}</p>
-          </div>
-          <div className="ready-memory-grid">
-            {primaryTechniques.map((technique) => (
-              <button
-                key={technique.id}
-                type="button"
-                onClick={() => setActiveTechniqueId(technique.id)}
-              >
-                <span aria-hidden="true">{technique.icon === 'image' ? '🖼' : technique.icon === 'book' ? '📖' : technique.icon === 'walk' ? '👣' : '🔁'}</span>
-                <strong>{t(`memory.techniques.${technique.id}.title`)}</strong>
+          {activeReadyTab === 'techniques' && (
+            <>
+              <article className="ready-ai-card is-eye">
+                <h2>{t('eye.title')}</h2>
+                <p>{t('eye.body')}</p>
+                <div className="ready-eye-art" aria-hidden="true">◎</div>
+                <button type="button" onClick={() => setShowEyeInfo(true)}>{t('eye.start')}</button>
+                <p className="ready-ai-status">{t('eye.notConnected')}</p>
+              </article>
+              <button className="ready-text-link" type="button" onClick={() => setShowAllTechniques(true)}>
+                {t('memory.showAll')}
               </button>
-            ))}
-          </div>
-          <button className="ready-text-link" type="button" onClick={() => setShowAllTechniques(true)}>
-            {t('memory.showAll')}
-          </button>
-        </section>
-
-        <section className="ready-next" aria-labelledby="ready-next-title">
-          <h2 id="ready-next-title">{t('next.title')}</h2>
-          {nextEvents.length === 0 ? (
-            <div className="ready-next-empty">
-              <p>{t('next.empty')}</p>
-              <button type="button" onClick={() => onNavigateSection?.('notices')}>{t('next.add')}</button>
-            </div>
-          ) : (
-            <ul>
-              {nextEvents.map((event) => (
-                <li key={event.id}>
-                  <strong className={event.source === 'demo' ? 'is-demo' : ''}>{event.timeLabel}</strong>
-                  <span>{event.title}{event.source === 'demo' ? ` (${t('next.demo')})` : ''}</span>
-                </li>
-              ))}
-            </ul>
+            </>
           )}
-        </section>
+        </div>
 
         {deleteId ? (
           <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('checklist.deleteConfirm')}>

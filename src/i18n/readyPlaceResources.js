@@ -112,6 +112,14 @@ export const readySv = {
     add: 'Lägg till tid eller påminnelse',
     demo: 'exempel',
   },
+  tabs: {
+    plan: 'Planera',
+    companion: 'AI-kompis',
+    memory: 'Minne',
+    reminders: 'Påminnelser',
+    techniques: 'Tekniker',
+    ariaLabel: 'Redo-flikar',
+  },
 }
 
 export const readyEn = {
@@ -226,6 +234,14 @@ export const readyEn = {
     empty: 'Nothing planned yet',
     add: 'Add a time or reminder',
     demo: 'example',
+  },
+  tabs: {
+    plan: 'Plan',
+    companion: 'AI companion',
+    memory: 'Memory',
+    reminders: 'Reminders',
+    techniques: 'Techniques',
+    ariaLabel: 'Ready tabs',
   },
 }
 

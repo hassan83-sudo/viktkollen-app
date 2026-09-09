@@ -7,6 +7,7 @@ const placeSource = readFileSync(new URL('./PlaceSection.jsx', import.meta.url),
 const moreSource = readFileSync(new URL('./MoreSection.jsx', import.meta.url), 'utf8')
 const navSource = readFileSync(new URL('../../services/navigation/appSections.js', import.meta.url), 'utf8')
 const overviewSource = readFileSync(new URL('../app/OverviewDashboard.jsx', import.meta.url), 'utf8')
+const appCss = readFileSync(new URL('../../App.css', import.meta.url), 'utf8')
 
 describe('Ready! section wiring', () => {
   it('mounts Ready and Place as top-level sections', () => {
@@ -50,5 +51,11 @@ describe('Ready! section wiring', () => {
     expect(readySource).toContain('pendingForgotLabel')
     expect(readySource).toContain('handleConfirmForgot')
     expect(readySource).toContain("t('forgot.confirm'")
+  })
+
+  it('keeps the companion profile full width above the responsive AI card grid', () => {
+    expect(readySource.indexOf('<CompanionProfilePanel')).toBeLessThan(readySource.indexOf('<section className="ready-ai-grid"'))
+    expect(appCss).toMatch(/\.ready-shell\s*\{[^}]*align-content:\s*start;[^}]*width:\s*min\(100%, 960px\);/s)
+    expect(appCss).toMatch(/@media \(max-width: 640px\)\s*\{\s*\.ready-ai-grid\s*\{\s*grid-template-columns:\s*minmax\(0, 1fr\);/s)
   })
 })

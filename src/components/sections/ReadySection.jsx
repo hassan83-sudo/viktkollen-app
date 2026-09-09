@@ -300,8 +300,9 @@ function ReadySection({
           ) : null}
         </section>
 
+        <CompanionProfilePanel onProfileChange={setCompanionProfile} surface="ready" />
+
         <section className="ready-ai-grid" aria-label={t('ai.gridAria')}>
-          <CompanionProfilePanel onProfileChange={setCompanionProfile} surface="ready" />
           <article className="ready-ai-card is-eye">
             <h2>{t('eye.title')}</h2>
             <p>{t('eye.body')}</p>

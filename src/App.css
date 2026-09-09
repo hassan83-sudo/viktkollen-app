@@ -15945,8 +15945,22 @@ html:has(#app-section-more.is-active),
 .place-shell {
   display: grid;
   gap: 14px;
-  width: min(100%, 430px);
   margin: 0 auto;
+}
+
+.ready-shell {
+  align-content: start;
+  width: min(100%, 960px);
+}
+
+.place-shell {
+  width: min(100%, 430px);
+}
+
+#app-section-redo.is-active {
+  align-content: start;
+  min-height: 0;
+  padding-bottom: calc(var(--vk-nav-height) + 32px + env(safe-area-inset-bottom));
 }
 
 .ready-header,
@@ -16123,6 +16137,7 @@ html:has(#app-section-more.is-active),
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  align-items: start;
 }
 
 .ready-ai-card.is-eye {
@@ -16285,8 +16300,13 @@ html:has(#app-section-more.is-active),
   box-shadow: 0 0 16px rgba(56, 247, 255, 0.35);
 }
 
+@media (max-width: 640px) {
+  .ready-ai-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 374px) {
-  .ready-ai-grid,
   .ready-memory-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

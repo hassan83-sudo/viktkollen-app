@@ -42,4 +42,14 @@ describe('AI Coach tap me and realtime voice security', () => {
     expect(sessionSource).toContain("action: 'realtime-session'")
     expect(appSource).not.toMatch(/VITE_OPENAI_API_KEY/)
   })
+
+  it('keeps the chat input pinned by using the message thread as the flexible scroll area', () => {
+    const mobileCss = readSource('src/components/AiCoachOverlay.mobile.css')
+    const baseLayout = mobileCss.slice(0, mobileCss.indexOf('@media'))
+
+    expect(baseLayout).toMatch(/\.ai-coach-overlay-chat\s*\{[^}]*display:\s*flex;[^}]*height:\s*100%;/s)
+    expect(baseLayout).toMatch(/\.ai-coach-overlay-chat \.chat-panel\s*\{[^}]*display:\s*flex;[^}]*height:\s*100%;/s)
+    expect(baseLayout).toMatch(/\.ai-coach-overlay-chat \.chat-thread\s*\{[^}]*flex:\s*1 1 auto;[^}]*min-height:\s*0;[^}]*max-height:\s*none;[^}]*overflow-y:\s*auto;/s)
+    expect(baseLayout).toMatch(/\.ai-coach-overlay-chat \.chat-form,[\s\S]*flex:\s*0 0 auto;/)
+  })
 })

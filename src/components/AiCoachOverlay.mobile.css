@@ -1,4 +1,37 @@
-/* Loaded after App.css so these viewport rules win the cascade on phones. */
+/* Loaded after App.css so the overlay layout wins the shared chat rules. */
+.ai-coach-overlay-chat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ai-coach-overlay-chat .chat-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.ai-coach-overlay-chat .panel-heading,
+.ai-coach-overlay-chat .starter-prompts,
+.ai-coach-overlay-chat .chat-form,
+.ai-coach-overlay-chat .voice-status,
+.ai-coach-overlay-chat .chat-engine-status,
+.ai-coach-overlay-chat .chat-safety-note {
+  flex: 0 0 auto;
+}
+
+.ai-coach-overlay-chat .chat-thread {
+  flex: 1 1 auto;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+}
+
 @media (max-width: 640px) {
   .ai-coach-overlay {
     top: max(8px, env(safe-area-inset-top));
@@ -78,17 +111,11 @@
   }
 
   .ai-coach-overlay-chat {
-    min-height: 0;
-    overflow: hidden;
     overscroll-behavior: contain;
     padding-bottom: max(0px, env(safe-area-inset-bottom));
   }
 
   .ai-coach-overlay-chat .chat-panel {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    min-height: 0;
     padding: 10px;
   }
 
@@ -107,20 +134,8 @@
   }
 
   .ai-coach-overlay-chat .chat-thread {
-    flex: 1 1 auto;
-    width: 100%;
-    height: auto;
-    min-height: 72px;
-    max-height: none;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-  }
-
-  .ai-coach-overlay-chat .chat-form,
-  .ai-coach-overlay-chat .voice-status,
-  .ai-coach-overlay-chat .chat-engine-status,
-  .ai-coach-overlay-chat .chat-safety-note {
-    flex: 0 0 auto;
   }
 }
 

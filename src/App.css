@@ -14419,6 +14419,7 @@ html:has(#app-section-more.is-active),
   z-index: 90;
   display: flex;
   flex-direction: column;
+  gap: 12px;
   height: 100vh;
   height: 100dvh;
   min-height: 0;
@@ -14467,7 +14468,7 @@ html:has(#app-section-more.is-active),
   flex: 0 0 auto;
   display: grid;
   justify-items: center;
-  gap: 4px;
+  gap: 6px;
   min-height: 0;
   padding: 2px 0;
   text-align: center;
@@ -16901,7 +16902,7 @@ html:has(#app-section-more.is-active),
   text-align: center;
   min-height: 92px;
   border: 1px solid var(--ready-border);
-  border-radius: 18px;
+  border-radius: 20px;
   background: var(--ready-card);
   padding: 12px 8px;
   color: inherit;
@@ -16938,7 +16939,7 @@ html:has(#app-section-more.is-active),
   gap: 10px;
   min-height: 64px;
   border: 1px solid var(--ready-border);
-  border-radius: 18px;
+  border-radius: 20px;
   background: var(--ready-card);
   padding: 10px 12px;
   color: inherit;

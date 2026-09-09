@@ -1,0 +1,99 @@
+/* Mobile layout hardening for Redo!/Ready.
+ * Keep the desktop composition unchanged, but prevent the AI cards from
+ * being squeezed into two unusably narrow columns on phones.
+ */
+
+@media (max-width: 640px) {
+  #app-section-redo.is-active {
+    padding-bottom: calc(118px + env(safe-area-inset-bottom));
+  }
+
+  #app-section-redo .ready-shell {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  #app-section-redo .ready-ai-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  #app-section-redo .ready-ai-grid > * {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+  }
+
+  #app-section-redo .companion-panel.is-ready,
+  #app-section-redo .ready-ai-card {
+    min-height: 0;
+    align-self: start;
+  }
+
+  #app-section-redo .companion-panel-heading {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  #app-section-redo .companion-panel-heading > div,
+  #app-section-redo .companion-form-grid label,
+  #app-section-redo .companion-form-grid input,
+  #app-section-redo .companion-form-grid select,
+  #app-section-redo .ready-ai-card p,
+  #app-section-redo .ready-ai-card h2 {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  #app-section-redo .companion-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  #app-section-redo .companion-form-grid input,
+  #app-section-redo .companion-form-grid select {
+    width: 100%;
+  }
+
+  #app-section-redo .companion-avatar-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #app-section-redo .ready-avatar-choice {
+    min-width: 0;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  #app-section-redo .ready-ai-card.is-eye,
+  #app-section-redo .ready-ai-card.is-companion {
+    padding: 18px;
+  }
+
+  #app-section-redo .ready-eye-art,
+  #app-section-redo .ready-companion-art {
+    min-height: 84px;
+  }
+
+  #app-section-redo .ready-memory,
+  #app-section-redo .ready-next {
+    position: relative;
+    z-index: 0;
+  }
+}
+
+@media (max-width: 390px) {
+  #app-section-redo .ready-header {
+    gap: 10px;
+  }
+
+  #app-section-redo .ready-header-actions {
+    gap: 8px;
+  }
+
+  #app-section-redo .ready-memory-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

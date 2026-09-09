@@ -1,9 +1,15 @@
 import { getSmartCameraHubModes } from '../smartCameraModes.js'
 
+const carryListsMode = {
+  icon: '📝',
+  id: 'carry-lists',
+  label: 'Mina ta-med-listor',
+}
+
 export default function SmartCameraHub({ flags, onSelectMode }) {
   const { primary, secondary } = getSmartCameraHubModes(flags)
   const merModes = [
-    ...secondary.filter((mode) => mode.id === 'carry-lists'),
+    carryListsMode,
     ...secondary.filter((mode) => mode.id !== 'carry-lists'),
   ]
 

@@ -10,7 +10,6 @@ import {
   extractForgotItemLabel,
   getChecklistProgress,
   getExampleItemsForLevel,
-  readyLevels,
   removeItem,
   toggleItemDone,
   updateItem,
@@ -19,28 +18,14 @@ import { buildReadyNextEvents } from '../../features/ready/readyNextEvents.js'
 import { loadReadyState, saveReadyState } from '../../features/ready/readyStore.js'
 import CompanionProfilePanel from '../../features/companion/CompanionProfilePanel.jsx'
 import { loadCompanionProfile, saveCompanionProfile } from '../../features/companion/companionModel.js'
-import {
-  getAllReadyTechniques,
-  getPrimaryReadyTechniques,
-} from '../../features/ready/readyTechniques.js'
-
-const ITEM_ICONS = {
-  backpack: '🎒',
-  book: '📘',
-  clothes: '👕',
-  extra: '🧳',
-  glasses: '👓',
-  gym: '👟',
-  laptop: '💻',
-  lunch: '🍎',
-  notes: '📝',
-  toy: '🧸',
-  water: '💧',
-}
-
-function itemIcon(icon) {
-  return ITEM_ICONS[icon] || '✦'
-}
+import { getAllReadyTechniques } from '../../features/ready/readyTechniques.js'
+import ReadyHeader from './ready/ReadyHeader.jsx'
+import ReadyChecklistCard from './ready/ReadyChecklistCard.jsx'
+import ForgotSomethingCard from './ready/ForgotSomethingCard.jsx'
+import AiCompanionCard from './ready/AiCompanionCard.jsx'
+import ReadyQuickActions from './ready/ReadyQuickActions.jsx'
+import NextCard from './ready/NextCard.jsx'
+import ReminderCard from './ready/ReminderCard.jsx'
 
 function ReadySection({
   activeSection,
@@ -60,6 +45,8 @@ function ReadySection({
   const [showEyeInfo, setShowEyeInfo] = useState(false)
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   const [showExamples, setShowExamples] = useState(false)
+  const [showCompanionProfile, setShowCompanionProfile] = useState(false)
+  const [showNextList, setShowNextList] = useState(false)
   const [companionProfile, setCompanionProfile] = useState(() => loadCompanionProfile())
 
   useEffect(() => {
@@ -78,7 +65,6 @@ function ReadySection({
     }),
     [reminderState, state.demoMode, state.items],
   )
-  const primaryTechniques = getPrimaryReadyTechniques()
   const allTechniques = getAllReadyTechniques()
   const activeTechnique = allTechniques.find((technique) => technique.id === activeTechniqueId)
   const examples = getExampleItemsForLevel(state.levelId || 'mid79')
@@ -119,41 +105,24 @@ function ReadySection({
     setDeleteId('')
   }
 
+  function handleNextCardOpen() {
+    if (nextEvents.length === 0) {
+      onNavigateSection?.('notices')
+      return
+    }
+    setShowNextList(true)
+  }
+
   return (
     <AppSection activeSection={activeSection} id="redo" label={t('title')}>
       <div className={`ready-shell${policy.pictureChecklist ? ' is-picture' : ''}`}>
-        <header className="ready-header">
-          <div>
-            <h1 className="ready-title">{t('title')}</h1>
-            <p className="ready-greeting">{greeting}</p>
-          </div>
-          <div className="ready-header-actions">
-            <label className="ready-level-pill">
-              <span className="sr-only">{t('levelLabel')}</span>
-              <select
-                aria-label={t('levelLabel')}
-                value={state.levelId || ''}
-                onChange={(event) => commitState((current) => ({
-                  ...current,
-                  levelId: event.target.value || null,
-                }))}
-              >
-                <option value="">{t('levelPlaceholder')}</option>
-                {readyLevels.map((level) => (
-                  <option key={level.id} value={level.id}>{t(level.labelKey)}</option>
-                ))}
-              </select>
-            </label>
-            <button
-              aria-label={t('avatar.pick')}
-              className={`ready-avatar-button is-${avatar.accent}`}
-              type="button"
-              onClick={() => setShowAvatarPicker((open) => !open)}
-            >
-              <span aria-hidden="true">🤖</span>
-            </button>
-          </div>
-        </header>
+        <ReadyHeader
+          greeting={greeting}
+          levelId={state.levelId}
+          onLevelChange={(levelId) => commitState((current) => ({ ...current, levelId }))}
+          avatar={avatar}
+          onAvatarClick={() => setShowAvatarPicker((open) => !open)}
+        />
 
         {showAvatarPicker && (
           <section className="ready-avatar-panel" aria-label={t('avatar.pick')}>
@@ -177,190 +146,48 @@ function ReadySection({
           </section>
         )}
 
-        <section className="ready-checklist-card" aria-labelledby="ready-checklist-title">
-          <div className="ready-checklist-top">
-            <div>
-              <p className="ready-card-kicker" aria-hidden="true">☰</p>
-              <h2 id="ready-checklist-title">{t('checklist.title')}</h2>
-            </div>
-            <div
-              aria-label={t('checklist.progress', { done: progress.done, total: progress.total })}
-              className="ready-progress-ring"
-              style={{ '--ready-progress': progressRatio }}
-            >
-              <strong>{t('checklist.progressShort', { done: progress.done, total: progress.total })}</strong>
-            </div>
-          </div>
+        <ReadyChecklistCard
+          progress={progress}
+          progressRatio={progressRatio}
+          items={state.items}
+          editingId={editingId}
+          onStartEdit={setEditingId}
+          onCommitEdit={(id, label) => {
+            commitState((current) => updateItem(current, id, { label }))
+            setEditingId('')
+          }}
+          onToggleDone={(id) => commitState((current) => toggleItemDone(current, id))}
+          onDeleteRequest={setDeleteId}
+          showExamples={showExamples}
+          onToggleExamples={() => setShowExamples((open) => !open)}
+          examples={examples}
+          onUseExample={handleAddItem}
+          draftLabel={draftLabel}
+          onDraftChange={setDraftLabel}
+          onSubmitAdd={handleAddItem}
+        />
 
-          {state.items.length === 0 ? (
-            <div className="ready-empty">
-              <p>{t('checklist.empty')}</p>
-              <button className="ready-text-link" type="button" onClick={() => setShowExamples((open) => !open)}>
-                {t('checklist.showExamples')}
-              </button>
-              {showExamples && (
-                <ul className="ready-example-list">
-                  {examples.map((example) => (
-                    <li key={example.label}>
-                      <span aria-hidden="true">{itemIcon(example.icon)}</span>
-                      <span>{example.label}</span>
-                      <button type="button" onClick={() => handleAddItem(example.label)}>
-                        {t('checklist.useExample')}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ) : (
-            <ul className="ready-item-list">
-              {state.items.map((item) => (
-                <li key={item.id} className={item.done ? 'is-done' : ''}>
-                  <button
-                    aria-label={item.done ? t('checklist.markOpen', { label: item.label }) : t('checklist.markDone', { label: item.label })}
-                    className={`ready-check${item.done ? ' is-checked' : ''}`}
-                    type="button"
-                    onClick={() => commitState((current) => toggleItemDone(current, item.id))}
-                  >
-                    {item.done ? '✓' : ''}
-                  </button>
-                  <div className="ready-item-copy">
-                    <span className="ready-item-icon" aria-hidden="true">{itemIcon(item.icon)}</span>
-                    {editingId === item.id ? (
-                      <input
-                        aria-label={t('checklist.editLabel')}
-                        defaultValue={item.label}
-                        onBlur={(event) => {
-                          commitState((current) => updateItem(current, item.id, { label: event.target.value }))
-                          setEditingId('')
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') event.currentTarget.blur()
-                        }}
-                      />
-                    ) : (
-                      <button className="ready-item-label" type="button" onClick={() => setEditingId(item.id)}>
-                        <strong>{item.label}</strong>
-                        {item.note ? <small>{item.note}</small> : null}
-                      </button>
-                    )}
-                  </div>
-                  <button
-                    aria-label={t('checklist.deleteAria', { label: item.label })}
-                    className="ready-item-delete"
-                    type="button"
-                    onClick={() => setDeleteId(item.id)}
-                  >
-                    ×
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+        <ForgotSomethingCard
+          forgotText={forgotText}
+          onForgotTextChange={setForgotText}
+          onSubmit={handleAskForgot}
+          pendingForgotLabel={pendingForgotLabel}
+          onConfirm={handleConfirmForgot}
+          onCancel={() => setPendingForgotLabel('')}
+        />
 
-          <form
-            className="ready-add-form"
-            onSubmit={(event) => {
-              event.preventDefault()
-              handleAddItem(draftLabel)
-            }}
-          >
-            <span aria-hidden="true">+</span>
-            <input
-              aria-label={t('checklist.add')}
-              placeholder={t('checklist.add')}
-              value={draftLabel}
-              onChange={(event) => setDraftLabel(event.target.value)}
-            />
-            <button type="submit">{t('common:actions.save')}</button>
-          </form>
-        </section>
+        <AiCompanionCard onOpen={() => setShowCompanionProfile(true)} />
 
-        <section className="ready-forgot-card" aria-labelledby="ready-forgot-title">
-          <h2 id="ready-forgot-title">{t('forgot.title')}</h2>
-          <form onSubmit={handleAskForgot}>
-            <label>
-              <span className="sr-only">{t('forgot.input')}</span>
-              <input
-                placeholder={t('forgot.placeholder')}
-                value={forgotText}
-                onChange={(event) => setForgotText(event.target.value)}
-              />
-            </label>
-            <button type="submit">{t('forgot.ask')}</button>
-          </form>
-          {pendingForgotLabel ? (
-            <div className="ready-confirm" role="dialog" aria-label={t('forgot.confirm', { label: pendingForgotLabel })}>
-              <p>{t('forgot.confirm', { label: pendingForgotLabel })}</p>
-              <div>
-                <button type="button" onClick={handleConfirmForgot}>{t('common:yes')}</button>
-                <button type="button" onClick={() => setPendingForgotLabel('')}>{t('common:no')}</button>
-              </div>
-            </div>
-          ) : null}
-        </section>
+        <ReadyQuickActions
+          onOpenProfile={() => setShowCompanionProfile(true)}
+          onOpenEye={() => setShowEyeInfo(true)}
+          onOpenMemory={() => setShowAllTechniques(true)}
+        />
 
-        <CompanionProfilePanel onProfileChange={setCompanionProfile} surface="ready" />
-
-        <section className="ready-ai-grid" aria-label={t('ai.gridAria')}>
-          <article className="ready-ai-card is-eye">
-            <h2>{t('eye.title')}</h2>
-            <p>{t('eye.body')}</p>
-            <div className="ready-eye-art" aria-hidden="true">◎</div>
-            <button type="button" onClick={() => setShowEyeInfo(true)}>{t('eye.start')}</button>
-            <p className="ready-ai-status">{t('eye.notConnected')}</p>
-          </article>
-          <article className="ready-ai-card is-companion">
-            <h2>{t('companion.title')}</h2>
-            <p>{t('companion.body')}</p>
-            <div className="ready-companion-art" aria-hidden="true">🤖</div>
-            <button type="button" onClick={() => onOpenCompanion?.({ source: 'ready', levelId: state.levelId })}>
-              {t('companion.talk')}
-            </button>
-            <p className="ready-ai-status">{t('companion.aiLabel')}</p>
-          </article>
-        </section>
-
-        <section className="ready-memory" aria-labelledby="ready-memory-title">
-          <div className="ready-memory-head">
-            <h2 id="ready-memory-title">{t('memory.title')}</h2>
-            <p>{t('memory.subtitle')}</p>
-          </div>
-          <div className="ready-memory-grid">
-            {primaryTechniques.map((technique) => (
-              <button
-                key={technique.id}
-                type="button"
-                onClick={() => setActiveTechniqueId(technique.id)}
-              >
-                <span aria-hidden="true">{technique.icon === 'image' ? '🖼' : technique.icon === 'book' ? '📖' : technique.icon === 'walk' ? '👣' : '🔁'}</span>
-                <strong>{t(`memory.techniques.${technique.id}.title`)}</strong>
-              </button>
-            ))}
-          </div>
-          <button className="ready-text-link" type="button" onClick={() => setShowAllTechniques(true)}>
-            {t('memory.showAll')}
-          </button>
-        </section>
-
-        <section className="ready-next" aria-labelledby="ready-next-title">
-          <h2 id="ready-next-title">{t('next.title')}</h2>
-          {nextEvents.length === 0 ? (
-            <div className="ready-next-empty">
-              <p>{t('next.empty')}</p>
-              <button type="button" onClick={() => onNavigateSection?.('notices')}>{t('next.add')}</button>
-            </div>
-          ) : (
-            <ul>
-              {nextEvents.map((event) => (
-                <li key={event.id}>
-                  <strong className={event.source === 'demo' ? 'is-demo' : ''}>{event.timeLabel}</strong>
-                  <span>{event.title}{event.source === 'demo' ? ` (${t('next.demo')})` : ''}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <div className="ready-bottom-row">
+          <NextCard nextEvents={nextEvents} onOpen={handleNextCardOpen} />
+          <ReminderCard onOpen={() => onNavigateSection?.('notices')} />
+        </div>
 
         {deleteId ? (
           <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('checklist.deleteConfirm')}>
@@ -412,6 +239,48 @@ function ReadySection({
             <button type="button" onClick={() => { setShowAllTechniques(false); setActiveTechniqueId('') }}>
               {t('common:actions.close')}
             </button>
+          </div>
+        ) : null}
+
+        {showCompanionProfile ? (
+          <div className="ready-modal is-wide ready-companion-modal" role="dialog" aria-modal="true" aria-label={t('companion.cardTitle')}>
+            <CompanionProfilePanel onProfileChange={setCompanionProfile} surface="ready" />
+            <article className="ready-ai-card is-companion">
+              <h2>{t('companion.title')}</h2>
+              <p>{t('companion.body')}</p>
+              <div className="ready-companion-art" aria-hidden="true">🤖</div>
+              <button type="button" onClick={() => onOpenCompanion?.({ source: 'ready', levelId: state.levelId })}>
+                {t('companion.talk')}
+              </button>
+              <p className="ready-ai-status">{t('companion.aiLabel')}</p>
+            </article>
+            <button type="button" onClick={() => setShowCompanionProfile(false)}>
+              {t('common:actions.close')}
+            </button>
+          </div>
+        ) : null}
+
+        {showNextList ? (
+          <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('next.title')}>
+            <h3>{t('next.title')}</h3>
+            <div className="ready-next">
+              {nextEvents.length === 0 ? (
+                <div className="ready-next-empty">
+                  <p>{t('next.empty')}</p>
+                  <button type="button" onClick={() => onNavigateSection?.('notices')}>{t('next.add')}</button>
+                </div>
+              ) : (
+                <ul>
+                  {nextEvents.map((event) => (
+                    <li key={event.id}>
+                      <strong className={event.source === 'demo' ? 'is-demo' : ''}>{event.timeLabel}</strong>
+                      <span>{event.title}{event.source === 'demo' ? ` (${t('next.demo')})` : ''}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <button type="button" onClick={() => setShowNextList(false)}>{t('common:actions.close')}</button>
           </div>
         ) : null}
       </div>

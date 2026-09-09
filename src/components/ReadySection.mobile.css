@@ -97,3 +97,23 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+@media (max-width: 390px) {
+  #app-section-redo .ready-quick-actions {
+    gap: 8px;
+  }
+
+  #app-section-redo .ready-action-tile {
+    min-height: 84px;
+    padding: 10px 6px;
+  }
+
+  #app-section-redo .ready-bottom-row {
+    gap: 8px;
+  }
+
+  #app-section-redo .ready-info-tile {
+    min-height: 58px;
+    padding: 8px 10px;
+  }
+}

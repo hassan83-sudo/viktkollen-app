@@ -58,6 +58,13 @@ export const readySv = {
     body: 'Fråga, prata eller få hjälp',
     talk: 'Prata nu',
     aiLabel: 'Tydligt presenterad som AI — inte en riktig person.',
+    cardTitle: 'AI-kompisen',
+    summary: 'Lugn, kort och trygg ton.',
+  },
+  quickActions: {
+    profile: { title: 'Profil', subtitle: 'AI-kompisen' },
+    eye: { title: 'AI Ögat', subtitle: 'Kolla med kameran' },
+    memory: { title: 'Minnesträning', subtitle: 'Kom ihåg bättre' },
   },
   avatar: {
     pick: 'Välj avatar',
@@ -111,6 +118,8 @@ export const readySv = {
     empty: 'Inget planerat ännu',
     add: 'Lägg till tid eller påminnelse',
     demo: 'exempel',
+    reminderTitle: 'Påminnelser',
+    reminderSubtitle: 'Ställ in notiser',
   },
 }
 
@@ -173,6 +182,13 @@ export const readyEn = {
     body: 'Ask, talk or get help',
     talk: 'Talk now',
     aiLabel: 'Clearly presented as AI — not a real person.',
+    cardTitle: 'Your AI buddy',
+    summary: 'Calm, short and reassuring tone.',
+  },
+  quickActions: {
+    profile: { title: 'Profile', subtitle: 'Your AI buddy' },
+    eye: { title: 'AI Eye', subtitle: 'Check with the camera' },
+    memory: { title: 'Memory training', subtitle: 'Remember better' },
   },
   avatar: {
     pick: 'Choose avatar',
@@ -226,6 +242,8 @@ export const readyEn = {
     empty: 'Nothing planned yet',
     add: 'Add a time or reminder',
     demo: 'example',
+    reminderTitle: 'Reminders',
+    reminderSubtitle: 'Set up notifications',
   },
 }
 

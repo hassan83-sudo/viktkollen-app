@@ -1,6 +1,6 @@
 /* Mobile layout hardening for Redo!/Ready.
  * Keep the desktop composition unchanged, but prevent the AI cards from
- * being squeezed into two unusably narrow columns on phones.
+ * being squeezed into unusably narrow columns on phones.
  */
 
 @media (max-width: 640px) {
@@ -12,6 +12,40 @@
     width: 100%;
     max-width: 100%;
     overflow-x: clip;
+  }
+
+  /* The companion profile is a modal, not part of the page grid. On mobile
+   * it must be one full-width column. This deliberately overrides any wide
+   * desktop modal/grid rules so the profile cannot collapse into a thin
+   * left column with a large empty area beside it.
+   */
+  #app-section-redo .ready-modal.is-wide.ready-companion-modal {
+    box-sizing: border-box;
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 32px);
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: 14px;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  #app-section-redo .ready-companion-modal > * {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  #app-section-redo .ready-companion-modal .companion-panel.is-ready,
+  #app-section-redo .ready-companion-modal .ready-ai-card.is-companion {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 0;
+    align-self: start;
   }
 
   #app-section-redo .ready-ai-grid {
@@ -96,9 +130,7 @@
   #app-section-redo .ready-memory-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-}
 
-@media (max-width: 390px) {
   #app-section-redo .ready-quick-actions {
     gap: 8px;
   }

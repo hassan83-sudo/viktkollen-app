@@ -10,7 +10,7 @@ import {
 } from './nutrition/nutritionGoals.js'
 import { PROFILE_PHOTO_STORAGE_KEY } from './profilePhotoStorage.js'
 import { normalizeProfile } from './profileService.js'
-import { markSyncKeyDirty } from './sync/syncMetadata.js'
+import { markSyncKeyDirty, stableSerialize } from './sync/syncMetadata.js'
 
 export const userDataScopeVersion = 1
 export const userDataScopeMetadataKey = 'viktkollen.userDataScope.v1'
@@ -184,6 +184,17 @@ function notifyScopedStorageChanged(logicalKey) {
   }))
 }
 
+// Bug fix (CLOUD SYNC SPRINT follow-up): App.jsx's profile/weights
+// auto-save effects re-fire after a successful sync (refreshAppStateFromStorage
+// gives React a fresh object/array reference even when the content did not
+// actually change - see scopedProfile/scopedWeights in App.jsx). Before this
+// guard, that unconditionally re-wrote the value and re-marked the key dirty
+// via markSyncKeyDirty below, undoing a sync that had just completed and
+// leaving pendingKeys non-empty forever even though nothing had changed.
+// Comparing with stableSerialize (sorted object keys, same helper the sync
+// layer already uses for checksums) rather than raw JSON string equality
+// means two objects that only differ in key insertion order are still
+// correctly treated as identical, not as a spurious change.
 function writeJsonStorage(key, value, {
   logicalKey = key,
   markDirty = logicalKey !== key,
@@ -194,6 +205,30 @@ function writeJsonStorage(key, value, {
   if (!storage) return false
 
   try {
+    let existingRaw = null
+    try {
+      existingRaw = storage.getItem(key)
+    } catch {
+      existingRaw = null
+    }
+
+    if (existingRaw !== null) {
+      let existingValue
+      let existingParsed = true
+      try {
+        existingValue = JSON.parse(existingRaw)
+      } catch {
+        existingParsed = false
+      }
+
+      // Only skip the write when the existing value actually parses and is
+      // stably identical - any parse failure or real difference falls
+      // through to the exact same write/dirty/notify behaviour as before.
+      if (existingParsed && stableSerialize(existingValue) === stableSerialize(value)) {
+        return true
+      }
+    }
+
     storage.setItem(key, JSON.stringify(value))
     if (markDirty && logicalKey !== key) {
       markSyncKeyDirty(logicalKey, createScopedSyncStorage(syncScope, storage))

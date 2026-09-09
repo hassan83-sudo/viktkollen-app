@@ -14,7 +14,7 @@ import {
   userDataKeys,
   userDataScopeMetadataKey,
 } from './userDataRepository.js'
-import { readSyncMetadata, syncMetadataStorageKey } from './sync/syncMetadata.js'
+import { readSyncMetadata, syncMetadataStorageKey, writeSyncMetadata } from './sync/syncMetadata.js'
 
 function createMemoryStorage(initial = {}) {
   const data = new Map(Object.entries(initial))
@@ -245,5 +245,105 @@ describe('scoped profile and weight repository', () => {
 
     expect(localStorage.getItem(getScopedStorageKey(userDataKeys.profile, accountB))).toBeNull()
     expect(localStorage.getItem(getScopedStorageKey(userDataKeys.weights, accountB))).toBeNull()
+  })
+})
+
+describe('writeJsonStorage skips no-op writes (CLOUD SYNC SPRINT follow-up, fixed 2026-09)', () => {
+  // Root cause being regression-tested: App.jsx's profile/weights auto-save
+  // effects re-fire after a successful sync (refreshAppStateFromStorage
+  // gives React a fresh object/array reference even when the content did
+  // not change), which used to unconditionally call markSyncKeyDirty again
+  // and leave pendingKeys non-empty forever even though nothing had
+  // actually changed. See src/services/userDataRepository.js's
+  // writeJsonStorage for the fix.
+
+  it('1. saveProfile called twice with identical content does not re-mark viktkollen.profile pending on the second call', () => {
+    const accountA = createUserDataScopeFromAuth({ authLoading: false, userId: 'user-a' })
+    setActiveUserDataScope(accountA)
+    const scopedStorage = createScopedSyncStorage(accountA, localStorage)
+
+    saveProfile({ displayName: 'Ali', heightCm: 178 })
+    // Round-trip through getProfile so the second saveProfile call is fed
+    // exactly the same (already-normalized, timestamp-stable) object the
+    // first call produced - this is precisely what
+    // refreshAppStateFromStorage() -> setProfile() -> the auto-save effect
+    // does in App.jsx after a sync.
+    const storedProfile = getProfile(null)
+
+    // Clear pending exactly like a completed sync would.
+    writeSyncMetadata({ ...readSyncMetadata(scopedStorage), pendingKeys: [] }, scopedStorage)
+
+    saveProfile(storedProfile)
+
+    expect(readSyncMetadata(scopedStorage).pendingKeys).not.toContain(userDataKeys.profile)
+  })
+
+  it('2. saveWeights called twice with identical content does not re-mark viktkollen.weights pending on the second call', () => {
+    const accountA = createUserDataScopeFromAuth({ authLoading: false, userId: 'user-a' })
+    setActiveUserDataScope(accountA)
+    const scopedStorage = createScopedSyncStorage(accountA, localStorage)
+
+    saveWeights([{ id: 'w1', value: 90 }])
+    writeSyncMetadata({ ...readSyncMetadata(scopedStorage), pendingKeys: [] }, scopedStorage)
+
+    // A brand-new array/object with the same content, not the same
+    // reference - exactly like readInitialWeights() building a fresh
+    // array from storage after a sync.
+    saveWeights([{ id: 'w1', value: 90 }])
+
+    expect(readSyncMetadata(scopedStorage).pendingKeys).not.toContain(userDataKeys.weights)
+  })
+
+  it('3. a genuinely changed profile is still marked pending', () => {
+    const accountA = createUserDataScopeFromAuth({ authLoading: false, userId: 'user-a' })
+    setActiveUserDataScope(accountA)
+    const scopedStorage = createScopedSyncStorage(accountA, localStorage)
+
+    saveProfile({ displayName: 'Ali', heightCm: 178 })
+    writeSyncMetadata({ ...readSyncMetadata(scopedStorage), pendingKeys: [] }, scopedStorage)
+
+    saveProfile({ displayName: 'Alexandra', heightCm: 178 })
+
+    expect(readSyncMetadata(scopedStorage).pendingKeys).toContain(userDataKeys.profile)
+  })
+
+  it('4. genuinely changed weights are still marked pending', () => {
+    const accountA = createUserDataScopeFromAuth({ authLoading: false, userId: 'user-a' })
+    setActiveUserDataScope(accountA)
+    const scopedStorage = createScopedSyncStorage(accountA, localStorage)
+
+    saveWeights([{ id: 'w1', value: 90 }])
+    writeSyncMetadata({ ...readSyncMetadata(scopedStorage), pendingKeys: [] }, scopedStorage)
+
+    saveWeights([{ id: 'w1', value: 89 }])
+
+    expect(readSyncMetadata(scopedStorage).pendingKeys).toContain(userDataKeys.weights)
+  })
+
+  it('5. simulates a completed sync: save, clear pending like a successful sync would, re-save identical content -> pendingKeys stays empty for both keys', () => {
+    const accountA = createUserDataScopeFromAuth({ authLoading: false, userId: 'user-a' })
+    setActiveUserDataScope(accountA)
+    const scopedStorage = createScopedSyncStorage(accountA, localStorage)
+
+    saveProfile({ displayName: 'Ali', heightCm: 178 })
+    saveWeights([{ id: 'w1', value: 90 }])
+    const storedProfile = getProfile(null)
+
+    expect(readSyncMetadata(scopedStorage).pendingKeys).toEqual(
+      expect.arrayContaining([userDataKeys.profile, userDataKeys.weights]),
+    )
+
+    // Exactly what a successful runCloudSync does at the end of its loop
+    // (cloudSyncEngine.js: pendingKeys filtered down to that run's
+    // conflicts, which is empty here).
+    writeSyncMetadata({ ...readSyncMetadata(scopedStorage), pendingKeys: [] }, scopedStorage)
+
+    // Exactly what App.jsx's refreshAppStateFromStorage() -> setProfile()/
+    // setWeights() -> the auto-save effects do next: re-save the same data
+    // that was just synced, with fresh object/array references.
+    saveProfile(storedProfile)
+    saveWeights([{ id: 'w1', value: 90 }])
+
+    expect(readSyncMetadata(scopedStorage).pendingKeys).toEqual([])
   })
 })

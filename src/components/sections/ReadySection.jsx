@@ -169,7 +169,17 @@ function ReadySection({
 
         {showAvatarPicker && (
           <section className="ready-avatar-panel" aria-label={t('avatar.pick')}>
-            <p>{t('avatar.disclaimer')}</p>
+            <div className="ready-avatar-panel-top">
+              <p>{t('avatar.disclaimer')}</p>
+              <button
+                type="button"
+                className="ready-avatar-panel-close"
+                aria-label={t('common:actions.close')}
+                onClick={() => setShowAvatarPicker(false)}
+              >
+                ×
+              </button>
+            </div>
             <div className="ready-avatar-grid">
               {getReadyAvatars().map((entry) => (
                 <button
@@ -181,7 +191,7 @@ function ReadySection({
                     setShowAvatarPicker(false)
                   }}
                 >
-                  <span aria-hidden="true">🤖</span>
+                  <span className={`ready-avatar-mini is-${entry.accent}`} aria-hidden="true">🤖</span>
                   <strong>{t(entry.labelKey)}</strong>
                 </button>
               ))}
@@ -199,7 +209,10 @@ function ReadySection({
               aria-selected={activeReadyTab === tab.id}
               aria-controls={`ready-tabpanel-${tab.id}`}
               className={`ready-tab${activeReadyTab === tab.id ? ' is-active' : ''}`}
-              onClick={() => setActiveReadyTab(tab.id)}
+              onClick={() => {
+                setActiveReadyTab(tab.id)
+                setShowAvatarPicker(false)
+              }}
             >
               {t(tab.labelKey)}
             </button>

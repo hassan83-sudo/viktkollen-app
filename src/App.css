@@ -16319,6 +16319,61 @@ html:has(#app-section-more.is-active),
   overflow: auto;
 }
 
+.ready-avatar-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.ready-avatar-panel-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ready-avatar-panel-top p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: rgba(210, 220, 245, 0.8);
+  line-height: 1.4;
+}
+
+.ready-avatar-panel-close {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--ready-border);
+  border-radius: 999px;
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  display: grid;
+  place-items: center;
+  color: rgba(235, 240, 255, 0.85);
+  font-size: 1.15rem;
+  cursor: pointer;
+  flex: 0 0 auto;
+  padding: 0;
+  line-height: 1;
+}
+
+.ready-avatar-panel .ready-avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+@media (max-width: 480px) {
+  .ready-avatar-panel .ready-avatar-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ready-avatar-panel .ready-avatar-choice {
+  min-height: 48px;
+  padding: 6px 10px;
+  font-size: 0.84rem;
+}
+
 .ready-avatar-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

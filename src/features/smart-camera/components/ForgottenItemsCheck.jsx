@@ -104,9 +104,6 @@ export default function ForgottenItemsCheck({ list, onBack, onCameraActive }) {
     })
   }
 
-  // Step 1 of the AI check: capture one frame and hold it, unsent, until
-  // the person explicitly approves sending it (confirmAiCheck below).
-  // Nothing is sent to the network here.
   function requestAiCheck() {
     setAiNotice('')
     const canvas = liveViewRef.current?.captureFrame?.()
@@ -123,11 +120,6 @@ export default function ForgottenItemsCheck({ list, onBack, onCameraActive }) {
     setPendingCanvas(null)
   }
 
-  // Step 2: the actual, explicit, per-photo approval. consume() only
-  // returns true once for this exact captured frame - a second call with
-  // the same key (or any call without a matching approve() first) returns
-  // false, so this can never authorize more than the one frame the person
-  // just saw the privacy notice for.
   async function confirmAiCheck() {
     const canvas = pendingCanvas
     if (!canvas || aiBusy) return
@@ -203,22 +195,22 @@ export default function ForgottenItemsCheck({ list, onBack, onCameraActive }) {
           {items.map((item) => {
             const shown = visibleIds.includes(item.id)
             const aiStatus = aiStatusesById?.[item.id]
-            const aiHint = shown
-              ? ''
-              : aiStatus === 'identified'
-                ? 'AI: identifierad'
-                : aiStatus === 'uncertain'
-                  ? 'AI: osäker'
-                  : ''
+            const aiIdentified = aiStatus === 'identified'
+            const confirmed = shown || aiIdentified
+            const aiHint = aiIdentified
+              ? 'AI hittade den i bilden'
+              : aiStatus === 'uncertain'
+                ? 'AI: osäker'
+                : ''
             return (
               <button
                 key={item.id}
-                aria-pressed={shown}
-                className={`smart-camera-mode-chip${shown ? ' is-marked' : ''}`}
+                aria-pressed={confirmed}
+                className={`smart-camera-mode-chip${confirmed ? ' is-marked' : ''}`}
                 type="button"
                 onClick={() => toggleShown(item.id)}
               >
-                <span aria-hidden="true">{shown ? '✓' : '?'}</span>
+                <span aria-hidden="true">{confirmed ? '✓' : '?'}</span>
                 <strong>{item.label}</strong>
                 <small>{shown ? 'Markerad som visad' : (aiHint || 'Jag visar den här')}</small>
               </button>

@@ -391,6 +391,112 @@ function GetReadyMode({ memory, onSave }) {
   )
 }
 
+const carryListTemplates = Object.freeze([
+  { contextId: 'work', items: ['Nycklar', 'Plånbok', 'Lunch', 'Passerkort'], title: 'Jobb' },
+  { contextId: 'training', items: ['Vatten', 'Träningsskor', 'Hörlurar'], title: 'Gym' },
+  { contextId: 'travel', items: ['Pass/ID', 'Laddare', 'Hörlurar', 'Mediciner', 'Ombyte'], title: 'Resa' },
+  { contextId: 'everyday', items: defaultCarryItems, title: 'Vanlig dag' },
+])
+
+function collectCarryLists(memory) {
+  const byId = new Map()
+  ;[...(Array.isArray(memory.packingLists) ? memory.packingLists : []),
+    ...(Array.isArray(memory.checklists) ? memory.checklists.filter((list) => list?.kind === 'carry') : []),
+  ].forEach((list) => {
+    if (list?.id) byId.set(list.id, list)
+  })
+  return [...byId.values()]
+}
+
+function upsertCarryList(memory, nextList) {
+  const inPacking = (memory.packingLists || []).some((list) => list.id === nextList.id)
+  const inChecklists = (memory.checklists || []).some((list) => list.id === nextList.id)
+  return {
+    ...memory,
+    packingLists: inPacking
+      ? memory.packingLists.map((list) => list.id === nextList.id ? nextList : list)
+      : [...(memory.packingLists || []), nextList],
+    checklists: inChecklists
+      ? memory.checklists.map((list) => list.id === nextList.id ? nextList : list)
+      : memory.checklists,
+  }
+}
+
+function CarryListsMode({ memory, onCameraActive, onSave }) {
+  const [selectedId, setSelectedId] = useState('')
+  const [cameraOpen, setCameraOpen] = useState(false)
+  const lists = collectCarryLists(memory)
+  const selected = lists.find((list) => list.id === selectedId) || null
+  const existingContextIds = new Set(lists.map((list) => list.contextId))
+
+  function persistList(nextList) {
+    onSave(upsertCarryList(memory, nextList))
+  }
+
+  if (cameraOpen && selected) {
+    return (
+      <>
+        <button className="secondary-button" type="button" onClick={() => setCameraOpen(false)}>
+          Tillbaka till listan
+        </button>
+        <ItemsMode
+          list={selected}
+          onCameraActive={onCameraActive}
+          onChange={persistList}
+          usesCamera
+        />
+      </>
+    )
+  }
+
+  if (selected) {
+    return (
+      <>
+        <button className="secondary-button" type="button" onClick={() => setSelectedId('')}>
+          Alla listor
+        </button>
+        <h3>{selected.title}</h3>
+        <ChecklistEditor list={selected} onChange={persistList} />
+        <button className="primary-button" type="button" onClick={() => setCameraOpen(true)}>
+          Kamera
+        </button>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <p className="smart-camera-note">Välj en lista, redigera den och kontrollera sakerna med kamera. Befintliga listor skrivs inte över.</p>
+      {lists.length > 0 && (
+        <nav className="smart-camera-mode-grid is-secondary" aria-label="Sparade ta-med-listor">
+          {lists.map((list) => (
+            <button key={list.id} className="smart-camera-mode-chip" type="button" onClick={() => setSelectedId(list.id)}>
+              <strong>{list.title}</strong>
+            </button>
+          ))}
+        </nav>
+      )}
+      <h3>Ny lista</h3>
+      <nav className="smart-camera-mode-grid is-secondary" aria-label="Mallar för ta-med-listor">
+        {carryListTemplates.filter((template) => !existingContextIds.has(template.contextId)).map((template) => (
+          <button
+            key={template.contextId}
+            className="smart-camera-mode-chip"
+            type="button"
+            onClick={() => {
+              const next = createChecklist(template)
+              persistList(next)
+              setSelectedId(next.id)
+            }}
+          >
+            <strong>{template.title}</strong>
+          </button>
+        ))}
+      </nav>
+    </>
+  )
+}
+
 function loadMemoryStateOrDefaults() {
   const loaded = loadMemoryState()
   if (loaded.checklists.length) return loaded
@@ -482,6 +588,9 @@ export default function SmartCameraModeViews({
         <ForgottenItemsCheck list={carryList} onBack={onBack} onCameraActive={onCameraActive} />
       )}
       {selected.id === 'get-ready' && <GetReadyMode memory={memory} onSave={persist} />}
+      {selected.id === 'carry-lists' && (
+        <CarryListsMode memory={memory} onCameraActive={onCameraActive} onSave={persist} />
+      )}
       {selected.id === 'ask-ai' && (
         <>
           {voiceBar}

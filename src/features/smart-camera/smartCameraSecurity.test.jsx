@@ -97,6 +97,15 @@ describe('Smart Camera security', () => {
     stage.unmount()
   })
 
+  it('opens Mina ta-med-listor from Mer without the old Get Ready checklists', () => {
+    const stage = mountStage()
+    stage.click('Mina ta-med-listor')
+    expect(stage.container.textContent).toContain('Välj en lista')
+    expect(stage.container.textContent).not.toContain('Att göra')
+    expect(getUserMedia).not.toHaveBeenCalled()
+    stage.unmount()
+  })
+
   it('never asks for the microphone together with the camera', () => {
     const stage = mountStage()
     stage.click('Kolla mig')

@@ -2,6 +2,10 @@ import { getSmartCameraHubModes } from '../smartCameraModes.js'
 
 export default function SmartCameraHub({ flags, onSelectMode }) {
   const { primary, secondary } = getSmartCameraHubModes(flags)
+  const merModes = [
+    ...secondary.filter((mode) => mode.id === 'carry-lists'),
+    ...secondary.filter((mode) => mode.id !== 'carry-lists'),
+  ]
 
   return (
     <div className="smart-camera-hub">
@@ -18,11 +22,11 @@ export default function SmartCameraHub({ flags, onSelectMode }) {
           </button>
         ))}
       </nav>
-      {secondary.length > 0 && (
+      {merModes.length > 0 && (
         <>
           <h3 className="smart-camera-hub-more">Mer</h3>
           <nav className="smart-camera-mode-grid is-secondary" aria-label="Fler Smart kamera-lägen">
-            {secondary.map((mode) => (
+            {merModes.map((mode) => (
               <button key={mode.id} className="smart-camera-mode-chip" type="button" onClick={() => onSelectMode(mode.id)}>
                 <span aria-hidden="true">{mode.icon}</span>
                 <strong>{mode.label}</strong>

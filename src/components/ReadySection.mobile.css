@@ -111,6 +111,15 @@
     min-height: 84px;
   }
 
+  #app-section-redo .ready-companion-modal {
+    inset: auto 8px max(104px, calc(env(safe-area-inset-bottom) + 100px)) 8px;
+    padding: 12px;
+  }
+
+  #app-section-redo .companion-panel.is-ready {
+    padding: 0.75rem;
+  }
+
   #app-section-redo .ready-memory,
   #app-section-redo .ready-next {
     position: relative;

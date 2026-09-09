@@ -5,6 +5,7 @@ import './i18n/index.js'
 import App from './App.jsx'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import './dark-theme.css'
+import './ai-coach-mobile.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

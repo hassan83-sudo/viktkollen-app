@@ -304,6 +304,8 @@ export const placeSv = {
     allOkCheckin: {
       title: 'Allt är okej',
       body: 'Snabb checkning till vårdnadshavare utan falska trygghetsgarantier.',
+      empty: 'Check-in är inte ansluten till någon mottagare ännu.',
+      emptyBody: 'När funktionen är ansluten kan du meddela familjen att allt är okej.',
     },
     placeHistory: {
       title: 'Platshistorik',
@@ -387,6 +389,8 @@ export const placeEn = {
     allOkCheckin: {
       title: 'All OK',
       body: 'Quick check-in to guardians without false safety guarantees.',
+      empty: 'Check-in is not connected to any recipient yet.',
+      emptyBody: 'Once the feature is connected, you will be able to let your family know that everything is okay.',
     },
     placeHistory: {
       title: 'Location history',

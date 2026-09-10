@@ -228,4 +228,70 @@ describe('PlaceSection', () => {
     expect(placeResourcesSource).toContain('Vid akut fara, ring 112.')
     expect(placeResourcesSource).toContain('In case of immediate danger, call 112.')
   })
+
+  it('does not make Allt är okej openable without consent', () => {
+    expect(placeSource).toContain("featureId === 'allOkCheckin' && state.consentGranted")
+  })
+
+  it('makes Allt är okej openable with consent, without changing the six earlier openable cards', () => {
+    expect(placeSource).toContain('setIsAllOkOpen(true)')
+    expect(placeSource).toContain(
+      'familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable || placeNotificationsOpenable || sosOpenable || allOkOpenable',
+    )
+    expect(placeSource).toContain("role: 'button'")
+    expect(placeSource).toContain('tabIndex: 0')
+    // Every earlier card's own gating condition and handler — click and keyboard —
+    // is still present, byte for byte; only a sibling branch was added this sprint.
+    expect(placeSource).toContain("featureId === 'familyMap' && state.consentGranted")
+    expect(placeSource).toContain('setIsFamilyMapOpen(true)')
+    expect(placeSource).toContain("featureId === 'childLocation' && state.consentGranted")
+    expect(placeSource).toContain('setIsChildLocationOpen(true)')
+    expect(placeSource).toContain("featureId === 'status' && state.consentGranted")
+    expect(placeSource).toContain('setIsStatusOpen(true)')
+    expect(placeSource).toContain("featureId === 'safePlaces' && state.consentGranted")
+    expect(placeSource).toContain('setIsSafePlacesOpen(true)')
+    expect(placeSource).toContain("featureId === 'placeNotifications' && state.consentGranted")
+    expect(placeSource).toContain('setIsPlaceNotificationsOpen(true)')
+    expect(placeSource).toContain("featureId === 'sos' && state.consentGranted")
+    expect(placeSource).toContain('setIsSosOpen(true)')
+    // Enter and Space follow the same shared keyboard handler as every other card.
+    expect(placeSource).toContain("if (event.key === 'Enter' || event.key === ' ')")
+  })
+
+  it('closes the Allt är okej modal automatically if consent is revoked', () => {
+    expect(placeSource).toContain('if (!state.consentGranted) setIsAllOkOpen(false)')
+  })
+
+  it('shows an honest not-yet-connected check-in with no fabricated recipient, time or position', () => {
+    expect(placeSource).toContain('isAllOkOpen && state.consentGranted')
+    expect(placeSource).toContain("t('features.allOkCheckin.title')")
+    expect(placeSource).toContain("t('features.allOkCheckin.empty')")
+    expect(placeSource).toContain("t('features.allOkCheckin.emptyBody')")
+    expect(placeSource).toContain("t('common:actions.close')")
+    // No working send action was introduced for this card.
+    expect(placeSource).not.toContain('setIsAllOkOpen(false)}>{t(\'features.allOkCheckin.action\')')
+    expect(placeSource).not.toContain('features.allOkCheckin.action')
+    expect(placeSource).not.toContain('tel:')
+    expect(placeSource).not.toContain('sms:')
+    expect(placeSource).not.toContain('mailto:')
+    expect(placeSource).not.toContain('fetch(')
+    expect(placeSource).not.toContain('axios')
+    expect(placeSource).not.toContain('WebSocket')
+    expect(placeSource).not.toContain('supabase')
+    expect(placeSource).not.toContain('Notification.')
+    expect(placeSource).not.toContain('serviceWorker')
+    expect(placeSource).not.toContain('setInterval')
+    expect(placeSource).not.toContain('setTimeout')
+    expect(placeSource).not.toContain('navigator.geolocation')
+    expect(placeSource).not.toContain('getCurrentPosition')
+    expect(placeSource).not.toContain('watchPosition')
+    expect(placeSource).not.toContain('latitude')
+    expect(placeSource).not.toContain('longitude')
+    expect(placeSource).not.toContain('Skickat')
+    expect(placeSource).not.toContain('skickades')
+    expect(placeResourcesSource).toContain('Check-in är inte ansluten till någon mottagare ännu.')
+    expect(placeResourcesSource).toContain('Check-in is not connected to any recipient yet.')
+    expect(placeResourcesSource).toContain('När funktionen är ansluten kan du meddela familjen att allt är okej.')
+    expect(placeResourcesSource).toContain('Once the feature is connected, you will be able to let your family know that everything is okay.')
+  })
 })

@@ -131,23 +131,10 @@ export function createRealtimeVoiceController({
 
     closed = false
     setActive?.(true)
-    applyPhase('thinking')
     onStatus?.('Startar röstsamtal...')
 
-    const session = await requestSession?.()
-    if (closed) return { ok: false, reason: 'closed' }
-
-    if (!session?.available || !session.clientSecret) {
-      setActive?.(false)
-      onStatus?.(session?.message || VOICE_UNAVAILABLE_MESSAGE)
-      return { ok: false, reason: 'unavailable' }
-    }
-
-    sessionLimits = {
-      idleTimeoutMs: Number(session.idleTimeoutMs) || 45000,
-      maxSessionMs: Number(session.maxSessionMs) || 180000,
-    }
-
+    // Privacy first: do not mint a remote realtime session or send coach context
+    // until the user has explicitly granted microphone access for this start.
     try {
       mediaStream = await getUserMedia({ audio: true })
     } catch (error) {
@@ -162,7 +149,29 @@ export function createRealtimeVoiceController({
 
     if (closed) {
       mediaStream?.getTracks?.().forEach((track) => track.stop())
+      mediaStream = null
       return { ok: false, reason: 'closed' }
+    }
+
+    applyPhase('thinking')
+    const session = await requestSession?.()
+    if (closed) {
+      mediaStream?.getTracks?.().forEach((track) => track.stop())
+      mediaStream = null
+      return { ok: false, reason: 'closed' }
+    }
+
+    if (!session?.available || !session.clientSecret) {
+      mediaStream?.getTracks?.().forEach((track) => track.stop())
+      mediaStream = null
+      setActive?.(false)
+      onStatus?.(session?.message || VOICE_UNAVAILABLE_MESSAGE)
+      return { ok: false, reason: 'unavailable' }
+    }
+
+    sessionLimits = {
+      idleTimeoutMs: Number(session.idleTimeoutMs) || 45000,
+      maxSessionMs: Number(session.maxSessionMs) || 180000,
     }
 
     try {
@@ -174,6 +183,7 @@ export function createRealtimeVoiceController({
       })
     } catch {
       mediaStream?.getTracks?.().forEach((track) => track.stop())
+      mediaStream = null
       setActive?.(false)
       onStatus?.(VOICE_UNAVAILABLE_MESSAGE)
       return { ok: false, reason: 'unavailable' }

@@ -28,6 +28,7 @@ function PlaceSection({ activeSection }) {
   const { t } = useTranslation('place')
   const [state, setState] = useState(() => loadPlaceState())
   const [isFamilyMapOpen, setIsFamilyMapOpen] = useState(false)
+  const [isChildLocationOpen, setIsChildLocationOpen] = useState(false)
 
   useEffect(() => {
     savePlaceState(state)
@@ -35,6 +36,10 @@ function PlaceSection({ activeSection }) {
 
   useEffect(() => {
     if (!state.consentGranted) setIsFamilyMapOpen(false)
+  }, [state.consentGranted])
+
+  useEffect(() => {
+    if (!state.consentGranted) setIsChildLocationOpen(false)
   }, [state.consentGranted])
 
   function availabilityLabel(availability) {
@@ -82,13 +87,19 @@ function PlaceSection({ activeSection }) {
           {placeFeatureIds.map((featureId) => {
             const availability = getPlaceFeatureAvailability(featureId, state)
             const familyMapOpenable = featureId === 'familyMap' && state.consentGranted
-            const openableProps = familyMapOpenable
+            const childLocationOpenable = featureId === 'childLocation' && state.consentGranted
+            const isCardOpenable = familyMapOpenable || childLocationOpenable
+            const openableProps = isCardOpenable
               ? {
-                  onClick: () => setIsFamilyMapOpen(true),
+                  onClick: () => {
+                    if (familyMapOpenable) setIsFamilyMapOpen(true)
+                    else if (childLocationOpenable) setIsChildLocationOpen(true)
+                  },
                   onKeyDown: (event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault()
-                      setIsFamilyMapOpen(true)
+                      if (familyMapOpenable) setIsFamilyMapOpen(true)
+                      else if (childLocationOpenable) setIsChildLocationOpen(true)
                     }
                   },
                   role: 'button',
@@ -97,7 +108,7 @@ function PlaceSection({ activeSection }) {
               : {}
             return (
               <article
-                className={`place-feature-card is-${availability}${familyMapOpenable ? ' is-openable' : ''}`}
+                className={`place-feature-card is-${availability}${isCardOpenable ? ' is-openable' : ''}`}
                 key={featureId}
                 {...openableProps}
               >
@@ -143,6 +154,17 @@ function PlaceSection({ activeSection }) {
             <p>{t('features.familyMap.empty')}</p>
             <p>{t('features.familyMap.emptyBody')}</p>
             <button type="button" onClick={() => setIsFamilyMapOpen(false)}>
+              {t('common:actions.close')}
+            </button>
+          </div>
+        ) : null}
+
+        {isChildLocationOpen && state.consentGranted ? (
+          <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.childLocation.title')}>
+            <h3>{t('features.childLocation.title')}</h3>
+            <p>{t('features.childLocation.empty')}</p>
+            <p>{t('features.childLocation.emptyBody')}</p>
+            <button type="button" onClick={() => setIsChildLocationOpen(false)}>
               {t('common:actions.close')}
             </button>
           </div>

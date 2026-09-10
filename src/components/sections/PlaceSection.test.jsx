@@ -54,4 +54,28 @@ describe('PlaceSection', () => {
     expect(placeResourcesSource).toContain('Ingen delar sin plats med dig ännu.')
     expect(placeResourcesSource).toContain('No one is sharing their location with you yet.')
   })
+
+  it('makes Barnets plats openable only after consent, without changing Familjekarta', () => {
+    expect(placeSource).toContain("featureId === 'childLocation' && state.consentGranted")
+    expect(placeSource).toContain('setIsChildLocationOpen(true)')
+    expect(placeSource).toContain('const isCardOpenable = familyMapOpenable || childLocationOpenable')
+    // Familjekarta's own gating condition and handler are still present, byte for byte.
+    expect(placeSource).toContain("featureId === 'familyMap' && state.consentGranted")
+    expect(placeSource).toContain('setIsFamilyMapOpen(true)')
+  })
+
+  it('closes the Barnets plats modal automatically if consent is revoked', () => {
+    expect(placeSource).toContain('if (!state.consentGranted) setIsChildLocationOpen(false)')
+  })
+
+  it('shows an honest empty state for Barnets plats with no fabricated position, time or battery level', () => {
+    expect(placeSource).toContain('isChildLocationOpen && state.consentGranted')
+    expect(placeSource).toContain("t('features.childLocation.title')")
+    expect(placeSource).toContain("t('features.childLocation.empty')")
+    expect(placeSource).toContain("t('features.childLocation.emptyBody')")
+    expect(placeSource).not.toContain('batteryLevel')
+    expect(placeSource).not.toContain('live')
+    expect(placeResourcesSource).toContain('Ingen aktuell plats är delad ännu.')
+    expect(placeResourcesSource).toContain('No current location has been shared yet.')
+  })
 })

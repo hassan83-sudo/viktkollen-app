@@ -273,6 +273,8 @@ export const placeSv = {
     childLocation: {
       title: 'Barnets plats',
       body: 'Aktuell eller senast kända plats — visas bara med godkänd delning och riktig anslutning.',
+      empty: 'Ingen aktuell plats är delad ännu.',
+      emptyBody: 'Senaste delade plats visas här när en familjemedlem frivilligt delar den.',
     },
     status: {
       title: 'Status',
@@ -346,6 +348,8 @@ export const placeEn = {
     childLocation: {
       title: "Child's location",
       body: 'Current or last known location — shown only with approved sharing and a real connection.',
+      empty: 'No current location has been shared yet.',
+      emptyBody: 'The most recently shared location appears here once a family member chooses to share it.',
     },
     status: {
       title: 'Status',

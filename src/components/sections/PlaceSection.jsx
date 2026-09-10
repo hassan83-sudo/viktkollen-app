@@ -27,10 +27,15 @@ const featureIcons = {
 function PlaceSection({ activeSection }) {
   const { t } = useTranslation('place')
   const [state, setState] = useState(() => loadPlaceState())
+  const [isFamilyMapOpen, setIsFamilyMapOpen] = useState(false)
 
   useEffect(() => {
     savePlaceState(state)
   }, [state])
+
+  useEffect(() => {
+    if (!state.consentGranted) setIsFamilyMapOpen(false)
+  }, [state.consentGranted])
 
   function availabilityLabel(availability) {
     if (availability === placeAvailability.requiresConsent) return t('status.requiresConsent')
@@ -76,8 +81,26 @@ function PlaceSection({ activeSection }) {
         <section className="place-feature-grid" aria-label={t('featuresAria')}>
           {placeFeatureIds.map((featureId) => {
             const availability = getPlaceFeatureAvailability(featureId, state)
+            const familyMapOpenable = featureId === 'familyMap' && state.consentGranted
+            const openableProps = familyMapOpenable
+              ? {
+                  onClick: () => setIsFamilyMapOpen(true),
+                  onKeyDown: (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      setIsFamilyMapOpen(true)
+                    }
+                  },
+                  role: 'button',
+                  tabIndex: 0,
+                }
+              : {}
             return (
-              <article className={`place-feature-card is-${availability}`} key={featureId}>
+              <article
+                className={`place-feature-card is-${availability}${familyMapOpenable ? ' is-openable' : ''}`}
+                key={featureId}
+                {...openableProps}
+              >
                 <div className="place-feature-top">
                   <span aria-hidden="true">{featureIcons[featureId]}</span>
                   <span className={`place-status is-${availability}`}>{availabilityLabel(availability)}</span>
@@ -113,6 +136,17 @@ function PlaceSection({ activeSection }) {
             <li>{t('limits.separateSprint')}</li>
           </ul>
         </section>
+
+        {isFamilyMapOpen && state.consentGranted ? (
+          <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.familyMap.title')}>
+            <h3>{t('features.familyMap.title')}</h3>
+            <p>{t('features.familyMap.empty')}</p>
+            <p>{t('features.familyMap.emptyBody')}</p>
+            <button type="button" onClick={() => setIsFamilyMapOpen(false)}>
+              {t('common:actions.close')}
+            </button>
+          </div>
+        ) : null}
       </div>
     </AppSection>
   )

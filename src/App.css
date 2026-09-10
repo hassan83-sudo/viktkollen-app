@@ -16493,6 +16493,15 @@ html:has(#app-section-more.is-active),
   margin-top: auto;
 }
 
+.place-feature-card.is-openable {
+  cursor: pointer;
+}
+
+.place-feature-card.is-openable:focus-visible {
+  outline: 2px solid var(--ready-cyan);
+  outline-offset: 2px;
+}
+
 .app-shell:has(#app-section-place.is-active) .bottom-nav a.is-active span {
   width: 34px;
   height: 34px;

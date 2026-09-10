@@ -267,6 +267,8 @@ export const placeSv = {
     familyMap: {
       title: 'Familjekarta',
       body: 'Se var familjemedlemmar befinner sig när delning är aktiv och ansluten.',
+      empty: 'Ingen delar sin plats med dig ännu.',
+      emptyBody: 'Familjemedlemmar visas här först när de frivilligt delar sin plats med dig.',
     },
     childLocation: {
       title: 'Barnets plats',
@@ -338,6 +340,8 @@ export const placeEn = {
     familyMap: {
       title: 'Family map',
       body: 'See where family members are when sharing is active and connected.',
+      empty: 'No one is sharing their location with you yet.',
+      emptyBody: 'Family members appear here once they choose to share their location with you.',
     },
     childLocation: {
       title: "Child's location",

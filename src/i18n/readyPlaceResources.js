@@ -310,6 +310,8 @@ export const placeSv = {
     placeHistory: {
       title: 'Platshistorik',
       body: 'Tidigare platser och rörelser — endast med samtycke och riktig backend.',
+      empty: 'Ingen platshistorik finns ännu.',
+      emptyBody: 'Platshistorik visas här först när funktionen har aktiverats och verkliga platsuppdateringar har sparats.',
     },
     batterySaver: {
       title: 'Batterisnålt läge',
@@ -395,6 +397,8 @@ export const placeEn = {
     placeHistory: {
       title: 'Location history',
       body: 'Past locations and movements — only with consent and a real backend.',
+      empty: 'No location history exists yet.',
+      emptyBody: 'Location history will appear here once the feature has been enabled and real location updates have been saved.',
     },
     batterySaver: {
       title: 'Battery saver mode',

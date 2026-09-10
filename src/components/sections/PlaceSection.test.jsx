@@ -294,4 +294,86 @@ describe('PlaceSection', () => {
     expect(placeResourcesSource).toContain('När funktionen är ansluten kan du meddela familjen att allt är okej.')
     expect(placeResourcesSource).toContain('Once the feature is connected, you will be able to let your family know that everything is okay.')
   })
+
+  it('does not make Platshistorik openable without consent', () => {
+    expect(placeSource).toContain("featureId === 'placeHistory' && state.consentGranted")
+  })
+
+  it('makes Platshistorik openable with consent, without changing the seven earlier openable cards', () => {
+    expect(placeSource).toContain('setIsPlaceHistoryOpen(true)')
+    expect(placeSource).toContain(
+      'familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable || placeNotificationsOpenable || sosOpenable || allOkOpenable || placeHistoryOpenable',
+    )
+    expect(placeSource).toContain("role: 'button'")
+    expect(placeSource).toContain('tabIndex: 0')
+    // role="button"/tabIndex=0 are only ever applied through the shared
+    // openableProps spread — every non-openable card still renders with `: {}`.
+    expect(placeSource).toContain(': {}')
+    // Enter and Space follow the same shared keyboard handler as every other card.
+    expect(placeSource).toContain("if (event.key === 'Enter' || event.key === ' ')")
+    // Every earlier card's own gating condition and handler is still present,
+    // byte for byte — only a sibling branch was added this sprint.
+    expect(placeSource).toContain("featureId === 'familyMap' && state.consentGranted")
+    expect(placeSource).toContain('setIsFamilyMapOpen(true)')
+    expect(placeSource).toContain("featureId === 'childLocation' && state.consentGranted")
+    expect(placeSource).toContain('setIsChildLocationOpen(true)')
+    expect(placeSource).toContain("featureId === 'status' && state.consentGranted")
+    expect(placeSource).toContain('setIsStatusOpen(true)')
+    expect(placeSource).toContain("featureId === 'safePlaces' && state.consentGranted")
+    expect(placeSource).toContain('setIsSafePlacesOpen(true)')
+    expect(placeSource).toContain("featureId === 'placeNotifications' && state.consentGranted")
+    expect(placeSource).toContain('setIsPlaceNotificationsOpen(true)')
+    expect(placeSource).toContain("featureId === 'sos' && state.consentGranted")
+    expect(placeSource).toContain('setIsSosOpen(true)')
+    expect(placeSource).toContain("featureId === 'allOkCheckin' && state.consentGranted")
+    expect(placeSource).toContain('setIsAllOkOpen(true)')
+  })
+
+  it('closes the Platshistorik modal automatically if consent is revoked', () => {
+    expect(placeSource).toContain('if (!state.consentGranted) setIsPlaceHistoryOpen(false)')
+  })
+
+  it('shows an honest empty state for Platshistorik with no fabricated history and no tracking, storage or backend introduced', () => {
+    expect(placeSource).toContain('isPlaceHistoryOpen && state.consentGranted')
+    expect(placeSource).toContain("t('features.placeHistory.title')")
+    expect(placeSource).toContain("t('features.placeHistory.empty')")
+    expect(placeSource).toContain("t('features.placeHistory.emptyBody')")
+    expect(placeSource).toContain("t('common:actions.close')")
+    // No fabricated history entries: no addresses, coordinates, dates/times,
+    // people, routes, arrival/departure or entry counts.
+    expect(placeSource).not.toContain('adress')
+    expect(placeSource).not.toContain('address')
+    expect(placeSource).not.toContain('latitude')
+    expect(placeSource).not.toContain('longitude')
+    expect(placeSource).not.toContain('rutt')
+    expect(placeSource).not.toContain('resa')
+    expect(placeSource).not.toContain('anlände')
+    expect(placeSource).not.toContain('lämnade')
+    expect(placeSource).not.toContain('Hemma')
+    expect(placeSource).not.toContain('I skolan')
+    expect(placeSource).not.toContain('Senast sedd')
+    // No tracking, storage, timers or network/backend code was introduced.
+    expect(placeSource).not.toContain('navigator.geolocation')
+    expect(placeSource).not.toContain('getCurrentPosition')
+    expect(placeSource).not.toContain('watchPosition')
+    expect(placeSource).not.toContain('setInterval')
+    expect(placeSource).not.toContain('setTimeout')
+    expect(placeSource).not.toContain('localStorage')
+    expect(placeSource).not.toContain('IndexedDB')
+    expect(placeSource).not.toContain('indexedDB')
+    expect(placeSource).not.toContain('fetch(')
+    expect(placeSource).not.toContain('axios')
+    expect(placeSource).not.toContain('WebSocket')
+    expect(placeSource).not.toContain('supabase')
+    expect(placeSource).not.toContain('Notification.')
+    expect(placeSource).not.toContain('serviceWorker')
+    expect(placeResourcesSource).toContain('Ingen platshistorik finns ännu.')
+    expect(placeResourcesSource).toContain('No location history exists yet.')
+    expect(placeResourcesSource).toContain(
+      'Platshistorik visas här först när funktionen har aktiverats och verkliga platsuppdateringar har sparats.',
+    )
+    expect(placeResourcesSource).toContain(
+      'Location history will appear here once the feature has been enabled and real location updates have been saved.',
+    )
+  })
 })

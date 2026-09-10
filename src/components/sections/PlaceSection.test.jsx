@@ -58,7 +58,8 @@ describe('PlaceSection', () => {
   it('makes Barnets plats openable only after consent, without changing Familjekarta', () => {
     expect(placeSource).toContain("featureId === 'childLocation' && state.consentGranted")
     expect(placeSource).toContain('setIsChildLocationOpen(true)')
-    expect(placeSource).toContain('const isCardOpenable = familyMapOpenable || childLocationOpenable')
+    expect(placeSource).toContain('const isCardOpenable =')
+    expect(placeSource).toContain('familyMapOpenable || childLocationOpenable')
     // Familjekarta's own gating condition and handler are still present, byte for byte.
     expect(placeSource).toContain("featureId === 'familyMap' && state.consentGranted")
     expect(placeSource).toContain('setIsFamilyMapOpen(true)')
@@ -82,9 +83,8 @@ describe('PlaceSection', () => {
   it('makes Status openable only after consent, without changing Familjekarta or Barnets plats', () => {
     expect(placeSource).toContain("featureId === 'status' && state.consentGranted")
     expect(placeSource).toContain('setIsStatusOpen(true)')
-    expect(placeSource).toContain(
-      'const isCardOpenable = familyMapOpenable || childLocationOpenable || statusOpenable',
-    )
+    expect(placeSource).toContain('const isCardOpenable =')
+    expect(placeSource).toContain('familyMapOpenable || childLocationOpenable || statusOpenable')
     // Familjekarta's and Barnets plats's own gating conditions and handlers are
     // still present, byte for byte — this sprint only added a sibling branch.
     expect(placeSource).toContain("featureId === 'familyMap' && state.consentGranted")
@@ -116,8 +116,9 @@ describe('PlaceSection', () => {
   it('makes Trygga platser openable only after consent, without changing earlier Plats cards', () => {
     expect(placeSource).toContain("featureId === 'safePlaces' && state.consentGranted")
     expect(placeSource).toContain('setIsSafePlacesOpen(true)')
+    expect(placeSource).toContain('const isCardOpenable =')
     expect(placeSource).toContain(
-      'const isCardOpenable = familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable',
+      'familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable',
     )
     // Familjekarta's, Barnets plats's and Status's own gating conditions and
     // handlers are still present, byte for byte — only a sibling branch was added.
@@ -144,5 +145,41 @@ describe('PlaceSection', () => {
     expect(placeSource).not.toContain('longitude')
     expect(placeResourcesSource).toContain('Inga trygga platser är tillagda ännu.')
     expect(placeResourcesSource).toContain('No safe places have been added yet.')
+  })
+
+  it('makes Platsnotiser openable only after consent, without changing earlier Plats cards', () => {
+    expect(placeSource).toContain("featureId === 'placeNotifications' && state.consentGranted")
+    expect(placeSource).toContain('setIsPlaceNotificationsOpen(true)')
+    expect(placeSource).toContain(
+      'familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable || placeNotificationsOpenable',
+    )
+    // Every earlier card's own gating condition and handler is still present,
+    // byte for byte — only a sibling branch was added this sprint.
+    expect(placeSource).toContain("featureId === 'familyMap' && state.consentGranted")
+    expect(placeSource).toContain('setIsFamilyMapOpen(true)')
+    expect(placeSource).toContain("featureId === 'childLocation' && state.consentGranted")
+    expect(placeSource).toContain('setIsChildLocationOpen(true)')
+    expect(placeSource).toContain("featureId === 'status' && state.consentGranted")
+    expect(placeSource).toContain('setIsStatusOpen(true)')
+    expect(placeSource).toContain("featureId === 'safePlaces' && state.consentGranted")
+    expect(placeSource).toContain('setIsSafePlacesOpen(true)')
+  })
+
+  it('closes the Platsnotiser modal automatically if consent is revoked', () => {
+    expect(placeSource).toContain('if (!state.consentGranted) setIsPlaceNotificationsOpen(false)')
+  })
+
+  it('shows an honest empty state for Platsnotiser with no fabricated events, people or times', () => {
+    expect(placeSource).toContain('isPlaceNotificationsOpen && state.consentGranted')
+    expect(placeSource).toContain("t('features.placeNotifications.title')")
+    expect(placeSource).toContain("t('features.placeNotifications.empty')")
+    expect(placeSource).toContain("t('features.placeNotifications.emptyBody')")
+    expect(placeSource).not.toContain('Notification.')
+    expect(placeSource).not.toContain('serviceWorker')
+    expect(placeSource).not.toContain('geofence')
+    expect(placeSource).not.toContain('anlände')
+    expect(placeSource).not.toContain('lämnade')
+    expect(placeResourcesSource).toContain('Inga platsnotiser är aktiverade ännu.')
+    expect(placeResourcesSource).toContain('No place notifications are enabled yet.')
   })
 })

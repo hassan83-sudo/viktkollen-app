@@ -291,6 +291,8 @@ export const placeSv = {
     placeNotifications: {
       title: 'Platsnotiser',
       body: 'Påminnelser när någon lämnar eller anländer till en trygg plats.',
+      empty: 'Inga platsnotiser är aktiverade ännu.',
+      emptyBody: 'Här kan du senare välja notiser för när någon anländer till eller lämnar en trygg plats.',
     },
     sos: {
       title: 'SOS',
@@ -370,6 +372,8 @@ export const placeEn = {
     placeNotifications: {
       title: 'Place notifications',
       body: 'Reminders when someone leaves or arrives at a safe place.',
+      empty: 'No place notifications are enabled yet.',
+      emptyBody: 'Later you can choose notifications for when someone arrives at or leaves a safe place.',
     },
     sos: {
       title: 'SOS',

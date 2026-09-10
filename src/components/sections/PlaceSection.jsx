@@ -31,6 +31,7 @@ function PlaceSection({ activeSection }) {
   const [isChildLocationOpen, setIsChildLocationOpen] = useState(false)
   const [isStatusOpen, setIsStatusOpen] = useState(false)
   const [isSafePlacesOpen, setIsSafePlacesOpen] = useState(false)
+  const [isPlaceNotificationsOpen, setIsPlaceNotificationsOpen] = useState(false)
 
   useEffect(() => {
     savePlaceState(state)
@@ -50,6 +51,10 @@ function PlaceSection({ activeSection }) {
 
   useEffect(() => {
     if (!state.consentGranted) setIsSafePlacesOpen(false)
+  }, [state.consentGranted])
+
+  useEffect(() => {
+    if (!state.consentGranted) setIsPlaceNotificationsOpen(false)
   }, [state.consentGranted])
 
   function availabilityLabel(availability) {
@@ -100,7 +105,9 @@ function PlaceSection({ activeSection }) {
             const childLocationOpenable = featureId === 'childLocation' && state.consentGranted
             const statusOpenable = featureId === 'status' && state.consentGranted
             const safePlacesOpenable = featureId === 'safePlaces' && state.consentGranted
-            const isCardOpenable = familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable
+            const placeNotificationsOpenable = featureId === 'placeNotifications' && state.consentGranted
+            const isCardOpenable =
+              familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable || placeNotificationsOpenable
             const openableProps = isCardOpenable
               ? {
                   onClick: () => {
@@ -108,6 +115,7 @@ function PlaceSection({ activeSection }) {
                     else if (childLocationOpenable) setIsChildLocationOpen(true)
                     else if (statusOpenable) setIsStatusOpen(true)
                     else if (safePlacesOpenable) setIsSafePlacesOpen(true)
+                    else if (placeNotificationsOpenable) setIsPlaceNotificationsOpen(true)
                   },
                   onKeyDown: (event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
@@ -116,6 +124,7 @@ function PlaceSection({ activeSection }) {
                       else if (childLocationOpenable) setIsChildLocationOpen(true)
                       else if (statusOpenable) setIsStatusOpen(true)
                       else if (safePlacesOpenable) setIsSafePlacesOpen(true)
+                      else if (placeNotificationsOpenable) setIsPlaceNotificationsOpen(true)
                     }
                   },
                   role: 'button',
@@ -203,6 +212,22 @@ function PlaceSection({ activeSection }) {
             <p>{t('features.safePlaces.empty')}</p>
             <p>{t('features.safePlaces.emptyBody')}</p>
             <button type="button" onClick={() => setIsSafePlacesOpen(false)}>
+              {t('common:actions.close')}
+            </button>
+          </div>
+        ) : null}
+
+        {isPlaceNotificationsOpen && state.consentGranted ? (
+          <div
+            className="ready-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('features.placeNotifications.title')}
+          >
+            <h3>{t('features.placeNotifications.title')}</h3>
+            <p>{t('features.placeNotifications.empty')}</p>
+            <p>{t('features.placeNotifications.emptyBody')}</p>
+            <button type="button" onClick={() => setIsPlaceNotificationsOpen(false)}>
               {t('common:actions.close')}
             </button>
           </div>

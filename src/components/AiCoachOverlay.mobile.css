@@ -92,6 +92,17 @@
     flex: 0 0 auto;
   }
 
+  .ai-coach-overlay-suggestions .starter-prompts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ai-coach-overlay-suggestions .prompt-chip {
+    width: 100%;
+    min-width: 0;
+    padding-inline: 8px;
+  }
+
   .ai-coach-overlay-body .chat-thread {
     flex: 0 0 auto;
     height: auto;

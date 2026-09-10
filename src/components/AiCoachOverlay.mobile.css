@@ -85,10 +85,19 @@
 
   .ai-coach-overlay-body {
     min-height: 0;
+    overflow-y: auto;
+  }
+
+  .ai-coach-overlay-suggestions {
+    flex: 0 0 auto;
   }
 
   .ai-coach-overlay-body .chat-thread {
+    flex: 0 0 auto;
+    height: auto;
     min-height: 120px;
+    max-height: none;
+    overflow: visible;
     padding: 6px;
   }
 

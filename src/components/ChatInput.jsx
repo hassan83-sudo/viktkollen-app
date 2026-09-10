@@ -43,14 +43,6 @@ function ChatInput({
             />
             <span>AI-röst</span>
           </label>
-          <button
-            className="voice-secondary-button"
-            type="button"
-            onClick={onStopAiVoiceResponse}
-            disabled={!isAiSpeaking}
-          >
-            Avbryt svar
-          </button>
         </div>
       )}
     </form>

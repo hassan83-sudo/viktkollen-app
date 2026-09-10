@@ -197,7 +197,10 @@ export function createVoiceConversationController({
       speechRecoveryTimer = timers.setTimeout(settle, speechRecoveryMs)
 
       try {
-        speechSynthesis.cancel?.()
+        // Do not cancel immediately before speak: iOS Safari can silently drop
+        // the new utterance in that cancel -> speak race. Existing speech is
+        // cancelled explicitly by stopSpeechOutput when the user interrupts.
+        speechSynthesis.resume?.()
         onSpeechStart?.()
         speechSynthesis.speak(utterance)
       } catch {

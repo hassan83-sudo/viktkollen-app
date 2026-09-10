@@ -192,6 +192,7 @@ function getSafetyRules() {
     'Använd siffror från kontexten: vikt, kalorier, protein, steg, mål.',
     'Hitta inte på data som saknas. Om något saknas, säg det och föreslå nästa loggning.',
     'Ge ett konkret nästa steg, gärna med kyckling, nötkött eller ägg när protein saknas.',
+    'Appen kan läsa upp AI-coachens svar högt när AI-röst är aktiverad. Säg aldrig att du inte kan prata, tala högt eller höras; om användaren frågar, förklara att AI-röst kan läsa upp svaret.',
     '2–6 meningar. Ingen medicinsk diagnos, inga läkemedel, ingen svält.',
   ].join('\n')
 }

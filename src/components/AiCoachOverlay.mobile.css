@@ -1,88 +1,183 @@
 /* AI Coach mobile-specific layout tuning.
-   The robust flex-column + 100dvh structure lives in App.css (shared by all
-   sizes); this file only tightens spacing/sizing for small viewports. */
+   Keep the desktop/shared structure in App.css; mobile only compacts the
+   existing sections so header, voice controls and composer stay usable. */
 
 @media (max-width: 640px) {
   .ai-coach-overlay {
     padding:
-      max(10px, env(safe-area-inset-top))
-      12px
-      max(10px, env(safe-area-inset-bottom));
-    gap: 8px;
+      max(8px, env(safe-area-inset-top))
+      10px
+      max(8px, env(safe-area-inset-bottom));
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  .ai-coach-overlay-header {
+    padding-top: 0;
   }
 
   .ai-coach-overlay-header h2 {
-    font-size: clamp(20px, 6vw, 26px);
-    line-height: 1.05;
+    font-size: clamp(19px, 5.5vw, 24px);
+    line-height: 1;
   }
 
   .ai-coach-overlay-close {
-    width: 40px;
-    height: 40px;
-    min-width: 40px;
-    min-height: 40px;
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
+  }
+
+  .ai-coach-overlay-hero {
+    display: grid;
+    justify-items: center;
+    gap: 2px;
   }
 
   .ai-coach-overlay-hero img {
-    width: min(140px, 38vw);
-    max-height: 16svh;
+    width: min(108px, 29vw);
+    height: auto;
+    max-width: 108px;
+    max-height: 12svh;
+    object-fit: contain;
   }
 
-  .ai-coach-overlay-intro {
-    font-size: 0.8rem;
+  .ai-coach-overlay-intro,
+  .ai-coach-overlay-ai-label {
+    margin: 0;
+    font-size: 0.72rem;
+    line-height: 1.15;
   }
 
   .ai-coach-overlay-voice {
-    gap: 6px;
-    padding: 0 0 4px;
-  }
-
-  .ai-coach-overlay-mic {
-    width: 60px;
-    height: 60px;
-    min-height: 60px;
-    font-size: 1.5rem;
-  }
-
-  .ai-coach-overlay-status {
-    margin: 0;
-    font-size: 0.84rem;
-  }
-
-  .ai-coach-overlay-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
-    width: 100%;
-  }
-
-  .ai-coach-overlay-actions .secondary-button {
-    min-width: 0;
-    min-height: 40px;
-    padding: 8px 6px;
-    font-size: 0.8rem;
-    line-height: 1.15;
-    white-space: normal;
-  }
-
-  .ai-coach-overlay-body .chat-thread {
-    padding: 8px;
-  }
-}
-
-@media (max-width: 380px), (max-height: 700px) {
-  .ai-coach-overlay-hero img {
-    width: min(110px, 32vw);
-    max-height: 12svh;
+    gap: 4px;
+    padding: 0 0 2px;
   }
 
   .ai-coach-overlay-mic {
     width: 52px;
     height: 52px;
     min-height: 52px;
+    font-size: 1.35rem;
   }
 
-  .ai-coach-overlay-header {
-    padding-top: 2px;
+  .ai-coach-overlay-status {
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.15;
+  }
+
+  .ai-coach-overlay-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    width: 100%;
+  }
+
+  .ai-coach-overlay-actions .secondary-button {
+    min-width: 0;
+    min-height: 36px;
+    padding: 6px 4px;
+    font-size: 0.72rem;
+    line-height: 1.05;
+    white-space: nowrap;
+  }
+
+  .ai-coach-overlay-body {
+    min-height: 0;
+  }
+
+  .ai-coach-overlay-body .chat-thread {
+    min-height: 0;
+    padding: 6px;
+  }
+
+  .ai-coach-overlay-composer {
+    min-width: 0;
+  }
+
+  .ai-coach-overlay-composer .chat-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px auto;
+    gap: 6px;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .ai-coach-overlay-composer .chat-form input[type='text'] {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .ai-coach-overlay-composer .mic-button {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+
+  .ai-coach-overlay-composer .send-button {
+    width: auto;
+    min-width: 68px;
+    min-height: 44px;
+    padding: 8px 10px;
+    font-size: 0.86rem;
+    line-height: 1;
+    white-space: nowrap;
+    word-break: normal;
+    overflow-wrap: normal;
+  }
+
+  .ai-coach-overlay-composer .voice-conversation-controls {
+    grid-column: 1 / -1;
+  }
+
+  .chat-engine-status {
+    margin-top: 4px;
+    font-size: 0.72rem;
+    line-height: 1.25;
+  }
+}
+
+@media (max-width: 380px), (max-height: 700px) {
+  .ai-coach-overlay {
+    gap: 4px;
+  }
+
+  .ai-coach-overlay-hero img {
+    width: min(86px, 25vw);
+    max-width: 86px;
+    max-height: 9svh;
+  }
+
+  .ai-coach-overlay-mic {
+    width: 46px;
+    height: 46px;
+    min-height: 46px;
+  }
+
+  .ai-coach-overlay-actions .secondary-button {
+    min-height: 34px;
+    font-size: 0.68rem;
+  }
+
+  .ai-coach-overlay-composer .chat-form {
+    grid-template-columns: minmax(0, 1fr) 40px auto;
+    gap: 5px;
+  }
+
+  .ai-coach-overlay-composer .mic-button {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    min-height: 40px;
+  }
+
+  .ai-coach-overlay-composer .send-button {
+    min-width: 62px;
+    min-height: 40px;
+    padding-inline: 8px;
+    font-size: 0.8rem;
   }
 }

@@ -80,26 +80,24 @@ export async function prepareCoachChatSubmission({
   createdAt,
   text,
 }) {
-  let pendingChatHistory = [
+  const pendingChatHistory = makeRecentCoachChatHistory([
     ...chatMessages,
     {
       createdAt,
       role: 'user',
       text,
     },
-  ]
-  let addMemory = noopMemoryWriter
+  ])
 
-  try {
-    const [{ makePendingCoachChatHistory }, { addAiConversationMemory }] = await Promise.all([
-      loadAiCoachAppContext(),
-      loadAiConversationMemory(),
-    ])
+  let memoryWriterPromise = null
+  const addMemory = (entry) => {
+    if (!memoryWriterPromise) {
+      memoryWriterPromise = loadAiConversationMemory()
+        .then(({ addAiConversationMemory }) => addAiConversationMemory)
+        .catch(() => noopMemoryWriter)
+    }
 
-    pendingChatHistory = makePendingCoachChatHistory(chatMessages, text, createdAt)
-    addMemory = addAiConversationMemory
-  } catch {
-    // Optional memory/context chunks must not block the visible chat flow.
+    void memoryWriterPromise.then((writeMemory) => writeMemory(entry))
   }
 
   return {
@@ -210,6 +208,17 @@ export async function requestCoachChatReply({
   message,
 }) {
   const recentChatHistory = makeRecentCoachChatHistory(chatHistory)
+  const isSimpleGreeting = /^(hej|hejsan|hallå|tjena|god morgon|god kväll)[!.\s]*$/i.test(
+    String(message || '').trim(),
+  )
+
+  if (isSimpleGreeting) {
+    return {
+      reply: await fallbackReply(),
+      source: 'mock',
+    }
+  }
+
   const remote = await requestAiEndpoint(
     buildCoachChatRemotePayload(appData, message, recentChatHistory),
   )

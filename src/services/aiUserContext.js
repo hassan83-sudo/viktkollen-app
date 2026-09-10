@@ -20,6 +20,7 @@ function compactProfile(profile = {}) {
     activityLevelLabel: compact.activityLevelLabel,
     dietaryPreferences: compact.dietaryPreferences,
     displayName: compact.displayName,
+    educationLevel: profile.educationLevel || null,
     goalWeight: compact.goalWeight,
     heightCm: compact.heightCm,
     name: compact.displayName,

@@ -24,6 +24,12 @@ import {
   getCheckMeStep,
   getNextCheckMeIndex,
 } from '../checkMeGuide.js'
+import {
+  collectCarryLists,
+  getDefaultCarryList,
+  getTravelCarryList,
+  upsertCarryList,
+} from '../carryListStorage.js'
 import { compareChecklistToVisibleItems } from '../itemVisibility.js'
 import { getReadyPromptDisclaimer, lastCheckSteps } from '../lastCheckGuide.js'
 import { buildOutfitWeatherFacts, outfitFeedbackDisclaimer, outfitVisionReady } from '../outfitAdvice.js'
@@ -248,7 +254,7 @@ function WhereMode({ memory, onSave }) {
 }
 
 function RecallMode({ memory }) {
-  const source = memory.checklists.find((list) => list.kind === 'carry')?.items || defaultCarryItems
+  const source = getDefaultCarryList(memory).items || defaultCarryItems
   const [round, setRound] = useState(() => startRecallRound(source))
   const [answer, setAnswer] = useState('')
   const [result, setResult] = useState(null)
@@ -337,7 +343,7 @@ function RoutinesMode({ memory, onSave }) {
 function LastCheckMode({ memory, onCameraActive, weather }) {
   const [done, setDone] = useState({})
   const facts = buildOutfitWeatherFacts(weather)
-  const carry = memory.checklists.find((list) => list.kind === 'carry')
+  const carry = getDefaultCarryList(memory)
 
   return (
     <>
@@ -366,10 +372,14 @@ function LastCheckMode({ memory, onCameraActive, weather }) {
 function GetReadyMode({ memory, onSave }) {
   const todo = memory.checklists.find((list) => list.kind === 'todo')
     || createChecklist({ items: defaultTodoItems, kind: 'todo', title: 'Att göra' })
-  const carry = memory.checklists.find((list) => list.kind === 'carry')
-    || createChecklist({ items: defaultCarryItems, kind: 'carry', title: 'Att ta med' })
+  const carry = getDefaultCarryList(memory)
 
   function saveList(nextList) {
+    if (nextList.kind === 'carry') {
+      onSave(upsertCarryList(memory, nextList))
+      return
+    }
+
     const others = memory.checklists.filter((list) => list.id !== nextList.id && list.kind !== nextList.kind)
     const existing = memory.checklists.find((list) => list.kind === nextList.kind)
     onSave({
@@ -397,30 +407,6 @@ const carryListTemplates = Object.freeze([
   { contextId: 'travel', items: ['Pass/ID', 'Laddare', 'Hörlurar', 'Mediciner', 'Ombyte'], title: 'Resa' },
   { contextId: 'everyday', items: defaultCarryItems, title: 'Vanlig dag' },
 ])
-
-function collectCarryLists(memory) {
-  const byId = new Map()
-  ;[...(Array.isArray(memory.packingLists) ? memory.packingLists : []),
-    ...(Array.isArray(memory.checklists) ? memory.checklists.filter((list) => list?.kind === 'carry') : []),
-  ].forEach((list) => {
-    if (list?.id) byId.set(list.id, list)
-  })
-  return [...byId.values()]
-}
-
-function upsertCarryList(memory, nextList) {
-  const inPacking = (memory.packingLists || []).some((list) => list.id === nextList.id)
-  const inChecklists = (memory.checklists || []).some((list) => list.id === nextList.id)
-  return {
-    ...memory,
-    packingLists: inPacking
-      ? memory.packingLists.map((list) => list.id === nextList.id ? nextList : list)
-      : [...(memory.packingLists || []), nextList],
-    checklists: inChecklists
-      ? memory.checklists.map((list) => list.id === nextList.id ? nextList : list)
-      : memory.checklists,
-  }
-}
 
 function CarryListsMode({ memory, onCameraActive, onSave }) {
   const [selectedId, setSelectedId] = useState('')
@@ -576,8 +562,7 @@ export default function SmartCameraModeViews({
     )
   }
 
-  const carryList = memory.checklists.find((list) => list.kind === 'carry')
-    || createChecklist({ items: defaultCarryItems, kind: 'carry', title: 'Att ta med' })
+  const carryList = getDefaultCarryList(memory)
 
   return (
     <div className="smart-camera-mode">
@@ -592,24 +577,9 @@ export default function SmartCameraModeViews({
       {selected.id === 'outfit' && <OutfitMode onCameraActive={onCameraActive} weather={adapters?.weather} />}
       {(selected.id === 'items' || selected.id === 'pack') && (
         <ItemsMode
-          list={selected.id === 'pack'
-            ? memory.checklists.find((list) => list.contextId === 'travel') || createChecklist({
-                contextId: 'travel',
-                items: ['Pass/ID', 'Laddare', 'Hörlurar', 'Mediciner', 'Ombyte'],
-                kind: 'carry',
-                title: 'Resa',
-              })
-            : carryList}
+          list={selected.id === 'pack' ? getTravelCarryList(memory) : carryList}
           onCameraActive={onCameraActive}
-          onChange={(nextList) => {
-            const exists = memory.checklists.some((list) => list.id === nextList.id)
-            persist({
-              ...memory,
-              checklists: exists
-                ? memory.checklists.map((list) => list.id === nextList.id ? nextList : list)
-                : [...memory.checklists, nextList],
-            })
-          }}
+          onChange={(nextList) => persist(upsertCarryList(memory, nextList))}
           usesCamera={selected.usesCamera}
         />
       )}

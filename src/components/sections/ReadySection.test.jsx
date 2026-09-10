@@ -8,6 +8,7 @@ const moreSource = readFileSync(new URL('./MoreSection.jsx', import.meta.url), '
 const navSource = readFileSync(new URL('../../services/navigation/appSections.js', import.meta.url), 'utf8')
 const overviewSource = readFileSync(new URL('../app/OverviewDashboard.jsx', import.meta.url), 'utf8')
 const appCss = readFileSync(new URL('../../App.css', import.meta.url), 'utf8')
+const readyMobileCss = readFileSync(new URL('../ReadySection.mobile.css', import.meta.url), 'utf8')
 const forgotCardSource = readFileSync(new URL('./ready/ForgotSomethingCard.jsx', import.meta.url), 'utf8')
 const checklistCardSource = readFileSync(new URL('./ready/ReadyChecklistCard.jsx', import.meta.url), 'utf8')
 const profileCardSource = readFileSync(new URL('./ready/ProfileCard.jsx', import.meta.url), 'utf8')
@@ -117,5 +118,10 @@ describe('Ready! section wiring', () => {
 
   it('keeps the Fortsätt button on one line by giving the forgot-card form its own grid columns', () => {
     expect(appCss).toContain("button[type='submit'] {\n  white-space: nowrap;")
+  })
+
+  it('clears the bottom nav for every Ready modal on mobile, not only the companion profile', () => {
+    expect(readyMobileCss).toMatch(/#app-section-redo \.ready-modal\s*\{/)
+    expect(readyMobileCss).toContain('max(104px, calc(env(safe-area-inset-bottom) + 100px))')
   })
 })

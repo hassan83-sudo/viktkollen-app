@@ -2,6 +2,7 @@ import {
   appStorageChangedEvent,
   readStorage,
   removeStorage,
+  setSyncDirtyStorageResolver,
   writeStorage,
 } from './appStorageService.js'
 import {
@@ -386,6 +387,13 @@ export function createAuthenticatedUserSyncStorage(userId, storage = getStorage(
   }, storage)
 }
 
+setSyncDirtyStorageResolver((fallback) => {
+  if (activeUserDataScope?.kind === 'authenticated' && activeUserDataScope.storageId) {
+    return createScopedSyncStorage(activeUserDataScope, fallback)
+  }
+  return fallback
+})
+
 export function migrateLegacyProfileAndWeights(scope = activeUserDataScope, validators = {}) {
   const normalizedScope = normalizeUserDataScope(scope)
   if (!normalizedScope.storageId) {
@@ -725,9 +733,39 @@ export function saveCloudBackupMeta(meta) {
   return saveValue(userDataKeys.cloudBackupMeta, meta)
 }
 
+export function readUserDataRecord(key, fallbackValue = null) {
+  if (scopedLogicalKeys.has(key)) {
+    const scopedKey = scopedStorageKey(key)
+    if (scopedKey) {
+      const scopedValue = readJsonStorage(scopedKey, null)
+      if (scopedValue !== null && scopedValue !== undefined) {
+        return scopedValue
+      }
+    }
+  }
+
+  return readStorage(key, fallbackValue)
+}
+
+export function writeUserDataRecord(key, value) {
+  if (scopedLogicalKeys.has(key)) {
+    const scopedKey = scopedStorageKey(key)
+    if (scopedKey) {
+      if (key === userDataKeys.profile) {
+        saveScopedValue(key, normalizeProfile(value, { markCompleted: true }))
+      } else {
+        saveScopedValue(key, value)
+      }
+      return true
+    }
+  }
+
+  return writeStorage(key, value)
+}
+
 export function getUserDataBackupSnapshot() {
   const data = backupStorageKeys.reduce((snapshot, key) => {
-    const value = readStorage(key, null)
+    const value = readUserDataRecord(key, null)
 
     if (value === null || value === undefined) {
       return snapshot
@@ -779,7 +817,7 @@ export function restoreUserDataBackupSnapshot(snapshot) {
       return
     }
 
-    if (writeStorage(key, value)) {
+    if (writeUserDataRecord(key, value)) {
       restoredKeys.push(key)
     } else {
       failedKeys.push(key)

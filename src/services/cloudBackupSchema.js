@@ -1,4 +1,3 @@
-import { readStorage, writeStorage } from './appStorageService.js'
 import { isBodyAnalysisCloudStorageKey, sanitizeValueForCloudTransfer } from './bodyAnalysisHistory.js'
 import { sanitizeMediaPayloadMap } from './security/mediaSafeguard.js'
 import {
@@ -6,7 +5,9 @@ import {
   getCloudClientId,
   getPreRestoreBackup,
   getUserDataBackupSnapshot,
+  readUserDataRecord,
   savePreRestoreBackup,
+  writeUserDataRecord,
 } from './userDataRepository.js'
 
 export const cloudBackupSchemaVersion = 2
@@ -79,7 +80,7 @@ function getAppVersion() {
 // for cloud upload or cloud comparison.
 function readAllowlistedUserData({ forCloudUpload = true } = {}) {
   const sanitized = sanitizeBackupUserData(getBackupStorageKeys().reduce((data, key) => {
-    const value = readStorage(key, null)
+    const value = readUserDataRecord(key, null)
 
     if (value === null || value === undefined) {
       return data
@@ -327,7 +328,7 @@ export function restoreCloudBackupPayload(payload) {
       return
     }
 
-    if (writeStorage(key, value)) {
+    if (writeUserDataRecord(key, value)) {
       restoredKeys.push(key)
     } else {
       failedKeys.push(key)

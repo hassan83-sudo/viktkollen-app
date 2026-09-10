@@ -8,8 +8,11 @@ const afterDue = '2026-07-31T10:00:00.000Z'
 describe('reminderScheduler', () => {
   it('calculates the next daily trigger deterministically', () => {
     const reminder = normalizeReminderState({ reminders: [{ id: 'r1', time: '11:00', title: 'Check-in' }] }, { now }).reminders[0]
+    const next = new Date(getNextReminderAt(reminder, { now }))
 
-    expect(getNextReminderAt(reminder, { now })).toBe('2026-07-31T09:00:00.000Z')
+    expect(next.getHours()).toBe(11)
+    expect(next.getMinutes()).toBe(0)
+    expect(next.getTime()).toBeGreaterThan(new Date(now).getTime())
   })
 
   it('finds due reminders without archived or snoozed reminders', () => {
@@ -69,6 +72,33 @@ describe('reminderScheduler', () => {
 
     expect(() => buildReminderStatus(state, { now })).not.toThrow()
     expect(getDueReminders(state, { now })).toHaveLength(0)
+  })
+
+  it('fires an interval reminder after the first interval from createdAt', () => {
+    const createdAt = '2026-07-31T08:00:00.000Z'
+    const state = normalizeReminderState({
+      reminders: [{ createdAt, id: 'water', intervalMinutes: 60, scheduleType: 'interval', title: 'Vatten' }],
+    }, { now: createdAt })
+
+    expect(getDueReminders(state, { now: createdAt })).toHaveLength(0)
+    expect(getDueReminders(state, { now: '2026-07-31T09:05:00.000Z' }).map((reminder) => reminder.id)).toEqual(['water'])
+    expect(new Date(getNextReminderAt(state.reminders[0], { now: createdAt })).getTime())
+      .toBe(new Date('2026-07-31T09:00:00.000Z').getTime())
+  })
+
+  it('allows interval reminders to fire more than once on the same calendar day', () => {
+    const state = normalizeReminderState({
+      reminders: [{
+        createdAt: '2026-07-31T08:00:00.000Z',
+        id: 'water',
+        intervalMinutes: 60,
+        lastTriggeredAt: '2026-07-31T09:00:00.000Z',
+        scheduleType: 'interval',
+        title: 'Vatten',
+      }],
+    }, { now: '2026-07-31T09:00:00.000Z' })
+
+    expect(getDueReminders(state, { now: '2026-07-31T10:05:00.000Z' }).map((reminder) => reminder.id)).toEqual(['water'])
   })
 
   it('uses a single timer and cleans up', () => {

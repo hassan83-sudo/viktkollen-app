@@ -48,11 +48,18 @@ export function getNextReminderAt(reminder, options = {}) {
   }
 
   if (reminder.scheduleType === 'interval') {
-    const base = reminder.lastTriggeredAt ? new Date(reminder.lastTriggeredAt) : now
-    const safeBase = isValidDate(base) ? base : now
+    const lastTriggered = reminder.lastTriggeredAt ? new Date(reminder.lastTriggeredAt) : null
+    const created = reminder.createdAt ? new Date(reminder.createdAt) : now
+    const base = lastTriggered && isValidDate(lastTriggered)
+      ? lastTriggered
+      : (isValidDate(created) ? created : now)
     const interval = Math.max(60, reminder.intervalMinutes || 60) * 60000
-    const candidate = new Date(safeBase.getTime() + interval)
-    return isValidDate(candidate) && isDateAllowed(reminder, candidate) ? candidate.toISOString() : null
+    let candidate = new Date(base.getTime() + interval)
+    if (!isValidDate(candidate)) return null
+    if (candidate <= now) {
+      candidate = new Date(now.getTime() + interval)
+    }
+    return isDateAllowed(reminder, candidate) ? candidate.toISOString() : null
   }
 
   for (let offset = 0; offset < 370; offset += 1) {
@@ -75,12 +82,19 @@ export function getDueReminders(state, options = {}) {
   return normalized.reminders.filter((reminder) => {
     if (!reminder.enabled || reminder.archivedAt || reminder.pausedAt || reminder.needsReview) return false
     if (reminder.snoozedUntil && new Date(reminder.snoozedUntil) > now) return false
-    if (reminder.lastTriggeredAt && dateText(new Date(reminder.lastTriggeredAt)) === dateText(now)) return false
+    if (
+      reminder.scheduleType !== 'interval'
+      && reminder.lastTriggeredAt
+      && dateText(new Date(reminder.lastTriggeredAt)) === dateText(now)
+    ) return false
     if (reminder.scheduleType === 'interval') {
-      if (!reminder.lastTriggeredAt) return false
-      const lastTriggeredAt = new Date(reminder.lastTriggeredAt).getTime()
-      if (!Number.isFinite(lastTriggeredAt)) return false
-      return lastTriggeredAt + Math.max(60, reminder.intervalMinutes || 60) * 60000 <= now.getTime()
+      const intervalMs = Math.max(60, reminder.intervalMinutes || 60) * 60000
+      const lastTriggered = reminder.lastTriggeredAt ? new Date(reminder.lastTriggeredAt) : null
+      const created = reminder.createdAt ? new Date(reminder.createdAt) : now
+      const base = lastTriggered && isValidDate(lastTriggered)
+        ? lastTriggered
+        : (isValidDate(created) ? created : now)
+      return base.getTime() + intervalMs <= now.getTime() && isDateAllowed(reminder, now)
     }
 
     const candidate = atLocalTime(now, reminder.time)

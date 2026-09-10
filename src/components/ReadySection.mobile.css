@@ -111,6 +111,10 @@
     min-height: 84px;
   }
 
+  #app-section-redo .ready-modal {
+    inset: auto 12px max(104px, calc(env(safe-area-inset-bottom) + 100px)) 12px;
+  }
+
   #app-section-redo .ready-companion-modal {
     inset: auto 8px max(104px, calc(env(safe-area-inset-bottom) + 100px)) 8px;
     padding: 12px;

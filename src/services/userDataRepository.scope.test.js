@@ -1,13 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { writeStorage } from './appStorageService.js'
 import {
   createScopedSyncStorage,
   createUserDataScopeFromAuth,
   getProfile,
   getScopedStorageKey,
+  getUserDataBackupSnapshot,
   getWeights,
   isUserDataScopeHydrated,
   migrateLegacyProfileAndWeights,
+  restoreUserDataBackupSnapshot,
+  saveMeals,
   saveProfile,
   saveWeights,
   setActiveUserDataScope,
@@ -345,5 +349,66 @@ describe('writeJsonStorage skips no-op writes (CLOUD SYNC SPRINT follow-up, fixe
     saveWeights([{ id: 'w1', value: 90 }])
 
     expect(readSyncMetadata(scopedStorage).pendingKeys).toEqual([])
+  })
+})
+
+describe('scoped backup and autosync for authenticated users', () => {
+  it('includes scoped profile and weights in a backup snapshot', () => {
+    const accountA = createUserDataScopeFromAuth({ authLoading: false, userId: 'user-a' })
+    setActiveUserDataScope(accountA)
+    saveProfile({ displayName: 'Ali', heightCm: 178 })
+    saveWeights([{ id: 'w1', value: 90 }])
+
+    const snapshot = getUserDataBackupSnapshot()
+
+    expect(snapshot.data[userDataKeys.profile]).toMatchObject({ displayName: 'Ali' })
+    expect(snapshot.data[userDataKeys.weights]).toEqual([{ id: 'w1', value: 90 }])
+    expect(localStorage.getItem(userDataKeys.profile)).toBeNull()
+  })
+
+  it('restores profile and weights into the active scoped namespace', () => {
+    const accountA = createUserDataScopeFromAuth({ authLoading: false, userId: 'user-a' })
+    setActiveUserDataScope(accountA)
+
+    const snapshot = {
+      app: 'Viktkollen',
+      createdAt: '2026-09-10T00:00:00.000Z',
+      data: {
+        [userDataKeys.profile]: { displayName: 'Restored', heightCm: 180 },
+        [userDataKeys.weights]: [{ id: 'w-restored', value: 81 }],
+      },
+      storageKeys: [userDataKeys.profile, userDataKeys.weights],
+      version: 1,
+    }
+
+    expect(restoreUserDataBackupSnapshot(snapshot).ok).toBe(true)
+    expect(getProfile(null)).toMatchObject({ displayName: 'Restored', heightCm: 180 })
+    expect(getWeights([])).toEqual([{ id: 'w-restored', value: 81 }])
+    expect(localStorage.getItem(userDataKeys.profile)).toBeNull()
+    expect(localStorage.getItem(getScopedStorageKey(userDataKeys.profile, accountA))).toBeTruthy()
+  })
+
+  it('marks meals dirty on scoped sync metadata so autosync can see the change', () => {
+    const accountA = createUserDataScopeFromAuth({ authLoading: false, userId: 'user-a' })
+    setActiveUserDataScope(accountA)
+    const scopedStorage = createScopedSyncStorage(accountA, localStorage)
+
+    saveMeals([{ id: 'm1', name: 'Lunch' }])
+
+    expect(readSyncMetadata(scopedStorage).pendingKeys).toContain(userDataKeys.meals)
+  })
+
+  it('does not re-dirty unchanged meals written through writeStorage', () => {
+    const accountA = createUserDataScopeFromAuth({ authLoading: false, userId: 'user-a' })
+    setActiveUserDataScope(accountA)
+    const scopedStorage = createScopedSyncStorage(accountA, localStorage)
+    const meals = [{ id: 'm1', name: 'Lunch' }]
+
+    writeStorage(userDataKeys.meals, meals)
+    writeSyncMetadata({ ...readSyncMetadata(scopedStorage), pendingKeys: [] }, scopedStorage)
+
+    writeStorage(userDataKeys.meals, [{ id: 'm1', name: 'Lunch' }])
+
+    expect(readSyncMetadata(scopedStorage).pendingKeys).not.toContain(userDataKeys.meals)
   })
 })

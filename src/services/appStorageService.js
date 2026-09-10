@@ -1,5 +1,22 @@
-import { markSyncKeyDirty } from './sync/syncMetadata.js'
+import { markSyncKeyDirty, stableSerialize } from './sync/syncMetadata.js'
 import { normalizeAppError } from './appErrorService.js'
+
+let syncDirtyStorageResolver = null
+
+export function setSyncDirtyStorageResolver(resolver) {
+  syncDirtyStorageResolver = typeof resolver === 'function' ? resolver : null
+}
+
+function getSyncDirtyStorage() {
+  const fallback = canUseLocalStorage() ? window.localStorage : null
+  if (!fallback) return null
+
+  try {
+    return syncDirtyStorageResolver?.(fallback) || fallback
+  } catch {
+    return fallback
+  }
+}
 
 export const appStorageChangedEvent = 'viktkollen:app-storage-changed'
 
@@ -81,8 +98,25 @@ export function writeStorageResult(key, value) {
   }
 
   try {
+    const existingRaw = window.localStorage.getItem(key)
+    if (existingRaw !== null) {
+      try {
+        const existingValue = JSON.parse(existingRaw)
+        if (stableSerialize(existingValue) === stableSerialize(value)) {
+          return {
+            error: null,
+            ok: true,
+            reason: '',
+            type: 'ok',
+          }
+        }
+      } catch {
+        // Existing value is unreadable; fall through and overwrite.
+      }
+    }
+
     window.localStorage.setItem(key, JSON.stringify(value))
-    markSyncKeyDirty(key, window.localStorage)
+    markSyncKeyDirty(key, getSyncDirtyStorage())
     notifyStorageChanged(key)
     return {
       error: null,
@@ -118,7 +152,7 @@ export function removeStorageResult(key) {
 
   try {
     window.localStorage.removeItem(key)
-    markSyncKeyDirty(key, window.localStorage)
+    markSyncKeyDirty(key, getSyncDirtyStorage())
     notifyStorageChanged(key)
     return {
       error: null,

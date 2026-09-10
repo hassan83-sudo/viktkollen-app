@@ -4,8 +4,46 @@ import {
   loadAiConversationMemory,
   loadAiDeterministicReplies,
 } from './aiRuntimeLoader.js'
+import { loadReadyState } from '../../features/ready/readyStore.js'
 
 const noopMemoryWriter = () => {}
+
+const readyLevelContext = {
+  preschool: {
+    id: 'preschool',
+    label: 'Förskola',
+    instruction: 'Anpassa språk, förklaringar, övningar, studietips och exempel till förskolenivå.',
+  },
+  f3: {
+    id: 'f3',
+    label: 'F–3',
+    instruction: 'Anpassa språk, förklaringar, övningar, studietips och exempel till årskurs F–3.',
+  },
+  mid46: {
+    id: 'mid46',
+    label: '4–6',
+    instruction: 'Anpassa språk, förklaringar, övningar, studietips och exempel till årskurs 4–6.',
+  },
+  mid79: {
+    id: 'mid79',
+    label: '7–9',
+    instruction: 'Anpassa språk, förklaringar, övningar, studietips och exempel till årskurs 7–9.',
+  },
+  highschool: {
+    id: 'highschool',
+    label: 'Gymnasiet',
+    instruction: 'Anpassa språk, förklaringar, övningar, studietips och exempel till gymnasienivå.',
+  },
+}
+
+function getReadyEducationLevel() {
+  try {
+    const levelId = loadReadyState()?.levelId
+    return readyLevelContext[levelId] || null
+  } catch {
+    return null
+  }
+}
 
 function compactLiveWeather(weather) {
   if (!weather?.hasLiveWeather) return null
@@ -42,6 +80,7 @@ export function makeRecentCoachChatHistory(chatHistory = []) {
 
 export function buildCoachChatRemotePayload(appData = {}, message, chatHistory = []) {
   const snapshot = appData.healthSnapshot || {}
+  const educationLevel = getReadyEducationLevel()
   const latestCoachReply = [...chatHistory]
     .reverse()
     .find((entry) => entry?.role === 'assistant')?.text || ''
@@ -62,6 +101,7 @@ export function buildCoachChatRemotePayload(appData = {}, message, chatHistory =
     message,
     nutritionGoals: appData.nutritionGoals || {},
     profile: {
+      educationLevel,
       goal: appData.profile?.goal,
       goalWeight: appData.profile?.goalWeight,
       name: appData.profile?.name || appData.profile?.displayName,
@@ -108,9 +148,14 @@ export async function prepareCoachChatSubmission({
 
 export async function buildCurrentAiCoachContext(appData, chatHistory) {
   const { buildAiCoachAppContextFromData } = await loadAiCoachAppContext()
+  const educationLevel = getReadyEducationLevel()
 
   return buildAiCoachAppContextFromData({
     ...appData,
+    profile: {
+      ...(appData.profile || {}),
+      educationLevel,
+    },
     chatHistory,
   })
 }

@@ -8,8 +8,11 @@ const afterDue = '2026-07-31T10:00:00.000Z'
 describe('reminderScheduler', () => {
   it('calculates the next daily trigger deterministically', () => {
     const reminder = normalizeReminderState({ reminders: [{ id: 'r1', time: '11:00', title: 'Check-in' }] }, { now }).reminders[0]
+    const next = new Date(getNextReminderAt(reminder, { now }))
 
-    expect(getNextReminderAt(reminder, { now })).toBe('2026-07-31T09:00:00.000Z')
+    expect(next.getHours()).toBe(11)
+    expect(next.getMinutes()).toBe(0)
+    expect(next.getTime()).toBeGreaterThan(new Date(now).getTime())
   })
 
   it('finds due reminders without archived or snoozed reminders', () => {

@@ -69,16 +69,16 @@
 
   .ai-coach-overlay-actions {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 5px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
     width: 100%;
   }
 
   .ai-coach-overlay-actions .secondary-button {
     min-width: 0;
     min-height: 36px;
-    padding: 6px 4px;
-    font-size: 0.72rem;
+    padding: 6px 2px;
+    font-size: 0.64rem;
     line-height: 1.05;
     white-space: nowrap;
   }
@@ -215,7 +215,7 @@
 
   .ai-coach-overlay-actions .secondary-button {
     min-height: 34px;
-    font-size: 0.68rem;
+    font-size: 0.6rem;
   }
 
   .ai-coach-overlay-body .chat-thread {

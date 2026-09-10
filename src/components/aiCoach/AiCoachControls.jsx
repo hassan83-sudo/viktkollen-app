@@ -32,11 +32,11 @@ function AiCoachControls({
         <button className="secondary-button" type="button" onClick={onToggleVoiceMute} disabled={!isVoiceConversationActive}>
           {isVoiceMuted ? t('coach:overlay.unmute') : t('coach:overlay.mute')}
         </button>
-        <button className="secondary-button" type="button" onClick={onStopAiVoiceResponse} disabled={!isAiSpeaking}>
-          {t('coach:overlay.stopResponse')}
-        </button>
         <button className="secondary-button" type="button" onClick={onClearChat} disabled={!canClearChat}>
           {t('coach:overlay.clearChat')}
+        </button>
+        <button className="secondary-button" type="button" onClick={onStopAiVoiceResponse} disabled={!isAiSpeaking}>
+          {t('coach:overlay.stopResponse')}
         </button>
       </div>
     </div>

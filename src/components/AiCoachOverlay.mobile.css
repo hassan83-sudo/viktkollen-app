@@ -174,14 +174,36 @@
 
   .ai-coach-overlay-composer .voice-conversation-controls {
     grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px;
+    display: flex;
+    justify-content: flex-end;
     align-items: center;
+    width: 100%;
   }
 
   .ai-coach-overlay-composer .voice-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: auto;
     min-width: 0;
+    padding: 7px 11px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .ai-coach-overlay-composer .voice-toggle input {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    margin: 0;
+  }
+
+  .ai-coach-overlay-composer .voice-toggle span {
+    display: inline;
+    width: auto;
+    margin: 0;
+    white-space: nowrap;
   }
 
   .ai-coach-overlay-composer .voice-secondary-button {

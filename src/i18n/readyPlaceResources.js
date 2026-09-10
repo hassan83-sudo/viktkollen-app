@@ -279,6 +279,8 @@ export const placeSv = {
     status: {
       title: 'Status',
       body: 'Framme vid skolan, lämnat skolan eller på väg hem — utan fejkade statusar.',
+      empty: 'Status kan inte fastställas ännu.',
+      emptyBody: 'Status visas här när en familjemedlem frivilligt delar aktuell plats.',
     },
     safePlaces: {
       title: 'Trygga platser',
@@ -354,6 +356,8 @@ export const placeEn = {
     status: {
       title: 'Status',
       body: 'At school, left school or on the way home — without fake statuses.',
+      empty: 'Status cannot be determined yet.',
+      emptyBody: 'Status appears here when a family member voluntarily shares their current location.',
     },
     safePlaces: {
       title: 'Safe places',

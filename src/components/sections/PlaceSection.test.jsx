@@ -78,4 +78,38 @@ describe('PlaceSection', () => {
     expect(placeResourcesSource).toContain('Ingen aktuell plats är delad ännu.')
     expect(placeResourcesSource).toContain('No current location has been shared yet.')
   })
+
+  it('makes Status openable only after consent, without changing Familjekarta or Barnets plats', () => {
+    expect(placeSource).toContain("featureId === 'status' && state.consentGranted")
+    expect(placeSource).toContain('setIsStatusOpen(true)')
+    expect(placeSource).toContain(
+      'const isCardOpenable = familyMapOpenable || childLocationOpenable || statusOpenable',
+    )
+    // Familjekarta's and Barnets plats's own gating conditions and handlers are
+    // still present, byte for byte — this sprint only added a sibling branch.
+    expect(placeSource).toContain("featureId === 'familyMap' && state.consentGranted")
+    expect(placeSource).toContain('setIsFamilyMapOpen(true)')
+    expect(placeSource).toContain("featureId === 'childLocation' && state.consentGranted")
+    expect(placeSource).toContain('setIsChildLocationOpen(true)')
+  })
+
+  it('closes the Status modal automatically if consent is revoked', () => {
+    expect(placeSource).toContain('if (!state.consentGranted) setIsStatusOpen(false)')
+  })
+
+  it('shows an honest empty state for Status with no fabricated status, time or tracking', () => {
+    expect(placeSource).toContain('isStatusOpen && state.consentGranted')
+    expect(placeSource).toContain("t('features.status.title')")
+    expect(placeSource).toContain("t('features.status.empty')")
+    expect(placeSource).toContain("t('features.status.emptyBody')")
+    expect(placeSource).not.toContain('watchPosition')
+    expect(placeSource).not.toContain('getCurrentPosition')
+    expect(placeSource).not.toContain('navigator.geolocation')
+    expect(placeSource).not.toContain('setInterval')
+    expect(placeSource).not.toContain('Hemma')
+    expect(placeSource).not.toContain('I skolan')
+    expect(placeSource).not.toContain('Senast sedd')
+    expect(placeResourcesSource).toContain('Status kan inte fastställas ännu.')
+    expect(placeResourcesSource).toContain('Status cannot be determined yet.')
+  })
 })

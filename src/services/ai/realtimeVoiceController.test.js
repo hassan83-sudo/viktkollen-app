@@ -32,7 +32,7 @@ describe('realtimeVoiceController', () => {
     expect(getAvatarVoicePhaseLabel({ isAiSpeaking: true })).toBe('🔊 AI pratar...')
   })
 
-  it('starts a session with one tap after minting an ephemeral client secret', async () => {
+  it('starts a session with one tap after microphone permission and mints an ephemeral client secret', async () => {
     const mediaStream = { getAudioTracks: () => [{ enabled: true }], getTracks: () => [{ stop: vi.fn() }] }
     const peer = { close: vi.fn() }
     const controller = createRealtimeVoiceController({
@@ -60,8 +60,9 @@ describe('realtimeVoiceController', () => {
     expect(peer.close).toHaveBeenCalled()
   })
 
-  it('handles microphone permission denial without crashing', async () => {
+  it('does not create a remote session when microphone permission is denied', async () => {
     const onStatus = vi.fn()
+    const requestSession = vi.fn(async () => ({ available: true, clientSecret: 'ek_test' }))
     const controller = createRealtimeVoiceController({
       connectRealtime: vi.fn(),
       getUserMedia: vi.fn(async () => {
@@ -70,7 +71,7 @@ describe('realtimeVoiceController', () => {
         throw error
       }),
       onStatus,
-      requestSession: vi.fn(async () => ({ available: true, clientSecret: 'ek_test' })),
+      requestSession,
       setActive: vi.fn(),
       timers: createTimers(),
     })
@@ -79,13 +80,16 @@ describe('realtimeVoiceController', () => {
 
     expect(result).toEqual({ ok: false, reason: 'denied' })
     expect(onStatus).toHaveBeenCalledWith(VOICE_PERMISSION_DENIED_MESSAGE)
+    expect(requestSession).not.toHaveBeenCalled()
   })
 
-  it('handles session failure without exposing secrets', async () => {
+  it('stops microphone tracks when session creation fails', async () => {
+    const stop = vi.fn()
+    const mediaStream = { getAudioTracks: () => [{ enabled: true }], getTracks: () => [{ stop }] }
     const onStatus = vi.fn()
     const controller = createRealtimeVoiceController({
       connectRealtime: vi.fn(),
-      getUserMedia: vi.fn(),
+      getUserMedia: vi.fn(async () => mediaStream),
       onStatus,
       requestSession: vi.fn(async () => ({
         available: false,
@@ -99,6 +103,7 @@ describe('realtimeVoiceController', () => {
 
     expect(result).toEqual({ ok: false, reason: 'unavailable' })
     expect(onStatus).toHaveBeenCalledWith(VOICE_UNAVAILABLE_MESSAGE)
+    expect(stop).toHaveBeenCalled()
     expect(JSON.stringify(result)).not.toMatch(/OPENAI_API_KEY|sk-/)
   })
 

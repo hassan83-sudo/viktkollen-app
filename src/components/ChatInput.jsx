@@ -33,18 +33,16 @@ function ChatInput({
         {isVoiceConversationActive ? 'Avsluta samtal' : '🎙️'}
       </button>
       <button className="send-button" type="submit">Skicka</button>
-      {isVoiceConversationActive && (
-        <div className="voice-conversation-controls">
-          <label className="voice-toggle">
-            <input
-              type="checkbox"
-              checked={isAiVoiceEnabled}
-              onChange={(event) => onAiVoiceEnabledChange(event.target.checked)}
-            />
-            <span>AI-röst</span>
-          </label>
-        </div>
-      )}
+      <div className="voice-conversation-controls">
+        <label className="voice-toggle">
+          <input
+            type="checkbox"
+            checked={isAiVoiceEnabled}
+            onChange={(event) => onAiVoiceEnabledChange(event.target.checked)}
+          />
+          <span>AI-röst</span>
+        </label>
+      </div>
     </form>
   )
 }

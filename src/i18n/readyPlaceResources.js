@@ -285,6 +285,8 @@ export const placeSv = {
     safePlaces: {
       title: 'Trygga platser',
       body: 'Hem, skola och andra godkända platser du själv definierar.',
+      empty: 'Inga trygga platser är tillagda ännu.',
+      emptyBody: 'Här kan du senare lägga till platser som Hem, Skola eller andra platser du vill använda för platsstatus och notiser.',
     },
     placeNotifications: {
       title: 'Platsnotiser',
@@ -362,6 +364,8 @@ export const placeEn = {
     safePlaces: {
       title: 'Safe places',
       body: 'Home, school and other places you define yourself.',
+      empty: 'No safe places have been added yet.',
+      emptyBody: 'Later you can add places like Home, School or others you want to use for status and notifications.',
     },
     placeNotifications: {
       title: 'Place notifications',

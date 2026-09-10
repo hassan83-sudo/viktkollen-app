@@ -30,6 +30,7 @@ function PlaceSection({ activeSection }) {
   const [isFamilyMapOpen, setIsFamilyMapOpen] = useState(false)
   const [isChildLocationOpen, setIsChildLocationOpen] = useState(false)
   const [isStatusOpen, setIsStatusOpen] = useState(false)
+  const [isSafePlacesOpen, setIsSafePlacesOpen] = useState(false)
 
   useEffect(() => {
     savePlaceState(state)
@@ -45,6 +46,10 @@ function PlaceSection({ activeSection }) {
 
   useEffect(() => {
     if (!state.consentGranted) setIsStatusOpen(false)
+  }, [state.consentGranted])
+
+  useEffect(() => {
+    if (!state.consentGranted) setIsSafePlacesOpen(false)
   }, [state.consentGranted])
 
   function availabilityLabel(availability) {
@@ -94,13 +99,15 @@ function PlaceSection({ activeSection }) {
             const familyMapOpenable = featureId === 'familyMap' && state.consentGranted
             const childLocationOpenable = featureId === 'childLocation' && state.consentGranted
             const statusOpenable = featureId === 'status' && state.consentGranted
-            const isCardOpenable = familyMapOpenable || childLocationOpenable || statusOpenable
+            const safePlacesOpenable = featureId === 'safePlaces' && state.consentGranted
+            const isCardOpenable = familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable
             const openableProps = isCardOpenable
               ? {
                   onClick: () => {
                     if (familyMapOpenable) setIsFamilyMapOpen(true)
                     else if (childLocationOpenable) setIsChildLocationOpen(true)
                     else if (statusOpenable) setIsStatusOpen(true)
+                    else if (safePlacesOpenable) setIsSafePlacesOpen(true)
                   },
                   onKeyDown: (event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
@@ -108,6 +115,7 @@ function PlaceSection({ activeSection }) {
                       if (familyMapOpenable) setIsFamilyMapOpen(true)
                       else if (childLocationOpenable) setIsChildLocationOpen(true)
                       else if (statusOpenable) setIsStatusOpen(true)
+                      else if (safePlacesOpenable) setIsSafePlacesOpen(true)
                     }
                   },
                   role: 'button',
@@ -184,6 +192,17 @@ function PlaceSection({ activeSection }) {
             <p>{t('features.status.empty')}</p>
             <p>{t('features.status.emptyBody')}</p>
             <button type="button" onClick={() => setIsStatusOpen(false)}>
+              {t('common:actions.close')}
+            </button>
+          </div>
+        ) : null}
+
+        {isSafePlacesOpen && state.consentGranted ? (
+          <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.safePlaces.title')}>
+            <h3>{t('features.safePlaces.title')}</h3>
+            <p>{t('features.safePlaces.empty')}</p>
+            <p>{t('features.safePlaces.emptyBody')}</p>
+            <button type="button" onClick={() => setIsSafePlacesOpen(false)}>
               {t('common:actions.close')}
             </button>
           </div>

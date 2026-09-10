@@ -112,4 +112,37 @@ describe('PlaceSection', () => {
     expect(placeResourcesSource).toContain('Status kan inte fastställas ännu.')
     expect(placeResourcesSource).toContain('Status cannot be determined yet.')
   })
+
+  it('makes Trygga platser openable only after consent, without changing earlier Plats cards', () => {
+    expect(placeSource).toContain("featureId === 'safePlaces' && state.consentGranted")
+    expect(placeSource).toContain('setIsSafePlacesOpen(true)')
+    expect(placeSource).toContain(
+      'const isCardOpenable = familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable',
+    )
+    // Familjekarta's, Barnets plats's and Status's own gating conditions and
+    // handlers are still present, byte for byte — only a sibling branch was added.
+    expect(placeSource).toContain("featureId === 'familyMap' && state.consentGranted")
+    expect(placeSource).toContain('setIsFamilyMapOpen(true)')
+    expect(placeSource).toContain("featureId === 'childLocation' && state.consentGranted")
+    expect(placeSource).toContain('setIsChildLocationOpen(true)')
+    expect(placeSource).toContain("featureId === 'status' && state.consentGranted")
+    expect(placeSource).toContain('setIsStatusOpen(true)')
+  })
+
+  it('closes the Trygga platser modal automatically if consent is revoked', () => {
+    expect(placeSource).toContain('if (!state.consentGranted) setIsSafePlacesOpen(false)')
+  })
+
+  it('shows an honest empty state for Trygga platser with no fabricated address, coordinate or radius', () => {
+    expect(placeSource).toContain('isSafePlacesOpen && state.consentGranted')
+    expect(placeSource).toContain("t('features.safePlaces.title')")
+    expect(placeSource).toContain("t('features.safePlaces.empty')")
+    expect(placeSource).toContain("t('features.safePlaces.emptyBody')")
+    expect(placeSource).not.toContain('radius')
+    expect(placeSource).not.toContain('address')
+    expect(placeSource).not.toContain('latitude')
+    expect(placeSource).not.toContain('longitude')
+    expect(placeResourcesSource).toContain('Inga trygga platser är tillagda ännu.')
+    expect(placeResourcesSource).toContain('No safe places have been added yet.')
+  })
 })

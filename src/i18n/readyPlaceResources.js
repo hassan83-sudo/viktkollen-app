@@ -298,6 +298,8 @@ export const placeSv = {
       title: 'SOS',
       body: 'Nödläge — kontaktar inte larmcentral förrän riktig integration finns.',
       action: 'SOS (ej ansluten)',
+      empty: 'SOS är inte anslutet till någon nödkontakt ännu.',
+      emptyBody: 'Vid akut fara, ring 112.',
     },
     allOkCheckin: {
       title: 'Allt är okej',
@@ -379,6 +381,8 @@ export const placeEn = {
       title: 'SOS',
       body: 'Emergency — does not contact emergency services until a real integration exists.',
       action: 'SOS (not connected)',
+      empty: 'SOS is not connected to any emergency contact yet.',
+      emptyBody: 'In case of immediate danger, call 112.',
     },
     allOkCheckin: {
       title: 'All OK',

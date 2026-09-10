@@ -182,4 +182,50 @@ describe('PlaceSection', () => {
     expect(placeResourcesSource).toContain('Inga platsnotiser är aktiverade ännu.')
     expect(placeResourcesSource).toContain('No place notifications are enabled yet.')
   })
+
+  it('makes SOS openable only after consent, without changing earlier Plats cards', () => {
+    expect(placeSource).toContain("featureId === 'sos' && state.consentGranted")
+    expect(placeSource).toContain('setIsSosOpen(true)')
+    expect(placeSource).toContain(
+      'familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable || placeNotificationsOpenable || sosOpenable',
+    )
+    // Every earlier card's own gating condition and handler is still present,
+    // byte for byte — only a sibling branch was added this sprint.
+    expect(placeSource).toContain("featureId === 'familyMap' && state.consentGranted")
+    expect(placeSource).toContain('setIsFamilyMapOpen(true)')
+    expect(placeSource).toContain("featureId === 'childLocation' && state.consentGranted")
+    expect(placeSource).toContain('setIsChildLocationOpen(true)')
+    expect(placeSource).toContain("featureId === 'status' && state.consentGranted")
+    expect(placeSource).toContain('setIsStatusOpen(true)')
+    expect(placeSource).toContain("featureId === 'safePlaces' && state.consentGranted")
+    expect(placeSource).toContain('setIsSafePlacesOpen(true)')
+    expect(placeSource).toContain("featureId === 'placeNotifications' && state.consentGranted")
+    expect(placeSource).toContain('setIsPlaceNotificationsOpen(true)')
+    // The pre-existing disabled SOS button is untouched by this sprint.
+    expect(placeSource).toContain('place-action is-disabled')
+    expect(placeSource).toContain("t('features.sos.action')")
+  })
+
+  it('closes the SOS modal automatically if consent is revoked', () => {
+    expect(placeSource).toContain('if (!state.consentGranted) setIsSosOpen(false)')
+  })
+
+  it('shows an honest not-connected SOS status with the 112 fallback and no fabricated dispatch', () => {
+    expect(placeSource).toContain('isSosOpen && state.consentGranted')
+    expect(placeSource).toContain("t('features.sos.title')")
+    expect(placeSource).toContain("t('features.sos.empty')")
+    expect(placeSource).toContain("t('features.sos.emptyBody')")
+    expect(placeSource).not.toContain('tel:')
+    expect(placeSource).not.toContain('sms:')
+    expect(placeSource).not.toContain('fetch(')
+    expect(placeSource).not.toContain('navigator.geolocation')
+    expect(placeSource).not.toContain('Notification.')
+    expect(placeSource).not.toContain('serviceWorker')
+    expect(placeSource).not.toContain('setInterval')
+    expect(placeSource).not.toContain('112')
+    expect(placeResourcesSource).toContain('SOS är inte anslutet till någon nödkontakt ännu.')
+    expect(placeResourcesSource).toContain('SOS is not connected to any emergency contact yet.')
+    expect(placeResourcesSource).toContain('Vid akut fara, ring 112.')
+    expect(placeResourcesSource).toContain('In case of immediate danger, call 112.')
+  })
 })

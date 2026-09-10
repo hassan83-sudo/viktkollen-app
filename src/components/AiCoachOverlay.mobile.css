@@ -88,12 +88,13 @@
   }
 
   .ai-coach-overlay-body .chat-thread {
-    min-height: 0;
+    min-height: 120px;
     padding: 6px;
   }
 
   .ai-coach-overlay-composer {
     min-width: 0;
+    margin-bottom: 64px;
   }
 
   .ai-coach-overlay-composer .chat-form {
@@ -160,6 +161,14 @@
   .ai-coach-overlay-actions .secondary-button {
     min-height: 34px;
     font-size: 0.68rem;
+  }
+
+  .ai-coach-overlay-body .chat-thread {
+    min-height: 96px;
+  }
+
+  .ai-coach-overlay-composer {
+    margin-bottom: 48px;
   }
 
   .ai-coach-overlay-composer .chat-form {

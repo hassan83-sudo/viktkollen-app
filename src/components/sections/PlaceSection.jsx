@@ -10,6 +10,7 @@ import {
   setPlaceSharing,
 } from '../../features/place/placeModel.js'
 import { loadPlaceState, savePlaceState } from '../../features/place/placeStore.js'
+import { loadFamilyLatestLocations } from '../../features/place/placeFamilyMapService.js'
 
 const featureIcons = {
   familyMap: '🗺',
@@ -28,6 +29,8 @@ function PlaceSection({ activeSection }) {
   const { t } = useTranslation('place')
   const [state, setState] = useState(() => loadPlaceState())
   const [isFamilyMapOpen, setIsFamilyMapOpen] = useState(false)
+  const [familyLocations, setFamilyLocations] = useState([])
+  const [familyLocationsLoaded, setFamilyLocationsLoaded] = useState(false)
   const [isChildLocationOpen, setIsChildLocationOpen] = useState(false)
   const [isStatusOpen, setIsStatusOpen] = useState(false)
   const [isSafePlacesOpen, setIsSafePlacesOpen] = useState(false)
@@ -45,6 +48,35 @@ function PlaceSection({ activeSection }) {
   useEffect(() => {
     if (!state.consentGranted) setIsFamilyMapOpen(false)
   }, [state.consentGranted])
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!isFamilyMapOpen || !state.consentGranted) {
+      setFamilyLocations([])
+      setFamilyLocationsLoaded(false)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    setFamilyLocationsLoaded(false)
+    loadFamilyLatestLocations()
+      .then(({ data }) => {
+        if (cancelled) return
+        setFamilyLocations(Array.isArray(data) ? data : [])
+        setFamilyLocationsLoaded(true)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setFamilyLocations([])
+        setFamilyLocationsLoaded(true)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isFamilyMapOpen, state.consentGranted])
 
   useEffect(() => {
     if (!state.consentGranted) setIsChildLocationOpen(false)
@@ -216,8 +248,24 @@ function PlaceSection({ activeSection }) {
         {isFamilyMapOpen && state.consentGranted ? (
           <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.familyMap.title')}>
             <h3>{t('features.familyMap.title')}</h3>
-            <p>{t('features.familyMap.empty')}</p>
-            <p>{t('features.familyMap.emptyBody')}</p>
+            {familyLocationsLoaded && familyLocations.length > 0 ? (
+              <ul>
+                {familyLocations.map((location) => (
+                  <li key={`${location.family_id}:${location.user_id}`}>
+                    <strong>{Number(location.latitude).toFixed(5)}, {Number(location.longitude).toFixed(5)}</strong>
+                    {location.accuracy_meters != null ? <span> ±{Math.round(location.accuracy_meters)} m</span> : null}
+                    {location.location_recorded_at ? (
+                      <small> {new Date(location.location_recorded_at).toLocaleString()}</small>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : familyLocationsLoaded ? (
+              <>
+                <p>{t('features.familyMap.empty')}</p>
+                <p>{t('features.familyMap.emptyBody')}</p>
+              </>
+            ) : null}
             <button type="button" onClick={() => setIsFamilyMapOpen(false)}>
               {t('common:actions.close')}
             </button>

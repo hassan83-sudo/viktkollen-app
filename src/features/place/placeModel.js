@@ -6,7 +6,6 @@ export const placeFeatureIds = Object.freeze([
   'childLocation',
   'status',
   'safePlaces',
-  'placeNotifications',
   'sos',
   'allOkCheckin',
   'placeHistory',

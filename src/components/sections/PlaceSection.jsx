@@ -19,6 +19,10 @@ import {
   updateSafePlaceNotifications,
 } from '../../features/place/placeSafePlacesService.js'
 import {
+  getActiveLocationSharingStatus,
+  subscribeActiveLocationSharingStatus,
+} from '../../features/place/placeLocationSharingService.js'
+import {
   loadSafetyAlerts,
   sendSafetyAlert,
   subscribeSafetyAlerts,
@@ -110,10 +114,13 @@ function PlaceSection({ activeSection }) {
   const [placeHistorySaving, setPlaceHistorySaving] = useState(false)
   const [isBatterySaverOpen, setIsBatterySaverOpen] = useState(false)
   const [isSharingSettingsOpen, setIsSharingSettingsOpen] = useState(false)
+  const [activeSharingStatus, setActiveSharingStatus] = useState(() => getActiveLocationSharingStatus())
 
   useEffect(() => {
     savePlaceState(state)
   }, [state])
+
+  useEffect(() => subscribeActiveLocationSharingStatus(setActiveSharingStatus), [])
 
   useEffect(() => {
     if (!state.consentGranted) setIsFamilyMapOpen(false)
@@ -741,7 +748,13 @@ function PlaceSection({ activeSection }) {
 
         {isSharingSettingsOpen && state.consentGranted ? (
           <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.sharingSettings.title')}>
-            <h3>{t('features.sharingSettings.title')}</h3><p>{state.sharingEnabled ? t('features.sharingSettings.statusOn') : t('features.sharingSettings.statusOff')}</p><p>{t('features.sharingSettings.disclaimer')}</p>
+            <h3>{t('features.sharingSettings.title')}</h3>
+            <p>{state.sharingEnabled ? t('features.sharingSettings.statusOn') : t('features.sharingSettings.statusOff')}</p>
+            <p><strong>GPS:</strong> {state.sharingEnabled ? (activeSharingStatus.active ? 'Aktiv' : activeSharingStatus.paused ? 'Pausad' : 'Startar…') : 'Av'}</p>
+            {activeSharingStatus.lastUpdatedAt ? <p><strong>Senast uppdaterad:</strong> {new Date(activeSharingStatus.lastUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p> : null}
+            {activeSharingStatus.accuracyMeters != null ? <p><strong>Noggrannhet:</strong> ±{Math.round(activeSharingStatus.accuracyMeters)} m</p> : null}
+            <p><small>GPS uppdateras medan Viktkollen är aktiv. När appen är i bakgrunden pausas bevakningen och startar igen när du återvänder.</small></p>
+            <p>{t('features.sharingSettings.disclaimer')}</p>
             <label className="place-toggle"><input checked={state.sharingEnabled} type="checkbox" onChange={(event) => setState((current) => setPlaceSharing(current, event.target.checked))} /><span>{t('consent.sharingToggle')}</span></label>
             <button type="button" onClick={() => setIsSharingSettingsOpen(false)}>{t('common:actions.close')}</button>
           </div>

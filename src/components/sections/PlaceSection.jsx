@@ -188,6 +188,7 @@ function PlaceSection({ activeSection }) {
   function availabilityLabel(featureId, availability) {
     if ((featureId === 'familyMap' || featureId === 'childLocation' || featureId === 'status') && familyLocationsLoaded && familyLocations.length > 0) return 'Ansluten'
     if (featureId === 'safePlaces' && safePlacesLoaded && !safePlacesError) return 'Ansluten'
+    if ((featureId === 'batterySaver' || featureId === 'sharingSettings') && state.consentGranted) return 'Ansluten'
     if (availability === placeAvailability.requiresConsent) return t('status.requiresConsent')
     if (availability === placeAvailability.comingSoon) return t('status.comingSoon')
     return t('status.notConnected')

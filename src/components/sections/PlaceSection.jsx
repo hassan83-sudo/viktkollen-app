@@ -11,6 +11,11 @@ import {
 } from '../../features/place/placeModel.js'
 import { loadPlaceState, savePlaceState } from '../../features/place/placeStore.js'
 import { loadFamilyLatestLocations } from '../../features/place/placeFamilyMapService.js'
+import {
+  createSafePlaceFromOwnLatestLocation,
+  deleteSafePlace,
+  loadSafePlaces,
+} from '../../features/place/placeSafePlacesService.js'
 
 const featureIcons = {
   familyMap: '🗺',
@@ -34,6 +39,11 @@ function PlaceSection({ activeSection }) {
   const [isChildLocationOpen, setIsChildLocationOpen] = useState(false)
   const [isStatusOpen, setIsStatusOpen] = useState(false)
   const [isSafePlacesOpen, setIsSafePlacesOpen] = useState(false)
+  const [safePlaces, setSafePlaces] = useState([])
+  const [safePlacesLoaded, setSafePlacesLoaded] = useState(false)
+  const [safePlacesError, setSafePlacesError] = useState('')
+  const [safePlaceName, setSafePlaceName] = useState('')
+  const [safePlaceSaving, setSafePlaceSaving] = useState(false)
   const [isPlaceNotificationsOpen, setIsPlaceNotificationsOpen] = useState(false)
   const [isSosOpen, setIsSosOpen] = useState(false)
   const [isAllOkOpen, setIsAllOkOpen] = useState(false)
@@ -91,6 +101,39 @@ function PlaceSection({ activeSection }) {
   }, [state.consentGranted])
 
   useEffect(() => {
+    let cancelled = false
+
+    if (!state.consentGranted) {
+      setSafePlaces([])
+      setSafePlacesLoaded(false)
+      setSafePlacesError('')
+      return () => {
+        cancelled = true
+      }
+    }
+
+    setSafePlacesLoaded(false)
+    setSafePlacesError('')
+    loadSafePlaces()
+      .then(({ data, error }) => {
+        if (cancelled) return
+        setSafePlaces(Array.isArray(data) ? data : [])
+        setSafePlacesError(error?.message || '')
+        setSafePlacesLoaded(true)
+      })
+      .catch((error) => {
+        if (cancelled) return
+        setSafePlaces([])
+        setSafePlacesError(error?.message || 'Trygga platser kunde inte hämtas.')
+        setSafePlacesLoaded(true)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [state.consentGranted])
+
+  useEffect(() => {
     if (!state.consentGranted) setIsPlaceNotificationsOpen(false)
   }, [state.consentGranted])
 
@@ -114,8 +157,37 @@ function PlaceSection({ activeSection }) {
     if (!state.consentGranted) setIsSharingSettingsOpen(false)
   }, [state.consentGranted])
 
+  async function handleAddSafePlace(event) {
+    event.preventDefault()
+    if (!safePlaceName.trim() || safePlaceSaving) return
+
+    setSafePlaceSaving(true)
+    setSafePlacesError('')
+    const { data, error } = await createSafePlaceFromOwnLatestLocation(safePlaceName)
+
+    if (error) {
+      setSafePlacesError(error.message || 'Platsen kunde inte sparas.')
+    } else if (data) {
+      setSafePlaces((current) => [...current, data])
+      setSafePlaceName('')
+    }
+
+    setSafePlaceSaving(false)
+  }
+
+  async function handleDeleteSafePlace(id) {
+    setSafePlacesError('')
+    const { error } = await deleteSafePlace(id)
+    if (error) {
+      setSafePlacesError(error.message || 'Platsen kunde inte raderas.')
+      return
+    }
+    setSafePlaces((current) => current.filter((place) => place.id !== id))
+  }
+
   function availabilityLabel(featureId, availability) {
     if ((featureId === 'familyMap' || featureId === 'childLocation' || featureId === 'status') && familyLocationsLoaded && familyLocations.length > 0) return 'Ansluten'
+    if (featureId === 'safePlaces' && safePlacesLoaded && !safePlacesError) return 'Ansluten'
     if (availability === placeAvailability.requiresConsent) return t('status.requiresConsent')
     if (availability === placeAvailability.comingSoon) return t('status.comingSoon')
     return t('status.notConnected')
@@ -328,8 +400,39 @@ function PlaceSection({ activeSection }) {
         {isSafePlacesOpen && state.consentGranted ? (
           <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.safePlaces.title')}>
             <h3>{t('features.safePlaces.title')}</h3>
-            <p>{t('features.safePlaces.empty')}</p>
-            <p>{t('features.safePlaces.emptyBody')}</p>
+            {safePlacesLoaded && safePlaces.length > 0 ? (
+              <ul>
+                {safePlaces.map((place) => (
+                  <li key={place.id}>
+                    <strong>{place.name}</strong>{' '}
+                    <span>{Number(place.latitude).toFixed(5)}, {Number(place.longitude).toFixed(5)}</span>{' '}
+                    <small>radie {Math.round(place.radius_meters)} m</small>{' '}
+                    <button type="button" onClick={() => handleDeleteSafePlace(place.id)}>Radera</button>
+                  </li>
+                ))}
+              </ul>
+            ) : safePlacesLoaded && !safePlacesError ? (
+              <>
+                <p>{t('features.safePlaces.empty')}</p>
+                <p>Spara din senaste egna delade GPS-position som Hem, Skola eller en annan trygg plats.</p>
+              </>
+            ) : null}
+            <form onSubmit={handleAddSafePlace}>
+              <label>
+                Namn på trygg plats
+                <input
+                  type="text"
+                  maxLength={80}
+                  placeholder="Hem eller Skola"
+                  value={safePlaceName}
+                  onChange={(event) => setSafePlaceName(event.target.value)}
+                />
+              </label>
+              <button type="submit" disabled={!safePlaceName.trim() || safePlaceSaving}>
+                {safePlaceSaving ? 'Sparar…' : 'Spara senaste plats'}
+              </button>
+            </form>
+            {safePlacesError ? <p role="alert">{safePlacesError}</p> : null}
             <button type="button" onClick={() => setIsSafePlacesOpen(false)}>
               {t('common:actions.close')}
             </button>

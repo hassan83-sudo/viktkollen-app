@@ -29,6 +29,7 @@ function AuthPanel({
   const [formNotice, setFormNotice] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
   const isConfigured = Boolean(authStatus?.authEnabled)
   const isRegistering = mode === 'sign-up'
@@ -42,6 +43,7 @@ function AuthPanel({
     setFormNotice('')
     setPassword('')
     setConfirmPassword('')
+    setShowPassword(false)
   }
 
   async function handleSubmit(event) {
@@ -94,9 +96,7 @@ function AuthPanel({
 
     if (isResettingPassword) {
       setResetLoading(true)
-
       const { error } = await requestPasswordReset(normalizedEmail)
-
       setResetLoading(false)
 
       if (error) {
@@ -148,20 +148,8 @@ function AuthPanel({
 
         {!isResettingPassword && !isChoosingNewPassword && (
           <div className="welcome-actions">
-            <button
-              className={mode === 'sign-in' ? '' : 'secondary-button'}
-              type="button"
-              onClick={() => changeMode('sign-in')}
-            >
-              Logga in
-            </button>
-            <button
-              className={mode === 'sign-up' ? '' : 'secondary-button'}
-              type="button"
-              onClick={() => changeMode('sign-up')}
-            >
-              Registrera
-            </button>
+            <button className={mode === 'sign-in' ? '' : 'secondary-button'} type="button" onClick={() => changeMode('sign-in')}>Logga in</button>
+            <button className={mode === 'sign-up' ? '' : 'secondary-button'} type="button" onClick={() => changeMode('sign-up')}>Registrera</button>
           </div>
         )}
 
@@ -169,100 +157,46 @@ function AuthPanel({
           {!isChoosingNewPassword && (
             <label className="field">
               <span>E-post</span>
-              <input
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="namn@example.com"
-                disabled={!isConfigured || isBusy}
-                required
-              />
+              <input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="namn@example.com" disabled={!isConfigured || isBusy} required />
             </label>
           )}
 
           {!isResettingPassword && (
             <label className="field">
               <span>{isChoosingNewPassword ? 'Nytt lösenord' : 'Lösenord'}</span>
-              <input
-                type="password"
-                autoComplete={isRegistering || isChoosingNewPassword ? 'new-password' : 'current-password'}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Minst 6 tecken"
-                disabled={!isConfigured || isBusy}
-                required
-              />
+              <input type={showPassword ? 'text' : 'password'} autoComplete={isRegistering || isChoosingNewPassword ? 'new-password' : 'current-password'} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Minst 6 tecken" disabled={!isConfigured || isBusy} required />
             </label>
           )}
 
           {isChoosingNewPassword && (
             <label className="field">
               <span>Upprepa nytt lösenord</span>
-              <input
-                type="password"
-                autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                placeholder="Skriv lösenordet igen"
-                disabled={!isConfigured || isBusy}
-                required
-              />
+              <input type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Skriv lösenordet igen" disabled={!isConfigured || isBusy} required />
             </label>
           )}
 
+          {!isResettingPassword && (
+            <button className="secondary-button" type="button" onClick={() => setShowPassword((visible) => !visible)} disabled={!isConfigured || isBusy} aria-pressed={showPassword}>
+              {showPassword ? 'Dölj lösenord' : 'Visa lösenord'}
+            </button>
+          )}
+
           <button type="submit" disabled={!isConfigured || isBusy}>
-            {isBusy
-              ? 'Kontrollerar...'
-              : isChoosingNewPassword
-                ? 'Spara nytt lösenord'
-                : isResettingPassword
-                  ? 'Skicka återställningslänk'
-                  : isRegistering
-                    ? 'Skapa konto'
-                    : 'Logga in'}
+            {isBusy ? 'Kontrollerar...' : isChoosingNewPassword ? 'Spara nytt lösenord' : isResettingPassword ? 'Skicka återställningslänk' : isRegistering ? 'Skapa konto' : 'Logga in'}
           </button>
 
           {mode === 'sign-in' && (
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={() => changeMode('reset-password')}
-              disabled={!isConfigured || isBusy}
-            >
-              Glömt lösenord?
-            </button>
+            <button className="secondary-button" type="button" onClick={() => changeMode('reset-password')} disabled={!isConfigured || isBusy}>Glömt lösenord?</button>
           )}
 
           {isResettingPassword && (
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={() => changeMode('sign-in')}
-              disabled={isBusy}
-            >
-              Tillbaka till inloggning
-            </button>
+            <button className="secondary-button" type="button" onClick={() => changeMode('sign-in')} disabled={isBusy}>Tillbaka till inloggning</button>
           )}
         </form>
 
-        {!isConfigured && (
-          <p className="welcome-note">
-            Supabase Auth är inte konfigurerat ännu. Lägg till
-            VITE_SUPABASE_URL och VITE_SUPABASE_ANON_KEY för att aktivera
-            inloggning.
-          </p>
-        )}
-
-        {(formNotice || authNotice) && (
-          <p className="welcome-note">{formNotice || authNotice}</p>
-        )}
-
-        {(formError || authError) && (
-          <p className="form-error" role="alert">
-            {formError || authError}
-          </p>
-        )}
+        {!isConfigured && <p className="welcome-note">Supabase Auth är inte konfigurerat ännu. Lägg till VITE_SUPABASE_URL och VITE_SUPABASE_ANON_KEY för att aktivera inloggning.</p>}
+        {(formNotice || authNotice) && <p className="welcome-note">{formNotice || authNotice}</p>}
+        {(formError || authError) && <p className="form-error" role="alert">{formError || authError}</p>}
       </section>
     </main>
   )

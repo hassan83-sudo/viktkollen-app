@@ -22,12 +22,21 @@ const featureIcons = {
   childLocation: '📍',
   status: '🏫',
   safePlaces: '🏠',
-  sos: '🆘',
+  sos: '🛡️',
   allOkCheckin: '✓',
   placeHistory: '🕘',
   batterySaver: '🔋',
   sharingSettings: '⚙',
 }
+
+const safetyAlertChoices = [
+  ['🚨', 'Jag känner mig hotad'],
+  ['🧭', 'Jag har gått vilse'],
+  ['🩹', 'Jag har skadat mig'],
+  ['😟', 'Jag känner mig otrygg'],
+  ['🚗', 'Jag behöver bli hämtad'],
+  ['🆘', 'Annat – jag behöver hjälp'],
+]
 
 function PlaceSection({ activeSection }) {
   const { t } = useTranslation('place')
@@ -203,20 +212,12 @@ function PlaceSection({ activeSection }) {
           <h2 id="place-consent-title">{t('consent.title')}</h2>
           <p>{t('consent.body')}</p>
           <label className="place-toggle">
-            <input
-              checked={state.consentGranted}
-              type="checkbox"
-              onChange={(event) => setState((current) => setPlaceConsent(current, event.target.checked))}
-            />
+            <input checked={state.consentGranted} type="checkbox" onChange={(event) => setState((current) => setPlaceConsent(current, event.target.checked))} />
             <span>{t('consent.toggle')}</span>
           </label>
           {state.consentGranted ? (
             <label className="place-toggle">
-              <input
-                checked={state.sharingEnabled}
-                type="checkbox"
-                onChange={(event) => setState((current) => setPlaceSharing(current, event.target.checked))}
-              />
+              <input checked={state.sharingEnabled} type="checkbox" onChange={(event) => setState((current) => setPlaceSharing(current, event.target.checked))} />
               <span>{t('consent.sharingToggle')}</span>
             </label>
           ) : null}
@@ -235,65 +236,49 @@ function PlaceSection({ activeSection }) {
             const placeHistoryOpenable = featureId === 'placeHistory' && state.consentGranted
             const batterySaverOpenable = featureId === 'batterySaver' && state.consentGranted
             const sharingSettingsOpenable = featureId === 'sharingSettings' && state.consentGranted
-            const isCardOpenable =
-              familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable || sosOpenable || allOkOpenable || placeHistoryOpenable || batterySaverOpenable || sharingSettingsOpenable
-            const openableProps = isCardOpenable
-              ? {
-                  onPointerUp: () => {
-                    if (familyMapOpenable) setIsFamilyMapOpen(true)
-                    else if (childLocationOpenable) setIsChildLocationOpen(true)
-                    else if (statusOpenable) setIsStatusOpen(true)
-                    else if (safePlacesOpenable) setIsSafePlacesOpen(true)
-                    else if (sosOpenable) setIsSosOpen(true)
-                    else if (allOkOpenable) setIsAllOkOpen(true)
-                    else if (placeHistoryOpenable) setIsPlaceHistoryOpen(true)
-                    else if (batterySaverOpenable) setIsBatterySaverOpen(true)
-                    else if (sharingSettingsOpenable) setIsSharingSettingsOpen(true)
-                  },
-                  onKeyDown: (event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault()
-                      if (familyMapOpenable) setIsFamilyMapOpen(true)
-                      else if (childLocationOpenable) setIsChildLocationOpen(true)
-                      else if (statusOpenable) setIsStatusOpen(true)
-                      else if (safePlacesOpenable) setIsSafePlacesOpen(true)
-                      else if (sosOpenable) setIsSosOpen(true)
-                      else if (allOkOpenable) setIsAllOkOpen(true)
-                      else if (placeHistoryOpenable) setIsPlaceHistoryOpen(true)
-                      else if (batterySaverOpenable) setIsBatterySaverOpen(true)
-                      else if (sharingSettingsOpenable) setIsSharingSettingsOpen(true)
-                    }
-                  },
-                  role: 'button',
-                  tabIndex: 0,
+            const isCardOpenable = familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable || sosOpenable || allOkOpenable || placeHistoryOpenable || batterySaverOpenable || sharingSettingsOpenable
+            const openableProps = isCardOpenable ? {
+              onPointerUp: () => {
+                if (familyMapOpenable) setIsFamilyMapOpen(true)
+                else if (childLocationOpenable) setIsChildLocationOpen(true)
+                else if (statusOpenable) setIsStatusOpen(true)
+                else if (safePlacesOpenable) setIsSafePlacesOpen(true)
+                else if (sosOpenable) setIsSosOpen(true)
+                else if (allOkOpenable) setIsAllOkOpen(true)
+                else if (placeHistoryOpenable) setIsPlaceHistoryOpen(true)
+                else if (batterySaverOpenable) setIsBatterySaverOpen(true)
+                else if (sharingSettingsOpenable) setIsSharingSettingsOpen(true)
+              },
+              onKeyDown: (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  if (familyMapOpenable) setIsFamilyMapOpen(true)
+                  else if (childLocationOpenable) setIsChildLocationOpen(true)
+                  else if (statusOpenable) setIsStatusOpen(true)
+                  else if (safePlacesOpenable) setIsSafePlacesOpen(true)
+                  else if (sosOpenable) setIsSosOpen(true)
+                  else if (allOkOpenable) setIsAllOkOpen(true)
+                  else if (placeHistoryOpenable) setIsPlaceHistoryOpen(true)
+                  else if (batterySaverOpenable) setIsBatterySaverOpen(true)
+                  else if (sharingSettingsOpenable) setIsSharingSettingsOpen(true)
                 }
-              : {}
+              },
+              role: 'button',
+              tabIndex: 0,
+            } : {}
             return (
-              <article
-                className={`place-feature-card is-${availability}${isCardOpenable ? ' is-openable' : ''}`}
-                key={featureId}
-                {...openableProps}
-              >
+              <article className={`place-feature-card is-${availability}${isCardOpenable ? ' is-openable' : ''}`} key={featureId} {...openableProps}>
                 <div className="place-feature-top">
                   <span aria-hidden="true">{featureIcons[featureId]}</span>
                   <span className={`place-status is-${availability}`}>{availabilityLabel(featureId, availability)}</span>
                 </div>
-                <h3>{t(`features.${featureId}.title`)}</h3>
-                <p>{t(`features.${featureId}.body`)}</p>
+                <h3>{featureId === 'sos' ? 'Trygghetslarm' : t(`features.${featureId}.title`)}</h3>
+                <p>{featureId === 'sos' ? 'Skicka snabbt ett larm och din senaste plats till godkända familjemedlemmar.' : t(`features.${featureId}.body`)}</p>
                 {featureId === 'batterySaver' && state.consentGranted ? (
                   <label className="place-toggle">
-                    <input
-                      checked={state.batterySaverEnabled}
-                      type="checkbox"
-                      onChange={(event) => setState((current) => setBatterySaver(current, event.target.checked))}
-                    />
+                    <input checked={state.batterySaverEnabled} type="checkbox" onChange={(event) => setState((current) => setBatterySaver(current, event.target.checked))} />
                     <span>{t('features.batterySaver.toggle')}</span>
                   </label>
-                ) : null}
-                {featureId === 'sos' ? (
-                  <button className="place-action is-disabled" disabled type="button">
-                    {t('features.sos.action')}
-                  </button>
                 ) : null}
               </article>
             )
@@ -314,203 +299,109 @@ function PlaceSection({ activeSection }) {
           <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.familyMap.title')}>
             <h3>{t('features.familyMap.title')}</h3>
             {familyLocationsLoaded && familyLocations.length > 0 ? (
-              <ul>
-                {familyLocations.map((location) => (
-                  <li key={`${location.family_id}:${location.user_id}`}>
-                    <strong>{Number(location.latitude).toFixed(5)}, {Number(location.longitude).toFixed(5)}</strong>
-                    {location.accuracy_meters != null ? <span> ±{Math.round(location.accuracy_meters)} m</span> : null}
-                    {location.location_recorded_at ? (
-                      <small> {new Date(location.location_recorded_at).toLocaleString()}</small>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            ) : familyLocationsLoaded ? (
-              <>
-                <p>{t('features.familyMap.empty')}</p>
-                <p>{t('features.familyMap.emptyBody')}</p>
-              </>
-            ) : null}
-            <button type="button" onClick={() => setIsFamilyMapOpen(false)}>
-              {t('common:actions.close')}
-            </button>
+              <ul>{familyLocations.map((location) => (
+                <li key={`${location.family_id}:${location.user_id}`}>
+                  <strong>{Number(location.latitude).toFixed(5)}, {Number(location.longitude).toFixed(5)}</strong>
+                  {location.accuracy_meters != null ? <span> ±{Math.round(location.accuracy_meters)} m</span> : null}
+                  {location.location_recorded_at ? <small> {new Date(location.location_recorded_at).toLocaleString()}</small> : null}
+                </li>
+              ))}</ul>
+            ) : familyLocationsLoaded ? <><p>{t('features.familyMap.empty')}</p><p>{t('features.familyMap.emptyBody')}</p></> : null}
+            <button type="button" onClick={() => setIsFamilyMapOpen(false)}>{t('common:actions.close')}</button>
           </div>
         ) : null}
 
         {isChildLocationOpen && state.consentGranted ? (
           <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.childLocation.title')}>
             <h3>{t('features.childLocation.title')}</h3>
-            {familyLocationsLoaded && familyLocations.length > 0 ? (
-              <>
-                <p><strong>Senaste delade plats</strong></p>
-                <p>
-                  <strong>{Number(familyLocations[0].latitude).toFixed(5)}, {Number(familyLocations[0].longitude).toFixed(5)}</strong>
-                  {familyLocations[0].accuracy_meters != null ? <span> ±{Math.round(familyLocations[0].accuracy_meters)} m</span> : null}
-                </p>
-                {familyLocations[0].location_recorded_at ? (
-                  <p>Uppdaterad {new Date(familyLocations[0].location_recorded_at).toLocaleString()}</p>
-                ) : null}
-              </>
-            ) : familyLocationsLoaded ? (
-              <>
-                <p>{t('features.childLocation.empty')}</p>
-                <p>{t('features.childLocation.emptyBody')}</p>
-              </>
-            ) : null}
-            <button type="button" onClick={() => setIsChildLocationOpen(false)}>
-              {t('common:actions.close')}
-            </button>
+            {familyLocationsLoaded && familyLocations.length > 0 ? <>
+              <p><strong>Senaste delade plats</strong></p>
+              <p><strong>{Number(familyLocations[0].latitude).toFixed(5)}, {Number(familyLocations[0].longitude).toFixed(5)}</strong>{familyLocations[0].accuracy_meters != null ? <span> ±{Math.round(familyLocations[0].accuracy_meters)} m</span> : null}</p>
+              {familyLocations[0].location_recorded_at ? <p>Uppdaterad {new Date(familyLocations[0].location_recorded_at).toLocaleString()}</p> : null}
+            </> : familyLocationsLoaded ? <><p>{t('features.childLocation.empty')}</p><p>{t('features.childLocation.emptyBody')}</p></> : null}
+            <button type="button" onClick={() => setIsChildLocationOpen(false)}>{t('common:actions.close')}</button>
           </div>
         ) : null}
 
         {isStatusOpen && state.consentGranted ? (
           <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.status.title')}>
             <h3>{t('features.status.title')}</h3>
-            {familyLocationsLoaded && familyLocations.length > 0 ? (
-              <>
-                <p><strong>Platsdelning aktiv</strong></p>
-                <p>Senaste platsen har tagits emot från familjen.</p>
-                {familyLocations[0].location_recorded_at ? (
-                  <p>Senast uppdaterad {new Date(familyLocations[0].location_recorded_at).toLocaleString()}</p>
-                ) : null}
-                {familyLocations[0].accuracy_meters != null ? (
-                  <p>Noggrannhet ±{Math.round(familyLocations[0].accuracy_meters)} m</p>
-                ) : null}
-              </>
-            ) : familyLocationsLoaded ? (
-              <>
-                <p>{t('features.status.empty')}</p>
-                <p>{t('features.status.emptyBody')}</p>
-              </>
-            ) : null}
-            <button type="button" onClick={() => setIsStatusOpen(false)}>
-              {t('common:actions.close')}
-            </button>
+            {familyLocationsLoaded && familyLocations.length > 0 ? <>
+              <p><strong>Platsdelning aktiv</strong></p><p>Senaste platsen har tagits emot från familjen.</p>
+              {familyLocations[0].location_recorded_at ? <p>Senast uppdaterad {new Date(familyLocations[0].location_recorded_at).toLocaleString()}</p> : null}
+              {familyLocations[0].accuracy_meters != null ? <p>Noggrannhet ±{Math.round(familyLocations[0].accuracy_meters)} m</p> : null}
+            </> : familyLocationsLoaded ? <><p>{t('features.status.empty')}</p><p>{t('features.status.emptyBody')}</p></> : null}
+            <button type="button" onClick={() => setIsStatusOpen(false)}>{t('common:actions.close')}</button>
           </div>
         ) : null}
 
         {isSafePlacesOpen && state.consentGranted ? (
           <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.safePlaces.title')}>
             <h3>{t('features.safePlaces.title')}</h3>
-            {safePlacesLoaded && safePlaces.length > 0 ? (
-              <ul>
-                {safePlaces.map((place) => (
-                  <li key={place.id}>
-                    <strong>{place.name}</strong>{' '}
-                    <span>{Number(place.latitude).toFixed(5)}, {Number(place.longitude).toFixed(5)}</span>{' '}
-                    <small>radie {Math.round(place.radius_meters)} m</small>{' '}
-                    <button type="button" onClick={() => handleDeleteSafePlace(place.id)}>Radera</button>
-                    <div>
-                      <strong>Platsnotiser</strong>
-                      <label className="place-toggle">
-                        <input type="checkbox" disabled />
-                        <span>Notis när personen kommer hit</span>
-                      </label>
-                      <label className="place-toggle">
-                        <input type="checkbox" disabled />
-                        <span>Notis när personen lämnar platsen</span>
-                      </label>
-                      <small>Inte ansluten ännu</small>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : safePlacesLoaded && !safePlacesError ? (
-              <>
-                <p>{t('features.safePlaces.empty')}</p>
-                <p>Spara din senaste egna delade GPS-position som Hem, Skola eller en annan trygg plats.</p>
-              </>
-            ) : null}
+            {safePlacesLoaded && safePlaces.length > 0 ? <ul>{safePlaces.map((place) => (
+              <li key={place.id}>
+                <strong>{place.name}</strong>{' '}<span>{Number(place.latitude).toFixed(5)}, {Number(place.longitude).toFixed(5)}</span>{' '}<small>radie {Math.round(place.radius_meters)} m</small>{' '}
+                <button type="button" onClick={() => handleDeleteSafePlace(place.id)}>Radera</button>
+                <div><strong>Platsnotiser</strong>
+                  <label className="place-toggle"><input type="checkbox" disabled /><span>Notis när personen kommer hit</span></label>
+                  <label className="place-toggle"><input type="checkbox" disabled /><span>Notis när personen lämnar platsen</span></label>
+                  <small>Inte ansluten ännu</small>
+                </div>
+              </li>
+            ))}</ul> : safePlacesLoaded && !safePlacesError ? <><p>{t('features.safePlaces.empty')}</p><p>Spara din senaste egna delade GPS-position som Hem, Skola eller en annan trygg plats.</p></> : null}
             <form onSubmit={handleAddSafePlace}>
-              <label>
-                Namn på trygg plats
-                <input
-                  type="text"
-                  maxLength={80}
-                  placeholder="Hem eller Skola"
-                  value={safePlaceName}
-                  onChange={(event) => setSafePlaceName(event.target.value)}
-                />
-              </label>
-              <button type="submit" disabled={!safePlaceName.trim() || safePlaceSaving}>
-                {safePlaceSaving ? 'Sparar…' : 'Spara senaste plats'}
-              </button>
+              <label>Namn på trygg plats<input type="text" maxLength={80} placeholder="Hem eller Skola" value={safePlaceName} onChange={(event) => setSafePlaceName(event.target.value)} /></label>
+              <button type="submit" disabled={!safePlaceName.trim() || safePlaceSaving}>{safePlaceSaving ? 'Sparar…' : 'Spara senaste plats'}</button>
             </form>
             {safePlacesError ? <p role="alert">{safePlacesError}</p> : null}
-            <button type="button" onClick={() => setIsSafePlacesOpen(false)}>
-              {t('common:actions.close')}
-            </button>
+            <button type="button" onClick={() => setIsSafePlacesOpen(false)}>{t('common:actions.close')}</button>
           </div>
         ) : null}
 
         {isSosOpen && state.consentGranted ? (
-          <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.sos.title')}>
-            <h3>{t('features.sos.title')}</h3>
-            <p>{t('features.sos.empty')}</p>
-            <p>{t('features.sos.emptyBody')}</p>
-            <button type="button" onClick={() => setIsSosOpen(false)}>
-              {t('common:actions.close')}
-            </button>
+          <div className="ready-modal" role="dialog" aria-modal="true" aria-label="Trygghetslarm">
+            <h3>🛡️ Trygghetslarm</h3>
+            <p><strong>Vad har hänt?</strong></p>
+            <div className="place-safety-alert-choices">
+              {safetyAlertChoices.map(([icon, label]) => (
+                <button key={label} type="button" disabled title="Inte ansluten ännu">
+                  <span aria-hidden="true">{icon}</span> {label}
+                </button>
+              ))}
+            </div>
+            <p><small>Trygghetslarm till familjen är inte anslutet ännu. När det kopplas skickas vald anledning, tid och senaste kända plats.</small></p>
+            <p><strong>Vid akut fara – ring 112.</strong></p>
+            <button type="button" onClick={() => setIsSosOpen(false)}>{t('common:actions.close')}</button>
           </div>
         ) : null}
 
         {isAllOkOpen && state.consentGranted ? (
           <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.allOkCheckin.title')}>
-            <h3>{t('features.allOkCheckin.title')}</h3>
-            <p>{t('features.allOkCheckin.empty')}</p>
-            <p>{t('features.allOkCheckin.emptyBody')}</p>
-            <button type="button" onClick={() => setIsAllOkOpen(false)}>
-              {t('common:actions.close')}
-            </button>
+            <h3>{t('features.allOkCheckin.title')}</h3><p>{t('features.allOkCheckin.empty')}</p><p>{t('features.allOkCheckin.emptyBody')}</p>
+            <button type="button" onClick={() => setIsAllOkOpen(false)}>{t('common:actions.close')}</button>
           </div>
         ) : null}
 
         {isPlaceHistoryOpen && state.consentGranted ? (
           <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.placeHistory.title')}>
-            <h3>{t('features.placeHistory.title')}</h3>
-            <p>{t('features.placeHistory.empty')}</p>
-            <p>{t('features.placeHistory.emptyBody')}</p>
-            <button type="button" onClick={() => setIsPlaceHistoryOpen(false)}>
-              {t('common:actions.close')}
-            </button>
+            <h3>{t('features.placeHistory.title')}</h3><p>{t('features.placeHistory.empty')}</p><p>{t('features.placeHistory.emptyBody')}</p>
+            <button type="button" onClick={() => setIsPlaceHistoryOpen(false)}>{t('common:actions.close')}</button>
           </div>
         ) : null}
 
         {isBatterySaverOpen && state.consentGranted ? (
           <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.batterySaver.title')}>
-            <h3>{t('features.batterySaver.title')}</h3>
-            <p>{state.batterySaverEnabled ? t('features.batterySaver.statusOn') : t('features.batterySaver.statusOff')}</p>
-            <p>{t('features.batterySaver.disclaimer')}</p>
-            <label className="place-toggle">
-              <input
-                checked={state.batterySaverEnabled}
-                type="checkbox"
-                onChange={(event) => setState((current) => setBatterySaver(current, event.target.checked))}
-              />
-              <span>{t('features.batterySaver.toggle')}</span>
-            </label>
-            <button type="button" onClick={() => setIsBatterySaverOpen(false)}>
-              {t('common:actions.close')}
-            </button>
+            <h3>{t('features.batterySaver.title')}</h3><p>{state.batterySaverEnabled ? t('features.batterySaver.statusOn') : t('features.batterySaver.statusOff')}</p><p>{t('features.batterySaver.disclaimer')}</p>
+            <label className="place-toggle"><input checked={state.batterySaverEnabled} type="checkbox" onChange={(event) => setState((current) => setBatterySaver(current, event.target.checked))} /><span>{t('features.batterySaver.toggle')}</span></label>
+            <button type="button" onClick={() => setIsBatterySaverOpen(false)}>{t('common:actions.close')}</button>
           </div>
         ) : null}
 
         {isSharingSettingsOpen && state.consentGranted ? (
           <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.sharingSettings.title')}>
-            <h3>{t('features.sharingSettings.title')}</h3>
-            <p>{state.sharingEnabled ? t('features.sharingSettings.statusOn') : t('features.sharingSettings.statusOff')}</p>
-            <p>{t('features.sharingSettings.disclaimer')}</p>
-            <label className="place-toggle">
-              <input
-                checked={state.sharingEnabled}
-                type="checkbox"
-                onChange={(event) => setState((current) => setPlaceSharing(current, event.target.checked))}
-              />
-              <span>{t('consent.sharingToggle')}</span>
-            </label>
-            <button type="button" onClick={() => setIsSharingSettingsOpen(false)}>
-              {t('common:actions.close')}
-            </button>
+            <h3>{t('features.sharingSettings.title')}</h3><p>{state.sharingEnabled ? t('features.sharingSettings.statusOn') : t('features.sharingSettings.statusOff')}</p><p>{t('features.sharingSettings.disclaimer')}</p>
+            <label className="place-toggle"><input checked={state.sharingEnabled} type="checkbox" onChange={(event) => setState((current) => setPlaceSharing(current, event.target.checked))} /><span>{t('consent.sharingToggle')}</span></label>
+            <button type="button" onClick={() => setIsSharingSettingsOpen(false)}>{t('common:actions.close')}</button>
           </div>
         ) : null}
       </div>

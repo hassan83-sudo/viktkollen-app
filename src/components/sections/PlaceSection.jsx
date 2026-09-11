@@ -16,6 +16,11 @@ import {
   deleteSafePlace,
   loadSafePlaces,
 } from '../../features/place/placeSafePlacesService.js'
+import {
+  loadSafetyAlerts,
+  sendSafetyAlert,
+  subscribeSafetyAlerts,
+} from '../../features/place/placeSafetyAlertService.js'
 
 const featureIcons = {
   familyMap: '🗺',
@@ -30,13 +35,22 @@ const featureIcons = {
 }
 
 const safetyAlertChoices = [
-  ['🚨', 'Jag känner mig hotad'],
-  ['🧭', 'Jag har gått vilse'],
-  ['🩹', 'Jag har skadat mig'],
-  ['😟', 'Jag känner mig otrygg'],
-  ['🚗', 'Jag behöver bli hämtad'],
-  ['🆘', 'Annat – jag behöver hjälp'],
+  ['threatened', '🚨', 'Jag känner mig hotad'],
+  ['lost', '🧭', 'Jag har gått vilse'],
+  ['injured', '🩹', 'Jag har skadat mig'],
+  ['unsafe', '😟', 'Jag känner mig otrygg'],
+  ['pickup', '🚗', 'Jag behöver bli hämtad'],
+  ['other', '🆘', 'Annat – jag behöver hjälp'],
 ]
+
+const safetyAlertLabels = Object.fromEntries(
+  safetyAlertChoices.map(([reason, icon, label]) => [reason, `${icon} ${label}`]),
+)
+
+function addAlertOnce(alerts, alert) {
+  if (!alert?.id || alerts.some((item) => item.id === alert.id)) return alerts
+  return [alert, ...alerts].slice(0, 20)
+}
 
 function PlaceSection({ activeSection }) {
   const { t } = useTranslation('place')
@@ -53,6 +67,11 @@ function PlaceSection({ activeSection }) {
   const [safePlaceName, setSafePlaceName] = useState('')
   const [safePlaceSaving, setSafePlaceSaving] = useState(false)
   const [isSosOpen, setIsSosOpen] = useState(false)
+  const [safetyAlerts, setSafetyAlerts] = useState([])
+  const [safetyAlertsLoaded, setSafetyAlertsLoaded] = useState(false)
+  const [safetyAlertsError, setSafetyAlertsError] = useState('')
+  const [safetyAlertSending, setSafetyAlertSending] = useState(false)
+  const [safetyAlertNotice, setSafetyAlertNotice] = useState('')
   const [isAllOkOpen, setIsAllOkOpen] = useState(false)
   const [isPlaceHistoryOpen, setIsPlaceHistoryOpen] = useState(false)
   const [isBatterySaverOpen, setIsBatterySaverOpen] = useState(false)
@@ -141,7 +160,42 @@ function PlaceSection({ activeSection }) {
   }, [state.consentGranted])
 
   useEffect(() => {
-    if (!state.consentGranted) setIsSosOpen(false)
+    if (!state.consentGranted) {
+      setIsSosOpen(false)
+      setSafetyAlerts([])
+      setSafetyAlertsLoaded(false)
+      setSafetyAlertsError('')
+      setSafetyAlertNotice('')
+      return undefined
+    }
+
+    let cancelled = false
+    setSafetyAlertsLoaded(false)
+    setSafetyAlertsError('')
+
+    loadSafetyAlerts()
+      .then(({ data, error }) => {
+        if (cancelled) return
+        setSafetyAlerts(Array.isArray(data) ? data : [])
+        setSafetyAlertsError(error?.message || '')
+        setSafetyAlertsLoaded(true)
+      })
+      .catch((error) => {
+        if (cancelled) return
+        setSafetyAlerts([])
+        setSafetyAlertsError(error?.message || 'Trygghetslarm kunde inte hämtas.')
+        setSafetyAlertsLoaded(true)
+      })
+
+    const unsubscribe = subscribeSafetyAlerts((alert) => {
+      if (cancelled) return
+      setSafetyAlerts((current) => addAlertOnce(current, alert))
+    })
+
+    return () => {
+      cancelled = true
+      unsubscribe()
+    }
   }, [state.consentGranted])
 
   useEffect(() => {
@@ -188,9 +242,28 @@ function PlaceSection({ activeSection }) {
     setSafePlaces((current) => current.filter((place) => place.id !== id))
   }
 
+  async function handleSendSafetyAlert(reason) {
+    if (safetyAlertSending) return
+
+    setSafetyAlertSending(true)
+    setSafetyAlertsError('')
+    setSafetyAlertNotice('')
+
+    const { data, error } = await sendSafetyAlert(reason)
+    if (error) {
+      setSafetyAlertsError(error.message || 'Trygghetslarmet kunde inte skickas.')
+    } else if (data) {
+      setSafetyAlerts((current) => addAlertOnce(current, data))
+      setSafetyAlertNotice('Trygghetslarm skickat till familjen.')
+    }
+
+    setSafetyAlertSending(false)
+  }
+
   function availabilityLabel(featureId, availability) {
     if ((featureId === 'familyMap' || featureId === 'childLocation' || featureId === 'status') && familyLocationsLoaded && familyLocations.length > 0) return 'Ansluten'
     if (featureId === 'safePlaces' && safePlacesLoaded && !safePlacesError) return 'Ansluten'
+    if (featureId === 'sos' && safetyAlertsLoaded && !safetyAlertsError) return 'Ansluten'
     if ((featureId === 'batterySaver' || featureId === 'sharingSettings') && state.consentGranted) return 'Ansluten'
     if (availability === placeAvailability.requiresConsent) return t('status.requiresConsent')
     if (availability === placeAvailability.comingSoon) return t('status.comingSoon')
@@ -290,7 +363,7 @@ function PlaceSection({ activeSection }) {
           <ul>
             <li>{t('limits.noGps')}</li>
             <li>{t('limits.noTracking')}</li>
-            <li>{t('limits.noEmergency')}</li>
+            <li>Trygghetslarm kontaktar inte 112 eller larmcentralen automatiskt.</li>
             <li>{t('limits.separateSprint')}</li>
           </ul>
         </section>
@@ -363,13 +436,34 @@ function PlaceSection({ activeSection }) {
             <h3>🛡️ Trygghetslarm</h3>
             <p><strong>Vad har hänt?</strong></p>
             <div className="place-safety-alert-choices">
-              {safetyAlertChoices.map(([icon, label]) => (
-                <button key={label} type="button" disabled title="Inte ansluten ännu">
+              {safetyAlertChoices.map(([reason, icon, label]) => (
+                <button key={reason} type="button" disabled={safetyAlertSending} onClick={() => handleSendSafetyAlert(reason)}>
                   <span aria-hidden="true">{icon}</span> {label}
                 </button>
               ))}
             </div>
-            <p><small>Trygghetslarm till familjen är inte anslutet ännu. När det kopplas skickas vald anledning, tid och senaste kända plats.</small></p>
+            {safetyAlertSending ? <p><small>Skickar trygghetslarm…</small></p> : null}
+            {safetyAlertNotice ? <p role="status"><strong>{safetyAlertNotice}</strong></p> : null}
+            {safetyAlertsError ? <p role="alert">{safetyAlertsError}</p> : null}
+
+            {safetyAlertsLoaded && safetyAlerts.length > 0 ? (
+              <div className="place-safety-alert-history">
+                <p><strong>Senaste trygghetslarm i familjen</strong></p>
+                <ul>
+                  {safetyAlerts.slice(0, 5).map((alert) => (
+                    <li key={alert.id}>
+                      <strong>{safetyAlertLabels[alert.reason] || '🛡️ Trygghetslarm'}</strong>
+                      <small>{new Date(alert.created_at).toLocaleString()}</small>
+                      {alert.latitude != null && alert.longitude != null ? (
+                        <span>📍 {Number(alert.latitude).toFixed(5)}, {Number(alert.longitude).toFixed(5)}{alert.accuracy_meters != null ? ` ±${Math.round(alert.accuracy_meters)} m` : ''}</span>
+                      ) : <span>📍 Ingen delad plats bifogades</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            <p><small>Vald anledning, tid och senast delade plats skickas till familjen. Funktionen kontaktar inte 112.</small></p>
             <p><strong>Vid akut fara – ring 112.</strong></p>
             <button type="button" onClick={() => setIsSosOpen(false)}>{t('common:actions.close')}</button>
           </div>

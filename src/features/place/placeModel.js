@@ -75,6 +75,19 @@ export function setPlaceConsent(state, granted) {
 export function setPlaceSharing(state, enabled) {
   const next = normalizePlaceState(state)
   if (!next.consentGranted && enabled) return next
+
+  if (enabled && typeof navigator !== 'undefined' && navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      () => {},
+      () => {},
+      {
+        enableHighAccuracy: true,
+        maximumAge: 30000,
+        timeout: 15000,
+      },
+    )
+  }
+
   return {
     ...next,
     sharingEnabled: Boolean(enabled),

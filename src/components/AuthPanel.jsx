@@ -21,7 +21,6 @@ function AuthPanel({
   authNotice,
   authStatus,
   onSignIn,
-  onSignUp,
 }) {
   const [mode, setMode] = useState(() =>
     isRecoveryLink() ? 'choose-new-password' : 'sign-in',
@@ -35,7 +34,6 @@ function AuthPanel({
   const [resetLoading, setResetLoading] = useState(false)
   const [resetCooldown, setResetCooldown] = useState(0)
   const isConfigured = Boolean(authStatus?.authEnabled)
-  const isRegistering = mode === 'sign-up'
   const isResettingPassword = mode === 'reset-password'
   const isChoosingNewPassword = mode === 'choose-new-password'
   const isBusy = authLoading || resetLoading
@@ -144,11 +142,7 @@ function AuthPanel({
       return
     }
 
-    if (isRegistering) {
-      await onSignUp({ email: normalizedEmail, password })
-    } else {
-      await onSignIn({ email: normalizedEmail, password })
-    }
+    await onSignIn({ email: normalizedEmail, password })
   }
 
   return (
@@ -170,13 +164,6 @@ function AuthPanel({
               : 'Använd e-post och lösenord. Din vikt, mat, check-ins, bilder och chatt ligger fortfarande lokalt i den här webbläsaren.'}
         </p>
 
-        {!isResettingPassword && !isChoosingNewPassword && (
-          <div className="welcome-actions">
-            <button className={mode === 'sign-in' ? '' : 'secondary-button'} type="button" onClick={() => changeMode('sign-in')}>Logga in</button>
-            <button className={mode === 'sign-up' ? '' : 'secondary-button'} type="button" onClick={() => changeMode('sign-up')}>Registrera</button>
-          </div>
-        )}
-
         <form className="onboarding-form" onSubmit={handleSubmit}>
           {!isChoosingNewPassword && (
             <label className="field">
@@ -188,7 +175,7 @@ function AuthPanel({
           {!isResettingPassword && (
             <label className="field">
               <span>{isChoosingNewPassword ? 'Nytt lösenord' : 'Lösenord'}</span>
-              <input type={showPassword ? 'text' : 'password'} autoComplete={isRegistering || isChoosingNewPassword ? 'new-password' : 'current-password'} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Minst 6 tecken" disabled={!isConfigured || isBusy} required />
+              <input type={showPassword ? 'text' : 'password'} autoComplete={isChoosingNewPassword ? 'new-password' : 'current-password'} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Minst 6 tecken" disabled={!isConfigured || isBusy} required />
             </label>
           )}
 
@@ -214,9 +201,7 @@ function AuthPanel({
                   ? resetCooldown > 0
                     ? `Skicka igen om ${resetCooldown} s`
                     : 'Skicka återställningslänk'
-                  : isRegistering
-                    ? 'Skapa konto'
-                    : 'Logga in'}
+                  : 'Logga in'}
           </button>
 
           {mode === 'sign-in' && (

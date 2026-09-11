@@ -22,7 +22,6 @@ const featureIcons = {
   childLocation: '📍',
   status: '🏫',
   safePlaces: '🏠',
-  placeNotifications: '🔔',
   sos: '🆘',
   allOkCheckin: '✓',
   placeHistory: '🕘',
@@ -44,7 +43,6 @@ function PlaceSection({ activeSection }) {
   const [safePlacesError, setSafePlacesError] = useState('')
   const [safePlaceName, setSafePlaceName] = useState('')
   const [safePlaceSaving, setSafePlaceSaving] = useState(false)
-  const [isPlaceNotificationsOpen, setIsPlaceNotificationsOpen] = useState(false)
   const [isSosOpen, setIsSosOpen] = useState(false)
   const [isAllOkOpen, setIsAllOkOpen] = useState(false)
   const [isPlaceHistoryOpen, setIsPlaceHistoryOpen] = useState(false)
@@ -131,10 +129,6 @@ function PlaceSection({ activeSection }) {
     return () => {
       cancelled = true
     }
-  }, [state.consentGranted])
-
-  useEffect(() => {
-    if (!state.consentGranted) setIsPlaceNotificationsOpen(false)
   }, [state.consentGranted])
 
   useEffect(() => {
@@ -236,14 +230,13 @@ function PlaceSection({ activeSection }) {
             const childLocationOpenable = featureId === 'childLocation' && state.consentGranted
             const statusOpenable = featureId === 'status' && state.consentGranted
             const safePlacesOpenable = featureId === 'safePlaces' && state.consentGranted
-            const placeNotificationsOpenable = featureId === 'placeNotifications' && state.consentGranted
             const sosOpenable = featureId === 'sos' && state.consentGranted
             const allOkOpenable = featureId === 'allOkCheckin' && state.consentGranted
             const placeHistoryOpenable = featureId === 'placeHistory' && state.consentGranted
             const batterySaverOpenable = featureId === 'batterySaver' && state.consentGranted
             const sharingSettingsOpenable = featureId === 'sharingSettings' && state.consentGranted
             const isCardOpenable =
-              familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable || placeNotificationsOpenable || sosOpenable || allOkOpenable || placeHistoryOpenable || batterySaverOpenable || sharingSettingsOpenable
+              familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable || sosOpenable || allOkOpenable || placeHistoryOpenable || batterySaverOpenable || sharingSettingsOpenable
             const openableProps = isCardOpenable
               ? {
                   onPointerUp: () => {
@@ -251,7 +244,6 @@ function PlaceSection({ activeSection }) {
                     else if (childLocationOpenable) setIsChildLocationOpen(true)
                     else if (statusOpenable) setIsStatusOpen(true)
                     else if (safePlacesOpenable) setIsSafePlacesOpen(true)
-                    else if (placeNotificationsOpenable) setIsPlaceNotificationsOpen(true)
                     else if (sosOpenable) setIsSosOpen(true)
                     else if (allOkOpenable) setIsAllOkOpen(true)
                     else if (placeHistoryOpenable) setIsPlaceHistoryOpen(true)
@@ -265,7 +257,6 @@ function PlaceSection({ activeSection }) {
                       else if (childLocationOpenable) setIsChildLocationOpen(true)
                       else if (statusOpenable) setIsStatusOpen(true)
                       else if (safePlacesOpenable) setIsSafePlacesOpen(true)
-                      else if (placeNotificationsOpenable) setIsPlaceNotificationsOpen(true)
                       else if (sosOpenable) setIsSosOpen(true)
                       else if (allOkOpenable) setIsAllOkOpen(true)
                       else if (placeHistoryOpenable) setIsPlaceHistoryOpen(true)
@@ -409,6 +400,18 @@ function PlaceSection({ activeSection }) {
                     <span>{Number(place.latitude).toFixed(5)}, {Number(place.longitude).toFixed(5)}</span>{' '}
                     <small>radie {Math.round(place.radius_meters)} m</small>{' '}
                     <button type="button" onClick={() => handleDeleteSafePlace(place.id)}>Radera</button>
+                    <div>
+                      <strong>Platsnotiser</strong>
+                      <label className="place-toggle">
+                        <input type="checkbox" disabled />
+                        <span>Notis när personen kommer hit</span>
+                      </label>
+                      <label className="place-toggle">
+                        <input type="checkbox" disabled />
+                        <span>Notis när personen lämnar platsen</span>
+                      </label>
+                      <small>Inte ansluten ännu</small>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -435,22 +438,6 @@ function PlaceSection({ activeSection }) {
             </form>
             {safePlacesError ? <p role="alert">{safePlacesError}</p> : null}
             <button type="button" onClick={() => setIsSafePlacesOpen(false)}>
-              {t('common:actions.close')}
-            </button>
-          </div>
-        ) : null}
-
-        {isPlaceNotificationsOpen && state.consentGranted ? (
-          <div
-            className="ready-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label={t('features.placeNotifications.title')}
-          >
-            <h3>{t('features.placeNotifications.title')}</h3>
-            <p>{t('features.placeNotifications.empty')}</p>
-            <p>{t('features.placeNotifications.emptyBody')}</p>
-            <button type="button" onClick={() => setIsPlaceNotificationsOpen(false)}>
               {t('common:actions.close')}
             </button>
           </div>

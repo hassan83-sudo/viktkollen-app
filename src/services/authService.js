@@ -20,6 +20,14 @@ function getAuthUnavailableResult() {
   }
 }
 
+function isPasswordRecoveryRequest() {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  return new URLSearchParams(window.location.search).get('passwordRecovery') === '1'
+}
+
 async function withTimeout(promise, timeoutMs) {
   let timeoutId
 
@@ -82,11 +90,22 @@ export async function getCurrentAuthSession() {
     return getAuthUnavailableResult()
   }
 
-  if (typeof window === 'undefined') {
-    return supabase.auth.getSession()
+  const result =
+    typeof window === 'undefined'
+      ? await supabase.auth.getSession()
+      : await withTimeout(supabase.auth.getSession(), AUTH_SESSION_TIMEOUT_MS)
+
+  if (isPasswordRecoveryRequest() && result?.data) {
+    return {
+      ...result,
+      data: {
+        ...result.data,
+        session: null,
+      },
+    }
   }
 
-  return withTimeout(supabase.auth.getSession(), AUTH_SESSION_TIMEOUT_MS)
+  return result
 }
 
 export function subscribeToAuthChanges(onChange) {
@@ -94,7 +113,12 @@ export function subscribeToAuthChanges(onChange) {
     return () => {}
   }
 
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+  const { data } = supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY' || isPasswordRecoveryRequest()) {
+      onChange(null)
+      return
+    }
+
     onChange(session)
   })
 
@@ -138,6 +162,26 @@ export async function requestPasswordReset(email) {
   return supabase.auth.resetPasswordForEmail(email, {
     redirectTo,
   })
+}
+
+export async function completePasswordRecovery(password) {
+  if (!supabase) {
+    return getAuthUnavailableResult()
+  }
+
+  const result = await supabase.auth.updateUser({ password })
+
+  if (result.error) {
+    return result
+  }
+
+  const signOutResult = await supabase.auth.signOut()
+
+  if (signOutResult.error) {
+    return signOutResult
+  }
+
+  return result
 }
 
 export async function signOut() {

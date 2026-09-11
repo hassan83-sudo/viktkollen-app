@@ -317,6 +317,9 @@ export const placeSv = {
       title: 'Batterisnålt läge',
       body: 'Minska uppdateringsfrekvens när platsdelning är aktiv.',
       toggle: 'Aktivera batterisnålt läge (förberedd)',
+      statusOn: 'Batterisnålt läge är på.',
+      statusOff: 'Batterisnålt läge är av.',
+      disclaimer: 'Batterisnålt läge är en sparad inställning för platsfunktionen. Ingen automatisk ändring av GPS eller bakgrundsspårning är ansluten ännu.',
     },
     sharingSettings: {
       title: 'Inställningar för platsdelning',
@@ -404,6 +407,9 @@ export const placeEn = {
       title: 'Battery saver mode',
       body: 'Reduce update frequency when location sharing is active.',
       toggle: 'Enable battery saver (prepared)',
+      statusOn: 'Battery saver mode is on.',
+      statusOff: 'Battery saver mode is off.',
+      disclaimer: 'Battery saver mode is a saved setting for the location feature. No automatic change to GPS or background tracking is connected yet.',
     },
     sharingSettings: {
       title: 'Location sharing settings',

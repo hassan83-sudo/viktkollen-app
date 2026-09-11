@@ -35,6 +35,7 @@ function PlaceSection({ activeSection }) {
   const [isSosOpen, setIsSosOpen] = useState(false)
   const [isAllOkOpen, setIsAllOkOpen] = useState(false)
   const [isPlaceHistoryOpen, setIsPlaceHistoryOpen] = useState(false)
+  const [isBatterySaverOpen, setIsBatterySaverOpen] = useState(false)
 
   useEffect(() => {
     savePlaceState(state)
@@ -70,6 +71,10 @@ function PlaceSection({ activeSection }) {
 
   useEffect(() => {
     if (!state.consentGranted) setIsPlaceHistoryOpen(false)
+  }, [state.consentGranted])
+
+  useEffect(() => {
+    if (!state.consentGranted) setIsBatterySaverOpen(false)
   }, [state.consentGranted])
 
   function availabilityLabel(availability) {
@@ -124,8 +129,9 @@ function PlaceSection({ activeSection }) {
             const sosOpenable = featureId === 'sos' && state.consentGranted
             const allOkOpenable = featureId === 'allOkCheckin' && state.consentGranted
             const placeHistoryOpenable = featureId === 'placeHistory' && state.consentGranted
+            const batterySaverOpenable = featureId === 'batterySaver' && state.consentGranted
             const isCardOpenable =
-              familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable || placeNotificationsOpenable || sosOpenable || allOkOpenable || placeHistoryOpenable
+              familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable || placeNotificationsOpenable || sosOpenable || allOkOpenable || placeHistoryOpenable || batterySaverOpenable
             const openableProps = isCardOpenable
               ? {
                   onClick: () => {
@@ -137,6 +143,7 @@ function PlaceSection({ activeSection }) {
                     else if (sosOpenable) setIsSosOpen(true)
                     else if (allOkOpenable) setIsAllOkOpen(true)
                     else if (placeHistoryOpenable) setIsPlaceHistoryOpen(true)
+                    else if (batterySaverOpenable) setIsBatterySaverOpen(true)
                   },
                   onKeyDown: (event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
@@ -149,6 +156,7 @@ function PlaceSection({ activeSection }) {
                       else if (sosOpenable) setIsSosOpen(true)
                       else if (allOkOpenable) setIsAllOkOpen(true)
                       else if (placeHistoryOpenable) setIsPlaceHistoryOpen(true)
+                      else if (batterySaverOpenable) setIsBatterySaverOpen(true)
                     }
                   },
                   role: 'button',
@@ -285,6 +293,25 @@ function PlaceSection({ activeSection }) {
             <p>{t('features.placeHistory.empty')}</p>
             <p>{t('features.placeHistory.emptyBody')}</p>
             <button type="button" onClick={() => setIsPlaceHistoryOpen(false)}>
+              {t('common:actions.close')}
+            </button>
+          </div>
+        ) : null}
+
+        {isBatterySaverOpen && state.consentGranted ? (
+          <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.batterySaver.title')}>
+            <h3>{t('features.batterySaver.title')}</h3>
+            <p>{state.batterySaverEnabled ? t('features.batterySaver.statusOn') : t('features.batterySaver.statusOff')}</p>
+            <p>{t('features.batterySaver.disclaimer')}</p>
+            <label className="place-toggle">
+              <input
+                checked={state.batterySaverEnabled}
+                type="checkbox"
+                onChange={(event) => setState((current) => setBatterySaver(current, event.target.checked))}
+              />
+              <span>{t('features.batterySaver.toggle')}</span>
+            </label>
+            <button type="button" onClick={() => setIsBatterySaverOpen(false)}>
               {t('common:actions.close')}
             </button>
           </div>

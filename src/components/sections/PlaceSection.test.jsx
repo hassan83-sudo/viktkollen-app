@@ -376,4 +376,90 @@ describe('PlaceSection', () => {
       'Location history will appear here once the feature has been enabled and real location updates have been saved.',
     )
   })
+
+  it('does not make Batterisnålt läge openable without consent', () => {
+    expect(placeSource).toContain("featureId === 'batterySaver' && state.consentGranted")
+  })
+
+  it('makes Batterisnålt läge openable with consent, without changing the eight earlier openable cards', () => {
+    expect(placeSource).toContain('setIsBatterySaverOpen(true)')
+    expect(placeSource).toContain(
+      'familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable || placeNotificationsOpenable || sosOpenable || allOkOpenable || placeHistoryOpenable || batterySaverOpenable',
+    )
+    expect(placeSource).toContain("role: 'button'")
+    expect(placeSource).toContain('tabIndex: 0')
+    // role="button"/tabIndex=0 are only ever applied through the shared
+    // openableProps spread — every non-openable card still renders with `: {}`.
+    expect(placeSource).toContain(': {}')
+    // Enter and Space follow the same shared keyboard handler as every other card.
+    expect(placeSource).toContain("if (event.key === 'Enter' || event.key === ' ')")
+    // Every earlier card's own gating condition and handler is still present,
+    // byte for byte — only a sibling branch was added this sprint.
+    expect(placeSource).toContain("featureId === 'familyMap' && state.consentGranted")
+    expect(placeSource).toContain('setIsFamilyMapOpen(true)')
+    expect(placeSource).toContain("featureId === 'childLocation' && state.consentGranted")
+    expect(placeSource).toContain('setIsChildLocationOpen(true)')
+    expect(placeSource).toContain("featureId === 'status' && state.consentGranted")
+    expect(placeSource).toContain('setIsStatusOpen(true)')
+    expect(placeSource).toContain("featureId === 'safePlaces' && state.consentGranted")
+    expect(placeSource).toContain('setIsSafePlacesOpen(true)')
+    expect(placeSource).toContain("featureId === 'placeNotifications' && state.consentGranted")
+    expect(placeSource).toContain('setIsPlaceNotificationsOpen(true)')
+    expect(placeSource).toContain("featureId === 'sos' && state.consentGranted")
+    expect(placeSource).toContain('setIsSosOpen(true)')
+    expect(placeSource).toContain("featureId === 'allOkCheckin' && state.consentGranted")
+    expect(placeSource).toContain('setIsAllOkOpen(true)')
+    expect(placeSource).toContain("featureId === 'placeHistory' && state.consentGranted")
+    expect(placeSource).toContain('setIsPlaceHistoryOpen(true)')
+  })
+
+  it('closes the Batterisnålt läge modal automatically if consent is revoked', () => {
+    expect(placeSource).toContain('if (!state.consentGranted) setIsBatterySaverOpen(false)')
+  })
+
+  it('shows the real batterySaverEnabled status in the Batterisnålt läge modal, on and off, with no fake toggle', () => {
+    expect(placeSource).toContain('isBatterySaverOpen && state.consentGranted')
+    expect(placeSource).toContain("t('features.batterySaver.title')")
+    // Status text is driven directly off state.batterySaverEnabled, not a
+    // separate local value.
+    expect(placeSource).toContain(
+      "state.batterySaverEnabled ? t('features.batterySaver.statusOn') : t('features.batterySaver.statusOff')",
+    )
+    expect(placeSource).toContain("t('features.batterySaver.disclaimer')")
+    expect(placeSource).toContain("t('common:actions.close')")
+    // The modal's toggle reuses the existing legitimate update flow — the same
+    // checked source and updater as the card's own pre-existing toggle.
+    expect(placeSource).toContain('checked={state.batterySaverEnabled}')
+    expect(placeSource).toContain('setState((current) => setBatterySaver(current, event.target.checked))')
+    expect(placeResourcesSource).toContain('Batterisnålt läge är på.')
+    expect(placeResourcesSource).toContain('Batterisnålt läge är av.')
+    expect(placeResourcesSource).toContain('Battery saver mode is on.')
+    expect(placeResourcesSource).toContain('Battery saver mode is off.')
+  })
+
+  it('describes Batterisnålt läge truthfully, without claiming GPS frequency or real battery savings', () => {
+    expect(placeResourcesSource).toContain(
+      'Batterisnålt läge är en sparad inställning för platsfunktionen. Ingen automatisk ändring av GPS eller bakgrundsspårning är ansluten ännu.',
+    )
+    expect(placeResourcesSource).toContain(
+      'Battery saver mode is a saved setting for the location feature. No automatic change to GPS or background tracking is connected yet.',
+    )
+    // No new tracking, storage, timers or network/backend code was introduced
+    // anywhere in the file by this sprint.
+    expect(placeSource).not.toContain('navigator.geolocation')
+    expect(placeSource).not.toContain('getCurrentPosition')
+    expect(placeSource).not.toContain('watchPosition')
+    expect(placeSource).not.toContain('setInterval')
+    expect(placeSource).not.toContain('setTimeout')
+    expect(placeSource).not.toContain('localStorage')
+    expect(placeSource).not.toContain('sessionStorage')
+    expect(placeSource).not.toContain('IndexedDB')
+    expect(placeSource).not.toContain('indexedDB')
+    expect(placeSource).not.toContain('fetch(')
+    expect(placeSource).not.toContain('axios')
+    expect(placeSource).not.toContain('WebSocket')
+    expect(placeSource).not.toContain('supabase')
+    expect(placeSource).not.toContain('Notification.')
+    expect(placeSource).not.toContain('serviceWorker')
+  })
 })

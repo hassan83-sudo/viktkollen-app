@@ -26,6 +26,12 @@ import {
   sendFamilyCheckin,
   subscribeFamilyCheckins,
 } from '../../features/place/placeCheckinService.js'
+import {
+  loadOwnPlaceHistory,
+  loadPlaceHistoryRetention,
+  placeHistoryRetentionChoices,
+  setPlaceHistoryRetention,
+} from '../../features/place/placeHistoryService.js'
 
 const featureIcons = {
   familyMap: '🗺',
@@ -94,6 +100,11 @@ function PlaceSection({ activeSection }) {
   const [checkinSending, setCheckinSending] = useState(false)
   const [checkinNotice, setCheckinNotice] = useState('')
   const [isPlaceHistoryOpen, setIsPlaceHistoryOpen] = useState(false)
+  const [placeHistory, setPlaceHistory] = useState([])
+  const [placeHistoryLoaded, setPlaceHistoryLoaded] = useState(false)
+  const [placeHistoryError, setPlaceHistoryError] = useState('')
+  const [placeHistoryRetention, setPlaceHistoryRetentionMinutes] = useState(0)
+  const [placeHistorySaving, setPlaceHistorySaving] = useState(false)
   const [isBatterySaverOpen, setIsBatterySaverOpen] = useState(false)
   const [isSharingSettingsOpen, setIsSharingSettingsOpen] = useState(false)
 
@@ -258,8 +269,40 @@ function PlaceSection({ activeSection }) {
   }, [state.consentGranted])
 
   useEffect(() => {
-    if (!state.consentGranted) setIsPlaceHistoryOpen(false)
-  }, [state.consentGranted])
+    if (!state.consentGranted) {
+      setIsPlaceHistoryOpen(false)
+      setPlaceHistory([])
+      setPlaceHistoryLoaded(false)
+      setPlaceHistoryError('')
+      setPlaceHistoryRetentionMinutes(0)
+      return
+    }
+
+    if (!isPlaceHistoryOpen) return
+
+    let cancelled = false
+    setPlaceHistoryLoaded(false)
+    setPlaceHistoryError('')
+
+    Promise.all([loadPlaceHistoryRetention(), loadOwnPlaceHistory()])
+      .then(([retentionResult, historyResult]) => {
+        if (cancelled) return
+        setPlaceHistoryRetentionMinutes(retentionResult.minutes ?? 0)
+        setPlaceHistory(Array.isArray(historyResult.data) ? historyResult.data : [])
+        setPlaceHistoryError(retentionResult.error?.message || historyResult.error?.message || '')
+        setPlaceHistoryLoaded(true)
+      })
+      .catch((error) => {
+        if (cancelled) return
+        setPlaceHistory([])
+        setPlaceHistoryError(error?.message || 'Platshistoriken kunde inte hämtas.')
+        setPlaceHistoryLoaded(true)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isPlaceHistoryOpen, state.consentGranted])
 
   useEffect(() => {
     if (!state.consentGranted) setIsBatterySaverOpen(false)
@@ -333,11 +376,32 @@ function PlaceSection({ activeSection }) {
     setCheckinSending(false)
   }
 
+  async function handlePlaceHistoryRetention(minutes) {
+    if (placeHistorySaving) return
+    setPlaceHistorySaving(true)
+    setPlaceHistoryError('')
+
+    const { error } = await setPlaceHistoryRetention(minutes)
+    if (error) {
+      setPlaceHistoryError(error.message || 'Lagringstiden kunde inte ändras.')
+      setPlaceHistorySaving(false)
+      return
+    }
+
+    setPlaceHistoryRetentionMinutes(minutes)
+    const historyResult = await loadOwnPlaceHistory()
+    setPlaceHistory(Array.isArray(historyResult.data) ? historyResult.data : [])
+    setPlaceHistoryError(historyResult.error?.message || '')
+    setPlaceHistoryLoaded(true)
+    setPlaceHistorySaving(false)
+  }
+
   function availabilityLabel(featureId, availability) {
     if ((featureId === 'familyMap' || featureId === 'childLocation' || featureId === 'status') && familyLocationsLoaded && familyLocations.length > 0) return 'Ansluten'
     if (featureId === 'safePlaces' && safePlacesLoaded && !safePlacesError) return 'Ansluten'
     if (featureId === 'sos' && safetyAlertsLoaded && !safetyAlertsError) return 'Ansluten'
     if (featureId === 'allOkCheckin' && checkinsLoaded && !checkinsError) return 'Ansluten'
+    if (featureId === 'placeHistory' && placeHistoryLoaded && !placeHistoryError) return placeHistoryRetention === 0 ? 'Av' : 'Ansluten'
     if ((featureId === 'batterySaver' || featureId === 'sharingSettings') && state.consentGranted) return 'Ansluten'
     if (availability === placeAvailability.requiresConsent) return t('status.requiresConsent')
     if (availability === placeAvailability.comingSoon) return t('status.comingSoon')
@@ -582,7 +646,46 @@ function PlaceSection({ activeSection }) {
 
         {isPlaceHistoryOpen && state.consentGranted ? (
           <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.placeHistory.title')}>
-            <h3>{t('features.placeHistory.title')}</h3><p>{t('features.placeHistory.empty')}</p><p>{t('features.placeHistory.emptyBody')}</p>
+            <h3>🕘 {t('features.placeHistory.title')}</h3>
+            <p><strong>Hur länge ska platshistorik sparas?</strong></p>
+            <div className="place-safety-alert-choices">
+              {placeHistoryRetentionChoices.map((choice) => (
+                <button
+                  key={choice.minutes}
+                  type="button"
+                  disabled={placeHistorySaving}
+                  aria-pressed={placeHistoryRetention === choice.minutes}
+                  onClick={() => handlePlaceHistoryRetention(choice.minutes)}
+                >
+                  {placeHistoryRetention === choice.minutes ? '✓ ' : ''}{choice.label}
+                </button>
+              ))}
+            </div>
+            <p><small>Direkt betyder att ingen platshistorik sparas. När du väljer en kortare tid kortas även befintlig historik och för gamla poster raderas.</small></p>
+            <p><small>Koordinaterna krypteras i webbläsaren innan de skickas till Supabase. Krypteringsnyckeln ligger inte i Supabase.</small></p>
+            {placeHistorySaving ? <p><small>Sparar inställning…</small></p> : null}
+            {placeHistoryError ? <p role="alert">{placeHistoryError}</p> : null}
+
+            {placeHistoryLoaded && placeHistory.length > 0 ? (
+              <div className="place-safety-alert-history">
+                <p><strong>Din senaste krypterade platshistorik</strong></p>
+                <ul>
+                  {placeHistory.slice(0, 20).map((entry) => (
+                    <li key={entry.id}>
+                      <small>{new Date(entry.created_at).toLocaleString()}</small>
+                      {entry.locked ? (
+                        <span>🔒 Kan inte låsas upp på den här enheten.</span>
+                      ) : (
+                        <span>📍 {Number(entry.latitude).toFixed(5)}, {Number(entry.longitude).toFixed(5)}{entry.accuracyMeters != null ? ` ±${Math.round(entry.accuracyMeters)} m` : ''}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : placeHistoryLoaded && !placeHistoryError ? (
+              <p>{placeHistoryRetention === 0 ? 'Platshistorik är avstängd.' : 'Ingen platshistorik har sparats ännu.'}</p>
+            ) : null}
+
             <button type="button" onClick={() => setIsPlaceHistoryOpen(false)}>{t('common:actions.close')}</button>
           </div>
         ) : null}

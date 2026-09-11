@@ -125,6 +125,21 @@ export async function signInWithEmail({ email, password }) {
   })
 }
 
+export async function requestPasswordReset(email) {
+  if (!supabase) {
+    return getAuthUnavailableResult()
+  }
+
+  const redirectTo =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/?passwordRecovery=1`
+      : undefined
+
+  return supabase.auth.resetPasswordForEmail(email, {
+    redirectTo,
+  })
+}
+
 export async function signOut() {
   if (!supabase) {
     return getAuthUnavailableResult()

@@ -1,6 +1,6 @@
 import { supabase } from '../../services/supabaseClient.js'
 
-function getCurrentPosition() {
+function getCurrentPosition({ batterySaverEnabled = false } = {}) {
   return new Promise((resolve, reject) => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
       reject(new Error('Platsåtkomst stöds inte på den här enheten.'))
@@ -8,9 +8,9 @@ function getCurrentPosition() {
     }
 
     navigator.geolocation.getCurrentPosition(resolve, reject, {
-      enableHighAccuracy: true,
-      maximumAge: 30000,
-      timeout: 15000,
+      enableHighAccuracy: !batterySaverEnabled,
+      maximumAge: batterySaverEnabled ? 5 * 60 * 1000 : 30000,
+      timeout: batterySaverEnabled ? 10000 : 15000,
     })
   })
 }
@@ -65,6 +65,7 @@ export async function syncPlaceLocationSharing(state) {
 
   const consentGranted = Boolean(state?.consentGranted)
   const sharingEnabled = Boolean(state?.sharingEnabled && consentGranted)
+  const batterySaverEnabled = Boolean(state?.batterySaverEnabled)
   const consentGrantedAt = consentGranted ? state?.consentGrantedAt || new Date().toISOString() : null
 
   if (!sharingEnabled) {
@@ -75,7 +76,7 @@ export async function syncPlaceLocationSharing(state) {
   // Ask the device for location as soon as sharing is enabled. This must happen
   // before family lookup so the browser permission prompt is not skipped when
   // the account has not yet been connected to a family.
-  const position = await getCurrentPosition()
+  const position = await getCurrentPosition({ batterySaverEnabled })
 
   const familyId = await getPrimaryFamilyId(userId)
   if (!familyId) return { ok: false, reason: 'no-family-membership' }

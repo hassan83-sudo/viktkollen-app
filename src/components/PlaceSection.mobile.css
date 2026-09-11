@@ -169,4 +169,72 @@
     min-width: 0;
     overflow-wrap: anywhere;
   }
+
+  /* Sharing settings: make the modal a compact, scrollable control panel. */
+  #app-section-place.is-active .place-sharing-settings-modal {
+    padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+    scroll-padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  }
+
+  #app-section-place.is-active .place-sharing-settings-group {
+    display: grid;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(148, 163, 184, 0.16);
+  }
+
+  #app-section-place.is-active .place-sharing-settings-group h4,
+  #app-section-place.is-active .place-sharing-settings-group p {
+    margin: 0;
+  }
+
+  #app-section-place.is-active .place-sharing-settings-group form {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  #app-section-place.is-active .place-sharing-settings-group form label {
+    display: grid;
+    gap: 8px;
+  }
+
+  #app-section-place.is-active .place-sharing-settings-group form input {
+    box-sizing: border-box;
+    width: 100%;
+  }
+
+  #app-section-place.is-active .place-sharing-viewers {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  #app-section-place.is-active .place-sharing-viewers li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 12px;
+    background: rgba(8, 15, 31, 0.7);
+  }
+
+  #app-section-place.is-active .place-sharing-retention-choices {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #app-section-place.is-active .place-sharing-retention-choices button {
+    text-align: center;
+  }
+
+  #app-section-place.is-active .place-sharing-stop-group > button {
+    width: 100%;
+  }
 }

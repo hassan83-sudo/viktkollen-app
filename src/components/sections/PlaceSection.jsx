@@ -12,6 +12,11 @@ import {
 import { loadPlaceState, savePlaceState } from '../../features/place/placeStore.js'
 import { loadFamilyLatestLocations } from '../../features/place/placeFamilyMapService.js'
 import {
+  displayNameForUser,
+  loadPlaceFamilyMembers,
+  updateOwnPlaceDisplayName,
+} from '../../features/place/placeFamilyMemberService.js'
+import {
   createSafePlaceFromOwnLatestLocation,
   deleteSafePlace,
   loadSafePlaces,
@@ -86,6 +91,11 @@ function PlaceSection({ activeSection }) {
   const [isFamilyMapOpen, setIsFamilyMapOpen] = useState(false)
   const [familyLocations, setFamilyLocations] = useState([])
   const [familyLocationsLoaded, setFamilyLocationsLoaded] = useState(false)
+  const [familyMembers, setFamilyMembers] = useState([])
+  const [familyUserId, setFamilyUserId] = useState(null)
+  const [displayNameDraft, setDisplayNameDraft] = useState('')
+  const [displayNameSaving, setDisplayNameSaving] = useState(false)
+  const [displayNameError, setDisplayNameError] = useState('')
   const [isChildLocationOpen, setIsChildLocationOpen] = useState(false)
   const [isStatusOpen, setIsStatusOpen] = useState(false)
   const [isSafePlacesOpen, setIsSafePlacesOpen] = useState(false)
@@ -123,6 +133,41 @@ function PlaceSection({ activeSection }) {
   }, [state])
 
   useEffect(() => subscribeActiveLocationSharingStatus(setActiveSharingStatus), [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!state.consentGranted) {
+      setFamilyMembers([])
+      setFamilyUserId(null)
+      setDisplayNameDraft('')
+      setDisplayNameError('')
+      return () => {
+        cancelled = true
+      }
+    }
+
+    loadPlaceFamilyMembers()
+      .then(({ data, userId, error }) => {
+        if (cancelled) return
+        const members = Array.isArray(data) ? data : []
+        setFamilyMembers(members)
+        setFamilyUserId(userId || null)
+        setDisplayNameError(error?.message || '')
+        const ownName = members.find((member) => member.user_id === userId)?.display_name || ''
+        setDisplayNameDraft(ownName)
+      })
+      .catch((error) => {
+        if (cancelled) return
+        setFamilyMembers([])
+        setFamilyUserId(null)
+        setDisplayNameError(error?.message || 'Familjemedlemmar kunde inte hämtas.')
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [state.consentGranted])
 
   useEffect(() => {
     if (!state.consentGranted) setIsFamilyMapOpen(false)
@@ -219,14 +264,15 @@ function PlaceSection({ activeSection }) {
   useEffect(() => {
     if (!state.consentGranted || !safePlacesLoaded) return undefined
 
-    return subscribeSafePlaceTransitions(safePlaces, ({ type, place }) => {
+    return subscribeSafePlaceTransitions(safePlaces, ({ type, place, userId }) => {
+      const name = displayNameForUser(familyMembers, userId)
       setSafePlaceNotice(
         type === 'arrival'
-          ? `📍 Någon kom till ${place.name}.`
-          : `📍 Någon lämnade ${place.name}.`,
+          ? `📍 ${name} kom till ${place.name}.`
+          : `📍 ${name} lämnade ${place.name}.`,
       )
     })
-  }, [safePlaces, safePlacesLoaded, state.consentGranted])
+  }, [familyMembers, safePlaces, safePlacesLoaded, state.consentGranted])
 
   useEffect(() => {
     if (!state.consentGranted) {
@@ -401,6 +447,31 @@ function PlaceSection({ activeSection }) {
     } else {
       setPushStatus(await getPlacePushStatus())
     }
+  }
+
+  async function handleSaveDisplayName(event) {
+    event.preventDefault()
+    if (displayNameSaving || !displayNameDraft.trim()) return
+
+    setDisplayNameSaving(true)
+    setDisplayNameError('')
+    const { data, error } = await updateOwnPlaceDisplayName(displayNameDraft)
+
+    if (error) {
+      setDisplayNameError(error.message || 'Namnet kunde inte sparas.')
+      setDisplayNameSaving(false)
+      return
+    }
+
+    const updatedRows = Array.isArray(data) ? data : []
+    if (updatedRows.length > 0) {
+      setFamilyMembers((current) => current.map((member) => {
+        const updated = updatedRows.find((row) => row.family_id === member.family_id && row.user_id === member.user_id)
+        return updated || member
+      }))
+      setDisplayNameDraft(updatedRows[0]?.display_name || displayNameDraft.trim())
+    }
+    setDisplayNameSaving(false)
   }
 
   async function handleSendSafetyAlert(reason) {
@@ -582,7 +653,8 @@ function PlaceSection({ activeSection }) {
             {familyLocationsLoaded && familyLocations.length > 0 ? (
               <ul>{familyLocations.map((location) => (
                 <li key={`${location.family_id}:${location.user_id}`}>
-                  <strong>{Number(location.latitude).toFixed(5)}, {Number(location.longitude).toFixed(5)}</strong>
+                  <strong>{location.display_name || displayNameForUser(familyMembers, location.user_id)}</strong>{' '}
+                  <span>{Number(location.latitude).toFixed(5)}, {Number(location.longitude).toFixed(5)}</span>
                   {location.accuracy_meters != null ? <span> ±{Math.round(location.accuracy_meters)} m</span> : null}
                   {location.location_recorded_at ? <small> {new Date(location.location_recorded_at).toLocaleString()}</small> : null}
                 </li>
@@ -596,6 +668,7 @@ function PlaceSection({ activeSection }) {
           <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.childLocation.title')}>
             <h3>{t('features.childLocation.title')}</h3>
             {familyLocationsLoaded && familyLocations.length > 0 ? <>
+              <p><strong>{familyLocations[0].display_name || displayNameForUser(familyMembers, familyLocations[0].user_id)}</strong></p>
               <p><strong>Senaste delade plats</strong></p>
               <p><strong>{Number(familyLocations[0].latitude).toFixed(5)}, {Number(familyLocations[0].longitude).toFixed(5)}</strong>{familyLocations[0].accuracy_meters != null ? <span> ±{Math.round(familyLocations[0].accuracy_meters)} m</span> : null}</p>
               {familyLocations[0].location_recorded_at ? <p>Uppdaterad {new Date(familyLocations[0].location_recorded_at).toLocaleString()}</p> : null}
@@ -662,7 +735,7 @@ function PlaceSection({ activeSection }) {
                 <ul>
                   {safetyAlerts.slice(0, 5).map((alert) => (
                     <li key={alert.id}>
-                      <strong>{safetyAlertLabels[alert.reason] || '🛡️ Trygghetslarm'}</strong>
+                      <strong>{displayNameForUser(familyMembers, alert.sender_user_id)} · {safetyAlertLabels[alert.reason] || '🛡️ Trygghetslarm'}</strong>
                       <small>{new Date(alert.created_at).toLocaleString()}</small>
                       {alert.latitude != null && alert.longitude != null ? (
                         <span>📍 {Number(alert.latitude).toFixed(5)}, {Number(alert.longitude).toFixed(5)}{alert.accuracy_meters != null ? ` ±${Math.round(alert.accuracy_meters)} m` : ''}</span>
@@ -700,7 +773,7 @@ function PlaceSection({ activeSection }) {
                 <ul>
                   {checkins.slice(0, 5).map((checkin) => (
                     <li key={checkin.id}>
-                      <strong>{checkinLabels[checkin.status] || '✓ Check-in'}</strong>
+                      <strong>{displayNameForUser(familyMembers, checkin.sender_user_id)} · {checkinLabels[checkin.status] || '✓ Check-in'}</strong>
                       <small>{new Date(checkin.created_at).toLocaleString()}</small>
                       {checkin.latitude != null && checkin.longitude != null ? (
                         <span>📍 {Number(checkin.latitude).toFixed(5)}, {Number(checkin.longitude).toFixed(5)}{checkin.accuracy_meters != null ? ` ±${Math.round(checkin.accuracy_meters)} m` : ''}</span>
@@ -778,6 +851,12 @@ function PlaceSection({ activeSection }) {
             {activeSharingStatus.lastUpdatedAt ? <p><strong>Senast uppdaterad:</strong> {new Date(activeSharingStatus.lastUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p> : null}
             {activeSharingStatus.accuracyMeters != null ? <p><strong>Noggrannhet:</strong> ±{Math.round(activeSharingStatus.accuracyMeters)} m</p> : null}
             <p><small>GPS uppdateras medan Viktkollen är aktiv. När appen är i bakgrunden pausas bevakningen och startar igen när du återvänder.</small></p>
+            <form onSubmit={handleSaveDisplayName}>
+              <label>Ditt namn i familjen<input type="text" maxLength={80} value={displayNameDraft} onChange={(event) => setDisplayNameDraft(event.target.value)} placeholder="Exempel: Hassan" /></label>
+              <button type="submit" disabled={displayNameSaving || !displayNameDraft.trim()}>{displayNameSaving ? 'Sparar…' : 'Spara namn'}</button>
+            </form>
+            {displayNameError ? <p role="alert">{displayNameError}</p> : null}
+            {familyUserId && displayNameForUser(familyMembers, familyUserId, '') ? <p><small>Familjen ser dig som: <strong>{displayNameForUser(familyMembers, familyUserId, '')}</strong></small></p> : null}
             <p>{t('features.sharingSettings.disclaimer')}</p>
             <label className="place-toggle"><input checked={state.sharingEnabled} type="checkbox" onChange={(event) => setState((current) => setPlaceSharing(current, event.target.checked))} /><span>{t('consent.sharingToggle')}</span></label>
             <button type="button" onClick={() => setIsSharingSettingsOpen(false)}>{t('common:actions.close')}</button>

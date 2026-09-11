@@ -1,5 +1,17 @@
 import { useState } from 'react'
-import { getAuthErrorMessage, requestPasswordReset } from '../services/authService.js'
+import {
+  completePasswordRecovery,
+  getAuthErrorMessage,
+  requestPasswordReset,
+} from '../services/authService.js'
+
+function isRecoveryLink() {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  return new URLSearchParams(window.location.search).get('passwordRecovery') === '1'
+}
 
 function AuthPanel({
   authError,
@@ -9,27 +21,69 @@ function AuthPanel({
   onSignIn,
   onSignUp,
 }) {
-  const [mode, setMode] = useState('sign-in')
+  const [mode, setMode] = useState(() =>
+    isRecoveryLink() ? 'choose-new-password' : 'sign-in',
+  )
   const [email, setEmail] = useState('')
   const [formError, setFormError] = useState('')
   const [formNotice, setFormNotice] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [resetLoading, setResetLoading] = useState(false)
   const isConfigured = Boolean(authStatus?.authEnabled)
   const isRegistering = mode === 'sign-up'
   const isResettingPassword = mode === 'reset-password'
+  const isChoosingNewPassword = mode === 'choose-new-password'
   const isBusy = authLoading || resetLoading
 
   function changeMode(nextMode) {
     setMode(nextMode)
     setFormError('')
     setFormNotice('')
+    setPassword('')
+    setConfirmPassword('')
   }
 
   async function handleSubmit(event) {
     event.preventDefault()
     setFormError('')
     setFormNotice('')
+
+    if (isChoosingNewPassword) {
+      if (!password || !confirmPassword) {
+        setFormError('Fyll i det nya lösenordet två gånger.')
+        return
+      }
+
+      if (password.length < 6) {
+        setFormError('Lösenordet behöver vara minst 6 tecken.')
+        return
+      }
+
+      if (password !== confirmPassword) {
+        setFormError('Lösenorden matchar inte.')
+        return
+      }
+
+      setResetLoading(true)
+      const { error } = await completePasswordRecovery(password)
+      setResetLoading(false)
+
+      if (error) {
+        setFormError(getAuthErrorMessage(error))
+        return
+      }
+
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+
+      setPassword('')
+      setConfirmPassword('')
+      setMode('sign-in')
+      setFormNotice('Lösenordet är ändrat. Logga in med ditt nya lösenord.')
+      return
+    }
 
     const normalizedEmail = email.trim()
 
@@ -77,14 +131,22 @@ function AuthPanel({
     <main className="app-shell welcome-shell">
       <section className="welcome-card">
         <p className="eyebrow">Viktkollen Auth</p>
-        <h1>{isResettingPassword ? 'Glömt lösenord?' : 'Logga in'}</h1>
+        <h1>
+          {isChoosingNewPassword
+            ? 'Välj nytt lösenord'
+            : isResettingPassword
+              ? 'Glömt lösenord?'
+              : 'Logga in'}
+        </h1>
         <p className="welcome-subtitle">
-          {isResettingPassword
-            ? 'Ange e-postadressen till ditt konto så skickar vi en återställningslänk.'
-            : 'Använd e-post och lösenord. Din vikt, mat, check-ins, bilder och chatt ligger fortfarande lokalt i den här webbläsaren.'}
+          {isChoosingNewPassword
+            ? 'Skriv ditt nya lösenord två gånger och spara det.'
+            : isResettingPassword
+              ? 'Ange e-postadressen till ditt konto så skickar vi en återställningslänk.'
+              : 'Använd e-post och lösenord. Din vikt, mat, check-ins, bilder och chatt ligger fortfarande lokalt i den här webbläsaren.'}
         </p>
 
-        {!isResettingPassword && (
+        {!isResettingPassword && !isChoosingNewPassword && (
           <div className="welcome-actions">
             <button
               className={mode === 'sign-in' ? '' : 'secondary-button'}
@@ -104,25 +166,27 @@ function AuthPanel({
         )}
 
         <form className="onboarding-form" onSubmit={handleSubmit}>
-          <label className="field">
-            <span>E-post</span>
-            <input
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="namn@example.com"
-              disabled={!isConfigured || isBusy}
-              required
-            />
-          </label>
+          {!isChoosingNewPassword && (
+            <label className="field">
+              <span>E-post</span>
+              <input
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="namn@example.com"
+                disabled={!isConfigured || isBusy}
+                required
+              />
+            </label>
+          )}
 
           {!isResettingPassword && (
             <label className="field">
-              <span>Lösenord</span>
+              <span>{isChoosingNewPassword ? 'Nytt lösenord' : 'Lösenord'}</span>
               <input
                 type="password"
-                autoComplete={isRegistering ? 'new-password' : 'current-password'}
+                autoComplete={isRegistering || isChoosingNewPassword ? 'new-password' : 'current-password'}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="Minst 6 tecken"
@@ -132,14 +196,31 @@ function AuthPanel({
             </label>
           )}
 
+          {isChoosingNewPassword && (
+            <label className="field">
+              <span>Upprepa nytt lösenord</span>
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                placeholder="Skriv lösenordet igen"
+                disabled={!isConfigured || isBusy}
+                required
+              />
+            </label>
+          )}
+
           <button type="submit" disabled={!isConfigured || isBusy}>
             {isBusy
               ? 'Kontrollerar...'
-              : isResettingPassword
-                ? 'Skicka återställningslänk'
-                : isRegistering
-                  ? 'Skapa konto'
-                  : 'Logga in'}
+              : isChoosingNewPassword
+                ? 'Spara nytt lösenord'
+                : isResettingPassword
+                  ? 'Skicka återställningslänk'
+                  : isRegistering
+                    ? 'Skapa konto'
+                    : 'Logga in'}
           </button>
 
           {mode === 'sign-in' && (

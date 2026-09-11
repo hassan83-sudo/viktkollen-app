@@ -1,4 +1,5 @@
 import { supabase } from '../../services/supabaseClient.js'
+import { ensurePlacePushSubscription } from './placePushService.js'
 
 function unavailable(message = 'Trygga platser kräver att du är inloggad.') {
   return { data: [], error: new Error(message) }
@@ -104,12 +105,23 @@ export async function updateSafePlaceNotifications(id, updates) {
   if (typeof updates?.notifyOnDeparture === 'boolean') patch.notify_on_departure = updates.notifyOnDeparture
   if (Object.keys(patch).length === 0) return { data: null, error: new Error('Ingen notisinställning valdes.') }
 
+  const wantsPush = updates?.notifyOnArrival === true || updates?.notifyOnDeparture === true
+  const pushSetup = wantsPush
+    ? ensurePlacePushSubscription().catch((pushError) => ({ data: null, error: pushError }))
+    : null
+
   const { data, error } = await supabase
     .from('place_safe_places')
     .update(patch)
     .eq('id', id)
     .select('id,family_id,created_by,name,latitude,longitude,radius_meters,notify_on_arrival,notify_on_departure,created_at,updated_at')
     .single()
+
+  if (pushSetup) {
+    void pushSetup.then((result) => {
+      if (result?.error) console.warn('Place push setup failed:', result.error?.message || result.error)
+    })
+  }
 
   return { data: data || null, error: error || null }
 }

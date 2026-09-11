@@ -115,7 +115,7 @@ function PlaceSection({ activeSection }) {
   }, [state.consentGranted])
 
   function availabilityLabel(featureId, availability) {
-    if ((featureId === 'familyMap' || featureId === 'childLocation') && familyLocationsLoaded && familyLocations.length > 0) return 'Ansluten'
+    if ((featureId === 'familyMap' || featureId === 'childLocation' || featureId === 'status') && familyLocationsLoaded && familyLocations.length > 0) return 'Ansluten'
     if (availability === placeAvailability.requiresConsent) return t('status.requiresConsent')
     if (availability === placeAvailability.comingSoon) return t('status.comingSoon')
     return t('status.notConnected')
@@ -302,8 +302,23 @@ function PlaceSection({ activeSection }) {
         {isStatusOpen && state.consentGranted ? (
           <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.status.title')}>
             <h3>{t('features.status.title')}</h3>
-            <p>{t('features.status.empty')}</p>
-            <p>{t('features.status.emptyBody')}</p>
+            {familyLocationsLoaded && familyLocations.length > 0 ? (
+              <>
+                <p><strong>Platsdelning aktiv</strong></p>
+                <p>Senaste platsen har tagits emot från familjen.</p>
+                {familyLocations[0].location_recorded_at ? (
+                  <p>Senast uppdaterad {new Date(familyLocations[0].location_recorded_at).toLocaleString()}</p>
+                ) : null}
+                {familyLocations[0].accuracy_meters != null ? (
+                  <p>Noggrannhet ±{Math.round(familyLocations[0].accuracy_meters)} m</p>
+                ) : null}
+              </>
+            ) : familyLocationsLoaded ? (
+              <>
+                <p>{t('features.status.empty')}</p>
+                <p>{t('features.status.emptyBody')}</p>
+              </>
+            ) : null}
             <button type="button" onClick={() => setIsStatusOpen(false)}>
               {t('common:actions.close')}
             </button>

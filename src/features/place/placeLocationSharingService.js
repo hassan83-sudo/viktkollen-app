@@ -118,6 +118,14 @@ export async function syncPlaceLocationSharing(state) {
     console.warn('Encrypted place history write failed:', historyError?.message || historyError)
   })
 
+  void supabase.functions.invoke('place-push', {
+    body: { action: 'evaluate' },
+  }).then(({ error: pushError }) => {
+    if (pushError) console.warn('Safe-place push evaluation failed:', pushError?.message || pushError)
+  }).catch((pushError) => {
+    console.warn('Safe-place push evaluation failed:', pushError?.message || pushError)
+  })
+
   return {
     ok: true,
     sharingEnabled: true,

@@ -118,4 +118,55 @@
   #app-section-place.is-active .ready-modal > button:last-child {
     margin-top: 14px;
   }
+
+  /* Trygghetslarm: large one-tap choices and a compact recent-alert feed. */
+  #app-section-place.is-active .place-safety-alert-choices {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin: 12px 0 4px;
+  }
+
+  #app-section-place.is-active .place-safety-alert-choices button {
+    width: 100%;
+    min-height: 48px;
+    padding: 11px 12px;
+    text-align: left;
+    white-space: normal;
+  }
+
+  #app-section-place.is-active .place-safety-alert-history {
+    display: grid;
+    gap: 8px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(148, 163, 184, 0.16);
+  }
+
+  #app-section-place.is-active .place-safety-alert-history > p {
+    margin: 0;
+  }
+
+  #app-section-place.is-active .place-safety-alert-history ul {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  #app-section-place.is-active .place-safety-alert-history li {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+    padding: 11px 12px;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 12px;
+    background: rgba(8, 15, 31, 0.7);
+  }
+
+  #app-section-place.is-active .place-safety-alert-history li > * {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
 }

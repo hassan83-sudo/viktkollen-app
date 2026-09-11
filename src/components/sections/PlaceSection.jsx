@@ -115,7 +115,7 @@ function PlaceSection({ activeSection }) {
   }, [state.consentGranted])
 
   function availabilityLabel(featureId, availability) {
-    if (featureId === 'familyMap' && familyLocationsLoaded && familyLocations.length > 0) return 'Ansluten'
+    if ((featureId === 'familyMap' || featureId === 'childLocation') && familyLocationsLoaded && familyLocations.length > 0) return 'Ansluten'
     if (availability === placeAvailability.requiresConsent) return t('status.requiresConsent')
     if (availability === placeAvailability.comingSoon) return t('status.comingSoon')
     return t('status.notConnected')
@@ -276,8 +276,23 @@ function PlaceSection({ activeSection }) {
         {isChildLocationOpen && state.consentGranted ? (
           <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.childLocation.title')}>
             <h3>{t('features.childLocation.title')}</h3>
-            <p>{t('features.childLocation.empty')}</p>
-            <p>{t('features.childLocation.emptyBody')}</p>
+            {familyLocationsLoaded && familyLocations.length > 0 ? (
+              <>
+                <p><strong>Senaste delade plats</strong></p>
+                <p>
+                  <strong>{Number(familyLocations[0].latitude).toFixed(5)}, {Number(familyLocations[0].longitude).toFixed(5)}</strong>
+                  {familyLocations[0].accuracy_meters != null ? <span> ±{Math.round(familyLocations[0].accuracy_meters)} m</span> : null}
+                </p>
+                {familyLocations[0].location_recorded_at ? (
+                  <p>Uppdaterad {new Date(familyLocations[0].location_recorded_at).toLocaleString()}</p>
+                ) : null}
+              </>
+            ) : familyLocationsLoaded ? (
+              <>
+                <p>{t('features.childLocation.empty')}</p>
+                <p>{t('features.childLocation.emptyBody')}</p>
+              </>
+            ) : null}
             <button type="button" onClick={() => setIsChildLocationOpen(false)}>
               {t('common:actions.close')}
             </button>

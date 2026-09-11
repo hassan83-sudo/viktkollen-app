@@ -396,6 +396,27 @@ function PlaceSection({ activeSection }) {
     if (!state.consentGranted) setIsSharingSettingsOpen(false)
   }, [state.consentGranted])
 
+  useEffect(() => {
+    if (!isSharingSettingsOpen || !state.consentGranted) return undefined
+
+    let cancelled = false
+    Promise.all([getPlacePushStatus(), loadPlaceHistoryRetention()])
+      .then(([status, retentionResult]) => {
+        if (cancelled) return
+        setPushStatus(status)
+        setPlaceHistoryRetentionMinutes(retentionResult.minutes ?? 0)
+        if (retentionResult.error) setPlaceHistoryError(retentionResult.error.message || 'Lagringstiden kunde inte hämtas.')
+      })
+      .catch((error) => {
+        if (cancelled) return
+        setPlaceHistoryError(error?.message || 'Platsinställningarna kunde inte hämtas.')
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isSharingSettingsOpen, state.consentGranted])
+
   async function handleAddSafePlace(event) {
     event.preventDefault()
     if (!safePlaceName.trim() || safePlaceSaving) return
@@ -844,21 +865,78 @@ function PlaceSection({ activeSection }) {
         ) : null}
 
         {isSharingSettingsOpen && state.consentGranted ? (
-          <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.sharingSettings.title')}>
+          <div className="ready-modal place-sharing-settings-modal" role="dialog" aria-modal="true" aria-label={t('features.sharingSettings.title')}>
             <h3>{t('features.sharingSettings.title')}</h3>
             <p>{state.sharingEnabled ? t('features.sharingSettings.statusOn') : t('features.sharingSettings.statusOff')}</p>
-            <p><strong>GPS:</strong> {state.sharingEnabled ? (activeSharingStatus.active ? 'Aktiv' : activeSharingStatus.paused ? 'Pausad' : 'Startar…') : 'Av'}</p>
-            {activeSharingStatus.lastUpdatedAt ? <p><strong>Senast uppdaterad:</strong> {new Date(activeSharingStatus.lastUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p> : null}
-            {activeSharingStatus.accuracyMeters != null ? <p><strong>Noggrannhet:</strong> ±{Math.round(activeSharingStatus.accuracyMeters)} m</p> : null}
-            <p><small>GPS uppdateras medan Viktkollen är aktiv. När appen är i bakgrunden pausas bevakningen och startar igen när du återvänder.</small></p>
-            <form onSubmit={handleSaveDisplayName}>
-              <label>Ditt namn i familjen<input type="text" maxLength={80} value={displayNameDraft} onChange={(event) => setDisplayNameDraft(event.target.value)} placeholder="Exempel: Hassan" /></label>
-              <button type="submit" disabled={displayNameSaving || !displayNameDraft.trim()}>{displayNameSaving ? 'Sparar…' : 'Spara namn'}</button>
-            </form>
-            {displayNameError ? <p role="alert">{displayNameError}</p> : null}
-            {familyUserId && displayNameForUser(familyMembers, familyUserId, '') ? <p><small>Familjen ser dig som: <strong>{displayNameForUser(familyMembers, familyUserId, '')}</strong></small></p> : null}
-            <p>{t('features.sharingSettings.disclaimer')}</p>
-            <label className="place-toggle"><input checked={state.sharingEnabled} type="checkbox" onChange={(event) => setState((current) => setPlaceSharing(current, event.target.checked))} /><span>{t('consent.sharingToggle')}</span></label>
+            <section className="place-sharing-settings-group">
+              <h4>GPS-status</h4>
+              <p><strong>GPS:</strong> {state.sharingEnabled ? (activeSharingStatus.active ? 'Aktiv' : activeSharingStatus.paused ? 'Pausad' : 'Startar…') : 'Av'}</p>
+              {activeSharingStatus.lastUpdatedAt ? <p><strong>Senast uppdaterad:</strong> {new Date(activeSharingStatus.lastUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p> : null}
+              {activeSharingStatus.accuracyMeters != null ? <p><strong>Noggrannhet:</strong> ±{Math.round(activeSharingStatus.accuracyMeters)} m</p> : null}
+              <p><small>GPS uppdateras medan Viktkollen är aktiv. När appen är i bakgrunden pausas bevakningen och startar igen när du återvänder.</small></p>
+            </section>
+
+            <section className="place-sharing-settings-group">
+              <h4>Vem kan se min plats?</h4>
+              {familyMembers.filter((member) => member.user_id !== familyUserId).length > 0 ? (
+                <ul className="place-sharing-viewers">
+                  {familyMembers.filter((member) => member.user_id !== familyUserId).map((member) => (
+                    <li key={`${member.family_id}:${member.user_id}`}>
+                      <strong>{displayNameForUser(familyMembers, member.user_id)}</strong>
+                      {member.role ? <small>{member.role}</small> : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : <p><small>Ingen annan familjemedlem är ansluten ännu.</small></p>}
+            </section>
+
+            <section className="place-sharing-settings-group">
+              <h4>Platshistorik</h4>
+              <p><small>Välj hur länge tidigare positioner ska sparas.</small></p>
+              <div className="place-safety-alert-choices place-sharing-retention-choices">
+                {placeHistoryRetentionChoices.map((choice) => (
+                  <button
+                    key={choice.minutes}
+                    type="button"
+                    disabled={placeHistorySaving}
+                    aria-pressed={placeHistoryRetention === choice.minutes}
+                    onClick={() => handlePlaceHistoryRetention(choice.minutes)}
+                  >
+                    {placeHistoryRetention === choice.minutes ? '✓ ' : ''}{choice.label}
+                  </button>
+                ))}
+              </div>
+              {placeHistorySaving ? <p><small>Sparar inställning…</small></p> : null}
+              {placeHistoryError ? <p role="alert">{placeHistoryError}</p> : null}
+            </section>
+
+            <section className="place-sharing-settings-group">
+              <h4>Notiser och batteri</h4>
+              <p><strong>Pushnotiser:</strong> {pushStatus.label}</p>
+              <label className="place-toggle">
+                <input checked={state.batterySaverEnabled} type="checkbox" onChange={(event) => setState((current) => setBatterySaver(current, event.target.checked))} />
+                <span>Batterisparläge</span>
+              </label>
+              <p><small>{state.batterySaverEnabled ? 'Batterisparläge minskar hur ofta GPS-positionen uppdateras.' : 'Normal uppdateringsfrekvens används.'}</small></p>
+            </section>
+
+            <section className="place-sharing-settings-group">
+              <h4>Ditt namn i familjen</h4>
+              <form onSubmit={handleSaveDisplayName}>
+                <label>Ditt namn i familjen<input type="text" maxLength={80} value={displayNameDraft} onChange={(event) => setDisplayNameDraft(event.target.value)} placeholder="Exempel: Hassan" /></label>
+                <button type="submit" disabled={displayNameSaving || !displayNameDraft.trim()}>{displayNameSaving ? 'Sparar…' : 'Spara namn'}</button>
+              </form>
+              {displayNameError ? <p role="alert">{displayNameError}</p> : null}
+              {familyUserId && displayNameForUser(familyMembers, familyUserId, '') ? <p><small>Familjen ser dig som: <strong>{displayNameForUser(familyMembers, familyUserId, '')}</strong></small></p> : null}
+            </section>
+
+            <section className="place-sharing-settings-group place-sharing-stop-group">
+              <h4>Platsdelning</h4>
+              <p>{t('features.sharingSettings.disclaimer')}</p>
+              <label className="place-toggle"><input checked={state.sharingEnabled} type="checkbox" onChange={(event) => setState((current) => setPlaceSharing(current, event.target.checked))} /><span>{t('consent.sharingToggle')}</span></label>
+              <button type="button" disabled={!state.sharingEnabled} onClick={() => setState((current) => setPlaceSharing(current, false))}>Sluta dela plats</button>
+            </section>
+
             <button type="button" onClick={() => setIsSharingSettingsOpen(false)}>{t('common:actions.close')}</button>
           </div>
         ) : null}

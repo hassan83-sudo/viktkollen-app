@@ -11,6 +11,33 @@ function unsupported(message) {
   return { data: null, error: new Error(message) }
 }
 
+export async function getPlacePushStatus() {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return { status: 'unsupported', label: 'Stöds inte på den här enheten' }
+  }
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    return { status: 'unsupported', label: 'Stöds inte på den här enheten' }
+  }
+  if (Notification.permission === 'denied') {
+    return { status: 'denied', label: 'Tillstånd nekat' }
+  }
+  if (Notification.permission !== 'granted') {
+    return { status: 'inactive', label: 'Inte aktiverad ännu' }
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.getRegistration('/')
+    if (!registration) return { status: 'inactive', label: 'Inte aktiverad ännu' }
+
+    const subscription = await registration.pushManager.getSubscription()
+    if (!subscription) return { status: 'inactive', label: 'Inte aktiverad ännu' }
+
+    return { status: 'active', label: 'Aktiv' }
+  } catch {
+    return { status: 'unknown', label: 'Kunde inte kontrollera status' }
+  }
+}
+
 export async function ensurePlacePushSubscription() {
   if (!supabase) return unsupported('Pushnotiser kräver att Supabase är anslutet.')
   if (typeof window === 'undefined' || typeof navigator === 'undefined') {

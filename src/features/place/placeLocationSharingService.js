@@ -72,10 +72,14 @@ export async function syncPlaceLocationSharing(state) {
     return { ok: true, sharingEnabled: false }
   }
 
+  // Ask the device for location as soon as sharing is enabled. This must happen
+  // before family lookup so the browser permission prompt is not skipped when
+  // the account has not yet been connected to a family.
+  const position = await getCurrentPosition()
+
   const familyId = await getPrimaryFamilyId(userId)
   if (!familyId) return { ok: false, reason: 'no-family-membership' }
 
-  const position = await getCurrentPosition()
   const recordedAt = position.timestamp
     ? new Date(position.timestamp).toISOString()
     : new Date().toISOString()

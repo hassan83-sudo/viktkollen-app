@@ -26,6 +26,16 @@ async function getFamilyIds(userId) {
   }
 }
 
+function distanceMeters(lat1, lon1, lat2, lon2) {
+  const toRadians = (value) => (value * Math.PI) / 180
+  const earthRadius = 6371000
+  const deltaLat = toRadians(lat2 - lat1)
+  const deltaLon = toRadians(lon2 - lon1)
+  const a = Math.sin(deltaLat / 2) ** 2
+    + Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(deltaLon / 2) ** 2
+  return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
 export async function loadSafePlaces() {
   const { userId, error: sessionError } = await getSessionUserId()
   if (sessionError) return { data: [], error: sessionError }
@@ -37,7 +47,7 @@ export async function loadSafePlaces() {
 
   const { data, error } = await supabase
     .from('place_safe_places')
-    .select('id,family_id,created_by,name,latitude,longitude,radius_meters,created_at,updated_at')
+    .select('id,family_id,created_by,name,latitude,longitude,radius_meters,notify_on_arrival,notify_on_departure,created_at,updated_at')
     .in('family_id', familyIds)
     .order('created_at', { ascending: true })
 
@@ -80,10 +90,77 @@ export async function createSafePlaceFromOwnLatestLocation(name, radiusMeters = 
       longitude: latest.longitude,
       radius_meters: radiusMeters,
     })
-    .select('id,family_id,created_by,name,latitude,longitude,radius_meters,created_at,updated_at')
+    .select('id,family_id,created_by,name,latitude,longitude,radius_meters,notify_on_arrival,notify_on_departure,created_at,updated_at')
     .single()
 
   return { data: data || null, error: error || null }
+}
+
+export async function updateSafePlaceNotifications(id, updates) {
+  if (!supabase || !id) return { data: null, error: new Error('Platsnotisen kunde inte ändras.') }
+
+  const patch = {}
+  if (typeof updates?.notifyOnArrival === 'boolean') patch.notify_on_arrival = updates.notifyOnArrival
+  if (typeof updates?.notifyOnDeparture === 'boolean') patch.notify_on_departure = updates.notifyOnDeparture
+  if (Object.keys(patch).length === 0) return { data: null, error: new Error('Ingen notisinställning valdes.') }
+
+  const { data, error } = await supabase
+    .from('place_safe_places')
+    .update(patch)
+    .eq('id', id)
+    .select('id,family_id,created_by,name,latitude,longitude,radius_meters,notify_on_arrival,notify_on_departure,created_at,updated_at')
+    .single()
+
+  return { data: data || null, error: error || null }
+}
+
+export function subscribeSafePlaceTransitions(safePlaces, onTransition) {
+  if (!supabase || typeof onTransition !== 'function') return () => {}
+
+  const activePlaces = (Array.isArray(safePlaces) ? safePlaces : []).filter(
+    (place) => place?.notify_on_arrival || place?.notify_on_departure,
+  )
+  if (activePlaces.length === 0) return () => {}
+
+  const previousPresence = new Map()
+  const channel = supabase
+    .channel(`place-safe-place-transitions-${Math.random().toString(36).slice(2)}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'place_location_shares' },
+      (payload) => {
+        const location = payload?.new
+        if (!location?.user_id || !location?.family_id) return
+        if (!Number.isFinite(Number(location.latitude)) || !Number.isFinite(Number(location.longitude))) return
+
+        activePlaces
+          .filter((place) => place.family_id === location.family_id)
+          .forEach((place) => {
+            const radius = Number(place.radius_meters)
+            const inside = distanceMeters(
+              Number(location.latitude),
+              Number(location.longitude),
+              Number(place.latitude),
+              Number(place.longitude),
+            ) <= (Number.isFinite(radius) ? radius : 150)
+            const key = `${place.id}:${location.user_id}`
+            const previous = previousPresence.get(key)
+            previousPresence.set(key, inside)
+
+            if (previous === undefined || previous === inside) return
+            if (inside && place.notify_on_arrival) {
+              onTransition({ type: 'arrival', place, userId: location.user_id, location })
+            } else if (!inside && place.notify_on_departure) {
+              onTransition({ type: 'departure', place, userId: location.user_id, location })
+            }
+          })
+      },
+    )
+    .subscribe()
+
+  return () => {
+    void supabase.removeChannel(channel)
+  }
 }
 
 export async function deleteSafePlace(id) {

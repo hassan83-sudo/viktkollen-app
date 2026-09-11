@@ -462,4 +462,97 @@ describe('PlaceSection', () => {
     expect(placeSource).not.toContain('Notification.')
     expect(placeSource).not.toContain('serviceWorker')
   })
+
+  it('does not make Inställningar för platsdelning openable without consent', () => {
+    expect(placeSource).toContain("featureId === 'sharingSettings' && state.consentGranted")
+  })
+
+  it('makes Inställningar för platsdelning openable with consent, without changing the nine earlier openable cards', () => {
+    expect(placeSource).toContain('setIsSharingSettingsOpen(true)')
+    expect(placeSource).toContain(
+      'familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable || placeNotificationsOpenable || sosOpenable || allOkOpenable || placeHistoryOpenable || batterySaverOpenable || sharingSettingsOpenable',
+    )
+    expect(placeSource).toContain("role: 'button'")
+    expect(placeSource).toContain('tabIndex: 0')
+    // role="button"/tabIndex=0 are only ever applied through the shared
+    // openableProps spread — every non-openable card still renders with `: {}`.
+    expect(placeSource).toContain(': {}')
+    // Enter and Space follow the same shared keyboard handler as every other card.
+    expect(placeSource).toContain("if (event.key === 'Enter' || event.key === ' ')")
+    // Every earlier card's own gating condition and handler is still present,
+    // byte for byte — only a sibling branch was added this sprint.
+    expect(placeSource).toContain("featureId === 'familyMap' && state.consentGranted")
+    expect(placeSource).toContain('setIsFamilyMapOpen(true)')
+    expect(placeSource).toContain("featureId === 'childLocation' && state.consentGranted")
+    expect(placeSource).toContain('setIsChildLocationOpen(true)')
+    expect(placeSource).toContain("featureId === 'status' && state.consentGranted")
+    expect(placeSource).toContain('setIsStatusOpen(true)')
+    expect(placeSource).toContain("featureId === 'safePlaces' && state.consentGranted")
+    expect(placeSource).toContain('setIsSafePlacesOpen(true)')
+    expect(placeSource).toContain("featureId === 'placeNotifications' && state.consentGranted")
+    expect(placeSource).toContain('setIsPlaceNotificationsOpen(true)')
+    expect(placeSource).toContain("featureId === 'sos' && state.consentGranted")
+    expect(placeSource).toContain('setIsSosOpen(true)')
+    expect(placeSource).toContain("featureId === 'allOkCheckin' && state.consentGranted")
+    expect(placeSource).toContain('setIsAllOkOpen(true)')
+    expect(placeSource).toContain("featureId === 'placeHistory' && state.consentGranted")
+    expect(placeSource).toContain('setIsPlaceHistoryOpen(true)')
+    expect(placeSource).toContain("featureId === 'batterySaver' && state.consentGranted")
+    expect(placeSource).toContain('setIsBatterySaverOpen(true)')
+  })
+
+  it('closes the Inställningar för platsdelning modal automatically if consent is revoked', () => {
+    expect(placeSource).toContain('if (!state.consentGranted) setIsSharingSettingsOpen(false)')
+  })
+
+  it('shows the real sharingEnabled status in the sharing settings modal, on and off, with no fake toggle or recipient', () => {
+    expect(placeSource).toContain('isSharingSettingsOpen && state.consentGranted')
+    expect(placeSource).toContain("t('features.sharingSettings.title')")
+    // Status text is driven directly off state.sharingEnabled, not a separate
+    // local value.
+    expect(placeSource).toContain(
+      "state.sharingEnabled ? t('features.sharingSettings.statusOn') : t('features.sharingSettings.statusOff')",
+    )
+    expect(placeSource).toContain("t('features.sharingSettings.disclaimer')")
+    expect(placeSource).toContain("t('common:actions.close')")
+    // The modal's toggle reuses the existing legitimate update flow — the same
+    // checked source and updater as the consent card's own pre-existing toggle.
+    expect(placeSource).toContain('checked={state.sharingEnabled}')
+    expect(placeSource).toContain('setState((current) => setPlaceSharing(current, event.target.checked))')
+    // No fabricated recipient, family member or child was introduced.
+    expect(placeSource).not.toContain('familyMember')
+    expect(placeSource).not.toContain('recipient')
+    expect(placeResourcesSource).toContain('Platsdelning är på.')
+    expect(placeResourcesSource).toContain('Platsdelning är av.')
+    expect(placeResourcesSource).toContain('Location sharing is on.')
+    expect(placeResourcesSource).toContain('Location sharing is off.')
+  })
+
+  it('describes Inställningar för platsdelning truthfully, without claiming real GPS or family sharing is active', () => {
+    expect(placeResourcesSource).toContain(
+      'Platsdelning är en sparad inställning. Ingen automatisk GPS- eller bakgrundsdelning startas av den här inställningen ännu.',
+    )
+    expect(placeResourcesSource).toContain(
+      'Location sharing is a saved setting. No automatic GPS or background sharing is started by this setting yet.',
+    )
+    // No new tracking, storage, timers or network/backend code was introduced
+    // anywhere in the file by this sprint.
+    expect(placeSource).not.toContain('navigator.geolocation')
+    expect(placeSource).not.toContain('getCurrentPosition')
+    expect(placeSource).not.toContain('watchPosition')
+    expect(placeSource).not.toContain('setInterval')
+    expect(placeSource).not.toContain('setTimeout')
+    expect(placeSource).not.toContain('localStorage')
+    expect(placeSource).not.toContain('sessionStorage')
+    expect(placeSource).not.toContain('IndexedDB')
+    expect(placeSource).not.toContain('indexedDB')
+    expect(placeSource).not.toContain('cookie')
+    expect(placeSource).not.toContain('fetch(')
+    expect(placeSource).not.toContain('axios')
+    expect(placeSource).not.toContain('WebSocket')
+    expect(placeSource).not.toContain('supabase')
+    expect(placeSource).not.toContain('Notification.')
+    expect(placeSource).not.toContain('serviceWorker')
+    expect(placeSource).not.toContain('push')
+  })
 })

@@ -36,6 +36,7 @@ function PlaceSection({ activeSection }) {
   const [isAllOkOpen, setIsAllOkOpen] = useState(false)
   const [isPlaceHistoryOpen, setIsPlaceHistoryOpen] = useState(false)
   const [isBatterySaverOpen, setIsBatterySaverOpen] = useState(false)
+  const [isSharingSettingsOpen, setIsSharingSettingsOpen] = useState(false)
 
   useEffect(() => {
     savePlaceState(state)
@@ -75,6 +76,10 @@ function PlaceSection({ activeSection }) {
 
   useEffect(() => {
     if (!state.consentGranted) setIsBatterySaverOpen(false)
+  }, [state.consentGranted])
+
+  useEffect(() => {
+    if (!state.consentGranted) setIsSharingSettingsOpen(false)
   }, [state.consentGranted])
 
   function availabilityLabel(availability) {
@@ -130,8 +135,9 @@ function PlaceSection({ activeSection }) {
             const allOkOpenable = featureId === 'allOkCheckin' && state.consentGranted
             const placeHistoryOpenable = featureId === 'placeHistory' && state.consentGranted
             const batterySaverOpenable = featureId === 'batterySaver' && state.consentGranted
+            const sharingSettingsOpenable = featureId === 'sharingSettings' && state.consentGranted
             const isCardOpenable =
-              familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable || placeNotificationsOpenable || sosOpenable || allOkOpenable || placeHistoryOpenable || batterySaverOpenable
+              familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable || placeNotificationsOpenable || sosOpenable || allOkOpenable || placeHistoryOpenable || batterySaverOpenable || sharingSettingsOpenable
             const openableProps = isCardOpenable
               ? {
                   onClick: () => {
@@ -144,6 +150,7 @@ function PlaceSection({ activeSection }) {
                     else if (allOkOpenable) setIsAllOkOpen(true)
                     else if (placeHistoryOpenable) setIsPlaceHistoryOpen(true)
                     else if (batterySaverOpenable) setIsBatterySaverOpen(true)
+                    else if (sharingSettingsOpenable) setIsSharingSettingsOpen(true)
                   },
                   onKeyDown: (event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
@@ -157,6 +164,7 @@ function PlaceSection({ activeSection }) {
                       else if (allOkOpenable) setIsAllOkOpen(true)
                       else if (placeHistoryOpenable) setIsPlaceHistoryOpen(true)
                       else if (batterySaverOpenable) setIsBatterySaverOpen(true)
+                      else if (sharingSettingsOpenable) setIsSharingSettingsOpen(true)
                     }
                   },
                   role: 'button',
@@ -312,6 +320,25 @@ function PlaceSection({ activeSection }) {
               <span>{t('features.batterySaver.toggle')}</span>
             </label>
             <button type="button" onClick={() => setIsBatterySaverOpen(false)}>
+              {t('common:actions.close')}
+            </button>
+          </div>
+        ) : null}
+
+        {isSharingSettingsOpen && state.consentGranted ? (
+          <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.sharingSettings.title')}>
+            <h3>{t('features.sharingSettings.title')}</h3>
+            <p>{state.sharingEnabled ? t('features.sharingSettings.statusOn') : t('features.sharingSettings.statusOff')}</p>
+            <p>{t('features.sharingSettings.disclaimer')}</p>
+            <label className="place-toggle">
+              <input
+                checked={state.sharingEnabled}
+                type="checkbox"
+                onChange={(event) => setState((current) => setPlaceSharing(current, event.target.checked))}
+              />
+              <span>{t('consent.sharingToggle')}</span>
+            </label>
+            <button type="button" onClick={() => setIsSharingSettingsOpen(false)}>
               {t('common:actions.close')}
             </button>
           </div>

@@ -324,6 +324,9 @@ export const placeSv = {
     sharingSettings: {
       title: 'Inställningar för platsdelning',
       body: 'Hantera vem som får se plats och när delning är aktiv.',
+      statusOn: 'Platsdelning är på.',
+      statusOff: 'Platsdelning är av.',
+      disclaimer: 'Platsdelning är en sparad inställning. Ingen automatisk GPS- eller bakgrundsdelning startas av den här inställningen ännu.',
     },
   },
   disclaimer: {
@@ -414,6 +417,9 @@ export const placeEn = {
     sharingSettings: {
       title: 'Location sharing settings',
       body: 'Manage who can see location and when sharing is active.',
+      statusOn: 'Location sharing is on.',
+      statusOff: 'Location sharing is off.',
+      disclaimer: 'Location sharing is a saved setting. No automatic GPS or background sharing is started by this setting yet.',
     },
   },
   disclaimer: {

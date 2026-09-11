@@ -15,6 +15,8 @@ import {
   createSafePlaceFromOwnLatestLocation,
   deleteSafePlace,
   loadSafePlaces,
+  subscribeSafePlaceTransitions,
+  updateSafePlaceNotifications,
 } from '../../features/place/placeSafePlacesService.js'
 import {
   loadSafetyAlerts,
@@ -85,6 +87,7 @@ function PlaceSection({ activeSection }) {
   const [safePlaces, setSafePlaces] = useState([])
   const [safePlacesLoaded, setSafePlacesLoaded] = useState(false)
   const [safePlacesError, setSafePlacesError] = useState('')
+  const [safePlaceNotice, setSafePlaceNotice] = useState('')
   const [safePlaceName, setSafePlaceName] = useState('')
   const [safePlaceSaving, setSafePlaceSaving] = useState(false)
   const [isSosOpen, setIsSosOpen] = useState(false)
@@ -164,6 +167,7 @@ function PlaceSection({ activeSection }) {
       setSafePlaces([])
       setSafePlacesLoaded(false)
       setSafePlacesError('')
+      setSafePlaceNotice('')
       return () => {
         cancelled = true
       }
@@ -189,6 +193,18 @@ function PlaceSection({ activeSection }) {
       cancelled = true
     }
   }, [state.consentGranted])
+
+  useEffect(() => {
+    if (!state.consentGranted || !safePlacesLoaded) return undefined
+
+    return subscribeSafePlaceTransitions(safePlaces, ({ type, place }) => {
+      setSafePlaceNotice(
+        type === 'arrival'
+          ? `📍 Någon kom till ${place.name}.`
+          : `📍 Någon lämnade ${place.name}.`,
+      )
+    })
+  }, [safePlaces, safePlacesLoaded, state.consentGranted])
 
   useEffect(() => {
     if (!state.consentGranted) {
@@ -340,6 +356,23 @@ function PlaceSection({ activeSection }) {
     setSafePlaces((current) => current.filter((place) => place.id !== id))
   }
 
+  async function handleSafePlaceNotificationChange(place, field, checked) {
+    setSafePlacesError('')
+    const updates = field === 'arrival'
+      ? { notifyOnArrival: checked }
+      : { notifyOnDeparture: checked }
+    const { data, error } = await updateSafePlaceNotifications(place.id, updates)
+
+    if (error) {
+      setSafePlacesError(error.message || 'Platsnotisen kunde inte ändras.')
+      return
+    }
+
+    if (data) {
+      setSafePlaces((current) => current.map((item) => (item.id === data.id ? data : item)))
+    }
+  }
+
   async function handleSendSafetyAlert(reason) {
     if (safetyAlertSending) return
 
@@ -434,6 +467,13 @@ function PlaceSection({ activeSection }) {
           ) : null}
           <p className="place-consent-note">{t('consent.note')}</p>
         </section>
+
+        {safePlaceNotice ? (
+          <section className="place-card" aria-live="polite">
+            <p role="status"><strong>{safePlaceNotice}</strong></p>
+            <button type="button" onClick={() => setSafePlaceNotice('')}>Stäng notis</button>
+          </section>
+        ) : null}
 
         <section className="place-feature-grid" aria-label={t('featuresAria')}>
           {placeFeatureIds.map((featureId) => {
@@ -554,9 +594,9 @@ function PlaceSection({ activeSection }) {
                 <strong>{place.name}</strong>{' '}<span>{Number(place.latitude).toFixed(5)}, {Number(place.longitude).toFixed(5)}</span>{' '}<small>radie {Math.round(place.radius_meters)} m</small>{' '}
                 <button type="button" onClick={() => handleDeleteSafePlace(place.id)}>Radera</button>
                 <div><strong>Platsnotiser</strong>
-                  <label className="place-toggle"><input type="checkbox" disabled /><span>Notis när personen kommer hit</span></label>
-                  <label className="place-toggle"><input type="checkbox" disabled /><span>Notis när personen lämnar platsen</span></label>
-                  <small>Inte ansluten ännu</small>
+                  <label className="place-toggle"><input type="checkbox" checked={Boolean(place.notify_on_arrival)} onChange={(event) => handleSafePlaceNotificationChange(place, 'arrival', event.target.checked)} /><span>Notis när personen kommer hit</span></label>
+                  <label className="place-toggle"><input type="checkbox" checked={Boolean(place.notify_on_departure)} onChange={(event) => handleSafePlaceNotificationChange(place, 'departure', event.target.checked)} /><span>Notis när personen lämnar platsen</span></label>
+                  <small>{place.notify_on_arrival || place.notify_on_departure ? 'Aktiv i appen' : 'Av'}</small>
                 </div>
               </li>
             ))}</ul> : safePlacesLoaded && !safePlacesError ? <><p>{t('features.safePlaces.empty')}</p><p>Spara din senaste egna delade GPS-position som Hem, Skola eller en annan trygg plats.</p></> : null}
@@ -565,6 +605,7 @@ function PlaceSection({ activeSection }) {
               <button type="submit" disabled={!safePlaceName.trim() || safePlaceSaving}>{safePlaceSaving ? 'Sparar…' : 'Spara senaste plats'}</button>
             </form>
             {safePlacesError ? <p role="alert">{safePlacesError}</p> : null}
+            <p><small>Platsnotiser fungerar i realtid medan Viktkollen är öppen. Pushnotiser när appen är stängd kopplas separat.</small></p>
             <button type="button" onClick={() => setIsSafePlacesOpen(false)}>{t('common:actions.close')}</button>
           </div>
         ) : null}

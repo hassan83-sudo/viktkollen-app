@@ -52,7 +52,7 @@ function PlaceSection({ activeSection }) {
   useEffect(() => {
     let cancelled = false
 
-    if (!isFamilyMapOpen || !state.consentGranted) {
+    if (!state.consentGranted) {
       setFamilyLocations([])
       setFamilyLocationsLoaded(false)
       return () => {
@@ -76,7 +76,7 @@ function PlaceSection({ activeSection }) {
     return () => {
       cancelled = true
     }
-  }, [isFamilyMapOpen, state.consentGranted])
+  }, [state.consentGranted])
 
   useEffect(() => {
     if (!state.consentGranted) setIsChildLocationOpen(false)
@@ -114,7 +114,8 @@ function PlaceSection({ activeSection }) {
     if (!state.consentGranted) setIsSharingSettingsOpen(false)
   }, [state.consentGranted])
 
-  function availabilityLabel(availability) {
+  function availabilityLabel(featureId, availability) {
+    if (featureId === 'familyMap' && familyLocationsLoaded && familyLocations.length > 0) return 'Ansluten'
     if (availability === placeAvailability.requiresConsent) return t('status.requiresConsent')
     if (availability === placeAvailability.comingSoon) return t('status.comingSoon')
     return t('status.notConnected')
@@ -211,7 +212,7 @@ function PlaceSection({ activeSection }) {
               >
                 <div className="place-feature-top">
                   <span aria-hidden="true">{featureIcons[featureId]}</span>
-                  <span className={`place-status is-${availability}`}>{availabilityLabel(availability)}</span>
+                  <span className={`place-status is-${availability}`}>{availabilityLabel(featureId, availability)}</span>
                 </div>
                 <h3>{t(`features.${featureId}.title`)}</h3>
                 <p>{t(`features.${featureId}.body`)}</p>

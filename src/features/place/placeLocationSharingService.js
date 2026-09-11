@@ -1,4 +1,5 @@
 import { supabase } from '../../services/supabaseClient.js'
+import { recordEncryptedPlaceHistoryPoint } from './placeHistoryService.js'
 
 function getCurrentPosition({ batterySaverEnabled = false } = {}) {
   return new Promise((resolve, reject) => {
@@ -85,6 +86,8 @@ export async function syncPlaceLocationSharing(state) {
     ? new Date(position.timestamp).toISOString()
     : new Date().toISOString()
 
+  const accuracyMeters = Number.isFinite(position.coords.accuracy) ? position.coords.accuracy : null
+
   const { error } = await supabase
     .from('place_location_shares')
     .upsert(
@@ -95,7 +98,7 @@ export async function syncPlaceLocationSharing(state) {
         sharing_enabled: true,
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
-        accuracy_meters: Number.isFinite(position.coords.accuracy) ? position.coords.accuracy : null,
+        accuracy_meters: accuracyMeters,
         location_recorded_at: recordedAt,
         updated_at: new Date().toISOString(),
       },
@@ -103,6 +106,17 @@ export async function syncPlaceLocationSharing(state) {
     )
 
   if (error) throw error
+
+  void recordEncryptedPlaceHistoryPoint({
+    userId,
+    familyId,
+    latitude: position.coords.latitude,
+    longitude: position.coords.longitude,
+    accuracyMeters,
+    recordedAt,
+  }).catch((historyError) => {
+    console.warn('Encrypted place history write failed:', historyError?.message || historyError)
+  })
 
   return {
     ok: true,

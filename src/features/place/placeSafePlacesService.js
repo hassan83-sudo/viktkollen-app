@@ -117,13 +117,17 @@ export async function updateSafePlaceNotifications(id, updates) {
     .select('id,family_id,created_by,name,latitude,longitude,radius_meters,notify_on_arrival,notify_on_departure,created_at,updated_at')
     .single()
 
-  if (pushSetup) {
-    void pushSetup.then((result) => {
-      if (result?.error) console.warn('Place push setup failed:', result.error?.message || result.error)
-    })
+  const pushResult = pushSetup ? await pushSetup : null
+  if (pushResult?.error) {
+    console.warn('Place push setup failed:', pushResult.error?.message || pushResult.error)
   }
 
-  return { data: data || null, error: error || null }
+  return {
+    data: data || null,
+    error: error || null,
+    pushEnabled: Boolean(pushResult?.data?.enabled),
+    pushError: pushResult?.error || null,
+  }
 }
 
 export function subscribeSafePlaceTransitions(safePlaces, onTransition) {

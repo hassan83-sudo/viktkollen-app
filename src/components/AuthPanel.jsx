@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   completePasswordRecovery,
   getAuthErrorMessage,
   requestPasswordReset,
 } from '../services/authService.js'
+
+const PASSWORD_RESET_COOLDOWN_SECONDS = 60
 
 function isRecoveryLink() {
   if (typeof window === 'undefined') {
@@ -31,11 +33,24 @@ function AuthPanel({
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
+  const [resetCooldown, setResetCooldown] = useState(0)
   const isConfigured = Boolean(authStatus?.authEnabled)
   const isRegistering = mode === 'sign-up'
   const isResettingPassword = mode === 'reset-password'
   const isChoosingNewPassword = mode === 'choose-new-password'
   const isBusy = authLoading || resetLoading
+
+  useEffect(() => {
+    if (resetCooldown <= 0) {
+      return undefined
+    }
+
+    const timerId = window.setTimeout(() => {
+      setResetCooldown((seconds) => Math.max(0, seconds - 1))
+    }, 1000)
+
+    return () => window.clearTimeout(timerId)
+  }, [resetCooldown])
 
   function changeMode(nextMode) {
     setMode(nextMode)
@@ -95,17 +110,26 @@ function AuthPanel({
     }
 
     if (isResettingPassword) {
+      if (resetCooldown > 0) {
+        return
+      }
+
       setResetLoading(true)
       const { error } = await requestPasswordReset(normalizedEmail)
       setResetLoading(false)
 
       if (error) {
+        const errorMessage = String(error?.message || '').toLocaleLowerCase('sv-SE')
+        if (errorMessage.includes('rate limit')) {
+          setResetCooldown(PASSWORD_RESET_COOLDOWN_SECONDS)
+        }
         setFormError(getAuthErrorMessage(error))
         return
       }
 
+      setResetCooldown(PASSWORD_RESET_COOLDOWN_SECONDS)
       setFormNotice(
-        'Om det finns ett konto med den e-postadressen skickas en länk för att välja ett nytt lösenord.',
+        'Återställningslänk skickad. Kontrollera din e-post. Du kan skicka en ny länk om 60 sekunder.',
       )
       return
     }
@@ -181,8 +205,18 @@ function AuthPanel({
             </button>
           )}
 
-          <button type="submit" disabled={!isConfigured || isBusy}>
-            {isBusy ? 'Kontrollerar...' : isChoosingNewPassword ? 'Spara nytt lösenord' : isResettingPassword ? 'Skicka återställningslänk' : isRegistering ? 'Skapa konto' : 'Logga in'}
+          <button type="submit" disabled={!isConfigured || isBusy || (isResettingPassword && resetCooldown > 0)}>
+            {isBusy
+              ? 'Kontrollerar...'
+              : isChoosingNewPassword
+                ? 'Spara nytt lösenord'
+                : isResettingPassword
+                  ? resetCooldown > 0
+                    ? `Skicka igen om ${resetCooldown} s`
+                    : 'Skicka återställningslänk'
+                  : isRegistering
+                    ? 'Skapa konto'
+                    : 'Logga in'}
           </button>
 
           {mode === 'sign-in' && (

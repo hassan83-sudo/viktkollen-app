@@ -140,7 +140,7 @@ function PlaceSection({ activeSection }) {
               familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable || placeNotificationsOpenable || sosOpenable || allOkOpenable || placeHistoryOpenable || batterySaverOpenable || sharingSettingsOpenable
             const openableProps = isCardOpenable
               ? {
-                  onClick: () => {
+                  onPointerUp: () => {
                     if (familyMapOpenable) setIsFamilyMapOpen(true)
                     else if (childLocationOpenable) setIsChildLocationOpen(true)
                     else if (statusOpenable) setIsStatusOpen(true)

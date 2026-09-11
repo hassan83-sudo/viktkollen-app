@@ -21,6 +21,11 @@ import {
   sendSafetyAlert,
   subscribeSafetyAlerts,
 } from '../../features/place/placeSafetyAlertService.js'
+import {
+  loadFamilyCheckins,
+  sendFamilyCheckin,
+  subscribeFamilyCheckins,
+} from '../../features/place/placeCheckinService.js'
 
 const featureIcons = {
   familyMap: '🗺',
@@ -47,9 +52,19 @@ const safetyAlertLabels = Object.fromEntries(
   safetyAlertChoices.map(([reason, icon, label]) => [reason, `${icon} ${label}`]),
 )
 
-function addAlertOnce(alerts, alert) {
-  if (!alert?.id || alerts.some((item) => item.id === alert.id)) return alerts
-  return [alert, ...alerts].slice(0, 20)
+const checkinChoices = [
+  ['ok', '✓', 'Jag är okej'],
+  ['home', '🏠', 'Jag är hemma'],
+  ['on_way', '🚶', 'Jag är på väg'],
+]
+
+const checkinLabels = Object.fromEntries(
+  checkinChoices.map(([status, icon, label]) => [status, `${icon} ${label}`]),
+)
+
+function addItemOnce(items, item) {
+  if (!item?.id || items.some((current) => current.id === item.id)) return items
+  return [item, ...items].slice(0, 20)
 }
 
 function PlaceSection({ activeSection }) {
@@ -73,6 +88,11 @@ function PlaceSection({ activeSection }) {
   const [safetyAlertSending, setSafetyAlertSending] = useState(false)
   const [safetyAlertNotice, setSafetyAlertNotice] = useState('')
   const [isAllOkOpen, setIsAllOkOpen] = useState(false)
+  const [checkins, setCheckins] = useState([])
+  const [checkinsLoaded, setCheckinsLoaded] = useState(false)
+  const [checkinsError, setCheckinsError] = useState('')
+  const [checkinSending, setCheckinSending] = useState(false)
+  const [checkinNotice, setCheckinNotice] = useState('')
   const [isPlaceHistoryOpen, setIsPlaceHistoryOpen] = useState(false)
   const [isBatterySaverOpen, setIsBatterySaverOpen] = useState(false)
   const [isSharingSettingsOpen, setIsSharingSettingsOpen] = useState(false)
@@ -189,7 +209,7 @@ function PlaceSection({ activeSection }) {
 
     const unsubscribe = subscribeSafetyAlerts((alert) => {
       if (cancelled) return
-      setSafetyAlerts((current) => addAlertOnce(current, alert))
+      setSafetyAlerts((current) => addItemOnce(current, alert))
     })
 
     return () => {
@@ -199,7 +219,42 @@ function PlaceSection({ activeSection }) {
   }, [state.consentGranted])
 
   useEffect(() => {
-    if (!state.consentGranted) setIsAllOkOpen(false)
+    if (!state.consentGranted) {
+      setIsAllOkOpen(false)
+      setCheckins([])
+      setCheckinsLoaded(false)
+      setCheckinsError('')
+      setCheckinNotice('')
+      return undefined
+    }
+
+    let cancelled = false
+    setCheckinsLoaded(false)
+    setCheckinsError('')
+
+    loadFamilyCheckins()
+      .then(({ data, error }) => {
+        if (cancelled) return
+        setCheckins(Array.isArray(data) ? data : [])
+        setCheckinsError(error?.message || '')
+        setCheckinsLoaded(true)
+      })
+      .catch((error) => {
+        if (cancelled) return
+        setCheckins([])
+        setCheckinsError(error?.message || 'Check-in kunde inte hämtas.')
+        setCheckinsLoaded(true)
+      })
+
+    const unsubscribe = subscribeFamilyCheckins((checkin) => {
+      if (cancelled) return
+      setCheckins((current) => addItemOnce(current, checkin))
+    })
+
+    return () => {
+      cancelled = true
+      unsubscribe()
+    }
   }, [state.consentGranted])
 
   useEffect(() => {
@@ -253,17 +308,36 @@ function PlaceSection({ activeSection }) {
     if (error) {
       setSafetyAlertsError(error.message || 'Trygghetslarmet kunde inte skickas.')
     } else if (data) {
-      setSafetyAlerts((current) => addAlertOnce(current, data))
+      setSafetyAlerts((current) => addItemOnce(current, data))
       setSafetyAlertNotice('Trygghetslarm skickat till familjen.')
     }
 
     setSafetyAlertSending(false)
   }
 
+  async function handleSendCheckin(status) {
+    if (checkinSending) return
+
+    setCheckinSending(true)
+    setCheckinsError('')
+    setCheckinNotice('')
+
+    const { data, error } = await sendFamilyCheckin(status)
+    if (error) {
+      setCheckinsError(error.message || 'Check-in kunde inte skickas.')
+    } else if (data) {
+      setCheckins((current) => addItemOnce(current, data))
+      setCheckinNotice(`${checkinLabels[status] || 'Check-in'} skickat till familjen.`)
+    }
+
+    setCheckinSending(false)
+  }
+
   function availabilityLabel(featureId, availability) {
     if ((featureId === 'familyMap' || featureId === 'childLocation' || featureId === 'status') && familyLocationsLoaded && familyLocations.length > 0) return 'Ansluten'
     if (featureId === 'safePlaces' && safePlacesLoaded && !safePlacesError) return 'Ansluten'
     if (featureId === 'sos' && safetyAlertsLoaded && !safetyAlertsError) return 'Ansluten'
+    if (featureId === 'allOkCheckin' && checkinsLoaded && !checkinsError) return 'Ansluten'
     if ((featureId === 'batterySaver' || featureId === 'sharingSettings') && state.consentGranted) return 'Ansluten'
     if (availability === placeAvailability.requiresConsent) return t('status.requiresConsent')
     if (availability === placeAvailability.comingSoon) return t('status.comingSoon')
@@ -471,7 +545,37 @@ function PlaceSection({ activeSection }) {
 
         {isAllOkOpen && state.consentGranted ? (
           <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.allOkCheckin.title')}>
-            <h3>{t('features.allOkCheckin.title')}</h3><p>{t('features.allOkCheckin.empty')}</p><p>{t('features.allOkCheckin.emptyBody')}</p>
+            <h3>✓ {t('features.allOkCheckin.title')}</h3>
+            <p><strong>Skicka en snabb check-in till familjen</strong></p>
+            <div className="place-safety-alert-choices place-checkin-choices">
+              {checkinChoices.map(([status, icon, label]) => (
+                <button key={status} type="button" disabled={checkinSending} onClick={() => handleSendCheckin(status)}>
+                  <span aria-hidden="true">{icon}</span> {label}
+                </button>
+              ))}
+            </div>
+            {checkinSending ? <p><small>Skickar check-in…</small></p> : null}
+            {checkinNotice ? <p role="status"><strong>{checkinNotice}</strong></p> : null}
+            {checkinsError ? <p role="alert">{checkinsError}</p> : null}
+
+            {checkinsLoaded && checkins.length > 0 ? (
+              <div className="place-safety-alert-history place-checkin-history">
+                <p><strong>Senaste check-ins i familjen</strong></p>
+                <ul>
+                  {checkins.slice(0, 5).map((checkin) => (
+                    <li key={checkin.id}>
+                      <strong>{checkinLabels[checkin.status] || '✓ Check-in'}</strong>
+                      <small>{new Date(checkin.created_at).toLocaleString()}</small>
+                      {checkin.latitude != null && checkin.longitude != null ? (
+                        <span>📍 {Number(checkin.latitude).toFixed(5)}, {Number(checkin.longitude).toFixed(5)}{checkin.accuracy_meters != null ? ` ±${Math.round(checkin.accuracy_meters)} m` : ''}</span>
+                      ) : <span>📍 Ingen delad plats bifogades</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            <p><small>Check-in, tid och senast delade plats skickas till familjen när platsdelning är aktiv.</small></p>
             <button type="button" onClick={() => setIsAllOkOpen(false)}>{t('common:actions.close')}</button>
           </div>
         ) : null}

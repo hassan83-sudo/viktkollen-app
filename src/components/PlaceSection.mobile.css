@@ -1,0 +1,7 @@
+/* Place mobile: reserve enough scroll clearance for the fixed bottom navigation. */
+@media (max-width: 560px) {
+  #app-section-place.is-active .place-shell {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    scroll-padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+}

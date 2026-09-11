@@ -6,6 +6,29 @@ let activeVisibilityHandler = null
 let activeSharingState = null
 let lastActiveWriteAt = 0
 let activeWriteInFlight = false
+let activeSharingStatus = {
+  active: false,
+  paused: false,
+  lastUpdatedAt: null,
+  accuracyMeters: null,
+}
+const activeSharingStatusListeners = new Set()
+
+function notifyActiveSharingStatus(patch) {
+  activeSharingStatus = { ...activeSharingStatus, ...patch }
+  activeSharingStatusListeners.forEach((listener) => listener({ ...activeSharingStatus }))
+}
+
+export function getActiveLocationSharingStatus() {
+  return { ...activeSharingStatus }
+}
+
+export function subscribeActiveLocationSharingStatus(listener) {
+  if (typeof listener !== 'function') return () => {}
+  activeSharingStatusListeners.add(listener)
+  listener({ ...activeSharingStatus })
+  return () => activeSharingStatusListeners.delete(listener)
+}
 
 function locationOptions({ batterySaverEnabled = false } = {}) {
   return {
@@ -106,6 +129,13 @@ async function persistSharedPosition(state, position) {
 
   if (error) throw error
 
+  notifyActiveSharingStatus({
+    active: typeof document === 'undefined' || document.visibilityState !== 'hidden',
+    paused: typeof document !== 'undefined' && document.visibilityState === 'hidden',
+    lastUpdatedAt: recordedAt,
+    accuracyMeters,
+  })
+
   void recordEncryptedPlaceHistoryPoint({
     userId,
     familyId,
@@ -144,13 +174,11 @@ export async function syncPlaceLocationSharing(state) {
   const consentGrantedAt = consentGranted ? state?.consentGrantedAt || new Date().toISOString() : null
 
   if (!sharingEnabled) {
+    notifyActiveSharingStatus({ active: false, paused: false })
     await disableRemoteSharing(userId, consentGrantedAt)
     return { ok: true, sharingEnabled: false }
   }
 
-  // Ask the device for location as soon as sharing is enabled. This must happen
-  // before family lookup so the browser permission prompt is not skipped when
-  // the account has not yet been connected to a family.
   const position = await getCurrentPosition({ batterySaverEnabled })
   return persistSharedPosition(state, position)
 }
@@ -175,8 +203,12 @@ export function configureActiveLocationSharing(state) {
 
   const consentGranted = Boolean(state?.consentGranted)
   const sharingEnabled = Boolean(state?.sharingEnabled && consentGranted)
-  if (!sharingEnabled) return { active: false, reason: 'sharing-disabled' }
+  if (!sharingEnabled) {
+    notifyActiveSharingStatus({ active: false, paused: false })
+    return { active: false, reason: 'sharing-disabled' }
+  }
   if (typeof navigator === 'undefined' || !navigator.geolocation || typeof document === 'undefined') {
+    notifyActiveSharingStatus({ active: false, paused: true })
     return { active: false, reason: 'unsupported' }
   }
 
@@ -209,12 +241,15 @@ export function configureActiveLocationSharing(state) {
       },
       locationOptions({ batterySaverEnabled }),
     )
+
+    notifyActiveSharingStatus({ active: true, paused: false })
   }
 
   const stopWatch = () => {
     if (activeWatchId === null) return
     navigator.geolocation.clearWatch(activeWatchId)
     activeWatchId = null
+    notifyActiveSharingStatus({ active: false, paused: true })
   }
 
   activeVisibilityHandler = () => {
@@ -223,8 +258,6 @@ export function configureActiveLocationSharing(state) {
       return
     }
 
-    // Returning to the app should refresh the position promptly instead of
-    // waiting for the normal foreground write interval.
     lastActiveWriteAt = 0
     startWatch()
   }

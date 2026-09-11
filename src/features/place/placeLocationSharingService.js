@@ -15,6 +15,10 @@ function getCurrentPosition() {
   })
 }
 
+export function requestPlaceLocationPermission() {
+  return getCurrentPosition()
+}
+
 async function getSignedInUserId() {
   if (!supabase) return null
 

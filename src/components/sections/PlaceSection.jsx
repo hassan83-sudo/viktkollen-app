@@ -18,6 +18,7 @@ import {
   subscribeSafePlaceTransitions,
   updateSafePlaceNotifications,
 } from '../../features/place/placeSafePlacesService.js'
+import { getPlacePushStatus } from '../../features/place/placePushService.js'
 import {
   getActiveLocationSharingStatus,
   subscribeActiveLocationSharingStatus,
@@ -94,6 +95,7 @@ function PlaceSection({ activeSection }) {
   const [safePlaceNotice, setSafePlaceNotice] = useState('')
   const [safePlaceName, setSafePlaceName] = useState('')
   const [safePlaceSaving, setSafePlaceSaving] = useState(false)
+  const [pushStatus, setPushStatus] = useState({ status: 'inactive', label: 'Inte aktiverad ännu' })
   const [isSosOpen, setIsSosOpen] = useState(false)
   const [safetyAlerts, setSafetyAlerts] = useState([])
   const [safetyAlertsLoaded, setSafetyAlertsLoaded] = useState(false)
@@ -200,6 +202,19 @@ function PlaceSection({ activeSection }) {
       cancelled = true
     }
   }, [state.consentGranted])
+
+  useEffect(() => {
+    if (!isSafePlacesOpen || !state.consentGranted) return undefined
+
+    let cancelled = false
+    getPlacePushStatus().then((status) => {
+      if (!cancelled) setPushStatus(status)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isSafePlacesOpen, state.consentGranted])
 
   useEffect(() => {
     if (!state.consentGranted || !safePlacesLoaded) return undefined
@@ -368,7 +383,7 @@ function PlaceSection({ activeSection }) {
     const updates = field === 'arrival'
       ? { notifyOnArrival: checked }
       : { notifyOnDeparture: checked }
-    const { data, error } = await updateSafePlaceNotifications(place.id, updates)
+    const { data, error, pushEnabled, pushError } = await updateSafePlaceNotifications(place.id, updates)
 
     if (error) {
       setSafePlacesError(error.message || 'Platsnotisen kunde inte ändras.')
@@ -377,6 +392,14 @@ function PlaceSection({ activeSection }) {
 
     if (data) {
       setSafePlaces((current) => current.map((item) => (item.id === data.id ? data : item)))
+    }
+
+    if (pushEnabled) {
+      setPushStatus({ status: 'active', label: 'Aktiv' })
+    } else if (pushError) {
+      setPushStatus(await getPlacePushStatus())
+    } else {
+      setPushStatus(await getPlacePushStatus())
     }
   }
 
@@ -596,6 +619,7 @@ function PlaceSection({ activeSection }) {
         {isSafePlacesOpen && state.consentGranted ? (
           <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.safePlaces.title')}>
             <h3>{t('features.safePlaces.title')}</h3>
+            <p role="status"><strong>Pushnotiser:</strong> {pushStatus.label}</p>
             {safePlacesLoaded && safePlaces.length > 0 ? <ul>{safePlaces.map((place) => (
               <li key={place.id}>
                 <strong>{place.name}</strong>{' '}<span>{Number(place.latitude).toFixed(5)}, {Number(place.longitude).toFixed(5)}</span>{' '}<small>radie {Math.round(place.radius_meters)} m</small>{' '}
@@ -612,7 +636,7 @@ function PlaceSection({ activeSection }) {
               <button type="submit" disabled={!safePlaceName.trim() || safePlaceSaving}>{safePlaceSaving ? 'Sparar…' : 'Spara senaste plats'}</button>
             </form>
             {safePlacesError ? <p role="alert">{safePlacesError}</p> : null}
-            <p><small>Platsnotiser fungerar i realtid medan Viktkollen är öppen. Pushnotiser när appen är stängd kopplas separat.</small></p>
+            <p><small>Platsnotiser fungerar i realtid medan Viktkollen är öppen. Pushstatusen ovan visar om den här enheten kan ta emot pushnotiser när appen är stängd.</small></p>
             <button type="button" onClick={() => setIsSafePlacesOpen(false)}>{t('common:actions.close')}</button>
           </div>
         ) : null}

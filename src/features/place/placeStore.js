@@ -4,7 +4,11 @@ import {
   normalizePlaceState,
   placeStorageKey,
 } from './placeModel.js'
-import { syncPlaceLocationSharing } from './placeLocationSharingService.js'
+import {
+  configureActiveLocationSharing,
+  stopActiveLocationSharing,
+  syncPlaceLocationSharing,
+} from './placeLocationSharingService.js'
 
 export function loadPlaceState() {
   const raw = readStorage(placeStorageKey, null)
@@ -16,6 +20,8 @@ export function savePlaceState(state) {
   const normalized = normalizePlaceState(state)
   writeStorage(placeStorageKey, normalized)
 
+  configureActiveLocationSharing(normalized)
+
   void syncPlaceLocationSharing(normalized).catch((error) => {
     console.warn('Place sharing sync failed:', error?.message || error)
   })
@@ -24,6 +30,7 @@ export function savePlaceState(state) {
 }
 
 export function clearPlaceState() {
+  stopActiveLocationSharing()
   removeStorage(placeStorageKey)
   return createEmptyPlaceState()
 }

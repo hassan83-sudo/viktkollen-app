@@ -8,6 +8,7 @@ import './dark-theme.css'
 import './components/AiCoachOverlay.mobile.css'
 import './components/ReadySection.mobile.css'
 import './components/PlaceSection.mobile.css'
+import './components/FamilyMap.mobile.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

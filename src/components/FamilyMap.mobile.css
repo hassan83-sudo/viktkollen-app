@@ -1,0 +1,48 @@
+@media (max-width: 560px) {
+  #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] > ul {
+    display: grid;
+    gap: 12px;
+    margin: 14px 0 0;
+    padding: 0;
+  }
+
+  #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] > ul > li {
+    display: grid;
+    gap: 7px;
+    min-width: 0;
+    margin: 0;
+    padding: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 14px;
+    background: rgba(8, 15, 31, 0.7);
+    list-style: none;
+  }
+
+  #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] > ul > li > strong {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 16px;
+  }
+
+  #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] > ul > li > span,
+  #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] > ul > li > small {
+    display: block;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] > ul > li > span:first-of-type::before {
+    content: "Senaste plats: ";
+    font-weight: 600;
+  }
+
+  #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] > ul > li > span:nth-of-type(2)::before {
+    content: "Noggrannhet: ";
+    font-weight: 600;
+  }
+
+  #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] > ul > li > small::before {
+    content: "Uppdaterad: ";
+    font-weight: 600;
+  }
+}

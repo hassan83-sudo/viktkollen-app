@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppSection from '../app/AppSection.jsx'
+import PlaceLocationRequestPanel from '../place/PlaceLocationRequestPanel.jsx'
+import PlaceLocationStatusPanel from '../place/PlaceLocationStatusPanel.jsx'
 import {
   getPlaceFeatureAvailability,
   placeAvailability,
@@ -589,6 +591,23 @@ function PlaceSection({ activeSection }) {
           ) : null}
           <p className="place-consent-note">{t('consent.note')}</p>
         </section>
+
+        {state.consentGranted ? (
+          <>
+            <PlaceLocationRequestPanel
+              familyMembers={familyMembers}
+              userId={familyUserId}
+              sharingEnabled={state.sharingEnabled}
+            />
+            <PlaceLocationStatusPanel
+              activeSharingStatus={activeSharingStatus}
+              familyLocations={familyLocations}
+              familyLocationsLoaded={familyLocationsLoaded}
+              familyMembers={familyMembers}
+              sharingEnabled={state.sharingEnabled}
+            />
+          </>
+        ) : null}
 
         {safePlaceNotice ? (
           <section className="place-card" aria-live="polite">

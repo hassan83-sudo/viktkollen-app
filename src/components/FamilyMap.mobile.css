@@ -195,4 +195,80 @@
   #app-section-place.is-active .ready-modal[aria-label="Trygga platser"] > form button {
     width: 100%;
   }
+
+  #app-section-place.is-active .ready-modal[aria-label="Trygghetslarm"] .place-safety-alert-choices {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+    margin: 12px 0 14px;
+  }
+
+  #app-section-place.is-active .ready-modal[aria-label="Trygghetslarm"] .place-safety-alert-choices > button {
+    min-width: 0;
+    min-height: 58px;
+    margin: 0;
+    padding: 10px 9px;
+    white-space: normal;
+    line-height: 1.25;
+  }
+
+  #app-section-place.is-active .ready-modal[aria-label="Trygghetslarm"] .place-safety-alert-choices > button > span {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 20px;
+  }
+
+  #app-section-place.is-active .ready-modal[aria-label="Trygghetslarm"] > p[role="status"],
+  #app-section-place.is-active .ready-modal[aria-label="Trygghetslarm"] > p[role="alert"] {
+    margin: 10px 0;
+    padding: 10px 12px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 12px;
+    background: rgba(8, 15, 31, 0.55);
+  }
+
+  #app-section-place.is-active .ready-modal[aria-label="Trygghetslarm"] .place-safety-alert-history {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(148, 163, 184, 0.14);
+  }
+
+  #app-section-place.is-active .ready-modal[aria-label="Trygghetslarm"] .place-safety-alert-history > p {
+    margin: 0 0 10px;
+  }
+
+  #app-section-place.is-active .ready-modal[aria-label="Trygghetslarm"] .place-safety-alert-history > ul {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+  }
+
+  #app-section-place.is-active .ready-modal[aria-label="Trygghetslarm"] .place-safety-alert-history > ul > li {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    margin: 0;
+    padding: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 12px;
+    background: rgba(8, 15, 31, 0.7);
+    list-style: none;
+  }
+
+  #app-section-place.is-active .ready-modal[aria-label="Trygghetslarm"] .place-safety-alert-history > ul > li > strong,
+  #app-section-place.is-active .ready-modal[aria-label="Trygghetslarm"] .place-safety-alert-history > ul > li > small,
+  #app-section-place.is-active .ready-modal[aria-label="Trygghetslarm"] .place-safety-alert-history > ul > li > span {
+    display: block;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  #app-section-place.is-active .ready-modal[aria-label="Trygghetslarm"] .place-safety-alert-history > ul > li > small {
+    opacity: 0.78;
+  }
+
+  #app-section-place.is-active .ready-modal[aria-label="Trygghetslarm"] > p:last-of-type {
+    margin-bottom: 12px;
+  }
 }

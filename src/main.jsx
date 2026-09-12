@@ -10,6 +10,7 @@ import './components/ReadySection.mobile.css'
 import './components/PlaceSection.mobile.css'
 import './components/FamilyMap.mobile.css'
 import './components/PlaceCheckin.mobile.css'
+import './components/PlaceHistory.mobile.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { displayNameForUser } from '../../features/place/placeFamilyMemberService.js'
 import {
+  acceptFamilyInvite,
+  createFamilyInvite,
+  loadFamilyAccessState,
+} from '../../features/place/placeFamilyAccessService.js'
+import {
   loadLocationRequests,
   respondToLocationRequest,
   sendLocationRequest,
@@ -13,6 +18,12 @@ function PlaceLocationRequestPanel({ familyMembers, userId, sharingEnabled }) {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busyId, setBusyId] = useState('')
+  const [familyAccessLoaded, setFamilyAccessLoaded] = useState(false)
+  const [hasFamily, setHasFamily] = useState(false)
+  const [inviteCode, setInviteCode] = useState('')
+  const [inviteExpiresAt, setInviteExpiresAt] = useState('')
+  const [joinCode, setJoinCode] = useState('')
+  const [familyBusy, setFamilyBusy] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -34,6 +45,21 @@ function PlaceLocationRequestPanel({ familyMembers, userId, sharingEnabled }) {
     }
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+
+    loadFamilyAccessState().then((result) => {
+      if (cancelled) return
+      setHasFamily(Boolean(result.data?.hasFamily))
+      if (result.error) setError(result.error.message || 'Familjekopplingen kunde inte kontrolleras.')
+      setFamilyAccessLoaded(true)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const pendingIncoming = useMemo(
     () => requests.filter((request) => request.status === 'pending' && request.target_user_id === userId),
     [requests, userId],
@@ -52,6 +78,50 @@ function PlaceLocationRequestPanel({ familyMembers, userId, sharingEnabled }) {
     () => (familyMembers || []).filter((member) => member.user_id !== userId),
     [familyMembers, userId],
   )
+
+  async function handleCreateInvite() {
+    if (familyBusy) return
+
+    setFamilyBusy(true)
+    setError('')
+    setNotice('')
+    const result = await createFamilyInvite()
+
+    if (result.error) {
+      setError(result.error.message || 'Inbjudningskoden kunde inte skapas.')
+    } else if (result.data?.invite_code) {
+      setHasFamily(true)
+      setInviteCode(result.data.invite_code)
+      setInviteExpiresAt(result.data.expires_at || '')
+      setNotice('Koden är klar. Ge den bara till personen du vill lägga till i familjen.')
+    }
+
+    setFamilyBusy(false)
+  }
+
+  async function handleJoinFamily(event) {
+    event.preventDefault()
+    if (familyBusy || !joinCode.trim()) return
+
+    setFamilyBusy(true)
+    setError('')
+    setNotice('')
+    const result = await acceptFamilyInvite(joinCode)
+
+    if (result.error) {
+      setError(result.error.message?.includes('Invalid or expired')
+        ? 'Koden är fel, utgången eller redan använd.'
+        : (result.error.message || 'Familjen kunde inte anslutas.'))
+      setFamilyBusy(false)
+      return
+    }
+
+    setHasFamily(true)
+    setJoinCode('')
+    setNotice('Familjen är ansluten. Viktkollen uppdateras nu.')
+    setFamilyBusy(false)
+    window.setTimeout(() => window.location.reload(), 500)
+  }
 
   async function handleSend(member) {
     const key = `${member.family_id}:${member.user_id}`
@@ -96,10 +166,45 @@ function PlaceLocationRequestPanel({ familyMembers, userId, sharingEnabled }) {
     setBusyId('')
   }
 
-  if (!loaded && otherMembers.length === 0) return null
-
   return (
     <section className="place-card place-location-request-panel" aria-labelledby="place-location-request-title">
+      <div className="place-family-access">
+        <h2>👨‍👩‍👧 Familjekoppling</h2>
+        <p><small>Konton kopplas inte automatiskt. En person skapar en kod och den andra skriver in koden för att gå med.</small></p>
+
+        {familyAccessLoaded ? (
+          <p><strong>{hasFamily ? 'Du är kopplad till en familj.' : 'Du är inte kopplad till någon familj ännu.'}</strong></p>
+        ) : <p><small>Kontrollerar familjekoppling…</small></p>}
+
+        <button type="button" disabled={familyBusy} onClick={handleCreateInvite}>
+          {familyBusy ? 'Arbetar…' : hasFamily ? 'Skapa inbjudningskod' : 'Skapa familj och inbjudningskod'}
+        </button>
+
+        {inviteCode ? (
+          <div className="place-family-invite-code" role="status">
+            <p><strong>Inbjudningskod: {inviteCode}</strong></p>
+            <p><small>Koden kan användas en gång{inviteExpiresAt ? ` och gäller till ${new Date(inviteExpiresAt).toLocaleString()}` : ''}.</small></p>
+          </div>
+        ) : null}
+
+        <form onSubmit={handleJoinFamily}>
+          <label>
+            Gå med med kod
+            <input
+              type="text"
+              value={joinCode}
+              maxLength={8}
+              autoCapitalize="characters"
+              autoComplete="off"
+              placeholder="8 tecken"
+              onChange={(event) => setJoinCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+            />
+          </label>
+          <button type="submit" disabled={familyBusy || joinCode.length !== 8}>Gå med i familjen</button>
+        </form>
+      </div>
+
+      <hr />
       <h2 id="place-location-request-title">📍 Platsförfrågan</h2>
       <p><small>Be en familjemedlem att frivilligt dela sin plats. En förfrågan startar aldrig platsdelning automatiskt.</small></p>
 

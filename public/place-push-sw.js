@@ -7,12 +7,20 @@ self.addEventListener('push', (event) => {
   }
 
   const title = payload.title || 'Viktkollen'
+  const data = payload.data || { url: '/#app-section-notices' }
+  const isReminder = data.type === 'reminder'
+  const tag = isReminder && data.reminderId
+    ? `reminder-${data.reminderId}`
+    : data.safePlaceId
+      ? `place-${data.safePlaceId}-${data.type || 'update'}`
+      : 'viktkollen-update'
+
   const options = {
-    body: payload.body || 'Ny platsnotis',
-    data: payload.data || { url: '/?section=place' },
+    body: payload.body || (isReminder ? 'Du har en påminnelse i Viktkollen.' : 'Ny platsnotis'),
+    data,
     icon: '/favicon.ico',
     badge: '/favicon.ico',
-    tag: payload.data?.safePlaceId ? `place-${payload.data.safePlaceId}-${payload.data.type || 'update'}` : 'place-update',
+    tag,
   }
 
   event.waitUntil(self.registration.showNotification(title, options))
@@ -20,7 +28,7 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const targetUrl = new URL(event.notification.data?.url || '/?section=place', self.location.origin).href
+  const targetUrl = new URL(event.notification.data?.url || '/#app-section-notices', self.location.origin).href
 
   event.waitUntil((async () => {
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })

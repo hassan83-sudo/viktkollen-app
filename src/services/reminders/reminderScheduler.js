@@ -19,6 +19,12 @@ function dateText(date) {
   return `${year}-${month}-${day}`
 }
 
+function startDateTime(reminder, fallbackDate) {
+  const date = reminder.startDate || dateText(fallbackDate)
+  const candidate = atLocalTime(new Date(`${date}T12:00:00`), reminder.time)
+  return isValidDate(candidate) ? candidate : atLocalTime(fallbackDate, reminder.time)
+}
+
 function isDateAllowed(reminder, candidate) {
   const localDate = dateText(candidate)
   if (reminder.startDate && localDate < reminder.startDate) return false
@@ -36,6 +42,16 @@ function isWeekdayAllowed(reminder, candidate) {
   return true
 }
 
+function nextIntervalAt(reminder, now) {
+  const intervalMs = Math.max(60, reminder.intervalMinutes || 60) * 60000
+  const firstAt = startDateTime(reminder, now)
+  if (!reminder.lastTriggeredAt) return firstAt
+
+  const lastTriggeredAt = new Date(reminder.lastTriggeredAt)
+  if (!isValidDate(lastTriggeredAt)) return firstAt
+  return new Date(lastTriggeredAt.getTime() + intervalMs)
+}
+
 export function getNextReminderAt(reminder, options = {}) {
   if (!reminder || !reminder.enabled || reminder.archivedAt || reminder.pausedAt || reminder.needsReview) return null
   const now = new Date(options.now || Date.now())
@@ -43,16 +59,19 @@ export function getNextReminderAt(reminder, options = {}) {
   if (reminder.snoozedUntil && new Date(reminder.snoozedUntil) > now) return reminder.snoozedUntil
 
   if (reminder.scheduleType === 'once') {
-    const candidate = atLocalTime(new Date(`${reminder.startDate || dateText(now)}T12:00:00`), reminder.time)
+    const candidate = startDateTime(reminder, now)
     return candidate > now && isDateAllowed(reminder, candidate) ? candidate.toISOString() : null
   }
 
   if (reminder.scheduleType === 'interval') {
-    const base = reminder.lastTriggeredAt ? new Date(reminder.lastTriggeredAt) : now
-    const safeBase = isValidDate(base) ? base : now
-    const interval = Math.max(60, reminder.intervalMinutes || 60) * 60000
-    const candidate = new Date(safeBase.getTime() + interval)
-    return isValidDate(candidate) && isDateAllowed(reminder, candidate) ? candidate.toISOString() : null
+    let candidate = nextIntervalAt(reminder, now)
+    if (!isValidDate(candidate)) return null
+
+    if (!reminder.lastTriggeredAt && candidate <= now) {
+      return isDateAllowed(reminder, candidate) ? candidate.toISOString() : null
+    }
+
+    return isDateAllowed(reminder, candidate) ? candidate.toISOString() : null
   }
 
   for (let offset = 0; offset < 370; offset += 1) {
@@ -75,14 +94,14 @@ export function getDueReminders(state, options = {}) {
   return normalized.reminders.filter((reminder) => {
     if (!reminder.enabled || reminder.archivedAt || reminder.pausedAt || reminder.needsReview) return false
     if (reminder.snoozedUntil && new Date(reminder.snoozedUntil) > now) return false
-    if (reminder.lastTriggeredAt && dateText(new Date(reminder.lastTriggeredAt)) === dateText(now)) return false
+
     if (reminder.scheduleType === 'interval') {
-      if (!reminder.lastTriggeredAt) return false
-      const lastTriggeredAt = new Date(reminder.lastTriggeredAt).getTime()
-      if (!Number.isFinite(lastTriggeredAt)) return false
-      return lastTriggeredAt + Math.max(60, reminder.intervalMinutes || 60) * 60000 <= now.getTime()
+      const candidate = nextIntervalAt(reminder, now)
+      if (!isValidDate(candidate) || !isDateAllowed(reminder, candidate)) return false
+      return candidate <= now
     }
 
+    if (reminder.lastTriggeredAt && dateText(new Date(reminder.lastTriggeredAt)) === dateText(now)) return false
     const candidate = atLocalTime(now, reminder.time)
     if (candidate > now || !isDateAllowed(reminder, candidate)) return false
     if (!isWeekdayAllowed(reminder, candidate)) return false
@@ -134,6 +153,11 @@ export function createReminderScheduler({ getState, onDue, setTimer = setTimeout
     clear()
     if (stopped) return
     const current = now()
+    const due = getDueReminders(getState(), { now: current.toISOString() })
+    if (due.length) {
+      timerId = setTimer(tick, 1000)
+      return
+    }
     const nextAt = buildReminderStatus(getState(), { now: current.toISOString() }).nextReminderAt
     const delay = nextAt ? Math.max(1000, Math.min(3600000, new Date(nextAt).getTime() - current.getTime())) : 3600000
     timerId = setTimer(tick, delay)

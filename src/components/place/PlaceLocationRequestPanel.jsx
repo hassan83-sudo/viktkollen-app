@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { displayNameForUser } from '../../features/place/placeFamilyMemberService.js'
 import {
   acceptFamilyInvite,
@@ -25,6 +25,7 @@ function PlaceLocationRequestPanel({ familyMembers, userId, sharingEnabled }) {
   const [inviteExpiresAt, setInviteExpiresAt] = useState('')
   const [joinCode, setJoinCode] = useState('')
   const [familyBusy, setFamilyBusy] = useState(false)
+  const sentRequestIdRef = useRef(null)
 
   useEffect(() => {
     let cancelled = false
@@ -32,9 +33,19 @@ function PlaceLocationRequestPanel({ familyMembers, userId, sharingEnabled }) {
     const refresh = async () => {
       const result = await loadLocationRequests()
       if (cancelled) return
-      setRequests(Array.isArray(result.data) ? result.data : [])
+      const nextRequests = Array.isArray(result.data) ? result.data : []
+      setRequests(nextRequests)
       setRequestUserId(result.userId || null)
       setError(result.error?.message || '')
+
+      if (sentRequestIdRef.current) {
+        const sentRequest = nextRequests.find((request) => request.id === sentRequestIdRef.current)
+        if (!sentRequest || sentRequest.status !== 'pending') {
+          sentRequestIdRef.current = null
+          setNotice((current) => current.startsWith('Platsförfrågan skickad till ') ? '' : current)
+        }
+      }
+
       setLoaded(true)
     }
 
@@ -139,6 +150,7 @@ function PlaceLocationRequestPanel({ familyMembers, userId, sharingEnabled }) {
     if (result.error) {
       setError(result.error.code === '23505' ? 'Förfrågan är redan skickad.' : (result.error.message || 'Förfrågan kunde inte skickas.'))
     } else if (result.data) {
+      sentRequestIdRef.current = result.data.id
       setRequests((current) => [result.data, ...current.filter((item) => item.id !== result.data.id)])
       setNotice(`Platsförfrågan skickad till ${displayNameForUser(familyMembers, member.user_id)}.`)
     }

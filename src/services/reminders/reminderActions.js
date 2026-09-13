@@ -96,7 +96,7 @@ export function skipReminder(state, reminderId, options = {}) {
 
 export function snoozeReminder(state, reminderId, minutes = 30, options = {}) {
   const nowDate = new Date(options.now || Date.now())
-  const safeMinutes = Math.max(5, Math.min(240, Math.round(Number(minutes) || 30)))
+  const safeMinutes = Math.max(1, Math.min(240, Math.round(Number(minutes) || 30)))
   const snoozedUntil = new Date(nowDate.getTime() + safeMinutes * 60000).toISOString()
 
   const next = updateReminder(state, reminderId, (reminder) => ({

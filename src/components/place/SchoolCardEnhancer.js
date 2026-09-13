@@ -185,6 +185,17 @@ function enhanceCheckinMaps() {
   })
 }
 
+function enhancePlaceHistoryMaps() {
+  document.querySelectorAll('#app-section-place .ready-modal').forEach((modal) => {
+    const heading = modal.querySelector('h3')
+    if (!heading?.textContent?.includes('Platshistorik')) return
+
+    modal.querySelectorAll('.place-safety-alert-history li').forEach((item, index) => {
+      appendLocationMap(item, 'historyMapEnhanced', `Karta – platshistorik ${index + 1}`)
+    })
+  })
+}
+
 function applySchoolUi() {
   renameSchoolCard()
   document.querySelectorAll('#app-section-place .ready-modal').forEach((modal) => {
@@ -192,6 +203,7 @@ function applySchoolUi() {
   })
   enhanceSafetyAlertMaps()
   enhanceCheckinMaps()
+  enhancePlaceHistoryMaps()
 }
 
 if (typeof document !== 'undefined' && !window.__viktkollenSchoolCardEnhancer) {

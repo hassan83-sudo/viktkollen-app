@@ -1,17 +1,50 @@
 @media (max-width: 560px) {
+  #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] {
+    width: calc(100% - 24px);
+    max-width: 560px;
+    max-height: calc(100dvh - 130px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 16px;
+    box-sizing: border-box;
+    scrollbar-gutter: stable;
+  }
+
+  #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] > h3 {
+    margin: 0 0 12px;
+  }
+
+  #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] .leaflet-container,
+  #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] iframe {
+    width: 100% !important;
+    height: clamp(210px, 31dvh, 270px) !important;
+    min-height: 210px;
+    max-height: 270px;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] .leaflet-control-attribution {
+    max-width: calc(100% - 8px);
+    padding: 2px 4px;
+    font-size: 10px;
+    line-height: 1.15;
+    white-space: normal;
+  }
+
   #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] > ul {
     display: grid;
-    gap: 12px;
-    margin: 14px 0 0;
+    gap: 10px;
+    margin: 10px 0 0;
     padding: 0;
   }
 
   #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] > ul > li {
     display: grid;
-    gap: 7px;
+    gap: 6px;
     min-width: 0;
     margin: 0;
-    padding: 14px;
+    padding: 12px;
     border: 1px solid rgba(148, 163, 184, 0.18);
     border-radius: 14px;
     background: rgba(8, 15, 31, 0.7);
@@ -20,7 +53,7 @@
 
   #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] > ul > li > strong {
     display: block;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
     font-size: 16px;
   }
 
@@ -44,6 +77,15 @@
   #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] > ul > li > small::before {
     content: "Uppdaterad: ";
     font-weight: 600;
+  }
+
+  #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] > button:last-child {
+    position: sticky;
+    bottom: 0;
+    width: 100%;
+    margin-top: 12px;
+    background: rgba(13, 17, 32, 0.96);
+    backdrop-filter: blur(10px);
   }
 
   #app-section-place.is-active .ready-modal[aria-label="Barnets plats"] > p:nth-of-type(-n + 4) {

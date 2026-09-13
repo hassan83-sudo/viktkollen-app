@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppSection from '../app/AppSection.jsx'
+import FamilyMapView from '../place/FamilyMapView.jsx'
 import PlaceLocationRequestPanel from '../place/PlaceLocationRequestPanel.jsx'
 import PlaceLocationStatusPanel from '../place/PlaceLocationStatusPanel.jsx'
 import {
@@ -691,14 +692,7 @@ function PlaceSection({ activeSection }) {
           <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.familyMap.title')}>
             <h3>{t('features.familyMap.title')}</h3>
             {familyLocationsLoaded && familyLocations.length > 0 ? (
-              <ul>{familyLocations.map((location) => (
-                <li key={`${location.family_id}:${location.user_id}`}>
-                  <strong>{location.display_name || displayNameForUser(familyMembers, location.user_id)}</strong>{' '}
-                  <span>{Number(location.latitude).toFixed(5)}, {Number(location.longitude).toFixed(5)}</span>
-                  {location.accuracy_meters != null ? <span> ±{Math.round(location.accuracy_meters)} m</span> : null}
-                  {location.location_recorded_at ? <small> {new Date(location.location_recorded_at).toLocaleString()}</small> : null}
-                </li>
-              ))}</ul>
+              <FamilyMapView locations={familyLocations} familyMembers={familyMembers} />
             ) : familyLocationsLoaded ? <><p>{t('features.familyMap.empty')}</p><p>{t('features.familyMap.emptyBody')}</p></> : null}
             <button type="button" onClick={() => setIsFamilyMapOpen(false)}>{t('common:actions.close')}</button>
           </div>

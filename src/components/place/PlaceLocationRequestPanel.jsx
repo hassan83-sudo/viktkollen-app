@@ -11,6 +11,7 @@ import {
   sendLocationRequest,
   subscribeLocationRequests,
 } from '../../features/place/placeLocationRequestService.js'
+import { syncPlaceLocationSharing } from '../../features/place/placeLocationSharingService.js'
 
 function PlaceLocationRequestPanel({ familyMembers, userId, sharingEnabled }) {
   const [requests, setRequests] = useState([])
@@ -171,9 +172,23 @@ function PlaceLocationRequestPanel({ familyMembers, userId, sharingEnabled }) {
     } else if (result.data) {
       setRequests((current) => current.map((item) => (item.id === result.data.id ? result.data : item)))
       if (response === 'accepted') {
-        setNotice(sharingEnabled
-          ? 'Förfrågan godkänd. Din aktiva platsdelning fortsätter enligt dina inställningar.'
-          : 'Förfrågan godkänd. Ingen plats delas förrän du själv slår på platsdelning.')
+        if (sharingEnabled) {
+          try {
+            const locationResult = await syncPlaceLocationSharing({
+              consentGranted: true,
+              sharingEnabled: true,
+            })
+
+            setNotice(locationResult?.ok
+              ? 'Förfrågan godkänd. Din senaste GPS-position skickades direkt till familjekartan.'
+              : 'Förfrågan godkänd. Platsdelningen är på, men GPS-positionen kunde inte uppdateras just nu.')
+          } catch (locationError) {
+            setNotice('Förfrågan godkänd. Platsdelningen är på, men GPS-positionen kunde inte uppdateras just nu.')
+            setError(locationError?.message || 'GPS-positionen kunde inte uppdateras.')
+          }
+        } else {
+          setNotice('Förfrågan godkänd. Ingen plats delas förrän du själv slår på platsdelning.')
+        }
       } else {
         setNotice('Förfrågan avvisad. Ingen plats delas.')
       }

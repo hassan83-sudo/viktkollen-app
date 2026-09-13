@@ -49,4 +49,10 @@
     padding: 7px 11px;
     font-size: 14px;
   }
+
+  .family-map-osm-frame {
+    height: 190px !important;
+    min-height: 190px;
+    max-height: 190px;
+  }
 }

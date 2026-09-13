@@ -135,11 +135,47 @@ async function enhanceSchoolModal(modal) {
   insertSchoolMap(modal, school, closeButton)
 }
 
+function parseCoordinates(text) {
+  const match = String(text || '').match(/(-?\d{1,3}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/)
+  if (!match) return null
+  const latitude = Number(match[1])
+  const longitude = Number(match[2])
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null
+  return { latitude, longitude }
+}
+
+function enhanceSafetyAlertMaps() {
+  document.querySelectorAll('#app-section-place .ready-modal').forEach((modal) => {
+    const heading = modal.querySelector('h3')
+    if (!heading?.textContent?.includes('Trygghetslarm')) return
+
+    modal.querySelectorAll('.place-safety-alert-history li').forEach((item, index) => {
+      if (item.dataset.safetyMapEnhanced === 'true') return
+      const locationText = Array.from(item.querySelectorAll('span')).find((span) => span.textContent?.trim().startsWith('📍'))
+      const coordinates = parseCoordinates(locationText?.textContent)
+      if (!coordinates) return
+
+      item.dataset.safetyMapEnhanced = 'true'
+      const frame = document.createElement('div')
+      frame.className = 'family-map-frame safety-alert-map'
+
+      const iframe = document.createElement('iframe')
+      iframe.title = `Karta – trygghetslarm ${index + 1}`
+      iframe.src = mapUrlForPlace(coordinates)
+      iframe.loading = 'lazy'
+      iframe.referrerPolicy = 'no-referrer-when-downgrade'
+      frame.appendChild(iframe)
+      item.appendChild(frame)
+    })
+  })
+}
+
 function applySchoolUi() {
   renameSchoolCard()
   document.querySelectorAll('#app-section-place .ready-modal').forEach((modal) => {
     void enhanceSchoolModal(modal)
   })
+  enhanceSafetyAlertMaps()
 }
 
 if (typeof document !== 'undefined' && !window.__viktkollenSchoolCardEnhancer) {

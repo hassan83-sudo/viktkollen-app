@@ -1,4 +1,5 @@
 import { normalizeReminder, normalizeReminderState, weekDays } from '../services/reminders/reminderModel.js'
+import { requestReminderNotificationPermission } from '../services/reminders/reminderNotifications.js'
 
 const quickPresets = [
   { title: 'Deo', time: '08:00', scheduleType: 'daily' },
@@ -35,7 +36,11 @@ function repeatLabel(preset) {
 }
 
 function NoticeQuickPresets({ reminderState, onRemindersChange, onMessage }) {
-  function activatePreset(preset) {
+  async function activatePreset(preset) {
+    // This call is deliberately the first async operation after the tap so
+    // iPhone can show its native notification permission prompt.
+    const push = await requestReminderNotificationPermission()
+
     const state = normalizeReminderState(reminderState)
     const now = new Date().toISOString()
     const reminder = normalizeReminder({
@@ -57,13 +62,22 @@ function NoticeQuickPresets({ reminderState, onRemindersChange, onMessage }) {
       reminders: [...state.reminders, reminder],
       updatedAt: now,
     }))
-    onMessage?.(`${preset.title} är aktiverad kl. ${preset.time}. Du kan ändra tid och upprepning under Sparade påminnelser.`)
+
+    if (push.ok) {
+      onMessage?.(`${preset.title} är aktiverad kl. ${preset.time}. Pushnotiser är aktiverade.`)
+    } else if (push.permission === 'denied') {
+      onMessage?.(`${preset.title} är sparad, men notiser är blockerade på enheten. Tillåt notiser i iPhone-inställningarna.`)
+    } else if (push.permission === 'unsupported') {
+      onMessage?.(`${preset.title} är sparad. Pushnotiser kräver att Viktkollen körs som en installerad webbapp på en iPhone som stöder webbpush.`)
+    } else {
+      onMessage?.(`${preset.title} är sparad, men pushnotiser kunde inte aktiveras. Tryck på Aktivera systemnotiser och försök igen.`)
+    }
   }
 
   return (
     <section className="notice-card" aria-labelledby="ready-reminders-heading">
       <h2 id="ready-reminders-heading">Färdiga larm – ett tryck</h2>
-      <p>Tryck en gång för att aktivera. Tid och upprepning kan ändras efteråt.</p>
+      <p>Tryck en gång för att aktivera. Första gången frågar iPhone om tillåtelse för notiser.</p>
       <div className="notice-suggestions">
         {quickPresets.map((preset) => (
           <button key={`${preset.title}-${preset.time}`} type="button" onClick={() => activatePreset(preset)}>

@@ -1,10 +1,11 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { archiveReminder, completeReminder, pauseReminder, resumeReminder } from '../services/reminders/reminderActions.js'
 import { normalizeReminder, normalizeReminderState, weekDays } from '../services/reminders/reminderModel.js'
 import { getNextReminderAt } from '../services/reminders/reminderScheduler.js'
 import { getReminderCapabilities, readReminderSpeechSettings, saveReminderSpeechSettings } from '../services/reminders/reminderCapabilities.js'
 import { requestReminderNotificationPermission } from '../services/reminders/reminderNotifications.js'
+import { enableReminderBackgroundPush, syncReminderPushSchedules } from '../services/reminders/reminderPushSync.js'
 import NoticeQuickPresets from './NoticeQuickPresets.jsx'
 import ReminderSnoozeControls from './ReminderSnoozeControls.jsx'
 import {
@@ -61,6 +62,16 @@ function NoticeHub({ onRemindersChange, reminderState }) {
   const capabilities = getReminderCapabilities()
   const batteryCapabilities = getBatteryCapabilities()
   const batteryRecommendation = useMemo(() => createBatteryRecommendation(batteryState), [batteryState])
+
+  useEffect(() => {
+    let cancelled = false
+    syncReminderPushSchedules(state).then(({ error }) => {
+      if (!cancelled && error && !/måste vara inloggad/i.test(error.message || '')) {
+        console.warn('Reminder background sync failed:', error)
+      }
+    })
+    return () => { cancelled = true }
+  }, [state])
 
   function focusForm() {
     window.requestAnimationFrame?.(() => {
@@ -143,7 +154,24 @@ function NoticeHub({ onRemindersChange, reminderState }) {
 
   async function requestPermission() {
     const result = await requestReminderNotificationPermission()
-    setMessage(result.ok ? t('capabilities.permissionGranted') : t(`capabilities.permission${result.permission === 'unsupported' ? 'Unsupported' : 'Denied'}`))
+    if (!result.ok) {
+      setMessage(t(`capabilities.permission${result.permission === 'unsupported' ? 'Unsupported' : 'Denied'}`))
+      return
+    }
+
+    const pushResult = await enableReminderBackgroundPush()
+    if (pushResult.error) {
+      setMessage(`Notiser är tillåtna, men bakgrundsnotiser kunde inte aktiveras: ${pushResult.error.message}`)
+      return
+    }
+
+    const syncResult = await syncReminderPushSchedules(state)
+    if (syncResult.error) {
+      setMessage(`Bakgrundsnotiser är aktiverade, men larmen kunde inte synkas: ${syncResult.error.message}`)
+      return
+    }
+
+    setMessage('Bakgrundsnotiser är aktiverade. Larm kan nu skickas även när Viktkollen inte är öppen.')
   }
 
   function updateSpeech(key, value) {
@@ -289,7 +317,7 @@ function NoticeHub({ onRemindersChange, reminderState }) {
         <p>{t(`capabilities.notification.${capabilities.notification}`)}</p>
         <p>{t(`capabilities.mode.${capabilities.appMode}`)}</p>
         <p>{t(capabilities.serviceWorker ? 'capabilities.serviceWorkerAvailable' : 'capabilities.serviceWorkerUnavailable')}</p>
-        <button type="button" onClick={requestPermission} disabled={capabilities.notification === 'granted' || capabilities.notification === 'unsupported'}>{t('capabilities.request')}</button>
+        <button type="button" onClick={requestPermission} disabled={capabilities.notification === 'unsupported'}>{t('capabilities.request')}</button>
         <p className="estimate-note">{t('capabilities.disclosure')}</p>
       </section>
 

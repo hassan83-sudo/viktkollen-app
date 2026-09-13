@@ -88,7 +88,23 @@ export function subscribeLocationRequests(onChange) {
     )
     .subscribe()
 
+  // Realtime remains the primary path. Polling is a small fallback for browsers
+  // where a preview tab or mobile connection misses a websocket event.
+  const pollId = window.setInterval(() => {
+    if (document.visibilityState === 'visible') onChange()
+  }, 3000)
+
+  const refreshWhenVisible = () => {
+    if (document.visibilityState === 'visible') onChange()
+  }
+
+  window.addEventListener('focus', refreshWhenVisible)
+  document.addEventListener('visibilitychange', refreshWhenVisible)
+
   return () => {
+    window.clearInterval(pollId)
+    window.removeEventListener('focus', refreshWhenVisible)
+    document.removeEventListener('visibilitychange', refreshWhenVisible)
     supabase.removeChannel(channel)
   }
 }

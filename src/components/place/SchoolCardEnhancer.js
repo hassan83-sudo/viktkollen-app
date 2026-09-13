@@ -1,4 +1,4 @@
-import { loadSafePlaces } from '../../features/place/placeSafePlacesService.js'
+import { createSafePlaceFromOwnLatestLocation, loadSafePlaces } from '../../features/place/placeSafePlacesService.js'
 
 function mapUrlForPlace(place) {
   const latitude = Number(place.latitude)
@@ -25,6 +25,75 @@ function renameSchoolCard() {
     const body = card.querySelector('p')
     if (body) body.textContent = 'Se skolans sparade plats på karta och använd skolområdet för platsstatus.'
   })
+}
+
+function insertSchoolMap(modal, school, closeButton) {
+  const view = document.createElement('div')
+  view.className = 'family-map-view school-map-view'
+
+  const frame = document.createElement('div')
+  frame.className = 'family-map-frame'
+  const iframe = document.createElement('iframe')
+  iframe.title = `Karta – ${school.name || 'Skola'}`
+  iframe.src = mapUrlForPlace(school)
+  iframe.loading = 'lazy'
+  iframe.referrerPolicy = 'no-referrer-when-downgrade'
+  frame.appendChild(iframe)
+
+  const details = document.createElement('div')
+  details.className = 'family-map-selected'
+  const name = document.createElement('strong')
+  name.textContent = `🏫 ${school.name || 'Skola'}`
+  const coordinates = document.createElement('span')
+  coordinates.textContent = `${Number(school.latitude).toFixed(5)}, ${Number(school.longitude).toFixed(5)}`
+  const radius = document.createElement('span')
+  radius.textContent = `Skolområde ±${Math.round(Number(school.radius_meters) || 150)} m`
+  details.append(name, coordinates, radius)
+
+  const note = document.createElement('p')
+  note.className = 'family-map-provider-note'
+  note.innerHTML = '<small>Kartan visas av OpenStreetMap. Skolans plats är den plats familjen själv har sparat.</small>'
+
+  view.append(frame, details, note)
+  modal.insertBefore(view, closeButton || null)
+}
+
+function insertEmptySchoolState(modal, closeButton) {
+  const panel = document.createElement('div')
+  panel.className = 'family-map-selected school-map-empty'
+
+  const title = document.createElement('strong')
+  title.textContent = 'Ingen skola är sparad ännu.'
+
+  const text = document.createElement('span')
+  text.textContent = 'När du står vid skolan kan du spara din senaste delade GPS-position direkt som Skola.'
+
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.textContent = '📍 Spara min position som Skola'
+
+  const status = document.createElement('small')
+  status.setAttribute('aria-live', 'polite')
+
+  button.addEventListener('click', async () => {
+    button.disabled = true
+    status.textContent = 'Sparar skolans position…'
+
+    const { data, error } = await createSafePlaceFromOwnLatestLocation('Skola', 150)
+    if (!modal.isConnected) return
+
+    if (error || !data) {
+      button.disabled = false
+      status.textContent = error?.message || 'Skolans position kunde inte sparas.'
+      return
+    }
+
+    panel.remove()
+    insertSchoolMap(modal, data, closeButton)
+  })
+
+  panel.append(title, text, button, status)
+  modal.insertBefore(panel, closeButton || null)
 }
 
 async function enhanceSchoolModal(modal) {
@@ -59,40 +128,11 @@ async function enhanceSchoolModal(modal) {
 
   const school = schoolPlace(data)
   if (!school) {
-    const message = document.createElement('p')
-    message.innerHTML = '<strong>Ingen skola är sparad ännu.</strong><br>Spara först skolans position i Trygga platser med namnet Skola.'
-    modal.insertBefore(message, closeButton || null)
+    insertEmptySchoolState(modal, closeButton)
     return
   }
 
-  const view = document.createElement('div')
-  view.className = 'family-map-view school-map-view'
-
-  const frame = document.createElement('div')
-  frame.className = 'family-map-frame'
-  const iframe = document.createElement('iframe')
-  iframe.title = `Karta – ${school.name || 'Skola'}`
-  iframe.src = mapUrlForPlace(school)
-  iframe.loading = 'lazy'
-  iframe.referrerPolicy = 'no-referrer-when-downgrade'
-  frame.appendChild(iframe)
-
-  const details = document.createElement('div')
-  details.className = 'family-map-selected'
-  const name = document.createElement('strong')
-  name.textContent = `🏫 ${school.name || 'Skola'}`
-  const coordinates = document.createElement('span')
-  coordinates.textContent = `${Number(school.latitude).toFixed(5)}, ${Number(school.longitude).toFixed(5)}`
-  const radius = document.createElement('span')
-  radius.textContent = `Skolområde ±${Math.round(Number(school.radius_meters) || 150)} m`
-  details.append(name, coordinates, radius)
-
-  const note = document.createElement('p')
-  note.className = 'family-map-provider-note'
-  note.innerHTML = '<small>Kartan visas av OpenStreetMap. Skolans plats är den plats familjen själv har sparat.</small>'
-
-  view.append(frame, details, note)
-  modal.insertBefore(view, closeButton || null)
+  insertSchoolMap(modal, school, closeButton)
 }
 
 function applySchoolUi() {

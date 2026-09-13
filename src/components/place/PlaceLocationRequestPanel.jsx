@@ -14,6 +14,7 @@ import {
 
 function PlaceLocationRequestPanel({ familyMembers, userId, sharingEnabled }) {
   const [requests, setRequests] = useState([])
+  const [requestUserId, setRequestUserId] = useState(null)
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -32,6 +33,7 @@ function PlaceLocationRequestPanel({ familyMembers, userId, sharingEnabled }) {
       const result = await loadLocationRequests()
       if (cancelled) return
       setRequests(Array.isArray(result.data) ? result.data : [])
+      setRequestUserId(result.userId || null)
       setError(result.error?.message || '')
       setLoaded(true)
     }
@@ -60,23 +62,25 @@ function PlaceLocationRequestPanel({ familyMembers, userId, sharingEnabled }) {
     }
   }, [])
 
+  const currentUserId = requestUserId || userId
+
   const pendingIncoming = useMemo(
-    () => requests.filter((request) => request.status === 'pending' && request.target_user_id === userId),
-    [requests, userId],
+    () => requests.filter((request) => request.status === 'pending' && request.target_user_id === currentUserId),
+    [requests, currentUserId],
   )
 
   const pendingOutgoingKeys = useMemo(
     () => new Set(
       requests
-        .filter((request) => request.status === 'pending' && request.requester_user_id === userId)
+        .filter((request) => request.status === 'pending' && request.requester_user_id === currentUserId)
         .map((request) => `${request.family_id}:${request.target_user_id}`),
     ),
-    [requests, userId],
+    [requests, currentUserId],
   )
 
   const otherMembers = useMemo(
-    () => (familyMembers || []).filter((member) => member.user_id !== userId),
-    [familyMembers, userId],
+    () => (familyMembers || []).filter((member) => member.user_id !== currentUserId),
+    [familyMembers, currentUserId],
   )
 
   async function handleCreateInvite() {

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v3'
+const CACHE_VERSION = 'v4'
 const APP_SHELL_CACHE = `viktkollen-app-shell-${CACHE_VERSION}`
 const ASSET_CACHE = `viktkollen-assets-${CACHE_VERSION}`
 const IMAGE_CACHE = `viktkollen-images-${CACHE_VERSION}`
@@ -158,11 +158,19 @@ self.addEventListener('push', (event) => {
 
   const isReminder = payload.data?.type === 'reminder'
   const title = payload.title || 'Viktkollen'
+  const reminderActions = isReminder && payload.data?.actionToken
+    ? [
+        { action: 'snooze-5', title: 'Snooze 5 min' },
+        { action: 'done', title: 'Klar' },
+      ]
+    : undefined
+
   const options = {
-    body: payload.body || (isReminder ? 'Du har en påminnelse i Viktkollen.' : 'Ny platsnotis'),
+    body: isReminder ? (payload.body || `Dags för ${title}.`) : (payload.body || 'Ny platsnotis'),
     data: payload.data || { url: isReminder ? '/?section=notices' : '/?section=place' },
     icon: '/favicon.ico',
     badge: '/favicon.ico',
+    actions: reminderActions,
     tag: isReminder
       ? `reminder-${payload.data?.reminderId || 'update'}`
       : payload.data?.safePlaceId
@@ -173,10 +181,40 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(title, options))
 })
 
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close()
-  const targetUrl = new URL(event.notification.data?.url || '/', self.location.origin).href
+async function sendReminderAction(data, action) {
+  if (!data?.actionUrl || !data?.actionToken || !data?.scheduleId || !data?.reminderId) return false
 
+  const payload = {
+    action,
+    actionToken: data.actionToken,
+    scheduleId: data.scheduleId,
+    reminderId: data.reminderId,
+  }
+  if (action === 'snooze') payload.minutes = 5
+
+  try {
+    const response = await fetch(data.actionUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+self.addEventListener('notificationclick', (event) => {
+  const { action } = event
+  const data = event.notification.data || {}
+  event.notification.close()
+
+  if (action === 'snooze-5' || action === 'done') {
+    event.waitUntil(sendReminderAction(data, action === 'snooze-5' ? 'snooze' : 'done'))
+    return
+  }
+
+  const targetUrl = new URL(data.url || '/', self.location.origin).href
   event.waitUntil((async () => {
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
     for (const client of windows) {

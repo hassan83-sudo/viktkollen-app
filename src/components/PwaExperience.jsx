@@ -5,6 +5,7 @@ import {
   PWA_APP_VERSION,
   PWA_CACHE_VERSION,
   registerServiceWorker,
+  requestServiceWorkerUpdate,
 } from '../registerServiceWorker.js'
 
 function getInitialOnlineStatus() {
@@ -42,11 +43,14 @@ function PwaExperience({ showDiagnostics = false }) {
   const [online, setOnline] = useState(getInitialOnlineStatus)
   const [serviceWorkerStatus, setServiceWorkerStatus] = useState('not-registered')
   const [updateRegistration, setUpdateRegistration] = useState(null)
+  const registrationRef = useRef(null)
+  const controllerChangeHandledRef = useRef(false)
   const updateRequestedRef = useRef(false)
 
   useEffect(() => {
     function handleOnline() {
       setOnline(true)
+      requestServiceWorkerUpdate(registrationRef.current)
     }
 
     function handleOffline() {
@@ -88,31 +92,54 @@ function PwaExperience({ showDiagnostics = false }) {
 
   useEffect(() => {
     let cleanupRegistration = () => {}
+    let updateInterval = null
+
+    function applyAvailableUpdate(registration) {
+      setUpdateRegistration(registration)
+      setServiceWorkerStatus('updating')
+      updateRequestedRef.current = true
+      applyServiceWorkerUpdate(registration)
+    }
 
     registerServiceWorker({
       onStatusChange: setServiceWorkerStatus,
-      onUpdateAvailable: (registration) => {
-        setUpdateRegistration(registration)
-        setServiceWorkerStatus('update-ready')
-      },
+      onUpdateAvailable: applyAvailableUpdate,
     }).then((result) => {
-      if (result.cleanup) {
-        cleanupRegistration = result.cleanup
-      }
+      if (result.cleanup) cleanupRegistration = result.cleanup
+      if (!result.registration) return
+
+      registrationRef.current = result.registration
+      requestServiceWorkerUpdate(result.registration)
+      updateInterval = window.setInterval(() => {
+        requestServiceWorkerUpdate(registrationRef.current)
+      }, 5 * 60 * 1000)
     })
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        requestServiceWorkerUpdate(registrationRef.current)
+      }
+    }
 
     function handleControllerChange() {
       setServiceWorkerStatus('activated')
+      setUpdateRegistration(null)
 
-      if (updateRequestedRef.current) {
+      // Reload once whenever a new root worker takes control. This also migrates
+      // older iPhone installations that were controlled by place-push-sw.js.
+      if (!controllerChangeHandledRef.current) {
+        controllerChangeHandledRef.current = true
         window.location.reload()
       }
     }
 
+    document.addEventListener('visibilitychange', handleVisibilityChange)
     navigator.serviceWorker?.addEventListener?.('controllerchange', handleControllerChange)
 
     return () => {
       cleanupRegistration()
+      if (updateInterval) window.clearInterval(updateInterval)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
       navigator.serviceWorker?.removeEventListener?.('controllerchange', handleControllerChange)
     }
   }, [])
@@ -138,16 +165,14 @@ function PwaExperience({ showDiagnostics = false }) {
   }
 
   function updateNow() {
-    if (!updateRegistration) return
+    const registration = updateRegistration || registrationRef.current
+    if (!registration) return
 
     updateRequestedRef.current = true
     setServiceWorkerStatus('updating')
 
-    const requested = applyServiceWorkerUpdate(updateRegistration)
-
-    if (!requested) {
-      window.location.reload()
-    }
+    const requested = applyServiceWorkerUpdate(registration)
+    if (!requested) requestServiceWorkerUpdate(registration)
   }
 
   const showInstallButton = Boolean(deferredPrompt && !installed)
@@ -164,8 +189,8 @@ function PwaExperience({ showDiagnostics = false }) {
       {updateRegistration && (
         <div className="pwa-banner is-update" role="status" aria-live="polite">
           <div>
-            <strong>Ny version finns</strong>
-            <span>Uppdatera när det passar. Lokal data sparas kvar i appen.</span>
+            <strong>Ny version hämtas</strong>
+            <span>Viktkollen uppdateras automatiskt. Lokal data sparas kvar.</span>
           </div>
           <button type="button" onClick={updateNow}>
             Uppdatera nu

@@ -1,4 +1,4 @@
-export const PWA_CACHE_VERSION = 'v2'
+export const PWA_CACHE_VERSION = 'v3'
 export const PWA_APP_VERSION = import.meta.env.VITE_APP_VERSION || '0.0.0'
 
 export function shouldRegisterServiceWorker({
@@ -28,7 +28,6 @@ export function watchForServiceWorkerUpdate(registration, {
 
   function handleUpdateFound() {
     const worker = registration.installing
-
     if (!worker) return
 
     onStatusChange?.('installing')
@@ -62,14 +61,15 @@ export function registerServiceWorker({
     return Promise.resolve({ registered: false, reason: 'unsupported-or-non-production' })
   }
 
-  return serviceWorker.register(serviceWorkerUrl)
-    .then((registration) => {
+  return serviceWorker.register(serviceWorkerUrl, { scope: '/', updateViaCache: 'none' })
+    .then(async (registration) => {
       onStatusChange?.(getWaitingWorker(registration)?.state || 'registered')
       const cleanup = watchForServiceWorkerUpdate(registration, {
         onStatusChange,
         onUpdateAvailable,
       })
 
+      await registration.update().catch(() => undefined)
       return { cleanup, registered: true, registration }
     })
     .catch((error) => {
@@ -81,12 +81,15 @@ export function registerServiceWorker({
 export function applyServiceWorkerUpdate(registration) {
   const worker = registration?.waiting
 
-  if (!worker) {
-    return false
-  }
+  if (!worker) return false
 
   worker.postMessage({ type: 'SKIP_WAITING' })
   return true
+}
+
+export function requestServiceWorkerUpdate(registration) {
+  if (!registration?.update) return Promise.resolve(false)
+  return registration.update().then(() => true).catch(() => false)
 }
 
 export function isStandaloneDisplayMode({

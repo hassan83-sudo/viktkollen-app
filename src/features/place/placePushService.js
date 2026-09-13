@@ -48,7 +48,7 @@ export async function ensurePlacePushSubscription() {
   }
 
   // Start permission request before the first await so this can be called directly
-  // from the user's safe-place notification toggle gesture.
+  // from the user's notification toggle gesture.
   const permissionPromise = Notification.permission === 'default'
     ? Notification.requestPermission()
     : Promise.resolve(Notification.permission)
@@ -61,7 +61,10 @@ export async function ensurePlacePushSubscription() {
   const userId = sessionData?.session?.user?.id
   if (!userId) return unsupported('Du måste vara inloggad för pushnotiser.')
 
-  const registration = await navigator.serviceWorker.register('/place-push-sw.js', { scope: '/' })
+  // A single root worker handles both app updates/offline cache and push.
+  // This also migrates installations that were previously controlled by place-push-sw.js.
+  const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+  await registration.update().catch(() => undefined)
   await navigator.serviceWorker.ready
 
   const { data: keyData, error: keyError } = await supabase.functions.invoke('place-push', {

@@ -1,10 +1,12 @@
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { archiveReminder, completeReminder, pauseReminder, resumeReminder, snoozeReminder } from '../services/reminders/reminderActions.js'
+import { archiveReminder, completeReminder, pauseReminder, resumeReminder } from '../services/reminders/reminderActions.js'
 import { normalizeReminder, normalizeReminderState, weekDays } from '../services/reminders/reminderModel.js'
 import { getNextReminderAt } from '../services/reminders/reminderScheduler.js'
 import { getReminderCapabilities, readReminderSpeechSettings, saveReminderSpeechSettings } from '../services/reminders/reminderCapabilities.js'
 import { requestReminderNotificationPermission } from '../services/reminders/reminderNotifications.js'
+import NoticeQuickPresets from './NoticeQuickPresets.jsx'
+import ReminderSnoozeControls from './ReminderSnoozeControls.jsx'
 import {
   addBatteryMeasurement,
   createBatteryRecommendation,
@@ -14,6 +16,16 @@ import {
 } from '../services/battery/batteryNoticeModel.js'
 
 const suggestions = ['glasses', 'medicine', 'water', 'item', 'leave', 'call', 'laundry', 'pause', 'bed']
+const repeatOptions = [
+  { value: 'once', label: 'Aldrig' },
+  { value: 'daily', label: 'Varje dag' },
+  { value: 'selected_weekdays', label: 'Valda dagar' },
+  { value: 'weekly', label: 'Varje vecka' },
+  { value: 'interval-120', label: 'Varannan timme' },
+  { value: 'interval-180', label: 'Var tredje timme' },
+  { value: 'interval-2880', label: 'Varannan dag' },
+  { value: 'interval-4320', label: 'Var tredje dag' },
+]
 
 function localDate() {
   const now = new Date()
@@ -25,7 +37,12 @@ function currentWeekday() {
 }
 
 function createEmptyDraft() {
-  return { daysOfWeek: [], description: '', scheduleType: 'once', startDate: localDate(), time: '09:00', title: '' }
+  return { daysOfWeek: [], description: '', intervalMinutes: 0, scheduleType: 'once', startDate: localDate(), time: '09:00', title: '' }
+}
+
+function repeatValue(draft) {
+  if (draft.scheduleType === 'interval') return `interval-${draft.intervalMinutes || 120}`
+  return draft.scheduleType
 }
 
 function NoticeHub({ onRemindersChange, reminderState }) {
@@ -101,12 +118,27 @@ function NoticeHub({ onRemindersChange, reminderState }) {
     setDraft({
       daysOfWeek: reminder.daysOfWeek,
       description: reminder.description,
+      intervalMinutes: reminder.intervalMinutes || 0,
       scheduleType: reminder.scheduleType,
       startDate: reminder.startDate,
       time: reminder.time,
       title: reminder.title,
     })
     focusForm()
+  }
+
+  function changeRepeat(value) {
+    if (value.startsWith('interval-')) {
+      const intervalMinutes = Number(value.split('-')[1])
+      setDraft((current) => ({ ...current, intervalMinutes, scheduleType: 'interval' }))
+      return
+    }
+    setDraft((current) => ({
+      ...current,
+      daysOfWeek: value === 'weekly' && current.daysOfWeek.length === 0 ? [currentWeekday()] : current.daysOfWeek,
+      intervalMinutes: 0,
+      scheduleType: value,
+    }))
   }
 
   async function requestPermission() {
@@ -181,6 +213,7 @@ function NoticeHub({ onRemindersChange, reminderState }) {
   function prepareBatteryReminder() {
     prepareDraft({
       description: t('battery.reminder.description', { percent: batteryRecommendation.reminderPercent || 35 }),
+      intervalMinutes: 0,
       scheduleType: 'once',
       startDate: localDate(),
       time: '20:00',
@@ -191,6 +224,7 @@ function NoticeHub({ onRemindersChange, reminderState }) {
   function prepareMemoryReminder(id) {
     prepareDraft({
       description: `${t(`memory.techniques.${id}.body`)} ${t(`memory.techniques.${id}.example`)}`,
+      intervalMinutes: 0,
       scheduleType: 'once',
       startDate: localDate(),
       title: t(`memory.techniques.${id}.reminder`),
@@ -205,6 +239,8 @@ function NoticeHub({ onRemindersChange, reminderState }) {
         <p>{t('subtitle')}</p>
       </header>
       {message && <p className="form-success" role="status" aria-live="polite">{message}</p>}
+
+      <NoticeQuickPresets reminderState={state} onRemindersChange={onRemindersChange} onMessage={setMessage} />
 
       <section className="notice-card" aria-labelledby="quick-reminders-heading">
         <h2 id="quick-reminders-heading">{t('quick.title')}</h2>
@@ -222,15 +258,8 @@ function NoticeHub({ onRemindersChange, reminderState }) {
         <div className="notice-form-grid">
           <label>{t('form.date')}<input type="date" required value={draft.startDate} onChange={(event) => updateDraft('startDate', event.target.value)} /></label>
           <label>{t('form.time')}<input type="time" required value={draft.time} onChange={(event) => updateDraft('time', event.target.value)} /></label>
-          <label>{t('form.repeat')}<select value={draft.scheduleType} onChange={(event) => {
-            const scheduleType = event.target.value
-            setDraft((current) => ({
-              ...current,
-              daysOfWeek: scheduleType === 'weekly' && current.daysOfWeek.length === 0 ? [currentWeekday()] : current.daysOfWeek,
-              scheduleType,
-            }))
-          }}>
-            {['once', 'daily', 'selected_weekdays', 'weekly'].map((type) => <option key={type} value={type}>{t(`repeat.${type}`)}</option>)}
+          <label>{t('form.repeat')}<select value={repeatValue(draft)} onChange={(event) => changeRepeat(event.target.value)}>
+            {repeatOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select></label>
         </div>
         {['selected_weekdays', 'weekly'].includes(draft.scheduleType) && <fieldset><legend>{t('form.weekdays')}</legend><div className="notice-weekdays">{weekDays.map((day) => <label key={day}><input type="checkbox" checked={draft.daysOfWeek.includes(day)} onChange={(event) => updateDraft('daysOfWeek', event.target.checked ? [...draft.daysOfWeek, day] : draft.daysOfWeek.filter((item) => item !== day))} />{t(`weekdays.${day}`)}</label>)}</div></fieldset>}
@@ -243,12 +272,12 @@ function NoticeHub({ onRemindersChange, reminderState }) {
       <section className="notice-card" aria-labelledby="saved-reminders-heading">
         <h2 id="saved-reminders-heading">{t('saved.title')}</h2>
         {state.reminders.length === 0 ? <p>{t('saved.empty')}</p> : <ul className="notice-reminder-list">{state.reminders.filter((item) => !item.archivedAt).map((reminder) => <li key={reminder.id}>
-          <strong>{reminder.title}</strong><span>{t('saved.schedule', { date: reminder.startDate, time: reminder.time, repeat: t(`repeat.${reminder.scheduleType}`) })}</span><span>{t('saved.next', { time: getNextReminderAt(reminder) ? new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(getNextReminderAt(reminder))) : t('saved.none') })}</span>
+          <strong>{reminder.title}</strong><span>{t('saved.schedule', { date: reminder.startDate, time: reminder.time, repeat: reminder.scheduleType === 'interval' ? `${Math.round(reminder.intervalMinutes / 60)} h intervall` : t(`repeat.${reminder.scheduleType}`) })}</span><span>{t('saved.next', { time: getNextReminderAt(reminder) ? new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(getNextReminderAt(reminder))) : t('saved.none') })}</span>
           <div className="notice-actions">
             <button type="button" onClick={() => edit(reminder)}>{t('actions.edit')}</button>
             <button type="button" onClick={() => save(reminder.pausedAt ? resumeReminder(state, reminder.id) : pauseReminder(state, reminder.id), t(reminder.pausedAt ? 'status.enabled' : 'status.disabled'))}>{t(reminder.pausedAt ? 'actions.enable' : 'actions.disable')}</button>
             <button type="button" onClick={() => save(completeReminder(state, reminder.id), t('status.completed'))}>{t('actions.complete')}</button>
-            <button type="button" onClick={() => save(snoozeReminder(state, reminder.id, 30), t('status.snoozed'))}>{t('actions.snooze')}</button>
+            <ReminderSnoozeControls reminderId={reminder.id} reminderState={state} onSave={save} statusText={t('status.snoozed')} />
             <button type="button" onClick={() => setDeleteId(reminder.id)}>{t('actions.delete')}</button>
           </div>
           {deleteId === reminder.id && <div className="notice-delete-confirm" role="alert"><p>{t('delete.confirm')}</p><button type="button" onClick={() => save(archiveReminder(state, reminder.id), t('status.deleted'))}>{t('delete.yes')}</button><button type="button" onClick={() => setDeleteId('')}>{t('delete.no')}</button></div>}

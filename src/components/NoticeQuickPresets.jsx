@@ -1,4 +1,4 @@
-import { normalizeReminder, normalizeReminderState } from '../services/reminders/reminderModel.js'
+import { normalizeReminder, normalizeReminderState, weekDays } from '../services/reminders/reminderModel.js'
 
 const quickPresets = [
   { title: 'Deo', time: '08:00', scheduleType: 'daily' },
@@ -20,6 +20,10 @@ function localDate() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 }
 
+function currentWeekday() {
+  return weekDays[(new Date().getDay() + 6) % 7]
+}
+
 function repeatLabel(preset) {
   if (preset.scheduleType === 'daily') return 'Varje dag'
   if (preset.scheduleType === 'weekly') return 'Varje vecka'
@@ -36,6 +40,7 @@ function NoticeQuickPresets({ reminderState, onRemindersChange, onMessage }) {
     const now = new Date().toISOString()
     const reminder = normalizeReminder({
       createdAt: now,
+      daysOfWeek: preset.scheduleType === 'weekly' ? [currentWeekday()] : undefined,
       description: `Färdig snabbpåminnelse: ${preset.title}`,
       id: `quick-${preset.title.toLowerCase().replace(/[^a-z0-9åäö]+/gi, '-')}-${Date.now()}`,
       intervalMinutes: preset.intervalMinutes || 0,
@@ -52,7 +57,7 @@ function NoticeQuickPresets({ reminderState, onRemindersChange, onMessage }) {
       reminders: [...state.reminders, reminder],
       updatedAt: now,
     }))
-    onMessage?.(`${preset.title} är aktiverad kl. ${preset.time}. Du kan ändra tiden under Sparade påminnelser.`)
+    onMessage?.(`${preset.title} är aktiverad kl. ${preset.time}. Du kan ändra tid och upprepning under Sparade påminnelser.`)
   }
 
   return (

@@ -1,5 +1,7 @@
 const FAMILY_MAP_SELECTOR = '.ready-modal[aria-label="Familjekarta"]'
+const CHILD_LOCATION_SELECTOR = '.ready-modal[aria-label="Barnets plats"]'
 const ENHANCED_ATTR = 'data-family-map-enhanced'
+const CHILD_ENHANCED_ATTR = 'data-child-location-map-enhanced'
 
 function readLocations(modal) {
   return Array.from(modal.querySelectorAll(':scope > ul > li')).map((item, index) => {
@@ -15,6 +17,20 @@ function readLocations(modal) {
 
     return { name, latitude, longitude }
   }).filter(Boolean)
+}
+
+function readChildLocation(modal) {
+  const paragraphs = Array.from(modal.querySelectorAll(':scope > p'))
+  const coordinateParagraph = paragraphs.find((paragraph) => /-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?/.test(paragraph.textContent || ''))
+  const match = coordinateParagraph?.textContent?.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/)
+  if (!match) return null
+
+  const latitude = Number(match[1])
+  const longitude = Number(match[2])
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null
+
+  const name = paragraphs[0]?.querySelector('strong')?.textContent?.trim() || 'Familjemedlem'
+  return { name, latitude, longitude }
 }
 
 function buildMapUrl({ latitude, longitude }) {
@@ -83,14 +99,41 @@ function enhanceFamilyMap(modal) {
   showLocation(locations[0], controls.querySelector('button'))
 }
 
-function scanForFamilyMap() {
+function enhanceChildLocationMap(modal) {
+  if (!modal || modal.getAttribute(CHILD_ENHANCED_ATTR) === 'true') return
+
+  const location = readChildLocation(modal)
+  if (!location) return
+
+  modal.setAttribute(CHILD_ENHANCED_ATTR, 'true')
+
+  const mapWrap = document.createElement('section')
+  mapWrap.className = 'family-map-live-map child-location-live-map'
+  mapWrap.setAttribute('aria-label', `Karta med ${location.name}s senaste plats`)
+
+  const iframe = document.createElement('iframe')
+  iframe.className = 'family-map-osm-frame'
+  iframe.title = `Karta: ${location.name}`
+  iframe.loading = 'eager'
+  iframe.referrerPolicy = 'no-referrer-when-downgrade'
+  iframe.setAttribute('allowfullscreen', '')
+  iframe.src = buildMapUrl(location)
+  mapWrap.appendChild(iframe)
+
+  const firstParagraph = modal.querySelector(':scope > p')
+  if (firstParagraph) modal.insertBefore(mapWrap, firstParagraph)
+  else modal.appendChild(mapWrap)
+}
+
+function scanForPlaceMaps() {
   document.querySelectorAll(FAMILY_MAP_SELECTOR).forEach(enhanceFamilyMap)
+  document.querySelectorAll(CHILD_LOCATION_SELECTOR).forEach(enhanceChildLocationMap)
 }
 
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   const start = () => {
-    scanForFamilyMap()
-    const observer = new MutationObserver(scanForFamilyMap)
+    scanForPlaceMaps()
+    const observer = new MutationObserver(scanForPlaceMaps)
     observer.observe(document.body, { childList: true, subtree: true })
   }
 

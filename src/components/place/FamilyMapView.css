@@ -35,8 +35,7 @@
   border: 0;
 }
 
-.family-map-selected,
-.family-map-location-list > li {
+.family-map-selected {
   display: grid;
   gap: 6px;
   min-width: 0;
@@ -47,26 +46,8 @@
 }
 
 .family-map-selected > span,
-.family-map-selected > small,
-.family-map-location-list > li > span,
-.family-map-location-list > li > small {
+.family-map-selected > small {
   overflow-wrap: anywhere;
-}
-
-.family-map-location-list {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-}
-
-.family-map-location-list > li {
-  list-style: none;
-}
-
-.family-map-location-list > li > button {
-  width: 100%;
-  margin: 4px 0 0;
 }
 
 .family-map-provider-note {
@@ -107,14 +88,12 @@
     height: 210px;
   }
 
-  .family-map-selected,
-  .family-map-location-list > li {
+  .family-map-selected {
     padding: 11px;
   }
 
   #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] > button:last-child {
-    position: sticky;
-    bottom: 0;
+    position: static;
     width: 100%;
     margin-top: 12px;
   }

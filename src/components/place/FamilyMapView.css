@@ -55,6 +55,17 @@
   opacity: 0.78;
 }
 
+.safety-alert-map {
+  width: 100%;
+  min-height: 180px;
+  margin-top: 10px;
+  border-radius: 12px;
+}
+
+.safety-alert-map > iframe {
+  height: 190px;
+}
+
 @media (max-width: 560px) {
   #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] {
     max-height: calc(100svh - 190px);
@@ -90,6 +101,16 @@
 
   .family-map-selected {
     padding: 11px;
+  }
+
+  .safety-alert-map {
+    min-height: 160px;
+    margin-top: 8px;
+    border-radius: 12px;
+  }
+
+  .safety-alert-map > iframe {
+    height: 170px;
   }
 
   #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] > button:last-child {

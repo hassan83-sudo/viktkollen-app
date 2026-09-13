@@ -8,13 +8,10 @@ import { readReminderSpeechSettings } from '../reminders/reminderCapabilities.js
 function speakDueReminders(due = []) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return
   const settings = readReminderSpeechSettings()
-  if (!settings.enabled) return
-
-  const spoken = due.filter((reminder) => reminder.speakOnTrigger !== false)
-  if (spoken.length === 0) return
+  if (!settings.enabled || due.length === 0) return
 
   window.speechSynthesis.cancel()
-  spoken.slice(0, 3).forEach((reminder) => {
+  due.slice(0, 3).forEach((reminder) => {
     const reminderText = settings.includeSensitiveText
       ? (reminder.title || 'Du har en påminnelse i Viktkollen.')
       : 'Du har en påminnelse i Viktkollen.'

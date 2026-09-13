@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { displayNameForUser } from '../../features/place/placeFamilyMemberService.js'
+import './SchoolCardEnhancer.js'
 import './FamilyMapView.css'
 
 function locationKey(location) {

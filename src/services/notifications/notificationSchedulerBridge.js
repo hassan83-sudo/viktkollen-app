@@ -3,15 +3,22 @@ import {
   recordNotificationEvent,
   showNotificationDelivery,
 } from './notificationEngine.js'
+import { readReminderSpeechSettings } from '../reminders/reminderCapabilities.js'
 
 function speakDueReminders(due = []) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return
-  const spoken = due.filter((reminder) => reminder.speakOnTrigger === true)
+  const settings = readReminderSpeechSettings()
+  if (!settings.enabled) return
+
+  const spoken = due.filter((reminder) => reminder.speakOnTrigger !== false)
   if (spoken.length === 0) return
 
   window.speechSynthesis.cancel()
   spoken.slice(0, 3).forEach((reminder) => {
-    const utterance = new SpeechSynthesisUtterance(reminder.title || 'Du har en påminnelse i Viktkollen.')
+    const reminderText = settings.includeSensitiveText
+      ? (reminder.title || 'Du har en påminnelse i Viktkollen.')
+      : 'Du har en påminnelse i Viktkollen.'
+    const utterance = new SpeechSynthesisUtterance(reminderText)
     utterance.lang = document?.documentElement?.lang || 'sv-SE'
     window.speechSynthesis.speak(utterance)
   })

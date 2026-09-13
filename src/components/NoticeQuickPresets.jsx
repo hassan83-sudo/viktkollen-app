@@ -46,7 +46,7 @@ function NoticeQuickPresets({ reminderState, onRemindersChange, onMessage }) {
     const reminder = normalizeReminder({
       createdAt: now,
       daysOfWeek: preset.scheduleType === 'weekly' ? [currentWeekday()] : undefined,
-      description: `Färdig snabbpåminnelse: ${preset.title}`,
+      description: `Dags för ${preset.title}.`,
       id: `quick-${preset.title.toLowerCase().replace(/[^a-z0-9åäö]+/gi, '-')}-${Date.now()}`,
       intervalMinutes: preset.intervalMinutes || 0,
       scheduleType: preset.scheduleType,

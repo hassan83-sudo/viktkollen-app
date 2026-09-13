@@ -7,8 +7,19 @@ function unsupported(message) {
   return { data: null, error: new Error(message) }
 }
 
-function toRow(userId, reminder) {
-  const nextRunAt = getNextReminderAt(reminder)
+function activeServerSnooze(existingRow) {
+  const value = existingRow?.snoozed_until
+  if (!value) return ''
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime()) || parsed.getTime() <= Date.now()) return ''
+  return parsed.toISOString()
+}
+
+function toRow(userId, reminder, existingRow) {
+  const serverSnooze = activeServerSnooze(existingRow)
+  const localSnooze = reminder.snoozedUntil || ''
+  const snoozedUntil = localSnooze || serverSnooze || null
+  const nextRunAt = snoozedUntil || getNextReminderAt(reminder)
 
   return {
     archived: Boolean(reminder.archivedAt),
@@ -21,7 +32,7 @@ function toRow(userId, reminder) {
     reminder_id: reminder.id,
     reminder_time: reminder.time || '09:00',
     schedule_type: reminder.scheduleType,
-    snoozed_until: reminder.snoozedUntil || null,
+    snoozed_until: snoozedUntil,
     start_date: reminder.startDate || null,
     timezone: reminder.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Stockholm',
     title: reminder.title || 'Påminnelse från Viktkollen',
@@ -47,10 +58,11 @@ export async function syncReminderPushSchedules(reminderState) {
 
   const { data: existing, error: existingError } = await supabase
     .from('reminder_push_schedules')
-    .select('reminder_id')
+    .select('reminder_id,snoozed_until,updated_at')
 
   if (existingError) return { data: null, error: existingError }
 
+  const existingByReminderId = new Map((existing || []).map((row) => [row.reminder_id, row]))
   const staleIds = (existing || [])
     .map((row) => row.reminder_id)
     .filter((id) => id && !reminderIds.includes(id))
@@ -66,7 +78,7 @@ export async function syncReminderPushSchedules(reminderState) {
 
   if (!state.reminders.length) return { data: { synced: 0 }, error: null }
 
-  const rows = state.reminders.map((reminder) => toRow(userId, reminder))
+  const rows = state.reminders.map((reminder) => toRow(userId, reminder, existingByReminderId.get(reminder.id)))
   const { error: upsertError } = await supabase
     .from('reminder_push_schedules')
     .upsert(rows, { onConflict: 'user_id,reminder_id' })

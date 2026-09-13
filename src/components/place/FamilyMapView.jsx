@@ -26,10 +26,18 @@ function mapUrlForLocation(location) {
 }
 
 function FamilyMapView({ locations, familyMembers }) {
-  const validLocations = useMemo(
-    () => (locations || []).filter((location) => Number.isFinite(Number(location.latitude)) && Number.isFinite(Number(location.longitude))),
-    [locations],
-  )
+  const validLocations = useMemo(() => {
+    const seen = new Set()
+
+    return (locations || []).filter((location) => {
+      if (!Number.isFinite(Number(location.latitude)) || !Number.isFinite(Number(location.longitude))) return false
+
+      const key = locationKey(location)
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }, [locations])
 
   const entries = useMemo(() => {
     const baseNames = validLocations.map((location) => (
@@ -100,21 +108,6 @@ function FamilyMapView({ locations, familyMembers }) {
         {selectedLocation.accuracy_meters != null ? <span>Noggrannhet ±{Math.round(selectedLocation.accuracy_meters)} m</span> : null}
         {selectedLocation.location_recorded_at ? <small>Uppdaterad {new Date(selectedLocation.location_recorded_at).toLocaleString()}</small> : null}
       </div>
-
-      <ul className="family-map-location-list">
-        {entries.map((entry) => {
-          const location = entry.location
-          return (
-            <li key={entry.key}>
-              <strong>{entry.label}</strong>
-              <span>{Number(location.latitude).toFixed(5)}, {Number(location.longitude).toFixed(5)}</span>
-              {location.accuracy_meters != null ? <span>Noggrannhet ±{Math.round(location.accuracy_meters)} m</span> : null}
-              {location.location_recorded_at ? <small>Uppdaterad {new Date(location.location_recorded_at).toLocaleString()}</small> : null}
-              <button type="button" onClick={() => setSelectedKey(entry.key)}>Visa på kartan</button>
-            </li>
-          )
-        })}
-      </ul>
 
       <p className="family-map-provider-note"><small>Kartan visas av OpenStreetMap. Endast området runt den valda delade positionen begärs när kartan öppnas.</small></p>
     </div>

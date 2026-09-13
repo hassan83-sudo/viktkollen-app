@@ -75,9 +75,16 @@
 }
 
 @media (max-width: 560px) {
+  #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] {
+    max-height: calc(100svh - 190px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: 20px;
+  }
+
   .family-map-view {
-    gap: 12px;
-    margin-top: 12px;
+    gap: 10px;
+    margin-top: 10px;
   }
 
   .family-map-person-switcher {
@@ -92,16 +99,23 @@
   }
 
   .family-map-frame {
-    min-height: 250px;
+    min-height: 200px;
     border-radius: 14px;
   }
 
   .family-map-frame > iframe {
-    height: 260px;
+    height: 210px;
   }
 
   .family-map-selected,
   .family-map-location-list > li {
-    padding: 12px;
+    padding: 11px;
+  }
+
+  #app-section-place.is-active .ready-modal[aria-label="Familjekarta"] > button:last-child {
+    position: sticky;
+    bottom: 0;
+    width: 100%;
+    margin-top: 12px;
   }
 }

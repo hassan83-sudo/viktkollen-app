@@ -1,3 +1,4 @@
+import './snoozeUiEnhancer.js'
 import { normalizeReminderState, reminderHistoryLimit } from './reminderModel.js'
 import { recordRoutineAction } from '../routines/dailyRoutinePlan.js'
 
@@ -96,7 +97,10 @@ export function skipReminder(state, reminderId, options = {}) {
 
 export function snoozeReminder(state, reminderId, minutes = 30, options = {}) {
   const nowDate = new Date(options.now || Date.now())
-  const safeMinutes = Math.max(1, Math.min(240, Math.round(Number(minutes) || 30)))
+  const uiMinutes = typeof window !== 'undefined' ? Number(window.__viktkollenSnoozeMinutes) : NaN
+  if (typeof window !== 'undefined') delete window.__viktkollenSnoozeMinutes
+  const requestedMinutes = Number.isFinite(uiMinutes) ? uiMinutes : minutes
+  const safeMinutes = Math.max(1, Math.min(240, Math.round(Number(requestedMinutes) || 30)))
   const snoozedUntil = new Date(nowDate.getTime() + safeMinutes * 60000).toISOString()
 
   const next = updateReminder(state, reminderId, (reminder) => ({

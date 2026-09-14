@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import AppErrorBoundary from '../AppErrorBoundary.jsx'
 import AppSection from '../app/AppSection.jsx'
 import OverviewDashboard from '../app/OverviewDashboard.jsx'
+import HomeNoticeShortcuts from '../app/HomeNoticeShortcuts.jsx'
 
 function HomeSection({
   activeSection,
@@ -50,6 +51,7 @@ function HomeSection({
   weights,
 }) {
   const { t } = useTranslation('home')
+  const openNotices = () => onNavigateSection?.('notices')
 
   return (
     <AppSection
@@ -108,6 +110,7 @@ function HomeSection({
           weeklyWeightChange={dashboardData?.weeklyWeightChange}
           weights={weights}
         />
+        <HomeNoticeShortcuts onOpenNotices={openNotices} />
       </AppErrorBoundary>
     </AppSection>
   )

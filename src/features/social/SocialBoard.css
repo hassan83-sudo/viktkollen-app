@@ -1,0 +1,58 @@
+.social-board {
+  display: grid;
+  gap: 14px;
+}
+
+.social-board-admin {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
+  background: rgba(7, 17, 35, 0.5);
+}
+
+.social-board-admin input,
+.social-board-admin textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 10px;
+  background: rgba(3, 10, 24, 0.8);
+  color: inherit;
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.social-board-admin textarea {
+  resize: vertical;
+}
+
+.social-board-list {
+  display: grid;
+  gap: 12px;
+}
+
+.social-board-post {
+  padding: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
+  background: rgba(7, 17, 35, 0.45);
+}
+
+.social-board-post-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.social-board-post-head h3 {
+  margin: 0;
+}
+
+.social-board-body {
+  margin-bottom: 0;
+  white-space: pre-line;
+  line-height: 1.55;
+}

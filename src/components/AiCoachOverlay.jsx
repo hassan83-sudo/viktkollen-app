@@ -8,7 +8,11 @@ import AiCoachControls from './aiCoach/AiCoachControls.jsx'
 import AiCoachSuggestions from './aiCoach/AiCoachSuggestions.jsx'
 import useOverviewStageLock from './app/useOverviewStageLock.js'
 import { getVoicePhaseLabel } from '../services/ai/realtimeVoiceController.js'
-import { selectSpeechSynthesisVoice } from '../services/voiceConversationController.js'
+import {
+  getCompanionVoiceProfile,
+  getSelectedCompanionVoiceId,
+  selectSpeechSynthesisVoice,
+} from '../services/voiceConversationController.js'
 
 function AiCoachOverlay({
   canClearChat,
@@ -53,11 +57,13 @@ function AiCoachOverlay({
     const utterance = new SpeechSynthesisUtterance(String(latestAssistantMessage.text || '').trim())
     if (!utterance.text) return undefined
 
-    const voice = selectSpeechSynthesisVoice(speechSynthesis.getVoices?.() || [])
+    const avatarId = getSelectedCompanionVoiceId(window)
+    const voiceProfile = getCompanionVoiceProfile(avatarId)
+    const voice = selectSpeechSynthesisVoice(speechSynthesis.getVoices?.() || [], avatarId)
     if (voice) utterance.voice = voice
     utterance.lang = voice?.lang || 'sv-SE'
-    utterance.rate = 1
-    utterance.pitch = 1
+    utterance.rate = voiceProfile.rate
+    utterance.pitch = voiceProfile.pitch
 
     const finish = () => setIsTypedReplySpeaking(false)
     utterance.onend = finish

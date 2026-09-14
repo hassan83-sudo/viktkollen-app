@@ -19,6 +19,7 @@ import './components/PlaceCheckin.mobile.css'
 import './components/PlaceHistory.mobile.css'
 import './components/PlaceBatterySaver.mobile.css'
 import './features/social/SocialStage.mobile.css'
+import './features/social/SocialRoom.mobile.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

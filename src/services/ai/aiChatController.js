@@ -253,17 +253,6 @@ export async function requestCoachChatReply({
   message,
 }) {
   const recentChatHistory = makeRecentCoachChatHistory(chatHistory)
-  const isSimpleGreeting = /^(hej|hejsan|hallå|tjena|god morgon|god kväll)[!.\s]*$/i.test(
-    String(message || '').trim(),
-  )
-
-  if (isSimpleGreeting) {
-    return {
-      reply: await fallbackReply(),
-      source: 'mock',
-    }
-  }
-
   const remote = await requestAiEndpoint(
     buildCoachChatRemotePayload(appData, message, recentChatHistory),
   )

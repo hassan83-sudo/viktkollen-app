@@ -61,13 +61,36 @@
   }
 
   #app-section-redo .ready-companion-modal .companion-panel-heading {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
     gap: 10px;
+  }
+
+  #app-section-redo .ready-companion-modal .companion-heading-copy {
+    display: grid;
+    gap: 2px;
+  }
+
+  #app-section-redo .ready-companion-modal .companion-heading-copy > * {
+    margin: 0;
+  }
+
+  #app-section-redo .ready-companion-modal .companion-talk-button {
+    width: auto;
+    min-width: 92px;
+    min-height: 42px;
+    padding: 8px 14px;
+    white-space: nowrap;
   }
 
   #app-section-redo .ready-companion-modal .companion-avatar-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
+    padding-top: 10px;
+  }
+
+  #app-section-redo .ready-companion-modal .companion-avatar-grid .ready-avatar-choice {
+    min-height: 44px;
   }
 
   #app-section-redo .ready-companion-modal .companion-form-grid {
@@ -141,6 +164,15 @@
 }
 
 @media (max-width: 390px) {
+  #app-section-redo .ready-companion-modal .companion-panel-heading {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  #app-section-redo .ready-companion-modal .companion-talk-button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
   #app-section-redo .ready-header { gap: 10px; }
   #app-section-redo .ready-header-actions { gap: 8px; }
   #app-section-redo .ready-memory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

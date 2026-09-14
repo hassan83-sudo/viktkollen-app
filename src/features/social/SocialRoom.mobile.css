@@ -1,0 +1,9 @@
+@media (max-width: 720px) {
+  .social-room-player {
+    position: static !important;
+    bottom: auto !important;
+    z-index: auto !important;
+    width: 100%;
+    margin-top: 12px;
+  }
+}

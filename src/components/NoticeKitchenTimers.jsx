@@ -8,6 +8,12 @@ import {
 const appliances = ['Micro', 'Spis', 'Ugn', 'Kylskåp', 'Tvättmaskin']
 const secondOptions = Array.from({ length: 10 }, (_, index) => index + 1)
 const minuteOptions = Array.from({ length: 30 }, (_, index) => index + 1)
+const rooms = [
+  { id: 'kitchen', label: 'Kök' },
+  { id: 'bedroom', label: 'Sovrum' },
+  { id: 'wardrobe', label: 'Garderob' },
+  { id: 'bathroom', label: 'Badrum' },
+]
 
 function formatRemaining(ms) {
   const totalSeconds = Math.max(0, Math.ceil(ms / 1000))
@@ -17,7 +23,7 @@ function formatRemaining(ms) {
 }
 
 function NoticeKitchenTimers({ onMessage }) {
-  const [roomOpen, setRoomOpen] = useState(false)
+  const [openRoom, setOpenRoom] = useState('')
   const [selectedAppliance, setSelectedAppliance] = useState('Micro')
   const [timers, setTimers] = useState([])
   const [, setClock] = useState(Date.now())
@@ -111,21 +117,27 @@ function NoticeKitchenTimers({ onMessage }) {
     await removeKitchenTimerPushSchedule(timer.id).catch(() => undefined)
   }
 
+  function toggleRoom(roomId) {
+    setOpenRoom((current) => current === roomId ? '' : roomId)
+  }
+
   return (
     <section className="notice-card" aria-labelledby="room-timers-heading">
-      <h2 id="room-timers-heading">Rum & timers</h2>
-      <p>Öppna ett rum för att se dess snabbknappar. Fler rum läggs här utan att Notis blir stökig.</p>
+      <h2 id="room-timers-heading">Rum & snabbknappar</h2>
+      <p>Varje rum har en egen sektion. Bara det rum du öppnar visas, så Notis hålls ren.</p>
 
-      <div className="notice-suggestions">
-        <button type="button" aria-expanded={roomOpen} onClick={() => setRoomOpen((open) => !open)}>
-          Kök{activeTimers.length ? ` · ${activeTimers.length} aktiv${activeTimers.length === 1 ? '' : 'a'}` : ''}
-        </button>
+      <div className="notice-suggestions" aria-label="Rum">
+        {rooms.map((room) => (
+          <button key={room.id} type="button" aria-expanded={openRoom === room.id} aria-pressed={openRoom === room.id} onClick={() => toggleRoom(room.id)}>
+            {room.label}{room.id === 'kitchen' && activeTimers.length ? ` · ${activeTimers.length} aktiv${activeTimers.length === 1 ? '' : 'a'}` : ''}
+          </button>
+        ))}
       </div>
 
-      {roomOpen && <div className="notice-room-panel" aria-labelledby="kitchen-timers-heading">
+      {openRoom === 'kitchen' && <div className="notice-room-panel" aria-labelledby="kitchen-timers-heading">
         <div className="notice-actions">
           <h3 id="kitchen-timers-heading">Kök – snabbtimer</h3>
-          <button type="button" onClick={() => setRoomOpen(false)}>Stäng kök</button>
+          <button type="button" onClick={() => setOpenRoom('')}>Stäng</button>
         </div>
         <p>Välj sak och starta direkt. Micro och övriga kan använda både sekunder och minuter.</p>
 
@@ -164,6 +176,35 @@ function NoticeKitchenTimers({ onMessage }) {
         </div>}
 
         <p className="estimate-note">Minuttimers använder Viktkollens bakgrunds-push och kan ge notis även när appen inte är öppen. Sekundtimers 1–10 sek körs direkt i appen och kräver att den är öppen.</p>
+      </div>}
+
+      {openRoom === 'bedroom' && <div className="notice-room-panel" aria-labelledby="bedroom-heading">
+        <div className="notice-actions"><h3 id="bedroom-heading">Sovrum</h3><button type="button" onClick={() => setOpenRoom('')}>Stäng</button></div>
+        <p>Här samlar vi väckarklocka, mjuk väckning och sovrumsrelaterade snabbknappar.</p>
+        <div className="notice-suggestions">
+          <button type="button" onClick={() => onMessage?.('Väckarklockan byggs som nästa del i Notis.')}>Väckarklocka</button>
+          <button type="button" onClick={() => onMessage?.('Mjuk väckning: viskning → högre röst → larm kommer i nästa steg.')}>Mjuk väckning</button>
+        </div>
+      </div>}
+
+      {openRoom === 'wardrobe' && <div className="notice-room-panel" aria-labelledby="wardrobe-heading">
+        <div className="notice-actions"><h3 id="wardrobe-heading">Garderob</h3><button type="button" onClick={() => setOpenRoom('')}>Stäng</button></div>
+        <p>Här kommer klädhjälpen: vad du bar senast, plagg du glömt och förslag på vad du kan byta idag.</p>
+        <div className="notice-suggestions">
+          <button type="button" onClick={() => onMessage?.('Klädhistorik kopplas till AI Ögat i garderobsdelen senare.')}>Klädhistorik</button>
+          <button type="button" onClick={() => onMessage?.('Klädförslag kopplas till AI Ögat i garderobsdelen senare.')}>Klädförslag</button>
+        </div>
+      </div>}
+
+      {openRoom === 'bathroom' && <div className="notice-room-panel" aria-labelledby="bathroom-heading">
+        <div className="notice-actions"><h3 id="bathroom-heading">Badrum</h3><button type="button" onClick={() => setOpenRoom('')}>Stäng</button></div>
+        <p>Snabbvägar för hygienpåminnelser. De vanliga färdiga larmen ovan fortsätter användas för tider och upprepning.</p>
+        <div className="notice-suggestions">
+          <button type="button" onClick={() => onMessage?.('Använd färdiga larmet Tandborstning ovan för att aktivera tiden.')}>Tandborstning</button>
+          <button type="button" onClick={() => onMessage?.('Använd färdiga larmet Dusch ovan för att aktivera tiden.')}>Dusch</button>
+          <button type="button" onClick={() => onMessage?.('Använd färdiga larmet Hudkräm ovan för att aktivera tiden.')}>Hudkräm</button>
+          <button type="button" onClick={() => onMessage?.('Använd färdiga larmet Rakning ovan för att aktivera tiden.')}>Rakning</button>
+        </div>
       </div>}
     </section>
   )

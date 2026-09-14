@@ -18,8 +18,6 @@
     right: 8px;
     bottom: max(92px, calc(env(safe-area-inset-bottom) + 82px));
     left: 8px;
-    z-index: 1000;
-    isolation: isolate;
     width: auto;
     max-width: none;
     max-height: none;
@@ -31,7 +29,6 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-    background: var(--vk-bg);
   }
 
   #app-section-redo .ready-companion-modal > * {
@@ -168,14 +165,12 @@
 
 @media (max-width: 390px) {
   #app-section-redo .ready-companion-modal .companion-panel-heading {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
   }
 
   #app-section-redo .ready-companion-modal .companion-talk-button {
-    grid-column: auto;
-    width: auto;
-    min-width: 82px;
-    padding-inline: 10px;
+    grid-column: 1 / -1;
+    width: 100%;
   }
 
   #app-section-redo .ready-header { gap: 10px; }

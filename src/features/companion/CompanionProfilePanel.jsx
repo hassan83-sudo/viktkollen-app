@@ -27,6 +27,7 @@ function CompanionProfilePanel({ mode = 'full', onProfileChange, onTalk, surface
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const avatar = getReadyAvatar(profile.avatarId)
   const compact = mode === 'compact'
+  const selectedAiName = t(`ready:${avatar.labelKey}`)
 
   function patchProfile(patch) {
     const next = saveCompanionProfile({ ...profile, ...patch })
@@ -54,7 +55,7 @@ function CompanionProfilePanel({ mode = 'full', onProfileChange, onTalk, surface
         <span className={`ready-avatar-button is-${avatar.accent}`} aria-hidden="true">AI</span>
         <div className="companion-heading-copy">
           <p className="eyebrow">{t('eyebrow')}</p>
-          <h2 id={`companion-${surface}-title`}>{profile.displayName}</h2>
+          <h2 id={`companion-${surface}-title`}>{selectedAiName}</h2>
           <p>{t(`preview.${profile.tone}`)}</p>
         </div>
         {!compact && onTalk ? (

@@ -91,25 +91,55 @@
   }
 
   #app-section-redo .ready-companion-modal .companion-panel-heading {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: 52px minmax(0, 1fr) auto;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
+    padding: 15px;
+    border-color: rgba(122, 184, 255, 0.24);
+    background: linear-gradient(180deg, rgba(17, 27, 52, 0.98), rgba(10, 18, 36, 0.98));
+  }
+
+  #app-section-redo .ready-companion-modal .companion-panel-heading > .ready-avatar-button {
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    border-radius: 16px;
+    font-size: 0.82rem;
   }
 
   #app-section-redo .ready-companion-modal .companion-heading-copy {
     display: grid;
-    gap: 2px;
+    gap: 3px;
+    align-content: center;
   }
 
   #app-section-redo .ready-companion-modal .companion-heading-copy > * {
     margin: 0;
   }
 
+  #app-section-redo .ready-companion-modal .companion-heading-copy .eyebrow {
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    opacity: 0.68;
+  }
+
+  #app-section-redo .ready-companion-modal .companion-heading-copy h2 {
+    font-size: 1.18rem;
+    line-height: 1.12;
+  }
+
+  #app-section-redo .ready-companion-modal .companion-heading-copy p:last-child {
+    font-size: 0.82rem;
+    line-height: 1.28;
+    opacity: 0.82;
+  }
+
   #app-section-redo .ready-companion-modal .companion-talk-button {
     width: auto;
-    min-width: 92px;
+    min-width: 96px;
     min-height: 42px;
     padding: 8px 14px;
+    border-radius: 14px;
     white-space: nowrap;
   }
 
@@ -221,7 +251,13 @@
 
 @media (max-width: 390px) {
   #app-section-redo .ready-companion-modal .companion-panel-heading {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  #app-section-redo .ready-companion-modal .companion-panel-heading > .ready-avatar-button {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
   }
 
   #app-section-redo .ready-companion-modal .companion-talk-button {

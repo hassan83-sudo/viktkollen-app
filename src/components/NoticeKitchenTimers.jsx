@@ -22,12 +22,26 @@ function formatRemaining(ms) {
   return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
+function nextClockTime(time) {
+  const [hours, minutes] = String(time || '07:00').split(':').map(Number)
+  const now = new Date()
+  const target = new Date(now)
+  target.setHours(hours, minutes, 0, 0)
+  if (target <= now) target.setDate(target.getDate() + 1)
+  return target
+}
+
 function NoticeKitchenTimers({ onMessage }) {
   const [openRoom, setOpenRoom] = useState('')
   const [selectedAppliance, setSelectedAppliance] = useState('Micro')
   const [timers, setTimers] = useState([])
+  const [alarmTime, setAlarmTime] = useState('07:00')
+  const [wakeMode, setWakeMode] = useState('gentle')
+  const [wakeAlarm, setWakeAlarm] = useState(null)
   const [, setClock] = useState(Date.now())
   const timeoutIds = useRef(new Map())
+  const alarmTimeout = useRef(null)
+  const wakeSequenceTimeouts = useRef([])
 
   useEffect(() => {
     const interval = window.setInterval(() => setClock(Date.now()), 1000)
@@ -37,6 +51,8 @@ function NoticeKitchenTimers({ onMessage }) {
   useEffect(() => () => {
     timeoutIds.current.forEach((timeoutId) => window.clearTimeout(timeoutId))
     timeoutIds.current.clear()
+    if (alarmTimeout.current) window.clearTimeout(alarmTimeout.current)
+    wakeSequenceTimeouts.current.forEach((timeoutId) => window.clearTimeout(timeoutId))
   }, [])
 
   const activeTimers = useMemo(() => timers.filter((timer) => !timer.done), [timers])
@@ -117,6 +133,84 @@ function NoticeKitchenTimers({ onMessage }) {
     await removeKitchenTimerPushSchedule(timer.id).catch(() => undefined)
   }
 
+  function clearWakeSequence() {
+    wakeSequenceTimeouts.current.forEach((timeoutId) => window.clearTimeout(timeoutId))
+    wakeSequenceTimeouts.current = []
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel()
+  }
+
+  function speakWake(text, volume) {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = document?.documentElement?.lang || 'sv-SE'
+    utterance.volume = Math.max(0, Math.min(1, volume))
+    utterance.rate = 0.88
+    window.speechSynthesis.speak(utterance)
+  }
+
+  function runWakeSequence(alarm) {
+    clearWakeSequence()
+    const gentleSteps = [
+      { delay: 0, text: 'God morgon. Det är dags att vakna.', volume: 0.2 },
+      { delay: 12000, text: 'God morgon. Försök vakna nu.', volume: 0.35 },
+      { delay: 24000, text: 'Det är dags att gå upp.', volume: 0.55 },
+      { delay: 36000, text: 'Vakna nu. Ditt väckningslarm har gått.', volume: 0.8 },
+    ]
+    const normalSteps = [
+      { delay: 0, text: 'God morgon. Det är dags att vakna.', volume: 0.55 },
+      { delay: 12000, text: 'Vakna nu. Det är dags att gå upp.', volume: 0.85 },
+    ]
+    const steps = alarm.mode === 'gentle' ? gentleSteps : normalSteps
+    steps.forEach((step) => {
+      const timeoutId = window.setTimeout(() => {
+        speakWake(step.text, step.volume)
+        if (step === steps[steps.length - 1] && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          new Notification('Väckarklocka', { body: 'Dags att vakna.', tag: `wake-${alarm.id}` })
+        }
+      }, step.delay)
+      wakeSequenceTimeouts.current.push(timeoutId)
+    })
+  }
+
+  async function activateWakeAlarm() {
+    const target = nextClockTime(alarmTime)
+    const id = `wake-${target.getTime()}`
+    const alarm = { id, mode: wakeMode, time: alarmTime, endsAt: target.getTime() }
+
+    if (alarmTimeout.current) window.clearTimeout(alarmTimeout.current)
+    clearWakeSequence()
+    setWakeAlarm(alarm)
+    alarmTimeout.current = window.setTimeout(() => runWakeSequence(alarm), Math.max(0, target.getTime() - Date.now()))
+
+    const pushResult = await scheduleBackgroundPush({ appliance: 'Väckarklocka', endsAt: alarm.endsAt, id })
+    if (pushResult.error) {
+      onMessage?.(`Väckarklocka ${alarmTime} är satt i appen. Bakgrundsnotisen kunde inte aktiveras.`)
+      return
+    }
+    onMessage?.(`Väckarklocka satt till ${alarmTime}. ${wakeMode === 'gentle' ? 'Mjuk väckning börjar lågt och höjs stegvis.' : 'Normal väckning är vald.'}`)
+  }
+
+  async function snoozeWake(minutes = 5) {
+    if (!wakeAlarm) return
+    if (alarmTimeout.current) window.clearTimeout(alarmTimeout.current)
+    clearWakeSequence()
+    const next = { ...wakeAlarm, endsAt: Date.now() + minutes * 60000 }
+    setWakeAlarm(next)
+    alarmTimeout.current = window.setTimeout(() => runWakeSequence(next), minutes * 60000)
+    await scheduleBackgroundPush({ appliance: 'Väckarklocka', endsAt: next.endsAt, id: next.id })
+    onMessage?.(`Väckarklockan snoozad ${minutes} min.`)
+  }
+
+  async function stopWakeAlarm() {
+    if (!wakeAlarm) return
+    if (alarmTimeout.current) window.clearTimeout(alarmTimeout.current)
+    alarmTimeout.current = null
+    clearWakeSequence()
+    await removeKitchenTimerPushSchedule(wakeAlarm.id).catch(() => undefined)
+    setWakeAlarm(null)
+    onMessage?.('Väckarklockan är avstängd.')
+  }
+
   function toggleRoom(roomId) {
     setOpenRoom((current) => current === roomId ? '' : roomId)
   }
@@ -129,7 +223,7 @@ function NoticeKitchenTimers({ onMessage }) {
       <div className="notice-suggestions" aria-label="Rum">
         {rooms.map((room) => (
           <button key={room.id} type="button" aria-expanded={openRoom === room.id} aria-pressed={openRoom === room.id} onClick={() => toggleRoom(room.id)}>
-            {room.label}{room.id === 'kitchen' && activeTimers.length ? ` · ${activeTimers.length} aktiv${activeTimers.length === 1 ? '' : 'a'}` : ''}
+            {room.label}{room.id === 'kitchen' && activeTimers.length ? ` · ${activeTimers.length} aktiv${activeTimers.length === 1 ? '' : 'a'}` : ''}{room.id === 'bedroom' && wakeAlarm ? ' · larm satt' : ''}
           </button>
         ))}
       </div>
@@ -179,12 +273,19 @@ function NoticeKitchenTimers({ onMessage }) {
       </div>}
 
       {openRoom === 'bedroom' && <div className="notice-room-panel" aria-labelledby="bedroom-heading">
-        <div className="notice-actions"><h3 id="bedroom-heading">Sovrum</h3><button type="button" onClick={() => setOpenRoom('')}>Stäng</button></div>
-        <p>Här samlar vi väckarklocka, mjuk väckning och sovrumsrelaterade snabbknappar.</p>
-        <div className="notice-suggestions">
-          <button type="button" onClick={() => onMessage?.('Väckarklockan byggs som nästa del i Notis.')}>Väckarklocka</button>
-          <button type="button" onClick={() => onMessage?.('Mjuk väckning: viskning → högre röst → larm kommer i nästa steg.')}>Mjuk väckning</button>
+        <div className="notice-actions"><h3 id="bedroom-heading">Sovrum – väckarklocka</h3><button type="button" onClick={() => setOpenRoom('')}>Stäng</button></div>
+        <p>Välj tid och hur mjukt du vill bli väckt.</p>
+        <div className="notice-form-grid">
+          <label>Väckningstid<input type="time" value={alarmTime} onChange={(event) => setAlarmTime(event.target.value)} /></label>
+          <label>Väckning<select value={wakeMode} onChange={(event) => setWakeMode(event.target.value)}><option value="gentle">Mjuk: låg röst → högre → larm</option><option value="normal">Normal: röst → högre röst</option></select></label>
         </div>
+        <div className="notice-actions">
+          <button className="primary-button" type="button" onClick={activateWakeAlarm}>Sätt väckarklocka</button>
+          {wakeAlarm && <button type="button" onClick={() => snoozeWake(5)}>Snooze 5 min</button>}
+          {wakeAlarm && <button type="button" onClick={stopWakeAlarm}>Stäng av</button>}
+        </div>
+        {wakeAlarm && <p className="notice-confirmation" role="status">Väckarklocka {wakeAlarm.time} · {wakeAlarm.mode === 'gentle' ? 'mjuk väckning' : 'normal väckning'}.</p>}
+        <p className="estimate-note">När Viktkollen är öppen används stegvis systemröst. Bakgrund/lock screen får pushnotis; webbläsaren kan inte garantera att tal spelas automatiskt när iPhone är låst.</p>
       </div>}
 
       {openRoom === 'wardrobe' && <div className="notice-room-panel" aria-labelledby="wardrobe-heading">

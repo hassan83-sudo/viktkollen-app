@@ -32,12 +32,7 @@ function usePrefersReducedMotion() {
   return prefersReducedMotion
 }
 
-function SocialRoom({
-  enabled = false,
-  isAuthenticated = false,
-  liveEnabled = false,
-  mediaActive = false,
-}) {
+function SocialRoom({ enabled = false, isAuthenticated = false, liveEnabled = false, mediaActive = false }) {
   const { t } = useTranslation('social')
   const [activeTab, setActiveTab] = useState('chat')
   const [chatStageOpen, setChatStageOpen] = useState(false)
@@ -50,16 +45,10 @@ function SocialRoom({
   const [volume, setVolume] = useState(45)
   const [isPlaying, setIsPlaying] = useState(false)
   const prefersReducedMotion = usePrefersReducedMotion()
-  const canLoadLiveData = canLoadSocialRoomData({
-    enabled,
-    isAuthenticated,
-    liveEnabled,
-    supabaseConfigured: isSupabaseConfigured(),
-  })
+  const canLoadLiveData = canLoadSocialRoomData({ enabled, isAuthenticated, liveEnabled, supabaseConfigured: isSupabaseConfigured() })
 
   useEffect(() => {
     if (!canLoadLiveData) return undefined
-
     let cancelled = false
     loadSocialSnapshot(createSocialApi({ client: supabase }))
       .then((nextSnapshot) => {
@@ -71,10 +60,7 @@ function SocialRoom({
         if (cancelled) return
         setLoadError(error?.message || t('loadFriendsError'))
       })
-
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [canLoadLiveData, t])
 
   useEffect(() => {
@@ -94,14 +80,55 @@ function SocialRoom({
 
   if (!enabled) return null
 
-  const liveStatus = !canLoadLiveData
-    ? t('room.chat.disconnected')
-    : loadError || t('room.chat.ready')
-
+  const liveStatus = !canLoadLiveData ? t('room.chat.disconnected') : loadError || t('room.chat.ready')
   const openChatStage = (view = 'inbox') => {
     setChatInitialView(view)
     setChatStageOpen(true)
   }
+
+  const soundPlayer = (
+    <aside className="social-room-player is-wide" aria-label={t('room.player.aria')}>
+      <h2>{t('room.player.title')}</h2>
+      <p>{t('room.player.trackName', { track: t(`room.player.tracks.${selectedTrack}`) })}</p>
+      {!hasApprovedAmbientAudio ? <small>{t('room.player.unavailable')}</small> : null}
+      <div className="social-room-player-controls">
+        <button
+          aria-label={playbackActive ? t('room.player.pause') : t('room.player.play')}
+          aria-pressed={playbackActive}
+          disabled={!hasApprovedAmbientAudio || mediaActive}
+          type="button"
+          onClick={() => setIsPlaying((current) => !current)}
+        >
+          {playbackActive ? 'II' : '▶'}
+        </button>
+        <label>
+          {t('room.player.volume')}
+          <input
+            aria-label={t('room.player.volume')}
+            max="100"
+            min="0"
+            type="range"
+            value={volume}
+            onChange={(event) => setVolume(Number(event.target.value))}
+          />
+        </label>
+      </div>
+      <div className="social-room-player-options" aria-label={t('room.player.tracksAria')}>
+        {ambientTracks.map((track) => (
+          <button aria-pressed={selectedTrack === track} key={track} type="button" onClick={() => setSelectedTrack(track)}>
+            {t(`room.player.tracks.${track}`)}
+          </button>
+        ))}
+      </div>
+      <div className="social-room-player-timers" aria-label={t('room.player.timerAria')}>
+        {timerOptions.map((minutes) => (
+          <button aria-pressed={timerMinutes === minutes} key={minutes} type="button" onClick={() => setTimerMinutes(minutes)}>
+            {t('room.player.timer', { minutes })}
+          </button>
+        ))}
+      </div>
+    </aside>
+  )
 
   return (
     <section className="social-room" aria-labelledby="social-room-title">
@@ -128,25 +155,19 @@ function SocialRoom({
         ))}
       </div>
 
-      <div
-        aria-labelledby={`social-room-tab-${activeTab}`}
-        className="social-room-grid"
-        id={`social-room-panel-${activeTab}`}
-        role="tabpanel"
-      >
+      <div aria-labelledby={`social-room-tab-${activeTab}`} className="social-room-grid" id={`social-room-panel-${activeTab}`} role="tabpanel">
         {activeTab === 'room' && (
           <>
             <article className="social-room-card is-wide">
               <h2>{t('room.welcome.title')}</h2>
               <p>{t('room.welcome.body')}</p>
             </article>
+
+            {soundPlayer}
+
             <article className="social-room-card">
               <h3>{t('room.friends.title')}</h3>
-              <p>
-                {onlineFriends.length
-                  ? t('room.friends.online', { count: onlineFriends.length })
-                  : t('room.friends.empty')}
-              </p>
+              <p>{onlineFriends.length ? t('room.friends.online', { count: onlineFriends.length }) : t('room.friends.empty')}</p>
             </article>
             <article className="social-room-card">
               <h3>{t('room.clips.title')}</h3>
@@ -163,12 +184,7 @@ function SocialRoom({
             <article className="social-room-card is-wide">
               <h3>{t('room.restMode.title')}</h3>
               <p>{t('room.restMode.body')}</p>
-              <button
-                aria-pressed={restMode}
-                className="social-room-rest-mode"
-                type="button"
-                onClick={() => setRestMode((current) => !current)}
-              >
+              <button aria-pressed={restMode} className="social-room-rest-mode" type="button" onClick={() => setRestMode((current) => !current)}>
                 {restMode ? t('room.restMode.on') : t('room.restMode.off')}
               </button>
             </article>
@@ -180,9 +196,7 @@ function SocialRoom({
             <article className="social-room-chat-surface is-wide">
               <h2>{t('room.chat.title')}</h2>
               <p className="social-room-status" role="status">{liveStatus}</p>
-              {canLoadLiveData && !loadError && liveSnapshot.conversations.length === 0 ? (
-                <p>{t('room.chat.empty')}</p>
-              ) : null}
+              {canLoadLiveData && !loadError && liveSnapshot.conversations.length === 0 ? <p>{t('room.chat.empty')}</p> : null}
               <div className="social-room-chat-actions" aria-label={t('room.chat.actionsAria')}>
                 <button disabled={!canLoadLiveData} type="button" onClick={() => openChatStage('inbox')}>Öppna chatten</button>
                 <button disabled={!canLoadLiveData} type="button" onClick={() => openChatStage('friends')}>Vänner</button>
@@ -195,7 +209,6 @@ function SocialRoom({
 
         {activeTab === 'watch' && <SocialWatch />}
         {activeTab === 'board' && <SocialBoard />}
-
         {activeTab === 'games' && (
           <article className="social-room-card is-wide">
             <h2>{t('room.games.title')}</h2>
@@ -203,58 +216,6 @@ function SocialRoom({
           </article>
         )}
       </div>
-
-      <aside className="social-room-player" aria-label={t('room.player.aria')}>
-        <h2>{t('room.player.title')}</h2>
-        <p>{t('room.player.trackName', { track: t(`room.player.tracks.${selectedTrack}`) })}</p>
-        {!hasApprovedAmbientAudio ? <small>{t('room.player.unavailable')}</small> : null}
-        <div className="social-room-player-controls">
-          <button
-            aria-label={playbackActive ? t('room.player.pause') : t('room.player.play')}
-            aria-pressed={playbackActive}
-            disabled={!hasApprovedAmbientAudio || mediaActive}
-            type="button"
-            onClick={() => setIsPlaying((current) => !current)}
-          >
-            {playbackActive ? 'II' : '▶'}
-          </button>
-          <label>
-            {t('room.player.volume')}
-            <input
-              aria-label={t('room.player.volume')}
-              max="100"
-              min="0"
-              type="range"
-              value={volume}
-              onChange={(event) => setVolume(Number(event.target.value))}
-            />
-          </label>
-        </div>
-        <div className="social-room-player-options" aria-label={t('room.player.tracksAria')}>
-          {ambientTracks.map((track) => (
-            <button
-              aria-pressed={selectedTrack === track}
-              key={track}
-              type="button"
-              onClick={() => setSelectedTrack(track)}
-            >
-              {t(`room.player.tracks.${track}`)}
-            </button>
-          ))}
-        </div>
-        <div className="social-room-player-timers" aria-label={t('room.player.timerAria')}>
-          {timerOptions.map((minutes) => (
-            <button
-              aria-pressed={timerMinutes === minutes}
-              key={minutes}
-              type="button"
-              onClick={() => setTimerMinutes(minutes)}
-            >
-              {t('room.player.timer', { minutes })}
-            </button>
-          ))}
-        </div>
-      </aside>
 
       {chatStageOpen ? (
         <SocialStage

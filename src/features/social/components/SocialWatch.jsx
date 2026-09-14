@@ -27,7 +27,9 @@ function parseVideo(urlValue) {
     if (!/^[A-Za-z0-9_-]{6,20}$/.test(id)) return null
     return {
       platform: 'youtube',
+      id,
       embedUrl: `https://www.youtube-nocookie.com/embed/${id}`,
+      thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
       label: 'YouTube',
     }
   }
@@ -183,16 +185,30 @@ function SocialWatch() {
                 </button>
               ) : null}
             </div>
-            <div className={`social-watch-frame is-${video.platform}`}>
-              <iframe
-                title={video.title || `${video.parsed.label}-video`}
-                src={video.parsed.embedUrl}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="strict-origin-when-cross-origin"
-              />
-            </div>
+
+            {video.platform === 'youtube' ? (
+              <a
+                className="social-watch-youtube-preview"
+                href={video.source_url}
+                target="_blank"
+                rel="noreferrer noopener"
+                aria-label={`Spela ${video.title || 'YouTube-video'}`}
+              >
+                <img src={video.parsed.thumbnailUrl} alt="" loading="lazy" />
+                <span className="social-watch-play" aria-hidden="true">▶</span>
+              </a>
+            ) : (
+              <div className={`social-watch-frame is-${video.platform}`}>
+                <iframe
+                  title={video.title || `${video.parsed.label}-video`}
+                  src={video.parsed.embedUrl}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                />
+              </div>
+            )}
           </section>
         ))}
       </div>

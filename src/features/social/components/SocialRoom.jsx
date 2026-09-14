@@ -7,6 +7,7 @@ import { canLoadSocialRoomData } from '../model/socialRoomPolicy.js'
 import { createSocialApi } from '../services/socialApi.js'
 import SocialStage from './SocialStage.jsx'
 import SocialRoomMap from './SocialRoomMap.jsx'
+import SocialWatch from './SocialWatch.jsx'
 
 const roomTabs = ['room', 'chat', 'watch', 'board', 'games']
 const ambientTracks = ['rain', 'ocean', 'piano', 'spa']
@@ -191,13 +192,7 @@ function SocialRoom({
           </>
         )}
 
-        {activeTab === 'watch' && (
-          <article className="social-room-card is-wide">
-            <h2>{t('room.watch.title')}</h2>
-            <p>{t('room.watch.body')}</p>
-            <small>{t('room.watch.safety')}</small>
-          </article>
-        )}
+        {activeTab === 'watch' && <SocialWatch />}
 
         {activeTab === 'board' && (
           <article className="social-room-card is-wide">

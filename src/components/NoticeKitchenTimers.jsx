@@ -4,6 +4,7 @@ import {
   removeKitchenTimerPushSchedule,
   upsertKitchenTimerPushSchedule,
 } from '../services/reminders/reminderPushSync.js'
+import NoticeWardrobeHelper from './NoticeWardrobeHelper.jsx'
 
 const appliances = ['Micro', 'Spis', 'Ugn', 'Kylskåp', 'Tvättmaskin']
 const secondOptions = Array.from({ length: 10 }, (_, index) => index + 1)
@@ -142,7 +143,7 @@ function NoticeKitchenTimers({ onMessage }) {
   function speakWake(text, volume) {
     if (typeof window === 'undefined' || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return
     const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = document?.documentElement?.lang || 'sv-SE'
+    utterance.lang = typeof document !== 'undefined' ? (document.documentElement?.lang || 'sv-SE') : 'sv-SE'
     utterance.volume = Math.max(0, Math.min(1, volume))
     utterance.rate = 0.88
     window.speechSynthesis.speak(utterance)
@@ -288,14 +289,7 @@ function NoticeKitchenTimers({ onMessage }) {
         <p className="estimate-note">När Viktkollen är öppen används stegvis systemröst. Bakgrund/lock screen får pushnotis; webbläsaren kan inte garantera att tal spelas automatiskt när iPhone är låst.</p>
       </div>}
 
-      {openRoom === 'wardrobe' && <div className="notice-room-panel" aria-labelledby="wardrobe-heading">
-        <div className="notice-actions"><h3 id="wardrobe-heading">Garderob</h3><button type="button" onClick={() => setOpenRoom('')}>Stäng</button></div>
-        <p>Här kommer klädhjälpen: vad du bar senast, plagg du glömt och förslag på vad du kan byta idag.</p>
-        <div className="notice-suggestions">
-          <button type="button" onClick={() => onMessage?.('Klädhistorik kopplas till AI Ögat i garderobsdelen senare.')}>Klädhistorik</button>
-          <button type="button" onClick={() => onMessage?.('Klädförslag kopplas till AI Ögat i garderobsdelen senare.')}>Klädförslag</button>
-        </div>
-      </div>}
+      {openRoom === 'wardrobe' && <NoticeWardrobeHelper onClose={() => setOpenRoom('')} onMessage={onMessage} />}
 
       {openRoom === 'bathroom' && <div className="notice-room-panel" aria-labelledby="bathroom-heading">
         <div className="notice-actions"><h3 id="bathroom-heading">Badrum</h3><button type="button" onClick={() => setOpenRoom('')}>Stäng</button></div>

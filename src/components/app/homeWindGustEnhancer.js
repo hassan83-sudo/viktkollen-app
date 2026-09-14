@@ -97,6 +97,12 @@ function createDetails(data) {
   panel.style.fontSize = '12px'
   panel.style.lineHeight = '1.45'
 
+  const timing = document.createElement('strong')
+  timing.style.display = 'block'
+  timing.style.marginBottom = '7px'
+  timing.textContent = 'Vindbyar är oregelbundna och kan komma efter några sekunder eller flera minuter.'
+  panel.appendChild(timing)
+
   const title = document.createElement('strong')
   title.textContent = 'Byvind – kommande timmar'
   panel.appendChild(title)
@@ -153,9 +159,13 @@ async function enhanceWeatherRow(row) {
       button.setAttribute('aria-expanded', open ? 'true' : 'false')
     })
 
-    const detailsButton = row.querySelector('button, a')
-    if (detailsButton) row.insertBefore(button, detailsButton)
-    else row.appendChild(button)
+    const windText = Array.from(row.querySelectorAll('span')).find((span) => /m\/s/.test(span.textContent || ''))
+    if (windText) row.insertBefore(button, windText)
+    else {
+      const detailsButton = row.querySelector('button, a')
+      if (detailsButton) row.insertBefore(button, detailsButton)
+      else row.appendChild(button)
+    }
     row.insertAdjacentElement('afterend', panel)
   } catch {
     row.removeAttribute(GUST_ATTR)

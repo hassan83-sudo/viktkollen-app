@@ -21,7 +21,7 @@ function optionKey(id) {
   return id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())
 }
 
-function CompanionProfilePanel({ mode = 'full', onProfileChange, surface = 'coach' }) {
+function CompanionProfilePanel({ mode = 'full', onProfileChange, onTalk, surface = 'coach' }) {
   const { t } = useTranslation(['companion', 'ready', 'common'])
   const [profile, setProfile] = useState(() => loadCompanionProfile())
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -61,6 +61,12 @@ function CompanionProfilePanel({ mode = 'full', onProfileChange, surface = 'coac
 
       {!compact && (
         <>
+          {onTalk ? (
+            <button className="primary-button companion-talk-button" type="button" onClick={onTalk}>
+              {t('ready:companion.talk')}
+            </button>
+          ) : null}
+
           <div className="ready-avatar-grid companion-avatar-grid">
             {getReadyAvatars().map((entry) => (
               <button

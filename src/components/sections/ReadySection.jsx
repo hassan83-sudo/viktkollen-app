@@ -244,7 +244,6 @@ function ReadySection({
 
         {showCompanionProfile ? (
           <div className="ready-modal is-wide ready-companion-modal" role="dialog" aria-modal="true" aria-label={t('companion.cardTitle')}>
-            <CompanionProfilePanel onProfileChange={setCompanionProfile} surface="ready" />
             <article className="ready-ai-card is-companion">
               <h2>{t('companion.title')}</h2>
               <p>{t('companion.body')}</p>
@@ -254,6 +253,7 @@ function ReadySection({
               </button>
               <p className="ready-ai-status">{t('companion.aiLabel')}</p>
             </article>
+            <CompanionProfilePanel onProfileChange={setCompanionProfile} surface="ready" />
             <button type="button" onClick={() => setShowCompanionProfile(false)}>
               {t('common:actions.close')}
             </button>

@@ -14,13 +14,30 @@ function AiCoachControls({
 }) {
   const { t } = useTranslation(['coach'])
 
+  function handleMainMicClick() {
+    if (isAiSpeaking) {
+      onStopAiVoiceResponse?.()
+      return
+    }
+
+    if (!isVoiceConversationActive) {
+      onStartVoiceInput?.()
+    }
+  }
+
   return (
     <div className="ai-coach-overlay-voice">
       <button
         className={`ai-coach-overlay-mic ${isListening ? 'is-listening' : ''} ${isAiSpeaking ? 'is-speaking' : ''}`}
         type="button"
-        aria-label={isVoiceConversationActive ? t('coach:overlay.endCall', 'End call') : t('coach:overlay.startVoice')}
-        onClick={onStartVoiceInput}
+        aria-label={
+          isAiSpeaking
+            ? t('coach:overlay.stopResponse')
+            : isVoiceConversationActive
+              ? t('coach:overlay.listening', 'Lyssnar')
+              : t('coach:overlay.startVoice')
+        }
+        onClick={handleMainMicClick}
       >
         🎙️
       </button>

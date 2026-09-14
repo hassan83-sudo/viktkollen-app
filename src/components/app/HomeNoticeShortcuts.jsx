@@ -23,11 +23,17 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
   return createPortal(
     <>
       <style>{`
-        .overview-today-mood > .is-quick {
-          order: 2;
+        #app-section-home.is-active .overview-today-mood {
+          grid-template-areas:
+            "wellbeing coach"
+            "reminder quick"
+            "today today";
         }
-        .overview-today-mood > .is-today {
-          order: 4;
+        #app-section-home.is-active .overview-today-mood > .is-quick {
+          grid-area: quick;
+        }
+        #app-section-home.is-active .overview-today-mood > .is-today {
+          grid-area: today;
         }
         .overview-mood-card.is-quick {
           align-items: flex-start;

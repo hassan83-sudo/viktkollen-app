@@ -1,20 +1,45 @@
 export const voiceConversationSilenceTimeoutMs = 15000
 export const voiceConversationSpeechRecoveryMs = 30000
 
+const companionVoiceProfiles = Object.freeze({
+  nova: { voiceIndex: 0, rate: 0.96, pitch: 1.08 },
+  kai: { voiceIndex: 1, rate: 1.04, pitch: 0.92 },
+  mira: { voiceIndex: 2, rate: 1.02, pitch: 1.16 },
+  sol: { voiceIndex: 3, rate: 0.91, pitch: 0.88 },
+  rio: { voiceIndex: 4, rate: 1.09, pitch: 1.02 },
+  ash: { voiceIndex: 5, rate: 0.98, pitch: 0.82 },
+  quill: { voiceIndex: 6, rate: 0.9, pitch: 1.0 },
+  zen: { voiceIndex: 7, rate: 0.88, pitch: 0.94 },
+})
+
+export function getSelectedCompanionVoiceId(scope = globalThis) {
+  try {
+    const raw = scope?.localStorage?.getItem?.('viktkollen.ai-companion.v1')
+    const parsed = raw ? JSON.parse(raw) : null
+    return companionVoiceProfiles[parsed?.avatarId] ? parsed.avatarId : 'nova'
+  } catch {
+    return 'nova'
+  }
+}
+
+export function getCompanionVoiceProfile(avatarId = 'nova') {
+  return companionVoiceProfiles[avatarId] || companionVoiceProfiles.nova
+}
+
 export function getSpeechRecognitionConstructor(scope = globalThis) {
   return scope?.SpeechRecognition || scope?.webkitSpeechRecognition || null
 }
 
-export function selectSpeechSynthesisVoice(voices = []) {
+export function selectSpeechSynthesisVoice(voices = [], avatarId = 'nova') {
   if (!Array.isArray(voices) || voices.length === 0) return null
 
-  return (
-    voices.find((voice) => voice.lang === 'sv-SE') ||
-    voices.find((voice) => voice.lang?.toLowerCase().startsWith('sv')) ||
-    voices.find((voice) => voice.default) ||
-    voices[0] ||
-    null
-  )
+  const swedishVoices = voices.filter((voice) => voice.lang?.toLowerCase().startsWith('sv'))
+  if (swedishVoices.length > 0) {
+    const profile = getCompanionVoiceProfile(avatarId)
+    return swedishVoices[profile.voiceIndex % swedishVoices.length]
+  }
+
+  return voices.find((voice) => voice.default) || voices[0] || null
 }
 
 export function createVoiceConversationController({
@@ -154,18 +179,21 @@ export function createVoiceConversationController({
     return new Promise((resolve) => {
       let settled = false
       const utterance = new SpeechSynthesisUtterance(reply)
+      const scope = getScope?.()
+      const avatarId = getSelectedCompanionVoiceId(scope)
+      const voiceProfile = getCompanionVoiceProfile(avatarId)
       const voices = speechSynthesis.getVoices?.() || []
-      const voice = selectSpeechSynthesisVoice(voices)
+      const voice = selectSpeechSynthesisVoice(voices, avatarId)
       let removeVoicesChangedListener = null
 
       if (voice) utterance.voice = voice
       utterance.lang = voice?.lang || 'sv-SE'
-      utterance.rate = 1
-      utterance.pitch = 1
+      utterance.rate = voiceProfile.rate
+      utterance.pitch = voiceProfile.pitch
 
       if (!voice && typeof speechSynthesis.addEventListener === 'function') {
         const handleVoicesChanged = () => {
-          const loadedVoice = selectSpeechSynthesisVoice(speechSynthesis.getVoices?.() || [])
+          const loadedVoice = selectSpeechSynthesisVoice(speechSynthesis.getVoices?.() || [], avatarId)
           if (!loadedVoice || currentUtterance !== utterance) return
           utterance.voice = loadedVoice
           utterance.lang = loadedVoice.lang || 'sv-SE'
@@ -197,9 +225,6 @@ export function createVoiceConversationController({
       speechRecoveryTimer = timers.setTimeout(settle, speechRecoveryMs)
 
       try {
-        // Do not cancel immediately before speak: iOS Safari can silently drop
-        // the new utterance in that cancel -> speak race. Existing speech is
-        // cancelled explicitly by stopSpeechOutput when the user interrupts.
         speechSynthesis.resume?.()
         onSpeechStart?.()
         speechSynthesis.speak(utterance)

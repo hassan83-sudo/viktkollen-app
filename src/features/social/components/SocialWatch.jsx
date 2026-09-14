@@ -55,6 +55,7 @@ function SocialWatch() {
   const [url, setUrl] = useState('')
   const [title, setTitle] = useState('')
   const [saving, setSaving] = useState(false)
+  const [playingVideoId, setPlayingVideoId] = useState(null)
 
   const isAdmin = userId === ADMIN_USER_ID
 
@@ -128,6 +129,7 @@ function SocialWatch() {
       setError('Kunde inte ta bort videon.')
       return
     }
+    if (playingVideoId === id) setPlayingVideoId(null)
     await loadVideos()
   }
 
@@ -186,22 +188,21 @@ function SocialWatch() {
               ) : null}
             </div>
 
-            {video.platform === 'youtube' ? (
-              <a
+            {video.platform === 'youtube' && playingVideoId !== video.id ? (
+              <button
                 className="social-watch-youtube-preview"
-                href={video.source_url}
-                target="_blank"
-                rel="noreferrer noopener"
-                aria-label={`Spela ${video.title || 'YouTube-video'}`}
+                type="button"
+                onClick={() => setPlayingVideoId(video.id)}
+                aria-label={`Spela ${video.title || 'YouTube-video'} här`}
               >
                 <img src={video.parsed.thumbnailUrl} alt="" loading="lazy" />
                 <span className="social-watch-play" aria-hidden="true">▶</span>
-              </a>
+              </button>
             ) : (
               <div className={`social-watch-frame is-${video.platform}`}>
                 <iframe
                   title={video.title || `${video.parsed.label}-video`}
-                  src={video.parsed.embedUrl}
+                  src={video.platform === 'youtube' ? `${video.parsed.embedUrl}?autoplay=1&playsinline=1&rel=0` : video.parsed.embedUrl}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
                   loading="lazy"

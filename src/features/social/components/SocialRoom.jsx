@@ -8,6 +8,7 @@ import { createSocialApi } from '../services/socialApi.js'
 import SocialStage from './SocialStage.jsx'
 import SocialRoomMap from './SocialRoomMap.jsx'
 import SocialWatch from './SocialWatch.jsx'
+import SocialBoard from './SocialBoard.jsx'
 
 const roomTabs = ['room', 'chat', 'watch', 'board', 'games']
 const ambientTracks = ['rain', 'ocean', 'piano', 'spa']
@@ -193,14 +194,7 @@ function SocialRoom({
         )}
 
         {activeTab === 'watch' && <SocialWatch />}
-
-        {activeTab === 'board' && (
-          <article className="social-room-card is-wide">
-            <p className="social-room-eyebrow">{t('room.board.fromViktkollen')}</p>
-            <h2>{t('room.board.title')}</h2>
-            <p>{t('room.board.body')}</p>
-          </article>
-        )}
+        {activeTab === 'board' && <SocialBoard />}
 
         {activeTab === 'games' && (
           <article className="social-room-card is-wide">

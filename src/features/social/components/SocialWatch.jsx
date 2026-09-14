@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../../services/supabaseClient.js'
+import '../SocialWatch.css'
 
 const ADMIN_USER_ID = 'd449f4d1-d2c7-41fd-8c74-e8b1bbe46f89'
 

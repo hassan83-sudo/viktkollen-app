@@ -1,4 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  enableReminderBackgroundPush,
+  removeKitchenTimerPushSchedule,
+  upsertKitchenTimerPushSchedule,
+} from '../services/reminders/reminderPushSync.js'
 
 const appliances = ['Micro', 'Spis', 'Ugn', 'Kylskåp', 'Tvättmaskin']
 const secondOptions = Array.from({ length: 10 }, (_, index) => index + 1)
@@ -35,11 +40,24 @@ function NoticeKitchenTimers({ onMessage }) {
     onMessage?.(`${timer.appliance}-timern är klar.`)
 
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      new Notification(`${timer.appliance} – timer klar`, { body: `Dags att kontrollera ${timer.appliance.toLowerCase()}.`, tag: `kitchen-timer-${timer.id}` })
+      new Notification(`${timer.appliance} – timer klar`, {
+        body: `Dags att kontrollera ${timer.appliance.toLowerCase()}.`,
+        tag: `kitchen-timer-${timer.id}`,
+      })
     }
   }
 
-  function startTimer(amount, unit) {
+  async function scheduleBackgroundPush(timer) {
+    const permission = await enableReminderBackgroundPush()
+    if (permission.error) return { error: permission.error }
+    return upsertKitchenTimerPushSchedule({
+      appliance: timer.appliance,
+      endsAt: timer.endsAt,
+      timerId: timer.id,
+    })
+  }
+
+  async function startTimer(amount, unit) {
     const durationMs = unit === 'seconds' ? amount * 1000 : amount * 60000
     const now = Date.now()
     const timer = {
@@ -48,28 +66,48 @@ function NoticeKitchenTimers({ onMessage }) {
       durationMs,
       endsAt: now + durationMs,
       id: `kitchen-${selectedAppliance.toLowerCase()}-${now}`,
+      unit,
     }
+
     setTimers((current) => [...current, timer])
     const timeoutId = window.setTimeout(() => notify(timer), durationMs)
     timeoutIds.current.set(timer.id, timeoutId)
-    onMessage?.(`${selectedAppliance}: ${amount} ${unit === 'seconds' ? 'sek' : 'min'} startad.`)
+
+    if (unit === 'minutes') {
+      const pushResult = await scheduleBackgroundPush(timer)
+      if (pushResult.error) {
+        onMessage?.(`${selectedAppliance}: ${amount} min startad. Bakgrundsnotisen kunde inte aktiveras: ${pushResult.error.message}`)
+        return
+      }
+      onMessage?.(`${selectedAppliance}: ${amount} min startad med bakgrundsnotis.`)
+      return
+    }
+
+    onMessage?.(`${selectedAppliance}: ${amount} sek startad. Sekundtimer fungerar när Viktkollen är öppen.`)
   }
 
-  function snooze(timer, minutes = 5) {
+  async function snooze(timer, minutes = 5) {
     const previousTimeout = timeoutIds.current.get(timer.id)
     if (previousTimeout) window.clearTimeout(previousTimeout)
-    const next = { ...timer, done: false, endsAt: Date.now() + minutes * 60000 }
+    const next = { ...timer, done: false, endsAt: Date.now() + minutes * 60000, unit: 'minutes' }
     setTimers((current) => current.map((item) => item.id === timer.id ? next : item))
     const timeoutId = window.setTimeout(() => notify(next), minutes * 60000)
     timeoutIds.current.set(timer.id, timeoutId)
-    onMessage?.(`${timer.appliance} snoozad ${minutes} min.`)
+
+    const pushResult = await scheduleBackgroundPush(next)
+    if (pushResult.error) {
+      onMessage?.(`${timer.appliance} snoozad ${minutes} min lokalt. Bakgrundsnotisen kunde inte uppdateras.`)
+      return
+    }
+    onMessage?.(`${timer.appliance} snoozad ${minutes} min med bakgrundsnotis.`)
   }
 
-  function complete(timer) {
+  async function complete(timer) {
     const timeoutId = timeoutIds.current.get(timer.id)
     if (timeoutId) window.clearTimeout(timeoutId)
     timeoutIds.current.delete(timer.id)
     setTimers((current) => current.filter((item) => item.id !== timer.id))
+    await removeKitchenTimerPushSchedule(timer.id).catch(() => undefined)
   }
 
   return (
@@ -110,7 +148,7 @@ function NoticeKitchenTimers({ onMessage }) {
           ))}
         </ul>
       </div>}
-      <p className="estimate-note">Timers fungerar direkt när Viktkollen är öppen. Bakgrundslarm kopplas till samma pushsystem i nästa steg.</p>
+      <p className="estimate-note">Minuttimers använder Viktkollens bakgrunds-push och kan ge notis även när appen inte är öppen. Sekundtimers 1–10 sek körs direkt i appen och kräver att den är öppen.</p>
     </section>
   )
 }

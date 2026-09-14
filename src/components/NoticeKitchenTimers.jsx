@@ -6,6 +6,7 @@ import {
 } from '../services/reminders/reminderPushSync.js'
 import NoticeWardrobeHelper from './NoticeWardrobeHelper.jsx'
 import NoticeBathroomHelper from './NoticeBathroomHelper.jsx'
+import NoticeLivingRoomHelper from './NoticeLivingRoomHelper.jsx'
 
 const appliances = ['Micro', 'Spis', 'Ugn', 'Kylskåp', 'Tvättmaskin']
 const secondOptions = Array.from({ length: 10 }, (_, index) => index + 1)
@@ -15,6 +16,7 @@ const rooms = [
   { id: 'bedroom', label: 'Sovrum' },
   { id: 'wardrobe', label: 'Garderob' },
   { id: 'bathroom', label: 'Badrum' },
+  { id: 'living-room', label: 'Vardagsrum' },
 ]
 
 function formatRemaining(ms) {
@@ -293,6 +295,8 @@ function NoticeKitchenTimers({ reminderState, onRemindersChange, onMessage }) {
       {openRoom === 'wardrobe' && <NoticeWardrobeHelper onClose={() => setOpenRoom('')} onMessage={onMessage} />}
 
       {openRoom === 'bathroom' && <NoticeBathroomHelper reminderState={reminderState} onRemindersChange={onRemindersChange} onClose={() => setOpenRoom('')} onMessage={onMessage} />}
+
+      {openRoom === 'living-room' && <NoticeLivingRoomHelper reminderState={reminderState} onRemindersChange={onRemindersChange} onClose={() => setOpenRoom('')} onMessage={onMessage} />}
     </section>
   )
 }

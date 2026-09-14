@@ -81,7 +81,7 @@ function NoticeQuickPresets({ reminderState, onRemindersChange, onMessage }) {
         </div>
         <p className="estimate-note">Alla larm får snooze 1–10, 15 eller 20 minuter.</p>
       </section>
-      <NoticeKitchenTimers onMessage={onMessage} />
+      <NoticeKitchenTimers reminderState={reminderState} onRemindersChange={onRemindersChange} onMessage={onMessage} />
     </>
   )
 }

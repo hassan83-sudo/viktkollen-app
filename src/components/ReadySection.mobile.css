@@ -18,6 +18,8 @@
     right: 8px;
     bottom: max(92px, calc(env(safe-area-inset-bottom) + 82px));
     left: 8px;
+    z-index: 1000;
+    isolation: isolate;
     width: auto;
     max-width: none;
     max-height: none;
@@ -29,6 +31,7 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
+    background: var(--vk-bg);
   }
 
   #app-section-redo .ready-companion-modal > * {
@@ -64,24 +67,6 @@
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
     gap: 10px;
-  }
-
-  #app-section-redo .ready-companion-modal .companion-panel-heading > .ready-avatar-button {
-    width: 54px;
-    height: 54px;
-    min-width: 54px;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    font-size: 0;
-    display: grid;
-    place-items: center;
-  }
-
-  #app-section-redo .ready-companion-modal .companion-panel-heading > .ready-avatar-button::before {
-    content: '🤖';
-    font-size: 42px;
-    line-height: 1;
   }
 
   #app-section-redo .ready-companion-modal .companion-heading-copy {

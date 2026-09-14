@@ -34,7 +34,7 @@ function usePrefersReducedMotion() {
 
 function SocialRoom({ enabled = false, isAuthenticated = false, liveEnabled = false, mediaActive = false }) {
   const { t } = useTranslation('social')
-  const [activeTab, setActiveTab] = useState('chat')
+  const [activeTab, setActiveTab] = useState('room')
   const [chatStageOpen, setChatStageOpen] = useState(false)
   const [chatInitialView, setChatInitialView] = useState('inbox')
   const [snapshot, setSnapshot] = useState({ conversations: [], friends: [] })

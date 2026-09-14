@@ -66,8 +66,10 @@ export function createVoiceConversationController({
   let currentUtterance = null
   let hasStarted = false
   let handledResult = false
+  let pendingTranscript = ''
   let pendingRestart = null
   let pendingStatus = null
+  let resultFinalizeTimer = null
   let silenceTimer = null
   let speechRecoveryTimer = null
   let speechStartTimer = null
@@ -81,11 +83,13 @@ export function createVoiceConversationController({
   function clearTimers() {
     clearTimer(pendingRestart)
     clearTimer(pendingStatus)
+    clearTimer(resultFinalizeTimer)
     clearTimer(silenceTimer)
     clearTimer(speechRecoveryTimer)
     clearTimer(speechStartTimer)
     pendingRestart = null
     pendingStatus = null
+    resultFinalizeTimer = null
     silenceTimer = null
     speechRecoveryTimer = null
     speechStartTimer = null
@@ -130,7 +134,9 @@ export function createVoiceConversationController({
 
   async function releaseRecognitionForSpeech(recognition) {
     clearTimer(silenceTimer)
+    clearTimer(resultFinalizeTimer)
     silenceTimer = null
+    resultFinalizeTimer = null
 
     if (!recognition) {
       cleanupRecognition()
@@ -147,15 +153,11 @@ export function createVoiceConversationController({
       }
     }
 
-    // iOS Safari can keep the microphone audio session active briefly after
-    // SpeechRecognition.stop(). Starting SpeechSynthesis before it is released
-    // can leave the voice queued until the user presses Stop. Give WebKit a
-    // short handoff window before starting AI playback.
     await wait(180)
     cleanupRecognition(recognition)
   }
 
-  function scheduleRestart(delay = 320) {
+  function scheduleRestart(delay = 260) {
     clearTimer(pendingRestart)
     if (!active || stopRequested || currentRecognition || currentUtterance) return
     pendingRestart = timers.setTimeout(() => {
@@ -170,7 +172,7 @@ export function createVoiceConversationController({
       if (!active || stopRequested || handledResult) return
       setStatus?.('Jag hör inget. Vill du fortsätta?')
       currentRecognition?.abort?.()
-      scheduleRestart(450)
+      scheduleRestart(350)
     }, silenceTimeoutMs)
   }
 
@@ -306,7 +308,9 @@ export function createVoiceConversationController({
 
   async function handleTranscript(transcript, recognition) {
     clearTimer(silenceTimer)
+    clearTimer(resultFinalizeTimer)
     silenceTimer = null
+    resultFinalizeTimer = null
     setStatus?.('🧠 Bearbetar...')
 
     try {
@@ -316,11 +320,11 @@ export function createVoiceConversationController({
       const reply = await onTranscript?.(transcript)
       if (!active || stopRequested) return
       await speakResponse(reply)
-      await wait(180)
+      await wait(120)
     } finally {
       if (active && !stopRequested) {
         setStatus?.('🎤 Lyssnar...')
-        scheduleRestart(userInterruptedSpeech ? 120 : 320)
+        scheduleRestart(userInterruptedSpeech ? 120 : 260)
       }
     }
   }
@@ -353,13 +357,22 @@ export function createVoiceConversationController({
     }
 
     handledResult = false
+    pendingTranscript = ''
     const recognition = new SpeechRecognition()
     currentRecognition = recognition
 
     recognition.lang = 'sv-SE'
     recognition.continuous = false
-    recognition.interimResults = false
+    recognition.interimResults = true
     recognition.maxAlternatives = 1
+
+    function finalizeTranscript() {
+      if (handledResult || !pendingTranscript.trim()) return
+      handledResult = true
+      clearTimer(resultFinalizeTimer)
+      resultFinalizeTimer = null
+      void handleTranscript(pendingTranscript.trim(), recognition)
+    }
 
     recognition.addEventListener('start', () => {
       if (!active || stopRequested) return
@@ -370,19 +383,44 @@ export function createVoiceConversationController({
 
     recognition.addEventListener('result', (event) => {
       if (handledResult) return
-      const transcript = Array.from(event.results || [])
+
+      const results = Array.from(event.results || [])
+      const transcript = results
         .map((result) => result[0]?.transcript ?? '')
         .join(' ')
         .trim()
 
       if (!transcript) return
-      handledResult = true
-      void handleTranscript(transcript, recognition)
+      pendingTranscript = transcript
+      clearTimer(silenceTimer)
+      silenceTimer = null
+
+      if (results.some((result) => result?.isFinal)) {
+        finalizeTranscript()
+        return
+      }
+
+      clearTimer(resultFinalizeTimer)
+      resultFinalizeTimer = timers.setTimeout(() => {
+        resultFinalizeTimer = null
+        finalizeTranscript()
+      }, 750)
+    })
+
+    recognition.addEventListener('speechend', () => {
+      if (handledResult || !pendingTranscript.trim()) return
+      clearTimer(resultFinalizeTimer)
+      resultFinalizeTimer = timers.setTimeout(() => {
+        resultFinalizeTimer = null
+        finalizeTranscript()
+      }, 180)
     })
 
     recognition.addEventListener('error', (event = {}) => {
       clearTimer(silenceTimer)
+      clearTimer(resultFinalizeTimer)
       silenceTimer = null
+      resultFinalizeTimer = null
       cleanupRecognition(recognition)
 
       if (stopRequested) return
@@ -399,23 +437,36 @@ export function createVoiceConversationController({
         return
       }
 
+      if (pendingTranscript.trim()) {
+        finalizeTranscript()
+        return
+      }
+
       if (event.error === 'no-speech') {
         setStatus?.('Jag hör inget. Vill du fortsätta?')
-        scheduleRestart(450)
+        scheduleRestart(350)
         return
       }
 
       setStatus?.('Röstinmatningen startas om automatiskt.')
-      scheduleRestart(600)
+      scheduleRestart(450)
     })
 
     recognition.addEventListener('end', () => {
       clearTimer(silenceTimer)
+      clearTimer(resultFinalizeTimer)
       silenceTimer = null
+      resultFinalizeTimer = null
       cleanupRecognition(recognition)
 
       if (!active || stopRequested || handledResult) return
-      scheduleRestart(320)
+
+      if (pendingTranscript.trim()) {
+        finalizeTranscript()
+        return
+      }
+
+      scheduleRestart(260)
     })
 
     try {
@@ -424,7 +475,7 @@ export function createVoiceConversationController({
     } catch {
       cleanupRecognition(recognition)
       setStatus?.('Röstinmatningen startas om automatiskt.')
-      scheduleRestart(600)
+      scheduleRestart(450)
       return false
     }
   }
@@ -446,6 +497,7 @@ export function createVoiceConversationController({
     stopRequested = true
     setConversationActive(false)
     clearTimers()
+    pendingTranscript = ''
     stopSpeechOutput()
     const recognition = currentRecognition
     currentRecognition = null
@@ -470,6 +522,7 @@ export function createVoiceConversationController({
     stopRequested = true
     active = false
     clearTimers()
+    pendingTranscript = ''
     stopSpeechOutput()
     const recognition = currentRecognition
     currentRecognition = null

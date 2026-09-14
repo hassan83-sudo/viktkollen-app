@@ -52,21 +52,20 @@ function CompanionProfilePanel({ mode = 'full', onProfileChange, onTalk, surface
     <section className={`companion-panel is-${surface}`} aria-labelledby={`companion-${surface}-title`}>
       <div className="companion-panel-heading">
         <span className={`ready-avatar-button is-${avatar.accent}`} aria-hidden="true">AI</span>
-        <div>
+        <div className="companion-heading-copy">
           <p className="eyebrow">{t('eyebrow')}</p>
           <h2 id={`companion-${surface}-title`}>{profile.displayName}</h2>
           <p>{t(`preview.${profile.tone}`)}</p>
         </div>
+        {!compact && onTalk ? (
+          <button className="primary-button companion-talk-button" type="button" onClick={onTalk}>
+            {t('ready:companion.talk')}
+          </button>
+        ) : null}
       </div>
 
       {!compact && (
         <>
-          {onTalk ? (
-            <button className="primary-button companion-talk-button" type="button" onClick={onTalk}>
-              {t('ready:companion.talk')}
-            </button>
-          ) : null}
-
           <div className="ready-avatar-grid companion-avatar-grid">
             {getReadyAvatars().map((entry) => (
               <button

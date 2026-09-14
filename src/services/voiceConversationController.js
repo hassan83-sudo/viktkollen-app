@@ -70,6 +70,7 @@ export function createVoiceConversationController({
   let pendingStatus = null
   let silenceTimer = null
   let speechRecoveryTimer = null
+  let speechStartTimer = null
   let stopRequested = false
   let userInterruptedSpeech = false
 
@@ -82,10 +83,12 @@ export function createVoiceConversationController({
     clearTimer(pendingStatus)
     clearTimer(silenceTimer)
     clearTimer(speechRecoveryTimer)
+    clearTimer(speechStartTimer)
     pendingRestart = null
     pendingStatus = null
     silenceTimer = null
     speechRecoveryTimer = null
+    speechStartTimer = null
   }
 
   function stopSpeechOutput() {
@@ -93,7 +96,9 @@ export function createVoiceConversationController({
     currentUtterance = null
     setSpeaking?.(false)
     clearTimer(speechRecoveryTimer)
+    clearTimer(speechStartTimer)
     speechRecoveryTimer = null
+    speechStartTimer = null
 
     try {
       getSpeechSynthesis?.()?.cancel?.()
@@ -178,6 +183,7 @@ export function createVoiceConversationController({
 
     return new Promise((resolve) => {
       let settled = false
+      let started = false
       const utterance = new SpeechSynthesisUtterance(reply)
       const scope = getScope?.()
       const avatarId = getSelectedCompanionVoiceId(scope)
@@ -190,6 +196,7 @@ export function createVoiceConversationController({
       utterance.lang = voice?.lang || 'sv-SE'
       utterance.rate = voiceProfile.rate
       utterance.pitch = voiceProfile.pitch
+      utterance.volume = 1
 
       if (!voice && typeof speechSynthesis.addEventListener === 'function') {
         const handleVoicesChanged = () => {
@@ -209,12 +216,20 @@ export function createVoiceConversationController({
         settled = true
         removeVoicesChangedListener?.()
         clearTimer(speechRecoveryTimer)
+        clearTimer(speechStartTimer)
         speechRecoveryTimer = null
+        speechStartTimer = null
         currentUtterance = null
         setSpeaking?.(false)
         resolve(true)
       }
 
+      utterance.onstart = () => {
+        started = true
+        clearTimer(speechStartTimer)
+        speechStartTimer = null
+        setStatus?.('🔊 AI pratar...')
+      }
       utterance.onend = settle
       utterance.onerror = settle
 
@@ -225,9 +240,40 @@ export function createVoiceConversationController({
       speechRecoveryTimer = timers.setTimeout(settle, speechRecoveryMs)
 
       try {
+        // iOS Safari can leave SpeechSynthesis in a paused/stale queue after microphone use.
+        // Reset that queue, then give WebKit a short moment before starting playback.
+        speechSynthesis.cancel?.()
         speechSynthesis.resume?.()
         onSpeechStart?.()
-        speechSynthesis.speak(utterance)
+        speechStartTimer = timers.setTimeout(() => {
+          speechStartTimer = null
+          if (settled || currentUtterance !== utterance || !active || stopRequested) {
+            settle()
+            return
+          }
+
+          try {
+            speechSynthesis.resume?.()
+            speechSynthesis.speak(utterance)
+          } catch {
+            settle()
+            return
+          }
+
+          // If WebKit silently fails to start, one clean retry usually restores audio.
+          speechStartTimer = timers.setTimeout(() => {
+            speechStartTimer = null
+            if (settled || started || currentUtterance !== utterance || !active || stopRequested) return
+
+            try {
+              speechSynthesis.cancel?.()
+              speechSynthesis.resume?.()
+              speechSynthesis.speak(utterance)
+            } catch {
+              settle()
+            }
+          }, 900)
+        }, 80)
       } catch {
         settle()
       }

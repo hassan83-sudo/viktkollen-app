@@ -1,5 +1,5 @@
-export const voiceConversationSilenceTimeoutMs = 15000
-export const voiceConversationSpeechRecoveryMs = 30000
+export const voiceConversationSilenceTimeoutMs = 7000
+export const voiceConversationSpeechRecoveryMs = 20000
 
 const companionVoiceProfiles = Object.freeze({
   nova: { voiceIndex: 0, rate: 0.96, pitch: 1.08 },
@@ -64,116 +64,65 @@ export function createVoiceConversationController({
   let active = false
   let currentRecognition = null
   let currentUtterance = null
-  let hasStarted = false
+  let disposed = false
   let handledResult = false
   let pendingTranscript = ''
-  let pendingRestart = null
-  let pendingStatus = null
-  let resultFinalizeTimer = null
+  let finalizeTimer = null
   let silenceTimer = null
-  let speechRecoveryTimer = null
   let speechStartTimer = null
+  let speechRecoveryTimer = null
   let stopRequested = false
-  let userInterruptedSpeech = false
 
   function clearTimer(timer) {
     if (timer) timers.clearTimeout(timer)
   }
 
-  function clearTimers() {
-    clearTimer(pendingRestart)
-    clearTimer(pendingStatus)
-    clearTimer(resultFinalizeTimer)
+  function clearRecognitionTimers() {
+    clearTimer(finalizeTimer)
     clearTimer(silenceTimer)
-    clearTimer(speechRecoveryTimer)
-    clearTimer(speechStartTimer)
-    pendingRestart = null
-    pendingStatus = null
-    resultFinalizeTimer = null
+    finalizeTimer = null
     silenceTimer = null
-    speechRecoveryTimer = null
-    speechStartTimer = null
   }
 
-  function stopSpeechOutput() {
-    userInterruptedSpeech = true
-    currentUtterance = null
-    setSpeaking?.(false)
-    clearTimer(speechRecoveryTimer)
+  function clearSpeechTimers() {
     clearTimer(speechStartTimer)
-    speechRecoveryTimer = null
+    clearTimer(speechRecoveryTimer)
     speechStartTimer = null
-
-    try {
-      getSpeechSynthesis?.()?.cancel?.()
-    } catch {
-      // Ignore browser-specific speech synthesis races.
-    }
+    speechRecoveryTimer = null
   }
 
-  function wait(ms) {
-    return new Promise((resolve) => {
-      pendingStatus = timers.setTimeout(() => {
-        pendingStatus = null
-        resolve()
-      }, ms)
-    })
-  }
-
-  function setConversationActive(nextActive) {
-    active = nextActive
-    setActive?.(nextActive)
+  function setConversationActive(value) {
+    active = value
+    setActive?.(value)
   }
 
   function cleanupRecognition(recognition = currentRecognition) {
-    if (currentRecognition === recognition) {
-      currentRecognition = null
+    clearRecognitionTimers()
+    if (currentRecognition === recognition) currentRecognition = null
+    setListening?.(false)
+  }
+
+  function cancelRecognition() {
+    const recognition = currentRecognition
+    currentRecognition = null
+    clearRecognitionTimers()
+    try {
+      recognition?.abort?.()
+    } catch {
+      // WebKit can throw when abort races an end event.
     }
     setListening?.(false)
   }
 
-  async function releaseRecognitionForSpeech(recognition) {
-    clearTimer(silenceTimer)
-    clearTimer(resultFinalizeTimer)
-    silenceTimer = null
-    resultFinalizeTimer = null
-
-    if (!recognition) {
-      cleanupRecognition()
-      return
-    }
-
+  function cancelSpeech() {
+    clearSpeechTimers()
+    currentUtterance = null
+    setSpeaking?.(false)
     try {
-      recognition.stop?.()
+      getSpeechSynthesis?.()?.cancel?.()
     } catch {
-      try {
-        recognition.abort?.()
-      } catch {
-        // Ignore WebKit stop/abort races.
-      }
+      // Ignore browser speech queue races.
     }
-
-    await wait(180)
-    cleanupRecognition(recognition)
-  }
-
-  function scheduleRestart(delay = 260) {
-    clearTimer(pendingRestart)
-    if (!active || stopRequested || currentRecognition || currentUtterance) return
-    pendingRestart = timers.setTimeout(() => {
-      pendingRestart = null
-      void startListening()
-    }, delay)
-  }
-
-  function armSilenceTimer() {
-    clearTimer(silenceTimer)
-    silenceTimer = timers.setTimeout(() => {
-      if (!active || stopRequested || handledResult) return
-      setStatus?.('Jag hör inget. Vill du fortsätta?')
-      currentRecognition?.abort?.()
-      scheduleRestart(350)
-    }, silenceTimeoutMs)
   }
 
   async function ensureMicrophoneAvailable() {
@@ -202,6 +151,14 @@ export function createVoiceConversationController({
     }
   }
 
+  function finishTurn() {
+    if (disposed) return
+    setConversationActive(false)
+    setListening?.(false)
+    setSpeaking?.(false)
+    setStatus?.('')
+  }
+
   function speakResponse(text) {
     const reply = String(text || '').trim()
     if (!reply || !isSpeechEnabled?.()) return Promise.resolve(false)
@@ -212,149 +169,159 @@ export function createVoiceConversationController({
 
     return new Promise((resolve) => {
       let settled = false
-      let started = false
-      const utterance = new SpeechSynthesisUtterance(reply)
-      const scope = getScope?.()
-      const avatarId = getSelectedCompanionVoiceId(scope)
-      const voiceProfile = getCompanionVoiceProfile(avatarId)
-      const voices = speechSynthesis.getVoices?.() || []
-      const voice = selectSpeechSynthesisVoice(voices, avatarId)
-      let removeVoicesChangedListener = null
+      let attempt = 0
 
-      if (voice) utterance.voice = voice
-      utterance.lang = voice?.lang || 'sv-SE'
-      utterance.rate = voiceProfile.rate
-      utterance.pitch = voiceProfile.pitch
-      utterance.volume = 1
-
-      if (!voice && typeof speechSynthesis.addEventListener === 'function') {
-        const handleVoicesChanged = () => {
-          const loadedVoice = selectSpeechSynthesisVoice(speechSynthesis.getVoices?.() || [], avatarId)
-          if (!loadedVoice || currentUtterance !== utterance) return
-          utterance.voice = loadedVoice
-          utterance.lang = loadedVoice.lang || 'sv-SE'
-        }
-        speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged, { once: true })
-        removeVoicesChangedListener = () => {
-          speechSynthesis.removeEventListener?.('voiceschanged', handleVoicesChanged)
-        }
-      }
-
-      function settle() {
+      const settle = (didSpeak) => {
         if (settled) return
         settled = true
-        removeVoicesChangedListener?.()
-        clearTimer(speechRecoveryTimer)
-        clearTimer(speechStartTimer)
-        speechRecoveryTimer = null
-        speechStartTimer = null
+        clearSpeechTimers()
         currentUtterance = null
         setSpeaking?.(false)
-        resolve(true)
+        resolve(didSpeak)
       }
 
-      utterance.onstart = () => {
-        started = true
-        clearTimer(speechStartTimer)
-        speechStartTimer = null
-        setStatus?.('🔊 AI pratar...')
-      }
-      utterance.onend = settle
-      utterance.onerror = settle
+      const runAttempt = () => {
+        if (settled || stopRequested || !active || disposed) {
+          settle(false)
+          return
+        }
 
-      currentUtterance = utterance
-      userInterruptedSpeech = false
-      setSpeaking?.(true)
-      setStatus?.('🔊 AI pratar...')
-      speechRecoveryTimer = timers.setTimeout(settle, speechRecoveryMs)
+        attempt += 1
+        let started = false
+        const utterance = new SpeechSynthesisUtterance(reply)
+        const scope = getScope?.()
+        const avatarId = getSelectedCompanionVoiceId(scope)
+        const voiceProfile = getCompanionVoiceProfile(avatarId)
+        const voice = selectSpeechSynthesisVoice(speechSynthesis.getVoices?.() || [], avatarId)
 
-      try {
-        speechSynthesis.cancel?.()
-        speechSynthesis.resume?.()
-        onSpeechStart?.()
+        if (voice) utterance.voice = voice
+        utterance.lang = voice?.lang || 'sv-SE'
+        utterance.rate = voiceProfile.rate
+        utterance.pitch = voiceProfile.pitch
+        utterance.volume = 1
+
+        utterance.onstart = () => {
+          if (currentUtterance !== utterance || settled) return
+          started = true
+          clearTimer(speechStartTimer)
+          speechStartTimer = null
+          setSpeaking?.(true)
+          setStatus?.('🔊 AI pratar...')
+          onSpeechStart?.()
+        }
+
+        utterance.onend = () => settle(started)
+        utterance.onerror = () => {
+          if (!started && attempt < 2 && active && !stopRequested) {
+            clearSpeechTimers()
+            currentUtterance = null
+            timers.setTimeout(runAttempt, 120)
+            return
+          }
+          settle(started)
+        }
+
+        currentUtterance = utterance
+        setSpeaking?.(false)
+        setStatus?.('🔊 Startar AI-röst...')
+
+        try {
+          speechSynthesis.cancel?.()
+          speechSynthesis.resume?.()
+          speechSynthesis.speak(utterance)
+        } catch {
+          if (attempt < 2) {
+            timers.setTimeout(runAttempt, 120)
+          } else {
+            settle(false)
+          }
+          return
+        }
+
         speechStartTimer = timers.setTimeout(() => {
           speechStartTimer = null
-          if (settled || currentUtterance !== utterance || !active || stopRequested) {
-            settle()
-            return
-          }
+          if (settled || started || currentUtterance !== utterance) return
 
           try {
-            speechSynthesis.resume?.()
-            speechSynthesis.speak(utterance)
+            speechSynthesis.cancel?.()
           } catch {
-            settle()
-            return
+            // Ignore queue reset errors.
           }
 
-          speechStartTimer = timers.setTimeout(() => {
-            speechStartTimer = null
-            if (settled || started || currentUtterance !== utterance || !active || stopRequested) return
+          currentUtterance = null
+          if (attempt < 2 && active && !stopRequested) {
+            timers.setTimeout(runAttempt, 120)
+          } else {
+            settle(false)
+          }
+        }, 1000)
 
-            try {
-              speechSynthesis.cancel?.()
-              speechSynthesis.resume?.()
-              speechSynthesis.speak(utterance)
-            } catch {
-              settle()
-            }
-          }, 900)
-        }, 80)
-      } catch {
-        settle()
+        speechRecoveryTimer = timers.setTimeout(() => {
+          if (!settled) settle(started)
+        }, speechRecoveryMs)
       }
+
+      runAttempt()
     })
   }
 
-  async function handleTranscript(transcript, recognition) {
-    clearTimer(silenceTimer)
-    clearTimer(resultFinalizeTimer)
-    silenceTimer = null
-    resultFinalizeTimer = null
+  async function processTranscript(transcript, recognition) {
+    if (handledResult || stopRequested || !active) return
+    handledResult = true
+    clearRecognitionTimers()
     setStatus?.('🧠 Bearbetar...')
 
     try {
-      await releaseRecognitionForSpeech(recognition)
-      if (!active || stopRequested) return
-      setStatus?.('🧠 AI svarar...')
-      const reply = await onTranscript?.(transcript)
-      if (!active || stopRequested) return
-      await speakResponse(reply)
-      await wait(120)
-    } finally {
-      if (active && !stopRequested) {
-        setStatus?.('🎤 Lyssnar...')
-        scheduleRestart(userInterruptedSpeech ? 120 : 260)
+      try {
+        recognition?.stop?.()
+      } catch {
+        try {
+          recognition?.abort?.()
+        } catch {
+          // Ignore recognition handoff races.
+        }
       }
+
+      cleanupRecognition(recognition)
+
+      // Let iOS release the microphone audio session before starting speaker audio.
+      await new Promise((resolve) => timers.setTimeout(resolve, 140))
+      if (stopRequested || !active || disposed) return
+
+      const reply = await onTranscript?.(transcript)
+      if (stopRequested || !active || disposed) return
+
+      await speakResponse(reply)
+    } finally {
+      finishTurn()
     }
   }
 
   async function startListening() {
-    if (!active || stopRequested || currentRecognition || currentUtterance) return false
+    if (!active || stopRequested || currentRecognition || disposed) return false
+
     const scope = getScope?.()
     const SpeechRecognition = getSpeechRecognitionConstructor(scope)
-
     if (!SpeechRecognition) {
-      setConversationActive(false)
+      finishTurn()
       setStatus?.('Röstinmatning stöds inte i den här webbläsaren. Skriv frågan i stället.')
       return false
     }
 
     if (!isSecureContext?.() && hostname?.() !== 'localhost') {
-      setConversationActive(false)
-      setStatus?.('Mikrofonen kräver oftast HTTPS. Testa i en säker webbläsarsession.')
+      finishTurn()
+      setStatus?.('Mikrofonen kräver HTTPS. Testa i en säker webbläsarsession.')
       return false
     }
 
-    if (!hasStarted) {
-      const microphone = await ensureMicrophoneAvailable()
-      if (!microphone.ok) {
-        setConversationActive(false)
-        setStatus?.(microphone.status)
-        return false
-      }
-      hasStarted = true
+    const microphone = await ensureMicrophoneAvailable()
+    if (!microphone.ok) {
+      finishTurn()
+      setStatus?.(microphone.status)
+      return false
     }
+
+    if (!active || stopRequested || disposed) return false
 
     handledResult = false
     pendingTranscript = ''
@@ -366,23 +333,30 @@ export function createVoiceConversationController({
     recognition.interimResults = true
     recognition.maxAlternatives = 1
 
-    function finalizeTranscript() {
-      if (handledResult || !pendingTranscript.trim()) return
-      handledResult = true
-      clearTimer(resultFinalizeTimer)
-      resultFinalizeTimer = null
-      void handleTranscript(pendingTranscript.trim(), recognition)
+    const finalize = () => {
+      const transcript = pendingTranscript.trim()
+      if (!transcript || handledResult) return
+      void processTranscript(transcript, recognition)
     }
 
     recognition.addEventListener('start', () => {
       if (!active || stopRequested) return
       setListening?.(true)
       setStatus?.('🎤 Lyssnar...')
-      armSilenceTimer()
+      clearTimer(silenceTimer)
+      silenceTimer = timers.setTimeout(() => {
+        if (handledResult || pendingTranscript.trim()) {
+          finalize()
+          return
+        }
+        cancelRecognition()
+        finishTurn()
+        setStatus?.('Jag hörde inget. Tryck på mikrofonen och försök igen.')
+      }, silenceTimeoutMs)
     })
 
     recognition.addEventListener('result', (event) => {
-      if (handledResult) return
+      if (handledResult || stopRequested) return
 
       const results = Array.from(event.results || [])
       const transcript = results
@@ -396,77 +370,52 @@ export function createVoiceConversationController({
       silenceTimer = null
 
       if (results.some((result) => result?.isFinal)) {
-        finalizeTranscript()
+        finalize()
         return
       }
 
-      clearTimer(resultFinalizeTimer)
-      resultFinalizeTimer = timers.setTimeout(() => {
-        resultFinalizeTimer = null
-        finalizeTranscript()
-      }, 750)
+      clearTimer(finalizeTimer)
+      finalizeTimer = timers.setTimeout(finalize, 500)
     })
 
     recognition.addEventListener('speechend', () => {
       if (handledResult || !pendingTranscript.trim()) return
-      clearTimer(resultFinalizeTimer)
-      resultFinalizeTimer = timers.setTimeout(() => {
-        resultFinalizeTimer = null
-        finalizeTranscript()
-      }, 180)
+      clearTimer(finalizeTimer)
+      finalizeTimer = timers.setTimeout(finalize, 120)
     })
 
     recognition.addEventListener('error', (event = {}) => {
-      clearTimer(silenceTimer)
-      clearTimer(resultFinalizeTimer)
-      silenceTimer = null
-      resultFinalizeTimer = null
-      cleanupRecognition(recognition)
-
-      if (stopRequested) return
-
-      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-        setConversationActive(false)
-        setStatus?.('Mikrofonbehörighet nekades. Tillåt mikrofon i webbläsaren och försök igen.')
-        return
-      }
-
-      if (event.error === 'audio-capture') {
-        setConversationActive(false)
-        setStatus?.('Ingen mikrofon hittades. Kontrollera mikrofonen eller skriv frågan.')
-        return
-      }
+      if (handledResult || stopRequested) return
 
       if (pendingTranscript.trim()) {
-        finalizeTranscript()
+        finalize()
         return
       }
 
-      if (event.error === 'no-speech') {
-        setStatus?.('Jag hör inget. Vill du fortsätta?')
-        scheduleRestart(350)
-        return
-      }
+      cleanupRecognition(recognition)
+      finishTurn()
 
-      setStatus?.('Röstinmatningen startas om automatiskt.')
-      scheduleRestart(450)
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        setStatus?.('Mikrofonbehörighet nekades. Tillåt mikrofon och försök igen.')
+      } else if (event.error === 'audio-capture') {
+        setStatus?.('Ingen mikrofon hittades.')
+      } else if (event.error === 'no-speech') {
+        setStatus?.('Jag hörde inget. Tryck på mikrofonen och försök igen.')
+      } else {
+        setStatus?.('Röstinmatningen avbröts. Tryck på mikrofonen och försök igen.')
+      }
     })
 
     recognition.addEventListener('end', () => {
-      clearTimer(silenceTimer)
-      clearTimer(resultFinalizeTimer)
-      silenceTimer = null
-      resultFinalizeTimer = null
-      cleanupRecognition(recognition)
-
-      if (!active || stopRequested || handledResult) return
+      if (handledResult || stopRequested) return
 
       if (pendingTranscript.trim()) {
-        finalizeTranscript()
+        finalize()
         return
       }
 
-      scheduleRestart(260)
+      cleanupRecognition(recognition)
+      finishTurn()
     })
 
     try {
@@ -474,8 +423,8 @@ export function createVoiceConversationController({
       return true
     } catch {
       cleanupRecognition(recognition)
-      setStatus?.('Röstinmatningen startas om automatiskt.')
-      scheduleRestart(450)
+      finishTurn()
+      setStatus?.('Mikrofonen kunde inte starta. Tryck och försök igen.')
       return false
     }
   }
@@ -487,50 +436,34 @@ export function createVoiceConversationController({
     }
 
     stopRequested = false
-    hasStarted = false
     setConversationActive(true)
-    setStatus?.('🎤 Lyssnar...')
+    setStatus?.('🎤 Startar mikrofon...')
     return startListening()
   }
 
   function stop() {
     stopRequested = true
-    setConversationActive(false)
-    clearTimers()
+    cancelRecognition()
+    cancelSpeech()
     pendingTranscript = ''
-    stopSpeechOutput()
-    const recognition = currentRecognition
-    currentRecognition = null
-    try {
-      recognition?.abort?.()
-    } catch {
-      // Ignore browser-specific abort races.
-    }
-    setListening?.(false)
+    setConversationActive(false)
     setStatus?.('')
   }
 
   function stopSpeakingAndResume() {
-    if (!active || stopRequested || !currentUtterance) return false
-    stopSpeechOutput()
-    setStatus?.('🎤 Lyssnar...')
-    scheduleRestart(120)
+    if (!currentUtterance) return false
+    cancelSpeech()
+    finishTurn()
     return true
   }
 
   function dispose() {
+    disposed = true
     stopRequested = true
-    active = false
-    clearTimers()
+    cancelRecognition()
+    cancelSpeech()
     pendingTranscript = ''
-    stopSpeechOutput()
-    const recognition = currentRecognition
-    currentRecognition = null
-    try {
-      recognition?.abort?.()
-    } catch {
-      // Ignore browser-specific abort races during unmount.
-    }
+    active = false
   }
 
   return {

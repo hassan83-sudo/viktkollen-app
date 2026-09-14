@@ -8,7 +8,7 @@ import { createSocialApi } from '../services/socialApi.js'
 import SocialStage from './SocialStage.jsx'
 import SocialRoomMap from './SocialRoomMap.jsx'
 
-const roomTabs = ['room', 'chat', 'map', 'watch', 'board', 'games']
+const roomTabs = ['room', 'chat', 'watch', 'board', 'games']
 const ambientTracks = ['rain', 'ocean', 'piano', 'spa']
 const timerOptions = [5, 15, 30]
 const hasApprovedAmbientAudio = false
@@ -37,7 +37,7 @@ function SocialRoom({
   mediaActive = false,
 }) {
   const { t } = useTranslation('social')
-  const [activeTab, setActiveTab] = useState('room')
+  const [activeTab, setActiveTab] = useState('chat')
   const [chatStageOpen, setChatStageOpen] = useState(false)
   const [chatInitialView, setChatInitialView] = useState('inbox')
   const [snapshot, setSnapshot] = useState({ conversations: [], friends: [] })
@@ -121,7 +121,7 @@ function SocialRoom({
             type="button"
             onClick={() => setActiveTab(tab)}
           >
-            {tab === 'map' ? 'Karta' : t(`room.tabs.${tab}`)}
+            {t(`room.tabs.${tab}`)}
           </button>
         ))}
       </div>
@@ -137,9 +137,6 @@ function SocialRoom({
             <article className="social-room-card is-wide">
               <h2>{t('room.welcome.title')}</h2>
               <p>{t('room.welcome.body')}</p>
-              <button className="social-room-shortcut" type="button" onClick={() => setActiveTab('chat')}>
-                {t('room.welcome.chatShortcut')}
-              </button>
             </article>
             <article className="social-room-card">
               <h3>{t('room.friends.title')}</h3>
@@ -148,11 +145,6 @@ function SocialRoom({
                   ? t('room.friends.online', { count: onlineFriends.length })
                   : t('room.friends.empty')}
               </p>
-            </article>
-            <article className="social-room-card">
-              <h3>Karta</h3>
-              <p>Kartan är av som standard och öppnas bara när du själv vill.</p>
-              <button className="social-room-shortcut" type="button" onClick={() => setActiveTab('map')}>Öppna karta</button>
             </article>
             <article className="social-room-card">
               <h3>{t('room.clips.title')}</h3>
@@ -182,22 +174,22 @@ function SocialRoom({
         )}
 
         {activeTab === 'chat' && (
-          <article className="social-room-chat-surface is-wide">
-            <h2>{t('room.chat.title')}</h2>
-            <p className="social-room-status" role="status">{liveStatus}</p>
-            {canLoadLiveData && !loadError && liveSnapshot.conversations.length === 0 ? (
-              <p>{t('room.chat.empty')}</p>
-            ) : null}
-            <p>Öppna den riktiga chatten för meddelanden, vänner, förfrågningar och sökning.</p>
-            <div className="social-room-chat-actions" aria-label={t('room.chat.actionsAria')}>
-              <button disabled={!canLoadLiveData} type="button" onClick={() => openChatStage('inbox')}>Öppna chatten</button>
-              <button disabled={!canLoadLiveData} type="button" onClick={() => openChatStage('friends')}>Vänner</button>
-            </div>
-            <small>{t('room.chat.safety')}</small>
-          </article>
+          <>
+            <article className="social-room-chat-surface is-wide">
+              <h2>{t('room.chat.title')}</h2>
+              <p className="social-room-status" role="status">{liveStatus}</p>
+              {canLoadLiveData && !loadError && liveSnapshot.conversations.length === 0 ? (
+                <p>{t('room.chat.empty')}</p>
+              ) : null}
+              <div className="social-room-chat-actions" aria-label={t('room.chat.actionsAria')}>
+                <button disabled={!canLoadLiveData} type="button" onClick={() => openChatStage('inbox')}>Öppna chatten</button>
+                <button disabled={!canLoadLiveData} type="button" onClick={() => openChatStage('friends')}>Vänner</button>
+              </div>
+              <small>{t('room.chat.safety')}</small>
+            </article>
+            <SocialRoomMap friends={liveSnapshot.friends} />
+          </>
         )}
-
-        {activeTab === 'map' && <SocialRoomMap />}
 
         {activeTab === 'watch' && (
           <article className="social-room-card is-wide">

@@ -12,6 +12,12 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
 
   useEffect(() => {
     setTarget(document.querySelector('.overview-today-mood'))
+
+    // Keep the lower part of Home compact. The user opens only the section
+    // they wants to inspect instead of seeing every long card at once.
+    document.querySelectorAll('.overview-secondary-details').forEach((section) => {
+      section.open = false
+    })
   }, [])
 
   if (!target) return null
@@ -60,6 +66,19 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
         .overview-quick-buttons button {
           padding: 8px 10px;
           font-size: 12px;
+        }
+        .overview-more-section {
+          display: grid;
+          gap: 8px;
+        }
+        .overview-more-section > h2 {
+          margin-bottom: 2px;
+        }
+        .overview-secondary-details:not([open]) {
+          margin-block: 0;
+        }
+        .overview-secondary-details:not([open]) > summary {
+          min-height: 48px;
         }
       `}</style>
       <article className="overview-mood-card is-quick" aria-label="Snabbknappar för Notis">

@@ -136,7 +136,10 @@ function ReadySection({ activeSection, onNavigateSection, onOpenCompanion, remin
           <div className="ready-modal is-wide ready-companion-modal" role="dialog" aria-modal="true" aria-label={t('companion.cardTitle')}>
             <CompanionProfilePanel
               onProfileChange={setCompanionProfile}
-              onTalk={() => onOpenCompanion?.({ source: 'ready', levelId: state.levelId })}
+              onTalk={() => {
+                setShowCompanionProfile(false)
+                onOpenCompanion?.({ source: 'ready', levelId: state.levelId })
+              }}
               surface="ready"
             />
             <button type="button" onClick={() => setShowCompanionProfile(false)}>{t('common:actions.close')}</button>

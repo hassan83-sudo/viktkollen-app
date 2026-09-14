@@ -13,8 +13,6 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
   useEffect(() => {
     setTarget(document.querySelector('.overview-today-mood'))
 
-    // Keep the lower part of Home compact. The user opens only the section
-    // they wants to inspect instead of seeing every long card at once.
     document.querySelectorAll('.overview-secondary-details').forEach((section) => {
       section.open = false
     })
@@ -25,11 +23,11 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
   return createPortal(
     <>
       <style>{`
+        .overview-today-mood > .is-quick {
+          order: 2;
+        }
         .overview-today-mood > .is-today {
           order: 4;
-        }
-        .overview-today-mood > .is-quick {
-          order: 5;
         }
         .overview-mood-card.is-quick {
           align-items: flex-start;

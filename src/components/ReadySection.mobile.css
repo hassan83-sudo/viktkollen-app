@@ -11,6 +11,17 @@
     overflow-x: clip;
   }
 
+  #app-section-redo .ready-companion-card {
+    position: relative;
+    z-index: 4;
+    pointer-events: auto;
+    touch-action: manipulation;
+  }
+
+  #app-section-redo .ready-companion-card > * {
+    pointer-events: none;
+  }
+
   #app-section-redo .ready-modal.is-wide.ready-companion-modal {
     box-sizing: border-box;
     position: fixed;
@@ -18,6 +29,7 @@
     right: 8px;
     bottom: max(92px, calc(env(safe-area-inset-bottom) + 82px));
     left: 8px;
+    z-index: 1200;
     width: auto;
     max-width: none;
     max-height: none;
@@ -29,6 +41,7 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
+    pointer-events: auto;
   }
 
   #app-section-redo .ready-companion-modal > * {

@@ -1,7 +1,4 @@
-/* Mobile layout hardening for Redo!/Ready.
- * Keep the desktop composition unchanged, but prevent the AI cards from
- * being squeezed into unusably narrow columns on phones.
- */
+/* Mobile layout hardening for Redo!/Ready. */
 
 @media (max-width: 640px) {
   #app-section-redo.is-active {
@@ -14,21 +11,24 @@
     overflow-x: clip;
   }
 
-  /* The companion profile is a modal, not part of the page grid. On mobile
-   * it must be one full-width column. This deliberately overrides any wide
-   * desktop modal/grid rules so the profile cannot collapse into a thin
-   * left column with a large empty area beside it.
-   */
   #app-section-redo .ready-modal.is-wide.ready-companion-modal {
     box-sizing: border-box;
-    width: calc(100vw - 24px);
-    max-width: calc(100vw - 24px);
-    max-height: calc(100dvh - 32px);
+    position: fixed;
+    top: max(10px, env(safe-area-inset-top));
+    right: 8px;
+    bottom: max(92px, calc(env(safe-area-inset-bottom) + 82px));
+    left: 8px;
+    width: auto;
+    max-width: none;
+    max-height: none;
     grid-template-columns: minmax(0, 1fr);
     align-content: start;
-    gap: 14px;
+    gap: 12px;
+    padding: 10px;
     overflow-x: hidden;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   #app-section-redo .ready-companion-modal > * {
@@ -39,11 +39,52 @@
     box-sizing: border-box;
   }
 
-  #app-section-redo .ready-companion-modal .companion-panel.is-ready,
+  #app-section-redo .ready-companion-modal .companion-panel.is-ready {
+    display: contents;
+  }
+
+  #app-section-redo .ready-companion-modal .companion-panel-heading,
+  #app-section-redo .ready-companion-modal .companion-avatar-grid,
+  #app-section-redo .ready-companion-modal .companion-form-grid,
+  #app-section-redo .ready-companion-modal .education-actions,
+  #app-section-redo .ready-companion-modal .estimate-note,
   #app-section-redo .ready-companion-modal .ready-ai-card.is-companion {
+    display: grid;
     width: 100%;
     min-width: 0;
     max-width: 100%;
+    box-sizing: border-box;
+    padding: 14px;
+    border: 1px solid rgba(160, 178, 238, 0.18);
+    border-radius: 18px;
+    background: rgba(12, 19, 38, 0.96);
+  }
+
+  #app-section-redo .ready-companion-modal .companion-panel-heading {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  #app-section-redo .ready-companion-modal .companion-avatar-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  #app-section-redo .ready-companion-modal .companion-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  #app-section-redo .ready-companion-modal .education-actions {
+    gap: 10px;
+  }
+
+  #app-section-redo .ready-companion-modal .estimate-note {
+    margin: 0;
+    color: inherit;
+  }
+
+  #app-section-redo .ready-companion-modal .ready-ai-card.is-companion {
     min-height: 0;
     align-self: start;
   }
@@ -59,16 +100,6 @@
     min-width: 0;
   }
 
-  #app-section-redo .companion-panel.is-ready,
-  #app-section-redo .ready-ai-card {
-    min-height: 0;
-    align-self: start;
-  }
-
-  #app-section-redo .companion-panel-heading {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
   #app-section-redo .companion-panel-heading > div,
   #app-section-redo .companion-form-grid label,
   #app-section-redo .companion-form-grid input,
@@ -81,18 +112,9 @@
     word-break: normal;
   }
 
-  #app-section-redo .companion-form-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-  }
-
   #app-section-redo .companion-form-grid input,
   #app-section-redo .companion-form-grid select {
     width: 100%;
-  }
-
-  #app-section-redo .companion-avatar-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   #app-section-redo .ready-avatar-choice {
@@ -111,15 +133,6 @@
     min-height: 84px;
   }
 
-  #app-section-redo .ready-companion-modal {
-    inset: auto 8px max(104px, calc(env(safe-area-inset-bottom) + 100px)) 8px;
-    padding: 12px;
-  }
-
-  #app-section-redo .companion-panel.is-ready {
-    padding: 0.75rem;
-  }
-
   #app-section-redo .ready-memory,
   #app-section-redo .ready-next {
     position: relative;
@@ -128,33 +141,11 @@
 }
 
 @media (max-width: 390px) {
-  #app-section-redo .ready-header {
-    gap: 10px;
-  }
-
-  #app-section-redo .ready-header-actions {
-    gap: 8px;
-  }
-
-  #app-section-redo .ready-memory-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  #app-section-redo .ready-quick-actions {
-    gap: 8px;
-  }
-
-  #app-section-redo .ready-action-tile {
-    min-height: 84px;
-    padding: 10px 6px;
-  }
-
-  #app-section-redo .ready-bottom-row {
-    gap: 8px;
-  }
-
-  #app-section-redo .ready-info-tile {
-    min-height: 58px;
-    padding: 8px 10px;
-  }
+  #app-section-redo .ready-header { gap: 10px; }
+  #app-section-redo .ready-header-actions { gap: 8px; }
+  #app-section-redo .ready-memory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #app-section-redo .ready-quick-actions { gap: 8px; }
+  #app-section-redo .ready-action-tile { min-height: 84px; padding: 10px 6px; }
+  #app-section-redo .ready-bottom-row { gap: 8px; }
+  #app-section-redo .ready-info-tile { min-height: 58px; padding: 8px 10px; }
 }

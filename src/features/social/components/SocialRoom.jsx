@@ -5,8 +5,10 @@ import { isSupabaseConfigured, supabase } from '../../../services/supabaseClient
 import { loadSocialSnapshot } from '../hooks/loadSocialSnapshot.js'
 import { canLoadSocialRoomData } from '../model/socialRoomPolicy.js'
 import { createSocialApi } from '../services/socialApi.js'
+import SocialStage from './SocialStage.jsx'
+import SocialRoomMap from './SocialRoomMap.jsx'
 
-const roomTabs = ['room', 'chat', 'watch', 'board', 'games']
+const roomTabs = ['room', 'chat', 'map', 'watch', 'board', 'games']
 const ambientTracks = ['rain', 'ocean', 'piano', 'spa']
 const timerOptions = [5, 15, 30]
 const hasApprovedAmbientAudio = false
@@ -36,6 +38,8 @@ function SocialRoom({
 }) {
   const { t } = useTranslation('social')
   const [activeTab, setActiveTab] = useState('room')
+  const [chatStageOpen, setChatStageOpen] = useState(false)
+  const [chatInitialView, setChatInitialView] = useState('inbox')
   const [snapshot, setSnapshot] = useState({ conversations: [], friends: [] })
   const [loadError, setLoadError] = useState('')
   const [restMode, setRestMode] = useState(false)
@@ -92,6 +96,11 @@ function SocialRoom({
     ? t('room.chat.disconnected')
     : loadError || t('room.chat.ready')
 
+  const openChatStage = (view = 'inbox') => {
+    setChatInitialView(view)
+    setChatStageOpen(true)
+  }
+
   return (
     <section className="social-room" aria-labelledby="social-room-title">
       <header className="social-room-header">
@@ -112,7 +121,7 @@ function SocialRoom({
             type="button"
             onClick={() => setActiveTab(tab)}
           >
-            {t(`room.tabs.${tab}`)}
+            {tab === 'map' ? 'Karta' : t(`room.tabs.${tab}`)}
           </button>
         ))}
       </div>
@@ -139,6 +148,11 @@ function SocialRoom({
                   ? t('room.friends.online', { count: onlineFriends.length })
                   : t('room.friends.empty')}
               </p>
+            </article>
+            <article className="social-room-card">
+              <h3>Karta</h3>
+              <p>Kartan är av som standard och öppnas bara när du själv vill.</p>
+              <button className="social-room-shortcut" type="button" onClick={() => setActiveTab('map')}>Öppna karta</button>
             </article>
             <article className="social-room-card">
               <h3>{t('room.clips.title')}</h3>
@@ -174,14 +188,16 @@ function SocialRoom({
             {canLoadLiveData && !loadError && liveSnapshot.conversations.length === 0 ? (
               <p>{t('room.chat.empty')}</p>
             ) : null}
-            <p>{t('room.chat.surface')}</p>
+            <p>Öppna den riktiga chatten för meddelanden, vänner, förfrågningar och sökning.</p>
             <div className="social-room-chat-actions" aria-label={t('room.chat.actionsAria')}>
-              <button disabled={!canLoadLiveData} type="button">{t('room.chat.private')}</button>
-              <button disabled={!canLoadLiveData} type="button">{t('room.chat.group')}</button>
+              <button disabled={!canLoadLiveData} type="button" onClick={() => openChatStage('inbox')}>Öppna chatten</button>
+              <button disabled={!canLoadLiveData} type="button" onClick={() => openChatStage('friends')}>Vänner</button>
             </div>
             <small>{t('room.chat.safety')}</small>
           </article>
         )}
+
+        {activeTab === 'map' && <SocialRoomMap />}
 
         {activeTab === 'watch' && (
           <article className="social-room-card is-wide">
@@ -258,6 +274,16 @@ function SocialRoom({
           ))}
         </div>
       </aside>
+
+      {chatStageOpen ? (
+        <SocialStage
+          enabled
+          initialView={chatInitialView}
+          isAuthenticated={isAuthenticated}
+          liveEnabled={liveEnabled}
+          onClose={() => setChatStageOpen(false)}
+        />
+      ) : null}
     </section>
   )
 }

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import '../SocialRoomMap.css'
 
 function mapUrl(latitude, longitude) {
   const lat = Number(latitude)

@@ -41,8 +41,66 @@ function toRow(userId, reminder, existingRow) {
   }
 }
 
+async function currentUserId() {
+  if (!supabase) return { userId: '', error: new Error('Bakgrundsnotiser kräver att Supabase är anslutet.') }
+  const { data, error } = await supabase.auth.getSession()
+  if (error) return { userId: '', error }
+  const userId = data?.session?.user?.id || ''
+  if (!userId) return { userId: '', error: new Error('Du måste vara inloggad för bakgrundsnotiser.') }
+  return { userId, error: null }
+}
+
 export async function enableReminderBackgroundPush() {
   return ensurePlacePushSubscription()
+}
+
+export async function upsertKitchenTimerPushSchedule({ appliance, endsAt, timerId }) {
+  const { userId, error: userError } = await currentUserId()
+  if (userError) return { data: null, error: userError }
+
+  const endDate = new Date(endsAt)
+  if (Number.isNaN(endDate.getTime())) return unsupported('Timertiden kunde inte läsas.')
+
+  const reminderId = `kitchen-timer-${timerId}`
+  const localTime = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`
+  const localDate = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`
+  const row = {
+    archived: false,
+    body: `Dags att kontrollera ${String(appliance || 'köket').toLowerCase()}.`,
+    days_of_week: [],
+    enabled: true,
+    interval_minutes: 0,
+    next_run_at: endDate.toISOString(),
+    paused: false,
+    reminder_id: reminderId,
+    reminder_time: localTime,
+    schedule_type: 'once',
+    snoozed_until: null,
+    start_date: localDate,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Stockholm',
+    title: `${appliance || 'Kök'} – timer klar`,
+    updated_at: new Date().toISOString(),
+    user_id: userId,
+  }
+
+  const { error } = await supabase
+    .from('reminder_push_schedules')
+    .upsert(row, { onConflict: 'user_id,reminder_id' })
+
+  return error ? { data: null, error } : { data: { reminderId }, error: null }
+}
+
+export async function removeKitchenTimerPushSchedule(timerId) {
+  const { userId, error: userError } = await currentUserId()
+  if (userError) return { data: null, error: userError }
+
+  const { error } = await supabase
+    .from('reminder_push_schedules')
+    .delete()
+    .eq('user_id', userId)
+    .eq('reminder_id', `kitchen-timer-${timerId}`)
+
+  return error ? { data: null, error } : { data: { removed: true }, error: null }
 }
 
 export async function syncReminderPushSchedules(reminderState) {
@@ -65,7 +123,7 @@ export async function syncReminderPushSchedules(reminderState) {
   const existingByReminderId = new Map((existing || []).map((row) => [row.reminder_id, row]))
   const staleIds = (existing || [])
     .map((row) => row.reminder_id)
-    .filter((id) => id && !reminderIds.includes(id))
+    .filter((id) => id && !id.startsWith('kitchen-timer-') && !reminderIds.includes(id))
 
   if (staleIds.length) {
     const { error: deleteError } = await supabase

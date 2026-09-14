@@ -128,6 +128,33 @@ export function createVoiceConversationController({
     setListening?.(false)
   }
 
+  async function releaseRecognitionForSpeech(recognition) {
+    clearTimer(silenceTimer)
+    silenceTimer = null
+
+    if (!recognition) {
+      cleanupRecognition()
+      return
+    }
+
+    try {
+      recognition.stop?.()
+    } catch {
+      try {
+        recognition.abort?.()
+      } catch {
+        // Ignore WebKit stop/abort races.
+      }
+    }
+
+    // iOS Safari can keep the microphone audio session active briefly after
+    // SpeechRecognition.stop(). Starting SpeechSynthesis before it is released
+    // can leave the voice queued until the user presses Stop. Give WebKit a
+    // short handoff window before starting AI playback.
+    await wait(180)
+    cleanupRecognition(recognition)
+  }
+
   function scheduleRestart(delay = 320) {
     clearTimer(pendingRestart)
     if (!active || stopRequested || currentRecognition || currentUtterance) return
@@ -240,8 +267,6 @@ export function createVoiceConversationController({
       speechRecoveryTimer = timers.setTimeout(settle, speechRecoveryMs)
 
       try {
-        // iOS Safari can leave SpeechSynthesis in a paused/stale queue after microphone use.
-        // Reset that queue, then give WebKit a short moment before starting playback.
         speechSynthesis.cancel?.()
         speechSynthesis.resume?.()
         onSpeechStart?.()
@@ -260,7 +285,6 @@ export function createVoiceConversationController({
             return
           }
 
-          // If WebKit silently fails to start, one clean retry usually restores audio.
           speechStartTimer = timers.setTimeout(() => {
             speechStartTimer = null
             if (settled || started || currentUtterance !== utterance || !active || stopRequested) return
@@ -280,14 +304,13 @@ export function createVoiceConversationController({
     })
   }
 
-  async function handleTranscript(transcript) {
+  async function handleTranscript(transcript, recognition) {
     clearTimer(silenceTimer)
     silenceTimer = null
-    cleanupRecognition()
     setStatus?.('🧠 Bearbetar...')
 
     try {
-      await wait(90)
+      await releaseRecognitionForSpeech(recognition)
       if (!active || stopRequested) return
       setStatus?.('🧠 AI svarar...')
       const reply = await onTranscript?.(transcript)
@@ -354,12 +377,7 @@ export function createVoiceConversationController({
 
       if (!transcript) return
       handledResult = true
-      try {
-        recognition.stop?.()
-      } catch {
-        // Some WebKit builds throw if stop races onresult; the transcript is already captured.
-      }
-      void handleTranscript(transcript)
+      void handleTranscript(transcript, recognition)
     })
 
     recognition.addEventListener('error', (event = {}) => {

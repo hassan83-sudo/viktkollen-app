@@ -11,7 +11,7 @@ export const defaultFeatureFlags = Object.freeze({
   walkieTalkie: false,
   social: false,
   socialUi: true,
-  socialLive: false,
+  socialLive: true,
   reminderHubUi: true,
 })
 

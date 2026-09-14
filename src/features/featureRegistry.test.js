@@ -24,7 +24,7 @@ describe('featureRegistry', () => {
       mouth: true,
       smartCamera: true,
       social: false,
-      socialLive: false,
+      socialLive: true,
       socialUi: true,
     })
     expect(getFeatureFlags().walkieTalkie).toBe(false)
@@ -38,6 +38,7 @@ describe('featureRegistry', () => {
       memory: false,
       mouth: false,
       smartCamera: false,
+      socialLive: false,
       socialUi: false,
     })
 

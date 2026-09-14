@@ -1,4 +1,3 @@
-import { requestAiEndpoint } from '../aiApiService.js'
 import {
   loadAiCoachAppContext,
   loadAiConversationMemory,
@@ -45,74 +44,12 @@ function getReadyEducationLevel() {
   }
 }
 
-function compactLiveWeather(weather) {
-  if (!weather?.hasLiveWeather) return null
-  return {
-    city: weather.city || '',
-    condition: weather.condition || '',
-    feelsLikeC: Number.isFinite(Number(weather.feelsLikeC)) ? weather.feelsLikeC : null,
-    hasLiveWeather: true,
-    precipitationRiskPercent: Number.isFinite(Number(weather.precipitationRiskPercent))
-      ? weather.precipitationRiskPercent
-      : null,
-    sunriseLabel: weather.sunriseLabel || '',
-    sunsetLabel: weather.sunsetLabel || '',
-    temperatureC: Number.isFinite(Number(weather.temperatureC)) ? weather.temperatureC : null,
-    windSpeedMs: Number.isFinite(Number(weather.windSpeedMs)) ? weather.windSpeedMs : null,
-  }
-}
-
-function compactClothingAdvice(advice) {
-  if (!advice?.available || !Array.isArray(advice.lines)) return null
-  return {
-    available: true,
-    lines: advice.lines.slice(0, 4),
-  }
-}
-
 export function makeRecentCoachChatHistory(chatHistory = []) {
   return chatHistory.slice(-10).map((chatMessage) => ({
     createdAt: chatMessage.createdAt,
     role: chatMessage.role,
     text: chatMessage.text,
   }))
-}
-
-export function buildCoachChatRemotePayload(appData = {}, message, chatHistory = []) {
-  const snapshot = appData.healthSnapshot || {}
-  const educationLevel = getReadyEducationLevel()
-  const latestCoachReply = [...chatHistory]
-    .reverse()
-    .find((entry) => entry?.role === 'assistant')?.text || ''
-
-  return {
-    action: 'chat',
-    bodyAnalysisHistory: Array.isArray(appData.bodyAnalysisHistory)
-      ? appData.bodyAnalysisHistory.slice(0, 2)
-      : [],
-    chatHistory,
-    checkIn: appData.checkIn || {},
-    currentWeight: snapshot.weight?.current ?? appData.currentWeight,
-    foods: Array.isArray(appData.foods) ? appData.foods.slice(0, 12) : [],
-    latestCoachReply,
-    latestWeeklyReport: appData.latestWeeklyReport || null,
-    mealHistory: Array.isArray(appData.mealHistory) ? appData.mealHistory.slice(0, 5) : [],
-    meals: Array.isArray(appData.meals) ? appData.meals.slice(-10) : [],
-    message,
-    nutritionGoals: appData.nutritionGoals || {},
-    profile: {
-      educationLevel,
-      goal: appData.profile?.goal,
-      goalWeight: appData.profile?.goalWeight,
-      name: appData.profile?.name || appData.profile?.displayName,
-      startWeight: appData.profile?.startWeight,
-      weightDirection: appData.profile?.weightDirection,
-    },
-    clothingAdvice: compactClothingAdvice(appData.clothingAdvice),
-    liveWeather: compactLiveWeather(appData.liveWeather),
-    surface: appData.surface || 'coach',
-    weights: Array.isArray(appData.weights) ? appData.weights.slice(-14) : [],
-  }
 }
 
 export async function prepareCoachChatSubmission({
@@ -211,38 +148,10 @@ export async function createLocalSmartChatReply({
   }
 }
 
-export function buildCoachRealtimeSessionPayload(appData = {}, chatHistory = []) {
+export async function requestCoachRealtimeSession() {
   return {
-    ...buildCoachChatRemotePayload(appData, 'starta röstsamtal', chatHistory),
-    action: 'realtime-session',
-  }
-}
-
-export async function requestCoachRealtimeSession({
-  appData,
-  chatHistory = [],
-} = {}) {
-  const remote = await requestAiEndpoint(
-    buildCoachRealtimeSessionPayload(appData, makeRecentCoachChatHistory(chatHistory)),
-  )
-  const clientSecret = remote.ok && typeof remote.data?.clientSecret === 'string'
-    ? remote.data.clientSecret.trim()
-    : ''
-
-  if (!remote.ok || remote.data?.available === false || !clientSecret) {
-    return {
-      available: false,
-      message: remote.data?.message || remote.reason || 'Röstsamtal är inte tillgängligt just nu.',
-    }
-  }
-
-  return {
-    available: true,
-    clientSecret,
-    expiresAt: remote.data.expiresAt || null,
-    idleTimeoutMs: Number(remote.data.idleTimeoutMs) || 45000,
-    maxSessionMs: Number(remote.data.maxSessionMs) || 180000,
-    model: remote.data.model || '',
+    available: false,
+    message: 'Röstsamtal med premium-AI är avstängt i gratisläget.',
   }
 }
 
@@ -253,19 +162,6 @@ export async function requestCoachChatReply({
   message,
 }) {
   const recentChatHistory = makeRecentCoachChatHistory(chatHistory)
-  const remote = await requestAiEndpoint(
-    buildCoachChatRemotePayload(appData, message, recentChatHistory),
-  )
-  const remoteReply = remote.ok && typeof remote.data?.reply === 'string'
-    ? remote.data.reply.trim()
-    : ''
-
-  if (remoteReply) {
-    return {
-      reply: remoteReply,
-      source: remote.source === 'openai' ? 'openai' : 'mock',
-    }
-  }
 
   return (await createDeterministicChatReply({
     appData,

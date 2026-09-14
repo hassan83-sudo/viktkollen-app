@@ -25,12 +25,11 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
   return createPortal(
     <>
       <style>{`
-        .overview-today-mood > .is-quick {
+        .overview-today-mood > .is-today {
           order: 4;
         }
-        .overview-today-mood > .is-today {
+        .overview-today-mood > .is-quick {
           order: 5;
-          grid-column: 1 / -1;
         }
         .overview-mood-card.is-quick {
           align-items: flex-start;

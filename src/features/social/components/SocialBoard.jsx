@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../services/supabaseClient.js'
+import '../SocialBoard.css'
 
 const ADMIN_USER_ID = 'd449f4d1-d2c7-41fd-8c74-e8b1bbe46f89'
 
@@ -82,25 +83,9 @@ function SocialBoard() {
       {isAdmin ? (
         <form className="social-board-admin" onSubmit={addPost}>
           <strong>Lägg till på tavlan</strong>
-          <input
-            type="text"
-            maxLength={120}
-            placeholder="Rubrik"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            required
-          />
-          <textarea
-            rows={6}
-            maxLength={4000}
-            placeholder="Skriv texten här. Du kan använda flera rader för steg-för-steg."
-            value={body}
-            onChange={(event) => setBody(event.target.value)}
-            required
-          />
-          <button className="primary-button" type="submit" disabled={saving}>
-            {saving ? 'Lägger till…' : 'Lägg till'}
-          </button>
+          <input type="text" maxLength={120} placeholder="Rubrik" value={title} onChange={(event) => setTitle(event.target.value)} required />
+          <textarea rows={6} maxLength={4000} placeholder="Skriv texten här. Du kan använda flera rader för steg-för-steg." value={body} onChange={(event) => setBody(event.target.value)} required />
+          <button className="primary-button" type="submit" disabled={saving}>{saving ? 'Lägger till…' : 'Lägg till'}</button>
         </form>
       ) : null}
 
@@ -112,11 +97,7 @@ function SocialBoard() {
           <section className="social-board-post" key={post.id}>
             <div className="social-board-post-head">
               <h3>{post.title}</h3>
-              {isAdmin ? (
-                <button className="secondary-button" type="button" onClick={() => removePost(post.id)}>
-                  Ta bort
-                </button>
-              ) : null}
+              {isAdmin ? <button className="secondary-button" type="button" onClick={() => removePost(post.id)}>Ta bort</button> : null}
             </div>
             <p className="social-board-body">{post.body}</p>
           </section>

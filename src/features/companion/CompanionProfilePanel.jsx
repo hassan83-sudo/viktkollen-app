@@ -80,86 +80,107 @@ function CompanionProfilePanel({ mode = 'full', onProfileChange, onTalk, surface
             ))}
           </div>
 
-          <div className="companion-form-grid">
-            <label>
-              {t('fields.name')}
-              <input value={profile.displayName} onChange={(event) => patchProfile({ displayName: event.target.value })} />
-            </label>
-            <label>
-              {t('fields.pronouns')}
-              <input value={profile.pronouns} onChange={(event) => patchProfile({ pronouns: event.target.value })} />
-            </label>
-            <label>
-              {t('fields.ageStyle')}
-              <select value={profile.ageStyle} onChange={(event) => patchProfile({ ageStyle: event.target.value })}>
-                {companionAgeStyles.map((id) => <option key={id} value={id}>{t(`ageStyles.${optionKey(id)}`)}</option>)}
-              </select>
-            </label>
-            <label>
-              {t('fields.tone')}
-              <select value={profile.tone} onChange={(event) => patchProfile({ tone: event.target.value })}>
-                {companionToneIds.map((id) => <option key={id} value={id}>{t(`tones.${optionKey(id)}`)}</option>)}
-              </select>
-            </label>
-            <label>
-              {t('fields.responseLength')}
-              <select value={profile.responseLength} onChange={(event) => patchProfile({ responseLength: event.target.value })}>
-                {companionResponseLengths.map((id) => <option key={id} value={id}>{t(`responseLengths.${optionKey(id)}`)}</option>)}
-              </select>
-            </label>
-            <label>
-              {t('fields.directness')}
-              <select value={profile.directness} onChange={(event) => patchProfile({ directness: event.target.value })}>
-                {companionDirectnessLevels.map((id) => <option key={id} value={id}>{t(`directness.${optionKey(id)}`)}</option>)}
-              </select>
-            </label>
-            <label>
-              {t('fields.encouragement')}
-              <select value={profile.encouragementLevel} onChange={(event) => patchProfile({ encouragementLevel: event.target.value })}>
-                {companionEncouragementLevels.map((id) => <option key={id} value={id}>{t(`encouragement.${optionKey(id)}`)}</option>)}
-              </select>
-            </label>
-            <label>
-              {t('fields.emoji')}
-              <select value={profile.emojiPreference} onChange={(event) => patchProfile({ emojiPreference: event.target.value })}>
-                {companionEmojiPreferences.map((id) => <option key={id} value={id}>{t(`emoji.${optionKey(id)}`)}</option>)}
-              </select>
-            </label>
-            <label>
-              {t('fields.reminders')}
-              <select value={profile.reminderSuggestionPreference} onChange={(event) => patchProfile({ reminderSuggestionPreference: event.target.value })}>
-                {companionReminderSuggestionPreferences.map((id) => <option key={id} value={id}>{t(`reminders.${optionKey(id)}`)}</option>)}
-              </select>
-            </label>
-            <label>
-              {t('fields.communication')}
-              <select value={profile.communicationPreference} onChange={(event) => patchProfile({ communicationPreference: event.target.value })}>
-                {companionCommunicationPreferences.map((id) => <option key={id} value={id}>{t(`communication.${optionKey(id)}`)}</option>)}
-              </select>
-            </label>
-            <label>
-              {t('fields.signLanguage')}
-              <select value={profile.selectedSignLanguage} onChange={(event) => patchProfile({ selectedSignLanguage: event.target.value })}>
-                {companionSignLanguageIds.map((id) => <option key={id} value={id}>{t(`signLanguages.${optionKey(id)}`)}</option>)}
-              </select>
-            </label>
-            <label className="education-check-row">
-              <input type="checkbox" checked={profile.prefersSpeech} onChange={(event) => patchProfile({ prefersSpeech: event.target.checked })} />
-              {t('fields.speech')}
-            </label>
-          </div>
+          <section className="companion-settings-section" aria-labelledby={`companion-${surface}-profile-heading`}>
+            <h3 id={`companion-${surface}-profile-heading`}>{t('sections.profile', { defaultValue: 'Profil' })}</h3>
+            <div className="companion-form-grid">
+              <label>
+                {t('fields.name')}
+                <input value={profile.displayName} onChange={(event) => patchProfile({ displayName: event.target.value })} />
+              </label>
+              <label>
+                {t('fields.pronouns')}
+                <input value={profile.pronouns} onChange={(event) => patchProfile({ pronouns: event.target.value })} />
+              </label>
+              <label>
+                {t('fields.ageStyle')}
+                <select value={profile.ageStyle} onChange={(event) => patchProfile({ ageStyle: event.target.value })}>
+                  {companionAgeStyles.map((id) => <option key={id} value={id}>{t(`ageStyles.${optionKey(id)}`)}</option>)}
+                </select>
+              </label>
+            </div>
+          </section>
 
-          <div className="education-actions">
-            <button className="secondary-button" type="button" onClick={resetProfile}>{t('actions.reset')}</button>
-            {!confirmingDelete ? (
-              <button className="secondary-button" type="button" onClick={() => setConfirmingDelete(true)}>{t('actions.delete')}</button>
-            ) : (
-              <>
-                <button className="secondary-button" type="button" onClick={confirmDelete}>{t('actions.confirmDelete')}</button>
-                <button type="button" onClick={() => setConfirmingDelete(false)}>{t('common:actions.cancel')}</button>
-              </>
-            )}
-          </div>
+          <section className="companion-settings-section" aria-labelledby={`companion-${surface}-personality-heading`}>
+            <h3 id={`companion-${surface}-personality-heading`}>{t('sections.personality', { defaultValue: 'Personlighet' })}</h3>
+            <div className="companion-form-grid">
+              <label>
+                {t('fields.tone')}
+                <select value={profile.tone} onChange={(event) => patchProfile({ tone: event.target.value })}>
+                  {companionToneIds.map((id) => <option key={id} value={id}>{t(`tones.${optionKey(id)}`)}</option>)}
+                </select>
+              </label>
+              <label>
+                {t('fields.responseLength')}
+                <select value={profile.responseLength} onChange={(event) => patchProfile({ responseLength: event.target.value })}>
+                  {companionResponseLengths.map((id) => <option key={id} value={id}>{t(`responseLengths.${optionKey(id)}`)}</option>)}
+                </select>
+              </label>
+              <label>
+                {t('fields.directness')}
+                <select value={profile.directness} onChange={(event) => patchProfile({ directness: event.target.value })}>
+                  {companionDirectnessLevels.map((id) => <option key={id} value={id}>{t(`directness.${optionKey(id)}`)}</option>)}
+                </select>
+              </label>
+              <label>
+                {t('fields.encouragement')}
+                <select value={profile.encouragementLevel} onChange={(event) => patchProfile({ encouragementLevel: event.target.value })}>
+                  {companionEncouragementLevels.map((id) => <option key={id} value={id}>{t(`encouragement.${optionKey(id)}`)}</option>)}
+                </select>
+              </label>
+              <label>
+                {t('fields.emoji')}
+                <select value={profile.emojiPreference} onChange={(event) => patchProfile({ emojiPreference: event.target.value })}>
+                  {companionEmojiPreferences.map((id) => <option key={id} value={id}>{t(`emoji.${optionKey(id)}`)}</option>)}
+                </select>
+              </label>
+            </div>
+          </section>
+
+          <section className="companion-settings-section" aria-labelledby={`companion-${surface}-communication-heading`}>
+            <h3 id={`companion-${surface}-communication-heading`}>{t('sections.communication', { defaultValue: 'Kommunikation' })}</h3>
+            <div className="companion-form-grid">
+              <label>
+                {t('fields.communication')}
+                <select value={profile.communicationPreference} onChange={(event) => patchProfile({ communicationPreference: event.target.value })}>
+                  {companionCommunicationPreferences.map((id) => <option key={id} value={id}>{t(`communication.${optionKey(id)}`)}</option>)}
+                </select>
+              </label>
+              <label>
+                {t('fields.signLanguage')}
+                <select value={profile.selectedSignLanguage} onChange={(event) => patchProfile({ selectedSignLanguage: event.target.value })}>
+                  {companionSignLanguageIds.map((id) => <option key={id} value={id}>{t(`signLanguages.${optionKey(id)}`)}</option>)}
+                </select>
+              </label>
+              <label className="education-check-row">
+                <input type="checkbox" checked={profile.prefersSpeech} onChange={(event) => patchProfile({ prefersSpeech: event.target.checked })} />
+                {t('fields.speech')}
+              </label>
+            </div>
+          </section>
+
+          <section className="companion-settings-section" aria-labelledby={`companion-${surface}-other-heading`}>
+            <h3 id={`companion-${surface}-other-heading`}>{t('sections.other', { defaultValue: 'Övrigt' })}</h3>
+            <div className="companion-form-grid">
+              <label>
+                {t('fields.reminders')}
+                <select value={profile.reminderSuggestionPreference} onChange={(event) => patchProfile({ reminderSuggestionPreference: event.target.value })}>
+                  {companionReminderSuggestionPreferences.map((id) => <option key={id} value={id}>{t(`reminders.${optionKey(id)}`)}</option>)}
+                </select>
+              </label>
+            </div>
+
+            <div className="education-actions">
+              <button className="secondary-button" type="button" onClick={resetProfile}>{t('actions.reset')}</button>
+              {!confirmingDelete ? (
+                <button className="secondary-button" type="button" onClick={() => setConfirmingDelete(true)}>{t('actions.delete')}</button>
+              ) : (
+                <>
+                  <button className="secondary-button" type="button" onClick={confirmDelete}>{t('actions.confirmDelete')}</button>
+                  <button type="button" onClick={() => setConfirmingDelete(false)}>{t('common:actions.cancel')}</button>
+                </>
+              )}
+            </div>
+          </section>
         </>
       )}
 

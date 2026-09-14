@@ -14,11 +14,18 @@ function ChatInput({
     ? 'Avsluta samtal'
     : 'Starta röstsamtal'
 
+  function handleTextFocus() {
+    if (isVoiceConversationActive) {
+      onStartVoiceInput?.()
+    }
+  }
+
   return (
     <form className={`chat-form ${isVoiceConversationActive ? 'voice-conversation-active' : ''}`} onSubmit={onSendChatMessage}>
       <input
         type="text"
         value={chatInput}
+        onFocus={handleTextFocus}
         onChange={(event) => onChatInputChange(event.target.value)}
         placeholder="Skriv en fråga..."
         enterKeyHint="send"

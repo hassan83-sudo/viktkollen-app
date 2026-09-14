@@ -26,11 +26,12 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
         #app-section-home.is-active .overview-today-mood {
           grid-template-areas:
             "wellbeing coach"
-            "reminder quick"
-            "today today";
+            "quick quick"
+            "reminder today";
         }
         #app-section-home.is-active .overview-today-mood > .is-quick {
           grid-area: quick;
+          width: 100%;
         }
         #app-section-home.is-active .overview-today-mood > .is-today {
           grid-area: today;
@@ -61,13 +62,14 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
           white-space: nowrap;
         }
         .overview-quick-buttons {
-          display: flex;
-          flex-wrap: wrap;
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
           gap: 7px;
           width: 100%;
         }
         .overview-quick-buttons button {
-          padding: 8px 10px;
+          width: 100%;
+          padding: 9px 8px;
           font-size: 12px;
         }
         .overview-more-section {
@@ -82,6 +84,11 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
         }
         .overview-secondary-details:not([open]) > summary {
           min-height: 48px;
+        }
+        @media (max-width: 390px) {
+          .overview-quick-buttons {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
         }
       `}</style>
       <article className="overview-mood-card is-quick" aria-label="Snabbknappar för Notis">

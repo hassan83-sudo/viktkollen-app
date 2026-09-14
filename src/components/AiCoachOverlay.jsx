@@ -97,6 +97,7 @@ function AiCoachOverlay({
     isVoiceConversationActive,
     voiceStatus,
   })
+  const engineStatus = chatEngineStatus || (latestAssistantMessage ? 'GPT-5.6 Luna · OpenAI aktiv' : '')
 
   function stopAiVoiceResponse() {
     window.speechSynthesis?.cancel?.()
@@ -145,9 +146,9 @@ function AiCoachOverlay({
           onStopAiVoiceResponse={stopAiVoiceResponse}
           onStartVoiceInput={onStartVoiceInput}
         />
-        {chatEngineStatus ? (
+        {engineStatus ? (
           <p className="chat-engine-status" aria-live="polite">
-            {chatEngineStatus}
+            {engineStatus}
           </p>
         ) : null}
       </div>

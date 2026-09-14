@@ -17,6 +17,7 @@ function formatRemaining(ms) {
 }
 
 function NoticeKitchenTimers({ onMessage }) {
+  const [roomOpen, setRoomOpen] = useState(false)
   const [selectedAppliance, setSelectedAppliance] = useState('Micro')
   const [timers, setTimers] = useState([])
   const [, setClock] = useState(Date.now())
@@ -111,44 +112,59 @@ function NoticeKitchenTimers({ onMessage }) {
   }
 
   return (
-    <section className="notice-card" aria-labelledby="kitchen-timers-heading">
-      <h2 id="kitchen-timers-heading">Kök – snabbtimer</h2>
-      <p>Välj sak och starta direkt. Micro och övriga kan använda både sekunder och minuter.</p>
+    <section className="notice-card" aria-labelledby="room-timers-heading">
+      <h2 id="room-timers-heading">Rum & timers</h2>
+      <p>Öppna ett rum för att se dess snabbknappar. Fler rum läggs här utan att Notis blir stökig.</p>
 
-      <div className="notice-suggestions" aria-label="Kökssaker">
-        {appliances.map((appliance) => (
-          <button key={appliance} type="button" aria-pressed={selectedAppliance === appliance} onClick={() => setSelectedAppliance(appliance)}>
-            {appliance}
-          </button>
-        ))}
-      </div>
-
-      <h3>{selectedAppliance} · sekunder</h3>
       <div className="notice-suggestions">
-        {secondOptions.map((seconds) => <button key={`sec-${seconds}`} type="button" onClick={() => startTimer(seconds, 'seconds')}>{seconds} sek</button>)}
+        <button type="button" aria-expanded={roomOpen} onClick={() => setRoomOpen((open) => !open)}>
+          Kök{activeTimers.length ? ` · ${activeTimers.length} aktiv${activeTimers.length === 1 ? '' : 'a'}` : ''}
+        </button>
       </div>
 
-      <h3>{selectedAppliance} · minuter</h3>
-      <div className="notice-suggestions">
-        {minuteOptions.map((minutes) => <button key={`min-${minutes}`} type="button" onClick={() => startTimer(minutes, 'minutes')}>{minutes} min</button>)}
-      </div>
+      {roomOpen && <div className="notice-room-panel" aria-labelledby="kitchen-timers-heading">
+        <div className="notice-actions">
+          <h3 id="kitchen-timers-heading">Kök – snabbtimer</h3>
+          <button type="button" onClick={() => setRoomOpen(false)}>Stäng kök</button>
+        </div>
+        <p>Välj sak och starta direkt. Micro och övriga kan använda både sekunder och minuter.</p>
 
-      {activeTimers.length > 0 && <div className="notice-kitchen-active">
-        <h3>Aktiva timers</h3>
-        <ul className="notice-reminder-list">
-          {activeTimers.map((timer) => (
-            <li key={timer.id}>
-              <strong>{timer.appliance}</strong>
-              <span>{formatRemaining(timer.endsAt - Date.now())} kvar</span>
-              <div className="notice-actions">
-                <button type="button" onClick={() => snooze(timer, 5)}>Snooze 5 min</button>
-                <button type="button" onClick={() => complete(timer)}>Klar</button>
-              </div>
-            </li>
+        <div className="notice-suggestions" aria-label="Kökssaker">
+          {appliances.map((appliance) => (
+            <button key={appliance} type="button" aria-pressed={selectedAppliance === appliance} onClick={() => setSelectedAppliance(appliance)}>
+              {appliance}
+            </button>
           ))}
-        </ul>
+        </div>
+
+        <h3>{selectedAppliance} · sekunder</h3>
+        <div className="notice-suggestions">
+          {secondOptions.map((seconds) => <button key={`sec-${seconds}`} type="button" onClick={() => startTimer(seconds, 'seconds')}>{seconds} sek</button>)}
+        </div>
+
+        <h3>{selectedAppliance} · minuter</h3>
+        <div className="notice-suggestions">
+          {minuteOptions.map((minutes) => <button key={`min-${minutes}`} type="button" onClick={() => startTimer(minutes, 'minutes')}>{minutes} min</button>)}
+        </div>
+
+        {activeTimers.length > 0 && <div className="notice-kitchen-active">
+          <h3>Aktiva timers</h3>
+          <ul className="notice-reminder-list">
+            {activeTimers.map((timer) => (
+              <li key={timer.id}>
+                <strong>{timer.appliance}</strong>
+                <span>{formatRemaining(timer.endsAt - Date.now())} kvar</span>
+                <div className="notice-actions">
+                  <button type="button" onClick={() => snooze(timer, 5)}>Snooze 5 min</button>
+                  <button type="button" onClick={() => complete(timer)}>Klar</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>}
+
+        <p className="estimate-note">Minuttimers använder Viktkollens bakgrunds-push och kan ge notis även när appen inte är öppen. Sekundtimers 1–10 sek körs direkt i appen och kräver att den är öppen.</p>
       </div>}
-      <p className="estimate-note">Minuttimers använder Viktkollens bakgrunds-push och kan ge notis även när appen inte är öppen. Sekundtimers 1–10 sek körs direkt i appen och kräver att den är öppen.</p>
     </section>
   )
 }

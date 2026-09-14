@@ -80,8 +80,8 @@ function CompanionProfilePanel({ mode = 'full', onProfileChange, onTalk, surface
             ))}
           </div>
 
-          <section className="companion-settings-section" aria-labelledby={`companion-${surface}-profile-heading`}>
-            <h3 id={`companion-${surface}-profile-heading`}>{t('sections.profile', { defaultValue: 'Profil' })}</h3>
+          <details className="companion-settings-section" open>
+            <summary>{t('sections.profile', { defaultValue: 'Profil' })}</summary>
             <div className="companion-form-grid">
               <label>
                 {t('fields.name')}
@@ -98,10 +98,10 @@ function CompanionProfilePanel({ mode = 'full', onProfileChange, onTalk, surface
                 </select>
               </label>
             </div>
-          </section>
+          </details>
 
-          <section className="companion-settings-section" aria-labelledby={`companion-${surface}-personality-heading`}>
-            <h3 id={`companion-${surface}-personality-heading`}>{t('sections.personality', { defaultValue: 'Personlighet' })}</h3>
+          <details className="companion-settings-section">
+            <summary>{t('sections.personality', { defaultValue: 'Personlighet' })}</summary>
             <div className="companion-form-grid">
               <label>
                 {t('fields.tone')}
@@ -134,10 +134,10 @@ function CompanionProfilePanel({ mode = 'full', onProfileChange, onTalk, surface
                 </select>
               </label>
             </div>
-          </section>
+          </details>
 
-          <section className="companion-settings-section" aria-labelledby={`companion-${surface}-communication-heading`}>
-            <h3 id={`companion-${surface}-communication-heading`}>{t('sections.communication', { defaultValue: 'Kommunikation' })}</h3>
+          <details className="companion-settings-section">
+            <summary>{t('sections.communication', { defaultValue: 'Kommunikation' })}</summary>
             <div className="companion-form-grid">
               <label>
                 {t('fields.communication')}
@@ -156,10 +156,10 @@ function CompanionProfilePanel({ mode = 'full', onProfileChange, onTalk, surface
                 {t('fields.speech')}
               </label>
             </div>
-          </section>
+          </details>
 
-          <section className="companion-settings-section" aria-labelledby={`companion-${surface}-other-heading`}>
-            <h3 id={`companion-${surface}-other-heading`}>{t('sections.other', { defaultValue: 'Övrigt' })}</h3>
+          <details className="companion-settings-section">
+            <summary>{t('sections.other', { defaultValue: 'Övrigt' })}</summary>
             <div className="companion-form-grid">
               <label>
                 {t('fields.reminders')}
@@ -180,7 +180,7 @@ function CompanionProfilePanel({ mode = 'full', onProfileChange, onTalk, surface
                 </>
               )}
             </div>
-          </section>
+          </details>
         </>
       )}
 

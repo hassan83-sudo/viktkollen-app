@@ -5,6 +5,7 @@ import {
   upsertKitchenTimerPushSchedule,
 } from '../services/reminders/reminderPushSync.js'
 import NoticeWardrobeHelper from './NoticeWardrobeHelper.jsx'
+import NoticeBathroomHelper from './NoticeBathroomHelper.jsx'
 
 const appliances = ['Micro', 'Spis', 'Ugn', 'Kylskåp', 'Tvättmaskin']
 const secondOptions = Array.from({ length: 10 }, (_, index) => index + 1)
@@ -32,7 +33,7 @@ function nextClockTime(time) {
   return target
 }
 
-function NoticeKitchenTimers({ onMessage }) {
+function NoticeKitchenTimers({ reminderState, onRemindersChange, onMessage }) {
   const [openRoom, setOpenRoom] = useState('')
   const [selectedAppliance, setSelectedAppliance] = useState('Micro')
   const [timers, setTimers] = useState([])
@@ -291,16 +292,7 @@ function NoticeKitchenTimers({ onMessage }) {
 
       {openRoom === 'wardrobe' && <NoticeWardrobeHelper onClose={() => setOpenRoom('')} onMessage={onMessage} />}
 
-      {openRoom === 'bathroom' && <div className="notice-room-panel" aria-labelledby="bathroom-heading">
-        <div className="notice-actions"><h3 id="bathroom-heading">Badrum</h3><button type="button" onClick={() => setOpenRoom('')}>Stäng</button></div>
-        <p>Snabbvägar för hygienpåminnelser. De vanliga färdiga larmen ovan fortsätter användas för tider och upprepning.</p>
-        <div className="notice-suggestions">
-          <button type="button" onClick={() => onMessage?.('Använd färdiga larmet Tandborstning ovan för att aktivera tiden.')}>Tandborstning</button>
-          <button type="button" onClick={() => onMessage?.('Använd färdiga larmet Dusch ovan för att aktivera tiden.')}>Dusch</button>
-          <button type="button" onClick={() => onMessage?.('Använd färdiga larmet Hudkräm ovan för att aktivera tiden.')}>Hudkräm</button>
-          <button type="button" onClick={() => onMessage?.('Använd färdiga larmet Rakning ovan för att aktivera tiden.')}>Rakning</button>
-        </div>
-      </div>}
+      {openRoom === 'bathroom' && <NoticeBathroomHelper reminderState={reminderState} onRemindersChange={onRemindersChange} onClose={() => setOpenRoom('')} onMessage={onMessage} />}
     </section>
   )
 }

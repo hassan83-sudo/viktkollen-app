@@ -61,6 +61,20 @@ function CompanionProfilePanel({ mode = 'full', onProfileChange, surface = 'coac
 
       {!compact && (
         <>
+          <div className="ready-avatar-grid companion-avatar-grid">
+            {getReadyAvatars().map((entry) => (
+              <button
+                className={`ready-avatar-choice${profile.avatarId === entry.id ? ' is-active' : ''}`}
+                key={entry.id}
+                type="button"
+                onClick={() => patchProfile({ avatarId: entry.id })}
+              >
+                <span aria-hidden="true">AI</span>
+                <strong>{t(`ready:${entry.labelKey}`)}</strong>
+              </button>
+            ))}
+          </div>
+
           <div className="companion-form-grid">
             <label>
               {t('fields.name')}
@@ -128,20 +142,6 @@ function CompanionProfilePanel({ mode = 'full', onProfileChange, surface = 'coac
               <input type="checkbox" checked={profile.prefersSpeech} onChange={(event) => patchProfile({ prefersSpeech: event.target.checked })} />
               {t('fields.speech')}
             </label>
-          </div>
-
-          <div className="ready-avatar-grid companion-avatar-grid">
-            {getReadyAvatars().map((entry) => (
-              <button
-                className={`ready-avatar-choice${profile.avatarId === entry.id ? ' is-active' : ''}`}
-                key={entry.id}
-                type="button"
-                onClick={() => patchProfile({ avatarId: entry.id })}
-              >
-                <span aria-hidden="true">AI</span>
-                <strong>{t(`ready:${entry.labelKey}`)}</strong>
-              </button>
-            ))}
           </div>
 
           <div className="education-actions">

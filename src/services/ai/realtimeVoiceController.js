@@ -2,6 +2,10 @@ export const VOICE_UNAVAILABLE_MESSAGE = 'Röstsamtal är inte tillgängligt jus
 export const VOICE_PERMISSION_DENIED_MESSAGE =
   'Mikrofonbehörighet nekades. Tillåt mikrofon i webbläsaren och försök igen.'
 
+// Premium realtime voice stays wired for later, but must not touch the microphone
+// while Viktkollen is running the free local voice flow.
+export const REALTIME_VOICE_ENABLED = false
+
 export const voicePhaseLabels = {
   idle: 'Redo',
   listening: 'Lyssnar...',
@@ -124,6 +128,20 @@ export function createRealtimeVoiceController({
   }
 
   async function start() {
+    // Free mode: bypass realtime completely. This is intentionally checked before
+    // getUserMedia so the premium controller cannot grab the same iPhone audio
+    // session that the local SpeechRecognition/SpeechSynthesis flow needs.
+    if (!REALTIME_VOICE_ENABLED) {
+      clearTimers()
+      closed = true
+      setListening?.(false)
+      setSpeaking?.(false)
+      setActive?.(false)
+      setMuted?.(false)
+      onStatus?.('')
+      return { ok: false, reason: 'unavailable' }
+    }
+
     if (activeRealtimeSession && activeRealtimeSession !== api) {
       activeRealtimeSession.stop()
     }

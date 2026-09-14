@@ -12,7 +12,7 @@ import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_share
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/responses'
-const DEFAULT_MODEL = 'gpt-4.1-mini'
+const DEFAULT_MODEL = 'gpt-5.6-luna'
 const validRecommendationCategories = new Set(['nutrition', 'protein', 'weight', 'activity', 'recovery', 'consistency', 'logging', 'goal', 'general'])
 const validRecommendationPriorities = new Set(['low', 'medium', 'high'])
 const validRecommendationConfidence = new Set(['low', 'medium', 'high'])

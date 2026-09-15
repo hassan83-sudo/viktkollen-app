@@ -144,20 +144,20 @@ drop policy if exists "Viktkollen users delete own backups" on public.user_backu
 
 create policy "Viktkollen users read own backups"
 on public.user_backups for select to authenticated
-using (auth.uid() = user_id);
+using ((select auth.uid()) = user_id);
 
 create policy "Viktkollen users insert own backups"
 on public.user_backups for insert to authenticated
-with check (auth.uid() = user_id);
+with check ((select auth.uid()) = user_id);
 
 create policy "Viktkollen users update own backups"
 on public.user_backups for update to authenticated
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
+using ((select auth.uid()) = user_id)
+with check ((select auth.uid()) = user_id);
 
 create policy "Viktkollen users delete own backups"
 on public.user_backups for delete to authenticated
-using (auth.uid() = user_id);
+using ((select auth.uid()) = user_id);
 
 drop policy if exists "Viktkollen users read own sync state" on public.user_sync_state;
 drop policy if exists "Viktkollen users insert own sync state" on public.user_sync_state;
@@ -188,9 +188,12 @@ on public.user_sync_events for insert to authenticated
 with check (auth.uid() = user_id);
 
 grant usage on schema public to authenticated;
+revoke all privileges on public.user_backups from anon;
+revoke all privileges on public.user_backups from authenticated;
 grant select, insert, update, delete on public.user_backups to authenticated;
 grant select, insert, update on public.user_sync_state to authenticated;
 grant select, insert on public.user_sync_events to authenticated;
+revoke execute on function public.viktkollen_set_user_id() from public, anon, authenticated;
 
 comment on table public.user_backups is 'Viktkollen manuella backupversioner. RLS begränsar rader till auth.uid().';
 comment on table public.user_sync_state is 'Senaste manuella molnstatus per användare.';

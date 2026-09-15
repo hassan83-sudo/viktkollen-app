@@ -140,10 +140,11 @@ function getBackupSelectColumns() {
   return 'id, name, is_favorite, payload, data, schema_version, client_updated_at, created_at, updated_at, size_bytes, checksum'
 }
 
-async function getLatestCloudBackup() {
+async function getLatestCloudBackup(userId) {
   const { data, error } = await supabase
     .from(backupTable)
     .select(getBackupSelectColumns())
+    .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -317,7 +318,7 @@ export async function pushLocalDataToCloud(name = '') {
     })
   }
 
-  const latest = await getLatestCloudBackup()
+  const latest = await getLatestCloudBackup(auth.user.id)
 
   if (latest.error) {
     return makeFailure('backup', latest.error)
@@ -398,6 +399,7 @@ export async function listUserBackups() {
   const { count, data, error } = await supabase
     .from(backupTable)
     .select(getBackupSelectColumns(), { count: 'exact' })
+    .eq('user_id', auth.user.id)
     .order('is_favorite', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(maxHistoryRows)
@@ -426,6 +428,7 @@ export async function previewCloudRestore(backupId = '') {
   let query = supabase
     .from(backupTable)
     .select(getBackupSelectColumns())
+    .eq('user_id', auth.user.id)
     .order('created_at', { ascending: false })
 
   if (backupId) {
@@ -604,6 +607,7 @@ export async function getCloudDashboardStatus() {
   const { count, data, error } = await supabase
     .from(backupTable)
     .select(getBackupSelectColumns(), { count: 'exact' })
+    .eq('user_id', auth.user.id)
     .order('created_at', { ascending: false })
     .limit(1)
 
@@ -697,6 +701,7 @@ export async function updateUserBackup(backupId, updates) {
     .from(backupTable)
     .update(payload)
     .eq('id', backupId)
+    .eq('user_id', auth.user.id)
     .select(getBackupSelectColumns())
     .maybeSingle()
 
@@ -746,6 +751,7 @@ export async function deleteUserBackups(backupIds) {
     .from(backupTable)
     .delete()
     .in('id', ids)
+    .eq('user_id', auth.user.id)
 
   if (error) {
     return makeFailure('delete', error)

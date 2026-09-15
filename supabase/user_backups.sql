@@ -90,23 +90,27 @@ create policy "Users can read their own backup"
 on public.user_backups
 for select
 to authenticated
-using (auth.uid() = user_id);
+using ((select auth.uid()) = user_id);
 
 create policy "Users can insert their own backup"
 on public.user_backups
 for insert
 to authenticated
-with check (auth.uid() = user_id);
+with check ((select auth.uid()) = user_id);
 
 create policy "Users can update their own backup"
 on public.user_backups
 for update
 to authenticated
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
+using ((select auth.uid()) = user_id)
+with check ((select auth.uid()) = user_id);
 
 create policy "Users can delete their own backup"
 on public.user_backups
 for delete
 to authenticated
-using (auth.uid() = user_id);
+using ((select auth.uid()) = user_id);
+
+revoke all privileges on public.user_backups from anon;
+revoke all privileges on public.user_backups from authenticated;
+grant select, insert, update, delete on public.user_backups to authenticated;

@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { supabase } from '../../../services/supabaseClient.js'
+import {
+  disableEncryptedSocialLocation,
+  enableEncryptedSocialLocation,
+  loadEncryptedFriendLocations,
+  prepareSocialLocationEncryption,
+} from '../services/socialLocationE2eeService.js'
 import '../SocialRoomMap.css'
 
 function mapUrl(latitude, longitude) {
@@ -30,22 +35,18 @@ function SocialRoomMap({ friends = [] }) {
     [selected],
   )
 
+  useEffect(() => {
+    void prepareSocialLocationEncryption().catch(() => undefined)
+  }, [])
+
   async function loadFriendLocations() {
-    const ids = friends.map((friend) => friend?.userId).filter(Boolean)
-    if (!ids.length) {
+    if (!friends.some((friend) => friend?.userId)) {
       setFriendLocations([])
       setSelectedFriendId('')
       return
     }
 
-    const { data, error } = await supabase
-      .from('social_locations')
-      .select('user_id, latitude, longitude, accuracy_meters, updated_at')
-      .eq('enabled', true)
-      .in('user_id', ids)
-
-    if (error) throw error
-    const rows = (data || []).filter((row) => Number.isFinite(Number(row.latitude)) && Number.isFinite(Number(row.longitude)))
+    const rows = await loadEncryptedFriendLocations(friends)
     setFriendLocations(rows)
     setSelectedFriendId((current) => rows.some((row) => row.user_id === current) ? current : rows[0]?.user_id || '')
   }
@@ -66,15 +67,7 @@ function SocialRoomMap({ friends = [] }) {
     setStatus('Kartan är avstängd. Din plats delas inte med vänner.')
 
     try {
-      const { data } = await supabase.auth.getUser()
-      const userId = data?.user?.id
-      if (userId) {
-        await supabase.from('social_locations').upsert({
-          user_id: userId,
-          enabled: false,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' })
-      }
+      await disableEncryptedSocialLocation()
     } catch {
       // Keep the local map off even if the server cannot be reached.
     }
@@ -90,22 +83,7 @@ function SocialRoomMap({ friends = [] }) {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
-          const { data } = await supabase.auth.getUser()
-          const userId = data?.user?.id
-          if (!userId) {
-            setStatus('Logga in för att dela plats med vänner.')
-            return
-          }
-
-          const { error } = await supabase.from('social_locations').upsert({
-            user_id: userId,
-            enabled: true,
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy_meters: position.coords.accuracy,
-            updated_at: new Date().toISOString(),
-          }, { onConflict: 'user_id' })
-          if (error) throw error
+          await enableEncryptedSocialLocation(friends, position)
 
           setEnabled(true)
           setStatus('Kartan är på. Din plats delas bara med godkända vänner som också använder kartan.')

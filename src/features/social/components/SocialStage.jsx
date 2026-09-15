@@ -90,7 +90,9 @@ function SocialStage({
       liveEnabled,
       onInsert: (row) => {
         if (!row) return
-        setMessages((current) => current.some((item) => item.id === row.id) ? current : [...current, row])
+        api.listMessages(conversationId).then((nextRows) => {
+          if (!cancelled) setMessages(nextRows)
+        }).catch(() => {})
       },
       supabaseConfigured: isSupabaseConfigured(),
     })

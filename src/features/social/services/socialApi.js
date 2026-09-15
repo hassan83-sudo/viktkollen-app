@@ -7,6 +7,11 @@ import {
   socialTables,
   validateSocialProfileInput,
 } from '../model/socialModel.js'
+import {
+  decryptSocialMessage,
+  encryptSocialMessage,
+  getConversationEncryptionKeys,
+} from './socialMessageEncryption.js'
 
 function socialError(code, message) {
   const error = new Error(message)
@@ -259,7 +264,19 @@ export function createSocialApi({ client = defaultClient, getUserId } = {}) {
         .select('body')
         .eq('id', data.id)
         .maybeSingle()
-      return { ...data, body: bodyRow?.body || '' }
+      if (!bodyRow?.body) return { ...data, body: '' }
+      try {
+        const keys = await getConversationEncryptionKeys(db, conversationId)
+        const body = await decryptSocialMessage(bodyRow.body, {
+          client: db,
+          conversationId,
+          keys,
+          messageId: data.id,
+        })
+        return { ...data, body }
+      } catch {
+        return { ...data, body: '' }
+      }
     },
 
     async listMessages(conversationId) {
@@ -272,7 +289,29 @@ export function createSocialApi({ client = defaultClient, getUserId } = {}) {
         .order('created_at', { ascending: true })
         .limit(200)
       if (error) throw socialError('messages_failed', 'Kunde inte hämta meddelanden.')
-      return data || []
+      const rows = data || []
+      if (!rows.length) return []
+      let keys
+      try {
+        keys = await getConversationEncryptionKeys(db, conversationId)
+      } catch {
+        throw socialError('messages_failed', 'Kunde inte låsa upp meddelandena.')
+      }
+      return Promise.all(rows.map(async (row) => {
+        try {
+          return {
+            ...row,
+            body: await decryptSocialMessage(row.body, {
+              client: db,
+              conversationId,
+              keys,
+              messageId: row.id,
+            }),
+          }
+        } catch {
+          return { ...row, body: '' }
+        }
+      }))
     },
 
     async sendText(conversationId, text) {
@@ -280,11 +319,24 @@ export function createSocialApi({ client = defaultClient, getUserId } = {}) {
       const userId = await requireUserId()
       const body = String(text || '').trim()
       if (!body) throw socialError('empty', 'Skriv ett meddelande först.')
+      if (body.length > 4000) throw socialError('too_long', 'Meddelandet är för långt.')
+      const messageId = crypto.randomUUID()
+      let encryptedBody
+      try {
+        encryptedBody = await encryptSocialMessage(body, {
+          client: db,
+          conversationId,
+          messageId,
+        })
+      } catch {
+        throw socialError('encryption_failed', 'Meddelandet kunde inte krypteras.')
+      }
       const { data, error } = await db
         .from(socialTables.messages)
         .insert({
-          body,
+          body: encryptedBody,
           conversation_id: conversationId,
+          id: messageId,
           type: 'text',
         })
         .select('id, conversation_id, sender_id, type, created_at')

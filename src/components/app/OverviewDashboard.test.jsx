@@ -100,7 +100,7 @@ describe('OverviewDashboard', () => {
     expect(markup).toContain('is-bodyScan')
     expect(markup).toContain('is-foodCamera')
     expect(markup).toContain('Minne, kläder och sista kollen')
-    expect(markup).toContain('Följ kroppens förändringar över tid')
+    expect(markup).not.toContain('Följ kroppens förändringar över tid')
     expect(markup).toContain('Skanna maten och uppskatta näringen')
     expect(markup).toContain('/viktkollen-body-scan.png')
     expect(markup).toContain('Öppna kroppsscanning i helskärm')

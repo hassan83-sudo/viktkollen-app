@@ -707,7 +707,7 @@ function OverviewPrimaryActions({
       accent: 'body',
       alt: t('home:actionAlts.body'),
       art: 'body',
-      description: t('home:actionDescriptions.body'),
+      description: '',
       footerLabel: t('bodyScan:startScan'),
       hitLabel: t('home:openBodyScanFullscreen'),
       image: '/viktkollen-body-scan.png',
@@ -766,7 +766,7 @@ function OverviewPrimaryActions({
             </span>
             <span className="overview-primary-action-copy">
               <strong>{action.label}</strong>
-              <small>{action.description}</small>
+              {action.description ? <small>{action.description}</small> : null}
             </span>
             {showTapPulse && !prefersReducedMotion ? (
               <span className="overview-tap-me is-pulse">{t('home:tapImage')}</span>

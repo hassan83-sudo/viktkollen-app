@@ -1,38 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import { displayNameForUser } from '../../features/place/placeFamilyMemberService.js'
 import { loadOwnPlaceHistory } from '../../features/place/placeHistoryService.js'
+import { supabase } from '../../services/supabaseClient.js'
 import './SchoolCardEnhancer.js'
 import './FamilyMapView.css'
 
-const positionFrequencyOptions = [
-  ['live', 'Live'],
-  ['10m', '10 min'],
-  ['30m', '30 min'],
-  ['1h', '1 timme'],
-  ['battery', 'Batterispar'],
-]
+const positionFrequencyOptions = [['live', 'Live'], ['10m', '10 min'], ['30m', '30 min'], ['1h', '1 timme'], ['battery', 'Batterispar']]
+const historyPeriods = [['today', 'Idag'], ['yesterday', 'Igår'], ['7d', '7 dagar'], ['30d', '30 dagar']]
 
-const historyPeriods = [
-  ['today', 'Idag'],
-  ['yesterday', 'Igår'],
-  ['7d', '7 dagar'],
-  ['30d', '30 dagar'],
-]
-
-function locationKey(location) {
-  return `${location.family_id}:${location.user_id}`
-}
+function locationKey(location) { return `${location.family_id}:${location.user_id}` }
 
 function mapUrlForLocation(location) {
   const latitude = Number(location.latitude)
   const longitude = Number(location.longitude)
   const latitudePadding = 0.006
   const longitudePadding = Math.max(0.008, latitudePadding / Math.max(Math.cos(latitude * Math.PI / 180), 0.35))
-  const params = new URLSearchParams({
-    bbox: [longitude - longitudePadding, latitude - latitudePadding, longitude + longitudePadding, latitude + latitudePadding].join(','),
-    layer: 'mapnik',
-    marker: `${latitude},${longitude}`,
-  })
+  const params = new URLSearchParams({ bbox: [longitude - longitudePadding, latitude - latitudePadding, longitude + longitudePadding, latitude + latitudePadding].join(','), layer: 'mapnik', marker: `${latitude},${longitude}` })
   return `https://www.openstreetmap.org/export/embed.html?${params.toString()}`
 }
 
@@ -46,9 +29,7 @@ function relativeUpdatedAt(value) {
   return new Date(value).toLocaleString()
 }
 
-function historyPointDate(point) {
-  return new Date(point.recordedAt || point.created_at)
-}
+function historyPointDate(point) { return new Date(point.recordedAt || point.created_at) }
 
 function pointInPeriod(point, period) {
   const date = historyPointDate(point)
@@ -59,11 +40,10 @@ function pointInPeriod(point, period) {
   yesterdayStart.setDate(yesterdayStart.getDate() - 1)
   if (period === 'today') return date >= todayStart
   if (period === 'yesterday') return date >= yesterdayStart && date < todayStart
-  const days = period === '30d' ? 30 : 7
-  return date >= new Date(now.getTime() - days * 86400000)
+  return date >= new Date(now.getTime() - (period === '30d' ? 30 : 7) * 86400000)
 }
 
-function FamilyMapView({ locations, familyMembers, currentUserId = null }) {
+function FamilyMapView({ locations, familyMembers }) {
   const validLocations = useMemo(() => {
     const seen = new Set()
     return (locations || []).filter((location) => {
@@ -101,10 +81,8 @@ function FamilyMapView({ locations, familyMembers, currentUserId = null }) {
   }, [entries, selectedKey])
 
   if (!entries.length) return null
-
   const selectedEntry = entries.find((entry) => entry.key === selectedKey) || entries[0]
   const selectedLocation = selectedEntry.location
-  const isOwnLocation = Boolean(currentUserId && selectedLocation.user_id === currentUserId)
   const updatedLabel = relativeUpdatedAt(selectedLocation.location_recorded_at)
   const isLive = selectedLocation.location_recorded_at ? Date.now() - new Date(selectedLocation.location_recorded_at).getTime() < 120000 : false
   const visibleHistory = history.filter((point) => !point.locked && pointInPeriod(point, historyPeriod))
@@ -112,14 +90,16 @@ function FamilyMapView({ locations, familyMembers, currentUserId = null }) {
   async function openHistory() {
     setCardNotice('')
     setHistoryOpen(true)
-    if (!isOwnLocation) {
-      setHistory([])
-      setHistoryError('Familjemedlemmens historik delas inte ännu. Endast din egen krypterade historik kan visas säkert.')
-      return
-    }
     setHistoryLoading(true)
     setHistoryError('')
     try {
+      const sessionResult = await supabase?.auth.getSession()
+      const ownUserId = sessionResult?.data?.session?.user?.id || null
+      if (!ownUserId || selectedLocation.user_id !== ownUserId) {
+        setHistory([])
+        setHistoryError('Familjemedlemmens historik delas inte ännu. Endast din egen krypterade historik kan visas säkert.')
+        return
+      }
       const result = await loadOwnPlaceHistory()
       setHistory(Array.isArray(result.data) ? result.data : [])
       setHistoryError(result.error?.message || '')
@@ -131,43 +111,29 @@ function FamilyMapView({ locations, familyMembers, currentUserId = null }) {
     }
   }
 
-  function showPlannedFeature(label) {
-    setCardNotice(`${label} kopplas in när den funktionen har riktig data.`)
-  }
+  function showPlannedFeature(label) { setCardNotice(`${label} kopplas in när den funktionen har riktig data.`) }
 
-  return (
-    <div className="family-map-view">
-      {entries.length > 1 ? <div className="family-map-person-switcher" aria-label="Välj familjemedlem på kartan">{entries.map((entry) => <button key={entry.key} type="button" aria-pressed={entry.key === selectedEntry.key} onClick={() => { setSelectedKey(entry.key); setHistoryOpen(false); setCardNotice('') }}>📍 {entry.label}</button>)}</div> : null}
-
-      <div className="family-map-frame"><iframe key={selectedEntry.key} title={`Karta – ${selectedEntry.label}`} src={mapUrlForLocation(selectedLocation)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" /></div>
-
-      <article className="family-map-person-card" aria-live="polite">
-        <div className="family-map-person-card-heading"><strong>{selectedEntry.label}</strong><span className={isLive ? 'is-live' : ''}>{isLive ? '🟢 LIVE' : 'Senaste position'}</span></div>
-        <p>📍 Delad position</p>
-        <small>Senast uppdaterad: {updatedLabel}</small>
-        {selectedLocation.accuracy_meters != null ? <small>Noggrannhet ±{Math.round(selectedLocation.accuracy_meters)} m</small> : null}
-        <div className="family-map-person-actions">
-          <button type="button" onClick={() => showPlannedFeature('Följ live')}>Följ live</button>
-          <button type="button" onClick={() => showPlannedFeature('Prata')}>Prata</button>
-          <button type="button" onClick={openHistory}>Historik</button>
-        </div>
-        <label className="family-map-frequency"><span>Positionsfrekvens</span><select value={positionFrequency} onChange={(event) => setPositionFrequency(event.target.value)}>{positionFrequencyOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-        {cardNotice ? <p className="family-map-card-notice" role="status">{cardNotice}</p> : null}
-      </article>
-
-      {historyOpen ? <section className="family-map-history" aria-label={`Historik – ${selectedEntry.label}`}>
-        <div className="family-map-history-heading"><strong>Historik · {selectedEntry.label}</strong><button type="button" onClick={() => setHistoryOpen(false)}>Stäng</button></div>
-        <div className="family-map-history-periods">{historyPeriods.map(([value, label]) => <button key={value} type="button" aria-pressed={historyPeriod === value} onClick={() => setHistoryPeriod(value)}>{label}</button>)}</div>
-        {historyLoading ? <p>Hämtar historik…</p> : null}
-        {historyError ? <p className="family-map-card-notice" role="status">{historyError}</p> : null}
-        {!historyLoading && !historyError && visibleHistory.length === 0 ? <p>Ingen sparad position under perioden.</p> : null}
-        {visibleHistory.length ? <div className="family-map-history-list">{visibleHistory.map((point) => <article key={point.id}><strong>{historyPointDate(point).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong><span>📍 {Number(point.latitude).toFixed(5)}, {Number(point.longitude).toFixed(5)}</span>{point.accuracyMeters != null ? <small>±{Math.round(point.accuracyMeters)} m</small> : null}</article>)}</div> : null}
-      </section> : null}
-
-      <div className="family-map-selected"><strong>Position</strong><span>{Number(selectedLocation.latitude).toFixed(5)}, {Number(selectedLocation.longitude).toFixed(5)}</span></div>
-      <p className="family-map-provider-note"><small>Kartan visas av OpenStreetMap. Endast området runt den valda delade positionen begärs när kartan öppnas.</small></p>
-    </div>
-  )
+  return <div className="family-map-view">
+    {entries.length > 1 ? <div className="family-map-person-switcher" aria-label="Välj familjemedlem på kartan">{entries.map((entry) => <button key={entry.key} type="button" aria-pressed={entry.key === selectedEntry.key} onClick={() => { setSelectedKey(entry.key); setHistoryOpen(false); setCardNotice('') }}>📍 {entry.label}</button>)}</div> : null}
+    <div className="family-map-frame"><iframe key={selectedEntry.key} title={`Karta – ${selectedEntry.label}`} src={mapUrlForLocation(selectedLocation)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" /></div>
+    <article className="family-map-person-card" aria-live="polite">
+      <div className="family-map-person-card-heading"><strong>{selectedEntry.label}</strong><span className={isLive ? 'is-live' : ''}>{isLive ? '🟢 LIVE' : 'Senaste position'}</span></div>
+      <p>📍 Delad position</p><small>Senast uppdaterad: {updatedLabel}</small>
+      {selectedLocation.accuracy_meters != null ? <small>Noggrannhet ±{Math.round(selectedLocation.accuracy_meters)} m</small> : null}
+      <div className="family-map-person-actions"><button type="button" onClick={() => showPlannedFeature('Följ live')}>Följ live</button><button type="button" onClick={() => showPlannedFeature('Prata')}>Prata</button><button type="button" onClick={openHistory}>Historik</button></div>
+      <label className="family-map-frequency"><span>Positionsfrekvens</span><select value={positionFrequency} onChange={(event) => setPositionFrequency(event.target.value)}>{positionFrequencyOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+      {cardNotice ? <p className="family-map-card-notice" role="status">{cardNotice}</p> : null}
+    </article>
+    {historyOpen ? <section className="family-map-history" aria-label={`Historik – ${selectedEntry.label}`}>
+      <div className="family-map-history-heading"><strong>Historik · {selectedEntry.label}</strong><button type="button" onClick={() => setHistoryOpen(false)}>Stäng</button></div>
+      <div className="family-map-history-periods">{historyPeriods.map(([value, label]) => <button key={value} type="button" aria-pressed={historyPeriod === value} onClick={() => setHistoryPeriod(value)}>{label}</button>)}</div>
+      {historyLoading ? <p>Hämtar historik…</p> : null}{historyError ? <p className="family-map-card-notice" role="status">{historyError}</p> : null}
+      {!historyLoading && !historyError && visibleHistory.length === 0 ? <p>Ingen sparad position under perioden.</p> : null}
+      {visibleHistory.length ? <div className="family-map-history-list">{visibleHistory.map((point) => <article key={point.id}><strong>{historyPointDate(point).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong><span>📍 {Number(point.latitude).toFixed(5)}, {Number(point.longitude).toFixed(5)}</span>{point.accuracyMeters != null ? <small>±{Math.round(point.accuracyMeters)} m</small> : null}</article>)}</div> : null}
+    </section> : null}
+    <div className="family-map-selected"><strong>Position</strong><span>{Number(selectedLocation.latitude).toFixed(5)}, {Number(selectedLocation.longitude).toFixed(5)}</span></div>
+    <p className="family-map-provider-note"><small>Kartan visas av OpenStreetMap. Endast området runt den valda delade positionen begärs när kartan öppnas.</small></p>
+  </div>
 }
 
 export default FamilyMapView

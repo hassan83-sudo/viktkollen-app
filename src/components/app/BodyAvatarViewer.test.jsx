@@ -10,6 +10,14 @@ import BodyAvatarViewer from './BodyAvatarViewer.jsx'
 import { AVATAR_FRONT_SRC } from '../../services/bodyAvatarModel.js'
 
 describe('BodyAvatarViewer', () => {
+  it('uses the original artwork ratio to fill the mobile width without distortion', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/App.css'), 'utf8')
+
+    expect(css).toContain('@media (max-width: 799px)')
+    expect(css).toContain('aspect-ratio: 1023 / 1537')
+    expect(css).toContain('object-fit: cover')
+  })
+
   it('shows the brand avatar PNG, scan rings and rotation UI without CSS 3D fakes', () => {
     const html = renderToStaticMarkup(<BodyAvatarViewer view="front" />)
     const css = readFileSync(resolve(process.cwd(), 'src/App.css'), 'utf8')

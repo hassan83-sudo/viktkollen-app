@@ -14000,6 +14000,19 @@ html:has(#app-section-more.is-active),
   user-select: none;
 }
 
+@media (max-width: 799px) {
+  .body-avatar-viewer-stage {
+    aspect-ratio: 1023 / 1537;
+    min-height: 0;
+  }
+
+  .body-avatar-viewer-stage img {
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+  }
+}
+
 .body-avatar-viewer-hint {
   position: absolute;
   right: 0;
@@ -14229,10 +14242,12 @@ html:has(#app-section-more.is-active),
     padding-inline: 10px;
   }
 
-  .body-avatar-viewer-stage,
+  .body-avatar-viewer-stage {
+    min-height: 0;
+  }
+
   .body-avatar-viewer-stage img {
-    min-height: clamp(355px, 48svh, 430px);
-    height: clamp(355px, 48svh, 430px);
+    height: 100%;
   }
 }
 

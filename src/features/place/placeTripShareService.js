@@ -1,34 +1,8 @@
 import { supabase } from '../../services/supabaseClient.js'
+import { decryptPlacePayload, encryptPlacePayload, ensurePlaceE2eeIdentity } from './placeE2eeService.js'
 
-async function currentUserId() {
-  if (!supabase) return null
-  const { data } = await supabase.auth.getSession()
-  return data?.session?.user?.id || null
-}
-
-const fields='id,family_id,owner_user_id,viewer_user_id,started_at,ended_at,destination_latitude,destination_longitude,eta_minutes,deviation_alerts'
-
-export async function loadActiveTripShares() {
-  if (!supabase) return { data: [], userId: null, error: new Error('Supabase saknas.') }
-  const userId = await currentUserId()
-  if (!userId) return { data: [], userId: null, error: new Error('Du behöver vara inloggad.') }
-  const { data, error } = await supabase.from('place_trip_shares').select(fields).is('ended_at', null).order('started_at', { ascending: false })
-  return { data: data || [], userId, error }
-}
-
-export async function startTripShare({ familyId, viewerUserId, destinationLatitude=null, destinationLongitude=null, etaMinutes=null, deviationAlerts=false }) {
-  if (!supabase) return { data: null, error: new Error('Supabase saknas.') }
-  const ownerUserId = await currentUserId()
-  if (!ownerUserId) return { data: null, error: new Error('Du behöver vara inloggad.') }
-  const row={family_id:familyId,owner_user_id:ownerUserId,viewer_user_id:viewerUserId,deviation_alerts:Boolean(deviationAlerts)}
-  if(Number.isFinite(Number(destinationLatitude))&&Number.isFinite(Number(destinationLongitude))){row.destination_latitude=Number(destinationLatitude);row.destination_longitude=Number(destinationLongitude)}
-  if(Number.isFinite(Number(etaMinutes))&&Number(etaMinutes)>0)row.eta_minutes=Math.round(Number(etaMinutes))
-  const { data, error } = await supabase.from('place_trip_shares').insert(row).select(fields).single()
-  return { data, error }
-}
-
-export async function endTripShare(id) {
-  if (!supabase) return { error: new Error('Supabase saknas.') }
-  const { error } = await supabase.from('place_trip_shares').update({ ended_at: new Date().toISOString() }).eq('id', id)
-  return { error }
-}
+async function currentUserId(){if(!supabase)return null;const{data}=await supabase.auth.getSession();return data?.session?.user?.id||null}
+const fields='id,family_id,owner_user_id,viewer_user_id,started_at,ended_at,destination_encrypted_payload,destination_encrypted_iv,eta_minutes,deviation_alerts'
+export async function loadActiveTripShares(){if(!supabase)return{data:[],userId:null,error:new Error('Supabase saknas.')};const userId=await currentUserId();if(!userId)return{data:[],userId:null,error:new Error('Du behöver vara inloggad.')};try{await ensurePlaceE2eeIdentity()}catch(error){return{data:[],userId,error}}const{data,error}=await supabase.from('place_trip_shares').select(fields).is('ended_at',null).order('started_at',{ascending:false});if(error)return{data:[],userId,error};const out=[];for(const row of data||[]){let destination_latitude=null,destination_longitude=null;if(row.destination_encrypted_payload&&row.destination_encrypted_iv){try{const other=row.owner_user_id===userId?row.viewer_user_id:row.owner_user_id,p=await decryptPlacePayload(other,{encrypted_payload:row.destination_encrypted_payload,encrypted_iv:row.destination_encrypted_iv});destination_latitude=Number(p.latitude);destination_longitude=Number(p.longitude)}catch(e){console.warn('Trip destination decrypt failed:',e?.message||e)}}out.push({...row,destination_latitude,destination_longitude})}return{data:out,userId,error:null}}
+export async function startTripShare({familyId,viewerUserId,destinationLatitude=null,destinationLongitude=null,etaMinutes=null,deviationAlerts=false}){if(!supabase)return{data:null,error:new Error('Supabase saknas.')};const ownerUserId=await currentUserId();if(!ownerUserId)return{data:null,error:new Error('Du behöver vara inloggad.')};try{await ensurePlaceE2eeIdentity();const row={family_id:familyId,owner_user_id:ownerUserId,viewer_user_id:viewerUserId,deviation_alerts:Boolean(deviationAlerts),destination_latitude:null,destination_longitude:null};if(Number.isFinite(Number(destinationLatitude))&&Number.isFinite(Number(destinationLongitude))){const e=await encryptPlacePayload(viewerUserId,{latitude:Number(destinationLatitude),longitude:Number(destinationLongitude)});row.destination_encrypted_payload=e.encrypted_payload;row.destination_encrypted_iv=e.encrypted_iv}if(Number.isFinite(Number(etaMinutes))&&Number(etaMinutes)>0)row.eta_minutes=Math.round(Number(etaMinutes));const{data,error}=await supabase.from('place_trip_shares').insert(row).select(fields).single();return{data,error}}catch(error){return{data:null,error}}}
+export async function endTripShare(id){if(!supabase)return{error:new Error('Supabase saknas.')};const{error}=await supabase.from('place_trip_shares').update({ended_at:new Date().toISOString()}).eq('id',id);return{error}}

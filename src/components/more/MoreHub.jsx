@@ -1,5 +1,6 @@
 import { moreHubFolders } from '../../services/more/moreFolders.js'
 import SeniorEverydaySection from '../../features/senior/SeniorEverydaySection.jsx'
+import DebtCaseSection from '../../features/economy/DebtCaseSection.jsx'
 import { useTranslation } from 'react-i18next'
 
 const FOLDER_I18N_KEYS = {
@@ -49,7 +50,13 @@ function MoreHub({ activeFolder, children, isAuthenticated, onBack, onOpen, sync
           <p className="eyebrow">{t('more.heading')}</p>
           <h1>{title}</h1>
         </header>
-        {folder.id === 'senior-65-plus' ? <SeniorEverydaySection /> : children}
+        {folder.id === 'senior-65-plus' ? (
+          <SeniorEverydaySection />
+        ) : folder.id === 'inkasso' ? (
+          <DebtCaseSection type="inkasso" />
+        ) : folder.id === 'kronofogden' ? (
+          <DebtCaseSection type="kronofogden" />
+        ) : children}
       </div>
     )
   }

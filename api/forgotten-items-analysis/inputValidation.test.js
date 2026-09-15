@@ -9,6 +9,11 @@ describe('api/forgotten-items-analysis isAllowedOrigin - exact hostname origin g
     expect(isAllowedOrigin('https://viktkollen.vercel.app', 'viktkollen.vercel.app')).toBe(true)
   })
 
+  it('allows the exact incoming Host when VERCEL_URL is unavailable', () => {
+    expect(isAllowedOrigin('https://viktkollen-app.vercel.app', 'viktkollen-app.vercel.app', '')).toBe(true)
+    expect(isAllowedOrigin('http://localhost:5173', 'localhost:5173', '')).toBe(true)
+  })
+
   it('blocks a subdomain-suffix origin attack', () => {
     expect(isAllowedOrigin('https://viktkollen.vercel.app.attacker.example', 'viktkollen.vercel.app')).toBe(false)
   })
@@ -22,9 +27,15 @@ describe('api/forgotten-items-analysis isAllowedOrigin - exact hostname origin g
     expect(isAllowedOrigin(undefined, 'viktkollen.vercel.app')).toBe(true)
   })
 
-  it('keeps the current behavior: a missing VERCEL_URL disables the origin gate', () => {
-    expect(isAllowedOrigin('https://evil.example', '')).toBe(true)
-    expect(isAllowedOrigin('https://evil.example', undefined)).toBe(true)
+  it('fails closed for a supplied Origin when no allowed host can be established', () => {
+    expect(isAllowedOrigin('https://evil.example', '')).toBe(false)
+    expect(isAllowedOrigin('https://evil.example', undefined)).toBe(false)
+  })
+
+  it('blocks non-http origins and host lookalikes', () => {
+    expect(isAllowedOrigin('null', 'viktkollen.vercel.app')).toBe(false)
+    expect(isAllowedOrigin('file://viktkollen.vercel.app', 'viktkollen.vercel.app')).toBe(false)
+    expect(isAllowedOrigin('https://viktkollen.vercel.app.evil.example', 'viktkollen.vercel.app')).toBe(false)
   })
 })
 

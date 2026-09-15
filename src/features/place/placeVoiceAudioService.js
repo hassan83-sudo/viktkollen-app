@@ -24,4 +24,5 @@ export async function startPlaceVoiceAudio({callId,initiator,onRemoteStream,onSt
  return {stream,pc}
 }
 
+export function setPlaceVoiceMicrophone(callId,enabled){const item=peers.get(callId);if(!item)return false;item.stream?.getAudioTracks().forEach(track=>{track.enabled=Boolean(enabled)});return true}
 export function stopPlaceVoiceAudio(callId){const item=peers.get(callId);if(!item)return;item.stream?.getTracks().forEach(t=>t.stop());item.pc?.close();if(item.channel&&supabase)supabase.removeChannel(item.channel);peers.delete(callId)}

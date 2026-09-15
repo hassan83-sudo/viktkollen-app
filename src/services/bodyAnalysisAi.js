@@ -95,6 +95,10 @@ export async function analyzeBodyImages(
         ],
         max_output_tokens: 1600,
         model,
+        // Body photos are sensitive. The Responses API must process this
+        // request ephemerally instead of retaining the response for later
+        // retrieval through the provider API.
+        store: false,
       }),
       headers: {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,

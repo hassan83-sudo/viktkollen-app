@@ -973,11 +973,13 @@ function OverviewDashboard({
   isVoiceConversationActive,
   isVoiceMuted,
   meals,
+  navigationIntent,
   nutritionGoals,
   onAddMeal,
   onEditProfile,
   onLogWeight,
   onNavigateSection,
+  onNavigationIntentConsumed,
   onOpenAiCoach,
   onOpenWellbeing,
   onScanFood,
@@ -1000,11 +1002,16 @@ function OverviewDashboard({
   weights,
 }) {
   const { t } = useTranslation(['common', 'home', 'social'])
+  const flags = getFeatureFlags(featureFlags)
+  const initialSmartCameraMode = navigationIntent?.mode === 'forgotten'
+    && isFeatureEnabled('smartCamera', flags)
+    ? 'forgotten'
+    : ''
   const [now, setNow] = useState(() => new Date())
   const [bodyScanOpen, setBodyScanOpen] = useState(false)
   const [bodyCaptureOpen, setBodyCaptureOpen] = useState(false)
-  const [smartCameraOpen, setSmartCameraOpen] = useState(false)
-  const [smartCameraInitialMode, setSmartCameraInitialMode] = useState('')
+  const [smartCameraOpen, setSmartCameraOpen] = useState(Boolean(initialSmartCameraMode))
+  const [smartCameraInitialMode, setSmartCameraInitialMode] = useState(initialSmartCameraMode)
   const [coachOpen, setCoachOpen] = useState(false)
   const [socialOpen, setSocialOpen] = useState(false)
   const [socialView, setSocialView] = useState('inbox')
@@ -1016,9 +1023,13 @@ function OverviewDashboard({
   const [profilePhoto, setProfilePhoto] = useState(() => readProfilePhoto())
   const [weather, setWeather] = useState(() => createFallbackWeatherContext())
   const [weatherDayOpen, setWeatherDayOpen] = useState(false)
-  const flags = getFeatureFlags(featureFlags)
   const socialUiEnabled = isFeatureEnabled('socialUi', flags)
   const socialLiveEnabled = isFeatureEnabled('socialLive', flags)
+
+  useEffect(() => {
+    if (navigationIntent?.mode !== 'forgotten') return
+    onNavigationIntentConsumed?.()
+  }, [navigationIntent, onNavigationIntentConsumed])
   const liveContext = useMemo(() => createOverviewLiveContext(now, weather), [now, weather])
   const initials = getInitials(profile, email)
   const hasPendingNotifications = Boolean(

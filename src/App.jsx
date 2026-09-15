@@ -903,6 +903,7 @@ function App() {
   const [nutritionIntent, setNutritionIntent] = useState(null)
   const [progressIntent, setProgressIntent] = useState(null)
   const [moreIntent, setMoreIntent] = useState(null)
+  const [homeIntent, setHomeIntent] = useState(null)
   const [showInternalTools] = useState(isInternalToolsEnabled)
   const [checkIn, setCheckIn] = useState(() =>
     userDataRepository.getCheckIn(initialCheckIn, isStoredCheckIn),
@@ -3067,6 +3068,7 @@ function App() {
             isVoiceConversationActive={isVoiceConversationActive}
             isVoiceMuted={isVoiceMuted}
             meals={meals}
+            navigationIntent={homeIntent}
             nutritionGoals={nutritionGoals}
             onAddMeal={handleDailyCoachAddMeal}
             onAvatarLiveContextChange={(next) => {
@@ -3080,6 +3082,7 @@ function App() {
             onHealthDashboardPeriodChange={setHealthDashboardPeriod}
             onLogWeight={handleDailyCoachLogWeight}
             onNavigateSection={handleDailyCoachAction}
+            onNavigationIntentConsumed={() => setHomeIntent(null)}
             onOpenAiCoach={() => setAiCoachOverlayOpen(true)}
             onOpenWellbeing={() => handleDailyCoachAction('wellbeing', 'ma-bra')}
             onScanFood={handleDailyCoachScanFood}
@@ -3135,6 +3138,10 @@ function App() {
             activeSection={activeAppSection}
             onNavigateSection={handleAppSectionChange}
             onOpenCompanion={() => setAiCoachOverlayOpen(true)}
+            onOpenEye={isFeatureEnabled('smartCamera', featureFlags) ? () => {
+              setHomeIntent({ id: Date.now(), mode: 'forgotten' })
+              setActiveAppSection('home')
+            } : undefined}
             reminderState={reminderState}
           />
         )}

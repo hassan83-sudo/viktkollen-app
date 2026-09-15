@@ -90,8 +90,17 @@ describe('Ready! section wiring', () => {
     expect(eyeCardSource).toContain('quickActions.eye.title')
     expect(memoryCardSource).toContain('quickActions.memory.title')
     expect(readySource).toContain('onOpenProfile={() => setShowCompanionProfile(true)}')
-    expect(readySource).toContain('onOpenEye={() => setShowEyeInfo(true)}')
+    expect(readySource).toContain('onOpenEye={onOpenEye || (() => setShowEyeInfo(true))}')
     expect(readySource).toContain('onOpenMemory={() => setShowAllTechniques(true)}')
+  })
+
+  it('routes the Ready AI Eye shortcut to the existing forgotten-items camera flow', () => {
+    expect(appSource).toContain("setHomeIntent({ id: Date.now(), mode: 'forgotten' })")
+    expect(appSource).toContain("setActiveAppSection('home')")
+    expect(appSource).toContain('onNavigationIntentConsumed={() => setHomeIntent(null)}')
+    expect(overviewSource).toContain("navigationIntent?.mode === 'forgotten'")
+    expect(overviewSource).toContain("? 'forgotten'")
+    expect(overviewSource).toContain('useState(Boolean(initialSmartCameraMode))')
   })
 
   it('keeps existing Redo functionality: item CRUD, examples, forgot flow, companion settings, Nästa events, Påminnelser', () => {

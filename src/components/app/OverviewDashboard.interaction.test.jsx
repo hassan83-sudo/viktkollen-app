@@ -65,4 +65,17 @@ describe('OverviewDashboard interactions', () => {
     expect(screen.getByRole('dialog', { name: 'Vänner' })).toBeTruthy()
     expect(screen.getAllByText('Chatten är inte ansluten ännu. Ingen fejkdata visas.').length).toBeGreaterThanOrEqual(1)
   })
+
+  it('opens the existing forgotten-items camera flow from a one-shot Home intent', () => {
+    const onNavigationIntentConsumed = vi.fn()
+    renderOverview({
+      featureFlags: { memory: true, smartCamera: true },
+      navigationIntent: { id: 1, mode: 'forgotten' },
+      onNavigationIntentConsumed,
+    })
+
+    expect(screen.getByRole('dialog', { name: 'Smart kamera' })).toBeTruthy()
+    expect(screen.getByRole('navigation', { name: 'Saker att visa för kameran' })).toBeTruthy()
+    expect(onNavigationIntentConsumed).toHaveBeenCalledTimes(1)
+  })
 })

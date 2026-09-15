@@ -27,7 +27,7 @@ import ReadyQuickActions from './ready/ReadyQuickActions.jsx'
 import NextCard from './ready/NextCard.jsx'
 import ReminderCard from './ready/ReminderCard.jsx'
 
-function ReadySection({ activeSection, onNavigateSection, onOpenCompanion, reminderState }) {
+function ReadySection({ activeSection, onNavigateSection, onOpenCompanion, onOpenEye, reminderState }) {
   const { t } = useTranslation(['ready', 'common', 'notices'])
   const [state, setState] = useState(() => loadReadyState())
   const [draftLabel, setDraftLabel] = useState('')
@@ -122,7 +122,7 @@ function ReadySection({ activeSection, onNavigateSection, onOpenCompanion, remin
         <ForgotSomethingCard forgotText={forgotText} onForgotTextChange={setForgotText} onSubmit={handleAskForgot} pendingForgotLabel={pendingForgotLabel} onConfirm={handleConfirmForgot} onCancel={() => setPendingForgotLabel('')} />
 
         <AiCompanionCard onOpen={() => setShowCompanionProfile(true)} />
-        <ReadyQuickActions onOpenProfile={() => setShowCompanionProfile(true)} onOpenEye={() => setShowEyeInfo(true)} onOpenMemory={() => setShowAllTechniques(true)} />
+        <ReadyQuickActions onOpenProfile={() => setShowCompanionProfile(true)} onOpenEye={onOpenEye || (() => setShowEyeInfo(true))} onOpenMemory={() => setShowAllTechniques(true)} />
 
         <div className="ready-bottom-row"><NextCard nextEvents={nextEvents} onOpen={handleNextCardOpen} /><ReminderCard onOpen={() => onNavigateSection?.('notices')} /></div>
 

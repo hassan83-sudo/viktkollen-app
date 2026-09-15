@@ -23,6 +23,7 @@ function HomeSection({
   isVoiceConversationActive,
   isVoiceMuted,
   meals,
+  navigationIntent,
   nutritionGoals,
   onAddMeal,
   onAvatarLiveContextChange,
@@ -31,6 +32,7 @@ function HomeSection({
   onEditProfile,
   onLogWeight,
   onNavigateSection,
+  onNavigationIntentConsumed,
   onOpenAiCoach,
   onOpenWellbeing,
   onScanFood,
@@ -82,6 +84,7 @@ function HomeSection({
           isVoiceConversationActive={isVoiceConversationActive}
           isVoiceMuted={isVoiceMuted}
           meals={meals}
+          navigationIntent={navigationIntent}
           nutritionGoals={nutritionGoals}
           onAddMeal={onAddMeal}
           onAvatarLiveContextChange={onAvatarLiveContextChange}
@@ -90,6 +93,7 @@ function HomeSection({
           onEditProfile={onEditProfile}
           onLogWeight={onLogWeight}
           onNavigateSection={onNavigateSection}
+          onNavigationIntentConsumed={onNavigationIntentConsumed}
           onOpenAiCoach={onOpenAiCoach}
           onOpenWellbeing={onOpenWellbeing}
           onScanFood={onScanFood}

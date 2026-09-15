@@ -7,15 +7,15 @@ async function currentUserId() {
 }
 
 export async function loadActiveTripShares() {
-  if (!supabase) return { data: [], error: new Error('Supabase saknas.') }
+  if (!supabase) return { data: [], userId: null, error: new Error('Supabase saknas.') }
   const userId = await currentUserId()
-  if (!userId) return { data: [], error: new Error('Du behöver vara inloggad.') }
+  if (!userId) return { data: [], userId: null, error: new Error('Du behöver vara inloggad.') }
   const { data, error } = await supabase
     .from('place_trip_shares')
     .select('id,family_id,owner_user_id,viewer_user_id,started_at,ended_at')
     .is('ended_at', null)
     .order('started_at', { ascending: false })
-  return { data: data || [], error }
+  return { data: data || [], userId, error }
 }
 
 export async function startTripShare({ familyId, viewerUserId }) {

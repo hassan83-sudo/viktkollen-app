@@ -3,10 +3,14 @@ import { describe, expect, it } from 'vitest'
 
 const service = readFileSync('src/services/cloudSyncService.js', 'utf8')
 const migration = readFileSync('supabase/user_backups_security_hardening.sql', 'utf8')
+const encryptionMigration = readFileSync(
+  'supabase/migrations/20260915124145_encrypt_user_backups_with_vault_key.sql',
+  'utf8',
+)
 
 describe('user_backups defense in depth', () => {
   it('adds the authenticated owner filter to backup reads and mutations', () => {
-    expect(service.match(/\.eq\('user_id', auth\.user\.id\)/g)).toHaveLength(5)
+    expect(service.match(/\.eq\('user_id', auth\.user\.id\)/g).length).toBeGreaterThanOrEqual(5)
     expect(service).toContain("getLatestCloudBackup(auth.user.id)")
     expect(service).toContain(".eq('user_id', userId)")
   })
@@ -23,5 +27,18 @@ describe('user_backups defense in depth', () => {
     expect(migration.match(/create policy "Viktkollen users [^"]+"/g)).toHaveLength(4)
     expect(migration.match(/on public\.user_backups[^;]+to authenticated/g)).toHaveLength(4)
     expect(migration.match(/\(select auth\.uid\(\)\) = user_id/g)).toHaveLength(5)
+  })
+
+  it('stores new backup payloads encrypted and migrates legacy rows after validation', () => {
+    expect(service).toContain('encryptedPayload = await encryptBackupPayload(validation.payload)')
+    expect(service).toContain('payload: encryptedPayload,')
+    expect(service).toContain('name: null,')
+    expect(service).not.toContain('payload: validation.payload,')
+    expect(service).toContain('await migrateLegacyBackup(data, auth.user.id, validation.payload)')
+    expect(service).toContain('payload.payload = await encryptBackupPayload(renamedBackup)')
+    expect(encryptionMigration).toContain('create table if not exists private.user_backup_keys')
+    expect(encryptionMigration).toContain('requester_id uuid := auth.uid()')
+    expect(encryptionMigration).toContain('revoke all on function public.viktkollen_get_or_create_backup_key() from public, anon;')
+    expect(encryptionMigration).toContain('grant execute on function public.viktkollen_get_or_create_backup_key() to authenticated;')
   })
 })

@@ -26,6 +26,12 @@ import {
   saveCloudBackupMeta,
 } from './userDataRepository.js'
 import { safeLogger } from './safeLogger.js'
+import {
+  decryptBackupPayload,
+  encryptBackupPayload,
+  getBackupEncryptionKey,
+  isEncryptedBackupPayload,
+} from './backupEncryptionService.js'
 
 const disabledReason = 'Automatisk molnsynk är avstängd'
 const backupTable = 'user_backups'
@@ -115,8 +121,10 @@ function makeFailure(action, error, extra = {}) {
   return failure
 }
 
-function normalizeBackupRow(row) {
-  const backup = normalizeCloudBackupPayload(row.payload || row.data)
+function normalizeBackupRow(row, decryptedPayload) {
+  const backup = normalizeCloudBackupPayload(
+    decryptedPayload === undefined ? row.payload || row.data : decryptedPayload,
+  )
   const sizeBytes = Number(row.size_bytes) || getApproximatePayloadSize(backup)
 
   return {
@@ -124,9 +132,10 @@ function normalizeBackupRow(row) {
     checksum: row.checksum || backup?.checksum || '',
     clientId: backup?.clientId || '',
     createdAt: row.created_at || row.updated_at,
+    encrypted: isEncryptedBackupPayload(row.payload),
     id: row.id,
     isFavorite: Boolean(row.is_favorite),
-    name: typeof row.name === 'string' ? row.name : '',
+    name: typeof row.name === 'string' ? row.name : backup?.metadata?.name || '',
     schemaVersion: Number(row.schema_version) || backup?.schemaVersion || 1,
     sizeBytes,
     storageKeyCount: Array.isArray(backup?.metadata?.storageKeys)
@@ -134,6 +143,31 @@ function normalizeBackupRow(row) {
       : Object.keys(backup?.userData || backup?.data || {}).length,
     updatedAt: row.updated_at,
   }
+}
+
+async function decryptBackupRow(row, encryptionKey = null) {
+  const storedPayload = row.payload || row.data
+  const payload = await decryptBackupPayload(storedPayload, encryptionKey)
+  return normalizeBackupRow(row, payload)
+}
+
+async function decryptBackupRows(rows) {
+  const needsKey = rows.some((row) => isEncryptedBackupPayload(row.payload))
+  const encryptionKey = needsKey ? await getBackupEncryptionKey() : null
+  return Promise.all(rows.map((row) => decryptBackupRow(row, encryptionKey)))
+}
+
+async function migrateLegacyBackup(row, userId, payload) {
+  if (isEncryptedBackupPayload(row.payload)) return
+
+  const encryptedPayload = await encryptBackupPayload(payload)
+  const { error } = await supabase
+    .from(backupTable)
+    .update({ data: null, name: null, payload: encryptedPayload })
+    .eq('id', row.id)
+    .eq('user_id', userId)
+
+  if (error) throw error
 }
 
 function getBackupSelectColumns() {
@@ -324,7 +358,11 @@ export async function pushLocalDataToCloud(name = '') {
     return makeFailure('backup', latest.error)
   }
 
-  if (latest.backup?.checksum && latest.backup.checksum === validation.payload.checksum) {
+  if (
+    latest.backup?.encrypted
+    && latest.backup.checksum
+    && latest.backup.checksum === validation.payload.checksum
+  ) {
     await createCloudEvent('backup', 'skipped', 'Molnet har redan den senaste versionen.', {
       checksum: validation.payload.checksum,
     })
@@ -340,14 +378,22 @@ export async function pushLocalDataToCloud(name = '') {
     }
   }
 
+  let encryptedPayload
+  try {
+    encryptedPayload = await encryptBackupPayload(validation.payload)
+  } catch (encryptionError) {
+    return makeFailure('backup', encryptionError)
+  }
+
   const { data, error } = await supabase
     .from(backupTable)
     .insert({
       checksum: validation.payload.checksum,
       client_updated_at: validation.payload.exportedAt,
       is_favorite: false,
-      name: name.trim() || null,
-      payload: validation.payload,
+      name: null,
+      data: null,
+      payload: encryptedPayload,
       schema_version: validation.payload.schemaVersion,
       size_bytes: validation.payload.metadata.sizeBytes,
     })
@@ -358,7 +404,7 @@ export async function pushLocalDataToCloud(name = '') {
     return makeFailure('backup', error)
   }
 
-  const normalized = normalizeBackupRow(data)
+  const normalized = normalizeBackupRow(data, validation.payload)
   const stateError = await updateSyncState(validation.payload, normalized.id, 'push', 'success')
 
   if (stateError) {
@@ -408,11 +454,18 @@ export async function listUserBackups() {
     return makeFailure('list', error, { backups: [] })
   }
 
+  let backups
+  try {
+    backups = await decryptBackupRows(data || [])
+  } catch (decryptionError) {
+    return makeFailure('list', decryptionError, { backups: [] })
+  }
+
   return {
     ...getCloudSyncStatus(),
     action: 'list',
     backupCount: count || 0,
-    backups: (data || []).map(normalizeBackupRow),
+    backups,
     ok: true,
     reason: 'Säkerhetskopior hämtades.',
   }
@@ -449,13 +502,24 @@ export async function previewCloudRestore(backupId = '') {
     })
   }
 
-  const backup = normalizeBackupRow(data)
+  let backup
+  try {
+    backup = await decryptBackupRow(data)
+  } catch (decryptionError) {
+    return makeFailure('preview', decryptionError)
+  }
   const validation = validateCloudBackupPayload(backup.backup)
 
   if (!validation.ok) {
     return makeFailure('preview', new Error(validation.reason), {
       code: cloudErrorCodes.INVALID_PAYLOAD,
     })
+  }
+
+  try {
+    await migrateLegacyBackup(data, auth.user.id, validation.payload)
+  } catch (encryptionError) {
+    return makeFailure('preview', encryptionError)
   }
 
   const localPayload = getLocalCloudBackupPayload()
@@ -633,7 +697,7 @@ export async function getCloudDashboardStatus() {
     backupCount: count || 0,
     databaseStatus: 'Tillgänglig',
     isAuthenticated: true,
-    latestBackup: data?.[0] ? normalizeBackupRow(data[0]) : null,
+    latestBackup: data?.[0] ? await decryptBackupRow(data[0]) : null,
     latestRestoreAt: localMeta.latestRestoreAt || null,
     latestSyncAt: localMeta.latestSyncAt || null,
     ok: true,
@@ -690,7 +754,34 @@ export async function updateUserBackup(backupId, updates) {
   const payload = {}
 
   if (Object.prototype.hasOwnProperty.call(updates, 'name')) {
-    payload.name = updates.name.trim() || null
+    const { data: storedBackup, error: readError } = await supabase
+      .from(backupTable)
+      .select(getBackupSelectColumns())
+      .eq('id', backupId)
+      .eq('user_id', auth.user.id)
+      .maybeSingle()
+
+    if (readError) return makeFailure('update', readError)
+    if (!storedBackup) {
+      return makeFailure('update', new Error('Backup not found'), {
+        code: cloudErrorCodes.BACKUP_NOT_FOUND,
+      })
+    }
+
+    try {
+      const decoded = await decryptBackupRow(storedBackup)
+      const renamedBackup = {
+        ...decoded.backup,
+        metadata: {
+          ...decoded.backup.metadata,
+          name: updates.name.trim(),
+        },
+      }
+      payload.name = null
+      payload.payload = await encryptBackupPayload(renamedBackup)
+    } catch (encryptionError) {
+      return makeFailure('update', encryptionError)
+    }
   }
 
   if (Object.prototype.hasOwnProperty.call(updates, 'isFavorite')) {
@@ -722,7 +813,7 @@ export async function updateUserBackup(backupId, updates) {
   return {
     ...getCloudSyncStatus(),
     action: 'update',
-    backup: normalizeBackupRow(data),
+    backup: await decryptBackupRow(data),
     ok: true,
     reason: 'Säkerhetskopian uppdaterades.',
   }

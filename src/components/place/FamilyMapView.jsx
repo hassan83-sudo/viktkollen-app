@@ -3,6 +3,14 @@ import { displayNameForUser } from '../../features/place/placeFamilyMemberServic
 import './SchoolCardEnhancer.js'
 import './FamilyMapView.css'
 
+const positionFrequencyOptions = [
+  ['live', 'Live'],
+  ['10m', '10 min'],
+  ['30m', '30 min'],
+  ['1h', '1 timme'],
+  ['battery', 'Batterispar'],
+]
+
 function locationKey(location) {
   return `${location.family_id}:${location.user_id}`
 }
@@ -24,6 +32,16 @@ function mapUrlForLocation(location) {
   })
 
   return `https://www.openstreetmap.org/export/embed.html?${params.toString()}`
+}
+
+function relativeUpdatedAt(value) {
+  if (!value) return 'okänd tid'
+  const ageSeconds = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 1000))
+  if (!Number.isFinite(ageSeconds)) return 'okänd tid'
+  if (ageSeconds < 60) return 'nu'
+  if (ageSeconds < 3600) return `${Math.floor(ageSeconds / 60)} min sedan`
+  if (ageSeconds < 86400) return `${Math.floor(ageSeconds / 3600)} tim sedan`
+  return new Date(value).toLocaleString()
 }
 
 function FamilyMapView({ locations, familyMembers }) {
@@ -62,6 +80,8 @@ function FamilyMapView({ locations, familyMembers }) {
   }, [familyMembers, validLocations])
 
   const [selectedKey, setSelectedKey] = useState(() => entries[0]?.key || '')
+  const [positionFrequency, setPositionFrequency] = useState('30m')
+  const [cardNotice, setCardNotice] = useState('')
 
   useEffect(() => {
     if (!entries.length) {
@@ -75,6 +95,14 @@ function FamilyMapView({ locations, familyMembers }) {
 
   const selectedEntry = entries.find((entry) => entry.key === selectedKey) || entries[0]
   const selectedLocation = selectedEntry.location
+  const updatedLabel = relativeUpdatedAt(selectedLocation.location_recorded_at)
+  const isLive = selectedLocation.location_recorded_at
+    ? Date.now() - new Date(selectedLocation.location_recorded_at).getTime() < 2 * 60 * 1000
+    : false
+
+  function showPlannedFeature(label) {
+    setCardNotice(`${label} kopplas in när den funktionen har riktig data.`)
+  }
 
   return (
     <div className="family-map-view">
@@ -103,11 +131,33 @@ function FamilyMapView({ locations, familyMembers }) {
         />
       </div>
 
-      <div className="family-map-selected" aria-live="polite">
-        <strong>📍 {selectedEntry.label}</strong>
+      <article className="family-map-person-card" aria-live="polite">
+        <div className="family-map-person-card-heading">
+          <strong>{selectedEntry.label}</strong>
+          <span className={isLive ? 'is-live' : ''}>{isLive ? '🟢 LIVE' : 'Senaste position'}</span>
+        </div>
+        <p>📍 Delad position</p>
+        <small>Senast uppdaterad: {updatedLabel}</small>
+        {selectedLocation.accuracy_meters != null ? <small>Noggrannhet ±{Math.round(selectedLocation.accuracy_meters)} m</small> : null}
+
+        <div className="family-map-person-actions">
+          <button type="button" onClick={() => showPlannedFeature('Följ live')}>Följ live</button>
+          <button type="button" onClick={() => showPlannedFeature('Prata')}>Prata</button>
+          <button type="button" onClick={() => showPlannedFeature('Historik')}>Historik</button>
+        </div>
+
+        <label className="family-map-frequency">
+          <span>Positionsfrekvens</span>
+          <select value={positionFrequency} onChange={(event) => setPositionFrequency(event.target.value)}>
+            {positionFrequencyOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
+        {cardNotice ? <p className="family-map-card-notice" role="status">{cardNotice}</p> : null}
+      </article>
+
+      <div className="family-map-selected">
+        <strong>Position</strong>
         <span>{Number(selectedLocation.latitude).toFixed(5)}, {Number(selectedLocation.longitude).toFixed(5)}</span>
-        {selectedLocation.accuracy_meters != null ? <span>Noggrannhet ±{Math.round(selectedLocation.accuracy_meters)} m</span> : null}
-        {selectedLocation.location_recorded_at ? <small>Uppdaterad {new Date(selectedLocation.location_recorded_at).toLocaleString()}</small> : null}
       </div>
 
       <p className="family-map-provider-note"><small>Kartan visas av OpenStreetMap. Endast området runt den valda delade positionen begärs när kartan öppnas.</small></p>

@@ -52,11 +52,32 @@ function getHeader(request, name) {
   return headers[name] || headers[name.toLowerCase()] || ''
 }
 
-function isAllowedOrigin(origin, vercelUrl) {
-  if (!origin || !vercelUrl) return true
+function normalizeAllowedHost(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
 
   try {
-    return new URL(origin).hostname === vercelUrl
+    return new URL(raw.includes('://') ? raw : `https://${raw}`).host.toLowerCase()
+  } catch {
+    return ''
+  }
+}
+
+function isAllowedOrigin(origin, ...allowedHosts) {
+  // Non-browser/server requests do not always include Origin. They still
+  // have to pass Supabase auth and the image-bound consent-token gate.
+  if (!origin) return true
+
+  try {
+    const parsedOrigin = new URL(origin)
+    if (parsedOrigin.protocol !== 'https:' && parsedOrigin.protocol !== 'http:') return false
+
+    const originHost = parsedOrigin.host.toLowerCase()
+    const normalizedAllowedHosts = allowedHosts.map(normalizeAllowedHost).filter(Boolean)
+
+    // Fail closed when an Origin was supplied but neither the incoming Host
+    // nor VERCEL_URL could establish which Viktkollen origin is legitimate.
+    return normalizedAllowedHosts.includes(originHost)
   } catch {
     return false
   }
@@ -365,7 +386,8 @@ export default async function handler(request, response) {
   }
   const contentType = getHeader(request, 'content-type')
   const origin = getHeader(request, 'origin')
-  if (!isAllowedOrigin(origin, process.env.VERCEL_URL)) {
+  const requestHost = getHeader(request, 'host')
+  if (!isAllowedOrigin(origin, requestHost, process.env.VERCEL_URL)) {
     return safeError(response, 403, 'corsBlocked', 'Ursprunget är inte tillåtet.', false, requestId)
   }
 

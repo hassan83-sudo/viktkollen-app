@@ -59,6 +59,7 @@ import {
   syncRestoreSnapshotStorageKey,
   validateIncomingSyncRecord,
 } from './syncRestoreSafety.js'
+import { decryptSyncItemPayload, isEncryptedSyncItemPayload } from './syncItemEncryption.js'
 
 function createMemoryStorage(initial = {}) {
   const data = new Map(Object.entries(initial))
@@ -104,6 +105,10 @@ function createFakeClient(rows = [], options = {}) {
   }
   const client = {
     state,
+    rpc: vi.fn(async () => ({
+      data: btoa(String.fromCharCode(...new Uint8Array(32).fill(11))),
+      error: null,
+    })),
     from(tableName) {
       state.tableNames.push(tableName)
 
@@ -133,6 +138,10 @@ function createFakeClient(rows = [], options = {}) {
   }
 
   return client
+}
+
+async function decryptFakeUpload(client, row) {
+  return decryptSyncItemPayload(row.payload, row.storage_key, null, client)
 }
 
 beforeEach(() => {
@@ -568,7 +577,8 @@ describe('Molnsynk engine', () => {
     const result = await runCloudSync({ client, force: true, storage, userId: 'user-1' })
 
     expect(result.uploaded).toContain('viktkollen.profile')
-    expect(client.state.upserts[0].payload).toEqual({ name: 'Anna' })
+    expect(isEncryptedSyncItemPayload(client.state.upserts[0].payload)).toBe(true)
+    await expect(decryptFakeUpload(client, client.state.upserts[0])).resolves.toEqual({ name: 'Anna' })
   })
 
   it('uses the authenticated account namespace for profile and weights when syncing production storage', async () => {
@@ -586,14 +596,12 @@ describe('Molnsynk engine', () => {
     const result = await runCloudSync({ client, force: true, userId: 'user-b' })
 
     expect(result.uploaded).toEqual(expect.arrayContaining([userDataKeys.profile, userDataKeys.weights]))
-    expect(client.state.upserts).toEqual(expect.arrayContaining([
-      expect.objectContaining({ payload: { name: 'B' }, storage_key: userDataKeys.profile, user_id: 'user-b' }),
-      expect.objectContaining({ payload: [{ id: 'w-b', value: 80 }], storage_key: userDataKeys.weights, user_id: 'user-b' }),
-    ]))
-    expect(client.state.upserts).not.toEqual(expect.arrayContaining([
-      expect.objectContaining({ payload: { name: 'A' } }),
-      expect.objectContaining({ payload: [{ id: 'w-a', value: 90 }] }),
-    ]))
+    const profileUpload = client.state.upserts.find((row) => row.storage_key === userDataKeys.profile)
+    const weightsUpload = client.state.upserts.find((row) => row.storage_key === userDataKeys.weights)
+    expect(profileUpload).toMatchObject({ storage_key: userDataKeys.profile, user_id: 'user-b' })
+    expect(weightsUpload).toMatchObject({ storage_key: userDataKeys.weights, user_id: 'user-b' })
+    await expect(decryptFakeUpload(client, profileUpload)).resolves.toEqual({ name: 'B' })
+    await expect(decryptFakeUpload(client, weightsUpload)).resolves.toEqual([{ id: 'w-b', value: 80 }])
   })
 
   it('keeps account sync metadata, queue and device state isolated in production storage', () => {
@@ -717,9 +725,10 @@ describe('Molnsynk engine', () => {
     const client = createFakeClient([])
     const result = await runCloudSync({ client, force: true, storage, userId: 'user-1' })
     const uploadedHistory = client.state.upserts.find((row) => row.storage_key === historyKey)
+    const decryptedHistory = await decryptFakeUpload(client, uploadedHistory)
 
     expect(result.uploaded).toContain(historyKey)
-    expect(uploadedHistory.payload.analyses[0].result.summary).toBe('Stabil visuell baslinje.')
+    expect(decryptedHistory.analyses[0].result.summary).toBe('Stabil visuell baslinje.')
     expect(JSON.stringify(uploadedHistory)).not.toContain('data:image')
     expect(JSON.parse(storage.getItem(historyKey)).analyses[0].frontPhoto.preview).toContain('data:image/jpeg;base64,ZnJvbnQ=')
   })
@@ -840,7 +849,7 @@ describe('Molnsynk engine', () => {
     const result = await resolveStoredSyncConflict('viktkollen.profile', 'local', { client, storage, userId: 'user-1' })
 
     expect(result.status).toBe('resolved')
-    expect(client.state.upserts[0].payload).toEqual({ name: 'Local' })
+    await expect(decryptFakeUpload(client, client.state.upserts[0])).resolves.toEqual({ name: 'Local' })
   })
 
   it('keeps safe error messages on select failure', async () => {

@@ -7,6 +7,10 @@ const encryptionMigration = readFileSync(
   'supabase/migrations/20260915124145_encrypt_user_backups_with_vault_key.sql',
   'utf8',
 )
+const syncItemsMigration = readFileSync(
+  'supabase/migrations/20260915125522_secure_user_sync_items.sql',
+  'utf8',
+)
 
 describe('user_backups defense in depth', () => {
   it('adds the authenticated owner filter to backup reads and mutations', () => {
@@ -40,5 +44,20 @@ describe('user_backups defense in depth', () => {
     expect(encryptionMigration).toContain('requester_id uuid := auth.uid()')
     expect(encryptionMigration).toContain('revoke all on function public.viktkollen_get_or_create_backup_key() from public, anon;')
     expect(encryptionMigration).toContain('grant execute on function public.viktkollen_get_or_create_backup_key() to authenticated;')
+  })
+})
+
+describe('user_sync_items defense in depth', () => {
+  it('removes anonymous access and keeps only authenticated CRUD', () => {
+    expect(syncItemsMigration).toContain('revoke all privileges on table public.user_sync_items from anon, authenticated;')
+    expect(syncItemsMigration).toContain('grant select, insert, update, delete on table public.user_sync_items to authenticated;')
+    expect(syncItemsMigration).not.toMatch(/grant[^;]*\b(truncate|trigger|references)\b/i)
+  })
+
+  it('requires authenticated ownership and encrypted payloads', () => {
+    expect(syncItemsMigration.match(/create policy "Viktkollen users [^"]+"/g)).toHaveLength(4)
+    expect(syncItemsMigration.match(/\(select auth\.uid\(\)\) = user_id/g)).toHaveLength(5)
+    expect(syncItemsMigration).toContain("'viktkollen-sync-aes-cbc-hmac-v1'")
+    expect(syncItemsMigration).toContain('add constraint user_sync_items_payload_encrypted check')
   })
 })

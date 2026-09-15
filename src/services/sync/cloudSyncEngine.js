@@ -30,6 +30,12 @@ import { appendCloudSyncHistoryEvent } from './cloudSyncHistory.js'
 import { buildMultiDeviceRegistry, summarizeMultiDeviceRegistry } from './multiDeviceRegistry.js'
 import { getCloudRecoveryStatus } from './cloudRecoveryEngine.js'
 import { createAuthenticatedUserSyncStorage } from '../userDataRepository.js'
+import {
+  decryptSyncItemPayload,
+  encryptSyncItemPayload,
+  getSyncItemEncryptionKeys,
+  isEncryptedSyncItemPayload,
+} from './syncItemEncryption.js'
 
 export const cloudSyncTable = 'user_sync_items'
 
@@ -180,18 +186,28 @@ async function fetchRemoteSyncRows(client) {
 
   if (error) throw error
 
-  return normalizeRemoteSyncRows(data)
+  const rows = Array.isArray(data) ? data : []
+  const needsKey = rows.some((row) => isEncryptedSyncItemPayload(row.payload))
+  const keys = needsKey ? await getSyncItemEncryptionKeys(client) : null
+  const decryptedRows = await Promise.all(rows.map(async (row) => ({
+    ...row,
+    payload: await decryptSyncItemPayload(row.payload, row.storage_key, keys, client),
+  })))
+
+  return normalizeRemoteSyncRows(decryptedRows)
 }
 
 async function uploadLocalRecord({ client, deviceId, record, userId }) {
   const payload = createRemoteSyncPayload(record, userId, deviceId)
+  const plaintextPayload = payload.payload
+  payload.payload = await encryptSyncItemPayload(payload.payload, payload.storage_key, null, client)
   const { data, error } = await client
     .from(cloudSyncTable)
     .upsert(payload, { onConflict: 'user_id,storage_key' })
 
   if (error) throw error
 
-  return normalizeRemoteSyncRow(data?.[0] || payload) || {
+  return normalizeRemoteSyncRow({ ...(data?.[0] || payload), payload: plaintextPayload }) || {
     ...record,
     remoteRevision: record.clientUpdatedAt,
   }

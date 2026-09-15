@@ -277,6 +277,8 @@ create policy "Viktkollen users delete own sync items"
 on public.user_sync_items for delete to authenticated
 using (auth.uid() = user_id);
 
+revoke all privileges on public.user_sync_items from anon, authenticated;
 grant select, insert, update, delete on public.user_sync_items to authenticated;
+revoke execute on function public.viktkollen_set_sync_item_owner() from public, anon, authenticated;
 
 comment on table public.user_sync_items is 'Automatisk Cloud Sync V2 per allowlistad localStorage-nyckel. Innehåller inga auth-sessioner, tokens eller hemligheter.';

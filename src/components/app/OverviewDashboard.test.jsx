@@ -105,6 +105,7 @@ describe('OverviewDashboard', () => {
     expect(markup).toContain('/viktkollen-body-scan.png')
     expect(markup).toContain('Öppna kroppsscanning i helskärm')
     expect(markup).toContain('Tryck på bilden')
+    expect(markup).toContain('Tryck på personen för att förstora')
     expect(markup).not.toContain('tap me')
     expect(markup).toContain('Öppna kameran')
     expect(markup).toContain('Starta scanning')

@@ -75,6 +75,7 @@ export function mapRealtimeEventToPhase(payload) {
 export function createRealtimeVoiceController({
   connectRealtime,
   getUserMedia,
+  isEnabled = () => REALTIME_VOICE_ENABLED,
   onPhaseChange,
   onStatus,
   requestSession,
@@ -131,7 +132,7 @@ export function createRealtimeVoiceController({
     // Free mode: bypass realtime completely. This is intentionally checked before
     // getUserMedia so the premium controller cannot grab the same iPhone audio
     // session that the local SpeechRecognition/SpeechSynthesis flow needs.
-    if (!REALTIME_VOICE_ENABLED) {
+    if (!isEnabled()) {
       clearTimers()
       closed = true
       setListening?.(false)

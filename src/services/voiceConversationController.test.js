@@ -33,9 +33,11 @@ function createRecognitionClass() {
       this.handlers[type]?.(event)
     }
 
-    emitResult(text) {
+    emitResult(text, { isFinal = true } = {}) {
+      const result = [{ transcript: text }]
+      result.isFinal = isFinal
       this.emit('result', {
-        results: [[{ transcript: text }]],
+        results: [result],
       })
     }
   }
@@ -59,6 +61,7 @@ function createSpeechSynthesis({ voices = [], throwOnSpeak = false } = {}) {
     speak: vi.fn((utterance) => {
       if (throwOnSpeak) throw new Error('speech failed')
       createSpeechSynthesis.lastUtterance = utterance
+      utterance.onstart?.()
     }),
     triggerVoicesChanged(nextVoices) {
       voiceList = nextVoices
@@ -149,19 +152,18 @@ describe('voiceConversationController', () => {
     expect(Recognition.instances[0].continuous).toBe(false)
   })
 
-  it('continues listening automatically after AI speech ends', async () => {
+  it('ends the turn after AI speech and never reopens the microphone automatically', async () => {
     const response = deferred()
-    const { controller, onTranscript, Recognition, speechSynthesis, status } = makeController({
+    const { active, controller, mediaDevices, onTranscript, Recognition, speechSynthesis, status } = makeController({
       onTranscript: vi.fn(() => response.promise),
     })
 
     await controller.start()
     Recognition.instances[0].emitResult('Hur ligger jag till?')
-    await vi.advanceTimersByTimeAsync(130)
+    await vi.advanceTimersByTimeAsync(150)
 
     expect(onTranscript).toHaveBeenCalledWith('Hur ligger jag till?')
     expect(status).toContain('🧠 Bearbetar...')
-    expect(status).toContain('🧠 AI svarar...')
 
     response.resolve('Du ligger bra till.')
     await vi.advanceTimersByTimeAsync(1)
@@ -170,10 +172,12 @@ describe('voiceConversationController', () => {
     expect(Recognition.instances).toHaveLength(1)
 
     createSpeechSynthesis.lastUtterance.onend()
-    await vi.advanceTimersByTimeAsync(510)
+    await vi.advanceTimersByTimeAsync(1000)
 
-    expect(Recognition.instances).toHaveLength(2)
-    expect(status.at(-1)).toBe('🎤 Lyssnar...')
+    expect(active.at(-1)).toBe(false)
+    expect(Recognition.instances).toHaveLength(1)
+    expect(mediaDevices.getUserMedia).toHaveBeenCalledTimes(1)
+    expect(status.at(-1)).toBe('')
   })
 
   it('selects a Swedish speech synthesis voice when available', async () => {
@@ -184,7 +188,7 @@ describe('voiceConversationController', () => {
 
     await controller.start()
     Recognition.instances[0].emitResult('Hej')
-    await vi.advanceTimersByTimeAsync(100)
+    await vi.advanceTimersByTimeAsync(150)
 
     expect(selectSpeechSynthesisVoice([fallbackVoice, swedishVoice])).toBe(swedishVoice)
     expect(createSpeechSynthesis.lastUtterance.voice).toBe(swedishVoice)
@@ -199,7 +203,7 @@ describe('voiceConversationController', () => {
 
     await controller.start()
     Recognition.instances[0].emitResult('Hej')
-    await vi.advanceTimersByTimeAsync(100)
+    await vi.advanceTimersByTimeAsync(150)
 
     expect(speechSynthesis.speak).toHaveBeenCalledTimes(1)
     expect(onSpeechStart).toHaveBeenCalledTimes(1)
@@ -210,36 +214,23 @@ describe('voiceConversationController', () => {
 
     await controller.start()
     Recognition.instances[0].emitResult('Hej')
-    await vi.advanceTimersByTimeAsync(100)
+    await vi.advanceTimersByTimeAsync(150)
 
     expect(speechSynthesis.getVoices).toHaveBeenCalled()
     expect(createSpeechSynthesis.lastUtterance.voice).toBe(null)
     expect(createSpeechSynthesis.lastUtterance.lang).toBe('sv-SE')
   })
 
-  it('handles voiceschanged when voices load after speech starts', async () => {
-    const speechSynthesis = createSpeechSynthesis()
-    const { controller, Recognition } = makeController({ speechSynthesis })
-    const swedishVoice = { lang: 'sv-SE', name: 'Svenska' }
+  it('ends silently timed-out turns without reopening the microphone', async () => {
+    const { active, controller, mediaDevices, Recognition, status } = makeController()
 
     await controller.start()
-    Recognition.instances[0].emitResult('Hej')
-    await vi.advanceTimersByTimeAsync(100)
-    speechSynthesis.triggerVoicesChanged([swedishVoice])
+    await vi.advanceTimersByTimeAsync(7000)
 
-    expect(createSpeechSynthesis.lastUtterance.voice).toBe(swedishVoice)
-    expect(createSpeechSynthesis.lastUtterance.lang).toBe('sv-SE')
-  })
-
-  it('announces silence after 15 seconds and restarts listening', async () => {
-    const { controller, Recognition, status } = makeController()
-
-    await controller.start()
-    await vi.advanceTimersByTimeAsync(15000)
-    await vi.advanceTimersByTimeAsync(460)
-
-    expect(status).toContain('Jag hör inget. Vill du fortsätta?')
-    expect(Recognition.instances).toHaveLength(2)
+    expect(status.at(-1)).toBe('Jag hörde inget. Tryck på mikrofonen och försök igen.')
+    expect(active.at(-1)).toBe(false)
+    expect(Recognition.instances).toHaveLength(1)
+    expect(mediaDevices.getUserMedia).toHaveBeenCalledTimes(1)
   })
 
   it('shows microphone permission denied and does not lock the UI', async () => {
@@ -269,15 +260,16 @@ describe('voiceConversationController', () => {
     expect(status.at(-1)).toMatch(/Röstinmatning stöds inte/)
   })
 
-  it('recovers from recognition errors by restarting automatically', async () => {
-    const { controller, Recognition, status } = makeController()
+  it('ends recognition errors without reopening the microphone', async () => {
+    const { active, controller, mediaDevices, Recognition, status } = makeController()
 
     await controller.start()
     Recognition.instances[0].emit('error', { error: 'network' })
-    await vi.advanceTimersByTimeAsync(610)
 
-    expect(status).toContain('Röstinmatningen startas om automatiskt.')
-    expect(Recognition.instances).toHaveLength(2)
+    expect(status.at(-1)).toBe('Röstinmatningen avbröts. Tryck på mikrofonen och försök igen.')
+    expect(active.at(-1)).toBe(false)
+    expect(Recognition.instances).toHaveLength(1)
+    expect(mediaDevices.getUserMedia).toHaveBeenCalledTimes(1)
   })
 
   it('stops the conversation and cancels speech without restarting', async () => {
@@ -285,7 +277,7 @@ describe('voiceConversationController', () => {
 
     await controller.start()
     Recognition.instances[0].emitResult('Protein?')
-    await vi.advanceTimersByTimeAsync(100)
+    await vi.advanceTimersByTimeAsync(150)
     controller.stop()
     await vi.advanceTimersByTimeAsync(31000)
 
@@ -295,79 +287,94 @@ describe('voiceConversationController', () => {
     expect(speechSynthesis.cancel).toHaveBeenCalled()
   })
 
-  it('lets the user interrupt AI speech and resumes listening', async () => {
-    const { controller, Recognition, speechSynthesis, status } = makeController()
+  it('lets the user interrupt AI speech without reopening the microphone', async () => {
+    const { active, controller, mediaDevices, Recognition, speechSynthesis, status } = makeController()
 
     await controller.start()
     Recognition.instances[0].emitResult('Berätta mer')
-    await vi.advanceTimersByTimeAsync(100)
+    await vi.advanceTimersByTimeAsync(150)
 
     expect(controller.stopSpeakingAndResume()).toBe(true)
-    await vi.advanceTimersByTimeAsync(130)
 
     expect(speechSynthesis.cancel).toHaveBeenCalled()
-    expect(status.at(-1)).toBe('🎤 Lyssnar...')
-    expect(Recognition.instances).toHaveLength(2)
+    expect(active.at(-1)).toBe(false)
+    expect(status.at(-1)).toBe('')
+    expect(Recognition.instances).toHaveLength(1)
+    expect(mediaDevices.getUserMedia).toHaveBeenCalledTimes(1)
   })
 
-  it('continues without speech synthesis when unsupported', async () => {
-    const { controller, Recognition, status } = makeController({
+  it('finishes without reopening the microphone when speech synthesis is unsupported', async () => {
+    const { active, controller, mediaDevices, Recognition, status } = makeController({
       SpeechSynthesisUtterance: null,
       speechSynthesis: null,
     })
 
     await controller.start()
     Recognition.instances[0].emitResult('Hej')
-    await vi.advanceTimersByTimeAsync(700)
+    await vi.advanceTimersByTimeAsync(150)
 
-    expect(status).toContain('🧠 AI svarar...')
-    expect(Recognition.instances).toHaveLength(2)
+    expect(active.at(-1)).toBe(false)
+    expect(status.at(-1)).toBe('')
+    expect(Recognition.instances).toHaveLength(1)
+    expect(mediaDevices.getUserMedia).toHaveBeenCalledTimes(1)
   })
 
-  it('recovers if speech synthesis errors or never reports onend', async () => {
-    const { controller, Recognition, status } = makeController({ speechRecoveryMs: 1200 })
+  it('finishes safely if speech synthesis errors', async () => {
+    const { active, controller, mediaDevices, Recognition } = makeController({ speechRecoveryMs: 1200 })
 
     await controller.start()
     Recognition.instances[0].emitResult('Hej')
-    await vi.advanceTimersByTimeAsync(100)
+    await vi.advanceTimersByTimeAsync(150)
 
     createSpeechSynthesis.lastUtterance.onerror()
-    await vi.advanceTimersByTimeAsync(510)
-    expect(Recognition.instances).toHaveLength(2)
+    await vi.advanceTimersByTimeAsync(1)
 
-    Recognition.instances[1].emitResult('Nästa fråga')
-    await vi.advanceTimersByTimeAsync(100)
-    await vi.advanceTimersByTimeAsync(1800)
-
-    expect(status).toContain('🔊 AI pratar...')
-    expect(Recognition.instances).toHaveLength(3)
-  })
-
-  it('does not restart recognition while AI speech is active', async () => {
-    const { controller, Recognition } = makeController()
-
-    await controller.start()
-    Recognition.instances[0].emitResult('Hej')
-    await vi.advanceTimersByTimeAsync(100)
-    await vi.advanceTimersByTimeAsync(1000)
-
+    expect(active.at(-1)).toBe(false)
     expect(Recognition.instances).toHaveLength(1)
-
-    createSpeechSynthesis.lastUtterance.onend()
-    await vi.advanceTimersByTimeAsync(510)
-
-    expect(Recognition.instances).toHaveLength(2)
+    expect(mediaDevices.getUserMedia).toHaveBeenCalledTimes(1)
   })
 
-  it('skips AI speech when the voice preference is off', async () => {
-    const { controller, Recognition, speechSynthesis } = makeController({ speechEnabled: false })
+  it('finishes safely if speech synthesis never reports onend', async () => {
+    const { active, controller, mediaDevices, Recognition } = makeController({ speechRecoveryMs: 1200 })
 
     await controller.start()
     Recognition.instances[0].emitResult('Hej')
-    await vi.advanceTimersByTimeAsync(600)
+    await vi.advanceTimersByTimeAsync(150)
+    await vi.advanceTimersByTimeAsync(1200)
+
+    expect(active.at(-1)).toBe(false)
+    expect(Recognition.instances).toHaveLength(1)
+    expect(mediaDevices.getUserMedia).toHaveBeenCalledTimes(1)
+  })
+
+  it('skips AI speech and does not reopen the microphone when the preference is off', async () => {
+    const { active, controller, mediaDevices, Recognition, speechSynthesis } = makeController({ speechEnabled: false })
+
+    await controller.start()
+    Recognition.instances[0].emitResult('Hej')
+    await vi.advanceTimersByTimeAsync(150)
 
     expect(speechSynthesis.speak).not.toHaveBeenCalled()
+    expect(active.at(-1)).toBe(false)
+    expect(Recognition.instances).toHaveLength(1)
+    expect(mediaDevices.getUserMedia).toHaveBeenCalledTimes(1)
+  })
+
+  it('requires another explicit start call before listening again', async () => {
+    const { controller, mediaDevices, Recognition } = makeController({ speechEnabled: false })
+
+    await controller.start()
+    Recognition.instances[0].emitResult('Första frågan')
+    await vi.advanceTimersByTimeAsync(150)
+    await vi.advanceTimersByTimeAsync(5000)
+
+    expect(Recognition.instances).toHaveLength(1)
+    expect(mediaDevices.getUserMedia).toHaveBeenCalledTimes(1)
+
+    await controller.start()
+
     expect(Recognition.instances).toHaveLength(2)
+    expect(mediaDevices.getUserMedia).toHaveBeenCalledTimes(2)
   })
 
   it('uses webkitSpeechRecognition for iOS Safari/PWA', () => {

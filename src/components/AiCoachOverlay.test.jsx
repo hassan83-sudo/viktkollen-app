@@ -31,7 +31,7 @@ describe('AI Coach tap me and realtime voice security', () => {
     expect(appSource).toContain('<HomeSection')
   })
 
-  it('starts voice on one tap and never ships the API key to the browser', () => {
+  it('keeps premium realtime disabled and never ships the API key to the browser', () => {
     const appSource = readSource('src/App.jsx')
     const clientSource = readSource('src/services/ai/realtimeVoiceController.js')
     const sessionSource = readSource('src/services/ai/aiChatController.js')
@@ -40,7 +40,9 @@ describe('AI Coach tap me and realtime voice security', () => {
     expect(appSource).toContain('await realtimeVoiceRef.current.start()')
     expect(clientSource).not.toContain('OPENAI_API_KEY')
     expect(clientSource).toContain('clientSecret')
-    expect(sessionSource).toContain("action: 'realtime-session'")
+    expect(clientSource).toContain('export const REALTIME_VOICE_ENABLED = false')
+    expect(sessionSource).toContain('Röstsamtal med premium-AI är avstängt i gratisläget.')
+    expect(sessionSource).not.toContain("action: 'realtime-session'")
     expect(appSource).not.toMatch(/VITE_OPENAI_API_KEY/)
   })
 

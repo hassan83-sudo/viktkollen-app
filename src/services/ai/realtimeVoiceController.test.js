@@ -32,12 +32,34 @@ describe('realtimeVoiceController', () => {
     expect(getAvatarVoicePhaseLabel({ isAiSpeaking: true })).toBe('🔊 AI pratar...')
   })
 
+  it('keeps premium realtime disabled without touching the microphone or network', async () => {
+    const getUserMedia = vi.fn()
+    const requestSession = vi.fn()
+    const connectRealtime = vi.fn()
+    const setActive = vi.fn()
+    const controller = createRealtimeVoiceController({
+      connectRealtime,
+      getUserMedia,
+      requestSession,
+      setActive,
+      timers: createTimers(),
+    })
+
+    await expect(controller.start()).resolves.toEqual({ ok: false, reason: 'unavailable' })
+    expect(controller.isActive()).toBe(false)
+    expect(setActive).toHaveBeenLastCalledWith(false)
+    expect(getUserMedia).not.toHaveBeenCalled()
+    expect(requestSession).not.toHaveBeenCalled()
+    expect(connectRealtime).not.toHaveBeenCalled()
+  })
+
   it('starts a session with one tap after microphone permission and mints an ephemeral client secret', async () => {
     const mediaStream = { getAudioTracks: () => [{ enabled: true }], getTracks: () => [{ stop: vi.fn() }] }
     const peer = { close: vi.fn() }
     const controller = createRealtimeVoiceController({
       connectRealtime: vi.fn(async () => peer),
       getUserMedia: vi.fn(async () => mediaStream),
+      isEnabled: () => true,
       onStatus: vi.fn(),
       requestSession: vi.fn(async () => ({
         available: true,
@@ -70,6 +92,7 @@ describe('realtimeVoiceController', () => {
         error.name = 'NotAllowedError'
         throw error
       }),
+      isEnabled: () => true,
       onStatus,
       requestSession,
       setActive: vi.fn(),
@@ -90,6 +113,7 @@ describe('realtimeVoiceController', () => {
     const controller = createRealtimeVoiceController({
       connectRealtime: vi.fn(),
       getUserMedia: vi.fn(async () => mediaStream),
+      isEnabled: () => true,
       onStatus,
       requestSession: vi.fn(async () => ({
         available: false,
@@ -114,6 +138,7 @@ describe('realtimeVoiceController', () => {
     const first = createRealtimeVoiceController({
       connectRealtime: vi.fn(async () => firstPeer),
       getUserMedia: vi.fn(async () => mediaStream),
+      isEnabled: () => true,
       requestSession: vi.fn(async () => ({ available: true, clientSecret: 'ek_one' })),
       setActive: vi.fn(),
       timers: createTimers(),
@@ -121,6 +146,7 @@ describe('realtimeVoiceController', () => {
     const second = createRealtimeVoiceController({
       connectRealtime: vi.fn(async () => secondPeer),
       getUserMedia: vi.fn(async () => mediaStream),
+      isEnabled: () => true,
       requestSession: vi.fn(async () => ({ available: true, clientSecret: 'ek_two' })),
       setActive: vi.fn(),
       timers: createTimers(),

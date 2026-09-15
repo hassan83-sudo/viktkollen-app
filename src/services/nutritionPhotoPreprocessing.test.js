@@ -66,4 +66,51 @@ describe('nutritionPhotoPreprocessing', () => {
     expect(result.errors.join(' ')).toContain('Bilden kunde inte läsas')
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:meal')
   })
+
+  it('re-encodes even a small image so hidden EXIF metadata is not uploaded', async () => {
+    const originalFile = file({ size: 1500 })
+    const sanitizedBlob = new Blob(['sanitized pixels'], { type: 'image/jpeg' })
+    const drawImage = vi.fn()
+    const toBlob = vi.fn((callback) => callback(sanitizedBlob))
+
+    vi.stubGlobal('URL', {
+      createObjectURL: () => 'blob:meal',
+      revokeObjectURL: vi.fn(),
+    })
+    vi.stubGlobal('Image', class {
+      constructor() {
+        this.naturalHeight = 600
+        this.naturalWidth = 800
+      }
+
+      set src(value) {
+        this._src = value
+        queueMicrotask(() => this.onload?.())
+      }
+    })
+    vi.stubGlobal('document', {
+      createElement: () => ({
+        getContext: () => ({ drawImage }),
+        toBlob,
+      }),
+    })
+
+    const result = await preprocessNutritionPhoto(originalFile)
+
+    expect(result.ok).toBe(true)
+    expect(result.processedBlob).toBe(sanitizedBlob)
+    expect(result.processedBlob).not.toBe(originalFile)
+    expect(drawImage).toHaveBeenCalledTimes(1)
+    expect(toBlob).toHaveBeenCalledTimes(1)
+  })
+
+  it('fails closed instead of uploading the original when safe re-encoding is unavailable', async () => {
+    vi.stubGlobal('URL', {})
+
+    const result = await preprocessNutritionPhoto(file())
+
+    expect(result.ok).toBe(false)
+    expect(result.processedBlob).toBeUndefined()
+    expect(result.errors.join(' ')).toContain('rensa bildens metadata')
+  })
 })

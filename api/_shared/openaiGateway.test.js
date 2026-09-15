@@ -90,6 +90,7 @@ describe('openaiGateway', () => {
 
     expect(result.ok).toBe(true)
     expect(body.max_output_tokens).toBe(3400)
+    expect(body.store).toBe(false)
   })
 
   it('caps nutrition photo output at a bounded 3600 tokens', async () => {

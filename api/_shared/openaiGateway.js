@@ -474,6 +474,7 @@ export async function callOpenAiJson({
           type === 'photo' ? 3600 : 1200,
         ),
         model: model || config.model,
+        ...(type === 'photo' ? { store: false } : {}),
         temperature,
       }),
       headers: {

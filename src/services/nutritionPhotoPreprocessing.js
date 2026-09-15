@@ -90,18 +90,8 @@ export async function preprocessNutritionPhoto(file, options = {}) {
   const previewUrl = createObjectUrl(file)
   if (!previewUrl) {
     return {
-      errors: [],
-      file,
-      metadata: {
-        dimensions: '',
-        fileType: file.type,
-        originalSizeBytes: file.size,
-        sizeBytes: file.size,
-      },
-      ok: true,
-      previewUrl: '',
-      processedBlob: file,
-      revoke: () => {},
+      errors: ['Webbläsaren kunde inte rensa bildens metadata säkert.'],
+      ok: false,
     }
   }
 
@@ -110,22 +100,11 @@ export async function preprocessNutritionPhoto(file, options = {}) {
     const dimensions = scaleDimensions(image.naturalWidth || image.width, image.naturalHeight || image.height, options.maxDimension || maxNutritionPhotoDimension)
     if (!dimensions.width || !dimensions.height) throw new Error('Bilddimensionerna kunde inte läsas.')
 
-    if (dimensions.scale >= 1 || typeof document === 'undefined') {
-      return {
-        errors: [],
-        metadata: {
-          dimensions: `${dimensions.width}x${dimensions.height}`,
-          fileType: file.type,
-          originalSizeBytes: file.size,
-          sizeBytes: file.size,
-        },
-        ok: true,
-        previewUrl,
-        processedBlob: file,
-        revoke: () => revokeNutritionPhotoObjectUrl(previewUrl),
-      }
-    }
+    if (typeof document === 'undefined') throw new Error('Säker bildrensning stöds inte i denna miljö.')
 
+    // Always draw through a fresh canvas, even when the image is already
+    // small enough. Returning the original file could preserve hidden EXIF
+    // fields such as GPS position, device model and capture time.
     const canvas = document.createElement('canvas')
     canvas.width = dimensions.width
     canvas.height = dimensions.height

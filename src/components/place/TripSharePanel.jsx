@@ -3,59 +3,15 @@ import { displayNameForUser } from '../../features/place/placeFamilyMemberServic
 import { endTripShare, loadActiveTripShares, startTripShare } from '../../features/place/placeTripShareService.js'
 
 function TripSharePanel({ familyMembers }) {
-  const [shares, setShares] = useState([])
-  const [userId, setUserId] = useState(null)
-  const [viewerKey, setViewerKey] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState('')
-
-  async function refresh() {
-    const result = await loadActiveTripShares()
-    setUserId(result.userId || null)
-    setShares(Array.isArray(result.data) ? result.data : [])
-    if (result.error) setNotice(result.error.message || 'Dela resa kunde inte hämtas.')
-  }
-
-  useEffect(() => { refresh() }, [])
-
-  const choices = useMemo(() => (familyMembers || [])
-    .filter((member) => member.user_id !== userId)
-    .map((member) => ({
-      key: `${member.family_id}:${member.user_id}`,
-      familyId: member.family_id,
-      userId: member.user_id,
-      name: displayNameForUser(familyMembers, member.user_id),
-    })), [familyMembers, userId])
-
-  const ownShares = shares.filter((share) => share.owner_user_id === userId)
-  const incomingShares = shares.filter((share) => share.viewer_user_id === userId)
-
-  async function start() {
-    const choice = choices.find((item) => item.key === viewerKey)
-    if (!choice) { setNotice('Välj vem som får följa resan.'); return }
-    setBusy(true); setNotice('')
-    const result = await startTripShare({ familyId: choice.familyId, viewerUserId: choice.userId })
-    if (result.error) setNotice(result.error.message || 'Resan kunde inte delas.')
-    else { setNotice(`Resan delas nu med ${choice.name}.`); setViewerKey(''); await refresh() }
-    setBusy(false)
-  }
-
-  async function stop(id) {
-    setBusy(true); setNotice('')
-    const result = await endTripShare(id)
-    if (result.error) setNotice(result.error.message || 'Resan kunde inte avslutas.')
-    else { setNotice('Resdelningen är avslutad.'); await refresh() }
-    setBusy(false)
-  }
-
-  return <section className="family-map-history" aria-label="Dela resa">
-    <div className="family-map-history-heading"><strong>🚶 Dela resa</strong></div>
-    <p><small>Välj en familjemedlem som får följa din redan godkända delade position tills du avslutar resan.</small></p>
-    {choices.length ? <><label className="family-map-frequency"><span>Dela med</span><select value={viewerKey} onChange={(event) => setViewerKey(event.target.value)} disabled={busy}><option value="">Välj familjemedlem</option>{choices.map((choice) => <option key={choice.key} value={choice.key}>{choice.name}</option>)}</select></label><button type="button" onClick={start} disabled={busy || !viewerKey}>Starta Dela resa</button></> : <p>Ingen annan familjemedlem finns att dela resan med.</p>}
-    {ownShares.map((share) => <article key={share.id} className="family-map-card-notice"><strong>🟢 Resa delas med {displayNameForUser(familyMembers, share.viewer_user_id)}</strong><br/><small>Startad {new Date(share.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small><br/><button type="button" onClick={() => stop(share.id)} disabled={busy}>Avsluta resa</button></article>)}
-    {incomingShares.map((share) => <p key={share.id} className="family-map-card-notice">📍 {displayNameForUser(familyMembers, share.owner_user_id)} delar en pågående resa med dig.</p>)}
-    {notice ? <p className="family-map-card-notice" role="status">{notice}</p> : null}
-  </section>
+  const [shares,setShares]=useState([]),[userId,setUserId]=useState(null),[viewerKey,setViewerKey]=useState(''),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[eta,setEta]=useState(''),[alerts,setAlerts]=useState(false),[destination,setDestination]=useState(null)
+  async function refresh(){const r=await loadActiveTripShares();setUserId(r.userId||null);setShares(Array.isArray(r.data)?r.data:[]);if(r.error)setNotice(r.error.message||'Dela resa kunde inte hämtas.')}
+  useEffect(()=>{refresh()},[])
+  const choices=useMemo(()=>(familyMembers||[]).filter(m=>m.user_id!==userId).map(m=>({key:`${m.family_id}:${m.user_id}`,familyId:m.family_id,userId:m.user_id,name:displayNameForUser(familyMembers,m.user_id)})),[familyMembers,userId])
+  const ownShares=shares.filter(s=>s.owner_user_id===userId),incomingShares=shares.filter(s=>s.viewer_user_id===userId)
+  function chooseDestination(){if(!navigator.geolocation){setNotice('Plats stöds inte i webbläsaren.');return}setNotice('Hämtar destination…');navigator.geolocation.getCurrentPosition(p=>{setDestination({latitude:p.coords.latitude,longitude:p.coords.longitude});setNotice('Destination sparad från din nuvarande position. Du kan flytta dig och sedan starta resan.')},e=>setNotice(e?.message||'Destinationen kunde inte hämtas.'),{enableHighAccuracy:true,timeout:15000})}
+  async function start(){const choice=choices.find(i=>i.key===viewerKey);if(!choice){setNotice('Välj vem som får följa resan.');return}setBusy(true);setNotice('');const r=await startTripShare({familyId:choice.familyId,viewerUserId:choice.userId,destinationLatitude:destination?.latitude,destinationLongitude:destination?.longitude,etaMinutes:eta,deviationAlerts:alerts});if(r.error)setNotice(r.error.message||'Resan kunde inte delas.');else{setNotice(`Resan delas nu med ${choice.name}.`);setViewerKey('');setEta('');setAlerts(false);setDestination(null);await refresh()}setBusy(false)}
+  async function stop(id){setBusy(true);setNotice('');const r=await endTripShare(id);if(r.error)setNotice(r.error.message||'Resan kunde inte avslutas.');else{setNotice('Resdelningen är avslutad.');await refresh()}setBusy(false)}
+  function etaText(s){if(!s.eta_minutes)return null;const arrival=new Date(new Date(s.started_at).getTime()+s.eta_minutes*60000);return `ETA cirka ${arrival.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`}
+  return <section className="family-map-history" aria-label="Dela resa"><div className="family-map-history-heading"><strong>🚶 Dela resa</strong></div><p><small>Välj vem som får följa resan. Destination, ETA och avvikelsevarning är frivilliga.</small></p>{choices.length?<><label className="family-map-frequency"><span>Dela med</span><select value={viewerKey} onChange={e=>setViewerKey(e.target.value)} disabled={busy}><option value="">Välj familjemedlem</option>{choices.map(c=><option key={c.key} value={c.key}>{c.name}</option>)}</select></label><label className="family-map-frequency"><span>Beräknad restid</span><input type="number" min="1" max="1440" inputMode="numeric" placeholder="Minuter" value={eta} onChange={e=>setEta(e.target.value)}/></label><button type="button" onClick={chooseDestination}>{destination?'📍 Destination sparad':'📍 Sätt nuvarande plats som destination'}</button><label className="family-map-frequency"><span>Varna vid tydlig avvikelse</span><input type="checkbox" checked={alerts} onChange={e=>setAlerts(e.target.checked)} disabled={!destination}/></label><small>Avvikelse kan bedömas när delade GPS-positioner finns under resan. Det är en uppskattning, inte ett säkerhetslarm.</small><br/><button type="button" onClick={start} disabled={busy||!viewerKey}>Starta Dela resa</button></>:<p>Ingen annan familjemedlem finns att dela resan med.</p>}{ownShares.map(s=><article key={s.id} className="family-map-card-notice"><strong>🟢 Resa delas med {displayNameForUser(familyMembers,s.viewer_user_id)}</strong><br/><small>Startad {new Date(s.started_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}{etaText(s)?` · ${etaText(s)}`:''}{s.deviation_alerts?' · avvikelsevarning på':''}</small><br/><button type="button" onClick={()=>stop(s.id)} disabled={busy}>Avsluta resa</button></article>)}{incomingShares.map(s=><p key={s.id} className="family-map-card-notice">📍 {displayNameForUser(familyMembers,s.owner_user_id)} delar en pågående resa med dig.{etaText(s)?` ${etaText(s)}.`:''}{s.deviation_alerts?' Avvikelsebevakning är vald.':''}</p>)}{notice?<p className="family-map-card-notice" role="status">{notice}</p>:null}</section>
 }
-
 export default TripSharePanel

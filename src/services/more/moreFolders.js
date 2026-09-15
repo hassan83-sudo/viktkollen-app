@@ -14,6 +14,13 @@ export const moreHubFolders = [
     title: 'Mat',
   },
   {
+    id: 'aktivitet',
+    accent: 'green',
+    description: 'Steg, träning, distans och aktiv tid',
+    icon: '◉',
+    title: 'Aktivitet',
+  },
+  {
     id: 'ai-coach',
     accent: 'cyan',
     description: 'Fullständig AI Coach',
@@ -108,6 +115,10 @@ export const moreHubFolders = [
 
 export const moreHubTargetFolders = {
   'ai-coach': 'ai-coach',
+  aktivitet: 'aktivitet',
+  activity: 'aktivitet',
+  'activity-center': 'aktivitet',
+  'app-section-activity': 'aktivitet',
   'animal-world': 'animal-world',
   'app-section-coach': 'ai-coach',
   'app-section-animal-world': 'animal-world',

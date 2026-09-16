@@ -13,6 +13,15 @@ describe('WellbeingCenter', () => {
 
   afterEach(() => cleanup())
 
+  it('shows one compact section at a time', () => {
+    render(<WellbeingCenter />)
+
+    expect(screen.getByRole('button', { name: /Frivillig check-in/ }).getAttribute('aria-expanded')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: /Hjälp mig nu/ }))
+    expect(screen.getByRole('button', { name: /Frivillig check-in/ }).getAttribute('aria-expanded')).toBe('false')
+    expect(screen.getByRole('button', { name: /Hjälp mig nu/ }).getAttribute('aria-expanded')).toBe('true')
+  })
+
   it('keeps check-in voluntary and hidden until the user saves it', () => {
     render(<WellbeingCenter />)
 
@@ -31,10 +40,12 @@ describe('WellbeingCenter', () => {
   it('shows honest AI placeholder and emergency 112 path', () => {
     render(<WellbeingCenter />)
 
+    fireEvent.click(screen.getByRole('button', { name: /Må bra AI-coach/ }))
     expect(screen.getByText('Förhandsläge')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Vad vill du sätta ord på?'), { target: { value: 'Jag känner mig inte säker' } })
     expect(screen.getByRole('alert').textContent).toContain('Ring 112')
 
+    fireEvent.click(screen.getByRole('button', { name: /Akut hjälp/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Jag känner mig inte säker' }))
     expect(screen.getAllByRole('alert').some((node) => node.textContent.includes('Ring 112'))).toBe(true)
   })
@@ -42,6 +53,7 @@ describe('WellbeingCenter', () => {
   it('supports safety plan editing and confirmed deletion', () => {
     render(<WellbeingCenter />)
 
+    fireEvent.click(screen.getByRole('button', { name: /Trygghetsplan/ }))
     fireEvent.change(screen.getByLabelText('Trygga personer'), { target: { value: 'Min mentor' } })
     expect(JSON.parse(window.localStorage.getItem(wellbeingStorageKey)).plan.safePeople).toBe('Min mentor')
 
@@ -53,6 +65,7 @@ describe('WellbeingCenter', () => {
   it('prepares but does not send a support message', () => {
     render(<WellbeingCenter />)
 
+    fireEvent.click(screen.getByRole('button', { name: /Kontakta någon/ }))
     fireEvent.change(screen.getByLabelText('Kontaktens namn'), { target: { value: 'Alex' } })
     expect(screen.getByLabelText('Meddelandeutkast').value).toContain('Jag mår inte så bra')
     expect(screen.queryByText('Meddelandet har skickats')).toBe(null)

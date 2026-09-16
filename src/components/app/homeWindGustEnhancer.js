@@ -144,6 +144,9 @@ async function enhanceWeatherRow(row) {
       })
       windText.style.order = String(windIndex + 1)
       button.style.order = String(windIndex + 2)
+      row.querySelectorAll(':scope > button, :scope > a').forEach((action) => {
+        action.style.order = '99'
+      })
       row.appendChild(button)
     } else {
       const detailsButton = row.querySelector('button, a')

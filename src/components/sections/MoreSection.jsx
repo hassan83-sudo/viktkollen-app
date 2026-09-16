@@ -35,6 +35,7 @@ function MoreSection({
   onEditProfile,
   onLanguageChange,
   onOpenAiCoach,
+  onOpenEye,
   onSearchNavigate,
   onSignOut,
   profileCompleteness,
@@ -181,6 +182,7 @@ function MoreSection({
         syncStatus={syncStatus}
         onBack={handleBackToHub}
         onOpen={setActiveFolder}
+        onOpenEye={onOpenEye}
       >
         {activeFolder === 'mat' && (
           <AppErrorBoundary area="nutrition" resetKey={`${healthSnapshot?.date}-${weights.length}`} title={t('nutritionError', { defaultValue: 'Mat kunde inte visas' })}>

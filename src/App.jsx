@@ -3178,6 +3178,10 @@ function App() {
   onEditProfile={() => setShowOnboarding(true)}
   onLanguageChange={handleLanguageChange}
   onOpenAiCoach={() => setAiCoachOverlayOpen(true)}
+  onOpenEye={isFeatureEnabled('smartCamera', featureFlags) ? () => {
+    setHomeIntent({ id: Date.now(), mode: 'forgotten' })
+    setActiveAppSection('home')
+  } : undefined}
   WellbeingSectionComponent={WellbeingSection}
   wellbeingSectionProps={{ profile: validatedProfile }}
   EconomySectionComponent={EconomySection}

@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 const complaintTopics = ['Vädret', 'Priserna', 'Tekniken', 'Trafiken']
 
-function SeniorEverydaySection() {
+function SeniorEverydaySection({ onOpenEye }) {
   const [medicineName, setMedicineName] = useState('')
   const [medicineTime, setMedicineTime] = useState('08:00')
   const [medicines, setMedicines] = useState([])
@@ -30,6 +30,14 @@ function SeniorEverydaySection() {
           </div>
         </div>
         <p>Samla egna rutiner, medicinpåminnelser och sådant du tycker om på ett ställe.</p>
+      </article>
+
+      <article className="panel">
+        <h3>👁 AI Öga – Hitta glömda saker</h3>
+        <p>Starta kameran och låt AI Öga hjälpa dig kontrollera om glasögon, nycklar, plånbok eller andra viktiga saker finns med.</p>
+        <button className="primary-button" type="button" onClick={onOpenEye}>
+          Öppna AI Öga
+        </button>
       </article>
 
       <article className="panel">

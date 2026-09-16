@@ -30,7 +30,7 @@ function folderCopy(t, folder) {
   }
 }
 
-function MoreHub({ activeFolder, children, isAuthenticated, onBack, onOpen, syncStatus = {} }) {
+function MoreHub({ activeFolder, children, isAuthenticated, onBack, onOpen, onOpenEye, syncStatus = {} }) {
   const { t } = useTranslation('settings')
   const folder = moreHubFolders.find((entry) => entry.id === activeFolder) || null
   const online = syncStatus.online !== false
@@ -52,7 +52,7 @@ function MoreHub({ activeFolder, children, isAuthenticated, onBack, onOpen, sync
           <h1>{title}</h1>
         </header>
         {folder.id === 'senior-65-plus' ? (
-          <SeniorEverydaySection />
+          <SeniorEverydaySection onOpenEye={onOpenEye} />
         ) : folder.id === 'aktivitet' ? (
           <ActivitySection />
         ) : folder.id === 'inkasso' ? (

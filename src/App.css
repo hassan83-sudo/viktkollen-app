@@ -13087,7 +13087,7 @@ body:has(#app-section-home.is-active) {
   }
 
   #app-section-home.is-active .overview-primary-action.is-body .overview-primary-visual {
-    inset: 82px -1px 18px;
+    inset: 58px -4px 0;
   }
 
   #app-section-home.is-active .overview-primary-action.is-food .overview-primary-visual {

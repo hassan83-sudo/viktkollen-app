@@ -21,6 +21,27 @@ const quickActions = ['breathe', 'grounding', 'distract', 'write', 'contact', 'h
 const emergencyChoices = ['calm', 'contact', 'unsafe', 'otherDanger']
 const planFields = ['warningSigns', 'helps', 'safePeople', 'safePlaces', 'careContacts', 'personalSupportLine']
 
+function CompactWellbeingSection({ children, id, isOpen, meta = '', onToggle, title }) {
+  return (
+    <section className="wellbeing-panel wellbeing-compact-section" aria-labelledby={`${id}-title`}>
+      <button
+        aria-expanded={isOpen}
+        className="wellbeing-section-toggle"
+        id={`${id}-title`}
+        type="button"
+        onClick={onToggle}
+      >
+        <span>{title}</span>
+        <span className="wellbeing-section-toggle-end">
+          {meta && <small>{meta}</small>}
+          <span aria-hidden="true">{isOpen ? '−' : '+'}</span>
+        </span>
+      </button>
+      {isOpen && <div className="wellbeing-section-content">{children}</div>}
+    </section>
+  )
+}
+
 function WellbeingCenter({ profile = {}, readyState = {} }) {
   const { t } = useTranslation('wellbeing')
   const [state, setState] = useState(readWellbeingState)
@@ -31,6 +52,7 @@ function WellbeingCenter({ profile = {}, readyState = {} }) {
   const [contactName, setContactName] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [status, setStatus] = useState('')
+  const [openSection, setOpenSection] = useState('checkIn')
   const coachCapabilities = getWellbeingCoachCapabilities()
   const safety = evaluateWellbeingSafety(coachDraft)
   const ageLanguage = getAgeLanguage(profile, readyState)
@@ -76,6 +98,24 @@ function WellbeingCenter({ profile = {}, readyState = {} }) {
     setDeleteConfirm(false)
   }
 
+  function toggleSection(section) {
+    setOpenSection((current) => current === section ? '' : section)
+  }
+
+  function chooseQuickAction(action) {
+    if (action === 'helpNow') {
+      setOpenSection('emergency')
+      return
+    }
+    if (action === 'contact') {
+      setSelectedExercise('contact')
+      setOpenSection('contact')
+      return
+    }
+    setSelectedExercise(action)
+    setOpenSection('exercise')
+  }
+
   const exercise = useMemo(() => ({
     steps: t(`exercises.${selectedExercise}.steps`, { returnObjects: true }),
     title: t(`exercises.${selectedExercise}.title`),
@@ -93,11 +133,13 @@ function WellbeingCenter({ profile = {}, readyState = {} }) {
 
       <CompanionProfilePanel mode="compact" surface="wellbeing" />
 
-      <section className="wellbeing-panel" aria-labelledby="wellbeing-checkin-title">
-        <div className="wellbeing-panel-heading">
-          <h2 id="wellbeing-checkin-title">{t('checkIn.title')}</h2>
-          <small>{latestCheckIn ? t('checkIn.saved') : t('checkIn.private')}</small>
-        </div>
+      <CompactWellbeingSection
+        id="wellbeing-checkin"
+        isOpen={openSection === 'checkIn'}
+        meta={latestCheckIn ? t('checkIn.saved') : t('checkIn.private')}
+        title={t('checkIn.title')}
+        onToggle={() => toggleSection('checkIn')}
+      >
         <div className="wellbeing-choice-grid" role="group" aria-label={t('checkIn.moodAria')}>
           {moodOptions.map((mood) => (
             <button
@@ -124,36 +166,48 @@ function WellbeingCenter({ profile = {}, readyState = {} }) {
           <button className="primary-button" type="button" onClick={saveCheckIn}>{t('checkIn.save')}</button>
           <button type="button" onClick={skipCheckIn}>{t('checkIn.skip')}</button>
         </div>
-      </section>
+      </CompactWellbeingSection>
 
-      <section className="wellbeing-panel" aria-labelledby="wellbeing-actions-title">
-        <h2 id="wellbeing-actions-title">{t('quick.title')}</h2>
+      <CompactWellbeingSection
+        id="wellbeing-actions"
+        isOpen={openSection === 'quick'}
+        title={t('quick.title')}
+        onToggle={() => toggleSection('quick')}
+      >
         <div className="wellbeing-quick-grid">
           {quickActions.map((action) => (
-            <button key={action} type="button" onClick={() => setSelectedExercise(action === 'helpNow' ? 'breathe' : action)}>
+            <button key={action} type="button" onClick={() => chooseQuickAction(action)}>
               <span aria-hidden="true">{t(`quick.${action}.icon`)}</span>
               <strong>{t(`quick.${action}.title`)}</strong>
             </button>
           ))}
         </div>
-      </section>
+      </CompactWellbeingSection>
 
-      <section className="wellbeing-panel" aria-labelledby="wellbeing-exercise-title">
-        <div className="wellbeing-panel-heading">
-          <h2 id="wellbeing-exercise-title">{exercise.title}</h2>
+      <CompactWellbeingSection
+        id="wellbeing-exercise"
+        isOpen={openSection === 'exercise'}
+        title={exercise.title}
+        onToggle={() => toggleSection('exercise')}
+      >
+        <div className="wellbeing-inline-action">
           <button type="button" onClick={() => setSelectedExercise('breathe')}>{t('exercises.stop')}</button>
         </div>
         <ol className="wellbeing-steps">
           {Array.isArray(exercise.steps) ? exercise.steps.map((step) => <li key={step}>{step}</li>) : null}
         </ol>
         <p className="estimate-note">{t('exercises.limits')}</p>
-      </section>
+      </CompactWellbeingSection>
 
-      <section className="wellbeing-panel" aria-labelledby="wellbeing-coach-title">
+      <CompactWellbeingSection
+        id="wellbeing-coach"
+        isOpen={openSection === 'coach'}
+        title={t('coach.title')}
+        onToggle={() => toggleSection('coach')}
+      >
         <div className="wellbeing-panel-heading">
           <div>
             <p className="eyebrow">{t('coach.eyebrow')}</p>
-            <h2 id="wellbeing-coach-title">{t('coach.title')}</h2>
           </div>
           <span className="wellbeing-pill">{coachCapabilities.placeholder ? t('coach.preview') : t('coach.available')}</span>
         </div>
@@ -167,17 +221,25 @@ function WellbeingCenter({ profile = {}, readyState = {} }) {
         ) : (
           <p className="estimate-note">{t('coach.placeholder')}</p>
         )}
-      </section>
+      </CompactWellbeingSection>
 
-      <section className="wellbeing-panel" aria-labelledby="wellbeing-contact-title">
-        <h2 id="wellbeing-contact-title">{t('contact.title')}</h2>
+      <CompactWellbeingSection
+        id="wellbeing-contact"
+        isOpen={openSection === 'contact'}
+        title={t('contact.title')}
+        onToggle={() => toggleSection('contact')}
+      >
         <label>{t('contact.name')}<input value={contactName} onChange={(event) => setContactName(event.target.value)} /></label>
         <label>{t('contact.message')}<textarea readOnly rows="3" value={preparedMessage} /></label>
         <p className="estimate-note">{t('contact.limit')}</p>
-      </section>
+      </CompactWellbeingSection>
 
-      <section className="wellbeing-panel" aria-labelledby="wellbeing-emergency-title">
-        <h2 id="wellbeing-emergency-title">{t('emergency.title')}</h2>
+      <CompactWellbeingSection
+        id="wellbeing-emergency"
+        isOpen={openSection === 'emergency'}
+        title={t('emergency.title')}
+        onToggle={() => toggleSection('emergency')}
+      >
         <div className="wellbeing-choice-grid">
           {emergencyChoices.map((choice) => (
             <button
@@ -197,13 +259,15 @@ function WellbeingCenter({ profile = {}, readyState = {} }) {
           </div>
         )}
         <p className="estimate-note">{t('emergency.future')}</p>
-      </section>
+      </CompactWellbeingSection>
 
-      <section className="wellbeing-panel" aria-labelledby="wellbeing-plan-title">
-        <div className="wellbeing-panel-heading">
-          <h2 id="wellbeing-plan-title">{t('plan.title')}</h2>
-          <small>{t('plan.private')}</small>
-        </div>
+      <CompactWellbeingSection
+        id="wellbeing-plan"
+        isOpen={openSection === 'plan'}
+        meta={t('plan.private')}
+        title={t('plan.title')}
+        onToggle={() => toggleSection('plan')}
+      >
         {planFields.map((field) => (
           <label key={field}>{t(`plan.fields.${field}`)}<textarea rows="2" value={state.plan[field]} onChange={(event) => updatePlanField(field, event.target.value)} /></label>
         ))}
@@ -218,7 +282,7 @@ function WellbeingCenter({ profile = {}, readyState = {} }) {
           )}
         </div>
         <p className="estimate-note">{t('privacy', { key: wellbeingStorageKey, days: wellbeingRetentionDays })}</p>
-      </section>
+      </CompactWellbeingSection>
     </div>
   )
 }

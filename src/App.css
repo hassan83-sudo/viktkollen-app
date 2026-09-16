@@ -13090,11 +13090,6 @@ body:has(#app-section-home.is-active) {
     inset: 82px -1px 18px;
   }
 
-  #app-section-home.is-active .overview-primary-action.is-body .overview-primary-art img {
-    transform: scale(2.35);
-    transform-origin: 50% 48%;
-  }
-
   #app-section-home.is-active .overview-primary-action.is-food .overview-primary-visual {
     inset: 82px 4px 18px;
   }

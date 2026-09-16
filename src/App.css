@@ -15580,7 +15580,16 @@ html:has(#app-section-more.is-active),
 
 .wellbeing-reasons label {
   min-width: 0;
-  overflow-wrap: anywhere;
+  gap: 8px;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.wellbeing-reasons input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  margin: 0;
 }
 
 

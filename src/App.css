@@ -15508,10 +15508,116 @@ html:has(#app-section-more.is-active),
   background: rgba(255, 178, 106, 0.12);
 }
 
+.wellbeing-compact-section {
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.wellbeing-section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 58px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+
+.wellbeing-section-toggle > span:first-child {
+  font-size: 1.05rem;
+  font-weight: 850;
+}
+
+.wellbeing-section-toggle-end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+
+.wellbeing-section-toggle-end small {
+  max-width: 150px;
+  color: rgba(247, 248, 255, 0.66);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wellbeing-section-toggle-end > span:last-child {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgba(78, 213, 255, 0.35);
+  border-radius: 999px;
+  color: #7de5ff;
+  font-size: 1.15rem;
+}
+
+.wellbeing-section-content {
+  display: grid;
+  gap: 12px;
+  padding: 0 14px 14px;
+}
+
+.wellbeing-inline-action {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.wellbeing-reasons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.wellbeing-reasons label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+
 @media (max-width: 430px) {
+  .wellbeing-center {
+    gap: 10px;
+  }
+
+  .wellbeing-hero {
+    padding: 12px;
+  }
+
   .wellbeing-choice-grid,
   .wellbeing-quick-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .wellbeing-choice-grid button:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  .wellbeing-choice-grid button,
+  .wellbeing-quick-grid button {
+    min-height: 42px;
+    padding: 8px 10px;
+  }
+
+  .wellbeing-actions {
+    align-items: stretch;
+  }
+
+  .wellbeing-actions button {
+    flex: 1 1 0;
+  }
+
+  .wellbeing-section-toggle-end small {
+    max-width: 92px;
   }
 }
 

@@ -135,9 +135,20 @@ async function enhanceWeatherRow(row) {
       button.setAttribute('aria-expanded', open ? 'true' : 'false')
     })
 
-    const windText = Array.from(row.querySelectorAll('span')).find((span) => /m\/s/.test(span.textContent || ''))
-    if (windText) windText.insertAdjacentElement('afterend', button)
-    else {
+    const weatherValues = Array.from(row.querySelectorAll(':scope > span'))
+    const windText = weatherValues.find((span) => /m\/s/.test(span.textContent || ''))
+    if (windText) {
+      const windIndex = weatherValues.indexOf(windText)
+      weatherValues.forEach((value, index) => {
+        value.style.order = String(index < windIndex ? index + 1 : index + 2)
+      })
+      windText.style.order = String(windIndex + 1)
+      button.style.order = String(windIndex + 2)
+      row.querySelectorAll(':scope > button, :scope > a').forEach((action) => {
+        action.style.order = '99'
+      })
+      row.appendChild(button)
+    } else {
       const detailsButton = row.querySelector('button, a')
       if (detailsButton) row.insertBefore(button, detailsButton)
       else row.appendChild(button)

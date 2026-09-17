@@ -43,6 +43,7 @@ const sv = {
     sections: {
       coach: { aria: 'Öppna coach och insikter', label: 'Coach' },
       home: { aria: 'Öppna översikten', label: 'Hem' },
+      journey: { aria: 'Öppna Min resa', label: 'Min resa' },
       more: { aria: 'Öppna fler funktioner och inställningar', label: 'Mer' },
       nutrition: { aria: 'Öppna mat och nutrition', label: 'Mat' },
       notices: { aria: 'Öppna notiser och minnesstöd', label: 'Notis' },
@@ -1032,6 +1033,12 @@ const sv = {
       framePlacementAria: 'Placeringsram - se till att hela kroppen syns i bild',
     },
   },
+  journey: {
+    sectionLabel: 'Min resa',
+    eyebrow: 'Min resa',
+    title: 'Min resa',
+    intro: 'Din vikt, mat, kropp, aktivitet och utveckling samlat på ett ställe.',
+  },
   progress: {
     sectionLabel: 'Framsteg och statistik',
     eyebrow: 'Framsteg',
@@ -1674,6 +1681,7 @@ const en = {
     sections: {
       coach: { aria: 'Open coach and insights', label: 'Coach' },
       home: { aria: 'Open overview', label: 'Home' },
+      journey: { aria: 'Open My journey', label: 'My journey' },
       more: { aria: 'Open more features and settings', label: 'More' },
       nutrition: { aria: 'Open food and nutrition', label: 'Food' },
       notices: { aria: 'Open notices and memory support', label: 'Notices' },
@@ -2662,6 +2670,12 @@ const en = {
       cameraOff: 'The camera is off.',
       framePlacementAria: 'Placement frame - make sure your whole body is in view',
     },
+  },
+  journey: {
+    sectionLabel: 'My journey',
+    eyebrow: 'My journey',
+    title: 'My journey',
+    intro: 'Your weight, food, body, activity and progress, all in one place.',
   },
   progress: {
     sectionLabel: 'Progress and statistics',

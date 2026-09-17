@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import HomeSection from './components/sections/HomeSection.jsx'
 import MoreSection from './components/sections/MoreSection.jsx'
 import NoticesSection from './components/sections/NoticesSection.jsx'
+import JourneySection from './features/journey/JourneySection.jsx'
 import PlaceSection from './components/sections/PlaceSection.jsx'
 import ProgressSection from './components/sections/ProgressSection.jsx'
 import ReadySection from './components/sections/ReadySection.jsx'
@@ -3148,6 +3149,10 @@ function App() {
 
         {activeAppSection === 'place' && (
           <PlaceSection activeSection={activeAppSection} />
+        )}
+
+        {activeAppSection === 'journey' && (
+          <JourneySection activeSection={activeAppSection} />
         )}
 
         {activeAppSection === 'notices' && reminderHubUiEnabled && (

@@ -427,6 +427,10 @@ const sv = {
         title: 'AI Coach',
         description: 'Fullständig AI Coach',
       },
+      aiEar: {
+        title: 'AI-örat',
+        description: 'Lyssna och identifiera musik, visslingar och andra ljud',
+      },
       wellbeing: {
         title: 'Må bra',
         description: 'Lugna övningar och trygghetsplan',
@@ -1671,6 +1675,22 @@ const sv = {
   },
   ready: readySv,
   place: placeSv,
+  aiEar: {
+    eyebrow: 'AI-ÖRAT',
+    title: 'Lyssna och identifiera',
+    intro: 'AI-örat ska kunna hjälpa dig känna igen musik, visslingar, fågelläten och andra ljud.',
+    categories: {
+      music: { icon: '♪', title: 'Musik' },
+      hum: { icon: '〜', title: 'Nynna & vissla' },
+      birds: { icon: '◇', title: 'Fågelläten' },
+      other: { icon: '•', title: 'Andra ljud' },
+    },
+    comingSoon: 'Den här delen av AI-örat byggs i nästa steg.',
+    start: {
+      title: 'Starta AI-örat',
+      note: 'Ljudanalysen byggs i nästa steg. Ingen inspelning sker än.',
+    },
+  },
 }
 
 const en = {
@@ -2097,6 +2117,10 @@ const en = {
       coach: {
         title: 'AI Coach',
         description: 'Full AI Coach',
+      },
+      aiEar: {
+        title: 'AI Ear',
+        description: 'Listen and identify music, whistling and other sounds',
       },
       wellbeing: {
         title: 'Wellbeing',
@@ -3342,6 +3366,22 @@ const en = {
   },
   ready: readyEn,
   place: placeEn,
+  aiEar: {
+    eyebrow: 'AI EAR',
+    title: 'Listen and identify',
+    intro: 'The AI Ear will be able to help you recognize music, whistling, bird calls and other sounds.',
+    categories: {
+      music: { icon: '♪', title: 'Music' },
+      hum: { icon: '〜', title: 'Hum & whistle' },
+      birds: { icon: '◇', title: 'Bird calls' },
+      other: { icon: '•', title: 'Other sounds' },
+    },
+    comingSoon: 'This part of the AI Ear is being built in the next step.',
+    start: {
+      title: 'Start AI Ear',
+      note: 'Sound analysis is built in the next step. No recording happens yet.',
+    },
+  },
 }
 
 function clone(value) {

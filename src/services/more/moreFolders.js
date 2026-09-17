@@ -28,6 +28,13 @@ export const moreHubFolders = [
     title: 'AI Coach',
   },
   {
+    id: 'ai-ear',
+    accent: 'blue',
+    description: 'Lyssna och identifiera musik, visslingar och andra ljud',
+    icon: '♪',
+    title: 'AI-örat',
+  },
+  {
     id: 'ma-bra',
     accent: 'purple',
     description: 'Lugna övningar och trygghetsplan',

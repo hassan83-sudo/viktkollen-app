@@ -2,10 +2,12 @@ import { moreHubFolders } from '../../services/more/moreFolders.js'
 import SeniorEverydaySection from '../../features/senior/SeniorEverydaySection.jsx'
 import DebtCaseSection from '../../features/economy/DebtCaseSection.jsx'
 import ActivitySection from '../../features/activity/ActivitySection.jsx'
+import AiEarSection from '../../features/ai-ear/AiEarSection.jsx'
 import { useTranslation } from 'react-i18next'
 
 const FOLDER_I18N_KEYS = {
   'ai-coach': 'coach',
+  'ai-ear': 'aiEar',
   'animal-world': 'animalWorld',
   ekonomi: 'economy',
   'pregnancy-first-year': 'pregnancyFirstYear',
@@ -55,6 +57,8 @@ function MoreHub({ activeFolder, children, isAuthenticated, onBack, onOpen, onOp
           <SeniorEverydaySection onOpenEye={onOpenEye} />
         ) : folder.id === 'aktivitet' ? (
           <ActivitySection />
+        ) : folder.id === 'ai-ear' ? (
+          <AiEarSection />
         ) : folder.id === 'inkasso' ? (
           <DebtCaseSection type="inkasso" />
         ) : folder.id === 'kronofogden' ? (

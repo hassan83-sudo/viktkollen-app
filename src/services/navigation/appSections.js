@@ -21,10 +21,10 @@ export const appSections = [
     label: 'Plats',
   },
   {
-    ariaLabel: 'Öppna notiser och minnesstöd',
-    icon: '🔔',
-    id: 'notices',
-    label: 'Notis',
+    ariaLabel: 'Öppna Min resa',
+    icon: '◎',
+    id: 'journey',
+    label: 'Min resa',
   },
   {
     ariaLabel: 'Öppna Stället',

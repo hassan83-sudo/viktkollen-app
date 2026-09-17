@@ -11886,7 +11886,8 @@ body:has(#app-section-home.is-active) {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-areas:
     "wellbeing coach"
-    "reminder today";
+    "reminder notices"
+    "today today";
   gap: 8px;
 }
 
@@ -11929,6 +11930,10 @@ body:has(#app-section-home.is-active) {
   background:
     radial-gradient(circle at 16% 18%, rgba(255, 180, 90, 0.14), transparent 34%),
     linear-gradient(150deg, #2a1c12, rgba(7, 11, 23, 0.98));
+}
+
+#app-section-home.is-active .overview-mood-card.is-notices {
+  grid-area: notices;
 }
 
 #app-section-home.is-active .overview-mood-card.is-today {
@@ -15440,6 +15445,63 @@ html:has(#app-section-more.is-active),
   min-width: 0;
 }
 
+.wellbeing-accordion-heading {
+  margin: 0;
+}
+
+.wellbeing-accordion-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.wellbeing-accordion-trigger-title {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.wellbeing-accordion-trigger-title .eyebrow {
+  margin: 0;
+}
+
+.wellbeing-accordion-trigger-meta {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  opacity: 0.82;
+}
+
+.wellbeing-accordion-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.wellbeing-accordion-content {
+  display: grid;
+  gap: 12px;
+}
+
 .wellbeing-choice-grid,
 .wellbeing-quick-grid {
   display: grid;
@@ -15481,7 +15543,7 @@ html:has(#app-section-more.is-active),
 }
 
 .wellbeing-panel textarea,
-.wellbeing-panel input {
+.wellbeing-panel input:not([type="checkbox"]) {
   width: 100%;
 }
 

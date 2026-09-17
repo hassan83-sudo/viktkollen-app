@@ -13,13 +13,18 @@ describe('WellbeingCenter', () => {
 
   afterEach(() => cleanup())
 
-  it('shows one compact section at a time', () => {
+  it('allows multiple sections to stay open at the same time', () => {
     render(<WellbeingCenter />)
 
     expect(screen.getByRole('button', { name: /Frivillig check-in/ }).getAttribute('aria-expanded')).toBe('true')
+
     fireEvent.click(screen.getByRole('button', { name: /Hjälp mig nu/ }))
-    expect(screen.getByRole('button', { name: /Frivillig check-in/ }).getAttribute('aria-expanded')).toBe('false')
+    expect(screen.getByRole('button', { name: /Frivillig check-in/ }).getAttribute('aria-expanded')).toBe('true')
     expect(screen.getByRole('button', { name: /Hjälp mig nu/ }).getAttribute('aria-expanded')).toBe('true')
+
+    fireEvent.click(screen.getByRole('button', { name: /Hjälp mig nu/ }))
+    expect(screen.getByRole('button', { name: /Hjälp mig nu/ }).getAttribute('aria-expanded')).toBe('false')
+    expect(screen.getByRole('button', { name: /Frivillig check-in/ }).getAttribute('aria-expanded')).toBe('true')
   })
 
   it('keeps check-in voluntary and hidden until the user saves it', () => {

@@ -826,6 +826,7 @@ function OverviewTodayMood({
   const hasCurrentWeight = isFiniteNumber(displayWeight) && Number(displayWeight) > 0
   const hasCalories = isFiniteNumber(caloriesToday)
   const nextReminder = useMemo(() => resolveNextReminder(reminderState), [reminderState])
+  const noticesCount = Array.isArray(reminderState?.reminders) ? reminderState.reminders.length : 0
   const nextReminderLabel = nextReminder.at
     ? new Intl.DateTimeFormat(i18n.language || 'sv-SE', {
         hour: '2-digit',
@@ -872,6 +873,19 @@ function OverviewTodayMood({
             <strong className="is-empty">{t('home:mood.noReminder')}</strong>
             <small className="is-empty">{t('home:mood.openNotices')}</small>
           </>
+        )}
+        <span className="overview-mood-link">{t('home:mood.openLink')}</span>
+      </button>
+
+      <button className="overview-mood-card is-notices" type="button" onClick={onOpenNotices} aria-label={t('home:mood.openNoticesCard')}>
+        <span className="overview-mood-card-top">
+          <OverviewIcon name="bell" />
+          <span className="overview-mood-label">{t('home:mood.notices')}</span>
+        </span>
+        {noticesCount > 0 ? (
+          <strong>{t('home:mood.noticesCount', { count: noticesCount })}</strong>
+        ) : (
+          <strong className="is-empty">{t('home:mood.noNotices')}</strong>
         )}
         <span className="overview-mood-link">{t('home:mood.openLink')}</span>
       </button>

@@ -65,9 +65,23 @@ const HEX64_PATTERN = /^[a-f0-9]{64}$/i
  * humming/melody matching, never AudD) receives the clip, so the consent
  * must name that distinct purpose. Birds, vehicles/machines and other
  * sounds remain unconnected and unlisted here.
+ *
+ * audio-lyrics-transcription (AI-örat -> "Ord ur en låt", Sprint 7) is a
+ * third, again separate, audio purpose: the clip is sent only to
+ * Viktkollen's own server-side speech-to-text route
+ * (api/ai-ear-lyrics-transcription), which forwards it to OpenAI's audio
+ * transcription API to get back plain text - never to AudD or ACRCloud,
+ * and the transcript itself is never sent onward to any lyrics/song
+ * lookup provider in this sprint (lyricsSearchProvider.search() stays
+ * "not-connected", entirely client-side, no network call). Kept separate
+ * from audio-music-recognition and audio-humming-recognition on purpose:
+ * a different external provider (OpenAI, never AudD or ACRCloud) receives
+ * the clip, and unlike those two this purpose's successful outcome is a
+ * transcript, not a song/melody match.
  */
 export const analysisConsentPurposes = Object.freeze({
   audioHummingRecognition: 'audio-humming-recognition',
+  audioLyricsTranscription: 'audio-lyrics-transcription',
   audioMusicRecognition: 'audio-music-recognition',
   bodyAnalysis: 'body-analysis',
   forgottenItemsAnalysis: 'forgotten-items-analysis',

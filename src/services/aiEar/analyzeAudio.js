@@ -13,7 +13,7 @@
 // it only ever hands the blob to the resolved provider and normalizes
 // whatever that provider returns.
 
-import { analysisFailureReasons, createAudioAnalysisResult } from './audioResultModel.js'
+import { analysisFailureReasons, createAudioAnalysisResult, createLyricsTranscriptionResult } from './audioResultModel.js'
 import { providersByCategory } from './providers.js'
 
 /**
@@ -30,6 +30,7 @@ import { providersByCategory } from './providers.js'
  * @returns {Promise<
  *   { ok: true, matched: false } |
  *   { ok: true, matched: true, result: object } |
+ *   { ok: true, transcript: object } |
  *   { ok: false, reason: string, message?: string }
  * >}
  */
@@ -45,6 +46,24 @@ export async function analyzeAudio({ audioBlob, category, consentApproved = fals
 
     if (!outcome || outcome.ok !== true) {
       return { ok: false, reason: outcome?.reason || analysisFailureReasons.NOT_CONNECTED }
+    }
+
+    // lyricsProvider (Sprint 7) never returns a song/melody "hit" - it
+    // returns a speech-to-text TRANSCRIPT, which must stay a structurally
+    // different shape from createAudioAnalysisResult's title/subtitle
+    // "match" shape (see audioResultModel.js). This branch is checked
+    // FIRST, before the matched/no-match logic below, and returns early -
+    // no other provider today ever sets `transcript` on its outcome.
+    if (typeof outcome.transcript === 'string') {
+      return {
+        ok: true,
+        transcript: createLyricsTranscriptionResult({
+          language: outcome.language,
+          lyricsSearch: outcome.lyricsSearch,
+          noSpeech: outcome.noSpeech,
+          transcript: outcome.transcript,
+        }),
+      }
     }
 
     // A provider may report "analyzed successfully, no confident match"

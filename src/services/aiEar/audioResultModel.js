@@ -13,6 +13,10 @@
 export const analysisTypes = Object.freeze({
   SONG_IDENTIFICATION: 'song-identification',
   HUMMED_MELODY_SEARCH: 'hummed-melody-search',
+  // Sprint 7: NOT a "hit" like the two types above - see
+  // createLyricsTranscriptionResult below. A transcript is never forced
+  // through createAudioAnalysisResult's title/subtitle "match" shape.
+  LYRICS_TRANSCRIPTION: 'lyrics-transcription',
   BIRD_SPECIES_IDENTIFICATION: 'bird-species-identification',
   VEHICLE_SOUND_IDENTIFICATION: 'vehicle-sound-identification',
   GENERAL_SOUND_CLASSIFICATION: 'general-sound-classification',
@@ -75,6 +79,37 @@ export function createAudioAnalysisResult({
     ...normalizeCandidate({ title, subtitle, confidence }),
     alternatives: Array.isArray(alternatives) ? alternatives.map(normalizeCandidate) : [],
     details: details && typeof details === 'object' ? details : null,
+  }
+}
+
+/**
+ * Builds a normalized "what did I hear as text" result for the
+ * "Ord ur en låt" category (Sprint 7) - deliberately NOT
+ * createAudioAnalysisResult: a speech-to-text transcript is not a song
+ * match, has no title/subtitle/confidence "hit", and must never be
+ * dressed up to look like one (see AiEarSection.jsx's separate rendering
+ * branch for this shape).
+ *
+ * transcript is always coerced to a plain string and defensively capped
+ * in length - it is treated purely as inert analysis-result TEXT, never
+ * interpreted, evaluated, or rendered as HTML/markup anywhere downstream.
+ *
+ * lyricsSearch is whatever src/services/aiEar/lyricsSearchProvider.js
+ * returned for this transcript (today always { status: 'not-connected' }
+ * - no real lyrics/song lookup is connected in Sprint 7).
+ */
+export function createLyricsTranscriptionResult({
+  transcript = '',
+  language = null,
+  noSpeech = false,
+  lyricsSearch = null,
+} = {}) {
+  const safeTranscript = String(transcript || '').slice(0, 500)
+  return {
+    transcript: safeTranscript,
+    language: typeof language === 'string' && language ? language : null,
+    noSpeech: noSpeech === true || safeTranscript.length === 0,
+    lyricsSearch: lyricsSearch && typeof lyricsSearch === 'object' ? lyricsSearch : { status: 'not-connected' },
   }
 }
 

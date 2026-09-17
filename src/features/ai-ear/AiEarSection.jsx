@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { analyzeAudio } from '../../services/aiEar/analyzeAudio.js'
 import { vehicleSubcategories } from '../../services/aiEar/audioResultModel.js'
 
-const categoryIds = ['music', 'hum', 'birds', 'vehicles', 'other']
+const categoryIds = ['music', 'lyrics', 'hum', 'birds', 'vehicles', 'other']
 
 function isRecordingSupported() {
   return typeof window !== 'undefined'
@@ -39,6 +39,7 @@ function AiEarSection() {
   // immediately, unchanged from Sprint 3.
   const [awaitingMusicConsent, setAwaitingMusicConsent] = useState(false)
   const [awaitingHumConsent, setAwaitingHumConsent] = useState(false)
+  const [awaitingLyricsConsent, setAwaitingLyricsConsent] = useState(false)
 
   const streamRef = useRef(null)
   const recorderRef = useRef(null)
@@ -154,6 +155,7 @@ function AiEarSection() {
     setAnalysisOutcome(null)
     setAwaitingMusicConsent(false)
     setAwaitingHumConsent(false)
+    setAwaitingLyricsConsent(false)
     setPhase('idle')
     startRecording()
   }
@@ -167,6 +169,7 @@ function AiEarSection() {
     setAnalysisOutcome(null)
     setAwaitingMusicConsent(false)
     setAwaitingHumConsent(false)
+    setAwaitingLyricsConsent(false)
     setPhase('idle')
   }
 
@@ -198,6 +201,10 @@ function AiEarSection() {
       setAwaitingHumConsent(true)
       return
     }
+    if (selectedCategory === 'lyrics') {
+      setAwaitingLyricsConsent(true)
+      return
+    }
     runAnalysis()
   }
 
@@ -217,6 +224,15 @@ function AiEarSection() {
 
   function cancelHumConsent() {
     setAwaitingHumConsent(false)
+  }
+
+  function confirmLyricsConsent() {
+    setAwaitingLyricsConsent(false)
+    runAnalysis({ consentApproved: true })
+  }
+
+  function cancelLyricsConsent() {
+    setAwaitingLyricsConsent(false)
   }
 
   const isVehicleCategory = selectedCategory === 'vehicles'
@@ -242,6 +258,7 @@ function AiEarSection() {
               setSelectedCategory(categoryId)
               setAwaitingMusicConsent(false)
               setAwaitingHumConsent(false)
+              setAwaitingLyricsConsent(false)
             }}
           >
             <span aria-hidden="true">{t(`categories.${categoryId}.icon`)}</span>
@@ -305,7 +322,7 @@ function AiEarSection() {
               {t('afterStop.delete')}
             </button>
           </div>
-          {!awaitingMusicConsent && !awaitingHumConsent && (
+          {!awaitingMusicConsent && !awaitingHumConsent && !awaitingLyricsConsent && (
             <button className="primary-button" type="button" onClick={requestAnalysis}>
               {t('analyze.button')}
             </button>
@@ -336,6 +353,19 @@ function AiEarSection() {
               </div>
             </div>
           )}
+          {awaitingLyricsConsent && (
+            <div className="wellbeing-accordion-content">
+              <p>{t('lyricsConsent.body')}</p>
+              <div className="wellbeing-actions">
+                <button className="primary-button" type="button" onClick={confirmLyricsConsent}>
+                  {t('lyricsConsent.confirm')}
+                </button>
+                <button className="secondary-button" type="button" onClick={cancelLyricsConsent}>
+                  {t('lyricsConsent.cancel')}
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -347,7 +377,23 @@ function AiEarSection() {
         <>
           <audio controls src={audioUrl} />
 
-          {analysisOutcome?.ok && analysisOutcome.matched !== false ? (
+          {analysisOutcome?.ok && typeof analysisOutcome.transcript?.transcript === 'string' ? (
+            <div className="wellbeing-accordion-content">
+              {analysisOutcome.transcript.transcript && !analysisOutcome.transcript.noSpeech ? (
+                <>
+                  <p className="form-success" role="status" aria-live="polite">{t('result.lyricsHeardLabel')}</p>
+                  {/* The transcript is the user's own analysis result text, rendered
+                      as plain text only (React escapes it automatically) - never as
+                      HTML, never evaluated as code/commands. See
+                      audioResultModel.createLyricsTranscriptionResult. */}
+                  <p>&ldquo;{analysisOutcome.transcript.transcript}&rdquo;</p>
+                </>
+              ) : (
+                <p className="form-success" role="status" aria-live="polite">{t('result.lyricsNoSpeech')}</p>
+              )}
+              <p className="estimate-note">{t('result.lyricsSearchNotConnected')}</p>
+            </div>
+          ) : analysisOutcome?.ok && analysisOutcome.matched !== false ? (
             <div className="wellbeing-accordion-content">
               <p className="form-success" role="status" aria-live="polite">
                 {t('result.mainHitLabel')}: {analysisOutcome.result.title}
@@ -389,7 +435,7 @@ function AiEarSection() {
             </p>
           )}
 
-          {!awaitingMusicConsent && !awaitingHumConsent && (
+          {!awaitingMusicConsent && !awaitingHumConsent && !awaitingLyricsConsent && (
             <div className="wellbeing-actions">
               <button className="secondary-button" type="button" onClick={requestAnalysis}>
                 {t('result.retryAnalysis')}
@@ -421,6 +467,19 @@ function AiEarSection() {
                 </button>
                 <button className="secondary-button" type="button" onClick={cancelHumConsent}>
                   {t('humConsent.cancel')}
+                </button>
+              </div>
+            </div>
+          )}
+          {awaitingLyricsConsent && (
+            <div className="wellbeing-accordion-content">
+              <p>{t('lyricsConsent.body')}</p>
+              <div className="wellbeing-actions">
+                <button className="primary-button" type="button" onClick={confirmLyricsConsent}>
+                  {t('lyricsConsent.confirm')}
+                </button>
+                <button className="secondary-button" type="button" onClick={cancelLyricsConsent}>
+                  {t('lyricsConsent.cancel')}
                 </button>
               </div>
             </div>

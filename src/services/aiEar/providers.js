@@ -8,24 +8,33 @@
 // a future sprint can connect a real provider to one category without
 // touching the others.
 //
-// IMPORTANT: as of Sprint 6, musicProvider AND humProvider are connected
-// to real analysis services - musicProvider to AudD (Sprint 4, ordinary
-// recorded music only) and humProvider to ACRCloud's Humming Recognition
-// engine (Sprint 6, humming/whistling/sung melody only). These are two
-// deliberately separate external providers, never blended: AudD's exact
-// fingerprint matching cannot be assumed to work on a hummed or off-key
-// rendition, so humming never falls back to AudD and recorded music never
-// falls back to ACRCloud. Every OTHER provider below still only reports
-// that it is not connected - none of them invent a plausible-looking
-// result. See analyzeAudio.js for how the UI is expected to react to
-// "not-connected" versus a real outcome.
+// IMPORTANT: as of Sprint 7, musicProvider, humProvider AND lyricsProvider
+// are connected to real analysis services - musicProvider to AudD
+// (Sprint 4, ordinary recorded music only), humProvider to ACRCloud's
+// Humming Recognition engine (Sprint 6, humming/whistling/sung melody
+// only), and lyricsProvider to OpenAI's audio transcription API (Sprint 7,
+// speech-to-text ONLY - spoken or sung WORDS, e.g. "bailando bailando").
+// These are three deliberately separate external providers, never
+// blended: AudD's exact fingerprint matching cannot be assumed to work on
+// a hummed/off-key rendition, ACRCloud's melody matching is not a
+// transcription service, and OpenAI's transcription result is plain text,
+// never a song/artist match - lyricsProvider's result is intentionally a
+// different shape (see audioResultModel.js's createLyricsTranscriptionResult
+// and analyzeAudio.js's separate "transcript" branch). Every OTHER
+// provider below still only reports that it is not connected - none of
+// them invent a plausible-looking result. See analyzeAudio.js for how the
+// UI is expected to react to "not-connected" versus a real outcome.
 //
-// No network access happens anywhere in this file itself - musicProvider
-// and humProvider only delegate to their own dedicated provider modules,
-// which are the only places that talk to the network.
+// No network access happens anywhere in this file itself - musicProvider,
+// humProvider and lyricsProvider only delegate to their own dedicated
+// provider modules, which are the only places that talk to the network.
+// lyricsProvider's onward "which song is this from" step
+// (lyricsSearchProvider.js) explicitly makes NO network call at all this
+// sprint - see that file.
 
 import { analysisTypes } from './audioResultModel.js'
 import { recognizeHumming } from './hummingRecognitionProvider.js'
+import { recognizeLyrics } from './lyricsTranscriptionProvider.js'
 import { recognizeMusic } from './musicRecognitionProvider.js'
 
 function notConnected() {
@@ -64,6 +73,27 @@ export const humProvider = {
   analysisType: analysisTypes.HUMMED_MELODY_SEARCH,
   analyze(audioBlob, { consentApproved } = {}) {
     return recognizeHumming({ audioBlob, consentApproved })
+  },
+}
+
+/**
+ * "Ord ur en låt" - the user spoke or sang a few words from a song (e.g.
+ * "bailando bailando"). Sprint 7: connected to a real provider (OpenAI's
+ * audio transcription API, via Viktkollen's own server-side
+ * /api/ai-ear-lyrics-transcription route - see
+ * lyricsTranscriptionProvider.js). Deliberately its own provider slot,
+ * never blended with musicProvider (exact audio fingerprinting) or
+ * humProvider (melody matching) - this is speech-to-text only. Its
+ * result is NOT a song/melody "hit": see
+ * audioResultModel.createLyricsTranscriptionResult and
+ * analyzeAudio.js's separate transcript branch. Only proceeds when the
+ * caller has passed an explicit consentApproved: true, mirroring
+ * musicProvider/humProvider.
+ */
+export const lyricsProvider = {
+  analysisType: analysisTypes.LYRICS_TRANSCRIPTION,
+  analyze(audioBlob, { consentApproved } = {}) {
+    return recognizeLyrics({ audioBlob, consentApproved })
   },
 }
 
@@ -110,6 +140,7 @@ export const generalSoundProvider = {
 export const providersByCategory = Object.freeze({
   music: musicProvider,
   hum: humProvider,
+  lyrics: lyricsProvider,
   birds: birdProvider,
   vehicles: vehicleProvider,
   other: generalSoundProvider,

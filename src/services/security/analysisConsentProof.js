@@ -45,9 +45,17 @@
  * src/services/aiEar/hummingRecognitionProvider.js. It is a distinct
  * purpose from audioMusicRecognition even though both carry an audio Blob,
  * because a different external provider (ACRCloud) receives it.
+ *
+ * audioLyricsTranscription (AI-örat -> "Ord ur en låt", Sprint 7) reuses
+ * the same generic helpers a third time - see
+ * src/services/aiEar/lyricsTranscriptionProvider.js. Distinct again from
+ * both audio purposes above: the clip goes only to Viktkollen's own
+ * speech-to-text route (OpenAI transcription), never AudD or ACRCloud,
+ * and its successful result is a transcript, not a song/melody match.
  */
 export const analysisConsentPurposes = Object.freeze({
   audioHummingRecognition: 'audio-humming-recognition',
+  audioLyricsTranscription: 'audio-lyrics-transcription',
   audioMusicRecognition: 'audio-music-recognition',
   bodyAnalysis: 'body-analysis',
   forgottenItemsAnalysis: 'forgotten-items-analysis',

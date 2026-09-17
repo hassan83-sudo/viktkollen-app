@@ -126,6 +126,10 @@ const sv = {
       reminderReady: 'Nästa påminnelse',
       openNotices: 'Öppna',
       openLink: 'Öppna',
+      notices: 'Notis',
+      noticesCount: '{{count}} notiser',
+      noNotices: 'Inga notiser',
+      openNoticesCard: 'Öppna Notis',
     },
     weatherDay: {
       title: 'Vädret idag',
@@ -1764,6 +1768,10 @@ const en = {
       reminderReady: 'Next reminder',
       openNotices: 'Open',
       openLink: 'Open',
+      notices: 'Notices',
+      noticesCount: '{{count}} notices',
+      noNotices: 'No notices',
+      openNoticesCard: 'Open Notices',
     },
     weatherDay: {
       title: 'Weather today',

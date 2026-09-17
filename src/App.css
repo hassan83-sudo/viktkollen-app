@@ -11886,7 +11886,8 @@ body:has(#app-section-home.is-active) {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-areas:
     "wellbeing coach"
-    "reminder today";
+    "reminder notices"
+    "today today";
   gap: 8px;
 }
 
@@ -11929,6 +11930,10 @@ body:has(#app-section-home.is-active) {
   background:
     radial-gradient(circle at 16% 18%, rgba(255, 180, 90, 0.14), transparent 34%),
     linear-gradient(150deg, #2a1c12, rgba(7, 11, 23, 0.98));
+}
+
+#app-section-home.is-active .overview-mood-card.is-notices {
+  grid-area: notices;
 }
 
 #app-section-home.is-active .overview-mood-card.is-today {

@@ -27,7 +27,8 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
           grid-template-areas:
             "wellbeing coach"
             "quick quick"
-            "reminder today";
+            "reminder notices"
+            "today today";
         }
         #app-section-home.is-active .overview-today-mood > .is-quick {
           grid-area: quick;

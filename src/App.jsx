@@ -3292,6 +3292,7 @@ function App() {
           <JourneySection
             activeSection={activeAppSection}
             coachSectionProps={coachSectionProps}
+            CoachSectionComponent={CoachSection}
             NutritionSectionComponent={NutritionSection}
             nutritionSectionProps={nutritionSectionProps}
             ProgressSectionComponent={ProgressSection}

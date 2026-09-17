@@ -39,8 +39,15 @@
  * naming in this module's exports is legacy from when only photo flows
  * used it; see src/services/aiEar/musicRecognitionProvider.js for the
  * audio-specific caller.
+ *
+ * audioHummingRecognition (AI-örat -> Nynna & vissla, Sprint 6) reuses the
+ * same generic helpers again, for the same reason - see
+ * src/services/aiEar/hummingRecognitionProvider.js. It is a distinct
+ * purpose from audioMusicRecognition even though both carry an audio Blob,
+ * because a different external provider (ACRCloud) receives it.
  */
 export const analysisConsentPurposes = Object.freeze({
+  audioHummingRecognition: 'audio-humming-recognition',
   audioMusicRecognition: 'audio-music-recognition',
   bodyAnalysis: 'body-analysis',
   forgottenItemsAnalysis: 'forgotten-items-analysis',

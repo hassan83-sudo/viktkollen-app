@@ -58,8 +58,16 @@ const HEX64_PATTERN = /^[a-f0-9]{64}$/i
  * scoped to music only - humming/whistling, birds, vehicles/machines and
  * other sounds all remain unconnected and unlisted here until (and unless)
  * a future sprint adds a purpose for each of them individually.
+ *
+ * audio-humming-recognition (AI-örat -> Nynna & vissla, Sprint 6) is a
+ * separate purpose again, deliberately not reusing audio-music-recognition
+ * even though both are audio clips: a different external provider (ACRCloud
+ * humming/melody matching, never AudD) receives the clip, so the consent
+ * must name that distinct purpose. Birds, vehicles/machines and other
+ * sounds remain unconnected and unlisted here.
  */
 export const analysisConsentPurposes = Object.freeze({
+  audioHummingRecognition: 'audio-humming-recognition',
   audioMusicRecognition: 'audio-music-recognition',
   bodyAnalysis: 'body-analysis',
   forgottenItemsAnalysis: 'forgotten-items-analysis',

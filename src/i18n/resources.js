@@ -1683,13 +1683,33 @@ const sv = {
       music: { icon: '♪', title: 'Musik' },
       hum: { icon: '〜', title: 'Nynna & vissla' },
       birds: { icon: '◇', title: 'Fågelläten' },
+      vehicles: { icon: '▲', title: 'Fordon & maskiner' },
       other: { icon: '•', title: 'Andra ljud' },
     },
+    categoryGroupLabel: 'Välj ljudkategori',
+    selectedCategory: 'Vald kategori: {{category}}',
     comingSoon: 'Den här delen av AI-örat byggs i nästa steg.',
     start: {
       title: 'Starta AI-örat',
-      note: 'Ljudanalysen byggs i nästa steg. Ingen inspelning sker än.',
+      note: 'Tryck för att starta en kort inspelning. Ingen analys görs än, och ljudet stannar på din enhet.',
     },
+    requestingPermission: 'Väntar på mikrofonbehörighet...',
+    listening: {
+      status: 'AI-örat lyssnar...',
+      stop: 'Stoppa',
+    },
+    afterStop: {
+      title: 'Inspelningen är klar',
+      recordAgain: 'Spela in igen',
+      delete: 'Radera',
+    },
+    permissionDenied: {
+      message: 'Mikrofonåtkomst behövs för att AI-örat ska kunna lyssna.',
+    },
+    unsupported: {
+      message: 'Den här webbläsaren stöder inte ljudinspelning ännu.',
+    },
+    privacyNote: 'Ljudet stannar på din enhet tills du väljer att analysera det.',
   },
 }
 
@@ -3374,13 +3394,33 @@ const en = {
       music: { icon: '♪', title: 'Music' },
       hum: { icon: '〜', title: 'Hum & whistle' },
       birds: { icon: '◇', title: 'Bird calls' },
+      vehicles: { icon: '▲', title: 'Vehicles & machines' },
       other: { icon: '•', title: 'Other sounds' },
     },
+    categoryGroupLabel: 'Choose a sound category',
+    selectedCategory: 'Selected category: {{category}}',
     comingSoon: 'This part of the AI Ear is being built in the next step.',
     start: {
       title: 'Start AI Ear',
-      note: 'Sound analysis is built in the next step. No recording happens yet.',
+      note: 'Press to start a short recording. No analysis happens yet, and the audio stays on your device.',
     },
+    requestingPermission: 'Waiting for microphone permission...',
+    listening: {
+      status: 'AI Ear is listening...',
+      stop: 'Stop',
+    },
+    afterStop: {
+      title: 'Recording ready',
+      recordAgain: 'Record again',
+      delete: 'Delete',
+    },
+    permissionDenied: {
+      message: 'Microphone access is needed for the AI Ear to listen.',
+    },
+    unsupported: {
+      message: 'This browser does not support audio recording yet.',
+    },
+    privacyNote: 'The audio stays on your device until you choose to analyze it.',
   },
 }
 

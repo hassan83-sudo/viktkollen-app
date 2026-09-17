@@ -1042,6 +1042,15 @@ const sv = {
     eyebrow: 'Min resa',
     title: 'Min resa',
     intro: 'Din vikt, mat, kropp, aktivitet och utveckling samlat på ett ställe.',
+    tabsAriaLabel: 'Min resa - navigering',
+    tabs: {
+      overview: 'Översikt',
+      progress: 'Vikt & kropp',
+      nutrition: 'Mat',
+    },
+    overviewPlaceholder: 'Här samlar vi snart en översikt av din resa. Under tiden hittar du Vikt & kropp och Mat i flikarna ovan.',
+    progressError: 'Vikt & kropp kunde inte visas',
+    nutritionError: 'Mat kunde inte visas',
   },
   progress: {
     sectionLabel: 'Framsteg och statistik',
@@ -2684,6 +2693,15 @@ const en = {
     eyebrow: 'My journey',
     title: 'My journey',
     intro: 'Your weight, food, body, activity and progress, all in one place.',
+    tabsAriaLabel: 'My journey - navigation',
+    tabs: {
+      overview: 'Overview',
+      progress: 'Weight & body',
+      nutrition: 'Food',
+    },
+    overviewPlaceholder: 'An overview of your journey is coming soon. In the meantime, use the Weight & body and Food tabs above.',
+    progressError: 'Weight & body could not be shown',
+    nutritionError: 'Food could not be shown',
   },
   progress: {
     sectionLabel: 'Progress and statistics',

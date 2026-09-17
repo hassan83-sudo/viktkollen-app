@@ -3021,6 +3021,98 @@ function App() {
     )
   }
 
+  const nutritionSectionProps = {
+    barcodeInput,
+    barcodeScannerActive,
+    barcodeStatus,
+    barcodeVideoRef,
+    checkIn,
+    displayPhotoMeals,
+    favoriteMeals,
+    foodPhotoPreview,
+    foods,
+    foodScore,
+    handleFoodPhotoChange,
+    healthSnapshot,
+    mealHistoryImportSummary,
+    meals,
+    nutritionGoals,
+    onScrollToTarget: scrollTargetInApp,
+    onAnalyzePhotoMeal: analyzePhotoMeal,
+    onBarcodeInputChange: setBarcodeInput,
+    onCancelClearMealHistory: () => setShowClearMealHistoryConfirm(false),
+    onClearMealHistory: clearLocalMealHistory,
+    onCreateDemoMealDay: createDemoMealAnalysisDay,
+    onExportMealHistory: exportMealAnalysisHistory,
+    onFavoriteMealsChange: (nextFavorites) => setFavoriteMeals(normalizeFavoriteMeals(nextFavorites)),
+    onFoodToggle: toggleFood,
+    onImportMealHistory: importMealAnalysisHistory,
+    onMealsChange: (nextMeals) => setMeals(normalizeMeals(nextMeals)),
+    onNutritionGoalsChange: (nextGoals) => setNutritionGoals(normalizeNutritionGoals(nextGoals)),
+    onSelectedMealDateChange: setSelectedMealDate,
+    onShowClearMealHistory: () => setShowClearMealHistoryConfirm(true),
+    onStartBarcodeScanner: startBarcodeScanner,
+    onStopBarcodeScanner: stopBarcodeScanner,
+    onSubmitManualBarcode: submitManualBarcode,
+    onUpdateCheckIn: updateCheckIn,
+    photoAnalysisStatus,
+    profile: scopedProfile,
+    scannedProducts,
+    selectedMealDate,
+    showClearMealHistoryConfirm,
+    userId: authUserId || 'local-user',
+    weights: scopedWeights,
+    weekSummary: mealWeekSummary,
+  }
+
+  const progressSectionProps = {
+    adaptiveCoachFeedback,
+    afterPhoto,
+    beforeAfterPhotos,
+    beforePhoto,
+    bodyAnalysisHistory,
+    bodyMeasurements,
+    checkIn,
+    createWeeklyReport,
+    foods,
+    goalSettings: progressGoalSettings,
+    goalsHabits,
+    healthSnapshot,
+    meals,
+    monthlyReport,
+    navigationIntent: progressIntent || moreIntent,
+    onScrollToTarget: scrollTargetInApp,
+    nutritionGoals,
+    onAfterPhotoIdChange: setAfterPhotoId,
+    onBeforePhotoIdChange: setBeforePhotoId,
+    onBodyMeasurementsChange: (nextMeasurements) => setBodyMeasurements(normalizeBodyMeasurements(nextMeasurements)),
+    onDeleteProgressPhoto: (photoId) => {
+      if (window.confirm('Vill du ta bort den här framstegsbilden?')) {
+        setProgressPhotos((current) => current.filter((photo) => photo.id !== photoId))
+      }
+    },
+    onGoalSettingsChange: (nextSettings) => setProgressGoalSettings(normalizeGoalSettings(nextSettings)),
+    onProgressPhotoChange: handleProgressPhotoChange,
+    onProgressPhotoNoteChange: setProgressPhotoNote,
+    onProgressReportsChange: setProgressReports,
+    onUpdateProgressPhoto: (photoId, updates) => setProgressPhotos((current) => current.map((photo) => photo.id === photoId ? { ...photo, ...updates, updatedAt: new Date().toISOString() } : photo)),
+    onWeightsChange: (nextWeights) => setWeights(normalizeWeights(nextWeights)),
+    profile: validatedProfile,
+    progressPhotoComparison,
+    progressPhotoComparisonImages,
+    progressPhotoItems,
+    progressPhotoNote,
+    progressPhotoOptions,
+    progressPhotos,
+    progressReports,
+    selectedMealDate,
+    userId: authUserId || 'local-user',
+    weights: centralWeightStats.weights,
+    weeklyReportData,
+    weeklyReportLines,
+    weeklyReportStatus,
+  }
+
   return (
     <main className="app-shell">
         <PwaExperience showDiagnostics={showInternalTools} />
@@ -3152,7 +3244,13 @@ function App() {
         )}
 
         {activeAppSection === 'journey' && (
-          <JourneySection activeSection={activeAppSection} />
+          <JourneySection
+            activeSection={activeAppSection}
+            NutritionSectionComponent={NutritionSection}
+            nutritionSectionProps={nutritionSectionProps}
+            ProgressSectionComponent={ProgressSection}
+            progressSectionProps={progressSectionProps}
+          />
         )}
 
         {activeAppSection === 'notices' && reminderHubUiEnabled && (
@@ -3254,96 +3352,8 @@ function App() {
     voiceStatus,
     weights: centralWeightStats.weights,
   }}
-  nutritionSectionProps={{
-    barcodeInput,
-    barcodeScannerActive,
-    barcodeStatus,
-    barcodeVideoRef,
-    checkIn,
-    displayPhotoMeals,
-    favoriteMeals,
-    foodPhotoPreview,
-    foods,
-    foodScore,
-    handleFoodPhotoChange,
-    healthSnapshot,
-    mealHistoryImportSummary,
-    meals,
-    nutritionGoals,
-    onScrollToTarget: scrollTargetInApp,
-    onAnalyzePhotoMeal: analyzePhotoMeal,
-    onBarcodeInputChange: setBarcodeInput,
-    onCancelClearMealHistory: () => setShowClearMealHistoryConfirm(false),
-    onClearMealHistory: clearLocalMealHistory,
-    onCreateDemoMealDay: createDemoMealAnalysisDay,
-    onExportMealHistory: exportMealAnalysisHistory,
-    onFavoriteMealsChange: (nextFavorites) => setFavoriteMeals(normalizeFavoriteMeals(nextFavorites)),
-    onFoodToggle: toggleFood,
-    onImportMealHistory: importMealAnalysisHistory,
-    onMealsChange: (nextMeals) => setMeals(normalizeMeals(nextMeals)),
-    onNutritionGoalsChange: (nextGoals) => setNutritionGoals(normalizeNutritionGoals(nextGoals)),
-    onSelectedMealDateChange: setSelectedMealDate,
-    onShowClearMealHistory: () => setShowClearMealHistoryConfirm(true),
-    onStartBarcodeScanner: startBarcodeScanner,
-    onStopBarcodeScanner: stopBarcodeScanner,
-    onSubmitManualBarcode: submitManualBarcode,
-    onUpdateCheckIn: updateCheckIn,
-    photoAnalysisStatus,
-    profile: scopedProfile,
-    scannedProducts,
-    selectedMealDate,
-    showClearMealHistoryConfirm,
-    userId: authUserId || 'local-user',
-    weights: scopedWeights,
-    weekSummary: mealWeekSummary,
-  }}
-  progressSectionProps={{
-    adaptiveCoachFeedback,
-    afterPhoto,
-    beforeAfterPhotos,
-    beforePhoto,
-    bodyAnalysisHistory,
-    bodyMeasurements,
-    checkIn,
-    createWeeklyReport,
-    foods,
-    goalSettings: progressGoalSettings,
-    goalsHabits,
-    healthSnapshot,
-    meals,
-    monthlyReport,
-    navigationIntent: progressIntent || moreIntent,
-    onScrollToTarget: scrollTargetInApp,
-    nutritionGoals,
-    onAfterPhotoIdChange: setAfterPhotoId,
-    onBeforePhotoIdChange: setBeforePhotoId,
-    onBodyMeasurementsChange: (nextMeasurements) => setBodyMeasurements(normalizeBodyMeasurements(nextMeasurements)),
-    onDeleteProgressPhoto: (photoId) => {
-      if (window.confirm('Vill du ta bort den här framstegsbilden?')) {
-        setProgressPhotos((current) => current.filter((photo) => photo.id !== photoId))
-      }
-    },
-    onGoalSettingsChange: (nextSettings) => setProgressGoalSettings(normalizeGoalSettings(nextSettings)),
-    onProgressPhotoChange: handleProgressPhotoChange,
-    onProgressPhotoNoteChange: setProgressPhotoNote,
-    onProgressReportsChange: setProgressReports,
-    onUpdateProgressPhoto: (photoId, updates) => setProgressPhotos((current) => current.map((photo) => photo.id === photoId ? { ...photo, ...updates, updatedAt: new Date().toISOString() } : photo)),
-    onWeightsChange: (nextWeights) => setWeights(normalizeWeights(nextWeights)),
-    profile: validatedProfile,
-    progressPhotoComparison,
-    progressPhotoComparisonImages,
-    progressPhotoItems,
-    progressPhotoNote,
-    progressPhotoOptions,
-    progressPhotos,
-    progressReports,
-    selectedMealDate,
-    userId: authUserId || 'local-user',
-    weights: centralWeightStats.weights,
-    weeklyReportData,
-    weeklyReportLines,
-    weeklyReportStatus,
-  }}
+  nutritionSectionProps={nutritionSectionProps}
+  progressSectionProps={progressSectionProps}
 />
         )}
         {activeAppSection === 'social' && socialUiEnabled && (

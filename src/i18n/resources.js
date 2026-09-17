@@ -1708,9 +1708,16 @@ const sv = {
       mainHitLabel: 'Möjlig träff',
       confidenceLabel: 'Träffnivå: {{percent}}',
       alternativesLabel: 'Liknande ljud / alternativ',
+      noMatch: 'Ingen säker musikträff hittades.',
       notConnected: 'Ljudanalys är inte ansluten ännu.',
       error: 'Analysen kunde inte genomföras just nu. Försök gärna igen.',
       retryAnalysis: 'Analysera igen',
+    },
+    consent: {
+      title: 'Skicka ljud för musikigenkänning?',
+      body: 'Klippet skickas till Viktkollens server, som frågar en extern musiktjänst om låten. Ljudet sparas inte permanent och används bara för den här analysen.',
+      confirm: 'Skicka och analysera',
+      cancel: 'Avbryt',
     },
     comingSoon: 'Den här delen av AI-örat byggs i nästa steg.',
     start: {
@@ -3443,9 +3450,16 @@ const en = {
       mainHitLabel: 'Possible match',
       confidenceLabel: 'Confidence: {{percent}}',
       alternativesLabel: 'Similar sounds / alternatives',
+      noMatch: 'No confident music match was found.',
       notConnected: 'Sound analysis is not connected yet.',
       error: 'The analysis could not be completed right now. Please try again.',
       retryAnalysis: 'Analyze again',
+    },
+    consent: {
+      title: 'Send audio for music recognition?',
+      body: 'The clip is sent to Viktkollen\'s own server, which asks an external music service to identify the song. The audio is not stored permanently and is only used for this analysis.',
+      confirm: 'Send and analyze',
+      cancel: 'Cancel',
     },
     comingSoon: 'This part of the AI Ear is being built in the next step.',
     start: {

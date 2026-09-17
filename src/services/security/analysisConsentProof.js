@@ -30,8 +30,18 @@
  * for it, and src/services/mealAnalysisService.js must never import from
  * this module. The same is true for any future "Ögat" / eye-recognition
  * flow: it is not, and must never be, added to analysisConsentPurposes.
+ *
+ * audioMusicRecognition (AI-örat -> Musik, Sprint 4) reuses these same
+ * generic, already-image-agnostic helpers for one recorded audio Blob
+ * instead of a photo - toImageEntries/toArrayBuffer below only ever hash
+ * and transport raw bytes, they never inspect or require an image MIME
+ * type, so nothing here needed to change to support that. The "image"
+ * naming in this module's exports is legacy from when only photo flows
+ * used it; see src/services/aiEar/musicRecognitionProvider.js for the
+ * audio-specific caller.
  */
 export const analysisConsentPurposes = Object.freeze({
+  audioMusicRecognition: 'audio-music-recognition',
   bodyAnalysis: 'body-analysis',
   forgottenItemsAnalysis: 'forgotten-items-analysis',
   nutritionPhotoAnalysis: 'nutrition-photo-analysis',

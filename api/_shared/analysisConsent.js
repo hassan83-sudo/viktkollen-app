@@ -50,8 +50,17 @@ const HEX64_PATTERN = /^[a-f0-9]{64}$/i
  * (mobile, keys, wallet, ...) against the user's own checklist. It never
  * expands to "Ögat"/eye-recognition or to any body/face analysis - that
  * remains permanently unlisted here.
+ *
+ * audio-music-recognition (AI-örat -> Musik, Sprint 4) is a later, separate
+ * addition: it sends one user-recorded audio clip to a server-side music
+ * identification provider (never client-side) only after the user has
+ * explicitly approved that specific clip being sent. It is deliberately
+ * scoped to music only - humming/whistling, birds, vehicles/machines and
+ * other sounds all remain unconnected and unlisted here until (and unless)
+ * a future sprint adds a purpose for each of them individually.
  */
 export const analysisConsentPurposes = Object.freeze({
+  audioMusicRecognition: 'audio-music-recognition',
   bodyAnalysis: 'body-analysis',
   forgottenItemsAnalysis: 'forgotten-items-analysis',
   nutritionPhotoAnalysis: 'nutrition-photo-analysis',

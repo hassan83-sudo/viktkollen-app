@@ -8,14 +8,20 @@
 // a future sprint can connect a real provider to one category without
 // touching the others.
 //
-// IMPORTANT: none of these are connected to a real analysis service yet.
-// Every provider below only reports that it is not connected - none of
-// them invent a plausible-looking result. See analyzeAudio.js for how the
-// UI is expected to react to that.
+// IMPORTANT: as of Sprint 4, ONLY musicProvider is connected to a real
+// analysis service (see musicRecognitionProvider.js - a server-side AudD
+// call, gated behind the same explicit consent-token flow as the rest of
+// the app's remote AI features). Every OTHER provider below still only
+// reports that it is not connected - none of them invent a
+// plausible-looking result. See analyzeAudio.js for how the UI is
+// expected to react to "not-connected" versus a real outcome.
 //
-// No network access happens anywhere in this file.
+// No network access happens anywhere in this file itself - musicProvider
+// only delegates to musicRecognitionProvider.js, which is the one place
+// that talks to the network.
 
 import { analysisTypes } from './audioResultModel.js'
+import { recognizeMusic } from './musicRecognitionProvider.js'
 
 function notConnected() {
   return Promise.resolve({ ok: false, reason: 'not-connected' })
@@ -23,14 +29,17 @@ function notConnected() {
 
 /**
  * Song / recorded-music identification (e.g. music playing nearby).
- * A real implementation would call an audio-fingerprinting service
- * (see Sprint 3 report for provider options) - not a general LLM.
+ * Sprint 4: connected to a real provider (AudD, via Viktkollen's own
+ * server-side /api/ai-ear-music-recognition route - see
+ * musicRecognitionProvider.js). Only proceeds when the caller has passed
+ * an explicit consentApproved: true, mirroring the app's other
+ * consent-gated analysis features; analyzeAudio.js is the only caller and
+ * always forwards the consentApproved flag it was given.
  */
 export const musicProvider = {
   analysisType: analysisTypes.SONG_IDENTIFICATION,
-  // eslint-disable-next-line no-unused-vars -- audioBlob is part of the stable provider signature; unused until a real provider is connected
-  analyze(audioBlob) {
-    return notConnected()
+  analyze(audioBlob, { consentApproved } = {}) {
+    return recognizeMusic({ audioBlob, consentApproved })
   },
 }
 

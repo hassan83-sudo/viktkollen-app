@@ -1,12 +1,17 @@
-import { useState } from 'react'
+import { lazy, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppErrorBoundary from '../../components/AppErrorBoundary.jsx'
 import AppSection from '../../components/app/AppSection.jsx'
+import ActivitySection from '../activity/ActivitySection.jsx'
 
-const journeyTabIds = ['overview', 'progress', 'nutrition']
+const GoalsHabitsPanel = lazy(() => import('../../components/GoalsHabitsPanel.jsx'))
+const HabitGoalCenter = lazy(() => import('../../components/HabitGoalCenter.jsx'))
+
+const journeyTabIds = ['overview', 'progress', 'nutrition', 'activity', 'goals']
 
 function JourneySection({
   activeSection,
+  coachSectionProps,
   NutritionSectionComponent,
   nutritionSectionProps,
   ProgressSectionComponent,
@@ -52,6 +57,39 @@ function JourneySection({
         {activeTab === 'nutrition' && NutritionSectionComponent && (
           <AppErrorBoundary area="nutrition" title={t('nutritionError')}>
             <NutritionSectionComponent {...nutritionSectionProps} activeSection="nutrition" />
+          </AppErrorBoundary>
+        )}
+
+        {activeTab === 'activity' && (
+          <AppErrorBoundary area="activity" title={t('activityError')}>
+            <ActivitySection />
+          </AppErrorBoundary>
+        )}
+
+        {activeTab === 'goals' && coachSectionProps && (
+          <AppErrorBoundary area="goals" title={t('goalsError')}>
+            <GoalsHabitsPanel
+              analysisDate={coachSectionProps.selectedMealDate}
+              checkIn={coachSectionProps.checkIn}
+              goalsHabits={coachSectionProps.goalsHabits}
+              meals={coachSectionProps.meals}
+              nutritionGoals={coachSectionProps.nutritionGoals}
+              onGoalsHabitsChange={coachSectionProps.onGoalsHabitsChange}
+              profile={coachSectionProps.profile}
+              weights={coachSectionProps.weights}
+            />
+            <HabitGoalCenter
+              adaptiveCoachFeedback={coachSectionProps.adaptiveCoachFeedback}
+              checkIn={coachSectionProps.checkIn}
+              goalsHabits={coachSectionProps.goalsHabits}
+              healthSnapshot={coachSectionProps.healthSnapshot}
+              meals={coachSectionProps.meals}
+              nutritionGoals={coachSectionProps.nutritionGoals}
+              profile={coachSectionProps.profile}
+              reminderState={coachSectionProps.reminderState}
+              today={coachSectionProps.selectedMealDate}
+              weights={coachSectionProps.weights}
+            />
           </AppErrorBoundary>
         )}
       </div>

@@ -3113,6 +3113,51 @@ function App() {
     weeklyReportStatus,
   }
 
+  const coachSectionProps = {
+    adaptiveCoachFeedback,
+    aiStarterPrompts,
+    canClearChat: chatMessages.length > initialChatMessages.length,
+    chatEngineStatus,
+    chatInput,
+    chatMessages,
+    chatThreadRef,
+    checkIn,
+    coachMessage,
+    coachReport: latestCoachReport || currentCoachPreview,
+    coachReports,
+    coachStatus,
+    goalsHabits,
+    healthSnapshot,
+    isGeneratingCoachReport,
+    isAiSpeaking,
+    isAiVoiceEnabled,
+    isListening,
+    isVoiceConversationActive,
+    meals,
+    messagesEndRef,
+    nutritionGoals,
+    onAdaptiveCoachFeedbackChange: setAdaptiveCoachFeedback,
+    onChatInputChange: setChatInput,
+    onClearChat: clearChat,
+    onClearCoachReports: clearCoachReports,
+    onCoachQuestion: (question) => { void sendChatText(question) },
+    onCreateCoachReport: createCoachReport,
+    onDeleteCoachReport: deleteCoachReport,
+    onRecommendationFeedback: handleCoachRecommendationFeedback,
+    onGoalsHabitsChange: setGoalsHabits,
+    onAiVoiceEnabledChange: handleAiVoiceEnabledChange,
+    onStopAiVoiceResponse: stopAiVoiceResponse,
+    onReminderStateChange: handleReminderStateChange,
+    onSendChatMessage: sendChatMessage,
+    onStartVoiceInput: startVoiceInput,
+    onStarterPrompt: handleStarterPrompt,
+    profile: validatedProfile,
+    reminderState,
+    selectedMealDate,
+    voiceStatus,
+    weights: centralWeightStats.weights,
+  }
+
   return (
     <main className="app-shell">
         <PwaExperience showDiagnostics={showInternalTools} />
@@ -3246,6 +3291,7 @@ function App() {
         {activeAppSection === 'journey' && (
           <JourneySection
             activeSection={activeAppSection}
+            coachSectionProps={coachSectionProps}
             NutritionSectionComponent={NutritionSection}
             nutritionSectionProps={nutritionSectionProps}
             ProgressSectionComponent={ProgressSection}
@@ -3308,50 +3354,7 @@ function App() {
   NutritionSectionComponent={NutritionSection}
   CoachSectionComponent={CoachSection}
   nutritionNavigationIntent={nutritionIntent}
-  coachSectionProps={{
-    adaptiveCoachFeedback,
-    aiStarterPrompts,
-    canClearChat: chatMessages.length > initialChatMessages.length,
-    chatEngineStatus,
-    chatInput,
-    chatMessages,
-    chatThreadRef,
-    checkIn,
-    coachMessage,
-    coachReport: latestCoachReport || currentCoachPreview,
-    coachReports,
-    coachStatus,
-    goalsHabits,
-    healthSnapshot,
-    isGeneratingCoachReport,
-    isAiSpeaking,
-    isAiVoiceEnabled,
-    isListening,
-    isVoiceConversationActive,
-    meals,
-    messagesEndRef,
-    nutritionGoals,
-    onAdaptiveCoachFeedbackChange: setAdaptiveCoachFeedback,
-    onChatInputChange: setChatInput,
-    onClearChat: clearChat,
-    onClearCoachReports: clearCoachReports,
-    onCoachQuestion: (question) => { void sendChatText(question) },
-    onCreateCoachReport: createCoachReport,
-    onDeleteCoachReport: deleteCoachReport,
-    onRecommendationFeedback: handleCoachRecommendationFeedback,
-    onGoalsHabitsChange: setGoalsHabits,
-    onAiVoiceEnabledChange: handleAiVoiceEnabledChange,
-    onStopAiVoiceResponse: stopAiVoiceResponse,
-    onReminderStateChange: handleReminderStateChange,
-    onSendChatMessage: sendChatMessage,
-    onStartVoiceInput: startVoiceInput,
-    onStarterPrompt: handleStarterPrompt,
-    profile: validatedProfile,
-    reminderState,
-    selectedMealDate,
-    voiceStatus,
-    weights: centralWeightStats.weights,
-  }}
+  coachSectionProps={coachSectionProps}
   nutritionSectionProps={nutritionSectionProps}
   progressSectionProps={progressSectionProps}
 />

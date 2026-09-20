@@ -12,7 +12,7 @@ const accessibilitySectionIds = [
   'senior',
 ]
 
-function AccessibilityHub() {
+function AccessibilityHub({ onOpenEar, onOpenEye }) {
   const { t } = useTranslation('settings')
   const [activeSection, setActiveSection] = useState(null)
 
@@ -30,6 +30,16 @@ function AccessibilityHub() {
         <p className="eyebrow">{t('accessibility.eyebrow')}</p>
         <h2>{t(`${sectionKey}.title`)}</h2>
         <p>{t(`${sectionKey}.description`)}</p>
+        {activeSection === 'vision' && (
+          <button className="primary-button" type="button" onClick={onOpenEye}>
+            {t('accessibility.openEye')}
+          </button>
+        )}
+        {activeSection === 'hearing' && (
+          <button className="primary-button" type="button" onClick={onOpenEar}>
+            {t('accessibility.openEar')}
+          </button>
+        )}
         <p className="accessibility-status" role="status">
           {t('accessibility.comingLater')}
         </p>

@@ -3328,6 +3328,14 @@ function App() {
   onEditProfile={() => setShowOnboarding(true)}
   onLanguageChange={handleLanguageChange}
   onOpenAiCoach={() => setAiCoachOverlayOpen(true)}
+  onOpenAccessibilityEar={isFeatureEnabled('smartCamera', featureFlags) && isFeatureEnabled('aiEar', featureFlags) ? () => {
+    setHomeIntent({ id: Date.now(), mode: 'ai-ear' })
+    setActiveAppSection('home')
+  } : undefined}
+  onOpenAccessibilityEye={isFeatureEnabled('smartCamera', featureFlags) && isFeatureEnabled('eyes', featureFlags) ? () => {
+    setHomeIntent({ id: Date.now(), mode: 'eyes' })
+    setActiveAppSection('home')
+  } : undefined}
   onOpenEye={isFeatureEnabled('smartCamera', featureFlags) ? () => {
     setHomeIntent({ id: Date.now(), mode: 'forgotten' })
     setActiveAppSection('home')

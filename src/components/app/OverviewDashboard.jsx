@@ -29,6 +29,7 @@ import {
 import { normalizeReminderState } from '../../services/reminders/reminderModel.js'
 import { buildReminderStatus, getNextReminderAt } from '../../services/reminders/reminderScheduler.js'
 import SmartCameraStage from '../../features/smart-camera/components/SmartCameraStage.jsx'
+import { getSmartCameraMode } from '../../features/smart-camera/smartCameraModes.js'
 import BodyAvatarTalkBar from './BodyAvatarTalkBar.jsx'
 import { formatNumber as formatLocaleNumber } from '../../i18n/format.js'
 
@@ -1017,9 +1018,8 @@ function OverviewDashboard({
 }) {
   const { t } = useTranslation(['common', 'home', 'social'])
   const flags = getFeatureFlags(featureFlags)
-  const initialSmartCameraMode = navigationIntent?.mode === 'forgotten'
-    && isFeatureEnabled('smartCamera', flags)
-    ? 'forgotten'
+  const initialSmartCameraMode = isFeatureEnabled('smartCamera', flags)
+    ? getSmartCameraMode(navigationIntent?.mode, flags)?.id || ''
     : ''
   const [now, setNow] = useState(() => new Date())
   const [bodyScanOpen, setBodyScanOpen] = useState(false)
@@ -1041,9 +1041,9 @@ function OverviewDashboard({
   const socialLiveEnabled = isFeatureEnabled('socialLive', flags)
 
   useEffect(() => {
-    if (navigationIntent?.mode !== 'forgotten') return
+    if (!initialSmartCameraMode) return
     onNavigationIntentConsumed?.()
-  }, [navigationIntent, onNavigationIntentConsumed])
+  }, [initialSmartCameraMode, navigationIntent, onNavigationIntentConsumed])
   const liveContext = useMemo(() => createOverviewLiveContext(now, weather), [now, weather])
   const initials = getInitials(profile, email)
   const hasPendingNotifications = Boolean(

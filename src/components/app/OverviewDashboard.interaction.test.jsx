@@ -78,4 +78,20 @@ describe('OverviewDashboard interactions', () => {
     expect(screen.getByRole('navigation', { name: 'Saker att visa för kameran' })).toBeTruthy()
     expect(onNavigationIntentConsumed).toHaveBeenCalledTimes(1)
   })
+
+  it.each([
+    ['eyes', 'Ögon'],
+    ['ai-ear', 'AI Örat'],
+  ])('opens the existing %s Smart Camera mode from a one-shot Home intent', (mode, heading) => {
+    const onNavigationIntentConsumed = vi.fn()
+    renderOverview({
+      featureFlags: { aiEar: true, eyes: true, smartCamera: true },
+      navigationIntent: { id: 1, mode },
+      onNavigationIntentConsumed,
+    })
+
+    expect(screen.getByRole('dialog', { name: 'Smart kamera' })).toBeTruthy()
+    expect(screen.getAllByRole('heading', { name: heading }).length).toBeGreaterThan(0)
+    expect(onNavigationIntentConsumed).toHaveBeenCalledTimes(1)
+  })
 })

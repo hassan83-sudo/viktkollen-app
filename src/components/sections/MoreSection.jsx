@@ -36,6 +36,8 @@ function MoreSection({
   onEditProfile,
   onLanguageChange,
   onOpenAiCoach,
+  onOpenAccessibilityEar,
+  onOpenAccessibilityEye,
   onOpenEye,
   onSearchNavigate,
   onSignOut,
@@ -259,7 +261,12 @@ function MoreSection({
           </AppErrorBoundary>
         )}
 
-        {activeFolder === 'accessibility' && <AccessibilityHub />}
+        {activeFolder === 'accessibility' && (
+          <AccessibilityHub
+            onOpenEar={onOpenAccessibilityEar}
+            onOpenEye={onOpenAccessibilityEye}
+          />
+        )}
 
         {activeFolder === 'sakerhet-backup' && (
           <AppErrorBoundary

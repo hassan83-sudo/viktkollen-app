@@ -83,6 +83,20 @@ describe('moreIntent is a one-shot signal', () => {
   })
 })
 
+describe('Accessibility hub AI navigation', () => {
+  it('routes the existing AI Eye and AI Ear modes through Smart Camera intents', () => {
+    const overviewDashboardSource = readFileSync(new URL('./components/app/OverviewDashboard.jsx', import.meta.url), 'utf8')
+
+    expect(appSource).toContain('onOpenAccessibilityEye=')
+    expect(appSource).toContain("mode: 'eyes'")
+    expect(appSource).toContain('onOpenAccessibilityEar=')
+    expect(appSource).toContain("mode: 'ai-ear'")
+    expect(moreSectionSource).toContain('onOpenEar={onOpenAccessibilityEar}')
+    expect(moreSectionSource).toContain('onOpenEye={onOpenAccessibilityEye}')
+    expect(overviewDashboardSource).toContain('getSmartCameraMode(navigationIntent?.mode, flags)')
+  })
+})
+
 describe('home dashboard collapsed content', () => {
   it('keeps more-for-today rows collapsible while rendering open content', () => {
     expect(overviewDashboardSource).toContain('const [isOpen, setIsOpen] = useState(true)')

@@ -16,10 +16,10 @@ const sectionTitles = [
   'Äldre',
 ]
 
-function renderAccessibilityHub(onBack = vi.fn()) {
+function renderAccessibilityHub({ onBack = vi.fn(), onOpenEar = vi.fn(), onOpenEye = vi.fn() } = {}) {
   return render(
     <MoreHub activeFolder="accessibility" onBack={onBack}>
-      <AccessibilityHub />
+      <AccessibilityHub onOpenEar={onOpenEar} onOpenEye={onOpenEye} />
     </MoreHub>,
   )
 }
@@ -56,10 +56,32 @@ describe('AccessibilityHub', () => {
 
   it('returns to the More hub from the accessibility hub', () => {
     const onBack = vi.fn()
-    renderAccessibilityHub(onBack)
+    renderAccessibilityHub({ onBack })
 
     fireEvent.click(screen.getByRole('button', { name: '← Tillbaka' }))
 
     expect(onBack).toHaveBeenCalledTimes(1)
+  })
+
+  it('opens the existing AI Eye from the vision detail', () => {
+    const onOpenEye = vi.fn()
+    renderAccessibilityHub({ onOpenEye })
+
+    fireEvent.click(screen.getByRole('button', { name: /^Syn/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Öppna AI Ögat' }))
+
+    expect(onOpenEye).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('status').textContent).toBe('Kommer senare')
+  })
+
+  it('opens the existing AI Ear from the hearing detail', () => {
+    const onOpenEar = vi.fn()
+    renderAccessibilityHub({ onOpenEar })
+
+    fireEvent.click(screen.getByRole('button', { name: /^Hörsel/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Öppna AI Örat' }))
+
+    expect(onOpenEar).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('status').textContent).toBe('Kommer senare')
   })
 })

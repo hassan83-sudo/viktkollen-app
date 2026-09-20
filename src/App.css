@@ -15006,8 +15006,110 @@ html:has(#app-section-more.is-active),
   font-size: 1.08rem;
 }
 
+.accessibility-communication,
+.accessibility-phrase-group,
+.accessibility-selected-phrase,
+.accessibility-custom-text {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.accessibility-communication-privacy,
+.accessibility-custom-text > span {
+  margin: 0;
+  color: rgba(214, 226, 255, 0.82);
+  line-height: 1.5;
+}
+
+.accessibility-phrase-group h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.accessibility-phrase-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.accessibility-phrase-button {
+  min-width: 0;
+  min-height: 52px;
+  padding: 10px 12px;
+  border: 1px solid rgba(103, 232, 249, 0.28);
+  border-radius: 14px;
+  color: #fff;
+  font: inherit;
+  font-size: 1.02rem;
+  font-weight: 800;
+  text-align: left;
+  background: rgba(13, 54, 76, 0.74);
+}
+
+.accessibility-phrase-button[aria-pressed='true'] {
+  border-color: rgba(165, 243, 252, 0.9);
+  background: rgba(14, 116, 144, 0.52);
+}
+
+.accessibility-custom-text textarea {
+  width: 100%;
+  min-width: 0;
+  resize: vertical;
+}
+
+.accessibility-selected-phrase {
+  padding: 14px;
+  border: 1px solid rgba(103, 232, 249, 0.42);
+  border-radius: 14px;
+  background: rgba(13, 54, 76, 0.42);
+}
+
+.accessibility-selected-phrase > strong {
+  color: #fff;
+  font-size: 1.25rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.accessibility-communication-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.accessibility-communication-actions button {
+  min-height: 44px;
+}
+
+.accessibility-speech-status {
+  margin: 0;
+  color: rgba(255, 226, 156, 0.98) !important;
+  font-weight: 750;
+}
+
+.accessibility-large-text {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 2px solid rgba(165, 243, 252, 0.82);
+  border-radius: 16px;
+  color: #fff;
+  background: #071423;
+}
+
+.accessibility-large-text p {
+  margin: 0;
+  font-size: clamp(2rem, 10vw, 4rem);
+  font-weight: 850;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 430px) {
-  .accessibility-option-grid {
+  .accessibility-option-grid,
+  .accessibility-phrase-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }

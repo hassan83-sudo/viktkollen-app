@@ -143,11 +143,10 @@ describe('AccessibilityHub', () => {
     expect(screen.queryByText('Lugnare gränssnitt')).toBeNull()
   })
 
-  it('keeps speech, motor and senior supports planned only', () => {
+  it('keeps motor and senior supports planned only', () => {
     renderAccessibilityHub()
 
     const plannedSections = {
-      'Tal & kommunikation': ['Text → tal', 'Tryckbara fraser', 'Bildstöd', 'Skriv till AI istället för att prata', 'Kommunikationskort'],
       Motorik: ['Stora tryckytor', 'Färre precisa gester', 'Tangentbord', 'Switch/hjälpmedelsknapp', 'Röststyrning', 'Extra tid för interaktion'],
       Äldre: ['Större text', 'Större knappar', 'Förenklad navigation', 'Uppläsning', 'Tydligare kontrast', 'Påminnelsestöd'],
     }

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import AccessibilityCommunication from './AccessibilityCommunication.jsx'
 
 const accessibilitySectionIds = [
   'vision',
@@ -15,7 +16,6 @@ const accessibilitySectionIds = [
 const plannedItemIds = {
   motor: ['largeTargets', 'fewerGestures', 'keyboard', 'switch', 'voiceControl', 'extraTime'],
   senior: ['largeText', 'largeButtons', 'simpleNavigation', 'readAloud', 'clearContrast', 'reminderSupport'],
-  speech: ['textToSpeech', 'tapPhrases', 'pictureSupport', 'writeToAi', 'communicationCards'],
 }
 
 const readingOptionIds = ['largerText', 'extraLargeText', 'clearerText', 'lineSpacing', 'simplifiedText']
@@ -136,6 +136,7 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
             )}
           </>
         )}
+        {activeSection === 'speech' && <AccessibilityCommunication />}
         {plannedItemIds[activeSection] && renderPlannedItems(activeSection)}
         <p className="accessibility-status" role="status">
           {t('accessibility.comingLater')}

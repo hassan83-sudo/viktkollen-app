@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessibilityCommunication from './AccessibilityCommunication.jsx'
+import {
+  defaultAccessibilityPreferences,
+  readAccessibilityPreferences,
+  resetAccessibilityPreferences,
+  saveAccessibilityPreferences,
+} from '../../services/accessibilityPreferences.js'
 
 const accessibilitySectionIds = [
   'vision',
@@ -23,13 +29,61 @@ const readingOptionIds = ['largerText', 'extraLargeText', 'clearerText', 'lineSp
 function AccessibilityHub({ onOpenEar, onOpenEye }) {
   const { t } = useTranslation('settings')
   const [activeSection, setActiveSection] = useState(null)
+  const [cognitiveStep, setCognitiveStep] = useState(0)
+  const [preferences, setPreferences] = useState(() => readAccessibilityPreferences().preferences)
   const [readingOption, setReadingOption] = useState('')
-  const [simplePreview, setSimplePreview] = useState(false)
+  const [settingsStatus, setSettingsStatus] = useState('')
+
+  const scopeClassName = [
+    'accessibility-scope',
+    `is-text-${preferences.seniorMode ? 'extra-large' : preferences.textSize}`,
+    (preferences.seniorMode || preferences.lineSpacing) && 'has-line-spacing',
+    (preferences.seniorMode || preferences.highContrast) && 'has-high-contrast',
+    (preferences.seniorMode || preferences.reduceMotion) && 'has-reduced-motion',
+    (preferences.seniorMode || preferences.largeControls) && 'has-large-controls',
+    (preferences.seniorMode || preferences.simpleReading) && 'has-simple-reading',
+    preferences.calmMode && 'has-calm-mode',
+    preferences.visualFeedback && 'has-visual-feedback',
+    preferences.keyboardFriendly && 'has-keyboard-friendly',
+    preferences.avoidPreciseGestures && 'avoids-precise-gestures',
+  ].filter(Boolean).join(' ')
+
+  function updatePreferences(changes, { keepSeniorMode = false } = {}) {
+    setPreferences((current) => {
+      const next = {
+        ...current,
+        ...changes,
+        seniorMode: keepSeniorMode ? Boolean(changes.seniorMode) : false,
+      }
+      saveAccessibilityPreferences(next)
+
+      if (next.hapticFeedback && !next.calmMode && typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+        navigator.vibrate(15)
+      }
+
+      return next
+    })
+    setSettingsStatus(t('accessibility.preferences.saved'))
+  }
+
+  function togglePreference(key) {
+    updatePreferences({ [key]: !preferences[key] })
+  }
+
+  function resetPreferences() {
+    if (typeof window !== 'undefined' && typeof window.confirm === 'function' && !window.confirm(t('accessibility.preferences.resetConfirm'))) {
+      return
+    }
+
+    resetAccessibilityPreferences()
+    setPreferences({ ...defaultAccessibilityPreferences })
+    setSettingsStatus(t('accessibility.preferences.resetDone'))
+  }
 
   function returnToAccessibilityHub() {
     setActiveSection(null)
+    setCognitiveStep(0)
     setReadingOption('')
-    setSimplePreview(false)
   }
 
   function renderPlannedItems(sectionId) {
@@ -47,7 +101,8 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
     const detailClassName = [
       'accessibility-detail',
       activeSection === 'reading' && readingOption ? `is-reading-${readingOption}` : '',
-      activeSection === 'simple' && simplePreview ? 'is-simple-preview' : '',
+      activeSection === 'simple' && preferences.calmMode ? 'is-simple-preview' : '',
+      scopeClassName,
     ].filter(Boolean).join(' ')
 
     return (
@@ -63,14 +118,45 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
         <h2>{t(`${sectionKey}.title`)}</h2>
         <p>{t(`${sectionKey}.description`)}</p>
         {activeSection === 'vision' && (
-          <button className="primary-button" type="button" onClick={onOpenEye}>
-            {t('accessibility.openEye')}
-          </button>
+          <>
+            <button className="primary-button" type="button" onClick={onOpenEye}>
+              {t('accessibility.openEye')}
+            </button>
+            <fieldset className="accessibility-preference-group">
+              <legend>{t('accessibility.preferences.displayLegend')}</legend>
+              {['highContrast', 'reduceMotion', 'visualFeedback'].map((key) => (
+                <button aria-pressed={preferences[key]} className="accessibility-preference-toggle" key={key} type="button" onClick={() => togglePreference(key)}>
+                  {t(`accessibility.preferences.${key}`)}
+                </button>
+              ))}
+            </fieldset>
+          </>
         )}
         {activeSection === 'hearing' && (
-          <button className="primary-button" type="button" onClick={onOpenEar}>
-            {t('accessibility.openEar')}
-          </button>
+          <>
+            <button className="primary-button" type="button" onClick={onOpenEar}>
+              {t('accessibility.openEar')}
+            </button>
+            <p className="accessibility-preference-note">{t('accessibility.preferences.soundNotOnlySignal')}</p>
+            <fieldset className="accessibility-preference-group">
+              <legend>{t('accessibility.preferences.feedbackLegend')}</legend>
+              {['visualFeedback', 'hapticFeedback'].map((key) => (
+                <button aria-pressed={preferences[key]} className="accessibility-preference-toggle" key={key} type="button" onClick={() => togglePreference(key)}>
+                  {t(`accessibility.preferences.${key}`)}
+                </button>
+              ))}
+            </fieldset>
+          </>
+        )}
+        {activeSection === 'motor' && (
+          <fieldset className="accessibility-preference-group">
+            <legend>{t('accessibility.preferences.motorLegend')}</legend>
+            {['largeControls', 'visualFeedback', 'avoidPreciseGestures', 'extraInteractionTime', 'keyboardFriendly'].map((key) => (
+              <button aria-pressed={preferences[key]} className="accessibility-preference-toggle" key={key} type="button" onClick={() => togglePreference(key)}>
+                {t(`accessibility.preferences.${key}`)}
+              </button>
+            ))}
+          </fieldset>
         )}
         {activeSection === 'reading' && (
           <>
@@ -87,6 +173,25 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
                 </button>
               ))}
             </div>
+            <fieldset className="accessibility-preference-group">
+              <legend>{t('accessibility.preferences.readingLegend')}</legend>
+              {['normal', 'large', 'extra-large'].map((size) => (
+                <button
+                  aria-pressed={preferences.textSize === size && !preferences.seniorMode}
+                  className="accessibility-preference-toggle"
+                  key={size}
+                  type="button"
+                  onClick={() => updatePreferences({ textSize: size })}
+                >
+                  {t(`accessibility.preferences.textSize.${size}`)}
+                </button>
+              ))}
+              {['lineSpacing', 'simpleReading'].map((key) => (
+                <button aria-pressed={preferences[key]} className="accessibility-preference-toggle" key={key} type="button" onClick={() => togglePreference(key)}>
+                  {t(`accessibility.preferences.${key}`)}
+                </button>
+              ))}
+            </fieldset>
             <article className="accessibility-preview-card">
               <h3>{t('accessibility.readingPreviewTitle')}</h3>
               <p>{readingOption === 'simplifiedText' ? t('accessibility.readingSimplePreview') : t('accessibility.readingPreview')}</p>
@@ -107,24 +212,33 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
             <article className="accessibility-preview-card">
               <h3>{t('accessibility.cognitiveExampleTitle')}</h3>
               <ol>
-                <li>{t('accessibility.cognitiveExample.first')}</li>
-                <li>{t('accessibility.cognitiveExample.second')}</li>
-                <li>{t('accessibility.cognitiveExample.third')}</li>
+                <li>{t(`accessibility.cognitiveExample.steps.${cognitiveStep}`)}</li>
               </ol>
+              <div className="accessibility-communication-actions">
+                {cognitiveStep > 0 && <button className="secondary-button" type="button" onClick={() => setCognitiveStep((current) => current - 1)}>{t('accessibility.preferences.back')}</button>}
+                {cognitiveStep < 2
+                  ? <button className="primary-button" type="button" onClick={() => setCognitiveStep((current) => current + 1)}>{t('accessibility.preferences.next')}</button>
+                  : <button className="primary-button" type="button" onClick={() => setCognitiveStep(0)}>{t('accessibility.preferences.finish')}</button>}
+                <button className="secondary-button" type="button" onClick={() => setCognitiveStep(0)}>{t('accessibility.preferences.resetStep')}</button>
+              </div>
+            </article>
+            <article className="accessibility-planned-card">
+              <h3>{t('accessibility.preferences.remindWhere')}</h3>
+              <p>{t('accessibility.preferences.remindWhereNote')}</p>
             </article>
           </>
         )}
         {activeSection === 'simple' && (
           <>
             <button
-              aria-pressed={simplePreview}
+              aria-pressed={preferences.calmMode}
               className="primary-button"
               type="button"
-              onClick={() => setSimplePreview((current) => !current)}
+              onClick={() => togglePreference('calmMode')}
             >
-              {simplePreview ? t('accessibility.endSimplePreview') : t('accessibility.previewSimpleMode')}
+              {preferences.calmMode ? t('accessibility.endSimplePreview') : t('accessibility.previewSimpleMode')}
             </button>
-            {simplePreview && (
+            {preferences.calmMode && (
               <article className="accessibility-simple-preview" aria-live="polite">
                 <p>{t('accessibility.simplePreviewIntro')}</p>
                 <ul>
@@ -134,6 +248,29 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
                 </ul>
               </article>
             )}
+          </>
+        )}
+        {activeSection === 'senior' && (
+          <>
+            <button
+              aria-pressed={preferences.seniorMode}
+              className="primary-button"
+              type="button"
+              onClick={() => updatePreferences({ seniorMode: !preferences.seniorMode }, { keepSeniorMode: true })}
+            >
+              {preferences.seniorMode ? t('accessibility.preferences.seniorModeOn') : t('accessibility.preferences.seniorMode')}
+            </button>
+            <p className="accessibility-preference-note">
+              {preferences.seniorMode ? t('accessibility.preferences.seniorPackageActive') : t('accessibility.preferences.seniorPackageNote')}
+            </p>
+            <fieldset className="accessibility-preference-group">
+              <legend>{t('accessibility.preferences.seniorLegend')}</legend>
+              {['largeControls', 'highContrast', 'reduceMotion', 'simpleReading'].map((key) => (
+                <button aria-pressed={preferences[key] || preferences.seniorMode} className="accessibility-preference-toggle" key={key} type="button" onClick={() => togglePreference(key)}>
+                  {t(`accessibility.preferences.${key}`)}
+                </button>
+              ))}
+            </fieldset>
           </>
         )}
         {activeSection === 'speech' && <AccessibilityCommunication />}
@@ -146,7 +283,7 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
   }
 
   return (
-    <section className="accessibility-hub" aria-label={t('accessibility.title')}>
+    <section className={`accessibility-hub ${scopeClassName}`} aria-label={t('accessibility.title')}>
       <p className="accessibility-intro">{t('accessibility.intro')}</p>
       <nav className="accessibility-section-list" aria-label={t('accessibility.sectionListLabel')}>
         {accessibilitySectionIds.map((id) => {
@@ -172,6 +309,10 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
         <p>{t('accessibility.focusNarration.description')}</p>
         <p className="accessibility-status" role="status">{t('accessibility.comingLater')}</p>
       </article>
+      <button className="secondary-button accessibility-reset-button" type="button" onClick={resetPreferences}>
+        {t('accessibility.preferences.reset')}
+      </button>
+      {settingsStatus && <p className="accessibility-settings-status" role="status">{settingsStatus}</p>}
     </section>
   )
 }

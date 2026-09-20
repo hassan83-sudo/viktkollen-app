@@ -15006,6 +15006,118 @@ html:has(#app-section-more.is-active),
   font-size: 1.08rem;
 }
 
+.accessibility-scope {
+  --accessibility-text-scale: 1;
+  min-width: 0;
+  font-size: calc(1rem * var(--accessibility-text-scale));
+}
+
+.accessibility-scope.is-text-large {
+  --accessibility-text-scale: 1.12;
+}
+
+.accessibility-scope.is-text-extra-large {
+  --accessibility-text-scale: 1.24;
+}
+
+.accessibility-scope.has-line-spacing,
+.accessibility-scope.has-line-spacing p,
+.accessibility-scope.has-line-spacing li {
+  line-height: 1.85;
+}
+
+.accessibility-scope.has-high-contrast {
+  background: #07101f;
+  color: #fff;
+}
+
+.accessibility-scope.has-high-contrast .accessibility-option-card,
+.accessibility-scope.has-high-contrast .accessibility-preview-card,
+.accessibility-scope.has-high-contrast .accessibility-planned-card,
+.accessibility-scope.has-high-contrast .accessibility-simple-preview,
+.accessibility-scope.has-high-contrast .accessibility-future-item,
+.accessibility-scope.has-high-contrast .accessibility-section-card {
+  border-color: #a5f3fc;
+  background: #08192d;
+}
+
+.accessibility-scope.has-reduced-motion *,
+.accessibility-scope.has-reduced-motion *::before,
+.accessibility-scope.has-reduced-motion *::after {
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+  animation-duration: 0.01ms !important;
+}
+
+.accessibility-scope.has-large-controls button,
+.accessibility-scope.has-calm-mode button {
+  min-height: 48px;
+}
+
+.accessibility-scope.has-simple-reading p,
+.accessibility-scope.has-simple-reading small {
+  max-width: 52ch;
+}
+
+.accessibility-scope.has-calm-mode {
+  gap: 16px;
+}
+
+.accessibility-scope.has-visual-feedback button:focus-visible,
+.accessibility-scope.has-keyboard-friendly button:focus-visible,
+.accessibility-scope button:focus-visible {
+  outline: 3px solid #a5f3fc;
+  outline-offset: 3px;
+}
+
+.accessibility-preference-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid rgba(165, 243, 252, 0.2);
+  border-radius: 14px;
+}
+
+.accessibility-preference-group legend {
+  padding: 0 5px;
+  color: rgba(207, 250, 254, 0.94);
+  font-weight: 800;
+}
+
+.accessibility-preference-toggle {
+  flex: 1 1 190px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid rgba(103, 232, 249, 0.28);
+  border-radius: 12px;
+  color: #fff;
+  font: inherit;
+  font-weight: 750;
+  text-align: left;
+  background: rgba(13, 54, 76, 0.74);
+}
+
+.accessibility-preference-toggle[aria-pressed='true'] {
+  border-color: rgba(165, 243, 252, 0.9);
+  background: rgba(14, 116, 144, 0.52);
+}
+
+.accessibility-preference-note,
+.accessibility-settings-status {
+  margin: 0;
+  color: rgba(207, 250, 254, 0.94) !important;
+  line-height: 1.55;
+}
+
+.accessibility-reset-button {
+  justify-self: start;
+  min-height: 44px;
+}
+
 .accessibility-communication,
 .accessibility-phrase-group,
 .accessibility-selected-phrase,
@@ -15108,9 +15220,17 @@ html:has(#app-section-more.is-active),
 }
 
 @media (max-width: 430px) {
+  .accessibility-scope.is-text-extra-large {
+    --accessibility-text-scale: 1.16;
+  }
+
   .accessibility-option-grid,
   .accessibility-phrase-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .accessibility-preference-toggle {
+    flex-basis: 100%;
   }
 }
 

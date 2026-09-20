@@ -26,6 +26,7 @@ function renderAccessibilityHub({ onBack = vi.fn(), onOpenEar = vi.fn(), onOpenE
 
 describe('AccessibilityHub', () => {
   beforeEach(async () => {
+    window.localStorage.clear()
     await i18n.changeLanguage('sv')
   })
 
@@ -99,7 +100,7 @@ describe('AccessibilityHub', () => {
 
     const largerText = screen.getByRole('button', { name: 'Större text' })
     ;['Extra stor text', 'Tydligare text', 'Mer radavstånd', 'Förenklade texter'].forEach((label) => {
-      expect(screen.getByRole('button', { name: label })).toBeTruthy()
+      expect(screen.getAllByRole('button', { name: label }).length).toBeGreaterThan(0)
     })
     expect(screen.getByText('Läs upp text')).toBeTruthy()
 
@@ -119,6 +120,13 @@ describe('AccessibilityHub', () => {
       expect(screen.getByText(label)).toBeTruthy()
     })
     expect(screen.getByRole('heading', { name: 'Ett steg i taget' })).toBeTruthy()
+    expect(screen.getByText('Välj vad du vill göra.')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Nästa' }))
+    expect(screen.getByText('Läs den korta bekräftelsen.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Tillbaka' }))
+    expect(screen.getByText('Välj vad du vill göra.')).toBeTruthy()
+    expect(screen.getByText('Påminn mig var jag var')).toBeTruthy()
   })
 
   it('toggles the local simple mode preview on and off', () => {
@@ -143,7 +151,7 @@ describe('AccessibilityHub', () => {
     expect(screen.queryByText('Lugnare gränssnitt')).toBeNull()
   })
 
-  it('keeps motor and senior supports planned only', () => {
+  it('retains planned support lists while exposing scoped motor and senior settings', () => {
     renderAccessibilityHub()
 
     const plannedSections = {
@@ -153,9 +161,45 @@ describe('AccessibilityHub', () => {
 
     Object.entries(plannedSections).forEach(([section, labels]) => {
       fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${section}`) }))
-      labels.forEach((label) => expect(screen.getByText(label)).toBeTruthy())
+      labels.forEach((label) => expect(screen.getAllByText(label).length).toBeGreaterThan(0))
       expect(screen.getByRole('status').textContent).toBe('Kommer senare')
       fireEvent.click(screen.getByRole('button', { name: /Till Tillgänglighet & hjälpmedel/ }))
     })
+  })
+
+  it('persists scoped reading settings and resets only the accessibility key', () => {
+    window.localStorage.setItem('unrelated-key', 'keep')
+    window.confirm = vi.fn(() => true)
+    renderAccessibilityHub()
+
+    fireEvent.click(screen.getByRole('button', { name: /^Läsning/ }))
+    const largeText = screen.getByRole('button', { name: 'Stor text' })
+    fireEvent.click(largeText)
+    expect(largeText.getAttribute('aria-pressed')).toBe('true')
+    expect(window.localStorage.getItem('viktkollen.accessibility.preferences.v1')).toContain('"textSize":"large"')
+
+    fireEvent.click(screen.getByRole('button', { name: /Till Tillgänglighet & hjälpmedel/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Återställ tillgänglighetsinställningar' }))
+    expect(window.localStorage.getItem('viktkollen.accessibility.preferences.v1')).toBeNull()
+    expect(window.localStorage.getItem('unrelated-key')).toBe('keep')
+    expect(screen.getAllByRole('status').some((node) => node.textContent === 'Inställningarna återställdes')).toBe(true)
+  })
+
+  it('uses native pressed buttons for motor settings and optional haptic confirmations', () => {
+    const vibrate = vi.fn()
+    Object.defineProperty(window.navigator, 'vibrate', { configurable: true, value: vibrate })
+    renderAccessibilityHub()
+
+    fireEvent.click(screen.getByRole('button', { name: /^Hörsel/ }))
+    const haptics = screen.getByRole('button', { name: 'Vibration vid viktiga tryck' })
+    fireEvent.click(haptics)
+    expect(haptics.getAttribute('aria-pressed')).toBe('true')
+    expect(vibrate).toHaveBeenCalledWith(15)
+
+    fireEvent.click(screen.getByRole('button', { name: /Till Tillgänglighet & hjälpmedel/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Motorik/ }))
+    const controls = screen.getByRole('button', { name: 'Större knappar och tryckytor' })
+    fireEvent.click(controls)
+    expect(controls.getAttribute('aria-pressed')).toBe('true')
   })
 })

@@ -407,6 +407,10 @@ const sv = {
       title: 'Inställningar',
     },
     folders: {
+      accessibility: {
+        title: 'Tillgänglighet & hjälpmedel',
+        description: 'Anpassningar och stöd som kommer senare',
+      },
       security: {
         title: 'Säkerhet & Backup',
         description: 'Backup, återställ, synk, moln',
@@ -458,6 +462,24 @@ const sv = {
       settings: {
         title: 'Inställningar',
         description: 'Appinställningar, enheter',
+      },
+    },
+    accessibility: {
+      title: 'Tillgänglighet & hjälpmedel',
+      eyebrow: 'Förbereds för framtida anpassningar',
+      intro: 'Här samlas framtida val för att göra Viktkollen lättare att använda på olika sätt.',
+      sectionListLabel: 'Områden för framtida tillgänglighetsanpassningar',
+      backToHub: 'Till Tillgänglighet & hjälpmedel',
+      comingLater: 'Kommer senare',
+      sections: {
+        vision: { title: 'Syn', summary: 'Visning och kontrast', description: 'Här kan framtida anpassningar för visning, kontrast, text och tydlighet samlas.' },
+        hearing: { title: 'Hörsel', summary: 'Ljud och visuella signaler', description: 'Här kan framtida anpassningar för ljud, visuella signaler och meddelanden samlas.' },
+        speech: { title: 'Tal & kommunikation', summary: 'Stöd för att uttrycka sig', description: 'Här kan framtida stöd för tal, kommunikation och alternativa sätt att uttrycka sig samlas.' },
+        motor: { title: 'Motorik', summary: 'Rörelse och styrning', description: 'Här kan framtida anpassningar för rörelse, styrning och enklare interaktion samlas.' },
+        reading: { title: 'Läsning', summary: 'Text och läsro', description: 'Här kan framtida anpassningar för text, läsning och fokus samlas.' },
+        cognitive: { title: 'Kognitivt stöd', summary: 'Struktur och överblick', description: 'Här kan framtida stöd för struktur, påminnelser och överblick samlas.' },
+        simple: { title: 'Enkelt läge', summary: 'Förenklad upplevelse', description: 'Här kan framtida val för en mer förenklad och lugn användarupplevelse samlas.' },
+        senior: { title: 'Äldre', summary: 'Stöd i vardagen', description: 'Här kan framtida anpassningar och stöd för vardagliga behov samlas.' },
       },
     },
     sectionLabel: 'Fler funktioner och inställningar',
@@ -2078,6 +2100,10 @@ const en = {
       title: 'Settings',
     },
     folders: {
+      accessibility: {
+        title: 'Accessibility & aids',
+        description: 'Adaptations and support coming later',
+      },
       security: {
         title: 'Security & Backup',
         description: 'Backup, restore, sync, cloud',
@@ -2129,6 +2155,24 @@ const en = {
       settings: {
         title: 'Settings',
         description: 'App settings, devices',
+      },
+    },
+    accessibility: {
+      title: 'Accessibility & aids',
+      eyebrow: 'Prepared for future adaptations',
+      intro: 'Future options for making Viktkollen easier to use in different ways are collected here.',
+      sectionListLabel: 'Areas for future accessibility adaptations',
+      backToHub: 'Back to Accessibility & aids',
+      comingLater: 'Coming later',
+      sections: {
+        vision: { title: 'Vision', summary: 'Display and contrast', description: 'Future adaptations for display, contrast, text and clarity can be collected here.' },
+        hearing: { title: 'Hearing', summary: 'Sound and visual signals', description: 'Future adaptations for sound, visual signals and notifications can be collected here.' },
+        speech: { title: 'Speech & communication', summary: 'Support for self-expression', description: 'Future support for speech, communication and alternative ways to express yourself can be collected here.' },
+        motor: { title: 'Motor skills', summary: 'Movement and controls', description: 'Future adaptations for movement, controls and easier interaction can be collected here.' },
+        reading: { title: 'Reading', summary: 'Text and reading comfort', description: 'Future adaptations for text, reading and focus can be collected here.' },
+        cognitive: { title: 'Cognitive support', summary: 'Structure and overview', description: 'Future support for structure, reminders and overview can be collected here.' },
+        simple: { title: 'Simple mode', summary: 'Simplified experience', description: 'Future options for a simpler and calmer user experience can be collected here.' },
+        senior: { title: 'Older adults', summary: 'Everyday support', description: 'Future adaptations and support for everyday needs can be collected here.' },
       },
     },
     sectionLabel: 'More features and settings',

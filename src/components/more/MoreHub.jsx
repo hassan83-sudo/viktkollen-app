@@ -9,6 +9,7 @@ const FOLDER_I18N_KEYS = {
   'animal-world': 'animalWorld',
   ekonomi: 'economy',
   'pregnancy-first-year': 'pregnancyFirstYear',
+  accessibility: 'accessibility',
   'ma-bra': 'wellbeing',
   mat: 'nutrition',
   'sakerhet-backup': 'security',

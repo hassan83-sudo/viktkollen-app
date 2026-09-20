@@ -1,5 +1,5 @@
-import { baseContentType, createProviderRouteHandler, fetchProviderJson, providerError, providerRouteConfig } from '../_shared/aiEarProviderRoute.js'
-import { analysisConsentPurposes } from '../_shared/analysisConsent.js'
+import { baseContentType, createProviderRouteHandler, fetchProviderJson, providerError, providerRouteConfig } from './aiEarProviderRoute.js'
+import { analysisConsentPurposes } from './analysisConsent.js'
 
 /**
  * AI-örat -> "Ord ur en låt": speech-to-text ONLY. Re-integrated in Sprint 12A

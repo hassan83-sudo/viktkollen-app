@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto'
-import { createProviderRouteHandler, fetchProviderJson, providerError, providerRouteConfig } from '../_shared/aiEarProviderRoute.js'
-import { analysisConsentPurposes } from '../_shared/analysisConsent.js'
+import { createProviderRouteHandler, fetchProviderJson, providerError, providerRouteConfig } from './aiEarProviderRoute.js'
+import { analysisConsentPurposes } from './analysisConsent.js'
 
 /**
  * AI-örat -> "Nynna / vissla / sjung": melody identification via ACRCloud's

@@ -1,5 +1,5 @@
-import { createProviderRouteHandler, fetchProviderJson, providerError, providerRouteConfig } from '../_shared/aiEarProviderRoute.js'
-import { analysisConsentPurposes } from '../_shared/analysisConsent.js'
+import { createProviderRouteHandler, fetchProviderJson, providerError, providerRouteConfig } from './aiEarProviderRoute.js'
+import { analysisConsentPurposes } from './analysisConsent.js'
 
 /**
  * AI-örat -> "Identifiera musik": exact-song identification via AudD.

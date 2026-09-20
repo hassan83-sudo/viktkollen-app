@@ -15,9 +15,10 @@ const clientFiles = [
 ]
 const serverFiles = [
   'api/_shared/aiEarProviderRoute.js',
-  'api/ai-ear-music-recognition/index.js',
-  'api/ai-ear-humming-recognition/index.js',
-  'api/ai-ear-lyrics-transcription/index.js',
+  'api/_shared/aiEarMusicRoute.js',
+  'api/_shared/aiEarHummingRoute.js',
+  'api/_shared/aiEarLyricsRoute.js',
+  'api/_shared/aiEarProvidersStatusRoute.js',
   'api/ai-ear-providers/index.js',
 ]
 
@@ -50,9 +51,9 @@ describe('Sprint 12A provider secrets stay on the server', () => {
   })
 
   it('each provider route talks only to its own provider', () => {
-    expect(stripComments(read('api/ai-ear-music-recognition/index.js'))).not.toMatch(/acrcloud|openai\.com|perch|v2\/interpret/i)
-    expect(stripComments(read('api/ai-ear-humming-recognition/index.js'))).not.toMatch(/audd\.io|openai\.com|perch|v2\/interpret/i)
-    expect(stripComments(read('api/ai-ear-lyrics-transcription/index.js'))).not.toMatch(/audd\.io|acrcloud\.com|perch|v2\/interpret/i)
+    expect(stripComments(read('api/_shared/aiEarMusicRoute.js'))).not.toMatch(/acrcloud|openai\.com|perch|v2\/interpret/i)
+    expect(stripComments(read('api/_shared/aiEarHummingRoute.js'))).not.toMatch(/audd\.io|openai\.com|perch|v2\/interpret/i)
+    expect(stripComments(read('api/_shared/aiEarLyricsRoute.js'))).not.toMatch(/audd\.io|acrcloud\.com|perch|v2\/interpret/i)
   })
 
   it('.env.example documents only names for the new server-only variables', () => {

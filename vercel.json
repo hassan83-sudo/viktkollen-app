@@ -26,14 +26,22 @@
     "api/ai-ear/interpret/index.js": {
       "maxDuration": 30
     },
-    "api/ai-ear-music-recognition/index.js": {
-      "maxDuration": 30
-    },
-    "api/ai-ear-humming-recognition/index.js": {
-      "maxDuration": 30
-    },
-    "api/ai-ear-lyrics-transcription/index.js": {
+    "api/ai-ear-providers/index.js": {
       "maxDuration": 30
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/api/ai-ear-music-recognition",
+      "destination": "/api/ai-ear-providers?feature=music"
+    },
+    {
+      "source": "/api/ai-ear-humming-recognition",
+      "destination": "/api/ai-ear-providers?feature=humming"
+    },
+    {
+      "source": "/api/ai-ear-lyrics-transcription",
+      "destination": "/api/ai-ear-providers?feature=speech"
+    }
+  ]
 }

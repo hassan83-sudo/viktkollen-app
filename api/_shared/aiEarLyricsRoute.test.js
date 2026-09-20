@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import handler, { audioFileName } from './index.js'
-import { setAiRateLimitAdapterForTests } from '../_shared/aiRateLimiter.js'
-import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
-import { analysisConsentPurposes } from '../_shared/analysisConsent.js'
-import { TEST_CONSENT_SECRET, TEST_USER_ID, callRoute, createRequestFactory, describeCommonProviderRouteBehaviour, jsonResult, stubProviderFetch } from '../_shared/aiEarProviderRoute.testkit.js'
+import handler, { audioFileName } from './aiEarLyricsRoute.js'
+import { setAiRateLimitAdapterForTests } from './aiRateLimiter.js'
+import { setSupabaseAuthVerifierForTests } from './verifySupabaseUser.js'
+import { analysisConsentPurposes } from './analysisConsent.js'
+import { TEST_CONSENT_SECRET, TEST_USER_ID, callRoute, createRequestFactory, describeCommonProviderRouteBehaviour, jsonResult, stubProviderFetch } from './aiEarProviderRoute.testkit.js'
 
 const KEY = 'sk-test-openai-SECRET-key-1234567890'
 const purpose = analysisConsentPurposes.audioLyricsTranscription

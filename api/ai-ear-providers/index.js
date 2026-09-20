@@ -1,38 +1,39 @@
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
-import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
-import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
+import musicHandler from '../_shared/aiEarMusicRoute.js'
+import hummingHandler from '../_shared/aiEarHummingRoute.js'
+import lyricsHandler from '../_shared/aiEarLyricsRoute.js'
+import statusHandler from '../_shared/aiEarProvidersStatusRoute.js'
 
 /**
- * AI-örat: which optional third-party audio features are actually configured
- * on this server. Returns booleans only (never names, hosts or values), for
- * logged-in users, so the UI can hide a feature instead of offering one that
- * cannot work.
+ * ONE Vercel function for all optional third-party AI-örat audio features.
+ *
+ * Why one function: the Hobby plan allows at most 12 serverless functions per
+ * deployment and the app already uses 10. The public URLs are unchanged and
+ * are mapped here by rewrites in vercel.json:
+ *
+ *   POST /api/ai-ear-music-recognition     -> ?feature=music     (AudD)
+ *   POST /api/ai-ear-humming-recognition   -> ?feature=humming   (ACRCloud)
+ *   POST /api/ai-ear-lyrics-transcription  -> ?feature=speech    (OpenAI speech-to-text)
+ *   GET  /api/ai-ear-providers                                   (which features are configured)
+ *
+ * The four handlers stay completely separate modules (api/_shared/aiEar*Route.js):
+ * own consent purpose, own rate limit, own provider - this file only dispatches.
+ * `feature` is a routing hint only; it grants nothing (auth, consent and
+ * validation happen inside each handler).
  */
+
+export const config = { api: { bodyParser: false } }
+
+const handlers = { humming: hummingHandler, music: musicHandler, speech: lyricsHandler }
+
 export default async function handler(request, response) {
-  const requestId = `ai-ear-providers-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
-  setNoStoreHeaders(response)
+  if (request.method === 'GET') return statusHandler(request, response)
 
-  if (request.method !== 'GET') {
-    response.setHeader('Allow', 'GET')
-    return sendSafeAiError(response, { code: aiRouteErrorCodes.INVALID_REQUEST, requestId, status: 405 })
+  const feature = new URL(request.url || '/', 'https://viktkollen.invalid').searchParams.get('feature') || ''
+  const target = Object.hasOwn(handlers, feature) ? handlers[feature] : null
+  if (!target) {
+    setNoStoreHeaders(response)
+    return sendSafeAiError(response, { code: aiRouteErrorCodes.INVALID_REQUEST, requestId: '', status: 404 })
   }
-
-  const auth = await verifySupabaseUser(request, { requestId })
-  if (!auth.authenticated) return response.status(auth.status).json({ error: auth.error, ok: false })
-
-  const rateLimit = checkAiRouteRateLimit({ limit: process.env.AI_EAR_RATE_LIMIT_MAX, route: 'aiEar', userId: auth.user.id })
-  if (rateLimit.limited) {
-    response.setHeader('Retry-After', String(rateLimit.retryAfterSeconds))
-    return sendSafeAiError(response, { code: aiRouteErrorCodes.RATE_LIMITED, requestId, retryAfterSeconds: rateLimit.retryAfterSeconds, retryable: true, status: 429 })
-  }
-
-  return response.status(200).json({
-    ok: true,
-    providers: {
-      humming: Boolean(process.env.ACRCLOUD_HOST && process.env.ACRCLOUD_ACCESS_KEY && process.env.ACRCLOUD_ACCESS_SECRET),
-      music: Boolean(process.env.AUDD_API_TOKEN),
-      transcription: Boolean(process.env.OPENAI_API_KEY),
-    },
-    requestId,
-  })
+  return target(request, response)
 }

@@ -2,6 +2,8 @@
 
 Date 2026-09-20. **No production deploy, no Cloud Run change, no push.** Work is committed on the local branch `sprint-12a-ai-ear-reintegration`, created from `main` (`c8899a5`, preserved). Nothing was merged from `ai-ear-sprint4/6/7`; their code was read with `git show` and re-implemented selectively on top of today's main.
 
+> **Deployment fix (preview build):** the Vercel Hobby plan allows max 12 serverless functions and the branch had 14, so the first preview build failed (`exceeded_serverless_functions_per_deployment`). The four new endpoints now live as separate modules in `api/_shared/aiEar*Route.js` and are served by ONE function `api/ai-ear-providers` (dispatch by `?feature=`); `vercel.json` rewrites keep the public URLs `/api/ai-ear-music-recognition`, `/api/ai-ear-humming-recognition`, `/api/ai-ear-lyrics-transcription` unchanged (11 functions total). Handlers, consent purposes, rate limits and providers remain separate.
+
 ## Result per feature
 | Feature | Provider | Status |
 | --- | --- | --- |

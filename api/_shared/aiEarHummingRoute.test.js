@@ -1,11 +1,11 @@
 import { createHmac } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import handler, { buildAcrCloudSignature, callAcrCloud } from './index.js'
-import { setAiRateLimitAdapterForTests } from '../_shared/aiRateLimiter.js'
-import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
-import { analysisConsentPurposes } from '../_shared/analysisConsent.js'
-import { TEST_CONSENT_SECRET, TEST_USER_ID, callRoute, createRequestFactory, describeCommonProviderRouteBehaviour, jsonResult, stubProviderFetch, wavBytes } from '../_shared/aiEarProviderRoute.testkit.js'
+import handler, { buildAcrCloudSignature, callAcrCloud } from './aiEarHummingRoute.js'
+import { setAiRateLimitAdapterForTests } from './aiRateLimiter.js'
+import { setSupabaseAuthVerifierForTests } from './verifySupabaseUser.js'
+import { analysisConsentPurposes } from './analysisConsent.js'
+import { TEST_CONSENT_SECRET, TEST_USER_ID, callRoute, createRequestFactory, describeCommonProviderRouteBehaviour, jsonResult, stubProviderFetch, wavBytes } from './aiEarProviderRoute.testkit.js'
 
 const ENV = { ACRCLOUD_ACCESS_KEY: 'acr-key-SECRET-abc', ACRCLOUD_ACCESS_SECRET: 'acr-secret-SECRET-xyz', ACRCLOUD_HOST: 'identify-eu-west-1.acrcloud.com' }
 const purpose = analysisConsentPurposes.audioHummingRecognition

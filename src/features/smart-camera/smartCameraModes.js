@@ -13,6 +13,8 @@ export const primarySmartCameraModes = Object.freeze([
   { existing: 'food', icon: '🍽', id: 'food', label: 'Mat', needs: [], usesCamera: false },
   { existing: 'body', icon: '🧍', id: 'body', label: 'Kroppsscanning', needs: [], usesCamera: false },
   { icon: '🎙', id: 'ask-ai', label: 'Fråga AI', needs: [], usesCamera: false },
+  // AI-örat: ljudigenkänning via server-hop. Dold tills featureflaggan `aiEar` slås på (default av).
+  { icon: '👂', id: 'ai-ear', label: 'AI Örat', needs: ['aiEar'], usesCamera: false },
 ])
 
 export const carryListsSmartCameraMode = Object.freeze({

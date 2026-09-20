@@ -2,6 +2,7 @@ export const FEATURE_FLAGS_STORAGE_KEY = 'viktkollen.features.v1'
 
 export const defaultFeatureFlags = Object.freeze({
   smartCamera: true,
+  aiEar: true,
   eyes: true,
   mouth: true,
   memory: true,

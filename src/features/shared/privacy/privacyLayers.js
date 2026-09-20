@@ -1,6 +1,10 @@
 export const privacyLayerIds = Object.freeze(['cameraSees', 'aiReceives', 'saved'])
 
-function getAiReceivesItems(aiReceivesFrame, voiceToAi) {
+function getAiReceivesItems(aiReceivesFrame, voiceToAi, audioToServer) {
+  if (audioToServer) {
+    return ['Ljudet du väljer att analysera skickas till Viktkollens server och vidare till AI-örats analystjänst först när du trycker Analysera. Ingen kamerabild följer med.']
+  }
+
   const items = [
     aiReceivesFrame
       ? 'En stillbild skickas till AI först när du uttryckligen väljer att analysera.'
@@ -16,6 +20,7 @@ function getAiReceivesItems(aiReceivesFrame, voiceToAi) {
 
 export function getSmartCameraPrivacyLayers({
   aiReceivesFrame = false,
+  audioToServer = false,
   cameraActive = false,
   savedLabels = [],
   voiceToAi = false,
@@ -23,21 +28,25 @@ export function getSmartCameraPrivacyLayers({
   return {
     aiReceives: {
       id: 'aiReceives',
-      items: getAiReceivesItems(aiReceivesFrame, voiceToAi),
-      localOnly: !aiReceivesFrame && !voiceToAi,
+      items: getAiReceivesItems(aiReceivesFrame, voiceToAi, audioToServer),
+      localOnly: !aiReceivesFrame && !voiceToAi && !audioToServer,
       title: 'Vad AI får',
     },
     cameraSees: {
       id: 'cameraSees',
-      items: cameraActive
-        ? ['Live-preview visas bara på den här enheten.']
-        : ['Kameran är inte igång.'],
+      items: audioToServer
+        ? ['Kameran används inte i det här läget.']
+        : cameraActive
+          ? ['Live-preview visas bara på den här enheten.']
+          : ['Kameran är inte igång.'],
       localOnly: true,
       title: 'Vad kameran ser',
     },
     saved: {
       id: 'saved',
-      items: savedLabels.length
+      items: audioToServer
+        ? ['Ljudet sparas inte, varken på enheten eller på servern. Resultatet visas bara här.']
+        : savedLabels.length
         ? savedLabels
         : ['Inget från kameran sparas. Checklistor och anteckningar sparas bara om du själv skriver dem.'],
       localOnly: true,

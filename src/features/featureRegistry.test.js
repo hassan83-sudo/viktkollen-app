@@ -47,7 +47,7 @@ describe('featureRegistry', () => {
     expect(isFeatureEnabled('mouth', off)).toBe(false)
     expect(isFeatureEnabled('memory', off)).toBe(false)
     expect(isFeatureEnabled('familySafety', off)).toBe(false)
-    expect(listEnabledFeatures(off)).toEqual(['reminderHubUi'])
+    expect(listEnabledFeatures(off)).toEqual(['aiEar', 'reminderHubUi'])
     expect(canExposeFamilySafety(off)).toBe(false)
   })
 

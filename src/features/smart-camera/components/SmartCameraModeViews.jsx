@@ -27,6 +27,7 @@ import {
 import { compareChecklistToVisibleItems } from '../itemVisibility.js'
 import { getReadyPromptDisclaimer, lastCheckSteps } from '../lastCheckGuide.js'
 import { buildOutfitWeatherFacts, outfitFeedbackDisclaimer, outfitVisionReady } from '../outfitAdvice.js'
+import AiEarMode from '../../ai-ear/AiEarMode.jsx'
 import ForgottenItemsCheck from './ForgottenItemsCheck.jsx'
 import SmartCameraLiveView from './SmartCameraLiveView.jsx'
 
@@ -616,6 +617,7 @@ export default function SmartCameraModeViews({
       {selected.id === 'forgotten' && (
         <ForgottenItemsCheck list={carryList} onBack={onBack} onCameraActive={onCameraActive} />
       )}
+      {selected.id === 'ai-ear' && <AiEarMode />}
       {selected.id === 'get-ready' && <GetReadyMode memory={memory} onSave={persist} />}
       {selected.id === 'carry-lists' && (
         <CarryListsMode memory={memory} onCameraActive={onCameraActive} onSave={persist} />

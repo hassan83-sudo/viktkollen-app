@@ -52,6 +52,7 @@ const HEX64_PATTERN = /^[a-f0-9]{64}$/i
  * remains permanently unlisted here.
  */
 export const analysisConsentPurposes = Object.freeze({
+  aiEarInterpret: 'ai-ear-interpret',
   bodyAnalysis: 'body-analysis',
   forgottenItemsAnalysis: 'forgotten-items-analysis',
   nutritionPhotoAnalysis: 'nutrition-photo-analysis',

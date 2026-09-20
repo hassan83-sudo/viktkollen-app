@@ -32,6 +32,7 @@
  * flow: it is not, and must never be, added to analysisConsentPurposes.
  */
 export const analysisConsentPurposes = Object.freeze({
+  aiEarInterpret: 'ai-ear-interpret',
   bodyAnalysis: 'body-analysis',
   forgottenItemsAnalysis: 'forgotten-items-analysis',
   nutritionPhotoAnalysis: 'nutrition-photo-analysis',

@@ -2,11 +2,12 @@ import { getSmartCameraPrivacyLayers } from '../../shared/privacy/privacyLayers.
 
 export default function SmartCameraPrivacyCard({
   aiReceivesFrame = false,
+  audioToServer = false,
   cameraActive = false,
   savedLabels = [],
   voiceToAi = false,
 }) {
-  const layers = getSmartCameraPrivacyLayers({ aiReceivesFrame, cameraActive, savedLabels, voiceToAi })
+  const layers = getSmartCameraPrivacyLayers({ aiReceivesFrame, audioToServer, cameraActive, savedLabels, voiceToAi })
 
   return (
     <section className="smart-camera-privacy" aria-label="Vad kameran ser, vad AI får och vad som sparas">

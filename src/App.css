@@ -14907,6 +14907,111 @@ html:has(#app-section-more.is-active),
   font-weight: 800;
 }
 
+.accessibility-option-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.accessibility-option-card,
+.accessibility-preview-card,
+.accessibility-planned-card,
+.accessibility-simple-preview,
+.accessibility-future-item {
+  min-width: 0;
+  border: 1px solid rgba(165, 243, 252, 0.2);
+  border-radius: 14px;
+  background: rgba(13, 29, 47, 0.72);
+}
+
+.accessibility-option-card {
+  min-height: 44px;
+  padding: 10px 12px;
+  color: #fff;
+  font: inherit;
+  font-weight: 750;
+  text-align: left;
+}
+
+.accessibility-option-card[aria-pressed='true'] {
+  border-color: rgba(103, 232, 249, 0.82);
+  background: rgba(14, 116, 144, 0.36);
+}
+
+.accessibility-preview-card,
+.accessibility-planned-card,
+.accessibility-simple-preview,
+.accessibility-future-item {
+  padding: 14px;
+}
+
+.accessibility-preview-card h3,
+.accessibility-planned-card h3,
+.accessibility-future-item h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.accessibility-preview-card p,
+.accessibility-planned-card p,
+.accessibility-simple-preview p,
+.accessibility-future-item p {
+  margin: 8px 0 0;
+  color: rgba(214, 226, 255, 0.82);
+  line-height: 1.55;
+}
+
+.accessibility-preview-card ol,
+.accessibility-simple-preview ul,
+.accessibility-planned-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding-left: 1.3rem;
+  color: rgba(228, 239, 255, 0.9);
+}
+
+.accessibility-planned-list {
+  padding: 14px 14px 14px 2rem;
+  border: 1px solid rgba(165, 243, 252, 0.2);
+  border-radius: 14px;
+  background: rgba(13, 29, 47, 0.72);
+}
+
+.accessibility-simple-preview {
+  border-color: rgba(103, 232, 249, 0.72);
+}
+
+.accessibility-detail.is-reading-largerText .accessibility-preview-card,
+.accessibility-detail.is-reading-extraLargeText .accessibility-preview-card {
+  font-size: 1.15rem;
+}
+
+.accessibility-detail.is-reading-extraLargeText .accessibility-preview-card {
+  font-size: 1.3rem;
+}
+
+.accessibility-detail.is-reading-clearerText .accessibility-preview-card {
+  font-weight: 700;
+}
+
+.accessibility-detail.is-reading-lineSpacing .accessibility-preview-card {
+  line-height: 1.9;
+}
+
+.accessibility-detail.is-simple-preview .primary-button,
+.accessibility-detail.is-simple-preview .more-hub-back {
+  min-height: 52px;
+  font-size: 1.08rem;
+}
+
+@media (max-width: 430px) {
+  .accessibility-option-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .more-goals-cards {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

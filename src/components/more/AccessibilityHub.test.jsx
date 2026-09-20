@@ -54,6 +54,13 @@ describe('AccessibilityHub', () => {
     })
   })
 
+  it('keeps the planned focus narration item visible in the accessibility hub', () => {
+    renderAccessibilityHub()
+
+    expect(screen.getByRole('heading', { name: 'Berätta vad jag markerar' })).toBeTruthy()
+    expect(screen.getByText('Framtida stöd för att beskriva vad som får fokus. Ingen uppläsning eller markering sker ännu.')).toBeTruthy()
+  })
+
   it('returns to the More hub from the accessibility hub', () => {
     const onBack = vi.fn()
     renderAccessibilityHub({ onBack })
@@ -83,5 +90,73 @@ describe('AccessibilityHub', () => {
 
     expect(onOpenEar).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('status').textContent).toBe('Kommer senare')
+  })
+
+  it('offers local reading previews without changing the rest of the app', () => {
+    renderAccessibilityHub()
+
+    fireEvent.click(screen.getByRole('button', { name: /^Läsning/ }))
+
+    const largerText = screen.getByRole('button', { name: 'Större text' })
+    ;['Extra stor text', 'Tydligare text', 'Mer radavstånd', 'Förenklade texter'].forEach((label) => {
+      expect(screen.getByRole('button', { name: label })).toBeTruthy()
+    })
+    expect(screen.getByText('Läs upp text')).toBeTruthy()
+
+    fireEvent.click(largerText)
+
+    expect(largerText.getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByText('Det här är en lokal förhandsvisning. Den ändrar bara texten i den här tillgänglighetsvyn.')).toBeTruthy()
+    expect(screen.getByText('Uppläsning förbereds för framtiden. Ingen extern tjänst eller AI används här.')).toBeTruthy()
+  })
+
+  it('shows cognitive support cards and a contained step-by-step example', () => {
+    renderAccessibilityHub()
+
+    fireEvent.click(screen.getByRole('button', { name: /^Kognitivt stöd/ }))
+
+    ;['Korta instruktioner', 'Steg-för-steg', 'Färre val åt gången', 'Tydliga bekräftelser', 'Minnesstöd', 'Förutsägbar navigation', 'Bilder/symboler som stöd'].forEach((label) => {
+      expect(screen.getByText(label)).toBeTruthy()
+    })
+    expect(screen.getByRole('heading', { name: 'Ett steg i taget' })).toBeTruthy()
+  })
+
+  it('toggles the local simple mode preview on and off', () => {
+    renderAccessibilityHub()
+
+    fireEvent.click(screen.getByRole('button', { name: /^Enkelt läge/ }))
+    const previewButton = screen.getByRole('button', { name: 'Förhandsvisa enkelt läge' })
+
+    previewButton.focus()
+    expect(document.activeElement).toBe(previewButton)
+
+    fireEvent.click(previewButton)
+
+    expect(screen.getByRole('button', { name: 'Avsluta förhandsvisning' }).getAttribute('aria-pressed')).toBe('true')
+    ;['Större knappar', 'Kortare texter', 'Färre val åt gången', 'Tydliga symboler', 'Ett steg i taget', 'Lugnare gränssnitt'].forEach((label) => {
+      expect(screen.getByText(label)).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Avsluta förhandsvisning' }))
+
+    expect(screen.getByRole('button', { name: 'Förhandsvisa enkelt läge' }).getAttribute('aria-pressed')).toBe('false')
+    expect(screen.queryByText('Lugnare gränssnitt')).toBeNull()
+  })
+
+  it('keeps speech, motor and senior supports planned only', () => {
+    renderAccessibilityHub()
+
+    const plannedSections = {
+      'Tal & kommunikation': ['Text → tal', 'Tryckbara fraser', 'Bildstöd', 'Skriv till AI istället för att prata', 'Kommunikationskort'],
+      Motorik: ['Stora tryckytor', 'Färre precisa gester', 'Tangentbord', 'Switch/hjälpmedelsknapp', 'Röststyrning', 'Extra tid för interaktion'],
+      Äldre: ['Större text', 'Större knappar', 'Förenklad navigation', 'Uppläsning', 'Tydligare kontrast', 'Påminnelsestöd'],
+    }
+
+    Object.entries(plannedSections).forEach(([section, labels]) => {
+      fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${section}`) }))
+      labels.forEach((label) => expect(screen.getByText(label)).toBeTruthy())
+      expect(screen.getByRole('status').textContent).toBe('Kommer senare')
+      fireEvent.click(screen.getByRole('button', { name: /Till Tillgänglighet & hjälpmedel/ }))
+    })
   })
 })

@@ -25,6 +25,15 @@
   "functions": {
     "api/ai-ear/interpret/index.js": {
       "maxDuration": 30
+    },
+    "api/ai-ear-music-recognition/index.js": {
+      "maxDuration": 30
+    },
+    "api/ai-ear-humming-recognition/index.js": {
+      "maxDuration": 30
+    },
+    "api/ai-ear-lyrics-transcription/index.js": {
+      "maxDuration": 30
     }
   }
 }

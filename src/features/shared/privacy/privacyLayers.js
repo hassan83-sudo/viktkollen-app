@@ -2,7 +2,7 @@ export const privacyLayerIds = Object.freeze(['cameraSees', 'aiReceives', 'saved
 
 function getAiReceivesItems(aiReceivesFrame, voiceToAi, audioToServer) {
   if (audioToServer) {
-    return ['Ljudet du väljer att analysera skickas till Viktkollens server och vidare till AI-örats analystjänst först när du trycker Analysera. Ingen kamerabild följer med.']
+    return ['Ljudet du väljer att analysera skickas till Viktkollens server först när du trycker på analysera-knappen. Fågel- och ljudanalysen sker i vår egen tjänst; musik, melodi och texttolkning skickas vidare till en extern tjänst som anges innan du skickar. Ingen kamerabild följer med.']
   }
 
   const items = [

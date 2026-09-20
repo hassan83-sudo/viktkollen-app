@@ -90,3 +90,43 @@
 .ai-ear-hints {
   padding-left: 1.25rem;
 }
+
+.ai-ear-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ai-ear-mode {
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  min-height: 44px;
+  padding: 0.4rem 0.9rem;
+}
+
+.ai-ear-mode.is-active {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.ai-ear-mode:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.ai-ear-quote {
+  border-left: 3px solid currentColor;
+  font-style: italic;
+  margin: 0;
+  padding-left: 0.75rem;
+  white-space: pre-wrap;
+}
+
+.ai-ear-details,
+.ai-ear-alternatives ul {
+  padding-left: 1.25rem;
+}

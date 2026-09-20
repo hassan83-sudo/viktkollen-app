@@ -113,8 +113,53 @@ const localReasonViews = Object.freeze({
   not_audio: { title: 'Det där är inte en ljudfil', body: 'Välj en ljudfil.', retryable: false },
 })
 
-export function buildAiEarErrorView(reason) {
+// Feature-specific "temporarily unavailable" wording so one provider's outage never reads as the whole AI-örat being down.
+const featureNames = Object.freeze({
+  humming: 'Melodiigenkänningen',
+  music: 'Musikigenkänningen',
+  speech: 'Taligenkänningen',
+})
+
+export function buildAiEarErrorView(reason, feature = 'sound') {
   const known = Boolean(errorViews[reason] || localReasonViews[reason])
   const view = errorViews[reason] || localReasonViews[reason] || errorViews.service_unavailable
-  return { ...view, kind: 'error', reason: known ? reason : 'service_unavailable' }
+  const normalized = known ? reason : 'service_unavailable'
+  const name = featureNames[feature]
+  if (name && normalized === 'service_unavailable') return { ...view, body: 'Försök igen om en stund. Fågel- och ljudanalysen påverkas inte.', kind: 'error', reason: normalized, title: `${name} är tillfälligt otillgänglig` }
+  if (name && normalized === 'not_available') return { ...view, body: 'Den här funktionen är inte påslagen just nu.', kind: 'error', reason: normalized, title: `${name} är inte tillgänglig just nu` }
+  return { ...view, kind: 'error', reason: normalized }
+}
+
+const providerFooter = 'Resultatet kommer från en extern tjänst och kan vara fel.'
+
+/** AudD result -> view. Shows only the fields the provider actually returned. */
+export function buildAiEarMusicView(outcome) {
+  if (!outcome?.matched) {
+    return { alternatives: [], details: [], footer: providerFooter, kind: 'music_none', quote: null, retryable: true, species: [], contextLines: [], hints: ['Håll telefonen närmare musiken.', 'Minska andra ljud.', 'Försök igen.'], title: 'Ingen säker musikträff hittades', body: null }
+  }
+  const { album, artist, releaseYear, title } = outcome.result
+  const details = [artist && `Artist: ${artist}`, album && `Album: ${album}`, releaseYear && `Utgivningsår: ${releaseYear}`].filter(Boolean)
+  return { alternatives: [], body: null, contextLines: [], details, footer: providerFooter, hints: [], kind: 'music_match', quote: null, retryable: false, species: [], title: `Det här verkar vara ${title}` }
+}
+
+/** ACRCloud humming result -> view. Provider scores are never shown. */
+export function buildAiEarHummingView(outcome) {
+  if (!outcome?.matched) {
+    return { alternatives: [], body: null, contextLines: [], details: [], footer: providerFooter, hints: ['Nynna eller vissla melodin tydligt, gärna 10–12 sekunder.', 'Håll det tyst runt omkring.', 'Försök igen.'], kind: 'humming_none', quote: null, retryable: true, species: [], title: 'Ingen säker meloditräff hittades' }
+  }
+  const { album, alternatives, artist, title } = outcome.result
+  const details = [artist && `Artist: ${artist}`, album && `Album: ${album}`].filter(Boolean)
+  return {
+    alternatives: alternatives.map((entry) => (entry.artist ? `${entry.title} – ${entry.artist}` : entry.title)),
+    body: 'Möjlig träff – melodiigenkänning är osäker.',
+    contextLines: [], details, footer: providerFooter, hints: [], kind: 'humming_match', quote: null, retryable: false, species: [], title: `Kanske ${title}`,
+  }
+}
+
+/** Speech-to-text result -> view. The transcript is shown to the user only; it is never stored or logged. */
+export function buildAiEarTranscriptionView(outcome) {
+  if (!outcome || outcome.noSpeech) {
+    return { alternatives: [], body: null, contextLines: [], details: [], footer: 'Texten sparas inte.', hints: ['Tala eller sjung tydligare och närmare mikrofonen.', 'Försök igen.'], kind: 'transcript_none', quote: null, retryable: true, species: [], title: 'Jag hörde ingen tydlig text i inspelningen' }
+  }
+  return { alternatives: [], body: null, contextLines: [], details: [], footer: 'Texten är en automatisk tolkning och kan innehålla fel. Den sparas inte.', hints: [], kind: 'transcript', quote: outcome.transcript, retryable: false, species: [], title: 'Jag hörde:' }
 }

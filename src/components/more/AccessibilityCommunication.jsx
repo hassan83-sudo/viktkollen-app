@@ -35,6 +35,11 @@ function AccessibilityCommunication() {
     setIsSpeaking(false)
   }
 
+  function stopSpeakingWithStatus() {
+    stopSpeaking()
+    setSpeechStatus(t('accessibility.communication.stopped'))
+  }
+
   useEffect(() => () => {
     getSpeechApi()?.synthesis.cancel?.()
   }, [])
@@ -75,11 +80,17 @@ function AccessibilityCommunication() {
     stopSpeaking()
     const utterance = new speechApi.Utterance(selectedText)
     utterance.lang = 'sv-SE'
-    utterance.onend = () => setIsSpeaking(false)
-    utterance.onerror = () => setIsSpeaking(false)
+    utterance.onend = () => {
+      setIsSpeaking(false)
+      setSpeechStatus(t('accessibility.communication.stopped'))
+    }
+    utterance.onerror = () => {
+      setIsSpeaking(false)
+      setSpeechStatus(t('accessibility.communication.stopped'))
+    }
     speechApi.synthesis.speak(utterance)
     setIsSpeaking(true)
-    setSpeechStatus('')
+    setSpeechStatus(t('accessibility.communication.speaking'))
   }
 
   function clearText() {
@@ -135,7 +146,7 @@ function AccessibilityCommunication() {
               {t('accessibility.communication.speak')}
             </button>
             {isSpeaking && (
-              <button className="secondary-button" type="button" onClick={stopSpeaking}>
+              <button className="secondary-button" type="button" onClick={stopSpeakingWithStatus}>
                 {t('accessibility.communication.stop')}
               </button>
             )}

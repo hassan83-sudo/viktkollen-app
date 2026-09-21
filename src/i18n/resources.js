@@ -546,6 +546,8 @@ const sv = {
         closeLarge: 'Stäng stor text',
         largeLabel: 'Stor text',
         unsupported: 'Uppläsning stöds inte på den här enheten.',
+        speaking: 'Uppläsningen startade',
+        stopped: 'Uppläsningen stoppades',
         writeToAi: 'Skriv till AI istället för att prata',
         writeToAiNote: 'Kommer senare. Ingen AI-anslutning används här.',
         favorites: 'Favoriter',
@@ -2319,6 +2321,8 @@ const en = {
         closeLarge: 'Close large text',
         largeLabel: 'Large text',
         unsupported: 'Read-aloud is not supported on this device.',
+        speaking: 'Read-aloud started',
+        stopped: 'Read-aloud stopped',
         writeToAi: 'Write to AI instead of speaking',
         writeToAiNote: 'Coming later. No AI connection is used here.',
         favorites: 'Favorites',
@@ -3616,6 +3620,12 @@ const da = mergeTranslation(en, {
     signedInAs: 'Logget ind som',
     editProfile: 'Rediger profil',
     deleteAccount: 'Slet konto',
+    accessibility: {
+      communication: {
+        speaking: 'Oplæsningen startede',
+        stopped: 'Oplæsningen blev stoppet',
+      },
+    },
   },
   social: {
     addFriend: 'Tilføj ven',
@@ -3750,6 +3760,12 @@ const no = mergeTranslation(en, {
     signedInAs: 'Innlogget som',
     editProfile: 'Endre profil',
     deleteAccount: 'Slett konto',
+    accessibility: {
+      communication: {
+        speaking: 'Opplesningen startet',
+        stopped: 'Opplesningen ble stoppet',
+      },
+    },
   },
   social: {
     addFriend: 'Legg til venn',
@@ -3877,6 +3893,12 @@ const fi = mergeTranslation(en, {
     signedInAs: 'Kirjautuneena',
     editProfile: 'Muokkaa profiilia',
     deleteAccount: 'Poista tili',
+    accessibility: {
+      communication: {
+        speaking: 'Lukuääni alkoi',
+        stopped: 'Lukuääni pysäytettiin',
+      },
+    },
   },
   social: {
     addFriend: 'Lisää ystävä',
@@ -4007,6 +4029,12 @@ const ar = mergeTranslation(en, {
     signedInAs: 'مسجّل الدخول كـ',
     editProfile: 'تعديل الملف الشخصي',
     deleteAccount: 'حذف الحساب',
+    accessibility: {
+      communication: {
+        speaking: 'بدأ القراءة الجهرية',
+        stopped: 'توقفت القراءة الجهرية',
+      },
+    },
   },
   social: {
     addFriend: 'إضافة صديق',
@@ -4136,6 +4164,12 @@ const zhCN = mergeTranslation(en, {
     signedInAs: '已登录为',
     editProfile: '编辑资料',
     deleteAccount: '删除账户',
+    accessibility: {
+      communication: {
+        speaking: '朗读已开始',
+        stopped: '朗读已停止',
+      },
+    },
   },
   social: {
     addFriend: '添加好友',
@@ -4263,6 +4297,12 @@ const zhTW = mergeTranslation(en, {
     signedInAs: '已登入為',
     editProfile: '編輯資料',
     deleteAccount: '刪除帳戶',
+    accessibility: {
+      communication: {
+        speaking: '朗讀已開始',
+        stopped: '朗讀已停止',
+      },
+    },
   },
   social: {
     addFriend: '加入好友',
@@ -4390,6 +4430,12 @@ const ja = mergeTranslation(en, {
     signedInAs: 'ログイン中',
     editProfile: 'プロフィールを編集',
     deleteAccount: 'アカウントを削除',
+    accessibility: {
+      communication: {
+        speaking: '読み上げを開始しました',
+        stopped: '読み上げを停止しました',
+      },
+    },
   },
   social: {
     addFriend: '友だちを追加',
@@ -4517,6 +4563,12 @@ const ko = mergeTranslation(en, {
     signedInAs: '로그인 계정',
     editProfile: '프로필 수정',
     deleteAccount: '계정 삭제',
+    accessibility: {
+      communication: {
+        speaking: '읽어주기가 시작되었습니다',
+        stopped: '읽어주기가 중지되었습니다',
+      },
+    },
   },
   social: {
     addFriend: '친구 추가',
@@ -4651,6 +4703,12 @@ const de = mergeTranslation(en, {
     signedInAs: 'Angemeldet als',
     editProfile: 'Profil bearbeiten',
     deleteAccount: 'Konto löschen',
+    accessibility: {
+      communication: {
+        speaking: 'Vorlesen gestartet',
+        stopped: 'Vorlesen gestoppt',
+      },
+    },
   },
   social: {
     close: 'Schließen',
@@ -4781,6 +4839,12 @@ const fr = mergeTranslation(en, {
     signedInAs: 'Connecté en tant que',
     editProfile: 'Modifier le profil',
     deleteAccount: 'Supprimer le compte',
+    accessibility: {
+      communication: {
+        speaking: 'La lecture a commencé',
+        stopped: 'La lecture a été arrêtée',
+      },
+    },
   },
   social: {
     close: 'Fermer',
@@ -4911,6 +4975,12 @@ const es = mergeTranslation(en, {
     signedInAs: 'Sesión iniciada como',
     editProfile: 'Editar perfil',
     deleteAccount: 'Eliminar cuenta',
+    accessibility: {
+      communication: {
+        speaking: 'La lectura en voz alta comenzó',
+        stopped: 'La lectura en voz alta se detuvo',
+      },
+    },
   },
   social: {
     close: 'Cerrar',
@@ -4989,22 +5059,54 @@ const es = mergeTranslation(en, {
   },
 })
 
-const it = mergeTranslation(en, {})
-const pt = mergeTranslation(en, {})
-const nl = mergeTranslation(en, {})
-const pl = mergeTranslation(en, {})
-const cs = mergeTranslation(en, {})
-const hu = mergeTranslation(en, {})
-const ro = mergeTranslation(en, {})
-const el = mergeTranslation(en, {})
-const tr = mergeTranslation(en, {})
-const uk = mergeTranslation(en, {})
-const he = mergeTranslation(en, {})
-const hi = mergeTranslation(en, {})
-const id = mergeTranslation(en, {})
-const vi = mergeTranslation(en, {})
-const th = mergeTranslation(en, {})
-const ms = mergeTranslation(en, {})
+const it = mergeTranslation(en, {
+  settings: { accessibility: { communication: { speaking: 'La lettura ad alta voce è iniziata', stopped: 'La lettura ad alta voce è stata interrotta' } } },
+})
+const pt = mergeTranslation(en, {
+  settings: { accessibility: { communication: { speaking: 'A leitura em voz alta começou', stopped: 'A leitura em voz alta foi interrompida' } } },
+})
+const nl = mergeTranslation(en, {
+  settings: { accessibility: { communication: { speaking: 'Voorlezen gestart', stopped: 'Voorlezen gestopt' } } },
+})
+const pl = mergeTranslation(en, {
+  settings: { accessibility: { communication: { speaking: 'Odczytywanie rozpoczęte', stopped: 'Odczytywanie zatrzymane' } } },
+})
+const cs = mergeTranslation(en, {
+  settings: { accessibility: { communication: { speaking: 'Čtení začalo', stopped: 'Čtení bylo zastaveno' } } },
+})
+const hu = mergeTranslation(en, {
+  settings: { accessibility: { communication: { speaking: 'A felolvasás elindult', stopped: 'A felolvasás leállt' } } },
+})
+const ro = mergeTranslation(en, {
+  settings: { accessibility: { communication: { speaking: 'Citirea a început', stopped: 'Citirea a fost oprită' } } },
+})
+const el = mergeTranslation(en, {
+  settings: { accessibility: { communication: { speaking: 'Η ανάγνωση ξεκίνησε', stopped: 'Η ανάγνωση σταμάτησε' } } },
+})
+const tr = mergeTranslation(en, {
+  settings: { accessibility: { communication: { speaking: 'Sesli okuma başladı', stopped: 'Sesli okuma durduruldu' } } },
+})
+const uk = mergeTranslation(en, {
+  settings: { accessibility: { communication: { speaking: 'Озвучення почалося', stopped: 'Озвучення зупинено' } } },
+})
+const he = mergeTranslation(en, {
+  settings: { accessibility: { communication: { speaking: 'ההקראה התחילה', stopped: 'ההקראה הופסקה' } } },
+})
+const hi = mergeTranslation(en, {
+  settings: { accessibility: { communication: { speaking: 'पढ़ना शुरू हुआ', stopped: 'पढ़ना रोक दिया गया' } } },
+})
+const id = mergeTranslation(en, {
+  settings: { accessibility: { communication: { speaking: 'Pembacaan dimulai', stopped: 'Pembacaan dihentikan' } } },
+})
+const vi = mergeTranslation(en, {
+  settings: { accessibility: { communication: { speaking: 'Đọc to đã bắt đầu', stopped: 'Đọc to đã dừng' } } },
+})
+const th = mergeTranslation(en, {
+  settings: { accessibility: { communication: { speaking: 'เริ่มการอ่านออกเสียงแล้ว', stopped: 'หยุดการอ่านออกเสียงแล้ว' } } },
+})
+const ms = mergeTranslation(en, {
+  settings: { accessibility: { communication: { speaking: 'Bacaan kuat dimulakan', stopped: 'Bacaan kuat dihentikan' } } },
+})
 
 export const translationResources = {
   ar,

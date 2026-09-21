@@ -78,6 +78,20 @@ describe('AccessibilityCommunication', () => {
     expect(screen.getByText('Nej', { selector: 'strong' })).toBeTruthy()
   })
 
+  it('shows a visible status message when speech starts and stops', () => {
+    renderCommunication()
+    openCommunication()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ja' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Läs upp' }))
+
+    expect(screen.getByText('Uppläsningen startade')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stoppa' }))
+
+    expect(screen.getByText('Uppläsningen stoppades')).toBeTruthy()
+  })
+
   it('stops active speech explicitly and when leaving the communication detail', () => {
     renderCommunication()
     openCommunication()

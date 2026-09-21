@@ -29,6 +29,122 @@ export function loadBillingTestEnvFile(filePath, sourceEnv = process.env) {
   return { ...sourceEnv, ...parsed }
 }
 
+function parsePostgresUrl(raw) {
+  try {
+    return new URL(String(raw || '').replace(/^postgres(ql)?:/i, 'http:'))
+  } catch {
+    return null
+  }
+}
+
+function databaseRefFromUrl(parsed) {
+  if (!parsed) return null
+  const host = parsed.hostname.toLowerCase()
+  const user = decodeURIComponent(parsed.username || '').toLowerCase()
+  const direct = host.match(/^db\.([a-z0-9]+)\.supabase\.co$/)
+  if (direct) return direct[1]
+  const poolUser = user.match(/^postgres\.([a-z0-9]+)$/)
+  if (poolUser && /pooler\.supabase\.com$/i.test(host)) return poolUser[1]
+  return null
+}
+
+export function assertStagingDatabaseUrl(env) {
+  const gate = assertStagingTarget(env)
+  const raw = envValue(env, 'BILLING_TEST_DATABASE_URL')
+  const parsed = parsePostgresUrl(raw)
+  if (!parsed) {
+    const error = new Error('staging_database_url_invalid')
+    error.code = 'staging_database_url_invalid'
+    throw error
+  }
+  const dbRef = databaseRefFromUrl(parsed)
+  if (!dbRef || dbRef !== gate.stagingRef) {
+    const error = new Error('staging_database_ref_mismatch')
+    error.code = 'staging_database_ref_mismatch'
+    throw error
+  }
+  if (dbRef === gate.productionRef || parsed.hostname.toLowerCase().includes(gate.productionRef) || decodeURIComponent(parsed.username || '').toLowerCase().includes(gate.productionRef)) {
+    const error = new Error('production_target_blocked')
+    error.code = 'production_target_blocked'
+    throw error
+  }
+  return { ...gate, databaseRef: dbRef, pooler: /pooler\.supabase\.com$/i.test(parsed.hostname) }
+}
+
+export function splitSqlStatements(sql) {
+  const statements = []
+  let buffer = ''
+  let index = 0
+  let dollarTag = null
+  let inSingle = false
+
+  while (index < sql.length) {
+    const current = sql[index]
+    const next = sql[index + 1]
+
+    if (dollarTag) {
+      if (sql.startsWith(dollarTag, index)) {
+        buffer += dollarTag
+        index += dollarTag.length
+        dollarTag = null
+        continue
+      }
+      buffer += current
+      index += 1
+      continue
+    }
+
+    if (inSingle) {
+      buffer += current
+      if (current === "'" && next === "'") {
+        buffer += next
+        index += 2
+        continue
+      }
+      if (current === "'") inSingle = false
+      index += 1
+      continue
+    }
+
+    if (current === '-' && next === '-') {
+      const newline = sql.indexOf('\n', index)
+      index = newline === -1 ? sql.length : newline + 1
+      buffer += '\n'
+      continue
+    }
+
+    if (current === "'") {
+      inSingle = true
+      buffer += current
+      index += 1
+      continue
+    }
+
+    const dollar = sql.slice(index).match(/^\$[A-Za-z0-9_]*\$/)
+    if (dollar) {
+      dollarTag = dollar[0]
+      buffer += dollarTag
+      index += dollarTag.length
+      continue
+    }
+
+    if (current === ';') {
+      const statement = buffer.trim()
+      if (statement) statements.push(statement)
+      buffer = ''
+      index += 1
+      continue
+    }
+
+    buffer += current
+    index += 1
+  }
+
+  const trailing = buffer.trim()
+  if (trailing) statements.push(trailing)
+  return statements
+}
+
 export function assertStagingTarget(env) {
   const validation = validateBillingStagingTarget(env)
   if (!validation.ok || validation.target !== 'staging') {
@@ -100,57 +216,35 @@ export async function restBilling(env, { body, method = 'GET', role = 'anon', us
   }
 }
 
-async function executeSqlViaPgMeta(env, sql) {
-  assertStagingTarget(env)
-  const base = envValue(env, 'BILLING_TEST_SUPABASE_URL').replace(/\/$/, '')
-  const key = envValue(env, 'BILLING_TEST_SUPABASE_SERVICE_ROLE_KEY')
-  const response = await fetch(`${base}/pg/query`, {
-    body: JSON.stringify({ query: sql }),
-    headers: {
-      Authorization: `Bearer ${key}`,
-      apikey: key,
-      'Content-Type': 'application/json',
-    },
-    method: 'POST',
+async function executeSqlViaNodePg(env, sql) {
+  assertStagingDatabaseUrl(env)
+  const pg = await import('pg')
+  const Client = pg.default?.Client || pg.Client
+  const client = new Client({
+    connectionString: envValue(env, 'BILLING_TEST_DATABASE_URL'),
+    connectionTimeoutMillis: 20000,
+    ssl: { rejectUnauthorized: false },
   })
-  const text = await response.text()
-  if (!response.ok) {
-    const error = new Error('pg_meta_sql_failed')
-    error.code = 'pg_meta_sql_failed'
-    error.status = response.status
-    throw error
-  }
+  await client.connect()
   try {
-    return JSON.parse(text)
-  } catch {
-    return text
+    const statements = splitSqlStatements(sql)
+    let lastRows = []
+    for (const statement of statements) {
+      const result = await client.query(statement)
+      if (Array.isArray(result?.rows)) lastRows = result.rows
+    }
+    return lastRows
+  } catch (error) {
+    const dbUrl = envValue(env, 'BILLING_TEST_DATABASE_URL')
+    let message = String(error.message || 'staging_sql_failed')
+    if (dbUrl) message = message.split(dbUrl).join('[redacted]')
+    const wrapped = new Error(message)
+    wrapped.code = error.code || 'staging_sql_failed'
+    wrapped.constraint = error.constraint
+    throw wrapped
+  } finally {
+    try { await client.end() } catch { /* ignore */ }
   }
-}
-
-async function executeSqlViaManagementApi(env, sql) {
-  assertStagingTarget(env)
-  const token = envValue(env, 'SUPABASE_ACCESS_TOKEN') || envValue(env, 'BILLING_TEST_SUPABASE_ACCESS_TOKEN')
-  if (!token) {
-    const error = new Error('no_management_token')
-    error.code = 'no_management_token'
-    throw error
-  }
-  const ref = envValue(env, 'BILLING_TEST_STAGING_PROJECT_REF')
-  const response = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
-    body: JSON.stringify({ query: sql }),
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    method: 'POST',
-  })
-  if (!response.ok) {
-    const error = new Error('management_sql_failed')
-    error.code = 'management_sql_failed'
-    error.status = response.status
-    throw error
-  }
-  return response.json()
 }
 
 export async function executeStagingSql(env, sql, adapters = {}) {
@@ -159,28 +253,12 @@ export async function executeStagingSql(env, sql, adapters = {}) {
     error.code = 'forbidden_sql'
     throw error
   }
-  assertStagingTarget(env)
+  assertStagingDatabaseUrl(env)
   const dbUrl = envValue(env, 'BILLING_TEST_DATABASE_URL')
-    || envValue(env, 'SUPABASE_DB_URL')
-    || envValue(env, 'DATABASE_URL')
   if (typeof adapters.pgQuery === 'function' && dbUrl) {
     return adapters.pgQuery(dbUrl, sql)
   }
-  if (typeof adapters.pgMeta === 'function') {
-    return adapters.pgMeta(env, sql)
-  }
-  try {
-    return await executeSqlViaPgMeta(env, sql)
-  } catch (pgMetaError) {
-    try {
-      return await executeSqlViaManagementApi(env, sql)
-    } catch {
-      const error = new Error('sql_adapter_unavailable')
-      error.code = 'sql_adapter_unavailable'
-      error.causeCode = pgMetaError?.code
-      throw error
-    }
-  }
+  return executeSqlViaNodePg(env, sql)
 }
 
 export function validUsageRow(suffix, extra = {}) {
@@ -212,7 +290,7 @@ export async function probeStagingReachable(env) {
 }
 
 export async function applyBillingMigrationToStaging(env) {
-  assertStagingTarget(env)
+  assertStagingDatabaseUrl(env)
   return applyUsageEventsMigration({
     applyMigration: true,
     env,

@@ -5,7 +5,7 @@ import {
 } from '../src/services/billing/stagingVerification.js'
 import {
   applyBillingMigrationToStaging,
-  assertStagingTarget,
+  assertStagingDatabaseUrl,
   executeStagingSql,
   loadBillingTestEnvFile,
   probeStagingReachable,
@@ -127,9 +127,14 @@ const results = {
 }
 
 try {
-  const gate = assertStagingTarget(env)
-  results.TARGET_VERIFIED_STAGING = gate.validation.target === 'staging' ? 'YES' : 'NO'
-  results.STAGING_NE_PRODUCTION = 'PASS'
+  const gate = assertStagingDatabaseUrl(env)
+  results.TARGET_VERIFIED_STAGING = gate.validation.target === 'staging' && gate.pooler ? 'YES' : 'NO'
+  results.STAGING_NE_PRODUCTION = gate.databaseRef !== gate.productionRef ? 'PASS' : 'FAIL'
+  if (results.TARGET_VERIFIED_STAGING !== 'YES' || results.STAGING_NE_PRODUCTION !== 'PASS') {
+    results.STOP_REASON = 'staging_target_invalid'
+    print(results)
+    process.exit(1)
+  }
 } catch (error) {
   results.TARGET_VERIFIED_STAGING = 'NO'
   results.STOP_REASON = error.code || 'staging_target_invalid'

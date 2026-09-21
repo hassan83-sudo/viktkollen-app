@@ -1,59 +1,66 @@
 # BILL-1D — Staging execution results
 
-Branch: `billing-cost-metering-sprint1`  
-Target: `BILLING_TEST_TARGET=staging` (preflight already green).  
-Production project was not contacted. `.env.local` was read only in-process and is gitignored.
+Branch: `billing-cost-metering-sprint1`
+Target: `BILLING_TEST_TARGET=staging` via Session pooler.
+Production was not contacted. `.env.local` is gitignored and was not committed.
 
-## Staging target
+## Target
 
 | Check | Result |
 |---|---|
-| Target label staging | YES |
-| URL ref matches `BILLING_TEST_STAGING_PROJECT_REF` | PASS |
-| Staging ref ≠ production ref | PASS |
-| Staging Auth/REST reachable | YES |
-| `BILLING_TEST_DATABASE_URL` / `DATABASE_URL` | NO |
+| Staging API + DB ref match | PASS |
+| Staging ≠ production | PASS |
+| Session pooler | PASS |
+| Pre-mutation abort path | not triggered |
 
 ## Migration
 
-**Not applied.** The BILL-1 SQL file needs a Postgres/SQL adapter. Staging publishable + secret keys can call Auth and PostgREST, but not `CREATE SCHEMA` / table DDL.
+Applied **only** `supabase/migrations/20260921121500_billing_usage_events.sql` to staging. No other Viktkollen migrations. Table was absent beforehand.
 
-Tried, then stopped: PostgREST is not a SQL console; `/pg/query` is not available; Management API token is not configured; no staging database URI in `.env.local`.
+| Check | Result |
+|---|---|
+| `billing` schema + `usage_events` | PASS |
+| RLS + FORCE RLS | PASS |
+| PK `event_id` | PASS |
+| quantity / event_type / unit / metadata CHECKs | PASS (live rejects) |
+| append-only trigger | PASS |
+| indexes `(user_id, occurred_at)`, `(event_type, occurred_at)` | PASS |
+| no float money columns | PASS |
+| `occurred_at` present on synthetic rows | PASS |
 
-No `drop database`. No other Viktkollen migrations. No production SQL.
-
-## PostgREST / client roles (live)
-
-These ran against the real staging Data API with synthetic requests only.
+## Live client / Data API
 
 | Check | Result |
 |---|---|
 | anon SELECT/INSERT/UPDATE/DELETE | BLOCKED |
 | authenticated SELECT/INSERT/UPDATE/DELETE | BLOCKED |
-| cross-user raw SELECT | BLOCKED (clients have no billing schema access) |
-| PostgREST raw `billing` access | BLOCKED |
+| cross-user raw SELECT | BLOCKED |
+| PostgREST raw billing | BLOCKED |
 
-Two temporary staging Auth users were created for JWT tests and then deleted via staging Auth admin. No production Auth.
+Temporary staging Auth users were created for JWT tests and deleted afterward. No production Auth.
 
-## SQL / RLS / constraints (not run)
+## Trusted SQL (staging pooler)
 
-Because no SQL adapter was available:
-
-RLS, grants, append-only trigger, trusted INSERT/UPDATE/DELETE, idempotency, concurrency, negative quantity, unknown unit/type, privacy metadata, allowlisted metadata, indexes, money column types, `occurred_at` lookup — **not executed**.
-
-In the status template those rows are **FAIL meaning not proven**, not that staging allowed a bypass.
+| Check | Result |
+|---|---|
+| INSERT valid dummy event | PASS |
+| UPDATE | BLOCKED |
+| DELETE | BLOCKED |
+| append-only | PASS |
+| duplicate `event_id` | PASS (one row) |
+| concurrent same `event_id` | PASS (one row) |
+| quantity &lt; 0 | BLOCKED |
+| unknown unit / event_type | BLOCKED |
+| forbidden metadata keys | BLOCKED |
+| allowlisted metadata | PASS |
+| uuid / null / invalid `user_id` | PASS / PASS / BLOCKED |
 
 ## Test data
 
-No `billing.usage_events` rows were inserted (schema not created). Auth test users were removed.
-
-## Remaining risks
-
-- BILL-1 migration is still unapplied on staging and production.
-- Client Data API blocking is consistent with an unexposed `billing` schema, but does not prove table RLS/triggers.
-- Next run needs a **staging-only** `BILLING_TEST_DATABASE_URL` in `.env.local` (never production). Then re-run `node scripts/run-billing-staging-1d.mjs`.
+Synthetic `bill1d-%` rows left in staging (append-only; trigger was not disabled). Count at end of run: **6**. No real user content.
 
 ## Recommendation
 
-**DO NOT APPROVE YET** for production migration.  
-**BILL-2: NOT READY**
+**APPROVE FOR SEPARATE PRODUCTION-MIGRATION STEP** — only after Hassan review.
+Do **not** apply this SQL to production from this sprint.
+**BILL-2:** persistence foundation is ready; do not start BILL-2 here.

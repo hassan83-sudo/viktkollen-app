@@ -145,6 +145,8 @@ export const ADMIN_AUDIT_ACTION = Object.freeze({
 
 export const ADMIN_AUDIT_ACTIONS = Object.freeze(Object.values(ADMIN_AUDIT_ACTION))
 
+export const ADMIN_AUDIT_TARGET_TYPE = 'admin_permission'
+
 export const ADMIN_AUDIT_SAFE_KEYS = Object.freeze([
   'permission',
   'status',
@@ -152,3 +154,5 @@ export const ADMIN_AUDIT_SAFE_KEYS = Object.freeze([
   'target_type',
   'user_id',
 ])
+
+export const ADMIN_AUDIT_MAX_SNAPSHOT_BYTES = 2048

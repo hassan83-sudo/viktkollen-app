@@ -28,6 +28,9 @@ const envExample = readFileSync(join(root, '.env.example'), 'utf8')
 const adminApi = readFileSync(join(root, 'api/billing/admin/index.js'), 'utf8')
 const adminShared = readFileSync(join(root, 'api/_shared/billing/admin.js'), 'utf8')
 const adminServiceSrc = readFileSync(join(root, 'src/services/billing/adminService.js'), 'utf8')
+const verifySrc = readFileSync(join(root, 'api/_shared/verifySupabaseUser.js'), 'utf8')
+const socialWatch = readFileSync(join(root, 'src/features/social/components/SocialWatch.jsx'), 'utf8')
+const authoritySrc = readFileSync(join(root, 'src/services/billing/adminAuthority.js'), 'utf8')
 
 const ADMIN = '11111111-1111-4111-8111-111111111111'
 const USER = '22222222-2222-4222-8222-222222222222'
@@ -36,12 +39,14 @@ const OTHER = '33333333-3333-4333-8333-333333333333'
 function createRequest({
   body = {},
   method = 'GET',
+  query = {},
   token = 'user-token',
 } = {}) {
   return {
     body,
     headers: token ? { authorization: `Bearer ${token}` } : {},
     method,
+    query,
   }
 }
 
@@ -121,7 +126,13 @@ describe('BILL-4A admin migration static security', () => {
     expect(sql).toMatch(/grant execute on function billing\.revoke_billing_admin/)
     expect(sql).toMatch(/revoke all on function billing\.append_admin_audit/)
     expect(sql).toMatch(/audit_sensitive_field/)
-    expect(sql).toMatch(/permission = 'billing_admin'/)
+    expect(sql).toMatch(/admin_audit_action_known/)
+    expect(sql).toMatch(/admin_audit_target_type_known/)
+    expect(sql).toMatch(/admin_audit_before_size/)
+    expect(sql).toMatch(/audit_nested_payload/)
+    expect(sql).toMatch(/audit_payload_too_large/)
+    expect(sql).toMatch(/when others then/)
+    expect(sql).toMatch(/last committed UPDATE wins/)
   })
 
   it('does not put service role or admin secrets on the Vite client', () => {
@@ -131,6 +142,14 @@ describe('BILL-4A admin migration static security', () => {
     expect(adminApi).not.toMatch(/service_role|sk_live|SUPABASE_SERVICE/)
     expect(adminShared).not.toMatch(/localStorage/)
     expect(adminServiceSrc).toMatch(/No permission cache/)
+    expect(adminShared).not.toMatch(/user_metadata|app_metadata/)
+    expect(adminApi).not.toMatch(/ADMIN_USER_ID|user_metadata/)
+    expect(adminApi).not.toMatch(/bootstrap/)
+    expect(verifySrc).toMatch(/auth\.getUser\(token\)/)
+    expect(verifySrc).not.toMatch(/jwt\.decode|JSON\.parse\(.*payload/)
+    expect(authoritySrc).not.toMatch(/ADMIN_USER_ID/)
+    expect(adminServiceSrc).not.toMatch(/ADMIN_USER_ID/)
+    expect(socialWatch).toMatch(/ADMIN_USER_ID/)
   })
 })
 
@@ -239,6 +258,35 @@ describe('BILL-4A requireBillingAdmin and admin API', () => {
     expect(denied.status).toBe(403)
     expect(await getBillingAdminService().hasBillingAdmin(ADMIN)).toBe(true)
   })
+
+  it('blocks a normal user granting billing_admin to another user', async () => {
+    const response = createResponse()
+    await handler(createRequest({
+      body: { action: 'grant', target_user_id: OTHER },
+      method: 'POST',
+    }), response)
+    expect(response.statusCode).toBe(403)
+    expect(await getBillingAdminService().hasBillingAdmin(OTHER)).toBe(false)
+  })
+
+  it('ignores query-parameter admin spoof fields', async () => {
+    const response = createResponse()
+    await handler(createRequest({
+      query: { admin_user_id: ADMIN, isAdmin: 'true', role: 'admin' },
+    }), response)
+    expect(response.statusCode).toBe(403)
+  })
+
+  it('denies when permission lookup throws', async () => {
+    setBillingAdminServiceForTests({
+      hasBillingAdmin: async () => {
+        throw new Error('db down')
+      },
+    })
+    const result = await requireBillingAdmin(createRequest({ token: 'admin-token' }))
+    expect(result.ok).toBe(false)
+    expect(result.status).toBe(403)
+  })
 })
 
 describe('BILL-4A permission and audit service', () => {
@@ -318,5 +366,41 @@ describe('BILL-4A permission and audit service', () => {
     await expect(service.grant({ actorUserId: USER, targetUserId: ADMIN })).rejects.toMatchObject({
       code: 'forbidden_admin',
     })
+  })
+
+  it('blocks unknown permission names and statuses on the store', async () => {
+    const { permissions } = servicePair()
+    await expect(permissions.upsert({
+      permission: 'super_admin',
+      status: 'ACTIVE',
+      user_id: USER,
+    })).rejects.toMatchObject({ code: 'unknown_permission' })
+    await expect(permissions.upsert({
+      permission: BILLING_PERMISSION.ADMIN,
+      status: 'SUSPENDED',
+      user_id: USER,
+    })).rejects.toMatchObject({ code: 'unknown_permission_status' })
+  })
+
+  it('re-grants REVOKED to ACTIVE through the trusted path with one new audit', async () => {
+    const { audits, service } = servicePair()
+    await service.bootstrapGrantForTests(ADMIN)
+    await service.grant({ actorUserId: ADMIN, targetUserId: USER })
+    await service.revoke({ actorUserId: ADMIN, targetUserId: USER })
+    expect(await service.hasBillingAdmin(USER)).toBe(false)
+    await service.grant({ actorUserId: ADMIN, reasonCode: 'MANUAL_ADMIN', targetUserId: USER })
+    expect(await service.hasBillingAdmin(USER)).toBe(true)
+    expect(await audits.list()).toHaveLength(3)
+  })
+
+  it('blocks nested, prefixed, and oversized audit payloads', () => {
+    expect(() => assertAuditPayloadSafe({ nested: { password: 'x' } })).toThrow(/audit/)
+    expect(() => assertAuditPayloadSafe({ PASSWORD: 'x' })).toThrow(/audit_sensitive_field/)
+    expect(() => assertAuditPayloadSafe({ user_password: 'x' })).toThrow(/audit_sensitive_field/)
+    expect(() => assertAuditPayloadSafe({ auth_token: 'x' })).toThrow(/audit_sensitive_field/)
+    expect(() => assertAuditPayloadSafe({ chat_text: 'hi' })).toThrow(/audit_sensitive_field/)
+    expect(() => assertAuditPayloadSafe({ transcript: 'hi' })).toThrow(/audit_sensitive_field/)
+    expect(() => assertAuditPayloadSafe([{ permission: 'billing_admin' }])).toThrow(/audit_nested_payload/)
+    expect(() => assertAuditPayloadSafe({ permission: 'a'.repeat(3000) })).toThrow(/audit_payload_too_large/)
   })
 })

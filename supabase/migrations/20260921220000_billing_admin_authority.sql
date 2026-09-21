@@ -37,6 +37,11 @@ create table if not exists billing.admin_permissions (
 create unique index if not exists admin_permissions_user_permission_uidx
   on billing.admin_permissions (user_id, permission);
 
+-- Concurrent trusted grants of the same (user_id, permission) are serialized
+-- by admin_permissions_user_permission_uidx plus SELECT FOR UPDATE.
+-- Concurrent grant+revoke on the same row: last committed UPDATE wins.
+-- No global advisory lock.
+
 create index if not exists admin_permissions_user_active_idx
   on billing.admin_permissions (user_id)
   where status = 'ACTIVE';
@@ -52,16 +57,25 @@ create table if not exists billing.admin_audit (
   after_safe jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default pg_catalog.now(),
   constraint admin_audit_id_len check (char_length(audit_id) between 1 and 80),
-  constraint admin_audit_action_len check (char_length(action) between 1 and 80),
-  constraint admin_audit_target_type_len check (char_length(target_type) between 1 and 40),
-  constraint admin_audit_target_id_len check (char_length(target_id) between 1 and 80),
+  constraint admin_audit_action_known check (action in (
+    'permission.grant',
+    'permission.revoke'
+  )),
+  constraint admin_audit_target_type_known check (target_type = 'admin_permission'),
+  constraint admin_audit_target_id_uuid check (
+    target_id ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+  ),
   constraint admin_audit_reason_known check (reason_code in (
     'MAINTENANCE',
     'COST_CONTROL',
     'PROVIDER_OUTAGE',
     'SECURITY',
     'MANUAL_ADMIN'
-  ))
+  )),
+  constraint admin_audit_before_object check (pg_catalog.jsonb_typeof(before_safe) = 'object'),
+  constraint admin_audit_after_object check (pg_catalog.jsonb_typeof(after_safe) = 'object'),
+  constraint admin_audit_before_size check (pg_catalog.octet_length(before_safe::text) <= 2048),
+  constraint admin_audit_after_size check (pg_catalog.octet_length(after_safe::text) <= 2048)
 );
 
 create index if not exists admin_audit_created_idx
@@ -168,16 +182,30 @@ set search_path = pg_catalog, pg_temp
 as $$
 declare
   k text;
+  v jsonb;
+  lowered text;
+  copied jsonb := '{}'::jsonb;
+  val text;
 begin
   if p_input is null then
     return '{}'::jsonb;
   end if;
-  for k in select pg_catalog.jsonb_object_keys(p_input)
+  if pg_catalog.octet_length(p_input::text) > 2048 then
+    raise exception 'audit_payload_too_large';
+  end if;
+  if pg_catalog.jsonb_typeof(p_input) is distinct from 'object' then
+    raise exception 'audit_nested_payload';
+  end if;
+  for k, v in select * from pg_catalog.jsonb_each(p_input)
   loop
-    if k in (
+    lowered := pg_catalog.lower(k);
+    if lowered in (
       'api_key',
       'audio',
+      'auth_token',
+      'bank',
       'card_number',
+      'chat_text',
       'coordinates',
       'cvv',
       'database_url',
@@ -188,18 +216,41 @@ begin
       'prompt',
       'response',
       'service_role',
-      'token'
-    ) then
+      'token',
+      'transcript'
+    )
+       or lowered like '%password%'
+       or lowered like '%api_key%'
+       or lowered like '%auth_token%'
+       or lowered like '%service_role%'
+       or lowered like '%database_url%'
+       or lowered like '%card_number%'
+       or lowered like '%cvv%'
+       or lowered like '%prompt%'
+       or lowered like '%transcript%'
+       or lowered like '%chat_text%'
+       or lowered like '%coordinates%'
+    then
       raise exception 'audit_sensitive_field';
     end if;
+    if pg_catalog.jsonb_typeof(v) in ('object', 'array') then
+      raise exception 'audit_nested_payload';
+    end if;
   end loop;
-  return pg_catalog.jsonb_strip_nulls(pg_catalog.jsonb_build_object(
-    'permission', p_input ->> 'permission',
-    'status', p_input ->> 'status',
-    'target_id', p_input ->> 'target_id',
-    'target_type', p_input ->> 'target_type',
-    'user_id', p_input ->> 'user_id'
-  ));
+  foreach k in array array['permission', 'status', 'target_id', 'target_type', 'user_id']
+  loop
+    if p_input ? k and pg_catalog.jsonb_typeof(p_input -> k) = 'string' then
+      val := p_input ->> k;
+      if pg_catalog.char_length(val) > 120 then
+        raise exception 'audit_payload_too_large';
+      end if;
+      copied := copied || pg_catalog.jsonb_build_object(k, val);
+    end if;
+  end loop;
+  if pg_catalog.octet_length(copied::text) > 2048 then
+    raise exception 'audit_payload_too_large';
+  end if;
+  return copied;
 end;
 $$;
 
@@ -222,6 +273,15 @@ declare
 begin
   if p_admin_user_id is null then
     raise exception 'invalid_admin_user_id';
+  end if;
+  if p_action not in ('permission.grant', 'permission.revoke') then
+    raise exception 'invalid_audit_action';
+  end if;
+  if p_target_type is distinct from 'admin_permission' then
+    raise exception 'invalid_target_type';
+  end if;
+  if p_target_id is null or p_target_id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
+    raise exception 'invalid_target_id';
   end if;
   insert into billing.admin_audit (
     action,
@@ -263,6 +323,9 @@ begin
       and p.permission = 'billing_admin'
       and p.status = 'ACTIVE'
   );
+exception
+  when others then
+    return false;
 end;
 $$;
 
@@ -303,7 +366,8 @@ begin
         select * into next_row
         from billing.admin_permissions
         where user_id = p_target_user_id
-          and permission = 'billing_admin';
+          and permission = 'billing_admin'
+        for update;
         if next_row.status = 'ACTIVE' then
           return next_row;
         end if;
@@ -327,8 +391,16 @@ begin
     'admin_permission',
     p_target_user_id::text,
     p_reason_code,
-    to_jsonb(existing),
-    to_jsonb(next_row)
+    pg_catalog.jsonb_strip_nulls(pg_catalog.jsonb_build_object(
+      'permission', existing.permission,
+      'status', existing.status,
+      'user_id', existing.user_id::text
+    )),
+    pg_catalog.jsonb_build_object(
+      'permission', next_row.permission,
+      'status', next_row.status,
+      'user_id', next_row.user_id::text
+    )
   );
   return next_row;
 end;
@@ -376,8 +448,16 @@ begin
     'admin_permission',
     p_target_user_id::text,
     p_reason_code,
-    to_jsonb(existing),
-    to_jsonb(next_row)
+    pg_catalog.jsonb_build_object(
+      'permission', existing.permission,
+      'status', existing.status,
+      'user_id', existing.user_id::text
+    ),
+    pg_catalog.jsonb_build_object(
+      'permission', next_row.permission,
+      'status', next_row.status,
+      'user_id', next_row.user_id::text
+    )
   );
   return next_row;
 end;

@@ -51,6 +51,7 @@ export default async function handler(request, response) {
   const action = String(body.action || '').trim()
   const targetUserId = String(body.target_user_id || '').trim()
   const reasonCode = ADMIN_AUDIT_REASONS.includes(body.reason_code) ? body.reason_code : 'MANUAL_ADMIN'
+  void request.query
   void body.admin_user_id
   void body.isAdmin
   void body.role

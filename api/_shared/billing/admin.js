@@ -22,7 +22,7 @@ export async function requireBillingAdmin(request, { requestId = '' } = {}) {
     }
   }
 
-  const allowed = await authority.hasBillingAdmin(auth.user.id)
+  const allowed = await authority.hasBillingAdmin(auth.user.id).catch(() => false)
   if (!allowed) {
     return {
       ok: false,

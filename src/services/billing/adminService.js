@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import {
   ADMIN_AUDIT_ACTION,
+  ADMIN_AUDIT_ACTIONS,
   ADMIN_AUDIT_REASONS,
+  ADMIN_AUDIT_TARGET_TYPE,
   BILLING_PERMISSION,
   PERMISSION_STATUS,
 } from './catalog.js'
@@ -46,11 +48,25 @@ export function createBillingAdminService({
   async function hasBillingAdmin(userId) {
     const id = String(userId || '').trim()
     if (!UUID_RE.test(id)) return false
-    const row = await permissions.get(id, BILLING_PERMISSION.ADMIN)
-    return row?.status === PERMISSION_STATUS.ACTIVE
+    try {
+      const row = await permissions.get(id, BILLING_PERMISSION.ADMIN)
+      return row?.status === PERMISSION_STATUS.ACTIVE
+    } catch {
+      return false
+    }
   }
 
   async function writeAudit({ action, actorUserId, after, before, reasonCode, targetId, targetType }) {
+    if (!ADMIN_AUDIT_ACTIONS.includes(action)) {
+      const error = new Error('invalid_audit_action')
+      error.code = 'invalid_audit_action'
+      throw error
+    }
+    if (targetType !== ADMIN_AUDIT_TARGET_TYPE) {
+      const error = new Error('invalid_target_type')
+      error.code = 'invalid_target_type'
+      throw error
+    }
     return audits.insert({
       action,
       admin_user_id: actorUserId,
@@ -59,8 +75,8 @@ export function createBillingAdminService({
       before_safe: assertAuditPayloadSafe(before),
       created_at: now().toISOString(),
       reason_code: requireReason(reasonCode),
-      target_id: String(targetId || '').slice(0, 80),
-      target_type: String(targetType || 'permission').slice(0, 40),
+      target_id: requireUuid(targetId, 'invalid_target_id'),
+      target_type: ADMIN_AUDIT_TARGET_TYPE,
     })
   }
 
@@ -80,6 +96,9 @@ export function createBillingAdminService({
       throw error
     }
     const existing = await permissions.get(target, BILLING_PERMISSION.ADMIN)
+    if (existing?.status === PERMISSION_STATUS.ACTIVE) {
+      return { audit: null, permission: existing }
+    }
     const next = await permissions.upsert({
       created_at: existing?.created_at || now().toISOString(),
       permission: BILLING_PERMISSION.ADMIN,
@@ -87,17 +106,22 @@ export function createBillingAdminService({
       updated_at: now().toISOString(),
       user_id: target,
     })
-    if (existing?.status === PERMISSION_STATUS.ACTIVE) return { audit: null, permission: next }
-    const audit = await writeAudit({
-      action: ADMIN_AUDIT_ACTION.PERMISSION_GRANT,
-      actorUserId: actor,
-      after: sanitizeAdminSnapshot(next),
-      before: sanitizeAdminSnapshot(existing || {}),
-      reasonCode,
-      targetId: target,
-      targetType: 'admin_permission',
-    })
-    return { audit, permission: next }
+    try {
+      const audit = await writeAudit({
+        action: ADMIN_AUDIT_ACTION.PERMISSION_GRANT,
+        actorUserId: actor,
+        after: sanitizeAdminSnapshot(next),
+        before: sanitizeAdminSnapshot(existing || {}),
+        reasonCode,
+        targetId: target,
+        targetType: ADMIN_AUDIT_TARGET_TYPE,
+      })
+      return { audit, permission: next }
+    } catch (error) {
+      if (existing) await permissions.upsert(existing)
+      else await permissions.remove(target, BILLING_PERMISSION.ADMIN)
+      throw error
+    }
   }
 
   async function revoke({ actorUserId, clientClaim = {}, reasonCode = 'SECURITY', targetUserId }) {
@@ -120,16 +144,21 @@ export function createBillingAdminService({
       status: PERMISSION_STATUS.REVOKED,
       updated_at: now().toISOString(),
     })
-    const audit = await writeAudit({
-      action: ADMIN_AUDIT_ACTION.PERMISSION_REVOKE,
-      actorUserId: actor,
-      after: sanitizeAdminSnapshot(next),
-      before: sanitizeAdminSnapshot(existing),
-      reasonCode,
-      targetId: target,
-      targetType: 'admin_permission',
-    })
-    return { audit, permission: next }
+    try {
+      const audit = await writeAudit({
+        action: ADMIN_AUDIT_ACTION.PERMISSION_REVOKE,
+        actorUserId: actor,
+        after: sanitizeAdminSnapshot(next),
+        before: sanitizeAdminSnapshot(existing),
+        reasonCode,
+        targetId: target,
+        targetType: ADMIN_AUDIT_TARGET_TYPE,
+      })
+      return { audit, permission: next }
+    } catch (error) {
+      await permissions.upsert(existing)
+      throw error
+    }
   }
 
   async function bootstrapGrantForTests(userId) {

@@ -143,6 +143,8 @@ export const ADMIN_AUDIT_ACTION = Object.freeze({
   FEATURE_CONTROL_CREATED: 'feature.control.created',
   PERMISSION_GRANT: 'permission.grant',
   PERMISSION_REVOKE: 'permission.revoke',
+  PROVIDER_CONTROL_CHANGED: 'provider.control.changed',
+  PROVIDER_CONTROL_CREATED: 'provider.control.created',
 })
 
 export const ADMIN_AUDIT_ACTIONS = Object.freeze(Object.values(ADMIN_AUDIT_ACTION))
@@ -152,14 +154,17 @@ export const ADMIN_AUDIT_TARGET_TYPE = 'admin_permission'
 export const ADMIN_AUDIT_TARGET_TYPES = Object.freeze([
   'admin_permission',
   'feature_control',
+  'provider_control',
 ])
 
 export const FEATURE_CONTROL_TARGET_TYPE = 'feature_control'
+export const PROVIDER_CONTROL_TARGET_TYPE = 'provider_control'
 
 export const ADMIN_AUDIT_SAFE_KEYS = Object.freeze([
   'feature_id',
   'mode',
   'permission',
+  'provider_id',
   'reason_code',
   'status',
   'target_id',

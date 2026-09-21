@@ -17,6 +17,7 @@ import {
   sanitizeAdminSnapshot,
 } from './adminAuthority.js'
 import { resolveFeatureId } from './features.js'
+import { resolveProviderId } from './providers.js'
 
 function requireUuid(value, code = 'invalid_user_id') {
   const id = String(value || '').trim()
@@ -72,7 +73,7 @@ export function createBillingAdminService({
     let storedTargetId
     if (targetType === ADMIN_AUDIT_TARGET_TYPE) {
       storedTargetId = requireUuid(targetId, 'invalid_target_id')
-    } else {
+    } else if (targetType === 'feature_control') {
       const featureId = resolveFeatureId(targetId)
       if (!featureId || featureId !== String(targetId || '').trim()) {
         const error = new Error('invalid_target_id')
@@ -80,6 +81,14 @@ export function createBillingAdminService({
         throw error
       }
       storedTargetId = featureId
+    } else {
+      const providerId = resolveProviderId(targetId)
+      if (!providerId || providerId !== String(targetId || '').trim()) {
+        const error = new Error('invalid_target_id')
+        error.code = 'invalid_target_id'
+        throw error
+      }
+      storedTargetId = providerId
     }
     return audits.insert({
       action,

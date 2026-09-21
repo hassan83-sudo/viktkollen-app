@@ -57,7 +57,7 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
       }
       saveAccessibilityPreferences(next)
 
-      if (next.hapticFeedback && !next.calmMode && typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+      if (changes.hapticFeedback === true && !next.calmMode && typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
         navigator.vibrate(15)
       }
 
@@ -265,6 +265,14 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
             </p>
             <fieldset className="accessibility-preference-group">
               <legend>{t('accessibility.preferences.seniorLegend')}</legend>
+              <button
+                aria-pressed={preferences.textSize === 'large' && !preferences.seniorMode}
+                className="accessibility-preference-toggle"
+                type="button"
+                onClick={() => updatePreferences({ textSize: 'large' })}
+              >
+                {t('accessibility.preferences.largerText')}
+              </button>
               {['largeControls', 'highContrast', 'reduceMotion', 'simpleReading'].map((key) => (
                 <button aria-pressed={preferences[key] || preferences.seniorMode} className="accessibility-preference-toggle" key={key} type="button" onClick={() => togglePreference(key)}>
                   {t(`accessibility.preferences.${key}`)}

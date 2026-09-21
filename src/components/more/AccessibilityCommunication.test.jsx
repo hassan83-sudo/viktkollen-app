@@ -112,6 +112,10 @@ describe('AccessibilityCommunication', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Stäng stor text' }))
     expect(screen.queryByLabelText('Stor text')).toBeNull()
 
+    fireEvent.click(screen.getByRole('button', { name: 'Visa stort' }))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByLabelText('Stor text')).toBeNull()
+
     fireEvent.click(screen.getByRole('button', { name: 'Rensa' }))
     expect(screen.getByRole('textbox', { name: 'Skriv vad du vill säga' }).value).toBe('')
     expect(screen.queryByRole('button', { name: 'Läs upp' })).toBeNull()

@@ -15049,6 +15049,16 @@ html:has(#app-section-more.is-active),
   animation-duration: 0.01ms !important;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .accessibility-scope *,
+  .accessibility-scope *::before,
+  .accessibility-scope *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
 .accessibility-scope.has-large-controls button,
 .accessibility-scope.has-calm-mode button {
   min-height: 48px;

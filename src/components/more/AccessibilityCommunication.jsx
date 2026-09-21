@@ -39,6 +39,17 @@ function AccessibilityCommunication() {
     getSpeechApi()?.synthesis.cancel?.()
   }, [])
 
+  useEffect(() => {
+    if (!largeTextOpen) return undefined
+
+    function closeLargeTextOnEscape(event) {
+      if (event.key === 'Escape') setLargeTextOpen(false)
+    }
+
+    window.addEventListener('keydown', closeLargeTextOnEscape)
+    return () => window.removeEventListener('keydown', closeLargeTextOnEscape)
+  }, [largeTextOpen])
+
   function selectPhrase(phraseId) {
     stopSpeaking()
     setLargeTextOpen(false)

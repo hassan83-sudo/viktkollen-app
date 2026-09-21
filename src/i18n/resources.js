@@ -501,6 +501,7 @@ const sv = {
         extraInteractionTime: 'Ge mig mer tid',
         keyboardFriendly: 'Tangentbordsvänligt läge',
         lineSpacing: 'Mer luft mellan rader',
+        largerText: 'Större text',
         simpleReading: 'Enklare texter',
         textSize: { normal: 'Normal text', large: 'Stor text', 'extra-large': 'Extra stor text' },
         soundNotOnlySignal: 'Ljud ska aldrig vara den enda signalen. Viktiga val visas också tydligt i den här vyn.',
@@ -517,7 +518,7 @@ const sv = {
       },
       previewSimpleMode: 'Förhandsvisa enkelt läge',
       endSimplePreview: 'Avsluta förhandsvisning',
-      simplePreviewIntro: 'Förhandsvisningen gäller bara den här tillgänglighetsvyn och sparas inte.',
+      simplePreviewIntro: 'Förhandsvisningen gäller bara Tillgänglighet & hjälpmedel och ändrar inte Viktkollen i övrigt.',
       simplePreviewItems: {
         largeButtons: 'Större knappar',
         shortTexts: 'Kortare texter',
@@ -2273,6 +2274,7 @@ const en = {
         extraInteractionTime: 'Give me more time',
         keyboardFriendly: 'Keyboard-friendly mode',
         lineSpacing: 'More space between lines',
+        largerText: 'Larger text',
         simpleReading: 'Simpler text',
         textSize: { normal: 'Normal text', large: 'Large text', 'extra-large': 'Extra large text' },
         soundNotOnlySignal: 'Sound should never be the only signal. Important choices are also clearly shown in this view.',
@@ -2289,7 +2291,7 @@ const en = {
       },
       previewSimpleMode: 'Preview simple mode',
       endSimplePreview: 'End preview',
-      simplePreviewIntro: 'This preview applies only to this accessibility view and is not saved.',
+      simplePreviewIntro: 'This preview applies only to Accessibility & aids and does not change Viktkollen elsewhere.',
       simplePreviewItems: {
         largeButtons: 'Larger buttons',
         shortTexts: 'Shorter text',

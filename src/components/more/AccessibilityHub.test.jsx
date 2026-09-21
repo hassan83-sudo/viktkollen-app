@@ -1,9 +1,14 @@
 /* @vitest-environment jsdom */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import process from 'node:process'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import i18n from '../../i18n/index.js'
 import AccessibilityHub from './AccessibilityHub.jsx'
 import MoreHub from './MoreHub.jsx'
+
+const appCss = readFileSync(resolve(process.cwd(), 'src', 'App.css'), 'utf8')
 
 const sectionTitles = [
   'Syn',
@@ -201,5 +206,37 @@ describe('AccessibilityHub', () => {
     const controls = screen.getByRole('button', { name: 'Större knappar och tryckytor' })
     fireEvent.click(controls)
     expect(controls.getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('keeps haptic confirmation safe when vibration is unsupported', () => {
+    Object.defineProperty(window.navigator, 'vibrate', { configurable: true, value: undefined })
+    renderAccessibilityHub()
+
+    fireEvent.click(screen.getByRole('button', { name: /^Hörsel/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Vibration vid viktiga tryck' }))
+
+    expect(screen.getByRole('button', { name: 'Vibration vid viktiga tryck' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('lets individual senior settings override the extra clear package', () => {
+    renderAccessibilityHub()
+
+    fireEvent.click(screen.getByRole('button', { name: /^Äldre/ }))
+    const packageButton = screen.getByRole('button', { name: 'Extra tydligt läge' })
+    fireEvent.click(packageButton)
+    expect(packageButton.getAttribute('aria-pressed')).toBe('true')
+
+    const largerText = screen.getByRole('button', { name: 'Större text' })
+    fireEvent.click(largerText)
+    expect(largerText.getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Extra tydligt läge' }).getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('keeps extra-large text and preference controls responsive at 390px and 430px', () => {
+    expect(appCss).toContain('@media (max-width: 430px)')
+    expect(appCss).toContain('.accessibility-scope.is-text-extra-large')
+    expect(appCss).toContain('--accessibility-text-scale: 1.16;')
+    expect(appCss).toContain('grid-template-columns: minmax(0, 1fr)')
+    expect(appCss).toContain('flex-basis: 100%')
   })
 })

@@ -320,6 +320,7 @@ async function callOpenAi(image, mealType) {
   const imageUrl = `data:${image.contentType};base64,${image.data.toString('base64')}`
   const config = getAiGatewayConfig('photo')
   const result = await callOpenAiJson({
+    feature: 'food.scan',
     input: [{
           content: [
             { text: createPrompt(mealType), type: 'input_text' },

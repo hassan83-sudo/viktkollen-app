@@ -234,6 +234,7 @@ export default async function handler(request, response) {
       temperature: 0.2,
       timeoutMs: config.timeoutMs,
       type: 'coach',
+      userId: auth.user.id,
     }))
   const result = await providerPromise
 

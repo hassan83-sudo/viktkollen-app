@@ -8227,6 +8227,21 @@ body.vk-body-scan-session .bottom-nav {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  min-height: 44px;
+}
+
+.overview-search-row {
+  display: flex;
+  justify-content: flex-start;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0 2px 10px;
+  overflow-x: hidden;
+}
+
+.overview-search-row .global-search-trigger {
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .global-search-trigger kbd {

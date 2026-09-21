@@ -9,6 +9,11 @@ import {
   searchGlobalNavigation,
 } from '../../services/navigation/globalSearchIndex.js'
 import { getFeatureFlags } from '../../features/featureRegistry.js'
+import {
+  GLOBAL_SEARCH_OPEN_EVENT,
+  isEditableSearchShortcutTarget,
+  requestOpenGlobalSearch,
+} from '../../services/navigation/globalSearchEvents.js'
 
 const recentSearchStorageKey = 'viktkollen.globalSearch.recentIds'
 /** Internal group title from globalSearchIndex until that corpus is migrated. */
@@ -45,7 +50,11 @@ function saveRecentSearchId(id) {
   }
 }
 
-function GlobalSearch({ onNavigate }) {
+function GlobalSearch({
+  listenForShortcut = false,
+  onNavigate,
+  showTrigger = true,
+}) {
   const { t } = useTranslation(['settings', 'common'])
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -54,6 +63,7 @@ function GlobalSearch({ onNavigate }) {
   const openerRef = useRef(null)
   const previousFocusRef = useRef(null)
   const [recentIds, setRecentIds] = useState(() => readRecentSearchIds())
+  const hostDialog = listenForShortcut
   const flags = getFeatureFlags()
   const catalog = useMemo(() => getVisibleGlobalSearchItems(flags), [flags])
   const results = useMemo(() => searchGlobalNavigation(query, catalog), [catalog, query])
@@ -82,8 +92,12 @@ function GlobalSearch({ onNavigate }) {
   }
 
   const openSearch = useCallback(() => {
-    previousFocusRef.current = document.activeElement
-    setIsOpen(true)
+    setIsOpen((alreadyOpen) => {
+      if (!alreadyOpen) {
+        previousFocusRef.current = document.activeElement
+      }
+      return true
+    })
   }, [])
 
   const closeSearch = useCallback(() => {
@@ -91,7 +105,7 @@ function GlobalSearch({ onNavigate }) {
     setQuery('')
     setSelectedIndex(0)
     window.requestAnimationFrame(() => {
-      const focusTarget = previousFocusRef.current || openerRef.current
+      const focusTarget = openerRef.current || previousFocusRef.current
       focusTarget?.focus?.()
     })
   }, [])
@@ -105,15 +119,30 @@ function GlobalSearch({ onNavigate }) {
   }
 
   useEffect(() => {
+    if (!listenForShortcut) return undefined
+
     function handleGlobalKeyDown(event) {
       if (!isGlobalSearchOpenShortcut(event)) return
+      if (isOpen) {
+        event.preventDefault()
+        return
+      }
+      if (isEditableSearchShortcutTarget(event.target)) return
       event.preventDefault()
       openSearch()
     }
 
+    function handleOpenEvent() {
+      openSearch()
+    }
+
     window.addEventListener('keydown', handleGlobalKeyDown)
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [openSearch])
+    window.addEventListener(GLOBAL_SEARCH_OPEN_EVENT, handleOpenEvent)
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown)
+      window.removeEventListener(GLOBAL_SEARCH_OPEN_EVENT, handleOpenEvent)
+    }
+  }, [isOpen, listenForShortcut, openSearch])
 
   useEffect(() => {
     if (!isOpen) return
@@ -163,21 +192,31 @@ function GlobalSearch({ onNavigate }) {
     )
   }
 
+  function handleTriggerClick() {
+    if (listenForShortcut) {
+      openSearch()
+      return
+    }
+    requestOpenGlobalSearch()
+  }
+
   return (
     <>
-      <button
-        className="global-search-trigger secondary-button"
-        type="button"
-        onClick={openSearch}
-        ref={openerRef}
-        aria-label={t('search.open')}
-      >
-        <span aria-hidden="true">⌕</span>
-        <strong>{t('common:search')}</strong>
-        <kbd>Ctrl K</kbd>
-      </button>
+      {showTrigger && (
+        <button
+          className="global-search-trigger secondary-button"
+          type="button"
+          onClick={handleTriggerClick}
+          ref={openerRef}
+          aria-label={t('search.open')}
+        >
+          <span aria-hidden="true">⌕</span>
+          <strong>{t('common:search')}</strong>
+          <kbd>Ctrl K</kbd>
+        </button>
+      )}
 
-      {isOpen && (
+      {hostDialog && isOpen && (
         <div className="global-search-backdrop" role="presentation">
           <div
             aria-label={t('search.dialog')}

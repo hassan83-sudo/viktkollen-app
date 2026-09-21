@@ -9,6 +9,7 @@ import WeeklyProgressSection from './WeeklyProgressSection.jsx'
 import BodyScanRings from './BodyScanRings.jsx'
 import OverviewBodyScanStage from './OverviewBodyScanStage.jsx'
 import OverviewCoachStage from './OverviewCoachStage.jsx'
+import GlobalSearch from './GlobalSearch.jsx'
 import WeatherDayDetail from './WeatherDayDetail.jsx'
 import {
   createFallbackWeatherContext,
@@ -1203,6 +1204,9 @@ function OverviewDashboard({
           </div>
         </div>
       </header>
+      <div className="overview-search-row">
+        <GlobalSearch />
+      </div>
 
       <section className="overview-home-section" aria-label={t('home:startAria')}>
         <OverviewPrimaryActions

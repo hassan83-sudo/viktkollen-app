@@ -17,6 +17,7 @@ import './App.css'
 import AuthPanel from './components/AuthPanel.jsx'
 import AppLoadingScreen from './components/app/AppLoadingScreen.jsx'
 import BottomNavigation from './components/app/BottomNavigation.jsx'
+import GlobalSearch from './components/app/GlobalSearch.jsx'
 import LazySectionFallback from './components/app/LazySectionFallback.jsx'
 import OnboardingScreen from './components/app/OnboardingScreen.jsx'
 import GlobalSyncStatus from './components/GlobalSyncStatus.jsx'
@@ -3176,6 +3177,11 @@ function App() {
           onSkip={handleReminderSkip}
           onSnooze={handleReminderSnooze}
         />
+        <GlobalSearch
+          listenForShortcut
+          onNavigate={handleGlobalSearchNavigate}
+          showTrigger={false}
+        />
         {showInternalTools && (
           <Suspense fallback={null}>
             <LaunchReadinessPanel
@@ -3345,7 +3351,6 @@ function App() {
   onReminderSettingChange={updateReminderSetting}
   onReminderStateChange={handleReminderStateChange}
    onRequestNotificationPermission={requestNotificationPermission}
-  onSearchNavigate={handleGlobalSearchNavigate}
   onSignOut={handleSignOut}
   profileCompleteness={profileCompleteness}
   reminderOptions={reminderOptions}

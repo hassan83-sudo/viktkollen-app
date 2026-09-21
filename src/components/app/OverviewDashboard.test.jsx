@@ -79,6 +79,8 @@ describe('OverviewDashboard', () => {
     expect(markup).toContain('HK')
     expect(markup).not.toContain('Din översikt')
     expect(markup).not.toContain('class="overview-avatar-photo"')
+    expect(markup).toContain('class="overview-search-row"')
+    expect(markup).toContain('aria-label="Öppna global sökning"')
   })
 
   it('keeps three equal neon primary cards with Tryck på bilden', () => {
@@ -102,7 +104,7 @@ describe('OverviewDashboard', () => {
     expect(markup).toContain('Minne, kläder och sista kollen')
     expect(markup).not.toContain('Följ kroppens förändringar över tid')
     expect(markup).toContain('Skanna maten och uppskatta näringen')
-    expect(markup).toContain('/viktkollen-body-scan.png')
+    expect(markup).toContain('/viktkollen-body-scan-card.svg')
     expect(markup).toContain('Öppna kroppsscanning i helskärm')
     expect(markup).toContain('Tryck på bilden')
     expect(markup).toContain('Tryck på personen för att förstora')

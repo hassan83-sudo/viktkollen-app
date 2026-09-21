@@ -14,7 +14,10 @@ describe('Release polish shell gating', () => {
     expect(appSource).not.toContain('<AppTopbar')
     expect(appSource).toContain('<HomeSection')
     expect(appSource).toContain('resolveGlobalSearchDestination')
+    expect(appSource).toContain('listenForShortcut')
+    expect(appSource).toContain('showTrigger={false}')
     expect(moreSectionSource).toContain('<GlobalSearch')
+    expect(moreSectionSource).not.toContain('listenForShortcut')
   })
 
   it('keeps the normal Home section limited to the new OverviewDashboard', () => {

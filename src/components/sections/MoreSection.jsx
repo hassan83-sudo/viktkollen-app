@@ -36,7 +36,6 @@ function MoreSection({
   onLanguageChange,
   onOpenAiCoach,
   onOpenEye,
-  onSearchNavigate,
   onSignOut,
   profileCompleteness,
   DataExportCenterComponent,
@@ -387,7 +386,7 @@ function MoreSection({
 
             <div className="app-information">
               <h3>{t('searchInApp')}</h3>
-              <GlobalSearch onNavigate={onSearchNavigate} />
+              <GlobalSearch />
             </div>
 
             <div className="account-settings-actions">

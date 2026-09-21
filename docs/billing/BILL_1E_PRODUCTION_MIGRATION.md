@@ -1,71 +1,70 @@
-# BILL-1E — Production migration (stopped before apply)
+# BILL-1E — Production migration (applied)
 
 Branch: `billing-cost-metering-sprint1`  
-HEAD: `e8cba6d` (BILL-1D). Origin matched. `origin/main` remained `c8899a5`.
+HEAD: `3d636ef`. `origin/main` remained `c8899a5`.
 
-**Production SQL was not executed.** Staging `.env.local` was not used as a production connection.
+Connection used **only** gitignored `.env.production.local` (`BILLING_PROD_*`). Staging `.env.local` was **not** used as a production URI; its staging project ref was read only as a deny-list for inequality checks.
 
 ## Exact migration
 
 File: `supabase/migrations/20260921121500_billing_usage_events.sql`  
 Git blob / `git hash-object`: `13c68b1473f501a48c57ab675eba525b5ee9d9ff`  
 Same blob at `e8cba6d:supabase/migrations/20260921121500_billing_usage_events.sql`.  
-`git diff e8cba6d --` that file: empty. **Checksum matches the BILL-1D staging file.**
+No other migration files were executed. `supabase db push` was not used.
 
-## Production target
+## Pre-mutation gates
 
-`BILLING_TEST_PRODUCTION_PROJECT_REF` exists only as a **deny-list** inside staging `.env.local`. That is not a production connection string.
-
-No separate production credential source was present:
-
-| Source | Result |
+| Check | Result |
 |---|---|
-| `BILLING_PROD_DATABASE_URL` process env | unset |
-| `PRODUCTION_DATABASE_URL` | unset |
-| `BILLING_PRODUCTION_DATABASE_URL` | unset |
-| `SUPABASE_PRODUCTION_DB_URL` | unset |
-| `PROD_DATABASE_URL` | unset |
-| `.env.production.local` / other prod env files | absent |
-| `BILLING_TEST_DATABASE_URL` | **not used** (staging Session pooler) |
+| TARGET | PRODUCTION |
+| Production ref = database target | PASS |
+| Production ref ≠ staging ref | PASS |
+| Database target ≠ staging | PASS |
+| Connection method | SESSION POOLER |
+| Checksum matches BILL-1D staging file | PASS |
+| Exact file only | YES |
+| `.env.production.local` gitignored | YES |
 
-**PRODUCTION TARGET VERIFIED: NO**  
-**PRODUCTION CREDENTIAL SOURCE: MISSING**
+## Collision (read-only, before apply)
 
-## What Hassan needs (placeholders only)
+| Check | Result |
+|---|---|
+| Pre-existing `billing` schema | NO |
+| Pre-existing `billing.usage_events` | NO |
+| Unexpected name collisions | none |
+| Already applied | NO |
+| Collision check | PASS |
 
-A **separate** gitignored file, for example `.env.production.local`, not `.env.local`:
+## Recovery (read-only; backup config unchanged)
 
-```
-BILLING_PROD_TARGET=production
-BILLING_PROD_PROJECT_REF=
-BILLING_PROD_DATABASE_URL=
-```
+WAL archiving is active (`archive_mode=on`, `wal_level=logical`, archived WAL present, no archive failure). Primary is not in recovery. Supabase PITR add-on / restore window was **not** checked via Management API. No restore procedure was invented or executed.
 
-Rules:
+**RECOVERY PATH: VERIFIED** (WAL archive). PITR dashboard: not checked.
 
-- `BILLING_PROD_PROJECT_REF` must equal the production project ref (the one already used as the staging deny-list).
-- `BILLING_PROD_DATABASE_URL` must be the **production** Session pooler URI (IPv4), user `postgres.<production-ref>`.
-- It must **not** be the staging URI, staging password, or staging API keys.
-- Do not put these values in git or in chat.
+## Apply
 
-After that file exists, BILL-1E can be re-run with the same hard guards.
+Human-approved SQL only, in a single transaction: **COMMITTED**.
+On this run there was no SQL error and no rollback.
 
-## Recovery path
+No usage events, test users, dummy rows, AI calls, GPS events, or provider prices were written. Row count after apply: **0**.
 
-**UNKNOWN.** No production Management/API access was used. Do not change backup settings.
+## Post-migration (read-only catalog)
 
-## Collision / pre-existing schema / apply
+| Check | Result |
+|---|---|
+| `billing` schema | PASS |
+| `usage_events` table | PASS |
+| RLS enabled + FORCE | PASS |
+| anon / authenticated raw table privileges | BLOCKED |
+| `service_role` USAGE + SELECT + INSERT; no UPDATE/DELETE | PASS |
+| append-only trigger `usage_events_append_only` | PASS |
+| PK `event_id` | PASS |
+| quantity / event_type / unit CHECKs | PASS |
+| metadata allowlist CHECKs | PASS |
+| index `(user_id, occurred_at)` | PASS |
 
-Not run (no production DB session).
-
-## Transaction / PostgREST / row count / RLS
-
-Not run.
+PostgREST HTTP was not exercised (no production API keys in the production env file). Privilege catalog is the source for anon/authenticated BLOCKED.
 
 ## Unchanged
 
-No production schema mutation. No test rows. No Auth users. No cost catalog. No Vercel. No main merge. Staging was not mutated in this sprint.
-
-## Recommendation
-
-**DO NOT APPLY** until a separate production Session pooler URI is provided. Then re-run BILL-1E only.
+No BILL-2. No Vercel. No main merge. Staging was not mutated. Backup settings were not changed.

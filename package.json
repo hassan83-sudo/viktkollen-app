@@ -17,7 +17,8 @@
     "verify:coach-route": "node scripts/verify-coach-route.js",
     "verify:photo-route": "node scripts/verify-photo-route.js",
     "verify:preview": "node scripts/verify-preview.js",
-    "verify:release": "node scripts/verify-release.js"
+    "verify:release": "node scripts/verify-release.js",
+    "billing:staging-preflight": "node scripts/billing-staging-preflight.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.8",

@@ -18,7 +18,8 @@
     "verify:photo-route": "node scripts/verify-photo-route.js",
     "verify:preview": "node scripts/verify-preview.js",
     "verify:release": "node scripts/verify-release.js",
-    "billing:staging-preflight": "node scripts/billing-staging-preflight.js"
+    "billing:staging-preflight": "node scripts/billing-staging-preflight.js",
+    "billing:staging-1d": "node scripts/run-billing-staging-1d.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.8",

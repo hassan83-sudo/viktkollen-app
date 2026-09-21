@@ -94,3 +94,29 @@ export const PLAN_PRICE_STATUS = Object.freeze({
  * updated committed total. Documented in docs/billing/BILL_2_PLAN_QUOTA.md.
  */
 export const OVERAGE_POLICY = 'COMMIT_ACTUAL_COUNT_OVERAGE'
+
+export const SUBSCRIPTION_STATUS = Object.freeze({
+  ACTIVE: 'ACTIVE',
+  CANCELED: 'CANCELED',
+  EXPIRED: 'EXPIRED',
+  PAST_DUE: 'PAST_DUE',
+  PAUSED: 'PAUSED',
+  TRIALING: 'TRIALING',
+})
+
+export const SUBSCRIPTION_TERMINAL = Object.freeze([
+  SUBSCRIPTION_STATUS.CANCELED,
+  SUBSCRIPTION_STATUS.EXPIRED,
+])
+
+export const SUBSCRIPTION_OPEN = Object.freeze([
+  SUBSCRIPTION_STATUS.ACTIVE,
+  SUBSCRIPTION_STATUS.PAST_DUE,
+  SUBSCRIPTION_STATUS.PAUSED,
+  SUBSCRIPTION_STATUS.TRIALING,
+])
+
+export const PLAN_CHANGE_WHEN = Object.freeze({
+  NEXT_PERIOD: 'next_period',
+  NOW: 'now',
+})

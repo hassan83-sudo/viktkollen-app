@@ -15,6 +15,19 @@ import { createInMemoryReservationStore } from './reservationStore.js'
 import { getUsageRepository } from './usageRepository.js'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function subscriptionPeriod(assignment, plan, nowDate) {
+  const start = assignment?.current_period_start ? new Date(assignment.current_period_start) : null
+  const end = assignment?.current_period_end ? new Date(assignment.current_period_end) : null
+  if (start && end && !Number.isNaN(start.getTime()) && end.getTime() > start.getTime()) {
+    return {
+      interval: plan.billing_interval,
+      period_end: end.toISOString(),
+      period_start: start.toISOString(),
+    }
+  }
+  return periodBounds(plan.billing_interval, nowDate)
+}
 const MAX_QUANTITY = 1_000_000_000
 const TERMINAL = new Set([
   RESERVATION_STATUS.COMMITTED,
@@ -124,7 +137,7 @@ export function createInMemoryAtomicBackend({
     const assignment = await assignments.get(userId)
     const plan = getPlanById(assignment.plan_id, catalog)
     if (!plan) return quotaResult(QUOTA_STATUS.DENIED_UNKNOWN_PLAN)
-    const period = periodBounds(plan.billing_interval, nowDate)
+    const period = subscriptionPeriod(assignment, plan, nowDate)
 
     if (!definition.metered) {
       return quotaResult(QUOTA_STATUS.ALLOWED_UNMETERED, {

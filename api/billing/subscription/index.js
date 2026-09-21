@@ -1,9 +1,9 @@
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../../_shared/aiRouteErrors.js'
-import { inspectServerQuota } from '../../_shared/billing/quota.js'
+import { getServerSubscription } from '../../_shared/billing/subscription.js'
 import { verifySupabaseUser } from '../../_shared/verifySupabaseUser.js'
 
 export default async function handler(request, response) {
-  const requestId = `quota-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+  const requestId = `sub-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   setNoStoreHeaders(response)
 
   if (request.method !== 'GET') {
@@ -24,17 +24,19 @@ export default async function handler(request, response) {
     })
   }
 
-  const feature = typeof request.query?.feature === 'string' ? request.query.feature : ''
-  const unit = typeof request.query?.unit === 'string' ? request.query.unit : undefined
-  const quota = await inspectServerQuota({
-    feature,
-    unit,
-    user: auth.user,
-  })
+  const queryUser = typeof request.query?.user_id === 'string' ? request.query.user_id : ''
+  if (queryUser && queryUser !== auth.user.id) {
+    return response.status(403).json({
+      error: { code: 'FORBIDDEN_USER' },
+      ok: false,
+      requestId,
+    })
+  }
 
+  const subscription = await getServerSubscription({ user: auth.user })
   return response.status(200).json({
     ok: true,
-    quota,
     requestId,
+    subscription,
   })
 }

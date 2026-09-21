@@ -51,3 +51,46 @@ export const SENSITIVE_USAGE_FIELDS = Object.freeze([
 
 export const SUPPORTED_CURRENCIES = Object.freeze(['SEK', 'USD', 'EUR'])
 export const CATALOG_STATUS = Object.freeze(['UNCONFIGURED', 'UNKNOWN', 'CONFIGURED'])
+
+/** BILL-2: single unit list is USAGE_UNITS. Do not add a second unit system. */
+export const BILLING_INTERVALS = Object.freeze(['day', 'week', 'month'])
+
+export const LIMIT_KIND = Object.freeze({
+  NUMBER: 'NUMBER',
+  UNLIMITED: 'UNLIMITED',
+})
+
+export const QUOTA_STATUS = Object.freeze({
+  ALLOWED: 'ALLOWED',
+  ALLOWED_UNMETERED: 'ALLOWED_UNMETERED',
+  COMMITTED: 'COMMITTED',
+  DENIED_DISABLED: 'DENIED_DISABLED',
+  DENIED_INVALID_QUANTITY: 'DENIED_INVALID_QUANTITY',
+  DENIED_NO_USER: 'DENIED_NO_USER',
+  DENIED_QUOTA_EXCEEDED: 'DENIED_QUOTA_EXCEEDED',
+  DENIED_UNIT_MISMATCH: 'DENIED_UNIT_MISMATCH',
+  DENIED_UNKNOWN_FEATURE: 'DENIED_UNKNOWN_FEATURE',
+  DENIED_UNKNOWN_PLAN: 'DENIED_UNKNOWN_PLAN',
+  RESERVED: 'RESERVED',
+  ROLLED_BACK: 'ROLLED_BACK',
+  UNLIMITED: 'UNLIMITED',
+})
+
+export const RESERVATION_STATUS = Object.freeze({
+  COMMITTED: 'COMMITTED',
+  EXPIRED: 'EXPIRED',
+  PENDING: 'PENDING',
+  ROLLED_BACK: 'ROLLED_BACK',
+})
+
+export const PLAN_PRICE_STATUS = Object.freeze({
+  ADMIN_CONFIGURABLE: 'ADMIN-CONFIGURABLE',
+  PRELIMINARY: 'PRELIMINARY',
+})
+
+/**
+ * If actual usage exceeds the reservation, count the actual integer against
+ * the period and never report negative remaining. Future reserves use the
+ * updated committed total. Documented in docs/billing/BILL_2_PLAN_QUOTA.md.
+ */
+export const OVERAGE_POLICY = 'COMMIT_ACTUAL_COUNT_OVERAGE'

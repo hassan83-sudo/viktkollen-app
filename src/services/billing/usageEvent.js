@@ -90,6 +90,32 @@ export function createUsageEvent(input = {}) {
   }
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+/**
+ * Maps an in-memory usage event to the SQL row shape.
+ * Empty / non-uuid user_id becomes null so a client cannot persist a
+ * forged text identifier as another user's uuid.
+ * Does not insert; trusted server persistence is not wired in BILL-1.
+ */
+export function toPersistedUsageRow(event) {
+  const userId = String(event?.user_id || '').trim()
+  return {
+    cost_basis: event.cost_basis,
+    event_id: event.event_id,
+    event_type: event.event_type,
+    feature: event.feature,
+    metadata: sanitizeUsageMetadata(event.metadata),
+    model: event.model || '',
+    occurred_at: event.occurred_at,
+    provider: event.provider || '',
+    quantity: event.quantity,
+    reference_id: event.reference_id,
+    unit: event.unit,
+    user_id: UUID_RE.test(userId) ? userId.toLowerCase() : null,
+  }
+}
+
 export function usageEventContainsSensitiveContent(event) {
   const blob = JSON.stringify(event || {})
   return SENSITIVE_USAGE_FIELDS.some((field) => new RegExp(`"${field}"\\s*:`, 'i').test(blob))

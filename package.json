@@ -20,8 +20,10 @@
     "verify:release": "node scripts/verify-release.js",
     "billing:staging-preflight": "node scripts/billing-staging-preflight.js",
     "billing:staging-2b": "node scripts/run-billing-staging-2b.mjs",
+    "billing:staging-3b": "node scripts/run-billing-staging-3b.mjs",
     "billing:staging-4a": "node scripts/run-billing-staging-4a.mjs",
-    "billing:production-3c": "node scripts/run-billing-production-3c.mjs"
+    "billing:production-3c": "node scripts/run-billing-production-3c.mjs",
+    "billing:production-4a": "node scripts/run-billing-production-4a.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.8",

@@ -66,3 +66,17 @@ describe('BILL-4A staging runner contract', () => {
     expect(source).toContain('verifySupabaseUser')
   })
 })
+
+describe('BILL-4A production runner contract', () => {
+  it('uses production env only and never bootstraps an admin', () => {
+    const source = readFileSync(new URL('../../../scripts/run-billing-production-4a.mjs', import.meta.url), 'utf8')
+    expect(source).toContain('.env.production.local')
+    expect(source).toContain('BILLING_PROD_DATABASE_URL')
+    expect(source).not.toMatch(/BILLING_TEST_DATABASE_URL/)
+    expect(source).toContain('d8cc1f98e68d8cbbf8b8e26775e2052d6719bf68')
+    expect(source).toContain('20260921220000_billing_admin_authority.sql')
+    expect(source).toContain("ADMIN_BOOTSTRAP_EXECUTED: 'NO'")
+    expect(source).not.toMatch(/insert into billing\.admin_permissions/i)
+    expect(source).not.toMatch(/grant_billing_admin\(\$/)
+  })
+})

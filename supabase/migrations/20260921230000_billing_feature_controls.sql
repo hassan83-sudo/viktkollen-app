@@ -150,14 +150,17 @@ begin
       'card_number',
       'chat_text',
       'coordinates',
+      'credential',
       'cvv',
       'database_url',
+      'gps',
       'image',
       'latitude',
       'longitude',
       'password',
       'prompt',
       'response',
+      'secret',
       'service_role',
       'token',
       'transcript'
@@ -173,6 +176,8 @@ begin
        or lowered like '%transcript%'
        or lowered like '%chat_text%'
        or lowered like '%coordinates%'
+       or lowered like '%credential%'
+       or lowered like '%secret%'
     then
       raise exception 'audit_sensitive_field';
     end if;
@@ -239,6 +244,15 @@ begin
   if p_target_id is null or p_target_id !~ '^[A-Za-z0-9._-]+$' or char_length(p_target_id) > 80 then
     raise exception 'invalid_target_id';
   end if;
+  if p_action in ('permission.grant', 'permission.revoke') and p_target_type is distinct from 'admin_permission' then
+    raise exception 'invalid_target_type';
+  end if;
+  if p_action in ('feature.control.created', 'feature.control.changed') and p_target_type is distinct from 'feature_control' then
+    raise exception 'invalid_target_type';
+  end if;
+  if p_action in ('provider.control.created', 'provider.control.changed') and p_target_type is distinct from 'provider_control' then
+    raise exception 'invalid_target_type';
+  end if;
   insert into billing.admin_audit (
     action,
     admin_user_id,
@@ -303,6 +317,16 @@ begin
   expected := coalesce(p_expected_version, 0);
   if expected < 0 then
     raise exception 'invalid_feature_version';
+  end if;
+  if p_mode not in ('ENABLED', 'DISABLED', 'MAINTENANCE') then
+    raise exception 'invalid_feature_mode';
+  end if;
+  if p_mode = 'ENABLED' then
+    if p_reason_code is not null and p_reason_code not in ('MAINTENANCE', 'MANUAL_ADMIN', 'SECURITY') then
+      raise exception 'invalid_reason_code';
+    end if;
+  elsif p_reason_code not in ('MAINTENANCE', 'MANUAL_ADMIN', 'SECURITY') then
+    raise exception 'invalid_reason_code';
   end if;
 
   select * into existing
@@ -499,6 +523,16 @@ begin
   expected := coalesce(p_expected_version, 0);
   if expected < 0 then
     raise exception 'invalid_provider_version';
+  end if;
+  if p_mode not in ('AVAILABLE', 'UNAVAILABLE', 'MAINTENANCE') then
+    raise exception 'invalid_provider_mode';
+  end if;
+  if p_mode = 'AVAILABLE' then
+    if p_reason_code is not null and p_reason_code not in ('PROVIDER_OUTAGE', 'MAINTENANCE', 'SECURITY', 'MANUAL_ADMIN') then
+      raise exception 'invalid_reason_code';
+    end if;
+  elsif p_reason_code not in ('PROVIDER_OUTAGE', 'MAINTENANCE', 'SECURITY', 'MANUAL_ADMIN') then
+    raise exception 'invalid_reason_code';
   end if;
 
   select * into existing

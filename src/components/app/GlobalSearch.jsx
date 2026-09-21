@@ -11,9 +11,20 @@ import {
 import { getFeatureFlags } from '../../features/featureRegistry.js'
 import {
   GLOBAL_SEARCH_OPEN_EVENT,
+  GLOBAL_SEARCH_VOICE_START_EVENT,
+  GLOBAL_SEARCH_VOICE_STATUS_EVENT,
   isEditableSearchShortcutTarget,
+  publishGlobalSearchVoiceStatus,
   requestOpenGlobalSearch,
+  requestStartGlobalSearchVoice,
 } from '../../services/navigation/globalSearchEvents.js'
+import {
+  getSpeechRecognitionConstructor,
+  isFinalSpeechResult,
+  mapSpeechRecognitionError,
+  pickSpeechTranscript,
+  resolveSpeechRecognitionLanguage,
+} from '../../services/navigation/globalSearchVoice.js'
 
 const recentSearchStorageKey = 'viktkollen.globalSearch.recentIds'
 /** Internal group title from globalSearchIndex until that corpus is migrated. */
@@ -25,6 +36,8 @@ const searchGroupTitleKeys = {
   'Förslag för dig': 'search.groups.suggestions',
   'Senast använda': 'search.groups.recent',
 }
+
+const idleVoiceStatus = { message: '', phase: 'idle' }
 
 function readRecentSearchIds() {
   if (typeof window === 'undefined') return []
@@ -55,13 +68,17 @@ function GlobalSearch({
   onNavigate,
   showTrigger = true,
 }) {
-  const { t } = useTranslation(['settings', 'common'])
+  const { t, i18n } = useTranslation(['settings', 'common'])
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [voiceStatus, setVoiceStatus] = useState(idleVoiceStatus)
   const inputRef = useRef(null)
   const openerRef = useRef(null)
   const previousFocusRef = useRef(null)
+  const recognitionRef = useRef(null)
+  const voiceSessionRef = useRef(0)
+  const ignoreAbortRef = useRef(false)
   const [recentIds, setRecentIds] = useState(() => readRecentSearchIds())
   const hostDialog = listenForShortcut
   const flags = getFeatureFlags()
@@ -85,11 +102,17 @@ function GlobalSearch({
   const fallbackResults = useMemo(() => searchGlobalNavigation('hem', catalog).slice(0, 4), [catalog])
   const navigationResults = visibleResults.length > 0 ? visibleResults : hasQuery ? fallbackResults : []
   const hasResults = navigationResults.length > 0
+  const isListening = voiceStatus.phase === 'listening'
 
   const translateGroupTitle = (title) => {
     const key = searchGroupTitleKeys[title]
     return key ? t(key) : title
   }
+
+  const updateVoiceStatus = useCallback((nextStatus) => {
+    setVoiceStatus(nextStatus)
+    publishGlobalSearchVoiceStatus(nextStatus)
+  }, [])
 
   const openSearch = useCallback(() => {
     setIsOpen((alreadyOpen) => {
@@ -100,7 +123,29 @@ function GlobalSearch({
     })
   }, [])
 
+  const stopRecognition = useCallback((publishStopped = false) => {
+    voiceSessionRef.current += 1
+    ignoreAbortRef.current = true
+    const active = recognitionRef.current
+    recognitionRef.current = null
+    try {
+      active?.abort?.()
+    } catch {
+      try {
+        active?.stop?.()
+      } catch {
+        // Browser implementations may throw if recognition is already ending.
+      }
+    }
+    ignoreAbortRef.current = false
+    if (publishStopped) {
+      updateVoiceStatus({ message: t('search.stopped'), phase: 'stopped' })
+    }
+  }, [t, updateVoiceStatus])
+
   const closeSearch = useCallback(() => {
+    stopRecognition(false)
+    updateVoiceStatus(idleVoiceStatus)
     setIsOpen(false)
     setQuery('')
     setSelectedIndex(0)
@@ -108,7 +153,7 @@ function GlobalSearch({
       const focusTarget = openerRef.current || previousFocusRef.current
       focusTarget?.focus?.()
     })
-  }, [])
+  }, [stopRecognition, updateVoiceStatus])
 
   function navigateToResult(result) {
     if (!result) return
@@ -117,6 +162,79 @@ function GlobalSearch({
     onNavigate?.(result)
     closeSearch()
   }
+
+  const startVoiceSearch = useCallback(() => {
+    openSearch()
+    if (recognitionRef.current) {
+      stopRecognition(true)
+      return
+    }
+
+    const Recognition = getSpeechRecognitionConstructor(window)
+    if (!Recognition) {
+      updateVoiceStatus({ message: t('search.unsupported'), phase: 'unsupported' })
+      return
+    }
+
+    const sessionId = voiceSessionRef.current + 1
+    voiceSessionRef.current = sessionId
+    const recognition = new Recognition()
+    recognition.lang = resolveSpeechRecognitionLanguage(i18n.language)
+    recognition.interimResults = true
+    recognition.continuous = false
+    recognition.maxAlternatives = 1
+
+    recognition.onstart = () => {
+      if (voiceSessionRef.current !== sessionId) return
+      updateVoiceStatus({ message: t('search.listening'), phase: 'listening' })
+    }
+
+    recognition.onresult = (event) => {
+      if (voiceSessionRef.current !== sessionId) return
+      const transcript = pickSpeechTranscript(event)
+      if (!transcript) return
+      if (!isFinalSpeechResult(event)) {
+        updateVoiceStatus({ message: t('search.processing'), phase: 'processing' })
+        return
+      }
+      setQuery(transcript)
+      setSelectedIndex(0)
+      updateVoiceStatus(idleVoiceStatus)
+    }
+
+    recognition.onerror = (event) => {
+      if (voiceSessionRef.current !== sessionId) return
+      const mapped = mapSpeechRecognitionError(event?.error)
+      if (mapped === 'aborted') {
+        if (!ignoreAbortRef.current) {
+          updateVoiceStatus({ message: t('search.stopped'), phase: 'stopped' })
+        }
+        return
+      }
+      const messages = {
+        permission: t('search.permissionDenied'),
+        noSpeech: t('search.noSpeech'),
+        audioCapture: t('search.audioCapture'),
+        network: t('search.network'),
+        generic: t('search.genericError'),
+      }
+      updateVoiceStatus({ message: messages[mapped] || t('search.genericError'), phase: 'error' })
+    }
+
+    recognition.onend = () => {
+      if (voiceSessionRef.current !== sessionId) return
+      recognitionRef.current = null
+      setVoiceStatus((current) => (current.phase === 'listening' || current.phase === 'processing' ? idleVoiceStatus : current))
+    }
+
+    recognitionRef.current = recognition
+    try {
+      recognition.start()
+    } catch {
+      recognitionRef.current = null
+      updateVoiceStatus({ message: t('search.genericError'), phase: 'error' })
+    }
+  }, [i18n.language, openSearch, stopRecognition, t, updateVoiceStatus])
 
   useEffect(() => {
     if (!listenForShortcut) return undefined
@@ -136,18 +254,50 @@ function GlobalSearch({
       openSearch()
     }
 
+    function handleVoiceStart() {
+      startVoiceSearch()
+    }
+
     window.addEventListener('keydown', handleGlobalKeyDown)
     window.addEventListener(GLOBAL_SEARCH_OPEN_EVENT, handleOpenEvent)
+    window.addEventListener(GLOBAL_SEARCH_VOICE_START_EVENT, handleVoiceStart)
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown)
       window.removeEventListener(GLOBAL_SEARCH_OPEN_EVENT, handleOpenEvent)
+      window.removeEventListener(GLOBAL_SEARCH_VOICE_START_EVENT, handleVoiceStart)
     }
-  }, [isOpen, listenForShortcut, openSearch])
+  }, [isOpen, listenForShortcut, openSearch, startVoiceSearch])
+
+  useEffect(() => {
+    if (listenForShortcut) return undefined
+
+    function handleVoiceStatus(event) {
+      const detail = event.detail
+      if (!detail || typeof detail !== 'object') return
+      setVoiceStatus({
+        message: typeof detail.message === 'string' ? detail.message : '',
+        phase: detail.phase || 'idle',
+      })
+    }
+
+    window.addEventListener(GLOBAL_SEARCH_VOICE_STATUS_EVENT, handleVoiceStatus)
+    return () => window.removeEventListener(GLOBAL_SEARCH_VOICE_STATUS_EVENT, handleVoiceStatus)
+  }, [listenForShortcut])
 
   useEffect(() => {
     if (!isOpen) return
     window.requestAnimationFrame(() => inputRef.current?.focus())
   }, [isOpen])
+
+  useEffect(() => () => {
+    voiceSessionRef.current += 1
+    try {
+      recognitionRef.current?.abort?.()
+    } catch {
+      // Unmount must not throw if the browser already ended recognition.
+    }
+    recognitionRef.current = null
+  }, [])
 
   function handleInputKeyDown(event) {
     const action = getGlobalSearchKeyboardAction(event, selectedIndex, navigationResults.length)
@@ -200,20 +350,45 @@ function GlobalSearch({
     requestOpenGlobalSearch()
   }
 
+  function handleVoiceClick() {
+    if (listenForShortcut) {
+      startVoiceSearch()
+      return
+    }
+    requestStartGlobalSearchVoice()
+  }
+
+  function renderVoiceButton(extraClass = '') {
+    return (
+      <button
+        aria-label={t('search.voiceSearch')}
+        aria-pressed={isListening}
+        className={`global-search-voice secondary-button ${extraClass}`.trim()}
+        type="button"
+        onClick={handleVoiceClick}
+      >
+        <span aria-hidden="true">{isListening ? '■' : '🎤'}</span>
+      </button>
+    )
+  }
+
   return (
     <>
       {showTrigger && (
-        <button
-          className="global-search-trigger secondary-button"
-          type="button"
-          onClick={handleTriggerClick}
-          ref={openerRef}
-          aria-label={t('search.open')}
-        >
-          <span aria-hidden="true">⌕</span>
-          <strong>{t('common:search')}</strong>
-          <kbd>Ctrl K</kbd>
-        </button>
+        <div className="global-search-entry">
+          <button
+            className="global-search-trigger secondary-button"
+            type="button"
+            onClick={handleTriggerClick}
+            ref={openerRef}
+            aria-label={t('search.open')}
+          >
+            <span aria-hidden="true">⌕</span>
+            <strong>{t('common:search')}</strong>
+            <kbd>Ctrl K</kbd>
+          </button>
+          {renderVoiceButton()}
+        </div>
       )}
 
       {hostDialog && isOpen && (
@@ -244,10 +419,22 @@ function GlobalSearch({
                 type="search"
                 value={query}
               />
-              <button className="secondary-button" type="button" onClick={closeSearch}>
-                {t('common:actions.close')}
-              </button>
+              {renderVoiceButton('is-in-dialog')}
+              {isListening ? (
+                <button className="secondary-button" type="button" onClick={() => stopRecognition(true)}>
+                  {t('common:actions.cancel')}
+                </button>
+              ) : (
+                <button className="secondary-button" type="button" onClick={closeSearch}>
+                  {t('common:actions.close')}
+                </button>
+              )}
             </div>
+            {voiceStatus.message ? (
+              <p className="global-search-voice-status is-in-dialog" aria-live="polite">
+                {voiceStatus.message}
+              </p>
+            ) : null}
 
             <div
               className="global-search-results"

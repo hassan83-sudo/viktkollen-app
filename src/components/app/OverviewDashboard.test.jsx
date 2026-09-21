@@ -81,6 +81,7 @@ describe('OverviewDashboard', () => {
     expect(markup).not.toContain('class="overview-avatar-photo"')
     expect(markup).toContain('class="overview-search-row"')
     expect(markup).toContain('aria-label="Öppna global sökning"')
+    expect(markup).toContain('aria-label="Röstsök"')
   })
 
   it('keeps three equal neon primary cards with Tryck på bilden', () => {

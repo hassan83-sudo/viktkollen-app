@@ -7,6 +7,7 @@ describe('GlobalSearch', () => {
     const markup = renderToStaticMarkup(<GlobalSearch onNavigate={() => {}} />)
 
     expect(markup).toContain('aria-label="Öppna global sökning"')
+    expect(markup).toContain('aria-label="Röstsök"')
     expect(markup).toContain('Sök')
     expect(markup).toContain('Ctrl K')
   })

@@ -1,8 +1,20 @@
 export const GLOBAL_SEARCH_OPEN_EVENT = 'viktkollen:open-global-search'
+export const GLOBAL_SEARCH_VOICE_START_EVENT = 'viktkollen:start-global-search-voice'
+export const GLOBAL_SEARCH_VOICE_STATUS_EVENT = 'viktkollen:global-search-voice-status'
 
 export function requestOpenGlobalSearch() {
   if (typeof window === 'undefined') return
   window.dispatchEvent(new CustomEvent(GLOBAL_SEARCH_OPEN_EVENT))
+}
+
+export function requestStartGlobalSearchVoice() {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(GLOBAL_SEARCH_VOICE_START_EVENT))
+}
+
+export function publishGlobalSearchVoiceStatus(detail) {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(GLOBAL_SEARCH_VOICE_STATUS_EVENT, { detail }))
 }
 
 export function isEditableSearchShortcutTarget(target) {

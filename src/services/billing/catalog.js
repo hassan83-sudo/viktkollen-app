@@ -120,3 +120,35 @@ export const PLAN_CHANGE_WHEN = Object.freeze({
   NEXT_PERIOD: 'next_period',
   NOW: 'now',
 })
+
+export const BILLING_PERMISSION = Object.freeze({
+  ADMIN: 'billing_admin',
+})
+
+export const PERMISSION_STATUS = Object.freeze({
+  ACTIVE: 'ACTIVE',
+  REVOKED: 'REVOKED',
+})
+
+export const ADMIN_AUDIT_REASONS = Object.freeze([
+  'COST_CONTROL',
+  'MAINTENANCE',
+  'MANUAL_ADMIN',
+  'PROVIDER_OUTAGE',
+  'SECURITY',
+])
+
+export const ADMIN_AUDIT_ACTION = Object.freeze({
+  PERMISSION_GRANT: 'permission.grant',
+  PERMISSION_REVOKE: 'permission.revoke',
+})
+
+export const ADMIN_AUDIT_ACTIONS = Object.freeze(Object.values(ADMIN_AUDIT_ACTION))
+
+export const ADMIN_AUDIT_SAFE_KEYS = Object.freeze([
+  'permission',
+  'status',
+  'target_id',
+  'target_type',
+  'user_id',
+])

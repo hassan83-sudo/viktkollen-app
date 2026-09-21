@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { LIMIT_KIND, OVERAGE_POLICY, QUOTA_STATUS } from './catalog.js'
 import { readClientQuotaDisplay } from './clientQuotaView.js'
-import { createQuotaEngine } from './quotaEngine.js'
+import { createQuotaEngine, passthroughMutex } from './quotaEngine.js'
+import { createInMemoryAtomicBackend, assertReservationTransition } from './quotaAtomicBackend.js'
 import { createInMemoryPlanAssignmentStore } from './planAssignment.js'
 import { defaultPlanCatalog, getPlanById, preliminarySekMonthMajors } from './planCatalog.js'
 import { periodBounds } from './period.js'
@@ -207,5 +208,48 @@ describe('BILL-2 quota engine', () => {
     const period = periodBounds('month', new Date('2026-01-31T23:00:00.000Z'))
     expect(period.period_start).toBe('2026-01-01T00:00:00.000Z')
     expect(period.period_end).toBe('2026-02-01T00:00:00.000Z')
+  })
+
+  it('two engines sharing one atomic backend cannot both take remaining=1', async () => {
+    const now = () => new Date('2026-04-15T12:00:00.000Z')
+    const backend = createInMemoryAtomicBackend({ now })
+    const firstEngine = createQuotaEngine({ backend, mutex: passthroughMutex() })
+    const secondEngine = createQuotaEngine({ backend, mutex: passthroughMutex() })
+    await firstEngine.reserveQuota({ feature: 'food.scan', quantity: 4, user: USER })
+    const [a, b] = await Promise.all([
+      firstEngine.reserveQuota({ feature: 'food.scan', quantity: 1, user: USER }),
+      secondEngine.reserveQuota({ feature: 'food.scan', quantity: 1, user: USER }),
+    ])
+    const statuses = [a.status, b.status].sort()
+    expect(statuses).toEqual([QUOTA_STATUS.DENIED_QUOTA_EXCEEDED, QUOTA_STATUS.RESERVED])
+  })
+
+  it('isolated backends (two processes) do not share remaining', async () => {
+    const now = () => new Date('2026-04-15T12:00:00.000Z')
+    const firstEngine = createQuotaEngine({
+      backend: createInMemoryAtomicBackend({ mutex: passthroughMutex(), now }),
+      mutex: passthroughMutex(),
+      now,
+    })
+    const secondEngine = createQuotaEngine({
+      backend: createInMemoryAtomicBackend({ mutex: passthroughMutex(), now }),
+      mutex: passthroughMutex(),
+      now,
+    })
+    const [a, b] = await Promise.all([
+      firstEngine.reserveQuota({ feature: 'food.scan', quantity: 5, user: USER }),
+      secondEngine.reserveQuota({ feature: 'food.scan', quantity: 5, user: USER }),
+    ])
+    expect(a.status).toBe(QUOTA_STATUS.RESERVED)
+    expect(b.status).toBe(QUOTA_STATUS.RESERVED)
+  })
+
+  it('rejects illegal reservation state transitions', () => {
+    expect(() => assertReservationTransition('COMMITTED', 'PENDING')).toThrow(/illegal_reservation_transition/)
+    expect(() => assertReservationTransition('COMMITTED', 'ROLLED_BACK')).toThrow(/illegal_reservation_transition/)
+    expect(() => assertReservationTransition('ROLLED_BACK', 'PENDING')).toThrow(/illegal_reservation_transition/)
+    expect(() => assertReservationTransition('ROLLED_BACK', 'COMMITTED')).toThrow(/illegal_reservation_transition/)
+    expect(() => assertReservationTransition('EXPIRED', 'PENDING')).toThrow(/illegal_reservation_transition/)
+    expect(() => assertReservationTransition('PENDING', 'COMMITTED')).not.toThrow()
   })
 })

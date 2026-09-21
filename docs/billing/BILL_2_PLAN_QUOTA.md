@@ -35,15 +35,23 @@ Default numeric limits are **PRELIMINARY**, not a product decision.
 
 ## Quota engine
 
-`createQuotaEngine` (in-memory store now; SQL is the persistence foundation):
+`createQuotaEngine` talks to an atomic backend. Production authority is PostgreSQL:
+
+- `billing.quota_period_locks` row `SELECT FOR UPDATE` inside `billing.reserve_quota` / `commit_quota` / `rollback_quota` (SECURITY DEFINER, `search_path = pg_catalog, pg_temp`, EXECUTE only `service_role`).
+- Two Vercel isolates serialize on that row lock, not on Node `asyncMutex`.
+- In-memory backend is a **shared-store** test stand-in. Isolated backends (two processes) still overconsume — that is why SQL must be applied before enforcement.
+
+Zero quantity: `ALLOWED`, no row. Negative: `DENIED_INVALID_QUANTITY`. Client `user_id` is not trusted; pass JWT user into the RPC from the server.
+
+State machine: insert `PENDING` only; `PENDING → COMMITTED|ROLLED_BACK|EXPIRED`; terminal states immutable (blocks `COMMITTED → PENDING`, `COMMITTED → ROLLED_BACK`, etc.).
 
 1. Server plan assignment (default `plan.free`).
 2. Entitlement / unit / quantity checks.
 3. Period usage = committed actuals + pending reservations (+ BILL-1 usage events not already tied to a `reservation_id`).
-4. `reserveQuota` is mutexed per user+feature so two callers cannot both consume `remaining = 1`.
+4. Atomic reserve under the period lock (check remaining + insert in one transaction).
 5. `commitReservation` is idempotent. If actual &lt; reserved, unused quantity is released.
 6. `rollbackReservation` is idempotent. Double rollback does not add quota. Commit then rollback does not unwind a commit.
-7. Periods are UTC `day` / `week` / `month` with exclusive end. Not “30 days”. Client clock is ignored.
+7. Periods are UTC `day` / `week` / `month` with exclusive end (`period_end > period_start`). Not “30 days”. SQL uses `pg_catalog.now()`.
 8. Remaining is `max(0, limit - committed - reserved)`. Integrity overage is still visible.
 
 ### Actual &gt; reserved

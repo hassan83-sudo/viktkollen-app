@@ -34,4 +34,18 @@ describe('BILL-2 plan/quota migration static security', () => {
     expect(sql).toMatch(/grant select, insert, update on table billing\.quota_reservations to service_role/)
     expect(sql).toMatch(/revoke delete on table billing\.quota_reservations/)
   })
+
+  it('enforces SELECT FOR UPDATE locking and a terminal state machine', () => {
+    expect(sql).toMatch(/for update/i)
+    expect(sql).toMatch(/quota_period_locks/)
+    expect(sql).toMatch(/security definer/i)
+    expect(sql).toMatch(/set search_path = pg_catalog, pg_temp/)
+    expect(sql).toMatch(/grant execute on function billing\.reserve_quota/)
+    expect(sql).toMatch(/grant execute on function billing\.commit_quota/)
+    expect(sql).toMatch(/grant execute on function billing\.rollback_quota/)
+    expect(sql).toMatch(/revoke all on function billing\.reserve_quota/)
+    expect(sql).toMatch(/terminal state is immutable/)
+    expect(sql).toMatch(/insert status must be PENDING/)
+    expect(sql).not.toMatch(/grant execute.*to (public|anon|authenticated)/i)
+  })
 })

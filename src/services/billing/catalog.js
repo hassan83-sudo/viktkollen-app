@@ -139,6 +139,8 @@ export const ADMIN_AUDIT_REASONS = Object.freeze([
 ])
 
 export const ADMIN_AUDIT_ACTION = Object.freeze({
+  FEATURE_CONTROL_CHANGED: 'feature.control.changed',
+  FEATURE_CONTROL_CREATED: 'feature.control.created',
   PERMISSION_GRANT: 'permission.grant',
   PERMISSION_REVOKE: 'permission.revoke',
 })
@@ -147,12 +149,23 @@ export const ADMIN_AUDIT_ACTIONS = Object.freeze(Object.values(ADMIN_AUDIT_ACTIO
 
 export const ADMIN_AUDIT_TARGET_TYPE = 'admin_permission'
 
+export const ADMIN_AUDIT_TARGET_TYPES = Object.freeze([
+  'admin_permission',
+  'feature_control',
+])
+
+export const FEATURE_CONTROL_TARGET_TYPE = 'feature_control'
+
 export const ADMIN_AUDIT_SAFE_KEYS = Object.freeze([
+  'feature_id',
+  'mode',
   'permission',
+  'reason_code',
   'status',
   'target_id',
   'target_type',
   'user_id',
+  'version',
 ])
 
 export const ADMIN_AUDIT_MAX_SNAPSHOT_BYTES = 2048

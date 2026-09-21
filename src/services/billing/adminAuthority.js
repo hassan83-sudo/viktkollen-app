@@ -58,6 +58,7 @@ export function sanitizeAdminSnapshot(input = {}) {
     if (!(key in input)) continue
     const value = input[key]
     if (typeof value === 'string' && value.length <= 120) safe[key] = value
+    if (key === 'version' && Number.isInteger(value) && value >= 1) safe[key] = value
   }
   return Object.freeze(safe)
 }

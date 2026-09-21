@@ -4,6 +4,7 @@ import {
   ADMIN_AUDIT_ACTIONS,
   ADMIN_AUDIT_REASONS,
   ADMIN_AUDIT_TARGET_TYPE,
+  ADMIN_AUDIT_TARGET_TYPES,
   BILLING_PERMISSION,
   PERMISSION_STATUS,
 } from './catalog.js'
@@ -15,6 +16,7 @@ import {
   isBillingAdminPermission,
   sanitizeAdminSnapshot,
 } from './adminAuthority.js'
+import { resolveFeatureId } from './features.js'
 
 function requireUuid(value, code = 'invalid_user_id') {
   const id = String(value || '').trim()
@@ -62,10 +64,22 @@ export function createBillingAdminService({
       error.code = 'invalid_audit_action'
       throw error
     }
-    if (targetType !== ADMIN_AUDIT_TARGET_TYPE) {
+    if (!ADMIN_AUDIT_TARGET_TYPES.includes(targetType)) {
       const error = new Error('invalid_target_type')
       error.code = 'invalid_target_type'
       throw error
+    }
+    let storedTargetId
+    if (targetType === ADMIN_AUDIT_TARGET_TYPE) {
+      storedTargetId = requireUuid(targetId, 'invalid_target_id')
+    } else {
+      const featureId = resolveFeatureId(targetId)
+      if (!featureId || featureId !== String(targetId || '').trim()) {
+        const error = new Error('invalid_target_id')
+        error.code = 'invalid_target_id'
+        throw error
+      }
+      storedTargetId = featureId
     }
     return audits.insert({
       action,
@@ -75,8 +89,8 @@ export function createBillingAdminService({
       before_safe: assertAuditPayloadSafe(before),
       created_at: now().toISOString(),
       reason_code: requireReason(reasonCode),
-      target_id: requireUuid(targetId, 'invalid_target_id'),
-      target_type: ADMIN_AUDIT_TARGET_TYPE,
+      target_id: storedTargetId,
+      target_type: targetType,
     })
   }
 

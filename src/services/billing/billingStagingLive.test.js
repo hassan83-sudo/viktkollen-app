@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { classifyRestAccess, splitSqlStatements, validUsageRow } from './stagingLive.js'
 import { validateBillingStagingTarget } from './stagingVerification.js'
@@ -40,6 +41,17 @@ describe('BILL-1D staging live helpers', () => {
     `)
     expect(statements).toHaveLength(2)
     expect(statements[1]).toContain('raise exception')
+  })
+})
+
+describe('BILL-3B staging runner contract', () => {
+  it('loads gitignored staging env only and never production env files', () => {
+    const source = readFileSync(new URL('../../../scripts/run-billing-staging-3b.mjs', import.meta.url), 'utf8')
+    expect(source).toContain('.env.local')
+    expect(source).not.toContain('.env.production.local')
+    expect(source).toContain('20260921200000_billing_subscriptions.sql')
+    expect(source).toContain('TWO_REAL_POSTGRES_SESSIONS')
+    expect(source).toContain('duplicate_open_subscription')
   })
 })
 

@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import process from 'node:process'
+import { SUBSCRIPTION_OPEN, SUBSCRIPTION_TERMINAL } from './catalog.js'
 import { setSupabaseAuthVerifierForTests } from '../../../api/_shared/verifySupabaseUser.js'
 import handler from '../../../api/billing/subscription/index.js'
 
@@ -95,6 +96,23 @@ describe('BILL-3 subscription migration static security', () => {
     expect(sql).toMatch(/grant execute on function billing\.schedule_cancel_at_period_end/)
     expect(sql).toMatch(/revoke all on function billing\.create_subscription/)
     expect(sql).toMatch(/for update/i)
+  })
+
+  it('makes concurrent open create DB-authoritative without a global lock', () => {
+    const ddl = sql.replace(/--[^\n]*/g, '')
+    expect([...SUBSCRIPTION_OPEN].sort()).toEqual(['ACTIVE', 'PAST_DUE', 'PAUSED', 'TRIALING'])
+    expect([...SUBSCRIPTION_TERMINAL].sort()).toEqual(['CANCELED', 'EXPIRED'])
+    expect(sql).toMatch(/subscriptions_one_open_per_user_uidx/)
+    expect(sql).toMatch(/on billing\.subscriptions \(user_id\)/)
+    expect(sql).toMatch(/where status in \('TRIALING', 'ACTIVE', 'PAST_DUE', 'PAUSED'\)/)
+    expect(sql).not.toMatch(/where status in \([^)]*CANCELED/)
+    expect(sql).not.toMatch(/where status in \([^)]*EXPIRED/)
+    expect(sql).toMatch(/when unique_violation/)
+    expect(sql).toMatch(/duplicate_open_subscription/)
+    expect(sql).toMatch(/external_event_id text primary key/)
+    expect(ddl).not.toMatch(/pg_advisory|lock table billing\.subscriptions/i)
+    expect(sql).toMatch(/No advisory lock/)
+    expect(sql).toMatch(/no global lock/i)
   })
 
   it('does not put service role on the Vite client env surface', () => {

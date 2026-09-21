@@ -68,6 +68,7 @@ create table if not exists billing.subscriptions (
 create unique index if not exists subscriptions_one_open_per_user_uidx
   on billing.subscriptions (user_id)
   where status in ('TRIALING', 'ACTIVE', 'PAST_DUE', 'PAUSED');
+-- Open = TRIALING, ACTIVE, PAST_DUE, PAUSED. Terminal CANCELED/EXPIRED omitted.
 
 create unique index if not exists subscriptions_provider_sub_uidx
   on billing.subscriptions (provider, provider_subscription_ref)
@@ -191,6 +192,13 @@ create trigger subscriptions_guard
 before insert or update or delete on billing.subscriptions
 for each row execute function billing.guard_subscription_row();
 
+-- Concurrent create authority is subscriptions_one_open_per_user_uidx
+-- (user_id WHERE status in TRIALING/ACTIVE/PAST_DUE/PAUSED). PostgreSQL
+-- unique-index insertion is atomic across sessions. No advisory lock and
+-- no global lock: different users hash to different keys. SELECT-then-INSERT
+-- is not the security boundary. CANCELED/EXPIRED are excluded so a later
+-- open row can be created without deleting history.
+
 create or replace function billing.create_subscription(
   p_user_id uuid,
   p_plan_id text,
@@ -222,53 +230,59 @@ begin
   if p_status not in ('TRIALING', 'ACTIVE', 'PAST_DUE', 'PAUSED') then
     raise exception 'invalid_status';
   end if;
-  if p_external_event_id is not null then
-    select s.* into existing
-    from billing.subscription_events e
-    inner join billing.subscriptions s on s.subscription_id = e.subscription_id
-    where e.external_event_id = p_external_event_id
-    limit 1;
-    if found then
-      return existing;
-    end if;
-  end if;
   select p.version into plan_version
   from billing.plans p
   where p.plan_id = p_plan_id and p.active = true;
   if plan_version is null then
     raise exception 'new subscription requires an active plan';
   end if;
-  insert into billing.subscriptions (
-    cancel_at_period_end,
-    current_period_end,
-    current_period_start,
-    external_event_id,
-    past_due_grace_until,
-    pending_plan_change,
-    pending_plan_id,
-    plan_id,
-    plan_version,
-    status,
-    user_id
-  ) values (
-    coalesce(p_cancel_at_period_end, false),
-    p_period_end,
-    p_period_start,
-    p_external_event_id,
-    p_past_due_grace_until,
-    p_pending_plan_change,
-    p_pending_plan_id,
-    p_plan_id,
-    plan_version,
-    p_status,
-    p_user_id
-  )
-  returning * into created;
-  if p_external_event_id is not null then
-    insert into billing.subscription_events (external_event_id, subscription_id)
-    values (p_external_event_id, created.subscription_id);
-  end if;
-  return created;
+
+  begin
+    insert into billing.subscriptions (
+      cancel_at_period_end,
+      current_period_end,
+      current_period_start,
+      external_event_id,
+      past_due_grace_until,
+      pending_plan_change,
+      pending_plan_id,
+      plan_id,
+      plan_version,
+      status,
+      user_id
+    ) values (
+      coalesce(p_cancel_at_period_end, false),
+      p_period_end,
+      p_period_start,
+      p_external_event_id,
+      p_past_due_grace_until,
+      p_pending_plan_change,
+      p_pending_plan_id,
+      p_plan_id,
+      plan_version,
+      p_status,
+      p_user_id
+    )
+    returning * into created;
+    if p_external_event_id is not null then
+      insert into billing.subscription_events (external_event_id, subscription_id)
+      values (p_external_event_id, created.subscription_id);
+    end if;
+    return created;
+  exception
+    when unique_violation then
+      if p_external_event_id is not null then
+        select s.* into existing
+        from billing.subscription_events e
+        inner join billing.subscriptions s on s.subscription_id = e.subscription_id
+        where e.external_event_id = p_external_event_id
+        limit 1;
+        if found then
+          return existing;
+        end if;
+      end if;
+      raise exception 'duplicate_open_subscription';
+  end;
 end;
 $$;
 

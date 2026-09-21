@@ -456,7 +456,7 @@ describe('BILL-3A resolver matrix and concurrency', () => {
     expect(() => assertSubscriptionTransition('EXPIRED', 'PAUSED')).toThrow(/illegal_subscription_transition/)
   })
 
-  it('serializes two services on a shared store and documents isolated-store races', async () => {
+  it('serializes two services on a shared store; isolated Maps are not production authority', async () => {
     const shared = createInMemorySubscriptionStore()
     const a = createSubscriptionService({
       catalog: defaultPlanCatalog,
@@ -497,6 +497,72 @@ describe('BILL-3A resolver matrix and concurrency', () => {
     await isolatedB.createSubscription(payload)
     expect((await isolatedA.resolveForUser(USER)).plan_id).toBe(PAID)
     expect((await isolatedB.resolveForUser(USER)).plan_id).toBe(PAID)
+  })
+
+  it('treats PAUSED, PAST_DUE, and TRIALING as open on a shared store', async () => {
+    for (const status of ['PAUSED', 'PAST_DUE', 'TRIALING']) {
+      const store = createInMemorySubscriptionStore()
+      const service = createSubscriptionService({
+        catalog: defaultPlanCatalog,
+        now: () => new Date('2026-04-15T12:00:00.000Z'),
+        store,
+      })
+      await service.createSubscription({
+        current_period_end: END,
+        current_period_start: START,
+        plan_id: PAID,
+        status,
+        user_id: USER,
+      })
+      await expect(service.createSubscription({
+        current_period_end: END,
+        current_period_start: START,
+        plan_id: 'plan.prelim.sek.month.09',
+        user_id: USER,
+      })).rejects.toMatchObject({ code: 'duplicate_active_subscription' })
+    }
+  })
+
+  it('allows a new open row after a terminal history row and does not delete it', async () => {
+    const { subscriptions, store } = serviceAt('2026-04-15T12:00:00.000Z')
+    const first = await subscriptions.createSubscription({
+      current_period_end: END,
+      current_period_start: START,
+      plan_id: PAID,
+      user_id: USER,
+    })
+    await subscriptions.transition({
+      subscription_id: first.subscription_id,
+      to: SUBSCRIPTION_STATUS.CANCELED,
+    })
+    const second = await subscriptions.createSubscription({
+      current_period_end: END,
+      current_period_start: START,
+      plan_id: 'plan.prelim.sek.month.09',
+      user_id: USER,
+    })
+    const rows = await store.listByUser(USER)
+    expect(rows.map((row) => row.status).sort()).toEqual(['ACTIVE', 'CANCELED'])
+    expect(rows.find((row) => row.subscription_id === first.subscription_id).status).toBe('CANCELED')
+    expect(second.subscription_id).not.toBe(first.subscription_id)
+  })
+
+  it('lets two users create open rows on one store', async () => {
+    const { subscriptions } = serviceAt('2026-04-15T12:00:00.000Z')
+    await subscriptions.createSubscription({
+      current_period_end: END,
+      current_period_start: START,
+      plan_id: PAID,
+      user_id: USER,
+    })
+    await subscriptions.createSubscription({
+      current_period_end: END,
+      current_period_start: START,
+      plan_id: PAID,
+      user_id: OTHER,
+    })
+    expect((await subscriptions.resolveForUser(USER)).plan_id).toBe(PAID)
+    expect((await subscriptions.resolveForUser(OTHER)).plan_id).toBe(PAID)
   })
 
   it('rejects plan, period, and grace extension on replace', async () => {

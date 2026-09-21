@@ -4,6 +4,13 @@ import { assertSubscriptionTransition } from './subscriptionState.js'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
+/**
+ * In-memory Maps for unit tests and local isolation proofs only.
+ * Not production authority. Two isolated stores can both insert an open
+ * row for the same user. Production create is billing.create_subscription
+ * plus subscriptions_one_open_per_user_uidx.
+ */
+
 function clone(row) {
   return Object.freeze({ ...row })
 }

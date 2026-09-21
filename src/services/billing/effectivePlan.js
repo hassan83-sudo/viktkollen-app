@@ -31,6 +31,9 @@ function pickDeterministic(rows) {
 
 /**
  * Server-authoritative effective plan. Ignores client claims.
+ * Open uniqueness (DB): TRIALING, ACTIVE, PAST_DUE, PAUSED.
+ * Entitled: TRIALING/ACTIVE in period; PAST_DUE only with explicit grace.
+ * PAUSED is open (blocks a second create) but not entitled.
  * Historical subscriptions may keep inactive plan_id; resolver still uses that
  * snapshot for entitlement until the period ends. New assignments must not
  * target inactive plans (enforced at create).

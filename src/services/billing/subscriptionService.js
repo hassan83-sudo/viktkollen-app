@@ -25,6 +25,11 @@ function requirePeriod(start, end) {
   return { current_period_end: b.toISOString(), current_period_start: a.toISOString() }
 }
 
+/**
+ * Trusted application service. The default store is in-memory and is not
+ * production authority. When persistence is enabled, callers must use
+ * billing.create_subscription (PostgreSQL unique open-row index).
+ */
 export function createSubscriptionService({
   catalog,
   now = () => new Date(),

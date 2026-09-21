@@ -17,7 +17,7 @@ Migration reviewed and locally hardened in place:
 | Direct table INSERT/UPDATE/DELETE by `service_role` | **BLOCKED after harden** (SELECT + RPC only) |
 | DB state machine + terminal lock | **PASS locally — unapplied** |
 | One open subscription per user | **PASS locally — unique partial index** |
-| Concurrent create across Vercel isolates | **DB unique index is SoT**; in-memory isolated stores can still both succeed |
+| Concurrent create across Vercel isolates | **PASS locally — unapplied** (`subscriptions_one_open_per_user_uidx` + `unique_violation` in `create_subscription`) |
 | Apply to staging/production now | **DO NOT APPLY** |
 
 ## Local SQL harden (same file, unapplied)
@@ -30,6 +30,7 @@ Migration reviewed and locally hardened in place:
 | Unique `external_event_id` on the row only | `billing.subscription_events` PK; first-write-wins on the subscription copy |
 | `past_due_grace_until` could be pushed forward | Cannot extend; CHECK grace only when `PAST_DUE` |
 | No RPC `FOR UPDATE` | Transition/cancel helpers lock the row |
+| Concurrent create SELECT-then-INSERT race | `create_subscription` inserts first; `unique_violation` is the authority. Same event → return existing. Different event, same user → `duplicate_open_subscription`. No advisory/global lock. |
 | Weak 50K lookup | Extra `(user_id, status)` index + unique provider sub-ref when both non-empty |
 
 In-memory `subscriptionStore.replace` now matches those immutability rules. Isolated Maps are still not a multi-instance lock.
@@ -78,7 +79,26 @@ Allowed (same status is a no-op):
 
 Examples from the review list that are **intentionally blocked** (BILL-3 policy, not omitted by accident): `PAST_DUE → PAUSED`, `PAUSED → EXPIRED`, all terminal reactivations (`CANCELED → ACTIVE/TRIALING/PAST_DUE`, `EXPIRED → ACTIVE/TRIALING/PAUSED`).
 
-Open statuses (unique index / insert allowlist): `TRIALING`, `ACTIVE`, `PAST_DUE`, `PAUSED`. Two of these cannot coexist for one user at the DB layer, so they cannot both be effective.
+Open statuses (unique index / insert allowlist / `create_subscription` / JS `SUBSCRIPTION_OPEN`): `TRIALING`, `ACTIVE`, `PAST_DUE`, `PAUSED`. Two of these cannot coexist for one user at the DB layer.
+
+`PAUSED` is **open** (blocks another ACTIVE) but **not entitled**. `PAST_DUE` is open; entitlement needs explicit `past_due_grace_until`. `TRIALING` is open and entitled in period. `CANCELED` / `EXPIRED` are terminal and **not** in the unique index, so a later open row can be created without deleting history.
+
+## Concurrent create (BILL-3A fix)
+
+**Blocker:** two isolated in-memory stores can both insert an open row. That is expected and is **not** production protection.
+
+**Production authority:** `UNIQUE (user_id) WHERE status IN ('TRIALING','ACTIVE','PAST_DUE','PAUSED')` on `billing.subscriptions`. PostgreSQL serializes two inserts on the same key across sessions. Different users use different keys (no global lock). No `pg_advisory_lock`.
+
+`billing.create_subscription` does not trust SELECT-then-INSERT. It inserts, then on `unique_violation`:
+
+- same `external_event_id` found in `subscription_events` → return that subscription (one event applied once)
+- otherwise → `duplicate_open_subscription`
+
+Same-event concurrency is also backed by `subscription_events.external_event_id` PK. The inner `BEGIN … EXCEPTION` rolls back a half-inserted row in that function.
+
+When persistence is enabled, the server path must call this RPC. `createInMemorySubscriptionStore` remains test/dev only.
+
+## Idempotency / provider
 
 ## Periods, cancel-at-period-end, PAST_DUE, trial
 
@@ -109,7 +129,8 @@ Partial unique open-per-user + `external_event_id` uniqueness + `(user_id, statu
 
 ## Remaining risks
 
-- SQL unapplied; JS tests do not execute PostgreSQL.
+- SQL unapplied; JS tests do not execute PostgreSQL. BILL-3B must run a live two-session create race on staging.
+- Isolated in-memory stores can still both succeed; that test exists to prove memory is not the boundary.
 - `service_role` key still bypasses RLS; it no longer has table write grants, but a stolen key can EXECUTE the helpers. Keep it server-only.
 - Period **renewal** (extending `current_period_end`) is intentionally blocked until a later trusted RPC.
 - `pending_plan_*` is unused (no proration / apply-now).

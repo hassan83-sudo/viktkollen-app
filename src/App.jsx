@@ -111,6 +111,7 @@ import { syncLegacyReminderSettingsToV2 } from './services/reminders/reminderLeg
 import { applyDueNotificationPlan } from './services/notifications/notificationSchedulerBridge.js'
 import { logNavigationOrigin } from './services/navigation/navigationOriginDiagnostics.js'
 import { resolveMoreFolderFromTarget } from './services/more/moreFolders.js'
+import { resolveGlobalSearchDestination } from './services/navigation/globalSearchIndex.js'
 import i18n, { changeAppLanguage, getActiveLanguageCode } from './i18n/index.js'
 import { getFeatureFlags, isFeatureEnabled } from './features/featureRegistry.js'
 
@@ -2873,19 +2874,25 @@ function App() {
   }
 
   function handleGlobalSearchNavigate(result) {
-    const requestedSection = result?.section || 'home'
-    const isMoreDestination = ['progress', 'nutrition', 'coach', 'wellbeing', 'economy'].includes(requestedSection)
-    const sectionId = isMoreDestination ? 'more' : requestedSection
-    const targetId = result?.targetId
-      || (requestedSection === 'nutrition' ? 'mat' : requestedSection === 'coach' ? 'ai-coach' : requestedSection === 'wellbeing' ? 'ma-bra' : requestedSection === 'economy' ? 'ekonomi' : requestedSection === 'progress' ? 'mal-framsteg' : `app-section-${requestedSection}`)
+    const destination = resolveGlobalSearchDestination(result, featureFlags)
+    if (!destination || destination.blocked) return
+
+    const sectionId = destination.sectionId
+    const targetId = destination.targetId
 
     logNavigationOrigin('global-search-navigate:before', {
       resultId: result?.id || '',
       sectionId,
       targetId,
     })
+    if (destination.homeIntent) {
+      setHomeIntent({ id: `search-${result?.id || 'home'}`, ...destination.homeIntent })
+    }
+    if (destination.nutritionIntent) {
+      setNutritionIntent({ id: `search-${result?.id || 'nutrition'}`, ...destination.nutritionIntent })
+    }
     if (sectionId === 'more') {
-      setMoreIntent({ id: Date.now(), targetId })
+      setMoreIntent({ id: `search-${result?.id || 'more'}`, targetId })
     }
     setActiveAppSection(sectionId)
 

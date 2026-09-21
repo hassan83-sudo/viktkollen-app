@@ -4,9 +4,11 @@ import {
   getDefaultGlobalSearchGroups,
   getGlobalSearchKeyboardAction,
   getGlobalSearchItemsById,
+  getVisibleGlobalSearchItems,
   isGlobalSearchOpenShortcut,
   searchGlobalNavigation,
 } from '../../services/navigation/globalSearchIndex.js'
+import { getFeatureFlags } from '../../features/featureRegistry.js'
 
 const recentSearchStorageKey = 'viktkollen.globalSearch.recentIds'
 /** Internal group title from globalSearchIndex until that corpus is migrated. */
@@ -52,10 +54,12 @@ function GlobalSearch({ onNavigate }) {
   const openerRef = useRef(null)
   const previousFocusRef = useRef(null)
   const [recentIds, setRecentIds] = useState(() => readRecentSearchIds())
-  const results = useMemo(() => searchGlobalNavigation(query), [query])
+  const flags = getFeatureFlags()
+  const catalog = useMemo(() => getVisibleGlobalSearchItems(flags), [flags])
+  const results = useMemo(() => searchGlobalNavigation(query, catalog), [catalog, query])
   const defaultGroups = useMemo(() => {
-    const groups = getDefaultGlobalSearchGroups()
-    const recentItems = getGlobalSearchItemsById(recentIds)
+    const groups = getDefaultGlobalSearchGroups(catalog)
+    const recentItems = getGlobalSearchItemsById(recentIds, catalog)
 
     if (recentItems.length === 0) return groups
 
@@ -63,12 +67,12 @@ function GlobalSearch({ onNavigate }) {
       ...groups.filter((group) => group.title !== RECENT_GROUP_TITLE),
       { items: recentItems, title: RECENT_GROUP_TITLE },
     ]
-  }, [recentIds])
+  }, [catalog, recentIds])
   const defaultResults = useMemo(() => defaultGroups.flatMap((group) => group.items), [defaultGroups])
   const hasQuery = query.trim().length > 0
   const hasTypedResults = results.length > 0
   const visibleResults = hasQuery ? results : defaultResults
-  const fallbackResults = useMemo(() => searchGlobalNavigation('hem').slice(0, 4), [])
+  const fallbackResults = useMemo(() => searchGlobalNavigation('hem', catalog).slice(0, 4), [catalog])
   const navigationResults = visibleResults.length > 0 ? visibleResults : hasQuery ? fallbackResults : []
   const hasResults = navigationResults.length > 0
 
@@ -152,8 +156,8 @@ function GlobalSearch({ onNavigate }) {
       >
         <span aria-hidden="true">{result.icon}</span>
         <span>
-          <strong>{result.title}</strong>
-          <small>{result.description}</small>
+          <strong>{t(`search.items.${result.id}.title`, { defaultValue: result.title })}</strong>
+          <small>{t(`search.items.${result.id}.description`, { defaultValue: result.description })}</small>
         </span>
       </button>
     )

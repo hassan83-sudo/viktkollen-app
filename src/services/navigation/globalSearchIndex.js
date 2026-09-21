@@ -1,4 +1,8 @@
 import { appSections, getAppSection } from './appSections.js'
+import { getFeatureFlags, isFeatureEnabled } from '../../features/featureRegistry.js'
+import { resolveMoreFolderFromTarget } from '../more/moreFolders.js'
+
+const moreSearchSections = new Set(['progress', 'nutrition', 'coach', 'wellbeing', 'economy', 'more'])
 
 function stripDiacritics(value) {
   return String(value || '')
@@ -19,7 +23,9 @@ function compact(value) {
 }
 
 function createItem({
+  action,
   description,
+  featureFlag,
   group = 'Förslag',
   icon,
   id,
@@ -34,7 +40,9 @@ function createItem({
   const sectionConfig = getAppSection(section)
 
   return {
+    action,
     description,
+    featureFlag,
     group,
     icon: icon || sectionConfig.icon,
     id,
@@ -61,7 +69,7 @@ export const globalSearchItems = [
     priority: 2,
     section: 'home',
     suggestionGroup: 'Populärt',
-    targetId: 'hem',
+    targetId: 'app-section-home',
     title: 'Hem / Dashboard',
   }),
   createItem({
@@ -141,7 +149,7 @@ export const globalSearchItems = [
     id: 'meal-planner',
     keywords: ['matplan', 'meal planner', 'matplanering', 'veckomeny', 'måltidsplan', 'maltidsplan', 'weekly meal planner', 'inköpslista'],
     priority: 12,
-    section: 'nutrition',
+    section: 'home',
     targetId: 'meal-planner',
     title: 'Meal Planner',
   }),
@@ -180,7 +188,7 @@ export const globalSearchItems = [
     priority: 1,
     section: 'coach',
     suggestionGroup: 'Populärt',
-    targetId: 'chat',
+    targetId: 'ai-coach',
     title: 'AI Coach',
   }),
   createItem({
@@ -279,7 +287,7 @@ export const globalSearchItems = [
     title: 'Achievements',
   }),
   createItem({
-    description: 'Smart Notifications och notiscenter',
+    description: 'Smart Notifications på startsidan',
     id: 'notifications',
     keywords: ['smart notifications', 'smarta notiser', 'rekommendationer', 'pending', 'visa alla', 'notifications'],
     section: 'home',
@@ -287,21 +295,120 @@ export const globalSearchItems = [
     title: 'Smart Notifications',
   }),
   createItem({
-    description: 'Hantera notiser, klarmarkering, snooze och ignorera',
-    id: 'notification-center',
-    keywords: ['notifications', 'notiser', 'notification center', 'aviseringar', 'klar', 'snooze', 'ignorera'],
-    section: 'more',
-    targetId: 'notification-center',
-    title: 'Notifications',
+    description: 'Notiser, påminnelser och minnesstöd',
+    featureFlag: 'reminderHubUi',
+    id: 'notices',
+    keywords: ['notiser', 'notices', 'påminnelser', 'reminder', 'reminders', 'snooze', 'aviseringar', 'minnesstöd', 'notice hub'],
+    priority: 13,
+    section: 'notices',
+    suggestionGroup: 'Snabbåtgärder',
+    targetId: 'app-section-notices',
+    title: 'Notiser',
   }),
   createItem({
-    description: 'Påminnelser, snooze och schemaläggning',
-    id: 'reminders',
-    keywords: ['reminders', 'påminnelser', 'påminnelse', 'reminder center', 'snooze', 'check in', 'checkins'],
-    priority: 13,
+    description: 'Redo-läge, checklista och sista kollen',
+    id: 'redo',
+    keywords: ['redo', 'redo!', 'checklista', 'glömt', 'sista kollen'],
+    priority: 8,
+    section: 'redo',
+    suggestionGroup: 'Populärt',
+    targetId: 'app-section-redo',
+    title: 'Redo!',
+  }),
+  createItem({
+    description: 'Karta, platsdelning och familjeöversikt',
+    id: 'place',
+    keywords: ['plats', 'karta', 'location', 'familjekarta', 'gps'],
+    priority: 17,
+    section: 'place',
+    targetId: 'app-section-place',
+    title: 'Plats',
+  }),
+  createItem({
+    description: 'Översikt över framsteg, mat, aktivitet och mål',
+    id: 'journey',
+    keywords: ['min resa', 'resa', 'journey', 'historik', 'översikt resa'],
+    priority: 16,
+    section: 'journey',
+    targetId: 'app-section-journey',
+    title: 'Min resa',
+  }),
+  createItem({
+    description: 'Lugn chatt, vänner och rummet Stället',
+    featureFlag: 'socialUi',
+    id: 'social',
+    keywords: ['stället', 'social', 'vänner', 'chatt', 'rum'],
+    priority: 19,
+    section: 'social',
+    targetId: 'app-section-social',
+    title: 'Stället',
+  }),
+  createItem({
+    description: 'Steg, träning, distans och aktiv tid',
+    id: 'activity',
+    keywords: ['aktivitet', 'steg', 'träning', 'distans', 'aktiv tid', 'activity'],
+    priority: 14,
     section: 'more',
-    targetId: 'reminder-center',
-    title: 'Reminders',
+    targetId: 'aktivitet',
+    title: 'Aktivitet',
+  }),
+  createItem({
+    description: 'Medicin, vardag, minnen och nöje',
+    id: 'senior-65-plus',
+    keywords: ['65+', '65 plus', 'senior', 'äldre', 'vardag', 'min vardag'],
+    priority: 20,
+    section: 'more',
+    suggestionGroup: 'Förslag för dig',
+    targetId: 'senior-65-plus',
+    title: '65+ · Min vardag',
+  }),
+  createItem({
+    description: 'Krav, förfallodatum, betalningar och mer tid',
+    id: 'inkasso',
+    keywords: ['inkasso', 'skuld', 'betalning', 'krav', 'förfallodatum'],
+    priority: 21,
+    section: 'more',
+    targetId: 'inkasso',
+    title: 'Inkasso',
+  }),
+  createItem({
+    description: 'Ärenden, skulder, deadlines och betalningsöversikt',
+    id: 'kronofogden',
+    keywords: ['kronofogden', 'skuld', 'ärende', 'deadline', 'utmätning'],
+    priority: 22,
+    section: 'more',
+    targetId: 'kronofogden',
+    title: 'Kronofogden',
+  }),
+  createItem({
+    description: 'Backup-historik och loggar',
+    id: 'archive-history',
+    keywords: ['arkiv', 'historik', 'backup-historik', 'loggar', 'arkiv & historik'],
+    priority: 23,
+    section: 'more',
+    targetId: 'arkiv-historik',
+    title: 'Arkiv & Historik',
+  }),
+  createItem({
+    action: 'openSmartCamera',
+    description: 'Smart kamera, AI Ögat, minne och sista kollen',
+    featureFlag: 'smartCamera',
+    id: 'smart-camera',
+    keywords: ['smart kamera', 'ai ögat', 'ögat', 'kamera', 'bild', 'minne', 'sista kollen'],
+    priority: 7,
+    section: 'home',
+    suggestionGroup: 'Populärt',
+    targetId: 'app-section-home',
+    title: 'Smart kamera / AI Ögat',
+  }),
+  createItem({
+    description: 'Språk och översättning i appen',
+    id: 'language-settings',
+    keywords: ['språk', 'language', 'översättning', 'locale', 'svenska'],
+    priority: 24,
+    section: 'more',
+    targetId: 'language-settings',
+    title: 'Språk',
   }),
   createItem({
     description: 'Molnbackup, återställning och konflikter',
@@ -340,6 +447,10 @@ export const globalSearchItems = [
   ...item,
   keywords: [...new Set([item.title, item.description, ...(sectionKeywords[item.section] || []), ...item.keywords])],
 }))
+
+export function getVisibleGlobalSearchItems(flags = getFeatureFlags(), items = globalSearchItems) {
+  return items.filter((item) => !item.featureFlag || isFeatureEnabled(item.featureFlag, flags))
+}
 
 export function searchGlobalNavigation(query, items = globalSearchItems) {
   const normalizedQuery = normalizeSearchText(query)
@@ -431,4 +542,45 @@ export function getGlobalSearchKeyboardAction(event, selectedIndex, resultCount)
 
 export function isGlobalSearchOpenShortcut(event) {
   return Boolean((event?.ctrlKey || event?.metaKey) && String(event?.key || '').toLowerCase() === 'k')
+}
+
+export function resolveGlobalSearchDestination(result, flags = getFeatureFlags()) {
+  if (!result) return null
+
+  if (result.featureFlag && !isFeatureEnabled(result.featureFlag, flags)) {
+    return { blocked: true, reason: result.featureFlag }
+  }
+
+  if (result.action === 'openSmartCamera') {
+    return {
+      blocked: false,
+      homeIntent: { mode: 'forgotten' },
+      moreFolder: null,
+      nutritionIntent: null,
+      sectionId: 'home',
+      targetId: 'app-section-home',
+    }
+  }
+
+  const requestedSection = result.section || 'home'
+  const moreFolder = resolveMoreFolderFromTarget(result.targetId)
+  const sectionId = moreSearchSections.has(requestedSection) || moreFolder ? 'more' : requestedSection
+  const targetId = result.targetId
+    || (requestedSection === 'nutrition' ? 'mat'
+      : requestedSection === 'coach' ? 'ai-coach'
+        : requestedSection === 'wellbeing' ? 'ma-bra'
+          : requestedSection === 'economy' ? 'ekonomi'
+            : requestedSection === 'progress' ? 'mal-framsteg'
+              : `app-section-${sectionId}`)
+
+  return {
+    blocked: false,
+    homeIntent: null,
+    moreFolder: sectionId === 'more' ? (moreFolder || resolveMoreFolderFromTarget(targetId)) : null,
+    nutritionIntent: result.targetId === 'nutrition-scanner-v2' || result.targetId === 'scanner'
+      ? { panel: 'scanner' }
+      : null,
+    sectionId,
+    targetId,
+  }
 }

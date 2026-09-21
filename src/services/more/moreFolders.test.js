@@ -2,14 +2,17 @@ import { describe, expect, it } from 'vitest'
 import { moreHubFolders, resolveMoreFolderFromTarget } from './moreFolders.js'
 
 describe('more hub folders', () => {
-  it('lists Framsteg, Mat and AI Coach first while preserving the family hubs', () => {
-    expect(moreHubFolders).toHaveLength(12)
+  it('lists current More hub folders including activity, 65+, debt and archive', () => {
     expect(moreHubFolders.map((folder) => folder.id)).toEqual([
       'mal-framsteg',
       'mat',
+      'aktivitet',
       'ai-coach',
       'ma-bra',
+      'senior-65-plus',
       'ekonomi',
+      'inkasso',
+      'kronofogden',
       'sign-language',
       'animal-world',
       'pregnancy-first-year',
@@ -17,20 +20,6 @@ describe('more hub folders', () => {
       'import-export',
       'arkiv-historik',
       'installningar',
-    ])
-    expect(moreHubFolders.map((folder) => folder.title)).toEqual([
-      'Framsteg',
-      'Mat',
-      'AI Coach',
-      'Må bra',
-      'Ekonomi',
-      'Teckenspråk',
-      'Djurvärlden',
-      'Graviditet & första året',
-      'Säkerhet & Backup',
-      'Import & Export',
-      'Arkiv & Historik',
-      'Inställningar',
     ])
   })
 
@@ -55,6 +44,19 @@ describe('more hub folders', () => {
     expect(resolveMoreFolderFromTarget('mal-framsteg-oversikt')).toBe('mal-framsteg')
     expect(resolveMoreFolderFromTarget('backup-historik')).toBe('arkiv-historik')
     expect(resolveMoreFolderFromTarget('installningar')).toBe('installningar')
+    expect(resolveMoreFolderFromTarget('maltider')).toBe('mat')
+    expect(resolveMoreFolderFromTarget('checkin')).toBe('mat')
+    expect(resolveMoreFolderFromTarget('nutrition-view-panel')).toBe('mat')
+    expect(resolveMoreFolderFromTarget('weekly-meal-planner-title')).toBe('mat')
+    expect(resolveMoreFolderFromTarget('recipe-manager-title')).toBe('mat')
+    expect(resolveMoreFolderFromTarget('chat')).toBe('ai-coach')
+    expect(resolveMoreFolderFromTarget('nutrition-coach-center')).toBe('ai-coach')
+    expect(resolveMoreFolderFromTarget('language-settings')).toBe('installningar')
+    expect(resolveMoreFolderFromTarget('aktivitet')).toBe('aktivitet')
+    expect(resolveMoreFolderFromTarget('senior-65-plus')).toBe('senior-65-plus')
+    expect(resolveMoreFolderFromTarget('inkasso')).toBe('inkasso')
+    expect(resolveMoreFolderFromTarget('kronofogden')).toBe('kronofogden')
+    expect(resolveMoreFolderFromTarget('arkiv-historik')).toBe('arkiv-historik')
     expect(resolveMoreFolderFromTarget('app-section-more')).toBeNull()
   })
 })

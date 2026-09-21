@@ -5,7 +5,7 @@ function LanguageSettingsPanel({ language, onLanguageChange }) {
   const { t } = useTranslation('settings')
 
   return (
-    <section className="panel profile-settings-panel">
+    <section className="panel profile-settings-panel" id="language-settings">
       <div className="panel-heading">
         <div>
           <p className="eyebrow">{t('language.title')}</p>

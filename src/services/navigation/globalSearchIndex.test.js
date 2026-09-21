@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest'
+import { getFeatureFlags } from '../../features/featureRegistry.js'
 import {
   getDefaultGlobalSearchGroups,
   getGlobalSearchKeyboardAction,
   getNextSearchSelection,
+  getVisibleGlobalSearchItems,
+  globalSearchItems,
   isGlobalSearchOpenShortcut,
   normalizeSearchText,
+  resolveGlobalSearchDestination,
   searchGlobalNavigation,
 } from './globalSearchIndex.js'
 
@@ -100,5 +104,89 @@ describe('globalSearchIndex', () => {
     expect(isGlobalSearchOpenShortcut({ ctrlKey: true, key: 'k' })).toBe(true)
     expect(isGlobalSearchOpenShortcut({ key: 'k', metaKey: true })).toBe(true)
     expect(isGlobalSearchOpenShortcut({ key: 'k' })).toBe(false)
+  })
+})
+
+function item(id) {
+  return globalSearchItems.find((entry) => entry.id === id)
+}
+
+describe('globalSearchIndex current destinations', () => {
+  it('keeps unique ids and required destination fields', () => {
+    const ids = globalSearchItems.map((entry) => entry.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    globalSearchItems.forEach((entry) => {
+      expect(entry.id).toBeTruthy()
+      expect(entry.title).toBeTruthy()
+      expect(entry.section).toBeTruthy()
+      expect(entry.targetId).toBeTruthy()
+      expect(Array.isArray(entry.keywords)).toBe(true)
+    })
+  })
+
+  it('adds current primary sections and More folders', () => {
+    expect(item('redo')).toMatchObject({ section: 'redo', targetId: 'app-section-redo' })
+    expect(item('place')).toMatchObject({ section: 'place', targetId: 'app-section-place' })
+    expect(item('journey')).toMatchObject({ section: 'journey', targetId: 'app-section-journey' })
+    expect(item('activity')).toMatchObject({ section: 'more', targetId: 'aktivitet' })
+    expect(item('senior-65-plus')).toMatchObject({ section: 'more', targetId: 'senior-65-plus' })
+    expect(item('inkasso')).toMatchObject({ section: 'more', targetId: 'inkasso' })
+    expect(item('kronofogden')).toMatchObject({ section: 'more', targetId: 'kronofogden' })
+    expect(item('archive-history')).toMatchObject({ section: 'more', targetId: 'arkiv-historik' })
+    expect(item('language-settings')).toMatchObject({ section: 'more', targetId: 'language-settings' })
+    expect(item('smart-camera')).toMatchObject({ action: 'openSmartCamera', featureFlag: 'smartCamera' })
+  })
+
+  it('removes dead notification and reminder centers', () => {
+    expect(item('notification-center')).toBeUndefined()
+    expect(item('reminders')).toBeUndefined()
+    expect(titles('notiser')).toContain('Notiser')
+  })
+
+  it('resolves search hits to current app destinations', () => {
+    expect(resolveGlobalSearchDestination(item('home-dashboard'))).toMatchObject({
+      sectionId: 'home',
+      targetId: 'app-section-home',
+    })
+    expect(resolveGlobalSearchDestination(item('redo'))).toMatchObject({ sectionId: 'redo', targetId: 'app-section-redo' })
+    expect(resolveGlobalSearchDestination(item('place'))).toMatchObject({ sectionId: 'place' })
+    expect(resolveGlobalSearchDestination(item('journey'))).toMatchObject({ sectionId: 'journey' })
+    expect(resolveGlobalSearchDestination(item('social'))).toMatchObject({ sectionId: 'social', blocked: false })
+    expect(resolveGlobalSearchDestination(item('notices'))).toMatchObject({ sectionId: 'notices', targetId: 'app-section-notices' })
+    expect(resolveGlobalSearchDestination(item('activity'))).toMatchObject({ sectionId: 'more', moreFolder: 'aktivitet' })
+    expect(resolveGlobalSearchDestination(item('scanner'))).toMatchObject({
+      sectionId: 'more',
+      moreFolder: 'mat',
+      nutritionIntent: { panel: 'scanner' },
+      targetId: 'nutrition-scanner-v2',
+    })
+    expect(resolveGlobalSearchDestination(item('ai-coach'))).toMatchObject({ sectionId: 'more', moreFolder: 'ai-coach' })
+    expect(resolveGlobalSearchDestination(item('wellbeing'))).toMatchObject({ sectionId: 'more', moreFolder: 'ma-bra' })
+    expect(resolveGlobalSearchDestination(item('economy'))).toMatchObject({ sectionId: 'more', moreFolder: 'ekonomi' })
+    expect(resolveGlobalSearchDestination(item('senior-65-plus'))).toMatchObject({ moreFolder: 'senior-65-plus' })
+    expect(resolveGlobalSearchDestination(item('inkasso'))).toMatchObject({ moreFolder: 'inkasso' })
+    expect(resolveGlobalSearchDestination(item('kronofogden'))).toMatchObject({ moreFolder: 'kronofogden' })
+    expect(resolveGlobalSearchDestination(item('archive-history'))).toMatchObject({ moreFolder: 'arkiv-historik' })
+    expect(resolveGlobalSearchDestination(item('language-settings'))).toMatchObject({
+      moreFolder: 'installningar',
+      targetId: 'language-settings',
+    })
+    expect(resolveGlobalSearchDestination(item('meals'))).toMatchObject({ moreFolder: 'mat', targetId: 'maltider' })
+    expect(resolveGlobalSearchDestination(item('weight-progress'))).toMatchObject({ moreFolder: 'mal-framsteg', targetId: 'vikt' })
+    expect(resolveGlobalSearchDestination(item('smart-camera'))).toMatchObject({
+      homeIntent: { mode: 'forgotten' },
+      sectionId: 'home',
+    })
+  })
+
+  it('hides feature-gated results when flags are off', () => {
+    const off = getFeatureFlags({ smartCamera: false, socialUi: false, reminderHubUi: false })
+    const visibleIds = getVisibleGlobalSearchItems(off).map((entry) => entry.id)
+    expect(visibleIds).not.toContain('smart-camera')
+    expect(visibleIds).not.toContain('social')
+    expect(visibleIds).not.toContain('notices')
+    expect(resolveGlobalSearchDestination(item('social'), off)).toMatchObject({ blocked: true })
+    expect(resolveGlobalSearchDestination(item('notices'), off)).toMatchObject({ blocked: true })
+    expect(resolveGlobalSearchDestination(item('smart-camera'), off)).toMatchObject({ blocked: true })
   })
 })

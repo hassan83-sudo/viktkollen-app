@@ -13,6 +13,8 @@ describe('Release polish shell gating', () => {
   it('does not render the legacy home overview topbar before the new OverviewDashboard', () => {
     expect(appSource).not.toContain('<AppTopbar')
     expect(appSource).toContain('<HomeSection')
+    expect(appSource).toContain('resolveGlobalSearchDestination')
+    expect(moreSectionSource).toContain('<GlobalSearch')
   })
 
   it('keeps the normal Home section limited to the new OverviewDashboard', () => {

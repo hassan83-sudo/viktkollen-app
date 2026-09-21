@@ -414,6 +414,117 @@ describe('BILL-3 quota integration and history isolation', () => {
   })
 })
 
+describe('BILL-3A resolver matrix and concurrency', () => {
+  it('applies the documented entitlement matrix and ignores client clock', async () => {
+    const now = new Date('2026-04-15T12:00:00.000Z')
+    const base = {
+      cancel_at_period_end: false,
+      current_period_end: END,
+      current_period_start: START,
+      plan_id: PAID,
+      plan_version: 1,
+      subscription_id: 'sub-matrix',
+      user_id: USER,
+    }
+    const cases = [
+      [{ ...base, status: 'ACTIVE' }, PAID],
+      [{ ...base, status: 'TRIALING' }, PAID],
+      [{ ...base, status: 'PAUSED' }, 'plan.free'],
+      [{ ...base, status: 'CANCELED' }, 'plan.free'],
+      [{ ...base, status: 'EXPIRED' }, 'plan.free'],
+      [{ ...base, status: 'PAST_DUE', past_due_grace_until: null }, 'plan.free'],
+      [{ ...base, status: 'PAST_DUE', past_due_grace_until: '2026-04-20T00:00:00.000Z' }, PAID],
+      [{ ...base, status: 'ACTIVE', current_period_end: '2026-04-15T00:00:00.000Z' }, 'plan.free'],
+    ]
+    for (const [row, planId] of cases) {
+      const effective = resolveEffectivePlan({
+        catalog: defaultPlanCatalog,
+        clientClaim: { now: '2099-01-01T00:00:00.000Z', plan_id: PAID, status: 'ACTIVE' },
+        now,
+        subscriptions: [row],
+      })
+      expect(effective.plan_id).toBe(planId)
+    }
+  })
+
+  it('blocks PAST_DUE→PAUSED, PAUSED→EXPIRED, and terminal reactivation', () => {
+    expect(() => assertSubscriptionTransition('PAST_DUE', 'PAUSED')).toThrow(/illegal_subscription_transition/)
+    expect(() => assertSubscriptionTransition('PAUSED', 'EXPIRED')).toThrow(/illegal_subscription_transition/)
+    expect(() => assertSubscriptionTransition('CANCELED', 'ACTIVE')).toThrow(/illegal_subscription_transition/)
+    expect(() => assertSubscriptionTransition('CANCELED', 'PAST_DUE')).toThrow(/illegal_subscription_transition/)
+    expect(() => assertSubscriptionTransition('EXPIRED', 'ACTIVE')).toThrow(/illegal_subscription_transition/)
+    expect(() => assertSubscriptionTransition('EXPIRED', 'PAUSED')).toThrow(/illegal_subscription_transition/)
+  })
+
+  it('serializes two services on a shared store and documents isolated-store races', async () => {
+    const shared = createInMemorySubscriptionStore()
+    const a = createSubscriptionService({
+      catalog: defaultPlanCatalog,
+      now: () => new Date('2026-04-15T12:00:00.000Z'),
+      store: shared,
+    })
+    const b = createSubscriptionService({
+      catalog: defaultPlanCatalog,
+      now: () => new Date('2026-04-15T12:00:00.000Z'),
+      store: shared,
+    })
+    const payload = {
+      current_period_end: END,
+      current_period_start: START,
+      plan_id: PAID,
+      user_id: USER,
+    }
+    const results = await Promise.allSettled([
+      a.createSubscription(payload),
+      b.createSubscription(payload),
+    ])
+    const ok = results.filter((row) => row.status === 'fulfilled')
+    const denied = results.filter((row) => row.status === 'rejected')
+    expect(ok.length).toBe(1)
+    expect(denied[0].reason.code).toBe('duplicate_active_subscription')
+
+    const isolatedA = createSubscriptionService({
+      catalog: defaultPlanCatalog,
+      now: () => new Date('2026-04-15T12:00:00.000Z'),
+      store: createInMemorySubscriptionStore(),
+    })
+    const isolatedB = createSubscriptionService({
+      catalog: defaultPlanCatalog,
+      now: () => new Date('2026-04-15T12:00:00.000Z'),
+      store: createInMemorySubscriptionStore(),
+    })
+    await isolatedA.createSubscription(payload)
+    await isolatedB.createSubscription(payload)
+    expect((await isolatedA.resolveForUser(USER)).plan_id).toBe(PAID)
+    expect((await isolatedB.resolveForUser(USER)).plan_id).toBe(PAID)
+  })
+
+  it('rejects plan, period, and grace extension on replace', async () => {
+    const store = createInMemorySubscriptionStore()
+    const row = await store.insert({
+      created_at: START,
+      current_period_end: END,
+      current_period_start: START,
+      past_due_grace_until: '2026-04-18T00:00:00.000Z',
+      plan_id: PAID,
+      plan_version: 1,
+      provider: '',
+      status: 'PAST_DUE',
+      subscription_id: 'sub-lock',
+      user_id: USER,
+    })
+    await expect(store.replace({ ...row, plan_id: 'plan.free' })).rejects.toMatchObject({
+      code: 'immutable_subscription_identity',
+    })
+    await expect(store.replace({ ...row, current_period_end: '2026-06-01T00:00:00.000Z' })).rejects.toMatchObject({
+      code: 'period_end_cannot_extend',
+    })
+    await expect(store.replace({ ...row, past_due_grace_until: '2026-05-01T00:00:00.000Z' })).rejects.toMatchObject({
+      code: 'grace_cannot_extend',
+    })
+  })
+})
+
 describe('BILL-3 client-safe payload', () => {
   it('omits provider references from the client view', async () => {
     const { subscriptions } = serviceAt('2026-04-15T12:00:00.000Z')

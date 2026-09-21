@@ -10,6 +10,7 @@ function clone(row) {
 
 export function createInMemorySubscriptionStore() {
   const byId = new Map()
+  const byEvent = new Map()
 
   return {
     async get(subscriptionId) {
@@ -17,6 +18,8 @@ export function createInMemorySubscriptionStore() {
     },
     async getByExternalEventId(eventId) {
       if (!eventId) return null
+      const subscriptionId = byEvent.get(eventId)
+      if (subscriptionId) return byId.get(subscriptionId) || null
       return [...byId.values()].find((row) => row.external_event_id === eventId) || null
     },
     async listByUser(userId) {
@@ -35,6 +38,7 @@ export function createInMemorySubscriptionStore() {
       if (stored.external_event_id) {
         const existing = await this.getByExternalEventId(stored.external_event_id)
         if (existing) return existing
+        byEvent.set(stored.external_event_id, stored.subscription_id)
       }
       if (SUBSCRIPTION_OPEN.includes(stored.status)) {
         const open = [...byId.values()].find((row) => (
@@ -56,18 +60,58 @@ export function createInMemorySubscriptionStore() {
         error.code = 'subscription_not_found'
         throw error
       }
-      if (prev.user_id !== next.user_id || prev.subscription_id !== next.subscription_id) {
+      if (
+        prev.user_id !== next.user_id
+        || prev.subscription_id !== next.subscription_id
+        || prev.plan_id !== next.plan_id
+        || prev.plan_version !== next.plan_version
+        || prev.created_at !== next.created_at
+      ) {
         const error = new Error('immutable_subscription_identity')
         error.code = 'immutable_subscription_identity'
         throw error
       }
+      if (prev.current_period_start !== next.current_period_start) {
+        const error = new Error('immutable_period_start')
+        error.code = 'immutable_period_start'
+        throw error
+      }
+      if (new Date(next.current_period_end).getTime() > new Date(prev.current_period_end).getTime()) {
+        const error = new Error('period_end_cannot_extend')
+        error.code = 'period_end_cannot_extend'
+        throw error
+      }
+      if (next.external_event_id) {
+        const mapped = await this.getByExternalEventId(next.external_event_id)
+        if (mapped && mapped.subscription_id !== prev.subscription_id) {
+          const error = new Error('duplicate_external_event')
+          error.code = 'duplicate_external_event'
+          throw error
+        }
+        byEvent.set(next.external_event_id, prev.subscription_id)
+      }
+      if (prev.provider && next.provider !== prev.provider) {
+        const error = new Error('immutable_provider')
+        error.code = 'immutable_provider'
+        throw error
+      }
+      if (prev.past_due_grace_until && next.past_due_grace_until
+        && new Date(next.past_due_grace_until).getTime() > new Date(prev.past_due_grace_until).getTime()) {
+        const error = new Error('grace_cannot_extend')
+        error.code = 'grace_cannot_extend'
+        throw error
+      }
       assertSubscriptionTransition(prev.status, next.status)
-      const stored = clone(next)
+      const stored = clone({
+        ...next,
+        external_event_id: prev.external_event_id || next.external_event_id || null,
+      })
       byId.set(stored.subscription_id, stored)
       return stored
     },
     reset() {
       byId.clear()
+      byEvent.clear()
     },
   }
 }

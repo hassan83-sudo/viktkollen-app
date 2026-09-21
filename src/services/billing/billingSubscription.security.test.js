@@ -59,23 +59,42 @@ describe('BILL-3 subscription migration static security', () => {
     expect(sql).not.toMatch(/alter table billing\.quota_reservations/i)
   })
 
-  it('force-RLS denies clients and grants trusted writes only', () => {
+  it('force-RLS denies clients and limits trusted access to SELECT plus RPCs', () => {
+    const ddl = sql.replace(/--[^\n]*/g, '')
     expect(sql).toMatch(/force row level security/)
     expect(sql).toMatch(/using \(false\)/)
     expect(sql).toMatch(/with check \(false\)/)
-    expect(sql).toMatch(/grant select, insert, update on table billing\.subscriptions to service_role/)
-    expect(sql).toMatch(/revoke delete on table billing\.subscriptions/)
+    expect(sql).toMatch(/grant select on table billing\.subscriptions to service_role/)
+    expect(sql).toMatch(/grant select on table billing\.subscription_events to service_role/)
+    expect(sql).toMatch(/revoke insert, update, delete on table billing\.subscriptions from public, anon, authenticated, service_role/)
     expect(sql).not.toMatch(/grant (all|select|insert|update|delete).*authenticated/i)
     expect(sql).not.toMatch(/grant execute.*to (public|anon|authenticated)/i)
+    expect(ddl).not.toMatch(/jsonb|json\b/i)
   })
 
   it('enforces period direction, one open row, and a DB state machine', () => {
     expect(sql).toMatch(/current_period_end > current_period_start/)
     expect(sql).toMatch(/subscriptions_one_open_per_user_uidx/)
+    expect(sql).toMatch(/status in \('TRIALING', 'ACTIVE', 'PAST_DUE', 'PAUSED'\)/)
     expect(sql).toMatch(/illegal subscription transition/)
     expect(sql).toMatch(/subscription identity and plan snapshot are immutable/)
+    expect(sql).toMatch(/current_period_start is immutable/)
+    expect(sql).toMatch(/current_period_end cannot be extended/)
+    expect(sql).toMatch(/past_due_grace_until cannot be extended/)
     expect(sql).toMatch(/new subscription requires an active plan/)
-    expect(sql).toMatch(/subscriptions_external_event_uidx/)
+    expect(sql).toMatch(/subscription_events/)
+    expect(sql).toMatch(/subscription_events.*primary key|external_event_id text primary key/)
+    expect(sql).toMatch(/on delete restrict/)
+  })
+
+  it('uses SECURITY DEFINER helpers with locked search_path', () => {
+    expect(sql).toMatch(/security definer/i)
+    expect(sql).toMatch(/set search_path = pg_catalog, pg_temp/)
+    expect(sql).toMatch(/grant execute on function billing\.create_subscription/)
+    expect(sql).toMatch(/grant execute on function billing\.transition_subscription/)
+    expect(sql).toMatch(/grant execute on function billing\.schedule_cancel_at_period_end/)
+    expect(sql).toMatch(/revoke all on function billing\.create_subscription/)
+    expect(sql).toMatch(/for update/i)
   })
 
   it('does not put service role on the Vite client env surface', () => {

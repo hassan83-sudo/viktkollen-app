@@ -170,7 +170,7 @@ describe('BILL-5B1 metered lifecycle adapter', () => {
       reserve: vi.fn(async ({ reservation_id }) => ({ reservation_id, status: QUOTA_STATUS.RESERVED })),
       rollback,
     })
-    expect(result.outcome).toBe(LIFECYCLE_OUTCOME.TIMED_OUT)
+    expect(result.outcome).toBe(LIFECYCLE_OUTCOME.AMBIGUOUS_BILLING)
     expect(result.provider_billing_class).toBe(PROVIDER_BILLING_CLASS.UNKNOWN_MAY_BE_BILLED)
     expect(commit).toHaveBeenCalledWith({ actual_quantity: 1, reservation_id: OP })
     expect(rollback).toHaveBeenCalledTimes(0)
@@ -211,9 +211,10 @@ describe('BILL-5B1 metered lifecycle adapter', () => {
     const first = await executeMeteredBillingOperation(deps)
     const second = await executeMeteredBillingOperation(deps)
     expect(first.outcome).toBe(LIFECYCLE_OUTCOME.SUCCEEDED)
-    expect(second.outcome).toBe(LIFECYCLE_OUTCOME.SUCCEEDED)
+    expect(second.outcome).toBe(LIFECYCLE_OUTCOME.ALREADY_COMPLETED)
     expect(executeProvider).toHaveBeenCalledTimes(1)
-    expect(second.order).toEqual(['evaluate', 'reserve'])
+    expect(second.calls.provider).toBe(0)
+    expect(second.already_completed).toBe(true)
   })
 
   it('double commit is idempotent on the BILL-2 engine', async () => {

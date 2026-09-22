@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { SENSITIVE_USAGE_FIELDS } from './catalog.js'
 
 const USER_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const CLIENT_ATTEMPT_RE = /^[A-Za-z0-9._-]{8,80}$/
 
 /**
  * Confirmed from api/nutrition-photo-analysis/index.js:
@@ -18,11 +19,35 @@ export const FOOD_SCAN_CANARY = Object.freeze({
   unit: 'requests',
 })
 
-export const PROVIDER_BILLING_CLASS = Object.freeze({
-  COMPLETED: 'COMPLETED',
-  NOT_STARTED: 'NOT_STARTED',
-  UNKNOWN_MAY_BE_BILLED: 'UNKNOWN_MAY_BE_BILLED',
+/**
+ * Image fingerprint / runDedupedAiRequest is product UX only.
+ * It is never the billing operation identity.
+ */
+export const IMAGE_DEDUP_ROLE = Object.freeze({
+  billing_authority: false,
+  role: 'product_ux_inflight_coalesce',
 })
+
+export const PROVIDER_DISPATCH_STATE = Object.freeze({
+  DISPATCHED_BILLING_UNKNOWN: 'DISPATCHED_BILLING_UNKNOWN',
+  DISPATCHED_CONFIRMED_FAILURE_NOT_BILLABLE: 'DISPATCHED_CONFIRMED_FAILURE_NOT_BILLABLE',
+  DISPATCHED_CONFIRMED_SUCCESS: 'DISPATCHED_CONFIRMED_SUCCESS',
+  NOT_DISPATCHED: 'NOT_DISPATCHED',
+})
+
+/** BILL-5B1 aliases. Values are the 5B1a dispatch states. */
+export const PROVIDER_BILLING_CLASS = Object.freeze({
+  COMPLETED: PROVIDER_DISPATCH_STATE.DISPATCHED_CONFIRMED_SUCCESS,
+  NOT_STARTED: PROVIDER_DISPATCH_STATE.NOT_DISPATCHED,
+  UNKNOWN_MAY_BE_BILLED: PROVIDER_DISPATCH_STATE.DISPATCHED_BILLING_UNKNOWN,
+  ...PROVIDER_DISPATCH_STATE,
+})
+
+export function normalizeClientAttemptId(value) {
+  const raw = String(value || '').trim()
+  if (!CLIENT_ATTEMPT_RE.test(raw)) return ''
+  return raw
+}
 
 export function createScopedOperationId({
   clientAttemptId = '',
@@ -30,7 +55,7 @@ export function createScopedOperationId({
   route = FOOD_SCAN_CANARY.route,
   userId,
 } = {}) {
-  const client = String(clientAttemptId || '').trim().slice(0, 80)
+  const client = normalizeClientAttemptId(clientAttemptId)
   if (!USER_ID_RE.test(String(userId || '')) || !client) {
     return randomUUID()
   }
@@ -41,21 +66,55 @@ export function createScopedOperationId({
 }
 
 /**
- * Classifies OpenAI photo-gateway failures from flags the live route already
- * attaches (timeout, aborted, parseError, networkError). Does not invent
- * OpenAI invoice semantics: once the request may have left this process,
- * billing is UNKNOWN_MAY_BE_BILLED.
+ * One logical food.scan operation = one reservation = one usage event.
+ * BILL-1 event_id is a string <= 180 chars (not UUID-only). Compatible.
+ * BILL-2 periodUsage skips usage rows whose event_id equals a reservation_id.
  */
-export function classifyFoodScanProviderOutcome(result = {}) {
-  if (result.ok === true) return PROVIDER_BILLING_CLASS.COMPLETED
-  if (result.providerRequestStarted === false || result.billingClass === PROVIDER_BILLING_CLASS.NOT_STARTED) {
-    return PROVIDER_BILLING_CLASS.NOT_STARTED
+export function createBillingAccountingIdentity(operationId) {
+  const id = String(operationId || '').trim()
+  if (!id || id.length > 180) return null
+  return Object.freeze({
+    event_id: id,
+    operation_id: id,
+    reservation_id: id,
+  })
+}
+
+/**
+ * OpenAI 5xx/timeout/abort-after-dispatch is never treated as proven
+ * non-billable. Only a proven non-start may roll back.
+ */
+export function classifyFoodScanProviderOutcome(result = {}, dispatchStarted = false) {
+  if (result.ok === true) return PROVIDER_DISPATCH_STATE.DISPATCHED_CONFIRMED_SUCCESS
+  if (result.dispatchState === PROVIDER_DISPATCH_STATE.DISPATCHED_CONFIRMED_FAILURE_NOT_BILLABLE) {
+    return PROVIDER_DISPATCH_STATE.DISPATCHED_CONFIRMED_FAILURE_NOT_BILLABLE
   }
-  if (result.providerRequestStarted === true) return PROVIDER_BILLING_CLASS.UNKNOWN_MAY_BE_BILLED
-  if (result.code === 'serverConfiguration' || result.code === 'aiNotConfigured') {
-    return PROVIDER_BILLING_CLASS.NOT_STARTED
+
+  const provenNotDispatched = dispatchStarted !== true && result.providerRequestStarted === false
+  if (
+    provenNotDispatched
+    || result.billingClass === PROVIDER_DISPATCH_STATE.NOT_DISPATCHED
+    || result.billingClass === 'NOT_STARTED'
+  ) {
+    return PROVIDER_DISPATCH_STATE.NOT_DISPATCHED
   }
-  return PROVIDER_BILLING_CLASS.UNKNOWN_MAY_BE_BILLED
+
+  if (
+    (result.code === 'serverConfiguration' || result.code === 'aiNotConfigured')
+    && dispatchStarted !== true
+    && result.providerRequestStarted !== true
+  ) {
+    return PROVIDER_DISPATCH_STATE.NOT_DISPATCHED
+  }
+
+  return PROVIDER_DISPATCH_STATE.DISPATCHED_BILLING_UNKNOWN
+}
+
+export function createDispatchBoundedProvider(run) {
+  return async function dispatchBounded(hooks = {}) {
+    hooks.markDispatched?.()
+    return run(hooks)
+  }
 }
 
 export function reservationExpiresAt(now = new Date(), timeoutMs = FOOD_SCAN_CANARY.timeout_ms) {
@@ -76,10 +135,17 @@ export function stripSensitiveBillingPayload(input) {
   return out
 }
 
+export function sanitizeLifecycleError(error = {}) {
+  return Object.freeze({
+    code: String(error.code || error.outcome || 'PROVIDER_FAILED').slice(0, 80),
+  })
+}
+
 export function foodScanUsageEventPlan({ operationId, userId } = {}) {
+  const identity = createBillingAccountingIdentity(operationId)
   return Object.freeze({
     cost_basis: 'UNAVAILABLE',
-    event_id: operationId,
+    event_id: identity?.event_id || operationId,
     event_type: FOOD_SCAN_CANARY.feature_id,
     feature: FOOD_SCAN_CANARY.feature_id,
     metadata: Object.freeze({
@@ -88,7 +154,7 @@ export function foodScanUsageEventPlan({ operationId, userId } = {}) {
     }),
     provider: FOOD_SCAN_CANARY.provider_id,
     quantity: FOOD_SCAN_CANARY.quantity,
-    reference_id: operationId,
+    reference_id: identity?.reservation_id || operationId,
     unit: FOOD_SCAN_CANARY.unit,
     user_id: userId,
   })

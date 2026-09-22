@@ -4,6 +4,7 @@ import {
   cancelAccessibilitySpeech,
   speakAccessibilityText,
 } from '../../services/accessibilitySpeech.js'
+import AccessibilityFeedback from './AccessibilityFeedback.jsx'
 
 const phraseGroups = [
   { id: 'basic', phrases: ['yes', 'no', 'thanks'] },
@@ -18,10 +19,16 @@ function AccessibilityCommunication() {
   const [customText, setCustomText] = useState('')
   const [largeTextOpen, setLargeTextOpen] = useState(false)
   const [selectedPhrase, setSelectedPhrase] = useState('')
-  const [speechStatus, setSpeechStatus] = useState('')
+  const [speechStatus, setSpeechStatus] = useState(null)
   const [isSpeaking, setIsSpeaking] = useState(false)
 
   const selectedText = selectedPhrase || customText.trim()
+
+  function setSpeechFeedback(message, tone = 'info') {
+    setSpeechStatus((current) => (
+      current?.message === message && current.tone === tone ? current : { message, tone }
+    ))
+  }
 
   function stopSpeaking() {
     cancelAccessibilitySpeech()
@@ -30,7 +37,7 @@ function AccessibilityCommunication() {
 
   function stopSpeakingWithStatus() {
     stopSpeaking()
-    setSpeechStatus(t('accessibility.communication.stopped'))
+    setSpeechFeedback(t('accessibility.communication.stopped'), 'warning')
   }
 
   useEffect(() => () => {
@@ -51,14 +58,14 @@ function AccessibilityCommunication() {
   function selectPhrase(phraseId) {
     stopSpeaking()
     setLargeTextOpen(false)
-    setSpeechStatus('')
+    setSpeechStatus(null)
     setSelectedPhrase(t(`accessibility.communication.phrases.${phraseId}`))
   }
 
   function updateCustomText(event) {
     stopSpeaking()
     setLargeTextOpen(false)
-    setSpeechStatus('')
+    setSpeechStatus(null)
     setSelectedPhrase('')
     setCustomText(event.target.value)
   }
@@ -69,19 +76,19 @@ function AccessibilityCommunication() {
       text: selectedText,
       onEnd: () => {
         setIsSpeaking(false)
-        setSpeechStatus(t('accessibility.communication.stopped'))
+        setSpeechFeedback(t('accessibility.communication.stopped'), 'warning')
       },
       onError: () => {
         setIsSpeaking(false)
-        setSpeechStatus(t('accessibility.communication.stopped'))
+        setSpeechFeedback(t('accessibility.communication.stopped'), 'error')
       },
     })
     if (!didSpeak) {
-      setSpeechStatus(t('accessibility.communication.unsupported'))
+      setSpeechFeedback(t('accessibility.communication.unsupported'), 'error')
       return
     }
     setIsSpeaking(true)
-    setSpeechStatus(t('accessibility.communication.speaking'))
+    setSpeechFeedback(t('accessibility.communication.speaking'))
   }
 
   function clearText() {
@@ -89,7 +96,7 @@ function AccessibilityCommunication() {
     setCustomText('')
     setLargeTextOpen(false)
     setSelectedPhrase('')
-    setSpeechStatus('')
+    setSpeechStatus(null)
   }
 
   return (
@@ -152,7 +159,7 @@ function AccessibilityCommunication() {
         </section>
       )}
 
-      {speechStatus && <p className="accessibility-speech-status" role="status">{speechStatus}</p>}
+      <AccessibilityFeedback message={speechStatus?.message} tone={speechStatus?.tone} />
 
       <article className="accessibility-planned-card">
         <h3>{t('accessibility.communication.writeToAi')}</h3>

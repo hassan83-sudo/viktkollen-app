@@ -497,6 +497,7 @@ const sv = {
         speaking: 'Läser upp',
         stopped: 'Stoppad',
         complete: 'Klar',
+        error: 'Fel vid uppläsning.',
         unsupported: 'Uppläsning stöds inte på den här enheten.',
         genericControl: 'Kontroll',
         states: {
@@ -2234,6 +2235,7 @@ const en = {
         speaking: 'Reading',
         stopped: 'Stopped',
         complete: 'Complete',
+        error: 'Read-aloud error.',
         unsupported: 'Read-aloud is not supported on this device.',
         genericControl: 'Control',
         states: {

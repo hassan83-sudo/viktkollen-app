@@ -86,11 +86,11 @@ describe('AccessibilityCommunication', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ja' }))
     fireEvent.click(screen.getByRole('button', { name: 'Läs upp' }))
 
-    expect(screen.getByText('Uppläsningen startade')).toBeTruthy()
+    expect(screen.getByText('Uppläsningen startade').closest('[role="status"]')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Stoppa' }))
 
-    expect(screen.getByText('Uppläsningen stoppades')).toBeTruthy()
+    expect(screen.getByText('Uppläsningen stoppades').closest('[role="status"]')).toBeTruthy()
   })
 
   it('stops active speech explicitly and when leaving the communication detail', () => {
@@ -145,7 +145,7 @@ describe('AccessibilityCommunication', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ja' }))
     fireEvent.click(screen.getByRole('button', { name: 'Läs upp' }))
 
-    expect(screen.getByText('Uppläsning stöds inte på den här enheten.')).toBeTruthy()
+    expect(screen.getByText('Uppläsning stöds inte på den här enheten.').closest('[role="status"]')).toBeTruthy()
     expect(screen.getByText('Ja', { selector: 'strong' })).toBeTruthy()
   })
 

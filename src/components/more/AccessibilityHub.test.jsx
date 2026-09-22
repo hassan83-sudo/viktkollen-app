@@ -1,5 +1,5 @@
 /* @vitest-environment jsdom */
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import process from 'node:process'
@@ -263,6 +263,9 @@ describe('AccessibilityHub', () => {
     expect(appCss).toContain('--accessibility-text-scale: 1.16;')
     expect(appCss).toContain('grid-template-columns: minmax(0, 1fr)')
     expect(appCss).toContain('flex-basis: 100%')
+    expect(appCss).toContain('.accessibility-feedback')
+    expect(appCss).toContain('.accessibility-scope.has-high-contrast .accessibility-feedback')
+    expect(appCss).toContain('@media (prefers-reduced-motion: reduce)')
   })
 
   it('keeps navigation speech off until explicitly enabled and persists a bounded rate', () => {
@@ -303,5 +306,24 @@ describe('AccessibilityHub', () => {
     expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(3)
     expect(window.speechSynthesis.speak.mock.calls[2][0].text).toContain('Tal & kommunikation')
     expect(window.speechSynthesis.cancel).toHaveBeenCalledTimes(3)
+  })
+
+  it('keeps navigation feedback visible with speech disabled and deduplicates repeated focus', () => {
+    renderAccessibilityHub()
+    const hub = screen.getByLabelText('Tillgänglighet & hjälpmedel')
+    const vision = screen.getByRole('button', { name: /^Syn/ })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Navigationsuppläsning' }))
+    fireEvent.keyDown(hub, { key: 'Tab' })
+    fireEvent.focus(vision)
+    fireEvent.focus(vision)
+
+    expect(screen.getAllByRole('status').filter((status) => status.textContent === 'Läser upp')).toHaveLength(1)
+    act(() => window.speechSynthesis.speak.mock.calls[0][0].onend())
+    expect(screen.getByText('Klar').closest('[role="status"]')).toBeTruthy()
+
+    delete window.speechSynthesis
+    fireEvent.focus(screen.getByRole('button', { name: /^Hörsel/ }))
+    expect(screen.getByText('Uppläsning stöds inte på den här enheten.').closest('[role="status"]')).toBeTruthy()
   })
 })

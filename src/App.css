@@ -15036,6 +15036,7 @@ html:has(#app-section-more.is-active),
 .accessibility-scope.has-high-contrast .accessibility-planned-card,
 .accessibility-scope.has-high-contrast .accessibility-simple-preview,
 .accessibility-scope.has-high-contrast .accessibility-future-item,
+.accessibility-scope.has-high-contrast .accessibility-feedback,
 .accessibility-scope.has-high-contrast .accessibility-section-card {
   border-color: #a5f3fc;
   background: #08192d;
@@ -15205,10 +15206,35 @@ html:has(#app-section-more.is-active),
   min-height: 44px;
 }
 
-.accessibility-speech-status {
+.accessibility-feedback {
+  width: fit-content;
+  max-width: 100%;
   margin: 0;
-  color: rgba(255, 226, 156, 0.98) !important;
+  padding: 8px 10px;
+  border: 1px solid rgba(165, 243, 252, 0.45);
+  border-radius: 10px;
+  color: rgba(207, 250, 254, 0.98) !important;
   font-weight: 750;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  background: rgba(13, 54, 76, 0.74);
+}
+
+.accessibility-feedback.is-success {
+  border-color: rgba(134, 239, 172, 0.75);
+  background: rgba(20, 83, 45, 0.7);
+}
+
+.accessibility-feedback.is-warning {
+  border-color: rgba(253, 224, 71, 0.76);
+  color: rgba(255, 251, 235, 0.98) !important;
+  background: rgba(113, 63, 18, 0.7);
+}
+
+.accessibility-feedback.is-error {
+  border-color: rgba(252, 165, 165, 0.8);
+  color: rgba(255, 241, 242, 0.98) !important;
+  background: rgba(127, 29, 29, 0.72);
 }
 
 .accessibility-large-text {

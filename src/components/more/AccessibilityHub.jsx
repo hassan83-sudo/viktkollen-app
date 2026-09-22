@@ -13,6 +13,7 @@ import {
   isNavigationSpeechTarget,
   speakAccessibilityText,
 } from '../../services/accessibilitySpeech.js'
+import AccessibilityFeedback from './AccessibilityFeedback.jsx'
 
 const accessibilitySectionIds = [
   'vision',
@@ -39,7 +40,7 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
   const [preferences, setPreferences] = useState(() => readAccessibilityPreferences().preferences)
   const [readingOption, setReadingOption] = useState('')
   const [settingsStatus, setSettingsStatus] = useState('')
-  const [navigationSpeechStatus, setNavigationSpeechStatus] = useState('')
+  const [navigationSpeechStatus, setNavigationSpeechStatus] = useState(null)
   const sectionButtonRefs = useRef({})
   const returnFocusRef = useRef(null)
   const lastNavigationInputRef = useRef('pointer')
@@ -147,20 +148,26 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
     lastSpokenFocusRef.current = { element: target, time: now }
     const requestId = navigationSpeechRequestRef.current + 1
     navigationSpeechRequestRef.current = requestId
+    function setNavigationFeedback(message, tone = 'info') {
+      setNavigationSpeechStatus((current) => (
+        current?.message === message && current.tone === tone ? current : { message, tone }
+      ))
+    }
     const didSpeak = speakAccessibilityText({
       language: i18n.language,
       rate: preferences.navigationSpeechRate,
       text: label,
       onEnd: () => {
-        if (navigationSpeechRequestRef.current === requestId) setNavigationSpeechStatus(t('accessibility.navigationSpeech.complete'))
+        if (navigationSpeechRequestRef.current === requestId) setNavigationFeedback(t('accessibility.navigationSpeech.complete'), 'success')
       },
       onError: () => {
-        if (navigationSpeechRequestRef.current === requestId) setNavigationSpeechStatus(t('accessibility.navigationSpeech.stopped'))
+        if (navigationSpeechRequestRef.current === requestId) setNavigationFeedback(t('accessibility.navigationSpeech.error'), 'error')
       },
     })
-    setNavigationSpeechStatus(didSpeak
-      ? t('accessibility.navigationSpeech.speaking')
-      : t('accessibility.navigationSpeech.unsupported'))
+    setNavigationFeedback(
+      didSpeak ? t('accessibility.navigationSpeech.speaking') : t('accessibility.navigationSpeech.unsupported'),
+      didSpeak ? 'info' : 'error',
+    )
   }
 
   function renderPlannedItems(sectionId) {
@@ -410,7 +417,7 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
         </div>
         <p className="accessibility-preference-note">{t('accessibility.navigationSpeech.note')}</p>
       </fieldset>
-      {navigationSpeechStatus && <p className="accessibility-settings-status" role="status">{navigationSpeechStatus}</p>}
+      <AccessibilityFeedback message={navigationSpeechStatus?.message} tone={navigationSpeechStatus?.tone} />
       <nav className="accessibility-section-list" aria-label={t('accessibility.sectionListLabel')}>
         {accessibilitySectionIds.map((id) => {
           const sectionKey = `accessibility.sections.${id}`

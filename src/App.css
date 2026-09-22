@@ -15315,6 +15315,9 @@ html:has(#app-section-more.is-active),
 .accessibility-phrase-button {
   min-width: 0;
   min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   padding: 10px 12px;
   border: 1px solid rgba(103, 232, 249, 0.28);
   border-radius: 14px;
@@ -15329,6 +15332,19 @@ html:has(#app-section-more.is-active),
 .accessibility-phrase-button[aria-pressed='true'] {
   border-color: rgba(165, 243, 252, 0.9);
   background: rgba(14, 116, 144, 0.52);
+}
+
+/* A11Y-7D: the symbol only ever supplements the visible text (which stays
+   the button's accessible name, since the symbol is aria-hidden) - it is
+   never the sole indicator of what the phrase is or whether it's selected. */
+.accessibility-phrase-symbol {
+  flex: none;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.accessibility-phrase-text {
+  min-width: 0;
 }
 
 .accessibility-custom-text textarea {

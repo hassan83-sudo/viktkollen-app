@@ -10,9 +10,34 @@ const phraseGroups = [
   { id: 'basic', phrases: ['yes', 'no', 'thanks'] },
   { id: 'needs', phrases: ['wait', 'pause', 'hungry', 'thirsty', 'toilet'] },
   { id: 'help', phrases: ['help', 'needHelp', 'callContact', 'cannotSpeakNow'] },
-  { id: 'wellbeing', phrases: ['pain'] },
+  { id: 'wellbeing', phrases: ['pain', 'tired', 'wantHome'] },
   { id: 'communication', phrases: ['dontUnderstand', 'writeInstead', 'repeat'] },
 ]
+
+// A11Y-7D: a symbol only ever supplements the visible phrase text below - it
+// is rendered aria-hidden, so it never becomes (or replaces) the button's
+// accessible name, and it is never the only indicator of what a phrase is.
+// Local Unicode/emoji only - no external icon API or network-loaded library.
+const phraseSymbols = {
+  yes: '✓',
+  no: '✕',
+  thanks: '🙏',
+  wait: '⏳',
+  pause: '⏸',
+  hungry: '🍽',
+  thirsty: '🥤',
+  toilet: '🚻',
+  help: '🆘',
+  needHelp: '🙋',
+  callContact: '☎',
+  cannotSpeakNow: '💬',
+  pain: '⚠',
+  tired: '😴',
+  wantHome: '🏠',
+  dontUnderstand: '❓',
+  writeInstead: '✍',
+  repeat: '↻',
+}
 
 function AccessibilityCommunication() {
   const { i18n, t } = useTranslation('settings')
@@ -167,7 +192,8 @@ function AccessibilityCommunication() {
                   type="button"
                   onClick={() => selectPhrase(phraseId)}
                 >
-                  {phrase}
+                  <span aria-hidden="true" className="accessibility-phrase-symbol">{phraseSymbols[phraseId]}</span>
+                  <span className="accessibility-phrase-text">{phrase}</span>
                 </button>
               )
             })}

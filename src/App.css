@@ -15388,6 +15388,79 @@ html:has(#app-section-more.is-active),
   background: rgba(13, 29, 47, 0.72);
 }
 
+/* A11Y-7F: local step-by-step routines. Run mode keeps a low information
+   density (one step, one heading, one set of controls) and the step-number
+   badge is decorative (aria-hidden) - the step text is the real content. */
+.accessibility-routine-list {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.accessibility-routine-card {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(103, 232, 249, 0.28);
+  border-radius: 14px;
+  background: rgba(13, 54, 76, 0.74);
+}
+
+.accessibility-routine-card strong {
+  display: block;
+  color: #fff;
+}
+
+.accessibility-routine-step-list {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.accessibility-routine-step-row {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(165, 243, 252, 0.2);
+  border-radius: 10px;
+}
+
+.accessibility-routine-run {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.accessibility-routine-current-step {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: break-word;
+}
+
+.accessibility-routine-step-number {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(14, 116, 144, 0.52);
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
 .accessibility-custom-text textarea {
   width: 100%;
   min-width: 0;
@@ -15488,6 +15561,12 @@ html:has(#app-section-more.is-active),
 
   .accessibility-preference-toggle {
     flex-basis: 100%;
+  }
+
+  .accessibility-routine-current-step {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
 }
 

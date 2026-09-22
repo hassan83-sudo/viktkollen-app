@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessibilityCommunication from './AccessibilityCommunication.jsx'
+import AccessibilityRoutines from './AccessibilityRoutines.jsx'
 import AccessibilitySetup from './AccessibilitySetup.jsx'
 import {
   defaultAccessibilityPreferences,
@@ -20,6 +21,7 @@ const accessibilitySectionIds = [
   'vision',
   'hearing',
   'speech',
+  'routines',
   'motor',
   'reading',
   'cognitive',
@@ -199,6 +201,28 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
           ← {t('accessibility.backToHub')}
         </button>
         <AccessibilitySetup onFinish={returnToAccessibilityHub} />
+      </article>
+    )
+  }
+
+  if (activeSection === 'routines') {
+    return (
+      <article
+        className={['accessibility-detail', scopeClassName].filter(Boolean).join(' ')}
+        onFocusCapture={handleNavigationFocus}
+        onKeyDownCapture={handleNavigationKeyDown}
+        onPointerDownCapture={() => {
+          lastNavigationInputRef.current = 'pointer'
+        }}
+      >
+        <button
+          className="more-hub-back"
+          type="button"
+          onClick={returnToAccessibilityHub}
+        >
+          ← {t('accessibility.backToHub')}
+        </button>
+        <AccessibilityRoutines />
       </article>
     )
   }

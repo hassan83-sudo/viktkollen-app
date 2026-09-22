@@ -73,6 +73,10 @@ function NoticeHub({ onRemindersChange, reminderState }) {
     return () => { cancelled = true }
   }, [state])
 
+  useEffect(() => () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel()
+  }, [])
+
   function focusForm() {
     window.requestAnimationFrame?.(() => {
       formRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })

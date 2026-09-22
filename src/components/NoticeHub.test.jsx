@@ -92,3 +92,85 @@ describe('NoticeHub', () => {
     })
   })
 })
+
+// A11Y-6B: verifies the speech-preview unmount cleanup gap found by A11Y-6A is
+// closed. Reuses the existing window.speechSynthesis.cancel() behavior - no new
+// TTS helper architecture is introduced.
+describe('NoticeHub speech preview cleanup (A11Y-6B)', () => {
+  let speechSynthesis
+
+  beforeEach(async () => {
+    window.localStorage.clear()
+    await i18n.changeLanguage('sv')
+    speechSynthesis = { cancel: vi.fn(), speak: vi.fn() }
+    Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: speechSynthesis })
+    globalThis.SpeechSynthesisUtterance = function SpeechSynthesisUtterance(text) {
+      this.text = text
+    }
+  })
+
+  afterEach(() => {
+    cleanup()
+    delete window.speechSynthesis
+    delete globalThis.SpeechSynthesisUtterance
+  })
+
+  function renderAndEnableSpeech() {
+    const result = render(<NoticeHub onRemindersChange={vi.fn()} reminderState={{ reminders: [] }} />)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Aktivera systemröst' }))
+    return result
+  }
+
+  it('plays a preview normally while mounted', () => {
+    renderAndEnableSpeech()
+    fireEvent.click(screen.getByRole('button', { name: 'Spela förhandsvisning' }))
+
+    expect(speechSynthesis.speak).toHaveBeenCalledTimes(1)
+    expect(speechSynthesis.speak.mock.calls[0][0]).toMatchObject({ text: 'Du har en påminnelse i Viktkollen.' })
+  })
+
+  it('cancels active preview speech on unmount', () => {
+    const { unmount } = renderAndEnableSpeech()
+    fireEvent.click(screen.getByRole('button', { name: 'Spela förhandsvisning' }))
+    speechSynthesis.cancel.mockClear()
+
+    unmount()
+
+    expect(speechSynthesis.cancel).toHaveBeenCalled()
+  })
+
+  it('is safe to unmount when nothing is speaking', () => {
+    const { unmount } = render(<NoticeHub onRemindersChange={vi.fn()} reminderState={{ reminders: [] }} />)
+
+    expect(() => unmount()).not.toThrow()
+    expect(speechSynthesis.cancel).toHaveBeenCalled()
+  })
+
+  it('is safe to unmount when speechSynthesis is unavailable', () => {
+    delete window.speechSynthesis
+    const { unmount } = render(<NoticeHub onRemindersChange={vi.fn()} reminderState={{ reminders: [] }} />)
+
+    expect(() => unmount()).not.toThrow()
+  })
+
+  it('survives repeated mount/unmount without throwing', () => {
+    for (let i = 0; i < 3; i += 1) {
+      const { unmount } = renderAndEnableSpeech()
+      fireEvent.click(screen.getByRole('button', { name: 'Spela förhandsvisning' }))
+      expect(() => unmount()).not.toThrow()
+    }
+  })
+
+  it('does not write to unmounted component state after cleanup', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { unmount } = renderAndEnableSpeech()
+    fireEvent.click(screen.getByRole('button', { name: 'Spela förhandsvisning' }))
+
+    unmount()
+
+    const reactActWarning = errorSpy.mock.calls.some((call) =>
+      String(call[0]).includes('act(') || String(call[0]).includes('unmounted component'))
+    expect(reactActWarning).toBe(false)
+    errorSpy.mockRestore()
+  })
+})

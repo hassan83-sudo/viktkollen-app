@@ -139,6 +139,8 @@ export const ADMIN_AUDIT_REASONS = Object.freeze([
 ])
 
 export const ADMIN_AUDIT_ACTION = Object.freeze({
+  COST_THRESHOLD_CHANGED: 'cost.threshold.changed',
+  COST_THRESHOLD_CREATED: 'cost.threshold.created',
   FEATURE_CONTROL_CHANGED: 'feature.control.changed',
   FEATURE_CONTROL_CREATED: 'feature.control.created',
   PERMISSION_GRANT: 'permission.grant',
@@ -153,22 +155,31 @@ export const ADMIN_AUDIT_TARGET_TYPE = 'admin_permission'
 
 export const ADMIN_AUDIT_TARGET_TYPES = Object.freeze([
   'admin_permission',
+  'cost_threshold',
   'feature_control',
   'provider_control',
 ])
 
 export const FEATURE_CONTROL_TARGET_TYPE = 'feature_control'
 export const PROVIDER_CONTROL_TARGET_TYPE = 'provider_control'
+export const COST_THRESHOLD_TARGET_TYPE = 'cost_threshold'
 
 export const ADMIN_AUDIT_SAFE_KEYS = Object.freeze([
+  'amount_minor',
+  'currency',
+  'enabled',
   'feature_id',
+  'limit_mode',
   'mode',
   'permission',
+  'period',
   'provider_id',
   'reason_code',
+  'scope',
   'status',
   'target_id',
   'target_type',
+  'threshold_id',
   'user_id',
   'version',
 ])

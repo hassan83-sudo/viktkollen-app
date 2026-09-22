@@ -6,7 +6,10 @@ import {
   ADMIN_AUDIT_TARGET_TYPE,
   ADMIN_AUDIT_TARGET_TYPES,
   BILLING_PERMISSION,
+  COST_THRESHOLD_TARGET_TYPE,
+  FEATURE_CONTROL_TARGET_TYPE,
   PERMISSION_STATUS,
+  PROVIDER_CONTROL_TARGET_TYPE,
 } from './catalog.js'
 import {
   UUID_RE,
@@ -71,9 +74,9 @@ export function createBillingAdminService({
       throw error
     }
     let storedTargetId
-    if (targetType === ADMIN_AUDIT_TARGET_TYPE) {
+    if (targetType === ADMIN_AUDIT_TARGET_TYPE || targetType === COST_THRESHOLD_TARGET_TYPE) {
       storedTargetId = requireUuid(targetId, 'invalid_target_id')
-    } else if (targetType === 'feature_control') {
+    } else if (targetType === FEATURE_CONTROL_TARGET_TYPE) {
       const featureId = resolveFeatureId(targetId)
       if (!featureId || featureId !== String(targetId || '').trim()) {
         const error = new Error('invalid_target_id')
@@ -81,7 +84,7 @@ export function createBillingAdminService({
         throw error
       }
       storedTargetId = featureId
-    } else {
+    } else if (targetType === PROVIDER_CONTROL_TARGET_TYPE) {
       const providerId = resolveProviderId(targetId)
       if (!providerId || providerId !== String(targetId || '').trim()) {
         const error = new Error('invalid_target_id')
@@ -89,6 +92,10 @@ export function createBillingAdminService({
         throw error
       }
       storedTargetId = providerId
+    } else {
+      const error = new Error('invalid_target_type')
+      error.code = 'invalid_target_type'
+      throw error
     }
     return audits.insert({
       action,

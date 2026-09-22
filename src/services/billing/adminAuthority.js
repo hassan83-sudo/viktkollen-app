@@ -60,8 +60,19 @@ export function sanitizeAdminSnapshot(input = {}) {
   for (const key of ADMIN_AUDIT_SAFE_KEYS) {
     if (!(key in input)) continue
     const value = input[key]
+    if (key === 'version' && Number.isInteger(value) && value >= 1) {
+      safe[key] = value
+      continue
+    }
+    if (key === 'amount_minor' && Number.isInteger(value) && value >= 0 && value <= Number.MAX_SAFE_INTEGER) {
+      safe[key] = value
+      continue
+    }
+    if (key === 'enabled' && typeof value === 'boolean') {
+      safe[key] = value
+      continue
+    }
     if (typeof value === 'string' && value.length <= 120) safe[key] = value
-    if (key === 'version' && Number.isInteger(value) && value >= 1) safe[key] = value
   }
   return Object.freeze(safe)
 }

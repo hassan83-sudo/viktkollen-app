@@ -16,6 +16,21 @@ export function createInMemoryUsageRepository() {
     async list() {
       return [...byEventId.values()]
     },
+    /**
+     * Bounded by [period_start, period_end). Optional event_types filter.
+     * Events are already sanitized — no prompt/audio/image/GPS fields.
+     */
+    async listInPeriod({ eventTypes = null, period_end, period_start } = {}) {
+      const start = new Date(period_start).getTime()
+      const end = new Date(period_end).getTime()
+      const allowed = eventTypes ? new Set(eventTypes) : null
+      return [...byEventId.values()].filter((event) => {
+        const t = new Date(event.occurred_at).getTime()
+        if (!(t >= start && t < end)) return false
+        if (allowed && !allowed.has(event.event_type)) return false
+        return true
+      })
+    },
     reset() {
       byEventId.clear()
     },

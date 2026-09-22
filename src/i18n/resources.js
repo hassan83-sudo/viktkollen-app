@@ -513,7 +513,7 @@ const sv = {
         label: 'Tal och kommunikation', privacy: 'Text och uppläsning stannar på den här enheten och sparas inte.',
         groups: { basic: 'Grundläggande', needs: 'Behov', help: 'Hjälp', wellbeing: 'Mående', communication: 'Kommunikation' },
         phrases: { yes: 'Ja', no: 'Nej', thanks: 'Tack', wait: 'Vänta', help: 'Hjälp mig', needHelp: 'Jag behöver hjälp', dontUnderstand: 'Jag förstår inte', writeInstead: 'Skriv istället', repeat: 'Kan du upprepa?', pause: 'Jag behöver en paus', pain: 'Jag har ont', hungry: 'Jag är hungrig', thirsty: 'Jag är törstig', toilet: 'Jag behöver gå på toaletten', callContact: 'Ring min kontakt', cannotSpeakNow: 'Jag kan inte prata just nu' },
-        customLabel: 'Säg detta åt mig', customPlaceholder: 'Skriv en kort mening', selectedLabel: 'Vald text', speak: 'Läs upp', stop: 'Stoppa', showLarge: 'Visa stort', clear: 'Rensa', closeLarge: 'Stäng stor text', largeLabel: 'Stor text', unsupported: 'Uppläsning stöds inte på den här enheten.', speaking: 'Uppläsningen startade', stopped: 'Uppläsningen stoppades',
+        customLabel: 'Säg detta åt mig', customPlaceholder: 'Skriv en kort mening', selectedLabel: 'Vald text', speak: 'Läs upp', stop: 'Stoppa', showLarge: 'Visa stort', clear: 'Rensa', restore: 'Ångra rensning', closeLarge: 'Stäng stor text', largeLabel: 'Stor text', unsupported: 'Uppläsning stöds inte på den här enheten.', speaking: 'Uppläsningen startade', stopped: 'Uppläsningen stoppades',
         writeToAi: 'Skriv till AI istället för att prata', writeToAiNote: 'Kommer senare. Ingen AI-anslutning används här.', favorites: 'Favoriter', favoritesNote: 'Kommer senare. Favoriter sparas inte i den här versionen.',
       },
       sections: {
@@ -2251,7 +2251,7 @@ const en = {
         label: 'Speech and communication', privacy: 'Text and read-aloud stay on this device and are not saved.',
         groups: { basic: 'Basic', needs: 'Needs', help: 'Help', wellbeing: 'Wellbeing', communication: 'Communication' },
         phrases: { yes: 'Yes', no: 'No', thanks: 'Thank you', wait: 'Wait', help: 'Help me', needHelp: 'I need help', dontUnderstand: 'I do not understand', writeInstead: 'Write instead', repeat: 'Can you repeat that?', pause: 'I need a break', pain: 'I am in pain', hungry: 'I am hungry', thirsty: 'I am thirsty', toilet: 'I need to use the toilet', callContact: 'Call my contact', cannotSpeakNow: 'I cannot speak right now' },
-        customLabel: 'Say this for me', customPlaceholder: 'Write a short sentence', selectedLabel: 'Selected text', speak: 'Read aloud', stop: 'Stop', showLarge: 'Show large', clear: 'Clear', closeLarge: 'Close large text', largeLabel: 'Large text', unsupported: 'Read-aloud is not supported on this device.', speaking: 'Read-aloud started', stopped: 'Read-aloud stopped',
+        customLabel: 'Say this for me', customPlaceholder: 'Write a short sentence', selectedLabel: 'Selected text', speak: 'Read aloud', stop: 'Stop', showLarge: 'Show large', clear: 'Clear', restore: 'Undo clear', closeLarge: 'Close large text', largeLabel: 'Large text', unsupported: 'Read-aloud is not supported on this device.', speaking: 'Read-aloud started', stopped: 'Read-aloud stopped',
         writeToAi: 'Write to AI instead of speaking', writeToAiNote: 'Coming later. No AI connection is used here.', favorites: 'Favorites', favoritesNote: 'Coming later. Favorites are not saved in this version.',
       },
       sections: {

@@ -1,9 +1,14 @@
 /* @vitest-environment jsdom */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import process from 'node:process'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import i18n from '../../i18n/index.js'
 import AccessibilityHub from './AccessibilityHub.jsx'
 import MoreHub from './MoreHub.jsx'
+
+const appCss = readFileSync(resolve(process.cwd(), 'src', 'App.css'), 'utf8')
 
 function renderCommunication() {
   return render(
@@ -112,7 +117,7 @@ describe('AccessibilityCommunication', () => {
     expect(speechSynthesis.cancel.mock.calls.length).toBeGreaterThan(cancelCallsBeforeLeaving)
   })
 
-  it('supports custom text, large text and clearing local state', () => {
+  it('supports custom text, large text and a local undo after clearing', () => {
     renderCommunication()
     openCommunication()
 
@@ -136,6 +141,10 @@ describe('AccessibilityCommunication', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Rensa' }))
     expect(screen.getByRole('textbox', { name: 'Säg detta åt mig' }).value).toBe('')
     expect(screen.queryByRole('button', { name: 'Läs upp' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Ångra rensning' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ångra rensning' }))
+    expect(screen.getByRole('textbox', { name: 'Säg detta åt mig' }).value).toBe('Jag vill ha vatten')
   })
 
   it('shows the exact fallback without crashing when browser speech is unsupported', () => {
@@ -172,7 +181,24 @@ describe('AccessibilityCommunication', () => {
     const largeButton = screen.getByRole('button', { name: 'Visa stort' })
     fireEvent.click(largeButton)
     expect(screen.getByLabelText('Stor text').textContent).toContain('Ring min kontakt')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Stäng stor text' }))
     fireEvent.click(screen.getByRole('button', { name: 'Stäng stor text' }))
     expect(document.activeElement).toBe(largeButton)
+  })
+
+  it('keeps communication controls keyboard-reachable with scoped target size and spacing', () => {
+    renderCommunication()
+    openCommunication()
+
+    const phrase = screen.getByRole('button', { name: 'Ja' })
+    const back = screen.getByRole('button', { name: /Till Tillgänglighet & hjälpmedel/ })
+    expect(phrase.tagName).toBe('BUTTON')
+    expect(back.tagName).toBe('BUTTON')
+    expect(phrase.getAttribute('tabindex')).toBeNull()
+    expect(back.getAttribute('tabindex')).toBeNull()
+    expect(appCss).toMatch(/\.accessibility-hub button,\s*\.accessibility-detail button/)
+    expect(appCss).toContain('min-height: 44px;')
+    expect(appCss).toMatch(/\.accessibility-phrase-button\s*\{\s*min-width: 0;\s*min-height: 52px;/)
+    expect(appCss).toMatch(/\.accessibility-communication-actions\s*\{\s*display: flex;\s*flex-wrap: wrap;\s*gap: 12px;/)
   })
 })

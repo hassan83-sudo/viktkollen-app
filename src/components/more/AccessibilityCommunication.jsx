@@ -17,10 +17,12 @@ const phraseGroups = [
 function AccessibilityCommunication() {
   const { i18n, t } = useTranslation('settings')
   const [customText, setCustomText] = useState('')
+  const [clearedText, setClearedText] = useState('')
   const [largeTextOpen, setLargeTextOpen] = useState(false)
   const [speechStatus, setSpeechStatus] = useState(null)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const largeTextTriggerRef = useRef(null)
+  const largeTextCloseRef = useRef(null)
 
   const selectedText = customText.trim()
 
@@ -50,6 +52,8 @@ function AccessibilityCommunication() {
       return undefined
     }
 
+    largeTextCloseRef.current?.focus()
+
     function closeLargeTextOnEscape(event) {
       if (event.key === 'Escape') setLargeTextOpen(false)
     }
@@ -62,6 +66,7 @@ function AccessibilityCommunication() {
     stopSpeaking()
     setLargeTextOpen(false)
     setSpeechStatus(null)
+    setClearedText('')
     setCustomText(t(`accessibility.communication.phrases.${phraseId}`))
   }
 
@@ -69,6 +74,7 @@ function AccessibilityCommunication() {
     stopSpeaking()
     setLargeTextOpen(false)
     setSpeechStatus(null)
+    setClearedText('')
     setCustomText(event.target.value)
   }
 
@@ -95,9 +101,15 @@ function AccessibilityCommunication() {
 
   function clearText() {
     stopSpeaking()
+    setClearedText(customText)
     setCustomText('')
     setLargeTextOpen(false)
     setSpeechStatus(null)
+  }
+
+  function restoreClearedText() {
+    setCustomText(clearedText)
+    setClearedText('')
   }
 
   return (
@@ -164,6 +176,11 @@ function AccessibilityCommunication() {
           </div>
         </section>
       )}
+      {clearedText && (
+        <button className="secondary-button accessibility-restore-button" type="button" onClick={restoreClearedText}>
+          {t('accessibility.communication.restore')}
+        </button>
+      )}
 
       <AccessibilityFeedback message={speechStatus?.message} tone={speechStatus?.tone} />
 
@@ -179,7 +196,7 @@ function AccessibilityCommunication() {
       {largeTextOpen && (
         <section className="accessibility-large-text" aria-label={t('accessibility.communication.largeLabel')}>
           <p>{selectedText}</p>
-          <button className="primary-button" type="button" onClick={() => setLargeTextOpen(false)}>
+          <button className="primary-button" ref={largeTextCloseRef} type="button" onClick={() => setLargeTextOpen(false)}>
             {t('accessibility.communication.closeLarge')}
           </button>
         </section>

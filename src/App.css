@@ -14848,6 +14848,11 @@ html:has(#app-section-more.is-active),
   min-width: 0;
 }
 
+.accessibility-hub button,
+.accessibility-detail button {
+  min-height: 44px;
+}
+
 .accessibility-intro,
 .accessibility-detail > p {
   margin: 0;
@@ -15199,10 +15204,15 @@ html:has(#app-section-more.is-active),
 .accessibility-communication-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 12px;
 }
 
 .accessibility-communication-actions button {
+  min-height: 44px;
+}
+
+.accessibility-restore-button {
+  justify-self: start;
   min-height: 44px;
 }
 
@@ -15245,6 +15255,10 @@ html:has(#app-section-more.is-active),
   border-radius: 16px;
   color: #fff;
   background: #071423;
+}
+
+.accessibility-large-text button {
+  justify-self: start;
 }
 
 .accessibility-large-text p {

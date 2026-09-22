@@ -4,6 +4,14 @@ import {
   cancelAccessibilitySpeech,
   speakAccessibilityText,
 } from '../../services/accessibilitySpeech.js'
+import {
+  addCommunicationPhrase,
+  maxCommunicationPhraseLength,
+  maxCommunicationPhrases,
+  readCommunicationPhrases,
+  removeCommunicationPhrase,
+  restoreCommunicationPhrase,
+} from '../../services/accessibilityCommunicationPhrases.js'
 import AccessibilityFeedback from './AccessibilityFeedback.jsx'
 
 const phraseGroups = [
@@ -47,6 +55,11 @@ function AccessibilityCommunication() {
   const [speechStatus, setSpeechStatus] = useState(null)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [speechSource, setSpeechSource] = useState(null)
+  const [savedPhrases, setSavedPhrases] = useState(() => readCommunicationPhrases())
+  const [newPhraseText, setNewPhraseText] = useState('')
+  const [phraseFormStatus, setPhraseFormStatus] = useState(null)
+  const [deletePhraseId, setDeletePhraseId] = useState('')
+  const [lastDeletedPhrase, setLastDeletedPhrase] = useState(null)
   const largeTextTriggerRef = useRef(null)
   const largeTextCloseRef = useRef(null)
   const speechRequestRef = useRef(0)
@@ -92,12 +105,55 @@ function AccessibilityCommunication() {
     return () => window.removeEventListener('keydown', closeLargeTextOnEscape)
   }, [largeTextOpen])
 
-  function selectPhrase(phraseId) {
+  function applySelectedText(text) {
     stopSpeaking()
     setLargeTextOpen(false)
     setSpeechStatus(null)
     setClearedText('')
-    setCustomText(t(`accessibility.communication.phrases.${phraseId}`))
+    setCustomText(text)
+  }
+
+  function selectPhrase(phraseId) {
+    applySelectedText(t(`accessibility.communication.phrases.${phraseId}`))
+  }
+
+  // A11Y-7E: a saved custom phrase feeds into the exact same flow as a
+  // built-in phrase - it just becomes selectedText, so Speak/Stop/Show
+  // large/Clear all work identically and nothing auto-speaks.
+  function selectSavedPhrase(phrase) {
+    applySelectedText(phrase.text)
+  }
+
+  function savePhrase(event) {
+    event.preventDefault()
+    const result = addCommunicationPhrase(newPhraseText)
+    if (result.error) {
+      setPhraseFormStatus({ message: t(`accessibility.communication.myPhrases.${result.error}`), tone: 'error' })
+      return
+    }
+    setSavedPhrases(result.phrases)
+    setNewPhraseText('')
+    setPhraseFormStatus({ message: t('accessibility.communication.myPhrases.saved'), tone: 'success' })
+  }
+
+  function requestDeletePhrase(id) {
+    setDeletePhraseId(id)
+  }
+
+  function cancelDeletePhrase() {
+    setDeletePhraseId('')
+  }
+
+  function confirmDeletePhrase(phrase) {
+    setSavedPhrases(removeCommunicationPhrase(phrase.id))
+    setDeletePhraseId('')
+    setLastDeletedPhrase(phrase)
+  }
+
+  function undoDeletePhrase() {
+    if (!lastDeletedPhrase) return
+    setSavedPhrases(restoreCommunicationPhrase(lastDeletedPhrase))
+    setLastDeletedPhrase(null)
   }
 
   function updateCustomText(event) {
@@ -201,6 +257,75 @@ function AccessibilityCommunication() {
         </section>
       ))}
 
+      <section className="accessibility-phrase-group accessibility-my-phrases" aria-labelledby="communication-my-phrases">
+        <h3 id="communication-my-phrases">{t('accessibility.communication.myPhrases.title')}</h3>
+        <p className="accessibility-communication-privacy">{t('accessibility.communication.myPhrases.privacy')}</p>
+
+        <form className="accessibility-my-phrase-form" onSubmit={savePhrase}>
+          <label>
+            <span>{t('accessibility.communication.myPhrases.inputLabel')}</span>
+            <input
+              maxLength={maxCommunicationPhraseLength}
+              type="text"
+              value={newPhraseText}
+              onChange={(event) => setNewPhraseText(event.target.value)}
+            />
+          </label>
+          <button className="primary-button" disabled={savedPhrases.length >= maxCommunicationPhrases} type="submit">
+            {t('accessibility.communication.myPhrases.save')}
+          </button>
+        </form>
+        <AccessibilityFeedback message={phraseFormStatus?.message} tone={phraseFormStatus?.tone} />
+
+        {savedPhrases.length === 0 ? (
+          <p>{t('accessibility.communication.myPhrases.emptyList')}</p>
+        ) : (
+          <div className="accessibility-phrase-grid accessibility-my-phrase-grid">
+            {savedPhrases.map((phrase) => (
+              <div className="accessibility-my-phrase-tile" key={phrase.id}>
+                <button
+                  aria-pressed={selectedText === phrase.text}
+                  className="accessibility-phrase-button"
+                  type="button"
+                  onClick={() => selectSavedPhrase(phrase)}
+                >
+                  <span aria-hidden="true" className="accessibility-phrase-symbol">★</span>
+                  <span className="accessibility-phrase-text">{phrase.text}</span>
+                </button>
+                {deletePhraseId === phrase.id ? (
+                  <div className="accessibility-my-phrase-delete-confirm" role="alert">
+                    <p>{t('accessibility.communication.myPhrases.deleteConfirm', { phrase: phrase.text })}</p>
+                    <div className="accessibility-communication-actions">
+                      <button className="secondary-button" type="button" onClick={() => confirmDeletePhrase(phrase)}>
+                        {t('accessibility.communication.myPhrases.deleteYes')}
+                      </button>
+                      <button className="secondary-button" type="button" onClick={cancelDeletePhrase}>
+                        {t('accessibility.communication.myPhrases.deleteNo')}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    aria-label={t('accessibility.communication.myPhrases.deleteAria', { phrase: phrase.text })}
+                    className="secondary-button accessibility-my-phrase-delete"
+                    type="button"
+                    onClick={() => requestDeletePhrase(phrase.id)}
+                  >
+                    {t('accessibility.communication.myPhrases.delete')}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {lastDeletedPhrase && (
+          <button className="secondary-button accessibility-restore-button" type="button" onClick={undoDeletePhrase}>
+            {t('accessibility.communication.myPhrases.undoDelete', { phrase: lastDeletedPhrase.text })}
+          </button>
+        )}
+      </section>
+
       <label className="accessibility-custom-text">
         <span>{t('accessibility.communication.customLabel')}</span>
         <textarea
@@ -251,10 +376,6 @@ function AccessibilityCommunication() {
       <article className="accessibility-planned-card">
         <h3>{t('accessibility.communication.writeToAi')}</h3>
         <p>{t('accessibility.communication.writeToAiNote')}</p>
-      </article>
-      <article className="accessibility-planned-card">
-        <h3>{t('accessibility.communication.favorites')}</h3>
-        <p>{t('accessibility.communication.favoritesNote')}</p>
       </article>
 
       {largeTextOpen && (

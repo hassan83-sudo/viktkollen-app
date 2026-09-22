@@ -194,12 +194,11 @@ describe('AccessibilityCommunication', () => {
     expect(screen.getByText('Ja', { selector: 'strong' })).toBeTruthy()
   })
 
-  it('keeps AI writing and favorites planned only', () => {
+  it('keeps AI writing planned only (favorites/saved phrases are implemented, see AccessibilityCommunication.myPhrases.test.jsx - A11Y-7E)', () => {
     renderCommunication()
     openCommunication()
 
     expect(screen.getByText('Kommer senare. Ingen AI-anslutning används här.')).toBeTruthy()
-    expect(screen.getByText('Kommer senare. Favoriter sparas inte i den här versionen.')).toBeTruthy()
   })
 
   it('keeps message text local, returns focus from large message mode, and never dials a contact phrase', () => {

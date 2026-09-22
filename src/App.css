@@ -15347,6 +15347,47 @@ html:has(#app-section-more.is-active),
   min-width: 0;
 }
 
+/* A11Y-7E: local custom AAC phrases. The delete control sits below (not
+   beside) the select tile, with its own gap, so an accidental tap near the
+   phrase tile cannot also land on delete. */
+.accessibility-my-phrase-form {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.accessibility-my-phrase-form input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid rgba(103, 232, 249, 0.28);
+  border-radius: 10px;
+  color: #fff;
+  font: inherit;
+  background: rgba(13, 54, 76, 0.74);
+}
+
+.accessibility-my-phrase-tile {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.accessibility-my-phrase-delete {
+  justify-self: start;
+  min-height: 44px;
+}
+
+.accessibility-my-phrase-delete-confirm {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(165, 243, 252, 0.2);
+  border-radius: 10px;
+  background: rgba(13, 29, 47, 0.72);
+}
+
 .accessibility-custom-text textarea {
   width: 100%;
   min-width: 0;

@@ -526,7 +526,15 @@ const sv = {
         groups: { basic: 'Grundläggande', needs: 'Behov', help: 'Hjälp', wellbeing: 'Mående', communication: 'Kommunikation' },
         phrases: { yes: 'Ja', no: 'Nej', thanks: 'Tack', wait: 'Vänta', help: 'Hjälp mig', needHelp: 'Jag behöver hjälp', dontUnderstand: 'Jag förstår inte', writeInstead: 'Skriv istället', repeat: 'Kan du upprepa?', pause: 'Jag behöver en paus', pain: 'Jag har ont', hungry: 'Jag är hungrig', thirsty: 'Jag är törstig', toilet: 'Jag behöver gå på toaletten', callContact: 'Ring min kontakt', cannotSpeakNow: 'Jag kan inte prata just nu', tired: 'Jag är trött', wantHome: 'Jag vill gå hem' },
         customLabel: 'Säg detta åt mig', customPlaceholder: 'Skriv en kort mening', selectedLabel: 'Vald text', speak: 'Läs upp', stop: 'Stoppa', showLarge: 'Visa stort', clear: 'Rensa', restore: 'Ångra rensning', closeLarge: 'Stäng stor text', largeLabel: 'Stor text', unsupported: 'Uppläsning stöds inte på den här enheten. Visa och läs texten i stället.', speaking: 'Läser upp', complete: 'Uppläsningen är klar. Texten finns kvar.', stopped: 'Uppläsningen stoppades. Texten finns kvar.', error: 'Kunde inte läsa upp. Du kan fortfarande visa och läsa texten.', guidanceTitle: 'Så använder du stödet', guidanceSteps: { select: 'Välj en fras eller skriv en kort mening.', showOrRead: 'Välj Visa stort eller Läs upp.', stop: 'Välj Stoppa om du vill avbryta uppläsningen.' }, readGuidance: 'Läs upp hjälp', guidanceReadText: 'Så använder du stödet. Välj en fras eller skriv en kort mening. Välj Visa stort eller Läs upp. Välj Stoppa om du vill avbryta uppläsningen.',
-        writeToAi: 'Skriv till AI istället för att prata', writeToAiNote: 'Kommer senare. Ingen AI-anslutning används här.', favorites: 'Favoriter', favoritesNote: 'Kommer senare. Favoriter sparas inte i den här versionen.',
+        writeToAi: 'Skriv till AI istället för att prata', writeToAiNote: 'Kommer senare. Ingen AI-anslutning används här.',
+        myPhrases: {
+          title: 'Mina fraser', privacy: 'Dina sparade fraser finns bara på den här enheten. De skickas aldrig till någon server.',
+          inputLabel: 'Skriv en egen fras', save: 'Spara fras', saved: 'Frasen sparades.',
+          delete: 'Ta bort', deleteAria: 'Ta bort frasen {{phrase}}', deleteConfirm: 'Vill du ta bort frasen "{{phrase}}"?', deleteYes: 'Ja, ta bort', deleteNo: 'Avbryt',
+          undoDelete: 'Ångra borttagning av "{{phrase}}"',
+          empty: 'Skriv en text innan du sparar.', tooLong: 'Frasen är för lång. Max 120 tecken.', duplicate: 'Den frasen finns redan sparad.', limitReached: 'Du har sparat max antal fraser (20). Ta bort en fras för att spara en ny.',
+          emptyList: 'Inga sparade fraser ännu.',
+        },
       },
       sections: {
         vision: { title: 'Syn', summary: 'Visning och kontrast', description: 'Här kan framtida anpassningar för visning, kontrast, text och tydlighet samlas. Du kan redan öppna AI Ögat i Smart kamera.' },
@@ -2276,7 +2284,15 @@ const en = {
         groups: { basic: 'Basic', needs: 'Needs', help: 'Help', wellbeing: 'Wellbeing', communication: 'Communication' },
         phrases: { yes: 'Yes', no: 'No', thanks: 'Thank you', wait: 'Wait', help: 'Help me', needHelp: 'I need help', dontUnderstand: 'I do not understand', writeInstead: 'Write instead', repeat: 'Can you repeat that?', pause: 'I need a break', pain: 'I am in pain', hungry: 'I am hungry', thirsty: 'I am thirsty', toilet: 'I need to use the toilet', callContact: 'Call my contact', cannotSpeakNow: 'I cannot speak right now', tired: 'I am tired', wantHome: 'I want to go home' },
         customLabel: 'Say this for me', customPlaceholder: 'Write a short sentence', selectedLabel: 'Selected text', speak: 'Read aloud', stop: 'Stop', showLarge: 'Show large', clear: 'Clear', restore: 'Undo clear', closeLarge: 'Close large text', largeLabel: 'Large text', unsupported: 'Read-aloud is not supported on this device. Show or read the text instead.', speaking: 'Reading', complete: 'Read-aloud is complete. The text remains.', stopped: 'Read-aloud stopped. The text remains.', error: 'Could not read aloud. You can still show and read the text.', guidanceTitle: 'How to use this support', guidanceSteps: { select: 'Choose a phrase or write a short sentence.', showOrRead: 'Choose Show large or Read aloud.', stop: 'Choose Stop to end read-aloud.' }, readGuidance: 'Read help aloud', guidanceReadText: 'How to use this support. Choose a phrase or write a short sentence. Choose Show large or Read aloud. Choose Stop to end read-aloud.',
-        writeToAi: 'Write to AI instead of speaking', writeToAiNote: 'Coming later. No AI connection is used here.', favorites: 'Favorites', favoritesNote: 'Coming later. Favorites are not saved in this version.',
+        writeToAi: 'Write to AI instead of speaking', writeToAiNote: 'Coming later. No AI connection is used here.',
+        myPhrases: {
+          title: 'My phrases', privacy: 'Your saved phrases stay only on this device. They are never sent to any server.',
+          inputLabel: 'Write your own phrase', save: 'Save phrase', saved: 'Phrase saved.',
+          delete: 'Delete', deleteAria: 'Delete the phrase {{phrase}}', deleteConfirm: 'Do you want to delete the phrase "{{phrase}}"?', deleteYes: 'Yes, delete', deleteNo: 'Cancel',
+          undoDelete: 'Undo deleting "{{phrase}}"',
+          empty: 'Write some text before saving.', tooLong: 'The phrase is too long. Maximum 120 characters.', duplicate: 'That phrase is already saved.', limitReached: 'You have saved the maximum number of phrases (20). Delete one to save a new one.',
+          emptyList: 'No saved phrases yet.',
+        },
       },
       sections: {
         vision: { title: 'Vision', summary: 'Display and contrast', description: 'Future adaptations for display, contrast, text and clarity can be collected here. You can already open AI Eye in Smart Camera.' },

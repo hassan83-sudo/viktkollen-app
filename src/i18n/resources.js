@@ -497,8 +497,8 @@ const sv = {
         speaking: 'Läser upp',
         stopped: 'Stoppad',
         complete: 'Klar',
-        error: 'Fel vid uppläsning.',
-        unsupported: 'Uppläsning stöds inte på den här enheten.',
+        error: 'Kunde inte läsa upp. Du kan fortsätta använda kontrollerna.',
+        unsupported: 'Uppläsning stöds inte på den här enheten. Du kan fortsätta använda kontrollerna.',
         genericControl: 'Kontroll',
         states: {
           checked: 'markerad', unchecked: 'inte markerad', expanded: 'expanderad', collapsed: 'komprimerad',
@@ -513,7 +513,7 @@ const sv = {
         label: 'Tal och kommunikation', privacy: 'Text och uppläsning stannar på den här enheten och sparas inte.',
         groups: { basic: 'Grundläggande', needs: 'Behov', help: 'Hjälp', wellbeing: 'Mående', communication: 'Kommunikation' },
         phrases: { yes: 'Ja', no: 'Nej', thanks: 'Tack', wait: 'Vänta', help: 'Hjälp mig', needHelp: 'Jag behöver hjälp', dontUnderstand: 'Jag förstår inte', writeInstead: 'Skriv istället', repeat: 'Kan du upprepa?', pause: 'Jag behöver en paus', pain: 'Jag har ont', hungry: 'Jag är hungrig', thirsty: 'Jag är törstig', toilet: 'Jag behöver gå på toaletten', callContact: 'Ring min kontakt', cannotSpeakNow: 'Jag kan inte prata just nu' },
-        customLabel: 'Säg detta åt mig', customPlaceholder: 'Skriv en kort mening', selectedLabel: 'Vald text', speak: 'Läs upp', stop: 'Stoppa', showLarge: 'Visa stort', clear: 'Rensa', restore: 'Ångra rensning', closeLarge: 'Stäng stor text', largeLabel: 'Stor text', unsupported: 'Uppläsning stöds inte på den här enheten.', speaking: 'Uppläsningen startade', stopped: 'Uppläsningen stoppades',
+        customLabel: 'Säg detta åt mig', customPlaceholder: 'Skriv en kort mening', selectedLabel: 'Vald text', speak: 'Läs upp', stop: 'Stoppa', showLarge: 'Visa stort', clear: 'Rensa', restore: 'Ångra rensning', closeLarge: 'Stäng stor text', largeLabel: 'Stor text', unsupported: 'Uppläsning stöds inte på den här enheten. Visa och läs texten i stället.', speaking: 'Läser upp', complete: 'Uppläsningen är klar. Texten finns kvar.', stopped: 'Uppläsningen stoppades. Texten finns kvar.', error: 'Kunde inte läsa upp. Du kan fortfarande visa och läsa texten.', guidanceTitle: 'Så använder du stödet', guidanceSteps: { select: 'Välj en fras eller skriv en kort mening.', showOrRead: 'Välj Visa stort eller Läs upp.', stop: 'Välj Stoppa om du vill avbryta uppläsningen.' }, readGuidance: 'Läs upp hjälp', guidanceReadText: 'Så använder du stödet. Välj en fras eller skriv en kort mening. Välj Visa stort eller Läs upp. Välj Stoppa om du vill avbryta uppläsningen.',
         writeToAi: 'Skriv till AI istället för att prata', writeToAiNote: 'Kommer senare. Ingen AI-anslutning används här.', favorites: 'Favoriter', favoritesNote: 'Kommer senare. Favoriter sparas inte i den här versionen.',
       },
       sections: {
@@ -2235,8 +2235,8 @@ const en = {
         speaking: 'Reading',
         stopped: 'Stopped',
         complete: 'Complete',
-        error: 'Read-aloud error.',
-        unsupported: 'Read-aloud is not supported on this device.',
+        error: 'Could not read aloud. You can continue using the controls.',
+        unsupported: 'Read-aloud is not supported on this device. You can continue using the controls.',
         genericControl: 'Control',
         states: {
           checked: 'checked', unchecked: 'not checked', expanded: 'expanded', collapsed: 'collapsed',
@@ -2251,7 +2251,7 @@ const en = {
         label: 'Speech and communication', privacy: 'Text and read-aloud stay on this device and are not saved.',
         groups: { basic: 'Basic', needs: 'Needs', help: 'Help', wellbeing: 'Wellbeing', communication: 'Communication' },
         phrases: { yes: 'Yes', no: 'No', thanks: 'Thank you', wait: 'Wait', help: 'Help me', needHelp: 'I need help', dontUnderstand: 'I do not understand', writeInstead: 'Write instead', repeat: 'Can you repeat that?', pause: 'I need a break', pain: 'I am in pain', hungry: 'I am hungry', thirsty: 'I am thirsty', toilet: 'I need to use the toilet', callContact: 'Call my contact', cannotSpeakNow: 'I cannot speak right now' },
-        customLabel: 'Say this for me', customPlaceholder: 'Write a short sentence', selectedLabel: 'Selected text', speak: 'Read aloud', stop: 'Stop', showLarge: 'Show large', clear: 'Clear', restore: 'Undo clear', closeLarge: 'Close large text', largeLabel: 'Large text', unsupported: 'Read-aloud is not supported on this device.', speaking: 'Read-aloud started', stopped: 'Read-aloud stopped',
+        customLabel: 'Say this for me', customPlaceholder: 'Write a short sentence', selectedLabel: 'Selected text', speak: 'Read aloud', stop: 'Stop', showLarge: 'Show large', clear: 'Clear', restore: 'Undo clear', closeLarge: 'Close large text', largeLabel: 'Large text', unsupported: 'Read-aloud is not supported on this device. Show or read the text instead.', speaking: 'Reading', complete: 'Read-aloud is complete. The text remains.', stopped: 'Read-aloud stopped. The text remains.', error: 'Could not read aloud. You can still show and read the text.', guidanceTitle: 'How to use this support', guidanceSteps: { select: 'Choose a phrase or write a short sentence.', showOrRead: 'Choose Show large or Read aloud.', stop: 'Choose Stop to end read-aloud.' }, readGuidance: 'Read help aloud', guidanceReadText: 'How to use this support. Choose a phrase or write a short sentence. Choose Show large or Read aloud. Choose Stop to end read-aloud.',
         writeToAi: 'Write to AI instead of speaking', writeToAiNote: 'Coming later. No AI connection is used here.', favorites: 'Favorites', favoritesNote: 'Coming later. Favorites are not saved in this version.',
       },
       sections: {

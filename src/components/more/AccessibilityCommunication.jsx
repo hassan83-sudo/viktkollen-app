@@ -21,6 +21,7 @@ function AccessibilityCommunication() {
   const [largeTextOpen, setLargeTextOpen] = useState(false)
   const [speechStatus, setSpeechStatus] = useState(null)
   const [isSpeaking, setIsSpeaking] = useState(false)
+  const [speechSource, setSpeechSource] = useState(null)
   const largeTextTriggerRef = useRef(null)
   const largeTextCloseRef = useRef(null)
 
@@ -35,6 +36,7 @@ function AccessibilityCommunication() {
   function stopSpeaking() {
     cancelAccessibilitySpeech()
     setIsSpeaking(false)
+    setSpeechSource(null)
   }
 
   function stopSpeakingWithStatus() {
@@ -78,17 +80,19 @@ function AccessibilityCommunication() {
     setCustomText(event.target.value)
   }
 
-  function speakSelectedText() {
+  function speakText(text, source) {
     const didSpeak = speakAccessibilityText({
       language: i18n.language,
-      text: selectedText,
+      text,
       onEnd: () => {
         setIsSpeaking(false)
-        setSpeechFeedback(t('accessibility.communication.stopped'), 'warning')
+        setSpeechSource(null)
+        setSpeechFeedback(t('accessibility.communication.complete'), 'success')
       },
       onError: () => {
         setIsSpeaking(false)
-        setSpeechFeedback(t('accessibility.communication.stopped'), 'error')
+        setSpeechSource(null)
+        setSpeechFeedback(t('accessibility.communication.error'), 'error')
       },
     })
     if (!didSpeak) {
@@ -96,7 +100,16 @@ function AccessibilityCommunication() {
       return
     }
     setIsSpeaking(true)
+    setSpeechSource(source)
     setSpeechFeedback(t('accessibility.communication.speaking'))
+  }
+
+  function speakSelectedText() {
+    speakText(selectedText, 'message')
+  }
+
+  function speakGuidance() {
+    speakText(t('accessibility.communication.guidanceReadText'), 'guidance')
   }
 
   function clearText() {
@@ -115,6 +128,24 @@ function AccessibilityCommunication() {
   return (
     <section className="accessibility-communication" aria-label={t('accessibility.communication.label')}>
       <p className="accessibility-communication-privacy">{t('accessibility.communication.privacy')}</p>
+      <details className="accessibility-communication-guidance">
+        <summary>{t('accessibility.communication.guidanceTitle')}</summary>
+        <ol>
+          {['select', 'showOrRead', 'stop'].map((step) => (
+            <li key={step}>{t(`accessibility.communication.guidanceSteps.${step}`)}</li>
+          ))}
+        </ol>
+        <div className="accessibility-communication-actions">
+          <button className="secondary-button" type="button" onClick={speakGuidance}>
+            {t('accessibility.communication.readGuidance')}
+          </button>
+          {isSpeaking && speechSource === 'guidance' && (
+            <button className="secondary-button" type="button" onClick={stopSpeakingWithStatus}>
+              {t('accessibility.communication.stop')}
+            </button>
+          )}
+        </div>
+      </details>
       {phraseGroups.map((group) => (
         <section className="accessibility-phrase-group" aria-labelledby={`communication-${group.id}`} key={group.id}>
           <h3 id={`communication-${group.id}`}>{t(`accessibility.communication.groups.${group.id}`)}</h3>
@@ -157,7 +188,7 @@ function AccessibilityCommunication() {
             <button className="primary-button" type="button" onClick={speakSelectedText}>
               {t('accessibility.communication.speak')}
             </button>
-            {isSpeaking && (
+            {isSpeaking && speechSource === 'message' && (
               <button className="secondary-button" type="button" onClick={stopSpeakingWithStatus}>
                 {t('accessibility.communication.stop')}
               </button>

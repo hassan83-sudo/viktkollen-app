@@ -15150,6 +15150,36 @@ html:has(#app-section-more.is-active),
   line-height: 1.5;
 }
 
+.accessibility-communication-guidance {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(165, 243, 252, 0.2);
+  border-radius: 14px;
+  background: rgba(13, 29, 47, 0.72);
+}
+
+.accessibility-communication-guidance summary {
+  min-height: 44px;
+  cursor: pointer;
+  color: #fff;
+  font-weight: 800;
+}
+
+.accessibility-communication-guidance summary:focus-visible {
+  outline: 3px solid #a5f3fc;
+  outline-offset: 3px;
+}
+
+.accessibility-communication-guidance ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 1.3rem;
+  color: rgba(228, 239, 255, 0.9);
+  line-height: 1.5;
+}
+
 .accessibility-phrase-group h3 {
   margin: 0;
   color: #fff;

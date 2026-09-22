@@ -1,5 +1,5 @@
 /* @vitest-environment jsdom */
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import process from 'node:process'
@@ -93,11 +93,15 @@ describe('AccessibilityCommunication', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ja' }))
     fireEvent.click(screen.getByRole('button', { name: 'Läs upp' }))
 
-    expect(screen.getByText('Uppläsningen startade').closest('[role="status"]')).toBeTruthy()
+    expect(screen.getByText('Läser upp').closest('[role="status"]')).toBeTruthy()
 
+    act(() => speechSynthesis.speak.mock.calls[0][0].onend())
+    expect(screen.getByText('Uppläsningen är klar. Texten finns kvar.').closest('[role="status"]')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Läs upp' }))
     fireEvent.click(screen.getByRole('button', { name: 'Stoppa' }))
 
-    expect(screen.getByText('Uppläsningen stoppades').closest('[role="status"]')).toBeTruthy()
+    expect(screen.getByText('Uppläsningen stoppades. Texten finns kvar.').closest('[role="status"]')).toBeTruthy()
   })
 
   it('stops active speech explicitly and when leaving the communication detail', () => {
@@ -156,7 +160,19 @@ describe('AccessibilityCommunication', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ja' }))
     fireEvent.click(screen.getByRole('button', { name: 'Läs upp' }))
 
-    expect(screen.getByText('Uppläsning stöds inte på den här enheten.').closest('[role="status"]')).toBeTruthy()
+    expect(screen.getByText('Uppläsning stöds inte på den här enheten. Visa och läs texten i stället.').closest('[role="status"]')).toBeTruthy()
+    expect(screen.getByText('Ja', { selector: 'strong' })).toBeTruthy()
+  })
+
+  it('keeps selected text visible when browser speech reports an error', () => {
+    renderCommunication()
+    openCommunication()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ja' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Läs upp' }))
+    act(() => speechSynthesis.speak.mock.calls[0][0].onerror())
+
+    expect(screen.getByText('Kunde inte läsa upp. Du kan fortfarande visa och läsa texten.').closest('[role="status"]')).toBeTruthy()
     expect(screen.getByText('Ja', { selector: 'strong' })).toBeTruthy()
   })
 
@@ -184,6 +200,28 @@ describe('AccessibilityCommunication', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Stäng stor text' }))
     fireEvent.click(screen.getByRole('button', { name: 'Stäng stor text' }))
     expect(document.activeElement).toBe(largeButton)
+  })
+
+  it('keeps stepwise help closed and silent until the user chooses to read it aloud', () => {
+    renderCommunication()
+    openCommunication()
+
+    const guidance = screen.getByText('Så använder du stödet').closest('details')
+    expect(guidance.open).toBe(false)
+    expect(speechSynthesis.speak).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByText('Så använder du stödet'))
+    expect(guidance.open).toBe(true)
+    expect(speechSynthesis.speak).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Läs upp hjälp' }))
+
+    expect(speechSynthesis.speak).toHaveBeenCalledTimes(1)
+    expect(speechSynthesis.speak.mock.calls[0][0].text).toContain('Välj en fras eller skriv en kort mening.')
+    expect(screen.getByText('Läser upp').closest('[role="status"]')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stoppa' }))
+    expect(screen.getByText('Uppläsningen stoppades. Texten finns kvar.').closest('[role="status"]')).toBeTruthy()
   })
 
   it('keeps communication controls keyboard-reachable with scoped target size and spacing', () => {

@@ -324,6 +324,6 @@ describe('AccessibilityHub', () => {
 
     delete window.speechSynthesis
     fireEvent.focus(screen.getByRole('button', { name: /^Hörsel/ }))
-    expect(screen.getByText('Uppläsning stöds inte på den här enheten.').closest('[role="status"]')).toBeTruthy()
+    expect(screen.getByText('Uppläsning stöds inte på den här enheten. Du kan fortsätta använda kontrollerna.').closest('[role="status"]')).toBeTruthy()
   })
 })

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import process from 'node:process'
 import { SUBSCRIPTION_OPEN, SUBSCRIPTION_TERMINAL } from './catalog.js'
 import { setSupabaseAuthVerifierForTests } from '../../../api/_shared/verifySupabaseUser.js'
-import handler from '../../../api/billing/subscription/index.js'
+import handler from '../../../api/billing/user/index.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../../..')
 const sql = readFileSync(join(root, 'supabase/migrations/20260921200000_billing_subscriptions.sql'), 'utf8')
@@ -16,15 +16,16 @@ const envExample = readFileSync(join(root, '.env.example'), 'utf8')
 const source = [
   readFileSync(join(root, 'src/services/billing/subscriptionService.js'), 'utf8'),
   readFileSync(join(root, 'src/services/billing/effectivePlan.js'), 'utf8'),
-  readFileSync(join(root, 'api/billing/subscription/index.js'), 'utf8'),
+  readFileSync(join(root, 'api/billing/user/index.js'), 'utf8'),
   sql,
 ].join('\n')
 
-function createRequest({ method = 'GET', query = {}, token = 'valid-token' } = {}) {
+function createRequest({ method = 'GET', query = {}, token = 'valid-token', url = '/api/billing/subscription' } = {}) {
   return {
     headers: token ? { authorization: `Bearer ${token}` } : {},
     method,
     query,
+    url,
   }
 }
 

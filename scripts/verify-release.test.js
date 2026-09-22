@@ -41,7 +41,7 @@ describe('verify-release script contract', () => {
     const source = readFileSync(new URL('./verify-release.js', import.meta.url), 'utf8')
 
     expect(source).toContain('src/services/entitlements.js')
-    expect(source).toContain('api/entitlements/index.js')
+    expect(source).toContain('api/billing/user/index.js')
     expect(source).toContain('api/account-deletion/index.js')
     expect(source).toContain('supabase/entitlements_and_account_deletion.sql')
     expect(source).toContain('docs/supabase-staging-runbook.md')

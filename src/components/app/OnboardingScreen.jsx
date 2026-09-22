@@ -1,5 +1,7 @@
+import { useRef } from 'react'
 import PwaExperience from '../PwaExperience.jsx'
 import { useTranslation } from 'react-i18next'
+import AccessibilitySetup from '../more/AccessibilitySetup.jsx'
 
 function OnboardingScreen({
   activityOptions,
@@ -11,7 +13,17 @@ function OnboardingScreen({
   profileError,
   profileForm,
 }) {
-  const { t } = useTranslation(['common', 'onboarding'])
+  const { t } = useTranslation(['common', 'onboarding', 'settings'])
+  // Uncontrolled <details> (closed by default, matching native behavior) with
+  // an imperative close: React's `open` prop is known to desync from the
+  // real DOM state once the native summary click has toggled it once, so
+  // Finish/Skip close it the same way the browser itself would.
+  const accessibilitySetupRef = useRef(null)
+
+  function closeAccessibilitySetup() {
+    if (accessibilitySetupRef.current) accessibilitySetupRef.current.open = false
+  }
+
   const dietaryOptions = [
     { label: t('onboarding:dietary.omnivore'), value: 'omnivore' },
     { label: t('onboarding:dietary.vegetarian'), value: 'vegetarian' },
@@ -29,6 +41,15 @@ function OnboardingScreen({
         <p className="onboarding-copy">
           {t('onboarding:copy')}
         </p>
+
+        <details className="onboarding-accessibility-setup" ref={accessibilitySetupRef}>
+          <summary>{t('settings:accessibility.setup.title')}</summary>
+          <AccessibilitySetup
+            showSkip
+            onFinish={closeAccessibilitySetup}
+            onSkip={closeAccessibilitySetup}
+          />
+        </details>
 
         <form className="onboarding-form" onSubmit={onSubmit}>
           <label className="field">

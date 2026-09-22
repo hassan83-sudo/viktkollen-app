@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessibilityCommunication from './AccessibilityCommunication.jsx'
+import AccessibilitySetup from './AccessibilitySetup.jsx'
 import {
   defaultAccessibilityPreferences,
   readAccessibilityPreferences,
@@ -177,6 +178,28 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
           <li key={itemId}>{t(`accessibility.sections.${sectionId}.items.${itemId}`)}</li>
         ))}
       </ul>
+    )
+  }
+
+  if (activeSection === 'setup') {
+    return (
+      <article
+        className={['accessibility-detail', scopeClassName].filter(Boolean).join(' ')}
+        onFocusCapture={handleNavigationFocus}
+        onKeyDownCapture={handleNavigationKeyDown}
+        onPointerDownCapture={() => {
+          lastNavigationInputRef.current = 'pointer'
+        }}
+      >
+        <button
+          className="more-hub-back"
+          type="button"
+          onClick={returnToAccessibilityHub}
+        >
+          ← {t('accessibility.backToHub')}
+        </button>
+        <AccessibilitySetup onFinish={returnToAccessibilityHub} />
+      </article>
     )
   }
 
@@ -392,6 +415,16 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
       }}
     >
       <p className="accessibility-intro">{t('accessibility.intro')}</p>
+      <button
+        className="primary-button accessibility-setup-trigger"
+        ref={(node) => {
+          sectionButtonRefs.current.setup = node
+        }}
+        type="button"
+        onClick={() => setActiveSection('setup')}
+      >
+        {t('accessibility.setup.title')}
+      </button>
       <fieldset className="accessibility-preference-group">
         <legend>{t('accessibility.navigationSpeech.legend')}</legend>
         <button

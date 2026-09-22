@@ -366,4 +366,30 @@ describe('AccessibilityHub', () => {
     fireEvent.focus(screen.getByRole('button', { name: /^Hörsel/ }))
     expect(screen.getByText('Uppläsning stöds inte på den här enheten. Du kan fortsätta använda kontrollerna.').closest('[role="status"]')).toBeTruthy()
   })
+
+  it('opens the shared accessibility setup from a prominent Anpassa Viktkollen action and returns focus on back (A11Y-7C)', () => {
+    renderAccessibilityHub()
+    const trigger = screen.getByRole('button', { name: 'Anpassa Viktkollen' })
+
+    fireEvent.click(trigger)
+
+    expect(screen.getByRole('button', { name: 'Tydligare kontrast' })).toBeTruthy()
+    // The real setup, not a placeholder - no "coming later" status here.
+    expect(screen.queryByText('Kommer senare')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stor text' }))
+    expect(window.localStorage.getItem('viktkollen.accessibility.preferences.v1')).toContain('"textSize":"large"')
+
+    fireEvent.click(screen.getByRole('button', { name: /Till Tillgänglighet & hjälpmedel/ }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Anpassa Viktkollen' }))
+  })
+
+  it('finishing the shared setup from the hub returns to the hub screen', () => {
+    renderAccessibilityHub()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anpassa Viktkollen' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Klart' }))
+
+    expect(screen.getByRole('heading', { name: 'Tillgänglighet & hjälpmedel' })).toBeTruthy()
+  })
 })

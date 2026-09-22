@@ -78,4 +78,18 @@ describe('OverviewDashboard interactions', () => {
     expect(screen.getByRole('navigation', { name: 'Saker att visa för kameran' })).toBeTruthy()
     expect(onNavigationIntentConsumed).toHaveBeenCalledTimes(1)
   })
+
+  it('opens the existing AI Örat camera flow from a one-shot Home intent', () => {
+    const onNavigationIntentConsumed = vi.fn()
+    renderOverview({
+      featureFlags: { smartCamera: true },
+      navigationIntent: { id: 2, mode: 'ai-ear' },
+      onNavigationIntentConsumed,
+    })
+
+    expect(screen.getByRole('dialog', { name: 'Smart kamera' })).toBeTruthy()
+    // The real AI Örat panel (not just the mode header) is showing: it renders its own heading.
+    expect(screen.getByRole('heading', { level: 3, name: 'AI Örat' })).toBeTruthy()
+    expect(onNavigationIntentConsumed).toHaveBeenCalledTimes(1)
+  })
 })

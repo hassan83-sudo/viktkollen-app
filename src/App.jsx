@@ -3328,6 +3328,10 @@ function App() {
   onEditProfile={() => setShowOnboarding(true)}
   onLanguageChange={handleLanguageChange}
   onOpenAiCoach={() => setAiCoachOverlayOpen(true)}
+  onOpenEar={isFeatureEnabled('smartCamera', featureFlags) ? () => {
+    setHomeIntent({ id: Date.now(), mode: 'ai-ear' })
+    setActiveAppSection('home')
+  } : undefined}
   onOpenEye={isFeatureEnabled('smartCamera', featureFlags) ? () => {
     setHomeIntent({ id: Date.now(), mode: 'forgotten' })
     setActiveAppSection('home')

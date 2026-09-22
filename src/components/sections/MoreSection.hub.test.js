@@ -46,6 +46,18 @@ describe('More information architecture', () => {
     expect(appCss).toContain('.accessibility-hub')
   })
 
+  it('wires the existing AI Örat opener from App through MoreSection into AccessibilityHub (A11Y-5H1)', () => {
+    // App.jsx supplies onOpenEar the same way it already supplies onOpenEye:
+    // a one-shot Home navigation intent that opens the existing Smart kamera
+    // AI Örat mode - reusing the real flow, not a second implementation.
+    expect(appSource).toContain("onOpenEar={isFeatureEnabled('smartCamera', featureFlags) ? () => {")
+    expect(appSource).toContain("mode: 'ai-ear' })")
+    expect(appSource.indexOf('<MoreSection')).toBeLessThan(appSource.indexOf("onOpenEar={isFeatureEnabled('smartCamera', featureFlags)"))
+    // MoreSection forwards both handlers into AccessibilityHub unchanged.
+    expect(moreSectionSource).toContain('onOpenEar,')
+    expect(moreSectionSource).toContain('<AccessibilityHub onOpenEar={onOpenEar} onOpenEye={onOpenEye} />')
+  })
+
   it('keeps backup cards compact and IDs in the detail view', () => {
     expect(cloudBackupSource).toContain('backup-history-item is-compact')
     expect(cloudBackupSource).toContain('ID: {backup.id}')

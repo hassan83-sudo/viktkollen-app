@@ -1017,9 +1017,11 @@ function OverviewDashboard({
 }) {
   const { t } = useTranslation(['common', 'home', 'social'])
   const flags = getFeatureFlags(featureFlags)
-  const initialSmartCameraMode = navigationIntent?.mode === 'forgotten'
-    && isFeatureEnabled('smartCamera', flags)
-    ? 'forgotten'
+  // 'forgotten' opens the AI Eye (Smart kamera) flow; 'ai-ear' opens AI Ear - both are
+  // existing Smart kamera modes, reached the same one-shot way from outside Home.
+  const initialSmartCameraMode = isFeatureEnabled('smartCamera', flags)
+    && ['forgotten', 'ai-ear'].includes(navigationIntent?.mode)
+    ? navigationIntent.mode
     : ''
   const [now, setNow] = useState(() => new Date())
   const [bodyScanOpen, setBodyScanOpen] = useState(false)
@@ -1041,7 +1043,7 @@ function OverviewDashboard({
   const socialLiveEnabled = isFeatureEnabled('socialLive', flags)
 
   useEffect(() => {
-    if (navigationIntent?.mode !== 'forgotten') return
+    if (!['forgotten', 'ai-ear'].includes(navigationIntent?.mode)) return
     onNavigationIntentConsumed?.()
   }, [navigationIntent, onNavigationIntentConsumed])
   const liveContext = useMemo(() => createOverviewLiveContext(now, weather), [now, weather])

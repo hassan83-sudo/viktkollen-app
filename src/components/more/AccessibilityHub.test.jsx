@@ -123,6 +123,21 @@ describe('AccessibilityHub', () => {
     expect(screen.getByRole('status').textContent).toBe('Kommer senare')
   })
 
+  it('does not crash the hub when onOpenEar/onOpenEye are not supplied (A11Y-5H1)', () => {
+    render(
+      <MoreHub activeFolder="accessibility" onBack={vi.fn()}>
+        <AccessibilityHub />
+      </MoreHub>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /^Hörsel/ }))
+    expect(() => fireEvent.click(screen.getByRole('button', { name: 'Öppna AI Örat' }))).not.toThrow()
+
+    fireEvent.click(screen.getByRole('button', { name: '← Till Tillgänglighet & hjälpmedel' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Syn/ }))
+    expect(() => fireEvent.click(screen.getByRole('button', { name: 'Öppna AI Ögat' }))).not.toThrow()
+  })
+
   it('offers local reading previews without changing the rest of the app', () => {
     renderAccessibilityHub()
 

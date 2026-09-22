@@ -11,7 +11,7 @@ const requiredRoutes = [
   'api/ai/index.js',
   'api/account-deletion/index.js',
   'api/body-analysis/index.js',
-  'api/entitlements/index.js',
+  'api/billing/user/index.js',
   'api/meal-analysis/index.js',
   'api/nutrition-photo-analysis/index.js',
 ]
@@ -201,8 +201,8 @@ export function validateStagingEnvironment({
       : makeCheck(`${id}-user-rate-limit`, 'FAIL', `${file} saknar user-scoped rate limit.`))
   })
 
-  if (files.exists('api/entitlements/index.js')) {
-    const route = files.read('api/entitlements/index.js')
+  if (files.exists('api/billing/user/index.js')) {
+    const route = files.read('api/billing/user/index.js')
     checks.push(route.includes('verifySupabaseUser')
       ? makeCheck('entitlement-auth-required', 'PASS', 'Entitlement route verifierar Supabase-session server-side.', false)
       : makeCheck('entitlement-auth-required', 'FAIL', 'Entitlement route saknar server-side authverifiering.'))

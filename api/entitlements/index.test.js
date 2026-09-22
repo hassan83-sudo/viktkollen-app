@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import handler from './index.js'
+import handler from '../billing/user/index.js'
 import { clearSupabaseAdminClientForTests, setSupabaseAdminClientForTests } from '../_shared/supabaseServer.js'
 import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
 
-function createRequest({ method = 'GET', token = 'valid-token' } = {}) {
+function createRequest({ method = 'GET', token = 'valid-token', url = '/api/entitlements' } = {}) {
   return {
     headers: token ? { authorization: `Bearer ${token}` } : {},
     method,
+    url,
   }
 }
 

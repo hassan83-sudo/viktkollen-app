@@ -26,5 +26,31 @@
     "api/ai-ear/interpret/index.js": {
       "maxDuration": 30
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/api/billing/quota",
+      "destination": "/api/billing/user?__vk_route=quota"
+    },
+    {
+      "source": "/api/billing/quota/",
+      "destination": "/api/billing/user?__vk_route=quota"
+    },
+    {
+      "source": "/api/billing/subscription",
+      "destination": "/api/billing/user?__vk_route=subscription"
+    },
+    {
+      "source": "/api/billing/subscription/",
+      "destination": "/api/billing/user?__vk_route=subscription"
+    },
+    {
+      "source": "/api/entitlements",
+      "destination": "/api/billing/user?__vk_route=entitlements"
+    },
+    {
+      "source": "/api/entitlements/",
+      "destination": "/api/billing/user?__vk_route=entitlements"
+    }
+  ]
 }

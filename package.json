@@ -17,12 +17,23 @@
     "verify:coach-route": "node scripts/verify-coach-route.js",
     "verify:photo-route": "node scripts/verify-photo-route.js",
     "verify:preview": "node scripts/verify-preview.js",
-    "verify:release": "node scripts/verify-release.js"
+    "verify:release": "node scripts/verify-release.js",
+    "billing:staging-preflight": "node scripts/billing-staging-preflight.js",
+    "billing:staging-2b": "node scripts/run-billing-staging-2b.mjs",
+    "billing:staging-3b": "node scripts/run-billing-staging-3b.mjs",
+    "billing:staging-4a": "node scripts/run-billing-staging-4a.mjs",
+    "billing:staging-4b": "node scripts/run-billing-staging-4b.mjs",
+    "billing:staging-4c": "node scripts/run-billing-staging-4c.mjs",
+    "billing:production-3c": "node scripts/run-billing-production-3c.mjs",
+    "billing:production-4a": "node scripts/run-billing-production-4a.mjs",
+    "billing:production-4b": "node scripts/run-billing-production-4b.mjs",
+    "billing:production-4c": "node scripts/run-billing-production-4c.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.8",
     "i18next": "^25.10.10",
     "i18next-browser-languagedetector": "^8.2.1",
+    "pg": "^8.23.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-i18next": "^16.6.6"

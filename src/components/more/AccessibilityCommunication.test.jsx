@@ -45,7 +45,7 @@ describe('AccessibilityCommunication', () => {
     ;['Grundläggande', 'Behov', 'Hjälp', 'Mående', 'Kommunikation'].forEach((group) => {
       expect(screen.getByRole('heading', { name: group })).toBeTruthy()
     })
-    ;['Ja', 'Nej', 'Tack', 'Hjälp mig', 'Jag förstår inte', 'Kan du upprepa?', 'Jag behöver en paus', 'Jag har ont', 'Jag är hungrig', 'Jag är törstig', 'Jag behöver gå på toaletten', 'Ring min kontakt'].forEach((phrase) => {
+    ;['Ja', 'Nej', 'Tack', 'Vänta', 'Hjälp mig', 'Jag behöver hjälp', 'Jag förstår inte', 'Skriv istället', 'Kan du upprepa?', 'Jag behöver en paus', 'Jag har ont', 'Jag är hungrig', 'Jag är törstig', 'Jag behöver gå på toaletten', 'Ring min kontakt', 'Jag kan inte prata just nu'].forEach((phrase) => {
       expect(screen.getByRole('button', { name: phrase })).toBeTruthy()
     })
 
@@ -56,6 +56,8 @@ describe('AccessibilityCommunication', () => {
     fireEvent.click(phrase)
 
     expect(screen.getByText('Hjälp mig', { selector: 'strong' })).toBeTruthy()
+    expect(screen.getByRole('textbox', { name: 'Säg detta åt mig' }).value).toBe('Hjälp mig')
+    expect(speechSynthesis.speak).not.toHaveBeenCalled()
     ;['Läs upp', 'Visa stort', 'Rensa'].forEach((label) => {
       expect(screen.getByRole('button', { name: label })).toBeTruthy()
     })
@@ -114,7 +116,7 @@ describe('AccessibilityCommunication', () => {
     renderCommunication()
     openCommunication()
 
-    fireEvent.change(screen.getByRole('textbox', { name: 'Skriv vad du vill säga' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Säg detta åt mig' }), {
       target: { value: 'Jag vill ha vatten' },
     })
 
@@ -132,7 +134,7 @@ describe('AccessibilityCommunication', () => {
     expect(screen.queryByLabelText('Stor text')).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Rensa' }))
-    expect(screen.getByRole('textbox', { name: 'Skriv vad du vill säga' }).value).toBe('')
+    expect(screen.getByRole('textbox', { name: 'Säg detta åt mig' }).value).toBe('')
     expect(screen.queryByRole('button', { name: 'Läs upp' })).toBeNull()
   })
 
@@ -155,5 +157,22 @@ describe('AccessibilityCommunication', () => {
 
     expect(screen.getByText('Kommer senare. Ingen AI-anslutning används här.')).toBeTruthy()
     expect(screen.getByText('Kommer senare. Favoriter sparas inte i den här versionen.')).toBeTruthy()
+  })
+
+  it('keeps message text local, returns focus from large message mode, and never dials a contact phrase', () => {
+    renderCommunication()
+    openCommunication()
+    const editor = screen.getByRole('textbox', { name: 'Säg detta åt mig' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ring min kontakt' }))
+    expect(editor.value).toBe('Ring min kontakt')
+    expect(speechSynthesis.speak).not.toHaveBeenCalled()
+    expect(window.localStorage.getItem('viktkollen.accessibility.preferences.v1')).toBeNull()
+
+    const largeButton = screen.getByRole('button', { name: 'Visa stort' })
+    fireEvent.click(largeButton)
+    expect(screen.getByLabelText('Stor text').textContent).toContain('Ring min kontakt')
+    fireEvent.click(screen.getByRole('button', { name: 'Stäng stor text' }))
+    expect(document.activeElement).toBe(largeButton)
   })
 })

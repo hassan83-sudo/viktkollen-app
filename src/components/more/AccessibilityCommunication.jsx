@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   cancelAccessibilitySpeech,
@@ -8,21 +8,21 @@ import AccessibilityFeedback from './AccessibilityFeedback.jsx'
 
 const phraseGroups = [
   { id: 'basic', phrases: ['yes', 'no', 'thanks'] },
-  { id: 'needs', phrases: ['hungry', 'thirsty', 'toilet', 'pause'] },
-  { id: 'help', phrases: ['help', 'callContact'] },
+  { id: 'needs', phrases: ['wait', 'pause', 'hungry', 'thirsty', 'toilet'] },
+  { id: 'help', phrases: ['help', 'needHelp', 'callContact', 'cannotSpeakNow'] },
   { id: 'wellbeing', phrases: ['pain'] },
-  { id: 'communication', phrases: ['dontUnderstand', 'repeat'] },
+  { id: 'communication', phrases: ['dontUnderstand', 'writeInstead', 'repeat'] },
 ]
 
 function AccessibilityCommunication() {
   const { i18n, t } = useTranslation('settings')
   const [customText, setCustomText] = useState('')
   const [largeTextOpen, setLargeTextOpen] = useState(false)
-  const [selectedPhrase, setSelectedPhrase] = useState('')
   const [speechStatus, setSpeechStatus] = useState(null)
   const [isSpeaking, setIsSpeaking] = useState(false)
+  const largeTextTriggerRef = useRef(null)
 
-  const selectedText = selectedPhrase || customText.trim()
+  const selectedText = customText.trim()
 
   function setSpeechFeedback(message, tone = 'info') {
     setSpeechStatus((current) => (
@@ -45,7 +45,10 @@ function AccessibilityCommunication() {
   }, [])
 
   useEffect(() => {
-    if (!largeTextOpen) return undefined
+    if (!largeTextOpen) {
+      largeTextTriggerRef.current?.focus()
+      return undefined
+    }
 
     function closeLargeTextOnEscape(event) {
       if (event.key === 'Escape') setLargeTextOpen(false)
@@ -59,14 +62,13 @@ function AccessibilityCommunication() {
     stopSpeaking()
     setLargeTextOpen(false)
     setSpeechStatus(null)
-    setSelectedPhrase(t(`accessibility.communication.phrases.${phraseId}`))
+    setCustomText(t(`accessibility.communication.phrases.${phraseId}`))
   }
 
   function updateCustomText(event) {
     stopSpeaking()
     setLargeTextOpen(false)
     setSpeechStatus(null)
-    setSelectedPhrase('')
     setCustomText(event.target.value)
   }
 
@@ -95,7 +97,6 @@ function AccessibilityCommunication() {
     stopSpeaking()
     setCustomText('')
     setLargeTextOpen(false)
-    setSelectedPhrase('')
     setSpeechStatus(null)
   }
 
@@ -110,7 +111,7 @@ function AccessibilityCommunication() {
               const phrase = t(`accessibility.communication.phrases.${phraseId}`)
               return (
                 <button
-                  aria-pressed={selectedPhrase === phrase}
+                  aria-pressed={selectedText === phrase}
                   className="accessibility-phrase-button"
                   key={phraseId}
                   type="button"
@@ -137,7 +138,7 @@ function AccessibilityCommunication() {
       </label>
 
       {selectedText && (
-        <section className="accessibility-selected-phrase" aria-live="polite">
+        <section className="accessibility-selected-phrase">
           <p className="eyebrow">{t('accessibility.communication.selectedLabel')}</p>
           <strong>{selectedText}</strong>
           <div className="accessibility-communication-actions">
@@ -149,7 +150,12 @@ function AccessibilityCommunication() {
                 {t('accessibility.communication.stop')}
               </button>
             )}
-            <button className="secondary-button" type="button" onClick={() => setLargeTextOpen(true)}>
+            <button
+              className="secondary-button"
+              ref={largeTextTriggerRef}
+              type="button"
+              onClick={() => setLargeTextOpen(true)}
+            >
               {t('accessibility.communication.showLarge')}
             </button>
             <button className="secondary-button" type="button" onClick={clearText}>

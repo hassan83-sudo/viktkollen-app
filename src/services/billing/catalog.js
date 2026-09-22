@@ -234,3 +234,29 @@ export const PROVIDER_CONTROL_REASONS = Object.freeze([
   'PROVIDER_OUTAGE',
   'SECURITY',
 ])
+
+/** BILL-4C1a reuses BILL-1 USAGE_BASIS. Do not invent a second classification. */
+export const COST_SAFETY_CLASSIFICATION = USAGE_BASIS
+
+export const COST_LIMIT_MODE = Object.freeze({
+  HARD_STOP: 'HARD_STOP',
+  SOFT_ALERT: 'SOFT_ALERT',
+})
+
+export const COST_THRESHOLD_PERIOD = Object.freeze({
+  DAILY: 'DAILY',
+  MONTHLY: 'MONTHLY',
+})
+
+export const COST_THRESHOLD_SCOPE = Object.freeze({
+  FEATURE: 'FEATURE',
+  GLOBAL: 'GLOBAL',
+})
+
+export const COST_SAFETY = Object.freeze({
+  COST_HARD_STOP: 'COST_HARD_STOP',
+  COST_SAFE: 'COST_SAFE',
+  COST_SOFT_ALERT: 'COST_SOFT_ALERT',
+  COST_UNAVAILABLE: 'COST_UNAVAILABLE',
+  INVALID_COST_INPUT: 'INVALID_COST_INPUT',
+})

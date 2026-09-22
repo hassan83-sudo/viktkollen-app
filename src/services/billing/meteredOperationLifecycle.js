@@ -276,7 +276,8 @@ async function recoverLedger({
 }
 
 /**
- * Isolated BILL-5B1/5B1a adapter. Not imported by live routes.
+ * Isolated BILL-5B1/5B1a adapter. BILL-5B2 food.scan live route uses
+ * executeDurableMeteredBillingOperation only.
  * Order: evaluate → reserve → dispatch marker (inside provider hook) →
  * provider → commit → usage | rollback.
  * Quota commit always precedes the extra usage write; usage-backed CAS

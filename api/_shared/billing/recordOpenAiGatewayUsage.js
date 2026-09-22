@@ -12,6 +12,7 @@ export async function recordOpenAiGatewayUsage({
   feature,
   model,
   providerData,
+  repository,
   requestId,
   type = 'coach',
   userId = '',
@@ -37,5 +38,5 @@ export async function recordOpenAiGatewayUsage({
     reference_id: requestId,
     unit: resolvedFeature === 'ai.voice.session' ? 'sessions' : 'requests',
     user_id: userId,
-  })
+  }, repository)
 }

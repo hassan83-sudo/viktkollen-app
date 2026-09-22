@@ -471,6 +471,7 @@ export async function callOpenAiJson({
   temperature = 0.2,
   timeoutMs = DEFAULT_TIMEOUT_MS,
   type = 'coach',
+  usageRepository,
   userId = '',
 } = {}) {
   if (!env.OPENAI_API_KEY) {
@@ -580,6 +581,7 @@ export async function callOpenAiJson({
         feature,
         model: model || config.model,
         providerData: data,
+        repository: usageRepository,
         requestId,
         type,
         userId,

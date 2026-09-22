@@ -7,6 +7,13 @@ import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { createImageFingerprint, runDedupedAiRequest } from '../_shared/aiRequestDeduper.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 import { analysisConsentPurposes, verifyAnalysisConsentToken } from '../_shared/analysisConsent.js'
+import { DISPATCH_CAS_RESULT } from '../../src/services/billing/durableOperationStore.js'
+import {
+  createFoodScanOperationId,
+  executeFoodScanMeteredOperation,
+  mapFoodScanBillingHttp,
+  resolveFoodScanBillingRuntime,
+} from '../_shared/billing/foodScanLiveBilling.js'
 import {
   calculateTotalsFromComponents,
   compareNutritionRanges,
@@ -310,7 +317,7 @@ function validateProviderPayload(payload = {}) {
   }
 }
 
-async function callOpenAi(image, mealType) {
+async function callOpenAi(image, mealType, { requestId, usageRepository, userId } = {}) {
   if (!process.env.OPENAI_API_KEY) {
     const error = new Error('missing_configuration')
     error.code = 'serverConfiguration'
@@ -330,8 +337,11 @@ async function callOpenAi(image, mealType) {
     }],
     maxOutputTokens: 3400,
     model: config.model || DEFAULT_MODEL,
+    requestId,
     timeoutMs: REQUEST_TIMEOUT_MS,
     type: 'photo',
+    usageRepository,
+    userId,
   })
 
   if (!result.ok) {
@@ -436,33 +446,154 @@ export default async function handler(request, response) {
       console.warn('[api/nutrition-photo-analysis] Analysis consent rejected', { reason: consent.reason, requestId })
       return safeError(response, 403, 'consentRequired', undefined, false, requestId)
     }
-    const { promise: providerPromise } = runDedupedAiRequest({
-      fingerprint: createImageFingerprint(image),
-      route: 'nutritionPhoto',
-      userId: auth.user.id,
-    }, () => callOpenAi(image, parsedRequest.parsed.fields.mealType))
-    console.info('[api/nutrition-photo-analysis] Provider request started', {
-      clientAttemptId,
-      modelName: getAiGatewayConfig('photo').model || DEFAULT_MODEL,
-      requestId,
-      upstreamRequestStarted: true,
-    })
-    const providerResult = await providerPromise
-    if (!providerResult.ok) {
-      return safeError(response, 502, 'invalidProviderResponse', 'AI-svaret kunde inte valideras.', true, requestId)
+    if (!process.env.OPENAI_API_KEY) {
+      return sendSafeAiError(response, {
+        code: aiRouteErrorCodes.PROVIDER_NOT_CONFIGURED,
+        requestId,
+        retryable: false,
+        status: 503,
+      })
     }
-    console.info('[api/nutrition-photo-analysis] Analysis completed', {
+
+    const runtime = await resolveFoodScanBillingRuntime()
+    if (!runtime?.ok) {
+      console.warn('[api/nutrition-photo-analysis] Billing unavailable', {
+        code: runtime?.code || 'DURABLE_STORE_UNAVAILABLE',
+        requestId,
+      })
+      return sendSafeAiError(response, {
+        code: aiRouteErrorCodes.PROVIDER_UNAVAILABLE,
+        requestId,
+        retryable: true,
+        status: 503,
+      })
+    }
+
+    const operationId = createFoodScanOperationId({
       clientAttemptId,
-      itemCount: providerResult.analysis.detectedItems.length,
-      requestCompleted: true,
-      requestId,
-      source: 'remote',
+      userId: auth.user.id,
     })
-    return response.status(200).json({
-      analysis: providerResult.analysis,
-      ok: true,
+    let photoResult = null
+    const { billing } = await executeFoodScanMeteredOperation({
+      clientClaim: {},
+      instanceKey: requestId,
+      log: (entry) => {
+        console.info('[api/nutrition-photo-analysis] Billing', {
+          decision: entry?.decision,
+          dispatch_state: entry?.dispatch_state,
+          event: entry?.event,
+          feature_id: 'food.scan',
+          operation_id: operationId,
+          requestId,
+        })
+      },
+      operationId,
+      runtime,
+      userId: auth.user.id,
+      executeProvider: async ({ markDispatched }) => {
+        const claim = await markDispatched()
+        if (claim?.result === DISPATCH_CAS_RESULT.ALREADY_DISPATCHED || (claim && claim.claimed === false && claim.result !== DISPATCH_CAS_RESULT.FIRST_DISPATCH)) {
+          return { ok: false, providerRequestStarted: false, code: 'alreadyDispatched' }
+        }
+        const { promise: providerPromise } = runDedupedAiRequest({
+          fingerprint: createImageFingerprint(image),
+          route: 'nutritionPhoto',
+          userId: auth.user.id,
+        }, () => callOpenAi(image, parsedRequest.parsed.fields.mealType, {
+          requestId: operationId,
+          usageRepository: runtime.usageRepository,
+          userId: auth.user.id,
+        }))
+        console.info('[api/nutrition-photo-analysis] Provider request started', {
+          clientAttemptId,
+          modelName: getAiGatewayConfig('photo').model || DEFAULT_MODEL,
+          operationId,
+          requestId,
+          upstreamRequestStarted: true,
+        })
+        try {
+          const providerResult = await providerPromise
+          photoResult = providerResult
+          if (!providerResult.ok) {
+            return { ok: false, code: 'invalidProviderResponse', providerRequestStarted: true }
+          }
+          return { ok: true }
+        } catch (error) {
+          photoResult = { ok: false, error }
+          console.warn('[api/nutrition-photo-analysis] Safe failure', {
+            aborted: error?.aborted === true,
+            clientAttemptId,
+            code: mapGatewayErrorCode(
+              error?.code === 'timeout' || error?.name === 'AbortError'
+                ? 'timeout'
+                : error?.code === 'requestAborted'
+                  ? 'requestAborted'
+                  : error?.code === 'rateLimit'
+                    ? 'rateLimited'
+                    : 'providerUnavailable',
+            ),
+            modelName: getAiGatewayConfig('photo').model || DEFAULT_MODEL,
+            networkError: error?.networkError === true,
+            fetchErrorCauseCode: safeText(error?.fetchErrorCauseCode, '', 80),
+            fetchErrorCauseMessage: safeText(error?.fetchErrorCauseMessage, '', 180),
+            fetchErrorCauseName: safeText(error?.fetchErrorCauseName, '', 80),
+            fetchErrorCode: safeText(error?.fetchErrorCode, '', 80),
+            fetchErrorMessage: safeText(error?.fetchErrorMessage, '', 180),
+            fetchErrorName: safeText(error?.fetchErrorName, '', 80),
+            parseError: error?.parseError === true,
+            parseErrorCode: safeText(error?.parseErrorCode, '', 80),
+            parseErrorName: safeText(error?.parseErrorName, '', 80),
+            containsCodeFence: error?.containsCodeFence === true,
+            endsWithBrace: error?.endsWithBrace === true,
+            outputChunkCount: Number.isFinite(Number(error?.outputChunkCount)) ? Number(error.outputChunkCount) : '',
+            outputTextLength: Number.isFinite(Number(error?.outputTextLength)) ? Number(error.outputTextLength) : '',
+            outputTextPresent: error?.outputTextPresent === true,
+            providerIncompleteReason: safeText(error?.providerIncompleteReason, '', 80),
+            providerResponseStatus: safeText(error?.providerResponseStatus, '', 80),
+            startsWithBrace: error?.startsWithBrace === true,
+            startsWithCodeFence: error?.startsWithCodeFence === true,
+            truncatedLikely: error?.truncatedLikely === true,
+            operationId,
+            requestCompleted: false,
+            requestId,
+            source: 'remote',
+            timeout: error?.timeout === true || error?.name === 'AbortError',
+            upstreamErrorCode: safeText(error?.upstreamErrorCode, '', 80),
+            upstreamRequestStarted: true,
+            upstreamStatus: Number.isFinite(Number(error?.upstreamStatus)) ? Number(error.upstreamStatus) : '',
+            upstreamStatusText: safeText(error?.upstreamStatusText, '', 80),
+          })
+          throw error
+        }
+      },
+    })
+
+    const mapped = mapFoodScanBillingHttp(billing, {
+      analysisOk: photoResult?.ok === true && Boolean(photoResult?.analysis),
+      providerAttempted: photoResult !== null,
+      timeout: photoResult?.error?.timeout === true || photoResult?.error?.name === 'AbortError',
+    })
+    if (mapped.kind === 'success') {
+      console.info('[api/nutrition-photo-analysis] Analysis completed', {
+        clientAttemptId,
+        itemCount: photoResult.analysis.detectedItems.length,
+        operationId,
+        requestCompleted: true,
+        requestId,
+        source: 'remote',
+      })
+      return response.status(200).json({
+        analysis: photoResult.analysis,
+        ok: true,
+        requestId,
+        source: 'remote',
+      })
+    }
+    return sendSafeAiError(response, {
+      code: mapped.code,
       requestId,
-      source: 'remote',
+      retryable: mapped.retryable,
+      status: mapped.status,
     })
   } catch (error) {
     const rawCode = error?.code === 'serverConfiguration'

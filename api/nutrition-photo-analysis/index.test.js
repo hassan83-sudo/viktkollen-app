@@ -5,10 +5,14 @@ import handler, { NUTRITION_PHOTO_ANALYSIS_TIMEOUT_MS, nutritionPhotoRouteIntern
 import { setAiRateLimitAdapterForTests } from '../_shared/aiRateLimiter.js'
 import { resetAiRequestDeduperForTests } from '../_shared/aiRequestDeduper.js'
 import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
+import {
+  installFoodScanBillingTestRuntime,
+  setFoodScanBillingRuntimeForTests,
+} from '../_shared/billing/foodScanLiveBilling.js'
 import { analysisConsentPurposes, computeCanonicalImageHash, issueAnalysisConsentToken } from '../_shared/analysisConsent.js'
 
 const TEST_SECRET = 'test-analysis-consent-secret-32-plus'
-const USER_ID = 'photo-user-a'
+const USER_ID = 'a1111111-1111-4111-8111-111111111111'
 const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4])
 
 function consentHeadersForPhoto(image = pngBytes) {
@@ -87,6 +91,7 @@ describe('nutrition photo analysis API route', () => {
         ? { user: { id: USER_ID } }
         : { error: { message: token === 'expired-token' ? 'JWT expired' : 'invalid' } }
     ))
+    installFoodScanBillingTestRuntime()
   })
 
   afterEach(() => {
@@ -96,6 +101,7 @@ describe('nutrition photo analysis API route', () => {
     setSupabaseAuthVerifierForTests(null)
     setAiRateLimitAdapterForTests()
     resetAiRequestDeduperForTests()
+    setFoodScanBillingRuntimeForTests(null)
   })
 
   it('accepts POST only', async () => {
@@ -115,7 +121,7 @@ describe('nutrition photo analysis API route', () => {
     expect(response.statusCode).toBe(401)
     expect(response.body.error.code).toBe('AUTH_REQUIRED')
     expect(fetchImpl).not.toHaveBeenCalled()
-    expect(JSON.stringify(response.body)).not.toMatch(/test-key|Bearer|photo-user-a|base64/)
+    expect(JSON.stringify(response.body)).not.toMatch(/test-key|Bearer|a1111111-1111-4111-8111-111111111111|base64/)
   })
 
   it('rejects invalid and expired auth without provider calls', async () => {

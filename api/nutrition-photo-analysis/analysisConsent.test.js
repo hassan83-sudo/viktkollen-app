@@ -5,10 +5,11 @@ import handler from './index.js'
 import { setAiRateLimitAdapterForTests } from '../_shared/aiRateLimiter.js'
 import { resetAiRequestDeduperForTests } from '../_shared/aiRequestDeduper.js'
 import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
+import { installFoodScanBillingTestRuntime, setFoodScanBillingRuntimeForTests } from '../_shared/billing/foodScanLiveBilling.js'
 import { analysisConsentPurposes, computeCanonicalImageHash, issueAnalysisConsentToken } from '../_shared/analysisConsent.js'
 
 const TEST_SECRET = 'a'.repeat(40)
-const USER_ID = 'photo-consent-user'
+const USER_ID = 'a1111111-1111-4111-8111-111111111111'
 
 const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4])
 const otherPngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 9, 9, 9, 9])
@@ -85,6 +86,7 @@ describe('nutrition photo analysis API - consent token gate', () => {
         ? { user: { id: USER_ID } }
         : { error: { message: 'invalid' } }
     ))
+    installFoodScanBillingTestRuntime()
   })
 
   afterEach(() => {
@@ -94,6 +96,7 @@ describe('nutrition photo analysis API - consent token gate', () => {
     setSupabaseAuthVerifierForTests(null)
     setAiRateLimitAdapterForTests()
     resetAiRequestDeduperForTests()
+    setFoodScanBillingRuntimeForTests(null)
   })
 
   it('blocks a request with no consent token before any AI/network call, even in the test environment', async () => {

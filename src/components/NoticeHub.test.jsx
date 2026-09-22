@@ -39,7 +39,7 @@ describe('NoticeHub', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Stäng av tillfälligt' }))
     fireEvent.click(screen.getByRole('button', { name: 'Markera klar' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Snooza 30 min' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Snooza' }))
     fireEvent.click(screen.getByRole('button', { name: 'Radera' }))
     expect(screen.getByRole('alert').textContent).toContain('Vill du radera påminnelsen?')
     fireEvent.click(screen.getByRole('button', { name: 'Ja, radera' }))

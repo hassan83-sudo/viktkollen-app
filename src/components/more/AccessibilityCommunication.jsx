@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  cancelAccessibilitySpeech,
+  speakAccessibilityText,
+} from '../../services/accessibilitySpeech.js'
 
 const phraseGroups = [
   { id: 'basic', phrases: ['yes', 'no', 'thanks'] },
@@ -9,19 +13,8 @@ const phraseGroups = [
   { id: 'communication', phrases: ['dontUnderstand', 'repeat'] },
 ]
 
-function getSpeechApi() {
-  if (typeof window === 'undefined') return null
-
-  const synthesis = window.speechSynthesis
-  const Utterance = window.SpeechSynthesisUtterance || globalThis.SpeechSynthesisUtterance
-
-  if (!synthesis?.speak || !Utterance) return null
-
-  return { synthesis, Utterance }
-}
-
 function AccessibilityCommunication() {
-  const { t } = useTranslation('settings')
+  const { i18n, t } = useTranslation('settings')
   const [customText, setCustomText] = useState('')
   const [largeTextOpen, setLargeTextOpen] = useState(false)
   const [selectedPhrase, setSelectedPhrase] = useState('')
@@ -31,7 +24,7 @@ function AccessibilityCommunication() {
   const selectedText = selectedPhrase || customText.trim()
 
   function stopSpeaking() {
-    getSpeechApi()?.synthesis.cancel?.()
+    cancelAccessibilitySpeech()
     setIsSpeaking(false)
   }
 
@@ -41,7 +34,7 @@ function AccessibilityCommunication() {
   }
 
   useEffect(() => () => {
-    getSpeechApi()?.synthesis.cancel?.()
+    cancelAccessibilitySpeech()
   }, [])
 
   useEffect(() => {
@@ -71,24 +64,22 @@ function AccessibilityCommunication() {
   }
 
   function speakSelectedText() {
-    const speechApi = getSpeechApi()
-    if (!speechApi) {
+    const didSpeak = speakAccessibilityText({
+      language: i18n.language,
+      text: selectedText,
+      onEnd: () => {
+        setIsSpeaking(false)
+        setSpeechStatus(t('accessibility.communication.stopped'))
+      },
+      onError: () => {
+        setIsSpeaking(false)
+        setSpeechStatus(t('accessibility.communication.stopped'))
+      },
+    })
+    if (!didSpeak) {
       setSpeechStatus(t('accessibility.communication.unsupported'))
       return
     }
-
-    stopSpeaking()
-    const utterance = new speechApi.Utterance(selectedText)
-    utterance.lang = 'sv-SE'
-    utterance.onend = () => {
-      setIsSpeaking(false)
-      setSpeechStatus(t('accessibility.communication.stopped'))
-    }
-    utterance.onerror = () => {
-      setIsSpeaking(false)
-      setSpeechStatus(t('accessibility.communication.stopped'))
-    }
-    speechApi.synthesis.speak(utterance)
     setIsSpeaking(true)
     setSpeechStatus(t('accessibility.communication.speaking'))
   }
@@ -129,6 +120,7 @@ function AccessibilityCommunication() {
       <label className="accessibility-custom-text">
         <span>{t('accessibility.communication.customLabel')}</span>
         <textarea
+          data-a11y-private="true"
           maxLength={280}
           onChange={updateCustomText}
           placeholder={t('accessibility.communication.customPlaceholder')}

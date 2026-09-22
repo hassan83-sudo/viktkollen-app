@@ -12,12 +12,14 @@ export const defaultAccessibilityPreferences = Object.freeze({
   reduceMotion: false,
   seniorMode: false,
   simpleReading: false,
+  navigationSpeech: false,
+  navigationSpeechRate: 'normal',
   textSize: 'normal',
   visualFeedback: false,
 })
 
 const booleanKeys = Object.freeze(
-  Object.keys(defaultAccessibilityPreferences).filter((key) => key !== 'textSize'),
+  Object.keys(defaultAccessibilityPreferences).filter((key) => !['textSize', 'navigationSpeechRate'].includes(key)),
 )
 
 function getStorage(storage = typeof window !== 'undefined' ? window.localStorage : null) {
@@ -34,6 +36,9 @@ export function normalizeAccessibilityPreferences(value) {
 
   if (['normal', 'large', 'extra-large'].includes(source.textSize)) {
     normalized.textSize = source.textSize
+  }
+  if (['slow', 'normal', 'fast'].includes(source.navigationSpeechRate)) {
+    normalized.navigationSpeechRate = source.navigationSpeechRate
   }
 
   return normalized

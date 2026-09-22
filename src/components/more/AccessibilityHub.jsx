@@ -7,6 +7,12 @@ import {
   resetAccessibilityPreferences,
   saveAccessibilityPreferences,
 } from '../../services/accessibilityPreferences.js'
+import {
+  cancelAccessibilitySpeech,
+  getNavigationSpeechLabel,
+  isNavigationSpeechTarget,
+  speakAccessibilityText,
+} from '../../services/accessibilitySpeech.js'
 
 const accessibilitySectionIds = [
   'vision',
@@ -27,14 +33,18 @@ const plannedItemIds = {
 const readingOptionIds = ['largerText', 'extraLargeText', 'clearerText', 'lineSpacing', 'simplifiedText']
 
 function AccessibilityHub({ onOpenEar, onOpenEye }) {
-  const { t } = useTranslation('settings')
+  const { i18n, t } = useTranslation('settings')
   const [activeSection, setActiveSection] = useState(null)
   const [cognitiveStep, setCognitiveStep] = useState(0)
   const [preferences, setPreferences] = useState(() => readAccessibilityPreferences().preferences)
   const [readingOption, setReadingOption] = useState('')
   const [settingsStatus, setSettingsStatus] = useState('')
+  const [navigationSpeechStatus, setNavigationSpeechStatus] = useState('')
   const sectionButtonRefs = useRef({})
   const returnFocusRef = useRef(null)
+  const lastNavigationInputRef = useRef('pointer')
+  const lastSpokenFocusRef = useRef({ element: null, time: 0 })
+  const navigationSpeechRequestRef = useRef(0)
 
   useEffect(() => {
     if (!activeSection && returnFocusRef.current) {
@@ -42,6 +52,10 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
       returnFocusRef.current = null
     }
   }, [activeSection])
+
+  useEffect(() => () => {
+    cancelAccessibilitySpeech()
+  }, [])
 
   const scopeClassName = [
     'accessibility-scope',
@@ -90,10 +104,63 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
   }
 
   function returnToAccessibilityHub() {
+    cancelAccessibilitySpeech()
+    navigationSpeechRequestRef.current += 1
     returnFocusRef.current = activeSection
     setActiveSection(null)
     setCognitiveStep(0)
     setReadingOption('')
+  }
+
+  function handleNavigationKeyDown(event) {
+    if (['Tab', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+      lastNavigationInputRef.current = 'keyboard'
+    }
+  }
+
+  function handleNavigationFocus(event) {
+    if (!preferences.navigationSpeech || lastNavigationInputRef.current !== 'keyboard') return
+    const target = event.target
+    if (!isNavigationSpeechTarget(target)) return
+
+    const now = Date.now()
+    if (lastSpokenFocusRef.current.element === target && now - lastSpokenFocusRef.current.time < 800) return
+
+    const label = getNavigationSpeechLabel(target, {
+      fallback: t('accessibility.navigationSpeech.genericControl'),
+      states: {
+        checked: t('accessibility.navigationSpeech.states.checked'),
+        collapsed: t('accessibility.navigationSpeech.states.collapsed'),
+        disabled: t('accessibility.navigationSpeech.states.disabled'),
+        expanded: t('accessibility.navigationSpeech.states.expanded'),
+        input: t('accessibility.navigationSpeech.states.input'),
+        notPressed: t('accessibility.navigationSpeech.states.notPressed'),
+        notSelected: t('accessibility.navigationSpeech.states.notSelected'),
+        password: t('accessibility.navigationSpeech.states.password'),
+        pressed: t('accessibility.navigationSpeech.states.pressed'),
+        selected: t('accessibility.navigationSpeech.states.selected'),
+        unchecked: t('accessibility.navigationSpeech.states.unchecked'),
+      },
+    })
+    if (!label) return
+
+    lastSpokenFocusRef.current = { element: target, time: now }
+    const requestId = navigationSpeechRequestRef.current + 1
+    navigationSpeechRequestRef.current = requestId
+    const didSpeak = speakAccessibilityText({
+      language: i18n.language,
+      rate: preferences.navigationSpeechRate,
+      text: label,
+      onEnd: () => {
+        if (navigationSpeechRequestRef.current === requestId) setNavigationSpeechStatus(t('accessibility.navigationSpeech.complete'))
+      },
+      onError: () => {
+        if (navigationSpeechRequestRef.current === requestId) setNavigationSpeechStatus(t('accessibility.navigationSpeech.stopped'))
+      },
+    })
+    setNavigationSpeechStatus(didSpeak
+      ? t('accessibility.navigationSpeech.speaking')
+      : t('accessibility.navigationSpeech.unsupported'))
   }
 
   function renderPlannedItems(sectionId) {
@@ -116,7 +183,14 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
     ].filter(Boolean).join(' ')
 
     return (
-      <article className={detailClassName}>
+      <article
+        className={detailClassName}
+        onFocusCapture={handleNavigationFocus}
+        onKeyDownCapture={handleNavigationKeyDown}
+        onPointerDownCapture={() => {
+          lastNavigationInputRef.current = 'pointer'
+        }}
+      >
         <button
           className="more-hub-back"
           type="button"
@@ -301,8 +375,42 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
   }
 
   return (
-    <section className={`accessibility-hub ${scopeClassName}`} aria-label={t('accessibility.title')}>
+    <section
+      className={`accessibility-hub ${scopeClassName}`}
+      aria-label={t('accessibility.title')}
+      onFocusCapture={handleNavigationFocus}
+      onKeyDownCapture={handleNavigationKeyDown}
+      onPointerDownCapture={() => {
+        lastNavigationInputRef.current = 'pointer'
+      }}
+    >
       <p className="accessibility-intro">{t('accessibility.intro')}</p>
+      <fieldset className="accessibility-preference-group">
+        <legend>{t('accessibility.navigationSpeech.legend')}</legend>
+        <button
+          aria-pressed={preferences.navigationSpeech}
+          className="accessibility-preference-toggle"
+          type="button"
+          onClick={() => updatePreferences({ navigationSpeech: !preferences.navigationSpeech })}
+        >
+          {t('accessibility.navigationSpeech.toggle')}
+        </button>
+        <div className="accessibility-option-grid" aria-label={t('accessibility.navigationSpeech.rateLegend')}>
+          {['slow', 'normal', 'fast'].map((rate) => (
+            <button
+              aria-pressed={preferences.navigationSpeechRate === rate}
+              className="accessibility-option-card"
+              key={rate}
+              type="button"
+              onClick={() => updatePreferences({ navigationSpeechRate: rate })}
+            >
+              {t(`accessibility.navigationSpeech.rates.${rate}`)}
+            </button>
+          ))}
+        </div>
+        <p className="accessibility-preference-note">{t('accessibility.navigationSpeech.note')}</p>
+      </fieldset>
+      {navigationSpeechStatus && <p className="accessibility-settings-status" role="status">{navigationSpeechStatus}</p>}
       <nav className="accessibility-section-list" aria-label={t('accessibility.sectionListLabel')}>
         {accessibilitySectionIds.map((id) => {
           const sectionKey = `accessibility.sections.${id}`

@@ -33,9 +33,20 @@ describe('AccessibilityHub', () => {
   beforeEach(async () => {
     window.localStorage.clear()
     await i18n.changeLanguage('sv')
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: { cancel: vi.fn(), speak: vi.fn() },
+    })
+    globalThis.SpeechSynthesisUtterance = function SpeechSynthesisUtterance(text) {
+      this.text = text
+    }
   })
 
-  afterEach(() => cleanup())
+  afterEach(() => {
+    cleanup()
+    delete window.speechSynthesis
+    delete globalThis.SpeechSynthesisUtterance
+  })
 
   it('opens the dedicated accessibility hub from More with all eight sections', () => {
     renderAccessibilityHub()
@@ -43,6 +54,9 @@ describe('AccessibilityHub', () => {
     expect(screen.getByRole('heading', { name: 'Tillgänglighet & hjälpmedel' })).toBeTruthy()
     sectionTitles.forEach((title) => {
       expect(screen.getByRole('button', { name: new RegExp(`^${title}`) })).toBeTruthy()
+    })
+    screen.getAllByRole('button').forEach((button) => {
+      expect(button.getAttribute('aria-label') || button.textContent.trim()).not.toBe('')
     })
   })
 
@@ -249,5 +263,45 @@ describe('AccessibilityHub', () => {
     expect(appCss).toContain('--accessibility-text-scale: 1.16;')
     expect(appCss).toContain('grid-template-columns: minmax(0, 1fr)')
     expect(appCss).toContain('flex-basis: 100%')
+  })
+
+  it('keeps navigation speech off until explicitly enabled and persists a bounded rate', () => {
+    renderAccessibilityHub()
+    const hub = screen.getByLabelText('Tillgänglighet & hjälpmedel')
+    const vision = screen.getByRole('button', { name: /^Syn/ })
+
+    fireEvent.keyDown(hub, { key: 'Tab' })
+    fireEvent.focus(vision)
+    expect(window.speechSynthesis.speak).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Navigationsuppläsning' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Snabb' }))
+    expect(window.localStorage.getItem('viktkollen.accessibility.preferences.v1')).toContain('"navigationSpeech":true')
+    expect(window.localStorage.getItem('viktkollen.accessibility.preferences.v1')).toContain('"navigationSpeechRate":"fast"')
+  })
+
+  it('speaks keyboard focus once, cancels stale navigation speech, and ignores pointer focus', () => {
+    renderAccessibilityHub()
+    const hub = screen.getByLabelText('Tillgänglighet & hjälpmedel')
+    const vision = screen.getByRole('button', { name: /^Syn/ })
+    const hearing = screen.getByRole('button', { name: /^Hörsel/ })
+    const speech = screen.getByRole('button', { name: /^Tal & kommunikation/ })
+    const navigationToggle = screen.getByRole('button', { name: 'Navigationsuppläsning' })
+
+    fireEvent.click(navigationToggle)
+    fireEvent.focus(vision)
+    expect(window.speechSynthesis.speak).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(hub, { key: 'Tab' })
+    fireEvent.focus(vision)
+    fireEvent.focus(vision)
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1)
+    expect(window.speechSynthesis.speak.mock.calls[0][0].text).toContain('Syn')
+
+    fireEvent.focus(hearing)
+    fireEvent.focus(speech)
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(3)
+    expect(window.speechSynthesis.speak.mock.calls[2][0].text).toContain('Tal & kommunikation')
+    expect(window.speechSynthesis.cancel).toHaveBeenCalledTimes(3)
   })
 })

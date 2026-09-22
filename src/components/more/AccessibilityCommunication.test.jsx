@@ -70,6 +70,7 @@ describe('AccessibilityCommunication', () => {
 
     expect(speechSynthesis.speak).toHaveBeenCalledTimes(1)
     expect(speechSynthesis.speak.mock.calls[0][0].text).toBe('Ja')
+    expect(speechSynthesis.speak.mock.calls[0][0].lang).toBe('sv-SE')
     expect(screen.getByRole('button', { name: 'Stoppa' })).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Nej' }))

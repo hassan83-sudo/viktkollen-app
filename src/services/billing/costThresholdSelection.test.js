@@ -150,7 +150,6 @@ describe('BILL-4C2b1 threshold selection', () => {
 
   it('returns NO_APPLICABLE_COST_THRESHOLD for LOCAL_FREE', () => {
     const result = selectApplicableCostThresholds({
-      costDriving: false,
       featureId: 'friend_chat',
       thresholds: matrix(),
     })

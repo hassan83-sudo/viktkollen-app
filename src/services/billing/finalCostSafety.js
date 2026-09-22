@@ -5,7 +5,7 @@ import {
 } from './catalog.js'
 import { costSummaryKey } from './costThresholdSelection.js'
 import { resolveCostSafety } from './costSafety.js'
-import { getFeatureDefinition, resolveFeatureId } from './features.js'
+import { resolveFeatureId } from './features.js'
 
 const FINAL_REASON = Object.freeze({
   ALL_SAFE: 'ALL_SAFE',
@@ -102,15 +102,17 @@ export function resolveFinalCostSafety({
 } = {}) {
   // Authoritative pairings win. Any client-claimed override is discarded,
   // never read below.
+  void clientClaim.amount_minor
   void clientClaim.classification
+  void clientClaim.costDriving
   void clientClaim.costSafe
   void clientClaim.currentCost
   void clientClaim.ignoreHardStop
   void clientClaim.threshold
   void clientClaim.underLimit
+  void costDriving
 
   const canonicalFeatureId = assertCanonicalFeature(featureId)
-  void getFeatureDefinition(canonicalFeatureId)
 
   if (!Array.isArray(selectedThresholds) || selectedThresholds.length === 0) {
     return Object.freeze({
@@ -136,7 +138,6 @@ export function resolveFinalCostSafety({
     if (!summary) fail('missing_cost_summary')
     const evaluation = resolveCostSafety({
       clientClaim,
-      costDriving,
       costSummary: summary,
       feature: canonicalFeatureId,
       threshold,

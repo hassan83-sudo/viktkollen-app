@@ -6,7 +6,7 @@ import {
   COST_THRESHOLD_SCOPE,
   FEATURE_CLASSIFICATION,
 } from './catalog.js'
-import { getFeatureDefinition, resolveFeatureId } from './features.js'
+import { getFeatureDefinition, isCostDrivingFeature, resolveFeatureId } from './features.js'
 
 const MAX_MINOR = Number.MAX_SAFE_INTEGER
 
@@ -30,7 +30,7 @@ function assertCanonicalFeature(value, code = 'unknown_feature') {
 
 export function assertCostThreshold(threshold = {}) {
   if (!threshold || typeof threshold !== 'object' || Array.isArray(threshold)) fail('invalid_cost_threshold')
-  const mode = String(threshold.mode || '').trim()
+  const mode = String(threshold.mode || threshold.limit_mode || '').trim()
   if (!Object.values(COST_LIMIT_MODE).includes(mode)) fail('invalid_limit_mode')
   const period = String(threshold.period || '').trim()
   if (!Object.values(COST_THRESHOLD_PERIOD).includes(period)) fail('invalid_cost_period')
@@ -122,19 +122,25 @@ export function resolveCostSafety({
   feature,
   threshold,
 } = {}) {
+  void clientClaim.amount_minor
+  void clientClaim.classification
+  void clientClaim.costDriving
   void clientClaim.costSafe
+  void clientClaim.currentCost
+  void clientClaim.ignoreHardStop
+  void clientClaim.threshold
   void clientClaim.underLimit
+  void costDriving
   const validatedThreshold = assertCostThreshold(threshold)
   const validatedCost = assertCostSummary(costSummary)
 
   const featureId = feature != null ? resolveFeatureId(feature) : null
   if (feature != null && !featureId) fail('unknown_feature')
   const definition = featureId ? getFeatureDefinition(featureId) : null
-  const localFree = definition?.classification === FEATURE_CLASSIFICATION.LOCAL_FREE
   const partial = definition?.classification === FEATURE_CLASSIFICATION.PARTIAL
-  const driving = costDriving === false ? false : (localFree ? false : costDriving !== false)
+  const driving = featureId ? isCostDrivingFeature(featureId) : true
 
-  if (localFree || driving === false) {
+  if (driving === false) {
     return decision({
       allow: true,
       cost: validatedCost,

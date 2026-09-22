@@ -120,6 +120,16 @@ export function getFeatureDefinition(value) {
   return id ? BILLING_FEATURES[id] : null
 }
 
+/**
+ * Server authority only. LOCAL_FREE is not cost-driving.
+ * EXTERNAL_COST and PARTIAL are. Caller costDriving is not consulted.
+ */
+export function isCostDrivingFeature(value) {
+  const definition = getFeatureDefinition(value)
+  if (!definition) return null
+  return definition.classification !== FEATURE_CLASSIFICATION.LOCAL_FREE
+}
+
 export function assertBillingUnit(unit) {
   return USAGE_UNITS.includes(String(unit || '').trim())
 }

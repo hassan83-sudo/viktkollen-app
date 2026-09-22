@@ -2,7 +2,6 @@ import {
   COST_SAFETY_CLASSIFICATION,
   COST_THRESHOLD_PERIOD,
   COST_THRESHOLD_SCOPE,
-  FEATURE_CLASSIFICATION,
   USAGE_EVENT_TYPES,
   USAGE_UNITS,
 } from './catalog.js'
@@ -61,7 +60,6 @@ function eventTypesForScope(scope, featureId) {
   if (scope === COST_THRESHOLD_SCOPE.GLOBAL) return USAGE_EVENT_TYPES.slice()
   const definition = getFeatureDefinition(featureId)
   if (!definition) fail('unknown_feature')
-  if (definition.classification === FEATURE_CLASSIFICATION.LOCAL_FREE) return []
   if (!definition.event_type) return null
   return [definition.event_type]
 }
@@ -130,6 +128,8 @@ export async function getCostSummary({
   repository = getUsageRepository(),
   scope,
 } = {}) {
+  void clientClaim.amount_minor
+  void clientClaim.classification
   void clientClaim.currentCost
   void clientClaim.totalCost
   void clientClaim.costMinor

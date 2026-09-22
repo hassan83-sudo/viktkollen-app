@@ -25,6 +25,11 @@ where occurred_at >= $1
 export function createPostgresUsagePeriodReader(query) {
   return {
     async listInPeriod({ eventTypes, period_end, period_start }) {
+      if (!period_start || !period_end || !Array.isArray(eventTypes)) {
+        const error = new Error('unbounded_usage_query')
+        error.code = 'unbounded_usage_query'
+        throw error
+      }
       return query(COST_AGGREGATION_SQL, [period_start, period_end, eventTypes])
     },
   }

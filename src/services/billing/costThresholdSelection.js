@@ -3,10 +3,9 @@ import {
   COST_THRESHOLD_PERIOD,
   COST_THRESHOLD_SCOPE,
   COST_THRESHOLD_SELECTION,
-  FEATURE_CLASSIFICATION,
 } from './catalog.js'
 import { getCostSummary } from './costAggregation.js'
-import { getFeatureDefinition, resolveFeatureId } from './features.js'
+import { isCostDrivingFeature, resolveFeatureId } from './features.js'
 
 const MAX_RELEVANT_THRESHOLDS = 8
 const MAX_UNIQUE_SUMMARIES = 4
@@ -78,16 +77,16 @@ export function selectApplicableCostThresholds({
   void clientClaim.thresholds
   void clientClaim.amount_minor
   void clientClaim.classification
+  void clientClaim.costDriving
   void clientClaim.currentCost
   void clientClaim.underLimit
   void clientClaim.now
+  void costDriving
 
   const canonical = assertCanonicalFeature(featureId)
-  const definition = getFeatureDefinition(canonical)
-  const localFree = definition?.classification === FEATURE_CLASSIFICATION.LOCAL_FREE
-  const driving = costDriving === false ? false : (localFree ? false : costDriving !== false)
+  const driving = isCostDrivingFeature(canonical)
 
-  if (localFree || driving === false) {
+  if (driving === false) {
     return Object.freeze({
       feature_id: canonical,
       reason: COST_THRESHOLD_SELECTION.NO_APPLICABLE_COST_THRESHOLD,

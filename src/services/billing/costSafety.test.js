@@ -246,15 +246,15 @@ describe('BILL-4C1a local free and partial', () => {
     expect(result.reason).toBe('not_cost_driving')
   })
 
-  it('does not hard-block an explicitly non-cost-driving operation', () => {
+  it('does not let client costDriving=false bypass an EXTERNAL_COST hard stop', () => {
     const result = resolveCostSafety({
       costDriving: false,
       costSummary: summary({ amount_minor: 5000 }),
       feature: 'food.scan',
       threshold: HARD,
     })
-    expect(result.result).toBe(COST_SAFETY.COST_SAFE)
-    expect(result.allow).toBe(true)
+    expect(result.result).toBe(COST_SAFETY.COST_HARD_STOP)
+    expect(result.allow).toBe(false)
   })
 
   it('uses UNAVAILABLE policy for PARTIAL + unavailable cost', () => {

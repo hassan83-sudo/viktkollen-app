@@ -39,6 +39,13 @@ describe('More information architecture', () => {
     expect(bottomNavSource).toContain('className="bottom-nav"')
   })
 
+  it('keeps accessibility as its own More route without replacing 65+', () => {
+    expect(moreSectionSource).toContain("activeFolder === 'accessibility'")
+    expect(moreSectionSource).toContain('<AccessibilityHub')
+    expect(moreSectionSource).not.toContain('SeniorEverydaySection')
+    expect(appCss).toContain('.accessibility-hub')
+  })
+
   it('keeps backup cards compact and IDs in the detail view', () => {
     expect(cloudBackupSource).toContain('backup-history-item is-compact')
     expect(cloudBackupSource).toContain('ID: {backup.id}')

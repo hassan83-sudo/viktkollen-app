@@ -5,6 +5,7 @@ import CloudBackupPanel from '../CloudBackupPanel.jsx'
 import CloudStatusPanel from '../CloudStatusPanel.jsx'
 import CloudSyncPanel from '../CloudSyncPanel.jsx'
 import MoreHub from '../more/MoreHub.jsx'
+import AccessibilityHub from '../more/AccessibilityHub.jsx'
 import AnimalWorldSection from '../../features/education/AnimalWorldSection.jsx'
 import PregnancyFirstYearSection from '../../features/education/PregnancyFirstYearSection.jsx'
 import SignLanguageSection from '../../features/education/SignLanguageSection.jsx'
@@ -257,6 +258,8 @@ function MoreSection({
             <PregnancyFirstYearSection />
           </AppErrorBoundary>
         )}
+
+        {activeFolder === 'accessibility' && <AccessibilityHub onOpenEye={onOpenEye} />}
 
         {activeFolder === 'sakerhet-backup' && (
           <AppErrorBoundary

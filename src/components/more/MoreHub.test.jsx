@@ -4,7 +4,7 @@ import MoreHub from './MoreHub.jsx'
 import { moreHubFolders } from '../../services/more/moreFolders.js'
 
 describe('MoreHub', () => {
-  it('renders a short hub with sync status and twelve folders', () => {
+  it('renders a short hub with sync status and configured folders', () => {
     const html = renderToStaticMarkup(
       <MoreHub
         isAuthenticated
@@ -75,6 +75,22 @@ describe('MoreHub', () => {
     expect(html).toContain('Teckenspråk')
     expect(html).toContain('Djurvärlden')
     expect(html).toContain('Graviditet &amp; första året')
+    expect(html).toContain('Ekonomi')
+    expect(html).toContain('Mat')
+  })
+
+  it('includes the accessibility hub without replacing existing More folders', () => {
+    const html = renderToStaticMarkup(
+      <MoreHub
+        isAuthenticated
+        syncStatus={{ online: true, statusCode: 'synced', statusLabel: 'Synkad' }}
+        onOpen={() => {}}
+      />,
+    )
+
+    expect(html).toContain('Tillgänglighet &amp; hjälpmedel')
+    expect(html).toContain('Anpassningar och stöd som kommer senare')
+    expect(html).toContain('Säkerhet &amp; Backup')
     expect(html).toContain('Ekonomi')
     expect(html).toContain('Mat')
   })

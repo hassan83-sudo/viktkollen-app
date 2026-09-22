@@ -308,6 +308,31 @@ describe('AccessibilityHub', () => {
     expect(window.speechSynthesis.cancel).toHaveBeenCalledTimes(3)
   })
 
+  it('arbitrates navigation and manual communication speech through one browser queue', () => {
+    renderAccessibilityHub()
+    const hub = screen.getByLabelText('Tillgänglighet & hjälpmedel')
+    const speechSection = screen.getByRole('button', { name: /^Tal & kommunikation/ })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Navigationsuppläsning' }))
+    fireEvent.keyDown(hub, { key: 'Tab' })
+    fireEvent.focus(speechSection)
+    const navigationUtterance = window.speechSynthesis.speak.mock.calls[0][0]
+
+    fireEvent.click(speechSection)
+    fireEvent.click(screen.getByRole('button', { name: 'Ja' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Läs upp' }))
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(2)
+    expect(window.speechSynthesis.speak.mock.calls[1][0].text).toBe('Ja')
+    act(() => navigationUtterance.onend())
+    expect(screen.getByText('Läser upp').closest('[role="status"]')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: /Till Tillgänglighet & hjälpmedel/ }))
+    fireEvent.keyDown(screen.getByLabelText('Tillgänglighet & hjälpmedel'), { key: 'Tab' })
+    fireEvent.focus(screen.getByRole('button', { name: /^Syn/ }))
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(4)
+    expect(window.speechSynthesis.cancel.mock.calls.length).toBeGreaterThanOrEqual(4)
+  })
+
   it('keeps navigation feedback visible with speech disabled and deduplicates repeated focus', () => {
     renderAccessibilityHub()
     const hub = screen.getByLabelText('Tillgänglighet & hjälpmedel')

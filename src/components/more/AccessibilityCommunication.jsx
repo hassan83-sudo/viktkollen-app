@@ -24,6 +24,7 @@ function AccessibilityCommunication() {
   const [speechSource, setSpeechSource] = useState(null)
   const largeTextTriggerRef = useRef(null)
   const largeTextCloseRef = useRef(null)
+  const speechRequestRef = useRef(0)
 
   const selectedText = customText.trim()
 
@@ -34,6 +35,7 @@ function AccessibilityCommunication() {
   }
 
   function stopSpeaking() {
+    speechRequestRef.current += 1
     cancelAccessibilitySpeech()
     setIsSpeaking(false)
     setSpeechSource(null)
@@ -45,6 +47,7 @@ function AccessibilityCommunication() {
   }
 
   useEffect(() => () => {
+    speechRequestRef.current += 1
     cancelAccessibilitySpeech()
   }, [])
 
@@ -81,15 +84,19 @@ function AccessibilityCommunication() {
   }
 
   function speakText(text, source) {
+    const requestId = speechRequestRef.current + 1
+    speechRequestRef.current = requestId
     const didSpeak = speakAccessibilityText({
       language: i18n.language,
       text,
       onEnd: () => {
+        if (speechRequestRef.current !== requestId) return
         setIsSpeaking(false)
         setSpeechSource(null)
         setSpeechFeedback(t('accessibility.communication.complete'), 'success')
       },
       onError: () => {
+        if (speechRequestRef.current !== requestId) return
         setIsSpeaking(false)
         setSpeechSource(null)
         setSpeechFeedback(t('accessibility.communication.error'), 'error')

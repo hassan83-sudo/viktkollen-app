@@ -104,6 +104,24 @@ describe('AccessibilityCommunication', () => {
     expect(screen.getByText('Uppläsningen stoppades. Texten finns kvar.').closest('[role="status"]')).toBeTruthy()
   })
 
+  it('ignores stale callbacks after a rapid new read or explicit stop', () => {
+    renderCommunication()
+    openCommunication()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ja' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Läs upp' }))
+    const firstUtterance = speechSynthesis.speak.mock.calls[0][0]
+
+    fireEvent.click(screen.getByRole('button', { name: 'Läs upp' }))
+    const secondUtterance = speechSynthesis.speak.mock.calls[1][0]
+    act(() => firstUtterance.onend())
+    expect(screen.getByText('Läser upp').closest('[role="status"]')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stoppa' }))
+    act(() => secondUtterance.onerror())
+    expect(screen.getByText('Uppläsningen stoppades. Texten finns kvar.').closest('[role="status"]')).toBeTruthy()
+  })
+
   it('stops active speech explicitly and when leaving the communication detail', () => {
     renderCommunication()
     openCommunication()

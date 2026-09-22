@@ -28,6 +28,19 @@ export const IMAGE_DEDUP_ROLE = Object.freeze({
   role: 'product_ux_inflight_coalesce',
 })
 
+/**
+ * BILL-5B2 must inject usage-backed dispatch, never a process Map.
+ * Store factory: createFoodScanDurableDispatchStore
+ * Lifecycle: executeDurableMeteredBillingOperation
+ */
+export const BILL_5B2_DISPATCH_INJECTION = Object.freeze({
+  authority: 'usage_events',
+  lifecycle: 'executeDurableMeteredBillingOperation',
+  map_authority_forbidden: true,
+  require_durable_dispatch: true,
+  store_factory: 'createFoodScanDurableDispatchStore',
+})
+
 export const PROVIDER_DISPATCH_STATE = Object.freeze({
   DISPATCHED_BILLING_UNKNOWN: 'DISPATCHED_BILLING_UNKNOWN',
   DISPATCHED_CONFIRMED_FAILURE_NOT_BILLABLE: 'DISPATCHED_CONFIRMED_FAILURE_NOT_BILLABLE',

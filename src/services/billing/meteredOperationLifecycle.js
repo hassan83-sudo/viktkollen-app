@@ -10,7 +10,7 @@ import {
   stripSensitiveBillingPayload,
 } from './foodScanCanary.js'
 import { QUOTA_PLAN_ACTION } from './quotaReservationPlan.js'
-import { createDurableOperationStore, FOOD_SCAN_RECOVERY_HTTP } from './durableOperationStore.js'
+import { createDurableOperationStore, FOOD_SCAN_RECOVERY_HTTP, isUsageBackedDispatchStore, DISPATCH_CAS_RESULT } from './durableOperationStore.js'
 
 export const LIFECYCLE_OUTCOME = Object.freeze({
   ABORTED: 'ABORTED',
@@ -24,6 +24,7 @@ export const LIFECYCLE_OUTCOME = Object.freeze({
   SUCCEEDED: 'SUCCEEDED',
   TIMED_OUT: 'TIMED_OUT',
   USAGE_EVENT_FAILED: 'USAGE_EVENT_FAILED',
+  PERSISTENCE_FAILURE: 'PERSISTENCE_FAILURE',
 })
 
 const inflight = new Map()
@@ -63,7 +64,32 @@ function identityFields(operationId) {
 }
 
 function remember(store, operationId, patch) {
+  if (!store || typeof store.put !== 'function') return null
   return store.put(operationId, patch)
+}
+
+function persistenceFailureResult({
+  calls,
+  ids,
+  order,
+  reservationId,
+  warnings,
+  code = 'DURABLE_DISPATCH_UNAVAILABLE',
+}) {
+  return safeResult({
+    ...ids,
+    allowed: false,
+    calls,
+    decision: ENFORCEMENT_DECISION.DENY_INTERNAL,
+    dispatch_state: PROVIDER_DISPATCH_STATE.NOT_DISPATCHED,
+    order,
+    outcome: LIFECYCLE_OUTCOME.PERSISTENCE_FAILURE,
+    provider_blocked: true,
+    reservation_id: reservationId,
+    recovery_http: FOOD_SCAN_RECOVERY_HTTP.PERSISTENCE_FAILURE,
+    safe_error: { code },
+    warnings,
+  })
 }
 
 function isCommittedStatus(status) {
@@ -253,7 +279,8 @@ async function recoverLedger({
  * Isolated BILL-5B1/5B1a adapter. Not imported by live routes.
  * Order: evaluate → reserve → dispatch marker (inside provider hook) →
  * provider → commit → usage | rollback.
- * Quota commit always precedes the usage event.
+ * Quota commit always precedes the extra usage write; usage-backed CAS
+ * may insert the same event_id earlier as dispatch authority.
  */
 export async function executeMeteredBillingOperation({
   clientClaim = {},
@@ -266,6 +293,7 @@ export async function executeMeteredBillingOperation({
   operationId,
   operationStore,
   recordUsage,
+  requireDurableDispatch = false,
   reserve,
   rollback,
   unit = FOOD_SCAN_CANARY.unit,
@@ -301,9 +329,10 @@ export async function executeMeteredBillingOperation({
     executeProvider,
     log,
     operationId: scopedId,
-    operationStore: operationStore || defaultOperationStore,
+    operationStore: operationStore || (requireDurableDispatch ? null : defaultOperationStore),
     quantity,
     recordUsage,
+    requireDurableDispatch,
     reserve,
     rollback,
     unit,
@@ -314,6 +343,16 @@ export async function executeMeteredBillingOperation({
   } finally {
     inflight.delete(`${instanceKey}:${scopedId}`)
   }
+}
+
+/**
+ * BILL-5B2 injection entry. Process-local Map cannot satisfy this contract.
+ */
+export async function executeDurableMeteredBillingOperation(input = {}) {
+  return executeMeteredBillingOperation({
+    ...input,
+    requireDurableDispatch: true,
+  })
 }
 
 async function runLifecycle({
@@ -327,12 +366,13 @@ async function runLifecycle({
   operationStore,
   quantity,
   recordUsage,
+  requireDurableDispatch = false,
   reserve,
   rollback,
   unit,
 }) {
   const store = operationStore
-  const prior = await store.get(operationId)
+  const prior = store && typeof store.get === 'function' ? await store.get(operationId) : null
   if (prior) {
     const recovered = await recoverLedger({
       commit,
@@ -457,7 +497,7 @@ async function runLifecycle({
     reservationId = reserveResult.reservation_id || ids.reservation_id
   }
 
-  const durableNow = await store.get(operationId)
+  const durableNow = store && typeof store.get === 'function' ? await store.get(operationId) : null
   if (durableNow?.dispatch_started) {
     const recovered = await recoverLedger({
       commit,
@@ -468,6 +508,78 @@ async function runLifecycle({
       userId,
     })
     if (recovered) return recovered
+  }
+
+  let dispatchStarted = false
+  let durableClaim = null
+
+  if (requireDurableDispatch) {
+    if (!isUsageBackedDispatchStore(store) || typeof store.claimDispatch !== 'function') {
+      if (reservationId && typeof rollback === 'function') {
+        calls.rollback += 1
+        order.push('rollback')
+        await rollback({ reservation_id: reservationId })
+      }
+      remember(store, operationId, {
+        dispatch_started: false,
+        dispatch_state: PROVIDER_DISPATCH_STATE.NOT_DISPATCHED,
+        outcome: LIFECYCLE_OUTCOME.PERSISTENCE_FAILURE,
+        rolled_back: true,
+      })
+      return persistenceFailureResult({
+        calls,
+        ids,
+        order,
+        reservationId,
+        warnings: decision.warnings,
+        code: 'DURABLE_DISPATCH_UNAVAILABLE',
+      })
+    }
+    durableClaim = await store.claimDispatch(operationId, {
+      feature_id: featureId,
+      userId,
+    })
+    if (durableClaim?.result === DISPATCH_CAS_RESULT.PERSISTENCE_FAILURE) {
+      if (reservationId && typeof rollback === 'function') {
+        calls.rollback += 1
+        order.push('rollback')
+        await rollback({ reservation_id: reservationId })
+      }
+      remember(store, operationId, {
+        dispatch_started: false,
+        dispatch_state: PROVIDER_DISPATCH_STATE.NOT_DISPATCHED,
+        outcome: LIFECYCLE_OUTCOME.PERSISTENCE_FAILURE,
+        rolled_back: true,
+      })
+      return persistenceFailureResult({
+        calls,
+        ids,
+        order,
+        reservationId,
+        warnings: decision.warnings,
+        code: 'DISPATCH_CAS_PERSISTENCE_FAILURE',
+      })
+    }
+    if (durableClaim?.result === DISPATCH_CAS_RESULT.ALREADY_DISPATCHED) {
+      const recovered = await recoverLedger({
+        commit,
+        operationId,
+        recordUsage,
+        row: durableClaim.record || (await store.get(operationId)) || { dispatch_started: true },
+        store,
+        userId,
+      })
+      if (recovered) return recovered
+      return persistenceFailureResult({
+        calls,
+        ids,
+        order,
+        reservationId,
+        warnings: decision.warnings,
+        code: 'DISPATCH_CAS_RECOVERY_INCOMPLETE',
+      })
+    }
+    dispatchStarted = durableClaim?.result === DISPATCH_CAS_RESULT.FIRST_DISPATCH
   }
 
   if (typeof executeProvider !== 'function') {
@@ -496,8 +608,11 @@ async function runLifecycle({
     })
   }
 
-  let dispatchStarted = false
   const markDispatched = async () => {
+    if (durableClaim?.result === DISPATCH_CAS_RESULT.FIRST_DISPATCH) {
+      dispatchStarted = true
+      return durableClaim
+    }
     dispatchStarted = true
     return store.claimDispatch(operationId, {
       feature_id: featureId,

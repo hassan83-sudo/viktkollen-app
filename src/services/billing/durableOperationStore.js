@@ -1,21 +1,36 @@
 import { PROVIDER_DISPATCH_STATE } from './foodScanCanary.js'
 import { foodScanUsageEventPlan } from './foodScanCanary.js'
 
+export const USAGE_BACKED_DISPATCH_AUTHORITY = 'usage_events'
+
+export const DISPATCH_CAS_RESULT = Object.freeze({
+  ALREADY_DISPATCHED: 'ALREADY_DISPATCHED',
+  FIRST_DISPATCH: 'FIRST_DISPATCH',
+  PERSISTENCE_FAILURE: 'PERSISTENCE_FAILURE',
+})
+
+export function isUsageBackedDispatchStore(store) {
+  return store?.authority === USAGE_BACKED_DISPATCH_AUTHORITY && store.durable === true
+}
+
 /**
- * Shareable durable operation records. Production authority is BILL-1
- * usage_events (event_id PK CAS) plus BILL-2 quota_reservations — not a
- * Node Map. This in-memory store is a single-process stand-in that tests
- * share across isolated lifecycle instances.
+ * Test/dev only. Process-local Map. Never production authority.
  */
 export function createDurableOperationStore() {
   const byId = new Map()
 
   return {
+    authority: 'process_local_map',
+    durable: false,
     async claimDispatch(operationId, extra = {}) {
       const id = String(operationId || '').trim()
       const existing = byId.get(id)
       if (existing?.dispatch_started === true) {
-        return { claimed: false, record: existing }
+        return {
+          claimed: false,
+          record: existing,
+          result: DISPATCH_CAS_RESULT.ALREADY_DISPATCHED,
+        }
       }
       const record = {
         ...existing,
@@ -26,7 +41,7 @@ export function createDurableOperationStore() {
         user_id: extra.userId || existing?.user_id || null,
       }
       byId.set(id, record)
-      return { claimed: true, record }
+      return { claimed: true, record, result: DISPATCH_CAS_RESULT.FIRST_DISPATCH }
     },
     async get(operationId) {
       return byId.get(String(operationId || '').trim()) || null
@@ -43,26 +58,60 @@ export function createDurableOperationStore() {
   }
 }
 
+function requireUsageBackedDeps({ recordUsage, usageRepository } = {}) {
+  if (typeof recordUsage !== 'function' || typeof usageRepository?.getByEventId !== 'function') {
+    const error = new Error('usage_backed_store_unavailable')
+    error.code = 'usage_backed_store_unavailable'
+    throw error
+  }
+}
+
 /**
- * Production-shaped dispatch CAS: unique BILL-1 event_id insert.
+ * Production-capable dispatch CAS: unique BILL-1 usage_events.event_id insert.
+ * Two isolates sharing the same repository/Postgres PK yield one FIRST_DISPATCH.
  * cost_basis/usage_basis stay UNAVAILABLE — never MEASURED.
  */
 export function createUsageBackedDispatchStore({ recordUsage, usageRepository } = {}) {
-  return {
+  requireUsageBackedDeps({ recordUsage, usageRepository })
+
+  const store = {
+    authority: USAGE_BACKED_DISPATCH_AUTHORITY,
+    durable: true,
     async claimDispatch(operationId, extra = {}) {
-      const plan = foodScanUsageEventPlan({
-        operationId,
-        userId: extra.userId,
-      })
-      const result = await recordUsage(plan)
-      const record = await this.get(operationId)
-      if (result?.duplicate === true) {
-        return { claimed: false, record }
+      try {
+        const plan = foodScanUsageEventPlan({
+          operationId,
+          userId: extra.userId,
+        })
+        const result = await recordUsage(plan)
+        const record = await store.get(operationId)
+        if (result?.duplicate === true) {
+          return {
+            claimed: false,
+            record,
+            result: DISPATCH_CAS_RESULT.ALREADY_DISPATCHED,
+          }
+        }
+        if (result?.ok === true) {
+          return {
+            claimed: true,
+            record,
+            result: DISPATCH_CAS_RESULT.FIRST_DISPATCH,
+          }
+        }
+        return {
+          claimed: false,
+          record: record || null,
+          result: DISPATCH_CAS_RESULT.PERSISTENCE_FAILURE,
+          error: result,
+        }
+      } catch {
+        return {
+          claimed: false,
+          record: null,
+          result: DISPATCH_CAS_RESULT.PERSISTENCE_FAILURE,
+        }
       }
-      if (result?.ok === true) {
-        return { claimed: true, record }
-      }
-      return { claimed: false, record: record || null, error: result }
     },
     async get(operationId) {
       const event = await usageRepository.getByEventId(operationId)
@@ -78,11 +127,20 @@ export function createUsageBackedDispatchStore({ recordUsage, usageRepository } 
       }
     },
     async put(operationId, patch = {}) {
-      const current = (await this.get(operationId)) || { operation_id: operationId }
+      const current = (await store.get(operationId)) || { operation_id: operationId }
       return { ...current, ...patch }
     },
     reset() {},
   }
+
+  return store
+}
+
+/**
+ * BILL-5B2 injection helper. Throws if BILL-1 primitives are missing.
+ */
+export function createFoodScanDurableDispatchStore(deps) {
+  return createUsageBackedDispatchStore(deps)
 }
 
 export const FOOD_SCAN_RECOVERY_HTTP = Object.freeze({
@@ -95,5 +153,10 @@ export const FOOD_SCAN_RECOVERY_HTTP = Object.freeze({
     code: 'STALE_REQUEST',
     retryable: false,
     status: 409,
+  }),
+  PERSISTENCE_FAILURE: Object.freeze({
+    code: 'BILLING_UNAVAILABLE',
+    retryable: true,
+    status: 503,
   }),
 })

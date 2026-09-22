@@ -15086,6 +15086,74 @@ html:has(#app-section-more.is-active),
   outline-offset: 3px;
 }
 
+/* A11Y-7B: app-wide equivalents of the accessibility-scope rules above, so
+   preferences set in AccessibilityHub meaningfully affect the whole app, not
+   only the hub itself. Each rule activates only via its own data attribute
+   (set from the existing accessibilityPreferences store) and stays additive:
+   it never replaces the app's normal theme or removes existing behavior. */
+.app-shell {
+  --a11y-text-scale: 1;
+}
+
+.app-shell[data-a11y-text-size='large'] {
+  --a11y-text-scale: 1.12;
+}
+
+.app-shell[data-a11y-text-size='extra-large'] {
+  --a11y-text-scale: 1.24;
+}
+
+.app-shell[data-a11y-text-size='large'],
+.app-shell[data-a11y-text-size='extra-large'] {
+  font-size: calc(1rem * var(--a11y-text-scale));
+  overflow-wrap: break-word;
+}
+
+.app-shell[data-a11y-line-spacing='true'] p,
+.app-shell[data-a11y-line-spacing='true'] li {
+  line-height: 1.85;
+}
+
+/* High contrast stays boundary/focus-first rather than repainting the whole
+   theme: it strengthens control borders and focus rings without touching
+   background/text colors, so it never replaces the app's normal look. */
+.app-shell[data-a11y-high-contrast='true'] button:not([disabled]),
+.app-shell[data-a11y-high-contrast='true'] select,
+.app-shell[data-a11y-high-contrast='true'] input:not([type='checkbox']):not([type='radio']),
+.app-shell[data-a11y-high-contrast='true'] textarea {
+  border: 2px solid currentColor;
+}
+
+.app-shell[data-a11y-high-contrast='true'] button[disabled],
+.app-shell[data-a11y-high-contrast='true'] input[disabled] {
+  border: 2px dashed currentColor;
+  opacity: 0.6;
+}
+
+.app-shell[data-a11y-high-contrast='true'] button:focus-visible,
+.app-shell[data-a11y-high-contrast='true'] a:focus-visible,
+.app-shell[data-a11y-high-contrast='true'] input:focus-visible,
+.app-shell[data-a11y-high-contrast='true'] select:focus-visible,
+.app-shell[data-a11y-high-contrast='true'] textarea:focus-visible {
+  outline: 3px solid #0f62fe;
+  outline-offset: 3px;
+}
+
+.app-shell[data-a11y-large-controls='true'] button {
+  min-height: 48px;
+}
+
+/* Only ever adds motion reduction on top of prefers-reduced-motion; the
+   existing @media (prefers-reduced-motion: reduce) rules elsewhere are left
+   completely untouched and keep working independently of this attribute. */
+.app-shell[data-a11y-reduced-motion='true'] *,
+.app-shell[data-a11y-reduced-motion='true'] *::before,
+.app-shell[data-a11y-reduced-motion='true'] *::after {
+  animation-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+}
+
 .accessibility-preference-group {
   display: flex;
   flex-wrap: wrap;

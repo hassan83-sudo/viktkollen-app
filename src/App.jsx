@@ -45,6 +45,10 @@ import {
 import { buildHealthSnapshot } from './services/healthSnapshot.js'
 import { getSafeErrorMessage } from './services/appErrorService.js'
 import {
+  getEffectiveAccessibilityPreferences,
+  useAccessibilityPreferences,
+} from './services/accessibilityPreferences.js'
+import {
   addMealAnalysis,
   clearMealHistory,
   createDemoMealDay,
@@ -867,6 +871,12 @@ function makeProductFromBarcode(barcode) {
 
 function App() {
   const { t } = useTranslation('navigation')
+  // A11Y-7B: read-only, live subscription to the existing accessibility
+  // preferences store (owned/written by AccessibilityHub) so the app root
+  // can reflect text size, contrast, motion, controls and spacing choices
+  // outside the hub - no duplicate state, no server round-trip.
+  const accessibilityPreferences = useAccessibilityPreferences()
+  const effectiveAccessibility = getEffectiveAccessibilityPreferences(accessibilityPreferences)
   const barcodeVideoRef = useRef(null)
   const barcodeStreamRef = useRef(null)
   const barcodeTimerRef = useRef(null)
@@ -3159,7 +3169,14 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
+    <main
+      className="app-shell"
+      data-a11y-text-size={effectiveAccessibility.textSize}
+      data-a11y-high-contrast={effectiveAccessibility.highContrast || undefined}
+      data-a11y-large-controls={effectiveAccessibility.largeControls || undefined}
+      data-a11y-line-spacing={effectiveAccessibility.lineSpacing || undefined}
+      data-a11y-reduced-motion={effectiveAccessibility.reduceMotion || undefined}
+    >
         <PwaExperience showDiagnostics={showInternalTools} />
         <GlobalSyncStatus />
         <ReminderBanner

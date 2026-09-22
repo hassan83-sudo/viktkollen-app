@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 export const accessibilityPreferencesKey = 'viktkollen.accessibility.preferences.v1'
 
 export const defaultAccessibilityPreferences = Object.freeze({
@@ -24,6 +26,30 @@ const booleanKeys = Object.freeze(
 
 function getStorage(storage = typeof window !== 'undefined' ? window.localStorage : null) {
   return storage && typeof storage.getItem === 'function' ? storage : null
+}
+
+// A11Y-7B: in-tab-only subscriber list so any mounted consumer (App root,
+// AccessibilityHub, etc.) can react immediately when preferences change,
+// without a reload, server round-trip, or BroadcastChannel. AccessibilityHub
+// remains the only writer; this just lets other readers hear about writes.
+const accessibilityPreferenceListeners = new Set()
+
+function notifyAccessibilityPreferenceListeners(preferences) {
+  accessibilityPreferenceListeners.forEach((listener) => {
+    try {
+      listener(preferences)
+    } catch {
+      // A listener error must never break preference persistence for others.
+    }
+  })
+}
+
+export function subscribeAccessibilityPreferences(listener) {
+  if (typeof listener !== 'function') return () => {}
+  accessibilityPreferenceListeners.add(listener)
+  return () => {
+    accessibilityPreferenceListeners.delete(listener)
+  }
 }
 
 export function normalizeAccessibilityPreferences(value) {
@@ -66,7 +92,9 @@ export function saveAccessibilityPreferences(preferences, storage) {
   if (!localStorage) return false
 
   try {
-    localStorage.setItem(accessibilityPreferencesKey, JSON.stringify(normalizeAccessibilityPreferences(preferences)))
+    const normalized = normalizeAccessibilityPreferences(preferences)
+    localStorage.setItem(accessibilityPreferencesKey, JSON.stringify(normalized))
+    notifyAccessibilityPreferenceListeners(normalized)
     return true
   } catch {
     return false
@@ -79,8 +107,38 @@ export function resetAccessibilityPreferences(storage) {
 
   try {
     localStorage.removeItem(accessibilityPreferencesKey)
+    notifyAccessibilityPreferenceListeners({ ...defaultAccessibilityPreferences })
     return true
   } catch {
     return false
   }
+}
+
+// A11Y-7B: resolves the same "senior mode bundles several toggles" rule
+// AccessibilityHub already applies to its own scope, so any other consumer
+// (the app root) reflects an identical effective state rather than a second,
+// possibly-drifting copy of that logic.
+export function getEffectiveAccessibilityPreferences(preferences) {
+  const source = preferences && typeof preferences === 'object' ? preferences : defaultAccessibilityPreferences
+
+  return {
+    highContrast: Boolean(source.seniorMode || source.highContrast),
+    largeControls: Boolean(source.seniorMode || source.largeControls),
+    lineSpacing: Boolean(source.seniorMode || source.lineSpacing),
+    reduceMotion: Boolean(source.seniorMode || source.reduceMotion),
+    simpleReading: Boolean(source.seniorMode || source.simpleReading),
+    textSize: source.seniorMode ? 'extra-large' : source.textSize,
+  }
+}
+
+// A11Y-7B: single hook any component can use to read the current, live
+// accessibility preferences without owning or duplicating the storage logic
+// above. AccessibilityHub keeps its own read/save calls (unchanged); this
+// hook exists for read-only consumers such as the app root.
+export function useAccessibilityPreferences() {
+  const [preferences, setPreferences] = useState(() => readAccessibilityPreferences().preferences)
+
+  useEffect(() => subscribeAccessibilityPreferences(setPreferences), [])
+
+  return preferences
 }

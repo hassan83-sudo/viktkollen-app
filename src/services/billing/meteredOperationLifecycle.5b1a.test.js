@@ -144,7 +144,7 @@ describe('BILL-5B1a failure accounting', () => {
     const result = await executeMeteredBillingOperation(base({
       commit,
       executeProvider: async ({ markDispatched }) => {
-        markDispatched()
+        await markDispatched()
         return { code: 'timeout', ok: false, timeout: true }
       },
       reserve: vi.fn(async ({ reservation_id }) => ({ reservation_id, status: QUOTA_STATUS.RESERVED })),
@@ -195,7 +195,7 @@ describe('BILL-5B1a failure accounting', () => {
     const result = await executeMeteredBillingOperation(base({
       commit: vi.fn(async () => ({ status: QUOTA_STATUS.COMMITTED })),
       executeProvider: async ({ markDispatched }) => {
-        markDispatched()
+        await markDispatched()
         return { aborted: true, code: 'requestAborted', ok: false }
       },
       reserve: vi.fn(async ({ reservation_id }) => ({ reservation_id, status: QUOTA_STATUS.RESERVED })),
@@ -209,7 +209,7 @@ describe('BILL-5B1a failure accounting', () => {
     const usageRepository = createInMemoryUsageRepository()
     const quota = createQuotaEngine({ usageRepository })
     const executeProvider = vi.fn(async ({ markDispatched }) => {
-      markDispatched()
+      await markDispatched()
       return { ok: true }
     })
     const result = await executeMeteredBillingOperation(base({
@@ -232,7 +232,7 @@ describe('BILL-5B1a failure accounting', () => {
 
   it('commit failure after success does not rollback and retries without provider', async () => {
     const executeProvider = vi.fn(async ({ markDispatched }) => {
-      markDispatched()
+      await markDispatched()
       return { ok: true }
     })
     const commit = vi.fn()
@@ -262,7 +262,7 @@ describe('BILL-5B1a failure accounting', () => {
 
   it('usage-event failure after commit retries usage only', async () => {
     const executeProvider = vi.fn(async ({ markDispatched }) => {
-      markDispatched()
+      await markDispatched()
       return { ok: true }
     })
     const recordUsage = vi.fn()
@@ -294,7 +294,7 @@ describe('BILL-5B1a failure accounting', () => {
     const usageRepository = createInMemoryUsageRepository()
     const quota = createQuotaEngine({ usageRepository })
     const executeProvider = vi.fn(async ({ markDispatched }) => {
-      markDispatched()
+      await markDispatched()
       return { ok: true }
     })
     const deps = base({
@@ -313,7 +313,7 @@ describe('BILL-5B1a failure accounting', () => {
 
   it('retry after ambiguous failure blocks provider re-execution', async () => {
     const executeProvider = vi.fn(async ({ markDispatched }) => {
-      markDispatched()
+      await markDispatched()
       return { code: 'timeout', ok: false, timeout: true }
     })
     const deps = base({
@@ -338,7 +338,7 @@ describe('BILL-5B1a failure accounting', () => {
     })
     const executeProvider = vi.fn(async ({ markDispatched }) => {
       providerRuns += 1
-      markDispatched()
+      await markDispatched()
       await gate
       return { ok: true }
     })

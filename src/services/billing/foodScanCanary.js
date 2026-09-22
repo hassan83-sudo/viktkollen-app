@@ -112,7 +112,7 @@ export function classifyFoodScanProviderOutcome(result = {}, dispatchStarted = f
 
 export function createDispatchBoundedProvider(run) {
   return async function dispatchBounded(hooks = {}) {
-    hooks.markDispatched?.()
+    await hooks.markDispatched?.()
     return run(hooks)
   }
 }

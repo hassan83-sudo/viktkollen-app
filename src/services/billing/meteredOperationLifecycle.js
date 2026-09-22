@@ -10,6 +10,7 @@ import {
   stripSensitiveBillingPayload,
 } from './foodScanCanary.js'
 import { QUOTA_PLAN_ACTION } from './quotaReservationPlan.js'
+import { createDurableOperationStore, FOOD_SCAN_RECOVERY_HTTP } from './durableOperationStore.js'
 
 export const LIFECYCLE_OUTCOME = Object.freeze({
   ABORTED: 'ABORTED',
@@ -26,15 +27,15 @@ export const LIFECYCLE_OUTCOME = Object.freeze({
 })
 
 const inflight = new Map()
-const ledger = new Map()
+const defaultOperationStore = createDurableOperationStore()
 
 export function resetMeteredLifecycleInflightForTests() {
   inflight.clear()
-  ledger.clear()
+  defaultOperationStore.reset()
 }
 
 export function getMeteredLifecycleLedgerForTests(operationId) {
-  return ledger.get(operationId) || null
+  return defaultOperationStore.get(operationId)
 }
 
 function emptyCounts() {
@@ -61,11 +62,8 @@ function identityFields(operationId) {
   }
 }
 
-function remember(operationId, patch) {
-  const prev = ledger.get(operationId) || {}
-  const next = { ...prev, ...patch, ...identityFields(operationId) }
-  ledger.set(operationId, next)
-  return next
+function remember(store, operationId, patch) {
+  return store.put(operationId, patch)
 }
 
 function isCommittedStatus(status) {
@@ -97,6 +95,8 @@ function safeResult(fields) {
     feature_id: fields.feature_id || FOOD_SCAN_CANARY.feature_id,
     live_wired: false,
     needs_recovery: fields.needs_recovery === true,
+    client_hint: fields.client_hint || null,
+    recovery_http: fields.needs_recovery === true ? FOOD_SCAN_RECOVERY_HTTP.BILLING_RECOVERY : null,
     operation_id: fields.operation_id || null,
     order: Object.freeze([...(fields.order || [])]),
     outcome: fields.outcome,
@@ -135,6 +135,7 @@ async function recoverLedger({
   operationId,
   recordUsage,
   row,
+  store,
   userId,
 }) {
   const calls = emptyCounts()
@@ -181,17 +182,11 @@ async function recoverLedger({
         reservation_id: ids.reservation_id,
       })
       if (!isCommittedStatus(committed?.status)) {
-        remember(operationId, {
-          dispatch_started: true,
-          dispatch_state: PROVIDER_DISPATCH_STATE.DISPATCHED_BILLING_UNKNOWN,
-          needs_recovery: true,
-          outcome: LIFECYCLE_OUTCOME.COMMIT_FAILED,
-          quota_committed: false,
-        })
         return safeResult({
           ...ids,
           allowed: false,
           calls,
+          client_hint: 'BILLING_RECOVERY',
           decision: ENFORCEMENT_DECISION.ALLOW,
           dispatch_state: PROVIDER_DISPATCH_STATE.DISPATCHED_BILLING_UNKNOWN,
           needs_recovery: true,
@@ -201,7 +196,7 @@ async function recoverLedger({
           safe_error: { code: LIFECYCLE_OUTCOME.COMMIT_FAILED },
         })
       }
-      remember(operationId, { quota_committed: true })
+      remember(store, operationId, { quota_committed: true })
     }
 
     if (row.usage_ok !== true) {
@@ -213,7 +208,7 @@ async function recoverLedger({
         userId,
       })
       if (usage.ok !== true && usage.skipped !== true) {
-        remember(operationId, {
+        remember(store, operationId, {
           dispatch_started: true,
           needs_recovery: true,
           outcome: LIFECYCLE_OUTCOME.USAGE_EVENT_FAILED,
@@ -234,7 +229,7 @@ async function recoverLedger({
           safe_error: { code: LIFECYCLE_OUTCOME.USAGE_EVENT_FAILED },
         })
       }
-      remember(operationId, { usage_ok: true, needs_recovery: false })
+      remember(store, operationId, { usage_ok: true, needs_recovery: false })
     }
 
     return safeResult({
@@ -266,8 +261,10 @@ export async function executeMeteredBillingOperation({
   evaluate = evaluateBillingOperation,
   evaluateInput = {},
   executeProvider,
+  instanceKey = 'default',
   log = () => {},
   operationId,
+  operationStore,
   recordUsage,
   reserve,
   rollback,
@@ -279,6 +276,11 @@ export async function executeMeteredBillingOperation({
   void clientClaim.costSafe
   void clientClaim.feature
   void clientClaim.quantity
+  void clientClaim.dispatchState
+  void clientClaim.billingOutcome
+  void clientClaim.recoveryState
+  void clientClaim.reservationState
+  void clientClaim.eventState
 
   const scopedId = String(operationId || '').trim()
   if (!scopedId || !createBillingAccountingIdentity(scopedId)) {
@@ -289,7 +291,7 @@ export async function executeMeteredBillingOperation({
     })
   }
 
-  if (inflight.has(scopedId)) return inflight.get(scopedId)
+  if (inflight.has(`${instanceKey}:${scopedId}`)) return inflight.get(`${instanceKey}:${scopedId}`)
 
   const run = runLifecycle({
     clientClaim,
@@ -299,17 +301,18 @@ export async function executeMeteredBillingOperation({
     executeProvider,
     log,
     operationId: scopedId,
+    operationStore: operationStore || defaultOperationStore,
     quantity,
     recordUsage,
     reserve,
     rollback,
     unit,
   })
-  inflight.set(scopedId, run)
+  inflight.set(`${instanceKey}:${scopedId}`, run)
   try {
     return await run
   } finally {
-    inflight.delete(scopedId)
+    inflight.delete(`${instanceKey}:${scopedId}`)
   }
 }
 
@@ -321,19 +324,22 @@ async function runLifecycle({
   executeProvider,
   log,
   operationId,
+  operationStore,
   quantity,
   recordUsage,
   reserve,
   rollback,
   unit,
 }) {
-  const prior = ledger.get(operationId)
+  const store = operationStore
+  const prior = await store.get(operationId)
   if (prior) {
     const recovered = await recoverLedger({
       commit,
       operationId,
       recordUsage,
       row: prior,
+      store,
       userId: evaluateInput.userId,
     })
     if (recovered) return recovered
@@ -356,7 +362,7 @@ async function runLifecycle({
   log({ event: 'evaluate', feature_id: featureId, operation_id: operationId })
 
   if (!decision?.allowed) {
-    remember(operationId, { outcome: LIFECYCLE_OUTCOME.DENIED_EVALUATE })
+    remember(store, operationId, { outcome: LIFECYCLE_OUTCOME.DENIED_EVALUATE })
     return safeResult({
       ...ids,
       allowed: false,
@@ -396,7 +402,7 @@ async function runLifecycle({
       user: userId,
     })
     if (isCommittedStatus(reserveResult?.status)) {
-      remember(operationId, {
+      remember(store, operationId, {
         dispatch_state: PROVIDER_DISPATCH_STATE.DISPATCHED_CONFIRMED_SUCCESS,
         outcome: LIFECYCLE_OUTCOME.SUCCEEDED,
         quota_committed: true,
@@ -417,7 +423,7 @@ async function runLifecycle({
       })
     }
     if (isRolledBackStatus(reserveResult?.status)) {
-      remember(operationId, {
+      remember(store, operationId, {
         dispatch_state: PROVIDER_DISPATCH_STATE.NOT_DISPATCHED,
         outcome: LIFECYCLE_OUTCOME.RETRY_REQUIRES_NEW_OPERATION,
         rolled_back: true,
@@ -436,7 +442,7 @@ async function runLifecycle({
       })
     }
     if (!reserveOk(reserveResult?.status)) {
-      remember(operationId, { outcome: LIFECYCLE_OUTCOME.DENIED_RESERVE })
+      remember(store, operationId, { outcome: LIFECYCLE_OUTCOME.DENIED_RESERVE })
       return safeResult({
         ...ids,
         allowed: false,
@@ -451,13 +457,26 @@ async function runLifecycle({
     reservationId = reserveResult.reservation_id || ids.reservation_id
   }
 
+  const durableNow = await store.get(operationId)
+  if (durableNow?.dispatch_started) {
+    const recovered = await recoverLedger({
+      commit,
+      operationId,
+      recordUsage,
+      row: durableNow,
+      store,
+      userId,
+    })
+    if (recovered) return recovered
+  }
+
   if (typeof executeProvider !== 'function') {
     if (reservationId && typeof rollback === 'function') {
       calls.rollback += 1
       order.push('rollback')
       await rollback({ reservation_id: reservationId })
     }
-    remember(operationId, {
+    remember(store, operationId, {
       dispatch_started: false,
       dispatch_state: PROVIDER_DISPATCH_STATE.NOT_DISPATCHED,
       outcome: LIFECYCLE_OUTCOME.PROVIDER_FAILED,
@@ -478,8 +497,12 @@ async function runLifecycle({
   }
 
   let dispatchStarted = false
-  const markDispatched = () => {
+  const markDispatched = async () => {
     dispatchStarted = true
+    return store.claimDispatch(operationId, {
+      feature_id: featureId,
+      userId,
+    })
   }
 
   let providerResult
@@ -511,7 +534,7 @@ async function runLifecycle({
         order.push('rollback')
         await rollback({ reservation_id: reservationId })
       }
-      remember(operationId, {
+      remember(store, operationId, {
         dispatch_started: false,
         dispatch_state: dispatchState,
         outcome,
@@ -531,7 +554,7 @@ async function runLifecycle({
       })
     }
 
-    remember(operationId, {
+    remember(store, operationId, {
       dispatch_started: true,
       dispatch_state: PROVIDER_DISPATCH_STATE.DISPATCHED_BILLING_UNKNOWN,
       outcome: LIFECYCLE_OUTCOME.AMBIGUOUS_BILLING,
@@ -545,7 +568,7 @@ async function runLifecycle({
         reservation_id: reservationId,
       })
       if (!isCommittedStatus(committed?.status)) {
-        remember(operationId, {
+        remember(store, operationId, {
           dispatch_started: true,
           needs_recovery: true,
           outcome: LIFECYCLE_OUTCOME.COMMIT_FAILED,
@@ -566,7 +589,7 @@ async function runLifecycle({
           warnings: decision.warnings,
         })
       }
-      remember(operationId, { quota_committed: true })
+      remember(store, operationId, { quota_committed: true })
     }
 
     const usage = await writeUsage({
@@ -577,7 +600,7 @@ async function runLifecycle({
       userId,
     })
     if (usage.ok !== true && usage.skipped !== true) {
-      remember(operationId, {
+      remember(store, operationId, {
         needs_recovery: true,
         outcome: LIFECYCLE_OUTCOME.USAGE_EVENT_FAILED,
         quota_committed: true,
@@ -599,7 +622,7 @@ async function runLifecycle({
         warnings: decision.warnings,
       })
     }
-    remember(operationId, { usage_ok: usage.skipped ? null : true, needs_recovery: false })
+    remember(store, operationId, { usage_ok: usage.skipped ? null : true, needs_recovery: false })
 
     return safeResult({
       ...ids,
@@ -625,7 +648,7 @@ async function runLifecycle({
       reservation_id: reservationId,
     })
     if (!isCommittedStatus(committed?.status)) {
-      remember(operationId, {
+      remember(store, operationId, {
         dispatch_started: true,
         dispatch_state: PROVIDER_DISPATCH_STATE.DISPATCHED_CONFIRMED_SUCCESS,
         needs_recovery: true,
@@ -647,7 +670,7 @@ async function runLifecycle({
         warnings: decision.warnings,
       })
     }
-    remember(operationId, { quota_committed: true })
+    remember(store, operationId, { quota_committed: true })
   }
 
   const usage = await writeUsage({
@@ -658,7 +681,7 @@ async function runLifecycle({
     userId,
   })
   if (usage.ok !== true && usage.skipped !== true) {
-    remember(operationId, {
+    remember(store, operationId, {
       dispatch_started: true,
       dispatch_state: PROVIDER_DISPATCH_STATE.DISPATCHED_CONFIRMED_SUCCESS,
       needs_recovery: true,
@@ -683,7 +706,7 @@ async function runLifecycle({
     })
   }
 
-  remember(operationId, {
+  remember(store, operationId, {
     dispatch_started: true,
     dispatch_state: PROVIDER_DISPATCH_STATE.DISPATCHED_CONFIRMED_SUCCESS,
     outcome: LIFECYCLE_OUTCOME.SUCCEEDED,

@@ -31,6 +31,11 @@ export function createInMemoryCostThresholdStore() {
       if (!current || current.version !== expectedVersion) {
         return { conflict: true, row: current }
       }
+      if (costThresholdIdentityKey(current) !== costThresholdIdentityKey(row)) {
+        const error = new Error('identity_immutable')
+        error.code = 'identity_immutable'
+        throw error
+      }
       const stored = Object.freeze({ ...row })
       byId.set(thresholdId, stored)
       byIdentity.set(costThresholdIdentityKey(stored), stored)

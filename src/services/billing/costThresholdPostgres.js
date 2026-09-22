@@ -31,9 +31,7 @@ export function createPostgresCostThresholdBackend(query) {
       return rows[0]
     },
     async listActive() {
-      return query(
-        'select * from billing.cost_thresholds where enabled = true',
-      )
+      return query('select * from billing.list_active_cost_thresholds()')
     },
     async update({ actorUserId, amountMinor, enabled, expectedVersion, thresholdId }) {
       const rows = await query(

@@ -114,6 +114,7 @@ describe('BILL-4C1b cost threshold migration static security', () => {
     expect(sql).toMatch(/'cost_threshold'/)
     expect(srcTree).not.toMatch(/SERVICE_ROLE|service_role/)
     expect(postgresSrc).toMatch(/billing\.create_cost_threshold/)
+    expect(postgresSrc).toMatch(/billing\.list_active_cost_thresholds/)
     expect(sql4b).toMatch(/feature_controls/)
   })
 })

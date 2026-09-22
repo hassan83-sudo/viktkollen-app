@@ -1,4 +1,5 @@
--- BILL-4C1b cost-threshold persistence. DO NOT apply to staging.
+-- BILL-4C1b cost-threshold persistence. BILL-4C-SEC1a hardened uniqueness/CAS/RPC grants.
+-- DO NOT apply to staging.
 -- DO NOT apply to production. Local schema only until a later isolated review.
 -- Extends BILL-4A audit allowlists for cost-threshold mutations.
 -- Does not ALTER usage, quota, subscription, feature_control, or provider_control tables.
@@ -48,11 +49,9 @@ create table if not exists billing.cost_thresholds (
       'ready_avatar',
       'smart_ai'
     )
-  )
+  ),
+  constraint cost_thresholds_identity_uidx unique nulls not distinct (scope, feature_id, period, limit_mode)
 );
-
-create unique index if not exists cost_thresholds_identity_uidx
-  on billing.cost_thresholds (scope, coalesce(feature_id, ''), period, limit_mode);
 
 create index if not exists cost_thresholds_active_lookup_idx
   on billing.cost_thresholds (enabled, scope, period, limit_mode)
@@ -95,7 +94,6 @@ using (false)
 with check (false);
 
 revoke all on table billing.cost_thresholds from public, anon, authenticated, service_role;
-grant select on table billing.cost_thresholds to service_role;
 
 create or replace function billing.guard_cost_threshold_row()
 returns trigger
@@ -529,11 +527,25 @@ begin
 end;
 $$;
 
+create or replace function billing.list_active_cost_thresholds()
+returns setof billing.cost_thresholds
+language sql
+stable
+security definer
+set search_path = pg_catalog, pg_temp
+as $$
+  select *
+  from billing.cost_thresholds
+  where enabled = true;
+$$;
+
 revoke all on function billing.guard_cost_threshold_row() from public, anon, authenticated, service_role;
 revoke all on function billing.cost_threshold_audit_payload(billing.cost_thresholds) from public, anon, authenticated, service_role;
 revoke all on function billing.create_cost_threshold(uuid, text, text, text, text, bigint, text, boolean) from public, anon, authenticated, service_role;
 revoke all on function billing.update_cost_threshold(uuid, uuid, integer, bigint, boolean) from public, anon, authenticated, service_role;
+revoke all on function billing.list_active_cost_thresholds() from public, anon, authenticated, service_role;
 grant execute on function billing.create_cost_threshold(uuid, text, text, text, text, bigint, text, boolean) to service_role;
 grant execute on function billing.update_cost_threshold(uuid, uuid, integer, bigint, boolean) to service_role;
+grant execute on function billing.list_active_cost_thresholds() to service_role;
 revoke all on function billing.append_admin_audit(uuid, text, text, text, text, jsonb, jsonb) from public, anon, authenticated, service_role;
 revoke all on function billing.admin_audit_snapshot(jsonb) from public, anon, authenticated, service_role;

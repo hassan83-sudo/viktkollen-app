@@ -2,6 +2,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppErrorBoundary from '../AppErrorBoundary.jsx'
 import PlanCommercialAdmin from '../billing/PlanCommercialAdmin.jsx'
+import PlanUsagePanel from '../billing/PlanUsagePanel.jsx'
 import CloudBackupPanel from '../CloudBackupPanel.jsx'
 import CloudStatusPanel from '../CloudStatusPanel.jsx'
 import CloudSyncPanel from '../CloudSyncPanel.jsx'
@@ -340,6 +341,8 @@ function MoreSection({
             <p className="account-email">
               {t('signedInAs')} <strong>{email || t('unknownEmail')}</strong>
             </p>
+
+            <PlanUsagePanel authLoading={authLoading} isAuthenticated={isAuthenticated} />
 
             <div className="app-information">
               <h3>{t('profileBasis')}</h3>

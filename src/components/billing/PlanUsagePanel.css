@@ -1,0 +1,33 @@
+.plan-usage {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.plan-usage h3,
+.plan-usage h4,
+.plan-usage p,
+.plan-usage li {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.plan-usage-list,
+.plan-usage-unlimited {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plan-usage-quota,
+.plan-usage-unlimited li {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.plan-usage-note {
+  margin-top: 0.75rem;
+}

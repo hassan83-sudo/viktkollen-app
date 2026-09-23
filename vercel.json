@@ -51,6 +51,14 @@
     {
       "source": "/api/entitlements/",
       "destination": "/api/billing/user?__vk_route=entitlements"
+    },
+    {
+      "source": "/api/billing/usage",
+      "destination": "/api/billing/user?__vk_route=usage"
+    },
+    {
+      "source": "/api/billing/usage/",
+      "destination": "/api/billing/user?__vk_route=usage"
     }
   ]
 }

@@ -1,6 +1,7 @@
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../../_shared/aiRouteErrors.js'
 import { inspectServerQuota } from '../../_shared/billing/quota.js'
 import { getServerSubscription } from '../../_shared/billing/subscription.js'
+import { readUsageSnapshot } from '../../_shared/billing/usageSnapshotRead.js'
 import { mapEntitlementRowToSnapshot } from '../../_shared/entitlementMapper.js'
 import { createSupabaseAdminClient } from '../../_shared/supabaseServer.js'
 import { verifySupabaseUser } from '../../_shared/verifySupabaseUser.js'
@@ -8,10 +9,11 @@ import { verifySupabaseUser } from '../../_shared/verifySupabaseUser.js'
 const PUBLIC_OPS = Object.freeze({
   '/api/billing/quota': 'quota',
   '/api/billing/subscription': 'subscription',
+  '/api/billing/usage': 'usage',
   '/api/entitlements': 'entitlements',
 })
 
-const INTERNAL_OPS = Object.freeze(['quota', 'subscription', 'entitlements'])
+const INTERNAL_OPS = Object.freeze(['quota', 'subscription', 'entitlements', 'usage'])
 
 const entitlementColumns = [
   'user_id',
@@ -133,6 +135,30 @@ async function handleSubscription(request, response, auth, requestId) {
   })
 }
 
+async function handleUsage(request, response, auth, requestId) {
+  void request.query?.plan
+  void request.query?.price
+  void request.query?.quota
+  void request.query?.remaining
+  void request.query?.usage
+  void request.query?.user_id
+  const snapshot = await readUsageSnapshot(auth.user.id)
+  if (!snapshot) {
+    return sendSafeAiError(response, {
+      code: aiRouteErrorCodes.PROVIDER_UNAVAILABLE,
+      requestId,
+      retryable: true,
+      safeMessage: 'Abonnemanget kunde inte hämtas just nu.',
+      status: 503,
+    })
+  }
+  return response.status(200).json({
+    ok: true,
+    requestId,
+    snapshot,
+  })
+}
+
 async function handleEntitlements(request, response, auth, requestId) {
   void request.query?.user_id
   void request.query?.plan
@@ -189,6 +215,7 @@ export default async function handler(request, response) {
   if (operation === 'quota') return handleQuota(request, response, auth, requestId)
   if (operation === 'subscription') return handleSubscription(request, response, auth, requestId)
   if (operation === 'entitlements') return handleEntitlements(request, response, auth, requestId)
+  if (operation === 'usage') return handleUsage(request, response, auth, requestId)
 
   return sendSafeAiError(response, {
     code: aiRouteErrorCodes.INVALID_REQUEST,

@@ -2,13 +2,14 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { COST_BASIS, SENSITIVE_USAGE_FIELDS, USAGE_EVENT_TYPES, USAGE_METADATA_ALLOWLIST, USAGE_UNITS } from './catalog.js'
+import { SENSITIVE_USAGE_FIELDS, USAGE_EVENT_TYPES, USAGE_METADATA_ALLOWLIST, USAGE_UNITS } from './catalog.js'
 import { createUsageEvent, sanitizeUsageMetadata, toPersistedUsageRow } from './usageEvent.js'
 import { recordUsageEvent } from './recordUsage.js'
 import { createInMemoryUsageRepository } from './usageRepository.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../../..')
 const sql = readFileSync(join(root, 'supabase/migrations/20260921121500_billing_usage_events.sql'), 'utf8')
+const telemetrySql = readFileSync(join(root, 'supabase/migrations/20260923140000_billing_usage_telemetry.sql'), 'utf8')
 const srcTree = readFileSync(join(root, 'src/services/supabaseClient.js'), 'utf8')
 const viteConfig = readFileSync(join(root, 'vite.config.js'), 'utf8')
 const envExample = readFileSync(join(root, '.env.example'), 'utf8')
@@ -55,14 +56,17 @@ describe('BILL-1A usage_events migration static security', () => {
     expect(sql).not.toMatch(/quantity > 0/)
     USAGE_EVENT_TYPES.forEach((type) => expect(sql).toContain(`'${type}'`))
     USAGE_UNITS.forEach((unit) => expect(sql).toContain(`'${unit}'`))
-    COST_BASIS.forEach((basis) => expect(sql).toContain(`'${basis}'`))
+    expect(sql).toContain("'ESTIMATED'")
+    expect(sql).toContain("'UNAVAILABLE'")
+    expect(telemetrySql).toContain("'MEASURED'")
+    expect(telemetrySql).toMatch(/DO NOT apply to production/)
   })
 
   it('restricts metadata to the privacy allowlist and has no payload columns', () => {
     const ddl = sql
       .replace(/--[^\n]*/g, '')
       .replace(/comment on[\s\S]*?;/gi, '')
-    USAGE_METADATA_ALLOWLIST.forEach((key) => expect(sql).toContain(`'${key}'`))
+    USAGE_METADATA_ALLOWLIST.forEach((key) => expect(`${sql}\n${telemetrySql}`).toContain(`'${key}'`))
     expect(sql).toMatch(/jsonb_typeof\(metadata\) = 'object'/)
     expect(ddl).not.toMatch(/\bpayload\b/)
     expect(ddl).not.toMatch(/\bcontext\b/)

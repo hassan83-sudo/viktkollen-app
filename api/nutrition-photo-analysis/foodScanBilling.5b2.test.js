@@ -356,7 +356,7 @@ describe('BILL-5B2 food.scan live canary wiring', () => {
     expect(inspect.used).toBe(1)
   })
 
-  it('gateway usage insert is a duplicate of the CAS event_id', async () => {
+  it('provider telemetry survives beside exactly one food.scan quota event', async () => {
     const store = new Map()
     const usageRepository = createPostgresUsageRepository({ client: createFakeUsageClient(store) })
     const quota = createQuotaEngine({ usageRepository: createInMemoryUsageRepository() })
@@ -365,11 +365,26 @@ describe('BILL-5B2 food.scan live canary wiring', () => {
     vi.stubGlobal('fetch', fetchImpl)
     const response = await callRoute(createRequest({ body: multipartBody(), headers: consentHeaders() }))
     expect(response.statusCode).toBe(200)
-    expect(store.size).toBe(1)
-    const row = [...store.values()][0]
-    expect(row.event_id).toBe(createFoodScanOperationId({ clientAttemptId: ATTEMPT, userId: USER_ID }))
-    expect(row.cost_basis).toBe('UNAVAILABLE')
-    expect(JSON.stringify(row)).not.toMatch(/base64|Lunch|consent|Bearer |test-key/)
+    const operationId = createFoodScanOperationId({ clientAttemptId: ATTEMPT, userId: USER_ID })
+    expect(store.size).toBe(2)
+    const quotaRow = store.get(operationId)
+    const telemetry = store.get(`provider.${operationId}`)
+    expect(quotaRow.unit).toBe('requests')
+    expect(quotaRow.quantity).toBe(1)
+    expect(quotaRow.cost_basis).toBe('UNAVAILABLE')
+    expect(telemetry.event_id).not.toBe(operationId)
+    expect(telemetry.reference_id).toBe(operationId)
+    expect(telemetry.unit).toBe('tokens')
+    expect(telemetry.metadata.input_tokens).toBe(11)
+    expect(telemetry.metadata.output_tokens).toBe(7)
+    expect(telemetry.metadata.total_tokens).toBe(18)
+    expect(telemetry.metadata.usage_basis).toBe('MEASURED')
+    expect(telemetry.cost_basis).toBe('UNAVAILABLE')
+    expect(JSON.stringify([...store.values()])).not.toMatch(/base64|Lunch|consent|Bearer |test-key/)
+    const replay = await usageRepository.insert(telemetry)
+    expect(replay.duplicate).toBe(true)
+    expect(store.size).toBe(2)
+    expect([...store.values()].filter((row) => row.unit === 'requests')).toHaveLength(1)
   })
 
   it('spoofed client feature/user/plan/dispatch fields are ignored', async () => {

@@ -54,6 +54,10 @@ export function getUsageRepository() {
   return activeRepository
 }
 
+export function isDefaultUsageRepository() {
+  return activeRepository === defaultRepository
+}
+
 export function setUsageRepositoryForTests(repository = defaultRepository) {
   activeRepository = repository || defaultRepository
   return activeRepository

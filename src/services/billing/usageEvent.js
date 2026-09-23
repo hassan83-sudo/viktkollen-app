@@ -25,18 +25,14 @@ function isNonEmptyString(value, max = 120) {
   return typeof value === 'string' && value.trim().length > 0 && value.trim().length <= max
 }
 
-function hasSensitiveKey(key) {
-  const normalized = String(key || '').toLowerCase()
-  return SENSITIVE_USAGE_FIELDS.some((field) => normalized === field || normalized.includes(field))
-}
-
 export function sanitizeUsageMetadata(input = {}) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return {}
 
   const metadata = {}
   for (const [key, value] of Object.entries(input)) {
-    if (CORE_FIELDS.has(key) || hasSensitiveKey(key)) continue
+    if (CORE_FIELDS.has(key)) continue
     if (!USAGE_METADATA_ALLOWLIST.includes(key)) continue
+    if (SENSITIVE_USAGE_FIELDS.includes(String(key).toLowerCase())) continue
     if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
       metadata[key] = Number.isInteger(value) ? value : Math.floor(value)
       continue

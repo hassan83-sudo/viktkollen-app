@@ -20,15 +20,20 @@ export const USAGE_UNITS = Object.freeze([
 ])
 
 export const USAGE_BASIS = Object.freeze(['MEASURED', 'ESTIMATED', 'UNAVAILABLE'])
-export const COST_BASIS = Object.freeze(['ESTIMATED', 'UNAVAILABLE'])
+export const COST_BASIS = Object.freeze(['ESTIMATED', 'MEASURED', 'UNAVAILABLE'])
 
 export const USAGE_METADATA_ALLOWLIST = Object.freeze([
   'cached_tokens',
+  'gps_history_write_count',
+  'gps_recipient_count',
+  'gps_update_count',
   'image_count',
+  'image_tokens',
   'input_tokens',
   'output_tokens',
   'total_tokens',
   'usage_basis',
+  'voice_seconds',
 ])
 
 export const SENSITIVE_USAGE_FIELDS = Object.freeze([

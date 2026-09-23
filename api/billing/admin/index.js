@@ -18,6 +18,8 @@ import {
   KILL_SWITCH_ACTION,
 } from '../../../src/services/billing/billingKillSwitch.js'
 import { rejectPlanCommercialOverrides } from '../../../src/services/billing/planCommercialControl.js'
+import { aggregateProviderTelemetry } from '../../../src/services/billing/providerTelemetry.js'
+import { resolveDurableUsageRepository } from '../../_shared/billing/durableUsageRepository.js'
 
 function readBody(request) {
   if (!request.body) return {}
@@ -136,6 +138,21 @@ export default async function handler(request, response) {
       }
       const listed = await controls.listPlanCommercial(admin.user.id)
       return respondPlanCommercial(response, requestId, listed)
+    }
+    if (request.query?.resource === 'usage_telemetry') {
+      try {
+        const repository = resolveDurableUsageRepository()
+        const events = typeof repository.listForTelemetry === 'function'
+          ? await repository.listForTelemetry()
+          : await repository.list()
+        return response.status(200).json({
+          ok: true,
+          requestId,
+          summaries: aggregateProviderTelemetry(events),
+        })
+      } catch {
+        return storeUnavailable(response, requestId)
+      }
     }
     return response.status(200).json({
       ok: true,

@@ -347,6 +347,7 @@ export async function createRealtimeVoiceSession({
   userId = '',
 } = {}) {
   const config = getVoiceAiGatewayConfig(env)
+  void userId
 
   if (!env.OPENAI_API_KEY) {
     return {
@@ -402,18 +403,6 @@ export async function createRealtimeVoiceSession({
     }
 
     const sessionModel = data.model || config.model
-    try {
-      await recordOpenAiGatewayUsage({
-        feature: 'ai.voice.session',
-        model: sessionModel,
-        providerData: {},
-        requestId,
-        type: 'voice',
-        userId,
-      })
-    } catch {
-      // Metering is fail-open and must not block session minting.
-    }
 
     return {
       available: true,

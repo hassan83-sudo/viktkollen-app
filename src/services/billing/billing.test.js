@@ -184,6 +184,7 @@ describe('OpenAI usage extraction', () => {
       usage: { input_tokens: 11, output_tokens: 7, total_tokens: 18, input_tokens_details: { cached_tokens: 2 } },
     })).toEqual({
       cached_tokens: 2,
+      image_tokens: 0,
       input_tokens: 11,
       output_tokens: 7,
       total_tokens: 18,

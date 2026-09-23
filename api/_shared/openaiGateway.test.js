@@ -488,8 +488,11 @@ describe('openaiGateway', () => {
 
     expect(result.ok).toBe(true)
     expect(result.value).toEqual({ summary: 'ok' })
-    const stored = await getUsageRepository().getByEventId('meter-1')
-    expect(stored.quantity).toBe(1)
+    const stored = await getUsageRepository().getByEventId('provider.meter-1')
+    expect(stored.quantity).toBe(13)
+    expect(stored.reference_id).toBe('meter-1')
+    expect(stored.unit).toBe('tokens')
+    expect(stored.cost_basis).toBe('UNAVAILABLE')
     expect(stored.provider).toBe('openai')
     expect(stored.model).toBe('server-model')
     expect(stored.user_id).toBe('user-meter')

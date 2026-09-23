@@ -13,8 +13,8 @@ function isUniqueViolation(error) {
 }
 
 /**
- * BILL-1 usage_events via service_role. Unique event_id is dispatch CAS.
- * No schema change. Process Maps are not used.
+ * BILL-1 usage_events via service_role. Unique event_id is the insert identity.
+ * Schema changes belong in migrations. Process Maps are not used.
  */
 export function createPostgresUsageRepository({ client } = {}) {
   if (!client || typeof client.schema !== 'function') unavailable()
@@ -32,6 +32,15 @@ export function createPostgresUsageRepository({ client } = {}) {
       const { data, error } = await table().select('*').eq('event_id', id).maybeSingle()
       if (error) throw error
       return data || null
+    },
+    async listForTelemetry({ limit = 2000 } = {}) {
+      const bounded = Math.min(Math.max(Number(limit) || 1, 1), 2000)
+      const { data, error } = await table()
+        .select('event_id,reference_id,event_type,feature,provider,model,unit,quantity,occurred_at,cost_basis,metadata')
+        .order('occurred_at', { ascending: false })
+        .limit(bounded)
+      if (error) throw error
+      return data || []
     },
     async insert(event) {
       const row = toPersistedUsageRow(event)

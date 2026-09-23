@@ -10,6 +10,7 @@ import {
 import { aiRouteErrorCodes, mapGatewayErrorCode, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
 import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { createAiRequestFingerprint, runDedupedAiRequest } from '../_shared/aiRequestDeduper.js'
+import { resolveDurableUsageRepository } from '../_shared/billing/durableUsageRepository.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 
 const MAX_PAYLOAD_BYTES = 12000
@@ -228,12 +229,14 @@ export default async function handler(request, response) {
     route: 'adaptiveCoach',
     userId: auth.user.id,
   }, () => callOpenAiJson({
+      feature: 'ai.text.request',
       input: buildCoachPrompt(facts, requestId),
       maxOutputTokens: 700,
       requestId,
       temperature: 0.2,
       timeoutMs: config.timeoutMs,
       type: 'coach',
+      usageRepository: resolveDurableUsageRepository(),
       userId: auth.user.id,
     }))
   const result = await providerPromise

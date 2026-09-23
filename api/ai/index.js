@@ -6,6 +6,8 @@ import {
   createLocalAiCoachReply,
   createVoiceCoachInstructions,
 } from '../../src/services/aiCoachPrompt.js'
+import { resolveDurableUsageRepository } from '../_shared/billing/durableUsageRepository.js'
+import { recordProviderUsageTelemetry } from '../../src/services/billing/providerTelemetry.js'
 import { createRealtimeVoiceSession } from '../_shared/openaiGateway.js'
 import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
@@ -230,7 +232,7 @@ function makeStudyBuddyFallback(data = {}) {
   return `Titta på nyckelorden i ${subject} och uteslut svar som inte passar. Försök hitta metoden innan du väljer alternativ.`
 }
 
-async function callOpenAI({ maxOutputTokens, prompt, userData }) {
+async function callOpenAI({ maxOutputTokens, meter = {}, prompt, userData }) {
   const openaiResponse = await fetch(OPENAI_API_URL, {
     body: JSON.stringify({
       input: [
@@ -262,10 +264,26 @@ async function callOpenAI({ maxOutputTokens, prompt, userData }) {
     throw new Error(`OpenAI request failed: ${openaiResponse.status}`)
   }
 
-  return parseJson(extractText(await openaiResponse.json()))
+  const payload = await openaiResponse.json()
+  if (meter.requestId) {
+    try {
+      await recordProviderUsageTelemetry({
+        feature: 'ai.text.request',
+        model: getModel(),
+        operationId: meter.requestId,
+        providerData: payload,
+        repository: resolveDurableUsageRepository(),
+        userId: meter.userId,
+      })
+    } catch {
+      // Metering is fail-open and must not change the AI result.
+    }
+  }
+
+  return parseJson(extractText(payload))
 }
 
-async function handleDailyCoach(data, response) {
+async function handleDailyCoach(data, response, meter) {
   if (!process.env.OPENAI_API_KEY) {
     return response.status(200).json({
       source: 'mock',
@@ -276,6 +294,7 @@ async function handleDailyCoach(data, response) {
   try {
     const result = await callOpenAI({
       maxOutputTokens: 500,
+      meter,
       prompt:
         'Du är Viktkollens dagliga coach. Svara endast med JSON: {"summary":"..."} på svenska. Ge kort, trygg allmän wellness-coaching, inte medicinsk rådgivning.',
       userData: data,
@@ -297,7 +316,7 @@ async function handleDailyCoach(data, response) {
   }
 }
 
-async function handleChat(data, response) {
+async function handleChat(data, response, meter) {
   const chatEngine = getChatEngineData(data)
   const unsafeMessage = unsafeCoachPattern.test(String(data.message || ''))
 
@@ -305,6 +324,7 @@ async function handleChat(data, response) {
     try {
       const result = await callOpenAI({
         maxOutputTokens: 800,
+        meter,
         prompt: createAiCoachPrompt({
           context: chatEngine.context,
           intent: chatEngine.intent,
@@ -383,7 +403,7 @@ async function handleRealtimeSession(data, response) {
   })
 }
 
-async function handleStudyBuddy(data, response) {
+async function handleStudyBuddy(data, response, meter) {
   if (!process.env.OPENAI_API_KEY) {
     return response.status(200).json({
       hint: makeStudyBuddyFallback(data),
@@ -394,6 +414,7 @@ async function handleStudyBuddy(data, response) {
   try {
     const result = await callOpenAI({
       maxOutputTokens: 400,
+      meter,
       prompt:
         'Du är en pedagogisk Study Buddy. Svara endast med JSON: {"hint":"..."} på svenska. Ge en kort hint utan att avslöja svaret direkt.',
       userData: data,
@@ -415,7 +436,7 @@ async function handleStudyBuddy(data, response) {
   }
 }
 
-async function handleProactiveCoach(data, response) {
+async function handleProactiveCoach(data, response, meter) {
   if (!process.env.OPENAI_API_KEY) {
     return response.status(200).json({
       insights: makeFallbackInsights(data),
@@ -426,6 +447,7 @@ async function handleProactiveCoach(data, response) {
   try {
     const result = await callOpenAI({
       maxOutputTokens: 500,
+      meter,
       prompt:
         'Du är en proaktiv svensk wellness-coach. Svara endast med JSON med fälten dailyStrength, dailyRisk, nextBestAction, budgetMealIdea och recoveryAdvice. Var kort, konkret, trygg och använd bara allmän hälsocoaching, inte medicinska råd.',
       userData: {
@@ -460,7 +482,7 @@ async function handleProactiveCoach(data, response) {
   }
 }
 
-async function handleWeeklyReport(data, response) {
+async function handleWeeklyReport(data, response, meter) {
   if (!process.env.OPENAI_API_KEY) {
     return response.status(200).json({
       report: makeFallbackReport(data),
@@ -471,6 +493,7 @@ async function handleWeeklyReport(data, response) {
   try {
     const report = await callOpenAI({
       maxOutputTokens: 800,
+      meter,
       prompt:
         'Du skriver en svensk AI-veckorapport för Viktkollen. Svara endast med JSON med fälten summary, weightTrend, mealPattern, nutritionStatus, movement, recovery, biggestProgress, biggestRisk, focusNextWeek och nextSteps (array med exakt 3 korta steg). Ge bara allmän wellness-coaching, inte medicinsk rådgivning.',
       userData: {
@@ -560,20 +583,22 @@ export default async function handler(request, response) {
     })
   }
 
+  const meter = { requestId, userId: auth.user.id }
+
   if (body.action === 'proactive-coach') {
-    return handleProactiveCoach(body, response)
+    return handleProactiveCoach(body, response, meter)
   }
 
   if (body.action === 'weekly-report') {
-    return handleWeeklyReport(body, response)
+    return handleWeeklyReport(body, response, meter)
   }
 
   if (body.action === 'daily-coach') {
-    return handleDailyCoach(body, response)
+    return handleDailyCoach(body, response, meter)
   }
 
   if (body.action === 'chat') {
-    return handleChat(body, response)
+    return handleChat(body, response, meter)
   }
 
   if (body.action === 'realtime-session') {
@@ -581,7 +606,7 @@ export default async function handler(request, response) {
   }
 
   if (body.action === 'study-buddy') {
-    return handleStudyBuddy(body, response)
+    return handleStudyBuddy(body, response, meter)
   }
 
   return sendSafeAiError(response, {

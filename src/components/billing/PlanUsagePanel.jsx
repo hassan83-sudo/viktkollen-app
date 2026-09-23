@@ -158,12 +158,10 @@ function PlanUsagePanel({ authLoading = false, isAuthenticated = false }) {
           {unlimited.length ? (
             <>
               <h4>Ingår utan användningsgräns</h4>
-              <ul className="plan-usage-unlimited">
+              <p>Obegränsat</p>
+              <ul className="plan-usage-unlimited" aria-label={unlimited.map((label) => `${label}: obegränsat`).join(', ')}>
                 {unlimited.map((label) => (
-                  <li key={label} aria-label={`${label}: obegränsat`}>
-                    <span>{label}</span>
-                    <span>Obegränsat</span>
-                  </li>
+                  <li key={label}>{label}</li>
                 ))}
               </ul>
               <p className="plan-usage-note">Normal användning. Tekniska säkerhetsgränser gäller.</p>

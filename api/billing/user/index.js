@@ -1,6 +1,7 @@
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../../_shared/aiRouteErrors.js'
 import { inspectServerQuota } from '../../_shared/billing/quota.js'
 import { getServerSubscription } from '../../_shared/billing/subscription.js'
+import { readPlanComparison } from '../../_shared/billing/planComparisonRead.js'
 import { readUsageSnapshot } from '../../_shared/billing/usageSnapshotRead.js'
 import { mapEntitlementRowToSnapshot } from '../../_shared/entitlementMapper.js'
 import { createSupabaseAdminClient } from '../../_shared/supabaseServer.js'
@@ -9,11 +10,12 @@ import { verifySupabaseUser } from '../../_shared/verifySupabaseUser.js'
 const PUBLIC_OPS = Object.freeze({
   '/api/billing/quota': 'quota',
   '/api/billing/subscription': 'subscription',
+  '/api/billing/plans': 'plans',
   '/api/billing/usage': 'usage',
   '/api/entitlements': 'entitlements',
 })
 
-const INTERNAL_OPS = Object.freeze(['quota', 'subscription', 'entitlements', 'usage'])
+const INTERNAL_OPS = Object.freeze(['quota', 'subscription', 'entitlements', 'plans', 'usage'])
 
 const entitlementColumns = [
   'user_id',
@@ -159,6 +161,30 @@ async function handleUsage(request, response, auth, requestId) {
   })
 }
 
+async function handlePlans(request, response, auth, requestId) {
+  void request.query?.enabled_for_sale
+  void request.query?.forSale
+  void request.query?.plan
+  void request.query?.plan_id
+  void request.query?.price
+  void request.query?.user_id
+  const comparison = await readPlanComparison(auth.user.id)
+  if (!comparison) {
+    return sendSafeAiError(response, {
+      code: aiRouteErrorCodes.PROVIDER_UNAVAILABLE,
+      requestId,
+      retryable: true,
+      safeMessage: 'Jämförelsen kunde inte hämtas just nu.',
+      status: 503,
+    })
+  }
+  return response.status(200).json({
+    comparison,
+    ok: true,
+    requestId,
+  })
+}
+
 async function handleEntitlements(request, response, auth, requestId) {
   void request.query?.user_id
   void request.query?.plan
@@ -215,6 +241,7 @@ export default async function handler(request, response) {
   if (operation === 'quota') return handleQuota(request, response, auth, requestId)
   if (operation === 'subscription') return handleSubscription(request, response, auth, requestId)
   if (operation === 'entitlements') return handleEntitlements(request, response, auth, requestId)
+  if (operation === 'plans') return handlePlans(request, response, auth, requestId)
   if (operation === 'usage') return handleUsage(request, response, auth, requestId)
 
   return sendSafeAiError(response, {

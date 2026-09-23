@@ -73,7 +73,7 @@ describe('PlanUsagePanel', () => {
     expect(screen.getByText('0 kr/mån')).toBeTruthy()
     expect(screen.getByText('Återställs 1 oktober')).toBeTruthy()
     expect(screen.getByText('Ingår utan användningsgräns')).toBeTruthy()
-    expect(screen.getAllByText('Obegränsat')).toHaveLength(7)
+    expect(screen.getAllByText('Obegränsat')).toHaveLength(1)
     expect(screen.getByText('Vänchatt')).toBeTruthy()
     expect(screen.getByText('Röstinmatning')).toBeTruthy()
     expect(screen.getByText('Uppläsning')).toBeTruthy()

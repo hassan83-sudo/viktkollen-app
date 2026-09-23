@@ -71,7 +71,11 @@ function requireUsageBackedDeps({ recordUsage, usageRepository } = {}) {
  * Two isolates sharing the same repository/Postgres PK yield one FIRST_DISPATCH.
  * cost_basis/usage_basis stay UNAVAILABLE — never MEASURED.
  */
-export function createUsageBackedDispatchStore({ recordUsage, usageRepository } = {}) {
+export function createUsageBackedDispatchStore({
+  recordUsage,
+  usageEventPlan = foodScanUsageEventPlan,
+  usageRepository,
+} = {}) {
   requireUsageBackedDeps({ recordUsage, usageRepository })
 
   const store = {
@@ -79,7 +83,7 @@ export function createUsageBackedDispatchStore({ recordUsage, usageRepository } 
     durable: true,
     async claimDispatch(operationId, extra = {}) {
       try {
-        const plan = foodScanUsageEventPlan({
+        const plan = usageEventPlan({
           operationId,
           userId: extra.userId,
         })

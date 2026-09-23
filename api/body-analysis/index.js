@@ -9,6 +9,13 @@ import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 import { analysisConsentPurposes, verifyAnalysisConsentToken } from '../_shared/analysisConsent.js'
+import {
+  createBodyScanOperationId,
+  executeBodyScanMeteredOperation,
+  mapBodyScanBillingHttp,
+  resolveBodyScanBillingRuntime,
+} from '../_shared/billing/bodyScanLiveBilling.js'
+import { DISPATCH_CAS_RESULT } from '../../src/services/billing/durableOperationStore.js'
 
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
 // Three images plus small text fields; anything larger is rejected before parsing.
@@ -475,6 +482,142 @@ async function runBodyAnalysis(images) {
   }
 }
 
+function sendBodyAnalysisResult(response, analysis) {
+  const result = formatBodyAnalysisResult(analysis)
+  console.info('[api/body-analysis] Response sent', {
+    source: result.source,
+    sourceReason: result.sourceReason,
+  })
+  return response.status(200).json(result)
+}
+
+function sendProductionMockBlocked(response, requestId) {
+  return response.status(503).json({
+    error: {
+      code: aiRouteErrorCodes.PROVIDER_UNAVAILABLE,
+      requestId,
+      retryable: true,
+      safeMessage: 'AI-kroppsanalysen kunde inte nås. Inget demoresultat visas i produktion. Försök igen senare.',
+    },
+    ok: false,
+  })
+}
+
+async function respondWithoutProvider(response, images, requestId) {
+  try {
+    const analysis = await runBodyAnalysis(images)
+    return sendBodyAnalysisResult(response, analysis)
+  } catch (error) {
+    if (error instanceof MockNotAllowedError) {
+      return sendProductionMockBlocked(response, requestId)
+    }
+
+    console.error('[api/body-analysis] Unexpected route error', {
+      error: error instanceof Error ? error.message : String(error),
+      source: 'error',
+    })
+
+    return response.status(500).json({
+      error: {
+        code: aiRouteErrorCodes.PROVIDER_UNAVAILABLE,
+        requestId,
+        retryable: true,
+        safeMessage: 'AI-kroppsanalys är tillfälligt otillgänglig.',
+      },
+      ok: false,
+    })
+  }
+}
+
+async function respondWithServerQuota({ images, request, requestId, response, userId }) {
+  const runtime = await resolveBodyScanBillingRuntime()
+  if (!runtime?.ok) {
+    return sendSafeAiError(response, {
+      code: aiRouteErrorCodes.PROVIDER_UNAVAILABLE,
+      requestId,
+      retryable: true,
+      status: 503,
+    })
+  }
+
+  const operationId = createBodyScanOperationId({
+    clientAttemptId: getRequestHeader(request, 'x-viktkollen-request-id'),
+    userId,
+  })
+  let analysis = null
+  let providerError = null
+  let providerInvoked = false
+
+  const { billing } = await executeBodyScanMeteredOperation({
+    executeProvider: async ({ markDispatched }) => {
+      const claim = await markDispatched()
+      if (
+        claim?.result === DISPATCH_CAS_RESULT.ALREADY_DISPATCHED
+        || (claim && claim.claimed === false && claim.result !== DISPATCH_CAS_RESULT.FIRST_DISPATCH)
+      ) {
+        return { ok: false, providerRequestStarted: false, code: 'alreadyDispatched' }
+      }
+      providerInvoked = true
+      try {
+        analysis = await runBodyAnalysis(images)
+        if (analysis?.source === 'mock') {
+          return { ok: false, providerRequestStarted: true, code: 'providerUnavailable' }
+        }
+        return { ok: true }
+      } catch (error) {
+        providerError = error
+        if (error && typeof error === 'object') {
+          error.providerRequestStarted = true
+        }
+        throw error
+      }
+    },
+    instanceKey: requestId,
+    log: (entry) => {
+      console.info('[api/body-analysis] Billing', {
+        decision: entry?.decision,
+        dispatch_state: entry?.dispatch_state,
+        event: entry?.event,
+        feature_id: 'body.scan',
+        operation_id: operationId,
+        requestId,
+      })
+    },
+    operationId,
+    runtime,
+    userId,
+  })
+
+  if (analysis?.source === 'ai') {
+    const mapped = mapBodyScanBillingHttp(billing, {
+      analysisOk: true,
+      providerAttempted: providerInvoked,
+    })
+    if (mapped.kind === 'success') {
+      return sendBodyAnalysisResult(response, analysis)
+    }
+  }
+
+  if (analysis?.source === 'mock' && isMockFallbackAllowed()) {
+    return sendBodyAnalysisResult(response, analysis)
+  }
+
+  if (providerError instanceof MockNotAllowedError) {
+    return sendProductionMockBlocked(response, requestId)
+  }
+
+  const mapped = mapBodyScanBillingHttp(billing, {
+    analysisOk: false,
+    providerAttempted: providerInvoked,
+  })
+  return sendSafeAiError(response, {
+    code: mapped.code,
+    requestId,
+    retryable: mapped.retryable,
+    status: mapped.status,
+  })
+}
+
 export default async function handler(request, response) {
   const requestId = `body-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   let images
@@ -587,45 +730,17 @@ export default async function handler(request, response) {
     })
   }
 
-  try {
-    const analysis = await runBodyAnalysis(images)
-    const result = formatBodyAnalysisResult(analysis)
-
-    console.info('[api/body-analysis] Response sent', {
-      source: result.source,
-      sourceReason: result.sourceReason,
-    })
-
-    return response.status(200).json(result)
-  } catch (error) {
-    if (error instanceof MockNotAllowedError) {
-      // Never invent analysis text in production - fail visibly instead.
-      return response.status(503).json({
-        error: {
-          code: aiRouteErrorCodes.PROVIDER_UNAVAILABLE,
-          requestId,
-          retryable: true,
-          safeMessage: 'AI-kroppsanalysen kunde inte nås. Inget demoresultat visas i produktion. Försök igen senare.',
-        },
-        ok: false,
-      })
-    }
-
-    console.error('[api/body-analysis] Unexpected route error', {
-      error: error instanceof Error ? error.message : String(error),
-      source: 'error',
-    })
-
-    return response.status(500).json({
-      error: {
-        code: aiRouteErrorCodes.PROVIDER_UNAVAILABLE,
-        requestId,
-        retryable: true,
-        safeMessage: 'AI-kroppsanalys är tillfälligt otillgänglig.',
-      },
-      ok: false,
-    })
+  if (!process.env.OPENAI_API_KEY) {
+    return respondWithoutProvider(response, images, requestId)
   }
+
+  return respondWithServerQuota({
+    images,
+    request,
+    requestId,
+    response,
+    userId: auth.user.id,
+  })
 }
 
 export const bodyAnalysisRouteInternals = {

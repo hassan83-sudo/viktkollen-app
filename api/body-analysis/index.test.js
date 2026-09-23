@@ -3,11 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import handler, { bodyAnalysisRouteInternals } from './index.js'
 import { setAiRateLimitAdapterForTests } from '../_shared/aiRateLimiter.js'
+import { installBodyScanBillingTestRuntime, setBodyScanBillingRuntimeForTests } from '../_shared/billing/bodyScanLiveBilling.js'
 import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
 import { analysisConsentPurposes, computeCanonicalImageHash, issueAnalysisConsentToken } from '../_shared/analysisConsent.js'
 
 const TEST_SECRET = 'test-analysis-consent-secret-32-plus'
-const USER_ID = 'body-user-a'
+const USER_ID = '11111111-1111-4111-8111-111111111111'
 const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4])
 
 function consentHeadersForBodyImages(images = { backImage: pngBytes, frontImage: pngBytes, sideImage: pngBytes }) {
@@ -92,6 +93,7 @@ describe('body analysis API route', () => {
     vi.restoreAllMocks()
     process.env = { ...originalEnv }
     setAiRateLimitAdapterForTests()
+    installBodyScanBillingTestRuntime()
     setSupabaseAuthVerifierForTests(async (token) => (
       token === 'valid-token'
         ? { user: { id: USER_ID } }
@@ -103,6 +105,7 @@ describe('body analysis API route', () => {
     process.env = { ...originalEnv }
     vi.unstubAllGlobals()
     setAiRateLimitAdapterForTests()
+    setBodyScanBillingRuntimeForTests(null)
     setSupabaseAuthVerifierForTests(null)
   })
 
@@ -123,7 +126,7 @@ describe('body analysis API route', () => {
     expect(response.statusCode).toBe(401)
     expect(response.body.error.code).toBe('AUTH_REQUIRED')
     expect(fetchImpl).not.toHaveBeenCalled()
-    expect(JSON.stringify(response.body)).not.toMatch(/test-key|Bearer|body-user-a|data:image/)
+    expect(JSON.stringify(response.body)).not.toMatch(/test-key|Bearer|11111111-1111-4111-8111-111111111111|data:image/)
   })
 
   it('rejects expired auth without provider calls', async () => {
@@ -165,7 +168,7 @@ describe('body analysis API route', () => {
     expect(response.body.sourceReason).toBe('missing_api_key')
     expect(response.body.estimatedWeight).toBeUndefined()
     expect(response.body.measuredWeight).toEqual({ date: '2026-08-12', source: 'Våg', valueKg: 78 })
-    expect(JSON.stringify(response.body)).not.toMatch(/OPENAI_API_KEY|Bearer|body-user-a|data:image/)
+    expect(JSON.stringify(response.body)).not.toMatch(/OPENAI_API_KEY|Bearer|11111111-1111-4111-8111-111111111111|data:image/)
   })
 
   it('sanitizes valid AI estimates and keeps measured weight separate', async () => {

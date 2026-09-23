@@ -7,6 +7,13 @@ import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { createImageFingerprint, runDedupedAiRequest } from '../_shared/aiRequestDeduper.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 import { analysisConsentPurposes, verifyAnalysisConsentToken } from '../_shared/analysisConsent.js'
+import {
+  createAiEyeOperationId,
+  executeAiEyeMeteredOperation,
+  mapAiEyeBillingHttp,
+  resolveAiEyeBillingRuntime,
+} from '../_shared/billing/aiEyeLiveBilling.js'
+import { DISPATCH_CAS_RESULT } from '../../src/services/billing/durableOperationStore.js'
 
 /**
  * "Har jag glömt något?" remote AI object check.
@@ -455,31 +462,115 @@ export default async function handler(request, response) {
       return safeError(response, 403, 'consentRequired', undefined, false, requestId)
     }
 
-    const { promise: providerPromise } = runDedupedAiRequest({
-      fingerprint: createImageFingerprint(image),
-      route: 'forgottenItems',
+    if (!process.env.OPENAI_API_KEY) {
+      const error = new Error('missing_configuration')
+      error.code = 'serverConfiguration'
+      throw error
+    }
+
+    const runtime = await resolveAiEyeBillingRuntime()
+    if (!runtime?.ok) {
+      console.warn('[api/forgotten-items-analysis] Billing unavailable', {
+        code: runtime?.code || 'DURABLE_STORE_UNAVAILABLE',
+        requestId,
+      })
+      return sendSafeAiError(response, {
+        code: aiRouteErrorCodes.PROVIDER_UNAVAILABLE,
+        requestId,
+        retryable: true,
+        status: 503,
+      })
+    }
+
+    const operationId = createAiEyeOperationId({
+      clientAttemptId,
       userId: auth.user.id,
-    }, () => callOpenAi(image, parsedItems.items))
-    console.info('[api/forgotten-items-analysis] Provider request started', {
-      clientAttemptId,
-      itemCount: parsedItems.items.length,
-      modelName: getAiGatewayConfig('photo').model || DEFAULT_MODEL,
-      requestId,
-      upstreamRequestStarted: true,
     })
-    const result = await providerPromise
-    console.info('[api/forgotten-items-analysis] Analysis completed', {
-      clientAttemptId,
-      itemCount: result.items.length,
-      requestCompleted: true,
-      requestId,
-      source: 'remote',
+    let analysis = null
+    let providerError = null
+    let providerInvoked = false
+    const { billing } = await executeAiEyeMeteredOperation({
+      executeProvider: async ({ markDispatched }) => {
+        const claim = await markDispatched()
+        if (
+          claim?.result === DISPATCH_CAS_RESULT.ALREADY_DISPATCHED
+          || (claim && claim.claimed === false && claim.result !== DISPATCH_CAS_RESULT.FIRST_DISPATCH)
+        ) {
+          return { ok: false, providerRequestStarted: false, code: 'alreadyDispatched' }
+        }
+        providerInvoked = true
+        const { promise: providerPromise } = runDedupedAiRequest({
+          fingerprint: createImageFingerprint(image),
+          route: 'forgottenItems',
+          userId: auth.user.id,
+        }, () => callOpenAi(image, parsedItems.items))
+        console.info('[api/forgotten-items-analysis] Provider request started', {
+          clientAttemptId,
+          itemCount: parsedItems.items.length,
+          modelName: getAiGatewayConfig('photo').model || DEFAULT_MODEL,
+          operationId,
+          requestId,
+          upstreamRequestStarted: true,
+        })
+        try {
+          analysis = await providerPromise
+          return { ok: true }
+        } catch (error) {
+          providerError = error
+          if (error && typeof error === 'object') error.providerRequestStarted = true
+          throw error
+        }
+      },
+      instanceKey: requestId,
+      log: (entry) => {
+        console.info('[api/forgotten-items-analysis] Billing', {
+          decision: entry?.decision,
+          dispatch_state: entry?.dispatch_state,
+          event: entry?.event,
+          feature_id: 'ai.eye.analysis',
+          operation_id: operationId,
+          requestId,
+        })
+      },
+      operationId,
+      runtime,
+      userId: auth.user.id,
     })
-    return response.status(200).json({
-      ok: true,
+
+    if (analysis && !providerError) {
+      const mapped = mapAiEyeBillingHttp(billing, {
+        analysisOk: true,
+        providerAttempted: providerInvoked,
+      })
+      if (mapped.kind === 'success') {
+        console.info('[api/forgotten-items-analysis] Analysis completed', {
+          clientAttemptId,
+          itemCount: analysis.items.length,
+          requestCompleted: true,
+          requestId,
+          source: 'remote',
+        })
+        return response.status(200).json({
+          ok: true,
+          requestId,
+          result: analysis,
+          source: 'remote',
+        })
+      }
+    }
+
+    if (providerError) throw providerError
+
+    const mapped = mapAiEyeBillingHttp(billing, {
+      analysisOk: false,
+      providerAttempted: providerInvoked,
+      timeout: providerError?.timeout === true || providerError?.name === 'AbortError',
+    })
+    return sendSafeAiError(response, {
+      code: mapped.code,
       requestId,
-      result,
-      source: 'remote',
+      retryable: mapped.retryable,
+      status: mapped.status,
     })
   } catch (error) {
     const rawCode = error?.code === 'serverConfiguration'

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import handler from './index.js'
 import { setAiRateLimitAdapterForTests } from '../_shared/aiRateLimiter.js'
 import { resetAiRequestDeduperForTests } from '../_shared/aiRequestDeduper.js'
+import { installAiEyeBillingTestRuntime, setAiEyeBillingRuntimeForTests } from '../_shared/billing/aiEyeLiveBilling.js'
 import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
 import { analysisConsentPurposes, computeCanonicalImageHash, issueAnalysisConsentToken } from '../_shared/analysisConsent.js'
 
@@ -82,6 +83,7 @@ describe('forgotten items analysis API - consent token gate', () => {
     process.env = { ...originalEnv, ANALYSIS_CONSENT_SECRET: TEST_SECRET }
     resetAiRequestDeduperForTests()
     setAiRateLimitAdapterForTests()
+    installAiEyeBillingTestRuntime()
     setSupabaseAuthVerifierForTests(async (token) => (
       token === 'valid-token'
         ? { user: { id: USER_ID } }
@@ -94,6 +96,7 @@ describe('forgotten items analysis API - consent token gate', () => {
     vi.useRealTimers()
     vi.unstubAllGlobals()
     setSupabaseAuthVerifierForTests(null)
+    setAiEyeBillingRuntimeForTests(null)
     setAiRateLimitAdapterForTests()
     resetAiRequestDeduperForTests()
   })

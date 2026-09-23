@@ -176,6 +176,56 @@ describe('legacy AI API route', () => {
     expect(fetch).toHaveBeenCalled()
   })
 
+  it('sends the intent-selected coach context once and keeps the user message', async () => {
+    process.env.OPENAI_API_KEY = 'test-key'
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: JSON.stringify({ reply: 'En enkel middag räcker.' }),
+      }),
+    }))
+
+    const chatHistory = Array.from({ length: 12 }, (_, index) => ({
+      role: index % 2 === 0 ? 'user' : 'assistant',
+      text: index === 0
+        ? 'HISTORIK-UTANFOR-KAP'
+        : index === 11
+          ? 'HISTORIK-UNIK-10'
+          : `vanligt meddelande ${index}`,
+    }))
+    const response = await callRoute(createRequest({
+      body: {
+        action: 'chat',
+        chatHistory,
+        message: 'MIDDAG-FRAGA-UNIK',
+        profile: { displayName: 'PROFIL-UNIK' },
+      },
+    }))
+    const providerBody = JSON.parse(fetch.mock.calls[0][1].body)
+    const texts = providerBody.input[0].content.map((item) => item.text)
+    const [prompt, userPayload] = texts
+    const contextJson = prompt.slice(
+      prompt.indexOf('Tillgänglig Viktkollen-data:\n') + 'Tillgänglig Viktkollen-data:\n'.length,
+      prompt.indexOf('\n\nSvara endast med giltig JSON:'),
+    )
+    const context = JSON.parse(contextJson)
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body.source).toBe('openai')
+    expect(providerBody.max_output_tokens).toBe(800)
+    expect(JSON.parse(userPayload)).toEqual({ message: 'MIDDAG-FRAGA-UNIK' })
+    expect(context.profile.displayName).toBe('PROFIL-UNIK')
+    expect(context.conversation.recentMessages).toHaveLength(10)
+    expect(context.conversation.recentMessages.at(-1).text).toBe('HISTORIK-UNIK-10')
+    expect(contextJson).not.toContain('HISTORIK-UTANFOR-KAP')
+    expect(prompt).toContain('Ingen medicinsk diagnos')
+    expect(prompt).toContain('Svara endast med giltig JSON')
+    expect(prompt).toContain('"intent":"food"')
+    expect(userPayload).not.toContain('PROFIL-UNIK')
+    expect(userPayload).not.toContain('HISTORIK-UNIK-10')
+    expect(texts.join('\n').match(/Tillgänglig Viktkollen-data:/g)).toEqual(['Tillgänglig Viktkollen-data:'])
+  })
+
   it('mints a realtime voice session without returning the API key', async () => {
     process.env.OPENAI_API_KEY = 'sk-secret-test-key'
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({

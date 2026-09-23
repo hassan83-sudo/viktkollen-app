@@ -330,9 +330,7 @@ async function handleChat(data, response, meter) {
           intent: chatEngine.intent,
         }),
         userData: {
-          context: chatEngine.context,
           message: data.message,
-          recentConversation: chatEngine.context.conversation?.recentMessages || [],
         },
       })
 

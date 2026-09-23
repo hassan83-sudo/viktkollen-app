@@ -165,51 +165,132 @@ describe('nutrition photo analysis API route', () => {
   })
 
   describe('origin gate - exact hostname check', () => {
-    it('allows the exact Vercel origin through to the consent gate', async () => {
-      process.env.VERCEL_URL = 'viktkollen.vercel.app'
+    const canonicalHost = 'viktkollen-app.vercel.app'
+    const deploymentHost = 'viktkollen-mwjacq506-appsonthego-s-projects.vercel.app'
+
+    it('allows the trusted canonical Production alias through to the consent gate', async () => {
+      process.env.VERCEL_URL = deploymentHost
       const response = await callRoute(createRequest({
         body: multipartBody(),
-        headers: { origin: 'https://viktkollen.vercel.app' },
+        headers: {
+          host: canonicalHost,
+          origin: `https://${canonicalHost}`,
+        },
+      }))
+      expect(response.statusCode).toBe(403)
+      expect(response.body.error.code).toBe('CONSENT_REQUIRED')
+    })
+
+    it('allows the exact deployment-specific Vercel origin through to the consent gate', async () => {
+      process.env.VERCEL_URL = deploymentHost
+      const response = await callRoute(createRequest({
+        body: multipartBody(),
+        headers: { origin: `https://${deploymentHost}` },
       }))
       expect(response.statusCode).toBe(403)
       expect(response.body.error.code).toBe('CONSENT_REQUIRED')
     })
 
     it('blocks a subdomain-suffix origin attack that the old includes() check would have allowed', async () => {
-      process.env.VERCEL_URL = 'viktkollen.vercel.app'
+      process.env.VERCEL_URL = deploymentHost
       const response = await callRoute(createRequest({
         body: multipartBody(),
-        headers: { origin: 'https://viktkollen.vercel.app.attacker.example' },
+        headers: {
+          host: canonicalHost,
+          origin: `https://${canonicalHost}.attacker.com`,
+        },
+      }))
+      expect(response.statusCode).toBe(403)
+      expect(response.body.error.code).toBe('INVALID_REQUEST')
+    })
+
+    it.each([
+      'attacker-viktkollen-app.vercel.app',
+      'viktkollen-app-vercel.app',
+      'evil.vercel.app',
+    ])('blocks prefix, lookalike, and arbitrary Vercel host %s', async (host) => {
+      process.env.VERCEL_URL = deploymentHost
+      const response = await callRoute(createRequest({
+        body: multipartBody(),
+        headers: {
+          host,
+          origin: `https://${host}`,
+        },
+      }))
+      expect(response.statusCode).toBe(403)
+      expect(response.body.error.code).toBe('INVALID_REQUEST')
+    })
+
+    it('blocks an arbitrary matching Host and Origin pair', async () => {
+      process.env.VERCEL_URL = deploymentHost
+      const response = await callRoute(createRequest({
+        body: multipartBody(),
+        headers: {
+          host: 'attacker.example',
+          origin: 'https://attacker.example',
+        },
+      }))
+      expect(response.statusCode).toBe(403)
+      expect(response.body.error.code).toBe('INVALID_REQUEST')
+    })
+
+    it('blocks a trusted Host paired with a mismatched Origin', async () => {
+      process.env.VERCEL_URL = deploymentHost
+      const response = await callRoute(createRequest({
+        body: multipartBody(),
+        headers: {
+          host: canonicalHost,
+          origin: 'https://attacker.example',
+        },
       }))
       expect(response.statusCode).toBe(403)
       expect(response.body.error.code).toBe('INVALID_REQUEST')
     })
 
     it('blocks a malformed origin', async () => {
-      process.env.VERCEL_URL = 'viktkollen.vercel.app'
+      process.env.VERCEL_URL = deploymentHost
       const response = await callRoute(createRequest({
         body: multipartBody(),
-        headers: { origin: 'not-a-url' },
+        headers: {
+          host: canonicalHost,
+          origin: 'not-a-url',
+        },
+      }))
+      expect(response.statusCode).toBe(403)
+      expect(response.body.error.code).toBe('INVALID_REQUEST')
+    })
+
+    it('blocks a non-http origin even when its hostname is trusted', async () => {
+      process.env.VERCEL_URL = deploymentHost
+      const response = await callRoute(createRequest({
+        body: multipartBody(),
+        headers: {
+          host: canonicalHost,
+          origin: `ftp://${canonicalHost}`,
+        },
       }))
       expect(response.statusCode).toBe(403)
       expect(response.body.error.code).toBe('INVALID_REQUEST')
     })
 
     it('keeps the current behavior: a missing Origin passes the origin gate', async () => {
-      process.env.VERCEL_URL = 'viktkollen.vercel.app'
+      process.env.VERCEL_URL = deploymentHost
       const response = await callRoute(createRequest({ body: multipartBody() }))
       expect(response.statusCode).toBe(403)
       expect(response.body.error.code).toBe('CONSENT_REQUIRED')
     })
 
-    it('keeps the current behavior: no VERCEL_URL means no origin enforcement', async () => {
+    it('fails closed for a supplied Origin when no trusted host is available', async () => {
       delete process.env.VERCEL_URL
       const response = await callRoute(createRequest({
         body: multipartBody(),
-        headers: { origin: 'https://evil.example' },
+        headers: {
+          host: 'evil.example',
+          origin: 'https://evil.example',
+        },
       }))
       expect(response.statusCode).toBe(403)
-      expect(response.body.error.code).toBe('CONSENT_REQUIRED')
+      expect(response.body.error.code).toBe('INVALID_REQUEST')
     })
   })
 

@@ -34,6 +34,7 @@ export const NUTRITION_PHOTO_ANALYSIS_TIMEOUT_MS = 45000
 const MAX_IMAGE_SIZE_BYTES = Number(process.env.NUTRITION_PHOTO_MAX_FILE_BYTES || 8 * 1024 * 1024)
 const REQUEST_TIMEOUT_MS = Number(process.env.NUTRITION_PHOTO_TIMEOUT_MS || NUTRITION_PHOTO_ANALYSIS_TIMEOUT_MS)
 const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp']
+const TRUSTED_PRODUCTION_HOSTS = new Set(['viktkollen-app.vercel.app'])
 
 export const config = {
   api: {
@@ -46,11 +47,32 @@ function getHeader(request, name) {
   return headers[name] || headers[name.toLowerCase()] || ''
 }
 
-function isAllowedOrigin(origin, vercelUrl) {
-  if (!origin || !vercelUrl) return true
+function normalizeAllowedHost(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
 
   try {
-    return new URL(origin).hostname === vercelUrl
+    return new URL(raw.includes('://') ? raw : `https://${raw}`).host.toLowerCase()
+  } catch {
+    return ''
+  }
+}
+
+function getTrustedProductionHost(requestHost) {
+  const normalized = normalizeAllowedHost(requestHost)
+  return TRUSTED_PRODUCTION_HOSTS.has(normalized) ? normalized : ''
+}
+
+function isAllowedOrigin(origin, ...allowedHosts) {
+  if (!origin) return true
+
+  try {
+    const parsedOrigin = new URL(origin)
+    if (parsedOrigin.protocol !== 'https:' && parsedOrigin.protocol !== 'http:') return false
+
+    const originHost = parsedOrigin.host.toLowerCase()
+    const normalizedAllowedHosts = allowedHosts.map(normalizeAllowedHost).filter(Boolean)
+    return normalizedAllowedHosts.includes(originHost)
   } catch {
     return false
   }
@@ -389,7 +411,8 @@ export default async function handler(request, response) {
   }
   const contentType = getHeader(request, 'content-type')
   const origin = getHeader(request, 'origin')
-  if (!isAllowedOrigin(origin, process.env.VERCEL_URL)) {
+  const trustedProductionHost = getTrustedProductionHost(getHeader(request, 'host'))
+  if (!isAllowedOrigin(origin, process.env.VERCEL_URL, trustedProductionHost)) {
     return safeError(response, 403, 'corsBlocked', 'Ursprunget är inte tillåtet.', false, requestId)
   }
 

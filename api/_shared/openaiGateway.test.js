@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { getUsageRepository, setUsageRepositoryForTests, createInMemoryUsageRepository } from '../../src/services/billing/usageRepository.js'
 import {
   callOpenAiJson,
   checkRateLimit,
@@ -12,6 +13,7 @@ import {
 describe('openaiGateway', () => {
   afterEach(() => {
     vi.useRealTimers()
+    setUsageRepositoryForTests(createInMemoryUsageRepository())
   })
 
   it('reports configured status without exposing key values', () => {
@@ -468,5 +470,51 @@ describe('openaiGateway', () => {
     expect(session.ok).toBe(true)
     expect(session.clientSecret).toBe('ek_test')
     expect(JSON.stringify(session)).not.toMatch(/secret-value|OPENAI_API_KEY|Bearer/)
+  })
+
+  it('records one usage event from provider usage without changing the AI payload', async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({
+      output_text: JSON.stringify({ summary: 'ok' }),
+      usage: { input_tokens: 9, output_tokens: 4, total_tokens: 13 },
+    }), { status: 200 }))
+    const result = await callOpenAiJson({
+      env: { OPENAI_API_KEY: 'secret', OPENAI_COACH_MODEL: 'server-model' },
+      fetchImpl,
+      input: [{ role: 'user', content: [{ text: 'safe', type: 'input_text' }] }],
+      requestId: 'meter-1',
+      userId: 'user-meter',
+    })
+    await Promise.resolve()
+
+    expect(result.ok).toBe(true)
+    expect(result.value).toEqual({ summary: 'ok' })
+    const stored = await getUsageRepository().getByEventId('meter-1')
+    expect(stored.quantity).toBe(1)
+    expect(stored.provider).toBe('openai')
+    expect(stored.model).toBe('server-model')
+    expect(stored.user_id).toBe('user-meter')
+    expect(stored.metadata.usage_basis).toBe('MEASURED')
+    expect(stored.metadata.input_tokens).toBe(9)
+    expect(JSON.stringify(stored)).not.toMatch(/prompt|safe|summary/)
+  })
+
+  it('does not let a second retry with the same requestId double-count usage', async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({
+      output_text: JSON.stringify({ summary: 'ok' }),
+    }), { status: 200 }))
+    await callOpenAiJson({
+      env: { OPENAI_API_KEY: 'secret' },
+      fetchImpl,
+      input: [],
+      requestId: 'retry-1',
+    })
+    await callOpenAiJson({
+      env: { OPENAI_API_KEY: 'secret' },
+      fetchImpl,
+      input: [],
+      requestId: 'retry-1',
+    })
+    await Promise.resolve()
+    expect((await getUsageRepository().list()).length).toBe(1)
   })
 })

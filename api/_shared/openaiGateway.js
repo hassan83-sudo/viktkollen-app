@@ -1,3 +1,5 @@
+import { recordOpenAiGatewayUsage } from './billing/recordOpenAiGatewayUsage.js'
+
 const OPENAI_API_URL = 'https://api.openai.com/v1/responses'
 const DEFAULT_TEXT_MODEL = 'gpt-4.1-mini'
 const DEFAULT_VISION_MODEL = 'gpt-4.1-mini'
@@ -342,6 +344,7 @@ export async function createRealtimeVoiceSession({
   fetchImpl = fetch,
   instructions,
   requestId = createSafeRequestId('voice'),
+  userId = '',
 } = {}) {
   const config = getVoiceAiGatewayConfig(env)
 
@@ -398,13 +401,27 @@ export async function createRealtimeVoiceSession({
       }
     }
 
+    const sessionModel = data.model || config.model
+    try {
+      await recordOpenAiGatewayUsage({
+        feature: 'ai.voice.session',
+        model: sessionModel,
+        providerData: {},
+        requestId,
+        type: 'voice',
+        userId,
+      })
+    } catch {
+      // Metering is fail-open and must not block session minting.
+    }
+
     return {
       available: true,
       clientSecret: String(clientSecret),
       expiresAt: data.client_secret?.expires_at || data.expires_at || null,
       idleTimeoutMs: config.idleTimeoutMs,
       maxSessionMs: config.maxSessionMs,
-      model: data.model || config.model,
+      model: sessionModel,
       ok: true,
       requestId,
     }
@@ -444,6 +461,7 @@ export function getAiGatewayConfig(type = 'coach', env = process.env) {
 
 export async function callOpenAiJson({
   env = process.env,
+  feature,
   fetchImpl = fetch,
   input,
   maxOutputTokens,
@@ -453,6 +471,8 @@ export async function callOpenAiJson({
   temperature = 0.2,
   timeoutMs = DEFAULT_TIMEOUT_MS,
   type = 'coach',
+  usageRepository,
+  userId = '',
 } = {}) {
   if (!env.OPENAI_API_KEY) {
     return {
@@ -554,6 +574,20 @@ export async function callOpenAiJson({
         ok: false,
         requestId,
       }
+    }
+
+    try {
+      await recordOpenAiGatewayUsage({
+        feature,
+        model: model || config.model,
+        providerData: data,
+        repository: usageRepository,
+        requestId,
+        type,
+        userId,
+      })
+    } catch {
+      // Metering is fail-open and must not change the AI result.
     }
 
     return {

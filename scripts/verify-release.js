@@ -80,7 +80,7 @@ export function assertDistContract() {
     'scripts/verify-photo-route.js',
     'scripts/verify-preview.js',
     'api/account-deletion/index.js',
-    'api/entitlements/index.js',
+    'api/billing/user/index.js',
     'api/_shared/supabaseServer.js',
     'docs/privacy-data-inventory-v1.md',
     'docs/staging-test-user-ab-acceptance.md',

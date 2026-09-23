@@ -347,6 +347,7 @@ async function callOpenAi(image, items) {
   const imageUrl = `data:${image.contentType};base64,${image.data.toString('base64')}`
   const config = getAiGatewayConfig('photo')
   const result = await callOpenAiJson({
+    feature: 'ai.eye.analysis',
     input: [{
       content: [
         { text: createPrompt(items), type: 'input_text' },

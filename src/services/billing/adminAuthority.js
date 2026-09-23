@@ -72,6 +72,23 @@ export function sanitizeAdminSnapshot(input = {}) {
       safe[key] = value
       continue
     }
+    if (key === 'enabled_for_sale' && typeof value === 'boolean') {
+      safe[key] = value
+      continue
+    }
+    if (key === 'display_order' && Number.isInteger(value) && value >= 1 && value <= 14) {
+      safe[key] = value
+      continue
+    }
+    if (key === 'plan_id' && /^plan\.prelim\.sek\.month\.\d{2}$/.test(String(value || ''))) {
+      safe[key] = value
+      continue
+    }
+    if (key === 'field' && (value === 'enabled_for_sale' || value === 'display_order')) {
+      safe[key] = value
+      continue
+    }
+    if (key === 'plan_id' || key === 'field' || key === 'display_order' || key === 'enabled_for_sale') continue
     if (typeof value === 'string' && value.length <= 120) safe[key] = value
   }
   return Object.freeze(safe)

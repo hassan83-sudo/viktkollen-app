@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppErrorBoundary from '../AppErrorBoundary.jsx'
+import PlanCommercialAdmin from '../billing/PlanCommercialAdmin.jsx'
 import CloudBackupPanel from '../CloudBackupPanel.jsx'
 import CloudStatusPanel from '../CloudStatusPanel.jsx'
 import CloudSyncPanel from '../CloudSyncPanel.jsx'
@@ -412,6 +413,8 @@ function MoreSection({
                 {authLoading ? t('common:loggingOut') : t('common:actions.signOut')}
               </button>
             </div>
+
+            {isAuthenticated ? <PlanCommercialAdmin /> : null}
 
             <div className="app-information">
               <h3>{t('aboutTitle')}</h3>

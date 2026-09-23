@@ -1,0 +1,158 @@
+import { useEffect, useState } from 'react'
+import { supabase } from '../../services/supabaseClient.js'
+
+const PAID_PLAN_COUNT = 14
+
+async function adminFetch(token, path, options = {}) {
+  const response = await fetch(path, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
+  })
+  const payload = await response.json().catch(() => ({}))
+  return { payload, response }
+}
+
+function validPlans(payload) {
+  return payload?.ok === true && Array.isArray(payload.plans) && payload.plans.length === PAID_PLAN_COUNT
+}
+
+export default function PlanCommercialAdmin() {
+  const [notice, setNotice] = useState('')
+  const [pendingId, setPendingId] = useState('')
+  const [plans, setPlans] = useState([])
+  const [status, setStatus] = useState('checking')
+  const [token, setToken] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      if (!supabase) {
+        if (!cancelled) setStatus('hidden')
+        return
+      }
+      const { data } = await supabase.auth.getSession()
+      const accessToken = data?.session?.access_token || ''
+      if (!accessToken) {
+        if (!cancelled) setStatus('hidden')
+        return
+      }
+      const session = await adminFetch(accessToken, '/api/billing/admin')
+      if (!session.response.ok) {
+        if (!cancelled) setStatus('hidden')
+        return
+      }
+      const listed = await adminFetch(accessToken, '/api/billing/admin?resource=plan_commercial')
+      if (cancelled) return
+      if (!listed.response.ok || !validPlans(listed.payload)) {
+        setPlans([])
+        setStatus('error')
+        setToken(accessToken)
+        return
+      }
+      setToken(accessToken)
+      setPlans(listed.payload.plans)
+      setStatus('ready')
+    }
+    load().catch(() => {
+      if (!cancelled) setStatus('hidden')
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function persist(plan, body) {
+    setNotice('')
+    setPendingId(plan.plan_id)
+    try {
+      const { payload, response } = await adminFetch(token, '/api/billing/admin', {
+        body: JSON.stringify(body),
+        method: 'POST',
+      })
+      if (!response.ok || !validPlans(payload)) {
+        setNotice('Ändringen sparades inte.')
+        return
+      }
+      setPlans(payload.plans)
+    } catch {
+      setNotice('Ändringen sparades inte.')
+    } finally {
+      setPendingId('')
+    }
+  }
+
+  if (status === 'checking' || status === 'hidden') return null
+  if (status === 'error') {
+    return (
+      <section className="app-information" aria-labelledby="plan-commercial-admin-title">
+        <h3 id="plan-commercial-admin-title">Planer</h3>
+        <p role="alert">Planstatus kunde inte läsas. Inga planer visas som tillgängliga.</p>
+      </section>
+    )
+  }
+
+  return (
+    <section className="app-information" aria-labelledby="plan-commercial-admin-title">
+      <h3 id="plan-commercial-admin-title">Planer</h3>
+      <p>PRELIMINARY / NOT FINALIZED</p>
+      {notice ? <p role="alert">{notice}</p> : null}
+      <ul>
+        {plans.map((plan, index) => {
+          const price = `${plan.price_sek_minor / 100} kr`
+          const busy = pendingId === plan.plan_id
+          return (
+            <li key={plan.plan_id}>
+              <span>{price}</span>
+              {' '}
+              <span>{plan.enabled_for_sale ? 'ON' : 'OFF'}</span>
+              {' '}
+              <span>PRELIMINARY / NOT FINALIZED</span>
+              <div>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => persist(plan, {
+                    action: 'set_plan_availability',
+                    enabled_for_sale: plan.enabled_for_sale !== true,
+                    expected_version: plan.version,
+                    plan_id: plan.plan_id,
+                  })}
+                >
+                  {plan.enabled_for_sale ? `Inaktivera ${price}` : `Aktivera ${price}`}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy || index === 0}
+                  onClick={() => persist(plan, {
+                    action: 'move_plan_display_order',
+                    direction: 'up',
+                    expected_version: plan.version,
+                    plan_id: plan.plan_id,
+                  })}
+                >
+                  {`Flytta upp ${price}`}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy || index === plans.length - 1}
+                  onClick={() => persist(plan, {
+                    action: 'move_plan_display_order',
+                    direction: 'down',
+                    expected_version: plan.version,
+                    plan_id: plan.plan_id,
+                  })}
+                >
+                  {`Flytta ned ${price}`}
+                </button>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}

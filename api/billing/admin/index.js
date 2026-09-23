@@ -17,6 +17,7 @@ import {
   defaultKillSwitchReason,
   KILL_SWITCH_ACTION,
 } from '../../../src/services/billing/billingKillSwitch.js'
+import { rejectPlanCommercialOverrides } from '../../../src/services/billing/planCommercialControl.js'
 
 function readBody(request) {
   if (!request.body) return {}
@@ -41,6 +42,56 @@ function storeUnavailable(response, requestId) {
     ok: false,
     requestId,
   })
+}
+
+function respondPlanCommercial(response, requestId, result) {
+  if (!result?.ok) {
+    if (result?.code === 'forbidden_admin') {
+      return response.status(403).json({
+        error: { code: 'FORBIDDEN' },
+        ok: false,
+        requestId,
+      })
+    }
+    if (result?.code === 'CONFIG_CONFLICT') {
+      return response.status(409).json({
+        error: { code: 'CONFIG_CONFLICT' },
+        ok: false,
+        requestId,
+      })
+    }
+    if (result?.code === 'PLAN_STATE_UNAVAILABLE' || result?.code === 'PLAN_WRITE_FAILED') {
+      return storeUnavailable(response, requestId)
+    }
+    return response.status(400).json({
+      error: { code: result?.code || 'INVALID_ADMIN_REQUEST' },
+      ok: false,
+      requestId,
+    })
+  }
+  return response.status(200).json({
+    ok: true,
+    plans: result.plans,
+    requestId,
+  })
+}
+
+function planCommercialCommand(body, action) {
+  const code = rejectPlanCommercialOverrides(body, action)
+  if (code) return { ok: false, code }
+  if (body.expected_version == null || body.expected_version === '') {
+    return { ok: false, code: 'invalid_plan_control' }
+  }
+  const expectedVersion = parseExpectedVersion(body.expected_version)
+  if (expectedVersion == null) return { ok: false, code: 'invalid_plan_control' }
+  const command = {
+    action,
+    enabled_for_sale: body.enabled_for_sale,
+    expected_version: expectedVersion,
+    plan_id: String(body.plan_id || '').trim(),
+  }
+  if (action === 'move_plan_display_order') command.direction = body.direction
+  return { command, ok: true }
 }
 
 function invalidAdmin(response, requestId, code = 'INVALID_ADMIN_REQUEST') {
@@ -75,6 +126,17 @@ export default async function handler(request, response) {
   }
 
   if (request.method === 'GET') {
+    void request.query?.enabled_for_sale
+    void request.query?.plan_id
+    void request.query?.price_sek_minor
+    if (request.query?.resource === 'plan_commercial') {
+      const controls = resolveBillingControlAdapter()
+      if (!controls || typeof controls.listPlanCommercial !== 'function') {
+        return storeUnavailable(response, requestId)
+      }
+      const listed = await controls.listPlanCommercial(admin.user.id)
+      return respondPlanCommercial(response, requestId, listed)
+    }
     return response.status(200).json({
       ok: true,
       requestId,
@@ -96,6 +158,10 @@ export default async function handler(request, response) {
   void body.table
   void body.sql
   void body.api_key
+  void body.localStorage
+  void body.price_sek_minor
+  void body.entitlements
+  void body.quotas
 
   const service = getBillingAdminService()
   try {
@@ -124,6 +190,25 @@ export default async function handler(request, response) {
         permission: result.permission.status,
         requestId,
       })
+    }
+    if (action === 'set_plan_availability' || action === 'move_plan_display_order') {
+      const controls = resolveBillingControlAdapter()
+      const method = action === 'set_plan_availability' ? 'setPlanAvailability' : 'movePlanDisplayOrder'
+      if (!controls || typeof controls[method] !== 'function') {
+        return storeUnavailable(response, requestId)
+      }
+      const parsed = planCommercialCommand(body, action)
+      if (!parsed.ok) return respondPlanCommercial(response, requestId, parsed)
+      const written = await controls[method](admin.user.id, parsed.command)
+      if (written?.ok) {
+        console.info('[api/billing/admin] Plan', {
+          action,
+          field: action === 'set_plan_availability' ? 'enabled_for_sale' : 'display_order',
+          plan_id: parsed.command.plan_id,
+          requestId,
+        })
+      }
+      return respondPlanCommercial(response, requestId, written)
     }
     if (action === 'set_feature_control' || action === KILL_SWITCH_ACTION.SET_FEATURE_CONTROL) {
       const controls = resolveBillingControlAdapter()

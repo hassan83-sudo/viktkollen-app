@@ -8,6 +8,7 @@ import { createInMemoryCostThresholdStore } from './costThresholdStore.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../../..')
 const sql = readFileSync(join(root, 'supabase/migrations/20260922000000_billing_cost_safety.sql'), 'utf8')
+const planCommercialSql = readFileSync(join(root, 'supabase/migrations/20260923130000_billing_plan_commercial_controls.sql'), 'utf8')
 const sql4a = readFileSync(join(root, 'supabase/migrations/20260921220000_billing_admin_authority.sql'), 'utf8')
 const sql4b = readFileSync(join(root, 'supabase/migrations/20260921230000_billing_feature_controls.sql'), 'utf8')
 const postgresSrc = readFileSync(join(root, 'src/services/billing/costThresholdPostgres.js'), 'utf8')
@@ -88,10 +89,18 @@ describe('BILL-4C-SEC1a threshold database security', () => {
 
   it('extends audit allowlists without dropping BILL-4A/4B actions or append-only', () => {
     for (const action of ADMIN_AUDIT_ACTIONS) {
-      expect(sql).toContain(`'${action}'`)
+      if (action.startsWith('plan.commercial.')) {
+        expect(planCommercialSql).toContain(`'${action}'`)
+      } else {
+        expect(sql).toContain(`'${action}'`)
+      }
     }
     for (const target of ADMIN_AUDIT_TARGET_TYPES) {
-      expect(sql).toContain(`'${target}'`)
+      if (target === 'plan_commercial') {
+        expect(planCommercialSql).toContain(`'${target}'`)
+      } else {
+        expect(sql).toContain(`'${target}'`)
+      }
     }
     expect(sql).toMatch(/'cost\.threshold\.created'/)
     expect(sql).toMatch(/'cost\.threshold\.changed'/)

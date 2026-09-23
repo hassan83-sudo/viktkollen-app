@@ -1,3 +1,5 @@
+import { presentPlanCommercialState } from './planCommercialControl.js'
+
 function unavailable(code = 'admin_store_unavailable') {
   const error = new Error(code)
   error.code = code
@@ -7,6 +9,20 @@ function unavailable(code = 'admin_store_unavailable') {
 function unwrapRpc(data) {
   if (Array.isArray(data)) return data[0] || null
   return data || null
+}
+
+function mapPlanRpcError(error) {
+  const code = String(error?.code || error?.message || '')
+  if (code.includes('forbidden_admin')) return 'forbidden_admin'
+  if (code.includes('protected_plan')) return 'protected_plan'
+  if (code.includes('unknown_plan')) return 'unknown_plan'
+  if (code.includes('price_immutable')) return 'price_immutable'
+  if (code.includes('quota_immutable')) return 'quota_immutable'
+  if (code.includes('entitlement_immutable')) return 'entitlement_immutable'
+  if (code.includes('CONFIG_CONFLICT')) return 'CONFIG_CONFLICT'
+  if (code.includes('order_bound')) return 'order_bound'
+  if (code.includes('invalid_plan_control')) return 'invalid_plan_control'
+  return 'PLAN_WRITE_FAILED'
 }
 
 function wrapRpcError(error) {
@@ -30,6 +46,12 @@ export function createPostgresBillingControlAdapter({ client } = {}) {
     const { data, error } = await billing().rpc(fn, args)
     if (error) wrapRpcError(error)
     return unwrapRpc(data)
+  }
+
+  async function rpcJson(fn, args) {
+    const { data, error } = await billing().rpc(fn, args)
+    if (error) wrapRpcError(error)
+    return data
   }
 
   return {
@@ -56,6 +78,46 @@ export function createPostgresBillingControlAdapter({ client } = {}) {
         .maybeSingle()
       if (error) wrapRpcError(error)
       return data || null
+    },
+    async listPlanCommercial(actorUserId) {
+      try {
+        const data = await rpcJson('list_plan_commercial_controls', { p_actor_user_id: actorUserId })
+        const plans = presentPlanCommercialState(data)
+        if (!plans) return { ok: false, code: 'PLAN_STATE_UNAVAILABLE' }
+        return { ok: true, plans }
+      } catch {
+        return { ok: false, code: 'PLAN_STATE_UNAVAILABLE' }
+      }
+    },
+    async setPlanAvailability(actorUserId, command) {
+      try {
+        const data = await rpcJson('set_plan_commercial_availability', {
+          p_actor_user_id: actorUserId,
+          p_enabled_for_sale: command.enabled_for_sale,
+          p_expected_version: command.expected_version,
+          p_plan_id: command.plan_id,
+        })
+        const plans = presentPlanCommercialState(data)
+        if (!plans) return { ok: false, code: 'PLAN_WRITE_FAILED' }
+        return { ok: true, plans }
+      } catch (error) {
+        return { ok: false, code: mapPlanRpcError(error) }
+      }
+    },
+    async movePlanDisplayOrder(actorUserId, command) {
+      try {
+        const data = await rpcJson('move_plan_commercial_order', {
+          p_actor_user_id: actorUserId,
+          p_direction: command.direction,
+          p_expected_version: command.expected_version,
+          p_plan_id: command.plan_id,
+        })
+        const plans = presentPlanCommercialState(data)
+        if (!plans) return { ok: false, code: 'PLAN_WRITE_FAILED' }
+        return { ok: true, plans }
+      } catch (error) {
+        return { ok: false, code: mapPlanRpcError(error) }
+      }
     },
     async hasBillingAdmin(userId) {
       const id = String(userId || '').trim()

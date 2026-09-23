@@ -6872,6 +6872,7 @@ body.vk-body-scan-session .bottom-nav {
   background: var(--surface);
   box-shadow: var(--shadow);
   backdrop-filter: blur(14px);
+  will-change: backdrop-filter;
 }
 
 .welcome-card {

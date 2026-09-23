@@ -1,7 +1,12 @@
 import { Readable } from 'node:stream'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import handler, { NUTRITION_PHOTO_ANALYSIS_TIMEOUT_MS, nutritionPhotoRouteInternals } from './index.js'
+import handler, {
+  NUTRITION_PHOTO_ANALYSIS_TIMEOUT_MS,
+  NUTRITION_PHOTO_MAX_COMPONENTS,
+  NUTRITION_PHOTO_MAX_OUTPUT_TOKENS,
+  nutritionPhotoRouteInternals,
+} from './index.js'
 import { setAiRateLimitAdapterForTests } from '../_shared/aiRateLimiter.js'
 import { resetAiRequestDeduperForTests } from '../_shared/aiRequestDeduper.js'
 import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
@@ -14,6 +19,60 @@ import { analysisConsentPurposes, computeCanonicalImageHash, issueAnalysisConsen
 const TEST_SECRET = 'test-analysis-consent-secret-32-plus'
 const USER_ID = 'a1111111-1111-4111-8111-111111111111'
 const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4])
+
+function boundedText(length, seed = 'x') {
+  return seed.repeat(Math.ceil(length / seed.length)).slice(0, length)
+}
+
+function maximumProviderShape() {
+  const categories = [
+    'protein',
+    'carbohydrate',
+    'vegetables',
+    'sauce',
+    'fat',
+    'unknown',
+    'protein',
+    'carbohydrate',
+    'vegetables',
+    'fat',
+    'unknown',
+    'protein',
+  ]
+  const range = { max: 200, min: 10 }
+  return {
+    components: Array.from({ length: NUTRITION_PHOTO_MAX_COMPONENTS }, (_, index) => ({
+      alternatives: [
+        boundedText(30, `alt${index}a`),
+        boundedText(30, `alt${index}b`),
+        boundedText(30, `alt${index}c`),
+      ],
+      category: categories[index],
+      confidence: 'medium',
+      cookingMethods: ['fried', 'breaded', 'grilled'],
+      name: `Item-${String.fromCharCode(65 + index)}-${boundedText(43, 'x')}`,
+      nutritionEstimate: {
+        calories: range,
+        carbsG: range,
+        fatG: range,
+        proteinG: range,
+      },
+      portionEstimate: {
+        confidence: 'medium',
+        description: boundedText(40, `portion${index}`),
+        gramsMax: 200,
+        gramsMin: 10,
+      },
+      uncertaintyReason: boundedText(60, `uncertain${index}`),
+      visualEvidence: boundedText(60, `visible${index}`),
+    })),
+    confidence: 'medium',
+    imageQuality: 'usable',
+    limitations: Array.from({ length: 3 }, (_, index) => boundedText(80, `limitation${index}`)),
+    safeSummary: boundedText(120, 'summary'),
+    warnings: Array.from({ length: 3 }, (_, index) => boundedText(80, `warning${index}`)),
+  }
+}
 
 function consentHeadersForPhoto(image = pngBytes) {
   process.env.ANALYSIS_CONSENT_SECRET = TEST_SECRET
@@ -356,14 +415,55 @@ describe('nutrition photo analysis API route', () => {
   it('prompts countable foods, plate-relative portions and visual inventory without merging separate foods', () => {
     const prompt = nutritionPhotoRouteInternals.createPrompt('Lunch')
 
-    expect(prompt).toContain('identityConfidence')
-    expect(prompt).toContain('pieceCountConfidence')
     expect(prompt).toContain('Pass 1 visuell inventering')
-    expect(prompt).toContain('pieceCount')
-    expect(prompt).toContain('relativePlateShare')
+    expect(prompt).toContain('synligt styckantal')
     expect(prompt).toContain('Slå inte ihop visuellt separata livsmedel')
     expect(prompt).toContain('Hitta inte på exakt tallriksdiameter')
     expect(prompt).toContain('detail')
+  })
+
+  it('bounds the compact provider contract and omits server-derived duplicates', () => {
+    const prompt = nutritionPhotoRouteInternals.createPrompt('Lunch')
+
+    expect(NUTRITION_PHOTO_MAX_COMPONENTS).toBe(12)
+    expect(prompt).toContain('högst 12 objekt')
+    expect(prompt).toContain('kompakt strikt JSON')
+    expect(prompt).toContain('name högst 50 tecken')
+    expect(prompt).toContain('alternatives har högst 3 poster')
+    expect(prompt).toContain('limitations och warnings har högst 3')
+    expect(prompt).toContain('Utelämna dubblerade legacy-fält')
+    expect(prompt).toContain('detectedItems')
+    expect(prompt).toContain('mealTotals')
+    expect(prompt).toContain('servern härleder midpoint och confidence')
+  })
+
+  it('fits and accepts the bounded twelve-component maximum shape in one provider call', async () => {
+    process.env.OPENAI_API_KEY = 'test-key'
+    const providerPayload = maximumProviderShape()
+    const compactJson = JSON.stringify(providerPayload)
+    const conservativeEstimatedTokens = Math.ceil(compactJson.length / 3)
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      output_text: compactJson,
+    }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const validated = nutritionPhotoRouteInternals.validateProviderPayload(providerPayload)
+    const response = await callRoute(createRequest({
+      body: multipartBody(),
+      headers: consentHeadersForPhoto(),
+    }))
+    const providerBody = JSON.parse(fetchMock.mock.calls[0][1].body)
+
+    expect(compactJson.length).toBeLessThanOrEqual(NUTRITION_PHOTO_MAX_OUTPUT_TOKENS * 3)
+    expect(conservativeEstimatedTokens).toBeLessThanOrEqual(NUTRITION_PHOTO_MAX_OUTPUT_TOKENS)
+    expect(validated.ok).toBe(true)
+    expect(validated.analysis.components).toHaveLength(NUTRITION_PHOTO_MAX_COMPONENTS)
+    expect(response.statusCode).toBe(200)
+    expect(response.body.ok).toBe(true)
+    expect(response.body.analysis.components).toHaveLength(NUTRITION_PHOTO_MAX_COMPONENTS)
+    expect(response.body.analysis.detectedItems).toHaveLength(NUTRITION_PHOTO_MAX_COMPONENTS)
+    expect(providerBody.max_output_tokens).toBe(NUTRITION_PHOTO_MAX_OUTPUT_TOKENS)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('validates provider payload and strips unsafe fields', () => {

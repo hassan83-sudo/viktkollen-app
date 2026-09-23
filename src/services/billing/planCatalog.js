@@ -1,4 +1,9 @@
 import { BILLING_INTERVALS, PLAN_PRICE_STATUS } from './catalog.js'
+import {
+  createFreeCommercialQuotas,
+  createPaidCommercialQuotas,
+  validateCommercialPlanCatalog,
+} from './commercialPlanMatrix.js'
 import { createEntitlement, numberLimit, unlimitedLimit } from './entitlementModel.js'
 import { BILLING_FEATURES } from './features.js'
 
@@ -37,6 +42,8 @@ function unmeteredEntitlements() {
 }
 
 function createPlan({
+  commercial_quotas,
+  commercial_status,
   display_order,
   entitlements,
   id,
@@ -46,6 +53,9 @@ function createPlan({
   return Object.freeze({
     active: true,
     billing_interval: 'month',
+    billing_period: 'month',
+    commercial_quotas,
+    commercial_status,
     configurability: PLAN_PRICE_STATUS.ADMIN_CONFIGURABLE,
     currency: 'SEK',
     display_order,
@@ -59,6 +69,8 @@ function createPlan({
 }
 
 const freePlan = createPlan({
+  commercial_quotas: createFreeCommercialQuotas(),
+  commercial_status: 'ACTIVE',
   display_order: 0,
   entitlements: Object.freeze({
     ...unmeteredEntitlements(),
@@ -71,11 +83,14 @@ const freePlan = createPlan({
 
 const paidPlans = PRELIMINARY_SEK_MAJOR.map((major, index) => {
   const priceMinor = major * 100
+  const legacyRequestLimit = 50 + index * 10
   return createPlan({
+    commercial_quotas: createPaidCommercialQuotas(legacyRequestLimit),
+    commercial_status: 'PRELIMINARY',
     display_order: index + 1,
     entitlements: Object.freeze({
       ...unmeteredEntitlements(),
-      ...meteredEntitlements({ enabled: true, limit: numberLimit(50 + index * 10) }),
+      ...meteredEntitlements({ enabled: true, limit: numberLimit(legacyRequestLimit) }),
     }),
     id: `plan.prelim.sek.month.${String(major).padStart(2, '0')}`,
     name: `Prelim ${major} SEK/month`,
@@ -84,6 +99,8 @@ const paidPlans = PRELIMINARY_SEK_MAJOR.map((major, index) => {
 })
 
 export const defaultPlanCatalog = Object.freeze([freePlan, ...paidPlans])
+
+validateCommercialPlanCatalog(defaultPlanCatalog)
 
 export function listActivePlans(catalog = defaultPlanCatalog) {
   return catalog.filter((plan) => plan.active).sort((a, b) => a.display_order - b.display_order)

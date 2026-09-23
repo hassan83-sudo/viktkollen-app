@@ -111,7 +111,7 @@ describe('BILL-2 quota engine', () => {
     expect(first.status).toBe(QUOTA_STATUS.ROLLED_BACK)
     expect(second.status).toBe(QUOTA_STATUS.ROLLED_BACK)
     const snapshot = await quota.inspectQuota({ feature: 'ai.text.request', userId: USER })
-    expect(snapshot.remaining).toBe(5)
+    expect(snapshot.remaining).toBe(20)
   })
 
   it('commits idempotently and releases unused reserved quantity', async () => {

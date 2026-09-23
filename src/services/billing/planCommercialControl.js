@@ -7,7 +7,9 @@ const FREE_PLAN_ID = 'plan.free'
 const IGNORED_AUTHORITY_KEYS = new Set(['admin', 'billing_admin', 'isAdmin', 'localStorage', 'role'])
 const PRICE_KEYS = new Set(['amount_minor', 'price', 'price_minor', 'price_sek', 'price_sek_minor'])
 const QUOTA_KEYS = new Set([
+  'ai_eye_requests',
   'ai_text_requests',
+  'body_scan_requests',
   'food_scan_requests',
   'gps_live_minutes',
   'limit',

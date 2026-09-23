@@ -6,11 +6,43 @@
  */
 
 export const COMMERCIAL_QUOTA_KEYS = Object.freeze([
-  'food_scan_requests',
   'ai_text_requests',
-  'voice_minutes',
-  'gps_live_minutes',
+  'food_scan_requests',
+  'body_scan_requests',
+  'ai_eye_requests',
 ])
+
+/**
+ * Reachable features that stay free at launch. They are not commercial quotas.
+ * SOS uses the safety alert path and has no plan quota.
+ */
+export const LAUNCH_UNMETERED_FEATURES = Object.freeze([
+  'friend_chat',
+  'ai.voice.session',
+  'tts.request',
+  'gps.live.session',
+  'gps_standard',
+  'ai.ear.interpret',
+])
+
+/** AI text, food.scan, body.scan, ai.eye.analysis. Prices stay on the plan row. */
+export const LAUNCH_QUOTA_BY_PLAN = Object.freeze({
+  'plan.free': Object.freeze({ ai_text_requests: 20, food_scan_requests: 5, body_scan_requests: 3, ai_eye_requests: 25 }),
+  'plan.prelim.sek.month.04': Object.freeze({ ai_text_requests: 30, food_scan_requests: 10, body_scan_requests: 4, ai_eye_requests: 40 }),
+  'plan.prelim.sek.month.07': Object.freeze({ ai_text_requests: 50, food_scan_requests: 15, body_scan_requests: 6, ai_eye_requests: 60 }),
+  'plan.prelim.sek.month.09': Object.freeze({ ai_text_requests: 70, food_scan_requests: 20, body_scan_requests: 8, ai_eye_requests: 80 }),
+  'plan.prelim.sek.month.12': Object.freeze({ ai_text_requests: 90, food_scan_requests: 30, body_scan_requests: 10, ai_eye_requests: 100 }),
+  'plan.prelim.sek.month.15': Object.freeze({ ai_text_requests: 120, food_scan_requests: 40, body_scan_requests: 12, ai_eye_requests: 125 }),
+  'plan.prelim.sek.month.19': Object.freeze({ ai_text_requests: 160, food_scan_requests: 55, body_scan_requests: 15, ai_eye_requests: 150 }),
+  'plan.prelim.sek.month.29': Object.freeze({ ai_text_requests: 250, food_scan_requests: 85, body_scan_requests: 25, ai_eye_requests: 250 }),
+  'plan.prelim.sek.month.39': Object.freeze({ ai_text_requests: 350, food_scan_requests: 120, body_scan_requests: 35, ai_eye_requests: 350 }),
+  'plan.prelim.sek.month.49': Object.freeze({ ai_text_requests: 500, food_scan_requests: 160, body_scan_requests: 50, ai_eye_requests: 500 }),
+  'plan.prelim.sek.month.59': Object.freeze({ ai_text_requests: 650, food_scan_requests: 200, body_scan_requests: 65, ai_eye_requests: 650 }),
+  'plan.prelim.sek.month.69': Object.freeze({ ai_text_requests: 800, food_scan_requests: 250, body_scan_requests: 80, ai_eye_requests: 800 }),
+  'plan.prelim.sek.month.79': Object.freeze({ ai_text_requests: 1000, food_scan_requests: 300, body_scan_requests: 100, ai_eye_requests: 1000 }),
+  'plan.prelim.sek.month.89': Object.freeze({ ai_text_requests: 1250, food_scan_requests: 350, body_scan_requests: 125, ai_eye_requests: 1250 }),
+  'plan.prelim.sek.month.99': Object.freeze({ ai_text_requests: 1500, food_scan_requests: 400, body_scan_requests: 150, ai_eye_requests: 1500 }),
+})
 
 export const COMMERCIAL_QUOTA_AUTHORITY = Object.freeze({
   ACTIVE: 'ACTIVE',
@@ -19,16 +51,18 @@ export const COMMERCIAL_QUOTA_AUTHORITY = Object.freeze({
 })
 
 const DIMENSIONS = Object.freeze({
+  ai_eye_requests: Object.freeze({ feature: 'ai.eye.analysis', unit: 'requests' }),
   ai_text_requests: Object.freeze({ feature: 'ai.text.request', unit: 'requests' }),
+  body_scan_requests: Object.freeze({ feature: 'body.scan', unit: 'requests' }),
   food_scan_requests: Object.freeze({ feature: 'food.scan', unit: 'requests' }),
-  gps_live_minutes: Object.freeze({ feature: 'gps.live.session', unit: 'minutes' }),
-  voice_minutes: Object.freeze({ feature: 'ai.voice.session', unit: 'minutes' }),
 })
 
 const KNOWN_FEATURES = new Set(Object.values(DIMENSIONS).map((dimension) => dimension.feature))
 const CLIENT_AUTHORITY_FIELDS = Object.freeze([
+  'ai_eye_requests',
   'ai_text_requests',
   'billing_period',
+  'body_scan_requests',
   'entitlements',
   'food_scan_requests',
   'gps_live_minutes',
@@ -74,59 +108,18 @@ export function createCommercialQuota({
   })
 }
 
-export function createFreeCommercialQuotas() {
-  return Object.freeze({
-    ai_text_requests: createCommercialQuota({
-      authority: COMMERCIAL_QUOTA_AUTHORITY.LEGACY_PRELIMINARY,
-      key: 'ai_text_requests',
-      limit: 5,
-    }),
-    food_scan_requests: createCommercialQuota({
+export function createLaunchCommercialQuotas(planId) {
+  const approved = LAUNCH_QUOTA_BY_PLAN[planId]
+  if (!approved) invalid('unknown_plan')
+  const quotas = {}
+  for (const key of COMMERCIAL_QUOTA_KEYS) {
+    quotas[key] = createCommercialQuota({
       authority: COMMERCIAL_QUOTA_AUTHORITY.ACTIVE,
-      key: 'food_scan_requests',
-      limit: 5,
-    }),
-    gps_live_minutes: createCommercialQuota({
-      authority: COMMERCIAL_QUOTA_AUTHORITY.TO_BE_FINALIZED,
-      key: 'gps_live_minutes',
-      limit: null,
-    }),
-    voice_minutes: createCommercialQuota({
-      authority: COMMERCIAL_QUOTA_AUTHORITY.TO_BE_FINALIZED,
-      key: 'voice_minutes',
-      limit: null,
-    }),
-  })
-}
-
-/**
- * The numeric request limits are the previous shared preliminary schedule.
- * They stay available for compatibility and are explicitly not approved
- * commercial quotas. Minute dimensions are independent and unfinished.
- */
-export function createPaidCommercialQuotas(legacyRequestLimit) {
-  return Object.freeze({
-    ai_text_requests: createCommercialQuota({
-      authority: COMMERCIAL_QUOTA_AUTHORITY.LEGACY_PRELIMINARY,
-      key: 'ai_text_requests',
-      limit: legacyRequestLimit,
-    }),
-    food_scan_requests: createCommercialQuota({
-      authority: COMMERCIAL_QUOTA_AUTHORITY.LEGACY_PRELIMINARY,
-      key: 'food_scan_requests',
-      limit: legacyRequestLimit,
-    }),
-    gps_live_minutes: createCommercialQuota({
-      authority: COMMERCIAL_QUOTA_AUTHORITY.TO_BE_FINALIZED,
-      key: 'gps_live_minutes',
-      limit: null,
-    }),
-    voice_minutes: createCommercialQuota({
-      authority: COMMERCIAL_QUOTA_AUTHORITY.TO_BE_FINALIZED,
-      key: 'voice_minutes',
-      limit: null,
-    }),
-  })
+      key,
+      limit: approved[key],
+    })
+  }
+  return Object.freeze(quotas)
 }
 
 export function validateCommercialPlanCatalog(catalog = []) {
@@ -141,7 +134,10 @@ export function validateCommercialPlanCatalog(catalog = []) {
       if (paidPrices.has(plan.price_minor)) invalid('duplicate_price')
       paidPrices.add(plan.price_minor)
       if (plan.commercial_status !== 'PRELIMINARY') invalid('invalid_commercial_status')
+      if (plan.enabled_for_sale === true) invalid('paid_plan_enabled')
     }
+    const approved = LAUNCH_QUOTA_BY_PLAN[plan.id]
+    if (!approved) invalid('unknown_plan')
     const quotas = plan.commercial_quotas || {}
     const keys = Object.keys(quotas)
     if (keys.length !== COMMERCIAL_QUOTA_KEYS.length || COMMERCIAL_QUOTA_KEYS.some((key) => !quotas[key])) {
@@ -152,9 +148,16 @@ export function validateCommercialPlanCatalog(catalog = []) {
       const quota = quotas[key]
       if (!KNOWN_FEATURES.has(quota.feature)) invalid('unknown_feature')
       if (quota.limit != null && (!Number.isInteger(quota.limit) || quota.limit < 0)) invalid('invalid_quota')
-      if (quota.authority === COMMERCIAL_QUOTA_AUTHORITY.TO_BE_FINALIZED && quota.limit != null) {
-        invalid('final_quota_not_allowed')
+      if (quota.authority !== COMMERCIAL_QUOTA_AUTHORITY.ACTIVE || quota.limit !== approved[key]) {
+        invalid('quota_matrix_mismatch')
       }
+      if (plan.entitlements?.[quota.feature]?.limit?.value !== quota.limit) {
+        invalid('entitlement_quota_mismatch')
+      }
+    }
+    for (const feature of LAUNCH_UNMETERED_FEATURES) {
+      if (plan.entitlements?.[feature]?.limit?.kind !== 'UNLIMITED') invalid('launch_feature_metered')
+      if (Object.values(quotas).some((quota) => quota.feature === feature)) invalid('launch_feature_metered')
     }
   }
   const free = catalog.find((plan) => plan.id === 'plan.free')

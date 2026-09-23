@@ -1,7 +1,7 @@
 import { BILLING_INTERVALS, PLAN_PRICE_STATUS } from './catalog.js'
 import {
-  createFreeCommercialQuotas,
-  createPaidCommercialQuotas,
+  createLaunchCommercialQuotas,
+  LAUNCH_UNMETERED_FEATURES,
   validateCommercialPlanCatalog,
 } from './commercialPlanMatrix.js'
 import { createEntitlement, numberLimit, unlimitedLimit } from './entitlementModel.js'
@@ -11,14 +11,17 @@ const PRELIMINARY_SEK_MAJOR = Object.freeze([
   4, 7, 9, 12, 15, 19, 29, 39, 49, 59, 69, 79, 89, 99,
 ])
 
-function meteredEntitlements({ enabled, limit }) {
-  const entries = {}
+const launchUnmetered = new Set(LAUNCH_UNMETERED_FEATURES)
+
+function entitlementsFor(quotas) {
+  const entries = { ...unmeteredEntitlements() }
+  const limitByFeature = new Map(Object.values(quotas).map((quota) => [quota.feature, quota.limit]))
   for (const [id, feature] of Object.entries(BILLING_FEATURES)) {
     if (!feature.metered) continue
     entries[id] = createEntitlement({
-      enabled,
+      enabled: true,
       feature: id,
-      limit,
+      limit: launchUnmetered.has(id) ? unlimitedLimit() : numberLimit(limitByFeature.get(id)),
       quota_status: PLAN_PRICE_STATUS.PRELIMINARY,
       unit: feature.unit,
     })
@@ -68,33 +71,28 @@ function createPlan({
   })
 }
 
+const freeQuotas = createLaunchCommercialQuotas('plan.free')
 const freePlan = createPlan({
-  commercial_quotas: createFreeCommercialQuotas(),
+  commercial_quotas: freeQuotas,
   commercial_status: 'ACTIVE',
   display_order: 0,
-  entitlements: Object.freeze({
-    ...unmeteredEntitlements(),
-    ...meteredEntitlements({ enabled: true, limit: numberLimit(5) }),
-  }),
+  entitlements: Object.freeze(entitlementsFor(freeQuotas)),
   id: 'plan.free',
   name: 'Free',
   price_minor: 0,
 })
 
 const paidPlans = PRELIMINARY_SEK_MAJOR.map((major, index) => {
-  const priceMinor = major * 100
-  const legacyRequestLimit = 50 + index * 10
+  const id = `plan.prelim.sek.month.${String(major).padStart(2, '0')}`
+  const commercialQuotas = createLaunchCommercialQuotas(id)
   return createPlan({
-    commercial_quotas: createPaidCommercialQuotas(legacyRequestLimit),
+    commercial_quotas: commercialQuotas,
     commercial_status: 'PRELIMINARY',
     display_order: index + 1,
-    entitlements: Object.freeze({
-      ...unmeteredEntitlements(),
-      ...meteredEntitlements({ enabled: true, limit: numberLimit(legacyRequestLimit) }),
-    }),
-    id: `plan.prelim.sek.month.${String(major).padStart(2, '0')}`,
+    entitlements: Object.freeze(entitlementsFor(commercialQuotas)),
+    id,
     name: `Prelim ${major} SEK/month`,
-    price_minor: priceMinor,
+    price_minor: major * 100,
   })
 })
 

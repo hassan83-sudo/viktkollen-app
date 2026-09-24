@@ -530,19 +530,15 @@ begin
 end;
 $$;
 
--- Privacy-first account purge (policy A: delete).
--- Deletes the deleted user's profile, requests, friendships, blocks,
--- and EVERY DM thread they participated in (messages + members + pair + conversation).
--- Surviving friend B therefore loses that shared thread; no PII of A remains in social tables.
--- Callable by: service_role only (account-deletion API).
+-- Account purge policy C. Callable by: service_role only (account-deletion API).
+-- Removes the departing user's own social rows. Keeps the conversation,
+-- the other participant's messages and membership, and the shared key.
 create or replace function public.social_purge_user_data(p_user_id uuid)
 returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = pg_catalog, public
 as $$
-declare
-  conv_ids uuid[];
 begin
   if p_user_id is null then
     raise exception 'invalid user';
@@ -551,27 +547,37 @@ begin
     raise exception 'not allowed';
   end if;
 
-  select coalesce(array_agg(conversation_id), '{}') into conv_ids
-  from public.social_conversation_members
+  delete from public.social_messages
+  where sender_id = p_user_id;
+
+  delete from public.social_conversation_members
   where user_id = p_user_id;
 
-  if array_length(conv_ids, 1) is not null then
-    delete from public.social_messages where conversation_id = any (conv_ids);
-    delete from public.social_conversation_members where conversation_id = any (conv_ids);
-    delete from public.social_dm_pairs where conversation_id = any (conv_ids);
-    delete from public.social_conversations where id = any (conv_ids);
-  end if;
+  delete from public.social_dm_pairs
+  where user_low = p_user_id
+     or user_high = p_user_id;
+
+  delete from public.social_location_envelopes
+  where owner_user_id = p_user_id
+     or recipient_user_id = p_user_id;
+
+  delete from public.social_locations
+  where user_id = p_user_id;
 
   delete from public.social_friend_requests
-  where from_user_id = p_user_id or to_user_id = p_user_id;
+  where from_user_id = p_user_id
+     or to_user_id = p_user_id;
 
   delete from public.social_friendships
-  where user_low = p_user_id or user_high = p_user_id;
+  where user_low = p_user_id
+     or user_high = p_user_id;
 
   delete from public.social_blocks
-  where blocker_id = p_user_id or blocked_id = p_user_id;
+  where blocker_id = p_user_id
+     or blocked_id = p_user_id;
 
-  delete from public.social_public_profiles where user_id = p_user_id;
+  delete from public.social_public_profiles
+  where user_id = p_user_id;
 end;
 $$;
 
@@ -725,4 +731,4 @@ comment on table public.social_blocks is
 comment on table public.social_dm_pairs is
   'Unique unordered DM pair → conversation_id. Prevents duplicate 1:1 conversations.';
 comment on function public.social_purge_user_data(uuid) is
-  'Privacy-first V1 account purge (policy A delete): removes profile, relations, and entire DM threads the user belonged to.';
+  'Account purge policy C: removes the departing user''s social rows and DM index. Keeps the conversation, the other participant''s messages and membership, and the shared conversation key.';

@@ -1645,7 +1645,9 @@ function App() {
       scopedWeights,
     ],
   )
-  function scrollChatToBottom(behavior = 'smooth') {
+  // A11Y-8J: instant scrolling when motion is reduced (OS setting or the app's
+  // own "Minska rörelse"); otherwise smooth, as before.
+  function scrollChatToBottom(behavior = getAccessibilityScrollBehavior()) {
     const chatThread = chatThreadRef.current
     const messagesEnd = messagesEndRef.current
 

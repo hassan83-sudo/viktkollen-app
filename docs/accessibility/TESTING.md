@@ -48,6 +48,12 @@ starts a browser.
    - `navigation-contrast.spec.js` (8I): every bottom-navigation label,
      active and inactive, reaches 4.5:1 in every section. The layers are
      composited: page, navigation, link and the link's gradient stops.
+   - `live-motion.spec.js` (8J): Viktkollen Live with a fake clock. Covers
+     rotation in normal mode, OS reduced motion, the app's own "Minska
+     rörelse" setting (turned on and off during the session, with a single
+     timer), Pausa/Spela, automatic changes that stay silent while a manual
+     change is announced once, and AI Coach chat scrolling ('auto' when
+     motion is reduced).
    - `axe-views.spec.js` also scans every main section, and Notis, with the
      navigation visible. That gate also blocks moderate findings (8I).
    - `high-contrast.spec.js`: resolved high-contrast tokens (7:1 and 4.5:1) and a

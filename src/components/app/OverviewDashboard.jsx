@@ -32,6 +32,7 @@ import SmartCameraStage from '../../features/smart-camera/components/SmartCamera
 import BodyAvatarTalkBar from './BodyAvatarTalkBar.jsx'
 import { formatNumber as formatLocaleNumber } from '../../i18n/format.js'
 import { prefersReducedAccessibilityMotion } from '../../services/accessibilityDocumentScope.js'
+import { getEffectiveAccessibilityPreferences, useAccessibilityPreferences } from '../../services/accessibilityPreferences.js'
 
 const HomeBodyScanStage = lazy(() => import('./HomeBodyScanStage.jsx'))
 
@@ -161,7 +162,18 @@ function SmartFeedCard({ liveContext }) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [favoriteIds, setFavoriteIds] = useState(() => new Set())
   const [isPaused, setIsPaused] = useState(false)
-  const prefersReducedMotion = usePrefersReducedMotion()
+  // A11Y-8J: automatic rotation stops when motion is reduced by EITHER the
+  // operating system or Viktkollen's own reduce-motion setting (the same
+  // effective accessibility state that 8B applies to the document). Both are
+  // reactive, so changing the setting during the session starts or stops
+  // the single rotation timer.
+  const prefersReducedMotionOs = usePrefersReducedMotion()
+  const reduceMotionSetting = getEffectiveAccessibilityPreferences(useAccessibilityPreferences()).reduceMotion
+  const prefersReducedMotion = prefersReducedMotionOs || reduceMotionSetting
+  // A11Y-8J: the card changes on its own (rotation, and the local time in
+  // the "today" item), so it is not a live region. Only a change the user
+  // asks for (previous/next) is announced, once, through this single status.
+  const [announcement, setAnnouncement] = useState('')
   const items = useMemo(() => buildSmartFeedItems(liveContext, t), [liveContext, t])
   const activeItem = items[activeIndex % items.length]
   const isFavorite = favoriteIds.has(activeItem.id)
@@ -177,8 +189,13 @@ function SmartFeedCard({ liveContext }) {
     return () => window.clearInterval(rotation)
   }, [autoRotate, items.length])
 
-  const showPrevious = () => setActiveIndex((current) => (current - 1 + items.length) % items.length)
-  const showNext = () => setActiveIndex((current) => (current + 1) % items.length)
+  const showItem = (index) => {
+    const item = items[index]
+    setActiveIndex(index)
+    setAnnouncement(`${item.category}. ${item.title}. ${item.body}`)
+  }
+  const showPrevious = () => showItem((activeIndex % items.length - 1 + items.length) % items.length)
+  const showNext = () => showItem((activeIndex % items.length + 1) % items.length)
   const toggleFavorite = () => {
     setFavoriteIds((current) => {
       const next = new Set(current)
@@ -249,7 +266,7 @@ function SmartFeedCard({ liveContext }) {
           <circle cx="344" cy="31" r="2.4" />
         </g>
       </svg>
-      <article className="smart-feed-active-card" aria-live="polite">
+      <article className="smart-feed-active-card">
         <span className={`smart-feed-thumbnail is-${activeItem.kind}`} aria-hidden="true">{activeItem.category.slice(0, 1)}</span>
         <span>
           <small>{activeItem.category}</small>
@@ -285,6 +302,8 @@ function SmartFeedCard({ liveContext }) {
           <button type="button" onClick={showNext} aria-label={t('live.next')}>›</button>
         </div>
       </div>
+      {/* A span: `.smart-feed-card > p` is positioned in the card layout. */}
+      <span className="sr-only" role="status">{announcement}</span>
     </section>
   )
 }

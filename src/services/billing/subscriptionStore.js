@@ -150,6 +150,60 @@ export function createInMemorySubscriptionStore() {
       byId.set(stored.subscription_id, stored)
       return stored
     },
+    async finalizeOpen({ createdAt, externalEventId, now, subscriptionId }) {
+      if (externalEventId && byEvent.has(externalEventId)) return byId.get(byEvent.get(externalEventId)) || null
+      const prev = byId.get(subscriptionId)
+      if (!prev) {
+        const error = new Error('subscription_not_found')
+        error.code = 'subscription_not_found'
+        throw error
+      }
+      if (prev.status === 'CANCELED' || prev.status === 'EXPIRED') return prev
+      const at = new Date(now).getTime()
+      const periodEnded = at >= new Date(prev.current_period_end).getTime()
+      const graceEnded = prev.past_due_grace_until
+        ? at >= new Date(prev.past_due_grace_until).getTime()
+        : false
+      let toStatus = null
+      if ((prev.status === 'ACTIVE' || prev.status === 'TRIALING') && prev.cancel_at_period_end === true && periodEnded) {
+        toStatus = 'CANCELED'
+      } else if (prev.status === 'ACTIVE' && prev.cancel_at_period_end !== true && periodEnded) {
+        toStatus = 'EXPIRED'
+      } else if (prev.status === 'PAST_DUE' && (prev.past_due_grace_until == null || graceEnded)) {
+        toStatus = 'EXPIRED'
+      }
+      if (!toStatus) return prev
+      assertSubscriptionTransition(prev.status, toStatus)
+      const stored = clone({
+        ...prev,
+        past_due_grace_until: null,
+        pending_plan_change: null,
+        pending_plan_id: null,
+        status: toStatus,
+        updated_at: createdAt,
+      })
+      events.push({
+        created_at: createdAt,
+        current_period_end: prev.current_period_end,
+        external_event_id: externalEventId,
+        from_cancel_at_period_end: prev.cancel_at_period_end === true,
+        from_plan_id: prev.plan_id,
+        from_plan_version: prev.plan_version,
+        from_status: prev.status,
+        operation: 'subscription.terminal',
+        past_due_grace_until: prev.past_due_grace_until,
+        previous_pending_plan_change: prev.pending_plan_change,
+        previous_pending_plan_id: prev.pending_plan_id,
+        subscription_id: prev.subscription_id,
+        to_cancel_at_period_end: prev.cancel_at_period_end === true,
+        to_plan_id: prev.plan_id,
+        to_plan_version: prev.plan_version,
+        to_status: toStatus,
+      })
+      byEvent.set(externalEventId, prev.subscription_id)
+      byId.set(stored.subscription_id, stored)
+      return stored
+    },
     async advancePeriod({ appliedPlan = null, createdAt, externalEventId, nextPeriodEnd, subscriptionId }) {
       const replayId = byEvent.get(externalEventId)
       if (replayId) return byId.get(replayId) || null

@@ -200,6 +200,28 @@ export function createSubscriptionService({
     })
   }
 
+  async function finalizeOpenSubscription({
+    clientClaim = {},
+    external_event_id,
+    subscription_id,
+  }) {
+    rejectClientSubscriptionClaim(clientClaim)
+    void clientClaim.pending_plan_change
+    void clientClaim.pending_plan_id
+    const eventId = String(external_event_id || '').trim()
+    if (!/^[A-Za-z0-9._:-]+$/.test(eventId) || eventId.length > 120) {
+      const error = new Error('invalid_event_id')
+      error.code = 'invalid_event_id'
+      throw error
+    }
+    return store.finalizeOpen({
+      createdAt: now().toISOString(),
+      externalEventId: eventId,
+      now: now().toISOString(),
+      subscriptionId: subscription_id,
+    })
+  }
+
   async function transition({ subscription_id, to, cancel_at_period_end, external_event_id }) {
     if (external_event_id) {
       const replay = await store.getByExternalEventId(external_event_id)
@@ -243,6 +265,7 @@ export function createSubscriptionService({
     createSubscription,
     getClientSafe,
     clearCancelAtPeriodEnd,
+    finalizeOpenSubscription,
     resolveForUser,
     scheduleCancelAtPeriodEnd,
     transition,

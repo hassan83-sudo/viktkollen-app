@@ -116,6 +116,18 @@ describe('BILL-6B2A plan commercial control', () => {
     expect(listed.plans.every((plan) => plan.enabled_for_sale === false)).toBe(true)
     expect(listed.plans.every((plan) => plan.quota_status === 'PRELIMINARY')).toBe(true)
     expect(listed.plans.map((plan) => plan.price_sek_minor)).toEqual(preliminarySekMonthMajors.map((major) => major * 100))
+    expect(listed.plans.find((plan) => plan.price_sek_minor === 400).quotas).toEqual({
+      ai_coach: 30,
+      ai_eye: 40,
+      body_scan: 4,
+      food_scan: 10,
+    })
+    expect(listed.plans.find((plan) => plan.price_sek_minor === 9900).quotas).toEqual({
+      ai_coach: 1500,
+      ai_eye: 1500,
+      body_scan: 150,
+      food_scan: 400,
+    })
     expect(listed.plans.some((plan) => plan.plan_id === 'plan.free')).toBe(false)
     expect(listed.plans.some((plan) => 'food_scan_requests' in plan || 'entitlements' in plan)).toBe(false)
   })

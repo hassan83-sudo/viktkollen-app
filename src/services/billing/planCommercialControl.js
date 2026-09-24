@@ -25,6 +25,18 @@ function fail(code) {
   return { ok: false, code }
 }
 
+function publicQuotas(plan) {
+  const source = plan?.commercial_quotas || {}
+  const quotas = {
+    ai_coach: source.ai_text_requests?.limit,
+    ai_eye: source.ai_eye_requests?.limit,
+    body_scan: source.body_scan_requests?.limit,
+    food_scan: source.food_scan_requests?.limit,
+  }
+  if (!Object.values(quotas).every((value) => Number.isInteger(value) && value >= 0)) return null
+  return quotas
+}
+
 export function paidCommercialPlans(catalog = defaultPlanCatalog) {
   return catalog.filter((plan) => plan.id !== FREE_PLAN_ID)
 }
@@ -42,6 +54,8 @@ export function presentPlanCommercialState(rows, catalog = defaultPlanCatalog) {
     if (!Number.isInteger(order) || order < 1 || order > paid.length) return null
     const version = Number(row.version)
     if (!Number.isInteger(version) || version < 0) return null
+    const quotas = publicQuotas(plan)
+    if (!quotas) return null
     presented.push(Object.freeze({
       display_order: order,
       enabled_for_sale: row.enabled_for_sale === true,
@@ -49,6 +63,7 @@ export function presentPlanCommercialState(rows, catalog = defaultPlanCatalog) {
       plan_id: plan.id,
       price_sek_minor: plan.price_minor,
       quota_status: 'PRELIMINARY',
+      quotas: Object.freeze(quotas),
       version,
     }))
   }

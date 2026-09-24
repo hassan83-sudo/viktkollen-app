@@ -40,6 +40,15 @@ export function resolveBillingControlAdapter() {
   }
 }
 
+export async function lookupBillingAdmin(userId) {
+  const adapter = resolveBillingControlAdapter()
+  const checker = adapter && typeof adapter.hasBillingAdmin === 'function'
+    ? (id) => adapter.hasBillingAdmin(id)
+    : (id) => authority.hasBillingAdmin(id)
+  const allowed = await Promise.resolve(checker(userId)).catch(() => false)
+  return allowed === true
+}
+
 export async function requireBillingAdmin(request, { requestId = '' } = {}) {
   const auth = await verifySupabaseUser(request, { requestId })
   if (!auth.authenticated) {
@@ -50,12 +59,7 @@ export async function requireBillingAdmin(request, { requestId = '' } = {}) {
     }
   }
 
-  const adapter = resolveBillingControlAdapter()
-  const checker = adapter && typeof adapter.hasBillingAdmin === 'function'
-    ? (userId) => adapter.hasBillingAdmin(userId)
-    : (userId) => authority.hasBillingAdmin(userId)
-
-  const allowed = await Promise.resolve(checker(auth.user.id)).catch(() => false)
+  const allowed = await lookupBillingAdmin(auth.user.id)
   if (!allowed) {
     return {
       ok: false,

@@ -1,6 +1,7 @@
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../../_shared/aiRouteErrors.js'
 import { inspectServerQuota } from '../../_shared/billing/quota.js'
 import { getServerSubscription } from '../../_shared/billing/subscription.js'
+import { lookupBillingAdmin } from '../../_shared/billing/admin.js'
 import { readPlanComparison } from '../../_shared/billing/planComparisonRead.js'
 import { readUsageSnapshot } from '../../_shared/billing/usageSnapshotRead.js'
 import { mapEntitlementRowToSnapshot } from '../../_shared/entitlementMapper.js'
@@ -12,10 +13,11 @@ const PUBLIC_OPS = Object.freeze({
   '/api/billing/subscription': 'subscription',
   '/api/billing/plans': 'plans',
   '/api/billing/usage': 'usage',
+  '/api/billing/capability': 'capability',
   '/api/entitlements': 'entitlements',
 })
 
-const INTERNAL_OPS = Object.freeze(['quota', 'subscription', 'entitlements', 'plans', 'usage'])
+const INTERNAL_OPS = Object.freeze(['quota', 'subscription', 'entitlements', 'plans', 'usage', 'capability'])
 
 const entitlementColumns = [
   'user_id',
@@ -185,6 +187,17 @@ async function handlePlans(request, response, auth, requestId) {
   })
 }
 
+async function handleCapability(request, response, auth, requestId) {
+  void request.query?.billing_admin
+  void request.query?.isAdmin
+  void request.query?.role
+  return response.status(200).json({
+    billing_admin: await lookupBillingAdmin(auth.user.id),
+    ok: true,
+    requestId,
+  })
+}
+
 async function handleEntitlements(request, response, auth, requestId) {
   void request.query?.user_id
   void request.query?.plan
@@ -243,6 +256,7 @@ export default async function handler(request, response) {
   if (operation === 'entitlements') return handleEntitlements(request, response, auth, requestId)
   if (operation === 'plans') return handlePlans(request, response, auth, requestId)
   if (operation === 'usage') return handleUsage(request, response, auth, requestId)
+  if (operation === 'capability') return handleCapability(request, response, auth, requestId)
 
   return sendSafeAiError(response, {
     code: aiRouteErrorCodes.INVALID_REQUEST,

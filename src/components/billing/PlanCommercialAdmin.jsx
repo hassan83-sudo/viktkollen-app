@@ -16,8 +16,24 @@ async function adminFetch(token, path, options = {}) {
   return { payload, response }
 }
 
+const QUOTA_LABELS = Object.freeze([
+  ['ai_coach', 'AI-coach'],
+  ['food_scan', 'Matscanning'],
+  ['body_scan', 'Kroppsscanning'],
+  ['ai_eye', 'AI-Ögat'],
+])
+
+function formatCount(value) {
+  return new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 0, useGrouping: true })
+    .format(value)
+    .replace(/[\u00a0\u202f]/g, ' ')
+}
+
 function validPlans(payload) {
-  return payload?.ok === true && Array.isArray(payload.plans) && payload.plans.length === PAID_PLAN_COUNT
+  return payload?.ok === true
+    && Array.isArray(payload.plans)
+    && payload.plans.length === PAID_PLAN_COUNT
+    && payload.plans.every((plan) => QUOTA_LABELS.every(([key]) => Number.isInteger(plan.quotas?.[key]) && plan.quotas[key] >= 0))
 }
 
 export default function PlanCommercialAdmin() {
@@ -37,6 +53,11 @@ export default function PlanCommercialAdmin() {
       const { data } = await supabase.auth.getSession()
       const accessToken = data?.session?.access_token || ''
       if (!accessToken) {
+        if (!cancelled) setStatus('hidden')
+        return
+      }
+      const capability = await adminFetch(accessToken, '/api/billing/capability')
+      if (!capability.response.ok || capability.payload?.billing_admin !== true) {
         if (!cancelled) setStatus('hidden')
         return
       }
@@ -98,6 +119,8 @@ export default function PlanCommercialAdmin() {
   return (
     <section className="app-information" aria-labelledby="plan-commercial-admin-title">
       <h3 id="plan-commercial-admin-title">Planer</h3>
+      <p>Betalning är inte ansluten ännu.</p>
+      <p>Att markera en plan som tillgänglig aktiverar inte köp eller checkout.</p>
       <p>PRELIMINARY / NOT FINALIZED</p>
       {notice ? <p role="alert">{notice}</p> : null}
       <ul>
@@ -108,9 +131,16 @@ export default function PlanCommercialAdmin() {
             <li key={plan.plan_id}>
               <span>{price}</span>
               {' '}
+              <span>{`Ordning ${plan.display_order}`}</span>
+              {' '}
               <span>{plan.enabled_for_sale ? 'ON' : 'OFF'}</span>
               {' '}
               <span>PRELIMINARY / NOT FINALIZED</span>
+              <ul>
+                {QUOTA_LABELS.map(([key, label]) => (
+                  <li key={key}>{`${label} ${formatCount(plan.quotas[key])}`}</li>
+                ))}
+              </ul>
               <div>
                 <button
                   type="button"

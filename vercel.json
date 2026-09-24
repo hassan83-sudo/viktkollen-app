@@ -61,6 +61,14 @@
       "destination": "/api/billing/user?__vk_route=plans"
     },
     {
+      "source": "/api/billing/capability",
+      "destination": "/api/billing/user?__vk_route=capability"
+    },
+    {
+      "source": "/api/billing/capability/",
+      "destination": "/api/billing/user?__vk_route=capability"
+    },
+    {
       "source": "/api/billing/usage",
       "destination": "/api/billing/user?__vk_route=usage"
     },

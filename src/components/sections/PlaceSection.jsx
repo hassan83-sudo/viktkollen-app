@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppSection from '../app/AppSection.jsx'
+import ModalDialog from '../a11y/ModalDialog.jsx'
 import FamilyMapView from '../place/FamilyMapView.jsx'
 import PlaceLocationRequestPanel from '../place/PlaceLocationRequestPanel.jsx'
 import PlaceLocationStatusPanel from '../place/PlaceLocationStatusPanel.jsx'
@@ -689,17 +690,17 @@ function PlaceSection({ activeSection }) {
         </section>
 
         {isFamilyMapOpen && state.consentGranted ? (
-          <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.familyMap.title')}>
+          <ModalDialog className="ready-modal" aria-label={t('features.familyMap.title')} closeOnEscape onClose={() => setIsFamilyMapOpen(false)}>
             <h3>{t('features.familyMap.title')}</h3>
             {familyLocationsLoaded && familyLocations.length > 0 ? (
               <FamilyMapView locations={familyLocations} familyMembers={familyMembers} />
             ) : familyLocationsLoaded ? <><p>{t('features.familyMap.empty')}</p><p>{t('features.familyMap.emptyBody')}</p></> : null}
             <button type="button" onClick={() => setIsFamilyMapOpen(false)}>{t('common:actions.close')}</button>
-          </div>
+          </ModalDialog>
         ) : null}
 
         {isChildLocationOpen && state.consentGranted ? (
-          <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.childLocation.title')}>
+          <ModalDialog className="ready-modal" aria-label={t('features.childLocation.title')} closeOnEscape onClose={() => setIsChildLocationOpen(false)}>
             <h3>{t('features.childLocation.title')}</h3>
             {familyLocationsLoaded && familyLocations.length > 0 ? <>
               <p><strong>{familyLocations[0].display_name || displayNameForUser(familyMembers, familyLocations[0].user_id)}</strong></p>
@@ -708,11 +709,11 @@ function PlaceSection({ activeSection }) {
               {familyLocations[0].location_recorded_at ? <p>Uppdaterad {new Date(familyLocations[0].location_recorded_at).toLocaleString()}</p> : null}
             </> : familyLocationsLoaded ? <><p>{t('features.childLocation.empty')}</p><p>{t('features.childLocation.emptyBody')}</p></> : null}
             <button type="button" onClick={() => setIsChildLocationOpen(false)}>{t('common:actions.close')}</button>
-          </div>
+          </ModalDialog>
         ) : null}
 
         {isStatusOpen && state.consentGranted ? (
-          <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.status.title')}>
+          <ModalDialog className="ready-modal" aria-label={t('features.status.title')} closeOnEscape onClose={() => setIsStatusOpen(false)}>
             <h3>{t('features.status.title')}</h3>
             {familyLocationsLoaded && familyLocations.length > 0 ? <>
               <p><strong>Platsdelning aktiv</strong></p><p>Senaste platsen har tagits emot från familjen.</p>
@@ -720,11 +721,11 @@ function PlaceSection({ activeSection }) {
               {familyLocations[0].accuracy_meters != null ? <p>Noggrannhet ±{Math.round(familyLocations[0].accuracy_meters)} m</p> : null}
             </> : familyLocationsLoaded ? <><p>{t('features.status.empty')}</p><p>{t('features.status.emptyBody')}</p></> : null}
             <button type="button" onClick={() => setIsStatusOpen(false)}>{t('common:actions.close')}</button>
-          </div>
+          </ModalDialog>
         ) : null}
 
         {isSafePlacesOpen && state.consentGranted ? (
-          <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.safePlaces.title')}>
+          <ModalDialog className="ready-modal" aria-label={t('features.safePlaces.title')} closeOnEscape onClose={() => setIsSafePlacesOpen(false)}>
             <h3>{t('features.safePlaces.title')}</h3>
             <p role="status"><strong>Pushnotiser:</strong> {pushStatus.label}</p>
             {safePlacesLoaded && safePlaces.length > 0 ? <ul>{safePlaces.map((place) => (
@@ -745,11 +746,11 @@ function PlaceSection({ activeSection }) {
             {safePlacesError ? <p role="alert">{safePlacesError}</p> : null}
             <p><small>Platsnotiser fungerar i realtid medan Viktkollen är öppen. Pushstatusen ovan visar om den här enheten kan ta emot pushnotiser när appen är stängd.</small></p>
             <button type="button" onClick={() => setIsSafePlacesOpen(false)}>{t('common:actions.close')}</button>
-          </div>
+          </ModalDialog>
         ) : null}
 
         {isSosOpen && state.consentGranted ? (
-          <div className="ready-modal" role="dialog" aria-modal="true" aria-label="Trygghetslarm">
+          <ModalDialog className="ready-modal" aria-label="Trygghetslarm" closeOnEscape={!safetyAlertSending} initialFocus="dialog" onClose={() => setIsSosOpen(false)}>
             <h3>🛡️ Trygghetslarm</h3>
             <p><strong>Vad har hänt?</strong></p>
             <div className="place-safety-alert-choices">
@@ -783,11 +784,11 @@ function PlaceSection({ activeSection }) {
             <p><small>Vald anledning, tid och senast delade plats skickas till familjen. Funktionen kontaktar inte 112.</small></p>
             <p><strong>Vid akut fara – ring 112.</strong></p>
             <button type="button" onClick={() => setIsSosOpen(false)}>{t('common:actions.close')}</button>
-          </div>
+          </ModalDialog>
         ) : null}
 
         {isAllOkOpen && state.consentGranted ? (
-          <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.allOkCheckin.title')}>
+          <ModalDialog className="ready-modal" aria-label={t('features.allOkCheckin.title')} closeOnEscape onClose={() => setIsAllOkOpen(false)}>
             <h3>✓ {t('features.allOkCheckin.title')}</h3>
             <p><strong>Skicka en snabb check-in till familjen</strong></p>
             <div className="place-safety-alert-choices place-checkin-choices">
@@ -820,11 +821,11 @@ function PlaceSection({ activeSection }) {
 
             <p><small>Check-in, tid och senast delade plats skickas till familjen när platsdelning är aktiv.</small></p>
             <button type="button" onClick={() => setIsAllOkOpen(false)}>{t('common:actions.close')}</button>
-          </div>
+          </ModalDialog>
         ) : null}
 
         {isPlaceHistoryOpen && state.consentGranted ? (
-          <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.placeHistory.title')}>
+          <ModalDialog className="ready-modal" aria-label={t('features.placeHistory.title')} closeOnEscape onClose={() => setIsPlaceHistoryOpen(false)}>
             <h3>🕘 {t('features.placeHistory.title')}</h3>
             <p><strong>Hur länge ska platshistorik sparas?</strong></p>
             <div className="place-safety-alert-choices">
@@ -866,19 +867,19 @@ function PlaceSection({ activeSection }) {
             ) : null}
 
             <button type="button" onClick={() => setIsPlaceHistoryOpen(false)}>{t('common:actions.close')}</button>
-          </div>
+          </ModalDialog>
         ) : null}
 
         {isBatterySaverOpen && state.consentGranted ? (
-          <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('features.batterySaver.title')}>
+          <ModalDialog className="ready-modal" aria-label={t('features.batterySaver.title')} closeOnEscape onClose={() => setIsBatterySaverOpen(false)}>
             <h3>{t('features.batterySaver.title')}</h3><p>{state.batterySaverEnabled ? t('features.batterySaver.statusOn') : t('features.batterySaver.statusOff')}</p><p>{t('features.batterySaver.disclaimer')}</p>
             <label className="place-toggle"><input checked={state.batterySaverEnabled} type="checkbox" onChange={(event) => setState((current) => setBatterySaver(current, event.target.checked))} /><span>{t('features.batterySaver.toggle')}</span></label>
             <button type="button" onClick={() => setIsBatterySaverOpen(false)}>{t('common:actions.close')}</button>
-          </div>
+          </ModalDialog>
         ) : null}
 
         {isSharingSettingsOpen && state.consentGranted ? (
-          <div className="ready-modal place-sharing-settings-modal" role="dialog" aria-modal="true" aria-label={t('features.sharingSettings.title')}>
+          <ModalDialog className="ready-modal place-sharing-settings-modal" aria-label={t('features.sharingSettings.title')} closeOnEscape onClose={() => setIsSharingSettingsOpen(false)}>
             <h3>{t('features.sharingSettings.title')}</h3>
             <p>{state.sharingEnabled ? t('features.sharingSettings.statusOn') : t('features.sharingSettings.statusOff')}</p>
             <section className="place-sharing-settings-group">
@@ -951,7 +952,7 @@ function PlaceSection({ activeSection }) {
             </section>
 
             <button type="button" onClick={() => setIsSharingSettingsOpen(false)}>{t('common:actions.close')}</button>
-          </div>
+          </ModalDialog>
         ) : null}
       </div>
     </AppSection>

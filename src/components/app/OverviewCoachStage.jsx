@@ -1,5 +1,6 @@
+import { useRef } from 'react'
 import { createPortal } from 'react-dom'
-import useOverviewStageLock from './useOverviewStageLock.js'
+import { useDialogA11y } from '../../services/accessibilityDialog.js'
 
 const proteinFoods = ['Kyckling', 'Nötkött', 'Ägg']
 
@@ -10,7 +11,9 @@ function OverviewCoachStage({
   proteinGoal,
   proteinToday,
 }) {
-  useOverviewStageLock(onClose)
+  // A11Y-8C: focus in/trap/return, Escape, inert background and scroll lock.
+  const dialogRef = useRef(null)
+  useDialogA11y({ closeOnEscape: true, dialogRef, lockScroll: true, onClose })
   const overlay = typeof document === 'undefined' ? null : document.body
   if (!overlay) return null
 
@@ -19,7 +22,7 @@ function OverviewCoachStage({
   const proteinTarget = hasProteinGoal ? Math.round(Number(proteinGoal)) : null
 
   return createPortal(
-    <div className="overview-home-stage is-coach" role="dialog" aria-labelledby="overview-coach-stage-title" aria-modal="true">
+    <div className="overview-home-stage is-coach" role="dialog" aria-labelledby="overview-coach-stage-title" aria-modal="true" ref={dialogRef}>
       <div className="overview-home-stage-hero">
         <img alt="Viktkollens AI Coach" src="/viktkollen-ai-coach-robot.png" />
         <button className="overview-body-scan-close" type="button" onClick={onClose}>Stäng</button>

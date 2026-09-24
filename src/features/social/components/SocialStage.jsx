@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
-import useOverviewStageLock from '../../../components/app/useOverviewStageLock.js'
+import { useDialogA11y } from '../../../services/accessibilityDialog.js'
 import { isSupabaseConfigured, supabase } from '../../../services/supabaseClient.js'
 import { loadSocialSnapshot } from '../hooks/loadSocialSnapshot.js'
 import { shouldStartSocialSubscriptions } from '../model/socialPolicy.js'
@@ -26,7 +26,9 @@ function SocialStage({
   liveEnabled = false,
   onClose,
 }) {
-  useOverviewStageLock(onClose)
+  // A11Y-8C: focus in/trap/return, Escape, inert background and scroll lock.
+  const dialogRef = useRef(null)
+  useDialogA11y({ closeOnEscape: true, dialogRef, isOpen: enabled, lockScroll: true, onClose })
   const { t, i18n } = useTranslation(['social', 'common'])
   const [view, setView] = useState(initialView)
   const [snapshot, setSnapshot] = useState({ conversations: [], friends: [], requests: { incoming: [], outgoing: [] }, blocks: [] })
@@ -172,7 +174,7 @@ function SocialStage({
   }
 
   return createPortal(
-    <div className="social-stage" role="dialog" aria-labelledby="social-stage-title" aria-modal="true">
+    <div className="social-stage" role="dialog" aria-labelledby="social-stage-title" aria-modal="true" ref={dialogRef}>
       <div className="social-stage-bar">
         <h1 id="social-stage-title">{view === 'thread' ? (activeConversation?.other?.displayName || t('titleChat')) : t('titleFriends')}</h1>
         <button className="overview-body-scan-close" type="button" onClick={onClose}>{t('close')}</button>

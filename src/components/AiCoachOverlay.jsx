@@ -6,7 +6,7 @@ import AiCoachHeader from './aiCoach/AiCoachHeader.jsx'
 import AiCoachHero from './aiCoach/AiCoachHero.jsx'
 import AiCoachControls from './aiCoach/AiCoachControls.jsx'
 import AiCoachSuggestions from './aiCoach/AiCoachSuggestions.jsx'
-import useOverviewStageLock from './app/useOverviewStageLock.js'
+import { useDialogA11y } from '../services/accessibilityDialog.js'
 import { getVoicePhaseLabel } from '../services/ai/realtimeVoiceController.js'
 import {
   getCompanionVoiceProfile,
@@ -38,7 +38,9 @@ function AiCoachOverlay({
   starterPrompts,
   voiceStatus,
 }) {
-  useOverviewStageLock(onClose)
+  // A11Y-8C: focus in/trap/return, Escape, inert background and scroll lock.
+  const dialogRef = useRef(null)
+  useDialogA11y({ closeOnEscape: true, dialogRef, lockScroll: true, onClose })
   const overlay = typeof document === 'undefined' ? null : document.body
   const latestAssistantMessage = [...chatMessages].reverse().find((message) => message.role === 'assistant')
   const lastSpokenAssistantIdRef = useRef(latestAssistantMessage?.id ?? null)
@@ -106,7 +108,7 @@ function AiCoachOverlay({
   }
 
   return createPortal(
-    <div className="ai-coach-overlay" role="dialog" aria-labelledby="ai-coach-overlay-title" aria-modal="true">
+    <div className="ai-coach-overlay" role="dialog" aria-labelledby="ai-coach-overlay-title" aria-modal="true" ref={dialogRef}>
       <AiCoachHeader onClose={onClose} />
 
       <AiCoachHero />

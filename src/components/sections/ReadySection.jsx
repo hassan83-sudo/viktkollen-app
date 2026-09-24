@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppSection from '../app/AppSection.jsx'
+import ModalDialog from '../a11y/ModalDialog.jsx'
 import { getReadyAvatar, getReadyAvatars } from '../../features/ready/readyAvatars.js'
 import { getReadyGreetingKey } from '../../features/ready/readyGreeting.js'
 import { getReadyLevelPolicy } from '../../features/ready/readyLevelPolicy.js'
@@ -42,6 +43,8 @@ function ReadySection({ activeSection, onNavigateSection, onOpenCompanion, onOpe
   const [showExamples, setShowExamples] = useState(false)
   const [showCompanionProfile, setShowCompanionProfile] = useState(false)
   const [showNextList, setShowNextList] = useState(false)
+  // A11Y-8C: the delete confirmation opens on its safe choice (Avbryt).
+  const deleteCancelRef = useRef(null)
   const [companionProfile, setCompanionProfile] = useState(() => loadCompanionProfile())
 
   useEffect(() => { saveReadyState(state) }, [state])
@@ -126,14 +129,14 @@ function ReadySection({ activeSection, onNavigateSection, onOpenCompanion, onOpe
 
         <div className="ready-bottom-row"><NextCard nextEvents={nextEvents} onOpen={handleNextCardOpen} /><ReminderCard onOpen={() => onNavigateSection?.('notices')} /></div>
 
-        {deleteId ? <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('checklist.deleteConfirm')}><p>{t('checklist.deleteConfirm')}</p><div><button type="button" onClick={handleDeleteConfirmed}>{t('checklist.deleteYes')}</button><button type="button" onClick={() => setDeleteId('')}>{t('common:actions.cancel')}</button></div></div> : null}
+        {deleteId ? <ModalDialog className="ready-modal" aria-label={t('checklist.deleteConfirm')} closeOnEscape initialFocusRef={deleteCancelRef} onClose={() => setDeleteId('')}><p>{t('checklist.deleteConfirm')}</p><div><button type="button" onClick={handleDeleteConfirmed}>{t('checklist.deleteYes')}</button><button ref={deleteCancelRef} type="button" onClick={() => setDeleteId('')}>{t('common:actions.cancel')}</button></div></ModalDialog> : null}
 
-        {showEyeInfo ? <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('eye.title')}><h3>{t('eye.title')}</h3><p>{t('eye.notConnectedBody')}</p><ul><li>{t('eye.limits.visibleOnly')}</li><li>{t('eye.limits.noGuarantee')}</li><li>{t('eye.limits.uncertain')}</li><li>{t('eye.limits.noFace')}</li><li>{t('eye.limits.noChildId')}</li></ul><button type="button" onClick={() => setShowEyeInfo(false)}>{t('common:actions.close')}</button></div> : null}
+        {showEyeInfo ? <ModalDialog className="ready-modal" aria-labelledby="ready-eye-dialog-title" closeOnEscape onClose={() => setShowEyeInfo(false)}><h3 id="ready-eye-dialog-title">{t('eye.title')}</h3><p>{t('eye.notConnectedBody')}</p><ul><li>{t('eye.limits.visibleOnly')}</li><li>{t('eye.limits.noGuarantee')}</li><li>{t('eye.limits.uncertain')}</li><li>{t('eye.limits.noFace')}</li><li>{t('eye.limits.noChildId')}</li></ul><button type="button" onClick={() => setShowEyeInfo(false)}>{t('common:actions.close')}</button></ModalDialog> : null}
 
-        {showAllTechniques || activeTechnique ? <div className="ready-modal is-wide" role="dialog" aria-modal="true" aria-label={t('memory.title')}><h3>{activeTechnique ? t(`memory.techniques.${activeTechnique.id}.title`) : t('memory.allTitle')}</h3>{activeTechnique ? <div className="ready-technique-detail"><p>{t(`memory.techniques.${activeTechnique.id}.body`)}</p><p>{t(`memory.techniques.${activeTechnique.id}.example`)}</p>{activeTechnique.comingSoon ? <p className="ready-soon">{t('memory.locationSoon')}</p> : null}<button type="button" onClick={() => setActiveTechniqueId('')}>{t('common:back')}</button></div> : <ul className="ready-technique-list">{allTechniques.map((technique) => <li key={technique.id}><button type="button" onClick={() => setActiveTechniqueId(technique.id)}><strong>{t(`memory.techniques.${technique.id}.title`)}</strong>{technique.comingSoon ? <small>{t('memory.comingSoon')}</small> : null}</button></li>)}</ul>}<button type="button" onClick={() => { setShowAllTechniques(false); setActiveTechniqueId('') }}>{t('common:actions.close')}</button></div> : null}
+        {showAllTechniques || activeTechnique ? <ModalDialog className="ready-modal is-wide" aria-labelledby="ready-memory-dialog-title" closeOnEscape onClose={() => { setShowAllTechniques(false); setActiveTechniqueId('') }}><h3 id="ready-memory-dialog-title">{activeTechnique ? t(`memory.techniques.${activeTechnique.id}.title`) : t('memory.allTitle')}</h3>{activeTechnique ? <div className="ready-technique-detail"><p>{t(`memory.techniques.${activeTechnique.id}.body`)}</p><p>{t(`memory.techniques.${activeTechnique.id}.example`)}</p>{activeTechnique.comingSoon ? <p className="ready-soon">{t('memory.locationSoon')}</p> : null}<button type="button" onClick={() => setActiveTechniqueId('')}>{t('common:back')}</button></div> : <ul className="ready-technique-list">{allTechniques.map((technique) => <li key={technique.id}><button type="button" onClick={() => setActiveTechniqueId(technique.id)}><strong>{t(`memory.techniques.${technique.id}.title`)}</strong>{technique.comingSoon ? <small>{t('memory.comingSoon')}</small> : null}</button></li>)}</ul>}<button type="button" onClick={() => { setShowAllTechniques(false); setActiveTechniqueId('') }}>{t('common:actions.close')}</button></ModalDialog> : null}
 
         {showCompanionProfile ? (
-          <div className="ready-modal is-wide ready-companion-modal" role="dialog" aria-modal="true" aria-label={t('companion.cardTitle')}>
+          <ModalDialog className="ready-modal is-wide ready-companion-modal" aria-label={t('companion.cardTitle')} closeOnEscape onClose={() => setShowCompanionProfile(false)}>
             <CompanionProfilePanel
               onProfileChange={setCompanionProfile}
               onTalk={() => {
@@ -143,10 +146,10 @@ function ReadySection({ activeSection, onNavigateSection, onOpenCompanion, onOpe
               surface="ready"
             />
             <button type="button" onClick={() => setShowCompanionProfile(false)}>{t('common:actions.close')}</button>
-          </div>
+          </ModalDialog>
         ) : null}
 
-        {showNextList ? <div className="ready-modal" role="dialog" aria-modal="true" aria-label={t('next.title')}><h3>{t('next.title')}</h3><div className="ready-next">{nextEvents.length === 0 ? <div className="ready-next-empty"><p>{t('next.empty')}</p><button type="button" onClick={() => onNavigateSection?.('notices')}>{t('next.add')}</button></div> : <ul>{nextEvents.map((event) => <li key={event.id}><strong className={event.source === 'demo' ? 'is-demo' : ''}>{event.timeLabel}</strong><span>{event.title}{event.source === 'demo' ? ` (${t('next.demo')})` : ''}</span></li>)}</ul>}</div><button type="button" onClick={() => setShowNextList(false)}>{t('common:actions.close')}</button></div> : null}
+        {showNextList ? <ModalDialog className="ready-modal" aria-labelledby="ready-next-dialog-title" closeOnEscape onClose={() => setShowNextList(false)}><h3 id="ready-next-dialog-title">{t('next.title')}</h3><div className="ready-next">{nextEvents.length === 0 ? <div className="ready-next-empty"><p>{t('next.empty')}</p><button type="button" onClick={() => onNavigateSection?.('notices')}>{t('next.add')}</button></div> : <ul>{nextEvents.map((event) => <li key={event.id}><strong className={event.source === 'demo' ? 'is-demo' : ''}>{event.timeLabel}</strong><span>{event.title}{event.source === 'demo' ? ` (${t('next.demo')})` : ''}</span></li>)}</ul>}</div><button type="button" onClick={() => setShowNextList(false)}>{t('common:actions.close')}</button></ModalDialog> : null}
       </div>
     </AppSection>
   )

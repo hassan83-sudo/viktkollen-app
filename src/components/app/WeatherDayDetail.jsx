@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { formatWeatherValue } from '../../services/overviewLiveContext.js'
 import { loadOverviewWeather } from '../../services/overviewWeather.js'
-import useOverviewStageLock from './useOverviewStageLock.js'
+import { useDialogA11y } from '../../services/accessibilityDialog.js'
 
 function formatUpdatedAt(value, locale) {
   if (!value) return ''
@@ -21,7 +21,9 @@ function WeatherDayDetail({
   preferDevice = false,
 }) {
   const { t, i18n } = useTranslation('home')
-  useOverviewStageLock(onClose)
+  // A11Y-8C: focus in/trap/return, Escape, inert background and scroll lock.
+  const dialogRef = useRef(null)
+  useDialogA11y({ closeOnEscape: true, dialogRef, lockScroll: true, onClose })
   const [weather, setWeather] = useState(initialWeather)
   const [status, setStatus] = useState(initialWeather?.hasLiveWeather ? 'ready' : 'loading')
   const [errorLabel, setErrorLabel] = useState('')
@@ -68,6 +70,7 @@ function WeatherDayDetail({
   return createPortal(
     <div
       className="overview-weather-day-detail"
+      ref={dialogRef}
       role="dialog"
       aria-labelledby="overview-weather-day-title"
       aria-modal="true"

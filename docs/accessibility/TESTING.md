@@ -54,6 +54,15 @@ starts a browser.
      timer), Pausa/Spela, automatic changes that stay silent while a manual
      change is announced once, and AI Coach chat scrolling ('auto' when
      motion is reduced).
+   - `place-cards.spec.js` (8K): the Plats cards with consent and no dialog
+     open. It runs axe (no nested-interactive, target-size or
+     aria-allowed-role findings) and checks that each card opens through its
+     native button on a plain `element.click()`, once. That covers voice and
+     switch control. It also checks the mouse anywhere on the card, Enter and
+     Space. The Batterisnålt checkbox must be a separate Tab stop that Space
+     and click toggle without opening the card, with a box of at least 24x24
+     px. The headings must stay in Chrome's accessibility tree, and the card
+     must show a focus ring.
    - `axe-views.spec.js` also scans every main section, and Notis, with the
      navigation visible. That gate also blocks moderate findings (8I).
    - `high-contrast.spec.js`: resolved high-contrast tokens (7:1 and 4.5:1) and a

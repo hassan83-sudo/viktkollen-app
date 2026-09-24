@@ -32,10 +32,12 @@ describe('PlaceSection', () => {
   it('makes Familjekarta openable only after consent, scoped to that one card', () => {
     expect(placeSource).toContain("featureId === 'familyMap' && state.consentGranted")
     expect(placeSource).toContain('setIsFamilyMapOpen(true)')
-    expect(placeSource).toContain("role: 'button'")
-    // The click/keyboard affordance is only ever wired up for familyMap — every
-    // other card keeps rendering with an empty props spread, unchanged.
-    expect(placeSource).toContain(': {}')
+    // A11Y-8K: an openable card is opened by a native <button> in its heading
+    // (click, Enter and Space through one onClick); a card that is not
+    // openable renders its heading as plain text, with no button.
+    expect(placeSource).toContain('<button aria-describedby={`${statusId} ${bodyId}`} className="place-feature-open" type="button" onClick={openFeature}>{featureTitle}</button>')
+    expect(placeSource).toContain(') : featureTitle}')
+    expect(placeSource).toContain('{isCardOpenable ? (')
   })
 
   it('closes the Familjekarta modal automatically if consent is revoked', () => {

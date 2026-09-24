@@ -631,43 +631,39 @@ function PlaceSection({ activeSection }) {
             const batterySaverOpenable = featureId === 'batterySaver' && state.consentGranted
             const sharingSettingsOpenable = featureId === 'sharingSettings' && state.consentGranted
             const isCardOpenable = familyMapOpenable || childLocationOpenable || statusOpenable || safePlacesOpenable || sosOpenable || allOkOpenable || placeHistoryOpenable || batterySaverOpenable || sharingSettingsOpenable
-            const openableProps = isCardOpenable ? {
-              onPointerUp: () => {
-                if (familyMapOpenable) setIsFamilyMapOpen(true)
-                else if (childLocationOpenable) setIsChildLocationOpen(true)
-                else if (statusOpenable) setIsStatusOpen(true)
-                else if (safePlacesOpenable) setIsSafePlacesOpen(true)
-                else if (sosOpenable) setIsSosOpen(true)
-                else if (allOkOpenable) setIsAllOkOpen(true)
-                else if (placeHistoryOpenable) setIsPlaceHistoryOpen(true)
-                else if (batterySaverOpenable) setIsBatterySaverOpen(true)
-                else if (sharingSettingsOpenable) setIsSharingSettingsOpen(true)
-              },
-              onKeyDown: (event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault()
-                  if (familyMapOpenable) setIsFamilyMapOpen(true)
-                  else if (childLocationOpenable) setIsChildLocationOpen(true)
-                  else if (statusOpenable) setIsStatusOpen(true)
-                  else if (safePlacesOpenable) setIsSafePlacesOpen(true)
-                  else if (sosOpenable) setIsSosOpen(true)
-                  else if (allOkOpenable) setIsAllOkOpen(true)
-                  else if (placeHistoryOpenable) setIsPlaceHistoryOpen(true)
-                  else if (batterySaverOpenable) setIsBatterySaverOpen(true)
-                  else if (sharingSettingsOpenable) setIsSharingSettingsOpen(true)
-                }
-              },
-              role: 'button',
-              tabIndex: 0,
-            } : {}
+            // A11Y-8K: the card is opened by a native <button> (its heading
+            // text), so click() (voice control, switch access), mouse, touch,
+            // Enter and Space all use one onClick and fire exactly once. The
+            // button's ::after covers the card (styles/accessibility.css), so a
+            // tap anywhere on the card still opens it. The heading keeps its
+            // semantics, and the Batterisnålt checkbox is a separate control
+            // outside the button, above the overlay.
+            const openFeature = () => {
+              if (familyMapOpenable) setIsFamilyMapOpen(true)
+              else if (childLocationOpenable) setIsChildLocationOpen(true)
+              else if (statusOpenable) setIsStatusOpen(true)
+              else if (safePlacesOpenable) setIsSafePlacesOpen(true)
+              else if (sosOpenable) setIsSosOpen(true)
+              else if (allOkOpenable) setIsAllOkOpen(true)
+              else if (placeHistoryOpenable) setIsPlaceHistoryOpen(true)
+              else if (batterySaverOpenable) setIsBatterySaverOpen(true)
+              else if (sharingSettingsOpenable) setIsSharingSettingsOpen(true)
+            }
+            const featureTitle = featureId === 'sos' ? 'Trygghetslarm' : t(`features.${featureId}.title`)
+            const statusId = `place-feature-${featureId}-status`
+            const bodyId = `place-feature-${featureId}-body`
             return (
-              <article className={`place-feature-card is-${availability}${isCardOpenable ? ' is-openable' : ''}`} key={featureId} {...openableProps}>
+              <article className={`place-feature-card is-${availability}${isCardOpenable ? ' is-openable' : ''}`} key={featureId}>
                 <div className="place-feature-top">
                   <span aria-hidden="true">{featureIcons[featureId]}</span>
-                  <span className={`place-status is-${availability}`}>{availabilityLabel(featureId, availability)}</span>
+                  <span className={`place-status is-${availability}`} id={statusId}>{availabilityLabel(featureId, availability)}</span>
                 </div>
-                <h3>{featureId === 'sos' ? 'Trygghetslarm' : t(`features.${featureId}.title`)}</h3>
-                <p>{featureId === 'sos' ? 'Skicka snabbt ett larm och din senaste plats till godkända familjemedlemmar.' : t(`features.${featureId}.body`)}</p>
+                <h3>
+                  {isCardOpenable ? (
+                    <button aria-describedby={`${statusId} ${bodyId}`} className="place-feature-open" type="button" onClick={openFeature}>{featureTitle}</button>
+                  ) : featureTitle}
+                </h3>
+                <p id={bodyId}>{featureId === 'sos' ? 'Skicka snabbt ett larm och din senaste plats till godkända familjemedlemmar.' : t(`features.${featureId}.body`)}</p>
                 {featureId === 'batterySaver' && state.consentGranted ? (
                   <label className="place-toggle">
                     <input checked={state.batterySaverEnabled} type="checkbox" onChange={(event) => setState((current) => setBatterySaver(current, event.target.checked))} />

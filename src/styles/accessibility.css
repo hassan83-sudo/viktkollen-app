@@ -450,3 +450,62 @@
 html {
   scroll-padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px));
 }
+
+/* ==========================================================================
+   A11Y-8K: Plats cards (native button, separate checkbox, target size)
+   ========================================================================== */
+
+/* The heading text is the card's native open button. It keeps the heading's
+   typography. The stronger selector beats the generic button styles,
+   including the high-contrast border, and !important beats the
+   large-controls minimum (the whole card is the target through ::after). */
+:root .place-feature-card.is-openable .place-feature-open {
+  all: unset;
+  cursor: pointer;
+  min-height: 0 !important;
+  min-width: 0 !important;
+}
+
+/* Stretched target: a tap anywhere on the card is a click on the button. */
+.place-feature-card.is-openable {
+  position: relative;
+}
+
+:root .place-feature-card.is-openable .place-feature-open::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+}
+
+/* The focus ring is drawn around the whole card, as before. */
+:root .place-feature-card.is-openable .place-feature-open:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.place-feature-card.is-openable:has(.place-feature-open:focus-visible) {
+  outline: 2px solid var(--ready-cyan);
+  outline-offset: 2px;
+}
+
+:root[data-a11y-high-contrast='true'] .place-feature-card.is-openable:has(.place-feature-open:focus-visible) {
+  outline: 3px solid #ffffff;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px #020617;
+}
+
+/* The Batterisnålt checkbox is a separate control above the overlay. The
+   flex label squeezed it to about 8x22px, so it keeps a real 24x24px box
+   (WCAG 2.5.8). Its 44px label is also clickable. */
+.place-feature-card .place-toggle {
+  position: relative;
+  z-index: 1;
+}
+
+.place-feature-card .place-toggle input {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+}

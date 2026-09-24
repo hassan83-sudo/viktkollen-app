@@ -21,7 +21,10 @@ function renameSchoolCard() {
   document.querySelectorAll('#app-section-place .place-feature-card').forEach((card) => {
     const heading = card.querySelector('h3')
     if (heading?.textContent?.trim() !== 'Status') return
-    heading.textContent = 'Skola'
+    // A11Y-8K: the heading contains the card's open button; rename the
+    // button's text so the button (and the card's activation) is kept.
+    const label = heading.querySelector('.place-feature-open') || heading
+    label.textContent = 'Skola'
     const body = card.querySelector('p')
     if (body) body.textContent = 'Se skolans sparade plats på karta och använd skolområdet för platsstatus.'
   })

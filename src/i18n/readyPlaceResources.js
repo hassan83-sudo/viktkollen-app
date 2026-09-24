@@ -36,6 +36,7 @@ export const readySv = {
     placeholder: 'Jag glömde laddaren.',
     ask: 'Fortsätt',
     confirm: 'Vill du lägga till {{label}} på checklistan?',
+    added: '{{label}} har lagts till på checklistan.',
   },
   ai: { gridAria: 'AI-hjälp i Redo!' },
   eye: {
@@ -160,6 +161,7 @@ export const readyEn = {
     placeholder: 'I forgot the charger.',
     ask: 'Continue',
     confirm: 'Do you want to add {{label}} to the checklist?',
+    added: '{{label}} has been added to the checklist.',
   },
   ai: { gridAria: 'AI help in Ready!' },
   eye: {

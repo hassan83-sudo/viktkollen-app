@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import ModalDialog from '../a11y/ModalDialog.jsx'
 import {
   getDefaultGlobalSearchGroups,
   getGlobalSearchKeyboardAction,
@@ -50,7 +51,6 @@ function GlobalSearch({ onNavigate }) {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef(null)
   const openerRef = useRef(null)
-  const previousFocusRef = useRef(null)
   const [recentIds, setRecentIds] = useState(() => readRecentSearchIds())
   const results = useMemo(() => searchGlobalNavigation(query), [query])
   const defaultGroups = useMemo(() => {
@@ -78,18 +78,16 @@ function GlobalSearch({ onNavigate }) {
   }
 
   const openSearch = useCallback(() => {
-    previousFocusRef.current = document.activeElement
     setIsOpen(true)
   }, [])
 
+  // A11Y-8I: focus handling (initial focus in the search field, trap, inert
+  // background, Escape from anywhere in the dialog, and return to the
+  // opener) is done by the shared 8C dialog system (ModalDialog).
   const closeSearch = useCallback(() => {
     setIsOpen(false)
     setQuery('')
     setSelectedIndex(0)
-    window.requestAnimationFrame(() => {
-      const focusTarget = previousFocusRef.current || openerRef.current
-      focusTarget?.focus?.()
-    })
   }, [])
 
   function navigateToResult(result) {
@@ -110,11 +108,6 @@ function GlobalSearch({ onNavigate }) {
     window.addEventListener('keydown', handleGlobalKeyDown)
     return () => window.removeEventListener('keydown', handleGlobalKeyDown)
   }, [openSearch])
-
-  useEffect(() => {
-    if (!isOpen) return
-    window.requestAnimationFrame(() => inputRef.current?.focus())
-  }, [isOpen])
 
   function handleInputKeyDown(event) {
     const action = getGlobalSearchKeyboardAction(event, selectedIndex, navigationResults.length)
@@ -175,11 +168,12 @@ function GlobalSearch({ onNavigate }) {
 
       {isOpen && (
         <div className="global-search-backdrop" role="presentation">
-          <div
+          <ModalDialog
             aria-label={t('search.dialog')}
-            aria-modal="true"
             className="global-search-dialog"
-            role="dialog"
+            closeOnEscape
+            initialFocusRef={inputRef}
+            onClose={closeSearch}
           >
             <div className="global-search-field">
               <span aria-hidden="true">⌕</span>
@@ -239,7 +233,7 @@ function GlobalSearch({ onNavigate }) {
                 </div>
               )}
             </div>
-          </div>
+          </ModalDialog>
         </div>
       )}
     </>

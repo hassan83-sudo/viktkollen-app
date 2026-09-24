@@ -41,14 +41,17 @@ export function formatViolations(violations) {
 }
 
 // Scans, attaches every finding to the report, and fails on critical/serious.
+// `block` widens the gate for views that are known to be clean at that level
+// (A11Y-8I: the main sections also block on moderate findings).
 export async function expectNoBlockingAxeViolations(page, testInfo, label, options = {}) {
-  const violations = await runAxe(page, options)
-  const blocking = violations.filter((violation) => blockingImpacts.includes(violation.impact))
-  const advisory = violations.filter((violation) => !blockingImpacts.includes(violation.impact))
+  const { block = blockingImpacts, ...scanOptions } = options
+  const violations = await runAxe(page, scanOptions)
+  const blocking = violations.filter((violation) => block.includes(violation.impact))
+  const advisory = violations.filter((violation) => !block.includes(violation.impact))
   await testInfo.attach(`axe-${label}.json`, { body: JSON.stringify(violations, null, 2), contentType: 'application/json' })
   if (advisory.length) {
     testInfo.annotations.push({ description: advisory.map((violation) => `${violation.impact} ${violation.id} (${violation.nodes.length})`).join(', '), type: `axe advisory: ${label}` })
   }
-  expect(blocking, `${label}: axe critical/serious violations\n${formatViolations(blocking)}`).toEqual([])
+  expect(blocking, `${label}: axe ${block.join('/')} violations\n${formatViolations(blocking)}`).toEqual([])
   return violations
 }

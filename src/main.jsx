@@ -24,6 +24,11 @@ import './features/social/SocialRoom.mobile.css'
 // A11Y-8B: global accessibility overrides, imported last so they apply on
 // top of the base theme and component styles.
 import './styles/accessibility.css'
+import { installFocusVisibility } from './services/accessibilityFocusVisibility.js'
+
+// A11Y-8I: keep keyboard focus visible above the fixed bottom navigation and
+// inside horizontal chip rows (WCAG 2.4.11).
+installFocusVisibility()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

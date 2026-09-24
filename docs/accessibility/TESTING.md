@@ -39,6 +39,17 @@ starts a browser.
    - `landmarks.spec.js`: one exposed `main`, one `h1` per view, a valid skip
      link target, and named modal dialogs.
    - `label-in-name.spec.js`: WCAG 2.5.3 and unique landmarks (see below).
+   - `focus-visibility.spec.js` (8I): every Tab stop in Hem, Redo!, Min resa,
+     Stället, Mer and Tillgänglighet is inside the viewport, above the fixed
+     bottom navigation and not covered by another element (WCAG 2.4.7 and
+     2.4.11). It runs in four modes: normal, 200 %, 320 px, and large text
+     with large controls. The only exception is the visually hidden Home
+     header buttons (8H A2), which are skipped by one selector.
+   - `navigation-contrast.spec.js` (8I): every bottom-navigation label,
+     active and inactive, reaches 4.5:1 in every section. The layers are
+     composited: page, navigation, link and the link's gradient stops.
+   - `axe-views.spec.js` also scans every main section, and Notis, with the
+     navigation visible. That gate also blocks moderate findings (8I).
    - `high-contrast.spec.js`: resolved high-contrast tokens (7:1 and 4.5:1) and a
      visible focus outline (at least 2px and 3:1).
 4. **Numeric contrast tests** for the 8B tokens

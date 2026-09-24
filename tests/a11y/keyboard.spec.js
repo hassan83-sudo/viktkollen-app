@@ -148,3 +148,120 @@ test.describe('keyboard: walkie-talkie', () => {
     await expectNoBlockingAxeViolations(page, testInfo, 'walkie', { include: '#walkie-host' })
   })
 })
+
+// A11Y-8I (8H A6/A7, C8/C9): real keyboard in Chromium. jsdom never moves
+// focus on Tab itself, so a focus trap is only proven here.
+test.describe('keyboard: GlobalSearch dialog', () => {
+  async function openSearch(page) {
+    await openApp(page, { reducedMotion: 'reduce' })
+    await goToSection(page, 'Mer', 'more')
+    const folder = page.locator('#app-section-more').getByRole('button', { name: /^Inställningar/ })
+    await folder.focus()
+    await page.keyboard.press('Enter')
+    const opener = page.getByRole('button', { name: 'Öppna global sökning' })
+    await opener.focus()
+    await page.keyboard.press('Enter')
+    const dialog = page.getByRole('dialog', { name: 'Global sökning' })
+    await expect(dialog).toBeVisible()
+    return { dialog, opener }
+  }
+
+  test('named modal: focus in the search field, background blocked, Tab/Shift+Tab trapped', async ({ page }) => {
+    const { dialog } = await openSearch(page)
+    await expect(dialog).toHaveAttribute('aria-modal', 'true')
+    await expect(dialog.getByRole('searchbox', { name: 'Sök i Viktkollen' })).toBeFocused()
+
+    // Background: inert, and cannot be focused programmatically either.
+    const background = bottomNavLink(page, 'Hem')
+    expect(await background.evaluate((element) => Boolean(element.closest('[inert]')))).toBe(true)
+    await background.evaluate((element) => element.focus())
+    await expectFocusInside(page, dialog)
+
+    // More presses than the dialog has tab stops, both directions.
+    const stops = await dialog.evaluate((element) => element.querySelectorAll('button, input').length)
+    expect(stops).toBeGreaterThan(5)
+    await expectTabTrappedIn(page, dialog, stops * 2 + 6)
+    for (let index = 0; index < stops + 3; index += 1) {
+      await page.keyboard.press('Shift+Tab')
+      await expectFocusInside(page, dialog)
+    }
+  })
+
+  test('Escape closes from any element in the dialog and focus returns to the opener', async ({ page }) => {
+    const { dialog, opener } = await openSearch(page)
+    await dialog.getByRole('button', { name: 'Stäng' }).focus()
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    await expect(opener).toBeFocused()
+    expect(await page.locator('[inert]').count()).toBe(0)
+
+    await page.keyboard.press('Enter')
+    await expect(dialog).toBeVisible()
+    await page.keyboard.press('Tab')
+    await page.keyboard.press('Tab')
+    await expect(page.getByRole('searchbox', { name: 'Sök i Viktkollen' })).not.toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    await expect(opener).toBeFocused()
+    await expectFocusNotOnBody(page)
+  })
+
+  test('search keyboard behaviour is unchanged: arrows move the selection, Enter navigates', async ({ page }) => {
+    const { dialog } = await openSearch(page)
+    const field = dialog.getByRole('searchbox', { name: 'Sök i Viktkollen' })
+    await page.keyboard.type('vikt')
+    const first = await field.getAttribute('aria-activedescendant')
+    await page.keyboard.press('ArrowDown')
+    expect(await field.getAttribute('aria-activedescendant')).not.toBe(first)
+    await page.keyboard.press('Enter')
+    await expect(dialog).toHaveCount(0)
+    await expectFocusNotOnBody(page)
+  })
+})
+
+test.describe('keyboard: Redo! "Jag glömde något" confirmation', () => {
+  async function askForgot(page) {
+    await openApp(page, { reducedMotion: 'reduce' })
+    await goToSection(page, 'Redo!', 'redo')
+    const field = page.getByRole('textbox', { name: 'Beskriv vad du glömde' })
+    await field.focus()
+    await page.keyboard.type('Jag glömde nycklarna')
+    await page.keyboard.press('Enter')
+    const question = page.getByRole('group', { name: /Vill du lägga till .* på checklistan\?/ })
+    return { field, question }
+  }
+
+  test('the question takes focus; Yes adds, announces once and returns focus to the field', async ({ page }) => {
+    const { field, question } = await askForgot(page)
+    await expect(question).toBeFocused()
+    const status = page.locator('.ready-forgot-card').getByRole('status')
+    await expect(status).toHaveText('')
+
+    await page.keyboard.press('Tab')
+    await expect(question.getByRole('button', { name: 'Ja' })).toBeFocused()
+    await page.keyboard.press('Enter')
+
+    await expect(question).toHaveCount(0)
+    await expect(field).toBeFocused()
+    await expect(status).toHaveText(/har lagts till på checklistan\.$/)
+    // One announcement: the result is in the single status region only; the
+    // question itself is not a live region.
+    expect(await page.locator('.ready-forgot-card [role=status], .ready-forgot-card [aria-live]').count()).toBe(1)
+    await expectFocusNotOnBody(page)
+
+    // Typing again clears the old result.
+    await page.keyboard.type('x')
+    await expect(status).toHaveText('')
+  })
+
+  test('No closes the question without adding and returns focus to the field', async ({ page }) => {
+    const { field, question } = await askForgot(page)
+    await page.keyboard.press('Tab')
+    await page.keyboard.press('Tab')
+    await expect(question.getByRole('button', { name: 'Nej' })).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(question).toHaveCount(0)
+    await expect(field).toBeFocused()
+    await expect(page.locator('.ready-forgot-card').getByRole('status')).toHaveText('')
+  })
+})

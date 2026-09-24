@@ -72,3 +72,43 @@ test.describe('axe views (default, more surfaces)', () => {
     await expectNoBlockingAxeViolations(page, testInfo, 'place-dialog')
   })
 })
+
+// A11Y-8I (8H C1/C4): every main section with the bottom navigation visible,
+// so the navigation (active and inactive labels) is scanned in each section's
+// own theme. These views had no moderate findings in the 8H audit, so the gate
+// also blocks moderate here (landmark-unique, heading-order, page-has-heading-
+// one, ...). Mer's subfolders are not in this gate yet (known 8H B1-B3).
+// Plats is scanned without consent; its consent state belongs to 8H A8.
+test.describe('axe main sections with visible navigation (blocks moderate)', () => {
+  const block = ['critical', 'serious', 'moderate']
+  const sections = [
+    ['Hem', null],
+    ['Redo!', 'redo'],
+    ['Plats', 'place'],
+    ['Min resa', 'journey'],
+    ['Stället', 'social'],
+    ['Mer', 'more'],
+  ]
+
+  for (const [label, sectionId] of sections) {
+    test(label, async ({ page }, testInfo) => {
+      await openApp(page)
+      if (sectionId) await goToSection(page, label, sectionId)
+      await expect(page.locator('.bottom-nav')).toBeVisible()
+      await expectNoBlockingAxeViolations(page, testInfo, `section-${sectionId || 'home'}`, { block })
+    })
+  }
+
+  test('Tillgänglighet', async ({ page }, testInfo) => {
+    await openApp(page)
+    await openAccessibilityFolder(page)
+    await expectNoBlockingAxeViolations(page, testInfo, 'section-accessibility', { block })
+  })
+
+  test('Notis', async ({ page }, testInfo) => {
+    await openApp(page)
+    await page.getByRole('button', { name: 'Alla notiser' }).click()
+    await expect(page.locator('#app-section-notices')).toHaveClass(/is-active/)
+    await expectNoBlockingAxeViolations(page, testInfo, 'section-notices', { block })
+  })
+})

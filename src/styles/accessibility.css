@@ -425,3 +425,28 @@
 .smart-feed-playback-glyph::before {
   content: attr(data-glyph);
 }
+
+/* ==========================================================================
+   A11Y-8I: navigation contrast and focus not obscured
+   ========================================================================== */
+
+/* WCAG 1.4.3: in Redo! and Plats the active bottom-nav label used
+   var(--ready-cyan), but that token is only defined on the Redo!/Plats
+   section, not on the navigation (a sibling). The value was therefore
+   undefined and the label inherited #cbd5e1 (3.83:1 on #7c3aed). The intended
+   cyan would only reach ~4.3:1, so the label uses the same white as every other
+   section (5.7:1). The cyan glow around the icon is unchanged. */
+.app-shell:has(#app-section-redo.is-active) .bottom-nav a.is-active,
+.app-shell:has(#app-section-place.is-active) .bottom-nav a.is-active {
+  color: #ffffff;
+}
+
+/* WCAG 2.4.11 (Focus Not Obscured): the page scrolls on the root element and
+   the bottom navigation is fixed over the last ~64-80px of the viewport.
+   scroll-padding makes the browser keep an element that receives keyboard
+   focus above the navigation, instead of scrolling it just into the viewport
+   (underneath the navigation). It changes no layout, only where the
+   browser stops scrolling. */
+html {
+  scroll-padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+}

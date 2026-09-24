@@ -2,10 +2,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   MAX_SPEECH_LENGTH,
+  MAX_SPEECH_SEGMENT_LENGTH,
+  cancelAccessibilitySpeech,
   getAccessibilitySpeechLocale,
   getAccessibilitySpeechRate,
   getNavigationSpeechLabel,
   speakAccessibilityText,
+  splitAccessibilitySpeechText,
 } from './accessibilitySpeech.js'
 
 describe('accessibility speech', () => {
@@ -73,5 +76,102 @@ describe('accessibility speech', () => {
     expect(getNavigationSpeechLabel(document.querySelector('[aria-checked]'), { states })).toBe('Choice. checked')
     expect(getNavigationSpeechLabel(document.querySelector('[aria-selected]'), { states })).toBe('Tab. not selected')
     expect(getNavigationSpeechLabel(document.querySelector('[disabled]'), { states })).toBe('Disabled. disabled')
+  })
+
+  // A11Y-8A: long text is spoken completely, in ordered segments.
+  describe('long text read-aloud (A11Y-8A)', () => {
+    const longText = 'Jag behöver hjälp med att hitta rätt dörr till mottagningen. Kan du visa mig vägen dit och vänta med mig en stund? Jag har svårt att prata men hör allt ni säger till mig, tack så mycket.'
+    const spokenText = () => speechSynthesis.speak.mock.calls.map(([utterance]) => utterance.text)
+    const lastUtterance = () => speechSynthesis.speak.mock.calls.at(-1)[0]
+
+    function finishAllSegments() {
+      let guard = 0
+      while (guard < 20) {
+        const before = speechSynthesis.speak.mock.calls.length
+        lastUtterance().onend()
+        if (speechSynthesis.speak.mock.calls.length === before) return
+        guard += 1
+      }
+    }
+
+    it('keeps short text as one utterance', () => {
+      const onEnd = vi.fn()
+      speakAccessibilityText({ language: 'sv', text: 'Ja', onEnd })
+      expect(spokenText()).toEqual(['Ja'])
+      lastUtterance().onend()
+      expect(onEnd).toHaveBeenCalledTimes(1)
+    })
+
+    it('splits text over 160 characters at word boundaries without losing any text', () => {
+      expect(longText.length).toBeGreaterThan(MAX_SPEECH_SEGMENT_LENGTH)
+      const segments = splitAccessibilitySpeechText(longText)
+      expect(segments.length).toBeGreaterThan(1)
+      segments.forEach((segment) => expect(segment.length).toBeLessThanOrEqual(MAX_SPEECH_SEGMENT_LENGTH))
+      expect(segments.join(' ')).toBe(longText)
+      segments.forEach((segment) => expect(longText.split(' ')).toEqual(expect.arrayContaining(segment.split(' '))))
+    })
+
+    it('reads a full 280-character message, in order, and reports completion only after the last segment', () => {
+      const maxMessage = `${'Jag vill ha vatten nu '.repeat(13)}tack!`.slice(0, 280)
+      expect(maxMessage.length).toBe(280)
+      const onEnd = vi.fn()
+
+      speakAccessibilityText({ language: 'sv', rate: 'slow', text: maxMessage, onEnd })
+      expect(speechSynthesis.speak).toHaveBeenCalledTimes(1)
+      expect(lastUtterance()).toMatchObject({ lang: 'sv-SE', rate: 0.8 })
+
+      lastUtterance().onend()
+      expect(onEnd).not.toHaveBeenCalled()
+      finishAllSegments()
+
+      expect(onEnd).toHaveBeenCalledTimes(1)
+      expect(spokenText().join(' ')).toBe(maxMessage.replace(/\s+/g, ' ').trim())
+      speechSynthesis.speak.mock.calls.forEach(([utterance]) => expect(utterance).toMatchObject({ lang: 'sv-SE', rate: 0.8 }))
+    })
+
+    it('stops the whole sequence on cancel', () => {
+      const onEnd = vi.fn()
+      speakAccessibilityText({ language: 'sv', text: longText, onEnd })
+      const first = lastUtterance()
+
+      cancelAccessibilitySpeech()
+      first.onend()
+
+      expect(speechSynthesis.speak).toHaveBeenCalledTimes(1)
+      expect(onEnd).not.toHaveBeenCalled()
+    })
+
+    it('lets a new read-aloud replace an old one without the old callbacks finishing it', () => {
+      const oldEnd = vi.fn()
+      const oldError = vi.fn()
+      const newEnd = vi.fn()
+      speakAccessibilityText({ language: 'sv', text: longText, onEnd: oldEnd, onError: oldError })
+      const oldUtterance = lastUtterance()
+
+      speakAccessibilityText({ language: 'sv', text: 'Ny text', onEnd: newEnd })
+      oldUtterance.onend()
+      oldUtterance.onerror()
+
+      expect(spokenText()).toEqual([splitAccessibilitySpeechText(longText)[0], 'Ny text'])
+      expect(oldEnd).not.toHaveBeenCalled()
+      expect(oldError).not.toHaveBeenCalled()
+      expect(newEnd).not.toHaveBeenCalled()
+
+      lastUtterance().onend()
+      expect(newEnd).toHaveBeenCalledTimes(1)
+    })
+
+    it('ends the sequence on an error and reports it once', () => {
+      const onEnd = vi.fn()
+      const onError = vi.fn()
+      speakAccessibilityText({ language: 'sv', text: longText, onEnd, onError })
+
+      lastUtterance().onerror()
+      lastUtterance().onend()
+
+      expect(onError).toHaveBeenCalledTimes(1)
+      expect(onEnd).not.toHaveBeenCalled()
+      expect(speechSynthesis.speak).toHaveBeenCalledTimes(1)
+    })
   })
 })

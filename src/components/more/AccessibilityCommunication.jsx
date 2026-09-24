@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useAccessibilityPreferences } from '../../services/accessibilityPreferences.js'
 import {
   cancelAccessibilitySpeech,
   speakAccessibilityText,
@@ -49,6 +50,9 @@ const phraseSymbols = {
 
 function AccessibilityCommunication() {
   const { i18n, t } = useTranslation('settings')
+  // A11Y-8A: manual read-aloud uses the same stored speech-rate preference as
+  // navigation speech (slow/normal/fast), never a second rate setting.
+  const { navigationSpeechRate } = useAccessibilityPreferences()
   const [customText, setCustomText] = useState('')
   const [clearedText, setClearedText] = useState('')
   const [largeTextOpen, setLargeTextOpen] = useState(false)
@@ -62,15 +66,52 @@ function AccessibilityCommunication() {
   const [lastDeletedPhrase, setLastDeletedPhrase] = useState(null)
   const largeTextTriggerRef = useRef(null)
   const largeTextCloseRef = useRef(null)
+  const largeTextSectionRef = useRef(null)
+  const restoreLargeTextFocusRef = useRef(false)
+  const customTextRef = useRef(null)
+  const restoreTextButtonRef = useRef(null)
+  const phraseInputRef = useRef(null)
+  const undoDeletePhraseRef = useRef(null)
+  const savedPhraseButtonRefs = useRef({})
+  const deletePhraseButtonRefs = useRef({})
+  const cancelDeletePhraseRef = useRef(null)
+  // A11Y-8A: focus requested by a user action that changes which controls
+  // exist (clear, delete, undo). It is resolved after the next render, so
+  // focus is only ever moved to an element that is actually mounted.
+  const pendingFocusRef = useRef(null)
   const speechRequestRef = useRef(0)
+  const announcementRef = useRef(0)
 
   const selectedText = customText.trim()
+  const phraseLimitReached = savedPhrases.length >= maxCommunicationPhrases
+  const phraseLimitHintId = 'communication-my-phrases-limit'
+  const phraseFormStatusId = 'communication-my-phrases-status'
 
-  function setSpeechFeedback(message, tone = 'info') {
+  function nextAnnouncementId() {
+    announcementRef.current += 1
+    return announcementRef.current
+  }
+
+  // repeat: true re-announces an identical message after an explicit user
+  // action that needs fresh feedback; otherwise an identical message is kept
+  // as-is and is not announced twice.
+  function setSpeechFeedback(message, tone = 'info', { repeat = false } = {}) {
+    const id = nextAnnouncementId()
     setSpeechStatus((current) => (
-      current?.message === message && current.tone === tone ? current : { message, tone }
+      !repeat && current?.message === message && current.tone === tone ? current : { id, message, tone }
     ))
   }
+
+  function focusAfterRender(getElement) {
+    pendingFocusRef.current = getElement
+  }
+
+  useEffect(() => {
+    const getElement = pendingFocusRef.current
+    if (!getElement) return
+    pendingFocusRef.current = null
+    getElement()?.focus()
+  })
 
   function stopSpeaking() {
     speechRequestRef.current += 1
@@ -81,7 +122,7 @@ function AccessibilityCommunication() {
 
   function stopSpeakingWithStatus() {
     stopSpeaking()
-    setSpeechFeedback(t('accessibility.communication.stopped'), 'warning')
+    setSpeechFeedback(t('accessibility.communication.stopped'), 'warning', { repeat: true })
   }
 
   useEffect(() => () => {
@@ -89,16 +130,33 @@ function AccessibilityCommunication() {
     cancelAccessibilitySpeech()
   }, [])
 
+  // A11Y-8A: focus only returns to "Visa stort" after the user explicitly
+  // closes the large view (Close button, or Escape while working in it).
+  // Closing it as a side effect of typing, clearing or picking a phrase never
+  // moves focus away from where the user is working.
+  function closeLargeText({ restoreFocus = false } = {}) {
+    restoreLargeTextFocusRef.current = restoreFocus
+    setLargeTextOpen(false)
+  }
+
   useEffect(() => {
     if (!largeTextOpen) {
-      largeTextTriggerRef.current?.focus()
+      if (restoreLargeTextFocusRef.current) {
+        restoreLargeTextFocusRef.current = false
+        largeTextTriggerRef.current?.focus()
+      }
       return undefined
     }
 
     largeTextCloseRef.current?.focus()
 
     function closeLargeTextOnEscape(event) {
-      if (event.key === 'Escape') setLargeTextOpen(false)
+      if (event.key !== 'Escape') return
+      const activeElement = document.activeElement
+      restoreLargeTextFocusRef.current = !activeElement
+        || activeElement === document.body
+        || Boolean(largeTextSectionRef.current?.contains(activeElement))
+      setLargeTextOpen(false)
     }
 
     window.addEventListener('keydown', closeLargeTextOnEscape)
@@ -107,7 +165,7 @@ function AccessibilityCommunication() {
 
   function applySelectedText(text) {
     stopSpeaking()
-    setLargeTextOpen(false)
+    closeLargeText()
     setSpeechStatus(null)
     setClearedText('')
     setCustomText(text)
@@ -124,41 +182,61 @@ function AccessibilityCommunication() {
     applySelectedText(phrase.text)
   }
 
+  // Every submit gets a fresh announcement id, so repeating the same save
+  // result or the same error is announced again.
   function savePhrase(event) {
     event.preventDefault()
     const result = addCommunicationPhrase(newPhraseText)
     if (result.error) {
-      setPhraseFormStatus({ message: t(`accessibility.communication.myPhrases.${result.error}`), tone: 'error' })
+      setPhraseFormStatus({ id: nextAnnouncementId(), message: t(`accessibility.communication.myPhrases.${result.error}`), tone: 'error' })
       return
     }
     setSavedPhrases(result.phrases)
     setNewPhraseText('')
-    setPhraseFormStatus({ message: t('accessibility.communication.myPhrases.saved'), tone: 'success' })
+    setPhraseFormStatus({ id: nextAnnouncementId(), message: t('accessibility.communication.myPhrases.saved'), tone: 'success' })
   }
 
+  // A11Y-8A: the inline delete confirmation takes focus on its safe choice
+  // (Avbryt); cancelling, also with Escape, returns focus to that phrase's
+  // delete button.
   function requestDeletePhrase(id) {
     setDeletePhraseId(id)
+    focusAfterRender(() => cancelDeletePhraseRef.current)
   }
 
   function cancelDeletePhrase() {
+    const id = deletePhraseId
     setDeletePhraseId('')
+    focusAfterRender(() => deletePhraseButtonRefs.current[id])
   }
 
+  function handleDeleteConfirmKeyDown(event) {
+    if (event.key !== 'Escape') return
+    event.preventDefault()
+    event.stopPropagation()
+    cancelDeletePhrase()
+  }
+
+  // After a confirmed delete the tile is gone, so focus moves to the Undo
+  // action that appears in its place; after Undo, to the restored phrase.
   function confirmDeletePhrase(phrase) {
     setSavedPhrases(removeCommunicationPhrase(phrase.id))
     setDeletePhraseId('')
     setLastDeletedPhrase(phrase)
+    focusAfterRender(() => undoDeletePhraseRef.current || phraseInputRef.current)
   }
 
   function undoDeletePhrase() {
     if (!lastDeletedPhrase) return
+    const restoredId = lastDeletedPhrase.id
     setSavedPhrases(restoreCommunicationPhrase(lastDeletedPhrase))
     setLastDeletedPhrase(null)
+    focusAfterRender(() => savedPhraseButtonRefs.current[restoredId] || phraseInputRef.current)
   }
 
   function updateCustomText(event) {
     stopSpeaking()
-    setLargeTextOpen(false)
+    closeLargeText()
     setSpeechStatus(null)
     setClearedText('')
     setCustomText(event.target.value)
@@ -169,6 +247,7 @@ function AccessibilityCommunication() {
     speechRequestRef.current = requestId
     const didSpeak = speakAccessibilityText({
       language: i18n.language,
+      rate: navigationSpeechRate,
       text,
       onEnd: () => {
         if (speechRequestRef.current !== requestId) return
@@ -184,7 +263,7 @@ function AccessibilityCommunication() {
       },
     })
     if (!didSpeak) {
-      setSpeechFeedback(t('accessibility.communication.unsupported'), 'error')
+      setSpeechFeedback(t('accessibility.communication.unsupported'), 'error', { repeat: true })
       return
     }
     setIsSpeaking(true)
@@ -200,17 +279,22 @@ function AccessibilityCommunication() {
     speakText(t('accessibility.communication.guidanceReadText'), 'guidance')
   }
 
+  // Clearing removes the selected-text controls (Rensa itself and, if open,
+  // the large view), so focus moves to "Ångra rensning", the control that
+  // takes their place, instead of being dropped on <body>.
   function clearText() {
     stopSpeaking()
     setClearedText(customText)
     setCustomText('')
-    setLargeTextOpen(false)
+    closeLargeText()
     setSpeechStatus(null)
+    focusAfterRender(() => restoreTextButtonRef.current || customTextRef.current)
   }
 
   function restoreClearedText() {
     setCustomText(clearedText)
     setClearedText('')
+    focusAfterRender(() => customTextRef.current)
   }
 
   return (
@@ -261,21 +345,41 @@ function AccessibilityCommunication() {
         <h3 id="communication-my-phrases">{t('accessibility.communication.myPhrases.title')}</h3>
         <p className="accessibility-communication-privacy">{t('accessibility.communication.myPhrases.privacy')}</p>
 
+        {/* A11Y-8A: at the limit Spara stays enabled instead of becoming a
+            silently disabled control. The reason is shown and tied to the
+            field, and saving anyway repeats it as an error status. */}
         <form className="accessibility-my-phrase-form" onSubmit={savePhrase}>
           <label>
             <span>{t('accessibility.communication.myPhrases.inputLabel')}</span>
             <input
+              aria-describedby={
+                phraseFormStatus?.tone === 'error'
+                  ? phraseFormStatusId
+                  : (phraseLimitReached ? phraseLimitHintId : undefined)
+              }
+              aria-invalid={phraseFormStatus?.tone === 'error' || undefined}
               maxLength={maxCommunicationPhraseLength}
+              ref={phraseInputRef}
               type="text"
               value={newPhraseText}
               onChange={(event) => setNewPhraseText(event.target.value)}
             />
           </label>
-          <button className="primary-button" disabled={savedPhrases.length >= maxCommunicationPhrases} type="submit">
+          <button className="primary-button" type="submit">
             {t('accessibility.communication.myPhrases.save')}
           </button>
         </form>
-        <AccessibilityFeedback message={phraseFormStatus?.message} tone={phraseFormStatus?.tone} />
+        {phraseLimitReached && (
+          <p className="accessibility-preference-note" id={phraseLimitHintId}>
+            {t('accessibility.communication.myPhrases.limitReached')}
+          </p>
+        )}
+        <AccessibilityFeedback
+          announcementId={phraseFormStatus?.id}
+          id={phraseFormStatusId}
+          message={phraseFormStatus?.message}
+          tone={phraseFormStatus?.tone}
+        />
 
         {savedPhrases.length === 0 ? (
           <p>{t('accessibility.communication.myPhrases.emptyList')}</p>
@@ -286,6 +390,9 @@ function AccessibilityCommunication() {
                 <button
                   aria-pressed={selectedText === phrase.text}
                   className="accessibility-phrase-button"
+                  ref={(node) => {
+                    savedPhraseButtonRefs.current[phrase.id] = node
+                  }}
                   type="button"
                   onClick={() => selectSavedPhrase(phrase)}
                 >
@@ -293,13 +400,18 @@ function AccessibilityCommunication() {
                   <span className="accessibility-phrase-text">{phrase.text}</span>
                 </button>
                 {deletePhraseId === phrase.id ? (
-                  <div className="accessibility-my-phrase-delete-confirm" role="alert">
-                    <p>{t('accessibility.communication.myPhrases.deleteConfirm', { phrase: phrase.text })}</p>
+                  <div
+                    aria-labelledby="communication-phrase-delete-question"
+                    className="accessibility-my-phrase-delete-confirm"
+                    role="group"
+                    onKeyDown={handleDeleteConfirmKeyDown}
+                  >
+                    <p id="communication-phrase-delete-question">{t('accessibility.communication.myPhrases.deleteConfirm', { phrase: phrase.text })}</p>
                     <div className="accessibility-communication-actions">
                       <button className="secondary-button" type="button" onClick={() => confirmDeletePhrase(phrase)}>
                         {t('accessibility.communication.myPhrases.deleteYes')}
                       </button>
-                      <button className="secondary-button" type="button" onClick={cancelDeletePhrase}>
+                      <button className="secondary-button" ref={cancelDeletePhraseRef} type="button" onClick={cancelDeletePhrase}>
                         {t('accessibility.communication.myPhrases.deleteNo')}
                       </button>
                     </div>
@@ -308,6 +420,9 @@ function AccessibilityCommunication() {
                   <button
                     aria-label={t('accessibility.communication.myPhrases.deleteAria', { phrase: phrase.text })}
                     className="secondary-button accessibility-my-phrase-delete"
+                    ref={(node) => {
+                      deletePhraseButtonRefs.current[phrase.id] = node
+                    }}
                     type="button"
                     onClick={() => requestDeletePhrase(phrase.id)}
                   >
@@ -320,7 +435,7 @@ function AccessibilityCommunication() {
         )}
 
         {lastDeletedPhrase && (
-          <button className="secondary-button accessibility-restore-button" type="button" onClick={undoDeletePhrase}>
+          <button className="secondary-button accessibility-restore-button" ref={undoDeletePhraseRef} type="button" onClick={undoDeletePhrase}>
             {t('accessibility.communication.myPhrases.undoDelete', { phrase: lastDeletedPhrase.text })}
           </button>
         )}
@@ -330,6 +445,7 @@ function AccessibilityCommunication() {
         <span>{t('accessibility.communication.customLabel')}</span>
         <textarea
           data-a11y-private="true"
+          ref={customTextRef}
           maxLength={280}
           onChange={updateCustomText}
           placeholder={t('accessibility.communication.customPlaceholder')}
@@ -366,12 +482,12 @@ function AccessibilityCommunication() {
         </section>
       )}
       {clearedText && (
-        <button className="secondary-button accessibility-restore-button" type="button" onClick={restoreClearedText}>
+        <button className="secondary-button accessibility-restore-button" ref={restoreTextButtonRef} type="button" onClick={restoreClearedText}>
           {t('accessibility.communication.restore')}
         </button>
       )}
 
-      <AccessibilityFeedback message={speechStatus?.message} tone={speechStatus?.tone} />
+      <AccessibilityFeedback announcementId={speechStatus?.id} message={speechStatus?.message} tone={speechStatus?.tone} />
 
       <article className="accessibility-planned-card">
         <h3>{t('accessibility.communication.writeToAi')}</h3>
@@ -379,9 +495,9 @@ function AccessibilityCommunication() {
       </article>
 
       {largeTextOpen && (
-        <section className="accessibility-large-text" aria-label={t('accessibility.communication.largeLabel')}>
+        <section className="accessibility-large-text" aria-label={t('accessibility.communication.largeLabel')} ref={largeTextSectionRef}>
           <p>{selectedText}</p>
-          <button className="primary-button" ref={largeTextCloseRef} type="button" onClick={() => setLargeTextOpen(false)}>
+          <button className="primary-button" ref={largeTextCloseRef} type="button" onClick={() => closeLargeText({ restoreFocus: true })}>
             {t('accessibility.communication.closeLarge')}
           </button>
         </section>

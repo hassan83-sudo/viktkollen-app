@@ -503,9 +503,9 @@ const sv = {
       navigationSpeech: {
         legend: 'Navigationsuppläsning',
         toggle: 'Navigationsuppläsning',
-        rateLegend: 'Hastighet för navigationsuppläsning',
+        rateLegend: 'Uppläsningshastighet',
         rates: { slow: 'Långsam', normal: 'Normal', fast: 'Snabb' },
-        note: 'Av som standard. Läser endast upp fokus vid tangentbordsnavigering i den här vyn.',
+        note: 'Av som standard. Läser endast upp fokus vid tangentbordsnavigering i den här vyn. Vald hastighet gäller också Läs upp i Tal & kommunikation.',
         speaking: 'Läser upp',
         stopped: 'Stoppad',
         complete: 'Klar',
@@ -2286,9 +2286,9 @@ const en = {
       navigationSpeech: {
         legend: 'Navigation read-aloud',
         toggle: 'Navigation read-aloud',
-        rateLegend: 'Navigation read-aloud speed',
+        rateLegend: 'Read-aloud speed',
         rates: { slow: 'Slow', normal: 'Normal', fast: 'Fast' },
-        note: 'Off by default. Reads focus only during keyboard navigation in this view.',
+        note: 'Off by default. Reads focus only during keyboard navigation in this view. The chosen speed also applies to Read aloud in Speech & communication.',
         speaking: 'Reading',
         stopped: 'Stopped',
         complete: 'Complete',

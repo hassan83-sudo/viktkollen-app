@@ -87,31 +87,43 @@ export function readAccessibilityPreferences(storage) {
   }
 }
 
+// A11Y-8A: listeners are notified even when persisting fails (storage
+// missing, full or blocked). AccessibilityHub reads its state through these
+// listeners, so a change still applies for the current tab; the return value
+// still reports whether it was persisted.
 export function saveAccessibilityPreferences(preferences, storage) {
+  const normalized = normalizeAccessibilityPreferences(preferences)
   const localStorage = getStorage(storage)
-  if (!localStorage) return false
+  let persisted = false
 
-  try {
-    const normalized = normalizeAccessibilityPreferences(preferences)
-    localStorage.setItem(accessibilityPreferencesKey, JSON.stringify(normalized))
-    notifyAccessibilityPreferenceListeners(normalized)
-    return true
-  } catch {
-    return false
+  if (localStorage) {
+    try {
+      localStorage.setItem(accessibilityPreferencesKey, JSON.stringify(normalized))
+      persisted = true
+    } catch {
+      persisted = false
+    }
   }
+
+  notifyAccessibilityPreferenceListeners(normalized)
+  return persisted
 }
 
 export function resetAccessibilityPreferences(storage) {
   const localStorage = getStorage(storage)
-  if (!localStorage) return false
+  let persisted = false
 
-  try {
-    localStorage.removeItem(accessibilityPreferencesKey)
-    notifyAccessibilityPreferenceListeners({ ...defaultAccessibilityPreferences })
-    return true
-  } catch {
-    return false
+  if (localStorage) {
+    try {
+      localStorage.removeItem(accessibilityPreferencesKey)
+      persisted = true
+    } catch {
+      persisted = false
+    }
   }
+
+  notifyAccessibilityPreferenceListeners({ ...defaultAccessibilityPreferences })
+  return persisted
 }
 
 // A11Y-7B: resolves the same "senior mode bundles several toggles" rule

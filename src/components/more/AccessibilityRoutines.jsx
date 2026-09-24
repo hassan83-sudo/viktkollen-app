@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   addRoutine,
@@ -42,6 +42,20 @@ function AccessibilityRoutines() {
   const [deleteId, setDeleteId] = useState('')
   const [runRoutine, setRunRoutine] = useState(null)
   const [runStepIndex, setRunStepIndex] = useState(0)
+  const createButtonRef = useRef(null)
+  const cancelDeleteRef = useRef(null)
+  const deleteButtonRefs = useRef({})
+  const startButtonRefs = useRef({})
+  // A11Y-8A: focus requested by the delete confirmation flow, resolved after
+  // the next render so it only ever targets an element that still exists.
+  const pendingFocusRef = useRef(null)
+
+  useEffect(() => {
+    const getElement = pendingFocusRef.current
+    if (!getElement) return
+    pendingFocusRef.current = null
+    getElement()?.focus()
+  })
 
   function openCreateForm() {
     setEditingId('')
@@ -111,17 +125,34 @@ function AccessibilityRoutines() {
     setView('list')
   }
 
+  // A11Y-8A: the inline confirmation takes focus on its safe choice
+  // (Avbryt). Cancelling, also with Escape, returns focus to the routine's
+  // delete button. After a confirmed delete, focus moves to the neighbouring
+  // routine (next, else previous) or to "Skapa ny rutin" when none is left.
   function requestDeleteRoutine(id) {
     setDeleteId(id)
+    pendingFocusRef.current = () => cancelDeleteRef.current
   }
 
   function cancelDeleteRoutine() {
+    const id = deleteId
     setDeleteId('')
+    pendingFocusRef.current = () => deleteButtonRefs.current[id]
+  }
+
+  function handleDeleteConfirmKeyDown(event) {
+    if (event.key !== 'Escape') return
+    event.preventDefault()
+    event.stopPropagation()
+    cancelDeleteRoutine()
   }
 
   function confirmDeleteRoutine(routine) {
+    const index = routines.findIndex((item) => item.id === routine.id)
+    const neighbour = routines[index + 1] || routines[index - 1]
     setRoutines(removeRoutine(routine.id))
     setDeleteId('')
+    pendingFocusRef.current = () => (neighbour && startButtonRefs.current[neighbour.id]) || createButtonRef.current
   }
 
   function startRun(routine) {
@@ -212,7 +243,7 @@ function AccessibilityRoutines() {
         <h3>{t(editingId ? 'accessibility.routines.editTitle' : 'accessibility.routines.createTitle')}</h3>
 
         {!editingId && (
-          <div className="accessibility-option-grid" aria-label={t('accessibility.routines.templatesLabel')}>
+          <div className="accessibility-option-grid" aria-label={t('accessibility.routines.templatesLabel')} role="group">
             {routineTemplates.map((template) => (
               <button
                 className="accessibility-option-card"
@@ -309,20 +340,32 @@ function AccessibilityRoutines() {
                 <span>{t('accessibility.routines.stepCount', { count: routine.steps.length })}</span>
               </div>
               <div className="accessibility-communication-actions">
-                <button className="primary-button" type="button" onClick={() => startRun(routine)}>
+                <button
+                  className="primary-button"
+                  ref={(node) => {
+                    startButtonRefs.current[routine.id] = node
+                  }}
+                  type="button"
+                  onClick={() => startRun(routine)}
+                >
                   {t('accessibility.routines.run.start')}
                 </button>
                 <button className="secondary-button" type="button" onClick={() => openEditForm(routine)}>
                   {t('accessibility.routines.edit')}
                 </button>
                 {deleteId === routine.id ? (
-                  <div className="accessibility-my-phrase-delete-confirm" role="alert">
-                    <p>{t('accessibility.routines.deleteConfirm', { name: routine.name })}</p>
+                  <div
+                    aria-labelledby="accessibility-routine-delete-question"
+                    className="accessibility-my-phrase-delete-confirm"
+                    role="group"
+                    onKeyDown={handleDeleteConfirmKeyDown}
+                  >
+                    <p id="accessibility-routine-delete-question">{t('accessibility.routines.deleteConfirm', { name: routine.name })}</p>
                     <div className="accessibility-communication-actions">
                       <button className="secondary-button" type="button" onClick={() => confirmDeleteRoutine(routine)}>
                         {t('accessibility.routines.deleteYes')}
                       </button>
-                      <button className="secondary-button" type="button" onClick={cancelDeleteRoutine}>
+                      <button className="secondary-button" ref={cancelDeleteRef} type="button" onClick={cancelDeleteRoutine}>
                         {t('accessibility.routines.deleteNo')}
                       </button>
                     </div>
@@ -331,6 +374,9 @@ function AccessibilityRoutines() {
                   <button
                     aria-label={t('accessibility.routines.deleteAria', { name: routine.name })}
                     className="secondary-button"
+                    ref={(node) => {
+                      deleteButtonRefs.current[routine.id] = node
+                    }}
                     type="button"
                     onClick={() => requestDeleteRoutine(routine.id)}
                   >
@@ -343,7 +389,7 @@ function AccessibilityRoutines() {
         </ul>
       )}
 
-      <button className="primary-button" disabled={routines.length >= maxRoutines} type="button" onClick={openCreateForm}>
+      <button className="primary-button" disabled={routines.length >= maxRoutines} ref={createButtonRef} type="button" onClick={openCreateForm}>
         {t('accessibility.routines.create')}
       </button>
     </section>

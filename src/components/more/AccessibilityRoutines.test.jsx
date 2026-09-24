@@ -379,7 +379,9 @@ describe('AccessibilityRoutines - Steg för steg (A11Y-7F)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Ta bort rutinen Morgon' }))
 
-    expect(screen.getByRole('alert').textContent).toContain('Vill du ta bort rutinen "Morgon"?')
+    // A11Y-8A: a labelled group that takes focus, not an assertive alert.
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByRole('group', { name: 'Vill du ta bort rutinen "Morgon"?' })).toBeTruthy()
     expect(screen.getByText('Morgon')).toBeTruthy()
   })
 
@@ -541,5 +543,68 @@ describe('AccessibilityRoutines - Steg för steg (A11Y-7F)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ta bort rutinen Morgon' }))
     fireEvent.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
     expect(window.localStorage.getItem(accessibilityPreferencesKey)).toContain('"highContrast":true')
+  })
+})
+
+// A11Y-8A: focus handling for the inline delete confirmation.
+describe('AccessibilityRoutines delete confirmation focus (A11Y-8A)', () => {
+  beforeEach(async () => {
+    window.localStorage.clear()
+    await i18n.changeLanguage('sv')
+  })
+
+  afterEach(() => {
+    cleanup()
+    window.localStorage.clear()
+  })
+
+  it('moves focus to the safe Avbryt choice when the confirmation opens', () => {
+    renderRoutines()
+    openRoutines()
+    createRoutineViaUi('Morgon', ['Ett steg'])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort rutinen Morgon' }))
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Avbryt' }))
+  })
+
+  it('cancels with Avbryt or Escape and returns focus to the delete button', () => {
+    renderRoutines()
+    openRoutines()
+    createRoutineViaUi('Morgon', ['Ett steg'])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort rutinen Morgon' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Avbryt' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ta bort rutinen Morgon' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort rutinen Morgon' }))
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Avbryt' }), { key: 'Escape' })
+    expect(screen.queryByRole('group', { name: 'Vill du ta bort rutinen "Morgon"?' })).toBeNull()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ta bort rutinen Morgon' }))
+    expect(window.localStorage.getItem(routinesStorageKey)).toContain('Morgon')
+  })
+
+  it('moves focus to a remaining routine, or to Skapa ny rutin, after a confirmed delete', () => {
+    renderRoutines()
+    openRoutines()
+    createRoutineViaUi('Morgon', ['Ett steg'])
+    createRoutineViaUi('Kväll', ['Ett annat steg'])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort rutinen Morgon' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Kör' }))
+    expect(document.activeElement).not.toBe(document.body)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort rutinen Kväll' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Skapa ny rutin' }))
+  })
+
+  it('labels the template choices as a group without duplicating other labels', () => {
+    renderRoutines()
+    openRoutines()
+    fireEvent.click(screen.getByRole('button', { name: 'Skapa ny rutin' }))
+
+    expect(screen.getByRole('group', { name: 'Välj en mall (valfritt)' })).toBeTruthy()
   })
 })

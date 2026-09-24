@@ -1,5 +1,6 @@
 /* @vitest-environment jsdom */
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { StrictMode } from 'react'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import process from 'node:process'
@@ -60,14 +61,22 @@ describe('AccessibilityHub', () => {
     })
   })
 
-  it('opens every coming-later detail and returns to the accessibility hub', () => {
+  it('opens every detail and returns to the accessibility hub', () => {
     renderAccessibilityHub()
+    // A11Y-8A: "Kommer senare" only labels genuinely planned support lists,
+    // never a working section, and is never announced as a live status.
+    const sectionsWithPlannedSupport = ['Motorik', 'Äldre']
 
     sectionTitles.forEach((title) => {
       fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${title}`) }))
 
       expect(screen.getByRole('heading', { name: title, level: 2 })).toBeTruthy()
-      expect(screen.getByRole('status').textContent).toBe('Kommer senare')
+      expect(screen.queryAllByRole('status').some((status) => status.textContent === 'Kommer senare')).toBe(false)
+      if (sectionsWithPlannedSupport.includes(title)) {
+        expect(screen.getByRole('list', { name: 'Kommer senare' })).toBeTruthy()
+      } else {
+        expect(screen.queryByText('Kommer senare')).toBeNull()
+      }
 
       fireEvent.click(screen.getByRole('button', { name: /Till Tillgänglighet & hjälpmedel/ }))
       const sectionButton = screen.getByRole('button', { name: new RegExp(`^${title}`) })
@@ -109,7 +118,8 @@ describe('AccessibilityHub', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Öppna AI Ögat' }))
 
     expect(onOpenEye).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('status').textContent).toBe('Kommer senare')
+    // A working section is never labelled as coming later.
+    expect(screen.queryByText('Kommer senare')).toBeNull()
   })
 
   it('opens the existing AI Ear from the hearing detail', () => {
@@ -120,7 +130,7 @@ describe('AccessibilityHub', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Öppna AI Örat' }))
 
     expect(onOpenEar).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('status').textContent).toBe('Kommer senare')
+    expect(screen.queryByText('Kommer senare')).toBeNull()
   })
 
   it('does not crash the hub when onOpenEar/onOpenEye are not supplied (A11Y-5H1)', () => {
@@ -199,15 +209,27 @@ describe('AccessibilityHub', () => {
   it('retains planned support lists while exposing scoped motor and senior settings', () => {
     renderAccessibilityHub()
 
+    // A11Y-8A: only support that is not implemented yet stays in the planned
+    // list; large targets, larger text, larger buttons and clearer contrast
+    // already work through the preferences and are no longer listed.
     const plannedSections = {
-      Motorik: ['Stora tryckytor', 'Färre precisa gester', 'Tangentbord', 'Switch/hjälpmedelsknapp', 'Röststyrning', 'Extra tid för interaktion'],
-      Äldre: ['Större text', 'Större knappar', 'Förenklad navigation', 'Uppläsning', 'Tydligare kontrast', 'Påminnelsestöd'],
+      Motorik: {
+        planned: ['Färre precisa gester', 'Tangentbord', 'Switch/hjälpmedelsknapp', 'Röststyrning', 'Extra tid för interaktion'],
+        working: ['Stora tryckytor'],
+      },
+      Äldre: {
+        planned: ['Förenklad navigation', 'Uppläsning', 'Påminnelsestöd'],
+        working: ['Större knappar', 'Tydligare kontrast'],
+      },
     }
 
-    Object.entries(plannedSections).forEach(([section, labels]) => {
+    Object.entries(plannedSections).forEach(([section, { planned, working }]) => {
       fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${section}`) }))
-      labels.forEach((label) => expect(screen.getAllByText(label).length).toBeGreaterThan(0))
-      expect(screen.getByRole('status').textContent).toBe('Kommer senare')
+      const plannedList = screen.getByRole('list', { name: 'Kommer senare' })
+      planned.forEach((label) => expect(plannedList.textContent).toContain(label))
+      working.forEach((label) => {
+        expect(Array.from(plannedList.querySelectorAll('li')).some((item) => item.textContent === label)).toBe(false)
+      })
       fireEvent.click(screen.getByRole('button', { name: /Till Tillgänglighet & hjälpmedel/ }))
     })
   })
@@ -391,5 +413,84 @@ describe('AccessibilityHub', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Klart' }))
 
     expect(screen.getByRole('heading', { name: 'Tillgänglighet & hjälpmedel' })).toBeTruthy()
+  })
+
+  it('keeps a change made in the shared setup when a hub setting changes afterwards (A11Y-8A regression)', () => {
+    renderAccessibilityHub()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anpassa Viktkollen' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Stor text' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Klart' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Navigationsuppläsning' }))
+
+    const stored = JSON.parse(window.localStorage.getItem('viktkollen.accessibility.preferences.v1'))
+    expect(stored.navigationSpeech).toBe(true)
+    expect(stored.textSize).toBe('large')
+
+    fireEvent.click(screen.getByRole('button', { name: /^Läsning/ }))
+    expect(screen.getByRole('button', { name: 'Stor text' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('keeps an earlier hub change when the shared setup saves a later one', () => {
+    renderAccessibilityHub()
+
+    fireEvent.click(screen.getByRole('button', { name: /^Syn/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Minska animationer' }))
+    fireEvent.click(screen.getByRole('button', { name: /Till Tillgänglighet & hjälpmedel/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Anpassa Viktkollen' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Extra stor text' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Klart' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Hörsel/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Tydligare markering' }))
+
+    const stored = JSON.parse(window.localStorage.getItem('viktkollen.accessibility.preferences.v1'))
+    expect(stored).toMatchObject({ reduceMotion: true, textSize: 'extra-large', visualFeedback: true })
+  })
+
+  it('vibrates exactly once per haptic change, also under StrictMode', () => {
+    const vibrate = vi.fn()
+    Object.defineProperty(window.navigator, 'vibrate', { configurable: true, value: vibrate })
+    render(
+      <StrictMode>
+        <MoreHub activeFolder="accessibility" onBack={vi.fn()}>
+          <AccessibilityHub />
+        </MoreHub>
+      </StrictMode>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /^Hörsel/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Vibration vid viktiga tryck' }))
+
+    expect(vibrate).toHaveBeenCalledTimes(1)
+    expect(vibrate).toHaveBeenCalledWith(15)
+  })
+
+  it('keeps the settings status region mounted and re-announces a repeated confirmation', () => {
+    renderAccessibilityHub()
+    const hub = screen.getByLabelText('Tillgänglighet & hjälpmedel')
+    const regionsBefore = within(hub).getAllByRole('status')
+    expect(regionsBefore.length).toBeGreaterThan(0)
+    regionsBefore.forEach((region) => {
+      expect(region.textContent).toBe('')
+      expect(region.getAttribute('aria-live')).toBe('polite')
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Normal' }))
+    const region = within(hub).getAllByRole('status').find((status) => status.textContent === 'Inställningen uppdaterades.')
+    expect(regionsBefore).toContain(region)
+    const firstMessageNode = region.firstChild
+
+    fireEvent.click(screen.getByRole('button', { name: 'Snabb' }))
+    expect(region.textContent).toBe('Inställningen uppdaterades.')
+    expect(region.firstChild).not.toBe(firstMessageNode)
+  })
+
+  it('uses a labelled group for the speech-rate choices and keeps the text-size legend unduplicated in setup', () => {
+    renderAccessibilityHub()
+    expect(screen.getByRole('group', { name: 'Uppläsningshastighet' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anpassa Viktkollen' }))
+    expect(screen.getAllByRole('group', { name: 'Textstorlek' })).toHaveLength(1)
   })
 })

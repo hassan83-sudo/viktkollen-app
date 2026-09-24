@@ -1,4 +1,10 @@
+// Upper bound for a single spoken focus label (navigation speech).
 const MAX_SPEECH_LENGTH = 160
+// A11Y-8A: longest text handed to one SpeechSynthesisUtterance. Longer text
+// (e.g. a full 280-character communication message) is split into several
+// utterances at sentence/word boundaries and spoken in order, because some
+// browsers silently cut or stall very long single utterances.
+const MAX_SPEECH_SEGMENT_LENGTH = 160
 
 const speechRates = Object.freeze({
   slow: 0.8,
@@ -52,7 +58,77 @@ export function getAccessibilitySpeechRate(rate) {
   return speechRates[rate] || speechRates.normal
 }
 
+function splitLongPart(part, maxLength) {
+  const segments = []
+  let current = ''
+
+  part.split(' ').forEach((word) => {
+    let remaining = word
+    // A single "word" longer than a segment (e.g. a long URL-like token) is
+    // the only case that is cut mid-word.
+    while (remaining.length > maxLength) {
+      if (current) {
+        segments.push(current)
+        current = ''
+      }
+      segments.push(remaining.slice(0, maxLength))
+      remaining = remaining.slice(maxLength)
+    }
+    if (!remaining) return
+
+    const candidate = current ? `${current} ${remaining}` : remaining
+    if (candidate.length <= maxLength) {
+      current = candidate
+      return
+    }
+    segments.push(current)
+    current = remaining
+  })
+
+  if (current) segments.push(current)
+  return segments
+}
+
+// Splits text into ordered segments of at most maxLength characters. Sentence
+// boundaries are preferred, then word boundaries; the joined segments always
+// contain the complete (whitespace-normalized) text.
+export function splitAccessibilitySpeechText(text, maxLength = MAX_SPEECH_SEGMENT_LENGTH) {
+  const normalized = normalizeText(text)
+  if (!normalized) return []
+  if (normalized.length <= maxLength) return [normalized]
+
+  const sentences = normalized.split(/(?<=[.!?…])\s+/)
+  const segments = []
+  let current = ''
+
+  sentences.forEach((sentence) => {
+    const candidate = current ? `${current} ${sentence}` : sentence
+    if (candidate.length <= maxLength) {
+      current = candidate
+      return
+    }
+    if (current) segments.push(current)
+    if (sentence.length <= maxLength) {
+      current = sentence
+      return
+    }
+    const parts = splitLongPart(sentence, maxLength)
+    current = parts.pop() || ''
+    segments.push(...parts)
+  })
+
+  if (current) segments.push(current)
+  return segments
+}
+
+// A11Y-8A: every speak/cancel starts a new sequence. Callbacks from an older
+// sequence (a cancelled or replaced read-aloud) are ignored here, so a stale
+// utterance can never continue speaking, report completion or report an error
+// for the read-aloud that replaced it.
+let activeSpeechSequence = 0
+
 export function cancelAccessibilitySpeech() {
+  activeSpeechSequence += 1
   getAccessibilitySpeechApi()?.synthesis.cancel?.()
 }
 
@@ -61,12 +137,34 @@ export function speakAccessibilityText({ language, onEnd, onError, rate, text })
   if (!speechApi) return false
 
   cancelAccessibilitySpeech()
-  const utterance = new speechApi.Utterance(normalizeText(text).slice(0, MAX_SPEECH_LENGTH))
-  utterance.lang = getAccessibilitySpeechLocale(language)
-  utterance.rate = getAccessibilitySpeechRate(rate)
-  utterance.onend = onEnd
-  utterance.onerror = onError
-  speechApi.synthesis.speak(utterance)
+  const sequence = activeSpeechSequence
+  const segments = splitAccessibilitySpeechText(text)
+  if (!segments.length) segments.push('')
+  const lang = getAccessibilitySpeechLocale(language)
+  const speechRate = getAccessibilitySpeechRate(rate)
+
+  function speakSegment(index) {
+    const utterance = new speechApi.Utterance(segments[index])
+    utterance.lang = lang
+    utterance.rate = speechRate
+    utterance.onend = (event) => {
+      if (sequence !== activeSpeechSequence) return
+      if (index + 1 < segments.length) {
+        speakSegment(index + 1)
+        return
+      }
+      onEnd?.(event)
+    }
+    utterance.onerror = (event) => {
+      if (sequence !== activeSpeechSequence) return
+      // An error ends the whole sequence; remaining segments are not spoken.
+      activeSpeechSequence += 1
+      onError?.(event)
+    }
+    speechApi.synthesis.speak(utterance)
+  }
+
+  speakSegment(0)
   return true
 }
 
@@ -117,4 +215,4 @@ export function isNavigationSpeechTarget(element) {
   return Boolean(element?.matches('button, a[href], input, select, textarea, [role="button"], [role="tab"], [role="checkbox"], [role="switch"]'))
 }
 
-export { MAX_SPEECH_LENGTH }
+export { MAX_SPEECH_LENGTH, MAX_SPEECH_SEGMENT_LENGTH }

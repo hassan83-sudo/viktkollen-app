@@ -184,7 +184,9 @@ describe('AccessibilityCommunication saved phrases - Mina fraser (A11Y-7E)', () 
 
     fireEvent.click(screen.getByRole('button', { name: 'Ta bort frasen Jag vill ha kaffe' }))
 
-    expect(screen.getByRole('alert').textContent).toContain('Vill du ta bort frasen "Jag vill ha kaffe"?')
+    // A11Y-8A: a labelled group that takes focus, not an assertive alert.
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByRole('group', { name: 'Vill du ta bort frasen "Jag vill ha kaffe"?' })).toBeTruthy()
     // The phrase is not gone yet - only a confirmation is shown.
     expect(screen.getByText('Jag vill ha kaffe', { selector: '.accessibility-phrase-text' })).toBeTruthy()
   })

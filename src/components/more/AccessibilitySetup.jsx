@@ -35,7 +35,8 @@ function AccessibilitySetup({ onFinish, onSkip, showSkip = false }) {
 
       <fieldset className="accessibility-preference-group">
         <legend>{t('accessibility.setup.textSizeLegend')}</legend>
-        <div className="accessibility-option-grid" aria-label={t('accessibility.setup.textSizeLegend')}>
+        {/* The fieldset legend already names this group; no duplicate label. */}
+        <div className="accessibility-option-grid">
           {textSizeOptions.map((size) => (
             <button
               aria-pressed={preferences.textSize === size}

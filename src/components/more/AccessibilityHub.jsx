@@ -4,10 +4,9 @@ import AccessibilityCommunication from './AccessibilityCommunication.jsx'
 import AccessibilityRoutines from './AccessibilityRoutines.jsx'
 import AccessibilitySetup from './AccessibilitySetup.jsx'
 import {
-  defaultAccessibilityPreferences,
-  readAccessibilityPreferences,
   resetAccessibilityPreferences,
   saveAccessibilityPreferences,
+  useAccessibilityPreferences,
 } from '../../services/accessibilityPreferences.js'
 import {
   cancelAccessibilitySpeech,
@@ -29,9 +28,13 @@ const accessibilitySectionIds = [
   'senior',
 ]
 
+// A11Y-8A: only support that is genuinely not implemented yet is listed as
+// "Kommer senare". Large targets (motor) and larger text, larger buttons and
+// clearer contrast (senior) already work app-wide through the preferences
+// above, so they are no longer presented as planned.
 const plannedItemIds = {
-  motor: ['largeTargets', 'fewerGestures', 'keyboard', 'switch', 'voiceControl', 'extraTime'],
-  senior: ['largeText', 'largeButtons', 'simpleNavigation', 'readAloud', 'clearContrast', 'reminderSupport'],
+  motor: ['fewerGestures', 'keyboard', 'switch', 'voiceControl', 'extraTime'],
+  senior: ['simpleNavigation', 'readAloud', 'reminderSupport'],
 }
 
 const readingOptionIds = ['largerText', 'extraLargeText', 'clearerText', 'lineSpacing', 'simplifiedText']
@@ -40,9 +43,14 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
   const { i18n, t } = useTranslation('settings')
   const [activeSection, setActiveSection] = useState(null)
   const [cognitiveStep, setCognitiveStep] = useState(0)
-  const [preferences, setPreferences] = useState(() => readAccessibilityPreferences().preferences)
+  // A11Y-8A: always the live shared preferences (the same store and hook the
+  // shared AccessibilitySetup and the app root use), never a private copy
+  // read once at mount. A copy could go stale after Setup saved a change and
+  // then overwrite that change on the next toggle here.
+  const preferences = useAccessibilityPreferences()
   const [readingOption, setReadingOption] = useState('')
-  const [settingsStatus, setSettingsStatus] = useState('')
+  const [settingsStatus, setSettingsStatus] = useState(null)
+  const settingsAnnouncementRef = useRef(0)
   const [navigationSpeechStatus, setNavigationSpeechStatus] = useState(null)
   const sectionButtonRefs = useRef({})
   const returnFocusRef = useRef(null)
@@ -75,22 +83,28 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
     preferences.avoidPreciseGestures && 'avoids-precise-gestures',
   ].filter(Boolean).join(' ')
 
+  // Each confirmation gets a new announcement id, so the same "saved"
+  // message is announced again for every separate change.
+  function announceSettingsStatus(message) {
+    settingsAnnouncementRef.current += 1
+    setSettingsStatus({ id: settingsAnnouncementRef.current, message })
+  }
+
+  // A11Y-8A: plain event handler, no state updater with side effects: the
+  // vibration runs exactly once per change, also under React StrictMode.
   function updatePreferences(changes, { keepSeniorMode = false } = {}) {
-    setPreferences((current) => {
-      const next = {
-        ...current,
-        ...changes,
-        seniorMode: keepSeniorMode ? Boolean(changes.seniorMode) : false,
-      }
-      saveAccessibilityPreferences(next)
+    const next = {
+      ...preferences,
+      ...changes,
+      seniorMode: keepSeniorMode ? Boolean(changes.seniorMode) : false,
+    }
+    saveAccessibilityPreferences(next)
 
-      if (changes.hapticFeedback === true && !next.calmMode && typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-        navigator.vibrate(15)
-      }
+    if (changes.hapticFeedback === true && !next.calmMode && typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+      navigator.vibrate(15)
+    }
 
-      return next
-    })
-    setSettingsStatus(t('accessibility.preferences.saved'))
+    announceSettingsStatus(t('accessibility.preferences.saved'))
   }
 
   function togglePreference(key) {
@@ -103,14 +117,19 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
     }
 
     resetAccessibilityPreferences()
-    setPreferences({ ...defaultAccessibilityPreferences })
-    setSettingsStatus(t('accessibility.preferences.resetDone'))
+    announceSettingsStatus(t('accessibility.preferences.resetDone'))
+  }
+
+  function openSection(sectionId) {
+    setSettingsStatus(null)
+    setActiveSection(sectionId)
   }
 
   function returnToAccessibilityHub() {
     cancelAccessibilitySpeech()
     navigationSpeechRequestRef.current += 1
     returnFocusRef.current = activeSection
+    setSettingsStatus(null)
     setActiveSection(null)
     setCognitiveStep(0)
     setReadingOption('')
@@ -173,13 +192,29 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
     )
   }
 
+  // Static label (not a live status): it describes the list, it is not an
+  // event the user needs to be told about.
   function renderPlannedItems(sectionId) {
+    const labelId = `accessibility-planned-${sectionId}`
     return (
-      <ul className="accessibility-planned-list">
-        {plannedItemIds[sectionId].map((itemId) => (
-          <li key={itemId}>{t(`accessibility.sections.${sectionId}.items.${itemId}`)}</li>
-        ))}
-      </ul>
+      <>
+        <p className="accessibility-status" id={labelId}>{t('accessibility.comingLater')}</p>
+        <ul aria-labelledby={labelId} className="accessibility-planned-list">
+          {plannedItemIds[sectionId].map((itemId) => (
+            <li key={itemId}>{t(`accessibility.sections.${sectionId}.items.${itemId}`)}</li>
+          ))}
+        </ul>
+      </>
+    )
+  }
+
+  function renderSettingsStatus() {
+    return (
+      <AccessibilityFeedback
+        announcementId={settingsStatus?.id}
+        message={settingsStatus?.message}
+        tone="success"
+      />
     )
   }
 
@@ -298,7 +333,7 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
         )}
         {activeSection === 'reading' && (
           <>
-            <div className="accessibility-option-grid" aria-label={t('accessibility.readingOptionsLabel')}>
+            <div className="accessibility-option-grid" aria-label={t('accessibility.readingOptionsLabel')} role="group">
               {readingOptionIds.map((optionId) => (
                 <button
                   aria-pressed={readingOption === optionId}
@@ -421,9 +456,7 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
         )}
         {activeSection === 'speech' && <AccessibilityCommunication />}
         {plannedItemIds[activeSection] && renderPlannedItems(activeSection)}
-        <p className="accessibility-status" role="status">
-          {t('accessibility.comingLater')}
-        </p>
+        {renderSettingsStatus()}
       </article>
     )
   }
@@ -445,7 +478,7 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
           sectionButtonRefs.current.setup = node
         }}
         type="button"
-        onClick={() => setActiveSection('setup')}
+        onClick={() => openSection('setup')}
       >
         {t('accessibility.setup.title')}
       </button>
@@ -459,7 +492,7 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
         >
           {t('accessibility.navigationSpeech.toggle')}
         </button>
-        <div className="accessibility-option-grid" aria-label={t('accessibility.navigationSpeech.rateLegend')}>
+        <div className="accessibility-option-grid" aria-label={t('accessibility.navigationSpeech.rateLegend')} role="group">
           {['slow', 'normal', 'fast'].map((rate) => (
             <button
               aria-pressed={preferences.navigationSpeechRate === rate}
@@ -486,7 +519,7 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
                 sectionButtonRefs.current[id] = node
               }}
               type="button"
-              onClick={() => setActiveSection(id)}
+              onClick={() => openSection(id)}
             >
               <span>
                 <strong>{t(`${sectionKey}.title`)}</strong>
@@ -500,12 +533,12 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
       <article className="accessibility-future-item">
         <h2>{t('accessibility.focusNarration.title')}</h2>
         <p>{t('accessibility.focusNarration.description')}</p>
-        <p className="accessibility-status" role="status">{t('accessibility.comingLater')}</p>
+        <p className="accessibility-status">{t('accessibility.comingLater')}</p>
       </article>
       <button className="secondary-button accessibility-reset-button" type="button" onClick={resetPreferences}>
         {t('accessibility.preferences.reset')}
       </button>
-      {settingsStatus && <p className="accessibility-settings-status" role="status">{settingsStatus}</p>}
+      {renderSettingsStatus()}
     </section>
   )
 }

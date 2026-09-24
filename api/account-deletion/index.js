@@ -12,6 +12,7 @@ const deletionTables = Object.freeze([
 const socialPurgeRpc = 'social_purge_user_data'
 const exclusivePurgeRpc = 'purge_exclusive_user_data'
 const placeParticipationPurgeRpc = 'purge_place_participation'
+const familyMembershipPurgeRpc = 'purge_family_membership'
 
 function parseBody(request) {
   if (typeof request.body === 'string') return JSON.parse(request.body || '{}')
@@ -97,7 +98,11 @@ async function deleteRowsForUser(client, userId, tables = deletionTables) {
   results.push(exclusiveResult)
   if (!exclusiveResult.ok) return results
 
-  results.push(await purgePlaceParticipationForUser(client, userId))
+  const participationResult = await purgePlaceParticipationForUser(client, userId)
+  results.push(participationResult)
+  if (!participationResult.ok) return results
+
+  results.push(await purgeFamilyMembershipForUser(client, userId))
   return results
 }
 
@@ -153,6 +158,34 @@ async function purgePlaceParticipationForUser(client, userId) {
       errorCode: error?.code || 'purge_failed',
       ok: false,
       table: placeParticipationPurgeRpc,
+    }
+  }
+}
+
+async function purgeFamilyMembershipForUser(client, userId) {
+  if (!client?.rpc) {
+    return {
+      area: 'family',
+      errorCode: 'rpc_unavailable',
+      ok: false,
+      table: familyMembershipPurgeRpc,
+    }
+  }
+
+  try {
+    const { error } = await client.rpc(familyMembershipPurgeRpc, { p_user_id: userId })
+    return {
+      area: 'family',
+      ok: !error,
+      table: familyMembershipPurgeRpc,
+      ...(error ? { errorCode: error.code || 'purge_failed' } : {}),
+    }
+  } catch (error) {
+    return {
+      area: 'family',
+      errorCode: error?.code || 'purge_failed',
+      ok: false,
+      table: familyMembershipPurgeRpc,
     }
   }
 }
@@ -236,6 +269,7 @@ export default async function handler(request, response) {
     mode,
     serviceRoleConfigured: Boolean(client),
     exclusivePurgeRpc,
+    familyMembershipPurgeRpc,
     placeParticipationPurgeRpc,
     socialPurgeRpc,
   }
@@ -292,9 +326,11 @@ export const accountDeletionRouteInternals = {
   deleteRowsForUser,
   deletionTables,
   exclusivePurgeRpc,
+  familyMembershipPurgeRpc,
   normalizeMode,
   placeParticipationPurgeRpc,
   purgeExclusiveDataForUser,
+  purgeFamilyMembershipForUser,
   purgePlaceParticipationForUser,
   purgeSocialDataForUser,
   socialPurgeRpc,

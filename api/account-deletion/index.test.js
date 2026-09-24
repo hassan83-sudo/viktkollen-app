@@ -196,6 +196,7 @@ describe('account deletion API route', () => {
     expect(response.statusCode).toBe(207)
     expect(client.rpc).not.toHaveBeenCalledWith('purge_exclusive_user_data', { p_user_id: 'user-a' })
     expect(client.rpc).not.toHaveBeenCalledWith('purge_place_participation', { p_user_id: 'user-a' })
+    expect(client.rpc).not.toHaveBeenCalledWith('purge_family_membership', { p_user_id: 'user-a' })
     expect(client.auth.admin.deleteUser).not.toHaveBeenCalled()
     expect(response.body.summary.results.some((result) => result.table === 'purge_exclusive_user_data' && result.ok === false)).toBe(true)
   })
@@ -238,6 +239,7 @@ describe('account deletion API route', () => {
     expect(response.statusCode).toBe(207)
     expect(client.rpc).toHaveBeenCalledWith('purge_exclusive_user_data', { p_user_id: 'user-a' })
     expect(client.rpc).not.toHaveBeenCalledWith('purge_place_participation', { p_user_id: 'user-a' })
+    expect(client.rpc).not.toHaveBeenCalledWith('purge_family_membership', { p_user_id: 'user-a' })
     expect(client.auth.admin.deleteUser).not.toHaveBeenCalled()
   })
 
@@ -249,7 +251,49 @@ describe('account deletion API route', () => {
 
     expect(response.statusCode).toBe(207)
     expect(client.rpc).toHaveBeenCalledWith('purge_place_participation', { p_user_id: 'user-a' })
+    expect(client.rpc).not.toHaveBeenCalledWith('purge_family_membership', { p_user_id: 'user-a' })
     expect(response.body.summary.results.some((result) => result.table === 'purge_place_participation' && result.ok === false)).toBe(true)
+    expect(client.auth.admin.deleteUser).not.toHaveBeenCalled()
+  })
+
+  it('purges family membership for the verified user only after place participation succeeds', async () => {
+    const client = createDeletionClient()
+    setSupabaseAdminClientForTests(client)
+    const response = await callRoute(createRequest({
+      body: { mode: 'cloud-data', user_id: 'user-b' },
+    }))
+    const participationIndex = client.rpc.mock.calls.findIndex((call) => call[0] === 'purge_place_participation')
+    const familyIndex = client.rpc.mock.calls.findIndex((call) => call[0] === 'purge_family_membership')
+
+    expect(response.statusCode).toBe(200)
+    expect(client.rpc).toHaveBeenNthCalledWith(1, 'social_purge_user_data', { p_user_id: 'user-a' })
+    expect(familyIndex).toBeGreaterThan(participationIndex)
+    expect(client.rpc).toHaveBeenCalledWith('purge_family_membership', { p_user_id: 'user-a' })
+    expect(client.rpc).not.toHaveBeenCalledWith('purge_family_membership', { p_user_id: 'user-b' })
+    expect(client.auth.admin.deleteUser).not.toHaveBeenCalled()
+  })
+
+  it('treats a second family-membership purge with no remaining rows as success', async () => {
+    const client = createDeletionClient()
+    setSupabaseAdminClientForTests(client)
+
+    const first = await callRoute(createRequest({ body: { mode: 'cloud-data' } }))
+    const second = await callRoute(createRequest({ body: { mode: 'cloud-data' } }))
+
+    expect(first.statusCode).toBe(200)
+    expect(second.statusCode).toBe(200)
+    expect(client.rpc.mock.calls.filter((call) => call[0] === 'purge_family_membership')).toHaveLength(2)
+  })
+
+  it('does not delete the auth user when family membership purge fails', async () => {
+    process.env.ACCOUNT_DELETION_ENABLE_AUTH_DELETE = 'true'
+    const client = createDeletionClient({ failRpc: 'purge_family_membership' })
+    setSupabaseAdminClientForTests(client)
+    const response = await callRoute(createRequest({ body: { mode: 'account' } }))
+
+    expect(response.statusCode).toBe(207)
+    expect(client.rpc).toHaveBeenCalledWith('purge_family_membership', { p_user_id: 'user-a' })
+    expect(response.body.summary.results.some((result) => result.table === 'purge_family_membership' && result.ok === false)).toBe(true)
     expect(client.auth.admin.deleteUser).not.toHaveBeenCalled()
   })
 })

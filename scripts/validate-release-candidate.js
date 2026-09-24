@@ -3,6 +3,7 @@ import process from 'node:process'
 import { assertDistContract, getSpawnTarget } from './verify-release.js'
 
 const checks = [
+  ['npm', ['run', 'supabase:security-check'], 'public table migration guard'],
   ['npm', ['run', 'validate:staging'], 'staging validator'],
   ['npm', ['run', 'lint'], 'lint'],
   ['npm', ['run', 'build'], 'production build'],

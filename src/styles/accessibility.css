@@ -47,17 +47,64 @@
   overflow-wrap: break-word;
 }
 
-/* Central navigation and labels that use fixed px sizes. */
-:root[data-a11y-text-size] .bottom-nav strong {
+/* Central navigation and labels that use fixed px sizes. Only for large and
+   extra-large, so the normal size keeps each component's own (responsive)
+   px values exactly as before. */
+:root:is([data-a11y-text-size='large'], [data-a11y-text-size='extra-large']) .bottom-nav strong {
   font-size: calc(10px * var(--a11y-text-scale));
 }
 
-:root[data-a11y-text-size] .bottom-nav span {
+:root:is([data-a11y-text-size='large'], [data-a11y-text-size='extra-large']) .bottom-nav span {
   font-size: calc(17px * var(--a11y-text-scale));
 }
 
-:root[data-a11y-text-size] .eyebrow {
+:root:is([data-a11y-text-size='large'], [data-a11y-text-size='extra-large']) .eyebrow {
   font-size: calc(11px * var(--a11y-text-scale));
+}
+
+/* The bottom navigation labels sit in a fixed 14px row of six equal columns;
+   at extra-large they would be cut off ("Min r…"), so they stay at the large
+   step there (still 12.5% above default). Their accessible names are the
+   links' aria-labels either way. */
+:root[data-a11y-text-size='extra-large'] .bottom-nav strong {
+  font-size: calc(10px * 1.125);
+}
+
+/* AI Coach voice actions are a fixed four-column row; with larger text let
+   their labels wrap inside the button instead of overflowing into the
+   neighbouring button. */
+:root[data-a11y-text-size='large'] .ai-coach-overlay-actions .secondary-button,
+:root[data-a11y-text-size='extra-large'] .ai-coach-overlay-actions .secondary-button {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.15;
+}
+
+/* Home primary action cards are fixed-geometry posters with text placed over
+   an image. With a larger text size (A11Y-8B visual verification) their
+   rem-based text grows, so let the "Tryck på bilden" pill grow in height
+   instead of overflowing its fixed 22px pill, let long card titles wrap
+   instead of being clipped, and keep the copy legible where it now reaches
+   the decorative image. */
+:root[data-a11y-text-size='large'] #app-section-home.is-active .overview-primary-action .overview-tap-me,
+:root[data-a11y-text-size='extra-large'] #app-section-home.is-active .overview-primary-action .overview-tap-me {
+  height: auto;
+  max-height: none;
+  padding: 3px 7px;
+  line-height: 1.15;
+  text-align: center;
+}
+
+:root[data-a11y-text-size='large'] #app-section-home.is-active .overview-primary-action .overview-primary-action-copy strong,
+:root[data-a11y-text-size='extra-large'] #app-section-home.is-active .overview-primary-action .overview-primary-action-copy strong {
+  overflow-wrap: anywhere;
+  word-break: normal;
+  hyphens: auto;
+}
+
+:root[data-a11y-text-size='large'] #app-section-home.is-active .overview-primary-action-copy,
+:root[data-a11y-text-size='extra-large'] #app-section-home.is-active .overview-primary-action-copy {
+  text-shadow: 0 1px 3px rgba(2, 6, 23, 0.95), 0 0 8px rgba(2, 6, 23, 0.85);
 }
 
 /* The accessibility hub used to scale its own text relative to rem. With the

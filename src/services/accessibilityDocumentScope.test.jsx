@@ -259,12 +259,32 @@ describe('global accessibility document scope (A11Y-8B)', () => {
       ;['data-a11y-text-size', 'data-a11y-high-contrast', 'data-a11y-large-controls', 'data-a11y-line-spacing', 'data-a11y-reduced-motion'].forEach((attribute) => {
         expect(accessibilityCss).toContain(`:root[${attribute}`)
       })
-      const unscopedRule = /(^|[\s,])\[data-a11y-[a-z-]+(=[^\]]+)?\][^{]*\{/m
+      const splitTopLevel = (selectorList) => {
+        const parts = []
+        let depth = 0
+        let current = ''
+        for (const char of selectorList) {
+          if (char === '(') depth += 1
+          if (char === ')') depth -= 1
+          if (char === ',' && depth === 0) {
+            parts.push(current.trim())
+            current = ''
+          } else {
+            current += char
+          }
+        }
+        parts.push(current.trim())
+        return parts
+      }
       const cssWithoutComments = accessibilityCss.replace(/\/\*[\s\S]*?\*\//g, '')
-      cssWithoutComments.split('}').forEach((rule) => {
-        if (!rule.includes('[data-a11y-')) return
-        expect(rule).not.toMatch(unscopedRule)
-      })
+      const selectorLists = [...cssWithoutComments.matchAll(/([^{}]+)\{/g)].map(([, selectors]) => selectors.trim())
+      const a11ySelectors = selectorLists
+        .filter((selectors) => !selectors.startsWith('@'))
+        .flatMap(splitTopLevel)
+        .filter((selector) => selector.includes('[data-a11y-'))
+
+      expect(a11ySelectors.length).toBeGreaterThan(10)
+      a11ySelectors.forEach((selector) => expect(selector.startsWith(':root')).toBe(true))
     })
 
     it('moves the old app-wide attribute rules out of App.css', () => {
@@ -278,6 +298,23 @@ describe('global accessibility document scope (A11Y-8B)', () => {
       expect(accessibilityCss).not.toMatch(/:root\[data-a11y-text-size[^\]]*\]\s*\{[^}]*font-size:\s*\d+px/)
       expect(accessibilityCss).toContain('.bottom-nav strong')
       expect(accessibilityCss).toMatch(/--accessibility-text-scale:\s*1;/)
+    })
+
+    // A11Y-8B visual verification: px overrides for central labels must only
+    // apply to large/extra-large, so the normal size keeps each component's
+    // own responsive px values (the normal view is unchanged by A11Y-8B).
+    it('leaves fixed px labels untouched at the normal text size', () => {
+      const cssWithoutComments = accessibilityCss.replace(/\/\*[\s\S]*?\*\//g, '')
+      expect(cssWithoutComments).not.toMatch(/:root\[data-a11y-text-size\]\s+\.(bottom-nav|eyebrow)/)
+      expect(cssWithoutComments).toMatch(/:root:is\(\[data-a11y-text-size='large'\], \[data-a11y-text-size='extra-large'\]\) \.bottom-nav strong/)
+      expect(cssWithoutComments).toMatch(/:root:is\(\[data-a11y-text-size='large'\], \[data-a11y-text-size='extra-large'\]\) \.eyebrow/)
+    })
+
+    it('keeps extra-large bottom navigation labels uncut and lets fixed-geometry labels wrap', () => {
+      expect(accessibilityCss).toMatch(/:root\[data-a11y-text-size='extra-large'\] \.bottom-nav strong\s*\{\s*font-size:\s*calc\(10px \* 1\.125\);/)
+      expect(accessibilityCss).toMatch(/\.ai-coach-overlay-actions \.secondary-button\s*\{\s*white-space:\s*normal;/)
+      expect(accessibilityCss).toMatch(/\.overview-tap-me\s*\{\s*height:\s*auto;\s*max-height:\s*none;/)
+      expect(accessibilityCss).toMatch(/\.overview-primary-action-copy strong\s*\{\s*overflow-wrap:\s*anywhere;/)
     })
 
     it('stops infinite animations in both the app and the OS reduced-motion paths', () => {

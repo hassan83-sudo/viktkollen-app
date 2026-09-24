@@ -14,15 +14,24 @@ function AiCoachControls({
 }) {
   const { t } = useTranslation(['coach'])
 
+  // A11Y-8D: the main voice button always does what its name says. While the
+  // AI speaks it stops the answer; otherwise it toggles the conversation
+  // through the existing start/end handler (onStartVoiceInput ends an active
+  // conversation). Previously an active, silent conversation made it a no-op
+  // named only by status ("Lyssnar").
+  const mainVoiceLabel = isAiSpeaking
+    ? t('coach:overlay.stopResponse')
+    : isVoiceConversationActive
+      ? t('coach:overlay.endCall')
+      : t('coach:overlay.startVoice')
+
   function handleMainMicClick() {
     if (isAiSpeaking) {
       onStopAiVoiceResponse?.()
       return
     }
 
-    if (!isVoiceConversationActive) {
-      onStartVoiceInput?.()
-    }
+    onStartVoiceInput?.()
   }
 
   return (
@@ -30,16 +39,10 @@ function AiCoachControls({
       <button
         className={`ai-coach-overlay-mic ${isListening ? 'is-listening' : ''} ${isAiSpeaking ? 'is-speaking' : ''}`}
         type="button"
-        aria-label={
-          isAiSpeaking
-            ? t('coach:overlay.stopResponse')
-            : isVoiceConversationActive
-              ? t('coach:overlay.listening', 'Lyssnar')
-              : t('coach:overlay.startVoice')
-        }
+        aria-label={mainVoiceLabel}
         onClick={handleMainMicClick}
       >
-        🎙️
+        <span aria-hidden="true">🎙️</span>
       </button>
       <p className="ai-coach-overlay-status" aria-live="polite">{phaseLabel}</p>
       <div className="ai-coach-overlay-actions">

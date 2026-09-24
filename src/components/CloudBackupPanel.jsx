@@ -791,6 +791,7 @@ function CloudBackupPanel({ isAuthenticated, onDataRestored, variant = 'security
 
                 <div className="backup-rename-row">
                   <input
+                    aria-label="Nytt namn för backupen"
                     type="text"
                     value={renameDrafts[backup.id] || ''}
                     onChange={(event) =>

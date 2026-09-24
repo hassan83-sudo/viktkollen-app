@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { AI_EAR_MAX_INPUT_BYTES, AI_EAR_MAX_SECONDS, blobToAiEarWav } from '../../services/aiEarAudio.js'
 import { interpretAiEarAudio } from '../../services/aiEarInterpret.js'
@@ -26,6 +27,7 @@ const defaultDeps = {
 }
 
 export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {}) {
+  const { t } = useTranslation('aiEar')
   const deps = { ...defaultDeps, ...depsOverride }
   const depsRef = useRef(deps)
   depsRef.current = deps
@@ -74,7 +76,7 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
 
   function showError(reason) {
     if (!mountedRef.current) return
-    setView(buildAiEarErrorView(reason))
+    setView(buildAiEarErrorView(reason, t))
     setPhase('error')
   }
 
@@ -164,7 +166,7 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
     controllerRef.current = null
     if (!mountedRef.current) return
     if (outcome.ok) {
-      setView(buildAiEarResultView(outcome.result))
+      setView(buildAiEarResultView(outcome.result, t))
       setPhase('result')
       return
     }
@@ -186,51 +188,59 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
     setPhase('idle')
   }
 
+  // A11Y-8D: all copy from i18n; status text is never only an icon, colour or
+  // sound. While recording, the live region announces once that the
+  // microphone is on; the per-second counter is visible but not live, so a
+  // screen reader is not interrupted every second.
   return (
     <section className="ai-ear" aria-labelledby="ai-ear-title">
-      <h3 id="ai-ear-title" className="ai-ear-title">AI Örat</h3>
-      <p className="ai-ear-intro">Spela in ett ljud eller välj en ljudfil. AI-örat säger om det låter som en fågel, tal, musik eller något annat.</p>
+      <h3 id="ai-ear-title" className="ai-ear-title">{t('title')}</h3>
+      <p className="ai-ear-intro">{t('intro')}</p>
 
       {phase === 'idle' && (
         <div className="ai-ear-actions">
-          <button className="primary-button" type="button" onClick={startRecording}>Spela in</button>
+          <button className="primary-button" type="button" onClick={startRecording}>{t('record')}</button>
           <label className="secondary-button ai-ear-file">
-            Välj ljudfil
+            {t('chooseFile')}
             <input type="file" accept="audio/*" onChange={onFileChosen} />
           </label>
         </div>
       )}
 
       {phase === 'recording' && (
-        <div className="ai-ear-recording" role="status" aria-live="polite">
-          <p className="ai-ear-mic">● Mikrofon aktiv – {seconds} s av {AI_EAR_MAX_SECONDS} s</p>
-          <button className="primary-button" type="button" onClick={stopRecording}>Stoppa inspelningen</button>
+        <div className="ai-ear-recording">
+          <p className="ai-ear-status" role="status">{t('recordingStatus')}</p>
+          <p className="ai-ear-mic">
+            <span aria-hidden="true">● </span>
+            {t('recordingProgress', { max: AI_EAR_MAX_SECONDS, seconds })}
+          </p>
+          <button className="primary-button" type="button" onClick={stopRecording}>{t('stopRecording')}</button>
         </div>
       )}
 
-      {phase === 'preparing' && <p className="ai-ear-status" role="status" aria-live="polite">Förbereder ljudet…</p>}
+      {phase === 'preparing' && <p className="ai-ear-status" role="status">{t('preparing')}</p>}
 
       {phase === 'ready' && (
         <div className="ai-ear-ready">
-          <p>Inspelningen är klar{truncated ? ` (de första ${AI_EAR_MAX_SECONDS} sekunderna analyseras)` : ''}.</p>
-          <p className="ai-ear-privacy">När du trycker på Analysera skickas just det här ljudet till Viktkollens server för analys. Ljudet sparas inte och ingen skriver ut vad som sägs.</p>
+          <p>{truncated ? t('readyTruncated', { max: AI_EAR_MAX_SECONDS }) : t('ready')}</p>
+          <p className="ai-ear-privacy" id="ai-ear-privacy">{t('privacy')}</p>
           <div className="ai-ear-actions">
-            <button className="primary-button" type="button" onClick={analyze}>Analysera ljudet</button>
-            <button className="secondary-button" type="button" onClick={reset}>Ny inspelning</button>
+            <button aria-describedby="ai-ear-privacy" className="primary-button" type="button" onClick={analyze}>{t('analyze')}</button>
+            <button className="secondary-button" type="button" onClick={reset}>{t('newRecording')}</button>
           </div>
         </div>
       )}
 
       {phase === 'analyzing' && (
-        <div className="ai-ear-analyzing" role="status" aria-live="polite" aria-busy="true">
+        <div className="ai-ear-analyzing" role="status" aria-busy="true">
           <span className="ai-ear-spinner" aria-hidden="true" />
-          <p>AI-örat lyssnar… Första gången kan det ta upp till en halv minut.</p>
-          <button className="secondary-button" type="button" onClick={cancelAnalysis}>Avbryt</button>
+          <p>{t('analyzing')}</p>
+          <button className="secondary-button" type="button" onClick={cancelAnalysis}>{t('cancel')}</button>
         </div>
       )}
 
       {phase === 'result' && view && (
-        <div className={`ai-ear-result is-${view.kind}`} role="status" aria-live="polite">
+        <div className={`ai-ear-result is-${view.kind}`} role="status">
           <h4>{view.title}</h4>
           {view.body && <p>{view.body}</p>}
           {view.contextLines.length > 0 && (
@@ -243,7 +253,7 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
             <ul className="ai-ear-hints">{view.hints.map((hint) => <li key={hint}>{hint}</li>)}</ul>
           )}
           <p className="ai-ear-footer">{view.footer}</p>
-          <button className="secondary-button" type="button" onClick={reset}>Ny inspelning</button>
+          <button className="secondary-button" type="button" onClick={reset}>{t('newRecording')}</button>
         </div>
       )}
 
@@ -252,8 +262,8 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
           <h4>{view.title}</h4>
           <p>{view.body}</p>
           <div className="ai-ear-actions">
-            {view.retryable && wavRef.current && <button className="primary-button" type="button" onClick={analyze}>Försök igen</button>}
-            <button className="secondary-button" type="button" onClick={reset}>Ny inspelning</button>
+            {view.retryable && wavRef.current && <button className="primary-button" type="button" onClick={analyze}>{t('retry')}</button>}
+            <button className="secondary-button" type="button" onClick={reset}>{t('newRecording')}</button>
           </div>
         </div>
       )}

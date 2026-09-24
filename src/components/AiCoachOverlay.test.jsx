@@ -105,8 +105,9 @@ describe('AI Coach tap me and realtime voice security', () => {
     expect(overlaySource).toContain('<div className="ai-coach-overlay-composer">')
     expect(overlaySource.indexOf('ai-coach-overlay-body')).toBeLessThan(overlaySource.indexOf('ai-coach-overlay-composer'))
     expect(overlaySource.indexOf('<ChatMessageList')).toBeLessThan(overlaySource.indexOf('<ChatInput'))
-    expect(chatInputSource).toContain('placeholder="Skriv en fråga..."')
-    expect(chatInputSource).toContain('>Skicka</button>')
+    // A11Y-8D: the composer copy is localized (coach:chatInput.*).
+    expect(chatInputSource).toContain("placeholder={t('chatInput.placeholder')}")
+    expect(chatInputSource).toContain("{t('chatInput.send')}</button>")
   })
 
   it('presents itself clearly as AI, not a real person', () => {

@@ -60,6 +60,7 @@ function BarcodeScanner({
         )}
         <form className="inline-form" onSubmit={onSubmitManualBarcode}>
           <input
+            aria-label="Streckkod"
             type="text"
             inputMode="numeric"
             placeholder="Skriv streckkod manuellt"

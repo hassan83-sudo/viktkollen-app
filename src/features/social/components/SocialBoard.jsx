@@ -83,8 +83,8 @@ function SocialBoard() {
       {isAdmin ? (
         <form className="social-board-admin" onSubmit={addPost}>
           <strong>Lägg till på tavlan</strong>
-          <input type="text" maxLength={120} placeholder="Rubrik" value={title} onChange={(event) => setTitle(event.target.value)} required />
-          <textarea rows={6} maxLength={4000} placeholder="Skriv texten här. Du kan använda flera rader för steg-för-steg." value={body} onChange={(event) => setBody(event.target.value)} required />
+          <input aria-label="Rubrik" type="text" maxLength={120} placeholder="Rubrik" value={title} onChange={(event) => setTitle(event.target.value)} required />
+          <textarea aria-label="Text på tavlan" rows={6} maxLength={4000} placeholder="Skriv texten här. Du kan använda flera rader för steg-för-steg." value={body} onChange={(event) => setBody(event.target.value)} required />
           <button className="primary-button" type="submit" disabled={saving}>{saving ? 'Lägger till…' : 'Lägg till'}</button>
         </form>
       ) : null}

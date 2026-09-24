@@ -24,6 +24,12 @@ const roots = [
   'src/components/ProfileSettings.jsx',
   'src/components/AiCoachOverlay.jsx',
   'src/components/app/OnboardingScreen.jsx',
+  // A11Y-8D: chat, voice controls and AI-örat were not covered, which is why
+  // their hardcoded Swedish was never reported.
+  'src/components/ChatInput.jsx',
+  'src/components/aiCoach/AiCoachControls.jsx',
+  'src/features/ai-ear/AiEarMode.jsx',
+  'src/features/ai-ear/aiEarViewModel.js',
 ]
 
 // JSX text nodes / quoted Swedish UI phrases (lightweight, low false positives)

@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { aiEarRouteInternals } from '../../../api/ai-ear/interpret/index.js'
+import i18n from '../../i18n/index.js'
 import AiEarMode from './AiEarMode.jsx'
 import { backendFixtures } from './fixtures/backendFixtures.js'
 
@@ -52,7 +53,9 @@ function fakeRecorderEnv() {
 }
 
 describe('AiEarMode', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    // A11Y-8D: the copy is localized; these assertions use the Swedish copy.
+    await i18n.changeLanguage('sv')
     Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: vi.fn() } })
   })
   afterEach(() => cleanup())
@@ -249,5 +252,65 @@ describe('AiEarMode', () => {
     await waitFor(() => expect(screen.getByText('Ny inspelning')).toBeTruthy())
     expect(setItem).not.toHaveBeenCalled()
     setItem.mockRestore()
+  })
+})
+
+// A11Y-8D: accessibility contract of AI-örat (media/permission layer mocked,
+// UI contract tested for real).
+describe('AiEarMode accessibility (A11Y-8D)', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('sv')
+    Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: vi.fn() } })
+  })
+  afterEach(() => cleanup())
+
+  it('offers microphone recording and a file upload as keyboard-reachable, named controls', () => {
+    render(<AiEarMode deps={makeDeps()} />)
+    const record = screen.getByRole('button', { name: 'Spela in' })
+    const file = screen.getByLabelText('Välj ljudfil')
+    expect(file.getAttribute('type')).toBe('file')
+    expect(file.tabIndex).toBe(0)
+    expect(file.disabled).toBe(false)
+    expect(file.hidden).toBe(false)
+    expect(record.compareDocumentPosition(file) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'AI Örat' })).toBeTruthy()
+  })
+
+  it('announces the microphone once as status text and keeps the per-second counter out of the live region', async () => {
+    const env = fakeRecorderEnv()
+    const deps = makeDeps({ getUserMedia: vi.fn(async () => env.stream), MediaRecorderImpl: env.MediaRecorderImpl })
+    render(<AiEarMode deps={deps} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Spela in' }))
+
+    const status = await screen.findByRole('status')
+    expect(status.textContent).toBe('Mikrofonen är aktiv. Inspelningen pågår.')
+    const counter = screen.getByText(/Mikrofon aktiv –/)
+    expect(counter.closest('[role="status"], [aria-live]')).toBeNull()
+    expect(counter.querySelector('[aria-hidden="true"]').textContent.trim()).toBe('●')
+    expect(screen.getByRole('button', { name: 'Stoppa inspelningen' })).toBeTruthy()
+  })
+
+  it('links the privacy note to the Analyse button and shows the result as text', async () => {
+    const deps = makeDeps()
+    render(<AiEarMode deps={deps} />)
+    chooseFile()
+    const analyse = await screen.findByRole('button', { name: 'Analysera ljudet' })
+    expect(document.getElementById(analyse.getAttribute('aria-describedby')).textContent).toMatch(/skickas just det här ljudet/)
+
+    fireEvent.click(analyse)
+    const footer = await screen.findByText('AI-örat är en prototyp. Resultatet är en indikation, inte en garanti.')
+    const result = footer.closest('[role="status"]')
+    expect(result).not.toBeNull()
+    expect(result.querySelector('h4').textContent.length).toBeGreaterThan(0)
+  })
+
+  it('is localized (English)', async () => {
+    await i18n.changeLanguage('en')
+    render(<AiEarMode deps={makeDeps()} />)
+    expect(screen.getByRole('region', { name: 'AI Ear' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Record' })).toBeTruthy()
+    expect(screen.getByLabelText('Choose audio file').getAttribute('type')).toBe('file')
+    chooseFile(new File([new Uint8Array(10)], 'bild.png', { type: 'image/png' }))
+    expect((await screen.findByRole('alert')).textContent).toContain('That is not an audio file')
   })
 })

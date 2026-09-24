@@ -90,3 +90,10 @@
 .ai-ear-hints {
   padding-left: 1.25rem;
 }
+
+/* A11Y-8D: the native file input is transparent over its label; show the
+   keyboard focus on the visible label instead. */
+.ai-ear-file:focus-within {
+  outline: 3px solid var(--accent, #22d3ee);
+  outline-offset: 3px;
+}

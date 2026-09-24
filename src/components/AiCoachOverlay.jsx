@@ -7,7 +7,7 @@ import AiCoachHero from './aiCoach/AiCoachHero.jsx'
 import AiCoachControls from './aiCoach/AiCoachControls.jsx'
 import AiCoachSuggestions from './aiCoach/AiCoachSuggestions.jsx'
 import { useDialogA11y } from '../services/accessibilityDialog.js'
-import { getVoicePhaseLabel } from '../services/ai/realtimeVoiceController.js'
+import { useTranslation } from 'react-i18next'
 import {
   getCompanionVoiceProfile,
   getSelectedCompanionVoiceId,
@@ -41,6 +41,7 @@ function AiCoachOverlay({
   // A11Y-8C: focus in/trap/return, Escape, inert background and scroll lock.
   const dialogRef = useRef(null)
   useDialogA11y({ closeOnEscape: true, dialogRef, lockScroll: true, onClose })
+  const { t } = useTranslation('coach')
   const overlay = typeof document === 'undefined' ? null : document.body
   const latestAssistantMessage = [...chatMessages].reverse().find((message) => message.role === 'assistant')
   const lastSpokenAssistantIdRef = useRef(latestAssistantMessage?.id ?? null)
@@ -93,12 +94,18 @@ function AiCoachOverlay({
   if (!overlay) return null
 
   const combinedAiSpeaking = isAiSpeaking || isTypedReplySpeaking
-  const phaseLabel = getVoicePhaseLabel({
-    isAiSpeaking: combinedAiSpeaking,
-    isListening,
-    isVoiceConversationActive,
-    voiceStatus,
-  })
+  // A11Y-8D: the voice phase is always shown as text in the overlay status
+  // line (not only by colour/animation of the mic). Runtime status messages
+  // from the voice controllers win; the default phases are localized here.
+  const runtimeStatus = String(voiceStatus || '').trim()
+  const phaseLabel = runtimeStatus
+    || (combinedAiSpeaking
+      ? t('coach:overlay.status.speaking')
+      : isListening
+        ? t('coach:overlay.status.listening')
+        : isVoiceConversationActive
+          ? t('coach:overlay.status.ready')
+          : t('coach:overlay.startVoice'))
   const engineStatus = chatEngineStatus || (latestAssistantMessage ? 'GPT-5.6 Luna · OpenAI aktiv' : '')
 
   function stopAiVoiceResponse() {

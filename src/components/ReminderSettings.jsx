@@ -39,6 +39,7 @@ function ReminderSettings({
           <div className="reminder-row" key={reminder.enabledKey}>
             <label className="toggle-row checkbox-row">
               <input
+                aria-describedby={`reminder-${reminder.enabledKey}-description`}
                 type="checkbox"
                 checked={reminderSettings[reminder.enabledKey]}
                 onChange={(event) =>
@@ -50,8 +51,11 @@ function ReminderSettings({
               />
               <span>{reminder.label}</span>
             </label>
-            <span>{reminderDescriptions[reminder.enabledKey]}</span>
+            <span id={`reminder-${reminder.enabledKey}-description`}>{reminderDescriptions[reminder.enabledKey]}</span>
+            {/* A11Y-8D: names which reminder the time belongs to (several rows). */}
             <input
+              aria-describedby={`reminder-${reminder.enabledKey}-description`}
+              aria-label={t('settings:reminders.timeLabel', { reminder: reminder.label })}
               type="time"
               value={reminderSettings[reminder.timeKey]}
               onChange={(event) =>

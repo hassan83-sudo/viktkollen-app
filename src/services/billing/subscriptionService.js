@@ -140,27 +140,63 @@ export function createSubscriptionService({
     })
   }
 
-  async function scheduleCancelAtPeriodEnd({ subscription_id, external_event_id }) {
-    if (external_event_id) {
-      const replay = await store.getByExternalEventId(external_event_id)
-      if (replay) return replay
-    }
-    const row = await store.get(subscription_id)
-    if (!row) {
-      const error = new Error('subscription_not_found')
-      error.code = 'subscription_not_found'
+  function rejectClientSubscriptionClaim(clientClaim = {}) {
+    void clientClaim.entitlement
+    void clientClaim.payment_success
+    void clientClaim.period_end
+    void clientClaim.plan_id
+    void clientClaim.plan_version
+    void clientClaim.price
+    void clientClaim.provider
+    void clientClaim.quota
+    void clientClaim.status
+  }
+
+  async function ownedRow(subscriptionId, actorUserId) {
+    const row = await store.get(subscriptionId)
+    if (!row) return null
+    if (actorUserId && row.user_id !== actorUserId) {
+      const error = new Error('forbidden_subscription')
+      error.code = 'forbidden_subscription'
       throw error
     }
-    if (row.status !== SUBSCRIPTION_STATUS.ACTIVE && row.status !== SUBSCRIPTION_STATUS.TRIALING) {
-      const error = new Error('illegal_subscription_transition')
-      error.code = 'illegal_subscription_transition'
+    return row
+  }
+
+  async function scheduleCancelAtPeriodEnd({
+    actor_user_id = null,
+    clientClaim = {},
+    external_event_id = null,
+    subscription_id,
+  }) {
+    rejectClientSubscriptionClaim(clientClaim)
+    if (actor_user_id) await ownedRow(subscription_id, actor_user_id)
+    return store.scheduleCancel({
+      createdAt: now().toISOString(),
+      externalEventId: external_event_id ? String(external_event_id) : null,
+      subscriptionId: subscription_id,
+    })
+  }
+
+  async function clearCancelAtPeriodEnd({
+    actor_user_id = null,
+    clientClaim = {},
+    external_event_id,
+    subscription_id,
+  }) {
+    rejectClientSubscriptionClaim(clientClaim)
+    const eventId = String(external_event_id || '').trim()
+    if (!/^[A-Za-z0-9._:-]+$/.test(eventId) || eventId.length > 120) {
+      const error = new Error('invalid_event_id')
+      error.code = 'invalid_event_id'
       throw error
     }
-    return store.replace({
-      ...row,
-      cancel_at_period_end: true,
-      external_event_id: external_event_id || row.external_event_id,
-      updated_at: now().toISOString(),
+    if (actor_user_id) await ownedRow(subscription_id, actor_user_id)
+    return store.clearCancel({
+      createdAt: now().toISOString(),
+      externalEventId: eventId,
+      now: now().toISOString(),
+      subscriptionId: subscription_id,
     })
   }
 
@@ -206,6 +242,7 @@ export function createSubscriptionService({
     advancePeriod,
     createSubscription,
     getClientSafe,
+    clearCancelAtPeriodEnd,
     resolveForUser,
     scheduleCancelAtPeriodEnd,
     transition,

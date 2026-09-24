@@ -64,6 +64,92 @@ export function createInMemorySubscriptionStore() {
     async listEvents() {
       return events.map((event) => ({ ...event }))
     },
+    async scheduleCancel({ createdAt, externalEventId, subscriptionId }) {
+      if (externalEventId && byEvent.has(externalEventId)) return byId.get(byEvent.get(externalEventId)) || null
+      const prev = byId.get(subscriptionId)
+      if (!prev) {
+        const error = new Error('subscription_not_found')
+        error.code = 'subscription_not_found'
+        throw error
+      }
+      if (prev.status !== 'ACTIVE' && prev.status !== 'TRIALING') {
+        const error = new Error('illegal_subscription_transition')
+        error.code = 'illegal_subscription_transition'
+        throw error
+      }
+      const stored = clone({
+        ...prev,
+        cancel_at_period_end: true,
+        updated_at: createdAt,
+      })
+      if (externalEventId) {
+        events.push({
+          created_at: createdAt,
+          current_period_end: prev.current_period_end,
+          external_event_id: externalEventId,
+          from_cancel_at_period_end: prev.cancel_at_period_end === true,
+          from_plan_id: prev.plan_id,
+          from_plan_version: prev.plan_version,
+          from_status: prev.status,
+          operation: 'cancel.schedule',
+          subscription_id: prev.subscription_id,
+          to_cancel_at_period_end: true,
+          to_plan_id: prev.plan_id,
+          to_plan_version: prev.plan_version,
+          to_status: prev.status,
+        })
+        byEvent.set(externalEventId, prev.subscription_id)
+      }
+      byId.set(stored.subscription_id, stored)
+      return stored
+    },
+    async clearCancel({ createdAt, externalEventId, now, subscriptionId }) {
+      if (externalEventId && byEvent.has(externalEventId)) return byId.get(byEvent.get(externalEventId)) || null
+      const prev = byId.get(subscriptionId)
+      if (!prev) {
+        const error = new Error('subscription_not_found')
+        error.code = 'subscription_not_found'
+        throw error
+      }
+      if (prev.status !== 'ACTIVE' && prev.status !== 'TRIALING') {
+        const error = new Error('illegal_subscription_transition')
+        error.code = 'illegal_subscription_transition'
+        throw error
+      }
+      if (new Date(now).getTime() >= new Date(prev.current_period_end).getTime()) {
+        const error = new Error('period_expired')
+        error.code = 'period_expired'
+        throw error
+      }
+      if (prev.cancel_at_period_end !== true) {
+        const error = new Error('cancel_not_scheduled')
+        error.code = 'cancel_not_scheduled'
+        throw error
+      }
+      const stored = clone({
+        ...prev,
+        cancel_at_period_end: false,
+        updated_at: createdAt,
+      })
+      events.push({
+        created_at: createdAt,
+        current_period_end: prev.current_period_end,
+        external_event_id: externalEventId,
+        from_cancel_at_period_end: true,
+        from_plan_id: prev.plan_id,
+        from_plan_version: prev.plan_version,
+        from_status: prev.status,
+        operation: 'cancel.clear',
+        subscription_id: prev.subscription_id,
+        to_cancel_at_period_end: false,
+        to_plan_id: prev.plan_id,
+        to_plan_version: prev.plan_version,
+        to_status: prev.status,
+      })
+      byEvent.set(externalEventId, prev.subscription_id)
+      byId.set(stored.subscription_id, stored)
+      return stored
+    },
     async advancePeriod({ appliedPlan = null, createdAt, externalEventId, nextPeriodEnd, subscriptionId }) {
       const replayId = byEvent.get(externalEventId)
       if (replayId) return byId.get(replayId) || null

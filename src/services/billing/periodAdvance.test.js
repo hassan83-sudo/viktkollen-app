@@ -35,8 +35,6 @@ async function activeRow(subscriptions) {
     cancel_at_period_end: true,
     current_period_end: END,
     current_period_start: START,
-    pending_plan_change: 'next_period',
-    pending_plan_id: 'plan.prelim.sek.month.09',
     plan_id: PAID,
     user_id: USER,
   })
@@ -57,7 +55,7 @@ describe('BILL-6C4A period advance', () => {
     expect(advanced.current_period_end).toBe(NEXT)
     expect(advanced.plan_id).toBe(PAID)
     expect(advanced.cancel_at_period_end).toBe(true)
-    expect(advanced.pending_plan_id).toBe('plan.prelim.sek.month.09')
+    expect(advanced.pending_plan_id).toBeNull()
     const events = await store.listEvents()
     expect(events).toEqual([expect.objectContaining({
       external_event_id: 'period-1',

@@ -64,7 +64,7 @@ export function createInMemorySubscriptionStore() {
     async listEvents() {
       return events.map((event) => ({ ...event }))
     },
-    async advancePeriod({ createdAt, externalEventId, nextPeriodEnd, subscriptionId }) {
+    async advancePeriod({ appliedPlan = null, createdAt, externalEventId, nextPeriodEnd, subscriptionId }) {
       const replayId = byEvent.get(externalEventId)
       if (replayId) return byId.get(replayId) || null
       const prev = byId.get(subscriptionId)
@@ -85,21 +85,35 @@ export function createInMemorySubscriptionStore() {
         throw error
       }
       assertSubscriptionTransition(prev.status, 'ACTIVE')
+      const applyPending = prev.pending_plan_change === 'next_period'
+      if (applyPending && !appliedPlan) {
+        const error = new Error('invalid_pending_plan')
+        error.code = 'invalid_pending_plan'
+        throw error
+      }
       const stored = clone({
         ...prev,
         current_period_end: new Date(nextPeriodEnd).toISOString(),
         past_due_grace_until: null,
+        pending_plan_change: applyPending ? null : prev.pending_plan_change,
+        pending_plan_id: applyPending ? null : prev.pending_plan_id,
+        plan_id: applyPending ? appliedPlan.id : prev.plan_id,
+        plan_version: applyPending ? appliedPlan.version : prev.plan_version,
         status: 'ACTIVE',
         updated_at: createdAt,
       })
       events.push({
         created_at: createdAt,
         external_event_id: externalEventId,
+        from_plan_id: prev.plan_id,
+        from_plan_version: prev.plan_version,
         from_status: prev.status,
         new_period_end: stored.current_period_end,
         operation: 'period.advance',
         previous_period_end: prev.current_period_end,
         subscription_id: prev.subscription_id,
+        to_plan_id: stored.plan_id,
+        to_plan_version: stored.plan_version,
         to_status: 'ACTIVE',
       })
       byEvent.set(externalEventId, prev.subscription_id)

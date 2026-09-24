@@ -104,10 +104,14 @@ export function createSubscriptionService({
     external_event_id,
     subscription_id,
   }) {
+    void clientClaim.entitlement
     void clientClaim.payment_success
+    void clientClaim.period_end
     void clientClaim.plan_id
+    void clientClaim.plan_version
     void clientClaim.price
     void clientClaim.provider
+    void clientClaim.quota
     const eventId = String(external_event_id || '').trim()
     if (!/^[A-Za-z0-9._:-]+$/.test(eventId) || eventId.length > 120) {
       const error = new Error('invalid_event_id')
@@ -116,7 +120,19 @@ export function createSubscriptionService({
     }
     const replay = await store.getByExternalEventId(eventId)
     if (replay) return replay
+    const current = await store.get(subscription_id)
+    let appliedPlan = null
+    if (current?.pending_plan_change === 'next_period') {
+      const pending = getPlanById(current.pending_plan_id, catalog)
+      if (!pending || pending.active !== true || pending.id === 'plan.free') {
+        const error = new Error('invalid_pending_plan')
+        error.code = 'invalid_pending_plan'
+        throw error
+      }
+      appliedPlan = { id: pending.id, version: pending.version }
+    }
     return store.advancePeriod({
+      appliedPlan,
       createdAt: now().toISOString(),
       externalEventId: eventId,
       nextPeriodEnd: current_period_end,

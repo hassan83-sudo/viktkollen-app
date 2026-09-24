@@ -1,5 +1,6 @@
 import { Component } from 'react'
 import { getSafeErrorMessage, isChunkLoadError, logAppError, normalizeAppError } from '../services/appErrorService.js'
+import { getAccessibilityScrollBehavior } from '../services/accessibilityDocumentScope.js'
 
 const chunkRecoveryPrefix = 'viktkollen.chunkRecovery'
 
@@ -10,11 +11,11 @@ function goHome() {
   const scrollContainer = document.querySelector('.app-scroll-container')
 
   if (scrollContainer) {
-    scrollContainer.scrollTo({ behavior: 'smooth', top: 0 })
+    scrollContainer.scrollTo({ behavior: getAccessibilityScrollBehavior(), top: 0 })
     return
   }
 
-  window.scrollTo?.({ behavior: 'smooth', top: 0 })
+  window.scrollTo?.({ behavior: getAccessibilityScrollBehavior(), top: 0 })
 }
 
 class AppErrorBoundary extends Component {

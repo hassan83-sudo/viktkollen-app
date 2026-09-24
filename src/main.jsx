@@ -21,6 +21,9 @@ import './components/PlaceHistory.mobile.css'
 import './components/PlaceBatterySaver.mobile.css'
 import './features/social/SocialStage.mobile.css'
 import './features/social/SocialRoom.mobile.css'
+// A11Y-8B: global accessibility overrides, imported last so they apply on
+// top of the base theme and component styles.
+import './styles/accessibility.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

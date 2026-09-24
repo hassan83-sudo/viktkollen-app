@@ -31,6 +31,7 @@ import { buildReminderStatus, getNextReminderAt } from '../../services/reminders
 import SmartCameraStage from '../../features/smart-camera/components/SmartCameraStage.jsx'
 import BodyAvatarTalkBar from './BodyAvatarTalkBar.jsx'
 import { formatNumber as formatLocaleNumber } from '../../i18n/format.js'
+import { prefersReducedAccessibilityMotion } from '../../services/accessibilityDocumentScope.js'
 
 const HomeBodyScanStage = lazy(() => import('./HomeBodyScanStage.jsx'))
 
@@ -594,7 +595,7 @@ function scrollToTarget(targetId) {
   const target = document.getElementById(targetId)
 
   if (target) {
-    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    const reduceMotion = prefersReducedAccessibilityMotion()
     const scrollContainer = document.querySelector('.app-scroll-container')
 
     if (scrollContainer) {

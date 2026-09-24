@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { getAccessibilityScrollBehavior } from '../../services/accessibilityDocumentScope.js'
 
 const quickActions = [
   {
@@ -43,7 +44,7 @@ function scrollTargetInAppContainer(target) {
   const scrollContainer = document.querySelector('.app-scroll-container')
 
   if (!target || !scrollContainer) {
-    target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    target?.scrollIntoView({ behavior: getAccessibilityScrollBehavior(), block: 'start' })
     return
   }
 
@@ -52,7 +53,7 @@ function scrollTargetInAppContainer(target) {
 
   scrollContainer.scrollTo({
     top: Math.max(0, targetRect.top - containerRect.top + scrollContainer.scrollTop),
-    behavior: 'smooth',
+    behavior: getAccessibilityScrollBehavior(),
   })
 }
 

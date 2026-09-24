@@ -1,6 +1,7 @@
 import { memo, useMemo } from 'react'
 import { buildNotificationCenterModel } from '../../services/notifications/notificationEngine.js'
 import { readMealPlans } from '../../services/nutrition/nutritionEngine.js'
+import { prefersReducedAccessibilityMotion } from '../../services/accessibilityDocumentScope.js'
 
 const priorityIcons = {
   high: '!',
@@ -56,7 +57,7 @@ function SmartNotificationsCard({
     : `${model.smartRecommendations.length} notiser väntar`
 
   function showAllNotifications() {
-    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    const reduceMotion = prefersReducedAccessibilityMotion()
     const target = document.getElementById('notification-center')
     const scrollContainer = document.querySelector('.app-scroll-container')
 

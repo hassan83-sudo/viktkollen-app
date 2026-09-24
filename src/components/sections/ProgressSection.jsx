@@ -6,6 +6,7 @@ import ProgressHub from '../progress/ProgressHub.jsx'
 import { progressHubTargetFolders } from '../progress/progressHubModel.js'
 import { analyzeWeights, formatKg, formatSignedKg } from '../../services/progressService.js'
 import { getLatestAnalysis } from '../../services/bodyAnalysisHistory.js'
+import { getAccessibilityScrollBehavior } from '../../services/accessibilityDocumentScope.js'
 
 const BodyAnalysisCard = lazy(() => import('../BodyAnalysisCard.jsx'))
 const MonthlyReport = lazy(() => import('../MonthlyReport.jsx'))
@@ -122,7 +123,7 @@ function ProgressSection({
       if (onScrollToTarget) {
         onScrollToTarget(target)
       } else {
-        target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        target?.scrollIntoView({ behavior: getAccessibilityScrollBehavior(), block: 'start' })
       }
       target?.focus?.({ preventScroll: true })
     }

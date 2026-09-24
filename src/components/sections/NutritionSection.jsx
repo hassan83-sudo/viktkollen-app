@@ -9,6 +9,7 @@ import {
   summarizeDay,
 } from '../../services/nutritionService.js'
 import { logNavigationOrigin } from '../../services/navigation/navigationOriginDiagnostics.js'
+import { getAccessibilityScrollBehavior } from '../../services/accessibilityDocumentScope.js'
 
 const BarcodeScanner = lazy(() => import('../BarcodeScanner.jsx'))
 const MealLogger = lazy(() => import('../MealLogger.jsx'))
@@ -150,7 +151,7 @@ function NutritionSection({
         return
       }
 
-      target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      target?.scrollIntoView({ behavior: getAccessibilityScrollBehavior(), block: 'start' })
       logNavigationOrigin('nutrition-show-panel:after-frame', {
         panel,
         targetFound: Boolean(target),

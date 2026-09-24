@@ -25,6 +25,7 @@ import {
   readNutritionRemoteConsent,
   revokeNutritionRemoteConsent,
 } from '../../services/nutritionRemoteConsent.js'
+import { getAccessibilityScrollBehavior } from '../../services/accessibilityDocumentScope.js'
 
 function MoreSection({
   activeSection,
@@ -114,7 +115,7 @@ function MoreSection({
     if (!targetId || targetId === activeFolder) return
 
     const scrollToTarget = () => {
-      document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      document.getElementById(targetId)?.scrollIntoView({ behavior: getAccessibilityScrollBehavior(), block: 'start' })
     }
 
     const timers = [80, 240, 480].map((delay) => window.setTimeout(scrollToTarget, delay))

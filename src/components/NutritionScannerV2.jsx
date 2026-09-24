@@ -39,6 +39,7 @@ import {
 } from '../services/nutritionPhotoDisplay.js'
 import { getCurrentTimeString, getTodayDateString, mealTypes } from '../services/nutritionService.js'
 import { safeLogger } from '../services/safeLogger.js'
+import { getAccessibilityScrollBehavior } from '../services/accessibilityDocumentScope.js'
 
 const dataSourceKeys = {
   aiEstimate: 'scanner.dataSources.aiEstimate',
@@ -487,9 +488,7 @@ function NutritionScannerV2({
   const scheduleResultScroll = useCallback(() => {
     const target = reviewRef.current
     if (!target || typeof window === 'undefined' || typeof document === 'undefined') return
-    const behavior = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      ? 'auto'
-      : 'smooth'
+    const behavior = getAccessibilityScrollBehavior()
 
     try {
       target.scrollIntoView({ behavior, block: 'start', inline: 'start' })

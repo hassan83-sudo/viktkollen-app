@@ -15,6 +15,7 @@ import {
   readBatteryNoticeState,
   saveBatteryNoticeState,
 } from '../services/battery/batteryNoticeModel.js'
+import { getAccessibilityScrollBehavior } from '../services/accessibilityDocumentScope.js'
 
 const suggestions = ['glasses', 'medicine', 'water', 'item', 'leave', 'call', 'laundry', 'pause', 'bed']
 const repeatOptions = [
@@ -79,7 +80,7 @@ function NoticeHub({ onRemindersChange, reminderState }) {
 
   function focusForm() {
     window.requestAnimationFrame?.(() => {
-      formRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      formRef.current?.scrollIntoView({ block: 'start', behavior: getAccessibilityScrollBehavior() })
       titleInputRef.current?.focus()
     })
   }

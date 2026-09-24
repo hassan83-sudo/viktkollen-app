@@ -15087,77 +15087,10 @@ html:has(#app-section-more.is-active),
   outline-offset: 3px;
 }
 
-/* A11Y-7B/7C: app-wide equivalents of the accessibility-scope rules above, so
-   preferences set in AccessibilityHub (or the optional accessibility setup)
-   meaningfully affect the whole app, not only the hub itself. Each rule
-   activates only via its own data attribute (set from the existing
-   accessibilityPreferences store) and stays additive: it never replaces the
-   app's normal theme or removes existing behavior. Selectors are plain
-   attribute selectors (not scoped to .app-shell) so the same rules also work
-   on the accessibility setup's own live-preview panel, which can render
-   outside .app-shell during onboarding. */
-[data-a11y-text-size] {
-  --a11y-text-scale: 1;
-}
-
-[data-a11y-text-size='large'] {
-  --a11y-text-scale: 1.12;
-}
-
-[data-a11y-text-size='extra-large'] {
-  --a11y-text-scale: 1.24;
-}
-
-[data-a11y-text-size='large'],
-[data-a11y-text-size='extra-large'] {
-  font-size: calc(1rem * var(--a11y-text-scale));
-  overflow-wrap: break-word;
-}
-
-[data-a11y-line-spacing='true'] p,
-[data-a11y-line-spacing='true'] li {
-  line-height: 1.85;
-}
-
-/* High contrast stays boundary/focus-first rather than repainting the whole
-   theme: it strengthens control borders and focus rings without touching
-   background/text colors, so it never replaces the app's normal look. */
-[data-a11y-high-contrast='true'] button:not([disabled]),
-[data-a11y-high-contrast='true'] select,
-[data-a11y-high-contrast='true'] input:not([type='checkbox']):not([type='radio']),
-[data-a11y-high-contrast='true'] textarea {
-  border: 2px solid currentColor;
-}
-
-[data-a11y-high-contrast='true'] button[disabled],
-[data-a11y-high-contrast='true'] input[disabled] {
-  border: 2px dashed currentColor;
-  opacity: 0.6;
-}
-
-[data-a11y-high-contrast='true'] button:focus-visible,
-[data-a11y-high-contrast='true'] a:focus-visible,
-[data-a11y-high-contrast='true'] input:focus-visible,
-[data-a11y-high-contrast='true'] select:focus-visible,
-[data-a11y-high-contrast='true'] textarea:focus-visible {
-  outline: 3px solid #0f62fe;
-  outline-offset: 3px;
-}
-
-[data-a11y-large-controls='true'] button {
-  min-height: 48px;
-}
-
-/* Only ever adds motion reduction on top of prefers-reduced-motion; the
-   existing @media (prefers-reduced-motion: reduce) rules elsewhere are left
-   completely untouched and keep working independently of this attribute. */
-[data-a11y-reduced-motion='true'] *,
-[data-a11y-reduced-motion='true'] *::before,
-[data-a11y-reduced-motion='true'] *::after {
-  animation-duration: 0.01ms !important;
-  scroll-behavior: auto !important;
-  transition-duration: 0.01ms !important;
-}
+/* A11Y-8B: the app-wide [data-a11y-*] rules (text size, line spacing, high
+   contrast, large controls, reduced motion) moved to
+   src/styles/accessibility.css and are now keyed on <html>, so portals and
+   dialogs outside .app-shell inherit them too. */
 
 .accessibility-setup-preview {
   display: flex;

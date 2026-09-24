@@ -1,0 +1,200 @@
+/* ==========================================================================
+   A11Y-8B: global accessibility preferences
+   --------------------------------------------------------------------------
+   useAccessibilityDocumentScope (src/services/accessibilityDocumentScope.js)
+   mirrors the user's effective accessibility preferences onto <html>:
+
+     data-a11y-text-size="normal|large|extra-large"   (always present)
+     data-a11y-high-contrast="true"                   (only while enabled)
+     data-a11y-large-controls="true"
+     data-a11y-line-spacing="true"
+     data-a11y-reduced-motion="true"
+
+   Everything here is keyed on :root, so it reaches the whole app, including
+   portals rendered into document.body (dialogs/stages) and the auth and
+   onboarding screens. Imported last from main.jsx so it can override the
+   base theme without editing App.css.
+
+   Moved here from App.css (A11Y-7B/7C block): text size, line spacing, high
+   contrast, large controls and reduced motion rules, now scoped to :root.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Text size
+   Scaling the root font-size (as a percentage, so the browser's own default
+   font size and page zoom keep working) enlarges everything sized in rem/em
+   and all inherited text. Components with fixed px text do not scale from
+   this alone; the central ones are scaled explicitly below via
+   --a11y-text-scale. Remaining px text is listed as technical debt in the
+   A11Y-8B report.
+   -------------------------------------------------------------------------- */
+:root {
+  --a11y-text-scale: 1;
+}
+
+:root[data-a11y-text-size='large'] {
+  --a11y-text-scale: 1.125;
+  font-size: 112.5%;
+}
+
+:root[data-a11y-text-size='extra-large'] {
+  --a11y-text-scale: 1.25;
+  font-size: 125%;
+}
+
+:root[data-a11y-text-size='large'] body,
+:root[data-a11y-text-size='extra-large'] body {
+  overflow-wrap: break-word;
+}
+
+/* Central navigation and labels that use fixed px sizes. */
+:root[data-a11y-text-size] .bottom-nav strong {
+  font-size: calc(10px * var(--a11y-text-scale));
+}
+
+:root[data-a11y-text-size] .bottom-nav span {
+  font-size: calc(17px * var(--a11y-text-scale));
+}
+
+:root[data-a11y-text-size] .eyebrow {
+  font-size: calc(11px * var(--a11y-text-scale));
+}
+
+/* The accessibility hub used to scale its own text relative to rem. With the
+   root already scaled that would apply the same choice twice, so the hub's
+   local scale is neutralised while a global text size is active. */
+:root[data-a11y-text-size] .accessibility-scope.is-text-large,
+:root[data-a11y-text-size] .accessibility-scope.is-text-extra-large {
+  --accessibility-text-scale: 1;
+}
+
+/* --------------------------------------------------------------------------
+   Line spacing (WCAG 1.4.12 text spacing)
+   -------------------------------------------------------------------------- */
+:root[data-a11y-line-spacing='true'] body {
+  line-height: 1.7;
+}
+
+:root[data-a11y-line-spacing='true'] :is(p, li, dd, dt, blockquote, figcaption) {
+  line-height: 1.85;
+}
+
+/* --------------------------------------------------------------------------
+   High contrast
+   Raises the shared theme tokens (dark theme is the app's active theme):
+   text, muted text, borders, form borders and navigation. Contrast measured
+   against the app's dark surfaces #07111f, #0f1729, #111827 and #1a2435:
+     --text    #e2e8f0  12.6-15.4:1
+     --text-h  #ffffff  15.6-18.9:1
+     --muted   #cbd5e1  10.5-12.8:1  (was #94a3b8, 6.1-7.4:1)
+     --border  #94a3b8   6.1-7.4:1   (was 17% alpha, ~1.3:1)
+     --field-border #cbd5e1 10.5-12.8:1 (was 24% alpha, ~1.5:1)
+   Focus uses a white outline plus a dark outer ring, visible on both dark
+   and light surfaces (>= 3:1 against either).
+   -------------------------------------------------------------------------- */
+:root[data-a11y-high-contrast='true'] {
+  --text: #e2e8f0;
+  --text-h: #ffffff;
+  --muted: #cbd5e1;
+  --border: #94a3b8;
+  --field-border: #cbd5e1;
+  --nav-border: #94a3b8;
+  --focus: rgba(255, 255, 255, 0.55);
+  --vk-text: #ffffff;
+  --vk-text-muted: #e2e8f0;
+  --vk-border: rgba(203, 213, 225, 0.7);
+}
+
+:root[data-a11y-high-contrast='true'] :is(input, textarea, select)::placeholder {
+  color: #cbd5e1;
+  opacity: 1;
+}
+
+:root[data-a11y-high-contrast='true'] button:not([disabled]),
+:root[data-a11y-high-contrast='true'] select,
+:root[data-a11y-high-contrast='true'] input:not([type='checkbox']):not([type='radio']),
+:root[data-a11y-high-contrast='true'] textarea {
+  border: 2px solid currentColor;
+}
+
+:root[data-a11y-high-contrast='true'] button[disabled],
+:root[data-a11y-high-contrast='true'] input[disabled] {
+  border: 2px dashed currentColor;
+  opacity: 0.7;
+}
+
+/* State is never shown by colour alone. */
+:root[data-a11y-high-contrast='true'] :is([aria-pressed='true'], [aria-current='page'], [aria-selected='true']) {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+:root[data-a11y-high-contrast='true'] a:not([class]) {
+  text-decoration: underline;
+}
+
+:root[data-a11y-high-contrast='true'] :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px #020617;
+}
+
+/* --------------------------------------------------------------------------
+   Larger controls
+   44 x 44 px minimum for interactive controls. !important because this is an
+   explicit user choice that must win over component-specific compact sizes.
+   Visually hidden (.sr-only) controls stay hidden: they are clipped.
+   -------------------------------------------------------------------------- */
+:root[data-a11y-large-controls='true'] :is(button, [role='button'], summary, select, input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='hidden'])) {
+  min-height: 44px !important;
+}
+
+:root[data-a11y-large-controls='true'] :is(button, [role='button']) {
+  min-width: 44px !important;
+}
+
+:root[data-a11y-large-controls='true'] :is(input[type='checkbox'], input[type='radio']) {
+  min-width: 24px;
+  min-height: 24px;
+}
+
+:root[data-a11y-large-controls='true'] .bottom-nav a {
+  min-height: 56px;
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion
+   Two sources, one policy: Viktkollen's own setting (attribute) and the
+   operating system (media query). Both use the same declarations:
+   - animations finish immediately and run exactly once, so infinite
+     decorative loops stop (a tiny duration alone would still loop);
+     keyframe end states are kept, so nothing that fades in stays hidden;
+   - transitions are effectively instant (1ms, so end events still fire);
+   - smooth scrolling is turned off (JS uses getAccessibilityScrollBehavior).
+   -------------------------------------------------------------------------- */
+:root[data-a11y-reduced-motion='true'],
+:root[data-a11y-reduced-motion='true'] *,
+:root[data-a11y-reduced-motion='true'] *::before,
+:root[data-a11y-reduced-motion='true'] *::after {
+  animation-delay: 0s !important;
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-delay: 0s !important;
+  transition-duration: 1ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  :root *,
+  :root *::before,
+  :root *::after {
+    animation-delay: 0s !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-delay: 0s !important;
+    transition-duration: 1ms !important;
+  }
+}

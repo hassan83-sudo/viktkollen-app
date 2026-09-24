@@ -62,6 +62,7 @@ import {
   writeMealTemplates,
   writeRecipes,
 } from '../services/nutrition/nutritionEngine.js'
+import { getAccessibilityScrollBehavior } from '../services/accessibilityDocumentScope.js'
 
 const AIMealGenerator = lazy(() => import('./AIMealGenerator.jsx'))
 const MonthlyNutritionDashboard = lazy(() => import('./MonthlyNutritionDashboard.jsx'))
@@ -98,7 +99,7 @@ function scrollTargetInAppContainer(target) {
 
   if (!target || !scrollContainer) {
     target?.scrollIntoView({
-      behavior: 'smooth',
+      behavior: getAccessibilityScrollBehavior(),
       block: 'start',
     })
     return
@@ -109,7 +110,7 @@ function scrollTargetInAppContainer(target) {
 
   scrollContainer.scrollTo({
     top: Math.max(0, targetRect.top - containerRect.top + scrollContainer.scrollTop),
-    behavior: 'smooth',
+    behavior: getAccessibilityScrollBehavior(),
   })
 }
 

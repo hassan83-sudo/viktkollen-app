@@ -98,6 +98,32 @@ export function createSubscriptionService({
     })
   }
 
+  async function advancePeriod({
+    clientClaim = {},
+    current_period_end,
+    external_event_id,
+    subscription_id,
+  }) {
+    void clientClaim.payment_success
+    void clientClaim.plan_id
+    void clientClaim.price
+    void clientClaim.provider
+    const eventId = String(external_event_id || '').trim()
+    if (!/^[A-Za-z0-9._:-]+$/.test(eventId) || eventId.length > 120) {
+      const error = new Error('invalid_event_id')
+      error.code = 'invalid_event_id'
+      throw error
+    }
+    const replay = await store.getByExternalEventId(eventId)
+    if (replay) return replay
+    return store.advancePeriod({
+      createdAt: now().toISOString(),
+      externalEventId: eventId,
+      nextPeriodEnd: current_period_end,
+      subscriptionId: subscription_id,
+    })
+  }
+
   async function scheduleCancelAtPeriodEnd({ subscription_id, external_event_id }) {
     if (external_event_id) {
       const replay = await store.getByExternalEventId(external_event_id)
@@ -161,6 +187,7 @@ export function createSubscriptionService({
   }
 
   return {
+    advancePeriod,
     createSubscription,
     getClientSafe,
     resolveForUser,

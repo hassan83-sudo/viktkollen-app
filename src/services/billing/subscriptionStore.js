@@ -18,6 +18,7 @@ function clone(row) {
 export function createInMemorySubscriptionStore() {
   const byId = new Map()
   const byEvent = new Map()
+  const events = []
 
   return {
     async get(subscriptionId) {
@@ -57,6 +58,51 @@ export function createInMemorySubscriptionStore() {
           throw error
         }
       }
+      byId.set(stored.subscription_id, stored)
+      return stored
+    },
+    async listEvents() {
+      return events.map((event) => ({ ...event }))
+    },
+    async advancePeriod({ createdAt, externalEventId, nextPeriodEnd, subscriptionId }) {
+      const replayId = byEvent.get(externalEventId)
+      if (replayId) return byId.get(replayId) || null
+      const prev = byId.get(subscriptionId)
+      if (!prev) {
+        const error = new Error('subscription_not_found')
+        error.code = 'subscription_not_found'
+        throw error
+      }
+      if (prev.status !== 'ACTIVE' && prev.status !== 'PAST_DUE') {
+        const error = new Error('illegal_subscription_transition')
+        error.code = 'illegal_subscription_transition'
+        throw error
+      }
+      const nextEnd = new Date(nextPeriodEnd).getTime()
+      if (Number.isNaN(nextEnd) || nextEnd <= new Date(prev.current_period_end).getTime()) {
+        const error = new Error('period_end_not_later')
+        error.code = 'period_end_not_later'
+        throw error
+      }
+      assertSubscriptionTransition(prev.status, 'ACTIVE')
+      const stored = clone({
+        ...prev,
+        current_period_end: new Date(nextPeriodEnd).toISOString(),
+        past_due_grace_until: null,
+        status: 'ACTIVE',
+        updated_at: createdAt,
+      })
+      events.push({
+        created_at: createdAt,
+        external_event_id: externalEventId,
+        from_status: prev.status,
+        new_period_end: stored.current_period_end,
+        operation: 'period.advance',
+        previous_period_end: prev.current_period_end,
+        subscription_id: prev.subscription_id,
+        to_status: 'ACTIVE',
+      })
+      byEvent.set(externalEventId, prev.subscription_id)
       byId.set(stored.subscription_id, stored)
       return stored
     },
@@ -119,6 +165,7 @@ export function createInMemorySubscriptionStore() {
     reset() {
       byId.clear()
       byEvent.clear()
+      events.length = 0
     },
   }
 }

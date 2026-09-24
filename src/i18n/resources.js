@@ -40,6 +40,7 @@ const sv = {
   companion: companionSv,
   navigation: {
     mainNavigation: 'Huvudnavigation',
+    skipToContent: 'Hoppa till huvudinnehåll',
     sections: {
       coach: { aria: 'Öppna coach och insikter', label: 'Coach' },
       home: { aria: 'Öppna översikten', label: 'Hem' },
@@ -230,6 +231,13 @@ const sv = {
     },
   },
   notices: {
+    wakeAlarm: {
+      title: 'Väckarklockan ringer',
+      time: 'Larm kl. {{time}}',
+      body: 'Dags att vakna.',
+      stop: 'Stäng av larmet',
+      snooze: 'Snooza 5 min',
+    },
     eyebrow: 'Påminnelser och minnesstöd',
     title: 'Notis',
     subtitle: 'Planera egna påminnelser och träna små minnesstrategier.',
@@ -1887,6 +1895,7 @@ const en = {
   companion: companionEn,
   navigation: {
     mainNavigation: 'Main navigation',
+    skipToContent: 'Skip to main content',
     sections: {
       coach: { aria: 'Open coach and insights', label: 'Coach' },
       home: { aria: 'Open overview', label: 'Home' },
@@ -2077,6 +2086,13 @@ const en = {
     },
   },
   notices: {
+    wakeAlarm: {
+      title: 'The alarm is ringing',
+      time: 'Alarm at {{time}}',
+      body: 'Time to wake up.',
+      stop: 'Turn off the alarm',
+      snooze: 'Snooze 5 min',
+    },
     eyebrow: 'Reminders and memory support',
     title: 'Notices',
     subtitle: 'Plan your own reminders and practice small memory strategies.',

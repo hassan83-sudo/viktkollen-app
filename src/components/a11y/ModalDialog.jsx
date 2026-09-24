@@ -12,13 +12,14 @@ function ModalDialog({
   initialFocus,
   initialFocusRef,
   onClose,
+  role = 'dialog',
   ...props
 }) {
   const dialogRef = useRef(null)
   useDialogA11y({ closeOnEscape, dialogRef, initialFocus, initialFocusRef, onClose })
 
   return (
-    <div {...props} aria-modal="true" ref={dialogRef} role="dialog">
+    <div {...props} aria-modal="true" ref={dialogRef} role={role === 'alertdialog' ? 'alertdialog' : 'dialog'}>
       {children}
     </div>
   )

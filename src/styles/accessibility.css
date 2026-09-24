@@ -193,12 +193,48 @@
    explicit user choice that must win over component-specific compact sizes.
    Visually hidden (.sr-only) controls stay hidden: they are clipped.
    -------------------------------------------------------------------------- */
-:root[data-a11y-large-controls='true'] :is(button, [role='button'], summary, select, input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='hidden'])) {
+:root[data-a11y-large-controls='true'] :where(button, [role='button'], summary, select, input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='hidden'])) {
   min-height: 44px !important;
 }
 
-:root[data-a11y-large-controls='true'] :is(button, [role='button']) {
+:root[data-a11y-large-controls='true'] :where(button, [role='button']) {
   min-width: 44px !important;
+}
+
+/* A11Y-8E: the 44px minimum above must never make a control smaller than
+   its own design. CSS cannot take the larger of two min-heights, so controls
+   that are normally taller than 44px keep their own height here (the rule
+   above uses :where() so these win). */
+:root[data-a11y-large-controls='true'] :is(.dashboard-actions button, .vk-details > summary, .social-room-player-controls button, .family-map-walkie button, .accessibility-scope.has-calm-mode button, .place-safety-alert-choices button) {
+  min-height: 48px !important;
+}
+
+:root[data-a11y-large-controls='true'] :is(.topbar-actions button) {
+  min-height: 46px !important;
+}
+
+:root[data-a11y-large-controls='true'] :is(.scanner-primary-actions .primary-button, .accessibility-phrase-button, .accessibility-detail.is-simple-preview .primary-button, .accessibility-detail.is-simple-preview .more-hub-back, .ready-companion-modal > button:last-child) {
+  min-height: 52px !important;
+}
+
+:root[data-a11y-large-controls='true'] :is(.scanner-ingredient-edit-item summary, .overview-avatar-button, .place-checkin-choices > button) {
+  min-height: 54px !important;
+}
+
+:root[data-a11y-large-controls='true'] :is(.wake-alarm-visual-actions button) {
+  min-height: 56px !important;
+}
+
+:root[data-a11y-large-controls='true'] :is(.wellbeing-section-toggle) {
+  min-height: 58px !important;
+}
+
+:root[data-a11y-large-controls='true'] :is(.smart-camera-mode-chip) {
+  min-height: 70px !important;
+}
+
+:root[data-a11y-large-controls='true'] :is(.ready-memory-grid button) {
+  min-height: 84px !important;
 }
 
 :root[data-a11y-large-controls='true'] :is(input[type='checkbox'], input[type='radio']) {
@@ -244,4 +280,132 @@
     transition-delay: 0s !important;
     transition-duration: 1ms !important;
   }
+}
+
+/* ==========================================================================
+   A11Y-8E: navigation, hearing, motor and touch
+   ========================================================================== */
+
+/* Skip link: first focusable element, off-screen until it gets focus. */
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 10000;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 2px solid #ffffff;
+  border-radius: 10px;
+  color: #ffffff;
+  background: #020617;
+  font-weight: 800;
+  text-decoration: underline;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: none;
+  outline: 3px solid #22d3ee;
+  outline-offset: 3px;
+}
+
+/* Visual alarm: a stable, full-attention panel with text, time and large
+   buttons. No blinking or animation (also under reduced motion). */
+.wake-alarm-visual {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px 16px;
+  overflow-y: auto;
+  text-align: center;
+  color: #ffffff;
+  background: #0b1220;
+  border: 6px solid #fbbf24;
+}
+
+.wake-alarm-visual-icon {
+  margin: 0;
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.wake-alarm-visual h2 {
+  margin: 0;
+  font-size: clamp(1.6rem, 7vw, 2.6rem);
+  line-height: 1.15;
+}
+
+.wake-alarm-visual-time {
+  margin: 0;
+  font-size: clamp(1.3rem, 6vw, 2rem);
+  font-weight: 800;
+}
+
+.wake-alarm-visual p {
+  max-width: 32rem;
+}
+
+.wake-alarm-visual-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  width: min(100%, 28rem);
+}
+
+.wake-alarm-visual-actions button {
+  flex: 1 1 12rem;
+  min-height: 56px;
+  font-size: 1.1rem;
+}
+
+/* Walkie-talkie: the toggle and hold buttons are full-width, comfortable
+   targets; the status is plain text. */
+.family-map-walkie {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.family-map-walkie-status {
+  margin: 0;
+  font-weight: 700;
+}
+
+.family-map-walkie button {
+  min-height: 48px;
+}
+
+/* Touch targets in normal use (not only with "larger controls"): small icon
+   buttons keep their look but get an invisible 44 x 44 px hit area; text
+   buttons that were a little short get a 44 px minimum height. */
+#app-section-home.is-active .overview-notification-button::after,
+#app-section-home.is-active .smart-feed-active-card > button::after,
+#app-section-home.is-active .smart-feed-controls button::after {
+  content: '';
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+
+#app-section-home.is-active .smart-feed-controls button,
+#app-section-home.is-active .smart-feed-active-card > button {
+  position: relative;
+}
+
+:root .more-hub-back,
+:root .prompt-chip,
+:root .segmented-control button,
+:root .app-shell:has(#app-section-home.is-active) .pwa-install-card button {
+  min-height: 44px;
 }

@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
+import ModalDialog from './a11y/ModalDialog.jsx'
 import {
   enableReminderBackgroundPush,
   removeKitchenTimerPushSchedule,
@@ -38,7 +41,7 @@ function nextClockTime(time) {
 }
 
 function NoticeKitchenTimers({ reminderState, onRemindersChange, onMessage }) {
-  const [openRoom, setOpenRoom] = useState(''); const [selectedAppliance, setSelectedAppliance] = useState('Micro'); const [timers, setTimers] = useState([]); const [alarmTime, setAlarmTime] = useState('07:00'); const [wakeMode, setWakeMode] = useState('gentle'); const [wakeAlarm, setWakeAlarm] = useState(null); const [, setClock] = useState(Date.now()); const timeoutIds = useRef(new Map()); const alarmTimeout = useRef(null); const wakeSequenceTimeouts = useRef([])
+  const [openRoom, setOpenRoom] = useState(''); const [selectedAppliance, setSelectedAppliance] = useState('Micro'); const [timers, setTimers] = useState([]); const [alarmTime, setAlarmTime] = useState('07:00'); const [wakeMode, setWakeMode] = useState('gentle'); const [wakeAlarm, setWakeAlarm] = useState(null); const [ringingAlarm, setRingingAlarm] = useState(null); const stopAlarmButtonRef = useRef(null); const { t } = useTranslation('notices'); const [, setClock] = useState(Date.now()); const timeoutIds = useRef(new Map()); const alarmTimeout = useRef(null); const wakeSequenceTimeouts = useRef([])
   useEffect(() => { const interval = window.setInterval(() => setClock(Date.now()), 1000); return () => window.clearInterval(interval) }, [])
   useEffect(() => () => { timeoutIds.current.forEach((timeoutId) => window.clearTimeout(timeoutId)); timeoutIds.current.clear(); if (alarmTimeout.current) window.clearTimeout(alarmTimeout.current); clearWakeSequence() }, [])
   const activeTimers = useMemo(() => timers.filter((timer) => !timer.done), [timers])
@@ -49,10 +52,15 @@ function NoticeKitchenTimers({ reminderState, onRemindersChange, onMessage }) {
   async function complete(timer) { const timeoutId = timeoutIds.current.get(timer.id); if (timeoutId) window.clearTimeout(timeoutId); timeoutIds.current.delete(timer.id); setTimers((current) => current.filter((item) => item.id !== timer.id)); await removeKitchenTimerPushSchedule(timer.id).catch(() => undefined) }
   function clearWakeSequence() { wakeSequenceTimeouts.current.forEach((timeoutId) => window.clearTimeout(timeoutId)); wakeSequenceTimeouts.current = []; if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel() }
   function speakWake(text, volume) { if (typeof window === 'undefined' || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return; const utterance = new SpeechSynthesisUtterance(text); utterance.lang = typeof document !== 'undefined' ? (document.documentElement?.lang || 'sv-SE') : 'sv-SE'; utterance.volume = Math.max(0, Math.min(1, volume)); utterance.rate = 0.88; window.speechSynthesis.speak(utterance) }
-  function runWakeSequence(alarm) { clearWakeSequence(); const gentleSteps = [{ delay: 0, text: 'God morgon. Det är dags att vakna.', volume: 0.2 }, { delay: 12000, text: 'God morgon. Försök vakna nu.', volume: 0.35 }, { delay: 24000, text: 'Det är dags att gå upp.', volume: 0.55 }, { delay: 36000, text: 'Vakna nu. Ditt väckningslarm har gått.', volume: 0.8 }]; const normalSteps = [{ delay: 0, text: 'God morgon. Det är dags att vakna.', volume: 0.55 }, { delay: 12000, text: 'Vakna nu. Det är dags att gå upp.', volume: 0.85 }]; const steps = alarm.mode === 'gentle' ? gentleSteps : normalSteps; steps.forEach((step) => { const timeoutId = window.setTimeout(() => { speakWake(step.text, step.volume); if (step === steps[steps.length - 1] && typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('Väckarklocka', { body: 'Dags att vakna.', tag: `wake-${alarm.id}` }) }, step.delay); wakeSequenceTimeouts.current.push(timeoutId) }) }
+  // A11Y-8E: the alarm is never sound-only. When it goes off, a visual alarm
+  // (text, time and explicit stop/snooze buttons) is shown in a modal
+  // alertdialog on top of whatever view is open, plus a short vibration where
+  // the device supports it. The speech steps below stay as they were.
+  function signalAlarmVisually(alarm) { setRingingAlarm(alarm); try { if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate([400, 200, 400]) } catch { /* vibration is only an extra signal */ } }
+  function runWakeSequence(alarm) { clearWakeSequence(); signalAlarmVisually(alarm); const gentleSteps = [{ delay: 0, text: 'God morgon. Det är dags att vakna.', volume: 0.2 }, { delay: 12000, text: 'God morgon. Försök vakna nu.', volume: 0.35 }, { delay: 24000, text: 'Det är dags att gå upp.', volume: 0.55 }, { delay: 36000, text: 'Vakna nu. Ditt väckningslarm har gått.', volume: 0.8 }]; const normalSteps = [{ delay: 0, text: 'God morgon. Det är dags att vakna.', volume: 0.55 }, { delay: 12000, text: 'Vakna nu. Det är dags att gå upp.', volume: 0.85 }]; const steps = alarm.mode === 'gentle' ? gentleSteps : normalSteps; steps.forEach((step) => { const timeoutId = window.setTimeout(() => { speakWake(step.text, step.volume); if (step === steps[steps.length - 1] && typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('Väckarklocka', { body: 'Dags att vakna.', tag: `wake-${alarm.id}` }) }, step.delay); wakeSequenceTimeouts.current.push(timeoutId) }) }
   async function activateWakeAlarm() { const target = nextClockTime(alarmTime); const id = `wake-${target.getTime()}`; const alarm = { id, mode: wakeMode, time: alarmTime, endsAt: target.getTime() }; if (alarmTimeout.current) window.clearTimeout(alarmTimeout.current); clearWakeSequence(); setWakeAlarm(alarm); alarmTimeout.current = window.setTimeout(() => runWakeSequence(alarm), Math.max(0, target.getTime() - Date.now())); const pushResult = await scheduleBackgroundPush({ appliance: 'Väckarklocka', endsAt: alarm.endsAt, id }); if (pushResult.error) { onMessage?.(`Väckarklocka ${alarmTime} är satt i appen. Bakgrundsnotisen kunde inte aktiveras.`); return } onMessage?.(`Väckarklocka satt till ${alarmTime}. ${wakeMode === 'gentle' ? 'Mjuk väckning börjar lågt och höjs stegvis.' : 'Normal väckning är vald.'}`) }
-  async function snoozeWake(minutes = 5) { if (!wakeAlarm) return; if (alarmTimeout.current) window.clearTimeout(alarmTimeout.current); clearWakeSequence(); const next = { ...wakeAlarm, endsAt: Date.now() + minutes * 60000 }; setWakeAlarm(next); alarmTimeout.current = window.setTimeout(() => runWakeSequence(next), minutes * 60000); await scheduleBackgroundPush({ appliance: 'Väckarklocka', endsAt: next.endsAt, id: next.id }); onMessage?.(`Väckarklockan snoozad ${minutes} min.`) }
-  async function stopWakeAlarm() { if (!wakeAlarm) return; if (alarmTimeout.current) window.clearTimeout(alarmTimeout.current); alarmTimeout.current = null; clearWakeSequence(); await removeKitchenTimerPushSchedule(wakeAlarm.id).catch(() => undefined); setWakeAlarm(null); onMessage?.('Väckarklockan är avstängd.') }
+  async function snoozeWake(minutes = 5) { setRingingAlarm(null); if (!wakeAlarm) return; if (alarmTimeout.current) window.clearTimeout(alarmTimeout.current); clearWakeSequence(); const next = { ...wakeAlarm, endsAt: Date.now() + minutes * 60000 }; setWakeAlarm(next); alarmTimeout.current = window.setTimeout(() => runWakeSequence(next), minutes * 60000); await scheduleBackgroundPush({ appliance: 'Väckarklocka', endsAt: next.endsAt, id: next.id }); onMessage?.(`Väckarklockan snoozad ${minutes} min.`) }
+  async function stopWakeAlarm() { setRingingAlarm(null); if (!wakeAlarm) return; if (alarmTimeout.current) window.clearTimeout(alarmTimeout.current); alarmTimeout.current = null; clearWakeSequence(); await removeKitchenTimerPushSchedule(wakeAlarm.id).catch(() => undefined); setWakeAlarm(null); onMessage?.('Väckarklockan är avstängd.') }
   function toggleRoom(roomId) { setOpenRoom((current) => current === roomId ? '' : roomId) }
 
   return <section className="notice-card" aria-labelledby="room-timers-heading">
@@ -65,6 +73,19 @@ function NoticeKitchenTimers({ reminderState, onRemindersChange, onMessage }) {
     {openRoom === 'living-room' && <NoticeLivingRoomHelper reminderState={reminderState} onRemindersChange={onRemindersChange} onClose={() => setOpenRoom('')} onMessage={onMessage} />}
     {openRoom === 'hall' && <NoticeHallHelper reminderState={reminderState} onRemindersChange={onRemindersChange} onClose={() => setOpenRoom('')} onMessage={onMessage} />}
     {openRoom === 'laundry' && <NoticeLaundryHelper reminderState={reminderState} onRemindersChange={onRemindersChange} onClose={() => setOpenRoom('')} onMessage={onMessage} />}
+    {ringingAlarm && typeof document !== 'undefined' && createPortal(
+      <ModalDialog aria-describedby="wake-alarm-visual-body" aria-labelledby="wake-alarm-visual-title" className="wake-alarm-visual" initialFocusRef={stopAlarmButtonRef} role="alertdialog">
+        <p className="wake-alarm-visual-icon" aria-hidden="true">⏰</p>
+        <h2 id="wake-alarm-visual-title">{t('wakeAlarm.title')}</h2>
+        <p className="wake-alarm-visual-time">{t('wakeAlarm.time', { time: ringingAlarm.time })}</p>
+        <p id="wake-alarm-visual-body">{t('wakeAlarm.body')}</p>
+        <div className="wake-alarm-visual-actions">
+          <button className="primary-button" ref={stopAlarmButtonRef} type="button" onClick={stopWakeAlarm}>{t('wakeAlarm.stop')}</button>
+          <button className="secondary-button" type="button" onClick={() => snoozeWake(5)}>{t('wakeAlarm.snooze')}</button>
+        </div>
+      </ModalDialog>,
+      document.body,
+    )}
     {openRoom === 'cleaning' && <NoticeCleaningHelper reminderState={reminderState} onRemindersChange={onRemindersChange} onClose={() => setOpenRoom('')} onMessage={onMessage} />}
   </section>
 }

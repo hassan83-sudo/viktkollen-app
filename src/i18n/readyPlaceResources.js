@@ -248,6 +248,16 @@ export const readyEn = {
 }
 
 export const placeSv = {
+  walkie: {
+    start: 'Börja prata',
+    stop: 'Sluta prata',
+    toggleHint: 'Tryck en gång för att börja prata och en gång till för att sluta. Du behöver inte hålla inne.',
+    hold: 'Håll inne för att prata',
+    holdActive: 'Pratar…',
+    holdHint: 'Eller håll inne knappen och släpp när du är klar.',
+    statusReady: 'Walkie-talkie redo. Din mikrofon är av.',
+    statusTalking: 'Du sänder. Familjemedlemmen hör dig.',
+  },
   title: 'Plats',
   subtitle: 'Trygg platsöversikt för familjen — ärligt förberedd utan fejkad GPS.',
   featuresAria: 'Platsfunktioner',
@@ -341,6 +351,16 @@ export const placeSv = {
 }
 
 export const placeEn = {
+  walkie: {
+    start: 'Start talking',
+    stop: 'Stop talking',
+    toggleHint: 'Tap once to start talking and once more to stop. You do not need to hold.',
+    hold: 'Hold to talk',
+    holdActive: 'Talking…',
+    holdHint: 'Or hold the button and release when you are done.',
+    statusReady: 'Walkie-talkie ready. Your microphone is off.',
+    statusTalking: 'You are transmitting. The family member can hear you.',
+  },
   title: 'Place',
   subtitle: 'Safe location overview for the family — honestly prepared without fake GPS.',
   featuresAria: 'Place features',

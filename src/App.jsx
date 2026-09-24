@@ -52,6 +52,8 @@ import {
   getAccessibilityScrollBehavior,
   useAccessibilityDocumentScope,
 } from './services/accessibilityDocumentScope.js'
+import { getOpenDialogCount } from './services/accessibilityDialog.js'
+import { focusViewHeading, setDocumentSection } from './services/accessibilityNavigation.js'
 import {
   addMealAnalysis,
   clearMealHistory,
@@ -1058,6 +1060,27 @@ function App() {
     window.addEventListener('hashchange', routeHash)
     return () => window.removeEventListener('hashchange', routeHash)
   }, [reminderHubUiEnabled])
+
+  // A11Y-8E: document.title follows the active main section.
+  useEffect(() => {
+    setDocumentSection(activeAppSection, t(`sections.${activeAppSection}.label`, { defaultValue: '' }))
+  }, [activeAppSection, currentLanguage, t])
+
+  // A11Y-8E: after a real section change, focus moves to the new view's
+  // heading (not on first render, not for changes inside a section, and not
+  // while a modal dialog owns focus).
+  const previousAppSectionRef = useRef(activeAppSection)
+  useEffect(() => {
+    if (previousAppSectionRef.current === activeAppSection) return
+    previousAppSectionRef.current = activeAppSection
+    if (getOpenDialogCount() > 0) return
+    focusViewHeading(document.getElementById(`app-section-${activeAppSection}`))
+  }, [activeAppSection])
+
+  function handleSkipToContent(event) {
+    event.preventDefault()
+    focusViewHeading(document.getElementById(`app-section-${activeAppSection}`) || document.querySelector('main'))
+  }
 
   useEffect(() => {
     const handleLanguageChange = (languageCode) => {
@@ -3175,6 +3198,12 @@ function App() {
   }
 
   return (
+    <>
+    {/* A11Y-8E: first focusable element; jumps past the global chrome to the
+        active view's heading. */}
+    <a className="skip-link" href={`#app-section-${activeAppSection}`} onClick={handleSkipToContent}>
+      {t('skipToContent')}
+    </a>
     <main className="app-shell">
         <PwaExperience showDiagnostics={showInternalTools} />
         <GlobalSyncStatus />
@@ -3408,6 +3437,7 @@ function App() {
         showSocial={socialUiEnabled}
       />
     </main>
+    </>
   )
 }
 

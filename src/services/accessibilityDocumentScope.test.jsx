@@ -332,7 +332,7 @@ describe('global accessibility document scope (A11Y-8B)', () => {
 
     it('gives larger controls a 44 x 44 px minimum', () => {
       expect(accessibilityCss).toMatch(/:root\[data-a11y-large-controls='true'\][^{]*button[^{]*\{\s*min-height:\s*44px !important;/)
-      expect(accessibilityCss).toMatch(/:root\[data-a11y-large-controls='true'\] :is\(button, \[role='button'\]\)\s*\{\s*min-width:\s*44px !important;/)
+      expect(accessibilityCss).toMatch(/:root\[data-a11y-large-controls='true'\] :where\(button, \[role='button'\]\)\s*\{\s*min-width:\s*44px !important;/)
     })
 
     it('applies line spacing to body text', () => {

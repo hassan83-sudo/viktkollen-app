@@ -2,7 +2,10 @@ import { moreHubFolders } from '../../services/more/moreFolders.js'
 import SeniorEverydaySection from '../../features/senior/SeniorEverydaySection.jsx'
 import DebtCaseSection from '../../features/economy/DebtCaseSection.jsx'
 import ActivitySection from '../../features/activity/ActivitySection.jsx'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getOpenDialogCount } from '../../services/accessibilityDialog.js'
+import { focusViewHeading, setDocumentSectionDetail } from '../../services/accessibilityNavigation.js'
 
 const FOLDER_I18N_KEYS = {
   'ai-coach': 'coach',
@@ -40,11 +43,35 @@ function MoreHub({ activeFolder, children, isAuthenticated, onBack, onOpen, onOp
     : syncStatus.statusCode === 'synced' || syncStatus.statusLabel === 'Synkad'
       ? t('more.synced')
       : syncStatus.statusLabel || (online ? t('more.online') : t('more.offline'))
+  const folderTitle = folder ? folderCopy(t, folder).title : ''
+  const viewRef = useRef(null)
+  const folderButtonRefs = useRef({})
+  const previousFolderRef = useRef(activeFolder)
+
+  // A11Y-8E: an open folder names the page ("Tillgänglighet & hjälpmedel –
+  // Viktkollen") while Mer is the active section.
+  useEffect(() => {
+    setDocumentSectionDetail('more', folderTitle || null)
+  }, [folderTitle])
+  useEffect(() => () => setDocumentSectionDetail('more', null), [])
+
+  // A11Y-8E: opening a folder moves focus to its heading; going back returns
+  // focus to the folder card that was open. Not on first render.
+  useEffect(() => {
+    const previous = previousFolderRef.current
+    previousFolderRef.current = activeFolder
+    if (previous === activeFolder || getOpenDialogCount() > 0) return
+    if (!activeFolder && previous && folderButtonRefs.current[previous]) {
+      folderButtonRefs.current[previous].focus({ preventScroll: true })
+      return
+    }
+    focusViewHeading(viewRef.current)
+  }, [activeFolder])
 
   if (folder) {
     const { title } = folderCopy(t, folder)
     return (
-      <div className="more-hub-view">
+      <div className="more-hub-view" ref={viewRef}>
         <button className="more-hub-back" type="button" onClick={onBack}>
           ← {t('more.back')}
         </button>
@@ -66,7 +93,7 @@ function MoreHub({ activeFolder, children, isAuthenticated, onBack, onOpen, onOp
   }
 
   return (
-    <div className="more-hub">
+    <div className="more-hub" ref={viewRef}>
       <header className="more-hub-heading">
         <div className="more-hub-status" role="status">
           <span className={`more-hub-online${online ? ' is-online' : ''}`}>
@@ -86,6 +113,9 @@ function MoreHub({ activeFolder, children, isAuthenticated, onBack, onOpen, onOp
               aria-label={`${title}. ${description}`}
               className={`more-hub-folder accent-${entry.accent}`}
               key={entry.id}
+              ref={(node) => {
+                folderButtonRefs.current[entry.id] = node
+              }}
               type="button"
               onClick={() => onOpen(entry.id)}
             >

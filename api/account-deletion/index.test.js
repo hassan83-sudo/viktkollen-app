@@ -33,7 +33,7 @@ function createResponse() {
   return response
 }
 
-function createDeletionClient({ failTable = '', authError = null } = {}) {
+function createDeletionClient({ failTable = '', failRpc = '', authError = null } = {}) {
   const deletedTables = []
 
   return {
@@ -51,7 +51,7 @@ function createDeletionClient({ failTable = '', authError = null } = {}) {
         }),
       })),
     })),
-    rpc: vi.fn(async () => ({ error: null })),
+    rpc: vi.fn(async (name) => ({ error: name === failRpc ? { code: 'purge_failed' } : null })),
   }
 }
 
@@ -195,7 +195,61 @@ describe('account deletion API route', () => {
 
     expect(response.statusCode).toBe(207)
     expect(client.rpc).not.toHaveBeenCalledWith('purge_exclusive_user_data', { p_user_id: 'user-a' })
+    expect(client.rpc).not.toHaveBeenCalledWith('purge_place_participation', { p_user_id: 'user-a' })
     expect(client.auth.admin.deleteUser).not.toHaveBeenCalled()
     expect(response.body.summary.results.some((result) => result.table === 'purge_exclusive_user_data' && result.ok === false)).toBe(true)
+  })
+
+  it('purges place participation for the verified user only after exclusive purge succeeds', async () => {
+    const client = createDeletionClient()
+    setSupabaseAdminClientForTests(client)
+    const response = await callRoute(createRequest({
+      body: { mode: 'cloud-data', user_id: 'user-b' },
+    }))
+    const exclusiveIndex = client.rpc.mock.calls.findIndex((call) => call[0] === 'purge_exclusive_user_data')
+    const participationIndex = client.rpc.mock.calls.findIndex((call) => call[0] === 'purge_place_participation')
+
+    expect(response.statusCode).toBe(200)
+    expect(client.rpc).toHaveBeenNthCalledWith(1, 'social_purge_user_data', { p_user_id: 'user-a' })
+    expect(participationIndex).toBeGreaterThan(exclusiveIndex)
+    expect(client.rpc).toHaveBeenCalledWith('purge_place_participation', { p_user_id: 'user-a' })
+    expect(client.rpc).not.toHaveBeenCalledWith('purge_place_participation', { p_user_id: 'user-b' })
+    expect(client.auth.admin.deleteUser).not.toHaveBeenCalled()
+  })
+
+  it('treats a second place-participation purge with no remaining rows as success', async () => {
+    const client = createDeletionClient()
+    setSupabaseAdminClientForTests(client)
+
+    const first = await callRoute(createRequest({ body: { mode: 'cloud-data' } }))
+    const second = await callRoute(createRequest({ body: { mode: 'cloud-data' } }))
+
+    expect(first.statusCode).toBe(200)
+    expect(second.statusCode).toBe(200)
+    expect(client.rpc.mock.calls.filter((call) => call[0] === 'purge_place_participation')).toHaveLength(2)
+  })
+
+  it('does not run place participation or auth deletion when exclusive purge fails', async () => {
+    process.env.ACCOUNT_DELETION_ENABLE_AUTH_DELETE = 'true'
+    const client = createDeletionClient({ failRpc: 'purge_exclusive_user_data' })
+    setSupabaseAdminClientForTests(client)
+    const response = await callRoute(createRequest({ body: { mode: 'account' } }))
+
+    expect(response.statusCode).toBe(207)
+    expect(client.rpc).toHaveBeenCalledWith('purge_exclusive_user_data', { p_user_id: 'user-a' })
+    expect(client.rpc).not.toHaveBeenCalledWith('purge_place_participation', { p_user_id: 'user-a' })
+    expect(client.auth.admin.deleteUser).not.toHaveBeenCalled()
+  })
+
+  it('does not delete the auth user when place participation purge fails', async () => {
+    process.env.ACCOUNT_DELETION_ENABLE_AUTH_DELETE = 'true'
+    const client = createDeletionClient({ failRpc: 'purge_place_participation' })
+    setSupabaseAdminClientForTests(client)
+    const response = await callRoute(createRequest({ body: { mode: 'account' } }))
+
+    expect(response.statusCode).toBe(207)
+    expect(client.rpc).toHaveBeenCalledWith('purge_place_participation', { p_user_id: 'user-a' })
+    expect(response.body.summary.results.some((result) => result.table === 'purge_place_participation' && result.ok === false)).toBe(true)
+    expect(client.auth.admin.deleteUser).not.toHaveBeenCalled()
   })
 })

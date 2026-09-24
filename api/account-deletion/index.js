@@ -11,6 +11,7 @@ const deletionTables = Object.freeze([
 
 const socialPurgeRpc = 'social_purge_user_data'
 const exclusivePurgeRpc = 'purge_exclusive_user_data'
+const placeParticipationPurgeRpc = 'purge_place_participation'
 
 function parseBody(request) {
   if (typeof request.body === 'string') return JSON.parse(request.body || '{}')
@@ -92,7 +93,11 @@ async function deleteRowsForUser(client, userId, tables = deletionTables) {
     return results
   }
 
-  results.push(await purgeExclusiveDataForUser(client, userId))
+  const exclusiveResult = await purgeExclusiveDataForUser(client, userId)
+  results.push(exclusiveResult)
+  if (!exclusiveResult.ok) return results
+
+  results.push(await purgePlaceParticipationForUser(client, userId))
   return results
 }
 
@@ -120,6 +125,34 @@ async function purgeExclusiveDataForUser(client, userId) {
       errorCode: error?.code || 'purge_failed',
       ok: false,
       table: exclusivePurgeRpc,
+    }
+  }
+}
+
+async function purgePlaceParticipationForUser(client, userId) {
+  if (!client?.rpc) {
+    return {
+      area: 'place',
+      errorCode: 'rpc_unavailable',
+      ok: false,
+      table: placeParticipationPurgeRpc,
+    }
+  }
+
+  try {
+    const { error } = await client.rpc(placeParticipationPurgeRpc, { p_user_id: userId })
+    return {
+      area: 'place',
+      ok: !error,
+      table: placeParticipationPurgeRpc,
+      ...(error ? { errorCode: error.code || 'purge_failed' } : {}),
+    }
+  } catch (error) {
+    return {
+      area: 'place',
+      errorCode: error?.code || 'purge_failed',
+      ok: false,
+      table: placeParticipationPurgeRpc,
     }
   }
 }
@@ -203,6 +236,7 @@ export default async function handler(request, response) {
     mode,
     serviceRoleConfigured: Boolean(client),
     exclusivePurgeRpc,
+    placeParticipationPurgeRpc,
     socialPurgeRpc,
   }
 
@@ -259,7 +293,9 @@ export const accountDeletionRouteInternals = {
   deletionTables,
   exclusivePurgeRpc,
   normalizeMode,
+  placeParticipationPurgeRpc,
   purgeExclusiveDataForUser,
+  purgePlaceParticipationForUser,
   purgeSocialDataForUser,
   socialPurgeRpc,
   summarizeDeletion,

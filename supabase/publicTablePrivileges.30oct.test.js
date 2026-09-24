@@ -30,7 +30,6 @@ describe('SUPABASE-30OCT-B3 public privilege contract', () => {
       'social_locations',
       'social_board_posts',
       'social_room_videos',
-      'user_entitlements',
     ]) {
       expect(sql).toContain(
         `revoke all on table public.${name} from public, anon, authenticated, service_role;`,
@@ -53,10 +52,9 @@ describe('SUPABASE-30OCT-B3 public privilege contract', () => {
     expect(sql).not.toMatch(/grant (?!select on table public\.social_(board_posts|room_videos))[^;]* to anon;/i)
   })
 
-  it('limits service_role to entitlement select and delete', () => {
-    expect(sql).toContain('grant select, delete on table public.user_entitlements to service_role;')
-    expect(sql).not.toMatch(/grant [^;]* on table public\.(?!user_entitlements)[a-z_]+ to service_role;/i)
-    expect(sql).not.toMatch(/grant (insert|update)[^;]*user_entitlements to service_role/i)
+  it('does not grant service_role or mention the legacy entitlements table', () => {
+    expect(sql).not.toMatch(/user_entitlements/i)
+    expect(sql).not.toMatch(/grant [^;]* to service_role;/i)
   })
 
   it('does not grant references, trigger, truncate, or a permissive policy', () => {

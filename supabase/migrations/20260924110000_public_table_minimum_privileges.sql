@@ -19,8 +19,7 @@ declare
     'reminder_push_schedules',
     'social_locations',
     'social_board_posts',
-    'social_room_videos',
-    'user_entitlements'
+    'social_room_videos'
   ];
   missing text;
 begin
@@ -47,7 +46,6 @@ revoke all on table public.reminder_push_schedules from public, anon, authentica
 revoke all on table public.social_locations from public, anon, authenticated, service_role;
 revoke all on table public.social_board_posts from public, anon, authenticated, service_role;
 revoke all on table public.social_room_videos from public, anon, authenticated, service_role;
-revoke all on table public.user_entitlements from public, anon, authenticated, service_role;
 
 grant select, update on table public.place_family_members to authenticated;
 grant select, insert, update on table public.place_location_shares to authenticated;
@@ -64,7 +62,6 @@ grant select on table public.social_board_posts to anon;
 grant select, insert, delete on table public.social_board_posts to authenticated;
 grant select on table public.social_room_videos to anon;
 grant select, insert, delete on table public.social_room_videos to authenticated;
-grant select, delete on table public.user_entitlements to service_role;
 
 -- Role list only. Omitting USING and WITH CHECK keeps the current expressions.
 do $reminder_policies$

@@ -58,6 +58,10 @@ async function purgeSocialDataForUser(client, userId) {
 async function deleteRowsForUser(client, userId, tables = deletionTables) {
   const results = []
 
+  const familyResult = await purgeFamilyMembershipForUser(client, userId)
+  results.push(familyResult)
+  if (!familyResult.ok) return results
+
   results.push(await purgeSocialDataForUser(client, userId))
 
   for (const table of tables) {
@@ -102,7 +106,6 @@ async function deleteRowsForUser(client, userId, tables = deletionTables) {
   results.push(participationResult)
   if (!participationResult.ok) return results
 
-  results.push(await purgeFamilyMembershipForUser(client, userId))
   return results
 }
 

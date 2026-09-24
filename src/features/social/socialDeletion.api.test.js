@@ -12,8 +12,10 @@ describe('account deletion social purge', () => {
     const client = { from, rpc }
     const results = await accountDeletionRouteInternals.deleteRowsForUser(client, 'user-1')
 
+    expect(rpc).toHaveBeenNthCalledWith(1, 'purge_family_membership', { p_user_id: 'user-1' })
     expect(rpc).toHaveBeenCalledWith('social_purge_user_data', { p_user_id: 'user-1' })
-    expect(results[0]).toMatchObject({ area: 'social', ok: true, table: 'social_purge_user_data' })
+    expect(results[0]).toMatchObject({ area: 'family', ok: true, table: 'purge_family_membership' })
+    expect(results[1]).toMatchObject({ area: 'social', ok: true, table: 'social_purge_user_data' })
     expect(accountDeletionRouteInternals.socialPurgeRpc).toBe('social_purge_user_data')
   })
 })

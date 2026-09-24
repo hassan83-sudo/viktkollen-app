@@ -409,3 +409,12 @@
 :root .app-shell:has(#app-section-home.is-active) .pwa-install-card button {
   min-height: 44px;
 }
+
+/* A11Y-8F: findings from the automated axe suite (tests/a11y). */
+
+/* color-contrast (serious): the active bottom-nav label (white, 9px bold)
+   had 4.23:1 on the dark-theme accent #8b5cf6. #7c3aed gives 5.7:1. Section
+   specific gradients (Hem) still paint over this background colour. */
+.bottom-nav a.is-active {
+  background-color: #7c3aed;
+}

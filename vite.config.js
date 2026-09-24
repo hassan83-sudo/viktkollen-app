@@ -192,7 +192,7 @@ export default defineConfig(({ mode }) => {
       host: true,
     },
     test: {
-      exclude: ['dist/**', 'node_modules/**', 'tests/e2e/**'],
+      exclude: ['dist/**', 'node_modules/**', 'tests/e2e/**', 'tests/a11y/**'],
       setupFiles: ['./src/test/setup.js'],
     },
   }

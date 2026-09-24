@@ -1198,8 +1198,10 @@ function OverviewDashboard({
             </button>
             <input
               accept="image/*"
+              aria-hidden="true"
               className="sr-only"
               id="overview-profile-photo-input"
+              tabIndex={-1}
               type="file"
               onChange={handleProfilePhotoChange}
             />

@@ -79,6 +79,10 @@ function AccessibilityCommunication() {
   // exist (clear, delete, undo). It is resolved after the next render, so
   // focus is only ever moved to an element that is actually mounted.
   const pendingFocusRef = useRef(null)
+  // A11Y-8F: "Stoppa" only exists while speaking. When it disappears while it
+  // has focus (stopped by the user or speech ended), focus moves to the
+  // matching "Läs upp" button instead of falling back to <body>.
+  const speakButtonRefs = useRef({})
   const speechRequestRef = useRef(0)
   const announcementRef = useRef(0)
 
@@ -113,7 +117,13 @@ function AccessibilityCommunication() {
     getElement()?.focus()
   })
 
+  function keepFocusFromStopButton() {
+    const source = document.activeElement?.getAttribute?.('data-speech-stop')
+    if (source) focusAfterRender(() => speakButtonRefs.current[source])
+  }
+
   function stopSpeaking() {
+    keepFocusFromStopButton()
     speechRequestRef.current += 1
     cancelAccessibilitySpeech()
     setIsSpeaking(false)
@@ -251,12 +261,14 @@ function AccessibilityCommunication() {
       text,
       onEnd: () => {
         if (speechRequestRef.current !== requestId) return
+        keepFocusFromStopButton()
         setIsSpeaking(false)
         setSpeechSource(null)
         setSpeechFeedback(t('accessibility.communication.complete'), 'success')
       },
       onError: () => {
         if (speechRequestRef.current !== requestId) return
+        keepFocusFromStopButton()
         setIsSpeaking(false)
         setSpeechSource(null)
         setSpeechFeedback(t('accessibility.communication.error'), 'error')
@@ -308,11 +320,11 @@ function AccessibilityCommunication() {
           ))}
         </ol>
         <div className="accessibility-communication-actions">
-          <button className="secondary-button" type="button" onClick={speakGuidance}>
+          <button className="secondary-button" ref={(element) => { speakButtonRefs.current.guidance = element }} type="button" onClick={speakGuidance}>
             {t('accessibility.communication.readGuidance')}
           </button>
           {isSpeaking && speechSource === 'guidance' && (
-            <button className="secondary-button" type="button" onClick={stopSpeakingWithStatus}>
+            <button className="secondary-button" data-speech-stop="guidance" type="button" onClick={stopSpeakingWithStatus}>
               {t('accessibility.communication.stop')}
             </button>
           )}
@@ -459,11 +471,11 @@ function AccessibilityCommunication() {
           <p className="eyebrow">{t('accessibility.communication.selectedLabel')}</p>
           <strong>{selectedText}</strong>
           <div className="accessibility-communication-actions">
-            <button className="primary-button" type="button" onClick={speakSelectedText}>
+            <button className="primary-button" ref={(element) => { speakButtonRefs.current.message = element }} type="button" onClick={speakSelectedText}>
               {t('accessibility.communication.speak')}
             </button>
             {isSpeaking && speechSource === 'message' && (
-              <button className="secondary-button" type="button" onClick={stopSpeakingWithStatus}>
+              <button className="secondary-button" data-speech-stop="message" type="button" onClick={stopSpeakingWithStatus}>
                 {t('accessibility.communication.stop')}
               </button>
             )}

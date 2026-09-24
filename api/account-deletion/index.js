@@ -10,6 +10,7 @@ const deletionTables = Object.freeze([
 ])
 
 const socialPurgeRpc = 'social_purge_user_data'
+const exclusivePurgeRpc = 'purge_exclusive_user_data'
 
 function parseBody(request) {
   if (typeof request.body === 'string') return JSON.parse(request.body || '{}')
@@ -80,7 +81,47 @@ async function deleteRowsForUser(client, userId, tables = deletionTables) {
     }
   }
 
+  const backupResult = results.find((result) => result.table === 'user_backups')
+  if (!backupResult?.ok) {
+    results.push({
+      area: 'cloudData',
+      errorCode: 'backup_delete_incomplete',
+      ok: false,
+      table: exclusivePurgeRpc,
+    })
+    return results
+  }
+
+  results.push(await purgeExclusiveDataForUser(client, userId))
   return results
+}
+
+async function purgeExclusiveDataForUser(client, userId) {
+  if (!client?.rpc) {
+    return {
+      area: 'cloudData',
+      errorCode: 'rpc_unavailable',
+      ok: false,
+      table: exclusivePurgeRpc,
+    }
+  }
+
+  try {
+    const { error } = await client.rpc(exclusivePurgeRpc, { p_user_id: userId })
+    return {
+      area: 'cloudData',
+      ok: !error,
+      table: exclusivePurgeRpc,
+      ...(error ? { errorCode: error.code || 'purge_failed' } : {}),
+    }
+  } catch (error) {
+    return {
+      area: 'cloudData',
+      errorCode: error?.code || 'purge_failed',
+      ok: false,
+      table: exclusivePurgeRpc,
+    }
+  }
 }
 
 async function deleteAuthUser({ client, env = process.env, userId }) {
@@ -161,6 +202,7 @@ export default async function handler(request, response) {
     deletionTables: deletionTables.map((table) => table.name),
     mode,
     serviceRoleConfigured: Boolean(client),
+    exclusivePurgeRpc,
     socialPurgeRpc,
   }
 
@@ -215,7 +257,9 @@ export const accountDeletionRouteInternals = {
   deleteAuthUser,
   deleteRowsForUser,
   deletionTables,
+  exclusivePurgeRpc,
   normalizeMode,
+  purgeExclusiveDataForUser,
   purgeSocialDataForUser,
   socialPurgeRpc,
   summarizeDeletion,

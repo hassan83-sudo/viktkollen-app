@@ -206,9 +206,9 @@ export function validateStagingEnvironment({
     checks.push(route.includes('verifySupabaseUser')
       ? makeCheck('entitlement-auth-required', 'PASS', 'Entitlement route verifierar Supabase-session server-side.', false)
       : makeCheck('entitlement-auth-required', 'FAIL', 'Entitlement route saknar server-side authverifiering.'))
-    checks.push(route.includes('setNoStoreHeaders') && route.includes('mapEntitlementRowToSnapshot')
-      ? makeCheck('entitlement-safe-free-fallback', 'PASS', 'Entitlement route har no-store och safe free fallback.', false)
-      : makeCheck('entitlement-safe-free-fallback', 'FAIL', 'Entitlement route saknar no-store eller safe free fallback.'))
+    checks.push(route.includes('setNoStoreHeaders') && route.includes('legacy_compatibility_not_authority')
+      ? makeCheck('entitlement-safe-free-fallback', 'PASS', 'Entitlement route har no-store och är inte faktureringsauktoritet.', false)
+      : makeCheck('entitlement-safe-free-fallback', 'FAIL', 'Entitlement route saknar no-store eller kompatibilitetsmarkering.'))
   }
 
   if (files.exists('api/account-deletion/index.js')) {

@@ -4,9 +4,26 @@ import { getServerSubscription } from '../../_shared/billing/subscription.js'
 import { lookupBillingAdmin } from '../../_shared/billing/admin.js'
 import { readPlanComparison } from '../../_shared/billing/planComparisonRead.js'
 import { readUsageSnapshot } from '../../_shared/billing/usageSnapshotRead.js'
-import { mapEntitlementRowToSnapshot } from '../../_shared/entitlementMapper.js'
-import { createSupabaseAdminClient } from '../../_shared/supabaseServer.js'
 import { verifySupabaseUser } from '../../_shared/verifySupabaseUser.js'
+
+function legacyCompatibilityEntitlement(userId) {
+  return {
+    cancelAt: '',
+    cancelAtPeriodEnd: false,
+    currentPeriodEnd: '',
+    currentPeriodStart: '',
+    featureOverrides: {},
+    plan: 'free',
+    provider: 'none',
+    providerCustomerId: '',
+    providerSubscriptionId: '',
+    source: 'legacy-compatibility',
+    status: 'none',
+    syncedAt: '',
+    userId: String(userId || ''),
+    version: 1,
+  }
+}
 
 const PUBLIC_OPS = Object.freeze({
   '/api/billing/quota': 'quota',
@@ -18,46 +35,6 @@ const PUBLIC_OPS = Object.freeze({
 })
 
 const INTERNAL_OPS = Object.freeze(['quota', 'subscription', 'entitlements', 'plans', 'usage', 'capability'])
-
-const entitlementColumns = [
-  'user_id',
-  'plan',
-  'status',
-  'provider',
-  'provider_customer_id',
-  'provider_subscription_id',
-  'current_period_start',
-  'current_period_end',
-  'cancel_at_period_end',
-  'updated_at',
-].join(',')
-
-async function fetchEntitlementRow(client, userId) {
-  if (!client) {
-    return {
-      row: null,
-      verification: 'admin_client_unconfigured',
-    }
-  }
-
-  const { data, error } = await client
-    .from('user_entitlements')
-    .select(entitlementColumns)
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  if (error) {
-    return {
-      row: null,
-      verification: 'read_failed_safe_free',
-    }
-  }
-
-  return {
-    row: data || null,
-    verification: data ? 'server_verified' : 'missing_row_default_free',
-  }
-}
 
 function header(request, name) {
   const headers = request?.headers || {}
@@ -201,16 +178,13 @@ async function handleCapability(request, response, auth, requestId) {
 async function handleEntitlements(request, response, auth, requestId) {
   void request.query?.user_id
   void request.query?.plan
-  const result = await fetchEntitlementRow(createSupabaseAdminClient(), auth.user.id)
-  const entitlement = mapEntitlementRowToSnapshot(result.row, {
-    source: 'server-verified',
-    userId: auth.user.id,
-  })
   return response.status(200).json({
-    entitlement,
+    authority: 'none',
+    compatibility: true,
+    entitlement: legacyCompatibilityEntitlement(auth.user.id),
     ok: true,
     requestId,
-    verification: result.verification,
+    verification: 'legacy_compatibility_not_authority',
   })
 }
 
@@ -267,5 +241,5 @@ export default async function handler(request, response) {
 }
 
 export const entitlementRouteInternals = {
-  fetchEntitlementRow,
+  verification: 'legacy_compatibility_not_authority',
 }

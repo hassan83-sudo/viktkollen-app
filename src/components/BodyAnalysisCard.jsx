@@ -22,14 +22,7 @@ import { buildBodyAnalysisContext } from '../services/bodyAnalysisEstimates'
 import { analyzeBodyWithAI } from '../services/bodyAnalysisService'
 import { getBodyAnalysisProgressStats } from '../services/bodyAnalysisStats'
 import { safeLogger } from '../services/safeLogger'
-import {
-  createDefaultEntitlementSnapshot,
-  entitlementFeatures,
-  fetchVerifiedEntitlementSnapshot,
-  freeFeatureLimits,
-  getFeatureAccess,
-} from '../services/entitlements'
-import { getCurrentAiAuthorization } from '../services/ai/aiAuthTransport'
+import { loadBodyScanQuota, unavailableBodyScanQuota } from '../services/billing/bodyScanQuota.js'
 import {
   incrementPremiumAnalyticsCounter,
   premiumAnalyticsCounters,
@@ -350,31 +343,24 @@ function BodyAnalysisCard({
   const [timelineFilter, setTimelineFilter] = useState('all')
   const analysisApprovalRef = useRef(createOneShotAnalysisApproval())
   const analysisCount = analysisHistory.length
-  const [entitlementSnapshot, setEntitlementSnapshot] = useState(() =>
-    createDefaultEntitlementSnapshot({ userId }))
+  const [bodyScanQuota, setBodyScanQuota] = useState(unavailableBodyScanQuota)
+  const [bodyScanQuotaError, setBodyScanQuotaError] = useState('')
 
   useEffect(() => {
     let active = true
 
-    fetchVerifiedEntitlementSnapshot({
-      getAuthorization: getCurrentAiAuthorization,
-      userId,
-    }).then((result) => {
-      if (active) {
-        setEntitlementSnapshot(result.entitlement)
-      }
+    loadBodyScanQuota().then((result) => {
+      if (!active) return
+      setBodyScanQuota(result.quota)
+      setBodyScanQuotaError(result.ok ? '' : t('card.errors.quotaUnavailable'))
     })
 
     return () => {
       active = false
     }
-  }, [userId])
+  }, [t, userId])
 
-  const bodyAnalysisAccess = getFeatureAccess(entitlementSnapshot, entitlementFeatures.bodyAnalysis, {
-    devPreviewEnabled: isPremiumPreviewEnabled,
-    usage: { bodyAnalysisScans: analysisCount },
-  })
-  const isFreeLimitReached = !bodyAnalysisAccess.allowed
+  const isFreeLimitReached = !bodyScanQuota.allowed
   const scanPhotos = {
     back: backPhoto,
     front: frontPhoto,
@@ -387,9 +373,11 @@ function BodyAnalysisCard({
   })
   const canAnalyze =
     canCompleteBodyAnalysisScan(scanPhotos) && !isAnalyzing && !isFreeLimitReached
-  const analyzeDisabledReason = isFreeLimitReached
-    ? t('card.freeLimitReason')
-    : ''
+  const analyzeDisabledReason = bodyScanQuotaError
+    ? bodyScanQuotaError
+    : bodyScanQuota.remaining === 0
+      ? t('card.freeLimitReason')
+      : ''
   const latestAnalysisDate = analysisHistory[0]?.createdAt
   const historyStats = getHistoryStats(analysisHistory)
   const daysSinceLatestAnalysis = latestAnalysisDate
@@ -402,7 +390,9 @@ function BodyAnalysisCard({
     ? analysisStatus
     : analysisError
       ? t('card.status.failed')
-      : isFreeLimitReached
+      : bodyScanQuotaError
+        ? bodyScanQuotaError
+      : bodyScanQuota.remaining === 0
         ? t('card.status.freeLimit')
       : analysisStatus === t('card.status.resultReady')
         ? t('card.status.resultReady')
@@ -669,7 +659,7 @@ function BodyAnalysisCard({
 
   async function runBodyAnalysis() {
     if (isFreeLimitReached) {
-      setAnalysisError(t('card.errors.freeLimitKeep'))
+      setAnalysisError(bodyScanQuotaError || t('card.errors.freeLimitKeep'))
       return
     }
 
@@ -727,6 +717,9 @@ function BodyAnalysisCard({
         frontPhoto: storedFrontPhoto,
         sidePhoto: storedSidePhoto,
       })
+      const refreshed = await loadBodyScanQuota()
+      setBodyScanQuota(refreshed.quota)
+      setBodyScanQuotaError(refreshed.ok ? '' : t('card.errors.quotaUnavailable'))
     } catch (error) {
       setAnalysisError(
         error instanceof Error
@@ -745,7 +738,7 @@ function BodyAnalysisCard({
     setAnalysisError('')
 
     if (isFreeLimitReached) {
-      setAnalysisError(t('card.errors.freeLimitDelete'))
+      setAnalysisError(bodyScanQuotaError || t('card.errors.freeLimitDelete'))
       return
     }
 
@@ -790,7 +783,7 @@ function BodyAnalysisCard({
 
   function handleCreateDemoAnalysis() {
     if (isFreeLimitReached) {
-      setAnalysisError(t('card.errors.freeLimitDev'))
+      setAnalysisError(bodyScanQuotaError || t('card.errors.freeLimitDev'))
       return
     }
 
@@ -961,7 +954,7 @@ function BodyAnalysisCard({
           <BodyAnalysisPremiumPreview
             analysisCount={analysisCount}
             isPremiumPreviewEnabled={isPremiumPreviewEnabled}
-            localLimit={freeFeatureLimits[entitlementFeatures.bodyAnalysis]}
+            localLimit={Number.isFinite(bodyScanQuota.limit) ? bodyScanQuota.limit : 0}
             onTogglePremiumPreview={() => {
               setAnalysisError('')
               setIsPremiumPreviewEnabled((currentValue) => !currentValue)

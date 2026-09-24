@@ -95,7 +95,7 @@ describe('account deletion API route', () => {
     const response = await callRoute(createRequest({ body: { mode: 'dry-run' } }))
 
     expect(response.statusCode).toBe(200)
-    expect(response.body.readiness.deletionTables).toContain('user_entitlements')
+    expect(response.body.readiness.deletionTables).not.toContain('user_entitlements')
     expect(client.from).not.toHaveBeenCalled()
   })
 
@@ -116,6 +116,7 @@ describe('account deletion API route', () => {
     expect(client.deletedTables.length).toBeGreaterThan(1)
     expect(client.deletedTables.every((entry) => entry.column === 'user_id')).toBe(true)
     expect(client.deletedTables.every((entry) => entry.userId === 'user-a')).toBe(true)
+    expect(client.deletedTables.map((entry) => entry.table)).not.toContain('user_entitlements')
   })
 
   it('reports partial failure instead of pretending deletion completed', async () => {

@@ -51,7 +51,7 @@ describe('staging environment validator', () => {
       'api/adaptive-coach/index.js': 'verifySupabaseUser setNoStoreHeaders hasBlockedFields userId checkAiRouteRateLimit',
       'api/ai/index.js': 'verifySupabaseUser setNoStoreHeaders sendSafeAiError checkAiRouteRateLimit',
       'api/body-analysis/index.js': 'verifySupabaseUser setNoStoreHeaders sendSafeAiError checkAiRouteRateLimit',
-      'api/billing/user/index.js': 'verifySupabaseUser setNoStoreHeaders mapEntitlementRowToSnapshot',
+      'api/billing/user/index.js': 'verifySupabaseUser setNoStoreHeaders legacy_compatibility_not_authority',
       'api/meal-analysis/index.js': 'verifySupabaseUser setNoStoreHeaders sendSafeAiError checkAiRouteRateLimit',
       'api/nutrition-photo-analysis/index.js': 'verifySupabaseUser checkAiRouteRateLimit setNoStoreHeaders',
       'src/services/entitlements.js': '/api/entitlements Authorization import.meta.env.DEV',

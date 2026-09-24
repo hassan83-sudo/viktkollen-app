@@ -3,7 +3,6 @@ import { createSupabaseAdminClient } from '../_shared/supabaseServer.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 
 const deletionTables = Object.freeze([
-  { area: 'entitlement', name: 'user_entitlements' },
   { area: 'cloudData', name: 'user_sync_items' },
   { area: 'cloudData', name: 'user_sync_events' },
   { area: 'cloudData', name: 'user_sync_state' },

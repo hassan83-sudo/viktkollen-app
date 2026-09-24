@@ -418,3 +418,10 @@
 .bottom-nav a.is-active {
   background-color: #7c3aed;
 }
+
+/* A11Y-8G: the Viktkollen Live play/pause glyph is decorative (the button
+   is named "Pausa/Spela upp Viktkollen Live"), so it is drawn as CSS
+   content instead of DOM text that would not match the name. */
+.smart-feed-playback-glyph::before {
+  content: attr(data-glyph);
+}

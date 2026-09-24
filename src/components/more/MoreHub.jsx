@@ -109,8 +109,9 @@ function MoreHub({ activeFolder, children, isAuthenticated, onBack, onOpen, onOp
         {moreHubFolders.map((entry) => {
           const { description, title } = folderCopy(t, entry)
           return (
+            // A11Y-8G (WCAG 2.5.3): name from content (title + description;
+            // icon and chevron are aria-hidden) instead of a separate label.
             <button
-              aria-label={`${title}. ${description}`}
               className={`more-hub-folder accent-${entry.accent}`}
               key={entry.id}
               ref={(node) => {
@@ -121,7 +122,7 @@ function MoreHub({ activeFolder, children, isAuthenticated, onBack, onOpen, onOp
             >
               <span className="more-hub-folder-icon" aria-hidden="true">{entry.icon}</span>
               <span className="more-hub-folder-copy">
-                <strong>{title}</strong>
+                <strong>{title}</strong>{' '}
                 <small>{description}</small>
               </span>
               <span className="more-hub-folder-chevron" aria-hidden="true">›</span>

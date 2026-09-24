@@ -38,6 +38,7 @@ starts a browser.
      app's own setting, plus a control case that proves the detector works.
    - `landmarks.spec.js`: one exposed `main`, one `h1` per view, a valid skip
      link target, and named modal dialogs.
+   - `label-in-name.spec.js`: WCAG 2.5.3 and unique landmarks (see below).
    - `high-contrast.spec.js`: resolved high-contrast tokens (7:1 and 4.5:1) and a
      visible focus outline (at least 2px and 3:1).
 4. **Numeric contrast tests** for the 8B tokens
@@ -108,9 +109,31 @@ is not wired into any workflow yet.
 - The walkie-talkie is tested through a fixture, not in a real two-device call.
 - Speech and alarm audio are never played. Only the text and visual paths are
   verified.
-- axe's experimental `label-content-name-mismatch` rule (WCAG 2.5.3) is not
-  part of the gate. It currently reports that the accessible names of Hem
-  cards, Mer folders and the bottom navigation do not contain the visible label
-  word (for example, visible "Hem" but the name "Öppna översikten"). This is
-  follow-up work.
-- `landmark-unique` (moderate) on Hem: two regions share a name.
+- Body Scan's Home card keeps its own label. It is the one documented
+  exclusion in the label-in-name checks (`bodyScanCard` in
+  `label-in-name.spec.js` and `labelInName.test.jsx`).
+
+## Label in Name and landmarks (8G)
+
+- Controls that show text are named by that text (WCAG 2.5.3): the bottom
+  navigation, Mer folders, and the Hem cards and primary actions. Prefer the
+  name from content over an `aria-label` that says something else. If a
+  visible title and description are in separate elements, put `{' '}` between
+  them so the name gets a word break. In a flex or grid container it does not
+  render.
+- Decorative glyphs that would contradict the name, such as the Live
+  play/pause "II", are drawn with CSS `content` and the element is
+  `aria-hidden`.
+- A named region must be unique on the page. Name the outer section by its
+  visible heading (`aria-labelledby`) and leave a nested wrapper unnamed.
+- `tests/a11y/label-in-name.spec.js` runs axe's experimental
+  `label-content-name-mismatch` rule, enabled explicitly by rule id, together
+  with `landmark-unique` on Hem, Redo!, Plats, Min resa, Stället, Mer and
+  Tillgänglighet. It fails on any finding. It is kept apart from the WCAG-tag
+  gate in `axe-views.spec.js` because axe marks the rule experimental: axe does
+  not run it through tag sets, so it has to be named explicitly. The run is
+  deterministic because it uses fixed data and no network. The spec also reads
+  Chrome's own computed names through the DevTools accessibility tree.
+- For component tests, `src/test/a11y/names.js` provides
+  `labelInNameViolations` and `duplicateLandmarks`. They are used by
+  `src/components/a11y/labelInName.test.jsx`.

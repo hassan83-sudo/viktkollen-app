@@ -32,9 +32,10 @@ function BottomNavigation({
         const isActive = section.id === normalizedActiveSection
 
         return (
+          // A11Y-8G (WCAG 2.5.3): the name is the visible label (the icon is
+          // aria-hidden), so voice control can use what is on screen.
           <a
             aria-current={isActive ? 'page' : undefined}
-            aria-label={t(`sections.${section.id}.aria`)}
             className={isActive ? 'is-active' : ''}
             href={`#app-section-${section.id}`}
             key={section.id}

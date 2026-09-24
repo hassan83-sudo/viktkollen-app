@@ -83,16 +83,10 @@ export async function openApp(page, { preferences = null, clockAt = null, speech
   return { errors }
 }
 
-// Accessible names of the bottom navigation links (visible label -> name).
-export const bottomNavNames = Object.freeze({
-  Hem: 'Öppna översikten',
-  Mer: 'Öppna fler funktioner och inställningar',
-  Plats: 'Öppna Plats',
-  'Redo!': 'Öppna Redo!',
-})
-
+// A11Y-8G: bottom navigation links are named by their visible label
+// (WCAG 2.5.3), so the label is also the accessible name.
 export function bottomNavLink(page, label) {
-  return page.getByRole('navigation', { name: 'Huvudnavigation' }).getByRole('link', { name: bottomNavNames[label] || label, exact: true })
+  return page.getByRole('navigation', { name: 'Huvudnavigation' }).getByRole('link', { name: label, exact: true })
 }
 
 // Keyboard navigation to a main section via the bottom navigation.

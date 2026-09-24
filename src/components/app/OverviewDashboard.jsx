@@ -213,7 +213,9 @@ function SmartFeedCard({ liveContext }) {
           onClick={() => setIsPaused((current) => !current)}
           aria-label={isPaused || prefersReducedMotion ? t('live.play') : t('live.pause')}
         >
-          {isPaused || prefersReducedMotion ? '>' : 'II'}
+          {/* A11Y-8G: the play/pause glyph is an icon (CSS content), so the
+              visible text never contradicts the accessible name. */}
+          <span aria-hidden="true" className="smart-feed-playback-glyph" data-glyph={isPaused || prefersReducedMotion ? '>' : 'II'} />
         </button>
         <button type="button" onClick={showNext} aria-label={t('live.next')}>&gt;</button>
       </div>
@@ -741,7 +743,9 @@ function OverviewPrimaryActions({
           <button
             className="overview-primary-action-hit"
             type="button"
-            aria-label={action.hitLabel}
+            // A11Y-8G (WCAG 2.5.3): the name comes from the visible card text.
+            // The Body Scan card keeps its label (Body Scan is out of scope).
+            aria-label={action.accent === 'body' ? action.hitLabel : undefined}
             onClick={action.imageOnClick || action.onClick}
           >
             <span className="overview-primary-visual">
@@ -766,9 +770,9 @@ function OverviewPrimaryActions({
               </span>
             </span>
             <span className="overview-primary-action-copy">
-              <strong>{action.label}</strong>
+              <strong>{action.label}</strong>{' '}
               {action.description ? <small>{action.description}</small> : null}
-            </span>
+            </span>{' '}
             {action.accent === 'body' ? null : showTapPulse && !prefersReducedMotion ? (
               <span className="overview-tap-me is-pulse">{t('home:tapImage')}</span>
             ) : (
@@ -836,58 +840,60 @@ function OverviewTodayMood({
     : ''
 
   return (
-    <section className="overview-today-mood" aria-label={t('home:todayMood')}>
-      <button className="overview-mood-card is-wellbeing" type="button" onClick={onOpenWellbeing} aria-label={t('home:mood.openWellbeing')}>
+    // A11Y-8G: unnamed, so it does not repeat the region name of the Home
+    // section around it, which is already labelled by its visible heading.
+    <section className="overview-today-mood">
+      <button className="overview-mood-card is-wellbeing" type="button" onClick={onOpenWellbeing}>
         <span className="overview-mood-card-top">
           <OverviewIcon name="heart" />
           <span className="overview-mood-label">{t('home:mood.wellbeing')}</span>
-        </span>
-        <strong>{t('home:mood.wellbeingQuestion')}</strong>
-        <small>{t('home:mood.wellbeingHint')}</small>
+        </span>{' '}
+        <strong>{t('home:mood.wellbeingQuestion')}</strong>{' '}
+        <small>{t('home:mood.wellbeingHint')}</small>{' '}
         <span className="overview-mood-link">{t('home:mood.openWellbeing')}</span>
       </button>
 
-      <button className="overview-mood-card is-coach" type="button" onClick={onOpenCoach} aria-label={t('home:mood.openCoach')}>
-        <span className="overview-mood-label">{t('home:labels.aiCoach')}</span>
+      <button className="overview-mood-card is-coach" type="button" onClick={onOpenCoach}>
+        <span className="overview-mood-label">{t('home:labels.aiCoach')}</span>{' '}
         <span className="overview-mood-coach-body">
           <OverviewIcon name="robot" />
           <span>
-            <strong>{t('home:mood.askCoach')}</strong>
+            <strong>{t('home:mood.askCoach')}</strong>{' '}
             <small>{t('home:mood.writeOrTalk')}</small>
           </span>
-        </span>
+        </span>{' '}
         <span className="overview-mood-link">{t('home:mood.openCoach')}</span>
       </button>
 
-      <button className="overview-mood-card is-reminder" type="button" onClick={onOpenNotices} aria-label={t('home:mood.nextReminder')}>
+      <button className="overview-mood-card is-reminder" type="button" onClick={onOpenNotices}>
         <span className="overview-mood-card-top">
           <OverviewIcon name="bell" />
           <span className="overview-mood-label">{t('home:mood.nextReminder')}</span>
-        </span>
+        </span>{' '}
         {nextReminder.at ? (
           <>
-            <strong className="overview-mood-time">{nextReminderLabel}</strong>
-            <small>{nextReminder.title || t('home:mood.reminderReady')}</small>
+            <strong className="overview-mood-time">{nextReminderLabel}</strong>{' '}
+            <small>{nextReminder.title || t('home:mood.reminderReady')}</small>{' '}
           </>
         ) : (
           <>
-            <strong className="is-empty">{t('home:mood.noReminder')}</strong>
-            <small className="is-empty">{t('home:mood.openNotices')}</small>
+            <strong className="is-empty">{t('home:mood.noReminder')}</strong>{' '}
+            <small className="is-empty">{t('home:mood.openNotices')}</small>{' '}
           </>
-        )}
+        )}{' '}
         <span className="overview-mood-link">{t('home:mood.openLink')}</span>
       </button>
 
-      <button className="overview-mood-card is-notices" type="button" onClick={onOpenNotices} aria-label={t('home:mood.openNoticesCard')}>
+      <button className="overview-mood-card is-notices" type="button" onClick={onOpenNotices}>
         <span className="overview-mood-card-top">
           <OverviewIcon name="bell" />
           <span className="overview-mood-label">{t('home:mood.notices')}</span>
-        </span>
+        </span>{' '}
         {noticesCount > 0 ? (
           <strong>{t('home:mood.noticesCount', { count: noticesCount })}</strong>
         ) : (
           <strong className="is-empty">{t('home:mood.noNotices')}</strong>
-        )}
+        )}{' '}
         <span className="overview-mood-link">{t('home:mood.openLink')}</span>
       </button>
 
@@ -1301,7 +1307,9 @@ function OverviewDashboard({
       </div>
       </section>
 
-      <section className="overview-home-section" aria-label={t('home:labels.viktkollenLive')}>
+      {/* A11Y-8G: SmartFeedCard is the named "Viktkollen Live" region; this
+          wrapper stays unnamed so the name is not duplicated. */}
+      <section className="overview-home-section">
         <SmartFeedCard liveContext={liveContext} />
       </section>
 

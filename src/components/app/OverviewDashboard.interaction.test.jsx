@@ -52,7 +52,7 @@ describe('OverviewDashboard interactions', () => {
     const onOpenWellbeing = vi.fn()
     renderOverview({ onOpenWellbeing })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Öppna Må bra' }))
+    fireEvent.click(screen.getByRole('button', { name: /Öppna Må bra$/ }))
 
     expect(onOpenWellbeing).toHaveBeenCalledTimes(1)
   })

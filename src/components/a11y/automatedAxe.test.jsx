@@ -245,7 +245,8 @@ describe('automated accessibility regression suite (A11Y-8F)', () => {
       const nav = screen.getByRole('navigation', { name: 'Huvudnavigation' })
       const links = within(nav).getAllByRole('link')
       expect(links.length).toBeGreaterThanOrEqual(5)
-      links.forEach((link) => expect(link.getAttribute('aria-label')?.trim()).toBeTruthy())
+      // A11Y-8G: each link is named by its visible label (WCAG 2.5.3).
+      links.forEach((link) => expect(within(nav).getByRole('link', { name: link.querySelector('strong').textContent })).toBe(link))
       expect(links.filter((link) => link.getAttribute('aria-current') === 'page')).toHaveLength(1)
     })
   })

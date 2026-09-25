@@ -2,6 +2,22 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../services/supabaseClient.js'
 
 const PAID_PLAN_COUNT = 14
+const PROBE_CODES = new Set([
+  'AUTH_REQUIRED',
+  'FORBIDDEN',
+  'SERVICE_ROLE_UNAVAILABLE',
+  'SCHEMA_NOT_EXPOSED',
+  'PERMISSION_DENIED',
+  'POSTGREST_ERROR',
+])
+
+function probeNotice(payload) {
+  if (payload?.ok === true && payload?.billingPostgrestReachable === true) {
+    return 'PostgREST billing: OK'
+  }
+  const code = payload?.code || payload?.error?.code
+  return `PostgREST billing: ${PROBE_CODES.has(code) ? code : 'POSTGREST_ERROR'}`
+}
 
 async function adminFetch(token, path, options = {}) {
   const response = await fetch(path, {
@@ -23,6 +39,16 @@ const QUOTA_LABELS = Object.freeze([
   ['ai_eye', 'AI-Ögat'],
 ])
 
+function PostgrestProbe({ onRun, result }) {
+  return (
+    <div>
+      {/* Temporary BILL-5B3E diagnostic. Remove with /api/billing/postgrest-probe after HIGH #1 is verified. */}
+      <button type="button" onClick={onRun}>Testa PostgREST</button>
+      {result ? <p role="status">{result}</p> : null}
+    </div>
+  )
+}
+
 function formatCount(value) {
   return new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 0, useGrouping: true })
     .format(value)
@@ -38,6 +64,7 @@ function validPlans(payload) {
 
 export default function PlanCommercialAdmin() {
   const [notice, setNotice] = useState('')
+  const [probeResult, setProbeResult] = useState('')
   const [pendingId, setPendingId] = useState('')
   const [plans, setPlans] = useState([])
   const [status, setStatus] = useState('checking')
@@ -86,6 +113,16 @@ export default function PlanCommercialAdmin() {
     }
   }, [])
 
+  async function runPostgrestProbe() {
+    setProbeResult('')
+    try {
+      const { payload } = await adminFetch(token, '/api/billing/postgrest-probe', { method: 'POST' })
+      setProbeResult(probeNotice(payload))
+    } catch {
+      setProbeResult('PostgREST billing: POSTGREST_ERROR')
+    }
+  }
+
   async function persist(plan, body) {
     setNotice('')
     setPendingId(plan.plan_id)
@@ -112,6 +149,7 @@ export default function PlanCommercialAdmin() {
       <section className="app-information" aria-labelledby="plan-commercial-admin-title">
         <h3 id="plan-commercial-admin-title">Planer</h3>
         <p role="alert">Planstatus kunde inte läsas. Inga planer visas som tillgängliga.</p>
+        <PostgrestProbe onRun={runPostgrestProbe} result={probeResult} />
       </section>
     )
   }
@@ -123,6 +161,7 @@ export default function PlanCommercialAdmin() {
       <p>Att markera en plan som tillgänglig aktiverar inte köp eller checkout.</p>
       <p>PRELIMINARY / NOT FINALIZED</p>
       {notice ? <p role="alert">{notice}</p> : null}
+      <PostgrestProbe onRun={runPostgrestProbe} result={probeResult} />
       <ul>
         {plans.map((plan, index) => {
           const price = `${plan.price_sek_minor / 100} kr`

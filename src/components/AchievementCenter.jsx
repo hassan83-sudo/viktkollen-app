@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { appendAchievementEvents, normalizeAchievementState } from '../services/achievements/achievementLedger.js'
 import { buildAchievementEngine } from '../services/achievements/achievementEngine.js'
 import { normalizeGoalsHabitsState } from '../services/goalsHabits.js'
@@ -80,11 +80,24 @@ function formatAchievementDate(value) {
 function AchievementCard({ achievement, onAcknowledge }) {
   const locked = achievement.status === 'locked'
   const newlyUnlocked = achievement.status === 'unlocked' && !achievement.acknowledged
+  const cardRef = useRef(null)
+  const focusCardRef = useRef(false)
+
+  // A11Y-8U (8T B-8T-N1): "Markera sedd" removes itself. When it had focus,
+  // focus moves to its card (tabIndex -1, not a Tab stop), which stays and is
+  // announced by its name, instead of falling back to <body>.
+  useEffect(() => {
+    if (!focusCardRef.current || !achievement.acknowledged) return
+    focusCardRef.current = false
+    cardRef.current?.focus()
+  }, [achievement.acknowledged])
 
   return (
     <article
       aria-label={`${achievement.title}, ${statusLabels[achievement.status] || statusLabels.locked}`}
       className={`achievement-card achievement-card-${achievement.status}${newlyUnlocked ? ' achievement-card-new' : ''}`}
+      ref={cardRef}
+      tabIndex={-1}
     >
       <div>
         <p className="eyebrow">{categoryLabels[achievement.category] || achievement.category}</p>
@@ -104,7 +117,10 @@ function AchievementCard({ achievement, onAcknowledge }) {
           aria-label={`Markera sedd: ${achievement.title}`}
           className="secondary-button"
           type="button"
-          onClick={() => onAcknowledge(achievement.definitionId)}
+          onClick={(event) => {
+            focusCardRef.current = event.currentTarget === event.currentTarget.ownerDocument.activeElement
+            onAcknowledge(achievement.definitionId)
+          }}
         >
           Markera sedd
         </button>

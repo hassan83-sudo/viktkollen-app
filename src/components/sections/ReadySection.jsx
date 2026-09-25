@@ -88,8 +88,26 @@ function ReadySection({ activeSection, onNavigateSection, onOpenCompanion, onOpe
     setPendingForgotLabel(label)
   }
 
+  // A11Y-8U (8T B-8T-N1): the dialog returns focus to its opener, the deleted
+  // item's delete button, which is removed right after, so focus fell to
+  // <body>. After a confirmed delete focus moves to the delete button of the
+  // item that takes its place, else the previous one, else the add field.
+  const deletedIndexRef = useRef(null)
+
+  useEffect(() => {
+    const index = deletedIndexRef.current
+    if (index === null) return
+    deletedIndexRef.current = null
+    const section = document.getElementById('app-section-redo')
+    const rows = [...(section?.querySelectorAll('.ready-item-list > li') || [])]
+    const row = rows[index] || rows[index - 1]
+    const target = row?.querySelector('.ready-item-delete') || section?.querySelector('.ready-add-form input')
+    target?.focus()
+  }, [state.items])
+
   function handleDeleteConfirmed() {
     if (!deleteId) return
+    deletedIndexRef.current = state.items.findIndex((item) => item.id === deleteId)
     commitState((current) => removeItem(current, deleteId))
     setDeleteId('')
   }

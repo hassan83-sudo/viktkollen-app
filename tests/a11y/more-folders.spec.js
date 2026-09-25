@@ -11,9 +11,10 @@ import { tabStops } from './support/hiddenFocus.js'
 // - focus: Tab through the folder; no Tab stop may be visually hidden,
 //   transparent, off-screen or without a focus indicator (C-N2, see
 //   support/hiddenFocus.js);
-// - reflow (A11Y-8P, 8M A-N1): the folder does not scroll sideways at the
-//   default 390 px width (WCAG 1.4.10). Narrower widths, 200 % and large text
-//   are covered for Mat in mat-reflow.spec.js.
+// - reflow (A11Y-8P, 8M A-N1; A11Y-8U, 8T C-8T-N1): the folder does not
+//   scroll sideways at 390 px, at the WCAG 1.4.10 width of 320 px, and at
+//   320 px with extra large text and large controls. 200 % and more Mat
+//   panels are covered in mat-reflow.spec.js.
 //
 // Coverage is checked against the app's own folder list, so a folder that is
 // added to Mer, or dropped from `coveredFolders`, fails the suite.
@@ -64,8 +65,8 @@ function folderButton(page, folder) {
   return page.locator('#app-section-more').getByRole('button', { name: new RegExp(`^${title}`) }).first()
 }
 
-async function openFolder(page, folder) {
-  await openApp(page, { reducedMotion: 'reduce' })
+async function openFolder(page, folder, preferences = null) {
+  await openApp(page, { preferences, reducedMotion: 'reduce' })
   await goToSection(page, 'Mer', 'more')
   const button = folderButton(page, folder)
   await button.focus()
@@ -101,9 +102,13 @@ for (const id of coveredFolders) {
       for (const entry of known) expect(blocking.map((violation) => violation.id), `stale baseline: ${entry.rule} (${entry.finding}) no longer reproduces; remove it`).toContain(entry.rule)
     })
 
-    test('reflow: no horizontal scroll', async ({ page }) => {
+    test('reflow: no horizontal scroll at 390 px, 320 px and 320 px with extra large text', async ({ page }) => {
       await openFolder(page, folder)
-      expect(await horizontalOverflow(page), 'page scrolls horizontally (px)').toBeLessThanOrEqual(1)
+      expect(await horizontalOverflow(page), '390 px: page scrolls horizontally (px)').toBeLessThanOrEqual(1)
+      await page.setViewportSize({ height: 640, width: 320 })
+      await expect.poll(() => horizontalOverflow(page), { message: '320 px: page scrolls horizontally (px)' }).toBeLessThanOrEqual(1)
+      await openFolder(page, folder, { largeControls: true, textSize: 'extra-large' })
+      expect(await horizontalOverflow(page), '320 px, extra large text: page scrolls horizontally (px)').toBeLessThanOrEqual(1)
     })
 
     test('focus: every Tab stop is visible and has a focus indicator', async ({ page }) => {

@@ -7,11 +7,20 @@ function SeniorEverydaySection({ onOpenEye }) {
   const [medicineTime, setMedicineTime] = useState('08:00')
   const [medicines, setMedicines] = useState([])
   const [complaint, setComplaint] = useState('')
+  // A11Y-8U (8T B-8T-N4): an empty or blank name is not saved, and the user
+  // is told why, as in Redo (8Q): a visible message in a polite status
+  // region, linked with aria-describedby, and aria-invalid until the name
+  // changes. Focus stays where the form was submitted from.
+  const [medicineError, setMedicineError] = useState('')
 
   function addMedicine(event) {
     event.preventDefault()
     const name = medicineName.trim()
-    if (!name) return
+    if (!name) {
+      setMedicineError('Skriv namnet på medicinen innan du lägger till.')
+      return
+    }
+    setMedicineError('')
     setMedicines((current) => [...current, { id: `${Date.now()}-${name}`, name, time: medicineTime, taken: false }])
     setMedicineName('')
   }
@@ -46,7 +55,16 @@ function SeniorEverydaySection({ onOpenEye }) {
         <form onSubmit={addMedicine} className="form-grid">
           <label>
             Medicin
-            <input value={medicineName} onChange={(event) => setMedicineName(event.target.value)} placeholder="Namn" />
+            <input
+              aria-describedby={medicineError ? 'senior-medicine-error' : undefined}
+              aria-invalid={medicineError ? true : undefined}
+              value={medicineName}
+              onChange={(event) => {
+                if (medicineError) setMedicineError('')
+                setMedicineName(event.target.value)
+              }}
+              placeholder="Namn"
+            />
           </label>
           <label>
             Tid
@@ -54,6 +72,7 @@ function SeniorEverydaySection({ onOpenEye }) {
           </label>
           <button className="primary-button" type="submit">Lägg till</button>
         </form>
+        <p className="form-feedback-error" id="senior-medicine-error" role="status">{medicineError}</p>
         {medicines.map((item) => (
           <button className="secondary-button" key={item.id} type="button" onClick={() => toggleMedicine(item.id)}>
             {item.taken ? '✓ Tagen' : '○ Inte markerad'} · {item.time} · {item.name}

@@ -687,3 +687,59 @@ html {
     background: CanvasText;
   }
 }
+
+/* --------------------------------------------------------------------------
+   A11Y-8U: fixes from the 8T gap audit.
+   -------------------------------------------------------------------------- */
+
+/* 8T B-8T-N1: an achievement card receives focus (tabindex -1, not a Tab
+   stop) after its "Markera sedd" button is removed. */
+.achievement-card:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* 8T B-8T-N2: Må bra accordion headers. The meta text ("Ingenting sparas
+   förrän du väljer …") was flex-shrink: 0 and pushed the +/- icon (and with
+   large text itself) outside the page at 320 px. It may now shrink and wrap. */
+.wellbeing-accordion-trigger-meta {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 8T B-8T-N3: Home clamps the coach advice and the smart notification text
+   to four lines. With enlarged text the advice was cut; the whole text is
+   shown then (normal text size is unchanged). */
+:root:is([data-a11y-text-size='large'], [data-a11y-text-size='extra-large']) #app-section-home.is-active :is(.daily-coach-advice, .smart-notifications-content > span) {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: none;
+}
+
+/* 8T B-8T-N4: form feedback message (65+ medicine form), same look as the
+   Redo message (8Q). Always in the DOM, no space while empty. */
+.form-feedback-error {
+  margin: 0;
+}
+
+.form-feedback-error:not(:empty) {
+  margin-top: 8px;
+  color: #fecaca;
+  font-weight: 700;
+}
+
+:root[data-a11y-high-contrast='true'] .form-feedback-error:not(:empty) {
+  color: #ffffff;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+}
+
+/* 8T B-8T-N8: "Ring 112" is an inline link, 19 px high. It is an emergency
+   action, so its hit area is at least 24 px high without relying on the
+   spacing exception. */
+.education-urgent a[href^='tel:'] {
+  display: inline-block;
+  min-height: 24px;
+  padding-block: 3px;
+}

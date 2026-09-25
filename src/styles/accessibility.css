@@ -586,3 +586,59 @@ html {
   outline-offset: 3px;
   border-radius: 4px;
 }
+
+/* --------------------------------------------------------------------------
+   A11Y-8R: target size (WCAG 2.5.8) and large text (1.4.4 / 1.4.10).
+   -------------------------------------------------------------------------- */
+
+/* 8M B5: the Home text links "Visa fler råd" and "Visa alla" were 14 px
+   high (App.css sets min-height 0 and padding 0). They get a 24 px high hit
+   area. The extra padding is taken back from the margins, so the text stays
+   exactly where it was: "Visa fler råd" has a 12 px top margin (7 + 24 - 5 =
+   12 + 14), "Visa alla" is centred in a grid row with no margin (-5 + 24 - 5
+   = 14). With large controls both are already 44 px, so no compensation. */
+#app-section-home.is-active :is(.daily-coach-more, .smart-notifications-meta .secondary-button) {
+  min-height: 24px;
+  padding-block: 5px;
+}
+
+:root:not([data-a11y-large-controls='true']) #app-section-home.is-active .daily-coach-more {
+  margin-top: 7px;
+  margin-bottom: -5px;
+}
+
+:root:not([data-a11y-large-controls='true']) #app-section-home.is-active .smart-notifications-meta .secondary-button {
+  margin-block: -5px;
+}
+
+/* 8M B-N2: Må bra reason checkboxes. The label is the hit area; it was
+   22 px high. (The other checkboxes found in 8M already have labels of at
+   least 28 px, see docs/accessibility/A11Y_8R_TARGETS_LARGE_TEXT.md.) */
+.wellbeing-reasons label {
+  min-height: 24px;
+}
+
+/* 8M B-N3: "Varför detta råd?" / "Varför visas detta?" were 19 px high. */
+.coach-v2-recommendation summary,
+.insight-card details summary {
+  min-height: 24px;
+  padding-block: 3px;
+  box-sizing: border-box;
+}
+
+/* 8M B8: Redo tiles. "Inget planerat ännu" (and any next-event title) was
+   cut with an ellipsis (nowrap), even at normal text size; it wraps now and
+   the tile grows in height. With enlarged text a word such as
+   "Minnesträning" no longer fitted a third of the row and was clipped by
+   .ready-shell: the quick actions use two columns then (as they already do
+   below 375 px), so each word fits whole. */
+#app-section-redo .ready-info-tile-copy span {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+:root:is([data-a11y-text-size='large'], [data-a11y-text-size='extra-large']) #app-section-redo .ready-quick-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}

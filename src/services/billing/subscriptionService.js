@@ -163,6 +163,52 @@ export function createSubscriptionService({
     return row
   }
 
+  async function scheduleNextPeriodPlanChange({
+    actor_user_id = null,
+    clientClaim = {},
+    external_event_id,
+    plan_id,
+    subscription_id,
+  }) {
+    rejectClientSubscriptionClaim(clientClaim)
+    void clientClaim.pending_plan_change
+    void clientClaim.payment_success
+    const eventId = String(external_event_id || '').trim()
+    if (!/^[A-Za-z0-9._:-]+$/.test(eventId) || eventId.length > 120) {
+      const error = new Error('invalid_event_id')
+      error.code = 'invalid_event_id'
+      throw error
+    }
+    if (actor_user_id) await ownedRow(subscription_id, actor_user_id)
+    const prior = (await store.listEvents()).find((event) => event.external_event_id === eventId)
+    if (prior || await store.getByExternalEventId(eventId)) {
+      if (prior?.operation === 'plan.schedule' && prior.to_pending_plan_id === plan_id) {
+        return store.get(prior.subscription_id)
+      }
+      const error = new Error('duplicate_external_event')
+      error.code = 'duplicate_external_event'
+      throw error
+    }
+    const current = await store.get(subscription_id)
+    if (!current) {
+      const error = new Error('subscription_not_found')
+      error.code = 'subscription_not_found'
+      throw error
+    }
+    const target = getPlanById(plan_id, catalog)
+    if (!target || target.active !== true || target.id === 'plan.free' || target.id === current.plan_id) {
+      const error = new Error('invalid_pending_plan')
+      error.code = 'invalid_pending_plan'
+      throw error
+    }
+    return store.schedulePendingPlan({
+      createdAt: now().toISOString(),
+      externalEventId: eventId,
+      pendingPlanId: target.id,
+      subscriptionId: subscription_id,
+    })
+  }
+
   async function scheduleCancelAtPeriodEnd({
     actor_user_id = null,
     clientClaim = {},
@@ -268,6 +314,7 @@ export function createSubscriptionService({
     finalizeOpenSubscription,
     resolveForUser,
     scheduleCancelAtPeriodEnd,
+    scheduleNextPeriodPlanChange,
     transition,
   }
 }

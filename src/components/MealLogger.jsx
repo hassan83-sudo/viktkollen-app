@@ -24,6 +24,7 @@ import {
   historyRangeOptions,
   summarizeMeals,
 } from '../services/nutrition/mealHistoryRange.js'
+import DateTimeDialog from './a11y/DateTimeDialog.jsx'
 import DailyNutritionSummary from './nutrition/DailyNutritionSummary.jsx'
 import DietaryPreferencesPanel from './nutrition/DietaryPreferencesPanel.jsx'
 import FavoriteMeals from './nutrition/FavoriteMeals.jsx'
@@ -148,6 +149,8 @@ function MealLogger({
   const fileInputRef = useRef(null)
   const [draft, setDraft] = useState(() => getEmptyMeal(selectedMealDate))
   const [editingFavoriteId, setEditingFavoriteId] = useState('')
+  // A11Y-8X1: date and time for "Kopiera" and a favourite ({ kind, item }).
+  const [dateTimeRequest, setDateTimeRequest] = useState(null)
   const [editingMealId, setEditingMealId] = useState('')
   const [errors, setErrors] = useState({})
   const [favoriteSearch, setFavoriteSearch] = useState('')
@@ -416,13 +419,10 @@ function MealLogger({
   }
 
   function copyMeal(meal) {
-    const date = window.prompt(t('logger.prompts.copyDate'), selectedMealDate)
+    setDateTimeRequest({ item: meal, kind: 'copy' })
+  }
 
-    if (!date) {
-      return
-    }
-
-    const time = window.prompt(t('logger.prompts.copyTime'), getCurrentTimeString()) || getCurrentTimeString()
+  function copyMealTo(meal, date, time) {
     const copiedMeal = {
       ...meal,
       createdAt: new Date().toISOString(),
@@ -458,15 +458,17 @@ function MealLogger({
   }
 
   function addFavoriteAsMeal(favorite) {
-    const date = window.prompt(t('logger.prompts.favoriteDate'), selectedMealDate)
+    setDateTimeRequest({ item: favorite, kind: 'favorite' })
+  }
 
-    if (!date) {
+  function saveDateTimeRequest(date, time) {
+    const { item, kind } = dateTimeRequest
+    setDateTimeRequest(null)
+    if (kind === 'copy') {
+      copyMealTo(item, date, time)
       return
     }
-
-    const time = window.prompt(t('logger.prompts.favoriteTime'), getCurrentTimeString()) || getCurrentTimeString()
-
-    onMealsChange([favoriteToMeal(favorite, date, time), ...normalizedMeals])
+    onMealsChange([favoriteToMeal(item, date, time), ...normalizedMeals])
   }
 
   function addTemplateFromRecommendation(template) {
@@ -930,6 +932,16 @@ function MealLogger({
           onSaveTemplate={saveMealTemplate}
         />
       </div>
+      {dateTimeRequest && (
+        <DateTimeDialog
+          initialDate={selectedMealDate}
+          initialTime={getCurrentTimeString()}
+          saveLabel={t(dateTimeRequest.kind === 'copy' ? 'logger.dateTimeDialog.copy' : 'logger.dateTimeDialog.add')}
+          title={t(dateTimeRequest.kind === 'copy' ? 'logger.dateTimeDialog.copyTitle' : 'logger.dateTimeDialog.favoriteTitle', { name: dateTimeRequest.item.name })}
+          onCancel={() => setDateTimeRequest(null)}
+          onSave={saveDateTimeRequest}
+        />
+      )}
     </article>
   )
 }

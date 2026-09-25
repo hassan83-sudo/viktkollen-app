@@ -796,3 +796,50 @@ html {
     font-size: 1.5rem;
   }
 }
+
+/* 8M B13 (A11Y-8X1): date and time dialog that replaces window.prompt in
+   MealLogger and ProgressCenter. Same sheet as the Ready and Place modals. */
+.date-time-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(2, 6, 18, 0.62);
+}
+
+.date-time-dialog {
+  position: fixed;
+  inset: auto 12px max(88px, calc(env(safe-area-inset-bottom) + 72px)) 12px;
+  max-width: 520px;
+  margin-inline: auto;
+  max-height: min(80vh, 560px);
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid rgba(120, 150, 255, 0.28);
+  border-radius: 20px;
+  color: var(--text, #f8fafc);
+  background: rgba(8, 12, 28, 0.98);
+}
+
+.date-time-dialog h2 {
+  margin: 0 0 6px;
+  font-size: 1.2rem;
+}
+
+.date-time-dialog .field {
+  margin-bottom: 12px;
+}
+
+.date-time-dialog input {
+  min-height: 44px;
+}
+
+.date-time-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.date-time-dialog-actions button {
+  min-height: 44px;
+}

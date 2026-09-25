@@ -5,6 +5,13 @@ import { placeEn, placeSv, readyEn, readySv } from './readyPlaceResources.js'
 const sv = {
   common: {
     appName: 'Viktkollen',
+    dateTimeDialog: {
+      date: 'Datum',
+      time: 'Tid',
+      hint: 'Datum anges som ÅÅÅÅ-MM-DD och tid som TT:MM.',
+      invalidDate: 'Ange ett giltigt datum (ÅÅÅÅ-MM-DD).',
+      invalidTime: 'Ange en giltig tid (TT:MM).',
+    },
     actions: {
       cancel: 'Avbryt',
       close: 'Stäng',
@@ -1553,6 +1560,10 @@ const sv = {
         clearReports: 'Vill du rensa all lokal rapporthistorik?',
         replaceImport: 'Detta ersätter endast lokal vikt- och framstegsdata. Vill du fortsätta?',
       },
+      dateTimeDialog: {
+        copy: 'Kopiera',
+        copyTitle: 'Kopiera vikten {{value}} kg från {{date}}',
+      },
       prompts: {
         copyDate: 'Vilket datum ska kopian få? (ÅÅÅÅ-MM-DD)',
         copyTime: 'Vilken tid ska kopian få? (TT:MM)',
@@ -1648,6 +1659,12 @@ const sv = {
         deleteFavorite: 'Vill du ta bort den här favoriten?',
         clearGoals: 'Vill du rensa alla kostmål?',
         replaceImport: 'Detta ersätter endast kostdata lokalt. Vill du fortsätta?',
+      },
+      dateTimeDialog: {
+        add: 'Lägg till',
+        copy: 'Kopiera',
+        copyTitle: 'Kopiera {{name}}',
+        favoriteTitle: 'Lägg till {{name}}',
       },
       prompts: {
         copyDate: 'Vilket datum ska kopian få? (ÅÅÅÅ-MM-DD)',
@@ -1864,6 +1881,13 @@ const sv = {
 const en = {
   common: {
     appName: 'Viktkollen',
+    dateTimeDialog: {
+      date: 'Date',
+      time: 'Time',
+      hint: 'Enter the date as YYYY-MM-DD and the time as HH:MM.',
+      invalidDate: 'Enter a valid date (YYYY-MM-DD).',
+      invalidTime: 'Enter a valid time (HH:MM).',
+    },
     actions: {
       cancel: 'Cancel',
       close: 'Close',
@@ -3412,6 +3436,10 @@ const en = {
         clearReports: 'Do you want to clear all local report history?',
         replaceImport: 'This replaces only local weight and progress data. Do you want to continue?',
       },
+      dateTimeDialog: {
+        copy: 'Copy',
+        copyTitle: 'Copy the weight {{value}} kg from {{date}}',
+      },
       prompts: {
         copyDate: 'Which date should the copy get? (YYYY-MM-DD)',
         copyTime: 'Which time should the copy get? (HH:MM)',
@@ -3507,6 +3535,12 @@ const en = {
         deleteFavorite: 'Do you want to remove this favorite?',
         clearGoals: 'Do you want to clear all nutrition goals?',
         replaceImport: 'This replaces nutrition data locally only. Do you want to continue?',
+      },
+      dateTimeDialog: {
+        add: 'Add',
+        copy: 'Copy',
+        copyTitle: 'Copy {{name}}',
+        favoriteTitle: 'Add {{name}}',
       },
       prompts: {
         copyDate: 'Which date should the copy get? (YYYY-MM-DD)',

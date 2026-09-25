@@ -1,5 +1,6 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import DateTimeDialog from './a11y/DateTimeDialog.jsx'
 import {
   addDays,
   analyzeBodyMeasurements,
@@ -525,7 +526,7 @@ function WeightHistory({
               </div>
               <div className="progress-actions">
                 <button className="secondary-button" type="button" onClick={() => onEdit(entry)}>{t('center.history.edit')}</button>
-                <button className="secondary-button" type="button" onClick={() => onCopy(entry)}>{t('center.history.copy')}</button>
+                <button className="secondary-button" data-copy-weight-id={entry.id} type="button" onClick={() => onCopy(entry)}>{t('center.history.copy')}</button>
                 <button className="secondary-button danger-button" type="button" onClick={() => onDelete(entry.id)}>{t('common:remove')}</button>
               </div>
             </article>
@@ -861,6 +862,20 @@ function ProgressCenter({
   const [weightDraft, setWeightDraft] = useState(() => getEmptyWeightDraft(normalizedWeights.at(-1)))
   const [measurementDraft, setMeasurementDraft] = useState(() => getEmptyMeasurementDraft())
   const [editingWeightId, setEditingWeightId] = useState('')
+  const [copyWeightEntry, setCopyWeightEntry] = useState(null)
+  // The weight list is rebuilt (new ids) when a weight is added, so the
+  // "Kopiera" button that opened the dialog is gone after a save. Focus goes
+  // to the same entry's new "Kopiera" button instead of <body>.
+  const copyFocusDateRef = useRef('')
+  useEffect(() => {
+    const date = copyFocusDateRef.current
+    const entry = date ? normalizedWeights.find((item) => item.date === date) : null
+    if (!entry) return
+    copyFocusDateRef.current = ''
+    const active = document.activeElement
+    if (active && active !== document.body && active.isConnected) return
+    document.querySelector(`[data-copy-weight-id="${CSS.escape(entry.id)}"]`)?.focus()
+  }, [normalizedWeights])
   const [editingMeasurementId, setEditingMeasurementId] = useState('')
   const [weightErrors, setWeightErrors] = useState({})
   const [measurementErrors, setMeasurementErrors] = useState({})
@@ -968,15 +983,15 @@ function ProgressCenter({
     }
   }
 
+  // A11Y-8X1: date and time for the copy come from DateTimeDialog.
   function copyWeight(entry) {
-    const date = window.prompt(t('center.prompts.copyDate'), entry.date)
+    setCopyWeightEntry(entry)
+  }
 
-    if (!date) {
-      return
-    }
-
-    const time = window.prompt(t('center.prompts.copyTime'), entry.time) || entry.time
-
+  function saveCopiedWeight(date, time) {
+    const entry = copyWeightEntry
+    copyFocusDateRef.current = entry.date
+    setCopyWeightEntry(null)
     onWeightsChange(upsertWeight(normalizedWeights, copyWeightToDate(entry, date, time)))
   }
 
@@ -1321,6 +1336,16 @@ function ProgressCenter({
         onToggleImages={() => setIncludeImages((current) => !current)}
       />
       </>
+      )}
+      {copyWeightEntry && (
+        <DateTimeDialog
+          initialDate={copyWeightEntry.date}
+          initialTime={copyWeightEntry.time}
+          saveLabel={t('center.dateTimeDialog.copy')}
+          title={t('center.dateTimeDialog.copyTitle', { date: copyWeightEntry.date, value: String(copyWeightEntry.value).replace('.', ',') })}
+          onCancel={() => setCopyWeightEntry(null)}
+          onSave={saveCopiedWeight}
+        />
       )}
     </article>
   )

@@ -130,7 +130,14 @@ describe('AI Nutrition Coach V2 insights', () => {
     expect(markup).toContain('Dina insikter')
     expect(markup).toContain('Föreslagen åtgärdsplan')
     expect(markup).toContain('Fråga coachen')
-    expect(markup).toContain('aria-live')
+    // A11Y-8V (8T B-8T-N6): the panel is a region named by its heading. The
+    // overview (summary and the whole dl) is not a live region, so a data
+    // change does not read out the whole block.
+    expect(markup).toContain('<section class="panel ai-nutrition-insights" id="insikter" aria-labelledby="insights-heading">')
+    expect(markup).toContain('<h2 id="insights-heading">Dina insikter</h2>')
+    expect(markup).toContain('<div class="insight-overview"><p>')
+    expect(markup).toContain('<dt>Nästa steg</dt>')
+    expect(markup).not.toMatch(/insight-overview"[^>]*aria-live|ai-nutrition-insights"[^>]*aria-live/)
     expect(markup).not.toMatch(/NaN|undefined|null|\[object Object\]/)
   })
 

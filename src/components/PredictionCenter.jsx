@@ -35,7 +35,7 @@ function TrendGraph({ points }) {
   if (!points.length) return null
 
   return (
-    <div className="report-v3-grid compact" aria-label="Härledda trendvärden">
+    <div className="report-v3-grid compact" role="group" aria-label="Härledda trendvärden">
       {points.map((point) => (
         <div className="report-v3-card" key={point.id}>
           <span>{point.label}</span>

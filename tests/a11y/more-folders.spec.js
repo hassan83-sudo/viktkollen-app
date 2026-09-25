@@ -39,10 +39,12 @@ const coveredFolders = [
 // A11Y_8M_POST_FIX_AUDIT.md) that belong to later sprints. Nothing else may
 // be listed here. Each entry is one exact rule in one exact folder. An entry
 // that no longer reproduces fails the suite, so it is removed when fixed.
-const knownAxeFindings = [
-  { folder: 'ai-coach', rule: 'aria-prohibited-attr', finding: '8M A-N3: aria-label on progress <div> without a role (AchievementCenter)', sprint: 'A11Y-8O' },
-  { folder: 'ai-coach', rule: 'color-contrast', finding: '8M A-N2: achievement headings and active filter chip below 4.5:1 (AchievementCenter)', sprint: 'A11Y-8O' },
-]
+// A11Y-8O fixed and removed: ai-coach aria-prohibited-attr (8M A-N3) and
+// ai-coach color-contrast (8M A-N2).
+const knownAxeFindings = []
+
+// Folders that are clean at the moderate level too, and must stay so.
+const moderateGatedFolders = ['ai-coach']
 
 const knownFocusFindings = [
   {
@@ -84,11 +86,12 @@ for (const id of coveredFolders) {
   const folder = moreHubFolders.find((candidate) => candidate.id === id)
 
   test.describe(`Mer: ${folder?.title || id}`, () => {
-    test('axe: no critical or serious violations beyond the documented 8M baseline', async ({ page }, testInfo) => {
+    test('axe: no critical or serious (moderate where gated) violations beyond the documented 8M baseline', async ({ page }, testInfo) => {
       await openFolder(page, folder)
       const violations = await runAxe(page)
       await testInfo.attach(`axe-more-${id}.json`, { body: JSON.stringify(violations, null, 2), contentType: 'application/json' })
-      const blocking = violations.filter((violation) => ['critical', 'serious'].includes(violation.impact))
+      const gate = moderateGatedFolders.includes(id) ? ['critical', 'serious', 'moderate'] : ['critical', 'serious']
+      const blocking = violations.filter((violation) => gate.includes(violation.impact))
       const known = knownAxeFindings.filter((entry) => entry.folder === id)
       const unexpected = blocking.filter((violation) => !known.some((entry) => entry.rule === violation.id))
       expect(unexpected.map((violation) => `[${violation.impact}] ${violation.id}: ${violation.nodes.map((node) => node.target).join(' | ')}`)).toEqual([])

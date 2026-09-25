@@ -524,3 +524,21 @@ html {
   height: 24px;
   margin: 0;
 }
+
+/* --------------------------------------------------------------------------
+   A11Y-8O (8M A-N2): AI Coach → Achievements and Socialt stöd.
+   The achievement sections and social cards kept a light-theme background
+   (white at 55 % / 72 %) under the dark theme's light text (2.0:1 and
+   1.3:1). They use the dark theme's own soft surface instead. The active
+   filter chip had white text on cyan (1.8:1); it uses the dark text of the
+   app's cyan buttons, also on hover, where the theme turns every button cyan.
+   -------------------------------------------------------------------------- */
+.achievement-center .achievement-section,
+.social-center .social-card {
+  background: var(--soft-bg);
+}
+
+.achievement-center .achievement-filter button.is-active,
+.achievement-center .achievement-filter button:hover:not(:disabled) {
+  color: #020617;
+}

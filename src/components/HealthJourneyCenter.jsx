@@ -168,7 +168,7 @@ function HealthJourneyCenter({
         </article>
       </div>
 
-      <div className="report-v3-actions" aria-label="Journey-filter">
+      <div className="report-v3-actions" role="group" aria-label="Journey-filter">
         <label>
           <span>Tema</span>
           <select value={filters.theme} onChange={(event) => updateFilter('theme', event.target.value)}>

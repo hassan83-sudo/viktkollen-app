@@ -1,6 +1,6 @@
 function QuickActions({ onStarterPrompt, starterPrompts }) {
   return (
-    <div className="starter-prompts" aria-label="Förslag på frågor">
+    <div className="starter-prompts" role="group" aria-label="Förslag på frågor">
       {starterPrompts.map((prompt) => (
         <button
           className="prompt-chip"

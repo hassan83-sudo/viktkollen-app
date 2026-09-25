@@ -7,11 +7,29 @@ function safePercent(value) {
   return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0
 }
 
-function ProgressBar({ label, value }) {
+// A11Y-8O (8M A-N3): a bar whose value is not shown as text is a named
+// progressbar. A bar next to a visible "1 av 3" text only repeats that text,
+// so it is hidden from assistive technology.
+function ProgressBar({ label = '', value }) {
   const percent = safePercent(value)
 
+  if (!label) {
+    return (
+      <div className="achievement-progress" aria-hidden="true">
+        <span style={{ width: `${percent}%` }} />
+      </div>
+    )
+  }
+
   return (
-    <div className="achievement-progress" aria-label={`${label}: ${percent}%`}>
+    <div
+      aria-label={label}
+      aria-valuemax={100}
+      aria-valuemin={0}
+      aria-valuenow={Math.round(percent)}
+      className="achievement-progress"
+      role="progressbar"
+    >
       <span style={{ width: `${percent}%` }} />
     </div>
   )
@@ -24,6 +42,13 @@ const achievementFilters = [
   { id: 'nutrition', label: 'Nutrition' },
   { id: 'activity', label: 'Aktivitet' },
 ]
+
+// Spoken state of a badge, matching what the card shows.
+const statusLabels = {
+  inProgress: 'pågår',
+  locked: 'låst',
+  unlocked: 'upplåst',
+}
 
 const categoryLabels = {
   activity: 'Aktivitet',
@@ -58,7 +83,7 @@ function AchievementCard({ achievement, onAcknowledge }) {
 
   return (
     <article
-      aria-label={`${achievement.title}, ${locked ? 'låst' : 'upplåst'}`}
+      aria-label={`${achievement.title}, ${statusLabels[achievement.status] || statusLabels.locked}`}
       className={`achievement-card achievement-card-${achievement.status}${newlyUnlocked ? ' achievement-card-new' : ''}`}
     >
       <div>
@@ -66,7 +91,7 @@ function AchievementCard({ achievement, onAcknowledge }) {
         <h3>{achievement.title}</h3>
         <p>{achievement.description}</p>
       </div>
-      <ProgressBar label={achievement.title} value={achievement.progressPercent} />
+      <ProgressBar value={achievement.progressPercent} />
       <div className="achievement-card-footer">
         <span>{achievement.progress} av {achievement.target} {achievement.unit}</span>
         <strong>{locked ? 'Låst' : `${achievement.xp} XP`}</strong>
@@ -76,7 +101,7 @@ function AchievementCard({ achievement, onAcknowledge }) {
       )}
       {achievement.status === 'unlocked' && !achievement.acknowledged && (
         <button
-          aria-label={`Markera ${achievement.title} som sedd`}
+          aria-label={`Markera sedd: ${achievement.title}`}
           className="secondary-button"
           type="button"
           onClick={() => onAcknowledge(achievement.definitionId)}
@@ -244,7 +269,7 @@ export default function AchievementCenter({
           <span>Nästa badge</span>
           <strong>{nextAchievement?.title || 'Alla upplåsta'}</strong>
           <small>{nextAchievement ? `${nextAchievement.progress} av ${nextAchievement.target} ${nextAchievement.unit}` : 'Bra jobbat'}</small>
-          <ProgressBar label="Nästa achievement" value={nextAchievement?.progressPercent ?? 100} />
+          <ProgressBar value={nextAchievement?.progressPercent ?? 100} />
         </div>
         <div className="metric">
           <span>Senaste badge</span>
@@ -257,7 +282,7 @@ export default function AchievementCenter({
         <article className="achievement-section">
           <div className="achievement-section-heading">
             <h3>Badges</h3>
-            <div className="achievement-filter" aria-label="Filtrera achievements">
+            <div className="achievement-filter" role="group" aria-label="Filtrera achievements">
               {achievementFilters.map((filter) => (
                 <button
                   aria-pressed={activeFilter === filter.id}

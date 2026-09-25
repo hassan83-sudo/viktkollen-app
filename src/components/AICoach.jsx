@@ -52,7 +52,7 @@ function RecommendationCard({ onFeedback, recommendation }) {
           ))}
         </ul>
       </details>
-      <div className="coach-v2-feedback" aria-label={`Feedback för ${recommendation.title}`}>
+      <div className="coach-v2-feedback" role="group" aria-label={`Feedback för ${recommendation.title}`}>
         <span>{confidenceLabels[recommendation.confidence] || 'Medel confidence'}</span>
         {recommendation.feedback ? (
           <small>{recommendation.feedback.value === 'helpful' ? 'Markerat som hjälpsamt' : 'Markerat som inte relevant'}</small>

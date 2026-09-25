@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 const ITEM_ICONS = {
@@ -36,6 +37,11 @@ function ReadyChecklistCard({
   onSubmitAdd,
 }) {
   const { t } = useTranslation(['ready', 'common'])
+  // A11Y-8Q (8M B6): an empty or blank item is not saved, and the user is
+  // told why: a visible message in a polite status region, linked to the
+  // field with aria-describedby and marked with aria-invalid until the text
+  // is changed. Focus stays where the user submitted from.
+  const [addError, setAddError] = useState('')
 
   return (
     <section className="ready-checklist-card" aria-labelledby="ready-checklist-title">
@@ -120,18 +126,29 @@ function ReadyChecklistCard({
         className="ready-add-form"
         onSubmit={(event) => {
           event.preventDefault()
+          if (!String(draftLabel || '').trim()) {
+            setAddError(t('checklist.emptyError'))
+            return
+          }
+          setAddError('')
           onSubmitAdd(draftLabel)
         }}
       >
         <span aria-hidden="true">+</span>
         <input
+          aria-describedby={addError ? 'ready-add-error' : undefined}
+          aria-invalid={addError ? true : undefined}
           aria-label={t('checklist.add')}
           placeholder={t('checklist.add')}
           value={draftLabel}
-          onChange={(event) => onDraftChange(event.target.value)}
+          onChange={(event) => {
+            if (addError) setAddError('')
+            onDraftChange(event.target.value)
+          }}
         />
         <button type="submit">{t('common:actions.save')}</button>
       </form>
+      <p className="ready-add-error" id="ready-add-error" role="status">{addError}</p>
     </section>
   )
 }

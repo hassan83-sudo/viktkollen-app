@@ -557,3 +557,32 @@ html {
     flex-wrap: nowrap;
   }
 }
+
+/* --------------------------------------------------------------------------
+   A11Y-8Q (8M B6): Redo "Lägg till sak" error message. The status region is
+   always in the DOM (so it is announced when text arrives) and takes no
+   space while empty.
+   -------------------------------------------------------------------------- */
+.ready-add-error {
+  margin: 0;
+}
+
+.ready-add-error:not(:empty) {
+  margin-top: 8px;
+  color: #fecaca;
+  font-weight: 700;
+}
+
+:root[data-a11y-high-contrast='true'] .ready-add-error:not(:empty) {
+  color: #ffffff;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+}
+
+/* A11Y-8Q: the Mat recommendations heading receives focus (tabindex -1, not
+   a Tab stop) when the last recommendation is hidden; show where focus is. */
+.nutrition-action-plan h3[tabindex='-1']:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}

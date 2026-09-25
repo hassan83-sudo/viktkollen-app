@@ -338,6 +338,7 @@ function OverviewLiveMeta({
   liveContext,
   onConnectWeather,
   onOpenWeatherDay,
+  weatherAnnouncement = '',
   weatherStatus = '',
 }) {
   const { t } = useTranslation('home')
@@ -371,7 +372,7 @@ function OverviewLiveMeta({
           </>
         ) : (
           <>
-            <span className="overview-weather-empty" aria-label={t('weatherNotConnected')}>
+            <span className="overview-weather-empty">
               {weatherStatus || t('weatherNotConnected')}
             </span>
             <button className="overview-weather-connect" type="button" onClick={onConnectWeather}>
@@ -389,6 +390,10 @@ function OverviewLiveMeta({
           </button>
         </p>
       )}
+      {/* A11Y-8Q (8M B7): one polite status region for the connect-weather
+          button. It is always rendered, so loading, success and failure are
+          announced once each without moving focus. */}
+      <span className="sr-only" role="status">{weatherAnnouncement}</span>
     </div>
   )
 }
@@ -1067,6 +1072,7 @@ function OverviewDashboard({
   const [socialLoading, setSocialLoading] = useState(false)
   const [socialError, setSocialError] = useState('')
   const [weatherStatus, setWeatherStatus] = useState('')
+  const [weatherAnnouncement, setWeatherAnnouncement] = useState('')
   const [profilePhoto, setProfilePhoto] = useState(() => readProfilePhoto())
   const [weather, setWeather] = useState(() => createFallbackWeatherContext())
   const [weatherDayOpen, setWeatherDayOpen] = useState(false)
@@ -1107,12 +1113,15 @@ function OverviewDashboard({
 
   async function connectWeather() {
     setWeatherStatus(t('home:fetchingWeather'))
+    setWeatherAnnouncement(t('home:fetchingWeather'))
     try {
       const nextWeather = await loadOverviewWeather({ preferDevice: true })
       setWeather(nextWeather)
       setWeatherStatus('')
+      setWeatherAnnouncement(t('home:weatherUpdated'))
     } catch {
-      setWeatherStatus(t('home:weatherNotConnected'))
+      setWeatherStatus(t('home:weatherFetchFailed'))
+      setWeatherAnnouncement(t('home:weatherFetchFailed'))
     }
   }
 
@@ -1203,6 +1212,7 @@ function OverviewDashboard({
           liveContext={liveContext}
           onConnectWeather={connectWeather}
           onOpenWeatherDay={() => setWeatherDayOpen(true)}
+          weatherAnnouncement={weatherAnnouncement}
           weatherStatus={weatherStatus}
         />
         <div className="overview-header-weather-art" aria-hidden="true">

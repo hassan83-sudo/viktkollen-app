@@ -49,7 +49,12 @@ function RecommendationCard({ onAddTemplate, onDismiss, recommendation }) {
           </button>
         )}
         {recommendation.dismissible && (
-          <button className="secondary-button" type="button" onClick={() => onDismiss(recommendation.id)}>
+          <button
+            className="secondary-button"
+            data-recommendation-dismiss=""
+            type="button"
+            onClick={(event) => onDismiss(recommendation.id, event.currentTarget === event.currentTarget.ownerDocument.activeElement)}
+          >
             Dölj
           </button>
         )}

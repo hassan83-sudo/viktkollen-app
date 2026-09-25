@@ -150,6 +150,8 @@ const sv = {
     liveMetaAria: 'Datum, tid och väder',
     myLocation: 'Min plats',
     fetchingWeather: 'Hämtar väder…',
+    weatherUpdated: 'Vädret är uppdaterat.',
+    weatherFetchFailed: 'Vädret kunde inte hämtas. Försök igen.',
     proteinPick: 'Protein att välja',
     proteinSourcesAria: 'Bra proteinkällor',
     proteinFoods: {
@@ -2005,6 +2007,8 @@ const en = {
     liveMetaAria: 'Date, time and weather',
     myLocation: 'My location',
     fetchingWeather: 'Fetching weather…',
+    weatherUpdated: 'The weather is updated.',
+    weatherFetchFailed: 'The weather could not be fetched. Try again.',
     proteinPick: 'Protein to choose',
     proteinSourcesAria: 'Good protein sources',
     proteinFoods: {

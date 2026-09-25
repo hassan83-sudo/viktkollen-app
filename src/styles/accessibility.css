@@ -642,3 +642,48 @@ html {
 :root:is([data-a11y-text-size='large'], [data-a11y-text-size='extra-large']) #app-section-redo .ready-quick-actions {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+
+/* --------------------------------------------------------------------------
+   A11Y-8S (8M B11): forced colors / Windows contrast themes.
+   In forced colors every background becomes Canvas, gradients and box
+   shadows are removed, and text, borders and outlines get system colours.
+   Focus rings are outlines and survive (verified in every view). What was
+   lost is anything shown by background alone:
+   - the selected item in a group (active navigation link, pressed toggle,
+     selected tab, active chip or segment);
+   - the fill of progress bars;
+   - the Live feed position dots.
+   Author system colours are kept by the browser, so forced-color-adjust is
+   not needed anywhere.
+   -------------------------------------------------------------------------- */
+@media (forced-colors: active) {
+  /* Selected: an inset Highlight outline plus an underline. While focused
+     the focus ring replaces the outline and the underline stays. */
+  :is(.bottom-nav a[aria-current='page'], [aria-pressed='true'], [role='tab'][aria-selected='true'], [role='option'][aria-selected='true']):not(:focus-visible) {
+    outline: 2px solid Highlight;
+    outline-offset: -4px;
+  }
+
+  :is(.bottom-nav a[aria-current='page'], [aria-pressed='true'], [role='tab'][aria-selected='true'], [role='option'][aria-selected='true']) {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+  }
+
+  /* Progress bars: a visible track and a Highlight fill. */
+  :is(.achievement-progress, .nutrition-coach-progress-bar, .report-progressbar, .achievement-preview-progress) {
+    border: 1px solid CanvasText;
+  }
+
+  :is(.achievement-progress, .nutrition-coach-progress-bar, .report-progressbar, .achievement-preview-progress) > span {
+    background: Highlight;
+  }
+
+  /* Live feed position dots (decorative, aria-hidden; the active dot is
+     wider, which shows once the dots are drawn). Same specificity as the
+     Home rules that colour them. */
+  #app-section-home.is-active .smart-feed-dots span,
+  #app-section-home.is-active .smart-feed-dots span.is-active {
+    background: CanvasText;
+  }
+}

@@ -101,11 +101,15 @@ function JourneySection({
           <p>{t('intro')}</p>
         </header>
 
-        <div className="segmented-control journey-tabs" aria-label={t('tabsAriaLabel')}>
+        {/* A11Y-8S: the selected view was shown by colour only (class
+            "active"); aria-pressed makes it programmatic and lets forced
+            colors mark it (styles/accessibility.css). */}
+        <div className="segmented-control journey-tabs" role="group" aria-label={t('tabsAriaLabel')}>
           {journeyTabIds.map((tabId) => (
             <button
               key={tabId}
               type="button"
+              aria-pressed={activeTab === tabId}
               className={activeTab === tabId ? 'active' : ''}
               onClick={() => setActiveTab(tabId)}
             >

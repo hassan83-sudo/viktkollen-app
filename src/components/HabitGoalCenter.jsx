@@ -94,7 +94,7 @@ function HabitGoalCenter({
         <span className="insight-coverage">Confidence {model.confidence}%</span>
       </div>
 
-      <div className="reminder-summary-grid" aria-live="polite">
+      <div className="reminder-summary-grid">
         <Metric label="Veckoframsteg" value={model.weeklyProgress.label} />
         <Metric label="Följsamhet" value={`${model.weeklyProgress.completionRate}%`} />
         <Metric label="Prognos" value={model.prediction.text} />
@@ -180,7 +180,7 @@ function HabitGoalCenter({
         <button className="secondary-button" type="button" onClick={requestAiRefinement}>
           Förfina formuleringar
         </button>
-        {aiStatus && <p className="analysis-status" aria-live="polite">{aiStatus}</p>}
+        <div role="status">{aiStatus && <p className="analysis-status">{aiStatus}</p>}</div>
       </article>
 
       <p className="estimate-note">

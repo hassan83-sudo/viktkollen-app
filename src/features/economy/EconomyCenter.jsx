@@ -201,9 +201,9 @@ function EconomyCenter({ onCreateReminderDraft }) {
   if (!state.settings.activated) {
     return (
       <div className="economy-center" id="economy-center">
-        <section className="economy-activation" aria-labelledby="economy-activation-title">
+        <section className="economy-activation">
           <p className="eyebrow">{t('privacy.eyebrow')}</p>
-          <h1 id="economy-activation-title">{t('title')}</h1>
+          <h2>{t('title')}</h2>
           <p>{t('privacy.intro')}</p>
           <ul>
             <li>{t('privacy.local')}</li>
@@ -222,7 +222,7 @@ function EconomyCenter({ onCreateReminderDraft }) {
       <header className="economy-hero">
         <div>
           <p className="eyebrow">{t('eyebrow')}</p>
-          <h1>{t('title')}</h1>
+          <h2>{t('title')}</h2>
           <p>{t('subtitle')}</p>
         </div>
         <button className="secondary-button economy-hide-button" type="button" onClick={toggleHidden} aria-pressed={hidden}>

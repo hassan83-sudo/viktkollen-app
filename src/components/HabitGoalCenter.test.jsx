@@ -33,10 +33,15 @@ describe('HabitGoalCenter', () => {
     expect(html).not.toMatch(/undefined|NaN|Infinity|\[object Object\]|session|token|provider/i)
   })
 
-  it('renders live progress and consent gated AI control', () => {
+  it('renders a small AI status region and consent gated AI control', () => {
     const html = renderToStaticMarkup(<HabitGoalCenter {...props} />)
 
-    expect(html).toContain('aria-live="polite"')
+    // A11Y-8V (8T B-8T-N6): the summary grid is not a live region, so data
+    // changes do not read out the whole grid. The AI result is announced by
+    // its own small status region, which is always in the DOM.
+    expect(html).toContain('<div class="reminder-summary-grid">')
+    expect(html).not.toContain('aria-live')
+    expect(html).toContain('<div role="status"></div>')
     expect(html).toContain('Jag vill att AI endast får en minimal mål- och vanesammanfattning.')
     expect(html).toContain('Förfina formuleringar')
   })

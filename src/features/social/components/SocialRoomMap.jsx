@@ -124,7 +124,7 @@ function SocialRoomMap({ friends = [] }) {
       {enabled && friendLocations.length ? (
         <>
           {friendLocations.length > 1 ? (
-            <div className="social-room-player-options" aria-label="Välj vän på kartan">
+            <div className="social-room-player-options" role="group" aria-label="Välj vän på kartan">
               {friendLocations.map((entry) => (
                 <button
                   aria-pressed={selected?.user_id === entry.user_id}

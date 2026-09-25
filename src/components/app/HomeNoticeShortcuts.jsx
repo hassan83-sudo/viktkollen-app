@@ -97,7 +97,7 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
           <span className="overview-mood-label">Snabbt</span>
           <button type="button" onClick={() => onOpenNotices?.()}>Alla notiser</button>
         </div>
-        <div className="overview-quick-buttons" aria-label="Viktiga snabbknappar">
+        <div className="overview-quick-buttons" role="group" aria-label="Viktiga snabbknappar">
           {shortcuts.map((shortcut) => (
             <button key={shortcut.id} type="button" onClick={() => onOpenNotices?.(shortcut.id)}>
               {shortcut.label}

@@ -94,7 +94,7 @@ function AINutritionInsights({
         <span className="insight-coverage">{coverageLabel(report.dataCoverage.level)}</span>
       </div>
 
-      <div className="insight-overview" aria-live="polite">
+      <div className="insight-overview">
         <p>{report.overview.summary}</p>
         <dl>
           <div>

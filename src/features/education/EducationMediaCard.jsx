@@ -7,7 +7,7 @@ function EducationMediaCard({ item }) {
 
   return (
     <article className="education-media-card">
-      <div className="education-media-preview" aria-label={t('media.previewAria')}>
+      <div className="education-media-preview">
         <span aria-hidden="true">{verified ? '▶' : '▣'}</span>
         <strong>{verified ? t('media.videoAvailable') : t('media.videoPlaceholder')}</strong>
       </div>

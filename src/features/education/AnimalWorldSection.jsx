@@ -31,7 +31,7 @@ function AnimalWorldSection() {
     <div className="education-center animal-world-center" id="animal-world">
       <header className="education-hero">
         <p className="eyebrow">{t('animalWorld.eyebrow')}</p>
-        <h1>{t('animalWorld.title')}</h1>
+        <h2>{t('animalWorld.title')}</h2>
         <p>{t('animalWorld.subtitle')}</p>
       </header>
 

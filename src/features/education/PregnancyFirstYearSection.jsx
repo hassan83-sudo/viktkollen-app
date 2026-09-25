@@ -26,7 +26,7 @@ function PregnancyFirstYearSection() {
     <div className="education-center pregnancy-center" id="pregnancy-first-year">
       <header className="education-hero">
         <p className="eyebrow">{t('pregnancyFirstYear.eyebrow')}</p>
-        <h1>{t('pregnancyFirstYear.title')}</h1>
+        <h2>{t('pregnancyFirstYear.title')}</h2>
         <p>{t('pregnancyFirstYear.subtitle')}</p>
       </header>
 

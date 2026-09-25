@@ -48,7 +48,18 @@ const coveredFolders = [
 const knownAxeFindings = []
 
 // Folders that are clean at the moderate level too, and must stay so.
-const moderateGatedFolders = ['ai-coach']
+// A11Y-8V: the folders changed for 8T B-8T-N5/N6/N7 and 8M B2/B3.
+const moderateGatedFolders = [
+  'ai-coach',
+  'mal-framsteg',
+  'mat',
+  'ma-bra',
+  'ekonomi',
+  'sign-language',
+  'animal-world',
+  'pregnancy-first-year',
+  'import-export',
+]
 
 const knownFocusFindings = [
   {

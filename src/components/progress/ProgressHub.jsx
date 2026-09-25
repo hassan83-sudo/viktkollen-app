@@ -23,7 +23,7 @@ function ProgressHub({ activeFolder, children, onBack, onOpen, summaries = {} })
         </button>
         <header className="progress-hub-view-heading">
           <p className="eyebrow">{t('eyebrow')}</p>
-          <h1>{t(`${folderKey}.title`)}</h1>
+          <h2>{t(`${folderKey}.title`)}</h2>
         </header>
         {children}
       </div>
@@ -34,7 +34,7 @@ function ProgressHub({ activeFolder, children, onBack, onOpen, summaries = {} })
     <div className="progress-hub">
       <header className="progress-hub-heading">
         <p className="eyebrow">{t('centerEyebrow')}</p>
-        <h1>{t('title')}</h1>
+        <h2>{t('title')}</h2>
         <p>{t('intro')}</p>
       </header>
       <nav className="progress-hub-folders" aria-label={t('foldersAria')}>

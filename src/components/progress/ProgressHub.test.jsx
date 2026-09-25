@@ -17,7 +17,7 @@ describe('ProgressHub', () => {
     )
 
     expect(markup).toContain('Framstegscenter')
-    expect(markup).toContain('<h1>Framsteg</h1>')
+    expect(markup).toContain('<h2>Framsteg</h2>')
     expect(markup).toContain('83,8 kg')
     expect(markup).toContain('progress-hub-folders')
     expect(markup).not.toContain('Tillbaka')

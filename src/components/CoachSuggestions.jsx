@@ -5,9 +5,9 @@ function CoachSuggestions({ coachMessage, coachStatus, isLoading = false }) {
     : coachStatus
 
   return (
-    <section className={`coach-suggestions${isLoading ? ' is-loading' : ''}`} aria-live="polite">
+    <section className={`coach-suggestions${isLoading ? ' is-loading' : ''}`}>
       <p className="coach-copy">{message}</p>
-      {status && <div className="coach-note" role={isLoading ? 'status' : undefined}>{status}</div>}
+      {status && <div className="coach-note" role="status">{status}</div>}
     </section>
   )
 }

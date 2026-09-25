@@ -113,14 +113,14 @@ function SocialRoom({ enabled = false, isAuthenticated = false, liveEnabled = fa
           />
         </label>
       </div>
-      <div className="social-room-player-options" aria-label={t('room.player.tracksAria')}>
+      <div className="social-room-player-options" role="group" aria-label={t('room.player.tracksAria')}>
         {ambientTracks.map((track) => (
           <button aria-pressed={selectedTrack === track} key={track} type="button" onClick={() => setSelectedTrack(track)}>
             {t(`room.player.tracks.${track}`)}
           </button>
         ))}
       </div>
-      <div className="social-room-player-timers" aria-label={t('room.player.timerAria')}>
+      <div className="social-room-player-timers" role="group" aria-label={t('room.player.timerAria')}>
         {timerOptions.map((minutes) => (
           <button aria-pressed={timerMinutes === minutes} key={minutes} type="button" onClick={() => setTimerMinutes(minutes)}>
             {t('room.player.timer', { minutes })}

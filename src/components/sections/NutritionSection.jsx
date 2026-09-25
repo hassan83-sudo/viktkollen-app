@@ -181,7 +181,7 @@ function NutritionSection({
       <div className="nutrition-premium-shell is-design-7" id="mat">
         <header className="nutrition-page-header">
           <p className="eyebrow">{t('eyebrow')}</p>
-          <h1>{t('title')}</h1>
+          <h2>{t('title')}</h2>
         </header>
 
         <section className="nutrition-ring-grid" aria-label={t('todayNutrition')}>

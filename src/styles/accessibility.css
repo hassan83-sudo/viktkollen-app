@@ -743,3 +743,56 @@ html {
   min-height: 24px;
   padding-block: 3px;
 }
+
+/* 8T B-8T-N7: a Mer folder has one h1, the folder title from MoreHub. The
+   section's own title under it is an h2 now, and keeps the look it had as
+   an h1 (index.css and App.css size h1 and h2 differently). */
+:is(.progress-hub-heading, .progress-hub-view-heading, .nutrition-page-header, .wellbeing-hero, .economy-activation, .economy-hero, .education-hero) > h2 {
+  max-width: 760px;
+  font-size: 56px;
+  line-height: 1.03;
+}
+
+@media (max-width: 900px) {
+  :is(.progress-hub-heading, .progress-hub-view-heading, .nutrition-page-header, .wellbeing-hero, .economy-activation, .economy-hero, .education-hero) > h2 {
+    font-size: 42px;
+  }
+}
+
+@media (max-width: 560px) {
+  :is(.progress-hub-heading, .progress-hub-view-heading, .nutrition-page-header, .wellbeing-hero, .economy-activation, .economy-hero, .education-hero) > h2 {
+    font-size: 34px;
+  }
+}
+
+@media (max-width: 430px) {
+  :is(.progress-hub-heading, .progress-hub-view-heading, .nutrition-page-header, .wellbeing-hero, .economy-activation, .economy-hero, .education-hero) > h2 {
+    font-size: 30px;
+    line-height: 1.05;
+  }
+}
+
+:is(.progress-hub-heading, .progress-hub-view-heading) > h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.7rem;
+  font-weight: 920;
+}
+
+.nutrition-page-header > h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 2.1rem;
+  font-weight: 950;
+  line-height: 0.9;
+}
+
+.education-hero > h2 {
+  margin: 0 0 0.55rem;
+}
+
+@media (max-width: 430px) {
+  :is(.progress-hub-heading, .progress-hub-view-heading) > h2 {
+    font-size: 1.5rem;
+  }
+}

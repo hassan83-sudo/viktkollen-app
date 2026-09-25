@@ -51,7 +51,6 @@ function ReadyChecklistCard({
           <h2 id="ready-checklist-title">{t('checklist.title')}</h2>
         </div>
         <div
-          aria-label={t('checklist.progress', { done: progress.done, total: progress.total })}
           className="ready-progress-ring"
           style={{ '--ready-progress': progressRatio }}
         >

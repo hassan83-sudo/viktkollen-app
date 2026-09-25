@@ -221,7 +221,7 @@ function SmartFeedCard({ liveContext }) {
         </div>
         <small>{activeItem.sourceLabel}</small>
       </div>
-      <div className="smart-feed-reference-controls" aria-label={t('live.controls')}>
+      <div className="smart-feed-reference-controls" role="group" aria-label={t('live.controls')}>
         <button type="button" onClick={showPrevious} aria-label={t('live.previous')}>&lt;</button>
         <button
           className="is-playback"
@@ -348,7 +348,7 @@ function OverviewLiveMeta({
   const city = hasWeatherDetails && weather.city && weather.city !== 'Vald stad' ? weather.city : ''
 
   return (
-    <div className="overview-live-meta" aria-label={t('liveMetaAria')}>
+    <div className="overview-live-meta">
       <p className="overview-live-status">
         <span className={isOnline ? 'is-online' : 'is-offline'}>
           <span className="overview-online-dot" aria-hidden="true" />

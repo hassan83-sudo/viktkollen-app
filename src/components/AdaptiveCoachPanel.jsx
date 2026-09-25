@@ -539,7 +539,7 @@ function AdaptiveCoachPanel({
         </div>
       )}
 
-      <div className="insight-plan" aria-live="polite">
+      <div className="insight-plan">
         <h3>AI-förslag</h3>
         <p>
           Regelbaserade råd visas alltid direkt. Remote AI kan formulera upp till tre förslag från en minimerad sammanfattning, men ändrar aldrig verifierade fakta.

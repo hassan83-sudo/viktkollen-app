@@ -224,10 +224,8 @@ function AdaptiveCoachWeeklyPlan({
       </div>
       <p>{basePlan.rationale}</p>
       <p className="estimate-note">{basePlan.safetyNote}</p>
-      <div aria-live="polite">
-        {status && <p className="form-success">{status}</p>}
-        {error && <p className="analysis-status" id="weekly-plan-error" role="alert">{error}</p>}
-      </div>
+      <div role="status">{status && <p className="form-success">{status}</p>}</div>
+      {error && <p className="analysis-status" id="weekly-plan-error" role="alert">{error}</p>}
 
       <form aria-describedby={error ? 'weekly-plan-error' : 'weekly-plan-help'} onSubmit={confirmSelected}>
         <p id="weekly-plan-help">Inget sparas innan du bekräftar valda actions. Du kan redigera eller välja bort förslag.</p>

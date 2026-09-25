@@ -146,7 +146,7 @@ function HealthJourneyCenter({
         <button className="secondary-button" type="button" onClick={printSafeView}>Print/export-safe view</button>
       </div>
 
-      <div className="reminder-summary-grid" aria-live="polite">
+      <div className="reminder-summary-grid">
         <Metric label="Fas" value={summary.currentPhase} />
         <Metric label="Coverage" value={`${summary.dataCoverage}%`} />
         <Metric label="Confidence" value={`${summary.confidence}%`} />
@@ -188,6 +188,7 @@ function HealthJourneyCenter({
           </select>
         </label>
       </div>
+      <p className="sr-only" role="status">{visibleEvents.length} journey-händelser visas.</p>
 
       <article>
         <h3>Timeline</h3>
@@ -269,7 +270,7 @@ function HealthJourneyCenter({
         <button className="secondary-button" type="button" onClick={requestAiRefinement}>
           Förfina förklaring
         </button>
-        {aiStatus && <p className="analysis-status" aria-live="polite">{aiStatus}</p>}
+        <div role="status">{aiStatus && <p className="analysis-status">{aiStatus}</p>}</div>
       </article>
 
       <p className="estimate-note">

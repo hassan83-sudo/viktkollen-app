@@ -101,7 +101,7 @@ function DataExportCenter({ userId = '' }) {
       </div>
 
       {!format.startsWith('csv') && (
-        <div className="meal-list" aria-label="Valbara exportsektioner">
+        <div className="meal-list" role="group" aria-label="Valbara exportsektioner">
           {sections.map((section) => (
             <article key={section.id} className="report-card">
               <label className="checkbox-row">

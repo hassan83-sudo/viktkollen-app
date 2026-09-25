@@ -88,7 +88,7 @@ function SignLanguageSection({ onOpenAiCoach }) {
     <div className="education-center sign-language-center" id="sign-language">
       <header className="education-hero">
         <p className="eyebrow">{t('education:signLanguage.eyebrow')}</p>
-        <h1>{t('education:signLanguage.title')}</h1>
+        <h2>{t('education:signLanguage.title')}</h2>
         <p>{t('education:signLanguage.subtitle')}</p>
       </header>
 
@@ -104,7 +104,7 @@ function SignLanguageSection({ onOpenAiCoach }) {
             <p className="eyebrow">{t('education:signLanguage.talk.aiEyebrow')}</p>
             <h2 id="sign-language-talk-title">{t('education:signLanguage.talk.title')}</h2>
           </div>
-          <span className={`ready-avatar-button is-${avatar.accent}`} aria-label={t('ready:avatar.pick')}>
+          <span className={`ready-avatar-button is-${avatar.accent}`}>
             {t(`ready:${avatar.labelKey}`)}
           </span>
         </div>

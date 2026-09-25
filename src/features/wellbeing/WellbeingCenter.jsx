@@ -136,7 +136,7 @@ function WellbeingCenter({ onOpenAiCoach, profile = {}, readyState = {} }) {
     <div className="wellbeing-center" id="wellbeing-center">
       <header className="wellbeing-hero">
         <p className="eyebrow">{t('eyebrow')}</p>
-        <h1>{t('title')}</h1>
+        <h2>{t('title')}</h2>
         <p>{t(`intro.${ageLanguage}`)}</p>
       </header>
 

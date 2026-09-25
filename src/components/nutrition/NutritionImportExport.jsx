@@ -13,10 +13,13 @@ function NutritionImportExport({ fileInputRef, importStatus, onExport, onFileCha
       <div className="nutrition-actions">
         <button type="button" onClick={onExport}>Spara kostdata</button>
         <button className="secondary-button" type="button" onClick={onOpenImport}>Välj säkerhetskopia</button>
+        {/* A11Y-8N: opened by the visible button, not a Tab stop. */}
         <input
           ref={fileInputRef}
+          aria-hidden="true"
           aria-label="Välj säkerhetskopia med kostdata"
           className="sr-only"
+          tabIndex={-1}
           type="file"
           accept="application/json,.json"
           onChange={onFileChange}

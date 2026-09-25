@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { goToSection, openAccessibilityFolder, openApp } from './support/app.js'
+import { inspectFocusedElement, settleFocus } from './support/hiddenFocus.js'
 
 // A11Y-8I: WCAG 2.4.7 / 2.4.11 in real Chromium (geometry cannot be proven in
 // jsdom). For every Tab stop in a view, the focused control must be inside
@@ -7,6 +8,9 @@ import { goToSection, openAccessibilityFolder, openApp } from './support/app.js'
 // other element, and it must not sit inside a visually hidden (clipped or
 // 1px) container. That last rule is the A2 gate (8L): the 8I exception for the
 // hidden Home header buttons is gone, because they are inert while hidden.
+// A11Y-8N (8M C-N2): the generic hidden-focus gate also runs on every stop, so
+// a control that is itself visually hidden (e.g. an sr-only file input),
+// transparent, off-screen or without a focus indicator fails too.
 
 const modes = {
   normal: { preferences: null, viewport: { height: 844, width: 390 } },
@@ -59,12 +63,14 @@ async function tabThroughView(page, maxStops = 70) {
   for (let index = 0; index < maxStops; index += 1) {
     await page.keyboard.press('Tab')
     // Let focus scrolling (browser + app) and focus transitions settle.
-    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve)))))
+    await settleFocus(page)
     const result = await measureFocus(page)
     if (result.nav) break
     if (result.body) continue
     stops += 1
-    if (result.problems.length) failures.push(`${result.name}: ${result.problems.join(', ')}`)
+    const hidden = await page.evaluate(inspectFocusedElement)
+    const problems = [...result.problems, ...(hidden.problems || []).filter((problem) => !problem.startsWith('inside-visually-hidden'))]
+    if (problems.length) failures.push(`${result.name}: ${problems.join(', ')}`)
   }
   return { failures, stops }
 }

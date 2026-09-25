@@ -187,6 +187,21 @@
   box-shadow: 0 0 0 6px #020617;
 }
 
+/* A11Y-8N: Tab also reaches the browser's own picker button inside date and
+   time fields. The field itself is then focused but not :focus-visible, so it
+   showed no focus ring. :focus-within draws the field's usual ring. */
+:is(input[type='date'], input[type='time'], input[type='datetime-local'], input[type='month'], input[type='week']):focus-within:not(:focus-visible) {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px var(--focus);
+}
+
+:root[data-a11y-high-contrast='true'] :is(input[type='date'], input[type='time'], input[type='datetime-local'], input[type='month'], input[type='week']):focus-within:not(:focus-visible) {
+  outline: 3px solid #ffffff;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px #020617;
+}
+
 /* --------------------------------------------------------------------------
    Larger controls
    44 x 44 px minimum for interactive controls. !important because this is an

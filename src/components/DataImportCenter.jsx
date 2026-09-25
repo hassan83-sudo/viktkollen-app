@@ -114,21 +114,24 @@ function DataImportCenter({ onDataImported, userId = '' }) {
           <p className="eyebrow">Import och återställning</p>
           <h2 tabIndex="-1" ref={headingRef}>Dataimport</h2>
         </div>
-        <button type="button" className="secondary-button" onClick={() => fileInputRef.current?.click()}>
+        <button type="button" className="secondary-button" aria-describedby="data-import-help" onClick={() => fileInputRef.current?.click()}>
           Välj fil
         </button>
       </div>
 
+      {/* A11Y-8N: the native input is opened by the visible "Välj fil"
+          button, so it is not a Tab stop of its own. */}
       <input
         accept=".json,.csv,.tsv,.txt,application/json,text/csv,text/plain"
         aria-label="Välj Viktkollen-backup eller CSV-fil för säker import"
         className="sr-only"
         onChange={handleFileChange}
         ref={fileInputRef}
+        tabIndex={-1}
         type="file"
       />
 
-      <p className="helper-text">
+      <p className="helper-text" id="data-import-help">
         Importen skapar alltid en förhandsgranskning först. Data sparas först efter uttrycklig bekräftelse.
       </p>
 

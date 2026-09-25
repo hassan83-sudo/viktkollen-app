@@ -771,10 +771,13 @@ function ProgressImportExport({
       <div className="progress-actions">
         <button type="button" onClick={onExport}>{t('center.importExport.export')}</button>
         <button className="secondary-button" type="button" onClick={onOpenImport}>{t('center.importExport.importJson')}</button>
+        {/* A11Y-8N: opened by the visible import button, not a Tab stop. */}
         <input
           ref={fileInputRef}
+          aria-hidden="true"
           aria-label={t('center.importExport.importAria')}
           className="sr-only"
+          tabIndex={-1}
           type="file"
           accept="application/json,.json"
           onChange={onFileChange}

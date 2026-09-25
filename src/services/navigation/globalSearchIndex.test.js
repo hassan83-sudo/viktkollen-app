@@ -87,6 +87,9 @@ describe('globalSearchIndex', () => {
     expect(getNextSearchSelection(0, 3, 1)).toBe(1)
     expect(getNextSearchSelection(0, 3, -1)).toBe(2)
     expect(getNextSearchSelection(-1, 0, 1)).toBe(-1)
+    // A11Y-8W: no active option yet (-1): down goes to the first, up to the last.
+    expect(getNextSearchSelection(-1, 3, 1)).toBe(0)
+    expect(getNextSearchSelection(-1, 3, -1)).toBe(2)
   })
 
   it('maps keyboard events to search actions', () => {

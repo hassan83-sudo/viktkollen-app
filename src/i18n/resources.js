@@ -635,6 +635,8 @@ const sv = {
       placeholder: 'Sök i Viktkollen...',
       results: 'Sökresultat',
       noExactMatches: 'Inga exakta träffar för "{{query}}". Här är närliggande alternativ.',
+      resultCount_one: '{{count}} träff',
+      resultCount_other: '{{count}} träffar',
       groups: {
         popular: 'Populärt',
         quickActions: 'Snabbåtgärder',
@@ -2492,6 +2494,8 @@ const en = {
       placeholder: 'Search in Viktkollen...',
       results: 'Search results',
       noExactMatches: 'No exact matches for "{{query}}". Here are nearby alternatives.',
+      resultCount_one: '{{count}} result',
+      resultCount_other: '{{count}} results',
       groups: {
         popular: 'Popular',
         quickActions: 'Quick actions',

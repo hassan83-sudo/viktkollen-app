@@ -171,7 +171,7 @@ test.describe('keyboard: GlobalSearch dialog', () => {
   test('named modal: focus in the search field, background blocked, Tab/Shift+Tab trapped', async ({ page }) => {
     const { dialog } = await openSearch(page)
     await expect(dialog).toHaveAttribute('aria-modal', 'true')
-    await expect(dialog.getByRole('searchbox', { name: 'Sök i Viktkollen' })).toBeFocused()
+    await expect(dialog.getByRole('combobox', { name: 'Sök i Viktkollen' })).toBeFocused()
 
     // Background: inert, and cannot be focused programmatically either.
     const background = bottomNavLink(page, 'Hem')
@@ -199,9 +199,10 @@ test.describe('keyboard: GlobalSearch dialog', () => {
 
     await page.keyboard.press('Enter')
     await expect(dialog).toBeVisible()
+    // A11Y-8W: the options are not Tab stops (combobox pattern), so the
+    // dialog's other Tab stop is "Stäng".
     await page.keyboard.press('Tab')
-    await page.keyboard.press('Tab')
-    await expect(page.getByRole('searchbox', { name: 'Sök i Viktkollen' })).not.toBeFocused()
+    await expect(dialog.getByRole('button', { name: 'Stäng' })).toBeFocused()
     await page.keyboard.press('Escape')
     await expect(dialog).toHaveCount(0)
     await expect(opener).toBeFocused()
@@ -210,7 +211,7 @@ test.describe('keyboard: GlobalSearch dialog', () => {
 
   test('search keyboard behaviour is unchanged: arrows move the selection, Enter navigates', async ({ page }) => {
     const { dialog } = await openSearch(page)
-    const field = dialog.getByRole('searchbox', { name: 'Sök i Viktkollen' })
+    const field = dialog.getByRole('combobox', { name: 'Sök i Viktkollen' })
     await page.keyboard.type('vikt')
     const first = await field.getAttribute('aria-activedescendant')
     await page.keyboard.press('ArrowDown')

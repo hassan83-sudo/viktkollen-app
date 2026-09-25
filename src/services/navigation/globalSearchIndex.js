@@ -405,6 +405,7 @@ export function getGlobalSearchItemsById(ids = [], items = globalSearchItems) {
 
 export function getNextSearchSelection(currentIndex, resultCount, direction) {
   if (resultCount <= 0) return -1
+  if (currentIndex < 0) return direction < 0 ? resultCount - 1 : 0
   const offset = direction < 0 ? -1 : 1
 
   return (currentIndex + offset + resultCount) % resultCount

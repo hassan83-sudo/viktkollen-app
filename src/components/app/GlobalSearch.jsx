@@ -48,7 +48,10 @@ function GlobalSearch({ onNavigate }) {
   const { t } = useTranslation(['settings', 'common'])
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [selectedIndex, setSelectedIndex] = useState(0)
+  // A11Y-8W (8M B4): combobox with a listbox popup. DOM focus stays in the
+  // field; the arrow keys move the active option (aria-activedescendant).
+  // -1 means no active option.
+  const [selectedIndex, setSelectedIndex] = useState(-1)
   const inputRef = useRef(null)
   const openerRef = useRef(null)
   const [recentIds, setRecentIds] = useState(() => readRecentSearchIds())
@@ -71,6 +74,12 @@ function GlobalSearch({ onNavigate }) {
   const fallbackResults = useMemo(() => searchGlobalNavigation('hem').slice(0, 4), [])
   const navigationResults = visibleResults.length > 0 ? visibleResults : hasQuery ? fallbackResults : []
   const hasResults = navigationResults.length > 0
+  const activeResult = selectedIndex >= 0 ? navigationResults[selectedIndex] : null
+  const resultStatus = !hasQuery
+    ? ''
+    : hasTypedResults
+      ? t('search.resultCount', { count: results.length })
+      : t('search.noExactMatches', { query })
 
   const translateGroupTitle = (title) => {
     const key = searchGroupTitleKeys[title]
@@ -87,7 +96,7 @@ function GlobalSearch({ onNavigate }) {
   const closeSearch = useCallback(() => {
     setIsOpen(false)
     setQuery('')
-    setSelectedIndex(0)
+    setSelectedIndex(-1)
   }, [])
 
   function navigateToResult(result) {
@@ -97,6 +106,13 @@ function GlobalSearch({ onNavigate }) {
     onNavigate?.(result)
     closeSearch()
   }
+
+  // The active option is not focused, so keep it in view when the arrow keys
+  // move it through the scrolling list.
+  useEffect(() => {
+    if (!isOpen || !activeResult) return
+    document.getElementById(`global-search-result-${activeResult.id}`)?.scrollIntoView?.({ block: 'nearest' })
+  }, [activeResult, isOpen])
 
   useEffect(() => {
     function handleGlobalKeyDown(event) {
@@ -128,7 +144,8 @@ function GlobalSearch({ onNavigate }) {
       return
     }
 
-    navigateToResult(navigationResults[action.index])
+    // Enter without an active option opens the first match of a typed search.
+    navigateToResult(activeResult || (hasQuery ? navigationResults[0] : null))
   }
 
   function renderResult(result, index) {
@@ -139,8 +156,10 @@ function GlobalSearch({ onNavigate }) {
         id={`global-search-result-${result.id}`}
         key={result.id}
         role="option"
+        tabIndex={-1}
         type="button"
         onClick={() => navigateToResult(result)}
+        onMouseDown={(event) => event.preventDefault()}
         onMouseEnter={() => setSelectedIndex(index)}
       >
         <span aria-hidden="true">{result.icon}</span>
@@ -178,20 +197,20 @@ function GlobalSearch({ onNavigate }) {
             <div className="global-search-field">
               <span aria-hidden="true">⌕</span>
               <input
-                aria-activedescendant={
-                  hasResults && selectedIndex >= 0 ? `global-search-result-${navigationResults[selectedIndex]?.id}` : undefined
-                }
+                aria-activedescendant={activeResult ? `global-search-result-${activeResult.id}` : undefined}
+                aria-autocomplete="list"
                 aria-controls="global-search-results"
+                aria-expanded={hasResults}
                 aria-label={t('search.input')}
                 autoComplete="off"
                 onChange={(event) => {
                   setQuery(event.target.value)
-                  setSelectedIndex(0)
+                  setSelectedIndex(-1)
                 }}
                 onKeyDown={handleInputKeyDown}
                 placeholder={t('search.placeholder')}
                 ref={inputRef}
-                role="searchbox"
+                role="combobox"
                 type="search"
                 value={query}
               />
@@ -199,6 +218,8 @@ function GlobalSearch({ onNavigate }) {
                 {t('common:actions.close')}
               </button>
             </div>
+
+            <p className="sr-only" id="global-search-status" role="status">{resultStatus}</p>
 
             <div
               className="global-search-results"
@@ -213,20 +234,21 @@ function GlobalSearch({ onNavigate }) {
                   startIndex += previousGroup.items.length
                 }
                 const groupTitle = translateGroupTitle(group.title)
+                const groupTitleId = `global-search-group-${startIndex}`
 
                 return (
-                  <section className="global-search-group" key={group.title} aria-label={groupTitle}>
-                    <h3>{groupTitle}</h3>
+                  <div className="global-search-group" key={group.title} role="group" aria-labelledby={groupTitleId}>
+                    <h3 id={groupTitleId} role="presentation">{groupTitle}</h3>
                     {group.items.map((result, index) => renderResult(result, startIndex + index))}
-                  </section>
+                  </div>
                 )
               })}
 
               {hasQuery && hasTypedResults && results.map((result, index) => renderResult(result, index))}
 
               {hasQuery && !hasTypedResults && (
-                <div className="global-search-empty">
-                  <p>{t('search.noExactMatches', { query })}</p>
+                <div className="global-search-empty" role="group" aria-labelledby="global-search-empty-title">
+                  <p id="global-search-empty-title">{t('search.noExactMatches', { query })}</p>
                   <div className="global-search-related">
                     {fallbackResults.map((result, index) => renderResult(result, index))}
                   </div>

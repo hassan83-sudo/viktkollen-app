@@ -797,16 +797,18 @@ html {
   }
 }
 
-/* 8M B13 (A11Y-8X1): date and time dialog that replaces window.prompt in
-   MealLogger and ProgressCenter. Same sheet as the Ready and Place modals. */
-.date-time-dialog-backdrop {
+/* 8M B13 (A11Y-8X1, 8X2): the dialogs that replace window.prompt (date and
+   time, import mode, photo note). Same sheet as the Ready and Place modals. */
+.date-time-dialog-backdrop,
+.form-dialog-backdrop {
   position: fixed;
   inset: 0;
   z-index: 60;
   background: rgba(2, 6, 18, 0.62);
 }
 
-.date-time-dialog {
+.date-time-dialog,
+.form-dialog {
   position: fixed;
   inset: auto 12px max(88px, calc(env(safe-area-inset-bottom) + 72px)) 12px;
   max-width: 520px;
@@ -820,12 +822,14 @@ html {
   background: rgba(8, 12, 28, 0.98);
 }
 
-.date-time-dialog h2 {
+.date-time-dialog h2,
+.form-dialog h2 {
   margin: 0 0 6px;
   font-size: 1.2rem;
 }
 
-.date-time-dialog .field {
+.date-time-dialog .field,
+.form-dialog .field {
   margin-bottom: 12px;
 }
 
@@ -833,13 +837,46 @@ html {
   min-height: 44px;
 }
 
-.date-time-dialog-actions {
+.date-time-dialog-actions,
+.form-dialog-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
 }
 
-.date-time-dialog-actions button {
+.date-time-dialog-actions button,
+.form-dialog-actions button {
   min-height: 44px;
+}
+
+.form-dialog textarea {
+  width: 100%;
+  min-height: 96px;
+}
+
+.form-dialog-choices {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.form-dialog-choices legend {
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.form-dialog-choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+
+.form-dialog-choice input {
+  width: 24px;
+  height: 24px;
+  margin: 0;
 }

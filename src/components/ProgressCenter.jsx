@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DateTimeDialog from './a11y/DateTimeDialog.jsx'
+import ImportModeDialog from './a11y/ImportModeDialog.jsx'
 import {
   addDays,
   analyzeBodyMeasurements,
@@ -751,6 +752,7 @@ function ProgressImportExport({
   onToggleImages,
   includeImages,
   fileInputRef,
+  importButtonRef,
 }) {
   const { t } = useTranslation(['progress', 'common'])
 
@@ -771,7 +773,7 @@ function ProgressImportExport({
       </p>
       <div className="progress-actions">
         <button type="button" onClick={onExport}>{t('center.importExport.export')}</button>
-        <button className="secondary-button" type="button" onClick={onOpenImport}>{t('center.importExport.importJson')}</button>
+        <button className="secondary-button" ref={importButtonRef} type="button" onClick={onOpenImport}>{t('center.importExport.importJson')}</button>
         {/* A11Y-8N: opened by the visible import button, not a Tab stop. */}
         <input
           ref={fileInputRef}
@@ -857,6 +859,9 @@ function ProgressCenter({
 }) {
   const { t } = useTranslation(['progress', 'common'])
   const importInputRef = useRef(null)
+  const importButtonRef = useRef(null)
+  // A11Y-8X2: a parsed import waiting for the import mode (ImportModeDialog).
+  const [pendingImport, setPendingImport] = useState(null)
   const normalizedWeights = useMemo(() => normalizeWeights(weights), [weights])
   const normalizedMeasurements = useMemo(() => normalizeBodyMeasurements(bodyMeasurements), [bodyMeasurements])
   const [weightDraft, setWeightDraft] = useState(() => getEmptyWeightDraft(normalizedWeights.at(-1)))
@@ -1120,38 +1125,7 @@ function ProgressCenter({
           return
         }
 
-        const mode = window.prompt(
-          t('center.prompts.importMode', {
-            weights: parsed.summary.weightCount,
-            measurements: parsed.summary.bodyMeasurementCount,
-            reports: parsed.summary.progressReportCount,
-          }),
-          t('center.prompts.importModeDefault'),
-        )
-
-        if (!mode) {
-          setImportStatus(t('center.importStatus.cancelled'))
-          return
-        }
-
-        if (mode.toLocaleLowerCase('sv-SE').includes('ers')) {
-          if (!window.confirm(t('center.confirms.replaceImport'))) {
-            setImportStatus(t('center.importStatus.cancelled'))
-            return
-          }
-
-          onWeightsChange(parsed.weights)
-          onBodyMeasurementsChange(parsed.bodyMeasurements)
-          onProgressReportsChange(parsed.progressReports)
-        } else {
-          onWeightsChange(normalizeWeights([...parsed.weights, ...normalizedWeights]))
-          onBodyMeasurementsChange(normalizeBodyMeasurements([...parsed.bodyMeasurements, ...normalizedMeasurements]))
-          onProgressReportsChange([...parsed.progressReports, ...progressReports])
-        }
-
-        onGoalSettingsChange(parsed.goalSettings)
-        setGoalDraft(parsed.goalSettings)
-        setImportStatus(t('center.importStatus.success'))
+        setPendingImport(parsed)
       } catch {
         setImportStatus(t('center.importStatus.failed'))
       } finally {
@@ -1159,6 +1133,39 @@ function ProgressCenter({
       }
     })
     reader.readAsText(file)
+  }
+
+  function cancelImport() {
+    setPendingImport(null)
+    setImportStatus(t('center.importStatus.cancelled'))
+  }
+
+  function applyImport(mode) {
+    const parsed = pendingImport
+    setPendingImport(null)
+
+    try {
+      if (mode === 'replace') {
+        if (!window.confirm(t('center.confirms.replaceImport'))) {
+          setImportStatus(t('center.importStatus.cancelled'))
+          return
+        }
+
+        onWeightsChange(parsed.weights)
+        onBodyMeasurementsChange(parsed.bodyMeasurements)
+        onProgressReportsChange(parsed.progressReports)
+      } else {
+        onWeightsChange(normalizeWeights([...parsed.weights, ...normalizedWeights]))
+        onBodyMeasurementsChange(normalizeBodyMeasurements([...parsed.bodyMeasurements, ...normalizedMeasurements]))
+        onProgressReportsChange([...parsed.progressReports, ...progressReports])
+      }
+
+      onGoalSettingsChange(parsed.goalSettings)
+      setGoalDraft(parsed.goalSettings)
+      setImportStatus(t('center.importStatus.success'))
+    } catch {
+      setImportStatus(t('center.importStatus.failed'))
+    }
   }
 
   const show = (name) => view === 'all' || view === name
@@ -1328,6 +1335,7 @@ function ProgressCenter({
       <ProgressImportExport
         estimatedSizeLabel={estimatedExport}
         fileInputRef={importInputRef}
+        importButtonRef={importButtonRef}
         importStatus={importStatus}
         includeImages={includeImages}
         onExport={exportProgress}
@@ -1336,6 +1344,18 @@ function ProgressCenter({
         onToggleImages={() => setIncludeImages((current) => !current)}
       />
       </>
+      )}
+      {pendingImport && (
+        <ImportModeDialog
+          fallbackFocusRef={importButtonRef}
+          summary={t('center.prompts.importSummary', {
+            weights: pendingImport.summary.weightCount,
+            measurements: pendingImport.summary.bodyMeasurementCount,
+            reports: pendingImport.summary.progressReportCount,
+          })}
+          onCancel={cancelImport}
+          onConfirm={applyImport}
+        />
       )}
       {copyWeightEntry && (
         <DateTimeDialog

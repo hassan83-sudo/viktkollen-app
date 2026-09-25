@@ -25,6 +25,7 @@ import {
   summarizeMeals,
 } from '../services/nutrition/mealHistoryRange.js'
 import DateTimeDialog from './a11y/DateTimeDialog.jsx'
+import ImportModeDialog from './a11y/ImportModeDialog.jsx'
 import DailyNutritionSummary from './nutrition/DailyNutritionSummary.jsx'
 import DietaryPreferencesPanel from './nutrition/DietaryPreferencesPanel.jsx'
 import FavoriteMeals from './nutrition/FavoriteMeals.jsx'
@@ -147,10 +148,13 @@ function MealLogger({
 }) {
   const { t } = useTranslation(['nutrition', 'common'])
   const fileInputRef = useRef(null)
+  const importButtonRef = useRef(null)
   const [draft, setDraft] = useState(() => getEmptyMeal(selectedMealDate))
   const [editingFavoriteId, setEditingFavoriteId] = useState('')
   // A11Y-8X1: date and time for "Kopiera" and a favourite ({ kind, item }).
   const [dateTimeRequest, setDateTimeRequest] = useState(null)
+  // A11Y-8X2: a parsed import waiting for the import mode (ImportModeDialog).
+  const [pendingImport, setPendingImport] = useState(null)
   const [editingMealId, setEditingMealId] = useState('')
   const [errors, setErrors] = useState({})
   const [favoriteSearch, setFavoriteSearch] = useState('')
@@ -579,68 +583,67 @@ function MealLogger({
           return
         }
 
-        const mode = window.prompt(
-          t('logger.prompts.importMode', {
-            mealCount: parsed.summary.mealCount,
-            favoriteCount: parsed.summary.favoriteCount,
-            mealTemplateCount: parsed.summary.mealTemplateCount,
-            recipeCount: parsed.summary.recipeCount,
-            goalsLabel: parsed.summary.hasGoals
-              ? t('logger.prompts.hasGoals')
-              : t('logger.prompts.noGoals'),
-          }),
-          t('logger.prompts.importModeDefault'),
-        )
-
-        if (!mode) {
-          setImportStatus(t('logger.importStatus.cancelled'))
-          return
-        }
-
-        if (mode.toLocaleLowerCase('sv-SE').includes('ers')) {
-          const shouldReplace = window.confirm(t('logger.confirms.replaceImport'))
-
-          if (!shouldReplace) {
-            setImportStatus(t('logger.importStatus.cancelled'))
-            return
-          }
-
-          onMealsChange(parsed.meals)
-          onFavoriteMealsChange(parsed.favoriteMeals)
-          changeMealTemplates(parsed.mealTemplates)
-          changeRecipes(parsed.recipes)
-          saveDietaryPreferences(parsed.dietaryPreferences)
-        } else {
-          const currentIds = new Set(normalizedMeals.map((meal) => meal.id))
-          const importedMeals = parsed.meals.map((meal) =>
-            currentIds.has(meal.id)
-              ? { ...meal, id: `meal-import-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` }
-              : meal,
-          )
-
-          onMealsChange([...importedMeals, ...normalizedMeals])
-          onFavoriteMealsChange(mergeById(parsed.favoriteMeals, favoriteMeals))
-          changeMealTemplates(mergeById(parsed.mealTemplates, mealTemplates))
-          changeRecipes(mergeById(parsed.recipes, recipes))
-          saveDietaryPreferences({
-            ...dietaryPreferences,
-            ...parsed.dietaryPreferences,
-          })
-        }
-
-        if (parsed.hasGoals) {
-          setGoalDraft(parsed.goals)
-          onNutritionGoalsChange(parsed.goals)
-        }
-
-        setImportStatus(t('logger.importStatus.success'))
+        setPendingImport(parsed)
       } catch {
         setImportStatus(t('logger.importStatus.failed'))
       } finally {
         event.target.value = ''
       }
     })
+
     reader.readAsText(file)
+  }
+
+  function cancelImport() {
+    setPendingImport(null)
+    setImportStatus(t('logger.importStatus.cancelled'))
+  }
+
+  function applyImport(mode) {
+    const parsed = pendingImport
+    setPendingImport(null)
+
+    try {
+      if (mode === 'replace') {
+        const shouldReplace = window.confirm(t('logger.confirms.replaceImport'))
+
+        if (!shouldReplace) {
+          setImportStatus(t('logger.importStatus.cancelled'))
+          return
+        }
+
+        onMealsChange(parsed.meals)
+        onFavoriteMealsChange(parsed.favoriteMeals)
+        changeMealTemplates(parsed.mealTemplates)
+        changeRecipes(parsed.recipes)
+        saveDietaryPreferences(parsed.dietaryPreferences)
+      } else {
+        const currentIds = new Set(normalizedMeals.map((meal) => meal.id))
+        const importedMeals = parsed.meals.map((meal) =>
+          currentIds.has(meal.id)
+            ? { ...meal, id: `meal-import-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` }
+            : meal,
+        )
+
+        onMealsChange([...importedMeals, ...normalizedMeals])
+        onFavoriteMealsChange(mergeById(parsed.favoriteMeals, favoriteMeals))
+        changeMealTemplates(mergeById(parsed.mealTemplates, mealTemplates))
+        changeRecipes(mergeById(parsed.recipes, recipes))
+        saveDietaryPreferences({
+          ...dietaryPreferences,
+          ...parsed.dietaryPreferences,
+        })
+      }
+
+      if (parsed.hasGoals) {
+        setGoalDraft(parsed.goals)
+        onNutritionGoalsChange(parsed.goals)
+      }
+
+      setImportStatus(t('logger.importStatus.success'))
+    } catch {
+      setImportStatus(t('logger.importStatus.failed'))
+    }
   }
 
   return (
@@ -863,6 +866,7 @@ function MealLogger({
       <div className="nutrition-panel-import-export">
         <NutritionImportExport
           fileInputRef={fileInputRef}
+          importButtonRef={importButtonRef}
           importStatus={importStatus}
           onExport={exportNutrition}
           onFileChange={importNutrition}
@@ -932,6 +936,20 @@ function MealLogger({
           onSaveTemplate={saveMealTemplate}
         />
       </div>
+      {pendingImport && (
+        <ImportModeDialog
+          fallbackFocusRef={importButtonRef}
+          summary={t('logger.prompts.importSummary', {
+            mealCount: pendingImport.summary.mealCount,
+            favoriteCount: pendingImport.summary.favoriteCount,
+            mealTemplateCount: pendingImport.summary.mealTemplateCount,
+            recipeCount: pendingImport.summary.recipeCount,
+            goalsLabel: pendingImport.summary.hasGoals ? t('logger.prompts.hasGoals') : t('logger.prompts.noGoals'),
+          })}
+          onCancel={cancelImport}
+          onConfirm={applyImport}
+        />
+      )}
       {dateTimeRequest && (
         <DateTimeDialog
           initialDate={selectedMealDate}

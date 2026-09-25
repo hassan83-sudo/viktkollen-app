@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import NoteDialog from './a11y/NoteDialog.jsx'
 import BodyAnalysisCard from './BodyAnalysisCard.jsx'
 import ProgressPhotoEmptyState from './ProgressPhotoEmptyState.jsx'
 import ProgressPhotoUpload from './ProgressPhotoUpload.jsx'
@@ -143,6 +144,8 @@ function ProgressPhotos({
   const [showSameOccasionComparison, setShowSameOccasionComparison] =
     useState(false)
   const [photoFilter, setPhotoFilter] = useState('Alla')
+  // A11Y-8X2: the photo whose note is being edited (NoteDialog).
+  const [noteEditPhoto, setNoteEditPhoto] = useState(null)
   const [periodFilter, setPeriodFilter] = useState('all')
   const [photoSearch, setPhotoSearch] = useState('')
   const [sliderPosition, setSliderPosition] = useState(50)
@@ -322,13 +325,7 @@ function ProgressPhotos({
                     <button
                       className="secondary-button"
                       type="button"
-                      onClick={() => {
-                        const note = window.prompt('Uppdatera anteckning', photo.note)
-
-                        if (note !== null) {
-                          onUpdateProgressPhoto(photo.id, { note })
-                        }
-                      }}
+                      onClick={() => setNoteEditPhoto(photo)}
                     >
                       Redigera
                     </button>
@@ -452,6 +449,16 @@ function ProgressPhotos({
 
       {!hasProgressPhotos && (!showBodyAnalysis || !hasBodyAnalysisHistory) && (
         <ProgressPhotoEmptyState />
+      )}
+      {noteEditPhoto && (
+        <NoteDialog
+          initialNote={noteEditPhoto.note || ''}
+          onCancel={() => setNoteEditPhoto(null)}
+          onSave={(note) => {
+            onUpdateProgressPhoto(noteEditPhoto.id, { note })
+            setNoteEditPhoto(null)
+          }}
+        />
       )}
     </article>
   )

@@ -5,6 +5,17 @@ import { placeEn, placeSv, readyEn, readySv } from './readyPlaceResources.js'
 const sv = {
   common: {
     appName: 'Viktkollen',
+    importModeDialog: {
+      title: 'Importera säkerhetskopia',
+      legend: 'Hur ska importen läggas in?',
+      merge: 'Slå ihop med befintlig data',
+      replace: 'Ersätt befintlig data',
+      confirm: 'Importera',
+    },
+    noteDialog: {
+      title: 'Redigera anteckning',
+      label: 'Anteckning',
+    },
     dateTimeDialog: {
       date: 'Datum',
       time: 'Tid',
@@ -1569,6 +1580,7 @@ const sv = {
         copyTime: 'Vilken tid ska kopian få? (TT:MM)',
         importMode: 'Importen innehåller {{weights}} viktposter, {{measurements}} kroppsmått och {{reports}} rapporter.\nSkriv "slå ihop" eller "ersätt".',
         importModeDefault: 'slå ihop',
+        importSummary: 'Importen innehåller {{weights}} viktposter, {{measurements}} kroppsmått och {{reports}} rapporter.',
       },
       importStatus: {
         noFile: 'Ingen fil valdes.',
@@ -1676,6 +1688,7 @@ const sv = {
         importModeDefault: 'slå ihop',
         hasGoals: 'kostmål',
         noGoals: 'inga kostmål',
+        importSummary: 'Importen innehåller {{mealCount}} måltider, {{favoriteCount}} favoriter, {{mealTemplateCount}} mallar, {{recipeCount}} recept och {{goalsLabel}}.',
       },
       importStatus: {
         noFile: 'Ingen fil valdes.',
@@ -1881,6 +1894,17 @@ const sv = {
 const en = {
   common: {
     appName: 'Viktkollen',
+    importModeDialog: {
+      title: 'Import backup',
+      legend: 'How should the import be added?',
+      merge: 'Merge with existing data',
+      replace: 'Replace existing data',
+      confirm: 'Import',
+    },
+    noteDialog: {
+      title: 'Edit note',
+      label: 'Note',
+    },
     dateTimeDialog: {
       date: 'Date',
       time: 'Time',
@@ -3445,6 +3469,7 @@ const en = {
         copyTime: 'Which time should the copy get? (HH:MM)',
         importMode: 'The import contains {{weights}} weight entries, {{measurements}} body measurements and {{reports}} reports.\nType "slå ihop" or "ersätt".',
         importModeDefault: 'slå ihop',
+        importSummary: 'The import contains {{weights}} weight entries, {{measurements}} body measurements and {{reports}} reports.',
       },
       importStatus: {
         noFile: 'No file selected.',
@@ -3552,6 +3577,7 @@ const en = {
         importModeDefault: 'slå ihop',
         hasGoals: 'nutrition goals',
         noGoals: 'no nutrition goals',
+        importSummary: 'The import contains {{mealCount}} meals, {{favoriteCount}} favorites, {{mealTemplateCount}} templates, {{recipeCount}} recipes and {{goalsLabel}}.',
       },
       importStatus: {
         noFile: 'No file selected.',

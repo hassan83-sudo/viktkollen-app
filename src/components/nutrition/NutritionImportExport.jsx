@@ -1,4 +1,4 @@
-function NutritionImportExport({ fileInputRef, importStatus, onExport, onFileChange, onOpenImport }) {
+function NutritionImportExport({ fileInputRef, importButtonRef, importStatus, onExport, onFileChange, onOpenImport }) {
   return (
     <section className="nutrition-card nutrition-import-export">
       <div className="nutrition-card-heading">
@@ -12,7 +12,7 @@ function NutritionImportExport({ fileInputRef, importStatus, onExport, onFileCha
       </p>
       <div className="nutrition-actions">
         <button type="button" onClick={onExport}>Spara kostdata</button>
-        <button className="secondary-button" type="button" onClick={onOpenImport}>Välj säkerhetskopia</button>
+        <button className="secondary-button" ref={importButtonRef} type="button" onClick={onOpenImport}>Välj säkerhetskopia</button>
         {/* A11Y-8N: opened by the visible button, not a Tab stop. */}
         <input
           ref={fileInputRef}

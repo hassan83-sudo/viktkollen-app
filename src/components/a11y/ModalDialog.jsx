@@ -9,6 +9,7 @@ import { useDialogA11y } from '../../services/accessibilityDialog.js'
 function ModalDialog({
   children,
   closeOnEscape = false,
+  fallbackFocusRef,
   initialFocus,
   initialFocusRef,
   onClose,
@@ -16,7 +17,7 @@ function ModalDialog({
   ...props
 }) {
   const dialogRef = useRef(null)
-  useDialogA11y({ closeOnEscape, dialogRef, initialFocus, initialFocusRef, onClose })
+  useDialogA11y({ closeOnEscape, dialogRef, fallbackFocusRef, initialFocus, initialFocusRef, onClose })
 
   return (
     <div {...props} aria-modal="true" ref={dialogRef} role={role === 'alertdialog' ? 'alertdialog' : 'dialog'}>

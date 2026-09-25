@@ -12,29 +12,47 @@ NO PRODUCTION DATA.
 
 This harness validates account-deletion database atomicity and is not a complete reproduction of Production authorization/RLS.
 
-## Install order
+## Environment guard
 
-1. Create three synthetic Auth users in the isolated project only. Suggested emails: `f24-user-a@invalid.test`, `f24-user-b@invalid.test`, `f24-user-c@invalid.test`. Use the UUIDs in `01_test_data.sql`.
-2. `00_bootstrap.sql`
-3. `01_test_data.sql`
-4. For a failure case, `02_failure_injection.sql`
-5. `04_verification.sql` as a manual checklist. Do not point it at Production.
-6. `03_cleanup_failure_injection.sql`
+Every executable SQL file refuses to run unless the session already has:
 
-Purge function bodies in `00_bootstrap.sql` are exact copies of the account-deletion migrations. Do not edit them here.
+`viktkollen.account_deletion_harness = isolated-app-staging`
 
-## RLS
+Set that in the isolated test session before running any file. The SQL files do not set it themselves. A missing or different value fails closed. No project ref is hardcoded.
 
-RLS is enabled, and forced where Production forces it, for the F22/F23 tables. Policies that depend on `public.viktkollen_is_place_family_member` or `public.place_trip_shares` are omitted. Those objects are not required for `SECURITY DEFINER` cleanup. Execute rights are still revoked from `public`, `anon`, and `authenticated` on the purge functions, and granted to `service_role`.
+## Service role
 
-## Triggers
+Do not call `purge_account_user_data` as postgres in the SQL editor when `auth.role()` has no service_role JWT context. That call fails with `not allowed`.
 
-`viktkollen_place_touch_updated_at` runs on family and share updates, including the F15 ownership update. Owner triggers on sync, backups, and reminder schedules overwrite or require `auth.uid()`. Fixture SQL disables them only while inserting synthetic rows, then enables them. The reminder function is unchanged.
+`04_verification.sql` sets a transaction-local `request.jwt.claim.role` of `service_role` and then calls the function in that same transaction. That is the database atomicity runner. It stores no key.
+
+The API-boundary method is a service-role HTTP RPC to `/rest/v1/rpc/purge_account_user_data` against only the isolated app-staging project. Do not put the service-role key in the repo or in SQL.
+
+## Scenario model
+
+Each failure scenario starts from the same committed baseline. Run `01_test_data.sql` again before a new full pass. Do not chain scenarios on leftover mutations.
+
+1. Set the harness marker in the session.
+2. `00_bootstrap.sql` once.
+3. `01_test_data.sql` to reset synthetic fixtures, including the named Vault secret.
+4. `04_verification.sql` for the database atomicity pass. It checks the baseline, runs guardian, Policy C, sync, F13, and F14 failures inside transactions that roll back, then runs success and a second call.
+
+`02_failure_injection.sql` is only for a separate RPC scenario. Set `viktkollen.account_deletion_failure_point` to exactly one of `policy_c`, `sync`, `f13`, or `f14`. A missing or unknown value raises. The file drops the other test triggers and creates one. Then call the RPC. Then assert. Then `03_cleanup_failure_injection.sql`.
+
+Do not leave a committed failure trigger in place before `04_verification.sql`. `04` drops leftover test triggers first.
+
+## Fixture transactions
+
+`01_test_data.sql` opens one transaction after the guard. It disables owner triggers only inside that transaction, inserts rows, enables the triggers, then commits. `DISABLE TRIGGER` is transactional. If a statement fails, run `ROLLBACK` in that same session before retrying. A successful commit leaves the triggers enabled.
 
 ## Vault
 
-`private.user_backup_keys` uses a synthetic `secret_id`. The existing delete trigger looks for `vault.secrets` and matches nothing. No Production secret is created.
+The fixture calls `vault.create_secret` with the name `f26-synthetic-account-deletion-backup-key` and stores the returned id in `private.user_backup_keys`. The F14 failure scenario proves that a later error restores both the key row and that named secret. Success expects both to be gone. Cleanup deletes only that exact secret name.
+
+## RLS
+
+RLS is enabled, and forced where Production forces it. Policies that depend on `viktkollen_is_place_family_member` or `place_trip_shares` are omitted.
 
 ## Auth deletion
 
-This package does not call `auth.admin.deleteUser`. Auth deletion stays outside the database transaction.
+This package does not call `auth.admin.deleteUser`. After a successful purge, synthetic Auth user A must still exist.

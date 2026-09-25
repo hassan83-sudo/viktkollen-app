@@ -1,5 +1,15 @@
--- INSTALL ORDER: this file only, then 01, then 02 when a failure case is needed, then 04, then 03.
+-- INSTALL ORDER: 00, then 01, then 04. Use 02 only for a separate service-role RPC scenario.
 -- Function bodies below are exact copies of the account-deletion migrations.
+-- The session must already have viktkollen.account_deletion_harness=isolated-app-staging.
+-- This file does not set that marker.
+
+do $account_deletion_harness_guard$
+begin
+  if current_setting('viktkollen.account_deletion_harness', true) is distinct from 'isolated-app-staging' then
+    raise exception 'refusing to run without viktkollen.account_deletion_harness=isolated-app-staging';
+  end if;
+end
+$account_deletion_harness_guard$;
 
 -- TEST/STAGING ONLY. NEVER RUN AGAINST PRODUCTION OR BILLING-STAGING.
 -- Minimal account-deletion harness. Not a full Production RLS copy.

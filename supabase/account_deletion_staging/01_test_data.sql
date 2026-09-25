@@ -1,13 +1,21 @@
 -- TEST/STAGING ONLY. NEVER RUN AGAINST PRODUCTION OR BILLING-STAGING.
--- Synthetic fixtures. Create the three Auth users in the isolated project
--- before running this file. Do not copy Production users.
---
--- Owner triggers overwrite user_id with auth.uid(). Fixture inserts disable
--- those triggers, then enable them again. reminder_schedule_owner raises
--- when auth.uid() is null, so it is disabled for the same inserts.
--- Backup keys use a synthetic secret_id. The Vault trigger deletes zero rows.
+-- Run this file as one session script. It opens a transaction after the guard.
+-- DISABLE TRIGGER is transactional. If a later statement fails, ROLLBACK in
+-- this session restores the previous trigger state. A successful COMMIT
+-- leaves the triggers enabled.
+-- This file does not set viktkollen.account_deletion_harness.
 
-do $$
+do $account_deletion_harness_guard$
+begin
+  if current_setting('viktkollen.account_deletion_harness', true) is distinct from 'isolated-app-staging' then
+    raise exception 'refusing to run without viktkollen.account_deletion_harness=isolated-app-staging';
+  end if;
+end
+$account_deletion_harness_guard$;
+
+begin;
+
+do $check_users$
 begin
   if not exists (select 1 from auth.users where id = '11111111-1111-4111-8111-111111111111'::uuid) then
     raise exception 'missing synthetic auth user A';
@@ -18,7 +26,61 @@ begin
   if not exists (select 1 from auth.users where id = '33333333-3333-4333-8333-333333333333'::uuid) then
     raise exception 'missing synthetic auth user C';
   end if;
-end $$;
+end
+$check_users$;
+
+delete from public.place_voice_call_signals
+where call_id = '66666666-6666-4666-8666-666666666666';
+delete from public.place_voice_calls
+where id = '66666666-6666-4666-8666-666666666666';
+delete from public.place_e2ee_live_locations
+where family_id = '44444444-4444-4444-8444-444444444444';
+delete from public.place_location_shares
+where user_id = '11111111-1111-4111-8111-111111111111';
+delete from public.place_location_history
+where user_id = '11111111-1111-4111-8111-111111111111';
+delete from public.place_location_history_settings
+where user_id = '11111111-1111-4111-8111-111111111111';
+delete from public.place_push_subscriptions
+where user_id = '11111111-1111-4111-8111-111111111111';
+delete from public.reminder_push_schedules
+where user_id = '11111111-1111-4111-8111-111111111111';
+delete from public.user_sync_items
+where user_id in ('11111111-1111-4111-8111-111111111111', '33333333-3333-4333-8333-333333333333');
+delete from public.user_sync_events
+where user_id = '11111111-1111-4111-8111-111111111111';
+delete from public.user_sync_state
+where user_id = '11111111-1111-4111-8111-111111111111';
+delete from public.user_backups
+where user_id = '11111111-1111-4111-8111-111111111111';
+delete from private.user_backup_keys
+where user_id = '11111111-1111-4111-8111-111111111111';
+delete from vault.secrets
+where name = 'f26-synthetic-account-deletion-backup-key';
+delete from public.social_messages
+where conversation_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1';
+delete from public.social_dm_pairs
+where conversation_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1';
+delete from public.social_conversation_members
+where conversation_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1';
+delete from public.social_conversations
+where id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1';
+delete from public.social_friendships
+where user_low = '11111111-1111-4111-8111-111111111111';
+delete from public.social_friend_requests
+where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1';
+delete from public.social_blocks
+where blocker_id = '11111111-1111-4111-8111-111111111111';
+delete from public.social_location_envelopes
+where owner_user_id = '11111111-1111-4111-8111-111111111111';
+delete from public.social_locations
+where user_id = '11111111-1111-4111-8111-111111111111';
+delete from public.social_public_profiles
+where user_id in ('11111111-1111-4111-8111-111111111111', '33333333-3333-4333-8333-333333333333');
+delete from public.place_family_members
+where family_id = '44444444-4444-4444-8444-444444444444';
+delete from public.place_families
+where id = '44444444-4444-4444-8444-444444444444';
 
 alter table public.user_backups disable trigger viktkollen_user_backups_owner;
 alter table public.user_sync_state disable trigger viktkollen_user_sync_state_owner;
@@ -80,13 +142,9 @@ insert into public.user_sync_events (id, user_id, event_type, status)
 values ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee1', '11111111-1111-4111-8111-111111111111', 'f24', 'synthetic');
 
 insert into public.user_sync_items (id, user_id, storage_key, payload)
-values ('ffffffff-ffff-4fff-8fff-fffffffffff1', '11111111-1111-4111-8111-111111111111', 'f24.synthetic', '{"synthetic":true}'::jsonb);
-
-insert into public.user_sync_items (id, user_id, storage_key, payload)
-values ('ffffffff-ffff-4fff-8fff-fffffffffff2', '33333333-3333-4333-8333-333333333333', 'f24.keep', '{"synthetic":true}'::jsonb);
-
-insert into private.user_backup_keys (user_id, secret_id)
-values ('11111111-1111-4111-8111-111111111111', '77777777-7777-4777-8777-777777777777');
+values
+  ('ffffffff-ffff-4fff-8fff-fffffffffff1', '11111111-1111-4111-8111-111111111111', 'f24.synthetic', '{"synthetic":true}'::jsonb),
+  ('ffffffff-ffff-4fff-8fff-fffffffffff2', '33333333-3333-4333-8333-333333333333', 'f24.keep', '{"synthetic":true}'::jsonb);
 
 insert into public.reminder_push_schedules (id, user_id, reminder_id, title, schedule_type)
 values ('12121212-1212-4121-8121-121212121212', '11111111-1111-4111-8111-111111111111', 'f24', 'F24', 'once');
@@ -112,12 +170,27 @@ values ('66666666-6666-4666-8666-666666666666', '44444444-4444-4444-8444-4444444
 insert into public.place_voice_call_signals (call_id, sender_user_id, signal_type, payload)
 values ('66666666-6666-4666-8666-666666666666', '11111111-1111-4111-8111-111111111111', 'offer', '{"synthetic":true}'::jsonb);
 
+do $vault_secret$
+declare
+  secret_id uuid;
+begin
+  select vault.create_secret(
+    'f26-synthetic-backup-key-value',
+    'f26-synthetic-account-deletion-backup-key',
+    'F26 synthetic account-deletion test secret',
+    null
+  )
+  into secret_id;
+
+  insert into private.user_backup_keys (user_id, secret_id)
+  values ('11111111-1111-4111-8111-111111111111', secret_id);
+end
+$vault_secret$;
+
 alter table public.user_backups enable trigger viktkollen_user_backups_owner;
 alter table public.user_sync_state enable trigger viktkollen_user_sync_state_owner;
 alter table public.user_sync_events enable trigger viktkollen_user_sync_events_owner;
 alter table public.user_sync_items enable trigger viktkollen_user_sync_items_owner;
 alter table public.reminder_push_schedules enable trigger reminder_schedule_owner;
 
--- Guardian blocker is mutually exclusive with the transfer family because
--- place_family_members.user_id is unique. Install it inside the failing
--- transaction in 04_verification.sql, not as committed baseline data.
+commit;

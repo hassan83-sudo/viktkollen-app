@@ -217,3 +217,52 @@ for (const { name, button: buttonName, open } of otherImports) {
     await chooser.expectOpenedOnce(() => page.keyboard.press('Enter'))
   })
 }
+
+// A11Y-8P (8M A-N6): "Importera mathistorik" was a <label> around a
+// display:none input, so the keyboard could not reach it at all.
+test.describe('Mat → Importera mathistorik (8M A-N6)', () => {
+  test('is a Tab stop with visible focus, named, and opens the file chooser once with Enter, Space and click', async ({ page }) => {
+    await openApp(page, { reducedMotion: 'reduce' })
+    await openMoreFolder(page, 'Mat')
+    await page.locator('#app-section-more summary', { hasText: 'Mönster & historik' }).click()
+    await page.locator('#app-section-more').getByRole('button', { name: 'Öppna historik och veckomönster' }).click()
+
+    const tools = page.locator('.nutrition-panel-history-tools')
+    const button = tools.getByRole('button', { name: 'Importera mathistorik från JSON', exact: true })
+    const input = tools.locator('input[type=file]')
+    await expect(button).toBeVisible()
+    await expect(button).toHaveText('Importera mathistorik')
+
+    // 1-3: Tab from the previous control reaches the button, focus is
+    // visible, and the next Tab stop (checked by the 8N hidden-focus gate) is
+    // the next visible control, not the hidden input.
+    await tools.getByRole('button', { name: 'Exportera mathistorik som JSON' }).focus()
+    await page.keyboard.press('Tab')
+    await expect(button).toBeFocused()
+    await expectVisibleFocus(page, button)
+    await page.keyboard.press('Tab')
+    await settleFocus(page)
+    const next = await page.evaluate(inspectFocusedElement)
+    expect(next.problems, `hidden-focus gate: ${next.name}`).toEqual([])
+    expect(next.name).toBe('button[type=button] "Rensa lokal mathistorik"')
+
+    // The native input keeps its file types and is not exposed on its own.
+    await expect(input).toHaveAttribute('tabindex', '-1')
+    await expect(input).toHaveAttribute('aria-hidden', 'true')
+    await expect(input).toHaveAttribute('accept', 'application/json,.json')
+
+    // 5-8: one chooser per activation.
+    const chooser = await watchFileChooser(page, input)
+    await button.focus()
+    await chooser.expectOpenedOnce(() => page.keyboard.press('Enter'))
+    await button.focus()
+    await chooser.expectOpenedOnce(() => page.keyboard.press('Space'))
+    await chooser.expectOpenedOnce(() => button.click())
+
+    // 9: a mocked, empty export file goes through the existing import flow.
+    const picked = page.waitForEvent('filechooser')
+    await button.click()
+    await (await picked).setFiles({ buffer: Buffer.from('{"app":"Viktkollen","entries":[]}'), mimeType: 'application/json', name: 'mathistorik.json' })
+    await expect(tools.getByText(/Import klar: 0 importerade/)).toBeVisible()
+  })
+})

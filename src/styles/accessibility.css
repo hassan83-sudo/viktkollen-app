@@ -542,3 +542,18 @@ html {
 .achievement-center .achievement-filter button:hover:not(:disabled) {
   color: #020617;
 }
+
+/* --------------------------------------------------------------------------
+   A11Y-8P (8M A-N1): Mat reflow (WCAG 1.4.10).
+   On narrow screens .nutrition-actions is a column (App.css, max-width
+   900px) but keeps the base flex-wrap: wrap, and at max-width 560px its
+   buttons get flex: 1 1 100%. In a wrapping column that 100 % basis is the
+   column's height, so every button starts a new column to the right: the
+   second button ("Dölj") sat outside the page (286 px sideways scroll at
+   390 px). A column never needs to wrap, so it stacks instead.
+   -------------------------------------------------------------------------- */
+@media (max-width: 900px) {
+  .nutrition-actions {
+    flex-wrap: nowrap;
+  }
+}

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { moreHubFolders } from '../../src/services/more/moreFolders.js'
-import { goToSection, openApp } from './support/app.js'
+import { goToSection, horizontalOverflow, openApp } from './support/app.js'
 import { runAxe } from './support/axe.js'
 import { tabStops } from './support/hiddenFocus.js'
 
@@ -10,7 +10,10 @@ import { tabStops } from './support/hiddenFocus.js'
 // - axe: no critical or serious violations;
 // - focus: Tab through the folder; no Tab stop may be visually hidden,
 //   transparent, off-screen or without a focus indicator (C-N2, see
-//   support/hiddenFocus.js).
+//   support/hiddenFocus.js);
+// - reflow (A11Y-8P, 8M A-N1): the folder does not scroll sideways at the
+//   default 390 px width (WCAG 1.4.10). Narrower widths, 200 % and large text
+//   are covered for Mat in mat-reflow.spec.js.
 //
 // Coverage is checked against the app's own folder list, so a folder that is
 // added to Mer, or dropped from `coveredFolders`, fails the suite.
@@ -96,6 +99,11 @@ for (const id of coveredFolders) {
       const unexpected = blocking.filter((violation) => !known.some((entry) => entry.rule === violation.id))
       expect(unexpected.map((violation) => `[${violation.impact}] ${violation.id}: ${violation.nodes.map((node) => node.target).join(' | ')}`)).toEqual([])
       for (const entry of known) expect(blocking.map((violation) => violation.id), `stale baseline: ${entry.rule} (${entry.finding}) no longer reproduces; remove it`).toContain(entry.rule)
+    })
+
+    test('reflow: no horizontal scroll', async ({ page }) => {
+      await openFolder(page, folder)
+      expect(await horizontalOverflow(page), 'page scrolls horizontally (px)').toBeLessThanOrEqual(1)
     })
 
     test('focus: every Tab stop is visible and has a focus indicator', async ({ page }) => {

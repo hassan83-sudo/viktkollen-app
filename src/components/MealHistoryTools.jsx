@@ -1,3 +1,5 @@
+import { useRef } from 'react'
+
 function MealHistoryTools({
   importSummary,
   onCancelClearHistory,
@@ -8,6 +10,8 @@ function MealHistoryTools({
   onShowClearHistory,
   showClearHistoryConfirm,
 }) {
+  const fileInputRef = useRef(null)
+
   return (
     <div className="chart-card">
       <div className="chart-toolbar">
@@ -29,16 +33,26 @@ function MealHistoryTools({
         >
           Exportera mathistorik
         </button>
-        <label className="secondary-button">
+        {/* A11Y-8P (8M A-N6): a real button opens the file chooser. A <label>
+            around a display:none input was no Tab stop at all. The native
+            input is visually hidden and not a Tab stop of its own. */}
+        <button
+          className="secondary-button"
+          type="button"
+          aria-label="Importera mathistorik från JSON"
+          onClick={() => fileInputRef.current?.click()}
+        >
           Importera mathistorik
-          <input
-            type="file"
-            accept="application/json,.json"
-            aria-label="Importera mathistorik från JSON"
-            style={{ display: 'none' }}
-            onChange={onImportHistory}
-          />
-        </label>
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/json,.json"
+          aria-hidden="true"
+          className="sr-only"
+          tabIndex={-1}
+          onChange={onImportHistory}
+        />
         <button
           className="secondary-button"
           type="button"

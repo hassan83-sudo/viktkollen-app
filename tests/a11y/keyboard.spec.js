@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { bottomNavLink, goToSection, openAccessibilityFolder, openApp, supabaseUrl } from './support/app.js'
 import { expectNoBlockingAxeViolations } from './support/axe.js'
-import { expectBackgroundInert, expectFocusInside, expectFocusNotOnBody, expectTabTrappedIn } from './support/focus.js'
+import { expectBackgroundInert, expectFocusInside, expectFocusNotOnBody, expectTabTrappedIn, intentionallyInert, leftoverInertCount } from './support/focus.js'
 
 // A11Y-8F: keyboard-only flows through the real app (no mouse clicks).
 
@@ -68,7 +68,9 @@ test.describe('keyboard: AI Coach dialog', () => {
     await expect(dialog).toHaveCount(0)
     await expect(opener).toBeFocused()
     await expectFocusNotOnBody(page)
-    expect(await page.locator('[inert]').count()).toBe(0)
+    expect(await leftoverInertCount(page)).toBe(0)
+    // The dialog system restored, not removed, the pre-existing inert state.
+    await expect(page.locator(intentionallyInert)).toHaveAttribute('inert', '')
   })
 })
 
@@ -193,7 +195,7 @@ test.describe('keyboard: GlobalSearch dialog', () => {
     await page.keyboard.press('Escape')
     await expect(dialog).toHaveCount(0)
     await expect(opener).toBeFocused()
-    expect(await page.locator('[inert]').count()).toBe(0)
+    expect(await leftoverInertCount(page)).toBe(0)
 
     await page.keyboard.press('Enter')
     await expect(dialog).toBeVisible()

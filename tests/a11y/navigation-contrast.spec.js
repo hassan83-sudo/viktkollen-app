@@ -11,7 +11,14 @@ import { goToSection, openAccessibilityFolder, openApp } from './support/app.js'
 // (alpha). Radial highlights are left out: on Hem the only one is centred on
 // the icon, above the label.
 
-function labelContrasts(page) {
+// Measures the settled state: waits for running transitions (e.g. the active
+// label's colour) to finish and for a frame to be drawn.
+async function labelContrasts(page) {
+  await page.evaluate(async () => {
+    const finite = document.getAnimations().filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
+    await Promise.all(finite.map((animation) => animation.finished.catch(() => {})))
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+  })
   return page.evaluate(() => {
     const parse = (value) => {
       const match = String(value).match(/rgba?\(([^)]+)\)/)

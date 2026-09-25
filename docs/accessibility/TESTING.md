@@ -43,8 +43,16 @@ starts a browser.
      Stället, Mer and Tillgänglighet is inside the viewport, above the fixed
      bottom navigation and not covered by another element (WCAG 2.4.7 and
      2.4.11). It runs in four modes: normal, 200 %, 320 px, and large text
-     with large controls. The only exception is the visually hidden Home
-     header buttons (8H A2), which are skipped by one selector.
+     with large controls. Since 8L it also fails when focus lands inside a
+     visually hidden container (sr-only, clipped or 1 px). There are no
+     exceptions.
+   - `hidden-controls.spec.js` (8L): the Home header actions ("Visa smarta
+     notiser", "Lägg till profilbild") are inert while visually hidden. They
+     are not Tab stops, cannot be focused programmatically and are not buttons
+     in Chrome's accessibility tree. When shown (`showHeaderActions`), they are
+     normal named controls that can be focused visibly and activated. axe does
+     not detect focusable controls inside a visually hidden container, so this
+     spec is the gate for that problem.
    - `navigation-contrast.spec.js` (8I): every bottom-navigation label,
      active and inactive, reaches 4.5:1 in every section. The layers are
      composited: page, navigation, link and the link's gradient stops.

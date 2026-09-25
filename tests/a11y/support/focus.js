@@ -36,3 +36,11 @@ export async function expectTabTrappedIn(page, container, count = 20) {
 export async function expectBackgroundInert(page) {
   await expect.poll(() => page.evaluate(() => Boolean(document.querySelector('main.app-shell')?.closest('[inert]')))).toBe(true)
 }
+
+// Elements left inert after a dialog closed. The Home header actions are
+// intentionally inert while visually hidden (A11Y-8L) and are not counted.
+export const intentionallyInert = '#app-section-home .overview-header-actions.sr-only'
+
+export function leftoverInertCount(page) {
+  return page.evaluate((skip) => [...document.querySelectorAll('[inert]')].filter((element) => !element.matches(skip)).length, intentionallyInert)
+}

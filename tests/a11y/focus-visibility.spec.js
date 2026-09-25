@@ -4,12 +4,9 @@ import { goToSection, openAccessibilityFolder, openApp } from './support/app.js'
 // A11Y-8I: WCAG 2.4.7 / 2.4.11 in real Chromium (geometry cannot be proven in
 // jsdom). For every Tab stop in a view, the focused control must be inside
 // the viewport, above the fixed bottom navigation and not covered by any
-// other element.
-//
-// Known, separately tracked exception (8H A2, awaiting a product decision):
-// the two visually hidden Home header buttons inside `.overview-header-actions`
-// (sr-only). They are skipped by selector here and nowhere else.
-const knownHiddenFocusTargets = '.overview-header-actions.sr-only'
+// other element, and it must not sit inside a visually hidden (clipped or
+// 1px) container. That last rule is the A2 gate (8L): the 8I exception for the
+// hidden Home header buttons is gone, because they are inert while hidden.
 
 const modes = {
   normal: { preferences: null, viewport: { height: 844, width: 390 } },
@@ -21,16 +18,24 @@ const modes = {
 // Measures the focused element. Returns null when focus is in the bottom nav
 // (the end of the view's own content) or on <body>.
 function measureFocus(page) {
-  return page.evaluate((skipSelector) => {
+  return page.evaluate(() => {
     const element = document.activeElement
     if (!element || element === document.body) return { body: true }
     if (element.closest('.bottom-nav')) return { nav: true }
     const name = (element.getAttribute('aria-label') || element.innerText || element.value || element.tagName).trim().split('\n')[0].slice(0, 40)
-    if (element.closest(skipSelector)) return { name, skipped: true }
     const rect = element.getBoundingClientRect()
     const navTop = document.querySelector('.bottom-nav')?.getBoundingClientRect().top ?? window.innerHeight
     const problems = []
     if (rect.width < 2 || rect.height < 2) problems.push('zero-size')
+    // Visually hidden ancestor (sr-only / clip / 1px box with hidden overflow).
+    for (let node = element.parentElement; node && node !== document.body; node = node.parentElement) {
+      const style = getComputedStyle(node)
+      const box = node.getBoundingClientRect()
+      if (node.classList.contains('sr-only') || style.clip === 'rect(0px, 0px, 0px, 0px)' || style.clipPath === 'inset(50%)' || (box.width <= 1 && box.height <= 1 && style.overflow === 'hidden')) {
+        problems.push(`inside-visually-hidden:${String(node.className).split(' ')[0]}`)
+        break
+      }
+    }
     if (rect.top < 0 || rect.left < 0 || rect.right > window.innerWidth + 1) problems.push('outside-viewport')
     if (rect.bottom > navTop + 1) problems.push(`below-nav-top(${Math.round(rect.bottom)}>${Math.round(navTop)})`)
     // Covered: probe the centre and a point near the bottom edge.
@@ -44,7 +49,7 @@ function measureFocus(page) {
       }
     }
     return { name, problems }
-  }, knownHiddenFocusTargets)
+  })
 }
 
 async function tabThroughView(page, maxStops = 70) {
@@ -57,7 +62,7 @@ async function tabThroughView(page, maxStops = 70) {
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve)))))
     const result = await measureFocus(page)
     if (result.nav) break
-    if (result.body || result.skipped) continue
+    if (result.body) continue
     stops += 1
     if (result.problems.length) failures.push(`${result.name}: ${result.problems.join(', ')}`)
   }

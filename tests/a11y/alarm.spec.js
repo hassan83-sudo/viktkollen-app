@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { openApp } from './support/app.js'
 import { expectNoBlockingAxeViolations } from './support/axe.js'
-import { expectBackgroundInert, expectFocusNotOnBody } from './support/focus.js'
+import { expectBackgroundInert, expectFocusNotOnBody, leftoverInertCount } from './support/focus.js'
 
 // A11Y-8F: the wake alarm is triggered deterministically with Playwright's
 // fake clock. Speech synthesis is a silent stub and vibration a no-op, so the
@@ -59,7 +59,7 @@ for (const [modeName, preferences] of Object.entries(modes)) {
 
     await page.keyboard.press('Enter')
     await expect(alarm).toHaveCount(0)
-    expect(await page.locator('[inert]').count()).toBe(0)
+    expect(await leftoverInertCount(page)).toBe(0)
     await expect(setAlarm).toBeFocused()
     await expectFocusNotOnBody(page)
   })

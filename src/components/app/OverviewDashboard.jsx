@@ -1036,6 +1036,11 @@ function OverviewDashboard({
   proteinToday,
   reminderState,
   selectedDate,
+  // A11Y-8L: the header actions (smart notices, profile photo) are visually
+  // hidden in the current Home design. One switch controls both their look
+  // and their semantics: hidden means sr-only AND inert (no Tab stop, not
+  // exposed to assistive technology). Shown means a normal, focusable control.
+  showHeaderActions = false,
   syncStatus,
   userId = 'local-user',
   voiceStatus,
@@ -1203,7 +1208,7 @@ function OverviewDashboard({
         <div className="overview-header-weather-art" aria-hidden="true">
           <span className="overview-weather-hero-icon">{liveContext.weather?.icon || '☁'}</span>
         </div>
-        <div className="overview-header-actions sr-only">
+        <div className={showHeaderActions ? 'overview-header-actions' : 'overview-header-actions sr-only'} inert={!showHeaderActions}>
           <button
             aria-label={t('home:showSmartNotices')}
             className={hasPendingNotifications ? 'overview-notification-button has-pending' : 'overview-notification-button'}

@@ -47,7 +47,7 @@ Do not leave a committed failure trigger in place before `04_verification.sql`. 
 
 ## Vault
 
-The fixture calls `vault.create_secret` with the name `f26-synthetic-account-deletion-backup-key` and stores the returned id in `private.user_backup_keys`. The F14 failure scenario proves that a later error restores both the key row and that named secret. Success expects both to be gone. Cleanup deletes only that exact secret name.
+The fixture calls `vault.create_secret` with the name `f26-synthetic-account-deletion-backup-key` and stores the returned id in `private.user_backup_keys`. The F14 failure scenario proves that a later error restores both the key row and that named secret. Success expects both to be gone. Failure-injection cleanup removes only the test triggers and test functions. It does not delete that fixture secret.
 
 ## RLS
 

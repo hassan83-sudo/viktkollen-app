@@ -31,12 +31,22 @@ begin
   language plpgsql
   as $fn$
   begin
-    if tg_table_name = 'social_messages' and old.sender_id = '11111111-1111-4111-8111-111111111111'::uuid then
-      raise exception 'TEST ONLY failure injection';
-    end if;
-    if tg_table_name in ('user_sync_items', 'reminder_push_schedules', 'place_location_shares')
-       and old.user_id = '11111111-1111-4111-8111-111111111111'::uuid then
-      raise exception 'TEST ONLY failure injection';
+    if tg_table_name = 'social_messages' then
+      if old.sender_id = '11111111-1111-4111-8111-111111111111'::uuid then
+        raise exception 'TEST ONLY failure injection';
+      end if;
+    elsif tg_table_name = 'user_sync_items' then
+      if old.user_id = '11111111-1111-4111-8111-111111111111'::uuid then
+        raise exception 'TEST ONLY failure injection';
+      end if;
+    elsif tg_table_name = 'reminder_push_schedules' then
+      if old.user_id = '11111111-1111-4111-8111-111111111111'::uuid then
+        raise exception 'TEST ONLY failure injection';
+      end if;
+    elsif tg_table_name = 'place_location_shares' then
+      if old.user_id = '11111111-1111-4111-8111-111111111111'::uuid then
+        raise exception 'TEST ONLY failure injection';
+      end if;
     end if;
     return old;
   end;

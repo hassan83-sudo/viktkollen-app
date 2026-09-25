@@ -119,6 +119,17 @@ describe('account deletion staging bootstrap', () => {
     expect(cleanup).toContain('account_deletion_test_only_fail_sync')
     expect(cleanup).toContain('account_deletion_test_only_fail_f13')
     expect(cleanup).toContain('account_deletion_test_only_fail_f14')
-    expect(cleanup).toContain("name = 'f26-synthetic-account-deletion-backup-key'")
+    expect(cleanup).toContain('drop function if exists public.account_deletion_test_only_fail_delete()')
+    expect(cleanup).not.toMatch(/delete\s+from\s+vault\.secrets/i)
+    expect(cleanup).not.toContain("name = 'f26-synthetic-account-deletion-backup-key'")
+    const syncBranch = injection.slice(injection.indexOf("tg_table_name = 'user_sync_items'"))
+    expect(syncBranch.startsWith("tg_table_name = 'user_sync_items'")).toBe(true)
+    expect(syncBranch.slice(0, syncBranch.indexOf('elsif'))).toContain('old.user_id')
+    expect(syncBranch.slice(0, syncBranch.indexOf('elsif'))).not.toContain('sender_id')
+    for (const table of ['social_messages', 'user_sync_items', 'reminder_push_schedules', 'place_location_shares']) {
+      expect(injection).toContain(`tg_table_name = '${table}'`)
+      expect(injection).toContain('11111111-1111-4111-8111-111111111111')
+    }
+    expect(injection).toContain("raise exception 'TEST ONLY failure injection'")
   })
 })

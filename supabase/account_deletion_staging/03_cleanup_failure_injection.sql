@@ -16,6 +16,3 @@ drop trigger if exists account_deletion_test_only_fail_f13 on public.reminder_pu
 drop trigger if exists account_deletion_test_only_fail_f14 on public.place_location_shares;
 drop function if exists public.account_deletion_test_only_fail_delete();
 drop function if exists public.account_deletion_test_only_assert_baseline();
-
-delete from vault.secrets
-where name = 'f26-synthetic-account-deletion-backup-key';

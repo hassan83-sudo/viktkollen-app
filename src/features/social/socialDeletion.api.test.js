@@ -2,20 +2,18 @@ import { describe, expect, it, vi } from 'vitest'
 import { accountDeletionRouteInternals } from '../../../api/account-deletion/index.js'
 
 describe('account deletion social purge', () => {
-  it('calls social_purge_user_data before deleting other user-owned rows', async () => {
+  it('calls purge_account_user_data once and does not invoke the old social purge rpc', async () => {
     const rpc = vi.fn(async () => ({ data: null, error: null }))
-    const from = vi.fn((table) => ({
-      delete: () => ({
-        eq: async () => ({ error: null, table }),
-      }),
-    }))
-    const client = { from, rpc }
-    const results = await accountDeletionRouteInternals.deleteRowsForUser(client, 'user-1')
+    const from = vi.fn()
+    const results = await accountDeletionRouteInternals.deleteRowsForUser({ from, rpc }, 'user-1')
 
-    expect(rpc).toHaveBeenNthCalledWith(1, 'purge_family_membership', { p_user_id: 'user-1' })
-    expect(rpc).toHaveBeenCalledWith('social_purge_user_data', { p_user_id: 'user-1' })
-    expect(results[0]).toMatchObject({ area: 'family', ok: true, table: 'purge_family_membership' })
-    expect(results[1]).toMatchObject({ area: 'social', ok: true, table: 'social_purge_user_data' })
-    expect(accountDeletionRouteInternals.socialPurgeRpc).toBe('social_purge_user_data')
+    expect(rpc).toHaveBeenCalledTimes(1)
+    expect(rpc).toHaveBeenCalledWith('purge_account_user_data', { p_user_id: 'user-1' })
+    expect(rpc).not.toHaveBeenCalledWith('social_purge_user_data', { p_user_id: 'user-1' })
+    expect(from).not.toHaveBeenCalled()
+    expect(results).toEqual([
+      expect.objectContaining({ area: 'account', ok: true, table: 'purge_account_user_data' }),
+    ])
+    expect(accountDeletionRouteInternals.accountPurgeRpc).toBe('purge_account_user_data')
   })
 })

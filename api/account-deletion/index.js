@@ -2,17 +2,7 @@ import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_share
 import { createSupabaseAdminClient } from '../_shared/supabaseServer.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 
-const deletionTables = Object.freeze([
-  { area: 'cloudData', name: 'user_sync_items' },
-  { area: 'cloudData', name: 'user_sync_events' },
-  { area: 'cloudData', name: 'user_sync_state' },
-  { area: 'cloudData', name: 'user_backups' },
-])
-
-const socialPurgeRpc = 'social_purge_user_data'
-const exclusivePurgeRpc = 'purge_exclusive_user_data'
-const placeParticipationPurgeRpc = 'purge_place_participation'
-const familyMembershipPurgeRpc = 'purge_family_membership'
+const accountPurgeRpc = 'purge_account_user_data'
 
 function parseBody(request) {
   if (typeof request.body === 'string') return JSON.parse(request.body || '{}')
@@ -27,169 +17,31 @@ function canDeleteAuthUser(env = process.env) {
   return env.ACCOUNT_DELETION_ENABLE_AUTH_DELETE === 'true'
 }
 
-async function purgeSocialDataForUser(client, userId) {
+async function deleteRowsForUser(client, userId) {
   if (!client?.rpc) {
-    return {
-      area: 'social',
-      ok: false,
-      table: socialPurgeRpc,
+    return [{
+      area: 'account',
       errorCode: 'rpc_unavailable',
-    }
+      ok: false,
+      table: accountPurgeRpc,
+    }]
   }
 
   try {
-    const { error } = await client.rpc(socialPurgeRpc, { p_user_id: userId })
-    return {
-      area: 'social',
+    const { error } = await client.rpc(accountPurgeRpc, { p_user_id: userId })
+    return [{
+      area: 'account',
       ok: !error,
-      table: socialPurgeRpc,
+      table: accountPurgeRpc,
       ...(error ? { errorCode: error.code || 'purge_failed' } : {}),
-    }
+    }]
   } catch (error) {
-    return {
-      area: 'social',
+    return [{
+      area: 'account',
       errorCode: error?.code || 'purge_failed',
       ok: false,
-      table: socialPurgeRpc,
-    }
-  }
-}
-
-async function deleteRowsForUser(client, userId, tables = deletionTables) {
-  const results = []
-
-  const familyResult = await purgeFamilyMembershipForUser(client, userId)
-  results.push(familyResult)
-  if (!familyResult.ok) return results
-
-  results.push(await purgeSocialDataForUser(client, userId))
-
-  for (const table of tables) {
-    try {
-      const { error } = await client
-        .from(table.name)
-        .delete()
-        .eq('user_id', userId)
-
-      results.push({
-        area: table.area,
-        ok: !error,
-        table: table.name,
-        ...(error ? { errorCode: error.code || 'delete_failed' } : {}),
-      })
-    } catch (error) {
-      results.push({
-        area: table.area,
-        errorCode: error?.code || 'delete_failed',
-        ok: false,
-        table: table.name,
-      })
-    }
-  }
-
-  const backupResult = results.find((result) => result.table === 'user_backups')
-  if (!backupResult?.ok) {
-    results.push({
-      area: 'cloudData',
-      errorCode: 'backup_delete_incomplete',
-      ok: false,
-      table: exclusivePurgeRpc,
-    })
-    return results
-  }
-
-  const exclusiveResult = await purgeExclusiveDataForUser(client, userId)
-  results.push(exclusiveResult)
-  if (!exclusiveResult.ok) return results
-
-  const participationResult = await purgePlaceParticipationForUser(client, userId)
-  results.push(participationResult)
-  if (!participationResult.ok) return results
-
-  return results
-}
-
-async function purgeExclusiveDataForUser(client, userId) {
-  if (!client?.rpc) {
-    return {
-      area: 'cloudData',
-      errorCode: 'rpc_unavailable',
-      ok: false,
-      table: exclusivePurgeRpc,
-    }
-  }
-
-  try {
-    const { error } = await client.rpc(exclusivePurgeRpc, { p_user_id: userId })
-    return {
-      area: 'cloudData',
-      ok: !error,
-      table: exclusivePurgeRpc,
-      ...(error ? { errorCode: error.code || 'purge_failed' } : {}),
-    }
-  } catch (error) {
-    return {
-      area: 'cloudData',
-      errorCode: error?.code || 'purge_failed',
-      ok: false,
-      table: exclusivePurgeRpc,
-    }
-  }
-}
-
-async function purgePlaceParticipationForUser(client, userId) {
-  if (!client?.rpc) {
-    return {
-      area: 'place',
-      errorCode: 'rpc_unavailable',
-      ok: false,
-      table: placeParticipationPurgeRpc,
-    }
-  }
-
-  try {
-    const { error } = await client.rpc(placeParticipationPurgeRpc, { p_user_id: userId })
-    return {
-      area: 'place',
-      ok: !error,
-      table: placeParticipationPurgeRpc,
-      ...(error ? { errorCode: error.code || 'purge_failed' } : {}),
-    }
-  } catch (error) {
-    return {
-      area: 'place',
-      errorCode: error?.code || 'purge_failed',
-      ok: false,
-      table: placeParticipationPurgeRpc,
-    }
-  }
-}
-
-async function purgeFamilyMembershipForUser(client, userId) {
-  if (!client?.rpc) {
-    return {
-      area: 'family',
-      errorCode: 'rpc_unavailable',
-      ok: false,
-      table: familyMembershipPurgeRpc,
-    }
-  }
-
-  try {
-    const { error } = await client.rpc(familyMembershipPurgeRpc, { p_user_id: userId })
-    return {
-      area: 'family',
-      ok: !error,
-      table: familyMembershipPurgeRpc,
-      ...(error ? { errorCode: error.code || 'purge_failed' } : {}),
-    }
-  } catch (error) {
-    return {
-      area: 'family',
-      errorCode: error?.code || 'purge_failed',
-      ok: false,
-      table: familyMembershipPurgeRpc,
-    }
+      table: accountPurgeRpc,
+    }]
   }
 }
 
@@ -267,14 +119,10 @@ export default async function handler(request, response) {
   const mode = normalizeMode(body.mode)
   const client = createSupabaseAdminClient()
   const readiness = {
+    accountPurgeRpc,
     authDeleteEnabled: canDeleteAuthUser(),
-    deletionTables: deletionTables.map((table) => table.name),
     mode,
     serviceRoleConfigured: Boolean(client),
-    exclusivePurgeRpc,
-    familyMembershipPurgeRpc,
-    placeParticipationPurgeRpc,
-    socialPurgeRpc,
   }
 
   if (mode === 'dry-run') {
@@ -324,18 +172,10 @@ export default async function handler(request, response) {
 }
 
 export const accountDeletionRouteInternals = {
+  accountPurgeRpc,
   canDeleteAuthUser,
   deleteAuthUser,
   deleteRowsForUser,
-  deletionTables,
-  exclusivePurgeRpc,
-  familyMembershipPurgeRpc,
   normalizeMode,
-  placeParticipationPurgeRpc,
-  purgeExclusiveDataForUser,
-  purgeFamilyMembershipForUser,
-  purgePlaceParticipationForUser,
-  purgeSocialDataForUser,
-  socialPurgeRpc,
   summarizeDeletion,
 }

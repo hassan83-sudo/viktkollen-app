@@ -64,6 +64,112 @@ export function createInMemorySubscriptionStore() {
     async listEvents() {
       return events.map((event) => ({ ...event }))
     },
+    async markPastDue({ createdAt, currentPeriodEnd, externalEventId, graceUntil, subscriptionId }) {
+      const periodEnd = currentPeriodEnd == null ? null : new Date(currentPeriodEnd).toISOString()
+      const sameInstant = (left, right) => {
+        if (left == null || right == null) return false
+        return new Date(left).getTime() === new Date(right).getTime()
+      }
+      const prior = events.find((event) => event.external_event_id === externalEventId)
+      if (prior || byEvent.has(externalEventId)) {
+        if (prior?.operation === 'renewal.failed'
+          && prior.past_due_grace_until === graceUntil
+          && sameInstant(prior.previous_period_end, periodEnd)) {
+          return byId.get(prior.subscription_id) || null
+        }
+        const error = new Error('duplicate_external_event')
+        error.code = 'duplicate_external_event'
+        throw error
+      }
+      const prev = byId.get(subscriptionId)
+      if (!prev) {
+        const error = new Error('subscription_not_found')
+        error.code = 'subscription_not_found'
+        throw error
+      }
+      if (prev.status !== 'ACTIVE' && prev.status !== 'PAST_DUE') {
+        const error = new Error('illegal_subscription_transition')
+        error.code = 'illegal_subscription_transition'
+        throw error
+      }
+      if (!periodEnd || Number.isNaN(new Date(periodEnd).getTime())) {
+        const error = new Error('invalid_period')
+        error.code = 'invalid_period'
+        throw error
+      }
+      const samePeriod = sameInstant(periodEnd, prev.current_period_end)
+      const nextStatus = samePeriod && prev.status === 'ACTIVE' ? 'PAST_DUE' : prev.status
+      if (nextStatus === 'PAST_DUE' && prev.status === 'ACTIVE') {
+        assertSubscriptionTransition(prev.status, 'PAST_DUE')
+      }
+      const stored = nextStatus === prev.status ? prev : clone({
+        ...prev,
+        past_due_grace_until: graceUntil,
+        status: 'PAST_DUE',
+        updated_at: createdAt,
+      })
+      events.push({
+        created_at: createdAt,
+        external_event_id: externalEventId,
+        from_status: prev.status,
+        new_period_end: periodEnd,
+        operation: 'renewal.failed',
+        past_due_grace_until: graceUntil,
+        previous_period_end: periodEnd,
+        subscription_id: prev.subscription_id,
+        to_status: nextStatus,
+      })
+      byEvent.set(externalEventId, prev.subscription_id)
+      if (stored !== prev) byId.set(stored.subscription_id, stored)
+      return stored
+    },
+    async schedulePendingPlan({ createdAt, externalEventId, pendingPlanId, subscriptionId }) {
+      const prior = events.find((event) => event.external_event_id === externalEventId)
+      if (prior || byEvent.has(externalEventId)) {
+        if (prior?.operation === 'plan.schedule' && prior.to_pending_plan_id === pendingPlanId) {
+          return byId.get(prior.subscription_id) || null
+        }
+        const error = new Error('duplicate_external_event')
+        error.code = 'duplicate_external_event'
+        throw error
+      }
+      const prev = byId.get(subscriptionId)
+      if (!prev) {
+        const error = new Error('subscription_not_found')
+        error.code = 'subscription_not_found'
+        throw error
+      }
+      if (prev.status !== 'ACTIVE' && prev.status !== 'PAST_DUE') {
+        const error = new Error('illegal_subscription_transition')
+        error.code = 'illegal_subscription_transition'
+        throw error
+      }
+      const stored = clone({
+        ...prev,
+        pending_plan_change: 'next_period',
+        pending_plan_id: pendingPlanId,
+        updated_at: createdAt,
+      })
+      events.push({
+        created_at: createdAt,
+        external_event_id: externalEventId,
+        from_pending_plan_change: prev.pending_plan_change,
+        from_pending_plan_id: prev.pending_plan_id,
+        from_plan_id: prev.plan_id,
+        from_plan_version: prev.plan_version,
+        from_status: prev.status,
+        operation: 'plan.schedule',
+        subscription_id: prev.subscription_id,
+        to_pending_plan_change: 'next_period',
+        to_pending_plan_id: pendingPlanId,
+        to_plan_id: prev.plan_id,
+        to_plan_version: prev.plan_version,
+        to_status: prev.status,
+      })
+      byEvent.set(externalEventId, prev.subscription_id)
+      byId.set(stored.subscription_id, stored)
+      return stored
+    },
     async scheduleCancel({ createdAt, externalEventId, subscriptionId }) {
       if (externalEventId && byEvent.has(externalEventId)) return byId.get(byEvent.get(externalEventId)) || null
       const prev = byId.get(subscriptionId)

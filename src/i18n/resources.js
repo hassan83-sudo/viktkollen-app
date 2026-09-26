@@ -1122,6 +1122,8 @@ const sv = {
       errors: {
         imageReadFailed: 'Bilden kunde inte läsas. Välj en annan bild och försök igen.',
         imageReadAborted: 'Bildläsningen avbröts. Välj bilden igen om du vill fortsätta.',
+        quotaUnavailable:
+          'Kroppsanalysens kvot kunde inte hämtas. Försök igen om en stund.',
         freeLimitKeep:
           'Gratisgränsen är nådd. Du kan behålla historiken eller radera en analys. Betalning kopplas senare via verifierad backend.',
         missingFront: 'Framifrån-bilden saknas.',
@@ -3053,6 +3055,8 @@ const en = {
       errors: {
         imageReadFailed: 'The image could not be read. Choose another image and try again.',
         imageReadAborted: 'Image reading was cancelled. Select the image again to continue.',
+        quotaUnavailable:
+          'The body-scan quota could not be loaded. Try again in a moment.',
         freeLimitKeep:
           'Free limit reached. You can keep history or delete an analysis. Payment is wired later via verified backend.',
         missingFront: 'Front photo is missing.',

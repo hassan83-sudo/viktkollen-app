@@ -2,15 +2,7 @@ import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_share
 import { createSupabaseAdminClient } from '../_shared/supabaseServer.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 
-const deletionTables = Object.freeze([
-  { area: 'entitlement', name: 'user_entitlements' },
-  { area: 'cloudData', name: 'user_sync_items' },
-  { area: 'cloudData', name: 'user_sync_events' },
-  { area: 'cloudData', name: 'user_sync_state' },
-  { area: 'cloudData', name: 'user_backups' },
-])
-
-const socialPurgeRpc = 'social_purge_user_data'
+const accountPurgeRpc = 'purge_account_user_data'
 
 function parseBody(request) {
   if (typeof request.body === 'string') return JSON.parse(request.body || '{}')
@@ -25,63 +17,32 @@ function canDeleteAuthUser(env = process.env) {
   return env.ACCOUNT_DELETION_ENABLE_AUTH_DELETE === 'true'
 }
 
-async function purgeSocialDataForUser(client, userId) {
+async function deleteRowsForUser(client, userId) {
   if (!client?.rpc) {
-    return {
-      area: 'social',
-      ok: false,
-      table: socialPurgeRpc,
+    return [{
+      area: 'account',
       errorCode: 'rpc_unavailable',
-    }
+      ok: false,
+      table: accountPurgeRpc,
+    }]
   }
 
   try {
-    const { error } = await client.rpc(socialPurgeRpc, { p_user_id: userId })
-    return {
-      area: 'social',
+    const { error } = await client.rpc(accountPurgeRpc, { p_user_id: userId })
+    return [{
+      area: 'account',
       ok: !error,
-      table: socialPurgeRpc,
+      table: accountPurgeRpc,
       ...(error ? { errorCode: error.code || 'purge_failed' } : {}),
-    }
+    }]
   } catch (error) {
-    return {
-      area: 'social',
+    return [{
+      area: 'account',
       errorCode: error?.code || 'purge_failed',
       ok: false,
-      table: socialPurgeRpc,
-    }
+      table: accountPurgeRpc,
+    }]
   }
-}
-
-async function deleteRowsForUser(client, userId, tables = deletionTables) {
-  const results = []
-
-  results.push(await purgeSocialDataForUser(client, userId))
-
-  for (const table of tables) {
-    try {
-      const { error } = await client
-        .from(table.name)
-        .delete()
-        .eq('user_id', userId)
-
-      results.push({
-        area: table.area,
-        ok: !error,
-        table: table.name,
-        ...(error ? { errorCode: error.code || 'delete_failed' } : {}),
-      })
-    } catch (error) {
-      results.push({
-        area: table.area,
-        errorCode: error?.code || 'delete_failed',
-        ok: false,
-        table: table.name,
-      })
-    }
-  }
-
-  return results
 }
 
 async function deleteAuthUser({ client, env = process.env, userId }) {
@@ -158,11 +119,10 @@ export default async function handler(request, response) {
   const mode = normalizeMode(body.mode)
   const client = createSupabaseAdminClient()
   const readiness = {
+    accountPurgeRpc,
     authDeleteEnabled: canDeleteAuthUser(),
-    deletionTables: deletionTables.map((table) => table.name),
     mode,
     serviceRoleConfigured: Boolean(client),
-    socialPurgeRpc,
   }
 
   if (mode === 'dry-run') {
@@ -212,12 +172,10 @@ export default async function handler(request, response) {
 }
 
 export const accountDeletionRouteInternals = {
+  accountPurgeRpc,
   canDeleteAuthUser,
   deleteAuthUser,
   deleteRowsForUser,
-  deletionTables,
   normalizeMode,
-  purgeSocialDataForUser,
-  socialPurgeRpc,
   summarizeDeletion,
 }

@@ -121,7 +121,7 @@ describe('social policy and privacy', () => {
   })
 
   it('documents delete policy for messages on account deletion', () => {
-    expect(socialMessageDeletionPolicy.choice).toBe('A_delete')
+    expect(socialMessageDeletionPolicy.choice).toBe('C_retain_shared_thread')
     expect(socialPurgeRpc).toBe('social_purge_user_data')
   })
 
@@ -188,9 +188,7 @@ describe('social SQL security gate', () => {
     expect(sql).toContain('Callable by: service_role only')
   })
 
-  it('documents privacy-first purge of entire DM threads', () => {
-    expect(sql).toContain('social_purge_user_data')
-    expect(sql).toContain('delete from public.social_messages where conversation_id = any (conv_ids)')
+  it('keeps row level security forced on social tables', () => {
     expect(sql).toContain('force row level security')
   })
 })

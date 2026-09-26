@@ -65,4 +65,14 @@ POST 200 includes `{ control: { feature_id|provider_id, mode, reason_code, versi
 3. Confirm `control.mode` in the JSON body.
 4. Re-enable with `ENABLED` / `AVAILABLE` and `expected_version` equal to the current version.
 
-This does **not** close HIGH #1 (PostgREST `billing` exposure) or HIGH #3 (production `SUPABASE_SERVICE_ROLE_KEY` still absent). Production canary remains **DO NOT APPROVE**. Production and staging controls were not mutated in this sprint.
+This sprint did not itself close HIGH #1 or HIGH #3. Production and staging controls were not mutated in this sprint.
+
+Later status, recorded in BILL-5B3I from the already completed production probe (no new probe and no new production operation):
+
+| Gate | Status |
+| --- | --- |
+| HIGH #1 PostgREST `billing` exposure | VERIFIED / PASS |
+| HIGH #2 operable kill switches | VERIFIED / PASS (this sprint) |
+| HIGH #3 production service-role client for server-side billing | VERIFIED / PASS |
+
+`PostgREST billing: OK` required `createSupabaseAdminClient()` to succeed. A missing service-role client would have returned `SERVICE_ROLE_UNAVAILABLE`. The secret value was not read and must not be written into docs. BILL-5B3 technical HIGH gates are CLOSED / READY. Canary go/no-go is a separate later decision. This document does not start a canary.

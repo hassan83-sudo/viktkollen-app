@@ -33,7 +33,7 @@ function createResponse() {
   return response
 }
 
-function createDeletionClient({ failTable = '', authError = null } = {}) {
+function createDeletionClient({ failTable = '', failRpc = '', failRpcCode = 'purge_failed', authError = null } = {}) {
   const deletedTables = []
 
   return {
@@ -51,7 +51,7 @@ function createDeletionClient({ failTable = '', authError = null } = {}) {
         }),
       })),
     })),
-    rpc: vi.fn(async () => ({ error: null })),
+    rpc: vi.fn(async (name) => ({ error: name === failRpc ? { code: failRpcCode } : null })),
   }
 }
 
@@ -95,7 +95,9 @@ describe('account deletion API route', () => {
     const response = await callRoute(createRequest({ body: { mode: 'dry-run' } }))
 
     expect(response.statusCode).toBe(200)
-    expect(response.body.readiness.deletionTables).toContain('user_entitlements')
+    expect(response.body.readiness.accountPurgeRpc).toBe('purge_account_user_data')
+    expect(response.body.readiness.authDeleteEnabled).toBe(false)
+    expect(client.rpc).not.toHaveBeenCalled()
     expect(client.from).not.toHaveBeenCalled()
   })
 
@@ -106,25 +108,27 @@ describe('account deletion API route', () => {
     expect(response.body.error.code).toBe('INVALID_REQUEST')
   })
 
-  it('deletes only user-owned cloud rows with the verified user id', async () => {
+  it('calls purge_account_user_data once for the verified user', async () => {
     const client = createDeletionClient()
     setSupabaseAdminClientForTests(client)
     const response = await callRoute(createRequest({ body: { mode: 'cloud-data' } }))
 
     expect(response.statusCode).toBe(200)
-    expect(client.rpc).toHaveBeenCalledWith('social_purge_user_data', { p_user_id: 'user-a' })
-    expect(client.deletedTables.length).toBeGreaterThan(1)
-    expect(client.deletedTables.every((entry) => entry.column === 'user_id')).toBe(true)
-    expect(client.deletedTables.every((entry) => entry.userId === 'user-a')).toBe(true)
+    expect(client.rpc).toHaveBeenCalledTimes(1)
+    expect(client.rpc).toHaveBeenCalledWith('purge_account_user_data', { p_user_id: 'user-a' })
+    expect(client.from).not.toHaveBeenCalled()
   })
 
-  it('reports partial failure instead of pretending deletion completed', async () => {
-    setSupabaseAdminClientForTests(createDeletionClient({ failTable: 'user_sync_items' }))
-    const response = await callRoute(createRequest({ body: { mode: 'cloud-data' } }))
+  it('reports rpc failure instead of pretending deletion completed', async () => {
+    const client = createDeletionClient({ failRpc: 'purge_account_user_data' })
+    setSupabaseAdminClientForTests(client)
+    const response = await callRoute(createRequest({ body: { mode: 'account' } }))
 
     expect(response.statusCode).toBe(207)
     expect(response.body.ok).toBe(false)
+    expect(response.body.summary.ok).toBe(false)
     expect(response.body.summary.partialFailure).toBe(true)
+    expect(client.auth.admin.deleteUser).not.toHaveBeenCalled()
   })
 
   it('does not delete auth user during cloud-data deletion', async () => {
@@ -154,5 +158,67 @@ describe('account deletion API route', () => {
 
     expect(response.statusCode).toBe(200)
     expect(client.auth.admin.deleteUser).toHaveBeenCalledWith('user-a')
+    expect(client.auth.admin.deleteUser.mock.invocationCallOrder[0]).toBeGreaterThan(
+      client.rpc.mock.invocationCallOrder[0],
+    )
+  })
+
+  it('ignores a client-supplied user id', async () => {
+    const client = createDeletionClient()
+    setSupabaseAdminClientForTests(client)
+    const response = await callRoute(createRequest({
+      body: { mode: 'cloud-data', user_id: 'user-b' },
+    }))
+
+    expect(response.statusCode).toBe(200)
+    expect(client.rpc).toHaveBeenCalledTimes(1)
+    expect(client.rpc).toHaveBeenCalledWith('purge_account_user_data', { p_user_id: 'user-a' })
+    expect(client.rpc).not.toHaveBeenCalledWith('purge_account_user_data', { p_user_id: 'user-b' })
+    expect(client.from).not.toHaveBeenCalled()
+    expect(client.auth.admin.deleteUser).not.toHaveBeenCalled()
+  })
+
+  it('does not call the retired per-step purge chain', async () => {
+    const client = createDeletionClient()
+    setSupabaseAdminClientForTests(client)
+    const response = await callRoute(createRequest({ body: { mode: 'cloud-data', user_id: 'user-b' } }))
+    const names = client.rpc.mock.calls.map((call) => call[0])
+
+    expect(response.statusCode).toBe(200)
+    expect(names).toEqual(['purge_account_user_data'])
+    expect(names).not.toContain('purge_family_membership')
+    expect(names).not.toContain('social_purge_user_data')
+    expect(names).not.toContain('purge_exclusive_user_data')
+    expect(names).not.toContain('purge_place_participation')
+    expect(client.from).not.toHaveBeenCalled()
+  })
+
+  it('treats a second purge with no remaining rows as success', async () => {
+    const client = createDeletionClient()
+    setSupabaseAdminClientForTests(client)
+
+    const first = await callRoute(createRequest({ body: { mode: 'cloud-data' } }))
+    const second = await callRoute(createRequest({ body: { mode: 'cloud-data' } }))
+
+    expect(first.statusCode).toBe(200)
+    expect(second.statusCode).toBe(200)
+    expect(client.rpc.mock.calls.filter((call) => call[0] === 'purge_account_user_data')).toHaveLength(2)
+    expect(client.auth.admin.deleteUser).not.toHaveBeenCalled()
+  })
+
+  it('does not report success when auth deletion fails after the database purge', async () => {
+    process.env.ACCOUNT_DELETION_ENABLE_AUTH_DELETE = 'true'
+    const client = createDeletionClient({ authError: { code: 'auth_delete_failed' } })
+    setSupabaseAdminClientForTests(client)
+    const response = await callRoute(createRequest({ body: { mode: 'account' } }))
+
+    expect(response.statusCode).toBe(500)
+    expect(response.body.ok).toBe(false)
+    expect(response.body.summary.ok).toBe(false)
+    expect(client.rpc).toHaveBeenCalledWith('purge_account_user_data', { p_user_id: 'user-a' })
+    expect(client.auth.admin.deleteUser).toHaveBeenCalledWith('user-a')
+    expect(client.auth.admin.deleteUser.mock.invocationCallOrder[0]).toBeGreaterThan(
+      client.rpc.mock.invocationCallOrder[0],
+    )
   })
 })

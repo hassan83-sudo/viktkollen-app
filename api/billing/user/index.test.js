@@ -86,23 +86,20 @@ describe('VERCEL-FN-2A user billing dispatcher', () => {
     expect(response.body).not.toHaveProperty('entitlement')
   })
 
-  it('preserves GET /api/entitlements for the JWT user', async () => {
-    setSupabaseAdminClientForTests({
-      from: vi.fn(() => ({
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            maybeSingle: vi.fn(async () => ({ data: null, error: null })),
-          })),
-        })),
-      })),
-    })
+  it('keeps GET /api/entitlements as a non-authoritative compatibility response', async () => {
+    const from = vi.fn()
+    setSupabaseAdminClientForTests({ from })
     const response = await call(createRequest({
       query: { plan: 'premium', user_id: OTHER },
       url: '/api/entitlements',
     }))
     expect(response.statusCode).toBe(200)
+    expect(response.body.authority).toBe('none')
+    expect(response.body.compatibility).toBe(true)
+    expect(response.body.verification).toBe('legacy_compatibility_not_authority')
     expect(response.body.entitlement.plan).toBe('free')
     expect(response.body.entitlement.userId).toBe(USER)
+    expect(from).not.toHaveBeenCalled()
   })
 
   it('blocks anonymous callers on all three public paths', async () => {

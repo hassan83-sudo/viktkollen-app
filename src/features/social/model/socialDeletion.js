@@ -1,15 +1,16 @@
 export const socialMessageDeletionPolicy = Object.freeze({
-  choice: 'A_delete',
-  label: 'delete',
+  choice: 'C_retain_shared_thread',
+  label: 'delete own rows',
   summary:
-    'When user A deletes their account, every DM thread A participated in is deleted entirely (messages, members, dm_pairs, conversation). Surviving user B loses that shared thread. No anonymized sender rows remain.',
+    'When user A deletes their account, only A\'s messages, membership, DM-pair index, location rows, friend graph, and profile are removed. User B keeps the conversation, B\'s membership, B\'s messages, and the shared conversation key.',
 })
 
 export const futureSocialDeletionTables = Object.freeze([
   { area: 'social', name: 'social_messages' },
   { area: 'social', name: 'social_conversation_members' },
   { area: 'social', name: 'social_dm_pairs' },
-  { area: 'social', name: 'social_conversations' },
+  { area: 'social', name: 'social_location_envelopes' },
+  { area: 'social', name: 'social_locations' },
   { area: 'social', name: 'social_friend_requests' },
   { area: 'social', name: 'social_friendships' },
   { area: 'social', name: 'social_blocks' },

@@ -1,12 +1,11 @@
 import { createQuotaEngine } from '../../../src/services/billing/quotaEngine.js'
-import {
-  createSubscriptionAssignmentStore,
-  createSubscriptionService,
-} from '../../../src/services/billing/subscriptionService.js'
+import { createPrivilegedSubscriptionAuthority, createSubscriptionAuthority } from '../../../src/services/billing/subscriptionAuthority.js'
+import { createSubscriptionAssignmentStore } from '../../../src/services/billing/subscriptionService.js'
 import { defaultPlanCatalog } from '../../../src/services/billing/planCatalog.js'
 
 const catalog = defaultPlanCatalog
-const subscriptions = createSubscriptionService({ catalog })
+const authority = createSubscriptionAuthority({ catalog })
+const subscriptions = authority.subscriptions
 const assignments = createSubscriptionAssignmentStore(subscriptions)
 const quota = createQuotaEngine({ assignments, catalog })
 
@@ -24,3 +23,4 @@ export async function inspectQuotaForUser({ feature, unit, user } = {}) {
 }
 
 export { subscriptions as subscriptionService }
+export { createPrivilegedSubscriptionAuthority }

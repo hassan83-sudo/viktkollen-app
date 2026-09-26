@@ -1,5 +1,5 @@
 import { createQuotaEngine } from '../../../src/services/billing/quotaEngine.js'
-import { createSubscriptionAuthority } from '../../../src/services/billing/subscriptionAuthority.js'
+import { createPrivilegedSubscriptionAuthority, createSubscriptionAuthority } from '../../../src/services/billing/subscriptionAuthority.js'
 import { createSubscriptionAssignmentStore } from '../../../src/services/billing/subscriptionService.js'
 import { defaultPlanCatalog } from '../../../src/services/billing/planCatalog.js'
 
@@ -23,3 +23,4 @@ export async function inspectQuotaForUser({ feature, unit, user } = {}) {
 }
 
 export { subscriptions as subscriptionService }
+export { createPrivilegedSubscriptionAuthority }

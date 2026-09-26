@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { SUBSCRIPTION_STATUS } from './catalog.js'
 import { defaultPlanCatalog } from './planCatalog.js'
-import { createRpcSubscriptionPort, createSubscriptionAuthority, SUBSCRIPTION_RPC } from './subscriptionAuthority.js'
+import { createPrivilegedSubscriptionAuthority, createRpcSubscriptionPort, createSubscriptionAuthority, SUBSCRIPTION_RPC } from './subscriptionAuthority.js'
 
 const USER = '11111111-1111-4111-8111-111111111111'
 const CURRENT = 'plan.prelim.sek.month.49'
@@ -89,5 +89,52 @@ describe('BILL-7B subscription authority', () => {
       SUBSCRIPTION_RPC.scheduleNextPeriodPlanChange,
     ])
     expect(SUBSCRIPTION_RPC.scheduleNextPeriodPlanChange).toBe('billing.schedule_next_period_plan_change')
+  })
+
+  it('keeps the in-memory authority when durable mode is not requested', () => {
+    const current = authority()
+    expect(current.durable).toBe(false)
+    expect(current.store).toBeTruthy()
+  })
+
+  it('fails closed when a privileged durable authority has no RPC caller', () => {
+    expect(() => createPrivilegedSubscriptionAuthority({
+      catalog: defaultPlanCatalog,
+    })).toThrow(expect.objectContaining({ code: 'durable_operation_unavailable' }))
+  })
+
+  it('sends privileged plan changes to the existing RPC without client claims', async () => {
+    const callRpc = vi.fn(async () => ({
+      cancel_at_period_end: false,
+      current_period_end: END,
+      current_period_start: START,
+      plan_id: CURRENT,
+      plan_version: 1,
+      status: SUBSCRIPTION_STATUS.ACTIVE,
+      subscription_id: 'durable-sub',
+      user_id: USER,
+    }))
+    const current = createSubscriptionAuthority({
+      callRpc,
+      catalog: defaultPlanCatalog,
+      durable: true,
+    })
+    const scheduled = await current.subscriptions.scheduleNextPeriodPlanChange({
+      clientClaim: { payment_success: true, plan_id: 'plan.free', quota: 1 },
+      external_event_id: 'durable-change',
+      plan_id: TARGET,
+      subscription_id: 'durable-sub',
+    })
+    expect(scheduled.plan_id).toBe(CURRENT)
+    expect(callRpc).toHaveBeenCalledWith(SUBSCRIPTION_RPC.scheduleNextPeriodPlanChange, {
+      p_external_event_id: 'durable-change',
+      p_plan_id: TARGET,
+      p_subscription_id: 'durable-sub',
+    })
+    expect(JSON.stringify(callRpc.mock.calls)).not.toMatch(/payment_success|quota|plan\.free/)
+    await expect(current.subscriptions.transition({
+      subscription_id: 'durable-sub',
+      to: SUBSCRIPTION_STATUS.CANCELED,
+    })).rejects.toMatchObject({ code: 'durable_operation_unavailable' })
   })
 })

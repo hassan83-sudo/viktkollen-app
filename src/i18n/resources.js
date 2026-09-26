@@ -1571,6 +1571,15 @@ const sv = {
         clearReports: 'Vill du rensa all lokal rapporthistorik?',
         replaceImport: 'Detta ersätter endast lokal vikt- och framstegsdata. Vill du fortsätta?',
       },
+      confirmDialog: {
+        deleteWeight: { title: 'Ta bort viktpost', confirm: 'Ta bort' },
+        deleteWeights: { title: 'Ta bort markerade viktposter', confirm: 'Ta bort' },
+        deleteMeasurement: { title: 'Ta bort kroppsmått', confirm: 'Ta bort' },
+        duplicateReport: { title: 'Rapporten finns redan', confirm: 'Skapa ändå' },
+        deleteReport: { title: 'Ta bort rapport', confirm: 'Ta bort' },
+        clearReports: { title: 'Rensa rapporthistorik', confirm: 'Rensa' },
+        replaceImport: { title: 'Ersätt framstegsdata', confirm: 'Ersätt' },
+      },
       dateTimeDialog: {
         copy: 'Kopiera',
         copyTitle: 'Kopiera vikten {{value}} kg från {{date}}',
@@ -3459,6 +3468,15 @@ const en = {
         deleteReport: 'Do you want to remove the report?',
         clearReports: 'Do you want to clear all local report history?',
         replaceImport: 'This replaces only local weight and progress data. Do you want to continue?',
+      },
+      confirmDialog: {
+        deleteWeight: { title: 'Remove weight entry', confirm: 'Remove' },
+        deleteWeights: { title: 'Remove selected weight entries', confirm: 'Remove' },
+        deleteMeasurement: { title: 'Remove body measurement', confirm: 'Remove' },
+        duplicateReport: { title: 'The report already exists', confirm: 'Create anyway' },
+        deleteReport: { title: 'Remove report', confirm: 'Remove' },
+        clearReports: { title: 'Clear report history', confirm: 'Clear' },
+        replaceImport: { title: 'Replace progress data', confirm: 'Replace' },
       },
       dateTimeDialog: {
         copy: 'Copy',

@@ -6,9 +6,9 @@ import { inspectFocusedElement, settleFocus } from './support/hiddenFocus.js'
 
 // A11Y-8X2 (8M B13): the import mode in Mat and Framsteg and the progress
 // photo note use named modal forms instead of window.prompt
-// (docs/accessibility/A11Y_8X2_REMAINING_PROMPTS.md). The replace
-// confirmation (window.confirm) is unchanged in this sprint and is accepted
-// here.
+// (docs/accessibility/A11Y_8X2_REMAINING_PROMPTS.md). In Mat the replace
+// confirmation is still window.confirm and is accepted here; in Framsteg it
+// is ConfirmDialog since A11Y-8X3.
 
 const moderate = ['critical', 'serious', 'moderate']
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
@@ -185,9 +185,29 @@ test.describe('remaining prompts (8M B13)', () => {
     await page.keyboard.press('Tab')
     await page.keyboard.press('Enter')
     await expect(dialog).toHaveCount(0)
+    const confirm = page.getByRole('alertdialog', { name: 'Ersätt framstegsdata' })
+    await expect(confirm).toHaveAccessibleDescription('Detta ersätter endast lokal vikt- och framstegsdata. Vill du fortsätta?')
+    await expect(confirm.getByRole('button', { name: 'Avbryt' })).toBeFocused()
+    await expectNoBlockingAxeViolations(page, testInfo, 'confirm-replace-import', { block: moderate, include: '.confirm-dialog' })
+    // Avbryt: nothing replaced, focus back on the import button.
+    await page.keyboard.press('Enter')
+    await expect(confirm).toHaveCount(0)
+    await expect(open).toBeFocused()
+    await expect(page.locator('.progress-card [role="status"]').filter({ hasText: 'Import avbröts.' })).toHaveCount(1)
+    await expect(rows).toHaveCount(2)
+    // Ersätt.
+    await chooseFile(page, open, file)
+    await page.keyboard.press('ArrowDown')
+    await page.keyboard.press('Tab')
+    await page.keyboard.press('Enter')
+    await expect(confirm).toBeVisible()
+    await page.keyboard.press('Shift+Tab')
+    await page.keyboard.press('Enter')
+    await expect(confirm).toHaveCount(0)
     await expect(rows).toHaveCount(1)
+    await expect(open).toBeFocused()
     await expectFocusVisibleNotBody(page)
-    expect(native).toEqual(['confirm'])
+    expect(native).toEqual([])
   })
 
   test('Framstegsbilder: the note is edited in a labelled textarea; Escape, Cancel and Save', async ({ page }, testInfo) => {

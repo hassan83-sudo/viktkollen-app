@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import ConfirmDialog from './a11y/ConfirmDialog.jsx'
 import DateTimeDialog from './a11y/DateTimeDialog.jsx'
 import ImportModeDialog from './a11y/ImportModeDialog.jsx'
 import {
@@ -454,6 +455,7 @@ function WeightGoalCenter({ analysis, goalDraft, onChange, onSave, projection })
 
 function WeightHistory({
   filters,
+  headingRef,
   onClearFilters,
   onCopy,
   onDelete,
@@ -475,7 +477,7 @@ function WeightHistory({
       <div className="progress-card-heading">
         <div>
           <p className="eyebrow">{t('center.history.eyebrow')}</p>
-          <h3>{t('center.history.hits', { count: weights.length })}</h3>
+          <h3 ref={headingRef} tabIndex={-1}>{t('center.history.hits', { count: weights.length })}</h3>
         </div>
         <button className="secondary-button" type="button" onClick={onClearFilters}>{t('center.history.clearFilters')}</button>
       </div>
@@ -538,7 +540,7 @@ function WeightHistory({
   )
 }
 
-function BodyMeasurementsPanel({ analysis, draft, errors, measurements, onChange, onDelete, onEdit, onReset, onSubmit }) {
+function BodyMeasurementsPanel({ analysis, draft, errors, headingRef, measurements, onChange, onDelete, onEdit, onReset, onSubmit }) {
   const { t } = useTranslation(['progress', 'common'])
   const missing = t('center.missing')
 
@@ -547,7 +549,7 @@ function BodyMeasurementsPanel({ analysis, draft, errors, measurements, onChange
       <div className="progress-card-heading">
         <div>
           <p className="eyebrow">{t('center.measurements.eyebrow')}</p>
-          <h3>{t('center.measurements.count', { count: analysis.totalEntries })}</h3>
+          <h3 ref={headingRef} tabIndex={-1}>{t('center.measurements.count', { count: analysis.totalEntries })}</h3>
         </div>
       </div>
       <form onSubmit={onSubmit}>
@@ -630,7 +632,7 @@ function BodyMeasurementsPanel({ analysis, draft, errors, measurements, onChange
   )
 }
 
-function ProgressReportsPanel({ onCreate, onDelete, onClear, reports }) {
+function ProgressReportsPanel({ headingRef, onCreate, onDelete, onClear, reports }) {
   const { t } = useTranslation(['progress', 'common'])
   const missing = t('center.missing')
 
@@ -639,7 +641,7 @@ function ProgressReportsPanel({ onCreate, onDelete, onClear, reports }) {
       <div className="progress-card-heading">
         <div>
           <p className="eyebrow">{t('center.reports.eyebrow')}</p>
-          <h3>{t('center.reports.title')}</h3>
+          <h3 ref={headingRef} tabIndex={-1}>{t('center.reports.title')}</h3>
         </div>
         <div className="progress-actions">
           <button className="secondary-button" type="button" onClick={() => onCreate('week')}>{t('center.reports.createWeek')}</button>
@@ -860,6 +862,24 @@ function ProgressCenter({
   const { t } = useTranslation(['progress', 'common'])
   const importInputRef = useRef(null)
   const importButtonRef = useRef(null)
+  // A11Y-8X3: the pending confirmation ({ kind, ... }) for ConfirmDialog, and
+  // the headings that take focus when the button that asked is gone.
+  const [confirmRequest, setConfirmRequest] = useState(null)
+  const weightHistoryHeadingRef = useRef(null)
+  const measurementsHeadingRef = useRef(null)
+  const reportsHeadingRef = useRef(null)
+  // After a confirmed delete the list is rebuilt, and the button that asked
+  // may be removed only after the dialog has returned focus to it. This
+  // effect runs after that commit and moves focus to the fallback heading
+  // when focus was lost.
+  const focusAfterConfirmRef = useRef(null)
+  useEffect(() => {
+    const target = focusAfterConfirmRef.current
+    if (!target) return
+    focusAfterConfirmRef.current = null
+    const active = document.activeElement
+    if (!active || active === document.body || !active.isConnected || active.disabled) target.current?.focus()
+  })
   // A11Y-8X2: a parsed import waiting for the import mode (ImportModeDialog).
   const [pendingImport, setPendingImport] = useState(null)
   const normalizedWeights = useMemo(() => normalizeWeights(weights), [weights])
@@ -982,10 +1002,7 @@ function ProgressCenter({
   }
 
   function deleteWeight(id) {
-    if (window.confirm(t('center.confirms.deleteWeight'))) {
-      onWeightsChange(normalizedWeights.filter((entry) => entry.id !== id))
-      setSelectedWeightIds((current) => current.filter((entryId) => entryId !== id))
-    }
+    setConfirmRequest({ id, kind: 'deleteWeight' })
   }
 
   // A11Y-8X1: date and time for the copy come from DateTimeDialog.
@@ -1005,10 +1022,7 @@ function ProgressCenter({
       return
     }
 
-    if (window.confirm(t('center.confirms.deleteWeights', { count: selectedWeightIds.length }))) {
-      onWeightsChange(normalizedWeights.filter((entry) => !selectedWeightIds.includes(entry.id)))
-      setSelectedWeightIds([])
-    }
+    setConfirmRequest({ count: selectedWeightIds.length, kind: 'deleteWeights' })
   }
 
   function exportSelectedWeights() {
@@ -1051,9 +1065,7 @@ function ProgressCenter({
   }
 
   function deleteMeasurement(id) {
-    if (window.confirm(t('center.confirms.deleteMeasurement'))) {
-      onBodyMeasurementsChange(normalizedMeasurements.filter((entry) => entry.id !== id))
-    }
+    setConfirmRequest({ id, kind: 'deleteMeasurement' })
   }
 
   function saveGoalSettings() {
@@ -1063,10 +1075,15 @@ function ProgressCenter({
   function createReport(period) {
     const duplicate = progressReports.find((report) => report.period === period && report.createdAt?.slice(0, 10) === new Date().toISOString().slice(0, 10))
 
-    if (duplicate && !window.confirm(t('center.confirms.duplicateReport'))) {
+    if (duplicate) {
+      setConfirmRequest({ kind: 'duplicateReport', period })
       return
     }
 
+    addReport(period)
+  }
+
+  function addReport(period) {
     onProgressReportsChange([
       createProgressReport({
         bodyMeasurements: normalizedMeasurements,
@@ -1080,15 +1097,66 @@ function ProgressCenter({
   }
 
   function deleteReport(id) {
-    if (window.confirm(t('center.confirms.deleteReport'))) {
-      onProgressReportsChange(progressReports.filter((report) => report.id !== id))
-    }
+    setConfirmRequest({ id, kind: 'deleteReport' })
   }
 
   function clearReports() {
-    if (window.confirm(t('center.confirms.clearReports'))) {
-      onProgressReportsChange([])
+    setConfirmRequest({ kind: 'clearReports' })
+  }
+
+  // Runs the confirmed action; each case is the code that used to follow
+  // window.confirm.
+  function runConfirmed() {
+    const request = confirmRequest
+    setConfirmRequest(null)
+    if (!request) return
+    focusAfterConfirmRef.current = confirmFallbackRef(request.kind)
+
+    switch (request.kind) {
+      case 'deleteWeight':
+        onWeightsChange(normalizedWeights.filter((entry) => entry.id !== request.id))
+        setSelectedWeightIds((current) => current.filter((entryId) => entryId !== request.id))
+        break
+      case 'deleteWeights':
+        onWeightsChange(normalizedWeights.filter((entry) => !selectedWeightIds.includes(entry.id)))
+        setSelectedWeightIds([])
+        break
+      case 'deleteMeasurement':
+        onBodyMeasurementsChange(normalizedMeasurements.filter((entry) => entry.id !== request.id))
+        break
+      case 'duplicateReport':
+        addReport(request.period)
+        break
+      case 'deleteReport':
+        onProgressReportsChange(progressReports.filter((report) => report.id !== request.id))
+        break
+      case 'clearReports':
+        onProgressReportsChange([])
+        break
+      case 'replaceImport':
+        replaceImport(request.parsed)
+        break
+      default:
+        break
     }
+  }
+
+  function confirmFallbackRef(kind) {
+    return {
+      clearReports: reportsHeadingRef,
+      deleteMeasurement: measurementsHeadingRef,
+      deleteReport: reportsHeadingRef,
+      deleteWeight: weightHistoryHeadingRef,
+      deleteWeights: weightHistoryHeadingRef,
+      duplicateReport: reportsHeadingRef,
+      replaceImport: importButtonRef,
+    }[kind]
+  }
+
+  function cancelConfirm() {
+    const request = confirmRequest
+    setConfirmRequest(null)
+    if (request?.kind === 'replaceImport') setImportStatus(t('center.importStatus.cancelled'))
   }
 
   function exportProgress() {
@@ -1144,28 +1212,37 @@ function ProgressCenter({
     const parsed = pendingImport
     setPendingImport(null)
 
+    // A11Y-8X3: replace asks in ConfirmDialog, then replaceImport runs.
+    if (mode === 'replace') {
+      setConfirmRequest({ kind: 'replaceImport', parsed })
+      return
+    }
+
     try {
-      if (mode === 'replace') {
-        if (!window.confirm(t('center.confirms.replaceImport'))) {
-          setImportStatus(t('center.importStatus.cancelled'))
-          return
-        }
-
-        onWeightsChange(parsed.weights)
-        onBodyMeasurementsChange(parsed.bodyMeasurements)
-        onProgressReportsChange(parsed.progressReports)
-      } else {
-        onWeightsChange(normalizeWeights([...parsed.weights, ...normalizedWeights]))
-        onBodyMeasurementsChange(normalizeBodyMeasurements([...parsed.bodyMeasurements, ...normalizedMeasurements]))
-        onProgressReportsChange([...parsed.progressReports, ...progressReports])
-      }
-
-      onGoalSettingsChange(parsed.goalSettings)
-      setGoalDraft(parsed.goalSettings)
-      setImportStatus(t('center.importStatus.success'))
+      onWeightsChange(normalizeWeights([...parsed.weights, ...normalizedWeights]))
+      onBodyMeasurementsChange(normalizeBodyMeasurements([...parsed.bodyMeasurements, ...normalizedMeasurements]))
+      onProgressReportsChange([...parsed.progressReports, ...progressReports])
+      finishImport(parsed)
     } catch {
       setImportStatus(t('center.importStatus.failed'))
     }
+  }
+
+  function replaceImport(parsed) {
+    try {
+      onWeightsChange(parsed.weights)
+      onBodyMeasurementsChange(parsed.bodyMeasurements)
+      onProgressReportsChange(parsed.progressReports)
+      finishImport(parsed)
+    } catch {
+      setImportStatus(t('center.importStatus.failed'))
+    }
+  }
+
+  function finishImport(parsed) {
+    onGoalSettingsChange(parsed.goalSettings)
+    setGoalDraft(parsed.goalSettings)
+    setImportStatus(t('center.importStatus.success'))
   }
 
   const show = (name) => view === 'all' || view === name
@@ -1260,6 +1337,7 @@ function ProgressCenter({
         filters={weightFilters}
         onClearFilters={() => setWeightFilters(defaultWeightFilters)}
         onCopy={copyWeight}
+        headingRef={weightHistoryHeadingRef}
         onDelete={deleteWeight}
         onDeleteSelected={deleteSelectedWeights}
         onEdit={editWeight}
@@ -1282,6 +1360,7 @@ function ProgressCenter({
         errors={measurementErrors}
         measurements={normalizedMeasurements}
         onChange={(key, value) => setMeasurementDraft((current) => ({ ...current, [key]: value }))}
+        headingRef={measurementsHeadingRef}
         onDelete={deleteMeasurement}
         onEdit={editMeasurement}
         onReset={resetMeasurementDraft}
@@ -1319,6 +1398,7 @@ function ProgressCenter({
         reports={progressReports}
         onClear={clearReports}
         onCreate={createReport}
+        headingRef={reportsHeadingRef}
         onDelete={deleteReport}
       />
       </>
@@ -1344,6 +1424,17 @@ function ProgressCenter({
         onToggleImages={() => setIncludeImages((current) => !current)}
       />
       </>
+      )}
+      {confirmRequest && (
+        <ConfirmDialog
+          confirmLabel={t(`center.confirmDialog.${confirmRequest.kind}.confirm`)}
+          description={t(`center.confirms.${confirmRequest.kind}`, { count: confirmRequest.count })}
+          destructive={confirmRequest.kind !== 'duplicateReport'}
+          fallbackFocusRef={confirmFallbackRef(confirmRequest.kind)}
+          title={t(`center.confirmDialog.${confirmRequest.kind}.title`)}
+          onCancel={cancelConfirm}
+          onConfirm={runConfirmed}
+        />
       )}
       {pendingImport && (
         <ImportModeDialog

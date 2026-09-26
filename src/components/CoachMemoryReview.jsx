@@ -9,6 +9,8 @@ import {
   updateCoachMemoryPreferences,
 } from '../services/coachMemory/coachMemoryModel.js'
 import { buildCoachMemory, mergeCoachMemoryIntoFeedback } from '../services/coachMemory/coachMemoryBuilder.js'
+import ConfirmDialog from './a11y/ConfirmDialog.jsx'
+import { useFocusAfterConfirm } from './a11y/useFocusAfterConfirm.js'
 import { selectCoachMemoryContext } from '../services/coachMemory/coachContextSelector.js'
 
 const focusLabels = {
@@ -50,6 +52,14 @@ export default function CoachMemoryReview({
 }) {
   const headingRef = useRef(null)
   const [message, setMessage] = useState('')
+  // A11Y-8X6: "Glöm alla härledda minnen" asks in ConfirmDialog. While it is
+  // open, Escape belongs to the dialog (Avbryt), not to this review.
+  const [confirmForget, setConfirmForget] = useState(false)
+  const confirmOpenRef = useRef(false)
+  const focusAfterConfirm = useFocusAfterConfirm()
+  useEffect(() => {
+    confirmOpenRef.current = confirmForget
+  }, [confirmForget])
   const now = analysisDate ? `${analysisDate}T12:00:00.000Z` : new Date().toISOString()
   const derivedMemory = useMemo(() => buildCoachMemory({
     ...context,
@@ -61,7 +71,7 @@ export default function CoachMemoryReview({
   useEffect(() => {
     headingRef.current?.focus()
     const onKeyDown = (event) => {
-      if (event.key === 'Escape') onClose?.()
+      if (event.key === 'Escape' && !confirmOpenRef.current) onClose?.()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
@@ -108,7 +118,12 @@ export default function CoachMemoryReview({
   }
 
   function forgetAllDerived() {
-    if (!window.confirm('Vill du glömma alla härledda coachminnen? Preferenser behålls.')) return
+    setConfirmForget(true)
+  }
+
+  function forgetAllDerivedConfirmed() {
+    setConfirmForget(false)
+    focusAfterConfirm(headingRef)
     commit(forgetDerivedCoachMemory(memory, { now }), 'Härledda coachminnen glömdes.')
   }
 
@@ -207,6 +222,16 @@ export default function CoachMemoryReview({
         <p>{selectedContext.memoryEnabled ? selectedContext.summary : 'Personlig anpassning är avstängd.'}</p>
         <p className="estimate-note">Innehåller inte rå historik, e-post, user ID, auth/session, prompts, providerresponses eller bilder.</p>
       </article>
+      {confirmForget && (
+        <ConfirmDialog
+          confirmLabel="Glöm"
+          description="Vill du glömma alla härledda coachminnen? Preferenser behålls."
+          fallbackFocusRef={headingRef}
+          title="Glöm härledda coachminnen"
+          onCancel={() => setConfirmForget(false)}
+          onConfirm={forgetAllDerivedConfirmed}
+        />
+      )}
     </section>
   )
 }

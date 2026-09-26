@@ -20,6 +20,8 @@ import {
   updateWeeklyFocus,
 } from '../services/goalsHabits.js'
 import { buildAiNutritionCoachInsights } from '../services/aiNutritionInsights.js'
+import ConfirmDialog from './a11y/ConfirmDialog.jsx'
+import { useFocusAfterConfirm } from './a11y/useFocusAfterConfirm.js'
 
 const goalOptions = [
   ['protein', 'Proteinmål', 'g', 'day'],
@@ -79,6 +81,11 @@ function GoalsHabitsPanel({
   const [pendingSubmit, setPendingSubmit] = useState(false)
   const [statusMessage, setStatusMessage] = useState('')
   const [fieldError, setFieldError] = useState('')
+  // A11Y-8X6: the archived item waiting for "Ta bort permanent" in
+  // ConfirmDialog. Its row goes away, so the archive heading takes focus.
+  const [deleteArchived, setDeleteArchived] = useState(null)
+  const archiveHeadingRef = useRef(null)
+  const focusAfterConfirm = useFocusAfterConfirm()
   const state = useMemo(() => normalizeGoalsHabitsState(goalsHabits), [goalsHabits])
   const data = useMemo(() => ({
     checkIn,
@@ -453,7 +460,7 @@ function GoalsHabitsPanel({
       </div>
       {showArchive && (
         <article className="goals-habits-archive">
-          <h3>Arkiv och historik</h3>
+          <h3 ref={archiveHeadingRef} tabIndex={-1}>Arkiv och historik</h3>
           {archivedItems.length === 0 ? <p>Inga arkiverade eller slutförda objekt ännu.</p> : (
             <ul className="goals-list">
               {archivedItems.map(({ item, kind }) => (
@@ -463,11 +470,7 @@ function GoalsHabitsPanel({
                   <div className="habit-actions">
                     <button type="button" onClick={() => persist(restoreGoalsHabitsItem(state, kind, item.id), 'Objektet återställdes.')}>Återställ</button>
                     {item.status === 'archived' && (
-                      <button type="button" onClick={() => {
-                        if (window.confirm('Vill du ta bort det arkiverade objektet permanent?')) {
-                          persist(deleteArchivedGoalsHabitsItem(state, kind, item.id), 'Objektet togs bort permanent.')
-                        }
-                      }}>Ta bort permanent</button>
+                      <button type="button" onClick={() => setDeleteArchived({ id: item.id, kind })}>Ta bort permanent</button>
                     )}
                   </div>
                 </li>
@@ -505,6 +508,21 @@ function GoalsHabitsPanel({
       )}
 
       <p className="estimate-note">Lagring: {goalsHabitsStorageKey}. Inga befintliga mål eller check-ins kopieras.</p>
+      {deleteArchived && (
+        <ConfirmDialog
+          confirmLabel="Ta bort permanent"
+          description="Vill du ta bort det arkiverade objektet permanent?"
+          fallbackFocusRef={archiveHeadingRef}
+          title="Ta bort arkiverat objekt"
+          onCancel={() => setDeleteArchived(null)}
+          onConfirm={() => {
+            const { id, kind } = deleteArchived
+            setDeleteArchived(null)
+            focusAfterConfirm(archiveHeadingRef)
+            persist(deleteArchivedGoalsHabitsItem(state, kind, id), 'Objektet togs bort permanent.')
+          }}
+        />
+      )}
     </section>
   )
 }

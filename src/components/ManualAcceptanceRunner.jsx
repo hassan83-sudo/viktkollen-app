@@ -9,6 +9,7 @@ import {
   installReleaseAcceptanceFixtures,
 } from '../services/testing/releaseAcceptanceFixtures.js'
 import { buildMultiDeviceAcceptanceStatus } from '../services/testing/multiDeviceAcceptanceHarness.js'
+import ConfirmDialog from './a11y/ConfirmDialog.jsx'
 
 const manualSteps = [
   { area: 'auth', expected: 'Test User A och B kan registrera, logga in och logga ut utan dataläckage.', id: 'MRA2-AUTH' },
@@ -31,6 +32,9 @@ export default function ManualAcceptanceRunner({ syncStatus = {} }) {
   const [results, setResults] = useState({})
   const [notice, setNotice] = useState('')
   const [exportText, setExportText] = useState('')
+  // A11Y-8X6: the TESTDATA actions ask in ConfirmDialog ({ kind, total }); the
+  // buttons stay, so focus returns to them.
+  const [confirmFixtures, setConfirmFixtures] = useState(null)
   const deviceStatus = useMemo(() => buildMultiDeviceAcceptanceStatus({
     deviceId: syncStatus.deviceId,
     online: typeof navigator === 'undefined' ? true : navigator.onLine,
@@ -63,14 +67,20 @@ export default function ManualAcceptanceRunner({ syncStatus = {} }) {
   }
 
   function handleInstallFixtures() {
-    if (!window.confirm('Skapa markerad TESTDATA för acceptance-test?')) return
+    setConfirmFixtures({ kind: 'install' })
+  }
+
+  function installFixturesConfirmed() {
     const result = installReleaseAcceptanceFixtures()
     setNotice(result.ok ? 'TESTDATA skapades. Uppdatera appdata vid behov.' : 'TESTDATA kunde inte skapas.')
   }
 
   function handleCleanupFixtures() {
     const preview = cleanupReleaseAcceptanceFixtures().preview
-    if (!window.confirm(`Rensa endast markerad TESTDATA? Kontrollera först cleanup-guiden. Förhandsvisning: ${preview.total} objekt.`)) return
+    setConfirmFixtures({ kind: 'cleanup', total: preview.total })
+  }
+
+  function cleanupFixturesConfirmed() {
     const result = cleanupReleaseAcceptanceFixtures({ confirm: true })
     setNotice(result.ok ? `TESTDATA rensades: ${result.preview.total} objekt.` : result.reason)
   }
@@ -145,6 +155,23 @@ export default function ManualAcceptanceRunner({ syncStatus = {} }) {
           readOnly
           rows={8}
           value={exportText}
+        />
+      )}
+      {confirmFixtures && (
+        <ConfirmDialog
+          confirmLabel={confirmFixtures.kind === 'install' ? 'Skapa' : 'Rensa'}
+          description={confirmFixtures.kind === 'install'
+            ? 'Skapa markerad TESTDATA för acceptance-test?'
+            : `Rensa endast markerad TESTDATA? Kontrollera först cleanup-guiden. Förhandsvisning: ${confirmFixtures.total} objekt.`}
+          destructive={confirmFixtures.kind === 'cleanup'}
+          title={confirmFixtures.kind === 'install' ? 'Skapa TESTDATA' : 'Rensa TESTDATA'}
+          onCancel={() => setConfirmFixtures(null)}
+          onConfirm={() => {
+            const { kind } = confirmFixtures
+            setConfirmFixtures(null)
+            if (kind === 'install') installFixturesConfirmed()
+            else cleanupFixturesConfirmed()
+          }}
         />
       )}
     </section>

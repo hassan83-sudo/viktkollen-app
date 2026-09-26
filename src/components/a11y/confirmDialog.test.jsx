@@ -16,27 +16,17 @@ import ConfirmDialog from './ConfirmDialog.jsx'
 
 const root = resolve(process.cwd(), 'src')
 
-// window.confirm calls per production file after 8X5. A file may only go
-// down; CloudBackupPanel (Molnbackup) is Cursor-owned and not touched.
+// Browser dialog zero-gate (A11Y-8X6). No Claude-owned production file calls
+// window.confirm or window.prompt (window.prompt: remainingPrompts.test.jsx).
+// The only exception is Molnbackup (CloudBackupPanel), which is Cursor-owned
+// and keeps exactly its 4 known calls until Cursor replaces them.
 // Replaced: ProgressCenter (7, 8X3); MealLogger (4), RecipeManager,
 // MealQuickAdd and DietaryPreferencesPanel (1 each, 8X4); WeeklyMealPlanner
-// (5, 8X5).
-const allowedConfirmCalls = {
-  'App.jsx': 2,
+// (5, 8X5); App (2), CoachMemoryReview, GoalsHabitsPanel, AccessibilityHub
+// (1 each) and ManualAcceptanceRunner (2, 8X6).
+const cursorOwnedConfirmCalls = {
   'components/CloudBackupPanel.jsx': 4,
-  'components/CoachMemoryReview.jsx': 1,
-  'components/GoalsHabitsPanel.jsx': 1,
-  'components/ManualAcceptanceRunner.jsx': 2,
-  'components/more/AccessibilityHub.jsx': 1,
 }
-const replacedFiles = [
-  'components/MealLogger.jsx',
-  'components/ProgressCenter.jsx',
-  'components/RecipeManager.jsx',
-  'components/WeeklyMealPlanner.jsx',
-  'components/mealTemplates/MealQuickAdd.jsx',
-  'components/nutrition/DietaryPreferencesPanel.jsx',
-]
 
 function productionFiles(directory) {
   return readdirSync(directory).flatMap((name) => {
@@ -71,17 +61,13 @@ describe('ConfirmDialog (8M B13)', () => {
   })
   afterEach(cleanup)
 
-  it('confirm gate: window.confirm only where it is still allowed, never more', () => {
+  it('browser dialog zero-gate: window.confirm only in Molnbackup (Cursor, exactly 4), nowhere else', () => {
     const counts = Object.fromEntries(productionFiles(root)
       .map((path) => [relative(root, path), confirmCalls(readFileSync(path, 'utf8'))])
       .filter(([, count]) => count > 0))
-    for (const [file, count] of Object.entries(counts)) {
-      expect(count, `${file}: window.confirm calls`).toBeLessThanOrEqual(allowedConfirmCalls[file] ?? 0)
-    }
-    for (const file of replacedFiles) expect(counts[file], file).toBeUndefined()
-    expect(counts['components/CloudBackupPanel.jsx']).toBe(4)
-    expect(Object.values(counts).reduce((sum, count) => sum + count, 0)).toBeLessThanOrEqual(11)
+    expect(counts).toEqual(cursorOwnedConfirmCalls)
     expect(confirmCalls("if (window.confirm('x')) {}\n// window.confirm(")).toBe(1)
+    expect(confirmCalls('const ok = confirm(message)')).toBe(1)
   })
 
   it('is a named alertdialog with the question as description; Avbryt is focused first; one action per confirmation', () => {

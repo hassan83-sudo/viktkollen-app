@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import ConfirmDialog from './a11y/ConfirmDialog.jsx'
 import NoteDialog from './a11y/NoteDialog.jsx'
+import { useFocusAfterConfirm } from './a11y/useFocusAfterConfirm.js'
 import BodyAnalysisCard from './BodyAnalysisCard.jsx'
 import ProgressPhotoEmptyState from './ProgressPhotoEmptyState.jsx'
 import ProgressPhotoUpload from './ProgressPhotoUpload.jsx'
@@ -146,6 +148,11 @@ function ProgressPhotos({
   const [photoFilter, setPhotoFilter] = useState('Alla')
   // A11Y-8X2: the photo whose note is being edited (NoteDialog).
   const [noteEditPhoto, setNoteEditPhoto] = useState(null)
+  // A11Y-8X6: the photo waiting for "Ta bort" in ConfirmDialog. Its card goes
+  // away, so the "Framstegsbilder" heading takes focus.
+  const [deletePhotoId, setDeletePhotoId] = useState(null)
+  const photosHeadingRef = useRef(null)
+  const focusAfterConfirm = useFocusAfterConfirm()
   const [periodFilter, setPeriodFilter] = useState('all')
   const [photoSearch, setPhotoSearch] = useState('')
   const [sliderPosition, setSliderPosition] = useState(50)
@@ -178,7 +185,7 @@ function ProgressPhotos({
       <div className="panel-heading">
         <div>
           <p className="eyebrow">AI Framstegsbilder V2</p>
-          <h2>Framstegsbilder</h2>
+          <h2 ref={photosHeadingRef} tabIndex={-1}>Framstegsbilder</h2>
         </div>
       </div>
 
@@ -339,7 +346,7 @@ function ProgressPhotos({
                     <button
                       className="secondary-button danger-button"
                       type="button"
-                      onClick={() => onDeleteProgressPhoto(photo.id)}
+                      onClick={() => setDeletePhotoId(photo.id)}
                     >
                       Ta bort
                     </button>
@@ -449,6 +456,21 @@ function ProgressPhotos({
 
       {!hasProgressPhotos && (!showBodyAnalysis || !hasBodyAnalysisHistory) && (
         <ProgressPhotoEmptyState />
+      )}
+      {deletePhotoId !== null && (
+        <ConfirmDialog
+          confirmLabel="Ta bort"
+          description="Vill du ta bort den här framstegsbilden?"
+          fallbackFocusRef={photosHeadingRef}
+          title="Ta bort framstegsbild"
+          onCancel={() => setDeletePhotoId(null)}
+          onConfirm={() => {
+            const photoId = deletePhotoId
+            setDeletePhotoId(null)
+            focusAfterConfirm(photosHeadingRef)
+            onDeleteProgressPhoto(photoId)
+          }}
+        />
       )}
       {noteEditPhoto && (
         <NoteDialog

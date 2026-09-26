@@ -1601,12 +1601,9 @@ function App() {
       ),
     )
   }, [])
+  // A11Y-8X6: AICoach asks first (ConfirmDialog); this only clears.
   const clearCoachReports = useCallback(() => {
-    const shouldClear = window.confirm('Vill du rensa all coachhistorik?')
-
-    if (shouldClear) {
-      setCoachReports([])
-    }
+    setCoachReports([])
   }, [])
   const dashboardData = useMemo(
     () =>
@@ -3127,10 +3124,9 @@ function App() {
     onAfterPhotoIdChange: setAfterPhotoId,
     onBeforePhotoIdChange: setBeforePhotoId,
     onBodyMeasurementsChange: (nextMeasurements) => setBodyMeasurements(normalizeBodyMeasurements(nextMeasurements)),
+    // A11Y-8X6: ProgressPhotos asks first (ConfirmDialog); this only deletes.
     onDeleteProgressPhoto: (photoId) => {
-      if (window.confirm('Vill du ta bort den här framstegsbilden?')) {
-        setProgressPhotos((current) => current.filter((photo) => photo.id !== photoId))
-      }
+      setProgressPhotos((current) => current.filter((photo) => photo.id !== photoId))
     },
     onGoalSettingsChange: (nextSettings) => setProgressGoalSettings(normalizeGoalSettings(nextSettings)),
     onProgressPhotoChange: handleProgressPhotoChange,

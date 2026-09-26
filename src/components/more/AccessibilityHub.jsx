@@ -15,6 +15,7 @@ import {
   speakAccessibilityText,
 } from '../../services/accessibilitySpeech.js'
 import AccessibilityFeedback from './AccessibilityFeedback.jsx'
+import ConfirmDialog from '../a11y/ConfirmDialog.jsx'
 
 const accessibilitySectionIds = [
   'vision',
@@ -50,6 +51,9 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
   const preferences = useAccessibilityPreferences()
   const [readingOption, setReadingOption] = useState('')
   const [settingsStatus, setSettingsStatus] = useState(null)
+  // A11Y-8X6: the reset asks in ConfirmDialog; the button stays, so focus
+  // returns to it.
+  const [confirmReset, setConfirmReset] = useState(false)
   const settingsAnnouncementRef = useRef(0)
   const [navigationSpeechStatus, setNavigationSpeechStatus] = useState(null)
   const sectionButtonRefs = useRef({})
@@ -112,10 +116,11 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
   }
 
   function resetPreferences() {
-    if (typeof window !== 'undefined' && typeof window.confirm === 'function' && !window.confirm(t('accessibility.preferences.resetConfirm'))) {
-      return
-    }
+    setConfirmReset(true)
+  }
 
+  function resetPreferencesConfirmed() {
+    setConfirmReset(false)
     resetAccessibilityPreferences()
     announceSettingsStatus(t('accessibility.preferences.resetDone'))
   }
@@ -538,6 +543,15 @@ function AccessibilityHub({ onOpenEar, onOpenEye }) {
       <button className="secondary-button accessibility-reset-button" type="button" onClick={resetPreferences}>
         {t('accessibility.preferences.reset')}
       </button>
+      {confirmReset && (
+        <ConfirmDialog
+          confirmLabel={t('accessibility.preferences.resetAction')}
+          description={t('accessibility.preferences.resetConfirm')}
+          title={t('accessibility.preferences.reset')}
+          onCancel={() => setConfirmReset(false)}
+          onConfirm={resetPreferencesConfirmed}
+        />
+      )}
       {renderSettingsStatus()}
     </section>
   )

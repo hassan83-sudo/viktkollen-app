@@ -522,7 +522,7 @@ const sv = {
         skip: 'Inte nu',
       },
       preferences: {
-        saved: 'Inställningen uppdaterades.', reset: 'Återställ tillgänglighetsinställningar', resetConfirm: 'Vill du återställa bara tillgänglighetsinställningarna i den här vyn?', resetDone: 'Inställningarna återställdes',
+        saved: 'Inställningen uppdaterades.', reset: 'Återställ tillgänglighetsinställningar', resetConfirm: 'Vill du återställa bara tillgänglighetsinställningarna i den här vyn?', resetAction: 'Återställ', resetDone: 'Inställningarna återställdes',
         displayLegend: 'Visning i den här vyn', feedbackLegend: 'Visuell och haptisk återkoppling', motorLegend: 'Motoriskt stöd i den här vyn', readingLegend: 'Läsning i den här vyn', seniorLegend: 'Egna val i den här vyn',
         highContrast: 'Tydligare kontrast', reduceMotion: 'Minska animationer', visualFeedback: 'Tydligare markering', hapticFeedback: 'Vibration vid viktiga tryck', largeControls: 'Större knappar och tryckytor', avoidPreciseGestures: 'Undvik precisa gester', extraInteractionTime: 'Ge mig mer tid', keyboardFriendly: 'Tangentbordsvänligt läge', lineSpacing: 'Mer luft mellan rader', largerText: 'Större text', simpleReading: 'Enklare texter',
         textSize: { normal: 'Normal text', large: 'Stor text', 'extra-large': 'Extra stor text' }, soundNotOnlySignal: 'Ljud ska aldrig vara den enda signalen. Viktiga val visas också tydligt i den här vyn.',
@@ -2426,7 +2426,7 @@ const en = {
         skip: 'Not now',
       },
       preferences: {
-        saved: 'The setting was updated.', reset: 'Reset accessibility settings', resetConfirm: 'Reset only the accessibility settings in this view?', resetDone: 'The settings were reset',
+        saved: 'The setting was updated.', reset: 'Reset accessibility settings', resetConfirm: 'Reset only the accessibility settings in this view?', resetAction: 'Reset', resetDone: 'The settings were reset',
         displayLegend: 'Display in this view', feedbackLegend: 'Visual and haptic feedback', motorLegend: 'Motor support in this view', readingLegend: 'Reading in this view', seniorLegend: 'Your choices in this view',
         highContrast: 'Clearer contrast', reduceMotion: 'Reduce animation', visualFeedback: 'Clearer focus indicator', hapticFeedback: 'Vibration for important presses', largeControls: 'Larger buttons and tap targets', avoidPreciseGestures: 'Avoid precise gestures', extraInteractionTime: 'Give me more time', keyboardFriendly: 'Keyboard-friendly mode', lineSpacing: 'More space between lines', largerText: 'Larger text', simpleReading: 'Simpler text',
         textSize: { normal: 'Normal text', large: 'Large text', 'extra-large': 'Extra large text' }, soundNotOnlySignal: 'Sound should never be the only signal. Important choices are also clearly shown in this view.',

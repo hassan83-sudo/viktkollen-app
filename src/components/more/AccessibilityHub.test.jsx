@@ -236,7 +236,6 @@ describe('AccessibilityHub', () => {
 
   it('persists scoped reading settings and resets only the accessibility key', () => {
     window.localStorage.setItem('unrelated-key', 'keep')
-    window.confirm = vi.fn(() => true)
     renderAccessibilityHub()
 
     fireEvent.click(screen.getByRole('button', { name: /^Läsning/ }))
@@ -246,7 +245,15 @@ describe('AccessibilityHub', () => {
     expect(window.localStorage.getItem('viktkollen.accessibility.preferences.v1')).toContain('"textSize":"large"')
 
     fireEvent.click(screen.getByRole('button', { name: /Till Tillgänglighet & hjälpmedel/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Återställ tillgänglighetsinställningar' }))
+    // A11Y-8X6: the reset asks in ConfirmDialog; Avbryt keeps the setting.
+    const reset = screen.getByRole('button', { name: 'Återställ tillgänglighetsinställningar' })
+    fireEvent.click(reset)
+    let dialog = screen.getByRole('alertdialog', { name: 'Återställ tillgänglighetsinställningar' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Avbryt' }))
+    expect(window.localStorage.getItem('viktkollen.accessibility.preferences.v1')).toContain('"textSize":"large"')
+    fireEvent.click(reset)
+    dialog = screen.getByRole('alertdialog', { name: 'Återställ tillgänglighetsinställningar' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Återställ' }))
     expect(window.localStorage.getItem('viktkollen.accessibility.preferences.v1')).toBeNull()
     expect(window.localStorage.getItem('unrelated-key')).toBe('keep')
     expect(screen.getAllByRole('status').some((node) => node.textContent === 'Inställningarna återställdes')).toBe(true)

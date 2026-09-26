@@ -1,3 +1,6 @@
+import { useRef, useState } from 'react'
+import ConfirmDialog from './a11y/ConfirmDialog.jsx'
+import { useFocusAfterConfirm } from './a11y/useFocusAfterConfirm.js'
 import CoachSuggestions from './CoachSuggestions.jsx'
 
 function formatReportDate(value) {
@@ -124,13 +127,24 @@ function AICoach({
 }) {
   const resolvedCoachStatus =
     coachStatus || 'AI-coachen använder dagens profil, vanor och loggar.'
+  // A11Y-8X6: "Rensa historik" asks in ConfirmDialog. The button goes away
+  // with the history, so the panel heading takes focus.
+  const [confirmClearReports, setConfirmClearReports] = useState(false)
+  const headingRef = useRef(null)
+  const focusAfterConfirm = useFocusAfterConfirm()
+
+  function clearReportsConfirmed() {
+    setConfirmClearReports(false)
+    focusAfterConfirm(headingRef)
+    onClearCoachReports?.()
+  }
 
   return (
     <article className="panel coach-panel coach-v2-panel" id="coach">
       <div className="panel-heading">
         <div>
           <p className="eyebrow">AI Coach</p>
-          <h2>Personlig coach</h2>
+          <h2 ref={headingRef} tabIndex={-1}>Personlig coach</h2>
         </div>
         <button
           className="secondary-button"
@@ -300,9 +314,19 @@ function AICoach({
 
       <ReportHistory
         reports={coachReports}
-        onClearReports={onClearCoachReports}
+        onClearReports={() => setConfirmClearReports(true)}
         onDeleteReport={onDeleteCoachReport}
       />
+      {confirmClearReports && (
+        <ConfirmDialog
+          confirmLabel="Rensa"
+          description="Vill du rensa all coachhistorik?"
+          fallbackFocusRef={headingRef}
+          title="Rensa coachhistorik"
+          onCancel={() => setConfirmClearReports(false)}
+          onConfirm={clearReportsConfirmed}
+        />
+      )}
     </article>
   )
 }

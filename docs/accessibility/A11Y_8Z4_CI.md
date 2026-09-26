@@ -133,7 +133,40 @@ femtedel av tiden, 4 minuter mot 20.
   CI=true npm run test:a11y:e2e:fast   # eller: CI=true npm run test:a11y:e2e
   ```
 
+## Första körningen på GitHub
+
+Pushen av `70d39db` startade körning nr 1 (event `push`, gren
+`claude/parallel-1`). GitHub registrerade workflowet "Accessibility" som
+aktivt.
+
+| Jobb | Resultat |
+|---|---|
+| Accessibility gate (fast) | **success** på 4 min 42 s: `npm ci` 5 s, `test:a11y` 39 s, i18n 1 s, installation av Chromium 21 s och delmängden i Chromium **65 av 65 på 3,5 min** |
+| Accessibility E2E (full) | skipped, som avsett vid en push. Körs manuellt och varje vecka. |
+
+Länk: <https://github.com/hassan83-sudo/viktkollen-app/actions/runs/36238989422>
+
+Den fulla sviten är inte körd på GitHub i den här sprinten. Den kördes lokalt
+vid 8Z3 med 261 av 261 godkända. Jobbet har samma steg som det snabba, som
+har körts grönt, och kör bara `test:a11y:e2e` i stället för delmängden.
+
 ## C12: slutstatus
 
-Se avsnittet "C12" i slutrapporten för 8Z4. Status och eventuell körning på
-GitHub fylls i där.
+**C12 = FIXED.**
+- Gaten är definierad i repot (`.github/workflows/accessibility.yml` och
+  `test:a11y:e2e:fast`).
+- Den går att återskapa från repokonfigurationen: `npm ci`, pinnad Chromium
+  och inga hemligheter.
+- Den har körts grönt på GitHub Actions.
+
+**Rekommenderat, men inte en förutsättning för C12:**
+1. **Obligatorisk check:** repo-ägaren kan kräva "Accessibility gate (fast)"
+   före merge till `main` (Settings → Branches → branch protection). Det är en
+   inställning på GitHub och ligger utanför repot.
+2. **Workflowet på `main`:** det finns bara på `claude/parallel-1` tills
+   grenen mergas. Det manuella valet `full` och körningen varje vecka
+   (`schedule`) använder standardgrenens workflowfil. Veckokörningen startar
+   alltså först när filen finns på `main`.
+3. **Node 20-varning:** GitHub varnar för att `actions/checkout@v4` och
+   `actions/setup-node@v4` är byggda för Node 20 och körs på Node 24. Det
+   fungerar, men versionerna kan höjas senare.

@@ -1,3 +1,5 @@
+import { defaultLanguageCode, supportedLanguageCodes } from '../i18n/languages.js'
+
 export const voiceConversationSilenceTimeoutMs = 7000
 export const voiceConversationSpeechRecoveryMs = 20000
 
@@ -26,23 +28,57 @@ export function getCompanionVoiceProfile(avatarId = 'nova') {
   return companionVoiceProfiles[avatarId] || companionVoiceProfiles.nova
 }
 
+// A11Y-8Z2 (8T/8Y B10): speech recognition and the synthesis fallback follow
+// the app language (document.documentElement.lang, set by i18n) instead of
+// always sv-SE. Full locales for the app's complete languages; other
+// supported codes are valid language tags as they are; anything else falls
+// back to the app's default language (sv -> sv-SE).
+const speechLocales = Object.freeze({
+  ar: 'ar-SA',
+  da: 'da-DK',
+  de: 'de-DE',
+  en: 'en-US',
+  es: 'es-ES',
+  fi: 'fi-FI',
+  fr: 'fr-FR',
+  it: 'it-IT',
+  ja: 'ja-JP',
+  ko: 'ko-KR',
+  nl: 'nl-NL',
+  no: 'nb-NO',
+  pl: 'pl-PL',
+  pt: 'pt-PT',
+  sv: 'sv-SE',
+  'zh-CN': 'zh-CN',
+  'zh-TW': 'zh-TW',
+})
+
+export function getSpeechLocale(language) {
+  const code = String(language || '')
+  if (speechLocales[code]) return speechLocales[code]
+  if (supportedLanguageCodes.includes(code)) return code
+  return speechLocales[defaultLanguageCode]
+}
+
 export function getSpeechRecognitionConstructor(scope = globalThis) {
   return scope?.SpeechRecognition || scope?.webkitSpeechRecognition || null
 }
 
-export function selectSpeechSynthesisVoice(voices = [], avatarId = 'nova') {
+export function selectSpeechSynthesisVoice(voices = [], avatarId = 'nova', language = defaultLanguageCode) {
   if (!Array.isArray(voices) || voices.length === 0) return null
 
-  const swedishVoices = voices.filter((voice) => voice.lang?.toLowerCase().startsWith('sv'))
-  if (swedishVoices.length > 0) {
+  const prefix = getSpeechLocale(language).split('-')[0].toLowerCase()
+  const languageVoices = voices.filter((voice) => voice.lang?.toLowerCase().startsWith(prefix))
+  if (languageVoices.length > 0) {
     const profile = getCompanionVoiceProfile(avatarId)
-    return swedishVoices[profile.voiceIndex % swedishVoices.length]
+    return languageVoices[profile.voiceIndex % languageVoices.length]
   }
 
   return voices.find((voice) => voice.default) || voices[0] || null
 }
 
 export function createVoiceConversationController({
+  getLanguage = () => globalThis.document?.documentElement?.lang || '',
   getMediaDevices = () => globalThis.navigator?.mediaDevices,
   getScope = () => globalThis.window || globalThis,
   getSpeechSynthesis = () => globalThis.window?.speechSynthesis || globalThis.speechSynthesis,
@@ -192,10 +228,11 @@ export function createVoiceConversationController({
         const scope = getScope?.()
         const avatarId = getSelectedCompanionVoiceId(scope)
         const voiceProfile = getCompanionVoiceProfile(avatarId)
-        const voice = selectSpeechSynthesisVoice(speechSynthesis.getVoices?.() || [], avatarId)
+        const language = getLanguage?.()
+        const voice = selectSpeechSynthesisVoice(speechSynthesis.getVoices?.() || [], avatarId, language)
 
         if (voice) utterance.voice = voice
-        utterance.lang = voice?.lang || 'sv-SE'
+        utterance.lang = voice?.lang || getSpeechLocale(language)
         utterance.rate = voiceProfile.rate
         utterance.pitch = voiceProfile.pitch
         utterance.volume = 1
@@ -328,7 +365,7 @@ export function createVoiceConversationController({
     const recognition = new SpeechRecognition()
     currentRecognition = recognition
 
-    recognition.lang = 'sv-SE'
+    recognition.lang = getSpeechLocale(getLanguage?.())
     recognition.continuous = false
     recognition.interimResults = true
     recognition.maxAlternatives = 1

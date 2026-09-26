@@ -174,7 +174,8 @@ describe('dialog accessibility integration (A11Y-8C)', () => {
     })
 
     it('never lets Escape interrupt a safety alert that is being sent, and does not auto-focus an alert action', () => {
-      const sos = placeSource.match(/<ModalDialog [^\n]*aria-label="Trygghetslarm"[^\n]*>/)[0]
+      // A11Y-8Z2: the dialog name comes from i18n (place:safetyAlert.title).
+      const sos = placeSource.match(/<ModalDialog [^\n]*aria-label=\{t\('safetyAlert\.title'\)\}[^\n]*>/)[0]
       expect(sos).toContain('closeOnEscape={!safetyAlertSending}')
       expect(sos).toContain('initialFocus="dialog"')
     })

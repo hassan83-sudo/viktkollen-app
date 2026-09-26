@@ -646,6 +646,15 @@ const sv = {
     notificationsError: 'Notiscenter kunde inte visas',
     archiveError: 'Arkiv kunde inte visas',
     goalsProgressError: 'Framsteg kunde inte visas',
+    // A11Y-8Z2 (8T B-N4): error titles of the Mer folders (MoreSection reads
+    // the settings namespace).
+    nutritionError: 'Mat kunde inte visas',
+    coachError: 'AI Coach kunde inte visas',
+    wellbeingError: 'Må bra kunde inte visas',
+    economyError: 'Ekonomi kunde inte visas',
+    signLanguageError: 'Teckenspråk kunde inte visas',
+    animalWorldError: 'Djurvärlden kunde inte visas',
+    pregnancyFirstYearError: 'Graviditet och första året kunde inte visas',
     search: {
       open: 'Öppna global sökning',
       dialog: 'Global sökning',
@@ -2550,6 +2559,13 @@ const en = {
     notificationsError: 'Notification center could not be shown',
     archiveError: 'Archive could not be shown',
     goalsProgressError: 'Progress could not be shown',
+    nutritionError: 'Food could not be shown',
+    coachError: 'AI Coach could not be shown',
+    wellbeingError: 'Wellbeing could not be shown',
+    economyError: 'Economy could not be shown',
+    signLanguageError: 'Sign language could not be shown',
+    animalWorldError: 'Animal world could not be shown',
+    pregnancyFirstYearError: 'Pregnancy and the first year could not be shown',
     search: {
       open: 'Open global search',
       dialog: 'Global search',

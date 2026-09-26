@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import {
   getCompanionVoiceProfile,
   getSelectedCompanionVoiceId,
+  getSpeechLocale,
   selectSpeechSynthesisVoice,
 } from '../services/voiceConversationController.js'
 
@@ -62,9 +63,11 @@ function AiCoachOverlay({
 
     const avatarId = getSelectedCompanionVoiceId(window)
     const voiceProfile = getCompanionVoiceProfile(avatarId)
-    const voice = selectSpeechSynthesisVoice(speechSynthesis.getVoices?.() || [], avatarId)
+    // A11Y-8Z2 (B10): the voice and the fallback follow the app language.
+    const language = document.documentElement.lang
+    const voice = selectSpeechSynthesisVoice(speechSynthesis.getVoices?.() || [], avatarId, language)
     if (voice) utterance.voice = voice
-    utterance.lang = voice?.lang || 'sv-SE'
+    utterance.lang = voice?.lang || getSpeechLocale(language)
     utterance.rate = voiceProfile.rate
     utterance.pitch = voiceProfile.pitch
 

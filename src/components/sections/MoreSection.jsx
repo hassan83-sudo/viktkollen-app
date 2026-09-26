@@ -191,7 +191,7 @@ function MoreSection({
         onOpenEye={onOpenEye}
       >
         {activeFolder === 'mat' && (
-          <AppErrorBoundary area="nutrition" resetKey={`${healthSnapshot?.date}-${weights.length}`} title={t('nutritionError', { defaultValue: 'Mat kunde inte visas' })}>
+          <AppErrorBoundary area="nutrition" resetKey={`${healthSnapshot?.date}-${weights.length}`} title={t('nutritionError')}>
             {NutritionSectionComponent && (
               <NutritionSectionComponent
                 {...nutritionSectionProps}
@@ -217,7 +217,7 @@ function MoreSection({
             </button>
           </article>
           {CoachSectionComponent && (
-            <AppErrorBoundary area="coach" resetKey={userId} title={t('coachError', { defaultValue: 'AI Coach kunde inte visas' })}>
+            <AppErrorBoundary area="coach" resetKey={userId} title={t('coachError')}>
               <CoachSectionComponent
                 {...coachSectionProps}
                 activeSection="coach"
@@ -228,7 +228,7 @@ function MoreSection({
         )}
 
         {activeFolder === 'ma-bra' && WellbeingSectionComponent && (
-          <AppErrorBoundary area="wellbeing" resetKey={userId} title={t('wellbeingError', { defaultValue: 'Må bra kunde inte visas' })}>
+          <AppErrorBoundary area="wellbeing" resetKey={userId} title={t('wellbeingError')}>
             <WellbeingSectionComponent
               {...wellbeingSectionProps}
               activeSection="wellbeing"
@@ -238,7 +238,7 @@ function MoreSection({
         )}
 
         {activeFolder === 'ekonomi' && EconomySectionComponent && (
-          <AppErrorBoundary area="economy" resetKey={userId} title={t('economyError', { defaultValue: 'Ekonomi kunde inte visas' })}>
+          <AppErrorBoundary area="economy" resetKey={userId} title={t('economyError')}>
             <EconomySectionComponent
               {...economySectionProps}
               activeSection="economy"
@@ -247,19 +247,19 @@ function MoreSection({
         )}
 
         {activeFolder === 'sign-language' && (
-          <AppErrorBoundary area="sign-language" resetKey={userId} title={t('signLanguageError', { defaultValue: 'Teckenspråk kunde inte visas' })}>
+          <AppErrorBoundary area="sign-language" resetKey={userId} title={t('signLanguageError')}>
             <SignLanguageSection onOpenAiCoach={onOpenAiCoach} />
           </AppErrorBoundary>
         )}
 
         {activeFolder === 'animal-world' && (
-          <AppErrorBoundary area="animal-world" resetKey={userId} title={t('animalWorldError', { defaultValue: 'Djurvärlden kunde inte visas' })}>
+          <AppErrorBoundary area="animal-world" resetKey={userId} title={t('animalWorldError')}>
             <AnimalWorldSection />
           </AppErrorBoundary>
         )}
 
         {activeFolder === 'pregnancy-first-year' && (
-          <AppErrorBoundary area="pregnancy-first-year" resetKey={userId} title={t('pregnancyFirstYearError', { defaultValue: 'Graviditet och första året kunde inte visas' })}>
+          <AppErrorBoundary area="pregnancy-first-year" resetKey={userId} title={t('pregnancyFirstYearError')}>
             <PregnancyFirstYearSection />
           </AppErrorBoundary>
         )}

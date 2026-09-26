@@ -61,28 +61,25 @@ const featureIcons = {
   sharingSettings: '⚙',
 }
 
+// A11Y-8Z2 (8T/8Y B10): the labels come from i18n (place namespace).
 const safetyAlertChoices = [
-  ['threatened', '🚨', 'Jag känner mig hotad'],
-  ['lost', '🧭', 'Jag har gått vilse'],
-  ['injured', '🩹', 'Jag har skadat mig'],
-  ['unsafe', '😟', 'Jag känner mig otrygg'],
-  ['pickup', '🚗', 'Jag behöver bli hämtad'],
-  ['other', '🆘', 'Annat – jag behöver hjälp'],
+  ['threatened', '🚨'],
+  ['lost', '🧭'],
+  ['injured', '🩹'],
+  ['unsafe', '😟'],
+  ['pickup', '🚗'],
+  ['other', '🆘'],
 ]
 
-const safetyAlertLabels = Object.fromEntries(
-  safetyAlertChoices.map(([reason, icon, label]) => [reason, `${icon} ${label}`]),
-)
+const safetyAlertIcons = Object.fromEntries(safetyAlertChoices)
 
 const checkinChoices = [
-  ['ok', '✓', 'Jag är okej'],
-  ['home', '🏠', 'Jag är hemma'],
-  ['on_way', '🚶', 'Jag är på väg'],
+  ['ok', '✓'],
+  ['home', '🏠'],
+  ['on_way', '🚶'],
 ]
 
-const checkinLabels = Object.fromEntries(
-  checkinChoices.map(([status, icon, label]) => [status, `${icon} ${label}`]),
-)
+const checkinIcons = Object.fromEntries(checkinChoices)
 
 function addItemOnce(items, item) {
   if (!item?.id || items.some((current) => current.id === item.id)) return items
@@ -109,7 +106,10 @@ function PlaceSection({ activeSection }) {
   const [safePlaceNotice, setSafePlaceNotice] = useState('')
   const [safePlaceName, setSafePlaceName] = useState('')
   const [safePlaceSaving, setSafePlaceSaving] = useState(false)
-  const [pushStatus, setPushStatus] = useState({ status: 'inactive', label: 'Inte aktiverad ännu' })
+  const [pushStatus, setPushStatus] = useState({ status: 'inactive' })
+  const safetyAlertLabel = (reason) => (safetyAlertIcons[reason] ? `${safetyAlertIcons[reason]} ${t(`safetyAlert.reasons.${reason}`)}` : `🛡️ ${t('safetyAlert.title')}`)
+  const checkinLabel = (status) => (checkinIcons[status] ? `${checkinIcons[status]} ${t(`checkin.choices.${status}`)}` : '✓ Check-in')
+  const pushStatusLabel = t(`push.${pushStatus.status}`, { defaultValue: t('push.unknown') })
   const [isSosOpen, setIsSosOpen] = useState(false)
   const [safetyAlerts, setSafetyAlerts] = useState([])
   const [safetyAlertsLoaded, setSafetyAlertsLoaded] = useState(false)
@@ -466,7 +466,7 @@ function PlaceSection({ activeSection }) {
     }
 
     if (pushEnabled) {
-      setPushStatus({ status: 'active', label: 'Aktiv' })
+      setPushStatus({ status: 'active' })
     } else if (pushError) {
       setPushStatus(await getPlacePushStatus())
     } else {
@@ -511,7 +511,7 @@ function PlaceSection({ activeSection }) {
       setSafetyAlertsError(error.message || 'Trygghetslarmet kunde inte skickas.')
     } else if (data) {
       setSafetyAlerts((current) => addItemOnce(current, data))
-      setSafetyAlertNotice('Trygghetslarm skickat till familjen.')
+      setSafetyAlertNotice(t('safetyAlert.sent'))
     }
 
     setSafetyAlertSending(false)
@@ -529,7 +529,7 @@ function PlaceSection({ activeSection }) {
       setCheckinsError(error.message || 'Check-in kunde inte skickas.')
     } else if (data) {
       setCheckins((current) => addItemOnce(current, data))
-      setCheckinNotice(`${checkinLabels[status] || 'Check-in'} skickat till familjen.`)
+      setCheckinNotice(t('checkin.sent', { label: checkinLabel(status) }))
     }
 
     setCheckinSending(false)
@@ -614,7 +614,7 @@ function PlaceSection({ activeSection }) {
         {safePlaceNotice ? (
           <section className="place-card" aria-live="polite">
             <p role="status"><strong>{safePlaceNotice}</strong></p>
-            <button type="button" onClick={() => setSafePlaceNotice('')}>Stäng notis</button>
+            <button type="button" onClick={() => setSafePlaceNotice('')}>{t('notice.close')}</button>
           </section>
         ) : null}
 
@@ -663,7 +663,7 @@ function PlaceSection({ activeSection }) {
                     <button aria-describedby={`${statusId} ${bodyId}`} className="place-feature-open" type="button" onClick={openFeature}>{featureTitle}</button>
                   ) : featureTitle}
                 </h3>
-                <p id={bodyId}>{featureId === 'sos' ? 'Skicka snabbt ett larm och din senaste plats till godkända familjemedlemmar.' : t(`features.${featureId}.body`)}</p>
+                <p id={bodyId}>{featureId === 'sos' ? t('safetyAlert.body') : t(`features.${featureId}.body`)}</p>
                 {featureId === 'batterySaver' && state.consentGranted ? (
                   <label className="place-toggle">
                     <input checked={state.batterySaverEnabled} type="checkbox" onChange={(event) => setState((current) => setBatterySaver(current, event.target.checked))} />
@@ -712,7 +712,7 @@ function PlaceSection({ activeSection }) {
           <ModalDialog className="ready-modal" aria-label={t('features.status.title')} closeOnEscape onClose={() => setIsStatusOpen(false)}>
             <h3>{t('features.status.title')}</h3>
             {familyLocationsLoaded && familyLocations.length > 0 ? <>
-              <p><strong>Platsdelning aktiv</strong></p><p>Senaste platsen har tagits emot från familjen.</p>
+              <p><strong>{t('sharingStatus.active')}</strong></p><p>{t('sharingStatus.received')}</p>
               {familyLocations[0].location_recorded_at ? <p>Senast uppdaterad {new Date(familyLocations[0].location_recorded_at).toLocaleString()}</p> : null}
               {familyLocations[0].accuracy_meters != null ? <p>Noggrannhet ±{Math.round(familyLocations[0].accuracy_meters)} m</p> : null}
             </> : familyLocationsLoaded ? <><p>{t('features.status.empty')}</p><p>{t('features.status.emptyBody')}</p></> : null}
@@ -723,15 +723,15 @@ function PlaceSection({ activeSection }) {
         {isSafePlacesOpen && state.consentGranted ? (
           <ModalDialog className="ready-modal" aria-label={t('features.safePlaces.title')} closeOnEscape onClose={() => setIsSafePlacesOpen(false)}>
             <h3>{t('features.safePlaces.title')}</h3>
-            <p role="status"><strong>Pushnotiser:</strong> {pushStatus.label}</p>
+            <p role="status"><strong>{t('push.label')}</strong> {pushStatusLabel}</p>
             {safePlacesLoaded && safePlaces.length > 0 ? <ul>{safePlaces.map((place) => (
               <li key={place.id}>
                 <strong>{place.name}</strong>{' '}<span>{Number(place.latitude).toFixed(5)}, {Number(place.longitude).toFixed(5)}</span>{' '}<small>radie {Math.round(place.radius_meters)} m</small>{' '}
                 <button type="button" onClick={() => handleDeleteSafePlace(place.id)}>Radera</button>
-                <div><strong>Platsnotiser</strong>
-                  <label className="place-toggle"><input type="checkbox" checked={Boolean(place.notify_on_arrival)} onChange={(event) => handleSafePlaceNotificationChange(place, 'arrival', event.target.checked)} /><span>Notis när personen kommer hit</span></label>
-                  <label className="place-toggle"><input type="checkbox" checked={Boolean(place.notify_on_departure)} onChange={(event) => handleSafePlaceNotificationChange(place, 'departure', event.target.checked)} /><span>Notis när personen lämnar platsen</span></label>
-                  <small>{place.notify_on_arrival || place.notify_on_departure ? 'Aktiv i appen' : 'Av'}</small>
+                <div><strong>{t('safePlaceNotifications.title')}</strong>
+                  <label className="place-toggle"><input type="checkbox" checked={Boolean(place.notify_on_arrival)} onChange={(event) => handleSafePlaceNotificationChange(place, 'arrival', event.target.checked)} /><span>{t('safePlaceNotifications.arrival')}</span></label>
+                  <label className="place-toggle"><input type="checkbox" checked={Boolean(place.notify_on_departure)} onChange={(event) => handleSafePlaceNotificationChange(place, 'departure', event.target.checked)} /><span>{t('safePlaceNotifications.departure')}</span></label>
+                  <small>{place.notify_on_arrival || place.notify_on_departure ? t('safePlaceNotifications.on') : t('safePlaceNotifications.off')}</small>
                 </div>
               </li>
             ))}</ul> : safePlacesLoaded && !safePlacesError ? <><p>{t('features.safePlaces.empty')}</p><p>Spara din senaste egna delade GPS-position som Hem, Skola eller en annan trygg plats.</p></> : null}
@@ -746,27 +746,27 @@ function PlaceSection({ activeSection }) {
         ) : null}
 
         {isSosOpen && state.consentGranted ? (
-          <ModalDialog className="ready-modal" aria-label="Trygghetslarm" closeOnEscape={!safetyAlertSending} initialFocus="dialog" onClose={() => setIsSosOpen(false)}>
-            <h3>🛡️ Trygghetslarm</h3>
-            <p><strong>Vad har hänt?</strong></p>
+          <ModalDialog className="ready-modal" aria-label={t('safetyAlert.title')} closeOnEscape={!safetyAlertSending} initialFocus="dialog" onClose={() => setIsSosOpen(false)}>
+            <h3>🛡️ {t('safetyAlert.title')}</h3>
+            <p><strong>{t('safetyAlert.whatHappened')}</strong></p>
             <div className="place-safety-alert-choices">
-              {safetyAlertChoices.map(([reason, icon, label]) => (
+              {safetyAlertChoices.map(([reason, icon]) => (
                 <button key={reason} type="button" disabled={safetyAlertSending} onClick={() => handleSendSafetyAlert(reason)}>
-                  <span aria-hidden="true">{icon}</span> {label}
+                  <span aria-hidden="true">{icon}</span> {t(`safetyAlert.reasons.${reason}`)}
                 </button>
               ))}
             </div>
-            {safetyAlertSending ? <p><small>Skickar trygghetslarm…</small></p> : null}
+            {safetyAlertSending ? <p><small>{t('safetyAlert.sending')}</small></p> : null}
             {safetyAlertNotice ? <p role="status"><strong>{safetyAlertNotice}</strong></p> : null}
             {safetyAlertsError ? <p role="alert">{safetyAlertsError}</p> : null}
 
             {safetyAlertsLoaded && safetyAlerts.length > 0 ? (
               <div className="place-safety-alert-history">
-                <p><strong>Senaste trygghetslarm i familjen</strong></p>
+                <p><strong>{t('safetyAlert.historyTitle')}</strong></p>
                 <ul>
                   {safetyAlerts.slice(0, 5).map((alert) => (
                     <li key={alert.id}>
-                      <strong>{displayNameForUser(familyMembers, alert.sender_user_id)} · {safetyAlertLabels[alert.reason] || '🛡️ Trygghetslarm'}</strong>
+                      <strong>{displayNameForUser(familyMembers, alert.sender_user_id)} · {safetyAlertLabel(alert.reason)}</strong>
                       <small>{new Date(alert.created_at).toLocaleString()}</small>
                       {alert.latitude != null && alert.longitude != null ? (
                         <span>📍 {Number(alert.latitude).toFixed(5)}, {Number(alert.longitude).toFixed(5)}{alert.accuracy_meters != null ? ` ±${Math.round(alert.accuracy_meters)} m` : ''}</span>
@@ -786,15 +786,15 @@ function PlaceSection({ activeSection }) {
         {isAllOkOpen && state.consentGranted ? (
           <ModalDialog className="ready-modal" aria-label={t('features.allOkCheckin.title')} closeOnEscape onClose={() => setIsAllOkOpen(false)}>
             <h3>✓ {t('features.allOkCheckin.title')}</h3>
-            <p><strong>Skicka en snabb check-in till familjen</strong></p>
+            <p><strong>{t('checkin.prompt')}</strong></p>
             <div className="place-safety-alert-choices place-checkin-choices">
-              {checkinChoices.map(([status, icon, label]) => (
+              {checkinChoices.map(([status, icon]) => (
                 <button key={status} type="button" disabled={checkinSending} onClick={() => handleSendCheckin(status)}>
-                  <span aria-hidden="true">{icon}</span> {label}
+                  <span aria-hidden="true">{icon}</span> {t(`checkin.choices.${status}`)}
                 </button>
               ))}
             </div>
-            {checkinSending ? <p><small>Skickar check-in…</small></p> : null}
+            {checkinSending ? <p><small>{t('checkin.sending')}</small></p> : null}
             {checkinNotice ? <p role="status"><strong>{checkinNotice}</strong></p> : null}
             {checkinsError ? <p role="alert">{checkinsError}</p> : null}
 
@@ -804,7 +804,7 @@ function PlaceSection({ activeSection }) {
                 <ul>
                   {checkins.slice(0, 5).map((checkin) => (
                     <li key={checkin.id}>
-                      <strong>{displayNameForUser(familyMembers, checkin.sender_user_id)} · {checkinLabels[checkin.status] || '✓ Check-in'}</strong>
+                      <strong>{displayNameForUser(familyMembers, checkin.sender_user_id)} · {checkinLabel(checkin.status)}</strong>
                       <small>{new Date(checkin.created_at).toLocaleString()}</small>
                       {checkin.latitude != null && checkin.longitude != null ? (
                         <span>📍 {Number(checkin.latitude).toFixed(5)}, {Number(checkin.longitude).toFixed(5)}{checkin.accuracy_meters != null ? ` ±${Math.round(checkin.accuracy_meters)} m` : ''}</span>
@@ -922,7 +922,7 @@ function PlaceSection({ activeSection }) {
 
             <section className="place-sharing-settings-group">
               <h4>Notiser och batteri</h4>
-              <p><strong>Pushnotiser:</strong> {pushStatus.label}</p>
+              <p><strong>{t('push.label')}</strong> {pushStatusLabel}</p>
               <label className="place-toggle">
                 <input checked={state.batterySaverEnabled} type="checkbox" onChange={(event) => setState((current) => setBatterySaver(current, event.target.checked))} />
                 <span>Batterisparläge</span>

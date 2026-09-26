@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useRovingTabs } from '../../components/a11y/useRovingTabs.js'
 import { useTranslation } from 'react-i18next'
 import {
   billRepeats,
@@ -66,6 +67,9 @@ function EconomyCenter({ onCreateReminderDraft }) {
   const { t, i18n } = useTranslation('economy')
   const [state, setState] = useState(readEconomyState)
   const [activeTab, setActiveTab] = useState('overview')
+  // A11Y-8Z1 (8Y B-8Y-N1): ARIA tabs with roving tabindex; arrow keys, Home
+  // and End move between the tabs; the panels share one tabpanel.
+  const economyTabKeys = useRovingTabs({ activeTab, onSelect: setActiveTab, tabs })
   const [selectedMonth, setSelectedMonth] = useState(monthNow())
   const [selectedCategory, setSelectedCategory] = useState('food')
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -236,18 +240,24 @@ function EconomyCenter({ onCreateReminderDraft }) {
       <div className="economy-tabs" role="tablist" aria-label={t('tabs.aria')}>
         {tabs.map((tab) => (
           <button
+            aria-controls={activeTab === tab ? 'economy-tabpanel' : undefined}
             aria-selected={activeTab === tab}
             className={activeTab === tab ? 'is-active' : ''}
+            id={`economy-tab-${tab}`}
             key={tab}
+            ref={economyTabKeys.tabRef(tab)}
             role="tab"
+            tabIndex={activeTab === tab ? 0 : -1}
             type="button"
             onClick={() => setActiveTab(tab)}
+            onKeyDown={economyTabKeys.onKeyDown}
           >
             {t(`tabs.${tab}`)}
           </button>
         ))}
       </div>
 
+      <div aria-labelledby={`economy-tab-${activeTab}`} className="economy-tabpanel" id="economy-tabpanel" role="tabpanel">
       {activeTab === 'overview' && (
         <section className="economy-grid" aria-labelledby="economy-overview-title">
           <div className="economy-panel economy-overview-panel">
@@ -389,6 +399,7 @@ function EconomyCenter({ onCreateReminderDraft }) {
           </div>
         </CrudPanel>
       )}
+      </div>
 
       <section className="economy-panel economy-privacy" aria-labelledby="economy-privacy-title">
         <h2 id="economy-privacy-title">{t('privacy.storageTitle')}</h2>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useRovingTabs } from '../../../components/a11y/useRovingTabs.js'
 import { isSupabaseConfigured, supabase } from '../../../services/supabaseClient.js'
 import { loadSocialSnapshot } from '../hooks/loadSocialSnapshot.js'
 import { canLoadSocialRoomData } from '../model/socialRoomPolicy.js'
@@ -35,6 +36,8 @@ function usePrefersReducedMotion() {
 function SocialRoom({ enabled = false, isAuthenticated = false, liveEnabled = false, mediaActive = false }) {
   const { t } = useTranslation('social')
   const [activeTab, setActiveTab] = useState('room')
+  // A11Y-8Z1 (8Y A-8Y-N1): arrow keys, Home and End move between the tabs.
+  const roomTabKeys = useRovingTabs({ activeTab, onSelect: setActiveTab, tabs: roomTabs })
   const [chatStageOpen, setChatStageOpen] = useState(false)
   const [chatInitialView, setChatInitialView] = useState('inbox')
   const [snapshot, setSnapshot] = useState({ conversations: [], friends: [] })
@@ -141,14 +144,16 @@ function SocialRoom({ enabled = false, isAuthenticated = false, liveEnabled = fa
       <div className="social-room-tablist" role="tablist" aria-label={t('room.tabsAria')}>
         {roomTabs.map((tab) => (
           <button
-            aria-controls={`social-room-panel-${tab}`}
+            aria-controls={activeTab === tab ? `social-room-panel-${tab}` : undefined}
             aria-selected={activeTab === tab}
             id={`social-room-tab-${tab}`}
             key={tab}
+            ref={roomTabKeys.tabRef(tab)}
             role="tab"
             tabIndex={activeTab === tab ? 0 : -1}
             type="button"
             onClick={() => setActiveTab(tab)}
+            onKeyDown={roomTabKeys.onKeyDown}
           >
             {t(`room.tabs.${tab}`)}
           </button>

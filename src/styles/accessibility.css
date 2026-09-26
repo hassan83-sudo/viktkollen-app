@@ -880,3 +880,9 @@ html {
   height: 24px;
   margin: 0;
 }
+
+/* 8Y B-8Y-N1 (A11Y-8Z1): the Economy tab panels share one tabpanel
+   wrapper; as a grid item it must be allowed to shrink like the panels. */
+.economy-tabpanel {
+  min-width: 0;
+}

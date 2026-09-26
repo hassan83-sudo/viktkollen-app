@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   coachActionSizeOptions,
   coachFocusCategories,
@@ -50,6 +51,7 @@ export default function CoachMemoryReview({
   onClose,
   onFeedbackChange,
 }) {
+  const { t: tConfirm } = useTranslation('confirm')
   const headingRef = useRef(null)
   const [message, setMessage] = useState('')
   // A11Y-8X6: "Glöm alla härledda minnen" asks in ConfirmDialog. While it is
@@ -224,10 +226,10 @@ export default function CoachMemoryReview({
       </article>
       {confirmForget && (
         <ConfirmDialog
-          confirmLabel="Glöm"
-          description="Vill du glömma alla härledda coachminnen? Preferenser behålls."
+          confirmLabel={tConfirm('coachMemory.confirm')}
+          description={tConfirm('coachMemory.description')}
           fallbackFocusRef={headingRef}
-          title="Glöm härledda coachminnen"
+          title={tConfirm('coachMemory.title')}
           onCancel={() => setConfirmForget(false)}
           onConfirm={forgetAllDerivedConfirmed}
         />

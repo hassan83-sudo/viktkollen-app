@@ -1,13 +1,16 @@
 import { expect, test } from '@playwright/test'
 import { moreHubFolders } from '../../src/services/more/moreFolders.js'
 import { goToSection, horizontalOverflow, openApp } from './support/app.js'
-import { runAxe } from './support/axe.js'
+import { runAxe, runAxeRules } from './support/axe.js'
 import { tabStops } from './support/hiddenFocus.js'
+import { tabThroughView } from './support/obscuredFocus.js'
 
 // A11Y-8N (8M C-N1 / C3): every Mer folder is part of the permanent gate.
 //
 // For each folder, opened with the keyboard in the offline test app:
-// - axe: no critical or serious violations;
+// - axe: no critical, serious or moderate violations (moderate in all
+//   folders since A11Y-8Z3, 8Y C4), and no Label in Name finding (8Y C13);
+// - focus not obscured at 320 px with extra large text (A11Y-8Z3, 8Y C5);
 // - focus: Tab through the folder; no Tab stop may be visually hidden,
 //   transparent, off-screen or without a focus indicator (C-N2, see
 //   support/hiddenFocus.js);
@@ -47,25 +50,26 @@ const coveredFolders = [
 // ai-coach color-contrast (8M A-N2).
 const knownAxeFindings = []
 
-// Folders that are clean at the moderate level too, and must stay so.
-// A11Y-8V: the folders changed for 8T B-8T-N5/N6/N7 and 8M B2/B3.
-const moderateGatedFolders = [
-  'ai-coach',
-  'mal-framsteg',
-  'mat',
-  'ma-bra',
-  'ekonomi',
-  'sign-language',
-  'animal-world',
-  'pregnancy-first-year',
-  'import-export',
-]
+// A11Y-8Z3 (8Y C4): every folder is clean at the moderate level too, and
+// must stay so. (8V gated 9 of the 17; the 8Y audit found all 17 clean.)
+const blockingImpacts = ['critical', 'serious', 'moderate']
 
 const knownFocusFindings = [
   {
     folder: 'sakerhet-backup',
     stop: 'input[type=file] "Importera molnbackup från JSON-fil"',
     problem: 'self-visually-hidden',
+    finding: '8M A-N4: sr-only file input is a Tab stop (CloudBackupPanel.jsx). BLOCKED — CURSOR-OWNED',
+    sprint: 'Cursor handoff (Molnbackup)',
+  },
+]
+
+// The same Cursor-owned control (A-N4): the sr-only file input is a Tab stop,
+// so at 320 px its 1 px box sits under the visible import button.
+const knownObscuredFindings = [
+  {
+    folder: 'sakerhet-backup',
+    stop: 'Importera molnbackup från JSON-fil',
     finding: '8M A-N4: sr-only file input is a Tab stop (CloudBackupPanel.jsx). BLOCKED — CURSOR-OWNED',
     sprint: 'Cursor handoff (Molnbackup)',
   },
@@ -90,7 +94,7 @@ async function openFolder(page, folder, preferences = null) {
 test('every Mer folder is covered by the accessibility gate', () => {
   expect([...coveredFolders].sort()).toEqual(moreHubFolders.map((folder) => folder.id).sort())
   expect(coveredFolders).toHaveLength(17)
-  for (const entry of [...knownAxeFindings, ...knownFocusFindings]) {
+  for (const entry of [...knownAxeFindings, ...knownFocusFindings, ...knownObscuredFindings]) {
     expect(coveredFolders, `baseline entry for unknown folder ${entry.folder}`).toContain(entry.folder)
     expect(entry.finding, 'baseline entry must name its 8M finding').toMatch(/^8M [A-C]-N\d/)
     expect(entry.sprint, 'baseline entry must name its planned sprint').toBeTruthy()
@@ -105,12 +109,14 @@ for (const id of coveredFolders) {
       await openFolder(page, folder)
       const violations = await runAxe(page)
       await testInfo.attach(`axe-more-${id}.json`, { body: JSON.stringify(violations, null, 2), contentType: 'application/json' })
-      const gate = moderateGatedFolders.includes(id) ? ['critical', 'serious', 'moderate'] : ['critical', 'serious']
-      const blocking = violations.filter((violation) => gate.includes(violation.impact))
+      const blocking = violations.filter((violation) => blockingImpacts.includes(violation.impact))
       const known = knownAxeFindings.filter((entry) => entry.folder === id)
       const unexpected = blocking.filter((violation) => !known.some((entry) => entry.rule === violation.id))
       expect(unexpected.map((violation) => `[${violation.impact}] ${violation.id}: ${violation.nodes.map((node) => node.target).join(' | ')}`)).toEqual([])
       for (const entry of known) expect(blocking.map((violation) => violation.id), `stale baseline: ${entry.rule} (${entry.finding}) no longer reproduces; remove it`).toContain(entry.rule)
+      // A11Y-8Z3 (8Y C13): WCAG 2.5.3 Label in Name. axe's rule is tagged
+      // experimental, so the tag-based scan above skips it; it runs by id.
+      expect(await runAxeRules(page, ['label-content-name-mismatch']), 'label-content-name-mismatch').toEqual([])
     })
 
     test('reflow: no horizontal scroll at 390 px, 320 px and 320 px with extra large text', async ({ page }) => {
@@ -120,6 +126,19 @@ for (const id of coveredFolders) {
       await expect.poll(() => horizontalOverflow(page), { message: '320 px: page scrolls horizontally (px)' }).toBeLessThanOrEqual(1)
       await openFolder(page, folder, { largeControls: true, textSize: 'extra-large' })
       expect(await horizontalOverflow(page), '320 px, extra large text: page scrolls horizontally (px)').toBeLessThanOrEqual(1)
+    })
+
+    // A11Y-8Z3 (8Y C5): focus is not obscured (2.4.11) at 320 px with extra
+    // large text and large controls: every Tab stop is inside the viewport,
+    // above the bottom navigation and not covered by another element.
+    test('focus not obscured at 320 px with extra large text', async ({ page }) => {
+      await page.setViewportSize({ height: 640, width: 320 })
+      await openFolder(page, folder, { largeControls: true, textSize: 'extra-large' })
+      const { failures } = await tabThroughView(page)
+      const known = knownObscuredFindings.filter((entry) => entry.folder === id)
+      const isKnown = (failure) => known.some((entry) => failure.startsWith(`${entry.stop}:`))
+      expect(failures.filter((failure) => !isKnown(failure))).toEqual([])
+      for (const entry of known) expect(failures.some(isKnown), `stale baseline: ${entry.stop} (${entry.finding}) no longer reproduces; remove it`).toBe(true)
     })
 
     test('focus: every Tab stop is visible and has a focus indicator', async ({ page }) => {

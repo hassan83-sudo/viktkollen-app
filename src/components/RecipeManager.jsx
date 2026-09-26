@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   createRecipe,
   deleteRecipe,
@@ -51,6 +52,7 @@ function RecipeManager({
   onTemplateCreate,
   recipes,
 }) {
+  const { t: tConfirm } = useTranslation('confirm')
   const [draft, setDraft] = useState(emptyDraft)
   const [editingId, setEditingId] = useState('')
   const [errors, setErrors] = useState({})
@@ -218,10 +220,10 @@ function RecipeManager({
       </div>
       {removeRecipeId && (
         <ConfirmDialog
-          confirmLabel="Ta bort"
-          description="Vill du ta bort receptet?"
+          confirmLabel={tConfirm('recipeDelete.confirm')}
+          description={tConfirm('recipeDelete.description')}
           fallbackFocusRef={recipesHeadingRef}
-          title="Ta bort recept"
+          title={tConfirm('recipeDelete.title')}
           onCancel={() => setRemoveRecipeId('')}
           onConfirm={removeConfirmedRecipe}
         />

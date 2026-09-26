@@ -34,6 +34,19 @@ export async function runAxe(page, { include = null, exclude = [] } = {}) {
   }, { exclude, include })
 }
 
+// A11Y-8Z3: runs named axe rules only (for rules the tag sets above do not
+// include, such as the experimental label-content-name-mismatch). Returns one
+// "rule: target" line per finding.
+export async function runAxeRules(page, rules, { exclude = [] } = {}) {
+  if (!(await page.evaluate(() => Boolean(window.axe)))) {
+    await page.addScriptTag({ path: axeSourcePath })
+  }
+  return page.evaluate(async ({ ruleIds, scanExclude }) => {
+    const result = await window.axe.run({ exclude: scanExclude.map((selector) => [selector]) }, { resultTypes: ['violations'], runOnly: { type: 'rule', values: ruleIds } })
+    return result.violations.flatMap((violation) => violation.nodes.map((node) => `${violation.id}: ${node.target.join(' ')}`))
+  }, { ruleIds: rules, scanExclude: exclude })
+}
+
 export function formatViolations(violations) {
   return violations
     .map((violation) => `[${violation.impact}] ${violation.id}: ${violation.help}\n${violation.nodes.map((node) => `    ${node.target} — ${node.summary}`).join('\n')}`)

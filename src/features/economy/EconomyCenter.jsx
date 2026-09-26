@@ -135,14 +135,16 @@ function EconomyCenter({ onCreateReminderDraft }) {
   function submitPurchase(event) {
     event.preventDefault()
     const amountMinor = requireAmount(forms.purchase.amount)
-    if (!amountMinor || !forms.purchase.description.trim()) return
+    if (!amountMinor) return
+    if (!forms.purchase.description.trim()) return setStatus(t('status.missingName'))
     addRow('purchases', normalizePurchase({ ...forms.purchase, amountMinor }), t('status.saved'))
   }
 
   function submitIncome(event) {
     event.preventDefault()
     const amountMinor = requireAmount(forms.income.amount)
-    if (!amountMinor || !forms.income.name.trim()) return
+    if (!amountMinor) return
+    if (!forms.income.name.trim()) return setStatus(t('status.missingName'))
     addRow('incomes', normalizeIncome({ ...forms.income, amountMinor }), t('status.saved'))
   }
 
@@ -157,42 +159,49 @@ function EconomyCenter({ onCreateReminderDraft }) {
     event.preventDefault()
     const originalAmountMinor = requireAmount(forms.debt.originalAmount)
     const remainingAmountMinor = parseMoneyToMinorUnits(forms.debt.remainingAmount || forms.debt.originalAmount)
-    if (!originalAmountMinor || remainingAmountMinor === null || !forms.debt.name.trim()) return
+    if (!originalAmountMinor) return
+    if (remainingAmountMinor === null) return setStatus(t('status.invalidAmount'))
+    if (!forms.debt.name.trim()) return setStatus(t('status.missingName'))
     addRow('debts', normalizeDebt({ ...forms.debt, originalAmountMinor, remainingAmountMinor }), t('status.saved'))
   }
 
   function submitDebtPayment(event) {
     event.preventDefault()
     const amountMinor = requireAmount(forms.debtPayment.amount)
-    if (!amountMinor || !forms.debtPayment.debtId) return
+    if (!amountMinor) return
+    if (!forms.debtPayment.debtId) return setStatus(t('status.missingSelection'))
     addRow('debtPayments', normalizeDebtPayment({ ...forms.debtPayment, amountMinor, confirmed: true }), t('status.paymentConfirmed'))
   }
 
   function submitBill(event) {
     event.preventDefault()
     const amountMinor = requireAmount(forms.bill.amount)
-    if (!amountMinor || !forms.bill.name.trim()) return
+    if (!amountMinor) return
+    if (!forms.bill.name.trim()) return setStatus(t('status.missingName'))
     addRow('bills', normalizeBill({ ...forms.bill, amountMinor }), t('status.saved'))
   }
 
   function submitSubscription(event) {
     event.preventDefault()
     const amountMinor = requireAmount(forms.subscription.amount)
-    if (!amountMinor || !forms.subscription.name.trim()) return
+    if (!amountMinor) return
+    if (!forms.subscription.name.trim()) return setStatus(t('status.missingName'))
     addRow('subscriptions', normalizeSubscription({ ...forms.subscription, amountMinor }), t('status.saved'))
   }
 
   function submitSaving(event) {
     event.preventDefault()
     const targetAmountMinor = requireAmount(forms.saving.targetAmount)
-    if (!targetAmountMinor || !forms.saving.name.trim()) return
+    if (!targetAmountMinor) return
+    if (!forms.saving.name.trim()) return setStatus(t('status.missingName'))
     addRow('savingGoals', normalizeSavingGoal({ ...forms.saving, targetAmountMinor }), t('status.saved'))
   }
 
   function submitSavingTransaction(event) {
     event.preventDefault()
     const amountMinor = requireAmount(forms.savingTransaction.amount)
-    if (!amountMinor || !forms.savingTransaction.goalId) return
+    if (!amountMinor) return
+    if (!forms.savingTransaction.goalId) return setStatus(t('status.missingSelection'))
     addRow('savingTransactions', normalizeSavingTransaction({ ...forms.savingTransaction, amountMinor, confirmed: true }), t('status.paymentConfirmed'))
   }
 
@@ -235,7 +244,10 @@ function EconomyCenter({ onCreateReminderDraft }) {
         </button>
       </header>
 
-      {status && <p className="form-success" role="status">{status}</p>}
+      {/* A11Y-8Z3 (8Y C14): one status region that is always in the DOM, so
+          saved, invalid and missing-field messages are announced. A form
+          that is not saved always says why (it never returns silently). */}
+      <div className="economy-status" role="status">{status ? <p className="form-success">{status}</p> : null}</div>
 
       <div className="economy-tabs" role="tablist" aria-label={t('tabs.aria')}>
         {tabs.map((tab) => (
@@ -481,10 +493,17 @@ function ExpenseWheel({ breakdown, currency, hidden, hiddenLabel, language, mont
           </div>
         </div>
       )}
-      <table className="sr-only">
-        <caption>{t('wheel.table')}</caption>
-        <tbody>{breakdown.map((entry) => <tr key={entry.category}><th>{t(`categories.${entry.category}`)}</th><td>{hidden ? hiddenLabel : money(entry.amountMinor, hidden, language, currency)}</td><td>{percent(entry.percent)}</td></tr>)}</tbody>
-      </table>
+      {/* A11Y-8Z3 (8Y C15, B-8Z1-N1): the text alternative is a real data
+          table with column and row headers. It is hidden by a wrapper: a
+          table ignores the sr-only width and overflow, so .sr-only on the
+          table itself laid it out full width and scrolled the page at 320 px. */}
+      <div className="sr-only">
+        <table>
+          <caption>{t('wheel.table')}</caption>
+          <thead><tr><th scope="col">{t('wheel.columns.category')}</th><th scope="col">{t('wheel.columns.amount')}</th><th scope="col">{t('wheel.columns.share')}</th></tr></thead>
+          <tbody>{breakdown.map((entry) => <tr key={entry.category}><th scope="row">{t(`categories.${entry.category}`)}</th><td>{hidden ? hiddenLabel : money(entry.amountMinor, hidden, language, currency)}</td><td>{percent(entry.percent)}</td></tr>)}</tbody>
+        </table>
+      </div>
     </section>
   )
 }

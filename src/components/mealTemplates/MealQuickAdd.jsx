@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   buildMealTemplateDraft,
   createMealCopy,
@@ -111,6 +112,7 @@ function MealQuickAdd({
   selectedMealDate,
   templates,
 }) {
+  const { t: tConfirm } = useTranslation('confirm')
   const [copyDraft, setCopyDraft] = useState(() => makeCopyDraft(selectedMealDate))
   const [copySourceMeal, setCopySourceMeal] = useState(null)
   const [errors, setErrors] = useState({})
@@ -449,10 +451,10 @@ function MealQuickAdd({
       )}
       {deleteTemplateRequest && (
         <ConfirmDialog
-          confirmLabel="Radera"
-          description={`Vill du ta bort mallen "${deleteTemplateRequest.name}"?`}
+          confirmLabel={tConfirm('templateDelete.confirm')}
+          description={tConfirm('templateDelete.description', { name: deleteTemplateRequest.name })}
           fallbackFocusRef={templatesHeadingRef}
-          title="Radera mall"
+          title={tConfirm('templateDelete.title')}
           onCancel={() => setDeleteTemplateRequest(null)}
           onConfirm={deleteConfirmedTemplate}
         />

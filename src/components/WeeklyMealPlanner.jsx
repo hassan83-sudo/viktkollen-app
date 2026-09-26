@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ConfirmDialog from './a11y/ConfirmDialog.jsx'
 import { useFocusAfterConfirm } from './a11y/useFocusAfterConfirm.js'
 import {
@@ -262,16 +263,6 @@ function ShoppingListPanel({
   )
 }
 
-// A11Y-8X5 (8M B13): the texts of the former window.confirm calls; the
-// description is the old question.
-const confirmCopy = {
-  clearShopping: { confirm: 'Rensa', description: 'Vill du rensa vald veckas inköpslista?', title: 'Rensa inköpslista' },
-  clearWeek: { confirm: 'Rensa', description: 'Vill du rensa vald veckoplan?', title: 'Rensa veckoplan' },
-  copyReplace: { confirm: 'Ersätt', description: 'Vill du ersätta befintliga måltider på måldagarna?', title: 'Ersätt måltider' },
-  removeMeal: { confirm: 'Ta bort', description: 'Vill du ta bort den planerade måltiden?', title: 'Ta bort planerad måltid' },
-  removeRegistered: { confirm: 'Ta bort från planen', description: 'Måltiden registrerades. Vill du ta bort den från planen?', title: 'Måltiden registrerades' },
-}
-
 function WeeklyMealPlanner({
   dietaryPreferences,
   meals,
@@ -280,6 +271,7 @@ function WeeklyMealPlanner({
   recipes = [],
   templates,
 }) {
+  const { t: tConfirm } = useTranslation('confirm')
   const [plans, setPlans] = useState(() => readMealPlans())
   const [shoppingLists, setShoppingLists] = useState(() => readShoppingLists())
   const [weekStart, setWeekStart] = useState(() => getMealPlanWeekStart())
@@ -711,10 +703,10 @@ function WeeklyMealPlanner({
       />
       {confirmRequest && (
         <ConfirmDialog
-          confirmLabel={confirmCopy[confirmRequest.kind].confirm}
-          description={confirmCopy[confirmRequest.kind].description}
+          confirmLabel={tConfirm(`planner.${confirmRequest.kind}.confirm`)}
+          description={tConfirm(`planner.${confirmRequest.kind}.description`)}
           fallbackFocusRef={confirmFocusTarget}
-          title={confirmCopy[confirmRequest.kind].title}
+          title={tConfirm(`planner.${confirmRequest.kind}.title`)}
           onCancel={() => setConfirmRequest(null)}
           onConfirm={runConfirmed}
         />

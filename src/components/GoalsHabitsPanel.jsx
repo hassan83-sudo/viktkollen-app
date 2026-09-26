@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   acceptWeeklyFocus,
   buildGoalsHabitsReportSummary,
@@ -70,6 +71,7 @@ function GoalsHabitsPanel({
   profile = {},
   weights = [],
 }) {
+  const { t: tConfirm } = useTranslation('confirm')
   const editFormRef = useRef(null)
   const lastTriggerRef = useRef(null)
   const [goalDraft, setGoalDraft] = useState({ category: 'protein', target: '120', title: 'Nå proteinmålet' })
@@ -510,10 +512,10 @@ function GoalsHabitsPanel({
       <p className="estimate-note">Lagring: {goalsHabitsStorageKey}. Inga befintliga mål eller check-ins kopieras.</p>
       {deleteArchived && (
         <ConfirmDialog
-          confirmLabel="Ta bort permanent"
-          description="Vill du ta bort det arkiverade objektet permanent?"
+          confirmLabel={tConfirm('archiveDelete.confirm')}
+          description={tConfirm('archiveDelete.description')}
           fallbackFocusRef={archiveHeadingRef}
-          title="Ta bort arkiverat objekt"
+          title={tConfirm('archiveDelete.title')}
           onCancel={() => setDeleteArchived(null)}
           onConfirm={() => {
             const { id, kind } = deleteArchived

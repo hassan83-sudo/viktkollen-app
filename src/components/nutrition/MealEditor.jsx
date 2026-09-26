@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { mealTypes } from '../../services/nutritionService.js'
 
 const numericFields = [
@@ -21,8 +22,21 @@ function MealEditor({
   onReset,
   onSubmit,
 }) {
+  // A11Y-8Z3 (8Y C14): a submit with errors marks the fields aria-invalid and
+  // moves focus to the first one (its label includes the error text), so the
+  // error is announced; a closed "Näring och portion" is opened first.
+  const formRef = useRef(null)
+  useEffect(() => {
+    if (!errors || Object.keys(errors).length === 0) return
+    const first = formRef.current?.querySelector('[aria-invalid="true"]')
+    const details = first?.closest('details')
+    if (details && !details.open) details.open = true
+    first?.focus()
+  }, [errors])
+  const invalid = (key) => (errors?.[key] ? 'true' : undefined)
+
   return (
-    <form className="nutrition-card meal-editor" onSubmit={onSubmit}>
+    <form className="nutrition-card meal-editor" ref={formRef} onSubmit={onSubmit}>
       <div className="nutrition-card-heading">
         <div>
           <p className="eyebrow">Måltidsredaktör</p>
@@ -34,6 +48,7 @@ function MealEditor({
         <label className="field">
           <span>Datum</span>
           <input
+            aria-invalid={invalid('date')}
             type="date"
             value={draft.date}
             onChange={(event) => onChange('date', event.target.value)}
@@ -43,6 +58,7 @@ function MealEditor({
         <label className="field">
           <span>Tid</span>
           <input
+            aria-invalid={invalid('time')}
             type="time"
             value={draft.time}
             onChange={(event) => onChange('time', event.target.value)}
@@ -60,6 +76,7 @@ function MealEditor({
         <label className="field">
           <span>Namn</span>
           <input
+            aria-invalid={invalid('name')}
             type="text"
             value={draft.name}
             onChange={(event) => onChange('name', event.target.value)}
@@ -86,6 +103,7 @@ function MealEditor({
             <label className="field" key={key}>
               <span>{label} ({unit})</span>
               <input
+                aria-invalid={invalid(key)}
                 type="number"
                 min="0"
                 max="100000"
@@ -108,6 +126,7 @@ function MealEditor({
           <label className="field">
             <span>Antal portioner</span>
             <input
+              aria-invalid={invalid('portionCount')}
               type="number"
               min="1"
               max="100"

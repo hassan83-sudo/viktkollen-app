@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ConfirmDialog from './a11y/ConfirmDialog.jsx'
 import { useFocusAfterConfirm } from './a11y/useFocusAfterConfirm.js'
 import CoachSuggestions from './CoachSuggestions.jsx'
@@ -125,6 +126,7 @@ function AICoach({
   onDeleteCoachReport,
   onRecommendationFeedback,
 }) {
+  const { t: tConfirm } = useTranslation('confirm')
   const resolvedCoachStatus =
     coachStatus || 'AI-coachen använder dagens profil, vanor och loggar.'
   // A11Y-8X6: "Rensa historik" asks in ConfirmDialog. The button goes away
@@ -319,10 +321,10 @@ function AICoach({
       />
       {confirmClearReports && (
         <ConfirmDialog
-          confirmLabel="Rensa"
-          description="Vill du rensa all coachhistorik?"
+          confirmLabel={tConfirm('coachHistory.confirm')}
+          description={tConfirm('coachHistory.description')}
           fallbackFocusRef={headingRef}
-          title="Rensa coachhistorik"
+          title={tConfirm('coachHistory.title')}
           onCancel={() => setConfirmClearReports(false)}
           onConfirm={clearReportsConfirmed}
         />

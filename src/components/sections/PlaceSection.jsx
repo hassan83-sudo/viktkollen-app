@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n/index.js'
 import AppSection from '../app/AppSection.jsx'
 import ModalDialog from '../a11y/ModalDialog.jsx'
 import FamilyMapView from '../place/FamilyMapView.jsx'
@@ -81,6 +82,10 @@ const checkinChoices = [
 
 const checkinIcons = Object.fromEntries(checkinChoices)
 
+// A11Y-8Z3 (B10): texts set inside effects (load errors, arrival notices) use
+// the i18n instance, so the effects do not re-run (and refetch) on t changes.
+const placeText = (key, options) => i18n.t(`place:${key}`, options)
+
 function addItemOnce(items, item) {
   if (!item?.id || items.some((current) => current.id === item.id)) return items
   return [item, ...items].slice(0, 20)
@@ -108,7 +113,7 @@ function PlaceSection({ activeSection }) {
   const [safePlaceSaving, setSafePlaceSaving] = useState(false)
   const [pushStatus, setPushStatus] = useState({ status: 'inactive' })
   const safetyAlertLabel = (reason) => (safetyAlertIcons[reason] ? `${safetyAlertIcons[reason]} ${t(`safetyAlert.reasons.${reason}`)}` : `🛡️ ${t('safetyAlert.title')}`)
-  const checkinLabel = (status) => (checkinIcons[status] ? `${checkinIcons[status]} ${t(`checkin.choices.${status}`)}` : '✓ Check-in')
+  const checkinLabel = (status) => (checkinIcons[status] ? `${checkinIcons[status]} ${t(`checkin.choices.${status}`)}` : t('details.checkinDefault'))
   const pushStatusLabel = t(`push.${pushStatus.status}`, { defaultValue: t('push.unknown') })
   const [isSosOpen, setIsSosOpen] = useState(false)
   const [safetyAlerts, setSafetyAlerts] = useState([])
@@ -165,7 +170,7 @@ function PlaceSection({ activeSection }) {
         if (cancelled) return
         setFamilyMembers([])
         setFamilyUserId(null)
-        setDisplayNameError(error?.message || 'Familjemedlemmar kunde inte hämtas.')
+        setDisplayNameError(error?.message || placeText('errors.familyMembers'))
       })
 
     return () => {
@@ -243,7 +248,7 @@ function PlaceSection({ activeSection }) {
       .catch((error) => {
         if (cancelled) return
         setSafePlaces([])
-        setSafePlacesError(error?.message || 'Trygga platser kunde inte hämtas.')
+        setSafePlacesError(error?.message || placeText('errors.safePlaces'))
         setSafePlacesLoaded(true)
       })
 
@@ -272,8 +277,8 @@ function PlaceSection({ activeSection }) {
       const name = displayNameForUser(familyMembers, userId)
       setSafePlaceNotice(
         type === 'arrival'
-          ? `📍 ${name} kom till ${place.name}.`
-          : `📍 ${name} lämnade ${place.name}.`,
+          ? placeText('details.arrived', { name, place: place.name })
+          : placeText('details.left', { name, place: place.name }),
       )
     })
   }, [familyMembers, safePlaces, safePlacesLoaded, state.consentGranted])
@@ -302,7 +307,7 @@ function PlaceSection({ activeSection }) {
       .catch((error) => {
         if (cancelled) return
         setSafetyAlerts([])
-        setSafetyAlertsError(error?.message || 'Trygghetslarm kunde inte hämtas.')
+        setSafetyAlertsError(error?.message || placeText('errors.safetyAlerts'))
         setSafetyAlertsLoaded(true)
       })
 
@@ -341,7 +346,7 @@ function PlaceSection({ activeSection }) {
       .catch((error) => {
         if (cancelled) return
         setCheckins([])
-        setCheckinsError(error?.message || 'Check-in kunde inte hämtas.')
+        setCheckinsError(error?.message || placeText('errors.checkins'))
         setCheckinsLoaded(true)
       })
 
@@ -383,7 +388,7 @@ function PlaceSection({ activeSection }) {
       .catch((error) => {
         if (cancelled) return
         setPlaceHistory([])
-        setPlaceHistoryError(error?.message || 'Platshistoriken kunde inte hämtas.')
+        setPlaceHistoryError(error?.message || placeText('errors.placeHistory'))
         setPlaceHistoryLoaded(true)
       })
 
@@ -409,11 +414,11 @@ function PlaceSection({ activeSection }) {
         if (cancelled) return
         setPushStatus(status)
         setPlaceHistoryRetentionMinutes(retentionResult.minutes ?? 0)
-        if (retentionResult.error) setPlaceHistoryError(retentionResult.error.message || 'Lagringstiden kunde inte hämtas.')
+        if (retentionResult.error) setPlaceHistoryError(retentionResult.error.message || placeText('errors.retentionLoad'))
       })
       .catch((error) => {
         if (cancelled) return
-        setPlaceHistoryError(error?.message || 'Platsinställningarna kunde inte hämtas.')
+        setPlaceHistoryError(error?.message || placeText('errors.settingsLoad'))
       })
 
     return () => {
@@ -430,7 +435,7 @@ function PlaceSection({ activeSection }) {
     const { data, error } = await createSafePlaceFromOwnLatestLocation(safePlaceName)
 
     if (error) {
-      setSafePlacesError(error.message || 'Platsen kunde inte sparas.')
+      setSafePlacesError(error.message || t('errors.placeSave'))
     } else if (data) {
       setSafePlaces((current) => [...current, data])
       setSafePlaceName('')
@@ -443,7 +448,7 @@ function PlaceSection({ activeSection }) {
     setSafePlacesError('')
     const { error } = await deleteSafePlace(id)
     if (error) {
-      setSafePlacesError(error.message || 'Platsen kunde inte raderas.')
+      setSafePlacesError(error.message || t('errors.placeDelete'))
       return
     }
     setSafePlaces((current) => current.filter((place) => place.id !== id))
@@ -457,7 +462,7 @@ function PlaceSection({ activeSection }) {
     const { data, error, pushEnabled, pushError } = await updateSafePlaceNotifications(place.id, updates)
 
     if (error) {
-      setSafePlacesError(error.message || 'Platsnotisen kunde inte ändras.')
+      setSafePlacesError(error.message || t('errors.notificationChange'))
       return
     }
 
@@ -483,7 +488,7 @@ function PlaceSection({ activeSection }) {
     const { data, error } = await updateOwnPlaceDisplayName(displayNameDraft)
 
     if (error) {
-      setDisplayNameError(error.message || 'Namnet kunde inte sparas.')
+      setDisplayNameError(error.message || t('errors.nameSave'))
       setDisplayNameSaving(false)
       return
     }
@@ -508,7 +513,7 @@ function PlaceSection({ activeSection }) {
 
     const { data, error } = await sendSafetyAlert(reason)
     if (error) {
-      setSafetyAlertsError(error.message || 'Trygghetslarmet kunde inte skickas.')
+      setSafetyAlertsError(error.message || t('errors.safetyAlertSend'))
     } else if (data) {
       setSafetyAlerts((current) => addItemOnce(current, data))
       setSafetyAlertNotice(t('safetyAlert.sent'))
@@ -526,7 +531,7 @@ function PlaceSection({ activeSection }) {
 
     const { data, error } = await sendFamilyCheckin(status)
     if (error) {
-      setCheckinsError(error.message || 'Check-in kunde inte skickas.')
+      setCheckinsError(error.message || t('errors.checkinSend'))
     } else if (data) {
       setCheckins((current) => addItemOnce(current, data))
       setCheckinNotice(t('checkin.sent', { label: checkinLabel(status) }))
@@ -542,7 +547,7 @@ function PlaceSection({ activeSection }) {
 
     const { error } = await setPlaceHistoryRetention(minutes)
     if (error) {
-      setPlaceHistoryError(error.message || 'Lagringstiden kunde inte ändras.')
+      setPlaceHistoryError(error.message || t('errors.retentionChange'))
       setPlaceHistorySaving(false)
       return
     }
@@ -556,12 +561,12 @@ function PlaceSection({ activeSection }) {
   }
 
   function availabilityLabel(featureId, availability) {
-    if ((featureId === 'familyMap' || featureId === 'childLocation' || featureId === 'status') && familyLocationsLoaded && familyLocations.length > 0) return 'Ansluten'
-    if (featureId === 'safePlaces' && safePlacesLoaded && !safePlacesError) return 'Ansluten'
-    if (featureId === 'sos' && safetyAlertsLoaded && !safetyAlertsError) return 'Ansluten'
-    if (featureId === 'allOkCheckin' && checkinsLoaded && !checkinsError) return 'Ansluten'
-    if (featureId === 'placeHistory' && placeHistoryLoaded && !placeHistoryError) return placeHistoryRetention === 0 ? 'Av' : 'Ansluten'
-    if ((featureId === 'batterySaver' || featureId === 'sharingSettings') && state.consentGranted) return 'Ansluten'
+    if ((featureId === 'familyMap' || featureId === 'childLocation' || featureId === 'status') && familyLocationsLoaded && familyLocations.length > 0) return t('details.connected')
+    if (featureId === 'safePlaces' && safePlacesLoaded && !safePlacesError) return t('details.connected')
+    if (featureId === 'sos' && safetyAlertsLoaded && !safetyAlertsError) return t('details.connected')
+    if (featureId === 'allOkCheckin' && checkinsLoaded && !checkinsError) return t('details.connected')
+    if (featureId === 'placeHistory' && placeHistoryLoaded && !placeHistoryError) return placeHistoryRetention === 0 ? t('details.off') : t('details.connected')
+    if ((featureId === 'batterySaver' || featureId === 'sharingSettings') && state.consentGranted) return t('details.connected')
     if (availability === placeAvailability.requiresConsent) return t('status.requiresConsent')
     if (availability === placeAvailability.comingSoon) return t('status.comingSoon')
     return t('status.notConnected')
@@ -649,7 +654,7 @@ function PlaceSection({ activeSection }) {
               else if (batterySaverOpenable) setIsBatterySaverOpen(true)
               else if (sharingSettingsOpenable) setIsSharingSettingsOpen(true)
             }
-            const featureTitle = featureId === 'sos' ? 'Trygghetslarm' : t(`features.${featureId}.title`)
+            const featureTitle = featureId === 'sos' ? t('safetyAlert.title') : t(`features.${featureId}.title`)
             const statusId = `place-feature-${featureId}-status`
             const bodyId = `place-feature-${featureId}-body`
             return (
@@ -680,7 +685,7 @@ function PlaceSection({ activeSection }) {
           <ul>
             <li>{t('limits.noGps')}</li>
             <li>{t('limits.noTracking')}</li>
-            <li>Trygghetslarm kontaktar inte 112 eller larmcentralen automatiskt.</li>
+            <li>{t('details.noEmergencyContact')}</li>
             <li>{t('limits.separateSprint')}</li>
           </ul>
         </section>
@@ -700,9 +705,9 @@ function PlaceSection({ activeSection }) {
             <h3>{t('features.childLocation.title')}</h3>
             {familyLocationsLoaded && familyLocations.length > 0 ? <>
               <p><strong>{familyLocations[0].display_name || displayNameForUser(familyMembers, familyLocations[0].user_id)}</strong></p>
-              <p><strong>Senaste delade plats</strong></p>
+              <p><strong>{t('details.latestShared')}</strong></p>
               <p><strong>{Number(familyLocations[0].latitude).toFixed(5)}, {Number(familyLocations[0].longitude).toFixed(5)}</strong>{familyLocations[0].accuracy_meters != null ? <span> ±{Math.round(familyLocations[0].accuracy_meters)} m</span> : null}</p>
-              {familyLocations[0].location_recorded_at ? <p>Uppdaterad {new Date(familyLocations[0].location_recorded_at).toLocaleString()}</p> : null}
+              {familyLocations[0].location_recorded_at ? <p>{t('details.updated', { time: new Date(familyLocations[0].location_recorded_at).toLocaleString() })}</p> : null}
             </> : familyLocationsLoaded ? <><p>{t('features.childLocation.empty')}</p><p>{t('features.childLocation.emptyBody')}</p></> : null}
             <button type="button" onClick={() => setIsChildLocationOpen(false)}>{t('common:actions.close')}</button>
           </ModalDialog>
@@ -713,8 +718,8 @@ function PlaceSection({ activeSection }) {
             <h3>{t('features.status.title')}</h3>
             {familyLocationsLoaded && familyLocations.length > 0 ? <>
               <p><strong>{t('sharingStatus.active')}</strong></p><p>{t('sharingStatus.received')}</p>
-              {familyLocations[0].location_recorded_at ? <p>Senast uppdaterad {new Date(familyLocations[0].location_recorded_at).toLocaleString()}</p> : null}
-              {familyLocations[0].accuracy_meters != null ? <p>Noggrannhet ±{Math.round(familyLocations[0].accuracy_meters)} m</p> : null}
+              {familyLocations[0].location_recorded_at ? <p>{t('details.lastUpdated', { time: new Date(familyLocations[0].location_recorded_at).toLocaleString() })}</p> : null}
+              {familyLocations[0].accuracy_meters != null ? <p>{t('details.accuracy', { meters: Math.round(familyLocations[0].accuracy_meters) })}</p> : null}
             </> : familyLocationsLoaded ? <><p>{t('features.status.empty')}</p><p>{t('features.status.emptyBody')}</p></> : null}
             <button type="button" onClick={() => setIsStatusOpen(false)}>{t('common:actions.close')}</button>
           </ModalDialog>
@@ -726,21 +731,21 @@ function PlaceSection({ activeSection }) {
             <p role="status"><strong>{t('push.label')}</strong> {pushStatusLabel}</p>
             {safePlacesLoaded && safePlaces.length > 0 ? <ul>{safePlaces.map((place) => (
               <li key={place.id}>
-                <strong>{place.name}</strong>{' '}<span>{Number(place.latitude).toFixed(5)}, {Number(place.longitude).toFixed(5)}</span>{' '}<small>radie {Math.round(place.radius_meters)} m</small>{' '}
-                <button type="button" onClick={() => handleDeleteSafePlace(place.id)}>Radera</button>
+                <strong>{place.name}</strong>{' '}<span>{Number(place.latitude).toFixed(5)}, {Number(place.longitude).toFixed(5)}</span>{' '}<small>{t('details.radius', { meters: Math.round(place.radius_meters) })}</small>{' '}
+                <button type="button" onClick={() => handleDeleteSafePlace(place.id)}>{t('details.delete')}</button>
                 <div><strong>{t('safePlaceNotifications.title')}</strong>
                   <label className="place-toggle"><input type="checkbox" checked={Boolean(place.notify_on_arrival)} onChange={(event) => handleSafePlaceNotificationChange(place, 'arrival', event.target.checked)} /><span>{t('safePlaceNotifications.arrival')}</span></label>
                   <label className="place-toggle"><input type="checkbox" checked={Boolean(place.notify_on_departure)} onChange={(event) => handleSafePlaceNotificationChange(place, 'departure', event.target.checked)} /><span>{t('safePlaceNotifications.departure')}</span></label>
                   <small>{place.notify_on_arrival || place.notify_on_departure ? t('safePlaceNotifications.on') : t('safePlaceNotifications.off')}</small>
                 </div>
               </li>
-            ))}</ul> : safePlacesLoaded && !safePlacesError ? <><p>{t('features.safePlaces.empty')}</p><p>Spara din senaste egna delade GPS-position som Hem, Skola eller en annan trygg plats.</p></> : null}
+            ))}</ul> : safePlacesLoaded && !safePlacesError ? <><p>{t('features.safePlaces.empty')}</p><p>{t('details.safePlacesHint')}</p></> : null}
             <form onSubmit={handleAddSafePlace}>
-              <label>Namn på trygg plats<input type="text" maxLength={80} placeholder="Hem eller Skola" value={safePlaceName} onChange={(event) => setSafePlaceName(event.target.value)} /></label>
-              <button type="submit" disabled={!safePlaceName.trim() || safePlaceSaving}>{safePlaceSaving ? 'Sparar…' : 'Spara senaste plats'}</button>
+              <label>{t('details.safePlaceName')}<input type="text" maxLength={80} placeholder={t('details.safePlacePlaceholder')} value={safePlaceName} onChange={(event) => setSafePlaceName(event.target.value)} /></label>
+              <button type="submit" disabled={!safePlaceName.trim() || safePlaceSaving}>{safePlaceSaving ? t('details.saving') : t('details.saveLatest')}</button>
             </form>
             {safePlacesError ? <p role="alert">{safePlacesError}</p> : null}
-            <p><small>Platsnotiser fungerar i realtid medan Viktkollen är öppen. Pushstatusen ovan visar om den här enheten kan ta emot pushnotiser när appen är stängd.</small></p>
+            <p><small>{t('details.realtimeHint')}</small></p>
             <button type="button" onClick={() => setIsSafePlacesOpen(false)}>{t('common:actions.close')}</button>
           </ModalDialog>
         ) : null}
@@ -770,15 +775,15 @@ function PlaceSection({ activeSection }) {
                       <small>{new Date(alert.created_at).toLocaleString()}</small>
                       {alert.latitude != null && alert.longitude != null ? (
                         <span>📍 {Number(alert.latitude).toFixed(5)}, {Number(alert.longitude).toFixed(5)}{alert.accuracy_meters != null ? ` ±${Math.round(alert.accuracy_meters)} m` : ''}</span>
-                      ) : <span>📍 Ingen delad plats bifogades</span>}
+                      ) : <span>{t('details.noLocationAttached')}</span>}
                     </li>
                   ))}
                 </ul>
               </div>
             ) : null}
 
-            <p><small>Vald anledning, tid och senast delade plats skickas till familjen. Funktionen kontaktar inte 112.</small></p>
-            <p><strong>Vid akut fara – ring 112.</strong></p>
+            <p><small>{t('details.alertSharedInfo')}</small></p>
+            <p><strong>{t('details.call112')}</strong></p>
             <button type="button" onClick={() => setIsSosOpen(false)}>{t('common:actions.close')}</button>
           </ModalDialog>
         ) : null}
@@ -800,7 +805,7 @@ function PlaceSection({ activeSection }) {
 
             {checkinsLoaded && checkins.length > 0 ? (
               <div className="place-safety-alert-history place-checkin-history">
-                <p><strong>Senaste check-ins i familjen</strong></p>
+                <p><strong>{t('details.checkinsTitle')}</strong></p>
                 <ul>
                   {checkins.slice(0, 5).map((checkin) => (
                     <li key={checkin.id}>
@@ -808,14 +813,14 @@ function PlaceSection({ activeSection }) {
                       <small>{new Date(checkin.created_at).toLocaleString()}</small>
                       {checkin.latitude != null && checkin.longitude != null ? (
                         <span>📍 {Number(checkin.latitude).toFixed(5)}, {Number(checkin.longitude).toFixed(5)}{checkin.accuracy_meters != null ? ` ±${Math.round(checkin.accuracy_meters)} m` : ''}</span>
-                      ) : <span>📍 Ingen delad plats bifogades</span>}
+                      ) : <span>{t('details.noLocationAttached')}</span>}
                     </li>
                   ))}
                 </ul>
               </div>
             ) : null}
 
-            <p><small>Check-in, tid och senast delade plats skickas till familjen när platsdelning är aktiv.</small></p>
+            <p><small>{t('details.checkinSharedInfo')}</small></p>
             <button type="button" onClick={() => setIsAllOkOpen(false)}>{t('common:actions.close')}</button>
           </ModalDialog>
         ) : null}
@@ -823,7 +828,7 @@ function PlaceSection({ activeSection }) {
         {isPlaceHistoryOpen && state.consentGranted ? (
           <ModalDialog className="ready-modal" aria-label={t('features.placeHistory.title')} closeOnEscape onClose={() => setIsPlaceHistoryOpen(false)}>
             <h3>🕘 {t('features.placeHistory.title')}</h3>
-            <p><strong>Hur länge ska platshistorik sparas?</strong></p>
+            <p><strong>{t('details.retentionQuestion')}</strong></p>
             <div className="place-safety-alert-choices">
               {placeHistoryRetentionChoices.map((choice) => (
                 <button
@@ -833,24 +838,24 @@ function PlaceSection({ activeSection }) {
                   aria-pressed={placeHistoryRetention === choice.minutes}
                   onClick={() => handlePlaceHistoryRetention(choice.minutes)}
                 >
-                  {placeHistoryRetention === choice.minutes ? '✓ ' : ''}{choice.label}
+                  {placeHistoryRetention === choice.minutes ? '✓ ' : ''}{t(`retention.m${choice.minutes}`)}
                 </button>
               ))}
             </div>
-            <p><small>Direkt betyder att ingen platshistorik sparas. När du väljer en kortare tid kortas även befintlig historik och för gamla poster raderas.</small></p>
-            <p><small>Koordinaterna krypteras i webbläsaren innan de skickas till Supabase. Krypteringsnyckeln ligger inte i Supabase.</small></p>
-            {placeHistorySaving ? <p><small>Sparar inställning…</small></p> : null}
+            <p><small>{t('details.retentionInfo')}</small></p>
+            <p><small>{t('details.encryptionInfo')}</small></p>
+            {placeHistorySaving ? <p><small>{t('details.savingSetting')}</small></p> : null}
             {placeHistoryError ? <p role="alert">{placeHistoryError}</p> : null}
 
             {placeHistoryLoaded && placeHistory.length > 0 ? (
               <div className="place-safety-alert-history">
-                <p><strong>Din senaste krypterade platshistorik</strong></p>
+                <p><strong>{t('details.historyTitle')}</strong></p>
                 <ul>
                   {placeHistory.slice(0, 20).map((entry) => (
                     <li key={entry.id}>
                       <small>{new Date(entry.created_at).toLocaleString()}</small>
                       {entry.locked ? (
-                        <span>🔒 Kan inte låsas upp på den här enheten.</span>
+                        <span>{t('details.locked')}</span>
                       ) : (
                         <span>📍 {Number(entry.latitude).toFixed(5)}, {Number(entry.longitude).toFixed(5)}{entry.accuracyMeters != null ? ` ±${Math.round(entry.accuracyMeters)} m` : ''}</span>
                       )}
@@ -859,7 +864,7 @@ function PlaceSection({ activeSection }) {
                 </ul>
               </div>
             ) : placeHistoryLoaded && !placeHistoryError ? (
-              <p>{placeHistoryRetention === 0 ? 'Platshistorik är avstängd.' : 'Ingen platshistorik har sparats ännu.'}</p>
+              <p>{placeHistoryRetention === 0 ? t('details.historyOff') : t('details.historyEmpty')}</p>
             ) : null}
 
             <button type="button" onClick={() => setIsPlaceHistoryOpen(false)}>{t('common:actions.close')}</button>
@@ -879,15 +884,15 @@ function PlaceSection({ activeSection }) {
             <h3>{t('features.sharingSettings.title')}</h3>
             <p>{state.sharingEnabled ? t('features.sharingSettings.statusOn') : t('features.sharingSettings.statusOff')}</p>
             <section className="place-sharing-settings-group">
-              <h4>GPS-status</h4>
-              <p><strong>GPS:</strong> {state.sharingEnabled ? (activeSharingStatus.active ? 'Aktiv' : activeSharingStatus.paused ? 'Pausad' : 'Startar…') : 'Av'}</p>
-              {activeSharingStatus.lastUpdatedAt ? <p><strong>Senast uppdaterad:</strong> {new Date(activeSharingStatus.lastUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p> : null}
-              {activeSharingStatus.accuracyMeters != null ? <p><strong>Noggrannhet:</strong> ±{Math.round(activeSharingStatus.accuracyMeters)} m</p> : null}
-              <p><small>GPS uppdateras medan Viktkollen är aktiv. När appen är i bakgrunden pausas bevakningen och startar igen när du återvänder.</small></p>
+              <h4>{t('details.gpsStatusTitle')}</h4>
+              <p><strong>{t('details.gpsLabel')}</strong> {state.sharingEnabled ? (activeSharingStatus.active ? t('details.gpsActive') : activeSharingStatus.paused ? t('details.gpsPaused') : t('details.gpsStarting')) : t('details.gpsOff')}</p>
+              {activeSharingStatus.lastUpdatedAt ? <p><strong>{t('details.lastUpdatedLabel')}</strong> {new Date(activeSharingStatus.lastUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p> : null}
+              {activeSharingStatus.accuracyMeters != null ? <p><strong>{t('details.accuracyLabel')}</strong> ±{Math.round(activeSharingStatus.accuracyMeters)} m</p> : null}
+              <p><small>{t('details.gpsInfo')}</small></p>
             </section>
 
             <section className="place-sharing-settings-group">
-              <h4>Vem kan se min plats?</h4>
+              <h4>{t('details.viewersTitle')}</h4>
               {familyMembers.filter((member) => member.user_id !== familyUserId).length > 0 ? (
                 <ul className="place-sharing-viewers">
                   {familyMembers.filter((member) => member.user_id !== familyUserId).map((member) => (
@@ -897,12 +902,12 @@ function PlaceSection({ activeSection }) {
                     </li>
                   ))}
                 </ul>
-              ) : <p><small>Ingen annan familjemedlem är ansluten ännu.</small></p>}
+              ) : <p><small>{t('details.noViewers')}</small></p>}
             </section>
 
             <section className="place-sharing-settings-group">
-              <h4>Platshistorik</h4>
-              <p><small>Välj hur länge tidigare positioner ska sparas.</small></p>
+              <h4>{t('details.historyGroupTitle')}</h4>
+              <p><small>{t('details.historyGroupHint')}</small></p>
               <div className="place-safety-alert-choices place-sharing-retention-choices">
                 {placeHistoryRetentionChoices.map((choice) => (
                   <button
@@ -912,39 +917,39 @@ function PlaceSection({ activeSection }) {
                     aria-pressed={placeHistoryRetention === choice.minutes}
                     onClick={() => handlePlaceHistoryRetention(choice.minutes)}
                   >
-                    {placeHistoryRetention === choice.minutes ? '✓ ' : ''}{choice.label}
+                    {placeHistoryRetention === choice.minutes ? '✓ ' : ''}{t(`retention.m${choice.minutes}`)}
                   </button>
                 ))}
               </div>
-              {placeHistorySaving ? <p><small>Sparar inställning…</small></p> : null}
+              {placeHistorySaving ? <p><small>{t('details.savingSetting')}</small></p> : null}
               {placeHistoryError ? <p role="alert">{placeHistoryError}</p> : null}
             </section>
 
             <section className="place-sharing-settings-group">
-              <h4>Notiser och batteri</h4>
+              <h4>{t('details.notificationsTitle')}</h4>
               <p><strong>{t('push.label')}</strong> {pushStatusLabel}</p>
               <label className="place-toggle">
                 <input checked={state.batterySaverEnabled} type="checkbox" onChange={(event) => setState((current) => setBatterySaver(current, event.target.checked))} />
-                <span>Batterisparläge</span>
+                <span>{t('details.batterySaver')}</span>
               </label>
-              <p><small>{state.batterySaverEnabled ? 'Batterisparläge minskar hur ofta GPS-positionen uppdateras.' : 'Normal uppdateringsfrekvens används.'}</small></p>
+              <p><small>{state.batterySaverEnabled ? t('details.batterySaverOn') : t('details.batterySaverOff')}</small></p>
             </section>
 
             <section className="place-sharing-settings-group">
-              <h4>Ditt namn i familjen</h4>
+              <h4>{t('details.nameTitle')}</h4>
               <form onSubmit={handleSaveDisplayName}>
-                <label>Ditt namn i familjen<input type="text" maxLength={80} value={displayNameDraft} onChange={(event) => setDisplayNameDraft(event.target.value)} placeholder="Exempel: Hassan" /></label>
-                <button type="submit" disabled={displayNameSaving || !displayNameDraft.trim()}>{displayNameSaving ? 'Sparar…' : 'Spara namn'}</button>
+                <label>{t('details.nameTitle')}<input type="text" maxLength={80} value={displayNameDraft} onChange={(event) => setDisplayNameDraft(event.target.value)} placeholder={t('details.namePlaceholder')} /></label>
+                <button type="submit" disabled={displayNameSaving || !displayNameDraft.trim()}>{displayNameSaving ? t('details.saving') : t('details.saveName')}</button>
               </form>
               {displayNameError ? <p role="alert">{displayNameError}</p> : null}
-              {familyUserId && displayNameForUser(familyMembers, familyUserId, '') ? <p><small>Familjen ser dig som: <strong>{displayNameForUser(familyMembers, familyUserId, '')}</strong></small></p> : null}
+              {familyUserId && displayNameForUser(familyMembers, familyUserId, '') ? <p><small>{t('details.seenAs')} <strong>{displayNameForUser(familyMembers, familyUserId, '')}</strong></small></p> : null}
             </section>
 
             <section className="place-sharing-settings-group place-sharing-stop-group">
-              <h4>Platsdelning</h4>
+              <h4>{t('details.sharingTitle')}</h4>
               <p>{t('features.sharingSettings.disclaimer')}</p>
               <label className="place-toggle"><input checked={state.sharingEnabled} type="checkbox" onChange={(event) => setState((current) => setPlaceSharing(current, event.target.checked))} /><span>{t('consent.sharingToggle')}</span></label>
-              <button type="button" disabled={!state.sharingEnabled} onClick={() => setState((current) => setPlaceSharing(current, false))}>Sluta dela plats</button>
+              <button type="button" disabled={!state.sharingEnabled} onClick={() => setState((current) => setPlaceSharing(current, false))}>{t('details.stopSharing')}</button>
             </section>
 
             <button type="button" onClick={() => setIsSharingSettingsOpen(false)}>{t('common:actions.close')}</button>

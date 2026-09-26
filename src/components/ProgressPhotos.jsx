@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ConfirmDialog from './a11y/ConfirmDialog.jsx'
 import NoteDialog from './a11y/NoteDialog.jsx'
 import { useFocusAfterConfirm } from './a11y/useFocusAfterConfirm.js'
@@ -143,6 +144,7 @@ function ProgressPhotos({
   userId,
   weights = [],
 }) {
+  const { t: tConfirm } = useTranslation('confirm')
   const [showSameOccasionComparison, setShowSameOccasionComparison] =
     useState(false)
   const [photoFilter, setPhotoFilter] = useState('Alla')
@@ -459,10 +461,10 @@ function ProgressPhotos({
       )}
       {deletePhotoId !== null && (
         <ConfirmDialog
-          confirmLabel="Ta bort"
-          description="Vill du ta bort den här framstegsbilden?"
+          confirmLabel={tConfirm('progressPhoto.confirm')}
+          description={tConfirm('progressPhoto.description')}
           fallbackFocusRef={photosHeadingRef}
-          title="Ta bort framstegsbild"
+          title={tConfirm('progressPhoto.title')}
           onCancel={() => setDeletePhotoId(null)}
           onConfirm={() => {
             const photoId = deletePhotoId

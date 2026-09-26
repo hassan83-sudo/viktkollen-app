@@ -881,8 +881,22 @@ html {
   margin: 0;
 }
 
+/* 8Y C-8Y-N1 (A11Y-8Z3): in the app's high contrast mode the 8X dialogs get
+   a solid, clearly visible edge (the 28 % alpha border is ~1.5:1). Normal
+   mode is unchanged; forced colors already draws the border in CanvasText. */
+:root[data-a11y-high-contrast='true'] :is(.date-time-dialog, .form-dialog) {
+  border: 2px solid var(--border);
+}
+
 /* 8Y B-8Y-N1 (A11Y-8Z1): the Economy tab panels share one tabpanel
    wrapper; as a grid item it must be allowed to shrink like the panels. */
 .economy-tabpanel {
   min-width: 0;
+}
+
+/* A11Y-8Z3 (8Y C14): the Ekonomi status region stays in the DOM (and in the
+   accessibility tree) while empty, but takes no grid row, so the layout is
+   unchanged until a message is shown. */
+.economy-status:empty {
+  position: absolute;
 }

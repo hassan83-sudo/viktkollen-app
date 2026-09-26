@@ -58,6 +58,76 @@ describe('Place texts follow the language (B10)', () => {
   })
 })
 
+// A11Y-8Z3: the rest of B10 in the Claude-owned code.
+describe('B10 is closed in the Claude-owned code (8Z3)', () => {
+  // String literals and JSX text that contain Swedish letters. Comments are
+  // stripped first; emoji and identifiers never match.
+  const swedishLiterals = (code) => code
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+    .match(/'[^'\n]*[åäöÅÄÖ][^'\n]*'|"[^"\n]*[åäöÅÄÖ][^"\n]*"|`[^`\n]*[åäöÅÄÖ][^`\n]*`|>[^<>{}\n]*[åäöÅÄÖ][^<>{}\n]*</g) || []
+
+  it('PlaceSection, PlaceVoiceCallPanel and the speech controller have no hardcoded Swedish text', () => {
+    for (const path of ['src/components/sections/PlaceSection.jsx', 'src/components/place/PlaceVoiceCallPanel.jsx', 'src/services/voiceConversationController.js']) {
+      expect(swedishLiterals(source(path)), path).toEqual([])
+    }
+  })
+
+  it('Place error fallbacks, call status and dialog texts resolve in Swedish and English', async () => {
+    const keys = {
+      'details.call112': ['Vid akut fara – ring 112.', 'In acute danger – call 112.'],
+      'errors.safetyAlertSend': ['Trygghetslarmet kunde inte skickas.', 'The safety alert could not be sent.'],
+      'retention.m1440': ['24 timmar', '24 hours'],
+      'voiceCall.audioConnecting': ['Ansluter ljud…', 'Connecting audio…'],
+      'voiceCall.inProgress': ['Samtal pågår med Ada', 'Call in progress with Ada'],
+    }
+    for (const [language, index] of [['sv', 0], ['en', 1]]) {
+      await i18n.changeLanguage(language)
+      for (const [key, values] of Object.entries(keys)) expect(i18n.t(`place:${key}`, { name: 'Ada' }), `${language} ${key}`).toBe(values[index])
+    }
+    // Every retention choice the service offers has a text.
+    const { placeHistoryRetentionChoices } = await import('../features/place/placeHistoryService.js')
+    for (const choice of placeHistoryRetentionChoices) expect(i18n.exists(`place:retention.m${choice.minutes}`), `retention ${choice.minutes}`).toBe(true)
+  })
+
+  it('speech status texts follow the app language', async () => {
+    const { createVoiceConversationController } = await import('./voiceConversationController.js')
+    const statusFor = async (language) => {
+      await i18n.changeLanguage(language)
+      const status = []
+      await createVoiceConversationController({ getScope: () => ({}), setStatus: (text) => status.push(text) }).start()
+      return status.at(-1)
+    }
+    expect(await statusFor('sv')).toBe('Röstinmatning stöds inte i den här webbläsaren. Skriv frågan i stället.')
+    expect(await statusFor('en')).toBe('Voice input is not supported in this browser. Type your question instead.')
+  })
+
+  it('the 8X4–8X6 confirm dialogs take their texts from the confirm namespace', async () => {
+    const dialogs = {
+      'src/components/AICoach.jsx': 'coachHistory',
+      'src/components/CoachMemoryReview.jsx': 'coachMemory',
+      'src/components/GoalsHabitsPanel.jsx': 'archiveDelete',
+      'src/components/ProgressPhotos.jsx': 'progressPhoto',
+      'src/components/RecipeManager.jsx': 'recipeDelete',
+      'src/components/WeeklyMealPlanner.jsx': 'planner',
+      'src/components/mealTemplates/MealQuickAdd.jsx': 'templateDelete',
+      'src/components/nutrition/DietaryPreferencesPanel.jsx': 'dietaryClear',
+    }
+    for (const [path, key] of Object.entries(dialogs)) {
+      const block = source(path).match(/<ConfirmDialog[\s\S]*?\/>/)[0]
+      for (const prop of ['confirmLabel', 'description', 'title']) expect(block, `${path} ${prop}`).toMatch(new RegExp(`${prop}=\\{tConfirm\\(.${key}[.$]`))
+      expect(swedishLiterals(block), path).toEqual([])
+    }
+    await i18n.changeLanguage('en')
+    expect(i18n.t('confirm:recipeDelete.title')).toBe('Delete recipe')
+    expect(i18n.t('confirm:templateDelete.description', { name: 'Frukost' })).toBe('Do you want to delete the template "Frukost"?')
+    expect(i18n.t('confirm:planner.removeRegistered.confirm')).toBe('Remove from plan')
+    await i18n.changeLanguage('sv')
+    expect(i18n.t('confirm:recipeDelete.title')).toBe('Ta bort recept')
+    expect(i18n.t('confirm:planner.clearWeek.description')).toBe('Vill du rensa vald veckoplan?')
+  })
+})
+
 describe('Mer folder error titles (B-N4)', () => {
   const folders = ['nutritionError', 'coachError', 'wellbeingError', 'economyError', 'signLanguageError', 'animalWorldError', 'pregnancyFirstYearError', 'cloudError', 'goalsProgressError', 'archiveError']
 

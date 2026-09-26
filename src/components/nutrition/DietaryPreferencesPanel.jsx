@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   createUpdatedDietaryPreferences,
   getDietaryPreferencesSummary,
@@ -116,6 +117,7 @@ function DietaryPreferencesPanel({
   onClear,
   onSave,
 }) {
+  const { t: tConfirm } = useTranslation('confirm')
   const normalized = useMemo(
     () => normalizeDietaryPreferences(dietaryPreferences),
     [dietaryPreferences],
@@ -289,9 +291,9 @@ function DietaryPreferencesPanel({
       </form>
       {confirmClear && (
         <ConfirmDialog
-          confirmLabel="Rensa"
-          description="Vill du ta bort dina sparade matpreferenser?"
-          title="Rensa matpreferenser"
+          confirmLabel={tConfirm('dietaryClear.confirm')}
+          description={tConfirm('dietaryClear.description')}
+          title={tConfirm('dietaryClear.title')}
           onCancel={() => setConfirmClear(false)}
           onConfirm={clearConfirmed}
         />

@@ -1,3 +1,4 @@
+import i18n from '../i18n/index.js'
 import { defaultLanguageCode, supportedLanguageCodes } from '../i18n/languages.js'
 
 export const voiceConversationSilenceTimeoutMs = 7000
@@ -96,6 +97,8 @@ export function createVoiceConversationController({
   silenceTimeoutMs = voiceConversationSilenceTimeoutMs,
   speechRecoveryMs = voiceConversationSpeechRecoveryMs,
   timers = globalThis,
+  // A11Y-8Z3 (B10): status texts follow the app language (coach:voiceStatus).
+  translate = (key) => i18n.t(`coach:voiceStatus.${key}`),
 } = {}) {
   let active = false
   let currentRecognition = null
@@ -164,7 +167,7 @@ export function createVoiceConversationController({
   async function ensureMicrophoneAvailable() {
     const mediaDevices = getMediaDevices?.()
     if (!mediaDevices?.getUserMedia) {
-      return { ok: false, status: 'Mikrofonen är inte tillgänglig i den här webbläsaren.' }
+      return { ok: false, status: translate('micUnavailable') }
     }
 
     try {
@@ -175,15 +178,15 @@ export function createVoiceConversationController({
       if (error?.name === 'NotAllowedError' || error?.name === 'PermissionDeniedError') {
         return {
           ok: false,
-          status: 'Mikrofonbehörighet nekades. Tillåt mikrofon i webbläsaren och försök igen.',
+          status: translate('micDeniedBrowser'),
         }
       }
 
       if (error?.name === 'NotFoundError' || error?.name === 'DevicesNotFoundError') {
-        return { ok: false, status: 'Ingen mikrofon hittades. Kontrollera mikrofonen eller skriv frågan.' }
+        return { ok: false, status: translate('micNotFoundType') }
       }
 
-      return { ok: false, status: 'Mikrofonen kunde inte starta. Försök igen eller skriv frågan.' }
+      return { ok: false, status: translate('micStartFailedType') }
     }
   }
 
@@ -243,7 +246,7 @@ export function createVoiceConversationController({
           clearTimer(speechStartTimer)
           speechStartTimer = null
           setSpeaking?.(true)
-          setStatus?.('🔊 AI pratar...')
+          setStatus?.(translate('speaking'))
           onSpeechStart?.()
         }
 
@@ -260,7 +263,7 @@ export function createVoiceConversationController({
 
         currentUtterance = utterance
         setSpeaking?.(false)
-        setStatus?.('🔊 Startar AI-röst...')
+        setStatus?.(translate('startingVoice'))
 
         try {
           speechSynthesis.cancel?.()
@@ -306,7 +309,7 @@ export function createVoiceConversationController({
     if (handledResult || stopRequested || !active) return
     handledResult = true
     clearRecognitionTimers()
-    setStatus?.('🧠 Bearbetar...')
+    setStatus?.(translate('processing'))
 
     try {
       try {
@@ -341,13 +344,13 @@ export function createVoiceConversationController({
     const SpeechRecognition = getSpeechRecognitionConstructor(scope)
     if (!SpeechRecognition) {
       finishTurn()
-      setStatus?.('Röstinmatning stöds inte i den här webbläsaren. Skriv frågan i stället.')
+      setStatus?.(translate('unsupported'))
       return false
     }
 
     if (!isSecureContext?.() && hostname?.() !== 'localhost') {
       finishTurn()
-      setStatus?.('Mikrofonen kräver HTTPS. Testa i en säker webbläsarsession.')
+      setStatus?.(translate('requiresHttps'))
       return false
     }
 
@@ -379,7 +382,7 @@ export function createVoiceConversationController({
     recognition.addEventListener('start', () => {
       if (!active || stopRequested) return
       setListening?.(true)
-      setStatus?.('🎤 Lyssnar...')
+      setStatus?.(translate('listening'))
       clearTimer(silenceTimer)
       silenceTimer = timers.setTimeout(() => {
         if (handledResult || pendingTranscript.trim()) {
@@ -388,7 +391,7 @@ export function createVoiceConversationController({
         }
         cancelRecognition()
         finishTurn()
-        setStatus?.('Jag hörde inget. Tryck på mikrofonen och försök igen.')
+        setStatus?.(translate('noSpeech'))
       }, silenceTimeoutMs)
     })
 
@@ -433,13 +436,13 @@ export function createVoiceConversationController({
       finishTurn()
 
       if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-        setStatus?.('Mikrofonbehörighet nekades. Tillåt mikrofon och försök igen.')
+        setStatus?.(translate('micDenied'))
       } else if (event.error === 'audio-capture') {
-        setStatus?.('Ingen mikrofon hittades.')
+        setStatus?.(translate('micNotFound'))
       } else if (event.error === 'no-speech') {
-        setStatus?.('Jag hörde inget. Tryck på mikrofonen och försök igen.')
+        setStatus?.(translate('noSpeech'))
       } else {
-        setStatus?.('Röstinmatningen avbröts. Tryck på mikrofonen och försök igen.')
+        setStatus?.(translate('aborted'))
       }
     })
 
@@ -461,7 +464,7 @@ export function createVoiceConversationController({
     } catch {
       cleanupRecognition(recognition)
       finishTurn()
-      setStatus?.('Mikrofonen kunde inte starta. Tryck och försök igen.')
+      setStatus?.(translate('micStartFailed'))
       return false
     }
   }
@@ -474,7 +477,7 @@ export function createVoiceConversationController({
 
     stopRequested = false
     setConversationActive(true)
-    setStatus?.('🎤 Startar mikrofon...')
+    setStatus?.(translate('startingMic'))
     return startListening()
   }
 

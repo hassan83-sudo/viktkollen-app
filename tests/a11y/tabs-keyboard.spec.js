@@ -126,18 +126,12 @@ test.describe('tab keyboard navigation (8Y A-8Y-N1, B-8Y-N1)', () => {
     await expect(page.locator('#economy-tabpanel')).toHaveAttribute('aria-labelledby', 'economy-tab-purchases')
     await expect(page.locator('#economy-tabpanel').getByRole('heading', { level: 2 }).first()).toHaveText('Köp')
     // The shared tabpanel wrapper does not change the layout: no sideways
-    // scroll at 320 px in the tabs. Known exception, found in 8Z1 and the
-    // same without the wrapper: "Översikt" scrolls 25 px (8Z1 B-8Z1-N1,
-    // planned for 8Z3). When it is fixed this check fails; remove the entry.
-    const knownOverflow = { Översikt: 'B-8Z1-N1' }
+    // scroll at 320 px in any tab. "Översikt" scrolled 25 px until 8Z3
+    // (B-8Z1-N1); more sizes in economy-8z3.spec.js.
     await page.setViewportSize({ height: 640, width: 320 })
     for (const name of await tablist.getByRole('tab').allInnerTexts()) {
       await tablist.getByRole('tab', { name, exact: true }).click()
-      if (knownOverflow[name]) {
-        await expect.poll(() => horizontalOverflow(page), { message: `stale: ${knownOverflow[name]} no longer reproduces; remove it` }).toBeGreaterThan(1)
-      } else {
-        await expect.poll(() => horizontalOverflow(page), { message: `${name}: sideways scroll at 320 px` }).toBeLessThanOrEqual(1)
-      }
+      await expect.poll(() => horizontalOverflow(page), { message: `${name}: sideways scroll at 320 px` }).toBeLessThanOrEqual(0)
     }
   })
 })

@@ -1,4 +1,5 @@
 import { companionEn, companionSv } from './companionResources.js'
+import { confirmEn, confirmSv } from './confirmDialogResources.js'
 import { educationEn, educationSv } from './educationResources.js'
 import { placeEn, placeSv, readyEn, readySv } from './readyPlaceResources.js'
 
@@ -398,10 +399,10 @@ const sv = {
     privacy: { activate: 'Aktivera Ekonomi lokalt', delete: 'Radering görs längst ned i Ekonomi.', eyebrow: 'Frivillig aktivering', intro: 'Innan du börjar: Ekonomi sparar bara det du själv registrerar.', local: 'Data lagras lokalt i den här webbläsaren.', noBank: 'Ingen bank, Open Banking, kortnummer eller konto kopplas.', noSecrets: 'Viktkollen ber aldrig om banklösenord eller BankID-koder.', storage: 'Lagring: {{key}}, schema v{{schema}}, retention: {{retention}}. Ingår inte i cloud backup, sync, import eller export.', storageTitle: 'Integritet och lagring' },
     repeat: { none: 'Ingen', monthly: 'Månadsvis', quarterly: 'Kvartalsvis', yearly: 'Årsvis' },
     saving: { deposit: 'Insättning', remaining: '{{amount}} kvar', transaction: 'Manuell spartransaktion', withdrawal: 'Uttag' },
-    status: { activated: 'Ekonomi aktiverades lokalt.', cleared: 'All Ekonomi-data raderades lokalt.', deleted: 'Posten raderades.', hidden: 'Belopp döljs i Ekonomi.', invalidAmount: 'Ange ett giltigt belopp.', paymentConfirmed: 'Manuell transaktion bekräftades.', saved: 'Sparat lokalt.', visible: 'Belopp visas igen.' },
+    status: { activated: 'Ekonomi aktiverades lokalt.', cleared: 'All Ekonomi-data raderades lokalt.', deleted: 'Posten raderades.', hidden: 'Belopp döljs i Ekonomi.', invalidAmount: 'Ange ett giltigt belopp.', missingName: 'Fyll i namn eller beskrivning.', missingSelection: 'Välj i listan först.', paymentConfirmed: 'Manuell transaktion bekräftades.', saved: 'Sparat lokalt.', visible: 'Belopp visas igen.' },
     subscriptions: { title: 'Abonnemang', year: 'per år' },
     types: { purchase: 'Köp', refund: 'Återbetalning' },
-    wheel: { description: 'Rund tavla med månadens utgifter per kategori.', table: 'Textalternativ till utgiftstavlan', title: 'Rund utgiftstavla' },
+    wheel: { description: 'Rund tavla med månadens utgifter per kategori.', table: 'Textalternativ till utgiftstavlan', title: 'Rund utgiftstavla', columns: { amount: 'Belopp', category: 'Kategori', share: 'Andel' } },
   },
   education: educationSv,
   settings: {
@@ -680,6 +681,25 @@ const sv = {
       startVoice: 'Starta röstsamtal',
       endVoice: 'Avsluta samtal',
       aiVoice: 'AI-röst',
+    },
+    // A11Y-8Z3 (B10): browser speech status texts (voiceConversationController).
+    voiceStatus: {
+      aborted: 'Röstinmatningen avbröts. Tryck på mikrofonen och försök igen.',
+      listening: '🎤 Lyssnar...',
+      micDenied: 'Mikrofonbehörighet nekades. Tillåt mikrofon och försök igen.',
+      micDeniedBrowser: 'Mikrofonbehörighet nekades. Tillåt mikrofon i webbläsaren och försök igen.',
+      micNotFound: 'Ingen mikrofon hittades.',
+      micNotFoundType: 'Ingen mikrofon hittades. Kontrollera mikrofonen eller skriv frågan.',
+      micStartFailed: 'Mikrofonen kunde inte starta. Tryck och försök igen.',
+      micStartFailedType: 'Mikrofonen kunde inte starta. Försök igen eller skriv frågan.',
+      micUnavailable: 'Mikrofonen är inte tillgänglig i den här webbläsaren.',
+      noSpeech: 'Jag hörde inget. Tryck på mikrofonen och försök igen.',
+      processing: '🧠 Bearbetar...',
+      requiresHttps: 'Mikrofonen kräver HTTPS. Testa i en säker webbläsarsession.',
+      speaking: '🔊 AI pratar...',
+      startingMic: '🎤 Startar mikrofon...',
+      startingVoice: '🔊 Startar AI-röst...',
+      unsupported: 'Röstinmatning stöds inte i den här webbläsaren. Skriv frågan i stället.',
     },
     overlay: {
       aiLabel: 'Tydligt presenterad som AI — inte en riktig person.',
@@ -1913,6 +1933,7 @@ const sv = {
   },
   ready: readySv,
   place: placeSv,
+  confirm: confirmSv,
 }
 
 const en = {
@@ -2311,10 +2332,10 @@ const en = {
     privacy: { activate: 'Activate Economy locally', delete: 'Deletion is at the bottom of Economy.', eyebrow: 'Voluntary activation', intro: 'Before you start: Economy only saves what you register yourself.', local: 'Data is stored locally in this browser.', noBank: 'No bank, Open Banking, card number or account is connected.', noSecrets: 'Viktkollen never asks for bank passwords or BankID codes.', storage: 'Storage: {{key}}, schema v{{schema}}, retention: {{retention}}. Not included in cloud backup, sync, import or export.', storageTitle: 'Privacy and storage' },
     repeat: { none: 'None', monthly: 'Monthly', quarterly: 'Quarterly', yearly: 'Yearly' },
     saving: { deposit: 'Deposit', remaining: '{{amount}} remaining', transaction: 'Manual saving transaction', withdrawal: 'Withdrawal' },
-    status: { activated: 'Economy activated locally.', cleared: 'All Economy data was deleted locally.', deleted: 'Entry deleted.', hidden: 'Amounts are hidden in Economy.', invalidAmount: 'Enter a valid amount.', paymentConfirmed: 'Manual transaction confirmed.', saved: 'Saved locally.', visible: 'Amounts are visible again.' },
+    status: { activated: 'Economy activated locally.', cleared: 'All Economy data was deleted locally.', deleted: 'Entry deleted.', hidden: 'Amounts are hidden in Economy.', invalidAmount: 'Enter a valid amount.', missingName: 'Enter a name or description.', missingSelection: 'Choose from the list first.', paymentConfirmed: 'Manual transaction confirmed.', saved: 'Saved locally.', visible: 'Amounts are visible again.' },
     subscriptions: { title: 'Subscriptions', year: 'per year' },
     types: { purchase: 'Purchase', refund: 'Refund' },
-    wheel: { description: 'Round board with monthly expenses by category.', table: 'Text alternative for the expense board', title: 'Round expense board' },
+    wheel: { description: 'Round board with monthly expenses by category.', table: 'Text alternative for the expense board', title: 'Round expense board', columns: { amount: 'Amount', category: 'Category', share: 'Share' } },
   },
   education: educationEn,
   settings: {
@@ -2591,6 +2612,25 @@ const en = {
       startVoice: 'Start voice conversation',
       endVoice: 'End conversation',
       aiVoice: 'AI voice',
+    },
+    // A11Y-8Z3 (B10): browser speech status texts (voiceConversationController).
+    voiceStatus: {
+      aborted: 'Voice input was interrupted. Tap the microphone and try again.',
+      listening: '🎤 Listening...',
+      micDenied: 'Microphone permission was denied. Allow the microphone and try again.',
+      micDeniedBrowser: 'Microphone permission was denied. Allow the microphone in the browser and try again.',
+      micNotFound: 'No microphone was found.',
+      micNotFoundType: 'No microphone was found. Check the microphone or type your question.',
+      micStartFailed: 'The microphone could not start. Tap and try again.',
+      micStartFailedType: 'The microphone could not start. Try again or type your question.',
+      micUnavailable: 'The microphone is not available in this browser.',
+      noSpeech: 'I did not hear anything. Tap the microphone and try again.',
+      processing: '🧠 Processing...',
+      requiresHttps: 'The microphone requires HTTPS. Try in a secure browser session.',
+      speaking: '🔊 AI is speaking...',
+      startingMic: '🎤 Starting microphone...',
+      startingVoice: '🔊 Starting AI voice...',
+      unsupported: 'Voice input is not supported in this browser. Type your question instead.',
     },
     overlay: {
       aiLabel: 'Clearly presented as AI — not a real person.',
@@ -3824,6 +3864,7 @@ const en = {
   },
   ready: readyEn,
   place: placeEn,
+  confirm: confirmEn,
 }
 
 function clone(value) {

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import i18n from '../i18n/index.js'
 import {
   createVoiceConversationController,
   getSpeechRecognitionConstructor,
@@ -130,7 +131,9 @@ function makeController(overrides = {}) {
 }
 
 describe('voiceConversationController', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    // A11Y-8Z3: the status texts follow the app language; these assert Swedish.
+    await i18n.changeLanguage('sv')
     createSpeechSynthesis.lastUtterance = null
     vi.useFakeTimers()
   })

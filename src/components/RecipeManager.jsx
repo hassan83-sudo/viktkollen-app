@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   createRecipe,
   deleteRecipe,
@@ -10,6 +10,8 @@ import {
   toggleRecipeFavorite,
   updateRecipe,
 } from '../services/nutrition/nutritionEngine.js'
+import ConfirmDialog from './a11y/ConfirmDialog.jsx'
+import { useFocusAfterConfirm } from './a11y/useFocusAfterConfirm.js'
 import RecipeEditor from './recipe/RecipeEditor.jsx'
 import RecipeList from './recipe/RecipeList.jsx'
 
@@ -54,6 +56,11 @@ function RecipeManager({
   const [errors, setErrors] = useState({})
   const [filters, setFilters] = useState({ category: 'Alla', search: '', sort: 'updated' })
   const [isDirty, setIsDirty] = useState(false)
+  // A11Y-8X4: the recipe waiting for "Ta bort" in ConfirmDialog; the list
+  // heading takes focus when its row is gone.
+  const [removeRecipeId, setRemoveRecipeId] = useState('')
+  const recipesHeadingRef = useRef(null)
+  const focusAfterConfirm = useFocusAfterConfirm()
   const [status, setStatus] = useState('')
   const visibleRecipes = useMemo(() => filterRecipes(recipes, filters), [filters, recipes])
 
@@ -111,7 +118,13 @@ function RecipeManager({
   }
 
   function removeRecipe(recipeId) {
-    if (!window.confirm('Vill du ta bort receptet?')) return
+    setRemoveRecipeId(recipeId)
+  }
+
+  function removeConfirmedRecipe() {
+    const recipeId = removeRecipeId
+    setRemoveRecipeId('')
+    focusAfterConfirm(recipesHeadingRef)
     onRecipesChange(deleteRecipe(recipes, recipeId))
     setStatus('Receptet togs bort.')
     if (editingId === recipeId) resetEditor()
@@ -165,7 +178,7 @@ function RecipeManager({
           <div className="nutrition-card-heading">
             <div>
               <p className="eyebrow">Bibliotek</p>
-              <h4>Dina recept</h4>
+              <h4 ref={recipesHeadingRef} tabIndex={-1}>Dina recept</h4>
             </div>
           </div>
           <div className="meal-template-form-grid">
@@ -203,6 +216,16 @@ function RecipeManager({
           />
         </section>
       </div>
+      {removeRecipeId && (
+        <ConfirmDialog
+          confirmLabel="Ta bort"
+          description="Vill du ta bort receptet?"
+          fallbackFocusRef={recipesHeadingRef}
+          title="Ta bort recept"
+          onCancel={() => setRemoveRecipeId('')}
+          onConfirm={removeConfirmedRecipe}
+        />
+      )}
     </section>
   )
 }

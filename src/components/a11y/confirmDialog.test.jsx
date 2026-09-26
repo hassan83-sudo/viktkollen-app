@@ -16,21 +16,26 @@ import ConfirmDialog from './ConfirmDialog.jsx'
 
 const root = resolve(process.cwd(), 'src')
 
-// window.confirm calls per production file after 8X3. A file may only go
+// window.confirm calls per production file after 8X4. A file may only go
 // down; CloudBackupPanel (Molnbackup) is Cursor-owned and not touched.
+// Replaced: ProgressCenter (7, 8X3); MealLogger (4), RecipeManager,
+// MealQuickAdd and DietaryPreferencesPanel (1 each, 8X4).
 const allowedConfirmCalls = {
   'App.jsx': 2,
   'components/CloudBackupPanel.jsx': 4,
   'components/CoachMemoryReview.jsx': 1,
   'components/GoalsHabitsPanel.jsx': 1,
   'components/ManualAcceptanceRunner.jsx': 2,
-  'components/MealLogger.jsx': 4,
-  'components/RecipeManager.jsx': 1,
   'components/WeeklyMealPlanner.jsx': 5,
-  'components/mealTemplates/MealQuickAdd.jsx': 1,
   'components/more/AccessibilityHub.jsx': 1,
-  'components/nutrition/DietaryPreferencesPanel.jsx': 1,
 }
+const replacedFiles = [
+  'components/MealLogger.jsx',
+  'components/ProgressCenter.jsx',
+  'components/RecipeManager.jsx',
+  'components/mealTemplates/MealQuickAdd.jsx',
+  'components/nutrition/DietaryPreferencesPanel.jsx',
+]
 
 function productionFiles(directory) {
   return readdirSync(directory).flatMap((name) => {
@@ -72,9 +77,10 @@ describe('ConfirmDialog (8M B13)', () => {
     for (const [file, count] of Object.entries(counts)) {
       expect(count, `${file}: window.confirm calls`).toBeLessThanOrEqual(allowedConfirmCalls[file] ?? 0)
     }
-    expect(counts['components/ProgressCenter.jsx']).toBeUndefined()
+    for (const file of replacedFiles) expect(counts[file], file).toBeUndefined()
     expect(counts['components/CloudBackupPanel.jsx']).toBe(4)
-    expect(Object.values(counts).reduce((sum, count) => sum + count, 0)).toBeLessThanOrEqual(23)
+    expect(counts['components/WeeklyMealPlanner.jsx']).toBe(5)
+    expect(Object.values(counts).reduce((sum, count) => sum + count, 0)).toBeLessThanOrEqual(16)
     expect(confirmCalls("if (window.confirm('x')) {}\n// window.confirm(")).toBe(1)
   })
 

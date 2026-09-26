@@ -6,6 +6,7 @@ import {
   normalizeDietaryPreferences,
   validateDietaryPreferences,
 } from '../../services/nutrition/nutritionEngine.js'
+import ConfirmDialog from '../a11y/ConfirmDialog.jsx'
 
 const dietTypeLabels = {
   custom: 'Egna val',
@@ -122,6 +123,9 @@ function DietaryPreferencesPanel({
   const [draft, setDraft] = useState(() => makeDraft(normalized))
   const [errors, setErrors] = useState({})
   const [status, setStatus] = useState('')
+  // A11Y-8X4: "Rensa" asks in ConfirmDialog; the button stays, so focus
+  // returns to it.
+  const [confirmClear, setConfirmClear] = useState(false)
   const summary = getDietaryPreferencesSummary(normalized)
   const hasSavedPreferences = hasDietaryPreferences(normalized)
 
@@ -163,10 +167,11 @@ function DietaryPreferencesPanel({
   }
 
   function clear() {
-    const shouldClear = window.confirm('Vill du ta bort dina sparade matpreferenser?')
+    setConfirmClear(true)
+  }
 
-    if (!shouldClear) return
-
+  function clearConfirmed() {
+    setConfirmClear(false)
     const cleared = onClear()
 
     setDraft(makeDraft(cleared))
@@ -282,6 +287,15 @@ function DietaryPreferencesPanel({
           <button className="secondary-button danger-button" type="button" onClick={clear}>Rensa</button>
         </div>
       </form>
+      {confirmClear && (
+        <ConfirmDialog
+          confirmLabel="Rensa"
+          description="Vill du ta bort dina sparade matpreferenser?"
+          title="Rensa matpreferenser"
+          onCancel={() => setConfirmClear(false)}
+          onConfirm={clearConfirmed}
+        />
+      )}
     </section>
   )
 }

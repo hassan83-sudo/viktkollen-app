@@ -1681,6 +1681,12 @@ const sv = {
         clearGoals: 'Vill du rensa alla kostmål?',
         replaceImport: 'Detta ersätter endast kostdata lokalt. Vill du fortsätta?',
       },
+      confirmDialog: {
+        deleteMeal: { title: 'Ta bort måltid', confirm: 'Ta bort' },
+        deleteFavorite: { title: 'Ta bort favorit', confirm: 'Ta bort' },
+        clearGoals: { title: 'Rensa kostmål', confirm: 'Rensa' },
+        replaceImport: { title: 'Ersätt kostdata', confirm: 'Ersätt' },
+      },
       dateTimeDialog: {
         add: 'Lägg till',
         copy: 'Kopiera',
@@ -3578,6 +3584,12 @@ const en = {
         deleteFavorite: 'Do you want to remove this favorite?',
         clearGoals: 'Do you want to clear all nutrition goals?',
         replaceImport: 'This replaces nutrition data locally only. Do you want to continue?',
+      },
+      confirmDialog: {
+        deleteMeal: { title: 'Remove meal', confirm: 'Remove' },
+        deleteFavorite: { title: 'Remove favorite', confirm: 'Remove' },
+        clearGoals: { title: 'Clear nutrition goals', confirm: 'Clear' },
+        replaceImport: { title: 'Replace nutrition data', confirm: 'Replace' },
       },
       dateTimeDialog: {
         add: 'Add',

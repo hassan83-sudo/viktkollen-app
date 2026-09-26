@@ -30,6 +30,7 @@ function formatMacro(value, unit) {
 
 function MealHistory({
   filters,
+  headingRef,
   historyRange,
   historyRangeOptions = [],
   historySummary,
@@ -50,7 +51,7 @@ function MealHistory({
       <div className="nutrition-card-heading">
         <div>
           <p className="eyebrow">Historik</p>
-          <h3>{meals.length} träffar</h3>
+          <h3 ref={headingRef} tabIndex={-1}>{meals.length} träffar</h3>
         </div>
         <button className="secondary-button" type="button" onClick={onClearFilters}>
           Rensa filter

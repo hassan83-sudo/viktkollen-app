@@ -1,5 +1,6 @@
 function FavoriteMeals({
   favorites,
+  headingRef,
   onAddFavorite,
   onDeleteFavorite,
   onEditFavorite,
@@ -11,7 +12,7 @@ function FavoriteMeals({
       <div className="nutrition-card-heading">
         <div>
           <p className="eyebrow">Snabbval</p>
-          <h3>Favoritmåltider</h3>
+          <h3 ref={headingRef} tabIndex={-1}>Favoritmåltider</h3>
         </div>
       </div>
       <label className="field">

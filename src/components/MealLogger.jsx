@@ -24,8 +24,10 @@ import {
   historyRangeOptions,
   summarizeMeals,
 } from '../services/nutrition/mealHistoryRange.js'
+import ConfirmDialog from './a11y/ConfirmDialog.jsx'
 import DateTimeDialog from './a11y/DateTimeDialog.jsx'
 import ImportModeDialog from './a11y/ImportModeDialog.jsx'
+import { useFocusAfterConfirm } from './a11y/useFocusAfterConfirm.js'
 import DailyNutritionSummary from './nutrition/DailyNutritionSummary.jsx'
 import DietaryPreferencesPanel from './nutrition/DietaryPreferencesPanel.jsx'
 import FavoriteMeals from './nutrition/FavoriteMeals.jsx'
@@ -155,6 +157,12 @@ function MealLogger({
   const [dateTimeRequest, setDateTimeRequest] = useState(null)
   // A11Y-8X2: a parsed import waiting for the import mode (ImportModeDialog).
   const [pendingImport, setPendingImport] = useState(null)
+  // A11Y-8X4: the pending confirmation ({ kind, ... }) for ConfirmDialog, and
+  // the headings that take focus when the row that asked is gone.
+  const [confirmRequest, setConfirmRequest] = useState(null)
+  const mealHistoryHeadingRef = useRef(null)
+  const favoritesHeadingRef = useRef(null)
+  const focusAfterConfirm = useFocusAfterConfirm()
   const [editingMealId, setEditingMealId] = useState('')
   const [errors, setErrors] = useState({})
   const [favoriteSearch, setFavoriteSearch] = useState('')
@@ -441,14 +449,7 @@ function MealLogger({
   }
 
   function deleteMeal(mealId) {
-    const shouldDelete = window.confirm(t('logger.confirms.deleteMeal'))
-
-    if (shouldDelete) {
-      onMealsChange(normalizedMeals.filter((meal) => meal.id !== mealId))
-      if (editingMealId === mealId) {
-        resetDraft()
-      }
-    }
+    setConfirmRequest({ id: mealId, kind: 'deleteMeal' })
   }
 
   function saveFavorite(meal) {
@@ -498,11 +499,7 @@ function MealLogger({
   }
 
   function deleteFavorite(favoriteId) {
-    const shouldDelete = window.confirm(t('logger.confirms.deleteFavorite'))
-
-    if (shouldDelete) {
-      onFavoriteMealsChange(favoriteMeals.filter((favorite) => favorite.id !== favoriteId))
-    }
+    setConfirmRequest({ id: favoriteId, kind: 'deleteFavorite' })
   }
 
   function saveGoals() {
@@ -534,12 +531,36 @@ function MealLogger({
   }
 
   function clearGoals() {
-    const shouldClear = window.confirm(t('logger.confirms.clearGoals'))
+    setConfirmRequest({ kind: 'clearGoals' })
+  }
 
-    if (shouldClear) {
+  // Runs the confirmed action; each case is the code that used to follow
+  // window.confirm.
+  function runConfirmed() {
+    const request = confirmRequest
+    setConfirmRequest(null)
+    if (!request) return
+    focusAfterConfirm(request.kind === 'deleteMeal' ? mealHistoryHeadingRef : request.kind === 'deleteFavorite' ? favoritesHeadingRef : request.kind === 'replaceImport' ? importButtonRef : null)
+
+    if (request.kind === 'deleteMeal') {
+      onMealsChange(normalizedMeals.filter((meal) => meal.id !== request.id))
+      if (editingMealId === request.id) {
+        resetDraft()
+      }
+    } else if (request.kind === 'deleteFavorite') {
+      onFavoriteMealsChange(favoriteMeals.filter((favorite) => favorite.id !== request.id))
+    } else if (request.kind === 'clearGoals') {
       setGoalDraft({})
       onNutritionGoalsChange({})
+    } else if (request.kind === 'replaceImport') {
+      replaceImport(request.parsed)
     }
+  }
+
+  function cancelConfirm() {
+    const request = confirmRequest
+    setConfirmRequest(null)
+    if (request?.kind === 'replaceImport') setImportStatus(t('logger.importStatus.cancelled'))
   }
 
   function exportNutrition() {
@@ -603,47 +624,54 @@ function MealLogger({
     const parsed = pendingImport
     setPendingImport(null)
 
+    // A11Y-8X4: replace asks in ConfirmDialog, then replaceImport runs.
+    if (mode === 'replace') {
+      setConfirmRequest({ kind: 'replaceImport', parsed })
+      return
+    }
+
     try {
-      if (mode === 'replace') {
-        const shouldReplace = window.confirm(t('logger.confirms.replaceImport'))
+      const currentIds = new Set(normalizedMeals.map((meal) => meal.id))
+      const importedMeals = parsed.meals.map((meal) =>
+        currentIds.has(meal.id)
+          ? { ...meal, id: `meal-import-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` }
+          : meal,
+      )
 
-        if (!shouldReplace) {
-          setImportStatus(t('logger.importStatus.cancelled'))
-          return
-        }
-
-        onMealsChange(parsed.meals)
-        onFavoriteMealsChange(parsed.favoriteMeals)
-        changeMealTemplates(parsed.mealTemplates)
-        changeRecipes(parsed.recipes)
-        saveDietaryPreferences(parsed.dietaryPreferences)
-      } else {
-        const currentIds = new Set(normalizedMeals.map((meal) => meal.id))
-        const importedMeals = parsed.meals.map((meal) =>
-          currentIds.has(meal.id)
-            ? { ...meal, id: `meal-import-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` }
-            : meal,
-        )
-
-        onMealsChange([...importedMeals, ...normalizedMeals])
-        onFavoriteMealsChange(mergeById(parsed.favoriteMeals, favoriteMeals))
-        changeMealTemplates(mergeById(parsed.mealTemplates, mealTemplates))
-        changeRecipes(mergeById(parsed.recipes, recipes))
-        saveDietaryPreferences({
-          ...dietaryPreferences,
-          ...parsed.dietaryPreferences,
-        })
-      }
-
-      if (parsed.hasGoals) {
-        setGoalDraft(parsed.goals)
-        onNutritionGoalsChange(parsed.goals)
-      }
-
-      setImportStatus(t('logger.importStatus.success'))
+      onMealsChange([...importedMeals, ...normalizedMeals])
+      onFavoriteMealsChange(mergeById(parsed.favoriteMeals, favoriteMeals))
+      changeMealTemplates(mergeById(parsed.mealTemplates, mealTemplates))
+      changeRecipes(mergeById(parsed.recipes, recipes))
+      saveDietaryPreferences({
+        ...dietaryPreferences,
+        ...parsed.dietaryPreferences,
+      })
+      finishImport(parsed)
     } catch {
       setImportStatus(t('logger.importStatus.failed'))
     }
+  }
+
+  function replaceImport(parsed) {
+    try {
+      onMealsChange(parsed.meals)
+      onFavoriteMealsChange(parsed.favoriteMeals)
+      changeMealTemplates(parsed.mealTemplates)
+      changeRecipes(parsed.recipes)
+      saveDietaryPreferences(parsed.dietaryPreferences)
+      finishImport(parsed)
+    } catch {
+      setImportStatus(t('logger.importStatus.failed'))
+    }
+  }
+
+  function finishImport(parsed) {
+    if (parsed.hasGoals) {
+      setGoalDraft(parsed.goals)
+      onNutritionGoalsChange(parsed.goals)
+    }
+
+    setImportStatus(t('logger.importStatus.success'))
   }
 
   return (
@@ -855,6 +883,7 @@ function MealLogger({
       <div className="nutrition-panel-favorites">
         <FavoriteMeals
           favorites={visibleFavorites}
+          headingRef={favoritesHeadingRef}
           search={favoriteSearch}
           onAddFavorite={addFavoriteAsMeal}
           onDeleteFavorite={deleteFavorite}
@@ -922,6 +951,7 @@ function MealLogger({
       <div className="nutrition-panel-history">
         <MealHistory
           filters={filters}
+          headingRef={mealHistoryHeadingRef}
           historyRange={historyRange}
           historySummary={mealHistorySummary}
           historyRangeOptions={historyRangeOptions}
@@ -936,6 +966,16 @@ function MealLogger({
           onSaveTemplate={saveMealTemplate}
         />
       </div>
+      {confirmRequest && (
+        <ConfirmDialog
+          confirmLabel={t(`logger.confirmDialog.${confirmRequest.kind}.confirm`)}
+          description={t(`logger.confirms.${confirmRequest.kind}`)}
+          fallbackFocusRef={confirmRequest.kind === 'deleteMeal' ? mealHistoryHeadingRef : confirmRequest.kind === 'deleteFavorite' ? favoritesHeadingRef : confirmRequest.kind === 'replaceImport' ? importButtonRef : undefined}
+          title={t(`logger.confirmDialog.${confirmRequest.kind}.title`)}
+          onCancel={cancelConfirm}
+          onConfirm={runConfirmed}
+        />
+      )}
       {pendingImport && (
         <ImportModeDialog
           fallbackFocusRef={importButtonRef}

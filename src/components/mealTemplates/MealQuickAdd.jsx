@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   buildMealTemplateDraft,
   createMealCopy,
@@ -14,6 +14,8 @@ import {
   normalizeMealTemplates,
   updateMealTemplate,
 } from '../../services/nutrition/nutritionEngine.js'
+import ConfirmDialog from '../a11y/ConfirmDialog.jsx'
+import { useFocusAfterConfirm } from '../a11y/useFocusAfterConfirm.js'
 import MealTemplateForm from './MealTemplateForm.jsx'
 
 function formatMacro(value, unit) {
@@ -119,6 +121,11 @@ function MealQuickAdd({
   const [templateDraft, setTemplateDraft] = useState(() => buildMealTemplateDraft())
   const [templateId, setTemplateId] = useState('')
   const [status, setStatus] = useState('')
+  // A11Y-8X4: the template waiting for "Radera" in ConfirmDialog; the list
+  // heading takes focus when its card is gone.
+  const [deleteTemplateRequest, setDeleteTemplateRequest] = useState(null)
+  const templatesHeadingRef = useRef(null)
+  const focusAfterConfirm = useFocusAfterConfirm()
 
   const normalizedTemplates = useMemo(() => normalizeMealTemplates(templates), [templates])
   const templatesAfterCompatibilityFilter = useMemo(
@@ -255,10 +262,13 @@ function MealQuickAdd({
   }
 
   function deleteTemplate(template) {
-    const shouldDelete = window.confirm(`Vill du ta bort mallen "${template.name}"?`)
+    setDeleteTemplateRequest(template)
+  }
 
-    if (!shouldDelete) return
-
+  function deleteConfirmedTemplate() {
+    const template = deleteTemplateRequest
+    setDeleteTemplateRequest(null)
+    focusAfterConfirm(templatesHeadingRef)
     saveTemplates(normalizedTemplates.filter((entry) => entry.id !== template.id))
     setStatus('Mallen har tagits bort. Sparade måltider påverkas inte.')
   }
@@ -336,7 +346,7 @@ function MealQuickAdd({
       )}
 
       <div className="meal-template-section-heading">
-        <h4>Sparade mallar</h4>
+        <h4 ref={templatesHeadingRef} tabIndex={-1}>Sparade mallar</h4>
         <div className="segmented-control meal-template-filter-toggle" aria-label="Filtrera mallar efter matpreferenser">
           <button
             aria-pressed={templateCompatibilityFilter === 'all'}
@@ -436,6 +446,16 @@ function MealQuickAdd({
             </button>
           </div>
         </form>
+      )}
+      {deleteTemplateRequest && (
+        <ConfirmDialog
+          confirmLabel="Radera"
+          description={`Vill du ta bort mallen "${deleteTemplateRequest.name}"?`}
+          fallbackFocusRef={templatesHeadingRef}
+          title="Radera mall"
+          onCancel={() => setDeleteTemplateRequest(null)}
+          onConfirm={deleteConfirmedTemplate}
+        />
       )}
     </section>
   )

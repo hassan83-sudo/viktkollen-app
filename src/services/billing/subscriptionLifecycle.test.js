@@ -147,6 +147,7 @@ describe('subscription lifecycle alignment', () => {
     })
     const failed = await lifecycle.applyTrustedRenewal({
       clientClaim: { payment_success: false, plan_id: 'plan.free' },
+      current_period_end: END,
       external_event_id: 'life-fail',
       outcome: 'failed',
       past_due_grace_until: GRACE,
@@ -156,6 +157,7 @@ describe('subscription lifecycle alignment', () => {
     expect(failed.subscription.plan_id).toBe(CURRENT)
     expect(failed.assignment.plan_id).toBe(CURRENT)
     const failedReplay = await lifecycle.applyTrustedRenewal({
+      current_period_end: END,
       external_event_id: 'life-fail',
       outcome: 'failed',
       past_due_grace_until: GRACE,

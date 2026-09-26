@@ -75,6 +75,7 @@ describe('BILL-7D renewal results', () => {
     const { renewals, subscriptions } = harness()
     const row = await openRow(subscriptions)
     const failed = await renewals.applyTrustedRenewal({
+      current_period_end: END,
       external_event_id: 'renew-fail',
       outcome: 'failed',
       past_due_grace_until: GRACE,
@@ -84,6 +85,7 @@ describe('BILL-7D renewal results', () => {
     expect(failed.past_due_grace_until).toBe(GRACE)
     expect(failed.plan_id).toBe(CURRENT)
     const replay = await renewals.applyTrustedRenewal({
+      current_period_end: END,
       external_event_id: 'renew-fail',
       outcome: 'failed',
       past_due_grace_until: GRACE,
@@ -110,6 +112,7 @@ describe('BILL-7D renewal results', () => {
       subscription_id: row.subscription_id,
     })
     const failed = await renewals.applyTrustedRenewal({
+      current_period_end: END,
       external_event_id: 'renew-fail-pending',
       outcome: 'failed',
       past_due_grace_until: GRACE,
@@ -142,6 +145,159 @@ describe('BILL-7D renewal results', () => {
     })).rejects.toMatchObject({ code: 'illegal_subscription_transition' })
     await expect(renewals.applyTrustedRenewal({
       external_event_id: 'renew-terminal-fail',
+      outcome: 'failed',
+      past_due_grace_until: GRACE,
+      subscription_id: row.subscription_id,
+    })).rejects.toMatchObject({ code: 'illegal_subscription_transition' })
+  })
+
+  it('uses the durable renewal RPC without a memory store or client plan', async () => {
+    const calls = []
+    const renewals = createRenewalLifecycle({
+      subscriptions: {
+        async advancePeriod(input) {
+          calls.push(['advance', input])
+          return { status: 'ACTIVE', subscription_id: input.subscription_id }
+        },
+        async markPastDue(input) {
+          calls.push(['failed', input])
+          return { plan_id: CURRENT, status: 'PAST_DUE', subscription_id: input.subscriptionId }
+        },
+      },
+    })
+    const failed = await renewals.applyTrustedRenewal({
+      clientClaim: { period_end: '1999-01-01T00:00:00.000Z', plan_id: 'plan.free', quota: 3 },
+      current_period_end: END,
+      external_event_id: 'durable-fail',
+      outcome: 'failed',
+      past_due_grace_until: GRACE,
+      subscription_id: 'sub-1',
+    })
+    expect(failed.status).toBe('PAST_DUE')
+    expect(calls[0][1].clientClaim).toEqual({})
+    expect(calls[0][1].currentPeriodEnd).toBe(END)
+    expect(calls[0][1].graceUntil).toBe(GRACE)
+    expect(JSON.stringify(calls)).not.toMatch(/plan\.free|quota|1999-01-01/)
+    await renewals.applyTrustedRenewal({
+      current_period_end: NEXT,
+      external_event_id: 'durable-ok',
+      outcome: 'succeeded',
+      subscription_id: 'sub-1',
+    })
+    expect(calls[1][0]).toBe('advance')
+    await expect(createRenewalLifecycle({
+      subscriptions: { async advancePeriod() { return null } },
+    }).applyTrustedRenewal({
+      external_event_id: 'durable-missing',
+      outcome: 'failed',
+      subscription_id: 'sub-1',
+    })).rejects.toMatchObject({ code: 'durable_operation_unavailable' })
+  })
+})
+
+describe('BILL-7S failed renewal period ordering', () => {
+  it('keeps a recorded past-due event from applying after recovery', async () => {
+    const { renewals, subscriptions } = harness()
+    const row = await openRow(subscriptions, { cancel_at_period_end: true })
+    await subscriptions.scheduleNextPeriodPlanChange({
+      external_event_id: 'stale-pending',
+      plan_id: TARGET,
+      subscription_id: row.subscription_id,
+    })
+    const failed = await renewals.applyTrustedRenewal({
+      current_period_end: END,
+      external_event_id: 'stale-fail',
+      outcome: 'failed',
+      past_due_grace_until: GRACE,
+      subscription_id: row.subscription_id,
+    })
+    expect(failed.status).toBe(SUBSCRIPTION_STATUS.PAST_DUE)
+    expect(failed.plan_id).toBe(CURRENT)
+    expect(failed.pending_plan_id).toBe(TARGET)
+    expect(failed.cancel_at_period_end).toBe(true)
+    const again = await renewals.applyTrustedRenewal({
+      current_period_end: END,
+      external_event_id: 'stale-while-due',
+      outcome: 'failed',
+      past_due_grace_until: GRACE,
+      subscription_id: row.subscription_id,
+    })
+    expect(again.status).toBe(SUBSCRIPTION_STATUS.PAST_DUE)
+    expect(again.pending_plan_id).toBe(TARGET)
+    const longer = await renewals.applyTrustedRenewal({
+      current_period_end: END,
+      external_event_id: 'stale-longer-grace',
+      outcome: 'failed',
+      past_due_grace_until: '2026-05-20T00:00:00.000Z',
+      subscription_id: row.subscription_id,
+    })
+    expect(longer.status).toBe(SUBSCRIPTION_STATUS.PAST_DUE)
+    expect(longer.past_due_grace_until).toBe(GRACE)
+    const recovered = await renewals.applyTrustedRenewal({
+      current_period_end: NEXT,
+      external_event_id: 'stale-recover',
+      outcome: 'succeeded',
+      subscription_id: row.subscription_id,
+    })
+    expect(recovered.status).toBe(SUBSCRIPTION_STATUS.ACTIVE)
+    expect(recovered.plan_id).toBe(TARGET)
+    expect(recovered.pending_plan_id).toBeNull()
+    expect(recovered.current_period_end).toBe(NEXT)
+    const replay = await renewals.applyTrustedRenewal({
+      current_period_end: END,
+      external_event_id: 'stale-while-due',
+      outcome: 'failed',
+      past_due_grace_until: GRACE,
+      subscription_id: row.subscription_id,
+    })
+    expect(replay.status).toBe(SUBSCRIPTION_STATUS.ACTIVE)
+    expect(replay.plan_id).toBe(TARGET)
+    expect(replay.current_period_end).toBe(NEXT)
+    expect(replay.cancel_at_period_end).toBe(true)
+    const longerReplay = await renewals.applyTrustedRenewal({
+      current_period_end: END,
+      external_event_id: 'stale-longer-grace',
+      outcome: 'failed',
+      past_due_grace_until: '2026-05-20T00:00:00.000Z',
+      subscription_id: row.subscription_id,
+    })
+    expect(longerReplay.status).toBe(SUBSCRIPTION_STATUS.ACTIVE)
+    expect(longerReplay.past_due_grace_until).toBeNull()
+    const stale = await renewals.applyTrustedRenewal({
+      current_period_end: END,
+      external_event_id: 'stale-after-success',
+      outcome: 'failed',
+      past_due_grace_until: GRACE,
+      subscription_id: row.subscription_id,
+    })
+    expect(stale.status).toBe(SUBSCRIPTION_STATUS.ACTIVE)
+    expect(stale.plan_id).toBe(TARGET)
+    expect(stale.pending_plan_id).toBeNull()
+    expect(stale.cancel_at_period_end).toBe(true)
+    expect(stale.current_period_end).toBe(NEXT)
+    await expect(renewals.applyTrustedRenewal({
+      current_period_end: NEXT,
+      external_event_id: 'stale-after-success',
+      outcome: 'failed',
+      past_due_grace_until: GRACE,
+      subscription_id: row.subscription_id,
+    })).rejects.toMatchObject({ code: 'duplicate_external_event' })
+    await expect(renewals.applyTrustedRenewal({
+      current_period_end: END,
+      external_event_id: 'stale-fail',
+      outcome: 'failed',
+      past_due_grace_until: '2026-05-20T00:00:00.000Z',
+      subscription_id: row.subscription_id,
+    })).rejects.toMatchObject({ code: 'duplicate_external_event' })
+  })
+
+  it('rejects a failed renewal of a terminal subscription before using the period', async () => {
+    const { renewals, subscriptions } = harness()
+    const row = await openRow(subscriptions)
+    await subscriptions.transition({ subscription_id: row.subscription_id, to: SUBSCRIPTION_STATUS.CANCELED })
+    await expect(renewals.applyTrustedRenewal({
+      current_period_end: END,
+      external_event_id: 'stale-terminal',
       outcome: 'failed',
       past_due_grace_until: GRACE,
       subscription_id: row.subscription_id,

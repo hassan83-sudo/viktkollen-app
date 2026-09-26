@@ -89,6 +89,8 @@ describe('BILL-7B subscription authority', () => {
       SUBSCRIPTION_RPC.scheduleNextPeriodPlanChange,
     ])
     expect(SUBSCRIPTION_RPC.scheduleNextPeriodPlanChange).toBe('billing.schedule_next_period_plan_change')
+    await port.markRenewalFailed({ subscription_id: 'sub' })
+    expect(callRpc.mock.calls.at(-1)[0]).toBe('billing.mark_renewal_failed')
   })
 
   it('keeps the in-memory authority when durable mode is not requested', () => {

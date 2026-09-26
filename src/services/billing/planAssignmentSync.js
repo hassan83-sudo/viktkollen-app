@@ -1,5 +1,7 @@
 import { BASELINE_PLAN_ID } from './effectivePlan.js'
 
+export const PLAN_ASSIGNMENT_RPC = 'billing.sync_plan_assignment_from_subscription'
+
 const EVENT_RE = /^[A-Za-z0-9._:-]+$/
 
 function rejectClientActivationClaim(clientClaim = {}) {
@@ -68,6 +70,41 @@ export function createPlanActivation({ assignments, now = () => new Date(), subs
         planVersion: effective.plan_version,
         source: entitled ? 'server' : 'server-default',
         userId: subscription.user_id,
+      })
+    },
+  }
+}
+
+function unavailable() {
+  const error = new Error('durable_operation_unavailable')
+  error.code = 'durable_operation_unavailable'
+  throw error
+}
+
+/**
+ * Durable assignment path. The RPC derives the plan from the subscription
+ * row. This function does not send a client plan, limit, or quota.
+ */
+export function createDurablePlanActivation({ callRpc } = {}) {
+  if (typeof callRpc !== 'function') unavailable()
+  return {
+    async syncFromSubscription({ clientClaim = {}, external_event_id, subscription_id }) {
+      rejectClientActivationClaim(clientClaim)
+      const eventId = String(external_event_id || '').trim()
+      if (!EVENT_RE.test(eventId) || eventId.length > 120) {
+        const error = new Error('invalid_event_id')
+        error.code = 'invalid_event_id'
+        throw error
+      }
+      const subscriptionId = String(subscription_id || '').trim()
+      if (!subscriptionId) {
+        const error = new Error('subscription_not_found')
+        error.code = 'subscription_not_found'
+        throw error
+      }
+      return callRpc(PLAN_ASSIGNMENT_RPC, {
+        p_external_event_id: eventId,
+        p_subscription_id: subscriptionId,
       })
     },
   }

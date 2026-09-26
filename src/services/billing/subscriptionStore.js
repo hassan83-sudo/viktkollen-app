@@ -64,10 +64,17 @@ export function createInMemorySubscriptionStore() {
     async listEvents() {
       return events.map((event) => ({ ...event }))
     },
-    async markPastDue({ createdAt, externalEventId, graceUntil, subscriptionId }) {
+    async markPastDue({ createdAt, currentPeriodEnd, externalEventId, graceUntil, subscriptionId }) {
+      const periodEnd = currentPeriodEnd == null ? null : new Date(currentPeriodEnd).toISOString()
+      const sameInstant = (left, right) => {
+        if (left == null || right == null) return false
+        return new Date(left).getTime() === new Date(right).getTime()
+      }
       const prior = events.find((event) => event.external_event_id === externalEventId)
       if (prior || byEvent.has(externalEventId)) {
-        if (prior?.operation === 'renewal.failed' && prior.past_due_grace_until === graceUntil) {
+        if (prior?.operation === 'renewal.failed'
+          && prior.past_due_grace_until === graceUntil
+          && sameInstant(prior.previous_period_end, periodEnd)) {
           return byId.get(prior.subscription_id) || null
         }
         const error = new Error('duplicate_external_event')
@@ -80,27 +87,22 @@ export function createInMemorySubscriptionStore() {
         error.code = 'subscription_not_found'
         throw error
       }
-      if (prev.status === 'CANCELED' || prev.status === 'EXPIRED') {
+      if (prev.status !== 'ACTIVE' && prev.status !== 'PAST_DUE') {
         const error = new Error('illegal_subscription_transition')
         error.code = 'illegal_subscription_transition'
         throw error
       }
-      if (prev.status === 'PAST_DUE') {
-        if (prev.past_due_grace_until && graceUntil
-          && new Date(graceUntil).getTime() > new Date(prev.past_due_grace_until).getTime()) {
-          const error = new Error('grace_cannot_extend')
-          error.code = 'grace_cannot_extend'
-          throw error
-        }
-        return prev
-      }
-      if (prev.status !== 'ACTIVE') {
-        const error = new Error('illegal_subscription_transition')
-        error.code = 'illegal_subscription_transition'
+      if (!periodEnd || Number.isNaN(new Date(periodEnd).getTime())) {
+        const error = new Error('invalid_period')
+        error.code = 'invalid_period'
         throw error
       }
-      assertSubscriptionTransition(prev.status, 'PAST_DUE')
-      const stored = clone({
+      const samePeriod = sameInstant(periodEnd, prev.current_period_end)
+      const nextStatus = samePeriod && prev.status === 'ACTIVE' ? 'PAST_DUE' : prev.status
+      if (nextStatus === 'PAST_DUE' && prev.status === 'ACTIVE') {
+        assertSubscriptionTransition(prev.status, 'PAST_DUE')
+      }
+      const stored = nextStatus === prev.status ? prev : clone({
         ...prev,
         past_due_grace_until: graceUntil,
         status: 'PAST_DUE',
@@ -110,13 +112,15 @@ export function createInMemorySubscriptionStore() {
         created_at: createdAt,
         external_event_id: externalEventId,
         from_status: prev.status,
+        new_period_end: periodEnd,
         operation: 'renewal.failed',
         past_due_grace_until: graceUntil,
+        previous_period_end: periodEnd,
         subscription_id: prev.subscription_id,
-        to_status: 'PAST_DUE',
+        to_status: nextStatus,
       })
       byEvent.set(externalEventId, prev.subscription_id)
-      byId.set(stored.subscription_id, stored)
+      if (stored !== prev) byId.set(stored.subscription_id, stored)
       return stored
     },
     async schedulePendingPlan({ createdAt, externalEventId, pendingPlanId, subscriptionId }) {

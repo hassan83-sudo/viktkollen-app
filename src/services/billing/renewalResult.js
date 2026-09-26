@@ -37,6 +37,28 @@ export function createRenewalLifecycle({ now = () => new Date(), store, subscrip
         error.code = 'invalid_renewal_outcome'
         throw error
       }
+      if (!store) {
+        if (outcome === 'succeeded') {
+          return subscriptions.advancePeriod({
+            clientClaim: {},
+            current_period_end,
+            external_event_id: eventId,
+            subscription_id,
+          })
+        }
+        if (typeof subscriptions?.markPastDue !== 'function') {
+          const error = new Error('durable_operation_unavailable')
+          error.code = 'durable_operation_unavailable'
+          throw error
+        }
+        return subscriptions.markPastDue({
+          clientClaim: {},
+          currentPeriodEnd: current_period_end,
+          externalEventId: eventId,
+          graceUntil: past_due_grace_until,
+          subscriptionId: subscription_id,
+        })
+      }
       const prior = (await store.listEvents()).find((event) => event.external_event_id === eventId)
       if (outcome === 'succeeded') {
         if (prior && (prior.operation !== 'period.advance' || prior.new_period_end !== current_period_end)) {
@@ -64,6 +86,7 @@ export function createRenewalLifecycle({ now = () => new Date(), store, subscrip
       }
       return store.markPastDue({
         createdAt: now().toISOString(),
+        currentPeriodEnd: current_period_end,
         externalEventId: eventId,
         graceUntil: past_due_grace_until,
         subscriptionId: subscription_id,

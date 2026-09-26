@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { SUBSCRIPTION_STATUS } from './catalog.js'
 import { defaultPlanCatalog } from './planCatalog.js'
-import { createInMemoryUserPlanAssignmentStore, createPlanActivation } from './planAssignmentSync.js'
+import { createInMemoryUserPlanAssignmentStore, createDurablePlanActivation, createPlanActivation } from './planAssignmentSync.js'
 import { createSubscriptionService } from './subscriptionService.js'
 import { createInMemorySubscriptionStore } from './subscriptionStore.js'
 
@@ -123,5 +123,39 @@ describe('BILL-7C plan activation', () => {
       subscription_id: row.subscription_id,
     })
     expect(terminal.plan_id).toBe('plan.free')
+  })
+})
+
+describe('BILL-7P durable plan assignment', () => {
+  it('asks the assignment RPC for the derived row and ignores client claims', async () => {
+    const calls = []
+    const activation = createDurablePlanActivation({
+      callRpc: async (name, args) => {
+        calls.push({ args, name })
+        return {
+          plan_id: 'plan.prelim.sek.month.49',
+          plan_version: 1,
+          source: 'server',
+          user_id: USER,
+        }
+      },
+    })
+    const row = await activation.syncFromSubscription({
+      clientClaim: { limit: 1, plan_id: 'plan.free', quota: 9 },
+      external_event_id: 'assign-1',
+      subscription_id: 'sub-1',
+    })
+    expect(row.plan_id).toBe(CURRENT)
+    expect(calls).toEqual([{
+      args: {
+        p_external_event_id: 'assign-1',
+        p_subscription_id: 'sub-1',
+      },
+      name: 'billing.sync_plan_assignment_from_subscription',
+    }])
+    expect(JSON.stringify(calls)).not.toMatch(/plan\.free|quota|limit/)
+    expect(() => createDurablePlanActivation()).toThrow(expect.objectContaining({
+      code: 'durable_operation_unavailable',
+    }))
   })
 })

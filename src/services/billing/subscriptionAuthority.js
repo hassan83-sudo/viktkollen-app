@@ -17,6 +17,7 @@ export const SUBSCRIPTION_RPC = Object.freeze({
   clearCancelAtPeriodEnd: 'billing.clear_cancel_at_period_end',
   createSubscription: 'billing.create_subscription',
   finalizeOpenSubscription: 'billing.finalize_open_subscription',
+  markRenewalFailed: 'billing.mark_renewal_failed',
   scheduleCancelAtPeriodEnd: 'billing.schedule_cancel_at_period_end',
   scheduleNextPeriodPlanChange: 'billing.schedule_next_period_plan_change',
 })
@@ -149,6 +150,32 @@ export function createDurableSubscriptionOperations({
       })
       return remember(row)
     },
+    async markPastDue({
+      clientClaim = {},
+      currentPeriodEnd,
+      current_period_end,
+      externalEventId,
+      external_event_id,
+      graceUntil,
+      past_due_grace_until,
+      subscriptionId,
+      subscription_id,
+    }) {
+      rejectClientClaim(clientClaim)
+      const periodEnd = current_period_end === undefined ? currentPeriodEnd : current_period_end
+      if (periodEnd == null || Number.isNaN(new Date(periodEnd).getTime())) {
+        const error = new Error('invalid_period')
+        error.code = 'invalid_period'
+        throw error
+      }
+      const row = await port.markRenewalFailed({
+        p_external_event_id: requireEventId(external_event_id || externalEventId),
+        p_past_due_grace_until: past_due_grace_until === undefined ? graceUntil ?? null : past_due_grace_until,
+        p_period_end: new Date(periodEnd).toISOString(),
+        p_subscription_id: subscription_id || subscriptionId,
+      })
+      return remember(row)
+    },
     async getClientSafe(userId, clientClaim = {}) {
       const effective = await this.resolveForUser(userId, clientClaim)
       return toClientSafeSubscription(effective.subscription, effective)
@@ -249,6 +276,7 @@ export function createRpcSubscriptionPort(callRpc) {
     clearCancelAtPeriodEnd: (args) => call('clearCancelAtPeriodEnd', args),
     createSubscription: (args) => call('createSubscription', args),
     finalizeOpenSubscription: (args) => call('finalizeOpenSubscription', args),
+    markRenewalFailed: (args) => call('markRenewalFailed', args),
     scheduleCancelAtPeriodEnd: (args) => call('scheduleCancelAtPeriodEnd', args),
     scheduleNextPeriodPlanChange: (args) => call('scheduleNextPeriodPlanChange', args),
   }

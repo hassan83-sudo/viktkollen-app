@@ -1,0 +1,132 @@
+# A11Y-8Z4 (8M/8Y C12): accessibility regression gate.
+# docs/accessibility/A11Y_8Z4_CI.md
+#
+# - fast: every push and pull request that touches the app or its tests.
+#   Vitest accessibility suite, i18n checks and a ~4 minute Chromium subset
+#   (axe on the main views, keyboard, label in name, landmarks, semantics,
+#   tabs, global search, Plats cards).
+# - full: the complete Chromium accessibility suite (~20 minutes, 261 tests
+#   at 8Z3), run manually (Actions > Accessibility > Run workflow, choose
+#   "full") and weekly.
+#
+# No secrets are used. The E2E suite runs the Vite dev server against a
+# local, never-contacted Supabase URL and aborts every Supabase request
+# (playwright.a11y.config.js). Full Vitest is not run here: it has 96 known
+# baseline failures (docs/accessibility/A11Y_8Y_POST_8X_FULL_AUDIT.md).
+
+name: Accessibility
+
+on:
+  push:
+    paths:
+      - 'src/**'
+      - 'tests/a11y/**'
+      - 'scripts/check-i18n.mjs'
+      - 'scripts/check-hardcoded-ui.mjs'
+      - 'index.html'
+      - 'public/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.js'
+      - 'playwright.a11y.config.js'
+      - '.github/workflows/accessibility.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tests/a11y/**'
+      - 'scripts/check-i18n.mjs'
+      - 'scripts/check-hardcoded-ui.mjs'
+      - 'index.html'
+      - 'public/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.js'
+      - 'playwright.a11y.config.js'
+      - '.github/workflows/accessibility.yml'
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'fast = the push gate; full = the complete accessibility E2E suite (~20 min)'
+        type: choice
+        default: full
+        options:
+          - fast
+          - full
+  schedule:
+    # Mondays 03:17 UTC: the full suite as a weekly checkpoint.
+    - cron: '17 3 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: accessibility-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+env:
+  CI: 'true'
+  # E2E times and dates are fixed by the Playwright config (sv-SE,
+  # Europe/Stockholm); the jsdom tests run in UTC as locally.
+  TZ: UTC
+
+jobs:
+  fast:
+    name: Accessibility gate (fast)
+    if: github.event_name == 'push' || github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.suite == 'fast')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Vitest accessibility suite
+        run: npm run test:a11y
+      - name: i18n keys
+        run: npm run i18n:check
+      - name: Hardcoded UI text
+        run: npm run i18n:hardcoded
+      # Chromium pinned by the lockfile (@playwright/test), with its OS deps.
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Chromium accessibility subset
+        run: npm run test:a11y:e2e:fast
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-fast-test-results
+          path: test-results/
+          retention-days: 7
+
+  full:
+    name: Accessibility E2E (full)
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.suite == 'full')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Vitest accessibility suite
+        run: npm run test:a11y
+      - name: i18n keys
+        run: npm run i18n:check
+      - name: Hardcoded UI text
+        run: npm run i18n:hardcoded
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Full Chromium accessibility suite
+        run: npm run test:a11y:e2e
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-full-test-results
+          path: test-results/
+          retention-days: 14

@@ -14,6 +14,7 @@
     "test:e2e": "node scripts/run-e2e.js",
     "test:a11y": "vitest run src/components/a11y src/components/more/Accessibility src/services/accessibility src/App.accessibilityAppWide.test.js src/components/accessibilityKeyboard.test.jsx src/components/app/OnboardingScreen.accessibilitySetup.test.jsx src/features/ai-ear",
     "test:a11y:e2e": "playwright test --config playwright.a11y.config.js",
+    "test:a11y:e2e:fast": "playwright test --config playwright.a11y.config.js tests/a11y/axe-views.spec.js tests/a11y/keyboard.spec.js tests/a11y/label-in-name.spec.js tests/a11y/landmarks.spec.js tests/a11y/semantics-8v.spec.js tests/a11y/tabs-keyboard.spec.js tests/a11y/global-search.spec.js tests/a11y/place-cards.spec.js",
     "validate:staging": "node scripts/validate-staging-environment.js",
     "validate:release-candidate": "node scripts/validate-release-candidate.js",
     "verify:coach-route": "node scripts/verify-coach-route.js",

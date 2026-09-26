@@ -8,6 +8,7 @@ const PLAN_ID_RE = /^[A-Za-z0-9._-]{1,80}$/
 const ACTIONS = new Set(['plan_change', 'schedule_cancel', 'undo_cancel'])
 
 const ERRORS = Object.freeze({
+  assignment_sync_unconfirmed: ['ASSIGNMENT_UNCONFIRMED', 503],
   billing_rpc_failed: ['BILLING_FAILED', 500],
   duplicate_external_event: ['DUPLICATE_EVENT', 409],
   durable_operation_unavailable: ['DURABLE_UNAVAILABLE', 503],
@@ -92,6 +93,16 @@ function liveDeps() {
   }
 }
 
+function confirmedIntent(result) {
+  if (!result?.assignment?.plan_id) return fail('ASSIGNMENT_UNCONFIRMED', 503)
+  return {
+    assignment: publicAssignment(result.assignment),
+    ok: true,
+    status: 200,
+    subscription: toPublicSubscription(result.subscription),
+  }
+}
+
 function publicAssignment(assignment) {
   if (!assignment || typeof assignment !== 'object') return null
   return {
@@ -112,12 +123,16 @@ export async function executeUserBillingIntent({
   }
   const input = readBody(body)
   void input.current_period_end
+  void input.current_plan
+  void input.current_plan_id
   void input.enabled_for_sale
   void input.entitlement
   void input.entitlements
   void input.external_event_id
   void input.grace_until
   void input.past_due_grace_until
+  void input.pending_plan
+  void input.pending_plan_id
   void input.price
   void input.price_minor
   void input.provider_customer_ref
@@ -152,12 +167,7 @@ export async function executeUserBillingIntent({
         plan_id: planId,
         subscription_id: current.subscriptionId,
       })
-      return {
-        assignment: publicAssignment(result?.assignment),
-        ok: true,
-        status: 200,
-        subscription: toPublicSubscription(result?.subscription),
-      }
+      return confirmedIntent(result)
     }
 
     const eventId = serverEventId(action, userId, current.subscriptionId, current.subscription.current_period_end || '')
@@ -172,12 +182,7 @@ export async function executeUserBillingIntent({
         external_event_id: eventId,
         subscription_id: current.subscriptionId,
       })
-    return {
-      assignment: publicAssignment(result?.assignment),
-      ok: true,
-      status: 200,
-      subscription: toPublicSubscription(result?.subscription),
-    }
+    return confirmedIntent(result)
   } catch (error) {
     return mappedError(error)
   }

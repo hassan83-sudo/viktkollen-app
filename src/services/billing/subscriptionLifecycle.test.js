@@ -51,6 +51,29 @@ describe('subscription lifecycle alignment', () => {
     }))
   })
 
+  it('refuses to complete a plan change when assignment sync is unconfirmed', async () => {
+    const lifecycle = createSubscriptionLifecycle({
+      activation: { async syncFromSubscription() { return null } },
+      renewals: { async applyTrustedRenewal() { return null } },
+      subscriptions: {
+        async scheduleNextPeriodPlanChange() {
+          return {
+            cancel_at_period_end: true,
+            pending_plan_id: TARGET,
+            plan_id: CURRENT,
+            status: 'ACTIVE',
+            subscription_id: 'sub-user',
+          }
+        },
+      },
+    })
+    await expect(lifecycle.scheduleNextPeriodPlanChange({
+      external_event_id: 'ui.plan-change',
+      plan_id: TARGET,
+      subscription_id: 'sub-user',
+    })).rejects.toMatchObject({ code: 'assignment_sync_unconfirmed' })
+  })
+
   it('keeps the current assignment when a next-period plan is only scheduled', async () => {
     const { assignments, lifecycle, subscriptions } = harness()
     const row = await openRow(subscriptions)

@@ -333,6 +333,126 @@ describe('BILL-7X2 user lifecycle intents', () => {
     }
   })
 
+  it('rejects an unknown plan before the lifecycle', async () => {
+    const response = createResponse()
+    await handler(createRequest({ body: { plan_id: 'plan.missing' } }), response)
+    expect(response.statusCode).toBe(400)
+    expect(response.body.error.code).toBe('INVALID_PLAN')
+    expect(calls.some((call) => call.type === 'plan')).toBe(false)
+  })
+
+  it('ignores a client current plan and pending plan', async () => {
+    const response = createResponse()
+    await handler(createRequest({
+      body: {
+        current_plan: 'plan.free',
+        current_plan_id: 'plan.free',
+        pending_plan: 'plan.free',
+        pending_plan_id: 'plan.free',
+        plan_id: TARGET,
+      },
+    }), response)
+    expect(response.statusCode).toBe(200)
+    const planCall = calls.find((call) => call.type === 'plan')
+    expect(planCall.input.plan_id).toBe(TARGET)
+    expect(JSON.stringify(planCall.input)).not.toMatch(/plan\.free/)
+    expect(response.body.subscription.plan_id).toBe(CURRENT)
+    expect(response.body.subscription.pending_plan_id).toBe(TARGET)
+  })
+
+  it('keeps a scheduled cancellation while scheduling the next-period plan', async () => {
+    installDeps(calls, {
+      deps: {
+        lifecycle: {
+          async scheduleNextPeriodPlanChange(input) {
+            calls.push({ input, type: 'plan' })
+            return {
+              assignment: { plan_id: CURRENT, source: 'server' },
+              subscription: {
+                cancel_at_period_end: true,
+                current_period_end: '2026-10-01T00:00:00.000Z',
+                pending_plan_id: input.plan_id,
+                plan_id: CURRENT,
+                status: 'ACTIVE',
+              },
+            }
+          },
+        },
+        readSubscription: async () => ({
+          subscription: {
+            cancel_at_period_end: true,
+            current_period_end: '2026-10-01T00:00:00.000Z',
+            pending_plan_id: null,
+            plan_id: CURRENT,
+            status: 'ACTIVE',
+          },
+          subscriptionId: 'sub-user',
+          unavailable: false,
+        }),
+      },
+    })
+    const response = createResponse()
+    await handler(createRequest({ body: { plan_id: TARGET, status: 'CANCELED' } }), response)
+    expect(response.statusCode).toBe(200)
+    expect(response.body.subscription.cancel_at_period_end).toBe(true)
+    expect(response.body.subscription.plan_id).toBe(CURRENT)
+    expect(response.body.subscription.pending_plan_id).toBe(TARGET)
+    expect(response.body.assignment.plan_id).toBe(CURRENT)
+    expect(response.body.subscription.status).toBe('ACTIVE')
+  })
+
+  it('fail-closes when the sale read is unavailable', async () => {
+    installDeps(calls, {
+      deps: {
+        readSale: async () => {
+          const error = new Error('plan_sale_read_failed')
+          error.code = 'durable_operation_unavailable'
+          throw error
+        },
+      },
+    })
+    const response = createResponse()
+    await handler(createRequest({ body: { enabled_for_sale: true, plan_id: TARGET } }), response)
+    expect(response.statusCode).toBe(503)
+    expect(response.body.error.code).toBe('DURABLE_UNAVAILABLE')
+    expect(response.body.ok).toBe(false)
+    expect(calls.some((call) => call.type === 'plan')).toBe(false)
+  })
+
+  it('does not report success when assignment sync is unconfirmed', async () => {
+    installDeps(calls, {
+      deps: {
+        lifecycle: {
+          async scheduleNextPeriodPlanChange() {
+            return { assignment: null, subscription: { pending_plan_id: TARGET, plan_id: CURRENT, status: 'ACTIVE' } }
+          },
+        },
+      },
+    })
+    const missing = createResponse()
+    await handler(createRequest({ body: { plan_id: TARGET } }), missing)
+    expect(missing.statusCode).toBe(503)
+    expect(missing.body.error.code).toBe('ASSIGNMENT_UNCONFIRMED')
+    expect(missing.body.ok).toBe(false)
+
+    installDeps(calls, {
+      deps: {
+        lifecycle: {
+          async scheduleNextPeriodPlanChange() {
+            const error = new Error('assignment_sync_unconfirmed')
+            error.code = 'assignment_sync_unconfirmed'
+            throw error
+          },
+        },
+      },
+    })
+    const thrown = createResponse()
+    await handler(createRequest({ body: { plan_id: TARGET } }), thrown)
+    expect(thrown.statusCode).toBe(503)
+    expect(thrown.body.error.code).toBe('ASSIGNMENT_UNCONFIRMED')
+    expect(thrown.body.ok).toBe(false)
+  })
+
   it('does not expose a generic subscription state endpoint', async () => {
     const source = readFileSync(join(root, 'api/billing/user/index.js'), 'utf8')
     const intent = readFileSync(join(root, 'api/_shared/billing/userLifecycleIntent.js'), 'utf8')

@@ -37,6 +37,11 @@ export function createSubscriptionLifecycle({ activation, renewals, subscription
       external_event_id: eventId,
       subscription_id: row.subscription_id,
     })
+    if (!assignment?.plan_id) {
+      const error = new Error('assignment_sync_unconfirmed')
+      error.code = 'assignment_sync_unconfirmed'
+      throw error
+    }
     return { assignment, subscription: row }
   }
 

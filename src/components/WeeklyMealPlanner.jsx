@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import ConfirmDialog from './a11y/ConfirmDialog.jsx'
+import { useFocusAfterConfirm } from './a11y/useFocusAfterConfirm.js'
 import {
   addLocalDays,
   addManualShoppingListItem,
@@ -260,6 +262,16 @@ function ShoppingListPanel({
   )
 }
 
+// A11Y-8X5 (8M B13): the texts of the former window.confirm calls; the
+// description is the old question.
+const confirmCopy = {
+  clearShopping: { confirm: 'Rensa', description: 'Vill du rensa vald veckas inköpslista?', title: 'Rensa inköpslista' },
+  clearWeek: { confirm: 'Rensa', description: 'Vill du rensa vald veckoplan?', title: 'Rensa veckoplan' },
+  copyReplace: { confirm: 'Ersätt', description: 'Vill du ersätta befintliga måltider på måldagarna?', title: 'Ersätt måltider' },
+  removeMeal: { confirm: 'Ta bort', description: 'Vill du ta bort den planerade måltiden?', title: 'Ta bort planerad måltid' },
+  removeRegistered: { confirm: 'Ta bort från planen', description: 'Måltiden registrerades. Vill du ta bort den från planen?', title: 'Måltiden registrerades' },
+}
+
 function WeeklyMealPlanner({
   dietaryPreferences,
   meals,
@@ -283,6 +295,13 @@ function WeeklyMealPlanner({
   const [status, setStatus] = useState('')
   const [shoppingStatus, setShoppingStatus] = useState('')
   const [registeringId, setRegisteringId] = useState('')
+  // A11Y-8X5: the pending confirmation ({ kind, ... }) for ConfirmDialog.
+  // When a planned meal card is gone, focus goes to the same day's
+  // "Lägg till måltid" (dayAddButtons, one per date).
+  const [confirmRequest, setConfirmRequest] = useState(null)
+  const dayAddButtons = useRef({})
+  const confirmFocusTarget = useRef(null)
+  const focusAfterConfirm = useFocusAfterConfirm()
 
   const week = useMemo(() => getMealPlanWeek(plans, weekStart), [plans, weekStart])
   const weekDates = useMemo(() => getMealPlanWeekDates(weekStart), [weekStart])
@@ -378,10 +397,12 @@ function WeeklyMealPlanner({
     })
   }
 
+  function plannedMealDate(mealId) {
+    return Object.entries(week.days || {}).find(([, dayMeals]) => dayMeals.some((meal) => meal.id === mealId))?.[0] || ''
+  }
+
   function removeMeal(mealId) {
-    if (!window.confirm('Vill du ta bort den planerade måltiden?')) return
-    savePlans(removePlannedMeal(plans, weekStart, mealId))
-    setStatus('Planerad måltid borttagen.')
+    setConfirmRequest({ date: plannedMealDate(mealId), id: mealId, kind: 'removeMeal' })
   }
 
   function moveMeal(mealId, targetDate) {
@@ -391,7 +412,14 @@ function WeeklyMealPlanner({
 
   function copyDay() {
     if (!copySourceDate) return
-    if (copyMode === 'replace' && !window.confirm('Vill du ersätta befintliga måltider på måldagarna?')) return
+    if (copyMode === 'replace') {
+      setConfirmRequest({ kind: 'copyReplace' })
+      return
+    }
+    copyDayConfirmed()
+  }
+
+  function copyDayConfirmed() {
     savePlans(copyPlannedDay(plans, weekStart, copySourceDate, { date: copyTargetDate, mode: copyMode, scope: copyScope }))
     setStatus('Dagens plan kopierades.')
   }
@@ -406,17 +434,37 @@ function WeeklyMealPlanner({
       return
     }
     onMealsChange([meal, ...meals])
-    if (window.confirm('Måltiden registrerades. Vill du ta bort den från planen?')) {
-      savePlans(removePlannedMeal(plans, weekStart, plannedMeal.id))
-    }
     setStatus('Planerad måltid registrerades som faktisk måltid.')
     setRegisteringId('')
+    // The meal is registered; the dialog asks whether to also remove it
+    // from the plan (Avbryt keeps it).
+    setConfirmRequest({ date: plannedMeal.date, id: plannedMeal.id, kind: 'removeRegistered' })
   }
 
   function clearWeek() {
-    if (!window.confirm('Vill du rensa vald veckoplan?')) return
-    savePlans(clearMealPlanWeek(plans, weekStart))
-    setStatus('Veckoplanen rensades.')
+    setConfirmRequest({ kind: 'clearWeek' })
+  }
+
+  // Runs the confirmed action; each case is the code that used to follow
+  // window.confirm.
+  function runConfirmed() {
+    const request = confirmRequest
+    setConfirmRequest(null)
+    if (!request) return
+    if (request.kind === 'removeMeal' || request.kind === 'removeRegistered') {
+      confirmFocusTarget.current = dayAddButtons.current[request.date] || null
+      focusAfterConfirm(confirmFocusTarget)
+      savePlans(removePlannedMeal(plans, weekStart, request.id))
+      if (request.kind === 'removeMeal') setStatus('Planerad måltid borttagen.')
+    } else if (request.kind === 'copyReplace') {
+      copyDayConfirmed()
+    } else if (request.kind === 'clearWeek') {
+      savePlans(clearMealPlanWeek(plans, weekStart))
+      setStatus('Veckoplanen rensades.')
+    } else if (request.kind === 'clearShopping') {
+      saveShoppingLists(clearShoppingListWeek(shoppingLists, weekStart))
+      setShoppingStatus('Inköpslistan rensades.')
+    }
   }
 
   function updateShopping() {
@@ -448,9 +496,7 @@ function WeeklyMealPlanner({
   }
 
   function clearShopping() {
-    if (!window.confirm('Vill du rensa vald veckas inköpslista?')) return
-    saveShoppingLists(clearShoppingListWeek(shoppingLists, weekStart))
-    setShoppingStatus('Inköpslistan rensades.')
+    setConfirmRequest({ kind: 'clearShopping' })
   }
 
   async function copyShoppingList() {
@@ -501,7 +547,7 @@ function WeeklyMealPlanner({
                     <h4>{dayNames[index]}</h4>
                     <span>{date}</span>
                   </div>
-                  <button className="secondary-button" type="button" onClick={() => resetForm(date)}>Lägg till måltid</button>
+                  <button className="secondary-button" ref={(element) => { dayAddButtons.current[date] = element }} type="button" onClick={() => resetForm(date)}>Lägg till måltid</button>
                 </div>
                 <dl className="meal-planner-day-stats">
                   <div><dt>Antal</dt><dd>{daySummary.mealCount}</dd></div>
@@ -663,6 +709,16 @@ function WeeklyMealPlanner({
         onToggleItem={toggleShopping}
         onUpdateFromPlan={updateShopping}
       />
+      {confirmRequest && (
+        <ConfirmDialog
+          confirmLabel={confirmCopy[confirmRequest.kind].confirm}
+          description={confirmCopy[confirmRequest.kind].description}
+          fallbackFocusRef={confirmFocusTarget}
+          title={confirmCopy[confirmRequest.kind].title}
+          onCancel={() => setConfirmRequest(null)}
+          onConfirm={runConfirmed}
+        />
+      )}
     </section>
   )
 }

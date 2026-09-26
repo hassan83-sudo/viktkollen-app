@@ -1,0 +1,47 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { describe, expect, it } from 'vitest'
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '../../..')
+const sql = readFileSync(join(root, 'supabase/migrations/20260926120000_billing_schedule_next_period_plan_change.sql'), 'utf8')
+const userApi = readFileSync(join(root, 'api/billing/user/index.js'), 'utf8')
+const body = sql.replace(/--[^\n]*/g, '')
+
+describe('BILL-7E schedule next-period RPC', () => {
+  it('is local-only, service_role only, and leaves the current plan unchanged', () => {
+    expect(sql).toMatch(/DO NOT apply to staging/)
+    expect(sql).toMatch(/DO NOT apply to production/)
+    expect(sql).toMatch(/create or replace function billing\.schedule_next_period_plan_change/)
+    expect(sql).toMatch(/security definer/)
+    expect(sql).toMatch(/set search_path = pg_catalog, pg_temp/)
+    expect(sql).toMatch(/revoke all on function billing\.schedule_next_period_plan_change\(text, text, text\) from public, anon, authenticated, service_role/)
+    expect(sql).toMatch(/grant execute on function billing\.schedule_next_period_plan_change\(text, text, text\) to service_role/)
+    expect(sql).not.toMatch(/grant execute.*to (public|anon|authenticated)/i)
+    expect(body).toMatch(/existing\.status not in \('ACTIVE', 'PAST_DUE'\)/)
+    expect(body).toMatch(/raise exception 'illegal subscription transition'/)
+    expect(body).toMatch(/raise exception 'invalid_pending_plan'/)
+    expect(body).toMatch(/p_plan_id = 'plan\.free'/)
+    expect(body).toMatch(/p_plan_id = existing\.plan_id/)
+    expect(body).toMatch(/plan_active is distinct from true/)
+    expect(body).toMatch(/pending_plan_change = 'next_period'/)
+    expect(body).not.toMatch(/pending_plan_change = 'now'/)
+    expect(body).toMatch(/set\s+pending_plan_id = p_plan_id,\s+pending_plan_change = 'next_period'/)
+    expect(body).toMatch(/to_plan_id = from_plan_id/)
+    expect(body).not.toMatch(/\bset\s+plan_id\b/)
+    expect(body).toMatch(/prior_operation = 'plan\.schedule' and prior_plan = p_plan_id/)
+    expect(body).toMatch(/raise exception 'duplicate_external_event'/)
+    const lockAt = body.indexOf('for update')
+    const recheckAt = body.indexOf('from billing.subscription_events e', lockAt)
+    const updateAt = body.indexOf('update billing.subscriptions')
+    expect(lockAt).toBeGreaterThan(-1)
+    expect(recheckAt).toBeGreaterThan(lockAt)
+    expect(updateAt).toBeGreaterThan(recheckAt)
+    expect(body.indexOf("raise exception 'duplicate_external_event'", lockAt)).toBeLessThan(updateAt)
+    expect(body.slice(lockAt, updateAt)).toMatch(/prior_operation = 'plan\.schedule' and prior_plan = p_plan_id/)
+    expect(body.slice(lockAt, updateAt)).toMatch(/return existing/)
+    expect(body).not.toMatch(/user_plan_assignments|plan_entitlements|quota_reservations|user_entitlements/i)
+    expect(body).not.toMatch(/stripe|sumup|klarna|checkout|webhook|proration/i)
+    expect(userApi).not.toMatch(/schedule_next_period_plan_change/)
+  })
+})

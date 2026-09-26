@@ -64,6 +64,61 @@ export function createInMemorySubscriptionStore() {
     async listEvents() {
       return events.map((event) => ({ ...event }))
     },
+    async markPastDue({ createdAt, externalEventId, graceUntil, subscriptionId }) {
+      const prior = events.find((event) => event.external_event_id === externalEventId)
+      if (prior || byEvent.has(externalEventId)) {
+        if (prior?.operation === 'renewal.failed' && prior.past_due_grace_until === graceUntil) {
+          return byId.get(prior.subscription_id) || null
+        }
+        const error = new Error('duplicate_external_event')
+        error.code = 'duplicate_external_event'
+        throw error
+      }
+      const prev = byId.get(subscriptionId)
+      if (!prev) {
+        const error = new Error('subscription_not_found')
+        error.code = 'subscription_not_found'
+        throw error
+      }
+      if (prev.status === 'CANCELED' || prev.status === 'EXPIRED') {
+        const error = new Error('illegal_subscription_transition')
+        error.code = 'illegal_subscription_transition'
+        throw error
+      }
+      if (prev.status === 'PAST_DUE') {
+        if (prev.past_due_grace_until && graceUntil
+          && new Date(graceUntil).getTime() > new Date(prev.past_due_grace_until).getTime()) {
+          const error = new Error('grace_cannot_extend')
+          error.code = 'grace_cannot_extend'
+          throw error
+        }
+        return prev
+      }
+      if (prev.status !== 'ACTIVE') {
+        const error = new Error('illegal_subscription_transition')
+        error.code = 'illegal_subscription_transition'
+        throw error
+      }
+      assertSubscriptionTransition(prev.status, 'PAST_DUE')
+      const stored = clone({
+        ...prev,
+        past_due_grace_until: graceUntil,
+        status: 'PAST_DUE',
+        updated_at: createdAt,
+      })
+      events.push({
+        created_at: createdAt,
+        external_event_id: externalEventId,
+        from_status: prev.status,
+        operation: 'renewal.failed',
+        past_due_grace_until: graceUntil,
+        subscription_id: prev.subscription_id,
+        to_status: 'PAST_DUE',
+      })
+      byEvent.set(externalEventId, prev.subscription_id)
+      byId.set(stored.subscription_id, stored)
+      return stored
+    },
     async schedulePendingPlan({ createdAt, externalEventId, pendingPlanId, subscriptionId }) {
       const prior = events.find((event) => event.external_event_id === externalEventId)
       if (prior || byEvent.has(externalEventId)) {

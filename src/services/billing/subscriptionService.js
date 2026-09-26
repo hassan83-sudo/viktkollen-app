@@ -301,6 +301,10 @@ export function createSubscriptionService({
     })
   }
 
+  async function getSubscription(subscriptionId) {
+    return store.get(subscriptionId)
+  }
+
   async function getClientSafe(userId, clientClaim = {}) {
     const effective = await resolveForUser(userId, clientClaim)
     return toClientSafeSubscription(effective.subscription, effective)
@@ -310,6 +314,7 @@ export function createSubscriptionService({
     advancePeriod,
     createSubscription,
     getClientSafe,
+    getSubscription,
     clearCancelAtPeriodEnd,
     finalizeOpenSubscription,
     resolveForUser,

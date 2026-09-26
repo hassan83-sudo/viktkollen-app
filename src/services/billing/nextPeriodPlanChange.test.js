@@ -105,6 +105,23 @@ describe('BILL-7A next-period plan change', () => {
     })).rejects.toMatchObject({ code: 'duplicate_external_event' })
     expect((await subscriptions.resolveForUser(USER)).plan_id).toBe(CURRENT)
     expect((await subscriptions.resolveForUser(USER)).subscription.pending_plan_id).toBe(TARGET)
+    await subscriptions.scheduleCancelAtPeriodEnd({
+      external_event_id: 'cancel-event',
+      subscription_id: row.subscription_id,
+    })
+    await expect(subscriptions.scheduleNextPeriodPlanChange({
+      external_event_id: 'cancel-event',
+      plan_id: OTHER,
+      subscription_id: row.subscription_id,
+    })).rejects.toMatchObject({ code: 'duplicate_external_event' })
+    const replaced = await subscriptions.scheduleNextPeriodPlanChange({
+      external_event_id: 'change-next',
+      plan_id: OTHER,
+      subscription_id: row.subscription_id,
+    })
+    expect(replaced.plan_id).toBe(CURRENT)
+    expect(replaced.pending_plan_id).toBe(OTHER)
+    expect(replaced.cancel_at_period_end).toBe(true)
   })
 
   it('rejects an unknown plan, plan.free, an inactive plan, and the current plan', async () => {

@@ -343,15 +343,15 @@ begin
     raise exception 'forbidden_admin';
   end if;
   return (
-    select pg_catalog.coalesce(pg_catalog.jsonb_agg(
+    select coalesce(pg_catalog.jsonb_agg(
       pg_catalog.jsonb_build_object(
-        'display_order', pg_catalog.coalesce(stored.display_order, catalog.display_order),
-        'enabled_for_sale', pg_catalog.coalesce(stored.enabled_for_sale, false),
+        'display_order', coalesce(stored.display_order, catalog.display_order),
+        'enabled_for_sale', coalesce(stored.enabled_for_sale, false),
         'featured', false,
         'plan_id', catalog.plan_id,
-        'version', pg_catalog.coalesce(stored.version, 0)
+        'version', coalesce(stored.version, 0)
       )
-      order by pg_catalog.coalesce(stored.display_order, catalog.display_order)
+      order by coalesce(stored.display_order, catalog.display_order)
     ), '[]'::jsonb)
     from billing.paid_candidate_plans() catalog
     left join billing.plan_commercial_controls stored on stored.plan_id = catalog.plan_id
@@ -489,9 +489,9 @@ begin
     raise exception 'unknown_plan';
   end if;
   select
-    pg_catalog.coalesce(stored.display_order, catalog.display_order),
-    pg_catalog.coalesce(stored.enabled_for_sale, false),
-    pg_catalog.coalesce(stored.version, 0)
+    coalesce(stored.display_order, catalog.display_order),
+    coalesce(stored.enabled_for_sale, false),
+    coalesce(stored.version, 0)
   into current_order, current_enabled, current_version
   from billing.paid_candidate_plans() catalog
   left join billing.plan_commercial_controls stored on stored.plan_id = catalog.plan_id
@@ -508,9 +508,9 @@ begin
   from (
     select
       catalog.plan_id,
-      pg_catalog.coalesce(stored.display_order, catalog.display_order) as display_order,
-      pg_catalog.coalesce(stored.enabled_for_sale, false) as enabled_for_sale,
-      pg_catalog.coalesce(stored.version, 0) as version
+      coalesce(stored.display_order, catalog.display_order) as display_order,
+      coalesce(stored.enabled_for_sale, false) as enabled_for_sale,
+      coalesce(stored.version, 0) as version
     from billing.paid_candidate_plans() catalog
     left join billing.plan_commercial_controls stored on stored.plan_id = catalog.plan_id
   ) ranked

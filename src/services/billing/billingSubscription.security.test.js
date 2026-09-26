@@ -6,6 +6,7 @@ import process from 'node:process'
 import { SUBSCRIPTION_OPEN, SUBSCRIPTION_TERMINAL } from './catalog.js'
 import { setSupabaseAuthVerifierForTests } from '../../../api/_shared/verifySupabaseUser.js'
 import handler from '../../../api/billing/user/index.js'
+import { clearSupabaseAdminClientForTests, setSupabaseAdminClientForTests } from '../../../api/_shared/supabaseServer.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../../..')
 const sql = readFileSync(join(root, 'supabase/migrations/20260921200000_billing_subscriptions.sql'), 'utf8')
@@ -144,6 +145,7 @@ describe('BILL-3 subscription API', () => {
   afterEach(() => {
     process.env = { ...originalEnv }
     setSupabaseAuthVerifierForTests(null)
+    clearSupabaseAdminClientForTests()
   })
 
   it('blocks unauthenticated GET and non-GET mutation attempts', async () => {
@@ -166,6 +168,22 @@ describe('BILL-3 subscription API', () => {
   })
 
   it('returns a client-safe snapshot for the JWT user', async () => {
+    setSupabaseAdminClientForTests({
+      schema() {
+        return {
+          from() {
+            const api = {
+              select() { return api },
+              eq() { return api },
+              then(resolve, reject) {
+                return Promise.resolve({ data: [], error: null }).then(resolve, reject)
+              },
+            }
+            return api
+          },
+        }
+      },
+    })
     const response = createResponse()
     await handler(createRequest(), response)
     expect(response.statusCode).toBe(200)

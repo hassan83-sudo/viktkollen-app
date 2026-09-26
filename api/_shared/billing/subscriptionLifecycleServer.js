@@ -6,8 +6,8 @@ import { createServerPrivilegedSubscriptionAuthority, createServerSubscriptionRp
 
 /**
  * Server lifecycle. Durable mode is explicit. Missing credentials throw
- * before any in-memory authority is constructed. User reads stay on
- * api/_shared/billing/subscription.js.
+ * before any in-memory authority is constructed. User reads use
+ * subscriptionRead.js and quotaRead.js.
  */
 export function createServerSubscriptionLifecycle({
   catalog = defaultPlanCatalog,

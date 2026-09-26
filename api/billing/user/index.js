@@ -1,6 +1,7 @@
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../../_shared/aiRouteErrors.js'
-import { inspectServerQuota } from '../../_shared/billing/quota.js'
-import { getServerSubscription } from '../../_shared/billing/subscription.js'
+import { readDurableQuota } from '../../_shared/billing/quotaRead.js'
+import { readDurableUserSubscription } from '../../_shared/billing/subscriptionRead.js'
+import { executeUserBillingIntent } from '../../_shared/billing/userLifecycleIntent.js'
 import { lookupBillingAdmin } from '../../_shared/billing/admin.js'
 import { readPlanComparison } from '../../_shared/billing/planComparisonRead.js'
 import { readUsageSnapshot } from '../../_shared/billing/usageSnapshotRead.js'
@@ -34,6 +35,12 @@ const PUBLIC_OPS = Object.freeze({
   '/api/entitlements': 'entitlements',
 })
 
+const POST_OPS = Object.freeze({
+  '/api/billing/plan-change': 'plan_change',
+  '/api/billing/cancel': 'schedule_cancel',
+  '/api/billing/cancel-undo': 'undo_cancel',
+})
+
 const INTERNAL_OPS = Object.freeze(['quota', 'subscription', 'entitlements', 'plans', 'usage', 'capability'])
 
 function header(request, name) {
@@ -57,6 +64,29 @@ function pathnameOf(value) {
 function normalizePath(path) {
   const trimmed = String(path || '').replace(/\/+$/, '')
   return trimmed || '/'
+}
+
+function requestPaths(request) {
+  const hints = [
+    request.url,
+    header(request, 'x-invoke-path'),
+    header(request, 'x-matched-path'),
+    header(request, 'x-original-uri'),
+    header(request, 'x-forwarded-uri'),
+  ]
+  return hints.map((hint) => normalizePath(pathnameOf(hint))).filter(Boolean)
+}
+
+export function resolveUserBillingPost(request = {}) {
+  for (const path of requestPaths(request)) {
+    if (POST_OPS[path]) return POST_OPS[path]
+  }
+  const path = normalizePath(pathnameOf(request.url || header(request, 'x-invoke-path')))
+  if (path === '/api/billing/user') {
+    const routed = String(request.query?.__vk_route || '').trim()
+    if (Object.values(POST_OPS).includes(routed)) return routed
+  }
+  return null
 }
 
 /**
@@ -85,16 +115,34 @@ export function resolveUserBillingOperation(request = {}) {
 }
 
 async function handleQuota(request, response, auth, requestId) {
+  void request.query?.limit
+  void request.query?.plan
+  void request.query?.plan_id
+  void request.query?.remaining
+  void request.query?.status
+  void request.query?.usage
+  void request.query?.used
+  void request.query?.user_id
+  void request.body
   const feature = typeof request.query?.feature === 'string' ? request.query.feature : ''
   const unit = typeof request.query?.unit === 'string' ? request.query.unit : undefined
-  const quota = await inspectServerQuota({
+  const result = await readDurableQuota({
     feature,
     unit,
-    user: auth.user,
+    userId: auth.user.id,
   })
+  if (result.unavailable) {
+    return sendSafeAiError(response, {
+      code: aiRouteErrorCodes.PROVIDER_UNAVAILABLE,
+      requestId,
+      retryable: true,
+      safeMessage: 'Kvoten kunde inte hämtas just nu.',
+      status: 503,
+    })
+  }
   return response.status(200).json({
     ok: true,
-    quota,
+    quota: result.quota,
     requestId,
   })
 }
@@ -108,11 +156,26 @@ async function handleSubscription(request, response, auth, requestId) {
       requestId,
     })
   }
-  const subscription = await getServerSubscription({ user: auth.user })
+  void request.query?.limit
+  void request.query?.plan
+  void request.query?.plan_id
+  void request.query?.quota
+  void request.query?.status
+  void request.body
+  const result = await readDurableUserSubscription(auth.user.id)
+  if (result.unavailable) {
+    return sendSafeAiError(response, {
+      code: aiRouteErrorCodes.PROVIDER_UNAVAILABLE,
+      requestId,
+      retryable: true,
+      safeMessage: 'Abonnemanget kunde inte hämtas just nu.',
+      status: 503,
+    })
+  }
   return response.status(200).json({
     ok: true,
     requestId,
-    subscription,
+    subscription: result.subscription,
   })
 }
 
@@ -176,6 +239,8 @@ async function handleCapability(request, response, auth, requestId) {
 }
 
 async function handleEntitlements(request, response, auth, requestId) {
+  // Fixed compatibility payload. Not billing authority. Do not pass it to
+  // subscription lifecycle, assignment sync, or quota reservation.
   void request.query?.user_id
   void request.query?.plan
   return response.status(200).json({
@@ -195,7 +260,44 @@ export default async function handler(request, response) {
   void request.query?.isAdmin
   void request.query?.role
   void request.query?.op
-  void request.body
+
+  const postOperation = resolveUserBillingPost(request)
+  if (postOperation) {
+    if (request.method !== 'POST') {
+      response.setHeader('Allow', 'POST')
+      return sendSafeAiError(response, {
+        code: aiRouteErrorCodes.INVALID_REQUEST,
+        requestId,
+        safeMessage: 'Endast POST stöds.',
+        status: 405,
+      })
+    }
+    const postAuth = await verifySupabaseUser(request, { requestId })
+    if (!postAuth.authenticated) {
+      return response.status(postAuth.status).json({
+        error: postAuth.error,
+        ok: false,
+      })
+    }
+    const intent = await executeUserBillingIntent({
+      action: postOperation,
+      body: request.body,
+      userId: postAuth.user.id,
+    })
+    if (!intent.ok) {
+      return response.status(intent.status).json({
+        error: { code: intent.code },
+        ok: false,
+        requestId,
+      })
+    }
+    return response.status(200).json({
+      assignment: intent.assignment,
+      ok: true,
+      requestId,
+      subscription: intent.subscription,
+    })
+  }
 
   const operation = resolveUserBillingOperation(request)
   if (!operation) {

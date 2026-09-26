@@ -75,6 +75,30 @@
     {
       "source": "/api/billing/usage/",
       "destination": "/api/billing/user?__vk_route=usage"
+    },
+    {
+      "source": "/api/billing/plan-change",
+      "destination": "/api/billing/user?__vk_route=plan_change"
+    },
+    {
+      "source": "/api/billing/plan-change/",
+      "destination": "/api/billing/user?__vk_route=plan_change"
+    },
+    {
+      "source": "/api/billing/cancel",
+      "destination": "/api/billing/user?__vk_route=schedule_cancel"
+    },
+    {
+      "source": "/api/billing/cancel/",
+      "destination": "/api/billing/user?__vk_route=schedule_cancel"
+    },
+    {
+      "source": "/api/billing/cancel-undo",
+      "destination": "/api/billing/user?__vk_route=undo_cancel"
+    },
+    {
+      "source": "/api/billing/cancel-undo/",
+      "destination": "/api/billing/user?__vk_route=undo_cancel"
     }
   ]
 }

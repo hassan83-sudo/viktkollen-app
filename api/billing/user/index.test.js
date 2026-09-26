@@ -6,6 +6,35 @@ import handler from './index.js'
 import { setSupabaseAuthVerifierForTests } from '../../_shared/verifySupabaseUser.js'
 import { clearSupabaseAdminClientForTests, setSupabaseAdminClientForTests } from '../../_shared/supabaseServer.js'
 
+function fakeBillingClient(tables) {
+  return {
+    schema() {
+      return {
+        from(table) {
+          const rows = tables[table] || []
+          const filters = []
+          const api = {
+            select() { return api },
+            eq(column, value) {
+              filters.push([column, value])
+              return api
+            },
+            maybeSingle: async () => ({
+              data: rows.find((row) => filters.every(([column, value]) => row[column] === value)) || null,
+              error: null,
+            }),
+            then(resolve, reject) {
+              const data = rows.filter((row) => filters.every(([column, value]) => row[column] === value))
+              return Promise.resolve({ data, error: null }).then(resolve, reject)
+            },
+          }
+          return api
+        },
+      }
+    },
+  }
+}
+
 const root = join(dirname(fileURLToPath(import.meta.url)), '../../..')
 
 const USER = '11111111-1111-4111-8111-111111111111'
@@ -58,7 +87,20 @@ describe('VERCEL-FN-2A user billing dispatcher', () => {
         ? { user: { id: USER } }
         : { error: { message: 'invalid jwt' } }
     ))
-    clearSupabaseAdminClientForTests()
+    setSupabaseAdminClientForTests(fakeBillingClient({
+      plan_entitlements: [{
+        enabled: true,
+        feature: 'food.scan',
+        limit_kind: 'NUMBER',
+        limit_value: 3,
+        plan_id: 'plan.free',
+        unit: 'requests',
+      }],
+      plans: [{ active: true, billing_interval: 'month', plan_id: 'plan.free' }],
+      quota_reservations: [],
+      subscriptions: [],
+      user_plan_assignments: [],
+    }))
   })
 
   afterEach(() => {

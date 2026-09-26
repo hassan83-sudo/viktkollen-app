@@ -10,7 +10,7 @@ stable
 security definer
 set search_path = pg_catalog, pg_temp
 as $$
-  select pg_catalog.coalesce((
+  select coalesce((
     select stored.enabled_for_sale
     from billing.plan_commercial_controls stored
     where stored.plan_id = p_plan_id

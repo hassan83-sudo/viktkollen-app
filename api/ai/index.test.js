@@ -226,33 +226,29 @@ describe('legacy AI API route', () => {
     expect(texts.join('\n').match(/Tillgänglig Viktkollen-data:/g)).toEqual(['Tillgänglig Viktkollen-data:'])
   })
 
-  it('mints a realtime voice session without returning the API key', async () => {
+  // BILL-AI-COST-GATE-1: OpenAI Realtime is BLOCK_UNTIL_VERIFIED (off in the
+  // client, not priced or gated). The route used to mint a session for any
+  // signed-in user; now no session is created and OpenAI is never called,
+  // even with the API key set and a forged Premium claim.
+  it('does not mint a realtime voice session: blocked before any OpenAI call', async () => {
     process.env.OPENAI_API_KEY = 'sk-secret-test-key'
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    setSupabaseAuthVerifierForTests(async () => ({ user: { id: 'a1111111-1111-4111-8111-111111111111' } }))
+    const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({
-        client_secret: { expires_at: 1700000000, value: 'ek_ephemeral_test' },
-        model: 'gpt-4o-mini-realtime-preview',
-      }),
-    }))
+      json: async () => ({ client_secret: { expires_at: 1700000000, value: 'ek_ephemeral_test' }, model: 'gpt-4o-mini-realtime-preview' }),
+    })
+    vi.stubGlobal('fetch', fetchSpy)
 
     const response = await callRoute(createRequest({
-      body: {
-        action: 'realtime-session',
-        checkIn: { steps: 7200 },
-        currentWeight: 83.8,
-        message: 'starta röstsamtal',
-      },
+      body: { action: 'realtime-session', isAdmin: true, plan_id: 'plan.prelim.sek.month.29', premium: true },
     }))
 
     expect(response.statusCode).toBe(200)
-    expect(response.body.available).toBe(true)
-    expect(response.body.clientSecret).toBe('ek_ephemeral_test')
-    expect(JSON.stringify(response.body)).not.toMatch(/sk-secret-test-key|OPENAI_API_KEY|Bearer/)
-    expect(fetch).toHaveBeenCalledWith(
-      'https://api.openai.com/v1/realtime/sessions',
-      expect.objectContaining({ method: 'POST' }),
-    )
+    expect(response.body.available).toBe(false)
+    expect(response.body.message).toMatch(/inte tillgängligt/i)
+    expect(response.body.clientSecret).toBeUndefined()
+    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(JSON.stringify(response.body)).not.toMatch(/sk-secret-test-key|ek_ephemeral_test|Bearer/)
   })
 
   it('keeps chat usable when realtime voice is not configured', async () => {

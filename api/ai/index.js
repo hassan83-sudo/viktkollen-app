@@ -7,6 +7,7 @@ import {
   createVoiceCoachInstructions,
 } from '../../src/services/aiCoachPrompt.js'
 import { resolveDurableUsageRepository } from '../_shared/billing/durableUsageRepository.js'
+import { evaluateFeatureCostGate } from '../_shared/billing/featureCostGate.js'
 import { recordProviderUsageTelemetry } from '../../src/services/billing/providerTelemetry.js'
 import { createRealtimeVoiceSession } from '../_shared/openaiGateway.js'
 import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
@@ -368,6 +369,15 @@ async function handleChat(data, response, meter) {
   })
 }
 
+function sendRealtimeUnavailable(response) {
+  return response.status(200).json({
+    available: false,
+    message: 'Röstsamtal är inte tillgängligt just nu.',
+    ok: true,
+    source: 'unavailable',
+  })
+}
+
 async function handleRealtimeSession(data, response) {
   const chatEngine = getChatEngineData({
     ...data,
@@ -380,14 +390,7 @@ async function handleRealtimeSession(data, response) {
     }),
   })
 
-  if (!session.ok || !session.available) {
-    return response.status(200).json({
-      available: false,
-      message: 'Röstsamtal är inte tillgängligt just nu.',
-      ok: true,
-      source: 'unavailable',
-    })
-  }
+  if (!session.ok || !session.available) return sendRealtimeUnavailable(response)
 
   return response.status(200).json({
     available: true,
@@ -600,6 +603,12 @@ export default async function handler(request, response) {
   }
 
   if (body.action === 'realtime-session') {
+    // BILL-AI-COST-GATE-1: OpenAI Realtime is off in the client but was
+    // reachable here for any signed-in user. It is BLOCK_UNTIL_VERIFIED
+    // until priced and gated, so no session is minted (0 provider calls).
+    // Same "not available" answer the client already handles.
+    const gate = await evaluateFeatureCostGate({ clientClaim: body, featureId: 'ai.voice.session', userId: auth.user.id })
+    if (!gate.allowed) return sendRealtimeUnavailable(response)
     return handleRealtimeSession(body, response)
   }
 

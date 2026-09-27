@@ -93,6 +93,27 @@ export function buildAiEarResultView(result, t = swedish) {
   }
 }
 
+// AI-EAR-1: per-mode presentation of the same backend result. Nothing is
+// invented: labels only frame what the backend returned. Confidence is never
+// shown because the server hop strips scores (see api/ai-ear/interpret).
+const noLabelStates = new Set(['insufficient_signal', 'unavailable', 'unresolved'])
+const notBirdStates = new Set(['speech', 'music', 'human_whistle'])
+
+export function buildAiEarModeView(result, modeId, t = swedish) {
+  const view = buildAiEarResultView(result, t)
+  const withExtras = { ...view, alternatives: [], label: '' }
+  if (noLabelStates.has(view.state)) return withExtras
+  if (modeId === 'bird') {
+    if (view.kind === 'species_lead' && view.species.length > 0) {
+      const [first, ...rest] = view.species
+      return { ...withExtras, alternatives: rest.map((entry) => entry.text), body: null, label: t('modes.bird.resultLabel'), species: [], title: first.text }
+    }
+    if (notBirdStates.has(view.state)) return { ...withExtras, label: t('modes.bird.noBird') }
+    return withExtras
+  }
+  return { ...withExtras, label: t('modes.sound.resultLabel') }
+}
+
 // Only whether a reason can be retried is decided here; the copy is in i18n.
 const errorRetryable = Object.freeze({
   aborted: true,

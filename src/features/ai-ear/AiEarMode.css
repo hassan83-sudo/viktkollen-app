@@ -97,3 +97,98 @@
   outline: 3px solid var(--accent, #22d3ee);
   outline-offset: 3px;
 }
+
+/* AI-EAR-1: mode cards. One native radio group; the card is the label, so the
+   whole card is the target (>= 44 px). Cards reflow to one column on narrow
+   screens and with large text. The selected card is shown by the checked
+   radio and a thicker border, not by colour alone. */
+.ai-ear-modes {
+  border: 0;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.ai-ear-modes legend {
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  padding: 0;
+}
+
+.ai-ear-mode-card {
+  align-items: flex-start;
+  border: 1px solid currentColor;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  gap: 0.6rem;
+  min-height: 44px;
+  min-width: 0;
+  padding: 0.7rem 0.8rem;
+}
+
+.ai-ear-mode-card.is-selected {
+  border-width: 3px;
+  padding: calc(0.7rem - 2px) calc(0.8rem - 2px);
+}
+
+.ai-ear-mode-card:has(input:focus-visible) {
+  outline: 3px solid var(--accent, currentColor);
+  outline-offset: 2px;
+}
+
+.ai-ear-mode-card input {
+  flex: none;
+  height: 24px;
+  margin: 0;
+  width: 24px;
+}
+
+.ai-ear-modes:disabled .ai-ear-mode-card {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.ai-ear-mode-text {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.ai-ear-mode-title {
+  font-weight: 700;
+}
+
+.ai-ear-mode-description {
+  font-size: 0.9em;
+}
+
+.ai-ear-mode-access {
+  font-size: 0.8em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ai-ear-mode-heading {
+  margin: 0.25rem 0 0;
+}
+
+.ai-ear-result-label {
+  font-size: 0.85em;
+  font-weight: 700;
+}
+
+.ai-ear-result h5,
+.ai-ear-error h5 {
+  font-size: 1.05em;
+  margin: 0;
+}
+
+.ai-ear-premium {
+  border-left: 4px solid currentColor;
+  padding-left: 0.6rem;
+}

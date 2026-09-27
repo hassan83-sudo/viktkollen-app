@@ -3,11 +3,17 @@ import { useTranslation } from 'react-i18next'
 
 import { AI_EAR_MAX_INPUT_BYTES, AI_EAR_MAX_SECONDS, blobToAiEarWav } from '../../services/aiEarAudio.js'
 import { interpretAiEarAudio } from '../../services/aiEarInterpret.js'
-import { buildAiEarErrorView, buildAiEarResultView } from './aiEarViewModel.js'
+import { aiEarModes, defaultAiEarModeId, getAiEarMode } from './aiEarModes.js'
+import { buildAiEarErrorView, buildAiEarModeView } from './aiEarViewModel.js'
 import './AiEarMode.css'
 
 /**
  * AI-örat (Smart kamera-läge, bakom featureflaggan `aiEar`, default AV).
+ *
+ * AI-EAR-1: fyra lägen (Ljudigenkänning, Fågelljud, Tal → text, Humma /
+ * sjung) i samma vy. Ljud och fågel använder samma server-hop nedan och visar
+ * resultatet på olika sätt. Tal och humma kräver Premium och är inte kopplade
+ * (se aiEarModes.js): de skickar inget ljud.
  *
  * Flöde: spela in (max 12 s) eller välj en ljudfil -> ljudet görs om till WAV på
  * enheten -> användaren trycker uttryckligen "Analysera ljudet" (det är
@@ -33,6 +39,10 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
   depsRef.current = deps
 
   const [phase, setPhase] = useState('idle') // idle | recording | preparing | ready | analyzing | result | error
+  const [modeId, setModeId] = useState(defaultAiEarModeId)
+  const mode = getAiEarMode(modeId)
+  // Modes cannot change while the microphone or a request is active.
+  const busy = phase === 'recording' || phase === 'preparing' || phase === 'analyzing'
   const [seconds, setSeconds] = useState(0)
   const [view, setView] = useState(null)
   const [truncated, setTruncated] = useState(false)
@@ -166,7 +176,7 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
     controllerRef.current = null
     if (!mountedRef.current) return
     if (outcome.ok) {
-      setView(buildAiEarResultView(outcome.result, t))
+      setView(buildAiEarModeView(outcome.result, modeId, t))
       setPhase('result')
       return
     }
@@ -188,6 +198,12 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
     setPhase('idle')
   }
 
+  function selectMode(id) {
+    if (busy || id === modeId) return
+    reset()
+    setModeId(id)
+  }
+
   // A11Y-8D: all copy from i18n; status text is never only an icon, colour or
   // sound. While recording, the live region announces once that the
   // microphone is on; the per-second counter is visible but not live, so a
@@ -197,7 +213,32 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
       <h3 id="ai-ear-title" className="ai-ear-title">{t('title')}</h3>
       <p className="ai-ear-intro">{t('intro')}</p>
 
-      {phase === 'idle' && (
+      {/* AI-EAR-1: four modes as one native radio group. Each card is the
+          radio's label, so the whole card is the target and arrow keys move
+          between modes. GRATIS/PREMIUM is the verified launch access (see
+          aiEarModes.js), shown as text. */}
+      <fieldset className="ai-ear-modes" disabled={busy}>
+        <legend>{t('modes.legend')}</legend>
+        {aiEarModes.map((entry) => (
+          <label className={`ai-ear-mode-card${entry.id === modeId ? ' is-selected' : ''}`} key={entry.id}>
+            <input checked={entry.id === modeId} name="ai-ear-mode" type="radio" value={entry.id} onChange={() => selectMode(entry.id)} />
+            <span className="ai-ear-mode-text">
+              {/* Spaces between the parts keep them separate words in the
+                  radio's name, whatever the layout. */}
+              <span className="ai-ear-mode-title"><span aria-hidden="true">{entry.icon} </span>{t(`modes.${entry.id}.title`)}</span>{' '}
+              <span className="ai-ear-mode-description">{t(`modes.${entry.id}.description`)}</span>{' '}
+              <span className={`ai-ear-mode-access is-${entry.access}`}>{t(`modes.access.${entry.access}`)}</span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
+
+      <h4 className="ai-ear-mode-heading" id="ai-ear-mode-title">{t(`modes.${mode.id}.title`)}</h4>
+      <p className="ai-ear-mode-instruction">{t(`modes.${mode.id}.instruction`)}</p>
+
+      {!mode.execution && <p className="ai-ear-premium">{t(`modes.${mode.id}.unavailable`)}</p>}
+
+      {mode.execution && phase === 'idle' && (
         <div className="ai-ear-actions">
           <button className="primary-button" type="button" onClick={startRecording}>{t('record')}</button>
           <label className="secondary-button ai-ear-file">
@@ -241,8 +282,15 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
 
       {phase === 'result' && view && (
         <div className={`ai-ear-result is-${view.kind}`} role="status">
-          <h4>{view.title}</h4>
+          {view.label && <p className="ai-ear-result-label">{view.label}</p>}
+          <h5>{view.title}</h5>
           {view.body && <p>{view.body}</p>}
+          {view.alternatives.length > 0 && (
+            <>
+              <p className="ai-ear-result-label">{t('modes.bird.alternatives')}</p>
+              <ul className="ai-ear-alternatives">{view.alternatives.map((line) => <li key={line}>{line}</li>)}</ul>
+            </>
+          )}
           {view.contextLines.length > 0 && (
             <ul className="ai-ear-context">{view.contextLines.map((line) => <li key={line}>{line}</li>)}</ul>
           )}
@@ -259,7 +307,7 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
 
       {phase === 'error' && view && (
         <div className="ai-ear-error" role="alert">
-          <h4>{view.title}</h4>
+          <h5>{view.title}</h5>
           <p>{view.body}</p>
           <div className="ai-ear-actions">
             {view.retryable && wavRef.current && <button className="primary-button" type="button" onClick={analyze}>{t('retry')}</button>}

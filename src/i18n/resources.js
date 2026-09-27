@@ -737,6 +737,15 @@ const sv = {
     cancel: 'Avbryt',
     retry: 'Försök igen',
     footer: 'AI-örat är en prototyp. Resultatet är en indikation, inte en garanti.',
+    // AI-EAR-1: the four modes. Premium modes are shown but not connected.
+    modes: {
+      legend: 'Vad vill du använda?',
+      access: { free: 'Gratis', premium: 'Premium' },
+      sound: { title: 'Ljudigenkänning', description: 'Känn igen ljud omkring dig', instruction: 'Spela in ett ljud omkring dig.', resultLabel: 'AI hör' },
+      bird: { title: 'Fågelljud', description: 'Försök identifiera fågellätet', instruction: 'Spela in fågeln så tydligt som möjligt.', resultLabel: 'Mest sannolikt', alternatives: 'Alternativ', noBird: 'Ingen fågel hördes tydligt' },
+      speech: { title: 'Tal → text', description: 'Gör tal till skriven text', instruction: 'Spela in tal eller välj en ljudfil.', unavailable: 'Tal → text kräver Premium och är inte tillgängligt ännu. Inget ljud skickas.' },
+      melody: { title: 'Humma / sjung', description: 'Analysera hummad eller sjungen melodi', instruction: 'Humma eller sjung melodin.', unavailable: 'Humma / sjung kräver Premium och är inte tillgängligt ännu. Inget ljud skickas.' },
+    },
     hints: { closer: 'Spela in närmare ljudet.', lessNoise: 'Minska bakgrundsljud.', tryAgain: 'Försök igen.' },
     results: {
       insufficient_signal: { title: 'Ljudsignalen räckte inte', body: 'AI-örat hörde för lite för att kunna säga något.' },
@@ -2670,6 +2679,15 @@ const en = {
     cancel: 'Cancel',
     retry: 'Try again',
     footer: 'The AI Ear is a prototype. The result is an indication, not a guarantee.',
+    // AI-EAR-1: the four modes. Premium modes are shown but not connected.
+    modes: {
+      legend: 'What do you want to use?',
+      access: { free: 'Free', premium: 'Premium' },
+      sound: { title: 'Sound recognition', description: 'Recognise sounds around you', instruction: 'Record a sound around you.', resultLabel: 'AI hears' },
+      bird: { title: 'Bird sounds', description: 'Try to identify the bird call', instruction: 'Record the bird as clearly as possible.', resultLabel: 'Most likely', alternatives: 'Alternatives', noBird: 'No bird was clearly heard' },
+      speech: { title: 'Speech → text', description: 'Turn speech into written text', instruction: 'Record speech or choose an audio file.', unavailable: 'Speech → text requires Premium and is not available yet. No audio is sent.' },
+      melody: { title: 'Hum / sing', description: 'Analyse a hummed or sung melody', instruction: 'Hum or sing the melody.', unavailable: 'Hum / sing requires Premium and is not available yet. No audio is sent.' },
+    },
     hints: { closer: 'Record closer to the sound.', lessNoise: 'Reduce background noise.', tryAgain: 'Try again.' },
     results: {
       insufficient_signal: { title: 'The audio signal was not enough', body: 'The AI Ear heard too little to say anything.' },

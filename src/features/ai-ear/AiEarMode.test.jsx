@@ -156,7 +156,8 @@ describe('AiEarMode', () => {
     expect(await screen.findByText('Ingen kontakt med tjänsten')).toBeTruthy()
     expect(screen.getByRole('alert').textContent).not.toMatch(/google|token|403|401|iam/i)
     fireEvent.click(screen.getByText('Försök igen'))
-    expect(await screen.findByText(/tal/i)).toBeTruthy()
+    // AI-EAR-1: /tal/i alone also matches the "Tal → text" mode card.
+    expect(await screen.findByText('Jag hör främst tal i inspelningen.')).toBeTruthy()
     expect(interpret).toHaveBeenCalledTimes(2)
     expect(interpret.mock.calls[1][0].wav).toBe(wavBlob)
   })
@@ -301,7 +302,8 @@ describe('AiEarMode accessibility (A11Y-8D)', () => {
     const footer = await screen.findByText('AI-örat är en prototyp. Resultatet är en indikation, inte en garanti.')
     const result = footer.closest('[role="status"]')
     expect(result).not.toBeNull()
-    expect(result.querySelector('h4').textContent.length).toBeGreaterThan(0)
+    // AI-EAR-1: the result heading is h5, under the mode heading (h4).
+    expect(result.querySelector('h5').textContent.length).toBeGreaterThan(0)
   })
 
   it('is localized (English)', async () => {

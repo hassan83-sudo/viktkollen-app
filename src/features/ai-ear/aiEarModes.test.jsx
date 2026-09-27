@@ -75,7 +75,7 @@ describe('AI Örat modes (AI-EAR-1)', () => {
     render(<AiEarMode deps={makeDeps()} />)
     const cases = [
       ['Fågelljud', 'Spela in fågeln så tydligt som möjligt.'],
-      ['Tal → text', 'Spela in tal eller välj en ljudfil.'],
+      ['Tal → text', 'Tryck på Starta lyssning och prata. Texten visas medan du pratar.'],
       ['Humma / sjung', 'Humma eller sjung melodin.'],
       ['Ljudigenkänning', 'Spela in ett ljud omkring dig.'],
     ]
@@ -86,10 +86,15 @@ describe('AI Örat modes (AI-EAR-1)', () => {
     }
   })
 
-  it('Premium modes (speech, melody) cannot record, choose a file or send audio', () => {
+  // AI-EAR-2C: Tal → text now runs in the browser (aiEarDictation.test.jsx);
+  // neither it nor Humma / sjung records a file or calls the server hop.
+  it('Tal → text and Humma / sjung cannot record a file or send audio to the server', () => {
     const deps = makeDeps()
     render(<AiEarMode deps={deps} />)
-    for (const [name, text] of [[/^Tal → text/, 'Tal → text kräver Premium och är inte tillgängligt ännu. Inget ljud skickas.'], [/^Humma \/ sjung/, 'Humma / sjung kräver Premium och är inte tillgängligt ännu. Inget ljud skickas.']]) {
+    fireEvent.click(screen.getByRole('radio', { name: /^Tal → text/ }))
+    expect(screen.queryByRole('button', { name: 'Spela in' })).toBeNull()
+    expect(document.querySelector('input[type="file"]')).toBeNull()
+    for (const [name, text] of [[/^Humma \/ sjung/, 'Humma / sjung kräver Premium och är inte tillgängligt ännu. Inget ljud skickas.']]) {
       fireEvent.click(screen.getByRole('radio', { name }))
       expect(screen.getByText(text)).toBeTruthy()
       expect(screen.queryByRole('button', { name: 'Spela in' })).toBeNull()
@@ -146,7 +151,7 @@ describe('AI Örat modes (AI-EAR-1)', () => {
     expect(aiEarModes.map(({ access, execution, id }) => [id, access, execution])).toEqual([
       ['sound', 'free', 'interpret'],
       ['bird', 'free', 'interpret'],
-      ['speech', 'premium', null],
+      ['speech', 'premium', 'browser'],
       ['melody', 'premium', null],
     ])
     // Sound and bird run on ai.ear.interpret, which billing keeps free and

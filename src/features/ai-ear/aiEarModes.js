@@ -7,9 +7,11 @@
  *   Viktkollen-owned Cloud Run service (Perch + YAMNet). No third-party
  *   per-analysis fee; billing lists `ai.ear.interpret` as free and unmetered
  *   at launch (LAUNCH_UNMETERED_FEATURES).
- * - speech / melody: the only implementations (OpenAI speech-to-text,
- *   ACRCloud humming) are on the unmerged branch
- *   sprint-12a-ai-ear-reintegration and charge per request. They are not
+ * - speech (AI-EAR-2C): `execution: 'browser'`, the browser's own
+ *   SpeechRecognition. No Viktkollen server, route or provider; no direct
+ *   Viktkollen provider cost.
+ * - melody: the only implementation (ACRCloud humming) is on the unmerged
+ *   branch sprint-12a-ai-ear-reintegration and charges per request. Not
  *   connected here: `execution: null` shows the mode without any way to send
  *   audio.
  *
@@ -20,7 +22,10 @@
 export const aiEarModes = Object.freeze([
   Object.freeze({ access: 'free', execution: 'interpret', icon: '🔊', id: 'sound' }),
   Object.freeze({ access: 'free', execution: 'interpret', icon: '🐦', id: 'bird' }),
-  Object.freeze({ access: 'premium', execution: null, icon: '🗣️', id: 'speech' }),
+  // AI-EAR-2C: the browser's SpeechRecognition (no Viktkollen server or
+  // provider). `access` still shows Premium: a product decision (see
+  // docs/ai-ear/AI_EAR_2C_DICTATION.md), not a gate.
+  Object.freeze({ access: 'premium', execution: 'browser', icon: '🗣️', id: 'speech' }),
   Object.freeze({ access: 'premium', execution: null, icon: '🎶', id: 'melody' }),
 ])
 

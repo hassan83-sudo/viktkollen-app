@@ -192,3 +192,30 @@
   border-left: 4px solid currentColor;
   padding-left: 0.6rem;
 }
+
+/* AI-EAR-2C: Tal → text. The transcript wraps at any width and text size. */
+.ai-ear-dictation,
+.ai-ear-transcript {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.ai-ear-transcript h5 {
+  font-size: 1.05em;
+  margin: 0;
+}
+
+.ai-ear-transcript-text,
+.ai-ear-interim {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.ai-ear-interim {
+  opacity: 0.85;
+}
+
+.ai-ear-status:empty {
+  display: none;
+}

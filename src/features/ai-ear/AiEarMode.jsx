@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import { AI_EAR_MAX_INPUT_BYTES, AI_EAR_MAX_SECONDS, blobToAiEarWav } from '../../services/aiEarAudio.js'
 import { interpretAiEarAudio } from '../../services/aiEarInterpret.js'
+import AiEarDictation from './AiEarDictation.jsx'
 import { aiEarModes, defaultAiEarModeId, getAiEarMode } from './aiEarModes.js'
 import { buildAiEarErrorView, buildAiEarModeView } from './aiEarViewModel.js'
 import { useAiEarRecorder } from './useAiEarRecorder.js'
@@ -13,8 +14,9 @@ import './AiEarMode.css'
  *
  * AI-EAR-1: fyra lägen (Ljudigenkänning, Fågelljud, Tal → text, Humma /
  * sjung) i samma vy. Ljud och fågel använder samma server-hop nedan och visar
- * resultatet på olika sätt. Tal och humma kräver Premium och är inte kopplade
- * (se aiEarModes.js): de skickar inget ljud.
+ * resultatet på olika sätt. Tal → text (AI-EAR-2C) använder webbläsarens
+ * taligenkänning (AiEarDictation.jsx), utan server. Humma är inte kopplat (se
+ * aiEarModes.js) och skickar inget ljud.
  *
  * Flöde: spela in (max 12 s) eller välj en ljudfil -> ljudet görs om till WAV på
  * enheten -> användaren trycker uttryckligen "Analysera ljudet" (det är
@@ -159,6 +161,9 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
 
   function selectMode(id) {
     if (busy || id === modeId) return
+    // Leaving a mode releases its microphone engine: the recorder is cancelled
+    // here, and a Tal → text session is aborted when its panel unmounts.
+    recorder.cancel()
     reset()
     setModeId(id)
   }
@@ -197,7 +202,9 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
 
       {!mode.execution && <p className="ai-ear-premium">{t(`modes.${mode.id}.unavailable`)}</p>}
 
-      {mode.execution && phase === 'idle' && (
+      {mode.execution === 'browser' && <AiEarDictation deps={deps.dictation} microphoneBusy={recorder.recording} />}
+
+      {mode.execution === 'interpret' && phase === 'idle' && (
         <div className="ai-ear-actions">
           <button className="primary-button" type="button" onClick={startRecording}>{t('record')}</button>
           <label className="secondary-button ai-ear-file">

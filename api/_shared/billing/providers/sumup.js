@@ -198,7 +198,10 @@ export function createSumUpCheckoutAdapter({
       }
       const paidAt = new Date(paid[0].timestamp || '')
       if (Number.isNaN(paidAt.getTime())) return closed('PAYMENT_BINDING_UNAVAILABLE', 400)
-      const period = monthPeriod(paidAt)
+      if (checkout.purpose === 'SETUP_RECURRING_PAYMENT') {
+        return closed('SUMUP_SETUP_REQUIRES_ATOMIC_ACTIVATION', 400)
+      }
+      const period = sumUpMonthPeriod(paidAt)
       return {
         ok: true,
         payload: {
@@ -254,7 +257,7 @@ function parseJson(rawBody) {
   }
 }
 
-function monthPeriod(current) {
+export function sumUpMonthPeriod(current) {
   const start = new Date(current)
   const end = new Date(start.getTime())
   const day = end.getUTCDate()

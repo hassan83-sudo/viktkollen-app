@@ -4,11 +4,24 @@ import {
   SUBSCRIPTION_RPC,
 } from '../../../src/services/billing/subscriptionAuthority.js'
 import { PLAN_ASSIGNMENT_RPC } from '../../../src/services/billing/planAssignmentSync.js'
+import { SUMUP_INITIAL_ACTIVATION_RPC } from './sumupInitialActivation.js'
 
 const SAFE_MESSAGES = new Map([
+  ['assignment_sync_unconfirmed', 'assignment_sync_unconfirmed'],
+  ['checkout_binding_mismatch', 'checkout_binding_mismatch'],
+  ['checkout_intent_cancelled', 'checkout_intent_cancelled'],
+  ['checkout_intent_consumed', 'checkout_intent_consumed'],
+  ['checkout_intent_expired', 'checkout_intent_expired'],
+  ['checkout_intent_missing', 'checkout_intent_missing'],
+  ['checkout_intent_unconfirmed', 'checkout_intent_unconfirmed'],
+  ['customer_mismatch', 'customer_mismatch'],
   ['duplicate_external_event', 'duplicate_external_event'],
   ['duplicate_open_subscription', 'duplicate_open_subscription'],
   ['durable_operation_unavailable', 'durable_operation_unavailable'],
+  ['instrument_bind_failed', 'instrument_bind_failed'],
+  ['instrument_conflict', 'instrument_conflict'],
+  ['invalid_provider_event', 'invalid_provider_event'],
+  ['invalid_recurring_instrument', 'invalid_recurring_instrument'],
   ['grace_cannot_extend', 'grace_cannot_extend'],
   ['illegal_subscription_transition', 'illegal_subscription_transition'],
   ['inactive_plan', 'inactive_plan'],
@@ -18,6 +31,9 @@ const SAFE_MESSAGES = new Map([
   ['invalid_status', 'invalid_status'],
   ['invalid_user_id', 'invalid_user_id'],
   ['period_expired', 'period_expired'],
+  ['provider_checkout_mismatch', 'provider_checkout_mismatch'],
+  ['provider_mismatch', 'provider_mismatch'],
+  ['provider_subscription_conflict', 'provider_subscription_conflict'],
   ['subscription_not_found', 'subscription_not_found'],
   ['unknown_plan', 'unknown_plan'],
 ])
@@ -48,6 +64,7 @@ function allowedRpcNames() {
   return new Set([
     ...Object.values(SUBSCRIPTION_RPC),
     PLAN_ASSIGNMENT_RPC,
+    SUMUP_INITIAL_ACTIVATION_RPC,
   ])
 }
 

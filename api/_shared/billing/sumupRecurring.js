@@ -25,6 +25,56 @@ export function createSumUpRecurringState() {
   return { attempts: [], instruments: [], setups: [] }
 }
 
+export function reserveSumUpRenewalAttempt(state, { periodEnd, reference, subscriptionId } = {}) {
+  const period = new Date(periodEnd).toISOString()
+  const existing = state.attempts.find((row) => row.reference === reference)
+  if (existing) {
+    if (existing.subscriptionId !== subscriptionId || existing.periodEnd !== period) {
+      const error = new Error('renewal_attempt_conflict')
+      error.code = 'renewal_attempt_conflict'
+      throw error
+    }
+    return existing
+  }
+  const samePeriod = state.attempts.find((row) => row.subscriptionId === subscriptionId && row.periodEnd === period)
+  if (samePeriod) {
+    const error = new Error('renewal_attempt_conflict')
+    error.code = 'renewal_attempt_conflict'
+    throw error
+  }
+  const attempt = {
+    periodEnd: period,
+    providerCheckoutRef: '',
+    reference,
+    status: 'reserved',
+    subscriptionId,
+  }
+  state.attempts.push(attempt)
+  return attempt
+}
+
+export function markSumUpRenewalProcessing(state, { reference, subscriptionId } = {}) {
+  const attempt = state.attempts.find((row) => row.reference === reference)
+  if (!attempt) {
+    const error = new Error('renewal_attempt_not_found')
+    error.code = 'renewal_attempt_not_found'
+    throw error
+  }
+  if (attempt.subscriptionId !== subscriptionId) {
+    const error = new Error('renewal_attempt_conflict')
+    error.code = 'renewal_attempt_conflict'
+    throw error
+  }
+  if (attempt.status === 'processing') return attempt
+  if (attempt.status !== 'reserved') {
+    const error = new Error('illegal_renewal_transition')
+    error.code = 'illegal_renewal_transition'
+    throw error
+  }
+  attempt.status = 'processing'
+  return attempt
+}
+
 /**
  * Local recurring foundation. The payment instrument token is used only to
  * call SumUp and is not stored, returned, or logged. A SHA-256 fingerprint
@@ -151,21 +201,25 @@ export function createSumUpRecurring({
     const priced = priceFor(planId)
     if (!priced) return { charged: false, code: 'INVALID_PLAN', subscriptionId: subscription.subscription_id }
     const reference = renewalReference(subscription.subscription_id, subscription.current_period_end)
-    let attempt = state.attempts.find((row) => row.reference === reference)
-    if (!attempt) {
-      attempt = {
-        periodEnd: new Date(subscription.current_period_end).toISOString(),
-        providerCheckoutRef: '',
+    let attempt
+    try {
+      attempt = reserveSumUpRenewalAttempt(state, {
+        periodEnd: subscription.current_period_end,
         reference,
-        status: 'reserved',
         subscriptionId: subscription.subscription_id,
+      })
+    } catch (error) {
+      if (error?.code === 'renewal_attempt_conflict') {
+        return { charged: false, code: 'RENEWAL_ATTEMPT_CONFLICT', subscriptionId: subscription.subscription_id }
       }
-      state.attempts.push(attempt)
+      throw error
     }
-    if (attempt.subscriptionId !== subscription.subscription_id) return { charged: false, code: 'RENEWAL_ATTEMPT_CONFLICT', subscriptionId: subscription.subscription_id }
     if (attempt.status === 'succeeded') return applySuccess(subscription, attempt)
     if (attempt.status === 'failed') return { charged: false, code: 'RENEWAL_FAILED', subscriptionId: subscription.subscription_id }
     if (attempt.status === 'processing') return reconcile(subscription, attempt, priced)
+    if (attempt.status !== 'reserved') {
+      return { charged: false, code: 'illegal_renewal_transition', subscriptionId: subscription.subscription_id }
+    }
     let checkout = await singleCheckout(transport, reference)
     if (!checkout) {
       try {
@@ -184,18 +238,19 @@ export function createSumUpRecurring({
       }
     }
     attempt.providerCheckoutRef = checkout.id
-    attempt.status = attempt.status === 'reserved' ? 'created' : attempt.status
     const verified = await transport.retrieveCheckout(checkout.id)
     if (!samePrice(verified, priced) || verified.customer_id !== binding.customerId) {
       return { charged: false, code: 'AMOUNT_MISMATCH', subscriptionId: subscription.subscription_id }
     }
     if (verified.status === 'PAID') return applySuccess(subscription, attempt, verified)
     if (verified.status === 'FAILED' || verified.status === 'EXPIRED') return applyFailure(subscription, attempt)
-    if (attempt.status === 'processing') return { ambiguous: true, charged: false, code: 'RENEWAL_AMBIGUOUS', subscriptionId: subscription.subscription_id }
     const instruments = await transport.listPaymentInstruments(binding.customerId)
     const matches = (Array.isArray(instruments) ? instruments : []).filter((row) => instrumentFingerprint(row?.token) === binding.fingerprint)
     if (matches.length !== 1) return { charged: false, code: 'MISSING_INSTRUMENT', subscriptionId: subscription.subscription_id }
-    attempt.status = 'processing'
+    markSumUpRenewalProcessing(state, {
+      reference: attempt.reference,
+      subscriptionId: subscription.subscription_id,
+    })
     try {
       await transport.processCheckout(verified.id, {
         customer_id: binding.customerId,

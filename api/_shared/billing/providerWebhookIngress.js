@@ -1,5 +1,6 @@
 import { setNoStoreHeaders } from '../aiRouteErrors.js'
 import { getPaymentProviderRegistry, getTrustedProviderApply, normalizeProviderEvent } from './paymentProviderContract.js'
+import { isSumUpCheckoutNotification, SUMUP_PROVIDER } from './providers/sumup.js'
 
 function fail(code, status) {
   return { code, ok: false, status }
@@ -15,7 +16,8 @@ export async function ingestProviderWebhook({
   rawBody = '',
   registry = getPaymentProviderRegistry(),
 } = {}) {
-  const provider = String(headers['x-billing-provider'] || headers['X-Billing-Provider'] || '').trim()
+  const headerProvider = String(headers['x-billing-provider'] || headers['X-Billing-Provider'] || '').trim()
+  const provider = headerProvider || (isSumUpCheckoutNotification(rawBody) ? SUMUP_PROVIDER : '')
   const adapter = provider ? registry.get(provider) : null
   if (!adapter) return fail('UNKNOWN_PROVIDER', 404)
   let verified
@@ -25,7 +27,7 @@ export async function ingestProviderWebhook({
     return fail('INVALID_SIGNATURE', 401)
   }
   if (!verified?.ok || !verified.payload || typeof verified.payload !== 'object') {
-    return fail(verified?.code || 'INVALID_SIGNATURE', 401)
+    return fail(verified?.code || 'INVALID_SIGNATURE', verified?.status || 401)
   }
   const normalized = normalizeProviderEvent(verified.payload)
   if (!normalized.ok) return normalized

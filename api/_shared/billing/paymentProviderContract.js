@@ -14,7 +14,8 @@
  * user cancellation -> schedule cancel at current_period_end, no refund
  * provider termination -> finalize the open subscription, no refund
  *
- * Checkout creation does not grant paid access. No provider is configured.
+ * Checkout creation does not grant paid access. SumUp is the selected
+ * provider and stays unconfigured until server credentials exist.
  */
 
 const EVENT_RE = /^[A-Za-z0-9._:-]+$/

@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { AI_EAR_MAX_INPUT_BYTES, AI_EAR_MAX_SECONDS, blobToAiEarWav } from '../../services/aiEarAudio.js'
 import { interpretAiEarAudio } from '../../services/aiEarInterpret.js'
 import { aiEarModes, defaultAiEarModeId, getAiEarMode } from './aiEarModes.js'
 import { buildAiEarErrorView, buildAiEarModeView } from './aiEarViewModel.js'
+import { useAiEarRecorder } from './useAiEarRecorder.js'
 import './AiEarMode.css'
 
 /**
@@ -18,6 +19,9 @@ import './AiEarMode.css'
  * Flöde: spela in (max 12 s) eller välj en ljudfil -> ljudet görs om till WAV på
  * enheten -> användaren trycker uttryckligen "Analysera ljudet" (det är
  * godkännandet) -> vår server-hop /api/ai-ear/interpret -> resultat.
+ *
+ * AI-EAR-2B: mikrofonen (getUserMedia, MediaRecorder, timer, maxtid,
+ * uppstädning) ägs av useAiEarRecorder.js. Här finns flödet runt den.
  *
  * Ljudet hålls bara i minnet under sessionen: det sparas aldrig, skrivs aldrig
  * till localStorage/databas och loggas aldrig. Inga Google-uppgifter finns i
@@ -36,53 +40,35 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
   const { t } = useTranslation('aiEar')
   const deps = { ...defaultDeps, ...depsOverride }
   const depsRef = useRef(deps)
-  depsRef.current = deps
+  useEffect(() => {
+    depsRef.current = deps
+  })
 
   const [phase, setPhase] = useState('idle') // idle | recording | preparing | ready | analyzing | result | error
   const [modeId, setModeId] = useState(defaultAiEarModeId)
   const mode = getAiEarMode(modeId)
   // Modes cannot change while the microphone or a request is active.
   const busy = phase === 'recording' || phase === 'preparing' || phase === 'analyzing'
-  const [seconds, setSeconds] = useState(0)
   const [view, setView] = useState(null)
   const [truncated, setTruncated] = useState(false)
+  // Mirrors wavRef for rendering (the Retry button needs a prepared recording).
+  const [hasWav, setHasWav] = useState(false)
 
   const mountedRef = useRef(true)
   const wavRef = useRef(null)
-  const streamRef = useRef(null)
-  const recorderRef = useRef(null)
-  const chunksRef = useRef([])
-  const timerRef = useRef(null)
   const controllerRef = useRef(null)
   const busyRef = useRef(false)
 
-  const stopTracks = useCallback(() => {
-    streamRef.current?.getTracks?.().forEach((track) => track.stop())
-    streamRef.current = null
-  }, [])
-
-  const clearTimer = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current)
-    timerRef.current = null
-  }, [])
-
+  // The recorder hook stops the microphone on unmount; this aborts an
+  // in-flight analysis and drops the prepared audio.
   useEffect(() => {
     mountedRef.current = true
     return () => {
       mountedRef.current = false
-      clearTimer()
       controllerRef.current?.abort('unmount')
-      const recorder = recorderRef.current
-      if (recorder && recorder.state !== 'inactive') {
-        recorder.onstop = null
-        try { recorder.stop() } catch { /* already stopped */ }
-      }
-      recorderRef.current = null
-      chunksRef.current = []
       wavRef.current = null
-      stopTracks()
     }
-  }, [clearTimer, stopTracks])
+  }, [])
 
   function showError(reason) {
     if (!mountedRef.current) return
@@ -96,6 +82,7 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
       const prepared = await depsRef.current.blobToWav(blob)
       if (!mountedRef.current) return
       wavRef.current = prepared.wav
+      setHasWav(true)
       setTruncated(prepared.truncated === true)
       setPhase('ready')
     } catch (error) {
@@ -103,56 +90,27 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
     }
   }
 
-  async function startRecording() {
+  const recorder = useAiEarRecorder({
+    getUserMedia: deps.getUserMedia,
+    maxSeconds: AI_EAR_MAX_SECONDS,
+    MediaRecorderImpl: deps.MediaRecorderImpl,
+    onError: showError,
+    onRecorded: prepareBlob,
+    onStart: () => {
+      wavRef.current = null
+      setHasWav(false)
+      setPhase('recording')
+    },
+  })
+  const seconds = recorder.seconds
+
+  function startRecording() {
     if (phase === 'recording') return
-    const Recorder = depsRef.current.MediaRecorderImpl
-    if (!Recorder || typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-      showError('mic_unavailable')
-      return
-    }
-
-    let stream
-    try {
-      stream = await depsRef.current.getUserMedia({ audio: true })
-    } catch (error) {
-      showError(error?.name === 'NotAllowedError' || error?.name === 'SecurityError' ? 'mic_denied' : 'mic_unavailable')
-      return
-    }
-    if (!mountedRef.current) {
-      stream.getTracks?.().forEach((track) => track.stop())
-      return
-    }
-
-    streamRef.current = stream
-    chunksRef.current = []
-    wavRef.current = null
-    const recorder = new Recorder(stream)
-    recorderRef.current = recorder
-    recorder.ondataavailable = (event) => {
-      if (event.data?.size) chunksRef.current.push(event.data)
-    }
-    recorder.onstop = () => {
-      clearTimer()
-      stopTracks()
-      const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' })
-      chunksRef.current = []
-      recorderRef.current = null
-      if (mountedRef.current) prepareBlob(blob)
-    }
     recorder.start()
-    setSeconds(0)
-    setPhase('recording')
-    const startedAt = Date.now()
-    timerRef.current = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startedAt) / 1000)
-      setSeconds(elapsed)
-      if (elapsed >= AI_EAR_MAX_SECONDS) stopRecording()
-    }, 250)
   }
 
   function stopRecording() {
-    const recorder = recorderRef.current
-    if (recorder && recorder.state !== 'inactive') recorder.stop()
+    recorder.stop()
   }
 
   function onFileChosen(event) {
@@ -193,6 +151,7 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
 
   function reset() {
     wavRef.current = null
+    setHasWav(false)
     setView(null)
     setTruncated(false)
     setPhase('idle')
@@ -310,7 +269,7 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
           <h5>{view.title}</h5>
           <p>{view.body}</p>
           <div className="ai-ear-actions">
-            {view.retryable && wavRef.current && <button className="primary-button" type="button" onClick={analyze}>{t('retry')}</button>}
+            {view.retryable && hasWav && <button className="primary-button" type="button" onClick={analyze}>{t('retry')}</button>}
             <button className="secondary-button" type="button" onClick={reset}>{t('newRecording')}</button>
           </div>
         </div>

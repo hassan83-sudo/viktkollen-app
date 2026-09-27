@@ -720,7 +720,6 @@ function OverviewPrimaryActions({
     else onOpenSmartCamera?.()
   }
 
-  const openBody = () => (onOpenBodyScan ? onOpenBodyScan() : goTo('progress', 'body-analysis'))
   const openFood = () => {
     if (onOpenFoodScan) onOpenFoodScan()
     else if (onScanFood) onScanFood()
@@ -744,8 +743,8 @@ function OverviewPrimaryActions({
       accent: 'body',
       alt: '',
       art: 'body',
-      description: t('aiEar:subtitle'),
-      footerLabel: t('common:open'),
+      description: t('aiEar:intro'),
+      footerLabel: t('aiEar:title'),
       hitLabel: t('aiEar:title'),
       icon: 'ear',
       label: t('aiEar:title'),

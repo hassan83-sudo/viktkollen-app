@@ -2,6 +2,8 @@ import { createSupabaseAdminClient } from '../supabaseServer.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../aiRouteErrors.js'
 import { verifySupabaseUser } from '../verifySupabaseUser.js'
 import { readServerPlanSale } from './userLifecycleIntent.js'
+import { getPlanById } from '../../../src/services/billing/planCatalog.js'
+import { getConfiguredSumUpAdapter, minorUnitsFromSumUpAmount, SUMUP_PROVIDER } from './providers/sumup.js'
 
 const PLAN_ID_RE = /^[A-Za-z0-9._-]{1,80}$/
 let saleReaderOverride = null
@@ -21,7 +23,7 @@ export function setCheckoutPortsForTests(ports = null) {
 }
 
 export function getCheckoutAdapter() {
-  return checkoutAdapterOverride
+  return checkoutAdapterOverride || getConfiguredSumUpAdapter()
 }
 
 async function defaultReadSale(planId) {
@@ -71,6 +73,8 @@ export async function beginCheckout({
   void input.entitlements
   void input.price
   void input.price_minor
+  const clientAmount = input.amount
+  const clientCurrency = input.currency
   void input.provider_checkout_ref
   void input.provider_customer_ref
   void input.provider_subscription_ref
@@ -92,9 +96,22 @@ export async function beginCheckout({
   if (!sale?.known || sale.active !== true || sale.enabledForSale !== true) {
     return fail('INVALID_PLAN', 400)
   }
+  const plan = getPlanById(planId)
+  if (!plan || plan.currency !== 'SEK' || !Number.isInteger(plan.price_minor) || plan.price_minor <= 0) {
+    return fail('INVALID_PLAN', 400)
+  }
+  if (clientAmount != null && minorUnitsFromSumUpAmount(clientAmount) !== plan.price_minor) {
+    return fail('INVALID_AMOUNT', 400)
+  }
+  if (clientCurrency != null && String(clientCurrency).trim().toUpperCase() !== 'SEK') {
+    return fail('INVALID_CURRENCY', 400)
+  }
   const adapter = getCheckoutAdapter()
   if (!adapter) return fail('PROVIDER_NOT_CONFIGURED', 503, { validated: true })
   if (typeof ports?.createIntent !== 'function' || typeof ports?.bindCheckoutRef !== 'function') {
+    return fail('DURABLE_UNAVAILABLE', 503, { validated: true })
+  }
+  if (adapter.provider === SUMUP_PROVIDER && typeof ports.cancelIntent !== 'function') {
     return fail('DURABLE_UNAVAILABLE', 503, { validated: true })
   }
   const intent = await ports.createIntent({
@@ -103,14 +120,45 @@ export async function beginCheckout({
     providerPriceRef: adapter.priceRef || null,
     userId,
   })
-  const prepared = await adapter.prepare({ checkoutId: intent.checkoutId, planId, userId })
-  if (prepared?.checkoutUrl || prepared?.url) return fail('PROVIDER_NOT_CONFIGURED', 503, { validated: true })
-  await ports.bindCheckoutRef({
+  let prepared
+  try {
+    prepared = await adapter.prepare({ checkoutId: intent.checkoutId, planId, userId })
+  } catch {
+    await cancelQuietly(ports, intent.checkoutId)
+    return fail('SUMUP_CHECKOUT_FAILED', 502, { validated: true })
+  }
+  if (prepared?.checkoutUrl || prepared?.url) {
+    await cancelQuietly(ports, intent.checkoutId)
+    return fail('PROVIDER_NOT_CONFIGURED', 503, { validated: true })
+  }
+  if (prepared?.hostedCheckoutUrl && adapter.provider !== SUMUP_PROVIDER) {
+    await cancelQuietly(ports, intent.checkoutId)
+    return fail('PROVIDER_NOT_CONFIGURED', 503, { validated: true })
+  }
+  try {
+    await ports.bindCheckoutRef({
+      checkoutId: intent.checkoutId,
+      provider: adapter.provider,
+      providerCheckoutRef: prepared.providerCheckoutRef,
+    })
+  } catch {
+    await cancelQuietly(ports, intent.checkoutId)
+    return fail('SUMUP_CHECKOUT_FAILED', 502, { validated: true })
+  }
+  return fail('CHECKOUT_PENDING', 202, {
     checkoutId: intent.checkoutId,
-    provider: adapter.provider,
-    providerCheckoutRef: prepared.providerCheckoutRef,
+    ...(prepared?.hostedCheckoutUrl ? { hostedCheckoutUrl: prepared.hostedCheckoutUrl } : {}),
+    validated: true,
   })
-  return fail('CHECKOUT_PENDING', 202, { checkoutId: intent.checkoutId, validated: true })
+}
+
+async function cancelQuietly(ports, checkoutId) {
+  if (typeof ports?.cancelIntent !== 'function') return
+  try {
+    await ports.cancelIntent(checkoutId)
+  } catch {
+    /* The failed checkout still grants no access. Expiry closes a pending intent. */
+  }
 }
 
 export async function handleCheckoutRequest(request, response) {
@@ -136,6 +184,7 @@ export async function handleCheckoutRequest(request, response) {
   return response.status(result.status).json({
     accessGranted: false,
     ...(result.checkoutId ? { checkoutId: result.checkoutId } : {}),
+    ...(result.hostedCheckoutUrl ? { hostedCheckoutUrl: result.hostedCheckoutUrl } : {}),
     error: { code: result.code },
     ok: false,
     requestId,

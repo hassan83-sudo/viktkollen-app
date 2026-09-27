@@ -2,6 +2,7 @@ import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../../_sh
 import { readDurableQuota } from '../../_shared/billing/quotaRead.js'
 import { readDurableUserSubscription } from '../../_shared/billing/subscriptionRead.js'
 import { handleCheckoutRequest } from '../../_shared/billing/checkoutIntent.js'
+import { prepareSumUpSandboxSetup } from '../../_shared/billing/sumupSandboxSetup.js'
 import { handleWebhookRequest } from '../../_shared/billing/providerWebhookIngress.js'
 import { executeUserBillingIntent } from '../../_shared/billing/userLifecycleIntent.js'
 import { lookupBillingAdmin } from '../../_shared/billing/admin.js'
@@ -40,6 +41,7 @@ const PUBLIC_OPS = Object.freeze({
 const POST_OPS = Object.freeze({
   '/api/billing/plan-change': 'plan_change',
   '/api/billing/checkout': 'checkout',
+  '/api/billing/sumup-sandbox': 'sumup_sandbox',
   '/api/billing/cancel': 'schedule_cancel',
   '/api/billing/cancel-undo': 'undo_cancel',
 })
@@ -89,6 +91,7 @@ export function resolveUserBillingPost(request = {}) {
   if (path === '/api/billing/user') {
     const routed = String(request.query?.__vk_route || '').trim()
     if (routed === 'webhook') return 'webhook'
+    if (routed === 'sumup_sandbox') return 'sumup_sandbox'
     if (Object.values(POST_OPS).includes(routed)) return routed
   }
   return null
@@ -243,6 +246,47 @@ async function handleCapability(request, response, auth, requestId) {
   })
 }
 
+async function handleSumUpSandbox(request, response, requestId) {
+  if (request.method !== 'POST') {
+    response.setHeader('Allow', 'POST')
+    return sendSafeAiError(response, {
+      code: aiRouteErrorCodes.INVALID_REQUEST,
+      requestId,
+      safeMessage: 'Endast POST stöds.',
+      status: 405,
+    })
+  }
+  const auth = await verifySupabaseUser(request, { requestId })
+  if (!auth.authenticated) {
+    return response.status(auth.status).json({
+      error: auth.error,
+      ok: false,
+    })
+  }
+  const result = await prepareSumUpSandboxSetup({
+    clientAmount: request.body?.amount,
+    clientCurrency: request.body?.currency,
+    userId: auth.user.id,
+  })
+  if (!result.ok) {
+    return response.status(result.status).json({
+      accessGranted: false,
+      error: { code: result.code },
+      ok: false,
+      requestId,
+    })
+  }
+  return response.status(200).json({
+    accessGranted: false,
+    amount: result.amount,
+    checkoutId: result.checkoutId,
+    currency: result.currency,
+    ok: true,
+    purpose: result.purpose,
+    requestId,
+  })
+}
+
 async function handleEntitlements(request, response, auth, requestId) {
   // Fixed compatibility payload. Not billing authority. Do not pass it to
   // subscription lifecycle, assignment sync, or quota reservation.
@@ -269,6 +313,7 @@ export default async function handler(request, response) {
   const postOperation = resolveUserBillingPost(request)
   if (postOperation === 'webhook') return handleWebhookRequest(request, response)
   if (postOperation === 'checkout') return handleCheckoutRequest(request, response)
+  if (postOperation === 'sumup_sandbox') return handleSumUpSandbox(request, response, requestId)
   if (postOperation) {
     if (request.method !== 'POST') {
       response.setHeader('Allow', 'POST')

@@ -93,6 +93,14 @@
       "destination": "/api/billing/user?__vk_route=checkout"
     },
     {
+      "source": "/api/billing/sumup-sandbox",
+      "destination": "/api/billing/user?__vk_route=sumup_sandbox"
+    },
+    {
+      "source": "/api/billing/sumup-sandbox/",
+      "destination": "/api/billing/user?__vk_route=sumup_sandbox"
+    },
+    {
       "source": "/api/billing/webhook",
       "destination": "/api/billing/user?__vk_route=webhook"
     },

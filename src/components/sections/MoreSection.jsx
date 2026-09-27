@@ -4,6 +4,7 @@ import AppErrorBoundary from '../AppErrorBoundary.jsx'
 import PlanCommercialAdmin from '../billing/PlanCommercialAdmin.jsx'
 import PlanComparison from '../billing/PlanComparison.jsx'
 import PlanUsagePanel from '../billing/PlanUsagePanel.jsx'
+import SumUpSandboxWidget from '../billing/SumUpSandboxWidget.jsx'
 import CloudBackupPanel from '../CloudBackupPanel.jsx'
 import CloudStatusPanel from '../CloudStatusPanel.jsx'
 import CloudSyncPanel from '../CloudSyncPanel.jsx'
@@ -17,6 +18,7 @@ import AppSection from '../app/AppSection.jsx'
 import GlobalSearch from '../app/GlobalSearch.jsx'
 import LazySectionFallback from '../app/LazySectionFallback.jsx'
 import { resolveMoreFolderFromTarget } from '../../services/more/moreFolders.js'
+import { sumUpSandboxRequested } from '../../services/billing/sumupWidgetMount.js'
 import {
   clearLocalViktkollenData,
   requestAccountDeletion as requestAccountDeletion,
@@ -190,6 +192,9 @@ function MoreSection({
         onOpen={setActiveFolder}
         onOpenEye={onOpenEye}
       >
+        {sumUpSandboxRequested(window.location.search) ? (
+          <SumUpSandboxWidget authLoading={authLoading} isAuthenticated={isAuthenticated} />
+        ) : null}
         {activeFolder === 'mat' && (
           <AppErrorBoundary area="nutrition" resetKey={`${healthSnapshot?.date}-${weights.length}`} title={t('nutritionError')}>
             {NutritionSectionComponent && (

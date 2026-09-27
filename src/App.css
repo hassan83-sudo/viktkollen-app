@@ -11263,6 +11263,19 @@ body:has(#app-section-home.is-active) {
   transform: translateZ(0);
 }
 
+#app-section-home.is-active .overview-body-scan-home-card {
+  height: clamp(174px, 46vw, 196px);
+  min-height: clamp(174px, 46vw, 196px);
+}
+
+#app-section-home.is-active .overview-body-scan-home-card .overview-primary-visual {
+  inset: 58px 4px 46px;
+}
+
+#app-section-home.is-active .overview-body-scan-home-card .overview-primary-action-footer {
+  min-height: 42px;
+}
+
 #app-section-home.is-active .overview-primary-action.is-coach {
   background:
     radial-gradient(circle at 58% 52%, rgba(73, 109, 255, 0.35), transparent 38%),

@@ -963,7 +963,7 @@ function OverviewBodyScanAction({ onOpenBodyScan }) {
     description: t('home:bodyCardHint'),
     footerLabel: t('bodyScan:startScan'),
     hitLabel: t('home:openBodyScanFullscreen'),
-    image: '/viktkollen-body-scan-card.svg',
+    image: '/viktkollen-body-scan.png',
     imageHeight: 1167,
     imageWidth: 400,
     icon: 'bodyScan',

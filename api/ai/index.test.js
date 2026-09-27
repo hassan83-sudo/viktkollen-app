@@ -4,6 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import handler, { sanitizeCoachRecommendations } from './index.js'
 import { setAiRateLimitAdapterForTests } from '../_shared/aiRateLimiter.js'
 import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
+import { installAiTextBillingTestRuntime, setAiTextBillingRuntimeForTests } from '../_shared/billing/aiTextLiveBilling.js'
+import { resetMeteredLifecycleInflightForTests } from '../../src/services/billing/meteredOperationLifecycle.js'
+
+// BILL-AI-TEXT-QUOTA-1: OpenAI calls are billed as ai.text.request. The
+// tests use the in-memory billing runtime and a real user UUID (the quota
+// engine requires one), as in production.
+const AI_USER = 'a1a1a1a1-1111-4111-8111-111111111111'
 
 function createRequest({ body = {}, method = 'POST', token = 'valid-token' } = {}) {
   const requestBody = JSON.stringify(body)
@@ -47,10 +54,12 @@ describe('legacy AI API route', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     process.env = { ...originalEnv }
+    installAiTextBillingTestRuntime()
+    resetMeteredLifecycleInflightForTests()
     setAiRateLimitAdapterForTests()
     setSupabaseAuthVerifierForTests(async (token) => (
       token === 'valid-token'
-        ? { user: { id: 'ai-user-a' } }
+        ? { user: { id: AI_USER } }
         : { error: { message: token === 'expired-token' ? 'JWT expired' : 'invalid' } }
     ))
   })
@@ -59,6 +68,7 @@ describe('legacy AI API route', () => {
     process.env = { ...originalEnv }
     vi.unstubAllGlobals()
     setAiRateLimitAdapterForTests()
+    setAiTextBillingRuntimeForTests(null)
     setSupabaseAuthVerifierForTests(null)
   })
 
@@ -83,7 +93,7 @@ describe('legacy AI API route', () => {
     expect(expired.statusCode).toBe(401)
     expect(expired.body.error.code).toBe('AUTH_EXPIRED')
     expect(fetchImpl).not.toHaveBeenCalled()
-    expect(JSON.stringify(missing.body)).not.toMatch(/test-key|Bearer|ai-user-a/)
+    expect(JSON.stringify(missing.body)).not.toMatch(/test-key|Bearer|ai-user-a|a1a1a1a1-1111-4111-8111-111111111111/)
   })
 
   it('keeps existing mock fallback when provider key is missing', async () => {

@@ -4,6 +4,13 @@ import handler, { adaptiveCoachRouteInternals } from './index.js'
 import { setAiRateLimitAdapterForTests } from '../_shared/aiRateLimiter.js'
 import { resetAiRequestDeduperForTests } from '../_shared/aiRequestDeduper.js'
 import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
+import { installAiTextBillingTestRuntime, setAiTextBillingRuntimeForTests } from '../_shared/billing/aiTextLiveBilling.js'
+import { resetMeteredLifecycleInflightForTests } from '../../src/services/billing/meteredOperationLifecycle.js'
+
+// BILL-AI-TEXT-QUOTA-1: OpenAI calls are billed as ai.text.request. The
+// tests use the in-memory billing runtime and a real user UUID (the quota
+// engine requires one), as in production.
+const COACH_USER = 'c2c2c2c2-2222-4222-8222-222222222222'
 
 function createRequest({ body = {}, contentType = 'application/json', headers = {}, method = 'POST', token = 'valid-token' } = {}) {
   const request = Readable.from([JSON.stringify(body)])
@@ -51,10 +58,12 @@ describe('adaptive coach API route', () => {
     vi.restoreAllMocks()
     process.env = { ...originalEnv }
     resetAiRequestDeduperForTests()
+    installAiTextBillingTestRuntime()
+    resetMeteredLifecycleInflightForTests()
     setAiRateLimitAdapterForTests()
     setSupabaseAuthVerifierForTests(async (token) => (
       token === 'valid-token'
-        ? { user: { id: 'user-a' } }
+        ? { user: { id: COACH_USER } }
         : { error: { message: token === 'expired-token' ? 'JWT expired' : 'invalid' } }
     ))
   })
@@ -62,6 +71,7 @@ describe('adaptive coach API route', () => {
   afterEach(() => {
     process.env = { ...originalEnv }
     vi.unstubAllGlobals()
+    setAiTextBillingRuntimeForTests(null)
     setSupabaseAuthVerifierForTests(null)
     setAiRateLimitAdapterForTests()
     resetAiRequestDeduperForTests()
@@ -100,7 +110,7 @@ describe('adaptive coach API route', () => {
     expect(expired.statusCode).toBe(401)
     expect(expired.body.error.code).toBe('AUTH_EXPIRED')
     expect(fetchImpl).not.toHaveBeenCalled()
-    expect(JSON.stringify(missing.body)).not.toMatch(/valid-token|user-a|Bearer/)
+    expect(JSON.stringify(missing.body)).not.toMatch(/valid-token|user-a|c2c2c2c2-2222-4222-8222-222222222222|Bearer/)
   })
 
   it('blocks raw sensitive fields', () => {

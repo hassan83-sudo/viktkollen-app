@@ -8,6 +8,13 @@ import {
 } from '../../src/services/aiCoachPrompt.js'
 import { resolveDurableUsageRepository } from '../_shared/billing/durableUsageRepository.js'
 import { evaluateFeatureCostGate } from '../_shared/billing/featureCostGate.js'
+import {
+  createAiTextOperationId,
+  executeAiTextMeteredOperation,
+  mapAiTextBillingHttp,
+  resolveAiTextBillingRuntime,
+} from '../_shared/billing/aiTextLiveBilling.js'
+import { DISPATCH_CAS_RESULT } from '../../src/services/billing/durableOperationStore.js'
 import { recordProviderUsageTelemetry } from '../../src/services/billing/providerTelemetry.js'
 import { createRealtimeVoiceSession } from '../_shared/openaiGateway.js'
 import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
@@ -233,7 +240,24 @@ function makeStudyBuddyFallback(data = {}) {
   return `Titta på nyckelorden i ${subject} och uteslut svar som inte passar. Försök hitta metoden innan du väljer alternativ.`
 }
 
-async function callOpenAI({ maxOutputTokens, meter = {}, prompt, userData }) {
+// BILL-AI-TEXT-QUOTA-1: a billing denial (quota, entitlement, billing
+// store) is a real error for the client. The actions' OpenAI fallbacks must
+// not hide it behind a mock answer.
+class AiTextBillingDenied extends Error {
+  constructor(mapped) {
+    super('ai_text_billing_denied')
+    this.aiTextBilling = true
+    this.code = mapped.code
+    this.retryable = mapped.retryable === true
+    this.status = mapped.status
+  }
+}
+
+function rethrowBillingDenial(error) {
+  if (error?.aiTextBilling === true) throw error
+}
+
+async function requestOpenAI({ maxOutputTokens, prompt, userData }) {
   const openaiResponse = await fetch(OPENAI_API_URL, {
     body: JSON.stringify({
       input: [
@@ -265,23 +289,75 @@ async function callOpenAI({ maxOutputTokens, meter = {}, prompt, userData }) {
     throw new Error(`OpenAI request failed: ${openaiResponse.status}`)
   }
 
-  const payload = await openaiResponse.json()
-  if (meter.requestId) {
-    try {
-      await recordProviderUsageTelemetry({
-        feature: 'ai.text.request',
-        model: getModel(),
-        operationId: meter.requestId,
-        providerData: payload,
-        repository: resolveDurableUsageRepository(),
-        userId: meter.userId,
-      })
-    } catch {
-      // Metering is fail-open and must not change the AI result.
+  return openaiResponse.json()
+}
+
+// BILL-AI-TEXT-QUOTA-1: every OpenAI call from /api/ai is one ai.text.request
+// unit: server plan -> entitlement -> quota reserved -> OpenAI -> commit, or
+// rollback if OpenAI was never started. Denied or exhausted: 0 OpenAI calls.
+async function callOpenAI({ maxOutputTokens, meter = {}, prompt, userData }) {
+  const runtime = await resolveAiTextBillingRuntime()
+  if (!runtime?.ok) {
+    throw new AiTextBillingDenied({ code: aiRouteErrorCodes.PROVIDER_UNAVAILABLE, retryable: true, status: 503 })
+  }
+  const operationId = createAiTextOperationId({
+    clientAttemptId: meter.clientAttemptId,
+    route: `api/ai/index.js#${meter.action || 'unknown'}`,
+    userId: meter.userId,
+  })
+  let payload = null
+  let providerError = null
+  let providerInvoked = false
+  const { billing } = await executeAiTextMeteredOperation({
+    executeProvider: async ({ markDispatched }) => {
+      const claim = await markDispatched()
+      if (
+        claim?.result === DISPATCH_CAS_RESULT.ALREADY_DISPATCHED
+        || (claim && claim.claimed === false && claim.result !== DISPATCH_CAS_RESULT.FIRST_DISPATCH)
+      ) {
+        return { code: 'alreadyDispatched', ok: false, providerRequestStarted: false }
+      }
+      providerInvoked = true
+      try {
+        payload = await requestOpenAI({ maxOutputTokens, prompt, userData })
+        return { ok: true }
+      } catch (error) {
+        providerError = error
+        if (error && typeof error === 'object') error.providerRequestStarted = true
+        throw error
+      }
+    },
+    instanceKey: meter.requestId,
+    log: () => {},
+    operationId,
+    runtime,
+    userId: meter.userId,
+  })
+
+  if (payload && !providerError) {
+    const mapped = mapAiTextBillingHttp(billing, { analysisOk: true, providerAttempted: providerInvoked })
+    if (mapped.kind === 'success') {
+      if (meter.requestId) {
+        try {
+          await recordProviderUsageTelemetry({
+            feature: 'ai.text.request',
+            model: getModel(),
+            operationId: meter.requestId,
+            providerData: payload,
+            repository: resolveDurableUsageRepository(),
+            userId: meter.userId,
+          })
+        } catch {
+          // Metering is fail-open and must not change the AI result.
+        }
+      }
+      return parseJson(extractText(payload))
     }
   }
-
-  return parseJson(extractText(payload))
+  // OpenAI failed after dispatch: quota already settled by the lifecycle;
+  // the action keeps its existing fallback answer.
+  if (providerError) throw providerError
+  throw new AiTextBillingDenied(mapAiTextBillingHttp(billing, { analysisOk: false, providerAttempted: providerInvoked }))
 }
 
 async function handleDailyCoach(data, response, meter) {
@@ -306,6 +382,7 @@ async function handleDailyCoach(data, response, meter) {
       summary: result.summary || makeDailyCoachFallback(data),
     })
   } catch (error) {
+    rethrowBillingDenial(error)
     console.warn('[api/ai] daily-coach OpenAI failed, using mock', {
       error: error instanceof Error ? error.message : String(error),
     })
@@ -344,6 +421,7 @@ async function handleChat(data, response, meter) {
         })
       }
     } catch (error) {
+      rethrowBillingDenial(error)
       console.warn('[api/ai] chat OpenAI failed, using mock', {
         error: error instanceof Error ? error.message : String(error),
       })
@@ -426,6 +504,7 @@ async function handleStudyBuddy(data, response, meter) {
       source: 'openai',
     })
   } catch (error) {
+    rethrowBillingDenial(error)
     console.warn('[api/ai] study-buddy OpenAI failed, using mock', {
       error: error instanceof Error ? error.message : String(error),
     })
@@ -472,6 +551,7 @@ async function handleProactiveCoach(data, response, meter) {
       source: 'openai',
     })
   } catch (error) {
+    rethrowBillingDenial(error)
     console.warn('[api/ai] proactive-coach OpenAI failed, using mock', {
       error: error instanceof Error ? error.message : String(error),
     })
@@ -523,6 +603,7 @@ async function handleWeeklyReport(data, response, meter) {
       source: 'openai',
     })
   } catch (error) {
+    rethrowBillingDenial(error)
     console.warn('[api/ai] weekly-report OpenAI failed, using mock', {
       error: error instanceof Error ? error.message : String(error),
     })
@@ -584,7 +665,24 @@ export default async function handler(request, response) {
     })
   }
 
-  const meter = { requestId, userId: auth.user.id }
+  const clientAttemptId = String(request.headers?.['x-viktkollen-request-id'] || '').trim().slice(0, 80)
+  const meter = { action: body.action, clientAttemptId, requestId, userId: auth.user.id }
+
+  try {
+    return await dispatchAction(body, response, meter, auth)
+  } catch (error) {
+    if (error?.aiTextBilling !== true) throw error
+    return sendSafeAiError(response, {
+      code: error.code,
+      requestId,
+      retryable: error.retryable,
+      status: error.status,
+    })
+  }
+}
+
+async function dispatchAction(body, response, meter, auth) {
+  const { requestId } = meter
 
   if (body.action === 'proactive-coach') {
     return handleProactiveCoach(body, response, meter)

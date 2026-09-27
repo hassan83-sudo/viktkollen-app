@@ -40,7 +40,8 @@ export const FEATURE_COST_POLICY = Object.freeze({
   'ai.ear.transcription': Object.freeze({ costClass: FEATURE_COST_CLASS.METERED, enforcement: 'none_route_not_on_main', premiumOnly: true, status: 'dormant' }),
   // OpenAI vision/text features with an existing Free quota in the plan matrix.
   'ai.eye.analysis': Object.freeze({ costClass: FEATURE_COST_CLASS.METERED, enforcement: 'live_billing', premiumOnly: false, status: 'live' }),
-  'ai.text.request': Object.freeze({ costClass: FEATURE_COST_CLASS.METERED, enforcement: 'missing_quota_gate', premiumOnly: false, status: 'live' }),
+  // BILL-AI-TEXT-QUOTA-1: /api/ai and /api/adaptive-coach use live billing.
+  'ai.text.request': Object.freeze({ costClass: FEATURE_COST_CLASS.METERED, enforcement: 'live_billing', premiumOnly: false, status: 'live' }),
   'body.scan': Object.freeze({ costClass: FEATURE_COST_CLASS.METERED, enforcement: 'live_billing', premiumOnly: false, status: 'live' }),
   'food.scan': Object.freeze({ costClass: FEATURE_COST_CLASS.METERED, enforcement: 'live_billing', premiumOnly: false, status: 'live' }),
   // OpenAI Realtime voice: disabled in the client, cost per minute not

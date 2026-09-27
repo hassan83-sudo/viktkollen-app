@@ -11,6 +11,13 @@ import { aiRouteErrorCodes, mapGatewayErrorCode, sendSafeAiError, setNoStoreHead
 import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { createAiRequestFingerprint, runDedupedAiRequest } from '../_shared/aiRequestDeduper.js'
 import { resolveDurableUsageRepository } from '../_shared/billing/durableUsageRepository.js'
+import {
+  createAiTextOperationId,
+  executeAiTextMeteredOperation,
+  mapAiTextBillingHttp,
+  resolveAiTextBillingRuntime,
+} from '../_shared/billing/aiTextLiveBilling.js'
+import { DISPATCH_CAS_RESULT } from '../../src/services/billing/durableOperationStore.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 
 const MAX_PAYLOAD_BYTES = 12000
@@ -224,11 +231,12 @@ export default async function handler(request, response) {
   }
 
   const fingerprint = createAiRequestFingerprint(facts)
-  const { promise: providerPromise } = runDedupedAiRequest({
-    fingerprint,
-    route: 'adaptiveCoach',
-    userId: auth.user.id,
-  }, () => callOpenAiJson({
+  const requestOpenAi = () => {
+    const { promise } = runDedupedAiRequest({
+      fingerprint,
+      route: 'adaptiveCoach',
+      userId: auth.user.id,
+    }, () => callOpenAiJson({
       feature: 'ai.text.request',
       input: buildCoachPrompt(facts, requestId),
       maxOutputTokens: 700,
@@ -239,7 +247,55 @@ export default async function handler(request, response) {
       usageRepository: resolveDurableUsageRepository(),
       userId: auth.user.id,
     }))
-  const result = await providerPromise
+    return promise
+  }
+
+  // BILL-AI-TEXT-QUOTA-1: with OpenAI configured, one coach request is one
+  // ai.text.request unit through the durable metered lifecycle (server plan,
+  // entitlement, quota reserved before OpenAI; commit, or rollback if OpenAI
+  // never started). Without a key the gateway answers "not configured" and
+  // nothing is billed, as before.
+  let result
+  if (process.env.OPENAI_API_KEY) {
+    const runtime = await resolveAiTextBillingRuntime()
+    if (!runtime?.ok) {
+      return sendSafeAiError(response, { code: aiRouteErrorCodes.PROVIDER_UNAVAILABLE, requestId, retryable: true, status: 503 })
+    }
+    let providerInvoked = false
+    const { billing } = await executeAiTextMeteredOperation({
+      executeProvider: async ({ markDispatched }) => {
+        const claim = await markDispatched()
+        if (
+          claim?.result === DISPATCH_CAS_RESULT.ALREADY_DISPATCHED
+          || (claim && claim.claimed === false && claim.result !== DISPATCH_CAS_RESULT.FIRST_DISPATCH)
+        ) {
+          return { code: 'alreadyDispatched', ok: false, providerRequestStarted: false }
+        }
+        providerInvoked = true
+        result = await requestOpenAi()
+        if (result.ok) return { ok: true }
+        const notStarted = result.error?.code === 'aiNotConfigured'
+        return { code: result.error?.code, ok: false, providerRequestStarted: !notStarted, timeout: result.error?.code === 'timeout' }
+      },
+      instanceKey: requestId,
+      log: () => {},
+      operationId: createAiTextOperationId({
+        clientAttemptId: getHeader(request, 'x-viktkollen-request-id').trim().slice(0, 80),
+        route: 'api/adaptive-coach/index.js',
+        userId: auth.user.id,
+      }),
+      runtime,
+      userId: auth.user.id,
+    })
+    const mapped = mapAiTextBillingHttp(billing, { analysisOk: result?.ok === true, providerAttempted: providerInvoked })
+    // Denied or not settled (quota, entitlement, replay, billing store):
+    // no answer from a request that was not billed correctly.
+    if (!result || (result.ok && mapped.kind !== 'success')) {
+      return sendSafeAiError(response, { code: mapped.code, requestId, retryable: mapped.retryable, status: mapped.status })
+    }
+  } else {
+    result = await requestOpenAi()
+  }
 
   if (!result.ok) {
     const code = mapGatewayErrorCode(result.error?.code)

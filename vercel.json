@@ -85,6 +85,22 @@
       "destination": "/api/billing/user?__vk_route=plan_change"
     },
     {
+      "source": "/api/billing/checkout",
+      "destination": "/api/billing/user?__vk_route=checkout"
+    },
+    {
+      "source": "/api/billing/checkout/",
+      "destination": "/api/billing/user?__vk_route=checkout"
+    },
+    {
+      "source": "/api/billing/webhook",
+      "destination": "/api/billing/user?__vk_route=webhook"
+    },
+    {
+      "source": "/api/billing/webhook/",
+      "destination": "/api/billing/user?__vk_route=webhook"
+    },
+    {
       "source": "/api/billing/cancel",
       "destination": "/api/billing/user?__vk_route=schedule_cancel"
     },

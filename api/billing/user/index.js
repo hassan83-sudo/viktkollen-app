@@ -1,6 +1,8 @@
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../../_shared/aiRouteErrors.js'
 import { readDurableQuota } from '../../_shared/billing/quotaRead.js'
 import { readDurableUserSubscription } from '../../_shared/billing/subscriptionRead.js'
+import { handleCheckoutRequest } from '../../_shared/billing/checkoutIntent.js'
+import { handleWebhookRequest } from '../../_shared/billing/providerWebhookIngress.js'
 import { executeUserBillingIntent } from '../../_shared/billing/userLifecycleIntent.js'
 import { lookupBillingAdmin } from '../../_shared/billing/admin.js'
 import { readPlanComparison } from '../../_shared/billing/planComparisonRead.js'
@@ -37,6 +39,7 @@ const PUBLIC_OPS = Object.freeze({
 
 const POST_OPS = Object.freeze({
   '/api/billing/plan-change': 'plan_change',
+  '/api/billing/checkout': 'checkout',
   '/api/billing/cancel': 'schedule_cancel',
   '/api/billing/cancel-undo': 'undo_cancel',
 })
@@ -79,11 +82,13 @@ function requestPaths(request) {
 
 export function resolveUserBillingPost(request = {}) {
   for (const path of requestPaths(request)) {
+    if (path === '/api/billing/webhook') return 'webhook'
     if (POST_OPS[path]) return POST_OPS[path]
   }
   const path = normalizePath(pathnameOf(request.url || header(request, 'x-invoke-path')))
   if (path === '/api/billing/user') {
     const routed = String(request.query?.__vk_route || '').trim()
+    if (routed === 'webhook') return 'webhook'
     if (Object.values(POST_OPS).includes(routed)) return routed
   }
   return null
@@ -262,6 +267,8 @@ export default async function handler(request, response) {
   void request.query?.op
 
   const postOperation = resolveUserBillingPost(request)
+  if (postOperation === 'webhook') return handleWebhookRequest(request, response)
+  if (postOperation === 'checkout') return handleCheckoutRequest(request, response)
   if (postOperation) {
     if (request.method !== 'POST') {
       response.setHeader('Allow', 'POST')

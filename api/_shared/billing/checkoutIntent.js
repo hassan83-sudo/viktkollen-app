@@ -5,9 +5,23 @@ import { readServerPlanSale } from './userLifecycleIntent.js'
 
 const PLAN_ID_RE = /^[A-Za-z0-9._-]{1,80}$/
 let saleReaderOverride = null
+let checkoutAdapterOverride = null
+let checkoutPortsOverride = null
 
 export function setCheckoutSaleReaderForTests(reader = null) {
   saleReaderOverride = typeof reader === 'function' ? reader : null
+}
+
+export function setCheckoutAdapterForTests(adapter = null) {
+  checkoutAdapterOverride = adapter?.testOnly === true ? adapter : null
+}
+
+export function setCheckoutPortsForTests(ports = null) {
+  checkoutPortsOverride = ports || null
+}
+
+export function getCheckoutAdapter() {
+  return checkoutAdapterOverride
 }
 
 async function defaultReadSale(planId) {
@@ -41,7 +55,12 @@ function readBody(body) {
  * the body. No provider is connected, so a validated request fails closed
  * and does not create a subscription.
  */
-export async function beginCheckout({ body, readSale = saleReaderOverride || defaultReadSale, userId } = {}) {
+export async function beginCheckout({
+  body,
+  ports = checkoutPortsOverride,
+  readSale = saleReaderOverride || defaultReadSale,
+  userId,
+} = {}) {
   if (!userId) return fail('AUTH_REQUIRED', 401)
   const input = readBody(body)
   void input.cancel_at_period_end
@@ -52,6 +71,7 @@ export async function beginCheckout({ body, readSale = saleReaderOverride || def
   void input.entitlements
   void input.price
   void input.price_minor
+  void input.provider_checkout_ref
   void input.provider_customer_ref
   void input.provider_subscription_ref
   void input.quota
@@ -72,7 +92,25 @@ export async function beginCheckout({ body, readSale = saleReaderOverride || def
   if (!sale?.known || sale.active !== true || sale.enabledForSale !== true) {
     return fail('INVALID_PLAN', 400)
   }
-  return fail('PROVIDER_NOT_CONFIGURED', 503, { validated: true })
+  const adapter = getCheckoutAdapter()
+  if (!adapter) return fail('PROVIDER_NOT_CONFIGURED', 503, { validated: true })
+  if (typeof ports?.createIntent !== 'function' || typeof ports?.bindCheckoutRef !== 'function') {
+    return fail('DURABLE_UNAVAILABLE', 503, { validated: true })
+  }
+  const intent = await ports.createIntent({
+    planId,
+    provider: adapter.provider,
+    providerPriceRef: adapter.priceRef || null,
+    userId,
+  })
+  const prepared = await adapter.prepare({ checkoutId: intent.checkoutId, planId, userId })
+  if (prepared?.checkoutUrl || prepared?.url) return fail('PROVIDER_NOT_CONFIGURED', 503, { validated: true })
+  await ports.bindCheckoutRef({
+    checkoutId: intent.checkoutId,
+    provider: adapter.provider,
+    providerCheckoutRef: prepared.providerCheckoutRef,
+  })
+  return fail('CHECKOUT_PENDING', 202, { checkoutId: intent.checkoutId, validated: true })
 }
 
 export async function handleCheckoutRequest(request, response) {
@@ -97,6 +135,7 @@ export async function handleCheckoutRequest(request, response) {
   })
   return response.status(result.status).json({
     accessGranted: false,
+    ...(result.checkoutId ? { checkoutId: result.checkoutId } : {}),
     error: { code: result.code },
     ok: false,
     requestId,

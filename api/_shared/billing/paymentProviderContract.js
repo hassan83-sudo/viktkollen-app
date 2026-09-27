@@ -113,6 +113,7 @@ export function normalizeProviderEvent(payload) {
     periodEnd: optionalTimestamp(payload.periodEnd),
     periodStart: optionalTimestamp(payload.periodStart),
     provider,
+    providerCheckoutRef: optionalToken(payload.providerCheckoutRef, 120),
     providerCustomerRef: optionalToken(payload.providerCustomerRef, 120),
     providerEventId,
     providerPriceRef: optionalToken(payload.providerPriceRef, 120),
@@ -120,7 +121,8 @@ export function normalizeProviderEvent(payload) {
     type,
   }
   if (event.checkoutId === false || event.graceUntil === false || event.paymentStatus === false
-    || event.periodEnd === false || event.periodStart === false || event.providerCustomerRef === false
+    || event.periodEnd === false || event.periodStart === false || event.providerCheckoutRef === false
+    || event.providerCustomerRef === false
     || event.providerPriceRef === false || event.providerSubscriptionRef === false) {
     return { code: 'INVALID_PROVIDER_EVENT', ok: false, status: 400 }
   }
@@ -149,6 +151,7 @@ export function providerEventFingerprint(event) {
     periodEnd: event.periodEnd,
     periodStart: event.periodStart,
     provider: event.provider,
+    providerCheckoutRef: event.providerCheckoutRef,
     providerCustomerRef: event.providerCustomerRef,
     providerEventId: event.providerEventId,
     providerPriceRef: event.providerPriceRef,

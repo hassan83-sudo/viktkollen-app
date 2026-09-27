@@ -69,6 +69,7 @@ export function createMemoryProviderBindings() {
 export function createProviderEventProcessor({
   activation,
   bindings,
+  durableActivate = null,
   inbox,
   intents,
   readSale,
@@ -107,7 +108,10 @@ export function createProviderEventProcessor({
         return prior.result
       }
 
-      if (event.type === 'checkout.activated') return remember(event, await activateCheckout(event))
+      if (event.type === 'checkout.activated') {
+        if (typeof durableActivate === 'function') return remember(event, await durableActivate(event))
+        return remember(event, await activateCheckout(event))
+      }
       if (event.type === 'renewal.succeeded' || event.type === 'renewal.failed') {
         return remember(event, await applyRenewal(event))
       }

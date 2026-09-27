@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
-import { beginCheckout, handleCheckoutRequest as checkoutHandler, setCheckoutSaleReaderForTests } from './checkoutIntent.js'
+import { beginCheckout, handleCheckoutRequest as checkoutHandler, setCheckoutAdapterForTests, setCheckoutPortsForTests, setCheckoutSaleReaderForTests } from './checkoutIntent.js'
 import { handleWebhookRequest as webhookHandler } from './providerWebhookIngress.js'
 import {
   createProviderRegistry,
@@ -97,6 +97,8 @@ function activatedEvent(overrides = {}) {
 afterEach(() => {
   setSupabaseAuthVerifierForTests(null)
   setCheckoutSaleReaderForTests(null)
+  setCheckoutAdapterForTests(null)
+  setCheckoutPortsForTests(null)
   setPaymentProviderRegistryForTests(null)
   setTrustedProviderApplyForTests(null)
 })

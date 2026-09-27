@@ -100,6 +100,19 @@ describe('BILL-10B SumUp recurring foundation', () => {
     expect(JSON.stringify(second.state)).not.toMatch(/4111111111111111|"cvv"|card_number/)
   })
 
+  it('does not bind an instrument when the retrieved setup merchant or status is wrong', async () => {
+    const { recurring, sumup, state, transport } = await world()
+    await recurring.beginRecurringSetup({ subscription: sumup, userId: USER })
+    transport.markSetup({ merchant_code: 'MOTHER1', status: 'PAID', token: TOKEN })
+    const merchant = await recurring.confirmRecurringInstrument({ subscription: sumup, userId: USER })
+    expect(merchant).toMatchObject({ accessGranted: false, code: 'MERCHANT_MISMATCH' })
+    expect(state.instruments).toEqual([])
+    transport.markSetup({ merchant_code: MERCHANT, status: 'FAILED', token: TOKEN })
+    const failed = await recurring.confirmRecurringInstrument({ subscription: sumup, userId: USER })
+    expect(failed).toMatchObject({ accessGranted: false, code: 'PAYMENT_FAILED' })
+    expect(state.instruments).toEqual([])
+  })
+
   it('keeps the instrument token out of the subscription API, logs, and client env', async () => {
     const { recurring, sumup, state, transport } = await world()
     await recurring.beginRecurringSetup({ subscription: sumup, userId: USER })

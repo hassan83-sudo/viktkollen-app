@@ -281,6 +281,23 @@ describe('BILL-10A SumUp adapter', () => {
       registry,
     })).resolves.toMatchObject({ code: 'CHECKOUT_INTENT_MISSING' })
 
+    store.set('checkout', { ...checkout, merchant_code: 'MOTHER1' })
+    await expect(ingestProviderWebhook({
+      applyTrusted: (event) => processor.apply(event),
+      rawBody: note,
+      registry,
+    })).resolves.toMatchObject({ code: 'MERCHANT_MISMATCH' })
+    expect(db.getIntent(pending.checkoutId).status).toBe('pending')
+    expect(db.quotaPlan(USER)).toBe('plan.free')
+
+    store.set('checkout', { ...checkout, status: 'EXPIRED' })
+    await expect(ingestProviderWebhook({
+      applyTrusted: (event) => processor.apply(event),
+      rawBody: note,
+      registry,
+    })).resolves.toMatchObject({ code: 'PAYMENT_FAILED' })
+    expect(db.quotaPlan(USER)).toBe('plan.free')
+
     store.set('checkout', checkout)
     const verified = await ingestProviderWebhook({
       applyTrusted: (event) => processor.apply(event),

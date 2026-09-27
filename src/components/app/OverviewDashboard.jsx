@@ -1376,7 +1376,9 @@ function OverviewDashboard({
           }}
         />
         <OverviewCheckInAction onNavigateSection={onNavigateSection} />
-        <OverviewBodyScanAction onOpenBodyScan={() => setBodyScanOpen(true)} />
+        <div className="overview-primary-actions overview-body-scan-original-size">
+          <OverviewBodyScanAction onOpenBodyScan={() => setBodyScanOpen(true)} />
+        </div>
       </section>
 
       <section className="overview-home-section" aria-labelledby="overview-advice-title">

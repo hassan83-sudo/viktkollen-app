@@ -354,6 +354,51 @@ describe('BILL-10A SumUp adapter', () => {
     expect(verified.payload.providerCustomerRef).toBe('cus_bill10a')
     expect(verified.payload.providerSubscriptionRef).toBe(TRANSACTION_ID)
   })
+
+  it('maps recurring customer, list, and process calls without card data or a live request', async () => {
+    const seen = []
+    const transport = createSumUpHttpTransport({
+      apiKey: 'test-only-key',
+      async fetchImpl(url, options) {
+        seen.push({ body: options.body ? JSON.parse(options.body) : null, method: options.method, url })
+        return {
+          async json() {
+            return [{ id: CHECKOUT_ID, token: '6878cb7f-6515-47bf-bdd9-1408d270fdce' }]
+          },
+          ok: options.method !== 'CONFLICT',
+          status: 200,
+        }
+      },
+    })
+    await transport.createCustomer({ customer_id: 'vk11111111111141118111111111111111' })
+    await transport.listCheckouts('rn-ref')
+    await transport.listPaymentInstruments('vk11111111111141118111111111111111')
+    await transport.processCheckout(CHECKOUT_ID, {
+      customer_id: 'vk11111111111141118111111111111111',
+      payment_type: 'card',
+      token: '6878cb7f-6515-47bf-bdd9-1408d270fdce',
+    })
+    expect(seen.map((call) => `${call.method} ${call.url}`)).toEqual([
+      'POST https://api.sumup.com/v0.1/customers',
+      'GET https://api.sumup.com/v0.1/checkouts?checkout_reference=rn-ref',
+      'GET https://api.sumup.com/v0.1/customers/vk11111111111141118111111111111111/payment-instruments',
+      `PUT https://api.sumup.com/v0.1/checkouts/${CHECKOUT_ID}`,
+    ])
+    expect(seen[0].body).toEqual({ customer_id: 'vk11111111111141118111111111111111' })
+    expect(seen[3].body).toEqual({
+      customer_id: 'vk11111111111141118111111111111111',
+      payment_type: 'card',
+      token: '6878cb7f-6515-47bf-bdd9-1408d270fdce',
+    })
+    expect(JSON.stringify(seen[3].body)).not.toMatch(/4111111111111111|"cvv"|card_number/)
+    const denied = createSumUpHttpTransport({
+      apiKey: 'test-only-key',
+      async fetchImpl() {
+        return { ok: false, status: 409, async json() { return { message: 'hidden' } } }
+      },
+    })
+    await expect(denied.createCheckout({ amount: 4 })).rejects.toMatchObject({ code: 'SUMUP_REFERENCE_EXISTS' })
+  })
 })
 
 function ports(db) {

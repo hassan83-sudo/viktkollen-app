@@ -73,7 +73,7 @@ export function createSumUpHttpTransport({ apiKey, fetchImpl = globalThis.fetch,
     })
     if (!response?.ok) {
       const error = new Error('sumup_http_failed')
-      error.code = 'SUMUP_UNAVAILABLE'
+      error.code = response?.status === 409 ? 'SUMUP_REFERENCE_EXISTS' : 'SUMUP_UNAVAILABLE'
       throw error
     }
     return response.json()
@@ -82,6 +82,24 @@ export function createSumUpHttpTransport({ apiKey, fetchImpl = globalThis.fetch,
   return {
     async createCheckout(body) {
       return request('/v0.1/checkouts', { body, method: 'POST' })
+    },
+    async createCustomer(body) {
+      return request('/v0.1/customers', { body, method: 'POST' })
+    },
+    async listCheckouts(checkoutReference) {
+      const reference = encodeURIComponent(String(checkoutReference || ''))
+      return request(`/v0.1/checkouts?checkout_reference=${reference}`, { method: 'GET' })
+    },
+    async listPaymentInstruments(customerId) {
+      return request(`/v0.1/customers/${encodeURIComponent(customerId)}/payment-instruments`, { method: 'GET' })
+    },
+    async processCheckout(checkoutId, body) {
+      if (!CHECKOUT_ID_RE.test(String(checkoutId || ''))) {
+        const error = new Error('invalid_sumup_checkout')
+        error.code = 'INVALID_PROVIDER_EVENT'
+        throw error
+      }
+      return request(`/v0.1/checkouts/${checkoutId}`, { body, method: 'PUT' })
     },
     async retrieveCheckout(checkoutId) {
       if (!CHECKOUT_ID_RE.test(String(checkoutId || ''))) {

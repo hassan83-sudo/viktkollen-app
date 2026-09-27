@@ -60,6 +60,10 @@ export function isSumUpCheckoutNotification(rawBody) {
   return Boolean(parsed && parsed.event_type === 'CHECKOUT_STATUS_CHANGED' && typeof parsed.id === 'string')
 }
 
+export function sumUpNotificationCheckoutId(rawBody) {
+  return notificationId(rawBody)
+}
+
 export function createSumUpHttpTransport({ apiKey, fetchImpl = globalThis.fetch, baseUrl = API_BASE } = {}) {
   async function request(path, { method, body } = {}) {
     const response = await fetchImpl(`${baseUrl}${path}`, {
@@ -132,8 +136,11 @@ export function createSumUpCheckoutAdapter({
   }
 
   return {
+    intents,
+    merchantCode,
     provider: SUMUP_PROVIDER,
     testOnly,
+    transport,
     async prepare({ checkoutId, planId }) {
       const priced = priceForPlan(planId, catalog)
       if (!priced || !TOKEN_RE.test(String(checkoutId || '')) || String(checkoutId).length > 64) {

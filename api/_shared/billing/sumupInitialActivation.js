@@ -7,6 +7,26 @@ import {
 import { instrumentFingerprint, sumUpCustomerIdForUser } from './sumupRecurring.js'
 
 export const SUMUP_INITIAL_ACTIVATION_RPC = 'billing.activate_verified_sumup_setup'
+export const SUMUP_CHECKOUT_INTENT_RPC = 'billing.read_sumup_checkout_intent'
+
+export function createServerSumUpCheckoutIntentReader(callRpc) {
+  return {
+    async get(checkoutId) {
+      const data = await callRpc(SUMUP_CHECKOUT_INTENT_RPC, { p_checkout_id: checkoutId })
+      const row = data && typeof data === 'object' && !Array.isArray(data) ? data : null
+      if (!row || row.checkout_id !== checkoutId || row.provider !== SUMUP_PROVIDER) return null
+      return {
+        checkoutId: row.checkout_id,
+        expiresAt: row.expires_at,
+        planId: row.plan_id,
+        provider: row.provider,
+        providerCheckoutRef: row.provider_checkout_ref || '',
+        status: row.status,
+        userId: row.user_id,
+      }
+    },
+  }
+}
 
 const CHECKOUT_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const FORBIDDEN_ARGS = ['p_plan_id', 'p_subscription_id', 'p_token', 'p_user_id', 'token']

@@ -3,11 +3,14 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { getPlanById } from '../../../src/services/billing/planCatalog.js'
+import { createProviderRegistry } from './paymentProviderContract.js'
+import { handleWebhookRequest, ingestProviderWebhook } from './providerWebhookIngress.js'
 import { createSumUpCheckoutAdapter, sumUpMonthPeriod } from './providers/sumup.js'
 import { createServerSubscriptionRpcCaller, mapBillingRpcError } from './subscriptionRpcCaller.js'
 import {
   activateVerifiedSumUpSetup,
   createInMemorySumUpInitialActivation,
+  SUMUP_CHECKOUT_INTENT_RPC,
   SUMUP_INITIAL_ACTIVATION_RPC,
 } from './sumupInitialActivation.js'
 import { instrumentFingerprint, sumUpCustomerIdForUser } from './sumupRecurring.js'
@@ -391,10 +394,21 @@ describe('BILL-11F atomic SumUp initial activation', () => {
 
     const source = readFileSync(join(root, 'api/_shared/billing/sumupInitialActivation.js'), 'utf8')
     expect(source).not.toMatch(/activate_verified_checkout|bind_verified_sumup_instrument/)
+    const ingress = readFileSync(join(root, 'api/_shared/billing/providerWebhookIngress.js'), 'utf8')
+    expect(ingress).toMatch(/activateVerifiedSumUpSetup/)
+    expect(ingress).not.toMatch(/activate_verified_checkout|bind_verified_sumup_instrument/)
     const widget = readFileSync(join(root, 'src/components/billing/SumUpSandboxWidget.jsx'), 'utf8')
     const sandbox = readFileSync(join(root, 'api/_shared/billing/sumupSandboxSetup.js'), 'utf8')
     const route = readFileSync(join(root, 'api/billing/user/index.js'), 'utf8')
     expect(`${widget}\n${sandbox}\n${route}`).not.toMatch(/activateVerifiedSumUpSetup|activate_verified_sumup_setup/)
+    const readSql = readFileSync(join(root, 'supabase/migrations/20260927180000_billing_sumup_checkout_intent_read.sql'), 'utf8')
+    expect(readSql).toMatch(/DO NOT apply to staging/)
+    expect(readSql).toMatch(/DO NOT apply to production/)
+    expect(readSql).toMatch(/security definer/)
+    expect(readSql).toMatch(/set search_path = pg_catalog, pg_temp/)
+    expect(readSql).not.toMatch(/create_subscription|bind_verified_sumup_instrument|user_entitlements|access_granted|token|card_number/i)
+    expect(readSql).toMatch(/grant execute on function billing\.read_sumup_checkout_intent\(text\) to service_role/)
+    expect(readSql).not.toMatch(/grant execute on function billing\.read_sumup_checkout_intent\(text\) to (public|anon|authenticated)/)
 
     expect(mapBillingRpcError({ message: 'instrument_conflict' }).code).toBe('instrument_conflict')
     expect(mapBillingRpcError({ code: '23505', message: 'duplicate key value violates unique constraint' }).code)
@@ -433,5 +447,263 @@ describe('BILL-11F atomic SumUp initial activation', () => {
     await expect(callRpc('billing.bind_verified_sumup_instrument', {})).rejects.toMatchObject({
       code: 'durable_operation_unavailable',
     })
+    await callRpc(SUMUP_CHECKOUT_INTENT_RPC, { p_checkout_id: INTENT })
+    expect(calls[1]).toEqual({
+      args: { p_checkout_id: INTENT },
+      fn: 'read_sumup_checkout_intent',
+      name: 'billing',
+    })
+  })
+})
+
+function responseStub() {
+  const response = {
+    body: null,
+    statusCode: 200,
+    json(body) {
+      response.body = body
+      return response
+    },
+    setHeader() {},
+    status(code) {
+      response.statusCode = code
+      return response
+    },
+  }
+  return response
+}
+
+function notification(extra = {}) {
+  return JSON.stringify({
+    amount: 11,
+    card_number: '4111111111111111',
+    currency: 'EUR',
+    event_type: 'CHECKOUT_STATUS_CHANGED',
+    id: CHECKOUT_ID,
+    plan_id: 'plan.free',
+    status: 'PAID',
+    user_id: OTHER,
+    ...extra,
+  })
+}
+
+function webhookHarness(db, checkout) {
+  const state = { checkout }
+  let verified = false
+  const transport = {
+    async createCheckout() {
+      throw new Error('checkout creation is not used')
+    },
+    async retrieveCheckout(id) {
+      if (state.checkout === 'down') throw new Error('sumup down')
+      if (!state.checkout || state.checkout.id !== id) return { id, status: 'FAILED' }
+      return state.checkout
+    },
+  }
+  const adapter = createSumUpCheckoutAdapter({
+    intents: { get: (id) => db.getIntent(id) },
+    merchantCode: MERCHANT,
+    transport,
+  })
+  adapter.verify = async () => {
+    verified = true
+    throw new Error('hosted verification must not grant setup access')
+  }
+  const registry = createProviderRegistry()
+  registry.register(adapter)
+  const rpcCalls = []
+  return {
+    registry,
+    rpcCalls,
+    state,
+    wasVerified() {
+      return verified
+    },
+    callRpc: async (name, args) => {
+      rpcCalls.push({ args, name })
+      if (name !== SUMUP_INITIAL_ACTIVATION_RPC) {
+        const error = new Error('unexpected rpc')
+        error.code = 'durable_operation_unavailable'
+        throw error
+      }
+      return db.activate(args)
+    },
+  }
+}
+
+async function postSetup(db, harness, rawBody = notification()) {
+  return ingestProviderWebhook({
+    callRpc: harness.callRpc,
+    now: () => NOW,
+    rawBody,
+    registry: harness.registry,
+  })
+}
+
+describe('BILL-11H SumUp webhook atomic activation', () => {
+  it('grants access only after server retrieval and one atomic RPC', async () => {
+    const db = database()
+    await ready(db)
+    const harness = webhookHarness(db, paidSetup())
+    const opened = await postSetup(db, harness)
+    expect(opened).toEqual({ accessGranted: true, ok: true, status: 200 })
+    expect(harness.wasVerified()).toBe(false)
+    expect(harness.rpcCalls).toHaveLength(1)
+    expect(harness.rpcCalls[0].name).toBe(SUMUP_INITIAL_ACTIVATION_RPC)
+    expect(Object.keys(harness.rpcCalls[0].args).sort()).toEqual([
+      'p_checkout_id',
+      'p_instrument_fingerprint',
+      'p_period_end',
+      'p_period_start',
+      'p_provider_checkout_ref',
+      'p_provider_customer_ref',
+      'p_provider_event_id',
+      'p_provider_subscription_ref',
+    ])
+    expect(harness.rpcCalls[0].args.p_checkout_id).toBe(INTENT)
+    expect(harness.rpcCalls[0].args.p_provider_customer_ref).toBe(sumUpCustomerIdForUser(USER))
+    expect(harness.rpcCalls[0].args.p_instrument_fingerprint).toBe(FINGERPRINT)
+    expect(JSON.stringify(harness.rpcCalls)).not.toMatch(/4111111111111111/)
+    expect(JSON.stringify(harness.rpcCalls)).not.toContain(TOKEN)
+    expect(db.inspect().subscriptions).toHaveLength(1)
+    expect(db.quotaPlan(USER)).toBe(PAID)
+    expect(db.getIntent(INTENT).status).toBe('consumed')
+
+    const replay = await postSetup(db, harness)
+    expect(replay).toEqual({ accessGranted: true, ok: true, status: 200 })
+    expect(db.inspect().subscriptions).toHaveLength(1)
+    expect(db.inspect().instruments).toHaveLength(1)
+    expect(harness.rpcCalls).toHaveLength(2)
+    expect(harness.rpcCalls[1].name).toBe(SUMUP_INITIAL_ACTIVATION_RPC)
+  })
+
+  it('does not activate on pending, failed, expired, or provider mismatches', async () => {
+    const cases = [
+      [paidSetup({ status: 'PENDING' }), 'PAYMENT_PENDING'],
+      [paidSetup({ status: 'FAILED' }), 'PAYMENT_FAILED'],
+      [paidSetup({ status: 'EXPIRED' }), 'PAYMENT_FAILED'],
+      [paidSetup({ merchant_code: 'MOTHER1' }), 'MERCHANT_MISMATCH'],
+      [paidSetup({ amount: 11 }), 'AMOUNT_MISMATCH'],
+      [paidSetup({ currency: 'EUR' }), 'CURRENCY_MISMATCH'],
+      [paidSetup({ id: OTHER_CHECKOUT }), 'WRONG_CHECKOUT_REF'],
+      [paidSetup({ checkout_reference: 'chk_missing' }), 'CHECKOUT_INTENT_MISSING'],
+      [paidSetup({ customer_id: sumUpCustomerIdForUser(OTHER) }), 'CUSTOMER_MISMATCH'],
+      [paidSetup({ payment_instrument: undefined }), 'UNVERIFIED_INSTRUMENT'],
+      [paidSetup({ payment_instrument: { token: 'short' } }), 'UNVERIFIED_INSTRUMENT'],
+    ]
+    for (const [checkout, code] of cases) {
+      const db = database()
+      await ready(db)
+      const harness = webhookHarness(db, checkout)
+      const result = await postSetup(db, harness, notification({ id: checkout.id }))
+      expect(result).toMatchObject({ accessGranted: false, code, ok: false })
+      expect(harness.rpcCalls).toEqual([])
+      expect(harness.wasVerified()).toBe(false)
+      empty(db)
+    }
+  })
+
+  it('fails closed when the atomic RPC fails and hides database errors', async () => {
+    const db = database()
+    await ready(db)
+    const harness = webhookHarness(db, paidSetup())
+    harness.callRpc = async () => {
+      const error = new Error('duplicate key value violates unique constraint "users_pkey" at db.example.supabase.co')
+      error.code = '23505'
+      throw error
+    }
+    const response = responseStub()
+    await handleWebhookRequest({
+      body: notification(),
+      headers: {},
+      method: 'POST',
+    }, response, {
+      callRpc: harness.callRpc,
+      now: () => NOW,
+      registry: harness.registry,
+    })
+    expect(response.statusCode).toBe(409)
+    expect(response.body).toMatchObject({
+      accessGranted: false,
+      error: { code: 'duplicate_external_event' },
+      ok: false,
+    })
+    expect(JSON.stringify(response.body)).not.toMatch(/23505|users_pkey|supabase|duplicate key/)
+    empty(db)
+
+    harness.callRpc = async () => {
+      const error = new Error('connection to postgres://secret@db.internal failed')
+      error.code = '08006'
+      throw error
+    }
+    const hidden = responseStub()
+    await handleWebhookRequest({
+      body: notification(),
+      headers: {},
+      method: 'POST',
+    }, hidden, {
+      callRpc: harness.callRpc,
+      now: () => NOW,
+      registry: harness.registry,
+    })
+    expect(hidden.body).toMatchObject({
+      accessGranted: false,
+      error: { code: 'billing_rpc_failed' },
+      ok: false,
+    })
+    expect(JSON.stringify(hidden.body)).not.toMatch(/postgres|secret|db\.internal|08006/)
+    empty(db)
+  })
+
+  it('loads the durable intent by checkout reference before the atomic RPC', async () => {
+    const db = database()
+    await ready(db)
+    const transport = {
+      async createCheckout() {
+        throw new Error('checkout creation is not used')
+      },
+      async retrieveCheckout() {
+        return paidSetup()
+      },
+    }
+    const adapter = createSumUpCheckoutAdapter({
+      merchantCode: MERCHANT,
+      transport,
+    })
+    const registry = createProviderRegistry()
+    registry.register(adapter)
+    const calls = []
+    const callRpc = async (name, args) => {
+      calls.push({ args, name })
+      if (name === SUMUP_CHECKOUT_INTENT_RPC) {
+        expect(args).toEqual({ p_checkout_id: INTENT })
+        return {
+          checkout_id: INTENT,
+          expires_at: '2026-09-27T12:30:00.000Z',
+          plan_id: PAID,
+          provider: 'sumup',
+          provider_checkout_ref: CHECKOUT_ID,
+          status: 'pending',
+          user_id: USER,
+        }
+      }
+      if (name === SUMUP_INITIAL_ACTIVATION_RPC) return db.activate(args)
+      throw new Error(name)
+    }
+    const opened = await ingestProviderWebhook({
+      callRpc,
+      now: () => NOW,
+      rawBody: notification(),
+      registry,
+    })
+    expect(opened.accessGranted).toBe(true)
+    expect(calls.map((call) => call.name)).toEqual([
+      SUMUP_CHECKOUT_INTENT_RPC,
+      SUMUP_INITIAL_ACTIVATION_RPC,
+    ])
+    expect(JSON.stringify(calls)).not.toMatch(/4111111111111111/)
+    expect(JSON.stringify(calls)).not.toContain(TOKEN)
+    expect(db.quotaPlan(USER)).toBe(PAID)
+    expect(db.quotaPlan(OTHER)).toBe('plan.free')
   })
 })

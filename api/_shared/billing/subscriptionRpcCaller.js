@@ -4,7 +4,7 @@ import {
   SUBSCRIPTION_RPC,
 } from '../../../src/services/billing/subscriptionAuthority.js'
 import { PLAN_ASSIGNMENT_RPC } from '../../../src/services/billing/planAssignmentSync.js'
-import { SUMUP_INITIAL_ACTIVATION_RPC } from './sumupInitialActivation.js'
+import { SUMUP_CHECKOUT_INTENT_RPC, SUMUP_INITIAL_ACTIVATION_RPC } from './sumupInitialActivation.js'
 
 const SAFE_MESSAGES = new Map([
   ['assignment_sync_unconfirmed', 'assignment_sync_unconfirmed'],
@@ -64,6 +64,7 @@ function allowedRpcNames() {
   return new Set([
     ...Object.values(SUBSCRIPTION_RPC),
     PLAN_ASSIGNMENT_RPC,
+    SUMUP_CHECKOUT_INTENT_RPC,
     SUMUP_INITIAL_ACTIVATION_RPC,
   ])
 }

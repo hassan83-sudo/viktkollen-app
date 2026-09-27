@@ -956,43 +956,59 @@ function OverviewTodayMood({
 
 function OverviewBodyScanAction({ onOpenBodyScan }) {
   const { t } = useTranslation(['bodyScan', 'home'])
+  const action = {
+    accent: 'body',
+    alt: t('home:actionAlts.body'),
+    art: 'body',
+    description: t('home:bodyCardHint'),
+    footerLabel: t('bodyScan:startScan'),
+    hitLabel: t('home:openBodyScanFullscreen'),
+    image: '/viktkollen-body-scan-card.svg',
+    imageHeight: 1167,
+    imageWidth: 400,
+    icon: 'bodyScan',
+    label: t('home:labels.bodyScan'),
+    onClick: onOpenBodyScan,
+  }
 
   return (
-    <div className="overview-primary-action is-body overview-body-scan-home-card">
+    <div className={`overview-primary-action is-${action.accent}`}>
       <button
-        aria-label={t('home:openBodyScanFullscreen')}
         className="overview-primary-action-hit"
         type="button"
-        onClick={onOpenBodyScan}
+        aria-label={action.hitLabel}
+        onClick={action.onClick}
       >
         <span className="overview-primary-visual">
           <span className="overview-primary-orbit" />
-          <span className="overview-primary-art is-body">
+          <span className={`overview-primary-art is-${action.art}`}>
             <img
-              alt={t('home:actionAlts.body')}
+              alt={action.alt}
               decoding="async"
-              height="1167"
+              height={action.imageHeight}
               loading="lazy"
-              src="/viktkollen-body-scan-card.svg"
-              width="400"
+              src={action.image}
+              width={action.imageWidth}
             />
             <BodyScanRings />
           </span>
-          <span className="overview-primary-action-icon"><OverviewIcon name="bodyScan" /></span>
+          <span className="overview-primary-action-icon">
+            <OverviewIcon name={action.icon} />
+          </span>
         </span>
         <span className="overview-primary-action-copy">
-          <strong>{t('home:labels.bodyScan')}</strong>{' '}
-          <small>{t('home:bodyCardHint')}</small>
+          <strong>{action.label}</strong>{' '}
+          <small>{action.description}</small>
         </span>
       </button>
       <button
-        aria-label={t('bodyScan:startScan')}
         className="overview-primary-action-footer"
         type="button"
-        onClick={onOpenBodyScan}
+        aria-label={action.footerLabel}
+        onClick={action.onClick}
       >
         <OverviewIcon name="foodCamera" />
-        <span>{t('bodyScan:startScan')}</span>
+        <span>{action.footerLabel}</span>
       </button>
     </div>
   )

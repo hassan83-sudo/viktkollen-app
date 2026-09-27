@@ -11378,6 +11378,11 @@ body:has(#app-section-home.is-active) {
   object-position: 50% 46%;
 }
 
+#app-section-home.is-active .overview-body-scan-original-size .overview-primary-art.is-body img {
+  transform: scale(2);
+  transform-origin: 50% 46%;
+}
+
 .overview-body-scan-rings {
   position: absolute;
   inset: 0;

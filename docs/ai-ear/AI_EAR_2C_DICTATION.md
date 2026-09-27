@@ -80,17 +80,23 @@ meddelande i stället för knappen och kraschar inte.
 Viktkollens server, och ingen leverantör faktureras. Inga beslut om billing,
 kvoter eller entitlements är fattade här.
 
-## Produktbeslut som återstår
+## Produktbeslut (AI-EAR-2C1): Gratis
 
-Kortet visar fortfarande **Premium** (`access: 'premium'` i `aiEarModes.js`).
-Det är bara en etikett och ingen spärr: läget fungerar för alla som har AI
-Örat. Eftersom det inte finns någon direkt kostnad för Viktkollen behöver
-produkt/Cursor bestämma något av följande:
+Tal → text i webbläsaren är **Gratis** (`access: 'free'` i `aiEarModes.js`).
+Skälet är att läget inte kostar Viktkollen något direkt: ingen OpenAI,
+ingen AI-leverantör på servern, ingen API-route och ingen kvotförbrukning.
+Allt körs i webbläsaren.
 
-1. **Gratis.** Ändra `access` till `'free'` för `speech`. Det är en rad, plus
-   de tester som låser mappningen i `aiEarModes.test.jsx`.
-2. **Premium som produktval.** Då behöver en riktig gate byggas i Cursors
-   entitlement-spår. Claude ändrar inte plan- eller billingdefinitioner.
+"Gratis" är bara metadata på kortet. Det finns ingen entitlement-, billing-
+eller kvotspärr för läget, och ingen behövs.
 
-Humma / sjung (`melody`) är fortfarande inte kopplat. Ljudigenkänning och
-Fågelljud är oförändrade.
+Beslutet gäller **bara** Tal → text i webbläsaren. Följande är separata
+framtida beslut och påverkas inte:
+
+- transkribering på servern, till exempel via OpenAI;
+- transkribering av ljudfiler;
+- Humma / sjung (ACRCloud), som fortfarande är **Premium** och inte kopplat
+  (`execution: null`);
+- AudD.
+
+Ljudigenkänning och Fågelljud är oförändrade.

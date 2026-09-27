@@ -743,7 +743,7 @@ const sv = {
       access: { free: 'Gratis', premium: 'Premium' },
       sound: { title: 'Ljudigenkänning', description: 'Känn igen ljud omkring dig', instruction: 'Spela in ett ljud omkring dig.', resultLabel: 'AI hör' },
       bird: { title: 'Fågelljud', description: 'Försök identifiera fågellätet', instruction: 'Spela in fågeln så tydligt som möjligt.', resultLabel: 'Mest sannolikt', alternatives: 'Alternativ', noBird: 'Ingen fågel hördes tydligt' },
-      speech: { title: 'Tal → text', description: 'Gör tal till skriven text', instruction: 'Tryck på Starta lyssning och prata. Texten visas medan du pratar.', unavailable: 'Tal → text kräver Premium och är inte tillgängligt ännu. Inget ljud skickas.' },
+      speech: { title: 'Tal → text', description: 'Gör tal till skriven text', instruction: 'Tryck på Starta lyssning och prata. Texten visas medan du pratar.' },
       melody: { title: 'Humma / sjung', description: 'Analysera hummad eller sjungen melodi', instruction: 'Humma eller sjung melodin.', unavailable: 'Humma / sjung kräver Premium och är inte tillgängligt ännu. Inget ljud skickas.' },
     },
     // AI-EAR-2C: Tal → text with the browser's own speech recognition.
@@ -2711,7 +2711,7 @@ const en = {
       access: { free: 'Free', premium: 'Premium' },
       sound: { title: 'Sound recognition', description: 'Recognise sounds around you', instruction: 'Record a sound around you.', resultLabel: 'AI hears' },
       bird: { title: 'Bird sounds', description: 'Try to identify the bird call', instruction: 'Record the bird as clearly as possible.', resultLabel: 'Most likely', alternatives: 'Alternatives', noBird: 'No bird was clearly heard' },
-      speech: { title: 'Speech → text', description: 'Turn speech into written text', instruction: 'Press Start listening and speak. The text appears while you speak.', unavailable: 'Speech → text requires Premium and is not available yet. No audio is sent.' },
+      speech: { title: 'Speech → text', description: 'Turn speech into written text', instruction: 'Press Start listening and speak. The text appears while you speak.' },
       melody: { title: 'Hum / sing', description: 'Analyse a hummed or sung melody', instruction: 'Hum or sing the melody.', unavailable: 'Hum / sing requires Premium and is not available yet. No audio is sent.' },
     },
     // AI-EAR-2C: Speech → text with the browser's own speech recognition.

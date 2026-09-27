@@ -740,17 +740,6 @@ function OverviewPrimaryActions({
       onClick: openEyes,
     },
     {
-      accent: 'body',
-      alt: '',
-      art: 'body',
-      description: t('aiEar:intro'),
-      footerLabel: t('aiEar:title'),
-      hitLabel: t('aiEar:title'),
-      icon: 'ear',
-      label: t('aiEar:title'),
-      onClick: onOpenEar,
-    },
-    {
       accent: 'food',
       alt: t('home:actionAlts.food'),
       art: 'meal',
@@ -763,6 +752,17 @@ function OverviewPrimaryActions({
       icon: 'foodCamera',
       label: t('home:foodScan.title'),
       onClick: openFood,
+    },
+    {
+      accent: 'body',
+      alt: '',
+      art: 'body',
+      description: t('aiEar:intro'),
+      footerLabel: t('aiEar:title'),
+      hitLabel: t('aiEar:title'),
+      icon: 'ear',
+      label: t('aiEar:title'),
+      onClick: onOpenEar,
     },
   ]
 

@@ -958,14 +958,43 @@ function OverviewBodyScanAction({ onOpenBodyScan }) {
   const { t } = useTranslation(['bodyScan', 'home'])
 
   return (
-    <button className="overview-checkin-action" type="button" onClick={onOpenBodyScan}>
-      <span className="overview-checkin-icon" aria-hidden="true"><OverviewIcon name="bodyScan" /></span>
-      <span>
-        <strong>{t('home:labels.bodyScan')}</strong>
-        <small>{t('home:actionDescriptions.body')}</small>
-      </span>
-      <span aria-hidden="true">›</span>
-    </button>
+    <div className="overview-primary-action is-body overview-body-scan-home-card">
+      <button
+        aria-label={t('home:openBodyScanFullscreen')}
+        className="overview-primary-action-hit"
+        type="button"
+        onClick={onOpenBodyScan}
+      >
+        <span className="overview-primary-visual">
+          <span className="overview-primary-orbit" />
+          <span className="overview-primary-art is-body">
+            <img
+              alt={t('home:actionAlts.body')}
+              decoding="async"
+              height="1167"
+              loading="lazy"
+              src="/viktkollen-body-scan-card.svg"
+              width="400"
+            />
+            <BodyScanRings />
+          </span>
+          <span className="overview-primary-action-icon"><OverviewIcon name="bodyScan" /></span>
+        </span>
+        <span className="overview-primary-action-copy">
+          <strong>{t('home:labels.bodyScan')}</strong>{' '}
+          <small>{t('home:bodyCardHint')}</small>
+        </span>
+      </button>
+      <button
+        aria-label={t('bodyScan:startScan')}
+        className="overview-primary-action-footer"
+        type="button"
+        onClick={onOpenBodyScan}
+      >
+        <OverviewIcon name="foodCamera" />
+        <span>{t('bodyScan:startScan')}</span>
+      </button>
+    </div>
   )
 }
 
@@ -1330,8 +1359,8 @@ function OverviewDashboard({
             setSocialOpen(true)
           }}
         />
-        <OverviewBodyScanAction onOpenBodyScan={() => setBodyScanOpen(true)} />
         <OverviewCheckInAction onNavigateSection={onNavigateSection} />
+        <OverviewBodyScanAction onOpenBodyScan={() => setBodyScanOpen(true)} />
       </section>
 
       <section className="overview-home-section" aria-labelledby="overview-advice-title">

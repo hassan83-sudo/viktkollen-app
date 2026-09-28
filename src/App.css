@@ -17967,3 +17967,27 @@ html:has(#app-section-more.is-active),
   #app-section-home.is-active .overview-halloween-toggle { gap: 6px; font-size: 11px; padding-inline: 3px; }
   #app-section-home.is-active .overview-halloween-state { min-width: 29px; }
 }
+
+/* Align the seasonal switch with the uppermost Online pill, not the live-details row.
+   The status strip is one row (roughly 26px) above the dashboard header. */
+#app-section-home.is-active .overview-app-header .overview-halloween-toggle {
+  top: -31px;
+  right: 4px;
+  min-height: 24px;
+  height: 24px;
+  padding: 1px 5px;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1;
+  background: #10151d;
+}
+#app-section-home.is-active .overview-app-header .overview-halloween-state {
+  height: 21px;
+  min-width: 28px;
+  font-size: 10px;
+}
+#app-section-home.is-active .overview-app-header .overview-halloween-power {
+  width: 17px;
+  height: 17px;
+  flex-basis: 17px;
+}

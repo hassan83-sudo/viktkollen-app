@@ -66,6 +66,25 @@ export function getSpeechRecognitionConstructor(scope = globalThis) {
   return scope?.SpeechRecognition || scope?.webkitSpeechRecognition || null
 }
 
+export async function preferOnDeviceSpeechRecognition(SpeechRecognition, language) {
+  if (!SpeechRecognition || typeof SpeechRecognition.available !== 'function') return false
+
+  const lang = getSpeechLocale(language)
+  try {
+    const availability = await SpeechRecognition.available({
+      langs: [lang],
+      processLocally: true,
+      quality: 'dictation',
+    })
+
+    // Do not silently download language packs. That needs an explicit product/UI
+    // decision; for now we use local recognition only when it is already ready.
+    return availability === 'available'
+  } catch {
+    return false
+  }
+}
+
 export function selectSpeechSynthesisVoice(voices = [], avatarId = 'nova', language = defaultLanguageCode) {
   if (!Array.isArray(voices) || voices.length === 0) return null
 
@@ -369,13 +388,22 @@ export function createVoiceConversationController({
 
     handledResult = false
     pendingTranscript = ''
+    const language = getLanguage?.()
     const recognition = new SpeechRecognition()
     currentRecognition = recognition
 
-    recognition.lang = getSpeechLocale(getLanguage?.())
+    recognition.lang = getSpeechLocale(language)
     recognition.continuous = false
     recognition.interimResults = true
     recognition.maxAlternatives = 1
+
+    // Privacy-first enhancement: if this browser already has an on-device
+    // dictation pack, require local recognition. Unsupported browsers (notably
+    // current WebKit-prefixed implementations) keep the existing compatible
+    // behavior rather than breaking voice input.
+    if ('processLocally' in recognition && await preferOnDeviceSpeechRecognition(SpeechRecognition, language)) {
+      recognition.processLocally = true
+    }
 
     const finalize = () => {
       const transcript = pendingTranscript.trim()

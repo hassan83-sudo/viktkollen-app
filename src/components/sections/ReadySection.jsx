@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useAccessibilityPreferences } from '../../services/accessibilityPreferences.js'
+import { speakAccessibilityText } from '../../services/accessibilitySpeech.js'
 import AppSection from '../app/AppSection.jsx'
 import ModalDialog from '../a11y/ModalDialog.jsx'
 import { getReadyAvatar, getReadyAvatars } from '../../features/ready/readyAvatars.js'
@@ -29,7 +31,8 @@ import NextCard from './ready/NextCard.jsx'
 import ReminderCard from './ready/ReminderCard.jsx'
 
 function ReadySection({ activeSection, onNavigateSection, onOpenCompanion, onOpenEye, reminderState }) {
-  const { t } = useTranslation(['ready', 'common', 'notices'])
+  const { i18n, t } = useTranslation(['ready', 'common', 'notices'])
+  const { navigationSpeechRate } = useAccessibilityPreferences()
   const [state, setState] = useState(() => loadReadyState())
   const [draftLabel, setDraftLabel] = useState('')
   const [forgotText, setForgotText] = useState('')
@@ -58,6 +61,18 @@ function ReadySection({ activeSection, onNavigateSection, onOpenCompanion, onOpe
   const activeTechnique = allTechniques.find((technique) => technique.id === activeTechniqueId)
   const examples = getExampleItemsForLevel(state.levelId || 'mid79')
   const greeting = t(getReadyGreetingKey())
+  const isPreschool = state.levelId === 'preschool'
+
+  function handlePreschoolReadAloud() {
+    const section = document.getElementById('app-section-redo')
+    const text = section?.innerText?.trim()
+    if (!text) return
+    speakAccessibilityText({
+      language: i18n.language,
+      rate: navigationSpeechRate,
+      text,
+    })
+  }
 
   function commitState(updater) {
     setState((current) => {
@@ -124,6 +139,12 @@ function ReadySection({ activeSection, onNavigateSection, onOpenCompanion, onOpe
     <AppSection activeSection={activeSection} id="redo" label={t('title')}>
       <div className={`ready-shell${policy.pictureChecklist ? ' is-picture' : ''}`}>
         <ReadyHeader greeting={greeting} levelId={state.levelId} onLevelChange={(levelId) => commitState((current) => ({ ...current, levelId }))} avatar={avatar} onAvatarClick={() => setShowAvatarPicker((open) => !open)} />
+
+        {isPreschool ? (
+          <button className="secondary-button ready-preschool-read-aloud" type="button" onClick={handlePreschoolReadAloud}>
+            <span aria-hidden="true">🔊</span> Läs upp sidan
+          </button>
+        ) : null}
 
         {showAvatarPicker && (
           <section className="ready-avatar-panel" aria-label={t('avatar.pick')}>

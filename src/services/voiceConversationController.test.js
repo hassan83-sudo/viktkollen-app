@@ -391,6 +391,15 @@ describe('voiceConversationController', () => {
     expect(mediaDevices.getUserMedia).toHaveBeenCalledTimes(2)
   })
 
+  it('uses an available local recognition pack', async () => {
+    const Recognition = createRecognitionClass()
+    Recognition.available = vi.fn(async () => 'available')
+    Recognition.prototype.processLocally = false
+    const { controller } = makeController({ Recognition })
+    await controller.start()
+    expect(Recognition.instances[0].processLocally).toBe(true)
+  })
+
   it('uses webkitSpeechRecognition for iOS Safari/PWA', () => {
     const WebkitRecognition = createRecognitionClass()
 

@@ -17991,3 +17991,26 @@ html:has(#app-section-more.is-active),
   height: 17px;
   flex-basis: 17px;
 }
+
+/* Approved cozy Halloween wallpaper, shown ONLY while the user-enabled toggle is on.
+   A normal dark fallback remains if the optional image has not been installed. */
+html.viktkollen-halloween-on:has(#app-section-home.is-active)
+  #app-section-home.is-active {
+  background-color: #211624;
+  background-image:
+    linear-gradient(180deg, rgba(13, 13, 25, .38), rgba(13, 13, 25, .50)),
+    url('/halloween-background.png');
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-attachment: scroll;
+}
+html.viktkollen-halloween-on:has(#app-section-home.is-active)
+  .app-shell:has(#app-section-home.is-active) {
+  background-color: #211624;
+}
+html.viktkollen-halloween-on:has(#app-section-home.is-active)
+  #app-section-home.is-active .overview-app-header {
+  background-color: rgba(10, 13, 25, .78);
+  border-radius: 12px;
+}

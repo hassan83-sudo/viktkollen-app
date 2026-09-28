@@ -18014,3 +18014,23 @@ html.viktkollen-halloween-on:has(#app-section-home.is-active)
   background-color: rgba(10, 13, 25, .78);
   border-radius: 12px;
 }
+
+/* Approved Halloween wallpaper, proposal 1: background only, never a UI overlay.
+   The regular home background above remains the fallback when toggled off or
+   when the optional asset has not yet been installed in public/. */
+html.viktkollen-halloween-on #app-section-home.is-active {
+  background-image:
+    linear-gradient(180deg, rgba(10, 11, 22, .42), rgba(10, 11, 22, .55) 38%, rgba(10, 11, 22, .65)),
+    url('/halloween-home-background.png');
+  background-color: #171324;
+  background-position: center top, center top;
+  background-size: cover, 100% auto;
+  background-repeat: no-repeat;
+  background-attachment: scroll;
+}
+@media (min-width: 800px) {
+  html.viktkollen-halloween-on #app-section-home.is-active {
+    background-size: cover, cover;
+    background-position: center, center top;
+  }
+}

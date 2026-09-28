@@ -923,7 +923,7 @@ function OverviewTodayMood({
         <span className="overview-mood-link">{t('home:mood.openLink')}</span>
       </button>
 
-      <div className="overview-today-meal-split">
+      <div className="overview-today-meal-split" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "8px", gridColumn: "1 / -1", minWidth: 0 }}>
       <article className="overview-mood-card is-today">
         <span className="overview-mood-label">{t('home:labels.today')}</span>
         <div className="overview-mood-today-stats">
@@ -947,7 +947,7 @@ function OverviewTodayMood({
           )}
         </div>
       </article>
-      <button className="overview-mood-card is-meal-week" type="button" onClick={onOpenMealPlanner} aria-label="Öppna matplanering">
+      <button className="overview-mood-card is-meal-week" style={{ textAlign: "left", minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "6px", cursor: "pointer", background: "linear-gradient(145deg, #17261f, #111924)", border: "1px solid #345445", borderRadius: "14px", padding: "11px" }} type="button" onClick={onOpenMealPlanner} aria-label="Öppna matplanering">
         <span className="overview-mood-label">MATPLANERING</span>
         <strong>Veckans recept</strong>
         <small>{(() => {

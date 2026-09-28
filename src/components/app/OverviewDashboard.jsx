@@ -344,18 +344,41 @@ function OverviewLiveMeta({
 }) {
   const { t } = useTranslation('home')
   const isOnline = useOnlineStatus()
+  const [halloweenEnabled, setHalloweenEnabled] = useState(() => {
+    try { return window.localStorage.getItem('viktkollen:halloween-theme') !== 'off' }
+    catch { return true }
+  })
+  function toggleHalloween() {
+    setHalloweenEnabled((current) => {
+      const next = !current
+      try { window.localStorage.setItem('viktkollen:halloween-theme', next ? 'on' : 'off') }
+      catch { /* Keep the toggle usable if storage is unavailable. */ }
+      window.dispatchEvent(new CustomEvent('viktkollen:halloween-theme', { detail: { enabled: next } }))
+      return next
+    })
+  }
   const weather = liveContext.weather
   const hasWeatherDetails = Boolean(weather.hasLiveWeather)
   const city = hasWeatherDetails && weather.city && weather.city !== 'Vald stad' ? weather.city : ''
 
   return (
     <div className="overview-live-meta">
-      <p className="overview-live-status">
+      <div className="overview-live-status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <span className={isOnline ? 'is-online' : 'is-offline'}>
           <span className="overview-online-dot" aria-hidden="true" />
           {isOnline ? t('online') : t('offline')}
         </span>
-      </p>
+        <button
+          type="button"
+          className="overview-halloween-toggle"
+          aria-label={halloweenEnabled ? 'Stäng av Halloween-tema' : 'Aktivera Halloween-tema'}
+          aria-pressed={halloweenEnabled}
+          onClick={toggleHalloween}
+          style={{ marginLeft: 'auto', border: '1px solid #b66c35', borderRadius: 999, padding: '4px 9px', background: halloweenEnabled ? '#43230f' : '#20232b', color: halloweenEnabled ? '#ffbb73' : '#d4d4d8', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+        >
+          🎃 {halloweenEnabled ? 'PÅ' : 'AV'}
+        </button>
+      </div>
       <p>
         <span><OverviewIcon name="calendar" /> {shortWeekday(liveContext.weekday)} {liveContext.dateLabel}</span>
         <span><OverviewIcon name="clock" /> {liveContext.timeLabel}</span>

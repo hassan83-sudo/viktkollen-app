@@ -2,6 +2,7 @@ import i18n from '../i18n/index.js'
 import { defaultLanguageCode, supportedLanguageCodes } from '../i18n/languages.js'
 
 export const voiceConversationSilenceTimeoutMs = 7000
+export const voiceConversationMaxListeningMs = 30000
 export const voiceConversationSpeechRecoveryMs = 20000
 
 const companionVoiceProfiles = Object.freeze({
@@ -108,6 +109,7 @@ export function createVoiceConversationController({
   let pendingTranscript = ''
   let finalizeTimer = null
   let silenceTimer = null
+  let maxListeningTimer = null
   let speechStartTimer = null
   let speechRecoveryTimer = null
   let stopRequested = false
@@ -121,6 +123,8 @@ export function createVoiceConversationController({
     clearTimer(silenceTimer)
     finalizeTimer = null
     silenceTimer = null
+    clearTimer(maxListeningTimer)
+    maxListeningTimer = null
   }
 
   function clearSpeechTimers() {
@@ -384,6 +388,17 @@ export function createVoiceConversationController({
       setListening?.(true)
       setStatus?.(translate('listening'))
       clearTimer(silenceTimer)
+      maxListeningTimer = timers.setTimeout(() => {
+        if (handledResult || stopRequested) return
+        if (pendingTranscript.trim()) {
+          finalize()
+          return
+        }
+        cancelRecognition()
+        finishTurn()
+        setStatus?.(translate('noSpeech'))
+      }, voiceConversationMaxListeningMs)
+
       silenceTimer = timers.setTimeout(() => {
         if (handledResult || pendingTranscript.trim()) {
           finalize()

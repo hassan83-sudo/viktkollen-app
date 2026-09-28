@@ -17897,3 +17897,9 @@ html:has(#app-section-more.is-active),
 #app-section-home.is-active .manual-meal-entry { display:flex; gap:6px; flex-wrap:wrap; align-items:center; padding:8px; background:#243348; border-radius:8px; }
 #app-section-home.is-active .manual-meal-entry span { flex:1; min-width:80px; overflow-wrap:anywhere; }
 #app-section-home.is-active .manual-meal-note { font-size:.75rem; opacity:.8; }
+
+/* Dedicated meal planning view, not embedded under "Mer för idag". */
+#app-section-home.is-active .manual-meal-page { width:100%; max-width:100%; min-width:0; padding:14px 12px 96px; box-sizing:border-box; }
+#app-section-home.is-active .manual-meal-page-header { display:flex; gap:12px; align-items:center; margin-bottom:18px; }
+#app-section-home.is-active .manual-meal-page-header h2 { margin:0; font-size:1.3rem; }
+#app-section-home.is-active .manual-meal-page-header button { border:1px solid #42536b; background:#1b2940; color:#fff; border-radius:10px; padding:10px 12px; cursor:pointer; }

@@ -11888,7 +11888,7 @@ body:has(#app-section-home.is-active) {
   grid-template-areas:
     "wellbeing coach"
     "reminder notices"
-    "today today";
+    "today meal";
   gap: 8px;
 }
 
@@ -11943,6 +11943,21 @@ body:has(#app-section-home.is-active) {
   background:
     radial-gradient(circle at 15% 15%, rgba(255, 152, 47, 0.14), transparent 29%),
     linear-gradient(150deg, var(--home-card-2), rgba(7, 11, 23, 0.98));
+}
+
+#app-section-home.is-active .overview-mood-card.is-meal-week {
+  grid-area: meal;
+  min-width: 0;
+  min-height: 112px;
+  overflow-wrap: anywhere;
+}
+
+#app-section-home.is-active .overview-mood-card.is-today {
+  min-width: 0;
+}
+
+#app-section-home.is-active .overview-today-links {
+  flex-wrap: wrap;
 }
 
 #app-section-home.is-active .overview-mood-label {

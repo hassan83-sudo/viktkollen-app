@@ -236,6 +236,17 @@ describe('voiceConversationController', () => {
     expect(mediaDevices.getUserMedia).toHaveBeenCalledTimes(1)
   })
 
+  it('hard-stops microphone listening after the maximum listening window', async () => {
+    const { active, controller, Recognition, status } = makeController({ silenceTimeoutMs: 60000 })
+
+    await controller.start()
+    await vi.advanceTimersByTimeAsync(30000)
+
+    expect(Recognition.instances[0].abort).toHaveBeenCalled()
+    expect(active.at(-1)).toBe(false)
+    expect(status.at(-1)).toBe('Jag hörde inget. Tryck på mikrofonen och försök igen.')
+  })
+
   it('shows microphone permission denied and does not lock the UI', async () => {
     const { active, controller, listening, status } = makeController({
       mediaDevices: {

@@ -11,11 +11,15 @@ let memoryWriteQueue = Promise.resolve()
 
 // Clear only the shared AI conversation memory, without touching other app data.
 // Invalidate pending lazy writers so they cannot repopulate a cleared conversation.
-export async function clearCoachConversationMemory() {
+export function clearCoachConversationMemory() {
   memoryGeneration += 1
-  await memoryWriteQueue.catch(() => {})
-  const { setAiConversationMemory } = await loadAiConversationMemory()
-  setAiConversationMemory([])
+  memoryWriteQueue = memoryWriteQueue
+    .catch(() => {})
+    .then(async () => {
+      const { setAiConversationMemory } = await loadAiConversationMemory()
+      setAiConversationMemory([])
+    })
+  return memoryWriteQueue
 }
 
 const readyLevelContext = {

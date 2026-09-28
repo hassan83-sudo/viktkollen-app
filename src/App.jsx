@@ -2777,29 +2777,8 @@ function App() {
       return
     }
 
-    realtimeVoiceRef.current = createRealtimeVoiceController({
-      connectRealtime: connectOpenAiRealtimeWebRtc,
-      getUserMedia: (constraints) => navigator.mediaDevices.getUserMedia(constraints),
-      onStatus: setVoiceStatus,
-      requestSession: () => requestCoachRealtimeSession({
-        appData: getAiCoachAppData(),
-        chatHistory: chatMessagesRef.current,
-      }),
-      setActive: setIsVoiceConversationActive,
-      setListening: setIsListening,
-      setMuted: setIsVoiceMuted,
-      setSpeaking: setIsAiSpeaking,
-    })
-
-    const realtimeResult = await realtimeVoiceRef.current.start()
-    if (realtimeResult?.ok) {
-      trackPremiumCounter(premiumAnalyticsCounters.voiceSessions)
-      return
-    }
-    if (realtimeResult?.reason === 'denied') {
-      return
-    }
-
+    // Privacy-first browser voice: do not attempt an external Realtime
+    // session before the local/browser-dictation consent gate.
     voiceConversationRef.current = createVoiceConversationController({
       onTranscript: async (transcript) => {
         setChatInput(transcript)

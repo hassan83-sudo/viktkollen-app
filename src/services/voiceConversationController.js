@@ -101,6 +101,7 @@ export function selectSpeechSynthesisVoice(voices = [], avatarId = 'nova', langu
 export function createVoiceConversationController({
   getLanguage = () => globalThis.document?.documentElement?.lang || '',
   getMediaDevices = () => globalThis.navigator?.mediaDevices,
+  confirmExternalRecognition = () => globalThis.window?.confirm?.('Lokal taligenkänning saknas. Webbläsaren kan skicka ditt tal till sin leverantör för transkribering. Vill du fortsätta med mikrofonen? Välj Avbryt för att skriva i stället.') === true,
   getScope = () => globalThis.window || globalThis,
   getSpeechSynthesis = () => globalThis.window?.speechSynthesis || globalThis.speechSynthesis,
   getSpeechSynthesisUtterance = () =>
@@ -377,33 +378,45 @@ export function createVoiceConversationController({
       return false
     }
 
+    const language = getLanguage?.()
+    const recognition = new SpeechRecognition()
+    const localAvailable = 'processLocally' in recognition
+      && await preferOnDeviceSpeechRecognition(SpeechRecognition, language)
+    if (!active || stopRequested || disposed) return false
+
+    // Explicit opt-in for potentially provider-processed browser dictation.
+    // A missing/throwing confirmation API fails closed, leaving typed chat available.
+    if (!localAvailable) {
+      let approved = false
+      try {
+        approved = await confirmExternalRecognition?.() === true
+      } catch {
+        approved = false
+      }
+      if (!active || stopRequested || disposed) return false
+      if (!approved) {
+        finishTurn()
+        setStatus?.('Röstinmatning avbruten. Skriv din fråga i chatten i stället.')
+        return false
+      }
+    }
+
     const microphone = await ensureMicrophoneAvailable()
     if (!microphone.ok) {
       finishTurn()
       setStatus?.(microphone.status)
       return false
     }
-
     if (!active || stopRequested || disposed) return false
 
     handledResult = false
     pendingTranscript = ''
-    const language = getLanguage?.()
-    const recognition = new SpeechRecognition()
     currentRecognition = recognition
-
     recognition.lang = getSpeechLocale(language)
     recognition.continuous = false
     recognition.interimResults = true
     recognition.maxAlternatives = 1
-
-    // Privacy-first enhancement: if this browser already has an on-device
-    // dictation pack, require local recognition. Unsupported browsers (notably
-    // current WebKit-prefixed implementations) keep the existing compatible
-    // behavior rather than breaking voice input.
-    if ('processLocally' in recognition && await preferOnDeviceSpeechRecognition(SpeechRecognition, language)) {
-      recognition.processLocally = true
-    }
+    if (localAvailable) recognition.processLocally = true
 
     const finalize = () => {
       const transcript = pendingTranscript.trim()

@@ -101,6 +101,7 @@ function makeController(overrides = {}) {
     : FakeSpeechSynthesisUtterance
   const controller = createVoiceConversationController({
     getMediaDevices: () => mediaDevices,
+    confirmExternalRecognition: overrides.confirmExternalRecognition || (() => true),
     getScope: () => overrides.scope || { SpeechRecognition: Recognition },
     getSpeechSynthesis: () => speechSynthesis,
     getSpeechSynthesisUtterance: () => SpeechSynthesisUtterance,
@@ -407,6 +408,16 @@ describe('voiceConversationController', () => {
     const { controller } = makeController({ Recognition })
     await controller.start()
     expect(Recognition.instances[0].processLocally).toBe(false)
+  })
+
+  it('does not request the microphone when external recognition is declined', async () => {
+    const { controller, mediaDevices, Recognition, status } = makeController({
+      confirmExternalRecognition: () => false,
+    })
+    await controller.start()
+    expect(mediaDevices.getUserMedia).not.toHaveBeenCalled()
+    expect(Recognition.instances[0].start).not.toHaveBeenCalled()
+    expect(status.at(-1)).toMatch(/Skriv din fråga/)
   })
 
   it('uses webkitSpeechRecognition for iOS Safari/PWA', () => {

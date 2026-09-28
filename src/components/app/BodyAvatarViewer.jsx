@@ -61,7 +61,7 @@ function BodyAvatarViewer({
           src={useApprovedArtwork ? '/viktkollen-body-scan-new.png' : AVATAR_FRONT_SRC}
           onError={() => setUseApprovedArtwork(false)}
         />
-        <BodyScanRings className="overview-body-scan-rings is-fullscreen" />
+        {!useApprovedArtwork && <BodyScanRings className="overview-body-scan-rings is-fullscreen" />}
         <p className="body-avatar-viewer-hint">↔ Dra för att rotera</p>
       </div>
 

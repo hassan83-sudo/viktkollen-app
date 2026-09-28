@@ -367,7 +367,7 @@ function OverviewLiveMeta({
 
   return (
     <div className="overview-live-meta">
-      <div className="overview-live-status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+      <div className="overview-live-status">
         <span className={isOnline ? 'is-online' : 'is-offline'}>
           <span className="overview-online-dot" aria-hidden="true" />
           {isOnline ? t('online') : t('offline')}
@@ -378,9 +378,14 @@ function OverviewLiveMeta({
           aria-label={halloweenEnabled ? 'Stäng av Halloween-tema' : 'Aktivera Halloween-tema'}
           aria-pressed={halloweenEnabled}
           onClick={toggleHalloween}
-          style={{ marginLeft: 'auto', border: '1px solid #b66c35', borderRadius: 999, padding: '4px 9px', background: halloweenEnabled ? '#43230f' : '#20232b', color: halloweenEnabled ? '#ffbb73' : '#d4d4d8', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
         >
-          🎃 {halloweenEnabled ? 'PÅ' : 'AV'}
+          <span className="overview-halloween-name" aria-hidden="true">🎃 Halloween</span>
+          <span className={halloweenEnabled ? 'overview-halloween-state is-on' : 'overview-halloween-state is-off'} aria-hidden="true">
+            {halloweenEnabled ? 'PÅ' : 'AV'}
+          </span>
+          <svg className="overview-halloween-power" viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 2v9M6.1 5.7a9 9 0 1 0 11.8 0" />
+          </svg>
         </button>
       </div>
       <p>

@@ -348,6 +348,10 @@ function OverviewLiveMeta({
     try { return window.localStorage.getItem('viktkollen:halloween-theme') !== 'off' }
     catch { return true }
   })
+  useEffect(() => {
+    document.documentElement.classList.toggle('viktkollen-halloween-on', halloweenEnabled)
+    return () => document.documentElement.classList.remove('viktkollen-halloween-on')
+  }, [halloweenEnabled])
   function toggleHalloween() {
     setHalloweenEnabled((current) => {
       const next = !current

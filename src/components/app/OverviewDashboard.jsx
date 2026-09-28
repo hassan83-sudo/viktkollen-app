@@ -1290,7 +1290,13 @@ function OverviewDashboard({
           onLogWeight={onLogWeight}
           onOpenCoach={() => (onOpenAiCoach ? onOpenAiCoach() : setCoachOpen(true))}
           onOpenNotices={goToNotifications}
-          onOpenMealPlanner={() => onNavigateSection ? onNavigateSection('nutrition', 'meal-planner') : scrollToTarget('meal-planner')}
+          onOpenMealPlanner={() => {
+            const panel = document.getElementById('meal-planner')
+            if (panel) {
+              panel.open = true
+              window.requestAnimationFrame(() => scrollToTarget('meal-planner'))
+            }
+          }}
           onOpenWellbeing={onOpenWellbeing}
           onScanFood={onScanFood}
           reminderState={reminderState}

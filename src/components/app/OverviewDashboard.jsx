@@ -27,6 +27,7 @@ import {
   resolveHomeWeightKg,
 } from '../../services/homeTodayStats.js'
 import { normalizeReminderState } from '../../services/reminders/reminderModel.js'
+import { getMealPlanWeek, getMealPlanWeekStart, readMealPlans } from '../../services/nutrition/nutritionEngine.js'
 import { buildReminderStatus, getNextReminderAt } from '../../services/reminders/reminderScheduler.js'
 import SmartCameraStage from '../../features/smart-camera/components/SmartCameraStage.jsx'
 import BodyAvatarTalkBar from './BodyAvatarTalkBar.jsx'
@@ -844,6 +845,7 @@ function OverviewTodayMood({
   currentWeight,
   onLogWeight,
   onOpenCoach,
+  onOpenMealPlanner,
   onOpenNotices,
   onOpenWellbeing,
   onScanFood,
@@ -921,6 +923,7 @@ function OverviewTodayMood({
         <span className="overview-mood-link">{t('home:mood.openLink')}</span>
       </button>
 
+      <div className="overview-today-meal-split">
       <article className="overview-mood-card is-today">
         <span className="overview-mood-label">{t('home:labels.today')}</span>
         <div className="overview-mood-today-stats">
@@ -944,6 +947,17 @@ function OverviewTodayMood({
           )}
         </div>
       </article>
+      <button className="overview-mood-card is-meal-week" type="button" onClick={onOpenMealPlanner} aria-label="Öppna matplanering">
+        <span className="overview-mood-label">MATPLANERING</span>
+        <strong>Veckans recept</strong>
+        <small>{(() => {
+          const week = getMealPlanWeek(readMealPlans(), getMealPlanWeekStart())
+          const count = Object.values(week.days || {}).reduce((sum, meals) => sum + meals.length, 0)
+          return count ? `${count} planerade måltider` : 'Lägg till egna rätter'
+        })()}</small>
+        <span className="overview-mood-link">Öppna matplan →</span>
+      </button>
+      </div>
     </section>
   )
 }
@@ -1276,6 +1290,7 @@ function OverviewDashboard({
           onLogWeight={onLogWeight}
           onOpenCoach={() => (onOpenAiCoach ? onOpenAiCoach() : setCoachOpen(true))}
           onOpenNotices={goToNotifications}
+          onOpenMealPlanner={() => onNavigateSection ? onNavigateSection('nutrition', 'meal-planner') : scrollToTarget('meal-planner')}
           onOpenWellbeing={onOpenWellbeing}
           onScanFood={onScanFood}
           reminderState={reminderState}

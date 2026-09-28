@@ -11888,7 +11888,7 @@ body:has(#app-section-home.is-active) {
   grid-template-areas:
     "wellbeing coach"
     "reminder notices"
-    "today meal";
+    "today today";
   gap: 8px;
 }
 
@@ -11945,19 +11945,33 @@ body:has(#app-section-home.is-active) {
     linear-gradient(150deg, var(--home-card-2), rgba(7, 11, 23, 0.98));
 }
 
-#app-section-home.is-active .overview-mood-card.is-meal-week {
-  grid-area: meal;
+/* One full-width row containing two equal cards. Keep the named area on
+   the wrapper, not on its children (otherwise CSS Grid creates implicit tracks). */
+#app-section-home.is-active .overview-today-meal-split {
+  grid-area: today;
+  display: grid;
+  width: 100%;
   min-width: 0;
-  min-height: 112px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-items: stretch;
+}
+
+#app-section-home.is-active .overview-today-meal-split > .overview-mood-card {
+  grid-area: auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 122px;
+  box-sizing: border-box;
   overflow-wrap: anywhere;
 }
 
-#app-section-home.is-active .overview-mood-card.is-today {
-  min-width: 0;
+#app-section-home.is-active .overview-today-meal-split .overview-today-links {
+  flex-wrap: wrap;
 }
 
-#app-section-home.is-active .overview-today-links {
-  flex-wrap: wrap;
+#app-section-home.is-active .overview-today-meal-split .overview-stat-link {
+  white-space: normal;
 }
 
 #app-section-home.is-active .overview-mood-label {

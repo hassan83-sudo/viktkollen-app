@@ -17875,3 +17875,25 @@ html:has(#app-section-more.is-active),
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Manual meal calendar, scoped to Home; mobile-first and independent of AI planner. */
+#app-section-home.is-active .manual-meal-calendar { display:grid; gap:12px; min-width:0; }
+#app-section-home.is-active .manual-meal-calendar h3,
+#app-section-home.is-active .manual-meal-calendar h4,
+#app-section-home.is-active .manual-meal-calendar p { margin:0; }
+#app-section-home.is-active .manual-meal-toolbar { display:flex; flex-wrap:wrap; gap:6px; }
+#app-section-home.is-active .manual-meal-toolbar button,
+#app-section-home.is-active .manual-meal-dates button,
+#app-section-home.is-active .manual-meal-slot button { border:1px solid #42536b; background:#1b2940; color:#f5f9ff; border-radius:10px; padding:9px; cursor:pointer; }
+#app-section-home.is-active .manual-meal-toolbar button[aria-pressed="true"],
+#app-section-home.is-active .manual-meal-dates button[aria-pressed="true"] { border-color:#6ec8ff; background:#20445b; }
+#app-section-home.is-active .manual-meal-dates { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; }
+#app-section-home.is-active .manual-meal-dates button { min-width:0; padding:7px 2px; font-size:.7rem; overflow-wrap:anywhere; }
+#app-section-home.is-active .manual-meal-dates button small { display:block; }
+#app-section-home.is-active .manual-meal-slot { display:grid; gap:8px; padding:12px; border:1px solid #354357; border-radius:13px; background:#151e2d; }
+#app-section-home.is-active .manual-meal-slot label { display:grid; gap:4px; font-size:.8rem; }
+#app-section-home.is-active .manual-meal-slot input,
+#app-section-home.is-active .manual-meal-slot textarea { width:100%; box-sizing:border-box; min-width:0; border:1px solid #4a5970; border-radius:8px; background:#0c1523; color:#fff; padding:10px; font:inherit; }
+#app-section-home.is-active .manual-meal-entry { display:flex; gap:6px; flex-wrap:wrap; align-items:center; padding:8px; background:#243348; border-radius:8px; }
+#app-section-home.is-active .manual-meal-entry span { flex:1; min-width:80px; overflow-wrap:anywhere; }
+#app-section-home.is-active .manual-meal-note { font-size:.75rem; opacity:.8; }

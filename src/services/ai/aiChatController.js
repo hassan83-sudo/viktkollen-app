@@ -6,6 +6,17 @@ import {
 import { loadReadyState } from '../../features/ready/readyStore.js'
 
 const noopMemoryWriter = () => {}
+let memoryGeneration = 0
+let memoryWriteQueue = Promise.resolve()
+
+// Clear only the shared AI conversation memory, without touching other app data.
+// Invalidate pending lazy writers so they cannot repopulate a cleared conversation.
+export async function clearCoachConversationMemory() {
+  memoryGeneration += 1
+  await memoryWriteQueue.catch(() => {})
+  const { setAiConversationMemory } = await loadAiConversationMemory()
+  setAiConversationMemory([])
+}
 
 const readyLevelContext = {
   preschool: {
@@ -66,15 +77,17 @@ export async function prepareCoachChatSubmission({
     },
   ])
 
-  let memoryWriterPromise = null
+  const generation = memoryGeneration
   const addMemory = (entry) => {
-    if (!memoryWriterPromise) {
-      memoryWriterPromise = loadAiConversationMemory()
-        .then(({ addAiConversationMemory }) => addAiConversationMemory)
-        .catch(() => noopMemoryWriter)
-    }
-
-    void memoryWriterPromise.then((writeMemory) => writeMemory(entry))
+    memoryWriteQueue = memoryWriteQueue
+      .catch(() => {})
+      .then(async () => {
+        if (generation !== memoryGeneration) return
+        const { addAiConversationMemory = noopMemoryWriter } = await loadAiConversationMemory()
+        if (generation !== memoryGeneration) return
+        addAiConversationMemory(entry)
+      })
+      .catch(() => {})
   }
 
   return {

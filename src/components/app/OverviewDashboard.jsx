@@ -2,7 +2,7 @@ import { lazy, memo, Suspense, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AchievementPreviewCard from './AchievementPreviewCard.jsx'
 import DailyCoachCard from './DailyCoachCard.jsx'
-import DailyMealPlannerCard from './DailyMealPlannerCard.jsx'
+import ManualMealCalendar from './ManualMealCalendar.jsx'
 import HealthPredictionCard from './HealthPredictionCard.jsx'
 import SmartNotificationsCard from './SmartNotificationsCard.jsx'
 import WeeklyProgressSection from './WeeklyProgressSection.jsx'
@@ -1487,11 +1487,7 @@ function OverviewDashboard({
       <section className="overview-more-section home-last-content" aria-labelledby="overview-more-title">
         <h2 id="overview-more-title">{t('home:moreForToday')}</h2>
         <CollapsibleDashboardSection id="meal-planner" title={t('home:mealPlanTitle')}>
-          <DailyMealPlannerCard
-            date={selectedDate}
-            meals={meals}
-            nutritionGoals={nutritionGoals}
-          />
+          <ManualMealCalendar />
         </CollapsibleDashboardSection>
         <CollapsibleDashboardSection id="weekly-progress" title={t('home:last7Days')}>
           <WeeklyProgressSection

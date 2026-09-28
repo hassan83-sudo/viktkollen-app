@@ -6,7 +6,7 @@ import { makeNutritionGoalProgress, normalizeNutritionGoals } from './nutritionG
 
 export const mealPlansStorageKey = 'viktkollen.mealPlans'
 export const mealPlanVersion = 1
-export const plannedMealTypes = ['Frukost', 'Lunch', 'Middag', 'Mellanmål', 'Kvällsmål', 'Nattmål', 'Måltid', 'Dryck', 'Annat']
+export const plannedMealTypes = ['Frukost', 'Lunch', 'Middag', 'Kvällsmat', 'Mellanmål', 'Kvällsmål', 'Nattmål', 'Måltid', 'Dryck', 'Annat']
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/
 const timePattern = /^\d{2}:\d{2}$/

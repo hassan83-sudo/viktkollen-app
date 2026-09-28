@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAccessibilityPreferences } from '../../services/accessibilityPreferences.js'
-import { speakAccessibilityText } from '../../services/accessibilitySpeech.js'
+import { cancelAccessibilitySpeech, speakAccessibilityText } from '../../services/accessibilitySpeech.js'
 import AppSection from '../app/AppSection.jsx'
 import ModalDialog from '../a11y/ModalDialog.jsx'
 import { getReadyAvatar, getReadyAvatars } from '../../features/ready/readyAvatars.js'
@@ -34,6 +34,7 @@ function ReadySection({ activeSection, onNavigateSection, onOpenCompanion, onOpe
   const { i18n, t } = useTranslation(['ready', 'common', 'notices'])
   const { navigationSpeechRate } = useAccessibilityPreferences()
   const [state, setState] = useState(() => loadReadyState())
+  const [isPreschoolSpeaking, setIsPreschoolSpeaking] = useState(false)
   const [draftLabel, setDraftLabel] = useState('')
   const [forgotText, setForgotText] = useState('')
   const [pendingForgotLabel, setPendingForgotLabel] = useState('')
@@ -67,11 +68,19 @@ function ReadySection({ activeSection, onNavigateSection, onOpenCompanion, onOpe
     const section = document.getElementById('app-section-redo')
     const text = section?.innerText?.trim()
     if (!text) return
-    speakAccessibilityText({
+    const didSpeak = speakAccessibilityText({
       language: i18n.language,
       rate: navigationSpeechRate,
       text,
+      onEnd: () => setIsPreschoolSpeaking(false),
+      onError: () => setIsPreschoolSpeaking(false),
     })
+    if (didSpeak) setIsPreschoolSpeaking(true)
+  }
+
+  function handleStopPreschoolReadAloud() {
+    cancelAccessibilitySpeech()
+    setIsPreschoolSpeaking(false)
   }
 
   function commitState(updater) {
@@ -141,8 +150,8 @@ function ReadySection({ activeSection, onNavigateSection, onOpenCompanion, onOpe
         <ReadyHeader greeting={greeting} levelId={state.levelId} onLevelChange={(levelId) => commitState((current) => ({ ...current, levelId }))} avatar={avatar} onAvatarClick={() => setShowAvatarPicker((open) => !open)} />
 
         {isPreschool ? (
-          <button className="secondary-button ready-preschool-read-aloud" type="button" onClick={handlePreschoolReadAloud}>
-            <span aria-hidden="true">🔊</span> Läs upp sidan
+          <button className="secondary-button ready-preschool-read-aloud" type="button" onClick={isPreschoolSpeaking ? handleStopPreschoolReadAloud : handlePreschoolReadAloud}>
+            <span aria-hidden="true">{isPreschoolSpeaking ? '⏹' : '🔊'}</span> {isPreschoolSpeaking ? 'Stoppa uppläsning' : 'Läs upp sidan'}
           </button>
         ) : null}
 

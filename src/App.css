@@ -17903,3 +17903,18 @@ html:has(#app-section-more.is-active),
 #app-section-home.is-active .manual-meal-page-header { display:flex; gap:12px; align-items:center; margin-bottom:18px; }
 #app-section-home.is-active .manual-meal-page-header h2 { margin:0; font-size:1.3rem; }
 #app-section-home.is-active .manual-meal-page-header button { border:1px solid #42536b; background:#1b2940; color:#fff; border-radius:10px; padding:10px 12px; cursor:pointer; }
+
+/* Optional seasonal accent: scoped to the home header; no layout changes. */
+.viktkollen-halloween-on .overview-app-header {
+  background-image: radial-gradient(ellipse at 86% 16%, rgba(237, 113, 27, .15), transparent 42%);
+}
+.viktkollen-halloween-on .overview-header-weather-art {
+  filter: drop-shadow(0 0 9px rgba(255, 132, 37, .34));
+}
+.overview-halloween-toggle:focus-visible {
+  outline: 2px solid #ffb366;
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .overview-halloween-toggle { transition: background-color .18s ease, color .18s ease; }
+}

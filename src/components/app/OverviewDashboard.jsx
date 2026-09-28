@@ -923,6 +923,7 @@ function OverviewTodayMood({
         <span className="overview-mood-link">{t('home:mood.openLink')}</span>
       </button>
 
+      <div className="overview-today-meal-split">
       <article className="overview-mood-card is-today">
         <span className="overview-mood-label">{t('home:labels.today')}</span>
         <div className="overview-mood-today-stats">
@@ -956,6 +957,7 @@ function OverviewTodayMood({
         })()}</small>
         <span className="overview-mood-link">Öppna matplan →</span>
       </button>
+      </div>
     </section>
   )
 }

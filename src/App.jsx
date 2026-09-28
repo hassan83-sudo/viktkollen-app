@@ -96,7 +96,7 @@ import {
 import { upsertOnboardingStartWeight } from './services/onboardingPersistence.js'
 import * as userDataRepository from './services/userDataRepository.js'
 import { loadAiApiService, loadAiCoachV2Service, loadAiSuggestions, loadAiUserContext, loadProactiveCoachService, loadWeeklyReportService } from './services/ai/aiRuntimeLoader.js'
-import { prepareCoachChatSubmission, requestCoachChatReply, requestCoachRealtimeSession } from './services/ai/aiChatController.js'
+import { clearCoachConversationMemory, prepareCoachChatSubmission, requestCoachChatReply, requestCoachRealtimeSession } from './services/ai/aiChatController.js'
 import AiCoachOverlay from './components/AiCoachOverlay.jsx'
 import { createVoiceConversationController } from './services/voiceConversationController.js'
 import {
@@ -2688,7 +2688,11 @@ function App() {
     ])
   }
 
+  const chatClearGenerationRef = useRef(0)
+
   function clearChat() {
+    chatClearGenerationRef.current += 1
+    void clearCoachConversationMemory()
     setChatMessages(initialChatMessages)
     setChatInput('')
     setChatEngineStatus('')
@@ -2701,6 +2705,7 @@ function App() {
     }
 
     chatRequestInFlightRef.current = true
+    const chatGeneration = chatClearGenerationRef.current
     const createdAt = new Date().toISOString()
     const { addMemory, pendingChatHistory } = await prepareCoachChatSubmission({
       chatMessages: chatMessagesRef.current,
@@ -2708,6 +2713,10 @@ function App() {
       text,
     })
 
+    if (chatGeneration !== chatClearGenerationRef.current) {
+      chatRequestInFlightRef.current = false
+      return ''
+    }
     appendChatMessage('user', text, '', createdAt)
     addMemory({
       feature: 'ai-coach',
@@ -2717,6 +2726,7 @@ function App() {
 
     try {
       const result = await requestChatReply(text, pendingChatHistory)
+      if (chatGeneration !== chatClearGenerationRef.current) return ''
       const isLocalFallback = result.source !== 'openai'
 
       setChatEngineStatus(
@@ -2733,6 +2743,7 @@ function App() {
       trackPremiumCounter(premiumAnalyticsCounters.aiCoachMessages)
       return result.reply
     } catch (error) {
+      if (chatGeneration !== chatClearGenerationRef.current) return ''
       const reply = getSafeErrorMessage(error, { area: 'ai' })
 
       setChatEngineStatus('AI-coachen kunde inte svara just nu.')

@@ -1079,6 +1079,7 @@ function OverviewDashboard({
   const [smartCameraOpen, setSmartCameraOpen] = useState(Boolean(initialSmartCameraMode))
   const [smartCameraInitialMode, setSmartCameraInitialMode] = useState(initialSmartCameraMode)
   const [coachOpen, setCoachOpen] = useState(false)
+  const [manualMealPlanOpen, setManualMealPlanOpen] = useState(false)
   const [socialOpen, setSocialOpen] = useState(false)
   const [socialView, setSocialView] = useState('inbox')
   const [socialConversationId, setSocialConversationId] = useState(null)
@@ -1218,6 +1219,18 @@ function OverviewDashboard({
     }
   }, [isAuthenticated, socialLiveEnabled, t])
 
+  if (manualMealPlanOpen) {
+    return (
+      <section className="home-overview-shell manual-meal-page" aria-label="Matplanering">
+        <header className="manual-meal-page-header">
+          <button type="button" onClick={() => setManualMealPlanOpen(false)} aria-label="Tillbaka till startsidan">← Tillbaka</button>
+          <h2>Matplanering</h2>
+        </header>
+        <ManualMealCalendar />
+      </section>
+    )
+  }
+
   return (
     <div className="home-overview-shell">
       <header className="overview-app-header">
@@ -1290,13 +1303,7 @@ function OverviewDashboard({
           onLogWeight={onLogWeight}
           onOpenCoach={() => (onOpenAiCoach ? onOpenAiCoach() : setCoachOpen(true))}
           onOpenNotices={goToNotifications}
-          onOpenMealPlanner={() => {
-            const panel = document.getElementById('meal-planner')
-            if (panel) {
-              panel.open = true
-              window.requestAnimationFrame(() => scrollToTarget('meal-planner'))
-            }
-          }}
+          onOpenMealPlanner={() => setManualMealPlanOpen(true)}
           onOpenWellbeing={onOpenWellbeing}
           onScanFood={onScanFood}
           reminderState={reminderState}
@@ -1486,9 +1493,7 @@ function OverviewDashboard({
 
       <section className="overview-more-section home-last-content" aria-labelledby="overview-more-title">
         <h2 id="overview-more-title">{t('home:moreForToday')}</h2>
-        <CollapsibleDashboardSection id="meal-planner" title={t('home:mealPlanTitle')}>
-          <ManualMealCalendar />
-        </CollapsibleDashboardSection>
+
         <CollapsibleDashboardSection id="weekly-progress" title={t('home:last7Days')}>
           <WeeklyProgressSection
             checkIn={checkIn}

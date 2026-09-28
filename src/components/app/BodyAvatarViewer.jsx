@@ -18,8 +18,7 @@ function BodyAvatarViewer({
   view = 'front',
 }) {
   const pointerRef = useRef(null)
-  const [womanAssetReady, setWomanAssetReady] = useState(false)
-  const [womanAssetFailed, setWomanAssetFailed] = useState(false)
+  const [useApprovedArtwork, setUseApprovedArtwork] = useState(true)
   const availability = getAvatarViewAvailability(view)
   const showingOriginal = compareMode === 'original' || holdOriginal
 
@@ -56,39 +55,12 @@ function BodyAvatarViewer({
         role="img"
         aria-label={`Hälsokropp, ${availability.label}`}
       >
-        {/* Preserve the original composite until a verified woman-only transparent asset exists.
-            The optional overlay never changes the 420px canvas or its surrounding columns. */}
         <img
           alt="Viktkollens hälsokropp"
           draggable={false}
-          src={AVATAR_FRONT_SRC}
-          style={womanAssetReady ? { visibility: 'hidden' } : undefined}
+          src={useApprovedArtwork ? '/viktkollen-body-scan-new.png' : AVATAR_FRONT_SRC}
+          onError={() => setUseApprovedArtwork(false)}
         />
-        {!womanAssetFailed && (
-          <img
-            alt=""
-            aria-hidden="true"
-            draggable={false}
-            src="/body-avatar/woman-front-transparent.png"
-            onLoad={(event) => {
-              const image = event.currentTarget
-              // A tiny placeholder must not accidentally replace the real artwork.
-              if (image.naturalWidth >= 256 && image.naturalHeight >= 512) setWomanAssetReady(true)
-              else setWomanAssetFailed(true)
-            }}
-            onError={() => setWomanAssetFailed(true)}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'contain',
-              objectPosition: 'center',
-              pointerEvents: 'none',
-              visibility: womanAssetReady ? 'visible' : 'hidden',
-            }}
-          />
-        )}
         <BodyScanRings className="overview-body-scan-rings is-fullscreen" />
         <p className="body-avatar-viewer-hint">↔ Dra för att rotera</p>
       </div>

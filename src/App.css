@@ -11366,8 +11366,10 @@ body:has(#app-section-home.is-active) {
 }
 
 #app-section-home.is-active .overview-primary-art.is-body img {
-  object-fit: contain;
-  object-position: 50% 46%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
 }
 
 .overview-body-scan-rings {

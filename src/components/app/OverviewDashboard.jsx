@@ -6,7 +6,6 @@ import ManualMealCalendar from './ManualMealCalendar.jsx'
 import HealthPredictionCard from './HealthPredictionCard.jsx'
 import SmartNotificationsCard from './SmartNotificationsCard.jsx'
 import WeeklyProgressSection from './WeeklyProgressSection.jsx'
-import BodyScanRings from './BodyScanRings.jsx'
 import OverviewBodyScanStage from './OverviewBodyScanStage.jsx'
 import OverviewCoachStage from './OverviewCoachStage.jsx'
 import WeatherDayDetail from './WeatherDayDetail.jsx'
@@ -770,9 +769,9 @@ function OverviewPrimaryActions({
       description: t('home:bodyCardHint'),
       footerLabel: t('bodyScan:startScan'),
       hitLabel: t('home:openBodyScanFullscreen'),
-      image: '/viktkollen-body-scan-card.svg',
-      imageHeight: 1167,
-      imageWidth: 400,
+      image: '/viktkollen-body-scan-new.png',
+      imageHeight: 1538,
+      imageWidth: 1023,
       icon: 'bodyScan',
       label: t('home:labels.bodyScan'),
       onClick: openBody,
@@ -820,7 +819,7 @@ function OverviewPrimaryActions({
                 ) : (
                   <OverviewIcon name={action.icon} />
                 )}
-                {action.art === 'body' ? <BodyScanRings /> : null}
+                {/* Home preview uses the approved complete artwork without an extra ring overlay. */}
               </span>
               <span className="overview-primary-action-icon">
                 <OverviewIcon name={action.icon} />

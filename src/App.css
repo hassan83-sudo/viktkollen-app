@@ -11370,22 +11370,18 @@ body:has(#app-section-home.is-active) {
   object-position: 50% 46%;
 }
 
-/* AI Örat card only: its picture reaches down to the footer. The picture
-   keeps its width and sits at the top; the space below is filled with the
-   purple of the artwork's bottom edge. The Kroppsscanning card shares
-   .is-body but is not inside section.overview-primary-actions, and at 380px
-   and below the picture already reaches the bottom. */
+/* AI Örat card only: the ear picture fills its box down to the footer.
+   The Kroppsscanning card shares .is-body but is not inside
+   section.overview-primary-actions, and at 380px and below the picture
+   already reaches the bottom. */
 @media (min-width: 381px) {
   #app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-body .overview-primary-visual {
     bottom: 0;
   }
 
-  #app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-body .overview-primary-art {
-    background: rgb(65, 46, 129);
-  }
-
   #app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-body .overview-primary-art img {
-    object-position: 50% 0;
+    object-fit: cover;
+    object-position: 50% 50%;
   }
 }
 

@@ -682,6 +682,7 @@ function OverviewPrimaryActions({
   featureFlags,
   onNavigateSection,
   onOpenBodyScan,
+  onOpenEar,
   onOpenEyes,
   onOpenFoodScan,
   onOpenSmartCamera,
@@ -743,7 +744,6 @@ function OverviewPrimaryActions({
     else onOpenSmartCamera?.()
   }
 
-  const openBody = () => (onOpenBodyScan ? onOpenBodyScan() : goTo('progress', 'body-analysis'))
   const openFood = () => {
     if (onOpenFoodScan) onOpenFoodScan()
     else if (onScanFood) onScanFood()
@@ -764,20 +764,6 @@ function OverviewPrimaryActions({
       onClick: openEyes,
     },
     {
-      accent: 'body',
-      alt: t('home:actionAlts.body'),
-      art: 'body',
-      description: t('home:bodyCardHint'),
-      footerLabel: t('bodyScan:startScan'),
-      hitLabel: t('home:openBodyScanFullscreen'),
-      image: '/viktkollen-body-scan-card.svg',
-      imageHeight: 1167,
-      imageWidth: 400,
-      icon: 'bodyScan',
-      label: t('home:labels.bodyScan'),
-      onClick: openBody,
-    },
-    {
       accent: 'food',
       alt: t('home:actionAlts.food'),
       art: 'meal',
@@ -791,6 +777,17 @@ function OverviewPrimaryActions({
       label: t('home:foodScan.title'),
       onClick: openFood,
     },
+    {
+      accent: 'body',
+      alt: '',
+      art: 'body',
+      description: t('aiEar:intro'),
+      footerLabel: t('aiEar:title'),
+      hitLabel: t('aiEar:title'),
+      icon: 'ear',
+      label: t('aiEar:title'),
+      onClick: onOpenEar,
+    },
   ]
 
   return (
@@ -802,7 +799,7 @@ function OverviewPrimaryActions({
             type="button"
             // A11Y-8G (WCAG 2.5.3): the name comes from the visible card text.
             // The Body Scan card keeps its label (Body Scan is out of scope).
-            aria-label={action.accent === 'body' ? action.hitLabel : undefined}
+            aria-label={action.hitLabel || undefined}
             onClick={action.imageOnClick || action.onClick}
           >
             <span className="overview-primary-visual">
@@ -820,7 +817,7 @@ function OverviewPrimaryActions({
                 ) : (
                   <OverviewIcon name={action.icon} />
                 )}
-                {action.art === 'body' ? <BodyScanRings /> : null}
+                {action.icon === 'bodyScan' ? <BodyScanRings /> : null}
               </span>
               <span className="overview-primary-action-icon">
                 <OverviewIcon name={action.icon} />
@@ -830,7 +827,7 @@ function OverviewPrimaryActions({
               <strong>{action.label}</strong>{' '}
               {action.description ? <small>{action.description}</small> : null}
             </span>{' '}
-            {action.accent === 'body' ? null : showTapPulse && !prefersReducedMotion ? (
+            {showTapPulse && !prefersReducedMotion ? (
               <span className="overview-tap-me is-pulse">{t('home:tapImage')}</span>
             ) : (
               <span className="overview-tap-me">{t('home:tapImage')}</span>
@@ -991,6 +988,66 @@ function OverviewTodayMood({
       </button>
       </div>
     </section>
+  )
+}
+
+function OverviewBodyScanAction({ onOpenBodyScan }) {
+  const { t } = useTranslation(['bodyScan', 'home'])
+  const action = {
+    accent: 'body',
+    alt: t('home:actionAlts.body'),
+    art: 'body',
+    description: t('home:bodyCardHint'),
+    footerLabel: t('bodyScan:startScan'),
+    hitLabel: t('home:openBodyScanFullscreen'),
+    image: '/viktkollen-body-scan.png',
+    imageHeight: 1167,
+    imageWidth: 400,
+    icon: 'bodyScan',
+    label: t('home:labels.bodyScan'),
+    onClick: onOpenBodyScan,
+  }
+
+  return (
+    <div className={`overview-primary-action is-${action.accent}`}>
+      <button
+        className="overview-primary-action-hit"
+        type="button"
+        aria-label={action.hitLabel}
+        onClick={action.onClick}
+      >
+        <span className="overview-primary-visual">
+          <span className="overview-primary-orbit" />
+          <span className={`overview-primary-art is-${action.art}`}>
+            <img
+              alt={action.alt}
+              decoding="async"
+              height={action.imageHeight}
+              loading="lazy"
+              src={action.image}
+              width={action.imageWidth}
+            />
+            <BodyScanRings />
+          </span>
+          <span className="overview-primary-action-icon">
+            <OverviewIcon name={action.icon} />
+          </span>
+        </span>
+        <span className="overview-primary-action-copy">
+          <strong>{action.label}</strong>{' '}
+          <small>{action.description}</small>
+        </span>
+      </button>
+      <button
+        className="overview-primary-action-footer"
+        type="button"
+        aria-label={action.footerLabel}
+        onClick={action.onClick}
+      >
+        <OverviewIcon name="foodCamera" />
+        <span>{action.footerLabel}</span>
+      </button>
+    </div>
   )
 }
 
@@ -1313,6 +1370,11 @@ function OverviewDashboard({
           featureFlags={flags}
           onNavigateSection={onNavigateSection}
           onOpenBodyScan={() => setBodyScanOpen(true)}
+          onOpenEar={() => {
+            setBodyScanOpen(false)
+            setSmartCameraInitialMode('ai-ear')
+            setSmartCameraOpen(true)
+          }}
           onOpenEyes={() => {
             setBodyScanOpen(false)
             setSmartCameraInitialMode('eyes')
@@ -1365,6 +1427,9 @@ function OverviewDashboard({
           }}
         />
         <OverviewCheckInAction onNavigateSection={onNavigateSection} />
+        <div className="overview-primary-actions overview-body-scan-original-size">
+          <OverviewBodyScanAction onOpenBodyScan={() => setBodyScanOpen(true)} />
+        </div>
       </section>
 
       <section className="overview-home-section" aria-labelledby="overview-advice-title">

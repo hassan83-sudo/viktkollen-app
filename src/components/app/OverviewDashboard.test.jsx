@@ -102,7 +102,7 @@ describe('OverviewDashboard', () => {
     expect(markup).toContain('Minne, kläder och sista kollen')
     expect(markup).not.toContain('Följ kroppens förändringar över tid')
     expect(markup).toContain('Skanna maten och uppskatta näringen')
-    expect(markup).toContain('/viktkollen-body-scan.png')
+    expect(markup).toContain('/viktkollen-body-scan-home.webp')
     expect(markup).toContain('Öppna kroppsscanning i helskärm')
     expect(markup).toContain('Tryck på bilden')
     expect(markup).toContain('Tryck på personen för att förstora')
@@ -111,7 +111,7 @@ describe('OverviewDashboard', () => {
     expect(markup).toContain('Starta scanning')
     expect(markup).toContain('Skanna maten')
     expect(markup).toContain('overview-primary-action-footer')
-    expect(markup).toContain('/viktkollen-meal-scan.png')
+    expect(markup).toContain('/viktkollen-meal-scan-chicken-rice.webp')
     expect(markup).toContain('overview-body-scan-rings')
   })
 

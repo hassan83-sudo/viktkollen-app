@@ -649,6 +649,7 @@ function OverviewPrimaryActions({
   featureFlags,
   onNavigateSection,
   onOpenBodyScan,
+  onOpenEar,
   onOpenEyes,
   onOpenFoodScan,
   onOpenSmartCamera,
@@ -710,7 +711,6 @@ function OverviewPrimaryActions({
     else onOpenSmartCamera?.()
   }
 
-  const openBody = () => (onOpenBodyScan ? onOpenBodyScan() : goTo('progress', 'body-analysis'))
   const openFood = () => {
     if (onOpenFoodScan) onOpenFoodScan()
     else if (onScanFood) onScanFood()
@@ -725,24 +725,13 @@ function OverviewPrimaryActions({
       description: t('home:actionDescriptions.smartCamera'),
       footerLabel: t('home:cardActions.openCamera'),
       hitLabel: t('home:labels.openAiEyes'),
+      image: '/viktkollen-ai-eyes-home.webp',
+      imageHeight: 623,
+      imageWidth: 480,
       icon: 'eye',
       imageOnClick: openSmartCameraHub,
       label: t('home:labels.aiEyes'),
       onClick: openEyes,
-    },
-    {
-      accent: 'body',
-      alt: t('home:actionAlts.body'),
-      art: 'body',
-      description: t('home:bodyCardHint'),
-      footerLabel: t('bodyScan:startScan'),
-      hitLabel: t('home:openBodyScanFullscreen'),
-      image: '/viktkollen-body-scan-card.svg',
-      imageHeight: 1167,
-      imageWidth: 400,
-      icon: 'bodyScan',
-      label: t('home:labels.bodyScan'),
-      onClick: openBody,
     },
     {
       accent: 'food',
@@ -751,13 +740,27 @@ function OverviewPrimaryActions({
       description: t('home:actionDescriptions.food'),
       footerLabel: t('home:cardActions.scanFood'),
       hitLabel: t('home:scanFoodWithCamera'),
-      image: '/viktkollen-meal-scan.png',
-      imageHeight: 1536,
-      imageWidth: 1024,
+      image: '/viktkollen-meal-scan-chicken-rice.webp',
+      imageHeight: 623,
+      imageWidth: 480,
       icon: 'foodCamera',
       label: t('home:foodScan.title'),
       onClick: openFood,
     },
+    ...(smartCameraOn && isFeatureEnabled('aiEar', featureFlags) ? [{
+      accent: 'body',
+      alt: '',
+      art: 'body',
+      description: t('home:actionDescriptions.ear'),
+      footerLabel: t('aiEar:title'),
+      hitLabel: t('aiEar:title'),
+      image: '/viktkollen-ai-ear-home.webp',
+      imageHeight: 542,
+      imageWidth: 480,
+      icon: 'ear',
+      label: t('aiEar:title'),
+      onClick: onOpenEar,
+    }] : []),
   ]
 
   return (
@@ -787,7 +790,7 @@ function OverviewPrimaryActions({
                 ) : (
                   <OverviewIcon name={action.icon} />
                 )}
-                {action.art === 'body' ? <BodyScanRings /> : null}
+                {action.icon === 'bodyScan' ? <BodyScanRings /> : null}
               </span>
               <span className="overview-primary-action-icon">
                 <OverviewIcon name={action.icon} />
@@ -797,7 +800,7 @@ function OverviewPrimaryActions({
               <strong>{action.label}</strong>{' '}
               {action.description ? <small>{action.description}</small> : null}
             </span>{' '}
-            {action.accent === 'body' ? null : showTapPulse && !prefersReducedMotion ? (
+            {showTapPulse && !prefersReducedMotion ? (
               <span className="overview-tap-me is-pulse">{t('home:tapImage')}</span>
             ) : (
               <span className="overview-tap-me">{t('home:tapImage')}</span>
@@ -945,6 +948,66 @@ function OverviewTodayMood({
         </div>
       </article>
     </section>
+  )
+}
+
+function OverviewBodyScanAction({ onOpenBodyScan }) {
+  const { t } = useTranslation(['bodyScan', 'home'])
+  const action = {
+    accent: 'body',
+    alt: t('home:actionAlts.body'),
+    art: 'body',
+    description: t('home:bodyCardHint'),
+    footerLabel: t('bodyScan:startScan'),
+    hitLabel: t('home:openBodyScanFullscreen'),
+    image: '/viktkollen-body-scan-home.webp',
+    imageHeight: 1538,
+    imageWidth: 1023,
+    icon: 'bodyScan',
+    label: t('home:labels.bodyScan'),
+    onClick: onOpenBodyScan,
+  }
+
+  return (
+    <div className={`overview-primary-action is-${action.accent}`}>
+      <button
+        className="overview-primary-action-hit"
+        type="button"
+        aria-label={action.hitLabel}
+        onClick={action.onClick}
+      >
+        <span className="overview-primary-visual">
+          <span className="overview-primary-orbit" />
+          <span className={`overview-primary-art is-${action.art}`}>
+            <img
+              alt={action.alt}
+              decoding="async"
+              height={action.imageHeight}
+              loading="lazy"
+              src={action.image}
+              width={action.imageWidth}
+            />
+            <BodyScanRings />
+          </span>
+          <span className="overview-primary-action-icon">
+            <OverviewIcon name={action.icon} />
+          </span>
+        </span>
+        <span className="overview-primary-action-copy">
+          <strong>{action.label}</strong>{' '}
+          <small>{action.description}</small>
+        </span>
+      </button>
+      <button
+        className="overview-primary-action-footer"
+        type="button"
+        aria-label={action.footerLabel}
+        onClick={action.onClick}
+      >
+        <OverviewIcon name="foodCamera" />
+        <span>{action.footerLabel}</span>
+      </button>
+    </div>
   )
 }
 
@@ -1254,6 +1317,11 @@ function OverviewDashboard({
           featureFlags={flags}
           onNavigateSection={onNavigateSection}
           onOpenBodyScan={() => setBodyScanOpen(true)}
+          onOpenEar={() => {
+            setBodyScanOpen(false)
+            setSmartCameraInitialMode('ai-ear')
+            setSmartCameraOpen(true)
+          }}
           onOpenEyes={() => {
             setBodyScanOpen(false)
             setSmartCameraInitialMode('eyes')
@@ -1305,6 +1373,9 @@ function OverviewDashboard({
           }}
         />
         <OverviewCheckInAction onNavigateSection={onNavigateSection} />
+        <div className="overview-primary-actions overview-body-scan-original-size">
+          <OverviewBodyScanAction onOpenBodyScan={() => setBodyScanOpen(true)} />
+        </div>
       </section>
 
       <section className="overview-home-section" aria-labelledby="overview-advice-title">

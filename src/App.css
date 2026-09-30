@@ -11370,6 +11370,76 @@ body:has(#app-section-home.is-active) {
   object-position: 50% 46%;
 }
 
+/* Kroppsscanning card on Home: the whole body artwork, background and
+   panels included, fills its box down to the footer; the dark edge colour
+   fills any space beside it. Scoped to its own container, so the AI Örat
+   card (also .is-body) keeps its own rules. */
+#app-section-home.is-active .overview-body-scan-original-size > .overview-primary-action.is-body .overview-primary-visual {
+  bottom: 0;
+}
+
+#app-section-home.is-active .overview-body-scan-original-size > .overview-primary-action.is-body .overview-primary-art.is-body {
+  background: rgb(1, 6, 17);
+}
+
+#app-section-home.is-active .overview-body-scan-original-size > .overview-primary-action.is-body .overview-primary-art.is-body img {
+  object-fit: contain;
+  object-position: 50% 50%;
+}
+
+/* The picture has its own scan rings. */
+#app-section-home.is-active .overview-body-scan-original-size > .overview-primary-action.is-body .overview-body-scan-rings {
+  display: none;
+}
+
+/* Narrow screens: start the picture below the card text. */
+@media (max-width: 380px) {
+  #app-section-home.is-active .overview-body-scan-original-size > .overview-primary-action.is-body .overview-primary-visual {
+    top: 82px;
+  }
+}
+
+/* AI Ögon card: the eye picture fills its box down to the footer. */
+#app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-eyes .overview-primary-visual {
+  bottom: 0;
+}
+
+#app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-eyes .overview-primary-art.is-eyes {
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+#app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-eyes .overview-primary-art.is-eyes img {
+  object-fit: cover;
+  object-position: 50% 50%;
+}
+
+/* Matscanning card: the sharp photo fills its box down to the footer,
+   centred on the plate. */
+#app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-food .overview-primary-visual {
+  bottom: 0;
+}
+
+#app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-food .overview-primary-art.is-meal img {
+  object-fit: cover;
+  object-position: 50% 50%;
+}
+
+/* AI Örat card: the ear picture fills its box down to the footer. The
+   Kroppsscanning card shares .is-body but is not inside
+   section.overview-primary-actions, and at 380px and below the picture
+   already reaches the bottom. */
+@media (min-width: 381px) {
+  #app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-body .overview-primary-visual {
+    bottom: 0;
+  }
+
+  #app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-body .overview-primary-art img {
+    object-fit: cover;
+    object-position: 50% 50%;
+  }
+}
+
 .overview-body-scan-rings {
   position: absolute;
   inset: 0;

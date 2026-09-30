@@ -11370,6 +11370,30 @@ body:has(#app-section-home.is-active) {
   object-position: 50% 46%;
 }
 
+/* Kroppsscanning card on Home: the body picture fills its box down to the
+   footer. Scoped to its own container, so the AI Örat card (also .is-body)
+   keeps its own rules. */
+#app-section-home.is-active .overview-body-scan-original-size > .overview-primary-action.is-body .overview-primary-visual {
+  bottom: 0;
+}
+
+#app-section-home.is-active .overview-body-scan-original-size > .overview-primary-action.is-body .overview-primary-art.is-body img {
+  object-fit: cover;
+  object-position: 50% 50%;
+}
+
+/* The picture has its own scan rings. */
+#app-section-home.is-active .overview-body-scan-original-size > .overview-primary-action.is-body .overview-body-scan-rings {
+  display: none;
+}
+
+/* Narrow screens: start the picture below the card text. */
+@media (max-width: 380px) {
+  #app-section-home.is-active .overview-body-scan-original-size > .overview-primary-action.is-body .overview-primary-visual {
+    top: 82px;
+  }
+}
+
 /* AI Ögon card: the eye picture fills its box down to the footer. */
 #app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-eyes .overview-primary-visual {
   bottom: 0;

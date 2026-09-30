@@ -18,6 +18,8 @@ import { DISPATCH_CAS_RESULT } from '../../src/services/billing/durableOperation
 import { recordProviderUsageTelemetry } from '../../src/services/billing/providerTelemetry.js'
 import { createRealtimeVoiceSession } from '../_shared/openaiGateway.js'
 import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
+import { handleAiCoachRequest } from '../_shared/aiCoach/httpHandler.js'
+import { handleAiHelpRequest } from '../_shared/aiHelp/httpHandler.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 
@@ -615,7 +617,32 @@ async function handleWeeklyReport(data, response, meter) {
   }
 }
 
+function readVkRoute(request) {
+  const queryValue = request?.query?.__vk_route
+  const fromQuery = Array.isArray(queryValue) ? queryValue[0] : queryValue
+  if (typeof fromQuery === 'string' && fromQuery.trim()) return fromQuery.trim()
+  const rawUrl = String(request?.url || '')
+  const queryIndex = rawUrl.indexOf('?')
+  if (queryIndex === -1) return ''
+  const fromUrl = new URLSearchParams(rawUrl.slice(queryIndex + 1)).get('__vk_route')
+  return typeof fromUrl === 'string' ? fromUrl.trim() : ''
+}
+
 export default async function handler(request, response) {
+  const route = readVkRoute(request)
+  if (route === 'ai-help') return handleAiHelpRequest(request, response)
+  if (route === 'ai-coach') return handleAiCoachRequest(request, response)
+  if (route) {
+    return sendSafeAiError(response, {
+      code: aiRouteErrorCodes.INVALID_REQUEST,
+      requestId: `ai-route-${Date.now().toString(36)}`,
+      status: 400,
+    })
+  }
+  return legacyAiHandler(request, response)
+}
+
+async function legacyAiHandler(request, response) {
   const requestId = `ai-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   setNoStoreHeaders(response)
 

@@ -123,6 +123,14 @@
     {
       "source": "/api/billing/cancel-undo/",
       "destination": "/api/billing/user?__vk_route=undo_cancel"
+    },
+    {
+      "source": "/api/ai-help",
+      "destination": "/api/ai?__vk_route=ai-help"
+    },
+    {
+      "source": "/api/ai-coach",
+      "destination": "/api/ai?__vk_route=ai-coach"
     }
   ]
 }

@@ -7,8 +7,9 @@ import { fileURLToPath } from 'node:url'
 import { createServer } from 'vite'
 import { defineConfig } from '@playwright/test'
 
-// Isolated AI Help test server. The /api/ai-help route exists only in this
-// process. The shared Vite config and production server are not changed.
+// Isolated AI Help test server. Vite does not apply vercel.json rewrites, so
+// this process mounts the shared handlers on the public /api/ai-help and
+// /api/ai-coach paths. The shared Vite config is not changed.
 const port = 5176
 
 function withVercelResponseHelpers(response) {
@@ -58,8 +59,8 @@ function aiHelpTestApiPlugin() {
           }
         })
       }
-      mount('/api/ai-help', './api/ai-help/index.js')
-      mount('/api/ai-coach', './api/ai-coach/index.js')
+      mount('/api/ai-help', './api/_shared/aiHelp/httpHandler.js')
+      mount('/api/ai-coach', './api/_shared/aiCoach/httpHandler.js')
     },
     name: 'ai-help-test-api',
   }

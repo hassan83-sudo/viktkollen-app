@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import handler from './index.js'
+import handler from '../_shared/aiHelp/httpHandler.js'
 import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
 import { clearAiHelpRateLimitForTests } from '../_shared/aiHelp/costGuard.js'
 import { createTestCostStore } from '../_shared/aiHelp/sharedCostLedger.js'

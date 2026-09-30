@@ -1,14 +1,16 @@
-import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
-import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
-import { answerAiHelpQuestion } from '../_shared/aiHelp/service.js'
+import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../aiRouteErrors.js'
+import { verifySupabaseUser } from '../verifySupabaseUser.js'
+import { answerCoachQuestion } from './service.js'
+import { filterCoachRequestContext } from './requestContext.js'
+import { createCostStoreFromEnv } from '../aiHelp/supabaseCostStore.js'
 
 function parseBody(request) {
   if (typeof request.body === 'string') return JSON.parse(request.body)
   return request.body || {}
 }
 
-export default async function handler(request, response) {
-  const requestId = `ai-help-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+export async function handleAiCoachRequest(request, response) {
+  const requestId = `ai-coach-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   setNoStoreHeaders(response)
 
   if (request.method !== 'POST') {
@@ -36,7 +38,21 @@ export default async function handler(request, response) {
     })
   }
 
-  const result = await answerAiHelpQuestion({ body, userId: auth.user.id })
+  const messages = Array.isArray(body.messages) ? body.messages : []
+  const latest = [...messages].reverse().find((message) => message?.role === 'user')?.content || ''
+  const context = filterCoachRequestContext(body.context, latest)
+  const result = await answerCoachQuestion({
+    body: {
+      featureIds: body.featureIds,
+      language: body.language,
+      messages,
+    },
+    contextProvider: () => context,
+    costStore: createCostStoreFromEnv(process.env, fetch),
+    fetchImpl: fetch,
+    userId: auth.user.id,
+  })
+
   if (!result.ok) {
     const code = result.code === 'MODEL_LIMITED'
       ? 'MODEL_LIMITED'
@@ -53,13 +69,13 @@ export default async function handler(request, response) {
 
   return response.status(200).json({
     answer: result.answer,
-    featureIds: result.featureIds,
+    knowledgeIds: result.knowledgeIds || [],
     language: result.language,
     ok: true,
     requestId,
     source: result.source,
     status: result.status,
-    ...(result.tool ? { tool: result.tool } : {}),
-    ...(result.unansweredId ? { unansweredId: result.unansweredId } : {}),
   })
 }
+
+export default handleAiCoachRequest

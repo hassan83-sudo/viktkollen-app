@@ -14,7 +14,7 @@ describe('AI Help test route boundary', () => {
 
   it('does not put the server key or account actions in the help client', () => {
     const client = readFileSync(new URL('./aiHelpClient.js', import.meta.url), 'utf8')
-    const handler = readFileSync(new URL('../../../api/ai-help/index.js', import.meta.url), 'utf8')
+    const handler = readFileSync(new URL('../../../api/_shared/aiHelp/httpHandler.js', import.meta.url), 'utf8')
     const helpTree = readFileSync(new URL('../../../api/_shared/aiHelp/service.js', import.meta.url), 'utf8')
 
     expect(client).not.toMatch(/OPENAI_API_KEY|sk-/)

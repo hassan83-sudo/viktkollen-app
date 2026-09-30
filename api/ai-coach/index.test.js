@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import handler from './index.js'
+import handler from '../_shared/aiCoach/httpHandler.js'
 import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
 import { hashAiHelpScope } from '../_shared/aiHelp/costGuard.js'
 import { createTestCostStore } from '../_shared/aiHelp/sharedCostLedger.js'
@@ -173,7 +173,7 @@ describe('POST /api/ai-coach', () => {
 
   it('keeps the coach route out of the ordinary Vite config and off the old /api/ai path', () => {
     const vite = readFileSync(new URL('../../vite.config.js', import.meta.url), 'utf8')
-    const handlerSource = readFileSync(new URL('./index.js', import.meta.url), 'utf8')
+    const handlerSource = readFileSync(new URL('../_shared/aiCoach/httpHandler.js', import.meta.url), 'utf8')
     expect(vite).not.toContain('/api/ai-coach')
     expect(handlerSource).not.toMatch(/\/api\/ai(?!-coach)|requestAiEndpoint/)
     expect(handlerSource).toContain('answerCoachQuestion')

@@ -2,7 +2,7 @@
 import process from 'node:process'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import handler from '../../../api/ai-help/index.js'
+import handler from '../../../api/_shared/aiHelp/httpHandler.js'
 import { clearAiHelpRateLimitForTests } from '../../../api/_shared/aiHelp/costGuard.js'
 import { createTestCostStore } from '../../../api/_shared/aiHelp/sharedCostLedger.js'
 import { setAiHelpCostStoreForTests } from '../../../api/_shared/aiHelp/service.js'

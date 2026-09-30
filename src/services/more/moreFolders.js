@@ -178,6 +178,7 @@ export const moreHubTargetFolders = {
   'app-section-wellbeing': 'ma-bra',
   economy: 'ekonomi',
   'economy-center': 'ekonomi',
+  'ai-help': 'installningar',
 }
 
 export function resolveMoreFolderFromTarget(targetId) {

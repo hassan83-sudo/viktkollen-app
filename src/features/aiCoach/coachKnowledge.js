@@ -1,0 +1,140 @@
+/**
+ * Verified wellness principles for the coach domain.
+ * Entries are reusable facts, not scripted questions and answers.
+ */
+export const coachKnowledge = Object.freeze([
+  {
+    aliases: ['viktmål', 'målvikt', 'mitt mål'],
+    contextFields: ['goal'],
+    examples: ['Behåll veckans ena vana även om målet ligger långt bort.'],
+    id: 'coach.weight-goal',
+    limits: 'Coachen ändrar inte målet och hittar inte på en målvikt.',
+    source: 'wellness-principles',
+    status: 'verified',
+    steps: ['Använd målet som riktning för veckans vana.'],
+    summary: 'Ett viktmål är en riktning, inte ett datum och inte ett krav på en viss vecka.',
+    title: 'Viktmål',
+  },
+  {
+    aliases: ['vikttrend', 'viktutveckling', 'platå', 'planat', 'stått still', 'vikt still', 'viktplatå'],
+    contextFields: ['weightTrend'],
+    examples: ['Jämför de senaste veckorna i stället för gårdagens siffra.'],
+    id: 'coach.weight-trend',
+    limits: 'Coachen hittar inte på din vikt eller din trend. Personliga siffror används bara från vikttrend-kontexten.',
+    source: 'wellness-principles',
+    status: 'verified',
+    steps: ['Läs riktningen över flera veckor.'],
+    summary: 'En vikttrend läses över flera veckor, inte från en enstaka vägning. Vätska, mat, sömn och vanor kan flytta vikten utan att den längre riktningen är borta. En platå betyder att de senaste punkterna ligger nära varandra.',
+    title: 'Vikttrend',
+  },
+  {
+    aliases: ['gått upp', 'gått ner', 'förstört', 'veckouppgång'],
+    contextFields: ['weightTrend'],
+    examples: ['Behåll nästa vanliga måltid och nästa vägning.'],
+    id: 'coach.change-over-time',
+    limits: 'En vecka är en punkt. Coachen kallar inte en kort uppgång för ett misslyckande och hittar inte på kilona.',
+    source: 'wellness-principles',
+    status: 'verified',
+    steps: ['Jämför flera veckor innan riktningen byts.'],
+    summary: 'En liten uppgång under en vecka betyder inte att arbetet är förstört. Jämför flera veckor innan du byter riktning.',
+    title: 'Förändring över tid',
+  },
+  {
+    aliases: ['måltid', 'måltider', 'frukost', 'lunch', 'middag', 'matstruktur'],
+    contextFields: ['meals'],
+    examples: ['Protein, grönsak eller frukt, och en kolhydrat du redan äter.'],
+    id: 'coach.meal-structure',
+    limits: 'Coachen ser inte vad du har ätit om måltidskontext saknas, och loggar ingen måltid.',
+    source: 'wellness-principles',
+    status: 'verified',
+    steps: ['Ersätt en missad måltid med nästa vanliga måltid.'],
+    summary: 'En användbar måltid har en proteinkälla, grönsaker eller frukt, och en kolhydratkälla du redan brukar äta. En missad måltid ersätts med nästa vanliga måltid.',
+    title: 'Måltidsstruktur',
+  },
+  {
+    aliases: ['protein', 'proteinrik', 'proteinkälla', 'mättande'],
+    contextFields: ['protein'],
+    examples: [
+      'Ägg och yoghurt till en måltid du redan äter.',
+      'Bönor eller linser i en vanlig rätt.',
+      'Fisk eller kyckling med samma tillbehör som vanligt.',
+    ],
+    id: 'coach.protein',
+    limits: 'Coachen anger inte ett personligt gramantal om det inte finns i proteinkontexten.',
+    source: 'wellness-principles',
+    status: 'verified',
+    steps: ['Lägg en proteinkälla i en måltid du redan äter.'],
+    summary: 'Protein i måltiden gör den mer mättande. Vanliga källor är ägg, mjölkprodukter, fisk, kött, bönor, linser och soja.',
+    title: 'Protein',
+  },
+  {
+    aliases: ['vana', 'vanor', 'rutin', 'vardag'],
+    contextFields: ['habits'],
+    examples: ['En planerad måltid eller en kort promenad räcker som dagens vana.'],
+    id: 'coach.habits',
+    limits: 'Coachen bockar inte av vanor och kräver inte en perfekt vecka.',
+    source: 'wellness-principles',
+    status: 'verified',
+    steps: ['Välj en vana som går att upprepa.'],
+    summary: 'En liten vana som går att upprepa är mer värd än en perfekt vecka.',
+    title: 'Vardagsvanor',
+  },
+  {
+    aliases: ['aktivitet', 'promenad', 'rörelse', 'träning', 'steg'],
+    contextFields: ['activity'],
+    examples: ['En kort promenad är ett tillräckligt nästa steg.'],
+    id: 'coach.activity',
+    limits: 'Coachen ändrar inte loggad aktivitet och ger inget träningsprogram eller någon medicinsk belastningsråd.',
+    source: 'wellness-principles',
+    status: 'verified',
+    steps: ['Börja med vardagsrörelse.'],
+    summary: 'Vardagsrörelse räknas. En promenad är tillräcklig aktivitet att börja med.',
+    title: 'Aktivitet',
+  },
+  {
+    aliases: ['motivation', 'komma igång', 'igång igen', 'missade', 'omstart', 'återstart'],
+    contextFields: [],
+    examples: ['Nästa måltid eller nästa promenad är omstarten.'],
+    id: 'coach.motivation',
+    limits: 'Coachen skuldbelägger inte missade dagar och lovar inte ett resultat.',
+    source: 'wellness-principles',
+    status: 'verified',
+    steps: ['Börja med nästa vanliga handling.'],
+    summary: 'Missade dagar är en paus, inte ett nollställt resultat. Börja om med nästa måltid eller nästa promenad, och välj ett fokus för veckan.',
+    title: 'Motivation och omstart',
+  },
+  {
+    aliases: ['viktlogg', 'logga vikten', 'vägning', 'väga', 'vägde', 'senaste vikten'],
+    contextFields: ['weightTrend'],
+    examples: ['Väg på ett liknande sätt nästa gång.'],
+    id: 'coach.weight-logging',
+    limits: 'Coachen kan inte skriva in en vikt.',
+    source: 'wellness-principles',
+    status: 'verified',
+    steps: ['Upprepa vägningen under liknande förhållanden.'],
+    summary: 'En viktlogg blir tydligare när vägningarna görs på ett liknande sätt över tid.',
+    title: 'Viktloggning',
+  },
+  {
+    aliases: ['fokus', 'fokusera', 'veckofokus'],
+    contextFields: ['goal', 'weightTrend', 'meals', 'protein', 'activity'],
+    examples: ['Ett fokus: protein till en måltid, en promenad, eller att logga vikten.'],
+    id: 'coach.weekly-focus',
+    limits: 'Utan personlig kontext blir svaret en allmän prioritering, inte en påstådd personlig plan.',
+    source: 'wellness-principles',
+    status: 'verified',
+    steps: ['Välj en sak som går att upprepa den här veckan.'],
+    summary: 'Ett veckofokus är en sak som går att upprepa, till exempel protein till en måltid, en promenad eller att logga vikten.',
+    title: 'Veckofokus',
+  },
+])
+
+const byId = new Map(coachKnowledge.map((entry) => [entry.id, entry]))
+
+export function isCoachKnowledgeId(id) {
+  return byId.has(id)
+}
+
+export function getCoachEntry(id) {
+  return byId.get(id) || null
+}

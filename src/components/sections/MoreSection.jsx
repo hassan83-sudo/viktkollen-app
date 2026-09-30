@@ -14,6 +14,7 @@ import AnimalWorldSection from '../../features/education/AnimalWorldSection.jsx'
 import PregnancyFirstYearSection from '../../features/education/PregnancyFirstYearSection.jsx'
 import SignLanguageSection from '../../features/education/SignLanguageSection.jsx'
 import LanguageSettingsPanel from '../LanguageSettingsPanel.jsx'
+import AiHelpPanel from '../../features/aiHelp/AiHelpPanel.jsx'
 import AppSection from '../app/AppSection.jsx'
 import GlobalSearch from '../app/GlobalSearch.jsx'
 import LazySectionFallback from '../app/LazySectionFallback.jsx'
@@ -384,6 +385,10 @@ function MoreSection({
                 language={language}
                 onLanguageChange={onLanguageChange}
               />
+            </div>
+
+            <div className="app-information">
+              <AiHelpPanel />
             </div>
 
             <div className="app-information">

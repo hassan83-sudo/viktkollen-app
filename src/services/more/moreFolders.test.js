@@ -37,6 +37,7 @@ describe('more hub folders', () => {
     expect(resolveMoreFolderFromTarget('mal-framsteg-oversikt')).toBe('mal-framsteg')
     expect(resolveMoreFolderFromTarget('backup-historik')).toBe('arkiv-historik')
     expect(resolveMoreFolderFromTarget('installningar')).toBe('installningar')
+    expect(resolveMoreFolderFromTarget('ai-help')).toBe('installningar')
     expect(resolveMoreFolderFromTarget('app-section-more')).toBeNull()
   })
 })

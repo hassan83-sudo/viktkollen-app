@@ -1,3 +1,4 @@
+import { answerCoachPanelQuestion } from '../../features/aiCoach/coachPanelReply.js'
 import {
   loadAiCoachAppContext,
   loadAiConversationMemory,
@@ -158,20 +159,24 @@ export async function requestCoachRealtimeSession() {
 export async function requestCoachChatReply({
   appData,
   chatHistory,
-  fallbackReply,
   message,
+  modelAnswer = null,
+  onStatus = null,
 }) {
   const recentChatHistory = makeRecentCoachChatHistory(chatHistory)
+  const messages = recentChatHistory.map((item) => ({
+    content: item.text,
+    role: item.role,
+  }))
+  const last = messages.at(-1)
+  if (message && last?.content !== message) {
+    messages.push({ content: message, role: 'user' })
+  }
 
-  return (await createDeterministicChatReply({
+  return answerCoachPanelQuestion({
     appData,
-    chatHistory: recentChatHistory,
-    message,
-  })) ||
-    createLocalSmartChatReply({
-      appData,
-      chatHistory: recentChatHistory,
-      fallbackReply,
-      message,
-    })
+    messages,
+    modelAnswer,
+    onStatus,
+  })
 }

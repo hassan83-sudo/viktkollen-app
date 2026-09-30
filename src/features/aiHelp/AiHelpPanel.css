@@ -1,0 +1,50 @@
+.ai-help-panel {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+
+.ai-help-thread {
+  display: grid;
+  gap: 8px;
+  max-height: min(70dvh, 640px);
+  overflow: auto;
+  padding: 4px 0;
+}
+
+.ai-help-message {
+  margin: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.ai-help-message.is-user {
+  justify-self: end;
+}
+
+.ai-help-panel[dir='rtl'] .ai-help-message.is-user {
+  justify-self: start;
+}
+
+.ai-help-form {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.ai-help-action {
+  margin-top: 8px;
+  max-width: 100%;
+}
+
+.ai-help-form textarea {
+  font-size: 16px;
+  min-height: 48px;
+  resize: vertical;
+  width: 100%;
+}
+
+.ai-help-note {
+  margin: 0;
+}

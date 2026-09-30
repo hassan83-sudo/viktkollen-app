@@ -4,6 +4,7 @@ import HomeSection from './components/sections/HomeSection.jsx'
 import MoreSection from './components/sections/MoreSection.jsx'
 import NoticesSection from './components/sections/NoticesSection.jsx'
 import JourneySection from './features/journey/JourneySection.jsx'
+import { commitHelpSectionOpen, isAiHelpSectionAllowed } from './features/aiHelp/aiHelpTools.js'
 import PlaceSection from './components/sections/PlaceSection.jsx'
 import ProgressSection from './components/sections/ProgressSection.jsx'
 import ReadySection from './components/sections/ReadySection.jsx'
@@ -675,6 +676,8 @@ function makeMultiPartReply(message, chatHistory = []) {
   return parts.length > 1 ? parts.join('\n\n') : ''
 }
 
+// The coach chat no longer calls this template engine. It remains for the old local replies.
+// eslint-disable-next-line no-unused-vars
 async function makeChatResponse(
   message,
   profile,
@@ -2661,17 +2664,8 @@ function App() {
     return requestCoachChatReply({
       appData: getAiCoachAppData(),
       chatHistory: sourceChatHistory,
-      fallbackReply: () => makeChatResponse(
-        message,
-        scopedProfile,
-        checkIn,
-        foods,
-        centralCurrentWeight,
-        sourceChatHistory,
-        healthSnapshot.weight.dailyWeights,
-        healthSnapshot.nutrition.mealsToday,
-      ),
       message,
+      onStatus: setChatEngineStatus,
     })
   }
 
@@ -2717,13 +2711,7 @@ function App() {
 
     try {
       const result = await requestChatReply(text, pendingChatHistory)
-      const isLocalFallback = result.source !== 'openai'
-
-      setChatEngineStatus(
-        isLocalFallback
-          ? 'AI-coachen använder lokal fallback just nu.'
-          : '',
-      )
+      setChatEngineStatus(result.source === 'provider-unavailable' ? 'AI-coachen kunde inte svara just nu.' : '')
       appendChatMessage('assistant', result.reply, result.source)
       addMemory({
         feature: 'ai-coach',
@@ -2868,47 +2856,74 @@ function App() {
   }, [getScrollBehavior, scrollAppToTop])
 
   function handleAppSectionChange(sectionId) {
-    if (sectionId === 'social' && !socialUiEnabled) return
-    if (sectionId === 'progress') {
-      setMoreIntent({ id: Date.now(), targetId: 'mal-framsteg' })
-      setActiveAppSection('more')
-      return
-    }
-    if (sectionId === 'nutrition') {
-      setMoreIntent({ id: Date.now(), targetId: 'mat' })
-      setActiveAppSection('more')
-      return
-    }
-    if (sectionId === 'coach') {
-      setMoreIntent({ id: Date.now(), targetId: 'ai-coach' })
-      setActiveAppSection('more')
-      return
-    }
-    if (sectionId === 'wellbeing') {
-      setMoreIntent({ id: Date.now(), targetId: 'ma-bra' })
-      setActiveAppSection('more')
-      return
-    }
-    if (sectionId === 'economy') {
-      setMoreIntent({ id: Date.now(), targetId: 'ekonomi' })
-      setActiveAppSection('more')
-      return
-    }
-    const moreFolder = resolveMoreFolderFromTarget(sectionId)
-    if (moreFolder) {
-      setMoreIntent({ id: Date.now(), targetId: moreFolder })
-      setActiveAppSection('more')
-      return
+    function changeSection(nextSectionId) {
+      if (nextSectionId === 'progress') {
+        setMoreIntent({ id: Date.now(), targetId: 'mal-framsteg' })
+        setActiveAppSection('more')
+        return true
+      }
+      if (nextSectionId === 'nutrition') {
+        setMoreIntent({ id: Date.now(), targetId: 'mat' })
+        setActiveAppSection('more')
+        return true
+      }
+      if (nextSectionId === 'coach') {
+        setMoreIntent({ id: Date.now(), targetId: 'ai-coach' })
+        setActiveAppSection('more')
+        return true
+      }
+      if (nextSectionId === 'wellbeing') {
+        setMoreIntent({ id: Date.now(), targetId: 'ma-bra' })
+        setActiveAppSection('more')
+        return true
+      }
+      if (nextSectionId === 'economy') {
+        setMoreIntent({ id: Date.now(), targetId: 'ekonomi' })
+        setActiveAppSection('more')
+        return true
+      }
+      const moreFolder = resolveMoreFolderFromTarget(nextSectionId)
+      if (moreFolder) {
+        setMoreIntent({ id: Date.now(), targetId: moreFolder })
+        setActiveAppSection('more')
+        return true
+      }
+      if (nextSectionId === 'notices' && !reminderHubUiEnabled) return false
+
+      logNavigationOrigin('app-section-change:before', { sectionId: nextSectionId })
+      setActiveAppSection(nextSectionId)
+
+      window.requestAnimationFrame(() => {
+        scrollAppToTop()
+        logNavigationOrigin('app-section-change:after-frame', { sectionId: nextSectionId })
+      })
+      return true
     }
 
-    logNavigationOrigin('app-section-change:before', { sectionId })
-    setActiveAppSection(sectionId)
-
-    window.requestAnimationFrame(() => {
-      scrollAppToTop()
-      logNavigationOrigin('app-section-change:after-frame', { sectionId })
+    return commitHelpSectionOpen(sectionId, {
+      changeSection,
+      noticesEnabled: reminderHubUiEnabled,
+      socialEnabled: socialUiEnabled,
     })
   }
+
+  const openHelpSectionRef = useRef(null)
+  useEffect(() => {
+    openHelpSectionRef.current = handleAppSectionChange
+  })
+
+  useEffect(() => {
+    function onOpenSection(event) {
+      const sectionId = String(event?.detail?.sectionId || '')
+      if (!isAiHelpSectionAllowed(sectionId)) return
+      if (openHelpSectionRef.current?.(sectionId) !== true) return
+      window.dispatchEvent(new CustomEvent('viktkollen:ai-help-section-opened', {
+        detail: { sectionId },
+      }))
+    }
+    window.addEventListener('viktkollen:ai-help-open-section', onOpenSection)
+    return () => window.removeEventListener('viktkollen:ai-help-open-section', onOpenSection)
+  }, [])
 
   function handleGlobalSearchNavigate(result) {
     const requestedSection = result?.section || 'home'

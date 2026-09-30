@@ -2,8 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { requestAiEndpoint } from '../aiApiService.js'
 import {
-  buildCoachChatRemotePayload,
-  buildCoachRealtimeSessionPayload,
   requestCoachChatReply,
   requestCoachRealtimeSession,
 } from './aiChatController.js'
@@ -21,79 +19,32 @@ describe('aiChatController', () => {
     vi.clearAllMocks()
   })
 
-  it('sends a chat payload with the user message and compact health facts', () => {
-    const payload = buildCoachChatRemotePayload(
-      {
-        checkIn: { steps: 7200 },
-        healthSnapshot: { weight: { current: 83.8 } },
-        nutritionGoals: { protein: 145 },
-        profile: { name: 'Hassan', weightDirection: 'loss' },
-        weights: [{ date: '2026-08-21', value: 83.8 }],
-      },
-      'Hur mycket protein behöver jag?',
-      [{ role: 'user', text: 'Hej' }],
-    )
-
-    expect(payload).toMatchObject({
-      action: 'chat',
-      currentWeight: 83.8,
-      message: 'Hur mycket protein behöver jag?',
-    })
-    expect(payload.profile.name).toBe('Hassan')
-    expect(payload.nutritionGoals.protein).toBe(145)
-  })
-
-  it('uses the remote OpenAI chat reply when /api/ai succeeds', async () => {
-    requestAiEndpoint.mockResolvedValue({
-      data: { reply: 'Du ligger på 83,8 kg. Sikta på kyckling, nötkött eller ägg till middag.' },
-      ok: true,
-      source: 'openai',
-    })
-
+  it('answers a new coach question through the coach domain and not /api/ai', async () => {
+    const fallbackReply = vi.fn(async () => 'gammal motor')
     const result = await requestCoachChatReply({
-      appData: { profile: { name: 'Hassan' } },
+      appData: { today: '2026-09-30' },
       chatHistory: [],
-      fallbackReply: async () => 'fallback',
-      message: 'Hej',
+      fallbackReply,
+      message: 'Hur fungerar vikttrend?',
     })
 
-    expect(requestAiEndpoint).toHaveBeenCalled()
-    expect(result).toEqual({
-      reply: 'Du ligger på 83,8 kg. Sikta på kyckling, nötkött eller ägg till middag.',
-      source: 'openai',
-    })
+    expect(requestAiEndpoint).not.toHaveBeenCalled()
+    expect(fallbackReply).not.toHaveBeenCalled()
+    expect(result.source).toBe('local')
+    expect(result.reply).toMatch(/flera veckor/)
+    expect(result.tool).toBeNull()
+    expect(result.handoff).toBe(false)
   })
 
-  it('requests a realtime session through /api/ai without exposing secrets in the payload', () => {
-    const payload = buildCoachRealtimeSessionPayload(
-      {
-        checkIn: { steps: 7200 },
-        healthSnapshot: { weight: { current: 83.8 } },
-        nutritionGoals: { protein: 145 },
-        profile: { name: 'Hassan' },
-      },
-      [{ role: 'user', text: 'Hej' }],
-    )
-
-    expect(payload.action).toBe('realtime-session')
-    expect(payload.currentWeight).toBe(83.8)
-    expect(JSON.stringify(payload)).not.toMatch(/OPENAI_API_KEY|sk-/)
-  })
-
-  it('treats a missing realtime session as unavailable', async () => {
-    requestAiEndpoint.mockResolvedValue({
-      data: { available: false, message: 'Röstsamtal är inte tillgängligt just nu.' },
-      ok: true,
-      source: 'unavailable',
-    })
-
+  it('does not start a realtime session through /api/ai', async () => {
     const result = await requestCoachRealtimeSession({
       appData: { profile: { name: 'Hassan' } },
       chatHistory: [],
     })
 
+    expect(requestAiEndpoint).not.toHaveBeenCalled()
     expect(result.available).toBe(false)
     expect(result.clientSecret).toBeUndefined()
-    expect(result.message).toMatch(/inte tillgängligt/i)
+    expect(result.message).toMatch(/avstängt/i)
   })
 })

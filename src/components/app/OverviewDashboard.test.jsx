@@ -111,7 +111,7 @@ describe('OverviewDashboard', () => {
     expect(markup).toContain('Starta scanning')
     expect(markup).toContain('Skanna maten')
     expect(markup).toContain('overview-primary-action-footer')
-    expect(markup).toContain('/viktkollen-meal-scan.png')
+    expect(markup).toContain('/viktkollen-meal-scan-chicken-rice.webp')
     expect(markup).toContain('overview-body-scan-rings')
   })
 

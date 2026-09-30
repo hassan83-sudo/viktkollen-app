@@ -11370,8 +11370,18 @@ body:has(#app-section-home.is-active) {
   object-position: 50% 46%;
 }
 
-/* AI Örat card only: the ear picture fills its box down to the footer.
-   The Kroppsscanning card shares .is-body but is not inside
+/* Matscanning card: the plate picture fills its box down to the footer. */
+#app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-food .overview-primary-visual {
+  bottom: 0;
+}
+
+#app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-food .overview-primary-art.is-meal img {
+  object-fit: cover;
+  object-position: 50% 50%;
+}
+
+/* AI Örat card: the ear picture fills its box down to the footer. The
+   Kroppsscanning card shares .is-body but is not inside
    section.overview-primary-actions, and at 380px and below the picture
    already reaches the bottom. */
 @media (min-width: 381px) {

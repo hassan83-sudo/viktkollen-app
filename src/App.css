@@ -11370,6 +11370,11 @@ body:has(#app-section-home.is-active) {
   object-position: 50% 46%;
 }
 
+/* Kroppsscanning row on Home: one card across the full width. */
+#app-section-home.is-active .overview-primary-actions.overview-body-scan-original-size {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 /* Kroppsscanning card on Home: the whole body artwork, background and
    panels included, fills its box down to the footer; the dark edge colour
    fills any space beside it. Scoped to its own container, so the AI Örat

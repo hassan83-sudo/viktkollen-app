@@ -11243,6 +11243,14 @@ body:has(#app-section-home.is-active) {
   margin-top: 1px;
 }
 
+#app-section-home.is-active .overview-primary-actions.overview-body-scan-original-size {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+#app-section-home.is-active .overview-primary-actions.overview-body-scan-original-size .overview-primary-action {
+  grid-column: 1;
+}
+
 #app-section-home.is-active .overview-primary-action {
   position: relative;
   isolation: isolate;

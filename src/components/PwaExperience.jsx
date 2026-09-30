@@ -125,11 +125,18 @@ function PwaExperience({ showDiagnostics = false }) {
       setServiceWorkerStatus('activated')
       setUpdateRegistration(null)
 
-      // Reload once whenever a new root worker takes control. This also migrates
-      // older iPhone installations that were controlled by place-push-sw.js.
+      // Reload once whenever a new root worker takes control. Avoid doing this
+      // while the user is actively typing: a reload here steals focus from
+      // login/form fields and can discard an in-progress edit.
       if (!controllerChangeHandledRef.current) {
         controllerChangeHandledRef.current = true
-        window.location.reload()
+
+        const activeElement = document.activeElement
+        const isEditing = activeElement?.matches?.('input, textarea, select, [contenteditable="true"]')
+
+        if (!isEditing) {
+          window.location.reload()
+        }
       }
     }
 

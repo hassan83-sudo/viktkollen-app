@@ -11370,6 +11370,15 @@ body:has(#app-section-home.is-active) {
   object-position: 50% 46%;
 }
 
+/* AI Örat card only: its picture reaches further down. The Kroppsscanning
+   card shares .is-body but is not inside section.overview-primary-actions,
+   and at 380px and below the picture already reaches the bottom. */
+@media (min-width: 381px) {
+  #app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-body .overview-primary-visual {
+    bottom: 30px;
+  }
+}
+
 .overview-body-scan-rings {
   position: absolute;
   inset: 0;

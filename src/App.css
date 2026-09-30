@@ -11370,6 +11370,21 @@ body:has(#app-section-home.is-active) {
   object-position: 50% 46%;
 }
 
+/* AI Ögon card: the eye picture fills its box down to the footer. */
+#app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-eyes .overview-primary-visual {
+  bottom: 0;
+}
+
+#app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-eyes .overview-primary-art.is-eyes {
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+#app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-eyes .overview-primary-art.is-eyes img {
+  object-fit: cover;
+  object-position: 50% 50%;
+}
+
 /* Matscanning card: the sharp photo fills its box down to the footer,
    centred on the plate. */
 #app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-food .overview-primary-visual {

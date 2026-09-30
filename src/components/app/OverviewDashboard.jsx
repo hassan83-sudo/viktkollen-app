@@ -2,7 +2,7 @@ import { lazy, memo, Suspense, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AchievementPreviewCard from './AchievementPreviewCard.jsx'
 import DailyCoachCard from './DailyCoachCard.jsx'
-import DailyMealPlannerCard from './DailyMealPlannerCard.jsx'
+import ManualMealCalendar from './ManualMealCalendar.jsx'
 import HealthPredictionCard from './HealthPredictionCard.jsx'
 import SmartNotificationsCard from './SmartNotificationsCard.jsx'
 import WeeklyProgressSection from './WeeklyProgressSection.jsx'
@@ -27,6 +27,7 @@ import {
   resolveHomeWeightKg,
 } from '../../services/homeTodayStats.js'
 import { normalizeReminderState } from '../../services/reminders/reminderModel.js'
+import { getMealPlanWeek, getMealPlanWeekStart, readMealPlans } from '../../services/nutrition/nutritionEngine.js'
 import { buildReminderStatus, getNextReminderAt } from '../../services/reminders/reminderScheduler.js'
 import SmartCameraStage from '../../features/smart-camera/components/SmartCameraStage.jsx'
 import BodyAvatarTalkBar from './BodyAvatarTalkBar.jsx'
@@ -343,18 +344,50 @@ function OverviewLiveMeta({
 }) {
   const { t } = useTranslation('home')
   const isOnline = useOnlineStatus()
+  const [halloweenEnabled, setHalloweenEnabled] = useState(() => {
+    try { return window.localStorage.getItem('viktkollen:halloween-theme') !== 'off' }
+    catch { return true }
+  })
+  useEffect(() => {
+    document.documentElement.classList.toggle('viktkollen-halloween-on', halloweenEnabled)
+    return () => document.documentElement.classList.remove('viktkollen-halloween-on')
+  }, [halloweenEnabled])
+  function toggleHalloween() {
+    setHalloweenEnabled((current) => {
+      const next = !current
+      try { window.localStorage.setItem('viktkollen:halloween-theme', next ? 'on' : 'off') }
+      catch { /* Keep the toggle usable if storage is unavailable. */ }
+      window.dispatchEvent(new CustomEvent('viktkollen:halloween-theme', { detail: { enabled: next } }))
+      return next
+    })
+  }
   const weather = liveContext.weather
   const hasWeatherDetails = Boolean(weather.hasLiveWeather)
   const city = hasWeatherDetails && weather.city && weather.city !== 'Vald stad' ? weather.city : ''
 
   return (
     <div className="overview-live-meta">
-      <p className="overview-live-status">
+      <div className="overview-live-status">
         <span className={isOnline ? 'is-online' : 'is-offline'}>
           <span className="overview-online-dot" aria-hidden="true" />
           {isOnline ? t('online') : t('offline')}
         </span>
-      </p>
+        <button
+          type="button"
+          className="overview-halloween-toggle"
+          aria-label={halloweenEnabled ? 'Stäng av Halloween-tema' : 'Aktivera Halloween-tema'}
+          aria-pressed={halloweenEnabled}
+          onClick={toggleHalloween}
+        >
+          <span className="overview-halloween-name" aria-hidden="true">🎃 Halloween</span>
+          <span className={halloweenEnabled ? 'overview-halloween-state is-on' : 'overview-halloween-state is-off'} aria-hidden="true">
+            {halloweenEnabled ? 'PÅ' : 'AV'}
+          </span>
+          <svg className="overview-halloween-power" viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 2v9M6.1 5.7a9 9 0 1 0 11.8 0" />
+          </svg>
+        </button>
+      </div>
       <p>
         <span><OverviewIcon name="calendar" /> {shortWeekday(liveContext.weekday)} {liveContext.dateLabel}</span>
         <span><OverviewIcon name="clock" /> {liveContext.timeLabel}</span>
@@ -649,6 +682,7 @@ function OverviewPrimaryActions({
   featureFlags,
   onNavigateSection,
   onOpenBodyScan,
+  onOpenEar,
   onOpenEyes,
   onOpenFoodScan,
   onOpenSmartCamera,
@@ -710,7 +744,6 @@ function OverviewPrimaryActions({
     else onOpenSmartCamera?.()
   }
 
-  const openBody = () => (onOpenBodyScan ? onOpenBodyScan() : goTo('progress', 'body-analysis'))
   const openFood = () => {
     if (onOpenFoodScan) onOpenFoodScan()
     else if (onScanFood) onScanFood()
@@ -731,20 +764,6 @@ function OverviewPrimaryActions({
       onClick: openEyes,
     },
     {
-      accent: 'body',
-      alt: t('home:actionAlts.body'),
-      art: 'body',
-      description: t('home:bodyCardHint'),
-      footerLabel: t('bodyScan:startScan'),
-      hitLabel: t('home:openBodyScanFullscreen'),
-      image: '/viktkollen-body-scan-card.svg',
-      imageHeight: 1167,
-      imageWidth: 400,
-      icon: 'bodyScan',
-      label: t('home:labels.bodyScan'),
-      onClick: openBody,
-    },
-    {
       accent: 'food',
       alt: t('home:actionAlts.food'),
       art: 'meal',
@@ -758,6 +777,17 @@ function OverviewPrimaryActions({
       label: t('home:foodScan.title'),
       onClick: openFood,
     },
+    {
+      accent: 'body',
+      alt: '',
+      art: 'body',
+      description: t('aiEar:intro'),
+      footerLabel: t('aiEar:title'),
+      hitLabel: t('aiEar:title'),
+      icon: 'ear',
+      label: t('aiEar:title'),
+      onClick: onOpenEar,
+    },
   ]
 
   return (
@@ -769,7 +799,7 @@ function OverviewPrimaryActions({
             type="button"
             // A11Y-8G (WCAG 2.5.3): the name comes from the visible card text.
             // The Body Scan card keeps its label (Body Scan is out of scope).
-            aria-label={action.accent === 'body' ? action.hitLabel : undefined}
+            aria-label={action.hitLabel || undefined}
             onClick={action.imageOnClick || action.onClick}
           >
             <span className="overview-primary-visual">
@@ -787,7 +817,7 @@ function OverviewPrimaryActions({
                 ) : (
                   <OverviewIcon name={action.icon} />
                 )}
-                {action.art === 'body' ? <BodyScanRings /> : null}
+                {action.icon === 'bodyScan' ? <BodyScanRings /> : null}
               </span>
               <span className="overview-primary-action-icon">
                 <OverviewIcon name={action.icon} />
@@ -797,7 +827,7 @@ function OverviewPrimaryActions({
               <strong>{action.label}</strong>{' '}
               {action.description ? <small>{action.description}</small> : null}
             </span>{' '}
-            {action.accent === 'body' ? null : showTapPulse && !prefersReducedMotion ? (
+            {showTapPulse && !prefersReducedMotion ? (
               <span className="overview-tap-me is-pulse">{t('home:tapImage')}</span>
             ) : (
               <span className="overview-tap-me">{t('home:tapImage')}</span>
@@ -844,6 +874,7 @@ function OverviewTodayMood({
   currentWeight,
   onLogWeight,
   onOpenCoach,
+  onOpenMealPlanner,
   onOpenNotices,
   onOpenWellbeing,
   onScanFood,
@@ -921,6 +952,7 @@ function OverviewTodayMood({
         <span className="overview-mood-link">{t('home:mood.openLink')}</span>
       </button>
 
+      <div className="overview-today-meal-split">
       <article className="overview-mood-card is-today">
         <span className="overview-mood-label">{t('home:labels.today')}</span>
         <div className="overview-mood-today-stats">
@@ -944,7 +976,78 @@ function OverviewTodayMood({
           )}
         </div>
       </article>
+      <button className="overview-mood-card is-meal-week" style={{ textAlign: "left", minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "6px", cursor: "pointer", background: "linear-gradient(145deg, #17261f, #111924)", border: "1px solid #345445", borderRadius: "14px", padding: "11px" }} type="button" onClick={onOpenMealPlanner} aria-label="Öppna matplanering">
+        <span className="overview-mood-label">MATPLANERING</span>
+        <strong>Veckans recept</strong>
+        <small>{(() => {
+          const week = getMealPlanWeek(readMealPlans(), getMealPlanWeekStart())
+          const count = Object.values(week.days || {}).reduce((sum, meals) => sum + meals.length, 0)
+          return count ? `${count} planerade måltider` : 'Lägg till egna rätter'
+        })()}</small>
+        <span className="overview-mood-link">Öppna matplan →</span>
+      </button>
+      </div>
     </section>
+  )
+}
+
+function OverviewBodyScanAction({ onOpenBodyScan }) {
+  const { t } = useTranslation(['bodyScan', 'home'])
+  const action = {
+    accent: 'body',
+    alt: t('home:actionAlts.body'),
+    art: 'body',
+    description: t('home:bodyCardHint'),
+    footerLabel: t('bodyScan:startScan'),
+    hitLabel: t('home:openBodyScanFullscreen'),
+    image: '/viktkollen-body-scan.png',
+    imageHeight: 1167,
+    imageWidth: 400,
+    icon: 'bodyScan',
+    label: t('home:labels.bodyScan'),
+    onClick: onOpenBodyScan,
+  }
+
+  return (
+    <div className={`overview-primary-action is-${action.accent}`}>
+      <button
+        className="overview-primary-action-hit"
+        type="button"
+        aria-label={action.hitLabel}
+        onClick={action.onClick}
+      >
+        <span className="overview-primary-visual">
+          <span className="overview-primary-orbit" />
+          <span className={`overview-primary-art is-${action.art}`}>
+            <img
+              alt={action.alt}
+              decoding="async"
+              height={action.imageHeight}
+              loading="lazy"
+              src={action.image}
+              width={action.imageWidth}
+            />
+            <BodyScanRings />
+          </span>
+          <span className="overview-primary-action-icon">
+            <OverviewIcon name={action.icon} />
+          </span>
+        </span>
+        <span className="overview-primary-action-copy">
+          <strong>{action.label}</strong>{' '}
+          <small>{action.description}</small>
+        </span>
+      </button>
+      <button
+        className="overview-primary-action-footer"
+        type="button"
+        aria-label={action.footerLabel}
+        onClick={action.onClick}
+      >
+        <OverviewIcon name="foodCamera" />
+        <span>{action.footerLabel}</span>
+      </button>
+    </div>
   )
 }
 
@@ -1065,6 +1168,7 @@ function OverviewDashboard({
   const [smartCameraOpen, setSmartCameraOpen] = useState(Boolean(initialSmartCameraMode))
   const [smartCameraInitialMode, setSmartCameraInitialMode] = useState(initialSmartCameraMode)
   const [coachOpen, setCoachOpen] = useState(false)
+  const [manualMealPlanOpen, setManualMealPlanOpen] = useState(false)
   const [socialOpen, setSocialOpen] = useState(false)
   const [socialView, setSocialView] = useState('inbox')
   const [socialConversationId, setSocialConversationId] = useState(null)
@@ -1204,6 +1308,18 @@ function OverviewDashboard({
     }
   }, [isAuthenticated, socialLiveEnabled, t])
 
+  if (manualMealPlanOpen) {
+    return (
+      <section className="home-overview-shell manual-meal-page" aria-label="Matplanering">
+        <header className="manual-meal-page-header">
+          <button type="button" onClick={() => setManualMealPlanOpen(false)} aria-label="Tillbaka till startsidan">← Tillbaka</button>
+          <h2>Matplanering</h2>
+        </header>
+        <ManualMealCalendar />
+      </section>
+    )
+  }
+
   return (
     <div className="home-overview-shell">
       <header className="overview-app-header">
@@ -1254,6 +1370,11 @@ function OverviewDashboard({
           featureFlags={flags}
           onNavigateSection={onNavigateSection}
           onOpenBodyScan={() => setBodyScanOpen(true)}
+          onOpenEar={() => {
+            setBodyScanOpen(false)
+            setSmartCameraInitialMode('ai-ear')
+            setSmartCameraOpen(true)
+          }}
           onOpenEyes={() => {
             setBodyScanOpen(false)
             setSmartCameraInitialMode('eyes')
@@ -1276,6 +1397,7 @@ function OverviewDashboard({
           onLogWeight={onLogWeight}
           onOpenCoach={() => (onOpenAiCoach ? onOpenAiCoach() : setCoachOpen(true))}
           onOpenNotices={goToNotifications}
+          onOpenMealPlanner={() => setManualMealPlanOpen(true)}
           onOpenWellbeing={onOpenWellbeing}
           onScanFood={onScanFood}
           reminderState={reminderState}
@@ -1305,6 +1427,9 @@ function OverviewDashboard({
           }}
         />
         <OverviewCheckInAction onNavigateSection={onNavigateSection} />
+        <div className="overview-primary-actions overview-body-scan-original-size">
+          <OverviewBodyScanAction onOpenBodyScan={() => setBodyScanOpen(true)} />
+        </div>
       </section>
 
       <section className="overview-home-section" aria-labelledby="overview-advice-title">
@@ -1465,13 +1590,7 @@ function OverviewDashboard({
 
       <section className="overview-more-section home-last-content" aria-labelledby="overview-more-title">
         <h2 id="overview-more-title">{t('home:moreForToday')}</h2>
-        <CollapsibleDashboardSection id="meal-planner" title={t('home:mealPlanTitle')}>
-          <DailyMealPlannerCard
-            date={selectedDate}
-            meals={meals}
-            nutritionGoals={nutritionGoals}
-          />
-        </CollapsibleDashboardSection>
+
         <CollapsibleDashboardSection id="weekly-progress" title={t('home:last7Days')}>
           <WeeklyProgressSection
             checkIn={checkIn}

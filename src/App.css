@@ -11370,14 +11370,12 @@ body:has(#app-section-home.is-active) {
   object-position: 50% 46%;
 }
 
-/* Matscanning card: the plate picture fills its box down to the footer. */
+/* Matscanning card: the picture box takes the photo's own shape, so the
+   whole photo shows at full card width with its frame tight around it. */
 #app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-food .overview-primary-visual {
-  bottom: 0;
-}
-
-#app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-food .overview-primary-art.is-meal img {
-  object-fit: cover;
-  object-position: 50% 50%;
+  bottom: auto;
+  height: auto;
+  aspect-ratio: 1448 / 1086;
 }
 
 /* AI Örat card: the ear picture fills its box down to the footer. The

@@ -781,7 +781,7 @@ function OverviewPrimaryActions({
       accent: 'body',
       alt: '',
       art: 'body',
-      description: t('aiEar:intro'),
+      description: t('home:actionDescriptions.ear'),
       footerLabel: t('aiEar:title'),
       hitLabel: t('aiEar:title'),
       image: '/viktkollen-ai-ear-home.webp',

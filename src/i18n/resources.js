@@ -76,6 +76,7 @@ const sv = {
   home: {
     actionDescriptions: {
       body: 'Följ kroppens förändringar över tid',
+      ear: 'Hör vad som saknas',
       coach: 'Personliga råd från din data',
       food: 'Skanna maten och uppskatta näringen',
       smartCamera: 'Minne, kläder och sista kollen',
@@ -2046,6 +2047,7 @@ const en = {
   home: {
     actionDescriptions: {
       body: 'Follow body changes over time',
+      ear: 'Hear what is missing',
       coach: 'Personal guidance from your data',
       food: 'Scan food and estimate nutrition',
       smartCamera: 'Memory, clothes and final check',

@@ -1,0 +1,18 @@
+---
+description: After verified work, sync origin/main and ship ordinary UI changes; stop on conflicts and risk areas
+alwaysApply: true
+---
+
+# Parallel work with Claude
+
+Viktkollen is edited in parallel. When a change is finished and verified:
+
+1. Fetch `origin/main` before integrating.
+2. Compare the change with `origin/main`. Keep both sides. Do not overwrite commits or files that are already on main.
+3. Run the relevant tests, lint, and build.
+4. If that is clean and the change is an ordinary UI, image, or text change, merge it to `main` and push `main` so Vercel Production can deploy.
+5. If there is a conflict, a regression, or any uncertainty, stop. Do not resolve it by replacing the other agent's work. Report the conflict first.
+
+Do not merge or push to `main` without an explicit approval when the change touches billing, payments, Supabase or the database, migrations, account deletion, or security.
+
+Push `main` only as a fast-forward or a merge that preserves both histories. Never force-push `main`.

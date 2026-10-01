@@ -114,7 +114,11 @@ function HomeSection({
           weeklyWeightChange={dashboardData?.weeklyWeightChange}
           weights={weights}
         />
-        <HomeNoticeShortcuts onOpenNotices={openNotices} />
+        <HomeNoticeShortcuts
+          onOpenCoach={onOpenAiCoach}
+          onOpenNotices={openNotices}
+          onOpenWellbeing={onOpenWellbeing}
+        />
       </AppErrorBoundary>
     </AppSection>
   )

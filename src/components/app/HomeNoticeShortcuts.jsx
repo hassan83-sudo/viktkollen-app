@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 
-function HomeNoticeShortcuts({ onOpenNotices }) {
+function HomeNoticeShortcuts({ onOpenCoach, onOpenNotices, onOpenWellbeing }) {
   const [target, setTarget] = useState(null)
   const shortcuts = [
     { id: 'timer', label: 'Timer' },
@@ -25,7 +25,6 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
       <style>{`
         #app-section-home.is-active .overview-today-mood {
           grid-template-areas:
-            "wellbeing coach"
             "quick quick"
             "reminder notices"
             "today today";
@@ -92,7 +91,7 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
           }
         }
       `}</style>
-      <article className="overview-mood-card is-quick" aria-label="Snabbknappar för Notis">
+      <article className="overview-mood-card is-quick" aria-label="Snabbt">
         <div className="overview-quick-head">
           <span className="overview-mood-label">Snabbt</span>
           <button type="button" onClick={() => onOpenNotices?.()}>Alla notiser</button>
@@ -103,6 +102,10 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
               {shortcut.label}
             </button>
           ))}
+        </div>
+        <div className="overview-quick-buttons" role="group" aria-label="Må bra och AI Coach">
+          <button type="button" onClick={() => onOpenWellbeing?.()}>Må bra</button>
+          <button type="button" onClick={() => onOpenCoach?.()}>AI Coach</button>
         </div>
       </article>
     </>,

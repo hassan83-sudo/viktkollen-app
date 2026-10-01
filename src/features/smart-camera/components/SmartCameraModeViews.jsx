@@ -615,7 +615,20 @@ export default function SmartCameraModeViews({
         />
       )}
       {selected.id === 'forgotten' && (
-        <ForgottenItemsCheck list={carryList} onBack={onBack} onCameraActive={onCameraActive} />
+        <ForgottenItemsCheck
+          list={carryList}
+          onBack={onBack}
+          onCameraActive={onCameraActive}
+          onChange={(nextList) => {
+            const exists = memory.checklists.some((list) => list.id === nextList.id)
+            persist({
+              ...memory,
+              checklists: exists
+                ? memory.checklists.map((list) => list.id === nextList.id ? nextList : list)
+                : [...memory.checklists, nextList],
+            })
+          }}
+        />
       )}
       {selected.id === 'ai-ear' && <AiEarMode />}
       {selected.id === 'get-ready' && <GetReadyMode memory={memory} onSave={persist} />}

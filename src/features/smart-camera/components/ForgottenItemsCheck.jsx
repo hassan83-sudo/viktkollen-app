@@ -74,7 +74,7 @@ import SmartCameraLiveView from './SmartCameraLiveView.jsx'
  * "glömt" claim (see itemVisibility.js's assertNoMissingClaim, used by
  * the targeted tests for this file).
  */
-export default function ForgottenItemsCheck({ list, onBack, onCameraActive }) {
+export default function ForgottenItemsCheck({ list, onBack, onCameraActive, onChange }) {
   const [stage, setStage] = useState('check')
   const [visibleIds, setVisibleIds] = useState([])
   const [guidanceIndex, setGuidanceIndex] = useState(0)
@@ -83,6 +83,8 @@ export default function ForgottenItemsCheck({ list, onBack, onCameraActive }) {
   const [aiBusy, setAiBusy] = useState(false)
   const [aiNotice, setAiNotice] = useState('')
   const [aiStatusesById, setAiStatusesById] = useState(null)
+  const [editingList, setEditingList] = useState(false)
+  const [draftItem, setDraftItem] = useState('')
   const liveViewRef = useRef(null)
   const approvalRef = useRef(createOneShotAnalysisApproval())
   const items = list?.items || []
@@ -93,6 +95,36 @@ export default function ForgottenItemsCheck({ list, onBack, onCameraActive }) {
   function handleCameraActive(active) {
     setCameraActive(active)
     onCameraActive?.(active)
+  }
+
+  function addListItem() {
+    const label = draftItem.trim()
+    if (!label || !onChange) return
+    const id = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? `item-${crypto.randomUUID()}`
+      : `item-${Date.now()}`
+    onChange({
+      ...list,
+      items: [...items, { done: false, id, label }],
+      updatedAt: new Date().toISOString(),
+    })
+    setDraftItem('')
+  }
+
+  function removeListItem(itemId) {
+    if (!onChange) return
+    onChange({
+      ...list,
+      items: items.filter((item) => item.id !== itemId),
+      updatedAt: new Date().toISOString(),
+    })
+    setVisibleIds((current) => current.filter((id) => id !== itemId))
+    setAiStatusesById((current) => {
+      if (!current) return current
+      const next = { ...current }
+      delete next[itemId]
+      return next
+    })
   }
 
   function toggleShown(itemId) {
@@ -186,6 +218,44 @@ export default function ForgottenItemsCheck({ list, onBack, onCameraActive }) {
       <p className="smart-camera-forgotten-guidance" aria-live="polite" data-voice-guidance="true">
         {guidance.phrase}
       </p>
+      {onChange && (
+        <div className="smart-camera-forgotten-list-editor">
+          <button
+            className="secondary-button"
+            type="button"
+            aria-expanded={editingList}
+            onClick={() => setEditingList((current) => !current)}
+          >
+            {editingList ? 'Klar' : 'Redigera lista'}
+          </button>
+          {editingList && (
+            <div className="smart-camera-checklist">
+              <ul>
+                {items.map((item) => (
+                  <li key={item.id}>
+                    <span>{item.label}</span>
+                    <button type="button" onClick={() => removeListItem(item.id)}>Ta bort</button>
+                  </li>
+                ))}
+              </ul>
+              <div className="smart-camera-add-row">
+                <input
+                  aria-label="Ny sak att ta med"
+                  placeholder="Lägg till egen sak"
+                  value={draftItem}
+                  onChange={(event) => setDraftItem(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') addListItem()
+                  }}
+                />
+                <button className="secondary-button" type="button" disabled={!draftItem.trim()} onClick={addListItem}>
+                  Lägg till
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       {items.length === 0 ? (
         <p className="smart-camera-note">
           Din lista över saker att ta med är tom. Lägg till punkter under "Vad har jag med mig?" eller "Göra mig klar" så visas de här.

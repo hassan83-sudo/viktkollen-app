@@ -374,12 +374,11 @@ function OverviewLiveMeta({
         <button
           type="button"
           className="overview-halloween-toggle"
-          aria-label={halloweenEnabled ? 'Halloween PÅ' : 'Halloween AV'}
           aria-pressed={halloweenEnabled}
           onClick={toggleHalloween}
         >
-          <span className="overview-halloween-name" aria-hidden="true">🎃 Halloween</span>
-          <span className={halloweenEnabled ? 'overview-halloween-state is-on' : 'overview-halloween-state is-off'} aria-hidden="true">
+          <span className="overview-halloween-name">🎃 Halloween</span>
+          <span className={halloweenEnabled ? 'overview-halloween-state is-on' : 'overview-halloween-state is-off'}>
             {halloweenEnabled ? 'PÅ' : 'AV'}
           </span>
           <svg className="overview-halloween-power" viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

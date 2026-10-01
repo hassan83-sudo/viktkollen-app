@@ -53,7 +53,6 @@ function HomeSection({
   weights,
 }) {
   const { t } = useTranslation('home')
-  const openNotices = () => onNavigateSection?.('notices')
 
   return (
     <AppSection
@@ -94,8 +93,6 @@ function HomeSection({
           onLogWeight={onLogWeight}
           onNavigateSection={onNavigateSection}
           onNavigationIntentConsumed={onNavigationIntentConsumed}
-          onOpenAiCoach={onOpenAiCoach}
-          onOpenWellbeing={onOpenWellbeing}
           onScanFood={onScanFood}
           onSendChatMessage={onSendChatMessage}
           onStartVoiceInput={onStartVoiceInput}
@@ -116,7 +113,6 @@ function HomeSection({
         />
         <HomeNoticeShortcuts
           onOpenCoach={onOpenAiCoach}
-          onOpenNotices={openNotices}
           onOpenWellbeing={onOpenWellbeing}
         />
       </AppErrorBoundary>

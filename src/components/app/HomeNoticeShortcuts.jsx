@@ -1,14 +1,8 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 
-function HomeNoticeShortcuts({ onOpenCoach, onOpenNotices, onOpenWellbeing }) {
+function HomeNoticeShortcuts({ onOpenCoach, onOpenWellbeing }) {
   const [target, setTarget] = useState(null)
-  const shortcuts = [
-    { id: 'timer', label: 'Timer' },
-    { id: 'alarm', label: 'Väckarklocka' },
-    { id: 'reminder', label: 'Påminnelse' },
-    { id: 'bathroom', label: 'Badrum' },
-  ]
 
   useEffect(() => {
     setTarget(document.querySelector('.overview-today-mood'))
@@ -63,7 +57,7 @@ function HomeNoticeShortcuts({ onOpenCoach, onOpenNotices, onOpenWellbeing }) {
         }
         .overview-quick-buttons {
           display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
+          grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 7px;
           width: 100%;
         }
@@ -94,14 +88,6 @@ function HomeNoticeShortcuts({ onOpenCoach, onOpenNotices, onOpenWellbeing }) {
       <article className="overview-mood-card is-quick" aria-label="Snabbt">
         <div className="overview-quick-head">
           <span className="overview-mood-label">Snabbt</span>
-          <button type="button" onClick={() => onOpenNotices?.()}>Alla notiser</button>
-        </div>
-        <div className="overview-quick-buttons" role="group" aria-label="Viktiga snabbknappar">
-          {shortcuts.map((shortcut) => (
-            <button key={shortcut.id} type="button" onClick={() => onOpenNotices?.(shortcut.id)}>
-              {shortcut.label}
-            </button>
-          ))}
         </div>
         <div className="overview-quick-buttons" role="group" aria-label="Må bra och AI Coach">
           <button type="button" onClick={() => onOpenWellbeing?.()}>Må bra</button>

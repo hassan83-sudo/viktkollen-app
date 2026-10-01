@@ -1,7 +1,8 @@
 /* @vitest-environment jsdom */
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import i18n from '../../i18n/index.js'
+import HomeNoticeShortcuts from './HomeNoticeShortcuts.jsx'
 import OverviewDashboard from './OverviewDashboard.jsx'
 
 function renderOverview(overrides = {}) {
@@ -48,13 +49,21 @@ describe('OverviewDashboard interactions', () => {
 
   afterEach(() => cleanup())
 
-  it('opens Wellbeing from the Home card', () => {
+  it('opens Må bra and AI Coach from the Snabbt area, and only those two quick buttons', () => {
     const onOpenWellbeing = vi.fn()
-    renderOverview({ onOpenWellbeing })
+    const onOpenCoach = vi.fn()
+    renderOverview()
+    render(<HomeNoticeShortcuts onOpenCoach={onOpenCoach} onOpenWellbeing={onOpenWellbeing} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /Öppna Må bra$/ }))
+    const quick = screen.getByRole('article', { name: 'Snabbt' })
+    fireEvent.click(within(quick).getByRole('button', { name: 'Må bra' }))
+    fireEvent.click(within(quick).getByRole('button', { name: 'AI Coach' }))
 
     expect(onOpenWellbeing).toHaveBeenCalledTimes(1)
+    expect(onOpenCoach).toHaveBeenCalledTimes(1)
+    expect(within(quick).getAllByRole('button').map((button) => button.textContent)).toEqual(['Må bra', 'AI Coach'])
+    expect(screen.queryByRole('button', { name: /Öppna Må bra$/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Öppna Coach$/ })).toBeNull()
   })
 
   it('opens the existing social stage from the compact Home chat row', () => {

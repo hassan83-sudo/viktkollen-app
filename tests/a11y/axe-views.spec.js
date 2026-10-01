@@ -32,7 +32,7 @@ for (const [modeName, preferences] of Object.entries(modes)) {
 
     test('AI Coach-dialog', async ({ page }, testInfo) => {
       await openApp(page, { preferences })
-      await page.getByRole('button', { name: 'Öppna Coach' }).first().click()
+      await page.getByRole('group', { name: 'Må bra och AI Coach' }).getByRole('button', { name: 'AI Coach' }).click()
       await expect(page.getByRole('dialog', { name: 'AI Coach' })).toBeVisible()
       await expectNoBlockingAxeViolations(page, testInfo, `ai-coach-${modeName}`)
     })
@@ -107,7 +107,7 @@ test.describe('axe main sections with visible navigation (blocks moderate)', () 
 
   test('Notis', async ({ page }, testInfo) => {
     await openApp(page)
-    await page.getByRole('button', { name: 'Alla notiser' }).click()
+    await page.getByRole('button', { name: /^Notis / }).first().click()
     await expect(page.locator('#app-section-notices')).toHaveClass(/is-active/)
     await expectNoBlockingAxeViolations(page, testInfo, 'section-notices', { block })
   })

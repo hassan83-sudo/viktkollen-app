@@ -6,12 +6,14 @@ function readSource(relativePath) {
 }
 
 describe('AI Coach tap me and realtime voice security', () => {
-  it('opens AI Coach from Dagens läge mood card on Home', () => {
+  it('opens AI Coach from the Snabbt area on Home, not from a Dagens läge card', () => {
     const source = readSource('src/components/app/OverviewDashboard.jsx')
+    const homeSource = readSource('src/components/sections/HomeSection.jsx')
+    const quickSource = readSource('src/components/app/HomeNoticeShortcuts.jsx')
 
-    expect(source).toContain('overview-mood-card is-coach')
-    expect(source).toContain("t('home:mood.openCoach')")
-    expect(source).toContain('onOpenAiCoach')
+    expect(source).not.toContain('overview-mood-card is-coach')
+    expect(homeSource).toContain('onOpenCoach={onOpenAiCoach}')
+    expect(quickSource).toContain("onClick={() => onOpenCoach?.()}>AI Coach</button>")
     expect(source).toContain("t('home:tapImage')")
     expect(source).not.toContain('is-coach-hero')
   })

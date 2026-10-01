@@ -877,9 +877,7 @@ function OverviewTodayMood({
   caloriesToday,
   currentWeight,
   onLogWeight,
-  onOpenCoach,
   onOpenNotices,
-  onOpenWellbeing,
   onScanFood,
   reminderState,
   weights,
@@ -1097,8 +1095,6 @@ function OverviewDashboard({
   onLogWeight,
   onNavigateSection,
   onNavigationIntentConsumed,
-  onOpenAiCoach,
-  onOpenWellbeing,
   onScanFood,
   onSendChatMessage,
   onStartVoiceInput,
@@ -1351,9 +1347,7 @@ function OverviewDashboard({
           caloriesToday={caloriesToday}
           currentWeight={currentWeight}
           onLogWeight={onLogWeight}
-          onOpenCoach={() => (onOpenAiCoach ? onOpenAiCoach() : setCoachOpen(true))}
           onOpenNotices={goToNotifications}
-          onOpenWellbeing={onOpenWellbeing}
           onScanFood={onScanFood}
           reminderState={reminderState}
           weights={weights}

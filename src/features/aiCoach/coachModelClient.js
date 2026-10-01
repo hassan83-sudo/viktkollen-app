@@ -7,7 +7,7 @@ export function resetCoachModelRequestForTests() {
   inFlight = null
 }
 
-export function coachModelRequestBody({ context, messages, route } = {}) {
+export function coachModelRequestBody({ context, language = 'sv', messages, route } = {}) {
   const history = Array.isArray(messages) ? messages.slice(-8) : []
   const latest = history.at(-1)?.content || ''
   return {
@@ -16,7 +16,7 @@ export function coachModelRequestBody({ context, messages, route } = {}) {
       .map((entry) => entry?.id)
       .filter(Boolean)
       .slice(0, 4),
-    language: 'sv',
+    language: language || 'sv',
     messages: history,
   }
 }

@@ -69,11 +69,12 @@ describe('coach answer service', () => {
     expect(request.model).toBe('gpt-5-mini')
     expect(request.max_output_tokens).toBe(AI_HELP_DEFAULT_MAX_OUTPUT_TOKENS)
     expect(AI_HELP_DEFAULT_MAX_OUTPUT_TOKENS).toBe(400)
-    expect(request.text).toBeUndefined()
+    expect(request.text).toEqual({ verbosity: 'low' })
     expect(request.reasoning).toEqual({ effort: 'low' })
     expect(request.input[0].content[0].type).toBe('input_text')
     expect(request.input.at(-1).content[0].type).toBe('input_text')
     const instructions = request.input[0].content[0].text
+    expect(instructions).toContain('at most four short sentences')
     expect(instructions).toMatch(/Do not invent/)
     expect(instructions).toMatch(/not a doctor/)
     expect(instructions).toContain('coach.weekly-focus')
@@ -107,6 +108,32 @@ describe('coach answer service', () => {
     expect(request.input.map((item) => item.content[0].type)).toEqual(['input_text', 'input_text', 'output_text', 'input_text'])
     expect(request.input[2].content[0].annotations).toEqual([])
     expect(request.input).toHaveLength(4)
+  })
+
+  it('does not present a reply that was cut at the 400 token cap', async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        incomplete_details: { reason: 'max_output_tokens' },
+        output_text: '{"status":"answered","answer":"Protein',
+        status: 'incomplete',
+        usage: { input_tokens: 944, output_tokens: 400, output_tokens_details: { reasoning_tokens: 64 } },
+      }),
+    }))
+    const result = await answerCoachQuestion({
+      body: { language: 'sv', messages: [{ content: 'Jämför protein och aktivitet för mig', role: 'user' }] },
+      costStore: {
+        reserve: async () => ({ ok: true, reservationId: 'reserve-cut' }),
+        settle: async () => ({ ok: true }),
+      },
+      env: { AI_HELP_BUDGET_SEK: '10', OPENAI_API_KEY: 'test-key' },
+      fetchImpl,
+      userId: 'coach-user',
+    })
+    const request = JSON.parse(fetchImpl.mock.calls[0][1].body)
+    expect(request.max_output_tokens).toBe(400)
+    expect(request.text).toEqual({ verbosity: 'low' })
+    expect(result).toMatchObject({ answer: '', ok: true, source: 'withheld', status: 'unanswered', tool: null })
   })
 
   it('withholds a mocked answer that invents a weight or a diagnosis', async () => {

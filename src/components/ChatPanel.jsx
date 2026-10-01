@@ -7,6 +7,7 @@ function ChatPanel({
   chatEngineStatus,
   chatInput,
   chatMessages,
+  chatSending = false,
   chatThreadRef,
   compact = false,
   isAiSpeaking,
@@ -66,6 +67,7 @@ function ChatPanel({
       <ChatMessageList
         chatMessages={chatMessages}
         chatThreadRef={chatThreadRef}
+        emptyLabel={chatMessages.length === 0 ? 'Ställ en fråga om vikt, mat, vanor eller motivation.' : ''}
         messagesEndRef={messagesEndRef}
       />
 
@@ -78,6 +80,7 @@ function ChatPanel({
         onAiVoiceEnabledChange={onAiVoiceEnabledChange}
         onChatInputChange={onChatInputChange}
         onSendChatMessage={onSendChatMessage}
+        sending={chatSending}
         onStopAiVoiceResponse={onStopAiVoiceResponse}
         onStartVoiceInput={onStartVoiceInput}
       />

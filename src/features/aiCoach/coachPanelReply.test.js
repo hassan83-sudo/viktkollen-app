@@ -207,6 +207,38 @@ describe('coach panel replies', () => {
     expect(result.reply).not.toMatch(/88\.4|drake väger/)
   })
 
+  it('uses registered weight data and does not invent a missing calorie number', async () => {
+    const weighed = await ask('Vad vägde jag senast?')
+    expect(weighed.reply).toMatch(/Registrerad data/)
+    expect(weighed.reply).toMatch(/88\.4 kg/)
+    const calories = await ask('Hur många kalorier är lagom till en måltid?')
+    expect(calories.source).not.toBe('safety')
+    expect(calories.reply).not.toMatch(/\b\d{3,4}\s*kcal\b|112/)
+    expect(calories.tool).toBeNull()
+  })
+
+  it('answers Swedish by default and keeps an urgent symptom out of normal coaching', async () => {
+    let seenLanguage = ''
+    const modeled = await answerCoachPanelQuestion({
+      appData: source(),
+      languageCode: 'sv',
+      messages: [{ content: 'Jämför protein och aktivitet för mig', role: 'user' }],
+      modelAnswer: async (input) => {
+        seenLanguage = input.language
+        return { answer: 'Protein till en måltid och en promenad.', ok: true, source: 'openai' }
+      },
+    })
+    expect(seenLanguage).toBe('sv')
+    expect(modeled.source).toBe('openai')
+    expect(modeled.tool).toBeNull()
+
+    const urgent = await ask('Jag har bröstsmärta och kan inte andas')
+    expect(urgent.source).toBe('safety')
+    expect(urgent.reply).toMatch(/112/)
+    expect(urgent.reply).not.toMatch(/88\.4|promenad är tillräcklig/)
+    expect(requestCoachModelReply).not.toHaveBeenCalled()
+  })
+
   it('refuses a diagnosis and still coaches a walk', async () => {
     const diagnosis = await ask('Har jag diabetes?')
     expect(diagnosis.source).toBe('safety')

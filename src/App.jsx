@@ -1019,6 +1019,7 @@ function App() {
   const [reminderStatus, setReminderStatus] = useState('')
   const [chatInput, setChatInput] = useState('')
   const [chatEngineStatus, setChatEngineStatus] = useState('')
+  const [chatSending, setChatSending] = useState(false)
   const [voiceStatus, setVoiceStatus] = useState('')
   const [isListening, setIsListening] = useState(false)
   const [isAiSpeaking, setIsAiSpeaking] = useState(false)
@@ -2686,6 +2687,7 @@ function App() {
     setChatMessages(initialChatMessages)
     setChatInput('')
     setChatEngineStatus('')
+    setChatSending(false)
     setVoiceStatus('')
   }
 
@@ -2695,6 +2697,8 @@ function App() {
     }
 
     chatRequestInFlightRef.current = true
+    setChatSending(true)
+    setChatEngineStatus('AI-coachen formulerar ett svar.')
     const createdAt = new Date().toISOString()
     const { addMemory, pendingChatHistory } = await prepareCoachChatSubmission({
       chatMessages: chatMessagesRef.current,
@@ -2729,13 +2733,14 @@ function App() {
       return reply
     } finally {
       chatRequestInFlightRef.current = false
+      setChatSending(false)
     }
   }
 
   function submitChatText(text) {
     const trimmedText = text.trim()
 
-    if (!trimmedText) {
+    if (!trimmedText || chatRequestInFlightRef.current) {
       return
     }
 
@@ -3171,6 +3176,7 @@ function App() {
     canClearChat: chatMessages.length > initialChatMessages.length,
     chatEngineStatus,
     chatInput,
+    chatSending,
     chatMessages,
     chatThreadRef,
     checkIn,
@@ -3305,6 +3311,7 @@ function App() {
             chatEngineStatus={chatEngineStatus}
             chatInput={chatInput}
             chatMessages={chatMessages}
+            chatSending={chatSending}
             chatThreadRef={chatThreadRef}
             isAiSpeaking={isAiSpeaking}
             isAiVoiceEnabled={isAiVoiceEnabled}

@@ -20,6 +20,7 @@ function AiCoachOverlay({
   chatEngineStatus,
   chatInput,
   chatMessages,
+  chatSending = false,
   chatThreadRef,
   isAiSpeaking,
   isAiVoiceEnabled,
@@ -72,14 +73,15 @@ function AiCoachOverlay({
     utterance.pitch = voiceProfile.pitch
 
     const finish = () => setIsTypedReplySpeaking(false)
+    utterance.onstart = () => setIsTypedReplySpeaking(true)
     utterance.onend = finish
     utterance.onerror = finish
 
-    setIsTypedReplySpeaking(true)
     speechSynthesis.resume?.()
     speechSynthesis.speak(utterance)
 
     return () => {
+      utterance.onstart = null
       utterance.onend = null
       utterance.onerror = null
     }
@@ -109,7 +111,7 @@ function AiCoachOverlay({
         : isVoiceConversationActive
           ? t('coach:overlay.status.ready')
           : t('coach:overlay.startVoice'))
-  const engineStatus = chatEngineStatus || (latestAssistantMessage ? 'GPT-5.6 Luna · OpenAI aktiv' : '')
+  const engineStatus = chatEngineStatus || ''
 
   function stopAiVoiceResponse() {
     window.speechSynthesis?.cancel?.()
@@ -141,6 +143,7 @@ function AiCoachOverlay({
         <ChatMessageList
           chatMessages={chatMessages}
           chatThreadRef={chatThreadRef}
+          emptyLabel={chatMessages.length === 0 ? t('coach:overlay.intro') : ''}
           messagesEndRef={messagesEndRef}
         />
       </div>
@@ -155,6 +158,7 @@ function AiCoachOverlay({
           onAiVoiceEnabledChange={onAiVoiceEnabledChange}
           onChatInputChange={onChatInputChange}
           onSendChatMessage={onSendChatMessage}
+          sending={chatSending}
           onStopAiVoiceResponse={stopAiVoiceResponse}
           onStartVoiceInput={onStartVoiceInput}
         />

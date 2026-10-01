@@ -17921,3 +17921,80 @@ html:has(#app-section-more.is-active),
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Halloween control: full label, status and power symbol, aligned with the
+   Online pill at the top of Home. Only the switch; no theme styling. */
+#app-section-home.is-active .overview-app-header { position: relative; }
+#app-section-home.is-active .overview-halloween-toggle {
+  position: absolute;
+  top: 3px;
+  right: 5px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-height: 34px;
+  margin: 0;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 9px;
+  background: #151720;
+  color: #ffae63;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+#app-section-home.is-active .overview-halloween-name { display: inline-flex; align-items: center; gap: 5px; }
+#app-section-home.is-active .overview-halloween-state {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 34px;
+  height: 28px;
+  border-radius: 999px;
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 800;
+}
+#app-section-home.is-active .overview-halloween-state.is-on { background: #063d2b; color: #69eaa7; }
+#app-section-home.is-active .overview-halloween-state.is-off { background: #373039; color: #c5b4b9; }
+#app-section-home.is-active .overview-halloween-power { flex: 0 0 21px; }
+#app-section-home.is-active .overview-halloween-toggle[aria-pressed="false"] { color: #a7a4aa; }
+#app-section-home.is-active .overview-halloween-toggle:focus-visible {
+  outline: 2px solid #ffb366;
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .overview-halloween-toggle { transition: background-color .18s ease, color .18s ease; }
+}
+@media (max-width: 360px) {
+  #app-section-home.is-active .overview-halloween-toggle { gap: 6px; font-size: 11px; padding-inline: 3px; }
+  #app-section-home.is-active .overview-halloween-state { min-width: 29px; }
+}
+
+/* Align the switch with the uppermost Online pill, not the live-details row.
+   The status strip is one row (roughly 26px) above the dashboard header. */
+#app-section-home.is-active .overview-app-header .overview-halloween-toggle {
+  top: -31px;
+  right: 4px;
+  min-height: 24px;
+  height: 24px;
+  padding: 1px 5px;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1;
+  background: #10151d;
+}
+#app-section-home.is-active .overview-app-header .overview-halloween-state {
+  height: 21px;
+  min-width: 28px;
+  font-size: 10px;
+}
+#app-section-home.is-active .overview-app-header .overview-halloween-power {
+  width: 17px;
+  height: 17px;
+  flex-basis: 17px;
+}

@@ -1,3 +1,4 @@
+import { getActiveLanguageCode } from '../../i18n/index.js'
 import { explainCoachRoute } from './coachRouter.js'
 import { createViktkollenCoachContext } from './coachDataProvider.js'
 import { requestCoachModelReply } from './coachModelClient.js'
@@ -75,6 +76,7 @@ function present(result) {
 
 export async function answerCoachPanelQuestion({
   appData = {},
+  languageCode = getActiveLanguageCode() || 'sv',
   messages = [],
   modelAnswer = null,
   onStatus = null,
@@ -83,14 +85,15 @@ export async function answerCoachPanelQuestion({
   const personal = coachDomain.context(createViktkollenCoachContext(source, { today: source.today }))
   const context = personal.ok ? personal.data : null
   const history = panelMessages(messages)
-  const route = coachDomain.route({ context, languageCode: 'sv', messages: history })
+  const language = languageCode || 'sv'
+  const route = coachDomain.route({ context, languageCode: language, messages: history })
   const local = explainCoachRoute(route, context)
   if (local && route.kind !== 'model') return present(local)
 
   const answerer = typeof modelAnswer === 'function' ? modelAnswer : requestCoachModelReply
   onStatus?.('AI-coachen formulerar ett svar.')
   try {
-    const modeled = await answerer({ context, messages: history, route })
+    const modeled = await answerer({ context, language, messages: history, route })
     if (modeled?.ok && modeled.answer) return present(modeled)
     if (modeled?.code === 'MODEL_LIMITED' && route.fallbackEntry) {
       return present(explainCoachRoute({ entry: route.fallbackEntry, kind: 'local' }, context))

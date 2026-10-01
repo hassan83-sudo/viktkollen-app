@@ -199,6 +199,7 @@ export async function answerCoachQuestion({
         max_output_tokens: maxOutputTokens,
         model,
         reasoning: { effort: 'low' },
+        text: { verbosity: 'low' },
       }),
       headers: {
         Authorization: `Bearer ${env.OPENAI_API_KEY}`,
@@ -230,7 +231,8 @@ export async function answerCoachQuestion({
     await store.markUncertain?.({ reservationId: reservation.reservationId })
   }
 
-  const parsed = parseModelJson(extractResponseText(payload))
+  const outputWasCut = payload?.status === 'incomplete' || payload?.incomplete_details?.reason === 'max_output_tokens'
+  const parsed = outputWasCut ? null : parseModelJson(extractResponseText(payload))
   const answer = clampText(parsed?.answer, 1200)
   const knowledgeIds = (Array.isArray(parsed?.knowledgeIds) ? parsed.knowledgeIds : [])
     .filter((id) => route.entries.some((entry) => entry.id === id))

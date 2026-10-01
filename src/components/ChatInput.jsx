@@ -17,6 +17,7 @@ function ChatInput({
   onChatInputChange,
   onSendChatMessage,
   onStartVoiceInput,
+  sending = false,
 }) {
   const { t } = useTranslation('coach')
   const inputId = useId()
@@ -44,7 +45,7 @@ function ChatInput({
       >
         {isVoiceConversationActive ? voiceButtonLabel : <span aria-hidden="true">🎙️</span>}
       </button>
-      <button className="send-button" type="submit">{t('chatInput.send')}</button>
+      <button className="send-button" type="submit" disabled={sending} aria-busy={sending || undefined}>{t('chatInput.send')}</button>
       <div className="voice-conversation-controls">
         <label className="voice-toggle">
           <input

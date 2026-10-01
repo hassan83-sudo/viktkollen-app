@@ -45,7 +45,28 @@ describe('ChatInput voice conversation UI', () => {
     )
 
     expect(markup).toContain('placeholder="Skriv en fråga..."')
+    expect(markup).not.toContain('disabled')
     expect(markup).toContain('aria-label="Starta röstsamtal"')
     expect(markup).not.toContain('AI-röst')
+  })
+
+  it('disables send while a coach reply is pending', () => {
+    const markup = renderToStaticMarkup(
+      <ChatInput
+        chatInput="Protein?"
+        isAiSpeaking={false}
+        isAiVoiceEnabled={false}
+        isListening={false}
+        isVoiceConversationActive={false}
+        onAiVoiceEnabledChange={() => {}}
+        onChatInputChange={() => {}}
+        onSendChatMessage={() => {}}
+        onStartVoiceInput={() => {}}
+        sending
+      />,
+    )
+
+    expect(markup).toContain('type="submit"')
+    expect(markup).toContain('disabled')
   })
 })

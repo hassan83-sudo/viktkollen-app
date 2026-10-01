@@ -25,6 +25,7 @@ function CoachSection({
   chatEngineStatus,
   chatInput,
   chatMessages,
+  chatSending = false,
   chatThreadRef,
   checkIn,
   coachMessage,
@@ -80,6 +81,7 @@ function CoachSection({
           chatEngineStatus={chatEngineStatus}
           chatInput={chatInput}
           chatMessages={chatMessages}
+          chatSending={chatSending}
           chatThreadRef={chatThreadRef}
           isListening={isListening}
           isAiSpeaking={isAiSpeaking}

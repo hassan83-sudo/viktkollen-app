@@ -40,7 +40,7 @@ export const coachKnowledge = Object.freeze([
     title: 'Förändring över tid',
   },
   {
-    aliases: ['måltid', 'måltider', 'frukost', 'lunch', 'middag', 'matstruktur'],
+    aliases: ['måltid', 'måltider', 'frukost', 'lunch', 'middag', 'matstruktur', 'kalori', 'kalorier'],
     contextFields: ['meals'],
     examples: ['Protein, grönsak eller frukt, och en kolhydrat du redan äter.'],
     id: 'coach.meal-structure',

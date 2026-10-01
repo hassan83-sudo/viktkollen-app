@@ -4,11 +4,13 @@ import { getCoachEntry } from './coachKnowledge.js'
 import { COACH_CONTEXT_LIMIT, rankCoachKnowledge } from './coachSearch.js'
 
 const examplePattern = /exempel|enklare|förklara|andra ord/i
+const urgentPattern = /\b(bröstsmärta|kan inte andas|självmord|ta livet av mig|överdos|svimmade|stroke|ring 112|ändra (?:min )?dos|höj dosen|sluta med (?:min )?medicin)\b/i
 const medicalPattern = /\b(diagnos|diagnostisera|cancer|tumör|diabetes|medicin|läkemedel|blodtryck|ätstörning|anorexi|bulimi|självskada|gravid|hjärtinfarkt|depression)\b/i
 const needsStoredPattern = /\b(hur har min|har min|min vikttrend|mitt mål|min målvikt|vad åt jag|min aktivitet|mina måltider|mina vanor|åt rätt håll|min protein|mitt protein|vad vägde jag|senaste vikten|protein idag|tillräckligt med protein|hur ligger jag)\b/i
 const modelPattern = /jämför|skillnad mellan/i
 
 const SAFETY_TEXT = 'Jag är en vanecoach i Viktkollen och kan inte bedöma sjukdom, medicin eller diagnos. För det behöver du vården. Jag kan fortfarande prata om vanor, mat och viktloggning.'
+const URGENT_TEXT = 'Det här låter akut. Jag är en vanecoach och kan inte bedöma sjukdom, medicin eller diagnos. Kontakta vården, eller ring 112 om du behöver akut hjälp.'
 
 function isConfident(ranked) {
   const [top, second] = ranked
@@ -83,7 +85,8 @@ export function localCoachAnswer(entry, { context = null, examples = false, pers
       .filter(Boolean)
       .join(' ')
     : ''
-  return `${entry.summary} ${entry.limits || ''}${exampleText}${personalText ? ` ${personalText}` : ''}`.replace(/\s+/g, ' ').trim()
+  const known = personalText ? ` Registrerad data: ${personalText}` : ''
+  return `${entry.summary} ${entry.limits || ''}${exampleText}${known}`.replace(/\s+/g, ' ').trim()
 }
 
 export function routeCoachQuestion({
@@ -97,6 +100,7 @@ export function routeCoachQuestion({
   if (intent.domain === 'help') {
     return { domain: 'help', handoff: false, kind: 'other-domain', performed: false }
   }
+  if (urgentPattern.test(latest)) return { kind: 'urgent' }
   if (medicalPattern.test(latest)) return { kind: 'safety' }
 
   const earlier = [...messages].reverse().find((message) => message !== messages[messages.length - 1] && message?.role === 'user')
@@ -163,8 +167,13 @@ export function routeCoachQuestion({
 }
 
 export function explainCoachRoute(route, context = null) {
-  if (route.kind === 'safety') {
-    return { answer: SAFETY_TEXT, knowledgeIds: [], source: 'safety', status: 'answered' }
+  if (route.kind === 'urgent' || route.kind === 'safety') {
+    return {
+      answer: route.kind === 'urgent' ? URGENT_TEXT : SAFETY_TEXT,
+      knowledgeIds: [],
+      source: 'safety',
+      status: 'answered',
+    }
   }
   if (route.kind === 'other-domain') {
     return {

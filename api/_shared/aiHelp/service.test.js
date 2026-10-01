@@ -164,7 +164,7 @@ describe('AI Help language and model contract', () => {
     expect(request.max_output_tokens).toBe(400)
     expect(request.reasoning).toEqual({ effort: 'low' })
     expect(request.temperature).toBeUndefined()
-    expect(request.text).toBeUndefined()
+    expect(request.text).toEqual({ verbosity: 'low' })
     expect(fetchImpl.mock.calls[0][0]).toBe('https://api.openai.com/v1/responses')
     expect(fetchImpl.mock.calls[0][1].method).toBe('POST')
   })
@@ -229,6 +229,40 @@ describe('AI Help language and model contract', () => {
       expect(JSON.stringify(result)).not.toContain('Öppna')
       expect(listUnansweredQuestionsForTests()).toHaveLength(0)
     }
+  })
+
+  it('asks for a short answer so gpt-5-mini can finish inside the 400 token cap', async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        output_text: JSON.stringify({
+          answer: 'Språket väljs i Inställningar.',
+          featureIds: ['settings.language'],
+          status: 'answered',
+        }),
+        status: 'completed',
+        usage: {
+          input_tokens: 944,
+          output_tokens: 180,
+          output_tokens_details: { reasoning_tokens: 64 },
+        },
+      }),
+    }))
+    const result = await answerAiHelpQuestion({
+      body: {
+        language: 'en',
+        messages: [{ content: 'What does the language setting do?', role: 'user' }],
+      },
+      env: { AI_HELP_BUDGET_SEK: '1000', OPENAI_API_KEY: 'test-key' },
+      fetchImpl,
+      userId: 'user-prod-cap',
+    })
+    const request = JSON.parse(fetchImpl.mock.calls[0][1].body)
+
+    expect(request.max_output_tokens).toBe(400)
+    expect(request.text).toEqual({ verbosity: 'low' })
+    expect(request.input[0].content[0].text).toContain('at most four short sentences')
+    expect(result).toMatchObject({ ok: true, source: 'openai', status: 'answered' })
   })
 
   it('returns a provider error when the mocked model call fails', async () => {

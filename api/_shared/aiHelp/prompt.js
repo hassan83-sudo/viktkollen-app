@@ -31,6 +31,7 @@ export function buildAiHelpInstructions({ entries, languageCode, planFacts = '' 
     'Never turn an unknown feature name into a different Viktkollen feature.',
     'You may set tool only to {"name":"open-section","sectionId":"..."} when that sectionId is on an entry. Never invent a tool. Never say you already opened a section or completed an action.',
     `Write the answer in ${definition.nativeName} (${definition.code}).`,
+    'Keep the answer to at most four short sentences.',
     'Return only JSON with this shape: {"status":"answered"|"unanswered","answer":"...","featureIds":["id"],"tool":null}.',
     `Knowledge entries: ${JSON.stringify(facts)}`,
   ].join('\n')

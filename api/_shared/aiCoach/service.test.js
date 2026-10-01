@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
 import { answerCoachQuestion, coachAnswerIsAllowed } from './service.js'
+import { AI_HELP_DEFAULT_MAX_OUTPUT_TOKENS } from '../aiHelp/costGuard.js'
 
 function providerResponse(answer, status = 'answered') {
   return {
@@ -66,6 +67,9 @@ describe('coach answer service', () => {
     expect(settle).toHaveBeenCalledOnce()
     const request = JSON.parse(fetchImpl.mock.calls[0][1].body)
     expect(request.model).toBe('gpt-5-mini')
+    expect(request.max_output_tokens).toBe(AI_HELP_DEFAULT_MAX_OUTPUT_TOKENS)
+    expect(AI_HELP_DEFAULT_MAX_OUTPUT_TOKENS).toBe(400)
+    expect(request.text).toBeUndefined()
     expect(request.reasoning).toEqual({ effort: 'low' })
     expect(request.input[0].content[0].type).toBe('input_text')
     expect(request.input.at(-1).content[0].type).toBe('input_text')

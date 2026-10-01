@@ -256,6 +256,7 @@ export async function answerAiHelpQuestion({
         max_output_tokens: maxOutputTokens,
         model,
         reasoning: { effort: 'low' },
+        text: { verbosity: 'low' },
       }),
       headers: {
         Authorization: `Bearer ${env.OPENAI_API_KEY}`,

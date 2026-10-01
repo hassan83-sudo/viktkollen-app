@@ -17998,3 +17998,23 @@ html:has(#app-section-more.is-active),
   height: 17px;
   flex-basis: 17px;
 }
+
+/* Halloween background on Home, only while the Halloween switch is on. A fixed
+   layer behind the Home content (its only child, .home-overview-shell, is
+   positioned and paints above it), so the picture covers the screen on mobile
+   while the cards scroll over it. */
+html.viktkollen-halloween-on #app-section-home.is-active::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: url('/halloween-home-background.webp') center center / cover no-repeat;
+}
+
+/* Keep the top status strip (Online pill), which comes before Home in the
+   page, above the Halloween background layer. */
+html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-experience {
+  position: relative;
+  z-index: 1;
+}

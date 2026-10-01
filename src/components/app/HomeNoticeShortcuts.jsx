@@ -92,6 +92,7 @@ function HomeNoticeShortcuts({ onOpenCoach, onOpenWellbeing }) {
         }
         .overview-quick-buttons button::after {
           content: "›";
+          content: "›" / "";
           color: rgba(255, 255, 255, 0.68);
           font-size: 22px;
           font-weight: 500;
@@ -103,6 +104,7 @@ function HomeNoticeShortcuts({ onOpenCoach, onOpenWellbeing }) {
         }
         .overview-quick-wellbeing::before {
           content: "♥";
+          content: "♥" / "";
           background: rgba(87, 230, 190, 0.14);
           color: #72edc7;
         }
@@ -112,6 +114,7 @@ function HomeNoticeShortcuts({ onOpenCoach, onOpenWellbeing }) {
         }
         .overview-quick-coach::before {
           content: "✦";
+          content: "✦" / "";
           background: rgba(171, 137, 255, 0.15);
           color: #c5adff;
         }

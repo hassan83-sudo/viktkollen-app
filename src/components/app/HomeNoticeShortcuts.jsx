@@ -134,7 +134,6 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
         }
-        }
       `}</style>
       <article className="overview-mood-card is-quick" aria-label="Snabbt">
         <div className="overview-quick-head">

@@ -53,7 +53,39 @@ function HomeSection({
   weights,
 }) {
   const { t } = useTranslation('home')
-  const openNotices = (target) => onNavigateSection?.('notices', target)
+  const openNotices = (target) => {
+    onNavigateSection?.('notices')
+
+    if (!target) return
+
+    const roomByTarget = {
+      alarm: 'bedroom',
+      bathroom: 'bathroom',
+      timer: 'kitchen',
+    }
+
+    const openTarget = () => {
+      if (target === 'reminder') {
+        const heading = document.getElementById('quick-reminders-heading')
+        heading?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+        heading?.focus?.({ preventScroll: true })
+        return Boolean(heading)
+      }
+
+      const roomId = roomByTarget[target]
+      const button = roomId ? document.querySelector(`[data-notice-room="${roomId}"]`) : null
+      if (!button) return false
+      if (button.getAttribute('aria-expanded') !== 'true') button.click()
+      button.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+      button.focus?.({ preventScroll: true })
+      return true
+    }
+
+    window.requestAnimationFrame(() => {
+      if (openTarget()) return
+      window.setTimeout(openTarget, 120)
+    })
+  }
 
   return (
     <AppSection

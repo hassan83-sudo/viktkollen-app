@@ -18119,3 +18119,15 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
 #app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-eyes .overview-primary-action-copy {
   top: 3px;
 }
+
+
+/* Home AI Eyes: scale the approved title capsule down by 20%, keeping it centered. */
+#app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-eyes .overview-primary-action-copy > small:first-child {
+  width: 80%;
+  min-height: 46.4px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 6.4px 6.4px;
+  border-width: 2.4px;
+  font-size: .576rem;
+}

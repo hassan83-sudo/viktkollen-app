@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next'
 
 import { AI_EAR_MAX_INPUT_BYTES, AI_EAR_MAX_SECONDS, blobToAiEarWav } from '../../services/aiEarAudio.js'
 import { interpretAiEarAudio } from '../../services/aiEarInterpret.js'
+import { recognizeAiEarHumming } from '../../services/aiEarHumming.js'
 import AiEarDictation from './AiEarDictation.jsx'
 import { aiEarModes, defaultAiEarModeId, getAiEarMode } from './aiEarModes.js'
-import { buildAiEarErrorView, buildAiEarModeView } from './aiEarViewModel.js'
+import { buildAiEarErrorView, buildAiEarHummingView, buildAiEarModeView } from './aiEarViewModel.js'
 import { useAiEarRecorder } from './useAiEarRecorder.js'
 import './AiEarMode.css'
 
@@ -15,8 +16,8 @@ import './AiEarMode.css'
  * AI-EAR-1: fyra lägen (Ljudigenkänning, Fågelljud, Tal → text, Humma /
  * sjung) i samma vy. Ljud och fågel använder samma server-hop nedan och visar
  * resultatet på olika sätt. Tal → text (AI-EAR-2C) använder webbläsarens
- * taligenkänning (AiEarDictation.jsx), utan server. Humma är inte kopplat (se
- * aiEarModes.js) och skickar inget ljud.
+ * taligenkänning (AiEarDictation.jsx), utan server. Humma / sjung använder
+ * samma inspelning och skickar ljudet till /api/ai-ear/humming.
  *
  * Flöde: spela in (max 12 s) eller välj en ljudfil -> ljudet görs om till WAV på
  * enheten -> användaren trycker uttryckligen "Analysera ljudet" (det är
@@ -35,6 +36,7 @@ const defaultDeps = {
   blobToWav: blobToAiEarWav,
   getUserMedia: (constraints) => navigator.mediaDevices.getUserMedia(constraints),
   interpret: interpretAiEarAudio,
+  recognizeHumming: recognizeAiEarHumming,
   MediaRecorderImpl: typeof MediaRecorder === 'undefined' ? null : MediaRecorder,
 }
 
@@ -131,12 +133,13 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
     controllerRef.current = controller
     setPhase('analyzing')
     // Trycket på "Analysera ljudet" är det uttryckliga godkännandet att skicka just den här inspelningen.
-    const outcome = await depsRef.current.interpret({ consentApproved: true, locale, signal: controller.signal, wav: wavRef.current })
+    const recognize = mode.execution === 'humming' ? depsRef.current.recognizeHumming : depsRef.current.interpret
+    const outcome = await recognize({ consentApproved: true, locale, signal: controller.signal, wav: wavRef.current })
     busyRef.current = false
     controllerRef.current = null
     if (!mountedRef.current) return
     if (outcome.ok) {
-      setView(buildAiEarModeView(outcome.result, modeId, t))
+      setView(mode.execution === 'humming' ? buildAiEarHummingView(outcome.result, t) : buildAiEarModeView(outcome.result, modeId, t))
       setPhase('result')
       return
     }
@@ -204,7 +207,7 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
 
       {mode.execution === 'browser' && <AiEarDictation deps={deps.dictation} microphoneBusy={recorder.recording} />}
 
-      {mode.execution === 'interpret' && phase === 'idle' && (
+      {(mode.execution === 'interpret' || mode.execution === 'humming') && phase === 'idle' && (
         <div className="ai-ear-actions">
           <button className="primary-button" type="button" onClick={startRecording}>{t('record')}</button>
           <label className="secondary-button ai-ear-file">

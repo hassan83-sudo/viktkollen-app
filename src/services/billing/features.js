@@ -14,6 +14,14 @@ export const BILLING_FEATURES = Object.freeze({
     metered: true,
     unit: 'requests',
   }),
+  'ai.ear.humming': Object.freeze({
+    aliases: Object.freeze(['ai_ear_humming']),
+    classification: FEATURE_CLASSIFICATION.EXTERNAL_COST,
+    event_type: 'ai.ear.humming',
+    integration: 'live_api',
+    metered: true,
+    unit: 'requests',
+  }),
   'ai.eye.analysis': Object.freeze({
     aliases: Object.freeze(['ai_eye', 'ai_eye_analysis']),
     classification: FEATURE_CLASSIFICATION.EXTERNAL_COST,

@@ -57,6 +57,35 @@ describe('commercial plan matrix', () => {
       }
     }
     expect(quotaTuple(getPlanById('plan.free'))).toEqual([20, 5, 3, 25])
+    const hummingLimits = {
+      'plan.free': 1,
+      'plan.prelim.sek.month.04': 3,
+      'plan.prelim.sek.month.07': 5,
+      'plan.prelim.sek.month.09': 7,
+      'plan.prelim.sek.month.12': 10,
+      'plan.prelim.sek.month.15': 15,
+      'plan.prelim.sek.month.19': 20,
+      'plan.prelim.sek.month.29': 30,
+      'plan.prelim.sek.month.39': 40,
+      'plan.prelim.sek.month.49': 50,
+      'plan.prelim.sek.month.59': 60,
+      'plan.prelim.sek.month.69': 70,
+      'plan.prelim.sek.month.79': 80,
+      'plan.prelim.sek.month.89': 90,
+      'plan.prelim.sek.month.99': 100,
+    }
+    expect(Object.keys(hummingLimits)).toHaveLength(15)
+    for (const [planId, limit] of Object.entries(hummingLimits)) {
+      const plan = getPlanById(planId)
+      expect(LAUNCH_QUOTA_BY_PLAN[planId]['ai.ear.humming']).toBe(limit)
+      expect(plan.commercial_quotas['ai.ear.humming'].feature).toBe('ai.ear.humming')
+      expect(plan.commercial_quotas['ai.ear.humming'].limit).toBe(limit)
+      expect(plan.entitlements['ai.ear.humming'].limit.value).toBe(limit)
+      expect(plan.commercial_quotas.food_scan_requests.limit).toBe(LAUNCH_QUOTA_BY_PLAN[planId].food_scan_requests)
+      expect(plan.commercial_quotas.body_scan_requests.limit).toBe(LAUNCH_QUOTA_BY_PLAN[planId].body_scan_requests)
+      expect(plan.commercial_quotas.ai_eye_requests.limit).toBe(LAUNCH_QUOTA_BY_PLAN[planId].ai_eye_requests)
+      expect(plan.commercial_quotas.ai_text_requests.limit).toBe(LAUNCH_QUOTA_BY_PLAN[planId].ai_text_requests)
+    }
     expect(quotaTuple(getPlanById(NINE))).toEqual([70, 20, 8, 80])
     expect(quotaTuple(getPlanById('plan.prelim.sek.month.49'))).toEqual([500, 160, 50, 500])
     expect(quotaTuple(getPlanById('plan.prelim.sek.month.99'))).toEqual([1500, 400, 150, 1500])

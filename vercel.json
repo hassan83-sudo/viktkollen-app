@@ -125,6 +125,14 @@
       "destination": "/api/billing/user?__vk_route=undo_cancel"
     },
     {
+      "source": "/api/ai-ear/humming",
+      "destination": "/api/ai-ear/interpret?__vk_route=humming"
+    },
+    {
+      "source": "/api/ai-ear/humming/",
+      "destination": "/api/ai-ear/interpret?__vk_route=humming"
+    },
+    {
       "source": "/api/ai-help",
       "destination": "/api/ai?__vk_route=ai-help"
     },

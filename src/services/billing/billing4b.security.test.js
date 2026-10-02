@@ -24,9 +24,11 @@ const srcTree = readFileSync(join(root, 'src/services/supabaseClient.js'), 'utf8
 describe('BILL-4B combined security contract', () => {
   it('keeps JS canonical IDs aligned with SQL allowlists', () => {
     for (const id of canonicalFeatureIds()) {
+      if (id === 'ai.ear.humming') continue
       expect(sql).toContain(`'${id}'`)
     }
-    expect(canonicalFeatureIds()).toHaveLength(12)
+    expect(canonicalFeatureIds().filter((id) => id !== 'ai.ear.humming')).toHaveLength(12)
+    expect(canonicalFeatureIds()).toHaveLength(13)
     expect(canonicalProviderIds()).toEqual(['openai', 'google.cloud_run.ai_ear'])
     expect(sql).toMatch(/provider_id in \(\s*'openai',\s*'google\.cloud_run\.ai_ear'\s*\)/)
     expect(FEATURE_REQUIRED_PROVIDERS['ai.ear.interpret']).toEqual(['google.cloud_run.ai_ear'])

@@ -8,6 +8,7 @@ import { periodBounds } from '../../../src/services/billing/period.js'
  * that function: quantity 0 still inserts billing.quota_period_locks.
  */
 const RESERVE_FEATURES = new Set([
+  'ai.ear.humming',
   'ai.ear.interpret',
   'ai.eye.analysis',
   'ai.text.request',

@@ -745,7 +745,7 @@ const sv = {
       sound: { title: 'Ljudigenkänning', description: 'Känn igen ljud omkring dig', instruction: 'Spela in ett ljud omkring dig.', resultLabel: 'AI hör' },
       bird: { title: 'Fågelljud', description: 'Försök identifiera fågellätet', instruction: 'Spela in fågeln så tydligt som möjligt.', resultLabel: 'Mest sannolikt', alternatives: 'Alternativ', noBird: 'Ingen fågel hördes tydligt' },
       speech: { title: 'Tal → text', description: 'Gör tal till skriven text', instruction: 'Tryck på Starta lyssning och prata. Texten visas medan du pratar.' },
-      melody: { title: 'Humma / sjung', description: 'Analysera hummad eller sjungen melodi', instruction: 'Humma eller sjung melodin.', unavailable: 'Humma / sjung kräver Premium och är inte tillgängligt ännu. Inget ljud skickas.' },
+      melody: { title: 'Humma / sjung', description: 'Analysera hummad eller sjungen melodi', instruction: 'Humma eller sjung melodin.', unavailable: 'Humma / sjung kräver Premium och är inte tillgängligt ännu. Inget ljud skickas.', resultLabel: 'Humma / sjung', noMatchTitle: 'Ingen träff', noMatchBody: 'Melodin matchade ingen låt.' },
     },
     // AI-EAR-2C: Tal → text with the browser's own speech recognition.
     dictation: {
@@ -794,6 +794,7 @@ const sv = {
       network: { title: 'Ingen kontakt med tjänsten', body: 'Kontrollera din uppkoppling och försök igen.' },
       not_available: { title: 'AI-örat är inte tillgängligt just nu', body: 'Försök igen senare.' },
       offline: { title: 'Du verkar vara offline', body: 'Anslut till internet och försök igen.' },
+      quota_exceeded: { title: 'Humma / sjung är slut för den här perioden', body: 'Kvoten för den här planen är använd.' },
       rate_limited: { title: 'För många försök just nu', body: 'Vänta en stund och försök igen.' },
       service_unavailable: { title: 'AI-örat är tillfälligt otillgängligt', body: 'Försök igen om en stund.' },
       timeout: { title: 'Det tog för lång tid', body: 'Första analysen kan ta längre tid. Försök igen.' },
@@ -2714,7 +2715,7 @@ const en = {
       sound: { title: 'Sound recognition', description: 'Recognise sounds around you', instruction: 'Record a sound around you.', resultLabel: 'AI hears' },
       bird: { title: 'Bird sounds', description: 'Try to identify the bird call', instruction: 'Record the bird as clearly as possible.', resultLabel: 'Most likely', alternatives: 'Alternatives', noBird: 'No bird was clearly heard' },
       speech: { title: 'Speech → text', description: 'Turn speech into written text', instruction: 'Press Start listening and speak. The text appears while you speak.' },
-      melody: { title: 'Hum / sing', description: 'Analyse a hummed or sung melody', instruction: 'Hum or sing the melody.', unavailable: 'Hum / sing requires Premium and is not available yet. No audio is sent.' },
+      melody: { title: 'Hum / sing', description: 'Analyse a hummed or sung melody', instruction: 'Hum or sing the melody.', unavailable: 'Hum / sing requires Premium and is not available yet. No audio is sent.', resultLabel: 'Hum / sing', noMatchTitle: 'No match', noMatchBody: 'The melody did not match a song.' },
     },
     // AI-EAR-2C: Speech → text with the browser's own speech recognition.
     dictation: {
@@ -2763,6 +2764,7 @@ const en = {
       network: { title: 'No connection to the service', body: 'Check your connection and try again.' },
       not_available: { title: 'The AI Ear is not available right now', body: 'Try again later.' },
       offline: { title: 'You seem to be offline', body: 'Connect to the internet and try again.' },
+      quota_exceeded: { title: 'Hum / sing is used up for this period', body: 'This plan has no humming scans left.' },
       rate_limited: { title: 'Too many attempts right now', body: 'Wait a moment and try again.' },
       service_unavailable: { title: 'The AI Ear is temporarily unavailable', body: 'Try again in a moment.' },
       timeout: { title: 'It took too long', body: 'The first analysis can take longer. Try again.' },

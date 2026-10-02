@@ -32,10 +32,10 @@ export const FEATURE_COST_POLICY = Object.freeze({
   // (Perch + YAMNet), scale to zero; estimated well under 1 SEK per 1,000
   // analyses. Billing already keeps it free and unmetered at launch.
   'ai.ear.interpret': Object.freeze({ costClass: FEATURE_COST_CLASS.FREE_NEGLIGIBLE, enforcement: 'route_auth_rate_limit', premiumOnly: false, status: 'live' }),
-  // Dormant AI Örat providers (only on the unmerged sprint-12a branch). Not
-  // registered in billing, so every request is denied until Cursor adds
-  // plan entitlements and quotas.
-  'ai.ear.humming': Object.freeze({ costClass: FEATURE_COST_CLASS.METERED, enforcement: 'none_route_not_on_main', premiumOnly: true, status: 'dormant' }),
+  // Humma / sjung: ACRCloud on /api/ai-ear/humming. Free and paid plans
+  // both have a launch quota, so this is not premium-only.
+  'ai.ear.humming': Object.freeze({ costClass: FEATURE_COST_CLASS.METERED, enforcement: 'live_billing', premiumOnly: false, status: 'live' }),
+  // Dormant AI Örat providers (only on the unmerged sprint-12a branch).
   'ai.ear.music': Object.freeze({ costClass: FEATURE_COST_CLASS.METERED, enforcement: 'none_route_not_on_main', premiumOnly: true, status: 'dormant' }),
   'ai.ear.transcription': Object.freeze({ costClass: FEATURE_COST_CLASS.METERED, enforcement: 'none_route_not_on_main', premiumOnly: true, status: 'dormant' }),
   // OpenAI vision/text features with an existing Free quota in the plan matrix.

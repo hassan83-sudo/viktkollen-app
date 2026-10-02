@@ -1,3 +1,4 @@
+import { handleAiEarHummingRequest, isAiEarHummingDispatch } from '../../_shared/aiEarHumming.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../../_shared/aiRouteErrors.js'
 import { checkAiRouteRateLimit } from '../../_shared/aiRateLimiter.js'
 import { verifySupabaseUser } from '../../_shared/verifySupabaseUser.js'
@@ -168,6 +169,7 @@ function reduceBackendResult(body) {
 export const aiEarRouteInternals = { reduceBackendResult }
 
 export default async function handler(request, response) {
+  if (isAiEarHummingDispatch(request)) return handleAiEarHummingRequest(request, response)
   const requestId = `ai-ear-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   setNoStoreHeaders(response)
 

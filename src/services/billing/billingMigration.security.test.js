@@ -9,6 +9,7 @@ import { createInMemoryUsageRepository } from './usageRepository.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../../..')
 const sql = readFileSync(join(root, 'supabase/migrations/20260921121500_billing_usage_events.sql'), 'utf8')
+const hummingSql = readFileSync(join(root, 'supabase/migrations/20261002120000_billing_humming_quota.sql'), 'utf8')
 const telemetrySql = readFileSync(join(root, 'supabase/migrations/20260923140000_billing_usage_telemetry.sql'), 'utf8')
 const srcTree = readFileSync(join(root, 'src/services/supabaseClient.js'), 'utf8')
 const viteConfig = readFileSync(join(root, 'vite.config.js'), 'utf8')
@@ -54,7 +55,7 @@ describe('BILL-1A usage_events migration static security', () => {
     expect(sql).toMatch(/quantity integer not null/)
     expect(sql).toMatch(/quantity >= 0/)
     expect(sql).not.toMatch(/quantity > 0/)
-    USAGE_EVENT_TYPES.forEach((type) => expect(sql).toContain(`'${type}'`))
+    USAGE_EVENT_TYPES.forEach((type) => expect(`${sql}\n${hummingSql}`).toContain(`'${type}'`))
     USAGE_UNITS.forEach((unit) => expect(sql).toContain(`'${unit}'`))
     expect(sql).toContain("'ESTIMATED'")
     expect(sql).toContain("'UNAVAILABLE'")

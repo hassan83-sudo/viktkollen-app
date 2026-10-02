@@ -5,6 +5,7 @@ export const USAGE_EVENT_TYPES = Object.freeze([
   'food.scan',
   'ai.eye.analysis',
   'ai.ear.interpret',
+  'ai.ear.humming',
   'body.scan',
   'gps.live.session',
 ])

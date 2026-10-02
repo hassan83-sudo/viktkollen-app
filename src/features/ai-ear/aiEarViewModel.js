@@ -114,6 +114,36 @@ export function buildAiEarModeView(result, modeId, t = swedish) {
   return { ...withExtras, label: t('modes.sound.resultLabel') }
 }
 
+export function buildAiEarHummingView(result, t = swedish) {
+  const alternatives = Array.isArray(result?.alternatives) ? result.alternatives.slice(0, 2) : []
+  const base = {
+    alternatives: [],
+    contextLines: [],
+    footer: t('footer'),
+    hints: [],
+    retryable: false,
+    species: [],
+  }
+  if (result?.matched !== true || typeof result?.title !== 'string' || !result.title.trim()) {
+    return {
+      ...base,
+      body: t('modes.melody.noMatchBody'),
+      kind: 'humming_none',
+      label: t('modes.melody.resultLabel'),
+      retryable: true,
+      title: t('modes.melody.noMatchTitle'),
+    }
+  }
+  return {
+    ...base,
+    alternatives: alternatives.map((entry) => [entry?.title, entry?.artist].filter(Boolean).join(' — ')).filter(Boolean),
+    body: typeof result.artist === 'string' && result.artist.trim() ? result.artist.trim() : null,
+    kind: 'humming',
+    label: t('modes.melody.resultLabel'),
+    title: result.title.trim(),
+  }
+}
+
 // Only whether a reason can be retried is decided here; the copy is in i18n.
 const errorRetryable = Object.freeze({
   aborted: true,
@@ -124,6 +154,7 @@ const errorRetryable = Object.freeze({
   network: true,
   not_available: false,
   offline: true,
+  quota_exceeded: false,
   rate_limited: true,
   service_unavailable: true,
   timeout: true,

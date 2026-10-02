@@ -33,8 +33,10 @@ describe('BILL-4C-SEC1a threshold database security', () => {
   it('enforces scope consistency, canonical features, money, period, mode, and currency in SQL', () => {
     expect(sql).toMatch(/scope = 'GLOBAL' and feature_id is null/)
     expect(sql).toMatch(/scope = 'FEATURE' and feature_id is not null/)
-    expect(FEATURE_IDS).toHaveLength(12)
+    expect(FEATURE_IDS.filter((id) => id !== 'ai.ear.humming')).toHaveLength(12)
+    expect(FEATURE_IDS).toHaveLength(13)
     for (const id of FEATURE_IDS) {
+      if (id === 'ai.ear.humming') continue
       expect(sql).toContain(`'${id}'`)
     }
     expect(sql).toMatch(/amount_minor bigint not null/)

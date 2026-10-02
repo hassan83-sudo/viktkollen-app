@@ -7,6 +7,7 @@ import { resolveProviderId } from './providers.js'
  * Verified against api/* + BILL-1; not inferred from "AI" in the name.
  */
 export const FEATURE_REQUIRED_PROVIDERS = Object.freeze({
+  'ai.ear.humming': Object.freeze([]),
   'ai.ear.interpret': Object.freeze(['google.cloud_run.ai_ear']),
   'ai.eye.analysis': Object.freeze(['openai']),
   'ai.text.request': Object.freeze(['openai']),

@@ -118,7 +118,7 @@ describe('feature cost gate: Premium / metered', () => {
 
 describe('feature cost gate: real policy', () => {
   it('dormant AI Örat providers are denied even for Premium (not registered in billing)', async () => {
-    for (const featureId of ['ai.ear.transcription', 'ai.ear.humming', 'ai.ear.music']) {
+    for (const featureId of ['ai.ear.transcription', 'ai.ear.music']) {
       const { executed, gate, quota } = await run({ featureId, subscriptions: [activeSubscription()] }, { getPolicy: getFeatureCostPolicy })
       expect(gate.decision, featureId).toBe(COST_GATE_DECISION.DENY_NOT_REGISTERED)
       expect(executed).toBe(false)

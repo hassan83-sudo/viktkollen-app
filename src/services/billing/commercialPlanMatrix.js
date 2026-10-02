@@ -10,6 +10,7 @@ export const COMMERCIAL_QUOTA_KEYS = Object.freeze([
   'food_scan_requests',
   'body_scan_requests',
   'ai_eye_requests',
+  'ai.ear.humming',
 ])
 
 /**
@@ -25,23 +26,23 @@ export const LAUNCH_UNMETERED_FEATURES = Object.freeze([
   'ai.ear.interpret',
 ])
 
-/** AI text, food.scan, body.scan, ai.eye.analysis. Prices stay on the plan row. */
+/** AI text, food.scan, body.scan, ai.eye.analysis, ai.ear.humming. Prices stay on the plan row. */
 export const LAUNCH_QUOTA_BY_PLAN = Object.freeze({
-  'plan.free': Object.freeze({ ai_text_requests: 20, food_scan_requests: 5, body_scan_requests: 3, ai_eye_requests: 25 }),
-  'plan.prelim.sek.month.04': Object.freeze({ ai_text_requests: 30, food_scan_requests: 10, body_scan_requests: 4, ai_eye_requests: 40 }),
-  'plan.prelim.sek.month.07': Object.freeze({ ai_text_requests: 50, food_scan_requests: 15, body_scan_requests: 6, ai_eye_requests: 60 }),
-  'plan.prelim.sek.month.09': Object.freeze({ ai_text_requests: 70, food_scan_requests: 20, body_scan_requests: 8, ai_eye_requests: 80 }),
-  'plan.prelim.sek.month.12': Object.freeze({ ai_text_requests: 90, food_scan_requests: 30, body_scan_requests: 10, ai_eye_requests: 100 }),
-  'plan.prelim.sek.month.15': Object.freeze({ ai_text_requests: 120, food_scan_requests: 40, body_scan_requests: 12, ai_eye_requests: 125 }),
-  'plan.prelim.sek.month.19': Object.freeze({ ai_text_requests: 160, food_scan_requests: 55, body_scan_requests: 15, ai_eye_requests: 150 }),
-  'plan.prelim.sek.month.29': Object.freeze({ ai_text_requests: 250, food_scan_requests: 85, body_scan_requests: 25, ai_eye_requests: 250 }),
-  'plan.prelim.sek.month.39': Object.freeze({ ai_text_requests: 350, food_scan_requests: 120, body_scan_requests: 35, ai_eye_requests: 350 }),
-  'plan.prelim.sek.month.49': Object.freeze({ ai_text_requests: 500, food_scan_requests: 160, body_scan_requests: 50, ai_eye_requests: 500 }),
-  'plan.prelim.sek.month.59': Object.freeze({ ai_text_requests: 650, food_scan_requests: 200, body_scan_requests: 65, ai_eye_requests: 650 }),
-  'plan.prelim.sek.month.69': Object.freeze({ ai_text_requests: 800, food_scan_requests: 250, body_scan_requests: 80, ai_eye_requests: 800 }),
-  'plan.prelim.sek.month.79': Object.freeze({ ai_text_requests: 1000, food_scan_requests: 300, body_scan_requests: 100, ai_eye_requests: 1000 }),
-  'plan.prelim.sek.month.89': Object.freeze({ ai_text_requests: 1250, food_scan_requests: 350, body_scan_requests: 125, ai_eye_requests: 1250 }),
-  'plan.prelim.sek.month.99': Object.freeze({ ai_text_requests: 1500, food_scan_requests: 400, body_scan_requests: 150, ai_eye_requests: 1500 }),
+  'plan.free': Object.freeze({ ai_text_requests: 20, food_scan_requests: 5, body_scan_requests: 3, ai_eye_requests: 25, 'ai.ear.humming': 1 }),
+  'plan.prelim.sek.month.04': Object.freeze({ ai_text_requests: 30, food_scan_requests: 10, body_scan_requests: 4, ai_eye_requests: 40, 'ai.ear.humming': 3 }),
+  'plan.prelim.sek.month.07': Object.freeze({ ai_text_requests: 50, food_scan_requests: 15, body_scan_requests: 6, ai_eye_requests: 60, 'ai.ear.humming': 5 }),
+  'plan.prelim.sek.month.09': Object.freeze({ ai_text_requests: 70, food_scan_requests: 20, body_scan_requests: 8, ai_eye_requests: 80, 'ai.ear.humming': 7 }),
+  'plan.prelim.sek.month.12': Object.freeze({ ai_text_requests: 90, food_scan_requests: 30, body_scan_requests: 10, ai_eye_requests: 100, 'ai.ear.humming': 10 }),
+  'plan.prelim.sek.month.15': Object.freeze({ ai_text_requests: 120, food_scan_requests: 40, body_scan_requests: 12, ai_eye_requests: 125, 'ai.ear.humming': 15 }),
+  'plan.prelim.sek.month.19': Object.freeze({ ai_text_requests: 160, food_scan_requests: 55, body_scan_requests: 15, ai_eye_requests: 150, 'ai.ear.humming': 20 }),
+  'plan.prelim.sek.month.29': Object.freeze({ ai_text_requests: 250, food_scan_requests: 85, body_scan_requests: 25, ai_eye_requests: 250, 'ai.ear.humming': 30 }),
+  'plan.prelim.sek.month.39': Object.freeze({ ai_text_requests: 350, food_scan_requests: 120, body_scan_requests: 35, ai_eye_requests: 350, 'ai.ear.humming': 40 }),
+  'plan.prelim.sek.month.49': Object.freeze({ ai_text_requests: 500, food_scan_requests: 160, body_scan_requests: 50, ai_eye_requests: 500, 'ai.ear.humming': 50 }),
+  'plan.prelim.sek.month.59': Object.freeze({ ai_text_requests: 650, food_scan_requests: 200, body_scan_requests: 65, ai_eye_requests: 650, 'ai.ear.humming': 60 }),
+  'plan.prelim.sek.month.69': Object.freeze({ ai_text_requests: 800, food_scan_requests: 250, body_scan_requests: 80, ai_eye_requests: 800, 'ai.ear.humming': 70 }),
+  'plan.prelim.sek.month.79': Object.freeze({ ai_text_requests: 1000, food_scan_requests: 300, body_scan_requests: 100, ai_eye_requests: 1000, 'ai.ear.humming': 80 }),
+  'plan.prelim.sek.month.89': Object.freeze({ ai_text_requests: 1250, food_scan_requests: 350, body_scan_requests: 125, ai_eye_requests: 1250, 'ai.ear.humming': 90 }),
+  'plan.prelim.sek.month.99': Object.freeze({ ai_text_requests: 1500, food_scan_requests: 400, body_scan_requests: 150, ai_eye_requests: 1500, 'ai.ear.humming': 100 }),
 })
 
 export const COMMERCIAL_QUOTA_AUTHORITY = Object.freeze({
@@ -55,6 +56,7 @@ const DIMENSIONS = Object.freeze({
   ai_text_requests: Object.freeze({ feature: 'ai.text.request', unit: 'requests' }),
   body_scan_requests: Object.freeze({ feature: 'body.scan', unit: 'requests' }),
   food_scan_requests: Object.freeze({ feature: 'food.scan', unit: 'requests' }),
+  'ai.ear.humming': Object.freeze({ feature: 'ai.ear.humming', unit: 'requests' }),
 })
 
 const KNOWN_FEATURES = new Set(Object.values(DIMENSIONS).map((dimension) => dimension.feature))

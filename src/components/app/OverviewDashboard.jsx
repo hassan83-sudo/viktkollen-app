@@ -829,7 +829,7 @@ function OverviewPrimaryActions({
             </span>
             <span className="overview-primary-action-copy">
               
-              {action.description ? <small>{action.description}</small> : null}
+              {action.description ? <small>{action.accent === 'food' ? <>Skanna maten,<br />uppskatta näringen</> : action.description}</small> : null}
             </span>{' '}
             {showTapPulse && !prefersReducedMotion ? (
               <span className="overview-tap-me is-pulse">{t('home:tapImage')}</span>

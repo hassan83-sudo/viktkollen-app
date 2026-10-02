@@ -18117,5 +18117,5 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
 
 /* Home AI Eyes: move title capsule down to match approved reference. */
 #app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-eyes .overview-primary-action-copy {
-  top: -12px;
+  top: -7px;
 }

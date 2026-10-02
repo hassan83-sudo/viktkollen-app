@@ -877,7 +877,9 @@ function OverviewTodayMood({
   caloriesToday,
   currentWeight,
   onLogWeight,
+  onOpenCoach,
   onOpenNotices,
+  onOpenWellbeing,
   onScanFood,
   reminderState,
   weights,
@@ -899,6 +901,28 @@ function OverviewTodayMood({
     // A11Y-8G: unnamed, so it does not repeat the region name of the Home
     // section around it, which is already labelled by its visible heading.
     <section className="overview-today-mood">
+      <button className="overview-mood-card is-wellbeing" type="button" onClick={onOpenWellbeing}>
+        <span className="overview-mood-card-top">
+          <OverviewIcon name="heart" />
+          <span className="overview-mood-label">{t('home:mood.wellbeing')}</span>
+        </span>{' '}
+        <strong>{t('home:mood.wellbeingQuestion')}</strong>{' '}
+        <small>{t('home:mood.wellbeingHint')}</small>{' '}
+        <span className="overview-mood-link">{t('home:mood.openWellbeing')}</span>
+      </button>
+
+      <button className="overview-mood-card is-coach" type="button" onClick={onOpenCoach}>
+        <span className="overview-mood-label">{t('home:labels.aiCoach')}</span>{' '}
+        <span className="overview-mood-coach-body">
+          <OverviewIcon name="robot" />
+          <span>
+            <strong>{t('home:mood.askCoach')}</strong>{' '}
+            <small>{t('home:mood.writeOrTalk')}</small>
+          </span>
+        </span>{' '}
+        <span className="overview-mood-link">{t('home:mood.openCoach')}</span>
+      </button>
+
       <button className="overview-mood-card is-reminder" type="button" onClick={onOpenNotices}>
         <span className="overview-mood-card-top">
           <OverviewIcon name="bell" />
@@ -1095,6 +1119,8 @@ function OverviewDashboard({
   onLogWeight,
   onNavigateSection,
   onNavigationIntentConsumed,
+  onOpenAiCoach,
+  onOpenWellbeing,
   onScanFood,
   onSendChatMessage,
   onStartVoiceInput,
@@ -1347,7 +1373,9 @@ function OverviewDashboard({
           caloriesToday={caloriesToday}
           currentWeight={currentWeight}
           onLogWeight={onLogWeight}
+          onOpenCoach={() => (onOpenAiCoach ? onOpenAiCoach() : setCoachOpen(true))}
           onOpenNotices={goToNotifications}
+          onOpenWellbeing={onOpenWellbeing}
           onScanFood={onScanFood}
           reminderState={reminderState}
           weights={weights}

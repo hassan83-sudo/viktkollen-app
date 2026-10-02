@@ -18020,15 +18020,7 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
 }
 
 
-/* Home mobile top cleanup: the live dashboard already shows connectivity.
-   Hide the duplicate PWA pill and remove the reserved strip above Home. */
-.app-shell:has(#app-section-home.is-active) .pwa-experience:has(> .pwa-network-pill:only-child) {
-  display: none;
-  margin: 0;
-}
+/* Home: hide only the duplicate upper PWA Online/Offline pill. */
 .app-shell:has(#app-section-home.is-active) .pwa-experience > .pwa-network-pill {
   display: none;
-}
-#app-section-home.is-active .overview-app-header .overview-halloween-toggle {
-  top: 0;
 }

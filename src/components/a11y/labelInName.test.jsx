@@ -5,7 +5,6 @@ import i18n from '../../i18n/index.js'
 import { duplicateLandmarks, labelInNameViolations } from '../../test/a11y/names.js'
 import { moreHubFolders } from '../../services/more/moreFolders.js'
 import BottomNavigation from '../app/BottomNavigation.jsx'
-import HomeNoticeShortcuts from '../app/HomeNoticeShortcuts.jsx'
 import OverviewDashboard from '../app/OverviewDashboard.jsx'
 import MoreHub from '../more/MoreHub.jsx'
 
@@ -93,10 +92,9 @@ describe('label in name and landmarks (A11Y-8G)', () => {
   describe('Home cards', () => {
     it('names the Dagens läge cards and primary actions by their visible text', () => {
       renderHome()
-      render(<HomeNoticeShortcuts onOpenCoach={vi.fn()} onOpenWellbeing={vi.fn()} />)
       ;[
-        /^Må bra$/,
-        /^AI Coach$/,
+        /^Må bra .*Öppna Må bra$/,
+        /^AI Coach Fråga din coach .*Öppna Coach$/,
         /^Nästa påminnelse /,
         /^Notis /,
         /AI Ögon Minne, kläder och sista kollen Tryck på bilden$/,

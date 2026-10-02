@@ -49,7 +49,7 @@ test.describe('keyboard: navigation', () => {
 test.describe('keyboard: AI Coach dialog', () => {
   test('opens, traps Tab/Shift+Tab, blocks the background, closes on Escape and returns focus', async ({ page }) => {
     await openApp(page)
-    const opener = page.getByRole('group', { name: 'Må bra och AI Coach' }).getByRole('button', { name: 'AI Coach' })
+    const opener = page.getByRole('button', { name: 'Öppna Coach' }).first()
     await opener.focus()
     await page.keyboard.press('Enter')
 

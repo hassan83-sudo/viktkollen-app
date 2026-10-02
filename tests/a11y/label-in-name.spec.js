@@ -64,15 +64,14 @@ test.describe('label in name (WCAG 2.5.3)', () => {
   test('Home cards: names contain the visible card text', async ({ page }) => {
     await openApp(page)
     const cards = await page.locator('.overview-mood-card:is(button), .overview-primary-action:not(.is-body) .overview-primary-action-hit').evaluateAll((elements) => elements.length)
-    expect(cards).toBe(4)
-    // Chrome's name follows the rendering: CSS text-transform and
+    expect(cards).toBe(6)
+    // Chrome's name follows the rendering: CSS text-transform (MÅ BRA) and
     // CSS-generated arrows (›) are included, so matching is case-insensitive.
     const names = await chromeNames(page, '.overview-mood-card:is(button)')
-    expect(names[0]).toMatch(/^Nästa påminnelse /i)
-    expect(names[1]).toMatch(/^Notis /i)
-    // Må bra and AI Coach now live in the Snabbt area, named by their text.
-    const quick = await chromeNames(page, '.overview-mood-card.is-quick button')
-    expect(quick).toEqual(['Må bra', 'AI Coach'])
+    expect(names[0]).toMatch(/^Må bra Hur känns dagen\? .*Öppna Må bra( ›)?$/i)
+    expect(names[1]).toMatch(/^AI Coach Fråga din coach Skriv eller prata Öppna Coach( ›)?$/i)
+    expect(names[2]).toMatch(/^Nästa påminnelse /i)
+    expect(names[3]).toMatch(/^Notis /i)
     const primary = await chromeNames(page, '.overview-primary-action:not(.is-body) .overview-primary-action-hit')
     expect(primary[0]).toMatch(/AI Ögon Minne, kläder och sista kollen Tryck på bilden$/i)
     expect(primary[1]).toMatch(/Matscanning Skanna maten och uppskatta näringen Tryck på bilden$/i)

@@ -84,7 +84,7 @@ test.describe('structure gate: named generics, one h1, unique regions (8T B-8T-N
   test('the named groups are real groups, and value text is not renamed', async ({ page }) => {
     await openApp(page, { reducedMotion: 'reduce' })
     await expect(page.getByRole('group', { name: 'Styr Viktkollen Live' }).getByRole('button')).toHaveCount(3)
-    await expect(page.getByRole('group', { name: 'Må bra och AI Coach' }).getByRole('button').first()).toBeVisible()
+    await expect(page.getByRole('group', { name: 'Viktiga snabbknappar' }).getByRole('button').first()).toBeVisible()
 
     await goToSection(page, 'Redo!', 'redo')
     const ring = page.locator('.ready-progress-ring')

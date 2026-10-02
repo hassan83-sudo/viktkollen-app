@@ -152,7 +152,7 @@ test.describe('Viktkollen Live and reduced motion', () => {
         }
       })
       await openApp(page, options)
-      await page.getByRole('group', { name: 'Må bra och AI Coach' }).getByRole('button', { name: 'AI Coach' }).click()
+      await page.getByRole('button', { name: /Öppna Coach/ }).first().click()
       const field = page.getByRole('textbox', { name: 'Fråga till AI Coach' })
       await field.fill('Hur mycket protein behöver jag?')
       await page.keyboard.press('Enter')

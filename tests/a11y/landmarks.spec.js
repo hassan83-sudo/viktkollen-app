@@ -44,7 +44,7 @@ test('Hem, Mer and Tillgänglighet have one main, one h1 and a valid skip-link t
 
 test('open dialogs are named, modal and the only exposed layer', async ({ page }) => {
   await openApp(page)
-  await page.getByRole('group', { name: 'Må bra och AI Coach' }).getByRole('button', { name: 'AI Coach' }).click()
+  await page.getByRole('button', { name: 'Öppna Coach' }).first().click()
   const dialogs = await page.evaluate(() => [...document.querySelectorAll('[role="dialog"], [role="alertdialog"], dialog[open]')]
     .filter((dialog) => dialog.getClientRects().length)
     .map((dialog) => {

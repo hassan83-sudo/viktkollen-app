@@ -53,6 +53,7 @@ function HomeSection({
   weights,
 }) {
   const { t } = useTranslation('home')
+  const openNotices = (target) => onNavigateSection?.('notices', target)
 
   return (
     <AppSection
@@ -113,10 +114,7 @@ function HomeSection({
           weeklyWeightChange={dashboardData?.weeklyWeightChange}
           weights={weights}
         />
-        <HomeNoticeShortcuts
-          onOpenCoach={onOpenAiCoach}
-          onOpenWellbeing={onOpenWellbeing}
-        />
+        <HomeNoticeShortcuts onOpenNotices={openNotices} />
       </AppErrorBoundary>
     </AppSection>
   )

@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 
-function HomeNoticeShortcuts({ onOpenCoach, onOpenWellbeing }) {
+function HomeNoticeShortcuts({ onOpenNotices }) {
   const [target, setTarget] = useState(null)
+  const shortcuts = [
+    { id: 'timer', label: 'Timer' },
+    { id: 'alarm', label: 'Väckarklocka' },
+    { id: 'reminder', label: 'Påminnelse' },
+    { id: 'bathroom', label: 'Badrum' },
+  ]
 
   useEffect(() => {
     setTarget(document.querySelector('.overview-today-mood'))
@@ -75,80 +81,36 @@ function HomeNoticeShortcuts({ onOpenCoach, onOpenWellbeing }) {
           letter-spacing: 0.12em;
           text-transform: uppercase;
         }
+        .overview-quick-head button,
+        .overview-quick-buttons button {
+          border: 0;
+          border-radius: 999px;
+          background: linear-gradient(135deg, #22c7e8, #815cf6);
+          color: #06111f;
+          cursor: pointer;
+          font: inherit;
+        }
+        .overview-quick-head button {
+          padding: 8px 12px;
+          font-size: 12px;
+          white-space: nowrap;
+        }
         .overview-quick-buttons {
           display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 10px;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 7px;
           width: 100%;
         }
         .overview-quick-buttons button {
-          position: relative;
-          display: grid;
-          grid-template-columns: 38px minmax(0, 1fr) auto;
-          align-items: center;
-          gap: 10px;
           width: 100%;
-          min-height: 68px;
-          padding: 10px 12px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 16px;
-          color: #f8fbff;
-          cursor: pointer;
-          font: inherit;
-          font-size: 14px;
-          font-weight: 750;
-          text-align: left;
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-          transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+          min-height: 38px;
+          padding: 9px 8px;
+          font-size: 12px;
         }
-        .overview-quick-buttons button::before {
-          display: grid;
-          place-items: center;
-          width: 38px;
-          height: 38px;
-          border-radius: 12px;
-          font-size: 18px;
-          line-height: 1;
-        }
-        .overview-quick-buttons button::after {
-          content: "›";
-          content: "›" / "";
-          color: rgba(255, 255, 255, 0.68);
-          font-size: 22px;
-          font-weight: 500;
-          line-height: 1;
-        }
-        .overview-quick-wellbeing {
-          background: linear-gradient(135deg, rgba(21, 83, 76, 0.88), rgba(18, 48, 54, 0.94));
-          border-color: rgba(79, 225, 187, 0.24) !important;
-        }
-        .overview-quick-wellbeing::before {
-          content: "♥";
-          content: "♥" / "";
-          background: rgba(87, 230, 190, 0.14);
-          color: #72edc7;
-        }
-        .overview-quick-coach {
-          background: linear-gradient(135deg, rgba(65, 47, 132, 0.9), rgba(35, 33, 78, 0.96));
-          border-color: rgba(157, 124, 255, 0.3) !important;
-        }
-        .overview-quick-coach::before {
-          content: "✦";
-          content: "✦" / "";
-          background: rgba(171, 137, 255, 0.15);
-          color: #c5adff;
-        }
-        .overview-quick-buttons button:hover {
-          border-color: rgba(255, 255, 255, 0.24) !important;
-          box-shadow: 0 10px 24px rgba(4, 8, 20, 0.2);
-          transform: translateY(-1px);
-        }
+        .overview-quick-head button:focus-visible,
         .overview-quick-buttons button:focus-visible {
           outline: 2px solid #79e7f2;
           outline-offset: 3px;
-        }
-        .overview-quick-buttons button:active {
-          transform: translateY(0);
         }
         .overview-more-section {
           display: grid;
@@ -169,41 +131,22 @@ function HomeNoticeShortcuts({ onOpenCoach, onOpenWellbeing }) {
             border-radius: 18px;
           }
           .overview-quick-buttons {
-            gap: 8px;
-          }
-          .overview-quick-buttons button {
-            grid-template-columns: 34px minmax(0, 1fr) auto;
-            gap: 8px;
-            min-height: 62px;
-            padding: 9px 10px;
-            border-radius: 14px;
-            font-size: 13px;
-          }
-          .overview-quick-buttons button::before {
-            width: 34px;
-            height: 34px;
-            border-radius: 11px;
-            font-size: 16px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
         }
-        @media (max-width: 340px) {
-          .overview-quick-buttons {
-            grid-template-columns: minmax(0, 1fr);
-          }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .overview-quick-buttons button {
-            transition: none;
-          }
         }
       `}</style>
       <article className="overview-mood-card is-quick" aria-label="Snabbt">
         <div className="overview-quick-head">
           <span className="overview-mood-label">Snabbt</span>
+          <button type="button" onClick={() => onOpenNotices?.()}>Alla notiser</button>
         </div>
-        <div className="overview-quick-buttons" role="group" aria-label="Må bra och AI Coach">
-          <button className="overview-quick-wellbeing" type="button" onClick={() => onOpenWellbeing?.()}>Må bra</button>
-          <button className="overview-quick-coach" type="button" onClick={() => onOpenCoach?.()}>AI Coach</button>
+        <div className="overview-quick-buttons" role="group" aria-label="Viktiga snabbknappar">
+          {shortcuts.map((shortcut) => (
+            <button key={shortcut.id} type="button" onClick={() => onOpenNotices?.(shortcut.id)}>
+              {shortcut.label}
+            </button>
+          ))}
         </div>
       </article>
     </>,

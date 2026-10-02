@@ -13147,7 +13147,7 @@ body:has(#app-section-home.is-active) {
   #app-section-home.is-active .overview-primary-action-copy {
     left: 10px;
     right: 7px;
-    top: 0;
+    top: -9px;
     bottom: auto;
   }
 

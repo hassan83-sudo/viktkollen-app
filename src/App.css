@@ -18018,3 +18018,9 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   position: relative;
   z-index: 1;
 }
+
+
+/* Home: hide only the duplicate upper PWA Online/Offline pill. */
+.app-shell:has(#app-section-home.is-active) .pwa-experience > .pwa-network-pill {
+  display: none;
+}

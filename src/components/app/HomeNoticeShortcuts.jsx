@@ -24,22 +24,48 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
     <>
       <style>{`
         #app-section-home.is-active .overview-today-mood {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
           grid-template-areas:
-            "wellbeing coach"
             "quick quick"
+            "wellbeing coach"
             "reminder notices"
             "today today";
+        }
+        #app-section-home.is-active .overview-today-mood > .is-wellbeing {
+          grid-area: wellbeing;
+          min-width: 0;
+        }
+        #app-section-home.is-active .overview-today-mood > .is-coach {
+          grid-area: coach;
+          min-width: 0;
         }
         #app-section-home.is-active .overview-today-mood > .is-quick {
           grid-area: quick;
           width: 100%;
+          min-width: 0;
+        }
+        #app-section-home.is-active .overview-today-mood > .is-reminder {
+          grid-area: reminder;
+          min-width: 0;
+        }
+        #app-section-home.is-active .overview-today-mood > .is-notices {
+          grid-area: notices;
+          min-width: 0;
         }
         #app-section-home.is-active .overview-today-mood > .is-today {
           grid-area: today;
+          min-width: 0;
         }
         .overview-mood-card.is-quick {
-          align-items: flex-start;
-          gap: 10px;
+          align-items: stretch;
+          gap: 12px;
+          padding: 14px;
+          border: 1px solid rgba(144, 125, 255, 0.24);
+          border-radius: 20px;
+          background:
+            radial-gradient(circle at 88% 0%, rgba(111, 92, 246, 0.16), transparent 42%),
+            linear-gradient(145deg, rgba(18, 22, 38, 0.96), rgba(11, 15, 28, 0.96));
+          box-shadow: 0 12px 30px rgba(3, 8, 20, 0.18);
         }
         .overview-quick-head {
           display: flex;
@@ -47,6 +73,13 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
           align-items: center;
           justify-content: space-between;
           gap: 8px;
+        }
+        .overview-mood-card.is-quick .overview-mood-label {
+          color: rgba(224, 231, 255, 0.72);
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
         }
         .overview-quick-head button,
         .overview-quick-buttons button {
@@ -58,7 +91,7 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
           font: inherit;
         }
         .overview-quick-head button {
-          padding: 7px 10px;
+          padding: 8px 12px;
           font-size: 12px;
           white-space: nowrap;
         }
@@ -70,8 +103,14 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
         }
         .overview-quick-buttons button {
           width: 100%;
+          min-height: 38px;
           padding: 9px 8px;
           font-size: 12px;
+        }
+        .overview-quick-head button:focus-visible,
+        .overview-quick-buttons button:focus-visible {
+          outline: 2px solid #79e7f2;
+          outline-offset: 3px;
         }
         .overview-more-section {
           display: grid;
@@ -87,12 +126,16 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
           min-height: 48px;
         }
         @media (max-width: 390px) {
+          .overview-mood-card.is-quick {
+            padding: 12px;
+            border-radius: 18px;
+          }
           .overview-quick-buttons {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
         }
       `}</style>
-      <article className="overview-mood-card is-quick" aria-label="Snabbknappar för Notis">
+      <article className="overview-mood-card is-quick" aria-label="Snabbt">
         <div className="overview-quick-head">
           <span className="overview-mood-label">Snabbt</span>
           <button type="button" onClick={() => onOpenNotices?.()}>Alla notiser</button>

@@ -828,7 +828,7 @@ function OverviewPrimaryActions({
               </span>
             </span>
             <span className="overview-primary-action-copy">
-              <strong>{action.label}</strong>{' '}
+              
               {action.description ? <small>{action.description}</small> : null}
             </span>{' '}
             {showTapPulse && !prefersReducedMotion ? (

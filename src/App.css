@@ -11398,6 +11398,58 @@ body:has(#app-section-home.is-active) {
 }
 
 /* Narrow screens: start the picture below the card text. */
+/* Approved neon text treatment for the three primary Home cards. */
+#app-section-home.is-active .overview-primary-action:not(.is-body) .overview-primary-action-copy {
+  left: 5px;
+  right: 5px;
+  top: -22px;
+  text-align: center;
+}
+
+#app-section-home.is-active .overview-primary-action:not(.is-body) .overview-primary-action-copy > small:first-child {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: none;
+  min-height: 44px;
+  margin: 0;
+  padding: 6px 5px;
+  border: 2px solid rgba(255,255,255,.72);
+  border-radius: 999px;
+  background: #05070d;
+  color: #fff;
+  font-size: .60rem;
+  font-weight: 800;
+  line-height: 1.12;
+  white-space: normal;
+  box-shadow: 0 0 10px rgba(118,72,255,.65);
+}
+
+#app-section-home.is-active .overview-primary-action.is-food .overview-primary-action-copy > small:first-child {
+  font-size: .56rem;
+  box-shadow: 0 0 10px rgba(255,61,137,.65);
+}
+
+#app-section-home.is-active .overview-primary-action.is-ai-ear .overview-primary-action-copy > small:first-child {
+  box-shadow: 0 0 10px rgba(41,224,191,.65);
+}
+
+#app-section-home.is-active .overview-primary-action:not(.is-body) .overview-primary-action-hint {
+  display: block;
+  width: 100%;
+  max-width: none;
+  margin-top: 5px;
+  color: #000;
+  font-size: .45rem;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 @media (max-width: 380px) {
   #app-section-home.is-active .overview-body-scan-original-size > .overview-primary-action.is-body .overview-primary-visual {
     top: 82px;
@@ -13176,59 +13228,6 @@ body:has(#app-section-home.is-active) {
     white-space: nowrap;
     font-size: 0.50rem;
     letter-spacing: -0.02em;
-  }
-
-  /* Approved neon text treatment for the three primary Home cards. */
-  #app-section-home.is-active .overview-primary-action:not(.is-body) .overview-primary-action-copy {
-    left: 5px;
-    right: 5px;
-    top: -22px;
-    text-align: center;
-  }
-
-  #app-section-home.is-active .overview-primary-action:not(.is-body) .overview-primary-action-copy > small:first-child {
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    max-width: none;
-    min-height: 44px;
-    margin: 0;
-    padding: 6px 5px;
-    border: 2px solid rgba(255, 255, 255, 0.72);
-    border-radius: 999px;
-    background: #05070d;
-    color: #fff;
-    font-size: 0.60rem;
-    font-weight: 800;
-    line-height: 1.12;
-    white-space: normal;
-    box-shadow: 0 0 10px rgba(118, 72, 255, 0.65);
-  }
-
-  #app-section-home.is-active .overview-primary-action.is-food .overview-primary-action-copy > small:first-child {
-    font-size: 0.56rem;
-    box-shadow: 0 0 10px rgba(255, 61, 137, 0.65);
-  }
-
-  #app-section-home.is-active .overview-primary-action.is-ai-ear .overview-primary-action-copy > small:first-child {
-    box-shadow: 0 0 10px rgba(41, 224, 191, 0.65);
-  }
-
-  #app-section-home.is-active .overview-primary-action:not(.is-body) .overview-primary-action-hint {
-    display: block;
-    width: 100%;
-    max-width: none;
-    margin-top: 5px;
-    color: #000;
-    font-size: 0.45rem;
-    font-weight: 900;
-    line-height: 1;
-    letter-spacing: 0;
-    text-align: center;
-    text-transform: uppercase;
-    white-space: nowrap;
   }
 
   #app-section-home.is-active .overview-primary-action.is-body .overview-primary-visual {

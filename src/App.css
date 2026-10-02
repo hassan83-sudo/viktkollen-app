@@ -13167,6 +13167,12 @@ body:has(#app-section-home.is-active) {
     line-height: 1.18;
   }
 
+  #app-section-home.is-active .overview-primary-action.is-food .overview-primary-action-copy small {
+    max-width: none;
+    white-space: nowrap;
+    font-size: 0.56rem;
+  }
+
   #app-section-home.is-active .overview-primary-action.is-body .overview-primary-visual {
     inset: 58px -4px 0;
   }

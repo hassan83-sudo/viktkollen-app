@@ -18,17 +18,37 @@ function HomeNoticeShortcuts({ onOpenCoach, onOpenWellbeing }) {
     <>
       <style>{`
         #app-section-home.is-active .overview-today-mood {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
           grid-template-areas:
+            "wellbeing coach"
             "quick quick"
             "reminder notices"
             "today today";
         }
+        #app-section-home.is-active .overview-today-mood > .is-wellbeing {
+          grid-area: wellbeing;
+          min-width: 0;
+        }
+        #app-section-home.is-active .overview-today-mood > .is-coach {
+          grid-area: coach;
+          min-width: 0;
+        }
         #app-section-home.is-active .overview-today-mood > .is-quick {
           grid-area: quick;
           width: 100%;
+          min-width: 0;
+        }
+        #app-section-home.is-active .overview-today-mood > .is-reminder {
+          grid-area: reminder;
+          min-width: 0;
+        }
+        #app-section-home.is-active .overview-today-mood > .is-notices {
+          grid-area: notices;
+          min-width: 0;
         }
         #app-section-home.is-active .overview-today-mood > .is-today {
           grid-area: today;
+          min-width: 0;
         }
         .overview-mood-card.is-quick {
           align-items: stretch;

@@ -93,6 +93,8 @@ function HomeSection({
           onLogWeight={onLogWeight}
           onNavigateSection={onNavigateSection}
           onNavigationIntentConsumed={onNavigationIntentConsumed}
+          onOpenAiCoach={onOpenAiCoach}
+          onOpenWellbeing={onOpenWellbeing}
           onScanFood={onScanFood}
           onSendChatMessage={onSendChatMessage}
           onStartVoiceInput={onStartVoiceInput}

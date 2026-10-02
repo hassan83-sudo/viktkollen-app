@@ -78,8 +78,8 @@ const sv = {
       body: 'Följ kroppens förändringar över tid',
       ear: 'Hör vad som saknas',
       coach: 'Personliga råd från din data',
-      food: 'Skanna maten och uppskatta näringen',
-      smartCamera: 'Minne, kläder och sista kollen',
+      food: 'Skanna maten, uppskatta näringen',
+      smartCamera: 'Se vad som saknas',
     },
     labels: {
       aiCoach: 'AI Coach',

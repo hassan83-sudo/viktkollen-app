@@ -246,6 +246,52 @@ describe('AiEarMode', () => {
     expect(screen.getByText('Välj ljudfil')).toBeTruthy()
   })
 
+  it('returns a humming error to Spela in and Välj ljudfil', async () => {
+    const deps = makeDeps({
+      recognizeHumming: vi.fn(async () => ({ ok: false, reason: 'not_available', retryable: false })),
+    })
+    render(<AiEarMode deps={deps} />)
+    fireEvent.click(screen.getByRole('radio', { name: /Humma/ }))
+    chooseFile()
+    await screen.findByText('Analysera ljudet')
+    fireEvent.click(screen.getByText('Analysera ljudet'))
+
+    expect(await screen.findByText('AI-örat är inte tillgängligt just nu')).toBeTruthy()
+    expect(screen.getByText('Försök igen senare.')).toBeTruthy()
+    expect(deps.interpret).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Ny inspelning' }))
+
+    expect(screen.getByText('Spela in')).toBeTruthy()
+    expect(screen.getByText('Välj ljudfil')).toBeTruthy()
+    expect(screen.queryByText('AI-örat är inte tillgängligt just nu')).toBeNull()
+    expect(screen.queryByText('Försök igen senare.')).toBeNull()
+  })
+
+  it('does not keep a humming error after the page is restored, or apply that old attempt afterwards', async () => {
+    let finish
+    const deps = makeDeps({
+      recognizeHumming: vi.fn(() => new Promise((resolve) => { finish = resolve })),
+    })
+    render(<AiEarMode deps={deps} />)
+    fireEvent.click(screen.getByRole('radio', { name: /Humma/ }))
+    chooseFile()
+    await screen.findByText('Analysera ljudet')
+    fireEvent.click(screen.getByText('Analysera ljudet'))
+    await screen.findByText(/AI-örat lyssnar/)
+
+    const restored = new Event('pageshow')
+    Object.defineProperty(restored, 'persisted', { value: true })
+    await act(async () => {
+      window.dispatchEvent(restored)
+    })
+    expect(screen.getByText('Spela in')).toBeTruthy()
+    expect(screen.getByText('Välj ljudfil')).toBeTruthy()
+
+    await act(async () => finish({ ok: false, reason: 'not_available', retryable: false }))
+    expect(screen.queryByText('AI-örat är inte tillgängligt just nu')).toBeNull()
+    expect(screen.getByText('Spela in')).toBeTruthy()
+  })
+
   it('keeps recordings out of storage', async () => {
     const setItem = vi.spyOn(Storage.prototype, 'setItem')
     await readyWithFile(makeDeps())

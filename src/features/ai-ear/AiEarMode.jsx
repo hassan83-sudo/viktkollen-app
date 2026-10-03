@@ -62,6 +62,10 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
   const wavRef = useRef(null)
   const controllerRef = useRef(null)
   const busyRef = useRef(false)
+  // Bumps when the user starts over, so a humming response from the previous
+  // attempt cannot paint its error after Ny inspelning or a restored page.
+  const attemptRef = useRef(0)
+  const resetRef = useRef(() => {})
 
   // The recorder hook stops the microphone on unmount; this aborts an
   // in-flight analysis and drops the prepared audio.
@@ -128,6 +132,8 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
 
   async function analyze() {
     if (busyRef.current || !wavRef.current) return
+    const attempt = attemptRef.current + 1
+    attemptRef.current = attempt
     busyRef.current = true
     const controller = new AbortController()
     controllerRef.current = controller
@@ -135,9 +141,9 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
     // Trycket på "Analysera ljudet" är det uttryckliga godkännandet att skicka just den här inspelningen.
     const recognize = mode.execution === 'humming' ? depsRef.current.recognizeHumming : depsRef.current.interpret
     const outcome = await recognize({ consentApproved: true, locale, signal: controller.signal, wav: wavRef.current })
+    if (!mountedRef.current || attempt !== attemptRef.current) return
     busyRef.current = false
     controllerRef.current = null
-    if (!mountedRef.current) return
     if (outcome.ok) {
       setView(mode.execution === 'humming' ? buildAiEarHummingView(outcome.result, t) : buildAiEarModeView(outcome.result, modeId, t))
       setPhase('result')
@@ -155,12 +161,29 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
   }
 
   function reset() {
+    attemptRef.current += 1
+    controllerRef.current?.abort('reset')
+    controllerRef.current = null
+    busyRef.current = false
+    recorder.cancel()
     wavRef.current = null
     setHasWav(false)
     setView(null)
     setTruncated(false)
     setPhase('idle')
   }
+  resetRef.current = reset
+
+  // A restored page (back-forward cache) keeps the old React tree, including a
+  // humming error. Nothing is read back from storage; the restored error is
+  // dropped so the start controls are current again.
+  useEffect(() => {
+    const onPageShow = (event) => {
+      if (event.persisted) resetRef.current()
+    }
+    window.addEventListener('pageshow', onPageShow)
+    return () => window.removeEventListener('pageshow', onPageShow)
+  }, [])
 
   function selectMode(id) {
     if (busy || id === modeId) return

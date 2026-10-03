@@ -1192,7 +1192,7 @@ function NutritionScannerV2({
 
       {!previewUrl && (
         <div className="scanner-start-image" aria-hidden="true">
-          <img src="/pizza-scan-preview.png" alt="" />
+          <img src="/viktkollen-meal-scan-chicken-rice.webp" alt="" />
           <span className="scanner-start-image-corner is-tl" />
           <span className="scanner-start-image-corner is-tr" />
           <span className="scanner-start-image-corner is-bl" />

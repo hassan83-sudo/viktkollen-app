@@ -1,9 +1,9 @@
 import { createHmac, randomUUID } from 'node:crypto'
+import { createClient } from '@supabase/supabase-js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from './aiRouteErrors.js'
 import { checkAiRouteRateLimit } from './aiRateLimiter.js'
 import { analysisConsentPurposes, verifyAnalysisConsentToken } from './analysisConsent.js'
 import { verifySupabaseUser } from './verifySupabaseUser.js'
-import { createSupabaseAdminClient } from './supabaseServer.js'
 import { QUOTA_STATUS } from '../../src/services/billing/catalog.js'
 import { createQuotaEngine } from '../../src/services/billing/quotaEngine.js'
 import { createPostgresQuotaBackend, createSupabaseBillingRpcQuery } from '../../src/services/billing/quotaPostgres.js'
@@ -170,9 +170,27 @@ function publicResult(outcome) {
   }
 }
 
+export function getHummingQuotaConfig(env = process.env) {
+  return {
+    serviceRoleKey: env.HUMMING_QUOTA_SUPABASE_SERVICE_ROLE_KEY || '',
+    url: env.HUMMING_QUOTA_SUPABASE_URL || '',
+  }
+}
+
+function createHummingQuotaClient(env = process.env) {
+  const config = getHummingQuotaConfig(env)
+  if (!config.url || !config.serviceRoleKey) return null
+  return createClient(config.url, config.serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
+}
+
 async function resolveQuotaEngine() {
   if (quotaEngineOverride) return quotaEngineOverride
-  const client = createSupabaseAdminClient()
+  const client = createHummingQuotaClient()
   if (!client) return null
   return createQuotaEngine({
     backend: createPostgresQuotaBackend(createSupabaseBillingRpcQuery(client)),

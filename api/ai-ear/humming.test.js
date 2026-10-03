@@ -3,7 +3,7 @@ import { Readable } from 'node:stream'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import handler from './interpret/index.js'
-import { setAiEarHummingQuotaForTests } from '../_shared/aiEarHumming.js'
+import { getHummingQuotaConfig, setAiEarHummingQuotaForTests } from '../_shared/aiEarHumming.js'
 import { setAiRateLimitAdapterForTests } from '../_shared/aiRateLimiter.js'
 import { analysisConsentPurposes, computeCanonicalImageHash, issueAnalysisConsentToken } from '../_shared/analysisConsent.js'
 import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
@@ -225,6 +225,37 @@ describe('POST /api/ai-ear/humming', () => {
     expect(snapshot.reserved).toBe(0)
     expect(JSON.stringify(console.warn.mock.calls)).not.toContain(ACCESS_SECRET)
     expect(JSON.stringify(console.warn.mock.calls)).not.toContain(ACCESS_KEY)
+  })
+
+  it('fails closed before ACRCloud when the humming quota project is not configured', async () => {
+    setAiEarHummingQuotaForTests(undefined)
+    delete process.env.HUMMING_QUOTA_SUPABASE_URL
+    delete process.env.HUMMING_QUOTA_SUPABASE_SERVICE_ROLE_KEY
+    process.env.SUPABASE_URL = 'https://viktkollen.example.supabase.co'
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'shared-service-role-must-not-be-used'
+    const fetchMock = stubFetch(hummingPayload([]))
+    const response = await callRoute(createRequest())
+    expect(response.statusCode).toBe(503)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('reads humming quota config only from the humming env names', () => {
+    const source = readFileSync(new URL('../_shared/aiEarHumming.js', import.meta.url), 'utf8')
+    const auth = readFileSync(new URL('../_shared/verifySupabaseUser.js', import.meta.url), 'utf8')
+    expect(getHummingQuotaConfig({
+      HUMMING_QUOTA_SUPABASE_SERVICE_ROLE_KEY: 'humming-role',
+      HUMMING_QUOTA_SUPABASE_URL: 'https://staging.example.supabase.co',
+      SUPABASE_SERVICE_ROLE_KEY: 'shared-role',
+      SUPABASE_URL: 'https://viktkollen.example.supabase.co',
+      VITE_SUPABASE_URL: 'https://vite.example.supabase.co',
+    })).toEqual({
+      serviceRoleKey: 'humming-role',
+      url: 'https://staging.example.supabase.co',
+    })
+    expect(getHummingQuotaConfig({})).toEqual({ serviceRoleKey: '', url: '' })
+    expect(source).not.toMatch(/createSupabaseAdminClient/)
+    expect(auth).toContain('env.SUPABASE_URL || env.VITE_SUPABASE_URL')
+    expect(auth).not.toContain('HUMMING_QUOTA')
   })
 
   it('keeps the launch humming quotas in the database migration and does not rewrite the other four', () => {

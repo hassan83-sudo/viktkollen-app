@@ -1152,6 +1152,7 @@ function OverviewDashboard({
   const [now, setNow] = useState(() => new Date())
   const [bodyScanOpen, setBodyScanOpen] = useState(false)
   const [bodyCaptureOpen, setBodyCaptureOpen] = useState(false)
+  const [earPreviewOpen, setEarPreviewOpen] = useState(false)
   const [smartCameraOpen, setSmartCameraOpen] = useState(Boolean(initialSmartCameraMode))
   const [smartCameraInitialMode, setSmartCameraInitialMode] = useState(initialSmartCameraMode)
   const [coachOpen, setCoachOpen] = useState(false)
@@ -1494,6 +1495,21 @@ function OverviewDashboard({
             onClose={() => setBodyCaptureOpen(false)}
           />
         </Suspense>
+      )}
+      {earPreviewOpen && (
+        <div className="overview-ear-preview" role="dialog" aria-modal="true" aria-label="AI Örat">
+          <button className="overview-ear-preview-backdrop" type="button" aria-label="Stäng" onClick={() => setEarPreviewOpen(false)} />
+          <div className="overview-ear-preview-panel">
+            <button className="overview-ear-preview-close" type="button" onClick={() => setEarPreviewOpen(false)}>×</button>
+            <img src="/viktkollen-ai-ear-home.webp" alt="" />
+            <button className="overview-ear-preview-open" type="button" onClick={() => {
+              setEarPreviewOpen(false)
+              setBodyScanOpen(false)
+              setSmartCameraInitialMode('ai-ear')
+              setSmartCameraOpen(true)
+            }}>AI Örat</button>
+          </div>
+        </div>
       )}
       {smartCameraOpen && isFeatureEnabled('smartCamera', flags) && (
         <SmartCameraStage

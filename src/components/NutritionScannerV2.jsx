@@ -1190,6 +1190,15 @@ function NutritionScannerV2({
         </div>
       </div>
 
+      {!previewUrl && (
+        <div className="scanner-start-image" aria-hidden="true">
+          <img src="/pizza-scan-preview.png" alt="" />
+          <span className="scanner-start-image-corner is-tl" />
+          <span className="scanner-start-image-corner is-tr" />
+          <span className="scanner-start-image-corner is-bl" />
+          <span className="scanner-start-image-corner is-br" />
+        </div>
+      )}
       <div className="scanner-file-picker-group" aria-label={t('scanner.imagePickerAria')}>
         <div className="photo-input scanner-file-picker scanner-camera-control">
           <span>{t('scanner.takePhoto')}</span>

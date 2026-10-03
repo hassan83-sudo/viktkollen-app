@@ -18333,3 +18333,34 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   font-size: 12px;
   line-height: 1.35;
 }
+
+
+/* Nutrition scanner: large meal/camera area directly above Ta bild / Välj bild. */
+.nutrition-scanner-v2 .scanner-start-image {
+  order: -2;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1.65 / 1;
+  overflow: hidden;
+  border: 1px solid rgba(111, 159, 209, .34);
+  border-radius: 14px;
+  background: #071222;
+}
+.nutrition-scanner-v2 .scanner-start-image > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.nutrition-scanner-v2 .scanner-start-image-corner {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-color: rgba(255,255,255,.94);
+  border-style: solid;
+  pointer-events: none;
+}
+.nutrition-scanner-v2 .scanner-start-image-corner.is-tl { top: 10px; left: 10px; border-width: 2px 0 0 2px; border-radius: 9px 0 0 0; }
+.nutrition-scanner-v2 .scanner-start-image-corner.is-tr { top: 10px; right: 10px; border-width: 2px 2px 0 0; border-radius: 0 9px 0 0; }
+.nutrition-scanner-v2 .scanner-start-image-corner.is-bl { bottom: 10px; left: 10px; border-width: 0 0 2px 2px; border-radius: 0 0 0 9px; }
+.nutrition-scanner-v2 .scanner-start-image-corner.is-br { right: 10px; bottom: 10px; border-width: 0 2px 2px 0; border-radius: 0 0 9px 0; }

@@ -18131,3 +18131,13 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   border-width: 2.4px;
   font-size: .576rem;
 }
+
+
+/* Home AI Eyes: make only the instruction below the title small and clearly readable. */
+#app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-eyes .overview-primary-action-hint {
+  color: #fff;
+  font-size: .49rem;
+  font-weight: 900;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .9);
+}

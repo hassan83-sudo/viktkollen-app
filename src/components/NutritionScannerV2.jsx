@@ -435,6 +435,8 @@ function NutritionScannerV2({
   const fileInputRef = useRef(null)
   const cameraInputRef = useRef(null)
   const reviewRef = useRef(null)
+  const liveCameraVideoRef = useRef(null)
+  const liveCameraStreamRef = useRef(null)
   const currentImageRef = useRef(null)
   const imagePayloadRef = useRef(null)
   const activeAnalysisControllerRef = useRef(null)
@@ -461,6 +463,7 @@ function NutritionScannerV2({
     userId,
   }))
   const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine !== false)
+  const [liveCameraActive, setLiveCameraActive] = useState(false)
   const canUseLiveCamera = typeof window !== 'undefined' && window.isSecureContext && Boolean(navigator.mediaDevices?.getUserMedia)
   const today = analysisDate || selectedMealDate || getTodayDateString()
   const remoteConsentRecord = storedRemoteConsent.userId === userId
@@ -618,6 +621,33 @@ function NutritionScannerV2({
     logCameraDiagnostic('camera native input change', event.currentTarget)
     return handleFileChange(event)
   }
+
+  useEffect(() => {
+    if (previewUrl || !canUseLiveCamera) return undefined
+
+    let cancelled = false
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+      .then((stream) => {
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop())
+          return
+        }
+        liveCameraStreamRef.current = stream
+        if (liveCameraVideoRef.current) {
+          liveCameraVideoRef.current.srcObject = stream
+          liveCameraVideoRef.current.play().catch(() => {})
+        }
+        setLiveCameraActive(true)
+      })
+      .catch(() => setLiveCameraActive(false))
+
+    return () => {
+      cancelled = true
+      liveCameraStreamRef.current?.getTracks?.().forEach((track) => track.stop())
+      liveCameraStreamRef.current = null
+      setLiveCameraActive(false)
+    }
+  }, [canUseLiveCamera, previewUrl])
 
   useEffect(() => {
     headingRef.current?.focus()
@@ -1191,8 +1221,21 @@ function NutritionScannerV2({
       </div>
 
       {!previewUrl && (
-        <div className="scanner-start-image" aria-hidden="true">
-          <img src="/viktkollen-meal-scan-chicken-rice.webp" alt="" />
+        <div className="scanner-start-image">
+          <video
+            ref={liveCameraVideoRef}
+            className="scanner-live-camera"
+            autoPlay
+            muted
+            playsInline
+            aria-label={t('scanner.takePhotoAria')}
+          />
+          {!liveCameraActive && (
+            <button type="button" className="scanner-live-camera-fallback" onClick={() => cameraInputRef.current?.click()}>
+              <span aria-hidden="true">📷</span>
+              <strong>{t('scanner.takePhoto')}</strong>
+            </button>
+          )}
           <span className="scanner-start-image-corner is-tl" />
           <span className="scanner-start-image-corner is-tr" />
           <span className="scanner-start-image-corner is-bl" />

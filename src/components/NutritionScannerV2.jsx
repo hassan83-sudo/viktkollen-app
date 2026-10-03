@@ -1176,7 +1176,18 @@ function NutritionScannerV2({
     <section className="photo-meal-tool scanner-tool nutrition-scanner-v2" aria-labelledby="nutrition-scanner-v2-heading">
       <div className="scanner-start-header">
         <h3 id="nutrition-scanner-v2-heading" ref={headingRef} tabIndex={-1}>{t('scanner.title')}</h3>
-        <p>{t('scanner.subtitle')}</p>
+        <div className="scanner-start-guide">
+          <span className="scanner-start-guide-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M8.5 5.5 10 3.5h4l1.5 2H19a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-10a2 2 0 0 1 2-2h3.5Z" />
+              <circle cx="12" cy="12.5" r="4" />
+            </svg>
+          </span>
+          <span className="scanner-start-guide-copy">
+            <strong>{t('scanner.heroTitle', { defaultValue: 'Ta en tydlig bild av din måltid' })}</strong>
+            <small>{t('scanner.heroBody', { defaultValue: 'AI identifierar maten och räknar ut näringsvärdena.' })}</small>
+          </span>
+        </div>
       </div>
 
       <div className="scanner-file-picker-group" aria-label={t('scanner.imagePickerAria')}>

@@ -829,7 +829,7 @@ function OverviewPrimaryActions({
             </span>
             <span className="overview-primary-action-copy">
               
-              {action.description ? <small>{action.accent === 'food' ? <>Skanna mat,<br />uppskatta näring</> : action.description}</small> : null}
+              {action.description ? <small>{action.accent === 'food' ? <>Uppskatta<br />näring</> : action.description}</small> : null}
               <small className="overview-primary-action-hint">Tryck på ikonen nedan</small>
             </span>{' '}
             </button>

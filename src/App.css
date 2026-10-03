@@ -18168,3 +18168,53 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   text-shadow: 0 1px 2px rgba(0, 0, 0, .9);
   transform: translateY(10px);
 }
+
+
+/* Home AI Ear: match the approved AI Eyes title/hint measurements exactly. */
+#app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-body .overview-primary-action-copy {
+  top: 3px;
+}
+#app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-body .overview-primary-action-copy > small:first-child {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80%;
+  max-width: none;
+  min-height: 46.4px;
+  margin: 0 auto;
+  padding: 6.4px 6.4px;
+  border: 2.4px solid transparent;
+  border-radius: 999px;
+  background:
+    linear-gradient(#05070d, #05070d) padding-box,
+    linear-gradient(100deg, #21e8d0 0%, #28e6c0 45%, #9dff5b 100%) border-box;
+  color: #fff;
+  font-size: .576rem;
+  font-weight: 900;
+  line-height: 1.15;
+  text-align: center;
+  white-space: normal;
+  box-shadow:
+    0 0 8px rgba(33, 232, 208, .78),
+    0 0 16px rgba(40, 230, 192, .62),
+    0 0 22px rgba(157, 255, 91, .42),
+    inset 0 0 12px rgba(33, 232, 208, .22);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .9);
+}
+#app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-body .overview-primary-action-hint {
+  display: block;
+  width: 100%;
+  max-width: none;
+  margin-top: 5px;
+  color: #fff;
+  font-size: 7px;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .9);
+  transform: translateY(10px);
+}

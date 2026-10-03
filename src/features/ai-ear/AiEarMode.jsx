@@ -15,8 +15,8 @@ import './AiEarMode.css'
  * AI-EAR-1: fyra lägen (Ljudigenkänning, Fågelljud, Tal → text, Humma /
  * sjung) i samma vy. Ljud och fågel använder samma server-hop nedan och visar
  * resultatet på olika sätt. Tal → text (AI-EAR-2C) använder webbläsarens
- * taligenkänning (AiEarDictation.jsx), utan server. Humma är inte kopplat (se
- * aiEarModes.js) och skickar inget ljud.
+ * taligenkänning (AiEarDictation.jsx), utan server. Humma / sjung visar samma
+ * inspelning och filval, men ljudet lämnar inte enheten.
  *
  * Flöde: spela in (max 12 s) eller välj en ljudfil -> ljudet görs om till WAV på
  * enheten -> användaren trycker uttryckligen "Analysera ljudet" (det är
@@ -126,6 +126,20 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
 
   async function analyze() {
     if (busyRef.current || !wavRef.current) return
+    // Humma / sjung is visible only. The recording stays on the device.
+    if (mode.execution === 'local') {
+      setView({
+        alternatives: [],
+        body: t(`modes.${mode.id}.unavailable`),
+        contextLines: [],
+        hints: [],
+        retryable: false,
+        species: [],
+        title: t(`modes.${mode.id}.title`),
+      })
+      setPhase('error')
+      return
+    }
     busyRef.current = true
     const controller = new AbortController()
     controllerRef.current = controller
@@ -204,7 +218,7 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
 
       {mode.execution === 'browser' && <AiEarDictation deps={deps.dictation} microphoneBusy={recorder.recording} />}
 
-      {mode.execution === 'interpret' && phase === 'idle' && (
+      {(mode.execution === 'interpret' || mode.execution === 'local') && phase === 'idle' && (
         <div className="ai-ear-actions">
           <button className="primary-button" type="button" onClick={startRecording}>{t('record')}</button>
           <label className="secondary-button ai-ear-file">

@@ -11,10 +11,9 @@
  *   SpeechRecognition. No Viktkollen server, route, provider or quota; no
  *   direct Viktkollen provider cost, so free. This applies only to browser
  *   dictation: server or audio-file transcription is a separate decision.
- * - melody: the only implementation (ACRCloud humming) is on the unmerged
- *   branch sprint-12a-ai-ear-reintegration and charges per request. Not
- *   connected here: `execution: null` shows the mode without any way to send
- *   audio.
+ * - melody: the same record and file screen as the other audio modes.
+ *   `execution: 'local'` keeps that screen visible and never sends the
+ *   recording. Recognition stays disconnected.
  *
  * Integration point for the Premium gate (Cursor): a premium mode may get an
  * `execution` only after its server route enforces the entitlement itself. A
@@ -25,7 +24,7 @@ export const aiEarModes = Object.freeze([
   Object.freeze({ access: 'free', execution: 'interpret', icon: '🐦', id: 'bird' }),
   // AI-EAR-2C1: free by product decision (docs/ai-ear/AI_EAR_2C_DICTATION.md).
   Object.freeze({ access: 'free', execution: 'browser', icon: '🗣️', id: 'speech' }),
-  Object.freeze({ access: 'premium', execution: null, icon: '🎶', id: 'melody' }),
+  Object.freeze({ access: 'premium', execution: 'local', icon: '🎶', id: 'melody' }),
 ])
 
 export const defaultAiEarModeId = 'sound'

@@ -87,22 +87,23 @@ describe('AI Örat modes (AI-EAR-1)', () => {
     }
   })
 
-  // AI-EAR-2C: Tal → text now runs in the browser (aiEarDictation.test.jsx);
-  // neither it nor Humma / sjung records a file or calls the server hop.
-  it('Tal → text and Humma / sjung cannot record a file or send audio to the server', () => {
+  // AI-EAR-2C: Tal → text runs in the browser. Humma / sjung shows the same
+  // record and file controls, and still never calls the sound server.
+  it('Tal → text cannot record a file; Humma / sjung shows the recorder without sending audio', async () => {
     const deps = makeDeps()
     render(<AiEarMode deps={deps} />)
     fireEvent.click(screen.getByRole('radio', { name: /^Tal → text/ }))
     expect(screen.queryByRole('button', { name: 'Spela in' })).toBeNull()
     expect(document.querySelector('input[type="file"]')).toBeNull()
-    for (const [name, text] of [[/^Humma \/ sjung/, 'Humma / sjung kräver Premium och är inte tillgängligt ännu. Inget ljud skickas.']]) {
-      fireEvent.click(screen.getByRole('radio', { name }))
-      expect(screen.getByText(text)).toBeTruthy()
-      expect(screen.queryByRole('button', { name: 'Spela in' })).toBeNull()
-      expect(document.querySelector('input[type="file"]')).toBeNull()
-    }
+
+    fireEvent.click(screen.getByRole('radio', { name: /^Humma \/ sjung/ }))
+    expect(screen.getByRole('button', { name: 'Spela in' })).toBeTruthy()
+    expect(screen.getByText('Välj ljudfil')).toBeTruthy()
+    expect(screen.queryByText('Humma / sjung kräver Premium och är inte tillgängligt ännu. Inget ljud skickas.')).toBeNull()
+    chooseFile()
+    fireEvent.click(await screen.findByRole('button', { name: 'Analysera ljudet' }))
+    expect(screen.getByText('Humma / sjung kräver Premium och är inte tillgängligt ännu. Inget ljud skickas.')).toBeTruthy()
     expect(deps.interpret).not.toHaveBeenCalled()
-    expect(deps.blobToWav).not.toHaveBeenCalled()
   })
 
   it('bird mode: the leading species as "Mest sannolikt", the rest as alternatives, no confidence', async () => {
@@ -153,7 +154,7 @@ describe('AI Örat modes (AI-EAR-1)', () => {
       ['sound', 'free', 'interpret'],
       ['bird', 'free', 'interpret'],
       ['speech', 'free', 'browser'],
-      ['melody', 'premium', null],
+      ['melody', 'premium', 'local'],
     ])
     // Sound and bird run on ai.ear.interpret, which billing keeps free and
     // unmetered at launch.
@@ -172,6 +173,6 @@ describe('AI Örat modes (AI-EAR-1)', () => {
       .join('\n')
     expect(code).not.toMatch(/billing|entitlement|quota|supabase|featureCostGate|\/api\//i)
     const melody = aiEarModes.find((mode) => mode.id === 'melody')
-    expect(melody).toMatchObject({ access: 'premium', execution: null })
+    expect(melody).toMatchObject({ access: 'premium', execution: 'local' })
   })
 })

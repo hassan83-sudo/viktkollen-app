@@ -18142,3 +18142,29 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   text-shadow: 0 1px 2px rgba(0, 0, 0, .9);
   transform: translateY(10px);
 }
+
+
+/* Home Food: match the approved AI Eyes title/hint measurements exactly. */
+#app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-food .overview-primary-action-copy {
+  top: 3px;
+}
+#app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-food .overview-primary-action-copy > small:first-child {
+  position: relative;
+  width: 80%;
+  min-height: 46.4px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 6.4px 6.4px;
+  border-width: 2.4px;
+  font-size: .576rem;
+  font-weight: 900;
+  line-height: 1.15;
+}
+#app-section-home.is-active section.overview-primary-actions > .overview-primary-action.is-food .overview-primary-action-hint {
+  color: #fff;
+  font-size: 7px;
+  font-weight: 900;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .9);
+  transform: translateY(10px);
+}

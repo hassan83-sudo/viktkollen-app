@@ -18277,3 +18277,59 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   color: #fff;
   font-weight: 900;
 }
+
+
+/* Nutrition scanner: approved top section from the new scan design. */
+.nutrition-scanner-v2 .scanner-start-header {
+  order: -3;
+  display: grid;
+  gap: 12px;
+}
+.nutrition-scanner-v2 .scanner-start-header > h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 900;
+  text-align: center;
+}
+.nutrition-scanner-v2 .scanner-start-guide {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid rgba(111, 159, 209, .34);
+  border-radius: 14px;
+  background: rgba(7, 18, 34, .92);
+}
+.nutrition-scanner-v2 .scanner-start-guide-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #7734ff, #3b7cff);
+  box-shadow: 0 0 16px rgba(104, 62, 255, .38);
+}
+.nutrition-scanner-v2 .scanner-start-guide-icon svg {
+  width: 25px;
+  height: 25px;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.8;
+}
+.nutrition-scanner-v2 .scanner-start-guide-copy {
+  display: grid;
+  gap: 3px;
+}
+.nutrition-scanner-v2 .scanner-start-guide-copy strong {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+.nutrition-scanner-v2 .scanner-start-guide-copy small {
+  color: #b8c3d4;
+  font-size: 12px;
+  line-height: 1.35;
+}

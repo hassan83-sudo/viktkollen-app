@@ -18218,3 +18218,62 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   text-shadow: 0 1px 2px rgba(0, 0, 0, .9);
   transform: translateY(10px);
 }
+
+
+/* Home AI Ear image preview: large focused view before entering AI Ear. */
+.overview-ear-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.overview-ear-preview-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: rgba(1, 6, 17, .88);
+}
+.overview-ear-preview-panel {
+  position: relative;
+  z-index: 1;
+  width: min(92vw, 430px);
+  overflow: hidden;
+  border: 1px solid rgba(45, 255, 231, .45);
+  border-radius: 24px;
+  background: #07111f;
+  box-shadow: 0 0 28px rgba(41, 224, 191, .28);
+}
+.overview-ear-preview-panel img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.overview-ear-preview-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(255,255,255,.55);
+  border-radius: 999px;
+  background: rgba(5,7,13,.82);
+  color: #fff;
+  font-size: 24px;
+  line-height: 1;
+}
+.overview-ear-preview-open {
+  display: block;
+  width: calc(100% - 24px);
+  min-height: 46px;
+  margin: 12px;
+  border: 0;
+  border-radius: 14px;
+  background: #0b6667;
+  color: #fff;
+  font-weight: 900;
+}

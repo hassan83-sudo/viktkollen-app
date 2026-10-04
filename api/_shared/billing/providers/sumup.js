@@ -166,7 +166,7 @@ export function createSumUpCheckoutAdapter({
         || created?.currency !== 'SEK'
         || created?.merchant_code !== merchantCode
         || minorUnitsFromSumUpAmount(created?.amount) !== priced.minor
-        || !officialHostedUrl(hostedCheckoutUrl, checkoutRef)) {
+        || !officialHostedUrl(hostedCheckoutUrl)) {
         throw coded('SUMUP_CHECKOUT_FAILED')
       }
       return { hostedCheckoutUrl, providerCheckoutRef: checkoutRef }
@@ -236,13 +236,18 @@ function priceForPlan(planId, catalog) {
   return { amount, minor: plan.price_minor }
 }
 
-function officialHostedUrl(value, checkoutId) {
+const HOSTED_CHECKOUT_PATH_RE = /^\/pay\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function officialHostedUrl(value) {
   try {
     const url = new URL(value)
     return url.protocol === 'https:'
+      && url.username === ''
+      && url.password === ''
       && url.hostname === 'checkout.sumup.com'
-      && url.pathname === `/pay/${checkoutId}`
+      && HOSTED_CHECKOUT_PATH_RE.test(url.pathname)
       && url.search === ''
+      && url.hash === ''
   } catch {
     return false
   }

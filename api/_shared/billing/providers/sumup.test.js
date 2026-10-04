@@ -193,6 +193,164 @@ describe('BILL-10A SumUp adapter', () => {
     expect([...PLANS.map(([id]) => id)].includes(db.getIntent(pending.checkoutId).planId)).toBe(true)
   })
 
+  it('accepts a SumUp hosted page id that is separate from the checkout id', async () => {
+    const checkoutId = '64553e20-3f0e-49e4-8af3-fd0eca86ce91'
+    const pageId = '8f9316a3-cda9-42a9-9771-54d534315676'
+    const hostedCheckoutUrl = `https://checkout.sumup.com/pay/${pageId}`
+    const db = database()
+    const transport = {
+      calls: [],
+      async createCheckout(body) {
+        this.calls.push(body)
+        return {
+          amount: body.amount,
+          checkout_reference: body.checkout_reference,
+          currency: body.currency,
+          hosted_checkout: { enabled: true },
+          hosted_checkout_url: hostedCheckoutUrl,
+          id: checkoutId,
+          merchant_code: body.merchant_code,
+          status: 'PENDING',
+        }
+      },
+      async retrieveCheckout() {
+        throw new Error('not used')
+      },
+    }
+    setCheckoutSaleReaderForTests(() => ({ active: true, enabledForSale: true, known: true }))
+    setCheckoutAdapterForTests(createSumUpCheckoutAdapter({
+      merchantCode: MERCHANT,
+      testOnly: true,
+      transport,
+    }))
+    setCheckoutPortsForTests(ports(db))
+    const pending = await beginCheckout({
+      body: { plan_id: 'plan.prelim.sek.month.04' },
+      userId: USER,
+    })
+    expect(pending).toMatchObject({
+      accessGranted: false,
+      code: 'CHECKOUT_PENDING',
+      hostedCheckoutUrl,
+      validated: true,
+    })
+    expect(db.getIntent(pending.checkoutId)).toMatchObject({
+      providerCheckoutRef: checkoutId,
+      status: 'pending',
+      userId: USER,
+    })
+    expect(db.quotaPlan(USER)).toBe('plan.free')
+  })
+
+  it('accepts the sanitized non-UUID SumUp hosted page shape', async () => {
+    const pageId = 'not-a-uuid'
+    const hostedCheckoutUrl = `https://checkout.sumup.com/pay/${pageId}`
+    const db = database()
+    setCheckoutSaleReaderForTests(() => ({ active: true, enabledForSale: true, known: true }))
+    setCheckoutAdapterForTests(createSumUpCheckoutAdapter({
+      merchantCode: MERCHANT,
+      testOnly: true,
+      transport: {
+        async createCheckout(body) {
+          return {
+            amount: body.amount,
+            checkout_reference: body.checkout_reference,
+            currency: body.currency,
+            hosted_checkout_url: hostedCheckoutUrl,
+            id: CHECKOUT_ID,
+            merchant_code: body.merchant_code,
+            status: 'PENDING',
+          }
+        },
+        async retrieveCheckout() {
+          throw new Error('not used')
+        },
+      },
+    }))
+    setCheckoutPortsForTests(ports(db))
+    const pending = await beginCheckout({
+      body: { plan_id: 'plan.prelim.sek.month.04' },
+      userId: USER,
+    })
+    expect(pending).toMatchObject({
+      accessGranted: false,
+      code: 'CHECKOUT_PENDING',
+      hostedCheckoutUrl,
+      validated: true,
+    })
+    expect(hostedCheckoutUrl.split('/').filter(Boolean)).toEqual(['https:', 'checkout.sumup.com', 'pay', pageId])
+    expect(pageId).not.toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+    expect(db.getIntent(pending.checkoutId)).toMatchObject({
+      providerCheckoutRef: CHECKOUT_ID,
+      status: 'pending',
+    })
+    expect(db.quotaPlan(USER)).toBe('plan.free')
+  })
+
+  it('rejects a hosted checkout URL that is not an official SumUp pay page', async () => {
+    const rejected = [
+      `https://evil.example/pay/${CHECKOUT_ID}`,
+      `http://checkout.sumup.com/pay/${CHECKOUT_ID}`,
+      `https://user:pass@checkout.sumup.com/pay/${CHECKOUT_ID}`,
+      `https://checkout.sumup.com:8443/pay/${CHECKOUT_ID}`,
+      `https://checkout.sumup.com:443/pay/${CHECKOUT_ID}`,
+      `https://checkout.sumup.com/pay/${CHECKOUT_ID}?token=secret`,
+      `https://checkout.sumup.com/pay/${CHECKOUT_ID}#fragment`,
+      `https://checkout.sumup.com.evil.example/pay/${CHECKOUT_ID}`,
+      `https://checkout.sumup.com/pay/${CHECKOUT_ID}/extra`,
+      'https://checkout.sumup.com/pay/',
+      'https://checkout.sumup.com/pay',
+      'https://checkout.sumup.com/pay/abc%2Fdef',
+      'https://checkout.sumup.com/pay/abc%2fdef',
+      'https://checkout.sumup.com/pay/..',
+      'https://checkout.sumup.com/pay/.',
+      'https://checkout.sumup.com/pay/%2e%2e',
+      'https://checkout.sumup.com/pay/abc%00def',
+      'https://checkout.sumup.com/pay/a.b',
+      '',
+    ]
+    for (const hostedCheckoutUrl of rejected) {
+      const db = database()
+      let binds = 0
+      setCheckoutSaleReaderForTests(() => ({ active: true, enabledForSale: true, known: true }))
+      setCheckoutAdapterForTests(createSumUpCheckoutAdapter({
+        merchantCode: MERCHANT,
+        testOnly: true,
+        transport: {
+          async createCheckout(body) {
+            return {
+              amount: body.amount,
+              checkout_reference: body.checkout_reference,
+              currency: body.currency,
+              hosted_checkout_url: hostedCheckoutUrl,
+              id: CHECKOUT_ID,
+              merchant_code: body.merchant_code,
+              status: 'PENDING',
+            }
+          },
+          async retrieveCheckout() {
+            throw new Error('not used')
+          },
+        },
+      }))
+      setCheckoutPortsForTests({
+        ...ports(db),
+        bindCheckoutRef(input) {
+          binds += 1
+          return db.bindCheckoutRef(input)
+        },
+      })
+      const result = await beginCheckout({
+        body: { plan_id: 'plan.prelim.sek.month.04' },
+        userId: USER,
+      })
+      expect(result).toMatchObject({ accessGranted: false, code: 'SUMUP_CHECKOUT_FAILED' })
+      expect(result.hostedCheckoutUrl).toBeUndefined()
+      expect(binds).toBe(0)
+      expect(db.quotaPlan(USER)).toBe('plan.free')
+    }
+  })
+
   it('retrieves the checkout before activation and rejects unverified payments', async () => {
     const db = database()
     const store = new Map()

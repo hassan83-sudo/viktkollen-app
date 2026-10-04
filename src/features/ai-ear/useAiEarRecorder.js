@@ -71,8 +71,26 @@ export function useAiEarRecorder({
 
   useEffect(() => {
     mountedRef.current = true
+
+    function releaseMicrophone() {
+      discard()
+      if (mountedRef.current) {
+        setRecording(false)
+        setSeconds(0)
+      }
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') releaseMicrophone()
+    }
+
+    window.addEventListener('pagehide', releaseMicrophone)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
     return () => {
       mountedRef.current = false
+      window.removeEventListener('pagehide', releaseMicrophone)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
       discard()
     }
   }, [discard])

@@ -18441,3 +18441,26 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   width: 100%;
   min-width: 0;
 }
+
+
+/* Nutrition scanner: compact consent row to match approved reference. */
+.nutrition-scanner-v2 .scanner-consent-row:not(.scanner-consent-status) {
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 10px;
+  min-height: 0;
+  padding: 10px 12px;
+  border-color: rgba(111, 159, 209, .34);
+  border-radius: 13px;
+  background: rgba(7, 18, 34, .94);
+}
+.nutrition-scanner-v2 .scanner-consent-row:not(.scanner-consent-status) input {
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+}
+.nutrition-scanner-v2 .scanner-consent-row:not(.scanner-consent-status) span {
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
+}

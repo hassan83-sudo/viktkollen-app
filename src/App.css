@@ -18609,3 +18609,12 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
 .nutrition-scanner-v2 .scanner-secondary-analysis {
   transform: translateY(-40px);
 }
+
+
+/* Nutrition scanner: move Analyze + AI help another 18px upward. */
+.nutrition-scanner-v2 .scanner-primary-actions {
+  transform: translateY(-58px);
+}
+.nutrition-scanner-v2 .scanner-secondary-analysis {
+  transform: translateY(-58px);
+}

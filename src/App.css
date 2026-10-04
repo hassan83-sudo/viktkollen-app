@@ -18429,3 +18429,15 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+
+/* Nutrition scanner mobile: keep Ta bild and Välj bild side by side. */
+.nutrition-scanner-v2 .scanner-file-picker-group {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: 10px !important;
+}
+.nutrition-scanner-v2 .scanner-file-picker-group > .scanner-file-picker {
+  width: 100%;
+  min-width: 0;
+}

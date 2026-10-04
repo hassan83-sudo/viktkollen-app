@@ -18666,13 +18666,13 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
 @media (max-width: 600px) {
   .nutrition-scanner-v2 .scanner-consent-display {
     display: grid;
-    gap: 8px;
+    gap: 3px;
     margin: 0;
     padding: 10px 12px 12px;
   }
 
   .nutrition-scanner-v2 .scanner-consent-display legend {
-    margin: 0 0 2px;
+    margin: 0;
   }
 
   .nutrition-scanner-v2 .scanner-consent-display label,

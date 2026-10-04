@@ -19,6 +19,29 @@ const SmartCameraLiveView = forwardRef(function SmartCameraLiveView({
     onActiveChangeRef.current = onActiveChange
   }, [onActiveChange])
 
+  useEffect(() => {
+    function releaseCamera() {
+      sessionRef.current?.stop()
+      sessionRef.current = null
+      detachStreamFromVideo(videoRef.current)
+      setActive(false)
+      setRequested(false)
+      onActiveChangeRef.current?.(false)
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') releaseCamera()
+    }
+
+    window.addEventListener('pagehide', releaseCamera)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener('pagehide', releaseCamera)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
+
   // Opt-in capture hook for callers that need one still frame from the
   // live preview (today: ForgottenItemsCheck's "Kontrollera saker"
   // button, via services/forgottenItemsAnalysis.js). Draws the current

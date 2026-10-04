@@ -13167,26 +13167,6 @@ body:has(#app-section-home.is-active) {
   white-space: nowrap;
 }
 
-/* iPhone/PWA: keep Home navigation geometry stable after camera/scanner navigation. */
-@media (max-width: 600px) {
-  .app-shell:has(#app-section-home.is-active) .bottom-nav {
-    position: fixed;
-    left: 50%;
-    right: auto;
-    width: calc(100vw - 20px);
-    max-width: 402px;
-    min-height: var(--vk-nav-height);
-    margin: 0;
-    padding: 8px;
-    transform: translateX(-50%);
-  }
-
-  .app-shell:has(#app-section-home.is-active) .bottom-nav a {
-    min-height: 54px;
-    padding: 6px 4px 5px;
-  }
-}
-
 @media (max-width: 380px) {
   #app-section-home.is-active .overview-live-meta {
     font-size: 0.64rem;
@@ -18720,5 +18700,14 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
 
   .scanner-tool-focused .nutrition-scanner-v2 {
     padding-bottom: calc(96px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+
+/* Mobile/PWA: keep the bottom navigation anchored to the viewport while content scrolls. */
+@media (max-width: 600px) {
+  .bottom-nav {
+    position: fixed !important;
+    bottom: max(9px, calc(env(safe-area-inset-bottom) + 9px)) !important;
   }
 }

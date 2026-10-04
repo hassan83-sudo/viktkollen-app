@@ -2,7 +2,7 @@ import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../../_sh
 import { readDurableQuota } from '../../_shared/billing/quotaRead.js'
 import { readDurableUserSubscription } from '../../_shared/billing/subscriptionRead.js'
 import { handleCheckoutRequest } from '../../_shared/billing/checkoutIntent.js'
-import { prepareSumUpSandboxSetup } from '../../_shared/billing/sumupSandboxSetup.js'
+import { createServerCheckoutIntentPorts, prepareSumUpSandboxSetup } from '../../_shared/billing/sumupSandboxSetup.js'
 import { handleWebhookRequest } from '../../_shared/billing/providerWebhookIngress.js'
 import { executeUserBillingIntent } from '../../_shared/billing/userLifecycleIntent.js'
 import { lookupBillingAdmin } from '../../_shared/billing/admin.js'
@@ -266,6 +266,7 @@ async function handleSumUpSandbox(request, response, requestId) {
   const result = await prepareSumUpSandboxSetup({
     clientAmount: request.body?.amount,
     clientCurrency: request.body?.currency,
+    ports: createServerCheckoutIntentPorts(),
     userId: auth.user.id,
   })
   if (!result.ok) {

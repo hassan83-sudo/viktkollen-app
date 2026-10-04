@@ -242,14 +242,71 @@ describe('BILL-10A SumUp adapter', () => {
     expect(db.quotaPlan(USER)).toBe('plan.free')
   })
 
+  it('accepts the sanitized non-UUID SumUp hosted page shape', async () => {
+    const pageId = 'not-a-uuid'
+    const hostedCheckoutUrl = `https://checkout.sumup.com/pay/${pageId}`
+    const db = database()
+    setCheckoutSaleReaderForTests(() => ({ active: true, enabledForSale: true, known: true }))
+    setCheckoutAdapterForTests(createSumUpCheckoutAdapter({
+      merchantCode: MERCHANT,
+      testOnly: true,
+      transport: {
+        async createCheckout(body) {
+          return {
+            amount: body.amount,
+            checkout_reference: body.checkout_reference,
+            currency: body.currency,
+            hosted_checkout_url: hostedCheckoutUrl,
+            id: CHECKOUT_ID,
+            merchant_code: body.merchant_code,
+            status: 'PENDING',
+          }
+        },
+        async retrieveCheckout() {
+          throw new Error('not used')
+        },
+      },
+    }))
+    setCheckoutPortsForTests(ports(db))
+    const pending = await beginCheckout({
+      body: { plan_id: 'plan.prelim.sek.month.04' },
+      userId: USER,
+    })
+    expect(pending).toMatchObject({
+      accessGranted: false,
+      code: 'CHECKOUT_PENDING',
+      hostedCheckoutUrl,
+      validated: true,
+    })
+    expect(hostedCheckoutUrl.split('/').filter(Boolean)).toEqual(['https:', 'checkout.sumup.com', 'pay', pageId])
+    expect(pageId).not.toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+    expect(db.getIntent(pending.checkoutId)).toMatchObject({
+      providerCheckoutRef: CHECKOUT_ID,
+      status: 'pending',
+    })
+    expect(db.quotaPlan(USER)).toBe('plan.free')
+  })
+
   it('rejects a hosted checkout URL that is not an official SumUp pay page', async () => {
     const rejected = [
       `https://evil.example/pay/${CHECKOUT_ID}`,
       `http://checkout.sumup.com/pay/${CHECKOUT_ID}`,
-      `https://checkout.sumup.com/pay/${CHECKOUT_ID}?token=secret`,
-      `https://checkout.sumup.com.evil.example/pay/${CHECKOUT_ID}`,
       `https://user:pass@checkout.sumup.com/pay/${CHECKOUT_ID}`,
-      'https://checkout.sumup.com/pay/not-a-uuid',
+      `https://checkout.sumup.com:8443/pay/${CHECKOUT_ID}`,
+      `https://checkout.sumup.com:443/pay/${CHECKOUT_ID}`,
+      `https://checkout.sumup.com/pay/${CHECKOUT_ID}?token=secret`,
+      `https://checkout.sumup.com/pay/${CHECKOUT_ID}#fragment`,
+      `https://checkout.sumup.com.evil.example/pay/${CHECKOUT_ID}`,
+      `https://checkout.sumup.com/pay/${CHECKOUT_ID}/extra`,
+      'https://checkout.sumup.com/pay/',
+      'https://checkout.sumup.com/pay',
+      'https://checkout.sumup.com/pay/abc%2Fdef',
+      'https://checkout.sumup.com/pay/abc%2fdef',
+      'https://checkout.sumup.com/pay/..',
+      'https://checkout.sumup.com/pay/.',
+      'https://checkout.sumup.com/pay/%2e%2e',
+      'https://checkout.sumup.com/pay/abc%00def',
+      'https://checkout.sumup.com/pay/a.b',
       '',
     ]
     for (const hostedCheckoutUrl of rejected) {

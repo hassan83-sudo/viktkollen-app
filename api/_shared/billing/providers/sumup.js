@@ -236,21 +236,39 @@ function priceForPlan(planId, catalog) {
   return { amount, minor: plan.price_minor }
 }
 
-const HOSTED_CHECKOUT_PATH_RE = /^\/pay\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const HOSTED_PAGE_ID_RE = /^[A-Za-z0-9_-]{1,128}$/
 
 function officialHostedUrl(value) {
+  if (typeof value !== 'string' || value.length === 0) return false
+  let url
   try {
-    const url = new URL(value)
-    return url.protocol === 'https:'
-      && url.username === ''
-      && url.password === ''
-      && url.hostname === 'checkout.sumup.com'
-      && HOSTED_CHECKOUT_PATH_RE.test(url.pathname)
-      && url.search === ''
-      && url.hash === ''
+    url = new URL(value)
   } catch {
     return false
   }
+  const segments = url.pathname.split('/')
+  const pageId = segments[2] || ''
+  return url.protocol === 'https:'
+    && url.username === ''
+    && url.password === ''
+    && url.port === ''
+    && !authorityHasExplicitPort(value)
+    && url.hostname === 'checkout.sumup.com'
+    && segments.length === 3
+    && segments[0] === ''
+    && segments[1] === 'pay'
+    && HOSTED_PAGE_ID_RE.test(pageId)
+    && url.pathname === `/pay/${pageId}`
+    && url.search === ''
+    && url.hash === ''
+}
+
+function authorityHasExplicitPort(value) {
+  const scheme = value.indexOf('://')
+  if (scheme < 0) return true
+  const authority = value.slice(scheme + 3).split(/[/?#]/, 1)[0]
+  const host = authority.slice(authority.lastIndexOf('@') + 1)
+  return host.includes(':')
 }
 
 function notificationId(rawBody) {

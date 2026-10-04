@@ -903,7 +903,7 @@ function MealLogger({
         />
       </div>
 
-      <div id="nutrition-scanner-v2" className="scanner-tool">
+      <div id="nutrition-scanner-v2" className={`scanner-tool${initialPanel === 'scanner' || navigationIntent?.panel === 'scanner' ? ' scanner-tool-focused' : ' scanner-tool-embedded'}`}>
         <Suspense fallback={<div className="photo-meal-tool" role="status">{t('logger.loadingScanner')}</div>}>
           <NutritionScannerV2
             analysisDate={selectedMealDate}

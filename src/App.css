@@ -18388,3 +18388,44 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
 .nutrition-scanner-v2 .scanner-live-camera-fallback > span {
   font-size: 28px;
 }
+
+
+/* Nutrition scanner: Ta bild / Välj bild buttons from approved reference. */
+.nutrition-scanner-v2 .scanner-file-picker-group {
+  gap: 10px;
+}
+.nutrition-scanner-v2 .scanner-file-picker-group .scanner-file-picker {
+  display: grid;
+  place-items: center;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid rgba(111, 159, 209, .42);
+  border-radius: 13px;
+  background: rgba(7, 18, 34, .94);
+}
+.nutrition-scanner-v2 .scanner-file-picker-group .scanner-camera-control {
+  border-color: transparent;
+  background: linear-gradient(110deg, #7024ff 0%, #435eff 58%, #379cff 100%);
+  box-shadow: 0 0 18px rgba(80, 74, 255, .24);
+}
+.nutrition-scanner-v2 .scanner-picker-label {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+.nutrition-scanner-v2 .scanner-picker-label svg {
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

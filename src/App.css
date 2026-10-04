@@ -18464,3 +18464,35 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   font-weight: 800;
   line-height: 1.35;
 }
+
+
+/* Nutrition scanner: consent information display preference. */
+.nutrition-scanner-v2 .scanner-consent-display {
+  display: grid;
+  gap: 7px;
+  margin: -2px 0 0;
+  padding: 10px 12px 11px;
+  border: 0;
+  color: #fff;
+}
+.nutrition-scanner-v2 .scanner-consent-display legend {
+  margin-bottom: 3px;
+  padding: 0;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+}
+.nutrition-scanner-v2 .scanner-consent-display label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #b8c3d4;
+  font-size: 11px;
+  line-height: 1.2;
+}
+.nutrition-scanner-v2 .scanner-consent-display input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: #7b32ff;
+}

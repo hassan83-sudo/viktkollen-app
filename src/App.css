@@ -18660,3 +18660,26 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
 .scanner-tool-focused .nutrition-scanner-v2 .scanner-secondary-analysis {
   margin-top: 8px !important;
 }
+
+
+/* Mobile scanner: keep consent display heading and radio options in normal flow. */
+@media (max-width: 600px) {
+  .nutrition-scanner-v2 .scanner-consent-display {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 10px 12px 12px;
+  }
+
+  .nutrition-scanner-v2 .scanner-consent-display legend {
+    margin: 0 0 2px;
+  }
+
+  .nutrition-scanner-v2 .scanner-consent-display label,
+  .nutrition-scanner-v2 .scanner-consent-display label:first-of-type,
+  .nutrition-scanner-v2 .scanner-consent-display label + label {
+    min-height: 20px;
+    margin: 0;
+    transform: none;
+  }
+}

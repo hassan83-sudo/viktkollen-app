@@ -1203,7 +1203,7 @@ function NutritionScannerV2({
   }
 
   return (
-    <section className="photo-meal-tool scanner-tool nutrition-scanner-v2" aria-labelledby="nutrition-scanner-v2-heading">
+    <section id="nutrition-scanner-v2" className="photo-meal-tool scanner-tool nutrition-scanner-v2" aria-labelledby="nutrition-scanner-v2-heading">
       <div className="scanner-start-header">
         <h3 id="nutrition-scanner-v2-heading" ref={headingRef} tabIndex={-1}>{t('scanner.title')}</h3>
         <div className="scanner-start-guide">

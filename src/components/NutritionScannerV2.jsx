@@ -464,6 +464,7 @@ function NutritionScannerV2({
   }))
   const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine !== false)
   const [liveCameraActive, setLiveCameraActive] = useState(false)
+  const [consentInfoDisplay, setConsentInfoDisplay] = useState('always')
   const canUseLiveCamera = typeof window !== 'undefined' && window.isSecureContext && Boolean(navigator.mediaDevices?.getUserMedia)
   const today = analysisDate || selectedMealDate || getTodayDateString()
   const remoteConsentRecord = storedRemoteConsent.userId === userId
@@ -1304,6 +1305,29 @@ function NutritionScannerV2({
         />
         <span>{t('scanner.consentLabel')}</span>
       </label>
+      <fieldset className="scanner-consent-display">
+        <legend>Visa denna information</legend>
+        <label>
+          <input
+            type="radio"
+            name="nutrition-consent-display"
+            value="always"
+            checked={consentInfoDisplay === 'always'}
+            onChange={() => setConsentInfoDisplay('always')}
+          />
+          <span>Visa varje gång</span>
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="nutrition-consent-display"
+            value="never"
+            checked={consentInfoDisplay === 'never'}
+            onChange={() => setConsentInfoDisplay('never')}
+          />
+          <span>Visa inte igen</span>
+        </label>
+      </fieldset>
       <div className="scanner-actions scanner-primary-actions">
           <button className="primary-button" type="button" disabled={!hasActiveImagePayload || isAnalyzing || !isOnline} onClick={(event) => handleAnalysisAction('remote', event)}>
             {isAnalyzing ? t('scanner.analyzing') : t('scanner.analyzeFood')}

@@ -432,6 +432,7 @@ function NutritionScannerV2({
 }) {
   const { t, i18n } = useTranslation(['nutrition', 'common'])
   const headingRef = useRef(null)
+  const scannerSectionRef = useRef(null)
   const fileInputRef = useRef(null)
   const cameraInputRef = useRef(null)
   const reviewRef = useRef(null)
@@ -627,9 +628,26 @@ function NutritionScannerV2({
     if (previewUrl || !canUseLiveCamera) return undefined
 
     let cancelled = false
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
-      .then((stream) => {
-        if (cancelled) {
+    let cameraStarting = false
+
+    function stopLiveCamera() {
+      liveCameraStreamRef.current?.getTracks?.().forEach((track) => track.stop())
+      liveCameraStreamRef.current = null
+      if (liveCameraVideoRef.current) {
+        liveCameraVideoRef.current.srcObject = null
+      }
+      setLiveCameraActive(false)
+    }
+
+    async function startLiveCamera() {
+      if (cancelled || cameraStarting || liveCameraStreamRef.current || document.visibilityState === 'hidden') return
+      cameraStarting = true
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false,
+        })
+        if (cancelled || document.visibilityState === 'hidden') {
           stream.getTracks().forEach((track) => track.stop())
           return
         }
@@ -639,14 +657,45 @@ function NutritionScannerV2({
           liveCameraVideoRef.current.play().catch(() => {})
         }
         setLiveCameraActive(true)
-      })
-      .catch(() => setLiveCameraActive(false))
+      } catch {
+        setLiveCameraActive(false)
+      } finally {
+        cameraStarting = false
+      }
+    }
+
+    const section = scannerSectionRef.current
+    const observer = typeof IntersectionObserver === 'function' && section
+      ? new IntersectionObserver(([entry]) => {
+        if (entry?.isIntersecting) startLiveCamera()
+        else stopLiveCamera()
+      }, { threshold: 0.05 })
+      : null
+
+    if (observer && section) observer.observe(section)
+    else startLiveCamera()
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') {
+        stopLiveCamera()
+      } else if (!observer) {
+        startLiveCamera()
+      }
+    }
+
+    function handlePageHide() {
+      stopLiveCamera()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('pagehide', handlePageHide)
 
     return () => {
       cancelled = true
-      liveCameraStreamRef.current?.getTracks?.().forEach((track) => track.stop())
-      liveCameraStreamRef.current = null
-      setLiveCameraActive(false)
+      observer?.disconnect()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('pagehide', handlePageHide)
+      stopLiveCamera()
     }
   }, [canUseLiveCamera, previewUrl])
 
@@ -1204,7 +1253,7 @@ function NutritionScannerV2({
   }
 
   return (
-    <section className="photo-meal-tool scanner-tool nutrition-scanner-v2" aria-labelledby="nutrition-scanner-v2-heading">
+    <section ref={scannerSectionRef} className="photo-meal-tool scanner-tool nutrition-scanner-v2" aria-labelledby="nutrition-scanner-v2-heading">
       <div className="scanner-start-header">
         <h3 id="nutrition-scanner-v2-heading" ref={headingRef} tabIndex={-1}>{t('scanner.title')}</h3>
         <div className="scanner-start-guide">

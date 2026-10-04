@@ -180,7 +180,9 @@ function MealLogger({
   const [weekStart, setWeekStart] = useState(() => getWeekStart(selectedMealDate))
 
   useEffect(() => {
-    window.requestAnimationFrame(() => {
+    let secondFrame = 0
+
+    const firstFrame = window.requestAnimationFrame(() => {
       if (initialPanel === 'recipes') {
         setNutritionViewMode('recipes')
       }
@@ -190,9 +192,17 @@ function MealLogger({
       }
 
       if (initialPanel === 'scanner') {
-        scrollTargetInAppContainer(document.getElementById('nutrition-scanner-v2'))
+        setNutritionViewMode('day')
+        secondFrame = window.requestAnimationFrame(() => {
+          scrollTargetInAppContainer(document.getElementById('nutrition-scanner-v2'))
+        })
       }
     })
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame)
+      if (secondFrame) window.cancelAnimationFrame(secondFrame)
+    }
   }, [initialPanel])
 
   useEffect(() => {

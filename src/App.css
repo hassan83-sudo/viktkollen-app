@@ -18565,3 +18565,38 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
 .nutrition-scanner-v2 .scanner-consent-display label + label {
   transform: translateY(-50px);
 }
+
+
+/* Nutrition scanner: approved Analyze + AI help layout. */
+.nutrition-scanner-v2 .scanner-primary-actions {
+  margin-top: 0;
+}
+.nutrition-scanner-v2 .scanner-primary-actions .primary-button {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(110deg, #7b24ff 0%, #5859ff 55%, #36a0ff 100%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+  box-shadow: 0 0 18px rgba(80, 74, 255, .22);
+}
+.nutrition-scanner-v2 .scanner-primary-actions .primary-button:disabled {
+  color: rgba(255,255,255,.92);
+  opacity: .72;
+}
+.nutrition-scanner-v2 .scanner-secondary-analysis {
+  margin-top: 2px;
+  padding: 0;
+  border: 1px solid rgba(111, 159, 209, .34);
+  border-radius: 11px;
+  background: rgba(7, 18, 34, .94);
+}
+.nutrition-scanner-v2 .scanner-secondary-analysis > summary {
+  padding: 11px 14px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.2;
+}

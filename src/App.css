@@ -18636,3 +18636,27 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
 .nutrition-scanner-v2 .scanner-secondary-analysis {
   transform: translateY(-68px);
 }
+
+
+/* Focused food scanner: remove inherited vertical space so opening Skanna mat matches the compact reference. */
+.scanner-tool-focused .nutrition-scanner-v2 {
+  min-height: 0 !important;
+  height: auto !important;
+  padding-bottom: 12px !important;
+}
+.scanner-tool-focused .nutrition-scanner-v2 .scanner-consent-display {
+  min-height: 0 !important;
+  height: auto !important;
+  padding-bottom: 0 !important;
+}
+.scanner-tool-focused .nutrition-scanner-v2 .scanner-primary-actions,
+.scanner-tool-focused .nutrition-scanner-v2 .scanner-secondary-analysis {
+  position: relative;
+  transform: none !important;
+}
+.scanner-tool-focused .nutrition-scanner-v2 .scanner-primary-actions {
+  margin-top: -52px !important;
+}
+.scanner-tool-focused .nutrition-scanner-v2 .scanner-secondary-analysis {
+  margin-top: 8px !important;
+}

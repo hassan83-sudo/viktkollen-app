@@ -18660,3 +18660,9 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
 .scanner-tool-focused .nutrition-scanner-v2 .scanner-secondary-analysis {
   margin-top: 8px !important;
 }
+
+
+/* Focused food scanner: move Analyze control another 20px upward from -52px to -72px. */
+.scanner-tool-focused .nutrition-scanner-v2 .scanner-primary-actions {
+  margin-top: -72px !important;
+}

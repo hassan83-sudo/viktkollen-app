@@ -18600,3 +18600,12 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   font-weight: 900;
   line-height: 1.2;
 }
+
+
+/* Nutrition scanner: move Analyze + AI help group 40px upward. */
+.nutrition-scanner-v2 .scanner-primary-actions {
+  transform: translateY(-40px);
+}
+.nutrition-scanner-v2 .scanner-secondary-analysis {
+  transform: translateY(-40px);
+}

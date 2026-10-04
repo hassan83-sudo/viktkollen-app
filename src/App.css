@@ -18668,7 +18668,7 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
     display: grid;
     gap: 0;
     margin: 0;
-    padding: 10px 12px 12px;
+    padding: 6px 12px 12px;
   }
 
   .nutrition-scanner-v2 .scanner-consent-display legend {
@@ -18678,9 +18678,15 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   .nutrition-scanner-v2 .scanner-consent-display label,
   .nutrition-scanner-v2 .scanner-consent-display label:first-of-type,
   .nutrition-scanner-v2 .scanner-consent-display label + label {
-    min-height: 16px;
+    min-height: 24px;
     margin: 0;
     transform: none;
+  }
+
+  /* The generic mobile input rule (min-height: 48px) made each radio row 48px tall. */
+  .nutrition-scanner-v2 .scanner-consent-display input {
+    min-height: 0;
+    padding: 0;
   }
 
   /* Keep the focused mobile scanner controls in normal document flow. */

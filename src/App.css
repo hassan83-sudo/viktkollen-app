@@ -18683,3 +18683,14 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
 .scanner-tool-focused .nutrition-scanner-v2 .scanner-primary-actions {
   margin-top: 0 !important;
 }
+
+
+/* Fix: do not transform the focused wrapper; it caused overlap with the section above. */
+.scanner-tool-focused {
+  transform: none !important;
+}
+
+/* Focused scanner: reduce the space above the scanner without painting over previous content. */
+.scanner-tool-focused .nutrition-scanner-v2 {
+  margin-top: -100px !important;
+}

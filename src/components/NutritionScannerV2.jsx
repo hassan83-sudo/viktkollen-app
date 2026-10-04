@@ -465,7 +465,11 @@ function NutritionScannerV2({
   }))
   const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine !== false)
   const [liveCameraActive, setLiveCameraActive] = useState(false)
-  const [consentInfoDisplay, setConsentInfoDisplay] = useState('always')
+  const consentInfoStorageKey = `viktkollen.nutritionScanner.consentInfoDisplay.${userId || 'anonymous'}`
+  const [consentInfoDisplay, setConsentInfoDisplay] = useState(() => {
+    if (typeof window === 'undefined') return 'always'
+    return window.localStorage.getItem(consentInfoStorageKey) === 'never' ? 'never' : 'always'
+  })
   const canUseLiveCamera = typeof window !== 'undefined' && window.isSecureContext && Boolean(navigator.mediaDevices?.getUserMedia)
   const today = analysisDate || selectedMealDate || getTodayDateString()
   const remoteConsentRecord = storedRemoteConsent.userId === userId
@@ -1241,6 +1245,14 @@ function NutritionScannerV2({
     setStatus(t('scanner.status.consentOff'))
   }
 
+  function handleConsentInfoDisplayChange(value) {
+    const nextValue = value === 'never' ? 'never' : 'always'
+    setConsentInfoDisplay(nextValue)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(consentInfoStorageKey, nextValue)
+    }
+  }
+
   function handleRevokeRemoteConsent() {
     remoteAnalysisApprovalRef.current.clear()
     setRemoteConsentDraft({ checked: false, userId })
@@ -1336,7 +1348,7 @@ function NutritionScannerV2({
           </div>
         </div>
       )}
-      {remoteConsentRecord.granted && (
+      {remoteConsentRecord.granted && consentInfoDisplay !== 'never' && (
         <div className="scanner-consent-row scanner-consent-status">
           <p className="estimate-note">{t('scanner.consentGranted')}</p>
           <button type="button" className="secondary-button" disabled={isAnalyzing} onClick={handleRevokeRemoteConsent}>
@@ -1362,7 +1374,7 @@ function NutritionScannerV2({
             name="nutrition-consent-display"
             value="always"
             checked={consentInfoDisplay === 'always'}
-            onChange={() => setConsentInfoDisplay('always')}
+            onChange={() => handleConsentInfoDisplayChange('always')}
           />
           <span>Visa varje gång</span>
         </label>
@@ -1372,7 +1384,7 @@ function NutritionScannerV2({
             name="nutrition-consent-display"
             value="never"
             checked={consentInfoDisplay === 'never'}
-            onChange={() => setConsentInfoDisplay('never')}
+            onChange={() => handleConsentInfoDisplayChange('never')}
           />
           <span>Visa inte igen</span>
         </label>

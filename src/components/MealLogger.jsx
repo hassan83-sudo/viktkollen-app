@@ -113,7 +113,7 @@ function scrollTargetInAppContainer(target) {
   const targetRect = target.getBoundingClientRect()
 
   scrollContainer.scrollTo({
-    top: Math.max(0, targetRect.top - containerRect.top + scrollContainer.scrollTop),
+    top: Math.max(0, targetRect.top - containerRect.top + scrollContainer.scrollTop + 100),
     behavior: getAccessibilityScrollBehavior(),
   })
 }

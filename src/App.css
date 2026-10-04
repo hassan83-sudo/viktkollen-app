@@ -18496,3 +18496,18 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   margin: 0;
   accent-color: #7b32ff;
 }
+
+
+/* Nutrition scanner: keep consent display heading and both choices tightly grouped. */
+.nutrition-scanner-v2 .scanner-consent-display {
+  gap: 3px;
+  padding-top: 6px;
+  padding-bottom: 7px;
+}
+.nutrition-scanner-v2 .scanner-consent-display legend {
+  margin-bottom: 2px;
+}
+.nutrition-scanner-v2 .scanner-consent-display label {
+  min-height: 20px;
+  margin: 0;
+}

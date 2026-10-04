@@ -73,12 +73,31 @@ function BodyScanGuidedCapture({
   const canFinishScan = canCompleteBodyAnalysisScan(photos)
   const hasCameraApi = typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia)
 
-  useEffect(() => () => {
-    cameraRequestRef.current += 1
-    window.clearTimeout(countdownTimerRef.current)
-    stopMediaStream(streamRef.current)
-    cancelVideoScanSpeech()
-    setBodyScanSessionActive(false)
+  useEffect(() => {
+    function releaseMedia() {
+      cameraRequestRef.current += 1
+      window.clearTimeout(countdownTimerRef.current)
+      countdownTimerRef.current = null
+      stopMediaStream(streamRef.current)
+      streamRef.current = null
+      if (videoRef.current) videoRef.current.srcObject = null
+      cancelVideoScanSpeech()
+      setBodyScanSessionActive(false)
+      setCameraActive(false)
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') releaseMedia()
+    }
+
+    window.addEventListener('pagehide', releaseMedia)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener('pagehide', releaseMedia)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      releaseMedia()
+    }
   }, [])
 
   useEffect(() => {

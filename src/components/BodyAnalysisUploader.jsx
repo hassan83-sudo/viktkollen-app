@@ -61,11 +61,30 @@ function BodyAnalysisUploader({
   const isCountingDown = countdown !== null
   const cameraRequestRef = useRef(0)
 
-  useEffect(() => () => {
-    cameraRequestRef.current += 1
-    window.clearTimeout(countdownTimerRef.current)
-    stopMediaStream(streamRef.current)
-    setBodyScanSessionActive(false)
+  useEffect(() => {
+    function releaseMedia() {
+      cameraRequestRef.current += 1
+      window.clearTimeout(countdownTimerRef.current)
+      countdownTimerRef.current = null
+      stopMediaStream(streamRef.current)
+      streamRef.current = null
+      if (videoRef.current) videoRef.current.srcObject = null
+      setBodyScanSessionActive(false)
+      setCameraActive(false)
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') releaseMedia()
+    }
+
+    window.addEventListener('pagehide', releaseMedia)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener('pagehide', releaseMedia)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      releaseMedia()
+    }
   }, [])
 
   // Camera and mic access must only ever start from an explicit tap -

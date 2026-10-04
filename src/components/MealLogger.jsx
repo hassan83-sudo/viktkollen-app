@@ -113,9 +113,42 @@ function scrollTargetInAppContainer(target) {
   const targetRect = target.getBoundingClientRect()
 
   scrollContainer.scrollTo({
-    top: Math.max(0, targetRect.top - containerRect.top + scrollContainer.scrollTop + 300),
+    top: Math.max(0, targetRect.top - containerRect.top + scrollContainer.scrollTop),
     behavior: getAccessibilityScrollBehavior(),
   })
+}
+
+// The scanner is lazy-loaded. On the first navigation after login its chunk is
+// not loaded yet, so the page is too short and the scroll is clamped above the
+// scanner. Scroll again once the scanner heading has actually rendered.
+function scrollToScannerWhenReady() {
+  const scrollToScanner = () => scrollTargetInAppContainer(document.getElementById('nutrition-scanner-v2'))
+  scrollToScanner()
+
+  if (document.getElementById('nutrition-scanner-v2-heading')) return () => {}
+
+  let frame = 0
+  const stop = () => {
+    observer.disconnect()
+    window.clearTimeout(timeout)
+    window.cancelAnimationFrame(frame)
+    window.removeEventListener('touchstart', stop)
+    window.removeEventListener('wheel', stop)
+    window.removeEventListener('keydown', stop)
+  }
+  const observer = new MutationObserver(() => {
+    if (!document.getElementById('nutrition-scanner-v2-heading')) return
+    stop()
+    frame = window.requestAnimationFrame(scrollToScanner)
+  })
+  const timeout = window.setTimeout(stop, 10000)
+
+  observer.observe(document.body, { childList: true, subtree: true })
+  window.addEventListener('touchstart', stop, { passive: true })
+  window.addEventListener('wheel', stop, { passive: true })
+  window.addEventListener('keydown', stop)
+
+  return stop
 }
 
 function MealLogger({
@@ -181,6 +214,7 @@ function MealLogger({
 
   useEffect(() => {
     let secondFrame = 0
+    let stopScannerScroll = () => {}
 
     const firstFrame = window.requestAnimationFrame(() => {
       if (initialPanel === 'recipes') {
@@ -194,7 +228,7 @@ function MealLogger({
       if (initialPanel === 'scanner') {
         setNutritionViewMode('day')
         secondFrame = window.requestAnimationFrame(() => {
-          scrollTargetInAppContainer(document.getElementById('nutrition-scanner-v2'))
+          stopScannerScroll = scrollToScannerWhenReady()
         })
       }
     })
@@ -202,16 +236,23 @@ function MealLogger({
     return () => {
       window.cancelAnimationFrame(firstFrame)
       if (secondFrame) window.cancelAnimationFrame(secondFrame)
+      stopScannerScroll()
     }
   }, [initialPanel])
 
   useEffect(() => {
     if (navigationIntent?.panel !== 'scanner') return
 
-    window.requestAnimationFrame(() => {
+    let stopScannerScroll = () => {}
+    const frame = window.requestAnimationFrame(() => {
       setNutritionViewMode('day')
-      scrollTargetInAppContainer(document.getElementById('nutrition-scanner-v2'))
+      stopScannerScroll = scrollToScannerWhenReady()
     })
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      stopScannerScroll()
+    }
   }, [navigationIntent])
 
   const normalizedMeals = useMemo(() => normalizeMeals(meals), [meals])

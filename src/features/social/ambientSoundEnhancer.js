@@ -11,8 +11,22 @@ function stop() {
   nodes = []
   if (timer) clearTimeout(timer)
   timer = null
+  try { master?.disconnect?.() } catch {}
+  master = null
+  if (context && context.state !== 'closed') {
+    try { context.suspend?.() } catch {}
+  }
   playing = false
   syncButton()
+}
+
+function releaseAudioSession() {
+  stop()
+  const activeContext = context
+  context = null
+  if (activeContext && activeContext.state !== 'closed') {
+    try { activeContext.close?.() } catch {}
+  }
 }
 
 function noiseBuffer(ctx, brown = false) {
@@ -124,6 +138,10 @@ function bind() {
 
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   const observer = new MutationObserver(bind)
+  window.addEventListener('pagehide', releaseAudioSession)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') releaseAudioSession()
+  })
   observer.observe(document.documentElement, { childList: true, subtree: true })
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind, { once: true })
   else bind()

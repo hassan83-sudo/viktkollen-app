@@ -1244,7 +1244,7 @@ function NutritionScannerV2({
       )}
       <div className="scanner-file-picker-group" aria-label={t('scanner.imagePickerAria')}>
         <div className="photo-input scanner-file-picker scanner-camera-control">
-          <span>{t('scanner.takePhoto')}</span>
+          <span className="scanner-picker-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5.5 10 3.5h4l1.5 2H19a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-10a2 2 0 0 1 2-2h3.5Z"/><circle cx="12" cy="12.5" r="4"/></svg>{t('scanner.takePhoto')}</span>
           <input
             className="scanner-camera-native-input"
             id="nutrition-scanner-photo-camera-input"
@@ -1260,7 +1260,7 @@ function NutritionScannerV2({
           />
         </div>
         <label className="photo-input scanner-file-picker" htmlFor="nutrition-scanner-photo-library-input">
-          <span>{t('scanner.chooseImage')}</span>
+          <span className="scanner-picker-label"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m5 17 4.5-4.5 3.5 3 2.5-2.5L19 17"/></svg>{t('scanner.chooseImage')}</span>
           <input
             className="scanner-file-picker-input"
             id="nutrition-scanner-photo-library-input"

@@ -18559,3 +18559,9 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
 .nutrition-scanner-v2 .scanner-consent-display label + label {
   transform: translateY(-30px);
 }
+
+
+/* Nutrition scanner: move second consent option another 20px upward. */
+.nutrition-scanner-v2 .scanner-consent-display label + label {
+  transform: translateY(-50px);
+}

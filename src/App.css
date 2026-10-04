@@ -18511,3 +18511,15 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   min-height: 20px;
   margin: 0;
 }
+
+
+/* Nutrition scanner: exact requested consent preference spacing. */
+.nutrition-scanner-v2 .scanner-consent-display {
+  gap: 0;
+}
+.nutrition-scanner-v2 .scanner-consent-display legend {
+  margin-bottom: 10px;
+}
+.nutrition-scanner-v2 .scanner-consent-display label + label {
+  margin-top: 15px;
+}

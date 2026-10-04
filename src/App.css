@@ -18672,3 +18672,14 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
 .scanner-tool-focused .nutrition-scanner-v2 .scanner-primary-actions {
   margin-top: -100px !important;
 }
+
+
+/* Focused food scanner: move the entire scanner block upward by 100px. */
+.scanner-tool-focused {
+  transform: translateY(-100px);
+}
+
+/* The whole focused scanner now moves as one unit; don't separately pull Analyze upward. */
+.scanner-tool-focused .nutrition-scanner-v2 .scanner-primary-actions {
+  margin-top: 0 !important;
+}

@@ -18711,3 +18711,71 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
     bottom: max(9px, calc(env(safe-area-inset-bottom) + 9px)) !important;
   }
 }
+
+
+/* Home title neon brightness: user-adjustable, with a calmer default. */
+#app-section-home.is-active .overview-title-glow-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0 0 6px;
+  color: rgba(255,255,255,.78);
+  font-size: 7px;
+  font-weight: 800;
+}
+#app-section-home.is-active .overview-title-glow-control button {
+  min-height: 24px;
+  padding: 3px 7px;
+  border: 1px solid rgba(255,255,255,.24);
+  border-radius: 999px;
+  background: rgba(5,9,20,.76);
+  color: rgba(255,255,255,.76);
+  font: inherit;
+}
+#app-section-home.is-active .overview-title-glow-control button.is-active {
+  border-color: rgba(255,255,255,.72);
+  color: #fff;
+  background: rgba(255,255,255,.12);
+}
+
+/* Normal is intentionally softer than the previous fixed glow. */
+#app-section-home.is-active .overview-primary-actions[data-glow-level="normal"] > .overview-primary-action.is-eyes .overview-primary-action-copy > small:first-child {
+  box-shadow: 0 0 6px rgba(57,217,255,.55), 0 0 11px rgba(100,82,255,.46), 0 0 16px rgba(213,46,255,.32), inset 0 0 8px rgba(83,58,255,.18);
+}
+#app-section-home.is-active .overview-primary-actions[data-glow-level="normal"] > .overview-primary-action.is-food .overview-primary-action-copy > small:first-child {
+  box-shadow: 0 0 6px rgba(255,61,137,.48), 0 0 12px rgba(255,61,137,.28);
+}
+#app-section-home.is-active .overview-primary-actions[data-glow-level="normal"] > .overview-primary-action.is-body .overview-primary-action-copy > small:first-child {
+  box-shadow: 0 0 6px rgba(33,232,208,.52), 0 0 11px rgba(40,230,192,.40), 0 0 16px rgba(157,255,91,.26), inset 0 0 8px rgba(33,232,208,.15);
+}
+
+#app-section-home.is-active .overview-primary-actions[data-glow-level="low"] > .overview-primary-action.is-eyes .overview-primary-action-copy > small:first-child {
+  box-shadow: 0 0 4px rgba(57,217,255,.34), 0 0 8px rgba(100,82,255,.25);
+}
+#app-section-home.is-active .overview-primary-actions[data-glow-level="low"] > .overview-primary-action.is-food .overview-primary-action-copy > small:first-child {
+  box-shadow: 0 0 4px rgba(255,61,137,.30), 0 0 8px rgba(255,61,137,.18);
+}
+#app-section-home.is-active .overview-primary-actions[data-glow-level="low"] > .overview-primary-action.is-body .overview-primary-action-copy > small:first-child {
+  box-shadow: 0 0 4px rgba(33,232,208,.32), 0 0 8px rgba(40,230,192,.22);
+}
+
+#app-section-home.is-active .overview-primary-actions[data-glow-level="strong"] > .overview-primary-action.is-eyes .overview-primary-action-copy > small:first-child {
+  box-shadow: 0 0 8px rgba(57,217,255,.82), 0 0 16px rgba(100,82,255,.72), 0 0 22px rgba(213,46,255,.55), inset 0 0 12px rgba(83,58,255,.28);
+}
+#app-section-home.is-active .overview-primary-actions[data-glow-level="strong"] > .overview-primary-action.is-food .overview-primary-action-copy > small:first-child {
+  box-shadow: 0 0 8px rgba(255,61,137,.72), 0 0 16px rgba(255,61,137,.46);
+}
+#app-section-home.is-active .overview-primary-actions[data-glow-level="strong"] > .overview-primary-action.is-body .overview-primary-action-copy > small:first-child {
+  box-shadow: 0 0 8px rgba(33,232,208,.78), 0 0 16px rgba(40,230,192,.62), 0 0 22px rgba(157,255,91,.42), inset 0 0 12px rgba(33,232,208,.22);
+}
+
+#app-section-home.is-active .overview-primary-actions[data-glow-level="max"] > .overview-primary-action.is-eyes .overview-primary-action-copy > small:first-child {
+  box-shadow: 0 0 10px rgba(57,217,255,.98), 0 0 20px rgba(100,82,255,.90), 0 0 30px rgba(213,46,255,.74), inset 0 0 15px rgba(83,58,255,.34);
+}
+#app-section-home.is-active .overview-primary-actions[data-glow-level="max"] > .overview-primary-action.is-food .overview-primary-action-copy > small:first-child {
+  box-shadow: 0 0 10px rgba(255,61,137,.92), 0 0 22px rgba(255,61,137,.68), 0 0 30px rgba(255,61,137,.42);
+}
+#app-section-home.is-active .overview-primary-actions[data-glow-level="max"] > .overview-primary-action.is-body .overview-primary-action-copy > small:first-child {
+  box-shadow: 0 0 10px rgba(33,232,208,.96), 0 0 20px rgba(40,230,192,.82), 0 0 30px rgba(157,255,91,.58), inset 0 0 15px rgba(33,232,208,.30);
+}

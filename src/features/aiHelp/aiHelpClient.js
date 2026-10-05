@@ -44,5 +44,24 @@ export async function requestAiHelpReply({
     status: payload.status === 'unanswered' ? 'unanswered' : 'answered',
     tool: sanitizeHelpTool(payload.tool),
     unansweredId: payload.unansweredId || '',
+    ...(payload.confirmation?.action === 'schedule_cancel' ? { confirmation: { action: 'schedule_cancel' } } : {}),
   }
+}
+
+export async function confirmScheduleCancel() {
+  const auth = await getCurrentAiAuthorization()
+  if (!auth.ok) return { code: auth.errorCode || 'AUTH_REQUIRED', ok: false }
+  const response = await fetch('/api/billing/cancel', {
+    body: '{}',
+    headers: {
+      Authorization: auth.authorizationHeader,
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  })
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || !payload?.ok) {
+    return { code: payload?.error?.code || 'UNKNOWN_ERROR', ok: false }
+  }
+  return { ok: true, subscription: payload.subscription || null }
 }

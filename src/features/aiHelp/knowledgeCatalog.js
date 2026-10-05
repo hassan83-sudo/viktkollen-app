@@ -310,7 +310,7 @@ export const knowledgeCatalog = [
     id: 'settings.plan',
     title: 'Abonnemang',
     aliases: ['abonnemang', 'pris', 'kostar', 'betalning', 'kvot', 'paket', 'plan', 'subscription', 'quota', 'uppsägning', 'avsluta'],
-    summary: 'Inställningar visar den inloggade användarens abonnemang och användning, och kan jämföra paket som servern har till försäljning. Priserna i plankatalogen är preliminära. AI-Hjälpen läser inte din personliga betalning eller uppsägning och kan inte ändra abonnemang, betalning eller uppsägning. Kontoradering görs inte här.',
+    summary: 'Inställningar visar abonnemang och användning. Priserna i plankatalogen är preliminära och ersätter inte verifierade kundfakta om plan, pris, kvot, betalning eller uppsägning. AI-Hjälpen kan inte ändra abonnemang, betalning eller uppsägning själv. En uppsägning kräver en separat bekräftelse. Kontoradering görs inte här.',
     steps: ['Öppna Mer.', 'Öppna Inställningar.', 'Läs abonnemang och jämför abonnemang där.'],
     status: 'partial',
     sectionId: 'installningar',

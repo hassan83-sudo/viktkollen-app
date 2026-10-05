@@ -3,7 +3,10 @@ import { normalizeLanguageCode } from '../../i18n/languages.js'
 const chrome = {
   sv: {
     close: 'Stäng',
-    empty: 'Ställ en fråga om hur Viktkollen fungerar.',
+    confirmCancel: 'Bekräfta uppsägning',
+    cancelDone: 'Uppsägningen är schemalagd till periodens slut.',
+    cancelFailed: 'Uppsägningen kunde inte genomföras.',
+    empty: 'Fråga om hur appen fungerar, eller om konto, abonnemang, plan, kvoter och betalningsstatus.',
     error: 'AI-Hjälpen kunde inte svara just nu.',
     modelLimited: 'Den avancerade förklaringen är tillfälligt begränsad. Tydliga frågor om appens funktioner kan fortfarande besvaras.',
     open: 'Öppna AI-Hjälp',
@@ -17,7 +20,10 @@ const chrome = {
   },
   en: {
     close: 'Close',
-    empty: 'Ask how Viktkollen works.',
+    confirmCancel: 'Confirm cancellation',
+    cancelDone: 'Cancellation is scheduled for the end of the period.',
+    cancelFailed: 'The cancellation could not be completed.',
+    empty: 'Ask how the app works, or about your account, subscription, plan, quotas and payment status.',
     error: 'AI Help could not answer right now.',
     modelLimited: 'The longer explanation is temporarily limited. Clear questions about app features can still be answered.',
     open: 'Open AI Help',

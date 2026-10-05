@@ -60,6 +60,7 @@ export async function handleAiHelpRequest(request, response) {
     source: result.source,
     status: result.status,
     ...(result.tool ? { tool: result.tool } : {}),
+    ...(result.confirmation?.action === 'schedule_cancel' ? { confirmation: { action: 'schedule_cancel' } } : {}),
     ...(result.unansweredId ? { unansweredId: result.unansweredId } : {}),
   })
 }

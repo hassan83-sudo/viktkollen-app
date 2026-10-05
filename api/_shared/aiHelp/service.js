@@ -14,6 +14,13 @@ import {
   reservedInputTokens,
 } from './costGuard.js'
 import { createCostStoreFromEnv } from './supabaseCostStore.js'
+import {
+  loadCustomerContext,
+  renderCancelOffer,
+  renderVerifiedAnswer,
+  selectCustomerContext,
+  verifiedPriceMinor,
+} from './customerContext.js'
 import { preliminaryPlanFacts, verifiedPriceMajors } from './planFacts.js'
 import { buildAiHelpInstructions } from './prompt.js'
 import { recordUnansweredQuestion } from './unansweredStore.js'
@@ -58,12 +65,21 @@ const secretPattern = /sk-[A-Za-z0-9_-]{8,}|OPENAI_API_KEY|SUPABASE_SERVICE_ROLE
 const personalPricePattern = /ditt abonnemang kostar|din plan kostar|du betalar\s+\d/i
 const foreignMoneyPattern = /\$\s*\d|\d[\d\s.,]*\s*€/i
 
-export function answerIsAllowed(answer) {
+export function answerIsAllowed(answer, { verifiedPriceMinor: serverPriceMinor = null } = {}) {
   const text = String(answer || '')
-  if (secretPattern.test(text) || claimedAccountActionPattern.test(text) || personalPricePattern.test(text) || foreignMoneyPattern.test(text)) {
+  if (secretPattern.test(text) || claimedAccountActionPattern.test(text) || foreignMoneyPattern.test(text)) {
     return false
   }
+  const verifiedMajor = Number.isInteger(serverPriceMinor) && serverPriceMinor % 100 === 0
+    ? serverPriceMinor / 100
+    : null
+  if (personalPricePattern.test(text)) {
+    const stated = [...text.matchAll(/\b(\d{1,6})(?:[.,]\d{1,2})?\s*(?:kr|sek|kronor)\b/gi)]
+      .map((match) => Number(match[1]))
+    if (verifiedMajor == null || stated.length === 0 || stated.some((amount) => amount !== verifiedMajor)) return false
+  }
   const allowed = new Set(verifiedPriceMajors())
+  if (verifiedMajor != null) allowed.add(verifiedMajor)
   const amounts = [...text.matchAll(/\b(\d{1,6})(?:[.,]\d{1,2})?\s*(?:kr|sek|kronor)\b/gi)]
     .map((match) => Number(match[1]))
   return amounts.every((amount) => allowed.has(amount))
@@ -147,9 +163,25 @@ async function keepReservation(store, reservationId) {
   }
 }
 
+function verifiedCustomerResult(validated, selection, customer) {
+  const rendered = selection.cancel
+    ? renderCancelOffer({ context: customer, languageCode: validated.language.code })
+    : { answer: renderVerifiedAnswer({ context: customer, languageCode: validated.language.code, selection }), confirmation: null }
+  return {
+    answer: rendered.answer,
+    featureIds: ['settings.plan'],
+    language: validated.language,
+    ok: true,
+    source: 'verified-customer',
+    status: 'answered',
+    ...(rendered.confirmation ? { confirmation: rendered.confirmation } : {}),
+  }
+}
+
 export async function answerAiHelpQuestion({
   body = {},
   costStore = null,
+  customerReaders = null,
   env = process.env,
   fetchImpl = fetch,
   userId,
@@ -159,12 +191,30 @@ export async function answerAiHelpQuestion({
     return { ok: false, status: 400, code: 'INVALID_REQUEST', language: validated.language }
   }
 
+  const question = validated.messages[validated.messages.length - 1].content
+  const selection = selectCustomerContext(question)
+  let customer = null
+  if (selection.personal) {
+    customer = userId
+      ? await loadCustomerContext({
+        feature: selection.feature,
+        readers: customerReaders,
+        slices: selection.slices,
+        userId,
+      })
+      : { available: false, reason: 'unauthenticated' }
+    if (selection.cancel || selection.direct || !env.OPENAI_API_KEY) {
+      return verifiedCustomerResult(validated, selection, customer)
+    }
+  }
+
   const route = helpDomain.route({
     languageCode: validated.language.code,
     messages: validated.messages,
     pinnedIds: validated.featureIds,
   })
   if (route.kind === 'local') {
+    if (customer) return verifiedCustomerResult(validated, selection, customer)
     return {
       ...localHelpResult(route.entry, {
         extra: route.entry.id === 'settings.plan' ? preliminaryPlanFacts() : '',
@@ -202,6 +252,7 @@ export async function answerAiHelpQuestion({
   const entries = route.entries
 
   if (!env.OPENAI_API_KEY) {
+    if (customer) return verifiedCustomerResult(validated, selection, customer)
     return { code: 'PROVIDER_NOT_CONFIGURED', language: validated.language, ok: false, status: 503 }
   }
 
@@ -212,9 +263,10 @@ export async function answerAiHelpQuestion({
     Number.isFinite(requestedTokens) && requestedTokens > 0 ? requestedTokens : AI_HELP_DEFAULT_MAX_OUTPUT_TOKENS,
   )
   const instructions = buildAiHelpInstructions({
+    customerFacts: customer,
     entries,
     languageCode: validated.language.code,
-    planFacts: entries.some((entry) => entry.id === 'settings.plan') ? preliminaryPlanFacts() : '',
+    planFacts: customer ? '' : (entries.some((entry) => entry.id === 'settings.plan') ? preliminaryPlanFacts() : ''),
   })
   const input = [
     { role: 'developer', content: [{ text: instructions, type: 'input_text' }] },
@@ -227,6 +279,7 @@ export async function answerAiHelpQuestion({
   ]
   const budgetSek = Number(env.AI_HELP_BUDGET_SEK)
   if (!Number.isFinite(budgetSek) || budgetSek <= 0) {
+    if (customer) return verifiedCustomerResult(validated, selection, customer)
     if (route.fallbackEntry) return localFallbackResult(route, validated.language)
     return limitedModelResult(validated.language, 60)
   }
@@ -244,6 +297,7 @@ export async function answerAiHelpQuestion({
     windowSeconds: Math.max(1, Math.round(positiveInteger(env.AI_HELP_RATE_WINDOW_MS, AI_HELP_DEFAULT_WINDOW_MS) / 1000)),
   })
   if (!reservation.ok) {
+    if (customer) return verifiedCustomerResult(validated, selection, customer)
     if (route.fallbackEntry) return localFallbackResult(route, validated.language)
     return limitedModelResult(validated.language, reservation.retryAfterSeconds)
   }
@@ -267,11 +321,13 @@ export async function answerAiHelpQuestion({
     })
   } catch {
     await keepReservation(store, reservation.reservationId)
+    if (customer) return verifiedCustomerResult(validated, selection, customer)
     return { code: 'PROVIDER_UNAVAILABLE', language: validated.language, ok: false, status: 503 }
   }
 
   if (!providerResponse.ok) {
     await keepReservation(store, reservation.reservationId)
+    if (customer) return verifiedCustomerResult(validated, selection, customer)
     return { code: 'PROVIDER_UNAVAILABLE', language: validated.language, ok: false, status: 503 }
   }
 
@@ -315,7 +371,9 @@ export async function answerAiHelpQuestion({
     .map((id) => clampText(id, 80))
     .filter((id) => entries.some((entry) => entry.id === id))
     .slice(0, 4)
-  if (parsed.status === 'answered' && answer && !answerIsAllowed(answer)) {
+  const priceMinor = verifiedPriceMinor(customer)
+  if (parsed.status === 'answered' && answer && !answerIsAllowed(answer, { verifiedPriceMinor: priceMinor })) {
+    if (customer) return verifiedCustomerResult(validated, selection, customer)
     return {
       answer: '',
       featureIds: [],
@@ -325,7 +383,7 @@ export async function answerAiHelpQuestion({
       status: 'unanswered',
     }
   }
-  const answered = parsed.status === 'answered' && answer && answerIsAllowed(answer)
+  const answered = parsed.status === 'answered' && answer && answerIsAllowed(answer, { verifiedPriceMinor: priceMinor })
 
   if (!answered) {
     const recorded = recordUnansweredQuestion({

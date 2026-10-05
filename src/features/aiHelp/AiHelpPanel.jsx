@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getLanguageDefinition, normalizeLanguageCode } from '../../i18n/languages.js'
-import { requestAiHelpReply } from './aiHelpClient.js'
+import { confirmScheduleCancel, requestAiHelpReply } from './aiHelpClient.js'
 import { requestOpenHelpSection } from './aiHelpTools.js'
 import { helpChrome } from './uiChrome.js'
 import './AiHelpPanel.css'
@@ -54,6 +54,35 @@ function AiHelpPanel() {
     return () => window.removeEventListener('hashchange', syncHash)
   }, [])
 
+  async function confirmMessageCancel(index) {
+    if (pending) return
+    setPending(true)
+    setNotice('')
+    try {
+      const result = await confirmScheduleCancel()
+      setMessages((current) => {
+        const message = current[index]
+        if (message?.confirmation?.action !== 'schedule_cancel') return current
+        const next = current.map((item, itemIndex) => (
+          itemIndex === index ? { ...item, confirmation: null } : item
+        ))
+        return [
+          ...next,
+          {
+            content: result.ok ? chrome.cancelDone : chrome.cancelFailed,
+            featureIds: [],
+            role: 'assistant',
+            status: 'answered',
+          },
+        ]
+      })
+    } catch {
+      setNotice(chrome.error)
+    } finally {
+      setPending(false)
+    }
+  }
+
   async function handleSubmit(event) {
     event.preventDefault()
     const content = draft.replace(/\s+/g, ' ').trim()
@@ -102,6 +131,7 @@ function AiHelpPanel() {
       setMessages((current) => [
         ...current,
         {
+          confirmation: result.confirmation || null,
           content: result.answer,
           featureIds: result.featureIds,
           role: 'assistant',
@@ -132,6 +162,15 @@ function AiHelpPanel() {
             {messages.map((message, index) => (
               <div className={`ai-help-message is-${message.role}`} key={`${message.role}-${index}`}>
                 <p>{message.content}</p>
+                {message.confirmation?.action === 'schedule_cancel' && (
+                  <button
+                    className="secondary-button ai-help-action"
+                    type="button"
+                    onClick={() => confirmMessageCancel(index)}
+                  >
+                    {chrome.confirmCancel}
+                  </button>
+                )}
                 {message.tool?.name === 'open-section' && (
                   <button
                     className="secondary-button ai-help-action"

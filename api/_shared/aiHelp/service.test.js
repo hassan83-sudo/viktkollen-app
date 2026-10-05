@@ -507,4 +507,203 @@ describe('AI Help language and model contract', () => {
     expect(local.answer).toMatch(/AI-estimat/)
     expect(fetchImpl).toHaveBeenCalledTimes(1)
   })
+
+  it('answers personal billing questions from the authenticated user only', async () => {
+    const writes = vi.fn()
+    const seen = []
+    const customerReaders = {
+      plan: async (planId) => {
+        seen.push(planId)
+        return {
+          entitlements: [{ enabled: true, feature: 'food.scan', limit_kind: 'NUMBER', limit_value: 30 }],
+          plan: {
+            active: true,
+            billing_interval: 'month',
+            currency: 'SEK',
+            enabled_for_sale: true,
+            plan_id: planId,
+            price_minor: 400,
+          },
+          unavailable: false,
+        }
+      },
+      quota: async ({ userId: quotaUserId }) => {
+        seen.push(quotaUserId)
+        return {
+          quota: { feature: 'food.scan', limit: 30, remaining: 12, status: 'ALLOWED', used: 18 },
+          unavailable: false,
+        }
+      },
+      subscription: async (id) => {
+        seen.push(id)
+        return {
+          subscription: {
+            cancel_at_period_end: false,
+            current_period_end: '2026-11-01T00:00:00.000Z',
+            past_due_grace_until: null,
+            pending_plan_id: null,
+            plan_id: 'plan.prelim.sek.month.04',
+            status: 'ACTIVE',
+          },
+          unavailable: false,
+        }
+      },
+      usage: async (id) => {
+        seen.push(id)
+        return { quotas: [{ key: 'food_scan', limit: 30, remaining: 12, used: 18 }], unlimited: [] }
+      },
+    }
+    const fetchImpl = vi.fn()
+    const result = await answerAiHelpQuestion({
+      body: {
+        confirmation: true,
+        messages: [{ content: 'Vilket abonnemang har jag?', role: 'user' }],
+        user_id: 'user-b',
+      },
+      customerReaders,
+      env: { AI_HELP_BUDGET_SEK: '1000', OPENAI_API_KEY: 'test-key' },
+      fetchImpl,
+      userId: 'user-a',
+    })
+
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(writes).not.toHaveBeenCalled()
+    expect(seen).not.toContain('user-b')
+    expect(seen).toContain('user-a')
+    expect(result.source).toBe('verified-customer')
+    expect(result.answer).toContain('plan.prelim.sek.month.04')
+    expect(result.answer).toContain('ACTIVE')
+    expect(result.answer).toContain('4 kr')
+    expect(result.confirmation).toBeUndefined()
+  })
+
+  it('uses the quota reader for remaining food scans and does not call the model', async () => {
+    const fetchImpl = vi.fn()
+    const result = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Hur mycket matscanning har jag kvar?', role: 'user' }] },
+      customerReaders: {
+        quota: async ({ feature, userId }) => ({
+          quota: { feature, limit: 30, remaining: 4, status: 'ALLOWED', used: 26 },
+          unavailable: false,
+          userId,
+        }),
+        usage: async () => ({ quotas: [], unlimited: [] }),
+      },
+      env: { OPENAI_API_KEY: 'test-key' },
+      fetchImpl,
+      userId: 'user-a',
+    })
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(result.answer).toContain('4')
+    expect(result.answer).toContain('26')
+    expect(result.source).toBe('verified-customer')
+  })
+
+  it('keeps ordinary navigation on the catalog', async () => {
+    const readers = { subscription: vi.fn() }
+    const fetchImpl = vi.fn()
+    const result = await answerAiHelpQuestion({
+      body: { language: 'sv', messages: [{ content: 'Var finns matscanning?', role: 'user' }] },
+      customerReaders: readers,
+      env: { AI_HELP_BUDGET_SEK: '1000', OPENAI_API_KEY: 'test-key' },
+      fetchImpl,
+      userId: 'user-a',
+    })
+    expect(readers.subscription).not.toHaveBeenCalled()
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(result.source).toBe('local')
+    expect(result.answer).toContain('Mat')
+  })
+
+  it('offers cancellation without a billing write until a separate confirmation exists', async () => {
+    const writes = vi.fn()
+    const fetchImpl = vi.fn()
+    const result = await answerAiHelpQuestion({
+      body: {
+        confirmation: true,
+        messages: [{ content: 'Avsluta mitt abonnemang', role: 'user' }],
+        user_id: 'user-b',
+      },
+      customerReaders: {
+        plan: async () => ({
+          entitlements: [],
+          plan: { active: true, billing_interval: 'month', currency: 'SEK', enabled_for_sale: true, plan_id: 'plan.prelim.sek.month.04', price_minor: 400 },
+          unavailable: false,
+        }),
+        subscription: async (id) => {
+          expect(id).toBe('user-a')
+          return {
+            subscription: {
+              cancel_at_period_end: false,
+              current_period_end: '2026-11-01T00:00:00.000Z',
+              plan_id: 'plan.prelim.sek.month.04',
+              status: 'ACTIVE',
+            },
+            unavailable: false,
+          }
+        },
+      },
+      env: { AI_HELP_BUDGET_SEK: '1000', OPENAI_API_KEY: 'test-key' },
+      fetchImpl,
+      userId: 'user-a',
+      writes,
+    })
+    expect(writes).not.toHaveBeenCalled()
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(result.confirmation).toEqual({ action: 'schedule_cancel' })
+    expect(result.answer).toMatch(/Inget har ändrats/)
+    expect(result.answer).not.toMatch(/har sagt upp|är uppsagt/)
+  })
+
+  it('replaces an invented personal price with the verified plan price', async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        output_text: JSON.stringify({
+          answer: 'Ditt abonnemang kostar 1234 kr.',
+          featureIds: ['settings.plan'],
+          status: 'answered',
+          confirmation: true,
+        }),
+      }),
+    }))
+    const result = await answerAiHelpQuestion({
+      body: { language: 'sv', messages: [{ content: 'Kan du förklara mitt abonnemang med andra ord?', role: 'user' }] },
+      customerReaders: {
+        plan: async () => ({
+          entitlements: [],
+          plan: { active: true, billing_interval: 'month', currency: 'SEK', enabled_for_sale: true, plan_id: 'plan.prelim.sek.month.04', price_minor: 400 },
+          unavailable: false,
+        }),
+        subscription: async () => ({
+          subscription: {
+            cancel_at_period_end: false,
+            current_period_end: '2026-11-01T00:00:00.000Z',
+            plan_id: 'plan.prelim.sek.month.04',
+            status: 'ACTIVE',
+          },
+          unavailable: false,
+        }),
+      },
+      env: { AI_HELP_BUDGET_SEK: '1000', OPENAI_API_KEY: 'test-key' },
+      fetchImpl,
+      userId: 'user-a',
+    })
+    expect(result.answer).toContain('4 kr')
+    expect(result.answer).not.toContain('1234')
+    expect(result.confirmation).toBeUndefined()
+  })
+
+  it('does not return personal billing data when no user id is supplied', async () => {
+    const readers = { subscription: vi.fn() }
+    const result = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Vilket abonnemang har jag?', role: 'user' }], user_id: 'user-b' },
+      customerReaders: readers,
+      userId: '',
+    })
+    expect(readers.subscription).not.toHaveBeenCalled()
+    expect(result.source).toBe('verified-customer')
+    expect(result.answer).not.toContain('user-b')
+    expect(result.answer).toMatch(/inte verifiera|cannot verify/i)
+  })
 })

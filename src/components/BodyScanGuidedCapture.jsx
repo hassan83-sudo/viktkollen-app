@@ -47,6 +47,7 @@ function BodyScanGuidedCapture({
   const [timerSeconds, setTimerSeconds] = useState(3)
   const [voiceEnabled, setVoiceEnabled] = useState(true)
   const [cameraActive, setCameraActive] = useState(false)
+  const [captureMode, setCaptureMode] = useState('guided')
   const [cameraError, setCameraError] = useState('')
   const [countdown, setCountdown] = useState(null)
   const [paused, setPaused] = useState(false)
@@ -56,6 +57,8 @@ function BodyScanGuidedCapture({
 
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
+  const nativeCameraInputRef = useRef(null)
+  const nativeCapturePoseRef = useRef('front')
   const streamRef = useRef(null)
   const countdownTimerRef = useRef(null)
   const cameraRequestRef = useRef(0)
@@ -287,6 +290,20 @@ function BodyScanGuidedCapture({
     startCamera(pose, { isRetake: true })
   }
 
+  function openNativeCamera(pose) {
+    nativeCapturePoseRef.current = pose
+    if (nativeCameraInputRef.current) {
+      nativeCameraInputRef.current.value = ''
+      nativeCameraInputRef.current.click()
+    }
+  }
+
+  function handleNativeCameraChange(event) {
+    const file = event.currentTarget.files?.[0]
+    if (!file) return
+    onPhotoChange(file, nativeCapturePoseRef.current)
+  }
+
   const stepLabel = {
     prepare: t('bodyScan:guided.stepPrepare'),
     front: t('bodyScan:guided.stepFront'),
@@ -335,10 +352,64 @@ function BodyScanGuidedCapture({
             ))}
           </div>
           {cameraError && <p className="analysis-status" role="alert">{cameraError}</p>}
-          <button className="body-scan-guided-cta" type="button" onClick={() => startCamera('front')}>
-            {t('bodyScan:guided.startCamera')}
-          </button>
-          <p className="body-scan-guided-hint">{t('bodyScan:guided.startCameraHint')}</p>
+          <div className="body-scan-mode-switch" role="group" aria-label={t('bodyScan:guided.captureModeLabel')}>
+            <button
+              aria-pressed={captureMode === 'native'}
+              className={captureMode === 'native' ? '' : 'secondary-button'}
+              type="button"
+              onClick={() => setCaptureMode('native')}
+            >
+              {t('bodyScan:guided.openCamera')}
+            </button>
+            <button
+              aria-pressed={captureMode === 'guided'}
+              className={captureMode === 'guided' ? '' : 'secondary-button'}
+              type="button"
+              onClick={() => setCaptureMode('guided')}
+            >
+              {t('bodyScan:guided.guidedScan')}
+            </button>
+          </div>
+          {captureMode === 'guided' ? (
+            <>
+              <button className="body-scan-guided-cta" type="button" onClick={() => startCamera('front')}>
+                {t('bodyScan:guided.startCamera')}
+              </button>
+              <p className="body-scan-guided-hint">{t('bodyScan:guided.startCameraHint')}</p>
+            </>
+          ) : (
+            <div className="body-scan-native-capture">
+              <input
+                ref={nativeCameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                hidden
+                onChange={handleNativeCameraChange}
+              />
+              <p className="body-scan-guided-hint">{t('bodyScan:guided.nativeCameraHint')}</p>
+              {captureOrder.map((pose) => {
+                const view = getBodyAnalysisView(pose)
+                return (
+                  <button
+                    className={photos[pose] ? 'secondary-button' : 'body-scan-guided-cta'}
+                    key={pose}
+                    type="button"
+                    onClick={() => openNativeCamera(pose)}
+                  >
+                    {photos[pose]
+                      ? t('bodyScan:guided.nativeRetake', { label: view.label })
+                      : t('bodyScan:guided.nativeTake', { label: view.label })}
+                  </button>
+                )
+              })}
+              {canFinishScan && (
+                <button className="body-scan-guided-cta" type="button" onClick={() => setStep('review')}>
+                  {t('bodyScan:guided.nativeReview')}
+                </button>
+              )}
+            </div>
+          )}
         </section>
       )}
 

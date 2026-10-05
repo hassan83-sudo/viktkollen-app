@@ -153,6 +153,15 @@ export const knowledgeCatalog = [
     sectionId: 'redo',
   },
   {
+    id: 'feature.ai-ear',
+    title: 'AI Örat',
+    aliases: ['ai örat', 'ai-örat', 'örat', 'ljudigenkänning', 'fågelljud', 'tal till text', 'humma', 'sjung'],
+    summary: 'AI Örat öppnas i Smart kamera på Hem, och från Mer under Tillgänglighet och Hörsel. Ljudigenkänning och fågelljud skickas till Viktkollens server först när du själv analyserar. Tal till text görs i webbläsaren och skickar inget ljud dit. Humma eller sjung visas i gränssnittet, skickar inget ljud och har ingen ansluten melodiigenkänning. Resultatet är en indikation.',
+    steps: ['Öppna Hem.', 'Öppna Smart kamera.', 'Välj AI Örat.'],
+    status: 'partial',
+    sectionId: 'home',
+  },
+  {
     id: 'feature.family-map',
     title: 'Familjekarta',
     aliases: ['familjekarta', 'familj', 'gps', 'position'],

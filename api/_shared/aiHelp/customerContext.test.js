@@ -104,6 +104,43 @@ describe('customer context selection', () => {
     expect(clear).toMatch(/Inget verifierat fel/)
   })
 
+  it('answers renewal from the subscription period end', () => {
+    const selection = selectCustomerContext('När förnyas mitt abonnemang?')
+    expect(selection.slices).toContain('subscription')
+    expect(selection.slices).not.toContain('usage')
+    const answer = renderVerifiedAnswer({
+      context: {
+        available: true,
+        plan: {
+          active: true,
+          billing_interval: 'month',
+          currency: 'SEK',
+          enabled_for_sale: true,
+          plan_id: 'plan.prelim.sek.month.04',
+          price_minor: 400,
+        },
+        subscription: {
+          ...activeSubscription,
+          current_period_end: '2026-11-01T00:00:00.000Z',
+        },
+        usage: { periodEnd: '2026-10-31T00:00:00.000Z', quotas: [], unlimited: [] },
+      },
+      selection,
+    })
+    expect(answer).toContain('2026-11-01T00:00:00.000Z')
+    expect(answer).not.toContain('2026-10-31')
+    const missing = renderVerifiedAnswer({
+      context: {
+        available: true,
+        subscription: { ...activeSubscription, current_period_end: null, plan_id: 'plan.free', status: 'NONE' },
+        usage: { periodEnd: '2026-10-31T00:00:00.000Z' },
+      },
+      selection,
+    })
+    expect(missing).toMatch(/Ingen verifierad förnyelsetidpunkt/)
+    expect(missing).not.toContain('2026-10-31')
+  })
+
   it('does not use the legacy entitlement route or a billing write', () => {
     const contextSource = readFileSync(new URL('./customerContext.js', import.meta.url), 'utf8')
     const serviceSource = readFileSync(new URL('./service.js', import.meta.url), 'utf8')

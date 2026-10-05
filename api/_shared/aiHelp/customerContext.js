@@ -38,7 +38,7 @@ const FEATURE_FOCUS = Object.freeze([
   Object.freeze({
     feature: 'ai.ear.interpret',
     key: 'ai_ear',
-    knowledgeId: null,
+    knowledgeId: 'feature.ai-ear',
     pattern: /ai-?örat|humming|humma|sjung/i,
     unit: 'requests',
   }),
@@ -133,7 +133,9 @@ export function selectCustomerContext(question) {
 
   let focus = 'subscription'
   if (cancel) focus = 'cancel'
+  else if (aboutPay && !feature) focus = 'payment'
   else if (why) focus = 'access'
+  else if (/förny|renewal/i.test(text)) focus = 'renewal'
   else if (aboutPay) focus = 'payment'
   else if (aboutUsage || (feature && /kvar|använt|kvot/i.test(text))) focus = 'usage'
   else if (aboutEnt) focus = 'entitlements'
@@ -348,6 +350,7 @@ export function renderVerifiedAnswer({ context, languageCode = 'sv', selection }
       : 'This question was sent with a valid sign-in. I cannot see the cause of an earlier sign-in failure.'
   }
   if (selection?.focus === 'cancel') return renderCancelOffer({ context, languageCode }).answer
+  if (selection?.focus === 'renewal') return renderRenewalAnswer({ context, languageCode })
   if (selection?.focus === 'access') return renderAccessAnswer({ context, languageCode, selection })
   if (selection?.focus === 'usage') return renderUsageAnswer({ context, languageCode, selection })
   if (selection?.focus === 'payment') return renderPaymentAnswer({ context, languageCode })
@@ -384,6 +387,22 @@ function renderSubscriptionAnswer({ context, languageCode }) {
       : `A plan change to ${subscription.pending_plan_id} is pending.`)
   }
   return parts.join(' ')
+}
+
+function renderRenewalAnswer({ context, languageCode }) {
+  const swedish = isSwedish(languageCode)
+  const subscription = context.subscription
+  if (!subscription) {
+    return swedish ? 'Ingen verifierad förnyelsetidpunkt finns.' : 'No verified renewal time is available.'
+  }
+  if (!subscription.current_period_end) {
+    return swedish
+      ? `Abonnemanget ${subscription.plan_id} har status ${subscription.status}. Ingen verifierad förnyelsetidpunkt finns.`
+      : `Subscription ${subscription.plan_id} has status ${subscription.status}. No verified renewal time is available.`
+  }
+  return swedish
+    ? `Abonnemanget ${subscription.plan_id} har status ${subscription.status}. Nuvarande period slutar ${subscription.current_period_end}.`
+    : `Subscription ${subscription.plan_id} has status ${subscription.status}. The current period ends ${subscription.current_period_end}.`
 }
 
 function renderPlanAnswer({ context, languageCode }) {

@@ -17,7 +17,6 @@ import {
   getTrackZoomCapabilities,
   speakVideoScanLine,
 } from '../services/bodyAnalysisVideoScan'
-import { setBodyScanSessionActive } from '../services/bodyScanSessionChrome'
 
 const timerOptions = [3, 5, 10]
 const zoomLevelCandidates = [0.5, 1, 2]
@@ -85,7 +84,6 @@ function BodyScanGuidedCapture({
       streamRef.current = null
       if (videoRef.current) videoRef.current.srcObject = null
       cancelVideoScanSpeech()
-      setBodyScanSessionActive(false)
       setCameraActive(false)
     }
 
@@ -103,9 +101,6 @@ function BodyScanGuidedCapture({
     }
   }, [])
 
-  useEffect(() => {
-    setBodyScanSessionActive(cameraActive)
-  }, [cameraActive])
 
   useEffect(() => {
     const video = videoRef.current

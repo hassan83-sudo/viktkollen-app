@@ -697,6 +697,25 @@ function OverviewPrimaryActions({
     }
   })
 
+  const [glowLevel, setGlowLevel] = useState(() => {
+    if (typeof window === 'undefined') return 'normal'
+    try {
+      const saved = window.localStorage.getItem('viktkollen.home.titleGlow')
+      return ['low', 'normal', 'strong', 'max'].includes(saved) ? saved : 'normal'
+    } catch {
+      return 'normal'
+    }
+  })
+
+  const updateGlowLevel = (level) => {
+    setGlowLevel(level)
+    try {
+      window.localStorage.setItem('viktkollen.home.titleGlow', level)
+    } catch {
+      // Keep the visual preference for this session if storage is unavailable.
+    }
+  }
+
   useEffect(() => {
     if (!showTapPulse || prefersReducedMotion) return undefined
     const timer = window.setTimeout(() => {
@@ -795,7 +814,27 @@ function OverviewPrimaryActions({
   ]
 
   return (
-    <section className="overview-primary-actions" aria-label={t('home:labels.home')}>
+    <>
+      <div className="overview-title-glow-control" role="group" aria-label="Ljusstyrka för neonringen">
+        <span>Ljusstyrka</span>
+        {[
+          ['low', 'Låg'],
+          ['normal', 'Normal'],
+          ['strong', 'Stark'],
+          ['max', 'Extra'],
+        ].map(([value, label]) => (
+          <button
+            aria-pressed={glowLevel === value}
+            className={glowLevel === value ? 'is-active' : ''}
+            key={value}
+            type="button"
+            onClick={() => updateGlowLevel(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <section className="overview-primary-actions" data-glow-level={glowLevel} aria-label={t('home:labels.home')}>
       {actions.map((action) => (
         <div className={`overview-primary-action is-${action.accent}`} key={action.label}>
           <button
@@ -844,7 +883,8 @@ function OverviewPrimaryActions({
           </button>
         </div>
       ))}
-    </section>
+      </section>
+    </>
   )
 }
 

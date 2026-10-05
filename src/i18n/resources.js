@@ -1783,7 +1783,7 @@ const sv = {
       title: 'Skanna mat',
       subtitle: 'Ta eller välj en tydlig bild av måltiden.',
       imagePickerAria: 'Bildval för Nutrition Scanner',
-      takePhoto: 'Ta bild',
+      takePhoto: 'Öppna kamera',
       takePhotoAria: 'Ta en ny matbild med kameran',
       chooseImage: 'Välj bild',
       chooseImageAria: 'Välj en matbild från bildbiblioteket',

@@ -659,6 +659,16 @@ export default function SmartCameraModeViews({
       {selected.id === 'eyes' && (
         <>
           <SmartCameraLiveView enabled onActiveChange={onCameraActive} />
+          <label className="primary-button">
+            📷 Öppna kamera
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              aria-label="Öppna mobilens kamera"
+              hidden
+            />
+          </label>
           <p className="smart-camera-note">{eyesFeature.emptyState}</p>
         </>
       )}

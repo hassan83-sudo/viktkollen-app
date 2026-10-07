@@ -349,12 +349,16 @@ function BodyScanGuidedCapture({
           {cameraError && <p className="analysis-status" role="alert">{cameraError}</p>}
           <div className="body-scan-mode-switch" role="group" aria-label={t('bodyScan:guided.captureModeLabel')}>
             <button
+              aria-label={t('bodyScan:guided.openCamera')}
               aria-pressed={captureMode === 'native'}
               className={captureMode === 'native' ? '' : 'secondary-button'}
               type="button"
-              onClick={() => setCaptureMode('native')}
+              onClick={() => {
+                setCaptureMode('native')
+                openNativeCamera('front')
+              }}
             >
-              {t('bodyScan:guided.openCamera')}
+              <span aria-hidden="true">📷</span> {t('bodyScan:guided.openCamera')}
             </button>
             <button
               aria-pressed={captureMode === 'guided'}

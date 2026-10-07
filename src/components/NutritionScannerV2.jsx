@@ -38,6 +38,7 @@ import {
   getNutritionPhotoPortionDisplayName,
 } from '../services/nutritionPhotoDisplay.js'
 import { getCurrentTimeString, getTodayDateString, mealTypes } from '../services/nutritionService.js'
+import { buildRemotePhotoIngredientMatchSummary } from '../services/nutritionFoodBank.js'
 import { safeLogger } from '../services/safeLogger.js'
 import { getAccessibilityScrollBehavior } from '../services/accessibilityDocumentScope.js'
 
@@ -749,10 +750,43 @@ function NutritionScannerV2({
     () => reviewDraft ? detectPhotoMealDuplicate(reviewDraft, meals) : { status: 'noDuplicate', message: '' },
     [meals, reviewDraft],
   )
-  const ingredientMatches = useMemo(
+  const localIngredientMatches = useMemo(
     () => reviewDraft ? buildPhotoIngredientMatchSummary(reviewDraft.detectedItems) : { counts: {}, matches: [] },
     [reviewDraft],
   )
+  const [remoteIngredientMatches, setRemoteIngredientMatches] = useState({ counts: {}, matches: [] })
+
+  useEffect(() => {
+    let cancelled = false
+    const items = reviewDraft?.detectedItems || []
+    if (!items.length || !isOnline) {
+      setRemoteIngredientMatches({ counts: {}, matches: [] })
+      return () => { cancelled = true }
+    }
+
+    buildRemotePhotoIngredientMatchSummary(items)
+      .then((summary) => {
+        if (!cancelled) setRemoteIngredientMatches(summary)
+      })
+      .catch(() => {
+        if (!cancelled) setRemoteIngredientMatches({ counts: {}, matches: [] })
+      })
+
+    return () => { cancelled = true }
+  }, [isOnline, reviewDraft])
+
+  const ingredientMatches = useMemo(() => {
+    const matches = localIngredientMatches.matches.map((localMatch) => {
+      const remoteMatch = remoteIngredientMatches.matches.find((entry) => entry.id === localMatch.id)
+      return remoteMatch && remoteMatch.status !== 'noMatch' ? remoteMatch : localMatch
+    })
+    const counts = matches.reduce((summary, match) => {
+      summary[match.status] = (summary[match.status] || 0) + 1
+      return summary
+    }, { exactMatch: 0, multipleMatches: 0, noMatch: 0, normalizedMatch: 0 })
+    return { counts, matches }
+  }, [localIngredientMatches, remoteIngredientMatches])
+
   const ingredientMatchStatusCounts = useMemo(
     () => reviewDraft ? buildPhotoIngredientMatchStatusCounts(reviewDraft.detectedItems, ingredientMatches.matches) : buildPhotoIngredientMatchStatusCounts(),
     [ingredientMatches.matches, reviewDraft],

@@ -156,3 +156,54 @@
   display: grid;
   gap: 10px;
 }
+
+/* Främre kamera visas spegelvänd som en spegel; analysen påverkas inte. */
+.local-body-scan-frame.is-mirrored video {
+  transform: scaleX(-1);
+}
+
+.local-body-scan-camera-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.local-body-scan-camera-row button {
+  min-height: 44px;
+}
+
+.local-body-scan-native,
+.local-body-scan-legacy,
+.local-body-scan-summary {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(140, 168, 255, 0.24);
+  background: rgba(10, 16, 32, 0.6);
+}
+
+.local-body-scan-native {
+  min-height: 140px;
+  align-content: center;
+  text-align: center;
+}
+
+.local-body-scan-native p,
+.local-body-scan-legacy p {
+  margin: 0;
+}
+
+.local-body-scan-summary {
+  font-weight: 800;
+  border-color: rgba(107, 214, 255, 0.5);
+}
+
+.local-body-scan-confirm {
+  display: grid;
+  gap: 8px;
+}

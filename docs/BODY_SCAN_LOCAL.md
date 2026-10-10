@@ -38,6 +38,44 @@ Hem → Kroppsscanning → `HomeBodyScanStage` → `BodyAnalysisCard` → `BodyS
   och ljus är likvärdiga. Annars: "kan inte bedömas".
 - Viktförändring visas endast från användarens registrerade vikt.
 
+## Var gamla kroppsbilder ligger (inventering, BODY-SCAN-LOCAL-2)
+
+| Plats | Innehåller kroppsbilder? |
+| --- | --- |
+| `viktkollen.bodyAnalysis.history.v1` (localStorage, enhetsglobal) | **Ja** – data-URL-förhandsvisningar per analys |
+| `viktkollen.bodyAnalysis.history`, `viktkollen.bodyAnalysis.latest` (äldre format) | **Ja**, om de finns kvar |
+| `viktkollen.syncRestoreSnapshots` och `viktkollen.userData.v1.<user>.syncRestoreSnapshots` | **Ja** – råa kopior av historiknycklarna |
+| `viktkollen.preRestoreBackup` | Nej – byggs via `sanitizeBackupUserData` |
+| Molnsynk, molnbackup, JSON-export, dataexport | Nej – förhandsvisningar tas bort före överföring/export |
+| sessionStorage, IndexedDB, Cache Storage | Nej (SW cachar bara app-assets/bilder från egen origin, inte data-/blob-URL:er) |
+| `viktkollen.progressPhotos`, profilbild | Framstegs-/profilbilder – **rörs inte** |
+
+## Rensning av gamla kroppsbilder
+
+`legacyBodyImageCleanup.js` tar bort endast bildsträngar (`data:image/…`, `blob:`) ur
+nycklarna ovan. Analysresultat, datum, filnamn, viktloggar och framstegsbilder lämnas
+orörda. Poster med ett annat `userId` än den inloggade lämnas orörda.
+
+- Körs bara i det lokala flödet efter två tryck (öppna + bekräfta). Aldrig automatiskt.
+- Idempotent. Varje nyckel skrivs atomiskt; en avbruten körning kan köras om.
+- Oläsbar JSON lämnas orörd. En markör per användare (`…legacyBodyImageCleanup.v1`)
+  sparar status och raderas vid kontoradering.
+- Skrivningen markerar inte nycklarna för molnsynk (molnkopian är redan bildfri).
+
+## Validering mot riktiga bilder (Chromium, riktig modell)
+
+- WASM-krasch hittad och åtgärdad: MediaPipe 0.10.35 kraschar när bildbredden inte är
+  delbar med 4. Arbetsbilden avrundas nu alltid till multiplar av 4.
+- 23 bilder utan korrekt scanningpose (vardagsbilder, sittande, utfall, mörker, långt bort)
+  avvisades av kvalitetsspärrarna.
+- En riktig bakvy (stående person i studio) godkändes i 5 varianter (original, spegelvänd,
+  mörkare, längre bort, förskjuten). Bröst- och midjekontur: ingen tydlig förändring i
+  alla 4 jämförelser. Samma bild som framvy avvisades.
+- Ledpunkternas brus (höftleder ±12 % för samma bild spegelvänd) gör att skelettmått
+  bara används som kontroll av lika förutsättningar, aldrig som kroppsförändring.
+- Ej validerat på riktiga bilder: framvy och sidovy av stående person, samt verkliga
+  förändringar över tid. Trösklarna är inte kalibrerade mot upprepade mätningar.
+
 ## Content Security Policy
 
 Appen har i dag ingen CSP. Om en CSP införs behöver den lokala analysen:
@@ -46,6 +84,8 @@ från egen origin). Ingen extern domän behövs.
 
 ## Kvar innan Production
 
-- Riktig enhetsverifiering på iPhone (Safari + hemskärms-PWA) och Android (Chrome).
-- Kalibrering av tröskelvärden mot riktiga upprepade mätningar.
-- Beslut om befintlig historik ska sluta spara data-URL-förhandsvisningar lokalt.
+- Riktig enhetsverifiering på iPhone (Safari + hemskärms-PWA) och Android (Chrome):
+  kamerabehörighet, kamerabyte, orientering, bakgrundsläge, minne/prestanda för WASM.
+- Validering av fram- och sidovy samt kalibrering av trösklar mot upprepade mätningar
+  på riktiga personer.
+- Beslut om det gamla flödet ska sluta spara data-URL-förhandsvisningar (Production-ändring).

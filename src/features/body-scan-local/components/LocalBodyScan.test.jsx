@@ -16,12 +16,13 @@ const scope = { kind: 'authenticated', storageId: 'user.local-test', userId: 'lo
 function frontLandmarks() {
   const points = Array.from({ length: 33 }, () => ({ visibility: 0.9, x: 0.5, y: 0.5, z: 0 }))
   const set = (index, x, y) => { points[index] = { visibility: 0.99, x, y, z: 0 } }
-  set(0, 0.5, 0.1); set(7, 0.48, 0.1); set(8, 0.52, 0.1)
-  set(11, 0.35, 0.22); set(12, 0.65, 0.22)
-  set(23, 0.42, 0.52); set(24, 0.58, 0.52)
-  set(25, 0.45, 0.72); set(26, 0.55, 0.72)
-  set(27, 0.45, 0.92); set(28, 0.55, 0.92)
-  set(15, 0.25, 0.5); set(16, 0.75, 0.5)
+  // Framifrån: personens vänstra sida syns till höger i bilden.
+  set(0, 0.5, 0.1); set(7, 0.52, 0.1); set(8, 0.48, 0.1)
+  set(11, 0.65, 0.22); set(12, 0.35, 0.22)
+  set(23, 0.58, 0.52); set(24, 0.42, 0.52)
+  set(25, 0.55, 0.72); set(26, 0.45, 0.72)
+  set(27, 0.55, 0.92); set(28, 0.45, 0.92)
+  set(15, 0.8, 0.5); set(16, 0.2, 0.5)
   return points
 }
 
@@ -222,5 +223,91 @@ describe('LocalBodyScan', () => {
     view.unmount()
     view = null
     expect(stream.track.stop).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('LocalBodyScan – mobilens kamera, kamerabyte och gamla bilder', () => {
+  it('analyzes a photo from the phone camera app locally and releases the file', async () => {
+    const analyze = vi.fn(() => ({ landmarks: frontLandmarks(), mask: frontMask() }))
+    const release = vi.fn()
+    const readImageFile = vi.fn(async () => ({ canvas: document.createElement('canvas'), height: 1000, luminance: 130, release, width: 600 }))
+    view = mount({ createAnalyzer: async () => ({ analyze, close: vi.fn() }), readImageFile })
+
+    view.click('Använd mobilens kamera-app')
+    await view.flush()
+    await view.flush()
+    expect(spies.getUserMedia).not.toHaveBeenCalled()
+
+    const input = view.container.querySelector('input[type="file"]')
+    expect(input.getAttribute('capture')).toBe('environment')
+    expect(input.getAttribute('accept')).toBe('image/*')
+    const openSpy = vi.spyOn(input, 'click').mockImplementation(() => {})
+    view.click('Öppna kamera-appen')
+    expect(openSpy).toHaveBeenCalled()
+
+    const file = new File([new Uint8Array([1, 2, 3])], 'kropp.jpg', { type: 'image/jpeg' })
+    Object.defineProperty(input, 'files', { configurable: true, value: [file] })
+    await act(async () => {
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(readImageFile).toHaveBeenCalledWith(file)
+    expect(analyze).toHaveBeenCalledTimes(1)
+    expect(release).toHaveBeenCalled()
+    expect(input.value).toBe('')
+    expect(view.container.textContent).toContain('Vyn kunde analyseras')
+    expectNoImageEgressOrStorage()
+  })
+
+  it('switches between back and front camera and stops the previous stream', async () => {
+    view = mount({ createAnalyzer: async () => ({ analyze: vi.fn(), close: vi.fn() }) })
+    view.click('Starta lokal analys')
+    await view.flush()
+    await view.flush()
+    const first = stream
+    expect(spies.getUserMedia.mock.calls[0][0].video.facingMode).toEqual({ ideal: 'environment' })
+
+    stream = createFakeStream()
+    view.click('Byt kamera')
+    await view.flush()
+    expect(first.track.stop).toHaveBeenCalled()
+    expect(spies.getUserMedia.mock.calls[1][0].video.facingMode).toEqual({ ideal: 'user' })
+    expect(spies.getUserMedia.mock.calls[1][0].audio).toBe(false)
+    expect(view.container.querySelector('.local-body-scan-frame').className).toContain('is-mirrored')
+    expect(view.container.textContent).toContain('Främre kamera')
+    // Videon måste faktiskt kopplas till den nya strömmen.
+    expect(view.container.querySelector('video').srcObject).toBe(stream)
+  })
+
+  it('removes old body images only after explicit confirmation', async () => {
+    const legacy = JSON.stringify({
+      analyses: [{
+        createdAt: '2026-09-01T08:00:00.000Z',
+        frontPhoto: { name: 'front.jpg', preview: 'data:image/jpeg;base64,AAAA' },
+        result: { summary: 'Gammal analys' },
+        userId: null,
+      }],
+      version: 1,
+    })
+    window.localStorage.setItem('viktkollen.bodyAnalysis.history.v1', legacy)
+    view = mount({ createAnalyzer: async () => ({ analyze: vi.fn(), close: vi.fn() }) })
+
+    expect(view.container.textContent).toContain('sparat 1 bildförhandsvisning')
+    // Ingen automatisk rensning vid visning.
+    expect(window.localStorage.getItem('viktkollen.bodyAnalysis.history.v1')).toBe(legacy)
+    view.click('Ta bort gamla kroppsbilder')
+    expect(window.localStorage.getItem('viktkollen.bodyAnalysis.history.v1')).toBe(legacy)
+    view.click('Ja, ta bort gamla kroppsbilder')
+
+    const cleaned = JSON.parse(window.localStorage.getItem('viktkollen.bodyAnalysis.history.v1'))
+    expect(cleaned.analyses[0]).toEqual({
+      createdAt: '2026-09-01T08:00:00.000Z',
+      frontPhoto: { name: 'front.jpg' },
+      result: { summary: 'Gammal analys' },
+      userId: null,
+    })
+    expect(view.container.textContent).toContain('1 bild borttagen')
   })
 })

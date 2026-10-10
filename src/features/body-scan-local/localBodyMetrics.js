@@ -23,7 +23,7 @@ const L = Object.freeze({
 })
 
 const requiredLandmarks = [L.leftShoulder, L.rightShoulder, L.leftHip, L.rightHip, L.leftAnkle, L.rightAnkle]
-const minVisibility = 0.5
+const minVisibility = 0.65
 
 export const qualityIssueMessages = Object.freeze({
   'arms-close': 'Armarna ligger för nära kroppen, så konturen kunde inte mätas.',
@@ -31,6 +31,7 @@ export const qualityIssueMessages = Object.freeze({
   'missing-landmarks': 'Hela kroppen syntes inte tydligt (axlar, höfter och fötter krävs).',
   'no-contour': 'Kroppens kontur kunde inte avgränsas tillförlitligt.',
   'no-person': 'Ingen person hittades i bilden.',
+  'not-standing': 'Stå upprätt med raka ben – sittande, knästående eller böjda knän kan inte mätas.',
   'not-full-body': 'Hela kroppen, från huvud till fötter, måste synas i bild.',
   tilted: 'Kameran eller kroppen lutar för mycket. Håll mobilen rakt.',
   'wide-stance': 'Stå med fötterna ungefär höftbrett isär så att höftens kontur kan mätas.',
@@ -38,12 +39,19 @@ export const qualityIssueMessages = Object.freeze({
   'too-close': 'Du står för nära kameran.',
   'too-dark': 'Bilden är för mörk. Tänd mer ljus.',
   'too-far': 'Du står för långt från kameran.',
-  'wrong-orientation': 'Kroppen var inte vänd som vyn kräver.',
+  'wrong-orientation': 'Kroppen var inte vänd som vyn kräver (framifrån, från sidan eller bakifrån).',
 })
 
+// Alla problem blockerar: en vy räknas bara som godkänd när minst ett
+// konturmått finns, annars ger den ingen information om förändring.
 const blockingIssues = new Set([
+  'arms-close',
+  'arms-side',
   'missing-landmarks',
+  'no-contour',
+  'wide-stance',
   'no-person',
+  'not-standing',
   'not-full-body',
   'tilted',
   'too-bright',
@@ -189,13 +197,35 @@ export function computeViewMetrics({ imageHeight, imageWidth, landmarks, luminan
   if (bodyFraction < 0.45) issues.push('too-far')
   if (bodyFraction > 0.97) issues.push('too-close')
   if (roll > 8) issues.push('tilted')
+
+  // Personen måste stå upprätt: raka knän och ben som är längre än bålen.
+  // (Modellen gissar annars fram en hel pose även för sittande personer.)
+  const kneeAngle = (hip, knee, ankle) => {
+    const a = Math.atan2(hip.y - knee.y, hip.x - knee.x)
+    const b = Math.atan2(ankle.y - knee.y, ankle.x - knee.x)
+    const angle = Math.abs((a - b) * 180 / Math.PI)
+    return angle > 180 ? 360 - angle : angle
+  }
+  const torsoLength = hipMid.y - shoulderMid.y
+  const legRatio = torsoLength > 0 ? (ankleMid.y - hipMid.y) / torsoLength : 0
+  const kneesStraight = kneeAngle(p[L.leftHip], p[L.leftKnee], p[L.leftAnkle]) >= 150
+    && kneeAngle(p[L.rightHip], p[L.rightKnee], p[L.rightAnkle]) >= 150
+  if (!kneesStraight || legRatio < 1.2) issues.push('not-standing')
   if (Number.isFinite(luminance) && luminance < 50) issues.push('too-dark')
   if (Number.isFinite(luminance) && luminance > 225) issues.push('too-bright')
 
   const shoulderWidth = distance(p[L.leftShoulder], p[L.rightShoulder]) / refPx
   const hipWidth = distance(p[L.leftHip], p[L.rightHip]) / refPx
   const isSide = view === 'side'
-  if (isSide ? shoulderWidth > 0.14 : shoulderWidth < 0.17) issues.push('wrong-orientation')
+  // Framifrån syns personens vänstra axel/höft till höger i bilden, bakifrån
+  // till vänster (kamerans råbild, aldrig spegelvänd). Båda paren måste stämma.
+  // Verifierat mot riktiga fram- och bakvyer; näsans synlighet är opålitlig.
+  const facesCamera = p[L.leftShoulder].x > p[L.rightShoulder].x && p[L.leftHip].x > p[L.rightHip].x
+  const facesAway = p[L.leftShoulder].x < p[L.rightShoulder].x && p[L.leftHip].x < p[L.rightHip].x
+  const orientationOk = isSide
+    ? shoulderWidth <= 0.14
+    : shoulderWidth >= 0.17 && (view === 'back' ? facesAway : facesCamera)
+  if (!orientationOk) issues.push('wrong-orientation')
 
   const metrics = {}
   if (!isSide) {
@@ -244,10 +274,20 @@ export function computeViewMetrics({ imageHeight, imageWidth, landmarks, luminan
     contourBlocked = true
   }
 
+  // En hand nära en mätrad gör den raden opålitlig (händer smälter ihop med
+  // silhuetten). Handledens position används oavsett synlighet, eftersom
+  // händerna ofta är dolda bakom kroppen i bakvyn.
+  const wrists = [p[L.leftWrist], p[L.rightWrist]]
+  const handNearRow = (y, widthPx, centerPx) => wrists.some((wrist) =>
+    Math.abs(wrist.y - y) < 0.1 * refPx
+    && Math.abs(wrist.x - centerPx) < widthPx / 2 + 0.06 * refPx)
+
   const contour = {}
   if (!contourBlocked && mask) {
     for (const [key, y] of Object.entries(rows)) {
-      contour[key] = sanitizeContour(measureBand(mask, y, centerAt(y), imageHeight, imageWidth, refPx), refPx)
+      const center = centerAt(y)
+      const widthPx = measureBand(mask, y, center, imageHeight, imageWidth, refPx)
+      contour[key] = widthPx !== null && !handNearRow(y, widthPx, center) ? sanitizeContour(widthPx, refPx) : null
     }
   }
 
@@ -273,12 +313,18 @@ export function computeViewMetrics({ imageHeight, imageWidth, landmarks, luminan
 // Jämförelse mot tidigare GODKÄNDA analysvärden (inga bilder).
 // ---------------------------------------------------------------------------
 
+// Trösklarna är försiktiga. Ledpunkternas brus mättes mot riktiga bilder
+// (samma bild spegelvänd: höftleder ±12 %, axlar ±4 %), därför används
+// skelettmått bara som kontroll av att förutsättningarna är lika – skelettet
+// ändras inte med vikt – och endast silhuettens kontur tolkas som möjlig
+// förändring.
 export const comparisonThresholds = Object.freeze({
-  maxBodyFractionDiff: 0.12,
+  maxBodyFractionDiff: 0.08,
   maxLuminanceDiff: 45,
   maxRollDiff: 4,
-  possibleClear: 0.08,
-  stable: 0.04,
+  maxSkeletonDiff: 0.06,
+  possibleClear: 0.1,
+  stable: 0.05,
   unreliable: 0.2,
 })
 
@@ -301,6 +347,11 @@ function classifyChange(previous, current) {
     direction: level === 'stable' || level === 'unreliable' ? 'none' : relative < 0 ? 'smaller' : 'larger',
     level,
   }
+}
+
+function relativeDiff(previous, current) {
+  if (!Number.isFinite(previous) || !Number.isFinite(current) || previous <= 0) return null
+  return Math.abs(current - previous) / previous
 }
 
 function conditionMismatch(previous = {}, current = {}) {
@@ -343,10 +394,21 @@ export function compareWithPrevious(previousRecord, currentResults) {
       reasons.push(...mismatch)
       continue
     }
+    const skeletonDrift = relativeDiff(previous.metrics?.shoulderWidth, current.metrics?.shoulderWidth)
+    if (skeletonDrift !== null && skeletonDrift > comparisonThresholds.maxSkeletonDiff) {
+      const reason = 'Kroppens ställning eller kamerans vinkel skiljer sig från förra gången (skelettmåtten stämmer inte överens).'
+      views[viewId] = { reasons: [reason], reliable: false }
+      reasons.push(reason)
+      continue
+    }
     const changes = {}
-    for (const key of [...(landmarkMetricKeys[viewId] || []), ...(contourMetricKeys[viewId] || [])]) {
+    for (const key of contourMetricKeys[viewId] || []) {
       const change = classifyChange(previous.metrics?.[key], current.metrics?.[key])
       if (change) changes[key] = change
+    }
+    if (!Object.keys(changes).length) {
+      views[viewId] = { reasons: ['Kroppens kontur kunde inte mätas i båda scanningarna.'], reliable: false }
+      continue
     }
     const usable = Object.values(changes).filter((change) => change.level !== 'unreliable')
     if (!usable.length) {

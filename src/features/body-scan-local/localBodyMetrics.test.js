@@ -13,26 +13,28 @@ import { localModelVersionTag } from './localBodyScanConfig.js'
 const W = 600
 const H = 1000
 
+// Framifrån: personens vänstra sida (11, 23, 25, 27, 15) syns till höger i bilden.
 function makeLandmarks({ ankleHalf = 0.05, hipHalf = 0.08, shoulderHalf = 0.15, view = 'front', visibility = 0.99, shiftX = 0 } = {}) {
   const points = Array.from({ length: 33 }, () => ({ visibility: 0.9, x: 0.5, y: 0.5, z: 0 }))
-  const set = (index, x, y) => { points[index] = { visibility, x: x + shiftX, y, z: 0 } }
+  const mirror = view === 'back'
+  const set = (index, x, y) => { points[index] = { visibility, x: (mirror ? 1 - x : x) + shiftX, y, z: 0 } }
   set(0, 0.5, 0.1)
-  set(7, 0.48, 0.1)
-  set(8, 0.52, 0.1)
-  set(11, 0.5 - shoulderHalf, 0.22)
-  set(12, 0.5 + shoulderHalf, 0.22)
-  set(23, 0.5 - hipHalf, 0.52)
-  set(24, 0.5 + hipHalf, 0.52)
-  set(25, 0.45, 0.72)
-  set(26, 0.55, 0.72)
-  set(27, 0.5 - ankleHalf, 0.92)
-  set(28, 0.5 + ankleHalf, 0.92)
+  set(7, 0.52, 0.1)
+  set(8, 0.48, 0.1)
+  set(11, 0.5 + shoulderHalf, 0.22)
+  set(12, 0.5 - shoulderHalf, 0.22)
+  set(23, 0.5 + hipHalf, 0.52)
+  set(24, 0.5 - hipHalf, 0.52)
+  set(25, 0.55, 0.72)
+  set(26, 0.45, 0.72)
+  set(27, 0.5 + ankleHalf, 0.92)
+  set(28, 0.5 - ankleHalf, 0.92)
   if (view === 'side') {
-    set(15, 0.49, 0.12)
-    set(16, 0.51, 0.12)
+    set(15, 0.51, 0.12)
+    set(16, 0.49, 0.12)
   } else {
-    set(15, 0.25, 0.5)
-    set(16, 0.75, 0.5)
+    set(15, 0.8, 0.5)
+    set(16, 0.2, 0.5)
   }
   return points
 }
@@ -93,6 +95,16 @@ describe('computeViewMetrics', () => {
     expect(result.metrics.waistDepth).toBeCloseTo(112 / 700, 2)
   })
 
+  it('tells front and back views apart and rejects the wrong one', () => {
+    const asView = (landmarkView, view) => computeViewMetrics({
+      imageHeight: H, imageWidth: W, landmarks: makeLandmarks({ view: landmarkView }), luminance: 120, mask: makeMask(torso()), view,
+    })
+    expect(asView('front', 'front').quality.ok).toBe(true)
+    expect(asView('back', 'back').quality.ok).toBe(true)
+    expect(asView('back', 'front').quality.issues).toContain('wrong-orientation')
+    expect(asView('front', 'back').quality.issues).toContain('wrong-orientation')
+  })
+
   it('reports blocking quality issues instead of inventing values', () => {
     expect(computeViewMetrics({ imageHeight: H, imageWidth: W, landmarks: [], view: 'front' }).quality)
       .toEqual({ issues: ['no-person'], ok: false })
@@ -100,6 +112,25 @@ describe('computeViewMetrics', () => {
     expect(front({ luminance: 20 }).quality.issues).toContain('too-dark')
     expect(front({ landmarks: { shoulderHalf: 0.03 } }).quality.issues).toContain('wrong-orientation')
     expect(front({ luminance: 20 }).quality.ok).toBe(false)
+  })
+
+  it('rejects people who are not standing upright', () => {
+    const kneeling = makeLandmarks().map((point, index) => {
+      if (index === 25 || index === 26) return { ...point, x: point.x + (index === 25 ? 0.2 : -0.2), y: 0.6 }
+      return point
+    })
+    const result = computeViewMetrics({ imageHeight: H, imageWidth: W, landmarks: kneeling, luminance: 120, mask: makeMask(torso()), view: 'front' })
+    expect(result.quality.issues).toContain('not-standing')
+    expect(result.quality.ok).toBe(false)
+  })
+
+  it('skips a contour row when a hand is next to it', () => {
+    const handsAtHips = makeLandmarks({ view: 'back' }).map((point, index) => (index === 15 || index === 16
+      ? { ...point, visibility: 0.2, x: index === 15 ? 0.31 : 0.69, y: 0.54 }
+      : point))
+    const result = computeViewMetrics({ imageHeight: H, imageWidth: W, landmarks: handsAtHips, luminance: 120, mask: makeMask(torso()), view: 'back' })
+    expect(result.metrics.hip).toBeNull()
+    expect(result.metrics.waist).toBeCloseTo(160 / 700, 2)
   })
 
   it('blocks contour metrics when arms touch the body, stance is wide or mask is missing', () => {
@@ -137,13 +168,29 @@ describe('compareWithPrevious', () => {
     expect(result.views.front.changes.waist.level).toBe('stable')
   })
 
-  it('flags a possible change in proportions without numbers in cm or kg', () => {
-    const slimmerWaist = front({ mask: makeMask((y) => (y >= 380 && y < 470 ? 147 : torso()(y))) })
-    const result = compareWithPrevious(baseline, { front: slimmerWaist })
-    expect(result.views.front.changes.waist).toEqual({ direction: 'smaller', level: 'possible-clear' })
-    const text = describeChange('waist', result.views.front.changes.waist)
+  it('flags a possible change in contour only, without numbers in cm or kg', () => {
+    const waistWidth = (px) => front({ mask: makeMask((y) => (y >= 380 && y < 470 ? px : torso()(y))) })
+    const clear = compareWithPrevious(baseline, { front: waistWidth(140) })
+    expect(clear.views.front.changes.waist).toEqual({ direction: 'smaller', level: 'possible-clear' })
+    expect(compareWithPrevious(baseline, { front: waistWidth(147) }).views.front.changes.waist)
+      .toEqual({ direction: 'smaller', level: 'possible-small' })
+    // Skelettmått (leder) redovisas aldrig som kroppsförändring.
+    expect(Object.keys(clear.views.front.changes).sort()).toEqual(['chest', 'hip', 'waist', 'waistToHip'])
+    const text = describeChange('waist', clear.views.front.changes.waist)
     expect(text).toContain('möjligen')
     expect(text).not.toMatch(/\d|cm|kg|vikt|fett|gått ner/i)
+  })
+
+  it('refuses to compare when the skeleton does not match (different pose or angle)', () => {
+    const wider = front({ landmarks: { shoulderHalf: 0.17 } })
+    const result = compareWithPrevious(baseline, { front: wider })
+    expect(result.status).toBe('not-assessable')
+    expect(result.reasons.join(' ')).toMatch(/skelettmåtten/)
+  })
+
+  it('cannot assess when the contour is missing in one of the scans', () => {
+    const result = compareWithPrevious(baseline, { front: front({ mask: null }) })
+    expect(result.status).toBe('not-assessable')
   })
 
   it('refuses to compare when distance, angle or light differ too much', () => {
@@ -166,7 +213,9 @@ describe('compareWithPrevious', () => {
 
   it('marks huge jumps as unreliable rather than as a real change', () => {
     const result = compareWithPrevious(baseline, { front: front({ mask: makeMask(torso(1.3)) }) })
-    expect(result.views.front.changes.waist.level).toBe('unreliable')
+    const view = result.views.front
+    // Antingen hela vyn "kan inte bedömas" eller midjan markerad som opålitlig – aldrig en förändring.
+    expect(view.reliable ? view.changes.waist.level : 'unreliable').toBe('unreliable')
   })
 })
 

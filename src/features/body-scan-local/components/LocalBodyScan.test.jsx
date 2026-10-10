@@ -311,3 +311,14 @@ describe('LocalBodyScan – mobilens kamera, kamerabyte och gamla bilder', () =>
     expect(view.container.textContent).toContain('1 bild borttagen')
   })
 })
+
+describe('LocalBodyScan – Preview-test', () => {
+  it('hides the legacy cleanup when showLegacyCleanup is false', () => {
+    window.localStorage.setItem('viktkollen.bodyAnalysis.history.v1', JSON.stringify({
+      analyses: [{ createdAt: '2026-09-01T08:00:00.000Z', frontPhoto: { preview: 'data:image/jpeg;base64,AAAA' }, result: {} }],
+    }))
+    view = mount({ createAnalyzer: async () => ({ analyze: vi.fn(), close: vi.fn() }), showLegacyCleanup: false })
+    expect(view.container.textContent).not.toContain('Gamla kroppsbilder')
+    expect(view.container.textContent).toContain('Starta lokal analys')
+  })
+})

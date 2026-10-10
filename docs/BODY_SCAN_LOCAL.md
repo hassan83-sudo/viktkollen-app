@@ -89,3 +89,20 @@ från egen origin). Ingen extern domän behövs.
 - Validering av fram- och sidovy samt kalibrering av trösklar mot upprepade mätningar
   på riktiga personer.
 - Beslut om det gamla flödet ska sluta spara data-URL-förhandsvisningar (Production-ändring).
+
+## Preview-test på iPhone (BODY-SCAN-LOCAL-3)
+
+Testsida: `/body-scan-preview.html` på en Vercel Preview-deployment av branchen.
+
+- Byggs bara när `VERCEL_ENV=preview` (eller vid lokalt bygge utanför Vercel). Vercel
+  Production-byggen och Vercel-byggen utan `VERCEL_ENV` innehåller inte sidan.
+- Körs bara på localhost eller projektets Preview-adresser
+  (`viktkollen-<hash>-appsonthego-s-projects.vercel.app`, `viktkollen-git-<branch>-…`).
+  Production-domänen visar "Inte tillgänglig".
+- Ingen inloggning, Supabase-klient, synk, `/api/` eller service worker. Verifierat i
+  Chromium mot byggd Preview: endast GET av egna statiska filer, även med en inloggad
+  Supabase-session i webbläsaren. (Bundlern lägger Vites preload-hjälpare i
+  `supabase-vendor`, så den biblioteksfilen laddas, men ingen klient skapas.)
+- Eget test-scope `preview-test`; ingen rensning eller migrering av gamla data.
+- Egen PWA-manifest (`start_url: /body-scan-preview.html`) för hemskärms-test.
+- Huvudappens flagga `localBodyScan` är fortsatt av; huvudappen är oförändrad.

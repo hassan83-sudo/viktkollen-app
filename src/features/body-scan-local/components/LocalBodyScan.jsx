@@ -232,6 +232,7 @@ export default function LocalBodyScan({
   createAnalyzer = createLocalPoseAnalyzer,
   readImageFile = frameFromImageFile,
   scope: scopeProp,
+  showLegacyCleanup = true,
   weights = [],
 }) {
   const [scope] = useState(() => scopeProp || getActiveUserDataScope())
@@ -582,7 +583,7 @@ export default function LocalBodyScan({
             Med kamera-appen tar du bilden själv. iPhone sparar inte sådana bilder i Bilder. Vissa Android-kameraappar
             kan spara en kopia i galleriet – livekameran i Viktkollen sparar aldrig något.
           </p>
-          <LegacyImageCleanup scope={scope} />
+          {showLegacyCleanup && <LegacyImageCleanup scope={scope} />}
         </>
       )}
 

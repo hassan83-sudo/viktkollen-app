@@ -4,6 +4,7 @@ import {
   removeUserData,
   userDataKeys,
 } from './userDataRepository.js'
+import { getLocalBodyScanStorageKey } from '../features/body-scan-local/localBodyScanStore.js'
 
 const endpoint = '/api/account-deletion'
 
@@ -13,6 +14,8 @@ export function getLocalDeletionKeys() {
     userDataKeys.cloudBackupMeta,
     userDataKeys.demoMode,
     userDataKeys.profilePhoto,
+    // Lokala kroppsscanningsvärden för aktiv användare (inga bilder).
+    getLocalBodyScanStorageKey(),
   ])].filter(Boolean)
 }
 

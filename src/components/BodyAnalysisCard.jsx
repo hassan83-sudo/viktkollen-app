@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { formatDate } from '../i18n/format.js'
@@ -41,6 +41,12 @@ import BodyAnalysisStats from './BodyAnalysisStats'
 import BodyAnalysisTimeline from './BodyAnalysisTimeline'
 import BodyAnalysisUnlockCard from './BodyAnalysisUnlockCard'
 import BodyScanGuidedCapture from './BodyScanGuidedCapture'
+import { getFeatureFlags, isFeatureEnabled } from '../features/featureRegistry.js'
+import { localBodyScanTexts } from '../features/body-scan-local/localBodyScanConfig.js'
+
+// Lokal analys på enheten bakom feature flag (av som standard). Laddas bara
+// när läget öppnas så att modellen aldrig hämtas för övriga användare.
+const LocalBodyScan = lazy(() => import('../features/body-scan-local/components/LocalBodyScan.jsx'))
 
 const bodyOverviewMarkerDefs = [
   { id: 'shoulders', x: 50, y: 25 },
@@ -338,6 +344,7 @@ function BodyAnalysisCard({
   const [showAnalysisConsent, setShowAnalysisConsent] = useState(false)
   // Photo mode stays the default so the stabilized iPhone flow is unchanged.
   const [scanMode, setScanMode] = useState('photo')
+  const [localScanEnabled] = useState(() => isFeatureEnabled('localBodyScan', getFeatureFlags()))
   const [showClearHistoryConfirm, setShowClearHistoryConfirm] = useState(false)
   const [sidePhoto, setSidePhoto] = useState(null)
   const [timelineFilter, setTimelineFilter] = useState('all')
@@ -910,11 +917,27 @@ function BodyAnalysisCard({
           >
             {t('card.heading.modeVideo')}
           </button>
+          {localScanEnabled && (
+            <button
+              aria-pressed={scanMode === 'local'}
+              className={scanMode === 'local' ? '' : 'secondary-button'}
+              type="button"
+              onClick={() => setScanMode('local')}
+            >
+              {localBodyScanTexts.modeButton}
+            </button>
+          )}
         </div>
         <p className="progress-photo-safety">
-          {scanMode === 'video' ? t('card.heading.modeVideoHint') : t('card.heading.modePhotoHint')}
+          {scanMode === 'local'
+            ? localBodyScanTexts.hint
+            : scanMode === 'video' ? t('card.heading.modeVideoHint') : t('card.heading.modePhotoHint')}
         </p>
-        {scanMode === 'photo' ? (
+        {scanMode === 'local' && localScanEnabled ? (
+          <Suspense fallback={<p role="status">{localBodyScanTexts.loading}</p>}>
+            <LocalBodyScan weights={weights} />
+          </Suspense>
+        ) : scanMode === 'photo' ? (
           <BodyScanGuidedCapture
             canAnalyze={canAnalyze}
             currentAnalysisStatus={currentAnalysisStatus}
@@ -936,7 +959,7 @@ function BodyAnalysisCard({
             </button>
           </div>
         )}
-        <details className="body-scan-section">
+        {scanMode !== 'local' && <details className="body-scan-section">
           <summary>{t('card.heading.privacySummary')}</summary>
           <ul className="body-scan-privacy-list">
             <li>{t('card.privacy.localCamera')}</li>
@@ -945,7 +968,7 @@ function BodyAnalysisCard({
             <li>{t('card.privacy.localHistory')}</li>
             <li>{t('card.privacy.exportDelete')}</li>
           </ul>
-        </details>
+        </details>}
       </div>
       <details className="body-analysis-more-info">
         <summary>{t('card.heading.moreInfo')}</summary>

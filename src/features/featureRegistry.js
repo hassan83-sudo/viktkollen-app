@@ -14,6 +14,8 @@ export const defaultFeatureFlags = Object.freeze({
   socialUi: true,
   socialLive: true,
   reminderHubUi: true,
+  // Lokal kroppsscanning på enheten (BODY-SCAN-LOCAL-1). Av som standard.
+  localBodyScan: false,
 })
 
 const knownFeatureIds = Object.freeze(Object.keys(defaultFeatureFlags))

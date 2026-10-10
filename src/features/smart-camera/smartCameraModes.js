@@ -9,6 +9,8 @@ export const primarySmartCameraModes = Object.freeze([
   { icon: '👕', id: 'outfit', label: 'Kläder & outfit', needs: [], usesCamera: true },
   { icon: '💇', id: 'grooming', label: 'Hår & grooming', needs: [], usesCamera: true },
   { icon: '🎒', id: 'items', label: 'Vad har jag med mig?', needs: ['memory'], usesCamera: true },
+  // Sakbank + Snabbkoll: lokal lista och bildspel, ingen kamera eller AI krävs.
+  { icon: '⚡', id: 'item-bank', label: 'Sakbank & Snabbkoll', needs: [], usesCamera: false },
   { icon: '🪥', id: 'get-ready', label: 'Göra mig klar', needs: ['memory'], usesCamera: false },
   { existing: 'food', icon: '🍽', id: 'food', label: 'Mat', needs: [], usesCamera: false },
   { existing: 'body', icon: '🧍', id: 'body', label: 'Kroppsscanning', needs: [], usesCamera: false },

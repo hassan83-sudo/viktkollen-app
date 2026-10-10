@@ -28,6 +28,7 @@ import { compareChecklistToVisibleItems } from '../itemVisibility.js'
 import { getReadyPromptDisclaimer, lastCheckSteps } from '../lastCheckGuide.js'
 import { buildOutfitWeatherFacts, outfitFeedbackDisclaimer, outfitVisionReady } from '../outfitAdvice.js'
 import AiEarMode from '../../ai-ear/AiEarMode.jsx'
+import ItemBankMode from '../../item-bank/components/ItemBankMode.jsx'
 import ForgottenItemsCheck from './ForgottenItemsCheck.jsx'
 import SmartCameraLiveView from './SmartCameraLiveView.jsx'
 
@@ -544,6 +545,7 @@ export default function SmartCameraModeViews({
   mode,
   onBack,
   onCameraActive,
+  onOpenMode,
   voiceBar,
 }) {
   const [memory, setMemory] = useState(() => loadMemoryStateOrDefaults())
@@ -631,6 +633,26 @@ export default function SmartCameraModeViews({
         />
       )}
       {selected.id === 'ai-ear' && <AiEarMode />}
+      {selected.id === 'item-bank' && (
+        <ItemBankMode
+          onAddToCarryList={(labels) => {
+            const known = new Set(carryList.items.map((item) => item.label.trim().toLocaleLowerCase('sv-SE')))
+            const additions = labels
+              .filter((label) => !known.has(label.trim().toLocaleLowerCase('sv-SE')))
+              .map((label, index) => ({ done: false, id: `item-${Date.now()}-${index}`, label }))
+            if (!additions.length) return
+            const nextList = { ...carryList, items: [...carryList.items, ...additions] }
+            const exists = memory.checklists.some((list) => list.id === nextList.id)
+            persist({
+              ...memory,
+              checklists: exists
+                ? memory.checklists.map((list) => list.id === nextList.id ? nextList : list)
+                : [...memory.checklists, nextList],
+            })
+          }}
+          onOpenCamera={onOpenMode ? () => onOpenMode('forgotten') : undefined}
+        />
+      )}
       {selected.id === 'get-ready' && <GetReadyMode memory={memory} onSave={persist} />}
       {selected.id === 'carry-lists' && (
         <CarryListsMode memory={memory} onCameraActive={onCameraActive} onSave={persist} />

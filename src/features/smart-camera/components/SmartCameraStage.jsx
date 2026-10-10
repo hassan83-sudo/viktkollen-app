@@ -65,6 +65,7 @@ export default function SmartCameraStage({
               voiceBar={voiceBar}
               onBack={() => setModeId('')}
               onCameraActive={setCameraActive}
+              onOpenMode={setModeId}
             />
           )
           : <SmartCameraHub flags={flags} onSelectMode={setModeId} />}

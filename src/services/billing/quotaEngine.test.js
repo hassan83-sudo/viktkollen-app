@@ -25,7 +25,8 @@ function engineAt(iso, extras = {}) {
 
 describe('BILL-2 plan catalog', () => {
   it('represents preliminary SEK monthly prices as integer ore', () => {
-    expect(preliminarySekMonthMajors).toEqual([4, 7, 9, 12, 15, 19, 29, 39, 49, 59, 69, 79, 89, 99])
+    expect(preliminarySekMonthMajors).toEqual([2, 4, 7, 9, 12, 15, 19, 29, 39, 49, 59, 69, 79, 89, 99])
+    expect(getPlanById('plan.prelim.sek.month.02').price_minor).toBe(200)
     const nine = getPlanById('plan.prelim.sek.month.09')
     expect(nine.price_minor).toBe(900)
     expect(nine.currency).toBe('SEK')

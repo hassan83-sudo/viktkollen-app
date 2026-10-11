@@ -68,15 +68,16 @@ describe('GET /api/billing/plans', () => {
       },
     }))
     expect(response.statusCode).toBe(200)
-    expect(response.body.comparison.plans).toHaveLength(15)
+    expect(response.body.comparison.plans).toHaveLength(16)
     expect(response.body.comparison.plans.map((plan) => plan.priceText)).toEqual([
-      'Gratis', '4 kr/mån', '7 kr/mån', '9 kr/mån', '12 kr/mån', '15 kr/mån',
+      'Gratis', '2 kr/mån', '4 kr/mån', '7 kr/mån', '9 kr/mån', '12 kr/mån', '15 kr/mån',
       '19 kr/mån', '29 kr/mån', '39 kr/mån', '49 kr/mån', '59 kr/mån', '69 kr/mån',
       '79 kr/mån', '89 kr/mån', '99 kr/mån',
     ])
     const current = response.body.comparison.plans.find((plan) => plan.current)
     expect(current.priceText).toBe('Gratis')
     expect(current.quotas.map((row) => row.limit)).toEqual([20, 5, 3, 25])
+    expect(response.body.comparison.plans.find((plan) => plan.priceText === '2 kr/mån').quotas.map((row) => row.limit)).toEqual([25, 5, 3, 25])
     expect(response.body.comparison.plans.find((plan) => plan.priceText === '99 kr/mån').quotas.map((row) => row.limit)).toEqual([1500, 400, 150, 1500])
     expect(response.body.comparison.plans.filter((plan) => plan.forSale)).toEqual([])
     expect(JSON.stringify(response.body)).not.toMatch(/plan\.free|plan\.prelim|ai\.text\.request|Köp|checkout|service_role/)

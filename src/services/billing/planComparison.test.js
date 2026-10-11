@@ -8,14 +8,15 @@ function limits(comparison, priceText) {
 }
 
 describe('plan comparison', () => {
-  it('reads fifteen plans from the server catalog in price order', () => {
+  it('reads sixteen plans from the server catalog in price order', () => {
     const comparison = buildPlanComparison({
       currentPlanId: 'plan.free',
       plans: defaultPlanCatalog,
     })
-    expect(comparison.plans).toHaveLength(15)
+    expect(comparison.plans).toHaveLength(16)
     expect(comparison.plans.map((plan) => plan.priceText)).toEqual([
       'Gratis',
+      '2 kr/mån',
       '4 kr/mån',
       '7 kr/mån',
       '9 kr/mån',

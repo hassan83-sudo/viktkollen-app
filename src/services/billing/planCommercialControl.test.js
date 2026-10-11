@@ -21,8 +21,10 @@ import {
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../../..')
 const sql = readFileSync(join(root, 'supabase/migrations/20260923130000_billing_plan_commercial_controls.sql'), 'utf8')
+const entrySql = readFileSync(join(root, 'supabase/migrations/20261011190000_billing_plan_entry_2kr.sql'), 'utf8')
 const ADMIN = '11111111-1111-4111-8111-111111111111'
 const USER = '22222222-2222-4222-8222-222222222222'
+const PLAN_2 = 'plan.prelim.sek.month.02'
 const PLAN_4 = 'plan.prelim.sek.month.04'
 const PLAN_7 = 'plan.prelim.sek.month.07'
 const PLAN_99 = 'plan.prelim.sek.month.99'
@@ -90,13 +92,42 @@ describe('BILL-6B2A plan commercial migration', () => {
     expect(sql).toMatch(/plan\.commercial\.changed/)
     expect(sql).toMatch(/'field', 'enabled_for_sale'/)
     expect(sql).toMatch(/'field', 'display_order'/)
-    for (const major of preliminarySekMonthMajors) {
+    // The original (already applied) migration holds the 14 plans that existed before 2 SEK.
+    const originalMajors = preliminarySekMonthMajors.filter((major) => major !== 2)
+    for (const major of originalMajors) {
       expect(sql).toContain(`plan.prelim.sek.month.${String(major).padStart(2, '0')}`)
     }
     expect(sql.match(/plan\.prelim\.sek\.month\.\d{2}/g)).toHaveLength(28)
     const knownCheck = sql.slice(sql.indexOf('plan_commercial_plan_known'), sql.indexOf('plan_commercial_order_bounds'))
     expect(knownCheck).not.toContain('plan.free')
     expect(sql).not.toMatch(/insert into billing\.plan_commercial_controls[\s\S]{0,80}default/i)
+  })
+
+  it('adds the 2 SEK plan to the server catalog in a forward-only migration that sells nothing', () => {
+    const ids = preliminarySekMonthMajors.map((major) => `plan.prelim.sek.month.${String(major).padStart(2, '0')}`)
+    expect(ids[0]).toBe(PLAN_2)
+    const knownCheck = entrySql.slice(entrySql.indexOf('add constraint plan_commercial_plan_known'), entrySql.indexOf('add constraint plan_commercial_order_bounds'))
+    const catalog = entrySql.slice(entrySql.indexOf('create or replace function billing.paid_candidate_plans()'), entrySql.indexOf('-- 4. Audit snapshots'))
+    for (const [index, id] of ids.entries()) {
+      expect(knownCheck).toContain(`'${id}'`)
+      // Same order as planCatalog.js: 2 SEK first, 99 SEK last.
+      expect(catalog).toContain(`('${id}'::text, ${index + 1})`)
+      expect(getPlanById(id).display_order).toBe(index + 1)
+    }
+    expect(knownCheck).not.toContain('plan.free')
+    expect(entrySql).toMatch(/check \(display_order between 1 and 15\)/)
+    expect(entrySql).toMatch(/display_order between 1 and 15 and \(p_input ->> 'display_order'\)/)
+    expect(entrySql).toMatch(/'plan\.prelim\.sek\.month\.02', 'Prelim 2 SEK\/month', 200, 'SEK', 'month', true, 1, 1, 'PRELIMINARY'/)
+    for (const [feature, limit] of Object.entries({ 'ai.text.request': 25, 'food.scan': 5, 'body.scan': 3, 'ai.eye.analysis': 25 })) {
+      expect(entrySql).toContain(`('${feature}', 'NUMBER', ${limit},`)
+    }
+    // Nothing is put up for sale, and no payment or checkout surface is touched.
+    expect(entrySql).not.toMatch(/insert into billing\.plan_commercial_controls/i)
+    expect(entrySql).not.toMatch(/enabled_for_sale\s*=\s*true/i)
+    const entryCode = entrySql.replace(/--.*$/gm, '')
+    expect(entryCode).not.toMatch(/stripe|sumup|checkout|webhook|proration/i)
+    expect(entrySql).not.toMatch(/grant execute.*to (public|anon|authenticated)/i)
+    expect(entrySql).toMatch(/DO NOT apply to staging or production without explicit approval/)
   })
 })
 
@@ -108,11 +139,18 @@ describe('BILL-6B2A plan commercial control', () => {
     delete globalThis.localStorage
   })
 
-  it('lets an admin read 14 paid plans that are off and not final', async () => {
+  it('lets an admin read 15 paid plans that are off and not final', async () => {
     const { service } = harness()
     const listed = await service.list(ADMIN)
     expect(listed.ok).toBe(true)
-    expect(listed.plans).toHaveLength(14)
+    expect(listed.plans).toHaveLength(15)
+    expect(listed.plans[0]).toMatchObject({ enabled_for_sale: false, plan_id: PLAN_2, price_sek_minor: 200 })
+    expect(listed.plans.find((plan) => plan.price_sek_minor === 200).quotas).toEqual({
+      ai_coach: 25,
+      ai_eye: 25,
+      body_scan: 3,
+      food_scan: 5,
+    })
     expect(listed.plans.every((plan) => plan.enabled_for_sale === false)).toBe(true)
     expect(listed.plans.every((plan) => plan.quota_status === 'PRELIMINARY')).toBe(true)
     expect(listed.plans.map((plan) => plan.price_sek_minor)).toEqual(preliminarySekMonthMajors.map((major) => major * 100))
@@ -174,10 +212,11 @@ describe('BILL-6B2A plan commercial control', () => {
 
   it('moves display order only within the paid catalog', async () => {
     const { service } = harness()
+    // The 2 SEK plan is now first in the paid catalog, 99 SEK is still last.
     expect((await service.move(ADMIN, {
       direction: 'up',
       expected_version: 0,
-      plan_id: PLAN_4,
+      plan_id: PLAN_2,
     })).code).toBe('order_bound')
     expect((await service.move(ADMIN, {
       direction: 'down',
@@ -187,16 +226,16 @@ describe('BILL-6B2A plan commercial control', () => {
     const moved = await service.move(ADMIN, {
       direction: 'down',
       expected_version: 0,
-      plan_id: PLAN_4,
+      plan_id: PLAN_2,
     })
-    expect(moved.plans.map((plan) => plan.plan_id).slice(0, 2)).toEqual([PLAN_7, PLAN_4])
+    expect(moved.plans.map((plan) => plan.plan_id).slice(0, 3)).toEqual([PLAN_4, PLAN_2, PLAN_7])
     expect(moved.plans.every((plan) => plan.enabled_for_sale === false)).toBe(true)
     expect((await service.move(ADMIN, {
       direction: 'up',
       expected_version: 1,
-      plan_id: PLAN_7,
+      plan_id: PLAN_4,
     })).code).toBe('order_bound')
-    expect((await service.list(ADMIN)).plans.map((plan) => plan.plan_id).slice(0, 2)).toEqual([PLAN_7, PLAN_4])
+    expect((await service.list(ADMIN)).plans.map((plan) => plan.plan_id).slice(0, 3)).toEqual([PLAN_4, PLAN_2, PLAN_7])
   })
 
   it('denies ordinary users, anonymous callers, and client authority flags', async () => {
@@ -401,7 +440,7 @@ describe('BILL-6B2A plan commercial control', () => {
             }
             if (fn === 'set_plan_commercial_availability') {
               if (args.p_plan_id !== PLAN_99) return { data: null, error: { message: 'unknown_plan' } }
-              rows.set(PLAN_99, { display_order: 14, enabled_for_sale: true, version: 1 })
+              rows.set(PLAN_99, { display_order: getPlanById(PLAN_99).display_order, enabled_for_sale: true, version: 1 })
               return {
                 data: paidCommercialPlans().map((plan) => ({
                   display_order: plan.display_order,

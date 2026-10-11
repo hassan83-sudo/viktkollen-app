@@ -12,8 +12,8 @@ Status: **foundation only; not available for sale**. No production changes.
 
 ## Quota rollover policy (current decision)
 - Subscription monthly quotas do NOT carry over. Unused monthly allowances expire at renewal.
-- Purchased extra scan quotas also do NOT carry forward indefinitely; unused extra quotas expire. The precise expiry boundary (subscription renewal or a fixed period after purchase) is not yet decided and must be displayed before purchase.
-- Consume monthly subscription allowances before purchased extra quotas, while each balance is valid.
+- Purchased extra scan quotas expire exactly 30 days after successful purchase (payment verification timestamp), regardless of subscription renewal date. Unused units are forfeited at expiry; no rollover beyond 30 days.
+- Consume monthly subscription allowances before purchased extra quotas, while each balance is valid. Purchased quota expiry is per purchase batch, not a global account-wide date.
 - Plan changes take effect at next renewal; monthly allowances follow the new plan.
 - Do not implement subscription rollover without a new explicit decision and profitability review.
 - Keep existing per-period subscription quota accounting unchanged.
@@ -25,7 +25,7 @@ Status: **foundation only; not available for sale**. No production changes.
 4. Implement a database-atomic, idempotent grant keyed by unique provider payment/checkout ID; webhook retries must not double-credit.
 5. Integrate purchased balances into the existing server-side quota reservation/commit/rollback SQL functions, consuming plan quota first and purchased units only when necessary. Never grant credits from client input.
 6. Make read-only quota display show subscription and purchased balances separately.
-7. Implement and clearly display purchased-quota expiry once the exact period is decided; define refund/chargeback reversal, failed scans and concurrency rules; test against double spending.
+7. Enforce each purchased batch's 30-day expiry in the authoritative database reservation flow; show the exact expiry date before purchase and in the balance UI. Define refund/chargeback reversal, failed scans and concurrency rules; test against double spending.
 8. Verify end-to-end in sandbox before any production enablement.
 
 This branch intentionally does **not** modify SumUp checkout, production billing tables, or quota RPCs. The feature remains disabled.

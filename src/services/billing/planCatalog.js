@@ -8,7 +8,7 @@ import { createEntitlement, numberLimit, unlimitedLimit } from './entitlementMod
 import { BILLING_FEATURES } from './features.js'
 
 const PRELIMINARY_SEK_MAJOR = Object.freeze([
-  4, 7, 9, 12, 15, 19, 29, 39, 49, 59, 69, 79, 89, 99,
+  2, 4, 7, 9, 12, 15, 19, 29, 39, 49, 59, 69, 79, 89, 99,
 ])
 
 const launchUnmetered = new Set(LAUNCH_UNMETERED_FEATURES)

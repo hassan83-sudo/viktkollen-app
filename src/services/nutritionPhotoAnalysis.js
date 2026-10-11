@@ -169,7 +169,18 @@ function normalizeDetectedItem(item = {}, index = 0) {
       },
     } : {}),
     ...(item.macrosEdited === true ? { macrosEdited: true } : {}),
+    ...(normalizeAmountRange(item.amountRange) ? { amountRange: normalizeAmountRange(item.amountRange) } : {}),
+    ...(safeArray(item.checks).length ? { checks: safeArray(item.checks).map((entry) => safeText(entry, '', 40)).filter(Boolean).slice(0, 4) } : {}),
   }
+}
+
+// Uppskattat gramintervall från bilden. Visas i stället för ett exakt värde
+// tills användaren själv anger mängden.
+function normalizeAmountRange(value) {
+  if (!Array.isArray(value) || value.length !== 2) return null
+  const [min, max] = value.map((entry) => safeNumber(entry, null, 10000))
+  if (min === null || max === null || max < min || max <= 0) return null
+  return [Math.round(min), Math.round(max)]
 }
 
 function normalizeItemPer100(value) {

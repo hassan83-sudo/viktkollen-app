@@ -312,6 +312,8 @@ function reviewMacroLabel(field, t) {
   return t('scanner.macros.fat')
 }
 
+const ingredientCheckKeys = new Set(['energy_recomputed', 'energy_unusual', 'macros_scaled', 'portion_capped', 'portion_typical'])
+
 function IngredientEditor({ disabled, item, match, onApplySuggestion, onChange, onRemove }) {
   const { t } = useTranslation(['nutrition', 'common'])
 
@@ -322,11 +324,19 @@ function IngredientEditor({ disabled, item, match, onApplySuggestion, onChange, 
           <span>
             <strong>{getNutritionPhotoFoodDisplayName(item.name)}</strong>
             <small>
-              {t('scanner.ingredient.summaryLine', {
-                amount: item.estimatedAmount || t('scanner.amountUncertain'),
-                unit: item.unit || 'g',
-                confidence: confidenceLabel(item.confidence, t),
-              })}
+              {/* AI:ns gram är en uppskattning: visa intervallet tills användaren angett mängden. */}
+              {item.amountRange && !item.userEdited
+                ? t('scanner.ingredient.summaryLineRange', {
+                  confidence: confidenceLabel(item.confidence, t),
+                  max: item.amountRange[1],
+                  min: item.amountRange[0],
+                  unit: item.unit || 'g',
+                })
+                : t('scanner.ingredient.summaryLine', {
+                  amount: item.estimatedAmount || t('scanner.amountUncertain'),
+                  unit: item.unit || 'g',
+                  confidence: confidenceLabel(item.confidence, t),
+                })}
             </small>
           </span>
           <span>{dataSourceLabel(item.dataSource, t)}</span>
@@ -390,6 +400,9 @@ function IngredientEditor({ disabled, item, match, onApplySuggestion, onChange, 
         {item.dataSource === 'aiEstimate' && (
           <p className="estimate-note">{t('scanner.ingredient.aiFallback')}</p>
         )}
+        {!item.userEdited && safeArray(item.checks).filter((check) => ingredientCheckKeys.has(check)).map((check) => (
+          <p className="estimate-note" key={check}>{t(`scanner.ingredient.checks.${check}`)}</p>
+        ))}
         {/* Säker träff från servern (Livsmedelsverket) ersätts inte av klientens enklare namnmatchning. */}
         {!item.sourceFood && (match?.status === 'exactMatch' || match?.status === 'normalizedMatch') ? (
           <button disabled={disabled || item.userEdited} type="button" onClick={() => onApplySuggestion(item.id, match.matchedFood)}>

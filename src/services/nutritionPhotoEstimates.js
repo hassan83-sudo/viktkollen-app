@@ -584,6 +584,7 @@ export function normalizePhotoComponent(raw = {}, index = 0) {
     sourceEvidence: safeText(source.sourceEvidence, '', 80),
     ...(normalizeFoodBankMatch(source.foodBankMatch) ? { foodBankMatch: normalizeFoodBankMatch(source.foodBankMatch) } : {}),
     ...(isObject(source.aiPer100) ? { aiPer100: normalizeAiPer100(source.aiPer100) } : {}),
+    plausibilityFlags: safeArray(source.plausibilityFlags).map((entry) => safeText(entry, '', 40)).filter(Boolean).slice(0, 4),
     nutritionIsUsable: ['calories', 'proteinG', 'carbsG', 'fatG']
       .some((nutrient) => {
         const bounds = toRangeBounds(nutritionEstimate?.[nutrient])
@@ -644,6 +645,7 @@ export function normalizePhotoComponents(rawComponents = []) {
       },
       alternatives: [...new Set([...existing.alternatives, ...component.alternatives])].slice(0, 3),
       cookingMethods: [...new Set([...existing.cookingMethods, ...component.cookingMethods])].slice(0, 4),
+      plausibilityFlags: [...new Set([...existing.plausibilityFlags, ...component.plausibilityFlags])].slice(0, 4),
     })
   })
 

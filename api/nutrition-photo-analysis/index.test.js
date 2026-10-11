@@ -521,6 +521,52 @@ describe('nutrition photo analysis API route', () => {
     expect(response.body.analysis.foodBank).toMatchObject({ lookupOk: false, reason: 'http_500' })
   })
 
+  it('checks portions and nutrition automatically and keeps meal totals equal to the ingredient sum', async () => {
+    process.env.OPENAI_API_KEY = 'test-key'
+    process.env.SUPABASE_URL = 'https://example.supabase.co'
+    process.env.SUPABASE_ANON_KEY = 'anon-test-key'
+    vi.spyOn(console, 'info').mockImplementation(() => {})
+    const fetchMock = vi.fn(async (url) => {
+      if (String(url).includes('/rest/v1/')) return new Response('[]', { status: 200 })
+      return new Response(JSON.stringify({
+        output_text: JSON.stringify({
+          conf: 'medium',
+          items: [
+            // Orimligt stor sås: sänks till övre gränsen och märks.
+            { bank: 'Gräddsås', cat: 'sauce', conf: 'high', cook: '', g: [400, 600], gconf: 'medium', name: 'Gräddsås', per100: [150, 2, 6, 13] },
+            // Energin motsäger makrona: räknas om (4/4/9).
+            { bank: 'Bulgur kokt', cat: 'carbohydrate', conf: 'high', cook: 'boiled', g: [150, 200], gconf: 'high', name: 'Bulgur', per100: [450, 3, 19, 0.2] },
+            // Mängden syntes inte: typisk portion används och märks.
+            { bank: 'Potatis kokt', cat: 'carbohydrate', conf: 'high', cook: 'boiled', g: null, gconf: 'low', name: 'Kokt potatis', per100: [77, 2, 16, 0.1] },
+            // Rimlig komponent passerar oförändrad.
+            { bank: 'Lax ugnsstekt', cat: 'protein', conf: 'high', cook: 'baked', g: [120, 160], gconf: 'high', name: 'Lax', per100: [210, 23, 0, 13] },
+          ],
+          quality: 'good',
+        }),
+      }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await callRoute(createRequest({ body: multipartBody(), headers: consentHeadersForPhoto() }))
+
+    expect(response.statusCode).toBe(200)
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('openai'))).toHaveLength(1)
+    const { detectedItems, nutrition } = response.body.analysis
+    const byName = Object.fromEntries(detectedItems.map((item) => [item.name, item]))
+
+    expect(byName['Gräddsås']).toMatchObject({ amountRange: [150, 250], checks: ['portion_capped'], estimatedAmount: 200, uncertain: true })
+    expect(byName['Gräddsås'].calories).toBe(300)
+    expect(byName.Bulgur).toMatchObject({ checks: ['energy_recomputed'], per100: { calories: 90 }, uncertain: true })
+    expect(byName['Kokt potatis']).toMatchObject({ amountRange: [100, 300], checks: ['portion_typical'], estimatedAmount: 200, uncertain: true })
+    expect(byName.Lax).toMatchObject({ amountRange: [120, 160], estimatedAmount: 140 })
+    expect(byName.Lax.uncertain).toBeUndefined()
+    expect(byName.Lax.checks).toBeUndefined()
+
+    // Måltidens total är exakt summan av ingredienserna.
+    const sum = (field) => Number(detectedItems.reduce((total, item) => total + (Number(item[field]) || 0), 0).toFixed(1))
+    expect(nutrition).toEqual({ calories: sum('calories'), carbs: sum('carbohydrates'), fat: sum('fat'), protein: sum('protein') })
+  })
+
   it('validates provider payload and strips unsafe fields', () => {
     const result = nutritionPhotoRouteInternals.validateProviderPayload({
       detectedItems: Array.from({ length: 14 }, (_, index) => ({

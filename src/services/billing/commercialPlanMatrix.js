@@ -28,6 +28,8 @@ export const LAUNCH_UNMETERED_FEATURES = Object.freeze([
 /** AI text, food.scan, body.scan, ai.eye.analysis. Prices stay on the plan row. */
 export const LAUNCH_QUOTA_BY_PLAN = Object.freeze({
   'plan.free': Object.freeze({ ai_text_requests: 20, food_scan_requests: 5, body_scan_requests: 3, ai_eye_requests: 25 }),
+  // Entry plan must never offer less than Free on existing metered features.
+  'plan.prelim.sek.month.02': Object.freeze({ ai_text_requests: 25, food_scan_requests: 5, body_scan_requests: 3, ai_eye_requests: 25 }),
   'plan.prelim.sek.month.04': Object.freeze({ ai_text_requests: 30, food_scan_requests: 10, body_scan_requests: 4, ai_eye_requests: 40 }),
   'plan.prelim.sek.month.07': Object.freeze({ ai_text_requests: 50, food_scan_requests: 15, body_scan_requests: 6, ai_eye_requests: 60 }),
   'plan.prelim.sek.month.09': Object.freeze({ ai_text_requests: 70, food_scan_requests: 20, body_scan_requests: 8, ai_eye_requests: 80 }),

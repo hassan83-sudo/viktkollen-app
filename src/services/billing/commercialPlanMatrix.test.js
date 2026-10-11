@@ -29,13 +29,13 @@ function quotaTuple(plan) {
 }
 
 describe('commercial plan matrix', () => {
-  it('preserves the fourteen candidate monthly prices in minor units', () => {
-    expect(preliminarySekMonthMajors).toEqual([4, 7, 9, 12, 15, 19, 29, 39, 49, 59, 69, 79, 89, 99])
+  it('includes the 2 SEK entry tier alongside existing monthly prices in minor units', () => {
+    expect(preliminarySekMonthMajors).toEqual([2, 4, 7, 9, 12, 15, 19, 29, 39, 49, 59, 69, 79, 89, 99])
     const prices = defaultPlanCatalog
       .filter((plan) => plan.id !== 'plan.free')
       .map((plan) => plan.price_minor)
     expect(prices).toEqual(preliminarySekMonthMajors.map((major) => major * 100))
-    expect(defaultPlanCatalog).toHaveLength(15)
+    expect(defaultPlanCatalog).toHaveLength(16)
     expect(validateCommercialPlanCatalog(defaultPlanCatalog)).toBe(true)
   })
 
@@ -57,6 +57,7 @@ describe('commercial plan matrix', () => {
       }
     }
     expect(quotaTuple(getPlanById('plan.free'))).toEqual([20, 5, 3, 25])
+    expect(quotaTuple(getPlanById('plan.prelim.sek.month.02'))).toEqual([25, 5, 3, 25])
     expect(quotaTuple(getPlanById(NINE))).toEqual([70, 20, 8, 80])
     expect(quotaTuple(getPlanById('plan.prelim.sek.month.49'))).toEqual([500, 160, 50, 500])
     expect(quotaTuple(getPlanById('plan.prelim.sek.month.99'))).toEqual([1500, 400, 150, 1500])

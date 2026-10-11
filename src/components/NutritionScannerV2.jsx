@@ -30,6 +30,7 @@ import {
 } from '../services/security/oneShotAnalysisApproval.js'
 import {
   applyPhotoIngredientDatabaseSuggestion,
+  applyPhotoIngredientPatch,
   buildPhotoIngredientMatchSummary,
   buildPhotoIngredientMatchStatusCounts,
 } from '../services/nutritionPhotoIngredientMatching.js'
@@ -383,15 +384,22 @@ function IngredientEditor({ disabled, item, match, onApplySuggestion, onChange, 
             confidence: confidenceLabel(item.confidence, t),
           })}
         </p>
-        {match?.status === 'exactMatch' || match?.status === 'normalizedMatch' ? (
+        {item.sourceFood?.name && item.dataSource !== 'manual' && (
+          <p className="estimate-note">{t('scanner.ingredient.sourceFood', { name: item.sourceFood.name })}</p>
+        )}
+        {item.dataSource === 'aiEstimate' && (
+          <p className="estimate-note">{t('scanner.ingredient.aiFallback')}</p>
+        )}
+        {/* Säker träff från servern (Livsmedelsverket) ersätts inte av klientens enklare namnmatchning. */}
+        {!item.sourceFood && (match?.status === 'exactMatch' || match?.status === 'normalizedMatch') ? (
           <button disabled={disabled || item.userEdited} type="button" onClick={() => onApplySuggestion(item.id, match.matchedFood)}>
             {t('scanner.ingredient.useDatabase', { name: match.matchedFood.name })}
           </button>
         ) : null}
-        {match?.status === 'multipleMatches' && (
+        {!item.sourceFood && match?.status === 'multipleMatches' && (
           <small>{t('scanner.ingredient.multipleMatches')}</small>
         )}
-        {match?.status === 'noMatch' && (
+        {!item.sourceFood && match?.status === 'noMatch' && (
           <small>{t('scanner.ingredient.noMatch')}</small>
         )}
         <button disabled={disabled} type="button" onClick={() => onRemove(item.id)}>{t('common:remove')}</button>
@@ -1184,17 +1192,23 @@ function NutritionScannerV2({
     })
   }
 
+  // Måltidens summa följer ingredienserna tills användaren själv bekräftat egna totaler.
+  function withIngredientTotals(detectedItems) {
+    if (reviewDraft.nutritionProvenance === 'user_confirmed') return { detectedItems }
+    return { detectedItems, nutrition: { ...reviewDraft.nutrition, ...calculateIngredientTotals(detectedItems) } }
+  }
+
   function updateIngredient(id, patch) {
-    updateReview({
-      detectedItems: reviewDraft.detectedItems.map((item) => item.id === id ? { ...item, dataSource: 'manual', ...patch } : item),
-    })
+    updateReview(withIngredientTotals(
+      reviewDraft.detectedItems.map((item) => item.id === id ? applyPhotoIngredientPatch(item, patch) : item),
+    ))
   }
 
   function applyDatabaseSuggestion(id, suggestion) {
-    updateReview({
-      detectedItems: reviewDraft.detectedItems.map((item) =>
+    updateReview(withIngredientTotals(
+      reviewDraft.detectedItems.map((item) =>
         item.id === id ? applyPhotoIngredientDatabaseSuggestion(item, suggestion) : item),
-    })
+    ))
   }
 
   function addIngredient(overrides = {}) {

@@ -351,7 +351,55 @@ export function matchPhotoComponentToNutritionDatabase(component = {}) {
   return { food, reason: '', status: 'matched' }
 }
 
+// Validerad träff i Livsmedelsverkets matbank (sätts av servern). Värdena per
+// 100 g används oförändrade; inget annat fält följer med.
+export function normalizeFoodBankMatch(value) {
+  if (!isObject(value) || !isObject(value.per100)) return null
+  const per100 = {
+    calories: safeNumber(value.per100.calories, null, 1000),
+    carbs: safeNumber(value.per100.carbs, null, 100),
+    fat: safeNumber(value.per100.fat, null, 100),
+    protein: safeNumber(value.per100.protein, null, 100),
+  }
+  if (Object.values(per100).some((entry) => entry === null)) return null
+  const name = safeText(value.name, '', 120)
+  const id = safeText(value.id, '', 80)
+  if (!name || !id) return null
+  return {
+    id,
+    name,
+    per100,
+    source: safeText(value.source, 'nutrition_food_bank', 40),
+    sourceVersion: safeText(value.sourceVersion, '', 40),
+  }
+}
+
 export function derivePhotoComponentNutrition(component = {}) {
+  const bankMatch = normalizeFoodBankMatch(component.foodBankMatch)
+  if (bankMatch) {
+    const derivedNutrition = createNutritionRangeFromFood({
+      caloriesPer100g: bankMatch.per100.calories,
+      carbsPer100g: bankMatch.per100.carbs,
+      fatPer100g: bankMatch.per100.fat,
+      proteinPer100g: bankMatch.per100.protein,
+    }, component.portionEstimate, component.confidence === 'high' ? 'high' : 'medium')
+    if (derivedNutrition?.calories && derivedNutrition?.proteinG && derivedNutrition?.carbsG && derivedNutrition?.fatG) {
+      return {
+        nutritionEstimate: derivedNutrition,
+        nutritionSource: 'databaseDerived',
+        nutritionSourceReason: 'food_bank_per_100g_and_vision_grams',
+        matchedFood: {
+          category: 'nutrition_food_bank',
+          id: bankMatch.id,
+          name: bankMatch.name,
+          per100: bankMatch.per100,
+          source: bankMatch.source,
+          sourceVersion: bankMatch.sourceVersion,
+        },
+      }
+    }
+  }
+
   const match = matchPhotoComponentToNutritionDatabase(component)
   if (match.food) {
     const derivedNutrition = createNutritionRangeFromFood(match.food, component.portionEstimate, component.confidence === 'high' ? 'high' : 'medium')
@@ -487,6 +535,15 @@ function mergePortionEstimate(first = {}, second = {}) {
   return merged
 }
 
+function normalizeAiPer100(value = {}) {
+  return {
+    calories: safeNumber(value.calories, null, 1000),
+    carbs: safeNumber(value.carbs, null, 100),
+    fat: safeNumber(value.fat, null, 100),
+    protein: safeNumber(value.protein, null, 100),
+  }
+}
+
 export function normalizePhotoComponent(raw = {}, index = 0) {
   const source = isObject(raw) ? raw : {}
   const baseConfidence = normalizeNutritionEstimateConfidence(source.confidence || 'low')
@@ -525,6 +582,8 @@ export function normalizePhotoComponent(raw = {}, index = 0) {
       reason: safeText(source.uncertaintyReason || source.reason || source.notes || '', 'Komponenten kan vara osäker.', 140),
     },
     sourceEvidence: safeText(source.sourceEvidence, '', 80),
+    ...(normalizeFoodBankMatch(source.foodBankMatch) ? { foodBankMatch: normalizeFoodBankMatch(source.foodBankMatch) } : {}),
+    ...(isObject(source.aiPer100) ? { aiPer100: normalizeAiPer100(source.aiPer100) } : {}),
     nutritionIsUsable: ['calories', 'proteinG', 'carbsG', 'fatG']
       .some((nutrient) => {
         const bounds = toRangeBounds(nutritionEstimate?.[nutrient])

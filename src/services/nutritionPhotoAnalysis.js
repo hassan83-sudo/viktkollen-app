@@ -160,7 +160,27 @@ function normalizeDetectedItem(item = {}, index = 0) {
     unit: safeText(item.unit, 'g', 24),
     uncertain: item.uncertain === true || confidence === 'low' || confidence === 'insufficient',
     userEdited: item.userEdited === true,
+    ...(normalizeItemPer100(item.per100) ? { per100: normalizeItemPer100(item.per100) } : {}),
+    ...(item.sourceFood?.id ? {
+      sourceFood: {
+        id: safeText(item.sourceFood.id, '', 80),
+        name: safeText(item.sourceFood.name, '', 120),
+        source: safeText(item.sourceFood.source, '', 40),
+      },
+    } : {}),
+    ...(item.macrosEdited === true ? { macrosEdited: true } : {}),
   }
+}
+
+function normalizeItemPer100(value) {
+  if (!isObject(value)) return null
+  const per100 = {
+    calories: safeNumber(value.calories, null, 1000),
+    carbs: safeNumber(value.carbs, null, 100),
+    fat: safeNumber(value.fat, null, 100),
+    protein: safeNumber(value.protein, null, 100),
+  }
+  return Object.values(per100).every((entry) => entry !== null) ? per100 : null
 }
 
 function sumDetectedNutrition(items) {

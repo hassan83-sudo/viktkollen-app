@@ -1,7 +1,10 @@
 export const allowedPhotoMimeTypes = ['image/jpeg', 'image/png', 'image/webp']
 export const allowedPhotoExtensions = ['.jpg', '.jpeg', '.png', '.webp']
 export const maxNutritionPhotoFileBytes = 8 * 1024 * 1024
-export const maxNutritionPhotoDimension = 1920
+// 1280 px: vision-modellen skalar ändå ner till ca 1440x1080 px, så 1920 px gav
+// fler bild-tokens utan märkbart mer detalj. 1280 px behåller detaljen för små
+// komponenter (såser, garnering) men sänker bildkostnaden med ca en femtedel.
+export const maxNutritionPhotoDimension = 1280
 
 function safeText(value, fallback = '') {
   return String(value || fallback).replace(/\s+/g, ' ').trim()

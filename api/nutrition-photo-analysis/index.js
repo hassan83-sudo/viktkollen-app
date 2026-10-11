@@ -5,8 +5,9 @@ import {
 import { aiRouteErrorCodes, mapGatewayErrorCode, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
 import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { createImageFingerprint, runDedupedAiRequest } from '../_shared/aiRequestDeduper.js'
-import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
+import { verifySupabaseUser, verifySupabaseUserInternals } from '../_shared/verifySupabaseUser.js'
 import { analysisConsentPurposes, verifyAnalysisConsentToken } from '../_shared/analysisConsent.js'
+import { matchComponentsToFoodBank } from '../_shared/nutritionFoodBankLookup.js'
 import { DISPATCH_CAS_RESULT } from '../../src/services/billing/durableOperationStore.js'
 import {
   createFoodScanOperationId,
@@ -32,7 +33,9 @@ import {
 const DEFAULT_MODEL = 'gpt-4.1-mini'
 export const NUTRITION_PHOTO_ANALYSIS_TIMEOUT_MS = 45000
 export const NUTRITION_PHOTO_MAX_COMPONENTS = 12
-export const NUTRITION_PHOTO_MAX_OUTPUT_TOKENS = 3400
+// Kompakt svar: identitet, tillagning, gram och reservvärde per 100 g (ca 60-80
+// tokens per komponent). Näring räknas på servern från Livsmedelsverkets matbank.
+export const NUTRITION_PHOTO_MAX_OUTPUT_TOKENS = 1400
 const MAX_IMAGE_SIZE_BYTES = Number(process.env.NUTRITION_PHOTO_MAX_FILE_BYTES || 8 * 1024 * 1024)
 const REQUEST_TIMEOUT_MS = Number(process.env.NUTRITION_PHOTO_TIMEOUT_MS || NUTRITION_PHOTO_ANALYSIS_TIMEOUT_MS)
 const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp']
@@ -197,40 +200,122 @@ function validateImage(image) {
   return null
 }
 
+// Kort prompt (MATSCAN-OPT-1): modellen identifierar livsmedel, tillagning och
+// gram per komponent. Kalorier och makron räknas på servern från Livsmedelsverkets
+// matbank; modellens per100-värden används bara som märkt reserv.
 function createPrompt(mealType) {
   return [
-    'Du analyserar en matbild för Viktkollen.',
-    'Arbeta component-first: inventera synliga separata måltidskomponenter före total näring.',
-    'Pass 1 visuell inventering: lista varje visuellt distinkt del för sig (protein/kött/fisk, ris, potatis, pommes, grönsaker, bröd, synlig sås/dipp/dressing, garnish/citron, räkningsbara bitar). Slå inte ihop visuellt separata livsmedel bara för att de är relaterade. Inferera inte dolda ingredienser som synliga fakta.',
-    'Returnera endast kompakt strikt JSON utan markdown, kodblock, inledning eller extra whitespace.',
-    'Tillåtna toppnivåfält är exakt: components, imageQuality, confidence, limitations, warnings, safeSummary.',
-    `components ska innehålla högst ${NUTRITION_PHOTO_MAX_COMPONENTS} objekt. Slå inte ihop visuellt separata livsmedel för att nå gränsen; välj i stället de mest näringsmässigt betydande synliga komponenterna om fler än ${NUTRITION_PHOTO_MAX_COMPONENTS} finns.`,
-    'Varje component får endast innehålla: name, category, confidence, visualEvidence, portionEstimate, nutritionEstimate, uncertaintyReason, alternatives, cookingMethods.',
-    'Textgränser per component: name högst 50 tecken, visualEvidence högst 60, portionEstimate.description högst 40 och uncertaintyReason högst 60. alternatives har högst 3 poster om högst 30 tecken. cookingMethods har högst 3 poster.',
-    'portionEstimate får endast innehålla description, gramsMin, gramsMax och confidence. Använd null för gram som inte kan bedömas.',
-    'nutritionEstimate får endast innehålla calories, proteinG, carbsG och fatG. Varje näringsintervall får endast innehålla min och max; servern härleder midpoint och confidence. Alla fyra intervall krävs för varje component.',
-    'limitations och warnings har högst 3 korta poster vardera, högst 80 tecken per post. safeSummary är högst 120 tecken.',
-    'Utelämna dubblerade legacy-fält: detectedItems, ingredients, uncertainIngredients, mealTotals, portionEstimate på toppnivå och analysisQuality. Servern härleder dessa från components.',
-    'Upprepa inte samma information i flera fält. Utelämna valfria tomma fält.',
-    'Inventera protein, kolhydrat/stärkelse, grönsaker, sås/dressing/dipp, synligt fett/olja, bröd/panering, dryck, garnish/tillbehör och unknown. category ska vara protein, carbohydrate, vegetables, sauce, fat eller unknown.',
-    'confidence är säkerhet i vad maten är. portionEstimate.confidence är säkerhet i mängden. De får skilja sig: high confidence och medium/low portion confidence är normalt när typen syns men skalan är osäker.',
-    'visualEvidence ska vara kort och maskinläsbar, inte intern chain-of-thought.',
-    'Uppskatta gram med relativ tallriksyta, footprint, synlig höjd/volym, om maten ligger platt eller i hög, livsmedelsdensitet, synligt styckantal och jämförelse mot grannkomponenter. Hitta inte på exakt tallriksdiameter om skala saknas. Vid svag skala: bredda gramsMin/gramsMax i stället för att låtsas precision.',
-    'När maten är räkningsbar (nuggets, köttbullar, ägg, brödskivor, sushibitar, kycklingbitar, dumplings), använd endast synliga bitar när gramintervallet uppskattas. Gissa inte dolda bitar. Bilden skickas med hög visuell detail; använd den för portion, såsglans och panering.',
-    'nutritionEstimate är endast reserv; gram och identitet är primära. Utelämna näringsintervallets midpoint och confidence eftersom servern härleder dem.',
-    'Gör en intern second visual pass innan JSON slutförs: kontrollera missad sås/dipp/dressing, glans eller olja/fett, panering/fritering, topping/garnish, delvis dold komponent, dubbelräkning och om gram är rimliga relativt varandra.',
-    'Synlig separat sås/dressing/dipp ska alltid vara egen komponent. Vid osäker typ: använd neutral etikett som Krämig sås och lägg möjliga typer i alternatives.',
-    'Hög confidence på att sås finns kan kombineras med medium/low confidence eller uncertaintyReason för exakt typ/mängd. Låt nutritionintervallet spegla möjliga såstyper.',
-    'För fried, breaded, battered eller oil-coated komponenter ska nutritionintervallet ta hänsyn till tillagningsfett/panering när bilden stöder det.',
-    'Undvik dubbelräkning: ingen separat oljekomponent om fettet redan ingår i friterad/panerad komponent, om inte separat synligt fett/olja finns eller anges som osäker möjlig bidragare.',
-    'Ange cookingMethods bara när bilden ger stöd, t.ex. fried, breaded, grilled, boiled, baked eller raw. Håll pommes skild från kokt/ugnsbakad potatis och friterad kyckling skild från grillad/kokt kyckling.',
-    'Om synlig mat inte kan identifieras säkert, behåll den som Okänd komponent med low confidence och högst tre relevanta alternatives.',
-    'Hallucinera inte dolda ingredienser som fakta. Om något kan bidra men inte syns säkert ska det markeras som uncertainty eller possible hidden contributor, inte som säker komponent.',
-    'imageQuality ska vara good, usable eller poor baserat på ljus, blur, occlusion, vinkel, plate coverage och om bilden verkar vara fotograferad från skärm.',
-    'Var specifik där visuell evidens är stark. Var försiktig där bilden inte ger stöd. Returnera null när något inte kan avgöras.',
-    'Ge ingen medicinsk rådgivning, ingen diagnos, ingen bedömning av kropp, vikt eller om maten är bra/dålig.',
-    `Måltidstyp om användaren valt den: ${safeText(mealType, 'okänd', 40)}.`,
-  ].join(' ')
+    'Viktkollen food photo analysis. Reply with compact JSON only, no markdown:',
+    `{"items":[{"name":"","bank":"","cat":"","cook":"","g":[0,0],"conf":"","gconf":"","alt":[],"per100":[0,0,0,0]}],"quality":"","conf":"","note":""}`,
+    `1. One item per visually distinct food, max ${NUTRITION_PHOTO_MAX_COMPONENTS}. Keep every visible sauce, dressing, dip, oil/butter, bread, breading and topping as its own item; split dishes into their visible parts (burger: bun, patty, cheese, vegetables, sauce). A dish that cannot be separated (pizza slice, lasagne, soup, stew) is one item. Do not merge separate foods; do not count the same food twice.`,
+    '2. name: short Swedish name for the user. bank: Swedish name in Livsmedelsverket style, main food first, then cut/type, then cooking, e.g. "Kyckling bröstfilé stekt", "Ris vitt kokt", "Broccoli kokt", "Pommes frites ugnsstekta", "Lax ugnsstekt", "Nötfärs stekt", "Potatis kokt", "Bearnaisesås".',
+    '3. cat: protein|carbohydrate|vegetables|sauce|fat|drink|unknown. cook: fried|breaded|grilled|boiled|baked|steamed|raw or "" - only with visible cues (browning, crust, grill marks, breading, oil sheen).',
+    '4. Identity: check texture before naming meat or fish. Chicken: matte white-beige meat with long parallel fibres, often grill marks or a seasoned crust. Fish: flakes in layers, white or pink segments, often skin or sheen. Also check pork vs chicken, beef vs lamb, rice vs bulgur/couscous, potato vs sweet potato, cream sauce vs yoghurt sauce. conf high only when unmistakable; otherwise medium or low with up to 2 likely alternatives in alt. Never present a guess as certain. An unidentifiable food is "Okänd komponent" with conf low.',
+    '5. g: grams for each item separately as [min,max], from visible area, height/thickness and density relative to the plate (standard dinner plate about 26 cm unless clearly otherwise), cutlery and neighbouring items. For countable foods count only visible pieces. Use a wider range when scale is unclear and null when impossible. gconf: high|medium|low confidence in the grams.',
+    '6. per100: your estimate of kcal, protein g, carbs g, fat g per 100 g of the item as served, including cooking fat and breading. Used only as a labelled fallback when the food database has no safe match.',
+    '7. Never invent hidden ingredients. quality: good|usable|poor (light, blur, occlusion, photo of a screen). conf: overall high|medium|low. note: max 100 characters in Swedish, factual, no health or diet advice.',
+    `Meal type: ${safeText(mealType, 'unknown', 40)}.`,
+  ].join('\n')
+}
+
+const compactCategories = new Set(['protein', 'carbohydrate', 'vegetables', 'sauce', 'fat', 'unknown'])
+const compactCooking = new Set(['fried', 'breaded', 'grilled', 'boiled', 'baked', 'steamed', 'raw'])
+
+function compactConfidence(value, fallback = 'low') {
+  const text = safeText(value, '', 20).toLowerCase()
+  return ['high', 'medium', 'low'].includes(text) ? text : fallback
+}
+
+function compactGrams(value) {
+  if (!Array.isArray(value)) return { gramsMax: null, gramsMin: null }
+  const min = safeNumber(value[0], null, 5000)
+  const max = safeNumber(value[1] ?? value[0], null, 5000)
+  if (min === null || max === null || max <= 0) return { gramsMax: null, gramsMin: null }
+  return { gramsMax: Math.max(min, max), gramsMin: Math.min(min, max) }
+}
+
+function compactPer100(value) {
+  if (!Array.isArray(value) || value.length < 4) return null
+  const [calories, protein, carbs, fat] = [
+    safeNumber(value[0], null, 1000),
+    safeNumber(value[1], null, 100),
+    safeNumber(value[2], null, 100),
+    safeNumber(value[3], null, 100),
+  ]
+  if ([calories, protein, carbs, fat].some((entry) => entry === null)) return null
+  return { calories, carbs, fat, protein }
+}
+
+function rangeFromPer100(per100Value, gramsMin, gramsMax) {
+  return {
+    max: Number((per100Value * gramsMax / 100).toFixed(1)),
+    min: Number((per100Value * gramsMin / 100).toFixed(1)),
+  }
+}
+
+// Översätter modellens kompakta svar till appens befintliga komponentformat.
+export function componentsFromCompactItems(items = []) {
+  return (Array.isArray(items) ? items : []).slice(0, NUTRITION_PHOTO_MAX_COMPONENTS).map((item, index) => {
+    const source = item && typeof item === 'object' ? item : {}
+    const confidence = compactConfidence(source.conf)
+    const grams = compactGrams(source.g)
+    const aiPer100 = compactPer100(source.per100)
+    const category = safeText(source.cat, 'unknown', 20).toLowerCase()
+    const cook = safeText(source.cook, '', 20).toLowerCase()
+    const hasGrams = grams.gramsMin !== null
+    return {
+      aiPer100,
+      alternatives: Array.isArray(source.alt) ? source.alt.map((entry) => safeText(entry, '', 30)).filter(Boolean).slice(0, 2) : [],
+      bankName: safeText(source.bank, '', 80),
+      category: compactCategories.has(category) ? category : 'unknown',
+      confidence,
+      cookingMethods: compactCooking.has(cook) ? [cook] : [],
+      id: `photo-component-${index}`,
+      identityConfidence: confidence,
+      name: safeText(source.name, 'Okänd komponent', 50),
+      nutritionEstimate: hasGrams && aiPer100 ? {
+        calories: rangeFromPer100(aiPer100.calories, grams.gramsMin, grams.gramsMax),
+        carbsG: rangeFromPer100(aiPer100.carbs, grams.gramsMin, grams.gramsMax),
+        fatG: rangeFromPer100(aiPer100.fat, grams.gramsMin, grams.gramsMax),
+        proteinG: rangeFromPer100(aiPer100.protein, grams.gramsMin, grams.gramsMax),
+      } : {},
+      portionEstimate: {
+        confidence: compactConfidence(source.gconf, hasGrams ? 'medium' : 'low'),
+        description: hasGrams ? `${Math.round(grams.gramsMin)}–${Math.round(grams.gramsMax)} g` : 'Mängden kunde inte bedömas',
+        gramsMax: grams.gramsMax,
+        gramsMin: grams.gramsMin,
+      },
+      uncertaintyReason: confidence === 'high' ? '' : 'Osäker identifiering – kontrollera.',
+      visualEvidence: '',
+    }
+  })
+}
+
+// Kompakt svar -> befintligt format, med näring från matbanken där en säker träff finns.
+export async function expandCompactPayload(payload = {}, foodBankOptions = {}) {
+  if (!payload || !Array.isArray(payload.items)) return { foodBank: null, payload }
+  const components = componentsFromCompactItems(payload.items)
+  const { lookup, matches } = await matchComponentsToFoodBank(components, foodBankOptions)
+  const withBank = components.map((component) => {
+    const match = matches.get(component.id)
+    return match?.status === 'matched' ? { ...component, foodBankMatch: match.food } : component
+  })
+  const statuses = [...matches.values()].reduce((summary, match) => {
+    summary[match.status] = (summary[match.status] || 0) + 1
+    return summary
+  }, {})
+  const note = safeText(payload.note, '', 120)
+  return {
+    foodBank: { lookupOk: lookup.ok, reason: lookup.reason, statuses },
+    payload: {
+      components: withBank,
+      confidence: compactConfidence(payload.conf, 'low'),
+      imageQuality: safeText(payload.quality, 'usable', 20),
+      limitations: [],
+      safeSummary: note,
+      warnings: [],
+    },
+  }
 }
 
 function normalizeConfidence(value) {
@@ -245,8 +330,22 @@ function normalizeConfidence(value) {
   return 'insufficient'
 }
 
+function normalizePer100(value) {
+  if (!value || typeof value !== 'object') return null
+  const per100 = {
+    calories: safeNumber(value.calories, null, 1000),
+    carbs: safeNumber(value.carbs, null, 100),
+    fat: safeNumber(value.fat, null, 100),
+    protein: safeNumber(value.protein, null, 100),
+  }
+  return Object.values(per100).every((entry) => entry !== null) ? per100 : null
+}
+
 function normalizeItem(item = {}, index = 0) {
   return {
+    ...(normalizePer100(item.per100) ? { per100: normalizePer100(item.per100) } : {}),
+    ...(item.sourceFood?.id ? { sourceFood: { id: safeText(item.sourceFood.id, '', 80), name: safeText(item.sourceFood.name, '', 120), source: safeText(item.sourceFood.source, '', 40) } } : {}),
+    ...(item.uncertain === true ? { uncertain: true } : {}),
     alternatives: Array.isArray(item.alternatives) ? item.alternatives.map((entry) => safeText(entry, '', 60)).filter(Boolean).slice(0, 4) : [],
     calories: safeNumber(item.calories, null, 5000),
     carbohydrates: safeNumber(item.carbohydrates ?? item.carbs, null, 1000),
@@ -279,7 +378,12 @@ function validateProviderPayload(payload = {}) {
           : null,
         fat: nutrition.fat,
         name: component.name,
+        per100: component.matchedFood?.per100 || component.aiPer100 || null,
         protein: nutrition.protein,
+        sourceFood: component.matchedFood?.source === 'livsmedelsverket' || component.matchedFood?.category === 'nutrition_food_bank'
+          ? { id: component.matchedFood.id, name: component.matchedFood.name, source: component.matchedFood.source }
+          : null,
+        uncertain: component.confidence !== 'high',
         unit: 'g',
       }, index)
     })
@@ -346,7 +450,7 @@ function validateProviderPayload(payload = {}) {
   }
 }
 
-async function callOpenAi(image, mealType, { requestId, usageRepository, userId } = {}) {
+async function callOpenAi(image, mealType, { accessToken = '', requestId, usageRepository, userId } = {}) {
   if (!process.env.OPENAI_API_KEY) {
     const error = new Error('missing_configuration')
     error.code = 'serverConfiguration'
@@ -404,7 +508,13 @@ async function callOpenAi(image, mealType, { requestId, usageRepository, userId 
     throw error
   }
 
-  return validateProviderPayload(result.value)
+  const expanded = await expandCompactPayload(result.value, { accessToken })
+  const validated = validateProviderPayload(expanded.payload)
+  if (expanded.foodBank) {
+    validated.analysis.foodBank = expanded.foodBank
+    console.info('[api/nutrition-photo-analysis] Food bank', { requestId, ...expanded.foodBank })
+  }
+  return validated
 }
 
 export default async function handler(request, response) {
@@ -530,6 +640,7 @@ export default async function handler(request, response) {
           route: 'nutritionPhoto',
           userId: auth.user.id,
         }, () => callOpenAi(image, parsedRequest.parsed.fields.mealType, {
+          accessToken: verifySupabaseUserInternals.getBearerToken(request).token || '',
           requestId: operationId,
           usageRepository: runtime.usageRepository,
           userId: auth.user.id,
@@ -685,7 +796,9 @@ export default async function handler(request, response) {
 }
 
 export const nutritionPhotoRouteInternals = {
+  componentsFromCompactItems,
   createPrompt,
+  expandCompactPayload,
   isAllowedOrigin,
   parseMultipart,
   validateProviderPayload,

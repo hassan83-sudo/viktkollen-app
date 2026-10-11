@@ -24,53 +24,24 @@ function boundedText(length, seed = 'x') {
   return seed.repeat(Math.ceil(length / seed.length)).slice(0, length)
 }
 
-function maximumProviderShape() {
-  const categories = [
-    'protein',
-    'carbohydrate',
-    'vegetables',
-    'sauce',
-    'fat',
-    'unknown',
-    'protein',
-    'carbohydrate',
-    'vegetables',
-    'fat',
-    'unknown',
-    'protein',
-  ]
-  const range = { max: 200, min: 10 }
+// Största tillåtna kompakta svar: 12 komponenter med längsta tillåtna text.
+function maximumCompactShape() {
   return {
-    components: Array.from({ length: NUTRITION_PHOTO_MAX_COMPONENTS }, (_, index) => ({
-      alternatives: [
-        boundedText(30, `alt${index}a`),
-        boundedText(30, `alt${index}b`),
-        boundedText(30, `alt${index}c`),
-      ],
-      category: categories[index],
-      confidence: 'medium',
-      cookingMethods: ['fried', 'breaded', 'grilled'],
+    conf: 'medium',
+    items: Array.from({ length: NUTRITION_PHOTO_MAX_COMPONENTS }, (_, index) => ({
+      alt: [boundedText(30, `alt${index}a`), boundedText(30, `alt${index}b`)],
+      bank: boundedText(80, `Bank${index} `),
+      cat: ['protein', 'carbohydrate', 'vegetables', 'sauce', 'fat', 'unknown'][index % 6],
+      // high: osäkra såser döps annars medvetet om till "Krämig sås" och slås ihop.
+      conf: 'high',
+      cook: 'fried',
+      g: [10, 200],
+      gconf: 'medium',
       name: `Item-${String.fromCharCode(65 + index)}-${boundedText(43, 'x')}`,
-      nutritionEstimate: {
-        calories: range,
-        carbsG: range,
-        fatG: range,
-        proteinG: range,
-      },
-      portionEstimate: {
-        confidence: 'medium',
-        description: boundedText(40, `portion${index}`),
-        gramsMax: 200,
-        gramsMin: 10,
-      },
-      uncertaintyReason: boundedText(60, `uncertain${index}`),
-      visualEvidence: boundedText(60, `visible${index}`),
+      per100: [250, 20, 30, 12],
     })),
-    confidence: 'medium',
-    imageQuality: 'usable',
-    limitations: Array.from({ length: 3 }, (_, index) => boundedText(80, `limitation${index}`)),
-    safeSummary: boundedText(120, 'summary'),
-    warnings: Array.from({ length: 3 }, (_, index) => boundedText(80, `warning${index}`)),
+    note: boundedText(100, 'note'),
+    quality: 'usable',
   }
 }
 
@@ -381,65 +352,66 @@ describe('nutrition photo analysis API route', () => {
     expect(NUTRITION_PHOTO_ANALYSIS_TIMEOUT_MS).toBe(45000)
   })
 
-  it('prompts the model to use component-first analysis with a second visual pass', () => {
-    const prompt = nutritionPhotoRouteInternals.createPrompt('Lunch')
-
-    expect(prompt).toContain('component-first')
-    expect(prompt).toContain('second visual pass')
-    expect(prompt).toContain('missad sås/dipp/dressing')
-    expect(prompt).toContain('glans eller olja/fett')
-    expect(prompt).toContain('panering/fritering')
-    expect(prompt).toContain('dubbelräkning')
-    expect(prompt).toContain('portion')
-  })
-
-  it('prompts visible sauces to remain separate components with alternatives when identity is uncertain', () => {
-    const prompt = nutritionPhotoRouteInternals.createPrompt('Lunch')
-
-    expect(prompt).toContain('Synlig separat sås/dressing/dipp ska alltid vara egen komponent')
-    expect(prompt).toContain('Krämig sås')
-    expect(prompt).toContain('alternatives')
-    expect(prompt).toContain('Hög confidence på att sås finns')
-    expect(prompt).toContain('medium/low confidence')
-  })
-
-  it('prompts fried and breaded foods to account for fat without double-counting oil', () => {
-    const prompt = nutritionPhotoRouteInternals.createPrompt('Lunch')
-
-    expect(prompt).toContain('fried, breaded, battered eller oil-coated')
-    expect(prompt).toContain('tillagningsfett/panering')
-    expect(prompt).toContain('Undvik dubbelräkning')
-    expect(prompt).toContain('separat synligt fett/olja')
-  })
-
-  it('prompts countable foods, plate-relative portions and visual inventory without merging separate foods', () => {
-    const prompt = nutritionPhotoRouteInternals.createPrompt('Lunch')
-
-    expect(prompt).toContain('Pass 1 visuell inventering')
-    expect(prompt).toContain('synligt styckantal')
-    expect(prompt).toContain('Slå inte ihop visuellt separata livsmedel')
-    expect(prompt).toContain('Hitta inte på exakt tallriksdiameter')
-    expect(prompt).toContain('detail')
-  })
-
-  it('bounds the compact provider contract and omits server-derived duplicates', () => {
+  it('prompts a short compact contract: identity, cooking and grams per item, no nutrition maths', () => {
     const prompt = nutritionPhotoRouteInternals.createPrompt('Lunch')
 
     expect(NUTRITION_PHOTO_MAX_COMPONENTS).toBe(12)
-    expect(prompt).toContain('högst 12 objekt')
-    expect(prompt).toContain('kompakt strikt JSON')
-    expect(prompt).toContain('name högst 50 tecken')
-    expect(prompt).toContain('alternatives har högst 3 poster')
-    expect(prompt).toContain('limitations och warnings har högst 3')
-    expect(prompt).toContain('Utelämna dubblerade legacy-fält')
-    expect(prompt).toContain('detectedItems')
-    expect(prompt).toContain('mealTotals')
-    expect(prompt).toContain('servern härleder midpoint och confidence')
+    expect(prompt).toContain('compact JSON only')
+    expect(prompt).toContain(`max ${NUTRITION_PHOTO_MAX_COMPONENTS}`)
+    expect(prompt).toContain('grams for each item separately')
+    expect(prompt).toContain('Livsmedelsverket style')
+    expect(prompt).toContain('Kyckling bröstfilé stekt')
+    expect(prompt).toContain('per100')
+    expect(prompt).toContain('labelled fallback')
+    expect(prompt).toContain('Meal type: Lunch')
+    // Kortare än den tidigare promptens ca 5 800 tecken.
+    expect(prompt.length).toBeLessThan(3000)
+  })
+
+  it('prompts chicken versus fish checks and never presenting guesses as certain', () => {
+    const prompt = nutritionPhotoRouteInternals.createPrompt('Lunch')
+
+    expect(prompt).toContain('check texture before naming meat or fish')
+    expect(prompt).toContain('Chicken:')
+    expect(prompt).toContain('Fish:')
+    expect(prompt).toContain('Never present a guess as certain')
+    expect(prompt).toContain('alternatives in alt')
+    expect(prompt).toContain('Okänd komponent')
+  })
+
+  it('prompts sauces, fats and breading as own items, cooking only from visible cues, and no hidden food', () => {
+    const prompt = nutritionPhotoRouteInternals.createPrompt('Lunch')
+
+    expect(prompt).toContain('sauce, dressing, dip, oil/butter, bread, breading and topping as its own item')
+    expect(prompt).toContain('do not count the same food twice')
+    expect(prompt).toContain('only with visible cues')
+    expect(prompt).toContain('count only visible pieces')
+    expect(prompt).toContain('Never invent hidden ingredients')
+    expect(prompt).toContain('no health or diet advice')
+  })
+
+  it('converts compact items to components with grams, cooking and a labelled AI fallback', () => {
+    const [chicken, unknown] = nutritionPhotoRouteInternals.componentsFromCompactItems([
+      { alt: ['Fisk'], bank: 'Kyckling bröstfilé stekt', cat: 'protein', conf: 'medium', cook: 'fried', g: [160, 120], gconf: 'medium', name: 'Kycklingfilé', per100: [165, 31, 0, 4] },
+      { cat: 'drink', conf: 'nonsense', g: null, name: '' },
+    ])
+
+    expect(chicken).toMatchObject({
+      alternatives: ['Fisk'],
+      bankName: 'Kyckling bröstfilé stekt',
+      category: 'protein',
+      confidence: 'medium',
+      cookingMethods: ['fried'],
+      portionEstimate: { gramsMax: 160, gramsMin: 120 },
+      uncertaintyReason: 'Osäker identifiering – kontrollera.',
+    })
+    expect(chicken.nutritionEstimate.calories).toEqual({ max: 264, min: 198 })
+    expect(unknown).toMatchObject({ category: 'unknown', confidence: 'low', name: 'Okänd komponent', portionEstimate: { gramsMax: null, gramsMin: null } })
   })
 
   it('fits and accepts the bounded twelve-component maximum shape in one provider call', async () => {
     process.env.OPENAI_API_KEY = 'test-key'
-    const providerPayload = maximumProviderShape()
+    const providerPayload = maximumCompactShape()
     const compactJson = JSON.stringify(providerPayload)
     const conservativeEstimatedTokens = Math.ceil(compactJson.length / 3)
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({
@@ -447,7 +419,9 @@ describe('nutrition photo analysis API route', () => {
     }), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
 
-    const validated = nutritionPhotoRouteInternals.validateProviderPayload(providerPayload)
+    const validated = nutritionPhotoRouteInternals.validateProviderPayload(
+      (await nutritionPhotoRouteInternals.expandCompactPayload(providerPayload)).payload,
+    )
     const response = await callRoute(createRequest({
       body: multipartBody(),
       headers: consentHeadersForPhoto(),
@@ -464,6 +438,87 @@ describe('nutrition photo analysis API route', () => {
     expect(response.body.analysis.detectedItems).toHaveLength(NUTRITION_PHOTO_MAX_COMPONENTS)
     expect(providerBody.max_output_tokens).toBe(NUTRITION_PHOTO_MAX_OUTPUT_TOKENS)
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses Livsmedelsverket values for safe matches and keeps a labelled AI fallback otherwise', async () => {
+    process.env.OPENAI_API_KEY = 'test-key'
+    process.env.SUPABASE_URL = 'https://example.supabase.co'
+    process.env.SUPABASE_ANON_KEY = 'anon-test-key'
+    vi.spyOn(console, 'info').mockImplementation(() => {})
+    const bankRows = [
+      { calories_per_100g: 151, carbs_per_100g: 0, fat_per_100g: 3.1, name: 'Kyckling bröstfilé stekt', normalized_name: 'kyckling brostfile stekt', protein_per_100g: 30.5, source: 'livsmedelsverket', source_food_id: '1', source_version: '2026' },
+      { calories_per_100g: 106, carbs_per_100g: 0, fat_per_100g: 1.2, name: 'Kyckling bröstfilé rå', normalized_name: 'kyckling brostfile ra', protein_per_100g: 23.1, source: 'livsmedelsverket', source_food_id: '2', source_version: '2026' },
+      { calories_per_100g: 132, carbs_per_100g: 28.6, fat_per_100g: 0.4, name: 'Ris vitt långkornigt kokt', normalized_name: 'ris vitt langkornigt kokt', protein_per_100g: 2.6, source: 'livsmedelsverket', source_food_id: '3', source_version: '2026' },
+    ]
+    const fetchMock = vi.fn(async (url) => {
+      if (String(url).startsWith('https://example.supabase.co/rest/v1/nutrition_food_bank')) {
+        return new Response(JSON.stringify(bankRows), { status: 200 })
+      }
+      return new Response(JSON.stringify({
+        output_text: JSON.stringify({
+          conf: 'medium',
+          items: [
+            { bank: 'Kyckling bröstfilé stekt', cat: 'protein', conf: 'high', cook: 'fried', g: [120, 160], gconf: 'medium', name: 'Kycklingfilé', per100: [170, 30, 0, 5] },
+            { bank: 'Ris vitt kokt', cat: 'carbohydrate', conf: 'high', cook: 'boiled', g: [150, 200], gconf: 'medium', name: 'Kokt ris', per100: [130, 3, 28, 0] },
+            { alt: ['Yoghurtsås'], bank: 'Gräddsås', cat: 'sauce', conf: 'low', cook: '', g: [30, 60], gconf: 'low', name: 'Krämig sås', per100: [150, 2, 6, 13] },
+          ],
+          note: 'Kyckling med ris och sås.',
+          quality: 'good',
+        }),
+      }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await callRoute(createRequest({
+      body: multipartBody(),
+      headers: consentHeadersForPhoto(),
+    }))
+
+    expect(response.statusCode).toBe(200)
+    // Exakt ett AI-anrop och ett databasanrop per scanning.
+    const calls = fetchMock.mock.calls.map(([url]) => String(url))
+    expect(calls.filter((url) => url.includes('openai'))).toHaveLength(1)
+    const bankCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/rest/v1/nutrition_food_bank'))
+    expect(bankCall[1].headers.Authorization).toBe('Bearer valid-token')
+    expect(bankCall[1].headers.apikey).toBe('anon-test-key')
+
+    const items = response.body.analysis.detectedItems
+    const chicken = items.find((item) => item.name === 'Kycklingfilé')
+    const rice = items.find((item) => item.name === 'Kokt ris')
+    const sauce = items.find((item) => item.name === 'Krämig sås')
+    // Kyckling: stekt filé från databasen (inte rå), 140 g * 151 kcal/100 g.
+    expect(chicken).toMatchObject({ dataSource: 'databaseDerived', estimatedAmount: 140, per100: { calories: 151 } })
+    expect(chicken.sourceFood).toMatchObject({ id: 'livsmedelsverket:1', name: 'Kyckling bröstfilé stekt' })
+    expect(chicken.calories).toBe(212)
+    expect(rice).toMatchObject({ dataSource: 'databaseDerived', per100: { calories: 132 } })
+    // Osäker sås: ingen databasträff, AI-reserv tydligt märkt och flaggad som osäker.
+    expect(sauce).toMatchObject({ dataSource: 'aiEstimate', uncertain: true, per100: { calories: 150 } })
+    expect(response.body.analysis.foodBank).toMatchObject({ lookupOk: true })
+    expect(JSON.stringify(response.body)).not.toMatch(/anon-test-key|valid-token|test-key/)
+  })
+
+  it('falls back to labelled AI values when the food bank is unavailable', async () => {
+    process.env.OPENAI_API_KEY = 'test-key'
+    process.env.SUPABASE_URL = 'https://example.supabase.co'
+    process.env.SUPABASE_ANON_KEY = 'anon-test-key'
+    vi.spyOn(console, 'info').mockImplementation(() => {})
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (String(url).includes('/rest/v1/')) return new Response('{}', { status: 500 })
+      return new Response(JSON.stringify({
+        output_text: JSON.stringify({
+          conf: 'high',
+          items: [{ bank: 'Kyckling bröstfilé stekt', cat: 'protein', conf: 'high', cook: 'fried', g: [100, 140], gconf: 'medium', name: 'Kycklingfilé', per100: [170, 30, 0, 5] }],
+          quality: 'good',
+        }),
+      }), { status: 200 })
+    }))
+
+    const response = await callRoute(createRequest({ body: multipartBody(), headers: consentHeadersForPhoto() }))
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body.analysis.detectedItems[0]).toMatchObject({ dataSource: 'aiEstimate', estimatedAmount: 120 })
+    expect(response.body.analysis.detectedItems[0].calories).toBeCloseTo(204, 0)
+    expect(response.body.analysis.foodBank).toMatchObject({ lookupOk: false, reason: 'http_500' })
   })
 
   it('validates provider payload and strips unsafe fields', () => {
@@ -725,7 +780,7 @@ describe('nutrition photo analysis API route', () => {
     expect(response.body.ok).toBe(true)
     expect(response.body.analysis.providerType).toBe('remote')
     expect(response.body.analysis.detectedItems[0].name).toBe('Pizza')
-    expect(providerBody.max_output_tokens).toBe(3400)
+    expect(providerBody.max_output_tokens).toBe(NUTRITION_PHOTO_MAX_OUTPUT_TOKENS)
     expect(JSON.stringify(response.body)).not.toMatch(/test-key|Bearer|output_text|data:image/)
     expect(response.headers['Cache-Control']).toContain('no-store')
   })

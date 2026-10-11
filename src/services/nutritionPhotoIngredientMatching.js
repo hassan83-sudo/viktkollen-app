@@ -207,6 +207,51 @@ export function applyPhotoIngredientDatabaseSuggestion(item = {}, suggestion = {
     dataSource: 'nutritionDatabase',
     fat: Number((suggestion.nutritionPer100g.fat * factor).toFixed(1)),
     name: suggestion.name,
+    // Sparas så att en senare gramkorrigering räknas om från samma livsmedel.
+    per100: {
+      calories: suggestion.nutritionPer100g.calories,
+      carbs: suggestion.nutritionPer100g.carbs,
+      fat: suggestion.nutritionPer100g.fat,
+      protein: suggestion.nutritionPer100g.protein,
+    },
     protein: Number((suggestion.nutritionPer100g.protein * factor).toFixed(1)),
+    sourceFood: suggestion.id ? { id: suggestion.id, name: suggestion.name, source: suggestion.source || '' } : null,
   }
+}
+
+const macroPatchFields = ['calories', 'protein', 'carbohydrates', 'fat']
+
+function hasUsablePer100(per100) {
+  return Boolean(per100) && ['calories', 'protein', 'carbs', 'fat'].every((key) => Number.isFinite(Number(per100[key])))
+}
+
+/**
+ * Ändring av en ingrediens i granskningen.
+ * - Ny mängd (gram): makron räknas om från värdet per 100 g (databas eller
+ *   märkt AI-reserv), om användaren inte själv har skrivit in makron.
+ * - Egna makron: används som de är och skrivs aldrig över senare.
+ * - Nytt namn eller annan enhet: värdet per 100 g gäller inte längre.
+ */
+export function applyPhotoIngredientPatch(item = {}, patch = {}) {
+  if (macroPatchFields.some((field) => field in patch)) {
+    return { ...item, ...patch, dataSource: 'manual', macrosEdited: true }
+  }
+  if (('name' in patch && patch.name !== item.name) || ('unit' in patch && patch.unit !== 'g')) {
+    return { ...item, ...patch, dataSource: 'manual', per100: null, sourceFood: null }
+  }
+  const next = { ...item, ...patch }
+  if ('estimatedAmount' in patch && !item.macrosEdited && hasUsablePer100(item.per100) && (next.unit || 'g') === 'g') {
+    const grams = Number(patch.estimatedAmount)
+    if (Number.isFinite(grams) && grams >= 0) {
+      const factor = grams / 100
+      return {
+        ...next,
+        calories: Number((item.per100.calories * factor).toFixed(1)),
+        carbohydrates: Number((item.per100.carbs * factor).toFixed(1)),
+        fat: Number((item.per100.fat * factor).toFixed(1)),
+        protein: Number((item.per100.protein * factor).toFixed(1)),
+      }
+    }
+  }
+  return 'estimatedAmount' in patch ? next : { ...next, dataSource: 'manual' }
 }

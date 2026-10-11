@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
+import { normalizeNutritionPhotoAnalysis } from './nutritionPhotoAnalysis.js'
 import {
   applyPhotoIngredientDatabaseSuggestion,
+  applyPhotoIngredientPatch,
   buildPhotoIngredientMatchStatusCounts,
   buildPhotoIngredientMatchSummary,
   matchPhotoIngredientToDatabase,
@@ -113,5 +115,54 @@ describe('nutritionPhotoIngredientMatching', () => {
     expect(applied.calories).toBeGreaterThan(0)
     expect(preserved.name).toBe('Min pizza')
     expect(preserved.dataSource).toBeUndefined()
+  })
+
+  describe('gram corrections', () => {
+    const chicken = {
+      calories: 211.4,
+      carbohydrates: 0,
+      dataSource: 'databaseDerived',
+      estimatedAmount: 140,
+      fat: 4.3,
+      id: 'a',
+      name: 'Kycklingfilé',
+      per100: { calories: 151, carbs: 0, fat: 3.1, protein: 30.5 },
+      protein: 42.7,
+      unit: 'g',
+    }
+
+    it('recalculates macros from the per-100 g value when the user corrects grams', () => {
+      const corrected = applyPhotoIngredientPatch(chicken, { estimatedAmount: 200, userEdited: true })
+      expect(corrected).toMatchObject({ calories: 302, carbohydrates: 0, dataSource: 'databaseDerived', estimatedAmount: 200, fat: 6.2, protein: 61, userEdited: true })
+    })
+
+    it('never overwrites macros the user typed in', () => {
+      const typed = applyPhotoIngredientPatch(chicken, { calories: 250, userEdited: true })
+      expect(typed).toMatchObject({ calories: 250, dataSource: 'manual', macrosEdited: true })
+      expect(applyPhotoIngredientPatch(typed, { estimatedAmount: 300 }).calories).toBe(250)
+    })
+
+    it('drops the per-100 g value when the food is renamed or the unit is not grams', () => {
+      expect(applyPhotoIngredientPatch(chicken, { name: 'Fisk' })).toMatchObject({ dataSource: 'manual', per100: null, sourceFood: null })
+      const pieces = applyPhotoIngredientPatch(chicken, { unit: 'st' })
+      expect(applyPhotoIngredientPatch(pieces, { estimatedAmount: 2 }).calories).toBe(211.4)
+    })
+
+    it('keeps per-100 g values from a chosen database suggestion for later corrections', () => {
+      const applied = applyPhotoIngredientDatabaseSuggestion({ estimatedAmount: 100, name: 'Ris' }, {
+        id: 'livsmedelsverket:8', name: 'Ris vitt kokt', nutritionPer100g: { calories: 132, carbs: 28.6, fat: 0.4, protein: 2.6 }, source: 'livsmedelsverket',
+      })
+      expect(applyPhotoIngredientPatch(applied, { estimatedAmount: 250 })).toMatchObject({ calories: 330, carbohydrates: 71.5, dataSource: 'nutritionDatabase' })
+    })
+
+    it('keeps per-100 g values and the source food through client normalization', () => {
+      const analysis = normalizeNutritionPhotoAnalysis({
+        detectedItems: [{ ...chicken, sourceFood: { id: 'livsmedelsverket:2', name: 'Kyckling bröstfilé stekt', source: 'livsmedelsverket' } }],
+      })
+      expect(analysis.detectedItems[0]).toMatchObject({
+        per100: { calories: 151, carbs: 0, fat: 3.1, protein: 30.5 },
+        sourceFood: { id: 'livsmedelsverket:2' },
+      })
+    })
   })
 })

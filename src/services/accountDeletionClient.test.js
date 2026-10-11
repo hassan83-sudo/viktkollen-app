@@ -15,6 +15,9 @@ vi.mock('./ai/aiAuthTransport.js', () => ({
 }))
 
 vi.mock('./userDataRepository.js', () => ({
+  // Lokal kroppsscanning läser aktivt användarscope; utan scope finns ingen nyckel.
+  getActiveUserDataScope: () => ({ storageId: '' }),
+  userDataScopeVersion: 1,
   getBackupStorageKeys: () => ['viktkollen.profile', 'viktkollen.weights'],
   getDeletionStorageKeys: () => ['viktkollen.profile', 'viktkollen.weights', 'viktkollen.profile-photo'],
   removeUserData: vi.fn((key) => key !== 'viktkollen.weights'),

@@ -11,13 +11,12 @@ Status: **foundation only; not available for sale**. No production changes.
 - No customer-facing checkout or purchase button may be enabled before then.
 
 ## Quota rollover policy (current decision)
-- Unused subscription quotas carry forward to the next month and are added to that month's new allowance.
-- Purchased extra quotas also carry forward, in a separate balance.
-- Consume accumulated subscription quotas before purchased extra quotas.
-- Plan changes take effect on renewal; preserve already accrued subscription quotas when changing plan.
-- Existing per-period billing.reserve_quota calculations do not implement subscription rollover. Do not enable or deploy rollover until a durable grant ledger and atomic reserve/commit/rollback integration are complete and tested.
-- Customer usage of carried-forward quotas still incurs future AI costs, even when the subscription was paid earlier.
-- Account closure, refunds, and transitions to free plan require explicit policy before launch.
+- Subscription monthly quotas do NOT carry over. Unused monthly allowances expire at renewal.
+- Purchased extra scan quotas carry forward across renewals in a separate balance, subject to pricing that covers future redemption costs.
+- Consume monthly subscription allowances before purchased extra quotas.
+- Plan changes take effect at next renewal; monthly allowances follow the new plan.
+- Do not implement subscription rollover without a new explicit decision and profitability review.
+- Keep existing per-period subscription quota accounting unchanged.
 
 ## Required before activation
 1. Approve server-controlled SEK prices including VAT; check SumUp minimum charge.

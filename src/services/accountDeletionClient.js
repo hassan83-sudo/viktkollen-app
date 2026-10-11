@@ -1,9 +1,12 @@
 import { getCurrentAiAuthorization } from './ai/aiAuthTransport.js'
 import {
+  getActiveUserDataScope,
   getDeletionStorageKeys,
   removeUserData,
   userDataKeys,
 } from './userDataRepository.js'
+import { getLocalBodyScanStorageKey } from '../features/body-scan-local/localBodyScanStore.js'
+import { getLegacyCleanupMarkerKey } from '../features/body-scan-local/legacyBodyImageCleanup.js'
 
 const endpoint = '/api/account-deletion'
 
@@ -13,6 +16,9 @@ export function getLocalDeletionKeys() {
     userDataKeys.cloudBackupMeta,
     userDataKeys.demoMode,
     userDataKeys.profilePhoto,
+    // Lokala kroppsscanningsvärden för aktiv användare (inga bilder).
+    getLocalBodyScanStorageKey(),
+    getLegacyCleanupMarkerKey(getActiveUserDataScope()),
   ])].filter(Boolean)
 }
 

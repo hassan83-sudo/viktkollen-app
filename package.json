@@ -34,6 +34,7 @@
     "supabase:security-check": "node scripts/publicTableMigrationGuard.mjs"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "0.10.35",
     "@supabase/supabase-js": "^2.110.8",
     "i18next": "^25.10.10",
     "i18next-browser-languagedetector": "^8.2.1",

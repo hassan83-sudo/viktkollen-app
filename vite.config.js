@@ -174,17 +174,37 @@ function nutritionPhotoApiDevMiddleware() {
   }
 }
 
+// Preview-only testsida för lokal kroppsscanning (BODY-SCAN-LOCAL-3).
+// Byggs bara i Vercel Preview eller lokalt utanför Vercel – aldrig i
+// Vercel Production. Sidan har dessutom en egen värdnamnsspärr i webbläsaren.
+export function shouldBuildBodyScanPreview(env = process.env) {
+  if (env.VERCEL_ENV === 'preview') return true
+  return !env.VERCEL && env.VERCEL_ENV === undefined
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   loadServerOnlyDevEnv(mode)
+  const bodyScanPreview = shouldBuildBodyScanPreview()
 
   return {
     build: {
       rollupOptions: {
+        ...(bodyScanPreview
+          ? {
+              input: {
+                bodyScanPreview: new URL('./body-scan-preview.html', import.meta.url).pathname,
+                main: new URL('./index.html', import.meta.url).pathname,
+              },
+            }
+          : {}),
         output: {
           manualChunks,
         },
       },
+    },
+    define: {
+      __VK_BODY_SCAN_PREVIEW__: JSON.stringify(bodyScanPreview),
     },
     plugins: [react(), basicSsl(), legacyAiApiDevMiddleware(), nutritionPhotoApiDevMiddleware()],
     server: {

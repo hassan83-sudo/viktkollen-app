@@ -2,6 +2,7 @@
 import { useTranslation } from 'react-i18next'
 import { useCallback } from 'react'
 
+import { currentCameraEpoch, releaseVideoElement, retainCameraStream } from '../features/shared/camera/cameraLifecycle.js'
 import {
   bodyAnalysisViews,
   canCompleteBodyAnalysisScan,
@@ -68,7 +69,7 @@ function BodyAnalysisUploader({
       countdownTimerRef.current = null
       stopMediaStream(streamRef.current)
       streamRef.current = null
-      if (videoRef.current) videoRef.current.srcObject = null
+      releaseVideoElement(videoRef.current)
       setBodyScanSessionActive(false)
       setCameraActive(false)
     }
@@ -78,10 +79,12 @@ function BodyAnalysisUploader({
     }
 
     window.addEventListener('pagehide', releaseMedia)
+    window.addEventListener('freeze', releaseMedia)
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
       window.removeEventListener('pagehide', releaseMedia)
+      window.removeEventListener('freeze', releaseMedia)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       releaseMedia()
     }
@@ -105,12 +108,13 @@ function BodyAnalysisUploader({
   }, [activeViewKey, cameraActive])
 
   function stopCamera(message = t('uploader.cameraStopped')) {
+    cameraRequestRef.current += 1
     window.clearTimeout(countdownTimerRef.current)
     countdownTimerRef.current = null
     setCountdown(null)
     stopMediaStream(streamRef.current)
     streamRef.current = null
-    if (videoRef.current) videoRef.current.srcObject = null
+    releaseVideoElement(videoRef.current)
     setCameraActive(false)
     setCameraStatus(message)
   }
@@ -167,17 +171,20 @@ function BodyAnalysisUploader({
     try {
       const requestId = cameraRequestRef.current + 1
       cameraRequestRef.current = requestId
+      const epoch = currentCameraEpoch()
       stopMediaStream(streamRef.current)
       streamRef.current = null
-      if (videoRef.current) videoRef.current.srcObject = null
+      releaseVideoElement(videoRef.current)
 
-      const stream = await navigator.mediaDevices.getUserMedia(
+      const opened = await navigator.mediaDevices.getUserMedia(
         getBodyScanVideoConstraints(nextFacingMode),
       )
       if (requestId !== cameraRequestRef.current) {
-        stopMediaStream(stream)
+        stopMediaStream(opened)
         return false
       }
+      const stream = retainCameraStream(opened, epoch)
+      if (!stream) return false
       streamRef.current = stream
       setFacingMode(nextFacingMode)
       setCameraActive(true)

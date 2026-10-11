@@ -1,4 +1,5 @@
 ﻿import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { currentCameraEpoch, releaseCameraStream, releaseVideoElement, retainCameraStream } from './features/shared/camera/cameraLifecycle.js'
 import { useTranslation } from 'react-i18next'
 import HomeSection from './components/sections/HomeSection.jsx'
 import MoreSection from './components/sections/MoreSection.jsx'
@@ -891,6 +892,7 @@ function App() {
   const barcodeVideoRef = useRef(null)
   const barcodeStreamRef = useRef(null)
   const barcodeTimerRef = useRef(null)
+  const barcodeRequestRef = useRef(0)
   const chatThreadRef = useRef(null)
   const messagesEndRef = useRef(null)
   const chatRequestInFlightRef = useRef(false)
@@ -1917,16 +1919,45 @@ function App() {
       voiceConversationRef.current?.dispose()
       realtimeVoiceRef.current?.stop()
 
+      barcodeRequestRef.current += 1
       if (barcodeTimerRef.current) {
         window.clearInterval(barcodeTimerRef.current)
+        barcodeTimerRef.current = null
       }
 
-      if (barcodeStreamRef.current) {
-        barcodeStreamRef.current.getTracks().forEach((track) => track.stop())
-      }
+      releaseCameraStream(barcodeStreamRef.current)
+      barcodeStreamRef.current = null
+      releaseVideoElement(barcodeVideoRef.current)
     },
     [],
   )
+
+  useEffect(() => {
+    function releaseBarcodeCamera() {
+      barcodeRequestRef.current += 1
+      if (barcodeTimerRef.current) {
+        window.clearInterval(barcodeTimerRef.current)
+        barcodeTimerRef.current = null
+      }
+      releaseCameraStream(barcodeStreamRef.current)
+      barcodeStreamRef.current = null
+      releaseVideoElement(barcodeVideoRef.current)
+      setBarcodeScannerActive(false)
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') releaseBarcodeCamera()
+    }
+
+    window.addEventListener('pagehide', releaseBarcodeCamera)
+    window.addEventListener('freeze', releaseBarcodeCamera)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      window.removeEventListener('pagehide', releaseBarcodeCamera)
+      window.removeEventListener('freeze', releaseBarcodeCamera)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
 
   useEffect(() => {
     if (!reminderSettings.enabled || !('Notification' in window)) {
@@ -2483,20 +2514,15 @@ function App() {
   }
 
   function stopBarcodeScanner() {
+    barcodeRequestRef.current += 1
     if (barcodeTimerRef.current) {
       window.clearInterval(barcodeTimerRef.current)
       barcodeTimerRef.current = null
     }
 
-    if (barcodeStreamRef.current) {
-      barcodeStreamRef.current.getTracks().forEach((track) => track.stop())
-      barcodeStreamRef.current = null
-    }
-
-    if (barcodeVideoRef.current) {
-      barcodeVideoRef.current.srcObject = null
-    }
-
+    releaseCameraStream(barcodeStreamRef.current)
+    barcodeStreamRef.current = null
+    releaseVideoElement(barcodeVideoRef.current)
     setBarcodeScannerActive(false)
   }
 
@@ -2514,9 +2540,18 @@ function App() {
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      const requestId = barcodeRequestRef.current + 1
+      barcodeRequestRef.current = requestId
+      const epoch = currentCameraEpoch()
+      const opened = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' },
       })
+      if (requestId !== barcodeRequestRef.current) {
+        releaseCameraStream(opened)
+        return
+      }
+      const stream = retainCameraStream(opened, epoch)
+      if (!stream) return
       const detector = new window.BarcodeDetector({
         formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'],
       })
@@ -2526,6 +2561,13 @@ function App() {
       if (barcodeVideoRef.current) {
         barcodeVideoRef.current.srcObject = stream
         await barcodeVideoRef.current.play()
+      }
+
+      if (requestId !== barcodeRequestRef.current) {
+        if (barcodeStreamRef.current === stream) barcodeStreamRef.current = null
+        releaseCameraStream(stream)
+        if (barcodeVideoRef.current?.srcObject === stream) releaseVideoElement(barcodeVideoRef.current)
+        return
       }
 
       setBarcodeScannerActive(true)

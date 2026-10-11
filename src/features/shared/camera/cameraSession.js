@@ -1,4 +1,10 @@
 import {
+  currentCameraEpoch,
+  releaseCameraStream,
+  releaseVideoElement,
+  retainCameraStream,
+} from './cameraLifecycle.js'
+import {
   defaultBodyScanFacingMode,
   getBodyScanFacingLabel,
   getBodyScanVideoConstraints,
@@ -71,18 +77,12 @@ export function captureVideoFrame(video, canvas) {
 }
 
 export function detachStreamFromVideo(video) {
-  if (!video) return false
-  try {
-    if (video.paused === false) video.pause?.()
-  } catch {
-    // A detached element is fine to leave as-is.
-  }
-  video.srcObject = null
-  return true
+  return releaseVideoElement(video)
 }
 
 export function createCameraSession(options = {}) {
   let facingMode = options.facingMode || defaultCameraFacingMode
+  let generation = 0
   let stream = null
   let videoElement = null
   let zoom = 1
@@ -93,6 +93,10 @@ export function createCameraSession(options = {}) {
     detachStreamFromVideo(videoElement)
   }
 
+  function abandonedResult() {
+    return { abandoned: true, message: '', ok: false, stream: null }
+  }
+
   return {
     getFacingLabel: () => getBodyScanFacingLabel(facingMode),
     getFacingMode: () => facingMode,
@@ -101,18 +105,34 @@ export function createCameraSession(options = {}) {
     isActive: () => Boolean(stream?.getTracks?.().some((track) => track.readyState !== 'ended') ?? stream),
 
     async start(videoEl) {
+      const generationId = ++generation
+      const epoch = currentCameraEpoch()
       releaseStream()
       if (videoEl) videoElement = videoEl
       try {
-        stream = await startCameraStream(facingMode)
+        const opened = await startCameraStream(facingMode)
+        if (generationId !== generation) {
+          releaseCameraStream(opened)
+          return abandonedResult()
+        }
+        const retained = retainCameraStream(opened, epoch)
+        if (!retained || generationId !== generation) {
+          releaseCameraStream(opened)
+          return abandonedResult()
+        }
+        stream = retained
         const target = videoEl || videoElement
         if (target) {
           videoElement = target
           await attachStreamToVideo(target, stream)
         }
+        if (generationId !== generation) {
+          releaseStream()
+          return abandonedResult()
+        }
         return { message: '', ok: true, stream }
       } catch (error) {
-        releaseStream()
+        if (generationId === generation) releaseStream()
         return {
           error,
           message: getCameraPermissionMessage(error),
@@ -123,6 +143,7 @@ export function createCameraSession(options = {}) {
     },
 
     stop() {
+      generation += 1
       releaseStream()
       videoElement = null
     },

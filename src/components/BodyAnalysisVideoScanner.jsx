@@ -1,6 +1,7 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
+import { currentCameraEpoch, retainCameraStream } from '../features/shared/camera/cameraLifecycle.js'
 import {
   defaultBodyScanFacingMode,
   getBodyScanVideoConstraints,
@@ -125,6 +126,7 @@ function BodyAnalysisVideoScanner({
   const pinchTrackerRef = useRef(null)
   const previewUrlsRef = useRef([])
   const streamRef = useRef(null)
+  const cameraRequestRef = useRef(0)
   const timerRef = useRef(null)
   const videoRef = useRef(null)
   const sawAnalyzingRef = useRef(false)
@@ -260,9 +262,17 @@ function BodyAnalysisVideoScanner({
   }
 
   function stopStream({ clearPreviewError = true } = {}) {
+    cameraRequestRef.current += 1
     stopMediaStream(streamRef.current)
     streamRef.current = null
-    if (videoRef.current) videoRef.current.srcObject = null
+    if (videoRef.current) {
+      try {
+        if (videoRef.current.paused === false) videoRef.current.pause()
+      } catch {
+        // The element can already be detached.
+      }
+      videoRef.current.srcObject = null
+    }
     if (clearPreviewError) setPreviewError('')
   }
 
@@ -277,14 +287,23 @@ function BodyAnalysisVideoScanner({
 
     try {
       if (capturingLockRef.current) return false
+      const requestId = cameraRequestRef.current + 1
+      cameraRequestRef.current = requestId
+      const epoch = currentCameraEpoch()
       const previousStream = streamRef.current
 
       // audio is always false: getBodyScanVideoConstraints* never request the microphone.
-      const stream = await navigator.mediaDevices.getUserMedia(
+      const opened = await navigator.mediaDevices.getUserMedia(
         selectedCameraId
           ? getBodyScanVideoConstraintsForDevice(selectedCameraId, nextFacingMode)
           : getBodyScanVideoConstraints(nextFacingMode),
       )
+      if (requestId !== cameraRequestRef.current) {
+        stopMediaStream(opened)
+        return false
+      }
+      const stream = retainCameraStream(opened, epoch)
+      if (!stream) return false
       streamRef.current = stream
       dispatch({ type: 'SET_FACING', facingMode: nextFacingMode })
       const attached = await attachStreamToVideo(stream, previousStream ? 'switch-camera' : 'start')
@@ -360,9 +379,17 @@ function BodyAnalysisVideoScanner({
     function releaseCamera() {
       clearTimers()
       cancelVideoScanSpeech()
+      cameraRequestRef.current += 1
       stopMediaStream(streamRef.current)
       streamRef.current = null
-      if (videoRef.current) videoRef.current.srcObject = null
+      if (videoRef.current) {
+        try {
+          if (videoRef.current.paused === false) videoRef.current.pause()
+        } catch {
+          // The element can already be detached.
+        }
+        videoRef.current.srcObject = null
+      }
     }
 
     function onVisibilityChange() {
@@ -370,9 +397,11 @@ function BodyAnalysisVideoScanner({
     }
 
     window.addEventListener('pagehide', releaseCamera)
+    window.addEventListener('freeze', releaseCamera)
     document.addEventListener('visibilitychange', onVisibilityChange)
     return () => {
       window.removeEventListener('pagehide', releaseCamera)
+      window.removeEventListener('freeze', releaseCamera)
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
   }, [cameraActiveUi])
@@ -395,9 +424,17 @@ function BodyAnalysisVideoScanner({
 
   useEffect(() => {
     if (state.phase === 'review' || state.phase === 'analyzing') {
+      cameraRequestRef.current += 1
       stopMediaStream(streamRef.current)
       streamRef.current = null
-      if (videoRef.current) videoRef.current.srcObject = null
+      if (videoRef.current) {
+        try {
+          if (videoRef.current.paused === false) videoRef.current.pause()
+        } catch {
+          // The element can already be detached.
+        }
+        videoRef.current.srcObject = null
+      }
     }
   }, [state.phase])
 

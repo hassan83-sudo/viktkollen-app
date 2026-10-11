@@ -1,3 +1,5 @@
+import { releaseCameraStream } from '../features/shared/camera/cameraLifecycle.js'
+
 export const bodyAnalysisViews = [
   {
     doneLabel: 'Fram klar',
@@ -189,9 +191,7 @@ export function revokeBodyScanPreview(photo) {
 }
 
 export function stopMediaStream(stream) {
-  stream?.getTracks?.().forEach((track) => {
-    track.stop()
-  })
+  releaseCameraStream(stream)
 }
 
 export function getCameraPermissionMessage(error, globalObject = globalThis) {

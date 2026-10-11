@@ -34,6 +34,28 @@ describe('cameraSession', () => {
     vi.unstubAllGlobals()
   })
 
+  it('stops a stream that resolves after the session was closed', async () => {
+    let resolveStream
+    const track = { readyState: 'live', stop: vi.fn(function stop() { this.readyState = 'ended' }) }
+    const stream = { getTracks: () => [track], getVideoTracks: () => [track] }
+    const getUserMedia = vi.fn(() => new Promise((resolve) => {
+      resolveStream = resolve
+    }))
+    vi.stubGlobal('navigator', { mediaDevices: { getUserMedia } })
+
+    const session = createCameraSession()
+    const pending = session.start()
+    session.stop()
+    resolveStream(stream)
+    const result = await pending
+
+    expect(result.ok).toBe(false)
+    expect(result.abandoned).toBe(true)
+    expect(track.stop).toHaveBeenCalled()
+    expect(session.isActive()).toBe(false)
+    vi.unstubAllGlobals()
+  })
+
   it('returns a permission message instead of throwing when getUserMedia is missing', async () => {
     vi.stubGlobal('navigator', {})
     const session = createCameraSession()

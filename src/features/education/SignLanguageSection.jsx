@@ -39,8 +39,26 @@ function SignLanguageSection({ onOpenAiCoach }) {
 
   const capabilityRows = Object.entries(capabilities)
 
-  useEffect(() => () => {
-    cameraSessionRef.current?.stop()
+  useEffect(() => {
+    function releaseMirror() {
+      cameraSessionRef.current?.stop()
+      cameraSessionRef.current = null
+      setMirrorActive(false)
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') releaseMirror()
+    }
+
+    window.addEventListener('pagehide', releaseMirror)
+    window.addEventListener('freeze', releaseMirror)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      window.removeEventListener('pagehide', releaseMirror)
+      window.removeEventListener('freeze', releaseMirror)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      releaseMirror()
+    }
   }, [])
 
   function patchProfile(patch) {
@@ -61,8 +79,15 @@ function SignLanguageSection({ onOpenAiCoach }) {
     }
 
     const result = await cameraSessionRef.current.start(videoRef.current)
+    if (cameraSessionRef.current == null) return
     setMirrorActive(result.ok)
-    setMirrorStatus(result.ok ? t('signLanguage.practice.active') : result.message || t('signLanguage.practice.unavailable'))
+    setMirrorStatus(
+      result.ok
+        ? t('signLanguage.practice.active')
+        : result.abandoned
+          ? t('signLanguage.practice.stopped')
+          : result.message || t('signLanguage.practice.unavailable'),
+    )
   }
 
   function stopMirror() {

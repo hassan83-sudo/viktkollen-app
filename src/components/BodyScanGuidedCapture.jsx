@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { currentCameraEpoch, releaseVideoElement, retainCameraStream } from '../features/shared/camera/cameraLifecycle.js'
 import {
   canCompleteBodyAnalysisScan,
   defaultBodyScanFacingMode,
@@ -82,7 +83,7 @@ function BodyScanGuidedCapture({
       countdownTimerRef.current = null
       stopMediaStream(streamRef.current)
       streamRef.current = null
-      if (videoRef.current) videoRef.current.srcObject = null
+      releaseVideoElement(videoRef.current)
       cancelVideoScanSpeech()
       setCameraActive(false)
     }
@@ -92,10 +93,12 @@ function BodyScanGuidedCapture({
     }
 
     window.addEventListener('pagehide', releaseMedia)
+    window.addEventListener('freeze', releaseMedia)
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
       window.removeEventListener('pagehide', releaseMedia)
+      window.removeEventListener('freeze', releaseMedia)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       releaseMedia()
     }
@@ -199,8 +202,10 @@ function BodyScanGuidedCapture({
   function advanceAfterCapture(pose) {
     if (retakeTargetRef.current) {
       retakeTargetRef.current = null
+      cameraRequestRef.current += 1
       stopMediaStream(streamRef.current)
       streamRef.current = null
+      releaseVideoElement(videoRef.current)
       setCameraActive(false)
       setStep('review')
       return
@@ -214,8 +219,10 @@ function BodyScanGuidedCapture({
       enterBack()
       return
     }
+    cameraRequestRef.current += 1
     stopMediaStream(streamRef.current)
     streamRef.current = null
+    releaseVideoElement(videoRef.current)
     setCameraActive(false)
     setStep('review')
   }
@@ -228,13 +235,16 @@ function BodyScanGuidedCapture({
     try {
       const requestId = cameraRequestRef.current + 1
       cameraRequestRef.current = requestId
-      const stream = await navigator.mediaDevices.getUserMedia(
+      const epoch = currentCameraEpoch()
+      const opened = await navigator.mediaDevices.getUserMedia(
         getBodyScanVideoConstraints(defaultBodyScanFacingMode),
       )
       if (requestId !== cameraRequestRef.current) {
-        stopMediaStream(stream)
+        stopMediaStream(opened)
         return false
       }
+      const stream = retainCameraStream(opened, epoch)
+      if (!stream) return false
       streamRef.current = stream
       const track = stream.getVideoTracks?.()[0]
       const supported = canUseHardwareZoom(track)
@@ -272,8 +282,10 @@ function BodyScanGuidedCapture({
   function handleRetakeAll() {
     stopCountdown()
     setCountdown(null)
+    cameraRequestRef.current += 1
     stopMediaStream(streamRef.current)
     streamRef.current = null
+    releaseVideoElement(videoRef.current)
     setCameraActive(false)
     spokenStepRef.current = ''
     captureOrder.forEach((pose) => onPhotoChange(null, pose))

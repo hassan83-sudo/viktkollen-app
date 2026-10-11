@@ -34,10 +34,12 @@ const SmartCameraLiveView = forwardRef(function SmartCameraLiveView({
     }
 
     window.addEventListener('pagehide', releaseCamera)
+    window.addEventListener('freeze', releaseCamera)
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
       window.removeEventListener('pagehide', releaseCamera)
+      window.removeEventListener('freeze', releaseCamera)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [])
@@ -73,7 +75,7 @@ const SmartCameraLiveView = forwardRef(function SmartCameraLiveView({
         session.stop()
         return
       }
-      setError(result.ok ? '' : result.message)
+      setError(result.ok || result.abandoned ? '' : result.message)
       setActive(result.ok)
       setFacingLabel(session.getFacingLabel())
       onActiveChangeRef.current?.(result.ok)
@@ -92,7 +94,8 @@ const SmartCameraLiveView = forwardRef(function SmartCameraLiveView({
     const session = sessionRef.current
     if (!session) return
     const result = await session.flip(videoRef.current)
-    setError(result.ok ? '' : result.message)
+    if (sessionRef.current !== session) return
+    setError(result.ok || result.abandoned ? '' : result.message)
     setActive(result.ok)
     setFacingLabel(session.getFacingLabel())
     onActiveChangeRef.current?.(result.ok)

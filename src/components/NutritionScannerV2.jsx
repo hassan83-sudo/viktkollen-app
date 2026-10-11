@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { currentCameraEpoch, releaseCameraStream, releaseVideoElement, retainCameraStream } from '../features/shared/camera/cameraLifecycle.js'
 import { useTranslation } from 'react-i18next'
 import {
   commitPhotoAnalysisMeal,
@@ -634,26 +635,33 @@ function NutritionScannerV2({
 
     let cancelled = false
     let cameraStarting = false
+    let session = 0
 
     function stopLiveCamera() {
-      liveCameraStreamRef.current?.getTracks?.().forEach((track) => track.stop())
+      session += 1
+      releaseCameraStream(liveCameraStreamRef.current)
       liveCameraStreamRef.current = null
-      if (liveCameraVideoRef.current) {
-        liveCameraVideoRef.current.srcObject = null
-      }
+      releaseVideoElement(liveCameraVideoRef.current)
       setLiveCameraActive(false)
     }
 
     async function startLiveCamera() {
       if (cancelled || cameraStarting || liveCameraStreamRef.current || document.visibilityState === 'hidden') return
+      const sessionId = session
+      const epoch = currentCameraEpoch()
       cameraStarting = true
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        const opened = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { ideal: 'environment' } },
           audio: false,
         })
-        if (cancelled || document.visibilityState === 'hidden') {
-          stream.getTracks().forEach((track) => track.stop())
+        if (cancelled || sessionId !== session || document.visibilityState === 'hidden') {
+          releaseCameraStream(opened)
+          return
+        }
+        const stream = retainCameraStream(opened, epoch)
+        if (!stream || sessionId !== session) {
+          releaseCameraStream(opened)
           return
         }
         liveCameraStreamRef.current = stream
@@ -694,12 +702,14 @@ function NutritionScannerV2({
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('pagehide', handlePageHide)
+    window.addEventListener('freeze', handlePageHide)
 
     return () => {
       cancelled = true
       observer?.disconnect()
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('pagehide', handlePageHide)
+      window.removeEventListener('freeze', handlePageHide)
       stopLiveCamera()
     }
   }, [canUseLiveCamera, previewUrl])

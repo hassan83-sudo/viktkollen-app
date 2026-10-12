@@ -46,3 +46,17 @@ Preview och Production delar Supabase-projekt, så steg 1 gäller båda.
 
 Ta bort flaggan i Vercel (verkar vid nästa deploy), eller återkalla behörigheten direkt:
 `update billing.admin_permissions set status = 'REVOKED' where user_id = '<ditt user-id>';`
+
+## Ordning för Production (kräver slutligt godkännande)
+
+Varje steg är ofarligt ensamt: flaggan utan admin-rad gör ingenting, och admin-raden utan flagga
+påverkar inte matscanningens kvot.
+
+1. Supabase (en gång): lägg till ägarkontots `billing_admin` enligt SQL ovan och verifiera att
+   `billing.admin_permissions` bara innehåller det kontot.
+2. Vercel → Environment Variables → Production: `FOOD_SCAN_OWNER_UNLIMITED=true`.
+   `FOOD_SCAN_OWNER_DAILY_CAP` behövs inte (standard 100). `NUTRITION_PHOTO_RATE_LIMIT_MAX` ska
+   inte vara satt (standard 12 per 10 min).
+3. Merga `claude/matscan-v2-owner-preview` till `main` (fast-forward). Vercel bygger Production med
+   flaggan; därefter gäller undantaget automatiskt i den vanliga appen.
+4. Kontroll: Vercel-loggen visar `Owner quota exemption` med `applied: true` för ägarens scanningar.

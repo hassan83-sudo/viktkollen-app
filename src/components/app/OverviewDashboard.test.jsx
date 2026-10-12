@@ -83,15 +83,15 @@ describe('OverviewDashboard', () => {
 
   it('keeps three equal neon primary cards with Tryck på bilden', () => {
     const markup = renderOverview()
-    const eyesIndex = markup.indexOf('AI Ögon')
+    const eyesIndex = markup.indexOf('Smart kamera och AI-ögon')
+    const foodIndex = markup.indexOf('AI-matscanning av måltid')
     const bodyIndex = markup.indexOf('Kroppsscanning')
-    const foodIndex = markup.indexOf('Matscanning')
     const moreIndex = markup.indexOf('Mer för idag')
 
     expect(eyesIndex).toBeGreaterThan(-1)
-    expect(bodyIndex).toBeGreaterThan(eyesIndex)
-    expect(foodIndex).toBeGreaterThan(bodyIndex)
-    expect(moreIndex).toBeGreaterThan(foodIndex)
+    expect(foodIndex).toBeGreaterThan(eyesIndex)
+    expect(bodyIndex).toBeGreaterThan(foodIndex)
+    expect(moreIndex).toBeGreaterThan(bodyIndex)
     expect(markup).toContain('class="overview-primary-visual"')
     expect(markup).toContain('overview-primary-art is-eyes')
     expect(markup).toContain('overview-primary-art is-body')
@@ -99,12 +99,12 @@ describe('OverviewDashboard', () => {
     expect(markup).toContain('is-eyes')
     expect(markup).toContain('is-bodyScan')
     expect(markup).toContain('is-foodCamera')
-    expect(markup).toContain('Minne, kläder och sista kollen')
+    expect(markup).toContain('Se vad som saknas')
     expect(markup).not.toContain('Följ kroppens förändringar över tid')
-    expect(markup).toContain('Skanna maten och uppskatta näringen')
+    expect(markup).toContain('Uppskatta')
     expect(markup).toContain('/viktkollen-body-scan-home.webp')
     expect(markup).toContain('Öppna kroppsscanning i helskärm')
-    expect(markup).toContain('Tryck på bilden')
+    expect(markup).toContain('Tryck på ikonen nedan')
     expect(markup).toContain('Öppnar scanningen med röstguide')
     expect(markup).not.toContain('tap me')
     expect(markup).toContain('Öppna kameran')
@@ -126,11 +126,11 @@ describe('OverviewDashboard', () => {
       },
     })
 
-    expect(markup).toContain('AI Ögon')
+    expect(markup).toContain('Smart kamera och AI-ögon')
     expect(markup).toContain('is-eyes')
     expect(markup).toContain('Öppna kameran')
     expect(markup).toContain('Kroppsscanning')
-    expect(markup).toContain('Matscanning')
+    expect(markup).toContain('AI-matscanning av måltid')
   })
 
   it('renders Dagens läge with Må bra instead of sensitive mood data', () => {

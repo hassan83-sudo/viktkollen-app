@@ -97,8 +97,8 @@ describe('label in name and landmarks (A11Y-8G)', () => {
         /^AI Coach Fråga din coach .*Öppna Coach$/,
         /^Nästa påminnelse /,
         /^Notis /,
-        /AI Ögon Minne, kläder och sista kollen Tryck på bilden$/,
-        /Matscanning Skanna maten och uppskatta näringen Tryck på bilden$/,
+        /Smart kamera och AI-ögon\s*Se vad som saknas\s*Tryck på ikonen nedan$/,
+        /AI-matscanning av måltid\s*Uppskatta\s*näring\s*Tryck på ikonen nedan$/,
       ].forEach((name) => expect(screen.getByRole('button', { name })).toBeTruthy())
     })
 

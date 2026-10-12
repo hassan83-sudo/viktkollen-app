@@ -73,8 +73,8 @@ test.describe('label in name (WCAG 2.5.3)', () => {
     expect(names[2]).toMatch(/^Nästa påminnelse /i)
     expect(names[3]).toMatch(/^Notis /i)
     const primary = await chromeNames(page, '.overview-primary-action:not(.is-body) .overview-primary-action-hit')
-    expect(primary[0]).toMatch(/AI Ögon Minne, kläder och sista kollen Tryck på bilden$/i)
-    expect(primary[1]).toMatch(/Matscanning Skanna maten och uppskatta näringen Tryck på bilden$/i)
+    expect(primary[0]).toMatch(/Smart kamera och AI-ögon\s*Se vad som saknas\s*Tryck på ikonen nedan$/i)
+    expect(primary[1]).toMatch(/AI-matscanning av måltid\s*Uppskatta\s*näring\s*Tryck på ikonen nedan$/i)
   })
 
   const views = [

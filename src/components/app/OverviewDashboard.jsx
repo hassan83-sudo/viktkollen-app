@@ -1,4 +1,4 @@
-import { lazy, memo, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AchievementPreviewCard from './AchievementPreviewCard.jsx'
 import DailyCoachCard from './DailyCoachCard.jsx'
@@ -9,6 +9,7 @@ import WeeklyProgressSection from './WeeklyProgressSection.jsx'
 import BodyScanRings from './BodyScanRings.jsx'
 import OverviewBodyScanStage from './OverviewBodyScanStage.jsx'
 import OverviewCoachStage from './OverviewCoachStage.jsx'
+import { useKeepAboveBottomNav } from './keepAboveBottomNav.js'
 import WeatherDayDetail from './WeatherDayDetail.jsx'
 import {
   createFallbackWeatherContext,
@@ -1020,6 +1021,8 @@ function OverviewTodayMood({
 
 function OverviewBodyScanAction({ onOpenBodyScan }) {
   const { t } = useTranslation(['bodyScan', 'home'])
+  const footerRef = useRef(null)
+  useKeepAboveBottomNav(footerRef)
   const action = {
     accent: 'body',
     alt: t('home:actionAlts.body'),
@@ -1067,6 +1070,7 @@ function OverviewBodyScanAction({ onOpenBodyScan }) {
       </button>
       <button
         className="overview-primary-action-footer"
+        ref={footerRef}
         type="button"
         aria-label={action.footerLabel}
         onClick={action.onClick}

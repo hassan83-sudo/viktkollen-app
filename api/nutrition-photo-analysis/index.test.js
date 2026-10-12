@@ -15,6 +15,7 @@ import {
   setFoodScanBillingRuntimeForTests,
 } from '../_shared/billing/foodScanLiveBilling.js'
 import { analysisConsentPurposes, computeCanonicalImageHash, issueAnalysisConsentToken } from '../_shared/analysisConsent.js'
+import { setFoodScanOwnerExemptionDepsForTests } from '../_shared/billing/foodScanOwnerExemption.js'
 
 const TEST_SECRET = 'test-analysis-consent-secret-32-plus'
 const USER_ID = 'a1111111-1111-4111-8111-111111111111'
@@ -161,6 +162,7 @@ describe('nutrition photo analysis API route', () => {
     setAiRateLimitAdapterForTests()
     resetAiRequestDeduperForTests()
     setFoodScanBillingRuntimeForTests(null)
+    setFoodScanOwnerExemptionDepsForTests(null)
   })
 
   it('accepts POST only', async () => {
@@ -728,6 +730,105 @@ describe('nutrition photo analysis API route', () => {
     expect(providerBody.max_output_tokens).toBe(3400)
     expect(JSON.stringify(response.body)).not.toMatch(/test-key|Bearer|output_text|data:image/)
     expect(response.headers['Cache-Control']).toContain('no-store')
+  })
+
+  describe('owner unlimited food.scan', () => {
+    function stubProvider() {
+      const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+        output_text: JSON.stringify({
+          detectedItems: [{ calories: 260, carbohydrates: 32, confidence: 'medium', fat: 10, name: 'Pizza', protein: 12 }],
+          estimatedNutrition: {
+            calories: { confidence: 'medium', max: 340, midpoint: 260, min: 210 },
+            carbsG: { confidence: 'medium', max: 40, midpoint: 32, min: 24 },
+            fatG: { confidence: 'medium', max: 16, midpoint: 10, min: 7 },
+            proteinG: { confidence: 'medium', max: 18, midpoint: 12, min: 8 },
+          },
+          portionEstimate: { confidence: 'medium', description: 'Slice', gramsMax: 180, gramsMin: 110 },
+          safeSummary: 'Uppskattad portion.',
+        }),
+      }), { status: 200 }))
+      vi.stubGlobal('fetch', fetchMock)
+      return fetchMock
+    }
+
+    async function scan(index, extraHeaders = {}) {
+      return callRoute(createRequest({
+        body: multipartBody(),
+        headers: { ...consentHeadersForPhoto(), 'x-viktkollen-request-id': `owner-test-${index}`, ...extraHeaders },
+      }))
+    }
+
+    async function scanMany(count, extraHeaders) {
+      const statuses = []
+      for (let index = 0; index < count; index += 1) statuses.push((await scan(index, extraHeaders)).statusCode)
+      return statuses
+    }
+
+    beforeEach(() => {
+      process.env.OPENAI_API_KEY = 'test-key'
+      vi.spyOn(console, 'info').mockImplementation(() => {})
+    })
+
+    it('keeps the normal monthly quota for regular users even when the flag is on', async () => {
+      process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
+      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async () => false })
+      stubProvider()
+
+      const statuses = await scanMany(6)
+
+      expect(statuses.slice(0, 5)).toEqual([200, 200, 200, 200, 200])
+      expect(statuses[5]).toBe(429)
+    })
+
+    it('ignores client attempts to claim admin or unlimited status', async () => {
+      process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
+      const isAdmin = vi.fn(async () => false)
+      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin })
+      stubProvider()
+
+      const statuses = await scanMany(6, { 'x-viktkollen-admin': 'true', 'x-viktkollen-plan': 'unlimited' })
+
+      expect(statuses[5]).toBe(429)
+      // Behörigheten avgörs enbart av den verifierade JWT-användaren.
+      expect(isAdmin.mock.calls.every(([id]) => id === USER_ID)).toBe(true)
+    })
+
+    it('lets the verified owner scan past the monthly limit while usage is still recorded', async () => {
+      process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
+      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async (id) => id === USER_ID })
+      const runtime = installFoodScanBillingTestRuntime()
+      const fetchMock = stubProvider()
+
+      const statuses = await scanMany(8)
+
+      expect(statuses).toEqual(Array(8).fill(200))
+      expect(fetchMock).toHaveBeenCalledTimes(8)
+      const events = await runtime.usageRepository.list()
+      expect(events.filter((event) => event.event_type === 'food.scan' && event.unit === 'requests')).toHaveLength(8)
+    })
+
+    it('does not exempt the owner when the flag is off', async () => {
+      delete process.env.FOOD_SCAN_OWNER_UNLIMITED
+      const isAdmin = vi.fn(async () => true)
+      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin })
+      stubProvider()
+
+      const statuses = await scanMany(6)
+
+      expect(statuses[5]).toBe(429)
+      expect(isAdmin).not.toHaveBeenCalled()
+    })
+
+    it('falls back to the normal quota when the owner daily cap is reached', async () => {
+      process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
+      process.env.FOOD_SCAN_OWNER_DAILY_CAP = '3'
+      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 3, isAdmin: async () => true })
+      stubProvider()
+
+      const statuses = await scanMany(6)
+
+      expect(statuses[5]).toBe(429)
+    })
   })
 
   it('logs safe upstream status when OpenAI rejects the provider request', async () => {

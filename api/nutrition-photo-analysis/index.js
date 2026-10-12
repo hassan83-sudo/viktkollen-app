@@ -8,6 +8,7 @@ import { createImageFingerprint, runDedupedAiRequest } from '../_shared/aiReques
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 import { analysisConsentPurposes, verifyAnalysisConsentToken } from '../_shared/analysisConsent.js'
 import { DISPATCH_CAS_RESULT } from '../../src/services/billing/durableOperationStore.js'
+import { resolveFoodScanOwnerExemption, withOwnerUnlimitedQuota } from '../_shared/billing/foodScanOwnerExemption.js'
 import {
   createFoodScanOperationId,
   executeFoodScanMeteredOperation,
@@ -499,6 +500,23 @@ export default async function handler(request, response) {
       })
     }
 
+    // Ägarens administratörskonto: obegränsad månadskvot när servern har verifierat
+    // billing_admin och flaggan är aktiverad i miljön. Dygnstak och övriga
+    // säkerhetsgränser gäller fortfarande. Inget från klienten påverkar detta.
+    const ownerExemption = await resolveFoodScanOwnerExemption({ userId: auth.user.id })
+    if (ownerExemption.reason !== 'disabled' && ownerExemption.reason !== 'not_admin') {
+      console.info('[api/nutrition-photo-analysis] Owner quota exemption', {
+        applied: ownerExemption.exempt,
+        dailyCap: ownerExemption.dailyCap ?? null,
+        reason: ownerExemption.reason,
+        requestId,
+        usedLast24h: ownerExemption.usedLast24h ?? null,
+      })
+    }
+    const billingRuntime = ownerExemption.exempt
+      ? { ...runtime, quota: withOwnerUnlimitedQuota(runtime.quota) }
+      : runtime
+
     const operationId = createFoodScanOperationId({
       clientAttemptId,
       userId: auth.user.id,
@@ -518,7 +536,7 @@ export default async function handler(request, response) {
         })
       },
       operationId,
-      runtime,
+      runtime: billingRuntime,
       userId: auth.user.id,
       executeProvider: async ({ markDispatched }) => {
         const claim = await markDispatched()

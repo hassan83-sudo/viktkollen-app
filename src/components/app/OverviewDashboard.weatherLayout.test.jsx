@@ -49,6 +49,11 @@ describe('Home weather header layout', () => {
 
   beforeEach(async () => {
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: true })
+    // jsdom saknar layout: sidhuvudet "mäter" 185 px medan vädret laddas.
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function rect() {
+      const height = this.classList?.contains('overview-live-meta') ? 185 : 0
+      return { bottom: height, height, left: 0, right: 0, top: 0, width: 0, x: 0, y: 0 }
+    })
     container = document.createElement('div')
     document.body.append(container)
     root = createRoot(container)
@@ -58,6 +63,7 @@ describe('Home weather header layout', () => {
   afterEach(() => {
     act(() => root.unmount())
     container.remove()
+    vi.restoreAllMocks()
   })
 
   it('reserves the final weather rows while loading, invisibly, so Home does not jump when weather arrives', async () => {
@@ -76,6 +82,7 @@ describe('Home weather header layout', () => {
     expect(container.querySelector('.overview-weather-row').style.visibility).toBe('')
     expect(container.querySelector('.overview-weather-pending')).toBeNull()
     expect(container.querySelector('.overview-weather-row').textContent).toContain('14°C')
+    expect(container.querySelector('.overview-live-meta').style.minHeight).toBe('')
   })
 
   it('shows the not-connected state only when loading really fails', async () => {
@@ -86,5 +93,10 @@ describe('Home weather header layout', () => {
     expect(container.querySelector('.overview-weather-pending')).toBeNull()
     expect(container.querySelector('.overview-weather-row').getAttribute('aria-hidden')).toBeNull()
     expect(container.querySelector('.overview-weather-empty')).not.toBeNull()
+    // Sidhuvudet behåller den reserverade höjden, med raderna överst, så att
+    // Hem inte hoppar uppåt när hämtningen misslyckas.
+    const meta = container.querySelector('.overview-live-meta')
+    expect(meta.style.minHeight).toBe('185px')
+    expect(meta.style.alignContent).toBe('start')
   })
 })

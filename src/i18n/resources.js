@@ -126,7 +126,7 @@ const sv = {
     online: 'Online',
     offline: 'Offline',
     tapImage: 'Tryck på bilden',
-    bodyCardHint: 'Tryck på personen för att förstora',
+    bodyCardHint: 'Öppnar scanningen med röstguide',
     cardActions: {
       openCamera: 'Öppna kameran',
       scanFood: 'Skanna maten',
@@ -2114,7 +2114,7 @@ const en = {
     online: 'Online',
     offline: 'Offline',
     tapImage: 'Press the image',
-    bodyCardHint: 'Tap the person to enlarge',
+    bodyCardHint: 'Opens the scan with voice guide',
     cardActions: {
       openCamera: 'Open camera',
       scanFood: 'Scan food',

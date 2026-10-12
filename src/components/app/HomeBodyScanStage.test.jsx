@@ -41,27 +41,35 @@ describe('HomeBodyScanStage', () => {
     expect(dashboardSource).not.toContain("onNavigateSection('progress', 'body-analysis')")
   })
 
-  it('shows a short consent screen before mounting the real Body Scan component', async () => {
+  it('opens the scan view immediately, with close and back, and without the intro screens', async () => {
     await changeAppLanguage('sv')
     const container = document.createElement('div')
     document.body.append(container)
     const root = createRoot(container)
+    const onClose = vi.fn()
 
-    act(() => {
-      root.render(<HomeBodyScanStage onClose={() => {}} profile={{}} userId="local-user" weights={[]} />)
-    })
-
-    expect(container.querySelector('[data-testid="real-body-analysis-card"]')).toBeNull()
-    expect(container.textContent).toContain('Ta tre bilder')
-
-    const startButton = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Ta tre bilder')
     await act(async () => {
-      startButton.click()
-      await Promise.resolve()
+      root.render(<HomeBodyScanStage onClose={onClose} profile={{}} userId="local-user" weights={[]} />)
       await Promise.resolve()
     })
 
     expect(container.querySelector('[data-testid="real-body-analysis-card"]')).toBeTruthy()
+    expect(stageSource).toContain('directCapture')
+    expect(container.textContent).not.toContain('Första steget')
+    expect(container.textContent).not.toContain('Ta tre bilder')
+    expect(container.textContent).not.toContain('Guidad videoscanning')
+    expect(container.textContent).not.toContain('Livekameran körs lokalt')
+
+    const closeButton = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Stäng')
+    const backButton = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Tillbaka')
+    expect(closeButton).toBeTruthy()
+    expect(backButton).toBeTruthy()
+
+    act(() => {
+      closeButton.click()
+      backButton.click()
+    })
+    expect(onClose).toHaveBeenCalledTimes(2)
 
     act(() => root.unmount())
     container.remove()

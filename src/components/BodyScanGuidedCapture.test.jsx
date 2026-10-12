@@ -97,6 +97,10 @@ describe('BodyScanGuidedCapture', () => {
     expect(getUserMedia).not.toHaveBeenCalled()
     expect(container.textContent).toContain('1 av 5 · Förbered')
     expect(container.textContent).toContain('Placera mobilen stadigt')
+    expect(container.textContent).toContain('Röstguide på')
+    expect(container.textContent).toContain('3 sek')
+    expect(findButton(container, 'Starta kameran')).toBeTruthy()
+    expect(findButton(container, 'Öppna kamera')).toBeFalsy()
     unmount()
   })
 

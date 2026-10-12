@@ -298,6 +298,7 @@ function createDemoBodyAnalysisResult(previousAnalysis, context = null, t) {
 
 function BodyAnalysisCard({
   bodyAnalysisHistoryContext = [],
+  directCapture = false,
   onAnalysisHistoryChange = () => {},
   profile = {},
   userId = 'local-user',
@@ -891,14 +892,20 @@ function BodyAnalysisCard({
 
   return (
     <div className="progress-upload" id="body-analysis">
-      <div className="panel-heading">
-        <div>
-          <p className="eyebrow">{t('card.heading.eyebrow')}</p>
-          <h3>{t('card.heading.title')}</h3>
-        </div>
-      </div>
-      <p className="progress-photo-safety">{t('card.heading.intro')}</p>
+      {!directCapture && (
+        <>
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">{t('card.heading.eyebrow')}</p>
+              <h3>{t('card.heading.title')}</h3>
+            </div>
+          </div>
+          <p className="progress-photo-safety">{t('card.heading.intro')}</p>
+        </>
+      )}
       <div className="body-scan-hub">
+        {!directCapture && (
+          <>
         <h3 className="body-scan-hub-title">{t('card.heading.hubTitle')}</h3>
         <div className="body-scan-mode-switch" role="group" aria-label={t('card.heading.modeLabel')}>
           <button
@@ -933,6 +940,8 @@ function BodyAnalysisCard({
             ? localBodyScanTexts.hint
             : scanMode === 'video' ? t('card.heading.modeVideoHint') : t('card.heading.modePhotoHint')}
         </p>
+          </>
+        )}
         {scanMode === 'local' && localScanEnabled ? (
           <Suspense fallback={<p role="status">{localBodyScanTexts.loading}</p>}>
             <LocalBodyScan weights={weights} />

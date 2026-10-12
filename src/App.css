@@ -14575,6 +14575,12 @@ html:has(#app-section-more.is-active),
   overflow-y: auto;
 }
 
+.home-body-scan-back {
+  justify-self: start;
+  min-height: 40px;
+  margin-right: 96px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .home-body-scan-intro,
   .home-body-scan-capture {

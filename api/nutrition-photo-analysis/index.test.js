@@ -870,6 +870,62 @@ describe('nutrition photo analysis API route', () => {
       vi.spyOn(console, 'info').mockImplementation(() => {})
     })
 
+    async function scanResponses(count) {
+      const responses = []
+      for (let index = 0; index < count; index += 1) responses.push(await scan(index))
+      return responses
+    }
+
+    it('lifts the 12 per 10 minutes limit only for the server-verified owner', async () => {
+      process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
+      const isAdmin = vi.fn(async (id) => id === USER_ID)
+      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 20, isAdmin })
+      const fetchMock = stubProvider()
+
+      const statuses = await scanMany(15)
+
+      expect(statuses).toEqual(Array(15).fill(200))
+      expect(fetchMock).toHaveBeenCalledTimes(15)
+    })
+
+    it('keeps the 12 per 10 minutes limit for regular users', async () => {
+      process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
+      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async () => false })
+      stubProvider()
+
+      const responses = await scanResponses(13)
+
+      // Scanning 6-12 stoppas av månadskvoten (utan Retry-After), nummer 13 av spärren.
+      expect(responses[11].headers['Retry-After']).toBeUndefined()
+      expect(responses[12].statusCode).toBe(429)
+      expect(responses[12].headers['Retry-After']).toBeDefined()
+    })
+
+    it('keeps the 12 per 10 minutes limit for the owner when the flag is off or the daily cap is reached', async () => {
+      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async () => true })
+      stubProvider()
+      delete process.env.FOOD_SCAN_OWNER_UNLIMITED
+      let responses = await scanResponses(13)
+      expect(responses[12].headers['Retry-After']).toBeDefined()
+
+      setAiRateLimitAdapterForTests()
+      process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
+      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 100, isAdmin: async () => true })
+      responses = await scanResponses(13)
+      expect(responses[12].statusCode).toBe(429)
+      expect(responses[12].headers['Retry-After']).toBeDefined()
+    })
+
+    it('keeps the 12 per 10 minutes limit when the owner lookup fails', async () => {
+      process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
+      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async () => { throw new Error('rpc down') } })
+      stubProvider()
+
+      const responses = await scanResponses(13)
+
+      expect(responses[12].headers['Retry-After']).toBeDefined()
+    })
+
     it('keeps the normal monthly quota for regular users even when the flag is on', async () => {
       process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
       setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async () => false })

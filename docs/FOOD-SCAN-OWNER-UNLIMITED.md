@@ -14,9 +14,10 @@ Vid varje matscanning prövar servern (`api/_shared/billing/foodScanOwnerExempti
 4. Dygnstaket är inte nått: högst `FOOD_SCAN_OWNER_DAILY_CAP` scanningar (standard 100, max 500)
    per rullande 24 h, räknat varaktigt i `billing.usage_events`.
 
-Är allt uppfyllt räknas scanningen inte mot månadskvoten. Annars – och vid alla fel – gäller
-vanlig kvot (fail closed). Kvar som vanligt: rate-limit per användare (12 per 10 min), kill
-switches för `food.scan`/OpenAI, samtycke, ett AI-anrop per scanning och användningsloggning.
+Är allt uppfyllt räknas scanningen inte mot månadskvoten, och spärren 12 per 10 min gäller inte
+för ägarkontot (dygnstaket är då skyddet). Annars – och vid alla fel – gäller vanlig kvot och
+vanlig spärr (fail closed). Kvar som vanligt: kill switches för `food.scan`/OpenAI, samtycke, ett
+AI-anrop per scanning och användningsloggning. Vanliga användare har kvar 12 per 10 min.
 
 Vanliga användares planer, kvoter och abonnemang ändras inte. Ingen migration behövs.
 
@@ -56,7 +57,7 @@ påverkar inte matscanningens kvot.
    `billing.admin_permissions` bara innehåller det kontot.
 2. Vercel → Environment Variables → Production: `FOOD_SCAN_OWNER_UNLIMITED=true`.
    `FOOD_SCAN_OWNER_DAILY_CAP` behövs inte (standard 100). `NUTRITION_PHOTO_RATE_LIMIT_MAX` ska
-   inte vara satt (standard 12 per 10 min).
+   inte vara satt (standard 12 per 10 min för vanliga användare).
 3. Merga `claude/matscan-v2-owner-preview` till `main` (fast-forward). Vercel bygger Production med
    flaggan; därefter gäller undantaget automatiskt i den vanliga appen.
 4. Kontroll: Vercel-loggen visar `Owner quota exemption` med `applied: true` för ägarens scanningar.

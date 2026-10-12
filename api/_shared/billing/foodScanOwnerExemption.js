@@ -11,8 +11,10 @@
 // 4. Ett varaktigt dygnstak (rullande 24 h, räknat i billing.usage_events) är
 //    inte nått. Skydd mot missbruk och oväntade API-kostnader.
 //
-// Allt fel eller osäkerhet ger "inget undantag": vanlig kvot gäller då.
-// Rate-limit per rutt, kill switches och användningsloggning gäller som vanligt.
+// Allt fel eller osäkerhet ger "inget undantag": vanlig kvot och vanlig
+// rate-limit gäller då. Med undantag gäller inte spärren 12 per 10 min för
+// ägaren (dygnstaket ersätter den). Kill switches och användningsloggning
+// gäller som vanligt.
 
 import { QUOTA_STATUS } from '../../../src/services/billing/catalog.js'
 import { FOOD_SCAN_CANARY } from '../../../src/services/billing/foodScanCanary.js'

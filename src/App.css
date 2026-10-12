@@ -3128,13 +3128,16 @@ button {
 
 .body-scan-section {
   padding: 12px;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(118, 245, 255, 0.18);
   border-radius: 16px;
-  background: var(--surface);
+  background: rgba(8, 16, 34, 0.72);
+  color: #fbfdff;
+  color-scheme: dark;
 }
 
 .body-scan-section > summary {
   min-height: 44px;
+  color: #fbfdff;
   cursor: pointer;
   font-weight: 850;
 }
@@ -3144,7 +3147,7 @@ button {
   gap: 8px;
   margin: 8px 0 0;
   padding-left: 1.1rem;
-  color: var(--muted);
+  color: rgba(225, 233, 255, 0.78);
   font-size: 13px;
 }
 
@@ -3185,6 +3188,11 @@ body.vk-body-scan-session .bottom-nav {
   border-radius: 20px;
   background: #050b18;
   border: 1px solid rgba(122, 247, 255, 0.16);
+  color: #eaf2ff;
+}
+
+.body-scan-guided h3 {
+  margin: 0;
   color: #eaf2ff;
 }
 
@@ -14573,6 +14581,12 @@ html:has(#app-section-more.is-active),
   height: 100dvh;
   padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
+}
+
+.home-body-scan-back {
+  justify-self: start;
+  min-height: 40px;
+  margin-right: 96px;
 }
 
 @media (prefers-reduced-motion: reduce) {

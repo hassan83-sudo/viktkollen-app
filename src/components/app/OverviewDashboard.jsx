@@ -1442,7 +1442,7 @@ function OverviewDashboard({
         />
         <OverviewCheckInAction onNavigateSection={onNavigateSection} />
         <div className="overview-primary-actions overview-body-scan-original-size">
-          <OverviewBodyScanAction onOpenBodyScan={() => setBodyScanOpen(true)} />
+          <OverviewBodyScanAction onOpenBodyScan={() => setBodyCaptureOpen(true)} />
         </div>
       </section>
 

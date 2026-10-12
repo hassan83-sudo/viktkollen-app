@@ -71,4 +71,39 @@ describe('NutritionScannerV2 live preview', () => {
     expect(video.srcObject).toBeNull()
     expect(stream.track.stop).toHaveBeenCalled()
   })
+
+  it('releases the preview before the iPhone camera opens and does not restart it meanwhile', async () => {
+    const first = createStream()
+    const getUserMedia = vi.fn(async () => first)
+    mount(getUserMedia)
+    await act(async () => {})
+    expect(getUserMedia).toHaveBeenCalledTimes(1)
+
+    const input = container.querySelector('#nutrition-scanner-photo-camera-input')
+    await act(async () => input.dispatchEvent(new MouseEvent('click', { bubbles: true })))
+
+    expect(first.track.stop).toHaveBeenCalledTimes(1)
+    expect(container.querySelector('video.scanner-live-camera').srcObject).toBeNull()
+
+    // Sidan blir synlig igen medan iPhones kamera är öppen: ingen ny start.
+    document.dispatchEvent(new Event('visibilitychange'))
+    await act(async () => {})
+    expect(getUserMedia).toHaveBeenCalledTimes(1)
+  })
+
+  it('starts the preview again once when the iPhone camera is cancelled', async () => {
+    const streams = [createStream(), createStream()]
+    const getUserMedia = vi.fn(async () => streams[getUserMedia.mock.calls.length - 1])
+    mount(getUserMedia)
+    await act(async () => {})
+
+    const input = container.querySelector('#nutrition-scanner-photo-camera-input')
+    await act(async () => input.dispatchEvent(new MouseEvent('click', { bubbles: true })))
+    await act(async () => input.dispatchEvent(new Event('cancel')))
+    await act(async () => {})
+
+    expect(getUserMedia).toHaveBeenCalledTimes(2)
+    expect(container.querySelector('video.scanner-live-camera').srcObject).toBe(streams[1])
+    expect(streams[1].track.stop).not.toHaveBeenCalled()
+  })
 })

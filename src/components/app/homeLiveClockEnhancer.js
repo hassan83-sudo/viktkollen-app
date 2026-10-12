@@ -10,7 +10,7 @@ function updateHomeClock() {
   if (typeof document === 'undefined') return
 
   const clock = document.querySelector(
-    '#app-section-home.is-active .overview-live-meta > p:nth-of-type(2) > span:nth-of-type(2)',
+    '#app-section-home.is-active .overview-live-meta > p:nth-of-type(1) > span:nth-of-type(2)',
   )
 
   if (!clock) return

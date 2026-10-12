@@ -14111,6 +14111,16 @@ html:has(#app-section-more.is-active),
   font-size: 0.82rem;
 }
 
+/* iPhone: lyft kroppsscanningens knapprad ("Ny scanning"/"Tillbaka") så att den
+   syns helt ovanför nederkanten och safe area. Padding (inte margin) eftersom
+   panelens innehåll flyter ut ur panelen och bara padding räknas in i scrollytan.
+   Påverkar bara kroppsscanningen. */
+@media (max-width: 799px) {
+  .overview-body-scan-stage .overview-body-scan-actions {
+    padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 .overview-body-scan-kicker {
   position: absolute;
   top: max(14px, env(safe-area-inset-top));

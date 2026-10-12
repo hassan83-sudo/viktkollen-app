@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 function HomeNoticeShortcuts({ onOpenNotices }) {
@@ -10,7 +10,9 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
     { id: 'bathroom', label: 'Badrum' },
   ]
 
-  useEffect(() => {
+  // Placeras före första målningen: med useEffect visades Hem först utan
+  // kortet och hoppade sedan nedåt när kortet lades till överst.
+  useLayoutEffect(() => {
     setTarget(document.querySelector('.overview-today-mood'))
 
     document.querySelectorAll('.overview-secondary-details').forEach((section) => {

@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   applyServiceWorkerUpdate,
+  controllerChangeReloadAction,
   isStandaloneDisplayMode,
   PWA_APP_VERSION,
   PWA_CACHE_VERSION,
   registerServiceWorker,
+  reloadPage,
   requestServiceWorkerUpdate,
 } from '../registerServiceWorker.js'
 
@@ -93,6 +95,8 @@ function PwaExperience({ showDiagnostics = false }) {
   useEffect(() => {
     let cleanupRegistration = () => {}
     let updateInterval = null
+    const hadControllerAtStart = typeof navigator !== 'undefined' && Boolean(navigator.serviceWorker?.controller)
+    let deferredReload = false
 
     function applyAvailableUpdate(registration) {
       setUpdateRegistration(registration)
@@ -116,6 +120,11 @@ function PwaExperience({ showDiagnostics = false }) {
     })
 
     function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden' && deferredReload) {
+        deferredReload = false
+        reloadPage()
+        return
+      }
       if (document.visibilityState === 'visible') {
         requestServiceWorkerUpdate(registrationRef.current)
       }
@@ -125,12 +134,19 @@ function PwaExperience({ showDiagnostics = false }) {
       setServiceWorkerStatus('activated')
       setUpdateRegistration(null)
 
-      // Reload once whenever a new root worker takes control. This also migrates
-      // older iPhone installations that were controlled by place-push-sw.js.
-      if (!controllerChangeHandledRef.current) {
-        controllerChangeHandledRef.current = true
-        window.location.reload()
-      }
+      // Reload once when a new root worker replaces an older one. This also
+      // migrates older iPhone installations that were controlled by
+      // place-push-sw.js. The first install does not reload (the page is
+      // already fresh), and a reload never interrupts typing: it waits until
+      // the page is hidden.
+      if (controllerChangeHandledRef.current) return
+      controllerChangeHandledRef.current = true
+      const action = controllerChangeReloadAction({
+        activeElement: document.activeElement,
+        hadControllerAtStart,
+      })
+      if (action === 'now') reloadPage()
+      else if (action === 'defer') deferredReload = true
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange)

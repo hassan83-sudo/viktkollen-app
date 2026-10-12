@@ -106,53 +106,99 @@ function createDetails(button) {
   return panel
 }
 
+function createGustButton() {
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.className = 'overview-wind-gust'
+  button.setAttribute('aria-expanded', 'false')
+  button.style.border = '0'
+  button.style.background = 'transparent'
+  button.style.color = 'inherit'
+  button.style.padding = '0'
+  button.style.font = 'inherit'
+  button.style.cursor = 'pointer'
+  button.style.textDecoration = 'underline'
+  button.style.textUnderlineOffset = '2px'
+  return button
+}
+
+function placeGustButton(row, button) {
+  const weatherValues = Array.from(row.querySelectorAll(':scope > span'))
+  const windText = weatherValues.find((span) => /m\/s/.test(span.textContent || ''))
+  if (windText) {
+    const windIndex = weatherValues.indexOf(windText)
+    const nextWeatherValue = weatherValues[windIndex + 1]
+    if (nextWeatherValue) {
+      row.insertBefore(windText, nextWeatherValue)
+      row.insertBefore(button, nextWeatherValue)
+    } else {
+      row.append(windText, button)
+    }
+  } else {
+    const detailsButton = row.querySelector('button, a')
+    if (detailsButton) row.insertBefore(button, detailsButton)
+    else row.appendChild(button)
+  }
+}
+
+function showGust(row, button, gust) {
+  button.textContent = `(byvind ${gust} m/s)`
+  button.style.visibility = ''
+  button.removeAttribute('aria-hidden')
+  button.tabIndex = 0
+  const panel = createDetails(button)
+  button.addEventListener('click', () => {
+    const open = panel.hidden
+    panel.hidden = !open
+    button.setAttribute('aria-expanded', open ? 'true' : 'false')
+  })
+  row.insertAdjacentElement('afterend', panel)
+}
+
+// Byvinden läggs bara in i en väderrad med riktigt väder. Finns värdet inte
+// ännu läggs en osynlig platshållare in i samma ritning som vädret visas, så
+// att raden får sin slutliga höjd direkt och Hem inte hoppar när värdet kommer.
 async function enhanceWeatherRow(row) {
-  if (!row || row.getAttribute(GUST_ATTR) === '1') return
+  if (!row) return
+  if (row.getAttribute(GUST_ATTR) === '1') {
+    // Vädret kunde inte laddas: ta bort den osynliga platshållaren i samma
+    // ritning som raden byter till "Väder ej anslutet".
+    if (!row.querySelector('.overview-weather-day-link')) {
+      row.querySelectorAll('.overview-wind-gust[aria-hidden="true"]').forEach((node) => node.remove())
+      row.removeAttribute(GUST_ATTR)
+    }
+    return
+  }
+  const gustRequest = getWindGust()
+  if (!row.querySelector('.overview-weather-day-link')) {
+    gustRequest.catch(() => {})
+    return
+  }
   row.setAttribute(GUST_ATTR, '1')
 
+  const button = createGustButton()
+  const ready = cachedGust !== null && Date.now() - cachedAt < 10 * 60 * 1000
+  if (ready) {
+    placeGustButton(row, button)
+    showGust(row, button, cachedGust)
+    return
+  }
+
+  button.textContent = '(byvind 00 m/s)'
+  button.style.visibility = 'hidden'
+  button.setAttribute('aria-hidden', 'true')
+  button.tabIndex = -1
+  placeGustButton(row, button)
+
   try {
-    const gust = await getWindGust()
-    if (gust === null || !row.isConnected) return
-
-    const button = document.createElement('button')
-    button.type = 'button'
-    button.className = 'overview-wind-gust'
-    button.textContent = `(byvind ${gust} m/s)`
-    button.setAttribute('aria-expanded', 'false')
-    button.style.border = '0'
-    button.style.background = 'transparent'
-    button.style.color = 'inherit'
-    button.style.padding = '0'
-    button.style.font = 'inherit'
-    button.style.cursor = 'pointer'
-    button.style.textDecoration = 'underline'
-    button.style.textUnderlineOffset = '2px'
-
-    const panel = createDetails(button)
-    button.addEventListener('click', () => {
-      const open = panel.hidden
-      panel.hidden = !open
-      button.setAttribute('aria-expanded', open ? 'true' : 'false')
-    })
-
-    const weatherValues = Array.from(row.querySelectorAll(':scope > span'))
-    const windText = weatherValues.find((span) => /m\/s/.test(span.textContent || ''))
-    if (windText) {
-      const windIndex = weatherValues.indexOf(windText)
-      const nextWeatherValue = weatherValues[windIndex + 1]
-      if (nextWeatherValue) {
-        row.insertBefore(windText, nextWeatherValue)
-        row.insertBefore(button, nextWeatherValue)
-      } else {
-        row.append(windText, button)
-      }
-    } else {
-      const detailsButton = row.querySelector('button, a')
-      if (detailsButton) row.insertBefore(button, detailsButton)
-      else row.appendChild(button)
+    const gust = await gustRequest
+    if (gust === null || !row.isConnected || !button.isConnected) {
+      button.remove()
+      return
     }
-    row.insertAdjacentElement('afterend', panel)
+    showGust(row, button, gust)
   } catch {
+    button.remove()
     row.removeAttribute(GUST_ATTR)
   }
 }

@@ -1,4 +1,4 @@
-import { lazy, memo, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, memo, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AchievementPreviewCard from './AchievementPreviewCard.jsx'
 import DailyCoachCard from './DailyCoachCard.jsx'
@@ -339,6 +339,7 @@ function OverviewLiveMeta({
   onConnectWeather,
   onOpenWeatherDay,
   weatherAnnouncement = '',
+  weatherPending = false,
   weatherStatus = '',
 }) {
   const { t } = useTranslation('home')
@@ -363,9 +364,39 @@ function OverviewLiveMeta({
   const weather = liveContext.weather
   const hasWeatherDetails = Boolean(weather.hasLiveWeather)
   const city = hasWeatherDetails && weather.city && weather.city !== 'Vald stad' ? weather.city : ''
+  const weatherRowPending = !hasWeatherDetails && weatherPending
+  const weatherFailed = !hasWeatherDetails && !weatherPending
+  const metaRef = useRef(null)
+  const reservedHeightRef = useRef(0)
+
+  // Höjden som sidhuvudet har medan vädret laddas (med väderrad, byvind och
+  // solrad reserverade) mäts här, före varje målning.
+  useLayoutEffect(() => {
+    if (!weatherRowPending) return undefined
+    const element = metaRef.current
+    if (!element) return undefined
+    const record = () => {
+      reservedHeightRef.current = Math.max(reservedHeightRef.current, element.getBoundingClientRect().height)
+    }
+    record()
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(record) : null
+    observer?.observe(element)
+    return () => observer?.disconnect()
+  }, [weatherRowPending])
+
+  // Misslyckas hämtningen behåller sidhuvudet den reserverade höjden, så att
+  // Hem inte hoppar uppåt när "Väder ej anslutet" visas.
+  useLayoutEffect(() => {
+    const element = metaRef.current
+    if (!element) return
+    const keepHeight = weatherFailed && reservedHeightRef.current > 0
+    element.style.minHeight = keepHeight ? `${reservedHeightRef.current}px` : ''
+    // Raderna ligger kvar överst; det reserverade utrymmet hamnar under dem.
+    element.style.alignContent = keepHeight ? 'start' : ''
+  }, [weatherFailed])
 
   return (
-    <div className="overview-live-meta">
+    <div className="overview-live-meta" ref={metaRef}>
       <div className="overview-live-status">
         <span className={isOnline ? 'is-online' : 'is-offline'}>
           <span className="overview-online-dot" aria-hidden="true" />
@@ -391,8 +422,23 @@ function OverviewLiveMeta({
         <span><OverviewIcon name="clock" /> {liveContext.timeLabel}</span>
         {city ? <span>{city}</span> : null}
       </p>
-      <p className="overview-weather-row">
-        {hasWeatherDetails ? (
+      <p
+        className="overview-weather-row"
+        aria-hidden={weatherRowPending ? 'true' : undefined}
+        style={weatherRowPending ? { visibility: 'hidden' } : undefined}
+      >
+        {/* Under första hämtningen har raden redan väderlayouten (osynlig),
+            så att den inte byter höjd och flyttar Hem när vädret visas. */}
+        {weatherRowPending ? (
+          <>
+            <span>--°C</span>
+            <span><OverviewIcon name="wind" /> -- m/s</span>
+            <span><OverviewIcon name="drop" /> -- %</span>
+            <button className="overview-weather-day-link" type="button" tabIndex={-1}>
+              {t('weatherDay.viewFullDay')}
+            </button>
+          </>
+        ) : hasWeatherDetails ? (
           <>
             <span>{formatWeatherValue(weather.temperatureC, '°C')}</span>
             <span><OverviewIcon name="wind" /> {formatWeatherValue(weather.windSpeedMs, ' m/s')}</span>
@@ -417,6 +463,17 @@ function OverviewLiveMeta({
           <span><OverviewIcon name="sunrise" /> {weather.sunriseLabel}</span>
           <span><OverviewIcon name="sunset" /> {weather.sunsetLabel}</span>
           <button className="overview-weather-connect" type="button" onClick={onConnectWeather}>
+            {t('myLocation')}
+          </button>
+        </p>
+      )}
+      {/* Medan vädret laddas reserveras solraden osynligt, så att Hem inte
+          hoppar nedåt när den riktiga raden visas. */}
+      {!hasWeatherDetails && weatherPending && (
+        <p className="overview-weather-pending" aria-hidden="true" style={{ visibility: 'hidden' }}>
+          <span><OverviewIcon name="sunrise" /> --:--</span>
+          <span><OverviewIcon name="sunset" /> --:--</span>
+          <button className="overview-weather-connect" type="button" tabIndex={-1}>
             {t('myLocation')}
           </button>
         </p>
@@ -1203,6 +1260,10 @@ function OverviewDashboard({
   const [socialLoading, setSocialLoading] = useState(false)
   const [socialError, setSocialError] = useState('')
   const [weatherStatus, setWeatherStatus] = useState('')
+  // Första väderhämtningen pågår (bara när enheten är online).
+  const [weatherPending, setWeatherPending] = useState(
+    () => typeof navigator === 'undefined' || navigator.onLine !== false,
+  )
   const [weatherAnnouncement, setWeatherAnnouncement] = useState('')
   const [profilePhoto, setProfilePhoto] = useState(() => readProfilePhoto())
   const [weather, setWeather] = useState(() => createFallbackWeatherContext())
@@ -1293,6 +1354,9 @@ function OverviewDashboard({
     }).catch(() => {
       if (!cancelled) setWeatherStatus(t('home:weatherNotConnected'))
     })
+      .finally(() => {
+        if (!cancelled) setWeatherPending(false)
+      })
 
     getWeatherPermissionState().then(async (permissionState) => {
       if (cancelled || permissionState !== 'granted') return
@@ -1344,6 +1408,7 @@ function OverviewDashboard({
           onConnectWeather={connectWeather}
           onOpenWeatherDay={() => setWeatherDayOpen(true)}
           weatherAnnouncement={weatherAnnouncement}
+          weatherPending={weatherPending}
           weatherStatus={weatherStatus}
         />
         <div className="overview-header-weather-art" aria-hidden="true">

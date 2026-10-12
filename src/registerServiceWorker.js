@@ -87,6 +87,31 @@ export function applyServiceWorkerUpdate(registration) {
   return true
 }
 
+// Vad sidan ska göra när en service worker tar kontroll (controllerchange).
+// - Första kontrollen (ingen service worker styrde sidan vid start): sidan är
+//   redan hämtad från nätet, så en omladdning behövs inte. Den gav tidigare
+//   ett flimmer på inloggningssidan och tömde e-postfältet medan man skrev.
+// - Byte från en äldre service worker: ladda om, men inte mitt i inmatning.
+//   Då skjuts omladdningen upp tills sidan döljs.
+export function controllerChangeReloadAction({ activeElement = null, hadControllerAtStart = false } = {}) {
+  if (!hadControllerAtStart) return 'none'
+  return isEditingElement(activeElement) ? 'defer' : 'now'
+}
+
+export function reloadPage() {
+  window.location.reload()
+}
+
+export function isEditingElement(element) {
+  if (!element || typeof element !== 'object') return false
+  if (element.isContentEditable) return true
+  const tag = String(element.tagName || '').toUpperCase()
+  if (tag === 'TEXTAREA' || tag === 'SELECT') return true
+  if (tag !== 'INPUT') return false
+  const type = String(element.type || 'text').toLowerCase()
+  return !['button', 'checkbox', 'color', 'file', 'hidden', 'image', 'radio', 'range', 'reset', 'submit'].includes(type)
+}
+
 export function requestServiceWorkerUpdate(registration) {
   if (!registration?.update) return Promise.resolve(false)
   return registration.update().then(() => true).catch(() => false)

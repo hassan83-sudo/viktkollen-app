@@ -461,6 +461,10 @@ function NutritionScannerV2({
   const reviewRef = useRef(null)
   const liveCameraVideoRef = useRef(null)
   const liveCameraStreamRef = useRef(null)
+  // iPhones egen kamera (filinmatningen) och förhandsvisningen ska aldrig ha
+  // kameran samtidigt. Medan den egna kameran är öppen startas ingen förhandsvisning.
+  const liveCameraControlsRef = useRef(null)
+  const nativeCameraOpenRef = useRef(false)
   const currentImageRef = useRef(null)
   const imagePayloadRef = useRef(null)
   const activeAnalysisControllerRef = useRef(null)
@@ -608,7 +612,31 @@ function NutritionScannerV2({
     const input = event.currentTarget
     logCameraDiagnostic('camera native input click', input)
     input.value = ''
+    // Släpp förhandsvisningens kamera innan iPhones kamera tar över, så att
+    // kameran inte startas och avbryts flera gånger runt bytet.
+    nativeCameraOpenRef.current = true
+    liveCameraControlsRef.current?.stop()
   }
+
+  function handleCameraInputCancel(event) {
+    handleCameraInputEvent(event)
+    nativeCameraOpenRef.current = false
+    liveCameraControlsRef.current?.start()
+  }
+
+  // React kopplar inte onCancel till <input>, så "cancel" (avbruten kamera)
+  // lyssnas på direkt på elementet.
+  const cameraCancelHandlerRef = useRef(handleCameraInputCancel)
+  useEffect(() => {
+    cameraCancelHandlerRef.current = handleCameraInputCancel
+  })
+  useEffect(() => {
+    const input = cameraInputRef.current
+    if (!input) return undefined
+    const onCancel = (event) => cameraCancelHandlerRef.current(event)
+    input.addEventListener('cancel', onCancel)
+    return () => input.removeEventListener('cancel', onCancel)
+  }, [previewUrl])
 
   function setImagePayloadState(payload) {
     imagePayloadRef.current = payload
@@ -648,6 +676,7 @@ function NutritionScannerV2({
 
   function handleCameraFileChange(event) {
     logCameraDiagnostic('camera native input change', event.currentTarget)
+    nativeCameraOpenRef.current = false
     return handleFileChange(event)
   }
 
@@ -667,7 +696,7 @@ function NutritionScannerV2({
     }
 
     async function startLiveCamera() {
-      if (cancelled || cameraStarting || liveCameraStreamRef.current || document.visibilityState === 'hidden') return
+      if (cancelled || cameraStarting || liveCameraStreamRef.current || nativeCameraOpenRef.current || document.visibilityState === 'hidden') return
       const sessionId = session
       const epoch = currentCameraEpoch()
       cameraStarting = true
@@ -698,6 +727,8 @@ function NutritionScannerV2({
       }
     }
 
+    liveCameraControlsRef.current = { start: startLiveCamera, stop: stopLiveCamera }
+
     const section = scannerSectionRef.current
     const observer = typeof IntersectionObserver === 'function' && section
       ? new IntersectionObserver(([entry]) => {
@@ -727,6 +758,7 @@ function NutritionScannerV2({
 
     return () => {
       cancelled = true
+      liveCameraControlsRef.current = null
       observer?.disconnect()
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('pagehide', handlePageHide)
@@ -1386,7 +1418,6 @@ function NutritionScannerV2({
             accept="image/*"
             capture="environment"
             aria-label={t('scanner.takePhotoAria')}
-            onCancel={handleCameraInputEvent}
             onChange={handleCameraFileChange}
             onClick={handleCameraInputClick}
             onInput={handleCameraInputEvent}

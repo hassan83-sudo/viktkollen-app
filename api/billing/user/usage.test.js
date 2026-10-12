@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import handler from './index.js'
 import { installCatalogUsageSnapshotForTests, setUsageSnapshotReaderForTests } from '../../_shared/billing/usageSnapshotRead.js'
 import { setSupabaseAuthVerifierForTests } from '../../_shared/verifySupabaseUser.js'
+import { setFoodScanOwnerExemptionDepsForTests } from '../../_shared/billing/foodScanOwnerExemption.js'
 import { createInMemoryPlanAssignmentStore } from '../../../src/services/billing/planAssignment.js'
 import { createQuotaEngine } from '../../../src/services/billing/quotaEngine.js'
 
@@ -59,6 +60,45 @@ describe('GET /api/billing/usage', () => {
   afterEach(() => {
     setUsageSnapshotReaderForTests(null)
     setSupabaseAuthVerifierForTests(null)
+    setFoodScanOwnerExemptionDepsForTests(null)
+    delete process.env.FOOD_SCAN_OWNER_UNLIMITED
+  })
+
+  describe('owner food.scan status', () => {
+    const foodScanRow = (response) => response.body.snapshot.quotas.find((row) => row.key === 'food_scan')
+
+    it('shows unlimited food scanning with the daily cap for the server-verified owner', async () => {
+      process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
+      const isAdmin = vi.fn(async (id) => id === USER)
+      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 7, isAdmin })
+
+      const response = await call(createRequest({ query: { user_id: OTHER } }))
+
+      expect(response.statusCode).toBe(200)
+      expect(foodScanRow(response)).toEqual({ daily_cap: 100, key: 'food_scan', owner_unlimited: true, used_last_24h: 7 })
+      // Övriga kvoter är oförändrade, och behörigheten prövas bara för den inloggade användaren.
+      expect(response.body.snapshot.quotas.find((row) => row.key === 'body_scan')).toMatchObject({ limit: 3 })
+      expect(isAdmin.mock.calls).toEqual([[USER]])
+    })
+
+    it('keeps showing the owner status when the daily cap is reached', async () => {
+      process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
+      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 100, isAdmin: async () => true })
+      expect(foodScanRow(await call(createRequest()))).toMatchObject({ owner_unlimited: true, used_last_24h: 100 })
+    })
+
+    it('shows the real monthly quota to regular users, when the flag is off, and on lookup errors', async () => {
+      process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
+      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async () => false })
+      expect(foodScanRow(await call(createRequest()))).toEqual({ key: 'food_scan', limit: 5, remaining: 5, used: 0 })
+
+      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => { throw new Error('db') }, isAdmin: async () => true })
+      expect(foodScanRow(await call(createRequest()))).toMatchObject({ limit: 5 })
+
+      delete process.env.FOOD_SCAN_OWNER_UNLIMITED
+      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async () => true })
+      expect(foodScanRow(await call(createRequest()))).toMatchObject({ limit: 5 })
+    })
   })
 
   it('returns the signed-in free snapshot and ignores client plan claims', async () => {

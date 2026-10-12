@@ -46,6 +46,19 @@ function formatQuotaReset(periodEnd) {
 }
 
 function presentQuota(row) {
+  // Satt endast av servern efter verifierad ägarbehörighet.
+  if (row?.key === 'food_scan' && row.owner_unlimited === true) {
+    const dailyCap = Number(row.daily_cap)
+    const usedLast24h = Number(row.used_last_24h)
+    if (!Number.isInteger(dailyCap) || dailyCap < 1) return null
+    return {
+      dailyCap,
+      key: row.key,
+      label: LABELS[row.key],
+      ownerUnlimited: true,
+      usedLast24h: Number.isInteger(usedLast24h) && usedLast24h >= 0 ? usedLast24h : null,
+    }
+  }
   const limit = Number(row?.limit)
   const used = Number(row?.used)
   if (!Number.isInteger(limit) || limit < 0 || !Number.isInteger(used)) return null
@@ -140,7 +153,22 @@ function PlanUsagePanel({ authLoading = false, isAuthenticated = false }) {
           ) : null}
           {quotas.length ? (
             <ul className="plan-usage-list">
-              {quotas.map((row) => (
+              {quotas.map((row) => (row.ownerUnlimited ? (
+                <li
+                  className="plan-usage-quota"
+                  key={row.key}
+                  aria-label={`${row.label}: obegränsad matscanning, max ${row.dailyCap} per 24 timmar`}
+                >
+                  <strong>{row.label}</strong>
+                  <span>Obegränsad matscanning – max {row.dailyCap} per 24 timmar</span>
+                  {row.usedLast24h !== null ? (
+                    <span>
+                      {row.usedLast24h} de senaste 24 timmarna
+                      {row.usedLast24h >= row.dailyCap ? '. Dygnstaket är nått' : ''}
+                    </span>
+                  ) : null}
+                </li>
+              ) : (
                 <li
                   className="plan-usage-quota"
                   key={row.key}
@@ -150,7 +178,7 @@ function PlanUsagePanel({ authLoading = false, isAuthenticated = false }) {
                   <span>{row.used} av {row.limit} använda</span>
                   <span>{row.remaining} kvar{row.remaining === 0 ? '. Kvoten är slut' : ''}</span>
                 </li>
-              ))}
+              )))}
             </ul>
           ) : (
             <p>Ingen kvot kunde visas.</p>

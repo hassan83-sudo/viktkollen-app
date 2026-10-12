@@ -122,3 +122,30 @@ export function withOwnerUnlimitedQuota(quota) {
     },
   }
 }
+
+/**
+ * Ägarstatus för visning (Mer → Plan och användning). Samma serverprövning som
+ * scanningen; dygnstaket nått räknas fortfarande som ägarkonto. Fel ger null,
+ * så att den vanliga kvoten visas.
+ */
+export async function resolveFoodScanOwnerStatus({ env = process.env, now = new Date(), userId } = {}) {
+  const result = await resolveFoodScanOwnerExemption({ env, now, userId })
+  if (!result.exempt && result.reason !== 'daily_cap') return null
+  return { dailyCap: result.dailyCap, usedLast24h: result.usedLast24h }
+}
+
+// Ersätter matscanningens månadskvot i användningsöversikten med ägarstatus.
+export function applyOwnerFoodScanStatus(snapshot, status) {
+  if (!snapshot || !status || !Array.isArray(snapshot.quotas)) return snapshot
+  return {
+    ...snapshot,
+    quotas: snapshot.quotas.map((row) => (row?.key === 'food_scan'
+      ? {
+        daily_cap: status.dailyCap,
+        key: 'food_scan',
+        owner_unlimited: true,
+        used_last_24h: status.usedLast24h,
+      }
+      : row)),
+  }
+}

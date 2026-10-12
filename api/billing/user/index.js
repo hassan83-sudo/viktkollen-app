@@ -8,6 +8,7 @@ import { executeUserBillingIntent } from '../../_shared/billing/userLifecycleInt
 import { lookupBillingAdmin } from '../../_shared/billing/admin.js'
 import { readPlanComparison } from '../../_shared/billing/planComparisonRead.js'
 import { readUsageSnapshot } from '../../_shared/billing/usageSnapshotRead.js'
+import { applyOwnerFoodScanStatus, resolveFoodScanOwnerStatus } from '../../_shared/billing/foodScanOwnerExemption.js'
 import { verifySupabaseUser } from '../../_shared/verifySupabaseUser.js'
 
 function legacyCompatibilityEntitlement(userId) {
@@ -204,10 +205,13 @@ async function handleUsage(request, response, auth, requestId) {
       status: 503,
     })
   }
+  // Ägarkontot (serververifierad billing_admin + aktiverad flagga) ser
+  // obegränsad matscanning i stället för månadskvoten. Övriga ser sin riktiga kvot.
+  const ownerStatus = await resolveFoodScanOwnerStatus({ userId: auth.user.id }).catch(() => null)
   return response.status(200).json({
     ok: true,
     requestId,
-    snapshot,
+    snapshot: applyOwnerFoodScanStatus(snapshot, ownerStatus),
   })
 }
 

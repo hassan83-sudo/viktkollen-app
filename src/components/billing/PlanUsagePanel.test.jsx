@@ -123,4 +123,34 @@ describe('PlanUsagePanel', () => {
     expect(css).toMatch(/overflow-x:\s*hidden/)
     expect(css).toMatch(/max-width:\s*100%/)
   })
+
+  it('shows unlimited food scanning for the owner instead of an exhausted quota', async () => {
+    mockSnapshot({
+      ok: true,
+      snapshot: {
+        ...snapshot,
+        quotas: [
+          { key: 'ai_coach', limit: 20, remaining: 16, used: 4 },
+          { daily_cap: 100, key: 'food_scan', owner_unlimited: true, used_last_24h: 12 },
+        ],
+      },
+    })
+    render(<PlanUsagePanel isAuthenticated />)
+
+    expect(await screen.findByText('Obegränsad matscanning – max 100 per 24 timmar')).toBeTruthy()
+    expect(screen.getByText(/12 de senaste 24 timmarna/)).toBeTruthy()
+    expect(screen.queryByText(/Kvoten är slut/)).toBeNull()
+    expect(screen.getByText('4 av 20 använda')).toBeTruthy()
+  })
+
+  it('keeps the normal exhausted-quota text for regular users', async () => {
+    mockSnapshot({
+      ok: true,
+      snapshot: { ...snapshot, quotas: [{ key: 'food_scan', limit: 5, remaining: 0, used: 5 }] },
+    })
+    render(<PlanUsagePanel isAuthenticated />)
+
+    expect(await screen.findByText(/Kvoten är slut/)).toBeTruthy()
+    expect(screen.queryByText(/Obegränsad matscanning/)).toBeNull()
+  })
 })

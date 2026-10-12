@@ -10761,6 +10761,7 @@ body:has(#app-section-home.is-active) {
 }
 
 .app-shell:has(#app-section-home.is-active) {
+  position: relative;
   box-sizing: border-box;
   width: 100%;
   max-width: 430px;
@@ -10774,6 +10775,22 @@ body:has(#app-section-home.is-active) {
   padding: 0;
   scroll-padding-bottom: calc(var(--vk-nav-height) + 112px + env(safe-area-inset-bottom));
   background: var(--vk-bg);
+}
+
+/* Hem: synkstatusen ligger ovanpå Hems tomma ovankant i stället för i
+   flödet. Annars trycks hela Hem ned när "Synkar..." visas vid uppstart
+   (och varje gång appen öppnas igen) och upp igen när synken är klar. */
+.app-shell:has(#app-section-home.is-active) > .global-sync-status {
+  position: absolute;
+  z-index: 5;
+  top: 0;
+  left: 0;
+  max-width: calc(100% - 170px);
+  margin: 0;
+  padding-block: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-shell:has(#app-section-home.is-active) .pwa-experience {

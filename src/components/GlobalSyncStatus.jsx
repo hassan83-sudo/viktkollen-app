@@ -21,7 +21,7 @@ function GlobalSyncStatus() {
 
   return (
     <aside className={`global-sync-status is-${status.statusCode}`} role="status" aria-live="polite">
-      <a href="#cloud-sync">{status.statusLabel}</a>
+      <a href="#cloud-sync" title={status.statusLabel}>{status.statusLabel}</a>
     </aside>
   )
 }

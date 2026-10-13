@@ -1,15 +1,17 @@
 /** @vitest-environment jsdom */
 
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import process from 'node:process'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { changeAppLanguage } from '../i18n/index.js'
 import {
-  bindHomeSystemCameraInput,
-  openHomeSystemCamera,
   readHomeBodyScanSession,
   resetHomeBodyScanSession,
+  saveHomeBodyScanPhoto,
 } from '../services/homeBodyScanSession.js'
 
 vi.mock('../services/bodyAnalysisVideoScan.js', async () => {
@@ -25,6 +27,8 @@ vi.mock('../services/bodyAnalysisVideoScan.js', async () => {
 
 import BodyScanSystemCapture from './BodyScanSystemCapture.jsx'
 
+const dashboardSource = readFileSync(resolve(process.cwd(), 'src/components/app/OverviewDashboard.jsx'), 'utf8')
+
 function renderCapture(props = {}) {
   const container = document.createElement('div')
   document.body.append(container)
@@ -38,7 +42,7 @@ function renderCapture(props = {}) {
       <BodyScanSystemCapture
         canAnalyze={Boolean(props.canAnalyze)}
         currentAnalysisStatus=""
-        disabledReason=""
+        disabledReason={props.disabledReason || ''}
         photos={photos}
         onAnalyze={onAnalyze}
         onPhotoChange={onPhotoChange}
@@ -50,13 +54,13 @@ function renderCapture(props = {}) {
     container,
     onAnalyze,
     onPhotoChange,
-    rerender(nextPhotos) {
+    rerender(nextPhotos, extra = {}) {
       act(() => {
         root.render(
           <BodyScanSystemCapture
-            canAnalyze={Boolean(props.canAnalyze)}
+            canAnalyze={extra.canAnalyze ?? Boolean(props.canAnalyze)}
             currentAnalysisStatus=""
-            disabledReason=""
+            disabledReason={extra.disabledReason ?? props.disabledReason ?? ''}
             photos={nextPhotos}
             onAnalyze={onAnalyze}
             onPhotoChange={onPhotoChange}
@@ -71,80 +75,223 @@ function renderCapture(props = {}) {
   }
 }
 
+function fileInput(container) {
+  return container.querySelector('input[type="file"]')
+}
+
+function chooseAngle(container, angle) {
+  const radio = container.querySelector(`input[type="radio"][value="${angle}"]`)
+  act(() => {
+    radio.click()
+  })
+}
+
+async function takePhoto(container, contents, name) {
+  const input = fileInput(container)
+  const file = new File([contents], name, { type: 'image/jpeg' })
+  await act(async () => {
+    input.closest('label').click()
+    Object.defineProperty(input, 'files', { configurable: true, value: [file] })
+    input.dispatchEvent(new Event('change', { bubbles: true }))
+    await Promise.resolve()
+    await Promise.resolve()
+  })
+  return file
+}
+
 describe('BodyScanSystemCapture', () => {
   beforeEach(async () => {
     resetHomeBodyScanSession()
     await changeAppLanguage('sv')
-    vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {})
   })
 
-  it('uses the system camera input and does not start the live camera', () => {
+  it('shows the three angles and waits for Ta bild before opening the camera', () => {
     const getUserMedia = vi.fn()
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
       value: { getUserMedia },
     })
+    const clickSpy = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {})
     const { container, unmount } = renderCapture()
-    const input = container.querySelector('input[type="file"]')
+    const input = fileInput(container)
 
+    expect(container.textContent).toContain('Välj vilken kroppsvinkel du vill fotografera')
+    expect(container.textContent).toContain('Framifrån')
+    expect(container.textContent).toContain('Från sidan')
+    expect(container.textContent).toContain('Bakifrån')
+    expect(container.textContent).toContain('Ta bild – Framifrån')
     expect(input.getAttribute('capture')).toBe('environment')
-    expect(input.getAttribute('accept')).toBe('image/*')
-    expect(container.textContent).toContain('Ta bilden Framifrån')
-    expect(container.textContent).toContain('Öppna kameran')
+    expect(container.querySelector('button').disabled).toBe(true)
     expect(getUserMedia).not.toHaveBeenCalled()
-    expect(HTMLInputElement.prototype.click).not.toHaveBeenCalled()
+    expect(clickSpy).not.toHaveBeenCalled()
+    clickSpy.mockRestore()
+    expect(dashboardSource).not.toContain('openHomeSystemCamera()')
     unmount()
   })
 
-  it('keeps the first photo when the next camera is cancelled and waits for another tap', async () => {
+  it('stores the new photo on the selected angle and keeps the earlier photo', async () => {
+    const frontFile = new File(['front'], 'front.jpg', { type: 'image/jpeg' })
+    const frontPhoto = { file: frontFile, name: frontFile.name, preview: 'data:image/jpeg;base64,front' }
+    saveHomeBodyScanPhoto('front', frontPhoto)
+    const onPhotoChange = vi.fn()
+    const { container, unmount } = renderCapture({
+      onPhotoChange,
+      photos: { front: frontPhoto, side: null, back: null },
+    })
+
+    chooseAngle(container, 'side')
+    await takePhoto(container, 'side', 'side.jpg')
+
+    expect(onPhotoChange).toHaveBeenCalledWith(expect.any(File), 'side', 'data:image/jpeg;base64,side')
+    expect(readHomeBodyScanSession().photos.front.file).toBe(frontFile)
+    expect(readHomeBodyScanSession().photos.side.file.name).toBe('body-scan-side.jpg')
+    expect(readHomeBodyScanSession().photos.back).toBeNull()
+    unmount()
+  })
+
+  it('keeps the angle from camera start while the image is still processing', async () => {
+    const { reencodeImageFileToScanFile } = await import('../services/bodyAnalysisVideoScan.js')
+    let finish
+    reencodeImageFileToScanFile.mockImplementationOnce((file, pose) => new Promise((resolve) => {
+      finish = () => resolve({
+        file: new File([file], `body-scan-${pose}.jpg`, { type: 'image/jpeg' }),
+        preview: `data:image/jpeg;base64,${pose}`,
+      })
+    }))
+    const onPhotoChange = vi.fn()
+    const { container, unmount } = renderCapture({ onPhotoChange })
+
+    chooseAngle(container, 'side')
+    const input = fileInput(container)
+    let done
+    act(() => {
+      input.click()
+      Object.defineProperty(input, 'files', {
+        configurable: true,
+        value: [new File(['side'], 'side.jpg', { type: 'image/jpeg' })],
+      })
+      done = input.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    chooseAngle(container, 'front')
+    await act(async () => {
+      finish()
+      await done
+    })
+
+    expect(onPhotoChange).toHaveBeenCalledWith(expect.any(File), 'side', 'data:image/jpeg;base64,side')
+    expect(readHomeBodyScanSession().photos.side.preview).toBe('data:image/jpeg;base64,side')
+    expect(readHomeBodyScanSession().photos.front).toBeNull()
+    expect(readHomeBodyScanSession().photos.back).toBeNull()
+    unmount()
+  })
+
+  it('stores front, side, and back in any order, with the matching preview', async () => {
     const onPhotoChange = vi.fn()
     const { container, rerender, unmount } = renderCapture({ onPhotoChange })
-    const input = container.querySelector('input[type="file"]')
-    const file = new File(['front'], 'front.jpg', { type: 'image/jpeg' })
 
-    await act(async () => {
-      Object.defineProperty(input, 'files', { configurable: true, value: [file] })
-      input.dispatchEvent(new Event('change', { bubbles: true }))
-      await Promise.resolve()
-      await Promise.resolve()
-    })
+    chooseAngle(container, 'back')
+    await takePhoto(container, 'back', 'back.jpg')
+    rerender(readHomeBodyScanSession().photos)
+    chooseAngle(container, 'side')
+    await takePhoto(container, 'side', 'side.jpg')
+    rerender(readHomeBodyScanSession().photos)
+    chooseAngle(container, 'front')
+    await takePhoto(container, 'front', 'front.jpg')
+
+    const session = readHomeBodyScanSession()
+    expect(session.photos.back.file.name).toBe('body-scan-back.jpg')
+    expect(session.photos.side.file.name).toBe('body-scan-side.jpg')
+    expect(session.photos.front.file.name).toBe('body-scan-front.jpg')
+    expect(onPhotoChange.mock.calls.map((call) => call[1])).toEqual(['back', 'side', 'front'])
+
+    rerender(session.photos)
+    const preview = (alt) => container.querySelector(`img[alt="${alt}"]`).getAttribute('src')
+    expect(preview('Bakifrån')).toBe('data:image/jpeg;base64,back')
+    expect(preview('Från sidan')).toBe('data:image/jpeg;base64,side')
+    expect(preview('Framifrån')).toBe('data:image/jpeg;base64,front')
+
+    const frontFile = session.photos.front.file
+    const sideFile = session.photos.side.file
+    const backFile = session.photos.back.file
+    chooseAngle(container, 'side')
+    await takePhoto(container, 'side-2', 'side-2.jpg')
+    expect(readHomeBodyScanSession().photos.side.file).not.toBe(sideFile)
+    expect(readHomeBodyScanSession().photos.front.file).toBe(frontFile)
+    expect(readHomeBodyScanSession().photos.back.file).toBe(backFile)
+
+    const sideRetake = readHomeBodyScanSession().photos.side.file
+    chooseAngle(container, 'back')
+    await takePhoto(container, 'back-2', 'back-2.jpg')
+    expect(readHomeBodyScanSession().photos.back.file).not.toBe(backFile)
+    expect(readHomeBodyScanSession().photos.front.file).toBe(frontFile)
+    expect(readHomeBodyScanSession().photos.side.file).toBe(sideRetake)
+    unmount()
+  })
+
+  it('replaces only the chosen angle when a photo is retaken', async () => {
+    const frontFile = new File(['front'], 'front.jpg', { type: 'image/jpeg' })
+    const sideFile = new File(['side'], 'side.jpg', { type: 'image/jpeg' })
+    saveHomeBodyScanPhoto('front', { file: frontFile, name: frontFile.name, preview: 'data:image/jpeg;base64,front' })
+    saveHomeBodyScanPhoto('side', { file: sideFile, name: sideFile.name, preview: 'data:image/jpeg;base64,side' })
+    const photos = {
+      front: readHomeBodyScanSession().photos.front,
+      side: readHomeBodyScanSession().photos.side,
+      back: null,
+    }
+    const onPhotoChange = vi.fn()
+    const { container, unmount } = renderCapture({ onPhotoChange, photos })
+
+    expect(container.textContent).toContain('Ta om bild – Framifrån')
+    await takePhoto(container, 'front-2', 'front-2.jpg')
 
     expect(onPhotoChange).toHaveBeenCalledWith(expect.any(File), 'front', 'data:image/jpeg;base64,front')
-    const saved = { file: onPhotoChange.mock.calls[0][0], name: 'front.jpg', preview: 'data:image/jpeg;base64,front' }
-    rerender({ front: saved, side: null, back: null })
+    expect(readHomeBodyScanSession().photos.front.file).not.toBe(frontFile)
+    expect(readHomeBodyScanSession().photos.side.file).toBe(sideFile)
+    unmount()
+  })
 
-    expect(container.textContent).toContain('Nästa bild: Från sidan')
-    expect(container.textContent).toContain('Ta nästa bild')
-    expect(HTMLInputElement.prototype.click).not.toHaveBeenCalled()
-
-    act(() => {
-      container.querySelector('input[type="file"]').dispatchEvent(new Event('cancel', { bubbles: true }))
+  it('keeps saved photos when the camera is cancelled', async () => {
+    const frontFile = new File(['front'], 'front.jpg', { type: 'image/jpeg' })
+    saveHomeBodyScanPhoto('front', { file: frontFile, name: frontFile.name, preview: 'data:image/jpeg;base64,front' })
+    const { container, unmount } = renderCapture({
+      photos: { front: readHomeBodyScanSession().photos.front, side: null, back: null },
     })
 
-    expect(readHomeBodyScanSession().photos.front?.file).toBe(saved.file)
+    act(() => {
+      fileInput(container).dispatchEvent(new Event('cancel', { bubbles: true }))
+    })
+
+    expect(readHomeBodyScanSession().photos.front.file).toBe(frontFile)
     expect(container.textContent).toContain('Ingen bild togs')
-    expect(container.textContent).toContain('Framifrån sparad')
+    expect(container.textContent).toContain('Framifrån')
     unmount()
   })
 
-  it('restores photos from the same session after the view is closed', () => {
-    const file = new File(['front'], 'front.jpg', { type: 'image/jpeg' })
-    const photos = { front: { file, name: file.name, preview: 'data:image/jpeg;base64,front' }, side: null, back: null }
-    const { container, unmount } = renderCapture({ photos })
+  it('starts analysis only after three photos, and keeps the quota block', () => {
+    const photos = {
+      front: { file: new File(['f'], 'f.jpg', { type: 'image/jpeg' }), preview: 'data:image/jpeg;base64,f' },
+      side: { file: new File(['s'], 's.jpg', { type: 'image/jpeg' }), preview: 'data:image/jpeg;base64,s' },
+      back: null,
+    }
+    const onAnalyze = vi.fn()
+    const { container, rerender, unmount } = renderCapture({
+      canAnalyze: true,
+      onAnalyze,
+      photos,
+      disabledReason: 'Kvotgränsen är nådd',
+    })
+    const analyze = () => [...container.querySelectorAll('button')].find((button) => button.textContent.includes('Analysera kroppen'))
 
-    expect(container.textContent).toContain('Framifrån sparad')
-    expect(container.textContent).toContain('Nästa bild: Från sidan')
+    expect(analyze().disabled).toBe(true)
+    expect(container.textContent).toContain('Kvotgränsen är nådd')
+
+    rerender({
+      ...photos,
+      back: { file: new File(['b'], 'b.jpg', { type: 'image/jpeg' }), preview: 'data:image/jpeg;base64,b' },
+    }, { canAnalyze: true, disabledReason: '' })
+    expect(analyze().disabled).toBe(false)
+    act(() => analyze().click())
+    expect(onAnalyze).toHaveBeenCalledTimes(1)
     unmount()
-  })
-
-  it('opens the bound system camera input from the Home tap handler', () => {
-    const input = document.createElement('input')
-    document.body.append(input)
-    bindHomeSystemCameraInput(input)
-
-    expect(openHomeSystemCamera()).toBe(true)
-    expect(HTMLInputElement.prototype.click).toHaveBeenCalledTimes(1)
-    input.remove()
-    bindHomeSystemCameraInput(null)
   })
 })

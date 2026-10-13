@@ -62,16 +62,16 @@ export function nextHomeBodyScanAngle() {
   return state.pendingAngle || order.find((key) => !state.photos[key]) || null
 }
 
-export async function acceptHomeSystemCameraFile(file) {
+export async function acceptHomeSystemCameraFile(file, angle) {
   if (!file) {
     setHomeBodyScanNotice('cancelled')
     return
   }
-  const angle = nextHomeBodyScanAngle()
-  if (!angle) return
+  const target = order.includes(angle) ? angle : nextHomeBodyScanAngle()
+  if (!target) return
   try {
-    const { file: reencoded, preview } = await reencodeImageFileToScanFile(file, angle)
-    saveHomeBodyScanPhoto(angle, {
+    const { file: reencoded, preview } = await reencodeImageFileToScanFile(file, target)
+    saveHomeBodyScanPhoto(target, {
       file: reencoded,
       name: reencoded.name,
       preview,

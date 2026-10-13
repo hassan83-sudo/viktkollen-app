@@ -30,10 +30,16 @@ function BodyScanSystemCapture({
   const photosRef = useRef(photos)
   const onPhotoChangeRef = useRef(onPhotoChange)
   const fileInputRef = useRef(null)
+  const selectedAngleRef = useRef('front')
+  const captureAngleRef = useRef('front')
   const [, setRevision] = useState(0)
   const [selectedAngle, setSelectedAngle] = useState('front')
-  photosRef.current = photos
-  onPhotoChangeRef.current = onPhotoChange
+
+  useEffect(() => {
+    photosRef.current = photos
+    onPhotoChangeRef.current = onPhotoChange
+    selectedAngleRef.current = selectedAngle
+  })
 
   useEffect(() => {
     const input = fileInputRef.current
@@ -55,15 +61,25 @@ function BodyScanSystemCapture({
   }), [])
 
   const session = readHomeBodyScanSession()
-  const nextMissing = order.find((key) => !photos[key]) || null
   const active = selectedAngle
   const view = getBodyAnalysisView(active)
   const taken = order.filter((key) => photos[key]).length
 
+  function chooseAngle(key) {
+    selectedAngleRef.current = key
+    setSelectedAngle(key)
+  }
+
+  function beginCapture() {
+    captureAngleRef.current = selectedAngleRef.current
+    setHomeBodyScanPendingAngle(captureAngleRef.current)
+  }
+
   async function handleFile(event) {
     const file = event.target.files?.[0] || null
     event.target.value = ''
-    await acceptHomeSystemCameraFile(file)
+    const angle = captureAngleRef.current
+    await acceptHomeSystemCameraFile(file, angle)
   }
 
   return (
@@ -71,7 +87,7 @@ function BodyScanSystemCapture({
       <h3 id="body-scan-system-title">{t('guided.systemTitle')}</h3>
       <p>{t('guided.systemProgress', { taken, total: order.length })}</p>
       <fieldset className="body-scan-system-angles">
-        <legend>Välj vilken kroppsvinkel du vill fotografera</legend>
+        <legend>{t('guided.systemChooseAngle')}</legend>
         {order.map((key) => (
           <label key={key} style={{ display: 'block', padding: '0.5rem 0' }}>
             <input
@@ -79,7 +95,7 @@ function BodyScanSystemCapture({
               name="body-scan-angle"
               value={key}
               checked={selectedAngle === key}
-              onChange={() => setSelectedAngle(key)}
+              onChange={() => chooseAngle(key)}
             />
             {' '}{getBodyAnalysisView(key).label}
             {photos[key] ? ` ✓ ${t('guided.systemSaved')}` : ''}
@@ -99,14 +115,15 @@ function BodyScanSystemCapture({
           <p>{view.poseTips[0]}</p>
           <label
             className="body-scan-guided-cta body-scan-system-file"
-            onClick={() => setHomeBodyScanPendingAngle(active)}
+            onClick={beginCapture}
           >
-            <span>{photos[active] ? 'Ta om bild' : 'Ta bild'} – {view.label}</span>
+            <span>{photos[active] ? t('guided.systemRetakePhoto', { label: view.label }) : t('guided.systemTakePhoto', { label: view.label })}</span>
             <input
               ref={fileInputRef}
               accept="image/*"
               capture="environment"
               type="file"
+              onClick={beginCapture}
               onChange={handleFile}
             />
           </label>

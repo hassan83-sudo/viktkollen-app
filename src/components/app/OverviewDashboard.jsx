@@ -34,13 +34,6 @@ import { formatNumber as formatLocaleNumber } from '../../i18n/format.js'
 import { prefersReducedAccessibilityMotion } from '../../services/accessibilityDocumentScope.js'
 import { getEffectiveAccessibilityPreferences, useAccessibilityPreferences } from '../../services/accessibilityPreferences.js'
 
-import {
-  acceptHomeSystemCameraFile,
-  bindHomeSystemCameraInput,
-  openHomeSystemCamera,
-  setHomeBodyScanNotice,
-} from '../../services/homeBodyScanSession.js'
-
 const HomeBodyScanStage = lazy(() => import('./HomeBodyScanStage.jsx'))
 
 function isFiniteNumber(value) {
@@ -1101,28 +1094,12 @@ function OverviewBodyScanAction({ onOpenBodyScan }) {
 
   return (
     <div className={`overview-primary-action is-${action.accent}`}>
-      <input
-        ref={bindHomeSystemCameraInput}
-        accept="image/*"
-        aria-hidden="true"
-        capture="environment"
-        className="home-system-camera-input"
-        tabIndex={-1}
-        type="file"
-        onCancel={() => setHomeBodyScanNotice('cancelled')}
-        onChange={(event) => {
-          const file = event.target.files?.[0] || null
-          event.target.value = ''
-          acceptHomeSystemCameraFile(file)
-        }}
-      />
       <button
         className="overview-primary-action-hit"
         type="button"
         aria-label={action.hitLabel}
         onClick={() => {
           action.onClick()
-          openHomeSystemCamera()
         }}
       >
         <span className="overview-primary-visual">
@@ -1153,7 +1130,6 @@ function OverviewBodyScanAction({ onOpenBodyScan }) {
         aria-label={action.footerLabel}
         onClick={() => {
           action.onClick()
-          openHomeSystemCamera()
         }}
       >
         <OverviewIcon name="foodCamera" />

@@ -17,6 +17,7 @@ import {
   getWeatherPermissionState,
 } from '../../services/overviewLiveContext.js'
 import { loadOverviewWeather } from '../../services/overviewWeather.js'
+import { canSkipNutritionConsentPrompt, setPendingHomeFoodScanFile } from '../../services/nutritionScanHomeCapture.js'
 import { createProfilePhotoFromFile, readProfilePhoto, writeProfilePhoto } from '../../services/profilePhotoStorage.js'
 import { getFeatureFlags, isFeatureEnabled } from '../../features/featureRegistry.js'
 import HomeSocialPreview from '../../features/social/components/HomeSocialPreview.jsx'
@@ -749,9 +750,11 @@ function OverviewPrimaryActions({
   onOpenFoodScan,
   onOpenSmartCamera,
   onScanFood,
+  userId = 'local-user',
 }) {
   const { t } = useTranslation(['bodyScan', 'home'])
   const prefersReducedMotion = usePrefersReducedMotion()
+  const [foodCameraInput, setFoodCameraInput] = useState(null)
   const [showTapPulse, setShowTapPulse] = useState(() => {
     if (typeof window === 'undefined') return false
     try {
@@ -825,10 +828,30 @@ function OverviewPrimaryActions({
     else onOpenSmartCamera?.()
   }
 
-  const openFood = () => {
+  const navigateToFoodScan = () => {
     if (onOpenFoodScan) onOpenFoodScan()
     else if (onScanFood) onScanFood()
     else goTo('nutrition', 'streckkod')
+  }
+
+  // När användaren valt att inte bli tillfrågad igen och har giltigt samtycke öppnas telefonens kamera direkt
+  // i samma tryck. Annars visas matscanningen med information och samtycke.
+  const openFood = () => {
+    if (foodCameraInput && typeof foodCameraInput.click === 'function' && canSkipNutritionConsentPrompt(userId)) {
+      // Värdet nollställs i onChange, så samma bild kan väljas igen.
+      foodCameraInput.click()
+      return
+    }
+    navigateToFoodScan()
+  }
+
+  const handleFoodCameraFile = (event) => {
+    const file = event.target.files?.[0] || null
+    event.target.value = ''
+    // Avbruten kamera: stanna kvar på Hem.
+    if (!file) return
+    setPendingHomeFoodScanFile(file, userId)
+    navigateToFoodScan()
   }
 
   const actions = [
@@ -898,6 +921,16 @@ function OverviewPrimaryActions({
           </button>
         ))}
       </div>
+      <input
+        ref={setFoodCameraInput}
+        accept="image/*"
+        aria-hidden="true"
+        capture="environment"
+        className="home-system-camera-input home-food-camera-input"
+        tabIndex={-1}
+        type="file"
+        onChange={handleFoodCameraFile}
+      />
       <section className="overview-primary-actions" data-glow-level={glowLevel} aria-label={t('home:labels.home')}>
       {actions.map((action) => (
         <div className={`overview-primary-action is-${action.accent}`} key={action.label}>
@@ -1494,6 +1527,7 @@ function OverviewDashboard({
             setSmartCameraOpen(true)
           }}
           onScanFood={onScanFood}
+          userId={userId}
         />
       </section>
 

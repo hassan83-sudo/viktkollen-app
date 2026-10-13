@@ -25,6 +25,13 @@ import {
   revokeNutritionRemoteConsent,
 } from '../services/nutritionRemoteConsent.js'
 import {
+  getNutritionConsentPromptStorageKey,
+  hasPendingHomeFoodScanFile,
+  readNutritionConsentPromptPreference,
+  subscribePendingHomeFoodScanFile,
+  takePendingHomeFoodScanFile,
+} from '../services/nutritionScanHomeCapture.js'
+import {
   createAnalysisApprovalKey,
   createOneShotAnalysisApproval,
 } from '../services/security/oneShotAnalysisApproval.js'
@@ -465,6 +472,9 @@ function NutritionScannerV2({
   // kameran samtidigt. Medan den egna kameran är öppen startas ingen förhandsvisning.
   const liveCameraControlsRef = useRef(null)
   const nativeCameraOpenRef = useRef(false)
+  // En bild tagen med telefonens kamera från Hem håller på att tas emot; starta
+  // då ingen förhandsvisning av kameran under tiden.
+  const homeCaptureInProgressRef = useRef(hasPendingHomeFoodScanFile(userId))
   const currentImageRef = useRef(null)
   const imagePayloadRef = useRef(null)
   const activeAnalysisControllerRef = useRef(null)
@@ -492,26 +502,16 @@ function NutritionScannerV2({
   }))
   const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine !== false)
   const [liveCameraActive, setLiveCameraActive] = useState(false)
-  const consentInfoStorageKey = `viktkollen.nutritionScanner.consentInfoDisplay.${userId || 'anonymous'}`
-  const [consentInfoPreference, setConsentInfoPreference] = useState(() => {
-    if (typeof window === 'undefined') return { userId, value: 'always' }
-    try {
-      return { userId, value: window.localStorage.getItem(consentInfoStorageKey) === 'never' ? 'never' : 'always' }
-    } catch {
-      return { userId, value: 'always' }
-    }
-  })
+  const consentInfoStorageKey = getNutritionConsentPromptStorageKey(userId)
+  const [consentInfoPreference, setConsentInfoPreference] = useState(() => ({
+    userId,
+    value: readNutritionConsentPromptPreference(userId),
+  }))
   // MealLogger can retain the scanner while the signed-in user changes.
   // Never apply another user's stored preference to the current user.
   const consentInfoDisplay = consentInfoPreference.userId === userId
     ? consentInfoPreference.value
-    : (() => {
-      try {
-        return window.localStorage.getItem(consentInfoStorageKey) === 'never' ? 'never' : 'always'
-      } catch {
-        return 'always'
-      }
-    })()
+    : readNutritionConsentPromptPreference(userId)
   const canUseLiveCamera = typeof window !== 'undefined' && window.isSecureContext && Boolean(navigator.mediaDevices?.getUserMedia)
   const today = analysisDate || selectedMealDate || getTodayDateString()
   const remoteConsentRecord = storedRemoteConsent.userId === userId
@@ -698,6 +698,32 @@ function NutritionScannerV2({
     return handleFileChange(event)
   }
 
+  // Bild som togs med telefonens kamera direkt från Hem när frågan hoppas över.
+  const homeCaptureHandlerRef = useRef(null)
+  useEffect(() => {
+    homeCaptureHandlerRef.current = async () => {
+      const file = takePendingHomeFoodScanFile(userId)
+      if (!file) {
+        homeCaptureInProgressRef.current = false
+        return
+      }
+      homeCaptureInProgressRef.current = true
+      try {
+        await handleFileChange({ target: { files: [file] } })
+      } finally {
+        homeCaptureInProgressRef.current = false
+        if (!currentImageRef.current) liveCameraControlsRef.current?.start()
+      }
+    }
+  })
+  useEffect(() => {
+    const consume = () => {
+      if (hasPendingHomeFoodScanFile(userId)) homeCaptureHandlerRef.current?.()
+    }
+    consume()
+    return subscribePendingHomeFoodScanFile(consume)
+  }, [userId])
+
   useEffect(() => {
     if (previewUrl || !canUseLiveCamera) return undefined
 
@@ -714,7 +740,7 @@ function NutritionScannerV2({
     }
 
     async function startLiveCamera() {
-      if (cancelled || cameraStarting || liveCameraStreamRef.current || nativeCameraOpenRef.current || document.visibilityState === 'hidden') return
+      if (cancelled || cameraStarting || liveCameraStreamRef.current || nativeCameraOpenRef.current || homeCaptureInProgressRef.current || document.visibilityState === 'hidden') return
       const sessionId = session
       const epoch = currentCameraEpoch()
       cameraStarting = true
@@ -1361,12 +1387,11 @@ function NutritionScannerV2({
       return
     }
 
+    // Att kryssa ur gäller bara den här bilden. Det sparade samtycket återkallas
+    // endast med knappen för att återkalla samtycket, så att ett oavsiktligt tryck på
+    // raden inte tar bort valet att slippa frågan.
     remoteAnalysisApprovalRef.current.clear()
-    setStoredRemoteConsent({
-      consent: revokeNutritionRemoteConsent(userId),
-      userId,
-    })
-    setStatus(t('scanner.status.consentOff'))
+    setStatus('')
   }
 
   function handleConsentInfoDisplayChange(value) {

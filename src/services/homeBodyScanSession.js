@@ -1,6 +1,22 @@
 import { reencodeImageFileToScanFile } from './bodyAnalysisVideoScan.js'
 
 const order = ['front', 'side', 'back']
+const preferredAngleKey = 'viktkollen.bodyScan.preferredAngle'
+
+export function getPreferredBodyScanAngle() {
+  try {
+    const value = window.localStorage.getItem(preferredAngleKey)
+    return order.includes(value) ? value : null
+  } catch {
+    return null
+  }
+}
+
+export function setPreferredBodyScanAngle(angle) {
+  if (!order.includes(angle)) return
+  try { window.localStorage.setItem(preferredAngleKey, angle) } catch { /* storage may be unavailable */ }
+}
+
 
 let state = emptyState()
 const listeners = new Set()
@@ -94,7 +110,9 @@ export function bindHomeSystemCameraInput(node) {
   node.addEventListener('cancel', handleCancel)
 }
 
-export function openHomeSystemCamera() {
+export function openHomeSystemCamera(angle = getPreferredBodyScanAngle()) {
+  if (!order.includes(angle)) return false
+  setHomeBodyScanPendingAngle(angle)
   if (!cameraInput || typeof cameraInput.click !== 'function') return false
   cameraInput.click()
   return true

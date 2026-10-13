@@ -1471,7 +1471,7 @@ function NutritionScannerV2({
       {consentInfoDisplay === 'never' ? (
         <button
           type="button"
-          className="scanner-consent-display-toggle"
+          className="secondary-button scanner-consent-display-toggle"
           onClick={() => handleConsentInfoDisplayChange('always')}
         >
           Ändra visningsval

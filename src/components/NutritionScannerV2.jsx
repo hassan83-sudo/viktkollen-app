@@ -1468,15 +1468,6 @@ function NutritionScannerV2({
         />
         <span>{t('scanner.consentLabel')}</span>
       </label>
-      {consentInfoDisplay === 'never' ? (
-        <button
-          type="button"
-          className="secondary-button scanner-consent-display-toggle"
-          onClick={() => handleConsentInfoDisplayChange('always')}
-        >
-          Ändra visningsval
-        </button>
-      ) : (
       <fieldset className="scanner-consent-display">
         <legend>Visa denna information</legend>
         <label>
@@ -1500,7 +1491,6 @@ function NutritionScannerV2({
           <span>Visa inte igen</span>
         </label>
       </fieldset>
-      )}
       <div className="scanner-actions scanner-primary-actions">
           <button className="primary-button" type="button" disabled={!hasActiveImagePayload || isAnalyzing || !isOnline} onClick={(event) => handleAnalysisAction('remote', event)}>
             {isAnalyzing ? t('scanner.analyzing') : t('scanner.analyzeFood')}

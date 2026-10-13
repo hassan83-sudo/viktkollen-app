@@ -31,6 +31,7 @@ function BodyScanSystemCapture({
   const onPhotoChangeRef = useRef(onPhotoChange)
   const fileInputRef = useRef(null)
   const [, setRevision] = useState(0)
+  const [selectedAngle, setSelectedAngle] = useState('front')
   photosRef.current = photos
   onPhotoChangeRef.current = onPhotoChange
 
@@ -55,8 +56,8 @@ function BodyScanSystemCapture({
 
   const session = readHomeBodyScanSession()
   const nextMissing = order.find((key) => !photos[key]) || null
-  const active = session.pendingAngle || nextMissing
-  const view = active ? getBodyAnalysisView(active) : null
+  const active = selectedAngle
+  const view = getBodyAnalysisView(active)
   const taken = order.filter((key) => photos[key]).length
 
   async function handleFile(event) {
@@ -69,23 +70,38 @@ function BodyScanSystemCapture({
     <section className="body-scan-guided body-scan-system" aria-labelledby="body-scan-system-title">
       <h3 id="body-scan-system-title">{t('guided.systemTitle')}</h3>
       <p>{t('guided.systemProgress', { taken, total: order.length })}</p>
-      <ul className="body-scan-system-angles">
+      <fieldset className="body-scan-system-angles">
+        <legend>Välj vilken kroppsvinkel du vill fotografera</legend>
         {order.map((key) => (
-          <li key={key}>
-            {getBodyAnalysisView(key).label}
-            {photos[key] ? ` ${t('guided.systemSaved')}` : ''}
-          </li>
+          <label key={key} style={{ display: 'block', padding: '0.5rem 0' }}>
+            <input
+              type="radio"
+              name="body-scan-angle"
+              value={key}
+              checked={selectedAngle === key}
+              onChange={() => setSelectedAngle(key)}
+            />
+            {' '}{getBodyAnalysisView(key).label}
+            {photos[key] ? ` ✓ ${t('guided.systemSaved')}` : ''}
+            {photos[key]?.preview && (
+              <img
+                src={photos[key].preview}
+                alt={getBodyAnalysisView(key).label}
+                style={{ display: 'block', width: 80, height: 80, objectFit: 'cover', margin: '0.4rem 0 0 1.5rem', borderRadius: 8 }}
+              />
+            )}
+          </label>
         ))}
-      </ul>
+      </fieldset>
       {view && (
         <>
-          <p>{taken === 0 ? t('guided.systemPromptFirst', { label: view.label }) : t('guided.systemPromptNext', { label: view.label })}</p>
+          <p>{t('guided.systemPromptFirst', { label: view.label })}</p>
           <p>{view.poseTips[0]}</p>
           <label
             className="body-scan-guided-cta body-scan-system-file"
             onClick={() => setHomeBodyScanPendingAngle(active)}
           >
-            <span>{taken === 0 ? t('guided.systemOpenCamera') : t('guided.systemTakeNext')}</span>
+            <span>{photos[active] ? 'Ta om bild' : 'Ta bild'} – {view.label}</span>
             <input
               ref={fileInputRef}
               accept="image/*"
@@ -96,13 +112,13 @@ function BodyScanSystemCapture({
           </label>
         </>
       )}
-      {!view && <p>{t('guided.systemAllDone')}</p>}
+      {taken === order.length && <p>{t('guided.systemAllDone')}</p>}
       {session.notice === 'cancelled' && <p role="alert">{t('guided.systemCancelled')}</p>}
       {session.notice === 'failed' && <p role="alert">{t('guided.systemFailed')}</p>}
       <button
         className="body-scan-guided-cta"
         type="button"
-        disabled={!canAnalyze}
+        disabled={!canAnalyze || taken !== order.length}
         onClick={onAnalyze}
       >
         {t('uploader.analyze')}

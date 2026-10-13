@@ -493,14 +493,25 @@ function NutritionScannerV2({
   const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine !== false)
   const [liveCameraActive, setLiveCameraActive] = useState(false)
   const consentInfoStorageKey = `viktkollen.nutritionScanner.consentInfoDisplay.${userId || 'anonymous'}`
-  const [consentInfoDisplay, setConsentInfoDisplay] = useState(() => {
-    if (typeof window === 'undefined') return 'always'
+  const [consentInfoPreference, setConsentInfoPreference] = useState(() => {
+    if (typeof window === 'undefined') return { userId, value: 'always' }
     try {
-      return window.localStorage.getItem(consentInfoStorageKey) === 'never' ? 'never' : 'always'
+      return { userId, value: window.localStorage.getItem(consentInfoStorageKey) === 'never' ? 'never' : 'always' }
     } catch {
-      return 'always'
+      return { userId, value: 'always' }
     }
   })
+  // MealLogger can retain the scanner while the signed-in user changes.
+  // Never apply another user's stored preference to the current user.
+  const consentInfoDisplay = consentInfoPreference.userId === userId
+    ? consentInfoPreference.value
+    : (() => {
+      try {
+        return window.localStorage.getItem(consentInfoStorageKey) === 'never' ? 'never' : 'always'
+      } catch {
+        return 'always'
+      }
+    })()
   const canUseLiveCamera = typeof window !== 'undefined' && window.isSecureContext && Boolean(navigator.mediaDevices?.getUserMedia)
   const today = analysisDate || selectedMealDate || getTodayDateString()
   const remoteConsentRecord = storedRemoteConsent.userId === userId
@@ -1360,7 +1371,7 @@ function NutritionScannerV2({
 
   function handleConsentInfoDisplayChange(value) {
     const nextValue = value === 'never' ? 'never' : 'always'
-    setConsentInfoDisplay(nextValue)
+    setConsentInfoPreference({ userId, value: nextValue })
     if (typeof window !== 'undefined') {
       try {
         window.localStorage.setItem(consentInfoStorageKey, nextValue)

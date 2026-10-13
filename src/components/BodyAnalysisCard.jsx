@@ -41,6 +41,8 @@ import BodyAnalysisStats from './BodyAnalysisStats'
 import BodyAnalysisTimeline from './BodyAnalysisTimeline'
 import BodyAnalysisUnlockCard from './BodyAnalysisUnlockCard'
 import BodyScanGuidedCapture from './BodyScanGuidedCapture'
+import BodyScanSystemCapture from './BodyScanSystemCapture.jsx'
+import { readHomeBodyScanSession, saveHomeBodyScanPhoto } from '../services/homeBodyScanSession.js'
 import { getFeatureFlags, isFeatureEnabled } from '../features/featureRegistry.js'
 import { localBodyScanTexts } from '../features/body-scan-local/localBodyScanConfig.js'
 
@@ -335,8 +337,8 @@ function BodyAnalysisCard({
     t('card.status.waitingPhotos'),
   )
   const [expandedAnalysisIds, setExpandedAnalysisIds] = useState([])
-  const [backPhoto, setBackPhoto] = useState(null)
-  const [frontPhoto, setFrontPhoto] = useState(null)
+  const [backPhoto, setBackPhoto] = useState(() => (directCapture ? readHomeBodyScanSession().photos.back : null))
+  const [frontPhoto, setFrontPhoto] = useState(() => (directCapture ? readHomeBodyScanSession().photos.front : null))
   const [importSummary, setImportSummary] = useState(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isPremiumPreviewEnabled, setIsPremiumPreviewEnabled] = useState(false)
@@ -347,7 +349,7 @@ function BodyAnalysisCard({
   const [scanMode, setScanMode] = useState('photo')
   const [localScanEnabled] = useState(() => isFeatureEnabled('localBodyScan', getFeatureFlags()))
   const [showClearHistoryConfirm, setShowClearHistoryConfirm] = useState(false)
-  const [sidePhoto, setSidePhoto] = useState(null)
+  const [sidePhoto, setSidePhoto] = useState(() => (directCapture ? readHomeBodyScanSession().photos.side : null))
   const [timelineFilter, setTimelineFilter] = useState('all')
   const analysisApprovalRef = useRef(createOneShotAnalysisApproval())
   const analysisCount = analysisHistory.length
@@ -589,6 +591,9 @@ function BodyAnalysisCard({
         setBackPhoto(photo)
       } else {
         setSidePhoto(photo)
+      }
+      if (directCapture) {
+        saveHomeBodyScanPhoto(view, photo ? { file: photo.file, name: photo.name, preview: photo.preview } : null)
       }
 
       const nextPhotos = {
@@ -947,14 +952,25 @@ function BodyAnalysisCard({
             <LocalBodyScan weights={weights} />
           </Suspense>
         ) : scanMode === 'photo' ? (
-          <BodyScanGuidedCapture
-            canAnalyze={canAnalyze}
-            currentAnalysisStatus={currentAnalysisStatus}
-            disabledReason={analyzeDisabledReason}
-            photos={scanPhotos}
-            onAnalyze={handleAnalyzeBody}
-            onPhotoChange={handlePhotoChange}
-          />
+          directCapture ? (
+            <BodyScanSystemCapture
+              canAnalyze={canAnalyze}
+              currentAnalysisStatus={currentAnalysisStatus}
+              disabledReason={analyzeDisabledReason}
+              photos={scanPhotos}
+              onAnalyze={handleAnalyzeBody}
+              onPhotoChange={handlePhotoChange}
+            />
+          ) : (
+            <BodyScanGuidedCapture
+              canAnalyze={canAnalyze}
+              currentAnalysisStatus={currentAnalysisStatus}
+              disabledReason={analyzeDisabledReason}
+              photos={scanPhotos}
+              onAnalyze={handleAnalyzeBody}
+              onPhotoChange={handlePhotoChange}
+            />
+          )
         ) : (
           // Guided video scanning is not reliable enough to ship as a working
           // mode yet. Selecting it must never start the camera or fabricate a

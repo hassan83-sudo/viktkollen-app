@@ -34,6 +34,8 @@ import { formatNumber as formatLocaleNumber } from '../../i18n/format.js'
 import { prefersReducedAccessibilityMotion } from '../../services/accessibilityDocumentScope.js'
 import { getEffectiveAccessibilityPreferences, useAccessibilityPreferences } from '../../services/accessibilityPreferences.js'
 
+import { acceptHomeSystemCameraFile, bindHomeSystemCameraInput, getPreferredBodyScanAngle, openHomeSystemCamera, readHomeBodyScanSession, setHomeBodyScanNotice } from '../../services/homeBodyScanSession.js'
+
 const HomeBodyScanStage = lazy(() => import('./HomeBodyScanStage.jsx'))
 
 function isFiniteNumber(value) {
@@ -1076,6 +1078,16 @@ function OverviewTodayMood({
 }
 
 function OverviewBodyScanAction({ onOpenBodyScan }) {
+  const capturedAngleRef = useRef(null)
+  function openBodyScan() {
+    const angle = getPreferredBodyScanAngle()
+    onOpenBodyScan()
+    if (angle) {
+      capturedAngleRef.current = angle
+      openHomeSystemCamera(angle)
+    }
+  }
+
   const { t } = useTranslation(['bodyScan', 'home'])
   const action = {
     accent: 'body',
@@ -1089,11 +1101,27 @@ function OverviewBodyScanAction({ onOpenBodyScan }) {
     imageWidth: 1023,
     icon: 'bodyScan',
     label: t('home:labels.bodyScan'),
-    onClick: onOpenBodyScan,
+    onClick: openBodyScan,
   }
 
   return (
     <div className={`overview-primary-action is-${action.accent}`}>
+      <input
+        ref={bindHomeSystemCameraInput}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        aria-label="Ta kroppsscanningsbild"
+        tabIndex={-1}
+        className="home-system-camera-input"
+        onCancel={() => setHomeBodyScanNotice('cancelled')}
+        onChange={(event) => {
+          const file = event.target.files?.[0] || null
+          event.target.value = ''
+          const angle = capturedAngleRef.current || readHomeBodyScanSession().pendingAngle
+          void acceptHomeSystemCameraFile(file, angle)
+        }}
+      />
       <button
         className="overview-primary-action-hit"
         type="button"

@@ -495,7 +495,11 @@ function NutritionScannerV2({
   const consentInfoStorageKey = `viktkollen.nutritionScanner.consentInfoDisplay.${userId || 'anonymous'}`
   const [consentInfoDisplay, setConsentInfoDisplay] = useState(() => {
     if (typeof window === 'undefined') return 'always'
-    return window.localStorage.getItem(consentInfoStorageKey) === 'never' ? 'never' : 'always'
+    try {
+      return window.localStorage.getItem(consentInfoStorageKey) === 'never' ? 'never' : 'always'
+    } catch {
+      return 'always'
+    }
   })
   const canUseLiveCamera = typeof window !== 'undefined' && window.isSecureContext && Boolean(navigator.mediaDevices?.getUserMedia)
   const today = analysisDate || selectedMealDate || getTodayDateString()
@@ -503,6 +507,9 @@ function NutritionScannerV2({
     ? storedRemoteConsent.consent
     : readNutritionRemoteConsent(userId)
   const remoteConsent = remoteConsentDraft.userId === userId ? remoteConsentDraft.checked : false
+  // Valet att inte bli tillfrågad igen gäller bara så länge ett giltigt sparat samtycke finns.
+  // Återkallas samtycket visas frågan igen och kräver nytt godkännande.
+  const skipConsentPrompt = consentInfoDisplay === 'never' && remoteConsentRecord.granted === true
   const resolveActiveImagePayload = () => getNutritionImagePayloadSnapshot(imagePayloadRef.current || imagePayload, currentImageRef.current)
   const mealTypeLabel = (type) => t(`scanner.mealTypes.${type}`, { defaultValue: type })
 
@@ -986,9 +993,12 @@ function NutritionScannerV2({
       return
     }
 
-    const remoteConsentApprovedForAttempt = requestedMode === 'remote'
+    const oneShotApproved = requestedMode === 'remote'
       ? remoteAnalysisApprovalRef.current.consume(getRemoteAnalysisApprovalKey(activeImagePayload))
       : false
+    // Läs samtycket direkt från lagringen så att ett återkallat samtycke aldrig återanvänds.
+    const remoteConsentApprovedForAttempt = requestedMode === 'remote'
+      && (oneShotApproved || (consentInfoDisplay === 'never' && readNutritionRemoteConsent(userId).granted === true))
     if (requestedMode === 'remote') {
       setRemoteConsentDraft({ checked: false, userId })
     }
@@ -1352,7 +1362,11 @@ function NutritionScannerV2({
     const nextValue = value === 'never' ? 'never' : 'always'
     setConsentInfoDisplay(nextValue)
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(consentInfoStorageKey, nextValue)
+      try {
+        window.localStorage.setItem(consentInfoStorageKey, nextValue)
+      } catch {
+        // Utan lagring gäller valet bara tills skannern stängs.
+      }
     }
   }
 
@@ -1458,6 +1472,7 @@ function NutritionScannerV2({
           </button>
         </div>
       )}
+      {!skipConsentPrompt && (
       <label className="checkbox-row scanner-consent-row" htmlFor="nutrition-scanner-remote-consent">
         <input
           id="nutrition-scanner-remote-consent"
@@ -1468,6 +1483,7 @@ function NutritionScannerV2({
         />
         <span>{t('scanner.consentLabel')}</span>
       </label>
+      )}
       {consentInfoDisplay === 'never' ? (
         <button
           type="button"
@@ -1478,7 +1494,7 @@ function NutritionScannerV2({
         </button>
       ) : (
       <fieldset className="scanner-consent-display">
-        <legend>Visa denna information</legend>
+        <legend>Fråga om godkännande av AI-analys</legend>
         <label>
           <input
             type="radio"
@@ -1487,7 +1503,7 @@ function NutritionScannerV2({
             checked={consentInfoDisplay === 'always'}
             onChange={() => handleConsentInfoDisplayChange('always')}
           />
-          <span>Visa varje gång</span>
+          <span>Fråga varje gång</span>
         </label>
         <label>
           <input
@@ -1497,7 +1513,7 @@ function NutritionScannerV2({
             checked={consentInfoDisplay === 'never'}
             onChange={() => handleConsentInfoDisplayChange('never')}
           />
-          <span>Visa inte igen</span>
+          <span>Fråga inte igen</span>
         </label>
       </fieldset>
       )}

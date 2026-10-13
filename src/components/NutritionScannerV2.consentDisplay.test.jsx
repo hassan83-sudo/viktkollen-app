@@ -2,7 +2,7 @@
 
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   getNutritionAnalysisBlocker,
@@ -13,17 +13,35 @@ import {
 } from '../services/nutritionRemoteConsent.js'
 import NutritionScannerV2 from './NutritionScannerV2.jsx'
 
+const analyzeNutritionPhoto = vi.hoisted(() => vi.fn(async () => ({ ok: false, errorCode: 'test_stop' })))
+
+vi.mock('../services/nutritionPhotoAnalysisProvider.js', () => ({ analyzeNutritionPhoto }))
+vi.mock('../services/nutritionPhotoPreprocessing.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  preprocessNutritionPhoto: vi.fn(async () => ({
+    metadata: { width: 10, height: 10 },
+    ok: true,
+    previewUrl: 'blob:test-preview',
+    processedBlob: new Blob(['x'], { type: 'image/jpeg' }),
+    revoke: () => {},
+  })),
+  revokeNutritionPhotoObjectUrl: () => {},
+}))
+
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
 const USER_ID = 'user-consent-display'
 const DISPLAY_KEY = `viktkollen.nutritionScanner.consentInfoDisplay.${USER_ID}`
 
-describe('NutritionScannerV2 "Visa inte igen"', () => {
+describe('NutritionScannerV2 "Fråga inte igen"', () => {
   let container
   let root
+  let clock = 0
 
   beforeEach(() => {
     localStorage.clear()
+    analyzeNutritionPhoto.mockClear()
+    vi.spyOn(performance, 'now').mockImplementation(() => clock)
   })
 
   afterEach(() => {
@@ -31,6 +49,7 @@ describe('NutritionScannerV2 "Visa inte igen"', () => {
     container?.remove()
     root = null
     localStorage.clear()
+    vi.restoreAllMocks()
   })
 
   // Montera skannern som när appen öppnas; att avmontera och montera igen
@@ -61,12 +80,12 @@ describe('NutritionScannerV2 "Visa inte igen"', () => {
   it('shows the display options by default', () => {
     openScanner()
     expect(displayOptions()).not.toBeNull()
-    expect(radio('Visa varje gång').checked).toBe(true)
+    expect(radio('Fråga varje gång').checked).toBe(true)
   })
 
-  it('keeps "Visa inte igen" after the app is closed and opened again', () => {
+  it('keeps "Fråga inte igen" after the app is closed and opened again', () => {
     openScanner()
-    act(() => radio('Visa inte igen').click())
+    act(() => radio('Fråga inte igen').click())
 
     expect(localStorage.getItem(DISPLAY_KEY)).toBe('never')
     expect(displayOptions()).toBeNull()
@@ -77,33 +96,139 @@ describe('NutritionScannerV2 "Visa inte igen"', () => {
     expect(changeButton()).toBeDefined()
   })
 
-  it('restores "Visa varje gång" via change button, also after reopening', () => {
+  it('restores "Fråga varje gång" via change button, also after reopening', () => {
     localStorage.setItem(DISPLAY_KEY, 'never')
     openScanner()
 
     act(() => changeButton().click())
     expect(localStorage.getItem(DISPLAY_KEY)).toBe('always')
     expect(displayOptions()).not.toBeNull()
-    expect(radio('Visa varje gång').checked).toBe(true)
+    expect(radio('Fråga varje gång').checked).toBe(true)
 
     openScanner()
     expect(displayOptions()).not.toBeNull()
-    expect(radio('Visa varje gång').checked).toBe(true)
+    expect(radio('Fråga varje gång').checked).toBe(true)
   })
 
-  it('never grants or skips AI consent when the information is hidden', () => {
-    localStorage.setItem(DISPLAY_KEY, 'never')
-    openScanner()
+  async function selectImage() {
+    const input = container.querySelector('#nutrition-scanner-photo-library-input')
+    Object.defineProperty(input, 'files', {
+      configurable: true,
+      value: [new File(['x'], 'meal.jpg', { type: 'image/jpeg' })],
+    })
+    await act(async () => {
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+  }
 
-    // Samtyckesrutan finns kvar, är inte ikryssad och inget samtycke sparas.
+  async function analyzeWithAi() {
+    const button = container.querySelector('.scanner-primary-actions .primary-button')
+    // Hoppa förbi skyddet mot dubbeltryck (420 ms) mellan testklick.
+    clock += 1000
+    await act(async () => {
+      button.click()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+  }
+
+  it('asks a new user for consent before anything is sent to AI', async () => {
+    openScanner()
     expect(consentCheckbox()).not.toBeNull()
     expect(consentCheckbox().checked).toBe(false)
     expect(readNutritionRemoteConsent(USER_ID).granted).toBe(false)
 
-    // Även med tidigare sparat samtycke krävs kryss för varje AI-analys.
+    await selectImage()
+    await analyzeWithAi()
+    expect(analyzeNutritionPhoto).not.toHaveBeenCalled()
+    expect(container.textContent).toContain('Bekräfta först')
+  })
+
+  it('"Fråga inte igen" with valid consent skips the question, also after reopening', async () => {
+    openScanner()
+    await selectImage()
+    act(() => consentCheckbox().click())
+    act(() => radio('Fråga inte igen').click())
+
+    expect(readNutritionRemoteConsent(USER_ID).granted).toBe(true)
+    expect(localStorage.getItem(DISPLAY_KEY)).toBe('never')
+    expect(consentCheckbox()).toBeNull()
+
+    // Appen stängs och öppnas igen: ingen fråga, analysen går direkt.
+    openScanner()
+    expect(consentCheckbox()).toBeNull()
+    expect(displayOptions()).toBeNull()
+    expect(changeButton()).toBeDefined()
+    expect(container.querySelector('.scanner-file-picker-group')).not.toBeNull()
+
+    await selectImage()
+    await analyzeWithAi()
+    expect(analyzeNutritionPhoto).toHaveBeenCalledTimes(1)
+    expect(analyzeNutritionPhoto.mock.calls[0][1].consentApproved).toBe(true)
+
+    // Även nästa bild går direkt utan nytt kryss.
+    await selectImage()
+    await analyzeWithAi()
+    expect(analyzeNutritionPhoto).toHaveBeenCalledTimes(2)
+    expect(analyzeNutritionPhoto.mock.calls[1][1].consentApproved).toBe(true)
+  })
+
+  it('"Fråga varje gång" requires active consent for every scan', async () => {
     grantNutritionRemoteConsent(USER_ID)
     openScanner()
+    expect(radio('Fråga varje gång').checked).toBe(true)
+    expect(consentCheckbox()).not.toBeNull()
+
+    await selectImage()
+    await analyzeWithAi()
+    expect(analyzeNutritionPhoto).not.toHaveBeenCalled()
+
+    act(() => consentCheckbox().click())
+    await analyzeWithAi()
+    expect(analyzeNutritionPhoto).toHaveBeenCalledTimes(1)
+    expect(analyzeNutritionPhoto.mock.calls[0][1].consentApproved).toBe(true)
+
+    // Ny bild: frågan visas igen och kryss krävs på nytt.
+    await selectImage()
     expect(consentCheckbox().checked).toBe(false)
+    await analyzeWithAi()
+    expect(analyzeNutritionPhoto).toHaveBeenCalledTimes(1)
+  })
+
+  it('revoked consent is never reused, even with "Fråga inte igen"', async () => {
+    grantNutritionRemoteConsent(USER_ID)
+    localStorage.setItem(DISPLAY_KEY, 'never')
+    openScanner()
+    expect(consentCheckbox()).toBeNull()
+
+    const revokeButton = container.querySelector('.scanner-consent-status button')
+    act(() => revokeButton.click())
+    expect(readNutritionRemoteConsent(USER_ID).granted).toBe(false)
+    expect(consentCheckbox()).not.toBeNull()
+    expect(consentCheckbox().checked).toBe(false)
+
+    await selectImage()
+    await analyzeWithAi()
+    expect(analyzeNutritionPhoto).not.toHaveBeenCalled()
+
+    // Samtycke som tas bort utanför skannern gäller inte heller.
+    grantNutritionRemoteConsent(USER_ID)
+    openScanner()
+    expect(consentCheckbox()).toBeNull()
+    localStorage.removeItem(`viktkollen.nutritionRemoteAnalysisConsent.${USER_ID}`)
+    await selectImage()
+    await analyzeWithAi()
+    expect(analyzeNutritionPhoto).not.toHaveBeenCalled()
+
+    // Nytt godkännande: analysen fungerar igen.
+    openScanner()
+    await selectImage()
+    act(() => consentCheckbox().click())
+    await analyzeWithAi()
+    expect(analyzeNutritionPhoto).toHaveBeenCalledTimes(1)
+    expect(consentCheckbox()).toBeNull()
+  })
+
+  it('keeps the blocker message for remote analysis without consent', () => {
     expect(getNutritionAnalysisBlocker({
       imagePayload: { processedBlob: { size: 1 }, imageMetadata: {} },
       isAnalyzing: false,

@@ -53,6 +53,7 @@ describe('NutritionScannerV2 "Visa inte igen"', () => {
   }
 
   const displayOptions = () => container.querySelector('fieldset.scanner-consent-display')
+  const changeButton = () => [...container.querySelectorAll('button')].find((button) => button.textContent === 'Ändra visningsval')
   const consentCheckbox = () => container.querySelector('#nutrition-scanner-remote-consent')
   const radio = (label) => [...container.querySelectorAll('fieldset.scanner-consent-display label')]
     .find((row) => row.textContent.includes(label))?.querySelector('input')
@@ -68,19 +69,19 @@ describe('NutritionScannerV2 "Visa inte igen"', () => {
     act(() => radio('Visa inte igen').click())
 
     expect(localStorage.getItem(DISPLAY_KEY)).toBe('never')
-    expect(displayOptions()).not.toBeNull()
-    expect(radio('Visa inte igen').checked).toBe(true)
+    expect(displayOptions()).toBeNull()
+    expect(changeButton()).toBeDefined()
 
     openScanner()
-    expect(displayOptions()).not.toBeNull()
-    expect(radio('Visa inte igen').checked).toBe(true)
+    expect(displayOptions()).toBeNull()
+    expect(changeButton()).toBeDefined()
   })
 
-  it('restores "Visa varje gång" by selecting its radio option, also after reopening', () => {
+  it('restores "Visa varje gång" via change button, also after reopening', () => {
     localStorage.setItem(DISPLAY_KEY, 'never')
     openScanner()
 
-    act(() => radio('Visa varje gång').click())
+    act(() => changeButton().click())
     expect(localStorage.getItem(DISPLAY_KEY)).toBe('always')
     expect(displayOptions()).not.toBeNull()
     expect(radio('Visa varje gång').checked).toBe(true)

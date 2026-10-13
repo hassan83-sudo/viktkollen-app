@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { getBodyAnalysisView } from '../services/bodyAnalysisGuidedScan'
 import {
   acceptHomeSystemCameraFile,
+  getPreferredBodyScanAngle,
+  setPreferredBodyScanAngle,
   readHomeBodyScanSession,
   setHomeBodyScanNotice,
   setHomeBodyScanPendingAngle,
@@ -30,10 +32,10 @@ function BodyScanSystemCapture({
   const photosRef = useRef(photos)
   const onPhotoChangeRef = useRef(onPhotoChange)
   const fileInputRef = useRef(null)
-  const selectedAngleRef = useRef('front')
+  const selectedAngleRef = useRef(getPreferredBodyScanAngle() || 'front')
   const captureAngleRef = useRef('front')
   const [, setRevision] = useState(0)
-  const [selectedAngle, setSelectedAngle] = useState('front')
+  const [selectedAngle, setSelectedAngle] = useState(() => getPreferredBodyScanAngle() || 'front')
 
   useEffect(() => {
     photosRef.current = photos
@@ -67,6 +69,7 @@ function BodyScanSystemCapture({
 
   function chooseAngle(key) {
     selectedAngleRef.current = key
+    setPreferredBodyScanAngle(key)
     setSelectedAngle(key)
   }
 

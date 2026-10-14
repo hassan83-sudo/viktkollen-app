@@ -42,9 +42,7 @@ import {
   buildPhotoIngredientMatchStatusCounts,
 } from '../services/nutritionPhotoIngredientMatching.js'
 import {
-  getNutritionPhotoDisplayText,
   getNutritionPhotoFoodDisplayName,
-  getNutritionPhotoPortionDisplayName,
 } from '../services/nutritionPhotoDisplay.js'
 import { getCurrentTimeString, getTodayDateString, mealTypes } from '../services/nutritionService.js'
 import { buildRemotePhotoIngredientMatchSummary } from '../services/nutritionFoodBank.js'
@@ -101,12 +99,6 @@ const macroShortKeys = {
   fiberG: 'scanner.macros.fiber',
   proteinG: 'scanner.macros.proteinShort',
 }
-
-const scannerAnalysisStageKeys = [
-  'scanner.stages.identifying',
-  'scanner.stages.portions',
-  'scanner.stages.nutrition',
-]
 
 function safeArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : []
@@ -233,15 +225,6 @@ function createScannerImageDebugState(payload = null) {
     previewPresent: Boolean(payload?.previewUrl),
     processedImagePresent: Boolean(payload?.processedBlob),
   }
-}
-
-function portionRangeLabel(portion, t) {
-  if (!portion) return t('scanner.unknownPortion')
-  const grams = portion.gramsMin !== null && portion.gramsMax !== null
-    ? t('scanner.portionGramsRange', { min: portion.gramsMin, max: portion.gramsMax })
-    : ''
-
-  return `${getNutritionPhotoPortionDisplayName(portion.description)}${grams}`
 }
 
 function foodThumbnailSymbol(name = '') {

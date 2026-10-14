@@ -163,7 +163,8 @@ describe('NutritionScannerV2', () => {
     expect(source).toContain('isGenericUncertaintyText')
     expect(source).toContain('!isGenericUncertaintyText(component.uncertainty.reason)')
     expect(source).toContain('scanner.component.summaryPortionEstimated')
-    expect(source).toContain('getNutritionPhotoDisplayText(analysis.safeSummary)')
+    // Den kompakta designen visar livsmedel med portion och makron i stället för en separat sammanfattningstext.
+    expect(source).toContain('scanner-component-macros')
     expect(source).not.toContain('Osäkerhet finns.')
     expect(source).not.toContain('Confidence:')
   })

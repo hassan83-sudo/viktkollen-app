@@ -1663,21 +1663,7 @@ function NutritionScannerV2({
                 {analysis.components.map((component) => (
                   <details className="scanner-component-card" key={component.id}>
                     <summary>
-                      {previewUrl && <span className="scanner-food-thumb" aria-hidden="true">
-                        {component.imageBox ? (
-                          <img
-                            src={previewUrl}
-                            alt=""
-                            className="scanner-food-cropped-image"
-                            style={{
-                              width: `${100000 / (component.imageBox[2] - component.imageBox[0])}%`,
-                              height: `${100000 / (component.imageBox[3] - component.imageBox[1])}%`,
-                              left: `${-100 * component.imageBox[0] / (component.imageBox[2] - component.imageBox[0])}%`,
-                              top: `${-100 * component.imageBox[1] / (component.imageBox[3] - component.imageBox[1])}%`,
-                            }}
-                          />
-                        ) : <img src={previewUrl} alt="" />}
-                      </span>}
+                      {previewUrl && <span className="scanner-food-thumb" aria-hidden="true"><img src={previewUrl} alt="" /></span>}
                       <span className="scanner-food-content">
                         <span className="scanner-food-topline">
                           <strong>{getNutritionPhotoFoodDisplayName(component.name)}</strong>

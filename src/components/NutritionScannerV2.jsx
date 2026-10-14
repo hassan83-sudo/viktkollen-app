@@ -430,21 +430,30 @@ function IngredientEditor({ disabled, item, match, onApplySuggestion, onChange, 
 
 function ScannerAnalyzingStatus() {
   const { t } = useTranslation(['nutrition', 'common'])
-  const [stageIndex, setStageIndex] = useState(0)
+  // The AI API does not provide progress updates. This is an estimated,
+  // capped indicator; 100% is reserved for a completed analysis.
+  const [progress, setProgress] = useState(0)
 
   useEffect(() => {
-    let index = 0
+    const startedAt = Date.now()
     const timer = window.setInterval(() => {
-      index = Math.min(index + 1, scannerAnalysisStageKeys.length - 1)
-      setStageIndex(index)
-    }, 1600)
-
+      const elapsed = Date.now() - startedAt
+      // Rise quickly at first, then ease toward 95% while awaiting the server.
+      const estimated = Math.min(95, Math.floor(95 * (1 - Math.exp(-elapsed / 4800))))
+      setProgress((current) => Math.max(current, estimated))
+    }, 120)
     return () => window.clearInterval(timer)
   }, [])
 
+  const stageIndex = Math.min(scannerAnalysisStageKeys.length - 1, Math.floor(progress / 34))
+
   return (
-    <div className="scanner-analyzing-state" role="status">
+    <div className="scanner-analyzing-state" role="status" aria-label="Analys pågår">
       <p><strong>{t('scanner.analyzing')}</strong></p>
+      <p className="scanner-progress-value" aria-hidden="true">{progress} %</p>
+      <div className="scanner-progress-track" role="progressbar" aria-label="Uppskattat analysförlopp" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
+        <div className="scanner-progress-fill" style={{ width: `${progress}%` }} />
+      </div>
       <p className="estimate-note">{t(scannerAnalysisStageKeys[stageIndex])}</p>
     </div>
   )

@@ -1658,7 +1658,7 @@ function NutritionScannerV2({
 
           {analysis.components?.length > 0 && (
             <section className="scanner-review-section">
-              <h4>{t('scanner.identifiedComponents')}</h4>
+              <h4>{i18n.language?.startsWith('sv') ? 'Livsmedel' : t('scanner.identifiedComponents')}</h4>
               <div className="nutrition-component-list">
                 {analysis.components.map((component) => (
                   <details className="scanner-component-card" key={component.id}>

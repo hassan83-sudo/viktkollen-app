@@ -988,6 +988,20 @@ function OverviewPrimaryActions({
             <OverviewIcon name="foodCamera" />
             <span>{action.footerLabel}</span>
           </button>
+          {action.accent === 'food' && (
+            <button
+              className="overview-primary-action-footer overview-food-library-button"
+              type="button"
+              onClick={() => {
+                if (foodLibraryInput) {
+                  foodLibraryInput.value = ''
+                  foodLibraryInput.click()
+                }
+              }}
+            >
+              Välj bild
+            </button>
+          )}
         </div>
       ))}
       </section>
@@ -1111,20 +1125,6 @@ function OverviewTodayMood({
             <OverviewIcon name="scale" />
             {hasCurrentWeight ? formatHomeWeightLabel(displayWeight) : t('home:states.noWeight')}
           </span>
-          {action.accent === 'food' && (
-            <button
-              className="overview-primary-action-footer overview-food-library-button"
-              type="button"
-              onClick={() => {
-                if (foodLibraryInput) {
-                  foodLibraryInput.value = ''
-                  foodLibraryInput.click()
-                }
-              }}
-            >
-              Välj bild
-            </button>
-          )}
         </div>
         <div className="overview-today-links">
           {onScanFood && (

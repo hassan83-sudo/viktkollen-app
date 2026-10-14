@@ -1731,28 +1731,19 @@ function NutritionScannerV2({
           </div>
 
           {reviewUncertainties.length > 0 && (
-            <section className="scanner-review-section">
-              <h4>{t('scanner.toCheck')}</h4>
-              <ul className="health-dashboard-list">
-                {reviewUncertainties.map((item) => <li key={item}>{item}</li>)}
-              </ul>
-            </section>
-          )}
-
             <details className="scanner-review-meta-details">
-              <summary>{t('scanner.editDetails')}</summary>
-            <p className="scanner-hero-meta">
-              {t('scanner.estimatedPortion', {
-                portion: reviewDraft.portionSize || portionRangeLabel(analysis.portionEstimate, t),
-              })}
-            </p>
+              <summary>{'Osäkra uppgifter'} ({reviewUncertainties.length})</summary>
+              <ul className="health-dashboard-list">
+                {[...new Set(reviewUncertainties)].map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            </details>
+          )}
+          <details className="scanner-advanced-edit">
+            <summary>{t('scanner.editDetails')}</summary>
             <p className="scanner-hero-meta">
               {t('scanner.confidenceLine', { level: confidenceLabel(analysis.confidence.level, t) })}
               {analysis.imageQuality ? t('scanner.imageQualitySuffix', { quality: imageQualityLabel(analysis.imageQuality, t) }) : ''}
             </p>
-            </details>
-          <details className="scanner-advanced-edit">
-            <summary>{t('scanner.editDetails')}</summary>
             <label>
               <span>{t('scanner.mealName')}</span>
               <input aria-invalid={Boolean(validation.errors.mealName)} value={reviewDraft.mealName} onChange={(event) => updateReview({ mealName: event.target.value })} />

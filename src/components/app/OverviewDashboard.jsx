@@ -17,6 +17,7 @@ import {
   getWeatherPermissionState,
 } from '../../services/overviewLiveContext.js'
 import { loadOverviewWeather } from '../../services/overviewWeather.js'
+import { setPendingHomeFoodScanFile } from '../../services/nutritionScanHomeCapture.js'
 import { createProfilePhotoFromFile, readProfilePhoto, writeProfilePhoto } from '../../services/profilePhotoStorage.js'
 import { getFeatureFlags, isFeatureEnabled } from '../../features/featureRegistry.js'
 import HomeSocialPreview from '../../features/social/components/HomeSocialPreview.jsx'
@@ -744,9 +745,12 @@ function OverviewPrimaryActions({
   onOpenFoodScan,
   onOpenSmartCamera,
   onScanFood,
+  userId = 'local-user',
 }) {
   const { t } = useTranslation(['bodyScan', 'home'])
   const prefersReducedMotion = usePrefersReducedMotion()
+  const [foodCameraInput, setFoodCameraInput] = useState(null)
+  const [foodLibraryInput, setFoodLibraryInput] = useState(null)
   const [showTapPulse, setShowTapPulse] = useState(() => {
     if (typeof window === 'undefined') return false
     try {
@@ -820,10 +824,30 @@ function OverviewPrimaryActions({
     else onOpenSmartCamera?.()
   }
 
-  const openFood = () => {
+  const navigateToFoodScan = () => {
     if (onOpenFoodScan) onOpenFoodScan()
     else if (onScanFood) onScanFood()
     else goTo('nutrition', 'streckkod')
+  }
+
+  // Att ta en bild kräver inte AI-samtycke. Kamera öppnas direkt i samma tryck;
+  // AI-samtycke kontrolleras fortfarande innan bilden skickas till analys.
+  const openFood = () => {
+    if (foodCameraInput && typeof foodCameraInput.click === 'function') {
+      // Värdet nollställs i onChange, så samma bild kan väljas igen.
+      foodCameraInput.click()
+      return
+    }
+    navigateToFoodScan()
+  }
+
+  const handleFoodCameraFile = (event) => {
+    const file = event.target.files?.[0] || null
+    event.target.value = ''
+    // Avbruten kamera: stanna kvar på Hem.
+    if (!file) return
+    setPendingHomeFoodScanFile(file, userId)
+    navigateToFoodScan()
   }
 
   const actions = [
@@ -893,6 +917,25 @@ function OverviewPrimaryActions({
           </button>
         ))}
       </div>
+      <input
+        ref={setFoodCameraInput}
+        accept="image/*"
+        aria-hidden="true"
+        capture="environment"
+        className="home-system-camera-input home-food-camera-input"
+        tabIndex={-1}
+        type="file"
+        onChange={handleFoodCameraFile}
+      />
+      <input
+        ref={setFoodLibraryInput}
+        accept="image/*"
+        aria-label="Välj matbild från bildbiblioteket"
+        className="home-system-camera-input home-food-library-input"
+        tabIndex={-1}
+        type="file"
+        onChange={handleFoodCameraFile}
+      />
       <section className="overview-primary-actions" data-glow-level={glowLevel} aria-label={t('home:labels.home')}>
       {actions.map((action) => (
         <div className={`overview-primary-action is-${action.accent}`} key={action.label}>
@@ -931,6 +974,20 @@ function OverviewPrimaryActions({
               <small className="overview-primary-action-hint">Tryck på ikonen nedan</small>
             </span>{' '}
             </button>
+          {action.accent === 'food' && (
+            <button
+              className="overview-primary-action-footer overview-food-library-button"
+              type="button"
+              onClick={() => {
+                if (foodLibraryInput) {
+                  foodLibraryInput.value = ''
+                  foodLibraryInput.click()
+                }
+              }}
+            >
+              Välj bild
+            </button>
+          )}
           <button
             className="overview-primary-action-footer"
             type="button"
@@ -940,6 +997,7 @@ function OverviewPrimaryActions({
             <OverviewIcon name="foodCamera" />
             <span>{action.footerLabel}</span>
           </button>
+
         </div>
       ))}
       </section>
@@ -1493,6 +1551,7 @@ function OverviewDashboard({
             setSmartCameraOpen(true)
           }}
           onScanFood={onScanFood}
+          userId={userId}
         />
       </section>
 

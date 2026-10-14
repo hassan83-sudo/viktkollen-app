@@ -18750,6 +18750,14 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   .bottom-nav {
     position: fixed !important;
     bottom: max(9px, calc(env(safe-area-inset-bottom) + 9px)) !important;
+    /* iOS Safari: avoid the transformed, backdrop-filtered fixed layer
+       shifting while the browser chrome expands/collapses on scroll. */
+    left: 0 !important;
+    right: 0 !important;
+    margin-inline: auto !important;
+    transform: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
   }
 }
 
@@ -18844,4 +18852,25 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   height: 100%;
   opacity: 0.001;
   cursor: pointer;
+}
+
+/* Estimated progress for AI food scanning; the server does not stream progress. */
+.scanner-analyzing-state .scanner-progress-value {
+  margin: 4px 0;
+  font-size: 1.4rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.scanner-analyzing-state .scanner-progress-track {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.25);
+}
+.scanner-analyzing-state .scanner-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 120ms linear;
 }

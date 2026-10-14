@@ -25,6 +25,13 @@ import {
   revokeNutritionRemoteConsent,
 } from '../services/nutritionRemoteConsent.js'
 import {
+  getNutritionConsentPromptStorageKey,
+  hasPendingHomeFoodScanFile,
+  readNutritionConsentPromptPreference,
+  subscribePendingHomeFoodScanFile,
+  takePendingHomeFoodScanFile,
+} from '../services/nutritionScanHomeCapture.js'
+import {
   createAnalysisApprovalKey,
   createOneShotAnalysisApproval,
 } from '../services/security/oneShotAnalysisApproval.js'
@@ -423,21 +430,30 @@ function IngredientEditor({ disabled, item, match, onApplySuggestion, onChange, 
 
 function ScannerAnalyzingStatus() {
   const { t } = useTranslation(['nutrition', 'common'])
-  const [stageIndex, setStageIndex] = useState(0)
+  // The AI API does not provide progress updates. This is an estimated,
+  // capped indicator; 100% is reserved for a completed analysis.
+  const [progress, setProgress] = useState(0)
 
   useEffect(() => {
-    let index = 0
+    const startedAt = Date.now()
     const timer = window.setInterval(() => {
-      index = Math.min(index + 1, scannerAnalysisStageKeys.length - 1)
-      setStageIndex(index)
-    }, 1600)
-
+      const elapsed = Date.now() - startedAt
+      // Rise quickly at first, then ease toward 95% while awaiting the server.
+      const estimated = Math.min(95, Math.floor(95 * (1 - Math.exp(-elapsed / 4800))))
+      setProgress((current) => Math.max(current, estimated))
+    }, 120)
     return () => window.clearInterval(timer)
   }, [])
 
+  const stageIndex = Math.min(scannerAnalysisStageKeys.length - 1, Math.floor(progress / 34))
+
   return (
-    <div className="scanner-analyzing-state" role="status">
+    <div className="scanner-analyzing-state" role="status" aria-label="Analys pågår">
       <p><strong>{t('scanner.analyzing')}</strong></p>
+      <p className="scanner-progress-value" aria-hidden="true">{progress} %</p>
+      <div className="scanner-progress-track" role="progressbar" aria-label="Uppskattat analysförlopp" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
+        <div className="scanner-progress-fill" style={{ width: `${progress}%` }} />
+      </div>
       <p className="estimate-note">{t(scannerAnalysisStageKeys[stageIndex])}</p>
     </div>
   )
@@ -459,12 +475,16 @@ function NutritionScannerV2({
   const fileInputRef = useRef(null)
   const cameraInputRef = useRef(null)
   const reviewRef = useRef(null)
+  const photoPreviewRef = useRef(null)
   const liveCameraVideoRef = useRef(null)
   const liveCameraStreamRef = useRef(null)
   // iPhones egen kamera (filinmatningen) och förhandsvisningen ska aldrig ha
   // kameran samtidigt. Medan den egna kameran är öppen startas ingen förhandsvisning.
   const liveCameraControlsRef = useRef(null)
   const nativeCameraOpenRef = useRef(false)
+  // En bild tagen med telefonens kamera från Hem håller på att tas emot; starta
+  // då ingen förhandsvisning av kameran under tiden.
+  const homeCaptureInProgressRef = useRef(hasPendingHomeFoodScanFile(userId))
   const currentImageRef = useRef(null)
   const imagePayloadRef = useRef(null)
   const activeAnalysisControllerRef = useRef(null)
@@ -492,17 +512,25 @@ function NutritionScannerV2({
   }))
   const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine !== false)
   const [liveCameraActive, setLiveCameraActive] = useState(false)
-  const consentInfoStorageKey = `viktkollen.nutritionScanner.consentInfoDisplay.${userId || 'anonymous'}`
-  const [consentInfoDisplay, setConsentInfoDisplay] = useState(() => {
-    if (typeof window === 'undefined') return 'always'
-    return window.localStorage.getItem(consentInfoStorageKey) === 'never' ? 'never' : 'always'
-  })
+  const consentInfoStorageKey = getNutritionConsentPromptStorageKey(userId)
+  const [consentInfoPreference, setConsentInfoPreference] = useState(() => ({
+    userId,
+    value: readNutritionConsentPromptPreference(userId),
+  }))
+  // MealLogger can retain the scanner while the signed-in user changes.
+  // Never apply another user's stored preference to the current user.
+  const consentInfoDisplay = consentInfoPreference.userId === userId
+    ? consentInfoPreference.value
+    : readNutritionConsentPromptPreference(userId)
   const canUseLiveCamera = typeof window !== 'undefined' && window.isSecureContext && Boolean(navigator.mediaDevices?.getUserMedia)
   const today = analysisDate || selectedMealDate || getTodayDateString()
   const remoteConsentRecord = storedRemoteConsent.userId === userId
     ? storedRemoteConsent.consent
     : readNutritionRemoteConsent(userId)
   const remoteConsent = remoteConsentDraft.userId === userId ? remoteConsentDraft.checked : false
+  // Valet att inte bli tillfrågad igen gäller bara så länge ett giltigt sparat samtycke finns.
+  // Återkallas samtycket visas frågan igen och kräver nytt godkännande.
+  const skipConsentPrompt = consentInfoDisplay === 'never' && remoteConsentRecord.granted === true
   const resolveActiveImagePayload = () => getNutritionImagePayloadSnapshot(imagePayloadRef.current || imagePayload, currentImageRef.current)
   const mealTypeLabel = (type) => t(`scanner.mealTypes.${type}`, { defaultValue: type })
 
@@ -680,6 +708,32 @@ function NutritionScannerV2({
     return handleFileChange(event)
   }
 
+  // Bild som togs med telefonens kamera direkt från Hem när frågan hoppas över.
+  const homeCaptureHandlerRef = useRef(null)
+  useEffect(() => {
+    homeCaptureHandlerRef.current = async () => {
+      const file = takePendingHomeFoodScanFile(userId)
+      if (!file) {
+        homeCaptureInProgressRef.current = false
+        return
+      }
+      homeCaptureInProgressRef.current = true
+      try {
+        await handleFileChange({ target: { files: [file] } })
+      } finally {
+        homeCaptureInProgressRef.current = false
+        if (!currentImageRef.current) liveCameraControlsRef.current?.start()
+      }
+    }
+  })
+  useEffect(() => {
+    const consume = () => {
+      if (hasPendingHomeFoodScanFile(userId)) homeCaptureHandlerRef.current?.()
+    }
+    consume()
+    return subscribePendingHomeFoodScanFile(consume)
+  }, [userId])
+
   useEffect(() => {
     if (previewUrl || !canUseLiveCamera) return undefined
 
@@ -696,7 +750,7 @@ function NutritionScannerV2({
     }
 
     async function startLiveCamera() {
-      if (cancelled || cameraStarting || liveCameraStreamRef.current || nativeCameraOpenRef.current || document.visibilityState === 'hidden') return
+      if (cancelled || cameraStarting || liveCameraStreamRef.current || nativeCameraOpenRef.current || homeCaptureInProgressRef.current || document.visibilityState === 'hidden') return
       const sessionId = session
       const epoch = currentCameraEpoch()
       cameraStarting = true
@@ -964,6 +1018,24 @@ function NutritionScannerV2({
     setStatus(t('scanner.status.prepared'))
   }
 
+  // After returning from the iPhone camera, bring the selected photo and
+  // Analyze button above the fixed bottom navigation without an extra swipe.
+  useEffect(() => {
+    if (!previewUrl || typeof window === 'undefined') return undefined
+    const scrollToPhoto = () => {
+      const target = photoPreviewRef.current
+      if (!target) return
+      const top = window.scrollY + target.getBoundingClientRect().top - 160
+      window.scrollTo({ top: Math.max(0, top), behavior: 'instant' })
+    }
+    const frame = window.requestAnimationFrame(scrollToPhoto)
+    const delayed = window.setTimeout(scrollToPhoto, 260)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(delayed)
+    }
+  }, [previewUrl])
+
   async function analyzeImage(providerType = 'local', imagePayloadSnapshot = null) {
     const activeImagePayload = imagePayloadSnapshot || resolveActiveImagePayload()
     const imageDebugState = createScannerImageDebugState(activeImagePayload)
@@ -986,9 +1058,12 @@ function NutritionScannerV2({
       return
     }
 
-    const remoteConsentApprovedForAttempt = requestedMode === 'remote'
+    const oneShotApproved = requestedMode === 'remote'
       ? remoteAnalysisApprovalRef.current.consume(getRemoteAnalysisApprovalKey(activeImagePayload))
       : false
+    // Läs samtycket direkt från lagringen så att ett återkallat samtycke aldrig återanvänds.
+    const remoteConsentApprovedForAttempt = requestedMode === 'remote'
+      && (oneShotApproved || (consentInfoDisplay === 'never' && readNutritionRemoteConsent(userId).granted === true))
     if (requestedMode === 'remote') {
       setRemoteConsentDraft({ checked: false, userId })
     }
@@ -1340,19 +1415,22 @@ function NutritionScannerV2({
       return
     }
 
+    // Att kryssa ur gäller bara den här bilden. Det sparade samtycket återkallas
+    // endast med knappen för att återkalla samtycket, så att ett oavsiktligt tryck på
+    // raden inte tar bort valet att slippa frågan.
     remoteAnalysisApprovalRef.current.clear()
-    setStoredRemoteConsent({
-      consent: revokeNutritionRemoteConsent(userId),
-      userId,
-    })
-    setStatus(t('scanner.status.consentOff'))
+    setStatus('')
   }
 
   function handleConsentInfoDisplayChange(value) {
     const nextValue = value === 'never' ? 'never' : 'always'
-    setConsentInfoDisplay(nextValue)
+    setConsentInfoPreference({ userId, value: nextValue })
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(consentInfoStorageKey, nextValue)
+      try {
+        window.localStorage.setItem(consentInfoStorageKey, nextValue)
+      } catch {
+        // Utan lagring gäller valet bara tills skannern stängs.
+      }
     }
   }
 
@@ -1438,19 +1516,29 @@ function NutritionScannerV2({
         </label>
       </div>
       {previewUrl && (
-        <div className="scanner-preview-stage">
+        <div ref={photoPreviewRef} className="scanner-preview-stage">
           <img
             className="food-preview"
             src={previewUrl}
             alt={fileName ? t('scanner.previewAltNamed', { fileName }) : t('scanner.previewAlt')}
           />
+          <div className="scanner-actions scanner-preview-analyze">
+            <button
+              className="primary-button"
+              type="button"
+              disabled={!hasActiveImagePayload || isAnalyzing || !isOnline}
+              onClick={(event) => handleAnalysisAction('remote', event)}
+            >
+              {isAnalyzing ? t('scanner.analyzing') : t('scanner.analyzeFood')}
+            </button>
+          </div>
           <div className="scanner-actions scanner-preview-actions">
             <button type="button" className="secondary-button" onClick={() => fileInputRef.current?.click()}>{t('scanner.changeImage')}</button>
             <button type="button" className="secondary-button" onClick={clearTemporaryImage}>{t('common:remove')}</button>
           </div>
         </div>
       )}
-      {remoteConsentRecord.granted && consentInfoDisplay !== 'never' && (
+      {remoteConsentRecord.granted && (
         <div className="scanner-consent-row scanner-consent-status">
           <p className="estimate-note">{t('scanner.consentGranted')}</p>
           <button type="button" className="secondary-button" disabled={isAnalyzing} onClick={handleRevokeRemoteConsent}>
@@ -1458,6 +1546,7 @@ function NutritionScannerV2({
           </button>
         </div>
       )}
+      {!skipConsentPrompt && (
       <label className="checkbox-row scanner-consent-row" htmlFor="nutrition-scanner-remote-consent">
         <input
           id="nutrition-scanner-remote-consent"
@@ -1468,6 +1557,7 @@ function NutritionScannerV2({
         />
         <span>{t('scanner.consentLabel')}</span>
       </label>
+      )}
       {consentInfoDisplay === 'never' ? (
         <button
           type="button"
@@ -1478,7 +1568,7 @@ function NutritionScannerV2({
         </button>
       ) : (
       <fieldset className="scanner-consent-display">
-        <legend>Visa denna information</legend>
+        <legend>Fråga om godkännande av AI-analys</legend>
         <label>
           <input
             type="radio"
@@ -1487,7 +1577,7 @@ function NutritionScannerV2({
             checked={consentInfoDisplay === 'always'}
             onChange={() => handleConsentInfoDisplayChange('always')}
           />
-          <span>Visa varje gång</span>
+          <span>Fråga varje gång</span>
         </label>
         <label>
           <input
@@ -1497,15 +1587,17 @@ function NutritionScannerV2({
             checked={consentInfoDisplay === 'never'}
             onChange={() => handleConsentInfoDisplayChange('never')}
           />
-          <span>Visa inte igen</span>
+          <span>Fråga inte igen</span>
         </label>
       </fieldset>
       )}
+      {!previewUrl && (
       <div className="scanner-actions scanner-primary-actions">
           <button className="primary-button" type="button" disabled={!hasActiveImagePayload || isAnalyzing || !isOnline} onClick={(event) => handleAnalysisAction('remote', event)}>
             {isAnalyzing ? t('scanner.analyzing') : t('scanner.analyzeFood')}
           </button>
         </div>
+      )}
       {isAnalyzing && <ScannerAnalyzingStatus />}
       <details className="scanner-secondary-analysis">
         <summary>{t('scanner.aiNotWorking')}</summary>

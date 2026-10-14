@@ -879,6 +879,7 @@ function OverviewPrimaryActions({
       icon: 'foodCamera',
       label: t('home:foodScan.title'),
       onClick: openFood,
+      imageOnClick: navigateToFoodScan,
     },
     ...(smartCameraOn && isFeatureEnabled('aiEar', featureFlags) ? [{
       accent: 'body',

@@ -1648,6 +1648,8 @@ function NutritionScannerV2({
                 <dd>{nutritionMidpointLabel(reviewDraft.nutrition.fat, 'g', t)}</dd>
               </div>
             </dl>
+            <details className="scanner-review-meta-details">
+              <summary>{t('scanner.editDetails')}</summary>
             <p className="scanner-hero-meta">
               {t('scanner.estimatedPortion', {
                 portion: reviewDraft.portionSize || portionRangeLabel(analysis.portionEstimate, t),
@@ -1657,10 +1659,8 @@ function NutritionScannerV2({
               {t('scanner.confidenceLine', { level: confidenceLabel(analysis.confidence.level, t) })}
               {analysis.imageQuality ? t('scanner.imageQualitySuffix', { quality: imageQualityLabel(analysis.imageQuality, t) }) : ''}
             </p>
+            </details>
           </div>
-          {getNutritionPhotoDisplayText(analysis.safeSummary) ? (
-            <p className="scanner-review-lede">{getNutritionPhotoDisplayText(analysis.safeSummary)}</p>
-          ) : null}
 
           {analysis.components?.length > 0 && (
             <section className="scanner-review-section">
@@ -1794,30 +1794,9 @@ function NutritionScannerV2({
             ))}
           </details>
 
-          <section className="scanner-save-summary">
-            <h4>{t('scanner.whatIsSaved')}</h4>
-            <dl className="scanner-summary-stats">
-              <div>
-                <dt>{t('scanner.macros.calories')}</dt>
-                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.calories, 'kcal', t)}</dd>
-              </div>
-              <div>
-                <dt>{t('scanner.macros.protein')}</dt>
-                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.protein, 'g', t)}</dd>
-              </div>
-              <div>
-                <dt>{t('scanner.macros.carbs')}</dt>
-                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.carbs, 'g', t)}</dd>
-              </div>
-              <div>
-                <dt>{t('scanner.macros.fat')}</dt>
-                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.fat, 'g', t)}</dd>
-              </div>
-            </dl>
-            {Math.abs(nutritionDifference.calories) > 80 && (
-              <p className="analysis-status">{t('scanner.totalMismatch')}</p>
-            )}
-          </section>
+          {Math.abs(nutritionDifference.calories) > 80 && (
+            <p className="analysis-status">{t('scanner.totalMismatch')}</p>
+          )}
 
           {duplicate.status !== 'noDuplicate' && (
             <p className="analysis-status">

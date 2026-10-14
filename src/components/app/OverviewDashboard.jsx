@@ -835,10 +835,10 @@ function OverviewPrimaryActions({
     else goTo('nutrition', 'streckkod')
   }
 
-  // När användaren valt att inte bli tillfrågad igen och har giltigt samtycke öppnas telefonens kamera direkt
-  // i samma tryck. Annars visas matscanningen med information och samtycke.
+  // Att ta en bild kräver inte AI-samtycke. Kamera öppnas direkt i samma tryck;
+  // AI-samtycke kontrolleras fortfarande innan bilden skickas till analys.
   const openFood = () => {
-    if (foodCameraInput && typeof foodCameraInput.click === 'function' && canSkipNutritionConsentPrompt(userId)) {
+    if (foodCameraInput && typeof foodCameraInput.click === 'function') {
       // Värdet nollställs i onChange, så samma bild kan väljas igen.
       foodCameraInput.click()
       return

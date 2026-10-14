@@ -28,7 +28,7 @@ function fieldPart(boundary, fieldName, value) {
 
 function multipartBody({
   boundary = 'body-boundary',
-  fieldNames = ['frontImage', 'sideImage', 'backImage'],
+  fieldNames = ['frontImage', 'sideImage'],
   fields = {},
   images = {},
 } = {}) {
@@ -41,13 +41,12 @@ function multipartBody({
 
 const TEST_ANALYSIS_CONSENT_SECRET = 'a'.repeat(40)
 
-function issueValidBodyAnalysisToken(images = { backImage: pngBytes, frontImage: pngBytes, sideImage: pngBytes }, userId = 'body-hardening-user') {
+function issueValidBodyAnalysisToken(images = { frontImage: pngBytes, sideImage: pngBytes }, userId = 'body-hardening-user') {
   return issueAnalysisConsentToken({
     env: { ANALYSIS_CONSENT_SECRET: TEST_ANALYSIS_CONSENT_SECRET },
     imageHash: computeCanonicalImageHash([
       { bytes: images.frontImage, label: 'front' },
       { bytes: images.sideImage, label: 'side' },
-      { bytes: images.backImage, label: 'back' },
     ]),
     purpose: analysisConsentPurposes.bodyAnalysis,
     userId,
@@ -113,24 +112,24 @@ describe('body analysis API hardening', () => {
     setSupabaseAuthVerifierForTests(null)
   })
 
-  describe('exactly three images', () => {
-    it('accepts precisely the three required angles', () => {
-      expect(validateImageFieldNames(['frontImage', 'sideImage', 'backImage'])).toBe('')
+  describe('exactly two images', () => {
+    it('accepts precisely the two required angles', () => {
+      expect(validateImageFieldNames(['frontImage', 'sideImage'])).toBe('')
     })
 
-    it('rejects a fourth image field', () => {
-      expect(validateImageFieldNames(['frontImage', 'sideImage', 'backImage', 'extraImage']))
+    it('rejects a back image or any extra field', () => {
+      expect(validateImageFieldNames(['frontImage', 'sideImage', 'backImage']))
         .toContain('Endast bilderna')
     })
 
     it('rejects too few images', () => {
-      expect(validateImageFieldNames(['frontImage', 'sideImage'])).toContain('exakt tre bilder')
-      expect(validateImageFieldNames([])).toContain('exakt tre bilder')
+      expect(validateImageFieldNames(['frontImage'])).toContain('exakt två bilder')
+      expect(validateImageFieldNames([])).toContain('exakt två bilder')
     })
 
     it('refuses an upload carrying an unexpected extra file', async () => {
       const response = await callRoute(createRequest({
-        body: multipartBody({ fieldNames: ['frontImage', 'sideImage', 'backImage', 'bonusImage'] }),
+        body: multipartBody({ fieldNames: ['frontImage', 'sideImage', 'backImage'] }),
       }))
 
       expect(response.statusCode).toBe(400)

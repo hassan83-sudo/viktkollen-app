@@ -18854,6 +18854,59 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   cursor: pointer;
 }
 
+.body-scan-angle-picker {
+  display: grid;
+  gap: 8px;
+}
+
+.body-scan-angle-legend {
+  margin: 0;
+  color: #eaf2ff;
+  font-weight: 700;
+}
+
+.body-scan-angle-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.body-scan-angle-options label {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(8, 16, 34, 0.55);
+  border: 1px solid rgba(148, 180, 255, 0.28);
+  color: #eaf2ff;
+}
+
+.body-scan-angle-options label.is-selected {
+  border-color: rgba(122, 247, 255, 0.85);
+}
+
+.body-scan-angle-options input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: #7af7ff;
+}
+
+.body-scan-angle-options img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.body-scan-pose-instruction {
+  margin: 0;
+  color: #eaf2ff;
+  line-height: 1.45;
+}
+
 /* Estimated progress for AI food scanning; the server does not stream progress. */
 .scanner-analyzing-state .scanner-progress-value {
   margin: 4px 0;

@@ -21,7 +21,7 @@ const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
 // Three images plus small text fields; anything larger is rejected before parsing.
 const MAX_REQUEST_BODY_BYTES = 3 * MAX_IMAGE_SIZE_BYTES + 1024 * 1024
 const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png']
-const requiredImageFields = ['frontImage', 'sideImage', 'backImage']
+const requiredImageFields = ['frontImage', 'sideImage']
 const resultKeys = [
   'status',
   'source',
@@ -214,17 +214,17 @@ async function parseImages(request) {
   }
 }
 
-/** The contract is exactly three images: front, side and back. */
+/** The contract is exactly two images: front and side. */
 export function validateImageFieldNames(fieldNames = []) {
   const names = Array.isArray(fieldNames) ? fieldNames : []
   const unexpected = names.filter((name) => !requiredImageFields.includes(name))
 
   if (unexpected.length > 0) {
-    return 'Endast bilderna framifrån, från sidan och bakifrån får skickas.'
+    return 'Endast bilderna framifrån och från sidan får skickas.'
   }
 
   if (new Set(names).size !== requiredImageFields.length) {
-    return 'Analysen kräver exakt tre bilder: framifrån, från sidan och bakifrån.'
+    return 'Analysen kräver exakt två bilder: framifrån och från sidan.'
   }
 
   return ''
@@ -232,7 +232,7 @@ export function validateImageFieldNames(fieldNames = []) {
 
 function validateImage(image, label) {
   if (!image) {
-    return `${label} saknas. Ladda upp bilder framifrån, från sidan och bakifrån.`
+    return `${label} saknas. Ladda upp bilder framifrån och från sidan.`
   }
 
   if (!allowedImageTypes.includes(image.contentType)) {
@@ -285,15 +285,6 @@ function validateRequest(request, images) {
   if (sideImageError) {
     return {
       error: sideImageError,
-      status: 400,
-    }
-  }
-
-  const backImageError = validateImage(images.backImage, 'Bild bakifrån')
-
-  if (backImageError) {
-    return {
-      error: backImageError,
       status: 400,
     }
   }
@@ -441,7 +432,6 @@ async function runBodyAnalysis(images) {
     const analysis = await analyzeBodyImages(
       images.frontImage,
       images.sideImage,
-      images.backImage,
       prompt,
       images.previousAnalysis,
     )
@@ -712,7 +702,6 @@ export default async function handler(request, response) {
     imageEntries: [
       { bytes: images.frontImage?.data, label: 'front' },
       { bytes: images.sideImage?.data, label: 'side' },
-      { bytes: images.backImage?.data, label: 'back' },
     ],
     purpose: analysisConsentPurposes.bodyAnalysis,
     token: consentToken,

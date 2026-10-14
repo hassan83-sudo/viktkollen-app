@@ -1,6 +1,6 @@
 import { reencodeImageFileToScanFile } from './bodyAnalysisVideoScan.js'
 
-const order = ['front', 'side', 'back']
+const order = ['front', 'side']
 const preferredAngleKey = 'viktkollen.bodyScan.preferredAngle'
 
 export function getPreferredBodyScanAngle() {

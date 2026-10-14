@@ -21,7 +21,7 @@ import {
 
 const timerOptions = [3, 5, 10]
 const zoomLevelCandidates = [0.5, 1, 2]
-const captureOrder = ['front', 'side', 'back']
+const captureOrder = ['front', 'side']
 
 function formatZoomLabel(level) {
   return `${String(level).replace('.', ',')}×`
@@ -190,12 +190,6 @@ function BodyScanGuidedCapture({
     beginCountdown('side')
   }
 
-  function enterBack() {
-    setStep('back')
-    speakOnce('back', t('bodyScan:guided.voiceBack'))
-    beginCountdown('back')
-  }
-
   function advanceAfterCapture(pose) {
     if (retakeTargetRef.current) {
       retakeTargetRef.current = null
@@ -210,10 +204,6 @@ function BodyScanGuidedCapture({
     const nextPose = captureOrder[captureOrder.indexOf(pose) + 1]
     if (nextPose === 'side') {
       enterSide()
-      return
-    }
-    if (nextPose === 'back') {
-      enterBack()
       return
     }
     cameraRequestRef.current += 1
@@ -255,7 +245,6 @@ function BodyScanGuidedCapture({
       setCameraError('')
       setCameraActive(true)
       if (targetStep === 'side') enterSide()
-      else if (targetStep === 'back') enterBack()
       else enterFront(isRetake)
       return true
     } catch (error) {

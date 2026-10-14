@@ -3,7 +3,7 @@ function BodyAnalysisOnboarding() {
     <div className="body-analysis-help">
       <h3>Så tar du bilder för en bättre analys</h3>
       <ul>
-        <li>Ta tre bilder: framifrån, från sidan och bakifrån.</li>
+        <li>Ta två bilder: framifrån och från sidan.</li>
         <li>Placera mobilen så att hela kroppen syns från huvud till fötter.</li>
         <li>Ställ kameran ungefär i midje-/brösthöjd, gärna 1,5-3 meter bort.</li>
         <li>Stå på samma plats med liknande ljus varje gång.</li>

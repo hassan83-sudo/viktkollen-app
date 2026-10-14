@@ -43,7 +43,6 @@ function createTimeoutSignal() {
  *
  * @param {{dataUrl: string}} frontImage
  * @param {{dataUrl: string}} sideImage
- * @param {{dataUrl: string}} backImage
  * @param {string} prompt
  * @param {object | null} previousAnalysis
  * @returns {Promise<object>}
@@ -51,7 +50,6 @@ function createTimeoutSignal() {
 export async function analyzeBodyImages(
   frontImage,
   sideImage,
-  backImage,
   prompt,
   previousAnalysis = null,
 ) {
@@ -83,10 +81,6 @@ export async function analyzeBodyImages(
               },
               {
                 image_url: sideImage.dataUrl,
-                type: 'input_image',
-              },
-              {
-                image_url: backImage.dataUrl,
                 type: 'input_image',
               },
             ],

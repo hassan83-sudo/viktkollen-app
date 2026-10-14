@@ -110,7 +110,7 @@ describe('BodyScanSystemCapture', () => {
     await changeAppLanguage('sv')
   })
 
-  it('shows the three angles and waits for Ta bild before opening the camera', () => {
+  it('shows the two angles and waits for Ta bild before opening the camera', () => {
     const getUserMedia = vi.fn()
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
@@ -121,10 +121,13 @@ describe('BodyScanSystemCapture', () => {
     const input = fileInput(container)
 
     expect(container.textContent).toContain('Välj vilken kroppsvinkel du vill fotografera')
+    expect(container.textContent).toContain('0 av 2 bilder')
     expect(container.textContent).toContain('Framifrån')
     expect(container.textContent).toContain('Från sidan')
-    expect(container.textContent).toContain('Bakifrån')
+    expect(container.textContent).not.toContain('Bakifrån')
+    expect(container.textContent).toContain('Ställ mobilen så att hela kroppen syns i bild, från huvudet till fötterna. Stå rakt och håll armarna lite från kroppen.')
     expect(container.textContent).toContain('Ta bild – Framifrån')
+    expect(container.querySelector('fieldset')).toBeNull()
     expect(input.getAttribute('capture')).toBe('environment')
     expect(container.querySelector('button').disabled).toBe(true)
     expect(getUserMedia).not.toHaveBeenCalled()
@@ -235,46 +238,34 @@ describe('BodyScanSystemCapture', () => {
     unmount()
   })
 
-  it('stores front, side, and back in any order, with the matching preview', async () => {
+  it('stores front and side in either order, with the matching preview and side instruction', async () => {
     const onPhotoChange = vi.fn()
     const { container, rerender, unmount } = renderCapture({ onPhotoChange })
 
-    chooseAngle(container, 'back')
-    await takePhoto(container, 'back', 'back.jpg')
-    rerender(readHomeBodyScanSession().photos)
     chooseAngle(container, 'side')
+    expect(container.textContent).toContain('Stå med sidan mot kameran')
     await takePhoto(container, 'side', 'side.jpg')
     rerender(readHomeBodyScanSession().photos)
     chooseAngle(container, 'front')
     await takePhoto(container, 'front', 'front.jpg')
 
     const session = readHomeBodyScanSession()
-    expect(session.photos.back.file.name).toBe('body-scan-back.jpg')
     expect(session.photos.side.file.name).toBe('body-scan-side.jpg')
     expect(session.photos.front.file.name).toBe('body-scan-front.jpg')
-    expect(onPhotoChange.mock.calls.map((call) => call[1])).toEqual(['back', 'side', 'front'])
+    expect(session.photos.back).toBeNull()
+    expect(onPhotoChange.mock.calls.map((call) => call[1])).toEqual(['side', 'front'])
 
     rerender(session.photos)
     const preview = (alt) => container.querySelector(`img[alt="${alt}"]`).getAttribute('src')
-    expect(preview('Bakifrån')).toBe('data:image/jpeg;base64,back')
     expect(preview('Från sidan')).toBe('data:image/jpeg;base64,side')
     expect(preview('Framifrån')).toBe('data:image/jpeg;base64,front')
+    expect(container.textContent).toContain('2 av 2 bilder')
 
     const frontFile = session.photos.front.file
-    const sideFile = session.photos.side.file
-    const backFile = session.photos.back.file
     chooseAngle(container, 'side')
     await takePhoto(container, 'side-2', 'side-2.jpg')
-    expect(readHomeBodyScanSession().photos.side.file).not.toBe(sideFile)
+    expect(readHomeBodyScanSession().photos.side.file).not.toBe(session.photos.side.file)
     expect(readHomeBodyScanSession().photos.front.file).toBe(frontFile)
-    expect(readHomeBodyScanSession().photos.back.file).toBe(backFile)
-
-    const sideRetake = readHomeBodyScanSession().photos.side.file
-    chooseAngle(container, 'back')
-    await takePhoto(container, 'back-2', 'back-2.jpg')
-    expect(readHomeBodyScanSession().photos.back.file).not.toBe(backFile)
-    expect(readHomeBodyScanSession().photos.front.file).toBe(frontFile)
-    expect(readHomeBodyScanSession().photos.side.file).toBe(sideRetake)
     unmount()
   })
 
@@ -317,10 +308,10 @@ describe('BodyScanSystemCapture', () => {
     unmount()
   })
 
-  it('starts analysis only after three photos, and keeps the quota block', () => {
+  it('starts analysis only after both photos, and keeps the quota block', () => {
     const photos = {
       front: { file: new File(['f'], 'f.jpg', { type: 'image/jpeg' }), preview: 'data:image/jpeg;base64,f' },
-      side: { file: new File(['s'], 's.jpg', { type: 'image/jpeg' }), preview: 'data:image/jpeg;base64,s' },
+      side: null,
       back: null,
     }
     const onAnalyze = vi.fn()
@@ -337,7 +328,7 @@ describe('BodyScanSystemCapture', () => {
 
     rerender({
       ...photos,
-      back: { file: new File(['b'], 'b.jpg', { type: 'image/jpeg' }), preview: 'data:image/jpeg;base64,b' },
+      side: { file: new File(['s'], 's.jpg', { type: 'image/jpeg' }), preview: 'data:image/jpeg;base64,s' },
     }, { canAnalyze: true, disabledReason: '' })
     expect(analyze().disabled).toBe(false)
     act(() => analyze().click())

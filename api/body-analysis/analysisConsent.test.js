@@ -25,7 +25,7 @@ function imagePart(boundary, fieldName, image = pngBytes, contentType = 'image/p
 
 function multipartBody({
   boundary = 'body-boundary',
-  fieldNames = ['frontImage', 'sideImage', 'backImage'],
+  fieldNames = ['frontImage', 'sideImage'],
   images = {},
 } = {}) {
   return Buffer.concat([
@@ -34,11 +34,10 @@ function multipartBody({
   ])
 }
 
-function bodyImageEntries(images = { backImage: pngBytes, frontImage: pngBytes, sideImage: pngBytes }) {
+function bodyImageEntries(images = { frontImage: pngBytes, sideImage: pngBytes }) {
   return [
     { bytes: images.frontImage, label: 'front' },
     { bytes: images.sideImage, label: 'side' },
-    { bytes: images.backImage, label: 'back' },
   ]
 }
 

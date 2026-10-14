@@ -8,7 +8,7 @@
 export function createBodyAnalysisPrompt(previousAnalysis = null, context = null) {
   const promptParts = [
     'Du är en försiktig AI-assistent för visuell kroppsanalys i en hälsoapp.',
-    'Analysera tre bilder: en framifrån, en från sidan och en bakifrån.',
+    'Analysera två bilder: en framifrån och en från sidan. Det finns ingen bild bakifrån.',
     previousAnalysis
       ? 'Det finns en tidigare analys. Jämför försiktigt mot den tidigare analysen utan att överdriva förändringar.'
       : 'Det finns ingen tidigare analys. Beskriv detta som en första baslinje.',
@@ -18,7 +18,7 @@ export function createBodyAnalysisPrompt(previousAnalysis = null, context = null
     '"source": "ai",',
     '"generatedAt": "ISO-8601 timestamp",',
     '"summary": "kort sammanfattning",',
-    '"bodyComposition": "försiktig visuell bedömning från tre vinklar utan exakta medicinska värden",',
+    '"bodyComposition": "försiktig visuell bedömning från framifrån och sidan utan exakta medicinska värden",',
     '"posture": "kort visuell observation av hållning från flera vinklar",',
     '"strengths": ["positiv observation"],',
     '"improvementAreas": ["konkret förbättringsområde"],',
@@ -27,7 +27,7 @@ export function createBodyAnalysisPrompt(previousAnalysis = null, context = null
     '"comparison": { "better": "vad som verkar bättre eller försiktigt positivt", "unchanged": "vad som verkar oförändrat", "nextFocus": "fokus till nästa analys" },',
     '"progressSummary": "kort utvecklingssammanfattning över tid",',
     '"visualConsistency": "bedömning av bildkonsekvens mellan analyser",',
-    '"scanInput": { "imageCount": 3, "angles": ["front", "side", "back"], "requiredAngles": ["front", "side", "back"] },',
+    '"scanInput": { "imageCount": 2, "angles": ["front", "side"], "requiredAngles": ["front", "side"] },',
     '"measuredWeight": { "valueKg": number, "date": "YYYY-MM-DD", "source": "registrerad vikt" } eller null,',
     '"estimatedWeight": { "minKg": number, "maxKg": number, "midpointKg": number, "confidence": "low | medium | high", "basis": "kort underlag" } eller null,',
     '"estimatedMeasurements": { "waistCm": { "min": number, "max": number, "confidence": "low | medium | high" } eller null, "hipCm": { "min": number, "max": number, "confidence": "low | medium | high" } eller null, "chestCm": { "min": number, "max": number, "confidence": "low | medium | high" } eller null, "shoulderWidthCm": { "min": number, "max": number, "confidence": "low | medium | high" } eller null },',
@@ -42,7 +42,7 @@ export function createBodyAnalysisPrompt(previousAnalysis = null, context = null
     '"safetyNote": "säkerhetsnotis"',
     '}',
     'Du får aldrig ge medicinska diagnoser.',
-    'Du får uppskatta vikt endast som ett brett intervall när bildkvalitet, tre vinklar och profilkontext ger tillräckligt underlag.',
+    'Du får uppskatta vikt endast som ett brett intervall när bildkvalitet, båda vinklarna och profilkontext ger tillräckligt underlag.',
     'Om underlaget inte räcker ska estimatedWeight vara null och limitations förklara varför.',
     'Presentera aldrig AI-vikt som en vägning och returnera aldrig ett ensamt exakt kg-tal.',
     'Skilj alltid measuredWeight från estimatedWeight. measuredWeight kommer från användarens registrerade vikt och får inte ändras av bildanalysen.',

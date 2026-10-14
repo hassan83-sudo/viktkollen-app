@@ -284,9 +284,9 @@ function createDemoBodyAnalysisResult(previousAnalysis, context = null, t) {
     safetyNote: t('card.demo.safetyNote'),
     measuredWeight: context?.latestMeasuredWeight || null,
     scanInput: {
-      angles: ['front', 'side', 'back'],
-      imageCount: 3,
-      requiredAngles: ['front', 'side', 'back'],
+      angles: ['front', 'side'],
+      imageCount: 2,
+      requiredAngles: ['front', 'side'],
     },
     schemaVersion: 2,
     source: 'mock',
@@ -444,11 +444,6 @@ function BodyAnalysisCard({
       label: t('card.quality.sideLabel'),
       status: sidePhoto ? 'positive' : 'neutral',
       value: sidePhoto ? t('card.quality.done') : t('card.quality.waiting'),
-    },
-    {
-      label: t('card.quality.backLabel'),
-      status: backPhoto ? 'positive' : 'neutral',
-      value: backPhoto ? t('card.quality.done') : t('card.quality.waiting'),
     },
     {
       label: t('card.quality.sameLightLabel'),
@@ -649,9 +644,9 @@ function BodyAnalysisCard({
       frontPhoto: photos.frontPhoto || { name: t('card.demoPhotos.front'), preview: '' },
       result,
       scanInput: result.scanInput || {
-        angles: ['front', 'side', 'back'],
-        imageCount: 3,
-        requiredAngles: ['front', 'side', 'back'],
+        angles: ['front', 'side'],
+        imageCount: 2,
+        requiredAngles: ['front', 'side'],
       },
       schemaVersion: result.schemaVersion || 2,
       sidePhoto: photos.sidePhoto || { name: t('card.demoPhotos.side'), preview: '' },
@@ -676,14 +671,8 @@ function BodyAnalysisCard({
       return
     }
 
-    if (!frontPhoto || !sidePhoto || !backPhoto) {
-      setAnalysisError(
-        !frontPhoto
-          ? t('card.errors.missingFront')
-          : !sidePhoto
-            ? t('card.errors.missingSide')
-            : t('card.errors.missingBack'),
-      )
+    if (!frontPhoto || !sidePhoto) {
+      setAnalysisError(!frontPhoto ? t('card.errors.missingFront') : t('card.errors.missingSide'))
       return
     }
     if (isAnalyzing) {
@@ -717,7 +706,6 @@ function BodyAnalysisCard({
       const consentApproved = analysisApprovalRef.current.consume(getBodyAnalysisApprovalKey())
 
       const result = await analyzeBodyWithAI({
-        backPhoto,
         consentApproved,
         context: analysisContext,
         frontPhoto,
@@ -763,15 +751,11 @@ function BodyAnalysisCard({
       setAnalysisError(t('card.errors.missingSide'))
       return
     }
-    if (!backPhoto) {
-      setAnalysisError(t('card.errors.missingBack'))
-      return
-    }
     if (isAnalyzing) {
       setAnalysisStatus(t('card.status.analyzing'))
       return
     }
-    if (!frontPhoto.file || !sidePhoto.file || !backPhoto.file) {
+    if (!frontPhoto.file || !sidePhoto.file) {
       setAnalysisError(t('card.errors.couldNotStart'))
       safeLogger.info('body-scan-analyze', { guard: 'missing-file' })
       return

@@ -24,7 +24,6 @@ function consentToken(userId) {
     imageHash: computeCanonicalImageHash([
       { bytes: pngBytes, label: 'front' },
       { bytes: pngBytes, label: 'side' },
-      { bytes: pngBytes, label: 'back' },
     ]),
     purpose: analysisConsentPurposes.bodyAnalysis,
     userId,
@@ -35,7 +34,7 @@ function consentToken(userId) {
 
 function multipartBody(fields = {}) {
   const boundary = 'body-boundary'
-  const parts = ['frontImage', 'sideImage', 'backImage'].map((fieldName) => Buffer.concat([
+  const parts = ['frontImage', 'sideImage'].map((fieldName) => Buffer.concat([
     Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${fieldName}"; filename="${fieldName}.png"\r\nContent-Type: image/png\r\n\r\n`, 'latin1'),
     pngBytes,
     Buffer.from('\r\n', 'latin1'),

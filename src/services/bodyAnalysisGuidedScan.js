@@ -7,7 +7,7 @@ export const bodyAnalysisViews = [
     label: 'Framifrån',
     shortLabel: 'Fram',
     poseTips: [
-      'Stå rakt fram mot kameran.',
+      'Ställ mobilen så att hela kroppen syns i bild, från huvudet till fötterna. Stå rakt och håll armarna lite från kroppen.',
       'Håll armarna lätt från kroppen.',
       'Se till att hela kroppen syns från huvud till fötter.',
     ],
@@ -18,20 +18,9 @@ export const bodyAnalysisViews = [
     label: 'Från sidan',
     shortLabel: 'Sida',
     poseTips: [
-      'Vänd höger sida mot kameran.',
+      'Ställ mobilen så att hela kroppen syns i bild, från huvudet till fötterna. Stå med sidan mot kameran, stå rakt och håll armarna lite från kroppen.',
       'Stå naturligt med rak hållning.',
       'Se till att hela kroppen syns från huvud till fötter.',
-    ],
-  },
-  {
-    doneLabel: 'Bak klar',
-    key: 'back',
-    label: 'Bakifrån',
-    shortLabel: 'Bak',
-    poseTips: [
-      'Vänd ryggen mot kameran.',
-      'Stå rakt och avslappnat.',
-      'Håll armarna lätt från kroppen.',
     ],
   },
 ]
@@ -62,7 +51,7 @@ export function getBodyScanProgress(photos = {}) {
   const completed = getCompletedBodyAnalysisViews(photos).length
   return {
     completed,
-    label: `${completed}/3`,
+    label: `${completed}/${bodyAnalysisViews.length}`,
     total: bodyAnalysisViews.length,
   }
 }

@@ -113,13 +113,13 @@ export function normalizeBodyFatEstimate(value) {
 export function normalizeScanInput(value = {}) {
   const source = isObject(value) ? value : {}
   const angles = Array.isArray(source.angles)
-    ? source.angles.filter((angle) => ['front', 'side', 'back'].includes(angle))
-    : ['front', 'side', 'back']
+    ? source.angles.filter((angle) => ['front', 'side'].includes(angle))
+    : ['front', 'side']
 
   return {
     angles: [...new Set(angles)],
-    imageCount: Math.max(0, Math.min(3, Number(source.imageCount) || angles.length || 0)),
-    requiredAngles: ['front', 'side', 'back'],
+    imageCount: Math.max(0, Math.min(2, Number(source.imageCount) || angles.length || 0)),
+    requiredAngles: ['front', 'side'],
   }
 }
 

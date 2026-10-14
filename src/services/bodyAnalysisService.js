@@ -44,7 +44,7 @@ const mockBodyResult = {
   visualConsistency: 'Försök använda samma ljus, avstånd och vinkel.',
 }
 
-export function buildBodyAnalysisPayload(frontImage, sideImage, backImage, previousAnalysis, context = null) {
+export function buildBodyAnalysisPayload(frontImage, sideImage, previousAnalysis, context = null) {
   const requestMetadata = {
     createdAt: new Date().toISOString(),
     requestId: `body-analysis-${Date.now()}`,
@@ -56,14 +56,13 @@ export function buildBodyAnalysisPayload(frontImage, sideImage, backImage, previ
 
   return {
     createdAt: new Date().toISOString(),
-    backImage: backImage.file,
     context,
     frontImage: frontImage.file,
     previousAnalysis,
     scanInput: {
-      angles: ['front', 'side', 'back'],
-      imageCount: 3,
-      requiredAngles: ['front', 'side', 'back'],
+      angles: ['front', 'side'],
+      imageCount: 2,
+      requiredAngles: ['front', 'side'],
     },
     sideImage: sideImage.file,
   }
@@ -132,7 +131,6 @@ async function callBodyAnalysisApi(payload, consentApproved) {
 
     formData.append('frontImage', payload.frontImage, payload.frontImage.name || 'front.jpg')
     formData.append('sideImage', payload.sideImage, payload.sideImage.name || 'side.jpg')
-    formData.append('backImage', payload.backImage, payload.backImage.name || 'back.jpg')
 
     if (payload.previousAnalysis) {
       formData.append('previousAnalysis', JSON.stringify(payload.previousAnalysis))
@@ -152,7 +150,6 @@ async function callBodyAnalysisApi(payload, consentApproved) {
         images: [
           { label: 'front', source: payload.frontImage },
           { label: 'side', source: payload.sideImage },
-          { label: 'back', source: payload.backImage },
         ],
         purpose: analysisConsentPurposes.bodyAnalysis,
         signal: controller?.signal,
@@ -211,11 +208,10 @@ async function callBodyAnalysisApi(payload, consentApproved) {
 /**
  * Sends selected body analysis images to the backend route.
  *
- * @param {{backPhoto: {file?: File}, frontPhoto: {file?: File}, previousAnalysis?: object, sidePhoto: {file?: File}}} params
+ * @param {{frontPhoto: {file?: File}, previousAnalysis?: object, sidePhoto: {file?: File}}} params
  * @returns {Promise<Record<string, unknown>>}
  */
 export async function analyzeBodyWithAI({
-  backPhoto,
   consentApproved,
   context,
   frontPhoto,
@@ -230,10 +226,6 @@ export async function analyzeBodyWithAI({
     throw new Error('Välj en bild från sidan innan du startar analysen.')
   }
 
-  if (!backPhoto?.file) {
-    throw new Error('Välj en bild bakifrån innan du startar analysen.')
-  }
-
   // The consent-token request (and therefore this entire remote call) must
   // never start without an explicit approval flag from the real UI event
   // handler - see BodyAnalysisCard.jsx's handleApproveAnalysis. No fetch of
@@ -245,7 +237,6 @@ export async function analyzeBodyWithAI({
   const payload = buildBodyAnalysisPayload(
     frontPhoto,
     sidePhoto,
-    backPhoto,
     previousAnalysis,
     context,
   )

@@ -12,7 +12,7 @@ import {
   subscribeHomeBodyScanSession,
 } from '../services/homeBodyScanSession.js'
 
-const order = ['front', 'side', 'back']
+const order = ['front', 'side']
 
 /**
  * Home body scan uses the phone's own camera through a file input.
@@ -90,33 +90,36 @@ function BodyScanSystemCapture({
     <section className="body-scan-guided body-scan-system" aria-labelledby="body-scan-system-title">
       <h3 id="body-scan-system-title">{t('guided.systemTitle')}</h3>
       <p>{t('guided.systemProgress', { taken, total: order.length })}</p>
-      <fieldset className="body-scan-system-angles">
-        <legend>{t('guided.systemChooseAngle')}</legend>
-        {order.map((key) => (
-          <label key={key} style={{ display: 'block', padding: '0.5rem 0' }}>
-            <input
-              type="radio"
-              name="body-scan-angle"
-              value={key}
-              checked={selectedAngle === key}
-              onChange={() => chooseAngle(key)}
-            />
-            {' '}{getBodyAnalysisView(key).label}
-            {photos[key] ? ` ✓ ${t('guided.systemSaved')}` : ''}
-            {photos[key]?.preview && (
-              <img
-                src={photos[key].preview}
-                alt={getBodyAnalysisView(key).label}
-                style={{ display: 'block', width: 80, height: 80, objectFit: 'cover', margin: '0.4rem 0 0 1.5rem', borderRadius: 8 }}
+      <div className="body-scan-angle-picker" role="radiogroup" aria-labelledby="body-scan-angle-legend">
+        <p id="body-scan-angle-legend" className="body-scan-angle-legend">{t('guided.systemChooseAngle')}</p>
+        <div className="body-scan-angle-options">
+          {order.map((key) => (
+            <label key={key} className={selectedAngle === key ? 'is-selected' : ''}>
+              <input
+                type="radio"
+                name="body-scan-angle"
+                value={key}
+                checked={selectedAngle === key}
+                onChange={() => chooseAngle(key)}
               />
-            )}
-          </label>
-        ))}
-      </fieldset>
+              <span>
+                {getBodyAnalysisView(key).label}
+                {photos[key] ? ` ✓ ${t('guided.systemSaved')}` : ''}
+              </span>
+              {photos[key]?.preview && (
+                <img
+                  src={photos[key].preview}
+                  alt={getBodyAnalysisView(key).label}
+                />
+              )}
+            </label>
+          ))}
+        </div>
+      </div>
       {view && (
         <>
           <p>{t('guided.systemPromptFirst', { label: view.label })}</p>
-          <p>{view.poseTips[0]}</p>
+          <p className="body-scan-pose-instruction">{t(active === 'side' ? 'guided.systemPoseSide' : 'guided.systemPoseFront')}</p>
           <label
             className="body-scan-guided-cta body-scan-system-file"
             onClick={beginCapture}

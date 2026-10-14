@@ -95,7 +95,7 @@ describe('BodyScanGuidedCapture', () => {
   it('never requests the camera before Starta kameran is tapped', () => {
     const { container, unmount } = renderCapture()
     expect(getUserMedia).not.toHaveBeenCalled()
-    expect(container.textContent).toContain('1 av 5 · Förbered')
+    expect(container.textContent).toContain('1 av 4 · Förbered')
     expect(container.textContent).toContain('Placera mobilen stadigt')
     expect(container.textContent).toContain('Röstguide på')
     expect(container.textContent).toContain('3 sek')
@@ -114,12 +114,12 @@ describe('BodyScanGuidedCapture', () => {
     })
 
     expect(getUserMedia).toHaveBeenCalledWith(expect.objectContaining({ audio: false }))
-    expect(container.textContent).toContain('2 av 5 · Framifrån')
+    expect(container.textContent).toContain('2 av 4 · Framifrån')
     expect(findButton(container, 'Starta första bilden')).toBeTruthy()
     unmount()
   })
 
-  it('auto-advances through side and back with voice and timer, capturing all three photos', async () => {
+  it('auto-advances through the side photo and then reviews both photos', async () => {
     const onPhotoChange = vi.fn()
     const { container, unmount } = renderCapture({ onPhotoChange })
 
@@ -138,7 +138,7 @@ describe('BodyScanGuidedCapture', () => {
       await vi.advanceTimersByTimeAsync(3000)
     })
     expect(onPhotoChange).toHaveBeenCalledWith(expect.anything(), 'front', 'data:image/jpeg;base64,xx')
-    expect(container.textContent).toContain('3 av 5 · Höger sida')
+    expect(container.textContent).toContain('3 av 4 · Från sidan')
     expect(window.speechSynthesis.speak).toHaveBeenCalled()
 
     // Side auto-starts its own countdown - no extra start button needed.
@@ -146,14 +146,9 @@ describe('BodyScanGuidedCapture', () => {
       await vi.advanceTimersByTimeAsync(3000)
     })
     expect(onPhotoChange).toHaveBeenCalledWith(expect.anything(), 'side', 'data:image/jpeg;base64,xx')
-    expect(container.textContent).toContain('4 av 5 · Bakifrån')
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000)
-    })
-    expect(onPhotoChange).toHaveBeenCalledWith(expect.anything(), 'back', 'data:image/jpeg;base64,xx')
-    expect(container.textContent).toContain('5 av 5 · Granska')
-    expect(onPhotoChange).toHaveBeenCalledTimes(3)
+    expect(container.textContent).toContain('4 av 4 · Granska')
+    expect(container.textContent).not.toContain('Bakifrån')
+    expect(onPhotoChange).toHaveBeenCalledTimes(2)
 
     vi.useRealTimers()
     unmount()
@@ -218,7 +213,7 @@ describe('BodyScanGuidedCapture', () => {
       await vi.advanceTimersByTimeAsync(5000)
     })
     expect(onPhotoChange).not.toHaveBeenCalled()
-    expect(container.textContent).toContain('2 av 5 · Framifrån')
+    expect(container.textContent).toContain('2 av 4 · Framifrån')
 
     act(() => {
       findButton(container, 'Fortsätt').click()
@@ -277,7 +272,7 @@ describe('BodyScanGuidedCapture', () => {
     unmount()
   })
 
-  it('shows all three photos in review and only calls analyze on explicit press', async () => {
+  it('shows both photos in review and only calls analyze on explicit press', async () => {
     const onAnalyze = vi.fn()
     // The component reports captures via onPhotoChange - mirror BodyAnalysisCard's
     // real wiring by feeding each capture straight back into the photos prop.
@@ -320,11 +315,9 @@ describe('BodyScanGuidedCapture', () => {
     renderNow()
     await act(async () => { await vi.advanceTimersByTimeAsync(3000) })
     renderNow()
-    await act(async () => { await vi.advanceTimersByTimeAsync(3000) })
-    renderNow()
 
-    expect(container.textContent).toContain('5 av 5 · Granska')
-    expect(container.querySelectorAll('.body-scan-guided-thumbnails img').length).toBe(3)
+    expect(container.textContent).toContain('4 av 4 · Granska')
+    expect(container.querySelectorAll('.body-scan-guided-thumbnails img').length).toBe(2)
     expect(onAnalyze).not.toHaveBeenCalled()
 
     act(() => {

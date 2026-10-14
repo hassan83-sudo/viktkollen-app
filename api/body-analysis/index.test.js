@@ -11,14 +11,13 @@ const TEST_SECRET = 'test-analysis-consent-secret-32-plus'
 const USER_ID = '11111111-1111-4111-8111-111111111111'
 const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4])
 
-function consentHeadersForBodyImages(images = { backImage: pngBytes, frontImage: pngBytes, sideImage: pngBytes }) {
+function consentHeadersForBodyImages(images = { frontImage: pngBytes, sideImage: pngBytes }) {
   process.env.ANALYSIS_CONSENT_SECRET = TEST_SECRET
   const issued = issueAnalysisConsentToken({
     env: { ANALYSIS_CONSENT_SECRET: TEST_SECRET },
     imageHash: computeCanonicalImageHash([
       { bytes: images.frontImage, label: 'front' },
       { bytes: images.sideImage, label: 'side' },
-      { bytes: images.backImage, label: 'back' },
     ]),
     purpose: analysisConsentPurposes.bodyAnalysis,
     userId: USER_ID,
@@ -29,7 +28,7 @@ function consentHeadersForBodyImages(images = { backImage: pngBytes, frontImage:
 }
 
 function multipartBody({ boundary = 'body-boundary', contentType = 'image/png', fields = {}, image = pngBytes } = {}) {
-  const parts = ['frontImage', 'sideImage', 'backImage'].map((fieldName) => Buffer.concat([
+  const parts = ['frontImage', 'sideImage'].map((fieldName) => Buffer.concat([
     Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${fieldName}"; filename="${fieldName}.png"\r\nContent-Type: ${contentType}\r\n\r\n`, 'latin1'),
     image,
     Buffer.from('\r\n', 'latin1'),

@@ -18874,3 +18874,70 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   background: var(--accent);
   transition: width 120ms linear;
 }
+
+/* Compact food analysis result matching the approved mobile layout. */
+.nutrition-scanner-review .scanner-review-hero {
+  gap: 12px;
+  padding: 14px;
+}
+.nutrition-scanner-review .scanner-review-hero-main {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: 12px;
+  align-items: stretch;
+}
+.nutrition-scanner-review .scanner-review-hero-heading {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+.nutrition-scanner-review .scanner-result-photo {
+  width: 100%;
+  height: 100%;
+  min-height: 145px;
+  max-height: 205px;
+  border-radius: 14px;
+  object-fit: cover;
+}
+.nutrition-scanner-review .scanner-review-hero-heading h4 {
+  margin: 0;
+  font-size: clamp(1rem, 4.5vw, 1.4rem);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.nutrition-scanner-review .scanner-hero-calories {
+  margin: 0;
+  padding: 10px 6px;
+  border: 1px solid rgba(160,178,238,.2);
+  border-radius: 12px;
+  text-align: center;
+  font-size: clamp(1.25rem, 5.5vw, 2rem);
+}
+.nutrition-scanner-review .scanner-hero-macros {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 6px;
+  width: 100%;
+}
+.nutrition-scanner-review .scanner-hero-macros > div {
+  min-width: 0;
+  padding: 8px 3px;
+  text-align: center;
+}
+.nutrition-scanner-review .scanner-hero-macros dt {
+  font-size: clamp(.63rem, 2.7vw, .8rem);
+  overflow-wrap: anywhere;
+}
+.nutrition-scanner-review .scanner-hero-macros dd {
+  font-size: clamp(.75rem, 3.4vw, 1rem);
+  white-space: nowrap;
+}
+.nutrition-scanner-review .scanner-review-meta-details {
+  font-size: .85rem;
+}
+@media (max-width: 360px) {
+  .nutrition-scanner-review .scanner-review-hero-main { gap: 8px; }
+  .nutrition-scanner-review .scanner-result-photo { min-height: 125px; }
+}

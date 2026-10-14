@@ -18994,3 +18994,32 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
     padding-bottom: 20px;
   }
 }
+
+/* Ingredient nutrition: consistent three-column mobile layout. */
+.nutrition-scanner-review .scanner-component-card summary > .scanner-component-macros {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+  width: 100%;
+}
+.nutrition-scanner-review .scanner-component-macros > span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px 5px;
+  border-radius: 8px;
+  background: rgba(145, 160, 202, 0.09);
+  text-align: center;
+}
+.nutrition-scanner-review .scanner-component-macro-label {
+  font-size: clamp(.62rem, 2.6vw, .75rem);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.nutrition-scanner-review .scanner-component-macros strong {
+  font-size: clamp(.75rem, 3.1vw, .9rem);
+  color: var(--vk-text, #fff);
+  white-space: nowrap;
+}

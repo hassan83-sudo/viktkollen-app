@@ -1672,8 +1672,8 @@ function NutritionScannerV2({
                               max: component.portionEstimate.gramsMax,
                             })
                             : componentPortionLabel(component, t)}
-                          {component.portionEstimate?.pieceCount
-                            ? ` · ${t('scanner.piecesCount', { count: component.portionEstimate.pieceCount })}`
+                          {Number(component.portionEstimate?.pieceCount) > 0
+                            ? ` · ${i18n.language?.startsWith('sv') ? `${component.portionEstimate.pieceCount} st` : t('scanner.piecesCount', { count: component.portionEstimate.pieceCount })}`
                             : ''}
                         </small>
                       </span>

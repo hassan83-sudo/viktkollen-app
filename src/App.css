@@ -18987,7 +18987,7 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
 /* Keep the final food-scan actions reachable above the fixed mobile navigation. */
 @media (max-width: 600px) {
   .nutrition-scanner-v2 {
-    padding-bottom: calc(170px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(105px + env(safe-area-inset-bottom, 0px));
     scroll-margin-bottom: calc(150px + env(safe-area-inset-bottom, 0px));
   }
   .nutrition-scanner-v2 .nutrition-scanner-review .habit-actions {

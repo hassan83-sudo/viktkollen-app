@@ -35,7 +35,6 @@ import { formatNumber as formatLocaleNumber } from '../../i18n/format.js'
 import { prefersReducedAccessibilityMotion } from '../../services/accessibilityDocumentScope.js'
 import { getEffectiveAccessibilityPreferences, useAccessibilityPreferences } from '../../services/accessibilityPreferences.js'
 
-import { acceptHomeSystemCameraFile, bindHomeSystemCameraInput, getPreferredBodyScanAngle, openHomeSystemCamera, readHomeBodyScanSession, setHomeBodyScanNotice } from '../../services/homeBodyScanSession.js'
 
 const HomeBodyScanStage = lazy(() => import('./HomeBodyScanStage.jsx'))
 
@@ -1136,15 +1135,6 @@ function OverviewTodayMood({
 }
 
 function OverviewBodyScanAction({ onOpenBodyScan }) {
-  const capturedAngleRef = useRef(null)
-  function openBodyScan() {
-    const angle = getPreferredBodyScanAngle()
-    if (angle) {
-      capturedAngleRef.current = angle
-      openHomeSystemCamera(angle)
-    }
-    onOpenBodyScan()
-  }
 
   const { t } = useTranslation(['bodyScan', 'home'])
   const action = {
@@ -1163,27 +1153,11 @@ function OverviewBodyScanAction({ onOpenBodyScan }) {
 
   return (
     <div className={`overview-primary-action is-${action.accent}`}>
-      <input
-        ref={bindHomeSystemCameraInput}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        aria-label={t('guided.systemOpenCamera')}
-        tabIndex={-1}
-        className="home-system-camera-input"
-        onCancel={() => setHomeBodyScanNotice('cancelled')}
-        onChange={(event) => {
-          const file = event.target.files?.[0] || null
-          event.target.value = ''
-          const angle = capturedAngleRef.current || readHomeBodyScanSession().pendingAngle
-          void acceptHomeSystemCameraFile(file, angle)
-        }}
-      />
       <button
         className="overview-primary-action-hit"
         type="button"
         aria-label={action.hitLabel}
-        onClick={openBodyScan}
+        onClick={onOpenBodyScan}
       >
         <span className="overview-primary-visual">
           <span className="overview-primary-orbit" />
@@ -1211,7 +1185,7 @@ function OverviewBodyScanAction({ onOpenBodyScan }) {
         className="overview-primary-action-footer"
         type="button"
         aria-label={action.footerLabel}
-        onClick={openBodyScan}
+        onClick={onOpenBodyScan}
       >
         <OverviewIcon name="foodCamera" />
         <span>{action.footerLabel}</span>

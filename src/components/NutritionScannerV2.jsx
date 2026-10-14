@@ -466,6 +466,7 @@ function NutritionScannerV2({
   const fileInputRef = useRef(null)
   const cameraInputRef = useRef(null)
   const reviewRef = useRef(null)
+  const photoPreviewRef = useRef(null)
   const liveCameraVideoRef = useRef(null)
   const liveCameraStreamRef = useRef(null)
   // iPhones egen kamera (filinmatningen) och förhandsvisningen ska aldrig ha
@@ -1008,6 +1009,24 @@ function NutritionScannerV2({
     setStatus(t('scanner.status.prepared'))
   }
 
+  // After returning from the iPhone camera, bring the selected photo and
+  // Analyze button above the fixed bottom navigation without an extra swipe.
+  useEffect(() => {
+    if (!previewUrl || typeof window === 'undefined') return undefined
+    const scrollToPhoto = () => {
+      const target = photoPreviewRef.current
+      if (!target) return
+      const top = window.scrollY + target.getBoundingClientRect().top - 160
+      window.scrollTo({ top: Math.max(0, top), behavior: 'instant' })
+    }
+    const frame = window.requestAnimationFrame(scrollToPhoto)
+    const delayed = window.setTimeout(scrollToPhoto, 260)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(delayed)
+    }
+  }, [previewUrl])
+
   async function analyzeImage(providerType = 'local', imagePayloadSnapshot = null) {
     const activeImagePayload = imagePayloadSnapshot || resolveActiveImagePayload()
     const imageDebugState = createScannerImageDebugState(activeImagePayload)
@@ -1488,7 +1507,7 @@ function NutritionScannerV2({
         </label>
       </div>
       {previewUrl && (
-        <div className="scanner-preview-stage">
+        <div ref={photoPreviewRef} className="scanner-preview-stage">
           <img
             className="food-preview"
             src={previewUrl}

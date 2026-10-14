@@ -572,7 +572,6 @@ export function normalizePhotoComponent(raw = {}, index = 0) {
     identityConfidence,
     cookingMethods,
     visualEvidence: safeText(source.visualEvidence, '', 160),
-    imageBox: Array.isArray(source.imageBox) && source.imageBox.length === 4 && source.imageBox.every((v) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1000) && source.imageBox[2] > source.imageBox[0] && source.imageBox[3] > source.imageBox[1] ? source.imageBox : null,
     cookingMethodHints: safeArray(source.cookingMethodHints).map((entry) => safeText(entry, '', 50)).filter(Boolean).slice(0, 4),
     imageQuality: normalizePhotoAnalysisImageQuality(source.imageQuality || source.imageQualityOverall || source.image_quality, 'usable'),
     name: normalizeComponentName(source.name || source.label, `Komponent ${index + 1}`),

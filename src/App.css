@@ -18983,3 +18983,14 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
 .nutrition-scanner-review .scanner-hero-calories {
   font-size: clamp(1.15rem, 4.8vw, 1.7rem);
 }
+
+/* Keep the final food-scan actions reachable above the fixed mobile navigation. */
+@media (max-width: 600px) {
+  .nutrition-scanner-v2 {
+    padding-bottom: calc(170px + env(safe-area-inset-bottom, 0px));
+    scroll-margin-bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+  }
+  .nutrition-scanner-v2 .nutrition-scanner-review .habit-actions {
+    padding-bottom: 20px;
+  }
+}

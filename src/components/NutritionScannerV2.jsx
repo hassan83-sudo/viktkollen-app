@@ -1663,7 +1663,7 @@ function NutritionScannerV2({
                 {analysis.components.map((component) => (
                   <details className="scanner-component-card" key={component.id}>
                     <summary>
-                      <span className="scanner-food-thumb" aria-hidden="true">{getNutritionPhotoFoodDisplayName(component.name).slice(0, 1).toLocaleUpperCase(i18n.language || 'sv')}</span>
+                      {previewUrl && <span className="scanner-food-thumb" aria-hidden="true"><img src={previewUrl} alt="" /></span>}
                       <span className="scanner-food-content">
                         <span className="scanner-food-topline">
                           <strong>{getNutritionPhotoFoodDisplayName(component.name)}</strong>

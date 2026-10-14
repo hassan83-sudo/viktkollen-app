@@ -1626,6 +1626,9 @@ function NutritionScannerV2({
       {analysis && reviewDraft && (
         <form ref={reviewRef} className="inline-edit-form nutrition-scanner-review" onSubmit={saveMeal}>
           <div className="scanner-review-hero">
+            <div className="scanner-review-hero-main">
+              {previewUrl && <img className="scanner-result-photo" src={previewUrl} alt={t('scanner.previewAlt')} />}
+              <div className="scanner-review-hero-heading">
             <span className={`scanner-provider-badge ${analysis.provider.type === 'remote' ? 'is-remote' : 'is-local'}`}>
               {providerBadgeLabel(analysis.provider.type, t)}
             </span>
@@ -1634,6 +1637,8 @@ function NutritionScannerV2({
               <p className="estimate-note">{t('scanner.localNotAiInterpreted')}</p>
             )}
             <p className="scanner-hero-calories">{t('scanner.approxCalories', { value: nutritionMidpointLabel(reviewDraft.nutrition.calories, 'kcal', t) })}</p>
+              </div>
+            </div>
             <dl className="scanner-summary-stats scanner-hero-macros">
               <div>
                 <dt>{t('scanner.macros.protein')}</dt>

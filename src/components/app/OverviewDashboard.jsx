@@ -979,15 +979,6 @@ function OverviewPrimaryActions({
               <small className="overview-primary-action-hint">Tryck på ikonen nedan</small>
             </span>{' '}
             </button>
-          <button
-            className="overview-primary-action-footer"
-            type="button"
-            aria-label={action.footerLabel}
-            onClick={action.onClick}
-          >
-            <OverviewIcon name="foodCamera" />
-            <span>{action.footerLabel}</span>
-          </button>
           {action.accent === 'food' && (
             <button
               className="overview-primary-action-footer overview-food-library-button"
@@ -1002,6 +993,16 @@ function OverviewPrimaryActions({
               Välj bild
             </button>
           )}
+          <button
+            className="overview-primary-action-footer"
+            type="button"
+            aria-label={action.footerLabel}
+            onClick={action.onClick}
+          >
+            <OverviewIcon name="foodCamera" />
+            <span>{action.footerLabel}</span>
+          </button>
+
         </div>
       ))}
       </section>

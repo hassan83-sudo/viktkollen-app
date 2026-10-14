@@ -244,6 +244,26 @@ function portionRangeLabel(portion, t) {
   return `${getNutritionPhotoPortionDisplayName(portion.description)}${grams}`
 }
 
+function foodThumbnailSymbol(name = '') {
+  const value = String(name).toLocaleLowerCase('sv')
+  if (/köttbull|meatball/.test(value)) return '🍖'
+  if (/potatis|potato/.test(value)) return '🥔'
+  if (/morot|carrot/.test(value)) return '🥕'
+  if (/persilja|parsley|ört|herb/.test(value)) return '🌿'
+  if (/sås|sauce|grädd|cream/.test(value)) return '🥣'
+  if (/lingon|sylt|jam|berry/.test(value)) return '🫐'
+  if (/kyckling|chicken/.test(value)) return '🍗'
+  if (/ris|rice/.test(value)) return '🍚'
+  if (/broccoli/.test(value)) return '🥦'
+  if (/fisk|fish|lax|salmon/.test(value)) return '🐟'
+  if (/ägg|egg/.test(value)) return '🥚'
+  if (/sallad|salad/.test(value)) return '🥗'
+  if (/pasta|spaghetti/.test(value)) return '🍝'
+  if (/pizza/.test(value)) return '🍕'
+  if (/bröd|bread/.test(value)) return '🍞'
+  return '🍽️'
+}
+
 function componentPortionLabel(component, t) {
   const portion = component?.portionEstimate
   if (!portion || portion.gramsMin === null || portion.gramsMax === null) return t('scanner.amountUncertain')
@@ -1663,7 +1683,7 @@ function NutritionScannerV2({
                 {analysis.components.map((component) => (
                   <details className="scanner-component-card" key={component.id}>
                     <summary>
-                      {previewUrl && <span className="scanner-food-thumb" aria-hidden="true"><img src={previewUrl} alt="" /></span>}
+                      <span className="scanner-food-thumb" aria-hidden="true">{foodThumbnailSymbol(component.name)}</span>
                       <span className="scanner-food-content">
                         <span className="scanner-food-topline">
                           <strong>{getNutritionPhotoFoodDisplayName(component.name)}</strong>

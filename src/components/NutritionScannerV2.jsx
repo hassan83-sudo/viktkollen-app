@@ -1632,7 +1632,7 @@ function NutritionScannerV2({
             <span className={`scanner-provider-badge ${analysis.provider.type === 'remote' ? 'is-remote' : 'is-local'}`}>
               {providerBadgeLabel(analysis.provider.type, t)}
             </span>
-            <h4>{reviewDraft.mealName || t('scanner.mealSuggestion')}</h4>
+            <h4>{(reviewDraft.mealName || t('scanner.mealSuggestion')).replace(/^Foto:\s*/i, '')}</h4>
             {analysis.provider.type !== 'remote' && (
               <p className="estimate-note">{t('scanner.localNotAiInterpreted')}</p>
             )}
@@ -1653,18 +1653,7 @@ function NutritionScannerV2({
                 <dd>{nutritionMidpointLabel(reviewDraft.nutrition.fat, 'g', t)}</dd>
               </div>
             </dl>
-            <details className="scanner-review-meta-details">
-              <summary>{t('scanner.editDetails')}</summary>
-            <p className="scanner-hero-meta">
-              {t('scanner.estimatedPortion', {
-                portion: reviewDraft.portionSize || portionRangeLabel(analysis.portionEstimate, t),
-              })}
-            </p>
-            <p className="scanner-hero-meta">
-              {t('scanner.confidenceLine', { level: confidenceLabel(analysis.confidence.level, t) })}
-              {analysis.imageQuality ? t('scanner.imageQualitySuffix', { quality: imageQualityLabel(analysis.imageQuality, t) }) : ''}
-            </p>
-            </details>
+
           </div>
 
           {analysis.components?.length > 0 && (
@@ -1688,7 +1677,12 @@ function NutritionScannerV2({
                             : ''}
                         </small>
                       </span>
-                      <span>{t('scanner.approxCalories', { value: nutritionMidpointLabel(component.nutritionEstimate?.calories?.midpoint, 'kcal', t) })}</span>
+                      <span className="scanner-component-calories">{t('scanner.approxCalories', { value: nutritionMidpointLabel(component.nutritionEstimate?.calories?.midpoint, 'kcal', t) })}</span>
+                      <span className="scanner-component-macros">
+                        {component.nutritionEstimate?.proteinG && <span>{t('scanner.macros.protein')}: {nutritionMidpointLabel(component.nutritionEstimate.proteinG.midpoint, 'g', t)}</span>}
+                        {component.nutritionEstimate?.carbsG && <span>{t('scanner.macros.carbs')}: {nutritionMidpointLabel(component.nutritionEstimate.carbsG.midpoint, 'g', t)}</span>}
+                        {component.nutritionEstimate?.fatG && <span>{t('scanner.macros.fat')}: {nutritionMidpointLabel(component.nutritionEstimate.fatG.midpoint, 'g', t)}</span>}
+                      </span>
                     </summary>
                     <div className="scanner-component-detail">
                       {componentNutritionSummary(component, t) ? <p>{componentNutritionSummary(component, t)}</p> : null}
@@ -1725,6 +1719,18 @@ function NutritionScannerV2({
             </section>
           )}
 
+            <details className="scanner-review-meta-details">
+              <summary>{t('scanner.editDetails')}</summary>
+            <p className="scanner-hero-meta">
+              {t('scanner.estimatedPortion', {
+                portion: reviewDraft.portionSize || portionRangeLabel(analysis.portionEstimate, t),
+              })}
+            </p>
+            <p className="scanner-hero-meta">
+              {t('scanner.confidenceLine', { level: confidenceLabel(analysis.confidence.level, t) })}
+              {analysis.imageQuality ? t('scanner.imageQualitySuffix', { quality: imageQualityLabel(analysis.imageQuality, t) }) : ''}
+            </p>
+            </details>
           <details className="scanner-advanced-edit">
             <summary>{t('scanner.editDetails')}</summary>
             <label>

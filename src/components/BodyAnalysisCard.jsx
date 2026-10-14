@@ -41,7 +41,6 @@ import BodyAnalysisStats from './BodyAnalysisStats'
 import BodyAnalysisTimeline from './BodyAnalysisTimeline'
 import BodyAnalysisUnlockCard from './BodyAnalysisUnlockCard'
 import BodyScanGuidedCapture from './BodyScanGuidedCapture'
-import BodyScanSystemCapture from './BodyScanSystemCapture.jsx'
 import { readHomeBodyScanSession, saveHomeBodyScanPhoto } from '../services/homeBodyScanSession.js'
 import { getFeatureFlags, isFeatureEnabled } from '../features/featureRegistry.js'
 import { localBodyScanTexts } from '../features/body-scan-local/localBodyScanConfig.js'
@@ -936,16 +935,7 @@ function BodyAnalysisCard({
             <LocalBodyScan weights={weights} />
           </Suspense>
         ) : scanMode === 'photo' ? (
-          directCapture ? (
-            <BodyScanSystemCapture
-              canAnalyze={canAnalyze}
-              currentAnalysisStatus={currentAnalysisStatus}
-              disabledReason={analyzeDisabledReason}
-              photos={scanPhotos}
-              onAnalyze={handleAnalyzeBody}
-              onPhotoChange={handlePhotoChange}
-            />
-          ) : (
+          (
             <BodyScanGuidedCapture
               canAnalyze={canAnalyze}
               currentAnalysisStatus={currentAnalysisStatus}

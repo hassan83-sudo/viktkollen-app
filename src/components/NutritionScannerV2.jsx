@@ -1494,6 +1494,16 @@ function NutritionScannerV2({
             src={previewUrl}
             alt={fileName ? t('scanner.previewAltNamed', { fileName }) : t('scanner.previewAlt')}
           />
+          <div className="scanner-actions scanner-preview-analyze">
+            <button
+              className="primary-button"
+              type="button"
+              disabled={!hasActiveImagePayload || isAnalyzing || !isOnline}
+              onClick={(event) => handleAnalysisAction('remote', event)}
+            >
+              {isAnalyzing ? t('scanner.analyzing') : t('scanner.analyzeFood')}
+            </button>
+          </div>
           <div className="scanner-actions scanner-preview-actions">
             <button type="button" className="secondary-button" onClick={() => fileInputRef.current?.click()}>{t('scanner.changeImage')}</button>
             <button type="button" className="secondary-button" onClick={clearTemporaryImage}>{t('common:remove')}</button>
@@ -1553,11 +1563,13 @@ function NutritionScannerV2({
         </label>
       </fieldset>
       )}
+      {!previewUrl && (
       <div className="scanner-actions scanner-primary-actions">
           <button className="primary-button" type="button" disabled={!hasActiveImagePayload || isAnalyzing || !isOnline} onClick={(event) => handleAnalysisAction('remote', event)}>
             {isAnalyzing ? t('scanner.analyzing') : t('scanner.analyzeFood')}
           </button>
         </div>
+      )}
       {isAnalyzing && <ScannerAnalyzingStatus />}
       <details className="scanner-secondary-analysis">
         <summary>{t('scanner.aiNotWorking')}</summary>

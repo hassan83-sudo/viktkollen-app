@@ -42,9 +42,7 @@ import {
   buildPhotoIngredientMatchStatusCounts,
 } from '../services/nutritionPhotoIngredientMatching.js'
 import {
-  getNutritionPhotoDisplayText,
   getNutritionPhotoFoodDisplayName,
-  getNutritionPhotoPortionDisplayName,
 } from '../services/nutritionPhotoDisplay.js'
 import { getCurrentTimeString, getTodayDateString, mealTypes } from '../services/nutritionService.js'
 import { buildRemotePhotoIngredientMatchSummary } from '../services/nutritionFoodBank.js'
@@ -101,12 +99,6 @@ const macroShortKeys = {
   fiberG: 'scanner.macros.fiber',
   proteinG: 'scanner.macros.proteinShort',
 }
-
-const scannerAnalysisStageKeys = [
-  'scanner.stages.identifying',
-  'scanner.stages.portions',
-  'scanner.stages.nutrition',
-]
 
 function safeArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : []
@@ -235,13 +227,24 @@ function createScannerImageDebugState(payload = null) {
   }
 }
 
-function portionRangeLabel(portion, t) {
-  if (!portion) return t('scanner.unknownPortion')
-  const grams = portion.gramsMin !== null && portion.gramsMax !== null
-    ? t('scanner.portionGramsRange', { min: portion.gramsMin, max: portion.gramsMax })
-    : ''
-
-  return `${getNutritionPhotoPortionDisplayName(portion.description)}${grams}`
+function foodThumbnailSymbol(name = '') {
+  const value = String(name).toLocaleLowerCase('sv')
+  if (/köttbull|meatball/.test(value)) return '🍖'
+  if (/potatis|potato/.test(value)) return '🥔'
+  if (/morot|carrot/.test(value)) return '🥕'
+  if (/persilja|parsley|ört|herb/.test(value)) return '🌿'
+  if (/sås|sauce|grädd|cream/.test(value)) return '🥣'
+  if (/lingon|sylt|jam|berry/.test(value)) return '🫐'
+  if (/kyckling|chicken/.test(value)) return '🍗'
+  if (/ris|rice/.test(value)) return '🍚'
+  if (/broccoli/.test(value)) return '🥦'
+  if (/fisk|fish|lax|salmon/.test(value)) return '🐟'
+  if (/ägg|egg/.test(value)) return '🥚'
+  if (/sallad|salad/.test(value)) return '🥗'
+  if (/pasta|spaghetti/.test(value)) return '🍝'
+  if (/pizza/.test(value)) return '🍕'
+  if (/bröd|bread/.test(value)) return '🍞'
+  return '🍽️'
 }
 
 function componentPortionLabel(component, t) {
@@ -429,34 +432,19 @@ function IngredientEditor({ disabled, item, match, onApplySuggestion, onChange, 
 }
 
 function ScannerAnalyzingStatus() {
-  const { t } = useTranslation(['nutrition', 'common'])
-  // The AI API does not provide progress updates. This is an estimated,
-  // capped indicator; 100% is reserved for a completed analysis.
   const [progress, setProgress] = useState(0)
 
   useEffect(() => {
     const startedAt = Date.now()
     const timer = window.setInterval(() => {
       const elapsed = Date.now() - startedAt
-      // Rise quickly at first, then ease toward 95% while awaiting the server.
       const estimated = Math.min(95, Math.floor(95 * (1 - Math.exp(-elapsed / 4800))))
       setProgress((current) => Math.max(current, estimated))
     }, 120)
     return () => window.clearInterval(timer)
   }, [])
 
-  const stageIndex = Math.min(scannerAnalysisStageKeys.length - 1, Math.floor(progress / 34))
-
-  return (
-    <div className="scanner-analyzing-state" role="status" aria-label="Analys pågår">
-      <p><strong>{t('scanner.analyzing')}</strong></p>
-      <p className="scanner-progress-value" aria-hidden="true">{progress} %</p>
-      <div className="scanner-progress-track" role="progressbar" aria-label="Uppskattat analysförlopp" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
-        <div className="scanner-progress-fill" style={{ width: `${progress}%` }} />
-      </div>
-      <p className="estimate-note">{t(scannerAnalysisStageKeys[stageIndex])}</p>
-    </div>
-  )
+  return <span aria-label={`Uppskattat analysförlopp ${progress} procent`}>{progress} %</span>
 }
 
 function NutritionScannerV2({
@@ -1529,7 +1517,7 @@ function NutritionScannerV2({
               disabled={!hasActiveImagePayload || isAnalyzing || !isOnline}
               onClick={(event) => handleAnalysisAction('remote', event)}
             >
-              {isAnalyzing ? t('scanner.analyzing') : t('scanner.analyzeFood')}
+              {isAnalyzing ? <>{t('scanner.analyzing')} <ScannerAnalyzingStatus /></> : t('scanner.analyzeFood')}
             </button>
           </div>
           <div className="scanner-actions scanner-preview-actions">
@@ -1594,11 +1582,10 @@ function NutritionScannerV2({
       {!previewUrl && (
       <div className="scanner-actions scanner-primary-actions">
           <button className="primary-button" type="button" disabled={!hasActiveImagePayload || isAnalyzing || !isOnline} onClick={(event) => handleAnalysisAction('remote', event)}>
-            {isAnalyzing ? t('scanner.analyzing') : t('scanner.analyzeFood')}
+            {isAnalyzing ? <>{t('scanner.analyzing')} <ScannerAnalyzingStatus /></> : t('scanner.analyzeFood')}
           </button>
         </div>
       )}
-      {isAnalyzing && <ScannerAnalyzingStatus />}
       <details className="scanner-secondary-analysis">
         <summary>{t('scanner.aiNotWorking')}</summary>
         <p className="estimate-note">{t('scanner.localEstimateHint')}</p>
@@ -1642,14 +1629,19 @@ function NutritionScannerV2({
       {analysis && reviewDraft && (
         <form ref={reviewRef} className="inline-edit-form nutrition-scanner-review" onSubmit={saveMeal}>
           <div className="scanner-review-hero">
+            <div className="scanner-review-hero-main">
+              {previewUrl && <img className="scanner-result-photo" src={previewUrl} alt={t('scanner.previewAlt')} />}
+              <div className="scanner-review-hero-heading">
             <span className={`scanner-provider-badge ${analysis.provider.type === 'remote' ? 'is-remote' : 'is-local'}`}>
               {providerBadgeLabel(analysis.provider.type, t)}
             </span>
-            <h4>{reviewDraft.mealName || t('scanner.mealSuggestion')}</h4>
+            <h4>{(reviewDraft.mealName || t('scanner.mealSuggestion')).replace(/^Foto:\s*/i, '')}</h4>
             {analysis.provider.type !== 'remote' && (
               <p className="estimate-note">{t('scanner.localNotAiInterpreted')}</p>
             )}
             <p className="scanner-hero-calories">{t('scanner.approxCalories', { value: nutritionMidpointLabel(reviewDraft.nutrition.calories, 'kcal', t) })}</p>
+              </div>
+            </div>
             <dl className="scanner-summary-stats scanner-hero-macros">
               <div>
                 <dt>{t('scanner.macros.protein')}</dt>
@@ -1664,29 +1656,22 @@ function NutritionScannerV2({
                 <dd>{nutritionMidpointLabel(reviewDraft.nutrition.fat, 'g', t)}</dd>
               </div>
             </dl>
-            <p className="scanner-hero-meta">
-              {t('scanner.estimatedPortion', {
-                portion: reviewDraft.portionSize || portionRangeLabel(analysis.portionEstimate, t),
-              })}
-            </p>
-            <p className="scanner-hero-meta">
-              {t('scanner.confidenceLine', { level: confidenceLabel(analysis.confidence.level, t) })}
-              {analysis.imageQuality ? t('scanner.imageQualitySuffix', { quality: imageQualityLabel(analysis.imageQuality, t) }) : ''}
-            </p>
+
           </div>
-          {getNutritionPhotoDisplayText(analysis.safeSummary) ? (
-            <p className="scanner-review-lede">{getNutritionPhotoDisplayText(analysis.safeSummary)}</p>
-          ) : null}
 
           {analysis.components?.length > 0 && (
             <section className="scanner-review-section">
-              <h4>{t('scanner.identifiedComponents')}</h4>
+              <h4>{i18n.language?.startsWith('sv') ? 'Livsmedel' : t('scanner.identifiedComponents')}</h4>
               <div className="nutrition-component-list">
                 {analysis.components.map((component) => (
                   <details className="scanner-component-card" key={component.id}>
                     <summary>
-                      <span>
-                        <strong>{getNutritionPhotoFoodDisplayName(component.name)}</strong>
+                      <span className="scanner-food-thumb" aria-hidden="true">{foodThumbnailSymbol(component.name)}</span>
+                      <span className="scanner-food-content">
+                        <span className="scanner-food-topline">
+                          <strong>{getNutritionPhotoFoodDisplayName(component.name)}</strong>
+                          <span className="scanner-component-calories">{t('scanner.approxCalories', { value: nutritionMidpointLabel(component.nutritionEstimate?.calories?.midpoint, 'kcal', t) })}</span>
+                        </span>
                         <small>
                           {component.portionEstimate?.gramsMin != null && component.portionEstimate?.gramsMax != null
                             ? t('scanner.gramsRange', {
@@ -1694,12 +1679,17 @@ function NutritionScannerV2({
                               max: component.portionEstimate.gramsMax,
                             })
                             : componentPortionLabel(component, t)}
-                          {component.portionEstimate?.pieceCount
-                            ? ` · ${t('scanner.piecesCount', { count: component.portionEstimate.pieceCount })}`
+                          {Number(component.portionEstimate?.pieceCount) > 0
+                            ? ` · ${i18n.language?.startsWith('sv') ? `${component.portionEstimate.pieceCount} st` : t('scanner.piecesCount', { count: component.portionEstimate.pieceCount })}`
                             : ''}
                         </small>
+                      <span className="scanner-component-macros">
+                        <span><span className="scanner-component-macro-label">{t('scanner.macros.protein')}</span><strong>{component.nutritionEstimate?.proteinG ? nutritionMidpointLabel(component.nutritionEstimate.proteinG.midpoint, 'g', t) : '—'}</strong></span>
+                        <span><span className="scanner-component-macro-label">{t('scanner.macros.carbs')}</span><strong>{component.nutritionEstimate?.carbsG ? nutritionMidpointLabel(component.nutritionEstimate.carbsG.midpoint, 'g', t) : '—'}</strong></span>
+                        <span><span className="scanner-component-macro-label">{t('scanner.macros.fat')}</span><strong>{component.nutritionEstimate?.fatG ? nutritionMidpointLabel(component.nutritionEstimate.fatG.midpoint, 'g', t) : '—'}</strong></span>
                       </span>
-                      <span>{t('scanner.approxCalories', { value: nutritionMidpointLabel(component.nutritionEstimate?.calories?.midpoint, 'kcal', t) })}</span>
+                      </span>
+                      <span className="scanner-food-chevron" aria-hidden="true">⌄</span>
                     </summary>
                     <div className="scanner-component-detail">
                       {componentNutritionSummary(component, t) ? <p>{componentNutritionSummary(component, t)}</p> : null}
@@ -1727,17 +1717,40 @@ function NutritionScannerV2({
               </div>
             </section>
           )}
-          {reviewUncertainties.length > 0 && (
-            <section className="scanner-review-section">
-              <h4>{t('scanner.toCheck')}</h4>
-              <ul className="health-dashboard-list">
-                {reviewUncertainties.map((item) => <li key={item}>{item}</li>)}
-              </ul>
-            </section>
+          {duplicate.status !== 'noDuplicate' && (
+            <p className="analysis-status">
+              {duplicate.message} {duplicate.existingMealId && <a href="#meal-history">{t('scanner.openMealHistory')}</a>}
+              {duplicate.status === 'possibleDuplicate' && (
+                <label className="checkbox-row">
+                  <input checked={allowDuplicate} type="checkbox" onChange={() => setAllowDuplicate((current) => !current)} />
+                  <span>{t('scanner.saveAnyway')}</span>
+                </label>
+              )}
+            </p>
           )}
 
+          <div className="habit-actions">
+            <button className="primary-button" disabled={isSaving || !validation.ok || ((duplicate.status === 'exactDuplicate' || duplicate.status === 'likelyDuplicate') && !allowDuplicate)} type="submit">
+              {isSaving ? t('scanner.saving') : t('scanner.saveMeal')}
+            </button>
+            <button type="button" onClick={handleCancel}>{t('common:actions.cancel')}</button>
+            {savedMealId && <a className="secondary-button" href="#meal-history">{t('scanner.openSavedMeal')}</a>}
+          </div>
+
+          {reviewUncertainties.length > 0 && (
+            <details className="scanner-review-meta-details">
+              <summary>{'Osäkra uppgifter'} ({reviewUncertainties.length})</summary>
+              <ul className="health-dashboard-list">
+                {[...new Set(reviewUncertainties)].map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            </details>
+          )}
           <details className="scanner-advanced-edit">
             <summary>{t('scanner.editDetails')}</summary>
+            <p className="scanner-hero-meta">
+              {t('scanner.confidenceLine', { level: confidenceLabel(analysis.confidence.level, t) })}
+              {analysis.imageQuality ? t('scanner.imageQualitySuffix', { quality: imageQualityLabel(analysis.imageQuality, t) }) : ''}
+            </p>
             <label>
               <span>{t('scanner.mealName')}</span>
               <input aria-invalid={Boolean(validation.errors.mealName)} value={reviewDraft.mealName} onChange={(event) => updateReview({ mealName: event.target.value })} />
@@ -1810,50 +1823,11 @@ function NutritionScannerV2({
             ))}
           </details>
 
-          <section className="scanner-save-summary">
-            <h4>{t('scanner.whatIsSaved')}</h4>
-            <dl className="scanner-summary-stats">
-              <div>
-                <dt>{t('scanner.macros.calories')}</dt>
-                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.calories, 'kcal', t)}</dd>
-              </div>
-              <div>
-                <dt>{t('scanner.macros.protein')}</dt>
-                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.protein, 'g', t)}</dd>
-              </div>
-              <div>
-                <dt>{t('scanner.macros.carbs')}</dt>
-                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.carbs, 'g', t)}</dd>
-              </div>
-              <div>
-                <dt>{t('scanner.macros.fat')}</dt>
-                <dd>{nutritionMidpointLabel(reviewDraft.nutrition.fat, 'g', t)}</dd>
-              </div>
-            </dl>
-            {Math.abs(nutritionDifference.calories) > 80 && (
-              <p className="analysis-status">{t('scanner.totalMismatch')}</p>
-            )}
-          </section>
-
-          {duplicate.status !== 'noDuplicate' && (
-            <p className="analysis-status">
-              {duplicate.message} {duplicate.existingMealId && <a href="#meal-history">{t('scanner.openMealHistory')}</a>}
-              {duplicate.status === 'possibleDuplicate' && (
-                <label className="checkbox-row">
-                  <input checked={allowDuplicate} type="checkbox" onChange={() => setAllowDuplicate((current) => !current)} />
-                  <span>{t('scanner.saveAnyway')}</span>
-                </label>
-              )}
-            </p>
+          {Math.abs(nutritionDifference.calories) > 80 && (
+            <p className="analysis-status">{t('scanner.totalMismatch')}</p>
           )}
 
-          <div className="habit-actions">
-            <button className="primary-button" disabled={isSaving || !validation.ok || ((duplicate.status === 'exactDuplicate' || duplicate.status === 'likelyDuplicate') && !allowDuplicate)} type="submit">
-              {isSaving ? t('scanner.saving') : t('scanner.saveMeal')}
-            </button>
-            <button type="button" onClick={handleCancel}>{t('common:actions.cancel')}</button>
-            {savedMealId && <a className="secondary-button" href="#meal-history">{t('scanner.openSavedMeal')}</a>}
-          </div>
+
         </form>
       )}
     </section>

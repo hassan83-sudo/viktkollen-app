@@ -18927,3 +18927,210 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   background: var(--accent);
   transition: width 120ms linear;
 }
+
+/* Compact food analysis result matching the approved mobile layout. */
+.nutrition-scanner-review .scanner-review-hero {
+  gap: 12px;
+  padding: 14px;
+}
+.nutrition-scanner-review .scanner-review-hero-main {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: 12px;
+  align-items: stretch;
+}
+.nutrition-scanner-review .scanner-review-hero-heading {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+.nutrition-scanner-review .scanner-result-photo {
+  width: 100%;
+  height: 100%;
+  min-height: 145px;
+  max-height: 205px;
+  border-radius: 14px;
+  object-fit: cover;
+}
+.nutrition-scanner-review .scanner-review-hero-heading h4 {
+  margin: 0;
+  font-size: clamp(1rem, 4.5vw, 1.4rem);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.nutrition-scanner-review .scanner-hero-calories {
+  margin: 0;
+  padding: 10px 6px;
+  border: 1px solid rgba(160,178,238,.2);
+  border-radius: 12px;
+  text-align: center;
+  font-size: clamp(1.25rem, 5.5vw, 2rem);
+}
+.nutrition-scanner-review .scanner-hero-macros {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 6px;
+  width: 100%;
+}
+.nutrition-scanner-review .scanner-hero-macros > div {
+  min-width: 0;
+  padding: 8px 3px;
+  text-align: center;
+}
+.nutrition-scanner-review .scanner-hero-macros dt {
+  font-size: clamp(.63rem, 2.7vw, .8rem);
+  overflow-wrap: anywhere;
+}
+.nutrition-scanner-review .scanner-hero-macros dd {
+  font-size: clamp(.75rem, 3.4vw, 1rem);
+  white-space: nowrap;
+}
+.nutrition-scanner-review .scanner-review-meta-details {
+  font-size: .85rem;
+}
+@media (max-width: 360px) {
+  .nutrition-scanner-review .scanner-review-hero-main { gap: 8px; }
+  .nutrition-scanner-review .scanner-result-photo { min-height: 125px; }
+}
+
+/* Compact ingredient rows: title and calories on first row, grams and macros beneath. */
+.nutrition-scanner-review .scanner-component-card summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 10px;
+  align-items: start;
+  padding: 11px 12px;
+}
+.nutrition-scanner-review .scanner-component-card summary > span:first-child {
+  grid-column: 1;
+  grid-row: 1;
+}
+.nutrition-scanner-review .scanner-component-card summary strong {
+  font-size: .95rem;
+}
+.nutrition-scanner-review .scanner-component-card summary small {
+  margin-top: 2px;
+}
+.nutrition-scanner-review .scanner-component-card summary > .scanner-component-calories {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+  color: var(--vk-text, #fff);
+  font-size: .9rem;
+  white-space: nowrap;
+}
+.nutrition-scanner-review .scanner-component-card summary > .scanner-component-macros {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: flex;
+  gap: 4px 12px;
+  flex-wrap: wrap;
+  justify-self: stretch;
+  color: var(--vk-text-muted, #9ca3af);
+  font-size: .74rem;
+  font-weight: 500;
+  text-align: left;
+}
+.nutrition-scanner-review .scanner-hero-calories {
+  font-size: clamp(1.15rem, 4.8vw, 1.7rem);
+}
+
+/* Keep the final food-scan actions reachable above the fixed mobile navigation. */
+@media (max-width: 600px) {
+  .nutrition-scanner-v2 {
+    padding-bottom: calc(105px + env(safe-area-inset-bottom, 0px));
+    scroll-margin-bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+  }
+  .nutrition-scanner-v2 .nutrition-scanner-review .habit-actions {
+    padding-bottom: 20px;
+  }
+}
+
+/* Ingredient nutrition: consistent three-column mobile layout. */
+.nutrition-scanner-review .scanner-component-card summary > .scanner-component-macros {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+  width: 100%;
+}
+.nutrition-scanner-review .scanner-component-macros > span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px 5px;
+  border-radius: 8px;
+  background: rgba(145, 160, 202, 0.09);
+  text-align: center;
+}
+.nutrition-scanner-review .scanner-component-macro-label {
+  font-size: clamp(.62rem, 2.6vw, .75rem);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.nutrition-scanner-review .scanner-component-macros strong {
+  font-size: clamp(.75rem, 3.1vw, .9rem);
+  color: var(--vk-text, #fff);
+  white-space: nowrap;
+}
+
+/* Compact food rows inspired by the approved ingredient reference. */
+.nutrition-scanner-review .scanner-component-card > summary {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) 15px;
+  gap: 9px;
+  align-items: center;
+  padding: 8px;
+  list-style: none;
+}
+.nutrition-scanner-review .scanner-component-card > summary::-webkit-details-marker { display: none; }
+.nutrition-scanner-review .scanner-food-thumb {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #25364a, #111e30);
+  font-size: 29px;
+}
+.nutrition-scanner-review .scanner-food-content { min-width: 0; display: block; }
+.nutrition-scanner-review .scanner-food-topline {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+.nutrition-scanner-review .scanner-food-topline > strong { min-width: 0; font-size: .88rem; line-height: 1.25; }
+.nutrition-scanner-review .scanner-food-topline .scanner-component-calories { flex-shrink: 0; font-size: .79rem; white-space: nowrap; }
+.nutrition-scanner-review .scanner-food-content > small { display: block; margin-top: 2px; font-size: .75rem; }
+.nutrition-scanner-review .scanner-food-chevron { font-size: 1.1rem; opacity: .7; transition: transform .15s; }
+.nutrition-scanner-review .scanner-component-card[open] .scanner-food-chevron { transform: rotate(180deg); }
+.nutrition-scanner-review .scanner-food-content > .scanner-component-macros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 12px;
+  margin-top: 3px;
+  width: 100%;
+}
+.nutrition-scanner-review .scanner-food-content > .scanner-component-macros > span {
+  display: inline-flex;
+  flex-direction: row;
+  gap: 3px;
+  padding: 0;
+  background: transparent;
+  text-align: left;
+  white-space: nowrap;
+}
+.nutrition-scanner-review .scanner-food-content .scanner-component-macro-label,
+.nutrition-scanner-review .scanner-food-content .scanner-component-macros strong {
+  font-size: .68rem;
+  font-weight: 400;
+}
+@media (max-width: 380px) {
+  .nutrition-scanner-review .scanner-component-card > summary { grid-template-columns: 46px minmax(0,1fr) 12px; gap: 6px; }
+  .nutrition-scanner-review .scanner-food-thumb { width: 46px; height: 46px; font-size: 25px; }
+  .nutrition-scanner-review .scanner-food-content > .scanner-component-macros { gap: 3px 7px; }
+}

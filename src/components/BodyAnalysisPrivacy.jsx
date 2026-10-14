@@ -3,7 +3,7 @@ function BodyAnalysisPrivacy({ showConsent, onApprove, onCancel }) {
     <>
       <p className="progress-photo-safety">
         Bilderna skickas till AI-analysen när du klickar på Analysera kroppen.
-        Originalvideo sparas inte. Analysen använder tre stillbilder.
+        Originalvideo sparas inte. Analysen använder två stillbilder.
         Resultatet är endast en allmän uppskattning och ingen medicinsk diagnos.
       </p>
       <p className="progress-photo-safety">

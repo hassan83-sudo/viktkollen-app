@@ -1240,9 +1240,9 @@ const sv = {
       },
       privacy: {
         localCamera:
-          'Livekameran körs lokalt. Appen sparar inte originalvideo; den tar tre stillbilder.',
+          'Livekameran körs lokalt. Appen sparar inte originalvideo; den tar två stillbilder.',
         sendImages:
-          'När du trycker Analysera kroppen skickas tre bildfiler till Viktkollens `/api/body-analysis` via HTTPS med inloggning.',
+          'När du trycker Analysera kroppen skickas två bildfiler till Viktkollens `/api/body-analysis` via HTTPS med inloggning.',
         openai:
           'Servern skickar bilderna till OpenAI Vision för analys. API-nyckeln ligger inte i frontend.',
         localHistory:
@@ -3241,9 +3241,9 @@ const en = {
       },
       privacy: {
         localCamera:
-          'The live camera runs locally. The app does not save original video; it takes three stills.',
+          'The live camera runs locally. The app does not save original video; it takes two stills.',
         sendImages:
-          'When you press Analyze body, three image files are sent to Viktkollen’s `/api/body-analysis` over HTTPS while signed in.',
+          'When you press Analyze body, two image files are sent to Viktkollen’s `/api/body-analysis` over HTTPS while signed in.',
         openai:
           'The server sends the images to OpenAI Vision for analysis. The API key is not in the frontend.',
         localHistory:

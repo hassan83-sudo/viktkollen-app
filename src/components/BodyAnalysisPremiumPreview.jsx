@@ -21,7 +21,7 @@ function BodyAnalysisPremiumPreview({
         {remainingAnalyses} kvar innan premiumläget behöver låsas upp senare.
       </p>
       <ul>
-        <li>AI-kroppsanalys med tre bildvinklar.</li>
+        <li>AI-kroppsanalys med två bildvinklar.</li>
         <li>Historik över tid med lokala analyser.</li>
         <li>Jämförelse mellan analyser.</li>
         <li>Export och import av analystidslinjen.</li>

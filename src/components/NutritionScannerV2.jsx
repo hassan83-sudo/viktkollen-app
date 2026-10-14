@@ -1710,6 +1710,26 @@ function NutritionScannerV2({
               </div>
             </section>
           )}
+          {duplicate.status !== 'noDuplicate' && (
+            <p className="analysis-status">
+              {duplicate.message} {duplicate.existingMealId && <a href="#meal-history">{t('scanner.openMealHistory')}</a>}
+              {duplicate.status === 'possibleDuplicate' && (
+                <label className="checkbox-row">
+                  <input checked={allowDuplicate} type="checkbox" onChange={() => setAllowDuplicate((current) => !current)} />
+                  <span>{t('scanner.saveAnyway')}</span>
+                </label>
+              )}
+            </p>
+          )}
+
+          <div className="habit-actions">
+            <button className="primary-button" disabled={isSaving || !validation.ok || ((duplicate.status === 'exactDuplicate' || duplicate.status === 'likelyDuplicate') && !allowDuplicate)} type="submit">
+              {isSaving ? t('scanner.saving') : t('scanner.saveMeal')}
+            </button>
+            <button type="button" onClick={handleCancel}>{t('common:actions.cancel')}</button>
+            {savedMealId && <a className="secondary-button" href="#meal-history">{t('scanner.openSavedMeal')}</a>}
+          </div>
+
           {reviewUncertainties.length > 0 && (
             <section className="scanner-review-section">
               <h4>{t('scanner.toCheck')}</h4>
@@ -1809,25 +1829,7 @@ function NutritionScannerV2({
             <p className="analysis-status">{t('scanner.totalMismatch')}</p>
           )}
 
-          {duplicate.status !== 'noDuplicate' && (
-            <p className="analysis-status">
-              {duplicate.message} {duplicate.existingMealId && <a href="#meal-history">{t('scanner.openMealHistory')}</a>}
-              {duplicate.status === 'possibleDuplicate' && (
-                <label className="checkbox-row">
-                  <input checked={allowDuplicate} type="checkbox" onChange={() => setAllowDuplicate((current) => !current)} />
-                  <span>{t('scanner.saveAnyway')}</span>
-                </label>
-              )}
-            </p>
-          )}
 
-          <div className="habit-actions">
-            <button className="primary-button" disabled={isSaving || !validation.ok || ((duplicate.status === 'exactDuplicate' || duplicate.status === 'likelyDuplicate') && !allowDuplicate)} type="submit">
-              {isSaving ? t('scanner.saving') : t('scanner.saveMeal')}
-            </button>
-            <button type="button" onClick={handleCancel}>{t('common:actions.cancel')}</button>
-            {savedMealId && <a className="secondary-button" href="#meal-history">{t('scanner.openSavedMeal')}</a>}
-          </div>
         </form>
       )}
     </section>

@@ -1679,9 +1679,9 @@ function NutritionScannerV2({
                       </span>
                       <span className="scanner-component-calories">{t('scanner.approxCalories', { value: nutritionMidpointLabel(component.nutritionEstimate?.calories?.midpoint, 'kcal', t) })}</span>
                       <span className="scanner-component-macros">
-                        {component.nutritionEstimate?.proteinG && <span>{t('scanner.macros.protein')}: {nutritionMidpointLabel(component.nutritionEstimate.proteinG.midpoint, 'g', t)}</span>}
-                        {component.nutritionEstimate?.carbsG && <span>{t('scanner.macros.carbs')}: {nutritionMidpointLabel(component.nutritionEstimate.carbsG.midpoint, 'g', t)}</span>}
-                        {component.nutritionEstimate?.fatG && <span>{t('scanner.macros.fat')}: {nutritionMidpointLabel(component.nutritionEstimate.fatG.midpoint, 'g', t)}</span>}
+                        <span><span className="scanner-component-macro-label">{t('scanner.macros.protein')}</span><strong>{component.nutritionEstimate?.proteinG ? nutritionMidpointLabel(component.nutritionEstimate.proteinG.midpoint, 'g', t) : '—'}</strong></span>
+                        <span><span className="scanner-component-macro-label">{t('scanner.macros.carbs')}</span><strong>{component.nutritionEstimate?.carbsG ? nutritionMidpointLabel(component.nutritionEstimate.carbsG.midpoint, 'g', t) : '—'}</strong></span>
+                        <span><span className="scanner-component-macro-label">{t('scanner.macros.fat')}</span><strong>{component.nutritionEstimate?.fatG ? nutritionMidpointLabel(component.nutritionEstimate.fatG.midpoint, 'g', t) : '—'}</strong></span>
                       </span>
                     </summary>
                     <div className="scanner-component-detail">

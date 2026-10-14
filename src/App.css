@@ -18750,6 +18750,14 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   .bottom-nav {
     position: fixed !important;
     bottom: max(9px, calc(env(safe-area-inset-bottom) + 9px)) !important;
+    /* iOS Safari: avoid the transformed, backdrop-filtered fixed layer
+       shifting while the browser chrome expands/collapses on scroll. */
+    left: 0 !important;
+    right: 0 !important;
+    margin-inline: auto !important;
+    transform: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
   }
 }
 

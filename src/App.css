@@ -19138,14 +19138,3 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   object-fit: cover;
   object-position: center;
 }
-
-/* Per-food photo crop; image remains an in-memory preview. */
-.nutrition-scanner-review .scanner-food-thumb { position: relative; overflow: hidden; }
-.nutrition-scanner-review .scanner-food-thumb img.scanner-food-cropped-image {
-  position: absolute;
-  display: block;
-  max-width: none;
-  max-height: none;
-  object-fit: fill;
-  border-radius: 0;
-}

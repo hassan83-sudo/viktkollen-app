@@ -85,6 +85,7 @@ function renderScanner() {
 const foodCameraInput = () => document.querySelector('.home-food-camera-input')
 const startFoodScan = () => fireEvent.click(screen.getAllByRole('button', { name: 'Skanna maten' })[0])
 const consentCheckbox = () => document.querySelector('#nutrition-scanner-remote-consent')
+const analyzeButton = () => document.querySelector('.scanner-preview-stage .scanner-preview-analyze .primary-button')
 
 async function flush() {
   await act(async () => {
@@ -94,6 +95,28 @@ async function flush() {
 
 describe('Hem → Skanna maten', () => {
   let clock = 0
+
+  async function analyzeWithAi() {
+    clock += 1000
+    fireEvent.click(analyzeButton())
+    await flush()
+  }
+
+  // Hem → Skanna maten → bild tas → matscannern öppnas med bilden.
+  async function captureFromHome() {
+    const onScanFood = vi.fn()
+    renderHome(onScanFood)
+    const click = vi.spyOn(foodCameraInput(), 'click').mockImplementation(() => {})
+    startFoodScan()
+    expect(click).toHaveBeenCalledTimes(1)
+    expect(onScanFood).not.toHaveBeenCalled()
+    fireEvent.change(foodCameraInput(), { target: { files: [new File(['x'], 'meal.jpg', { type: 'image/jpeg' })] } })
+    expect(onScanFood).toHaveBeenCalledTimes(1)
+    cleanup()
+    renderScanner()
+    await flush()
+    expect(document.querySelector('img.food-preview')?.getAttribute('src')).toBe('blob:home-capture')
+  }
 
   beforeEach(async () => {
     await i18n.changeLanguage('sv')
@@ -115,15 +138,19 @@ describe('Hem → Skanna maten', () => {
     localStorage.setItem(getNutritionConsentPromptStorageKey(USER_ID), 'never')
   }
 
-  it('opens the scanner page with information and consent for a new user', () => {
-    const onScanFood = vi.fn()
-    renderHome(onScanFood)
-    const click = vi.spyOn(foodCameraInput(), 'click')
+  it('opens the phone camera for a new user too, but requires AI consent before analysis', async () => {
+    await captureFromHome()
 
-    startFoodScan()
+    expect(consentCheckbox()).not.toBeNull()
+    expect(consentCheckbox().checked).toBe(false)
+    await analyzeWithAi()
+    expect(analyzeNutritionPhoto).not.toHaveBeenCalled()
+    expect(document.body.textContent).toContain('Bekräfta först')
 
-    expect(click).not.toHaveBeenCalled()
-    expect(onScanFood).toHaveBeenCalledTimes(1)
+    fireEvent.click(consentCheckbox())
+    await analyzeWithAi()
+    expect(analyzeNutritionPhoto).toHaveBeenCalledTimes(1)
+    expect(analyzeNutritionPhoto.mock.calls[0][1].consentApproved).toBe(true)
   })
 
   it('opens the phone camera directly with "Fråga inte igen" and valid consent', () => {
@@ -152,31 +179,30 @@ describe('Hem → Skanna maten', () => {
     expect(hasPendingHomeFoodScanFile(USER_ID)).toBe(false)
   })
 
-  it('asks every time with "Fråga varje gång", even with stored consent', () => {
+  it('asks every time with "Fråga varje gång", even with stored consent', async () => {
     grantNutritionRemoteConsent(USER_ID)
     localStorage.setItem(getNutritionConsentPromptStorageKey(USER_ID), 'always')
-    const onScanFood = vi.fn()
-    renderHome(onScanFood)
-    const click = vi.spyOn(foodCameraInput(), 'click')
+    await captureFromHome()
 
-    startFoodScan()
+    expect(consentCheckbox()).not.toBeNull()
+    await analyzeWithAi()
+    expect(analyzeNutritionPhoto).not.toHaveBeenCalled()
 
-    expect(click).not.toHaveBeenCalled()
-    expect(onScanFood).toHaveBeenCalledTimes(1)
+    fireEvent.click(consentCheckbox())
+    await analyzeWithAi()
+    expect(analyzeNutritionPhoto).toHaveBeenCalledTimes(1)
   })
 
-  it('never uses an old consent after it was revoked', () => {
+  it('never uses an old consent after it was revoked', async () => {
     chooseNeverAsk()
     revokeNutritionRemoteConsent(USER_ID)
     expect(canSkipNutritionConsentPrompt(USER_ID)).toBe(false)
 
-    const onScanFood = vi.fn()
-    renderHome(onScanFood)
-    const click = vi.spyOn(foodCameraInput(), 'click')
-    startFoodScan()
+    await captureFromHome()
 
-    expect(click).not.toHaveBeenCalled()
-    expect(onScanFood).toHaveBeenCalledTimes(1)
+    expect(consentCheckbox()).not.toBeNull()
+    await analyzeWithAi()
+    expect(analyzeNutritionPhoto).not.toHaveBeenCalled()
   })
 
   it('keeps the choice per account', () => {
@@ -220,9 +246,7 @@ describe('Hem → Skanna maten', () => {
     // Bildval från mobilen finns kvar.
     expect(document.querySelector('#nutrition-scanner-photo-library-input')).not.toBeNull()
 
-    clock += 1000
-    fireEvent.click(document.querySelector('.scanner-primary-actions .primary-button'))
-    await flush()
+    await analyzeWithAi()
     expect(analyzeNutritionPhoto).toHaveBeenCalledTimes(1)
     expect(analyzeNutritionPhoto.mock.calls[0][1].consentApproved).toBe(true)
   })

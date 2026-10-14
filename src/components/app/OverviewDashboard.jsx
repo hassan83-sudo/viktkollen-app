@@ -17,7 +17,7 @@ import {
   getWeatherPermissionState,
 } from '../../services/overviewLiveContext.js'
 import { loadOverviewWeather } from '../../services/overviewWeather.js'
-import { canSkipNutritionConsentPrompt, setPendingHomeFoodScanFile } from '../../services/nutritionScanHomeCapture.js'
+import { setPendingHomeFoodScanFile } from '../../services/nutritionScanHomeCapture.js'
 import { createProfilePhotoFromFile, readProfilePhoto, writeProfilePhoto } from '../../services/profilePhotoStorage.js'
 import { getFeatureFlags, isFeatureEnabled } from '../../features/featureRegistry.js'
 import HomeSocialPreview from '../../features/social/components/HomeSocialPreview.jsx'

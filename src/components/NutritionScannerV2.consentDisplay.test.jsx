@@ -122,7 +122,10 @@ describe('NutritionScannerV2 "Fråga inte igen"', () => {
   }
 
   async function analyzeWithAi() {
-    const button = container.querySelector('.scanner-primary-actions .primary-button')
+    // Med vald bild ligger "Analysera maten" direkt under bilden.
+    const button = container.querySelector('.scanner-preview-stage .scanner-preview-analyze .primary-button')
+    expect(button).not.toBeNull()
+    expect(container.querySelector('.scanner-primary-actions')).toBeNull()
     // Hoppa förbi skyddet mot dubbeltryck (420 ms) mellan testklick.
     clock += 1000
     await act(async () => {

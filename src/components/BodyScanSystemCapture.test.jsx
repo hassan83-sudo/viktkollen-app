@@ -9,9 +9,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { changeAppLanguage } from '../i18n/index.js'
 import {
+  bindHomeSystemCameraInput,
+  getPreferredBodyScanAngle,
+  openHomeSystemCamera,
   readHomeBodyScanSession,
   resetHomeBodyScanSession,
   saveHomeBodyScanPhoto,
+  setPreferredBodyScanAngle,
 } from '../services/homeBodyScanSession.js'
 
 vi.mock('../services/bodyAnalysisVideoScan.js', async () => {
@@ -102,6 +106,7 @@ async function takePhoto(container, contents, name) {
 describe('BodyScanSystemCapture', () => {
   beforeEach(async () => {
     resetHomeBodyScanSession()
+    window.localStorage.removeItem('viktkollen.bodyScan.preferredAngle')
     await changeAppLanguage('sv')
   })
 
@@ -125,8 +130,53 @@ describe('BodyScanSystemCapture', () => {
     expect(getUserMedia).not.toHaveBeenCalled()
     expect(clickSpy).not.toHaveBeenCalled()
     clickSpy.mockRestore()
-    expect(dashboardSource).not.toContain('openHomeSystemCamera()')
+    expect(getPreferredBodyScanAngle()).toBeNull()
+    expect(dashboardSource).toContain('if (angle)')
+    expect(dashboardSource).toContain('openHomeSystemCamera(angle)')
+    expect(dashboardSource).toContain('capture="environment"')
+    expect(dashboardSource).not.toContain('getUserMedia')
     unmount()
+  })
+
+  it('remembers the photographed angle after restart and does not store the image', async () => {
+    const first = renderCapture()
+    await takePhoto(first.container, 'front', 'front.jpg')
+    expect(window.localStorage.getItem('viktkollen.bodyScan.preferredAngle')).toBe('front')
+    expect(readHomeBodyScanSession().photos.front.preview).toBe('data:image/jpeg;base64,front')
+    first.unmount()
+
+    resetHomeBodyScanSession()
+    expect(readHomeBodyScanSession().photos.front).toBeNull()
+    expect(window.localStorage.getItem('viktkollen.bodyScan.preferredAngle')).toBe('front')
+    for (const key of Object.keys(window.localStorage)) {
+      const value = window.localStorage.getItem(key)
+      expect(value).not.toContain('data:image')
+      expect(value).not.toContain('body-scan-front')
+    }
+
+    const second = renderCapture()
+    expect(second.container.querySelector('input[value="front"]').checked).toBe(true)
+    expect(second.container.textContent).toContain('Ta bild – Framifrån')
+    expect(second.container.textContent).toContain('Välj vilken kroppsvinkel du vill fotografera')
+    second.unmount()
+  })
+
+  it('opens the phone system camera from Home only for a saved angle', () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.setAttribute('capture', 'environment')
+    const click = vi.spyOn(input, 'click').mockImplementation(() => {})
+    bindHomeSystemCameraInput(input)
+
+    expect(openHomeSystemCamera()).toBe(false)
+    expect(click).not.toHaveBeenCalled()
+
+    setPreferredBodyScanAngle('side')
+    expect(openHomeSystemCamera()).toBe(true)
+    expect(click).toHaveBeenCalledTimes(1)
+    expect(readHomeBodyScanSession().pendingAngle).toBe('side')
+    expect(input.getAttribute('capture')).toBe('environment')
+    click.mockRestore()
   })
 
   it('stores the new photo on the selected angle and keeps the earlier photo', async () => {

@@ -1081,11 +1081,11 @@ function OverviewBodyScanAction({ onOpenBodyScan }) {
   const capturedAngleRef = useRef(null)
   function openBodyScan() {
     const angle = getPreferredBodyScanAngle()
-    onOpenBodyScan()
     if (angle) {
       capturedAngleRef.current = angle
       openHomeSystemCamera(angle)
     }
+    onOpenBodyScan()
   }
 
   const { t } = useTranslation(['bodyScan', 'home'])
@@ -1101,7 +1101,6 @@ function OverviewBodyScanAction({ onOpenBodyScan }) {
     imageWidth: 1023,
     icon: 'bodyScan',
     label: t('home:labels.bodyScan'),
-    onClick: openBodyScan,
   }
 
   return (
@@ -1111,7 +1110,7 @@ function OverviewBodyScanAction({ onOpenBodyScan }) {
         type="file"
         accept="image/*"
         capture="environment"
-        aria-label="Ta kroppsscanningsbild"
+        aria-label={t('guided.systemOpenCamera')}
         tabIndex={-1}
         className="home-system-camera-input"
         onCancel={() => setHomeBodyScanNotice('cancelled')}
@@ -1126,9 +1125,7 @@ function OverviewBodyScanAction({ onOpenBodyScan }) {
         className="overview-primary-action-hit"
         type="button"
         aria-label={action.hitLabel}
-        onClick={() => {
-          action.onClick()
-        }}
+        onClick={openBodyScan}
       >
         <span className="overview-primary-visual">
           <span className="overview-primary-orbit" />
@@ -1156,9 +1153,7 @@ function OverviewBodyScanAction({ onOpenBodyScan }) {
         className="overview-primary-action-footer"
         type="button"
         aria-label={action.footerLabel}
-        onClick={() => {
-          action.onClick()
-        }}
+        onClick={openBodyScan}
       >
         <OverviewIcon name="foodCamera" />
         <span>{action.footerLabel}</span>

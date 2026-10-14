@@ -75,6 +75,7 @@ function BodyScanSystemCapture({
 
   function beginCapture() {
     captureAngleRef.current = selectedAngleRef.current
+    setPreferredBodyScanAngle(captureAngleRef.current)
     setHomeBodyScanPendingAngle(captureAngleRef.current)
   }
 

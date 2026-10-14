@@ -213,9 +213,8 @@ function validateImage(image) {
 function createPrompt(mealType) {
   return [
     'Viktkollen food photo analysis. Reply with compact JSON only, no markdown:',
-    `{"items":[{"name":"","bank":"","cat":"","cook":"","g":[0,0],"conf":"","gconf":"","alt":[],"per100":[0,0,0,0],"box":null}],"quality":"","conf":"","note":""}`,
+    `{"items":[{"name":"","bank":"","cat":"","cook":"","g":[0,0],"conf":"","gconf":"","alt":[],"per100":[0,0,0,0]}],"quality":"","conf":"","note":""}`,
     `1. One item per visually distinct food, max ${NUTRITION_PHOTO_MAX_COMPONENTS}. Keep every visible sauce, dressing, dip, oil/butter, bread, breading and topping as its own item; split dishes into their visible parts (burger: bun, patty, cheese, vegetables, sauce). A dish that cannot be separated (pizza slice, lasagne, soup, stew) is one item. Do not merge separate foods; do not count the same food twice.`,
-    'For each visible item, box: [left,top,right,bottom] in image coordinates 0-1000 (full image dimensions), tightly enclosing the visible food. If its position is unclear, box:null. Never invent a location.',
     '2. name: short Swedish name for the user. bank: Swedish name in Livsmedelsverket style, main food first, then cut/type, then cooking, e.g. "Kyckling bröstfilé stekt", "Ris vitt kokt", "Broccoli kokt", "Pommes frites ugnsstekta", "Lax ugnsstekt", "Nötfärs stekt", "Potatis kokt", "Bearnaisesås".',
     '3. cat: protein|carbohydrate|vegetables|sauce|fat|drink|unknown. cook: fried|breaded|grilled|boiled|baked|steamed|raw or "" - only with visible cues (browning, crust, grill marks, breading, oil sheen).',
     '4. Identity: judge colour, texture, shape, surface and cooking cues; check texture before naming meat or fish. Chicken: matte white-beige meat with long parallel fibres, often grill marks or a seasoned crust. Fish: flakes in layers, white or pink segments, often skin or sheen. Also check pork vs chicken, beef vs lamb, rice vs bulgur/couscous, potato vs sweet potato, cream sauce vs yoghurt sauce. conf high only when unmistakable; otherwise medium or low with up to 2 likely alternatives in alt. Never present a guess as certain. An unidentifiable food is "Okänd komponent" with conf low.',
@@ -287,7 +286,6 @@ export function componentsFromCompactItems(items = []) {
     ].filter(Boolean)
     return {
       ...base,
-      imageBox: Array.isArray(source.box) && source.box.length === 4 && source.box.every((v) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1000) && source.box[2] > source.box[0] && source.box[3] > source.box[1] ? source.box : null,
       aiPer100,
       alternatives: Array.isArray(source.alt) ? source.alt.map((entry) => safeText(entry, '', 30)).filter(Boolean).slice(0, 2) : [],
       confidence,

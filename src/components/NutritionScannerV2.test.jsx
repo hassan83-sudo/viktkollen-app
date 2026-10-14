@@ -21,8 +21,8 @@ describe('NutritionScannerV2', () => {
     )
 
     expect(markup).toContain('Skanna mat')
-    expect(markup).toContain('Ta eller välj en tydlig bild av måltiden.')
-    expect(markup).toContain('Ta bild')
+    expect(markup).toContain('Ta en tydlig bild av din måltid')
+    expect(markup).toContain('Öppna kamera')
     expect(markup).toContain('Välj bild')
     expect(markup).toContain('Analysera maten')
     expect(markup).toContain('AI-analys fungerar inte?')

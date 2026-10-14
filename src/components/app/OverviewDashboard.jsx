@@ -755,6 +755,7 @@ function OverviewPrimaryActions({
   const { t } = useTranslation(['bodyScan', 'home'])
   const prefersReducedMotion = usePrefersReducedMotion()
   const [foodCameraInput, setFoodCameraInput] = useState(null)
+  const [foodLibraryInput, setFoodLibraryInput] = useState(null)
   const [showTapPulse, setShowTapPulse] = useState(() => {
     if (typeof window === 'undefined') return false
     try {
@@ -931,6 +932,15 @@ function OverviewPrimaryActions({
         type="file"
         onChange={handleFoodCameraFile}
       />
+      <input
+        ref={setFoodLibraryInput}
+        accept="image/*"
+        aria-label="Välj matbild från bildbiblioteket"
+        className="home-system-camera-input home-food-library-input"
+        tabIndex={-1}
+        type="file"
+        onChange={handleFoodCameraFile}
+      />
       <section className="overview-primary-actions" data-glow-level={glowLevel} aria-label={t('home:labels.home')}>
       {actions.map((action) => (
         <div className={`overview-primary-action is-${action.accent}`} key={action.label}>
@@ -979,6 +989,20 @@ function OverviewPrimaryActions({
             <span>{action.footerLabel}</span>
           </button>
         </div>
+          {action.accent === 'food' && (
+            <button
+              className="overview-primary-action-footer overview-food-library-button"
+              type="button"
+              onClick={() => {
+                if (foodLibraryInput) {
+                  foodLibraryInput.value = ''
+                  foodLibraryInput.click()
+                }
+              }}
+            >
+              Välj bild
+            </button>
+          )}
       ))}
       </section>
     </>

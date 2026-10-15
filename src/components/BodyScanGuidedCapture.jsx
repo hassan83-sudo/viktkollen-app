@@ -59,6 +59,8 @@ function BodyScanGuidedCapture({
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
   const countdownTimerRef = useRef(null)
+  const voiceWaitTimerRef = useRef(null)
+  const voiceWaitEpochRef = useRef(0)
   const cameraRequestRef = useRef(0)
   const facingModeRef = useRef('user')
   const spokenStepRef = useRef('')
@@ -80,6 +82,9 @@ function BodyScanGuidedCapture({
       cameraRequestRef.current += 1
       window.clearTimeout(countdownTimerRef.current)
       countdownTimerRef.current = null
+      window.clearTimeout(voiceWaitTimerRef.current)
+      voiceWaitTimerRef.current = null
+      voiceWaitEpochRef.current += 1
       stopMediaStream(streamRef.current)
       streamRef.current = null
       releaseVideoElement(videoRef.current)
@@ -121,6 +126,10 @@ function BodyScanGuidedCapture({
   function stopCountdown() {
     window.clearTimeout(countdownTimerRef.current)
     countdownTimerRef.current = null
+    window.clearTimeout(voiceWaitTimerRef.current)
+    voiceWaitTimerRef.current = null
+    voiceWaitEpochRef.current += 1
+    cancelVideoScanSpeech()
   }
 
   function captureCurrentStep(pose) {
@@ -188,8 +197,37 @@ function BodyScanGuidedCapture({
 
   function enterSide() {
     setStep('side')
-    speakOnce('side', t('bodyScan:guided.voiceSide'))
-    beginCountdown('side')
+    stopCountdown()
+    setCountdown(null)
+    const epoch = voiceWaitEpochRef.current
+    const instruction = 'Bra! Vänd dig nu åt höger så att du står med sidan mot kameran. Håll hela kroppen synlig.'
+    const synth = typeof window !== 'undefined' ? window.speechSynthesis : null
+    const canSpeak = voiceEnabled && synth?.speak && typeof SpeechSynthesisUtterance !== 'undefined'
+    if (!canSpeak) {
+      beginCountdown('side')
+      return
+    }
+    let completed = false
+    const startWhenReady = () => {
+      if (completed || voiceWaitEpochRef.current !== epoch) return
+      completed = true
+      window.clearTimeout(voiceWaitTimerRef.current)
+      voiceWaitTimerRef.current = null
+      beginCountdown('side')
+    }
+    const utterance = new SpeechSynthesisUtterance(instruction)
+    utterance.lang = 'sv-SE'
+    utterance.rate = 0.95
+    utterance.onend = startWhenReady
+    utterance.onerror = startWhenReady
+    try {
+      synth.cancel()
+      synth.speak(utterance)
+      // Some browsers never deliver speech completion; avoid blocking the scan.
+      voiceWaitTimerRef.current = window.setTimeout(startWhenReady, 12000)
+    } catch {
+      startWhenReady()
+    }
   }
 
   function advanceAfterCapture(pose) {

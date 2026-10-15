@@ -203,11 +203,8 @@ function BodyScanGuidedCapture({
     const instruction = 'Bra! Vänd dig nu åt höger så att du står med sidan mot kameran. Håll hela kroppen synlig.'
     const synth = typeof window !== 'undefined' ? window.speechSynthesis : null
     const canSpeak = voiceEnabled && synth?.speak && typeof SpeechSynthesisUtterance !== 'undefined'
-    if (!canSpeak) {
-      beginCountdown('side')
-      return
-    }
     let completed = false
+    let speechStarted = false
     const startWhenReady = () => {
       if (completed || voiceWaitEpochRef.current !== epoch) return
       completed = true
@@ -215,18 +212,38 @@ function BodyScanGuidedCapture({
       voiceWaitTimerRef.current = null
       beginCountdown('side')
     }
+    if (!canSpeak) {
+      voiceWaitTimerRef.current = window.setTimeout(startWhenReady, 2500)
+      return
+    }
     const utterance = new SpeechSynthesisUtterance(instruction)
     utterance.lang = 'sv-SE'
     utterance.rate = 0.95
+    utterance.onstart = () => {
+      if (voiceWaitEpochRef.current !== epoch) return
+      speechStarted = true
+      // If speech actually starts, allow it to finish before countdown.
+      window.clearTimeout(voiceWaitTimerRef.current)
+      voiceWaitTimerRef.current = window.setTimeout(startWhenReady, 9000)
+    }
     utterance.onend = startWhenReady
-    utterance.onerror = startWhenReady
+    utterance.onerror = () => {
+      if (voiceWaitEpochRef.current !== epoch) return
+      window.clearTimeout(voiceWaitTimerRef.current)
+      voiceWaitTimerRef.current = window.setTimeout(startWhenReady, 1200)
+    }
     try {
       synth.cancel()
       synth.speak(utterance)
-      // Some browsers never deliver speech completion; avoid blocking the scan.
-      voiceWaitTimerRef.current = window.setTimeout(startWhenReady, 12000)
+      // iOS may silently queue speech without playing it. Do not wait 12s
+      // for an onend event when speech never even started.
+      voiceWaitTimerRef.current = window.setTimeout(() => {
+        if (voiceWaitEpochRef.current !== epoch || speechStarted) return
+        synth.cancel()
+        startWhenReady()
+      }, 2500)
     } catch {
-      startWhenReady()
+      voiceWaitTimerRef.current = window.setTimeout(startWhenReady, 2500)
     }
   }
 

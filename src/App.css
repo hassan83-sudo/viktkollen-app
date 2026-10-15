@@ -19134,3 +19134,63 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   .nutrition-scanner-review .scanner-food-thumb { width: 46px; height: 46px; font-size: 25px; }
   .nutrition-scanner-review .scanner-food-content > .scanner-component-macros { gap: 3px 7px; }
 }
+
+/* Manual meal calendar, scoped to Home; mobile-first and independent of AI planner. */
+#app-section-home.is-active .manual-meal-calendar { display:grid; gap:12px; min-width:0; }
+#app-section-home.is-active .manual-meal-calendar h3,
+#app-section-home.is-active .manual-meal-calendar h4,
+#app-section-home.is-active .manual-meal-calendar p { margin:0; }
+#app-section-home.is-active .manual-meal-toolbar { display:flex; flex-wrap:wrap; gap:6px; }
+#app-section-home.is-active .manual-meal-toolbar button,
+#app-section-home.is-active .manual-meal-dates button,
+#app-section-home.is-active .manual-meal-slot button { border:1px solid #42536b; background:#1b2940; color:#f5f9ff; border-radius:10px; padding:9px; cursor:pointer; }
+#app-section-home.is-active .manual-meal-toolbar button[aria-pressed="true"],
+#app-section-home.is-active .manual-meal-dates button[aria-pressed="true"] { border-color:#6ec8ff; background:#20445b; }
+#app-section-home.is-active .manual-meal-dates { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; }
+#app-section-home.is-active .manual-meal-dates button { min-width:0; padding:7px 2px; font-size:.7rem; overflow-wrap:anywhere; }
+#app-section-home.is-active .manual-meal-dates button small { display:block; }
+#app-section-home.is-active .manual-meal-slot { display:grid; gap:8px; padding:12px; border:1px solid #354357; border-radius:13px; background:#151e2d; }
+#app-section-home.is-active .manual-meal-slot label { display:grid; gap:4px; font-size:.8rem; }
+#app-section-home.is-active .manual-meal-slot input,
+#app-section-home.is-active .manual-meal-slot textarea { width:100%; box-sizing:border-box; min-width:0; border:1px solid #4a5970; border-radius:8px; background:#0c1523; color:#fff; padding:10px; font:inherit; }
+#app-section-home.is-active .manual-meal-entry { display:flex; gap:6px; flex-wrap:wrap; align-items:center; padding:8px; background:#243348; border-radius:8px; }
+#app-section-home.is-active .manual-meal-entry span { flex:1; min-width:80px; overflow-wrap:anywhere; }
+#app-section-home.is-active .manual-meal-note { font-size:.75rem; opacity:.8; }
+
+/* Dedicated meal planning view, not embedded under "Mer för idag". */
+#app-section-home.is-active .manual-meal-page { width:100%; max-width:100%; min-width:0; padding:14px 12px 96px; box-sizing:border-box; }
+#app-section-home.is-active .manual-meal-page-header { display:flex; gap:12px; align-items:center; margin-bottom:18px; }
+#app-section-home.is-active .manual-meal-page-header h2 { margin:0; font-size:1.3rem; }
+#app-section-home.is-active .manual-meal-page-header button { border:1px solid #42536b; background:#1b2940; color:#fff; border-radius:10px; padding:10px 12px; cursor:pointer; }
+
+
+/* Standalone Matplanering section; preserve the existing Snabbt and mood grid. */
+#app-section-home.is-active .overview-mood-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+}
+#app-section-home.is-active .overview-meal-plan-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  min-height: 112px;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid #345445;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #17261f, #111924);
+  color: #fff;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+#app-section-home.is-active .overview-meal-plan-card strong { font-size: .98rem; font-weight: 920; }
+#app-section-home.is-active .overview-meal-plan-card small { color: rgba(226,235,255,.7); }
+#app-section-home.is-active .manual-meal-dates.is-month button { min-height: 48px; }

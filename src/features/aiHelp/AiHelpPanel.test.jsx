@@ -138,4 +138,31 @@ describe('AiHelpPanel language', () => {
     expect(await screen.findByText('Uppsägningen är schemalagd till periodens slut.')).toBeTruthy()
     fetchMock.mockRestore()
   })
+
+  it('reports a technical problem without the question text', async () => {
+    await i18n.changeLanguage('sv')
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true }),
+    })
+
+    render(<AiHelpPanel />)
+    fireEvent.click(screen.getByRole('button', { name: 'Öppna AI-Hjälp' }))
+    fireEvent.change(screen.getByLabelText('Fråga om Viktkollen'), {
+      target: { value: 'Hemligt chattinnehåll' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Rapportera tekniskt fel' }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body).toMatchObject({
+      errorType: 'ai-help',
+      feature: 'ai-help',
+      fingerprint: 'ai-help-manual',
+      source: 'ai-help',
+    })
+    expect(JSON.stringify(body)).not.toContain('Hemligt')
+    expect(await screen.findByText('Felrapporten skickades utan frågetexten.')).toBeTruthy()
+    fetchMock.mockRestore()
+  })
 })

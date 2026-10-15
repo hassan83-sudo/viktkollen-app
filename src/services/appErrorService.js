@@ -1,3 +1,4 @@
+import { reportClientBug } from './bugMonitor/bugMonitorClient.js'
 import { safeLogger, sanitizeLogValue } from './safeLogger.js'
 
 const sensitivePattern = /(token|apikey|api[_-]?key|authorization|bearer|supabase|password|session|secret)[\s:=/"']+[^\s,;)"']+/gi
@@ -119,5 +120,13 @@ export function logAppError(error, context = {}) {
     context: sanitizeLogValue(context),
     error: import.meta.env?.DEV ? sanitizeLogValue(error) : undefined,
     normalized,
+  })
+  if (!normalized.shouldReport) return
+  void reportClientBug({
+    errorType: normalized.safeCategory,
+    feature: context.area || 'app',
+    fingerprint: normalized.technicalCode,
+    severity: normalized.severity,
+    source: 'frontend',
   })
 }

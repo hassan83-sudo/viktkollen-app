@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getLanguageDefinition, normalizeLanguageCode } from '../../i18n/languages.js'
 import { confirmScheduleCancel, requestAiHelpReply } from './aiHelpClient.js'
+import { reportClientBug } from '../../services/bugMonitor/bugMonitorClient.js'
 import { requestOpenHelpSection } from './aiHelpTools.js'
 import { helpChrome } from './uiChrome.js'
 import './AiHelpPanel.css'
@@ -146,6 +147,17 @@ function AiHelpPanel() {
     }
   }
 
+  async function reportTechnicalProblem() {
+    const result = await reportClientBug({
+      errorType: 'ai-help',
+      feature: 'ai-help',
+      fingerprint: 'ai-help-manual',
+      severity: 'medium',
+      source: 'ai-help',
+    }, { force: true })
+    setNotice(result.ok ? chrome.bugReported : chrome.bugFailed)
+  }
+
   return (
     <section aria-label={chrome.title} className="ai-help-panel" dir={direction} lang={languageCode}>
       <div className="panel-heading">
@@ -193,6 +205,9 @@ function AiHelpPanel() {
             />
             <button className="secondary-button" type="submit" disabled={pending || !draft.trim()}>
               {chrome.send}
+            </button>
+            <button className="secondary-button" type="button" onClick={reportTechnicalProblem}>
+              {chrome.bugReport}
             </button>
           </form>
         </>

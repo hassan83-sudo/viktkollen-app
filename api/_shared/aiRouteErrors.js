@@ -1,3 +1,5 @@
+import { recordServerBug } from '../../src/services/bugMonitor/bugMonitor.js'
+
 export const aiRouteErrorCodes = {
   AUTH_EXPIRED: 'AUTH_EXPIRED',
   AUTH_INVALID: 'AUTH_INVALID',
@@ -66,10 +68,20 @@ export function makeSafeAiRouteError({
 export function sendSafeAiError(response, options = {}) {
   setNoStoreHeaders(response)
   const error = makeSafeAiRouteError(options)
-  return response.status(error.status).json({
+  const sent = response.status(error.status).json({
     error: error.error,
     ok: false,
   })
+  if (Number(error.status) < 500) return sent
+  const code = String(error.error.code || 'unknown').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 16) || 'error'
+  const pending = recordServerBug({
+    errorType: 'server',
+    feature: 'app',
+    fingerprint: `server-${code}`,
+    severity: 'high',
+  })
+  if (pending && typeof pending.then === 'function') pending.catch(() => {})
+  return sent
 }
 
 export function mapGatewayErrorCode(code) {

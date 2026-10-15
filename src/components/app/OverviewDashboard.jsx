@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import AchievementPreviewCard from './AchievementPreviewCard.jsx'
 import DailyCoachCard from './DailyCoachCard.jsx'
 import DailyMealPlannerCard from './DailyMealPlannerCard.jsx'
+import ManualMealCalendar from './ManualMealCalendar.jsx'
+import { getMealPlanWeek, getMealPlanWeekStart, readMealPlans } from '../../services/nutrition/mealPlanner.js'
 import HealthPredictionCard from './HealthPredictionCard.jsx'
 import SmartNotificationsCard from './SmartNotificationsCard.jsx'
 import WeeklyProgressSection from './WeeklyProgressSection.jsx'
@@ -1031,6 +1033,7 @@ function OverviewTodayMood({
   currentWeight,
   onLogWeight,
   onOpenCoach,
+  onOpenMealPlanner,
   onOpenNotices,
   onOpenWellbeing,
   onScanFood,
@@ -1038,6 +1041,20 @@ function OverviewTodayMood({
   weights,
 }) {
   const { t, i18n } = useTranslation(['common', 'home'])
+  const [plannedCount, setPlannedCount] = useState(0)
+  useEffect(() => {
+    const refresh = () => {
+      const week = getMealPlanWeek(readMealPlans(), getMealPlanWeekStart())
+      setPlannedCount(Object.values(week.days || {}).reduce((sum, meals) => sum + meals.length, 0))
+    }
+    refresh()
+    window.addEventListener('viktkollen:meal-plan-updated', refresh)
+    window.addEventListener('focus', refresh)
+    return () => {
+      window.removeEventListener('viktkollen:meal-plan-updated', refresh)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [])
   const displayWeight = resolveHomeWeightKg({ currentWeight, weights })
   const hasCurrentWeight = isFiniteNumber(displayWeight) && Number(displayWeight) > 0
   const hasCalories = isFiniteNumber(caloriesToday)
@@ -1053,7 +1070,14 @@ function OverviewTodayMood({
   return (
     // A11Y-8G: unnamed, so it does not repeat the region name of the Home
     // section around it, which is already labelled by its visible heading.
-    <section className="overview-today-mood">
+    <div className="overview-mood-stack">
+      <button className="overview-meal-plan-card" type="button" onClick={onOpenMealPlanner} aria-label="Öppna matplanering">
+        <span className="overview-mood-label">MATPLANERING</span>
+        <strong>Veckans recept</strong>
+        <small>{plannedCount ? `${plannedCount} planerade måltider` : 'Lägg till egna rätter'}</small>
+        <span className="overview-mood-link">Öppna matplan →</span>
+      </button>
+      <section className="overview-today-mood">
       <button className="overview-mood-card is-wellbeing" type="button" onClick={onOpenWellbeing}>
         <span className="overview-mood-card-top">
           <OverviewIcon name="heart" />
@@ -1132,6 +1156,7 @@ function OverviewTodayMood({
         </div>
       </article>
     </section>
+    </div>
   )
 }
 
@@ -1313,6 +1338,7 @@ function OverviewDashboard({
   const [smartCameraOpen, setSmartCameraOpen] = useState(Boolean(initialSmartCameraMode))
   const [smartCameraInitialMode, setSmartCameraInitialMode] = useState(initialSmartCameraMode)
   const [coachOpen, setCoachOpen] = useState(false)
+  const [manualMealPlanOpen, setManualMealPlanOpen] = useState(false)
   const [socialOpen, setSocialOpen] = useState(false)
   const [socialView, setSocialView] = useState('inbox')
   const [socialConversationId, setSocialConversationId] = useState(null)
@@ -1459,6 +1485,18 @@ function OverviewDashboard({
     }
   }, [isAuthenticated, socialLiveEnabled, t])
 
+  if (manualMealPlanOpen) {
+    return (
+      <section className="home-overview-shell manual-meal-page" aria-label="Matplanering">
+        <header className="manual-meal-page-header">
+          <button type="button" onClick={() => setManualMealPlanOpen(false)} aria-label="Tillbaka till startsidan">← Tillbaka</button>
+          <h2>Matplanering</h2>
+        </header>
+        <ManualMealCalendar />
+      </section>
+    )
+  }
+
   return (
     <div className="home-overview-shell">
       <header className="overview-app-header">
@@ -1538,6 +1576,7 @@ function OverviewDashboard({
           onLogWeight={onLogWeight}
           onOpenCoach={() => (onOpenAiCoach ? onOpenAiCoach() : setCoachOpen(true))}
           onOpenNotices={goToNotifications}
+          onOpenMealPlanner={() => setManualMealPlanOpen(true)}
           onOpenWellbeing={onOpenWellbeing}
           onScanFood={onScanFood}
           reminderState={reminderState}

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { currentCameraEpoch, releaseVideoElement, retainCameraStream } from '../features/shared/camera/cameraLifecycle.js'
 import {
   canCompleteBodyAnalysisScan,
-  defaultBodyScanFacingMode,
+  getNextBodyScanFacingMode,
   getBodyAnalysisView,
   getBodyScanVideoConstraints,
   getCameraPermissionMessage,
@@ -46,6 +46,7 @@ function BodyScanGuidedCapture({
   const [step, setStep] = useState('prepare')
   const [timerSeconds, setTimerSeconds] = useState(3)
   const [voiceEnabled, setVoiceEnabled] = useState(true)
+  const [facingMode, setFacingMode] = useState('user')
   const [cameraActive, setCameraActive] = useState(false)
   const [cameraError, setCameraError] = useState('')
   const [countdown, setCountdown] = useState(null)
@@ -59,6 +60,7 @@ function BodyScanGuidedCapture({
   const streamRef = useRef(null)
   const countdownTimerRef = useRef(null)
   const cameraRequestRef = useRef(0)
+  const facingModeRef = useRef('user')
   const spokenStepRef = useRef('')
   const remainingSecondsRef = useRef(0)
   const pausedRef = useRef(false)
@@ -214,17 +216,26 @@ function BodyScanGuidedCapture({
     setStep('review')
   }
 
-  async function startCamera(targetStep = 'front', { isRetake = false } = {}) {
+  async function startCamera(targetStep = 'front', { isRetake = false, requestedFacingMode = facingModeRef.current } = {}) {
     if (!hasCameraApi) {
       setCameraError(t('bodyScan:guided.cameraOff'))
       return false
     }
     try {
+      // Release the previous camera before requesting a different device.
+      stopCountdown()
+      setCountdown(null)
+      pausedRef.current = false
+      setPaused(false)
+      stopMediaStream(streamRef.current)
+      streamRef.current = null
+      releaseVideoElement(videoRef.current)
+      setCameraActive(false)
       const requestId = cameraRequestRef.current + 1
       cameraRequestRef.current = requestId
       const epoch = currentCameraEpoch()
       const opened = await navigator.mediaDevices.getUserMedia(
-        getBodyScanVideoConstraints(defaultBodyScanFacingMode),
+        getBodyScanVideoConstraints(requestedFacingMode),
       )
       if (requestId !== cameraRequestRef.current) {
         stopMediaStream(opened)
@@ -242,6 +253,8 @@ function BodyScanGuidedCapture({
       setZoomSupported(supported)
       setZoomLevels(levels.length ? levels : [1])
       setZoom(1)
+      facingModeRef.current = requestedFacingMode
+      setFacingMode(requestedFacingMode)
       setCameraError('')
       setCameraActive(true)
       if (targetStep === 'side') enterSide()
@@ -251,6 +264,16 @@ function BodyScanGuidedCapture({
       setCameraActive(false)
       setCameraError(getCameraPermissionMessage(error))
       return false
+    }
+  }
+
+  async function flipCamera() {
+    const nextMode = getNextBodyScanFacingMode(facingModeRef.current)
+    const targetStep = step === 'side' ? 'side' : 'front'
+    const previousMode = facingModeRef.current
+    const started = await startCamera(targetStep, { requestedFacingMode: nextMode })
+    if (!started) {
+      facingModeRef.current = previousMode
     }
   }
 
@@ -359,6 +382,10 @@ function BodyScanGuidedCapture({
               </div>
             )}
           </div>
+
+          <button className="secondary-button" type="button" onClick={flipCamera} disabled={!cameraActive} aria-label="Växla mellan framkamera och bakkamera">
+            {facingMode === 'user' ? 'Byt till bakkamera' : 'Byt till selfiekamera'}
+          </button>
 
           {zoomLevels.length > 1 && (
             <div className="body-scan-guided-zoom" aria-label={t('bodyScan:guided.zoomAria')}>

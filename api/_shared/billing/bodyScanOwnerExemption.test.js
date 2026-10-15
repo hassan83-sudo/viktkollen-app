@@ -39,6 +39,21 @@ describe('body.scan owner exemption', () => {
     expect(await resolveBodyScanOwnerExemption({ env: ON, userId: OWNER })).toMatchObject({ dailyCap: 50, exempt: true })
   })
 
+  it('accepts a server-side user id allowlist without billing_admin', async () => {
+    const isAdmin = vi.fn(async () => false)
+    setBodyScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin })
+    const env = { ...ON, BODY_SCAN_OWNER_USER_IDS: ` x, ${OWNER.toUpperCase()} ` }
+    expect(await resolveBodyScanOwnerExemption({ env, userId: OWNER })).toMatchObject({ exempt: true })
+    expect(isAdmin).not.toHaveBeenCalled()
+
+    const other = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+    expect((await resolveBodyScanOwnerExemption({ env, userId: other })).reason).toBe('not_admin')
+    expect((await resolveBodyScanOwnerExemption({ env: { BODY_SCAN_OWNER_USER_IDS: OWNER }, userId: OWNER })).reason).toBe('disabled')
+
+    setBodyScanOwnerExemptionDepsForTests({ countRecentScans: async () => 50, isAdmin })
+    expect((await resolveBodyScanOwnerExemption({ env, userId: OWNER })).reason).toBe('daily_cap')
+  })
+
   it('clamps the daily cap', () => {
     expect(resolveBodyScanOwnerDailyCap({})).toBe(50)
     expect(resolveBodyScanOwnerDailyCap({ BODY_SCAN_OWNER_DAILY_CAP: '0' })).toBe(50)

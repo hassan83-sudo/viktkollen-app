@@ -6,9 +6,11 @@
 // 1. Serverflaggan BODY_SCAN_OWNER_UNLIMITED är exakt 'true' i den aktuella
 //    Vercel-miljön (Preview och Production styrs var för sig).
 // 2. Användaren är verifierad via Supabase Auth (JWT) av rutten.
-// 3. Användaren har ACTIVE billing_admin i billing.admin_permissions, läst via
-//    service-role-RPC:n billing.has_billing_admin (BILL-4A). Klienter kan inte
-//    läsa eller skriva tabellen; e-post, headers och formulärfält ignoreras.
+// 3. Användarens verifierade id står i servervariabeln BODY_SCAN_OWNER_USER_IDS
+//    (kommaseparerade UUID:n, utan adminrättigheter), eller användaren har
+//    ACTIVE billing_admin i billing.admin_permissions, läst via service-role-
+//    RPC:n billing.has_billing_admin (BILL-4A). E-post, headers och
+//    formulärfält från klienten ignoreras.
 // 4. Ett varaktigt dygnstak (rullande 24 h, räknat i billing.usage_events) är
 //    inte nått. Skydd mot missbruk och oväntade AI-kostnader.
 //
@@ -25,6 +27,7 @@ import { withOwnerUnlimitedQuota } from './foodScanOwnerExemption.js'
 export { withOwnerUnlimitedQuota }
 
 export const BODY_SCAN_OWNER_FLAG = 'BODY_SCAN_OWNER_UNLIMITED'
+export const BODY_SCAN_OWNER_USER_IDS_ENV = 'BODY_SCAN_OWNER_USER_IDS'
 export const BODY_SCAN_OWNER_DAILY_CAP_ENV = 'BODY_SCAN_OWNER_DAILY_CAP'
 export const BODY_SCAN_OWNER_DAILY_CAP_DEFAULT = 50
 export const BODY_SCAN_OWNER_DAILY_CAP_MAX = 200
@@ -72,7 +75,11 @@ export async function resolveBodyScanOwnerExemption({ env = process.env, now = n
   const id = String(userId || '').trim()
   if (!UUID_RE.test(id)) return { exempt: false, reason: 'invalid_user' }
 
-  const admin = await Promise.resolve()
+  const allowlisted = String(env[BODY_SCAN_OWNER_USER_IDS_ENV] || '')
+    .split(',')
+    .map((value) => value.trim().toLowerCase())
+    .some((value) => UUID_RE.test(value) && value === id.toLowerCase())
+  const admin = allowlisted || await Promise.resolve()
     .then(() => deps.isAdmin(id))
     .catch(() => false)
   if (admin !== true) return { exempt: false, reason: 'not_admin' }

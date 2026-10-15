@@ -11,11 +11,11 @@ function BodyAnalysisPrivacy({ showConsent, onApprove, onCancel }) {
         Molnlagring för kroppsbilder är inte implementerad.
       </p>
       {showConsent && (
-        <div className="progress-photo-ai-comparison body-scan-consent-overlay">
-          <div className="progress-photo-ai-heading">
+        <div className="progress-photo-ai-comparison body-scan-consent-overlay" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 12, width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowWrap: 'anywhere' }}>
+          <div className="progress-photo-ai-heading" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 12, minWidth: 0 }}>
             <div>
               <p className="eyebrow">Bekräfta analys</p>
-              <h3>Skicka bilder till AI-analysen?</h3>
+              <h3 style={{ overflowWrap: 'anywhere' }}>Skicka bilder till AI-analysen?</h3>
             </div>
             <span>Integritet</span>
           </div>
@@ -27,6 +27,7 @@ function BodyAnalysisPrivacy({ showConsent, onApprove, onCancel }) {
           <button
             type="button"
             aria-label="Godkänn och starta AI-kroppsanalys"
+            style={{ display: 'block', flex: '0 0 auto', width: '100%', minHeight: 48, height: 'auto', padding: '12px 16px', boxSizing: 'border-box' }}
             onClick={onApprove}
           >
             Jag godkänner och analyserar
@@ -35,6 +36,7 @@ function BodyAnalysisPrivacy({ showConsent, onApprove, onCancel }) {
             className="secondary-button"
             type="button"
             aria-label="Avbryt AI-kroppsanalys"
+            style={{ display: 'block', flex: '0 0 auto', width: '100%', minHeight: 48, height: 'auto', padding: '12px 16px', boxSizing: 'border-box' }}
             onClick={onCancel}
           >
             Avbryt

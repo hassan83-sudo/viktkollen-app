@@ -698,10 +698,9 @@ function BodyAnalysisCard({
         name: sidePhoto.name,
         preview: sidePhoto.preview,
       }
-      const storedBackPhoto = {
-        name: backPhoto.name,
-        preview: backPhoto.preview,
-      }
+      const storedBackPhoto = backPhoto
+        ? { name: backPhoto.name, preview: backPhoto.preview }
+        : null
       const consentApproved = analysisApprovalRef.current.consume(getBodyAnalysisApprovalKey())
 
       const result = await analyzeBodyWithAI({

@@ -51,6 +51,26 @@ describe('body.scan quota client', () => {
     expect(unavailableBodyScanQuota.allowed).toBe(false)
   })
 
+  it('allows analysis when the server reports owner unlimited status', () => {
+    expect(interpretBodyScanQuota({
+      daily_cap: 50,
+      limit: null,
+      owner_unlimited: true,
+      remaining: null,
+      status: 'ALLOWED',
+      used_last_24h: 3,
+    })).toEqual({
+      allowed: true,
+      dailyCap: 50,
+      limit: null,
+      ownerUnlimited: true,
+      remaining: null,
+      status: 'ALLOWED',
+      used: null,
+    })
+    expect(interpretBodyScanQuota({ owner_unlimited: true, remaining: null, status: 'DENIED_DISABLED' }).allowed).toBe(false)
+  })
+
   it('does not grant access when quota inspection fails', async () => {
     const failed = await loadBodyScanQuota({
       fetchImpl: vi.fn(async () => { throw new Error('offline') }),

@@ -36,6 +36,7 @@ function formatZoomLabel(level) {
  */
 function BodyScanGuidedCapture({
   canAnalyze,
+  quotaNote = '',
   currentAnalysisStatus,
   disabledReason,
   photos,
@@ -500,6 +501,9 @@ function BodyScanGuidedCapture({
               {disabledReason || 'Analysen är tillfälligt spärrad. Kontrollera din scanningskvot eller vänta tills pågående analys är klar.'}
             </p>
           )}
+          {quotaNote ? (
+            <p className="body-scan-guided-hint" role="status">{quotaNote}</p>
+          ) : null}
           <button
             className="body-scan-guided-cta"
             type="button"

@@ -387,6 +387,10 @@ function BodyAnalysisCard({
     : bodyScanQuota.remaining === 0
       ? t('card.freeLimitReason')
       : ''
+  // Visas bara när servern har verifierat ägarundantaget för body.scan.
+  const bodyScanQuotaNote = bodyScanQuota.ownerUnlimited
+    ? `Obegränsade kroppsscanningar på detta konto${bodyScanQuota.dailyCap ? ` – max ${bodyScanQuota.dailyCap} per 24 timmar` : ''}.`
+    : ''
   const latestAnalysisDate = analysisHistory[0]?.createdAt
   const historyStats = getHistoryStats(analysisHistory)
   const daysSinceLatestAnalysis = latestAnalysisDate
@@ -939,6 +943,7 @@ function BodyAnalysisCard({
               canAnalyze={canAnalyze}
               currentAnalysisStatus={currentAnalysisStatus}
               disabledReason={analyzeDisabledReason}
+              quotaNote={bodyScanQuotaNote}
               photos={scanPhotos}
               onAnalyze={handleAnalyzeBody}
               onPhotoChange={handlePhotoChange}

@@ -351,6 +351,81 @@ describe('BodyScanGuidedCapture', () => {
     vi.useRealTimers()
   })
 
+  it('opens the selfie camera and stops it when switching to the back camera', async () => {
+    const frontStream = createStream()
+    const backStream = createStream()
+    getUserMedia.mockReset()
+    getUserMedia.mockResolvedValueOnce(frontStream).mockResolvedValueOnce(backStream)
+    const { container, unmount } = renderCapture()
+
+    await act(async () => {
+      findButton(container, 'Starta kameran').click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(getUserMedia).toHaveBeenCalledWith(expect.objectContaining({
+      audio: false,
+      video: { facingMode: { ideal: 'user' } },
+    }))
+    expect(container.textContent).toContain('Byt till bakkamera')
+
+    await act(async () => {
+      findButton(container, 'Byt till bakkamera').click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(frontStream.getVideoTracks()[0].stop).toHaveBeenCalled()
+    expect(getUserMedia).toHaveBeenLastCalledWith(expect.objectContaining({
+      audio: false,
+      video: { facingMode: { ideal: 'environment' } },
+    }))
+    expect(container.textContent).toContain('Byt till selfiekamera')
+    unmount()
+    expect(backStream.getVideoTracks()[0].stop).toHaveBeenCalled()
+  })
+
+  it('restarts the countdown after a camera switch and reopens the previous camera if the switch fails', async () => {
+    const frontStream = createStream()
+    const failed = new Error('camera-busy')
+    getUserMedia.mockReset()
+    getUserMedia.mockResolvedValueOnce(frontStream).mockRejectedValueOnce(failed).mockResolvedValueOnce(frontStream)
+    const { container, unmount } = renderCapture()
+
+    await act(async () => {
+      findButton(container, 'Starta kameran').click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    stubCanvasCapture(container)
+    vi.useFakeTimers()
+    act(() => {
+      findButton(container, 'Starta första bilden').click()
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000)
+    })
+    expect(container.querySelector('.body-scan-guided-countdown').textContent).toBe('2')
+
+    await act(async () => {
+      findButton(container, 'Byt till bakkamera').click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(frontStream.getVideoTracks()[0].stop).toHaveBeenCalled()
+    expect(getUserMedia).toHaveBeenLastCalledWith(expect.objectContaining({
+      video: { facingMode: { ideal: 'user' } },
+    }))
+    expect(container.textContent).toContain('Byt till bakkamera')
+    expect(container.querySelector('.body-scan-guided-countdown').textContent).toBe('3')
+    vi.useRealTimers()
+    unmount()
+  })
+
   it('never asks for a microphone', async () => {
     const { container, unmount } = renderCapture()
     await act(async () => {

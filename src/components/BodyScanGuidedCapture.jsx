@@ -216,7 +216,11 @@ function BodyScanGuidedCapture({
     setStep('review')
   }
 
-  async function startCamera(targetStep = 'front', { isRetake = false, requestedFacingMode = facingModeRef.current } = {}) {
+  async function startCamera(targetStep = 'front', {
+    isRetake = false,
+    requestedFacingMode = facingModeRef.current,
+    resumeCountdown = false,
+  } = {}) {
     if (!hasCameraApi) {
       setCameraError(t('bodyScan:guided.cameraOff'))
       return false
@@ -258,7 +262,10 @@ function BodyScanGuidedCapture({
       setCameraError('')
       setCameraActive(true)
       if (targetStep === 'side') enterSide()
-      else enterFront(isRetake)
+      else {
+        enterFront(isRetake)
+        if (resumeCountdown && !isRetake) beginCountdown('front')
+      }
       return true
     } catch (error) {
       setCameraActive(false)
@@ -271,10 +278,18 @@ function BodyScanGuidedCapture({
     const nextMode = getNextBodyScanFacingMode(facingModeRef.current)
     const targetStep = step === 'side' ? 'side' : 'front'
     const previousMode = facingModeRef.current
-    const started = await startCamera(targetStep, { requestedFacingMode: nextMode })
-    if (!started) {
-      facingModeRef.current = previousMode
-    }
+    const shouldResumeCountdown = countdown !== null
+    const requestBefore = cameraRequestRef.current
+    const started = await startCamera(targetStep, {
+      requestedFacingMode: nextMode,
+      resumeCountdown: shouldResumeCountdown,
+    })
+    if (started || cameraRequestRef.current !== requestBefore + 1) return
+    facingModeRef.current = previousMode
+    await startCamera(targetStep, {
+      requestedFacingMode: previousMode,
+      resumeCountdown: shouldResumeCountdown,
+    })
   }
 
   async function applyZoom(level) {

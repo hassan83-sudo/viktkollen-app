@@ -76,6 +76,23 @@ describe('durable bug monitor store', () => {
     expect(firstInstance.kind).toBe('supabase')
   })
 
+  it('keeps a successful acknowledge result and rejects a negative one', async () => {
+    const client = {
+      schema(name) {
+        return {
+          rpc: async (fn, args) => {
+            expect(name).toBe('bug_monitor')
+            expect(fn).toBe('acknowledge_report')
+            return { data: args.p_fingerprint === 'render-local', error: null }
+          },
+        }
+      },
+    }
+    const store = createPostgresBugMonitorStore({ client })
+    expect(await store.acknowledge('render-local')).toBe(true)
+    expect(await store.acknowledge('missing-group')).toBe(false)
+  })
+
   it('removes actor keys from a database summary', () => {
     const summary = presentBugSummary({
       affectedCount: 1,

@@ -87,6 +87,18 @@ describe('bug monitor reports', () => {
     expect(summarizeBugReports().recurringCount).toBe(0)
   })
 
+  it('stores and acknowledges a camelCase chunkLoad fingerprint', () => {
+    const accepted = acceptBugReport({
+      errorType: 'chunkLoad',
+      feature: 'app',
+      fingerprint: 'chunkLoad-local',
+      severity: 'high',
+    }, { actorKey: 'actor-one' })
+    expect(accepted).toMatchObject({ fingerprint: 'chunkLoad-local', ok: true, stored: true })
+    expect(acknowledgeBugGroup('chunkLoad-local')).toBe(true)
+    expect(summarizeBugReports().groups[0].status).toBe('acknowledged')
+  })
+
   it('limits repeated reports from the same actor', () => {
     const start = new Date('2026-10-15T10:00:00.000Z')
     const input = { errorType: 'network', feature: 'app', fingerprint: 'network-abcd1234' }

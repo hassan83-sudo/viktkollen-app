@@ -72,7 +72,8 @@ export function createPostgresBugMonitorStore({ client } = {}) {
       })
     },
     async acknowledge(fingerprint) {
-      return rpc('acknowledge_report', { p_fingerprint: fingerprint }) === true
+      const data = await rpc('acknowledge_report', { p_fingerprint: fingerprint })
+      return data === true
     },
     async summary() {
       return presentBugSummary(await rpc('summary', {}))

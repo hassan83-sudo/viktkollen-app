@@ -58,7 +58,7 @@ function cleanVersion(value) {
 
 function cleanFingerprint(value, errorType) {
   const text = String(value || '').trim().slice(0, 48)
-  if (/^[a-z][a-z0-9-]{3,47}$/.test(text) && text.startsWith(errorType)) return text
+  if (/^[a-z][A-Za-z0-9-]{3,47}$/.test(text) && text.startsWith(errorType)) return text
   return `${errorType}-group`
 }
 
@@ -179,7 +179,7 @@ export function createMemoryBugMonitorStore() {
     },
     acknowledge(fingerprint) {
       const clean = String(fingerprint || '')
-      if (!/^[a-z][a-z0-9-]{3,47}$/.test(clean)) return false
+      if (!/^[a-z][A-Za-z0-9-]{3,47}$/.test(clean)) return false
       return state.acknowledge(clean)
     },
     reset() {
@@ -277,7 +277,7 @@ export function summarizeBugReports(reports = store.list(), { acknowledged = sto
 
 export function acknowledgeBugGroup(fingerprint) {
   const clean = String(fingerprint || '')
-  if (!/^[a-z][a-z0-9-]{3,47}$/.test(clean)) return false
+  if (!/^[a-z][A-Za-z0-9-]{3,47}$/.test(clean)) return false
   return store.acknowledge(clean)
 }
 

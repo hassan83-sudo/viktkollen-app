@@ -37,7 +37,7 @@ create table if not exists bug_monitor.reports (
     'camera', 'food-scan', 'other'
   )),
   constraint reports_fingerprint_check check (
-    fingerprint ~ '^[a-z][a-z0-9-]{3,47}$'
+    fingerprint ~ '^[a-z][A-Za-z0-9-]{3,47}$'
     and position('@' in fingerprint) = 0
   ),
   constraint reports_release_check check (release_name in ('development', 'local', 'preview', 'production')),
@@ -59,7 +59,7 @@ create index if not exists reports_fingerprint_received_idx
 create table if not exists bug_monitor.acknowledgements (
   fingerprint text primary key,
   acknowledged_at timestamptz not null default pg_catalog.now(),
-  constraint acknowledgements_fingerprint_check check (fingerprint ~ '^[a-z][a-z0-9-]{3,47}$')
+  constraint acknowledgements_fingerprint_check check (fingerprint ~ '^[a-z][A-Za-z0-9-]{3,47}$')
 );
 
 alter table bug_monitor.reports enable row level security;
@@ -125,9 +125,9 @@ begin
     return pg_catalog.jsonb_build_object('ok', false, 'code', 'INVALID_REPORT');
   end if;
   if p_fingerprint is null
-     or p_fingerprint !~ '^[a-z][a-z0-9-]{3,47}$'
+     or p_fingerprint !~ '^[a-z][A-Za-z0-9-]{3,47}$'
      or pg_catalog.left(p_fingerprint, pg_catalog.char_length(p_error_type)) is distinct from p_error_type
-     or pg_catalog.position('@' in p_fingerprint) > 0 then
+     or pg_catalog.strpos(p_fingerprint, '@') > 0 then
     return pg_catalog.jsonb_build_object('ok', false, 'code', 'INVALID_REPORT');
   end if;
   if p_app_version is null or p_app_version !~ '^[0-9A-Za-z._-]{1,32}$' then
@@ -226,7 +226,7 @@ security definer
 set search_path = pg_catalog, pg_temp
 as $$
 begin
-  if p_fingerprint is null or p_fingerprint !~ '^[a-z][a-z0-9-]{3,47}$' then
+  if p_fingerprint is null or p_fingerprint !~ '^[a-z][A-Za-z0-9-]{3,47}$' then
     return false;
   end if;
   if not exists (

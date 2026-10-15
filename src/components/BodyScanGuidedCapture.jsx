@@ -134,8 +134,14 @@ function BodyScanGuidedCapture({
     }
     const preview = canvas.toDataURL('image/jpeg', 0.88)
     canvasToScanFile(canvas, pose).then((file) => {
+      if (!file) {
+        setCameraError('Bilden kunde inte registreras. Försök ta om bilden.')
+        return
+      }
       onPhotoChange(file, pose, preview)
       advanceAfterCapture(pose)
+    }).catch(() => {
+      setCameraError('Bilden kunde inte registreras. Försök ta om bilden.')
     })
   }
 
@@ -481,6 +487,19 @@ function BodyScanGuidedCapture({
             })}
           </div>
           <p className="body-scan-guided-timer-pill">{t('bodyScan:guided.timerPill', { seconds: timerSeconds })}</p>
+          {!canFinishScan && (
+            <p className="body-scan-guided-hint" role="status">
+              Analysera är inte tillgänglig ännu. Saknas: {captureOrder
+                .filter((pose) => !photos[pose]?.file)
+                .map((pose) => pose === 'front' ? 'bild framifrån' : 'bild från sidan')
+                .join(' och ')}.
+            </p>
+          )}
+          {canFinishScan && !canAnalyze && (
+            <p className="body-scan-guided-hint" role="status">
+              {disabledReason || 'Analysen är tillfälligt spärrad. Kontrollera din scanningskvot eller vänta tills pågående analys är klar.'}
+            </p>
+          )}
           <button
             className="body-scan-guided-cta"
             type="button"

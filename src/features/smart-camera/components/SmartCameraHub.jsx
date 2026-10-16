@@ -11,10 +11,10 @@ export default function SmartCameraHub({ flags, onSelectMode }) {
   const utilityCards = [
     { id: 'pack', icon: '🧳', title: 'Packning', description: 'Skapa checklistor utifrån din resa.', glow: '#007bff' },
     { id: 'where', icon: '📦', title: 'Hem & saker', description: 'Identifiera objekt, få råd och inspiration.', glow: '#ae875e' },
-    { id: 'carry-lists', icon: '📋', title: 'Checklistor', description: 'Ta bild på t.ex. kylskåp, skåp eller innehåll.', glow: '#ac7856' },
+    { id: 'checklists-bank', icon: '📋', title: 'Checklistor', description: 'Ta bild på t.ex. kylskåp, skåp eller innehåll.', glow: '#ac7856' },
     { id: 'routines', icon: '📖', title: 'Rutiner', description: 'Skapa och följ rutiner med hjälp av AI.', glow: '#286eff' },
   ]
-  const availableUtility = utilityCards.filter((card) => secondary.some((mode) => mode.id === card.id))
+  const availableUtility = utilityCards.filter((card) => card.id === 'checklists-bank' || secondary.some((mode) => mode.id === card.id))
   const availableFeatured = featuredCards.filter((card) => primary.some((mode) => mode.id === card.id))
 
   return (

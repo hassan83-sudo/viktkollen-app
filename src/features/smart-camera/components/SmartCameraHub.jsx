@@ -8,6 +8,14 @@ const carryListsMode = {
 
 export default function SmartCameraHub({ flags, onSelectMode }) {
   const { primary, secondary } = getSmartCameraHubModes(flags)
+  const featuredCards = [
+    { id: 'forgotten', icon: '🧠', title: 'Har jag glömt något?', description: 'Kontrollera saker som nycklar, plånbok, mobil m.m.', glow: '#e831b3' },
+    { id: 'check-me', icon: '👤', title: 'Kolla mig', description: 'Få snabb feedback på ditt utseende.', glow: '#7835e9' },
+    { id: 'outfit', icon: '👕', title: 'Kläder & stil', description: 'Få tips och förslag utifrån din garderob.', glow: '#05b86d' },
+    { id: 'grooming', icon: '💇', title: 'Hår & frisyr', description: 'Få tips, inspiration och stiltips.', glow: '#dd742a' },
+  ]
+  const availableFeatured = featuredCards.filter((card) => primary.some((mode) => mode.id === card.id))
+  const otherPrimary = primary.filter((mode) => !featuredCards.some((card) => card.id === mode.id))
   const merModes = [
     carryListsMode,
     ...secondary.filter((mode) => mode.id !== 'carry-lists'),
@@ -53,14 +61,43 @@ export default function SmartCameraHub({ flags, onSelectMode }) {
         </svg>
         <span aria-hidden="true" style={{ marginLeft: 'auto', position: 'relative', zIndex: 1, fontSize: 25, paddingLeft: 8 }}>›</span>
       </button>
-      <nav className="smart-camera-mode-grid" aria-label="Smart kamera-lägen">
-        {primary.map((mode) => (
-          <button key={mode.id} className="smart-camera-mode-chip" type="button" onClick={() => onSelectMode(mode.id)}>
-            <span aria-hidden="true">{mode.icon}</span>
-            <strong>{mode.label}</strong>
-          </button>
-        ))}
-      </nav>
+      <section aria-label="Praktisk hjälp i vardagen" style={{ marginBottom: 18 }}>
+        <h3 style={{ margin: '0 0 3px', color: '#fff', fontSize: 19 }}>Praktisk hjälp i vardagen</h3>
+        <p style={{ margin: '0 0 12px', color: '#b5c9ed', fontSize: 13 }}>Få snabba svar och tips med kameran.</p>
+        <nav aria-label="Vardagshjälp" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 9 }}>
+          {availableFeatured.map((card) => (
+            <button
+              key={card.id}
+              type="button"
+              onClick={() => onSelectMode(card.id)}
+              style={{
+                position: 'relative', display: 'flex', alignItems: 'center', minWidth: 0, minHeight: 93,
+                gap: 8, padding: '12px 9px', borderRadius: 16, color: '#fff', textAlign: 'left',
+                border: `1px solid ${card.glow}55`,
+                background: `radial-gradient(ellipse at 0% 100%, ${card.glow}44, transparent 64%), linear-gradient(125deg, #12102a, #07152b)`,
+                cursor: 'pointer',
+              }}
+            >
+              <span aria-hidden="true" style={{ fontSize: 36, lineHeight: 1, flexShrink: 0, filter: `drop-shadow(0 0 8px ${card.glow}99)` }}>{card.icon}</span>
+              <span style={{ display: 'grid', gap: 4, minWidth: 0, paddingRight: 4 }}>
+                <strong style={{ fontSize: 12, lineHeight: 1.15 }}>{card.title}</strong>
+                <span style={{ fontSize: 10, lineHeight: 1.35, color: '#bed0ed' }}>{card.description}</span>
+              </span>
+              <span aria-hidden="true" style={{ position: 'absolute', right: 6, top: 7, borderRadius: '50%', background: '#24314b', width: 23, height: 23, display: 'grid', placeItems: 'center', fontSize: 20 }}>›</span>
+            </button>
+          ))}
+        </nav>
+      </section>
+      {otherPrimary.length > 0 && (
+        <nav className="smart-camera-mode-grid" aria-label="Övriga Smart kamera-lägen">
+          {otherPrimary.map((mode) => (
+            <button key={mode.id} className="smart-camera-mode-chip" type="button" onClick={() => onSelectMode(mode.id)}>
+              <span aria-hidden="true">{mode.icon}</span>
+              <strong>{mode.label}</strong>
+            </button>
+          ))}
+        </nav>
+      )}
       {merModes.length > 0 && (
         <>
           <h3 className="smart-camera-hub-more">Mer</h3>

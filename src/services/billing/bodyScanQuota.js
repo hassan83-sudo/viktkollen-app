@@ -12,6 +12,19 @@ export const unavailableBodyScanQuota = Object.freeze({
 })
 
 export function interpretBodyScanQuota(quota) {
+  // Satt endast av servern efter verifierad ägarbehörighet (billing_admin + miljöflagga).
+  if (quota?.owner_unlimited === true && quota.status === QUOTA_STATUS.ALLOWED) {
+    const dailyCap = Number.isInteger(quota.daily_cap) && quota.daily_cap > 0 ? quota.daily_cap : null
+    return {
+      allowed: true,
+      dailyCap,
+      limit: null,
+      ownerUnlimited: true,
+      remaining: null,
+      status: quota.status,
+      used: null,
+    }
+  }
   const used = Number.isFinite(quota?.used) ? quota.used : null
   const limit = Number.isFinite(quota?.limit) ? quota.limit : null
   const remaining = Number.isFinite(quota?.remaining) ? quota.remaining : null

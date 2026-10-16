@@ -45,9 +45,15 @@ function formatQuotaReset(periodEnd) {
   return `${day} ${MONTHS[month - 1]}`
 }
 
+// Funktioner där servern kan ge ägarkontot obegränsad månadskvot.
+const OWNER_UNLIMITED_NOUNS = {
+  body_scan: 'kroppsscanning',
+  food_scan: 'matscanning',
+}
+
 function presentQuota(row) {
   // Satt endast av servern efter verifierad ägarbehörighet.
-  if (row?.key === 'food_scan' && row.owner_unlimited === true) {
+  if (OWNER_UNLIMITED_NOUNS[row?.key] && row.owner_unlimited === true) {
     const dailyCap = Number(row.daily_cap)
     const usedLast24h = Number(row.used_last_24h)
     if (!Number.isInteger(dailyCap) || dailyCap < 1) return null
@@ -55,6 +61,7 @@ function presentQuota(row) {
       dailyCap,
       key: row.key,
       label: LABELS[row.key],
+      noun: OWNER_UNLIMITED_NOUNS[row.key],
       ownerUnlimited: true,
       usedLast24h: Number.isInteger(usedLast24h) && usedLast24h >= 0 ? usedLast24h : null,
     }
@@ -157,10 +164,10 @@ function PlanUsagePanel({ authLoading = false, isAuthenticated = false }) {
                 <li
                   className="plan-usage-quota"
                   key={row.key}
-                  aria-label={`${row.label}: obegränsad matscanning, max ${row.dailyCap} per 24 timmar`}
+                  aria-label={`${row.label}: obegränsad ${row.noun}, max ${row.dailyCap} per 24 timmar`}
                 >
                   <strong>{row.label}</strong>
-                  <span>Obegränsad matscanning – max {row.dailyCap} per 24 timmar</span>
+                  <span>Obegränsad {row.noun} – max {row.dailyCap} per 24 timmar</span>
                   {row.usedLast24h !== null ? (
                     <span>
                       {row.usedLast24h} de senaste 24 timmarna

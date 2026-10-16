@@ -15,6 +15,7 @@ import {
   mapBodyScanBillingHttp,
   resolveBodyScanBillingRuntime,
 } from '../_shared/billing/bodyScanLiveBilling.js'
+import { resolveBodyScanOwnerExemption, withOwnerUnlimitedQuota } from '../_shared/billing/bodyScanOwnerExemption.js'
 import { DISPATCH_CAS_RESULT } from '../../src/services/billing/durableOperationStore.js'
 
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
@@ -530,6 +531,23 @@ async function respondWithServerQuota({ images, request, requestId, response, us
     })
   }
 
+  // Ägarens administratörskonto: obegränsad månadskvot när servern har verifierat
+  // billing_admin och flaggan är aktiverad i miljön. Dygnstak, rate limit och
+  // övriga säkerhetsgränser gäller fortfarande. Inget från klienten påverkar detta.
+  const ownerExemption = await resolveBodyScanOwnerExemption({ userId })
+  if (ownerExemption.reason !== 'disabled' && ownerExemption.reason !== 'not_admin') {
+    console.info('[api/body-analysis] Owner quota exemption', {
+      applied: ownerExemption.exempt,
+      dailyCap: ownerExemption.dailyCap ?? null,
+      reason: ownerExemption.reason,
+      requestId,
+      usedLast24h: ownerExemption.usedLast24h ?? null,
+    })
+  }
+  const billingRuntime = ownerExemption.exempt
+    ? { ...runtime, quota: withOwnerUnlimitedQuota(runtime.quota) }
+    : runtime
+
   const operationId = createBodyScanOperationId({
     clientAttemptId: getRequestHeader(request, 'x-viktkollen-request-id'),
     userId,
@@ -574,7 +592,7 @@ async function respondWithServerQuota({ images, request, requestId, response, us
       })
     },
     operationId,
-    runtime,
+    runtime: billingRuntime,
     userId,
   })
 
@@ -640,8 +658,14 @@ export default async function handler(request, response) {
       ok: false,
     })
   }
+  // Higher short-window test allowance only for the server-verified owner in Preview.
+  // Ordinary users and Production retain the existing rate limit (4/10 min by default).
+  const previewOwner = process.env.VERCEL_ENV === 'preview'
+    ? await resolveBodyScanOwnerExemption({ userId: auth.user.id })
+    : null
+  const normalLimit = Number(process.env.BODY_ANALYSIS_RATE_LIMIT_MAX) || 4
   const rateLimit = checkAiRouteRateLimit({
-    limit: process.env.BODY_ANALYSIS_RATE_LIMIT_MAX,
+    limit: previewOwner?.exempt ? Math.max(normalLimit, 20) : process.env.BODY_ANALYSIS_RATE_LIMIT_MAX,
     route: 'bodyAnalysis',
     userId: auth.user.id,
   })

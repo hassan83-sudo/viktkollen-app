@@ -6,6 +6,7 @@ import handler from './index.js'
 import { setSupabaseAuthVerifierForTests } from '../../_shared/verifySupabaseUser.js'
 import { clearSupabaseAdminClientForTests, setSupabaseAdminClientForTests } from '../../_shared/supabaseServer.js'
 import { summarizeQuotaReservations } from '../../_shared/billing/quotaRead.js'
+import { setBodyScanOwnerExemptionDepsForTests } from '../../_shared/billing/bodyScanOwnerExemption.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../../..')
 const USER = '11111111-1111-4111-8111-111111111111'
@@ -281,5 +282,67 @@ describe('BILL-7X1 durable billing reads', () => {
       { quantity: 3, status: 'ROLLED_BACK' },
     ], NOW)
     expect(summary).toEqual({ committed: 4, reserved: 2 })
+  })
+})
+
+describe('owner unlimited body.scan quota read', () => {
+  const originalFlag = process.env.BODY_SCAN_OWNER_UNLIMITED
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+    setSupabaseAuthVerifierForTests(async () => ({ user: { id: USER } }))
+    setSupabaseAdminClientForTests(fakeBillingClient(tablesFor(), []))
+  })
+
+  afterEach(() => {
+    if (originalFlag === undefined) delete process.env.BODY_SCAN_OWNER_UNLIMITED
+    else process.env.BODY_SCAN_OWNER_UNLIMITED = originalFlag
+    vi.useRealTimers()
+    setSupabaseAuthVerifierForTests(null)
+    clearSupabaseAdminClientForTests()
+    setBodyScanOwnerExemptionDepsForTests(null)
+  })
+
+  async function readQuota(feature = 'body.scan', query = {}) {
+    const response = createResponse()
+    await handler(createRequest({ query: { feature, unit: 'requests', ...query }, url: '/api/billing/quota' }), response)
+    return response
+  }
+
+  it('returns owner unlimited status only for the server-verified admin with the flag on', async () => {
+    process.env.BODY_SCAN_OWNER_UNLIMITED = 'true'
+    const isAdmin = vi.fn(async (id) => id === USER)
+    setBodyScanOwnerExemptionDepsForTests({ countRecentScans: async () => 2, isAdmin })
+
+    const response = await readQuota('body.scan', { owner_unlimited: 'true', user_id: OTHER })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body.quota).toMatchObject({
+      daily_cap: 50,
+      feature: 'body.scan',
+      owner_unlimited: true,
+      remaining: null,
+      status: 'ALLOWED',
+      used_last_24h: 2,
+    })
+    expect(isAdmin.mock.calls.every(([id]) => id === USER)).toBe(true)
+  })
+
+  it('keeps the real quota for regular users, a disabled flag and other features', async () => {
+    process.env.BODY_SCAN_OWNER_UNLIMITED = 'true'
+    setBodyScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async () => false })
+    const regular = await readQuota()
+    expect(regular.body.quota.owner_unlimited).toBeUndefined()
+    expect(regular.body.quota.remaining).toBe(9)
+
+    setBodyScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async () => true })
+    const otherFeature = await readQuota('food.scan')
+    expect(otherFeature.body.quota.owner_unlimited).toBeUndefined()
+
+    delete process.env.BODY_SCAN_OWNER_UNLIMITED
+    const disabled = await readQuota()
+    expect(disabled.body.quota.owner_unlimited).toBeUndefined()
+    expect(disabled.body.quota.remaining).toBe(9)
   })
 })

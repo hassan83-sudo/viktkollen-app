@@ -5,6 +5,7 @@ import handler from './index.js'
 import { analysisConsentPurposes, computeCanonicalImageHash, issueAnalysisConsentToken } from '../_shared/analysisConsent.js'
 import { setAiRateLimitAdapterForTests } from '../_shared/aiRateLimiter.js'
 import { installBodyScanBillingTestRuntime, setBodyScanBillingRuntimeForTests } from '../_shared/billing/bodyScanLiveBilling.js'
+import { setBodyScanOwnerExemptionDepsForTests } from '../_shared/billing/bodyScanOwnerExemption.js'
 import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
 import { createInMemoryPlanAssignmentStore } from '../../src/services/billing/planAssignment.js'
 import { createQuotaEngine } from '../../src/services/billing/quotaEngine.js'
@@ -142,6 +143,7 @@ describe('body.scan server quota', () => {
     setAiRateLimitAdapterForTests()
     setBodyScanBillingRuntimeForTests(null)
     setSupabaseAuthVerifierForTests(null)
+    setBodyScanOwnerExemptionDepsForTests(null)
   })
 
   async function snapshot(userId) {
@@ -351,5 +353,68 @@ describe('body.scan server quota', () => {
     expect(response.statusCode).toBe(503)
     expect(response.body.ok).toBe(false)
     expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  describe('owner unlimited body.scan', () => {
+    const OWNER = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'
+
+    async function scanMany(userId, count, prefix, fields = {}) {
+      currentUser = userId
+      const statuses = []
+      for (let index = 1; index <= count; index += 1) {
+        statuses.push((await callRoute({ attemptId: `${prefix}-${index}`, fields, userId })).statusCode)
+      }
+      return statuses
+    }
+
+    beforeEach(() => {
+      vi.spyOn(console, 'info').mockImplementation(() => {})
+    })
+
+    it('lets the verified owner scan past the monthly limit with real AI while usage is recorded', async () => {
+      process.env.BODY_SCAN_OWNER_UNLIMITED = 'true'
+      setBodyScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async (id) => id === OWNER })
+      const fetchImpl = stubAiSuccess()
+
+      const statuses = await scanMany(OWNER, 6, 'owner-scan')
+
+      expect(statuses).toEqual(Array(6).fill(200))
+      expect(fetchImpl).toHaveBeenCalledTimes(6)
+      const events = await runtime.usageRepository.list()
+      expect(events.filter((event) => event.event_type === 'body.scan' && event.user_id === OWNER)).toHaveLength(6)
+    })
+
+    it('keeps the free quota for regular users and ignores client claims of admin status', async () => {
+      process.env.BODY_SCAN_OWNER_UNLIMITED = 'true'
+      const isAdmin = vi.fn(async (id) => id === OWNER)
+      setBodyScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin })
+      stubAiSuccess()
+
+      const statuses = await scanMany(FREE_USER, 4, 'regular-scan', { admin: 'true', owner_unlimited: 'true', ...spoofFields })
+
+      expect(statuses).toEqual([200, 200, 200, 429])
+      expect(isAdmin.mock.calls.every(([id]) => id === FREE_USER)).toBe(true)
+    })
+
+    it('does not exempt the owner when the flag is off or the daily cap is reached', async () => {
+      delete process.env.BODY_SCAN_OWNER_UNLIMITED
+      setBodyScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async () => true })
+      stubAiSuccess()
+      expect(await scanMany(OWNER, 4, 'flag-off')).toEqual([200, 200, 200, 429])
+
+      process.env.BODY_SCAN_OWNER_UNLIMITED = 'true'
+      setBodyScanOwnerExemptionDepsForTests({ countRecentScans: async () => 50, isAdmin: async () => true })
+      expect(await scanMany(OWNER, 1, 'cap-reached')).toEqual([429])
+    })
+
+    it('keeps the rate limit for the owner', async () => {
+      process.env.BODY_SCAN_OWNER_UNLIMITED = 'true'
+      process.env.BODY_ANALYSIS_RATE_LIMIT_MAX = '2'
+      setBodyScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async () => true })
+      const fetchImpl = stubAiSuccess()
+
+      expect(await scanMany(OWNER, 3, 'owner-rate')).toEqual([200, 200, 429])
+      expect(fetchImpl).toHaveBeenCalledTimes(2)
+    })
   })
 })

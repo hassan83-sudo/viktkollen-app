@@ -97,7 +97,7 @@ export const videoScanPreparationTips = [
   },
   {
     key: 'clothing',
-    text: 'Ha åtsittande kläder som kontrasterar mot bakgrunden. Vida kläder gör kroppsformen svårare att bedöma.',
+    text: 'Du kan scanna med vanliga kläder på. Åtsittande kläder som kontrasterar mot bakgrunden ger bättre underlag, men är inget krav. Vida kläder gör uppskattningarna mer osäkra. Du behöver aldrig klä av dig.',
     title: 'Kläder',
   },
   {

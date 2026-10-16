@@ -16,10 +16,12 @@ export default function SmartCameraChecklists({ onBack, onOpenBank }) {
   const [title, setTitle] = useState('')
   const [query, setQuery] = useState('')
   const [manual, setManual] = useState('')
+  const [bankCategory, setBankCategory] = useState('Alla')
   const [error, setError] = useState('')
   const bank = useMemo(() => [...PRESETS, ...loadCustom()], [])
   const active = lists.find((list) => list.id === selectedId)
-  const results = useMemo(() => query.trim() ? bank.filter((item) => item.name.toLocaleLowerCase('sv').includes(query.trim().toLocaleLowerCase('sv'))).slice(0, 25) : [], [bank, query])
+  const categories = useMemo(() => ['Alla', ...new Set(bank.map((item) => item.category))], [bank])
+  const results = useMemo(() => bank.filter((item) => (bankCategory === 'Alla' || item.category === bankCategory) && item.name.toLocaleLowerCase('sv').includes(query.trim().toLocaleLowerCase('sv'))).slice(0, 100), [bank, query, bankCategory])
 
   function save(next) {
     try {
@@ -79,12 +81,14 @@ export default function SmartCameraChecklists({ onBack, onOpenBank }) {
           </ul>
           <h3>Lägg till från föremålsbanken</h3>
           <input aria-label="Sök i föremålsbanken" placeholder="Sök bland 623 föremål" value={query} onChange={(event) => setQuery(event.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: 12, borderRadius: 12 }} />
+          <label style={{ display: 'grid', gap: 6, marginTop: 12 }}>Välj kategori<select value={bankCategory} onChange={(event) => setBankCategory(event.target.value)} style={{ padding: 12, borderRadius: 12 }}>{categories.map((value) => <option key={value}>{value}</option>)}</select></label>
+          <p style={{ color: '#b9cae5' }}>Tryck på + för att lägga till ett föremål i listan. Visar högst 100 åt gången – använd sökning eller kategori för fler.</p>
           {results.length > 0 && <ul style={{ padding: 0, listStyle: 'none', maxHeight: 260, overflowY: 'auto' }}>{results.map((item) => <li key={item.id} style={{ padding: 5 }}><button type="button" className="secondary-button" onClick={() => addItem(item.name)}>+ {item.name} · {item.category}</button></li>)}</ul>}
           <form onSubmit={(event) => { event.preventDefault(); addItem(manual) }} style={{ display: 'grid', gap: 9, marginTop: 16 }}>
             <label>Egen punkt <input value={manual} maxLength={60} onChange={(event) => setManual(event.target.value)} placeholder="Skriv en egen sak" style={{ display: 'block', width: '100%', boxSizing: 'border-box', padding: 12, borderRadius: 12 }} /></label>
             <button type="submit" className="primary-button" disabled={!manual.trim()}>Lägg till punkt</button>
           </form>
-          <button type="button" className="secondary-button" onClick={onOpenBank} style={{ marginTop: 14 }}>Öppna föremålsbanken</button>
+          <button type="button" className="secondary-button" onClick={onOpenBank} style={{ marginTop: 14 }}>Öppna föremålsbanken för att skapa egna föremål</button>
         </>
       ) : (
         <>

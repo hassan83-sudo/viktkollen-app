@@ -6,6 +6,7 @@ import { getSmartCameraMode } from '../smartCameraModes.js'
 import SmartCameraHub from './SmartCameraHub.jsx'
 import SmartCameraObjectBank from './SmartCameraObjectBank.jsx'
 import SmartCameraChecklists from './SmartCameraChecklists.jsx'
+import SmartCameraObjectScan from './SmartCameraObjectScan.jsx'
 import SmartCameraModeViews from './SmartCameraModeViews.jsx'
 import SmartCameraPrivacyCard from './SmartCameraPrivacyCard.jsx'
 
@@ -59,17 +60,15 @@ export default function SmartCameraStage({
         <button className="overview-body-scan-close" type="button" onClick={onClose}>Stäng</button>
       </div>
       <div className="smart-camera-stage-body">
-        {mode
-          ? (
-            <SmartCameraModeViews
-              adapters={adapters}
-              mode={mode}
-              voiceBar={voiceBar}
-              onBack={() => setModeId('')}
-              onCameraActive={setCameraActive}
-            />
-          )
-          : <SmartCameraHub flags={flags} onSelectMode={setModeId} />}
+        {modeId === 'object-bank'
+          ? <SmartCameraObjectBank onBack={() => setModeId('')} onOpenChecklists={() => setModeId('checklists-bank')} />
+          : modeId === 'checklists-bank'
+            ? <SmartCameraChecklists onBack={() => setModeId('')} onOpenBank={() => setModeId('object-bank')} />
+            : modeId === 'object-scan'
+              ? <SmartCameraObjectScan onBack={() => setModeId('')} onOpenBank={() => setModeId('object-bank')} onCameraActive={setCameraActive} />
+              : mode
+                ? <SmartCameraModeViews adapters={adapters} mode={mode} voiceBar={voiceBar} onBack={() => setModeId('')} onCameraActive={setCameraActive} />
+                : <SmartCameraHub flags={flags} onSelectMode={setModeId} />}
         <SmartCameraPrivacyCard
           aiReceivesFrame={false}
           audioToServer={mode?.id === 'ai-ear'}

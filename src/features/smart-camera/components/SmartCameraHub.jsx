@@ -126,7 +126,7 @@ export default function SmartCameraHub({ flags, onSelectMode }) {
           <span aria-hidden="true" style={{ borderRadius: '50%', background: '#4c116c', padding: '1px 10px', fontSize: 25 }}>›</span>
         </button>
       )}
-      <h3 style={{ color: '#fff', fontSize: 16, margin: '0 0 3px' }}>Mer</h3>
+      <button type="button" onClick={() => onSelectMode('object-bank')} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '16px', marginBottom: 18, borderRadius: 15, color: '#fff', border: '1px solid #365eac', background: 'linear-gradient(115deg,#102653,#08152e)', textAlign: 'left', cursor: 'pointer' }}><span aria-hidden="true" style={{ fontSize: 31 }}>🗂️</span><span style={{ flex: 1 }}><strong style={{ display: 'block', fontSize: 15 }}>Föremålsbank</strong><small style={{ color: '#c2d1ef' }}>Sök, sortera och lägg till egna saker</small></span><span aria-hidden="true">›</span></button>\n      <h3 style={{ color: '#fff', fontSize: 16, margin: '0 0 3px' }}>Mer</h3>
       <p style={{ color: '#b6c5dd', fontSize: 12, margin: '0 0 10px' }}>Ytterligare funktioner och information.</p>
       <nav aria-label="Fråga AI och integritet" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 9, marginBottom: 14 }}>
         <button type="button" onClick={() => onSelectMode('ask-ai')} style={{ display: 'flex', alignItems: 'center', position: 'relative', gap: 9, minWidth: 0, padding: '12px 9px', minHeight: 76, borderRadius: 14, border: '1px solid #20436d', color: '#fff', textAlign: 'left', background: 'linear-gradient(120deg,#10213b,#061327)', cursor: 'pointer' }}>

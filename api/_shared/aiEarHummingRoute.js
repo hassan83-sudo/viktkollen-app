@@ -31,16 +31,20 @@ export function buildAcrCloudSignature({ accessKey, accessSecret, timestamp }) {
   return createHmac('sha1', accessSecret).update(stringToSign, 'utf8').digest('base64')
 }
 
+export function isAcrCloudHost(host) {
+  const value = String(host || '')
+  return /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?)*\.acrcloud\.com$/i.test(value)
+}
+
 function isConfigured() {
-  return Boolean(process.env.ACRCLOUD_HOST && process.env.ACRCLOUD_ACCESS_KEY && process.env.ACRCLOUD_ACCESS_SECRET)
+  return Boolean(isAcrCloudHost(process.env.ACRCLOUD_HOST) && process.env.ACRCLOUD_ACCESS_KEY && process.env.ACRCLOUD_ACCESS_SECRET)
 }
 
 export async function callAcrCloud(audio, { fetchImpl, now = Date.now(), timeoutMs = HUMMING_RECOGNITION_TIMEOUT_MS } = {}) {
   const host = String(process.env.ACRCLOUD_HOST || '')
   const accessKey = String(process.env.ACRCLOUD_ACCESS_KEY || '')
   const accessSecret = String(process.env.ACRCLOUD_ACCESS_SECRET || '')
-  if (!host || !accessKey || !accessSecret) throw providerError('serverConfiguration')
-  if (!/^[a-z0-9.-]+$/i.test(host)) throw providerError('serverConfiguration')
+  if (!isAcrCloudHost(host) || !accessKey || !accessSecret) throw providerError('serverConfiguration')
 
   const timestamp = Math.floor(now / 1000)
   const form = new FormData()
@@ -96,6 +100,7 @@ export default createProviderRouteHandler({
   logFields: (outcome) => ({ candidateCount: outcome.candidates?.length || 0, matched: Boolean(outcome.matched) }),
   logName: '[api/ai-ear-humming-recognition]',
   maxBytes: MAX_AUDIO_BYTES,
+  ownerOnly: true,
   purpose: analysisConsentPurposes.audioHummingRecognition,
   rateLimitEnv: 'AI_EAR_HUMMING_RATE_LIMIT_MAX',
   rateRoute: 'aiEarHumming',

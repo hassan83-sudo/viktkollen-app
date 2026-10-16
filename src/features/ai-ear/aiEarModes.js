@@ -11,9 +11,10 @@
  *   SpeechRecognition. No Viktkollen server, route, provider or quota; no
  *   direct Viktkollen provider cost, so free. This applies only to browser
  *   dictation: server or audio-file transcription is a separate decision.
- * - melody: the same record and file screen as the other audio modes.
- *   `execution: 'local'` keeps that screen visible and never sends the
- *   recording. Recognition stays disconnected.
+ * - melody: records like the other audio modes, then sends that one clip
+ *   through /api/ai-ear-humming-recognition. The server allows only an
+ *   active billing_admin, requires signed consent for those exact bytes,
+ *   and applies a short burst limit. There is no monthly quota.
  *
  * Integration point for the Premium gate (Cursor): a premium mode may get an
  * `execution` only after its server route enforces the entitlement itself. A

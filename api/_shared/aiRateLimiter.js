@@ -4,6 +4,8 @@ const DEFAULT_WINDOW_MS = 10 * 60 * 1000
 const DEFAULT_LIMITS = {
   adaptiveCoach: 8,
   aiEar: 10,
+  // Burst cap for ACRCloud humming. Not a monthly quota; the owner is included.
+  aiEarHumming: 20,
   analysisConsent: 20,
   bodyAnalysis: 4,
   forgottenItems: 10,
@@ -70,6 +72,7 @@ export function checkAiRouteRateLimit({
   const routeName = [
     'adaptiveCoach',
     'aiEar',
+    'aiEarHumming',
     'analysisConsent',
     'bodyAnalysis',
     'forgottenItems',

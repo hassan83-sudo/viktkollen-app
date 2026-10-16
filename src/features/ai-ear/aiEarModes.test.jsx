@@ -15,8 +15,7 @@ import { backendFixtures } from './fixtures/backendFixtures.js'
 
 // AI-EAR-1: four separate modes inside AI Örat. Sound and bird use the
 // existing free server hop; speech (AI-EAR-2C1) is free and runs in the
-// browser; melody is Premium and not connected, so it can never send audio
-// from this client.
+// browser; melody is Premium and calls the owner-gated humming hop.
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -87,10 +86,17 @@ describe('AI Örat modes (AI-EAR-1)', () => {
     }
   })
 
-  // AI-EAR-2C: Tal → text runs in the browser. Humma / sjung shows the same
-  // record and file controls, and still never calls the sound server.
-  it('Tal → text cannot record a file; Humma / sjung shows the recorder without sending audio', async () => {
-    const deps = makeDeps()
+    // AI-EAR-2C: Tal → text stays in the browser. Humma / sjung records, then
+  // sends that clip only through the humming hop after the ACRCloud notice.
+  it('Tal → text cannot record a file; Humma / sjung sends the clip with consent', async () => {
+    const deps = {
+      ...makeDeps(),
+      identifyHumming: vi.fn(async () => ({
+        matched: true,
+        ok: true,
+        result: { alternatives: [], artist: 'Testartist', title: 'Testlåt' },
+      })),
+    }
     render(<AiEarMode deps={deps} />)
     fireEvent.click(screen.getByRole('radio', { name: /^Tal → text/ }))
     expect(screen.queryByRole('button', { name: 'Spela in' })).toBeNull()
@@ -99,10 +105,12 @@ describe('AI Örat modes (AI-EAR-1)', () => {
     fireEvent.click(screen.getByRole('radio', { name: /^Humma \/ sjung/ }))
     expect(screen.getByRole('button', { name: 'Spela in' })).toBeTruthy()
     expect(screen.getByText('Välj ljudfil')).toBeTruthy()
-    expect(screen.queryByText('Humma / sjung kräver Premium och är inte tillgängligt ännu. Inget ljud skickas.')).toBeNull()
     chooseFile()
-    fireEvent.click(await screen.findByRole('button', { name: 'Analysera ljudet' }))
-    expect(screen.getByText('Humma / sjung kräver Premium och är inte tillgängligt ännu. Inget ljud skickas.')).toBeTruthy()
+    expect(await screen.findByText('Melodin skickas även till ACRCloud för att föreslå låt och artist. Ljudet sparas inte.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Analysera ljudet' }))
+    expect(await screen.findByText('Testlåt')).toBeTruthy()
+    expect(deps.identifyHumming).toHaveBeenCalledTimes(1)
+    expect(deps.identifyHumming.mock.calls[0][0]).toMatchObject({ consentApproved: true, wav: wavBlob })
     expect(deps.interpret).not.toHaveBeenCalled()
   })
 
@@ -149,30 +157,30 @@ describe('AI Örat modes (AI-EAR-1)', () => {
     await i18n.changeLanguage('sv')
   })
 
-  it('access follows the verified execution paths; no paid provider is reachable from AI Örat', () => {
+  it('access follows the verified execution paths; the client never holds ACRCloud credentials', () => {
     expect(aiEarModes.map(({ access, execution, id }) => [id, access, execution])).toEqual([
       ['sound', 'free', 'interpret'],
       ['bird', 'free', 'interpret'],
       ['speech', 'free', 'browser'],
-      ['melody', 'premium', 'local'],
+      ['melody', 'premium', 'humming'],
     ])
     // Sound and bird run on ai.ear.interpret, which billing keeps free and
     // unmetered at launch.
     expect(LAUNCH_UNMETERED_FEATURES).toContain('ai.ear.interpret')
-    // Code only: the comments name the providers to explain why they are not here.
-    const code = ['src/features/ai-ear/AiEarMode.jsx', 'src/features/ai-ear/aiEarModes.js', 'src/services/aiEarInterpret.js']
+    const code = ['src/features/ai-ear/AiEarMode.jsx', 'src/features/ai-ear/aiEarModes.js', 'src/services/aiEarInterpret.js', 'src/services/aiEarProviders.js']
       .map((path) => source(path).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''))
       .join('\n')
-    expect(code).not.toMatch(/ai-ear-(lyrics|humming|music)|acrcloud|audd|api\.openai|\/v1\/audio/i)
+    expect(code).toMatch(/\/api\/ai-ear-humming-recognition/)
+    expect(code).not.toMatch(/ACRCLOUD_|acrcloud\.com|AUDD_|OPENAI_API_KEY|access_secret/i)
   })
 
   // AI-EAR-2C1: free means no gate at all, not a client-side check.
-  it('Tal → text needs no entitlement, billing, quota or Supabase; Humma / sjung stays locked', () => {
+  it('Tal → text needs no entitlement, billing, quota or Supabase; Humma / sjung uses the humming hop', () => {
     const code = ['src/features/ai-ear/AiEarMode.jsx', 'src/features/ai-ear/AiEarDictation.jsx', 'src/services/aiEarDictation.js']
       .map((path) => source(path).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''))
       .join('\n')
     expect(code).not.toMatch(/billing|entitlement|quota|supabase|featureCostGate|\/api\//i)
     const melody = aiEarModes.find((mode) => mode.id === 'melody')
-    expect(melody).toMatchObject({ access: 'premium', execution: 'local' })
+    expect(melody).toMatchObject({ access: 'premium', execution: 'humming' })
   })
 })

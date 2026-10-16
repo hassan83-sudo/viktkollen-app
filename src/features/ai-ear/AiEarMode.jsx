@@ -16,8 +16,8 @@ import './AiEarMode.css'
  * AI-EAR-1: fyra lägen (Ljudigenkänning, Fågelljud, Tal → text, Humma /
  * sjung) i samma vy. Ljud och fågel använder samma server-hop nedan och visar
  * resultatet på olika sätt. Tal → text (AI-EAR-2C) använder webbläsarens
- * taligenkänning (AiEarDictation.jsx), utan server. Humma / sjung visar samma
- * inspelning och filval, men ljudet lämnar inte enheten.
+ * taligenkänning (AiEarDictation.jsx), utan server. Humma / sjung skickar
+ * klippet till /api/ai-ear-humming-recognition efter ett uttryckligt tryck.
  *
  * Flöde: spela in (max 12 s) eller välj en ljudfil -> ljudet görs om till WAV på
  * enheten -> användaren trycker uttryckligen "Analysera ljudet" (det är
@@ -35,6 +35,7 @@ import './AiEarMode.css'
 const defaultDeps = {
   blobToWav: blobToAiEarWav,
   getUserMedia: (constraints) => navigator.mediaDevices.getUserMedia(constraints),
+  identifyHumming,
   interpret: interpretAiEarAudio,
   MediaRecorderImpl: typeof MediaRecorder === 'undefined' ? null : MediaRecorder,
 }
@@ -146,7 +147,7 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
     setPhase('analyzing')
     // Trycket på "Analysera ljudet" är det uttryckliga godkännandet att skicka just den här inspelningen.
     const outcome = mode.execution === 'humming'
-      ? await identifyHumming({ consentApproved: true, signal: controller.signal, wav: wavRef.current })
+      ? await depsRef.current.identifyHumming({ consentApproved: true, signal: controller.signal, wav: wavRef.current })
       : await depsRef.current.interpret({ consentApproved: true, locale, signal: controller.signal, wav: wavRef.current })
     busyRef.current = false
     controllerRef.current = null
@@ -254,8 +255,9 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
         <div className="ai-ear-ready">
           <p>{truncated ? t('readyTruncated', { max: AI_EAR_MAX_SECONDS }) : t('ready')}</p>
           <p className="ai-ear-privacy" id="ai-ear-privacy">{t('privacy')}</p>
+          {mode.execution === 'humming' ? <p className="ai-ear-privacy" id="ai-ear-humming-privacy">{t('modes.melody.sendNotice')}</p> : null}
           <div className="ai-ear-actions">
-            <button aria-describedby="ai-ear-privacy" className="primary-button" type="button" onClick={analyze}>{t('analyze')}</button>
+            <button aria-describedby={mode.execution === 'humming' ? 'ai-ear-privacy ai-ear-humming-privacy' : 'ai-ear-privacy'} className="primary-button" type="button" onClick={analyze}>{t('analyze')}</button>
             <button className="secondary-button" type="button" onClick={reset}>{t('newRecording')}</button>
           </div>
         </div>

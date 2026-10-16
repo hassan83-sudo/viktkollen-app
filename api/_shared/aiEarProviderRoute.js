@@ -156,12 +156,13 @@ export async function fetchProviderJson(url, init, { timeoutMs, fetchImpl = glob
  * @param {string} [options.rateLimitEnv] env var name with a numeric per-user limit
  * @param {string} options.purpose   analysisConsentPurposes value
  * @param {number} options.maxBytes  provider-specific audio cap (further capped to the Vercel body limit)
+ * @param {boolean} [options.ownerOnly] require an active billing_admin (the verified owner) before any provider work
  * @param {() => boolean} options.isConfigured
  * @param {(audio: {data: Buffer, size: number, contentType: string}) => Promise<object>} options.callProvider
  * @param {(outcome: object, requestId: string) => object} options.buildBody JSON body for HTTP 200
  * @param {(outcome: object) => object} options.logFields non-sensitive fields to log on success
  */
-export function createProviderRouteHandler({ allowedTypes = defaultAllowedAudioTypes, buildBody, callProvider, idPrefix, isConfigured, logFields = () => ({}), logName, maxBytes, purpose, rateLimitEnv, rateRoute }) {
+export function createProviderRouteHandler({ allowedTypes = defaultAllowedAudioTypes, buildBody, callProvider, idPrefix, isConfigured, logFields = () => ({}), logName, maxBytes, ownerOnly = false, purpose, rateLimitEnv, rateRoute }) {
   const allowed = new Set(allowedTypes)
   const cap = () => Math.min(maxBytes, VERCEL_BODY_LIMIT_BYTES)
   const fail = (response, status, aiCode, requestId, retryable = false, reason) => {
@@ -189,13 +190,15 @@ export function createProviderRouteHandler({ allowedTypes = defaultAllowedAudioT
     const auth = await verifySupabaseUser(request, { requestId })
     if (!auth.authenticated) return response.status(auth.status).json({ error: auth.error, ok: false })
 
-    if (!isConfigured()) return fail(response, 503, aiRouteErrorCodes.PROVIDER_NOT_CONFIGURED, requestId)
-
-    // Humming remains owner-only until a durable paid entitlement and quota exist.
-    if (rateRoute === 'aiEarHumming') {
+    // Owner check before configuration, the body, consent and the provider,
+    // so other accounts learn nothing and cannot spend a provider call.
+    // There is no monthly quota. The burst limit below still applies to the owner.
+    if (ownerOnly) {
       const isOwner = await lookupBillingAdmin(auth.user.id).catch(() => false)
       if (isOwner !== true) return fail(response, 403, aiRouteErrorCodes.INVALID_REQUEST, requestId)
     }
+
+    if (!isConfigured()) return fail(response, 503, aiRouteErrorCodes.PROVIDER_NOT_CONFIGURED, requestId)
 
     const rateLimit = checkAiRouteRateLimit({ limit: rateLimitEnv ? process.env[rateLimitEnv] : undefined, route: rateRoute, userId: auth.user.id })
     if (rateLimit.limited) {

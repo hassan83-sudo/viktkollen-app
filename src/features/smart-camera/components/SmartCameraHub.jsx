@@ -1,11 +1,5 @@
 import { getSmartCameraHubModes } from '../smartCameraModes.js'
 
-const carryListsMode = {
-  icon: '📝',
-  id: 'carry-lists',
-  label: 'Mina ta-med-listor',
-}
-
 export default function SmartCameraHub({ flags, onSelectMode }) {
   const { primary, secondary } = getSmartCameraHubModes(flags)
   const featuredCards = [
@@ -22,8 +16,6 @@ export default function SmartCameraHub({ flags, onSelectMode }) {
   ]
   const availableUtility = utilityCards.filter((card) => secondary.some((mode) => mode.id === card.id))
   const availableFeatured = featuredCards.filter((card) => primary.some((mode) => mode.id === card.id))
-  const otherPrimary = primary.filter((mode) => !featuredCards.some((card) => card.id === mode.id) && mode.id !== 'ask-ai')
-  const merModes = secondary.filter((mode) => !utilityCards.some((card) => card.id === mode.id) && mode.id !== 'recall')
 
   return (
     <div className="smart-camera-hub">
@@ -147,29 +139,6 @@ export default function SmartCameraHub({ flags, onSelectMode }) {
           <span style={{ display: 'grid', gap: 3, minWidth: 0 }}><strong style={{ fontSize: 12 }}>Din integritet</strong><span style={{ fontSize: 10, color: '#b5c8e8' }}>Läs om hur kamerabilder och analyser hanteras.</span></span>
         </div>
       </nav>
-      {otherPrimary.length > 0 && (
-        <nav className="smart-camera-mode-grid" aria-label="Övriga Smart kamera-lägen">
-          {otherPrimary.map((mode) => (
-            <button key={mode.id} className="smart-camera-mode-chip" type="button" onClick={() => onSelectMode(mode.id)}>
-              <span aria-hidden="true">{mode.icon}</span>
-              <strong>{mode.label}</strong>
-            </button>
-          ))}
-        </nav>
-      )}
-      {merModes.length > 0 && (
-        <>
-          <h3 className="smart-camera-hub-more">Övriga lägen</h3>
-          <nav className="smart-camera-mode-grid is-secondary" aria-label="Fler Smart kamera-lägen">
-            {merModes.map((mode) => (
-              <button key={mode.id} className="smart-camera-mode-chip" type="button" onClick={() => onSelectMode(mode.id)}>
-                <span aria-hidden="true">{mode.icon}</span>
-                <strong>{mode.label}</strong>
-              </button>
-            ))}
-          </nav>
-        </>
-      )}
     </div>
   )
 }

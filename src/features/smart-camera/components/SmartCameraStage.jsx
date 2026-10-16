@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { getFeatureFlags, isFeatureEnabled } from '../../featureRegistry.js'
 import { getSmartCameraMode } from '../smartCameraModes.js'
 import SmartCameraHub from './SmartCameraHub.jsx'
+import SmartCameraObjectBank from './SmartCameraObjectBank.jsx'
 import SmartCameraModeViews from './SmartCameraModeViews.jsx'
 import SmartCameraPrivacyCard from './SmartCameraPrivacyCard.jsx'
 

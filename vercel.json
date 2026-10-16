@@ -131,6 +131,10 @@
     {
       "source": "/api/ai-coach",
       "destination": "/api/ai?__vk_route=ai-coach"
+    },
+    {
+      "source": "/api/bug-monitor",
+      "destination": "/api/ai?__vk_route=bug-monitor"
     }
   ]
 }

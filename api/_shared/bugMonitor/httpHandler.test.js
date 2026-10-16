@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import handler, { setBugMonitorAdminLookupForTests } from './index.js'
-import { sendSafeAiError } from '../_shared/aiRouteErrors.js'
-import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
-import { createMemoryBugMonitorStore, summarizeBugReports } from '../../src/services/bugMonitor/bugMonitor.js'
-import { setBugMonitorStoreForTests } from '../../src/services/bugMonitor/bugMonitorStore.js'
+import handler, { setBugMonitorAdminLookupForTests } from './httpHandler.js'
+import { sendSafeAiError } from '../aiRouteErrors.js'
+import { setSupabaseAuthVerifierForTests } from '../verifySupabaseUser.js'
+import { createMemoryBugMonitorStore, summarizeBugReports } from '../../../src/services/bugMonitor/bugMonitor.js'
+import { setBugMonitorStoreForTests } from '../../../src/services/bugMonitor/bugMonitorStore.js'
 
 function createResponse() {
   return {

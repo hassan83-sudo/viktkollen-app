@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { createClient } from '@supabase/supabase-js'
-import handler from '../api/bug-monitor/index.js'
-import { setBugMonitorAdminLookupForTests } from '../api/bug-monitor/index.js'
+import handler from '../api/_shared/bugMonitor/httpHandler.js'
+import { setBugMonitorAdminLookupForTests } from '../api/_shared/bugMonitor/httpHandler.js'
 import { setSupabaseAuthVerifierForTests } from '../api/_shared/verifySupabaseUser.js'
 import { setBugMonitorStoreForTests } from '../src/services/bugMonitor/bugMonitorStore.js'
 

@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto'
-import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
-import { requireBillingAdmin } from '../_shared/billing/admin.js'
-import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
-import { planBugInvestigation } from '../../src/services/bugMonitor/bugMonitor.js'
-import { resolveBugMonitorStore } from '../../src/services/bugMonitor/bugMonitorStore.js'
+import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../aiRouteErrors.js'
+import { requireBillingAdmin } from '../billing/admin.js'
+import { verifySupabaseUser } from '../verifySupabaseUser.js'
+import { planBugInvestigation } from '../../../src/services/bugMonitor/bugMonitor.js'
+import { resolveBugMonitorStore } from '../../../src/services/bugMonitor/bugMonitorStore.js'
 
 let testAdminCheck = null
 

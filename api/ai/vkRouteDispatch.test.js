@@ -7,6 +7,9 @@ import * as billing from '../_shared/billing/aiTextLiveBilling.js'
 import { setCoachCostStoreForTests } from '../_shared/aiCoach/service.js'
 import { createTestCostStore } from '../_shared/aiHelp/sharedCostLedger.js'
 import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
+import { setBugMonitorAdminLookupForTests } from '../_shared/bugMonitor/httpHandler.js'
+import { createMemoryBugMonitorStore } from '../../src/services/bugMonitor/bugMonitor.js'
+import { setBugMonitorStoreForTests } from '../../src/services/bugMonitor/bugMonitorStore.js'
 
 const root = fileURLToPath(new URL('../..', import.meta.url))
 
@@ -57,6 +60,8 @@ function createRequest({ body = {}, method = 'POST', query, token = 'valid-token
 afterEach(() => {
   setSupabaseAuthVerifierForTests(null)
   setCoachCostStoreForTests(null)
+  setBugMonitorStoreForTests(undefined)
+  setBugMonitorAdminLookupForTests(null)
   delete process.env.OPENAI_API_KEY
   delete process.env.AI_HELP_BUDGET_SEK
   vi.unstubAllGlobals()
@@ -188,6 +193,46 @@ describe('AI route dispatch on /api/ai', () => {
     expect(fetchImpl).not.toHaveBeenCalled()
   })
 
+  it('sends __vk_route=bug-monitor to the Bug Monitor handler without AI billing or provider calls', async () => {
+    setSupabaseAuthVerifierForTests(async () => ({ user: { id: 'signed-in-user' } }))
+    setBugMonitorStoreForTests(createMemoryBugMonitorStore())
+    process.env.OPENAI_API_KEY = 'test-key'
+    const fetchImpl = vi.fn()
+    const resolveSpy = vi.spyOn(billing, 'resolveAiTextBillingRuntime')
+    const executeSpy = vi.spyOn(billing, 'executeAiTextMeteredOperation')
+    vi.stubGlobal('fetch', fetchImpl)
+    const response = createResponse()
+    await handler(createRequest({
+      body: { errorType: 'render', feature: 'app', fingerprint: 'render-abcd1234' },
+      url: '/api/ai?__vk_route=bug-monitor',
+    }), response)
+
+    expect(response.statusCode).toBe(202)
+    expect(response.body.ok).toBe(true)
+    expect(response.body.requestId).toMatch(/^bug-/)
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(resolveSpy).not.toHaveBeenCalled()
+    expect(executeSpy).not.toHaveBeenCalled()
+  })
+
+  it('keeps Bug Monitor reports behind sign-in and the overview behind a billing admin', async () => {
+    setBugMonitorStoreForTests(createMemoryBugMonitorStore())
+    setBugMonitorAdminLookupForTests(async () => ({ error: { code: 'FORBIDDEN' }, ok: false, status: 403 }))
+    const anonymous = createResponse()
+    await handler(createRequest({
+      body: { errorType: 'render', fingerprint: 'render-abcd1234' },
+      query: { __vk_route: 'bug-monitor' },
+      token: '',
+    }), anonymous)
+    expect(anonymous.statusCode).toBe(401)
+
+    const overview = createResponse()
+    await handler(createRequest({ method: 'GET', query: { __vk_route: 'bug-monitor' } }), overview)
+    expect(overview.statusCode).toBe(403)
+    expect(overview.body.ok).toBe(false)
+    expect(overview.body.summary).toBeUndefined()
+  })
+
   it('fails closed for an unknown __vk_route before legacy auth and the provider', async () => {
     process.env.OPENAI_API_KEY = 'test-key'
     const fetchImpl = vi.fn()
@@ -218,6 +263,10 @@ describe('AI route dispatch on /api/ai', () => {
       source: '/api/ai-coach',
       destination: '/api/ai?__vk_route=ai-coach',
     })
+    expect(rewrites).toContainEqual({
+      source: '/api/bug-monitor',
+      destination: '/api/ai?__vk_route=bug-monitor',
+    })
     const clientHelp = readFileSync(join(root, 'src/features/aiHelp/aiHelpClient.js'), 'utf8')
     const clientCoach = readFileSync(join(root, 'src/features/aiCoach/coachModelClient.js'), 'utf8')
     expect(clientHelp).toContain("fetch('/api/ai-help'")
@@ -232,5 +281,6 @@ describe('AI route dispatch on /api/ai', () => {
     expect(names.some((file) => file.endsWith('/api/ai/index.js'))).toBe(true)
     expect(names.some((file) => file.includes('/api/ai-help/'))).toBe(false)
     expect(names.some((file) => file.includes('/api/ai-coach/'))).toBe(false)
+    expect(names.some((file) => file.includes('/api/bug-monitor/'))).toBe(false)
   })
 })

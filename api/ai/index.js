@@ -20,6 +20,7 @@ import { createRealtimeVoiceSession } from '../_shared/openaiGateway.js'
 import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { handleAiCoachRequest } from '../_shared/aiCoach/httpHandler.js'
 import { handleAiHelpRequest } from '../_shared/aiHelp/httpHandler.js'
+import handleBugMonitorRequest from '../_shared/bugMonitor/httpHandler.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 
@@ -632,6 +633,7 @@ export default async function handler(request, response) {
   const route = readVkRoute(request)
   if (route === 'ai-help') return handleAiHelpRequest(request, response)
   if (route === 'ai-coach') return handleAiCoachRequest(request, response)
+  if (route === 'bug-monitor') return handleBugMonitorRequest(request, response)
   if (route) {
     return sendSafeAiError(response, {
       code: aiRouteErrorCodes.INVALID_REQUEST,

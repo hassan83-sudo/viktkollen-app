@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 
+export const OBJECT_BANK_STORAGE_KEY = 'viktkollen-smart-camera-object-bank-v1'
 const STORAGE_KEY = 'viktkollen-smart-camera-object-bank-v1'
-const PRESETS = [
+export const PRESETS = [
   ["Nycklar", "Vardag"],
   ["Husnyckel", "Vardag"],
   ["Bilnyckel", "Vardag"],
@@ -629,7 +630,7 @@ const PRESETS = [
 
 const CATEGORIES = ['Alla', "Vardag", "Elektronik", "Resa", "Träning", "Jobb & skola", "Hygien", "Hem & övrigt", "Kläder & accessoarer", "Kök & mat", "Barn & familj", "Fritid & hobby"]
 const normalize = (value) => value.trim().toLocaleLowerCase('sv')
-const loadCustom = () => {
+export const loadCustom = () => {
   try {
     const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || '[]')
     return Array.isArray(saved) ? saved.filter((item) => item && typeof item.name === 'string' && typeof item.category === 'string' && item.custom === true).slice(0, 200) : []
@@ -638,7 +639,7 @@ const loadCustom = () => {
   }
 }
 
-export default function SmartCameraObjectBank({ onBack }) {
+export default function SmartCameraObjectBank({ onBack, onOpenChecklists }) {
   const [customItems, setCustomItems] = useState(loadCustom)
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('Alla')
@@ -674,6 +675,7 @@ export default function SmartCameraObjectBank({ onBack }) {
     <section aria-label="Föremålsbank" style={{ color: '#fff', padding: '8px 0 24px' }}>
       <button type="button" className="secondary-button" onClick={onBack}>← Smart kamera</button>
       <h2 style={{ marginBottom: 4 }}>Föremålsbank</h2>
+      <button type="button" className="primary-button" onClick={onOpenChecklists} style={{ marginBottom: 12 }}>Öppna mina checklistor →</button>
       <p style={{ color: '#b8c9e8' }}>Hitta vanliga föremål eller lägg till dina egna. Ingen kamera eller AI behövs.</p>
       <label style={{ display: 'grid', gap: 6, margin: '16px 0 12px' }}>Sök föremål
         <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="T.ex. nycklar, laddare, pass" style={{ padding: 12, borderRadius: 12, width: '100%', boxSizing: 'border-box' }} />
@@ -706,7 +708,7 @@ export default function SmartCameraObjectBank({ onBack }) {
         <button type="submit" className="primary-button" disabled={!name.trim()}>Lägg till i banken</button>
         {notice && <p role="alert">{notice}</p>}
       </form>
-      <p className="smart-camera-note">Egna föremål sparas lokalt i den här webbläsaren. De synkas inte mellan enheter. Checklistor kopplas på i nästa sprint.</p>
+      <p className="smart-camera-note">Egna föremål sparas lokalt i den här webbläsaren. De synkas inte mellan enheter. Skapa och återanvänd checklistor via knappen ovan.</p>
     </section>
   )
 }

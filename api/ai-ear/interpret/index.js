@@ -3,6 +3,7 @@ import { checkAiRouteRateLimit } from '../../_shared/aiRateLimiter.js'
 import { verifySupabaseUser } from '../../_shared/verifySupabaseUser.js'
 import { analysisConsentPurposes, verifyAnalysisConsentToken } from '../../_shared/analysisConsent.js'
 import { getGoogleIdToken } from '../../_shared/googleIdToken.js'
+import handleHummingRecognition from '../../_shared/aiEarHummingRoute.js'
 
 /**
  * AI-örat: secure server-side hop from the Viktkollen app to the PRIVATE
@@ -167,7 +168,25 @@ function reduceBackendResult(body) {
 
 export const aiEarRouteInternals = { reduceBackendResult }
 
+// /api/ai-ear-humming-recognition is rewritten here (vercel.json) so humming
+// shares this function and the deployment stays within 12 serverless functions.
+function readVkRoute(request) {
+  const queryValue = request?.query?.__vk_route
+  const fromQuery = Array.isArray(queryValue) ? queryValue[0] : queryValue
+  if (typeof fromQuery === 'string' && fromQuery.trim()) return fromQuery.trim()
+  const rawUrl = String(request?.url || '')
+  const queryIndex = rawUrl.indexOf('?')
+  if (queryIndex === -1) return ''
+  const fromUrl = new URLSearchParams(rawUrl.slice(queryIndex + 1)).get('__vk_route')
+  return typeof fromUrl === 'string' ? fromUrl.trim() : ''
+}
+
 export default async function handler(request, response) {
+  if (readVkRoute(request) === 'humming') return handleHummingRecognition(request, response)
+  return interpretHandler(request, response)
+}
+
+async function interpretHandler(request, response) {
   const requestId = `ai-ear-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   setNoStoreHeaders(response)
 

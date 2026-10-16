@@ -1,4 +1,5 @@
 import { generateKeyPairSync } from 'node:crypto'
+import { existsSync, readFileSync } from 'node:fs'
 import { Readable } from 'node:stream'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -366,5 +367,49 @@ describe('AI-örat server-side hop', () => {
     expect(everything).not.toContain('valid-token')
     expect(everything).not.toContain('audio.wav')
     expect(everything).not.toMatch(/Bearer/)
+  })
+})
+
+describe('humming recognition shares the AI-örat function', () => {
+  afterEach(() => {
+    setSupabaseAuthVerifierForTests(null)
+    vi.unstubAllGlobals()
+  })
+
+  it('sends __vk_route=humming to the ACRCloud humming route, not the interpret hop', async () => {
+    const calls = stubFetch()
+    const response = await callRoute(createRequest({ url: '/api/ai-ear/interpret?__vk_route=humming', withConsent: false }))
+
+    expect(response.statusCode).toBe(415)
+    expect(response.body.error.reason).toBe('unsupported_media')
+    expect(response.body.error.requestId).toMatch(/^ai-ear-humming-/)
+    expect(calls.backend).toHaveLength(0)
+    expect(calls.google).toHaveLength(0)
+  })
+
+  it('keeps sign-in required for humming before any provider call', async () => {
+    setSupabaseAuthVerifierForTests(async () => ({ error: { message: 'invalid' } }))
+    const calls = stubFetch()
+    const response = await callRoute(createRequest({
+      contentType: 'multipart/form-data; boundary=x',
+      token: '',
+      url: '/api/ai-ear/interpret?__vk_route=humming',
+      withConsent: false,
+    }))
+
+    expect(response.statusCode).toBe(401)
+    expect(response.body.ok).toBe(false)
+    expect(calls.backend).toHaveLength(0)
+  })
+
+  it('keeps the public humming URL as a rewrite instead of its own serverless function', () => {
+    const root = new URL('../../../', import.meta.url)
+    const vercel = JSON.parse(readFileSync(new URL('vercel.json', root), 'utf8'))
+    expect(vercel.rewrites).toContainEqual({
+      source: '/api/ai-ear-humming-recognition',
+      destination: '/api/ai-ear/interpret?__vk_route=humming',
+    })
+    expect(existsSync(new URL('api/ai-ear-humming-recognition/index.js', root))).toBe(false)
+    expect(readFileSync(new URL('src/services/aiEarProviders.js', root), 'utf8')).toContain("endpoint: '/api/ai-ear-humming-recognition'")
   })
 })

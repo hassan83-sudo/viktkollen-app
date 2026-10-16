@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../services/supabaseClient.js'
-import BugMonitorPanel from './BugMonitorPanel.jsx'
 
 const PAID_PLAN_COUNT = 14
 
@@ -184,7 +183,6 @@ export default function PlanCommercialAdmin() {
           )
         })}
       </ul>
-      <BugMonitorPanel token={token} />
     </section>
   )
 }

@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppErrorBoundary from '../AppErrorBoundary.jsx'
+import BugMonitorAdminEntry from '../billing/BugMonitorAdminEntry.jsx'
 import PlanCommercialAdmin from '../billing/PlanCommercialAdmin.jsx'
 import PlanComparison from '../billing/PlanComparison.jsx'
 import PlanUsagePanel from '../billing/PlanUsagePanel.jsx'
@@ -431,6 +432,7 @@ function MoreSection({
             </div>
 
             {isAuthenticated ? <PlanCommercialAdmin /> : null}
+            {isAuthenticated ? <BugMonitorAdminEntry /> : null}
 
             <div className="app-information">
               <h3>{t('aboutTitle')}</h3>

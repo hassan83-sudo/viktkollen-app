@@ -14,12 +14,16 @@ export default function SmartCameraHub({ flags, onSelectMode }) {
     { id: 'outfit', icon: '👕', title: 'Kläder & stil', description: 'Få tips och förslag utifrån din garderob.', glow: '#05b86d' },
     { id: 'grooming', icon: '💇', title: 'Hår & frisyr', description: 'Få tips, inspiration och stiltips.', glow: '#dd742a' },
   ]
+  const utilityCards = [
+    { id: 'pack', icon: '🧳', title: 'Packning', description: 'Skapa checklistor utifrån din resa.', glow: '#007bff' },
+    { id: 'where', icon: '📦', title: 'Hem & saker', description: 'Identifiera objekt, få råd och inspiration.', glow: '#ae875e' },
+    { id: 'carry-lists', icon: '📋', title: 'Checklistor', description: 'Ta bild på t.ex. kylskåp, skåp eller innehåll.', glow: '#ac7856' },
+    { id: 'routines', icon: '📖', title: 'Rutiner', description: 'Skapa och följ rutiner med hjälp av AI.', glow: '#286eff' },
+  ]
+  const availableUtility = utilityCards.filter((card) => secondary.some((mode) => mode.id === card.id))
   const availableFeatured = featuredCards.filter((card) => primary.some((mode) => mode.id === card.id))
   const otherPrimary = primary.filter((mode) => !featuredCards.some((card) => card.id === mode.id))
-  const merModes = [
-    carryListsMode,
-    ...secondary.filter((mode) => mode.id !== 'carry-lists'),
-  ]
+  const merModes = secondary.filter((mode) => !utilityCards.some((card) => card.id === mode.id))
 
   return (
     <div className="smart-camera-hub">
@@ -88,6 +92,29 @@ export default function SmartCameraHub({ flags, onSelectMode }) {
           ))}
         </nav>
       </section>
+      <nav aria-label="Packning, hem, checklistor och rutiner" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 9, marginBottom: 18 }}>
+        {availableUtility.map((card) => (
+          <button
+            key={card.id}
+            type="button"
+            onClick={() => onSelectMode(card.id)}
+            style={{
+              position: 'relative', display: 'flex', alignItems: 'center', minWidth: 0, minHeight: 93,
+              gap: 8, padding: '12px 9px', borderRadius: 16, color: '#fff', textAlign: 'left',
+              border: `1px solid ${card.glow}55`,
+              background: `radial-gradient(ellipse at 0% 100%, ${card.glow}44, transparent 64%), linear-gradient(125deg, #12102a, #07152b)`,
+              cursor: 'pointer',
+            }}
+          >
+            <span aria-hidden="true" style={{ fontSize: 36, lineHeight: 1, flexShrink: 0, filter: `drop-shadow(0 0 8px ${card.glow}99)` }}>{card.icon}</span>
+            <span style={{ display: 'grid', gap: 4, minWidth: 0, paddingRight: 4 }}>
+              <strong style={{ fontSize: 12, lineHeight: 1.15 }}>{card.title}</strong>
+              <span style={{ fontSize: 10, lineHeight: 1.35, color: '#bed0ed' }}>{card.description}</span>
+            </span>
+            <span aria-hidden="true" style={{ position: 'absolute', right: 6, top: 7, borderRadius: '50%', background: '#24314b', width: 23, height: 23, display: 'grid', placeItems: 'center', fontSize: 20 }}>›</span>
+          </button>
+        ))}
+      </nav>
       {otherPrimary.length > 0 && (
         <nav className="smart-camera-mode-grid" aria-label="Övriga Smart kamera-lägen">
           {otherPrimary.map((mode) => (

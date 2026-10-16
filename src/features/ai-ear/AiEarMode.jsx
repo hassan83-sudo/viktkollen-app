@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { AI_EAR_MAX_INPUT_BYTES, AI_EAR_MAX_SECONDS, blobToAiEarWav } from '../../services/aiEarAudio.js'
+import { identifyHumming } from '../../services/aiEarProviders.js'
 import { interpretAiEarAudio } from '../../services/aiEarInterpret.js'
 import AiEarDictation from './AiEarDictation.jsx'
 import { aiEarModes, defaultAiEarModeId, getAiEarMode } from './aiEarModes.js'
@@ -126,7 +127,6 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
 
   async function analyze() {
     if (busyRef.current || !wavRef.current) return
-    // Humma / sjung is visible only. The recording stays on the device.
     if (mode.execution === 'local') {
       setView({
         alternatives: [],
@@ -145,12 +145,19 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
     controllerRef.current = controller
     setPhase('analyzing')
     // Trycket på "Analysera ljudet" är det uttryckliga godkännandet att skicka just den här inspelningen.
-    const outcome = await depsRef.current.interpret({ consentApproved: true, locale, signal: controller.signal, wav: wavRef.current })
+    const outcome = mode.execution === 'humming'
+      ? await identifyHumming({ consentApproved: true, signal: controller.signal, wav: wavRef.current })
+      : await depsRef.current.interpret({ consentApproved: true, locale, signal: controller.signal, wav: wavRef.current })
     busyRef.current = false
     controllerRef.current = null
     if (!mountedRef.current) return
     if (outcome.ok) {
-      setView(buildAiEarModeView(outcome.result, modeId, t))
+      setView(mode.execution === 'humming' ? {
+        kind: 'music', title: outcome.matched ? outcome.result.title : 'Ingen melodi hittades',
+        body: outcome.matched ? (outcome.result.artist || 'Okänd artist') : 'Prova att nynna tydligare eller spela in igen.',
+        alternatives: (outcome.result?.alternatives || []).map((item) => [item.title, item.artist].filter(Boolean).join(' – ')),
+        contextLines: [], hints: [], species: [], footer: 'ACRCloud – resultatet är ett förslag.',
+      } : buildAiEarModeView(outcome.result, modeId, t))
       setPhase('result')
       return
     }
@@ -220,7 +227,7 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
 
       {mode.execution === 'browser' && <AiEarDictation deps={deps.dictation} microphoneBusy={recorder.recording} />}
 
-      {(mode.execution === 'interpret' || mode.execution === 'local') && phase === 'idle' && (
+      {(mode.execution === 'interpret' || mode.execution === 'local' || mode.execution === 'humming') && phase === 'idle' && (
         <div className="ai-ear-actions">
           <button className="primary-button" type="button" onClick={startRecording}>{t('record')}</button>
           <label className="secondary-button ai-ear-file">

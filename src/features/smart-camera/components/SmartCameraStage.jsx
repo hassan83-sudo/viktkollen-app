@@ -70,7 +70,7 @@ export default function SmartCameraStage({
                 ? <SmartCameraModeViews adapters={adapters} mode={mode} voiceBar={voiceBar} onBack={() => setModeId('')} onCameraActive={setCameraActive} />
                 : <SmartCameraHub flags={flags} onSelectMode={setModeId} />}
         <SmartCameraPrivacyCard
-          aiReceivesFrame={false}
+          aiReceivesFrame={modeId === 'object-scan'}
           audioToServer={mode?.id === 'ai-ear'}
           cameraActive={cameraActive}
           savedLabels={['Checklistor, rutiner och objektplatser sparas lokalt om du redigerar dem.']}

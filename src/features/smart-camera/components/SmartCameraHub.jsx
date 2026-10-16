@@ -11,10 +11,10 @@ export default function SmartCameraHub({ flags, onSelectMode }) {
   const utilityCards = [
     { id: 'pack', icon: '🧳', title: 'Packning', description: 'Skapa checklistor utifrån din resa.', glow: '#007bff' },
     { id: 'where', icon: '📦', title: 'Hem & saker', description: 'Identifiera objekt, få råd och inspiration.', glow: '#ae875e' },
-    { id: 'carry-lists', icon: '📋', title: 'Checklistor', description: 'Ta bild på t.ex. kylskåp, skåp eller innehåll.', glow: '#ac7856' },
+    { id: 'checklists-bank', icon: '📋', title: 'Checklistor', description: 'Ta bild på t.ex. kylskåp, skåp eller innehåll.', glow: '#ac7856' },
     { id: 'routines', icon: '📖', title: 'Rutiner', description: 'Skapa och följ rutiner med hjälp av AI.', glow: '#286eff' },
   ]
-  const availableUtility = utilityCards.filter((card) => secondary.some((mode) => mode.id === card.id))
+  const availableUtility = utilityCards.filter((card) => card.id === 'checklists-bank' || secondary.some((mode) => mode.id === card.id))
   const availableFeatured = featuredCards.filter((card) => primary.some((mode) => mode.id === card.id))
 
   return (
@@ -126,6 +126,7 @@ export default function SmartCameraHub({ flags, onSelectMode }) {
           <span aria-hidden="true" style={{ borderRadius: '50%', background: '#4c116c', padding: '1px 10px', fontSize: 25 }}>›</span>
         </button>
       )}
+      <button type="button" onClick={() => onSelectMode('object-bank')} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '16px', marginBottom: 18, borderRadius: 15, color: '#fff', border: '1px solid #365eac', background: 'linear-gradient(115deg,#102653,#08152e)', textAlign: 'left', cursor: 'pointer' }}><span aria-hidden="true" style={{ fontSize: 31 }}>🗂️</span><span style={{ flex: 1 }}><strong style={{ display: 'block', fontSize: 15 }}>Föremålsbank</strong><small style={{ color: '#c2d1ef' }}>Sök, sortera och lägg till egna saker</small></span><span aria-hidden="true">›</span></button>\n      <button type="button" onClick={() => onSelectMode('object-scan')} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '16px', marginBottom: 18, borderRadius: 15, color: '#fff', border: '1px solid #315b9e', background: 'linear-gradient(115deg,#102451,#08152e)', textAlign: 'left', cursor: 'pointer' }}><span aria-hidden="true" style={{ fontSize: 31 }}>📷</span><span style={{ flex: 1 }}><strong style={{ display: 'block', fontSize: 15 }}>Identifiera föremål med AI</strong><small style={{ color: '#c2d1ef' }}>Ta en bild och godkänn förslag till banken</small></span><span aria-hidden="true">›</span></button>
       <h3 style={{ color: '#fff', fontSize: 16, margin: '0 0 3px' }}>Mer</h3>
       <p style={{ color: '#b6c5dd', fontSize: 12, margin: '0 0 10px' }}>Ytterligare funktioner och information.</p>
       <nav aria-label="Fråga AI och integritet" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 9, marginBottom: 14 }}>

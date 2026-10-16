@@ -35,6 +35,7 @@ export const analysisConsentPurposes = Object.freeze({
   aiEarInterpret: 'ai-ear-interpret',
   bodyAnalysis: 'body-analysis',
   forgottenItemsAnalysis: 'forgotten-items-analysis',
+  objectBankScan: 'object-bank-scan',
   nutritionPhotoAnalysis: 'nutrition-photo-analysis',
 })
 

@@ -37,11 +37,11 @@ export default function SmartCameraHub({ flags, onSelectMode }) {
         type="button"
         onClick={() => onSelectMode('eyes')}
         style={{
-          display: 'flex', alignItems: 'center', width: '100%', minHeight: 104,
+          display: 'flex', alignItems: 'center', width: '100%', minHeight: 104, maxHeight: 110,
           position: 'relative', overflow: 'hidden', margin: '12px 0 20px',
           padding: '16px 16px', borderRadius: 18, textAlign: 'left',
           border: '1px solid rgba(116,91,255,.65)', color: '#fff',
-          background: 'radial-gradient(ellipse at 85% 65%, #4813a8 0%, #17104b 38%, #081127 77%)',
+          background: 'radial-gradient(ellipse at 80% 50%, #4d0fba 0%, #15165b 40%, #051332 80%), linear-gradient(115deg,#091333,#201064)',
           boxShadow: 'inset 0 0 28px rgba(50,100,255,.12)',
           cursor: 'pointer',
         }}
@@ -51,7 +51,7 @@ export default function SmartCameraHub({ flags, onSelectMode }) {
           <strong style={{ fontSize: 19, lineHeight: 1.15 }}>AI-ögon</strong>
           <span style={{ fontSize: 12, lineHeight: 1.4, color: '#c6d7ff' }}>Kolla mitt läge, få feedback och guide i realtid.</span>
         </span>
-        <svg aria-hidden="true" viewBox="0 0 130 130" style={{ position: 'absolute', width: 124, height: 124, right: 28, top: '50%', transform: 'translateY(-50%)', filter: 'drop-shadow(0 0 12px #754cff)' }}>
+        <svg aria-hidden="true" viewBox="0 0 130 130" style={{ position: 'absolute', width: 112, height: 112, right: 24, top: '50%', transform: 'translateY(-50%)', filter: 'drop-shadow(0 0 12px #754cff)' }}>
           <defs>
             <radialGradient id="smart-camera-lens-glass"><stop offset="0" stopColor="#020317"/><stop offset=".25" stopColor="#17105c"/><stop offset=".56" stopColor="#034fc3"/><stop offset=".78" stopColor="#2a0a75"/><stop offset="1" stopColor="#a647ff"/></radialGradient>
             <linearGradient id="smart-camera-lens-ring" x1="0" y1="1" x2="1" y2="0"><stop stopColor="#ea36ff"/><stop offset=".48" stopColor="#4237ff"/><stop offset=".78" stopColor="#00baff"/><stop offset="1" stopColor="#f5a5ff"/></linearGradient>
@@ -75,16 +75,16 @@ export default function SmartCameraHub({ flags, onSelectMode }) {
               type="button"
               onClick={() => onSelectMode(card.id)}
               style={{
-                position: 'relative', display: 'flex', alignItems: 'center', minWidth: 0, minHeight: 93,
-                gap: 8, padding: '12px 9px', borderRadius: 16, color: '#fff', textAlign: 'left',
+                position: 'relative', display: 'flex', alignItems: 'center', minWidth: 0, minHeight: 86,
+                gap: 8, padding: '10px 9px', borderRadius: 16, color: '#fff', textAlign: 'left',
                 border: `1px solid ${card.glow}55`,
                 background: `radial-gradient(ellipse at 0% 100%, ${card.glow}44, transparent 64%), linear-gradient(125deg, #12102a, #07152b)`,
                 cursor: 'pointer',
               }}
             >
-              <span aria-hidden="true" style={{ fontSize: 36, lineHeight: 1, flexShrink: 0, filter: `drop-shadow(0 0 8px ${card.glow}99)` }}>{card.icon}</span>
+              <span aria-hidden="true" style={{ fontSize: 43, lineHeight: 1, flexShrink: 0, filter: `drop-shadow(0 0 8px ${card.glow}99)` }}>{card.icon}</span>
               <span style={{ display: 'grid', gap: 4, minWidth: 0, paddingRight: 4 }}>
-                <strong style={{ fontSize: 12, lineHeight: 1.15 }}>{card.title}</strong>
+                <strong style={{ fontSize: 12, lineHeight: 1.2 }}>{card.title}</strong>
                 <span style={{ fontSize: 10, lineHeight: 1.35, color: '#bed0ed' }}>{card.description}</span>
               </span>
               <span aria-hidden="true" style={{ position: 'absolute', right: 6, top: 7, borderRadius: '50%', background: '#24314b', width: 23, height: 23, display: 'grid', placeItems: 'center', fontSize: 20 }}>›</span>

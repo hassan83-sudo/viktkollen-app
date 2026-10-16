@@ -188,6 +188,8 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
   // screen reader is not interrupted every second.
   return (
     <section className="ai-ear" aria-labelledby="ai-ear-title">
+      <div className="ai-ear-hero" aria-hidden="true"><span className="ai-ear-wave">▂▅▇▃▆</span><span className="ai-ear-hero-icon">👂</span><span className="ai-ear-wave">▆▃▇▅▂</span></div>
+      <div className="ai-ear-kicker">♫ AI ÖRAT</div>
       <h3 id="ai-ear-title" className="ai-ear-title">{t('title')}</h3>
       <p className="ai-ear-intro">{t('intro')}</p>
 
@@ -211,7 +213,7 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
         ))}
       </fieldset>
 
-      <h4 className="ai-ear-mode-heading" id="ai-ear-mode-title">{t(`modes.${mode.id}.title`)}</h4>
+      <div className="ai-ear-workspace"><h4 className="ai-ear-mode-heading" id="ai-ear-mode-title">{t(`modes.${mode.id}.title`)}</h4>
       <p className="ai-ear-mode-instruction">{t(`modes.${mode.id}.instruction`)}</p>
 
       {!mode.execution && <p className="ai-ear-premium">{t(`modes.${mode.id}.unavailable`)}</p>}

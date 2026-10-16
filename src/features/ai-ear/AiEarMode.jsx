@@ -297,6 +297,7 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
           </div>
         </div>
       )}
+      </div>
     </section>
   )
 }

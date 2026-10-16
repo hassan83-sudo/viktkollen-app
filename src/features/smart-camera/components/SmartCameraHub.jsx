@@ -22,8 +22,8 @@ export default function SmartCameraHub({ flags, onSelectMode }) {
   ]
   const availableUtility = utilityCards.filter((card) => secondary.some((mode) => mode.id === card.id))
   const availableFeatured = featuredCards.filter((card) => primary.some((mode) => mode.id === card.id))
-  const otherPrimary = primary.filter((mode) => !featuredCards.some((card) => card.id === mode.id))
-  const merModes = secondary.filter((mode) => !utilityCards.some((card) => card.id === mode.id))
+  const otherPrimary = primary.filter((mode) => !featuredCards.some((card) => card.id === mode.id) && mode.id !== 'ask-ai')
+  const merModes = secondary.filter((mode) => !utilityCards.some((card) => card.id === mode.id) && mode.id !== 'recall')
 
   return (
     <div className="smart-camera-hub">
@@ -115,6 +115,38 @@ export default function SmartCameraHub({ flags, onSelectMode }) {
           </button>
         ))}
       </nav>
+      {secondary.some((mode) => mode.id === 'recall') && (
+        <button
+          type="button"
+          onClick={() => onSelectMode('recall')}
+          style={{
+            display: 'flex', alignItems: 'center', width: '100%', gap: 12, minHeight: 58,
+            padding: '9px 14px', marginBottom: 15, borderRadius: 15, textAlign: 'left',
+            color: '#fff', border: '1px solid rgba(217,48,215,.42)',
+            background: 'linear-gradient(105deg, #49102e, #230d36 70%, #360b52)', cursor: 'pointer',
+          }}
+        >
+          <span aria-hidden="true" style={{ fontSize: 37, filter: 'drop-shadow(0 0 8px #ff4dd3)' }}>🧠</span>
+          <span style={{ display: 'grid', gap: 4, flex: 1 }}>
+            <strong style={{ fontSize: 14 }}>Minne</strong>
+            <span style={{ color: '#d9c4df', fontSize: 11 }}>Kom ihåg och få personliga förslag.</span>
+          </span>
+          <span aria-hidden="true" style={{ borderRadius: '50%', background: '#4c116c', padding: '1px 10px', fontSize: 25 }}>›</span>
+        </button>
+      )}
+      <h3 style={{ color: '#fff', fontSize: 16, margin: '0 0 3px' }}>Mer</h3>
+      <p style={{ color: '#b6c5dd', fontSize: 12, margin: '0 0 10px' }}>Ytterligare funktioner och information.</p>
+      <nav aria-label="Fråga AI och integritet" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 9, marginBottom: 14 }}>
+        <button type="button" onClick={() => onSelectMode('ask-ai')} style={{ display: 'flex', alignItems: 'center', position: 'relative', gap: 9, minWidth: 0, padding: '12px 9px', minHeight: 76, borderRadius: 14, border: '1px solid #20436d', color: '#fff', textAlign: 'left', background: 'linear-gradient(120deg,#10213b,#061327)', cursor: 'pointer' }}>
+          <span aria-hidden="true" style={{ fontSize: 35, filter: 'drop-shadow(0 0 8px #ffc526)' }}>💡</span>
+          <span style={{ display: 'grid', gap: 3, minWidth: 0 }}><strong style={{ fontSize: 12 }}>Fråga AI</strong><span style={{ fontSize: 10, color: '#b5c8e8' }}>Ställ frågor om vad kameran ser.</span></span>
+          <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: 23 }}>›</span>
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, padding: '12px 9px', minHeight: 76, borderRadius: 14, border: '1px solid #20436d', color: '#fff', background: 'linear-gradient(120deg,#10213b,#061327)' }}>
+          <span aria-hidden="true" style={{ fontSize: 34 }}>🛡️</span>
+          <span style={{ display: 'grid', gap: 3, minWidth: 0 }}><strong style={{ fontSize: 12 }}>Din integritet</strong><span style={{ fontSize: 10, color: '#b5c8e8' }}>Läs om hur kamerabilder och analyser hanteras.</span></span>
+        </div>
+      </nav>
       {otherPrimary.length > 0 && (
         <nav className="smart-camera-mode-grid" aria-label="Övriga Smart kamera-lägen">
           {otherPrimary.map((mode) => (
@@ -127,7 +159,7 @@ export default function SmartCameraHub({ flags, onSelectMode }) {
       )}
       {merModes.length > 0 && (
         <>
-          <h3 className="smart-camera-hub-more">Mer</h3>
+          <h3 className="smart-camera-hub-more">Övriga lägen</h3>
           <nav className="smart-camera-mode-grid is-secondary" aria-label="Fler Smart kamera-lägen">
             {merModes.map((mode) => (
               <button key={mode.id} className="smart-camera-mode-chip" type="button" onClick={() => onSelectMode(mode.id)}>

@@ -203,12 +203,15 @@ begin
     p_source
   );
 
+  -- Keep reports for 30 days regardless of report volume.
   delete from bug_monitor.reports
-  where report_id in (
-    select report_id
-    from bug_monitor.reports
-    order by received_at desc
-    offset 400
+  where received_at < pg_catalog.now() - interval '30 days';
+
+  -- Remove acknowledgements whose fingerprints no longer have reports.
+  delete from bug_monitor.acknowledgements a
+  where not exists (
+    select 1 from bug_monitor.reports r
+    where r.fingerprint = a.fingerprint
   );
 
   return pg_catalog.jsonb_build_object(

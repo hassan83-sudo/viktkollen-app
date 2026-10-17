@@ -6,7 +6,7 @@ export async function recordSecurityEvent(input, { client = createSupabaseAdminC
   const event = classifySecurityEvent(input)
   if (!event || !client || typeof client.schema !== 'function') return false
   try {
-    const { data, error } = await client.schema('security_center').rpc('record_event', {
+    const { data, error } = await client.rpc('security_center_record_event', {
       p_type: event.type,
       p_severity: event.severity,
       p_feature: event.feature,

@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import i18n from '../../i18n/index.js'
 import SupportPanel from './SupportPanel.jsx'
 import { requestSupport } from './supportClient.js'
 import { showReminderNotification } from '../../services/reminders/reminderNotifications.js'
@@ -16,7 +17,8 @@ const pendingTicket = {
 }
 
 describe('admin support notification polling', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('sv')
     vi.clearAllMocks()
     requestSupport.mockResolvedValue({ ok: true, pendingCount: 1, tickets: [pendingTicket] })
   })

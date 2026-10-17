@@ -3,6 +3,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import {
+  AI_EAR_HUMMING_MAX_SECONDS,
   AI_EAR_MAX_SECONDS,
   AI_EAR_TARGET_SAMPLE_RATE,
   blobToAiEarWav,
@@ -53,6 +54,21 @@ describe('AI-örat audio preparation', () => {
   it('resamples to the requested length', () => {
     expect(resampleLinear(sine(48000, 48000), 48000, 32000).length).toBe(32000)
     expect(resampleLinear(sine(100, 8000), 8000, 8000).length).toBe(100)
+  })
+
+  it('Humma / sjung keeps up to 20 s, still small enough for the upload cap', async () => {
+    const rate = 48000
+    const { seconds, truncated, wav } = channelsToWav({ channels: [sine(rate * 25, rate)], maxSeconds: AI_EAR_HUMMING_MAX_SECONDS, sampleRate: rate })
+    const view = await bytesOf(wav)
+    expect(AI_EAR_HUMMING_MAX_SECONDS).toBe(20)
+    expect(truncated).toBe(true)
+    expect(seconds).toBe(20)
+    expect(view.getUint32(40, true)).toBe(20 * AI_EAR_TARGET_SAMPLE_RATE * 2)
+    expect(wav.size).toBeLessThan(1.5 * 1024 * 1024)
+
+    const short = channelsToWav({ channels: [sine(rate * 15, rate)], maxSeconds: AI_EAR_HUMMING_MAX_SECONDS, sampleRate: rate })
+    expect(short.truncated).toBe(false)
+    expect(short.seconds).toBe(15)
   })
 
   it('converts to at most 12 s at 32 kHz and reports truncation', async () => {

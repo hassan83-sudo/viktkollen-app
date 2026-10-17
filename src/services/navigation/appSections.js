@@ -15,10 +15,10 @@ export const appSections = [
     label: 'Redo!',
   },
   {
-    ariaLabel: 'Öppna Plats',
-    icon: '📍',
-    id: 'place',
-    label: 'Plats',
+    ariaLabel: 'Öppna Kundtjänst',
+    icon: '🎧',
+    id: 'support',
+    label: 'Kundtjänst',
   },
   {
     ariaLabel: 'Öppna Min resa',
@@ -43,6 +43,7 @@ export const appSections = [
 /** Deep-link / Mer destinations kept routable without bottom-nav tabs. */
 export const secondaryAppSectionIds = Object.freeze([
   'coach',
+  'place',
   'nutrition',
   'progress',
   'wellbeing',

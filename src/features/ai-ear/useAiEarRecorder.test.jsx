@@ -197,4 +197,100 @@ describe('useAiEarRecorder (AI-EAR-2B)', () => {
     expect(onRecorded).toHaveBeenCalledTimes(1)
     expect(env.recorders[0].stop).toHaveBeenCalledTimes(1)
   })
+
+  describe('Humma / sjung automatic stop', () => {
+    function scriptedMeter(levelAt) {
+      const meter = { close: vi.fn(), read: vi.fn(() => levelAt(meter.read.mock.calls.length)) }
+      return meter
+    }
+
+    it('stops by itself about 2 s after the singing ends and releases the meter', async () => {
+      vi.useFakeTimers()
+      const env = fakeEnv()
+      // 100 ms frames: 4 s of singing, then silence.
+      const meter = scriptedMeter((frame) => (frame <= 40 ? 0.2 : 0.002))
+      const createLevelMeter = vi.fn(() => meter)
+      const { result, onRecorded } = setup(env, { autoStop: {}, createLevelMeter, maxSeconds: 20 })
+      await act(() => result.current.start())
+      expect(createLevelMeter).toHaveBeenCalledTimes(1)
+      act(() => { vi.advanceTimersByTime(5500) })
+      expect(onRecorded).not.toHaveBeenCalled()
+      act(() => { vi.advanceTimersByTime(700) })
+      expect(onRecorded).toHaveBeenCalledTimes(1)
+      expect(result.current.recording).toBe(false)
+      expect(meter.close).toHaveBeenCalled()
+      expect(env.tracks[0].stop).toHaveBeenCalled()
+      const reads = meter.read.mock.calls.length
+      act(() => { vi.advanceTimersByTime(2000) })
+      expect(meter.read.mock.calls.length).toBe(reads)
+    })
+
+    it('keeps recording through a pause between lines', async () => {
+      vi.useFakeTimers()
+      const env = fakeEnv()
+      // 3 s singing, 1.5 s pause, 3 s singing, then silence.
+      const meter = scriptedMeter((frame) => ((frame <= 30 || (frame > 45 && frame <= 75)) ? 0.2 : 0.002))
+      const { result, onRecorded } = setup(env, { autoStop: {}, createLevelMeter: () => meter, maxSeconds: 20 })
+      await act(() => result.current.start())
+      act(() => { vi.advanceTimersByTime(9000) })
+      expect(onRecorded).not.toHaveBeenCalled()
+      act(() => { vi.advanceTimersByTime(800) })
+      expect(onRecorded).toHaveBeenCalledTimes(1)
+    })
+
+    it('still stops at the 20 s maximum when the room never goes quiet', async () => {
+      vi.useFakeTimers()
+      const env = fakeEnv()
+      const meter = scriptedMeter((frame) => 0.05 + (frame % 4) * 0.005)
+      const { result, onRecorded } = setup(env, { autoStop: {}, createLevelMeter: () => meter, maxSeconds: 20 })
+      await act(() => result.current.start())
+      act(() => { vi.advanceTimersByTime(19500) })
+      expect(onRecorded).not.toHaveBeenCalled()
+      act(() => { vi.advanceTimersByTime(1000) })
+      expect(onRecorded).toHaveBeenCalledTimes(1)
+      expect(meter.close).toHaveBeenCalled()
+    })
+
+    it('can still be stopped by hand before the silence', async () => {
+      vi.useFakeTimers()
+      const env = fakeEnv()
+      const meter = scriptedMeter(() => 0.2)
+      const { result, onRecorded } = setup(env, { autoStop: {}, createLevelMeter: () => meter, maxSeconds: 20 })
+      await act(() => result.current.start())
+      act(() => { vi.advanceTimersByTime(1500) })
+      act(() => result.current.stop())
+      expect(onRecorded).toHaveBeenCalledTimes(1)
+      expect(meter.close).toHaveBeenCalled()
+    })
+
+    it('records normally without a level meter (no Web Audio) and never builds one without autoStop', async () => {
+      vi.useFakeTimers()
+      let env = fakeEnv()
+      let hook = setup(env, { autoStop: {}, createLevelMeter: () => null, maxSeconds: 20 })
+      await act(() => hook.result.current.start())
+      act(() => { vi.advanceTimersByTime(10000) })
+      expect(hook.onRecorded).not.toHaveBeenCalled()
+      act(() => hook.result.current.stop())
+      expect(hook.onRecorded).toHaveBeenCalledTimes(1)
+      hook.unmount()
+
+      env = fakeEnv()
+      const createLevelMeter = vi.fn()
+      hook = setup(env, { createLevelMeter })
+      await act(() => hook.result.current.start())
+      expect(createLevelMeter).not.toHaveBeenCalled()
+      expect(env.getUserMedia).toHaveBeenCalledWith({ audio: true })
+    })
+
+    it('releases the level meter when the recording is cancelled or unmounted', async () => {
+      vi.useFakeTimers()
+      const env = fakeEnv()
+      const meter = scriptedMeter(() => 0.2)
+      const hook = setup(env, { autoStop: {}, createLevelMeter: () => meter, maxSeconds: 20 })
+      await act(() => hook.result.current.start())
+      act(() => hook.result.current.cancel())
+      expect(meter.close).toHaveBeenCalledTimes(1)
+      expect(hook.onRecorded).not.toHaveBeenCalled()
+    })
+  })
 })

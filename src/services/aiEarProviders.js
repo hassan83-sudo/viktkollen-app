@@ -117,6 +117,12 @@ function parseMusic(payload) {
   }
 }
 
+// ACRCloud's humming score (0-1) is not documented with a cut-off; its own
+// examples range from about 0.6 to 0.9. Below this value (or with no score)
+// the match is shown as a suggestion, never as a certain answer. To be
+// calibrated with real owner test recordings.
+export const HUMMING_CERTAIN_SCORE = 0.8
+
 function parseHumming(payload) {
   if (payload.matched === false) return { matched: false }
   const result = payload.result
@@ -124,10 +130,12 @@ function parseHumming(payload) {
   const alternatives = Array.isArray(result.alternatives)
     ? result.alternatives.map((entry) => ({ artist: text(entry?.artist) || null, title: text(entry?.title) })).filter((entry) => entry.title).slice(0, 2)
     : []
-  // The provider score is deliberately NOT passed on: the UI never shows it as a confidence or percentage.
+  // The score itself is NOT passed on: the UI never shows it as a confidence or
+  // percentage. It only decides between "certain" and "suggestion".
+  const certain = typeof result.score === 'number' && result.score >= HUMMING_CERTAIN_SCORE
   return {
     matched: true,
-    result: { album: text(result?.details?.album) || null, alternatives, artist: text(result?.artist) || null, provider: 'ACRCloud', title: text(result.title) },
+    result: { album: text(result?.details?.album) || null, alternatives, artist: text(result?.artist) || null, certain, provider: 'ACRCloud', title: text(result.title) },
   }
 }
 

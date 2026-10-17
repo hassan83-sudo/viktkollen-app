@@ -150,3 +150,22 @@ export function buildAiEarErrorView(reason, t = swedish) {
     title: t(`errors.${key}.title`),
   }
 }
+
+const formatSong = (item) => [item.title, item.artist].filter(Boolean).join(' – ')
+
+/** Humma / sjung result: a certain match by title, an uncertain one only as suggestions. */
+export function buildHummingView(outcome, t) {
+  const base = { contextLines: [], hints: [], kind: 'music', species: [], footer: t('modes.melody.footer') }
+  if (!outcome.matched) return { ...base, alternatives: [], body: t('modes.melody.noMatchBody'), title: t('modes.melody.noMatch') }
+  const { alternatives = [], artist, certain, title } = outcome.result
+  if (certain) {
+    return { ...base, alternatives: alternatives.map(formatSong), body: artist || t('modes.melody.unknownArtist'), title }
+  }
+  return {
+    ...base,
+    alternatives: [{ artist, title }, ...alternatives].map(formatSong),
+    alternativesLabel: t('modes.melody.suggestions'),
+    body: t('modes.melody.uncertainBody'),
+    title: t('modes.melody.uncertainTitle'),
+  }
+}

@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { AI_EAR_MAX_SECONDS } from '../../services/aiEarAudio.js'
+import { createHummingAutoStop, createStreamLevelMeter } from './hummingAutoStop.js'
+
+const AUTO_STOP_FRAME_MS = 100
 
 /**
  * AI-EAR-2B: the MediaRecorder microphone engine of AI Örat, shared by the
@@ -17,12 +20,18 @@ import { AI_EAR_MAX_SECONDS } from '../../services/aiEarAudio.js'
  * belong here. The two must never hold the microphone at the same time
  * (notably on iPhone, where they compete for one audio session).
  *
+ * Optional `autoStop` ({ silenceMs, minVoicedMs }, Humma / sjung only) stops
+ * the recording by itself after a stretch of quiet once enough sound was
+ * heard (hummingAutoStop.js). Without it, nothing changes for other modes.
+ *
  * Errors are reported through `onError(code)`: 'mic_unavailable' (no
  * MediaRecorder or getUserMedia, or the device failed) and 'mic_denied'
  * (NotAllowedError/SecurityError).
  */
 export function useAiEarRecorder({
   audioConstraints = { audio: true },
+  autoStop = null,
+  createLevelMeter = createStreamLevelMeter,
   getUserMedia,
   maxSeconds = AI_EAR_MAX_SECONDS,
   MediaRecorderImpl,
@@ -39,11 +48,13 @@ export function useAiEarRecorder({
   const recorderRef = useRef(null)
   const chunksRef = useRef([])
   const timerRef = useRef(null)
+  const meterRef = useRef(null)
+  const meterTimerRef = useRef(null)
   // The latest options, so start/stop keep stable identities. Synced after
   // each render (a user can only press start after a commit).
-  const optionsRef = useRef({ audioConstraints, getUserMedia, maxSeconds, MediaRecorderImpl, onError, onRecorded, onStart })
+  const optionsRef = useRef({ audioConstraints, autoStop, createLevelMeter, getUserMedia, maxSeconds, MediaRecorderImpl, onError, onRecorded, onStart })
   useEffect(() => {
-    optionsRef.current = { audioConstraints, getUserMedia, maxSeconds, MediaRecorderImpl, onError, onRecorded, onStart }
+    optionsRef.current = { audioConstraints, autoStop, createLevelMeter, getUserMedia, maxSeconds, MediaRecorderImpl, onError, onRecorded, onStart }
   })
 
   const stopTracks = useCallback(() => {
@@ -54,6 +65,10 @@ export function useAiEarRecorder({
   const clearTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current)
     timerRef.current = null
+    if (meterTimerRef.current) clearInterval(meterTimerRef.current)
+    meterTimerRef.current = null
+    meterRef.current?.close?.()
+    meterRef.current = null
   }, [])
 
   // Stops everything without delivering a Blob (unmount and cancel).
@@ -165,6 +180,21 @@ export function useAiEarRecorder({
       setSeconds(elapsed)
       if (elapsed >= limit) stop()
     }, 250)
+
+    const auto = optionsRef.current.autoStop
+    if (auto) {
+      let meter = null
+      try { meter = optionsRef.current.createLevelMeter?.(stream) || null } catch { meter = null }
+      if (meter) {
+        meterRef.current = meter
+        const detector = createHummingAutoStop(auto)
+        meterTimerRef.current = setInterval(() => {
+          let level
+          try { level = meter.read() } catch { level = 0 }
+          if (detector.update(level, Date.now() - startedAt) === 'stop') stop()
+        }, AUTO_STOP_FRAME_MS)
+      }
+    }
   }, [clearTimer, stop, stopTracks])
 
   return { cancel, recording, seconds, start, stop }

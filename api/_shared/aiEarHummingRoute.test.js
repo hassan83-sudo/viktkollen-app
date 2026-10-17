@@ -220,4 +220,32 @@ describe('ACRCloud humming route', () => {
       fetchImpl: vi.fn(),
     })).rejects.toMatchObject({ code: 'serverConfiguration' })
   })
+
+  it('logs only the ACRCloud status code for 3001 and 3014, never credentials', async () => {
+    for (const code of [3001, 3014]) {
+      console.warn.mockClear()
+      await expect(callAcrCloud({ contentType: 'audio/wav', data: audioBytes(), size: 4 }, {
+        fetchImpl: vi.fn(async () => ({ json: async () => ({ status: { code, msg: `${ACCESS_KEY} ${ACCESS_SECRET}` } }), ok: true, status: 200 })),
+      })).rejects.toMatchObject({ code: 'serverConfiguration' })
+      expect(console.warn).toHaveBeenCalledWith('[api/ai-ear-humming-recognition] ACRCloud rejected credentials', { acrStatus: code })
+      const logged = JSON.stringify(console.warn.mock.calls)
+      expect(logged).not.toContain(ACCESS_KEY)
+      expect(logged).not.toContain(ACCESS_SECRET)
+      expect(logged).not.toMatch(/signature|length/i)
+    }
+  })
+
+  it('trims surrounding whitespace and newlines from the three ACRCloud variables', async () => {
+    process.env.ACRCLOUD_HOST = ` ${HOST}\n`
+    process.env.ACRCLOUD_ACCESS_KEY = `${ACCESS_KEY}\n`
+    process.env.ACRCLOUD_ACCESS_SECRET = ` ${ACCESS_SECRET}\r\n`
+    const now = 1_760_000_000_000
+    const fetchImpl = vi.fn(async () => ({ json: async () => ({ status: { code: 1001 } }), ok: true, status: 200 }))
+    await expect(callAcrCloud({ contentType: 'audio/wav', data: audioBytes(), size: 4 }, { fetchImpl, now })).resolves.toEqual({ matched: false })
+
+    const [url, init] = fetchImpl.mock.calls[0]
+    expect(url).toBe(`https://${HOST}/v1/identify`)
+    expect(init.body.get('access_key')).toBe(ACCESS_KEY)
+    expect(init.body.get('signature')).toBe(buildAcrCloudSignature({ accessKey: ACCESS_KEY, accessSecret: ACCESS_SECRET, timestamp: Math.floor(now / 1000) }))
+  })
 })

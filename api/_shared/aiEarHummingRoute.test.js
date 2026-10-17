@@ -2,12 +2,12 @@ import { createHmac } from 'node:crypto'
 import { Readable } from 'node:stream'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import handler from './index.js'
-import { buildAcrCloudSignature, callAcrCloud, isAcrCloudHost } from '../_shared/aiEarHummingRoute.js'
-import { setAiRateLimitAdapterForTests } from '../_shared/aiRateLimiter.js'
-import { setBillingAdminServiceForTests } from '../_shared/billing/admin.js'
-import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
-import { analysisConsentPurposes, computeCanonicalImageHash, issueAnalysisConsentToken } from '../_shared/analysisConsent.js'
+import handler from '../ai-ear/interpret/index.js'
+import { buildAcrCloudSignature, callAcrCloud, isAcrCloudHost } from './aiEarHummingRoute.js'
+import { setAiRateLimitAdapterForTests } from './aiRateLimiter.js'
+import { setBillingAdminServiceForTests } from './billing/admin.js'
+import { setSupabaseAuthVerifierForTests } from './verifySupabaseUser.js'
+import { analysisConsentPurposes, computeCanonicalImageHash, issueAnalysisConsentToken } from './analysisConsent.js'
 
 const TEST_SECRET = 'test-analysis-consent-secret-32-plus'
 const OWNER_ID = '11111111-1111-4111-8111-111111111111'
@@ -56,7 +56,7 @@ async function callRoute({ audio = audioBytes(), method = 'POST', token = 'owner
   const encoded = await encodeAudio(audio)
   const request = Readable.from([encoded.body])
   request.method = method
-  request.url = '/api/ai-ear-humming-recognition'
+  request.url = '/api/ai-ear/interpret?__vk_route=humming'
   request.headers = {
     'content-type': encoded.contentType,
     ...(token ? { authorization: `Bearer ${token}` } : {}),

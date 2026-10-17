@@ -10,6 +10,7 @@ on:
       - 'api/security-center/**'
       - 'api/_shared/aiRouteErrors.js'
       - 'supabase/migrations/20261017170000_security_center_events.sql'
+      - 'supabase/migrations/20261017183000_security_center_rpc_bridge.sql'
       - 'src/components/billing/SecurityCenterPanel.jsx'
       - 'src/components/billing/BugMonitorAdminEntry.jsx'
       - '.github/workflows/security-center.yml'

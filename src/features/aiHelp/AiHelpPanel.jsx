@@ -4,14 +4,12 @@ import { getLanguageDefinition, normalizeLanguageCode } from '../../i18n/languag
 import { confirmScheduleCancel, requestAiHelpReply } from './aiHelpClient.js'
 import { reportClientBug } from '../../services/bugMonitor/bugMonitorClient.js'
 import { requestOpenHelpSection } from './aiHelpTools.js'
+import { isDirectNavigationRequest } from './navigationRequest.js'
+import SupportPanel from './SupportPanel.jsx'
 import { helpChrome } from './uiChrome.js'
 import './AiHelpPanel.css'
 
 const THREAD_STORAGE_KEY = 'viktkollen.aiHelp.thread'
-
-function isDirectNavigationRequest(text) {
-  return /^(?:kan du\s+)?(?:ta mig till|öppna|visa mig|gå till|navigera till|skicka mig till)\b/i.test(text.trim())
-}
 
 function AiHelpPanel() {
   const { i18n } = useTranslation()
@@ -125,7 +123,7 @@ function AiHelpPanel() {
       }
 
       if (result.tool?.name === 'open-section' && isDirectNavigationRequest(content)) {
-        requestOpenHelpSection(result.tool.sectionId)
+        requestOpenHelpSection(result.tool.sectionId, result.tool.targetId)
       }
 
       setMessages((current) => [
@@ -187,9 +185,9 @@ function AiHelpPanel() {
                   <button
                     className="secondary-button ai-help-action"
                     type="button"
-                    onClick={() => requestOpenHelpSection(message.tool.sectionId)}
+                    onClick={() => requestOpenHelpSection(message.tool.sectionId, message.tool.targetId)}
                   >
-                    {openedSections[message.tool.sectionId] ? chrome.opened : message.tool.label}
+                    {openedSections[message.tool.sectionId] ? chrome.opened : languageCode === 'sv' ? message.tool.label : chrome.openSection}
                   </button>
                 )}
               </div>
@@ -211,6 +209,7 @@ function AiHelpPanel() {
               {chrome.bugReport}
             </button>
           </form>
+          <SupportPanel />
         </>
       )}
     </section>

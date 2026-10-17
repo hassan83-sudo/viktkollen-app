@@ -432,7 +432,7 @@ function MoreSection({
             </div>
 
             {isAuthenticated ? <PlanCommercialAdmin /> : null}
-            {isAuthenticated ? <BugMonitorAdminEntry /> : null}
+            {isAuthenticated ? <BugMonitorAdminEntry key={userId || 'signed-out'} /> : null}
 
             <div className="app-information">
               <h3>{t('aboutTitle')}</h3>

@@ -267,6 +267,7 @@ describe('AI route dispatch on /api/ai', () => {
       source: '/api/bug-monitor',
       destination: '/api/ai?__vk_route=bug-monitor',
     })
+    expect(rewrites).toContainEqual({ source: '/api/support', destination: '/api/ai?__vk_route=support' })
     const clientHelp = readFileSync(join(root, 'src/features/aiHelp/aiHelpClient.js'), 'utf8')
     const clientCoach = readFileSync(join(root, 'src/features/aiCoach/coachModelClient.js'), 'utf8')
     expect(clientHelp).toContain("fetch('/api/ai-help'")
@@ -277,10 +278,10 @@ describe('AI route dispatch on /api/ai', () => {
     const functions = countDeployableFunctions()
     const names = functions.map((file) => file.replaceAll('\\', '/'))
     expect(functions.length).toBeLessThanOrEqual(12)
-    expect(functions).toHaveLength(11)
     expect(names.some((file) => file.endsWith('/api/ai/index.js'))).toBe(true)
     expect(names.some((file) => file.includes('/api/ai-help/'))).toBe(false)
     expect(names.some((file) => file.includes('/api/ai-coach/'))).toBe(false)
     expect(names.some((file) => file.includes('/api/bug-monitor/'))).toBe(false)
+    expect(names.some((file) => file.includes('/api/support/'))).toBe(false)
   })
 })

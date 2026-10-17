@@ -1,5 +1,7 @@
 # Granskning av AI-kundtjänst och AI-Hjälp
 
+Historisk rapport från `7dbe726`. Se [uppdaterad funktion och verifiering inför lanseringen](AI_SUPPORT_LAUNCH_2026-10-31.md).
+
 Granskad 2026-10-17 från `origin/main` på commit `8a9597da1f288d0f2545c51d0f313e7738769c0d`.
 Arbetsgren: `codex/ai-support-review`. Ingen merge, publicering eller kontoändring har utförts.
 

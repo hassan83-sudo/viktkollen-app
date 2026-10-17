@@ -13,12 +13,13 @@ export function isAiHelpSectionAllowed(sectionId) {
   return sectionIds.has(String(sectionId || ''))
 }
 
-export function toolForSection(sectionId, title) {
+export function toolForSection(sectionId, title, targetId) {
   if (!isAiHelpSectionAllowed(sectionId)) return null
   return {
     label: `Öppna ${title}`,
     name: 'open-section',
     sectionId,
+    ...(sectionId === 'nutrition' && targetId === 'nutrition-scanner-v2' ? { targetId } : {}),
   }
 }
 
@@ -32,7 +33,7 @@ export function sanitizeHelpTool(tool, entries = []) {
     .map((entry) => entry.title)
   const entry = entries.find((item) => item.sectionId === sectionId)
   const title = titles.find((item) => tool.label === `Öppna ${item}`) || entry?.title || titles[0]
-  return toolForSection(sectionId, title || 'avsnittet')
+  return toolForSection(sectionId, title || 'avsnittet', tool.targetId)
 }
 
 export function listAllowedHelpSections() {
@@ -51,10 +52,10 @@ export function commitHelpSectionOpen(sectionId, {
   return changeSection(sectionId) !== false
 }
 
-export function requestOpenHelpSection(sectionId) {
+export function requestOpenHelpSection(sectionId, targetId) {
   if (typeof window === 'undefined' || !isAiHelpSectionAllowed(sectionId)) return false
   window.dispatchEvent(new CustomEvent('viktkollen:ai-help-open-section', {
-    detail: { sectionId },
+    detail: { sectionId, ...(sectionId === 'nutrition' && targetId === 'nutrition-scanner-v2' ? { targetId } : {}) },
   }))
   return true
 }

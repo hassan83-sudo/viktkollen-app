@@ -36,14 +36,23 @@ export function isAcrCloudHost(host) {
   return /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?)*\.acrcloud\.com$/i.test(value)
 }
 
+// Pasted values often carry a trailing newline or space, which ACRCloud then
+// rejects as a wrong key (3001) or a bad signature (3014).
+function readAcrCloudEnv() {
+  return {
+    accessKey: String(process.env.ACRCLOUD_ACCESS_KEY || '').trim(),
+    accessSecret: String(process.env.ACRCLOUD_ACCESS_SECRET || '').trim(),
+    host: String(process.env.ACRCLOUD_HOST || '').trim(),
+  }
+}
+
 function isConfigured() {
-  return Boolean(isAcrCloudHost(process.env.ACRCLOUD_HOST) && process.env.ACRCLOUD_ACCESS_KEY && process.env.ACRCLOUD_ACCESS_SECRET)
+  const { accessKey, accessSecret, host } = readAcrCloudEnv()
+  return Boolean(isAcrCloudHost(host) && accessKey && accessSecret)
 }
 
 export async function callAcrCloud(audio, { fetchImpl, now = Date.now(), timeoutMs = HUMMING_RECOGNITION_TIMEOUT_MS } = {}) {
-  const host = String(process.env.ACRCLOUD_HOST || '')
-  const accessKey = String(process.env.ACRCLOUD_ACCESS_KEY || '')
-  const accessSecret = String(process.env.ACRCLOUD_ACCESS_SECRET || '')
+  const { accessKey, accessSecret, host } = readAcrCloudEnv()
   if (!isAcrCloudHost(host) || !accessKey || !accessSecret) throw providerError('serverConfiguration')
 
   const timestamp = Math.floor(now / 1000)
@@ -63,7 +72,12 @@ export async function callAcrCloud(audio, { fetchImpl, now = Date.now(), timeout
   if (statusCode === 1001) return { matched: false }
   if (statusCode !== 0) {
     // 3001 (wrong access key) / 3014 (invalid signature): our own credentials are wrong.
-    throw providerError(statusCode === 3001 || statusCode === 3014 ? 'serverConfiguration' : 'providerUnavailable')
+    // Only the status code is logged: never the key, secret, signature or ACRCloud's message.
+    if (statusCode === 3001 || statusCode === 3014) {
+      console.warn('[api/ai-ear-humming-recognition] ACRCloud rejected credentials', { acrStatus: statusCode })
+      throw providerError('serverConfiguration')
+    }
+    throw providerError('providerUnavailable')
   }
 
   const humming = Array.isArray(payload?.metadata?.humming) ? payload.metadata.humming : []

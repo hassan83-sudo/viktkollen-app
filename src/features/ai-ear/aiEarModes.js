@@ -25,7 +25,7 @@ export const aiEarModes = Object.freeze([
   Object.freeze({ access: 'free', execution: 'interpret', icon: '🐦', id: 'bird' }),
   // AI-EAR-2C1: free by product decision (docs/ai-ear/AI_EAR_2C_DICTATION.md).
   Object.freeze({ access: 'free', execution: 'browser', icon: '🗣️', id: 'speech' }),
-  Object.freeze({ access: 'premium', execution: 'humming', icon: '🎶', id: 'melody' }),
+  Object.freeze({ access: 'premium', execution: 'local', icon: '🎶', id: 'melody' }),
 ])
 
 export const defaultAiEarModeId = 'sound'

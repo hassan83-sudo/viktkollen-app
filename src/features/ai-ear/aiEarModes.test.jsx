@@ -15,7 +15,7 @@ import { backendFixtures } from './fixtures/backendFixtures.js'
 
 // AI-EAR-1: four separate modes inside AI Örat. Sound and bird use the
 // existing free server hop; speech (AI-EAR-2C1) is free and runs in the
-// browser; melody is Premium and calls the owner-gated humming hop.
+// browser; melody stays locked until the server confirms the billing admin.
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -86,32 +86,63 @@ describe('AI Örat modes (AI-EAR-1)', () => {
     }
   })
 
-    // AI-EAR-2C: Tal → text stays in the browser. Humma / sjung records, then
-  // sends that clip only through the humming hop after the ACRCloud notice.
-  it('Tal → text cannot record a file; Humma / sjung sends the clip with consent', async () => {
-    const deps = {
-      ...makeDeps(),
-      identifyHumming: vi.fn(async () => ({
-        matched: true,
-        ok: true,
-        result: { alternatives: [], artist: 'Testartist', title: 'Testlåt' },
-      })),
-    }
+  // AI-EAR-2C: Tal → text runs in the browser. Humma / sjung is owner-only:
+  // everyone else sees it locked, with no recorder and no request.
+  it('Tal → text cannot record a file; Humma / sjung is locked for an ordinary user', async () => {
+    const deps = { ...makeDeps(), identifyHumming: vi.fn(), loadHummingAccess: vi.fn(async () => false) }
     render(<AiEarMode deps={deps} />)
     fireEvent.click(screen.getByRole('radio', { name: /^Tal → text/ }))
     expect(screen.queryByRole('button', { name: 'Spela in' })).toBeNull()
     expect(document.querySelector('input[type="file"]')).toBeNull()
 
     fireEvent.click(screen.getByRole('radio', { name: /^Humma \/ sjung/ }))
-    expect(screen.getByRole('button', { name: 'Spela in' })).toBeTruthy()
-    expect(screen.getByText('Välj ljudfil')).toBeTruthy()
+    expect(screen.getByText('Humma / sjung kräver Premium och är inte tillgängligt ännu. Inget ljud skickas.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Spela in' })).toBeNull()
+    expect(document.querySelector('input[type="file"]')).toBeNull()
+    expect(deps.loadHummingAccess).toHaveBeenCalledTimes(1)
+    expect(deps.identifyHumming).not.toHaveBeenCalled()
+    expect(deps.interpret).not.toHaveBeenCalled()
+  })
+
+  it('Humma / sjung is locked when the owner check fails', async () => {
+    const deps = { ...makeDeps(), identifyHumming: vi.fn(), loadHummingAccess: vi.fn(async () => { throw new Error('offline') }) }
+    render(<AiEarMode deps={deps} />)
+    fireEvent.click(screen.getByRole('radio', { name: /^Humma \/ sjung/ }))
+    await Promise.resolve()
+    expect(screen.queryByRole('button', { name: 'Spela in' })).toBeNull()
+    expect(deps.identifyHumming).not.toHaveBeenCalled()
+  })
+
+  it('Humma / sjung records and asks ACRCloud only for the verified owner', async () => {
+    const identifyHumming = vi.fn(async () => ({ matched: true, ok: true, result: { alternatives: [{ artist: 'B', title: 'Andra låten' }], artist: 'Artist A', title: 'Låten' } }))
+    const deps = { ...makeDeps(), identifyHumming, loadHummingAccess: vi.fn(async () => true) }
+    render(<AiEarMode deps={deps} />)
+    fireEvent.click(screen.getByRole('radio', { name: /^Humma \/ sjung/ }))
+    expect(await screen.findByRole('button', { name: 'Spela in' })).toBeTruthy()
+    expect(screen.queryByText('Humma / sjung kräver Premium och är inte tillgängligt ännu. Inget ljud skickas.')).toBeNull()
     chooseFile()
     expect(await screen.findByText('Melodin skickas även till ACRCloud för att föreslå låt och artist. Ljudet sparas inte.')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Analysera ljudet' }))
-    expect(await screen.findByText('Testlåt')).toBeTruthy()
-    expect(deps.identifyHumming).toHaveBeenCalledTimes(1)
-    expect(deps.identifyHumming.mock.calls[0][0]).toMatchObject({ consentApproved: true, wav: wavBlob })
+    fireEvent.click(await screen.findByRole('button', { name: 'Analysera ljudet' }))
+    expect(await screen.findByText('Låten')).toBeTruthy()
+    expect(screen.getByText('Artist A')).toBeTruthy()
+    expect(screen.getByText('ACRCloud – resultatet är ett förslag.')).toBeTruthy()
+    expect(identifyHumming).toHaveBeenCalledTimes(1)
+    expect(identifyHumming.mock.calls[0][0]).toMatchObject({ consentApproved: true, wav: wavBlob })
     expect(deps.interpret).not.toHaveBeenCalled()
+  })
+
+  it('Humma / sjung results are localized (English)', async () => {
+    await i18n.changeLanguage('en')
+    const deps = { ...makeDeps(), identifyHumming: vi.fn(async () => ({ matched: false, ok: true })), loadHummingAccess: vi.fn(async () => true) }
+    render(<AiEarMode deps={deps} />)
+    fireEvent.click(screen.getByRole('radio', { name: /^Hum \/ sing/ }))
+    await screen.findByRole('button', { name: 'Record' })
+    chooseFile()
+    fireEvent.click(await screen.findByRole('button', { name: 'Analyse the sound' }))
+    expect(await screen.findByText('No melody found')).toBeTruthy()
+    expect(screen.getByText('Try humming more clearly or record again.')).toBeTruthy()
+    expect(screen.getByText('ACRCloud – the result is a suggestion.')).toBeTruthy()
+    await i18n.changeLanguage('sv')
   })
 
   it('bird mode: the leading species as "Mest sannolikt", the rest as alternatives, no confidence', async () => {
@@ -162,7 +193,7 @@ describe('AI Örat modes (AI-EAR-1)', () => {
       ['sound', 'free', 'interpret'],
       ['bird', 'free', 'interpret'],
       ['speech', 'free', 'browser'],
-      ['melody', 'premium', 'humming'],
+      ['melody', 'premium', 'local'],
     ])
     // Sound and bird run on ai.ear.interpret, which billing keeps free and
     // unmetered at launch.
@@ -181,6 +212,6 @@ describe('AI Örat modes (AI-EAR-1)', () => {
       .join('\n')
     expect(code).not.toMatch(/billing|entitlement|quota|supabase|featureCostGate|\/api\//i)
     const melody = aiEarModes.find((mode) => mode.id === 'melody')
-    expect(melody).toMatchObject({ access: 'premium', execution: 'humming' })
+    expect(melody).toMatchObject({ access: 'premium', execution: 'local' })
   })
 })

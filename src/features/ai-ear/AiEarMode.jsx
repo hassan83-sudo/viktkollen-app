@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { AI_EAR_MAX_INPUT_BYTES, AI_EAR_MAX_SECONDS, blobToAiEarWav } from '../../services/aiEarAudio.js'
+import { loadAiEarHummingAccess } from '../../services/aiEarHummingAccess.js'
 import { identifyHumming } from '../../services/aiEarProviders.js'
 import { interpretAiEarAudio } from '../../services/aiEarInterpret.js'
 import AiEarDictation from './AiEarDictation.jsx'
@@ -37,6 +38,7 @@ const defaultDeps = {
   getUserMedia: (constraints) => navigator.mediaDevices.getUserMedia(constraints),
   identifyHumming,
   interpret: interpretAiEarAudio,
+  loadHummingAccess: loadAiEarHummingAccess,
   MediaRecorderImpl: typeof MediaRecorder === 'undefined' ? null : MediaRecorder,
 }
 
@@ -50,7 +52,11 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
 
   const [phase, setPhase] = useState('idle') // idle | recording | preparing | ready | analyzing | result | error
   const [modeId, setModeId] = useState(defaultAiEarModeId)
-  const mode = getAiEarMode(modeId)
+  // Humma / sjung stays locked (no recorder, no audio sent) unless the server
+  // confirms the owner account for the test period.
+  const [hummingAllowed, setHummingAllowed] = useState(false)
+  const baseMode = getAiEarMode(modeId)
+  const mode = baseMode.id === 'melody' && hummingAllowed ? { ...baseMode, execution: 'humming' } : baseMode
   // Modes cannot change while the microphone or a request is active.
   const busy = phase === 'recording' || phase === 'preparing' || phase === 'analyzing'
   const [view, setView] = useState(null)
@@ -65,6 +71,18 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
 
   // The recorder hook stops the microphone on unmount; this aborts an
   // in-flight analysis and drops the prepared audio.
+  useEffect(() => {
+    const load = depsRef.current.loadHummingAccess
+    if (typeof load !== 'function') return undefined
+    const controller = new AbortController()
+    Promise.resolve(load({ signal: controller.signal }))
+      .then((allowed) => {
+        if (!controller.signal.aborted) setHummingAllowed(allowed === true)
+      })
+      .catch(() => {})
+    return () => controller.abort()
+  }, [])
+
   useEffect(() => {
     mountedRef.current = true
     return () => {
@@ -154,10 +172,10 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
     if (!mountedRef.current) return
     if (outcome.ok) {
       setView(mode.execution === 'humming' ? {
-        kind: 'music', title: outcome.matched ? outcome.result.title : 'Ingen melodi hittades',
-        body: outcome.matched ? (outcome.result.artist || 'Okänd artist') : 'Prova att nynna tydligare eller spela in igen.',
+        kind: 'music', title: outcome.matched ? outcome.result.title : t('modes.melody.noMatch'),
+        body: outcome.matched ? (outcome.result.artist || t('modes.melody.unknownArtist')) : t('modes.melody.noMatchBody'),
         alternatives: (outcome.result?.alternatives || []).map((item) => [item.title, item.artist].filter(Boolean).join(' – ')),
-        contextLines: [], hints: [], species: [], footer: 'ACRCloud – resultatet är ett förslag.',
+        contextLines: [], hints: [], species: [], footer: t('modes.melody.footer'),
       } : buildAiEarModeView(outcome.result, modeId, t))
       setPhase('result')
       return
@@ -224,11 +242,11 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
       <div className="ai-ear-workspace"><h4 className="ai-ear-mode-heading" id="ai-ear-mode-title">{t(`modes.${mode.id}.title`)}</h4>
       <p className="ai-ear-mode-instruction">{t(`modes.${mode.id}.instruction`)}</p>
 
-      {!mode.execution && <p className="ai-ear-premium">{t(`modes.${mode.id}.unavailable`)}</p>}
+      {(!mode.execution || mode.execution === 'local') && <p className="ai-ear-premium">{t(`modes.${mode.id}.unavailable`)}</p>}
 
       {mode.execution === 'browser' && <AiEarDictation deps={deps.dictation} microphoneBusy={recorder.recording} />}
 
-      {(mode.execution === 'interpret' || mode.execution === 'local' || mode.execution === 'humming') && phase === 'idle' && (
+      {(mode.execution === 'interpret' || mode.execution === 'humming') && phase === 'idle' && (
         <div className="ai-ear-actions">
           <button className="primary-button" type="button" onClick={startRecording}>{t('record')}</button>
           <label className="secondary-button ai-ear-file">

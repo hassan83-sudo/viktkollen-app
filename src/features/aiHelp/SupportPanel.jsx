@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { normalizeLanguageCode, getLanguageDefinition } from '../../i18n/languages.js'
-import { showReminderNotification } from '../../services/reminders/reminderNotifications.js'
 import { requestSupport } from './supportClient.js'
 import { supportChrome } from './supportChrome.js'
 
@@ -52,8 +51,15 @@ export default function SupportPanel({ admin = false }) {
       if (admin) for (const ticket of result.tickets || []) {
         const key = `${ticket.id}:${ticket.version}`
         if (ticket.notification_pending && !seen.current.has(key)) {
-          seen.current.add(key)
-          try { showReminderNotification({ id: `support-${ticket.id}`, title: chromeRef.current.pending }) } catch { /* In-app alert remains available. */ }
+          try {
+            if (typeof window !== 'undefined' && window.Notification?.permission === 'granted') {
+              new window.Notification(chromeRef.current.pending, {
+                body: chromeRef.current.adminTitle,
+                tag: `viktkollen-support-${ticket.id}`,
+              })
+              seen.current.add(key)
+            }
+          } catch { /* Keep the pending count visible when notifications are unavailable. */ }
         }
       }
       setData(result)

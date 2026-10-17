@@ -21,6 +21,7 @@ import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { handleAiCoachRequest } from '../_shared/aiCoach/httpHandler.js'
 import { handleAiHelpRequest } from '../_shared/aiHelp/httpHandler.js'
 import supportHandler from '../_shared/aiHelp/supportHandler.js'
+import supportAlertsHandler from '../_shared/aiHelp/supportAlertsHandler.js'
 import handleBugMonitorRequest from '../_shared/bugMonitor/httpHandler.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
@@ -634,6 +635,7 @@ export default async function handler(request, response) {
   const route = readVkRoute(request)
   if (route === 'ai-help') return handleAiHelpRequest(request, response)
   if (route === 'support') return supportHandler(request, response)
+  if (route === 'support-alerts') return supportAlertsHandler(request, response)
   if (route === 'ai-coach') return handleAiCoachRequest(request, response)
   if (route === 'bug-monitor') return handleBugMonitorRequest(request, response)
   if (route) {

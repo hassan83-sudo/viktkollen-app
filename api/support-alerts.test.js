@@ -21,7 +21,7 @@ vi.mock('./_shared/supabaseServer.js', () => ({
     }),
   }),
 }))
-import handler from './support-alerts.js'
+import handler from './_shared/aiHelp/supportAlertsHandler.js'
 
 function response() {
   return {

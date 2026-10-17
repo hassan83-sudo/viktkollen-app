@@ -1,4 +1,4 @@
-import { createSupabaseAdminClient } from './_shared/supabaseServer.js'
+import { createSupabaseAdminClient } from '../supabaseServer.js'
 
 // Scheduled server-side email alerts. No browser session, ticket text or user data is sent.
 // Configure CRON_SECRET, RESEND_API_KEY, SUPPORT_ALERT_TO and SUPPORT_ALERT_FROM

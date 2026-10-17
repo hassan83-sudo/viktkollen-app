@@ -146,7 +146,7 @@ function HomeSection({
           weeklyWeightChange={dashboardData?.weeklyWeightChange}
           weights={weights}
         />
-        <HomeNoticeShortcuts onOpenNotices={openNotices} />
+        <HomeNoticeShortcuts onOpenNotices={openNotices} onOpenPlace={() => onNavigateSection?.('place')} />
       </AppErrorBoundary>
     </AppSection>
   )

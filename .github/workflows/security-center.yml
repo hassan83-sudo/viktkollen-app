@@ -30,6 +30,6 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Security event and bug monitor tests
-        run: node --test src/services/security/securityEvents.test.js && npx vitest run api/_shared/security src/services/bugMonitor src/components/billing/BugMonitorPanel.test.jsx src/components/billing/SecurityCenterPanel.test.jsx api/_shared/bugMonitor/httpHandler.test.js
+        run: node --test src/services/security/securityEvents.test.js && npx vitest run api/_shared/security src/services/bugMonitor src/components/billing/BugMonitorPanel.test.jsx src/components/billing/SecurityCenterPanel.test.jsx api/security-center/index.test.js api/_shared/bugMonitor/httpHandler.test.js
       - name: Lint changed security modules
         run: npx eslint api/_shared/aiRouteErrors.js api/_shared/security src/services/security/securityEvents.js src/components/billing/BugMonitorPanel.jsx

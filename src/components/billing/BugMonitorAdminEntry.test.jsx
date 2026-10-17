@@ -39,7 +39,11 @@ describe('AI Bug Monitor entry under More', () => {
     expect(await screen.findByText('AI Bug Monitor')).toBeTruthy()
     expect(screen.getByRole('region', { name: 'AI Bug Monitor' })).toBeTruthy()
     const paths = fetchImpl.mock.calls.map(([path]) => String(path))
-    expect(paths).toEqual(['/api/billing/capability'])
+    // Capability first; the Security Center panel then reads its own admin
+    // endpoint. The plan list is never loaded.
+    expect(paths[0]).toBe('/api/billing/capability')
+    expect(paths.every((path) => path === '/api/billing/capability' || path === '/api/security-center')).toBe(true)
+    expect(screen.getByRole('region', { name: 'Säkerhetscentral' })).toBeTruthy()
     expect(fetchImpl.mock.calls[0][1].headers.Authorization).toBe('Bearer admin-token')
   })
 

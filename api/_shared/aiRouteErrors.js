@@ -1,6 +1,6 @@
 import { recordServerBug } from '../../src/services/bugMonitor/bugMonitor.js'
 import { securitySignalFromOutcome } from './security/securitySignal.js'
-import { recordSecurityEvent } from './security/securityEventStore.js'
+import { queueSecurityEvent } from './security/securityEventStore.js'
 
 export const aiRouteErrorCodes = {
   AUTH_EXPIRED: 'AUTH_EXPIRED',
@@ -74,9 +74,10 @@ export function sendSafeAiError(response, options = {}) {
     error: error.error,
     ok: false,
   })
-  // Persist trusted server rate-limit outcomes asynchronously. Never log request payloads.
+  // Persist trusted server rate-limit outcomes after the response, kept alive
+  // with waitUntil on Vercel. Never log request payloads.
   const signal = securitySignalFromOutcome({ code: error.error.code, status: error.status, feature: 'api' })
-  if (signal) void recordSecurityEvent(signal).catch(() => {})
+  if (signal) queueSecurityEvent(signal)
   if (Number(error.status) < 500) return sent
   const code = String(error.error.code || 'unknown').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 16) || 'error'
   const pending = recordServerBug({

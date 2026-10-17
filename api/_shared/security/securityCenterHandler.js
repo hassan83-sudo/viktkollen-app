@@ -1,6 +1,6 @@
-import { requireBillingAdmin } from '../_shared/billing/admin.js'
-import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
-import { createSupabaseAdminClient } from '../_shared/supabaseServer.js'
+import { requireBillingAdmin } from '../billing/admin.js'
+import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../aiRouteErrors.js'
+import { createSupabaseAdminClient } from '../supabaseServer.js'
 
 export default async function handler(request, response) {
   const requestId = 'security-center-' + Date.now().toString(36)

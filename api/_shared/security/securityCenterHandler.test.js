@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import handler from './index.js'
-import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
-import { setBillingAdminControlsForTests } from '../_shared/billing/admin.js'
-import { setSupabaseAdminClientForTests, clearSupabaseAdminClientForTests } from '../_shared/supabaseServer.js'
+import handler from './securityCenterHandler.js'
+import { setSupabaseAuthVerifierForTests } from '../verifySupabaseUser.js'
+import { setBillingAdminControlsForTests } from '../billing/admin.js'
+import { setSupabaseAdminClientForTests, clearSupabaseAdminClientForTests } from '../supabaseServer.js'
 
 function response() {
   return {

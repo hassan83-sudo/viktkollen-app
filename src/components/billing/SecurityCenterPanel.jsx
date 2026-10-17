@@ -57,7 +57,8 @@ export default function SecurityCenterPanel({ token }) {
                   <strong>{LABELS[event.type] || 'Säkerhetshändelse'}</strong>
                   {' · '}{event.severity || 'okänd nivå'}
                   {' · '}{event.feature || 'okänd funktion'}
-                  {' · '}{event.occurred_at || event.timestamp || 'okänd tid'}
+                  {' · '}{event.last_seen_at || event.occurred_at || event.timestamp || 'okänd tid'}
+                  {Number(event.event_count) > 1 ? ` · ${Number(event.event_count)} gånger` : ''}
                 </li>
               ))}
             </ul>

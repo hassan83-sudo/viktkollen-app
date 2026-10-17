@@ -1,5 +1,13 @@
+import { waitUntil as vercelWaitUntil } from '@vercel/functions'
+
 import { createSupabaseAdminClient } from '../supabaseServer.js'
 import { classifySecurityEvent } from '../../../src/services/security/securityEvents.js'
+
+let waitUntilOverride = null
+
+export function setSecurityWaitUntilForTests(fn = null) {
+  waitUntilOverride = fn
+}
 
 // Server-only, fail closed: never fall back to browser or volatile memory storage.
 export async function recordSecurityEvent(input, { client } = {}) {
@@ -17,4 +25,19 @@ export async function recordSecurityEvent(input, { client } = {}) {
   } catch {
     return false
   }
+}
+
+/**
+ * Records an event after the response may already have been sent. On Vercel
+ * the write is handed to waitUntil, so the function instance is kept alive
+ * until it settles instead of being frozen mid-request. Never throws.
+ */
+export function queueSecurityEvent(input, options = {}) {
+  const pending = recordSecurityEvent(input, options).catch(() => false)
+  try {
+    (waitUntilOverride || vercelWaitUntil)(pending)
+  } catch {
+    // Outside a Vercel request (tests, local scripts) the promise still runs.
+  }
+  return pending
 }

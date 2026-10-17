@@ -22,6 +22,21 @@ describe('SecurityCenterPanel', () => {
     }))
   })
 
+  it('shows how often a merged event happened and keeps polling without a page reload', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    let events = []
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, events }) }))
+    vi.stubGlobal('fetch', fetchMock)
+    render(<SecurityCenterPanel token="test-token" />)
+    expect(await screen.findByText(/Inga registrerade händelser/)).toBeTruthy()
+    events = [{ id: 2, type: 'API_RATE_LIMITED', severity: 'medium', feature: 'api', occurred_at: '2026-10-17T12:00:00Z', last_seen_at: '2026-10-17T12:00:40Z', event_count: 7 }]
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(await screen.findByText(/7 gånger/)).toBeTruthy()
+    expect(screen.getByText(/2026-10-17T12:00:40Z/)).toBeTruthy()
+    expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2)
+    vi.useRealTimers()
+  })
+
   it('alerts admin if security monitoring cannot be read', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network unavailable')))
     render(<SecurityCenterPanel token="test-token" />)

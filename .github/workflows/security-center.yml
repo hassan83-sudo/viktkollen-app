@@ -7,10 +7,12 @@ on:
       - 'src/components/billing/BugMonitorPanel.jsx'
       - 'api/_shared/bugMonitor/**'
       - 'api/_shared/security/**'
-      - 'api/security-center/**'
+      - 'api/ai/index.js'
+      - 'vercel.json'
       - 'api/_shared/aiRouteErrors.js'
       - 'supabase/migrations/20261017170000_security_center_events.sql'
       - 'supabase/migrations/20261017183000_security_center_rpc_bridge.sql'
+      - 'supabase/migrations/20261017151943_security_center_event_aggregation.sql'
       - 'src/components/billing/SecurityCenterPanel.jsx'
       - 'src/components/billing/BugMonitorAdminEntry.jsx'
       - '.github/workflows/security-center.yml'
@@ -31,6 +33,6 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Security event and bug monitor tests
-        run: node --test src/services/security/securityEvents.test.js && npx vitest run api/_shared/security src/services/bugMonitor src/components/billing/BugMonitorPanel.test.jsx src/components/billing/SecurityCenterPanel.test.jsx api/security-center/index.test.js api/_shared/bugMonitor/httpHandler.test.js
+        run: npx vitest run src/services/security/securityEvents.test.js api/_shared/security src/services/bugMonitor src/components/billing/BugMonitorPanel.test.jsx src/components/billing/SecurityCenterPanel.test.jsx api/_shared/bugMonitor/httpHandler.test.js
       - name: Lint changed security modules
-        run: npx eslint api/_shared/aiRouteErrors.js api/_shared/security src/services/security/securityEvents.js src/components/billing/BugMonitorPanel.jsx
+        run: npx eslint api/_shared/aiRouteErrors.js api/_shared/security src/services/security/securityEvents.js src/components/billing/BugMonitorPanel.jsx src/components/billing/SecurityCenterPanel.jsx

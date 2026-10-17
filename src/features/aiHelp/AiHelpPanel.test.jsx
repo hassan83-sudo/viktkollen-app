@@ -105,6 +105,35 @@ describe('AiHelpPanel language', () => {
     expect(await screen.findByRole('button', { name: 'Avsnittet är öppnat.' })).toBeTruthy()
   })
 
+  it('navigates immediately for an explicit request, but not for a how-to question', async () => {
+    const navigation = vi.fn()
+    window.addEventListener('viktkollen:ai-help-open-section', navigation)
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        answer: 'Öppna Mat.',
+        featureIds: ['more.nutrition'],
+        ok: true,
+        source: 'local',
+        status: 'answered',
+        tool: { label: 'Öppna Mat', name: 'open-section', sectionId: 'nutrition' },
+      }),
+    })
+    render(<AiHelpPanel />)
+    fireEvent.click(screen.getByRole('button', { name: 'Öppna AI-Hjälp' }))
+    const question = screen.getByLabelText('Fråga om Viktkollen')
+    fireEvent.change(question, { target: { value: 'Hur hittar jag matscanning?' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
+    await screen.findByText('Öppna Mat.')
+    expect(navigation).not.toHaveBeenCalled()
+    fireEvent.change(question, { target: { value: 'Ta mig till matscanning' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
+    await waitFor(() => expect(navigation).toHaveBeenCalledTimes(1))
+    expect(navigation.mock.calls[0][0].detail.sectionId).toBe('nutrition')
+    window.removeEventListener('viktkollen:ai-help-open-section', navigation)
+    fetchMock.mockRestore()
+  })
+
   it('waits for the cancellation button before calling billing', async () => {
     await i18n.changeLanguage('sv')
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {

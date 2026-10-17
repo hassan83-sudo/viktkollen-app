@@ -4,7 +4,7 @@ import { classifySecurityEvent } from '../../../src/services/security/securityEv
 // Server-only, fail closed: never fall back to browser or volatile memory storage.
 export async function recordSecurityEvent(input, { client = createSupabaseAdminClient() } = {}) {
   const event = classifySecurityEvent(input)
-  if (!event || !client || typeof client.schema !== 'function') return false
+  if (!event || !client || typeof client.rpc !== 'function') return false
   try {
     const { data, error } = await client.rpc('security_center_record_event', {
       p_type: event.type,

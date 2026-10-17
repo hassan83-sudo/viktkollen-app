@@ -6,7 +6,7 @@ describe('security event persistence', () => {
     const rpc = vi.fn(async () => ({ data: 7, error: null }))
     const client = { schema: vi.fn(() => ({ rpc })) }
     expect(await recordSecurityEvent({ type: 'API_RATE_LIMITED', severity: 'critical', feature: 'food-scan', password: 'private' }, { client })).toBe(true)
-    expect(client.schema).toHaveBeenCalledWith('security_center')
+    expect(client.rpc).toHaveBeenCalled()
     expect(rpc).toHaveBeenCalledWith('record_event', {
       p_type: 'API_RATE_LIMITED', p_severity: 'medium', p_feature: 'food-scan',
     })

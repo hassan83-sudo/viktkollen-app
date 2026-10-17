@@ -8,6 +8,7 @@ on:
       - 'api/_shared/bugMonitor/**'
       - 'api/_shared/security/**'
       - 'api/security-center/**'
+      - 'api/_shared/aiRouteErrors.js'
       - 'src/components/billing/SecurityCenterPanel.jsx'
       - 'src/components/billing/BugMonitorAdminEntry.jsx'
       - '.github/workflows/security-center.yml'
@@ -30,4 +31,4 @@ jobs:
       - name: Security event and bug monitor tests
         run: node --test src/services/security/securityEvents.test.js && npx vitest run api/_shared/security src/services/bugMonitor src/components/billing/BugMonitorPanel.test.jsx api/_shared/bugMonitor/httpHandler.test.js
       - name: Lint changed security modules
-        run: npx eslint api/_shared/security src/services/security/securityEvents.js src/components/billing/BugMonitorPanel.jsx
+        run: npx eslint api/_shared/aiRouteErrors.js api/_shared/security src/services/security/securityEvents.js src/components/billing/BugMonitorPanel.jsx

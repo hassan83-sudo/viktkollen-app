@@ -1,0 +1,38 @@
+name: Security Center checks
+
+on:
+  pull_request:
+    paths:
+      - 'src/services/security/**'
+      - 'src/components/billing/BugMonitorPanel.jsx'
+      - 'api/_shared/bugMonitor/**'
+      - 'api/_shared/security/**'
+      - 'api/ai/index.js'
+      - 'vercel.json'
+      - 'api/_shared/aiRouteErrors.js'
+      - 'supabase/migrations/20261017170000_security_center_events.sql'
+      - 'supabase/migrations/20261017183000_security_center_rpc_bridge.sql'
+      - 'supabase/migrations/20261017151943_security_center_event_aggregation.sql'
+      - 'src/components/billing/SecurityCenterPanel.jsx'
+      - 'src/components/billing/BugMonitorAdminEntry.jsx'
+      - '.github/workflows/security-center.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  security-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Security event and bug monitor tests
+        run: npx vitest run src/services/security/securityEvents.test.js api/_shared/security src/services/bugMonitor src/components/billing/BugMonitorPanel.test.jsx src/components/billing/SecurityCenterPanel.test.jsx api/_shared/bugMonitor/httpHandler.test.js
+      - name: Lint changed security modules
+        run: npx eslint api/_shared/aiRouteErrors.js api/_shared/security src/services/security/securityEvents.js src/components/billing/BugMonitorPanel.jsx src/components/billing/SecurityCenterPanel.jsx

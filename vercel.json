@@ -137,6 +137,10 @@
       "destination": "/api/ai?__vk_route=bug-monitor"
     },
     {
+      "source": "/api/security-center",
+      "destination": "/api/ai?__vk_route=security-center"
+    },
+    {
       "source": "/api/ai-ear-humming-recognition",
       "destination": "/api/ai-ear/interpret?__vk_route=humming"
     }

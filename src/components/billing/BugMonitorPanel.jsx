@@ -43,7 +43,7 @@ export default function BugMonitorPanel({ token }) {
 
   useEffect(() => {
     if (!open) return undefined
-    const timer = window.setInterval(load, 30000)
+    const timer = window.setInterval(load, 5000)
     return () => window.clearInterval(timer)
   }, [load, open])
 
@@ -73,10 +73,10 @@ export default function BugMonitorPanel({ token }) {
     <details
       onToggle={onToggle}
     >
-      <summary>AI Bug Monitor</summary>
+      <summary>AI Bug Monitor – liveöversikt</summary>
       {open && (
         <>
-          <p>Översikten sparas i databasen. Bara en administratör kan läsa den.</p>
+          <p>Översikten sparas i databasen. Bara en administratör kan läsa den. Uppdateras var femte sekund när panelen är öppen; serverövervakning kräver separat logginsamling.</p>
           {notice ? <p>{notice}</p> : null}
           {summary ? (
             <>

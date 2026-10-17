@@ -1,4 +1,4 @@
-import { getCurrentAiAuthorization } from '../../services/ai/aiAuthTransport.js'
+import { getCurrentAiAuthorization, hasSameAiAuthUser } from '../../services/ai/aiAuthTransport.js'
 import { getActiveLanguageCode } from '../../i18n/index.js'
 import { sanitizeHelpTool } from './aiHelpTools.js'
 
@@ -26,6 +26,7 @@ export async function requestAiHelpReply({
   })
 
   const payload = await response.json().catch(() => null)
+  if (!await hasSameAiAuthUser(auth.userScope)) return { code: 'AUTH_STALE', ok: false }
 
   if (!response.ok || !payload?.ok) {
     return {
@@ -44,13 +45,14 @@ export async function requestAiHelpReply({
     status: payload.status === 'unanswered' ? 'unanswered' : 'answered',
     tool: sanitizeHelpTool(payload.tool),
     unansweredId: payload.unansweredId || '',
-    ...(payload.confirmation?.action === 'schedule_cancel' ? { confirmation: { action: 'schedule_cancel' } } : {}),
+    ...(payload.confirmation?.action === 'schedule_cancel' ? { confirmation: { action: 'schedule_cancel', userScope: auth.userScope } } : {}),
   }
 }
 
-export async function confirmScheduleCancel() {
+export async function confirmScheduleCancel(userScope) {
   const auth = await getCurrentAiAuthorization()
   if (!auth.ok) return { code: auth.errorCode || 'AUTH_REQUIRED', ok: false }
+  if (!userScope || userScope !== auth.userScope) return { code: 'AUTH_STALE', ok: false }
   const response = await fetch('/api/billing/cancel', {
     body: '{}',
     headers: {

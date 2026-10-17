@@ -60,6 +60,7 @@ function aiHelpTestApiPlugin() {
         })
       }
       mount('/api/ai-help', './api/_shared/aiHelp/httpHandler.js')
+      mount('/api/support', './api/_shared/aiHelp/supportHandler.js')
       mount('/api/ai-coach', './api/_shared/aiCoach/httpHandler.js')
     },
     name: 'ai-help-test-api',

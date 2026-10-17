@@ -48,3 +48,8 @@
 .ai-help-note {
   margin: 0;
 }
+
+.support-panel { overflow-wrap: anywhere; min-width: 0; }
+.support-panel form, .support-panel label { display: grid; gap: 8px; min-width: 0; }
+.support-panel textarea, .support-panel select { max-width: 100%; width: 100%; font-size: 16px; }
+.support-panel textarea { min-height: 80px; resize: vertical; }

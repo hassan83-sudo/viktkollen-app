@@ -3,11 +3,14 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import i18n from '../../i18n/index.js'
 import AiHelpPanel from './AiHelpPanel.jsx'
+import { helpChrome } from './uiChrome.js'
 
 vi.mock('../../services/ai/aiAuthTransport.js', () => ({
+  hasSameAiAuthUser: vi.fn(async () => true),
   getCurrentAiAuthorization: vi.fn(async () => ({
     authorizationHeader: 'Bearer session-token',
     ok: true,
+    userScope: 'user-a',
   })),
 }))
 
@@ -22,12 +25,13 @@ describe('AiHelpPanel language', () => {
     ['sv', 'ltr', 'Öppna AI-Hjälp'],
     ['en', 'ltr', 'Open AI Help'],
     ['zh-CN', 'ltr', 'Open AI Help'],
-    ['ar', 'rtl', 'Open AI Help'],
+    ['ar', 'rtl', 'افتح مساعدة الذكاء الاصطناعي'],
+    ['es', 'ltr', 'Abrir Ayuda IA'],
   ])('follows the app language %s', async (code, direction, openLabel) => {
     await i18n.changeLanguage(code)
     render(<AiHelpPanel />)
 
-    const panel = screen.getByRole('region', { name: openLabel === 'Öppna AI-Hjälp' ? 'AI-Hjälp' : 'AI Help' })
+    const panel = screen.getByRole('region', { name: helpChrome(code).title })
     expect(panel.getAttribute('lang')).toBe(code)
     expect(panel.getAttribute('dir')).toBe(direction)
     expect(screen.getByRole('button', { name: openLabel })).toBeTruthy()
@@ -60,15 +64,26 @@ describe('AiHelpPanel language', () => {
     expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer session-token')
 
     await i18n.changeLanguage('ar')
-    await waitFor(() => expect(screen.getByRole('region', { name: 'AI Help' }).getAttribute('dir')).toBe('rtl'))
+    await waitFor(() => expect(screen.getByRole('region', { name: helpChrome('ar').title }).getAttribute('dir')).toBe('rtl'))
     fetchMock.mockClear()
-    fireEvent.change(screen.getByLabelText('Ask about Viktkollen'), {
+    fireEvent.change(screen.getByLabelText(helpChrome('ar').placeholder), {
       target: { value: 'أين اللغة؟' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    fireEvent.click(screen.getByRole('button', { name: helpChrome('ar').send }))
     await waitFor(() => expect(fetchMock).toHaveBeenCalled())
     expect(JSON.parse(fetchMock.mock.calls[0][1].body).language).toBe('ar')
     fetchMock.mockRestore()
+  })
+
+  it('discards legacy private threads and cancellation actions', () => {
+    window.sessionStorage.setItem('viktkollen.aiHelp.thread', JSON.stringify([
+      { content: 'Previous account private facts', role: 'assistant', confirmation: { action: 'schedule_cancel' } },
+    ]))
+    render(<AiHelpPanel />)
+    fireEvent.click(screen.getByRole('button', { name: 'Öppna AI-Hjälp' }))
+    expect(screen.queryByText('Previous account private facts')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Bekräfta uppsägning' })).toBeNull()
+    expect(window.sessionStorage.getItem('viktkollen.aiHelp.thread')).toBeNull()
   })
 
   it('opens an allowlisted section only after the app confirms it', async () => {

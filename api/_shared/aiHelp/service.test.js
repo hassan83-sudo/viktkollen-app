@@ -694,6 +694,24 @@ describe('AI Help language and model contract', () => {
     expect(result.confirmation).toBeUndefined()
   })
 
+  it.each(['free', 'premium'])('answers verified %s plan facts without a model or plan gate', async (planId) => {
+    const fetchImpl = vi.fn()
+    const result = await answerAiHelpQuestion({
+      body: { language: 'sv', messages: [{ role: 'user', content: 'Vilket abonnemang har jag?' }] },
+      userId: `user-${planId}`,
+      env: {},
+      fetchImpl,
+      customerReaders: {
+        subscription: async () => ({ unavailable: false, subscription: { plan_id: planId, status: 'ACTIVE' } }),
+        plan: async () => ({ unavailable: false, plan: { plan_id: planId, price_minor: 0, currency: 'SEK' }, entitlements: [] }),
+      },
+    })
+    expect(result.ok).toBe(true)
+    expect(result.source).toBe('verified-customer')
+    expect(result.answer).toContain(planId)
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
   it('does not return personal billing data when no user id is supplied', async () => {
     const readers = { subscription: vi.fn() }
     const result = await answerAiHelpQuestion({

@@ -11,9 +11,11 @@ import i18n from '../../i18n/index.js'
 import AiHelpPanel from './AiHelpPanel.jsx'
 
 vi.mock('../../services/ai/aiAuthTransport.js', () => ({
+  hasSameAiAuthUser: vi.fn(async () => true),
   getCurrentAiAuthorization: vi.fn(async () => ({
     authorizationHeader: 'Bearer session-token',
     ok: true,
+    userScope: 'chain-user',
   })),
 }))
 

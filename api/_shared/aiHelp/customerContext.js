@@ -4,6 +4,7 @@ import { readDurableQuota } from '../billing/quotaRead.js'
 import { readDurableUserSubscription } from '../billing/subscriptionRead.js'
 import { readUsageSnapshot } from '../billing/usageSnapshotRead.js'
 import { createSupabaseAdminClient } from '../supabaseServer.js'
+import { localizedCancel, localizedCustomer } from './localizedCustomer.js'
 
 const LAUNCH_FEATURES = Object.freeze([
   'ai.ear.interpret',
@@ -18,7 +19,7 @@ const FEATURE_FOCUS = Object.freeze([
     feature: 'food.scan',
     key: 'food_scan',
     knowledgeId: 'more.nutrition',
-    pattern: /matskann|matscan|food scan|skanna mat/i,
+    pattern: /matskann|matscan|food scan|skanna mat|escáner de alimentos|escanear comida|مسح الطعام|ماسح الطعام/i,
     unit: 'requests',
   }),
   Object.freeze({
@@ -66,10 +67,9 @@ function matchFeature(question) {
 
 export function wantsScheduleCancel(question) {
   const text = String(question || '')
-  if (/hur |how do|how can|what happens|ångra|undo|avbryt uppsäg/i.test(text)) return false
-  return /(?:avsluta|säg upp|cancel)\s+(?:mitt |mina |min |my )?(?:abonnemang|prenumeration|subscription)/i.test(text)
-    || /jag vill (?:avsluta|säga upp)/i.test(text)
-    || /i want to cancel my subscription/i.test(text)
+  if (/hur |how do|how can|what happens|ångra|undo|avbryt uppsäg|cómo|como |كيف|ماذا يحدث|لا تلغ|no cancel|inte.{0,30}(avsluta|säg|säga)|don.?t|do not|no quiero|لا أريد/i.test(text)) return false
+  return /(?:avsluta|säg upp|säga upp|cancel)\s+(?:mitt |mina |min |my )?(?:abonnemang|prenumeration|subscription)/i.test(text)
+    || /(?:cancelar|cancela) (?:mi |la )?suscripción|(?:ألغ|ألغي|إلغاء) (?:اشتراكي|الاشتراك)/iu.test(text)
 }
 
 /**
@@ -80,15 +80,15 @@ export function selectCustomerContext(question) {
   const text = String(question || '')
   const feature = matchFeature(text)
   const cancel = wantsScheduleCancel(text)
-  const why = /varför kan jag inte|why can.?t i|kan inte använda|cannot use|can't use|doesn.?t work|fungerar inte/i.test(text)
-  const personal = /\b(mitt|mina|min|jag|my)\b/i.test(text) || /\bi have\b|\bdo i\b/i.test(text) || /har jag/i.test(text)
+  const why = /varför kan jag inte|why can.?t i|kan inte använda|cannot use|can't use|doesn.?t work|fungerar inte|por qué no puedo|no funciona|لماذا لا|لا يعمل/i.test(text)
+  const personal = /\b(mitt|mina|min|jag|my|mi|mis|tengo|me)\b/i.test(text) || /\bi have\b|\bdo i\b/i.test(text) || /har jag|اشتراكي|حسابي|خطتي|لدي|حصتي|دفعي/i.test(text)
   const navigation = /var finns|where is|hur öppnar|hur hittar|öppna /i.test(text)
-  const aboutSub = /abonnemang|prenumeration|subscription|förny|renewal|uppsäg|avsluta|cancel/i.test(text)
-  const aboutPlan = /\bplan\b|pris|kostar|kostnad|price|paket/i.test(text)
-  const aboutUsage = /kvot|kvar|använt|användning|remaining|quota|hur mycket/i.test(text)
-  const aboutPay = /betal|payment|grace|förfallen|past due|gick inte igenom/i.test(text)
-  const aboutEnt = /ingår|entitlement|planinnehåll/i.test(text)
-  const login = /logga in|inlogg|sign in|login/i.test(text)
+  const aboutSub = /abonnemang|prenumeration|subscription|förny|renewal|uppsäg|avsluta|cancel|suscripción|renueva|renovación|اشتراك|تجديد/i.test(text)
+  const aboutPlan = /\bplan\b|pris|kostar|kostnad|price|paket|precio|cuesta|خطة|خطتي|سعر/i.test(text)
+  const aboutUsage = /kvot|kvar|använt|användning|remaining|quota|hur mycket|\bleft\b|\bused\b|\busage\b|cuota|queda|usado|حصتي|حصة|متبقي|تبقى|استخدام/i.test(text)
+  const aboutPay = /betal|payment|grace|förfallen|past due|gick inte igenom|pago|cobro|دفع|دفعي|مدفوع/i.test(text)
+  const aboutEnt = /ingår|entitlement|planinnehåll|incluye|incluido|مشمول/i.test(text)
+  const login = /logga in|inlogg|sign in|login|iniciar sesión|تسجيل الدخول/i.test(text)
 
   const accountTopic = Boolean(feature || login || cancel || why || aboutSub || aboutPlan || aboutUsage || aboutPay || aboutEnt)
   if (!accountTopic || (navigation && !why && !cancel && !aboutUsage && !aboutPay)) {
@@ -135,13 +135,13 @@ export function selectCustomerContext(question) {
   if (cancel) focus = 'cancel'
   else if (aboutPay && !feature) focus = 'payment'
   else if (why) focus = 'access'
-  else if (/förny|renewal/i.test(text)) focus = 'renewal'
+  else if (/förny|renewal|renueva|renovación|تجديد/i.test(text)) focus = 'renewal'
   else if (aboutPay) focus = 'payment'
   else if (aboutUsage || (feature && /kvar|använt|kvot/i.test(text))) focus = 'usage'
   else if (aboutEnt) focus = 'entitlements'
   else if (aboutPlan && !aboutSub) focus = 'plan'
 
-  const rephrase = /förklara|enklare|annat sätt|andra ord|mer detalj|utveckla|skillnad|explain|another way/i.test(text)
+  const rephrase = /förklara|enklare|annat sätt|andra ord|mer detalj|utveckla|skillnad|explain|another way|explica|detalle|اشرح|وضح/i.test(text)
   return {
     cancel,
     direct: !rephrase,
@@ -274,9 +274,8 @@ export async function loadCustomerContext({
     usage: null,
   }
 
-  let subscriptionResult = null
   if (requested.has('subscription') || requested.has('plan') || requested.has('payment') || requested.has('entitlements')) {
-    subscriptionResult = await subscriptionReader(userId)
+    const subscriptionResult = await subscriptionReader(userId)
     if (!subscriptionResult || subscriptionResult.unavailable) {
       return { available: false, reason: 'unverified' }
     }
@@ -338,6 +337,8 @@ function knowledgeSentence(feature, swedish) {
 }
 
 export function renderVerifiedAnswer({ context, languageCode = 'sv', selection } = {}) {
+  const localized = localizedCustomer(context, selection, languageCode)
+  if (localized) return localized
   const swedish = isSwedish(languageCode)
   if (!context?.available) {
     return swedish
@@ -526,6 +527,8 @@ function renderAccessAnswer({ context, languageCode, selection }) {
 }
 
 export function renderCancelOffer({ context, languageCode = 'sv' } = {}) {
+  const localized = localizedCancel(context, languageCode)
+  if (localized) return localized
   const swedish = isSwedish(languageCode)
   if (!context?.available) {
     return {

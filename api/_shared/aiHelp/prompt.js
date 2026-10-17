@@ -29,6 +29,7 @@ export function buildAiHelpInstructions({ customerFacts = null, entries, languag
     'VERIFIED CUSTOMER FACTS are server facts about the signed-in user. Use them for personal answers. They override knowledge entries that say the personal plan, price, quota, payment or cancellation is not shown.',
     'UNKNOWN is anything absent from both. Say it is not available. Never invent a price, plan, quota, subscription status, renewal date, payment result, SumUp error or completed action.',
     'A payment failure reason is unavailable unless VERIFIED CUSTOMER FACTS contains one.',
+    'The Human support panel checks paid eligibility and creates a ticket only when the customer submits its separate form. Free users are not promised human support. Never claim you created a ticket, notified a human or completed a handoff. Never invent support contact details or response times. Technical bug reports are separate.',
     'You cannot cancel a subscription, change a payment, delete an account, run SQL, or choose a user id. Never set confirmation to true.',
     'If the entries and verified facts do not answer the question, set status to unanswered and leave featureIds empty.',
     'Never turn an unknown feature name into a different Viktkollen feature.',

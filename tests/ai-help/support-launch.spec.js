@@ -58,15 +58,25 @@ test('a paid request enters the admin queue, can be prioritized and receives a h
   expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1)
 })
 
-test('explicit scanner navigation uses the real app intent without requesting the camera', async ({ page }) => {
+test('explicit scanner navigation uses the real app intent; AI-Hjälp itself never requests the camera', async ({ page }) => {
   // API response is mocked; the browser still exercises the actual App/More/Nutrition navigation.
+  // The food scanner starts its live camera by itself once it is on screen (existing product
+  // behaviour, also on manual navigation). AI-Hjälp must not ask for the camera before that.
   await page.route('**/api/ai-help', (route) => route.fulfill({ json: { ok: true, status: 'answered', source: 'local', answer: 'Öppnar matscanningen.', featureIds: ['more.nutrition'], tool: { name: 'open-section', sectionId: 'nutrition', targetId: 'nutrition-scanner-v2' } } }))
-  await page.addInitScript(() => { window.__cameraCalls = 0; if (navigator.mediaDevices) navigator.mediaDevices.getUserMedia = async () => { window.__cameraCalls++; throw new Error('Camera is not part of navigation') } })
+  await page.addInitScript(() => {
+    window.__cameraCallsBeforeScanner = 0
+    if (navigator.mediaDevices) {
+      navigator.mediaDevices.getUserMedia = async () => {
+        if (!document.querySelector('#nutrition-scanner-v2')) window.__cameraCallsBeforeScanner++
+        throw new Error('Camera is not available in this test')
+      }
+    }
+  })
   const help = await openHelp(page)
   await help.getByRole('textbox', { name: 'Fråga om Viktkollen' }).fill('Ta mig till matscanningen')
   await help.getByRole('button', { name: 'Skicka', exact: true }).click()
   await expect(page.locator('#nutrition-scanner-v2')).toBeVisible()
-  expect(await page.evaluate(() => window.__cameraCalls)).toBe(0)
+  expect(await page.evaluate(() => window.__cameraCallsBeforeScanner)).toBe(0)
 })
 
 test('the same help panel switches Swedish, English, Arabic and Spanish', async ({ page }) => {

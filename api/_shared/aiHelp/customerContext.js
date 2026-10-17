@@ -67,9 +67,7 @@ function matchFeature(question) {
 export function wantsScheduleCancel(question) {
   const text = String(question || '')
   if (/hur |how do|how can|what happens|ångra|undo|avbryt uppsäg/i.test(text)) return false
-  return /(?:avsluta|säg upp|cancel)\s+(?:mitt |mina |min |my )?(?:abonnemang|prenumeration|subscription)/i.test(text)
-    || /jag vill (?:avsluta|säga upp)/i.test(text)
-    || /i want to cancel my subscription/i.test(text)
+  return /(?:avsluta|säg upp|säga upp|cancel)\s+(?:mitt |mina |min |my )?(?:abonnemang|prenumeration|subscription)/i.test(text)
 }
 
 /**
@@ -274,9 +272,8 @@ export async function loadCustomerContext({
     usage: null,
   }
 
-  let subscriptionResult = null
   if (requested.has('subscription') || requested.has('plan') || requested.has('payment') || requested.has('entitlements')) {
-    subscriptionResult = await subscriptionReader(userId)
+    const subscriptionResult = await subscriptionReader(userId)
     if (!subscriptionResult || subscriptionResult.unavailable) {
       return { available: false, reason: 'unverified' }
     }

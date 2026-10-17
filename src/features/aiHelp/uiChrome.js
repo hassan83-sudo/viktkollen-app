@@ -19,7 +19,8 @@ const chrome = {
     send: 'Skicka',
     signIn: 'Logga in för att använda AI-Hjälp.',
     title: 'AI-Hjälp',
-    unanswered: 'Jag kan inte svara på det ännu. Frågan är registrerad.',
+    humanSupport: 'Kontakt med mänsklig support är inte inkopplad här. Rapportera tekniskt fel skickar en teknisk felrapport, inte ett supportärende.',
+    unanswered: 'Jag kan inte svara på det ännu. Ingen kontakt med mänsklig support har skapats.',
   },
   en: {
     close: 'Close',
@@ -39,7 +40,8 @@ const chrome = {
     send: 'Send',
     signIn: 'Sign in to use AI Help.',
     title: 'AI Help',
-    unanswered: 'I cannot answer that yet. The question has been recorded.',
+    humanSupport: 'Human support is not connected here. Report a technical problem sends a technical report, not a support request.',
+    unanswered: 'I cannot answer that yet. No human support request has been created.',
   },
 }
 

@@ -5,9 +5,11 @@ import i18n from '../../i18n/index.js'
 import AiHelpPanel from './AiHelpPanel.jsx'
 
 vi.mock('../../services/ai/aiAuthTransport.js', () => ({
+  hasSameAiAuthUser: vi.fn(async () => true),
   getCurrentAiAuthorization: vi.fn(async () => ({
     authorizationHeader: 'Bearer session-token',
     ok: true,
+    userScope: 'user-a',
   })),
 }))
 
@@ -69,6 +71,17 @@ describe('AiHelpPanel language', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalled())
     expect(JSON.parse(fetchMock.mock.calls[0][1].body).language).toBe('ar')
     fetchMock.mockRestore()
+  })
+
+  it('discards legacy private threads and cancellation actions', () => {
+    window.sessionStorage.setItem('viktkollen.aiHelp.thread', JSON.stringify([
+      { content: 'Previous account private facts', role: 'assistant', confirmation: { action: 'schedule_cancel' } },
+    ]))
+    render(<AiHelpPanel />)
+    fireEvent.click(screen.getByRole('button', { name: 'Öppna AI-Hjälp' }))
+    expect(screen.queryByText('Previous account private facts')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Bekräfta uppsägning' })).toBeNull()
+    expect(window.sessionStorage.getItem('viktkollen.aiHelp.thread')).toBeNull()
   })
 
   it('opens an allowlisted section only after the app confirms it', async () => {

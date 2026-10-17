@@ -389,7 +389,7 @@ function MoreSection({
             </div>
 
             <div className="app-information">
-              <AiHelpPanel />
+              <AiHelpPanel key={userId || 'signed-out'} />
             </div>
 
             <div className="app-information">

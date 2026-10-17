@@ -7,6 +7,7 @@ import NoticesSection from './components/sections/NoticesSection.jsx'
 import JourneySection from './features/journey/JourneySection.jsx'
 import { commitHelpSectionOpen, isAiHelpSectionAllowed } from './features/aiHelp/aiHelpTools.js'
 import PlaceSection from './components/sections/PlaceSection.jsx'
+import AiHelpPanel from './features/aiHelp/AiHelpPanel.jsx'
 import ProgressSection from './components/sections/ProgressSection.jsx'
 import ReadySection from './components/sections/ReadySection.jsx'
 import WellbeingSection from './components/sections/WellbeingSection.jsx'
@@ -3389,6 +3390,16 @@ function App() {
             } : undefined}
             reminderState={reminderState}
           />
+        )}
+
+        {activeAppSection === 'support' && (
+          <AppSection activeSection={activeAppSection} id="support" label="Kundtjänst">
+            <article className="panel">
+              <h2>Kundtjänst</h2>
+              <p>Få hjälp med appen, abonnemang, betalningar och ditt konto.</p>
+              <AiHelpPanel />
+            </article>
+          </AppSection>
         )}
 
         {activeAppSection === 'place' && (

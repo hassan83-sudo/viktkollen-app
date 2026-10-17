@@ -30,12 +30,12 @@ grant execute on function security_center.recent_events(integer) to service_role
 
 create or replace function security_center.record_event(p_type text, p_severity text, p_feature text)
 returns bigint
-language plpgsql security invoker set search_path = ''
-as $$
-declare result_id bigint;
-begin
-  if p_type not in ('AUTH_FAILURE_BURST','QUOTA_BYPASS_ATTEMPT','PREMIUM_ACCESS_DENIED','BILLING_TAMPER_ATTEMPT','CROSS_USER_ACCESS_DENIED','AI_USAGE_SPIKE','API_RATE_LIMITED','MONITORING_UNAVAILABLE')
-    or p_severity <> case p_type
+language sql security invoker set search_path = ''
+as $
+  insert into security_center.events(type,severity,feature)
+  select p_type,p_severity,p_feature
+  where p_type in ('AUTH_FAILURE_BURST','QUOTA_BYPASS_ATTEMPT','PREMIUM_ACCESS_DENIED','BILLING_TAMPER_ATTEMPT','CROSS_USER_ACCESS_DENIED','AI_USAGE_SPIKE','API_RATE_LIMITED','MONITORING_UNAVAILABLE')
+    and p_severity = case p_type
       when 'AUTH_FAILURE_BURST' then 'medium'
       when 'QUOTA_BYPASS_ATTEMPT' then 'high'
       when 'PREMIUM_ACCESS_DENIED' then 'medium'
@@ -44,13 +44,10 @@ begin
       when 'AI_USAGE_SPIKE' then 'high'
       when 'API_RATE_LIMITED' then 'medium'
       when 'MONITORING_UNAVAILABLE' then 'critical' end
-    or p_feature !~ '^[a-zA-Z0-9_-]{1,48}$' then
-    raise exception 'invalid security event';
-  end if;
-  insert into security_center.events(type,severity,feature)
-    values (p_type,p_severity,p_feature) returning id into result_id;
-  return result_id;
-end;
-$$;
+    and p_feature ~ '^[a-zA-Z0-9_-]{1,48}(text,text,text) from public, anon, authenticated;
+grant execute on function security_center.record_event(text,text,text) to service_role;
+
+  returning id;
+$;
 revoke all on function security_center.record_event(text,text,text) from public, anon, authenticated;
 grant execute on function security_center.record_event(text,text,text) to service_role;

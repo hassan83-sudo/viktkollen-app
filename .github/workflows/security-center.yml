@@ -6,6 +6,7 @@ on:
       - 'src/services/security/**'
       - 'src/components/billing/BugMonitorPanel.jsx'
       - 'api/_shared/bugMonitor/**'
+      - 'api/_shared/security/**'
       - '.github/workflows/security-center.yml'
   workflow_dispatch:
 
@@ -24,6 +25,6 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Security event and bug monitor tests
-        run: node --test src/services/security/securityEvents.test.js && npx vitest run src/services/bugMonitor src/components/billing/BugMonitorPanel.test.jsx api/_shared/bugMonitor/httpHandler.test.js
+        run: node --test src/services/security/securityEvents.test.js && npx vitest run api/_shared/security src/services/bugMonitor src/components/billing/BugMonitorPanel.test.jsx api/_shared/bugMonitor/httpHandler.test.js
       - name: Lint changed security modules
-        run: npx eslint src/services/security/securityEvents.js src/components/billing/BugMonitorPanel.jsx
+        run: npx eslint api/_shared/security src/services/security/securityEvents.js src/components/billing/BugMonitorPanel.jsx

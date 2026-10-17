@@ -19,6 +19,10 @@ function readStoredThread() {
   }
 }
 
+function isDirectNavigationRequest(text) {
+  return /^(?:kan du\s+)?(?:ta mig till|öppna|visa mig|gå till|navigera till|skicka mig till)\b/i.test(text.trim())
+}
+
 function AiHelpPanel() {
   const { i18n } = useTranslation()
   const languageCode = normalizeLanguageCode(i18n.resolvedLanguage || i18n.language)
@@ -127,6 +131,10 @@ function AiHelpPanel() {
           { content: chrome.unanswered, featureIds: [], role: 'assistant', status: 'unanswered' },
         ])
         return
+      }
+
+      if (result.tool?.name === 'open-section' && isDirectNavigationRequest(content)) {
+        requestOpenHelpSection(result.tool.sectionId)
       }
 
       setMessages((current) => [

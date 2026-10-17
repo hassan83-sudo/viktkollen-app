@@ -44,10 +44,8 @@ as $
       when 'AI_USAGE_SPIKE' then 'high'
       when 'API_RATE_LIMITED' then 'medium'
       when 'MONITORING_UNAVAILABLE' then 'critical' end
-    and p_feature ~ '^[a-zA-Z0-9_-]{1,48}(text,text,text) from public, anon, authenticated;
-grant execute on function security_center.record_event(text,text,text) to service_role;
-
+    and p_feature ~ '^[a-zA-Z0-9_-]{1,48}$'
   returning id;
-$;
+$$;
 revoke all on function security_center.record_event(text,text,text) from public, anon, authenticated;
 grant execute on function security_center.record_event(text,text,text) to service_role;

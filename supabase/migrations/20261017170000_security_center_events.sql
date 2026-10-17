@@ -31,7 +31,7 @@ grant execute on function security_center.recent_events(integer) to service_role
 create or replace function security_center.record_event(p_type text, p_severity text, p_feature text)
 returns bigint
 language sql security invoker set search_path = ''
-as $
+as $body$
   insert into security_center.events(type,severity,feature)
   select p_type,p_severity,p_feature
   where p_type in ('AUTH_FAILURE_BURST','QUOTA_BYPASS_ATTEMPT','PREMIUM_ACCESS_DENIED','BILLING_TAMPER_ATTEMPT','CROSS_USER_ACCESS_DENIED','AI_USAGE_SPIKE','API_RATE_LIMITED','MONITORING_UNAVAILABLE')
@@ -46,6 +46,6 @@ as $
       when 'MONITORING_UNAVAILABLE' then 'critical' end
     and p_feature ~ '^[a-zA-Z0-9_-]{1,48}$'
   returning id;
-$$;
+$body$;
 revoke all on function security_center.record_event(text,text,text) from public, anon, authenticated;
 grant execute on function security_center.record_event(text,text,text) to service_role;

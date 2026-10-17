@@ -16,7 +16,7 @@ export default async function handler(request, response) {
   const client = createSupabaseAdminClient()
   if (!client) return response.status(503).json({ ok: false, error: { code: 'SECURITY_STORE_UNAVAILABLE' }, requestId })
   try {
-    const { data, error } = await client.schema('security_center').rpc('recent_events', { p_limit: 50 })
+    const { data, error } = await client.rpc('security_center_recent_events', { p_limit: 50 })
     if (error) throw error
     return response.status(200).json({ ok: true, events: Array.isArray(data) ? data : [], requestId })
   } catch {

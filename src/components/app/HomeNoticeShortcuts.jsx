@@ -8,7 +8,6 @@ function HomeNoticeShortcuts({ onOpenNotices, onOpenPlace }) {
     { id: 'alarm', label: 'Väckarklocka' },
     { id: 'reminder', label: 'Påminnelse' },
     { id: 'bathroom', label: 'Badrum' },
-    { id: 'place', label: 'Plats' },
   ]
 
   // Placeras före första målningen: med useEffect visades Hem först utan
@@ -30,6 +29,7 @@ function HomeNoticeShortcuts({ onOpenNotices, onOpenPlace }) {
           grid-template-columns: repeat(2, minmax(0, 1fr));
           grid-template-areas:
             "quick quick"
+            "place place"
             "wellbeing coach"
             "reminder notices"
             "today today";
@@ -42,6 +42,7 @@ function HomeNoticeShortcuts({ onOpenNotices, onOpenPlace }) {
           grid-area: coach;
           min-width: 0;
         }
+        #app-section-home.is-active .overview-today-mood > .is-place { grid-area: place; min-width: 0; }
         #app-section-home.is-active .overview-today-mood > .is-quick {
           grid-area: quick;
           width: 100%;
@@ -115,6 +116,10 @@ function HomeNoticeShortcuts({ onOpenNotices, onOpenPlace }) {
           outline: 2px solid #79e7f2;
           outline-offset: 3px;
         }
+        .overview-quick-buttons button { overflow-wrap: normal; word-break: normal; hyphens: none; font-size: clamp(10px, 2.8vw, 12px); }
+        .overview-place-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px; border-radius: 20px; border: 1px solid rgba(144,125,255,.24); background: linear-gradient(135deg, rgba(18,35,51,.96), rgba(20,24,47,.96)); }
+        .overview-place-card button { min-height: 44px; border: 0; border-radius: 999px; padding: 10px 18px; background: linear-gradient(135deg, #22c7e8, #815cf6); color: #06111f; font: inherit; cursor: pointer; }
+        .overview-place-card button:focus-visible { outline: 2px solid #79e7f2; outline-offset: 3px; }
         .overview-more-section {
           display: grid;
           gap: 8px;
@@ -145,11 +150,15 @@ function HomeNoticeShortcuts({ onOpenNotices, onOpenPlace }) {
         </div>
         <div className="overview-quick-buttons" role="group" aria-label="Viktiga snabbknappar">
           {shortcuts.map((shortcut) => (
-            <button key={shortcut.id} type="button" onClick={() => shortcut.id === 'place' ? onOpenPlace?.() : onOpenNotices?.(shortcut.id)}>
+            <button key={shortcut.id} type="button" onClick={() => onOpenNotices?.(shortcut.id)}>
               {shortcut.label}
             </button>
           ))}
         </div>
+      </article>
+      <article className="overview-place-card is-place" aria-label="Plats">
+        <strong>📍 Plats</strong>
+        <button type="button" onClick={() => onOpenPlace?.()}>Öppna Plats</button>
       </article>
     </>,
     target,

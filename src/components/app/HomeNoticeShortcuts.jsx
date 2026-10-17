@@ -1,13 +1,14 @@
 import { useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 
-function HomeNoticeShortcuts({ onOpenNotices }) {
+function HomeNoticeShortcuts({ onOpenNotices, onOpenPlace }) {
   const [target, setTarget] = useState(null)
   const shortcuts = [
     { id: 'timer', label: 'Timer' },
     { id: 'alarm', label: 'Väckarklocka' },
     { id: 'reminder', label: 'Påminnelse' },
     { id: 'bathroom', label: 'Badrum' },
+    { id: 'place', label: 'Plats' },
   ]
 
   // Placeras före första målningen: med useEffect visades Hem först utan
@@ -144,7 +145,7 @@ function HomeNoticeShortcuts({ onOpenNotices }) {
         </div>
         <div className="overview-quick-buttons" role="group" aria-label="Viktiga snabbknappar">
           {shortcuts.map((shortcut) => (
-            <button key={shortcut.id} type="button" onClick={() => onOpenNotices?.(shortcut.id)}>
+            <button key={shortcut.id} type="button" onClick={() => shortcut.id === 'place' ? onOpenPlace?.() : onOpenNotices?.(shortcut.id)}>
               {shortcut.label}
             </button>
           ))}

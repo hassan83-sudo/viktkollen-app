@@ -73,10 +73,10 @@ export default function BugMonitorPanel({ token }) {
     <details
       onToggle={onToggle}
     >
-      <summary>AI Bug Monitor – liveöversikt</summary>
+      <summary>AI Bug Monitor</summary>
       {open && (
         <>
-          <p>Översikten sparas i databasen. Bara en administratör kan läsa den. Uppdateras var femte sekund när panelen är öppen; serverövervakning kräver separat logginsamling.</p>
+          <p>Översikten sparas i databasen. Bara en administratör kan läsa den.</p>
           {notice ? <p>{notice}</p> : null}
           {summary ? (
             <>

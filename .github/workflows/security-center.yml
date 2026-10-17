@@ -7,6 +7,9 @@ on:
       - 'src/components/billing/BugMonitorPanel.jsx'
       - 'api/_shared/bugMonitor/**'
       - 'api/_shared/security/**'
+      - 'api/security-center/**'
+      - 'src/components/billing/SecurityCenterPanel.jsx'
+      - 'src/components/billing/BugMonitorAdminEntry.jsx'
       - '.github/workflows/security-center.yml'
   workflow_dispatch:
 

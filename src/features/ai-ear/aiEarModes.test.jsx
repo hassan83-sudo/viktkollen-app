@@ -114,7 +114,7 @@ describe('AI Örat modes (AI-EAR-1)', () => {
   })
 
   it('Humma / sjung records and asks ACRCloud only for the verified owner', async () => {
-    const identifyHumming = vi.fn(async () => ({ matched: true, ok: true, result: { alternatives: [{ artist: 'B', title: 'Andra låten' }], artist: 'Artist A', title: 'Låten' } }))
+    const identifyHumming = vi.fn(async () => ({ matched: true, ok: true, result: { alternatives: [{ artist: 'B', title: 'Andra låten' }], artist: 'Artist A', certain: true, title: 'Låten' } }))
     const deps = { ...makeDeps(), identifyHumming, loadHummingAccess: vi.fn(async () => true) }
     render(<AiEarMode deps={deps} />)
     fireEvent.click(screen.getByRole('radio', { name: /^Humma \/ sjung/ }))
@@ -128,6 +128,68 @@ describe('AI Örat modes (AI-EAR-1)', () => {
     expect(screen.getByText('ACRCloud – resultatet är ett förslag.')).toBeTruthy()
     expect(identifyHumming).toHaveBeenCalledTimes(1)
     expect(identifyHumming.mock.calls[0][0]).toMatchObject({ consentApproved: true, wav: wavBlob })
+    expect(deps.interpret).not.toHaveBeenCalled()
+  })
+
+  it('Humma / sjung shows an uncertain ACRCloud match only as suggestions', async () => {
+    const identifyHumming = vi.fn(async () => ({ matched: true, ok: true, result: { alternatives: [{ artist: 'B', title: 'Andra låten' }], artist: 'El Hasnaoui', certain: false, title: "Merhaba l'ehbab" } }))
+    const deps = { ...makeDeps(), identifyHumming, loadHummingAccess: vi.fn(async () => true) }
+    render(<AiEarMode deps={deps} />)
+    fireEvent.click(screen.getByRole('radio', { name: /^Humma \/ sjung/ }))
+    await screen.findByRole('button', { name: 'Spela in' })
+    chooseFile()
+    fireEvent.click(await screen.findByRole('button', { name: 'Analysera ljudet' }))
+    const result = (await screen.findByText('Osäker träff')).closest('[role="status"]')
+    expect(result.querySelector('h5').textContent).toBe('Osäker träff')
+    expect(within(result).getByText('Kanske någon av dessa')).toBeTruthy()
+    expect([...result.querySelectorAll('.ai-ear-alternatives li')].map((li) => li.textContent)).toEqual(["Merhaba l'ehbab – El Hasnaoui", 'Andra låten – B'])
+    expect(result.textContent).not.toMatch(/\d\s?%/)
+  })
+
+  it('Humma / sjung records with call processing off, shows the ACRCloud notice first and identifies right after the stop', async () => {
+    const recorders = []
+    class FakeRecorder {
+      constructor() { this.state = 'inactive'; this.mimeType = 'audio/webm'; recorders.push(this) }
+      start() { this.state = 'recording' }
+      stop() { this.state = 'inactive'; this.ondataavailable?.({ data: new Blob([new Uint8Array(40)]) }); this.onstop?.() }
+    }
+    const getUserMedia = vi.fn(async () => ({ getTracks: () => [{ stop: vi.fn() }] }))
+    const identifyHumming = vi.fn(async () => ({ matched: true, ok: true, result: { alternatives: [], artist: 'Enrique Iglesias', certain: true, title: 'Bailando' } }))
+    const deps = { ...makeDeps(), createLevelMeter: () => null, getUserMedia, identifyHumming, loadHummingAccess: vi.fn(async () => true), MediaRecorderImpl: FakeRecorder }
+    render(<AiEarMode deps={deps} />)
+    fireEvent.click(screen.getByRole('radio', { name: /^Humma \/ sjung/ }))
+    const record = await screen.findByRole('button', { name: 'Spela in' })
+    expect(record.getAttribute('aria-describedby')).toBe('ai-ear-humming-start-notice')
+    expect(document.getElementById('ai-ear-humming-start-notice').textContent).toContain('ACRCloud')
+    fireEvent.click(record)
+    await screen.findByRole('button', { name: 'Stoppa inspelningen' })
+    expect(getUserMedia).toHaveBeenCalledWith({ audio: { autoGainControl: false, echoCancellation: false, noiseSuppression: false } })
+    expect(screen.getByText(/stoppar av sig själv/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Stoppa inspelningen' }))
+    expect(await screen.findByText('Bailando')).toBeTruthy()
+    expect(deps.blobToWav).toHaveBeenCalledWith(expect.any(Blob), { maxSeconds: 20 })
+    expect(identifyHumming).toHaveBeenCalledTimes(1)
+    expect(identifyHumming.mock.calls[0][0]).toMatchObject({ consentApproved: true, wav: wavBlob })
+    expect(screen.queryByRole('button', { name: 'Analysera ljudet' })).toBeNull()
+  })
+
+  it('other AI Örat modes keep the default microphone, 12 s and the Analysera step', async () => {
+    class FakeRecorder {
+      constructor() { this.state = 'inactive'; this.mimeType = 'audio/webm' }
+      start() { this.state = 'recording' }
+      stop() { this.state = 'inactive'; this.ondataavailable?.({ data: new Blob([new Uint8Array(40)]) }); this.onstop?.() }
+    }
+    const getUserMedia = vi.fn(async () => ({ getTracks: () => [{ stop: vi.fn() }] }))
+    const createLevelMeter = vi.fn(() => null)
+    const deps = { ...makeDeps(), createLevelMeter, getUserMedia, loadHummingAccess: vi.fn(async () => true), MediaRecorderImpl: FakeRecorder }
+    render(<AiEarMode deps={deps} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Spela in' }))
+    await screen.findByRole('button', { name: 'Stoppa inspelningen' })
+    expect(getUserMedia).toHaveBeenCalledWith({ audio: true })
+    expect(createLevelMeter).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Stoppa inspelningen' }))
+    expect(await screen.findByRole('button', { name: 'Analysera ljudet' })).toBeTruthy()
+    expect(deps.blobToWav).toHaveBeenCalledWith(expect.any(Blob), { maxSeconds: 12 })
     expect(deps.interpret).not.toHaveBeenCalled()
   })
 

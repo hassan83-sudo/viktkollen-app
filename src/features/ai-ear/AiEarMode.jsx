@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { AI_EAR_MAX_INPUT_BYTES, AI_EAR_MAX_SECONDS, blobToAiEarWav } from '../../services/aiEarAudio.js'
+import { AI_EAR_HUMMING_MAX_SECONDS, AI_EAR_MAX_INPUT_BYTES, AI_EAR_MAX_SECONDS, blobToAiEarWav } from '../../services/aiEarAudio.js'
 import { loadAiEarHummingAccess } from '../../services/aiEarHummingAccess.js'
 import { identifyHumming } from '../../services/aiEarProviders.js'
 import { interpretAiEarAudio } from '../../services/aiEarInterpret.js'
 import AiEarDictation from './AiEarDictation.jsx'
 import { aiEarModes, defaultAiEarModeId, getAiEarMode } from './aiEarModes.js'
-import { buildAiEarErrorView, buildAiEarModeView } from './aiEarViewModel.js'
+import { buildAiEarErrorView, buildAiEarModeView, buildHummingView } from './aiEarViewModel.js'
 import { useAiEarRecorder } from './useAiEarRecorder.js'
 import './AiEarMode.css'
 
@@ -33,6 +33,14 @@ import './AiEarMode.css'
  * inga poäng eller trösklar hanteras här.
  */
 
+// Humma / sjung wants the raw voice: the browser's call processing (echo
+// cancellation, noise suppression, automatic gain) flattens sung pitch. Plain
+// values are preferences, so a browser that cannot turn one off still records.
+const HUMMING_AUDIO_CONSTRAINTS = Object.freeze({
+  audio: Object.freeze({ autoGainControl: false, echoCancellation: false, noiseSuppression: false }),
+})
+const HUMMING_AUTO_STOP = Object.freeze({})
+
 const defaultDeps = {
   blobToWav: blobToAiEarWav,
   getUserMedia: (constraints) => navigator.mediaDevices.getUserMedia(constraints),
@@ -57,6 +65,8 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
   const [hummingAllowed, setHummingAllowed] = useState(false)
   const baseMode = getAiEarMode(modeId)
   const mode = baseMode.id === 'melody' && hummingAllowed ? { ...baseMode, execution: 'humming' } : baseMode
+  const isHumming = mode.execution === 'humming'
+  const maxSeconds = isHumming ? AI_EAR_HUMMING_MAX_SECONDS : AI_EAR_MAX_SECONDS
   // Modes cannot change while the microphone or a request is active.
   const busy = phase === 'recording' || phase === 'preparing' || phase === 'analyzing'
   const [view, setView] = useState(null)
@@ -98,26 +108,32 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
     setPhase('error')
   }
 
-  async function prepareBlob(blob) {
+  async function prepareBlob(blob, { autoAnalyze = false } = {}) {
     setPhase('preparing')
     try {
-      const prepared = await depsRef.current.blobToWav(blob)
+      const prepared = await depsRef.current.blobToWav(blob, { maxSeconds })
       if (!mountedRef.current) return
       wavRef.current = prepared.wav
       setHasWav(true)
       setTruncated(prepared.truncated === true)
       setPhase('ready')
+      // Humma / sjung: tapping the microphone, under the ACRCloud notice, is the
+      // approval to send this recording, so identification starts right away.
+      if (autoAnalyze) analyze()
     } catch (error) {
       showError(error?.message || 'audio_undecodable')
     }
   }
 
   const recorder = useAiEarRecorder({
+    audioConstraints: isHumming ? HUMMING_AUDIO_CONSTRAINTS : undefined,
+    autoStop: isHumming ? HUMMING_AUTO_STOP : null,
+    createLevelMeter: deps.createLevelMeter,
     getUserMedia: deps.getUserMedia,
-    maxSeconds: AI_EAR_MAX_SECONDS,
+    maxSeconds,
     MediaRecorderImpl: deps.MediaRecorderImpl,
     onError: showError,
-    onRecorded: prepareBlob,
+    onRecorded: (blob) => prepareBlob(blob, { autoAnalyze: isHumming }),
     onStart: () => {
       wavRef.current = null
       setHasWav(false)
@@ -171,12 +187,7 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
     controllerRef.current = null
     if (!mountedRef.current) return
     if (outcome.ok) {
-      setView(mode.execution === 'humming' ? {
-        kind: 'music', title: outcome.matched ? outcome.result.title : t('modes.melody.noMatch'),
-        body: outcome.matched ? (outcome.result.artist || t('modes.melody.unknownArtist')) : t('modes.melody.noMatchBody'),
-        alternatives: (outcome.result?.alternatives || []).map((item) => [item.title, item.artist].filter(Boolean).join(' – ')),
-        contextLines: [], hints: [], species: [], footer: t('modes.melody.footer'),
-      } : buildAiEarModeView(outcome.result, modeId, t))
+      setView(mode.execution === 'humming' ? buildHummingView(outcome, t) : buildAiEarModeView(outcome.result, modeId, t))
       setPhase('result')
       return
     }
@@ -246,9 +257,16 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
 
       {mode.execution === 'browser' && <AiEarDictation deps={deps.dictation} microphoneBusy={recorder.recording} />}
 
+      {isHumming && phase === 'idle' && (
+        <>
+          <p className="ai-ear-privacy" id="ai-ear-humming-start-notice">{t('modes.melody.sendNotice')}</p>
+          <p className="ai-ear-privacy">{t('modes.melody.autoStopHint')}</p>
+        </>
+      )}
+
       {(mode.execution === 'interpret' || mode.execution === 'humming') && phase === 'idle' && (
         <div className="ai-ear-actions">
-          <button className="primary-button" type="button" onClick={startRecording}>{t('record')}</button>
+          <button aria-describedby={isHumming ? 'ai-ear-humming-start-notice' : undefined} className="primary-button" type="button" onClick={startRecording}>{t('record')}</button>
           <label className="secondary-button ai-ear-file">
             {t('chooseFile')}
             <input type="file" accept="audio/*" onChange={onFileChosen} />
@@ -261,8 +279,9 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
           <p className="ai-ear-status" role="status">{t('recordingStatus')}</p>
           <p className="ai-ear-mic">
             <span aria-hidden="true">● </span>
-            {t('recordingProgress', { max: AI_EAR_MAX_SECONDS, seconds })}
+            {t('recordingProgress', { max: maxSeconds, seconds })}
           </p>
+          {isHumming ? <p className="ai-ear-privacy">{t('modes.melody.autoStopHint')}</p> : null}
           <button className="primary-button" type="button" onClick={stopRecording}>{t('stopRecording')}</button>
         </div>
       )}
@@ -271,7 +290,7 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
 
       {phase === 'ready' && (
         <div className="ai-ear-ready">
-          <p>{truncated ? t('readyTruncated', { max: AI_EAR_MAX_SECONDS }) : t('ready')}</p>
+          <p>{truncated ? t('readyTruncated', { max: maxSeconds }) : t('ready')}</p>
           <p className="ai-ear-privacy" id="ai-ear-privacy">{t('privacy')}</p>
           {mode.execution === 'humming' ? <p className="ai-ear-privacy" id="ai-ear-humming-privacy">{t('modes.melody.sendNotice')}</p> : null}
           <div className="ai-ear-actions">
@@ -296,7 +315,7 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
           {view.body && <p>{view.body}</p>}
           {view.alternatives.length > 0 && (
             <>
-              <p className="ai-ear-result-label">{t('modes.bird.alternatives')}</p>
+              <p className="ai-ear-result-label">{view.alternativesLabel || t('modes.bird.alternatives')}</p>
               <ul className="ai-ear-alternatives">{view.alternatives.map((line) => <li key={line}>{line}</li>)}</ul>
             </>
           )}

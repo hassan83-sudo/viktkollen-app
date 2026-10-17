@@ -12,6 +12,9 @@
 
 export const AI_EAR_TARGET_SAMPLE_RATE = 32000
 export const AI_EAR_MAX_SECONDS = 12
+// Humma / sjung: a whole chorus with pauses between lines. 20 s of 32 kHz
+// mono 16-bit WAV is about 1.3 MB, well under the 4 MB upload cap.
+export const AI_EAR_HUMMING_MAX_SECONDS = 20
 export const AI_EAR_MIN_SECONDS = 0.5
 export const AI_EAR_MAX_INPUT_BYTES = 25 * 1024 * 1024
 
@@ -72,19 +75,19 @@ export function encodeWav16(samples, sampleRate) {
 }
 
 /** Channels -> { wav: Blob, seconds, truncated } ready for upload, or throws an Error with a short code. */
-export function channelsToWav({ channels, sampleRate }) {
+export function channelsToWav({ channels, maxSeconds = AI_EAR_MAX_SECONDS, sampleRate }) {
   const mono = downmixToMono(channels)
   if (!mono.length || !sampleRate) throw new Error('audio_empty')
   const seconds = mono.length / sampleRate
   if (seconds < AI_EAR_MIN_SECONDS) throw new Error('audio_too_short')
 
-  const maxSourceSamples = Math.floor(AI_EAR_MAX_SECONDS * sampleRate)
+  const maxSourceSamples = Math.floor(maxSeconds * sampleRate)
   const trimmed = mono.length > maxSourceSamples ? mono.subarray(0, maxSourceSamples) : mono
   const targetRate = Math.min(sampleRate, AI_EAR_TARGET_SAMPLE_RATE)
   const resampled = resampleLinear(trimmed, sampleRate, targetRate)
 
   return {
-    seconds: Math.min(seconds, AI_EAR_MAX_SECONDS),
+    seconds: Math.min(seconds, maxSeconds),
     truncated: mono.length > maxSourceSamples,
     wav: new Blob([encodeWav16(resampled, targetRate)], { type: 'audio/wav' }),
   }
@@ -93,7 +96,7 @@ export function channelsToWav({ channels, sampleRate }) {
 const passthroughCodes = ['audio_empty', 'audio_too_short', 'audio_too_large', 'audio_unsupported']
 
 /** Decodes a recorded/uploaded Blob with the browser's own decoder and converts it to WAV. */
-export async function blobToAiEarWav(blob, { audioContextFactory } = {}) {
+export async function blobToAiEarWav(blob, { audioContextFactory, maxSeconds = AI_EAR_MAX_SECONDS } = {}) {
   if (!blob || !blob.size) throw new Error('audio_empty')
   if (blob.size > AI_EAR_MAX_INPUT_BYTES) throw new Error('audio_too_large')
 
@@ -105,7 +108,7 @@ export async function blobToAiEarWav(blob, { audioContextFactory } = {}) {
     const decoded = await context.decodeAudioData(await blob.arrayBuffer())
     const channels = []
     for (let index = 0; index < decoded.numberOfChannels; index += 1) channels.push(decoded.getChannelData(index))
-    return channelsToWav({ channels, sampleRate: decoded.sampleRate })
+    return channelsToWav({ channels, maxSeconds, sampleRate: decoded.sampleRate })
   } catch (error) {
     if (passthroughCodes.includes(error?.message)) throw error
     throw new Error('audio_undecodable', { cause: error })

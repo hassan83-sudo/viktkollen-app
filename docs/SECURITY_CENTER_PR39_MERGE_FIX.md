@@ -26,3 +26,14 @@ for SmartCameraChecklists is retained without changing that feature.
 The existing confirmation-dialog accessibility gate normalizes filesystem paths
 before comparing its allowlist, so the same check works on Windows and Linux.
 The allowlist still permits only the existing four CloudBackupPanel calls.
+
+## Support browser fixture after the main merge
+
+The paid-support browser test also mounts Security Center. Its polling endpoint
+was not mocked, so the local Vite server returned its HTML fallback instead of
+the deployed API's JSON. A failing trace showed the page reloading and removing
+the queue while Playwright was waiting to click Save; the admin command was not
+sent. The fixture now explicitly fulfills `/api/security-center` and waits for
+the panel's loaded state before exercising support. No production handler,
+timeout, click behavior or support assertions were relaxed. The affected flow
+passed three consecutive local runs with the corrected offline fixture.

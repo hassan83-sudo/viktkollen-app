@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 function MealDailySummary({
   bestMeal,
   dailySummary,
@@ -6,48 +8,49 @@ function MealDailySummary({
   mealCount,
   nextMealTip,
 }) {
+  const { t } = useTranslation('home')
   return (
     <>
       <div className="chart-card">
         <div className="chart-toolbar">
           <div>
-            <span>AI-sammanfattning</span>
-            <strong>Dagens mat</strong>
+            <span>{t('mealDaily.aiSummary')}</span>
+            <strong>{t('mealDaily.todaysFood')}</strong>
           </div>
         </div>
         <p className="estimate-note">{dailySummary}</p>
         <p className="estimate-note">
-          Proteinstatus:{' '}
+          {t('mealDaily.proteinStatus')}{' '}
           {hasProtein
-            ? 'ser okej ut i dagens logg.'
-            : 'syns inte tydligt ännu.'}
+            ? t('mealDaily.proteinOk')
+            : t('mealDaily.proteinMissing')}
         </p>
         <p className="estimate-note">
-          Grönsaksstatus:{' '}
+          {t('mealDaily.vegetableStatus')}{' '}
           {hasVegetables
-            ? 'grönsaker eller frukt verkar finnas med.'
-            : 'lägg gärna till något grönt.'}
+            ? t('mealDaily.vegetableOk')
+            : t('mealDaily.vegetableMissing')}
         </p>
         <p className="estimate-note">
-          Fiber/kolhydratbalans:{' '}
+          {t('mealDaily.fiberBalance')}{' '}
           {bestMeal?.analysis?.fiberCarbBalance ||
-            'välj gärna fullkorn, potatis, frukt eller grönsaker för mer fiber.'}
+            t('mealDaily.fiberTip')}
         </p>
         <p className="estimate-note">
-          Enkel portionsbedömning:{' '}
+          {t('mealDaily.portion')}{' '}
           {bestMeal?.analysis?.portionEstimate ||
-            'ingen tydlig bildbedömning ännu.'}
+            t('mealDaily.noPortion')}
         </p>
         <p className="estimate-note">
-          Dagens bästa måltid:{' '}
-          {bestMeal?.summary || 'analysera en måltidsbild för att välja en.'}
+          {t('mealDaily.bestMeal')}{' '}
+          {bestMeal?.summary || t('mealDaily.noBestMeal')}
         </p>
         <p className="estimate-note">
-          Dagens förbättringsområde:{' '}
+          {t('mealDaily.improvement')}{' '}
           {bestMeal?.improvementSuggestion || nextMealTip}
         </p>
         <p className="estimate-note">
-          Billigt nästa måltidsförslag:{' '}
+          {t('mealDaily.cheapNext')}{' '}
           {bestMeal?.analysis?.cheapNextMealSuggestion || nextMealTip}
         </p>
       </div>
@@ -57,14 +60,14 @@ function MealDailySummary({
           <div>
             <span>Dagens mat</span>
             <strong>
-              {mealCount} måltid{mealCount === 1 ? '' : 'er'} registrerade idag.
+              {t('mealDaily.mealsRegistered', { count: mealCount })}
             </strong>
           </div>
         </div>
         <p className="estimate-note">
           {hasProtein
-            ? 'Protein verkar finnas med i dagens måltider.'
-            : 'Protein syns inte tydligt i dagens måltider ännu.'}
+            ? t('mealDaily.proteinMealsOk')
+            : t('mealDaily.proteinMealsMissing')}
         </p>
         <p className="estimate-note">{nextMealTip}</p>
       </div>

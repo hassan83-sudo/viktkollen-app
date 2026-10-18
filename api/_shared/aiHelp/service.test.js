@@ -29,6 +29,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.restoreAllMocks()
   setAiHelpCostStoreForTests(null)
   clearAiHelpRateLimitForTests()
   clearUnansweredQuestionsForTests()
@@ -220,7 +221,7 @@ describe('AI Help language and model contract', () => {
       clearUnansweredQuestionsForTests()
       const fetchImpl = vi.fn(async () => ({ ok: true, json: async () => payload }))
       const result = await answerAiHelpQuestion({
-        body: { language: 'sv', messages: [{ content: 'Kan du förklara Mer på ett annat sätt?', role: 'user' }] },
+        body: { language: 'en', messages: [{ content: 'Can you explain the More menu differently?', role: 'user' }] },
         env: { AI_HELP_BUDGET_SEK: '1000', OPENAI_API_KEY: 'test-key' },
         fetchImpl,
         userId: 'user-cut',
@@ -229,6 +230,35 @@ describe('AI Help language and model contract', () => {
       expect(JSON.stringify(result)).not.toContain('Öppna')
       expect(listUnansweredQuestionsForTests()).toHaveLength(0)
     }
+  })
+
+  it.each(['invalid_json', 'incomplete_output', 'invalid_contract', 'empty_answer'])('uses existing verified Swedish help after %s without a second paid call', async (reason) => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const payloads = {
+      incomplete_output: { status: 'incomplete', output_text: 'PRIVATE_PROVIDER_TEXT' },
+      invalid_contract: { output_text: 'PRIVATE_PROVIDER_TEXT' },
+      empty_answer: { output_text: '{"status":"answered","answer":""}' },
+    }
+    const store = createTestCostStore()
+    const keep = vi.spyOn(store, 'markUncertain')
+    const fetchImpl = vi.fn(async () => ({ ok: true, json: async () => {
+      if (reason === 'invalid_json') throw new Error('PRIVATE_PROVIDER_TEXT')
+      return payloads[reason]
+    } }))
+    const result = await answerAiHelpQuestion({
+      body: { language: 'sv', messages: [{ content: 'Kan du förklara Mer på ett annat sätt?', role: 'user' }] },
+      costStore: store,
+      env: { AI_HELP_BUDGET_SEK: '1000', OPENAI_API_KEY: 'PRIVATE_API_KEY' },
+      fetchImpl,
+      userId: 'PRIVATE_USER_ID',
+    })
+    expect(result).toMatchObject({ ok: true, source: 'local-fallback', status: 'answered', language: { code: 'sv' } })
+    expect(result.answer.length).toBeGreaterThan(0)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(keep).toHaveBeenCalledTimes(1)
+    expect(listUnansweredQuestionsForTests()).toHaveLength(0)
+    expect(warning).toHaveBeenCalledWith('[ai-help] invalid provider response', { reason })
+    expect(JSON.stringify([result, warning.mock.calls])).not.toMatch(/PRIVATE_/)
   })
 
   it('asks for a short answer so gpt-5-mini can finish inside the 400 token cap', async () => {
@@ -822,6 +852,115 @@ describe('AI Help language and model contract', () => {
     expect(result.answer).toContain('3')
   })
 
+  it('prepares a hosted payment only when no open subscription exists', async () => {
+    const fetchImpl = vi.fn()
+    const readers = {
+      plan: async () => ({ entitlements: [], plan: { currency: 'SEK', plan_id: 'plan.free', price_minor: 0 }, unavailable: false }),
+      subscription: async (id) => {
+        expect(id).toBe('user-a')
+        return { subscription: { plan_id: 'plan.free', status: 'NONE' }, unavailable: false }
+      },
+    }
+    const ready = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Nytt betalningsförsök för plan.prelim.sek.month.07 kort 4242424242424242', role: 'user' }], user_id: 'user-b' },
+      customerReaders: readers,
+      env: { OPENAI_API_KEY: 'test-key' },
+      fetchImpl,
+      userId: 'user-a',
+    })
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(ready.confirmation).toEqual({ action: 'hosted_checkout', planId: 'plan.prelim.sek.month.07' })
+    expect(ready.answer).toMatch(/Ingen betalning är gjord/)
+    expect(ready.answer).not.toMatch(/4242/)
+    expect(ready.handoff).toBe(true)
+
+    const sameAttempt = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Nytt betalningsförsök', role: 'user' }] },
+      customerReaders: {
+        plan: async () => ({ entitlements: [], plan: { currency: 'SEK', plan_id: 'plan.prelim.sek.month.04', price_minor: 400 }, unavailable: false }),
+        subscription: async () => ({
+          subscription: { plan_id: 'plan.prelim.sek.month.04', status: 'PAST_DUE' },
+          unavailable: false,
+        }),
+      },
+      env: { OPENAI_API_KEY: 'test-key' },
+      fetchImpl,
+      userId: 'user-a',
+    })
+    expect(sameAttempt.confirmation).toBeUndefined()
+    expect(sameAttempt.answer).toContain('PAST_DUE')
+    expect(sameAttempt.answer).toMatch(/blockerat/)
+    expect(sameAttempt.handoff).toBe(true)
+  })
+
+  it('explains charges and blocks refunds, receipts and transaction lists', async () => {
+    const fetchImpl = vi.fn()
+    const readers = {
+      plan: async () => ({
+        entitlements: [],
+        plan: { billing_interval: 'month', currency: 'SEK', plan_id: 'plan.prelim.sek.month.04', price_minor: 400 },
+        unavailable: false,
+      }),
+      subscription: async () => ({
+        subscription: {
+          current_period_end: '2026-11-01T00:00:00.000Z',
+          plan_id: 'plan.prelim.sek.month.04',
+          status: 'ACTIVE',
+        },
+        unavailable: false,
+      }),
+    }
+    const refund = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Jag vill ha återbetalning', role: 'user' }] },
+      customerReaders: readers,
+      env: { OPENAI_API_KEY: 'test-key' },
+      fetchImpl,
+      userId: 'user-a',
+    })
+    expect(refund.confirmation).toBeUndefined()
+    expect(refund.answer).toMatch(/Återbetalning är blockerad/)
+    expect(refund.handoff).toBe(true)
+
+    const receipt = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Visa mitt kvitto', role: 'user' }] },
+      customerReaders: readers,
+      env: {},
+      fetchImpl,
+      userId: 'user-a',
+    })
+    expect(receipt.answer).toContain('4 kr')
+    expect(receipt.answer).toMatch(/kan inte hämtas/)
+    expect(receipt.answer).toContain('ACTIVE')
+
+    const transactions = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Visa mina transaktioner', role: 'user' }] },
+      customerReaders: readers,
+      env: {},
+      fetchImpl,
+      userId: 'user-a',
+    })
+    expect(transactions.answer).toMatch(/kan inte listas/)
+    expect(transactions.answer).toContain('2026-11-01')
+    expect(fetchImpl).not.toHaveBeenCalled()
+
+    const reason = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Varför misslyckades min betalning?', role: 'user' }] },
+      customerReaders: {
+        subscription: async () => ({
+          subscription: { past_due_grace_until: '2026-10-20T00:00:00.000Z', plan_id: 'plan.prelim.sek.month.04', status: 'PAST_DUE' },
+          unavailable: false,
+        }),
+      },
+      env: {},
+      fetchImpl,
+      userId: 'user-a',
+    })
+    expect(reason.confirmation).toBeUndefined()
+    expect(reason.answer).toContain('PAST_DUE')
+    expect(reason.answer).toMatch(/inte tillgänglig/)
+    expect(reason.answer).not.toMatch(/insufficient|3DS|avslagskod/)
+  })
+
   it.each(['free', 'premium'])('answers verified %s plan facts without a model or plan gate', async (planId) => {
     const fetchImpl = vi.fn()
     const result = await answerAiHelpQuestion({
@@ -851,5 +990,345 @@ describe('AI Help language and model contract', () => {
     expect(result.source).toBe('verified-customer')
     expect(result.answer).not.toContain('user-b')
     expect(result.answer).toMatch(/inte verifiera|cannot verify/i)
+  })
+
+  it('reads the verified account and blocks changes that have no safe API', async () => {
+    const fetchImpl = vi.fn()
+    const readers = { subscription: vi.fn() }
+    const account = { createdAt: '2026-01-01T00:00:00Z', email: 'owner@example.test', emailConfirmed: true }
+    const read = await answerAiHelpQuestion({
+      account,
+      body: { messages: [{ content: 'Vilken e-post har jag?', role: 'user' }] },
+      customerReaders: readers,
+      env: { OPENAI_API_KEY: 'sk-test' },
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(read.source).toBe('verified-customer')
+    expect(read.answer).toContain('owner@example.test')
+    expect(read.answer).toMatch(/Inget har ändrats/)
+    expect(read.confirmation).toBeUndefined()
+    expect(readers.subscription).not.toHaveBeenCalled()
+    expect(fetchImpl).not.toHaveBeenCalled()
+
+    const reset = await answerAiHelpQuestion({
+      account,
+      body: { messages: [{ content: 'Återställ mitt lösenord. Lösenordet är hunter2', role: 'user' }] },
+      env: { OPENAI_API_KEY: 'sk-test' },
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(reset.confirmation).toBeUndefined()
+    expect(reset.answer).not.toMatch(/hunter2/)
+
+    const offer = await answerAiHelpQuestion({
+      account,
+      body: { messages: [{ content: 'Återställ mitt lösenord', role: 'user' }] },
+      env: {},
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(offer.confirmation).toEqual({ action: 'password_reset' })
+    expect(offer.answer).not.toMatch(/hunter2|reset-code/)
+
+    const removal = await answerAiHelpQuestion({
+      account,
+      body: { messages: [{ content: 'Radera mitt konto', role: 'user' }], password: 'hunter2', user_id: 'other-user' },
+      env: {},
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(removal.confirmation).toEqual({ action: 'delete_account' })
+    expect(removal.answer).toMatch(/Ingen radering har utförts/)
+    expect(JSON.stringify(removal)).not.toMatch(/hunter2|other-user/)
+
+    const email = await answerAiHelpQuestion({
+      account,
+      body: { messages: [{ content: 'Byt min e-post till annan@example.test', role: 'user' }] },
+      env: { OPENAI_API_KEY: 'sk-test' },
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(email.confirmation).toBeUndefined()
+    expect(email.answer).toMatch(/blockerat/)
+    expect(email.answer).not.toContain('annan@example.test')
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('diagnoses verified feature faults and blocks device fixes', async () => {
+    const fetchImpl = vi.fn()
+    const active = {
+      cancel_at_period_end: false,
+      current_period_end: '2026-11-01T00:00:00.000Z',
+      plan_id: 'plan.prelim.sek.month.04',
+      status: 'ACTIVE',
+    }
+    const readersFor = (quota, entitlements = [{ enabled: true, feature: 'food.scan', limit_kind: 'NUMBER', limit_value: 30 }]) => ({
+      plan: async () => ({ entitlements, plan: { active: true, currency: 'SEK', plan_id: active.plan_id, price_minor: 400 }, unavailable: false }),
+      quota: async ({ userId }) => {
+        expect(userId).toBe('user-1')
+        return { quota, unavailable: false }
+      },
+      subscription: async (userId) => {
+        expect(userId).toBe('user-1')
+        return { subscription: active, unavailable: false }
+      },
+      usage: async () => ({ quotas: [], unlimited: [] }),
+    })
+    const empty = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Matscanningen fungerar inte', role: 'user' }] },
+      customerReaders: readersFor({ feature: 'food.scan', limit: 30, remaining: 0, status: 'DENIED_QUOTA_EXCEEDED', unlimited: false, used: 30 }),
+      env: { OPENAI_API_KEY: 'sk-test' },
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(empty.source).toBe('verified-customer')
+    expect(empty.answer).toMatch(/Kvoten för matscanning är slut/)
+    expect(empty.answer).toMatch(/30/)
+    expect(empty.confirmation).toBeUndefined()
+    expect(empty.handoff).toBe(true)
+    expect(fetchImpl).not.toHaveBeenCalled()
+
+    const camera = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Kameran fungerar inte', role: 'user' }] },
+      env: { OPENAI_API_KEY: 'sk-test' },
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(camera.answer).toMatch(/Kameradiagnos är blockerad/)
+    expect(camera.answer).not.toMatch(/bilddata|hunter2|token/)
+    expect(camera.confirmation).toBeUndefined()
+    expect(camera.followUps).toEqual(['Gäller det matscanningen?', 'Gäller det kameran?'])
+
+    const microphone = await answerAiHelpQuestion({
+      body: { language: 'es', messages: [{ content: 'El micrófono no funciona', role: 'user' }] },
+      env: { OPENAI_API_KEY: 'sk-test' },
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(microphone.answer).toMatch(/micrófono está bloqueado/i)
+    expect(microphone.answer).not.toMatch(/Mikrofondiagnos/)
+
+    const login = await answerAiHelpQuestion({
+      account: { email: 'owner@example.test', emailConfirmed: false },
+      body: { messages: [{ content: 'Jag kan inte logga in', role: 'user' }] },
+      env: { OPENAI_API_KEY: 'sk-test' },
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(login.confirmation).toBeUndefined()
+    expect(login.answer).toMatch(/obekräftad/)
+    expect(login.answer).toMatch(/blockerat/)
+
+    const secret = await answerAiHelpQuestion({
+      account: { email: 'owner@example.test', emailConfirmed: true },
+      body: { messages: [{ content: 'Jag kan inte logga in. Lösenordet är hunter2', role: 'user' }] },
+      env: { OPENAI_API_KEY: 'sk-test' },
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(secret.confirmation).toBeUndefined()
+    expect(secret.answer).not.toMatch(/hunter2/)
+
+    const reset = await answerAiHelpQuestion({
+      account: { email: 'owner@example.test', emailConfirmed: true },
+      body: { messages: [{ content: 'Jag kan inte logga in', role: 'user' }] },
+      env: {},
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(reset.confirmation).toEqual({ action: 'password_reset' })
+    expect(reset.answer).toMatch(/bekräftad/)
+
+    const scheduled = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Abonnemanget fungerar inte', role: 'user' }] },
+      customerReaders: {
+        plan: async () => ({ entitlements: [], plan: { currency: 'SEK', plan_id: active.plan_id, price_minor: 400 }, unavailable: false }),
+        subscription: async () => ({ subscription: { ...active, cancel_at_period_end: true }, unavailable: false }),
+      },
+      env: {},
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(scheduled.confirmation).toEqual({ action: 'undo_cancel' })
+    expect(scheduled.answer).toMatch(/Ingen betalning har startats/)
+
+    const unresolved = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Matscanningen fungerar inte', role: 'user' }, { content: 'Fungerar det nu?', role: 'user' }] },
+      customerReaders: readersFor({ feature: 'food.scan', limit: 30, remaining: 0, status: 'DENIED_QUOTA_EXCEEDED', unlimited: false, used: 30 }),
+      env: {},
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(unresolved.answer).toMatch(/inte är löst/)
+    expect(unresolved.answer).toMatch(/Kvoten för matscanning/)
+
+    const clear = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Matscanningen fungerar inte', role: 'user' }, { content: 'Fungerar det nu?', role: 'user' }] },
+      customerReaders: readersFor({ feature: 'food.scan', limit: 30, remaining: 10, status: 'ALLOWED', unlimited: false, used: 20 }),
+      env: {},
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(clear.answer).toMatch(/inget kvarvarande hinder/)
+    expect(clear.answer).toMatch(/mänsklig support/)
+    expect(clear.confirmation).toBeUndefined()
+    expect(fetchImpl).not.toHaveBeenCalled()
+
+    const excluded = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Kroppsscanningen fungerar inte', role: 'user' }] },
+      customerReaders: {
+        plan: async () => ({ entitlements: [], plan: { currency: 'SEK', plan_id: active.plan_id, price_minor: 400 }, unavailable: false }),
+        quota: async () => ({ quota: { feature: 'body.scan', limit: 5, remaining: 5, status: 'ALLOWED', unlimited: false, used: 0 }, unavailable: false }),
+        subscription: async () => ({ subscription: active, unavailable: false }),
+        usage: async () => ({ quotas: [], unlimited: [] }),
+      },
+      env: {},
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(excluded.answer).toMatch(/kroppsscanning ingår inte/)
+    expect(excluded.confirmation).toBeUndefined()
+
+    const coach = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'AI-coachen fungerar inte', role: 'user' }] },
+      customerReaders: {
+        plan: async () => ({ entitlements: [{ enabled: true, feature: 'ai.text.request', limit_kind: 'NUMBER', limit_value: 20 }], plan: { currency: 'SEK', plan_id: active.plan_id, price_minor: 400 }, unavailable: false }),
+        quota: async () => ({ quota: { feature: 'ai.text.request', limit: 20, remaining: 0, status: 'DENIED_QUOTA_EXCEEDED', unlimited: false, used: 20 }, unavailable: false }),
+        subscription: async () => ({ subscription: active, unavailable: false }),
+        usage: async () => ({ quotas: [], unlimited: [] }),
+      },
+      env: {},
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(coach.answer).toMatch(/Kvoten för AI-coach är slut/)
+    expect(coach.confirmation).toBeUndefined()
+
+    const payment = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Betalningen fungerar inte', role: 'user' }] },
+      customerReaders: {
+        plan: async () => ({ entitlements: [], plan: { currency: 'SEK', plan_id: active.plan_id, price_minor: 400 }, unavailable: false }),
+        subscription: async () => ({ subscription: { ...active, status: 'PAST_DUE' }, unavailable: false }),
+      },
+      env: {},
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(payment.answer).toMatch(/PAST_DUE/)
+    expect(payment.answer).toMatch(/lagras inte/)
+    expect(payment.confirmation).toBeUndefined()
+
+    const unknown = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Appen fungerar inte', role: 'user' }] },
+      env: { OPENAI_API_KEY: 'sk-test' },
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(unknown.answer).toMatch(/Ingen diagnos är gjord/)
+    expect(unknown.followUps?.length).toBe(2)
+    expect(unknown.confirmation).toBeUndefined()
+  })
+
+  it('keeps one case across turns and does not mark it solved early', async () => {
+    const fetchImpl = vi.fn()
+    const active = {
+      cancel_at_period_end: true,
+      current_period_end: '2026-11-01T00:00:00.000Z',
+      plan_id: 'plan.prelim.sek.month.04',
+      status: 'ACTIVE',
+    }
+    const quotaReaders = {
+      plan: async () => ({ entitlements: [{ enabled: true, feature: 'food.scan', limit_kind: 'NUMBER', limit_value: 30 }], plan: { currency: 'SEK', plan_id: active.plan_id, price_minor: 400 }, unavailable: false }),
+      quota: async () => ({ quota: { feature: 'food.scan', limit: 30, remaining: 0, status: 'DENIED_QUOTA_EXCEEDED', unlimited: false, used: 30 }, unavailable: false }),
+      subscription: async () => ({ subscription: { ...active, cancel_at_period_end: false }, unavailable: false }),
+      usage: async () => ({ quotas: [], unlimited: [] }),
+    }
+    const opened = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Appen fungerar inte', role: 'user' }] },
+      env: { OPENAI_API_KEY: 'sk-test' },
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(opened.answer).toMatch(/Ingen diagnos är gjord/)
+    expect(opened.handoff).toBe(true)
+    expect(opened.confirmation).toBeUndefined()
+
+    const food = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Appen fungerar inte', role: 'user' }, { content: 'Gäller det matscanningen?', role: 'user' }] },
+      customerReaders: quotaReaders,
+      env: { OPENAI_API_KEY: 'sk-test' },
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(food.answer).toMatch(/Kvoten för matscanning är slut/)
+    expect(food.answer).not.toMatch(/löst/)
+    expect(food.confirmation).toBeUndefined()
+
+    const agreed = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Matscanningen fungerar inte', role: 'user' }, { content: 'ja', role: 'user' }] },
+      customerReaders: quotaReaders,
+      env: {},
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(agreed.answer).toMatch(/inte löst/)
+    expect(agreed.confirmation).toBeUndefined()
+
+    const stopped = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Matscanningen fungerar inte', role: 'user' }, { content: 'nej', role: 'user' }] },
+      customerReaders: quotaReaders,
+      env: {},
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(stopped.answer).toMatch(/avbruten/)
+    expect(stopped.answer).toMatch(/inte löst/)
+    expect(stopped.handoff).toBe(true)
+
+    const still = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Matscanningen fungerar inte', role: 'user' }, { content: 'Fungerar det nu?', role: 'user' }] },
+      customerReaders: quotaReaders,
+      env: {},
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(still.answer).toMatch(/inte är löst/)
+    expect(still.handoff).toBe(true)
+
+    const subscription = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Abonnemanget fungerar inte', role: 'user' }, { content: 'fortsätt', role: 'user' }] },
+      customerReaders: {
+        plan: async () => ({ entitlements: [], plan: { currency: 'SEK', plan_id: active.plan_id, price_minor: 400 }, unavailable: false }),
+        subscription: async () => ({ subscription: active, unavailable: false }),
+      },
+      env: {},
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(subscription.confirmation).toEqual({ action: 'undo_cancel' })
+    expect(subscription.answer).not.toMatch(/är löst/)
+
+    const english = await answerAiHelpQuestion({
+      account: { email: 'owner@example.test', emailConfirmed: true },
+      body: { language: 'en', messages: [{ content: "I can't sign in", role: 'user' }, { content: 'yes', role: 'user' }] },
+      env: {},
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(english.confirmation).toBeUndefined()
+    expect(english.answer).toMatch(/not solved/)
+    expect(english.answer).toMatch(/button/)
+
+    const arabic = await answerAiHelpQuestion({
+      body: { language: 'ar', messages: [{ content: 'الكاميرا لا تعمل', role: 'user' }] },
+      env: { OPENAI_API_KEY: 'sk-test' },
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(arabic.answer).toMatch(/الكاميرا محظور/)
+    expect(arabic.answer).not.toMatch(/تم الحل/)
+    expect(arabic.handoff).toBe(true)
+    expect(fetchImpl).not.toHaveBeenCalled()
   })
 })

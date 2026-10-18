@@ -17,6 +17,14 @@ const text = {
     planSame: 'Ese ya es tu plan verificado. No se ha cambiado nada y no se ha iniciado ningún pago.',
     planMissing: 'Indica un plan existente para cambiar. No se ha iniciado ningún pago y no se ha cambiado nada.',
     unchanged: 'No se ha cambiado nada y no se ha iniciado ningún pago.',
+    refundBlocked: 'El reembolso está bloqueado. La facturación existente no reembolsa y SumUp no tiene una llamada de reembolso. No se ha cambiado nada.',
+    receiptBlocked: 'No se puede obtener un recibo.',
+    transactionsBlocked: 'No se pueden listar las transacciones individuales.',
+    hostedBlocked: 'Un nuevo intento con tarjeta está bloqueado. El chat no puede cobrar un instrumento guardado ni crear un segundo cobro.',
+    hostedMissing: 'Indica un plan de pago existente para un nuevo intento.',
+    hostedOffer: 'Un nuevo intento abre la página de pago de SumUp solo después de confirmar. Aquí no se escribe el número de tarjeta.',
+    paymentNotStarted: 'No se ha iniciado ningún pago.',
+    followUp: 'El problema de pago no resuelto puede continuar con asistencia humana. No se ha creado una solicitud automáticamente.',
   },
   ar: {
     unknown: 'لا أستطيع التحقق من بيانات الحساب الآن. لم يتم تغيير أي شيء.',
@@ -33,6 +41,14 @@ const text = {
     planSame: 'هذه هي خطتك التي تم التحقق منها بالفعل. لم يتم تغيير أي شيء ولم يبدأ أي دفع.',
     planMissing: 'اذكر خطة موجودة للتغيير. لم يبدأ أي دفع ولم يتم تغيير أي شيء.',
     unchanged: 'لم يتم تغيير أي شيء ولم يبدأ أي دفع.',
+    refundBlocked: 'الاسترداد محظور. الفوترة الحالية لا تجري استردادًا ولا يملك تكامل SumUp استدعاء استرداد. لم يتم تغيير أي شيء.',
+    receiptBlocked: 'لا يمكن جلب إيصال.',
+    transactionsBlocked: 'لا يمكن عرض المعاملات الفردية.',
+    hostedBlocked: 'محاولة البطاقة الجديدة محظورة. لا يمكن للدردشة خصم وسيلة دفع محفوظة ولا إنشاء خصم ثان.',
+    hostedMissing: 'اذكر خطة مدفوعة موجودة لمحاولة جديدة.',
+    hostedOffer: 'تفتح محاولة الدفع الجديدة صفحة SumUp فقط بعد التأكيد. لا يُكتب رقم البطاقة هنا.',
+    paymentNotStarted: 'لم يبدأ أي دفع.',
+    followUp: 'يمكن متابعة مشكلة الدفع غير المحلولة مع الدعم البشري. لم يتم إنشاء طلب تلقائيًا.',
   },
 }
 export function localizedCancel(context, language) {
@@ -70,6 +86,100 @@ export function localizedPlanChange(context, language, planId) {
   }
   if (planId === currentId) return { answer: t.planSame, confirmation: null }
   return { answer: `${t.planOffer} ${planId}.`, confirmation: { action: 'plan_change', planId } }
+}
+
+export function localizedPaymentLimit(kind, context, language, planId = '') {
+  const t = text[language]
+  if (!t) return null
+  const status = context?.payment?.status || context?.subscription?.status || t.unavailable
+  const end = context?.subscription?.current_period_end
+  const safePlanId = planId || ''
+  if (kind === 'refund') {
+    return { answer: `${t.refundBlocked} ${t.status}: ${status}. ${t.followUp}`, confirmation: null }
+  }
+  if (kind === 'receipt') {
+    const price = context?.plan && Number.isInteger(context.plan.price_minor) && context.plan.currency
+      ? new Intl.NumberFormat(language, { style: 'currency', currency: context.plan.currency }).format(context.plan.price_minor / 100)
+      : ''
+    return {
+      answer: `${t.receiptBlocked} ${price ? `${t.price}: ${price}.` : ''} ${t.status}: ${status}.${end ? ` ${t.end}: ${end}.` : ''} ${t.followUp}`,
+      confirmation: null,
+    }
+  }
+  if (kind === 'transactions') {
+    return {
+      answer: `${t.transactionsBlocked} ${t.status}: ${status}.${end ? ` ${t.end}: ${end}.` : ''} ${t.reason} ${t.followUp}`,
+      confirmation: null,
+    }
+  }
+  if (kind === 'hosted') {
+    const open = context?.subscription && ['TRIALING', 'ACTIVE', 'PAST_DUE', 'PAUSED'].includes(context.subscription.status)
+    if (!context?.available) return { answer: `${t.unknown} ${t.paymentNotStarted}`, confirmation: null }
+    if (open) return { answer: `${t.hostedBlocked} ${t.status}: ${status}. ${t.reason} ${t.paymentNotStarted} ${t.followUp}`, confirmation: null }
+    if (!safePlanId) return { answer: `${t.hostedMissing} ${t.paymentNotStarted}`, confirmation: null }
+    return { answer: `${t.hostedOffer} ${safePlanId}. ${t.paymentNotStarted}`, confirmation: { action: 'hosted_checkout', planId: safePlanId } }
+  }
+  return null
+}
+
+const accountText = {
+  es: {
+    created: 'La cuenta se creó',
+    confirmed: 'confirmado',
+    unconfirmed: 'sin confirmar',
+    deleteHelp: 'La eliminación requiere una confirmación separada y usa el flujo existente. No se ha eliminado nada.',
+    deleteOffer: 'La cuenta se elimina con el flujo existente solo al pulsar Confirmar eliminación de cuenta. No se ha eliminado nada.',
+    emailBlocked: 'El cambio de correo está bloqueado. No existe una API que verifique una dirección nueva. No se ha cambiado nada.',
+    emailMissing: 'No se puede mostrar un correo verificado. No se ha cambiado nada.',
+    passwordHelp: 'Pide un correo de restablecimiento a la dirección verificada. No escribas la contraseña aquí. No se ha cambiado nada.',
+    passwordMissing: 'No hay un correo verificado para el restablecimiento. No se ha cambiado nada.',
+    passwordOffer: 'El correo de restablecimiento se envía a la dirección verificada solo después de confirmar. No escribas la contraseña, un código ni un token aquí. No se ha cambiado nada.',
+    profileBlocked: 'El cambio de nombre o perfil está bloqueado. No existe una API de cuenta segura para ese dato. No se ha cambiado nada.',
+    read: 'El correo verificado es',
+    secret: 'Las contraseñas, los códigos y los tokens no se guardan en el chat. Pide un correo de restablecimiento sin escribir la contraseña. No se ha cambiado nada.',
+    unknownTime: 'en un momento desconocido',
+  },
+  ar: {
+    created: 'أُنشئ الحساب',
+    confirmed: 'مؤكد',
+    unconfirmed: 'غير مؤكد',
+    deleteHelp: 'حذف الحساب يحتاج إلى تأكيد منفصل ويستخدم مسار الحذف الحالي. لم يتم تنفيذ حذف.',
+    deleteOffer: 'يُحذف الحساب عبر مسار الحذف الحالي فقط بعد الضغط على تأكيد حذف الحساب. لم يتم تنفيذ حذف.',
+    emailBlocked: 'تغيير البريد محظور. لا توجد واجهة حالية تتحقق من عنوان جديد. لم يتم تغيير أي شيء.',
+    emailMissing: 'لا يمكن عرض بريد تم التحقق منه. لم يتم تغيير أي شيء.',
+    passwordHelp: 'اطلب رسالة إعادة تعيين إلى العنوان الذي تم التحقق منه. لا تكتب كلمة المرور هنا. لم يتم تغيير أي شيء.',
+    passwordMissing: 'لا يوجد بريد تم التحقق منه لإعادة التعيين. لم يتم تغيير أي شيء.',
+    passwordOffer: 'تُرسل رسالة إعادة التعيين إلى العنوان الذي تم التحقق منه فقط بعد التأكيد. لا تكتب كلمة المرور أو رمزًا أو رمز دخول هنا. لم يتم تغيير أي شيء.',
+    profileBlocked: 'تغيير الاسم أو الملف الشخصي محظور. لا توجد واجهة حساب آمنة لتلك البيانات. لم يتم تغيير أي شيء.',
+    read: 'البريد الذي تم التحقق منه هو',
+    secret: 'لا تُحفظ كلمات المرور أو الرموز أو رموز الدخول في المحادثة. اطلب رسالة إعادة تعيين دون كتابة كلمة المرور. لم يتم تغيير أي شيء.',
+    unknownTime: 'في وقت غير معروف',
+  },
+}
+
+export function localizedAccount(kind, account, language) {
+  const t = accountText[language]
+  if (!t) return null
+  const email = account?.email || ''
+  const confirmed = account?.emailConfirmed === true
+  const created = account?.createdAt || t.unknownTime
+  if (kind === 'read') {
+    if (!email) return { answer: t.emailMissing, confirmation: null }
+    return {
+      answer: `${t.read} ${email}. ${confirmed ? t.confirmed : t.unconfirmed}. ${t.created} ${created}.`,
+      confirmation: null,
+    }
+  }
+  if (kind === 'password-reset') {
+    if (!email) return { answer: t.passwordMissing, confirmation: null }
+    return { answer: t.passwordOffer, confirmation: { action: 'password_reset' } }
+  }
+  if (kind === 'password-help') return { answer: t.passwordHelp, confirmation: null }
+  if (kind === 'delete-account') return { answer: t.deleteOffer, confirmation: { action: 'delete_account' } }
+  if (kind === 'delete-help') return { answer: t.deleteHelp, confirmation: null }
+  if (kind === 'email-change') return { answer: t.emailBlocked, confirmation: null }
+  if (kind === 'profile-change') return { answer: t.profileBlocked, confirmation: null }
+  return { answer: t.secret, confirmation: null }
 }
 
 export function localizedCustomer(context, selection, language) {

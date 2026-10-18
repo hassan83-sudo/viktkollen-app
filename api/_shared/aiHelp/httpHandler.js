@@ -1,6 +1,8 @@
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../aiRouteErrors.js'
 import { verifySupabaseUser } from '../verifySupabaseUser.js'
+import { publicAuthAccount } from './accountActions.js'
 import { knownAiActionId, sanitizeAiAction } from '../../../src/features/aiHelp/aiActions.js'
+import { officialSumUpHostedCheckoutUrl } from '../../../src/features/aiHelp/hostedCheckoutUrl.js'
 import { answerAiHelpQuestion } from './service.js'
 import { executeConfirmedAiAction } from './executeAiAction.js'
 
@@ -39,20 +41,27 @@ export async function handleAiHelpRequest(request, response) {
   }
 
   if (body && Object.prototype.hasOwnProperty.call(body, 'confirmAction')) {
+    const account = publicAuthAccount(auth.user)
     const result = await executeConfirmedAiAction({
+      accountEmail: account.email,
       actionId: body.confirmAction,
       actorUserId: auth.user.id,
       confirmed: body.confirmed === true,
       planId: body.planId,
     })
+    const hostedCheckoutUrl = officialSumUpHostedCheckoutUrl(result.hostedCheckoutUrl)
     return response.status(result.status || 400).json({
       action: knownAiActionId(result.action),
       code: result.code || null,
       ok: result.ok === true,
+      outcome: ['blocked', 'failed', 'pending', 'verified'].includes(result.outcome) ? result.outcome : 'failed',
+      resolved: result.resolved === true,
+      ...(hostedCheckoutUrl ? { hostedCheckoutUrl } : {}),
     })
   }
 
-  const result = await answerAiHelpQuestion({ body, userId: auth.user.id })
+  const account = publicAuthAccount(auth.user)
+  const result = await answerAiHelpQuestion({ account, body, userId: auth.user.id })
   if (!result.ok) {
     const code = result.code === 'MODEL_LIMITED'
       ? 'MODEL_LIMITED'

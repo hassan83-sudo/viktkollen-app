@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getLanguageDefinition, normalizeLanguageCode } from '../../i18n/languages.js'
 import { confirmAiAction, requestAiHelpReply } from './aiHelpClient.js'
+import { officialSumUpHostedCheckoutUrl } from './hostedCheckoutUrl.js'
 import { reportClientBug } from '../../services/bugMonitor/bugMonitorClient.js'
 import { requestOpenHelpSection } from './aiHelpTools.js'
 import { isDirectNavigationRequest } from './navigationRequest.js'
@@ -60,24 +61,42 @@ function AiHelpPanel() {
       setMessages((current) => {
         const message = current[index]
         if (!message?.confirmation?.action) return current
+        const verified = result.resolved === true && result.outcome === 'verified'
+        const pending = result.ok && result.outcome === 'pending'
         const done = {
+          delete_account: chrome.deleteDone,
           plan_change: chrome.planDone,
           schedule_cancel: chrome.cancelDone,
           undo_cancel: chrome.undoDone,
-        }[message.confirmation.action] || chrome.cancelFailed
+        }[message.confirmation.action]
+        const waiting = {
+          hosted_checkout: chrome.checkoutReady,
+          password_reset: chrome.passwordDone,
+        }[message.confirmation.action] || chrome.notSolved
         const failed = {
+          delete_account: chrome.deleteFailed,
+          hosted_checkout: chrome.checkoutFailed,
+          password_reset: chrome.passwordFailed,
           plan_change: chrome.planFailed,
           schedule_cancel: chrome.cancelFailed,
           undo_cancel: chrome.undoFailed,
-        }[message.confirmation.action] || chrome.cancelFailed
+        }[message.confirmation.action] || chrome.notSolved
+        const hostedCheckoutUrl = result.ok ? officialSumUpHostedCheckoutUrl(result.hostedCheckoutUrl) : ''
+        if (hostedCheckoutUrl) window.open(hostedCheckoutUrl, '_blank', 'noopener,noreferrer')
         const next = current.map((item, itemIndex) => (
           itemIndex === index ? { ...item, confirmation: null } : item
         ))
+        const content = verified && done
+          ? done
+          : pending && (message.confirmation.action !== 'hosted_checkout' || hostedCheckoutUrl)
+            ? waiting
+            : failed
         return [
           ...next,
           {
-            content: result.ok ? done : failed,
+            content,
             featureIds: [],
+            hostedCheckoutUrl,
             role: 'assistant',
             status: 'answered',
           },
@@ -227,6 +246,39 @@ function AiHelpPanel() {
                   >
                     {chrome.confirmPlan}
                   </button>
+                )}
+                {message.confirmation?.action === 'hosted_checkout' && message.confirmation.planId && (
+                  <button
+                    className="secondary-button ai-help-action"
+                    type="button"
+                    disabled={pending}
+                    onClick={() => confirmMessageAction(index)}
+                  >
+                    {chrome.confirmCheckout}
+                  </button>
+                )}
+                {message.confirmation?.action === 'password_reset' && (
+                  <button
+                    className="secondary-button ai-help-action"
+                    type="button"
+                    disabled={pending}
+                    onClick={() => confirmMessageAction(index)}
+                  >
+                    {chrome.confirmPassword}
+                  </button>
+                )}
+                {message.confirmation?.action === 'delete_account' && (
+                  <button
+                    className="secondary-button ai-help-action"
+                    type="button"
+                    disabled={pending}
+                    onClick={() => confirmMessageAction(index)}
+                  >
+                    {chrome.confirmDelete}
+                  </button>
+                )}
+                {message.hostedCheckoutUrl && (
+                  <a href={message.hostedCheckoutUrl} rel="noreferrer" target="_blank">{chrome.openCheckout}</a>
                 )}
                 {(message.followUps || []).map((question) => (
                   <button

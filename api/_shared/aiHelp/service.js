@@ -20,8 +20,13 @@ import {
 import { createCostStoreFromEnv } from './supabaseCostStore.js'
 import {
   loadCustomerContext,
+  renderAccountAnswer,
   renderCancelOffer,
+  renderHostedCheckoutOffer,
   renderPlanChangeOffer,
+  renderReceiptAnswer,
+  renderRefundAnswer,
+  renderTransactionAnswer,
   renderUndoCancelOffer,
   renderVerifiedAnswer,
   verifiedPriceMinor,
@@ -29,6 +34,8 @@ import {
 import { preliminaryPlanFacts, verifiedPriceMajors } from './planFacts.js'
 import { buildAiHelpInstructions } from './prompt.js'
 import { recordUnansweredQuestion } from './unansweredStore.js'
+import { renderCaseControl } from './caseOutcome.js'
+import { renderTroubleAnswer } from './troubleshooting.js'
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/responses'
 const DEFAULT_MODEL = 'gpt-5-mini'
@@ -168,20 +175,59 @@ async function keepReservation(store, reservationId) {
   }
 }
 
-function verifiedCustomerResult(validated, selection, customer) {
-  const rendered = selection.cancel
+function verifiedCustomerResult(validated, selection, customer, account = null) {
+  const accountKind = selection.deleteAccount
+    ? 'delete-account'
+    : selection.passwordReset
+      ? 'password-reset'
+      : selection.secretRefused
+        ? 'secret-refused'
+        : selection.emailChange
+          ? 'email-change'
+          : selection.profileChange
+            ? 'profile-change'
+            : selection.deleteHelp
+              ? 'delete-help'
+              : selection.passwordHelp
+                ? 'password-help'
+                : selection.accountRead
+                  ? 'read'
+                  : ''
+  const rendered = selection.caseControl
+    ? renderCaseControl({ control: selection.caseControl, languageCode: validated.language.code })
+    : accountKind
+    ? renderAccountAnswer({ account, kind: accountKind, languageCode: validated.language.code })
+    : selection.trouble
+      ? renderTroubleAnswer({ account, context: customer, languageCode: validated.language.code, selection })
+      : selection.cancel
     ? renderCancelOffer({ context: customer, languageCode: validated.language.code })
     : selection.undoCancel
       ? renderUndoCancelOffer({ context: customer, languageCode: validated.language.code })
       : selection.planChange
         ? renderPlanChangeOffer({ context: customer, languageCode: validated.language.code, planId: selection.planId })
-        : { answer: renderVerifiedAnswer({ context: customer, languageCode: validated.language.code, selection }), confirmation: null }
-  const focus = selection.focus === 'plan-change' || selection.focus === 'undo' ? 'subscription' : selection.focus
+        : selection.refundRequest
+          ? renderRefundAnswer({ context: customer, languageCode: validated.language.code })
+          : selection.receiptRequest
+            ? renderReceiptAnswer({ context: customer, languageCode: validated.language.code })
+            : selection.transactionRequest
+              ? renderTransactionAnswer({ context: customer, languageCode: validated.language.code })
+              : selection.hostedCheckout
+                ? renderHostedCheckoutOffer({ context: customer, languageCode: validated.language.code, planId: selection.planId })
+                : { answer: renderVerifiedAnswer({ context: customer, languageCode: validated.language.code, selection }), confirmation: null }
+  const paymentFollowUp = ['hosted-checkout', 'refund', 'receipt', 'transactions'].includes(selection.focus)
+  const accountFollowUp = ['account', 'delete-account', 'delete-help', 'email-change', 'password-help', 'password-reset', 'profile-change', 'secret-refused'].includes(selection.focus)
+  const focus = accountFollowUp
+    ? 'login'
+    : selection.focus === 'plan-change' || selection.focus === 'undo'
+    ? 'subscription'
+    : (paymentFollowUp ? 'payment' : selection.focus)
   return {
     answer: rendered.answer,
     featureIds: ['settings.plan'],
-    followUps: followUpsFor(focus, validated.language.code),
-    handoff: focus === 'login' || focus === 'access' || focus === 'payment',
+    followUps: rendered.followUps || followUpsFor(focus, validated.language.code),
+    handoff: typeof rendered.handoff === 'boolean'
+      ? rendered.handoff
+      : focus === 'login' || focus === 'access' || focus === 'payment',
     language: validated.language,
     ok: true,
     source: 'verified-customer',
@@ -191,6 +237,7 @@ function verifiedCustomerResult(validated, selection, customer) {
 }
 
 export async function answerAiHelpQuestion({
+  account = null,
   body = {},
   costStore = null,
   customerReaders = null,
@@ -222,8 +269,8 @@ export async function answerAiHelpQuestion({
         userId,
       })
       : { available: false, reason: 'unauthenticated' }
-    if (selection.cancel || selection.undoCancel || selection.planChange || selection.direct || !customer.available || !env.OPENAI_API_KEY) {
-      return verifiedCustomerResult(validated, selection, customer)
+    if (selection.cancel || selection.undoCancel || selection.planChange || selection.hostedCheckout || selection.refundRequest || selection.receiptRequest || selection.transactionRequest || selection.direct || !customer.available || !env.OPENAI_API_KEY) {
+      return verifiedCustomerResult(validated, selection, customer, account)
     }
   }
 
@@ -233,7 +280,7 @@ export async function answerAiHelpQuestion({
     pinnedIds: validated.featureIds,
   })
   if (route.kind === 'local') {
-    if (customer) return verifiedCustomerResult(validated, selection, customer)
+    if (customer) return verifiedCustomerResult(validated, selection, customer, account)
     return {
       ...localHelpResult(route.entry, {
         extra: route.entry.id === 'settings.plan' ? preliminaryPlanFacts() : '',
@@ -272,7 +319,7 @@ export async function answerAiHelpQuestion({
   const entries = route.entries
 
   if (!env.OPENAI_API_KEY) {
-    if (customer) return verifiedCustomerResult(validated, selection, customer)
+    if (customer) return verifiedCustomerResult(validated, selection, customer, account)
     return { code: 'PROVIDER_NOT_CONFIGURED', language: validated.language, ok: false, status: 503 }
   }
 
@@ -299,7 +346,7 @@ export async function answerAiHelpQuestion({
   ]
   const budgetSek = Number(env.AI_HELP_BUDGET_SEK)
   if (!Number.isFinite(budgetSek) || budgetSek <= 0) {
-    if (customer) return verifiedCustomerResult(validated, selection, customer)
+    if (customer) return verifiedCustomerResult(validated, selection, customer, account)
     if (route.fallbackEntry && validated.language.code === 'sv') return localFallbackResult(route, validated.language)
     return limitedModelResult(validated.language, 60)
   }
@@ -317,9 +364,18 @@ export async function answerAiHelpQuestion({
     windowSeconds: Math.max(1, Math.round(positiveInteger(env.AI_HELP_RATE_WINDOW_MS, AI_HELP_DEFAULT_WINDOW_MS) / 1000)),
   })
   if (!reservation.ok) {
-    if (customer) return verifiedCustomerResult(validated, selection, customer)
+    if (customer) return verifiedCustomerResult(validated, selection, customer, account)
     if (route.fallbackEntry && validated.language.code === 'sv') return localFallbackResult(route, validated.language)
     return limitedModelResult(validated.language, reservation.retryAfterSeconds)
+  }
+
+  // Never return partial/provider text or repeat a paid call. Reuse only the
+  // same verified answers already used when the model budget is unavailable.
+  function invalidProviderResult(reason) {
+    console.warn('[ai-help] invalid provider response', { reason })
+    if (customer) return verifiedCustomerResult(validated, selection, customer, account)
+    if (route.fallbackEntry && validated.language.code === 'sv') return localFallbackResult(route, validated.language)
+    return { code: 'PROVIDER_INVALID_RESPONSE', language: validated.language, ok: false, status: 502 }
   }
 
   let providerResponse
@@ -341,13 +397,13 @@ export async function answerAiHelpQuestion({
     })
   } catch {
     await keepReservation(store, reservation.reservationId)
-    if (customer) return verifiedCustomerResult(validated, selection, customer)
+    if (customer) return verifiedCustomerResult(validated, selection, customer, account)
     return { code: 'PROVIDER_UNAVAILABLE', language: validated.language, ok: false, status: 503 }
   }
 
   if (!providerResponse.ok) {
     await keepReservation(store, reservation.reservationId)
-    if (customer) return verifiedCustomerResult(validated, selection, customer)
+    if (customer) return verifiedCustomerResult(validated, selection, customer, account)
     return { code: 'PROVIDER_UNAVAILABLE', language: validated.language, ok: false, status: 503 }
   }
 
@@ -356,7 +412,7 @@ export async function answerAiHelpQuestion({
     payload = await providerResponse.json()
   } catch {
     await keepReservation(store, reservation.reservationId)
-    return { code: 'PROVIDER_INVALID_RESPONSE', language: validated.language, ok: false, status: 502 }
+    return invalidProviderResult('invalid_json')
   }
 
   const usage = payload?.usage || {}
@@ -380,12 +436,12 @@ export async function answerAiHelpQuestion({
   const outputWasCut = payload?.status === 'incomplete' || payload?.incomplete_details?.reason === 'max_output_tokens'
   const parsed = outputWasCut ? null : parseModelJson(extractResponseText(payload))
   if (!parsed || (parsed.status !== 'answered' && parsed.status !== 'unanswered')) {
-    return { code: 'PROVIDER_INVALID_RESPONSE', language: validated.language, ok: false, status: 502 }
+    return invalidProviderResult(outputWasCut ? 'incomplete_output' : 'invalid_contract')
   }
 
   const answer = clampText(parsed.answer, 1200)
   if (parsed.status === 'answered' && !answer) {
-    return { code: 'PROVIDER_INVALID_RESPONSE', language: validated.language, ok: false, status: 502 }
+    return invalidProviderResult('empty_answer')
   }
   const featureIds = (Array.isArray(parsed.featureIds) ? parsed.featureIds : [])
     .map((id) => clampText(id, 80))
@@ -393,7 +449,7 @@ export async function answerAiHelpQuestion({
     .slice(0, 4)
   const priceMinor = verifiedPriceMinor(customer)
   if (parsed.status === 'answered' && answer && !answerIsAllowed(answer, { verifiedPriceMinor: priceMinor })) {
-    if (customer) return verifiedCustomerResult(validated, selection, customer)
+    if (customer) return verifiedCustomerResult(validated, selection, customer, account)
     return {
       answer: '',
       featureIds: [],

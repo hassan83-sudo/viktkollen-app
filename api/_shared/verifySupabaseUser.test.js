@@ -55,4 +55,25 @@ describe('verifySupabaseUser', () => {
     expect(verifySupabaseUserInternals.getBearerToken(requestWithAuth('Bearer header.payload.signature')).token)
       .toBe('header.payload.signature')
   })
+
+  it('keeps only safe account fields from the verified user', async () => {
+    const result = await verifySupabaseUser(requestWithAuth('Bearer valid-token'), {
+      verifier: async () => ({
+        user: {
+          created_at: '2026-01-01T00:00:00Z',
+          email: 'owner@example.test',
+          email_confirmed_at: '2026-01-02T00:00:00Z',
+          id: 'user-a',
+          recovery_token: 'reset-code',
+        },
+      }),
+    })
+    expect(result.user).toEqual({
+      createdAt: '2026-01-01T00:00:00Z',
+      email: 'owner@example.test',
+      emailConfirmed: true,
+      id: 'user-a',
+    })
+    expect(JSON.stringify(result)).not.toMatch(/reset-code|valid-token/)
+  })
 })

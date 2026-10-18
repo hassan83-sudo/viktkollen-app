@@ -8,7 +8,7 @@ describe('confirmed AI actions', () => {
   it('rejects an invented action before billing runs', async () => {
     const execute = vi.fn()
     const result = await executeConfirmedAiAction({
-      actionId: 'delete_account',
+      actionId: 'email_change',
       actorUserId: 'user-1',
       confirmed: true,
       execute,
@@ -146,5 +146,184 @@ describe('confirmed AI actions', () => {
       execute,
     })
     expect(result).toMatchObject({ action: 'plan_change', code: 'INVALID_PLAN', ok: false, status: 400 })
+  })
+
+  it('opens only an official hosted checkout and ignores card data', async () => {
+    const checkout = vi.fn(async () => ({
+      code: 'CHECKOUT_PENDING',
+      hostedCheckoutUrl: 'https://checkout.sumup.com/pay/safePage',
+      ok: false,
+      status: 202,
+    }))
+    const execute = vi.fn()
+    const result = await executeConfirmedAiAction({
+      actionId: 'hosted_checkout',
+      actorUserId: 'user-1',
+      cardNumber: '4242424242424242',
+      checkout,
+      confirmed: true,
+      execute,
+      planId: 'plan.prelim.sek.month.07',
+      userId: 'other-user',
+    })
+    expect(result).toMatchObject({
+      action: 'hosted_checkout',
+      code: 'CHECKOUT_PENDING',
+      hostedCheckoutUrl: 'https://checkout.sumup.com/pay/safePage',
+      ok: true,
+      status: 202,
+    })
+    expect(checkout).toHaveBeenCalledWith({ body: { plan_id: 'plan.prelim.sek.month.07' }, userId: 'user-1' })
+    expect(execute).not.toHaveBeenCalled()
+    expect(JSON.stringify(recentAiActions())).not.toMatch(/safePage|4242|other-user|user-1/)
+  })
+
+  it('blocks a refund, a stored-card retry and an unofficial payment page', async () => {
+    const checkout = vi.fn(async () => ({
+      code: 'CHECKOUT_PENDING',
+      hostedCheckoutUrl: 'https://evil.example/pay/1',
+      status: 202,
+    }))
+    const execute = vi.fn()
+    const refund = await executeConfirmedAiAction({
+      actionId: 'refund',
+      actorUserId: 'user-1',
+      checkout,
+      confirmed: true,
+      execute,
+    })
+    expect(refund).toMatchObject({ code: 'UNKNOWN_ACTION', ok: false })
+    const unconfirmed = await executeConfirmedAiAction({
+      actionId: 'hosted_checkout',
+      actorUserId: 'user-1',
+      checkout,
+      confirmed: false,
+      planId: 'plan.prelim.sek.month.07',
+    })
+    expect(unconfirmed.code).toBe('CONFIRMATION_REQUIRED')
+    const unsafe = await executeConfirmedAiAction({
+      actionId: 'hosted_checkout',
+      actorUserId: 'user-1',
+      checkout,
+      confirmed: true,
+      planId: 'plan.prelim.sek.month.07',
+    })
+    expect(unsafe).toMatchObject({ code: 'CHECKOUT_UNAVAILABLE', ok: false })
+    expect(unsafe.hostedCheckoutUrl).toBeUndefined()
+    expect(checkout).toHaveBeenCalledTimes(1)
+    expect(execute).not.toHaveBeenCalled()
+    const blocked = await executeConfirmedAiAction({
+      actionId: 'hosted_checkout',
+      actorUserId: 'user-1',
+      checkout: vi.fn(async () => ({ code: 'PROVIDER_NOT_CONFIGURED', status: 503 })),
+      confirmed: true,
+      planId: 'plan.prelim.sek.month.07',
+    })
+    expect(blocked).toMatchObject({ code: 'PROVIDER_NOT_CONFIGURED', ok: false, status: 503 })
+  })
+
+  it('resets the verified email and deletes only the authenticated account', async () => {
+    const passwordReset = vi.fn(async ({ email }) => {
+      expect(email).toBe('owner@example.test')
+      return { code: 'RESET_EMAIL_SENT', ok: true, status: 200 }
+    })
+    const deleteAccount = vi.fn()
+    const reset = await executeConfirmedAiAction({
+      accountEmail: 'owner@example.test',
+      actionId: 'password_reset',
+      actorUserId: 'user-1',
+      confirmed: true,
+      deleteAccount,
+      email: 'other@example.test',
+      password: 'hunter2',
+      passwordReset,
+      token: 'reset-code',
+    })
+    expect(reset).toMatchObject({ action: 'password_reset', code: 'RESET_EMAIL_SENT', ok: true })
+    expect(deleteAccount).not.toHaveBeenCalled()
+    expect(JSON.stringify(recentAiActions())).not.toMatch(/hunter2|reset-code|owner@example|other@example|user-1/)
+
+    const unconfirmed = await executeConfirmedAiAction({
+      actionId: 'delete_account',
+      actorUserId: 'user-1',
+      confirmed: false,
+      deleteAccount,
+    })
+    expect(unconfirmed.code).toBe('CONFIRMATION_REQUIRED')
+    expect(deleteAccount).not.toHaveBeenCalled()
+
+    deleteAccount.mockResolvedValue({ code: 'ACCOUNT_DELETE_BLOCKED', ok: false, status: 409 })
+    const blockedDelete = await executeConfirmedAiAction({
+      actionId: 'delete_account',
+      actorUserId: 'user-1',
+      confirmed: true,
+      deleteAccount,
+      password: 'hunter2',
+      userId: 'other-user',
+    })
+    expect(blockedDelete).toMatchObject({ code: 'ACCOUNT_DELETE_BLOCKED', ok: false, status: 409 })
+    expect(deleteAccount).toHaveBeenCalledWith({ userId: 'user-1' })
+    expect(await executeConfirmedAiAction({
+      actionId: 'email_change',
+      actorUserId: 'user-1',
+      confirmed: true,
+      deleteAccount,
+      passwordReset,
+    })).toMatchObject({ code: 'UNKNOWN_ACTION', ok: false })
+    expect(await executeConfirmedAiAction({
+      actionId: 'profile_update',
+      actorUserId: 'user-1',
+      confirmed: true,
+    })).toMatchObject({ code: 'UNKNOWN_ACTION', ok: false })
+    expect(await executeConfirmedAiAction({
+      actionId: 'quota_reset',
+      actorUserId: 'user-1',
+      confirmed: true,
+    })).toMatchObject({ code: 'UNKNOWN_ACTION', ok: false })
+    expect(await executeConfirmedAiAction({
+      actionId: 'camera_fix',
+      actorUserId: 'user-1',
+      confirmed: true,
+    })).toMatchObject({ code: 'UNKNOWN_ACTION', ok: false, outcome: 'failed', resolved: false })
+  })
+
+  it('marks an action solved only after a fresh read of the same user', async () => {
+    const execute = vi.fn(async () => ({ ok: true, status: 200 }))
+    const pending = await executeConfirmedAiAction({
+      actionId: 'undo_cancel',
+      actorUserId: 'user-1',
+      confirmed: true,
+      execute,
+      readSubscription: async (userId) => {
+        expect(userId).toBe('user-1')
+        return { subscription: { cancel_at_period_end: true, status: 'ACTIVE' }, unavailable: false }
+      },
+      userId: 'other-user',
+    })
+    expect(pending).toMatchObject({ code: 'completed', ok: true, outcome: 'pending', resolved: false })
+    const verified = await executeConfirmedAiAction({
+      actionId: 'undo_cancel',
+      actorUserId: 'user-1',
+      confirmed: true,
+      execute,
+      readSubscription: async () => ({ subscription: { cancel_at_period_end: false, status: 'ACTIVE' }, unavailable: false }),
+    })
+    expect(verified).toMatchObject({ outcome: 'verified', resolved: true })
+    const reset = await executeConfirmedAiAction({
+      accountEmail: 'owner@example.test',
+      actionId: 'password_reset',
+      actorUserId: 'user-1',
+      confirmed: true,
+      passwordReset: async () => ({ code: 'RESET_EMAIL_SENT', ok: true, status: 200 }),
+    })
+    expect(reset).toMatchObject({ outcome: 'pending', resolved: false })
+    const checkout = await executeConfirmedAiAction({
+      actionId: 'hosted_checkout',
+      actorUserId: 'user-1',
+      checkout: async () => ({ code: 'CHECKOUT_PENDING', hostedCheckoutUrl: 'https://checkout.sumup.com/pay/safePage', status: 202 }),
+      confirmed: true,
+      planId: 'plan.prelim.sek.month.07',
+    })
+    expect(checkout).toMatchObject({ outcome: 'pending', resolved: false })
   })
 })

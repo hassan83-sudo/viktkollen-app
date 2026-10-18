@@ -2,6 +2,18 @@
 const PLAN_ID_RE = /^[A-Za-z0-9._-]{1,80}$/
 
 export const AI_ACTIONS = Object.freeze({
+  delete_account: Object.freeze({
+    id: 'delete_account',
+    sensitive: true,
+  }),
+  hosted_checkout: Object.freeze({
+    id: 'hosted_checkout',
+    sensitive: true,
+  }),
+  password_reset: Object.freeze({
+    id: 'password_reset',
+    sensitive: true,
+  }),
   plan_change: Object.freeze({
     id: 'plan_change',
     sensitive: true,
@@ -30,7 +42,7 @@ export function knownAiActionId(value) {
 export function sanitizeAiAction(value) {
   const id = knownAiActionId(value)
   if (!id) return null
-  if (id !== 'plan_change') return { action: id, sensitive: true }
+  if (id !== 'plan_change' && id !== 'hosted_checkout') return { action: id, sensitive: true }
   if (typeof value !== 'object' || value == null) return null
   const planId = acceptedPlanId(value.planId || value.plan_id)
   if (!planId) return null

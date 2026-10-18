@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { clearAiActionsForTests, recentAiActions } from './actionAudit.js'
+import { clearAiActionsForTests, recentAiActions, recordAiAction } from './actionAudit.js'
 import { executeConfirmedAiAction } from './executeAiAction.js'
 
 afterEach(() => clearAiActionsForTests())
@@ -42,5 +42,22 @@ describe('confirmed AI actions', () => {
     const logged = JSON.stringify(recentAiActions())
     expect(logged).not.toMatch(/password|Bearer|user-1|4242|card/i)
     expect(recentAiActions()[0]).toMatchObject({ action: 'schedule_cancel', code: 'completed', ok: true })
+  })
+
+  it('logs only the action, result code and actor hash', () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const saved = recordAiAction({
+      action: 'schedule_cancel',
+      actorUserId: 'user-1',
+      code: 'completed',
+      ok: true,
+      password: 'hunter2',
+      token: 'Bearer secret',
+      message: 'card 4242',
+    })
+    expect(Object.keys(saved).sort()).toEqual(['action', 'actorHash', 'code', 'ok'])
+    expect(saved.actorHash).not.toContain('user-1')
+    expect(JSON.stringify(info.mock.calls)).not.toMatch(/hunter2|Bearer|4242|user-1/)
+    info.mockRestore()
   })
 })

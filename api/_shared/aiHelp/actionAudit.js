@@ -14,7 +14,10 @@ export function safeAiActionRecord({ action, actorUserId, code, ok } = {}) {
 export function recordAiAction(entry, sink = recent) {
   const safe = safeAiActionRecord(entry)
   sink.push(safe)
-  if (sink === recent && recent.length > 20) recent.splice(0, recent.length - 20)
+  if (sink === recent) {
+    if (recent.length > 20) recent.splice(0, recent.length - 20)
+    console.info('[ai-action]', safe)
+  }
   return safe
 }
 

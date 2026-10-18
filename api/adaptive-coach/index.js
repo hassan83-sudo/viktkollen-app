@@ -291,7 +291,7 @@ export default async function handler(request, response) {
     // Denied or not settled (quota, entitlement, replay, billing store):
     // no answer from a request that was not billed correctly.
     if (!result || (result.ok && mapped.kind !== 'success')) {
-      return sendSafeAiError(response, { code: mapped.code, requestId, retryable: mapped.retryable, status: mapped.status })
+      return sendSafeAiError(response, { code: mapped.code, requestId, retryable: mapped.retryable, securityFeature: 'adaptive-coach', securitySignal: mapped.securitySignal, status: mapped.status })
     }
   } else {
     result = await requestOpenAi()

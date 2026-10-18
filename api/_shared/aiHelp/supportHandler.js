@@ -2,6 +2,19 @@ import { setNoStoreHeaders } from '../aiRouteErrors.js'
 import { verifySupabaseUser } from '../verifySupabaseUser.js'
 import { requireBillingAdmin } from '../billing/admin.js'
 import { createSupabaseAdminClient } from '../supabaseServer.js'
+import { SECURITY_EVENT_TYPES } from '../../../src/services/security/securityEvents.js'
+import { queueSecurityEvent } from '../security/securityEventStore.js'
+
+// The customer view lists only the user's own tickets, so replying to a ticket
+// the database cannot find for this user means another user's (or a guessed)
+// ticket id. Admin NOT_FOUND is an ordinary stale view and is not recorded.
+function noteSupportDenial({ action, code, isAdmin }) {
+  let type = null
+  if (code === 'RATE_LIMITED') type = SECURITY_EVENT_TYPES.API_RATE_LIMITED
+  else if (!isAdmin && code === 'PAID_SUPPORT_REQUIRED') type = SECURITY_EVENT_TYPES.PREMIUM_ACCESS_DENIED
+  else if (!isAdmin && action === 'reply' && code === 'NOT_FOUND') type = SECURITY_EVENT_TYPES.CROSS_USER_ACCESS_DENIED
+  if (type) queueSecurityEvent({ feature: isAdmin ? 'support-admin' : 'support', type })
+}
 
 // Reuses the existing AI dispatcher and billing-admin authority; never accepts identity or plan claims.
 export default async function supportHandler(request, response) {
@@ -12,7 +25,7 @@ export default async function supportHandler(request, response) {
     return fail(405, 'INVALID_REQUEST')
   }
   const isAdmin = request.query?.resource === 'admin' || new URL(String(request.url || '/'), 'http://local').searchParams.get('resource') === 'admin'
-  const auth = await (isAdmin ? requireBillingAdmin(request) : verifySupabaseUser(request)).catch(() => null)
+  const auth = await (isAdmin ? requireBillingAdmin(request, { securityFeature: 'support-admin' }) : verifySupabaseUser(request)).catch(() => null)
   if (!auth) return fail(503, 'AUTH_UNAVAILABLE')
   if (!(isAdmin ? auth.ok : auth.authenticated)) return fail(auth.status || 401, auth.error?.code || 'AUTH_REQUIRED')
   let body = {}
@@ -44,6 +57,7 @@ export default async function supportHandler(request, response) {
       p_actor: auth.user.id, p_action: action, p_body: command,
     })
     if (error || !data) return fail(503, 'SUPPORT_UNAVAILABLE')
+    if (!data.ok) noteSupportDenial({ action, code: data.code, isAdmin })
     if (!data.ok) return fail(({ PAID_SUPPORT_REQUIRED: 403, FORBIDDEN: 403, NOT_FOUND: 404, CONFLICT: 409, RATE_LIMITED: 429 })[data.code] || 400, data.code || 'INVALID_REQUEST')
     return response.status(action === 'create' ? 201 : 200).json(data)
   } catch { return fail(503, 'SUPPORT_UNAVAILABLE') }

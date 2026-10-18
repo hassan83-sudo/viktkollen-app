@@ -6,6 +6,8 @@ import { createServerCheckoutIntentPorts, prepareSumUpSandboxSetup } from '../..
 import { handleWebhookRequest } from '../../_shared/billing/providerWebhookIngress.js'
 import { executeUserBillingIntent } from '../../_shared/billing/userLifecycleIntent.js'
 import { lookupBillingAdmin } from '../../_shared/billing/admin.js'
+import { queueSecurityEvent } from '../../_shared/security/securityEventStore.js'
+import { SECURITY_EVENT_TYPES } from '../../../src/services/security/securityEvents.js'
 import { readPlanComparison } from '../../_shared/billing/planComparisonRead.js'
 import { readUsageSnapshot } from '../../_shared/billing/usageSnapshotRead.js'
 import { applyOwnerFoodScanStatus, resolveFoodScanOwnerStatus } from '../../_shared/billing/foodScanOwnerExemption.js'
@@ -169,6 +171,7 @@ async function handleQuota(request, response, auth, requestId) {
 async function handleSubscription(request, response, auth, requestId) {
   const queryUser = typeof request.query?.user_id === 'string' ? request.query.user_id : ''
   if (queryUser && queryUser !== auth.user.id) {
+    queueSecurityEvent({ feature: 'billing-subscription', type: SECURITY_EVENT_TYPES.CROSS_USER_ACCESS_DENIED })
     return response.status(403).json({
       error: { code: 'FORBIDDEN_USER' },
       ok: false,

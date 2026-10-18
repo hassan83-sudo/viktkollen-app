@@ -74,9 +74,15 @@ export function sendSafeAiError(response, options = {}) {
     error: error.error,
     ok: false,
   })
-  // Persist trusted server rate-limit outcomes after the response, kept alive
-  // with waitUntil on Vercel. Never log request payloads.
-  const signal = securitySignalFromOutcome({ code: error.error.code, status: error.status, feature: 'api' })
+  // Persist trusted server outcomes after the response, kept alive with
+  // waitUntil on Vercel. securitySignal and securityFeature are set by server
+  // code (billing enforcement), never from the request. Never log payloads.
+  const signal = securitySignalFromOutcome({
+    code: error.error.code,
+    feature: options.securityFeature || 'api',
+    signal: options.securitySignal,
+    status: error.status,
+  })
   if (signal) queueSecurityEvent(signal)
   if (Number(error.status) < 500) return sent
   const code = String(error.error.code || 'unknown').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 16) || 'error'

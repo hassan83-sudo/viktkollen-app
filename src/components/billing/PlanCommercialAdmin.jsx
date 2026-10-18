@@ -110,7 +110,7 @@ export default function PlanCommercialAdmin() {
   if (status === 'error') {
     return (
       <section className="app-information" aria-labelledby="plan-commercial-admin-title">
-        <h3 id="plan-commercial-admin-title">Planer</h3>
+        <h3 id="plan-commercial-admin-title">Abonnemangsplaner</h3>
         <p role="alert">Planstatus kunde inte läsas. Inga planer visas som tillgängliga.</p>
       </section>
     )
@@ -183,6 +183,7 @@ export default function PlanCommercialAdmin() {
           )
         })}
       </ul>
+      </details>
     </section>
   )
 }

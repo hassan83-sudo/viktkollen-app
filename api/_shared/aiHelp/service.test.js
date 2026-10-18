@@ -450,6 +450,21 @@ describe('AI Help language and model contract', () => {
     expect(result.source).toBe('local-fallback')
   })
 
+  it('reports an unavailable cost store as 503 rather than blaming the user with 429', async () => {
+    const fetchImpl = vi.fn()
+    const store = { reserve: vi.fn(async () => ({ ok: false, reason: 'store_unavailable', retryAfterSeconds: 60 })) }
+    const result = await answerAiHelpQuestion({
+      body: { language: 'en', messages: [{ content: 'Can you explain the More menu differently?', role: 'user' }] },
+      costStore: store,
+      env: { AI_HELP_BUDGET_SEK: '1000', OPENAI_API_KEY: 'test-key' },
+      fetchImpl,
+      userId: 'user-no-store',
+    })
+    expect(result).toMatchObject({ ok: false, code: 'PROVIDER_UNAVAILABLE', status: 503, retryAfterSeconds: 60 })
+    expect(store.reserve).toHaveBeenCalledTimes(1)
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
   it('keeps the reservation when the model call fails and still limits that user', async () => {
     const store = createTestCostStore()
     const env = { AI_HELP_BUDGET_SEK: '1000', AI_HELP_RATE_LIMIT_MAX: '1', OPENAI_API_KEY: 'test-key' }

@@ -19,6 +19,32 @@
   white-space: pre-wrap;
 }
 
+.ai-help-answer {
+  display: grid;
+  gap: 0.8rem;
+  min-width: 0;
+  white-space: normal;
+  text-align: start;
+  line-height: 1.6;
+}
+
+.ai-help-answer p, .ai-help-answer h3, .ai-help-answer ul, .ai-help-answer ol {
+  margin: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.ai-help-answer p, .ai-help-answer li { white-space: pre-line; unicode-bidi: plaintext; }
+.ai-help-answer h3 { font-size: 1.05em; line-height: 1.4; }
+.ai-help-answer ul, .ai-help-answer ol { padding-inline-start: 1.4em; }
+.ai-help-answer li + li { margin-block-start: 0.4rem; }
+
+@media (max-width: 420px) {
+  .ai-help-form { grid-template-columns: minmax(0, 1fr); }
+  .ai-help-form textarea, .ai-help-form button { min-width: 0; max-width: 100%; }
+}
+
 .ai-help-message.is-user {
   justify-self: end;
 }

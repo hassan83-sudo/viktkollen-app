@@ -7,6 +7,7 @@ import { reportClientBug } from '../../services/bugMonitor/bugMonitorClient.js'
 import { requestOpenHelpSection } from './aiHelpTools.js'
 import { isDirectNavigationRequest } from './navigationRequest.js'
 import SupportPanel from './SupportPanel.jsx'
+import HelpAnswer from './HelpAnswer.jsx'
 import { helpChrome } from './uiChrome.js'
 import { requestedLanguageSwitch } from './launchGuidance.js'
 import { changeAppLanguage } from '../../i18n/index.js'
@@ -216,7 +217,9 @@ function AiHelpPanel() {
             {messages.length === 0 && <p className="ai-help-note">{chrome.empty}</p>}
             {messages.map((message, index) => (
               <div className={`ai-help-message is-${message.role}`} key={`${message.role}-${index}`}>
-                <p>{message.content}</p>
+                {message.role === 'assistant'
+                  ? <HelpAnswer text={message.content} language={languageCode} />
+                  : <p>{message.content}</p>}
                 {message.confirmation?.action === 'schedule_cancel' && (
                   <button
                     className="secondary-button ai-help-action"

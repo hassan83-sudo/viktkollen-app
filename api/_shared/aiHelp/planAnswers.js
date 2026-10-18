@@ -56,23 +56,33 @@ export async function answerPlanQuestion({ question, userId, language, reader = 
   const selected = all || !requested.length ? plans : plans.filter((plan) => requested.includes(price(plan)))
   if (!selected.length) return { ...result, answer: words.missing }
   const label = (key) => words.labels[keys.indexOf(key)]
-  const month = { sv: 'mån', en: 'month', es: 'mes', ar: 'شهر' }[language.code] || 'month'
-  const lines = [words.intro]
+  const code = copy[language.code] ? language.code : 'en'
+  const priceLabel = (amount, monthly = false) => ({
+    sv: `${amount} kr${monthly ? '/månad' : ''}`,
+    en: `${amount} Swedish kronor${monthly ? '/month' : ''}`,
+    es: `${amount} coronas suecas${monthly ? '/mes' : ''}`,
+    ar: `${amount} كرونة سويدية${monthly ? '/شهر' : ''}`,
+  })[code]
+  const summaryTitle = { sv: 'Skillnader', en: 'Differences', es: 'Diferencias', ar: 'الفروق' }[code]
+  const lines = [words.intro, '']
   if (!all && requested.some((value) => !plans.some((plan) => price(plan) === value))) lines.push(words.unknown)
   for (const plan of selected) {
     const quotas = (plan.quotas || []).filter((row) => label(row.key) && Number.isInteger(row.limit) && row.limit >= 0)
-    lines.push(`${price(plan)} SEK/${month}: ${plan.complete && quotas.length ? quotas.map((row) => `${label(row.key)}: ${row.limit}`).join('; ') : words.incomplete}.`)
+    lines.push(`### ${priceLabel(price(plan), true)}`)
+    if (plan.complete && quotas.length) lines.push(...quotas.map((row) => `- ${label(row.key)}: ${row.limit}`))
+    else lines.push(words.incomplete)
     const unlimited = (plan.unlimited || []).map((row) => label(row.key)).filter(Boolean)
-    if (plan.complete && unlimited.length) lines.push(`${words.unlimited}: ${unlimited.join(', ')}.`)
+    if (plan.complete && unlimited.length) lines.push('', `${words.unlimited}:`, ...unlimited.map((name) => `- ${name}`))
+    lines.push('')
   }
   if (selected.length === 2) {
     const [low, high] = [...selected].sort((a, b) => price(a) - price(b))
-    lines.push(`${words.extra}: ${price(high) - price(low)} SEK.`)
+    lines.push(`### ${summaryTitle}`, `${words.extra}: ${priceLabel(price(high) - price(low))}.`, '')
     if (low.complete && high.complete) for (const row of high.quotas || []) {
       const before = low.quotas.find((item) => item.key === row.key)
       if (label(row.key) && Number.isInteger(before?.limit) && Number.isInteger(row.limit)) {
         const delta = row.limit - before.limit
-        lines.push(`${words.difference}, ${label(row.key)}: ${before.limit} → ${row.limit} (${delta >= 0 ? '+' : ''}${delta}).`)
+        lines.push(`- ${label(row.key)}: ${before.limit} → ${row.limit} (${delta >= 0 ? '+' : ''}${delta})`)
       }
     }
   }

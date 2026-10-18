@@ -32,6 +32,7 @@ export default function SupportPanel({ admin = false }) {
   const [data, setData] = useState(null)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
+  const [loadFailed, setLoadFailed] = useState(false)
   const [message, setMessage] = useState('')
   const [category, setCategory] = useState('technical')
   const requestId = useRef(null)
@@ -52,7 +53,7 @@ export default function SupportPanel({ admin = false }) {
     try {
       const result = await requestSupport({ admin })
       if (!active.current) return
-      if (!result.ok) { setData(null); setNotice(chromeRef.current.error); return }
+      if (!result.ok) { setData(null); setLoadFailed(true); return }
       if (admin) for (const ticket of result.tickets || []) {
         const key = `${ticket.id}:${ticket.version}`
         if (ticket.notification_pending && !seen.current.has(key)) {
@@ -68,6 +69,7 @@ export default function SupportPanel({ admin = false }) {
         }
       }
       setData(result)
+      setLoadFailed(false)
     } finally { inFlight.current = false }
   }, [admin])
   useEffect(() => {
@@ -111,7 +113,7 @@ export default function SupportPanel({ admin = false }) {
           } catch { setNotice(chrome.notificationsDenied) }
         }}>{chrome.enableNotifications}</button>
       </>}
-      {notice && <p role="status">{notice}</p>}
+      {(loadFailed || notice) && <p role="status">{loadFailed ? chrome.error : notice}</p>}
       {!admin && data?.eligible === true && <form onSubmit={async (event) => {
         event.preventDefault()
         requestId.current ||= crypto.randomUUID()

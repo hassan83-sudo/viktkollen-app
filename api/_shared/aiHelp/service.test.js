@@ -961,4 +961,67 @@ describe('AI Help language and model contract', () => {
     expect(result.answer).not.toContain('user-b')
     expect(result.answer).toMatch(/inte verifiera|cannot verify/i)
   })
+
+  it('reads the verified account and blocks changes that have no safe API', async () => {
+    const fetchImpl = vi.fn()
+    const readers = { subscription: vi.fn() }
+    const account = { createdAt: '2026-01-01T00:00:00Z', email: 'owner@example.test', emailConfirmed: true }
+    const read = await answerAiHelpQuestion({
+      account,
+      body: { messages: [{ content: 'Vilken e-post har jag?', role: 'user' }] },
+      customerReaders: readers,
+      env: { OPENAI_API_KEY: 'sk-test' },
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(read.source).toBe('verified-customer')
+    expect(read.answer).toContain('owner@example.test')
+    expect(read.answer).toMatch(/Inget har ändrats/)
+    expect(read.confirmation).toBeUndefined()
+    expect(readers.subscription).not.toHaveBeenCalled()
+    expect(fetchImpl).not.toHaveBeenCalled()
+
+    const reset = await answerAiHelpQuestion({
+      account,
+      body: { messages: [{ content: 'Återställ mitt lösenord. Lösenordet är hunter2', role: 'user' }] },
+      env: { OPENAI_API_KEY: 'sk-test' },
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(reset.confirmation).toBeUndefined()
+    expect(reset.answer).not.toMatch(/hunter2/)
+
+    const offer = await answerAiHelpQuestion({
+      account,
+      body: { messages: [{ content: 'Återställ mitt lösenord', role: 'user' }] },
+      env: {},
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(offer.confirmation).toEqual({ action: 'password_reset' })
+    expect(offer.answer).not.toMatch(/hunter2|reset-code/)
+
+    const removal = await answerAiHelpQuestion({
+      account,
+      body: { messages: [{ content: 'Radera mitt konto', role: 'user' }], password: 'hunter2', user_id: 'other-user' },
+      env: {},
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(removal.confirmation).toEqual({ action: 'delete_account' })
+    expect(removal.answer).toMatch(/Ingen radering har utförts/)
+    expect(JSON.stringify(removal)).not.toMatch(/hunter2|other-user/)
+
+    const email = await answerAiHelpQuestion({
+      account,
+      body: { messages: [{ content: 'Byt min e-post till annan@example.test', role: 'user' }] },
+      env: { OPENAI_API_KEY: 'sk-test' },
+      fetchImpl,
+      userId: 'user-1',
+    })
+    expect(email.confirmation).toBeUndefined()
+    expect(email.answer).toMatch(/blockerat/)
+    expect(email.answer).not.toContain('annan@example.test')
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
 })

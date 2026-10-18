@@ -122,6 +122,66 @@ export function localizedPaymentLimit(kind, context, language, planId = '') {
   return null
 }
 
+const accountText = {
+  es: {
+    created: 'La cuenta se creó',
+    confirmed: 'confirmado',
+    unconfirmed: 'sin confirmar',
+    deleteHelp: 'La eliminación requiere una confirmación separada y usa el flujo existente. No se ha eliminado nada.',
+    deleteOffer: 'La cuenta se elimina con el flujo existente solo al pulsar Confirmar eliminación de cuenta. No se ha eliminado nada.',
+    emailBlocked: 'El cambio de correo está bloqueado. No existe una API que verifique una dirección nueva. No se ha cambiado nada.',
+    emailMissing: 'No se puede mostrar un correo verificado. No se ha cambiado nada.',
+    passwordHelp: 'Pide un correo de restablecimiento a la dirección verificada. No escribas la contraseña aquí. No se ha cambiado nada.',
+    passwordMissing: 'No hay un correo verificado para el restablecimiento. No se ha cambiado nada.',
+    passwordOffer: 'El correo de restablecimiento se envía a la dirección verificada solo después de confirmar. No escribas la contraseña, un código ni un token aquí. No se ha cambiado nada.',
+    profileBlocked: 'El cambio de nombre o perfil está bloqueado. No existe una API de cuenta segura para ese dato. No se ha cambiado nada.',
+    read: 'El correo verificado es',
+    secret: 'Las contraseñas, los códigos y los tokens no se guardan en el chat. Pide un correo de restablecimiento sin escribir la contraseña. No se ha cambiado nada.',
+    unknownTime: 'en un momento desconocido',
+  },
+  ar: {
+    created: 'أُنشئ الحساب',
+    confirmed: 'مؤكد',
+    unconfirmed: 'غير مؤكد',
+    deleteHelp: 'حذف الحساب يحتاج إلى تأكيد منفصل ويستخدم مسار الحذف الحالي. لم يتم تنفيذ حذف.',
+    deleteOffer: 'يُحذف الحساب عبر مسار الحذف الحالي فقط بعد الضغط على تأكيد حذف الحساب. لم يتم تنفيذ حذف.',
+    emailBlocked: 'تغيير البريد محظور. لا توجد واجهة حالية تتحقق من عنوان جديد. لم يتم تغيير أي شيء.',
+    emailMissing: 'لا يمكن عرض بريد تم التحقق منه. لم يتم تغيير أي شيء.',
+    passwordHelp: 'اطلب رسالة إعادة تعيين إلى العنوان الذي تم التحقق منه. لا تكتب كلمة المرور هنا. لم يتم تغيير أي شيء.',
+    passwordMissing: 'لا يوجد بريد تم التحقق منه لإعادة التعيين. لم يتم تغيير أي شيء.',
+    passwordOffer: 'تُرسل رسالة إعادة التعيين إلى العنوان الذي تم التحقق منه فقط بعد التأكيد. لا تكتب كلمة المرور أو رمزًا أو رمز دخول هنا. لم يتم تغيير أي شيء.',
+    profileBlocked: 'تغيير الاسم أو الملف الشخصي محظور. لا توجد واجهة حساب آمنة لتلك البيانات. لم يتم تغيير أي شيء.',
+    read: 'البريد الذي تم التحقق منه هو',
+    secret: 'لا تُحفظ كلمات المرور أو الرموز أو رموز الدخول في المحادثة. اطلب رسالة إعادة تعيين دون كتابة كلمة المرور. لم يتم تغيير أي شيء.',
+    unknownTime: 'في وقت غير معروف',
+  },
+}
+
+export function localizedAccount(kind, account, language) {
+  const t = accountText[language]
+  if (!t) return null
+  const email = account?.email || ''
+  const confirmed = account?.emailConfirmed === true
+  const created = account?.createdAt || t.unknownTime
+  if (kind === 'read') {
+    if (!email) return { answer: t.emailMissing, confirmation: null }
+    return {
+      answer: `${t.read} ${email}. ${confirmed ? t.confirmed : t.unconfirmed}. ${t.created} ${created}.`,
+      confirmation: null,
+    }
+  }
+  if (kind === 'password-reset') {
+    if (!email) return { answer: t.passwordMissing, confirmation: null }
+    return { answer: t.passwordOffer, confirmation: { action: 'password_reset' } }
+  }
+  if (kind === 'password-help') return { answer: t.passwordHelp, confirmation: null }
+  if (kind === 'delete-account') return { answer: t.deleteOffer, confirmation: { action: 'delete_account' } }
+  if (kind === 'delete-help') return { answer: t.deleteHelp, confirmation: null }
+  if (kind === 'email-change') return { answer: t.emailBlocked, confirmation: null }
+  if (kind === 'profile-change') return { answer: t.profileBlocked, confirmation: null }
+  return { answer: t.secret, confirmation: null }
+}
+
 export function localizedCustomer(context, selection, language) {
   const t = text[language]
   if (!t) return null

@@ -62,13 +62,17 @@ function AiHelpPanel() {
         const message = current[index]
         if (!message?.confirmation?.action) return current
         const done = {
+          delete_account: chrome.deleteDone,
           hosted_checkout: chrome.checkoutReady,
+          password_reset: chrome.passwordDone,
           plan_change: chrome.planDone,
           schedule_cancel: chrome.cancelDone,
           undo_cancel: chrome.undoDone,
         }[message.confirmation.action] || chrome.cancelFailed
         const failed = {
+          delete_account: chrome.deleteFailed,
           hosted_checkout: chrome.checkoutFailed,
+          password_reset: chrome.passwordFailed,
           plan_change: chrome.planFailed,
           schedule_cancel: chrome.cancelFailed,
           undo_cancel: chrome.undoFailed,
@@ -242,6 +246,26 @@ function AiHelpPanel() {
                     onClick={() => confirmMessageAction(index)}
                   >
                     {chrome.confirmCheckout}
+                  </button>
+                )}
+                {message.confirmation?.action === 'password_reset' && (
+                  <button
+                    className="secondary-button ai-help-action"
+                    type="button"
+                    disabled={pending}
+                    onClick={() => confirmMessageAction(index)}
+                  >
+                    {chrome.confirmPassword}
+                  </button>
+                )}
+                {message.confirmation?.action === 'delete_account' && (
+                  <button
+                    className="secondary-button ai-help-action"
+                    type="button"
+                    disabled={pending}
+                    onClick={() => confirmMessageAction(index)}
+                  >
+                    {chrome.confirmDelete}
                   </button>
                 )}
                 {message.hostedCheckoutUrl && (

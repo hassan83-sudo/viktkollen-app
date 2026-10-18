@@ -93,6 +93,7 @@ describe('AI Help authentication', () => {
       actorUserId: 'user-a',
       confirmed: true,
       planId: undefined,
+      accountEmail: '',
     })
     expect(JSON.stringify(response.body)).not.toMatch(/hunter2|user-b|delete-account/)
   })

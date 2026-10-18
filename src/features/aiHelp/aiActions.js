@@ -2,8 +2,16 @@
 const PLAN_ID_RE = /^[A-Za-z0-9._-]{1,80}$/
 
 export const AI_ACTIONS = Object.freeze({
+  delete_account: Object.freeze({
+    id: 'delete_account',
+    sensitive: true,
+  }),
   hosted_checkout: Object.freeze({
     id: 'hosted_checkout',
+    sensitive: true,
+  }),
+  password_reset: Object.freeze({
+    id: 'password_reset',
     sensitive: true,
   }),
   plan_change: Object.freeze({

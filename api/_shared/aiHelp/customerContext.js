@@ -5,7 +5,7 @@ import { readDurableQuota } from '../billing/quotaRead.js'
 import { readDurableUserSubscription } from '../billing/subscriptionRead.js'
 import { readUsageSnapshot } from '../billing/usageSnapshotRead.js'
 import { createSupabaseAdminClient } from '../supabaseServer.js'
-import { localizedCancel, localizedCustomer, localizedPaymentLimit, localizedPlanChange, localizedUndoCancel } from './localizedCustomer.js'
+import { localizedAccount, localizedCancel, localizedCustomer, localizedPaymentLimit, localizedPlanChange, localizedUndoCancel } from './localizedCustomer.js'
 import { featureSteps, loginGuidance, troubleshootingLine } from '../../../src/features/aiHelp/launchGuidance.js'
 
 const LAUNCH_FEATURES = Object.freeze([
@@ -115,6 +115,50 @@ export function wantsTransactions(question) {
   return /mina transaktioner|betalningshistorik|payment history|my transactions|mis transacciones|معاملاتي/iu.test(String(question || ''))
 }
 
+export function suppliedSecret(question) {
+  return /lösenord(?:et)?\s*(?:är|is|:)\s*\S{3,}|password\s*(?:is|:)\s*\S{3,}|contraseña\s*(?:es|:)\s*\S{3,}|token\s*[:=]\s*\S{6,}|återställningskod\s*[:=]\s*\S{4,}/iu.test(String(question || ''))
+}
+
+export function requestedPasswordReset(question) {
+  const text = String(question || '')
+  if (HOW_TO.test(text) || suppliedSecret(text) || /inte.{0,40}(återställ|lösen)|don.?t reset|do not reset|no quiero restablecer|لا أريد/iu.test(text)) return false
+  return /återställ(?:\s+\S+){0,4}\s+lösenord|glömt(?:\s+\S+){0,3}\s+lösenord|reset my password|forgot my password|olvidé mi contraseña|restablece mi contraseña|نسيت كلمة المرور|أعد تعيين كلمة المرور/iu.test(text)
+}
+
+export function wantsDeleteAccount(question) {
+  const text = String(question || '')
+  if (HOW_TO.test(text) || /inte.{0,40}(radera|ta bort)|don.?t delete|do not delete|no quiero eliminar|لا أريد/iu.test(text)) return false
+  return /radera mitt konto|ta bort mitt konto|radera kontot|delete my account|elimina mi cuenta|borrar mi cuenta|احذف حسابي/iu.test(text)
+}
+
+export function wantsDeleteHelp(question) {
+  const text = String(question || '')
+  if (!HOW_TO.test(text) || /inte.{0,40}(radera|ta bort)|don.?t delete|do not delete|لا أريد/iu.test(text)) return false
+  return /radera(?:\s+\S+){0,4}\s+konto|ta bort(?:\s+\S+){0,4}\s+konto|delete(?:\s+\S+){0,4}\s+account|eliminar(?:\s+\S+){0,4}\s+cuenta|حذف حساب/iu.test(text)
+}
+
+export function wantsEmailChange(question) {
+  const text = String(question || '')
+  if (HOW_TO.test(text) || /inte.{0,40}(e-?post|email|correo)|don.?t change|do not change|لا أريد/iu.test(text)) return false
+  return /byt(?:\s+\S+){0,4}\s+e-?post|ändra(?:\s+\S+){0,4}\s+e-?post|change my e-?mail|cambiar mi correo|تغيير بريدي/iu.test(text)
+}
+
+export function wantsProfileChange(question) {
+  const text = String(question || '')
+  if (HOW_TO.test(text) || /inte.{0,40}(namn|profil)|don.?t change|do not change|لا أريد/iu.test(text)) return false
+  return /ändra(?:\s+\S+){0,3}\s+(?:mitt )?namn|byt namn|ändra(?:\s+\S+){0,3}\s+profil|change my name|update my profile|cambiar mi nombre|تغيير اسمي/iu.test(text)
+}
+
+export function wantsPasswordHelp(question) {
+  const text = String(question || '')
+  if (suppliedSecret(text) || requestedPasswordReset(text)) return false
+  return /lösenord|password|contraseña|كلمة المرور/iu.test(text)
+}
+
+export function wantsAccountRead(question) {
+  return /min e-?post|mitt konto|kontoinformation|kontostatus|vilken e-?post|my account|my email|mi cuenta|mi correo|حسابي|بريدي/iu.test(String(question || ''))
+}
+
 function noCustomerSelection() {
   return {
     cancel: false,
@@ -130,6 +174,14 @@ function noCustomerSelection() {
     transactionRequest: false,
     undoCancel: false,
     hostedCheckout: false,
+    accountRead: false,
+    deleteAccount: false,
+    deleteHelp: false,
+    emailChange: false,
+    passwordHelp: false,
+    passwordReset: false,
+    profileChange: false,
+    secretRefused: false,
   }
 }
 
@@ -149,7 +201,6 @@ export function selectCustomerContext(question) {
   const transactionRequest = wantsTransactions(text)
   const problem = /kvoten är slut|betalningen gick inte|förnyas inte|redan uppsagt|priset stämmer inte|quota is used up|payment failed|does not renew|already cancelled|already canceled|cuota agotada|pago fall|no se renueva|الحصة نفدت|فشل الدفع|لا يتجدد/iu.test(text)
   const why = /varför kan jag inte|why can.?t i|kan inte använda|cannot use|can't use|doesn.?t work|fungerar inte|por qué no puedo|no funciona|لماذا لا|لا يعمل/i.test(text)
-  const personal = /\b(mitt|mina|min|jag|my|mi|mis|tengo|me)\b/i.test(text) || /\bi have\b|\bdo i\b/i.test(text) || /har jag|اشتراكي|حسابي|خطتي|لدي|حصتي|دفعي/i.test(text)
   const navigation = /var finns|where is|hur öppnar|hur hittar|öppna /i.test(text)
   const aboutSub = /abonnemang|prenumeration|subscription|förny|renewal|uppsäg|avsluta|cancel|suscripción|renueva|renovación|اشتراك|تجديد/i.test(text)
   const aboutPlan = /\bplan\b|pris|kostar|kostnad|price|paket|precio|cuesta|خطة|خطتي|سعر/i.test(text)
@@ -157,13 +208,23 @@ export function selectCustomerContext(question) {
   const aboutPay = /betal|payment|grace|förfallen|past due|gick inte igenom|pago|cobro|دفع|دفعي|مدفوع/i.test(text)
   const aboutEnt = /ingår|entitlement|planinnehåll|incluye|incluido|مشمول/i.test(text)
   const login = /logga in|inlogg|sign in|login|iniciar sesión|تسجيل الدخول/i.test(text)
+  const deleteAccount = wantsDeleteAccount(text)
+  const deleteHelp = wantsDeleteHelp(text) && !deleteAccount
+  const passwordReset = requestedPasswordReset(text)
+  const secretRefused = suppliedSecret(text) && !passwordReset
+  const emailChange = wantsEmailChange(text) && !deleteAccount && !passwordReset && !secretRefused
+  const profileChange = wantsProfileChange(text) && !deleteAccount && !passwordReset && !secretRefused && !emailChange
+  const passwordHelp = wantsPasswordHelp(text) && !deleteAccount && !deleteHelp && !emailChange && !profileChange
+  const accountRead = wantsAccountRead(text) && !deleteAccount && !deleteHelp && !passwordReset && !secretRefused && !emailChange && !profileChange && !passwordHelp && !aboutSub && !aboutPlan && !aboutPay && !aboutUsage
+  const accountDirect = deleteAccount || deleteHelp || passwordReset || secretRefused || emailChange || profileChange || passwordHelp || accountRead
+  const personal = accountDirect || /\b(mitt|mina|min|jag|my|mi|mis|tengo|me)\b/i.test(text) || /\bi have\b|\bdo i\b/i.test(text) || /har jag|اشتراكي|حسابي|خطتي|لدي|حصتي|دفعي/i.test(text)
 
-  const accountTopic = Boolean(feature || login || cancel || undoCancel || planRequest || hostedRequest || refundRequest || receiptRequest || transactionRequest || problem || why || aboutSub || aboutPlan || aboutUsage || aboutPay || aboutEnt)
-  if (!accountTopic || (navigation && !why && !cancel && !undoCancel && !planRequest && !hostedRequest && !refundRequest && !receiptRequest && !transactionRequest && !problem && !aboutUsage && !aboutPay)) {
+  const accountTopic = Boolean(feature || login || cancel || undoCancel || planRequest || hostedRequest || refundRequest || receiptRequest || transactionRequest || problem || why || aboutSub || aboutPlan || aboutUsage || aboutPay || aboutEnt || accountDirect)
+  if (!accountTopic || (navigation && !why && !cancel && !undoCancel && !planRequest && !hostedRequest && !refundRequest && !receiptRequest && !transactionRequest && !problem && !aboutUsage && !aboutPay && !accountDirect)) {
     return noCustomerSelection()
   }
 
-  if (login && !feature && !aboutSub && !aboutUsage && !aboutPay && !undoCancel && !planRequest && !hostedRequest && !refundRequest) {
+  if (login && !feature && !aboutSub && !aboutUsage && !aboutPay && !undoCancel && !planRequest && !hostedRequest && !refundRequest && !accountDirect) {
     return {
       ...noCustomerSelection(),
       direct: true,
@@ -184,9 +245,17 @@ export function selectCustomerContext(question) {
   if (cancel || undoCancel || hostedRequest || refundRequest || receiptRequest || transactionRequest || aboutPay || why || /betalningen gick inte|payment failed|pago fall|فشل الدفع/iu.test(text)) slices.add('payment')
 
   let focus = 'subscription'
-  const keepPlanChange = Boolean(planRequest) && !cancel && !undoCancel
-  const keepHosted = Boolean(hostedRequest) && !cancel && !undoCancel && !keepPlanChange && !refundRequest
-  if (cancel) focus = 'cancel'
+  const keepPlanChange = Boolean(planRequest) && !cancel && !undoCancel && !accountDirect
+  const keepHosted = Boolean(hostedRequest) && !cancel && !undoCancel && !keepPlanChange && !refundRequest && !accountDirect
+  if (deleteAccount) focus = 'delete-account'
+  else if (passwordReset) focus = 'password-reset'
+  else if (secretRefused) focus = 'secret-refused'
+  else if (emailChange) focus = 'email-change'
+  else if (profileChange) focus = 'profile-change'
+  else if (deleteHelp) focus = 'delete-help'
+  else if (passwordHelp) focus = 'password-help'
+  else if (accountRead) focus = 'account'
+  else if (cancel) focus = 'cancel'
   else if (undoCancel) focus = 'undo'
   else if (keepPlanChange) focus = 'plan-change'
   else if (refundRequest) focus = 'refund'
@@ -205,19 +274,27 @@ export function selectCustomerContext(question) {
   const writes = cancel || undoCancel || Boolean(planRequest) || keepHosted
   const blockedPayment = refundRequest || receiptRequest || transactionRequest
   return {
-    cancel,
-    direct: writes || problem || blockedPayment || !rephrase,
+    accountRead,
+    cancel: cancel && !accountDirect,
+    deleteAccount,
+    deleteHelp,
+    direct: writes || problem || blockedPayment || accountDirect || !rephrase,
+    emailChange,
     feature,
     focus,
     hostedCheckout: keepHosted,
+    passwordHelp,
+    passwordReset,
     personal: true,
     planChange: keepPlanChange,
     planId: keepPlanChange ? planRequest.planId : (keepHosted ? hostedRequest.planId : ''),
+    profileChange,
     receiptRequest,
     refundRequest,
+    secretRefused,
     slices: [...slices],
     transactionRequest,
-    undoCancel: undoCancel && !cancel,
+    undoCancel: undoCancel && !cancel && !accountDirect,
   }
 }
 
@@ -717,6 +794,93 @@ function renderAccessAnswer({ context, languageCode, selection }) {
   return swedish
     ? `Inget verifierat fel hittades för ${label}. ${knowledgeSentence(feature, swedish)}${steps ? ` ${steps}` : ''} ${troubleshootingLine(languageCode)}`
     : `No verified fault was found for ${label}. ${knowledgeSentence(feature, swedish)} ${troubleshootingLine(languageCode)}`
+}
+
+export function renderAccountAnswer({ account, kind = 'read', languageCode = 'sv' } = {}) {
+  const localized = localizedAccount(kind, account, languageCode)
+  if (localized) return localized
+  const swedish = isSwedish(languageCode)
+  const email = account?.email || ''
+  const confirmed = account?.emailConfirmed === true
+  const created = account?.createdAt || ''
+  if (kind === 'read') {
+    if (!email) {
+      return {
+        answer: swedish
+          ? 'Ingen verifierad e-postadress kan visas. Inget har ändrats.'
+          : 'No verified email address can be shown. Nothing was changed.',
+        confirmation: null,
+      }
+    }
+    return {
+      answer: swedish
+        ? `Verifierad e-post är ${email}. E-posten är ${confirmed ? 'bekräftad' : 'obekräftad'}. Kontot skapades ${created || 'vid ett okänt tillfälle'}. Inget har ändrats.`
+        : `The verified email is ${email}. The email is ${confirmed ? 'confirmed' : 'unconfirmed'}. The account was created ${created || 'at an unknown time'}. Nothing was changed.`,
+      confirmation: null,
+    }
+  }
+  if (kind === 'password-reset') {
+    if (!email) {
+      return {
+        answer: swedish
+          ? 'Det finns ingen verifierad e-postadress att skicka återställningen till. Inget har ändrats.'
+          : 'There is no verified email address to send the reset to. Nothing was changed.',
+        confirmation: null,
+      }
+    }
+    return {
+      answer: swedish
+        ? 'Ett återställningsmejl skickas till den verifierade adressen först när du bekräftar. Skriv inte lösenord, kod eller token här. Inget har ändrats.'
+        : 'A reset email is sent to the verified address only after you confirm. Do not type a password, code or token here. Nothing was changed.',
+      confirmation: { action: 'password_reset' },
+    }
+  }
+  if (kind === 'password-help') {
+    return {
+      answer: swedish
+        ? 'Be om ett återställningsmejl till den verifierade adressen. Skriv inte lösenordet här. Inget har ändrats.'
+        : 'Ask for a reset email to the verified address. Do not type the password here. Nothing was changed.',
+      confirmation: null,
+    }
+  }
+  if (kind === 'delete-account') {
+    return {
+      answer: swedish
+        ? 'Kontot tas bort genom det befintliga raderingsflödet först när du trycker på Bekräfta kontoradering. Ingen radering har utförts.'
+        : 'The account is removed through the existing deletion flow only after you press Confirm account deletion. No deletion has been performed.',
+      confirmation: { action: 'delete_account' },
+    }
+  }
+  if (kind === 'delete-help') {
+    return {
+      answer: swedish
+        ? 'Kontoradering kräver en separat bekräftelse och använder det befintliga raderingsflödet. Ingen radering har utförts.'
+        : 'Account deletion requires a separate confirmation and uses the existing deletion flow. No deletion has been performed.',
+      confirmation: null,
+    }
+  }
+  if (kind === 'email-change') {
+    return {
+      answer: swedish
+        ? 'Byte av e-postadress är blockerat. Det finns inget befintligt API som verifierar en ny adress. Inget har ändrats.'
+        : 'Changing the email address is blocked. There is no existing API that verifies a new address. Nothing was changed.',
+      confirmation: null,
+    }
+  }
+  if (kind === 'profile-change') {
+    return {
+      answer: swedish
+        ? 'Ändring av namn eller profil är blockerad. Det finns inget säkert konto-API för den uppgiften. Inget har ändrats.'
+        : 'Changing the name or profile is blocked. There is no secure account API for that field. Nothing was changed.',
+      confirmation: null,
+    }
+  }
+  return {
+    answer: swedish
+      ? 'Lösenord, koder och token sparas inte i chatten. Be om ett återställningsmejl utan att skriva lösenordet. Inget har ändrats.'
+      : 'Passwords, codes and tokens are not stored in the chat. Ask for a reset email without typing the password. Nothing was changed.',
+    confirmation: null,
+  }
 }
 
 export function renderCancelOffer({ context, languageCode = 'sv' } = {}) {

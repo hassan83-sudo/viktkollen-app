@@ -275,5 +275,15 @@ describe('confirmed AI actions', () => {
       actorUserId: 'user-1',
       confirmed: true,
     })).toMatchObject({ code: 'UNKNOWN_ACTION', ok: false })
+    expect(await executeConfirmedAiAction({
+      actionId: 'quota_reset',
+      actorUserId: 'user-1',
+      confirmed: true,
+    })).toMatchObject({ code: 'UNKNOWN_ACTION', ok: false })
+    expect(await executeConfirmedAiAction({
+      actionId: 'camera_fix',
+      actorUserId: 'user-1',
+      confirmed: true,
+    })).toMatchObject({ code: 'UNKNOWN_ACTION', ok: false })
   })
 })

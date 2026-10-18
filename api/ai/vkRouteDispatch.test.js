@@ -7,6 +7,7 @@ import * as billing from '../_shared/billing/aiTextLiveBilling.js'
 import { setCoachCostStoreForTests } from '../_shared/aiCoach/service.js'
 import { createTestCostStore } from '../_shared/aiHelp/sharedCostLedger.js'
 import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
+import { setBillingAdminControlsForTests } from '../_shared/billing/admin.js'
 import { setBugMonitorAdminLookupForTests } from '../_shared/bugMonitor/httpHandler.js'
 import { createMemoryBugMonitorStore } from '../../src/services/bugMonitor/bugMonitor.js'
 import { setBugMonitorStoreForTests } from '../../src/services/bugMonitor/bugMonitorStore.js'
@@ -241,6 +242,25 @@ describe('AI route dispatch on /api/ai', () => {
     expect(overview.statusCode).toBe(403)
     expect(overview.body.ok).toBe(false)
     expect(overview.body.summary).toBeUndefined()
+  })
+
+  it('sends __vk_route=security-center to the admin-only Security Center reader', async () => {
+    const anonymous = createResponse()
+    await handler(createRequest({ method: 'GET', query: { __vk_route: 'security-center' }, token: '' }), anonymous)
+    expect(anonymous.statusCode).toBe(401)
+    expect(anonymous.body.events).toBeUndefined()
+
+    setSupabaseAuthVerifierForTests(async () => ({ user: { id: 'ordinary-user' } }))
+    setBillingAdminControlsForTests({ hasBillingAdmin: async () => false })
+    const ordinary = createResponse()
+    await handler(createRequest({ method: 'GET', url: '/api/ai?__vk_route=security-center' }), ordinary)
+    expect(ordinary.statusCode).toBe(403)
+    expect(ordinary.body.events).toBeUndefined()
+    setBillingAdminControlsForTests(undefined)
+
+    const vercel = JSON.parse(readFileSync(join(root, 'vercel.json'), 'utf8'))
+    expect(vercel.rewrites).toContainEqual({ source: '/api/security-center', destination: '/api/ai?__vk_route=security-center' })
+    expect(countDeployableFunctions().some((file) => file.replaceAll('\\', '/').includes('/api/security-center/'))).toBe(false)
   })
 
   it('fails closed for an unknown __vk_route before legacy auth and the provider', async () => {

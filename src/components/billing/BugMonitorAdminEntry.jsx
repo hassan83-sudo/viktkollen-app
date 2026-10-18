@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../services/supabaseClient.js'
 import BugMonitorPanel from './BugMonitorPanel.jsx'
+import SecurityCenterPanel from './SecurityCenterPanel.jsx'
 import SupportPanel from '../../features/aiHelp/SupportPanel.jsx'
 
 // Shown only when the server says this session is a billing admin. Every
@@ -34,6 +35,7 @@ export default function BugMonitorAdminEntry() {
   return (
     <section className="app-information" aria-label="AI Bug Monitor">
       <BugMonitorPanel token={token} />
+      <SecurityCenterPanel token={token} />
       <SupportPanel admin />
     </section>
   )

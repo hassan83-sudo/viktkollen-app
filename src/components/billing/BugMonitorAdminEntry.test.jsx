@@ -5,6 +5,10 @@ import BugMonitorAdminEntry from './BugMonitorAdminEntry.jsx'
 
 const getSession = vi.fn()
 
+vi.mock('../../features/aiHelp/SupportPanel.jsx', () => ({
+  default: ({ admin }) => <section aria-label={admin ? 'Support admin queue' : 'Customer support'} />,
+}))
+
 vi.mock('../../services/supabaseClient.js', () => ({
   supabase: {
     auth: {
@@ -39,7 +43,12 @@ describe('AI Bug Monitor entry under More', () => {
     expect(await screen.findByText('AI Bug Monitor')).toBeTruthy()
     expect(screen.getByRole('region', { name: 'AI Bug Monitor' })).toBeTruthy()
     const paths = fetchImpl.mock.calls.map(([path]) => String(path))
-    expect(paths).toEqual(['/api/billing/capability'])
+    // Capability first; the Security Center panel then reads its own admin
+    // endpoint. The plan list is never loaded.
+    expect(paths[0]).toBe('/api/billing/capability')
+    expect(paths.every((path) => path === '/api/billing/capability' || path === '/api/security-center')).toBe(true)
+    expect(screen.getByRole('region', { name: 'Säkerhetscentral' })).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Support admin queue' })).toBeTruthy()
     expect(fetchImpl.mock.calls[0][1].headers.Authorization).toBe('Bearer admin-token')
   })
 
@@ -50,6 +59,8 @@ describe('AI Bug Monitor entry under More', () => {
 
     await waitFor(() => expect(fetchImpl).toHaveBeenCalled())
     expect(screen.queryByText('AI Bug Monitor')).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Säkerhetscentral' })).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Support admin queue' })).toBeNull()
   })
 
   it('stays hidden when the capability check fails', async () => {

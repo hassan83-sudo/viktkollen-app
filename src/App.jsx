@@ -3297,7 +3297,6 @@ function App() {
         )}
         {activeAppSection === 'home' && (
           <HomeSection
-            onSearchNavigate={handleGlobalSearchNavigate}
             activeSection={activeAppSection}
             adaptiveCoachFeedback={adaptiveCoachFeedback}
             calorieGoal={nutritionGoals?.calories}

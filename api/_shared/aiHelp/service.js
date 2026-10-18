@@ -34,6 +34,7 @@ import {
 import { preliminaryPlanFacts, verifiedPriceMajors } from './planFacts.js'
 import { buildAiHelpInstructions } from './prompt.js'
 import { recordUnansweredQuestion } from './unansweredStore.js'
+import { renderTroubleAnswer } from './troubleshooting.js'
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/responses'
 const DEFAULT_MODEL = 'gpt-5-mini'
@@ -193,7 +194,9 @@ function verifiedCustomerResult(validated, selection, customer, account = null) 
                   : ''
   const rendered = accountKind
     ? renderAccountAnswer({ account, kind: accountKind, languageCode: validated.language.code })
-    : selection.cancel
+    : selection.trouble
+      ? renderTroubleAnswer({ account, context: customer, languageCode: validated.language.code, selection })
+      : selection.cancel
     ? renderCancelOffer({ context: customer, languageCode: validated.language.code })
     : selection.undoCancel
       ? renderUndoCancelOffer({ context: customer, languageCode: validated.language.code })
@@ -218,8 +221,10 @@ function verifiedCustomerResult(validated, selection, customer, account = null) 
   return {
     answer: rendered.answer,
     featureIds: ['settings.plan'],
-    followUps: followUpsFor(focus, validated.language.code),
-    handoff: focus === 'login' || focus === 'access' || focus === 'payment',
+    followUps: rendered.followUps || followUpsFor(focus, validated.language.code),
+    handoff: typeof rendered.handoff === 'boolean'
+      ? rendered.handoff
+      : focus === 'login' || focus === 'access' || focus === 'payment',
     language: validated.language,
     ok: true,
     source: 'verified-customer',

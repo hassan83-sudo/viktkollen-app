@@ -7,6 +7,7 @@ import { readUsageSnapshot } from '../billing/usageSnapshotRead.js'
 import { createSupabaseAdminClient } from '../supabaseServer.js'
 import { localizedAccount, localizedCancel, localizedCustomer, localizedPaymentLimit, localizedPlanChange, localizedUndoCancel } from './localizedCustomer.js'
 import { featureSteps, loginGuidance, troubleshootingLine } from '../../../src/features/aiHelp/launchGuidance.js'
+import { detectTrouble, troubleFeature } from './troubleshooting.js'
 
 const LAUNCH_FEATURES = Object.freeze([
   'ai.ear.interpret',
@@ -182,6 +183,10 @@ function noCustomerSelection() {
     passwordReset: false,
     profileChange: false,
     secretRefused: false,
+    deviceBlocked: false,
+    resolvedCheck: false,
+    trouble: false,
+    troubleDomain: '',
   }
 }
 
@@ -215,16 +220,19 @@ export function selectCustomerContext(question) {
   const emailChange = wantsEmailChange(text) && !deleteAccount && !passwordReset && !secretRefused
   const profileChange = wantsProfileChange(text) && !deleteAccount && !passwordReset && !secretRefused && !emailChange
   const passwordHelp = wantsPasswordHelp(text) && !deleteAccount && !deleteHelp && !emailChange && !profileChange
-  const accountRead = wantsAccountRead(text) && !deleteAccount && !deleteHelp && !passwordReset && !secretRefused && !emailChange && !profileChange && !passwordHelp && !aboutSub && !aboutPlan && !aboutPay && !aboutUsage
+  const detected = cancel || undoCancel || planRequest || hostedRequest || refundRequest || deleteAccount || passwordReset || secretRefused || emailChange || profileChange
+    ? null
+    : detectTrouble(text)
+  const accountRead = wantsAccountRead(text) && !detected && !deleteAccount && !deleteHelp && !passwordReset && !secretRefused && !emailChange && !profileChange && !passwordHelp && !aboutSub && !aboutPlan && !aboutPay && !aboutUsage
   const accountDirect = deleteAccount || deleteHelp || passwordReset || secretRefused || emailChange || profileChange || passwordHelp || accountRead
-  const personal = accountDirect || /\b(mitt|mina|min|jag|my|mi|mis|tengo|me)\b/i.test(text) || /\bi have\b|\bdo i\b/i.test(text) || /har jag|اشتراكي|حسابي|خطتي|لدي|حصتي|دفعي/i.test(text)
+  const personal = Boolean(detected) || accountDirect || /\b(mitt|mina|min|jag|my|mi|mis|tengo|me)\b/i.test(text) || /\bi have\b|\bdo i\b/i.test(text) || /har jag|اشتراكي|حسابي|خطتي|لدي|حصتي|دفعي/i.test(text)
 
-  const accountTopic = Boolean(feature || login || cancel || undoCancel || planRequest || hostedRequest || refundRequest || receiptRequest || transactionRequest || problem || why || aboutSub || aboutPlan || aboutUsage || aboutPay || aboutEnt || accountDirect)
-  if (!accountTopic || (navigation && !why && !cancel && !undoCancel && !planRequest && !hostedRequest && !refundRequest && !receiptRequest && !transactionRequest && !problem && !aboutUsage && !aboutPay && !accountDirect)) {
+  const accountTopic = Boolean(feature || login || cancel || undoCancel || planRequest || hostedRequest || refundRequest || receiptRequest || transactionRequest || problem || why || aboutSub || aboutPlan || aboutUsage || aboutPay || aboutEnt || accountDirect || detected)
+  if (!accountTopic || (navigation && !why && !cancel && !undoCancel && !planRequest && !hostedRequest && !refundRequest && !receiptRequest && !transactionRequest && !problem && !aboutUsage && !aboutPay && !accountDirect && !detected)) {
     return noCustomerSelection()
   }
 
-  if (login && !feature && !aboutSub && !aboutUsage && !aboutPay && !undoCancel && !planRequest && !hostedRequest && !refundRequest && !accountDirect) {
+  if (login && !feature && !aboutSub && !aboutUsage && !aboutPay && !undoCancel && !planRequest && !hostedRequest && !refundRequest && !accountDirect && !detected) {
     return {
       ...noCustomerSelection(),
       direct: true,
@@ -233,16 +241,19 @@ export function selectCustomerContext(question) {
     }
   }
 
-  if (!personal && !why && !cancel && !undoCancel && !planRequest && !hostedRequest && !refundRequest && !receiptRequest && !transactionRequest && !problem) {
+  if (!personal && !why && !cancel && !undoCancel && !planRequest && !hostedRequest && !refundRequest && !receiptRequest && !transactionRequest && !problem && !detected) {
     return noCustomerSelection()
   }
 
   const slices = new Set()
-  if (cancel || undoCancel || planRequest || hostedRequest || refundRequest || receiptRequest || transactionRequest || aboutSub || why || problem) slices.add('subscription')
-  if (cancel || planRequest || hostedRequest || receiptRequest || aboutPlan || aboutSub || why || /pris|price|precio|سعر/iu.test(text)) slices.add('plan')
-  if (aboutUsage || (why && feature) || (feature && /kvar|kvot|använt|remaining/i.test(text)) || /kvoten är slut|quota is used up|cuota agotada|الحصة نفدت/iu.test(text)) slices.add('usage')
-  if (aboutEnt || (why && (feature || aboutPlan || aboutSub))) slices.add('entitlements')
-  if (cancel || undoCancel || hostedRequest || refundRequest || receiptRequest || transactionRequest || aboutPay || why || /betalningen gick inte|payment failed|pago fall|فشل الدفع/iu.test(text)) slices.add('payment')
+  const troubleDomain = detected?.domain || ''
+  const selectedFeature = feature || troubleFeature(troubleDomain)
+  const deviceOnly = Boolean(detected) && ['', 'camera', 'login', 'microphone', 'unknown'].includes(troubleDomain)
+  if (!deviceOnly && (cancel || undoCancel || planRequest || hostedRequest || refundRequest || receiptRequest || transactionRequest || aboutSub || why || problem || troubleDomain === 'subscription' || troubleDomain === 'payment')) slices.add('subscription')
+  if (!deviceOnly && (cancel || planRequest || hostedRequest || receiptRequest || aboutPlan || aboutSub || why || troubleDomain === 'subscription' || troubleDomain === 'payment' || /pris|price|precio|سعر/iu.test(text))) slices.add('plan')
+  if (!deviceOnly && (aboutUsage || (why && selectedFeature) || (selectedFeature && /kvar|kvot|använt|remaining/i.test(text)) || /kvoten är slut|quota is used up|cuota agotada|الحصة نفدت/iu.test(text) || troubleFeature(troubleDomain))) slices.add('usage')
+  if (!deviceOnly && (aboutEnt || (why && (selectedFeature || aboutPlan || aboutSub)) || troubleFeature(troubleDomain))) slices.add('entitlements')
+  if (!deviceOnly && (cancel || undoCancel || hostedRequest || refundRequest || receiptRequest || transactionRequest || aboutPay || why || troubleDomain === 'payment' || troubleDomain === 'subscription' || troubleFeature(troubleDomain) || /betalningen gick inte|payment failed|pago fall|فشل الدفع/iu.test(text))) slices.add('payment')
 
   let focus = 'subscription'
   const keepPlanChange = Boolean(planRequest) && !cancel && !undoCancel && !accountDirect
@@ -255,6 +266,7 @@ export function selectCustomerContext(question) {
   else if (deleteHelp) focus = 'delete-help'
   else if (passwordHelp) focus = 'password-help'
   else if (accountRead) focus = 'account'
+  else if (detected) focus = 'troubleshoot'
   else if (cancel) focus = 'cancel'
   else if (undoCancel) focus = 'undo'
   else if (keepPlanChange) focus = 'plan-change'
@@ -278,9 +290,9 @@ export function selectCustomerContext(question) {
     cancel: cancel && !accountDirect,
     deleteAccount,
     deleteHelp,
-    direct: writes || problem || blockedPayment || accountDirect || !rephrase,
+    direct: writes || problem || blockedPayment || accountDirect || Boolean(detected) || !rephrase,
     emailChange,
-    feature,
+    feature: selectedFeature,
     focus,
     hostedCheckout: keepHosted,
     passwordHelp,
@@ -294,6 +306,10 @@ export function selectCustomerContext(question) {
     secretRefused,
     slices: [...slices],
     transactionRequest,
+    trouble: Boolean(detected),
+    troubleDomain,
+    deviceBlocked: detected?.deviceBlocked === true,
+    resolvedCheck: detected?.resolvedCheck === true,
     undoCancel: undoCancel && !cancel && !accountDirect,
   }
 }

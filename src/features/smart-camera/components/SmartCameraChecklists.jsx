@@ -18,6 +18,7 @@ export default function SmartCameraChecklists({ onBack, onOpenBank }) {
   const [manual, setManual] = useState('')
   const [bankCategory, setBankCategory] = useState('Alla')
   const [error, setError] = useState('')
+  const [deleteId, setDeleteId] = useState(null)
   const bank = useMemo(() => [...PRESETS, ...loadCustom()], [])
   const active = lists.find((list) => list.id === selectedId)
   const categories = useMemo(() => ['Alla', ...new Set(bank.map((item) => item.category))], [bank])
@@ -100,7 +101,12 @@ export default function SmartCameraChecklists({ onBack, onOpenBank }) {
           <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: 10 }}>
             {lists.map((list) => <li key={list.id} style={{ display: 'flex', gap: 8, padding: 12, background: '#0c1931', border: '1px solid #29416b', borderRadius: 12 }}>
               <button type="button" onClick={() => setSelectedId(list.id)} style={{ flex: 1, background: 'none', border: 0, color: '#fff', textAlign: 'left', cursor: 'pointer' }}><strong>{list.title}</strong><small style={{ display: 'block', color: '#aabfdb' }}>{list.items.filter((item) => item.done).length}/{list.items.length} klara</small></button>
-              <button type="button" className="secondary-button" onClick={() => { if (window.confirm('Ta bort checklistan?')) save(lists.filter((entry) => entry.id !== list.id)) }}>Ta bort</button>
+              {deleteId === list.id ? (
+                <div role="group" aria-label={'Bekräfta borttagning av ' + list.title} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <button type="button" className="secondary-button" onClick={() => { if (save(lists.filter((entry) => entry.id !== list.id))) setDeleteId(null) }}>Ja, ta bort</button>
+                  <button type="button" className="secondary-button" onClick={() => setDeleteId(null)}>Avbryt</button>
+                </div>
+              ) : <button type="button" className="secondary-button" onClick={() => setDeleteId(list.id)}>Ta bort</button>}
             </li>)}
           </ul>
         </>

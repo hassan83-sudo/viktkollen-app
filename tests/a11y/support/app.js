@@ -91,9 +91,18 @@ export function bottomNavLink(page, label) {
 
 // Keyboard navigation to a main section via the bottom navigation.
 export async function goToSection(page, label, sectionId) {
-  const link = bottomNavLink(page, label)
-  await link.focus()
-  await page.keyboard.press('Enter')
+  // Plats moved from the bottom navigation to the Home quick-access card.
+  // Exercise the actual keyboard-accessible entry point instead of a removed nav link.
+  if (sectionId === 'place') {
+    await goToSection(page, 'Hem', 'home')
+    const button = page.locator('#app-section-home').getByRole('button', { name: 'Öppna Plats' })
+    await button.focus()
+    await page.keyboard.press('Enter')
+  } else {
+    const link = bottomNavLink(page, label)
+    await link.focus()
+    await page.keyboard.press('Enter')
+  }
   await expect(page.locator(`#app-section-${sectionId}`)).toHaveClass(/is-active/)
 }
 

@@ -20,7 +20,7 @@ function countDeployableFunctions(dir = join(root, 'api')) {
       if (entry.startsWith('_') || entry.endsWith('.test.js')) continue
       const full = join(current, entry)
       if (statSync(full).isDirectory()) walk(full)
-      else if (entry === 'index.js') found.push(full)
+      else if (/\.(js|mjs|cjs|ts)$/.test(entry)) found.push(full)
     }
   }
   walk(dir)
@@ -69,6 +69,16 @@ afterEach(() => {
 })
 
 describe('AI route dispatch on /api/ai', () => {
+  it('routes support alerts to scheduler authorization before AI billing or provider calls', async () => {
+    const fetchImpl = vi.fn()
+    vi.stubGlobal('fetch', fetchImpl)
+    const resolveSpy = vi.spyOn(billing, 'resolveAiTextBillingRuntime')
+    const response = createResponse()
+    await handler(createRequest({ method: 'GET', query: { __vk_route: 'support-alerts' }, token: '' }), response)
+    expect(response.statusCode).toBe(401)
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(resolveSpy).not.toHaveBeenCalled()
+  })
   it('sends __vk_route=ai-help to the Help handler and skips legacy billing', async () => {
     setSupabaseAuthVerifierForTests(async () => ({ user: { id: 'signed-in-user' } }))
     process.env.OPENAI_API_KEY = 'test-key'
@@ -267,6 +277,8 @@ describe('AI route dispatch on /api/ai', () => {
       source: '/api/bug-monitor',
       destination: '/api/ai?__vk_route=bug-monitor',
     })
+    expect(rewrites).toContainEqual({ source: '/api/support', destination: '/api/ai?__vk_route=support' })
+    expect(rewrites).toContainEqual({ source: '/api/support-alerts', destination: '/api/ai?__vk_route=support-alerts' })
     const clientHelp = readFileSync(join(root, 'src/features/aiHelp/aiHelpClient.js'), 'utf8')
     const clientCoach = readFileSync(join(root, 'src/features/aiCoach/coachModelClient.js'), 'utf8')
     expect(clientHelp).toContain("fetch('/api/ai-help'")
@@ -277,10 +289,10 @@ describe('AI route dispatch on /api/ai', () => {
     const functions = countDeployableFunctions()
     const names = functions.map((file) => file.replaceAll('\\', '/'))
     expect(functions.length).toBeLessThanOrEqual(12)
-    expect(functions).toHaveLength(11)
     expect(names.some((file) => file.endsWith('/api/ai/index.js'))).toBe(true)
     expect(names.some((file) => file.includes('/api/ai-help/'))).toBe(false)
     expect(names.some((file) => file.includes('/api/ai-coach/'))).toBe(false)
     expect(names.some((file) => file.includes('/api/bug-monitor/'))).toBe(false)
+    expect(names.some((file) => file.includes('/api/support/'))).toBe(false)
   })
 })

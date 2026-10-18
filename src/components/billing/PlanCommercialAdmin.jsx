@@ -110,7 +110,7 @@ export default function PlanCommercialAdmin() {
   if (status === 'error') {
     return (
       <section className="app-information" aria-labelledby="plan-commercial-admin-title">
-        <h3 id="plan-commercial-admin-title">Planer</h3>
+        <h3 id="plan-commercial-admin-title">Abonnemangsplaner</h3>
         <p role="alert">Planstatus kunde inte läsas. Inga planer visas som tillgängliga.</p>
       </section>
     )
@@ -118,7 +118,8 @@ export default function PlanCommercialAdmin() {
 
   return (
     <section className="app-information" aria-labelledby="plan-commercial-admin-title">
-      <h3 id="plan-commercial-admin-title">Planer</h3>
+      <details>
+      <summary id="plan-commercial-admin-title">Abonnemangsplaner</summary>
       <p>Betalning är inte ansluten ännu.</p>
       <p>Att markera en plan som tillgänglig aktiverar inte köp eller checkout.</p>
       <p>PRELIMINARY / NOT FINALIZED</p>
@@ -183,6 +184,7 @@ export default function PlanCommercialAdmin() {
           )
         })}
       </ul>
+      </details>
     </section>
   )
 }

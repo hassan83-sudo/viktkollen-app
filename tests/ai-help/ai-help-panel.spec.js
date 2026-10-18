@@ -15,7 +15,7 @@ test('AI Help renders, opens and closes on a phone-sized screen', async ({ page 
   const question = panel.getByRole('textbox', { name: 'Fråga om Viktkollen' })
   await expect(question).toBeVisible()
   await expect(panel.getByRole('button', { name: 'Skicka' })).toBeVisible()
-  await expect(panel.getByText('Ställ en fråga om hur Viktkollen fungerar.')).toBeVisible()
+  await expect(panel.getByText('Fråga om hur appen fungerar, eller om konto, abonnemang, plan, kvoter och betalningsstatus.')).toBeVisible()
 
   const box = await question.boundingBox()
   expect(box?.width).toBeGreaterThan(120)

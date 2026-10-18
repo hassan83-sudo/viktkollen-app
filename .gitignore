@@ -31,3 +31,5 @@ test-results
 *.sln
 *.sw?
 .vercel
+supabase/.temp/
+ai-support-tests.json

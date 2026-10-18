@@ -2,6 +2,8 @@ import { normalizeLanguageCode } from '../../i18n/languages.js'
 
 const chrome = {
   sv: {
+    openSection: 'Öppna avsnittet',
+    navigate: 'Jag öppnar avsnittet på din begäran. Kamera och analys startas bara när du själv väljer det.',
     close: 'Stäng',
     confirmCancel: 'Bekräfta uppsägning',
     cancelDone: 'Uppsägningen är schemalagd till periodens slut.',
@@ -19,9 +21,14 @@ const chrome = {
     send: 'Skicka',
     signIn: 'Logga in för att använda AI-Hjälp.',
     title: 'AI-Hjälp',
-    unanswered: 'Jag kan inte svara på det ännu. Frågan är registrerad.',
+    handoff: 'Fortsätt med mänsklig support',
+    languageSwitched: 'Språket är bytt i appen. Inget konto har ändrats.',
+    humanSupport: 'Mänsklig support kräver ett verifierat betalabonnemang. Rapportera tekniskt fel skickar en teknisk felrapport, inte ett supportärende.',
+    unanswered: 'Jag kan inte svara på det ännu. Ingen kontakt med mänsklig support har skapats.',
   },
   en: {
+    openSection: 'Open section',
+    navigate: 'Opening the section at your request. Camera and analysis only start when you choose them.',
     close: 'Close',
     confirmCancel: 'Confirm cancellation',
     cancelDone: 'Cancellation is scheduled for the end of the period.',
@@ -39,10 +46,39 @@ const chrome = {
     send: 'Send',
     signIn: 'Sign in to use AI Help.',
     title: 'AI Help',
-    unanswered: 'I cannot answer that yet. The question has been recorded.',
+    handoff: 'Continue with human support',
+    languageSwitched: 'The app language was changed. No account was changed.',
+    humanSupport: 'Human support requires a verified paid subscription. A technical report is not a support request.',
+    unanswered: 'I cannot answer that yet. No human support request has been created.',
+  },
+  es: {
+    openSection: 'Abrir sección', navigate: 'Abriendo la sección solicitada. La cámara y el análisis solo se inician cuando tú lo eliges.',
+    close: 'Cerrar', confirmCancel: 'Confirmar cancelación', cancelDone: 'La cancelación está programada para el final del período.',
+    cancelFailed: 'No se pudo cancelar.', bugFailed: 'No se pudo enviar el informe.', bugReport: 'Informar de un problema técnico',
+    bugReported: 'Informe enviado sin el texto de la conversación.', empty: 'Pregunta sobre la aplicación, tu cuenta, suscripción, plan, cuotas o pagos.',
+    error: 'La Ayuda IA no puede responder ahora.', modelLimited: 'La explicación avanzada está limitada temporalmente.',
+    open: 'Abrir Ayuda IA', opened: 'Sección abierta.', outOfScope: 'Solo puedo ayudarte con Viktkollen.',
+    placeholder: 'Pregunta sobre Viktkollen', send: 'Enviar', signIn: 'Inicia sesión para usar la Ayuda IA.', title: 'Ayuda IA',
+    handoff: 'Continuar con asistencia humana',
+    languageSwitched: 'El idioma de la aplicación cambió. No se cambió ninguna cuenta.',
+    humanSupport: 'La asistencia humana requiere una suscripción de pago verificada. Un informe técnico no es una solicitud de asistencia.',
+    unanswered: 'Todavía no puedo responder. No se ha creado una solicitud de asistencia humana.',
+  },
+  ar: {
+    openSection: 'افتح القسم', navigate: 'جارٍ فتح القسم بناءً على طلبك. لا تبدأ الكاميرا والتحليل إلا عندما تختار ذلك.',
+    close: 'إغلاق', confirmCancel: 'تأكيد إلغاء الاشتراك', cancelDone: 'تمت جدولة الإلغاء لنهاية الفترة.',
+    cancelFailed: 'تعذر إلغاء الاشتراك.', bugFailed: 'تعذر إرسال تقرير الخطأ.', bugReport: 'الإبلاغ عن مشكلة تقنية',
+    bugReported: 'أُرسل التقرير دون نص المحادثة.', empty: 'اسأل عن التطبيق أو الحساب أو الاشتراك أو الخطة أو الحصص أو المدفوعات.',
+    error: 'تعذر الرد الآن.', modelLimited: 'الشرح المتقدم محدود مؤقتًا.', open: 'افتح مساعدة الذكاء الاصطناعي', opened: 'تم فتح القسم.',
+    outOfScope: 'يمكنني المساعدة في استخدام Viktkollen فقط.', placeholder: 'اسأل عن Viktkollen', send: 'إرسال',
+    signIn: 'سجّل الدخول لاستخدام المساعدة.', title: 'مساعدة الذكاء الاصطناعي',
+    handoff: 'المتابعة مع الدعم البشري',
+    languageSwitched: 'تم تغيير لغة التطبيق. لم يتم تغيير أي حساب.',
+    humanSupport: 'الدعم البشري يتطلب اشتراكًا مدفوعًا تم التحقق منه. تقرير الخطأ التقني ليس طلب دعم.',
+    unanswered: 'لا أستطيع الإجابة بعد. لم يتم إنشاء طلب دعم بشري.',
   },
 }
 
 export function helpChrome(languageCode) {
-  return normalizeLanguageCode(languageCode) === 'sv' ? chrome.sv : chrome.en
+  return chrome[normalizeLanguageCode(languageCode)] || chrome.en
 }

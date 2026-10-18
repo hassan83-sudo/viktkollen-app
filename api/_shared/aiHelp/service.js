@@ -1,8 +1,12 @@
 import { getLanguageDefinition, normalizeLanguageCode } from '../../../src/i18n/languages.js'
-import { isKnowledgeId } from '../../../src/features/aiHelp/knowledgeCatalog.js'
+import { getKnowledgeEntry, isKnowledgeId } from '../../../src/features/aiHelp/knowledgeCatalog.js'
 import { localHelpResult } from '../../../src/features/aiHelp/helpRouter.js'
 import { helpDomain } from '../../../src/features/sharedAi/helpDomain.js'
 import { sanitizeHelpTool } from '../../../src/features/aiHelp/aiHelpTools.js'
+import { directHelpDestination } from '../../../src/features/aiHelp/navigationRequest.js'
+import { helpChrome } from '../../../src/features/aiHelp/uiChrome.js'
+import { followUpsFor } from '../../../src/features/aiHelp/launchGuidance.js'
+import { selectCustomerConversation } from './customerConversation.js'
 import {
   AI_HELP_DEFAULT_LIMIT,
   AI_HELP_DEFAULT_MAX_OUTPUT_TOKENS,
@@ -18,7 +22,6 @@ import {
   loadCustomerContext,
   renderCancelOffer,
   renderVerifiedAnswer,
-  selectCustomerContext,
   verifiedPriceMinor,
 } from './customerContext.js'
 import { preliminaryPlanFacts, verifiedPriceMajors } from './planFacts.js'
@@ -60,9 +63,9 @@ function localFallbackResult(route, language) {
     language,
   }
 }
-const claimedAccountActionPattern = /har sagt upp|har raderat|abonnemanget är uppsagt|kontot är raderat|jag har avslutat|jag har öppnat/i
+const claimedAccountActionPattern = /har sagt upp|har raderat|abonnemanget är uppsagt|kontot är raderat|jag har avslutat|jag har öppnat|i (?:have )?(?:cancelled|canceled|deleted|changed|opened)|your (?:account|subscription) (?:is|has been) (?:deleted|cancelled|canceled)|he (?:cancelado|eliminado|cambiado)|(?:cuenta|suscripción) (?:ha sido|está) (?:eliminada|cancelada)|(?:تم|لقد) (?:حذف|إلغاء|تغيير|إيقاف) (?:حسابك|اشتراكك)/iu
 const secretPattern = /sk-[A-Za-z0-9_-]{8,}|OPENAI_API_KEY|SUPABASE_SERVICE_ROLE|Bearer\s+[A-Za-z0-9._-]{12,}/i
-const personalPricePattern = /ditt abonnemang kostar|din plan kostar|du betalar\s+\d/i
+const personalPricePattern = /ditt abonnemang kostar|din plan kostar|du betalar\s+\d|your (?:plan|subscription) costs|you pay\s+\d|tu (?:plan|suscripción) cuesta|تدفع|سعر اشتراكك/iu
 const foreignMoneyPattern = /\$\s*\d|\d[\d\s.,]*\s*€/i
 
 export function answerIsAllowed(answer, { verifiedPriceMinor: serverPriceMinor = null } = {}) {
@@ -167,9 +170,12 @@ function verifiedCustomerResult(validated, selection, customer) {
   const rendered = selection.cancel
     ? renderCancelOffer({ context: customer, languageCode: validated.language.code })
     : { answer: renderVerifiedAnswer({ context: customer, languageCode: validated.language.code, selection }), confirmation: null }
+  const focus = selection.focus
   return {
     answer: rendered.answer,
     featureIds: ['settings.plan'],
+    followUps: followUpsFor(focus, validated.language.code),
+    handoff: focus === 'login' || focus === 'access' || focus === 'payment',
     language: validated.language,
     ok: true,
     source: 'verified-customer',
@@ -192,7 +198,14 @@ export async function answerAiHelpQuestion({
   }
 
   const question = validated.messages[validated.messages.length - 1].content
-  const selection = selectCustomerContext(question)
+  const destination = directHelpDestination(question)
+  if (destination) return {
+    ok: true, status: 'answered', source: 'local', language: validated.language,
+    answer: helpChrome(validated.language.code).navigate,
+    featureIds: [destination.id],
+    tool: sanitizeHelpTool({ name: 'open-section', sectionId: destination.sectionId, targetId: destination.targetId }),
+  }
+  const selection = selectCustomerConversation(validated.messages)
   let customer = null
   if (selection.personal) {
     customer = userId
@@ -203,12 +216,12 @@ export async function answerAiHelpQuestion({
         userId,
       })
       : { available: false, reason: 'unauthenticated' }
-    if (selection.cancel || selection.direct || !env.OPENAI_API_KEY) {
+    if (selection.cancel || selection.direct || !customer.available || !env.OPENAI_API_KEY) {
       return verifiedCustomerResult(validated, selection, customer)
     }
   }
 
-  const route = helpDomain.route({
+  const route = customer ? { kind: 'model', entries: [getKnowledgeEntry('settings.plan')] } : helpDomain.route({
     languageCode: validated.language.code,
     messages: validated.messages,
     pinnedIds: validated.featureIds,
@@ -219,6 +232,7 @@ export async function answerAiHelpQuestion({
       ...localHelpResult(route.entry, {
         extra: route.entry.id === 'settings.plan' ? preliminaryPlanFacts() : '',
       }),
+      followUps: followUpsFor('default', validated.language.code),
       language: validated.language,
     }
   }
@@ -280,7 +294,7 @@ export async function answerAiHelpQuestion({
   const budgetSek = Number(env.AI_HELP_BUDGET_SEK)
   if (!Number.isFinite(budgetSek) || budgetSek <= 0) {
     if (customer) return verifiedCustomerResult(validated, selection, customer)
-    if (route.fallbackEntry) return localFallbackResult(route, validated.language)
+    if (route.fallbackEntry && validated.language.code === 'sv') return localFallbackResult(route, validated.language)
     return limitedModelResult(validated.language, 60)
   }
 
@@ -298,7 +312,7 @@ export async function answerAiHelpQuestion({
   })
   if (!reservation.ok) {
     if (customer) return verifiedCustomerResult(validated, selection, customer)
-    if (route.fallbackEntry) return localFallbackResult(route, validated.language)
+    if (route.fallbackEntry && validated.language.code === 'sv') return localFallbackResult(route, validated.language)
     return limitedModelResult(validated.language, reservation.retryAfterSeconds)
   }
 

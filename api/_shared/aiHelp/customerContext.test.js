@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
-import { loadCustomerContext, renderVerifiedAnswer, selectCustomerContext } from './customerContext.js'
+import { loadCustomerContext, renderVerifiedAnswer, selectCustomerContext, wantsScheduleCancel } from './customerContext.js'
 
 const activeSubscription = {
   cancel_at_period_end: false,
@@ -12,6 +12,14 @@ const activeSubscription = {
 }
 
 describe('customer context selection', () => {
+  it('requires an explicit subscription target before offering cancellation', () => {
+    for (const question of ['Jag vill avsluta mitt konto', 'Jag vill avsluta chatten', 'Jag vill säga upp', 'Hur avslutar jag mitt abonnemang?']) {
+      expect(wantsScheduleCancel(question)).toBe(false)
+    }
+    for (const question of ['Jag vill säga upp mitt abonnemang', 'Avsluta min prenumeration', 'Cancel my subscription']) {
+      expect(wantsScheduleCancel(question)).toBe(true)
+    }
+  })
   it('keeps navigation on knowledge and loads only the slices a personal question needs', () => {
     expect(selectCustomerContext('Var finns matscanning?').slices).toEqual([])
     expect(selectCustomerContext('Vad kostar abonnemanget?').personal).toBe(false)

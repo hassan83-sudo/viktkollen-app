@@ -4,24 +4,14 @@ import { getLanguageDefinition, normalizeLanguageCode } from '../../i18n/languag
 import { confirmScheduleCancel, requestAiHelpReply } from './aiHelpClient.js'
 import { reportClientBug } from '../../services/bugMonitor/bugMonitorClient.js'
 import { requestOpenHelpSection } from './aiHelpTools.js'
+import { isDirectNavigationRequest } from './navigationRequest.js'
+import SupportPanel from './SupportPanel.jsx'
 import { helpChrome } from './uiChrome.js'
+import { requestedLanguageSwitch } from './launchGuidance.js'
+import { changeAppLanguage } from '../../i18n/index.js'
 import './AiHelpPanel.css'
 
 const THREAD_STORAGE_KEY = 'viktkollen.aiHelp.thread'
-
-function readStoredThread() {
-  if (typeof window === 'undefined') return []
-  try {
-    const parsed = JSON.parse(window.sessionStorage.getItem(THREAD_STORAGE_KEY) || '[]')
-    return Array.isArray(parsed) ? parsed.slice(-8) : []
-  } catch {
-    return []
-  }
-}
-
-function isDirectNavigationRequest(text) {
-  return /^(?:kan du\s+)?(?:ta mig till|öppna|visa mig|gå till|navigera till|skicka mig till)\b/i.test(text.trim())
-}
 
 function AiHelpPanel() {
   const { i18n } = useTranslation()
@@ -32,7 +22,7 @@ function AiHelpPanel() {
     typeof window !== 'undefined' && window.location.hash.replace(/^#/, '') === 'ai-help'
   ))
   const [draft, setDraft] = useState('')
-  const [messages, setMessages] = useState(readStoredThread)
+  const [messages, setMessages] = useState([])
   const [pending, setPending] = useState(false)
   const [notice, setNotice] = useState('')
   const [openedSections, setOpenedSections] = useState({})
@@ -48,8 +38,9 @@ function AiHelpPanel() {
   }, [])
 
   useEffect(() => {
-    window.sessionStorage.setItem(THREAD_STORAGE_KEY, JSON.stringify(messages.slice(-8)))
-  }, [messages])
+    // Remove legacy threads: they can contain private account facts and stale actions.
+    try { window.sessionStorage.removeItem(THREAD_STORAGE_KEY) } catch { /* Storage may be disabled. */ }
+  }, [])
 
   useEffect(() => {
     const syncHash = () => {
@@ -64,7 +55,7 @@ function AiHelpPanel() {
     setPending(true)
     setNotice('')
     try {
-      const result = await confirmScheduleCancel()
+      const result = await confirmScheduleCancel(messages[index]?.confirmation?.userScope)
       setMessages((current) => {
         const message = current[index]
         if (message?.confirmation?.action !== 'schedule_cancel') return current
@@ -93,8 +84,20 @@ function AiHelpPanel() {
     const content = draft.replace(/\s+/g, ' ').trim()
     if (!content || pending) return
 
+    const switched = requestedLanguageSwitch(content)
+    if (switched) {
+      await changeAppLanguage(switched)
+      setMessages((current) => [
+        ...current.slice(-7),
+        { content, featureIds: [], role: 'user', status: 'asked' },
+        { content: helpChrome(switched).languageSwitched, featureIds: [], role: 'assistant', status: 'answered' },
+      ])
+      setDraft('')
+      return
+    }
+
     const previous = messages.slice(-7)
-    const nextMessages = [...previous, { content, featureIds: [], role: 'user', status: 'asked' }]
+    const nextMessages = [...previous.map((message) => ({ ...message, confirmation: null })), { content, featureIds: [], role: 'user', status: 'asked' }]
     const lastAssistant = [...messages].reverse().find((message) => message.role === 'assistant')
     setMessages(nextMessages)
     setDraft('')
@@ -134,7 +137,7 @@ function AiHelpPanel() {
       }
 
       if (result.tool?.name === 'open-section' && isDirectNavigationRequest(content)) {
-        requestOpenHelpSection(result.tool.sectionId)
+        requestOpenHelpSection(result.tool.sectionId, result.tool.targetId)
       }
 
       setMessages((current) => [
@@ -143,6 +146,8 @@ function AiHelpPanel() {
           confirmation: result.confirmation || null,
           content: result.answer,
           featureIds: result.featureIds,
+          followUps: result.followUps || [],
+          handoff: result.handoff === true,
           role: 'assistant',
           status: 'answered',
           tool: result.tool || null,
@@ -186,24 +191,45 @@ function AiHelpPanel() {
                   <button
                     className="secondary-button ai-help-action"
                     type="button"
+                    disabled={pending}
                     onClick={() => confirmMessageCancel(index)}
                   >
                     {chrome.confirmCancel}
+                  </button>
+                )}
+                {(message.followUps || []).map((question) => (
+                  <button
+                    className="secondary-button ai-help-action"
+                    key={question}
+                    type="button"
+                    onClick={() => setDraft(question)}
+                  >
+                    {question}
+                  </button>
+                ))}
+                {message.handoff && (
+                  <button
+                    className="secondary-button ai-help-action"
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent('viktkollen:open-human-support'))}
+                  >
+                    {chrome.handoff}
                   </button>
                 )}
                 {message.tool?.name === 'open-section' && (
                   <button
                     className="secondary-button ai-help-action"
                     type="button"
-                    onClick={() => requestOpenHelpSection(message.tool.sectionId)}
+                    onClick={() => requestOpenHelpSection(message.tool.sectionId, message.tool.targetId)}
                   >
-                    {openedSections[message.tool.sectionId] ? chrome.opened : message.tool.label}
+                    {openedSections[message.tool.sectionId] ? chrome.opened : languageCode === 'sv' ? message.tool.label : chrome.openSection}
                   </button>
                 )}
               </div>
             ))}
           </div>
           {notice && <p className="ai-help-note">{notice}</p>}
+          <p className="ai-help-note">{chrome.humanSupport}</p>
           <form className="ai-help-form" onSubmit={handleSubmit}>
             <textarea
               aria-label={chrome.placeholder}
@@ -218,6 +244,7 @@ function AiHelpPanel() {
               {chrome.bugReport}
             </button>
           </form>
+          <SupportPanel />
         </>
       )}
     </section>

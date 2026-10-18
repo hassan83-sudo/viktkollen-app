@@ -63,7 +63,7 @@ describe('ConfirmDialog (8M B13)', () => {
 
   it('browser dialog zero-gate: window.confirm only in Molnbackup (Cursor, exactly 4), nowhere else', () => {
     const counts = Object.fromEntries(productionFiles(root)
-      .map((path) => [relative(root, path), confirmCalls(readFileSync(path, 'utf8'))])
+      .map((path) => [relative(root, path).replaceAll('\\', '/'), confirmCalls(readFileSync(path, 'utf8'))])
       .filter(([, count]) => count > 0))
     expect(counts).toEqual(cursorOwnedConfirmCalls)
     expect(confirmCalls("if (window.confirm('x')) {}\n// window.confirm(")).toBe(1)

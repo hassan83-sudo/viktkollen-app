@@ -2965,6 +2965,9 @@ function App() {
       const sectionId = String(event?.detail?.sectionId || '')
       if (!isAiHelpSectionAllowed(sectionId)) return
       if (openHelpSectionRef.current?.(sectionId) !== true) return
+      if (sectionId === 'nutrition' && event?.detail?.targetId === 'nutrition-scanner-v2') {
+        setNutritionIntent({ id: Date.now(), panel: 'scanner' })
+      }
       window.dispatchEvent(new CustomEvent('viktkollen:ai-help-section-opened', {
         detail: { sectionId },
       }))

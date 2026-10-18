@@ -181,7 +181,7 @@ describe('AiHelpPanel language', () => {
     const body = JSON.parse(actionCalls()[0][1].body)
     expect(body).toEqual({ confirmAction: 'schedule_cancel', confirmed: true })
     expect(JSON.stringify(body)).not.toContain('Avsluta mitt abonnemang')
-    expect(await screen.findByText('Uppsägningen är schemalagd till periodens slut.')).toBeTruthy()
+    expect(await screen.findByText('Ärendet är inte löst. Inget har markerats som löst.')).toBeTruthy()
     fetchMock.mockRestore()
   })
 
@@ -191,7 +191,7 @@ describe('AiHelpPanel language', () => {
       const body = String(options?.body || '')
       if (String(url).includes('/api/ai-help') && body.includes('confirmAction')) {
         const parsed = JSON.parse(body)
-        return { ok: true, json: async () => ({ action: parsed.confirmAction, ok: true }) }
+        return { ok: true, json: async () => ({ action: parsed.confirmAction, ok: true, outcome: 'verified', resolved: true }) }
       }
       const question = JSON.parse(options.body).messages.at(-1).content
       const confirmation = question.startsWith('Byt')
@@ -205,12 +205,12 @@ describe('AiHelpPanel language', () => {
     fireEvent.change(screen.getByLabelText('Fråga om Viktkollen'), { target: { value: 'Byt mitt abonnemang' } })
     fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Bekräfta planbyte' }))
-    await screen.findByText('Planbytet är schemalagt till nästa period. Ingen betalning har startats nu.')
+    await screen.findByText('Planbytet är verifierat till nästa period. Nuvarande plan är oförändrad nu.')
 
     fireEvent.change(screen.getByLabelText('Fråga om Viktkollen'), { target: { value: 'Ångra min uppsägning' } })
     fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Bekräfta återaktivering' }))
-    await screen.findByText('Den schemalagda uppsägningen är borttagen. Ingen ny betalning har startats.')
+    await screen.findByText('Den schemalagda uppsägningen är verifierat borttagen. Ingen ny betalning har startats.')
 
     const actionBodies = fetchMock.mock.calls
       .map((call) => call[1]?.body)
@@ -230,7 +230,7 @@ describe('AiHelpPanel language', () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options) => {
       const body = String(options?.body || '')
       if (body.includes('confirmAction')) {
-        return { ok: true, json: async () => ({ code: 'CHECKOUT_PENDING', hostedCheckoutUrl: 'https://checkout.sumup.com/pay/safePage', ok: true }) }
+        return { ok: true, json: async () => ({ code: 'CHECKOUT_PENDING', hostedCheckoutUrl: 'https://checkout.sumup.com/pay/safePage', ok: true, outcome: 'pending', resolved: false }) }
       }
       return {
         ok: true,
@@ -248,7 +248,7 @@ describe('AiHelpPanel language', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
     expect(opened).not.toHaveBeenCalled()
     fireEvent.click(await screen.findByRole('button', { name: 'Bekräfta betalningsförsök' }))
-    await screen.findByText('SumUps betalningssida är öppnad. Betalningen är inte genomförd förrän du slutför den där.')
+    await screen.findByText('SumUps betalningssida är öppnad. Betalningen är inte genomförd och ärendet är inte löst.')
     expect(opened).toHaveBeenCalledWith('https://checkout.sumup.com/pay/safePage', '_blank', 'noopener,noreferrer')
     const body = JSON.parse(fetchMock.mock.calls.find((call) => String(call[1]?.body || '').includes('confirmAction'))[1].body)
     expect(body).toEqual({ confirmAction: 'hosted_checkout', confirmed: true, planId: 'plan.prelim.sek.month.07' })
@@ -289,7 +289,7 @@ describe('AiHelpPanel language', () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options) => {
       const body = String(options?.body || '')
       if (body.includes('confirmAction')) {
-        return { ok: true, json: async () => ({ code: 'ACCOUNT_DELETED', ok: true }) }
+        return { ok: true, json: async () => ({ code: 'ACCOUNT_DELETED', ok: true, outcome: 'verified', resolved: true }) }
       }
       return {
         ok: true,
@@ -306,7 +306,7 @@ describe('AiHelpPanel language', () => {
     fireEvent.change(screen.getByLabelText('Fråga om Viktkollen'), { target: { value: 'Radera mitt konto lösenordet är hunter2' } })
     fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Bekräfta kontoradering' }))
-    await screen.findByText('Kontoraderingen är genomförd.')
+    await screen.findByText('Kontoraderingen är verifierad. Inget annat ärende har markerats som löst.')
     const body = JSON.parse(fetchMock.mock.calls.find((call) => String(call[1]?.body || '').includes('confirmAction'))[1].body)
     expect(body).toEqual({ confirmAction: 'delete_account', confirmed: true })
     expect(JSON.stringify(body)).not.toMatch(/hunter2/)

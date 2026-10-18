@@ -34,6 +34,7 @@ import {
 import { preliminaryPlanFacts, verifiedPriceMajors } from './planFacts.js'
 import { buildAiHelpInstructions } from './prompt.js'
 import { recordUnansweredQuestion } from './unansweredStore.js'
+import { renderCaseControl } from './caseOutcome.js'
 import { renderTroubleAnswer } from './troubleshooting.js'
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/responses'
@@ -192,7 +193,9 @@ function verifiedCustomerResult(validated, selection, customer, account = null) 
                 : selection.accountRead
                   ? 'read'
                   : ''
-  const rendered = accountKind
+  const rendered = selection.caseControl
+    ? renderCaseControl({ control: selection.caseControl, languageCode: validated.language.code })
+    : accountKind
     ? renderAccountAnswer({ account, kind: accountKind, languageCode: validated.language.code })
     : selection.trouble
       ? renderTroubleAnswer({ account, context: customer, languageCode: validated.language.code, selection })

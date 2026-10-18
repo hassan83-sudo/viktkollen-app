@@ -86,7 +86,14 @@ export async function confirmAiAction(userScope, confirmation) {
     return { code: payload?.error?.code || payload?.code || 'UNKNOWN_ERROR', ok: false }
   }
   const hostedCheckoutUrl = officialSumUpHostedCheckoutUrl(payload.hostedCheckoutUrl)
-  return { code: payload.code || '', hostedCheckoutUrl, ok: true, subscription: payload.subscription || null }
+  return {
+    code: payload.code || '',
+    hostedCheckoutUrl,
+    ok: true,
+    outcome: ['blocked', 'failed', 'pending', 'verified'].includes(payload.outcome) ? payload.outcome : 'pending',
+    resolved: payload.resolved === true,
+    subscription: payload.subscription || null,
+  }
 }
 
 export async function confirmScheduleCancel(userScope) {

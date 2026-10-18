@@ -745,7 +745,6 @@ function OverviewPrimaryActions({
   onOpenFoodScan,
   onOpenSmartCamera,
   onScanFood,
-  onSearchNavigate,
   userId = 'local-user',
 }) {
   const { t } = useTranslation(['bodyScan', 'home'])
@@ -1532,7 +1531,6 @@ function OverviewDashboard({
         />
       </section>
 
-      <section className="overview-home-section" aria-label="Sök i appen"><div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: 8 }}><strong>Sök i appen</strong><GlobalSearch onNavigate={onSearchNavigate} /></div></section>
       <section className="overview-home-section" aria-labelledby="overview-today-title">
         <h2 id="overview-today-title">{t('home:todayMood')}</h2>
         <OverviewTodayMood

@@ -29,11 +29,19 @@ The allowlist still permits only the existing four CloudBackupPanel calls.
 
 ## Support browser fixture after the main merge
 
-The paid-support browser test also mounts Security Center. Its polling endpoint
-was not mocked, so the local Vite server returned its HTML fallback instead of
-the deployed API's JSON. A failing trace showed the page reloading and removing
-the queue while Playwright was waiting to click Save; the admin command was not
-sent. The fixture now explicitly fulfills `/api/security-center` and waits for
-the panel's loaded state before exercising support. No production handler,
-timeout, click behavior or support assertions were relaxed. The affected flow
-passed three consecutive local runs with the corrected offline fixture.
+The paid-support browser test also mounts Security Center. The fixture explicitly
+fulfills `/api/security-center` and waits for its loaded state, so it never reads
+the local Vite server's HTML fallback as an API response.
+
+That isolation correction alone passed three local repetitions but still failed
+in CI. A cold-cache run in CI order reproduced the actual blocker: Vite sent the
+WebSocket message `{"type":"full-reload","path":"*"}`, followed by a browser
+navigation with reason `reload`. This discarded the admin queue before the
+Save command was sent. This is development-server behavior, not a support form
+submission or a production API failure.
+
+Hot reload is therefore disabled only in the isolated AI Help test server. The
+same four browser cases passed with dependency optimization forced from a cold
+cache after this change, including prioritization, admin reply and customer
+readback. Temporary diagnostics and the forced optimizer setting were removed.
+No production handler, timeout, click behavior or support assertions were relaxed.

@@ -13,6 +13,7 @@ function response() {
   }
 }
 afterEach(() => {
+  vi.restoreAllMocks()
   setSupabaseAuthVerifierForTests(null)
   setBillingAdminControlsForTests(undefined)
   clearSupabaseAdminClientForTests()
@@ -70,5 +71,17 @@ describe('GET /api/security-center', () => {
     await handler({ method: 'GET', headers: { authorization: 'Bearer fake-test-token' } }, res)
     expect(res.statusCode).toBe(503)
     expect(res.body.ok).toBe(false)
+  })
+  it('identifies a missing database migration without exposing database details', async () => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    setSupabaseAuthVerifierForTests(async () => ({ user: { id: 'admin-user' } }))
+    setBillingAdminControlsForTests({ hasBillingAdmin: async () => true })
+    setSupabaseAdminClientForTests({ rpc: async () => ({ error: { code: 'PGRST202', message: 'PRIVATE_DATABASE_DETAIL' } }) })
+    const res = response()
+    await handler({ method: 'GET', headers: { authorization: 'Bearer PRIVATE_TOKEN' } }, res)
+    expect(res.statusCode).toBe(503)
+    expect(res.body.error.code).toBe('SECURITY_STORE_UNAVAILABLE')
+    expect(warning).toHaveBeenCalledWith('[security-center] store unavailable', { reason: 'missing_rpc', requestId: res.body.requestId })
+    expect(JSON.stringify([res.body, warning.mock.calls])).not.toMatch(/PRIVATE_/)
   })
 })

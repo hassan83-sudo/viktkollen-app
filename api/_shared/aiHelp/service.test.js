@@ -29,6 +29,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.restoreAllMocks()
   setAiHelpCostStoreForTests(null)
   clearAiHelpRateLimitForTests()
   clearUnansweredQuestionsForTests()
@@ -220,7 +221,7 @@ describe('AI Help language and model contract', () => {
       clearUnansweredQuestionsForTests()
       const fetchImpl = vi.fn(async () => ({ ok: true, json: async () => payload }))
       const result = await answerAiHelpQuestion({
-        body: { language: 'sv', messages: [{ content: 'Kan du förklara Mer på ett annat sätt?', role: 'user' }] },
+        body: { language: 'en', messages: [{ content: 'Can you explain the More menu differently?', role: 'user' }] },
         env: { AI_HELP_BUDGET_SEK: '1000', OPENAI_API_KEY: 'test-key' },
         fetchImpl,
         userId: 'user-cut',
@@ -229,6 +230,35 @@ describe('AI Help language and model contract', () => {
       expect(JSON.stringify(result)).not.toContain('Öppna')
       expect(listUnansweredQuestionsForTests()).toHaveLength(0)
     }
+  })
+
+  it.each(['invalid_json', 'incomplete_output', 'invalid_contract', 'empty_answer'])('uses existing verified Swedish help after %s without a second paid call', async (reason) => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const payloads = {
+      incomplete_output: { status: 'incomplete', output_text: 'PRIVATE_PROVIDER_TEXT' },
+      invalid_contract: { output_text: 'PRIVATE_PROVIDER_TEXT' },
+      empty_answer: { output_text: '{"status":"answered","answer":""}' },
+    }
+    const store = createTestCostStore()
+    const keep = vi.spyOn(store, 'markUncertain')
+    const fetchImpl = vi.fn(async () => ({ ok: true, json: async () => {
+      if (reason === 'invalid_json') throw new Error('PRIVATE_PROVIDER_TEXT')
+      return payloads[reason]
+    } }))
+    const result = await answerAiHelpQuestion({
+      body: { language: 'sv', messages: [{ content: 'Kan du förklara Mer på ett annat sätt?', role: 'user' }] },
+      costStore: store,
+      env: { AI_HELP_BUDGET_SEK: '1000', OPENAI_API_KEY: 'PRIVATE_API_KEY' },
+      fetchImpl,
+      userId: 'PRIVATE_USER_ID',
+    })
+    expect(result).toMatchObject({ ok: true, source: 'local-fallback', status: 'answered', language: { code: 'sv' } })
+    expect(result.answer.length).toBeGreaterThan(0)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(keep).toHaveBeenCalledTimes(1)
+    expect(listUnansweredQuestionsForTests()).toHaveLength(0)
+    expect(warning).toHaveBeenCalledWith('[ai-help] invalid provider response', { reason })
+    expect(JSON.stringify([result, warning.mock.calls])).not.toMatch(/PRIVATE_/)
   })
 
   it('asks for a short answer so gpt-5-mini can finish inside the 400 token cap', async () => {

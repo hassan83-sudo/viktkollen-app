@@ -369,6 +369,15 @@ export async function answerAiHelpQuestion({
     return limitedModelResult(validated.language, reservation.retryAfterSeconds)
   }
 
+  // Never return partial/provider text or repeat a paid call. Reuse only the
+  // same verified answers already used when the model budget is unavailable.
+  function invalidProviderResult(reason) {
+    console.warn('[ai-help] invalid provider response', { reason })
+    if (customer) return verifiedCustomerResult(validated, selection, customer, account)
+    if (route.fallbackEntry && validated.language.code === 'sv') return localFallbackResult(route, validated.language)
+    return { code: 'PROVIDER_INVALID_RESPONSE', language: validated.language, ok: false, status: 502 }
+  }
+
   let providerResponse
   try {
     providerResponse = await fetchImpl(OPENAI_API_URL, {
@@ -403,7 +412,7 @@ export async function answerAiHelpQuestion({
     payload = await providerResponse.json()
   } catch {
     await keepReservation(store, reservation.reservationId)
-    return { code: 'PROVIDER_INVALID_RESPONSE', language: validated.language, ok: false, status: 502 }
+    return invalidProviderResult('invalid_json')
   }
 
   const usage = payload?.usage || {}
@@ -427,12 +436,12 @@ export async function answerAiHelpQuestion({
   const outputWasCut = payload?.status === 'incomplete' || payload?.incomplete_details?.reason === 'max_output_tokens'
   const parsed = outputWasCut ? null : parseModelJson(extractResponseText(payload))
   if (!parsed || (parsed.status !== 'answered' && parsed.status !== 'unanswered')) {
-    return { code: 'PROVIDER_INVALID_RESPONSE', language: validated.language, ok: false, status: 502 }
+    return invalidProviderResult(outputWasCut ? 'incomplete_output' : 'invalid_contract')
   }
 
   const answer = clampText(parsed.answer, 1200)
   if (parsed.status === 'answered' && !answer) {
-    return { code: 'PROVIDER_INVALID_RESPONSE', language: validated.language, ok: false, status: 502 }
+    return invalidProviderResult('empty_answer')
   }
   const featureIds = (Array.isArray(parsed.featureIds) ? parsed.featureIds : [])
     .map((id) => clampText(id, 80))

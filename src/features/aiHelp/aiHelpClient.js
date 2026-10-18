@@ -55,8 +55,8 @@ export async function confirmScheduleCancel(userScope) {
   const auth = await getCurrentAiAuthorization()
   if (!auth.ok) return { code: auth.errorCode || 'AUTH_REQUIRED', ok: false }
   if (!userScope || userScope !== auth.userScope) return { code: 'AUTH_STALE', ok: false }
-  const response = await fetch('/api/billing/cancel', {
-    body: '{}',
+  const response = await fetch('/api/ai-help', {
+    body: JSON.stringify({ confirmAction: 'schedule_cancel', confirmed: true }),
     headers: {
       Authorization: auth.authorizationHeader,
       'Content-Type': 'application/json',

@@ -1,6 +1,8 @@
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../aiRouteErrors.js'
 import { verifySupabaseUser } from '../verifySupabaseUser.js'
+import { sanitizeAiAction } from '../../../src/features/aiHelp/aiActions.js'
 import { answerAiHelpQuestion } from './service.js'
+import { executeConfirmedAiAction } from './executeAiAction.js'
 
 function parseBody(request) {
   if (typeof request.body === 'string') return JSON.parse(request.body)
@@ -36,6 +38,19 @@ export async function handleAiHelpRequest(request, response) {
     })
   }
 
+  if (body && Object.prototype.hasOwnProperty.call(body, 'confirmAction')) {
+    const result = await executeConfirmedAiAction({
+      actionId: body.confirmAction,
+      actorUserId: auth.user.id,
+      confirmed: body.confirmed === true,
+    })
+    return response.status(result.status || 400).json({
+      action: sanitizeAiAction(result.action || body.confirmAction)?.action || null,
+      code: result.code || null,
+      ok: result.ok === true,
+    })
+  }
+
   const result = await answerAiHelpQuestion({ body, userId: auth.user.id })
   if (!result.ok) {
     const code = result.code === 'MODEL_LIMITED'
@@ -62,7 +77,7 @@ export async function handleAiHelpRequest(request, response) {
     ...(Array.isArray(result.followUps) ? { followUps: result.followUps.slice(0, 2) } : {}),
     ...(result.handoff === true ? { handoff: true } : {}),
     ...(result.tool ? { tool: result.tool } : {}),
-    ...(result.confirmation?.action === 'schedule_cancel' ? { confirmation: { action: 'schedule_cancel' } } : {}),
+    ...(sanitizeAiAction(result.confirmation) ? { confirmation: sanitizeAiAction(result.confirmation) } : {}),
     ...(result.unansweredId ? { unansweredId: result.unansweredId } : {}),
   })
 }

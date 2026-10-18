@@ -151,9 +151,9 @@ describe('AiHelpPanel language', () => {
 
   it('waits for the cancellation button before calling billing', async () => {
     await i18n.changeLanguage('sv')
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
-      if (String(url).includes('/api/billing/cancel')) {
-        return { ok: true, json: async () => ({ ok: true }) }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options) => {
+      if (String(url).includes('/api/ai-help') && String(options?.body || '').includes('confirmAction')) {
+        return { ok: true, json: async () => ({ ok: true, action: 'schedule_cancel' }) }
       }
       return {
         ok: true,
@@ -174,11 +174,13 @@ describe('AiHelpPanel language', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
 
     const confirm = await screen.findByRole('button', { name: 'Bekräfta uppsägning' })
-    const billingCalls = () => fetchMock.mock.calls.filter((call) => String(call[0]).includes('/api/billing/cancel'))
-    expect(billingCalls()).toHaveLength(0)
+    const actionCalls = () => fetchMock.mock.calls.filter((call) => String(call[1]?.body || '').includes('confirmAction'))
+    expect(actionCalls()).toHaveLength(0)
     fireEvent.click(confirm)
-    await waitFor(() => expect(billingCalls()).toHaveLength(1))
-    expect(billingCalls()[0][1].body).toBe('{}')
+    await waitFor(() => expect(actionCalls()).toHaveLength(1))
+    const body = JSON.parse(actionCalls()[0][1].body)
+    expect(body).toEqual({ confirmAction: 'schedule_cancel', confirmed: true })
+    expect(JSON.stringify(body)).not.toContain('Avsluta mitt abonnemang')
     expect(await screen.findByText('Uppsägningen är schemalagd till periodens slut.')).toBeTruthy()
     fetchMock.mockRestore()
   })

@@ -351,7 +351,10 @@ function MoreSection({
               {t('signedInAs')} <strong>{email || t('unknownEmail')}</strong>
             </p>
 
-            <PlanUsagePanel authLoading={authLoading} isAuthenticated={isAuthenticated} />
+            <details open className="app-information">
+              <summary style={{ cursor: "pointer", fontWeight: 700 }}>Visa/dölj abonnemang & användning</summary>
+              <PlanUsagePanel authLoading={authLoading} isAuthenticated={isAuthenticated} />
+            </details>
             <PlanComparison authLoading={authLoading} isAuthenticated={isAuthenticated} />
 
             <div className="app-information">

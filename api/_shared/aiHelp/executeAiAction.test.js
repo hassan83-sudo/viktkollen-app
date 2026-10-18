@@ -147,4 +147,78 @@ describe('confirmed AI actions', () => {
     })
     expect(result).toMatchObject({ action: 'plan_change', code: 'INVALID_PLAN', ok: false, status: 400 })
   })
+
+  it('opens only an official hosted checkout and ignores card data', async () => {
+    const checkout = vi.fn(async () => ({
+      code: 'CHECKOUT_PENDING',
+      hostedCheckoutUrl: 'https://checkout.sumup.com/pay/safePage',
+      ok: false,
+      status: 202,
+    }))
+    const execute = vi.fn()
+    const result = await executeConfirmedAiAction({
+      actionId: 'hosted_checkout',
+      actorUserId: 'user-1',
+      cardNumber: '4242424242424242',
+      checkout,
+      confirmed: true,
+      execute,
+      planId: 'plan.prelim.sek.month.07',
+      userId: 'other-user',
+    })
+    expect(result).toMatchObject({
+      action: 'hosted_checkout',
+      code: 'CHECKOUT_PENDING',
+      hostedCheckoutUrl: 'https://checkout.sumup.com/pay/safePage',
+      ok: true,
+      status: 202,
+    })
+    expect(checkout).toHaveBeenCalledWith({ body: { plan_id: 'plan.prelim.sek.month.07' }, userId: 'user-1' })
+    expect(execute).not.toHaveBeenCalled()
+    expect(JSON.stringify(recentAiActions())).not.toMatch(/safePage|4242|other-user|user-1/)
+  })
+
+  it('blocks a refund, a stored-card retry and an unofficial payment page', async () => {
+    const checkout = vi.fn(async () => ({
+      code: 'CHECKOUT_PENDING',
+      hostedCheckoutUrl: 'https://evil.example/pay/1',
+      status: 202,
+    }))
+    const execute = vi.fn()
+    const refund = await executeConfirmedAiAction({
+      actionId: 'refund',
+      actorUserId: 'user-1',
+      checkout,
+      confirmed: true,
+      execute,
+    })
+    expect(refund).toMatchObject({ code: 'UNKNOWN_ACTION', ok: false })
+    const unconfirmed = await executeConfirmedAiAction({
+      actionId: 'hosted_checkout',
+      actorUserId: 'user-1',
+      checkout,
+      confirmed: false,
+      planId: 'plan.prelim.sek.month.07',
+    })
+    expect(unconfirmed.code).toBe('CONFIRMATION_REQUIRED')
+    const unsafe = await executeConfirmedAiAction({
+      actionId: 'hosted_checkout',
+      actorUserId: 'user-1',
+      checkout,
+      confirmed: true,
+      planId: 'plan.prelim.sek.month.07',
+    })
+    expect(unsafe).toMatchObject({ code: 'CHECKOUT_UNAVAILABLE', ok: false })
+    expect(unsafe.hostedCheckoutUrl).toBeUndefined()
+    expect(checkout).toHaveBeenCalledTimes(1)
+    expect(execute).not.toHaveBeenCalled()
+    const blocked = await executeConfirmedAiAction({
+      actionId: 'hosted_checkout',
+      actorUserId: 'user-1',
+      checkout: vi.fn(async () => ({ code: 'PROVIDER_NOT_CONFIGURED', status: 503 })),
+      confirmed: true,
+      planId: 'plan.prelim.sek.month.07',
+    })
+    expect(blocked).toMatchObject({ code: 'PROVIDER_NOT_CONFIGURED', ok: false, status: 503 })
+  })
 })

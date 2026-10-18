@@ -822,6 +822,115 @@ describe('AI Help language and model contract', () => {
     expect(result.answer).toContain('3')
   })
 
+  it('prepares a hosted payment only when no open subscription exists', async () => {
+    const fetchImpl = vi.fn()
+    const readers = {
+      plan: async () => ({ entitlements: [], plan: { currency: 'SEK', plan_id: 'plan.free', price_minor: 0 }, unavailable: false }),
+      subscription: async (id) => {
+        expect(id).toBe('user-a')
+        return { subscription: { plan_id: 'plan.free', status: 'NONE' }, unavailable: false }
+      },
+    }
+    const ready = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Nytt betalningsförsök för plan.prelim.sek.month.07 kort 4242424242424242', role: 'user' }], user_id: 'user-b' },
+      customerReaders: readers,
+      env: { OPENAI_API_KEY: 'test-key' },
+      fetchImpl,
+      userId: 'user-a',
+    })
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(ready.confirmation).toEqual({ action: 'hosted_checkout', planId: 'plan.prelim.sek.month.07' })
+    expect(ready.answer).toMatch(/Ingen betalning är gjord/)
+    expect(ready.answer).not.toMatch(/4242/)
+    expect(ready.handoff).toBe(true)
+
+    const sameAttempt = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Nytt betalningsförsök', role: 'user' }] },
+      customerReaders: {
+        plan: async () => ({ entitlements: [], plan: { currency: 'SEK', plan_id: 'plan.prelim.sek.month.04', price_minor: 400 }, unavailable: false }),
+        subscription: async () => ({
+          subscription: { plan_id: 'plan.prelim.sek.month.04', status: 'PAST_DUE' },
+          unavailable: false,
+        }),
+      },
+      env: { OPENAI_API_KEY: 'test-key' },
+      fetchImpl,
+      userId: 'user-a',
+    })
+    expect(sameAttempt.confirmation).toBeUndefined()
+    expect(sameAttempt.answer).toContain('PAST_DUE')
+    expect(sameAttempt.answer).toMatch(/blockerat/)
+    expect(sameAttempt.handoff).toBe(true)
+  })
+
+  it('explains charges and blocks refunds, receipts and transaction lists', async () => {
+    const fetchImpl = vi.fn()
+    const readers = {
+      plan: async () => ({
+        entitlements: [],
+        plan: { billing_interval: 'month', currency: 'SEK', plan_id: 'plan.prelim.sek.month.04', price_minor: 400 },
+        unavailable: false,
+      }),
+      subscription: async () => ({
+        subscription: {
+          current_period_end: '2026-11-01T00:00:00.000Z',
+          plan_id: 'plan.prelim.sek.month.04',
+          status: 'ACTIVE',
+        },
+        unavailable: false,
+      }),
+    }
+    const refund = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Jag vill ha återbetalning', role: 'user' }] },
+      customerReaders: readers,
+      env: { OPENAI_API_KEY: 'test-key' },
+      fetchImpl,
+      userId: 'user-a',
+    })
+    expect(refund.confirmation).toBeUndefined()
+    expect(refund.answer).toMatch(/Återbetalning är blockerad/)
+    expect(refund.handoff).toBe(true)
+
+    const receipt = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Visa mitt kvitto', role: 'user' }] },
+      customerReaders: readers,
+      env: {},
+      fetchImpl,
+      userId: 'user-a',
+    })
+    expect(receipt.answer).toContain('4 kr')
+    expect(receipt.answer).toMatch(/kan inte hämtas/)
+    expect(receipt.answer).toContain('ACTIVE')
+
+    const transactions = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Visa mina transaktioner', role: 'user' }] },
+      customerReaders: readers,
+      env: {},
+      fetchImpl,
+      userId: 'user-a',
+    })
+    expect(transactions.answer).toMatch(/kan inte listas/)
+    expect(transactions.answer).toContain('2026-11-01')
+    expect(fetchImpl).not.toHaveBeenCalled()
+
+    const reason = await answerAiHelpQuestion({
+      body: { messages: [{ content: 'Varför misslyckades min betalning?', role: 'user' }] },
+      customerReaders: {
+        subscription: async () => ({
+          subscription: { past_due_grace_until: '2026-10-20T00:00:00.000Z', plan_id: 'plan.prelim.sek.month.04', status: 'PAST_DUE' },
+          unavailable: false,
+        }),
+      },
+      env: {},
+      fetchImpl,
+      userId: 'user-a',
+    })
+    expect(reason.confirmation).toBeUndefined()
+    expect(reason.answer).toContain('PAST_DUE')
+    expect(reason.answer).toMatch(/inte tillgänglig/)
+    expect(reason.answer).not.toMatch(/insufficient|3DS|avslagskod/)
+  })
+
   it.each(['free', 'premium'])('answers verified %s plan facts without a model or plan gate', async (planId) => {
     const fetchImpl = vi.fn()
     const result = await answerAiHelpQuestion({

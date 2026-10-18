@@ -3,7 +3,7 @@ import { directHelpDestination, isDirectNavigationRequest } from './navigationRe
 import { sanitizeHelpTool, commitHelpSectionOpen } from './aiHelpTools.js'
 import { answerAiHelpQuestion, answerIsAllowed } from '../../../api/_shared/aiHelp/service.js'
 import { selectCustomerConversation } from '../../../api/_shared/aiHelp/customerConversation.js'
-import { renderCancelOffer, renderPlanChangeOffer, renderUndoCancelOffer, renderVerifiedAnswer, selectCustomerContext, wantsScheduleCancel } from '../../../api/_shared/aiHelp/customerContext.js'
+import { renderCancelOffer, renderHostedCheckoutOffer, renderPlanChangeOffer, renderRefundAnswer, renderUndoCancelOffer, renderVerifiedAnswer, selectCustomerContext, wantsScheduleCancel } from '../../../api/_shared/aiHelp/customerContext.js'
 import { helpChrome } from './uiChrome.js'
 
 describe('launch language navigation and customer conversations', () => {
@@ -81,5 +81,16 @@ describe('launch language navigation and customer conversations', () => {
     ])
     expect(follow.planChange).toBe(false)
     expect(follow.focus).toBe('renewal')
+    expect(selectCustomerContext('Hur betalar jag igen?').hostedCheckout).toBe(false)
+    expect(selectCustomerContext('Nytt betalningsförsök för plan.prelim.sek.month.07')).toMatchObject({
+      hostedCheckout: true,
+      planId: 'plan.prelim.sek.month.07',
+    })
+    const blocked = renderHostedCheckoutOffer({
+      context: { available: true, subscription: { status: 'PAST_DUE' } },
+      planId: 'plan.prelim.sek.month.07',
+    })
+    expect(blocked.confirmation).toBeNull()
+    expect(renderRefundAnswer({ context: { available: true, subscription: { status: 'ACTIVE' } }, languageCode: 'es' }).answer).not.toMatch(/Återbetalning/)
   })
 })

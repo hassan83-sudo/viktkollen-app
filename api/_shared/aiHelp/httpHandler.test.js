@@ -96,4 +96,36 @@ describe('AI Help authentication', () => {
     })
     expect(JSON.stringify(response.body)).not.toMatch(/hunter2|user-b|delete-account/)
   })
+
+  it('returns only an official hosted checkout page', async () => {
+    verifySupabaseUser.mockResolvedValue({ authenticated: true, user: { id: 'user-a' } })
+    executeConfirmedAiAction.mockResolvedValue({
+      action: 'hosted_checkout',
+      code: 'CHECKOUT_PENDING',
+      hostedCheckoutUrl: 'https://checkout.sumup.com.evil/pay/abc',
+      ok: true,
+      status: 202,
+    })
+    const response = responseDouble()
+    await handleAiHelpRequest({
+      body: { confirmAction: 'hosted_checkout', confirmed: true, planId: 'plan.prelim.sek.month.07', cardNumber: '4242424242424242' },
+      method: 'POST',
+    }, response)
+    expect(response.body.hostedCheckoutUrl).toBeUndefined()
+    expect(JSON.stringify(response.body)).not.toMatch(/4242|evil/)
+    executeConfirmedAiAction.mockResolvedValue({
+      action: 'hosted_checkout',
+      code: 'CHECKOUT_PENDING',
+      hostedCheckoutUrl: 'https://checkout.sumup.com/pay/safePage',
+      ok: true,
+      status: 202,
+    })
+    const allowed = responseDouble()
+    await handleAiHelpRequest({
+      body: { confirmAction: 'hosted_checkout', confirmed: true, planId: 'plan.prelim.sek.month.07' },
+      method: 'POST',
+    }, allowed)
+    expect(allowed.body.hostedCheckoutUrl).toBe('https://checkout.sumup.com/pay/safePage')
+    expect(allowed.body.ok).toBe(true)
+  })
 })

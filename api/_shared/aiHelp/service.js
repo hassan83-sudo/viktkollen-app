@@ -21,7 +21,11 @@ import { createCostStoreFromEnv } from './supabaseCostStore.js'
 import {
   loadCustomerContext,
   renderCancelOffer,
+  renderHostedCheckoutOffer,
   renderPlanChangeOffer,
+  renderReceiptAnswer,
+  renderRefundAnswer,
+  renderTransactionAnswer,
   renderUndoCancelOffer,
   renderVerifiedAnswer,
   verifiedPriceMinor,
@@ -175,8 +179,19 @@ function verifiedCustomerResult(validated, selection, customer) {
       ? renderUndoCancelOffer({ context: customer, languageCode: validated.language.code })
       : selection.planChange
         ? renderPlanChangeOffer({ context: customer, languageCode: validated.language.code, planId: selection.planId })
-        : { answer: renderVerifiedAnswer({ context: customer, languageCode: validated.language.code, selection }), confirmation: null }
-  const focus = selection.focus === 'plan-change' || selection.focus === 'undo' ? 'subscription' : selection.focus
+        : selection.refundRequest
+          ? renderRefundAnswer({ context: customer, languageCode: validated.language.code })
+          : selection.receiptRequest
+            ? renderReceiptAnswer({ context: customer, languageCode: validated.language.code })
+            : selection.transactionRequest
+              ? renderTransactionAnswer({ context: customer, languageCode: validated.language.code })
+              : selection.hostedCheckout
+                ? renderHostedCheckoutOffer({ context: customer, languageCode: validated.language.code, planId: selection.planId })
+                : { answer: renderVerifiedAnswer({ context: customer, languageCode: validated.language.code, selection }), confirmation: null }
+  const paymentFollowUp = ['hosted-checkout', 'refund', 'receipt', 'transactions'].includes(selection.focus)
+  const focus = selection.focus === 'plan-change' || selection.focus === 'undo'
+    ? 'subscription'
+    : (paymentFollowUp ? 'payment' : selection.focus)
   return {
     answer: rendered.answer,
     featureIds: ['settings.plan'],
@@ -222,7 +237,7 @@ export async function answerAiHelpQuestion({
         userId,
       })
       : { available: false, reason: 'unauthenticated' }
-    if (selection.cancel || selection.undoCancel || selection.planChange || selection.direct || !customer.available || !env.OPENAI_API_KEY) {
+    if (selection.cancel || selection.undoCancel || selection.planChange || selection.hostedCheckout || selection.refundRequest || selection.receiptRequest || selection.transactionRequest || selection.direct || !customer.available || !env.OPENAI_API_KEY) {
       return verifiedCustomerResult(validated, selection, customer)
     }
   }

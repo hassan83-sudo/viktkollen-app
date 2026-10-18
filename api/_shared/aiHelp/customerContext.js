@@ -5,7 +5,7 @@ import { readDurableQuota } from '../billing/quotaRead.js'
 import { readDurableUserSubscription } from '../billing/subscriptionRead.js'
 import { readUsageSnapshot } from '../billing/usageSnapshotRead.js'
 import { createSupabaseAdminClient } from '../supabaseServer.js'
-import { localizedCancel, localizedCustomer, localizedPlanChange, localizedUndoCancel } from './localizedCustomer.js'
+import { localizedCancel, localizedCustomer, localizedPaymentLimit, localizedPlanChange, localizedUndoCancel } from './localizedCustomer.js'
 import { featureSteps, loginGuidance, troubleshootingLine } from '../../../src/features/aiHelp/launchGuidance.js'
 
 const LAUNCH_FEATURES = Object.freeze([
@@ -92,6 +92,29 @@ export function requestedPlanChange(question) {
   return { planId: acceptedPlanId(named?.[1] || '') }
 }
 
+export function requestedHostedCheckout(question) {
+  const text = String(question || '')
+  if (HOW_TO.test(text) || /inte.{0,40}betal|don.?t pay|do not pay|no quiero pagar|لا أريد الدفع|återbetal|refund|reembolso|استرداد/iu.test(text)) return null
+  const wants = /betala(?:\s+\S+){0,6}\s+igen|nytt betalningsförsök|försök(?:\s+\S+){0,4}\s+betala|pay again|try paying|new payment attempt|pagar de nuevo|nuevo intento de pago|ادفع مرة أخرى|محاولة دفع جديدة/iu.test(text)
+  if (!wants) return null
+  const named = text.match(/\b(plan\.[A-Za-z0-9._-]{1,74})\b/)
+  return { planId: acceptedPlanId(named?.[1] || '') }
+}
+
+export function wantsRefund(question) {
+  const text = String(question || '')
+  if (HOW_TO.test(text) || /inte.{0,30}(återbetal|refund)|don.?t refund|no quiero reembolso/iu.test(text)) return false
+  return /återbetal|refund|reembolso|استرداد/iu.test(text)
+}
+
+export function wantsReceipt(question) {
+  return /mitt kvitto|kvittot|payment receipt|my receipt|mi recibo|إيصالي/iu.test(String(question || ''))
+}
+
+export function wantsTransactions(question) {
+  return /mina transaktioner|betalningshistorik|payment history|my transactions|mis transacciones|معاملاتي/iu.test(String(question || ''))
+}
+
 function noCustomerSelection() {
   return {
     cancel: false,
@@ -101,8 +124,12 @@ function noCustomerSelection() {
     personal: false,
     planChange: false,
     planId: '',
+    receiptRequest: false,
+    refundRequest: false,
     slices: [],
+    transactionRequest: false,
     undoCancel: false,
+    hostedCheckout: false,
   }
 }
 
@@ -116,6 +143,10 @@ export function selectCustomerContext(question) {
   const cancel = wantsScheduleCancel(text)
   const undoCancel = wantsUndoCancel(text)
   const planRequest = requestedPlanChange(text)
+  const hostedRequest = requestedHostedCheckout(text)
+  const refundRequest = wantsRefund(text)
+  const receiptRequest = wantsReceipt(text)
+  const transactionRequest = wantsTransactions(text)
   const problem = /kvoten är slut|betalningen gick inte|förnyas inte|redan uppsagt|priset stämmer inte|quota is used up|payment failed|does not renew|already cancelled|already canceled|cuota agotada|pago fall|no se renueva|الحصة نفدت|فشل الدفع|لا يتجدد/iu.test(text)
   const why = /varför kan jag inte|why can.?t i|kan inte använda|cannot use|can't use|doesn.?t work|fungerar inte|por qué no puedo|no funciona|لماذا لا|لا يعمل/i.test(text)
   const personal = /\b(mitt|mina|min|jag|my|mi|mis|tengo|me)\b/i.test(text) || /\bi have\b|\bdo i\b/i.test(text) || /har jag|اشتراكي|حسابي|خطتي|لدي|حصتي|دفعي/i.test(text)
@@ -127,12 +158,12 @@ export function selectCustomerContext(question) {
   const aboutEnt = /ingår|entitlement|planinnehåll|incluye|incluido|مشمول/i.test(text)
   const login = /logga in|inlogg|sign in|login|iniciar sesión|تسجيل الدخول/i.test(text)
 
-  const accountTopic = Boolean(feature || login || cancel || undoCancel || planRequest || problem || why || aboutSub || aboutPlan || aboutUsage || aboutPay || aboutEnt)
-  if (!accountTopic || (navigation && !why && !cancel && !undoCancel && !planRequest && !problem && !aboutUsage && !aboutPay)) {
+  const accountTopic = Boolean(feature || login || cancel || undoCancel || planRequest || hostedRequest || refundRequest || receiptRequest || transactionRequest || problem || why || aboutSub || aboutPlan || aboutUsage || aboutPay || aboutEnt)
+  if (!accountTopic || (navigation && !why && !cancel && !undoCancel && !planRequest && !hostedRequest && !refundRequest && !receiptRequest && !transactionRequest && !problem && !aboutUsage && !aboutPay)) {
     return noCustomerSelection()
   }
 
-  if (login && !feature && !aboutSub && !aboutUsage && !aboutPay && !undoCancel && !planRequest) {
+  if (login && !feature && !aboutSub && !aboutUsage && !aboutPay && !undoCancel && !planRequest && !hostedRequest && !refundRequest) {
     return {
       ...noCustomerSelection(),
       direct: true,
@@ -141,22 +172,27 @@ export function selectCustomerContext(question) {
     }
   }
 
-  if (!personal && !why && !cancel && !undoCancel && !planRequest && !problem) {
+  if (!personal && !why && !cancel && !undoCancel && !planRequest && !hostedRequest && !refundRequest && !receiptRequest && !transactionRequest && !problem) {
     return noCustomerSelection()
   }
 
   const slices = new Set()
-  if (cancel || undoCancel || planRequest || aboutSub || why || problem) slices.add('subscription')
-  if (cancel || planRequest || aboutPlan || aboutSub || why || /pris|price|precio|سعر/iu.test(text)) slices.add('plan')
+  if (cancel || undoCancel || planRequest || hostedRequest || refundRequest || receiptRequest || transactionRequest || aboutSub || why || problem) slices.add('subscription')
+  if (cancel || planRequest || hostedRequest || receiptRequest || aboutPlan || aboutSub || why || /pris|price|precio|سعر/iu.test(text)) slices.add('plan')
   if (aboutUsage || (why && feature) || (feature && /kvar|kvot|använt|remaining/i.test(text)) || /kvoten är slut|quota is used up|cuota agotada|الحصة نفدت/iu.test(text)) slices.add('usage')
   if (aboutEnt || (why && (feature || aboutPlan || aboutSub))) slices.add('entitlements')
-  if (cancel || undoCancel || aboutPay || why || /betalningen gick inte|payment failed|pago fall|فشل الدفع/iu.test(text)) slices.add('payment')
+  if (cancel || undoCancel || hostedRequest || refundRequest || receiptRequest || transactionRequest || aboutPay || why || /betalningen gick inte|payment failed|pago fall|فشل الدفع/iu.test(text)) slices.add('payment')
 
   let focus = 'subscription'
   const keepPlanChange = Boolean(planRequest) && !cancel && !undoCancel
+  const keepHosted = Boolean(hostedRequest) && !cancel && !undoCancel && !keepPlanChange && !refundRequest
   if (cancel) focus = 'cancel'
   else if (undoCancel) focus = 'undo'
   else if (keepPlanChange) focus = 'plan-change'
+  else if (refundRequest) focus = 'refund'
+  else if (receiptRequest) focus = 'receipt'
+  else if (transactionRequest) focus = 'transactions'
+  else if (keepHosted) focus = 'hosted-checkout'
   else if (aboutPay && !feature) focus = 'payment'
   else if (why) focus = 'access'
   else if (/förny|renewal|renueva|renovación|تجديد|förnyas inte|does not renew|no se renueva|لا يتجدد/iu.test(text)) focus = 'renewal'
@@ -166,16 +202,21 @@ export function selectCustomerContext(question) {
   else if (aboutPlan && !aboutSub) focus = 'plan'
 
   const rephrase = /förklara|enklare|annat sätt|andra ord|mer detalj|utveckla|skillnad|explain|another way|explica|detalle|اشرح|وضح/i.test(text)
-  const writes = cancel || undoCancel || Boolean(planRequest)
+  const writes = cancel || undoCancel || Boolean(planRequest) || keepHosted
+  const blockedPayment = refundRequest || receiptRequest || transactionRequest
   return {
     cancel,
-    direct: writes || problem || !rephrase,
+    direct: writes || problem || blockedPayment || !rephrase,
     feature,
     focus,
+    hostedCheckout: keepHosted,
     personal: true,
     planChange: keepPlanChange,
-    planId: keepPlanChange ? planRequest.planId : '',
+    planId: keepPlanChange ? planRequest.planId : (keepHosted ? hostedRequest.planId : ''),
+    receiptRequest,
+    refundRequest,
     slices: [...slices],
+    transactionRequest,
     undoCancel: undoCancel && !cancel,
   }
 }
@@ -365,6 +406,10 @@ function knowledgeSentence(feature, swedish) {
 }
 
 export function renderVerifiedAnswer({ context, languageCode = 'sv', selection } = {}) {
+  if (selection?.focus === 'refund') return renderRefundAnswer({ context, languageCode }).answer
+  if (selection?.focus === 'receipt') return renderReceiptAnswer({ context, languageCode }).answer
+  if (selection?.focus === 'transactions') return renderTransactionAnswer({ context, languageCode }).answer
+  if (selection?.focus === 'hosted-checkout') return renderHostedCheckoutOffer({ context, languageCode, planId: selection.planId }).answer
   const localized = localizedCustomer(context, selection, languageCode)
   if (localized) return localized
   const swedish = isSwedish(languageCode)
@@ -377,6 +422,10 @@ export function renderVerifiedAnswer({ context, languageCode = 'sv', selection }
   if (selection?.focus === 'cancel') return renderCancelOffer({ context, languageCode }).answer
   if (selection?.focus === 'undo') return renderUndoCancelOffer({ context, languageCode }).answer
   if (selection?.focus === 'plan-change') return renderPlanChangeOffer({ context, languageCode, planId: selection.planId }).answer
+  if (selection?.focus === 'refund') return renderRefundAnswer({ context, languageCode }).answer
+  if (selection?.focus === 'receipt') return renderReceiptAnswer({ context, languageCode }).answer
+  if (selection?.focus === 'transactions') return renderTransactionAnswer({ context, languageCode }).answer
+  if (selection?.focus === 'hosted-checkout') return renderHostedCheckoutOffer({ context, languageCode, planId: selection.planId }).answer
   if (selection?.focus === 'renewal') return renderRenewalAnswer({ context, languageCode })
   if (selection?.focus === 'access') return renderAccessAnswer({ context, languageCode, selection })
   if (selection?.focus === 'usage' && selection?.slices?.includes('plan')) {
@@ -505,6 +554,102 @@ function renderEntitlementAnswer({ context, languageCode }) {
     if (row.limit_kind === 'UNLIMITED') return `${row.feature}: ${swedish ? 'obegränsat' : 'unlimited'}`
     return `${row.feature}: ${row.limit_value ?? (swedish ? 'okänt tak' : 'unknown limit')}`
   }).join(' ')
+}
+
+function paymentFollowUp(swedish) {
+  return swedish
+    ? 'Det olösta betalningsproblemet kan följas upp med mänsklig support. Ingen supportförfrågan har skapats.'
+    : 'The unsolved payment problem can be followed up with human support. No support request has been created.'
+}
+
+function openSubscription(subscription) {
+  return Boolean(subscription && ['TRIALING', 'ACTIVE', 'PAST_DUE', 'PAUSED'].includes(subscription.status))
+}
+
+export function renderRefundAnswer({ context, languageCode = 'sv' } = {}) {
+  const localized = localizedPaymentLimit('refund', context, languageCode)
+  if (localized) return localized
+  const swedish = isSwedish(languageCode)
+  const status = context?.payment?.status || context?.subscription?.status
+  return {
+    answer: swedish
+      ? `Återbetalning är blockerad. Befintlig billing gör ingen återbetalning, och SumUp-integrationen har inget återbetalningsanrop. Status är ${status || 'okänd'}. Inget har ändrats. ${paymentFollowUp(true)}`
+      : `A refund is blocked. Existing billing does not refund, and the SumUp integration has no refund call. The status is ${status || 'unknown'}. Nothing has been changed. ${paymentFollowUp(false)}`,
+    confirmation: null,
+  }
+}
+
+export function renderReceiptAnswer({ context, languageCode = 'sv' } = {}) {
+  const localized = localizedPaymentLimit('receipt', context, languageCode)
+  if (localized) return localized
+  const swedish = isSwedish(languageCode)
+  const status = context?.payment?.status || context?.subscription?.status || (swedish ? 'okänd' : 'unknown')
+  const price = formatPrice(context?.plan)
+  const end = context?.subscription?.current_period_end
+  const charge = price
+    ? (swedish ? `Den verifierade debiteringen är ${price} för ${context.plan.plan_id}.` : `The verified charge is ${price} for ${context.plan.plan_id}.`)
+    : (swedish ? 'Ingen verifierad debitering kan visas.' : 'No verified charge can be shown.')
+  return {
+    answer: swedish
+      ? `Ett kvitto kan inte hämtas. ${charge} Betalningsstatus är ${status}.${end ? ` Perioden slutar ${end}.` : ''} ${paymentFollowUp(true)}`
+      : `A receipt cannot be retrieved. ${charge} The payment status is ${status}.${end ? ` The period ends ${end}.` : ''} ${paymentFollowUp(false)}`,
+    confirmation: null,
+  }
+}
+
+export function renderTransactionAnswer({ context, languageCode = 'sv' } = {}) {
+  const localized = localizedPaymentLimit('transactions', context, languageCode)
+  if (localized) return localized
+  const swedish = isSwedish(languageCode)
+  const status = context?.payment?.status || context?.subscription?.status || (swedish ? 'okänd' : 'unknown')
+  const end = context?.subscription?.current_period_end
+  const reason = swedish
+    ? 'Orsaken till en misslyckad betalning lagras inte.'
+    : 'The reason for a failed payment is not stored.'
+  return {
+    answer: swedish
+      ? `Enskilda transaktioner kan inte listas. Betalningsstatus är ${status}.${end ? ` Perioden slutar ${end}.` : ''} ${reason} ${paymentFollowUp(true)}`
+      : `Individual transactions cannot be listed. The payment status is ${status}.${end ? ` The period ends ${end}.` : ''} ${reason} ${paymentFollowUp(false)}`,
+    confirmation: null,
+  }
+}
+
+export function renderHostedCheckoutOffer({ context, languageCode = 'sv', planId = '' } = {}) {
+  const localized = localizedPaymentLimit('hosted', context, languageCode, planId)
+  if (localized) return localized
+  const swedish = isSwedish(languageCode)
+  if (!context?.available) {
+    return {
+      answer: swedish
+        ? `Jag kan inte verifiera betalningen. Ingen betalning har startats.`
+        : 'I cannot verify the payment. No payment has been started.',
+      confirmation: null,
+    }
+  }
+  const subscription = context.subscription
+  if (openSubscription(subscription)) {
+    return {
+      answer: swedish
+        ? `Status är ${subscription.status}. Ett nytt kortförsök är blockerat: chatten kan inte dra ett sparat betalmedel och får inte skapa en andra debitering. Orsaken till en misslyckad betalning lagras inte. Ingen betalning har startats. ${paymentFollowUp(true)}`
+        : `The status is ${subscription.status}. A new card attempt is blocked: chat cannot charge a stored payment instrument and must not create a second charge. The reason for a failed payment is not stored. No payment has been started. ${paymentFollowUp(false)}`,
+      confirmation: null,
+    }
+  }
+  const safePlanId = acceptedPlanId(planId)
+  if (!safePlanId) {
+    return {
+      answer: swedish
+        ? 'Namnge en befintlig betalplan för ett nytt försök. Ingen betalning har startats.'
+        : 'Name an existing paid plan for a new attempt. No payment has been started.',
+      confirmation: null,
+    }
+  }
+  return {
+    answer: swedish
+      ? `Ett nytt betalningsförsök för ${safePlanId} öppnar SumUps betalningssida först när du bekräftar. Kortnummer skrivs inte här. Ingen betalning är gjord ännu.`
+      : `A new payment attempt for ${safePlanId} opens the SumUp payment page only after you confirm. Card numbers are not entered here. No payment has been made yet.`,
+    confirmation: { action: 'hosted_checkout', planId: safePlanId },
+  }
 }
 
 function renderPaymentAnswer({ context, languageCode }) {

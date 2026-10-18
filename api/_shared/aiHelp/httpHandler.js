@@ -1,6 +1,7 @@
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../aiRouteErrors.js'
 import { verifySupabaseUser } from '../verifySupabaseUser.js'
 import { knownAiActionId, sanitizeAiAction } from '../../../src/features/aiHelp/aiActions.js'
+import { officialSumUpHostedCheckoutUrl } from '../../../src/features/aiHelp/hostedCheckoutUrl.js'
 import { answerAiHelpQuestion } from './service.js'
 import { executeConfirmedAiAction } from './executeAiAction.js'
 
@@ -45,10 +46,12 @@ export async function handleAiHelpRequest(request, response) {
       confirmed: body.confirmed === true,
       planId: body.planId,
     })
+    const hostedCheckoutUrl = officialSumUpHostedCheckoutUrl(result.hostedCheckoutUrl)
     return response.status(result.status || 400).json({
       action: knownAiActionId(result.action),
       code: result.code || null,
       ok: result.ok === true,
+      ...(hostedCheckoutUrl ? { hostedCheckoutUrl } : {}),
     })
   }
 

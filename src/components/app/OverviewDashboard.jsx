@@ -986,7 +986,7 @@ function OverviewPrimaryActions({
                 }
               }}
             >
-              Välj bild
+              {t('home:chooseImage')}
             </button>
           )}
           <button

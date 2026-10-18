@@ -284,6 +284,46 @@ describe('confirmed AI actions', () => {
       actionId: 'camera_fix',
       actorUserId: 'user-1',
       confirmed: true,
-    })).toMatchObject({ code: 'UNKNOWN_ACTION', ok: false })
+    })).toMatchObject({ code: 'UNKNOWN_ACTION', ok: false, outcome: 'failed', resolved: false })
+  })
+
+  it('marks an action solved only after a fresh read of the same user', async () => {
+    const execute = vi.fn(async () => ({ ok: true, status: 200 }))
+    const pending = await executeConfirmedAiAction({
+      actionId: 'undo_cancel',
+      actorUserId: 'user-1',
+      confirmed: true,
+      execute,
+      readSubscription: async (userId) => {
+        expect(userId).toBe('user-1')
+        return { subscription: { cancel_at_period_end: true, status: 'ACTIVE' }, unavailable: false }
+      },
+      userId: 'other-user',
+    })
+    expect(pending).toMatchObject({ code: 'completed', ok: true, outcome: 'pending', resolved: false })
+    const verified = await executeConfirmedAiAction({
+      actionId: 'undo_cancel',
+      actorUserId: 'user-1',
+      confirmed: true,
+      execute,
+      readSubscription: async () => ({ subscription: { cancel_at_period_end: false, status: 'ACTIVE' }, unavailable: false }),
+    })
+    expect(verified).toMatchObject({ outcome: 'verified', resolved: true })
+    const reset = await executeConfirmedAiAction({
+      accountEmail: 'owner@example.test',
+      actionId: 'password_reset',
+      actorUserId: 'user-1',
+      confirmed: true,
+      passwordReset: async () => ({ code: 'RESET_EMAIL_SENT', ok: true, status: 200 }),
+    })
+    expect(reset).toMatchObject({ outcome: 'pending', resolved: false })
+    const checkout = await executeConfirmedAiAction({
+      actionId: 'hosted_checkout',
+      actorUserId: 'user-1',
+      checkout: async () => ({ code: 'CHECKOUT_PENDING', hostedCheckoutUrl: 'https://checkout.sumup.com/pay/safePage', status: 202 }),
+      confirmed: true,
+      planId: 'plan.prelim.sek.month.07',
+    })
+    expect(checkout).toMatchObject({ outcome: 'pending', resolved: false })
   })
 })

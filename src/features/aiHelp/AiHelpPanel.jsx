@@ -61,14 +61,18 @@ function AiHelpPanel() {
       setMessages((current) => {
         const message = current[index]
         if (!message?.confirmation?.action) return current
+        const verified = result.resolved === true && result.outcome === 'verified'
+        const pending = result.ok && result.outcome === 'pending'
         const done = {
           delete_account: chrome.deleteDone,
-          hosted_checkout: chrome.checkoutReady,
-          password_reset: chrome.passwordDone,
           plan_change: chrome.planDone,
           schedule_cancel: chrome.cancelDone,
           undo_cancel: chrome.undoDone,
-        }[message.confirmation.action] || chrome.cancelFailed
+        }[message.confirmation.action]
+        const waiting = {
+          hosted_checkout: chrome.checkoutReady,
+          password_reset: chrome.passwordDone,
+        }[message.confirmation.action] || chrome.notSolved
         const failed = {
           delete_account: chrome.deleteFailed,
           hosted_checkout: chrome.checkoutFailed,
@@ -76,16 +80,21 @@ function AiHelpPanel() {
           plan_change: chrome.planFailed,
           schedule_cancel: chrome.cancelFailed,
           undo_cancel: chrome.undoFailed,
-        }[message.confirmation.action] || chrome.cancelFailed
+        }[message.confirmation.action] || chrome.notSolved
         const hostedCheckoutUrl = result.ok ? officialSumUpHostedCheckoutUrl(result.hostedCheckoutUrl) : ''
         if (hostedCheckoutUrl) window.open(hostedCheckoutUrl, '_blank', 'noopener,noreferrer')
         const next = current.map((item, itemIndex) => (
           itemIndex === index ? { ...item, confirmation: null } : item
         ))
+        const content = verified && done
+          ? done
+          : pending && (message.confirmation.action !== 'hosted_checkout' || hostedCheckoutUrl)
+            ? waiting
+            : failed
         return [
           ...next,
           {
-            content: result.ok && (message.confirmation.action !== 'hosted_checkout' || hostedCheckoutUrl) ? done : failed,
+            content,
             featureIds: [],
             hostedCheckoutUrl,
             role: 'assistant',

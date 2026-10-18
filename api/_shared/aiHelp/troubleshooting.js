@@ -1,5 +1,5 @@
 const HOW_TO = /hur |how do|how can|what happens|cómo|como |كيف|ماذا يحدث/i
-const PROBLEM = /fungerar inte|funkar inte|problem med|fel på|kan inte använda|kan inte logga|doesn.?t work|not working|problem with|cannot use|can't use|can't sign in|no funciona|problema con|لا يعمل|مشكلة في|لا أستطيع/iu
+const PROBLEM = /fungerar inte|funkar inte|problem med|fel på|kan inte använda|kan inte logga|doesn.?t work|not working|problem with|cannot use|can't use|can't sign in|no funciona|problema con|لا يعمل|لا تعمل|مشكلة في|لا أستطيع/iu
 const RESOLVED = /fungerar det nu|är det (?:nu )?löst|is it fixed|does it work now|¿ya funciona|هل تم الحل/iu
 const NEGATED = /inget problem|no problem|sin problema|لا توجد مشكلة|inte.{0,24}problem/iu
 

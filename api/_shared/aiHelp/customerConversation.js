@@ -1,4 +1,5 @@
 import { selectCustomerContext } from './customerContext.js'
+import { caseControl } from './caseOutcome.js'
 import { troubleProbeSentence } from './troubleshooting.js'
 
 function withoutWrites(selection) {
@@ -27,14 +28,25 @@ function withoutWrites(selection) {
   }
 }
 
+function canContinue(prior) {
+  return Boolean(prior?.personal) && !prior.secretRefused && !prior.emailChange && !prior.profileChange && !prior.deleteAccount
+}
+
 export function selectCustomerConversation(messages) {
   const latest = messages.at(-1)?.content || ''
   const current = selectCustomerContext(latest)
   const previous = messages.slice(0, -1).filter((m) => m.role === 'user').at(-1)
   const prior = previous ? selectCustomerContext(previous.content) : null
   const safePrior = prior?.trouble && !prior.cancel && !prior.deleteAccount && !prior.passwordReset && !prior.planChange && !prior.hostedCheckout && !prior.undoCancel
+  const control = caseControl(latest)
+  if (control === 'continue' && canContinue(prior) && !current.cancel && !current.deleteAccount && !current.passwordReset && !current.planChange && !current.hostedCheckout) {
+    return { ...prior, caseControl: '', direct: true, personal: true }
+  }
+  if ((control === 'abort' || control === 'unconfirmed') && canContinue(prior)) {
+    return { ...withoutWrites(prior), caseControl: control }
+  }
   if (safePrior && current.resolvedCheck && !current.troubleDomain) {
-    return { ...withoutWrites(prior), resolvedCheck: true }
+    return { ...withoutWrites(prior), caseControl: '', resolvedCheck: true }
   }
   const probe = troubleProbeSentence(latest)
   if (safePrior && probe && !current.trouble) return selectCustomerContext(probe)

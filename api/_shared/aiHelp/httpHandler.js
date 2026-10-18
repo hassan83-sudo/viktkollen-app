@@ -54,6 +54,8 @@ export async function handleAiHelpRequest(request, response) {
       action: knownAiActionId(result.action),
       code: result.code || null,
       ok: result.ok === true,
+      outcome: ['blocked', 'failed', 'pending', 'verified'].includes(result.outcome) ? result.outcome : 'failed',
+      resolved: result.resolved === true,
       ...(hostedCheckoutUrl ? { hostedCheckoutUrl } : {}),
     })
   }

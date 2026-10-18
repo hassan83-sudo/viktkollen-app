@@ -43,7 +43,7 @@ describe('AI Help account boundaries', () => {
     const reply = await requestAiHelpReply({ messages: [{ content: 'Byt mitt abonnemang', role: 'user' }] })
     expect(reply.confirmation).toEqual({ action: 'plan_change', planId: 'plan.prelim.sek.month.07', userScope: 'first' })
     fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, action: 'plan_change' }) })
-    expect(await confirmAiAction('first', reply.confirmation)).toEqual({ code: '', hostedCheckoutUrl: '', ok: true, subscription: null })
+    expect(await confirmAiAction('first', reply.confirmation)).toEqual({ code: '', hostedCheckoutUrl: '', ok: true, outcome: 'pending', resolved: false, subscription: null })
     const body = JSON.parse(fetchMock.mock.calls.at(-1)[1].body)
     expect(body).toEqual({ confirmAction: 'plan_change', confirmed: true, planId: 'plan.prelim.sek.month.07' })
     expect(JSON.stringify(body)).not.toMatch(/price|Byt mitt/)

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getLanguageDefinition, normalizeLanguageCode } from '../../i18n/languages.js'
-import { confirmScheduleCancel, requestAiHelpReply } from './aiHelpClient.js'
+import { confirmAiAction, requestAiHelpReply } from './aiHelpClient.js'
 import { reportClientBug } from '../../services/bugMonitor/bugMonitorClient.js'
 import { requestOpenHelpSection } from './aiHelpTools.js'
 import { isDirectNavigationRequest } from './navigationRequest.js'
@@ -50,22 +50,33 @@ function AiHelpPanel() {
     return () => window.removeEventListener('hashchange', syncHash)
   }, [])
 
-  async function confirmMessageCancel(index) {
+  async function confirmMessageAction(index) {
     if (pending) return
+    const confirmation = messages[index]?.confirmation
     setPending(true)
     setNotice('')
     try {
-      const result = await confirmScheduleCancel(messages[index]?.confirmation?.userScope)
+      const result = await confirmAiAction(confirmation?.userScope, confirmation)
       setMessages((current) => {
         const message = current[index]
-        if (message?.confirmation?.action !== 'schedule_cancel') return current
+        if (!message?.confirmation?.action) return current
+        const done = {
+          plan_change: chrome.planDone,
+          schedule_cancel: chrome.cancelDone,
+          undo_cancel: chrome.undoDone,
+        }[message.confirmation.action] || chrome.cancelFailed
+        const failed = {
+          plan_change: chrome.planFailed,
+          schedule_cancel: chrome.cancelFailed,
+          undo_cancel: chrome.undoFailed,
+        }[message.confirmation.action] || chrome.cancelFailed
         const next = current.map((item, itemIndex) => (
           itemIndex === index ? { ...item, confirmation: null } : item
         ))
         return [
           ...next,
           {
-            content: result.ok ? chrome.cancelDone : chrome.cancelFailed,
+            content: result.ok ? done : failed,
             featureIds: [],
             role: 'assistant',
             status: 'answered',
@@ -192,9 +203,29 @@ function AiHelpPanel() {
                     className="secondary-button ai-help-action"
                     type="button"
                     disabled={pending}
-                    onClick={() => confirmMessageCancel(index)}
+                    onClick={() => confirmMessageAction(index)}
                   >
                     {chrome.confirmCancel}
+                  </button>
+                )}
+                {message.confirmation?.action === 'undo_cancel' && (
+                  <button
+                    className="secondary-button ai-help-action"
+                    type="button"
+                    disabled={pending}
+                    onClick={() => confirmMessageAction(index)}
+                  >
+                    {chrome.confirmUndo}
+                  </button>
+                )}
+                {message.confirmation?.action === 'plan_change' && message.confirmation.planId && (
+                  <button
+                    className="secondary-button ai-help-action"
+                    type="button"
+                    disabled={pending}
+                    onClick={() => confirmMessageAction(index)}
+                  >
+                    {chrome.confirmPlan}
                   </button>
                 )}
                 {(message.followUps || []).map((question) => (

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getCurrentAiAuthorization, hasSameAiAuthUser } from '../../services/ai/aiAuthTransport.js'
-import { confirmScheduleCancel, requestAiHelpReply } from './aiHelpClient.js'
+import { confirmAiAction, confirmScheduleCancel, requestAiHelpReply } from './aiHelpClient.js'
 
 vi.mock('../../services/ai/aiAuthTransport.js', () => ({
   getCurrentAiAuthorization: vi.fn(),
@@ -33,5 +33,21 @@ describe('AI Help account boundaries', () => {
     expect((await requestAiHelpReply()).code).toBe('AUTH_REQUIRED')
     expect((await confirmScheduleCancel('first')).code).toBe('AUTH_REQUIRED')
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('sends only the confirmed plan id and drops invented billing actions', async () => {
+    getCurrentAiAuthorization.mockResolvedValue({ ok: true, userScope: 'first', authorizationHeader: 'Bearer first' })
+    hasSameAiAuthUser.mockResolvedValue(true)
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, answer: 'Väntar på bekräftelse.', confirmation: { action: 'plan_change', planId: 'plan.prelim.sek.month.07', price_minor: 1 } }) }))
+    vi.stubGlobal('fetch', fetchMock)
+    const reply = await requestAiHelpReply({ messages: [{ content: 'Byt mitt abonnemang', role: 'user' }] })
+    expect(reply.confirmation).toEqual({ action: 'plan_change', planId: 'plan.prelim.sek.month.07', userScope: 'first' })
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, action: 'plan_change' }) })
+    expect(await confirmAiAction('first', reply.confirmation)).toEqual({ ok: true, subscription: null })
+    const body = JSON.parse(fetchMock.mock.calls.at(-1)[1].body)
+    expect(body).toEqual({ confirmAction: 'plan_change', confirmed: true, planId: 'plan.prelim.sek.month.07' })
+    expect(JSON.stringify(body)).not.toMatch(/price|Byt mitt/)
+    expect(await confirmAiAction('first', { action: 'checkout', planId: 'plan.prelim.sek.month.07' })).toEqual({ code: 'UNKNOWN_ACTION', ok: false })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })

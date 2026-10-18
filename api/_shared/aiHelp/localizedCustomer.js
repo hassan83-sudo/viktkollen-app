@@ -11,6 +11,12 @@ const text = {
     login: loginGuidance('es'),
     none: 'No hay una suscripción abierta para cancelar. No se ha cambiado nada.', scheduled: 'La cancelación ya está programada para el final del período.',
     offer: 'La cancelación solo se realizará al pulsar Confirmar cancelación. La suscripción seguirá hasta el final del período. No se ha cambiado nada.',
+    undoOffer: 'La cancelación programada se retira solo al pulsar Confirmar reactivación. No se inicia un pago nuevo. No se ha cambiado nada.',
+    undoNone: 'No hay una cancelación programada para deshacer.',
+    planOffer: 'El cambio de plan solo se realiza al pulsar Confirmar cambio de plan. Empieza en el siguiente período y el plan se comprueba entonces. No se ha iniciado ningún pago y no se ha cambiado nada.',
+    planSame: 'Ese ya es tu plan verificado. No se ha cambiado nada y no se ha iniciado ningún pago.',
+    planMissing: 'Indica un plan existente para cambiar. No se ha iniciado ningún pago y no se ha cambiado nada.',
+    unchanged: 'No se ha cambiado nada y no se ha iniciado ningún pago.',
   },
   ar: {
     unknown: 'لا أستطيع التحقق من بيانات الحساب الآن. لم يتم تغيير أي شيء.',
@@ -21,6 +27,12 @@ const text = {
     login: loginGuidance('ar'),
     none: 'لا يوجد اشتراك مفتوح للإلغاء. لم يتم تغيير أي شيء.', scheduled: 'الإلغاء مجدول بالفعل لنهاية الفترة.',
     offer: 'لن يتم الإلغاء إلا بعد الضغط على تأكيد إلغاء الاشتراك. يستمر الاشتراك حتى نهاية الفترة. لم يتم تغيير أي شيء.',
+    undoOffer: 'يُزال الإلغاء المجدول فقط بعد الضغط على تأكيد إعادة التفعيل. لا يبدأ دفع جديد. لم يتم تغيير أي شيء.',
+    undoNone: 'لا يوجد إلغاء مجدول للتراجع عنه.',
+    planOffer: 'لا يتم تغيير الخطة إلا بعد الضغط على تأكيد تغيير الخطة. يبدأ في الفترة التالية ويتم التحقق من الخطة حينها. لم يبدأ أي دفع ولم يتم تغيير أي شيء.',
+    planSame: 'هذه هي خطتك التي تم التحقق منها بالفعل. لم يتم تغيير أي شيء ولم يبدأ أي دفع.',
+    planMissing: 'اذكر خطة موجودة للتغيير. لم يبدأ أي دفع ولم يتم تغيير أي شيء.',
+    unchanged: 'لم يتم تغيير أي شيء ولم يبدأ أي دفع.',
   },
 }
 export function localizedCancel(context, language) {
@@ -32,6 +44,34 @@ export function localizedCancel(context, language) {
   if (s.cancel_at_period_end) return { answer: `${t.scheduled} ${s.current_period_end || ''}`, confirmation: null }
   return { answer: `${t.offer} ${s.current_period_end ? `${t.end}: ${s.current_period_end}.` : ''}`, confirmation: { action: 'schedule_cancel' } }
 }
+
+export function localizedUndoCancel(context, language) {
+  const t = text[language]
+  if (!t) return null
+  if (!context?.available) return { answer: t.unknown, confirmation: null }
+  const s = context.subscription
+  const open = s && ['TRIALING', 'ACTIVE', 'PAST_DUE', 'PAUSED'].includes(s.status)
+  if (!open || !s.cancel_at_period_end) {
+    return { answer: `${t.undoNone} ${t.status}: ${s?.status || t.unavailable}. ${t.unchanged}`, confirmation: null }
+  }
+  return { answer: `${t.undoOffer} ${s.current_period_end ? `${t.end}: ${s.current_period_end}.` : ''}`, confirmation: { action: 'undo_cancel' } }
+}
+
+export function localizedPlanChange(context, language, planId) {
+  const t = text[language]
+  if (!t) return null
+  if (!context?.available) return { answer: `${t.unknown} ${t.unchanged}`, confirmation: null }
+  const currentId = context.subscription?.plan_id || context.plan?.plan_id || ''
+  const price = context.plan && Number.isInteger(context.plan.price_minor) && context.plan.currency
+    ? new Intl.NumberFormat(language, { style: 'currency', currency: context.plan.currency }).format(context.plan.price_minor / 100)
+    : ''
+  if (!planId) {
+    return { answer: `${t.planMissing} ${currentId}. ${price ? `${t.price}: ${price}.` : ''}`, confirmation: null }
+  }
+  if (planId === currentId) return { answer: t.planSame, confirmation: null }
+  return { answer: `${t.planOffer} ${planId}.`, confirmation: { action: 'plan_change', planId } }
+}
+
 export function localizedCustomer(context, selection, language) {
   const t = text[language]
   if (!t) return null
@@ -45,8 +85,15 @@ export function localizedCustomer(context, selection, language) {
   }
   if (focus === 'usage') {
     const q = context.quota
-    if (q) return q.unlimited ? t.unlimited : `${t.used}: ${q.used ?? t.unavailable}. ${t.limit}: ${q.limit ?? t.unavailable}. ${t.remaining}: ${q.remaining ?? t.unavailable}.`
-    return (context.usage?.quotas || []).map((q) => `${q.key}: ${t.used} ${q.used}, ${t.limit} ${q.limit}, ${t.remaining} ${q.remaining}.`).concat((context.usage?.unlimited || []).map((key) => `${key}: ${t.unlimited}.`)).join(' ') || t.unavailable
+    const usageText = q
+      ? (q.unlimited ? t.unlimited : `${t.used}: ${q.used ?? t.unavailable}. ${t.limit}: ${q.limit ?? t.unavailable}. ${t.remaining}: ${q.remaining ?? t.unavailable}.`)
+      : ((context.usage?.quotas || []).map((row) => `${row.key}: ${t.used} ${row.used}, ${t.limit} ${row.limit}, ${t.remaining} ${row.remaining}.`).concat((context.usage?.unlimited || []).map((key) => `${key}: ${t.unlimited}.`)).join(' ') || t.unavailable)
+    if (!selection?.slices?.includes('plan')) return usageText
+    const p = context.plan
+    const price = p && Number.isInteger(p.price_minor) && p.currency
+      ? `${t.price}: ${new Intl.NumberFormat(language, { style: 'currency', currency: p.currency }).format(p.price_minor / 100)}.`
+      : ''
+    return `${p?.plan_id ? `${t.subscription}: ${p.plan_id}.` : ''} ${price} ${usageText}`.trim()
   }
   if (focus === 'entitlements') return (context.entitlements || []).map((e) => `${e.feature}: ${!e.enabled ? t.blocked : e.limit_kind === 'UNLIMITED' ? t.unlimited : e.limit_value ?? t.unavailable}.`).join(' ') || t.unavailable
   if (focus === 'access') {

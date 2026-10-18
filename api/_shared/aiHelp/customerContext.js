@@ -1,10 +1,11 @@
+import { acceptedPlanId } from '../../../src/features/aiHelp/aiActions.js'
 import { QUOTA_STATUS } from '../../../src/services/billing/catalog.js'
 import { getKnowledgeEntry } from '../../../src/features/aiHelp/knowledgeCatalog.js'
 import { readDurableQuota } from '../billing/quotaRead.js'
 import { readDurableUserSubscription } from '../billing/subscriptionRead.js'
 import { readUsageSnapshot } from '../billing/usageSnapshotRead.js'
 import { createSupabaseAdminClient } from '../supabaseServer.js'
-import { localizedCancel, localizedCustomer } from './localizedCustomer.js'
+import { localizedCancel, localizedCustomer, localizedPlanChange, localizedUndoCancel } from './localizedCustomer.js'
 import { featureSteps, loginGuidance, troubleshootingLine } from '../../../src/features/aiHelp/launchGuidance.js'
 
 const LAUNCH_FEATURES = Object.freeze([
@@ -66,11 +67,43 @@ function matchFeature(question) {
   return FEATURE_FOCUS.find((item) => item.pattern.test(question)) || null
 }
 
+const HOW_TO = /hur |how do|how can|what happens|cómo|como |كيف|ماذا يحدث/i
+
 export function wantsScheduleCancel(question) {
   const text = String(question || '')
-  if (/hur |how do|how can|what happens|ångra|undo|avbryt uppsäg|cómo|como |كيف|ماذا يحدث|لا تلغ|no cancel|inte.{0,30}(avsluta|säg|säga)|don.?t|do not|no quiero|لا أريد/i.test(text)) return false
+  if (HOW_TO.test(text) || /ångra|undo|avbryt uppsäg|återaktivera|reactivate|deshacer|reactivar|تراجع|أعد تفعيل|لا تلغ|no cancel|inte.{0,30}(avsluta|säg|säga)|don.?t|do not|no quiero|لا أريد/iu.test(text)) return false
   return /(?:avsluta|säg upp|säga upp|cancel)\s+(?:mitt |mina |min |my )?(?:abonnemang|prenumeration|subscription)/i.test(text)
     || /(?:cancelar|cancela) (?:mi |la )?suscripción|(?:ألغ|ألغي|إلغاء) (?:اشتراكي|الاشتراك)/iu.test(text)
+}
+
+export function wantsUndoCancel(question) {
+  const text = String(question || '')
+  if (HOW_TO.test(text) || /inte.{0,40}(ångra|återaktivera)|don.?t|do not|no quiero|لا أريد/iu.test(text)) return false
+  return /ångra (?:min |den )?(?:schemalagda )?uppsäg|avbryt (?:min |den )?uppsäg|återaktivera(?: mitt| mina)? abonnemang|undo (?:the |my )?(?:scheduled )?cancel|reactivate(?: my)? subscription|deshacer (?:la )?cancelación|reactivar mi suscripción|تراجع عن (?:إلغاء|الإلغاء)|أعد تفعيل اشتراكي/iu.test(text)
+}
+
+export function requestedPlanChange(question) {
+  const text = String(question || '')
+  if (HOW_TO.test(text) || /inte.{0,40}(byt|ändra)|don.?t|do not|no quiero|لا أريد/iu.test(text)) return null
+  const wants = /(?:byt|byta|ändra|ändrar|change|switch|cambia|cambiar|غيّر|غير)(?:\s+\S+){0,8}\s+(?:plan|abonnemang|prenumeration|subscription|suscripción|خطة|اشتراك)/iu.test(text)
+    || /(?:planbyte|byte av plan|change my plan|cambiar mi plan|تغيير خطتي)/iu.test(text)
+  if (!wants) return null
+  const named = text.match(/\b(plan\.[A-Za-z0-9._-]{1,74})\b/)
+  return { planId: acceptedPlanId(named?.[1] || '') }
+}
+
+function noCustomerSelection() {
+  return {
+    cancel: false,
+    direct: false,
+    feature: null,
+    focus: null,
+    personal: false,
+    planChange: false,
+    planId: '',
+    slices: [],
+    undoCancel: false,
+  }
 }
 
 /**
@@ -81,6 +114,9 @@ export function selectCustomerContext(question) {
   const text = String(question || '')
   const feature = matchFeature(text)
   const cancel = wantsScheduleCancel(text)
+  const undoCancel = wantsUndoCancel(text)
+  const planRequest = requestedPlanChange(text)
+  const problem = /kvoten är slut|betalningen gick inte|förnyas inte|redan uppsagt|priset stämmer inte|quota is used up|payment failed|does not renew|already cancelled|already canceled|cuota agotada|pago fall|no se renueva|الحصة نفدت|فشل الدفع|لا يتجدد/iu.test(text)
   const why = /varför kan jag inte|why can.?t i|kan inte använda|cannot use|can't use|doesn.?t work|fungerar inte|por qué no puedo|no funciona|لماذا لا|لا يعمل/i.test(text)
   const personal = /\b(mitt|mina|min|jag|my|mi|mis|tengo|me)\b/i.test(text) || /\bi have\b|\bdo i\b/i.test(text) || /har jag|اشتراكي|حسابي|خطتي|لدي|حصتي|دفعي/i.test(text)
   const navigation = /var finns|where is|hur öppnar|hur hittar|öppna /i.test(text)
@@ -91,65 +127,56 @@ export function selectCustomerContext(question) {
   const aboutEnt = /ingår|entitlement|planinnehåll|incluye|incluido|مشمول/i.test(text)
   const login = /logga in|inlogg|sign in|login|iniciar sesión|تسجيل الدخول/i.test(text)
 
-  const accountTopic = Boolean(feature || login || cancel || why || aboutSub || aboutPlan || aboutUsage || aboutPay || aboutEnt)
-  if (!accountTopic || (navigation && !why && !cancel && !aboutUsage && !aboutPay)) {
-    return {
-      cancel: false,
-      direct: false,
-      feature: null,
-      focus: null,
-      personal: false,
-      slices: [],
-    }
+  const accountTopic = Boolean(feature || login || cancel || undoCancel || planRequest || problem || why || aboutSub || aboutPlan || aboutUsage || aboutPay || aboutEnt)
+  if (!accountTopic || (navigation && !why && !cancel && !undoCancel && !planRequest && !problem && !aboutUsage && !aboutPay)) {
+    return noCustomerSelection()
   }
 
-  if (login && !feature && !aboutSub && !aboutUsage && !aboutPay) {
+  if (login && !feature && !aboutSub && !aboutUsage && !aboutPay && !undoCancel && !planRequest) {
     return {
-      cancel: false,
+      ...noCustomerSelection(),
       direct: true,
-      feature: null,
       focus: 'login',
       personal: true,
-      slices: [],
     }
   }
 
-  if (!personal && !why && !cancel) {
-    return {
-      cancel: false,
-      direct: false,
-      feature: null,
-      focus: null,
-      personal: false,
-      slices: [],
-    }
+  if (!personal && !why && !cancel && !undoCancel && !planRequest && !problem) {
+    return noCustomerSelection()
   }
 
   const slices = new Set()
-  if (cancel || aboutSub || why) slices.add('subscription')
-  if (cancel || aboutPlan || aboutSub || why) slices.add('plan')
-  if (aboutUsage || (why && feature) || (feature && /kvar|kvot|använt|remaining/i.test(text))) slices.add('usage')
+  if (cancel || undoCancel || planRequest || aboutSub || why || problem) slices.add('subscription')
+  if (cancel || planRequest || aboutPlan || aboutSub || why || /pris|price|precio|سعر/iu.test(text)) slices.add('plan')
+  if (aboutUsage || (why && feature) || (feature && /kvar|kvot|använt|remaining/i.test(text)) || /kvoten är slut|quota is used up|cuota agotada|الحصة نفدت/iu.test(text)) slices.add('usage')
   if (aboutEnt || (why && (feature || aboutPlan || aboutSub))) slices.add('entitlements')
-  if (cancel || aboutPay || why) slices.add('payment')
+  if (cancel || undoCancel || aboutPay || why || /betalningen gick inte|payment failed|pago fall|فشل الدفع/iu.test(text)) slices.add('payment')
 
   let focus = 'subscription'
+  const keepPlanChange = Boolean(planRequest) && !cancel && !undoCancel
   if (cancel) focus = 'cancel'
+  else if (undoCancel) focus = 'undo'
+  else if (keepPlanChange) focus = 'plan-change'
   else if (aboutPay && !feature) focus = 'payment'
   else if (why) focus = 'access'
-  else if (/förny|renewal|renueva|renovación|تجديد/i.test(text)) focus = 'renewal'
+  else if (/förny|renewal|renueva|renovación|تجديد|förnyas inte|does not renew|no se renueva|لا يتجدد/iu.test(text)) focus = 'renewal'
   else if (aboutPay) focus = 'payment'
-  else if (aboutUsage || (feature && /kvar|använt|kvot/i.test(text))) focus = 'usage'
+  else if (aboutUsage || /kvoten är slut|quota is used up|cuota agotada|الحصة نفدت/iu.test(text) || (feature && /kvar|använt|kvot/i.test(text))) focus = 'usage'
   else if (aboutEnt) focus = 'entitlements'
   else if (aboutPlan && !aboutSub) focus = 'plan'
 
   const rephrase = /förklara|enklare|annat sätt|andra ord|mer detalj|utveckla|skillnad|explain|another way|explica|detalle|اشرح|وضح/i.test(text)
+  const writes = cancel || undoCancel || Boolean(planRequest)
   return {
     cancel,
-    direct: !rephrase,
+    direct: writes || problem || !rephrase,
     feature,
     focus,
     personal: true,
+    planChange: keepPlanChange,
+    planId: keepPlanChange ? planRequest.planId : '',
     slices: [...slices],
+    undoCancel: undoCancel && !cancel,
   }
 }
 
@@ -348,8 +375,13 @@ export function renderVerifiedAnswer({ context, languageCode = 'sv', selection }
   }
   if (selection?.focus === 'login') return loginGuidance(languageCode)
   if (selection?.focus === 'cancel') return renderCancelOffer({ context, languageCode }).answer
+  if (selection?.focus === 'undo') return renderUndoCancelOffer({ context, languageCode }).answer
+  if (selection?.focus === 'plan-change') return renderPlanChangeOffer({ context, languageCode, planId: selection.planId }).answer
   if (selection?.focus === 'renewal') return renderRenewalAnswer({ context, languageCode })
   if (selection?.focus === 'access') return renderAccessAnswer({ context, languageCode, selection })
+  if (selection?.focus === 'usage' && selection?.slices?.includes('plan')) {
+    return `${renderPlanAnswer({ context, languageCode })} ${renderUsageAnswer({ context, languageCode, selection })}`
+  }
   if (selection?.focus === 'usage') return renderUsageAnswer({ context, languageCode, selection })
   if (selection?.focus === 'payment') return renderPaymentAnswer({ context, languageCode })
   if (selection?.focus === 'entitlements') return renderEntitlementAnswer({ context, languageCode })
@@ -398,9 +430,27 @@ function renderRenewalAnswer({ context, languageCode }) {
       ? `Abonnemanget ${subscription.plan_id} har status ${subscription.status}. Ingen verifierad förnyelsetidpunkt finns.`
       : `Subscription ${subscription.plan_id} has status ${subscription.status}. No verified renewal time is available.`
   }
-  return swedish
-    ? `Abonnemanget ${subscription.plan_id} har status ${subscription.status}. Nuvarande period slutar ${subscription.current_period_end}.`
-    : `Subscription ${subscription.plan_id} has status ${subscription.status}. The current period ends ${subscription.current_period_end}.`
+  const parts = [
+    swedish
+      ? `Abonnemanget ${subscription.plan_id} har status ${subscription.status}. Nuvarande period slutar ${subscription.current_period_end}.`
+      : `Subscription ${subscription.plan_id} has status ${subscription.status}. The current period ends ${subscription.current_period_end}.`,
+  ]
+  if (subscription.cancel_at_period_end) {
+    parts.push(swedish
+      ? 'Uppsägning är schemalagd till periodens slut.'
+      : 'Cancellation is scheduled for the end of the period.')
+  }
+  if (subscription.pending_plan_id) {
+    parts.push(swedish
+      ? `Ett planbyte till ${subscription.pending_plan_id} väntar till nästa period.`
+      : `A plan change to ${subscription.pending_plan_id} waits until the next period.`)
+  }
+  if (subscription.status === 'PAST_DUE') {
+    parts.push(swedish
+      ? 'Status PAST_DUE kan påverka förnyelsen. Ingen ny betalning har startats.'
+      : 'Status PAST_DUE can affect renewal. No new payment has been started.')
+  }
+  return parts.join(' ')
 }
 
 function renderPlanAnswer({ context, languageCode }) {
@@ -560,6 +610,81 @@ export function renderCancelOffer({ context, languageCode = 'sv' } = {}) {
       ? `Uppsägning sker först när du bekräftar knappen. Abonnemanget ${subscription.plan_id} kan då fortsätta till ${end} och avslutas där. Inget har ändrats ännu.`
       : `Cancellation happens only after you confirm the button. Subscription ${subscription.plan_id} can then continue until ${end} and end there. Nothing has been changed yet.`,
     confirmation: { action: 'schedule_cancel' },
+  }
+}
+
+function unchanged(swedish) {
+  return swedish
+    ? 'Inget har ändrats och ingen betalning har startats.'
+    : 'Nothing has been changed and no payment has been started.'
+}
+
+export function renderUndoCancelOffer({ context, languageCode = 'sv' } = {}) {
+  const localized = localizedUndoCancel(context, languageCode)
+  if (localized) return localized
+  const swedish = isSwedish(languageCode)
+  if (!context?.available) {
+    return {
+      answer: swedish
+        ? `Jag kan inte verifiera abonnemanget. ${unchanged(true)}`
+        : `I cannot verify the subscription. ${unchanged(false)}`,
+      confirmation: null,
+    }
+  }
+  const subscription = context.subscription
+  const open = subscription && ['TRIALING', 'ACTIVE', 'PAST_DUE', 'PAUSED'].includes(subscription.status)
+  if (!open || !subscription.cancel_at_period_end) {
+    return {
+      answer: swedish
+        ? `Det finns ingen schemalagd uppsägning att ångra. Status är ${subscription?.status || 'okänd'}. ${unchanged(true)}`
+        : `There is no scheduled cancellation to undo. The status is ${subscription?.status || 'unknown'}. ${unchanged(false)}`,
+      confirmation: null,
+    }
+  }
+  return {
+    answer: swedish
+      ? `Den schemalagda uppsägningen tas bort först när du bekräftar knappen. Perioden slutar ${subscription.current_period_end || 'vid periodens slut'}. Ingen ny betalning startas. Inget har ändrats ännu.`
+      : `The scheduled cancellation is removed only after you confirm the button. The period ends ${subscription.current_period_end || 'at the end of the period'}. No new payment is started. Nothing has been changed yet.`,
+    confirmation: { action: 'undo_cancel' },
+  }
+}
+
+export function renderPlanChangeOffer({ context, languageCode = 'sv', planId = '' } = {}) {
+  const localized = localizedPlanChange(context, languageCode, planId)
+  if (localized) return localized
+  const swedish = isSwedish(languageCode)
+  const safePlanId = acceptedPlanId(planId)
+  if (!context?.available) {
+    return {
+      answer: swedish
+        ? `Jag kan inte verifiera abonnemanget, så inget planbyte har gjorts. ${unchanged(true)}`
+        : `I cannot verify the subscription, so no plan change was made. ${unchanged(false)}`,
+      confirmation: null,
+    }
+  }
+  const currentId = context.subscription?.plan_id || context.plan?.plan_id || ''
+  const price = formatPrice(context.plan)
+  if (!safePlanId) {
+    return {
+      answer: swedish
+        ? `Namnge en befintlig plan för att byta. Din verifierade plan är ${currentId || 'okänd'}.${price ? ` Priset är ${price}.` : ''} ${unchanged(true)}`
+        : `Name an existing plan to change. Your verified plan is ${currentId || 'unknown'}.${price ? ` The price is ${price}.` : ''} ${unchanged(false)}`,
+      confirmation: null,
+    }
+  }
+  if (safePlanId === currentId) {
+    return {
+      answer: swedish
+        ? `Det är redan din verifierade plan. ${unchanged(true)}`
+        : `That is already your verified plan. ${unchanged(false)}`,
+      confirmation: null,
+    }
+  }
+  return {
+    answer: swedish
+      ? `Planbyte till ${safePlanId} sker först när du bekräftar knappen. Bytet gäller nästa period och planen kontrolleras då mot försäljningslistan. ${unchanged(true)}`
+      : `A change to ${safePlanId} happens only after you confirm the button. The change applies next period and the plan is checked against the sale list then. ${unchanged(false)}`,
+    confirmation: { action: 'plan_change', planId: safePlanId },
   }
 }
 

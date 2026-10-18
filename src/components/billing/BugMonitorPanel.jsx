@@ -43,7 +43,7 @@ export default function BugMonitorPanel({ token }) {
 
   useEffect(() => {
     if (!open) return undefined
-    const timer = window.setInterval(load, 30000)
+    const timer = window.setInterval(load, 5000)
     return () => window.clearInterval(timer)
   }, [load, open])
 

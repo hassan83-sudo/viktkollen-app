@@ -71,7 +71,9 @@ async function startAiHelpTestServer() {
   const server = await createServer({
     configFile: fileURLToPath(new URL('./vite.config.js', import.meta.url)),
     plugins: [aiHelpTestApiPlugin()],
-    server: { host: '127.0.0.1', port, strictPort: true },
+    // A cold dependency optimizer may emit full-reload during an admin action.
+    // Browser integration tests exercise a fixed app, not development hot reload.
+    server: { host: '127.0.0.1', port, strictPort: true, hmr: false },
   })
   await server.listen()
   await new Promise(() => {})

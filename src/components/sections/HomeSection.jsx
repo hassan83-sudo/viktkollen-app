@@ -36,6 +36,7 @@ function HomeSection({
   onOpenAiCoach,
   onOpenWellbeing,
   onScanFood,
+  onSearchNavigate,
   onSendChatMessage,
   onStartVoiceInput,
   onStopAiVoiceResponse,
@@ -129,6 +130,7 @@ function HomeSection({
           onOpenAiCoach={onOpenAiCoach}
           onOpenWellbeing={onOpenWellbeing}
           onScanFood={onScanFood}
+          onSearchNavigate={onSearchNavigate}
           onSendChatMessage={onSendChatMessage}
           onStartVoiceInput={onStartVoiceInput}
           onStopAiVoiceResponse={onStopAiVoiceResponse}

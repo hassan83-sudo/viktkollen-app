@@ -1,5 +1,5 @@
 import { assessActionOutcome } from './caseOutcome.js'
-import { deleteVerifiedAccount, publicAuthAccount, sendVerifiedPasswordReset } from './accountActions.js'
+import { deleteVerifiedAccount, sendVerifiedPasswordReset } from './accountActions.js'
 import { sanitizeAiAction } from '../../../src/features/aiHelp/aiActions.js'
 import { officialSumUpHostedCheckoutUrl } from '../../../src/features/aiHelp/hostedCheckoutUrl.js'
 import { beginCheckout } from '../billing/checkoutIntent.js'

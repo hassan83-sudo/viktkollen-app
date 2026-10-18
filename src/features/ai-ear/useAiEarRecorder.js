@@ -36,6 +36,7 @@ export function useAiEarRecorder({
   maxSeconds = AI_EAR_MAX_SECONDS,
   MediaRecorderImpl,
   onError,
+  onInterrupted,
   onRecorded,
   onStart,
 } = {}) {
@@ -44,6 +45,7 @@ export function useAiEarRecorder({
 
   const mountedRef = useRef(true)
   const startingRef = useRef(false)
+  const generationRef = useRef(0)
   const streamRef = useRef(null)
   const recorderRef = useRef(null)
   const chunksRef = useRef([])
@@ -52,9 +54,9 @@ export function useAiEarRecorder({
   const meterTimerRef = useRef(null)
   // The latest options, so start/stop keep stable identities. Synced after
   // each render (a user can only press start after a commit).
-  const optionsRef = useRef({ audioConstraints, autoStop, createLevelMeter, getUserMedia, maxSeconds, MediaRecorderImpl, onError, onRecorded, onStart })
+  const optionsRef = useRef({ audioConstraints, autoStop, createLevelMeter, getUserMedia, maxSeconds, MediaRecorderImpl, onError, onInterrupted, onRecorded, onStart })
   useEffect(() => {
-    optionsRef.current = { audioConstraints, autoStop, createLevelMeter, getUserMedia, maxSeconds, MediaRecorderImpl, onError, onRecorded, onStart }
+    optionsRef.current = { audioConstraints, autoStop, createLevelMeter, getUserMedia, maxSeconds, MediaRecorderImpl, onError, onInterrupted, onRecorded, onStart }
   })
 
   const stopTracks = useCallback(() => {
@@ -73,6 +75,8 @@ export function useAiEarRecorder({
 
   // Stops everything without delivering a Blob (unmount and cancel).
   const discard = useCallback(() => {
+    generationRef.current += 1
+    startingRef.current = false
     clearTimer()
     const recorder = recorderRef.current
     if (recorder && recorder.state !== 'inactive') {
@@ -88,7 +92,9 @@ export function useAiEarRecorder({
     mountedRef.current = true
 
     function releaseMicrophone() {
+      const wasActive = startingRef.current || recorderRef.current !== null
       discard()
+      if (wasActive) optionsRef.current.onInterrupted?.()
       if (mountedRef.current) {
         setRecording(false)
         setSeconds(0)
@@ -136,14 +142,20 @@ export function useAiEarRecorder({
     }
 
     startingRef.current = true
+    const generation = ++generationRef.current
     let stream
     try {
       stream = await options.getUserMedia(options.audioConstraints)
     } catch (error) {
+      if (generation !== generationRef.current) return
       startingRef.current = false
       if (mountedRef.current) {
         optionsRef.current.onError?.(error?.name === 'NotAllowedError' || error?.name === 'SecurityError' ? 'mic_denied' : 'mic_unavailable')
       }
+      return
+    }
+    if (generation !== generationRef.current || !mountedRef.current) {
+      stream.getTracks?.().forEach((track) => track.stop())
       return
     }
     startingRef.current = false

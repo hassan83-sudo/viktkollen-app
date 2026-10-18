@@ -3,6 +3,8 @@ import { verifySupabaseUser } from '../verifySupabaseUser.js'
 import { BILLING_PERMISSION } from '../../../src/services/billing/catalog.js'
 import { createBillingAdminService } from '../../../src/services/billing/adminService.js'
 import { createPostgresBillingControlAdapter } from '../../../src/services/billing/billingControlPostgres.js'
+import { SECURITY_EVENT_TYPES } from '../../../src/services/security/securityEvents.js'
+import { queueSecurityEvent } from '../security/securityEventStore.js'
 
 let authority = createBillingAdminService()
 let testServiceInjected = false
@@ -49,7 +51,7 @@ export async function lookupBillingAdmin(userId) {
   return allowed === true
 }
 
-export async function requireBillingAdmin(request, { requestId = '' } = {}) {
+export async function requireBillingAdmin(request, { requestId = '', securityFeature = 'admin' } = {}) {
   const auth = await verifySupabaseUser(request, { requestId })
   if (!auth.authenticated) {
     return {
@@ -61,6 +63,10 @@ export async function requireBillingAdmin(request, { requestId = '' } = {}) {
 
   const allowed = await lookupBillingAdmin(auth.user.id)
   if (!allowed) {
+    // A verified user who is not an admin reached an admin endpoint. The app
+    // checks /api/billing/capability before calling any of them, so this is
+    // not ordinary traffic. The account itself is not stored.
+    queueSecurityEvent({ feature: securityFeature, type: SECURITY_EVENT_TYPES.ADMIN_ACCESS_DENIED })
     return {
       ok: false,
       status: 403,

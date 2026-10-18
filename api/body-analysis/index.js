@@ -622,6 +622,8 @@ async function respondWithServerQuota({ images, request, requestId, response, us
     code: mapped.code,
     requestId,
     retryable: mapped.retryable,
+    securityFeature: 'body-scan',
+    securitySignal: mapped.securitySignal,
     status: mapped.status,
   })
 }

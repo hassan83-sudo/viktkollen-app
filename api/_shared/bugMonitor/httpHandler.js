@@ -33,7 +33,7 @@ function readJson(request) {
 
 async function authorizeAdmin(request, requestId) {
   if (typeof testAdminCheck === 'function') return testAdminCheck(request, requestId)
-  return requireBillingAdmin(request, { requestId })
+  return requireBillingAdmin(request, { requestId, securityFeature: 'bug-monitor' })
 }
 
 async function actorForIngest(request, requestId) {

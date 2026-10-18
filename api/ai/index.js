@@ -255,6 +255,7 @@ class AiTextBillingDenied extends Error {
     this.aiTextBilling = true
     this.code = mapped.code
     this.retryable = mapped.retryable === true
+    this.securitySignal = mapped.securitySignal
     this.status = mapped.status
   }
 }
@@ -711,6 +712,8 @@ async function legacyAiHandler(request, response) {
       code: error.code,
       requestId,
       retryable: error.retryable,
+      securityFeature: 'ai-text',
+      securitySignal: error.securitySignal,
       status: error.status,
     })
   }

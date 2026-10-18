@@ -1,7 +1,24 @@
 import { createClient } from '@supabase/supabase-js'
 import { aiRouteErrorCodes, makeSafeAiRouteError } from './aiRouteErrors.js'
+import { SECURITY_EVENT_TYPES } from '../../src/services/security/securityEvents.js'
+import { queueSecurityEvent } from './security/securityEventStore.js'
+import { recordBurst, requestSourceKey } from './security/securityGuard.js'
 
 const DEFAULT_AUTH_TIMEOUT_MS = 5000
+const INVALID_TOKEN_BURST = Object.freeze({ threshold: 10, windowMs: 5 * 60 * 1000 })
+
+// Forged or garbage tokens from one source. Expired sessions, missing tokens
+// and Auth outages are normal and never counted. The source is a hash kept
+// in memory only.
+function noteInvalidToken(request) {
+  try {
+    if (recordBurst('invalid-token', requestSourceKey(request), INVALID_TOKEN_BURST)) {
+      queueSecurityEvent({ feature: 'api-auth', type: SECURITY_EVENT_TYPES.AUTH_FAILURE_BURST })
+    }
+  } catch {
+    // Monitoring must never change the authentication result.
+  }
+}
 
 function getHeader(request, name) {
   const headers = request?.headers || {}
@@ -86,6 +103,7 @@ export async function verifySupabaseUser(request, {
 } = {}) {
   const parsed = getBearerToken(request)
   if (!parsed.token) {
+    if (parsed.code === 'invalidAuthorization') noteInvalidToken(request)
     return {
       authenticated: false,
       ...makeAuthError(parsed.code, requestId),
@@ -98,13 +116,16 @@ export async function verifySupabaseUser(request, {
     timeoutPromise(timeoutMs),
   ])
   if (result?.error) {
+    const code = mapAuthResult(result.error)
+    if (code === 'invalidSession') noteInvalidToken(request)
     return {
       authenticated: false,
-      ...makeAuthError(mapAuthResult(result.error), requestId),
+      ...makeAuthError(code, requestId),
     }
   }
 
   if (!result?.user?.id) {
+    noteInvalidToken(request)
     return {
       authenticated: false,
       ...makeAuthError('invalidSession', requestId),

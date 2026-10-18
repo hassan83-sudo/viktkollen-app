@@ -193,6 +193,13 @@ export function createMemoryBugMonitorStore() {
   }
 }
 
+export function serverReleaseName(env = globalThis.process?.env || {}) {
+  if (env.VERCEL_ENV === 'production') return 'production'
+  if (env.VERCEL_ENV === 'preview') return 'preview'
+  if (env.VERCEL_ENV === 'development') return 'development'
+  return 'local'
+}
+
 export function recordServerBug(input = {}) {
   try {
     const durableStore = resolveBugMonitorStore()
@@ -207,7 +214,7 @@ export function recordServerBug(input = {}) {
     }, {
       actorKey: 'server',
       now: input.now instanceof Date ? input.now : new Date(),
-      release: input.release,
+      release: input.release || serverReleaseName(),
       source: 'backend',
     })
   } catch {

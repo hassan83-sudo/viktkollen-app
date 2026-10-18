@@ -1,4 +1,6 @@
 import { sanitizeAiAction } from '../../../src/features/aiHelp/aiActions.js'
+import { officialSumUpHostedCheckoutUrl } from '../../../src/features/aiHelp/hostedCheckoutUrl.js'
+import { beginCheckout } from '../billing/checkoutIntent.js'
 import { executeUserBillingIntent } from '../billing/userLifecycleIntent.js'
 import { recordAiAction } from './actionAudit.js'
 
@@ -11,6 +13,7 @@ export async function executeConfirmedAiAction({
   actionId,
   actorUserId,
   confirmed = false,
+  checkout = beginCheckout,
   execute = executeUserBillingIntent,
   planId = '',
 } = {}) {
@@ -28,6 +31,23 @@ export async function executeConfirmedAiAction({
   }
   if (action.sensitive && confirmed !== true) {
     return finish({ ...base, code: 'CONFIRMATION_REQUIRED' }, { code: 'CONFIRMATION_REQUIRED', ok: false, status: 409 })
+  }
+  if (action.action === 'hosted_checkout') {
+    const result = await checkout({ body: { plan_id: action.planId }, userId: actorUserId })
+    const hostedCheckoutUrl = officialSumUpHostedCheckoutUrl(result?.hostedCheckoutUrl)
+    let code = result?.code || 'BILLING_FAILED'
+    if (code === 'CHECKOUT_PENDING' && !hostedCheckoutUrl) code = 'CHECKOUT_UNAVAILABLE'
+    const pending = code === 'CHECKOUT_PENDING'
+    return finish(
+      { ...base, code, ok: pending },
+      {
+        action: action.action,
+        code,
+        ok: pending,
+        status: pending ? 202 : (result?.status || 400),
+        ...(pending ? { hostedCheckoutUrl } : {}),
+      },
+    )
   }
   if (action.action === 'plan_change' || action.action === 'schedule_cancel' || action.action === 'undo_cancel') {
     const body = action.action === 'plan_change' ? { plan_id: action.planId } : {}

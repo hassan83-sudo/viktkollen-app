@@ -224,6 +224,39 @@ describe('AiHelpPanel language', () => {
     fetchMock.mockRestore()
   })
 
+  it('opens only the official SumUp page after confirmation', async () => {
+    await i18n.changeLanguage('sv')
+    const opened = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options) => {
+      const body = String(options?.body || '')
+      if (body.includes('confirmAction')) {
+        return { ok: true, json: async () => ({ code: 'CHECKOUT_PENDING', hostedCheckoutUrl: 'https://checkout.sumup.com/pay/safePage', ok: true }) }
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          answer: 'Ingen betalning är gjord ännu.',
+          confirmation: { action: 'hosted_checkout', planId: 'plan.prelim.sek.month.07' },
+          ok: true,
+          status: 'answered',
+        }),
+      }
+    })
+    render(<AiHelpPanel />)
+    fireEvent.click(screen.getByRole('button', { name: 'Öppna AI-Hjälp' }))
+    fireEvent.change(screen.getByLabelText('Fråga om Viktkollen'), { target: { value: 'Nytt betalningsförsök kort 4242' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
+    expect(opened).not.toHaveBeenCalled()
+    fireEvent.click(await screen.findByRole('button', { name: 'Bekräfta betalningsförsök' }))
+    await screen.findByText('SumUps betalningssida är öppnad. Betalningen är inte genomförd förrän du slutför den där.')
+    expect(opened).toHaveBeenCalledWith('https://checkout.sumup.com/pay/safePage', '_blank', 'noopener,noreferrer')
+    const body = JSON.parse(fetchMock.mock.calls.find((call) => String(call[1]?.body || '').includes('confirmAction'))[1].body)
+    expect(body).toEqual({ confirmAction: 'hosted_checkout', confirmed: true, planId: 'plan.prelim.sek.month.07' })
+    expect(JSON.stringify(body)).not.toMatch(/4242/)
+    opened.mockRestore()
+    fetchMock.mockRestore()
+  })
+
   it('reports a technical problem without the question text', async () => {
     await i18n.changeLanguage('sv')
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({

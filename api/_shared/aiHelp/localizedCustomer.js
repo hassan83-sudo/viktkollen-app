@@ -17,6 +17,14 @@ const text = {
     planSame: 'Ese ya es tu plan verificado. No se ha cambiado nada y no se ha iniciado ningún pago.',
     planMissing: 'Indica un plan existente para cambiar. No se ha iniciado ningún pago y no se ha cambiado nada.',
     unchanged: 'No se ha cambiado nada y no se ha iniciado ningún pago.',
+    refundBlocked: 'El reembolso está bloqueado. La facturación existente no reembolsa y SumUp no tiene una llamada de reembolso. No se ha cambiado nada.',
+    receiptBlocked: 'No se puede obtener un recibo.',
+    transactionsBlocked: 'No se pueden listar las transacciones individuales.',
+    hostedBlocked: 'Un nuevo intento con tarjeta está bloqueado. El chat no puede cobrar un instrumento guardado ni crear un segundo cobro.',
+    hostedMissing: 'Indica un plan de pago existente para un nuevo intento.',
+    hostedOffer: 'Un nuevo intento abre la página de pago de SumUp solo después de confirmar. Aquí no se escribe el número de tarjeta.',
+    paymentNotStarted: 'No se ha iniciado ningún pago.',
+    followUp: 'El problema de pago no resuelto puede continuar con asistencia humana. No se ha creado una solicitud automáticamente.',
   },
   ar: {
     unknown: 'لا أستطيع التحقق من بيانات الحساب الآن. لم يتم تغيير أي شيء.',
@@ -33,6 +41,14 @@ const text = {
     planSame: 'هذه هي خطتك التي تم التحقق منها بالفعل. لم يتم تغيير أي شيء ولم يبدأ أي دفع.',
     planMissing: 'اذكر خطة موجودة للتغيير. لم يبدأ أي دفع ولم يتم تغيير أي شيء.',
     unchanged: 'لم يتم تغيير أي شيء ولم يبدأ أي دفع.',
+    refundBlocked: 'الاسترداد محظور. الفوترة الحالية لا تجري استردادًا ولا يملك تكامل SumUp استدعاء استرداد. لم يتم تغيير أي شيء.',
+    receiptBlocked: 'لا يمكن جلب إيصال.',
+    transactionsBlocked: 'لا يمكن عرض المعاملات الفردية.',
+    hostedBlocked: 'محاولة البطاقة الجديدة محظورة. لا يمكن للدردشة خصم وسيلة دفع محفوظة ولا إنشاء خصم ثان.',
+    hostedMissing: 'اذكر خطة مدفوعة موجودة لمحاولة جديدة.',
+    hostedOffer: 'تفتح محاولة الدفع الجديدة صفحة SumUp فقط بعد التأكيد. لا يُكتب رقم البطاقة هنا.',
+    paymentNotStarted: 'لم يبدأ أي دفع.',
+    followUp: 'يمكن متابعة مشكلة الدفع غير المحلولة مع الدعم البشري. لم يتم إنشاء طلب تلقائيًا.',
   },
 }
 export function localizedCancel(context, language) {
@@ -70,6 +86,40 @@ export function localizedPlanChange(context, language, planId) {
   }
   if (planId === currentId) return { answer: t.planSame, confirmation: null }
   return { answer: `${t.planOffer} ${planId}.`, confirmation: { action: 'plan_change', planId } }
+}
+
+export function localizedPaymentLimit(kind, context, language, planId = '') {
+  const t = text[language]
+  if (!t) return null
+  const status = context?.payment?.status || context?.subscription?.status || t.unavailable
+  const end = context?.subscription?.current_period_end
+  const safePlanId = planId || ''
+  if (kind === 'refund') {
+    return { answer: `${t.refundBlocked} ${t.status}: ${status}. ${t.followUp}`, confirmation: null }
+  }
+  if (kind === 'receipt') {
+    const price = context?.plan && Number.isInteger(context.plan.price_minor) && context.plan.currency
+      ? new Intl.NumberFormat(language, { style: 'currency', currency: context.plan.currency }).format(context.plan.price_minor / 100)
+      : ''
+    return {
+      answer: `${t.receiptBlocked} ${price ? `${t.price}: ${price}.` : ''} ${t.status}: ${status}.${end ? ` ${t.end}: ${end}.` : ''} ${t.followUp}`,
+      confirmation: null,
+    }
+  }
+  if (kind === 'transactions') {
+    return {
+      answer: `${t.transactionsBlocked} ${t.status}: ${status}.${end ? ` ${t.end}: ${end}.` : ''} ${t.reason} ${t.followUp}`,
+      confirmation: null,
+    }
+  }
+  if (kind === 'hosted') {
+    const open = context?.subscription && ['TRIALING', 'ACTIVE', 'PAST_DUE', 'PAUSED'].includes(context.subscription.status)
+    if (!context?.available) return { answer: `${t.unknown} ${t.paymentNotStarted}`, confirmation: null }
+    if (open) return { answer: `${t.hostedBlocked} ${t.status}: ${status}. ${t.reason} ${t.paymentNotStarted} ${t.followUp}`, confirmation: null }
+    if (!safePlanId) return { answer: `${t.hostedMissing} ${t.paymentNotStarted}`, confirmation: null }
+    return { answer: `${t.hostedOffer} ${safePlanId}. ${t.paymentNotStarted}`, confirmation: { action: 'hosted_checkout', planId: safePlanId } }
+  }
+  return null
 }
 
 export function localizedCustomer(context, selection, language) {

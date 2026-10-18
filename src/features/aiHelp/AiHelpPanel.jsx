@@ -7,6 +7,8 @@ import { requestOpenHelpSection } from './aiHelpTools.js'
 import { isDirectNavigationRequest } from './navigationRequest.js'
 import SupportPanel from './SupportPanel.jsx'
 import { helpChrome } from './uiChrome.js'
+import { requestedLanguageSwitch } from './launchGuidance.js'
+import { changeAppLanguage } from '../../i18n/index.js'
 import './AiHelpPanel.css'
 
 const THREAD_STORAGE_KEY = 'viktkollen.aiHelp.thread'
@@ -82,6 +84,18 @@ function AiHelpPanel() {
     const content = draft.replace(/\s+/g, ' ').trim()
     if (!content || pending) return
 
+    const switched = requestedLanguageSwitch(content)
+    if (switched) {
+      await changeAppLanguage(switched)
+      setMessages((current) => [
+        ...current.slice(-7),
+        { content, featureIds: [], role: 'user', status: 'asked' },
+        { content: helpChrome(switched).languageSwitched, featureIds: [], role: 'assistant', status: 'answered' },
+      ])
+      setDraft('')
+      return
+    }
+
     const previous = messages.slice(-7)
     const nextMessages = [...previous.map((message) => ({ ...message, confirmation: null })), { content, featureIds: [], role: 'user', status: 'asked' }]
     const lastAssistant = [...messages].reverse().find((message) => message.role === 'assistant')
@@ -132,6 +146,8 @@ function AiHelpPanel() {
           confirmation: result.confirmation || null,
           content: result.answer,
           featureIds: result.featureIds,
+          followUps: result.followUps || [],
+          handoff: result.handoff === true,
           role: 'assistant',
           status: 'answered',
           tool: result.tool || null,
@@ -179,6 +195,25 @@ function AiHelpPanel() {
                     onClick={() => confirmMessageCancel(index)}
                   >
                     {chrome.confirmCancel}
+                  </button>
+                )}
+                {(message.followUps || []).map((question) => (
+                  <button
+                    className="secondary-button ai-help-action"
+                    key={question}
+                    type="button"
+                    onClick={() => setDraft(question)}
+                  >
+                    {question}
+                  </button>
+                ))}
+                {message.handoff && (
+                  <button
+                    className="secondary-button ai-help-action"
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent('viktkollen:open-human-support'))}
+                  >
+                    {chrome.handoff}
                   </button>
                 )}
                 {message.tool?.name === 'open-section' && (

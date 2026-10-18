@@ -5,6 +5,7 @@ import { helpDomain } from '../../../src/features/sharedAi/helpDomain.js'
 import { sanitizeHelpTool } from '../../../src/features/aiHelp/aiHelpTools.js'
 import { directHelpDestination } from '../../../src/features/aiHelp/navigationRequest.js'
 import { helpChrome } from '../../../src/features/aiHelp/uiChrome.js'
+import { followUpsFor } from '../../../src/features/aiHelp/launchGuidance.js'
 import { selectCustomerConversation } from './customerConversation.js'
 import {
   AI_HELP_DEFAULT_LIMIT,
@@ -169,9 +170,12 @@ function verifiedCustomerResult(validated, selection, customer) {
   const rendered = selection.cancel
     ? renderCancelOffer({ context: customer, languageCode: validated.language.code })
     : { answer: renderVerifiedAnswer({ context: customer, languageCode: validated.language.code, selection }), confirmation: null }
+  const focus = selection.focus
   return {
     answer: rendered.answer,
     featureIds: ['settings.plan'],
+    followUps: followUpsFor(focus, validated.language.code),
+    handoff: focus === 'login' || focus === 'access' || focus === 'payment',
     language: validated.language,
     ok: true,
     source: 'verified-customer',
@@ -228,6 +232,7 @@ export async function answerAiHelpQuestion({
       ...localHelpResult(route.entry, {
         extra: route.entry.id === 'settings.plan' ? preliminaryPlanFacts() : '',
       }),
+      followUps: followUpsFor('default', validated.language.code),
       language: validated.language,
     }
   }

@@ -43,6 +43,8 @@ export async function requestAiHelpReply({
     ok: true,
     source: payload.source || '',
     status: payload.status === 'unanswered' ? 'unanswered' : 'answered',
+    followUps: Array.isArray(payload.followUps) ? payload.followUps.filter((item) => typeof item === 'string').slice(0, 2) : [],
+    handoff: payload.handoff === true,
     tool: sanitizeHelpTool(payload.tool),
     unansweredId: payload.unansweredId || '',
     ...(payload.confirmation?.action === 'schedule_cancel' ? { confirmation: { action: 'schedule_cancel', userScope: auth.userScope } } : {}),

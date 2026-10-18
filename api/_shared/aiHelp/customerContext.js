@@ -5,6 +5,7 @@ import { readDurableUserSubscription } from '../billing/subscriptionRead.js'
 import { readUsageSnapshot } from '../billing/usageSnapshotRead.js'
 import { createSupabaseAdminClient } from '../supabaseServer.js'
 import { localizedCancel, localizedCustomer } from './localizedCustomer.js'
+import { featureSteps, loginGuidance, troubleshootingLine } from '../../../src/features/aiHelp/launchGuidance.js'
 
 const LAUNCH_FEATURES = Object.freeze([
   'ai.ear.interpret',
@@ -345,11 +346,7 @@ export function renderVerifiedAnswer({ context, languageCode = 'sv', selection }
       ? 'Jag kan inte verifiera kontouppgifterna just nu, så jag gissar inte pris, plan, kvot eller betalning.'
       : 'I cannot verify the account details right now, so I will not guess a price, plan, quota or payment.'
   }
-  if (selection?.focus === 'login') {
-    return swedish
-      ? 'Den här frågan skickades med en giltig inloggning. Jag kan inte se orsaken till ett tidigare inloggningsfel.'
-      : 'This question was sent with a valid sign-in. I cannot see the cause of an earlier sign-in failure.'
-  }
+  if (selection?.focus === 'login') return loginGuidance(languageCode)
   if (selection?.focus === 'cancel') return renderCancelOffer({ context, languageCode }).answer
   if (selection?.focus === 'renewal') return renderRenewalAnswer({ context, languageCode })
   if (selection?.focus === 'access') return renderAccessAnswer({ context, languageCode, selection })
@@ -521,9 +518,10 @@ function renderAccessAnswer({ context, languageCode, selection }) {
       ? `Abonnemangsstatus ${status} kan påverka åtkomsten till ${label}.${grace} ${reason}`
       : `Subscription status ${status} may affect access to ${label}.${grace} ${reason}`
   }
+  const steps = swedish ? featureSteps(feature?.knowledgeId) : ''
   return swedish
-    ? `Inget verifierat fel hittades för ${label}. ${knowledgeSentence(feature, swedish)}`
-    : `No verified fault was found for ${label}. ${knowledgeSentence(feature, swedish)}`
+    ? `Inget verifierat fel hittades för ${label}. ${knowledgeSentence(feature, swedish)}${steps ? ` ${steps}` : ''} ${troubleshootingLine(languageCode)}`
+    : `No verified fault was found for ${label}. ${knowledgeSentence(feature, swedish)} ${troubleshootingLine(languageCode)}`
 }
 
 export function renderCancelOffer({ context, languageCode = 'sv' } = {}) {

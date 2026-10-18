@@ -1,3 +1,5 @@
+import { loginGuidance, troubleshootingLine } from '../../../src/features/aiHelp/launchGuidance.js'
+
 // Deterministic customer facts for launch languages; no model or unverified facts are required.
 const text = {
   es: {
@@ -6,7 +8,7 @@ const text = {
     remaining: 'Disponible', used: 'Usado', limit: 'Límite', unlimited: 'Sin límite', unavailable: 'No disponible',
     payment: 'Estado del pago', reason: 'No se conoce la causa de un pago fallido.', grace: 'Período de gracia hasta',
     blocked: 'La función no está incluida en tu plan.', exhausted: 'La cuota está agotada.', clear: 'No se encontró un fallo verificado. Revisa los permisos de la función en la aplicación.',
-    login: 'La sesión de esta solicitud es válida. No puedo ver la causa de un fallo de inicio de sesión anterior.',
+    login: loginGuidance('es'),
     none: 'No hay una suscripción abierta para cancelar. No se ha cambiado nada.', scheduled: 'La cancelación ya está programada para el final del período.',
     offer: 'La cancelación solo se realizará al pulsar Confirmar cancelación. La suscripción seguirá hasta el final del período. No se ha cambiado nada.',
   },
@@ -16,7 +18,7 @@ const text = {
     remaining: 'المتبقي', used: 'المستخدم', limit: 'الحد', unlimited: 'غير محدود', unavailable: 'غير متاح',
     payment: 'حالة الدفع', reason: 'سبب فشل الدفع غير متاح.', grace: 'فترة السماح حتى',
     blocked: 'الميزة غير مشمولة في خطتك.', exhausted: 'تم استنفاد الحصة.', clear: 'لم يتم العثور على عطل مؤكد. تحقق من أذونات الميزة في التطبيق.',
-    login: 'جلسة تسجيل الدخول لهذا الطلب صالحة. لا أستطيع معرفة سبب فشل تسجيل دخول سابق.',
+    login: loginGuidance('ar'),
     none: 'لا يوجد اشتراك مفتوح للإلغاء. لم يتم تغيير أي شيء.', scheduled: 'الإلغاء مجدول بالفعل لنهاية الفترة.',
     offer: 'لن يتم الإلغاء إلا بعد الضغط على تأكيد إلغاء الاشتراك. يستمر الاشتراك حتى نهاية الفترة. لم يتم تغيير أي شيء.',
   },
@@ -53,7 +55,7 @@ export function localizedCustomer(context, selection, language) {
     if (context.quota?.remaining === 0 && !context.quota.unlimited) return t.exhausted
     const s = context.payment?.status || context.subscription?.status
     if (['PAST_DUE','PAUSED','EXPIRED'].includes(s)) return `${t.status}: ${s}. ${t.reason}`
-    return t.clear
+    return `${t.clear} ${troubleshootingLine(language)}`
   }
   const s = context.subscription
   const p = context.plan

@@ -41,6 +41,11 @@ export default function SupportPanel({ admin = false }) {
   const chromeRef = useRef(chrome)
   useEffect(() => { chromeRef.current = chrome }, [chrome])
   useEffect(() => { active.current = true; return () => { active.current = false } }, [])
+  useEffect(() => {
+    const openSupport = () => setOpened(true)
+    window.addEventListener('viktkollen:open-human-support', openSupport)
+    return () => window.removeEventListener('viktkollen:open-human-support', openSupport)
+  }, [])
   const load = useCallback(async () => {
     if (inFlight.current) return
     inFlight.current = true

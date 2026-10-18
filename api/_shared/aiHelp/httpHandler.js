@@ -59,6 +59,8 @@ export async function handleAiHelpRequest(request, response) {
     requestId,
     source: result.source,
     status: result.status,
+    ...(Array.isArray(result.followUps) ? { followUps: result.followUps.slice(0, 2) } : {}),
+    ...(result.handoff === true ? { handoff: true } : {}),
     ...(result.tool ? { tool: result.tool } : {}),
     ...(result.confirmation?.action === 'schedule_cancel' ? { confirmation: { action: 'schedule_cancel' } } : {}),
     ...(result.unansweredId ? { unansweredId: result.unansweredId } : {}),

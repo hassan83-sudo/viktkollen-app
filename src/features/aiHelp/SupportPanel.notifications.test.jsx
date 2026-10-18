@@ -40,4 +40,21 @@ describe('admin support notification polling', () => {
     await waitFor(() => expect(requestSupport).toHaveBeenCalled())
     expect(window.Notification).not.toHaveBeenCalled()
   })
+
+  it.each([true, false])('clears a temporary load failure after a successful refresh (admin=%s)', async (admin) => {
+    requestSupport.mockResolvedValueOnce({ ok: false, code: 'SUPPORT_UNAVAILABLE' })
+      .mockResolvedValueOnce({ ok: true, eligible: false, pendingCount: 0, tickets: [] })
+      .mockResolvedValue({ ok: false, code: 'SUPPORT_UNAVAILABLE' })
+    render(<SupportPanel admin={admin} />)
+    if (!admin) screen.getByRole('button', { name: 'Kontrollera supportåtkomst' }).click()
+    const error = 'Supporten kunde inte nås. Försök igen.'
+    await screen.findByText(error)
+    screen.getByRole('button', { name: 'Uppdatera ärenden' }).click()
+    await screen.findByText('Inga ärenden.')
+    expect(screen.queryByText(error)).toBeNull()
+    screen.getByRole('button', { name: 'Uppdatera ärenden' }).click()
+    await screen.findByText(error)
+    expect(screen.queryByText('Inga ärenden.')).toBeNull()
+    expect(requestSupport).toHaveBeenCalledTimes(3)
+  })
 })

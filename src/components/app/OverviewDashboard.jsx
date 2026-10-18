@@ -899,13 +899,13 @@ function OverviewPrimaryActions({
 
   return (
     <>
-      <div className="overview-title-glow-control" role="group" aria-label="Ljusstyrka för neonringen">
-        <span>Ljusstyrka</span>
+      <div className="overview-title-glow-control" role="group" aria-label={t('home:glowBrightnessAria')}>
+        <span>{t('home:glowBrightness')}</span>
         {[
-          ['low', 'Låg'],
-          ['normal', 'Normal'],
-          ['strong', 'Stark'],
-          ['max', 'Extra'],
+          ['low', t('home:glowLow')],
+          ['normal', t('home:glowNormal')],
+          ['strong', t('home:glowStrong')],
+          ['max', t('home:glowExtra')],
         ].map(([value, label]) => (
           <button
             aria-pressed={glowLevel === value}
@@ -931,7 +931,7 @@ function OverviewPrimaryActions({
       <input
         ref={setFoodLibraryInput}
         accept="image/*"
-        aria-label="Välj matbild från bildbiblioteket"
+        aria-label={t('home:chooseFoodImageAria')}
         className="home-system-camera-input home-food-library-input"
         tabIndex={-1}
         type="file"
@@ -971,8 +971,8 @@ function OverviewPrimaryActions({
             </span>
             <span className="overview-primary-action-copy">
               
-              {action.description ? <small>{action.accent === 'food' ? <>Uppskatta<br />näring</> : action.description}</small> : null}
-              <small className="overview-primary-action-hint">Tryck på ikonen nedan</small>
+              {action.description ? <small>{action.accent === 'food' ? <>{t('home:estimateNutrition')}</> : action.description}</small> : null}
+              <small className="overview-primary-action-hint">{t('home:tapIconBelow')}</small>
             </span>{' '}
             </button>
           {action.accent === 'food' && (

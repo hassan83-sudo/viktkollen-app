@@ -352,7 +352,7 @@ function MoreSection({
             </p>
 
             <details open className="app-information">
-              <summary style={{ cursor: "pointer", fontWeight: 700 }}>Visa/dölj abonnemang & användning</summary>
+              <summary style={{ cursor: "pointer", fontWeight: 700 }}>{t("usageToggle")}</summary>
               <PlanUsagePanel authLoading={authLoading} isAuthenticated={isAuthenticated} />
             </details>
             <PlanComparison authLoading={authLoading} isAuthenticated={isAuthenticated} />

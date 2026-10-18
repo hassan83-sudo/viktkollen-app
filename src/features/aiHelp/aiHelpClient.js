@@ -1,5 +1,6 @@
 import { getCurrentAiAuthorization, hasSameAiAuthUser } from '../../services/ai/aiAuthTransport.js'
 import { getActiveLanguageCode } from '../../i18n/index.js'
+import { sanitizeAiAction } from './aiActions.js'
 import { sanitizeHelpTool } from './aiHelpTools.js'
 
 export async function requestAiHelpReply({
@@ -47,16 +48,32 @@ export async function requestAiHelpReply({
     handoff: payload.handoff === true,
     tool: sanitizeHelpTool(payload.tool),
     unansweredId: payload.unansweredId || '',
-    ...(payload.confirmation?.action === 'schedule_cancel' ? { confirmation: { action: 'schedule_cancel', userScope: auth.userScope } } : {}),
+    ...(() => {
+      const confirmation = sanitizeAiAction(payload.confirmation)
+      if (!confirmation) return {}
+      return {
+        confirmation: {
+          action: confirmation.action,
+          userScope: auth.userScope,
+          ...(confirmation.planId ? { planId: confirmation.planId } : {}),
+        },
+      }
+    })(),
   }
 }
 
-export async function confirmScheduleCancel(userScope) {
+export async function confirmAiAction(userScope, confirmation) {
+  const action = sanitizeAiAction(confirmation)
+  if (!action) return { code: 'UNKNOWN_ACTION', ok: false }
   const auth = await getCurrentAiAuthorization()
   if (!auth.ok) return { code: auth.errorCode || 'AUTH_REQUIRED', ok: false }
   if (!userScope || userScope !== auth.userScope) return { code: 'AUTH_STALE', ok: false }
   const response = await fetch('/api/ai-help', {
-    body: JSON.stringify({ confirmAction: 'schedule_cancel', confirmed: true }),
+    body: JSON.stringify({
+      confirmAction: action.action,
+      confirmed: true,
+      ...(action.planId ? { planId: action.planId } : {}),
+    }),
     headers: {
       Authorization: auth.authorizationHeader,
       'Content-Type': 'application/json',
@@ -68,4 +85,8 @@ export async function confirmScheduleCancel(userScope) {
     return { code: payload?.error?.code || 'UNKNOWN_ERROR', ok: false }
   }
   return { ok: true, subscription: payload.subscription || null }
+}
+
+export async function confirmScheduleCancel(userScope) {
+  return confirmAiAction(userScope, { action: 'schedule_cancel' })
 }

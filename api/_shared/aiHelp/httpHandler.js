@@ -1,6 +1,6 @@
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../aiRouteErrors.js'
 import { verifySupabaseUser } from '../verifySupabaseUser.js'
-import { sanitizeAiAction } from '../../../src/features/aiHelp/aiActions.js'
+import { knownAiActionId, sanitizeAiAction } from '../../../src/features/aiHelp/aiActions.js'
 import { answerAiHelpQuestion } from './service.js'
 import { executeConfirmedAiAction } from './executeAiAction.js'
 
@@ -43,9 +43,10 @@ export async function handleAiHelpRequest(request, response) {
       actionId: body.confirmAction,
       actorUserId: auth.user.id,
       confirmed: body.confirmed === true,
+      planId: body.planId,
     })
     return response.status(result.status || 400).json({
-      action: sanitizeAiAction(result.action || body.confirmAction)?.action || null,
+      action: knownAiActionId(result.action),
       code: result.code || null,
       ok: result.ok === true,
     })

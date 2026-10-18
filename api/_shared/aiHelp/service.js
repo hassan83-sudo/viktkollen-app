@@ -21,6 +21,8 @@ import { createCostStoreFromEnv } from './supabaseCostStore.js'
 import {
   loadCustomerContext,
   renderCancelOffer,
+  renderPlanChangeOffer,
+  renderUndoCancelOffer,
   renderVerifiedAnswer,
   verifiedPriceMinor,
 } from './customerContext.js'
@@ -169,8 +171,12 @@ async function keepReservation(store, reservationId) {
 function verifiedCustomerResult(validated, selection, customer) {
   const rendered = selection.cancel
     ? renderCancelOffer({ context: customer, languageCode: validated.language.code })
-    : { answer: renderVerifiedAnswer({ context: customer, languageCode: validated.language.code, selection }), confirmation: null }
-  const focus = selection.focus
+    : selection.undoCancel
+      ? renderUndoCancelOffer({ context: customer, languageCode: validated.language.code })
+      : selection.planChange
+        ? renderPlanChangeOffer({ context: customer, languageCode: validated.language.code, planId: selection.planId })
+        : { answer: renderVerifiedAnswer({ context: customer, languageCode: validated.language.code, selection }), confirmation: null }
+  const focus = selection.focus === 'plan-change' || selection.focus === 'undo' ? 'subscription' : selection.focus
   return {
     answer: rendered.answer,
     featureIds: ['settings.plan'],
@@ -216,7 +222,7 @@ export async function answerAiHelpQuestion({
         userId,
       })
       : { available: false, reason: 'unauthenticated' }
-    if (selection.cancel || selection.direct || !customer.available || !env.OPENAI_API_KEY) {
+    if (selection.cancel || selection.undoCancel || selection.planChange || selection.direct || !customer.available || !env.OPENAI_API_KEY) {
       return verifiedCustomerResult(validated, selection, customer)
     }
   }

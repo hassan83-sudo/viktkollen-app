@@ -185,6 +185,45 @@ describe('AiHelpPanel language', () => {
     fetchMock.mockRestore()
   })
 
+  it('confirms a plan change and a reactivation without sending the question', async () => {
+    await i18n.changeLanguage('sv')
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options) => {
+      const body = String(options?.body || '')
+      if (String(url).includes('/api/ai-help') && body.includes('confirmAction')) {
+        const parsed = JSON.parse(body)
+        return { ok: true, json: async () => ({ action: parsed.confirmAction, ok: true }) }
+      }
+      const question = JSON.parse(options.body).messages.at(-1).content
+      const confirmation = question.startsWith('Byt')
+        ? { action: 'plan_change', planId: 'plan.prelim.sek.month.07' }
+        : { action: 'undo_cancel' }
+      return { ok: true, json: async () => ({ answer: 'Inget har ändrats ännu.', confirmation, ok: true, status: 'answered' }) }
+    })
+
+    render(<AiHelpPanel />)
+    fireEvent.click(screen.getByRole('button', { name: 'Öppna AI-Hjälp' }))
+    fireEvent.change(screen.getByLabelText('Fråga om Viktkollen'), { target: { value: 'Byt mitt abonnemang' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Bekräfta planbyte' }))
+    await screen.findByText('Planbytet är schemalagt till nästa period. Ingen betalning har startats nu.')
+
+    fireEvent.change(screen.getByLabelText('Fråga om Viktkollen'), { target: { value: 'Ångra min uppsägning' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Bekräfta återaktivering' }))
+    await screen.findByText('Den schemalagda uppsägningen är borttagen. Ingen ny betalning har startats.')
+
+    const actionBodies = fetchMock.mock.calls
+      .map((call) => call[1]?.body)
+      .filter((body) => String(body || '').includes('confirmAction'))
+      .map((body) => JSON.parse(body))
+    expect(actionBodies).toEqual([
+      { confirmAction: 'plan_change', confirmed: true, planId: 'plan.prelim.sek.month.07' },
+      { confirmAction: 'undo_cancel', confirmed: true },
+    ])
+    expect(JSON.stringify(actionBodies)).not.toMatch(/Byt mitt|Ångra min|price/)
+    fetchMock.mockRestore()
+  })
+
   it('reports a technical problem without the question text', async () => {
     await i18n.changeLanguage('sv')
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({

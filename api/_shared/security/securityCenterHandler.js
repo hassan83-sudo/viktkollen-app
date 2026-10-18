@@ -19,7 +19,12 @@ export default async function handler(request, response) {
     const { data, error } = await client.rpc('security_center_recent_events', { p_limit: 50 })
     if (error) throw error
     return response.status(200).json({ ok: true, events: Array.isArray(data) ? data : [], requestId })
-  } catch {
+  } catch (error) {
+    // Never log database messages, details, requests or credentials.
+    const reason = error?.code === 'PGRST202' || error?.code === '42883'
+      ? 'missing_rpc'
+      : 'store_unavailable'
+    console.warn('[security-center] store unavailable', { reason, requestId })
     return response.status(503).json({ ok: false, error: { code: 'SECURITY_STORE_UNAVAILABLE' }, requestId })
   }
 }

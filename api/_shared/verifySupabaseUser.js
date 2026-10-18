@@ -135,6 +135,9 @@ export async function verifySupabaseUser(request, {
   return {
     authenticated: true,
     user: {
+      createdAt: typeof result.user.created_at === 'string' ? result.user.created_at.slice(0, 40) : '',
+      email: typeof result.user.email === 'string' ? result.user.email.slice(0, 160) : '',
+      emailConfirmed: Boolean(result.user.email_confirmed_at),
       id: String(result.user.id),
     },
   }

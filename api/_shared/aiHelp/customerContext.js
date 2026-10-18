@@ -5,8 +5,9 @@ import { readDurableQuota } from '../billing/quotaRead.js'
 import { readDurableUserSubscription } from '../billing/subscriptionRead.js'
 import { readUsageSnapshot } from '../billing/usageSnapshotRead.js'
 import { createSupabaseAdminClient } from '../supabaseServer.js'
-import { localizedCancel, localizedCustomer, localizedPlanChange, localizedUndoCancel } from './localizedCustomer.js'
+import { localizedAccount, localizedCancel, localizedCustomer, localizedPaymentLimit, localizedPlanChange, localizedUndoCancel } from './localizedCustomer.js'
 import { featureSteps, loginGuidance, troubleshootingLine } from '../../../src/features/aiHelp/launchGuidance.js'
+import { detectTrouble, troubleFeature } from './troubleshooting.js'
 
 const LAUNCH_FEATURES = Object.freeze([
   'ai.ear.interpret',
@@ -92,6 +93,73 @@ export function requestedPlanChange(question) {
   return { planId: acceptedPlanId(named?.[1] || '') }
 }
 
+export function requestedHostedCheckout(question) {
+  const text = String(question || '')
+  if (HOW_TO.test(text) || /inte.{0,40}betal|don.?t pay|do not pay|no quiero pagar|لا أريد الدفع|återbetal|refund|reembolso|استرداد/iu.test(text)) return null
+  const wants = /betala(?:\s+\S+){0,6}\s+igen|nytt betalningsförsök|försök(?:\s+\S+){0,4}\s+betala|pay again|try paying|new payment attempt|pagar de nuevo|nuevo intento de pago|ادفع مرة أخرى|محاولة دفع جديدة/iu.test(text)
+  if (!wants) return null
+  const named = text.match(/\b(plan\.[A-Za-z0-9._-]{1,74})\b/)
+  return { planId: acceptedPlanId(named?.[1] || '') }
+}
+
+export function wantsRefund(question) {
+  const text = String(question || '')
+  if (HOW_TO.test(text) || /inte.{0,30}(återbetal|refund)|don.?t refund|no quiero reembolso/iu.test(text)) return false
+  return /återbetal|refund|reembolso|استرداد/iu.test(text)
+}
+
+export function wantsReceipt(question) {
+  return /mitt kvitto|kvittot|payment receipt|my receipt|mi recibo|إيصالي/iu.test(String(question || ''))
+}
+
+export function wantsTransactions(question) {
+  return /mina transaktioner|betalningshistorik|payment history|my transactions|mis transacciones|معاملاتي/iu.test(String(question || ''))
+}
+
+export function suppliedSecret(question) {
+  return /lösenord(?:et)?\s*(?:är|is|:)\s*\S{3,}|password\s*(?:is|:)\s*\S{3,}|contraseña\s*(?:es|:)\s*\S{3,}|token\s*[:=]\s*\S{6,}|återställningskod\s*[:=]\s*\S{4,}/iu.test(String(question || ''))
+}
+
+export function requestedPasswordReset(question) {
+  const text = String(question || '')
+  if (HOW_TO.test(text) || suppliedSecret(text) || /inte.{0,40}(återställ|lösen)|don.?t reset|do not reset|no quiero restablecer|لا أريد/iu.test(text)) return false
+  return /återställ(?:\s+\S+){0,4}\s+lösenord|glömt(?:\s+\S+){0,3}\s+lösenord|reset my password|forgot my password|olvidé mi contraseña|restablece mi contraseña|نسيت كلمة المرور|أعد تعيين كلمة المرور/iu.test(text)
+}
+
+export function wantsDeleteAccount(question) {
+  const text = String(question || '')
+  if (HOW_TO.test(text) || /inte.{0,40}(radera|ta bort)|don.?t delete|do not delete|no quiero eliminar|لا أريد/iu.test(text)) return false
+  return /radera mitt konto|ta bort mitt konto|radera kontot|delete my account|elimina mi cuenta|borrar mi cuenta|احذف حسابي/iu.test(text)
+}
+
+export function wantsDeleteHelp(question) {
+  const text = String(question || '')
+  if (!HOW_TO.test(text) || /inte.{0,40}(radera|ta bort)|don.?t delete|do not delete|لا أريد/iu.test(text)) return false
+  return /radera(?:\s+\S+){0,4}\s+konto|ta bort(?:\s+\S+){0,4}\s+konto|delete(?:\s+\S+){0,4}\s+account|eliminar(?:\s+\S+){0,4}\s+cuenta|حذف حساب/iu.test(text)
+}
+
+export function wantsEmailChange(question) {
+  const text = String(question || '')
+  if (HOW_TO.test(text) || /inte.{0,40}(e-?post|email|correo)|don.?t change|do not change|لا أريد/iu.test(text)) return false
+  return /byt(?:\s+\S+){0,4}\s+e-?post|ändra(?:\s+\S+){0,4}\s+e-?post|change my e-?mail|cambiar mi correo|تغيير بريدي/iu.test(text)
+}
+
+export function wantsProfileChange(question) {
+  const text = String(question || '')
+  if (HOW_TO.test(text) || /inte.{0,40}(namn|profil)|don.?t change|do not change|لا أريد/iu.test(text)) return false
+  return /ändra(?:\s+\S+){0,3}\s+(?:mitt )?namn|byt namn|ändra(?:\s+\S+){0,3}\s+profil|change my name|update my profile|cambiar mi nombre|تغيير اسمي/iu.test(text)
+}
+
+export function wantsPasswordHelp(question) {
+  const text = String(question || '')
+  if (suppliedSecret(text) || requestedPasswordReset(text)) return false
+  return /lösenord|password|contraseña|كلمة المرور/iu.test(text)
+}
+
+export function wantsAccountRead(question) {
+  return /min e-?post|mitt konto|kontoinformation|kontostatus|vilken e-?post|my account|my email|mi cuenta|mi correo|حسابي|بريدي/iu.test(String(question || ''))
+}
+
 function noCustomerSelection() {
   return {
     cancel: false,
@@ -101,8 +169,24 @@ function noCustomerSelection() {
     personal: false,
     planChange: false,
     planId: '',
+    receiptRequest: false,
+    refundRequest: false,
     slices: [],
+    transactionRequest: false,
     undoCancel: false,
+    hostedCheckout: false,
+    accountRead: false,
+    deleteAccount: false,
+    deleteHelp: false,
+    emailChange: false,
+    passwordHelp: false,
+    passwordReset: false,
+    profileChange: false,
+    secretRefused: false,
+    deviceBlocked: false,
+    resolvedCheck: false,
+    trouble: false,
+    troubleDomain: '',
   }
 }
 
@@ -116,9 +200,12 @@ export function selectCustomerContext(question) {
   const cancel = wantsScheduleCancel(text)
   const undoCancel = wantsUndoCancel(text)
   const planRequest = requestedPlanChange(text)
+  const hostedRequest = requestedHostedCheckout(text)
+  const refundRequest = wantsRefund(text)
+  const receiptRequest = wantsReceipt(text)
+  const transactionRequest = wantsTransactions(text)
   const problem = /kvoten är slut|betalningen gick inte|förnyas inte|redan uppsagt|priset stämmer inte|quota is used up|payment failed|does not renew|already cancelled|already canceled|cuota agotada|pago fall|no se renueva|الحصة نفدت|فشل الدفع|لا يتجدد/iu.test(text)
   const why = /varför kan jag inte|why can.?t i|kan inte använda|cannot use|can't use|doesn.?t work|fungerar inte|por qué no puedo|no funciona|لماذا لا|لا يعمل/i.test(text)
-  const personal = /\b(mitt|mina|min|jag|my|mi|mis|tengo|me)\b/i.test(text) || /\bi have\b|\bdo i\b/i.test(text) || /har jag|اشتراكي|حسابي|خطتي|لدي|حصتي|دفعي/i.test(text)
   const navigation = /var finns|where is|hur öppnar|hur hittar|öppna /i.test(text)
   const aboutSub = /abonnemang|prenumeration|subscription|förny|renewal|uppsäg|avsluta|cancel|suscripción|renueva|renovación|اشتراك|تجديد/i.test(text)
   const aboutPlan = /\bplan\b|pris|kostar|kostnad|price|paket|precio|cuesta|خطة|خطتي|سعر/i.test(text)
@@ -126,13 +213,26 @@ export function selectCustomerContext(question) {
   const aboutPay = /betal|payment|grace|förfallen|past due|gick inte igenom|pago|cobro|دفع|دفعي|مدفوع/i.test(text)
   const aboutEnt = /ingår|entitlement|planinnehåll|incluye|incluido|مشمول/i.test(text)
   const login = /logga in|inlogg|sign in|login|iniciar sesión|تسجيل الدخول/i.test(text)
+  const deleteAccount = wantsDeleteAccount(text)
+  const deleteHelp = wantsDeleteHelp(text) && !deleteAccount
+  const passwordReset = requestedPasswordReset(text)
+  const secretRefused = suppliedSecret(text) && !passwordReset
+  const emailChange = wantsEmailChange(text) && !deleteAccount && !passwordReset && !secretRefused
+  const profileChange = wantsProfileChange(text) && !deleteAccount && !passwordReset && !secretRefused && !emailChange
+  const passwordHelp = wantsPasswordHelp(text) && !deleteAccount && !deleteHelp && !emailChange && !profileChange
+  const detected = cancel || undoCancel || planRequest || hostedRequest || refundRequest || deleteAccount || passwordReset || secretRefused || emailChange || profileChange
+    ? null
+    : detectTrouble(text)
+  const accountRead = wantsAccountRead(text) && !detected && !deleteAccount && !deleteHelp && !passwordReset && !secretRefused && !emailChange && !profileChange && !passwordHelp && !aboutSub && !aboutPlan && !aboutPay && !aboutUsage
+  const accountDirect = deleteAccount || deleteHelp || passwordReset || secretRefused || emailChange || profileChange || passwordHelp || accountRead
+  const personal = Boolean(detected) || accountDirect || /\b(mitt|mina|min|jag|my|mi|mis|tengo|me)\b/i.test(text) || /\bi have\b|\bdo i\b/i.test(text) || /har jag|اشتراكي|حسابي|خطتي|لدي|حصتي|دفعي/i.test(text)
 
-  const accountTopic = Boolean(feature || login || cancel || undoCancel || planRequest || problem || why || aboutSub || aboutPlan || aboutUsage || aboutPay || aboutEnt)
-  if (!accountTopic || (navigation && !why && !cancel && !undoCancel && !planRequest && !problem && !aboutUsage && !aboutPay)) {
+  const accountTopic = Boolean(feature || login || cancel || undoCancel || planRequest || hostedRequest || refundRequest || receiptRequest || transactionRequest || problem || why || aboutSub || aboutPlan || aboutUsage || aboutPay || aboutEnt || accountDirect || detected)
+  if (!accountTopic || (navigation && !why && !cancel && !undoCancel && !planRequest && !hostedRequest && !refundRequest && !receiptRequest && !transactionRequest && !problem && !aboutUsage && !aboutPay && !accountDirect && !detected)) {
     return noCustomerSelection()
   }
 
-  if (login && !feature && !aboutSub && !aboutUsage && !aboutPay && !undoCancel && !planRequest) {
+  if (login && !feature && !aboutSub && !aboutUsage && !aboutPay && !undoCancel && !planRequest && !hostedRequest && !refundRequest && !accountDirect && !detected) {
     return {
       ...noCustomerSelection(),
       direct: true,
@@ -141,22 +241,39 @@ export function selectCustomerContext(question) {
     }
   }
 
-  if (!personal && !why && !cancel && !undoCancel && !planRequest && !problem) {
+  if (!personal && !why && !cancel && !undoCancel && !planRequest && !hostedRequest && !refundRequest && !receiptRequest && !transactionRequest && !problem && !detected) {
     return noCustomerSelection()
   }
 
   const slices = new Set()
-  if (cancel || undoCancel || planRequest || aboutSub || why || problem) slices.add('subscription')
-  if (cancel || planRequest || aboutPlan || aboutSub || why || /pris|price|precio|سعر/iu.test(text)) slices.add('plan')
-  if (aboutUsage || (why && feature) || (feature && /kvar|kvot|använt|remaining/i.test(text)) || /kvoten är slut|quota is used up|cuota agotada|الحصة نفدت/iu.test(text)) slices.add('usage')
-  if (aboutEnt || (why && (feature || aboutPlan || aboutSub))) slices.add('entitlements')
-  if (cancel || undoCancel || aboutPay || why || /betalningen gick inte|payment failed|pago fall|فشل الدفع/iu.test(text)) slices.add('payment')
+  const troubleDomain = detected?.domain || ''
+  const selectedFeature = feature || troubleFeature(troubleDomain)
+  const deviceOnly = Boolean(detected) && ['', 'camera', 'login', 'microphone', 'unknown'].includes(troubleDomain)
+  if (!deviceOnly && (cancel || undoCancel || planRequest || hostedRequest || refundRequest || receiptRequest || transactionRequest || aboutSub || why || problem || troubleDomain === 'subscription' || troubleDomain === 'payment')) slices.add('subscription')
+  if (!deviceOnly && (cancel || planRequest || hostedRequest || receiptRequest || aboutPlan || aboutSub || why || troubleDomain === 'subscription' || troubleDomain === 'payment' || /pris|price|precio|سعر/iu.test(text))) slices.add('plan')
+  if (!deviceOnly && (aboutUsage || (why && selectedFeature) || (selectedFeature && /kvar|kvot|använt|remaining/i.test(text)) || /kvoten är slut|quota is used up|cuota agotada|الحصة نفدت/iu.test(text) || troubleFeature(troubleDomain))) slices.add('usage')
+  if (!deviceOnly && (aboutEnt || (why && (selectedFeature || aboutPlan || aboutSub)) || troubleFeature(troubleDomain))) slices.add('entitlements')
+  if (!deviceOnly && (cancel || undoCancel || hostedRequest || refundRequest || receiptRequest || transactionRequest || aboutPay || why || troubleDomain === 'payment' || troubleDomain === 'subscription' || troubleFeature(troubleDomain) || /betalningen gick inte|payment failed|pago fall|فشل الدفع/iu.test(text))) slices.add('payment')
 
   let focus = 'subscription'
-  const keepPlanChange = Boolean(planRequest) && !cancel && !undoCancel
-  if (cancel) focus = 'cancel'
+  const keepPlanChange = Boolean(planRequest) && !cancel && !undoCancel && !accountDirect
+  const keepHosted = Boolean(hostedRequest) && !cancel && !undoCancel && !keepPlanChange && !refundRequest && !accountDirect
+  if (deleteAccount) focus = 'delete-account'
+  else if (passwordReset) focus = 'password-reset'
+  else if (secretRefused) focus = 'secret-refused'
+  else if (emailChange) focus = 'email-change'
+  else if (profileChange) focus = 'profile-change'
+  else if (deleteHelp) focus = 'delete-help'
+  else if (passwordHelp) focus = 'password-help'
+  else if (accountRead) focus = 'account'
+  else if (detected) focus = 'troubleshoot'
+  else if (cancel) focus = 'cancel'
   else if (undoCancel) focus = 'undo'
   else if (keepPlanChange) focus = 'plan-change'
+  else if (refundRequest) focus = 'refund'
+  else if (receiptRequest) focus = 'receipt'
+  else if (transactionRequest) focus = 'transactions'
+  else if (keepHosted) focus = 'hosted-checkout'
   else if (aboutPay && !feature) focus = 'payment'
   else if (why) focus = 'access'
   else if (/förny|renewal|renueva|renovación|تجديد|förnyas inte|does not renew|no se renueva|لا يتجدد/iu.test(text)) focus = 'renewal'
@@ -166,17 +283,34 @@ export function selectCustomerContext(question) {
   else if (aboutPlan && !aboutSub) focus = 'plan'
 
   const rephrase = /förklara|enklare|annat sätt|andra ord|mer detalj|utveckla|skillnad|explain|another way|explica|detalle|اشرح|وضح/i.test(text)
-  const writes = cancel || undoCancel || Boolean(planRequest)
+  const writes = cancel || undoCancel || Boolean(planRequest) || keepHosted
+  const blockedPayment = refundRequest || receiptRequest || transactionRequest
   return {
-    cancel,
-    direct: writes || problem || !rephrase,
-    feature,
+    accountRead,
+    cancel: cancel && !accountDirect,
+    deleteAccount,
+    deleteHelp,
+    direct: writes || problem || blockedPayment || accountDirect || Boolean(detected) || !rephrase,
+    emailChange,
+    feature: selectedFeature,
     focus,
+    hostedCheckout: keepHosted,
+    passwordHelp,
+    passwordReset,
     personal: true,
     planChange: keepPlanChange,
-    planId: keepPlanChange ? planRequest.planId : '',
+    planId: keepPlanChange ? planRequest.planId : (keepHosted ? hostedRequest.planId : ''),
+    profileChange,
+    receiptRequest,
+    refundRequest,
+    secretRefused,
     slices: [...slices],
-    undoCancel: undoCancel && !cancel,
+    transactionRequest,
+    trouble: Boolean(detected),
+    troubleDomain,
+    deviceBlocked: detected?.deviceBlocked === true,
+    resolvedCheck: detected?.resolvedCheck === true,
+    undoCancel: undoCancel && !cancel && !accountDirect,
   }
 }
 
@@ -365,6 +499,10 @@ function knowledgeSentence(feature, swedish) {
 }
 
 export function renderVerifiedAnswer({ context, languageCode = 'sv', selection } = {}) {
+  if (selection?.focus === 'refund') return renderRefundAnswer({ context, languageCode }).answer
+  if (selection?.focus === 'receipt') return renderReceiptAnswer({ context, languageCode }).answer
+  if (selection?.focus === 'transactions') return renderTransactionAnswer({ context, languageCode }).answer
+  if (selection?.focus === 'hosted-checkout') return renderHostedCheckoutOffer({ context, languageCode, planId: selection.planId }).answer
   const localized = localizedCustomer(context, selection, languageCode)
   if (localized) return localized
   const swedish = isSwedish(languageCode)
@@ -377,6 +515,10 @@ export function renderVerifiedAnswer({ context, languageCode = 'sv', selection }
   if (selection?.focus === 'cancel') return renderCancelOffer({ context, languageCode }).answer
   if (selection?.focus === 'undo') return renderUndoCancelOffer({ context, languageCode }).answer
   if (selection?.focus === 'plan-change') return renderPlanChangeOffer({ context, languageCode, planId: selection.planId }).answer
+  if (selection?.focus === 'refund') return renderRefundAnswer({ context, languageCode }).answer
+  if (selection?.focus === 'receipt') return renderReceiptAnswer({ context, languageCode }).answer
+  if (selection?.focus === 'transactions') return renderTransactionAnswer({ context, languageCode }).answer
+  if (selection?.focus === 'hosted-checkout') return renderHostedCheckoutOffer({ context, languageCode, planId: selection.planId }).answer
   if (selection?.focus === 'renewal') return renderRenewalAnswer({ context, languageCode })
   if (selection?.focus === 'access') return renderAccessAnswer({ context, languageCode, selection })
   if (selection?.focus === 'usage' && selection?.slices?.includes('plan')) {
@@ -507,6 +649,102 @@ function renderEntitlementAnswer({ context, languageCode }) {
   }).join(' ')
 }
 
+function paymentFollowUp(swedish) {
+  return swedish
+    ? 'Det olösta betalningsproblemet kan följas upp med mänsklig support. Ingen supportförfrågan har skapats.'
+    : 'The unsolved payment problem can be followed up with human support. No support request has been created.'
+}
+
+function openSubscription(subscription) {
+  return Boolean(subscription && ['TRIALING', 'ACTIVE', 'PAST_DUE', 'PAUSED'].includes(subscription.status))
+}
+
+export function renderRefundAnswer({ context, languageCode = 'sv' } = {}) {
+  const localized = localizedPaymentLimit('refund', context, languageCode)
+  if (localized) return localized
+  const swedish = isSwedish(languageCode)
+  const status = context?.payment?.status || context?.subscription?.status
+  return {
+    answer: swedish
+      ? `Återbetalning är blockerad. Befintlig billing gör ingen återbetalning, och SumUp-integrationen har inget återbetalningsanrop. Status är ${status || 'okänd'}. Inget har ändrats. ${paymentFollowUp(true)}`
+      : `A refund is blocked. Existing billing does not refund, and the SumUp integration has no refund call. The status is ${status || 'unknown'}. Nothing has been changed. ${paymentFollowUp(false)}`,
+    confirmation: null,
+  }
+}
+
+export function renderReceiptAnswer({ context, languageCode = 'sv' } = {}) {
+  const localized = localizedPaymentLimit('receipt', context, languageCode)
+  if (localized) return localized
+  const swedish = isSwedish(languageCode)
+  const status = context?.payment?.status || context?.subscription?.status || (swedish ? 'okänd' : 'unknown')
+  const price = formatPrice(context?.plan)
+  const end = context?.subscription?.current_period_end
+  const charge = price
+    ? (swedish ? `Den verifierade debiteringen är ${price} för ${context.plan.plan_id}.` : `The verified charge is ${price} for ${context.plan.plan_id}.`)
+    : (swedish ? 'Ingen verifierad debitering kan visas.' : 'No verified charge can be shown.')
+  return {
+    answer: swedish
+      ? `Ett kvitto kan inte hämtas. ${charge} Betalningsstatus är ${status}.${end ? ` Perioden slutar ${end}.` : ''} ${paymentFollowUp(true)}`
+      : `A receipt cannot be retrieved. ${charge} The payment status is ${status}.${end ? ` The period ends ${end}.` : ''} ${paymentFollowUp(false)}`,
+    confirmation: null,
+  }
+}
+
+export function renderTransactionAnswer({ context, languageCode = 'sv' } = {}) {
+  const localized = localizedPaymentLimit('transactions', context, languageCode)
+  if (localized) return localized
+  const swedish = isSwedish(languageCode)
+  const status = context?.payment?.status || context?.subscription?.status || (swedish ? 'okänd' : 'unknown')
+  const end = context?.subscription?.current_period_end
+  const reason = swedish
+    ? 'Orsaken till en misslyckad betalning lagras inte.'
+    : 'The reason for a failed payment is not stored.'
+  return {
+    answer: swedish
+      ? `Enskilda transaktioner kan inte listas. Betalningsstatus är ${status}.${end ? ` Perioden slutar ${end}.` : ''} ${reason} ${paymentFollowUp(true)}`
+      : `Individual transactions cannot be listed. The payment status is ${status}.${end ? ` The period ends ${end}.` : ''} ${reason} ${paymentFollowUp(false)}`,
+    confirmation: null,
+  }
+}
+
+export function renderHostedCheckoutOffer({ context, languageCode = 'sv', planId = '' } = {}) {
+  const localized = localizedPaymentLimit('hosted', context, languageCode, planId)
+  if (localized) return localized
+  const swedish = isSwedish(languageCode)
+  if (!context?.available) {
+    return {
+      answer: swedish
+        ? `Jag kan inte verifiera betalningen. Ingen betalning har startats.`
+        : 'I cannot verify the payment. No payment has been started.',
+      confirmation: null,
+    }
+  }
+  const subscription = context.subscription
+  if (openSubscription(subscription)) {
+    return {
+      answer: swedish
+        ? `Status är ${subscription.status}. Ett nytt kortförsök är blockerat: chatten kan inte dra ett sparat betalmedel och får inte skapa en andra debitering. Orsaken till en misslyckad betalning lagras inte. Ingen betalning har startats. ${paymentFollowUp(true)}`
+        : `The status is ${subscription.status}. A new card attempt is blocked: chat cannot charge a stored payment instrument and must not create a second charge. The reason for a failed payment is not stored. No payment has been started. ${paymentFollowUp(false)}`,
+      confirmation: null,
+    }
+  }
+  const safePlanId = acceptedPlanId(planId)
+  if (!safePlanId) {
+    return {
+      answer: swedish
+        ? 'Namnge en befintlig betalplan för ett nytt försök. Ingen betalning har startats.'
+        : 'Name an existing paid plan for a new attempt. No payment has been started.',
+      confirmation: null,
+    }
+  }
+  return {
+    answer: swedish
+      ? `Ett nytt betalningsförsök för ${safePlanId} öppnar SumUps betalningssida först när du bekräftar. Kortnummer skrivs inte här. Ingen betalning är gjord ännu.`
+      : `A new payment attempt for ${safePlanId} opens the SumUp payment page only after you confirm. Card numbers are not entered here. No payment has been made yet.`,
+    confirmation: { action: 'hosted_checkout', planId: safePlanId },
+  }
+}
+
 function renderPaymentAnswer({ context, languageCode }) {
   const swedish = isSwedish(languageCode)
   const payment = context.payment
@@ -572,6 +810,93 @@ function renderAccessAnswer({ context, languageCode, selection }) {
   return swedish
     ? `Inget verifierat fel hittades för ${label}. ${knowledgeSentence(feature, swedish)}${steps ? ` ${steps}` : ''} ${troubleshootingLine(languageCode)}`
     : `No verified fault was found for ${label}. ${knowledgeSentence(feature, swedish)} ${troubleshootingLine(languageCode)}`
+}
+
+export function renderAccountAnswer({ account, kind = 'read', languageCode = 'sv' } = {}) {
+  const localized = localizedAccount(kind, account, languageCode)
+  if (localized) return localized
+  const swedish = isSwedish(languageCode)
+  const email = account?.email || ''
+  const confirmed = account?.emailConfirmed === true
+  const created = account?.createdAt || ''
+  if (kind === 'read') {
+    if (!email) {
+      return {
+        answer: swedish
+          ? 'Ingen verifierad e-postadress kan visas. Inget har ändrats.'
+          : 'No verified email address can be shown. Nothing was changed.',
+        confirmation: null,
+      }
+    }
+    return {
+      answer: swedish
+        ? `Verifierad e-post är ${email}. E-posten är ${confirmed ? 'bekräftad' : 'obekräftad'}. Kontot skapades ${created || 'vid ett okänt tillfälle'}. Inget har ändrats.`
+        : `The verified email is ${email}. The email is ${confirmed ? 'confirmed' : 'unconfirmed'}. The account was created ${created || 'at an unknown time'}. Nothing was changed.`,
+      confirmation: null,
+    }
+  }
+  if (kind === 'password-reset') {
+    if (!email) {
+      return {
+        answer: swedish
+          ? 'Det finns ingen verifierad e-postadress att skicka återställningen till. Inget har ändrats.'
+          : 'There is no verified email address to send the reset to. Nothing was changed.',
+        confirmation: null,
+      }
+    }
+    return {
+      answer: swedish
+        ? 'Ett återställningsmejl skickas till den verifierade adressen först när du bekräftar. Skriv inte lösenord, kod eller token här. Inget har ändrats.'
+        : 'A reset email is sent to the verified address only after you confirm. Do not type a password, code or token here. Nothing was changed.',
+      confirmation: { action: 'password_reset' },
+    }
+  }
+  if (kind === 'password-help') {
+    return {
+      answer: swedish
+        ? 'Be om ett återställningsmejl till den verifierade adressen. Skriv inte lösenordet här. Inget har ändrats.'
+        : 'Ask for a reset email to the verified address. Do not type the password here. Nothing was changed.',
+      confirmation: null,
+    }
+  }
+  if (kind === 'delete-account') {
+    return {
+      answer: swedish
+        ? 'Kontot tas bort genom det befintliga raderingsflödet först när du trycker på Bekräfta kontoradering. Ingen radering har utförts.'
+        : 'The account is removed through the existing deletion flow only after you press Confirm account deletion. No deletion has been performed.',
+      confirmation: { action: 'delete_account' },
+    }
+  }
+  if (kind === 'delete-help') {
+    return {
+      answer: swedish
+        ? 'Kontoradering kräver en separat bekräftelse och använder det befintliga raderingsflödet. Ingen radering har utförts.'
+        : 'Account deletion requires a separate confirmation and uses the existing deletion flow. No deletion has been performed.',
+      confirmation: null,
+    }
+  }
+  if (kind === 'email-change') {
+    return {
+      answer: swedish
+        ? 'Byte av e-postadress är blockerat. Det finns inget befintligt API som verifierar en ny adress. Inget har ändrats.'
+        : 'Changing the email address is blocked. There is no existing API that verifies a new address. Nothing was changed.',
+      confirmation: null,
+    }
+  }
+  if (kind === 'profile-change') {
+    return {
+      answer: swedish
+        ? 'Ändring av namn eller profil är blockerad. Det finns inget säkert konto-API för den uppgiften. Inget har ändrats.'
+        : 'Changing the name or profile is blocked. There is no secure account API for that field. Nothing was changed.',
+      confirmation: null,
+    }
+  }
+  return {
+    answer: swedish
+      ? 'Lösenord, koder och token sparas inte i chatten. Be om ett återställningsmejl utan att skriva lösenordet. Inget har ändrats.'
+      : 'Passwords, codes and tokens are not stored in the chat. Ask for a reset email without typing the password. Nothing was changed.',
+    confirmation: null,
+  }
 }
 
 export function renderCancelOffer({ context, languageCode = 'sv' } = {}) {

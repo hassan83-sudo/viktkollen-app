@@ -133,6 +133,11 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
     maxSeconds,
     MediaRecorderImpl: deps.MediaRecorderImpl,
     onError: showError,
+    onInterrupted: () => {
+      wavRef.current = null
+      setHasWav(false)
+      setPhase('idle')
+    },
     onRecorded: (blob) => prepareBlob(blob, { autoAnalyze: isHumming }),
     onStart: () => {
       wavRef.current = null

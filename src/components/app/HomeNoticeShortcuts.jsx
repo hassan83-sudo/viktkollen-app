@@ -1,13 +1,15 @@
 import { useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 
 function HomeNoticeShortcuts({ onOpenNotices, onOpenPlace }) {
+  const { t } = useTranslation('home')
   const [target, setTarget] = useState(null)
   const shortcuts = [
-    { id: 'timer', label: 'Timer' },
-    { id: 'alarm', label: 'Väckarklocka' },
-    { id: 'reminder', label: 'Påminnelse' },
-    { id: 'bathroom', label: 'Badrum' },
+    { id: 'timer', label: t('quickShortcuts.timer') },
+    { id: 'alarm', label: t('quickShortcuts.alarm') },
+    { id: 'reminder', label: t('quickShortcuts.reminder') },
+    { id: 'bathroom', label: t('quickShortcuts.bathroom') },
   ]
 
   // Placeras före första målningen: med useEffect visades Hem först utan
@@ -143,12 +145,12 @@ function HomeNoticeShortcuts({ onOpenNotices, onOpenPlace }) {
           }
         }
       `}</style>
-      <article className="overview-mood-card is-quick" aria-label="Snabbt">
+      <article className="overview-mood-card is-quick" aria-label={t('quickShortcuts.title')}>
         <div className="overview-quick-head">
-          <span className="overview-mood-label">Snabbt</span>
-          <button type="button" onClick={() => onOpenNotices?.()}>Alla notiser</button>
+          <span className="overview-mood-label">{t('quickShortcuts.title')}</span>
+          <button type="button" onClick={() => onOpenNotices?.()}>{t('quickShortcuts.allNotices')}</button>
         </div>
-        <div className="overview-quick-buttons" role="group" aria-label="Viktiga snabbknappar">
+        <div className="overview-quick-buttons" role="group" aria-label={t('quickShortcuts.actions')}>
           {shortcuts.map((shortcut) => (
             <button key={shortcut.id} type="button" onClick={() => onOpenNotices?.(shortcut.id)}>
               {shortcut.label}
@@ -156,9 +158,9 @@ function HomeNoticeShortcuts({ onOpenNotices, onOpenPlace }) {
           ))}
         </div>
       </article>
-      <article className="overview-place-card is-place" aria-label="Plats">
-        <strong>📍 Plats</strong>
-        <button type="button" onClick={() => onOpenPlace?.()}>Öppna Plats</button>
+      <article className="overview-place-card is-place" aria-label={t('quickShortcuts.place')}>
+        <strong>📍 {t('quickShortcuts.place')}</strong>
+        <button type="button" onClick={() => onOpenPlace?.()}>{t('quickShortcuts.openPlace')}</button>
       </article>
     </>,
     target,

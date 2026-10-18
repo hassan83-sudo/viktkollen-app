@@ -1,6 +1,7 @@
 import { getCurrentAiAuthorization, hasSameAiAuthUser } from '../../services/ai/aiAuthTransport.js'
 import { getActiveLanguageCode } from '../../i18n/index.js'
 import { sanitizeAiAction } from './aiActions.js'
+import { officialSumUpHostedCheckoutUrl } from './hostedCheckoutUrl.js'
 import { sanitizeHelpTool } from './aiHelpTools.js'
 
 export async function requestAiHelpReply({
@@ -82,9 +83,17 @@ export async function confirmAiAction(userScope, confirmation) {
   })
   const payload = await response.json().catch(() => null)
   if (!response.ok || !payload?.ok) {
-    return { code: payload?.error?.code || 'UNKNOWN_ERROR', ok: false }
+    return { code: payload?.error?.code || payload?.code || 'UNKNOWN_ERROR', ok: false }
   }
-  return { ok: true, subscription: payload.subscription || null }
+  const hostedCheckoutUrl = officialSumUpHostedCheckoutUrl(payload.hostedCheckoutUrl)
+  return {
+    code: payload.code || '',
+    hostedCheckoutUrl,
+    ok: true,
+    outcome: ['blocked', 'failed', 'pending', 'verified'].includes(payload.outcome) ? payload.outcome : 'pending',
+    resolved: payload.resolved === true,
+    subscription: payload.subscription || null,
+  }
 }
 
 export async function confirmScheduleCancel(userScope) {

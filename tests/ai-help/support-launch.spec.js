@@ -22,6 +22,9 @@ test('free accounts get AI help and no human support submission form', async ({ 
 
 test('a paid request enters the admin queue, can be prioritized and receives a human reply', async ({ page }) => {
   let tickets = []
+  // Both admin panels mount together. Keep Security Center's independent
+  // polling endpoint inside this offline fixture instead of Vite's HTML fallback.
+  await page.route('**/api/security-center', (route) => route.fulfill({ json: { ok: true, events: [] } }))
   await page.route('**/api/billing/capability', (route) => route.fulfill({ json: { ok: true, billing_admin: true } }))
   await page.route('**/api/support**', async (route) => {
     const admin = route.request().url().includes('resource=admin')
@@ -37,6 +40,7 @@ test('a paid request enters the admin queue, can be prioritized and receives a h
     await route.fulfill({ json: command ? { ok: true, ticket: tickets[0] } : { ok: true, eligible: true, pendingCount: tickets.filter((t) => t.notification_pending).length, tickets } })
   })
   const help = await openHelp(page)
+  await expect(page.getByRole('region', { name: 'Säkerhetscentral' })).toContainText('0 senaste händelser.')
   const support = help.getByRole('region', { name: 'Mänsklig support' })
   await support.getByRole('button', { name: 'Kontrollera supportåtkomst' }).click()
   await support.getByRole('combobox').selectOption('billing')

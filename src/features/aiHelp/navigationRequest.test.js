@@ -3,7 +3,7 @@ import { directHelpDestination, isDirectNavigationRequest } from './navigationRe
 import { sanitizeHelpTool, commitHelpSectionOpen } from './aiHelpTools.js'
 import { answerAiHelpQuestion, answerIsAllowed } from '../../../api/_shared/aiHelp/service.js'
 import { selectCustomerConversation } from '../../../api/_shared/aiHelp/customerConversation.js'
-import { renderCancelOffer, renderHostedCheckoutOffer, renderPlanChangeOffer, renderRefundAnswer, renderUndoCancelOffer, renderVerifiedAnswer, selectCustomerContext, wantsScheduleCancel } from '../../../api/_shared/aiHelp/customerContext.js'
+import { renderAccountAnswer, renderCancelOffer, renderHostedCheckoutOffer, renderPlanChangeOffer, renderRefundAnswer, renderUndoCancelOffer, renderVerifiedAnswer, selectCustomerContext, wantsScheduleCancel } from '../../../api/_shared/aiHelp/customerContext.js'
 import { helpChrome } from './uiChrome.js'
 
 describe('launch language navigation and customer conversations', () => {
@@ -92,5 +92,30 @@ describe('launch language navigation and customer conversations', () => {
     })
     expect(blocked.confirmation).toBeNull()
     expect(renderRefundAnswer({ context: { available: true, subscription: { status: 'ACTIVE' } }, languageCode: 'es' }).answer).not.toMatch(/Återbetalning/)
+  })
+
+  it('offers password reset and account deletion only as separate confirmations', () => {
+    expect(selectCustomerContext('Hur återställer jag lösenordet?').passwordReset).toBe(false)
+    expect(selectCustomerContext('Jag vill inte radera mitt konto').deleteAccount).toBe(false)
+    expect(selectCustomerContext('Återställ mitt lösenord')).toMatchObject({ passwordReset: true, deleteAccount: false })
+    expect(selectCustomerContext('Radera mitt konto')).toMatchObject({ deleteAccount: true, passwordReset: false })
+    expect(selectCustomerContext('Byt min e-post till annan@example.test').emailChange).toBe(true)
+    expect(selectCustomerContext('Ändra mitt namn till Anna').profileChange).toBe(true)
+    const typed = selectCustomerContext('Lösenordet är hunter2')
+    expect(typed.secretRefused).toBe(true)
+    expect(typed.passwordReset).toBe(false)
+    expect(JSON.stringify(typed)).not.toMatch(/hunter2/)
+    const inherited = selectCustomerConversation([
+      { content: 'Radera mitt konto', role: 'user' },
+      { content: 'Och när förnyas mitt abonnemang?', role: 'user' },
+    ])
+    expect(inherited.deleteAccount).toBe(false)
+    const reset = renderAccountAnswer({
+      account: { createdAt: '2026-01-01T00:00:00Z', email: 'owner@example.test', emailConfirmed: true },
+      kind: 'password-reset',
+    })
+    expect(reset.confirmation).toEqual({ action: 'password_reset' })
+    expect(reset.answer).not.toMatch(/hunter2|reset-code/)
+    expect(renderAccountAnswer({ account: { email: 'owner@example.test' }, kind: 'email-change' }).confirmation).toBeNull()
   })
 })

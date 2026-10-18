@@ -8,7 +8,7 @@ describe('confirmed AI actions', () => {
   it('rejects an invented action before billing runs', async () => {
     const execute = vi.fn()
     const result = await executeConfirmedAiAction({
-      actionId: 'delete_account',
+      actionId: 'email_change',
       actorUserId: 'user-1',
       confirmed: true,
       execute,
@@ -220,5 +220,60 @@ describe('confirmed AI actions', () => {
       planId: 'plan.prelim.sek.month.07',
     })
     expect(blocked).toMatchObject({ code: 'PROVIDER_NOT_CONFIGURED', ok: false, status: 503 })
+  })
+
+  it('resets the verified email and deletes only the authenticated account', async () => {
+    const passwordReset = vi.fn(async ({ email }) => {
+      expect(email).toBe('owner@example.test')
+      return { code: 'RESET_EMAIL_SENT', ok: true, status: 200 }
+    })
+    const deleteAccount = vi.fn()
+    const reset = await executeConfirmedAiAction({
+      accountEmail: 'owner@example.test',
+      actionId: 'password_reset',
+      actorUserId: 'user-1',
+      confirmed: true,
+      deleteAccount,
+      email: 'other@example.test',
+      password: 'hunter2',
+      passwordReset,
+      token: 'reset-code',
+    })
+    expect(reset).toMatchObject({ action: 'password_reset', code: 'RESET_EMAIL_SENT', ok: true })
+    expect(deleteAccount).not.toHaveBeenCalled()
+    expect(JSON.stringify(recentAiActions())).not.toMatch(/hunter2|reset-code|owner@example|other@example|user-1/)
+
+    const unconfirmed = await executeConfirmedAiAction({
+      actionId: 'delete_account',
+      actorUserId: 'user-1',
+      confirmed: false,
+      deleteAccount,
+    })
+    expect(unconfirmed.code).toBe('CONFIRMATION_REQUIRED')
+    expect(deleteAccount).not.toHaveBeenCalled()
+
+    deleteAccount.mockResolvedValue({ code: 'ACCOUNT_DELETE_BLOCKED', ok: false, status: 409 })
+    const blockedDelete = await executeConfirmedAiAction({
+      actionId: 'delete_account',
+      actorUserId: 'user-1',
+      confirmed: true,
+      deleteAccount,
+      password: 'hunter2',
+      userId: 'other-user',
+    })
+    expect(blockedDelete).toMatchObject({ code: 'ACCOUNT_DELETE_BLOCKED', ok: false, status: 409 })
+    expect(deleteAccount).toHaveBeenCalledWith({ userId: 'user-1' })
+    expect(await executeConfirmedAiAction({
+      actionId: 'email_change',
+      actorUserId: 'user-1',
+      confirmed: true,
+      deleteAccount,
+      passwordReset,
+    })).toMatchObject({ code: 'UNKNOWN_ACTION', ok: false })
+    expect(await executeConfirmedAiAction({
+      actionId: 'profile_update',
+      actorUserId: 'user-1',
+      confirmed: true,
+    })).toMatchObject({ code: 'UNKNOWN_ACTION', ok: false })
   })
 })

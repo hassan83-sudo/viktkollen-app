@@ -283,4 +283,33 @@ describe('AiHelpPanel language', () => {
     expect(await screen.findByText('Felrapporten skickades utan frågetexten.')).toBeTruthy()
     fetchMock.mockRestore()
   })
+
+  it('confirms account deletion separately and does not send a typed password', async () => {
+    await i18n.changeLanguage('sv')
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options) => {
+      const body = String(options?.body || '')
+      if (body.includes('confirmAction')) {
+        return { ok: true, json: async () => ({ code: 'ACCOUNT_DELETED', ok: true }) }
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          answer: 'Ingen radering har utförts.',
+          confirmation: { action: 'delete_account' },
+          ok: true,
+          status: 'answered',
+        }),
+      }
+    })
+    render(<AiHelpPanel />)
+    fireEvent.click(screen.getByRole('button', { name: 'Öppna AI-Hjälp' }))
+    fireEvent.change(screen.getByLabelText('Fråga om Viktkollen'), { target: { value: 'Radera mitt konto lösenordet är hunter2' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Bekräfta kontoradering' }))
+    await screen.findByText('Kontoraderingen är genomförd.')
+    const body = JSON.parse(fetchMock.mock.calls.find((call) => String(call[1]?.body || '').includes('confirmAction'))[1].body)
+    expect(body).toEqual({ confirmAction: 'delete_account', confirmed: true })
+    expect(JSON.stringify(body)).not.toMatch(/hunter2/)
+    fetchMock.mockRestore()
+  })
 })

@@ -20,6 +20,7 @@ import {
 import { createCostStoreFromEnv } from './supabaseCostStore.js'
 import {
   loadCustomerContext,
+  renderAccountAnswer,
   renderCancelOffer,
   renderHostedCheckoutOffer,
   renderPlanChangeOffer,
@@ -172,8 +173,27 @@ async function keepReservation(store, reservationId) {
   }
 }
 
-function verifiedCustomerResult(validated, selection, customer) {
-  const rendered = selection.cancel
+function verifiedCustomerResult(validated, selection, customer, account = null) {
+  const accountKind = selection.deleteAccount
+    ? 'delete-account'
+    : selection.passwordReset
+      ? 'password-reset'
+      : selection.secretRefused
+        ? 'secret-refused'
+        : selection.emailChange
+          ? 'email-change'
+          : selection.profileChange
+            ? 'profile-change'
+            : selection.deleteHelp
+              ? 'delete-help'
+              : selection.passwordHelp
+                ? 'password-help'
+                : selection.accountRead
+                  ? 'read'
+                  : ''
+  const rendered = accountKind
+    ? renderAccountAnswer({ account, kind: accountKind, languageCode: validated.language.code })
+    : selection.cancel
     ? renderCancelOffer({ context: customer, languageCode: validated.language.code })
     : selection.undoCancel
       ? renderUndoCancelOffer({ context: customer, languageCode: validated.language.code })
@@ -189,7 +209,10 @@ function verifiedCustomerResult(validated, selection, customer) {
                 ? renderHostedCheckoutOffer({ context: customer, languageCode: validated.language.code, planId: selection.planId })
                 : { answer: renderVerifiedAnswer({ context: customer, languageCode: validated.language.code, selection }), confirmation: null }
   const paymentFollowUp = ['hosted-checkout', 'refund', 'receipt', 'transactions'].includes(selection.focus)
-  const focus = selection.focus === 'plan-change' || selection.focus === 'undo'
+  const accountFollowUp = ['account', 'delete-account', 'delete-help', 'email-change', 'password-help', 'password-reset', 'profile-change', 'secret-refused'].includes(selection.focus)
+  const focus = accountFollowUp
+    ? 'login'
+    : selection.focus === 'plan-change' || selection.focus === 'undo'
     ? 'subscription'
     : (paymentFollowUp ? 'payment' : selection.focus)
   return {
@@ -206,6 +229,7 @@ function verifiedCustomerResult(validated, selection, customer) {
 }
 
 export async function answerAiHelpQuestion({
+  account = null,
   body = {},
   costStore = null,
   customerReaders = null,
@@ -238,7 +262,7 @@ export async function answerAiHelpQuestion({
       })
       : { available: false, reason: 'unauthenticated' }
     if (selection.cancel || selection.undoCancel || selection.planChange || selection.hostedCheckout || selection.refundRequest || selection.receiptRequest || selection.transactionRequest || selection.direct || !customer.available || !env.OPENAI_API_KEY) {
-      return verifiedCustomerResult(validated, selection, customer)
+      return verifiedCustomerResult(validated, selection, customer, account)
     }
   }
 
@@ -248,7 +272,7 @@ export async function answerAiHelpQuestion({
     pinnedIds: validated.featureIds,
   })
   if (route.kind === 'local') {
-    if (customer) return verifiedCustomerResult(validated, selection, customer)
+    if (customer) return verifiedCustomerResult(validated, selection, customer, account)
     return {
       ...localHelpResult(route.entry, {
         extra: route.entry.id === 'settings.plan' ? preliminaryPlanFacts() : '',
@@ -287,7 +311,7 @@ export async function answerAiHelpQuestion({
   const entries = route.entries
 
   if (!env.OPENAI_API_KEY) {
-    if (customer) return verifiedCustomerResult(validated, selection, customer)
+    if (customer) return verifiedCustomerResult(validated, selection, customer, account)
     return { code: 'PROVIDER_NOT_CONFIGURED', language: validated.language, ok: false, status: 503 }
   }
 
@@ -314,7 +338,7 @@ export async function answerAiHelpQuestion({
   ]
   const budgetSek = Number(env.AI_HELP_BUDGET_SEK)
   if (!Number.isFinite(budgetSek) || budgetSek <= 0) {
-    if (customer) return verifiedCustomerResult(validated, selection, customer)
+    if (customer) return verifiedCustomerResult(validated, selection, customer, account)
     if (route.fallbackEntry && validated.language.code === 'sv') return localFallbackResult(route, validated.language)
     return limitedModelResult(validated.language, 60)
   }
@@ -332,7 +356,7 @@ export async function answerAiHelpQuestion({
     windowSeconds: Math.max(1, Math.round(positiveInteger(env.AI_HELP_RATE_WINDOW_MS, AI_HELP_DEFAULT_WINDOW_MS) / 1000)),
   })
   if (!reservation.ok) {
-    if (customer) return verifiedCustomerResult(validated, selection, customer)
+    if (customer) return verifiedCustomerResult(validated, selection, customer, account)
     if (route.fallbackEntry && validated.language.code === 'sv') return localFallbackResult(route, validated.language)
     return limitedModelResult(validated.language, reservation.retryAfterSeconds)
   }
@@ -356,13 +380,13 @@ export async function answerAiHelpQuestion({
     })
   } catch {
     await keepReservation(store, reservation.reservationId)
-    if (customer) return verifiedCustomerResult(validated, selection, customer)
+    if (customer) return verifiedCustomerResult(validated, selection, customer, account)
     return { code: 'PROVIDER_UNAVAILABLE', language: validated.language, ok: false, status: 503 }
   }
 
   if (!providerResponse.ok) {
     await keepReservation(store, reservation.reservationId)
-    if (customer) return verifiedCustomerResult(validated, selection, customer)
+    if (customer) return verifiedCustomerResult(validated, selection, customer, account)
     return { code: 'PROVIDER_UNAVAILABLE', language: validated.language, ok: false, status: 503 }
   }
 
@@ -408,7 +432,7 @@ export async function answerAiHelpQuestion({
     .slice(0, 4)
   const priceMinor = verifiedPriceMinor(customer)
   if (parsed.status === 'answered' && answer && !answerIsAllowed(answer, { verifiedPriceMinor: priceMinor })) {
-    if (customer) return verifiedCustomerResult(validated, selection, customer)
+    if (customer) return verifiedCustomerResult(validated, selection, customer, account)
     return {
       answer: '',
       featureIds: [],

@@ -74,4 +74,14 @@ describe('AI Help account boundaries', () => {
       planId: 'plan.prelim.sek.month.07',
     })
   })
+
+  it('confirms a password reset without sending the password', async () => {
+    getCurrentAiAuthorization.mockResolvedValue({ ok: true, userScope: 'first', authorizationHeader: 'Bearer first' })
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ code: 'RESET_EMAIL_SENT', ok: true }) }))
+    vi.stubGlobal('fetch', fetchMock)
+    const result = await confirmAiAction('first', { action: 'password_reset', password: 'hunter2', token: 'reset-code' })
+    expect(result).toMatchObject({ code: 'RESET_EMAIL_SENT', ok: true })
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ confirmAction: 'password_reset', confirmed: true })
+    expect(await confirmAiAction('first', { action: 'email_change' })).toEqual({ code: 'UNKNOWN_ACTION', ok: false })
+  })
 })

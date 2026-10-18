@@ -343,7 +343,7 @@ describe('AI Help language and model contract', () => {
     expect(listUnansweredQuestionsForTests()).toHaveLength(1)
   })
 
-  it('explains preliminary catalog prices locally', async () => {
+  it('does not replace unavailable live plan facts with preliminary prices', async () => {
     const fetchImpl = vi.fn()
     const result = await answerAiHelpQuestion({
       body: { language: 'sv', messages: [{ content: 'Vad kostar abonnemanget?', role: 'user' }] },
@@ -353,9 +353,9 @@ describe('AI Help language and model contract', () => {
     })
 
     expect(fetchImpl).not.toHaveBeenCalled()
-    expect(result.answer).toContain('preliminära')
-    expect(result.answer).toContain('0 kr')
-    expect(result.answer).toContain('kan inte ändra')
+    expect(result.answer).toContain('kan inte verifiera')
+    expect(result.answer).not.toMatch(/\d+ kr|preliminära/)
+    expect(result.source).toBe('verified-plans')
   })
 
   it('drops an invented tool and keeps local help after the model budget is spent', async () => {

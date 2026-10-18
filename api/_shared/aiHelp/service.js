@@ -31,8 +31,8 @@ import {
   renderVerifiedAnswer,
   verifiedPriceMinor,
 } from './customerContext.js'
-import { preliminaryPlanFacts, verifiedPriceMajors } from './planFacts.js'
 import { buildAiHelpInstructions } from './prompt.js'
+import { answerPlanQuestion, planQuestion } from './planAnswers.js'
 import { recordUnansweredQuestion } from './unansweredStore.js'
 import { renderCaseControl } from './caseOutcome.js'
 import { renderTroubleAnswer } from './troubleshooting.js'
@@ -65,10 +65,7 @@ function limitedModelResult(language, retryAfterSeconds) {
 
 function localFallbackResult(route, language) {
   return {
-    ...localHelpResult(route.fallbackEntry, {
-      extra: route.fallbackEntry.id === 'settings.plan' ? preliminaryPlanFacts() : '',
-      source: 'local-fallback',
-    }),
+    ...localHelpResult(route.fallbackEntry, { source: 'local-fallback' }),
     language,
   }
 }
@@ -86,14 +83,15 @@ export function answerIsAllowed(answer, { verifiedPriceMinor: serverPriceMinor =
     ? serverPriceMinor / 100
     : null
   if (personalPricePattern.test(text)) {
-    const stated = [...text.matchAll(/\b(\d{1,6})(?:[.,]\d{1,2})?\s*(?:kr|sek|kronor)\b/gi)]
-      .map((match) => Number(match[1]))
+    const stated = [...text.matchAll(/\b(\d{1,6}(?:[.,]\d{1,2})?)\s*(?:kr|sek|kronor)\b/gi)]
+      .map((match) => Number(match[1].replace(',', '.')))
     if (verifiedMajor == null || stated.length === 0 || stated.some((amount) => amount !== verifiedMajor)) return false
   }
-  const allowed = new Set(verifiedPriceMajors())
-  if (verifiedMajor != null) allowed.add(verifiedMajor)
-  const amounts = [...text.matchAll(/\b(\d{1,6})(?:[.,]\d{1,2})?\s*(?:kr|sek|kronor)\b/gi)]
-    .map((match) => Number(match[1]))
+  // Public prices are answered from the live plan reader, never from model
+  // text or a static price allowlist. Only verified personal prices may pass.
+  const allowed = new Set(verifiedMajor == null ? [] : [verifiedMajor])
+  const amounts = [...text.matchAll(/\b(\d{1,6}(?:[.,]\d{1,2})?)\s*(?:kr|sek|kronor)\b/gi)]
+    .map((match) => Number(match[1].replace(',', '.')))
   return amounts.every((amount) => allowed.has(amount))
 }
 
@@ -259,6 +257,10 @@ export async function answerAiHelpQuestion({
     tool: sanitizeHelpTool({ name: 'open-section', sectionId: destination.sectionId, targetId: destination.targetId }),
   }
   const selection = selectCustomerConversation(validated.messages)
+  const catalogQuestion = planQuestion(validated.messages)
+  if (!selection.personal && catalogQuestion) {
+    return answerPlanQuestion({ question: catalogQuestion, userId, language: validated.language })
+  }
   let customer = null
   if (selection.personal) {
     customer = userId
@@ -282,9 +284,7 @@ export async function answerAiHelpQuestion({
   if (route.kind === 'local') {
     if (customer) return verifiedCustomerResult(validated, selection, customer, account)
     return {
-      ...localHelpResult(route.entry, {
-        extra: route.entry.id === 'settings.plan' ? preliminaryPlanFacts() : '',
-      }),
+      ...localHelpResult(route.entry),
       followUps: followUpsFor('default', validated.language.code),
       language: validated.language,
     }
@@ -333,7 +333,6 @@ export async function answerAiHelpQuestion({
     customerFacts: customer,
     entries,
     languageCode: validated.language.code,
-    planFacts: customer ? '' : (entries.some((entry) => entry.id === 'settings.plan') ? preliminaryPlanFacts() : ''),
   })
   const input = [
     { role: 'developer', content: [{ text: instructions, type: 'input_text' }] },

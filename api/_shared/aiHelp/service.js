@@ -366,6 +366,9 @@ export async function answerAiHelpQuestion({
   if (!reservation.ok) {
     if (customer) return verifiedCustomerResult(validated, selection, customer, account)
     if (route.fallbackEntry && validated.language.code === 'sv') return localFallbackResult(route, validated.language)
+    if (reservation.reason === 'store_unavailable') {
+      return { code: 'PROVIDER_UNAVAILABLE', language: validated.language, ok: false, status: 503, retryAfterSeconds: reservation.retryAfterSeconds || 60 }
+    }
     return limitedModelResult(validated.language, reservation.retryAfterSeconds)
   }
 

@@ -109,6 +109,24 @@ describe('AI Help stability', () => {
     expect(followUp.entries.length).toBeLessThanOrEqual(KNOWLEDGE_CONTEXT_LIMIT)
   })
 
+  it.each([
+    ['Var finns matskanning?', 'more.nutrition', 'identifierade ingredienserna'],
+    ['Var finns kroppsskanning?', 'feature.body-scan', 'Mikrofonen används inte'],
+    ['Var finns AI Örat?', 'feature.ai-ear', 'webbläsarens taligenkänning'],
+    ['Var finns profilen?', 'settings.profile', 'namn, mål, längd och aktivitet'],
+  ])('retrieves concrete facts for a referential follow-up after %s', (question, id, fact) => {
+    const route = routeHelpQuestion({ languageCode: 'sv', messages: [
+      { role: 'user', content: question },
+      { role: 'assistant', content: 'UNTRUSTED invented facts' },
+      { role: 'user', content: 'Och hur fungerar den?' },
+    ] })
+    expect(route.kind).toBe('model')
+    expect(route.entries.some((entry) => entry.id === id && `${entry.summary} ${entry.limits || ''}`.includes(fact))).toBe(true)
+    expect(route.entries.length).toBeLessThanOrEqual(KNOWLEDGE_CONTEXT_LIMIT)
+    expect(route.entries.every((entry) => !entry.compact)).toBe(true)
+    expect(JSON.stringify(route.entries)).not.toContain('UNTRUSTED')
+  })
+
   it('confirms every allowed section and refuses a closed or unknown target', () => {
     const allowed = listAllowedHelpSections()
     expect(allowed).toContain('journey')

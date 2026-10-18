@@ -2,7 +2,7 @@ import { getKnowledgeEntry } from './knowledgeCatalog.js'
 import { compactKnowledgeIndex, KNOWLEDGE_CONTEXT_LIMIT, rankKnowledge } from './knowledgeSearch.js'
 import { toolForSection } from './aiHelpTools.js'
 
-const rephrasePattern = /förklara|enklare|annat sätt|andra ord|mer detalj|utveckla|skillnad/i
+const rephrasePattern = /förklara|enklare|annat sätt|andra ord|mer detalj|utveckla|skillnad|explain/i
 const offTopicPattern = /dikt|poem|skämt|joke|huvudstad|capital of|läxa|python|javascript|översätt|translate this|väderprognos|aktie|koka |recept på|write a /i
 const appIntentPattern = /öppna|öppnar|var finns|inställning|meny|flik|viktkollen|abonnemang|konto|påminn|kamera|mikrofon|notis/i
 const openReferencePattern = /^(?:kan du |vill du |snälla )?(?:öppna|visa|gå till|ta mig till) (?:den|det|den där|dit)\??$/i
@@ -35,9 +35,11 @@ export function routeHelpQuestion({ languageCode = 'sv', messages = [], pinnedId
     if (target && toolForSection(target.sectionId, target.title)) return { entry: target, kind: 'local' }
     return { kind: 'gap' }
   }
-  const ranked = rankKnowledge(latest, pinnedIds)
+  const previous = messages.slice(0, -1).filter((item) => item.role === 'user').at(-1)?.content || ''
+  const reference = /^(?:(?:och|and)\s+)?(?:hur fungerar (?:den|det)|hur använder jag (?:den|det)|vad betyder (?:det|den)|how does (?:it|that)|how do I use (?:it|that)|what does (?:it|that)|cómo funciona|كيف يعمل)/iu.test(latest.trim())
+  const ranked = rankKnowledge(reference && previous ? `${previous} ${latest}` : latest, pinnedIds)
   const top = ranked[0]?.entry || null
-  const rephrase = rephrasePattern.test(latest)
+  const rephrase = rephrasePattern.test(latest) || reference
   const confident = isConfident(ranked)
   const strong = ranked.filter((item) => item.score >= 3)
 

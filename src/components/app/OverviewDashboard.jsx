@@ -1,6 +1,7 @@
 import { lazy, memo, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AchievementPreviewCard from './AchievementPreviewCard.jsx'
+import GlobalSearch from './GlobalSearch.jsx'
 import DailyCoachCard from './DailyCoachCard.jsx'
 import DailyMealPlannerCard from './DailyMealPlannerCard.jsx'
 import HealthPredictionCard from './HealthPredictionCard.jsx'
@@ -744,6 +745,7 @@ function OverviewPrimaryActions({
   onOpenFoodScan,
   onOpenSmartCamera,
   onScanFood,
+  onSearchNavigate,
   userId = 'local-user',
 }) {
   const { t } = useTranslation(['bodyScan', 'home'])
@@ -1471,6 +1473,10 @@ function OverviewDashboard({
           weatherPending={weatherPending}
           weatherStatus={weatherStatus}
         />
+        <div className="overview-header-home-search" style={{ position: "absolute", left: "50%", top: "58%", transform: "translateX(-50%)", zIndex: 3, textAlign: "center" }}>
+          <span style={{ display: "block", fontWeight: 700, marginBottom: 4 }}>Sök i appen</span>
+          <GlobalSearch onNavigate={onSearchNavigate} />
+        </div>
         <div className="overview-header-weather-art" aria-hidden="true">
           <span className="overview-weather-hero-icon">{liveContext.weather?.icon || '☁'}</span>
         </div>

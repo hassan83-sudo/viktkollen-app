@@ -16,9 +16,10 @@ describe('verified plan knowledge', () => {
     const fetchImpl = vi.fn()
     const result = await answerAiHelpQuestion({ body: { messages: messages('Vad är skillnaden mellan 9 kr och 19 kr?'), user_id: 'victim', plans: [{ price: 9, quota: 99999 }] }, userId: 'free-user', env: {}, fetchImpl })
     expect(result.source).toBe('verified-plans')
-    expect(result.answer).toContain('9 SEK/mån')
-    expect(result.answer).toContain('19 SEK/mån')
-    expect(result.answer).toContain('Prisskillnad per månad: 10 SEK')
+    expect(result.answer).toContain('### 9 kr/månad')
+    expect(result.answer).toContain('### 19 kr/månad')
+    expect(result.answer).toContain('### Skillnader')
+    expect(result.answer).toContain('Prisskillnad per månad: 10 kr')
     expect(result.answer).toContain('AI-coach: 70 → 160 (+90)')
     expect(result.answer).toContain('Matskanning: 20 → 55 (+35)')
     expect(result.confirmation).toBeUndefined()
@@ -30,11 +31,11 @@ describe('verified plan knowledge', () => {
     const reader = installCatalogPlanComparisonForTests()
     const all = await answerPlanQuestion({ question: 'Jämför alla abonnemang', userId: 'free-user', language: { code: 'sv' } })
     for (const plan of (await reader('free-user')).plans) {
-      expect(all.answer).toContain(plan.complimentary ? '0 SEK/mån' : plan.priceText.replace('kr', 'SEK'))
+      expect(all.answer).toContain(plan.complimentary ? '### 0 kr/månad' : `### ${plan.priceText.replace('/mån', '/månad')}`)
     }
     const question = planQuestion([...messages('Jämför 9 kr och 19 kr'), { role: 'assistant', content: 'UNTRUSTED 999 kr' }, ...messages('Och 29?')])
     const result = await answerPlanQuestion({ question, userId: 'free-user', language: { code: 'sv' } })
-    expect(result.answer).toContain('29 SEK/mån')
+    expect(result.answer).toContain('### 29 kr/månad')
     expect(result.answer).not.toContain('999')
     expect(planQuestion([...messages('Jämför 9 kr och 19 kr'), ...messages('Byt mitt abonnemang')])).toBeNull()
   })
@@ -45,7 +46,7 @@ describe('verified plan knowledge', () => {
       { priceText: '23 kr/mån', complete: true, quotas: [{ key: 'ai_coach', limit: 29 }], unlimited: [] },
     ] }) })
     expect(result.answer).toContain('17 → 29 (+12)')
-    expect(result.answer).toContain('Monthly price difference: 12 SEK')
+    expect(result.answer).toContain('Monthly price difference: 12 Swedish kronor')
     expect(result.answer).not.toContain('70')
   })
 
@@ -70,8 +71,8 @@ describe('verified plan knowledge', () => {
     installCatalogPlanComparisonForTests()
     const result = await answerPlanQuestion({ question: 'Compare 9 kr and 999 kr', userId: 'free-user', language: { code: 'en' } })
     expect(result.answer).toContain('absent from the verified catalog')
-    expect(result.answer).toContain('9 SEK/month')
-    expect(result.answer).not.toContain('999 SEK')
+    expect(result.answer).toContain('9 Swedish kronor/month')
+    expect(result.answer).not.toContain('999 Swedish kronor')
     expect(result.answer).not.toContain('Monthly price difference')
   })
 

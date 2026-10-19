@@ -38,6 +38,7 @@ export function buildAiHelpInstructions({ customerFacts = null, entries, languag
     'You may set tool only to {"name":"open-section","sectionId":"..."} when that sectionId is on an entry. Never invent a tool. Never say you already opened a section or completed an action.',
     `Write the answer in ${definition.nativeName} (${definition.code}).`,
     'Keep the answer to at most four short sentences.',
+    'Use short paragraphs separated by a blank line. For multiple steps or checks use one numbered or hyphen list item per line. A short heading may start with ###. Do not output HTML, Markdown links, images or tables. Keep the same short-answer token budget.',
     'Return only JSON with this shape: {"status":"answered"|"unanswered","answer":"...","featureIds":["id"],"tool":null}.',
     `Knowledge entries: ${JSON.stringify(facts)}`,
     `VERIFIED CUSTOMER FACTS: ${JSON.stringify(customerFacts)}`,

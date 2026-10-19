@@ -213,6 +213,20 @@ function AiHelpPanel() {
 
       {open && (
         <>
+          <form className="ai-help-form" onSubmit={handleSubmit}>
+            <textarea
+              aria-label={chrome.placeholder}
+              value={draft}
+              placeholder={chrome.placeholder}
+              onChange={(event) => setDraft(event.target.value)}
+            />
+            <button className="secondary-button" type="submit" disabled={pending || !draft.trim()}>
+              {chrome.send}
+            </button>
+            <button className="secondary-button" type="button" onClick={reportTechnicalProblem}>
+              {chrome.bugReport}
+            </button>
+          </form>
           <div aria-live="polite" className="ai-help-thread" role="log">
             {messages.length === 0 && <p className="ai-help-note">{chrome.empty}</p>}
             {messages.map((message, index) => (
@@ -316,20 +330,7 @@ function AiHelpPanel() {
           </div>
           {notice && <p className="ai-help-note">{notice}</p>}
           <p className="ai-help-note">{chrome.humanSupport}</p>
-          <form className="ai-help-form" onSubmit={handleSubmit}>
-            <textarea
-              aria-label={chrome.placeholder}
-              value={draft}
-              placeholder={chrome.placeholder}
-              onChange={(event) => setDraft(event.target.value)}
-            />
-            <button className="secondary-button" type="submit" disabled={pending || !draft.trim()}>
-              {chrome.send}
-            </button>
-            <button className="secondary-button" type="button" onClick={reportTechnicalProblem}>
-              {chrome.bugReport}
-            </button>
-          </form>
+
           <SupportPanel />
         </>
       )}

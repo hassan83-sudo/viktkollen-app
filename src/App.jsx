@@ -1384,7 +1384,7 @@ function App() {
   // One automatic AI advice request per user and selected day; data changes update local fallback.
   const dailyCoachRequestRef = useRef({ userId: null, requestedKeys: new Set() })
   const [dailyCoachResult, setDailyCoachResult] = useState(null)
-  const hasFreshDailyCoach = dailyCoachResult?.key === dailyCoachKey
+  const hasFreshDailyCoach = dailyCoachResult?.key === selectedMealDate
   const coachMessage = hasFreshDailyCoach && dailyCoachResult.summary
     ? dailyCoachResult.summary
     : fallbackCoachMessage
@@ -2077,8 +2077,6 @@ function App() {
   ])
 
   useEffect(() => {
-    let cancelled = false
-
     const userId = authSession?.user?.id || null
     if (dailyCoachRequestRef.current.userId !== userId) {
       dailyCoachRequestRef.current = { userId, requestedKeys: new Set() }
@@ -2086,9 +2084,7 @@ function App() {
 
     const requestKey = selectedMealDate
     if (!userId || showOnboarding || dailyCoachRequestRef.current.requestedKeys.has(requestKey)) {
-      return () => {
-        cancelled = true
-      }
+      return
     }
 
     async function loadDailyCoach() {
@@ -2109,9 +2105,9 @@ function App() {
         })
         const data = result.data || {}
 
-        if (!cancelled && result.ok && typeof data.summary === 'string' && data.summary.trim()) {
+        if (dailyCoachRequestRef.current.userId === userId && result.ok && typeof data.summary === 'string' && data.summary.trim()) {
           setDailyCoachResult({
-            key: dailyCoachKey,
+            key: requestKey,
             source: data.source === 'openai' ? 'openai' : 'mock',
             summary: data.summary.trim(),
           })
@@ -2121,7 +2117,7 @@ function App() {
         // Daily coach falls back to the deterministic local summary below.
       }
 
-      if (!cancelled) {
+      if (dailyCoachRequestRef.current.userId === userId) {
         setDailyCoachResult({
           key: dailyCoachKey,
           source: 'mock',
@@ -2134,9 +2130,6 @@ function App() {
     dailyCoachRequestRef.current.requestedKeys.add(requestKey)
     void loadDailyCoach()
 
-    return () => {
-      cancelled = true
-    }
   }, [
     checkIn,
     centralCurrentWeight,

@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
 import webpush from 'npm:web-push@3.6.7'
+import { nextRun } from './nextRun.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -67,29 +68,6 @@ async function sendPush(service: ReturnType<typeof createClient>, supabaseUrl: s
     }
   }
   return sent
-}
-
-function nextRun(row: any, after: Date) {
-  if (row.schedule_type === 'once') return null
-  if (row.schedule_type === 'interval') return new Date(after.getTime() + Math.max(60, Number(row.interval_minutes) || 60) * 60000).toISOString()
-  const weekdayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
-  for (let offset = 1; offset <= 370; offset += 1) {
-    const local = new Date(after.toLocaleString('en-US', { timeZone: row.timezone || 'Europe/Stockholm' }))
-    local.setDate(local.getDate() + offset)
-    const weekday = weekdayNames[local.getDay()]
-    const allowed = row.schedule_type === 'daily'
-      || (row.schedule_type === 'weekdays' && !['saturday','sunday'].includes(weekday))
-      || (row.schedule_type === 'weekends' && ['saturday','sunday'].includes(weekday))
-      || (['weekly','selected_weekdays'].includes(row.schedule_type) && (row.days_of_week || []).includes(weekday))
-    if (!allowed) continue
-    const dateText = `${local.getFullYear()}-${String(local.getMonth()+1).padStart(2,'0')}-${String(local.getDate()).padStart(2,'0')}`
-    const timeText = String(row.reminder_time || '09:00:00').slice(0,5)
-    const probe = new Date(`${dateText}T${timeText}:00`)
-    const utcProbe = new Date(probe.toLocaleString('en-US', { timeZone: 'UTC' }))
-    const tzProbe = new Date(probe.toLocaleString('en-US', { timeZone: row.timezone || 'Europe/Stockholm' }))
-    return new Date(probe.getTime() + (utcProbe.getTime() - tzProbe.getTime())).toISOString()
-  }
-  return null
 }
 
 Deno.serve(async (req: Request) => {

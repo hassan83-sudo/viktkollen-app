@@ -1381,6 +1381,7 @@ function App() {
       }),
     [centralCurrentWeight, checkIn, foods, goalsHabits, healthSnapshot, meals, nutritionGoals, scopedProfile, scopedWeights, selectedMealDate],
   )
+  const dailyCoachRequestRef = useRef({ userId: null, requestedKeys: new Set() })
   const [dailyCoachResult, setDailyCoachResult] = useState(null)
   const hasFreshDailyCoach = dailyCoachResult?.key === dailyCoachKey
   const coachMessage = hasFreshDailyCoach && dailyCoachResult.summary
@@ -2077,7 +2078,12 @@ function App() {
   useEffect(() => {
     let cancelled = false
 
-    if (!authSession || showOnboarding) {
+    const userId = authSession?.user?.id || null
+    if (dailyCoachRequestRef.current.userId !== userId) {
+      dailyCoachRequestRef.current = { userId, requestedKeys: new Set() }
+    }
+
+    if (!userId || showOnboarding || dailyCoachRequestRef.current.requestedKeys.has(dailyCoachKey)) {
       return () => {
         cancelled = true
       }
@@ -2122,6 +2128,8 @@ function App() {
       }
     }
 
+    // Mark before the asynchronous request to prevent duplicate calls on rerenders.
+    dailyCoachRequestRef.current.requestedKeys.add(dailyCoachKey)
     void loadDailyCoach()
 
     return () => {

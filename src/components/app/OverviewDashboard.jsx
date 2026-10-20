@@ -998,6 +998,12 @@ function OverviewPrimaryActions({
             <OverviewIcon name="foodCamera" />
             <span>{action.footerLabel}</span>
           </button>
+          {action.accent === 'food' && (
+            <button className="overview-primary-action-footer" type="button" onClick={() => goTo('redo')}>
+              <span aria-hidden="true">✓</span>
+              <span>Redo!</span>
+            </button>
+          )}
 
         </div>
       ))}

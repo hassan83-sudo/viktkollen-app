@@ -1532,6 +1532,7 @@ function OverviewDashboard({
         />
       </section>
 
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 1fr)', gap: 8, alignItems: 'stretch', marginTop: 12, marginBottom: 14 }}>
         <button
           type="button"
           onClick={() => {
@@ -1553,9 +1554,9 @@ function OverviewDashboard({
           </span>
           <span aria-hidden="true" style={{ fontSize: 22 }}>›</span>
         </button>
-
-      <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 10, marginBottom: 14 }}>
-        <GlobalSearch compact onNavigate={onSearchNavigate} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 0 }}>
+          <GlobalSearch compact onNavigate={onSearchNavigate} />
+        </div>
       </div>
 
       <section className="overview-home-section" aria-labelledby="overview-today-title">

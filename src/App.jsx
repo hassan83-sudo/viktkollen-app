@@ -1,5 +1,6 @@
 ﻿import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { currentCameraEpoch, releaseCameraStream, releaseVideoElement, retainCameraStream } from './features/shared/camera/cameraLifecycle.js'
+import { useDailyCoachRequest } from './services/ai/useDailyCoachRequest.js'
 import { useTranslation } from 'react-i18next'
 import HomeSection from './components/sections/HomeSection.jsx'
 import MoreSection from './components/sections/MoreSection.jsx'
@@ -1365,25 +1366,20 @@ function App() {
       ),
     [checkIn, foods, healthSnapshot.checkIn.latestToday, healthSnapshot.nutrition.mealsToday, scopedProfile],
   )
-  const dailyCoachKey = useMemo(
-    () =>
-      JSON.stringify({
-        checkIn,
-        currentWeight: centralCurrentWeight,
-        foods,
-        goalsHabits,
-        healthSnapshot,
-        meals,
-        nutritionGoals,
-        profile: scopedProfile,
-        selectedMealDate,
-        weights: scopedWeights,
-      }),
-    [centralCurrentWeight, checkIn, foods, goalsHabits, healthSnapshot, meals, nutritionGoals, scopedProfile, scopedWeights, selectedMealDate],
-  )
-  // One automatic AI advice request per user and selected day; data changes update local fallback.
-  const dailyCoachRequestRef = useRef({ userId: null, requestedKeys: new Set() })
-  const [dailyCoachResult, setDailyCoachResult] = useState(null)
+  const dailyCoachResult = useDailyCoachRequest({
+    userId: authSession?.user?.id || null,
+    day: selectedMealDate,
+    enabled: !showOnboarding,
+    request: async (isCurrent) => {
+      const { requestAiEndpoint } = await loadAiApiService()
+      if (!isCurrent()) return null
+      return requestAiEndpoint({
+        action: 'daily-coach', checkIn, foods, healthSnapshot, mealHistory: photoMeals,
+        meals, nutritionGoals, profile: validatedProfile, today: selectedMealDate,
+        weights: healthSnapshot.weight.dailyWeights, currentWeight: centralCurrentWeight,
+      }, { expectedUserScope: authSession?.user?.id, isCurrent })
+    },
+  })
   const hasFreshDailyCoach = dailyCoachResult?.key === selectedMealDate
   const coachMessage = hasFreshDailyCoach && dailyCoachResult.summary
     ? dailyCoachResult.summary
@@ -2074,75 +2070,6 @@ function App() {
     validatedProfile,
     weeklyReportData,
     scopedWeights,
-  ])
-
-  useEffect(() => {
-    const userId = authSession?.user?.id || null
-    if (dailyCoachRequestRef.current.userId !== userId) {
-      dailyCoachRequestRef.current = { userId, requestedKeys: new Set() }
-    }
-
-    const requestKey = selectedMealDate
-    if (!userId || showOnboarding || dailyCoachRequestRef.current.requestedKeys.has(requestKey)) {
-      return
-    }
-
-    async function loadDailyCoach() {
-      try {
-        const { requestAiEndpoint } = await loadAiApiService()
-        const result = await requestAiEndpoint({
-          action: 'daily-coach',
-          checkIn,
-          foods,
-          healthSnapshot,
-          mealHistory: photoMeals,
-          meals,
-          nutritionGoals,
-          profile: validatedProfile,
-          today: selectedMealDate,
-          weights: healthSnapshot.weight.dailyWeights,
-          currentWeight: centralCurrentWeight,
-        })
-        const data = result.data || {}
-
-        if (dailyCoachRequestRef.current.userId === userId && result.ok && typeof data.summary === 'string' && data.summary.trim()) {
-          setDailyCoachResult({
-            key: requestKey,
-            source: data.source === 'openai' ? 'openai' : 'mock',
-            summary: data.summary.trim(),
-          })
-          return
-        }
-      } catch {
-        // Daily coach falls back to the deterministic local summary below.
-      }
-
-      if (dailyCoachRequestRef.current.userId === userId) {
-        setDailyCoachResult({
-          key: dailyCoachKey,
-          source: 'mock',
-          summary: '',
-        })
-      }
-    }
-
-    // Mark before the asynchronous request to prevent duplicate calls on rerenders.
-    dailyCoachRequestRef.current.requestedKeys.add(requestKey)
-    void loadDailyCoach()
-
-  }, [
-    checkIn,
-    centralCurrentWeight,
-    dailyCoachKey,
-    authSession,
-    foods,
-    healthSnapshot,
-    meals,
-    nutritionGoals,
-    photoMeals,
-    selectedMealDate,
-    showOnboarding,
-    validatedProfile,
   ])
 
   useEffect(() => {

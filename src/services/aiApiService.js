@@ -33,13 +33,16 @@ export function isAiEndpointUnavailable() {
   return Boolean(endpointUnavailableReason)
 }
 
-export async function requestAiEndpoint(payload) {
+export async function requestAiEndpoint(payload, { expectedUserScope, isCurrent } = {}) {
   if (endpointUnavailableReason) {
     return makeUnavailableResult(endpointUnavailableReason)
   }
 
   try {
     const auth = await getCurrentAiAuthorization()
+    if ((isCurrent && !isCurrent()) || (expectedUserScope && auth.userScope !== expectedUserScope)) {
+      return makeUnavailableResult(getAiAuthSafeMessage(aiAuthErrorCode.AUTH_STALE))
+    }
     if (!auth.ok) {
       return makeUnavailableResult(auth.warning || getAiAuthSafeMessage(auth.errorCode))
     }

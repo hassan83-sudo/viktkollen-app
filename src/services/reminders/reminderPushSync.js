@@ -41,9 +41,12 @@ function sameSchedule(existingRow, reminder) {
     && days(existingRow.days_of_week) === days(reminder.daysOfWeek)
 }
 
-// När servern redan har skickat påminnelsen och flyttat fram nästa körning får en äldre
-// beräkning i appen inte dra tillbaka tiden, annars skickas samma påminnelse igen.
+// När servern redan har skickat en intervallpåminnelse och flyttat fram nästa körning får en
+// äldre beräkning i appen inte dra tillbaka tiden, annars skickas samma påminnelse igen.
+// Gäller bara intervall: för dagliga och veckovisa påminnelser räknar appen alltid nästa
+// tillfälle efter nu, medan servern kan ha hoppat över dagens tillfälle efter en sen push.
 function keepServerProgress(nextRunAt, existingRow, reminder, now) {
+  if (reminder.scheduleType !== 'interval') return nextRunAt
   const serverNext = futureIso(existingRow?.next_run_at, now)
   if (!nextRunAt || !serverNext || !existingRow?.last_sent_at || !sameSchedule(existingRow, reminder)) return nextRunAt
   return new Date(serverNext) > new Date(nextRunAt) ? serverNext : nextRunAt

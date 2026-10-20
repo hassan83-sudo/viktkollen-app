@@ -157,4 +157,57 @@ describe('reminder push sync rows', () => {
     }, '2026-10-20T08:30:00.000Z')
     expect(result.next_run_at).toBeNull()
   })
+  it('keeps today\'s daily time after a late push made the server skip a day', () => {
+    // Snooze över midnatt: servern skickade 00:03 och räknade nästa tid från i morgon.
+    const result = row({ scheduleType: 'daily', startDate: '2026-09-25', time: '21:09' }, '2026-10-20T22:10:00.000Z', {
+      days_of_week: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+      interval_minutes: 0,
+      last_sent_at: '2026-10-20T22:03:00+00:00',
+      next_run_at: '2026-10-22T19:09:00+00:00',
+      reminder_id: 'r1',
+      reminder_time: '21:09:00',
+      schedule_type: 'daily',
+      start_date: '2026-09-25',
+    })
+    expect(result.next_run_at).toBe('2026-10-21T19:09:00.000Z')
+  })
+
+  it('does not schedule a daily reminder again right after the server sent it', () => {
+    const existing = {
+      days_of_week: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+      interval_minutes: 0,
+      last_sent_at: '2026-10-20T19:09:02+00:00',
+      next_run_at: '2026-10-21T19:09:00+00:00',
+      reminder_id: 'r1',
+      reminder_time: '21:09:00',
+      schedule_type: 'daily',
+      start_date: '2026-09-25',
+    }
+    const fields = { scheduleType: 'daily', startDate: '2026-09-25', time: '21:09' }
+    // Synk sekunder efter pushen och senare samma kväll: nästa körning är i morgon, inte nu.
+    expect(row(fields, '2026-10-20T19:09:05.000Z', existing).next_run_at).toBe('2026-10-21T19:09:00.000Z')
+    expect(row(fields, '2026-10-20T21:00:00.000Z', existing).next_run_at).toBe('2026-10-21T19:09:00.000Z')
+    // Synk strax före klockslaget behåller dagens tid, så servern skickar en gång.
+    expect(row(fields, '2026-10-20T19:08:30.000Z', { ...existing, last_sent_at: null, next_run_at: '2026-10-20T19:09:00+00:00' }).next_run_at)
+      .toBe('2026-10-20T19:09:00.000Z')
+  })
+
+  it('does not keep a later server time for chosen weekdays either', () => {
+    const result = row({
+      daysOfWeek: ['monday', 'wednesday'],
+      scheduleType: 'selected_weekdays',
+      startDate: '2026-09-25',
+      time: '07:30',
+    }, '2026-10-19T22:10:00.000Z', {
+      days_of_week: ['monday', 'wednesday'],
+      interval_minutes: 0,
+      last_sent_at: '2026-10-19T22:03:00+00:00',
+      next_run_at: '2026-10-26T06:30:00+00:00',
+      reminder_id: 'r1',
+      reminder_time: '07:30:00',
+      schedule_type: 'selected_weekdays',
+      start_date: '2026-09-25',
+    })
+    expect(result.next_run_at).toBe('2026-10-21T05:30:00.000Z')
+  })
 })

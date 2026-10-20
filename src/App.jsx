@@ -1381,6 +1381,7 @@ function App() {
       }),
     [centralCurrentWeight, checkIn, foods, goalsHabits, healthSnapshot, meals, nutritionGoals, scopedProfile, scopedWeights, selectedMealDate],
   )
+  // One automatic AI advice request per user and selected day; data changes update local fallback.
   const dailyCoachRequestRef = useRef({ userId: null, requestedKeys: new Set() })
   const [dailyCoachResult, setDailyCoachResult] = useState(null)
   const hasFreshDailyCoach = dailyCoachResult?.key === dailyCoachKey
@@ -2083,7 +2084,8 @@ function App() {
       dailyCoachRequestRef.current = { userId, requestedKeys: new Set() }
     }
 
-    if (!userId || showOnboarding || dailyCoachRequestRef.current.requestedKeys.has(dailyCoachKey)) {
+    const requestKey = selectedMealDate
+    if (!userId || showOnboarding || dailyCoachRequestRef.current.requestedKeys.has(requestKey)) {
       return () => {
         cancelled = true
       }
@@ -2129,7 +2131,7 @@ function App() {
     }
 
     // Mark before the asynchronous request to prevent duplicate calls on rerenders.
-    dailyCoachRequestRef.current.requestedKeys.add(dailyCoachKey)
+    dailyCoachRequestRef.current.requestedKeys.add(requestKey)
     void loadDailyCoach()
 
     return () => {

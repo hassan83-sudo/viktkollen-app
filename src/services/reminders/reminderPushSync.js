@@ -7,19 +7,58 @@ function unsupported(message) {
   return { data: null, error: new Error(message) }
 }
 
-function activeServerSnooze(existingRow) {
-  const value = existingRow?.snoozed_until
+const EXISTING_ROW_FIELDS = 'reminder_id,snoozed_until,updated_at,next_run_at,last_sent_at,schedule_type,interval_minutes,reminder_time,start_date,days_of_week'
+
+function futureIso(value, now) {
   if (!value) return ''
   const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime()) || parsed.getTime() <= Date.now()) return ''
+  if (Number.isNaN(parsed.getTime()) || parsed.getTime() <= now) return ''
   return parsed.toISOString()
 }
 
-function toRow(userId, reminder, existingRow) {
-  const serverSnooze = activeServerSnooze(existingRow)
-  const localSnooze = reminder.snoozedUntil || ''
+function localDateText(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+// En intervalltid som redan har passerat flyttas fram med hela intervall, så att rytmen
+// och det valda klockslaget behålls och servern inte skickar en gammal påminnelse direkt.
+function futureIntervalAt(candidate, reminder, now) {
+  const at = new Date(candidate).getTime()
+  if (!Number.isFinite(at)) return null
+  if (at > now) return new Date(at).toISOString()
+  const intervalMs = Math.max(60, Number(reminder.intervalMinutes) || 60) * 60000
+  const next = new Date(at + (Math.floor((now - at) / intervalMs) + 1) * intervalMs)
+  if (reminder.endDate && localDateText(next) > reminder.endDate) return null
+  return next.toISOString()
+}
+
+function sameSchedule(existingRow, reminder) {
+  const days = (value) => (Array.isArray(value) ? [...value].sort().join(',') : '')
+  return existingRow.schedule_type === reminder.scheduleType
+    && (Number(existingRow.interval_minutes) || 0) === (Number(reminder.intervalMinutes) || 0)
+    && String(existingRow.reminder_time || '').slice(0, 5) === String(reminder.time || '09:00').slice(0, 5)
+    && (existingRow.start_date || null) === (reminder.startDate || null)
+    && days(existingRow.days_of_week) === days(reminder.daysOfWeek)
+}
+
+// När servern redan har skickat påminnelsen och flyttat fram nästa körning får en äldre
+// beräkning i appen inte dra tillbaka tiden, annars skickas samma påminnelse igen.
+function keepServerProgress(nextRunAt, existingRow, reminder, now) {
+  const serverNext = futureIso(existingRow?.next_run_at, now)
+  if (!nextRunAt || !serverNext || !existingRow?.last_sent_at || !sameSchedule(existingRow, reminder)) return nextRunAt
+  return new Date(serverNext) > new Date(nextRunAt) ? serverNext : nextRunAt
+}
+
+export function buildReminderPushRow(userId, reminder, existingRow, { now = Date.now() } = {}) {
+  const serverSnooze = futureIso(existingRow?.snoozed_until, now)
+  const localSnooze = futureIso(reminder.snoozedUntil, now)
   const snoozedUntil = localSnooze || serverSnooze || null
-  const nextRunAt = snoozedUntil || getNextReminderAt(reminder)
+  let nextRunAt = snoozedUntil
+  if (!nextRunAt) {
+    const scheduled = getNextReminderAt(reminder, { now })
+    nextRunAt = scheduled && reminder.scheduleType === 'interval' ? futureIntervalAt(scheduled, reminder, now) : scheduled
+    nextRunAt = keepServerProgress(nextRunAt, existingRow, reminder, now)
+  }
 
   return {
     archived: Boolean(reminder.archivedAt),
@@ -36,7 +75,7 @@ function toRow(userId, reminder, existingRow) {
     start_date: reminder.startDate || null,
     timezone: reminder.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Stockholm',
     title: reminder.title || 'Påminnelse från Viktkollen',
-    updated_at: new Date().toISOString(),
+    updated_at: new Date(now).toISOString(),
     user_id: userId,
   }
 }
@@ -116,7 +155,7 @@ export async function syncReminderPushSchedules(reminderState) {
 
   const { data: existing, error: existingError } = await supabase
     .from('reminder_push_schedules')
-    .select('reminder_id,snoozed_until,updated_at')
+    .select(EXISTING_ROW_FIELDS)
 
   if (existingError) return { data: null, error: existingError }
 
@@ -136,7 +175,8 @@ export async function syncReminderPushSchedules(reminderState) {
 
   if (!state.reminders.length) return { data: { synced: 0 }, error: null }
 
-  const rows = state.reminders.map((reminder) => toRow(userId, reminder, existingByReminderId.get(reminder.id)))
+  const now = Date.now()
+  const rows = state.reminders.map((reminder) => buildReminderPushRow(userId, reminder, existingByReminderId.get(reminder.id), { now }))
   const { error: upsertError } = await supabase
     .from('reminder_push_schedules')
     .upsert(rows, { onConflict: 'user_id,reminder_id' })

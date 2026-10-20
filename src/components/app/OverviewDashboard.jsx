@@ -1544,6 +1544,27 @@ function OverviewDashboard({
           reminderState={reminderState}
           weights={weights}
         />
+        <button
+          type="button"
+          onClick={() => {
+            setBodyScanOpen(false)
+            setSmartCameraInitialMode('checklists-bank')
+            setSmartCameraOpen(true)
+          }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+            padding: '14px', marginTop: 12, borderRadius: 16, textAlign: 'left',
+            border: '1px solid rgba(172,120,86,.55)', color: '#fff',
+            background: 'linear-gradient(120deg, #282033, #0b1830)', cursor: 'pointer',
+          }}
+        >
+          <span aria-hidden="true" style={{ fontSize: 32 }}>📋</span>
+          <span style={{ flex: 1, display: 'grid', gap: 3 }}>
+            <strong>Checklistor</strong>
+            <small style={{ color: '#bed0ed' }}>Skapa och öppna checklistor</small>
+          </span>
+          <span aria-hidden="true" style={{ fontSize: 22 }}>›</span>
+        </button>
         <HomeSocialPreview
           compact
           conversations={socialLiveEnabled && isAuthenticated ? socialPreview : []}

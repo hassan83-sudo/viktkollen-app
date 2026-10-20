@@ -153,4 +153,30 @@ describe('bug monitor api', () => {
     expect(summarizeBugReports().groups).toHaveLength(0)
     expect(JSON.stringify(response.payload)).not.toContain('hunter2')
   })
+  it('lets only an admin mark a stored group as seen', async () => {
+    setSupabaseAuthVerifierForTests(async (token) => (
+      token === 'person-a' || token === 'admin' ? { user: { id: token } } : { error: { message: 'invalid' } }
+    ))
+    setBugMonitorAdminLookupForTests(async (request) => {
+      if (!request.headers.authorization) return { ok: false, error: { code: 'AUTH_REQUIRED' }, status: 401 }
+      if (request.headers.authorization === 'Bearer admin') return { ok: true, user: { id: 'admin' } }
+      return { ok: false, error: { code: 'FORBIDDEN' }, status: 403 }
+    })
+    await invoke({
+      body: { errorType: 'render', feature: 'app', fingerprint: 'render-abcd1234', severity: 'high' },
+      token: 'person-a',
+    })
+    const body = { action: 'acknowledge', fingerprint: 'render-abcd1234' }
+
+    expect((await invoke({ body })).statusCode).toBe(401)
+    expect((await invoke({ body, token: 'person-a' })).statusCode).toBe(403)
+    expect(memory.summary().groups[0].status).not.toBe('acknowledged')
+
+    const missing = await invoke({ body: { action: 'acknowledge', fingerprint: 'render-ffff0000' }, token: 'admin' })
+    expect(missing.statusCode).toBe(404)
+
+    const seen = await invoke({ body, token: 'admin' })
+    expect(seen.statusCode).toBe(200)
+    expect(seen.payload.summary.groups[0]).toMatchObject({ fingerprint: 'render-abcd1234', status: 'acknowledged' })
+  })
 })

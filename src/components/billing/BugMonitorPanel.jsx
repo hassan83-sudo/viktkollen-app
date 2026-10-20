@@ -30,6 +30,7 @@ export default function BugMonitorPanel({ token }) {
   const [open, setOpen] = useState(false)
   const [overview, setOverview] = useState(null)
   const [plan, setPlan] = useState(null)
+  const [acknowledging, setAcknowledging] = useState('')
 
   const load = useCallback(async () => {
     const result = await adminFetch(token)
@@ -67,6 +68,32 @@ export default function BugMonitorPanel({ token }) {
     setPlan(result.payload.plan)
   }
 
+  // Behörigheten prövas på servern (billing_admin). Knappen ger bara återkoppling.
+  async function acknowledge(fingerprint) {
+    setAcknowledging(fingerprint)
+    try {
+      const result = await adminFetch(token, {
+        body: JSON.stringify({ action: 'acknowledge', fingerprint }),
+        method: 'POST',
+      })
+      const status = result.response.status
+      if (result.response.ok && result.payload?.ok === true && result.payload.summary) {
+        setOverview(result.payload)
+        setNotice(`${fingerprint} är markerad som sedd.`)
+      } else if (status === 401 || status === 403) {
+        setNotice('Du saknar behörighet att markera fel som sedda.')
+      } else if (status === 404) {
+        setNotice('Felgruppen finns inte längre och kunde inte markeras.')
+      } else {
+        setNotice('Felgruppen kunde inte markeras som sedd. Försök igen.')
+      }
+    } catch {
+      setNotice('Felgruppen kunde inte markeras som sedd. Försök igen.')
+    } finally {
+      setAcknowledging('')
+    }
+  }
+
   const summary = overview?.summary
 
   return (
@@ -77,7 +104,7 @@ export default function BugMonitorPanel({ token }) {
       {open && (
         <>
           <p>Översikten sparas i databasen. Bara en administratör kan läsa den.</p>
-          {notice ? <p>{notice}</p> : null}
+          {notice ? <p role="status">{notice}</p> : null}
           {summary ? (
             <>
               <p>{`Nya fel ${summary.newCount}`}</p>
@@ -101,6 +128,17 @@ export default function BugMonitorPanel({ token }) {
                     <button type="button" onClick={() => prepare(group.fingerprint)}>
                       {`Förbered undersökning ${group.fingerprint}`}
                     </button>
+                    {group.status === 'acknowledged' ? null : (
+                      <button
+                        type="button"
+                        disabled={Boolean(acknowledging)}
+                        onClick={() => acknowledge(group.fingerprint)}
+                      >
+                        {acknowledging === group.fingerprint
+                          ? `Markerar ${group.fingerprint}…`
+                          : `Markera som sedd ${group.fingerprint}`}
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>

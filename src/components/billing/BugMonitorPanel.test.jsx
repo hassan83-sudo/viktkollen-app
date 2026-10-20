@@ -72,4 +72,62 @@ describe('AI Bug Monitor panel', () => {
       fingerprint: 'render-abcd1234',
     })
   })
+  function summaryWith(status) {
+    return {
+      affectedCount: 1,
+      groups: [{
+        affectedCount: 1,
+        count: 1,
+        errorType: 'server',
+        feature: 'app',
+        fingerprint: 'server-abcd1234',
+        latestAt: '2026-10-17T12:05:39.514Z',
+        severity: 'high',
+        status,
+      }],
+      newCount: status === 'new' ? 1 : 0,
+      recurringCount: 0,
+    }
+  }
+
+  function stubAcknowledge(postResult) {
+    vi.stubGlobal('fetch', vi.fn(async (path, options = {}) => {
+      if (options.method === 'POST') return postResult
+      return { json: async () => ({ ok: true, summary: summaryWith('new') }), ok: true, status: 200 }
+    }))
+  }
+
+  async function openAndAcknowledge() {
+    render(<BugMonitorPanel token="admin-token" />)
+    fireEvent.click(screen.getByText('AI Bug Monitor'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Markera som sedd server-abcd1234' }))
+  }
+
+  it('marks a group as seen and shows the stored status', async () => {
+    stubAcknowledge({
+      json: async () => ({ ok: true, summary: summaryWith('acknowledged') }),
+      ok: true,
+      status: 200,
+    })
+    await openAndAcknowledge()
+    expect(await screen.findByText('server-abcd1234 är markerad som sedd.')).toBeTruthy()
+    expect(screen.getByText('Sedd')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Markera som sedd server-abcd1234' })).toBeNull()
+    const post = globalThis.fetch.mock.calls.find((call) => call[1]?.method === 'POST')
+    expect(post[1].headers.Authorization).toBe('Bearer admin-token')
+    expect(JSON.parse(post[1].body)).toEqual({ action: 'acknowledge', fingerprint: 'server-abcd1234' })
+  })
+
+  it('explains a denied acknowledgement and keeps the group unseen', async () => {
+    stubAcknowledge({ json: async () => ({ ok: false }), ok: false, status: 403 })
+    await openAndAcknowledge()
+    expect(await screen.findByText('Du saknar behörighet att markera fel som sedda.')).toBeTruthy()
+    expect(screen.getByText('Ny')).toBeTruthy()
+  })
+
+  it('explains when the group no longer exists', async () => {
+    stubAcknowledge({ json: async () => ({ ok: false }), ok: false, status: 404 })
+    await openAndAcknowledge()
+    expect(await screen.findByText('Felgruppen finns inte längre och kunde inte markeras.')).toBeTruthy()
+  })
 })

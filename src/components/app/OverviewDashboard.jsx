@@ -1272,6 +1272,7 @@ function OverviewDashboard({
   onEditProfile,
   onLogWeight,
   onNavigateSection,
+  onSearchNavigate,
   onNavigationIntentConsumed,
   onOpenAiCoach,
   onOpenWellbeing,
@@ -1552,6 +1553,10 @@ function OverviewDashboard({
           </span>
           <span aria-hidden="true" style={{ fontSize: 22 }}>›</span>
         </button>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 10, marginBottom: 14 }}>
+        <GlobalSearch compact onNavigate={onSearchNavigate} />
+      </div>
 
       <section className="overview-home-section" aria-labelledby="overview-today-title">
         <h2 id="overview-today-title">{t('home:todayMood')}</h2>

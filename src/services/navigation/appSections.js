@@ -9,12 +9,6 @@ export const appSections = [
     label: 'Hem',
   },
   {
-    ariaLabel: 'Öppna Redo!',
-    icon: '✓',
-    id: 'redo',
-    label: 'Redo!',
-  },
-  {
     ariaLabel: 'Öppna Kundtjänst',
     icon: '🎧',
     id: 'support',
@@ -43,6 +37,7 @@ export const appSections = [
 /** Deep-link / Mer destinations kept routable without bottom-nav tabs. */
 export const secondaryAppSectionIds = Object.freeze([
   'coach',
+  'redo',
   'place',
   'nutrition',
   'progress',

@@ -41,22 +41,36 @@ function sameSchedule(existingRow, reminder) {
     && days(existingRow.days_of_week) === days(reminder.daysOfWeek)
 }
 
-// När servern redan har skickat en intervallpåminnelse och flyttat fram nästa körning får en
-// äldre beräkning i appen inte dra tillbaka tiden, annars skickas samma påminnelse igen.
+// När servern redan har skickat en intervallpåminnelse och räknat fram nästa körning gäller
+// serverns tid. Appens egen rytm kan ligga några sekunder fel och får varken dra tillbaka
+// tiden (dubbel push) eller hoppa ett helt intervall framåt (utebliven push).
 // Gäller bara intervall: för dagliga och veckovisa påminnelser räknar appen alltid nästa
 // tillfälle efter nu, medan servern kan ha hoppat över dagens tillfälle efter en sen push.
 function keepServerProgress(nextRunAt, existingRow, reminder, now) {
   if (reminder.scheduleType !== 'interval') return nextRunAt
   const serverNext = futureIso(existingRow?.next_run_at, now)
   if (!nextRunAt || !serverNext || !existingRow?.last_sent_at || !sameSchedule(existingRow, reminder)) return nextRunAt
-  return new Date(serverNext) > new Date(nextRunAt) ? serverNext : nextRunAt
+  return serverNext
+}
+
+// En servertid som just har inträffat men som schemajobbet (varje minut) ännu inte har
+// hunnit skicka behålls, så att synken inte flyttar fram en påminnelse som ska skickas nu.
+// Bara högst 2 minuter tillbaka och med oförändrat schema, så gamla tider kommer aldrig tillbaka.
+const PENDING_SERVER_RUN_MS = 2 * 60000
+
+function pendingServerRun(existingRow, reminder, now) {
+  if (!reminder.enabled || reminder.archivedAt || reminder.pausedAt || reminder.needsReview) return ''
+  if (!existingRow?.next_run_at || !sameSchedule(existingRow, reminder)) return ''
+  const at = new Date(existingRow.next_run_at).getTime()
+  if (!Number.isFinite(at) || at > now || at < now - PENDING_SERVER_RUN_MS) return ''
+  return new Date(at).toISOString()
 }
 
 export function buildReminderPushRow(userId, reminder, existingRow, { now = Date.now() } = {}) {
   const serverSnooze = futureIso(existingRow?.snoozed_until, now)
   const localSnooze = futureIso(reminder.snoozedUntil, now)
   const snoozedUntil = localSnooze || serverSnooze || null
-  let nextRunAt = snoozedUntil
+  let nextRunAt = snoozedUntil || pendingServerRun(existingRow, reminder, now)
   if (!nextRunAt) {
     const scheduled = getNextReminderAt(reminder, { now })
     nextRunAt = scheduled && reminder.scheduleType === 'interval' ? futureIntervalAt(scheduled, reminder, now) : scheduled

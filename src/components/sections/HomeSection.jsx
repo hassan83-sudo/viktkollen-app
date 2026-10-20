@@ -32,6 +32,7 @@ function HomeSection({
   onEditProfile,
   onLogWeight,
   onNavigateSection,
+  onSearchNavigate,
   onNavigationIntentConsumed,
   onOpenAiCoach,
   onOpenWellbeing,
@@ -125,6 +126,7 @@ function HomeSection({
           onEditProfile={onEditProfile}
           onLogWeight={onLogWeight}
           onNavigateSection={onNavigateSection}
+          onSearchNavigate={onSearchNavigate}
           onNavigationIntentConsumed={onNavigationIntentConsumed}
           onOpenAiCoach={onOpenAiCoach}
           onOpenWellbeing={onOpenWellbeing}

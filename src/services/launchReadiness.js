@@ -29,8 +29,17 @@ function hasStorage() {
   }
 }
 
+// Statiska läsningar: en dynamisk import.meta.env[name] får Vite att bygga in alla
+// VITE_-variabler i klientpaketet, även sådana som aldrig får nå webbläsaren.
+const NUMBER_ENV = {
+  VITE_NUTRITION_PHOTO_MAX_FILE_MB: import.meta.env.VITE_NUTRITION_PHOTO_MAX_FILE_MB,
+  VITE_NUTRITION_PHOTO_RATE_LIMIT_MAX: import.meta.env.VITE_NUTRITION_PHOTO_RATE_LIMIT_MAX,
+  VITE_NUTRITION_PHOTO_TIMEOUT_MS: import.meta.env.VITE_NUTRITION_PHOTO_TIMEOUT_MS,
+  VITE_OPENAI_COACH_TIMEOUT_MS: import.meta.env.VITE_OPENAI_COACH_TIMEOUT_MS,
+}
+
 function numberFromEnv(name, fallback) {
-  const value = Number(import.meta.env[name])
+  const value = Number(NUMBER_ENV[name])
 
   return Number.isFinite(value) && value > 0 ? value : fallback
 }

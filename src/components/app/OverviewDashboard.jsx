@@ -1272,6 +1272,7 @@ function OverviewDashboard({
   onEditProfile,
   onLogWeight,
   onNavigateSection,
+  onSearchNavigate,
   onNavigationIntentConsumed,
   onOpenAiCoach,
   onOpenWellbeing,
@@ -1531,6 +1532,33 @@ function OverviewDashboard({
         />
       </section>
 
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 1fr)', gap: 8, alignItems: 'stretch', marginTop: 12, marginBottom: 14 }}>
+        <button
+          type="button"
+          onClick={() => {
+            setBodyScanOpen(false)
+            setSmartCameraInitialMode('checklists-bank')
+            setSmartCameraOpen(true)
+          }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+            padding: '14px', marginTop: 12, borderRadius: 16, textAlign: 'left',
+            border: '1px solid rgba(172,120,86,.55)', color: '#fff',
+            background: 'linear-gradient(120deg, #282033, #0b1830)', cursor: 'pointer',
+          }}
+        >
+          <span aria-hidden="true" style={{ fontSize: 32 }}>📋</span>
+          <span style={{ flex: 1, display: 'grid', gap: 3 }}>
+            <strong>Checklistor</strong>
+            <small style={{ color: '#bed0ed' }}>Skapa och öppna checklistor</small>
+          </span>
+          <span aria-hidden="true" style={{ fontSize: 22 }}>›</span>
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 0 }}>
+          <GlobalSearch compact onNavigate={onSearchNavigate} />
+        </div>
+      </div>
+
       <section className="overview-home-section" aria-labelledby="overview-today-title">
         <h2 id="overview-today-title">{t('home:todayMood')}</h2>
         <OverviewTodayMood
@@ -1544,6 +1572,7 @@ function OverviewDashboard({
           reminderState={reminderState}
           weights={weights}
         />
+
         <HomeSocialPreview
           compact
           conversations={socialLiveEnabled && isAuthenticated ? socialPreview : []}

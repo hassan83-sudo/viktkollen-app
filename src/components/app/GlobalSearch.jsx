@@ -44,7 +44,7 @@ function saveRecentSearchId(id) {
   }
 }
 
-function GlobalSearch({ onNavigate }) {
+function GlobalSearch({ onNavigate, compact = false }) {
   const { t } = useTranslation(['settings', 'common'])
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -182,7 +182,7 @@ function GlobalSearch({ onNavigate }) {
       >
         <span aria-hidden="true">⌕</span>
         <strong>{t('common:search')}</strong>
-        <kbd>Ctrl K</kbd>
+        {!compact && <kbd>Ctrl K</kbd>}
       </button>
 
       {isOpen && (

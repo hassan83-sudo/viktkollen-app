@@ -1531,19 +1531,6 @@ function OverviewDashboard({
         />
       </section>
 
-      <section className="overview-home-section" aria-labelledby="overview-today-title">
-        <h2 id="overview-today-title">{t('home:todayMood')}</h2>
-        <OverviewTodayMood
-          caloriesToday={caloriesToday}
-          currentWeight={currentWeight}
-          onLogWeight={onLogWeight}
-          onOpenCoach={() => (onOpenAiCoach ? onOpenAiCoach() : setCoachOpen(true))}
-          onOpenNotices={goToNotifications}
-          onOpenWellbeing={onOpenWellbeing}
-          onScanFood={onScanFood}
-          reminderState={reminderState}
-          weights={weights}
-        />
         <button
           type="button"
           onClick={() => {
@@ -1565,6 +1552,21 @@ function OverviewDashboard({
           </span>
           <span aria-hidden="true" style={{ fontSize: 22 }}>›</span>
         </button>
+
+      <section className="overview-home-section" aria-labelledby="overview-today-title">
+        <h2 id="overview-today-title">{t('home:todayMood')}</h2>
+        <OverviewTodayMood
+          caloriesToday={caloriesToday}
+          currentWeight={currentWeight}
+          onLogWeight={onLogWeight}
+          onOpenCoach={() => (onOpenAiCoach ? onOpenAiCoach() : setCoachOpen(true))}
+          onOpenNotices={goToNotifications}
+          onOpenWellbeing={onOpenWellbeing}
+          onScanFood={onScanFood}
+          reminderState={reminderState}
+          weights={weights}
+        />
+
         <HomeSocialPreview
           compact
           conversations={socialLiveEnabled && isAuthenticated ? socialPreview : []}

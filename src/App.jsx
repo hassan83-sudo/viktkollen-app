@@ -3329,6 +3329,7 @@ function App() {
             onEditProfile={() => setShowOnboarding(true)}
             onHealthDashboardPeriodChange={setHealthDashboardPeriod}
             onLogWeight={handleDailyCoachLogWeight}
+            onSearchNavigate={handleGlobalSearchNavigate}
             onNavigateSection={handleDailyCoachAction}
             onNavigationIntentConsumed={() => setHomeIntent(null)}
             onOpenAiCoach={() => setAiCoachOverlayOpen(true)}

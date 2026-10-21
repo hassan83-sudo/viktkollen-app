@@ -1,6 +1,9 @@
 name: SumUp renewal draft checks
 
 on:
+  push:
+    branches:
+      - fix/sumup-recurring-production-wiring
   pull_request:
     paths:
       - 'api/_shared/billing/sumupRenewal*.js'

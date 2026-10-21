@@ -125,3 +125,5 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021183000_sumup_renewal_snapshot_guard_draft.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021184500_sumup_renewal_checkout_uniqueness_draft.sql
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-guard.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021173000_sumup_renewal_facts_reader_draft.sql
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-reader.sql

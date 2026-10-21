@@ -680,6 +680,7 @@ const sv = {
     },
   },
   coach: {
+    replySource: { local: 'Lokalt svar', generated: 'AI-genererat svar', unknown: 'Svarskälla ej angiven' },
     chatInput: {
       label: 'Fråga till AI Coach',
       placeholder: 'Skriv en fråga...',
@@ -2686,6 +2687,7 @@ const en = {
     },
   },
   coach: {
+    replySource: { local: 'Local answer', generated: 'AI-generated answer', unknown: 'Answer source unspecified' },
     chatInput: {
       label: 'Question for AI Coach',
       placeholder: 'Type a question...',
@@ -4429,6 +4431,7 @@ const fi = mergeTranslation(en, {
 })
 
 const ar = mergeTranslation(en, {
+  coach: { replySource: { local: 'إجابة محلية', generated: 'إجابة مولّدة بالذكاء الاصطناعي', unknown: 'مصدر الإجابة غير محدد' } },
   common: {
     actions: { save: 'حفظ', close: 'إغلاق', cancel: 'إلغاء', signOut: 'تسجيل الخروج', loading: 'جارٍ التحميل…' },
     back: 'رجوع',
@@ -5329,6 +5332,7 @@ const fr = mergeTranslation(en, {
 })
 
 const es = mergeTranslation(en, {
+  coach: { replySource: { local: 'Respuesta local', generated: 'Respuesta generada por IA', unknown: 'Origen de la respuesta no indicado' } },
   common: {
     back: 'Atrás',
     yes: 'Sí',

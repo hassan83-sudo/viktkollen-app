@@ -1,5 +1,3 @@
-import { verifySumUpRenewalCheckout } from './sumupRenewalReconcile.js'
-
 /**
  * Reconcile only. Never creates or processes a SumUp checkout.
  * Ambiguous outcomes stay pending; they must not trigger another charge.
@@ -11,22 +9,11 @@ export function createSumUpRenewalFinalizer({ transport, verifiedCommitPort } = 
   return {
     async reconcile({ providerCheckoutId, checkoutReference, subscriptionId, periodEnd,
       nextPeriodEnd, customerId, merchantCode, amountMinor } = {}) {
-      if (!providerCheckoutId || !subscriptionId || !periodEnd || !nextPeriodEnd) {
+      if (!providerCheckoutId || !checkoutReference || !subscriptionId || !periodEnd || !nextPeriodEnd) {
         throw new Error('INVALID_RENEWAL_RECONCILIATION')
       }
-      let checkout
-      try {
-        checkout = await transport.retrieveCheckout(providerCheckoutId)
-      } catch {
-        return { committed: false, outcome: 'pending' }
-      }
-      if (checkout?.id !== providerCheckoutId) return { committed: false, outcome: 'mismatch' }
-      const verified = verifySumUpRenewalCheckout({
-        checkout, checkoutReference, customerId, merchantCode, amountMinor,
-      })
-      if (!verified.verified || verified.outcome !== 'paid') {
-        return { committed: false, outcome: verified.outcome }
-      }
+      // Only the privileged settlement service may verify payment facts.
+      // It loads the expected customer and price from trusted subscription data.
       const data = await verifiedCommitPort.commitVerified({
         checkoutReference, subscriptionId, periodEnd,
         providerCheckoutRef: providerCheckoutId, nextPeriodEnd,

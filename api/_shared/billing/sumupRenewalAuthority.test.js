@@ -41,6 +41,7 @@ describe('SumUp renewal authority', () => {
     { amountMinor: 0 }, { customerId: '' },
     { currency: 'USD' }, { checkoutReference: 'different' },
     { providerCheckoutRef: 'different' },
+    { periodEnd: 'invalid' }, { nextPeriodEnd: 'invalid' },
     { nextPeriodEnd: '2027-01-01T00:00:00Z' },
   ])('rejects untrusted renewal facts: %j', async override => {
     const authority = createSumUpRenewalAuthority({

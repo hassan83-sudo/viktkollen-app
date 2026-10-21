@@ -1,5 +1,6 @@
 -- DRAFT ONLY. DO NOT APPLY TO STAGING OR PRODUCTION.
--- PAID cannot be attested by SQL alone; this RPC stays inaccessible until\n-- a privileged verification boundary and restricted execution role exist.
+-- PAID cannot be attested by SQL alone; this RPC stays inaccessible until
+-- a privileged verification boundary and restricted execution role exist.
 -- A successful RPC atomically advances the period and finalizes its attempt.
 create or replace function billing.commit_verified_sumup_renewal(
   p_checkout_reference text,
@@ -40,6 +41,7 @@ begin
 
   if attempt.status = 'succeeded' then
     if attempt.provider_checkout_ref is distinct from p_provider_checkout_ref
+       or attempt.expected_next_period_end is distinct from p_next_period_end
        or subscription.current_period_end < p_next_period_end then
       raise exception 'renewal_commit_conflict';
     end if;
@@ -47,10 +49,22 @@ begin
   end if;
 
   if attempt.status <> 'processing'
-     or (attempt.provider_checkout_ref <> ''
-         and attempt.provider_checkout_ref is distinct from p_provider_checkout_ref)
+     or attempt.provider_checkout_ref is distinct from p_provider_checkout_ref
+     or attempt.provider_checkout_ref = ''
+     or attempt.expected_next_period_end is distinct from p_next_period_end
+     or attempt.expected_customer_ref is null
+     or attempt.expected_amount_minor is null
+     or attempt.expected_amount_minor <= 0
+     or attempt.expected_currency is distinct from 'SEK'
      or subscription.current_period_end is distinct from p_period_end
-     or subscription.status not in ('ACTIVE', 'PAST_DUE') then
+     or subscription.status not in ('ACTIVE', 'PAST_DUE')
+     or not exists (
+       select 1 from billing.sumup_recurring_instruments i
+       where i.subscription_id = subscription.subscription_id
+         and i.user_id = subscription.user_id
+         and i.provider_customer_ref = attempt.expected_customer_ref
+         and i.status = 'verified'
+     ) then
     raise exception 'renewal_commit_conflict';
   end if;
 
@@ -73,4 +87,5 @@ $$;
 
 revoke all on function billing.commit_verified_sumup_renewal(text, text, timestamptz, text, timestamptz)
   from public, anon, authenticated, service_role;
--- Intentionally NO execute grant. Never expose this commit RPC via service_role.\n-- Verification must be enforced at the privileged boundary before enabling it.
+-- Intentionally NO execute grant. Never expose this commit RPC via service_role.
+-- Verification must be enforced at the privileged boundary before enabling it.

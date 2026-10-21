@@ -13,6 +13,14 @@ describe('SumUp renewal record loader', () => {
       .resolves.toMatchObject({ amountMinor: 1900 })
     expect(readRenewalFacts).toHaveBeenCalledWith(query)
   })
+  it('accepts equivalent timestamp representations', async () => {
+    const load = createSumUpRenewalRecordLoader({
+      database: { readRenewalFacts: vi.fn().mockResolvedValue({
+        ...query, periodEnd: '2026-10-01T00:00:00.000Z',
+      }) },
+    })
+    await expect(load(query)).resolves.toMatchObject({ subscriptionId: 'sub-1' })
+  })
   it('fails closed on a missing record', async () => {
     const load = createSumUpRenewalRecordLoader({
       database: { readRenewalFacts: vi.fn().mockResolvedValue(null) },

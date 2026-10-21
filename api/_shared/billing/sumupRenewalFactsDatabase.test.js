@@ -38,7 +38,7 @@ describe('SumUp renewal facts database', () => {
     await expect(db.readRenewalFacts(request)).rejects.toThrow('SUMUP_RENEWAL_FACTS_NOT_UNIQUE')
   })
   it.each([{ amountMinor: 0 }, { currency: 'USD' }, { status: 'CANCELED' },
-    { subscriptionId: 'other' }, { customerId: '' }])('rejects invalid records', async override => {
+    { periodEnd: 'invalid' }, { subscriptionId: 'other' }, { customerId: '' }])('rejects invalid records', async override => {
     const db = createSumUpRenewalFactsDatabase({
       query: vi.fn().mockResolvedValue([{ ...record, ...override }]),
     })

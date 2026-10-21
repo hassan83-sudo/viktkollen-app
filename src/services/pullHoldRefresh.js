@@ -9,6 +9,8 @@ export function installPullHoldRefresh() {
   let armed = false
   let timer = null
   let indicator = null
+  let spinner = null
+  let label = null
 
   const clearTimer = () => {
     if (timer !== null) window.clearTimeout(timer)
@@ -21,6 +23,8 @@ export function installPullHoldRefresh() {
     armed = false
     if (indicator) indicator.remove()
     indicator = null
+    spinner = null
+    label = null
   }
 
   const show = (message) => {
@@ -33,12 +37,22 @@ export function installPullHoldRefresh() {
         left: '50%', transform: 'translateX(-50%)',
         zIndex: '2147483647', padding: '9px 16px',
         borderRadius: '24px', background: '#172433', color: '#fff',
+        display: 'flex', alignItems: 'center', gap: '9px',
         font: '600 13px system-ui, sans-serif',
         boxShadow: '0 4px 16px #0004', pointerEvents: 'none',
       })
+      spinner = document.createElement('span')
+      spinner.setAttribute('aria-hidden', 'true')
+      Object.assign(spinner.style, {
+        width: '18px', height: '18px', flexShrink: '0',
+        border: '3px solid #ffffff55', borderTopColor: '#fff',
+        borderRadius: '50%', transform: 'rotate(0deg)',
+      })
+      label = document.createElement('span')
+      indicator.append(spinner, label)
       document.body.appendChild(indicator)
     }
-    indicator.textContent = message
+    label.textContent = message
   }
 
   const onStart = (event) => {
@@ -61,6 +75,12 @@ export function installPullHoldRefresh() {
     if (delta >= threshold && !armed) {
       armed = true
       show('Håll kvar för att uppdatera…')
+      if (spinner) {
+        spinner.style.transition = 'transform 650ms linear'
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          if (spinner && armed) spinner.style.transform = 'rotate(360deg)'
+        }))
+      }
       timer = window.setTimeout(() => {
         timer = null
         if (tracking && armed) {
@@ -71,7 +91,7 @@ export function installPullHoldRefresh() {
     } else if (delta < threshold && armed) {
       armed = false
       clearTimer()
-      if (indicator) { indicator.remove(); indicator = null }
+      if (indicator) { indicator.remove(); indicator = null; spinner = null; label = null }
     }
   }
 

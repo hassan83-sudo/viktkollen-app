@@ -17,7 +17,7 @@ declare
   expected_plan_version integer;
   catalog_plan_version integer;
 begin
-  if old.provider_checkout_ref <> '' then
+  if tg_op = 'UPDATE' and old.provider_checkout_ref <> '' then
     if new.provider_checkout_ref is distinct from old.provider_checkout_ref
        or new.checkout_reference is distinct from old.checkout_reference
        or new.subscription_id is distinct from old.subscription_id
@@ -41,7 +41,7 @@ begin
   end if;
 
   if new.provider_checkout_ref <> '' and
-     (tg_op = 'INSERT' or old.provider_checkout_ref = '') then
+     (tg_op = 'INSERT' or (tg_op = 'UPDATE' and old.provider_checkout_ref = '')) then
     select p.price_minor, p.currency, s.provider_customer_ref,
            s.plan_version, p.version
       into expected_price, expected_currency, expected_customer,

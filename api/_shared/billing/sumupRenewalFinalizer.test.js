@@ -23,10 +23,10 @@ const args = {
 }
 function setup(checkoutResult = checkout, dbResult = { data: { committed: true, already_committed: false }, error: null }) {
   const retrieveCheckout = vi.fn().mockResolvedValue(checkoutResult)
-  const rpc = vi.fn().mockResolvedValue(dbResult)
-  return { retrieveCheckout, rpc, finalizer: createSumUpRenewalFinalizer({
+  const commitVerified = vi.fn().mockResolvedValue(dbResult.data && !dbResult.error ? { committed: dbResult.data.committed, alreadyCommitted: dbResult.data.already_committed } : null)
+  return { retrieveCheckout, rpc: commitVerified, finalizer: createSumUpRenewalFinalizer({
     transport: { retrieveCheckout },
-    client: { schema: vi.fn().mockReturnValue({ rpc }) },
+    verifiedCommitPort: { commitVerified },
   }) }
 }
 describe('SumUp renewal finalizer', () => {

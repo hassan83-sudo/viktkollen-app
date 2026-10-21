@@ -1,5 +1,5 @@
 -- DRAFT ONLY. DO NOT APPLY TO STAGING OR PRODUCTION.
--- Caller MUST independently retrieve and verify PAID status from SumUp.
+-- PAID cannot be attested by SQL alone; this RPC stays inaccessible until\n-- a privileged verification boundary and restricted execution role exist.
 -- A successful RPC atomically advances the period and finalizes its attempt.
 create or replace function billing.commit_verified_sumup_renewal(
   p_checkout_reference text,
@@ -73,5 +73,4 @@ $$;
 
 revoke all on function billing.commit_verified_sumup_renewal(text, text, timestamptz, text, timestamptz)
   from public, anon, authenticated, service_role;
-grant execute on function billing.commit_verified_sumup_renewal(text, text, timestamptz, text, timestamptz)
-  to service_role;
+-- Intentionally NO execute grant. Never expose this commit RPC via service_role.\n-- Verification must be enforced at the privileged boundary before enabling it.

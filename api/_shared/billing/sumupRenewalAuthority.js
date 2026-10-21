@@ -20,8 +20,8 @@ export function createSumUpRenewalAuthority({ loadRenewalRecord } = {}) {
           record.checkoutReference !== checkoutReference ||
           record.providerCheckoutRef !== providerCheckoutRef ||
           record.subscriptionId !== subscriptionId ||
-          record.periodEnd !== periodEnd ||
-          record.nextPeriodEnd !== nextPeriodEnd ||
+          Date.parse(record.periodEnd) !== Date.parse(periodEnd) ||
+          Date.parse(record.nextPeriodEnd) !== Date.parse(nextPeriodEnd) ||
           typeof record.customerId !== 'string' || !record.customerId ||
           !Number.isSafeInteger(record.amountMinor) || record.amountMinor <= 0 ||
           record.currency !== 'SEK') {

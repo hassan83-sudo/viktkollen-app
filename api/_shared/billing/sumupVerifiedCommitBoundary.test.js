@@ -7,8 +7,6 @@ const args = {
   periodEnd: '2026-10-01T00:00:00Z',
   providerCheckoutRef: 'checkout-123',
   nextPeriodEnd: '2026-11-01T00:00:00Z',
-  customerId: 'vk123',
-  amountMinor: 1900,
 }
 
 describe('SumUp verified settlement boundary', () => {
@@ -25,6 +23,15 @@ describe('SumUp verified settlement boundary', () => {
     })
     await expect(boundary.commitVerified({})).rejects.toThrow('INVALID_RENEWAL_SETTLEMENT')
     expect(verifyAndCommit).not.toHaveBeenCalled()
+  })
+  it('passes only settlement identifiers to the verifier', async () => {
+    const verifyAndCommit = vi.fn().mockResolvedValue({ committed: true, alreadyCommitted: false })
+    const boundary = createVerifiedSumUpRenewalCommitBoundary({
+      settlementService: { kind: 'sumup-verified-settlement-v1', verifyAndCommit },
+    })
+    await expect(boundary.commitVerified({ ...args, customerId: 'untrusted', amountMinor: 1 }))
+      .resolves.toEqual({ committed: true, alreadyCommitted: false })
+    expect(verifyAndCommit).toHaveBeenCalledWith(args)
   })
   it('rejects malformed settlement responses', async () => {
     const boundary = createVerifiedSumUpRenewalCommitBoundary({

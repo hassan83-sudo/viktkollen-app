@@ -3,6 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import SecurityCenterPanel from './SecurityCenterPanel.jsx'
 
+vi.mock('../../services/supabaseClient.js', () => ({
+  supabase: { auth: { getSession: vi.fn(async () => ({ data: { session: { access_token: 'test-token' } }, error: null })) } },
+}))
+
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
@@ -20,6 +24,22 @@ describe('SecurityCenterPanel', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/security-center', expect.objectContaining({
       headers: { Authorization: 'Bearer test-token' }, cache: 'no-store',
     }))
+  })
+
+  it('displays the refreshed session token on subsequent polls', async () => {
+    const { supabase } = await import('../../services/supabaseClient.js')
+    supabase.auth.getSession
+      .mockResolvedValueOnce({ data: { session: { access_token: 'test-token' } }, error: null })
+      .mockResolvedValueOnce({ data: { session: { access_token: 'refreshed-token' } }, error: null })
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, events: [] }) }))
+    vi.stubGlobal('fetch', fetchMock)
+    render(<SecurityCenterPanel token="test-token" />)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    await vi.advanceTimersByTimeAsync(5000)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    expect(fetchMock.mock.calls[1][1].headers.Authorization).toBe('Bearer refreshed-token')
+    vi.useRealTimers()
   })
 
   it('shows how often a merged event happened and keeps polling without a page reload', async () => {

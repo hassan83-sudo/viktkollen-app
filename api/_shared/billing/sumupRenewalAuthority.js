@@ -30,7 +30,7 @@ export function createSumUpRenewalAuthority({ loadRenewalRecord } = {}) {
       return {
         checkoutReference, subscriptionId, periodEnd,
         providerCheckoutRef, nextPeriodEnd,
-        customerId: record.customerId, amountMinor: record.amountMinor,
+        customerId: record.customerId, amountMinor: record.amountMinor, currency: record.currency,
       }
     },
   }

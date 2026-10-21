@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { supabase } from '../../services/supabaseClient.js'
 
 const STATUS_LABELS = {
   acknowledged: 'Sedd',
@@ -12,11 +13,16 @@ const SEVERITY_LABELS = {
   medium: 'Medel',
 }
 
-async function adminFetch(token, options = {}) {
+async function adminFetch(options = {}) {
+  if (!supabase) throw new Error('session unavailable')
+  const { data, error } = await supabase.auth.getSession()
+  const accessToken = data?.session?.access_token
+  if (error || !accessToken) throw new Error('session unavailable')
+
   const response = await fetch('/api/bug-monitor', {
     ...options,
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
       ...(options.headers || {}),
     },
@@ -32,20 +38,24 @@ export default function BugMonitorPanel({ token }) {
   const [plan, setPlan] = useState(null)
 
   const load = useCallback(async () => {
-    const result = await adminFetch(token)
-    if (!result.response.ok || result.payload?.ok !== true || !result.payload.summary) {
+    try {
+      const result = await adminFetch()
+      if (!result.response.ok || result.payload?.ok !== true || !result.payload.summary) {
+        setNotice('Felöversikten kunde inte läsas.')
+        return
+      }
+      setNotice('')
+      setOverview(result.payload)
+    } catch {
       setNotice('Felöversikten kunde inte läsas.')
-      return
     }
-    setNotice('')
-    setOverview(result.payload)
-  }, [token])
+  }, [])
 
   useEffect(() => {
-    if (!open) return undefined
+    if (!open || !token) return undefined
     const timer = window.setInterval(load, 5000)
     return () => window.clearInterval(timer)
-  }, [load, open])
+  }, [load, open, token])
 
   function onToggle(event) {
     const next = event.currentTarget.open
@@ -55,16 +65,20 @@ export default function BugMonitorPanel({ token }) {
 
   async function prepare(fingerprint) {
     setPlan(null)
-    const result = await adminFetch(token, {
-      body: JSON.stringify({ action: 'plan', fingerprint }),
-      method: 'POST',
-    })
-    if (!result.response.ok || result.payload?.plan?.ok !== true) {
+    try {
+      const result = await adminFetch({
+        body: JSON.stringify({ action: 'plan', fingerprint }),
+        method: 'POST',
+      })
+      if (!result.response.ok || result.payload?.plan?.ok !== true) {
+        setNotice('Undersökningen kunde inte förberedas.')
+        return
+      }
+      setNotice('')
+      setPlan(result.payload.plan)
+    } catch {
       setNotice('Undersökningen kunde inte förberedas.')
-      return
     }
-    setNotice('')
-    setPlan(result.payload.plan)
   }
 
   const summary = overview?.summary

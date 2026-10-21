@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { supabase } from '../../services/supabaseClient.js'
 
 const LABELS = {
   AUTH_FAILURE_BURST: 'Upprepade inloggningsfel',
@@ -13,6 +14,14 @@ const LABELS = {
   QUOTA_EXCEEDED: 'Kvot överskriden',
 }
 
+async function currentAccessToken() {
+  if (!supabase) throw new Error('session unavailable')
+  const { data, error } = await supabase.auth.getSession()
+  const accessToken = data?.session?.access_token
+  if (error || !accessToken) throw new Error('session unavailable')
+  return accessToken
+}
+
 export default function SecurityCenterPanel({ token }) {
   const [events, setEvents] = useState([])
   const [state, setState] = useState('loading')
@@ -23,8 +32,11 @@ export default function SecurityCenterPanel({ token }) {
     let active = true
     async function refresh() {
       try {
+        // Read the current Supabase session for every poll; never reuse an
+        // access token captured when the admin panel was first opened.
+        const accessToken = await currentAccessToken()
         const response = await fetch('/api/security-center', {
-          headers: { Authorization: 'Bearer ' + token },
+          headers: { Authorization: 'Bearer ' + accessToken },
           cache: 'no-store',
         })
         if (!response.ok) throw new Error('unavailable')

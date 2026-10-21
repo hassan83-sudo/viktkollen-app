@@ -3,6 +3,10 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import BugMonitorPanel from './BugMonitorPanel.jsx'
 
+vi.mock('../../services/supabaseClient.js', () => ({
+  supabase: { auth: { getSession: vi.fn(async () => ({ data: { session: { access_token: 'admin-token' } }, error: null })) } },
+}))
+
 describe('AI Bug Monitor panel', () => {
   afterEach(() => {
     cleanup()

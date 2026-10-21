@@ -1,0 +1,26 @@
+name: SumUp renewal draft checks
+
+on:
+  pull_request:
+    paths:
+      - 'api/_shared/billing/sumupRenewal*.js'
+      - 'api/_shared/billing/sumupDurableRenewal*.js'
+      - '.github/workflows/sumup-renewal-draft.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  renewal-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Run renewal unit tests (no credentials or provider calls)
+        run: npx vitest run api/_shared/billing/sumupRenewalCandidates.test.js api/_shared/billing/sumupRenewalClaimPort.test.js api/_shared/billing/sumupRenewalClaimBatch.test.js api/_shared/billing/sumupRenewalReconcile.test.js api/_shared/billing/sumupRenewalFinalizer.test.js api/_shared/billing/sumupDurableRenewal.test.js

@@ -9,7 +9,7 @@ returns trigger
 language plpgsql
 security invoker
 set search_path = pg_catalog, pg_temp
-as $
+as $renewal_guard$
 declare
   expected_price integer;
   expected_currency text;
@@ -71,7 +71,7 @@ begin
 
   return new;
 end;
-$$;
+$renewal_guard$;
 
 drop trigger if exists sumup_renewal_snapshot_guard
   on billing.sumup_renewal_attempts;

@@ -12,7 +12,7 @@ export function selectDueRenewalCandidates(rows, { now = new Date(), limit = 20 
   const selected = []
   for (const row of rows) {
     if (selected.length >= limit) break
-    if (!row || row.provider !== 'sumup' || !['active', 'past_due'].includes(row.status)) continue
+    if (!row || row.provider !== 'sumup' || !['ACTIVE', 'PAST_DUE'].includes(row.status)) continue
     if (row.cancel_at_period_end === true || !row.subscription_id) continue
     if (typeof row.current_period_end !== 'string' || !/^\d{4}-\d\d-\d\dT/.test(row.current_period_end)) continue
     const end = new Date(row.current_period_end).getTime()

@@ -29,7 +29,7 @@ export function createSumUpRenewalFinalizer({ transport, verifiedCommitPort } = 
       }
       const data = await verifiedCommitPort.commitVerified({
         checkoutReference, subscriptionId, periodEnd,
-        providerCheckoutRef: providerCheckoutId, nextPeriodEnd,\n        customerId, amountMinor,
+        providerCheckoutRef: providerCheckoutId, nextPeriodEnd,
       })
       if (!data || typeof data.committed !== 'boolean' ||
           typeof data.alreadyCommitted !== 'boolean') {

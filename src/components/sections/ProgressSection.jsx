@@ -208,7 +208,7 @@ function ProgressSection({
         {activeFolder === 'reports' && (
           <>
             {progressCenter}
-            <details className="progress-hub-more" open>
+            <details className="progress-hub-more">
               <summary>{t('reports.monthlySummary')}</summary>
               <MonthlyReport report={monthlyReport} />
             </details>

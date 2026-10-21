@@ -11,13 +11,13 @@ export function createVerifiedSumUpRenewalCommitBoundary({ settlementService } =
   }
   return {
     async commitVerified({ checkoutReference, subscriptionId, periodEnd,
-      providerCheckoutRef, nextPeriodEnd, customerId, amountMinor } = {}) {
+      providerCheckoutRef, nextPeriodEnd } = {}) {
       if (!checkoutReference || !subscriptionId || !periodEnd ||
-          !providerCheckoutRef || !nextPeriodEnd || !customerId ||\n          !Number.isSafeInteger(amountMinor) || amountMinor <= 0) {
+          !providerCheckoutRef || !nextPeriodEnd) {
         throw new Error('INVALID_RENEWAL_SETTLEMENT')
       }
       const result = await settlementService.verifyAndCommit({
-        checkoutReference, subscriptionId, periodEnd, providerCheckoutRef, nextPeriodEnd,\n        customerId, amountMinor,
+        checkoutReference, subscriptionId, periodEnd, providerCheckoutRef, nextPeriodEnd,
       })
       if (!result || typeof result.committed !== 'boolean' ||
           typeof result.alreadyCommitted !== 'boolean') {

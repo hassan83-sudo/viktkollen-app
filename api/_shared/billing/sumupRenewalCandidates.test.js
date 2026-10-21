@@ -4,7 +4,7 @@ import { selectDueRenewalCandidates } from './sumupRenewalCandidates.js'
 const base = {
   subscription_id: 'sub-1',
   provider: 'sumup',
-  status: 'active',
+  status: 'ACTIVE',
   current_period_end: '2026-10-01T00:00:00.000Z',
   cancel_at_period_end: false,
 }

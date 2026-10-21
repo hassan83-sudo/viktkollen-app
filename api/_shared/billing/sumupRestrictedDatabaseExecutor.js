@@ -41,7 +41,7 @@ export function createRestrictedSumUpDatabaseExecutor({
   return {
     async execute({ text, values } = {}) {
       if (typeof text !== 'string' ||
-          !(/^select billing\\.commit_verified_sumup_renewal\\(/i.test(text) || /^select \\* from billing\\.read_sumup_renewal_facts_draft\\(/i.test(text)) ||
+          !(text.trim().toLowerCase().startsWith('select billing.commit_verified_sumup_renewal(') || text.trim().toLowerCase().startsWith('select * from billing.read_sumup_renewal_facts_draft(')) ||
           !Array.isArray(values)) {
         throw new Error('SUMUP_RENEWAL_SQL_OPERATION_NOT_ALLOWED')
       }

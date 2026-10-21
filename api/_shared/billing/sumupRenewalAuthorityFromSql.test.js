@@ -28,7 +28,7 @@ describe('SumUp renewal SQL authority integration', () => {
       subscriptionId: request.subscriptionId, periodEnd: request.periodEnd,
     })
   })
-  it('rejects a forged amount or checkout binding', async () => {
+  it('uses database amount and rejects a forged checkout binding', async () => {
     const authority = createSumUpRenewalAuthorityFromSql({
       executeReadOnly: vi.fn().mockResolvedValue([{ ...row, amount_minor: 1 }]),
     })

@@ -27,7 +27,7 @@ describe('restricted SumUp PostgreSQL executor', () => {
 
   it('enables certificate validation and executes parameterized approved RPCs', async () => {
     const pool = makePool()
-    const PoolClass = vi.fn(() => pool)
+    const PoolClass = vi.fn(class { constructor() { return pool } })
     const db = createRestrictedSumUpDatabaseExecutor({ connectionString: url, PoolClass })
     expect(PoolClass).toHaveBeenCalledWith(expect.objectContaining({
       ssl: { rejectUnauthorized: true },
@@ -45,7 +45,7 @@ describe('restricted SumUp PostgreSQL executor', () => {
 
   it('blocks arbitrary SQL and sanitizes database errors', async () => {
     const pool = makePool()
-    const db = createRestrictedSumUpDatabaseExecutor({ connectionString: url, PoolClass: vi.fn(() => pool) })
+    const db = createRestrictedSumUpDatabaseExecutor({ connectionString: url, PoolClass: vi.fn(class { constructor() { return pool } }) })
     await expect(db.execute({ text: 'delete from billing.subscriptions', values: [] }))
       .rejects.toThrow('SUMUP_RENEWAL_SQL_OPERATION_NOT_ALLOWED')
     pool.query.mockRejectedValueOnce(new Error('secret query details'))

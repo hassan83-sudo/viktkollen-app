@@ -25,6 +25,17 @@ describe('SumUp renewal authority', () => {
       subscriptionId: request.subscriptionId, periodEnd: request.periodEnd,
     })
   })
+  it('accepts equivalent database timestamps for both period boundaries', async () => {
+    const authority = createSumUpRenewalAuthority({
+      loadRenewalRecord: vi.fn().mockResolvedValue({
+        ...record, periodEnd: '2026-10-01T00:00:00.000Z',
+        nextPeriodEnd: '2026-11-01T00:00:00.000Z',
+      }),
+    })
+    await expect(authority.getExpectedRenewal(request)).resolves.toMatchObject({
+      customerId: 'vk123', amountMinor: 1900,
+    })
+  })
   it.each([
     { provider: 'other' }, { status: 'CANCELED' },
     { amountMinor: 0 }, { customerId: '' },

@@ -70,6 +70,44 @@ describe('coach panel replies', () => {
     expect(result.handoff).toBe(false)
   })
 
+  it.each([
+    'vad är bra att äta på morgonen',
+    'Vad kan jag äta till frukost?',
+    'Vad är bra mat mitt på dagen?',
+    'Vad kan jag äta till lunch?',
+    'Vad ska jag äta på kvällen?',
+    'Vad kan jag äta till middag?',
+    'Vad kan jag äta mellan måltiderna?',
+    'Tips på mellanmål?',
+  ])('answers meal wording locally without a model call: %s', async (question) => {
+    const result = await ask(question)
+    expect(result.source).toBe('local')
+    expect(result.reply).toContain('proteinkälla')
+    expect(requestCoachModelReply).not.toHaveBeenCalled()
+  })
+
+  it('answers a fresh meal question after previous history without reusing the old answer', async () => {
+    const result = await ask('vad är bra att äta på morgonen', source(), {
+      messages: [
+        { role: 'user', content: 'Hur fungerar vikttrend?' },
+        { role: 'assistant', content: 'Ett tidigare svar om vikttrend.' },
+        { role: 'user', content: 'vad är bra att äta på morgonen' },
+      ],
+    })
+    expect(result.source).toBe('local')
+    expect(result.reply).toContain('proteinkälla')
+    expect(result.reply).not.toContain('tidigare svar')
+    expect(requestCoachModelReply).not.toHaveBeenCalled()
+  })
+
+  it.each(['Varför är jag trött på morgonen?', 'Hur ska jag träna på kvällen?'])(
+    'does not turn a time-of-day question into meal advice: %s', async (question) => {
+      requestCoachModelReply.mockResolvedValue({ ok: false })
+      const result = await ask(question)
+      expect(result.reply).not.toContain('En användbar måltid')
+    },
+  )
+
   it('answers the latest measured weight from panel data', async () => {
     const result = await ask('Vad vägde jag senast?')
     expect(result.source).toBe('local')

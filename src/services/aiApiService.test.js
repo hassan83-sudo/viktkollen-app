@@ -50,4 +50,22 @@ describe('aiApiService', () => {
       }),
     }))
   })
+
+  it('does not send an old account payload under a new account session', async () => {
+    getCurrentAuthSession.mockResolvedValue({ data: { session: { access_token: 'new-account-token', user: { id: 'B' } } } })
+    const result = await requestAiEndpoint({ action: 'daily-coach', profile: { private: 'A' } }, { expectedUserScope: 'A' })
+    expect(result.skipped).toBe(true)
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('does not send if the originating request expires while auth is loading', async () => {
+    let finish
+    getCurrentAuthSession.mockReturnValue(new Promise((resolve) => { finish = resolve }))
+    let current = true
+    const pending = requestAiEndpoint({ action: 'daily-coach' }, { expectedUserScope: 'A', isCurrent: () => current })
+    current = false
+    finish({ data: { session: { access_token: 'same-account-token', user: { id: 'A' } } } })
+    expect((await pending).skipped).toBe(true)
+    expect(fetch).not.toHaveBeenCalled()
+  })
 })

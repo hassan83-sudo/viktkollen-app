@@ -1,5 +1,7 @@
 ﻿import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { currentCameraEpoch, releaseCameraStream, releaseVideoElement, retainCameraStream } from './features/shared/camera/cameraLifecycle.js'
+import { useDailyCoachRequest } from './services/ai/useDailyCoachRequest.js'
+import { useProactiveCoachRequest } from './services/ai/useProactiveCoachRequest.js'
 import { useTranslation } from 'react-i18next'
 import HomeSection from './components/sections/HomeSection.jsx'
 import MoreSection from './components/sections/MoreSection.jsx'
@@ -917,7 +919,6 @@ function App() {
   const [profile, setProfile] = useState(null)
   const [profileForm, setProfileForm] = useState(() => createProfileForm({}))
   const [profileError, setProfileError] = useState('')
-  const [proactiveCoachResult, setProactiveCoachResult] = useState(null)
   const [hydratedScopeId, setHydratedScopeId] = useState('')
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [currentLanguage, setCurrentLanguage] = useState(() => getActiveLanguageCode())
@@ -1365,24 +1366,21 @@ function App() {
       ),
     [checkIn, foods, healthSnapshot.checkIn.latestToday, healthSnapshot.nutrition.mealsToday, scopedProfile],
   )
-  const dailyCoachKey = useMemo(
-    () =>
-      JSON.stringify({
-        checkIn,
-        currentWeight: centralCurrentWeight,
-        foods,
-        goalsHabits,
-        healthSnapshot,
-        meals,
-        nutritionGoals,
-        profile: scopedProfile,
-        selectedMealDate,
-        weights: scopedWeights,
-      }),
-    [centralCurrentWeight, checkIn, foods, goalsHabits, healthSnapshot, meals, nutritionGoals, scopedProfile, scopedWeights, selectedMealDate],
-  )
-  const [dailyCoachResult, setDailyCoachResult] = useState(null)
-  const hasFreshDailyCoach = dailyCoachResult?.key === dailyCoachKey
+  const dailyCoachResult = useDailyCoachRequest({
+    userId: authSession?.user?.id || null,
+    day: selectedMealDate,
+    enabled: profileWeightsHydrated && !showOnboarding,
+    request: async (isCurrent) => {
+      const { requestAiEndpoint } = await loadAiApiService()
+      if (!isCurrent()) return null
+      return requestAiEndpoint({
+        action: 'daily-coach', checkIn, foods, healthSnapshot, mealHistory: photoMeals,
+        meals, nutritionGoals, profile: validatedProfile, today: selectedMealDate,
+        weights: healthSnapshot.weight.dailyWeights, currentWeight: centralCurrentWeight,
+      }, { expectedUserScope: authSession?.user?.id, isCurrent })
+    },
+  })
+  const hasFreshDailyCoach = dailyCoachResult?.key === selectedMealDate
   const coachMessage = hasFreshDailyCoach && dailyCoachResult.summary
     ? dailyCoachResult.summary
     : fallbackCoachMessage
@@ -1472,11 +1470,27 @@ function App() {
       }),
     [checkIn, meals, photoMeals, scopedWeights, selectedMealDate],
   )
-  const [fallbackProactiveCoachInsights, setFallbackProactiveCoachInsights] = useState([])
-  const proactiveCoachInsights =
-    proactiveCoachResult?.key === proactiveCoachKey
-      ? proactiveCoachResult.insights
-      : fallbackProactiveCoachInsights
+  const proactiveCoachResult = useProactiveCoachRequest({
+    userId: authSession?.user?.id || null,
+    enabled: profileWeightsHydrated && !showOnboarding,
+    requestKey: proactiveCoachKey,
+    request: async (isCurrent) => {
+      const { getProactiveCoachInsights } = await loadProactiveCoachService()
+      if (!isCurrent()) return null
+      return getProactiveCoachInsights({
+        bodyAnalysisHistory,
+        checkIn,
+        healthSnapshot,
+        mealHistory: photoMeals,
+        meals,
+        today: selectedMealDate,
+        weights: scopedWeights,
+      })
+    },
+  })
+  const proactiveCoachInsights = proactiveCoachResult?.key === proactiveCoachKey
+    ? proactiveCoachResult.insights
+    : null
   const createWeeklyReport = useCallback(async () => {
     setWeeklyReportStatus('Skapar AI-veckorapport...')
 
@@ -2073,122 +2087,6 @@ function App() {
     weeklyReportData,
     scopedWeights,
   ])
-
-  useEffect(() => {
-    let cancelled = false
-
-    if (!authSession || showOnboarding) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    async function loadDailyCoach() {
-      try {
-        const { requestAiEndpoint } = await loadAiApiService()
-        const result = await requestAiEndpoint({
-          action: 'daily-coach',
-          checkIn,
-          foods,
-          healthSnapshot,
-          mealHistory: photoMeals,
-          meals,
-          nutritionGoals,
-          profile: validatedProfile,
-          today: selectedMealDate,
-          weights: healthSnapshot.weight.dailyWeights,
-          currentWeight: centralCurrentWeight,
-        })
-        const data = result.data || {}
-
-        if (!cancelled && result.ok && typeof data.summary === 'string' && data.summary.trim()) {
-          setDailyCoachResult({
-            key: dailyCoachKey,
-            source: data.source === 'openai' ? 'openai' : 'mock',
-            summary: data.summary.trim(),
-          })
-          return
-        }
-      } catch {
-        // Daily coach falls back to the deterministic local summary below.
-      }
-
-      if (!cancelled) {
-        setDailyCoachResult({
-          key: dailyCoachKey,
-          source: 'mock',
-          summary: '',
-        })
-      }
-    }
-
-    void loadDailyCoach()
-
-    return () => {
-      cancelled = true
-    }
-  }, [
-    checkIn,
-    centralCurrentWeight,
-    dailyCoachKey,
-    authSession,
-    foods,
-    healthSnapshot,
-    meals,
-    nutritionGoals,
-    photoMeals,
-    selectedMealDate,
-    showOnboarding,
-    validatedProfile,
-  ])
-
-  useEffect(() => {
-    let cancelled = false
-    const coachData = {
-      bodyAnalysisHistory,
-      checkIn,
-      healthSnapshot,
-      mealHistory: photoMeals,
-      meals,
-      today: selectedMealDate,
-      weights: scopedWeights,
-    }
-
-    async function loadProactiveCoach() {
-      let fallbackInsights = []
-
-      try {
-        const { getProactiveCoachInsights, makeProactiveCoachInsights } = await loadProactiveCoachService()
-        fallbackInsights = makeProactiveCoachInsights(coachData)
-
-        if (!cancelled) {
-          setFallbackProactiveCoachInsights(fallbackInsights)
-        }
-
-        const insights = await getProactiveCoachInsights(coachData)
-
-        if (!cancelled) {
-          setProactiveCoachResult({
-            insights,
-            key: proactiveCoachKey,
-          })
-        }
-      } catch {
-        if (!cancelled) {
-          setProactiveCoachResult({
-            insights: fallbackInsights,
-            key: proactiveCoachKey,
-          })
-        }
-      }
-    }
-
-    void loadProactiveCoach()
-
-    return () => {
-      cancelled = true
-    }
-  }, [bodyAnalysisHistory, checkIn, healthSnapshot, meals, photoMeals, proactiveCoachKey, scopedWeights, selectedMealDate])
 
   const refreshAppStateFromStorage = useCallback(() => {
     if (!profileWeightsHydrated) return

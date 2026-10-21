@@ -9,6 +9,18 @@ const medicalPattern = /\b(diagnos|diagnostisera|cancer|tumör|diabetes|medicin|
 const needsStoredPattern = /\b(hur har min|har min|min vikttrend|mitt mål|min målvikt|vad åt jag|min aktivitet|mina måltider|mina vanor|åt rätt håll|min protein|mitt protein|vad vägde jag|senaste vikten|protein idag|tillräckligt med protein|hur ligger jag)\b/i
 const modelPattern = /jämför|skillnad mellan/i
 
+// Time words alone must not turn sleep or activity questions into meal advice.
+function mealSearchText(text) {
+  if (!/(?<![\p{L}\p{N}])(?:äta|äter|mat|måltid|måltider)(?![\p{L}\p{N}])/iu.test(text)) return text
+  const meals = [
+    [/\b(?:morgon|morgonen|morgnar)\b/iu, 'frukost'],
+    [/\b(?:mitt på dagen|lunchtid)\b/iu, 'lunch'],
+    [/\b(?:kväll|kvällen|kvällar)\b/iu, 'middag'],
+    [/\b(?:mellan måltiderna|mellan måltider|mellan maten|mellanmålet)\b/iu, 'mellanmål'],
+  ].filter(([pattern]) => pattern.test(text)).map(([, meal]) => meal)
+  return [text, ...meals].join(' ')
+}
+
 const SAFETY_TEXT = 'Jag är en vanecoach i Viktkollen och kan inte bedöma sjukdom, medicin eller diagnos. För det behöver du vården. Jag kan fortfarande prata om vanor, mat och viktloggning.'
 const URGENT_TEXT = 'Det här låter akut. Jag är en vanecoach och kan inte bedöma sjukdom, medicin eller diagnos. Kontakta vården, eller ring 112 om du behöver akut hjälp.'
 
@@ -107,7 +119,7 @@ export function routeCoachQuestion({
   const follow = examplePattern.test(latest)
   const dinnerFollow = Boolean(earlier?.content) && /middag/i.test(latest) && !needsStoredPattern.test(latest)
   const baseText = (follow || dinnerFollow || modelPattern.test(latest)) && earlier?.content ? `${earlier.content} ${latest}` : latest
-  const searchText = /vad åt jag|mina måltider/i.test(latest) ? `måltid ${baseText}` : baseText
+  const searchText = /vad åt jag|mina måltider/i.test(latest) ? `måltid ${baseText}` : mealSearchText(baseText)
   const ranked = rankCoachKnowledge(searchText, pinnedIds)
   const pinned = (Array.isArray(pinnedIds) ? pinnedIds : []).map(getCoachEntry).filter(Boolean)
   const top = ranked[0]?.entry || pinned[0] || null

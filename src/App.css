@@ -1855,6 +1855,11 @@ button.secondary-button:focus-visible,
   text-transform: uppercase;
 }
 
+.chat-message-source {
+  display: block;
+  margin-block: 0.25rem;
+}
+
 .chat-message p {
   margin: 0;
   color: inherit;

@@ -23,6 +23,18 @@ afterEach(() => {
 })
 
 describe('coach model client', () => {
+  it('allows a new manual question after completion without automatically repeating a limited request', async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: { code: 'RATE_LIMITED' } }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, answer: 'Ett nytt svar.', source: 'openai' }) })
+    vi.stubGlobal('fetch', fetchImpl)
+    await expect(requestCoachModelReply({ messages: [{ role: 'user', content: 'Första frågan' }] }))
+      .resolves.toMatchObject({ ok: false, code: 'RATE_LIMITED' })
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    await expect(requestCoachModelReply({ messages: [{ role: 'user', content: 'En annan fråga' }] }))
+      .resolves.toMatchObject({ ok: true, source: 'openai' })
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+  })
   it('sends only the filtered coach context and one request', async () => {
     const fetchImpl = vi.fn(async () => ({
       ok: true,

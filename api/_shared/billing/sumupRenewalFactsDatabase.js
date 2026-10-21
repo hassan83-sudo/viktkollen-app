@@ -19,7 +19,7 @@ export function createSumUpRenewalFactsDatabase({ query } = {}) {
         throw new Error('SUMUP_RENEWAL_FACTS_NOT_UNIQUE')
       }
       const row = rows[0]
-      if (!row || row.subscriptionId !== subscriptionId || row.periodEnd !== periodEnd ||
+      if (!row || row.subscriptionId !== subscriptionId || Date.parse(row.periodEnd) !== Date.parse(periodEnd) ||
           row.provider !== 'sumup' || !['ACTIVE', 'PAST_DUE'].includes(row.status) ||
           !row.checkoutReference || !row.providerCheckoutRef ||
           !row.nextPeriodEnd || !row.customerId ||

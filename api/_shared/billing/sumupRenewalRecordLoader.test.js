@@ -21,6 +21,12 @@ describe('SumUp renewal record loader', () => {
     })
     await expect(load(query)).resolves.toMatchObject({ subscriptionId: 'sub-1' })
   })
+  it('rejects malformed record timestamps', async () => {
+    const load = createSumUpRenewalRecordLoader({
+      database: { readRenewalFacts: vi.fn().mockResolvedValue({ ...query, periodEnd: 'invalid' }) },
+    })
+    await expect(load(query)).rejects.toThrow('SUMUP_RENEWAL_RECORD_NOT_FOUND')
+  })
   it('fails closed on a missing record', async () => {
     const load = createSumUpRenewalRecordLoader({
       database: { readRenewalFacts: vi.fn().mockResolvedValue(null) },

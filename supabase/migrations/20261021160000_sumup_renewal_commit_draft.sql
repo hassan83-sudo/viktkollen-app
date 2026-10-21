@@ -58,6 +58,15 @@ begin
      or attempt.expected_currency is distinct from 'SEK'
      or subscription.current_period_end is distinct from p_period_end
      or subscription.status not in ('ACTIVE', 'PAST_DUE')
+     or subscription.cancel_at_period_end
+     or not exists (
+       select 1 from billing.plans p
+       where p.plan_id = subscription.plan_id
+         and p.active = true
+         and p.version = subscription.plan_version
+         and p.price_minor = attempt.expected_amount_minor
+         and p.currency = attempt.expected_currency
+     )
      or not exists (
        select 1 from billing.sumup_recurring_instruments i
        where i.subscription_id = subscription.subscription_id

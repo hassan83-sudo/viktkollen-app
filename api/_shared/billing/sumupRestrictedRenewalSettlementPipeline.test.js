@@ -15,7 +15,7 @@ describe('restricted SumUp settlement pipeline composition', () => {
       executor, transport, merchantCode: 'merchant',
     })
     expect(typeof pipeline).toBe('object')
-    expect(typeof pipeline.finalize).toBe('function')
+    expect(typeof pipeline.reconcile).toBe('function')
     expect(executor.execute).not.toHaveBeenCalled()
     expect(transport.retrieveCheckout).not.toHaveBeenCalled()
   })

@@ -16,10 +16,10 @@ describe('SumUp renewal SQL reader', () => {
     }])
     const query = createSumUpRenewalSqlReader({ executeReadOnly })
     await expect(query(request)).resolves.toEqual([{
-      subscriptionId: 'sub-1', periodEnd: request.periodEnd,
+      subscriptionId: 'sub-1', periodEnd: '2026-10-01T00:00:00.000Z',
       provider: 'sumup', status: 'ACTIVE',
       checkoutReference: 'rn123', providerCheckoutRef: 'checkout-1',
-      nextPeriodEnd: '2026-11-01T00:00:00Z',
+      nextPeriodEnd: '2026-11-01T00:00:00.000Z',
       customerId: 'vk123', amountMinor: 1900, currency: 'SEK',
     }])
     expect(executeReadOnly).toHaveBeenCalledWith(request)

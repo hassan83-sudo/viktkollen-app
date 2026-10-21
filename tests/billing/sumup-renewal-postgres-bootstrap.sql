@@ -4,7 +4,7 @@ create role authenticated nologin;
 create role service_role nologin;
 create schema billing;
 create table billing.plans (
- plan_id text primary key, price_minor integer not null, currency text not null, version integer not null
+ plan_id text primary key, price_minor integer not null, currency text not null, version integer not null, active boolean not null default true
 );
 create table billing.subscriptions (
  subscription_id text primary key, user_id text not null, plan_id text not null,

@@ -127,6 +127,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-guard.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021173000_sumup_renewal_facts_reader_draft.sql
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-reader.sql
+          echo 'Verified reader migration and invalid-state checks'
 
   renewal-postgres-commit:
     runs-on: ubuntu-latest

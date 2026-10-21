@@ -22,7 +22,6 @@ const args = {
   periodEnd: '2026-10-01T00:00:00Z',
   providerCheckoutRef: checkout.id,
   nextPeriodEnd: '2026-11-01T00:00:00Z',
-  customerId: 'vk123',
 }
 function make(overrides = {}) {
   const retrieveCheckout = vi.fn().mockResolvedValue({ ...checkout, ...overrides })
@@ -56,6 +55,14 @@ describe('SumUp verified settlement service', () => {
     const { service, commit } = make(override)
     await expect(service.verifyAndCommit(args)).rejects.toThrow('SUMUP_PAYMENT_NOT_VERIFIED')
     expect(commit).not.toHaveBeenCalled()
+  })
+  it('ignores a forged customer and price from the caller', async () => {
+    const { service, commit, getExpectedRenewal } = make()
+    await expect(service.verifyAndCommit({
+      ...args, customerId: 'forged', amountMinor: 1,
+    })).resolves.toMatchObject({ committed: true })
+    expect(getExpectedRenewal).toHaveBeenCalledWith(args)
+    expect(commit).toHaveBeenCalledTimes(1)
   })
   it('never writes if trusted subscription facts do not match', async () => {
     const { service, getExpectedRenewal, commit, retrieveCheckout } = make()

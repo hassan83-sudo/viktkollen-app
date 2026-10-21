@@ -16,6 +16,7 @@ on:
       - 'api/_shared/billing/sumupRenewalAuthorityFromSql*.js'
       - 'api/_shared/billing/sumupRenewalSettlementPipeline*.js'
       - '.github/workflows/sumup-renewal-draft.yml'
+      - 'supabase/migrations/*sumup_renewal*'
   workflow_dispatch:
 
 permissions:
@@ -34,3 +35,58 @@ jobs:
       - run: npm ci
       - name: Run renewal unit tests (no credentials or provider calls)
         run: npx vitest run api/_shared/billing/sumupRenewalCandidates.test.js api/_shared/billing/sumupRenewalClaimPort.test.js api/_shared/billing/sumupRenewalClaimBatch.test.js api/_shared/billing/sumupRenewalReconcile.test.js api/_shared/billing/sumupRenewalFinalizer.test.js api/_shared/billing/sumupDurableRenewal.test.js api/_shared/billing/sumupVerifiedCommitBoundary.test.js api/_shared/billing/sumupVerifiedSettlementService.test.js api/_shared/billing/sumupRenewalAuthority.test.js api/_shared/billing/sumupRenewalRecordLoader.test.js api/_shared/billing/sumupRenewalFactsDatabase.test.js api/_shared/billing/sumupRenewalSqlReader.test.js api/_shared/billing/sumupRenewalAuthorityFromSql.test.js api/_shared/billing/sumupRenewalSettlementPipeline.test.js
+
+  renewal-postgres-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: isolated-test-only
+          POSTGRES_DB: renewal_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: isolated-test-only
+      PGDATABASE: renewal_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test renewal checkout uniqueness on disposable PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create schema billing;
+          create table billing.sumup_renewal_attempts (
+            checkout_reference text primary key,
+            provider_checkout_ref text not null default ''
+          );
+          SQL
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021184500_sumup_renewal_checkout_uniqueness_draft.sql
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          insert into billing.sumup_renewal_attempts (checkout_reference, provider_checkout_ref)
+            values ('unbound-1', ''), ('unbound-2', ''), ('renewal-1', 'checkout-1');
+          do $test$
+          begin
+            begin
+              insert into billing.sumup_renewal_attempts (checkout_reference, provider_checkout_ref)
+                values ('renewal-2', 'checkout-1');
+              raise exception 'duplicate checkout unexpectedly accepted';
+            exception when unique_violation then
+              null;
+            end;
+            if (select count(*) from billing.sumup_renewal_attempts) <> 3 then
+              raise exception 'unexpected renewal row count';
+            end if;
+          end;
+          $test$;
+          SQL

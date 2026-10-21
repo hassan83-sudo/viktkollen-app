@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import './i18n/index.js'
+import { installPullHoldRefresh } from './services/pullHoldRefresh.js'
 import { installCameraStartGuard } from './features/shared/camera/cameraStartGuard.js'
 import './features/place/familyMapDomEnhancer.js'
 import './components/app/homeLiveClockEnhancer.js'
@@ -28,6 +29,7 @@ import './styles/accessibility.css'
 import { installFocusVisibility } from './services/accessibilityFocusVisibility.js'
 // Ingen kamera får starta innan användaren har tryckt någonstans (t.ex. vid uppstart på Hem).
 installCameraStartGuard()
+installPullHoldRefresh()
 
 // A11Y-8I: keep keyboard focus visible above the fixed bottom navigation and
 // inside horizontal chip rows (WCAG 2.4.11).

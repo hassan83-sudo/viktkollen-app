@@ -17,6 +17,7 @@ on:
       - 'api/_shared/billing/sumupRenewalSettlementPipeline*.js'
       - '.github/workflows/sumup-renewal-draft.yml'
       - 'supabase/migrations/*sumup_renewal*'
+      - 'tests/billing/sumup-renewal-postgres-*.sql'
   workflow_dispatch:
 
 permissions:
@@ -90,3 +91,37 @@ jobs:
           end;
           $test$;
           SQL
+
+  renewal-postgres-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: isolated-test-only
+          POSTGRES_DB: renewal_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: isolated-test-only
+      PGDATABASE: renewal_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply actual renewal migrations and test immutable snapshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-bootstrap.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021170000_sumup_renewal_facts_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021183000_sumup_renewal_snapshot_guard_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021184500_sumup_renewal_checkout_uniqueness_draft.sql
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-guard.sql

@@ -22,6 +22,30 @@ begin
     raise exception 'failed verification changed subscription period';
   end if;
 
+  update billing.subscriptions set cancel_at_period_end = true where subscription_id = 'sub-1';
+  begin
+    perform billing.commit_verified_sumup_renewal(
+      'renewal-commit', 'sub-1', '2026-10-01T00:00:00Z',
+      'checkout-commit', '2026-11-01T00:00:00Z'
+    );
+    raise exception 'cancelled subscription unexpectedly committed';
+  exception when raise_exception then
+    if sqlerrm <> 'renewal_commit_conflict' then raise; end if;
+  end;
+  update billing.subscriptions set cancel_at_period_end = false where subscription_id = 'sub-1';
+
+  update billing.plans set price_minor = 2000 where plan_id = 'plan-1';
+  begin
+    perform billing.commit_verified_sumup_renewal(
+      'renewal-commit', 'sub-1', '2026-10-01T00:00:00Z',
+      'checkout-commit', '2026-11-01T00:00:00Z'
+    );
+    raise exception 'stale plan price unexpectedly committed';
+  exception when raise_exception then
+    if sqlerrm <> 'renewal_commit_conflict' then raise; end if;
+  end;
+  update billing.plans set price_minor = 1900 where plan_id = 'plan-1';
+
   result := billing.commit_verified_sumup_renewal(
     'renewal-commit', 'sub-1', '2026-10-01T00:00:00Z',
     'checkout-commit', '2026-11-01T00:00:00Z'

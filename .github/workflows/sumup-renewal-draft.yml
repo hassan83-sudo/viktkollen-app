@@ -16,6 +16,7 @@ on:
       - 'api/_shared/billing/sumupRenewalSqlWriter*.js'
       - 'api/_shared/billing/sumupRestrictedDatabaseExecutor*.js'
       - 'api/_shared/billing/sumupRestrictedRenewalDatabase*.js'
+      - 'api/_shared/billing/sumupRestrictedRenewalSettlementPipeline*.js'
       - 'api/_shared/billing/sumupRenewalAuthorityFromSql*.js'
       - 'api/_shared/billing/sumupRenewalSettlementPipeline*.js'
       - '.github/workflows/sumup-renewal-draft.yml'
@@ -38,7 +39,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Run renewal unit tests (no credentials or provider calls)
-        run: npx vitest run api/_shared/billing/sumupRenewalCandidates.test.js api/_shared/billing/sumupRenewalClaimPort.test.js api/_shared/billing/sumupRenewalClaimBatch.test.js api/_shared/billing/sumupRenewalReconcile.test.js api/_shared/billing/sumupRenewalFinalizer.test.js api/_shared/billing/sumupDurableRenewal.test.js api/_shared/billing/sumupVerifiedCommitBoundary.test.js api/_shared/billing/sumupVerifiedSettlementService.test.js api/_shared/billing/sumupRenewalAuthority.test.js api/_shared/billing/sumupRenewalRecordLoader.test.js api/_shared/billing/sumupRenewalFactsDatabase.test.js api/_shared/billing/sumupRenewalSqlReader.test.js api/_shared/billing/sumupRenewalSqlWriter.test.js api/_shared/billing/sumupRestrictedDatabaseExecutor.test.js api/_shared/billing/sumupRestrictedRenewalDatabase.test.js api/_shared/billing/sumupRenewalAuthorityFromSql.test.js api/_shared/billing/sumupRenewalSettlementPipeline.test.js
+        run: npx vitest run api/_shared/billing/sumupRenewalCandidates.test.js api/_shared/billing/sumupRenewalClaimPort.test.js api/_shared/billing/sumupRenewalClaimBatch.test.js api/_shared/billing/sumupRenewalReconcile.test.js api/_shared/billing/sumupRenewalFinalizer.test.js api/_shared/billing/sumupDurableRenewal.test.js api/_shared/billing/sumupVerifiedCommitBoundary.test.js api/_shared/billing/sumupVerifiedSettlementService.test.js api/_shared/billing/sumupRenewalAuthority.test.js api/_shared/billing/sumupRenewalRecordLoader.test.js api/_shared/billing/sumupRenewalFactsDatabase.test.js api/_shared/billing/sumupRenewalSqlReader.test.js api/_shared/billing/sumupRenewalSqlWriter.test.js api/_shared/billing/sumupRestrictedDatabaseExecutor.test.js api/_shared/billing/sumupRestrictedRenewalDatabase.test.js api/_shared/billing/sumupRestrictedRenewalSettlementPipeline.test.js api/_shared/billing/sumupRenewalAuthorityFromSql.test.js api/_shared/billing/sumupRenewalSettlementPipeline.test.js
 
   renewal-postgres-smoke:
     runs-on: ubuntu-latest

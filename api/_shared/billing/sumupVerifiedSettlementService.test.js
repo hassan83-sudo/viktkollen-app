@@ -23,15 +23,16 @@ const args = {
   providerCheckoutRef: checkout.id,
   nextPeriodEnd: '2026-11-01T00:00:00Z',
   customerId: 'vk123',
-  amountMinor: 1900,
 }
 function make(overrides = {}) {
   const retrieveCheckout = vi.fn().mockResolvedValue({ ...checkout, ...overrides })
+  const getExpectedRenewal = vi.fn().mockImplementation(async request => ({ ...request, customerId: 'vk123', amountMinor: 1900 }))
   const commit = vi.fn().mockResolvedValue({ committed: true, alreadyCommitted: false })
   return {
-    retrieveCheckout, commit,
+    retrieveCheckout, commit, getExpectedRenewal,
     service: createSumUpVerifiedSettlementService({
-      transport: { retrieveCheckout }, restrictedWriter: { commit }, merchantCode: 'MERCHANT',
+      transport: { retrieveCheckout }, restrictedWriter: { commit },
+      renewalAuthority: { getExpectedRenewal }, merchantCode: 'MERCHANT',
     }),
   }
 }
@@ -54,6 +55,13 @@ describe('SumUp verified settlement service', () => {
   ])('never writes for invalid or unpaid checkouts: %j', async (override) => {
     const { service, commit } = make(override)
     await expect(service.verifyAndCommit(args)).rejects.toThrow('SUMUP_PAYMENT_NOT_VERIFIED')
+    expect(commit).not.toHaveBeenCalled()
+  })
+  it('never writes if trusted subscription facts do not match', async () => {
+    const { service, getExpectedRenewal, commit, retrieveCheckout } = make()
+    getExpectedRenewal.mockResolvedValue({ ...args, customerId: 'vk123', amountMinor: 0 })
+    await expect(service.verifyAndCommit(args)).rejects.toThrow('SUMUP_RENEWAL_AUTHORITY_MISMATCH')
+    expect(retrieveCheckout).not.toHaveBeenCalled()
     expect(commit).not.toHaveBeenCalled()
   })
   it('does not write if SumUp is unavailable', async () => {

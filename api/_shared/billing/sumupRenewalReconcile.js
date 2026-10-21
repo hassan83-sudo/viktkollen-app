@@ -23,7 +23,19 @@ export function verifySumUpRenewalCheckout({
       Math.abs(amount * 100 - amountMinor) > 0.000001) {
     return { verified: false, outcome: 'mismatch' }
   }
-  if (checkout.status === 'PAID') return { verified: true, outcome: 'paid' }
+  if (checkout.status === 'PAID') {
+    const successful = (Array.isArray(checkout.transactions) ? checkout.transactions : [])
+      .filter((tx) => tx?.status === 'SUCCESSFUL')
+    if (successful.length !== 1 ||
+        successful[0].currency !== 'SEK' ||
+        !Number.isFinite(Number(successful[0].amount)) ||
+        Math.abs(Number(successful[0].amount) * 100 - amountMinor) > 0.000001 ||
+        typeof successful[0].id !== 'string' ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(successful[0].id)) {
+      return { verified: false, outcome: 'unverified_transaction' }
+    }
+    return { verified: true, outcome: 'paid' }
+  }
   if (checkout.status === 'FAILED' || checkout.status === 'EXPIRED') {
     return { verified: true, outcome: 'failed' }
   }

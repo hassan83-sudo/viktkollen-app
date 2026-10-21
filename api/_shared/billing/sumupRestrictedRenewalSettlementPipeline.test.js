@@ -14,7 +14,8 @@ describe('restricted SumUp settlement pipeline composition', () => {
     const pipeline = createSumUpRestrictedRenewalSettlementPipeline({
       executor, transport, merchantCode: 'merchant',
     })
-    expect(typeof pipeline).toBe('function')
+    expect(typeof pipeline).toBe('object')
+    expect(typeof pipeline.finalize).toBe('function')
     expect(executor.execute).not.toHaveBeenCalled()
     expect(transport.retrieveCheckout).not.toHaveBeenCalled()
   })

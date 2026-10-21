@@ -63,6 +63,16 @@ describe('automatic daily coach request lifecycle', () => {
     expect(result.current.summary).toBe('Current')
   })
 
+  it('sends one request when hydration enables the day and ignores a later rerender', async () => {
+    const request = vi.fn(async () => reply('After hydration'))
+    const props = { userId: 'A', day: '2026-10-20', enabled: false, request }
+    const { rerender } = renderHook((input) => useDailyCoachRequest(input), { initialProps: props })
+    rerender({ ...props, enabled: true })
+    await waitFor(() => expect(request).toHaveBeenCalledTimes(1))
+    rerender({ ...props, enabled: true, request: (...args) => request(...args) })
+    expect(request).toHaveBeenCalledTimes(1)
+  })
+
   it('does not request without auth/onboarding and invalidates work on unmount', async () => {
     const pending = deferred()
     const request = vi.fn(() => pending.promise)

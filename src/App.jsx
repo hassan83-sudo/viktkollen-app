@@ -1,6 +1,7 @@
 ﻿import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { currentCameraEpoch, releaseCameraStream, releaseVideoElement, retainCameraStream } from './features/shared/camera/cameraLifecycle.js'
 import { useDailyCoachRequest } from './services/ai/useDailyCoachRequest.js'
+import { useProactiveCoachRequest } from './services/ai/useProactiveCoachRequest.js'
 import { useTranslation } from 'react-i18next'
 import HomeSection from './components/sections/HomeSection.jsx'
 import MoreSection from './components/sections/MoreSection.jsx'
@@ -918,7 +919,6 @@ function App() {
   const [profile, setProfile] = useState(null)
   const [profileForm, setProfileForm] = useState(() => createProfileForm({}))
   const [profileError, setProfileError] = useState('')
-  const [proactiveCoachResult, setProactiveCoachResult] = useState(null)
   const [hydratedScopeId, setHydratedScopeId] = useState('')
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [currentLanguage, setCurrentLanguage] = useState(() => getActiveLanguageCode())
@@ -1369,7 +1369,7 @@ function App() {
   const dailyCoachResult = useDailyCoachRequest({
     userId: authSession?.user?.id || null,
     day: selectedMealDate,
-    enabled: !showOnboarding,
+    enabled: profileWeightsHydrated && !showOnboarding,
     request: async (isCurrent) => {
       const { requestAiEndpoint } = await loadAiApiService()
       if (!isCurrent()) return null
@@ -1470,11 +1470,27 @@ function App() {
       }),
     [checkIn, meals, photoMeals, scopedWeights, selectedMealDate],
   )
-  const [fallbackProactiveCoachInsights, setFallbackProactiveCoachInsights] = useState([])
-  const proactiveCoachInsights =
-    proactiveCoachResult?.key === proactiveCoachKey
-      ? proactiveCoachResult.insights
-      : fallbackProactiveCoachInsights
+  const proactiveCoachResult = useProactiveCoachRequest({
+    userId: authSession?.user?.id || null,
+    enabled: profileWeightsHydrated && !showOnboarding,
+    requestKey: proactiveCoachKey,
+    request: async (isCurrent) => {
+      const { getProactiveCoachInsights } = await loadProactiveCoachService()
+      if (!isCurrent()) return null
+      return getProactiveCoachInsights({
+        bodyAnalysisHistory,
+        checkIn,
+        healthSnapshot,
+        mealHistory: photoMeals,
+        meals,
+        today: selectedMealDate,
+        weights: scopedWeights,
+      })
+    },
+  })
+  const proactiveCoachInsights = proactiveCoachResult?.key === proactiveCoachKey
+    ? proactiveCoachResult.insights
+    : null
   const createWeeklyReport = useCallback(async () => {
     setWeeklyReportStatus('Skapar AI-veckorapport...')
 
@@ -2071,54 +2087,6 @@ function App() {
     weeklyReportData,
     scopedWeights,
   ])
-
-  useEffect(() => {
-    let cancelled = false
-    const coachData = {
-      bodyAnalysisHistory,
-      checkIn,
-      healthSnapshot,
-      mealHistory: photoMeals,
-      meals,
-      today: selectedMealDate,
-      weights: scopedWeights,
-    }
-
-    async function loadProactiveCoach() {
-      let fallbackInsights = []
-
-      try {
-        const { getProactiveCoachInsights, makeProactiveCoachInsights } = await loadProactiveCoachService()
-        fallbackInsights = makeProactiveCoachInsights(coachData)
-
-        if (!cancelled) {
-          setFallbackProactiveCoachInsights(fallbackInsights)
-        }
-
-        const insights = await getProactiveCoachInsights(coachData)
-
-        if (!cancelled) {
-          setProactiveCoachResult({
-            insights,
-            key: proactiveCoachKey,
-          })
-        }
-      } catch {
-        if (!cancelled) {
-          setProactiveCoachResult({
-            insights: fallbackInsights,
-            key: proactiveCoachKey,
-          })
-        }
-      }
-    }
-
-    void loadProactiveCoach()
-
-    return () => {
-      cancelled = true
-    }
-  }, [bodyAnalysisHistory, checkIn, healthSnapshot, meals, photoMeals, proactiveCoachKey, scopedWeights, selectedMealDate])
 
   const refreshAppStateFromStorage = useCallback(() => {
     if (!profileWeightsHydrated) return

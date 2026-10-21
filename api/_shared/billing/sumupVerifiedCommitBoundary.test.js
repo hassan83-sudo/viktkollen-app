@@ -7,6 +7,8 @@ const args = {
   periodEnd: '2026-10-01T00:00:00Z',
   providerCheckoutRef: 'checkout-123',
   nextPeriodEnd: '2026-11-01T00:00:00Z',
+  customerId: 'vk123',
+  amountMinor: 1900,
 }
 
 describe('SumUp verified settlement boundary', () => {

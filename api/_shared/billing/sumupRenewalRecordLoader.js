@@ -14,7 +14,7 @@ export function createSumUpRenewalRecordLoader({ database } = {}) {
     }
     const record = await database.readRenewalFacts({ subscriptionId, periodEnd })
     if (!record || record.subscriptionId !== subscriptionId ||
-        Date.parse(record.periodEnd) !== Date.parse(periodEnd)) {
+        !Number.isFinite(Date.parse(record.periodEnd)) || Date.parse(record.periodEnd) !== Date.parse(periodEnd)) {
       throw new Error('SUMUP_RENEWAL_RECORD_NOT_FOUND')
     }
     return record

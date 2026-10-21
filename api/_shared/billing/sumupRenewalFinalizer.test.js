@@ -1,60 +1,39 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createSumUpRenewalFinalizer } from './sumupRenewalFinalizer.js'
 
-const checkout = {
-  id: 'checkout-1',
-  checkout_reference: 'rn123',
-  customer_id: 'vk123',
-  merchant_code: 'MERCHANT',
-  currency: 'SEK',
-  amount: 19,
-  status: 'PAID',
-    transactions: [{ id: '123e4567-e89b-12d3-a456-426614174000', status: 'SUCCESSFUL', currency: 'SEK', amount: 19 }],
-}
 const args = {
-  providerCheckoutId: checkout.id,
-  checkoutReference: checkout.checkout_reference,
+  providerCheckoutId: '123e4567-e89b-12d3-a456-426614174001',
+  checkoutReference: 'rn123',
   subscriptionId: 'sub-1',
   periodEnd: '2026-10-01T00:00:00Z',
   nextPeriodEnd: '2026-11-01T00:00:00Z',
-  customerId: checkout.customer_id,
-  merchantCode: checkout.merchant_code,
-  amountMinor: 1900,
-}
-function setup(checkoutResult = checkout, dbResult = { data: { committed: true, already_committed: false }, error: null }) {
-  const retrieveCheckout = vi.fn().mockResolvedValue(checkoutResult)
-  const commitVerified = vi.fn().mockResolvedValue(dbResult.data && !dbResult.error ? { committed: dbResult.data.committed, alreadyCommitted: dbResult.data.already_committed } : null)
-  return { retrieveCheckout, rpc: commitVerified, finalizer: createSumUpRenewalFinalizer({
-    transport: { retrieveCheckout },
-    verifiedCommitPort: { commitVerified },
-  }) }
 }
 describe('SumUp renewal finalizer', () => {
-  it('commits only a verified paid checkout', async () => {
-    const { finalizer, rpc } = setup()
-    await expect(finalizer.reconcile(args)).resolves.toEqual({
-      committed: true, outcome: 'paid', alreadyCommitted: false,
+  it('requires the verified settlement port', () => {
+    expect(() => createSumUpRenewalFinalizer()).toThrow('SUMUP_RENEWAL_FINALIZER_UNAVAILABLE')
+  })
+  it('delegates to the privileged verifier without trusting caller-supplied price', async () => {
+    const commitVerified = vi.fn().mockResolvedValue({ committed: true, alreadyCommitted: false })
+    const finalizer = createSumUpRenewalFinalizer({ verifiedCommitPort: { commitVerified } })
+    await expect(finalizer.reconcile({ ...args, amountMinor: 1, customerId: 'attacker' }))
+      .resolves.toEqual({ committed: true, outcome: 'paid', alreadyCommitted: false })
+    expect(commitVerified).toHaveBeenCalledExactlyOnceWith({
+      checkoutReference: args.checkoutReference,
+      subscriptionId: args.subscriptionId,
+      periodEnd: args.periodEnd,
+      providerCheckoutRef: args.providerCheckoutId,
+      nextPeriodEnd: args.nextPeriodEnd,
     })
-    expect(rpc).toHaveBeenCalledTimes(1)
   })
-  it('does not commit pending payments', async () => {
-    const { finalizer, rpc } = setup({ ...checkout, status: 'PENDING' })
-    expect((await finalizer.reconcile(args)).outcome).toBe('pending')
-    expect(rpc).not.toHaveBeenCalled()
+  it('fails closed on a rejected payment', async () => {
+    const commitVerified = vi.fn().mockRejectedValue(new Error('SUMUP_PAYMENT_NOT_VERIFIED'))
+    const finalizer = createSumUpRenewalFinalizer({ verifiedCommitPort: { commitVerified } })
+    await expect(finalizer.reconcile(args)).rejects.toThrow('SUMUP_PAYMENT_NOT_VERIFIED')
   })
-  it('does not commit mismatched checkouts', async () => {
-    const { finalizer, rpc } = setup({ ...checkout, amount: 29 })
-    expect((await finalizer.reconcile(args)).outcome).toBe('mismatch')
-    expect(rpc).not.toHaveBeenCalled()
-  })
-  it('does not commit after a provider timeout', async () => {
-    const { finalizer, rpc, retrieveCheckout } = setup()
-    retrieveCheckout.mockRejectedValue(new Error('timeout'))
-    expect((await finalizer.reconcile(args)).outcome).toBe('pending')
-    expect(rpc).not.toHaveBeenCalled()
-  })
-  it('fails closed on a database error', async () => {
-    const { finalizer } = setup(checkout, { data: null, error: { message: 'db failure' } })
+  it('fails closed on an invalid settlement result', async () => {
+    const finalizer = createSumUpRenewalFinalizer({
+      verifiedCommitPort: { commitVerified: vi.fn().mockResolvedValue(null) },
+    })
     await expect(finalizer.reconcile(args)).rejects.toThrow('SUMUP_RENEWAL_COMMIT_FAILED')
   })
 })

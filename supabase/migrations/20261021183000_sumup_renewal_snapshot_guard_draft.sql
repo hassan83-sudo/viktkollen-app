@@ -9,7 +9,13 @@ returns trigger
 language plpgsql
 security invoker
 set search_path = pg_catalog, pg_temp
-as $$
+as $
+declare
+  expected_price integer;
+  expected_currency text;
+  expected_customer text;
+  expected_plan_version integer;
+  catalog_plan_version integer;
 begin
   if old.provider_checkout_ref <> '' then
     if new.provider_checkout_ref is distinct from old.provider_checkout_ref
@@ -31,6 +37,35 @@ begin
        or new.expected_next_period_end is null
        or new.expected_next_period_end <= new.period_end then
       raise exception 'sumup_renewal_snapshot_incomplete';
+    end if;
+  end if;
+
+  if new.provider_checkout_ref <> '' and
+     (tg_op = 'INSERT' or old.provider_checkout_ref = '') then
+    select p.price_minor, p.currency, s.provider_customer_ref,
+           s.plan_version, p.version
+      into expected_price, expected_currency, expected_customer,
+           expected_plan_version, catalog_plan_version
+    from billing.subscriptions s
+    join billing.plans p on p.plan_id = s.plan_id
+    join billing.sumup_recurring_instruments i
+      on i.subscription_id = s.subscription_id
+     and i.user_id = s.user_id
+     and i.provider_customer_ref = s.provider_customer_ref
+     and i.status = 'verified'
+    where s.subscription_id = new.subscription_id
+      and s.provider = 'sumup'
+      and s.status in ('ACTIVE', 'PAST_DUE')
+      and not s.cancel_at_period_end
+      and s.current_period_end = new.period_end;
+    if expected_price is null or expected_price <= 0
+       or expected_currency is distinct from 'SEK'
+       or expected_customer is null or expected_customer = ''
+       or expected_plan_version is distinct from catalog_plan_version
+       or new.expected_amount_minor is distinct from expected_price
+       or new.expected_currency is distinct from expected_currency
+       or new.expected_customer_ref is distinct from expected_customer then
+      raise exception 'sumup_renewal_plan_price_mismatch';
     end if;
   end if;
 

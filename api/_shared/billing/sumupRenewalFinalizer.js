@@ -4,8 +4,8 @@ import { verifySumUpRenewalCheckout } from './sumupRenewalReconcile.js'
  * Reconcile only. Never creates or processes a SumUp checkout.
  * Ambiguous outcomes stay pending; they must not trigger another charge.
  */
-export function createSumUpRenewalFinalizer({ transport, client } = {}) {
-  if (typeof transport?.retrieveCheckout !== 'function' || typeof client?.schema !== 'function') {
+export function createSumUpRenewalFinalizer({ transport, verifiedCommitPort } = {}) {
+  if (typeof transport?.retrieveCheckout !== 'function' || typeof verifiedCommitPort?.commitVerified !== 'function') {
     throw new Error('SUMUP_RENEWAL_FINALIZER_UNAVAILABLE')
   }
   return {
@@ -27,18 +27,15 @@ export function createSumUpRenewalFinalizer({ transport, client } = {}) {
       if (!verified.verified || verified.outcome !== 'paid') {
         return { committed: false, outcome: verified.outcome }
       }
-      const { data, error } = await client.schema('billing').rpc('commit_verified_sumup_renewal', {
-        p_checkout_reference: checkoutReference,
-        p_subscription_id: subscriptionId,
-        p_period_end: periodEnd,
-        p_provider_checkout_ref: providerCheckoutId,
-        p_next_period_end: nextPeriodEnd,
+      const data = await verifiedCommitPort.commitVerified({
+        checkoutReference, subscriptionId, periodEnd,
+        providerCheckoutRef: providerCheckoutId, nextPeriodEnd,
       })
-      if (error || !data || typeof data.committed !== 'boolean' ||
-          typeof data.already_committed !== 'boolean') {
+      if (!data || typeof data.committed !== 'boolean' ||
+          typeof data.alreadyCommitted !== 'boolean') {
         throw new Error('SUMUP_RENEWAL_COMMIT_FAILED')
       }
-      return { committed: data.committed, outcome: 'paid', alreadyCommitted: data.already_committed }
+      return { committed: data.committed, outcome: 'paid', alreadyCommitted: data.alreadyCommitted }
     },
   }
 }

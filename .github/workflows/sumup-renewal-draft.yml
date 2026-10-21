@@ -8,6 +8,7 @@ on:
       - 'api/_shared/billing/sumupVerified*.js'
       - 'api/_shared/billing/sumupRenewalAuthority*.js'
       - 'api/_shared/billing/sumupRenewalRecordLoader*.js'
+      - 'api/_shared/billing/sumupRenewalFactsDatabase*.js'
       - '.github/workflows/sumup-renewal-draft.yml'
   workflow_dispatch:
 
@@ -26,4 +27,4 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Run renewal unit tests (no credentials or provider calls)
-        run: npx vitest run api/_shared/billing/sumupRenewalCandidates.test.js api/_shared/billing/sumupRenewalClaimPort.test.js api/_shared/billing/sumupRenewalClaimBatch.test.js api/_shared/billing/sumupRenewalReconcile.test.js api/_shared/billing/sumupRenewalFinalizer.test.js api/_shared/billing/sumupDurableRenewal.test.js api/_shared/billing/sumupVerifiedCommitBoundary.test.js api/_shared/billing/sumupVerifiedSettlementService.test.js api/_shared/billing/sumupRenewalAuthority.test.js api/_shared/billing/sumupRenewalRecordLoader.test.js
+        run: npx vitest run api/_shared/billing/sumupRenewalCandidates.test.js api/_shared/billing/sumupRenewalClaimPort.test.js api/_shared/billing/sumupRenewalClaimBatch.test.js api/_shared/billing/sumupRenewalReconcile.test.js api/_shared/billing/sumupRenewalFinalizer.test.js api/_shared/billing/sumupDurableRenewal.test.js api/_shared/billing/sumupVerifiedCommitBoundary.test.js api/_shared/billing/sumupVerifiedSettlementService.test.js api/_shared/billing/sumupRenewalAuthority.test.js api/_shared/billing/sumupRenewalRecordLoader.test.js api/_shared/billing/sumupRenewalFactsDatabase.test.js

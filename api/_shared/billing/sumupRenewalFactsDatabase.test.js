@@ -21,6 +21,18 @@ describe('SumUp renewal facts database', () => {
       .resolves.toEqual(record)
     expect(query).toHaveBeenCalledWith(request)
   })
+  it('accepts equivalent PostgreSQL timestamp formats', async () => {
+    const db = createSumUpRenewalFactsDatabase({
+      query: vi.fn().mockResolvedValue([{ ...record, periodEnd: '2026-10-01T00:00:00.000Z' }]),
+    })
+    await expect(db.readRenewalFacts(request)).resolves.toMatchObject({ subscriptionId: 'sub-1' })
+  })
+  it('rejects a different billing instant', async () => {
+    const db = createSumUpRenewalFactsDatabase({
+      query: vi.fn().mockResolvedValue([{ ...record, periodEnd: '2026-10-02T00:00:00.000Z' }]),
+    })
+    await expect(db.readRenewalFacts(request)).rejects.toThrow('SUMUP_RENEWAL_FACTS_INVALID')
+  })
   it.each([[], [record, record], null])('rejects missing or duplicated records', async rows => {
     const db = createSumUpRenewalFactsDatabase({ query: vi.fn().mockResolvedValue(rows) })
     await expect(db.readRenewalFacts(request)).rejects.toThrow('SUMUP_RENEWAL_FACTS_NOT_UNIQUE')

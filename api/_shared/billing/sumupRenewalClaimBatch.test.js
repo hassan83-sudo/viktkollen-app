@@ -4,7 +4,7 @@ import { createSumUpRenewalClaimBatch } from './sumupRenewalClaimBatch.js'
 const due = {
   subscription_id: 'sub-1',
   provider: 'sumup',
-  status: 'active',
+  status: 'ACTIVE',
   current_period_end: '2026-10-01T00:00:00.000Z',
 }
 

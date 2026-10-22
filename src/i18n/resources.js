@@ -868,7 +868,7 @@ const sv = {
         safety: 'Blockera och rapportera är säkerhetsfunktioner för framtida chattar.',
       },
       watch: {
-        title: 'Titta tillsammans',
+        title: 'Titta och spela',
         body: 'Inget innehåll är anslutet ännu.',
         safety: 'Endast administratörshanterade officiella länkar eller inbäddningar kan visas här. Ingen scraping, nedladdning eller autoplay.',
       },

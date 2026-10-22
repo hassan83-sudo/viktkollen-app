@@ -1,12 +1,7 @@
-import { useMemo, useState } from 'react'
-import { readWardrobe, wardrobeStorageKey } from '../services/wardrobeStorage.js'
+import { useEffect, useMemo, useState } from 'react'
+import { readWardrobe, updateWardrobe, garmentTypes, wardrobeChangedEvent, markWardrobeWorn, removeWardrobeGarment } from '../services/wardrobeStorage.js'
 
-const clothingTypes = ['Tröja', 'Skjorta', 'Byxor', 'Jeans', 'Jacka', 'Skor', 'Annat']
-
-function saveWardrobe(state) {
-  if (typeof window !== 'undefined') window.localStorage.setItem(wardrobeStorageKey, JSON.stringify(state))
-  return state
-}
+const clothingTypes = garmentTypes
 
 function dateLabel(value) {
   if (!value) return ''
@@ -21,6 +16,11 @@ function NoticeWardrobeHelper({ onClose, onMessage }) {
   const [wardrobe, setWardrobe] = useState(readWardrobe)
   const [name, setName] = useState('')
   const [type, setType] = useState('Tröja')
+  useEffect(() => {
+    const refresh = () => setWardrobe(readWardrobe())
+    window.addEventListener(wardrobeChangedEvent, refresh)
+    return () => window.removeEventListener(wardrobeChangedEvent, refresh)
+  }, [])
 
   const lastWornIds = useMemo(() => {
     const latest = wardrobe.worn[0]
@@ -33,9 +33,9 @@ function NoticeWardrobeHelper({ onClose, onMessage }) {
     return preferred || wardrobe.garments.find((garment) => !lastWornIds.has(garment.id)) || null
   }, [wardrobe.garments, lastWornIds])
 
-  function update(next, message = '') {
-    setWardrobe(saveWardrobe(next))
-    if (message) onMessage?.(message)
+  function update(action, message = '') {
+    try { setWardrobe(action()); if (message) onMessage?.(message) }
+    catch { onMessage?.('Garderoben kunde inte sparas. Frigör lokal lagring och försök igen.') }
   }
 
   function addGarment() {
@@ -44,25 +44,17 @@ function NoticeWardrobeHelper({ onClose, onMessage }) {
       onMessage?.('Skriv namnet på plagget först.')
       return
     }
-    const garment = { id: `garment-${Date.now()}`, name: cleanName, type, createdAt: new Date().toISOString() }
-    update({ ...wardrobe, garments: [...wardrobe.garments, garment] }, `${cleanName} är tillagt i garderoben.`)
+    const garment = { id: `garment-${crypto.randomUUID()}`, name: cleanName.slice(0, 60), type, createdAt: new Date().toISOString() }
+    update(() => updateWardrobe((s) => ({ ...s, garments: [...s.garments, garment] })), `${cleanName} är tillagt i garderoben.`)
     setName('')
   }
 
   function markWorn(garmentId) {
-    const today = new Date().toISOString().slice(0, 10)
-    const existing = wardrobe.worn.find((entry) => entry.date === today)
-    const garmentIds = Array.from(new Set([...(existing?.garmentIds || []), garmentId]))
-    const nextEntry = { date: today, garmentIds, updatedAt: new Date().toISOString() }
-    const worn = [nextEntry, ...wardrobe.worn.filter((entry) => entry.date !== today)].slice(0, 30)
-    update({ ...wardrobe, worn }, 'Sparat som använt idag.')
+    update(() => markWardrobeWorn([garmentId]), 'Sparat som använt idag.')
   }
 
   function removeGarment(garmentId) {
-    update({
-      garments: wardrobe.garments.filter((garment) => garment.id !== garmentId),
-      worn: wardrobe.worn.map((entry) => ({ ...entry, garmentIds: entry.garmentIds.filter((id) => id !== garmentId) })),
-    }, 'Plagget är borttaget.')
+    update(() => removeWardrobeGarment(garmentId), 'Plagget är borttaget.')
   }
 
   const latest = wardrobe.worn[0]

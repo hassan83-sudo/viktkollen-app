@@ -182,6 +182,7 @@ export default defineConfig({
   timeout: 60000,
   workers: 1,
   use: {
+    launchOptions: { executablePath: process.env.A11Y_CHROMIUM_EXECUTABLE || undefined },
     baseURL: `https://127.0.0.1:${port}`,
     ignoreHTTPSErrors: true,
     locale: 'sv-SE',
@@ -191,6 +192,7 @@ export default defineConfig({
   webServer: {
     command: 'node playwright.ai-help.config.js --serve',
     env: {
+      WARDROBE_LOCAL_A11Y_FIXTURE: 'true',
       VITE_SUPABASE_ANON_KEY: 'local-ai-help-check',
       VITE_SUPABASE_URL: 'http://127.0.0.1:54321',
     },

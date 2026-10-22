@@ -40,6 +40,7 @@ export default defineConfig({
   webServer: {
     command: `node ./node_modules/vite/bin/vite.js --host 127.0.0.1 --port ${port} --strictPort`,
     env: {
+      WARDROBE_LOCAL_A11Y_FIXTURE: 'true',
       VITE_SUPABASE_ANON_KEY: 'local-a11y-check',
       VITE_SUPABASE_URL: 'http://127.0.0.1:54321',
     },

@@ -13,6 +13,7 @@ test('built offline wardrobe has no auth/cloud/AI dispatch and remains usable on
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Garderob – offline-Preview' })).toBeVisible()
   expect(await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content')).toContain("connect-src 'self'")
+  expect(await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content')).toContain("worker-src 'none'")
   await expect(page.locator('input[type=password]')).toHaveCount(0)
   const image = await page.evaluate(() => {
     const canvas = document.createElement('canvas'); canvas.width = 10; canvas.height = 10

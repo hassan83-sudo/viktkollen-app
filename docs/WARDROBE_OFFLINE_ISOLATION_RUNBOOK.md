@@ -6,6 +6,8 @@ Implementation commit: `9fd9bd86fbe518d164b0edb8bca292a0a070adef` (local only).
 
 ## Decision
 
+Final review: **GO for a separately approved GitHub push of the reviewed branch**, because its Git-triggered Vercel build is now pinned to the guarded `npm run build` and `dist` output in repository configuration. Missing configuration must fail the build; GO does not promise a READY deployment or authorize a push. See [final review](SPRINT_65_FINAL_REVIEW.md).
+
 **NO-GO for deployment or live AI.** Local offline isolation is implemented and verified with synthetic configuration. Vercel variables and the running Preview were not changed. Existing deployments retain their old code/configuration and must not be used for login, AI or writes based on this report.
 
 No real Auth, Supabase, OpenAI, payment, mail or webhook requests were made. The tests use mocks, local files and in-memory database fixtures. No main, Production, other branch, database, key or external environment setting was changed. Nothing was pushed: this branch has automatic Vercel deployments and the user prohibits deployment in this sprint.
@@ -50,6 +52,8 @@ Runtime: wardrobe markers, the exact wardrobe branch, unknown environment, or a 
 
 Build: actual local Git branch and provider markers must agree. Unknown/detached source identity fails closed; do not work around that by spoofing provider variables. If a future Vercel checkout lacks branch identity, stop and review that build integration separately. Real `vite build --mode test` still executes the build gate. Vitest's separate test configuration represents ordinary mocked regression fixtures with explicit unrelated development markers; it does not disable the real build gate.
 
+Final review closed the generic `serve + mode=test` exception: only the Vitest process marker or an explicit local browser fixture with exact loopback URL and one of the two known synthetic public values can bypass the development-server gate. Neither exception applies to `build`. `WARDROBE_LOCAL_A11Y_FIXTURE` belongs only to local Playwright server processes; it must not be configured in Vercel. It also forces server-side API denial, regardless of other local deployment metadata. Offline CSP sets `worker-src 'none'` so worker/service-worker scripts cannot create an independent outbound channel.
+
 Guarded builds require dedicated variables below and ignore inherited Supabase client settings. `envPrefix: []` stops automatic `VITE_*` inheritance; only the explicitly selected public Staging URL/key and offline flag are defined. A public-variable secret check rejects server credentials, legacy service-role JWTs and public values containing server credentials. No server secret is placed in `define` or returned to clients.
 
 The offline browser module exposes no login and creates no Supabase client. It is a public local demo, **not** a synthetic authenticated session. The AI control is unavailable. No monetary budget or server quota is modified; AI is entirely disabled rather than assumed affordable. Re-enabling AI is a separate review requiring proven Staging routing and a monetary cost guard.
@@ -79,6 +83,7 @@ Future order (requires separate explicit approval):
 3. Obtain deployment/push approval separately. A push can automatically deploy; it is not authorized by this runbook.
 4. Inspect the resulting artifact before opening it: minimal offline entry, no inherited Production reference/keys or server credentials, effective CSP. Then verify 503/no-store on every function and alias with no auth session; no provider requests, cost rows, support mail or database writes should occur.
 5. Verify local wardrobe behavior in that artifact. No login or real AI test is part of offline acceptance.
+   Use a fresh immutable deployment URL/browser context, not a previously used branch alias with possible old app/service-worker caches. A failed new build does not repair or remove the previous unsafe deployment.
 6. Rollback means removing only the seven newly added branch entries after checking their recorded IDs/scope, and decommissioning/reverting only the approved branch artifact under separate approval. Never expose the previous unisolated Preview as a test environment. Do not delete or edit the global Preview key.
 
 ## Executed validation

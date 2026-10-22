@@ -4,7 +4,7 @@ export const WARDROBE_STAGING_REF = 'armtslzspuebmlysnooq'
 export const WARDROBE_API_DISABLED = 'WARDROBE_STAGING_API_DISABLED'
 
 export function isWardrobePreview(env = {}) {
-  const marked = Object.keys(env).some((key) => key.startsWith('WARDROBE_STAGING_') && env[key])
+  const marked = env.WARDROBE_LOCAL_A11Y_FIXTURE === 'true' || Object.keys(env).some((key) => key.startsWith('WARDROBE_STAGING_') && env[key])
   const branchIdentified = typeof env.VERCEL_GIT_COMMIT_REF === 'string' && Boolean(env.VERCEL_GIT_COMMIT_REF) && !/\s/.test(env.VERCEL_GIT_COMMIT_REF)
   return Boolean(marked || env.VERCEL_GIT_COMMIT_REF === WARDROBE_BRANCH ||
     !['preview', 'production', 'development'].includes(env.VERCEL_ENV) || !branchIdentified)

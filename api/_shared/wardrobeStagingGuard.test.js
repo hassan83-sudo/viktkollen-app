@@ -1,11 +1,30 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { assertNoPublicServerKeys, assertWardrobeStagingConfig, isWardrobePreview, isWardrobeStagingUrl, isWardrobePublicKey, WARDROBE_BRANCH, WARDROBE_STAGING_REF } from './wardrobeStagingGuard.js'
 import { wardrobeIsolationFixtures as base } from '../../scripts/wardrobeIsolationFixtures.mjs'
-import { wardrobeBuildIsolation } from '../../scripts/wardrobeBuildIsolation.mjs'
+import { isWardrobeLocalTest, wardrobeBuildIsolation } from '../../scripts/wardrobeBuildIsolation.mjs'
+import { readFileSync } from 'node:fs'
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals() })
 const jwt = (role, ref) => `header.${btoa(JSON.stringify({ role, ref }))}.synthetic_signature`
 
 describe('wardrobe fail-closed identity and build boundary', () => {
+  it('pins the Git-triggered Vercel build and output to the guarded package script', () => {
+    const config = JSON.parse(readFileSync('vercel.json', 'utf8'))
+    const pkg = JSON.parse(readFileSync('package.json', 'utf8'))
+    expect(config.buildCommand).toBe('npm run build')
+    expect(config.outputDirectory).toBe('dist')
+    expect(pkg.scripts.build).toBe('vite build')
+    expect(config.builds).toBeUndefined()
+  })
+  it('permits only explicit local test fixtures, never an actual build or an arbitrary --mode test server', () => {
+    expect(isWardrobeLocalTest({ command: 'serve', mode: 'test', VITEST: 'true' })).toBe(true)
+    expect(isWardrobeLocalTest({ command: 'serve', mode: 'test' })).toBe(false)
+    const fixture = { command: 'serve', WARDROBE_LOCAL_A11Y_FIXTURE: 'true', VITE_SUPABASE_URL: 'http://127.0.0.1:54321', VITE_SUPABASE_ANON_KEY: 'local-a11y-check' }
+    expect(isWardrobeLocalTest(fixture)).toBe(true)
+    expect(isWardrobeLocalTest({ ...fixture, VITE_SUPABASE_ANON_KEY: 'local-ai-help-check' })).toBe(true)
+    expect(isWardrobeLocalTest({ ...fixture, VITE_SUPABASE_ANON_KEY: 'inherited-production-key' })).toBe(false)
+    expect(isWardrobeLocalTest({ ...fixture, VITE_SUPABASE_URL: 'https://production.invalid' })).toBe(false)
+    expect(isWardrobeLocalTest({ ...fixture, command: 'build', mode: 'test', VITEST: 'true' })).toBe(false)
+  })
   it('denies ambiguous runtime environments and contradictory markers', () => {
     for (const env of [{}, { VERCEL_ENV: 'preview' }, { VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: ' ' }, { VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: true }, { VERCEL_GIT_COMMIT_REF: WARDROBE_BRANCH }, { ...base, VERCEL_ENV: 'production' }]) {
       expect(isWardrobePreview(env)).toBe(true)
@@ -13,6 +32,7 @@ describe('wardrobe fail-closed identity and build boundary', () => {
     }
     expect(isWardrobePreview({ VERCEL_ENV: 'production', VERCEL_GIT_COMMIT_REF: 'main' })).toBe(false)
     expect(isWardrobePreview({ VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: 'another-branch' })).toBe(false)
+    expect(isWardrobePreview({ VERCEL_ENV: 'development', VERCEL_GIT_COMMIT_REF: 'local-fixture', WARDROBE_LOCAL_A11Y_FIXTURE: 'true' })).toBe(true)
   })
   it.each(Object.keys(base))('rejects a missing dedicated setting or provider marker: %s', (key) => {
     expect(() => assertWardrobeStagingConfig({ ...base, [key]: undefined })).toThrow()

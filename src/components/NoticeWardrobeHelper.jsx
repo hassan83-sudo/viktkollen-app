@@ -1,23 +1,10 @@
 import { useMemo, useState } from 'react'
+import { readWardrobe, wardrobeStorageKey } from '../services/wardrobeStorage.js'
 
-const STORAGE_KEY = 'viktkollen.notice.wardrobe.v1'
 const clothingTypes = ['Tröja', 'Skjorta', 'Byxor', 'Jeans', 'Jacka', 'Skor', 'Annat']
 
-function readWardrobe() {
-  if (typeof window === 'undefined') return { garments: [], worn: [] }
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || '{}')
-    return {
-      garments: Array.isArray(parsed.garments) ? parsed.garments : [],
-      worn: Array.isArray(parsed.worn) ? parsed.worn : [],
-    }
-  } catch {
-    return { garments: [], worn: [] }
-  }
-}
-
 function saveWardrobe(state) {
-  if (typeof window !== 'undefined') window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  if (typeof window !== 'undefined') window.localStorage.setItem(wardrobeStorageKey, JSON.stringify(state))
   return state
 }
 

@@ -415,6 +415,38 @@ function MoreSection({
               <GlobalSearch onNavigate={onSearchNavigate} />
             </div>
 
+            <section className="app-information" aria-labelledby="terms-privacy-heading">
+              <h3 id="terms-privacy-heading">Köpvillkor &amp; Integritet</h3>
+              <p><strong>Tjänsteleverantör:</strong> AppsOnTheGo</p>
+              <p><strong>Kontakt e-post:</strong> </p>
+
+              <details>
+                <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Köpvillkor</summary>
+                <div>
+                  <h4>Abonnemang och betalning</h4>
+                  <p>Pris, abonnemangsperiod, förnyelse och andra betalningsvillkor ska visas innan ett köp genomförs. Kontrollera uppgifterna i kassan innan du bekräftar betalningen.</p>
+                  <h4>Användning av appen</h4>
+                  <p>Du ansvarar för att använda appen lagligt och för att uppgifterna du lämnar är så korrekta som möjligt. AI-genererade resultat är vägledande och ersätter inte medicinsk bedömning eller professionell rådgivning.</p>
+                  <h4>Kontakt</h4>
+                  <p>AppsOnTheGo</p>
+                </div>
+              </details>
+
+              <details>
+                <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Integritet</summary>
+                <div>
+                  <h4>Uppgifter och användning</h4>
+                  <p>Appen kan behandla uppgifter du lämnar, till exempel kontouppgifter, vikt- och måltidsuppgifter samt innehåll som behövs för funktioner du använder. Uppgifterna används för att tillhandahålla och förbättra appens funktioner.</p>
+                  <h4>AI-funktioner</h4>
+                  <p>När du använder en AI-funktion kan den information som behövs för den begärda analysen skickas till en tjänsteleverantör. Läs informationen och eventuella samtycken som visas innan du skickar innehåll för analys.</p>
+                  <h4>Dina val</h4>
+                  <p>Använd appens konto- och integritetsinställningar för tillgängliga val kring dina uppgifter. Kontaktuppgifter för integritetsfrågor fylls i här när de har fastställts.</p>
+                  <h4>Kontakt</h4>
+                  <p>AppsOnTheGo</p>
+                </div>
+              </details>
+            </section>
+
             <div className="account-settings-actions">
               <button
                 className="secondary-button"

@@ -11,9 +11,9 @@ export function readWardrobe() {
     return {
       ...parsed,
       garments: Array.isArray(parsed.garments) ? parsed.garments.filter((g) => g && typeof g.id === 'string' && typeof g.name === 'string').map((g) => ({ ...g, image: isWardrobePhoto(g.image) ? g.image : '' })) : [],
-      worn: Array.isArray(parsed.worn) ? parsed.worn : [],
+      worn: Array.isArray(parsed.worn) ? parsed.worn.filter((w) => w && typeof w.date === 'string' && Array.isArray(w.garmentIds)) : [],
       outfits: Array.isArray(parsed.outfits) ? parsed.outfits.filter((o) => o && typeof o.id === 'string' && typeof o.name === 'string' && Array.isArray(o.garmentIds)) : [],
-      selectedGarmentIds: Array.isArray(parsed.selectedGarmentIds) ? parsed.selectedGarmentIds : [],
+      selectedGarmentIds: Array.isArray(parsed.selectedGarmentIds) ? [...new Set(parsed.selectedGarmentIds.filter((id) => typeof id === 'string'))] : [],
     }
   } catch {
     return empty()

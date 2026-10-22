@@ -70,10 +70,12 @@ export default function SmartCameraStage({
                 ? <SmartCameraModeViews adapters={adapters} mode={mode} voiceBar={voiceBar} onBack={() => setModeId('')} onCameraActive={setCameraActive} />
                 : <SmartCameraHub flags={flags} onSelectMode={setModeId} />}
         <SmartCameraPrivacyCard
-          aiReceivesFrame={modeId === 'object-scan'}
+          aiReceivesFrame={modeId === 'object-scan' || modeId === 'outfit'}
           audioToServer={mode?.id === 'ai-ear'}
           cameraActive={cameraActive}
-          savedLabels={['Checklistor, rutiner och objektplatser sparas lokalt om du redigerar dem.']}
+          savedLabels={modeId === 'outfit'
+            ? ['Plagg, valda outfits och användningshistorik sparas i den här webbläsaren. Plaggbilder sparas bara efter ditt samtycke. Livekamerans video sparas inte.']
+            : ['Checklistor, rutiner och objektplatser sparas lokalt om du redigerar dem.']}
           voiceToAi={isMicrophoneActive || mode?.id === 'ask-ai'}
         />
       </div>

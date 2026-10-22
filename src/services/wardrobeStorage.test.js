@@ -24,4 +24,11 @@ describe('wardrobe compatibility and privacy', () => {
     expect(() => updateWardrobe((s) => ({ ...s, extra: 'x'.repeat(2500001) }))).toThrow()
     expect(localStorage.getItem(wardrobeStorageKey)).toBe(original)
   })
+  it('ignores malformed wear entries and duplicate selection without breaking deletion', () => {
+    localStorage.setItem(wardrobeStorageKey, JSON.stringify({ garments: [{ id: 'a', name: 'Tröja' }], worn: [null, { date: '2026-10-22', garmentIds: 'a' }], selectedGarmentIds: ['a', 'a', null] }))
+    expect(readWardrobe().selectedGarmentIds).toEqual(['a'])
+    expect(readWardrobe().worn).toEqual([])
+    removeWardrobeGarment('a')
+    expect(readWardrobe().garments).toEqual([])
+  })
 })

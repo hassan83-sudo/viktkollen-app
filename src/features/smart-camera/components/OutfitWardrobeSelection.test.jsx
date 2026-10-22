@@ -23,7 +23,7 @@ const wardrobe = {
 }
 
 describe('outfit wardrobe link', () => {
-  it('reads existing clothes and supports multiple selection without changing the wardrobe or worn history', () => {
+  it('persists multiple selection without changing garments or worn history', () => {
     const saved = JSON.stringify(wardrobe)
     window.localStorage.setItem(wardrobeStorageKey, saved)
     render(<OutfitWardrobeSelection />)
@@ -33,10 +33,13 @@ describe('outfit wardrobe link', () => {
     fireEvent.click(jeans)
     expect(shirt.checked).toBe(true)
     expect(jeans.checked).toBe(true)
-    expect(screen.getByRole('status').textContent).toContain('Blå tröja, Svarta jeans')
+    expect(screen.getByTestId('wardrobe-selection').textContent).toContain('Blå tröja, Svarta jeans')
     fireEvent.click(shirt)
-    expect(screen.getByRole('status').textContent).not.toContain('Blå tröja')
-    expect(window.localStorage.getItem(wardrobeStorageKey)).toBe(saved)
+    expect(screen.getByTestId('wardrobe-selection').textContent).not.toContain('Blå tröja')
+    const updated = JSON.parse(window.localStorage.getItem(wardrobeStorageKey))
+    expect(updated.selectedGarmentIds).toEqual(['jeans'])
+    expect(updated.worn).toEqual(wardrobe.worn)
+    expect(updated.garments).toEqual(wardrobe.garments.map((garment) => ({ ...garment, image: '' })))
   })
 
   it.each([null, '{broken', '{"garments":null}', '{"garments":[null,{"id":"bad"}]}'])(
@@ -45,7 +48,7 @@ describe('outfit wardrobe link', () => {
       render(<OutfitWardrobeSelection />)
       expect(screen.queryAllByRole('checkbox')).toHaveLength(0)
       expect(screen.getByText(/Du har inga sparade kläder/)).toBeTruthy()
-      expect(screen.getByRole('status').textContent).toContain('Inga plagg valda')
+      expect(screen.getByTestId('wardrobe-selection').textContent).toContain('Inga plagg valda')
     },
   )
 
@@ -62,5 +65,39 @@ describe('outfit wardrobe link', () => {
     expect(screen.getByText(/12°C/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Testkamera' }))
     expect(onCameraActive).toHaveBeenCalledWith(true)
+  })
+
+  it('saves and restores an outfit, survives remount, and removes only the confirmed garment and references', () => {
+    window.localStorage.setItem(wardrobeStorageKey, JSON.stringify(wardrobe))
+    const view = render(<OutfitWardrobeSelection />)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Blå tröja · Tröja' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Svarta jeans · Jeans' }))
+    fireEvent.change(screen.getByLabelText('Outfitens namn'), { target: { value: 'Vardag' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Spara outfit' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Avmarkera alla' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Välj Vardag' }))
+    expect(screen.getByTestId('wardrobe-selection').textContent).toContain('Blå tröja, Svarta jeans')
+    view.unmount()
+    render(<OutfitWardrobeSelection />)
+    expect(screen.getByRole('checkbox', { name: 'Blå tröja · Tröja' }).checked).toBe(true)
+    expect(screen.getByRole('img', { name: /Schematisk 2D-docka/ })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort Blå tröja' }))
+    expect(JSON.parse(localStorage.getItem(wardrobeStorageKey)).garments).toHaveLength(2)
+    fireEvent.click(screen.getByRole('button', { name: 'Bekräfta radering' }))
+    const saved = JSON.parse(localStorage.getItem(wardrobeStorageKey))
+    expect(saved.garments.map((g) => g.id)).toEqual(['jeans'])
+    expect(saved.outfits[0].garmentIds).toEqual(['jeans'])
+    expect(saved.worn[0].garmentIds).toEqual([])
+  })
+
+  it('adds a manual garment and records wear only after an explicit action', () => {
+    render(<OutfitWardrobeSelection />)
+    fireEvent.change(screen.getByLabelText('Plaggets namn'), { target: { value: 'Jackan' } })
+    fireEvent.change(screen.getByLabelText('Plaggtyp'), { target: { value: 'Jacka' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Spara plagg' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Jackan · Jacka' }))
+    expect(JSON.parse(localStorage.getItem(wardrobeStorageKey)).worn).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'Jag har dessa idag' }))
+    expect(JSON.parse(localStorage.getItem(wardrobeStorageKey)).worn[0].garmentIds).toHaveLength(1)
   })
 })

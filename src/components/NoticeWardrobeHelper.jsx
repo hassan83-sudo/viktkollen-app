@@ -94,7 +94,7 @@ function NoticeWardrobeHelper({ onClose, onMessage }) {
         ))}
       </ul>}
 
-      <p className="estimate-note">AI Ögat kan senare fylla på detta automatiskt från godkända garderobsbilder. Den här delen sparar bara sådant användaren själv lägger in eller bekräftar.</p>
+      <p className="estimate-note">I Smart kamera → Kläder & stil kan du lägga till bilder och kombinera outfits. Garderoben sparar bara sådant du själv lägger in eller bekräftar.</p>
     </div>
   )
 }

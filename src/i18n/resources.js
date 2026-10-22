@@ -411,6 +411,15 @@ const sv = {
   },
   education: educationSv,
   settings: {
+    legal: {
+      title: 'Köpvillkor & Integritet', provider: 'Tjänsteleverantör', emailLabel: 'Kontakt e-post',
+      terms: 'Köpvillkor', subscription: 'Abonnemang och betalning', paymentText: 'Pris, abonnemangsperiod, förnyelse och andra betalningsvillkor ska visas innan ett köp genomförs. Kontrollera uppgifterna i kassan innan du bekräftar betalningen.',
+      usage: 'Användning av appen', usageText: 'Du ansvarar för att använda appen lagligt och för att uppgifterna du lämnar är så korrekta som möjligt. AI-genererade resultat är vägledande och ersätter inte medicinsk bedömning eller professionell rådgivning.',
+      privacy: 'Integritet', data: 'Uppgifter och användning', dataText: 'Appen kan behandla uppgifter du lämnar, till exempel kontouppgifter, vikt- och måltidsuppgifter samt innehåll som behövs för funktioner du använder. Uppgifterna används för att tillhandahålla appens funktioner.',
+      ai: 'AI-funktioner', aiText: 'När du använder en AI-funktion kan information som behövs för den begärda analysen skickas till en tjänsteleverantör. Läs informationen och eventuella samtycken som visas innan du skickar innehåll för analys.',
+      choices: 'Dina val', choicesText: 'Använd appens konto- och integritetsinställningar för tillgängliga val kring dina uppgifter. Kontaktuppgifter för integritetsfrågor fylls i här när de har fastställts.',
+      contact: 'Kontakt',
+    },
     language: {
       description: 'Byt språk direkt utan att ladda om. Svenska är källspråk.',
       help: 'Valt språk sparas i profilinställningen när profil finns, annars lokalt i webbläsaren.',
@@ -2419,6 +2428,15 @@ const en = {
   },
   education: educationEn,
   settings: {
+    legal: {
+      title: 'Purchase Terms & Privacy', provider: 'Service provider', emailLabel: 'Contact email',
+      terms: 'Purchase terms', subscription: 'Subscriptions and payments', paymentText: 'The price, subscription period, renewal and other payment terms should be shown before a purchase is made. Check the checkout details before confirming payment.',
+      usage: 'Use of the app', usageText: 'You are responsible for using the app lawfully and providing information that is as accurate as possible. AI-generated results are informational and do not replace medical assessment or professional advice.',
+      privacy: 'Privacy', data: 'Data and use', dataText: 'The app may process information you provide, such as account details, weight and meal information, and content needed for features you use. This information is used to provide app features.',
+      ai: 'AI features', aiText: 'When you use an AI feature, information needed for the requested analysis may be sent to a service provider. Read the information and any consent notices shown before submitting content for analysis.',
+      choices: 'Your choices', choicesText: 'Use the app’s account and privacy settings for available choices concerning your data. Contact details for privacy questions will be added here when confirmed.',
+      contact: 'Contact',
+    },
     language: {
       description: 'Change language instantly without reloading. Swedish remains the source language.',
       help: 'The selected language is saved in the profile setting when a profile exists, otherwise locally in the browser.',
@@ -4462,6 +4480,15 @@ const ar = mergeTranslation(en, {
   },
   settings: {
     language: { title: 'اللغة' },
+    legal: {
+      title: 'شروط الشراء والخصوصية', provider: 'مقدم الخدمة', emailLabel: 'البريد الإلكتروني للتواصل',
+      terms: 'شروط الشراء', subscription: 'الاشتراكات والدفع', paymentText: 'يجب عرض السعر وفترة الاشتراك والتجديد وشروط الدفع قبل إتمام الشراء. تحقق من تفاصيل الدفع قبل تأكيد العملية.',
+      usage: 'استخدام التطبيق', usageText: 'أنت مسؤول عن استخدام التطبيق بشكل قانوني وتقديم معلومات دقيقة قدر الإمكان. نتائج الذكاء الاصطناعي إرشادية ولا تحل محل التقييم الطبي أو المشورة المهنية.',
+      privacy: 'الخصوصية', data: 'البيانات واستخدامها', dataText: 'قد يعالج التطبيق المعلومات التي تقدمها، مثل بيانات الحساب والوزن والوجبات والمحتوى اللازم للميزات التي تستخدمها، وذلك لتوفير ميزات التطبيق.',
+      ai: 'ميزات الذكاء الاصطناعي', aiText: 'عند استخدام ميزة للذكاء الاصطناعي، قد تُرسل المعلومات اللازمة للتحليل المطلوب إلى مزود خدمة. اقرأ المعلومات وأي إشعارات موافقة تظهر قبل إرسال المحتوى للتحليل.',
+      choices: 'خياراتك', choicesText: 'استخدم إعدادات الحساب والخصوصية في التطبيق للاطلاع على الخيارات المتاحة بشأن بياناتك. ستُضاف بيانات التواصل الخاصة بالخصوصية هنا بعد تأكيدها.',
+      contact: 'التواصل',
+    },
     more: { back: 'رجوع', heading: 'المزيد', categories: 'الفئات', signInForCloud: 'سجّل الدخول للمزامنة السحابية' },
     folders: {
       security: { title: 'الأمان والنسخ الاحتياطي', description: 'نسخ احتياطي، استعادة، مزامنة، سحابة' },
@@ -5367,6 +5394,15 @@ const es = mergeTranslation(en, {
     live: { pause: 'Pausa', play: 'Reproducir', previous: 'Anterior', next: 'Siguiente' },
   },
   settings: {
+    legal: {
+      title: 'Condiciones de compra y privacidad', provider: 'Proveedor del servicio', emailLabel: 'Correo de contacto',
+      terms: 'Condiciones de compra', subscription: 'Suscripciones y pagos', paymentText: 'El precio, el periodo de suscripción, la renovación y las demás condiciones de pago deben mostrarse antes de realizar una compra. Revisa los detalles antes de confirmar el pago.',
+      usage: 'Uso de la aplicación', usageText: 'Eres responsable de utilizar la aplicación legalmente y de proporcionar información lo más precisa posible. Los resultados de la IA son orientativos y no sustituyen una evaluación médica ni el asesoramiento profesional.',
+      privacy: 'Privacidad', data: 'Datos y uso', dataText: 'La aplicación puede tratar la información que facilitas, como datos de cuenta, peso y comidas, y contenido necesario para las funciones que utilizas. Esta información se usa para proporcionar las funciones de la aplicación.',
+      ai: 'Funciones de IA', aiText: 'Al utilizar una función de IA, la información necesaria para el análisis solicitado puede enviarse a un proveedor de servicios. Lee la información y los avisos de consentimiento que aparezcan antes de enviar contenido para su análisis.',
+      choices: 'Tus opciones', choicesText: 'Utiliza los ajustes de cuenta y privacidad de la aplicación para las opciones disponibles sobre tus datos. Los datos de contacto para consultas de privacidad se añadirán aquí cuando estén confirmados.',
+      contact: 'Contacto',
+    },
     folders: {
       security: { title: 'Seguridad y copia', description: 'Copia, restaurar, sync, nube' },
       notifications: { title: 'Avisos y recordatorios', description: 'Avisos inteligentes, recordatorios, planes' },

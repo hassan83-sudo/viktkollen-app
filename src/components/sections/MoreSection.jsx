@@ -415,6 +415,38 @@ function MoreSection({
               <GlobalSearch onNavigate={onSearchNavigate} />
             </div>
 
+            <section className="app-information" aria-labelledby="terms-privacy-heading">
+              <h3 id="terms-privacy-heading">{t('legal.title')}</h3>
+              <p><strong>{t('legal.provider')}:</strong> AppsOnTheGo</p>
+              <p><strong>{t('legal.emailLabel')}:</strong> </p>
+
+              <details>
+                <summary style={{ cursor: 'pointer', fontWeight: 700 }}>{t('legal.terms')}</summary>
+                <div>
+                  <h4>{t('legal.subscription')}</h4>
+                  <p>{t('legal.paymentText')}</p>
+                  <h4>{t('legal.usage')}</h4>
+                  <p>{t('legal.usageText')}</p>
+                  <h4>{t('legal.contact')}</h4>
+                  <p>AppsOnTheGo</p>
+                </div>
+              </details>
+
+              <details>
+                <summary style={{ cursor: 'pointer', fontWeight: 700 }}>{t('legal.privacy')}</summary>
+                <div>
+                  <h4>{t('legal.data')}</h4>
+                  <p>{t('legal.dataText')}</p>
+                  <h4>{t('legal.ai')}</h4>
+                  <p>{t('legal.aiText')}</p>
+                  <h4>{t('legal.choices')}</h4>
+                  <p>{t('legal.choicesText')}</p>
+                  <h4>{t('legal.contact')}</h4>
+                  <p>AppsOnTheGo</p>
+                </div>
+              </details>
+            </section>
+
             <div className="account-settings-actions">
               <button
                 className="secondary-button"

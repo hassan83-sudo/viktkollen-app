@@ -51,16 +51,16 @@ describe('AI Örat modes (AI-EAR-1)', () => {
   })
   afterEach(() => cleanup())
 
-  it('shows four modes as one named radio group, with the verified access as text', () => {
+  it('shows four modes as one named radio group without access badges', () => {
     render(<AiEarMode deps={makeDeps()} />)
     const group = screen.getByRole('group', { name: 'Vad vill du använda?' })
     const radios = within(group).getAllByRole('radio')
     expect(radios).toHaveLength(4)
     const expected = [
-      [/^Ljudigenkänning Känn igen ljud omkring dig Gratis$/, true],
-      [/^Fågelljud Försök identifiera fågellätet Gratis$/, false],
-      [/^Tal → text Gör tal till skriven text Gratis$/, false],
-      [/^Humma \/ sjung Analysera hummad eller sjungen melodi Premium$/, false],
+      [/^Ljudigenkänning Känn igen ljud omkring dig$/, true],
+      [/^Fågelljud Försök identifiera fågellätet$/, false],
+      [/^Tal → text Gör tal till skriven text$/, false],
+      [/^Humma \/ sjung Analysera hummad eller sjungen melodi$/, false],
     ]
     expected.forEach(([name, checked], index) => {
       expect(within(group).getByRole('radio', { name })).toBe(radios[index])
@@ -246,7 +246,7 @@ describe('AI Örat modes (AI-EAR-1)', () => {
     await i18n.changeLanguage('en')
     render(<AiEarMode deps={makeDeps()} />)
     expect(screen.getByRole('group', { name: 'What do you want to use?' })).toBeTruthy()
-    expect(screen.getByRole('radio', { name: /^Speech → text Turn speech into written text Free$/ })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: /^Speech → text Turn speech into written text$/ })).toBeTruthy()
     await i18n.changeLanguage('sv')
   })
 

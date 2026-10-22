@@ -115,7 +115,7 @@ export default function SumUpSandboxWidget({
   }, [checkoutId, mountWidget, phase])
 
   useEffect(() => {
-    if (widgetState !== 'success' || !checkoutId || verification !== 'idle') return
+    if (widgetState !== 'success' || !checkoutId) return
     let cancelled = false
     setVerification('checking')
     verifySandboxCheckout(checkoutId).then((result) => {
@@ -131,7 +131,7 @@ export default function SumUpSandboxWidget({
       if (!cancelled) setVerification('unverified')
     })
     return () => { cancelled = true }
-  }, [widgetState, checkoutId, verification])
+  }, [widgetState, checkoutId])
 
   if (!isAuthenticated) return null
 

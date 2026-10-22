@@ -31,11 +31,12 @@ export default function SumUpSandboxWidget({
   prepare = defaultPrepare,
 }) {
   const [phase, setPhase] = useState('idle')
+  const [startRequested, setStartRequested] = useState(false)
   const [checkoutId, setCheckoutId] = useState('')
   const [widgetState, setWidgetState] = useState('')
 
   useEffect(() => {
-    if (authLoading || !isAuthenticated) return undefined
+    if (authLoading || !isAuthenticated || !startRequested) return undefined
     let cancelled = false
     prepare().then((result) => {
       if (cancelled) return
@@ -55,7 +56,7 @@ export default function SumUpSandboxWidget({
     return () => {
       cancelled = true
     }
-  }, [authLoading, isAuthenticated, prepare])
+  }, [authLoading, isAuthenticated, prepare, startRequested])
 
   useEffect(() => {
     const config = sumUpWidgetMountConfig({ checkoutId })
@@ -102,6 +103,7 @@ export default function SumUpSandboxWidget({
         </div>
       </div>
       <p>Kortuppgifter skickas till SumUp. Den här sidan ger ingen betald åtkomst.</p>
+      {!startRequested ? <button type="button" onClick={() => setStartRequested(true)}>Starta Sandbox-test (4 kr)</button> : null}
       {phase === 'unavailable' ? <p>Sandbox-kassan är inte tillgänglig.</p> : null}
       {phase === 'ready' ? <div id="sumup-card" /> : null}
       {widgetState === 'success' ? <p>SumUp tog emot kortet. Servern måste verifiera innan något ändras.</p> : null}

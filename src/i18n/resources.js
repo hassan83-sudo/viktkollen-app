@@ -829,7 +829,7 @@ const sv = {
       title: 'Stället',
       intro: 'Ett lugnt kvällsrum för vänner, inte ett socialt flöde.',
       tabsAria: 'Rumsvyer',
-      tabs: { room: 'Stället', chat: 'Chatt', watch: 'Titta', board: 'Tavlan', games: 'Spel' },
+      tabs: { room: 'Stället', chat: 'Chatt', watch: 'Titta och spela', board: 'Tavlan', games: 'Spel' },
       loading: 'Hämtar ansluten social information.',
       welcome: {
         title: 'Välkommen in',

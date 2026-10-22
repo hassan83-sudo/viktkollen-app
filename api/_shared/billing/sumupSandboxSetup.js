@@ -260,3 +260,60 @@ export async function prepareSumUpSandboxSetup({
     return closed('SUMUP_CHECKOUT_FAILED', 502)
   }
 }
+
+/**
+ * Read-only, fail-closed reconciliation. A widget callback never activates access.
+ * The durable intent must be resolved by its owner before trusting SumUp data.
+ */
+export async function verifySumUpSandboxSetup({
+  checkoutId,
+  env = process.env,
+  ports,
+  transport,
+  userId,
+} = {}) {
+  if (!CHECKOUT_ID_RE.test(String(checkoutId || '')) || !sumUpCustomerIdForUser(userId)) {
+    return closed('INVALID_CHECKOUT', 400)
+  }
+  if (typeof ports?.getOwnedIntentByProviderRef !== 'function') return closed('DURABLE_UNAVAILABLE', 503)
+  const config = readSumUpConfig(env)
+  if (!config) return closed('SANDBOX_NOT_CONFIGURED', 503)
+  const http = transport || createSumUpHttpTransport({ apiKey: config.apiKey })
+  let intent
+  try {
+    intent = await ports.getOwnedIntentByProviderRef({ providerCheckoutRef: checkoutId, userId })
+  } catch {
+    return closed('DURABLE_UNAVAILABLE', 503)
+  }
+  if (!intent || intent.provider !== SUMUP_PROVIDER || intent.planId !== SANDBOX_SETUP_PLAN_ID
+    || intent.providerCheckoutRef !== checkoutId || intent.userId !== userId || intent.status !== 'pending') {
+    return closed('CHECKOUT_NOT_FOUND', 404)
+  }
+  try {
+    const merchant = await http.retrieveMerchant(config.merchantCode)
+    if (merchant?.sandbox !== true || merchant?.merchant_code !== config.merchantCode) {
+      return closed('SANDBOX_IDENTITY_REQUIRED', 403)
+    }
+    const checkout = await http.retrieveCheckout(checkoutId)
+    if (checkout?.id !== checkoutId || checkout.checkout_reference !== intent.checkoutId
+      || checkout.merchant_code !== config.merchantCode
+      || checkout.customer_id !== sumUpCustomerIdForUser(userId)
+      || checkout.purpose !== 'SETUP_RECURRING_PAYMENT'
+      || checkout.currency !== 'SEK' || minorUnitsFromSumUpAmount(checkout.amount) !== 400) {
+      return closed('CHECKOUT_MISMATCH', 400)
+    }
+    if (checkout.status === 'PENDING') return { accessGranted: false, ok: true, paymentStatus: 'pending', status: 200 }
+    if (checkout.status !== 'PAID') return closed('PAYMENT_NOT_COMPLETED', 409)
+    // No durable instrument/atomic activation port exists yet. Never grant access.
+    const token = checkout.payment_instrument?.token
+    const hasInstrument = typeof token === 'string' && /^[A-Za-z0-9._:-]{8,80}$/.test(token)
+    return {
+      accessGranted: false,
+      code: hasInstrument ? 'ATOMIC_ACTIVATION_REQUIRED' : 'RECURRING_INSTRUMENT_MISSING',
+      ok: false,
+      status: 409,
+    }
+  } catch {
+    return closed('SUMUP_UNAVAILABLE', 503)
+  }
+}

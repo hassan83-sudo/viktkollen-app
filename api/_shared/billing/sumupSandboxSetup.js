@@ -324,7 +324,8 @@ export async function verifySumUpSandboxSetup({
     }
     if (checkout.status === 'PENDING') return { accessGranted: false, ok: true, paymentStatus: 'pending', status: 200 }
     if (checkout.status !== 'PAID') return closed('PAYMENT_NOT_COMPLETED', 409)
-    // No durable instrument/atomic activation port exists yet. Never grant access.
+    // Sandbox never invokes the production activation RPC, even if the token is valid.
+    // Keep payment instruments and entitlements untouched in this verification path.
     const token = checkout.payment_instrument?.token
     const hasInstrument = typeof token === 'string' && /^[A-Za-z0-9._:-]{8,80}$/.test(token)
     return {

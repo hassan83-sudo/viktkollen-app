@@ -417,7 +417,9 @@ function MoreSection({
 
             <section className="app-information" aria-labelledby="terms-privacy-heading">
               <h3 id="terms-privacy-heading">{t('legal.title')}</h3>
-              <p><strong>{t('legal.provider')}:</strong> AppsOnTheGo</p>
+              <p><strong>{t('legal.provider')}:</strong> TheFlow</p>
+              <p><strong>Namn:</strong> <span aria-label="Namn ej ifyllt">—</span></p>
+              <p><strong>Personnummer:</strong> <span aria-label="Personnummer ej ifyllt">—</span></p>
               <p><strong>{t('legal.emailLabel')}:</strong> </p>
 
               <details>
@@ -428,7 +430,7 @@ function MoreSection({
                   <h4>{t('legal.usage')}</h4>
                   <p>{t('legal.usageText')}</p>
                   <h4>{t('legal.contact')}</h4>
-                  <p>AppsOnTheGo</p>
+                  <p>TheFlow</p>
                 </div>
               </details>
 
@@ -442,7 +444,7 @@ function MoreSection({
                   <h4>{t('legal.choices')}</h4>
                   <p>{t('legal.choicesText')}</p>
                   <h4>{t('legal.contact')}</h4>
-                  <p>AppsOnTheGo</p>
+                  <p>TheFlow</p>
                 </div>
               </details>
             </section>

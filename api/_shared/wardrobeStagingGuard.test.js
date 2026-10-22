@@ -9,7 +9,8 @@ const base = {
   SUPABASE_URL: staging,
   VITE_SUPABASE_ANON_KEY: 'test-public',
   SUPABASE_ANON_KEY: 'test-public',
-  SUPABASE_SERVICE_ROLE_KEY: 'test-server',
+  WARDROBE_STAGING_SERVICE_ROLE_KEY: 'test-server',
+  WARDROBE_STAGING_AI_DISABLED: 'true',
 }
 
 describe('wardrobe Preview staging target guard', () => {
@@ -31,7 +32,7 @@ describe('wardrobe Preview staging target guard', () => {
     }
   })
   it('rejects missing credentials and foreign cost ledger', () => {
-    expect(() => assertWardrobeStagingConfig({ ...base, SUPABASE_SERVICE_ROLE_KEY: '' })).toThrow('wardrobe_staging_credentials_missing')
+    expect(() => assertWardrobeStagingConfig({ ...base, WARDROBE_STAGING_SERVICE_ROLE_KEY: '' })).toThrow('wardrobe_staging_credentials_missing')
     expect(() => assertWardrobeStagingConfig({ ...base, AI_HELP_COST_SUPABASE_URL: 'https://production.supabase.co' })).toThrow('wardrobe_staging_cost_target_invalid')
   })
   it('accepts target config without network calls', () => {

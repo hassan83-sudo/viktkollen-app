@@ -299,6 +299,15 @@ async function handleSumUpSandbox(request, response, requestId) {
     userId: auth.user.id,
   })
   if (!result.ok) {
+    // Safe diagnostics only: never log API keys, merchant codes, tokens, or payment data.
+    console.warn('sumup_sandbox_setup_failed', {
+      code: result.code,
+      requestId,
+      sumupApiKeyConfigured: Boolean(process.env.SUMUP_API_KEY?.trim()),
+      merchantCodeFormatValid: /^[A-Za-z0-9]{5,32}$/.test(String(process.env.SUMUP_MERCHANT_CODE || '').trim()),
+      supabaseUrlConfigured: Boolean((process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim()),
+      serviceRoleConfigured: Boolean((process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE || '').trim()),
+    })
     return response.status(result.status).json({
       accessGranted: false,
       error: { code: result.code },

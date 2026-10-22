@@ -237,8 +237,7 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
 
       {/* AI-EAR-1: four modes as one native radio group. Each card is the
           radio's label, so the whole card is the target and arrow keys move
-          between modes. GRATIS/PREMIUM is the verified launch access (see
-          aiEarModes.js), shown as text. */}
+          between modes. Access rules remain enforced independently of these cards. */}
       <fieldset className="ai-ear-modes" disabled={busy}>
         <legend>{t('modes.legend')}</legend>
         {aiEarModes.map((entry) => (
@@ -249,7 +248,6 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
                   radio's name, whatever the layout. */}
               <span className="ai-ear-mode-title"><span aria-hidden="true">{entry.icon} </span>{t(`modes.${entry.id}.title`)}</span>{' '}
               <span className="ai-ear-mode-description">{t(`modes.${entry.id}.description`)}</span>{' '}
-              <span className={`ai-ear-mode-access is-${entry.access}`}>{t(`modes.access.${entry.access}`)}</span>
             </span>
           </label>
         ))}

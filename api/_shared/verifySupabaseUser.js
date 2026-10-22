@@ -1,4 +1,4 @@
-import { assertWardrobeStagingConfig } from './wardrobeStagingGuard.js'
+import { isWardrobePreview, WARDROBE_API_DISABLED } from './wardrobeStagingGuard.js'
 import { createClient } from '@supabase/supabase-js'
 import { aiRouteErrorCodes, makeSafeAiRouteError } from './aiRouteErrors.js'
 
@@ -26,6 +26,7 @@ function timeoutPromise(ms) {
 }
 
 function getSupabaseServerConfig(env = process.env) {
+  if (isWardrobePreview(env)) return { anonKey: '', url: '' }
   return {
     anonKey: env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || '',
     url: env.SUPABASE_URL || env.VITE_SUPABASE_URL || '',
@@ -33,7 +34,6 @@ function getSupabaseServerConfig(env = process.env) {
 }
 
 function createSupabaseVerifier(env = process.env) {
-  assertWardrobeStagingConfig(env)
   const config = getSupabaseServerConfig(env)
   if (!config.url || !config.anonKey) {
     return async () => ({ error: { code: 'authUnavailable' } })
@@ -86,6 +86,7 @@ export async function verifySupabaseUser(request, {
   timeoutMs = DEFAULT_AUTH_TIMEOUT_MS,
   verifier,
 } = {}) {
+  if (isWardrobePreview(env)) return { authenticated: false, status: 503, error: { code: WARDROBE_API_DISABLED } }
   const parsed = getBearerToken(request)
   if (!parsed.token) {
     return {

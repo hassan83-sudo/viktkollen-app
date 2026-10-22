@@ -1,3 +1,4 @@
+import { isWardrobePreview } from './wardrobeStagingGuard.js'
 import { createSign } from 'node:crypto'
 
 /**
@@ -104,6 +105,7 @@ export async function getGoogleIdToken({
   now = Date.now(),
   timeoutMs = 8000,
 } = {}) {
+  if (isWardrobePreview(env)) throw fail('wardrobe_offline')
   if (!audience) throw fail('google_audience_missing')
 
   const cached = cache.get(audience)

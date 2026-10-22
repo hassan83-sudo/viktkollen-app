@@ -1,4 +1,4 @@
-import { isWardrobePreview } from '../../_shared/wardrobeStagingGuard.js'
+import { blockWardrobeApi } from '../../_shared/wardrobeStagingGuard.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../../_shared/aiRouteErrors.js'
 import { readDurableQuota } from '../../_shared/billing/quotaRead.js'
 import { readDurableUserSubscription } from '../../_shared/billing/subscriptionRead.js'
@@ -320,10 +320,7 @@ async function handleEntitlements(request, response, auth, requestId) {
 }
 
 export default async function handler(request, response) {
-  if (isWardrobePreview(process.env)) {
-    response.setHeader('Cache-Control', 'no-store')
-    return response.status(503).json({ ok: false, error: { code: 'WARDROBE_STAGING_API_DISABLED' } })
-  }
+  if (blockWardrobeApi(response)) return
   const requestId = `bill-user-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   setNoStoreHeaders(response)
 

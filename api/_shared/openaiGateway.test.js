@@ -10,6 +10,8 @@ import {
   parseJsonResponseText,
 } from './openaiGateway.js'
 
+const unrelatedEnvironment = { VERCEL_ENV: 'development', VERCEL_GIT_COMMIT_REF: 'local-gateway-fixture' }
+
 describe('openaiGateway', () => {
   afterEach(() => {
     vi.useRealTimers()
@@ -29,7 +31,7 @@ describe('openaiGateway', () => {
 
   it('returns safe missing-key error', async () => {
     const result = await callOpenAiJson({
-      env: {},
+      env: { ...unrelatedEnvironment,},
       fetchImpl: vi.fn(),
       input: [],
     })
@@ -63,7 +65,7 @@ describe('openaiGateway', () => {
       output_text: JSON.stringify({ summary: 'ok' }),
     }), { status: 200 }))
     const result = await callOpenAiJson({
-      env: { OPENAI_API_KEY: 'secret', OPENAI_COACH_MODEL: 'server-model' },
+      env: { ...unrelatedEnvironment, OPENAI_API_KEY: 'secret', OPENAI_COACH_MODEL: 'server-model' },
       fetchImpl,
       input: [{ role: 'user', content: [{ text: 'safe', type: 'input_text' }] }],
       maxOutputTokens: 100,
@@ -82,7 +84,7 @@ describe('openaiGateway', () => {
     }), { status: 200 }))
 
     const result = await callOpenAiJson({
-      env: { OPENAI_API_KEY: 'secret' },
+      env: { ...unrelatedEnvironment, OPENAI_API_KEY: 'secret' },
       fetchImpl,
       input: [{ role: 'user', content: [{ text: 'safe', type: 'input_text' }] }],
       maxOutputTokens: 3400,
@@ -101,7 +103,7 @@ describe('openaiGateway', () => {
     }), { status: 200 }))
 
     await callOpenAiJson({
-      env: { OPENAI_API_KEY: 'secret' },
+      env: { ...unrelatedEnvironment, OPENAI_API_KEY: 'secret' },
       fetchImpl,
       input: [{ role: 'user', content: [{ text: 'safe', type: 'input_text' }] }],
       maxOutputTokens: 9999,
@@ -118,7 +120,7 @@ describe('openaiGateway', () => {
     }), { status: 401, statusText: 'Unauthorized' }))
 
     const result = await callOpenAiJson({
-      env: { OPENAI_API_KEY: 'secret' },
+      env: { ...unrelatedEnvironment, OPENAI_API_KEY: 'secret' },
       fetchImpl,
       input: [{ role: 'user', content: [{ text: 'safe', type: 'input_text' }] }],
     })
@@ -140,7 +142,7 @@ describe('openaiGateway', () => {
     }))
 
     const result = await callOpenAiJson({
-      env: { OPENAI_API_KEY: 'secret' },
+      env: { ...unrelatedEnvironment, OPENAI_API_KEY: 'secret' },
       fetchImpl,
       input: [{ role: 'user', content: [{ text: 'safe', type: 'input_text' }] }],
     })
@@ -164,7 +166,7 @@ describe('openaiGateway', () => {
     }))
 
     const result = await callOpenAiJson({
-      env: { OPENAI_API_KEY: 'secret' },
+      env: { ...unrelatedEnvironment, OPENAI_API_KEY: 'secret' },
       fetchImpl,
       input: [{ role: 'user', content: [{ text: 'safe', type: 'input_text' }] }],
     })
@@ -187,7 +189,7 @@ describe('openaiGateway', () => {
     }))
 
     const result = await callOpenAiJson({
-      env: { OPENAI_API_KEY: 'secret' },
+      env: { ...unrelatedEnvironment, OPENAI_API_KEY: 'secret' },
       fetchImpl,
       input: [{ role: 'user', content: [{ text: 'safe', type: 'input_text' }] }],
     })
@@ -209,7 +211,7 @@ describe('openaiGateway', () => {
     }), { status: 200, statusText: 'OK' }))
 
     const result = await callOpenAiJson({
-      env: { OPENAI_API_KEY: 'secret' },
+      env: { ...unrelatedEnvironment, OPENAI_API_KEY: 'secret' },
       fetchImpl,
       input: [{ role: 'user', content: [{ text: 'safe', type: 'input_text' }] }],
     })
@@ -232,7 +234,7 @@ describe('openaiGateway', () => {
     }), { status: 200, statusText: 'OK' }))
 
     const result = await callOpenAiJson({
-      env: { OPENAI_API_KEY: 'secret' },
+      env: { ...unrelatedEnvironment, OPENAI_API_KEY: 'secret' },
       fetchImpl,
       input: [{ role: 'user', content: [{ text: 'safe', type: 'input_text' }] }],
     })
@@ -247,7 +249,7 @@ describe('openaiGateway', () => {
     }), { status: 200, statusText: 'OK' }))
 
     const result = await callOpenAiJson({
-      env: { OPENAI_API_KEY: 'secret' },
+      env: { ...unrelatedEnvironment, OPENAI_API_KEY: 'secret' },
       fetchImpl,
       input: [{ role: 'user', content: [{ text: 'safe', type: 'input_text' }] }],
     })
@@ -267,7 +269,7 @@ describe('openaiGateway', () => {
     }), { status: 200, statusText: 'OK' }))
 
     const result = await callOpenAiJson({
-      env: { OPENAI_API_KEY: 'secret' },
+      env: { ...unrelatedEnvironment, OPENAI_API_KEY: 'secret' },
       fetchImpl,
       input: [{ role: 'user', content: [{ text: 'safe', type: 'input_text' }] }],
     })
@@ -284,7 +286,7 @@ describe('openaiGateway', () => {
     }), { status: 200, statusText: 'OK' }))
 
     const result = await callOpenAiJson({
-      env: { OPENAI_API_KEY: 'secret' },
+      env: { ...unrelatedEnvironment, OPENAI_API_KEY: 'secret' },
       fetchImpl,
       input: [{ role: 'user', content: [{ text: 'safe', type: 'input_text' }] }],
       type: 'photo',
@@ -311,7 +313,7 @@ describe('openaiGateway', () => {
     const abortError = new Error('aborted')
     abortError.name = 'AbortError'
     const result = await callOpenAiJson({
-      env: { OPENAI_API_KEY: 'secret' },
+      env: { ...unrelatedEnvironment, OPENAI_API_KEY: 'secret' },
       fetchImpl: vi.fn(async () => {
         throw abortError
       }),
@@ -336,7 +338,7 @@ describe('openaiGateway', () => {
     }))
 
     const resultPromise = callOpenAiJson({
-      env: { OPENAI_API_KEY: 'secret' },
+      env: { ...unrelatedEnvironment, OPENAI_API_KEY: 'secret' },
       fetchImpl,
       input: [{ role: 'user', content: [{ text: 'safe', type: 'input_text' }] }],
       timeoutMs: 45000,
@@ -363,7 +365,7 @@ describe('openaiGateway', () => {
     }))
 
     const resultPromise = callOpenAiJson({
-      env: { OPENAI_API_KEY: 'secret' },
+      env: { ...unrelatedEnvironment, OPENAI_API_KEY: 'secret' },
       fetchImpl,
       input: [{ role: 'user', content: [{ text: 'safe', type: 'input_text' }] }],
       timeoutMs: 45000,
@@ -392,7 +394,7 @@ describe('openaiGateway', () => {
     }))
 
     const resultPromise = callOpenAiJson({
-      env: { OPENAI_API_KEY: 'secret' },
+      env: { ...unrelatedEnvironment, OPENAI_API_KEY: 'secret' },
       fetchImpl,
       input: [{ role: 'user', content: [{ text: 'safe', type: 'input_text' }] }],
       signal: controller.signal,
@@ -419,7 +421,7 @@ describe('openaiGateway', () => {
     }
 
     const result = await callOpenAiJson({
-      env: { OPENAI_API_KEY: 'secret' },
+      env: { ...unrelatedEnvironment, OPENAI_API_KEY: 'secret' },
       fetchImpl: vi.fn(async () => {
         throw networkError
       }),
@@ -456,7 +458,7 @@ describe('openaiGateway', () => {
     expect(JSON.stringify(config)).not.toContain('secret-value')
 
     const session = await createRealtimeVoiceSession({
-      env: { OPENAI_API_KEY: 'secret-value', VOICE_AI_MODEL: 'gpt-4o-mini-realtime-preview' },
+      env: { ...unrelatedEnvironment, OPENAI_API_KEY: 'secret-value', VOICE_AI_MODEL: 'gpt-4o-mini-realtime-preview' },
       fetchImpl: vi.fn(async () => ({
         ok: true,
         json: async () => ({
@@ -478,7 +480,7 @@ describe('openaiGateway', () => {
       usage: { input_tokens: 9, output_tokens: 4, total_tokens: 13 },
     }), { status: 200 }))
     const result = await callOpenAiJson({
-      env: { OPENAI_API_KEY: 'secret', OPENAI_COACH_MODEL: 'server-model' },
+      env: { ...unrelatedEnvironment, OPENAI_API_KEY: 'secret', OPENAI_COACH_MODEL: 'server-model' },
       fetchImpl,
       input: [{ role: 'user', content: [{ text: 'safe', type: 'input_text' }] }],
       requestId: 'meter-1',
@@ -506,13 +508,13 @@ describe('openaiGateway', () => {
       output_text: JSON.stringify({ summary: 'ok' }),
     }), { status: 200 }))
     await callOpenAiJson({
-      env: { OPENAI_API_KEY: 'secret' },
+      env: { ...unrelatedEnvironment, OPENAI_API_KEY: 'secret' },
       fetchImpl,
       input: [],
       requestId: 'retry-1',
     })
     await callOpenAiJson({
-      env: { OPENAI_API_KEY: 'secret' },
+      env: { ...unrelatedEnvironment, OPENAI_API_KEY: 'secret' },
       fetchImpl,
       input: [],
       requestId: 'retry-1',

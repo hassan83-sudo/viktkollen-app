@@ -1,4 +1,5 @@
 import { recordOpenAiGatewayUsage } from './billing/recordOpenAiGatewayUsage.js'
+import { isWardrobePreview, WARDROBE_API_DISABLED } from './wardrobeStagingGuard.js'
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/responses'
 const DEFAULT_TEXT_MODEL = 'gpt-4.1-mini'
@@ -346,6 +347,7 @@ export async function createRealtimeVoiceSession({
   requestId = createSafeRequestId('voice'),
   userId = '',
 } = {}) {
+  if (isWardrobePreview(env)) return { available: false, ok: false, error: { code: WARDROBE_API_DISABLED, status: 503 } }
   const config = getVoiceAiGatewayConfig(env)
   void userId
 
@@ -463,6 +465,7 @@ export async function callOpenAiJson({
   usageRepository,
   userId = '',
 } = {}) {
+  if (isWardrobePreview(env)) return { ok: false, error: { code: WARDROBE_API_DISABLED, status: 503 } }
   if (!env.OPENAI_API_KEY) {
     return {
       error: makeAiError('aiNotConfigured', 'AI-tjänsten är inte konfigurerad på servern.', 503, false, requestId).error,

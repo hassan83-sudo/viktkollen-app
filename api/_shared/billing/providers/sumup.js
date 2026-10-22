@@ -1,3 +1,4 @@
+import { isWardrobePreview } from '../../wardrobeStagingGuard.js'
 import { getPlanById } from '../../../../src/services/billing/planCatalog.js'
 
 export const SUMUP_PROVIDER = 'sumup'
@@ -66,6 +67,7 @@ export function sumUpNotificationCheckoutId(rawBody) {
 
 export function createSumUpHttpTransport({ apiKey, fetchImpl = globalThis.fetch, baseUrl = API_BASE } = {}) {
   async function request(path, { method, body } = {}) {
+    if (isWardrobePreview(process.env)) throw new Error('wardrobe_offline')
     const response = await fetchImpl(`${baseUrl}${path}`, {
       body: body == null ? undefined : JSON.stringify(body),
       headers: {

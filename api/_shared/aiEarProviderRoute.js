@@ -1,3 +1,4 @@
+import { blockWardrobeApi, isWardrobePreview } from './wardrobeStagingGuard.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from './aiRouteErrors.js'
 import { checkAiRouteRateLimit } from './aiRateLimiter.js'
 import { verifySupabaseUser } from './verifySupabaseUser.js'
@@ -128,6 +129,7 @@ export function providerError(code) {
 
 /** Runs one provider fetch with timeout + uniform network/HTTP error mapping. Returns the parsed JSON body. */
 export async function fetchProviderJson(url, init, { timeoutMs, fetchImpl = globalThis.fetch, httpErrorCode = () => 'providerUnavailable' } = {}) {
+  if (isWardrobePreview(process.env)) throw providerError('wardrobeOffline')
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
@@ -174,6 +176,7 @@ export function createProviderRouteHandler({ allowedTypes = defaultAllowedAudioT
   }
 
   return async function handler(request, response) {
+    if (blockWardrobeApi(response)) return
     const requestId = `${idPrefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
     setNoStoreHeaders(response)
 

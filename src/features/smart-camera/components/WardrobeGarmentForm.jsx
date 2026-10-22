@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { garmentTypes } from '../../../services/wardrobeStorage.js'
 import { createWardrobePhoto, wardrobePhotoCanvas } from '../../../services/wardrobePhoto.js'
 import { scanObjectBankPhoto } from '../../../services/objectBankScan.js'
+import { isWardrobeOffline } from '../../../services/supabaseClient.js'
 
 export default function WardrobeGarmentForm({ onAdd }) {
   const [name, setName] = useState('')
@@ -34,7 +35,7 @@ export default function WardrobeGarmentForm({ onAdd }) {
   }
 
   async function recognize() {
-    if (!remoteConsent || !image || busy || operation.current) return
+    if (isWardrobeOffline || !remoteConsent || !image || busy || operation.current) return
     const controller = new AbortController()
     operation.current = controller
     const current = generation.current
@@ -75,12 +76,12 @@ export default function WardrobeGarmentForm({ onAdd }) {
       <img className="wardrobe-photo-preview" src={image} alt="Förhandsvisning av nytt plagg" />
       <label><input type="checkbox" checked={localConsent} onChange={(e) => setLocalConsent(e.target.checked)} />Jag godkänner att bilden sparas i den här webbläsaren.</label>
       <button type="button" disabled={busy} onClick={() => { setImage(''); setLocalConsent(false); setRemoteConsent(false); setSuggestions([]) }}>Ta bort osparad bild</button>
-      <details><summary>Frivilliga AI-förslag</summary>
+      {isWardrobeOffline ? <p>Offline-Preview: AI-analys och molnanslutning är avstängda. Ange plagget manuellt.</p> : <details><summary>Frivilliga AI-förslag</summary>
         <p>Bara denna bild skickas till appens befintliga AI-analys. Inloggning, kvoter och serverns gränser gäller. Förslag kan vara fel och identifierar föremål, inte passform. Ingen automatisk analys sker.</p>
         <label><input type="checkbox" checked={remoteConsent} disabled={busy} onChange={(e) => setRemoteConsent(e.target.checked)} />Jag godkänner att denna bild skickas för AI-analys.</label>
         <button type="button" disabled={busy || !remoteConsent} onClick={recognize}>Analysera vald bild</button>
         {suggestions.map((suggestion) => <button key={suggestion} type="button" onClick={() => setName(suggestion.slice(0, 60))}>Använd namnet: {suggestion}</button>)}
-      </details>
+      </details>}
     </>}
     <label>Plaggets namn<input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} required /></label>
     <label>Plaggtyp<select value={type} onChange={(e) => setType(e.target.value)}>{garmentTypes.map((value) => <option key={value}>{value}</option>)}</select></label>

@@ -3,6 +3,8 @@ import { Buffer } from 'node:buffer'
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import basicSsl from '@vitejs/plugin-basic-ssl'
+import { execFileSync } from 'node:child_process'
+import { wardrobeBuildIsolation, wardrobeOfflineBrowserPolicy } from './scripts/wardrobeBuildIsolation.mjs'
 
 function manualChunks(id) {
   const normalized = id.replace(/\\/g, '/')
@@ -183,29 +185,17 @@ export function shouldBuildBodyScanPreview(env = process.env) {
 }
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command }) => {
   loadServerOnlyDevEnv(mode)
-  // Never emit a wardrobe Preview bundle with inherited Production credentials.
-  // This gate is deliberately stricter than the runtime API checks.
-  if (process.env.VERCEL_ENV === 'preview' &&
-      process.env.VERCEL_GIT_COMMIT_REF === 'feature/ai-eye-wardrobe-link-20261022') {
-    const stagingUrl = 'https://armtslzspuebmlysnooq.supabase.co'
-    const requiredUrls = ['VITE_SUPABASE_URL', 'SUPABASE_URL']
-    if (requiredUrls.some((key) => String(process.env[key] || '').replace(/\\/$/, '') !== stagingUrl) ||
-        !process.env.VITE_SUPABASE_ANON_KEY || !process.env.SUPABASE_ANON_KEY) {
-      throw new Error('wardrobe_preview_staging_build_blocked')
-    }
-    // Real AI calls remain forbidden until a separately reviewed cost gate exists.
-    if (!process.env.WARDROBE_STAGING_SERVICE_ROLE_KEY) {
-      throw new Error('wardrobe_preview_staging_secret_missing')
-    }
-    if (process.env.WARDROBE_STAGING_AI_DISABLED !== 'true') {
-      throw new Error('wardrobe_preview_ai_not_disabled')
-    }
-  }
-  const bodyScanPreview = shouldBuildBodyScanPreview()
+  let sourceBranch = ''
+  try { sourceBranch = execFileSync('git', ['branch', '--show-current'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() } catch { /* An unknown source identity fails closed. */ }
+  const isolation = command === 'serve' && mode === 'test'
+    ? { offline: false, define: {} }
+    : wardrobeBuildIsolation({ ...loadEnv(mode, process.cwd(), ''), ...process.env }, sourceBranch)
+  const bodyScanPreview = !isolation.offline && shouldBuildBodyScanPreview()
 
   return {
+    ...(isolation.offline ? { envPrefix: isolation.envPrefix } : {}),
     build: {
       rollupOptions: {
         ...(bodyScanPreview
@@ -222,15 +212,19 @@ export default defineConfig(({ mode }) => {
       },
     },
     define: {
+      ...isolation.define,
       __VK_BODY_SCAN_PREVIEW__: JSON.stringify(bodyScanPreview),
     },
-    plugins: [react(), basicSsl(), legacyAiApiDevMiddleware(), nutritionPhotoApiDevMiddleware()],
+    plugins: [react(), basicSsl(), legacyAiApiDevMiddleware(), nutritionPhotoApiDevMiddleware(), ...(isolation.offline ? [wardrobeOfflineBrowserPolicy()] : [])],
     server: {
       allowedHosts: true,
       host: true,
     },
     test: {
-      exclude: ['dist/**', 'node_modules/**', 'tests/e2e/**', 'tests/a11y/**', 'tests/ai-help/**'],
+      // Ordinary regression fixtures represent an explicitly unrelated local environment.
+      // Isolation tests remove/replace these markers to exercise the actual denial paths.
+      env: { VERCEL_ENV: 'development', VERCEL_GIT_COMMIT_REF: 'local-regression-fixtures' },
+      exclude: ['dist/**', '.tmp/**', 'node_modules/**', 'tests/e2e/**', 'tests/a11y/**', 'tests/ai-help/**', 'tests/wardrobe/**'],
       setupFiles: ['./src/test/setup.js'],
     },
   }

@@ -1,3 +1,4 @@
+import { blockWardrobeApi } from '../_shared/wardrobeStagingGuard.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
 import { createSupabaseAdminClient } from '../_shared/supabaseServer.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
@@ -83,6 +84,7 @@ function summarizeDeletion({ authResult = null, mode, rowResults = [] }) {
 }
 
 export default async function handler(request, response) {
+  if (blockWardrobeApi(response)) return
   const requestId = `del-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   setNoStoreHeaders(response)
 

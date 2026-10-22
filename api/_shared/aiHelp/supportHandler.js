@@ -1,3 +1,4 @@
+import { blockWardrobeApi } from '../wardrobeStagingGuard.js'
 import { setNoStoreHeaders } from '../aiRouteErrors.js'
 import { verifySupabaseUser } from '../verifySupabaseUser.js'
 import { requireBillingAdmin } from '../billing/admin.js'
@@ -5,6 +6,7 @@ import { createSupabaseAdminClient } from '../supabaseServer.js'
 
 // Reuses the existing AI dispatcher and billing-admin authority; never accepts identity or plan claims.
 export default async function supportHandler(request, response) {
+  if (blockWardrobeApi(response)) return
   setNoStoreHeaders(response)
   const fail = (status, code) => response.status(status).json({ ok: false, error: { code } })
   if (!['GET', 'POST'].includes(request.method)) {

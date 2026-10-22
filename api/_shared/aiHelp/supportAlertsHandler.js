@@ -1,9 +1,11 @@
+import { blockWardrobeApi } from '../wardrobeStagingGuard.js'
 import { createSupabaseAdminClient } from '../supabaseServer.js'
 
 // Scheduled server-side email alerts. No browser session, ticket text or user data is sent.
 // Configure CRON_SECRET, RESEND_API_KEY, SUPPORT_ALERT_TO and SUPPORT_ALERT_FROM
 // on the deployment before enabling a scheduler.
 export default async function handler(request, response) {
+  if (blockWardrobeApi(response)) return
   response.setHeader('Cache-Control', 'no-store')
   if (request.method !== 'GET') {
     response.setHeader('Allow', 'GET')

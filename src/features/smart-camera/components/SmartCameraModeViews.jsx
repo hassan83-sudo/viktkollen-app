@@ -176,7 +176,7 @@ function CheckMeMode({ onCameraActive }) {
   )
 }
 
-function OutfitMode({ onCameraActive, weather }) {
+export function OutfitMode({ onCameraActive, weather }) {
   const facts = useMemo(() => buildOutfitWeatherFacts(weather), [weather])
   return (
     <>

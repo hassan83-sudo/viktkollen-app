@@ -1,4 +1,4 @@
-import { isWardrobePreview } from '../_shared/wardrobeStagingGuard.js'
+import { blockWardrobeApi } from '../_shared/wardrobeStagingGuard.js'
 import { fallbackMealAnalysis } from '../../src/services/mealAnalysisService.js'
 import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
@@ -19,12 +19,8 @@ import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 void fallbackMealAnalysis
 
 export default async function handler(request, response) {
+  if (blockWardrobeApi(response)) return
   // Offline-only wardrobe Preview: reject before auth, billing, AI or database effects.
-  if (isWardrobePreview(process.env)) {
-    response.setHeader('Cache-Control', 'no-store')
-    response.statusCode = 503
-    return response.end(JSON.stringify({ ok: false, error: { code: 'WARDROBE_STAGING_API_DISABLED' } }))
-  }
 
   const requestId = `meal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   setNoStoreHeaders(response)

@@ -2,12 +2,14 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env?.VITE_SUPABASE_ANON_KEY || ''
+export const isWardrobeOffline = import.meta.env.VITE_WARDROBE_OFFLINE === 'true'
 
 export function isSupabaseConfigured() {
-  return Boolean(supabaseUrl && supabaseAnonKey)
+  return !isWardrobeOffline && Boolean(supabaseUrl && supabaseAnonKey)
 }
 
 export function getSupabaseStatus() {
+  if (isWardrobeOffline) return { configured: false, reason: 'Wardrobe Preview is offline; cloud authentication and writes are disabled' }
   if (!supabaseUrl && !supabaseAnonKey) {
     return {
       configured: false,

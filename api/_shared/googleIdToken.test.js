@@ -42,7 +42,7 @@ describe('Google ID-token minting for private Cloud Run', () => {
   it('exchanges the assertion for an ID token, caches it, and refreshes near expiry', async () => {
     const now = Date.now()
     const fetchImpl = vi.fn(async () => ({ json: async () => ({ id_token: idTokenWith(Math.floor(now / 1000) + 3600) }), ok: true }))
-    const env = { AI_EAR_GCP_SERVICE_ACCOUNT_JSON: JSON.stringify(account) }
+    const env = { VERCEL_ENV: 'development', VERCEL_GIT_COMMIT_REF: 'local-google-fixture', AI_EAR_GCP_SERVICE_ACCOUNT_JSON: JSON.stringify(account) }
 
     const first = await getGoogleIdToken({ audience, env, fetchImpl, now })
     const second = await getGoogleIdToken({ audience, env, fetchImpl, now: now + 60_000 })
@@ -54,7 +54,7 @@ describe('Google ID-token minting for private Cloud Run', () => {
   })
 
   it('never puts the key or Google error bodies into thrown errors', async () => {
-    const env = { AI_EAR_GCP_SERVICE_ACCOUNT_JSON: JSON.stringify(account) }
+    const env = { VERCEL_ENV: 'development', VERCEL_GIT_COMMIT_REF: 'local-google-fixture', AI_EAR_GCP_SERVICE_ACCOUNT_JSON: JSON.stringify(account) }
     const failing = vi.fn(async () => ({ json: async () => ({ error: 'invalid_grant', error_description: 'private detail' }), ok: false }))
     const error = await getGoogleIdToken({ audience, env, fetchImpl: failing }).catch((caught) => caught)
 

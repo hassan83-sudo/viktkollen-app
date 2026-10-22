@@ -1,8 +1,10 @@
+import { blockWardrobeApi } from '../wardrobeStagingGuard.js'
 import { requireBillingAdmin } from '../billing/admin.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../aiRouteErrors.js'
 import { createSupabaseAdminClient } from '../supabaseServer.js'
 
 export default async function handler(request, response) {
+  if (blockWardrobeApi(response)) return
   const requestId = 'security-center-' + Date.now().toString(36)
   setNoStoreHeaders(response)
   if (request.method !== 'GET') {

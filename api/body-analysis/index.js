@@ -1,4 +1,4 @@
-import { isWardrobePreview } from '../_shared/wardrobeStagingGuard.js'
+import { blockWardrobeApi } from '../_shared/wardrobeStagingGuard.js'
 import { analyzeBodyImages } from '../../src/services/bodyAnalysisAi.js'
 import {
   buildBodyAnalysisContext,
@@ -628,12 +628,8 @@ async function respondWithServerQuota({ images, request, requestId, response, us
 }
 
 export default async function handler(request, response) {
+  if (blockWardrobeApi(response)) return
   // Offline-only wardrobe Preview: reject before auth, billing, AI or database effects.
-  if (isWardrobePreview(process.env)) {
-    response.setHeader('Cache-Control', 'no-store')
-    response.statusCode = 503
-    return response.end(JSON.stringify({ ok: false, error: { code: 'WARDROBE_STAGING_API_DISABLED' } }))
-  }
 
   const requestId = `body-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   let images

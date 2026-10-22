@@ -1,3 +1,4 @@
+import { blockWardrobeApi } from '../wardrobeStagingGuard.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../aiRouteErrors.js'
 import { verifySupabaseUser } from '../verifySupabaseUser.js'
 import { publicAuthAccount } from './accountActions.js'
@@ -12,6 +13,7 @@ function parseBody(request) {
 }
 
 export async function handleAiHelpRequest(request, response) {
+  if (blockWardrobeApi(response)) return
   const requestId = `ai-help-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   setNoStoreHeaders(response)
 

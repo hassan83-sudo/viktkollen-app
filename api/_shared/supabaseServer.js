@@ -1,9 +1,10 @@
-import { assertWardrobeStagingConfig, isWardrobePreview } from './wardrobeStagingGuard.js'
+import { isWardrobePreview } from './wardrobeStagingGuard.js'
 import { createClient } from '@supabase/supabase-js'
 
 let adminClientOverride = undefined
 
 export function getSupabaseAdminConfig(env = process.env) {
+  if (isWardrobePreview(env)) return { serviceRoleKey: '', url: '' }
   return {
     serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_ROLE || '',
     url: env.SUPABASE_URL || env.VITE_SUPABASE_URL || '',
@@ -11,12 +12,11 @@ export function getSupabaseAdminConfig(env = process.env) {
 }
 
 export function createSupabaseAdminClient(env = process.env) {
+  // Offline denial precedes even the test adapter or client construction.
+  if (isWardrobePreview(env)) return null
   if (adminClientOverride !== undefined) return adminClientOverride
 
-  assertWardrobeStagingConfig(env)
-  const config = isWardrobePreview(env)
-    ? { url: env.SUPABASE_URL, serviceRoleKey: env.WARDROBE_STAGING_SERVICE_ROLE_KEY }
-    : getSupabaseAdminConfig(env)
+  const config = getSupabaseAdminConfig(env)
   if (!config.url || !config.serviceRoleKey) return null
 
   return createClient(config.url, config.serviceRoleKey, {

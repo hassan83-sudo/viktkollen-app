@@ -1,3 +1,4 @@
+import { isWardrobePreview } from '../wardrobeStagingGuard.js'
 const COST_URL_ENV = 'AI_HELP_COST_SUPABASE_URL'
 const COST_KEY_ENV = 'AI_HELP_COST_SUPABASE_SERVICE_ROLE_KEY'
 
@@ -54,6 +55,7 @@ function outstandingReservations(value) {
 }
 
 async function callCostFunction({ fetchImpl, functionName, payload, serviceRoleKey, url }) {
+  if (isWardrobePreview(process.env)) return { ok: false, reason: 'store_unavailable' }
   let response
   try {
     response = await fetchImpl(`${url}/rest/v1/rpc/${functionName}`, {
@@ -102,6 +104,7 @@ async function callCostFunction({ fetchImpl, functionName, payload, serviceRoleK
 }
 
 export function createSupabaseCostStore({ fetchImpl = fetch, serviceRoleKey, url }) {
+  if (isWardrobePreview(process.env)) return unavailableCostStore()
   const endpoint = url.replace(/\/$/, '')
   return {
     listOutstanding: (input = {}) => callCostFunction({
@@ -175,6 +178,7 @@ export function createSupabaseCostStore({ fetchImpl = fetch, serviceRoleKey, url
 }
 
 export function createCostStoreFromEnv(env = process.env, fetchImpl = fetch) {
+  if (isWardrobePreview(env)) return unavailableCostStore()
   const credentials = costCredentials(env)
   if (!credentials) return unavailableCostStore()
   return createSupabaseCostStore({ fetchImpl, ...credentials })

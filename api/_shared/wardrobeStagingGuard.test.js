@@ -1,41 +1,53 @@
-import { describe, expect, it } from 'vitest'
-import { assertWardrobeStagingConfig, isWardrobePreview, isWardrobeStagingUrl } from './wardrobeStagingGuard.js'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { assertNoPublicServerKeys, assertWardrobeStagingConfig, isWardrobePreview, isWardrobeStagingUrl, isWardrobePublicKey, WARDROBE_BRANCH, WARDROBE_STAGING_REF } from './wardrobeStagingGuard.js'
+import { wardrobeIsolationFixtures as base } from '../../scripts/wardrobeIsolationFixtures.mjs'
+import { wardrobeBuildIsolation } from '../../scripts/wardrobeBuildIsolation.mjs'
+afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals() })
+const jwt = (role, ref) => `header.${btoa(JSON.stringify({ role, ref }))}.synthetic_signature`
 
-const staging = 'https://armtslzspuebmlysnooq.supabase.co'
-const base = {
-  VERCEL_ENV: 'preview',
-  VERCEL_GIT_COMMIT_REF: 'feature/ai-eye-wardrobe-link-20261022',
-  VITE_SUPABASE_URL: staging,
-  SUPABASE_URL: staging,
-  VITE_SUPABASE_ANON_KEY: 'test-public',
-  SUPABASE_ANON_KEY: 'test-public',
-  WARDROBE_STAGING_SERVICE_ROLE_KEY: 'test-server',
-  WARDROBE_STAGING_AI_DISABLED: 'true',
-}
-
-describe('wardrobe Preview staging target guard', () => {
-  it('only targets the wardrobe Preview branch', () => {
-    expect(isWardrobePreview(base)).toBe(true)
-    expect(isWardrobePreview({ ...base, VERCEL_ENV: 'production' })).toBe(false)
-    expect(isWardrobePreview({ ...base, VERCEL_GIT_COMMIT_REF: 'main' })).toBe(false)
-  })
-  it('requires exact staging host and HTTPS', () => {
-    expect(isWardrobeStagingUrl(staging)).toBe(true)
-    for (const url of ['', 'https://example.supabase.co', 'http://armtslzspuebmlysnooq.supabase.co', 'https://armtslzspuebmlysnooq.supabase.co.evil.test', 'https://armtslzspuebmlysnooq.supabase.co/rest/v1']) {
-      expect(isWardrobeStagingUrl(url)).toBe(false)
+describe('wardrobe fail-closed identity and build boundary', () => {
+  it('denies ambiguous runtime environments and contradictory markers', () => {
+    for (const env of [{}, { VERCEL_ENV: 'preview' }, { VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: ' ' }, { VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: true }, { VERCEL_GIT_COMMIT_REF: WARDROBE_BRANCH }, { ...base, VERCEL_ENV: 'production' }]) {
+      expect(isWardrobePreview(env)).toBe(true)
+      expect(() => assertWardrobeStagingConfig(env)).toThrow()
     }
+    expect(isWardrobePreview({ VERCEL_ENV: 'production', VERCEL_GIT_COMMIT_REF: 'main' })).toBe(false)
+    expect(isWardrobePreview({ VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: 'another-branch' })).toBe(false)
   })
-  it('rejects missing and Production-targeted Supabase URLs', () => {
-    for (const key of ['SUPABASE_URL', 'VITE_SUPABASE_URL']) {
-      expect(() => assertWardrobeStagingConfig({ ...base, [key]: '' })).toThrow('wardrobe_staging_target_invalid')
-      expect(() => assertWardrobeStagingConfig({ ...base, [key]: 'https://production.supabase.co' })).toThrow('wardrobe_staging_target_invalid')
+  it.each(Object.keys(base))('rejects a missing dedicated setting or provider marker: %s', (key) => {
+    expect(() => assertWardrobeStagingConfig({ ...base, [key]: undefined })).toThrow()
+  })
+  it.each(['', 'http://armtslzspuebmlysnooq.supabase.co', 'https://production.supabase.co', 'https://armtslzspuebmlysnooq.supabase.co.evil.test', 'https://armtslzspuebmlysnooq.supabase.co/rest/v1', 'https://armtslzspuebmlysnooq.supabase.co:5432', 'https://user:pass@armtslzspuebmlysnooq.supabase.co'])('rejects an invalid project URL: %s', (url) => {
+    expect(isWardrobeStagingUrl(url)).toBe(false)
+    expect(() => assertWardrobeStagingConfig({ ...base, WARDROBE_STAGING_SUPABASE_URL: url })).toThrow()
+  })
+  it('validates legacy key role/project and refuses server keys in any public setting', () => {
+    expect(isWardrobePublicKey(jwt('anon', WARDROBE_STAGING_REF))).toBe(true)
+    expect(isWardrobePublicKey(jwt('anon', 'other-project'))).toBe(false)
+    expect(isWardrobePublicKey(jwt('service_role', WARDROBE_STAGING_REF))).toBe(false)
+    for (const value of [base.WARDROBE_STAGING_SERVICE_ROLE_KEY, jwt('service_role', WARDROBE_STAGING_REF)]) {
+      expect(() => assertNoPublicServerKeys({ VITE_SUPABASE_ANON_KEY: value })).toThrow('public_server_credential_blocked')
     }
+    expect(() => assertWardrobeStagingConfig({ ...base, WARDROBE_STAGING_SERVICE_ROLE_KEY: jwt('service_role', 'other-project') })).toThrow()
+    expect(() => assertWardrobeStagingConfig({ ...base, SUPABASE_SERVICE_ROLE_KEY: base.WARDROBE_STAGING_SERVICE_ROLE_KEY })).toThrow('wardrobe_staging_global_secret_reused')
   })
-  it('rejects missing credentials and foreign cost ledger', () => {
-    expect(() => assertWardrobeStagingConfig({ ...base, WARDROBE_STAGING_SERVICE_ROLE_KEY: '' })).toThrow('wardrobe_staging_credentials_missing')
-    expect(() => assertWardrobeStagingConfig({ ...base, AI_HELP_COST_SUPABASE_URL: 'https://production.supabase.co' })).toThrow('wardrobe_staging_cost_target_invalid')
+  it.each(['', 'false', 'TRUE', '1'])('rejects a non-exact AI-off flag: %s', (value) => {
+    expect(() => assertWardrobeStagingConfig({ ...base, WARDROBE_STAGING_AI_DISABLED: value })).toThrow()
   })
-  it('accepts target config without network calls', () => {
-    expect(assertWardrobeStagingConfig(base)).toBeUndefined()
+  it('uses only dedicated public data, even with inherited Production settings and AI key', () => {
+    const network = vi.fn(() => { throw Error('network_forbidden') }); vi.stubGlobal('fetch', network)
+    const result = wardrobeBuildIsolation({ ...base, SUPABASE_URL: 'https://production.supabase.co', VITE_SUPABASE_URL: 'https://production.supabase.co', OPENAI_API_KEY: 'synthetic-inherited-provider-secret', SUPABASE_SERVICE_ROLE_KEY: 'synthetic-inherited-global-server-secret' }, WARDROBE_BRANCH)
+    expect(result.offline).toBe(true)
+    expect(result.envPrefix).toEqual([])
+    expect(JSON.stringify(result.define)).not.toMatch(/production|synthetic-inherited|sb_secret_/)
+    expect(network).not.toHaveBeenCalled()
+  })
+  it('cannot bypass the build gate by deleting provider markers, changing source branch or using test mode', () => {
+    expect(() => wardrobeBuildIsolation({}, WARDROBE_BRANCH)).toThrow()
+    expect(() => wardrobeBuildIsolation({ ...base, VERCEL_ENV: undefined }, WARDROBE_BRANCH)).toThrow()
+    expect(() => wardrobeBuildIsolation(base, '')).toThrow()
+    expect(() => wardrobeBuildIsolation(base, 'main')).toThrow()
+    expect(() => wardrobeBuildIsolation({ VERCEL_ENV: 'production', VERCEL_GIT_COMMIT_REF: 'main' }, '')).toThrow()
+    expect(wardrobeBuildIsolation({ VERCEL_ENV: 'production', VERCEL_GIT_COMMIT_REF: 'main' }, 'main').offline).toBe(false)
   })
 })

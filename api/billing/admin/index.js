@@ -1,3 +1,4 @@
+import { blockWardrobeApi } from '../../_shared/wardrobeStagingGuard.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../../_shared/aiRouteErrors.js'
 import {
   getBillingAdminService,
@@ -105,6 +106,7 @@ function invalidAdmin(response, requestId, code = 'INVALID_ADMIN_REQUEST') {
 }
 
 export default async function handler(request, response) {
+  if (blockWardrobeApi(response)) return
   const requestId = `bill-admin-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   setNoStoreHeaders(response)
 

@@ -1,3 +1,4 @@
+import { blockWardrobeApi } from '../wardrobeStagingGuard.js'
 import { createHash } from 'node:crypto'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../aiRouteErrors.js'
 import { requireBillingAdmin } from '../billing/admin.js'
@@ -76,6 +77,7 @@ function unavailable(response, requestId) {
 }
 
 export default async function handler(request, response) {
+  if (blockWardrobeApi(response)) return
   const requestId = `bug-${Date.now().toString(36)}`
   setNoStoreHeaders(response)
   const method = String(request.method || 'GET').toUpperCase()

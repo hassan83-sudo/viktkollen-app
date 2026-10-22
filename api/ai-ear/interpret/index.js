@@ -1,4 +1,4 @@
-import { isWardrobePreview } from '../../_shared/wardrobeStagingGuard.js'
+import { blockWardrobeApi } from '../../_shared/wardrobeStagingGuard.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../../_shared/aiRouteErrors.js'
 import { checkAiRouteRateLimit } from '../../_shared/aiRateLimiter.js'
 import { verifySupabaseUser } from '../../_shared/verifySupabaseUser.js'
@@ -183,10 +183,7 @@ function readVkRoute(request) {
 }
 
 export default async function handler(request, response) {
-  if (isWardrobePreview(process.env)) {
-    response.setHeader('Cache-Control', 'no-store')
-    return response.status(503).json({ ok: false, error: { code: 'WARDROBE_STAGING_API_DISABLED' } })
-  }
+  if (blockWardrobeApi(response)) return
   if (readVkRoute(request) === 'humming') return handleHummingRecognition(request, response)
   return interpretHandler(request, response)
 }

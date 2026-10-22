@@ -1,3 +1,4 @@
+import { blockWardrobeApi } from '../_shared/wardrobeStagingGuard.js'
 import {
   callOpenAiJson,
   createSafeRequestId,
@@ -170,6 +171,7 @@ function buildCoachPrompt(facts, requestId) {
 }
 
 export default async function handler(request, response) {
+  if (blockWardrobeApi(response)) return
   const requestId = createSafeRequestId('coach')
   setNoStoreHeaders(response)
 

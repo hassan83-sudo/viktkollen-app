@@ -70,6 +70,10 @@ function aiHelpTestApiPlugin() {
 async function startAiHelpTestServer() {
   const server = await createServer({
     configFile: fileURLToPath(new URL('./vite.config.js', import.meta.url)),
+    // Unmounted /api paths resolve to their server source here. Discovering the
+    // server-only @vercel/functions through them re-optimizes deps and reloads
+    // the page mid-test on a cold cache, so never pre-bundle it for the browser.
+    optimizeDeps: { exclude: ['@vercel/functions'] },
     plugins: [aiHelpTestApiPlugin()],
     // A cold dependency optimizer may emit full-reload during an admin action.
     // Browser integration tests exercise a fixed app, not development hot reload.

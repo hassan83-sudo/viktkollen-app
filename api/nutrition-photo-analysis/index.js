@@ -1,3 +1,4 @@
+import { isWardrobePreview } from '../_shared/wardrobeStagingGuard.js'
 import {
   callOpenAiJson,
   getAiGatewayConfig,
@@ -551,6 +552,11 @@ async function callOpenAi(image, mealType, { accessToken = '', requestId, usageR
 }
 
 export default async function handler(request, response) {
+  // Wardrobe staging is offline-only: block before auth, billing, writes or AI dispatch.
+  if (isWardrobePreview(process.env)) {
+    response.setHeader('Cache-Control', 'no-store')
+    return response.status(503).json({ ok: false, error: { code: 'WARDROBE_STAGING_API_DISABLED' } })
+  }
   const requestId = `photo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   setNoStoreHeaders(response)
   const clientAttemptId = safeText(getHeader(request, 'x-viktkollen-request-id'), '', 80)

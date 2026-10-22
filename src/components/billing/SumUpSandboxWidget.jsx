@@ -34,11 +34,18 @@ export default function SumUpSandboxWidget({
   const [startRequested, setStartRequested] = useState(false)
   const [checkoutId, setCheckoutId] = useState('')
   const [widgetState, setWidgetState] = useState('')
+  const [prepareRequest, setPrepareRequest] = useState(null)
 
   useEffect(() => {
-    if (authLoading || !isAuthenticated || !startRequested) return undefined
+    if (authLoading || !isAuthenticated || !startRequested || prepareRequest) return
+    // A single explicit start must not issue a second POST during effect re-runs.
+    setPrepareRequest({ promise: Promise.resolve().then(() => prepare()) })
+  }, [authLoading, isAuthenticated, startRequested, prepareRequest, prepare])
+
+  useEffect(() => {
+    if (!prepareRequest) return undefined
     let cancelled = false
-    prepare().then((result) => {
+    prepareRequest.promise.then((result) => {
       if (cancelled) return
       if (!result?.ok || result.payload?.accessGranted !== false || result.payload?.amount !== 4 || result.payload?.currency !== 'SEK') {
         setPhase(result?.status === 401 ? 'signed-out' : 'unavailable')
@@ -56,7 +63,7 @@ export default function SumUpSandboxWidget({
     return () => {
       cancelled = true
     }
-  }, [authLoading, isAuthenticated, prepare, startRequested])
+  }, [prepareRequest])
 
   useEffect(() => {
     const config = sumUpWidgetMountConfig({ checkoutId })

@@ -323,6 +323,19 @@ export async function verifySumUpSandboxSetup({
       return closed('CHECKOUT_MISMATCH', 400)
     }
     if (checkout.status === 'PENDING') return { accessGranted: false, ok: true, paymentStatus: 'pending', status: 200 }
+    // A paid checkout is not proof of a settled transaction by itself.
+    // Verify the single successful transaction before reporting that
+    // server-side activation would be eligible for further checks.
+    if (checkout.status === 'PAID') {
+      const transactions = Array.isArray(checkout.transactions) ? checkout.transactions : []
+      const successful = transactions.filter((tx) => tx?.status === 'SUCCESSFUL')
+      if (successful.length !== 1 ||
+        successful[0].currency !== 'SEK' ||
+        minorUnitsFromSumUpAmount(successful[0].amount) !== 400 ||
+        !CHECKOUT_ID_RE.test(String(successful[0].id || ''))) {
+        return closed('PAYMENT_TRANSACTION_UNVERIFIED', 409)
+      }
+    }
     if (checkout.status !== 'PAID') return closed('PAYMENT_NOT_COMPLETED', 409)
     // Sandbox never invokes the production activation RPC, even if the token is valid.
     // Keep payment instruments and entitlements untouched in this verification path.

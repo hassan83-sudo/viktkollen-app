@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../services/supabaseClient.js'
 
-const EXPECTED_BRANCH = 'fix/sumup-recurring-production-wiring'
-
 export default function SumUpSandboxIdentityAdmin() {
   const [allowed, setAllowed] = useState(false)
   const [status, setStatus] = useState('idle')

@@ -196,6 +196,9 @@ export default defineConfig(({ mode }) => {
       throw new Error('wardrobe_preview_staging_build_blocked')
     }
     // Real AI calls remain forbidden until a separately reviewed cost gate exists.
+    if (!process.env.WARDROBE_STAGING_SERVICE_ROLE_KEY) {
+      throw new Error('wardrobe_preview_staging_secret_missing')
+    }
     if (process.env.WARDROBE_STAGING_AI_DISABLED !== 'true') {
       throw new Error('wardrobe_preview_ai_not_disabled')
     }

@@ -1,4 +1,4 @@
-import { assertWardrobeStagingConfig } from './wardrobeStagingGuard.js'
+import { assertWardrobeStagingConfig, isWardrobePreview } from './wardrobeStagingGuard.js'
 import { createClient } from '@supabase/supabase-js'
 
 let adminClientOverride = undefined
@@ -14,7 +14,9 @@ export function createSupabaseAdminClient(env = process.env) {
   if (adminClientOverride !== undefined) return adminClientOverride
 
   assertWardrobeStagingConfig(env)
-  const config = getSupabaseAdminConfig(env)
+  const config = isWardrobePreview(env)
+    ? { url: env.SUPABASE_URL, serviceRoleKey: env.WARDROBE_STAGING_SERVICE_ROLE_KEY }
+    : getSupabaseAdminConfig(env)
   if (!config.url || !config.serviceRoleKey) return null
 
   return createClient(config.url, config.serviceRoleKey, {

@@ -1,3 +1,4 @@
+import { isWardrobePreview } from '../_shared/wardrobeStagingGuard.js'
 import { buildAiCoachContext } from '../../src/services/aiCoachContext.js'
 import { createDeterministicAiCoachReply } from '../../src/services/aiCoachDeterministicReplies.js'
 import { classifyAiCoachIntent } from '../../src/services/aiCoachIntentService.js'
@@ -633,6 +634,11 @@ function readVkRoute(request) {
 }
 
 export default async function handler(request, response) {
+  // Wardrobe staging is offline-only: block before auth, billing, writes or AI dispatch.
+  if (isWardrobePreview(process.env)) {
+    response.setHeader('Cache-Control', 'no-store')
+    return response.status(503).json({ ok: false, error: { code: 'WARDROBE_STAGING_API_DISABLED' } })
+  }
   const route = readVkRoute(request)
   if (route === 'ai-help') return handleAiHelpRequest(request, response)
   if (route === 'support') return supportHandler(request, response)

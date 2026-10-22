@@ -1,0 +1,399 @@
+{
+  "deployable": [
+    "api/account-deletion/index.js",
+    "api/adaptive-coach/index.js",
+    "api/ai/index.js",
+    "api/ai-ear/interpret/index.js",
+    "api/analysis-consent/index.js",
+    "api/billing/admin/index.js",
+    "api/billing/user/index.js",
+    "api/body-analysis/index.js",
+    "api/forgotten-items-analysis/index.js",
+    "api/meal-analysis/index.js",
+    "api/nutrition-photo-analysis/index.js",
+    "api/object-bank-scan/index.js"
+  ],
+  "rewrites": [
+    {
+      "source": "/api/billing/quota",
+      "destination": "/api/billing/user?__vk_route=quota"
+    },
+    {
+      "source": "/api/billing/quota/",
+      "destination": "/api/billing/user?__vk_route=quota"
+    },
+    {
+      "source": "/api/billing/subscription",
+      "destination": "/api/billing/user?__vk_route=subscription"
+    },
+    {
+      "source": "/api/billing/subscription/",
+      "destination": "/api/billing/user?__vk_route=subscription"
+    },
+    {
+      "source": "/api/entitlements",
+      "destination": "/api/billing/user?__vk_route=entitlements"
+    },
+    {
+      "source": "/api/entitlements/",
+      "destination": "/api/billing/user?__vk_route=entitlements"
+    },
+    {
+      "source": "/api/billing/plans",
+      "destination": "/api/billing/user?__vk_route=plans"
+    },
+    {
+      "source": "/api/billing/plans/",
+      "destination": "/api/billing/user?__vk_route=plans"
+    },
+    {
+      "source": "/api/billing/capability",
+      "destination": "/api/billing/user?__vk_route=capability"
+    },
+    {
+      "source": "/api/billing/capability/",
+      "destination": "/api/billing/user?__vk_route=capability"
+    },
+    {
+      "source": "/api/billing/usage",
+      "destination": "/api/billing/user?__vk_route=usage"
+    },
+    {
+      "source": "/api/billing/usage/",
+      "destination": "/api/billing/user?__vk_route=usage"
+    },
+    {
+      "source": "/api/billing/plan-change",
+      "destination": "/api/billing/user?__vk_route=plan_change"
+    },
+    {
+      "source": "/api/billing/plan-change/",
+      "destination": "/api/billing/user?__vk_route=plan_change"
+    },
+    {
+      "source": "/api/billing/checkout",
+      "destination": "/api/billing/user?__vk_route=checkout"
+    },
+    {
+      "source": "/api/billing/checkout/",
+      "destination": "/api/billing/user?__vk_route=checkout"
+    },
+    {
+      "source": "/api/billing/sumup-sandbox",
+      "destination": "/api/billing/user?__vk_route=sumup_sandbox"
+    },
+    {
+      "source": "/api/billing/sumup-sandbox/",
+      "destination": "/api/billing/user?__vk_route=sumup_sandbox"
+    },
+    {
+      "source": "/api/billing/webhook",
+      "destination": "/api/billing/user?__vk_route=webhook"
+    },
+    {
+      "source": "/api/billing/webhook/",
+      "destination": "/api/billing/user?__vk_route=webhook"
+    },
+    {
+      "source": "/api/billing/cancel",
+      "destination": "/api/billing/user?__vk_route=schedule_cancel"
+    },
+    {
+      "source": "/api/billing/cancel/",
+      "destination": "/api/billing/user?__vk_route=schedule_cancel"
+    },
+    {
+      "source": "/api/billing/cancel-undo",
+      "destination": "/api/billing/user?__vk_route=undo_cancel"
+    },
+    {
+      "source": "/api/billing/cancel-undo/",
+      "destination": "/api/billing/user?__vk_route=undo_cancel"
+    },
+    {
+      "source": "/api/ai-help",
+      "destination": "/api/ai?__vk_route=ai-help"
+    },
+    {
+      "source": "/api/support",
+      "destination": "/api/ai?__vk_route=support"
+    },
+    {
+      "source": "/api/support-alerts",
+      "destination": "/api/ai?__vk_route=support-alerts"
+    },
+    {
+      "source": "/api/ai-coach",
+      "destination": "/api/ai?__vk_route=ai-coach"
+    },
+    {
+      "source": "/api/bug-monitor",
+      "destination": "/api/ai?__vk_route=bug-monitor"
+    },
+    {
+      "source": "/api/security-center",
+      "destination": "/api/ai?__vk_route=security-center"
+    },
+    {
+      "source": "/api/ai-ear-humming-recognition",
+      "destination": "/api/ai-ear/interpret?__vk_route=humming"
+    }
+  ],
+  "externalCallSites": [
+    {
+      "path": "api/ai/index.js",
+      "line": 268,
+      "operation": "fetch"
+    },
+    {
+      "path": "api/ai-ear/interpret/index.js",
+      "line": 281,
+      "operation": "fetch"
+    },
+    {
+      "path": "api/_shared/aiCoach/service.js",
+      "line": 196,
+      "operation": "fetchImpl"
+    },
+    {
+      "path": "api/_shared/aiEarHummingRoute.js",
+      "line": 68,
+      "operation": "fetchProviderJson"
+    },
+    {
+      "path": "api/_shared/aiEarProviderRoute.js",
+      "line": 131,
+      "operation": "fetchProviderJson"
+    },
+    {
+      "path": "api/_shared/aiEarProviderRoute.js",
+      "line": 138,
+      "operation": "fetchImpl"
+    },
+    {
+      "path": "api/_shared/aiHelp/accountActions.js",
+      "line": 21,
+      "operation": "createClient"
+    },
+    {
+      "path": "api/_shared/aiHelp/service.js",
+      "line": 385,
+      "operation": "fetchImpl"
+    },
+    {
+      "path": "api/_shared/aiHelp/supabaseCostStore.js",
+      "line": 61,
+      "operation": "fetchImpl"
+    },
+    {
+      "path": "api/_shared/aiHelp/supportAlertsHandler.js",
+      "line": 30,
+      "operation": "fetch"
+    },
+    {
+      "path": "api/_shared/billing/providers/sumup.js",
+      "line": 71,
+      "operation": "fetchImpl"
+    },
+    {
+      "path": "api/_shared/googleIdToken.js",
+      "line": 119,
+      "operation": "fetchImpl"
+    },
+    {
+      "path": "api/_shared/nutritionFoodBankLookup.js",
+      "line": 43,
+      "operation": "fetchImpl"
+    },
+    {
+      "path": "api/_shared/openaiGateway.js",
+      "line": 370,
+      "operation": "fetchImpl"
+    },
+    {
+      "path": "api/_shared/openaiGateway.js",
+      "line": 481,
+      "operation": "fetchImpl"
+    },
+    {
+      "path": "api/_shared/supabaseServer.js",
+      "line": 22,
+      "operation": "createClient"
+    },
+    {
+      "path": "api/_shared/verifySupabaseUser.js",
+      "line": 42,
+      "operation": "createClient"
+    },
+    {
+      "path": "src/components/app/homeWindGustEnhancer.js",
+      "line": 35,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/components/billing/BugMonitorAdminEntry.jsx",
+      "line": 20,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/components/billing/BugMonitorPanel.jsx",
+      "line": 16,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/components/billing/PlanCommercialAdmin.jsx",
+      "line": 7,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/components/billing/PlanComparison.jsx",
+      "line": 79,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/components/billing/PlanUsagePanel.jsx",
+      "line": 106,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/components/billing/SecurityCenterPanel.jsx",
+      "line": 24,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/components/billing/SumUpSandboxWidget.jsx",
+      "line": 15,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/features/aiCoach/coachModelClient.js",
+      "line": 30,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/features/aiHelp/aiHelpClient.js",
+      "line": 17,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/features/aiHelp/aiHelpClient.js",
+      "line": 72,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/features/aiHelp/supportClient.js",
+      "line": 7,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/services/accountDeletionClient.js",
+      "line": 54,
+      "operation": "fetchImpl"
+    },
+    {
+      "path": "src/services/ai/realtimeVoiceController.js",
+      "line": 297,
+      "operation": "fetchImpl"
+    },
+    {
+      "path": "src/services/ai/remoteCoachService.js",
+      "line": 68,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/services/aiApiService.js",
+      "line": 47,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/services/aiEarHummingAccess.js",
+      "line": 13,
+      "operation": "fetchImpl"
+    },
+    {
+      "path": "src/services/aiEarInterpret.js",
+      "line": 86,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/services/aiEarProviders.js",
+      "line": 74,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/services/aiEarProviders.js",
+      "line": 167,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/services/billing/bodyScanQuota.js",
+      "line": 51,
+      "operation": "fetchImpl"
+    },
+    {
+      "path": "src/services/billing/stagingLive.js",
+      "line": 206,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/services/billing/stagingLive.js",
+      "line": 223,
+      "operation": "Client"
+    },
+    {
+      "path": "src/services/billing/stagingLive.js",
+      "line": 286,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/services/bodyAnalysisAi.js",
+      "line": 69,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/services/bodyAnalysisService.js",
+      "line": 161,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/services/bugMonitor/bugMonitorClient.js",
+      "line": 80,
+      "operation": "fetchImpl"
+    },
+    {
+      "path": "src/services/entitlements.js",
+      "line": 150,
+      "operation": "fetchImpl"
+    },
+    {
+      "path": "src/services/forgottenItemsAnalysis.js",
+      "line": 132,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/services/nutritionPhotoAnalysisProvider.js",
+      "line": 353,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/services/objectBankScan.js",
+      "line": 118,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/services/overviewWeather.js",
+      "line": 135,
+      "operation": "fetchImpl"
+    },
+    {
+      "path": "src/services/security/analysisConsentProof.js",
+      "line": 202,
+      "operation": "fetch"
+    },
+    {
+      "path": "src/services/supabaseClient.js",
+      "line": 41,
+      "operation": "createClient"
+    }
+  ]
+}

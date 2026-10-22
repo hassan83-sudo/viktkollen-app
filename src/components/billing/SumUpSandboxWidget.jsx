@@ -106,7 +106,7 @@ export default function SumUpSandboxWidget({
       {!startRequested ? <button type="button" onClick={() => setStartRequested(true)}>Starta Sandbox-test (4 kr)</button> : null}
       {phase === 'unavailable' ? <p>Sandbox-kassan är inte tillgänglig.</p> : null}
       {phase === 'ready' ? <div id="sumup-card" /> : null}
-      {widgetState === 'success' ? <p>SumUp tog emot kortet. Servern måste verifiera innan något ändras.</p> : null}
+      {widgetState === 'success' ? <p role="status">SumUp rapporterade success, men betalning och recurring-token är ännu inte verifierade av Viktkollens server. Inget abonnemang har aktiverats av detta test.</p> : null}
       {widgetState === 'auth-screen' ? <p>SumUp visar en verifiering.</p> : null}
       {widgetState === 'fail' || widgetState === 'error' ? <p>SumUp avvisade försöket.</p> : null}
     </article>

@@ -5394,8 +5394,7 @@ const es = mergeTranslation(en, {
     live: { pause: 'Pausa', play: 'Reproducir', previous: 'Anterior', next: 'Siguiente' },
   },
   settings: {
-    folders: {
-      security: { title: 'Seguridad y copia'    legal: {
+    legal: {
       title: 'Condiciones de compra y privacidad', provider: 'Proveedor del servicio', emailLabel: 'Correo de contacto',
       terms: 'Condiciones de compra', subscription: 'Suscripciones y pagos', paymentText: 'El precio, el periodo de suscripción, la renovación y las demás condiciones de pago deben mostrarse antes de realizar una compra. Revisa los detalles antes de confirmar el pago.',
       usage: 'Uso de la aplicación', usageText: 'Eres responsable de utilizar la aplicación legalmente y de proporcionar información lo más precisa posible. Los resultados de la IA son orientativos y no sustituyen una evaluación médica ni el asesoramiento profesional.',
@@ -5404,7 +5403,8 @@ const es = mergeTranslation(en, {
       choices: 'Tus opciones', choicesText: 'Utiliza los ajustes de cuenta y privacidad de la aplicación para las opciones disponibles sobre tus datos. Los datos de contacto para consultas de privacidad se añadirán aquí cuando estén confirmados.',
       contact: 'Contacto',
     },
-, description: 'Copia, restaurar, sync, nube' },
+    folders: {
+      security: { title: 'Seguridad y copia', description: 'Copia, restaurar, sync, nube' },
       notifications: { title: 'Avisos y recordatorios', description: 'Avisos inteligentes, recordatorios, planes' },
       importExport: { title: 'Importar y exportar', description: 'Importación y exportación de datos' },
       goals: { title: 'Metas y progreso', description: 'Metas de peso, logros' },

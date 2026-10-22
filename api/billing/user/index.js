@@ -2,7 +2,7 @@ import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../../_sh
 import { readDurableQuota } from '../../_shared/billing/quotaRead.js'
 import { readDurableUserSubscription } from '../../_shared/billing/subscriptionRead.js'
 import { handleCheckoutRequest } from '../../_shared/billing/checkoutIntent.js'
-import { createServerCheckoutIntentPorts, prepareSumUpSandboxSetup } from '../../_shared/billing/sumupSandboxSetup.js'
+import { createServerCheckoutIntentPorts, prepareSumUpSandboxSetup, verifySumUpSandboxSetup } from '../../_shared/billing/sumupSandboxSetup.js'
 import { handleWebhookRequest } from '../../_shared/billing/providerWebhookIngress.js'
 import { executeUserBillingIntent } from '../../_shared/billing/userLifecycleIntent.js'
 import { lookupBillingAdmin } from '../../_shared/billing/admin.js'
@@ -276,6 +276,20 @@ async function handleSumUpSandbox(request, response, requestId) {
     return response.status(auth.status).json({
       error: auth.error,
       ok: false,
+    })
+  }
+  if (request.body?.action === 'verify') {
+    const result = await verifySumUpSandboxSetup({
+      checkoutId: request.body?.checkoutId,
+      ports: createServerCheckoutIntentPorts(),
+      userId: auth.user.id,
+    })
+    return response.status(result.status).json({
+      accessGranted: false,
+      code: result.code || null,
+      ok: result.ok,
+      paymentStatus: result.paymentStatus || null,
+      requestId,
     })
   }
   const result = await prepareSumUpSandboxSetup({

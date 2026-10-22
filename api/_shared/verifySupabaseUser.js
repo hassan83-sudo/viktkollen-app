@@ -1,3 +1,4 @@
+import { assertWardrobeStagingConfig } from './wardrobeStagingGuard.js'
 import { createClient } from '@supabase/supabase-js'
 import { aiRouteErrorCodes, makeSafeAiRouteError } from './aiRouteErrors.js'
 
@@ -32,6 +33,7 @@ function getSupabaseServerConfig(env = process.env) {
 }
 
 function createSupabaseVerifier(env = process.env) {
+  assertWardrobeStagingConfig(env)
   const config = getSupabaseServerConfig(env)
   if (!config.url || !config.anonKey) {
     return async () => ({ error: { code: 'authUnavailable' } })

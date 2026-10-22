@@ -24,6 +24,20 @@ async function defaultPrepare() {
   return { ok: response.ok && payload?.ok === true, payload, status: response.status }
 }
 
+async function verifySandboxCheckout(checkoutId) {
+  if (!supabase) return { ok: false, code: 'AUTH_REQUIRED' }
+  const { data } = await supabase.auth.getSession()
+  const token = data?.session?.access_token || ''
+  if (!token) return { ok: false, code: 'AUTH_REQUIRED' }
+  const response = await fetch('/api/billing/sumup-sandbox', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'verify', checkoutId }),
+  })
+  const payload = await response.json().catch(() => null)
+  return { ok: response.ok && payload?.ok === true, code: payload?.code, paymentStatus: payload?.paymentStatus }
+}
+
 export default function SumUpSandboxWidget({
   authLoading = false,
   isAuthenticated = false,
@@ -34,6 +48,7 @@ export default function SumUpSandboxWidget({
   const [startRequested, setStartRequested] = useState(false)
   const [checkoutId, setCheckoutId] = useState('')
   const [widgetState, setWidgetState] = useState('')
+  const [verification, setVerification] = useState('idle')
   const [prepareRequest, setPrepareRequest] = useState(null)
 
   useEffect(() => {
@@ -99,6 +114,25 @@ export default function SumUpSandboxWidget({
     }
   }, [checkoutId, mountWidget, phase])
 
+  useEffect(() => {
+    if (widgetState !== 'success' || !checkoutId || verification !== 'idle') return
+    let cancelled = false
+    setVerification('checking')
+    verifySandboxCheckout(checkoutId).then((result) => {
+      if (cancelled) return
+      setVerification(result.ok && result.paymentStatus === 'pending'
+        ? 'pending'
+        : result.code === 'ATOMIC_ACTIVATION_REQUIRED'
+          ? 'activation-required'
+          : result.code === 'RECURRING_INSTRUMENT_MISSING'
+            ? 'instrument-missing'
+            : 'unverified')
+    }).catch(() => {
+      if (!cancelled) setVerification('unverified')
+    })
+    return () => { cancelled = true }
+  }, [widgetState, checkoutId, verification])
+
   if (!isAuthenticated) return null
 
   return (
@@ -113,7 +147,7 @@ export default function SumUpSandboxWidget({
       {!startRequested ? <button type="button" onClick={() => setStartRequested(true)}>Starta Sandbox-test (4 kr)</button> : null}
       {phase === 'unavailable' ? <p>Sandbox-kassan är inte tillgänglig.</p> : null}
       {phase === 'ready' ? <div id="sumup-card" /> : null}
-      {widgetState === 'success' ? <p role="status">SumUp rapporterade success, men betalning och recurring-token är ännu inte verifierade av Viktkollens server. Inget abonnemang har aktiverats av detta test.</p> : null}
+      {widgetState === 'success' ? <p role="status">{verification === 'checking' ? 'Verifierar betalningen hos SumUp…' : verification === 'pending' ? 'SumUp visar fortfarande väntande betalning. Inget abonnemang aktiverat.' : verification === 'activation-required' ? 'Betalningen är verifierad, men säker abonnemangsaktivering saknas ännu.' : verification === 'instrument-missing' ? 'SumUp saknar verifierad recurring-token. Inget abonnemang aktiverat.' : 'SumUp rapporterade success, men betalningen är inte slutverifierad. Inget abonnemang aktiverat.'}</p> : null}
       {widgetState === 'auth-screen' ? <p>SumUp visar en verifiering.</p> : null}
       {widgetState === 'fail' || widgetState === 'error' ? <p>SumUp avvisade försöket.</p> : null}
     </article>

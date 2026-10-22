@@ -117,6 +117,7 @@ export function createInMemorySumUpInitialActivation({ now = () => new Date(), p
         if (!assigned || assigned.planId !== intent.planId) reject('assignment_sync_unconfirmed')
         return resultFrom(intent, stored, assigned.planId)
       }
+      if (intent.status === 'cancelled') reject('checkout_intent_cancelled')
       if (intent.status !== 'pending' && intent.status !== 'expired') reject('checkout_intent_invalid_status')
       if (intent.status === 'expired' || new Date(intent.expiresAt).getTime() <= now().getTime()) {
         reject('checkout_intent_expired')

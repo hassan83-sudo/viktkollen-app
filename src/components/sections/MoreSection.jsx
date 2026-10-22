@@ -418,7 +418,7 @@ function MoreSection({
             <section className="app-information" aria-labelledby="terms-privacy-heading">
               <h3 id="terms-privacy-heading">{t('legal.title')}</h3>
               <p><strong>{t('legal.provider')}:</strong> AppsOnTheGo</p>
-              <p><strong>Namn:</strong> <span aria-label="Namn ej ifyllt">—</span></p>
+              <p><strong>Namn:</strong> Hassan Kayed</p>
               <p><strong>Personnummer:</strong> <span aria-label="Personnummer ej ifyllt">—</span></p>
               <p><strong>{t('legal.emailLabel')}:</strong> </p>
 

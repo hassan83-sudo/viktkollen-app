@@ -98,6 +98,26 @@ export function createServerCheckoutIntentPorts({ client, env = process.env } = 
     return data
   }
   return {
+    async getOwnedIntentByProviderRef({ providerCheckoutRef, userId }) {
+      if (!CHECKOUT_ID_RE.test(String(providerCheckoutRef || '')) || !sumUpCustomerIdForUser(userId)) return null
+      const { data, error } = await resolved.schema('billing').from('checkout_intents')
+        .select('checkout_id,user_id,plan_id,provider,provider_checkout_ref,status')
+        .eq('user_id', userId)
+        .eq('provider', SUMUP_PROVIDER)
+        .eq('provider_checkout_ref', providerCheckoutRef)
+        .limit(2)
+      if (error) throw new Error('intent_lookup_failed')
+      if (!Array.isArray(data) || data.length !== 1) return null
+      const row = data[0]
+      return {
+        checkoutId: row.checkout_id,
+        userId: row.user_id,
+        planId: row.plan_id,
+        provider: row.provider,
+        providerCheckoutRef: row.provider_checkout_ref,
+        status: row.status,
+      }
+    },
     async createIntent({ planId, provider, userId }) {
       const data = await rpc('create_checkout_intent', {
         p_expires_at: new Date(Date.now() + INTENT_TTL_MS).toISOString(),

@@ -23,6 +23,7 @@ const checkout = {
   amount: 4,
   status: 'PAID',
   payment_instrument: { token: 'sandbox-token-123' },
+  transactions: [{ id: '11111111-2222-3333-4444-555555555555', status: 'SUCCESSFUL', currency: 'SEK', amount: 4 }],
 }
 function harness(overrides = {}) {
   let lookups = 0
@@ -99,5 +100,24 @@ test('sandbox verification fails closed when SumUp cannot be reached', async () 
   h.args.transport.retrieveCheckout = async () => { throw new Error('network unavailable') }
   const result = await verifySumUpSandboxSetup(h.args)
   assert.equal(result.code, 'SUMUP_UNAVAILABLE')
+  assert.equal(result.accessGranted, false)
+})
+
+test('sandbox verification refuses PAID checkout without successful transaction', async () => {
+  const h = harness({ checkout: { ...checkout, transactions: [] } })
+  const result = await verifySumUpSandboxSetup(h.args)
+  assert.equal(result.code, 'PAYMENT_TRANSACTION_UNVERIFIED')
+  assert.equal(result.accessGranted, false)
+})
+test('sandbox verification refuses mismatched successful transaction amount', async () => {
+  const h = harness({ checkout: { ...checkout, transactions: [{ ...checkout.transactions[0], amount: 5 }] } })
+  const result = await verifySumUpSandboxSetup(h.args)
+  assert.equal(result.code, 'PAYMENT_TRANSACTION_UNVERIFIED')
+  assert.equal(result.accessGranted, false)
+})
+test('sandbox verification refuses multiple successful transactions', async () => {
+  const h = harness({ checkout: { ...checkout, transactions: [checkout.transactions[0], { ...checkout.transactions[0], id: '99999999-8888-7777-6666-555555555555' }] } })
+  const result = await verifySumUpSandboxSetup(h.args)
+  assert.equal(result.code, 'PAYMENT_TRANSACTION_UNVERIFIED')
   assert.equal(result.accessGranted, false)
 })

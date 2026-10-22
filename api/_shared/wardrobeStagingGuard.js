@@ -28,8 +28,11 @@ export function assertWardrobeStagingConfig(env = {}) {
   if (!isWardrobeStagingUrl(clientUrl) || !isWardrobeStagingUrl(serverUrl)) {
     throw new Error('wardrobe_staging_target_invalid')
   }
-  if (!env.VITE_SUPABASE_ANON_KEY || !env.SUPABASE_ANON_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!env.VITE_SUPABASE_ANON_KEY || !env.SUPABASE_ANON_KEY || !env.WARDROBE_STAGING_SERVICE_ROLE_KEY) {
     throw new Error('wardrobe_staging_credentials_missing')
+  }
+  if (env.WARDROBE_STAGING_AI_DISABLED !== 'true') {
+    throw new Error('wardrobe_staging_ai_not_disabled')
   }
   if (costUrl && !isWardrobeStagingUrl(costUrl)) {
     throw new Error('wardrobe_staging_cost_target_invalid')

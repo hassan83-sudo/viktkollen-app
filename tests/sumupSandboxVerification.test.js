@@ -76,3 +76,28 @@ test('sandbox verification does not activate pending payments', async () => {
   assert.equal(result.paymentStatus, 'pending')
   assert.equal(result.accessGranted, false)
 })
+
+test('sandbox verification refuses missing recurring instrument', async () => {
+  const h = harness({ checkout: { ...checkout, payment_instrument: null } })
+  const result = await verifySumUpSandboxSetup(h.args)
+  assert.equal(result.code, 'RECURRING_INSTRUMENT_MISSING')
+  assert.equal(result.accessGranted, false)
+})
+test('sandbox verification rejects checkout bound to a different intent', async () => {
+  const h = harness({ checkout: { ...checkout, checkout_reference: 'other-intent' } })
+  const result = await verifySumUpSandboxSetup(h.args)
+  assert.equal(result.code, 'CHECKOUT_MISMATCH')
+})
+test('sandbox verification refuses already-consumed intents', async () => {
+  const h = harness({ intent: { ...intent, status: 'consumed' } })
+  const result = await verifySumUpSandboxSetup(h.args)
+  assert.equal(result.code, 'CHECKOUT_NOT_FOUND')
+  assert.equal(result.accessGranted, false)
+})
+test('sandbox verification fails closed when SumUp cannot be reached', async () => {
+  const h = harness()
+  h.args.transport.retrieveCheckout = async () => { throw new Error('network unavailable') }
+  const result = await verifySumUpSandboxSetup(h.args)
+  assert.equal(result.code, 'SUMUP_UNAVAILABLE')
+  assert.equal(result.accessGranted, false)
+})

@@ -185,6 +185,21 @@ export function shouldBuildBodyScanPreview(env = process.env) {
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   loadServerOnlyDevEnv(mode)
+  // Never emit a wardrobe Preview bundle with inherited Production credentials.
+  // This gate is deliberately stricter than the runtime API checks.
+  if (process.env.VERCEL_ENV === 'preview' &&
+      process.env.VERCEL_GIT_COMMIT_REF === 'feature/ai-eye-wardrobe-link-20261022') {
+    const stagingUrl = 'https://armtslzspuebmlysnooq.supabase.co'
+    const requiredUrls = ['VITE_SUPABASE_URL', 'SUPABASE_URL']
+    if (requiredUrls.some((key) => String(process.env[key] || '').replace(/\\/$/, '') !== stagingUrl) ||
+        !process.env.VITE_SUPABASE_ANON_KEY || !process.env.SUPABASE_ANON_KEY) {
+      throw new Error('wardrobe_preview_staging_build_blocked')
+    }
+    // Real AI calls remain forbidden until a separately reviewed cost gate exists.
+    if (process.env.WARDROBE_STAGING_AI_DISABLED !== 'true') {
+      throw new Error('wardrobe_preview_ai_not_disabled')
+    }
+  }
   const bodyScanPreview = shouldBuildBodyScanPreview()
 
   return {

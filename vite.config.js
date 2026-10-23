@@ -202,13 +202,13 @@ function separatePwaIdentity() {
     if (process.env.VERCEL && process.env.VERCEL_ENV !== 'preview') {
       throw new Error('test_pwa_requires_staging_preview')
     }
-    if (process.env.VITE_SUPABASE_URL?.replace(/\\/$/, '') !== stagingUrl ||
+    if (process.env.VITE_SUPABASE_URL?.replace(/\/$/, '') !== stagingUrl ||
         !process.env.VITE_SUPABASE_ANON_KEY) {
       throw new Error('test_pwa_requires_staging_client')
     }
     for (const key of endpointKeys) {
       const value = process.env[key]
-      if (value && value.replace(/\\/$/, '') !== stagingUrl) {
+      if (value && value.replace(/\/$/, '') !== stagingUrl) {
         throw new Error('test_pwa_server_endpoint_mismatch:' + key)
       }
     }

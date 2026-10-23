@@ -142,7 +142,7 @@ function AuthPanel({
       return
     }
 
-    // iOS Safari can retain the focused input's zoom after auth swaps the view.\n    // Release focus before the authenticated screen is rendered.\n    if (event.currentTarget.contains(document.activeElement)) {\n      document.activeElement.blur()\n    }\n\n    await onSignIn({ email: normalizedEmail, password })
+    await onSignIn({ email: normalizedEmail, password })
   }
 
   return (

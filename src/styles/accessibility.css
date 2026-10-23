@@ -900,3 +900,25 @@ html {
 .economy-status:empty {
   position: absolute;
 }
+
+/* Login only: iOS Safari autofill paints a yellow user-agent background.
+   Apply after all other styles and keep a visible blue keyboard focus ring. */
+.welcome-shell .onboarding-form .field input[type='password'],
+.welcome-shell .onboarding-form .field input[autocomplete='current-password'],
+.welcome-shell .onboarding-form .field input[autocomplete='new-password'] {
+  color-scheme: dark;
+}
+
+.welcome-shell .onboarding-form .field input:-webkit-autofill,
+.welcome-shell .onboarding-form .field input:-webkit-autofill:hover,
+.welcome-shell .onboarding-form .field input:-webkit-autofill:focus,
+.welcome-shell .onboarding-form .field input:autofill {
+  -webkit-text-fill-color: #f8fafc !important;
+  -webkit-box-shadow: 0 0 0 1000px #081322 inset !important;
+  box-shadow: 0 0 0 1000px #081322 inset !important;
+  caret-color: #67e8f9 !important;
+  background-color: #081322 !important;
+  background-clip: padding-box;
+  -webkit-background-clip: padding-box;
+  transition: background-color 99999s ease-out 0s;
+}

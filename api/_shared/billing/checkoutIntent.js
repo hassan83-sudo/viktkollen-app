@@ -3,6 +3,7 @@ import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../aiRout
 import { verifySupabaseUser } from '../verifySupabaseUser.js'
 import { readServerPlanSale } from './userLifecycleIntent.js'
 import { getPlanById } from '../../../src/services/billing/planCatalog.js'
+import { createServerCheckoutIntentPorts } from './sumupSandboxSetup.js'
 import { getConfiguredSumUpAdapter, minorUnitsFromSumUpAmount, SUMUP_PROVIDER } from './providers/sumup.js'
 
 const PLAN_ID_RE = /^[A-Za-z0-9._-]{1,80}$/
@@ -59,7 +60,7 @@ function readBody(body) {
  */
 export async function beginCheckout({
   body,
-  ports = checkoutPortsOverride,
+  ports = checkoutPortsOverride || createServerCheckoutIntentPorts(),
   readSale = saleReaderOverride || defaultReadSale,
   userId,
 } = {}) {

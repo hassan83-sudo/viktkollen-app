@@ -12,7 +12,9 @@ function isRecoveryLink() {
     return false
   }
 
-  return new URLSearchParams(window.location.search).get('passwordRecovery') === '1'
+  const query = new URLSearchParams(window.location.search)
+  const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  return query.get('passwordRecovery') === '1' || query.get('type') === 'recovery' || fragment.get('type') === 'recovery'
 }
 
 function AuthPanel({
@@ -37,6 +39,19 @@ function AuthPanel({
   const isResettingPassword = mode === 'reset-password'
   const isChoosingNewPassword = mode === 'choose-new-password'
   const isBusy = authLoading || resetLoading
+
+  useEffect(() => {
+    if (isRecoveryLink()) setMode('choose-new-password')
+    const handleRecoveryNavigation = () => {
+      if (isRecoveryLink()) setMode('choose-new-password')
+    }
+    window.addEventListener('hashchange', handleRecoveryNavigation)
+    window.addEventListener('popstate', handleRecoveryNavigation)
+    return () => {
+      window.removeEventListener('hashchange', handleRecoveryNavigation)
+      window.removeEventListener('popstate', handleRecoveryNavigation)
+    }
+  }, [])
 
   useEffect(() => {
     if (resetCooldown <= 0) {

@@ -99,23 +99,26 @@ export function createServerCheckoutIntentPorts({ client, env = process.env } = 
   }
   return {
     async getOwnedIntentByProviderRef({ providerCheckoutRef, userId }) {
-      if (!CHECKOUT_ID_RE.test(String(providerCheckoutRef || '')) || !sumUpCustomerIdForUser(userId)) return null
-      const { data, error } = await resolved.schema('billing').from('checkout_intents')
-        .select('checkout_id,user_id,plan_id,provider,provider_checkout_ref,status')
-        .eq('user_id', userId)
-        .eq('provider', SUMUP_PROVIDER)
-        .eq('provider_checkout_ref', providerCheckoutRef)
-        .limit(2)
-      if (error) throw new Error('intent_lookup_failed')
-      if (!Array.isArray(data) || data.length !== 1) return null
-      const row = data[0]
+      const ref = String(providerCheckoutRef || '')
+      if (!CHECKOUT_ID_RE.test(ref) || !sumUpCustomerIdForUser(userId)) return null
+      const data = await rpc('read_owned_sumup_checkout_by_ref', {
+        p_provider_checkout_ref: ref,
+        p_user_id: userId,
+      })
+      if (data == null) return null
+      if (data.provider !== SUMUP_PROVIDER
+        || data.provider_checkout_ref !== ref
+        || String(data.user_id) !== String(userId)
+        || typeof data.checkout_id !== 'string'
+        || typeof data.plan_id !== 'string'
+        || typeof data.status !== 'string') return null
       return {
-        checkoutId: row.checkout_id,
-        userId: row.user_id,
-        planId: row.plan_id,
-        provider: row.provider,
-        providerCheckoutRef: row.provider_checkout_ref,
-        status: row.status,
+        checkoutId: data.checkout_id,
+        userId: data.user_id,
+        planId: data.plan_id,
+        provider: data.provider,
+        providerCheckoutRef: data.provider_checkout_ref,
+        status: data.status,
       }
     },
     async createIntent({ planId, provider, userId }) {

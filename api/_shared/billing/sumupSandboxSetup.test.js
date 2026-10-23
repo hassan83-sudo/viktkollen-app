@@ -406,4 +406,67 @@ describe('durable checkout intent ports', () => {
     const route = readFileSync(join(root, 'api/billing/user/index.js'), 'utf8')
     expect(route).toContain('createServerCheckoutIntentPorts()')
   })
+
+  it('reads an owned SumUp checkout by provider reference without selecting the table', async () => {
+    const calls = []
+    const client = {
+      schema(name) {
+        return {
+          async rpc(fn, args) {
+            calls.push({ args, fn, schema: name })
+            if (args.p_user_id !== USER) return { data: null, error: null }
+            return {
+              data: {
+                checkout_id: 'chk_owned',
+                plan_id: SANDBOX_SETUP_PLAN_ID,
+                provider: 'sumup',
+                provider_checkout_ref: args.p_provider_checkout_ref,
+                status: 'pending',
+                user_id: args.p_user_id,
+              },
+              error: null,
+            }
+          },
+        }
+      },
+    }
+    const ports = createServerCheckoutIntentPorts({ client })
+    const owned = await ports.getOwnedIntentByProviderRef({
+      providerCheckoutRef: CHECKOUT_ID,
+      userId: USER,
+    })
+    const other = await ports.getOwnedIntentByProviderRef({
+      providerCheckoutRef: CHECKOUT_ID,
+      userId: '22222222-2222-4222-8222-222222222222',
+    })
+    expect(owned).toEqual({
+      checkoutId: 'chk_owned',
+      planId: SANDBOX_SETUP_PLAN_ID,
+      provider: 'sumup',
+      providerCheckoutRef: CHECKOUT_ID,
+      status: 'pending',
+      userId: USER,
+    })
+    expect(other).toBeNull()
+    expect(calls.map((call) => [call.schema, call.fn])).toEqual([
+      ['billing', 'read_owned_sumup_checkout_by_ref'],
+      ['billing', 'read_owned_sumup_checkout_by_ref'],
+    ])
+    expect(calls[0].args).toEqual({
+      p_provider_checkout_ref: CHECKOUT_ID,
+      p_user_id: USER,
+    })
+    const source = readFileSync(join(root, 'api/_shared/billing/sumupSandboxSetup.js'), 'utf8')
+    expect(source).not.toMatch(/from\('checkout_intents'\)/)
+    expect(source).not.toMatch(/read_sumup_checkout_intent/)
+    const sql = readFileSync(join(root, 'supabase/migrations/20261023143000_billing_read_owned_sumup_checkout_by_ref.sql'), 'utf8')
+    expect(sql).toMatch(/where provider = 'sumup'/)
+    expect(sql).toMatch(/provider_checkout_ref = p_provider_checkout_ref/)
+    expect(sql).toMatch(/user_id = p_user_id/)
+    expect(sql).not.toMatch(/where checkout_id = p_checkout_id/)
+    expect(sql).toMatch(/security definer/)
+    expect(sql).toMatch(/grant execute on function billing\.read_owned_sumup_checkout_by_ref\(text, uuid\) to service_role/)
+    expect(sql).not.toMatch(/grant select|grant all on table billing\.checkout_intents/i)
+    expect(sql).not.toMatch(/activate_verified|access_granted|card_number|token/i)
+  })
 })

@@ -1,0 +1,19 @@
+{
+  "id": "/install/admin",
+  "name": "Viktkollen Admin",
+  "short_name": "VK Admin",
+  "lang": "sv",
+  "display": "standalone",
+  "start_url": "/?app=admin",
+  "scope": "/",
+  "theme_color": "#263b69",
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/pwa-admin.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -100,7 +100,7 @@ export async function goToSection(page, label, sectionId) {
     await page.keyboard.press('Enter')
   } else if (sectionId === 'redo') {
     await goToSection(page, 'Hem', 'home')
-    const button = page.locator('#app-section-home .overview-primary-action-footer')
+    const button = page.locator('#app-section-home').getByRole('button', { name: 'Redo!', exact: true })
     await expect(button).toBeVisible()
     await button.focus()
     await page.keyboard.press('Enter')

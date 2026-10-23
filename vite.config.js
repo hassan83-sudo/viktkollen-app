@@ -4,7 +4,7 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 import { execFileSync } from 'node:child_process'
-import { isWardrobeLocalTest, wardrobeBuildIsolation, wardrobeOfflineBrowserPolicy } from './scripts/wardrobeBuildIsolation.mjs'
+import { isWardrobeLocalTest, wardrobeBuildIsolation, wardrobeOfflineBrowserPolicy, wardrobeAiBrowserPolicy } from './scripts/wardrobeBuildIsolation.mjs'
 
 function manualChunks(id) {
   const normalized = id.replace(/\\/g, '/')
@@ -197,10 +197,10 @@ export default defineConfig(({ mode, command }) => {
   const isolation = isWardrobeLocalTest({ ...process.env, mode, command })
     ? { offline: false, define: {} }
     : wardrobeBuildIsolation({ ...loadEnv(mode, process.cwd(), ''), ...process.env }, sourceBranch)
-  const bodyScanPreview = !isolation.offline && shouldBuildBodyScanPreview()
+  const bodyScanPreview = !isolation.offline && !isolation.aiPreview && shouldBuildBodyScanPreview()
 
   return {
-    ...(isolation.offline ? { envPrefix: isolation.envPrefix } : {}),
+    ...((isolation.offline || isolation.aiPreview) ? { envPrefix: isolation.envPrefix } : {}),
     build: {
       rollupOptions: {
         ...(bodyScanPreview
@@ -220,7 +220,7 @@ export default defineConfig(({ mode, command }) => {
       ...isolation.define,
       __VK_BODY_SCAN_PREVIEW__: JSON.stringify(bodyScanPreview),
     },
-    plugins: [react(), basicSsl(), legacyAiApiDevMiddleware(), nutritionPhotoApiDevMiddleware(), ...(isolation.offline ? [wardrobeOfflineBrowserPolicy()] : [])],
+    plugins: [react(), basicSsl(), legacyAiApiDevMiddleware(), nutritionPhotoApiDevMiddleware(), ...(isolation.offline ? [wardrobeOfflineBrowserPolicy()] : isolation.aiPreview ? [wardrobeAiBrowserPolicy()] : [])],
     server: {
       allowedHosts: true,
       host: true,

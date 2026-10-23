@@ -1,3 +1,4 @@
+import { wardrobeAiConfig } from './wardrobeAiStaging.js'
 import { isWardrobePreview } from './wardrobeStagingGuard.js'
 import { createClient } from '@supabase/supabase-js'
 
@@ -5,6 +6,8 @@ let adminClientOverride = undefined
 
 export function getSupabaseAdminConfig(env = process.env) {
   if (isWardrobePreview(env)) return { serviceRoleKey: '', url: '' }
+  const wardrobe = wardrobeAiConfig(env)
+  if (wardrobe) return { url: wardrobe.url, serviceRoleKey: wardrobe.service }
   return {
     serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_ROLE || '',
     url: env.SUPABASE_URL || env.VITE_SUPABASE_URL || '',

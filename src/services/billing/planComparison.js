@@ -75,6 +75,7 @@ export function buildPlanComparison({ currentPlanId = '', plans = [] } = {}) {
       current: plan.id === currentPlanId,
       forSale: plan.enabled_for_sale === true,
       name: price.name,
+      planId: plan.id,
       priceMinor: plan.price_minor,
       priceText: price.priceText,
       quotas: quotas || [],

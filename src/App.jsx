@@ -2205,6 +2205,8 @@ function App() {
     if (error) {
       setAuthError(getAuthErrorMessage(error))
     } else {
+      setActiveAppSection('home')
+      setMoreIntent(null)
       setAuthSession(data?.session ?? null)
     }
 
@@ -2244,6 +2246,8 @@ function App() {
     if (error) {
       setAuthError(getAuthErrorMessage(error))
     } else {
+      setActiveAppSection('home')
+      setMoreIntent(null)
       setAuthSession(null)
     }
 

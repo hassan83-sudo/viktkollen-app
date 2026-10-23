@@ -1,3 +1,5 @@
+> Historical handoff. Implementation status is superseded by [EXTRA_SCAN_PURCHASES.md](EXTRA_SCAN_PURCHASES.md). Production sales are still disabled.
+
 # Handoff till Claude — Viktkollen, 11 oktober 2026
 
 ## Syfte

@@ -29,6 +29,14 @@
   },
   "rewrites": [
     {
+      "source": "/api/billing/extra-scans-webhook",
+      "destination": "/api/billing/user?__vk_route=extra_scan_webhook"
+    },
+    {
+      "source": "/api/billing/extra-scans",
+      "destination": "/api/billing/user?__vk_route=extra_scans"
+    },
+    {
       "source": "/api/billing/quota",
       "destination": "/api/billing/user?__vk_route=quota"
     },

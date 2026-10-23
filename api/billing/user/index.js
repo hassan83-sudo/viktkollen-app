@@ -1,3 +1,4 @@
+import { handleExtraScanRequest } from '../../_shared/billing/extraScanRoute.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../../_shared/aiRouteErrors.js'
 import { readDurableQuota } from '../../_shared/billing/quotaRead.js'
 import { readDurableUserSubscription } from '../../_shared/billing/subscriptionRead.js'
@@ -41,6 +42,8 @@ const PUBLIC_OPS = Object.freeze({
 const POST_OPS = Object.freeze({
   '/api/billing/plan-change': 'plan_change',
   '/api/billing/checkout': 'checkout',
+  '/api/billing/extra-scans': 'extra_scans',
+  '/api/billing/extra-scans-webhook': 'extra_scan_webhook',
   '/api/billing/sumup-sandbox': 'sumup_sandbox',
   '/api/billing/cancel': 'schedule_cancel',
   '/api/billing/cancel-undo': 'undo_cancel',
@@ -312,6 +315,7 @@ export default async function handler(request, response) {
   void request.query?.op
 
   const postOperation = resolveUserBillingPost(request)
+  if (postOperation === 'extra_scans' || postOperation === 'extra_scan_webhook') return handleExtraScanRequest(request, response, { webhook: postOperation === 'extra_scan_webhook' })
   if (postOperation === 'webhook') return handleWebhookRequest(request, response)
   if (postOperation === 'checkout') return handleCheckoutRequest(request, response)
   if (postOperation === 'sumup_sandbox') return handleSumUpSandbox(request, response, requestId)

@@ -1,3 +1,4 @@
+import ExtraScanPurchases from './ExtraScanPurchases.jsx'
 import { Component, useEffect, useState } from 'react'
 import { supabase } from '../../services/supabaseClient.js'
 import './PlanUsagePanel.css'
@@ -129,6 +130,7 @@ function PlanUsagePanel({ authLoading = false, isAuthenticated = false }) {
       {state === 'loading' ? <p role="status">Hämtar abonnemang…</p> : null}
       {state === 'signed-out' ? <p>Logga in för att se abonnemang och användning.</p> : null}
       {state === 'unavailable' ? <p role="status">Abonnemanget kunde inte hämtas just nu.</p> : null}
+      {isAuthenticated ? <ExtraScanPurchases /> : null}
       {state === 'ready' && snapshot ? (
         <>
           <p aria-label={`Nuvarande plan ${snapshot.plan.name}, ${snapshot.plan.priceText}`}>

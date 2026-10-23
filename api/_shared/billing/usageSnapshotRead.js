@@ -1,3 +1,4 @@
+import { subscriptionOnlyReservations } from './extraScanQuotaRead.js'
 import { createSupabaseAdminClient } from '../supabaseServer.js'
 import { getPlanById } from '../../../src/services/billing/planCatalog.js'
 import { periodBounds } from '../../../src/services/billing/period.js'
@@ -93,13 +94,14 @@ export async function readPostgresUsageSnapshot(client, userId) {
   )
   const period = periodBounds(plan.billing_interval || 'month')
   const reservations = await listRows(
-    client.schema('billing').from('quota_reservations').select('feature, unit, status, quantity, actual_quantity, expires_at, period_start').eq('user_id', userId),
+    client.schema('billing').from('quota_reservations').select('reservation_id, feature, unit, status, quantity, actual_quantity, expires_at, period_start').eq('user_id', userId),
   )
+  const subscriptionRows = await subscriptionOnlyReservations(client, userId, reservations)
   return buildUsageSnapshot({
     entitlements,
     period,
     plan: { price_minor: plan.price_minor },
-    reservations,
+    reservations: subscriptionRows,
   })
 }
 

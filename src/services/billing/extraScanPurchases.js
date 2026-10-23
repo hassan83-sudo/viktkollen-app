@@ -1,5 +1,7 @@
 /**
- * Extra scanning purchases — preparation only.
+ * Extra scanning product validation and legacy disabled availability API.
+ * The isolated sandbox flow is gated by server-only extraScanConfig; this flag
+ * never enables purchases in the browser.
  * NO prices are approved, NO checkout is enabled, and this module never grants quota.
  * The final server flow must verify SumUp payment before a durable, idempotent grant.
  */

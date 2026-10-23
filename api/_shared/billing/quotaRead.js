@@ -1,3 +1,4 @@
+import { subscriptionOnlyReservations } from './extraScanQuotaRead.js'
 import { createSupabaseAdminClient } from '../supabaseServer.js'
 import { QUOTA_STATUS } from '../../../src/services/billing/catalog.js'
 import { resolveFeatureId } from '../../../src/services/billing/features.js'
@@ -178,13 +179,14 @@ export async function readDurableQuota({
     }
     const reservations = await listRows(
       billing.from('quota_reservations')
-        .select('status, quantity, actual_quantity, expires_at, period_start')
+        .select('reservation_id, status, quantity, actual_quantity, expires_at, period_start')
         .eq('user_id', userId)
         .eq('feature', featureId)
         .eq('unit', entitlement.unit),
     )
     const periodStart = new Date(period.period_start).getTime()
-    const inPeriod = reservations.filter((row) => new Date(row.period_start).getTime() === periodStart)
+    const subscriptionRows = await subscriptionOnlyReservations(client, userId, reservations)
+    const inPeriod = subscriptionRows.filter((row) => new Date(row.period_start).getTime() === periodStart)
     const usage = summarizeQuotaReservations(inPeriod, now)
     const remaining = Math.max(0, limit - usage.committed - usage.reserved)
     return {

@@ -48,6 +48,6 @@ Still missing / not verified:
 4. Execute the multi-session concurrency script against isolated PostgreSQL. Do not describe PGlite's serialized test as that verification.
 5. Refund/reversal processing is implemented when provider state is retrieved; independent periodic reconciliation and reliable chargeback notification delivery are not implemented/verified. No automated cash refund is initiated by this feature.
 6. Final commercial prices and production activation require a separate decision. Production is hard-disabled by this implementation.
-7. PR #24 is based on an older main and GitHub reports it is not mergeable. Integration with current main has not been performed; resolve that separately without overwriting parallel work.
+7. PR #24 continues from its existing older base. Integration with current main has not been performed; resolve that separately without overwriting parallel work.
 
 Do not merge or enable production sales until the outstanding sandbox and locking verification is complete.

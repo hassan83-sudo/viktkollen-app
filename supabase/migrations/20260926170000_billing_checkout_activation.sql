@@ -346,7 +346,7 @@ begin
     p_status => 'ACTIVE',
     p_period_start => p_period_start,
     p_period_end => p_period_end,
-    p_cancel_at_period_end => true,
+    p_cancel_at_period_end => false,
     p_external_event_id => p_provider_event_id,
     p_past_due_grace_until => null,
     p_pending_plan_id => null,

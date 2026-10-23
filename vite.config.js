@@ -182,6 +182,35 @@ export function shouldBuildBodyScanPreview(env = process.env) {
   return !env.VERCEL && env.VERCEL_ENV === undefined
 }
 
+// Dedicated installations use separate Vercel projects/hostnames and build identities.
+// The public Viktkollen build remains byte-for-byte unchanged when no variant is set.
+function separatePwaIdentity() {
+  const variant = process.env.VITE_APP_VARIANT || 'production'
+  if (!['production', 'admin', 'test'].includes(variant)) {
+    throw new Error('invalid_pwa_variant')
+  }
+  if (variant === 'test' && process.env.VERCEL) {
+    const url = process.env.VITE_SUPABASE_URL || ''
+    if (process.env.VERCEL_ENV !== 'preview' ||
+        !/^https:\/\/armtslzspuebmlysnooq\.supabase\.co\/?$/.test(url)) {
+      throw new Error('test_pwa_requires_staging_preview')
+    }
+  }
+  return {
+    name: 'separate-pwa-identity',
+    transformIndexHtml(html) {
+      if (variant === 'production') return html
+      const name = variant === 'admin' ? 'Viktkollen Admin' : 'Viktkollen Test'
+      return html
+        .replace('href="/manifest.webmanifest"', `href="/manifest-${variant}.webmanifest"`)
+        .replace('href="/pwa-icon-192.png"', `href="/pwa-${variant}.svg"`)
+        .replace('href="/favicon.svg"', `href="/pwa-${variant}.svg"`)
+        .replace('<title>Viktkollen</title>', `<title>${name}</title>`)
+        .replace('content="Viktkollen" />', `content="${name}" />`)
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   loadServerOnlyDevEnv(mode)
@@ -206,7 +235,7 @@ export default defineConfig(({ mode }) => {
     define: {
       __VK_BODY_SCAN_PREVIEW__: JSON.stringify(bodyScanPreview),
     },
-    plugins: [react(), basicSsl(), legacyAiApiDevMiddleware(), nutritionPhotoApiDevMiddleware()],
+    plugins: [separatePwaIdentity(), react(), basicSsl(), legacyAiApiDevMiddleware(), nutritionPhotoApiDevMiddleware()],
     server: {
       allowedHosts: true,
       host: true,

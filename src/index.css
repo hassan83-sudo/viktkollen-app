@@ -134,3 +134,22 @@ h2 {
   color: #16313a;
   background: #b8e6eb;
 }
+
+/* Keep sign-in controls at a readable size on narrow screens. Safari zooms
+   focused form fields when their computed font size is below 16px. */
+@media (max-width: 560px) {
+  .welcome-shell input,
+  .login-shell input {
+    font-size: 16px;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .welcome-shell,
+  .login-shell,
+  .welcome-card,
+  .login-card {
+    min-width: 0;
+    max-width: 100%;
+  }
+}

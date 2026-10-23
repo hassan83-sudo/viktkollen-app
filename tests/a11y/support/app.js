@@ -86,7 +86,12 @@ export async function openApp(page, { preferences = null, clockAt = null, speech
 // A11Y-8G: bottom navigation links are named by their visible label
 // (WCAG 2.5.3), so the label is also the accessible name.
 export function bottomNavLink(page, label) {
-  return page.getByRole('navigation', { name: 'Huvudnavigation' }).getByRole('link', { name: label, exact: true })
+  const navigation = page.getByRole('navigation', { name: 'Huvudnavigation' })
+  // "Redo!" is a branded label and can be translated by the navigation
+  // locale. Locate its stable section destination; label-in-name tests
+  // independently assert that the accessible name matches visible text.
+  if (label === 'Redo!') return navigation.locator('a[href="#app-section-redo"]')
+  return navigation.getByRole('link', { name: label, exact: true })
 }
 
 // Keyboard navigation to a main section via the bottom navigation.

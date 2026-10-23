@@ -208,7 +208,8 @@ export function createSumUpCheckoutAdapter({
       if (checkout.purpose === 'SETUP_RECURRING_PAYMENT') {
         return closed('SUMUP_SETUP_REQUIRES_ATOMIC_ACTIVATION', 400)
       }
-      const period = sumUpMonthPeriod(paidAt)
+      // Hosted checkout is a one-time purchase: exactly 30 days of access.
+      const period = { start: paidAt.toISOString(), end: new Date(paidAt.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString() }
       return {
         ok: true,
         payload: {

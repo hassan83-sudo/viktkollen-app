@@ -66,6 +66,15 @@ export function getAuthErrorMessage(error) {
     return 'E-postadressen behöver bekräftas innan du kan logga in.'
   }
 
+  if (
+    message.includes('new password should be different') ||
+    message.includes('same password') ||
+    message.includes('password is the same') ||
+    message.includes('different from the old password')
+  ) {
+    return 'Du kan inte använda ditt nuvarande lösenord igen. Välj ett nytt lösenord.'
+  }
+
   if (message.includes('password')) {
     return 'Lösenordet behöver vara minst 6 tecken.'
   }

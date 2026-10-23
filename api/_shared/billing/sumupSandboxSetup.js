@@ -352,8 +352,7 @@ export async function verifySumUpSandboxSetup({
     }
   }
   if (checkout.status !== 'PAID') return closed('PAYMENT_NOT_COMPLETED', 409, 'payment-not-completed')
-  // Sandbox never invokes the production activation RPC, even if the token is valid.
-  // Keep payment instruments and entitlements untouched in this verification path.
+  // This read-only preflight never activates access; the route may proceed only through the separately guarded atomic Staging path.
   const token = checkout.payment_instrument?.token
   const hasInstrument = typeof token === 'string' && /^[A-Za-z0-9._:-]{8,80}$/.test(token)
   return {
@@ -381,7 +380,8 @@ export async function activateOwnedSumUpSandboxSetup({
   transport,
   userId,
 } = {}) {
-  const databaseUrl = String(env.SUPABASE_URL || env.VITE_SUPABASE_URL || '').replace(/\\/+$/, '')
+  const rawDatabaseUrl = String(env.SUPABASE_URL || env.VITE_SUPABASE_URL || '').trim()
+  const databaseUrl = rawDatabaseUrl.endsWith('/') ? rawDatabaseUrl.slice(0, -1) : rawDatabaseUrl
   if (env.VERCEL_ENV !== 'preview'
     || env.VERCEL_GIT_COMMIT_REF !== SUMUP_ACTIVATION_PREVIEW_BRANCH
     || databaseUrl !== SUMUP_STAGING_DATABASE_URL) {
@@ -392,6 +392,23 @@ export async function activateOwnedSumUpSandboxSetup({
   }
   if (typeof ports?.getOwnedIntentByProviderRef !== 'function') {
     return closed('DURABLE_UNAVAILABLE', 503, 'ports-missing')
+  }
+  let ownedIntent
+  try {
+    ownedIntent = await ports.getOwnedIntentByProviderRef({
+      providerCheckoutRef: checkoutId,
+      userId,
+    })
+  } catch {
+    return closed('DURABLE_UNAVAILABLE', 503, 'intent-lookup')
+  }
+  if (!ownedIntent
+    || ownedIntent.planId !== SANDBOX_SETUP_PLAN_ID
+    || ownedIntent.provider !== SUMUP_PROVIDER
+    || ownedIntent.providerCheckoutRef !== checkoutId
+    || String(ownedIntent.userId) !== String(userId)
+    || !['pending', 'consumed', 'cancelled', 'expired'].includes(ownedIntent.status)) {
+    return closed('CHECKOUT_NOT_FOUND', 404, 'intent-unusable')
   }
   const config = readSumUpConfig(env)
   if (!config) return closed('SANDBOX_NOT_CONFIGURED', 503, 'config-missing')
@@ -407,24 +424,15 @@ export async function activateOwnedSumUpSandboxSetup({
 
   const ownedIntents = {
     async get(intentId) {
-      const owned = await ports.getOwnedIntentByProviderRef({
-        providerCheckoutRef: checkoutId,
-        userId,
-      })
-      if (!owned
-        || owned.checkoutId !== intentId
-        || owned.planId !== SANDBOX_SETUP_PLAN_ID
-        || owned.provider !== SUMUP_PROVIDER
-        || owned.providerCheckoutRef !== checkoutId
-        || String(owned.userId) !== String(userId)) return null
+      if (ownedIntent.checkoutId !== intentId) return null
       return {
-        checkoutId: owned.checkoutId,
-        expiresAt: owned.expiresAt,
-        planId: owned.planId,
-        provider: owned.provider,
-        providerCheckoutRef: owned.providerCheckoutRef,
-        status: owned.status,
-        userId: owned.userId,
+        checkoutId: ownedIntent.checkoutId,
+        expiresAt: ownedIntent.expiresAt,
+        planId: ownedIntent.planId,
+        provider: ownedIntent.provider,
+        providerCheckoutRef: ownedIntent.providerCheckoutRef,
+        status: ownedIntent.status,
+        userId: ownedIntent.userId,
       }
     },
   }

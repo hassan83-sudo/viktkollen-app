@@ -6,6 +6,7 @@ import { createInMemoryCheckoutActivation } from './checkoutActivation.js'
 import { createSumUpHttpTransport } from './providers/sumup.js'
 import { activateVerifiedSumUpSetup } from './sumupInitialActivation.js'
 import {
+  activateOwnedSumUpSandboxSetup,
   createServerCheckoutIntentPorts,
   prepareSumUpSandboxSetup,
   SANDBOX_SETUP_PLAN_ID,
@@ -468,5 +469,57 @@ describe('durable checkout intent ports', () => {
     expect(sql).toMatch(/grant execute on function billing\.read_owned_sumup_checkout_by_ref\(text, uuid\) to service_role/)
     expect(sql).not.toMatch(/grant select|grant all on table billing\.checkout_intents/i)
     expect(sql).not.toMatch(/activate_verified|access_granted|card_number|token/i)
+  })
+})
+
+
+describe('Preview-only atomic SumUp setup activation', () => {
+  it('refuses to activate unless the exact Preview branch points at Staging', async () => {
+    const transport = {
+      async retrieveMerchant() { throw new Error('must not contact SumUp') },
+    }
+    const result = await activateOwnedSumUpSandboxSetup({
+      checkoutId: CHECKOUT_ID,
+      env: {
+        SUMUP_API_KEY: 'test-only-key',
+        SUMUP_MERCHANT_CODE: 'MTEST01',
+        SUPABASE_URL: 'https://production-project.supabase.co',
+        VERCEL_ENV: 'production',
+        VERCEL_GIT_COMMIT_REF: 'main',
+      },
+      ports: { async getOwnedIntentByProviderRef() { throw new Error('must not query billing') } },
+      transport,
+      userId: USER,
+    })
+    expect(result).toMatchObject({ accessGranted: false, code: 'PREVIEW_ONLY', ok: false, status: 403 })
+  })
+
+  it('does not activate a checkout when the authenticated user does not own its intent', async () => {
+    const rpcCalls = []
+    const transport = {
+      async retrieveMerchant(code) { return { merchant_code: code, sandbox: true } },
+      async retrieveCheckout(id) {
+        return { ...checkoutRow(4, 'PAID'), id, checkout_reference: 'chk_not_owned',
+          transactions: [{ amount: 4, currency: 'SEK', id: '7164c99b-13cb-42a1-8ba1-3c2c46a29de8',
+            status: 'SUCCESSFUL', timestamp: '2026-10-23T10:00:00.000Z' }],
+          payment_instrument: { token: 'test-token-12345' } }
+      },
+    }
+    const result = await activateOwnedSumUpSandboxSetup({
+      callRpc: async (...args) => { rpcCalls.push(args); return { access_granted: true } },
+      checkoutId: CHECKOUT_ID,
+      env: {
+        SUMUP_API_KEY: 'test-only-key',
+        SUMUP_MERCHANT_CODE: 'MTEST01',
+        SUPABASE_URL: 'https://armtslzspuebmlysnooq.supabase.co',
+        VERCEL_ENV: 'preview',
+        VERCEL_GIT_COMMIT_REF: 'fix/sumup-recurring-production-wiring',
+      },
+      ports: { async getOwnedIntentByProviderRef() { return null } },
+      transport,
+      userId: USER,
+    })
+    expect(result).toMatchObject({ accessGranted: false, code: 'CHECKOUT_INTENT_MISSING', ok: false })
+    expect(rpcCalls).toEqual([])
   })
 })

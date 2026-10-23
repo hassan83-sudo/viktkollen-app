@@ -2,7 +2,7 @@ import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../../_sh
 import { readDurableQuota } from '../../_shared/billing/quotaRead.js'
 import { readDurableUserSubscription } from '../../_shared/billing/subscriptionRead.js'
 import { handleCheckoutRequest } from '../../_shared/billing/checkoutIntent.js'
-import { createServerCheckoutIntentPorts, prepareSumUpSandboxSetup, verifySumUpSandboxSetup } from '../../_shared/billing/sumupSandboxSetup.js'
+import { activateOwnedSumUpSandboxSetup, createServerCheckoutIntentPorts, prepareSumUpSandboxSetup, verifySumUpSandboxSetup } from '../../_shared/billing/sumupSandboxSetup.js'
 import { handleWebhookRequest } from '../../_shared/billing/providerWebhookIngress.js'
 import { executeUserBillingIntent } from '../../_shared/billing/userLifecycleIntent.js'
 import { lookupBillingAdmin } from '../../_shared/billing/admin.js'
@@ -306,11 +306,20 @@ async function handleSumUpSandbox(request, response, requestId) {
     })
   }
   if (action === 'verify') {
-    const result = await verifySumUpSandboxSetup({
+    const ports = createServerCheckoutIntentPorts()
+    let result = await verifySumUpSandboxSetup({
       checkoutId: request.body?.checkoutId,
-      ports: createServerCheckoutIntentPorts(),
+      ports,
       userId: auth.user.id,
     })
+    // A webhook may have activated the same checkout already; the atomic RPC is idempotent.
+    if (result.code === 'ATOMIC_ACTIVATION_REQUIRED' || result.code === 'CHECKOUT_NOT_FOUND') {
+      result = await activateOwnedSumUpSandboxSetup({
+        checkoutId: request.body?.checkoutId,
+        ports,
+        userId: auth.user.id,
+      })
+    }
     if (!result.ok) {
       logSumUpSandboxFailure({
         action,
@@ -321,10 +330,11 @@ async function handleSumUpSandbox(request, response, requestId) {
       })
     }
     return response.status(result.status).json({
-      accessGranted: false,
+      accessGranted: result.accessGranted === true,
       code: result.code || null,
       ok: result.ok,
       paymentStatus: result.paymentStatus || null,
+      planId: result.planId || null,
       requestId,
     })
   }

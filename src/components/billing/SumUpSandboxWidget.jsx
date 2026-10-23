@@ -35,7 +35,7 @@ async function verifySandboxCheckout(checkoutId) {
     body: JSON.stringify({ action: 'verify', checkoutId }),
   })
   const payload = await response.json().catch(() => null)
-  return { ok: response.ok && payload?.ok === true, code: payload?.code, paymentStatus: payload?.paymentStatus }
+  return { ok: response.ok && payload?.ok === true, accessGranted: payload?.accessGranted === true, code: payload?.code, paymentStatus: payload?.paymentStatus }
 }
 
 export default function SumUpSandboxWidget({
@@ -120,9 +120,11 @@ export default function SumUpSandboxWidget({
     setVerification('checking')
     verifySandboxCheckout(checkoutId).then((result) => {
       if (cancelled) return
-      setVerification(result.ok && result.paymentStatus === 'pending'
-        ? 'pending'
-        : result.code === 'ATOMIC_ACTIVATION_REQUIRED'
+      setVerification(result.ok && result.accessGranted
+        ? 'activated'
+        : result.ok && result.paymentStatus === 'pending'
+          ? 'pending'
+          : result.code === 'ATOMIC_ACTIVATION_REQUIRED'
           ? 'activation-required'
           : result.code === 'RECURRING_INSTRUMENT_MISSING'
             ? 'instrument-missing'
@@ -147,7 +149,7 @@ export default function SumUpSandboxWidget({
       {!startRequested ? <button type="button" onClick={() => setStartRequested(true)}>Starta Sandbox-test (4 kr)</button> : null}
       {phase === 'unavailable' ? <p>Sandbox-kassan är inte tillgänglig.</p> : null}
       {phase === 'ready' ? <div id="sumup-card" /> : null}
-      {widgetState === 'success' ? <p role="status">{verification === 'checking' ? 'Verifierar betalningen hos SumUp…' : verification === 'pending' ? 'SumUp visar fortfarande väntande betalning. Inget abonnemang aktiverat.' : verification === 'activation-required' ? 'Betalningen är verifierad, men säker abonnemangsaktivering saknas ännu.' : verification === 'instrument-missing' ? 'SumUp saknar verifierad recurring-token. Inget abonnemang aktiverat.' : 'SumUp rapporterade success, men betalningen är inte slutverifierad. Inget abonnemang aktiverat.'}</p> : null}
+      {widgetState === 'success' ? <p role="status">{verification === 'checking' ? 'Verifierar betalningen hos SumUp…' : verification === 'activated' ? 'Betalningen är verifierad och testabonnemanget har aktiverats i Staging.' : verification === 'pending' ? 'SumUp visar fortfarande väntande betalning. Inget abonnemang aktiverat.' : verification === 'activation-required' ? 'Betalningen är verifierad, men säker abonnemangsaktivering saknas ännu.' : verification === 'instrument-missing' ? 'SumUp saknar verifierad recurring-token. Inget abonnemang aktiverat.' : 'SumUp rapporterade success, men betalningen är inte slutverifierad. Inget abonnemang aktiverat.'}</p> : null}
       {widgetState === 'auth-screen' ? <p>SumUp visar en verifiering.</p> : null}
       {widgetState === 'fail' || widgetState === 'error' ? <p>SumUp avvisade försöket.</p> : null}
     </article>

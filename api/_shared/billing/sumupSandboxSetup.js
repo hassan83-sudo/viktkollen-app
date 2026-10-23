@@ -9,6 +9,8 @@ import {
   sumUpMajorFromMinor,
 } from './providers/sumup.js'
 import { sumUpCustomerIdForUser } from './sumupRecurring.js'
+import { activateVerifiedSumUpSetup } from './sumupInitialActivation.js'
+import { createServerSubscriptionRpcCaller } from './subscriptionRpcCaller.js'
 
 export const SANDBOX_SETUP_PLAN_ID = 'plan.prelim.sek.month.04'
 const CHECKOUT_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -360,5 +362,97 @@ export async function verifySumUpSandboxSetup({
     ok: false,
     status: 409,
     step: hasInstrument ? 'activation-required' : 'instrument-missing',
+  }
+}
+
+
+const SUMUP_ACTIVATION_PREVIEW_BRANCH = 'fix/sumup-recurring-production-wiring'
+const SUMUP_STAGING_DATABASE_URL = 'https://armtslzspuebmlysnooq.supabase.co'
+
+/**
+ * Explicit, owner-scoped activation for the isolated SumUp Preview test only.
+ * It refuses all other branches and any database URL except Staging.
+ */
+export async function activateOwnedSumUpSandboxSetup({
+  callRpc,
+  checkoutId,
+  env = process.env,
+  ports,
+  transport,
+  userId,
+} = {}) {
+  const databaseUrl = String(env.SUPABASE_URL || env.VITE_SUPABASE_URL || '').replace(/\\/+$/, '')
+  if (env.VERCEL_ENV !== 'preview'
+    || env.VERCEL_GIT_COMMIT_REF !== SUMUP_ACTIVATION_PREVIEW_BRANCH
+    || databaseUrl !== SUMUP_STAGING_DATABASE_URL) {
+    return closed('PREVIEW_ONLY', 403, 'environment-guard')
+  }
+  if (!CHECKOUT_ID_RE.test(String(checkoutId || '')) || !sumUpCustomerIdForUser(userId)) {
+    return closed('INVALID_CHECKOUT', 400, 'checkout-id')
+  }
+  if (typeof ports?.getOwnedIntentByProviderRef !== 'function') {
+    return closed('DURABLE_UNAVAILABLE', 503, 'ports-missing')
+  }
+  const config = readSumUpConfig(env)
+  if (!config) return closed('SANDBOX_NOT_CONFIGURED', 503, 'config-missing')
+  const http = transport || createSumUpHttpTransport({ apiKey: config.apiKey })
+  try {
+    const merchant = await http.retrieveMerchant(config.merchantCode)
+    if (merchant?.sandbox !== true || merchant?.merchant_code !== config.merchantCode) {
+      return closed('SANDBOX_IDENTITY_REQUIRED', 403, 'merchant-unproven')
+    }
+  } catch {
+    return closed('SUMUP_UNAVAILABLE', 503, 'merchant-unreachable')
+  }
+
+  const ownedIntents = {
+    async get(intentId) {
+      const owned = await ports.getOwnedIntentByProviderRef({
+        providerCheckoutRef: checkoutId,
+        userId,
+      })
+      if (!owned
+        || owned.checkoutId !== intentId
+        || owned.planId !== SANDBOX_SETUP_PLAN_ID
+        || owned.provider !== SUMUP_PROVIDER
+        || owned.providerCheckoutRef !== checkoutId
+        || String(owned.userId) !== String(userId)) return null
+      return {
+        checkoutId: owned.checkoutId,
+        expiresAt: owned.expiresAt,
+        planId: owned.planId,
+        provider: owned.provider,
+        providerCheckoutRef: owned.providerCheckoutRef,
+        status: owned.status,
+        userId: owned.userId,
+      }
+    },
+  }
+
+  try {
+    const rpc = callRpc || createServerSubscriptionRpcCaller({ env })
+    const activated = await activateVerifiedSumUpSetup({
+      callRpc: rpc,
+      checkoutId,
+      intents: ownedIntents,
+      merchantCode: config.merchantCode,
+      transport: http,
+      userId,
+    })
+    if (activated.ok && activated.accessGranted) {
+      return { ...activated, status: 200, paymentStatus: 'paid' }
+    }
+    const code = activated.code || 'DURABLE_UNAVAILABLE'
+    const status = ['duplicate_open_subscription', 'duplicate_external_event', 'provider_subscription_conflict', 'instrument_conflict'].includes(code)
+      ? 409
+      : ['INVALID_PROVIDER_EVENT', 'INVALID_PLAN', 'AMOUNT_MISMATCH', 'CURRENCY_MISMATCH', 'MERCHANT_MISMATCH', 'CUSTOMER_MISMATCH', 'PAYMENT_PENDING', 'PAYMENT_FAILED', 'PAYMENT_UNKNOWN', 'UNVERIFIED_INSTRUMENT', 'CHECKOUT_INTENT_MISSING', 'CHECKOUT_INTENT_CANCELLED', 'CHECKOUT_INTENT_EXPIRED', 'WRONG_CHECKOUT_REF', 'PURPOSE_MISMATCH'].includes(code)
+        ? 400
+        : 503
+    return closed(code, status, 'atomic-activation')
+  } catch (error) {
+    const code = typeof error?.code === 'string' && /^[a-zA-Z0-9_]{1,64}$/.test(error.code)
+      ? error.code
+      : 'DURABLE_UNAVAILABLE'
+    return closed(code, code === 'duplicate_open_subscription' || code === 'instrument_conflict' ? 409 : 503, 'atomic-activation')
   }
 }

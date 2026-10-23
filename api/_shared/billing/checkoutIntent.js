@@ -84,6 +84,8 @@ export async function beginCheckout({
   void input.user_id
   void input.userId
 
+  const paymentMode = input.payment_mode == null ? 'one_time' : input.payment_mode
+  if (paymentMode !== 'one_time') return fail('UNSUPPORTED_PAYMENT_MODE', 400)
   const planId = String(input.plan_id || '').trim()
   if (!PLAN_ID_RE.test(planId) || planId === 'plan.free') return fail('INVALID_PLAN', 400)
   if (typeof readSale !== 'function') return fail('DURABLE_UNAVAILABLE', 503)

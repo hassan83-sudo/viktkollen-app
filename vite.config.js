@@ -190,10 +190,34 @@ function separatePwaIdentity() {
     throw new Error('invalid_pwa_variant')
   }
   if (variant === 'test') {
-    const url = process.env.VITE_SUPABASE_URL || ''
-    if ((process.env.VERCEL && process.env.VERCEL_ENV !== 'preview') ||
-        !/^https:\/\/armtslzspuebmlysnooq\.supabase\.co\/?$/.test(url)) {
+    // Test installations must never build with a Production database endpoint,
+    // including the endpoints used by serverless functions.
+    const stagingUrl = 'https://armtslzspuebmlysnooq.supabase.co'
+    const endpointKeys = [
+      'VITE_SUPABASE_URL',
+      'SUPABASE_URL',
+      'AI_HELP_COST_SUPABASE_URL',
+      'HUMMING_QUOTA_SUPABASE_URL',
+    ]
+    if (process.env.VERCEL && process.env.VERCEL_ENV !== 'preview') {
       throw new Error('test_pwa_requires_staging_preview')
+    }
+    if (process.env.VITE_SUPABASE_URL?.replace(/\\/$/, '') !== stagingUrl ||
+        !process.env.VITE_SUPABASE_ANON_KEY) {
+      throw new Error('test_pwa_requires_staging_client')
+    }
+    for (const key of endpointKeys) {
+      const value = process.env[key]
+      if (value && value.replace(/\\/$/, '') !== stagingUrl) {
+        throw new Error('test_pwa_server_endpoint_mismatch:' + key)
+      }
+    }
+    const serverKeyNames = Object.keys(process.env).filter((key) =>
+      /SUPABASE.*(SERVICE_ROLE|SECRET_KEY)/.test(key))
+    for (const key of serverKeyNames) {
+      if (process.env[key] && !process.env.SUPABASE_URL) {
+        throw new Error('test_pwa_server_key_without_staging_endpoint:' + key)
+      }
     }
   }
   return {

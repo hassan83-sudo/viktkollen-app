@@ -261,9 +261,9 @@ async function handleCapability(request, response, auth, requestId) {
   })
 }
 
-function logSumUpSandboxFailure({ action, code, requestId, status, step }) {
+export function logSumUpSandboxFailure({ action, code, requestId, status, step }) {
   // One JSON line. Vercel shows the string itself. Values are codes and booleans only.
-  const safeCode = typeof code === 'string' && /^[A-Z0-9_]{1,64}$/.test(code) ? code : 'UNKNOWN'
+  const safeCode = typeof code === 'string' && /^[A-Za-z0-9_]{1,64}$/.test(code) ? code : 'UNKNOWN'
   const safeStep = typeof step === 'string' && /^[a-z0-9-]{1,40}$/.test(step) ? step : ''
   const safeRequestId = typeof requestId === 'string' && /^[A-Za-z0-9-]{1,80}$/.test(requestId) ? requestId : ''
   console.error(JSON.stringify({

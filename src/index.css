@@ -153,3 +153,18 @@ h2 {
     max-width: 100%;
   }
 }
+
+/* Login fields: keep iOS autofill and focus in the dark app palette. */
+.welcome-shell .onboarding-form .field input:is(:-webkit-autofill, :-webkit-autofill:hover, :-webkit-autofill:focus) {
+  -webkit-text-fill-color: #f8fafc !important;
+  -webkit-box-shadow: 0 0 0 1000px #081322 inset !important;
+  box-shadow: 0 0 0 1000px #081322 inset !important;
+  caret-color: #67e8f9;
+  transition: background-color 9999s ease-out 0s;
+}
+
+.welcome-shell .onboarding-form .field input:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.12);
+}

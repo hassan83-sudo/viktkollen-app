@@ -15,8 +15,8 @@ const CHECKOUT_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 const INTENT_ID_RE = /^[A-Za-z0-9._:-]{1,80}$/
 const INTENT_TTL_MS = 30 * 60 * 1000
 
-function closed(code, status) {
-  return { accessGranted: false, code, ok: false, status }
+function closed(code, status, step) {
+  return { accessGranted: false, code, ok: false, status, step }
 }
 
 function catalogPrice() {
@@ -180,24 +180,24 @@ export async function prepareSumUpSandboxSetup({
   void clientCurrency
   const priced = catalogPrice()
   const customerId = sumUpCustomerIdForUser(userId)
-  if (!priced || !customerId) return closed('INVALID_PLAN', 400)
+  if (!priced || !customerId) return closed('INVALID_PLAN', 400, 'invalid-plan')
 
   const config = readSumUpConfig(env)
-  if (!config) return closed('SANDBOX_NOT_CONFIGURED', 503)
+  if (!config) return closed('SANDBOX_NOT_CONFIGURED', 503, 'config-missing')
   const http = transport || createSumUpHttpTransport({ apiKey: config.apiKey })
   if (typeof http.retrieveMerchant !== 'function' || typeof http.createCheckout !== 'function') {
-    return closed('SANDBOX_NOT_CONFIGURED', 503)
+    return closed('SANDBOX_NOT_CONFIGURED', 503, 'transport-missing')
   }
-  if (!durablePorts(ports)) return closed('DURABLE_UNAVAILABLE', 503)
+  if (!durablePorts(ports)) return closed('DURABLE_UNAVAILABLE', 503, 'ports-missing')
 
   let merchant
   try {
     merchant = await http.retrieveMerchant(config.merchantCode)
   } catch {
-    return closed('SANDBOX_IDENTITY_REQUIRED', 403)
+    return closed('SANDBOX_IDENTITY_REQUIRED', 403, 'merchant-unreachable')
   }
   if (merchant?.sandbox !== true || merchant?.merchant_code !== config.merchantCode) {
-    return closed('SANDBOX_IDENTITY_REQUIRED', 403)
+    return closed('SANDBOX_IDENTITY_REQUIRED', 403, 'merchant-unproven')
   }
 
   let intent
@@ -208,7 +208,7 @@ export async function prepareSumUpSandboxSetup({
       userId,
     })
   } catch {
-    return closed('SUMUP_CHECKOUT_FAILED', 502)
+    return closed('SUMUP_CHECKOUT_FAILED', 502, 'intent-create')
   }
   const reference = String(intent?.checkoutId || '')
   if (!INTENT_ID_RE.test(reference)
@@ -216,7 +216,7 @@ export async function prepareSumUpSandboxSetup({
     || (intent.userId && String(intent.userId) !== userId)
     || (intent.status && intent.status !== 'pending')) {
     if (INTENT_ID_RE.test(reference)) await cancelQuietly(ports, reference)
-    return closed('SUMUP_CHECKOUT_FAILED', 502)
+    return closed('SUMUP_CHECKOUT_FAILED', 502, 'intent-invalid')
   }
 
   try {
@@ -244,7 +244,7 @@ export async function prepareSumUpSandboxSetup({
       reference,
     })) {
       await cancelQuietly(ports, reference)
-      return closed('SUMUP_CHECKOUT_FAILED', 502)
+      return closed('SUMUP_CHECKOUT_FAILED', 502, 'checkout-rejected')
     }
     await ports.bindCheckoutRef({
       checkoutId: reference,
@@ -259,12 +259,13 @@ export async function prepareSumUpSandboxSetup({
         currency: 'SEK',
         ok: false,
         status: checkout.status === 'PAID' ? 409 : 502,
+        step: checkout.status === 'PAID' ? 'already-completed' : 'checkout-not-pending',
       }
     }
     const widget = sumUpWidgetMountConfig({ checkoutId: checkout.id })
     if (!widget) {
       await cancelQuietly(ports, reference)
-      return closed('SUMUP_CHECKOUT_FAILED', 502)
+      return closed('SUMUP_CHECKOUT_FAILED', 502, 'widget-invalid')
     }
     return {
       accessGranted: false,
@@ -277,7 +278,7 @@ export async function prepareSumUpSandboxSetup({
     }
   } catch {
     await cancelQuietly(ports, reference)
-    return closed('SUMUP_CHECKOUT_FAILED', 502)
+    return closed('SUMUP_CHECKOUT_FAILED', 502, 'checkout-threw')
   }
 }
 
@@ -293,61 +294,68 @@ export async function verifySumUpSandboxSetup({
   userId,
 } = {}) {
   if (!CHECKOUT_ID_RE.test(String(checkoutId || '')) || !sumUpCustomerIdForUser(userId)) {
-    return closed('INVALID_CHECKOUT', 400)
+    return closed('INVALID_CHECKOUT', 400, 'checkout-id')
   }
-  if (typeof ports?.getOwnedIntentByProviderRef !== 'function') return closed('DURABLE_UNAVAILABLE', 503)
+  if (typeof ports?.getOwnedIntentByProviderRef !== 'function') return closed('DURABLE_UNAVAILABLE', 503, 'ports-missing')
   const config = readSumUpConfig(env)
-  if (!config) return closed('SANDBOX_NOT_CONFIGURED', 503)
+  if (!config) return closed('SANDBOX_NOT_CONFIGURED', 503, 'config-missing')
   const http = transport || createSumUpHttpTransport({ apiKey: config.apiKey })
   let intent
   try {
     intent = await ports.getOwnedIntentByProviderRef({ providerCheckoutRef: checkoutId, userId })
   } catch {
-    return closed('DURABLE_UNAVAILABLE', 503)
+    return closed('DURABLE_UNAVAILABLE', 503, 'intent-lookup')
   }
   if (!intent || intent.provider !== SUMUP_PROVIDER || intent.planId !== SANDBOX_SETUP_PLAN_ID
     || intent.providerCheckoutRef !== checkoutId || intent.userId !== userId || intent.status !== 'pending') {
-    return closed('CHECKOUT_NOT_FOUND', 404)
+    return closed('CHECKOUT_NOT_FOUND', 404, 'intent-unusable')
   }
+  let merchant
   try {
-    const merchant = await http.retrieveMerchant(config.merchantCode)
-    if (merchant?.sandbox !== true || merchant?.merchant_code !== config.merchantCode) {
-      return closed('SANDBOX_IDENTITY_REQUIRED', 403)
-    }
-    const checkout = await http.retrieveCheckout(checkoutId)
-    if (checkout?.id !== checkoutId || checkout.checkout_reference !== intent.checkoutId
-      || checkout.merchant_code !== config.merchantCode
-      || checkout.customer_id !== sumUpCustomerIdForUser(userId)
-      || checkout.purpose !== 'SETUP_RECURRING_PAYMENT'
-      || checkout.currency !== 'SEK' || minorUnitsFromSumUpAmount(checkout.amount) !== 400) {
-      return closed('CHECKOUT_MISMATCH', 400)
-    }
-    if (checkout.status === 'PENDING') return { accessGranted: false, ok: true, paymentStatus: 'pending', status: 200 }
-    // A paid checkout is not proof of a settled transaction by itself.
-    // Verify the single successful transaction before reporting that
-    // server-side activation would be eligible for further checks.
-    if (checkout.status === 'PAID') {
-      const transactions = Array.isArray(checkout.transactions) ? checkout.transactions : []
-      const successful = transactions.filter((tx) => tx?.status === 'SUCCESSFUL')
-      if (successful.length !== 1 ||
-        successful[0].currency !== 'SEK' ||
-        minorUnitsFromSumUpAmount(successful[0].amount) !== 400 ||
-        !CHECKOUT_ID_RE.test(String(successful[0].id || ''))) {
-        return closed('PAYMENT_TRANSACTION_UNVERIFIED', 409)
-      }
-    }
-    if (checkout.status !== 'PAID') return closed('PAYMENT_NOT_COMPLETED', 409)
-    // Sandbox never invokes the production activation RPC, even if the token is valid.
-    // Keep payment instruments and entitlements untouched in this verification path.
-    const token = checkout.payment_instrument?.token
-    const hasInstrument = typeof token === 'string' && /^[A-Za-z0-9._:-]{8,80}$/.test(token)
-    return {
-      accessGranted: false,
-      code: hasInstrument ? 'ATOMIC_ACTIVATION_REQUIRED' : 'RECURRING_INSTRUMENT_MISSING',
-      ok: false,
-      status: 409,
-    }
+    merchant = await http.retrieveMerchant(config.merchantCode)
   } catch {
-    return closed('SUMUP_UNAVAILABLE', 503)
+    return closed('SUMUP_UNAVAILABLE', 503, 'merchant-unreachable')
+  }
+  if (merchant?.sandbox !== true || merchant?.merchant_code !== config.merchantCode) {
+    return closed('SANDBOX_IDENTITY_REQUIRED', 403, 'merchant-unproven')
+  }
+  let checkout
+  try {
+    checkout = await http.retrieveCheckout(checkoutId)
+  } catch {
+    return closed('SUMUP_UNAVAILABLE', 503, 'checkout-unreachable')
+  }
+  if (checkout?.id !== checkoutId || checkout.checkout_reference !== intent.checkoutId
+    || checkout.merchant_code !== config.merchantCode
+    || checkout.customer_id !== sumUpCustomerIdForUser(userId)
+    || checkout.purpose !== 'SETUP_RECURRING_PAYMENT'
+    || checkout.currency !== 'SEK' || minorUnitsFromSumUpAmount(checkout.amount) !== 400) {
+    return closed('CHECKOUT_MISMATCH', 400, 'checkout-mismatch')
+  }
+  if (checkout.status === 'PENDING') return { accessGranted: false, ok: true, paymentStatus: 'pending', status: 200 }
+  // A paid checkout is not proof of a settled transaction by itself.
+  // Verify the single successful transaction before reporting that
+  // server-side activation would be eligible for further checks.
+  if (checkout.status === 'PAID') {
+    const transactions = Array.isArray(checkout.transactions) ? checkout.transactions : []
+    const successful = transactions.filter((tx) => tx?.status === 'SUCCESSFUL')
+    if (successful.length !== 1 ||
+      successful[0].currency !== 'SEK' ||
+      minorUnitsFromSumUpAmount(successful[0].amount) !== 400 ||
+      !CHECKOUT_ID_RE.test(String(successful[0].id || ''))) {
+      return closed('PAYMENT_TRANSACTION_UNVERIFIED', 409, 'payment-unverified')
+    }
+  }
+  if (checkout.status !== 'PAID') return closed('PAYMENT_NOT_COMPLETED', 409, 'payment-not-completed')
+  // Sandbox never invokes the production activation RPC, even if the token is valid.
+  // Keep payment instruments and entitlements untouched in this verification path.
+  const token = checkout.payment_instrument?.token
+  const hasInstrument = typeof token === 'string' && /^[A-Za-z0-9._:-]{8,80}$/.test(token)
+  return {
+    accessGranted: false,
+    code: hasInstrument ? 'ATOMIC_ACTIVATION_REQUIRED' : 'RECURRING_INSTRUMENT_MISSING',
+    ok: false,
+    status: 409,
+    step: hasInstrument ? 'activation-required' : 'instrument-missing',
   }
 }

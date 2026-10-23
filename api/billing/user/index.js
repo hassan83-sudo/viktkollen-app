@@ -261,6 +261,25 @@ async function handleCapability(request, response, auth, requestId) {
   })
 }
 
+function logSumUpSandboxFailure({ action, code, requestId, status, step }) {
+  // One JSON line. Vercel shows the string itself. Values are codes and booleans only.
+  const safeCode = typeof code === 'string' && /^[A-Z0-9_]{1,64}$/.test(code) ? code : 'UNKNOWN'
+  const safeStep = typeof step === 'string' && /^[a-z0-9-]{1,40}$/.test(step) ? step : ''
+  const safeRequestId = typeof requestId === 'string' && /^[A-Za-z0-9-]{1,80}$/.test(requestId) ? requestId : ''
+  console.error(JSON.stringify({
+    action: action === 'verify' ? 'verify' : 'setup',
+    code: safeCode,
+    event: 'sumup_sandbox_failed',
+    merchantCodeFormatValid: /^[A-Za-z0-9]{5,32}$/.test(String(process.env.SUMUP_MERCHANT_CODE || '').trim()),
+    requestId: safeRequestId,
+    serviceRoleConfigured: Boolean((process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE || '').trim()),
+    status: Number.isInteger(status) ? status : 0,
+    step: safeStep,
+    sumupApiKeyConfigured: Boolean(process.env.SUMUP_API_KEY?.trim()),
+    supabaseUrlConfigured: Boolean((process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim()),
+  }))
+}
+
 async function handleSumUpSandbox(request, response, requestId) {
   if (request.method !== 'POST') {
     response.setHeader('Allow', 'POST')
@@ -271,19 +290,36 @@ async function handleSumUpSandbox(request, response, requestId) {
       status: 405,
     })
   }
+  const action = request.body?.action === 'verify' ? 'verify' : 'setup'
   const auth = await verifySupabaseUser(request, { requestId })
   if (!auth.authenticated) {
+    logSumUpSandboxFailure({
+      action,
+      code: auth.error?.code,
+      requestId,
+      status: auth.status,
+      step: 'auth',
+    })
     return response.status(auth.status).json({
       error: auth.error,
       ok: false,
     })
   }
-  if (request.body?.action === 'verify') {
+  if (action === 'verify') {
     const result = await verifySumUpSandboxSetup({
       checkoutId: request.body?.checkoutId,
       ports: createServerCheckoutIntentPorts(),
       userId: auth.user.id,
     })
+    if (!result.ok) {
+      logSumUpSandboxFailure({
+        action,
+        code: result.code,
+        requestId,
+        status: result.status,
+        step: result.step,
+      })
+    }
     return response.status(result.status).json({
       accessGranted: false,
       code: result.code || null,
@@ -299,14 +335,12 @@ async function handleSumUpSandbox(request, response, requestId) {
     userId: auth.user.id,
   })
   if (!result.ok) {
-    // Safe diagnostics only: never log API keys, merchant codes, tokens, or payment data.
-    console.warn('sumup_sandbox_setup_failed', {
+    logSumUpSandboxFailure({
+      action,
       code: result.code,
       requestId,
-      sumupApiKeyConfigured: Boolean(process.env.SUMUP_API_KEY?.trim()),
-      merchantCodeFormatValid: /^[A-Za-z0-9]{5,32}$/.test(String(process.env.SUMUP_MERCHANT_CODE || '').trim()),
-      supabaseUrlConfigured: Boolean((process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim()),
-      serviceRoleConfigured: Boolean((process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE || '').trim()),
+      status: result.status,
+      step: result.step,
     })
     return response.status(result.status).json({
       accessGranted: false,

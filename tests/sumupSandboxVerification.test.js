@@ -100,6 +100,7 @@ test('sandbox verification fails closed when SumUp cannot be reached', async () 
   h.args.transport.retrieveCheckout = async () => { throw new Error('network unavailable') }
   const result = await verifySumUpSandboxSetup(h.args)
   assert.equal(result.code, 'SUMUP_UNAVAILABLE')
+  assert.equal(result.step, 'checkout-unreachable')
   assert.equal(result.accessGranted, false)
 })
 

@@ -189,6 +189,7 @@ describe('SumUp sandbox 4 SEK setup', () => {
     const transport = transportFor()
     const result = await prepareSumUpSandboxSetup({ env: {}, transport, userId: USER })
     expect(result.code).toBe('SANDBOX_NOT_CONFIGURED')
+    expect(result.step).toBe('config-missing')
     expect(transport.calls).toEqual([])
   })
 

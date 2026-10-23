@@ -1,0 +1,19 @@
+{
+  "id": "/install/test",
+  "name": "Viktkollen Test",
+  "short_name": "VK Test",
+  "lang": "sv",
+  "display": "standalone",
+  "start_url": "/?app=test",
+  "scope": "/",
+  "theme_color": "#9a5819",
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/pwa-test.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

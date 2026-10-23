@@ -99,6 +99,16 @@ export async function readPostgresPlanComparison(client, userId) {
       client.schema('billing').from('plans').select('plan_id, price_minor, currency, active'),
       'plans',
     )
+    // Sale flags are authoritative in billing.plan_enabled_for_sale, not client claims.
+    // Fail closed per plan when commercial controls are unavailable.
+    const saleFlags = await Promise.all(planRows.map(async (row) => {
+      try {
+        const { data, error } = await client.schema('billing').rpc('plan_enabled_for_sale', { p_plan_id: row.plan_id })
+        return !error && data === true
+      } catch {
+        return false
+      }
+    }))
     const entitlementRows = await listRows(
       client.schema('billing').from('plan_entitlements').select('plan_id, feature, enabled, limit_kind, limit_value, unit'),
       'plan_entitlements',
@@ -118,10 +128,10 @@ export async function readPostgresPlanComparison(client, userId) {
     try {
       return buildPlanComparison({
         currentPlanId: assignment?.plan_id || 'plan.free',
-        plans: planRows.map((row) => ({
+        plans: planRows.map((row, index) => ({
           active: row.active !== false,
           currency: row.currency,
-          enabled_for_sale: false,
+          enabled_for_sale: saleFlags[index] === true,
           entitlementsFlat: entitlementsByPlan.get(row.plan_id) || [],
           id: row.plan_id,
           price_minor: row.price_minor,

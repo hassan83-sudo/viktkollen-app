@@ -188,7 +188,12 @@ export function shouldBuildBodyScanPreview(env = process.env) {
 export default defineConfig(({ mode, command }) => {
   loadServerOnlyDevEnv(mode)
   let sourceBranch = ''
-  try { sourceBranch = execFileSync('git', ['branch', '--show-current'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() } catch { /* An unknown source identity fails closed. */ }
+  try { sourceBranch = execFileSync('git', ['branch', '--show-current'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() } catch { /* Vercel may check out a detached commit. */ }
+  // Vercel Git builds commonly use a detached HEAD. Trust its explicit branch metadata
+  // only when Git cannot name a branch; the staging guard still checks exact identity.
+  if (!sourceBranch && process.env.VERCEL === '1') {
+    sourceBranch = process.env.VERCEL_GIT_COMMIT_REF || ''
+  }
   const isolation = isWardrobeLocalTest({ ...process.env, mode, command })
     ? { offline: false, define: {} }
     : wardrobeBuildIsolation({ ...loadEnv(mode, process.cwd(), ''), ...process.env }, sourceBranch)

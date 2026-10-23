@@ -446,10 +446,11 @@ function MoreSection({
                 </div>
               </details>
 
-              <details style={{ marginLeft: 16 }} aria-label="Företagsuppgifter under Integritet">
+              <details aria-label="Företagsuppgifter under Integritet">
                 <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Företagsuppgifter</summary>
                 <p><strong>{t('legal.provider')}:</strong> AppsOnTheGo</p>
                 <p><strong>Namn:</strong> Hassan Kayed</p>
+                <p><strong>Adress:</strong> Harlyckegatan 5 C, 256 58 Helsingborg</p>
                 <p><strong>Organisationsnummer:</strong> {/^(?:\d{6}[- ]?\d{4}|\d{8}[- ]?\d{4})$/.test((import.meta.env.VITE_PUBLIC_LEGAL_ORG_NUMBER || "").trim()) ? import.meta.env.VITE_PUBLIC_LEGAL_ORG_NUMBER.trim() : "Ej angivet"}</p>
                 <p><strong>{t('legal.emailLabel')}:</strong> </p>
               </details>

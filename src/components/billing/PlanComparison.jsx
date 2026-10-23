@@ -49,6 +49,8 @@ function presentPlan(plan) {
     complete,
     current: plan.current === true,
     name: plan.name,
+    forSale: plan.forSale === true,
+    planId: plan.planId,
     priceText: plan.priceText,
     quotas: complete ? quotas.filter(Boolean) : [],
     unlimited: complete ? unlimited : [],
@@ -58,6 +60,29 @@ function presentPlan(plan) {
 function PlanComparison({ authLoading = false, isAuthenticated = false }) {
   const authKey = authLoading ? 'loading' : isAuthenticated ? 'in' : 'out'
   const [remote, setRemote] = useState({ authKey, comparison: null, status: 'idle' })
+  const [checkout, setCheckout] = useState({ pending: null, error: '' })
+
+  async function buyOnce(planId) {
+    if (!supabase || checkout.pending) return
+    setCheckout({ pending: planId, error: '' })
+    try {
+      const { data } = await supabase.auth.getSession()
+      const token = data?.session?.access_token
+      if (!token) throw new Error('Logga in för att betala.')
+      const response = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan_id: planId, payment_mode: 'one_time' }),
+      })
+      const payload = await response.json().catch(() => null)
+      if (response.status !== 202 || !payload?.hostedCheckoutUrl) throw new Error('Betalningen kunde inte startas.')
+      const url = new URL(payload.hostedCheckoutUrl)
+      if (url.protocol !== 'https:' || url.hostname !== 'checkout.sumup.com') throw new Error('Ogiltig betalningslänk.')
+      window.location.assign(url.href)
+    } catch (error) {
+      setCheckout({ pending: null, error: error.message || 'Betalningen kunde inte startas.' })
+    }
+  }
   if (remote.authKey !== authKey) {
     setRemote({ authKey, comparison: null, status: 'idle' })
   }
@@ -138,6 +163,11 @@ function PlanComparison({ authLoading = false, isAuthenticated = false }) {
                   >
                     <p className="plan-compare-price">{plan.priceText}</p>
                     <p className="plan-compare-state">{plan.availability}</p>
+                    {plan.forSale && !plan.current && plan.planId ? (
+                      <button type="button" disabled={checkout.pending !== null} onClick={() => buyOnce(plan.planId)}>
+                        {checkout.pending === plan.planId ? 'Öppnar SumUp…' : 'Betala en gång – 30 dagar, ingen förnyelse'}
+                      </button>
+                    ) : null}
                     {plan.complete ? (
                       <ul className="plan-compare-quotas">
                         {plan.quotas.map((row) => (
@@ -154,6 +184,7 @@ function PlanComparison({ authLoading = false, isAuthenticated = false }) {
                 )
               })}
             </ul>
+            {checkout.error ? <p role="alert">{checkout.error}</p> : null}
             {unlimited.length ? (
               <>
                 <h4>Ingår utan användningsgräns</h4>

@@ -189,9 +189,9 @@ function separatePwaIdentity() {
   if (!['production', 'admin', 'test'].includes(variant)) {
     throw new Error('invalid_pwa_variant')
   }
-  if (variant === 'test' && process.env.VERCEL) {
+  if (variant === 'test') {
     const url = process.env.VITE_SUPABASE_URL || ''
-    if (process.env.VERCEL_ENV !== 'preview' ||
+    if ((process.env.VERCEL && process.env.VERCEL_ENV !== 'preview') ||
         !/^https:\/\/armtslzspuebmlysnooq\.supabase\.co\/?$/.test(url)) {
       throw new Error('test_pwa_requires_staging_preview')
     }

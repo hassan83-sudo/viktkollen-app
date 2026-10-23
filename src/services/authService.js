@@ -25,7 +25,9 @@ function isPasswordRecoveryRequest() {
     return false
   }
 
-  return new URLSearchParams(window.location.search).get('passwordRecovery') === '1'
+  const query = new URLSearchParams(window.location.search)
+  const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  return query.get('passwordRecovery') === '1' || query.get('type') === 'recovery' || fragment.get('type') === 'recovery'
 }
 
 async function withTimeout(promise, timeoutMs) {

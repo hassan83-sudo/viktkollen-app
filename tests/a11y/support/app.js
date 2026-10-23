@@ -86,21 +86,22 @@ export async function openApp(page, { preferences = null, clockAt = null, speech
 // A11Y-8G: bottom navigation links are named by their visible label
 // (WCAG 2.5.3), so the label is also the accessible name.
 export function bottomNavLink(page, label) {
-  const navigation = page.getByRole('navigation', { name: 'Huvudnavigation' })
-  // "Redo!" is a branded label and can be translated by the navigation
-  // locale. Locate its stable section destination; label-in-name tests
-  // independently assert that the accessible name matches visible text.
-  if (label === 'Redo!') return navigation.locator('a[href="#app-section-redo"]')
-  return navigation.getByRole('link', { name: label, exact: true })
+  return page.getByRole('navigation', { name: 'Huvudnavigation' }).getByRole('link', { name: label, exact: true })
 }
 
-// Keyboard navigation to a main section via the bottom navigation.
+// Keyboard navigation to a main section via the real, user-facing entry point.
 export async function goToSection(page, label, sectionId) {
-  // Plats moved from the bottom navigation to the Home quick-access card.
-  // Exercise the actual keyboard-accessible entry point instead of a removed nav link.
+  // Secondary sections are not bottom-navigation tabs. Open them through
+  // the same visible entry points a user can activate from the app.
   if (sectionId === 'place') {
     await goToSection(page, 'Hem', 'home')
     const button = page.locator('#app-section-home').getByRole('button', { name: 'Öppna Plats' })
+    await button.focus()
+    await page.keyboard.press('Enter')
+  } else if (sectionId === 'redo') {
+    await goToSection(page, 'Hem', 'home')
+    const button = page.locator('#app-section-home .overview-primary-action-footer')
+    await expect(button).toBeVisible()
     await button.focus()
     await page.keyboard.press('Enter')
   } else {

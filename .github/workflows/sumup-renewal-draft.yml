@@ -168,6 +168,9 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065246_sumup_renewal_facts_draft.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065249_sumup_renewal_snapshot_guard_draft.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065251_sumup_renewal_checkout_uniqueness_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065319_sumup_renewal_claim_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024100000_sumup_renewal_bind_checkout_draft.sql
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-bind.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065322_sumup_renewal_commit_draft.sql
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-commit.sql
 

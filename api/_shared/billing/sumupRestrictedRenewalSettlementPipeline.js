@@ -1,3 +1,5 @@
+import { createSumUpRenewalFailureService } from './sumupRenewalFailureService.js'
+import { createSumUpRenewalAuthorityFromSql } from './sumupRenewalAuthorityFromSql.js'
 import { createSumUpRenewalSettlementPipeline } from './sumupRenewalSettlementPipeline.js'
 import { createSumUpRestrictedRenewalDatabase } from './sumupRestrictedRenewalDatabase.js'
 
@@ -17,7 +19,12 @@ export function createSumUpRestrictedRenewalSettlementPipeline({
     })
     return result?.rows
   }
-  return createSumUpRenewalSettlementPipeline({
+  const finalizer = createSumUpRenewalSettlementPipeline({
     executeReadOnly, transport, restrictedWriter, merchantCode,
   })
+  const failureService = createSumUpRenewalFailureService({
+    executor, transport, merchantCode,
+    renewalAuthority: createSumUpRenewalAuthorityFromSql({ executeReadOnly }),
+  })
+  return { ...finalizer, recordFailed: failureService.recordFailed }
 }

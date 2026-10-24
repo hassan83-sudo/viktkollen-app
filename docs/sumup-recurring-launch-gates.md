@@ -31,8 +31,17 @@ This branch is for isolated development only. No payment requests, schema change
 ### Verification and limitations
 - 25 focused local tests passed, including a PGlite worker-to-SQL integration using the real claim, binding, reader and commit functions. The provider and `advance_subscription_period` are stubs in that integration; this is not a sandbox payment or full subscription lifecycle verification.
 - Local isolated SQL binding/work/commit checks and targeted ESLint passed.
-- Failed/expired payments remain durably claimed and return `failed_review_required`; automatic failure/grace finalization is not implemented in this worker.
+- Failed/expired payments are finalized by the verified failure boundary described below; no automatic recharge is permitted.
 - Pending plan changes are blocked, not charged at the old price.
 - A crash between claim and payment may require manual recovery; automatic recharging is intentionally forbidden.
 - Cancellation after the last eligibility check but before the provider response, and settlement after concurrent plan/cancellation changes, still require isolated lifecycle verification and an explicit recovery policy.
 - The read/claim/bind/settlement role grants, Staging database provisioning, real sandbox end-to-end verification, and protected scheduling remain incomplete. No live migrations, charges, Production deployment, or cron activation were performed.
+
+
+## Verified failure finalization added 2026-10-24
+- The worker now sends matching FAILED/EXPIRED checkouts to `sumupRenewalFailureService.js`, which independently loads authoritative facts and re-fetches the checkout. PAID, PENDING, mismatched and contradictory SUCCESSFUL transaction responses cannot authorize a failure write.
+- The restricted failure RPC locks subscription then attempt, validates the exact bound reference/customer/period, calls the existing `billing.mark_renewal_failed` function and marks the attempt failed in one transaction. It does not advance the period or grant quota. Grace is derived from the original period plus 168 hours, rather than retry time; an existing PAST_DUE grace is preserved by the existing lifecycle function. Pending plan fields remain unchanged.
+- Duplicate SQL finalization is idempotent; failed attempts are excluded from the work queue. An ambiguous response remains subject to reconciliation without another charge.
+- The failure migration has no EXECUTE grants and has not been applied to Staging or Production.
+- Verification: 40 affected local tests passed, including FAILED and EXPIRED worker-to-SQL flows using the real `mark_renewal_failed` migration (SumUp transport remains mocked). Isolated SQL also covers replay, wrong checkout, cancellation, existing grace/pending-plan preservation, denied public execution, and transaction rollback if attempt finalization fails. Targeted ESLint and diff checks passed.
+- Still incomplete: pending-plan pricing/settlement, concurrent lifecycle recovery policy, restricted role provisioning, real sandbox end-to-end verification, and scheduling.

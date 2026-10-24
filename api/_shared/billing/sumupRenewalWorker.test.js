@@ -22,7 +22,7 @@ function setup() {
     listPaymentInstruments: vi.fn(async () => [{ token }]),
     processCheckout: vi.fn(async () => { checkout = { ...checkout, status: 'PAID', transactions: [{ id: tx, status: 'SUCCESSFUL', amount: 19, currency: 'SEK' }] } }),
   }
-  const finalizer = { reconcile: vi.fn(async () => ({ committed: true, alreadyCommitted: false })) }
+  const finalizer = { recordFailed: vi.fn(async () => ({ recorded: true, alreadyRecorded: false })), reconcile: vi.fn(async () => ({ committed: true, alreadyCommitted: false })) }
   const worker = () => createSumUpRenewalWorker({ store, transport, finalizer, merchantCode: 'MERCHANT1' })
   return { row, store, transport, finalizer, worker }
 }
@@ -103,14 +103,15 @@ describe('durable SumUp renewal worker', () => {
     await f.worker().run()
     expect(f.transport.processCheckout).not.toHaveBeenCalled()
   })
-  it('leaves failed payments for review without granting access', async () => {
+  it('finalizes verified failures without granting access', async () => {
     const f = setup()
     const create = f.transport.createCheckout.getMockImplementation()
     f.transport.createCheckout.mockImplementationOnce(async body => ({ ...await create(body) }))
     const retrieve = f.transport.retrieveCheckout.getMockImplementation()
     f.transport.retrieveCheckout.mockImplementation(async () => ({ ...await retrieve(), status: 'FAILED' }))
-    expect((await f.worker().run()).results[0].outcome).toBe('failed_review_required')
+    expect((await f.worker().run()).results[0].outcome).toBe('failed')
     expect(f.transport.processCheckout).not.toHaveBeenCalled()
     expect(f.finalizer.reconcile).not.toHaveBeenCalled()
+    expect(f.finalizer.recordFailed).toHaveBeenCalledOnce()
   })
 })

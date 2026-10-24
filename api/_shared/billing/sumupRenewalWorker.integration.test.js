@@ -6,12 +6,15 @@ import { createSumUpRenewalWorkerDatabase } from './sumupRenewalWorkerDatabase.j
 import { createSumUpRestrictedRenewalSettlementPipeline } from './sumupRestrictedRenewalSettlementPipeline.js'
 import { instrumentFingerprint } from './sumupRecurring.js'
 
-it('runs actual claim, bind, facts reader and atomic commit SQL through the worker (provider and period advance stubbed)', async () => {
+it.each(['PAID', 'FAILED', 'EXPIRED'])('runs worker %s through actual SQL (provider and successful period advance stubbed; failure lifecycle real)', async outcome => {
   const db = new PGlite()
   try {
     for (const file of [
       'tests/billing/sumup-renewal-postgres-bootstrap.sql',
       'tests/billing/sumup-renewal-postgres-commit-bootstrap.sql',
+      'tests/billing/sumup-renewal-postgres-failure-bootstrap.sql',
+      'supabase/migrations/20260926140000_billing_mark_renewal_failed.sql',
+      'supabase/migrations/20261024075008_sumup_renewal_failure_draft.sql',
       'supabase/migrations/20261024065246_sumup_renewal_facts_draft.sql',
       'supabase/migrations/20261024065249_sumup_renewal_snapshot_guard_draft.sql',
       'supabase/migrations/20261024065251_sumup_renewal_checkout_uniqueness_draft.sql',
@@ -31,18 +34,23 @@ it('runs actual claim, bind, facts reader and atomic commit SQL through the work
       retrieveCheckout: vi.fn(async () => checkout),
       listPaymentInstruments: vi.fn(async () => [{ token }]),
       processCheckout: vi.fn(async () => {
-        checkout = { ...checkout, status: 'PAID', transactions: [{ id: '00000000-0000-4000-8000-000000000002',
-          status: 'SUCCESSFUL', amount: 19, currency: 'SEK' }] }
+        checkout = { ...checkout, status: outcome, transactions: outcome === 'PAID' ? [{ id: '00000000-0000-4000-8000-000000000002',
+          status: 'SUCCESSFUL', amount: 19, currency: 'SEK' }] : [] }
       }),
     }
     const store = createSumUpRenewalWorkerDatabase({ executor })
     const finalizer = createSumUpRestrictedRenewalSettlementPipeline({ executor, transport, merchantCode: 'MERCHANT1' })
     const makeWorker = () => createSumUpRenewalWorker({ store, finalizer, transport, merchantCode: 'MERCHANT1' })
-    expect((await makeWorker().run()).results).toEqual([{ subscriptionId: 'sub-1', outcome: 'paid' }])
+    expect((await makeWorker().run()).results).toEqual([{ subscriptionId: 'sub-1', outcome: outcome === 'PAID' ? 'paid' : 'failed' }])
     expect((await db.query('select status, expected_amount_minor from billing.sumup_renewal_attempts')).rows[0])
-      .toMatchObject({ status: 'succeeded', expected_amount_minor: 1900 })
+      .toMatchObject({ status: outcome === 'PAID' ? 'succeeded' : 'failed', expected_amount_minor: 1900 })
     expect((await db.query('select current_period_end from billing.subscriptions')).rows[0].current_period_end.toISOString())
-      .toBe('2026-11-01T00:00:00.000Z')
+      .toBe(outcome === 'PAID' ? '2026-11-01T00:00:00.000Z' : '2026-10-01T00:00:00.000Z')
+    if (outcome !== 'PAID') {
+      expect((await db.query('select status, past_due_grace_until from billing.subscriptions')).rows[0])
+        .toMatchObject({ status: 'PAST_DUE', past_due_grace_until: new Date('2026-10-08T00:00:00Z') })
+      expect((await db.query("select count(*)::integer as count from billing.subscription_events where operation = 'renewal.failed'")).rows[0].count).toBe(1)
+    }
     expect(await makeWorker().run()).toEqual({ considered: 0, results: [] })
     expect(transport.processCheckout).toHaveBeenCalledOnce()
   } finally { await db.close() }

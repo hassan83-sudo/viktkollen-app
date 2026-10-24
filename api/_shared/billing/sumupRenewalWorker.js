@@ -13,7 +13,7 @@ export function createSumUpRenewalWorker({ store, transport, finalizer, merchant
   if (!['listDue', 'claim', 'bind'].every(key => typeof store?.[key] === 'function') ||
       !['listCheckouts', 'createCheckout', 'retrieveCheckout', 'listPaymentInstruments', 'processCheckout']
         .every(key => typeof transport?.[key] === 'function') ||
-      typeof finalizer?.reconcile !== 'function' || !merchantCode) {
+      typeof finalizer?.reconcile !== 'function' || typeof finalizer?.recordFailed !== 'function' || !merchantCode) {
     throw new Error('SUMUP_RENEWAL_WORKER_UNAVAILABLE')
   }
   return {
@@ -69,7 +69,7 @@ export function createSumUpRenewalWorker({ store, transport, finalizer, merchant
     const bound = await store.bind({ ...context, providerCheckoutRef: providerCheckoutId })
     if (bound?.bound !== true) throw new Error('RENEWAL_NOT_BOUND')
     if (verification.outcome === 'paid') return settle()
-    if (verification.outcome === 'failed') return { subscriptionId, outcome: 'failed_review_required' }
+    if (verification.outcome === 'failed') return recordFailure()
     // Even a newly claimed row must not process a pre-existing checkout.
     if (!claim.claimed || existed) return { subscriptionId, outcome: 'reconciliation_required' }
     if (checkout.status !== 'PENDING' || checkout.purpose !== 'CHECKOUT') throw new Error('INVALID_RENEWAL_STATUS')
@@ -87,11 +87,17 @@ export function createSumUpRenewalWorker({ store, transport, finalizer, merchant
     verification = verify(checkout)
     if (!verification.verified) throw new Error('RENEWAL_CHECKOUT_MISMATCH')
     if (verification.outcome === 'paid') return settle()
-    return { subscriptionId, outcome: verification.outcome === 'failed' ? 'failed_review_required' : 'reconciliation_required' }
+    if (verification.outcome === 'failed') return recordFailure()
+    return { subscriptionId, outcome: 'reconciliation_required' }
 
     function verify(value) {
       if (value?.id !== providerCheckoutId) return { verified: false }
       return verifySumUpRenewalCheckout({ checkout: value, checkoutReference, customerId, merchantCode, amountMinor })
+    }
+    async function recordFailure() {
+      const result = await finalizer.recordFailed({ ...context, providerCheckoutId })
+      if (!result?.recorded && !result?.alreadyRecorded) throw new Error('RENEWAL_FAILURE_NOT_RECORDED')
+      return { subscriptionId, outcome: 'failed' }
     }
     async function settle() {
       const result = await finalizer.reconcile({ ...context, providerCheckoutId })

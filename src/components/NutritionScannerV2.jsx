@@ -1740,9 +1740,6 @@ function NutritionScannerV2({
           )}
 
           <div className="habit-actions">
-            <button className="primary-button" disabled={isSaving || !validation.ok || ((duplicate.status === 'exactDuplicate' || duplicate.status === 'likelyDuplicate') && !allowDuplicate)} type="submit">
-              {isSaving ? t('scanner.saving') : t('scanner.saveMeal')}
-            </button>
             <button type="button" onClick={handleCancel}>{t('common:actions.cancel')}</button>
             {savedMealId && <a className="secondary-button" href="#meal-history">{t('scanner.openSavedMeal')}</a>}
           </div>

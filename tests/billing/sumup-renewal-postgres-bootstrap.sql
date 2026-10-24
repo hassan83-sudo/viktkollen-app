@@ -21,6 +21,8 @@ create table billing.sumup_renewal_attempts (
  period_end timestamptz not null, provider_checkout_ref text not null default '',
  status text not null default 'processing'
 );
+create unique index sumup_attempts_period
+  on billing.sumup_renewal_attempts (subscription_id, period_end);
 insert into billing.plans values ('plan-1', 1900, 'SEK', 1);
 insert into billing.subscriptions values (
  'sub-1', 'user-1', 'plan-1', 'sumup', 'ACTIVE', 'customer-1',

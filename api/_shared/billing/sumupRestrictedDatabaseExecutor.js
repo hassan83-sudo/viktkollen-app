@@ -1,3 +1,4 @@
+import { SUMUP_RECOVERY_SQL } from './sumupRenewalRecovery.js'
 import { SUMUP_RENEWAL_FAILURE_SQL } from './sumupRenewalFailureService.js'
 import { RENEWAL_WORKER_SQL } from './sumupRenewalWorkerDatabase.js'
 import pg from 'pg'
@@ -48,6 +49,7 @@ export function createRestrictedSumUpDatabaseExecutor({
             'select * from billing.read_sumup_renewal_facts_draft($1, $2::timestamptz)',
             ...Object.values(RENEWAL_WORKER_SQL),
             SUMUP_RENEWAL_FAILURE_SQL,
+            ...Object.values(SUMUP_RECOVERY_SQL),
           ].includes(text)) ||
           !Array.isArray(values)) {
         throw new Error('SUMUP_RENEWAL_SQL_OPERATION_NOT_ALLOWED')

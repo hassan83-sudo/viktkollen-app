@@ -1,3 +1,4 @@
+import { createSumUpRenewalRecovery, createSumUpRenewalRecoveryDatabase } from '../api/_shared/billing/sumupRenewalRecovery.js'
 /** Explicit, manual Staging-only runner. No scheduler or production fallback. */
 import { createRestrictedSumUpDatabaseExecutor } from '../api/_shared/billing/sumupRestrictedDatabaseExecutor.js'
 import { createSumUpRenewalWorkerDatabase } from '../api/_shared/billing/sumupRenewalWorkerDatabase.js'
@@ -30,8 +31,10 @@ try {
   }
   const finalizer = createSumUpRestrictedRenewalSettlementPipeline({ executor, transport, merchantCode })
   const store = createSumUpRenewalWorkerDatabase({ executor })
+  const recoveryStore = createSumUpRenewalRecoveryDatabase({ executor })
+  const recovery = await createSumUpRenewalRecovery({ store: recoveryStore, transport, finalizer, merchantCode }).run()
   const result = await createSumUpRenewalWorker({ store, transport, finalizer, merchantCode }).run()
-  console.log(JSON.stringify(result))
+  console.log(JSON.stringify({ recovery, renewals: result }))
 } catch {
   console.error('SUMUP_RENEWAL_STAGING_FAILED')
   process.exitCode = 1

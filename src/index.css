@@ -53,7 +53,8 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  scroll-behavior: smooth;
+  /* Avoid global animated scrolling that can keep moving after touch input. */
+  scroll-behavior: auto;
 }
 *,
 *::before,

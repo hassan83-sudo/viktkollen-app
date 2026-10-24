@@ -23,7 +23,8 @@ begin
      or p_provider_checkout_ref is null or p_provider_checkout_ref !~ '^[A-Za-z0-9._:-]{1,80}$'
      or p_subscription_id is null or p_period_end is null
      or p_expected_next_period_end is null
-     or p_expected_next_period_end <= p_period_end then
+     or p_expected_next_period_end is distinct from
+       ((p_period_end at time zone 'UTC') + interval '1 month') at time zone 'UTC' then
     raise exception 'invalid_renewal_binding';
   end if;
 
@@ -35,6 +36,7 @@ begin
   if not found or subscription.provider is distinct from 'sumup'
      or subscription.status not in ('ACTIVE', 'PAST_DUE')
      or subscription.cancel_at_period_end
+     or nullif(pg_catalog.to_jsonb(subscription)->>'pending_plan_id', '') is not null
      or subscription.current_period_end is distinct from p_period_end
      or subscription.current_period_end > pg_catalog.now() then
     raise exception 'renewal_not_eligible';

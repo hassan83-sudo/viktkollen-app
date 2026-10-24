@@ -1,3 +1,4 @@
+begin;
 -- Disposable PostgreSQL only. Exercises immutable checkout binding before charging.
 do $test$
 declare
@@ -21,6 +22,17 @@ begin
   if replay_result->>'bound' is distinct from 'true' then
     raise exception 'checkout binding failed: %', replay_result;
   end if;
+
+  begin
+    perform billing.bind_sumup_renewal_checkout_draft(
+      'renewal-bind-1', 'checkout-provider-1', 'sub-1',
+      '2026-10-01T00:00:00Z'::timestamptz,
+      '2027-11-01T00:00:00Z'::timestamptz
+    );
+    raise exception 'arbitrary future period accepted';
+  exception when others then
+    if sqlerrm <> 'invalid_renewal_binding' then raise; end if;
+  end;
 
   -- An exact retry is idempotent; a changed checkout cannot replace the bound one.
   select billing.bind_sumup_renewal_checkout_draft(
@@ -58,3 +70,5 @@ end;
 $test$;
 
 select 'renewal checkout binding invariants passed' as result;
+
+rollback; -- Do not leak this fixture into the atomic commit test.

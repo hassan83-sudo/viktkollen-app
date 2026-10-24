@@ -23,11 +23,14 @@ create table billing.sumup_renewal_attempts (
 );
 create unique index sumup_attempts_period
   on billing.sumup_renewal_attempts (subscription_id, period_end);
+alter table billing.sumup_recurring_instruments
+ add column instrument_fingerprint text not null default repeat('a', 64);
+
 insert into billing.plans values ('plan-1', 1900, 'SEK', 1);
 insert into billing.subscriptions values (
  'sub-1', 'user-1', 'plan-1', 'sumup', 'ACTIVE', 'customer-1',
  1, false, '2026-10-01T00:00:00Z'
 );
 insert into billing.sumup_recurring_instruments values (
- 'sub-1', 'user-1', 'customer-1', 'verified'
+ 'sub-1', 'user-1', 'customer-1', 'verified', repeat('a', 64)
 );

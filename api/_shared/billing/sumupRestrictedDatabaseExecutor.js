@@ -1,3 +1,4 @@
+import { RENEWAL_WORKER_SQL } from './sumupRenewalWorkerDatabase.js'
 import pg from 'pg'
 
 const { Pool } = pg
@@ -41,7 +42,11 @@ export function createRestrictedSumUpDatabaseExecutor({
   return {
     async execute({ text, values } = {}) {
       if (typeof text !== 'string' ||
-          !(text.trim().toLowerCase().startsWith('select billing.commit_verified_sumup_renewal(') || text.trim().toLowerCase().startsWith('select * from billing.read_sumup_renewal_facts_draft(')) ||
+          !([
+            'select billing.commit_verified_sumup_renewal($1, $2, $3::timestamptz, $4, $5::timestamptz) as result',
+            'select * from billing.read_sumup_renewal_facts_draft($1, $2::timestamptz)',
+            ...Object.values(RENEWAL_WORKER_SQL),
+          ].includes(text)) ||
           !Array.isArray(values)) {
         throw new Error('SUMUP_RENEWAL_SQL_OPERATION_NOT_ALLOWED')
       }

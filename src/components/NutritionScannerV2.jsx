@@ -1746,7 +1746,13 @@ function NutritionScannerV2({
 
           {reviewUncertainties.length > 0 && (
             <details className="scanner-review-meta-details">
-              <summary>{'Osäkra uppgifter'} ({reviewUncertainties.length})</summary>
+              <summary style={{ color: '#fbbf24' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false" style={{ verticalAlign: 'text-bottom', marginRight: '0.4em' }}>
+                  <path d="M10.3 3.9 1.8 18.1A2 2 0 0 0 3.5 21h17a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+                  <path d="M12 9v4m0 4h.01" />
+                </svg>
+                {'Osäkra uppgifter'} ({reviewUncertainties.length})
+              </summary>
               <ul className="health-dashboard-list">
                 {[...new Set(reviewUncertainties)].map((item) => <li key={item}>{item}</li>)}
               </ul>

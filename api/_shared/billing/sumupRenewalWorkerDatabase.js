@@ -28,8 +28,12 @@ export function createSumUpRenewalWorkerDatabase({ executor } = {}) {
     async bind({ checkoutReference, providerCheckoutRef, subscriptionId, periodEnd, nextPeriodEnd }) {
       const response = await executor.execute({ text: RENEWAL_WORKER_SQL.bind,
         values: [checkoutReference, providerCheckoutRef, subscriptionId, periodEnd, nextPeriodEnd] })
-      if (response.rows?.[0]?.result?.bound !== true) throw new Error('INVALID_RENEWAL_BINDING')
-      return { bound: true }
+      const data = response.rows?.[0]?.result
+      if (data?.bound !== true || !data.customer_id || data.currency !== 'SEK' ||
+          !Number.isSafeInteger(data.amount_minor) || data.amount_minor <= 0 || !data.plan_id ||
+          !Number.isSafeInteger(data.plan_version) || data.plan_version < 1) throw new Error('INVALID_RENEWAL_BINDING')
+      return { bound: true, customerId: data.customer_id, amountMinor: data.amount_minor,
+        currency: data.currency, planId: data.plan_id, planVersion: data.plan_version }
     },
   }
 }

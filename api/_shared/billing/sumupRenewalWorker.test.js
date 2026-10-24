@@ -13,7 +13,7 @@ function setup() {
   const store = {
     listDue: vi.fn(async () => [row]),
     claim: vi.fn(async () => { const first = !claimed; claimed = true; return { claimed: first, status: 'processing' } }),
-    bind: vi.fn(async () => ({ bound: true })),
+    bind: vi.fn(async () => ({ bound: true, customerId: row.customerId, amountMinor: row.amountMinor, currency: row.currency })),
   }
   const transport = {
     listCheckouts: vi.fn(async () => checkout ? [checkout] : []),
@@ -77,6 +77,12 @@ describe('durable SumUp renewal worker', () => {
     expect(f.transport.processCheckout).not.toHaveBeenCalled()
     expect(f.finalizer.reconcile).not.toHaveBeenCalled()
   })
+  it('blocks charging if target price changes between candidate selection and binding', async () => {
+    const f = setup()
+    f.store.bind.mockResolvedValue({ bound: true, customerId: f.row.customerId, amountMinor: 900, currency: 'SEK' })
+    expect((await f.worker().run()).results[0].outcome).toBe('reconciliation_required')
+    expect(f.transport.processCheckout).not.toHaveBeenCalled()
+  })
   it('never treats provider lookup errors as permission to create', async () => {
     const f = setup()
     f.transport.listCheckouts.mockRejectedValueOnce(new Error('timeout'))
@@ -99,7 +105,7 @@ describe('durable SumUp renewal worker', () => {
   })
   it('stops when eligibility changes immediately before payment', async () => {
     const f = setup()
-    f.store.bind.mockResolvedValueOnce({ bound: true }).mockRejectedValueOnce(new Error('cancelled'))
+    f.store.bind.mockResolvedValueOnce({ bound: true, customerId: f.row.customerId, amountMinor: f.row.amountMinor, currency: 'SEK' }).mockRejectedValueOnce(new Error('cancelled'))
     await f.worker().run()
     expect(f.transport.processCheckout).not.toHaveBeenCalled()
   })

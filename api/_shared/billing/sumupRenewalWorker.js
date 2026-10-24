@@ -67,7 +67,7 @@ export function createSumUpRenewalWorker({ store, transport, finalizer, merchant
     let verification = verify(checkout)
     if (!verification.verified) throw new Error('RENEWAL_CHECKOUT_MISMATCH')
     const bound = await store.bind({ ...context, providerCheckoutRef: providerCheckoutId })
-    if (bound?.bound !== true) throw new Error('RENEWAL_NOT_BOUND')
+    assertBinding(bound)
     if (verification.outcome === 'paid') return settle()
     if (verification.outcome === 'failed') return recordFailure()
     // Even a newly claimed row must not process a pre-existing checkout.
@@ -79,7 +79,7 @@ export function createSumUpRenewalWorker({ store, transport, finalizer, merchant
     if (matches.length !== 1) throw new Error('RENEWAL_INSTRUMENT_MISMATCH')
     // Revalidate eligibility under the database lock immediately before sending.
     const rechecked = await store.bind({ ...context, providerCheckoutRef: providerCheckoutId })
-    if (rechecked?.bound !== true) throw new Error('RENEWAL_NOT_BOUND')
+    assertBinding(rechecked)
     await transport.processCheckout(providerCheckoutId, {
       payment_type: 'card', customer_id: customerId, token: matches[0].token,
     })
@@ -90,6 +90,12 @@ export function createSumUpRenewalWorker({ store, transport, finalizer, merchant
     if (verification.outcome === 'failed') return recordFailure()
     return { subscriptionId, outcome: 'reconciliation_required' }
 
+    function assertBinding(value) {
+      if (value?.bound !== true || value.customerId !== customerId ||
+          value.amountMinor !== amountMinor || value.currency !== 'SEK') {
+        throw new Error('RENEWAL_BINDING_FACTS_CHANGED')
+      }
+    }
     function verify(value) {
       if (value?.id !== providerCheckoutId) return { verified: false }
       return verifySumUpRenewalCheckout({ checkout: value, checkoutReference, customerId, merchantCode, amountMinor })

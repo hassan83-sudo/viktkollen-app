@@ -179,6 +179,11 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-failure.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065322_sumup_renewal_commit_draft.sql
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-commit.sql
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-pending-bootstrap.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924084000_billing_pending_plan_apply.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260926140000_billing_mark_renewal_failed.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024100001_sumup_renewal_pending_plan_draft.sql
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-pending.sql
 
   renewal-postgres-claim:
     runs-on: ubuntu-latest

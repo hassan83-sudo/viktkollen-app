@@ -14,6 +14,16 @@ describe('renewal worker database', () => {
     const store = createSumUpRenewalWorkerDatabase({ executor: { execute: async () => ({ rows: [{ result: { claimed: true, status: 'processing', checkout_reference: 'other' } }] }) } })
     await expect(store.claim({ checkoutReference: 'expected' })).rejects.toThrow('INVALID_RENEWAL_CLAIM')
   })
+  it('returns the authoritative bound price and plan snapshot', async () => {
+    const store = createSumUpRenewalWorkerDatabase({ executor: { execute: async () => ({ rows: [{ result: {
+      bound: true, customer_id: 'customer', amount_minor: 900, currency: 'SEK', plan_id: 'next', plan_version: 2,
+    } }] }) } })
+    expect(await store.bind({})).toEqual({ bound: true, customerId: 'customer', amountMinor: 900, currency: 'SEK', planId: 'next', planVersion: 2 })
+  })
+  it('refuses an older binding response without the authoritative price', async () => {
+    const store = createSumUpRenewalWorkerDatabase({ executor: { execute: async () => ({ rows: [{ result: { bound: true } }] }) } })
+    await expect(store.bind({})).rejects.toThrow('INVALID_RENEWAL_BINDING')
+  })
   it('requires confirmed durable binding', async () => {
     const execute = vi.fn(async () => ({ rows: [{ result: { bound: false } }] }))
     const store = createSumUpRenewalWorkerDatabase({ executor: { execute } })

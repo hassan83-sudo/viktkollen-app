@@ -24,7 +24,7 @@ This branch is for isolated development only. No payment requests, schema change
 ## Draft worker added 2026-10-24
 - `sumupRenewalWorker.js` uses database-exclusive claims, server-owned pricing and customer facts, immutable binding before payment, fingerprint matching, and the existing verified settlement pipeline. A second process/restart only reconciles; it never repeats the payment PUT. Lost claims are deliberately not leased/reclaimed automatically.
 - `sumupRenewalWorkerDatabase.js` uses fixed parameterized list/claim/bind RPCs. The restricted executor now accepts exact SQL statements, rather than SQL prefixes.
-- New work-reader migration has no EXECUTE grants. The binding RPC enforces exactly one UTC calendar month and rejects pending plan changes. Pending plan changes are excluded from selection until their price/settlement rules are implemented.
+- New work-reader migration has no EXECUTE grants. The binding RPC enforces exactly one UTC calendar month. The additive pending-plan migration below supplies target-plan pricing and settlement.
 - `scripts/run-sumup-renewal-staging.mjs` is manual and disabled by default. It requires separate `SUMUP_RENEWAL_STAGING_*` variables, validates the Staging database identity and SumUp's `sandbox: true` merchant identity, and refuses a Vercel Production environment. It does not fall back to general credentials. No credentials have been configured and this runner has not been run against SumUp.
 - The bind SQL test rolls back its fixture so the subsequent commit test can retain the required unique subscription/period constraint.
 
@@ -32,7 +32,7 @@ This branch is for isolated development only. No payment requests, schema change
 - 25 focused local tests passed, including a PGlite worker-to-SQL integration using the real claim, binding, reader and commit functions. The provider and `advance_subscription_period` are stubs in that integration; this is not a sandbox payment or full subscription lifecycle verification.
 - Local isolated SQL binding/work/commit checks and targeted ESLint passed.
 - Failed/expired payments are finalized by the verified failure boundary described below; no automatic recharge is permitted.
-- Pending plan changes are blocked, not charged at the old price.
+- Pending plan changes use the immutable target-plan snapshot described below.
 - A crash between claim and payment may require manual recovery; automatic recharging is intentionally forbidden.
 - Cancellation after the last eligibility check but before the provider response, and settlement after concurrent plan/cancellation changes, still require isolated lifecycle verification and an explicit recovery policy.
 - The read/claim/bind/settlement role grants, Staging database provisioning, real sandbox end-to-end verification, and protected scheduling remain incomplete. No live migrations, charges, Production deployment, or cron activation were performed.
@@ -44,4 +44,14 @@ This branch is for isolated development only. No payment requests, schema change
 - Duplicate SQL finalization is idempotent; failed attempts are excluded from the work queue. An ambiguous response remains subject to reconciliation without another charge.
 - The failure migration has no EXECUTE grants and has not been applied to Staging or Production.
 - Verification: 40 affected local tests passed, including FAILED and EXPIRED worker-to-SQL flows using the real `mark_renewal_failed` migration (SumUp transport remains mocked). Isolated SQL also covers replay, wrong checkout, cancellation, existing grace/pending-plan preservation, denied public execution, and transaction rollback if attempt finalization fails. Targeted ESLint and diff checks passed.
-- Still incomplete: pending-plan pricing/settlement, concurrent lifecycle recovery policy, restricted role provisioning, real sandbox end-to-end verification, and scheduling.
+- Still incomplete: concurrent lifecycle recovery policy, restricted role provisioning, real sandbox end-to-end verification, and scheduling.
+
+
+## Pending-plan pricing and settlement added 2026-10-24
+- Additive draft migration `20261024100001_sumup_renewal_pending_plan_draft.sql` replaces selection, binding, snapshot guarding and successful commit after the existing binding migration. Earlier migration versions are unchanged. The CLI-generated file was ordered after the existing future-dated binding migration to preserve dependencies.
+- A stored next-period change uses the target plan's active server catalog price and version. Binding saves immutable `expected_plan_id` and `expected_plan_version` alongside customer, amount, currency and period. Missing/inactive/wrong-currency targets cannot fall back to charging the old plan.
+- The worker compares the database-returned bound price/customer/currency with the checkout before any payment PUT and again at the final eligibility check. A stale candidate price cannot authorize charging a checkout at an old amount.
+- Verified successful settlement requires the same effective plan ID/version/price, invokes the existing real `advance_subscription_period` lifecycle, and checks the resulting plan/version/period with the pending fields cleared. Same-price plan substitutions or changed catalog versions are refused. Failed payments preserve the current plan and pending change.
+- Previously bound attempts without a plan snapshot are not silently backfilled or recharged; successful settlement requires manual review.
+- Verification uses the real pending-plan and failed-renewal lifecycle migrations with mocked SumUp. PAID, FAILED and EXPIRED worker flows pass. Isolated SQL covers correct target price, immutable plan snapshots, same-price plan substitution, version changes, duplicate settlement, invalid target selection and unchanged current-plan renewal pricing. No hosted database, privileges, credentials, scheduler or charges were changed.
+- Remaining: concurrent lifecycle/abandoned-claim recovery policy, restricted role provisioning, real isolated SumUp sandbox verification and protected scheduling.

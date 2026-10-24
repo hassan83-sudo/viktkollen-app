@@ -78,7 +78,7 @@ jobs:
             provider_checkout_ref text not null default ''
           );
           SQL
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021184500_sumup_renewal_checkout_uniqueness_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065251_sumup_renewal_checkout_uniqueness_draft.sql
           psql -v ON_ERROR_STOP=1 <<'SQL'
           insert into billing.sumup_renewal_attempts (checkout_reference, provider_checkout_ref)
             values ('unbound-1', ''), ('unbound-2', ''), ('renewal-1', 'checkout-1');
@@ -127,11 +127,11 @@ jobs:
         run: |
           set -euo pipefail
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-bootstrap.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021170000_sumup_renewal_facts_draft.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021183000_sumup_renewal_snapshot_guard_draft.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021184500_sumup_renewal_checkout_uniqueness_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065246_sumup_renewal_facts_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065249_sumup_renewal_snapshot_guard_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065251_sumup_renewal_checkout_uniqueness_draft.sql
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-guard.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021173000_sumup_renewal_facts_reader_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065325_sumup_renewal_facts_reader_draft.sql
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-reader.sql
           echo 'Verified reader migration and invalid-state checks'
 
@@ -165,10 +165,10 @@ jobs:
           set -euo pipefail
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-bootstrap.sql
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-commit-bootstrap.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021170000_sumup_renewal_facts_draft.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021183000_sumup_renewal_snapshot_guard_draft.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021184500_sumup_renewal_checkout_uniqueness_draft.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021160000_sumup_renewal_commit_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065246_sumup_renewal_facts_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065249_sumup_renewal_snapshot_guard_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065251_sumup_renewal_checkout_uniqueness_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065322_sumup_renewal_commit_draft.sql
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-commit.sql
 
   renewal-postgres-claim:
@@ -200,5 +200,5 @@ jobs:
         run: |
           set -euo pipefail
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-bootstrap.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021140000_sumup_renewal_claim_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065319_sumup_renewal_claim_draft.sql
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-claim.sql

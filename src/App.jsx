@@ -19,6 +19,7 @@ import CoachSection from './components/sections/CoachSection.jsx'
 import AppSection from './components/app/AppSection.jsx'
 import SocialRoom from './features/social/components/SocialRoom.jsx'
 import './App.css'
+import './sharedBackButton.css'
 import AuthPanel from './components/AuthPanel.jsx'
 import AppLoadingScreen from './components/app/AppLoadingScreen.jsx'
 import BottomNavigation from './components/app/BottomNavigation.jsx'
@@ -924,6 +925,14 @@ function App() {
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [currentLanguage, setCurrentLanguage] = useState(() => getActiveLanguageCode())
   const [activeAppSection, setActiveAppSection] = useState('home')
+  const sectionHistoryRef = useRef([])
+  const lastSectionRef = useRef('home')
+  useEffect(() => {
+    if (lastSectionRef.current !== activeAppSection) {
+      sectionHistoryRef.current.push(lastSectionRef.current)
+      lastSectionRef.current = activeAppSection
+    }
+  }, [activeAppSection])
   const featureFlags = getFeatureFlags()
   const reminderHubUiEnabled = isFeatureEnabled('reminderHubUi', featureFlags)
   const socialUiEnabled = isFeatureEnabled('socialUi', featureFlags)
@@ -3432,6 +3441,16 @@ function App() {
           </section>
           </Suspense>
         )}
+      {activeAppSection !== 'home' && activeAppSection !== 'more' && (
+        <button className="vk-shared-bottom-back" type="button" onClick={() => {
+          const previous = sectionHistoryRef.current.pop() || 'home'
+          lastSectionRef.current = previous
+          setActiveAppSection(previous)
+        }}>
+          <span className="vk-shared-bottom-back-icon" aria-hidden="true">‹</span>
+          <span>{t('settings:more.back', { defaultValue: 'Tillbaka' })}</span>
+        </button>
+      )}
       <BottomNavigation
         activeSection={activeAppSection}
         onSectionChange={handleAppSectionChange}

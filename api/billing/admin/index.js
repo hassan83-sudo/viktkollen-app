@@ -1,3 +1,4 @@
+import { createSumUpHttpTransport, readSumUpConfig } from '../../_shared/billing/providers/sumup.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../../_shared/aiRouteErrors.js'
 import {
   getBillingAdminService,
@@ -131,6 +132,27 @@ export default async function handler(request, response) {
     void request.query?.enabled_for_sale
     void request.query?.plan_id
     void request.query?.price_sek_minor
+    if (request.query?.resource === 'sumup_sandbox_identity') {
+      // Admin-only, branch-scoped, read-only diagnostic. Never create a checkout.
+      if (process.env.VERCEL_ENV !== 'preview'
+        || process.env.VERCEL_GIT_COMMIT_REF !== 'fix/sumup-recurring-production-wiring') {
+        return response.status(404).json({ ok: false, code: 'NOT_AVAILABLE' })
+      }
+      const config = readSumUpConfig(process.env)
+      if (!config) return response.status(503).json({ ok: false, code: 'SANDBOX_NOT_CONFIGURED' })
+      try {
+        const merchant = await createSumUpHttpTransport({ apiKey: config.apiKey })
+          .retrieveMerchant(config.merchantCode)
+        const verified = merchant?.sandbox === true
+          && merchant?.merchant_code === config.merchantCode
+        return response.status(verified ? 200 : 403).json({
+          ok: verified,
+          code: verified ? 'SANDBOX_IDENTITY_VERIFIED' : 'SANDBOX_IDENTITY_MISMATCH',
+        })
+      } catch {
+        return response.status(503).json({ ok: false, code: 'SANDBOX_IDENTITY_UNAVAILABLE' })
+      }
+    }
     if (request.query?.resource === 'plan_commercial') {
       const controls = resolveBillingControlAdapter()
       if (!controls || typeof controls.listPlanCommercial !== 'function') {

@@ -6,6 +6,7 @@ import { createInMemoryCheckoutActivation } from './checkoutActivation.js'
 import { createSumUpHttpTransport } from './providers/sumup.js'
 import { activateVerifiedSumUpSetup } from './sumupInitialActivation.js'
 import {
+  activateOwnedSumUpSandboxSetup,
   createServerCheckoutIntentPorts,
   prepareSumUpSandboxSetup,
   SANDBOX_SETUP_PLAN_ID,
@@ -189,6 +190,7 @@ describe('SumUp sandbox 4 SEK setup', () => {
     const transport = transportFor()
     const result = await prepareSumUpSandboxSetup({ env: {}, transport, userId: USER })
     expect(result.code).toBe('SANDBOX_NOT_CONFIGURED')
+    expect(result.step).toBe('config-missing')
     expect(transport.calls).toEqual([])
   })
 
@@ -404,5 +406,120 @@ describe('durable checkout intent ports', () => {
     })
     const route = readFileSync(join(root, 'api/billing/user/index.js'), 'utf8')
     expect(route).toContain('createServerCheckoutIntentPorts()')
+  })
+
+  it('reads an owned SumUp checkout by provider reference without selecting the table', async () => {
+    const calls = []
+    const client = {
+      schema(name) {
+        return {
+          async rpc(fn, args) {
+            calls.push({ args, fn, schema: name })
+            if (args.p_user_id !== USER) return { data: null, error: null }
+            return {
+              data: {
+                checkout_id: 'chk_owned',
+                plan_id: SANDBOX_SETUP_PLAN_ID,
+                provider: 'sumup',
+                provider_checkout_ref: args.p_provider_checkout_ref,
+                status: 'pending',
+                user_id: args.p_user_id,
+              },
+              error: null,
+            }
+          },
+        }
+      },
+    }
+    const ports = createServerCheckoutIntentPorts({ client })
+    const owned = await ports.getOwnedIntentByProviderRef({
+      providerCheckoutRef: CHECKOUT_ID,
+      userId: USER,
+    })
+    const other = await ports.getOwnedIntentByProviderRef({
+      providerCheckoutRef: CHECKOUT_ID,
+      userId: '22222222-2222-4222-8222-222222222222',
+    })
+    expect(owned).toEqual({
+      checkoutId: 'chk_owned',
+      planId: SANDBOX_SETUP_PLAN_ID,
+      provider: 'sumup',
+      providerCheckoutRef: CHECKOUT_ID,
+      status: 'pending',
+      userId: USER,
+    })
+    expect(other).toBeNull()
+    expect(calls.map((call) => [call.schema, call.fn])).toEqual([
+      ['billing', 'read_owned_sumup_checkout_by_ref'],
+      ['billing', 'read_owned_sumup_checkout_by_ref'],
+    ])
+    expect(calls[0].args).toEqual({
+      p_provider_checkout_ref: CHECKOUT_ID,
+      p_user_id: USER,
+    })
+    const source = readFileSync(join(root, 'api/_shared/billing/sumupSandboxSetup.js'), 'utf8')
+    expect(source).not.toMatch(/from\('checkout_intents'\)/)
+    expect(source).not.toMatch(/read_sumup_checkout_intent/)
+    const sql = readFileSync(join(root, 'supabase/migrations/20261023143000_billing_read_owned_sumup_checkout_by_ref.sql'), 'utf8')
+    expect(sql).toMatch(/where provider = 'sumup'/)
+    expect(sql).toMatch(/provider_checkout_ref = p_provider_checkout_ref/)
+    expect(sql).toMatch(/user_id = p_user_id/)
+    expect(sql).not.toMatch(/where checkout_id = p_checkout_id/)
+    expect(sql).toMatch(/security definer/)
+    expect(sql).toMatch(/grant execute on function billing\.read_owned_sumup_checkout_by_ref\(text, uuid\) to service_role/)
+    expect(sql).not.toMatch(/grant select|grant all on table billing\.checkout_intents/i)
+    expect(sql).not.toMatch(/activate_verified|access_granted|card_number|token/i)
+  })
+})
+
+
+describe('Preview-only atomic SumUp setup activation', () => {
+  it('refuses to activate unless the exact Preview branch points at Staging', async () => {
+    const transport = {
+      async retrieveMerchant() { throw new Error('must not contact SumUp') },
+    }
+    const result = await activateOwnedSumUpSandboxSetup({
+      checkoutId: CHECKOUT_ID,
+      env: {
+        SUMUP_API_KEY: 'test-only-key',
+        SUMUP_MERCHANT_CODE: 'MTEST01',
+        SUPABASE_URL: 'https://production-project.supabase.co',
+        VERCEL_ENV: 'production',
+        VERCEL_GIT_COMMIT_REF: 'main',
+      },
+      ports: { async getOwnedIntentByProviderRef() { throw new Error('must not query billing') } },
+      transport,
+      userId: USER,
+    })
+    expect(result).toMatchObject({ accessGranted: false, code: 'PREVIEW_ONLY', ok: false, status: 403 })
+  })
+
+  it('does not activate a checkout when the authenticated user does not own its intent', async () => {
+    const rpcCalls = []
+    const transport = {
+      async retrieveMerchant(code) { return { merchant_code: code, sandbox: true } },
+      async retrieveCheckout(id) {
+        return { ...checkoutRow(4, 'PAID'), id, checkout_reference: 'chk_not_owned',
+          transactions: [{ amount: 4, currency: 'SEK', id: '7164c99b-13cb-42a1-8ba1-3c2c46a29de8',
+            status: 'SUCCESSFUL', timestamp: '2026-10-23T10:00:00.000Z' }],
+          payment_instrument: { token: 'test-token-12345' } }
+      },
+    }
+    const result = await activateOwnedSumUpSandboxSetup({
+      callRpc: async (...args) => { rpcCalls.push(args); return { access_granted: true } },
+      checkoutId: CHECKOUT_ID,
+      env: {
+        SUMUP_API_KEY: 'test-only-key',
+        SUMUP_MERCHANT_CODE: 'MTEST01',
+        SUPABASE_URL: 'https://armtslzspuebmlysnooq.supabase.co',
+        VERCEL_ENV: 'preview',
+        VERCEL_GIT_COMMIT_REF: 'fix/sumup-recurring-production-wiring',
+      },
+      ports: { async getOwnedIntentByProviderRef() { return null } },
+      transport,
+      userId: USER,
+    })
+    expect(result).toMatchObject({ accessGranted: false, code: 'CHECKOUT_INTENT_MISSING', ok: false })
+    expect(rpcCalls).toEqual([])
   })
 })

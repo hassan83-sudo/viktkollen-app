@@ -1,0 +1,33 @@
+.vk-shared-bottom-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  margin: 18px 0 10px;
+  padding: 6px 18px 6px 7px;
+  border: 1px solid rgba(118, 72, 255, .23);
+  border-radius: 18px;
+  background: #f8f6ff;
+  color: #6135ed;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(91, 51, 220, .10);
+  touch-action: manipulation;
+}
+.vk-shared-bottom-back-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 13px;
+  background: #f0ebff;
+  color: #6536f5;
+  font-size: 36px;
+  line-height: 1;
+}
+.vk-shared-bottom-back:focus-visible {
+  outline: 3px solid #7245ff;
+  outline-offset: 3px;
+}

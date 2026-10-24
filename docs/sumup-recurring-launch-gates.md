@@ -90,6 +90,57 @@ and [disabled leaked-password protection](https://supabase.com/docs/guides/auth/
 Those unrelated settings were left unchanged. Nothing was pushed or deployed
 as part of this Staging provisioning step; no new remote CI run is claimed.
 
+### Restricted-login credential handover (continuation from 2ccb77f)
+
+Read-only credential discovery found no local `SUPABASE_ACCESS_TOKEN`, no
+database/SumUp environment variables, no local test env file, and no access-token
+file in the known Supabase CLI locations. The connected MCP SQL session cannot
+be reused as a local TLS PostgreSQL credential. No password was generated or
+sent through MCP arguments/results. The role and its eight grants are unchanged;
+authentication and the real restricted-connection test are still BLOCKED.
+
+The branch-specific `SUMUP_API_KEY` exists as a sensitive, unreadable Vercel
+Secret. It cannot safely be copied into `SUMUP_RENEWAL_STAGING_API_KEY` through
+the available read API. `SUMUP_MERCHANT_CODE` is readable on this branch and can
+be reused only after the provider confirms the matching merchant is a sandbox.
+No provider request was made and that identity is not newly verified here.
+There are still no dedicated `SUMUP_RENEWAL_*` Vercel entries. An attempted
+project-ref Config creation failed; readback confirmed it was not installed.
+No existing env entry was edited; missing ENABLED continues to disable the runner.
+
+One handover is needed for Sprint 1: a short-lived Supabase Management API token
+scoped ONLY to `armtslzspuebmlysnooq`, with Database Write permission. Do not use
+an account-wide Legacy token. See the official
+[scoped-token documentation](https://supabase.com/docs/guides/platform/personal-access-tokens)
+and [database-query endpoint](https://supabase.com/docs/reference/api/v1-run-a-query).
+The token allows a local process to generate/store the worker password and
+provision it directly over HTTPS without emitting credentials into agent tool
+arguments or outputs. The connection test must not import/run the payment runner.
+
+Store this temporary token locally with hidden input and Windows user-bound
+DPAPI encryption, outside the repository/OneDrive, and share ONLY the file path:
+
+```powershell
+$vkTokenDirectory = Join-Path $env:LOCALAPPDATA 'Viktkollen'
+New-Item -ItemType Directory -Force -Path $vkTokenDirectory | Out-Null
+$vkManagementToken = Read-Host 'Tillfällig Supabase-token, endast Staging (dold)' -AsSecureString
+try {
+  $vkManagementToken | ConvertFrom-SecureString |
+    Set-Content -LiteralPath (Join-Path $vkTokenDirectory 'sumup-staging-management.dpapi') -Encoding ascii
+} finally {
+  if ($vkManagementToken) { $vkManagementToken.Dispose() }
+  Remove-Variable vkManagementToken -ErrorAction SilentlyContinue
+}
+```
+
+This input step itself changes no account, role, database, Vercel env or worker
+flag. Delete the encrypted handover file and revoke the temporary Management
+token after provisioning. Do not reset any existing database password or SumUp
+key. Once available, the next action is only restricted-login provisioning,
+TLS connection/role validation and secure storage of its separate connection
+string, with charging/scheduling disabled. No migration/test suite was rerun
+in this credential-discovery continuation.
+
 ## Existing pieces
 - `api/_shared/billing/sumupRecurring.js` implements a local in-memory recurring prototype, not a durable production worker.
 - `supabase/migrations/20260926180000_billing_sumup_recurring.sql` provides locked-down instrument fingerprint and attempt tables but explicitly says local only.

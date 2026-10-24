@@ -41,7 +41,7 @@ jobs:
       - name: Run SumUp Sandbox verification tests (mock transport, no charges)
         run: node --test tests/sumupSandboxVerification.test.js
       - name: Run renewal unit tests (no credentials or provider calls)
-        run: npx vitest run api/_shared/billing/sumupRenewalRecovery.test.js api/_shared/billing/sumupRenewalRecovery.integration.test.js api/_shared/billing/sumupRenewalFailureService.test.js api/_shared/billing/sumupRenewalWorker.integration.test.js api/_shared/billing/sumupRenewalWorker.test.js api/_shared/billing/sumupRenewalWorkerDatabase.test.js api/_shared/billing/sumupRenewalCandidates.test.js api/_shared/billing/sumupRenewalClaimPort.test.js api/_shared/billing/sumupRenewalClaimBatch.test.js api/_shared/billing/sumupRenewalReconcile.test.js api/_shared/billing/sumupRenewalFinalizer.test.js api/_shared/billing/sumupDurableRenewal.test.js api/_shared/billing/sumupVerifiedCommitBoundary.test.js api/_shared/billing/sumupVerifiedSettlementService.test.js api/_shared/billing/sumupRenewalAuthority.test.js api/_shared/billing/sumupRenewalRecordLoader.test.js api/_shared/billing/sumupRenewalFactsDatabase.test.js api/_shared/billing/sumupRenewalSqlReader.test.js api/_shared/billing/sumupRenewalSqlWriter.test.js api/_shared/billing/sumupRestrictedDatabaseExecutor.test.js api/_shared/billing/sumupRestrictedRenewalDatabase.test.js api/_shared/billing/sumupRestrictedRenewalSettlementPipeline.test.js api/_shared/billing/sumupRenewalAuthorityFromSql.test.js api/_shared/billing/sumupRenewalSettlementPipeline.test.js
+        run: npx vitest run api/_shared/billing/sumupRenewalStagingRole.test.js api/_shared/billing/sumupRenewalRecovery.test.js api/_shared/billing/sumupRenewalRecovery.integration.test.js api/_shared/billing/sumupRenewalFailureService.test.js api/_shared/billing/sumupRenewalWorker.integration.test.js api/_shared/billing/sumupRenewalWorker.test.js api/_shared/billing/sumupRenewalWorkerDatabase.test.js api/_shared/billing/sumupRenewalCandidates.test.js api/_shared/billing/sumupRenewalClaimPort.test.js api/_shared/billing/sumupRenewalClaimBatch.test.js api/_shared/billing/sumupRenewalReconcile.test.js api/_shared/billing/sumupRenewalFinalizer.test.js api/_shared/billing/sumupDurableRenewal.test.js api/_shared/billing/sumupVerifiedCommitBoundary.test.js api/_shared/billing/sumupVerifiedSettlementService.test.js api/_shared/billing/sumupRenewalAuthority.test.js api/_shared/billing/sumupRenewalRecordLoader.test.js api/_shared/billing/sumupRenewalFactsDatabase.test.js api/_shared/billing/sumupRenewalSqlReader.test.js api/_shared/billing/sumupRenewalSqlWriter.test.js api/_shared/billing/sumupRestrictedDatabaseExecutor.test.js api/_shared/billing/sumupRestrictedRenewalDatabase.test.js api/_shared/billing/sumupRestrictedRenewalSettlementPipeline.test.js api/_shared/billing/sumupRenewalAuthorityFromSql.test.js api/_shared/billing/sumupRenewalSettlementPipeline.test.js
 
   renewal-postgres-smoke:
     runs-on: ubuntu-latest
@@ -169,23 +169,23 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065249_sumup_renewal_snapshot_guard_draft.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065251_sumup_renewal_checkout_uniqueness_draft.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065319_sumup_renewal_claim_draft.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024100000_sumup_renewal_bind_checkout_draft.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024071558_sumup_renewal_worker_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024082853_sumup_renewal_bind_checkout_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024082814_sumup_renewal_worker_draft.sql
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-work.sql
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-bind.sql
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-failure-bootstrap.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260926140000_billing_mark_renewal_failed.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024075008_sumup_renewal_failure_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024082822_sumup_renewal_failure_draft.sql
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-failure.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065322_sumup_renewal_commit_draft.sql
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-commit.sql
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-pending-bootstrap.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924084000_billing_pending_plan_apply.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260926140000_billing_mark_renewal_failed.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024100001_sumup_renewal_pending_plan_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024083536_sumup_renewal_pending_plan_draft.sql
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-pending.sql
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-recovery-bootstrap.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024100002_sumup_renewal_recovery_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024083012_sumup_renewal_recovery_draft.sql
           psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-recovery.sql
 
   renewal-postgres-claim:

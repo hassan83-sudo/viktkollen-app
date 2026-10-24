@@ -16,16 +16,16 @@ it.each(['PAID', 'FAILED', 'EXPIRED'])('runs pending-plan worker %s through actu
       'tests/billing/sumup-renewal-postgres-pending-bootstrap.sql',
       'supabase/migrations/20260924084000_billing_pending_plan_apply.sql',
       'supabase/migrations/20260926140000_billing_mark_renewal_failed.sql',
-      'supabase/migrations/20261024075008_sumup_renewal_failure_draft.sql',
+      'supabase/migrations/20261024082822_sumup_renewal_failure_draft.sql',
       'supabase/migrations/20261024065246_sumup_renewal_facts_draft.sql',
       'supabase/migrations/20261024065249_sumup_renewal_snapshot_guard_draft.sql',
       'supabase/migrations/20261024065251_sumup_renewal_checkout_uniqueness_draft.sql',
       'supabase/migrations/20261024065319_sumup_renewal_claim_draft.sql',
-      'supabase/migrations/20261024100000_sumup_renewal_bind_checkout_draft.sql',
-      'supabase/migrations/20261024071558_sumup_renewal_worker_draft.sql',
+      'supabase/migrations/20261024082853_sumup_renewal_bind_checkout_draft.sql',
+      'supabase/migrations/20261024082814_sumup_renewal_worker_draft.sql',
       'supabase/migrations/20261024065322_sumup_renewal_commit_draft.sql',
       'supabase/migrations/20261024065325_sumup_renewal_facts_reader_draft.sql',
-      'supabase/migrations/20261024100001_sumup_renewal_pending_plan_draft.sql',
+      'supabase/migrations/20261024083536_sumup_renewal_pending_plan_draft.sql',
     ]) await db.exec(await readFile(file, 'utf8'))
     await db.exec("insert into billing.plans values ('plan-next', 900, 'SEK', 2, true); update billing.subscriptions set pending_plan_id = 'plan-next', pending_plan_change = 'next_period'")
     const token = 'temporary-server-token'

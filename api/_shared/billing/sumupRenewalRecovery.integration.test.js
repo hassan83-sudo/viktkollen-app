@@ -22,10 +22,10 @@ it.each(['paid', 'failed', 'terminal', 'cancelled', 'changed_plan', 'advanced_pe
         'supabase/migrations/20261024065319_sumup_renewal_claim_draft.sql',
         'supabase/migrations/20261024065322_sumup_renewal_commit_draft.sql',
         'supabase/migrations/20261024065325_sumup_renewal_facts_reader_draft.sql',
-        'supabase/migrations/20261024075008_sumup_renewal_failure_draft.sql',
-        'supabase/migrations/20261024100000_sumup_renewal_bind_checkout_draft.sql',
-        'supabase/migrations/20261024100001_sumup_renewal_pending_plan_draft.sql',
-        'supabase/migrations/20261024100002_sumup_renewal_recovery_draft.sql',
+        'supabase/migrations/20261024082822_sumup_renewal_failure_draft.sql',
+        'supabase/migrations/20261024082853_sumup_renewal_bind_checkout_draft.sql',
+        'supabase/migrations/20261024083536_sumup_renewal_pending_plan_draft.sql',
+        'supabase/migrations/20261024083012_sumup_renewal_recovery_draft.sql',
       ]) await db.exec(await readFile(file, 'utf8'))
       await db.exec("select billing.claim_sumup_renewal_attempt('original-ref','sub-1','2026-10-01Z')")
       if (scenario !== 'unbound') await db.query(

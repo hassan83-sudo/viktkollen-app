@@ -126,6 +126,7 @@ import { syncLegacyReminderSettingsToV2 } from './services/reminders/reminderLeg
 import { applyDueNotificationPlan } from './services/notifications/notificationSchedulerBridge.js'
 import { logNavigationOrigin } from './services/navigation/navigationOriginDiagnostics.js'
 import { resolveMoreFolderFromTarget } from './services/more/moreFolders.js'
+import { restorePendingHomeFoodScan } from './services/nutritionScanHomeCapture.js'
 import i18n, { changeAppLanguage, getActiveLanguageCode } from './i18n/index.js'
 import { getFeatureFlags, isFeatureEnabled } from './features/featureRegistry.js'
 
@@ -2996,6 +2997,18 @@ function App() {
     setNutritionIntent({ id: Date.now(), panel: 'scanner' })
     handleDailyCoachAction('nutrition', 'nutrition-scanner-v2')
   }
+  // Om appen laddades om mitt i en matscanning från Hem (iOS efter kameran,
+  // eller en ny version) öppnas matscannern igen, med bilden om den sparats.
+  useEffect(() => {
+    if (!authUserId) return undefined
+    let cancelled = false
+    restorePendingHomeFoodScan(authUserId).then((openScanner) => {
+      if (cancelled || !openScanner) return
+      logNavigationOrigin('home-scan-food:restore', { sectionId: 'nutrition', targetId: 'nutrition-scanner-v2' })
+      handleDailyCoachAction('nutrition', 'nutrition-scanner-v2')
+    })
+    return () => { cancelled = true }
+  }, [authUserId, handleDailyCoachAction])
   const syncStatusSnapshot = getSyncStatusSnapshot()
   const syncStatusWithUser = {
     ...syncStatusSnapshot,

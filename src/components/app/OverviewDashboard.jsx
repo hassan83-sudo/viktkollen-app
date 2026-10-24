@@ -18,7 +18,12 @@ import {
   getWeatherPermissionState,
 } from '../../services/overviewLiveContext.js'
 import { loadOverviewWeather } from '../../services/overviewWeather.js'
-import { setPendingHomeFoodScanFile } from '../../services/nutritionScanHomeCapture.js'
+import {
+  clearHomeFoodCameraIntent,
+  markHomeFoodCameraOpened,
+  setPendingHomeFoodScanFile,
+} from '../../services/nutritionScanHomeCapture.js'
+import { preloadFoodScanner } from '../../services/foodScannerPreload.js'
 import { createProfilePhotoFromFile, readProfilePhoto, writeProfilePhoto } from '../../services/profilePhotoStorage.js'
 import { getFeatureFlags, isFeatureEnabled } from '../../features/featureRegistry.js'
 import HomeSocialPreview from '../../features/social/components/HomeSocialPreview.jsx'
@@ -835,6 +840,10 @@ function OverviewPrimaryActions({
   const openFood = () => {
     if (foodCameraInput && typeof foodCameraInput.click === 'function') {
       // Värdet nollställs i onChange, så samma bild kan väljas igen.
+      markHomeFoodCameraOpened(userId)
+      // Matscannerns appdelar hämtas medan kameran är öppen, så att de inte
+      // laddas först efter "Använd bild".
+      preloadFoodScanner()
       foodCameraInput.click()
       return
     }
@@ -845,7 +854,10 @@ function OverviewPrimaryActions({
     const file = event.target.files?.[0] || null
     event.target.value = ''
     // Avbruten kamera: stanna kvar på Hem.
-    if (!file) return
+    if (!file) {
+      clearHomeFoodCameraIntent()
+      return
+    }
     setPendingHomeFoodScanFile(file, userId)
     navigateToFoodScan()
   }
@@ -982,6 +994,8 @@ function OverviewPrimaryActions({
               onClick={() => {
                 if (foodLibraryInput) {
                   foodLibraryInput.value = ''
+                  markHomeFoodCameraOpened(userId)
+                  preloadFoodScanner()
                   foodLibraryInput.click()
                 }
               }}

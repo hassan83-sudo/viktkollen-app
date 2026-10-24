@@ -110,7 +110,7 @@ describe('NutritionScannerV2 live preview', () => {
     expect(container.querySelector('video.scanner-live-camera').srcObject).toBe(streams[1])
     expect(streams[1].track.stop).not.toHaveBeenCalled()
   })
-  it('does not request camera access while the selected photo is being prepared', async () => {
+  it('does not request camera access while preparing or clearing the selected photo', async () => {
     const getUserMedia = vi.fn(async () => createStream())
     let finish
     preprocessNutritionPhoto.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
@@ -121,7 +121,15 @@ describe('NutritionScannerV2 live preview', () => {
     fireEvent.change(input, { target: { files: [new File(['photo'], 'meal.jpg', { type: 'image/jpeg' })] } })
     await act(async () => intersect([{ isIntersecting: true }]))
     expect(getUserMedia).toHaveBeenCalledTimes(1)
-    await act(async () => finish({ ok: false, errors: ['test end'] }))
+    await act(async () => finish({
+      ok: true, previewUrl: 'blob:meal', processedBlob: new Blob(['photo']),
+      metadata: { width: 10, height: 10 }, revoke: () => {},
+    }))
+    // Saving uses the same clearTemporaryImage path as removing the photo.
+    fireEvent.click(container.querySelectorAll('.scanner-preview-actions button')[1])
+    await act(async () => {})
+    expect(container.querySelector('img.food-preview')).toBeNull()
+    expect(getUserMedia).toHaveBeenCalledTimes(1)
   })
 
 })

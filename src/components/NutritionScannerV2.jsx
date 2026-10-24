@@ -955,7 +955,8 @@ function NutritionScannerV2({
   const hasActiveImagePayload = Boolean(resolveActiveImagePayload())
 
   function clearTemporaryImage() {
-    selectedPhotoRef.current = false
+    // Saving/removing a photo must not request camera permission again.
+    selectedPhotoRef.current = true
     clearImageState(true)
     if (import.meta.env.DEV) setRemoteDebug(null)
   }

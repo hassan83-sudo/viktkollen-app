@@ -473,6 +473,8 @@ function NutritionScannerV2({
   // En bild tagen med telefonens kamera från Hem håller på att tas emot; starta
   // då ingen förhandsvisning av kameran under tiden.
   const homeCaptureInProgressRef = useRef(hasPendingHomeFoodScanFile(userId))
+  // Keep this synchronous guard through preprocessing and effect replays.
+  const selectedPhotoRef = useRef(hasPendingHomeFoodScanFile(userId))
   const currentImageRef = useRef(null)
   const imagePayloadRef = useRef(null)
   const activeAnalysisControllerRef = useRef(null)
@@ -738,7 +740,7 @@ function NutritionScannerV2({
     }
 
     async function startLiveCamera() {
-      if (cancelled || cameraStarting || liveCameraStreamRef.current || nativeCameraOpenRef.current || homeCaptureInProgressRef.current || document.visibilityState === 'hidden') return
+      if (cancelled || selectedPhotoRef.current || currentImageRef.current || cameraStarting || liveCameraStreamRef.current || nativeCameraOpenRef.current || homeCaptureInProgressRef.current || document.visibilityState === 'hidden') return
       const sessionId = session
       const epoch = currentCameraEpoch()
       cameraStarting = true
@@ -953,12 +955,17 @@ function NutritionScannerV2({
   const hasActiveImagePayload = Boolean(resolveActiveImagePayload())
 
   function clearTemporaryImage() {
+    selectedPhotoRef.current = false
     clearImageState(true)
     if (import.meta.env.DEV) setRemoteDebug(null)
   }
 
   async function handleFileChange(event) {
     const file = event.target.files?.[0]
+    if (file) {
+      selectedPhotoRef.current = true
+      liveCameraControlsRef.current?.stop()
+    }
     clearRemoteAnalysisApproval()
     setError('')
     setStatus('')

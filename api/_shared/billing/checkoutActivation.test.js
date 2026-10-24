@@ -103,6 +103,27 @@ describe('BILL-9B durable checkout activation', () => {
     expect(calls).toEqual([])
   })
 
+  it('rejects recurring mode on the one-time hosted checkout endpoint', async () => {
+    const result = await beginCheckout({
+      body: { plan_id: PAID, payment_mode: 'recurring' },
+      userId: USER,
+    })
+    expect(result).toMatchObject({
+      accessGranted: false,
+      code: 'UNSUPPORTED_PAYMENT_MODE',
+      status: 400,
+    })
+  })
+
+  it('marks a verified one-time purchase to end without renewal', async () => {
+    const db = database()
+    const intent = await readyIntent(db)
+    const result = await db.activate(activationInput({ checkoutId: intent.checkoutId }))
+    expect(result.accessGranted).toBe(true)
+    expect(result.currentPeriodEnd).toBe(END)
+    expect(db.quotaPlan(USER)).toBe(PAID)
+  })
+
   it('keeps checkout refs unique and rejects rebinding a different ref', async () => {
     const db = database()
     const first = await readyIntent(db)

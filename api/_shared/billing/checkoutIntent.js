@@ -3,6 +3,7 @@ import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../aiRout
 import { verifySupabaseUser } from '../verifySupabaseUser.js'
 import { readServerPlanSale } from './userLifecycleIntent.js'
 import { getPlanById } from '../../../src/services/billing/planCatalog.js'
+import { createServerCheckoutIntentPorts } from './sumupSandboxSetup.js'
 import { getConfiguredSumUpAdapter, minorUnitsFromSumUpAmount, SUMUP_PROVIDER } from './providers/sumup.js'
 
 const PLAN_ID_RE = /^[A-Za-z0-9._-]{1,80}$/
@@ -59,7 +60,7 @@ function readBody(body) {
  */
 export async function beginCheckout({
   body,
-  ports = checkoutPortsOverride,
+  ports = checkoutPortsOverride || createServerCheckoutIntentPorts(),
   readSale = saleReaderOverride || defaultReadSale,
   userId,
 } = {}) {
@@ -84,6 +85,8 @@ export async function beginCheckout({
   void input.user_id
   void input.userId
 
+  const paymentMode = input.payment_mode == null ? 'one_time' : input.payment_mode
+  if (paymentMode !== 'one_time') return fail('UNSUPPORTED_PAYMENT_MODE', 400)
   const planId = String(input.plan_id || '').trim()
   if (!PLAN_ID_RE.test(planId) || planId === 'plan.free') return fail('INVALID_PLAN', 400)
   if (typeof readSale !== 'function') return fail('DURABLE_UNAVAILABLE', 503)

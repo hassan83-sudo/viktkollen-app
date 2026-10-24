@@ -55,7 +55,7 @@ export function createInMemoryCheckoutActivation({ now = () => new Date(), plans
         reject('provider_subscription_conflict')
       }
       const subscription = {
-        cancelAtPeriodEnd: false,
+        cancelAtPeriodEnd: true,
         currentPeriodEnd: input.periodEnd,
         currentPeriodStart: input.periodStart,
         planId: intent.planId,

@@ -19134,3 +19134,24 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   .nutrition-scanner-review .scanner-food-thumb { width: 46px; height: 46px; font-size: 25px; }
   .nutrition-scanner-review .scanner-food-content > .scanner-component-macros { gap: 3px 7px; }
 }
+
+/* Keep the Mer hub full-width in its active app-section grid. */
+#app-section-more.is-active {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: stretch;
+  width: 100%;
+  min-width: 0;
+}
+
+#app-section-more.is-active > .more-hub,
+#app-section-more.is-active > .more-hub-view,
+#app-section-more .more-hub-folders {
+  width: 100%;
+  min-width: 0;
+  justify-self: stretch;
+}
+
+#app-section-more .more-hub-folders {
+  grid-template-columns: minmax(0, 1fr);
+}

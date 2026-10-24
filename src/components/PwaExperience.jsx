@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import {
   applyServiceWorkerUpdate,
   controllerChangeReloadAction,
+  isNativeCaptureActive,
   isStandaloneDisplayMode,
   PWA_APP_VERSION,
   PWA_CACHE_VERSION,
   registerServiceWorker,
   reloadPage,
   requestServiceWorkerUpdate,
+  trackNativeCapture,
 } from '../registerServiceWorker.js'
 
 function getInitialOnlineStatus() {
@@ -119,8 +121,11 @@ function PwaExperience({ showDiagnostics = false }) {
       }, 5 * 60 * 1000)
     })
 
+    const stopTrackingNativeCapture = trackNativeCapture(document)
+
     function handleVisibilityChange() {
-      if (document.visibilityState === 'hidden' && deferredReload) {
+      // Kameran eller bildväljaren döljer sidan: vänta tills bilden är vald eller avbruten.
+      if (document.visibilityState === 'hidden' && deferredReload && !isNativeCaptureActive()) {
         deferredReload = false
         reloadPage()
         return
@@ -143,6 +148,7 @@ function PwaExperience({ showDiagnostics = false }) {
       controllerChangeHandledRef.current = true
       const action = controllerChangeReloadAction({
         activeElement: document.activeElement,
+        captureActive: isNativeCaptureActive(),
         hadControllerAtStart,
       })
       if (action === 'now') reloadPage()
@@ -153,6 +159,7 @@ function PwaExperience({ showDiagnostics = false }) {
     navigator.serviceWorker?.addEventListener?.('controllerchange', handleControllerChange)
 
     return () => {
+      stopTrackingNativeCapture()
       cleanupRegistration()
       if (updateInterval) window.clearInterval(updateInterval)
       document.removeEventListener('visibilitychange', handleVisibilityChange)

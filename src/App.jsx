@@ -2959,7 +2959,9 @@ function App() {
 
       if (target) {
         scrollTargetInApp(target)
-      } else {
+      } else if (!(sectionId === 'nutrition' && (targetId === 'nutrition-scanner-v2' || targetId === 'scanner'))) {
+        // Matscannern laddas separat; MealLogger scrollar dit när den finns.
+        // Att scrolla till toppen här gav ett hopp förbi skannern.
         scrollAppToTop()
       }
 

@@ -37,6 +37,7 @@ import {
   getCurrentAuthSession,
   signInWithEmail,
   signOut,
+  signOutAllSessions,
   signUpWithEmail,
   subscribeToAuthChanges,
 } from './services/authService.js'
@@ -2255,6 +2256,22 @@ function App() {
     setAuthLoading(false)
   }
 
+  async function handleAccountDeleted() {
+    setAuthError('')
+    setAuthNotice('')
+    setAuthLoading(true)
+    clearSharedAnalyticsCache()
+
+    try {
+      await signOutAllSessions()
+    } finally {
+      setActiveAppSection('home')
+      setMoreIntent(null)
+      setAuthSession(null)
+      setAuthLoading(false)
+    }
+  }
+
   const updateCheckIn = useCallback((key, value) => {
     setCheckIn((current) => ({ ...current, [key]: value }))
   }, [])
@@ -3393,6 +3410,7 @@ function App() {
   onReminderStateChange={handleReminderStateChange}
    onRequestNotificationPermission={requestNotificationPermission}
   onSearchNavigate={handleGlobalSearchNavigate}
+  onAccountDeleted={handleAccountDeleted}
   onSignOut={handleSignOut}
   profileCompleteness={profileCompleteness}
   reminderOptions={reminderOptions}

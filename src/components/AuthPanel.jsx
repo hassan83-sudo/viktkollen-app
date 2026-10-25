@@ -21,6 +21,7 @@ function AuthPanel({
   authNotice,
   authStatus,
   onSignIn,
+  onSignUp,
 }) {
   const [mode, setMode] = useState(() =>
     isRecoveryLink() ? 'choose-new-password' : 'sign-in',
@@ -34,6 +35,7 @@ function AuthPanel({
   const [resetLoading, setResetLoading] = useState(false)
   const [resetCooldown, setResetCooldown] = useState(0)
   const isConfigured = Boolean(authStatus?.authEnabled)
+  const isSigningUp = mode === 'sign-up'
   const isResettingPassword = mode === 'reset-password'
   const isChoosingNewPassword = mode === 'choose-new-password'
   const isBusy = authLoading || resetLoading
@@ -142,6 +144,15 @@ function AuthPanel({
       return
     }
 
+    if (isSigningUp) {
+      if (password !== confirmPassword) {
+        setFormError('Lösenorden matchar inte.')
+        return
+      }
+      await onSignUp({ email: normalizedEmail, password })
+      return
+    }
+
     await onSignIn({ email: normalizedEmail, password })
   }
 
@@ -154,14 +165,14 @@ function AuthPanel({
             ? 'Välj nytt lösenord'
             : isResettingPassword
               ? 'Glömt lösenord?'
-              : 'Logga in'}
+              : isSigningUp ? 'Skapa konto' : 'Logga in'}
         </h1>
         <p className="welcome-subtitle">
           {isChoosingNewPassword
             ? 'Skriv ditt nya lösenord två gånger och spara det.'
             : isResettingPassword
               ? 'Ange e-postadressen till ditt konto så skickar vi en återställningslänk.'
-              : 'Använd e-post och lösenord. Din vikt, mat, check-ins, bilder och chatt ligger fortfarande lokalt i den här webbläsaren.'}
+              : isSigningUp ? 'Ange e-post och välj ett lösenord för ditt nya konto.' : 'Använd e-post och lösenord. Din vikt, mat, check-ins, bilder och chatt ligger fortfarande lokalt i den här webbläsaren.'}
         </p>
 
         <form className="onboarding-form" onSubmit={handleSubmit}>
@@ -175,11 +186,11 @@ function AuthPanel({
           {!isResettingPassword && (
             <label className="field">
               <span>{isChoosingNewPassword ? 'Nytt lösenord' : 'Lösenord'}</span>
-              <input type={showPassword ? 'text' : 'password'} autoComplete={isChoosingNewPassword ? 'new-password' : 'current-password'} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Minst 6 tecken" disabled={!isConfigured || isBusy} required />
+              <input type={showPassword ? 'text' : 'password'} autoComplete={isChoosingNewPassword || isSigningUp ? 'new-password' : 'current-password'} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Minst 6 tecken" disabled={!isConfigured || isBusy} required />
             </label>
           )}
 
-          {isChoosingNewPassword && (
+          {(isChoosingNewPassword || isSigningUp) && (
             <label className="field">
               <span>Upprepa nytt lösenord</span>
               <input type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Skriv lösenordet igen" disabled={!isConfigured || isBusy} required />
@@ -201,11 +212,17 @@ function AuthPanel({
                   ? resetCooldown > 0
                     ? `Skicka igen om ${resetCooldown} s`
                     : 'Skicka återställningslänk'
-                  : 'Logga in'}
+                  : isSigningUp ? 'Skapa konto' : 'Logga in'}
           </button>
 
           {mode === 'sign-in' && (
-            <button className="secondary-button" type="button" onClick={() => changeMode('reset-password')} disabled={!isConfigured || isBusy}>Glömt lösenord?</button>
+            <>
+              <button className="secondary-button" type="button" onClick={() => changeMode('reset-password')} disabled={!isConfigured || isBusy}>Glömt lösenord?</button>
+              <button className="secondary-button" type="button" onClick={() => changeMode('sign-up')} disabled={!isConfigured || isBusy}>Skapa konto</button>
+            </>
+          )}
+          {isSigningUp && (
+            <button className="secondary-button" type="button" onClick={() => changeMode('sign-in')} disabled={isBusy}>Tillbaka till inloggning</button>
           )}
 
           {isResettingPassword && (

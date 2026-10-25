@@ -519,7 +519,7 @@ describe('Preview-only atomic SumUp setup activation', () => {
       transport,
       userId: USER,
     })
-    expect(result).toMatchObject({ accessGranted: false, code: 'CHECKOUT_INTENT_MISSING', ok: false })
+    expect(result).toMatchObject({ accessGranted: false, code: 'CHECKOUT_NOT_FOUND', ok: false })
     expect(rpcCalls).toEqual([])
   })
 })

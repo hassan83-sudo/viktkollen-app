@@ -252,7 +252,20 @@ function AuthPanel({
         </form>
 
         {!isConfigured && <p className="welcome-note">Supabase Auth är inte konfigurerat ännu. Lägg till VITE_SUPABASE_URL och VITE_SUPABASE_ANON_KEY för att aktivera inloggning.</p>}
-        {(formNotice || authNotice) && <p className="welcome-note">{formNotice || authNotice}</p>}
+        {(formNotice || authNotice) && (
+          <p
+            className="welcome-note"
+            role="status"
+            style={formNotice.startsWith('Kontot är skapat') ? {
+              color: '#34f5b0',
+              fontSize: '1.05rem',
+              fontWeight: 600,
+              lineHeight: 1.5,
+            } : undefined}
+          >
+            {formNotice || authNotice}
+          </p>
+        )}
         {(formError || authError) && <p className="form-error" role="alert">{formError || authError}</p>}
       </section>
     </main>

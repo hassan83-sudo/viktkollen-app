@@ -183,15 +183,17 @@ function AuthPanel({
                 ? 'Skapa konto'
                 : 'Logga in'}
         </h1>
-        <p className="welcome-subtitle">
-          {isChoosingNewPassword
-            ? 'Skriv ditt nya lösenord två gånger och spara det.'
-            : isResettingPassword
-              ? 'Ange e-postadressen till ditt konto så skickar vi en återställningslänk.'
-              : isSigningUp
-                ? 'Skapa ett konto med din e-postadress och ett lösenord.'
-                : 'Använd e-post och lösenord. Din vikt, mat, check-ins, bilder och chatt ligger fortfarande lokalt i den här webbläsaren.'}
-        </p>
+        {mode !== 'sign-in' && (
+          <p className="welcome-subtitle">
+            {isChoosingNewPassword
+              ? 'Skriv ditt nya lösenord två gånger och spara det.'
+              : isResettingPassword
+                ? 'Ange e-postadressen till ditt konto så skickar vi en återställningslänk.'
+                : isSigningUp
+                  ? 'Skapa ett konto med din e-postadress och ett lösenord.'
+                  : 'Använd e-post och lösenord. Din vikt, mat, check-ins, bilder och chatt ligger fortfarande lokalt i den här webbläsaren.'}
+          </p>
+        )}
 
         <form className="onboarding-form" onSubmit={handleSubmit}>
           {!isChoosingNewPassword && (

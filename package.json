@@ -31,7 +31,8 @@
     "billing:production-4a": "node scripts/run-billing-production-4a.mjs",
     "billing:production-4b": "node scripts/run-billing-production-4b.mjs",
     "billing:production-4c": "node scripts/run-billing-production-4c.mjs",
-    "supabase:security-check": "node scripts/publicTableMigrationGuard.mjs"
+    "supabase:security-check": "node scripts/publicTableMigrationGuard.mjs",
+    "auth:preview-preflight": "node scripts/run-preview-auth-preflight.js"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "0.10.35",

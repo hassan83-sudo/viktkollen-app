@@ -44,9 +44,9 @@
 }
 
 .test-feedback-chip {
-  position: relative;
   display: inline-flex;
   align-items: center;
+  gap: 8px;
   min-height: 44px;
   padding: 8px 14px;
   border: 1px solid rgba(127, 127, 127, 0.45);
@@ -56,21 +56,25 @@
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
+/* Den riktiga rutan/knappen syns, så att tangentbordsfokus alltid hamnar på
+   något synligt (tillgänglighetsgaten tillåter inga dolda Tab-stopp). */
 .test-feedback-chip input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: #16a37f;
+}
+
+.test-feedback-chip input:focus-visible {
+  outline: 3px solid #16a37f;
+  outline-offset: 2px;
 }
 
 .test-feedback-chip.is-selected {
   border-color: #16a37f;
   background: rgba(22, 163, 127, 0.16);
   font-weight: 700;
-}
-
-.test-feedback-chip:focus-within {
-  outline: 3px solid #16a37f;
-  outline-offset: 2px;
 }
 
 .test-feedback-clear {

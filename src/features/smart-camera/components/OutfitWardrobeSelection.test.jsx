@@ -23,6 +23,21 @@ const wardrobe = {
 }
 
 describe('outfit wardrobe link', () => {
+  it('edits saved metadata without replacing its approved photo, id, selection or history', () => {
+    const image = 'data:image/jpeg;base64,YWJj'
+    window.localStorage.setItem(wardrobeStorageKey, JSON.stringify({ ...wardrobe,
+      garments: [{ ...wardrobe.garments[0], image }], selectedGarmentIds: ['shirt'] }))
+    render(<OutfitWardrobeSelection />)
+    fireEvent.click(screen.getByRole('button', { name: 'Redigera Blå tröja' }))
+    fireEvent.change(screen.getByLabelText('Nytt namn'), { target: { value: 'Min skjorta' } })
+    fireEvent.change(screen.getByLabelText('Ny plaggtyp'), { target: { value: 'Skjorta' } })
+    fireEvent.change(screen.getByLabelText('Ny färg'), { target: { value: '#ff0000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Spara ändringar' }))
+    const saved = JSON.parse(localStorage.getItem(wardrobeStorageKey))
+    expect(saved.garments[0]).toMatchObject({ id: 'shirt', name: 'Min skjorta', type: 'Skjorta', color: '#ff0000', image })
+    expect(saved.selectedGarmentIds).toEqual(['shirt'])
+    expect(saved.worn).toEqual(wardrobe.worn)
+  })
   it('persists multiple selection without changing garments or worn history', () => {
     const saved = JSON.stringify(wardrobe)
     window.localStorage.setItem(wardrobeStorageKey, saved)
@@ -46,7 +61,7 @@ describe('outfit wardrobe link', () => {
     'handles absent or invalid stored clothes safely: %s', (saved) => {
       if (saved !== null) window.localStorage.setItem(wardrobeStorageKey, saved)
       render(<OutfitWardrobeSelection />)
-      expect(screen.queryAllByRole('checkbox')).toHaveLength(0)
+      expect(screen.queryByRole('group', { name: 'Välj ett eller flera plagg' })).toBeNull()
       expect(screen.getByText(/Du har inga sparade kläder/)).toBeTruthy()
       expect(screen.getByTestId('wardrobe-selection').textContent).toContain('Inga plagg valda')
     },

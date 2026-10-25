@@ -2,8 +2,10 @@ import { isWardrobeAiTarget, wardrobeAiConfig, WARDROBE_AI_BRANCH } from '../api
 import { assertNoPublicServerKeys, assertWardrobeStagingConfig, isWardrobePreview, WARDROBE_BRANCH } from '../api/_shared/wardrobeStagingGuard.js'
 
 export function wardrobeSourceBranch(gitBranch, env = {}) {
-  // Git-source deployments may have no .git directory and omit VERCEL=1.
-  // Exact provider environment/ref are still required by the isolation gate.
+  // Vercel may reconstruct the source snapshot in a synthetic Git repo named
+  // master. Its deployment metadata identifies the source branch, not that repo.
+  if (env.VERCEL === '1' && env.VERCEL_ENV === 'preview') return env.VERCEL_GIT_COMMIT_REF || ''
+  // Outside Vercel, do not override an existing conflicting local checkout.
   return gitBranch || (env.VERCEL_ENV === 'preview' ? env.VERCEL_GIT_COMMIT_REF || '' : '')
 }
 

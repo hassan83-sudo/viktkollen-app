@@ -10,3 +10,8 @@ it('does not override a conflicting Git branch or infer an unidentified environm
   expect(wardrobeSourceBranch('', { VERCEL_GIT_COMMIT_REF: branch })).toBe('')
   expect(() => wardrobeBuildIsolation({ WARDROBE_AI_PREVIEW: 'true' }, 'main')).toThrow('wardrobe_source_identity_invalid')
 })
+it('uses verified Vercel Preview metadata instead of its synthetic master checkout', () => {
+  expect(wardrobeSourceBranch('master', { VERCEL: '1', VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: branch })).toBe(branch)
+  expect(wardrobeSourceBranch('master', { VERCEL: '1', VERCEL_ENV: 'preview' })).toBe('')
+  expect(wardrobeSourceBranch('master', { VERCEL: '1', VERCEL_ENV: 'production', VERCEL_GIT_COMMIT_REF: branch })).toBe('master')
+})

@@ -365,7 +365,10 @@ export async function verifySumUpSandboxSetup({
 }
 
 
-const SUMUP_ACTIVATION_PREVIEW_BRANCH = 'fix/sumup-recurring-production-wiring'
+const SUMUP_ACTIVATION_PREVIEW_BRANCHES = new Set([
+  'fix/sumup-recurring-production-wiring',
+  'test/sumup-sandbox-verify-20261024',
+])
 const SUMUP_STAGING_DATABASE_URL = 'https://armtslzspuebmlysnooq.supabase.co'
 
 /**
@@ -383,7 +386,7 @@ export async function activateOwnedSumUpSandboxSetup({
   const rawDatabaseUrl = String(env.SUPABASE_URL || env.VITE_SUPABASE_URL || '').trim()
   const databaseUrl = rawDatabaseUrl.endsWith('/') ? rawDatabaseUrl.slice(0, -1) : rawDatabaseUrl
   if (env.VERCEL_ENV !== 'preview'
-    || env.VERCEL_GIT_COMMIT_REF !== SUMUP_ACTIVATION_PREVIEW_BRANCH
+    || !SUMUP_ACTIVATION_PREVIEW_BRANCHES.has(env.VERCEL_GIT_COMMIT_REF)
     || databaseUrl !== SUMUP_STAGING_DATABASE_URL) {
     return closed('PREVIEW_ONLY', 403, 'environment-guard')
   }

@@ -47,6 +47,7 @@ function MoreSection({
   onOpenAiCoach,
   onOpenEar,
   onOpenEye,
+  onAccountDeleted,
   onSearchNavigate,
   onSignOut,
   profileCompleteness,
@@ -159,7 +160,7 @@ function MoreSection({
     setDeleteStatus(localResult.ok
       ? t('deleteSuccess')
       : t('deletePartialLocal'))
-    await onSignOut?.()
+    await onAccountDeleted?.()
   }
 
   function handleBackToHub() {

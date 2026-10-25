@@ -184,7 +184,7 @@ export async function completePasswordRecovery(password) {
     return result
   }
 
-  const signOutResult = await supabase.auth.signOut()
+  const signOutResult = await signOutAllSessions()
 
   if (signOutResult.error) {
     return signOutResult
@@ -198,5 +198,13 @@ export async function signOut() {
     return getAuthUnavailableResult()
   }
 
-  return supabase.auth.signOut()
+  return supabase.auth.signOut({ scope: 'local' })
+}
+
+export async function signOutAllSessions() {
+  if (!supabase) {
+    return getAuthUnavailableResult()
+  }
+
+  return supabase.auth.signOut({ scope: 'global' })
 }

@@ -3015,7 +3015,10 @@ function App() {
     userId: authSession?.user?.id || '',
   }
 
-  if (authLoading) {
+  // Keep the loading screen until the authenticated user's profile is hydrated.
+  // Otherwise a cold start briefly mounts Home with placeholder data before
+  // the queued hydration switches its layout (and may trigger a visible jump).
+  if (authLoading || (authSession && !profileWeightsHydrated)) {
     return <AppLoadingScreen />
   }
 

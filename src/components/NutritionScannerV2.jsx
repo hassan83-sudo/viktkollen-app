@@ -546,12 +546,8 @@ function NutritionScannerV2({
     if (!target || typeof window === 'undefined' || typeof document === 'undefined') return
     const behavior = getAccessibilityScrollBehavior()
 
-    try {
-      target.scrollIntoView({ behavior, block: 'start', inline: 'start' })
-    } catch {
-      // Safari fallback if scrollIntoView is missing or restricted.
-    }
-
+    // Scroll only once: scrollIntoView followed by window.scrollTo caused
+    // competing movements when the analysis result first appeared.
     const nav = document.querySelector('.bottom-nav')
     if (typeof window.scrollTo !== 'function' || !nav || !Number.isFinite(target.getBoundingClientRect?.().top)) return
     if (typeof window.scrollY !== 'number') return

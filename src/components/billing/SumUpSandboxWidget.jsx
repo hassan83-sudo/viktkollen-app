@@ -115,7 +115,7 @@ export default function SumUpSandboxWidget({
   }, [checkoutId, mountWidget, phase])
 
   useEffect(() => {
-    if (widgetState !== 'success' || !checkoutId) return
+    if (!['success', 'fail', 'error'].includes(widgetState) || !checkoutId) return
     let cancelled = false
     setVerification('checking')
     verifySandboxCheckout(checkoutId).then((result) => {
@@ -149,9 +149,8 @@ export default function SumUpSandboxWidget({
       {!startRequested ? <button type="button" onClick={() => setStartRequested(true)}>Starta Sandbox-test (4 kr)</button> : null}
       {phase === 'unavailable' ? <p>Sandbox-kassan är inte tillgänglig.</p> : null}
       {phase === 'ready' ? <div id="sumup-card" /> : null}
-      {widgetState === 'success' ? <p role="status">{verification === 'checking' ? 'Verifierar betalningen hos SumUp…' : verification === 'activated' ? 'Betalningen är verifierad och testabonnemanget har aktiverats i Staging.' : verification === 'pending' ? 'SumUp visar fortfarande väntande betalning. Inget abonnemang aktiverat.' : verification === 'activation-required' ? 'Betalningen är verifierad, men säker abonnemangsaktivering saknas ännu.' : verification === 'instrument-missing' ? 'SumUp saknar verifierad recurring-token. Inget abonnemang aktiverat.' : 'SumUp rapporterade success, men betalningen är inte slutverifierad. Inget abonnemang aktiverat.'}</p> : null}
+      {['success', 'fail', 'error'].includes(widgetState) ? <p role="status">{verification === 'checking' ? 'Verifierar betalningen hos SumUp…' : verification === 'activated' ? 'Betalningen är verifierad och testabonnemanget har aktiverats i Staging.' : verification === 'pending' ? 'SumUp visar fortfarande väntande betalning. Inget abonnemang aktiverat.' : verification === 'activation-required' ? 'Betalningen är verifierad, men säker abonnemangsaktivering saknas ännu.' : verification === 'instrument-missing' ? 'SumUp saknar verifierad recurring-token. Inget abonnemang aktiverat.' : 'Kunde inte bekräfta betalningen hos servern. Kontrollera status innan ett nytt försök.'}</p> : null}
       {widgetState === 'auth-screen' ? <p>SumUp visar en verifiering.</p> : null}
-      {widgetState === 'fail' || widgetState === 'error' ? <p>SumUp avvisade försöket.</p> : null}
     </article>
   )
 }

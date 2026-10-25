@@ -8,7 +8,7 @@ import { isWardrobeOffline } from '../../../services/supabaseClient.js'
 const rejectionMessages = {
   person: 'Bilden avvisades eftersom en person eller kroppsdel syns. Fotografera plagget utan människor eller händer.',
   multiple: 'Fotografera ett plagg åt gången. Ett par skor går bra.',
-  not_clothing: 'Fotografera ett klädesplagg, ett par skor eller en accessoar.',
+  not_clothing: 'Fotografera ett klädesplagg eller ett par skor.',
   uncertain: 'Bilden kunde inte godkännas säkert. Ta en tydligare bild av hela plagget.',
 }
 

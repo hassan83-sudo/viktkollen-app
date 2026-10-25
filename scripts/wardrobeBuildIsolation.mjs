@@ -1,6 +1,12 @@
 import { isWardrobeAiTarget, wardrobeAiConfig, WARDROBE_AI_BRANCH } from '../api/_shared/wardrobeAiStaging.js'
 import { assertNoPublicServerKeys, assertWardrobeStagingConfig, isWardrobePreview, WARDROBE_BRANCH } from '../api/_shared/wardrobeStagingGuard.js'
 
+export function wardrobeSourceBranch(gitBranch, env = {}) {
+  // Git-source deployments may have no .git directory and omit VERCEL=1.
+  // Exact provider environment/ref are still required by the isolation gate.
+  return gitBranch || (env.VERCEL_ENV === 'preview' ? env.VERCEL_GIT_COMMIT_REF || '' : '')
+}
+
 export function isWardrobeLocalTest(env) {
   if (env.command !== 'serve') return false
   if (env.mode === 'test' && env.VITEST === 'true') return true

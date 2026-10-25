@@ -4,7 +4,7 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 import { execFileSync } from 'node:child_process'
-import { isWardrobeLocalTest, wardrobeBuildIsolation, wardrobeOfflineBrowserPolicy, wardrobeAiBrowserPolicy } from './scripts/wardrobeBuildIsolation.mjs'
+import { isWardrobeLocalTest, wardrobeBuildIsolation, wardrobeOfflineBrowserPolicy, wardrobeAiBrowserPolicy, wardrobeSourceBranch } from './scripts/wardrobeBuildIsolation.mjs'
 
 function manualChunks(id) {
   const normalized = id.replace(/\\/g, '/')
@@ -191,9 +191,11 @@ export default defineConfig(({ mode, command }) => {
   try { sourceBranch = execFileSync('git', ['branch', '--show-current'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() } catch { /* Vercel may check out a detached commit. */ }
   // Vercel Git builds commonly use a detached HEAD. Trust its explicit branch metadata
   // only when Git cannot name a branch; the staging guard still checks exact identity.
-  if (!sourceBranch && process.env.VERCEL === '1') {
-    sourceBranch = process.env.VERCEL_GIT_COMMIT_REF || ''
-  }
+  sourceBranch = wardrobeSourceBranch(sourceBranch, process.env)
+  if (process.env.WARDROBE_AI_PREVIEW === 'true') console.info('[wardrobe-build-identity]', {
+    sourceBranch: sourceBranch || 'missing', environment: process.env.VERCEL_ENV || 'missing',
+    providerBranch: process.env.VERCEL_GIT_COMMIT_REF || 'missing',
+  })
   const isolation = isWardrobeLocalTest({ ...process.env, mode, command })
     ? { offline: false, define: {} }
     : wardrobeBuildIsolation({ ...loadEnv(mode, process.cwd(), ''), ...process.env }, sourceBranch)

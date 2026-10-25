@@ -5,6 +5,9 @@ describe('wardrobe AI review', () => {
   it('accepts a complete explicit single garment verdict', () => {
     expect(validateWardrobeReview(accepted)).toEqual({ ...accepted, colorHex: '#446fa4' })
   })
+  it.each(['Accessoar', 'Annat'])('rejects non-clothing AI photo category %s', (category) => {
+    expect(validateWardrobeReview({ ...accepted, category })).toEqual({ verdict: 'reject', reason: 'uncertain' })
+  })
   it.each([null, {}, { items: ['Tröja'] }, { ...accepted, personPresent: true }, { ...accepted, personPresent: undefined }, { ...accepted, singleItem: false }, { ...accepted, category: 'Människa' }, { ...accepted, colorHex: 'blue' }, { ...accepted, reason: 'person' }, { ...accepted, name: '<script>' }])('fails closed for incomplete, contradictory and malformed results: %j', (input) => {
     expect(validateWardrobeReview(input)).toEqual({ verdict: 'reject', reason: 'uncertain' })
   })

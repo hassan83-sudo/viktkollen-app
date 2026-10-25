@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { completePasswordRecovery, signInWithEmail, signOut } from './authService.js'
+import { completePasswordRecovery, signInWithEmail, signOut, signOutAllSessions } from './authService.js'
 
 const { auth } = vi.hoisted(() => ({
   auth: {
@@ -34,6 +34,16 @@ describe('auth session scope', () => {
   it('signs out only the current device', async () => {
     await signOut()
     expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' })
+  })
+
+  it('keeps an ordinary sign-out local when a wider scope is requested', async () => {
+    await signOut({ scope: 'global' })
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' })
+  })
+
+  it('revokes every session after account deletion', async () => {
+    await signOutAllSessions()
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'global' })
   })
 
   it('revokes every session after a password change', async () => {

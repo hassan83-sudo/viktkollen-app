@@ -6,9 +6,13 @@ on:
       - 'scripts/run-preview-auth-preflight.js'
       - '.github/workflows/preview-auth-safeguards.yml'
       - 'src/services/supabaseClient.js'
+      - 'src/services/authService.js'
+      - 'api/_shared/billing/admin.js'
+      - 'api/_shared/verifySupabaseUser.js'
   push:
     branches:
       - 'fix/preview-auth-preflight-20261025'
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -23,10 +27,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx vitest run scripts/previewAuthPreflight.test.js
-      - name: Validate safe Staging fixture
+      - name: Run guard against fixture values, not a deployed Preview
         env:
           VERCEL_ENV: preview
           VITE_SUPABASE_URL: https://armtslzspuebmlysnooq.supabase.co
           SUPABASE_URL: https://armtslzspuebmlysnooq.supabase.co
           VITE_SUPABASE_ANON_KEY: fixture-public-key
-        run: node scripts/run-preview-auth-preflight.js
+          SUPABASE_SERVICE_ROLE_KEY: fixture-service-role
+        run: |
+          node scripts/run-preview-auth-preflight.js
+          echo "FIXTURE ONLY — this command did not verify a Vercel Preview deployment or a user login."

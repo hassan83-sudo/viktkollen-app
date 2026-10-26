@@ -57,7 +57,7 @@ function BottomNavigation({
                 <rect x="10" y="20.5" width="4" height="2" rx="1" />
               </svg>
             ) : section.icon}</span>
-            <strong>{t(`sections.${section.id}.label`)}</strong>
+            <strong>{t(`sections.${section.id}.label`, { defaultValue: section.label })}</strong>
           </a>
         )
       })}

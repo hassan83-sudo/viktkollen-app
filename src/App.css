@@ -19134,3 +19134,21 @@ html.viktkollen-halloween-on .app-shell:has(#app-section-home.is-active) .pwa-ex
   .nutrition-scanner-review .scanner-food-thumb { width: 46px; height: 46px; font-size: 25px; }
   .nutrition-scanner-review .scanner-food-content > .scanner-component-macros { gap: 3px 7px; }
 }
+
+/* Halloween: keep the live weather, date and sunrise text readable over the photo. */
+html.viktkollen-halloween-on #app-section-home.is-active .overview-live-meta {
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .95), 0 2px 7px rgba(0, 0, 0, .85);
+}
+html.viktkollen-halloween-on #app-section-home.is-active .overview-live-meta > p {
+  width: fit-content;
+  max-width: 100%;
+  padding: 3px 7px;
+  border-radius: 7px;
+  background: rgba(27, 23, 40, .55);
+}
+html.viktkollen-halloween-on #app-section-home.is-active .overview-live-meta .overview-svg-icon,
+html.viktkollen-halloween-on #app-section-home.is-active .overview-live-meta .overview-weather-day-link,
+html.viktkollen-halloween-on #app-section-home.is-active .overview-live-meta .overview-weather-connect {
+  color: #fff;
+}

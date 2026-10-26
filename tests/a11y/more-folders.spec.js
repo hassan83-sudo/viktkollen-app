@@ -39,6 +39,7 @@ const coveredFolders = [
   'sakerhet-backup',
   'import-export',
   'arkiv-historik',
+  'testa-viktkollen',
   'installningar',
 ]
 
@@ -93,7 +94,7 @@ async function openFolder(page, folder, preferences = null) {
 
 test('every Mer folder is covered by the accessibility gate', () => {
   expect([...coveredFolders].sort()).toEqual(moreHubFolders.map((folder) => folder.id).sort())
-  expect(coveredFolders).toHaveLength(17)
+  expect(coveredFolders).toHaveLength(18)
   for (const entry of [...knownAxeFindings, ...knownFocusFindings, ...knownObscuredFindings]) {
     expect(coveredFolders, `baseline entry for unknown folder ${entry.folder}`).toContain(entry.folder)
     expect(entry.finding, 'baseline entry must name its 8M finding').toMatch(/^8M [A-C]-N\d/)

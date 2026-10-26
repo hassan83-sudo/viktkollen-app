@@ -116,4 +116,41 @@ describe('login page and service worker takeover', () => {
     act(() => serviceWorker.dispatchEvent(new Event('controllerchange')))
     expect(reloadPage).toHaveBeenCalledTimes(1)
   })
+  it('does not reload while the phone camera is open or a photo was just chosen', async () => {
+    installServiceWorker({ controller: {} })
+    await renderLoginPage()
+    const camera = document.createElement('input')
+    camera.type = 'file'
+    container.append(camera)
+    document.activeElement?.blur?.()
+
+    // Kameran öppnas och sidan döljs; en ny version tar kontroll under tiden.
+    act(() => camera.dispatchEvent(new MouseEvent('click', { bubbles: true })))
+    act(() => serviceWorker.dispatchEvent(new Event('controllerchange')))
+    act(() => setVisibility('hidden'))
+    expect(reloadPage).not.toHaveBeenCalled()
+
+    // Bilden väljs och appen visas igen: bilden får inte tappas.
+    Object.defineProperty(camera, 'files', { configurable: true, value: [new File(['x'], 'mat.jpg', { type: 'image/jpeg' })] })
+    act(() => setVisibility('visible'))
+    act(() => camera.dispatchEvent(new Event('change', { bubbles: true })))
+    act(() => setVisibility('hidden'))
+    expect(reloadPage).not.toHaveBeenCalled()
+  })
+
+  it('reloads a deferred update once the camera was cancelled and the page is hidden', async () => {
+    installServiceWorker({ controller: {} })
+    await renderLoginPage()
+    const camera = document.createElement('input')
+    camera.type = 'file'
+    container.append(camera)
+
+    act(() => camera.dispatchEvent(new MouseEvent('click', { bubbles: true })))
+    act(() => serviceWorker.dispatchEvent(new Event('controllerchange')))
+    expect(reloadPage).not.toHaveBeenCalled()
+
+    act(() => camera.dispatchEvent(new Event('cancel', { bubbles: true })))
+    act(() => setVisibility('hidden'))
+    expect(reloadPage).toHaveBeenCalledTimes(1)
+  })
 })

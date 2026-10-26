@@ -3,6 +3,9 @@
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent } from '@testing-library/react'
+import { preprocessNutritionPhoto } from '../services/nutritionPhotoPreprocessing.js'
+vi.mock('../services/nutritionPhotoPreprocessing.js', async (load) => ({ ...(await load()), preprocessNutritionPhoto: vi.fn() }))
 import NutritionScannerV2 from './NutritionScannerV2.jsx'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -15,6 +18,7 @@ function createStream() {
 describe('NutritionScannerV2 live preview', () => {
   let container
   let root
+  let intersect
 
   afterEach(() => {
     act(() => root?.unmount())
@@ -25,7 +29,7 @@ describe('NutritionScannerV2 live preview', () => {
 
   function mount(getUserMedia) {
     vi.stubGlobal('IntersectionObserver', class {
-      constructor(callback) { this.callback = callback }
+      constructor(callback) { this.callback = callback; intersect = callback }
       observe() { this.callback([{ isIntersecting: true }]) }
       disconnect() {}
     })
@@ -106,4 +110,26 @@ describe('NutritionScannerV2 live preview', () => {
     expect(container.querySelector('video.scanner-live-camera').srcObject).toBe(streams[1])
     expect(streams[1].track.stop).not.toHaveBeenCalled()
   })
+  it('does not request camera access while preparing or clearing the selected photo', async () => {
+    const getUserMedia = vi.fn(async () => createStream())
+    let finish
+    preprocessNutritionPhoto.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    mount(getUserMedia)
+    await act(async () => {})
+    const input = container.querySelector('#nutrition-scanner-photo-camera-input')
+    fireEvent.click(input)
+    fireEvent.change(input, { target: { files: [new File(['photo'], 'meal.jpg', { type: 'image/jpeg' })] } })
+    await act(async () => intersect([{ isIntersecting: true }]))
+    expect(getUserMedia).toHaveBeenCalledTimes(1)
+    await act(async () => finish({
+      ok: true, previewUrl: 'blob:meal', processedBlob: new Blob(['photo']),
+      metadata: { width: 10, height: 10 }, revoke: () => {},
+    }))
+    // Saving uses the same clearTemporaryImage path as removing the photo.
+    fireEvent.click(container.querySelectorAll('.scanner-preview-actions button')[1])
+    await act(async () => {})
+    expect(container.querySelector('img.food-preview')).toBeNull()
+    expect(getUserMedia).toHaveBeenCalledTimes(1)
+  })
+
 })

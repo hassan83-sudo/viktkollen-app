@@ -438,7 +438,9 @@ function ScannerAnalyzingStatus() {
     const startedAt = Date.now()
     const timer = window.setInterval(() => {
       const elapsed = Date.now() - startedAt
-      const estimated = Math.min(95, Math.floor(95 * (1 - Math.exp(-elapsed / 4800))))
+      const estimated = elapsed < 7000
+        ? Math.floor(90 * elapsed / 7000)
+        : Math.min(99, 90 + Math.floor((elapsed - 7000) / 1800))
       setProgress((current) => Math.max(current, estimated))
     }, 120)
     return () => window.clearInterval(timer)
@@ -473,6 +475,8 @@ function NutritionScannerV2({
   // En bild tagen med telefonens kamera från Hem håller på att tas emot; starta
   // då ingen förhandsvisning av kameran under tiden.
   const homeCaptureInProgressRef = useRef(hasPendingHomeFoodScanFile(userId))
+  // Keep this synchronous guard through preprocessing and effect replays.
+  const selectedPhotoRef = useRef(hasPendingHomeFoodScanFile(userId))
   const currentImageRef = useRef(null)
   const imagePayloadRef = useRef(null)
   const activeAnalysisControllerRef = useRef(null)
@@ -542,12 +546,8 @@ function NutritionScannerV2({
     if (!target || typeof window === 'undefined' || typeof document === 'undefined') return
     const behavior = getAccessibilityScrollBehavior()
 
-    try {
-      target.scrollIntoView({ behavior, block: 'start', inline: 'start' })
-    } catch {
-      // Safari fallback if scrollIntoView is missing or restricted.
-    }
-
+    // Scroll only once: scrollIntoView followed by window.scrollTo caused
+    // competing movements when the analysis result first appeared.
     const nav = document.querySelector('.bottom-nav')
     if (typeof window.scrollTo !== 'function' || !nav || !Number.isFinite(target.getBoundingClientRect?.().top)) return
     if (typeof window.scrollY !== 'number') return
@@ -738,7 +738,7 @@ function NutritionScannerV2({
     }
 
     async function startLiveCamera() {
-      if (cancelled || cameraStarting || liveCameraStreamRef.current || nativeCameraOpenRef.current || homeCaptureInProgressRef.current || document.visibilityState === 'hidden') return
+      if (cancelled || selectedPhotoRef.current || currentImageRef.current || cameraStarting || liveCameraStreamRef.current || nativeCameraOpenRef.current || homeCaptureInProgressRef.current || document.visibilityState === 'hidden') return
       const sessionId = session
       const epoch = currentCameraEpoch()
       cameraStarting = true
@@ -953,12 +953,18 @@ function NutritionScannerV2({
   const hasActiveImagePayload = Boolean(resolveActiveImagePayload())
 
   function clearTemporaryImage() {
+    // Saving/removing a photo must not request camera permission again.
+    selectedPhotoRef.current = true
     clearImageState(true)
     if (import.meta.env.DEV) setRemoteDebug(null)
   }
 
   async function handleFileChange(event) {
     const file = event.target.files?.[0]
+    if (file) {
+      selectedPhotoRef.current = true
+      liveCameraControlsRef.current?.stop()
+    }
     clearRemoteAnalysisApproval()
     setError('')
     setStatus('')
@@ -1730,16 +1736,19 @@ function NutritionScannerV2({
           )}
 
           <div className="habit-actions">
-            <button className="primary-button" disabled={isSaving || !validation.ok || ((duplicate.status === 'exactDuplicate' || duplicate.status === 'likelyDuplicate') && !allowDuplicate)} type="submit">
-              {isSaving ? t('scanner.saving') : t('scanner.saveMeal')}
-            </button>
             <button type="button" onClick={handleCancel}>{t('common:actions.cancel')}</button>
             {savedMealId && <a className="secondary-button" href="#meal-history">{t('scanner.openSavedMeal')}</a>}
           </div>
 
           {reviewUncertainties.length > 0 && (
             <details className="scanner-review-meta-details">
-              <summary>{'Osäkra uppgifter'} ({reviewUncertainties.length})</summary>
+              <summary style={{ color: '#fbbf24' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false" style={{ verticalAlign: 'text-bottom', marginRight: '0.4em' }}>
+                  <path d="M10.3 3.9 1.8 18.1A2 2 0 0 0 3.5 21h17a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+                  <path d="M12 9v4m0 4h.01" />
+                </svg>
+                {'Osäkra uppgifter'} ({reviewUncertainties.length})
+              </summary>
               <ul className="health-dashboard-list">
                 {[...new Set(reviewUncertainties)].map((item) => <li key={item}>{item}</li>)}
               </ul>

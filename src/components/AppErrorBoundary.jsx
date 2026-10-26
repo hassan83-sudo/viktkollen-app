@@ -1,6 +1,7 @@
 import { Component } from 'react'
 import { getSafeErrorMessage, isChunkLoadError, logAppError, normalizeAppError } from '../services/appErrorService.js'
 import { getAccessibilityScrollBehavior } from '../services/accessibilityDocumentScope.js'
+import { waitForPendingHomeFoodScanSave } from '../services/nutritionScanHomeCapture.js'
 
 const chunkRecoveryPrefix = 'viktkollen.chunkRecovery'
 
@@ -68,7 +69,11 @@ class AppErrorBoundary extends Component {
     try {
       if (window.sessionStorage?.getItem(key)) return
       window.sessionStorage?.setItem(key, new Date().toISOString())
-      window.setTimeout(() => window.location.reload(), 50)
+      // En matbild från Hem-kameran ska hinna sparas, så att matscannern kan
+      // öppnas med den efter omladdningen.
+      waitForPendingHomeFoodScanSave().then(() => {
+        window.setTimeout(() => window.location.reload(), 50)
+      })
     } catch {
       // If sessionStorage is unavailable, keep the safe fallback visible.
     }

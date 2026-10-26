@@ -27,6 +27,7 @@ function AiHelpPanel() {
   const [messages, setMessages] = useState([])
   const [pending, setPending] = useState(false)
   const [notice, setNotice] = useState('')
+  const [showHumanSupport, setShowHumanSupport] = useState(false)
   const [openedSections, setOpenedSections] = useState({})
 
   useEffect(() => {
@@ -311,7 +312,7 @@ function AiHelpPanel() {
                   <button
                     className="secondary-button ai-help-action"
                     type="button"
-                    onClick={() => window.dispatchEvent(new CustomEvent('viktkollen:open-human-support'))}
+                    onClick={() => setShowHumanSupport(true)}
                   >
                     {chrome.handoff}
                   </button>
@@ -329,9 +330,7 @@ function AiHelpPanel() {
             ))}
           </div>
           {notice && <p className="ai-help-note">{notice}</p>}
-          <p className="ai-help-note">{chrome.humanSupport}</p>
-
-          <SupportPanel />
+          {showHumanSupport && <SupportPanel />}
         </>
       )}
     </section>

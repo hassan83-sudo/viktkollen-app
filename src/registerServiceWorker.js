@@ -93,9 +93,46 @@ export function applyServiceWorkerUpdate(registration) {
 //   ett flimmer på inloggningssidan och tömde e-postfältet medan man skrev.
 // - Byte från en äldre service worker: ladda om, men inte mitt i inmatning.
 //   Då skjuts omladdningen upp tills sidan döljs.
-export function controllerChangeReloadAction({ activeElement = null, hadControllerAtStart = false } = {}) {
+export function controllerChangeReloadAction({ activeElement = null, captureActive = false, hadControllerAtStart = false } = {}) {
   if (!hadControllerAtStart) return 'none'
-  return isEditingElement(activeElement) ? 'defer' : 'now'
+  return captureActive || isEditingElement(activeElement) ? 'defer' : 'now'
+}
+
+// Telefonens kamera eller bildväljare lämnar sidan. En omladdning medan den är
+// öppen, eller strax efter att en bild valts, tappar bilden (Hem-kameran håller
+// den bara i minnet tills matscannern tar emot den). Omladdningen väntar därför
+// tills valet är avbrutet eller klart och sidan sedan döljs igen.
+const NATIVE_CAPTURE_OPEN_MS = 10 * 60 * 1000
+const NATIVE_CAPTURE_SELECTED_MS = 2 * 60 * 1000
+let nativeCaptureUntil = 0
+
+export function isNativeCaptureActive(now = Date.now()) {
+  return now < nativeCaptureUntil
+}
+
+export function trackNativeCapture(doc = typeof document !== 'undefined' ? document : null) {
+  if (!doc) return () => {}
+  const isFileInput = (target) => String(target?.tagName || '').toUpperCase() === 'INPUT' &&
+    String(target.type || '').toLowerCase() === 'file'
+  const onClick = (event) => {
+    if (isFileInput(event.target)) nativeCaptureUntil = Date.now() + NATIVE_CAPTURE_OPEN_MS
+  }
+  const onChange = (event) => {
+    if (!isFileInput(event.target)) return
+    nativeCaptureUntil = event.target.files?.length ? Date.now() + NATIVE_CAPTURE_SELECTED_MS : 0
+  }
+  const onCancel = (event) => {
+    if (isFileInput(event.target)) nativeCaptureUntil = 0
+  }
+  doc.addEventListener('click', onClick, true)
+  doc.addEventListener('change', onChange, true)
+  doc.addEventListener('cancel', onCancel, true)
+  return () => {
+    doc.removeEventListener('click', onClick, true)
+    doc.removeEventListener('change', onChange, true)
+    doc.removeEventListener('cancel', onCancel, true)
+    nativeCaptureUntil = 0
+  }
 }
 
 export function reloadPage() {

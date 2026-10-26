@@ -74,7 +74,7 @@ test.describe('structure gate: named generics, one h1, unique regions (8T B-8T-N
 
   test('every Mer folder', async ({ page }) => {
     test.setTimeout(240000)
-    expect(moreHubFolders).toHaveLength(17)
+    expect(moreHubFolders).toHaveLength(18)
     for (const folder of moreHubFolders) {
       await openFolder(page, folder)
       await expectStructure(page, folder.title)

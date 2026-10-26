@@ -1,9 +1,11 @@
+import { isWardrobeAiTarget, wardrobeAiConfig } from './wardrobeAiStaging.js'
 // Ambiguous deployment identity is denied, never treated as an unrelated branch.
 export const WARDROBE_BRANCH = 'feature/ai-eye-wardrobe-link-20261022'
 export const WARDROBE_STAGING_REF = 'armtslzspuebmlysnooq'
 export const WARDROBE_API_DISABLED = 'WARDROBE_STAGING_API_DISABLED'
 
 export function isWardrobePreview(env = {}) {
+  if (isWardrobeAiTarget(env)) return !wardrobeAiConfig(env)
   const marked = env.WARDROBE_LOCAL_A11Y_FIXTURE === 'true' || Object.keys(env).some((key) => key.startsWith('WARDROBE_STAGING_') && env[key])
   const branchIdentified = typeof env.VERCEL_GIT_COMMIT_REF === 'string' && Boolean(env.VERCEL_GIT_COMMIT_REF) && !/\s/.test(env.VERCEL_GIT_COMMIT_REF)
   return Boolean(marked || env.VERCEL_GIT_COMMIT_REF === WARDROBE_BRANCH ||
@@ -65,7 +67,13 @@ export function assertWardrobeStagingConfig(env = {}) {
   assertNoPublicServerKeys(env)
 }
 
-export function blockWardrobeApi(response, env = process.env) {
+export function blockWardrobeApi(response, env = process.env, route = '') {
+  if (isWardrobeAiTarget(env)) {
+    if (wardrobeAiConfig(env) && ['object-bank-scan', 'analysis-consent'].includes(route)) return false
+    response.setHeader('Cache-Control', 'no-store')
+    response.status(503).json({ ok: false, error: { code: WARDROBE_API_DISABLED } })
+    return true
+  }
   if (!isWardrobePreview(env)) return false
   response.setHeader('Cache-Control', 'no-store')
   response.status(503).json({ ok: false, error: { code: WARDROBE_API_DISABLED } })

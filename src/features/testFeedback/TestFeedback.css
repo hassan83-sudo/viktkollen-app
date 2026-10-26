@@ -1,0 +1,161 @@
+.test-feedback {
+  display: grid;
+  gap: 16px;
+}
+
+.test-feedback-intro {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.test-feedback-form {
+  display: grid;
+  gap: 20px;
+}
+
+.test-feedback-group {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.test-feedback-group legend,
+.test-feedback-comment > label {
+  padding: 0;
+  margin-bottom: 10px;
+  font-weight: 700;
+  font-size: 1.02rem;
+}
+
+.test-feedback-hint {
+  display: block;
+  font-weight: 400;
+  font-size: 0.88rem;
+  opacity: 0.75;
+}
+
+.test-feedback-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.test-feedback-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid rgba(127, 127, 127, 0.45);
+  border-radius: 999px;
+  cursor: pointer;
+  line-height: 1.25;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+/* Den riktiga rutan/knappen syns, så att tangentbordsfokus alltid hamnar på
+   något synligt (tillgänglighetsgaten tillåter inga dolda Tab-stopp). */
+.test-feedback-chip input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: #16a37f;
+}
+
+.test-feedback-chip input:focus-visible {
+  outline: 3px solid #16a37f;
+  outline-offset: 2px;
+}
+
+.test-feedback-chip.is-selected {
+  border-color: #16a37f;
+  background: rgba(22, 163, 127, 0.16);
+  font-weight: 700;
+}
+
+.test-feedback-clear {
+  justify-self: start;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.test-feedback-comment textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 140px;
+  padding: 12px;
+  border-radius: 12px;
+  font: inherit;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.test-feedback-comment small {
+  justify-self: end;
+  opacity: 0.7;
+}
+
+.test-feedback-submit {
+  width: 100%;
+  min-height: 52px;
+}
+
+.test-feedback-admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.test-feedback-admin-stat {
+  display: grid;
+  gap: 2px;
+  padding: 12px;
+  border: 1px solid rgba(127, 127, 127, 0.35);
+  border-radius: 12px;
+}
+
+.test-feedback-admin-stat strong {
+  font-size: 1.6rem;
+}
+
+.test-feedback-admin-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.test-feedback-admin-filters label {
+  display: grid;
+  gap: 4px;
+  min-width: 150px;
+  flex: 1 1 150px;
+}
+
+.test-feedback-admin-report {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(127, 127, 127, 0.35);
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+}
+
+.test-feedback-admin-report p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.test-feedback-admin-report form {
+  display: grid;
+  gap: 8px;
+}

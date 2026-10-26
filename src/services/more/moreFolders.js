@@ -112,6 +112,13 @@ export const moreHubFolders = [
     title: 'Arkiv & Historik',
   },
   {
+    id: 'testa-viktkollen',
+    accent: 'green',
+    description: 'Testa appen och skicka feedback inför lanseringen',
+    icon: '✓',
+    title: 'Testa Viktkollen',
+  },
+  {
     id: 'installningar',
     accent: 'green',
     description: 'Appinställningar, enheter',
@@ -179,6 +186,8 @@ export const moreHubTargetFolders = {
   economy: 'ekonomi',
   'economy-center': 'ekonomi',
   'ai-help': 'installningar',
+  'testa-viktkollen': 'testa-viktkollen',
+  'test-feedback': 'testa-viktkollen',
 }
 
 export function resolveMoreFolderFromTarget(targetId) {

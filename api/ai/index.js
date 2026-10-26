@@ -24,6 +24,7 @@ import supportHandler from '../_shared/aiHelp/supportHandler.js'
 import supportAlertsHandler from '../_shared/aiHelp/supportAlertsHandler.js'
 import handleBugMonitorRequest from '../_shared/bugMonitor/httpHandler.js'
 import handleSecurityCenterRequest from '../_shared/security/securityCenterHandler.js'
+import testFeedbackHandler from '../_shared/testFeedback/testFeedbackHandler.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 
@@ -640,6 +641,7 @@ export default async function handler(request, response) {
   if (route === 'ai-coach') return handleAiCoachRequest(request, response)
   if (route === 'bug-monitor') return handleBugMonitorRequest(request, response)
   if (route === 'security-center') return handleSecurityCenterRequest(request, response)
+  if (route === 'test-feedback') return testFeedbackHandler(request, response)
   if (route) {
     return sendSafeAiError(response, {
       code: aiRouteErrorCodes.INVALID_REQUEST,

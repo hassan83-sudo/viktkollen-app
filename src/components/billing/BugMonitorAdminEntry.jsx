@@ -3,6 +3,7 @@ import { supabase } from '../../services/supabaseClient.js'
 import BugMonitorPanel from './BugMonitorPanel.jsx'
 import SecurityCenterPanel from './SecurityCenterPanel.jsx'
 import SupportPanel from '../../features/aiHelp/SupportPanel.jsx'
+import TestFeedbackAdminPanel from '../../features/testFeedback/TestFeedbackAdminPanel.jsx'
 
 // Shown only when the server says this session is a billing admin. Every
 // /api/bug-monitor call is still checked by the server; this only decides
@@ -37,6 +38,7 @@ export default function BugMonitorAdminEntry() {
       <BugMonitorPanel token={token} />
       <SecurityCenterPanel token={token} />
       <SupportPanel admin />
+      <TestFeedbackAdminPanel />
     </section>
   )
 }

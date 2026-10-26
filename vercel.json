@@ -133,6 +133,10 @@
       "destination": "/api/ai?__vk_route=support"
     },
     {
+      "source": "/api/test-feedback",
+      "destination": "/api/ai?__vk_route=test-feedback"
+    },
+    {
       "source": "/api/support-alerts",
       "destination": "/api/ai?__vk_route=support-alerts"
     },

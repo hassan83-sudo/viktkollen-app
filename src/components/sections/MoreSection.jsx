@@ -2,6 +2,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppErrorBoundary from '../AppErrorBoundary.jsx'
 import BugMonitorAdminEntry from '../billing/BugMonitorAdminEntry.jsx'
+import TestFeedbackPage from '../../features/testFeedback/TestFeedbackPage.jsx'
 import PlanCommercialAdmin from '../billing/PlanCommercialAdmin.jsx'
 import PlanComparison from '../billing/PlanComparison.jsx'
 import PlanUsagePanel from '../billing/PlanUsagePanel.jsx'
@@ -273,6 +274,12 @@ function MoreSection({
         )}
 
         {activeFolder === 'accessibility' && <AccessibilityHub onOpenEar={onOpenEar} onOpenEye={onOpenEye} />}
+
+        {activeFolder === 'testa-viktkollen' && (
+          <AppErrorBoundary area="test-feedback" resetKey={userId} title="Testa Viktkollen kunde inte visas">
+            <TestFeedbackPage key={userId || 'signed-out'} isAuthenticated={isAuthenticated} />
+          </AppErrorBoundary>
+        )}
 
         {activeFolder === 'sakerhet-backup' && (
           <AppErrorBoundary

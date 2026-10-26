@@ -1,0 +1,221 @@
+name: SumUp renewal draft checks
+
+on:
+  push:
+    branches:
+      - fix/sumup-recurring-production-wiring
+  pull_request:
+    paths:
+      - 'api/_shared/billing/sumupRenewal*.js'
+      - 'api/_shared/billing/sumupDurableRenewal*.js'
+      - 'api/_shared/billing/sumupVerified*.js'
+      - 'api/_shared/billing/sumupRenewalAuthority*.js'
+      - 'api/_shared/billing/sumupRenewalRecordLoader*.js'
+      - 'api/_shared/billing/sumupRenewalFactsDatabase*.js'
+      - 'api/_shared/billing/sumupRenewalSqlReader*.js'
+      - 'api/_shared/billing/sumupRenewalSqlWriter*.js'
+      - 'api/_shared/billing/sumupRestrictedDatabaseExecutor*.js'
+      - 'api/_shared/billing/sumupRestrictedRenewalDatabase*.js'
+      - 'api/_shared/billing/sumupRestrictedRenewalSettlementPipeline*.js'
+      - 'api/_shared/billing/sumupRenewalAuthorityFromSql*.js'
+      - 'api/_shared/billing/sumupRenewalSettlementPipeline*.js'
+      - '.github/workflows/sumup-renewal-draft.yml'
+      - 'supabase/migrations/*sumup_renewal*'
+      - 'tests/billing/sumup-renewal-postgres-*.sql'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  renewal-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Run SumUp Sandbox verification tests (mock transport, no charges)
+        run: node --test tests/sumupSandboxVerification.test.js
+      - name: Run renewal unit tests (no credentials or provider calls)
+        run: npx vitest run api/_shared/billing/sumupRenewalRecovery.test.js api/_shared/billing/sumupRenewalRecovery.integration.test.js api/_shared/billing/sumupRenewalFailureService.test.js api/_shared/billing/sumupRenewalWorker.integration.test.js api/_shared/billing/sumupRenewalWorker.test.js api/_shared/billing/sumupRenewalWorkerDatabase.test.js api/_shared/billing/sumupRenewalCandidates.test.js api/_shared/billing/sumupRenewalClaimPort.test.js api/_shared/billing/sumupRenewalClaimBatch.test.js api/_shared/billing/sumupRenewalReconcile.test.js api/_shared/billing/sumupRenewalFinalizer.test.js api/_shared/billing/sumupDurableRenewal.test.js api/_shared/billing/sumupVerifiedCommitBoundary.test.js api/_shared/billing/sumupVerifiedSettlementService.test.js api/_shared/billing/sumupRenewalAuthority.test.js api/_shared/billing/sumupRenewalRecordLoader.test.js api/_shared/billing/sumupRenewalFactsDatabase.test.js api/_shared/billing/sumupRenewalSqlReader.test.js api/_shared/billing/sumupRenewalSqlWriter.test.js api/_shared/billing/sumupRestrictedDatabaseExecutor.test.js api/_shared/billing/sumupRestrictedRenewalDatabase.test.js api/_shared/billing/sumupRestrictedRenewalSettlementPipeline.test.js api/_shared/billing/sumupRenewalAuthorityFromSql.test.js api/_shared/billing/sumupRenewalSettlementPipeline.test.js
+
+  renewal-postgres-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: isolated-test-only
+          POSTGRES_DB: renewal_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: isolated-test-only
+      PGDATABASE: renewal_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test renewal checkout uniqueness on disposable PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create schema billing;
+          create table billing.sumup_renewal_attempts (
+            checkout_reference text primary key,
+            provider_checkout_ref text not null default ''
+          );
+          SQL
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065251_sumup_renewal_checkout_uniqueness_draft.sql
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          insert into billing.sumup_renewal_attempts (checkout_reference, provider_checkout_ref)
+            values ('unbound-1', ''), ('unbound-2', ''), ('renewal-1', 'checkout-1');
+          do $test$
+          begin
+            begin
+              insert into billing.sumup_renewal_attempts (checkout_reference, provider_checkout_ref)
+                values ('renewal-2', 'checkout-1');
+              raise exception 'duplicate checkout unexpectedly accepted';
+            exception when unique_violation then
+              null;
+            end;
+            if (select count(*) from billing.sumup_renewal_attempts) <> 3 then
+              raise exception 'unexpected renewal row count';
+            end if;
+          end;
+          $test$;
+          SQL
+
+  renewal-postgres-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: isolated-test-only
+          POSTGRES_DB: renewal_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: isolated-test-only
+      PGDATABASE: renewal_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply actual renewal migrations and test immutable snapshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-bootstrap.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065246_sumup_renewal_facts_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065249_sumup_renewal_snapshot_guard_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065251_sumup_renewal_checkout_uniqueness_draft.sql
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-guard.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065325_sumup_renewal_facts_reader_draft.sql
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-reader.sql
+          echo 'Verified reader migration and invalid-state checks'
+
+  renewal-postgres-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: isolated-test-only
+          POSTGRES_DB: renewal_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: isolated-test-only
+      PGDATABASE: renewal_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test atomic renewal commit with disposable advance stub
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-bootstrap.sql
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-commit-bootstrap.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065246_sumup_renewal_facts_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065249_sumup_renewal_snapshot_guard_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065251_sumup_renewal_checkout_uniqueness_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065319_sumup_renewal_claim_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024100000_sumup_renewal_bind_checkout_draft.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024071558_sumup_renewal_worker_draft.sql
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-work.sql
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-bind.sql
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-failure-bootstrap.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260926140000_billing_mark_renewal_failed.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024075008_sumup_renewal_failure_draft.sql
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-failure.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065322_sumup_renewal_commit_draft.sql
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-commit.sql
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-pending-bootstrap.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924084000_billing_pending_plan_apply.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260926140000_billing_mark_renewal_failed.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024100001_sumup_renewal_pending_plan_draft.sql
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-pending.sql
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-recovery-bootstrap.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024100002_sumup_renewal_recovery_draft.sql
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-recovery.sql
+
+  renewal-postgres-claim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: isolated-test-only
+          POSTGRES_DB: renewal_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: isolated-test-only
+      PGDATABASE: renewal_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exclusive renewal claim on disposable PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-bootstrap.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024065319_sumup_renewal_claim_draft.sql
+          psql -v ON_ERROR_STOP=1 -f tests/billing/sumup-renewal-postgres-claim.sql

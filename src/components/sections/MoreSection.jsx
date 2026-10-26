@@ -4,6 +4,7 @@ import AppErrorBoundary from '../AppErrorBoundary.jsx'
 import BugMonitorAdminEntry from '../billing/BugMonitorAdminEntry.jsx'
 import TestFeedbackPage from '../../features/testFeedback/TestFeedbackPage.jsx'
 import PlanCommercialAdmin from '../billing/PlanCommercialAdmin.jsx'
+import SumUpSandboxIdentityAdmin from '../billing/SumUpSandboxIdentityAdmin.jsx'
 import PlanComparison from '../billing/PlanComparison.jsx'
 import PlanUsagePanel from '../billing/PlanUsagePanel.jsx'
 import SumUpSandboxWidget from '../billing/SumUpSandboxWidget.jsx'
@@ -484,6 +485,7 @@ function MoreSection({
             </div>
 
             {isAuthenticated ? <PlanCommercialAdmin /> : null}
+            {isAuthenticated ? <SumUpSandboxIdentityAdmin /> : null}
             {isAuthenticated ? <BugMonitorAdminEntry key={userId || 'signed-out'} /> : null}
 
             <div className="app-information">

@@ -85,6 +85,10 @@
       "destination": "/api/billing/user?__vk_route=plan_change"
     },
     {
+      "source": "/api/billing/checkout/status",
+      "destination": "/api/billing/user?__vk_route=checkout_status"
+    },
+    {
       "source": "/api/billing/checkout",
       "destination": "/api/billing/user?__vk_route=checkout"
     },

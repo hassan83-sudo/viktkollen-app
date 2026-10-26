@@ -2,14 +2,23 @@ import { createSupabaseAdminClient } from '../supabaseServer.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../aiRouteErrors.js'
 import { verifySupabaseUser } from '../verifySupabaseUser.js'
 import { readServerPlanSale } from './userLifecycleIntent.js'
-import { getPlanById } from '../../../src/services/billing/planCatalog.js'
+import { getPlanById, listActivePlans } from '../../../src/services/billing/planCatalog.js'
 import { createServerCheckoutIntentPorts } from './sumupSandboxSetup.js'
 import { getConfiguredSumUpAdapter, minorUnitsFromSumUpAmount, SUMUP_PROVIDER } from './providers/sumup.js'
+import {
+  createOneTimeCheckoutPorts,
+  createOneTimeIntentReader,
+  hostedCheckoutUrls,
+  isValidHostedCheckoutUrl,
+  oneTimeCheckoutStatus,
+} from './sumupOneTimeCheckout.js'
+import { createServerSubscriptionRpcCaller } from './subscriptionRpcCaller.js'
 
 const PLAN_ID_RE = /^[A-Za-z0-9._-]{1,80}$/
 let saleReaderOverride = null
 let checkoutAdapterOverride = null
 let checkoutPortsOverride = null
+let oneTimePortsOverride = null
 
 export function setCheckoutSaleReaderForTests(reader = null) {
   saleReaderOverride = typeof reader === 'function' ? reader : null
@@ -23,12 +32,25 @@ export function setCheckoutPortsForTests(ports = null) {
   checkoutPortsOverride = ports || null
 }
 
+export function setOneTimeCheckoutPortsForTests(ports = null) {
+  oneTimePortsOverride = ports || null
+}
+
 export function getCheckoutAdapter() {
   return checkoutAdapterOverride || getConfiguredSumUpAdapter()
 }
 
 async function defaultReadSale(planId) {
   return readServerPlanSale(createSupabaseAdminClient(), planId)
+}
+
+// The plan list shows a neutral offer key (sek-<öre>) instead of internal plan ids.
+function planIdFromOfferKey(value) {
+  const match = /^sek-([1-9][0-9]{0,7})$/.exec(String(value || ''))
+  if (!match) return ''
+  const matches = listActivePlans().filter((plan) => plan.id !== 'plan.free' && plan.currency === 'SEK'
+    && plan.price_minor === Number(match[1]))
+  return matches.length === 1 ? matches[0].id : ''
 }
 
 function fail(code, status, extra = {}) {
@@ -60,6 +82,8 @@ function readBody(body) {
  */
 export async function beginCheckout({
   body,
+  env = process.env,
+  oneTimePorts,
   ports = checkoutPortsOverride || createServerCheckoutIntentPorts(),
   readSale = saleReaderOverride || defaultReadSale,
   userId,
@@ -87,7 +111,7 @@ export async function beginCheckout({
 
   const paymentMode = input.payment_mode == null ? 'one_time' : input.payment_mode
   if (paymentMode !== 'one_time') return fail('UNSUPPORTED_PAYMENT_MODE', 400)
-  const planId = String(input.plan_id || '').trim()
+  const planId = String(input.plan_id || planIdFromOfferKey(input.offer_key)).trim()
   if (!PLAN_ID_RE.test(planId) || planId === 'plan.free') return fail('INVALID_PLAN', 400)
   if (typeof readSale !== 'function') return fail('DURABLE_UNAVAILABLE', 503)
   let sale
@@ -111,6 +135,15 @@ export async function beginCheckout({
   }
   const adapter = getCheckoutAdapter()
   if (!adapter) return fail('PROVIDER_NOT_CONFIGURED', 503, { validated: true })
+  if (adapter.provider === SUMUP_PROVIDER) {
+    return beginSumUpOneTimeCheckout({
+      adapter,
+      env,
+      planId,
+      ports: oneTimePorts || oneTimePortsOverride || createOneTimeCheckoutPorts(),
+      userId,
+    })
+  }
   if (typeof ports?.createIntent !== 'function' || typeof ports?.bindCheckoutRef !== 'function') {
     return fail('DURABLE_UNAVAILABLE', 503, { validated: true })
   }
@@ -155,6 +188,81 @@ export async function beginCheckout({
   })
 }
 
+/**
+ * SumUp Hosted Checkout, one-time purchase. The database allows at most one
+ * payable checkout per user: an open one for the same plan is reused, another
+ * plan or an open subscription is refused. Nothing here grants access.
+ */
+async function beginSumUpOneTimeCheckout({ adapter, env, planId, ports, userId }) {
+  if (typeof ports?.open !== 'function' || typeof ports?.bind !== 'function' || typeof ports?.cancel !== 'function') {
+    return fail('DURABLE_UNAVAILABLE', 503, { validated: true })
+  }
+  let intent
+  try {
+    intent = await ports.open({ planId, userId })
+  } catch (error) {
+    if (error?.code === 'active_period_exists') return fail('ACTIVE_PERIOD_EXISTS', 409, { validated: true })
+    if (error?.code === 'checkout_in_progress') return fail('CHECKOUT_IN_PROGRESS', 409, { validated: true })
+    if (error?.code === 'invalid_checkout_intent') return fail('INVALID_PLAN', 400)
+    return fail('DURABLE_UNAVAILABLE', 503, { validated: true })
+  }
+  if (intent.reused && intent.providerCheckoutRef && isValidHostedCheckoutUrl(intent.hostedUrl)) {
+    return fail('CHECKOUT_PENDING', 202, {
+      checkoutId: intent.checkoutId,
+      hostedCheckoutUrl: intent.hostedUrl,
+      validated: true,
+    })
+  }
+  // A reused, not yet bound purchase is left to expire on failure: another
+  // request may be finishing it. A new one is cancelled.
+  const abandon = async () => {
+    if (!intent.reused) {
+      try {
+        await ports.cancel(intent.checkoutId)
+      } catch {
+        /* Expiry closes it; it was never shown to the user. */
+      }
+    }
+  }
+  const urls = hostedCheckoutUrls(intent.checkoutId, env)
+  if (!urls) {
+    await abandon()
+    return fail('PROVIDER_NOT_CONFIGURED', 503, { validated: true })
+  }
+  let prepared
+  try {
+    prepared = await adapter.prepare({
+      checkoutId: intent.checkoutId,
+      planId,
+      redirectUrl: urls.redirectUrl,
+      returnUrl: urls.returnUrl,
+      validUntil: intent.expiresAt,
+    })
+  } catch {
+    await abandon()
+    return fail('SUMUP_CHECKOUT_FAILED', 502, { validated: true })
+  }
+  if (!isValidHostedCheckoutUrl(prepared?.hostedCheckoutUrl)) {
+    await abandon()
+    return fail('SUMUP_CHECKOUT_FAILED', 502, { validated: true })
+  }
+  try {
+    await ports.bind({
+      checkoutId: intent.checkoutId,
+      hostedUrl: prepared.hostedCheckoutUrl,
+      providerCheckoutRef: prepared.providerCheckoutRef,
+    })
+  } catch {
+    await abandon()
+    return fail('SUMUP_CHECKOUT_FAILED', 502, { validated: true })
+  }
+  return fail('CHECKOUT_PENDING', 202, {
+    checkoutId: intent.checkoutId,
+    hostedCheckoutUrl: prepared.hostedCheckoutUrl,
+    validated: true,
+  })
+}
+
 async function cancelQuietly(ports, checkoutId) {
   if (typeof ports?.cancelIntent !== 'function') return
   try {
@@ -192,5 +300,48 @@ export async function handleCheckoutRequest(request, response) {
     ok: false,
     requestId,
     validated: result.validated === true,
+  })
+}
+
+/**
+ * POST /api/billing/checkout/status { checkout_id }. The customer's return
+ * from SumUp: the server retrieves and verifies the payment itself and runs
+ * the same atomic activation as the webhook. Returning here grants nothing.
+ */
+export async function handleCheckoutStatusRequest(request, response, { callRpcFactory = createServerSubscriptionRpcCaller } = {}) {
+  const requestId = `bill-checkout-status-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+  setNoStoreHeaders(response)
+  if (request.method !== 'POST') {
+    response.setHeader('Allow', 'POST')
+    return response.status(405).json({ error: { code: 'INVALID_REQUEST' }, ok: false, requestId })
+  }
+  const auth = await verifySupabaseUser(request, { requestId })
+  if (!auth.authenticated) return response.status(auth.status).json({ error: auth.error, ok: false })
+  const input = readBody(request.body)
+  const adapter = getCheckoutAdapter()
+  let callRpc
+  try {
+    callRpc = callRpcFactory()
+  } catch {
+    callRpc = null
+  }
+  if (!adapter || adapter.provider !== SUMUP_PROVIDER || typeof callRpc !== 'function') {
+    return response.status(503).json({ accessGranted: false, error: { code: 'PROVIDER_NOT_CONFIGURED' }, ok: false, requestId, state: 'unknown' })
+  }
+  const result = await oneTimeCheckoutStatus({
+    callRpc,
+    checkoutId: String(input.checkout_id || ''),
+    merchantCode: adapter.merchantCode,
+    readIntent: createOneTimeIntentReader(callRpc),
+    transport: adapter.transport,
+    userId: auth.user.id,
+  })
+  const status = result.code === 'NOT_FOUND' ? 404 : result.code === 'INVALID_REQUEST' ? 400 : 200
+  return response.status(status).json({
+    accessGranted: result.accessGranted === true,
+    ...(result.accessGranted ? { currentPeriodEnd: result.currentPeriodEnd } : { error: { code: result.code } }),
+    ok: result.ok === true,
+    requestId,
+    state: result.state || 'unknown',
   })
 }

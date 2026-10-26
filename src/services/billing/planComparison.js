@@ -75,7 +75,10 @@ export function buildPlanComparison({ currentPlanId = '', plans = [] } = {}) {
       current: plan.id === currentPlanId,
       forSale: plan.enabled_for_sale === true,
       name: price.name,
-      planId: plan.id,
+      // Neutral köpnyckel: servern översätter den själv; interna plan-id visas inte.
+      offerKey: plan.enabled_for_sale === true && plan.currency === 'SEK' && Number.isInteger(plan.price_minor) && plan.price_minor > 0
+        ? `sek-${plan.price_minor}`
+        : '',
       priceMinor: plan.price_minor,
       priceText: price.priceText,
       quotas: quotas || [],

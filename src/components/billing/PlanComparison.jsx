@@ -1,5 +1,7 @@
 import { Component, useEffect, useState } from 'react'
 import { supabase } from '../../services/supabaseClient.js'
+import CheckoutReturnStatus from './CheckoutReturnStatus.jsx'
+import { readReturnedCheckoutId } from '../../services/billing/checkoutReturn.js'
 import './PlanComparison.css'
 
 const LABELS = Object.freeze({
@@ -17,6 +19,12 @@ const LABELS = Object.freeze({
 })
 
 const QUOTA_KEYS = Object.freeze(['ai_coach', 'food_scan', 'body_scan', 'ai_eye'])
+
+const CHECKOUT_ERRORS = Object.freeze({
+  ACTIVE_PERIOD_EXISTS: 'Du har redan en aktiv period. Ett nytt köp kan göras när den har tagit slut.',
+  CHECKOUT_IN_PROGRESS: 'Du har en påbörjad betalning för en annan plan. Slutför den eller vänta en halvtimme tills den har gått ut.',
+  PROVIDER_NOT_CONFIGURED: 'Betalning är inte tillgänglig just nu.',
+})
 
 function formatSwedishCount(value) {
   return new Intl.NumberFormat('sv-SE', {
@@ -50,7 +58,7 @@ function presentPlan(plan) {
     current: plan.current === true,
     name: plan.name,
     forSale: plan.forSale === true,
-    planId: plan.planId,
+    offerKey: typeof plan.offerKey === 'string' ? plan.offerKey : '',
     priceText: plan.priceText,
     quotas: complete ? quotas.filter(Boolean) : [],
     unlimited: complete ? unlimited : [],
@@ -61,10 +69,12 @@ function PlanComparison({ authLoading = false, isAuthenticated = false }) {
   const authKey = authLoading ? 'loading' : isAuthenticated ? 'in' : 'out'
   const [remote, setRemote] = useState({ authKey, comparison: null, status: 'idle' })
   const [checkout, setCheckout] = useState({ pending: null, error: '' })
+  const [returnedCheckoutId] = useState(() => readReturnedCheckoutId())
+  const [reloadKey, setReloadKey] = useState(0)
 
-  async function buyOnce(planId) {
+  async function buyOnce(offerKey) {
     if (!supabase || checkout.pending) return
-    setCheckout({ pending: planId, error: '' })
+    setCheckout({ pending: offerKey, error: '' })
     try {
       const { data } = await supabase.auth.getSession()
       const token = data?.session?.access_token
@@ -72,9 +82,11 @@ function PlanComparison({ authLoading = false, isAuthenticated = false }) {
       const response = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan_id: planId, payment_mode: 'one_time' }),
+        body: JSON.stringify({ offer_key: offerKey, payment_mode: 'one_time' }),
       })
       const payload = await response.json().catch(() => null)
+      const known = CHECKOUT_ERRORS[payload?.error?.code]
+      if (response.status !== 202 && known) throw new Error(known)
       if (response.status !== 202 || !payload?.hostedCheckoutUrl) throw new Error('Betalningen kunde inte startas.')
       const url = new URL(payload.hostedCheckoutUrl)
       if (url.protocol !== 'https:' || url.hostname !== 'checkout.sumup.com') throw new Error('Ogiltig betalningslänk.')
@@ -123,7 +135,7 @@ function PlanComparison({ authLoading = false, isAuthenticated = false }) {
     return () => {
       cancelled = true
     }
-  }, [authLoading, isAuthenticated])
+  }, [authLoading, isAuthenticated, reloadKey])
 
   const comparison = remote.authKey === authKey ? remote.comparison : null
   const state = authLoading
@@ -145,6 +157,9 @@ function PlanComparison({ authLoading = false, isAuthenticated = false }) {
 
   return (
     <section className="app-information plan-compare" aria-labelledby="plan-compare-title">
+      {returnedCheckoutId && isAuthenticated ? (
+        <CheckoutReturnStatus checkoutId={returnedCheckoutId} onPaid={() => setReloadKey((value) => value + 1)} />
+      ) : null}
       <details>
         <summary id="plan-compare-title">Jämför abonnemang</summary>
         {state === 'loading' ? <p role="status">Hämtar abonnemang…</p> : null}
@@ -163,9 +178,9 @@ function PlanComparison({ authLoading = false, isAuthenticated = false }) {
                   >
                     <p className="plan-compare-price">{plan.priceText}</p>
                     <p className="plan-compare-state">{plan.availability}</p>
-                    {plan.forSale && !plan.current && plan.planId ? (
-                      <button type="button" disabled={checkout.pending !== null} onClick={() => buyOnce(plan.planId)}>
-                        {checkout.pending === plan.planId ? 'Öppnar SumUp…' : 'Betala en gång – 30 dagar, ingen förnyelse'}
+                    {plan.forSale && !plan.current && plan.offerKey ? (
+                      <button type="button" disabled={checkout.pending !== null} onClick={() => buyOnce(plan.offerKey)}>
+                        {checkout.pending === plan.offerKey ? 'Öppnar SumUp…' : 'Betala en gång – 30 dagar, ingen förnyelse'}
                       </button>
                     ) : null}
                     {plan.complete ? (

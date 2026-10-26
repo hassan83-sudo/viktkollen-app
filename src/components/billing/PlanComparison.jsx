@@ -1,7 +1,7 @@
 import { Component, useEffect, useState } from 'react'
 import { supabase } from '../../services/supabaseClient.js'
 import CheckoutReturnStatus from './CheckoutReturnStatus.jsx'
-import { readReturnedCheckoutId } from '../../services/billing/checkoutReturn.js'
+import { openHostedCheckout, readReturnedCheckoutId } from '../../services/billing/checkoutReturn.js'
 import './PlanComparison.css'
 
 const LABELS = Object.freeze({
@@ -90,7 +90,7 @@ function PlanComparison({ authLoading = false, isAuthenticated = false }) {
       if (response.status !== 202 || !payload?.hostedCheckoutUrl) throw new Error('Betalningen kunde inte startas.')
       const url = new URL(payload.hostedCheckoutUrl)
       if (url.protocol !== 'https:' || url.hostname !== 'checkout.sumup.com') throw new Error('Ogiltig betalningslänk.')
-      window.location.assign(url.href)
+      openHostedCheckout(url.href)
     } catch (error) {
       setCheckout({ pending: null, error: error.message || 'Betalningen kunde inte startas.' })
     }

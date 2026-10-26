@@ -18,6 +18,7 @@ export default function WardrobeGarmentForm({ onAdd }) {
   const [color, setColor] = useState('#446fa4')
   const [image, setImage] = useState('')
   const [approvedImage, setApprovedImage] = useState('')
+  const [reviewResult, setReviewResult] = useState(null)
   const [localConsent, setLocalConsent] = useState(false)
   const [remoteConsent, setRemoteConsent] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -31,14 +32,14 @@ export default function WardrobeGarmentForm({ onAdd }) {
     generation.current += 1
     operation.current?.abort()
     operation.current = null
-    setImage(''); setApprovedImage(''); setBusy(false)
+    setImage(''); setApprovedImage(''); setReviewResult(null); setBusy(false)
   }
 
   async function recognize(photo, current) {
     if (isWardrobeOffline || !remoteConsent || operation.current) return
     const controller = new AbortController()
     operation.current = controller
-    setBusy(true); setNotice('')
+    setBusy(true); setNotice(''); setReviewResult(null)
     try {
       const canvas = await wardrobePhotoCanvas(photo)
       if (controller.signal.aborted) return
@@ -56,8 +57,9 @@ export default function WardrobeGarmentForm({ onAdd }) {
         return
       }
       setApprovedImage(photo)
+      setReviewResult(result)
       setName(result.name); setType(result.category); setColor(result.colorHex)
-      setNotice(`AI föreslår ${result.name}, ${result.colorName}. Kontrollera och rätta uppgifterna före sparning.`)
+      setNotice('Kontrollera och rätta uppgifterna före sparning.')
     } catch {
       if (current === generation.current) {
         setImage(''); setApprovedImage('')
@@ -74,7 +76,7 @@ export default function WardrobeGarmentForm({ onAdd }) {
     event.target.value = ''
     if (!file || operation.current || busy) return
     const current = ++generation.current
-    setBusy(true); setImage(''); setApprovedImage(''); setName(''); setNotice('')
+    setBusy(true); setImage(''); setApprovedImage(''); setReviewResult(null); setName(''); setNotice('')
     try {
       const result = await createWardrobePhoto(file)
       if (current !== generation.current) return
@@ -93,7 +95,7 @@ export default function WardrobeGarmentForm({ onAdd }) {
     if (!canSave) return
     if (onAdd({ name: name.trim().slice(0, 60), type, color, image })) {
       generation.current += 1
-      setName(''); setImage(''); setApprovedImage('')
+      setName(''); setImage(''); setApprovedImage(''); setReviewResult(null)
       setNotice('Plagget är sparat lokalt.')
       // Keep this in the user's click; browsers may block delayed camera opening.
       if (nextPhoto) cameraInput.current?.click()
@@ -117,6 +119,15 @@ export default function WardrobeGarmentForm({ onAdd }) {
     <label>Plaggets namn<input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} required /></label>
     <label>Plaggtyp<select value={type} onChange={(e) => setType(e.target.value)}>{garmentTypes.map((value) => <option key={value}>{value}</option>)}</select></label>
     <label>Färg på dockan<input type="color" value={color} onChange={(e) => setColor(e.target.value)} /></label>
+    {!busy && image && image === approvedImage && reviewResult && <section aria-label="AI-granskning klar" aria-live="polite">
+      <h5>AI-granskning klar</h5>
+      <ul>
+        <li>Plagg: {reviewResult.name}</li>
+        <li>Kategori: {reviewResult.category}</li>
+        <li>Färg: {reviewResult.colorName}</li>
+      </ul>
+      <p>Bilden är godkänd för garderoben.</p>
+    </section>}
     <button type="submit" disabled={!canSave}>Spara plagg</button>
     <button type="button" disabled={!canSave} onClick={() => save(true)}>Spara och fota nästa</button>
     <p role="status">{busy ? 'Granskar bilden…' : notice}</p>

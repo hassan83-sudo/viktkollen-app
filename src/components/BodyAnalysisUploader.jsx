@@ -387,14 +387,14 @@ function BodyAnalysisUploader({
               {t('standInFrame')}
             </button>
             <label className="secondary-button body-scan-file-picker" htmlFor={'body-scan-file-' + activeViewKey}>
-              <span aria-hidden="true">📷</span> Öppna kamera
+              <span aria-hidden="true">📷</span> {t('guided.openCamera')}
               <input
                 id={'body-scan-file-' + activeViewKey}
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
                 capture="environment"
-                aria-label={'Öppna kamera för ' + activeView.label.toLowerCase()}
+                aria-label={t('chooseImageAria', { label: activeView.label.toLowerCase() })}
                 onChange={(event) => handleFileChange(event, activeViewKey)}
               />
             </label>

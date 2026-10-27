@@ -1,3 +1,4 @@
+import { planIdForOpenPeriod } from '../../../src/services/billing/paidPeriod.js'
 import { createSupabaseAdminClient } from '../supabaseServer.js'
 import { getPlanById } from '../../../src/services/billing/planCatalog.js'
 import { periodBounds } from '../../../src/services/billing/period.js'
@@ -83,7 +84,20 @@ export async function readPostgresUsageSnapshot(client, userId) {
   const assignment = await maybeSingle(
     client.schema('billing').from('user_plan_assignments').select('plan_id').eq('user_id', userId),
   )
-  const planId = assignment?.plan_id || 'plan.free'
+  const assignedPlanId = assignment?.plan_id || 'plan.free'
+  const openPeriods = assignedPlanId === 'plan.free' ? [] : await listRows(
+    client.schema('billing').from('subscriptions')
+      .select('current_period_end')
+      .eq('user_id', userId)
+      .eq('plan_id', assignedPlanId)
+      .in('status', ['TRIALING', 'ACTIVE', 'PAST_DUE'])
+      .gt('current_period_end', new Date().toISOString())
+      .limit(1),
+  )
+  const planId = planIdForOpenPeriod({
+    assignedPlanId,
+    periodEnd: openPeriods[0]?.current_period_end || (assignedPlanId === 'plan.free' ? null : new Date(0).toISOString()),
+  })
   const plan = await maybeSingle(
     client.schema('billing').from('plans').select('plan_id, price_minor, billing_interval, active').eq('plan_id', planId),
   )

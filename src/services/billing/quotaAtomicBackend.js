@@ -9,6 +9,7 @@ import { createAsyncMutex } from './asyncMutex.js'
 import { isUnlimitedLimit, limitValue } from './entitlementModel.js'
 import { getFeatureDefinition, resolveFeatureId } from './features.js'
 import { inPeriod, periodBounds } from './period.js'
+import { planIdForOpenPeriod } from './paidPeriod.js'
 import { defaultPlanCatalog, getPlanById, getPlanEntitlement } from './planCatalog.js'
 import { createInMemoryPlanAssignmentStore } from './planAssignment.js'
 import { createInMemoryReservationStore } from './reservationStore.js'
@@ -135,9 +136,14 @@ export function createInMemoryAtomicBackend({
     void clientClaim
     const nowDate = now()
     const assignment = await assignments.get(userId)
-    const plan = getPlanById(assignment.plan_id, catalog)
+    const effectivePlanId = planIdForOpenPeriod({
+      assignedPlanId: assignment.plan_id,
+      now: nowDate,
+      periodEnd: assignment.current_period_end,
+    })
+    const plan = getPlanById(effectivePlanId, catalog)
     if (!plan) return quotaResult(QUOTA_STATUS.DENIED_UNKNOWN_PLAN)
-    const period = subscriptionPeriod(assignment, plan, nowDate)
+    const period = subscriptionPeriod(effectivePlanId === assignment.plan_id ? assignment : {}, plan, nowDate)
 
     if (!definition.metered) {
       return quotaResult(QUOTA_STATUS.ALLOWED_UNMETERED, {
@@ -254,8 +260,16 @@ export function createInMemoryAtomicBackend({
         overage_quantity: 0,
         period_end: snapshot.period_end,
         period_start: snapshot.period_start,
-        plan_id: assignment.plan_id,
-        plan_version: assignment.plan_version,
+        plan_id: planIdForOpenPeriod({
+          assignedPlanId: assignment.plan_id,
+          now: now(),
+          periodEnd: assignment.current_period_end,
+        }),
+        plan_version: getPlanById(planIdForOpenPeriod({
+          assignedPlanId: assignment.plan_id,
+          now: now(),
+          periodEnd: assignment.current_period_end,
+        }), catalog)?.version || assignment.plan_version,
         quantity: qty,
         reservation_id: reservation_id || randomUUID(),
         status: RESERVATION_STATUS.PENDING,

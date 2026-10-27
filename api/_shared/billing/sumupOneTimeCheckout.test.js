@@ -119,6 +119,8 @@ function response() {
 
 beforeEach(() => {
   vi.stubEnv('BILLING_PUBLIC_BASE_URL', 'https://viktkollen-preview.example')
+  vi.stubEnv('SUPABASE_URL', 'https://armtslzspuebmlysnooq.supabase.co')
+  vi.stubEnv('VITE_SUPABASE_URL', 'https://armtslzspuebmlysnooq.supabase.co')
 })
 
 afterEach(() => {
@@ -187,8 +189,13 @@ describe('SumUp Hosted Checkout, engångsköp', () => {
     expect(Object.keys(activations[0])).not.toContain('p_period_end')
     expect(db.getIntent(reference).status).toBe('consumed')
     expect(db.quotaPlan(USER)).toBe(PLAN)
+    expect(db.subscriptionCount(USER)).toBe(1)
     const periodEnd = new Date(results[0].currentPeriodEnd).getTime()
     expect(periodEnd - new Date(state.checkout.transactions[0].timestamp).getTime()).toBe(30 * DAY)
+
+    const again = await oneTimeCheckoutStatus({ checkoutId: reference, userId: USER, ...verifyArgs(db, transport, callRpc) })
+    expect(again).toMatchObject({ accessGranted: true, state: 'paid' })
+    expect(db.subscriptionCount(USER)).toBe(1)
   })
 
   it('avvisar fel belopp, valuta, mottagarkonto, kund, köp och dubbla transaktioner utan att aktivera', async () => {
@@ -257,13 +264,18 @@ describe('SumUp Hosted Checkout, engångsköp', () => {
 })
 
 describe('start av engångsköp', () => {
-  function setup({ open, createCheckout } = {}) {
-    const calls = { bind: [], cancel: [], create: [], list: 0 }
+  function setup({ open, createCheckout, merchant } = {}) {
+    const calls = { bind: [], cancel: [], create: [], list: 0, merchant: 0 }
     setCheckoutSaleReaderForTests(() => ({ active: true, enabledForSale: true, known: true }))
     setCheckoutAdapterForTests(createSumUpCheckoutAdapter({
       merchantCode: MERCHANT,
       testOnly: true,
       transport: {
+        async retrieveMerchant(code) {
+          calls.merchant += 1
+          if (merchant instanceof Error) throw merchant
+          return merchant || { merchant_code: code, sandbox: true }
+        },
         async createCheckout(body) {
           calls.create.push(body)
           if (createCheckout) return createCheckout(body)
@@ -345,9 +357,41 @@ describe('start av engångsköp', () => {
 
   it('godtar bara en https-ursprungsadress som bas', () => {
     expect(hostedCheckoutUrls('chk_1', { BILLING_PUBLIC_BASE_URL: 'https://app.example' })).toMatchObject({ returnUrl: 'https://app.example/api/billing/webhook' })
-    for (const value of ['http://app.example', 'https://app.example/sub', 'https://app.example?x=1', 'https://u:p@app.example', '', 'nope']) {
+    for (const value of [
+      'http://app.example',
+      'https://app.example/sub',
+      'https://app.example?x=1',
+      'https://u:p@app.example',
+      'https://viktkollen-app.vercel.app',
+      'https://viktkollen-app-appsonthego-s-projects.vercel.app',
+      'https://viktkollen-app-git-main-appsonthego-s-projects.vercel.app',
+      '',
+      'nope',
+    ]) {
       expect(hostedCheckoutUrls('chk_1', { BILLING_PUBLIC_BASE_URL: value }), value).toBeNull()
     }
+  })
+
+  it('skapar ingen checkout mot Production eller en handlare som inte är sandbox', async () => {
+    const production = setup()
+    const blocked = await beginCheckout({
+      body: { plan_id: PLAN },
+      env: {
+        BILLING_PUBLIC_BASE_URL: 'https://viktkollen-preview.example',
+        SUPABASE_URL: 'https://bxmdlckrlwzdtcxnsqqr.supabase.co',
+        VITE_SUPABASE_URL: 'https://armtslzspuebmlysnooq.supabase.co',
+      },
+      userId: USER,
+    })
+    expect(blocked).toMatchObject({ accessGranted: false, code: 'STAGING_IDENTITY_REQUIRED', status: 503 })
+    expect(production.create).toEqual([])
+    expect(production.merchant).toBe(0)
+
+    const live = setup({ merchant: { merchant_code: MERCHANT, sandbox: false } })
+    const refused = await beginCheckout({ body: { plan_id: PLAN }, userId: USER })
+    expect(refused).toMatchObject({ accessGranted: false, code: 'SANDBOX_IDENTITY_REQUIRED', status: 403 })
+    expect(live.create).toEqual([])
+    expect(live.cancel).toEqual([])
   })
 })
 

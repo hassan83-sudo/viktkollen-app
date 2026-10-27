@@ -140,6 +140,9 @@ export function createInMemoryCheckoutActivation({ now = () => new Date(), plans
     quotaPlan(userId) {
       return quotaPlan(state, userId)
     },
+    subscriptionCount(userId) {
+      return state.subscriptions.filter((row) => !userId || row.userId === userId).length
+    },
     quotaReservations() {
       return state.quotaReservations.length
     },

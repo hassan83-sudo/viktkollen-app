@@ -11,6 +11,7 @@ import {
   hostedCheckoutUrls,
   isValidHostedCheckoutUrl,
   oneTimeCheckoutStatus,
+  stagingSupabaseReady,
 } from './sumupOneTimeCheckout.js'
 import { createServerSubscriptionRpcCaller } from './subscriptionRpcCaller.js'
 
@@ -194,6 +195,19 @@ export async function beginCheckout({
  * plan or an open subscription is refused. Nothing here grants access.
  */
 async function beginSumUpOneTimeCheckout({ adapter, env, planId, ports, userId }) {
+  if (!stagingSupabaseReady(env)) return fail('STAGING_IDENTITY_REQUIRED', 503, { validated: true })
+  if (typeof adapter?.transport?.retrieveMerchant !== 'function' || !adapter.merchantCode) {
+    return fail('SANDBOX_IDENTITY_REQUIRED', 403, { validated: true })
+  }
+  let merchant
+  try {
+    merchant = await adapter.transport.retrieveMerchant(adapter.merchantCode)
+  } catch {
+    return fail('SANDBOX_IDENTITY_REQUIRED', 403, { validated: true })
+  }
+  if (merchant?.sandbox !== true || merchant?.merchant_code !== adapter.merchantCode) {
+    return fail('SANDBOX_IDENTITY_REQUIRED', 403, { validated: true })
+  }
   if (typeof ports?.open !== 'function' || typeof ports?.bind !== 'function' || typeof ports?.cancel !== 'function') {
     return fail('DURABLE_UNAVAILABLE', 503, { validated: true })
   }

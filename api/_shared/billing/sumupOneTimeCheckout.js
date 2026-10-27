@@ -10,6 +10,31 @@ import { sumUpCustomerIdForUser } from './sumupRecurring.js'
 export const ONE_TIME_ACTIVATION_RPC = 'billing.activate_verified_one_time_checkout'
 export const ONE_TIME_READ_RPC = 'billing.read_one_time_checkout'
 export const ONE_TIME_TTL_SECONDS = 30 * 60
+export const STAGING_SUPABASE_REF = 'armtslzspuebmlysnooq'
+export const PRODUCTION_SUPABASE_REF = 'bxmdlckrlwzdtcxnsqqr'
+
+const PRODUCTION_APP_HOSTS = new Set([
+  'viktkollen-app.vercel.app',
+  'viktkollen-app-appsonthego-s-projects.vercel.app',
+  'viktkollen-app-git-main-appsonthego-s-projects.vercel.app',
+])
+
+export function supabaseProjectRef(value) {
+  try {
+    return new URL(String(value || '')).hostname.split('.')[0]
+  } catch {
+    return ''
+  }
+}
+
+/** Preview checkout may use only the staging project. Production is refused. */
+export function stagingSupabaseReady(env = process.env) {
+  const server = supabaseProjectRef(env.SUPABASE_URL)
+  const client = supabaseProjectRef(env.VITE_SUPABASE_URL)
+  if (!server || !client) return false
+  if (server === PRODUCTION_SUPABASE_REF || client === PRODUCTION_SUPABASE_REF) return false
+  return server === STAGING_SUPABASE_REF && client === STAGING_SUPABASE_REF
+}
 
 const CHECKOUT_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const INTENT_ID_RE = /^[A-Za-z0-9._:-]{1,80}$/
@@ -33,7 +58,8 @@ export function hostedCheckoutUrls(checkoutId, env = process.env) {
     return null
   }
   if (base.protocol !== 'https:' || base.username || base.password || base.search || base.hash
-    || (base.pathname !== '/' && base.pathname !== '')) {
+    || (base.pathname !== '/' && base.pathname !== '')
+    || PRODUCTION_APP_HOSTS.has(base.hostname)) {
     return null
   }
   const origin = base.origin

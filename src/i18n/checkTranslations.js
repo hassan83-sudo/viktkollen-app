@@ -51,7 +51,14 @@ export function checkTranslations() {
       const sourceKeys = sourceNamespaceKeys[namespace]
       const localeKeys = new Set(flattenKeys(localeResources[namespace] || {}))
       const missing = [...sourceKeys].filter((key) => !localeKeys.has(key))
-      const extra = [...localeKeys].filter((key) => !sourceKeys.has(key))
+      // Arabic has four additional plural categories beyond English/Swedish.
+      const extra = [...localeKeys].filter((key) => {
+        if (sourceKeys.has(key)) return false
+        if (language.code === 'ar' && /_(zero|two|few|many)$/.test(key)) {
+          return !sourceKeys.has(key.replace(/_(zero|two|few|many)$/, '_other'))
+        }
+        return true
+      })
 
       if (missing.length) {
         report.missing[language.code] ||= {}

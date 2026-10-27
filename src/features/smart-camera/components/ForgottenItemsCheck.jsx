@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import {
   forgottenCheckAiButtonLabel,
@@ -75,6 +76,9 @@ import SmartCameraLiveView from './SmartCameraLiveView.jsx'
  * the targeted tests for this file).
  */
 export default function ForgottenItemsCheck({ list, onBack, onCameraActive, onChange }) {
+  const { t, i18n } = useTranslation('home')
+  const arabic = i18n.resolvedLanguage === 'ar'
+  const text = (key, options) => t(`smartCameraFlow.${key}`, options)
   const [stage, setStage] = useState('check')
   const [visibleIds, setVisibleIds] = useState([])
   const [guidanceIndex, setGuidanceIndex] = useState(0)
@@ -186,26 +190,26 @@ export default function ForgottenItemsCheck({ list, onBack, onCameraActive, onCh
   if (stage === 'result') {
     return (
       <div className="smart-camera-forgotten-result">
-        <p className="smart-camera-note">{forgottenCheckResultDisclaimer}</p>
-        <p className="smart-camera-forgotten-summary">{result.summary}</p>
+        <p className="smart-camera-note">{arabic ? text('resultDisclaimer') : forgottenCheckResultDisclaimer}</p>
+        <p className="smart-camera-forgotten-summary">{arabic ? (result.total ? text('resultSummary', { confirmed: result.confirmedCount, total: result.total }) : text('resultEmpty')) : result.summary}</p>
         <section className="smart-camera-compare">
-          <h3>Kontrollerat</h3>
+          <h3>{text('checked')}</h3>
           {result.seen.length
             ? result.seen.map((item) => <p key={item.id}>✓ {item.label}</p>)
-            : <p>Inget bekräftat ännu.</p>}
-          <h3>Kan inte bekräfta</h3>
+            : <p>{text('noneConfirmed')}</p>}
+          <h3>{text('cannotConfirm')}</h3>
           {(uncertainItems.length || result.check.length)
             ? (
               <>
-                {uncertainItems.map((item) => <p key={item.id}>? {item.message}</p>)}
-                {result.check.map((item) => <p key={item.id}>? {item.message}</p>)}
+                {uncertainItems.map((item) => <p key={item.id}>? {arabic ? text('uncertain', { label: item.label }) : item.message}</p>)}
+                {result.check.map((item) => <p key={item.id}>? {arabic ? text('unseen', { label: item.label }) : item.message}</p>)}
               </>
             )
-            : <p>Allt på listan är bekräftat.</p>}
+            : <p>{text('allConfirmed')}</p>}
         </section>
         <div className="smart-camera-row">
-          <button className="primary-button" type="button" onClick={() => setStage('check')}>Kolla igen</button>
-          <button className="secondary-button" type="button" onClick={onBack}>Avsluta kontrollen</button>
+          <button className="primary-button" type="button" onClick={() => setStage('check')}>{text('checkAgain')}</button>
+          <button className="secondary-button" type="button" onClick={onBack}>{text('finish')}</button>
         </div>
       </div>
     )
@@ -213,10 +217,10 @@ export default function ForgottenItemsCheck({ list, onBack, onCameraActive, onCh
 
   return (
     <div className="smart-camera-forgotten-check">
-      <p className="smart-camera-note">{forgottenCheckIntro}</p>
+      <p className="smart-camera-note">{arabic ? text('intro') : forgottenCheckIntro}</p>
       <SmartCameraLiveView ref={liveViewRef} autoStart enabled facingMode="environment" onActiveChange={handleCameraActive} />
       <p className="smart-camera-forgotten-guidance" aria-live="polite" data-voice-guidance="true">
-        {guidance.phrase}
+        {arabic ? text(`guidance${guidance.index}`) : guidance.phrase}
       </p>
       {onChange && (
         <div className="smart-camera-forgotten-list-editor">
@@ -226,7 +230,7 @@ export default function ForgottenItemsCheck({ list, onBack, onCameraActive, onCh
             aria-expanded={editingList}
             onClick={() => setEditingList((current) => !current)}
           >
-            {editingList ? 'Klar' : 'Redigera lista'}
+            {editingList ? text('done') : text('edit')}
           </button>
           {editingList && (
             <div className="smart-camera-checklist">
@@ -234,14 +238,14 @@ export default function ForgottenItemsCheck({ list, onBack, onCameraActive, onCh
                 {items.map((item) => (
                   <li key={item.id}>
                     <span>{item.label}</span>
-                    <button type="button" onClick={() => removeListItem(item.id)}>Ta bort</button>
+                    <button type="button" onClick={() => removeListItem(item.id)}>{text('remove')}</button>
                   </li>
                 ))}
               </ul>
               <div className="smart-camera-add-row">
                 <input
-                  aria-label="Ny sak att ta med"
-                  placeholder="Lägg till egen sak"
+                  aria-label={text('newItem')}
+                  placeholder={text('addPlaceholder')}
                   value={draftItem}
                   onChange={(event) => setDraftItem(event.target.value)}
                   onKeyDown={(event) => {
@@ -249,7 +253,7 @@ export default function ForgottenItemsCheck({ list, onBack, onCameraActive, onCh
                   }}
                 />
                 <button className="secondary-button" type="button" disabled={!draftItem.trim()} onClick={addListItem}>
-                  Lägg till
+                  {text('add')}
                 </button>
               </div>
             </div>
@@ -258,19 +262,19 @@ export default function ForgottenItemsCheck({ list, onBack, onCameraActive, onCh
       )}
       {items.length === 0 ? (
         <p className="smart-camera-note">
-          Din lista över saker att ta med är tom. Lägg till punkter under "Vad har jag med mig?" eller "Göra mig klar" så visas de här.
+          {text('emptyList')}
         </p>
       ) : (
-        <nav className="smart-camera-mode-grid smart-camera-forgotten-items" aria-label="Saker att visa för kameran">
+        <nav className="smart-camera-mode-grid smart-camera-forgotten-items" aria-label={text('itemsAria')}>
           {items.map((item) => {
             const shown = visibleIds.includes(item.id)
             const aiStatus = aiStatusesById?.[item.id]
             const aiIdentified = aiStatus === 'identified'
             const confirmed = shown || aiIdentified
             const aiHint = aiIdentified
-              ? 'AI hittade den i bilden'
+              ? text('aiFound')
               : aiStatus === 'uncertain'
-                ? 'AI: osäker'
+                ? text('aiUncertain')
                 : ''
             return (
               <button
@@ -282,14 +286,14 @@ export default function ForgottenItemsCheck({ list, onBack, onCameraActive, onCh
               >
                 <span aria-hidden="true">{confirmed ? '✓' : '?'}</span>
                 <strong>{item.label}</strong>
-                <small>{shown ? 'Markerad som visad' : (aiHint || 'Jag visar den här')}</small>
+                <small>{shown ? text('shown') : (aiHint || text('showThis'))}</small>
               </button>
             )
           })}
         </nav>
       )}
       <p className="smart-camera-note">
-        Att ett föremål inte är markerat betyder inte att du har glömt det - det betyder bara att du inte visat det för kameran än.
+        {text('notMarked')}
       </p>
       {items.length > 0 && !pendingCanvas && (
         <div className="smart-camera-row">
@@ -299,23 +303,23 @@ export default function ForgottenItemsCheck({ list, onBack, onCameraActive, onCh
             type="button"
             onClick={requestAiCheck}
           >
-            {aiBusy ? 'Analyserar...' : forgottenCheckAiButtonLabel}
+            {aiBusy ? text('analyzing') : (arabic ? text('checkItems') : forgottenCheckAiButtonLabel)}
           </button>
         </div>
       )}
       {pendingCanvas && (
         <div className="smart-camera-forgotten-ai-consent">
-          <p className="smart-camera-note">{forgottenCheckAiPrivacyNotice}</p>
+          <p className="smart-camera-note">{arabic ? text('aiPrivacy') : forgottenCheckAiPrivacyNotice}</p>
           <div className="smart-camera-row">
-            <button className="primary-button" type="button" onClick={confirmAiCheck}>{forgottenCheckAiConsentConfirmLabel}</button>
-            <button className="secondary-button" type="button" onClick={cancelAiCheck}>{forgottenCheckAiConsentCancelLabel}</button>
+            <button className="primary-button" type="button" onClick={confirmAiCheck}>{arabic ? text('sendImage') : forgottenCheckAiConsentConfirmLabel}</button>
+            <button className="secondary-button" type="button" onClick={cancelAiCheck}>{arabic ? text('cancel') : forgottenCheckAiConsentCancelLabel}</button>
           </div>
         </div>
       )}
-      {aiNotice && <p className="smart-camera-note">{aiNotice}</p>}
+      {aiNotice && <p className="smart-camera-note">{arabic && aiNotice === forgottenCheckAiFallbackNotice ? text('aiFallback') : aiNotice}</p>}
       {items.length > 0 && (
         <div className="smart-camera-row">
-          <button className="primary-button" type="button" onClick={() => setStage('result')}>Se resultat</button>
+          <button className="primary-button" type="button" onClick={() => setStage('result')}>{text('seeResults')}</button>
         </div>
       )}
     </div>

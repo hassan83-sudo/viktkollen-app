@@ -3,6 +3,7 @@
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { changeAppLanguage } from '../../../i18n/index.js'
 
 vi.mock('react-dom', async () => {
   const actual = await vi.importActual('react-dom')
@@ -85,7 +86,8 @@ describe('"Har jag glömt något?" guided camera flow', () => {
   let getUserMedia
   let fetchSpy
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    await changeAppLanguage('sv')
     getUserMedia = vi.fn(async () => createFakeStream())
     Object.defineProperty(globalThis.navigator, 'mediaDevices', {
       configurable: true,
@@ -198,7 +200,8 @@ describe('"Har jag glömt något?" optional remote AI check ("Kontrollera saker"
   let getUserMedia
   let restoreCanvasStub
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    await changeAppLanguage('sv')
     getUserMedia = vi.fn(async () => createFakeStream())
     Object.defineProperty(globalThis.navigator, 'mediaDevices', {
       configurable: true,
@@ -223,6 +226,22 @@ describe('"Har jag glömt något?" optional remote AI check ("Kontrollera saker"
     restoreCanvasStub = stubForgottenItemsCapture(stage.container)
     return stage
   }
+
+  it('shows Arabic consent and never sends the image before approval', async () => {
+    await changeAppLanguage('ar')
+    const stage = mountStage()
+    stage.click('هل نسيت شيئًا؟')
+    await act(async () => {})
+    restoreCanvasStub = stubForgottenItemsCapture(stage.container)
+    stage.click('التحقق من الأغراض')
+
+    expect(stage.container.textContent).toContain('لا يحفظ Viktkollen الصورة')
+    expect(stage.container.textContent).toContain('إرسال الصورة للتحليل')
+    expect(analyzeForgottenItemsPhoto).not.toHaveBeenCalled()
+    stage.click('إلغاء')
+    expect(analyzeForgottenItemsPhoto).not.toHaveBeenCalled()
+    stage.unmount()
+  })
 
   it('never calls the AI service just from tapping "Kontrollera saker" - it only shows the privacy notice and waits for explicit approval', async () => {
     const stage = await openAndStartCamera()

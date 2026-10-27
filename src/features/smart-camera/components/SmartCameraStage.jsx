@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { createPortal } from 'react-dom'
 
 import { getFeatureFlags, isFeatureEnabled } from '../../featureRegistry.js'
@@ -20,6 +21,7 @@ export default function SmartCameraStage({
   onVoiceCleanup,
   voiceBar = null,
 }) {
+  const { t } = useTranslation('home')
   const flags = featureFlags || getFeatureFlags()
   const [modeId, setModeId] = useState(initialMode)
   const [cameraActive, setCameraActive] = useState(false)
@@ -52,12 +54,12 @@ export default function SmartCameraStage({
   return createPortal(
     <div className="smart-camera-stage" role="dialog" aria-labelledby="smart-camera-title" aria-modal="true">
       <div className="smart-camera-stage-bar">
-        <h1 id="smart-camera-title">Smart kamera</h1>
+        <h1 id="smart-camera-title">{t('smartCameraHub.title')}</h1>
         <p className="smart-camera-hw-indicator" aria-live="polite">
-          {cameraActive && <span className="is-camera">● Kamera aktiv</span>}
-          {isMicrophoneActive && <span className="is-mic">● Mikrofon aktiv</span>}
+          {cameraActive && <span className="is-camera">{t('smartCameraHub.cameraActive')}</span>}
+          {isMicrophoneActive && <span className="is-mic">{t('smartCameraHub.microphoneActive')}</span>}
         </p>
-        <button className="overview-body-scan-close" type="button" onClick={onClose}>Stäng</button>
+        <button className="overview-body-scan-close" type="button" onClick={onClose}>{t('common:actions.close')}</button>
       </div>
       <div className="smart-camera-stage-body">
         {modeId === 'object-bank'
@@ -73,7 +75,7 @@ export default function SmartCameraStage({
           aiReceivesFrame={modeId === 'object-scan'}
           audioToServer={mode?.id === 'ai-ear'}
           cameraActive={cameraActive}
-          savedLabels={['Checklistor, rutiner och objektplatser sparas lokalt om du redigerar dem.']}
+          savedLabels={[t('smartCameraHub.localSaved')]}
           voiceToAi={isMicrophoneActive || mode?.id === 'ask-ai'}
         />
       </div>

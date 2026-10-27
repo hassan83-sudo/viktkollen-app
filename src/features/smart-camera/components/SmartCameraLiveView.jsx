@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { attachStreamToVideo, createCameraSession, detachStreamFromVideo } from '../../shared/camera/cameraSession.js'
 
 const SmartCameraLiveView = forwardRef(function SmartCameraLiveView({
@@ -7,6 +8,9 @@ const SmartCameraLiveView = forwardRef(function SmartCameraLiveView({
   facingMode = 'user',
   onActiveChange,
 }, ref) {
+  const { t, i18n } = useTranslation('home')
+  const text = (key, options) => t(`smartCameraFlow.${key}`, options)
+  const arabic = i18n.resolvedLanguage === 'ar'
   const videoRef = useRef(null)
   const sessionRef = useRef(null)
   const onActiveChangeRef = useRef(onActiveChange)
@@ -114,29 +118,33 @@ const SmartCameraLiveView = forwardRef(function SmartCameraLiveView({
 
   if (!requested) {
     return (
-      <section className="smart-camera-live is-off" aria-label="Kameran är avstängd">
+      <section className="smart-camera-live is-off" aria-label={text('cameraOffAria')}>
         <p className="smart-camera-note">
-          Kameran är avstängd. Den startar först när du trycker Starta kamera.
-          Bilden stannar lokalt och skickas inte någonstans.
+          {text('cameraOffNote')}
         </p>
         <button className="primary-button" type="button" onClick={() => setRequested(true)}>
-          Starta kamera
+          {text('startCamera')}
         </button>
       </section>
     )
   }
 
   return (
-    <section className="smart-camera-live" aria-label="Lokal kameravy">
+    <section className="smart-camera-live" aria-label={text('cameraView')}>
       <div className="smart-camera-live-frame">
         <video ref={videoRef} playsInline muted autoPlay />
-        {active && <span className="smart-camera-live-dot">● Kamera aktiv · lokal preview</span>}
+        {active && <span className="smart-camera-live-dot">{text('cameraPreview')}</span>}
       </div>
-      {error && <p className="smart-camera-note">{error}</p>}
+      {error && <p className="smart-camera-note">{arabic
+        ? error.startsWith('Kamerabehörighet nekades') ? text('denied')
+          : error.startsWith('Ingen bakre kamera') ? text('notFound')
+            : error.startsWith('Livekamera på iPhone') ? text('secureError', { address: error.match(/https:\/\/\S+/)?.[0] || 'https://' })
+              : text('genericError')
+        : error}</p>}
       <div className="smart-camera-live-actions">
-        <small>{facingLabel || 'Kamera'}</small>
-        <button className="secondary-button" type="button" onClick={flip}>Byt kamera</button>
-        <button className="secondary-button" type="button" onClick={stop}>Stäng kamera</button>
+        <small>{arabic && facingLabel ? text(facingLabel === 'Främre kamera' ? 'frontCamera' : 'rearCamera') : (facingLabel || text('camera'))}</small>
+        <button className="secondary-button" type="button" onClick={flip}>{text('flipCamera')}</button>
+        <button className="secondary-button" type="button" onClick={stop}>{text('stopCamera')}</button>
       </div>
     </section>
   )

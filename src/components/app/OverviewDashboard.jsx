@@ -418,7 +418,7 @@ function OverviewLiveMeta({
         >
           <span className="overview-halloween-name">🎃 Halloween</span>
           <span className={halloweenEnabled ? 'overview-halloween-state is-on' : 'overview-halloween-state is-off'}>
-            {halloweenEnabled ? 'PÅ' : 'AV'}
+            {halloweenEnabled ? t('halloweenOn') : t('halloweenOff')}
           </span>
           <svg className="overview-halloween-power" viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M12 2v9M6.1 5.7a9 9 0 1 0 11.8 0" />

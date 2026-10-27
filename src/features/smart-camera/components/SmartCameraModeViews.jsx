@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { eyesFeature } from '../../eyes/eyesFeature.js'
 import {
@@ -32,12 +33,15 @@ import ForgottenItemsCheck from './ForgottenItemsCheck.jsx'
 import SmartCameraLiveView from './SmartCameraLiveView.jsx'
 
 function ModeHeader({ mode, onBack, title }) {
+  const { t, i18n } = useTranslation('home')
+  const arabic = i18n.resolvedLanguage === 'ar'
+  const label = arabic && mode?.id ? t(`smartCameraFlow.modes.${mode.id}`, { defaultValue: mode.label }) : mode?.label
   return (
     <header className="smart-camera-mode-header">
-      <button className="smart-camera-back" type="button" onClick={onBack}>Hubb</button>
+      <button className="smart-camera-back" type="button" onClick={onBack}>{arabic ? t('common:back') : 'Hubb'}</button>
       <div>
-        <p className="eyebrow">{mode?.icon} {mode?.label}</p>
-        <h2>{title || mode?.label}</h2>
+        <p className="eyebrow">{mode?.icon} {label}</p>
+        <h2>{title || label}</h2>
       </div>
     </header>
   )

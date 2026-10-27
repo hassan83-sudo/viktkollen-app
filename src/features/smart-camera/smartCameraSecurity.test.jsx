@@ -6,6 +6,7 @@ import process from 'node:process'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { changeAppLanguage } from '../../i18n/index.js'
 
 vi.mock('react-dom', async () => {
   const actual = await vi.importActual('react-dom')
@@ -59,7 +60,8 @@ describe('Smart Camera security', () => {
   let getUserMedia
   let fetchSpy
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    await changeAppLanguage('sv')
     getUserMedia = vi.fn(async () => createFakeStream())
     Object.defineProperty(globalThis.navigator, 'mediaDevices', {
       configurable: true,

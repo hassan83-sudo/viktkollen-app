@@ -1,4 +1,18 @@
+import { useTranslation } from 'react-i18next'
 import { getSmartCameraPrivacyLayers } from '../../shared/privacy/privacyLayers.js'
+import { smartCameraPrivacySv } from '../../../i18n/smartCameraHubResources.js'
+
+const itemKeys = {
+  [smartCameraPrivacySv.noCameraForAudio]: 'noCameraForAudio',
+  [smartCameraPrivacySv.cameraLive]: 'cameraLive',
+  [smartCameraPrivacySv.cameraOff]: 'cameraOff',
+  [smartCameraPrivacySv.audioToServer]: 'audioToServer',
+  [smartCameraPrivacySv.frameToAi]: 'frameToAi',
+  [smartCameraPrivacySv.noFrameToAi]: 'noFrameToAi',
+  [smartCameraPrivacySv.voiceToAi]: 'voiceToAi',
+  [smartCameraPrivacySv.audioNotSaved]: 'audioNotSaved',
+  [smartCameraPrivacySv.cameraNotSaved]: 'cameraNotSaved',
+}
 
 export default function SmartCameraPrivacyCard({
   aiReceivesFrame = false,
@@ -7,17 +21,19 @@ export default function SmartCameraPrivacyCard({
   savedLabels = [],
   voiceToAi = false,
 }) {
+  const { t } = useTranslation('home')
   const layers = getSmartCameraPrivacyLayers({ aiReceivesFrame, audioToServer, cameraActive, savedLabels, voiceToAi })
+  const text = (key) => t(`smartCameraPrivacy.${key}`)
 
   return (
-    <section className="smart-camera-privacy" aria-label="Vad kameran ser, vad AI får och vad som sparas">
+    <section className="smart-camera-privacy" aria-label={text('aria')}>
       {Object.values(layers).map((layer) => (
         <article key={layer.id}>
-          <strong>{layer.title}</strong>
+          <strong>{text(layer.id)}</strong>
           {layer.items.map((item) => (
-            <p key={item}>{item}</p>
+            <p key={item}>{itemKeys[item] ? text(itemKeys[item]) : item}</p>
           ))}
-          {layer.localOnly && <small>Lokalt</small>}
+          {layer.localOnly && <small>{text('local')}</small>}
         </article>
       ))}
     </section>

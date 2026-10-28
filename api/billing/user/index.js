@@ -259,6 +259,13 @@ async function handleSumUpLiveCheck(request, response, requestId) {
   if (process.env.VERCEL_ENV !== 'production') {
     return response.status(403).json({ ok: false, code: 'PRODUCTION_ONLY', requestId })
   }
+  // SumUp documents secret API keys with the sup_sk_ prefix. Detect an
+  // accidentally pasted credential from another provider before making calls.
+  // Never echo, log or return any part of the configured secret.
+  const key = typeof process.env.SUMUP_API_KEY === 'string' ? process.env.SUMUP_API_KEY.trim() : ''
+  if (key && !key.startsWith('sup_sk_')) {
+    return response.status(409).json({ ok: false, code: 'SUMUP_KEY_FORMAT_INVALID', requestId })
+  }
   const adapter = getConfiguredSumUpAdapter()
   if (!adapter?.merchantCode || typeof adapter.transport?.retrieveMerchant !== 'function') {
     return response.status(503).json({ ok: false, code: 'SUMUP_NOT_CONFIGURED', requestId })
@@ -274,8 +281,8 @@ async function handleSumUpLiveCheck(request, response, requestId) {
         ? 'LIVE_MERCHANT_SANDBOX'
         : merchant?.sandbox === false
           ? 'LIVE_MERCHANT_PASS'
-          : 'LIVE_MERCHANT_UNVERIFIED'
-    return response.status(code === 'LIVE_MERCHANT_PASS' ? 200 : code === 'LIVE_MERCHANT_UNVERIFIED' ? 502 : 409).json({
+          : 'LIVE_MERCHANT_SANDBOX_UNSPECIFIED'
+    return response.status(code === 'LIVE_MERCHANT_PASS' ? 200 : code === 'LIVE_MERCHANT_SANDBOX_UNSPECIFIED' ? 502 : 409).json({
       ok: code === 'LIVE_MERCHANT_PASS',
       code,
       requestId,

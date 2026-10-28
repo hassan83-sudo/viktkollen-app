@@ -158,6 +158,10 @@ describe('NutritionScannerV2 "Fråga inte igen"', () => {
     expect(localStorage.getItem(DISPLAY_KEY)).toBe('never')
     expect(consentCheckbox()).toBeNull()
 
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    expect(analyzeNutritionPhoto).toHaveBeenCalledTimes(1)
+    analyzeNutritionPhoto.mockClear()
+
     // Appen stängs och öppnas igen: ingen fråga, analysen går direkt.
     openScanner()
     expect(consentCheckbox()).toBeNull()
@@ -166,13 +170,13 @@ describe('NutritionScannerV2 "Fråga inte igen"', () => {
     expect(container.querySelector('.scanner-file-picker-group')).not.toBeNull()
 
     await selectImage()
-    await analyzeWithAi()
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
     expect(analyzeNutritionPhoto).toHaveBeenCalledTimes(1)
     expect(analyzeNutritionPhoto.mock.calls[0][1].consentApproved).toBe(true)
 
     // Även nästa bild går direkt utan nytt kryss.
     await selectImage()
-    await analyzeWithAi()
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
     expect(analyzeNutritionPhoto).toHaveBeenCalledTimes(2)
     expect(analyzeNutritionPhoto.mock.calls[1][1].consentApproved).toBe(true)
   })

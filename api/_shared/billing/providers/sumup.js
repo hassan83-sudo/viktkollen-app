@@ -97,6 +97,9 @@ export function createSumUpHttpTransport({ apiKey, fetchImpl = globalThis.fetch,
     async listPaymentInstruments(customerId) {
       return request(`/v0.1/customers/${encodeURIComponent(customerId)}/payment-instruments`, { method: 'GET' })
     },
+    async retrieveCurrentMerchant() {
+      return request('/v0.1/me', { method: 'GET' })
+    },
     async retrieveMerchant(merchantCode) {
       if (!/^[A-Za-z0-9]{5,32}$/.test(String(merchantCode || ''))) {
         const error = new Error('invalid_sumup_merchant')

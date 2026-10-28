@@ -480,6 +480,9 @@ function NutritionScannerV2({
   const selectedPhotoRef = useRef(hasPendingHomeFoodScanFile(userId))
   const currentImageRef = useRef(null)
   const imagePayloadRef = useRef(null)
+  const imagePayloadOwnerRef = useRef(userId)
+  const autoAnalyzedPayloadRef = useRef(null)
+  const autoAnalyzeRef = useRef(null)
   const activeAnalysisControllerRef = useRef(null)
   const remoteAnalysisApprovalRef = useRef(createOneShotAnalysisApproval())
   const analysisInFlightRef = useRef(false)
@@ -657,6 +660,7 @@ function NutritionScannerV2({
 
   function setImagePayloadState(payload) {
     imagePayloadRef.current = payload
+    imagePayloadOwnerRef.current = userId
     setImagePayload(payload)
   }
 
@@ -1030,6 +1034,23 @@ function NutritionScannerV2({
       window.clearTimeout(delayed)
     }
   }, [previewUrl])
+
+  // Use the latest consent and account state after photo preparation completes.
+  useEffect(() => {
+    autoAnalyzeRef.current = () => analyzeImage('remote')
+  })
+
+  useEffect(() => {
+    if (!imagePayload || imagePayloadOwnerRef.current !== userId
+      || autoAnalyzedPayloadRef.current === imagePayload
+      || !isOnline || isAnalyzing || analysisInFlightRef.current
+      || (!skipConsentPrompt && !remoteConsent)) return
+
+    // Mark before starting: rerenders/effect replays must never charge twice.
+    // Failed attempts stay manual retries, rather than starting a retry loop.
+    autoAnalyzedPayloadRef.current = imagePayload
+    autoAnalyzeRef.current?.()
+  }, [imagePayload, isOnline, isAnalyzing, remoteConsent, skipConsentPrompt, userId])
 
   async function analyzeImage(providerType = 'local', imagePayloadSnapshot = null) {
     const activeImagePayload = imagePayloadSnapshot || resolveActiveImagePayload()

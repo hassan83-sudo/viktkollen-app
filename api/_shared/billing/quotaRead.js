@@ -1,7 +1,7 @@
 import { createSupabaseAdminClient } from '../supabaseServer.js'
 import { QUOTA_STATUS } from '../../../src/services/billing/catalog.js'
 import { resolveFeatureId } from '../../../src/services/billing/features.js'
-import { planIdForOpenPeriod } from '../../../src/services/billing/paidPeriod.js'
+import { planIdForSubscription } from '../../../src/services/billing/paidPeriod.js'
 import { quotaPeriodForPlan, reservationCountsTowardQuota } from '../../../src/services/billing/quotaWindow.js'
 
 /**
@@ -100,12 +100,12 @@ export async function readDurableQuota({
   try {
     const billing = client.schema('billing')
     const assignment = await maybeSingle(
-      billing.from('user_plan_assignments').select('plan_id, plan_version').eq('user_id', userId),
+      billing.from('user_plan_assignments').select('plan_id, plan_version, source').eq('user_id', userId),
     )
     const assignedPlanId = assignment?.plan_id || 'plan.free'
     const openPeriods = assignedPlanId === 'plan.free' ? [] : await listRows(
       billing.from('subscriptions')
-        .select('current_period_end, current_period_start, plan_id, quota_window')
+        .select('current_period_end, current_period_start, plan_id, quota_window, status, past_due_grace_until')
         .eq('user_id', userId)
         .eq('plan_id', assignedPlanId)
         .in('status', ['TRIALING', 'ACTIVE', 'PAST_DUE'])
@@ -113,10 +113,11 @@ export async function readDurableQuota({
         .order('current_period_end', { ascending: false })
         .limit(1),
     )
-    const planId = planIdForOpenPeriod({
+    const planId = planIdForSubscription({
       assignedPlanId,
-      now,
-      periodEnd: openPeriods[0]?.current_period_end || (assignedPlanId === 'plan.free' ? null : new Date(0).toISOString()),
+      source: assignment?.source,
+      subscription: openPeriods[0],
+      now: now,
     })
     const plan = await maybeSingle(
       billing.from('plans').select('plan_id, billing_interval, active').eq('plan_id', planId),

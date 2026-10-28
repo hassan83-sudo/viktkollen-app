@@ -22,6 +22,7 @@ function client(tables) {
               return query
             },
             limit() { return query },
+            order() { return query },
             maybeSingle: async () => ({
               data: (tables[table] || []).find((row) => filters.every((match) => match(row))) || null,
               error: null,
@@ -101,6 +102,79 @@ describe('readPostgresUsageSnapshot', () => {
       limit: 50,
       remaining: 43,
       used: 7,
+    })
+  })
+
+  it('reloads the one-time quota through 27 November and leaves free calls outside it', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-11-02T12:00:00.000Z'))
+    const snapshot = await readPostgresUsageSnapshot(client({
+      plan_entitlements: [{
+        enabled: true,
+        feature: 'ai.text.request',
+        limit_kind: 'NUMBER',
+        limit_value: 50,
+        plan_id: 'plan.prelim.sek.month.04',
+        unit: 'requests',
+      }],
+      plans: [{
+        active: true,
+        billing_interval: 'month',
+        plan_id: 'plan.prelim.sek.month.04',
+        price_minor: 400,
+      }],
+      quota_reservations: [
+        {
+          actual_quantity: 1,
+          created_at: '2026-10-20T12:00:00.000Z',
+          feature: 'ai.text.request',
+          period_start: '2026-10-01T00:00:00.000Z',
+          plan_id: 'plan.free',
+          quantity: 1,
+          status: 'COMMITTED',
+          unit: 'requests',
+          user_id: USER,
+        },
+        {
+          actual_quantity: 4,
+          created_at: '2026-10-28T12:00:00.000Z',
+          feature: 'ai.text.request',
+          period_start: '2026-10-01T00:00:00.000Z',
+          plan_id: 'plan.prelim.sek.month.04',
+          quantity: 4,
+          status: 'COMMITTED',
+          unit: 'requests',
+          user_id: USER,
+        },
+        {
+          actual_quantity: 8899,
+          created_at: '2026-10-28T12:00:00.000Z',
+          feature: 'ai.text.request',
+          period_start: '2026-10-01T00:00:00.000Z',
+          plan_id: 'plan.prelim.sek.month.04',
+          quantity: 8899,
+          status: 'COMMITTED',
+          unit: 'tokens',
+          user_id: USER,
+        },
+      ],
+      subscriptions: [{
+        current_period_end: '2026-11-27T09:22:46.000Z',
+        current_period_start: '2026-10-28T09:22:46.000Z',
+        plan_id: 'plan.prelim.sek.month.04',
+        quota_window: 'subscription',
+        status: 'ACTIVE',
+        user_id: USER,
+      }],
+      user_plan_assignments: [{ plan_id: 'plan.prelim.sek.month.04', user_id: USER }],
+    }), USER)
+
+    expect(snapshot.period.end).toBe('2026-11-27T09:22:46.000Z')
+    expect(snapshot.access.end).toBe('2026-11-27T09:22:46.000Z')
+    expect(snapshot.quotas.find((row) => row.key === 'ai_coach')).toMatchObject({
+      limit: 50,
+      remaining: 46,
+      used: 4,
     })
   })
 })

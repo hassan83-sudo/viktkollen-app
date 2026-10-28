@@ -1,4 +1,5 @@
 import { periodBounds } from './period.js'
+import { reservationCountsTowardQuota } from './quotaWindow.js'
 
 const METERED_QUOTAS = Object.freeze([
   Object.freeze({ feature: 'ai.text.request', key: 'ai_coach', unit: 'requests' }),
@@ -19,16 +20,22 @@ const UNLIMITED_FEATURES = Object.freeze([
 
 export function countReservationUsage(rows = [], {
   feature,
+  legacyPlanId = null,
   now = new Date(),
+  periodEnd = null,
   periodStart,
   unit,
 } = {}) {
-  const start = new Date(periodStart).getTime()
   const at = now.getTime()
+  const period = {
+    period_end: periodEnd,
+    period_start: periodStart,
+    ...(legacyPlanId ? { quota_window: 'subscription' } : {}),
+  }
   let used = 0
   for (const row of rows) {
     if (row.feature !== feature || row.unit !== unit) continue
-    if (new Date(row.period_start).getTime() !== start) continue
+    if (!reservationCountsTowardQuota(row, { period, planId: legacyPlanId })) continue
     if (row.status === 'COMMITTED') {
       used += Number.isInteger(row.actual_quantity) ? row.actual_quantity : Number(row.quantity) || 0
     } else if (row.status === 'PENDING') {
@@ -78,7 +85,9 @@ export function buildUsageSnapshot({
     if (!row || row.enabled === false || row.limit_kind !== 'NUMBER' || !Number.isInteger(row.limit_value)) continue
     const used = countReservationUsage(reservations, {
       feature: item.feature,
+      legacyPlanId: period.quota_window === 'subscription' ? period.plan_id : null,
       now,
+      periodEnd: period.period_end,
       periodStart: period.period_start,
       unit: row.unit || item.unit,
     })

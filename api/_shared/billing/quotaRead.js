@@ -2,7 +2,7 @@ import { createSupabaseAdminClient } from '../supabaseServer.js'
 import { QUOTA_STATUS } from '../../../src/services/billing/catalog.js'
 import { resolveFeatureId } from '../../../src/services/billing/features.js'
 import { planIdForOpenPeriod } from '../../../src/services/billing/paidPeriod.js'
-import { periodBounds } from '../../../src/services/billing/period.js'
+import { quotaPeriodForPlan, reservationCountsTowardQuota } from '../../../src/services/billing/quotaWindow.js'
 
 /**
  * Same feature set as billing.reserve_quota. A display read must not call
@@ -105,11 +105,12 @@ export async function readDurableQuota({
     const assignedPlanId = assignment?.plan_id || 'plan.free'
     const openPeriods = assignedPlanId === 'plan.free' ? [] : await listRows(
       billing.from('subscriptions')
-        .select('current_period_end')
+        .select('current_period_end, current_period_start, plan_id, quota_window')
         .eq('user_id', userId)
         .eq('plan_id', assignedPlanId)
         .in('status', ['TRIALING', 'ACTIVE', 'PAST_DUE'])
         .gt('current_period_end', (now instanceof Date ? now : new Date(now)).toISOString())
+        .order('current_period_end', { ascending: false })
         .limit(1),
     )
     const planId = planIdForOpenPeriod({
@@ -123,7 +124,11 @@ export async function readDurableQuota({
     if (!plan || plan.active !== true) {
       return { quota: denied(QUOTA_STATUS.DENIED_UNKNOWN_PLAN, { feature: featureId, plan_id: planId }), unavailable: false }
     }
-    const period = periodBounds(plan.billing_interval || 'month', now)
+    const period = quotaPeriodForPlan({
+      now,
+      planInterval: plan.billing_interval,
+      subscription: planId === 'plan.free' ? null : openPeriods[0],
+    })
     const entitlement = await maybeSingle(
       billing.from('plan_entitlements').select('enabled, limit_kind, limit_value, unit').eq('plan_id', plan.plan_id).eq('feature', featureId),
     )
@@ -193,13 +198,15 @@ export async function readDurableQuota({
     }
     const reservations = await listRows(
       billing.from('quota_reservations')
-        .select('status, quantity, actual_quantity, expires_at, period_start')
+        .select('status, quantity, actual_quantity, expires_at, period_start, plan_id, created_at')
         .eq('user_id', userId)
         .eq('feature', featureId)
         .eq('unit', entitlement.unit),
     )
-    const periodStart = new Date(period.period_start).getTime()
-    const inPeriod = reservations.filter((row) => new Date(row.period_start).getTime() === periodStart)
+    const inPeriod = reservations.filter((row) => reservationCountsTowardQuota(row, {
+      period,
+      planId: period.quota_window === 'subscription' ? plan.plan_id : null,
+    }))
     const usage = summarizeQuotaReservations(inPeriod, now)
     const remaining = Math.max(0, limit - usage.committed - usage.reserved)
     return {

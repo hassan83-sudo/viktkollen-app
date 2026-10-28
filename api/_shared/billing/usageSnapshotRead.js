@@ -2,6 +2,7 @@ import { planIdForOpenPeriod } from '../../../src/services/billing/paidPeriod.js
 import { createSupabaseAdminClient } from '../supabaseServer.js'
 import { getPlanById } from '../../../src/services/billing/planCatalog.js'
 import { periodBounds } from '../../../src/services/billing/period.js'
+import { quotaPeriodForPlan } from '../../../src/services/billing/quotaWindow.js'
 import {
   buildUsageSnapshot,
   entitlementsFromPlan,
@@ -87,11 +88,12 @@ export async function readPostgresUsageSnapshot(client, userId) {
   const assignedPlanId = assignment?.plan_id || 'plan.free'
   const openPeriods = assignedPlanId === 'plan.free' ? [] : await listRows(
     client.schema('billing').from('subscriptions')
-      .select('current_period_end')
+      .select('current_period_end, current_period_start, plan_id, quota_window')
       .eq('user_id', userId)
       .eq('plan_id', assignedPlanId)
       .in('status', ['TRIALING', 'ACTIVE', 'PAST_DUE'])
       .gt('current_period_end', new Date().toISOString())
+      .order('current_period_end', { ascending: false })
       .limit(1),
   )
   const planId = planIdForOpenPeriod({
@@ -105,9 +107,15 @@ export async function readPostgresUsageSnapshot(client, userId) {
   const entitlements = await listRows(
     client.schema('billing').from('plan_entitlements').select('feature, enabled, limit_kind, limit_value, unit').eq('plan_id', planId),
   )
-  const period = periodBounds(plan.billing_interval || 'month')
+  const period = quotaPeriodForPlan({
+    planInterval: plan.billing_interval,
+    subscription: planId === 'plan.free' ? null : {
+      ...openPeriods[0],
+      plan_id: openPeriods[0]?.plan_id || planId,
+    },
+  })
   const reservations = await listRows(
-    client.schema('billing').from('quota_reservations').select('feature, unit, status, quantity, actual_quantity, expires_at, period_start').eq('user_id', userId),
+    client.schema('billing').from('quota_reservations').select('feature, unit, status, quantity, actual_quantity, expires_at, period_start, plan_id, created_at').eq('user_id', userId),
   )
   return buildUsageSnapshot({
     accessPeriodEnd: planId === 'plan.free' ? null : openPeriods[0]?.current_period_end,

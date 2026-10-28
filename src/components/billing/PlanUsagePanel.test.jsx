@@ -100,7 +100,7 @@ describe('PlanUsagePanel', () => {
     })
     render(<PlanUsagePanel isAuthenticated />)
     expect(await screen.findByText('Kvoten återställs 1 november')).toBeTruthy()
-    expect(screen.getByText('Tillgång till 27 november')).toBeTruthy()
+    expect(screen.getByText('Tillgång till 27 november kl. 10:22')).toBeTruthy()
   })
 
   it('shows zero usage and an exhausted quota without a negative remainder', async () => {

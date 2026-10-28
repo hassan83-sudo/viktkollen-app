@@ -1569,8 +1569,8 @@ function OverviewDashboard({
         >
           <span aria-hidden="true" style={{ fontSize: 32 }}>📋</span>
           <span style={{ flex: 1, display: 'grid', gap: 3 }}>
-            <strong>Checklistor</strong>
-            <small style={{ color: '#bed0ed' }}>Skapa och öppna checklistor</small>
+            <strong>{t('home:checklists.title')}</strong>
+            <small style={{ color: '#bed0ed' }}>{t('home:checklists.description')}</small>
           </span>
           <span aria-hidden="true" style={{ fontSize: 22 }}>›</span>
         </button>
@@ -1713,8 +1713,8 @@ function OverviewDashboard({
         </Suspense>
       )}
       {earPreviewOpen && (
-        <div className="overview-ear-preview" role="dialog" aria-modal="true" aria-label="AI Örat">
-          <button className="overview-ear-preview-backdrop" type="button" aria-label="Stäng" onClick={() => setEarPreviewOpen(false)} />
+        <div className="overview-ear-preview" role="dialog" aria-modal="true" aria-label={t('aiEar:title')}>
+          <button className="overview-ear-preview-backdrop" type="button" aria-label={t('common:actions.close')} onClick={() => setEarPreviewOpen(false)} />
           <div className="overview-ear-preview-panel">
             <button className="overview-ear-preview-close" type="button" onClick={() => setEarPreviewOpen(false)}>×</button>
             <img src="/viktkollen-ai-ear-home.webp" alt="" />
@@ -1723,7 +1723,7 @@ function OverviewDashboard({
               setBodyScanOpen(false)
               setSmartCameraInitialMode('ai-ear')
               setSmartCameraOpen(true)
-            }}>AI Örat</button>
+            }}>{t('aiEar:title')}</button>
           </div>
         </div>
       )}

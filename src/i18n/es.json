@@ -1,0 +1,3868 @@
+{
+  "common": {
+    "appName": "Viktkollen",
+    "importModeDialog": {
+      "title": "Importar copia de seguridad",
+      "legend": "¿Cómo quieres importar los datos?",
+      "merge": "Combinar con los datos existentes",
+      "replace": "Sustituir los datos existentes",
+      "confirm": "Importar"
+    },
+    "noteDialog": {
+      "title": "Editar nota",
+      "label": "Nota"
+    },
+    "dateTimeDialog": {
+      "date": "Fecha",
+      "time": "Hora",
+      "hint": "Introduce la fecha como AAAA-MM-DD y la hora como HH:MM.",
+      "invalidDate": "Introduce una fecha válida (AAAA-MM-DD).",
+      "invalidTime": "Introduce una hora válida (HH:MM)."
+    },
+    "actions": {
+      "cancel": "Cancelar",
+      "close": "Cerrar",
+      "loading": "Cargando…",
+      "open": "Abrir",
+      "save": "Guardar",
+      "saveAndContinue": "Guardar y continuar",
+      "signOut": "Cerrar sesión",
+      "skipForNow": "Omitir por ahora"
+    },
+    "states": {
+      "missingData": "Sin datos",
+      "noneYet": "Aún no hay datos"
+    },
+    "units": {
+      "days_one": "{{count}} día",
+      "days_other": "{{count}} días"
+    },
+    "back": "Atrás",
+    "yes": "Sí",
+    "no": "No",
+    "search": "Buscar",
+    "send": "Enviar",
+    "remove": "Eliminar",
+    "block": "Bloquear",
+    "reset": "Restablecer",
+    "showMore": "Mostrar más",
+    "showLess": "Mostrar menos",
+    "loggingOut": "Cerrando sesión...",
+    "deleting": "Eliminando...",
+    "optional": "Opcional"
+  },
+  "companion": {
+    "eyebrow": "Amigo de IA compartido",
+    "safety": "El amigo de IA siempre es IA, nunca reemplaza a adultos, amigos, escuela, consejeros o cuidado, y la seguridad viene antes de la personalidad.",
+    "fields": {
+      "name": "Nombre",
+      "pronouns": "Pronombres",
+      "ageStyle": "Estilo de edad",
+      "tone": "Tono de conversación",
+      "responseLength": "Longitud de la respuesta",
+      "directness": "Directividad",
+      "encouragement": "Fomento",
+      "emoji": "Emojis",
+      "reminders": "Sugerencias de recordatorio",
+      "communication": "Comunicación",
+      "signLanguage": "Lenguaje de señas",
+      "speech": "Prefiero el apoyo hablado cuando esté disponible"
+    },
+    "tones": {
+      "calm": "Calma",
+      "directHonest": "Directo y honesto",
+      "encouraging": "Alentando",
+      "custom": "Personalizado"
+    },
+    "preview": {
+      "calm": "Un tono tranquilo, corto y constante.",
+      "directHonest": "Tono directo, honesto y respetuoso.",
+      "encouraging": "Tono alentador sin presión.",
+      "custom": "Tono personalizado con límites de seguridad."
+    },
+    "responseLengths": {
+      "short": "Corto",
+      "balanced": "Saldo",
+      "detailed": "Detalles"
+    },
+    "directness": {
+      "gentle": "Suave",
+      "clear": "Limpiar",
+      "veryDirect": "Muy directo"
+    },
+    "encouragement": {
+      "low": "Baja",
+      "medium": "Medio",
+      "high": "Alta"
+    },
+    "emoji": {
+      "none": "Ninguno",
+      "some": "Algunos",
+      "many": "Muchos"
+    },
+    "reminders": {
+      "off": "Desactivado",
+      "askFirst": "Pregunta primero",
+      "suggest": "Sugerir a veces"
+    },
+    "ageStyles": {
+      "child": "Niño",
+      "teen": "Adolescentes",
+      "adult": "Adultos",
+      "allAges": "Todas las edades"
+    },
+    "communication": {
+      "text": "Texto",
+      "visual": "Visual",
+      "textAndVerifiedSign": "Texto + signo verificado cuando esté disponible"
+    },
+    "signLanguages": {
+      "sts": "Lenguaje de señas sueco",
+      "asl": "ASL",
+      "bsl": "BSL",
+      "internationalSign": "Signo internacional"
+    },
+    "actions": {
+      "reset": "Restablecer perfil predeterminado",
+      "delete": "Eliminar perfil de amigo de IA",
+      "confirmDelete": "Confirmar la eliminación"
+    }
+  },
+  "navigation": {
+    "mainNavigation": "Navegación principal",
+    "skipToContent": "Ir al contenido principal",
+    "sections": {
+      "coach": {
+        "aria": "Abrir el asesor y los consejos",
+        "label": "Asesor"
+      },
+      "home": {
+        "aria": "Abrir el resumen",
+        "label": "Inicio"
+      },
+      "journey": {
+        "aria": "Abrir Mi camino",
+        "label": "Mi camino"
+      },
+      "more": {
+        "aria": "Abrir más funciones y ajustes",
+        "label": "Más"
+      },
+      "nutrition": {
+        "aria": "Abrir comida y nutrición",
+        "label": "Comida"
+      },
+      "notices": {
+        "aria": "Abrir avisos y ayudas para la memoria",
+        "label": "Avisos"
+      },
+      "place": {
+        "aria": "Abrir ubicación",
+        "label": "Ubicación"
+      },
+      "progress": {
+        "aria": "Abrir peso y progreso",
+        "label": "Progreso"
+      },
+      "redo": {
+        "aria": "Abrir ¡Listo!",
+        "label": "¡Listo!"
+      },
+      "social": {
+        "aria": "Abrir el punto de encuentro",
+        "label": "Encuentro"
+      }
+    }
+  },
+  "home": {
+    "actionDescriptions": {
+      "body": "Sigue los cambios de tu cuerpo a lo largo del tiempo",
+      "ear": "Escucha lo que falta",
+      "coach": "Orientación personal a partir de tus datos",
+      "food": "Escanea la comida y estima sus nutrientes",
+      "smartCamera": "Memoria, ropa y última revisión"
+    },
+    "labels": {
+      "aiCoach": "Asesor de IA",
+      "aiEyes": "Ojos de IA",
+      "bodyScan": "Escaneo corporal",
+      "calories": "Calorías",
+      "healthScore": "Puntuación de salud",
+      "home": "Inicio",
+      "openAiCoach": "Abrir el asesor de IA",
+      "openAiEyes": "Abrir Ojos de IA",
+      "proteinToday": "Proteínas de hoy",
+      "smartCameraSupport": "Memoria, ropa y última revisión",
+      "stepsToday": "Pasos de hoy",
+      "today": "HOY",
+      "weight": "Peso",
+      "viktkollenLive": "Viktkollen en directo"
+    },
+    "states": {
+      "noWeight": "Sin peso registrado",
+      "notConnected": "Sin conexión",
+      "registerWeight": "Registrar peso"
+    },
+    "moreForToday": "Más para hoy",
+    "logFood": "Registrar comida",
+    "personalAdvice": "Consejos personales",
+    "fromYourData": "De tus datos, no de chats de amigos",
+    "registerWeightLogged": "Peso registrado",
+    "weightTrendAria": "Tendencia del peso según los últimos registros",
+    "foodScan": {
+      "title": "Escaneo de comida",
+      "onPlate": "En el plato",
+      "plateHint": "Lo visible en la imagen, sin el resto de la base de alimentos.",
+      "mealScanAlt": "Escaneo de comida del plato"
+    },
+    "live": {
+      "pause": "Pausar Viktkollen en directo",
+      "play": "Reproducir Viktkollen en directo",
+      "previous": "Mostrar la tarjeta anterior",
+      "next": "Mostrar la tarjeta siguiente",
+      "controls": "Controles de Viktkollen en directo"
+    },
+    "weatherNotConnected": "El tiempo no está conectado",
+    "connectWeather": "Conectar el tiempo",
+    "online": "En línea",
+    "offline": "Sin conexión",
+    "tapImage": "Toca la imagen",
+    "bodyCardHint": "Abre el escaneo con guía de voz",
+    "cardActions": {
+      "openCamera": "Abrir cámara",
+      "scanFood": "Escanear comida"
+    },
+    "mood": {
+      "chat": "Charla",
+      "openChat": "Abrir chat",
+      "chatHint": "Habla con amigos",
+      "wellbeing": "Bienestar",
+      "openWellbeing": "Abrir Bienestar",
+      "wellbeingQuestion": "¿Cómo te sientes hoy?",
+      "wellbeingHint": "Apoyo opcional sin mostrar aquí cómo te sientes",
+      "askCoach": "Pregunta a tu asesor",
+      "writeOrTalk": "Escribe o habla",
+      "openCoach": "Abrir el asesor",
+      "nextReminder": "Próximo recordatorio",
+      "noReminder": "Sin recordatorios",
+      "reminderReady": "Próximo recordatorio",
+      "openNotices": "Abrir",
+      "openLink": "Abrir",
+      "notices": "Avisos",
+      "noticesCount": "{{count}} avisos",
+      "noNotices": "Sin avisos",
+      "openNoticesCard": "Abrir Avisos"
+    },
+    "weatherDay": {
+      "title": "El tiempo de hoy",
+      "close": "Cerrar",
+      "viewFullDay": "Ver el día completo",
+      "hourlyAria": "Hora a hora",
+      "noHourly": "No hay previsión por horas disponible ahora.",
+      "updated": "Actualizado a las {{time}}",
+      "source": "Fuente: {{source}}",
+      "uv": "UV {{value}}",
+      "fallbackCity": "Tu ubicación"
+    },
+    "todayMood": "Tu día",
+    "mealDaily": {
+      "aiSummary": "Resumen de IA",
+      "todaysFood": "Comida de hoy",
+      "proteinStatus": "Proteínas:",
+      "proteinOk": "parecen suficientes en el registro de hoy.",
+      "proteinMissing": "aún no aparecen claramente.",
+      "vegetableStatus": "Verduras:",
+      "vegetableOk": "parece que hay fruta o verdura.",
+      "vegetableMissing": "considera añadir algo de verdura.",
+      "fiberBalance": "Equilibrio de fibra y carbohidratos:",
+      "fiberTip": "elige cereales integrales, patatas, fruta o verdura para añadir fibra.",
+      "portion": "Estimación de la ración:",
+      "noPortion": "aún no hay una estimación clara de la foto.",
+      "bestMeal": "Mejor comida del día:",
+      "noBestMeal": "analiza una foto de una comida para elegirla.",
+      "improvement": "Aspecto a mejorar hoy:",
+      "cheapNext": "Sugerencia económica para la próxima comida:",
+      "mealsRegistered_one": "{{count}} comida registrada hoy.",
+      "mealsRegistered_other": "{{count}} comidas registradas hoy.",
+      "proteinMealsOk": "Parece que las comidas de hoy incluyen proteínas.",
+      "proteinMealsMissing": "Las proteínas aún no aparecen claramente en las comidas de hoy."
+    },
+    "glowBrightnessAria": "Brillo del anillo de neón",
+    "glowBrightness": "Brillo",
+    "glowLow": "Bajo",
+    "glowNormal": "Normal",
+    "glowStrong": "Alto",
+    "glowExtra": "Extra",
+    "chooseFoodImageAria": "Elegir una foto de comida de la galería",
+    "estimateNutrition": "Estimar nutrientes",
+    "tapIconBelow": "Toca el icono de abajo",
+    "chooseImage": "Elegir imagen",
+    "quickShortcuts": {
+      "title": "Acciones rápidas",
+      "timer": "Temporizador",
+      "alarm": "Despertador",
+      "reminder": "Recordatorio",
+      "bathroom": "Baño",
+      "allNotices": "Todos los avisos",
+      "actions": "Accesos directos importantes",
+      "place": "Ubicación",
+      "openPlace": "Abrir ubicación"
+    },
+    "checklists": {
+      "title": "Listas",
+      "description": "Crea y abre tus listas"
+    },
+    "adviceAndNotices": "Consejos y avisos",
+    "sectionLabel": "Inicio y resumen",
+    "overviewError": "No se pudo mostrar el resumen",
+    "liveMetaAria": "Fecha, hora y tiempo",
+    "myLocation": "Mi ubicación",
+    "fetchingWeather": "Consultando el tiempo…",
+    "weatherUpdated": "El tiempo está actualizado.",
+    "weatherFetchFailed": "No se pudo consultar el tiempo. Inténtalo de nuevo.",
+    "proteinPick": "Fuentes de proteínas",
+    "proteinSourcesAria": "Buenas fuentes de proteínas",
+    "proteinFoods": {
+      "chicken": "Pollo",
+      "beef": "Ternera",
+      "egg": "Huevos"
+    },
+    "proteinGoalLabel": "Objetivo: {{grams}} g",
+    "compactStatsAria": "Resumen de estadísticas diarias",
+    "checkInTitle": "Registro de hoy",
+    "checkInHint": "Energía, pasos, ánimo y movimiento",
+    "mealPlanTitle": "Plan de comidas de hoy",
+    "last7Days": "Últimos 7 días",
+    "achievementsTitle": "Logros",
+    "healthPredictionTitle": "Previsión de salud",
+    "dailyAdviceTitle": "Consejo del día",
+    "startAria": "Iniciar",
+    "showSmartNotices": "Mostrar avisos inteligentes",
+    "openProfileSettings": "Abrir ajustes del perfil",
+    "addProfilePhoto": "Añadir foto de perfil",
+    "openBodyScanFullscreen": "Abrir el escaneo corporal a pantalla completa",
+    "readIngredients": "Leer ingredientes",
+    "scanBodyWithCamera": "Escanear el cuerpo con la cámara",
+    "scanFoodWithCamera": "Escanear comida con la cámara",
+    "actionAlts": {
+      "coach": "Robot asesor de IA de Viktkollen con el cerebro visible",
+      "eyes": "Cámara inteligente y ojos de IA",
+      "body": "Escaneo corporal con una persona y una interfaz de IA",
+      "food": "Escaneo de una comida con IA"
+    },
+    "coachAdviceProtein": "AHORA. Has alcanzado el {{percent}} % de tu objetivo de proteínas. El pollo, la ternera o los huevos pueden ayudarte a avanzar.",
+    "coachAdviceDefault": "El asesor usa tus objetivos, comidas y hábitos para proponerte un siguiente paso concreto.",
+    "feed": {
+      "diagramAria": "Gráfico en directo de {{category}}",
+      "saveFavorite": "Guardar la tarjeta en favoritos",
+      "removeFavorite": "Quitar la tarjeta de favoritos",
+      "saved": "Guardada",
+      "save": "Guardar",
+      "play": "Reproducir",
+      "pause": "Pausar",
+      "clock": {
+        "category": "Ahora",
+        "body": "Hora local: {{time}}. El contenido de hoy está preparado para conectarse a fuentes reales cuando haya API disponibles.",
+        "source": "En directo desde el dispositivo"
+      },
+      "weather": {
+        "category": "Tiempo",
+        "titleLive": "{{condition}} en {{city}}",
+        "titleWaiting": "El tiempo espera una fuente de datos",
+        "bodyLive": "{{temperature}}, {{wind}} y {{rain}} de probabilidad de lluvia.",
+        "bodyWaiting": "Aún no hay una API meteorológica conectada. Cuando la haya, se podrán mostrar temperatura, viento, probabilidad de lluvia y amanecer sin datos ficticios."
+      },
+      "style": {
+        "category": "Asesor de estilo",
+        "title": "Consejos de ropa adaptados al contexto",
+        "body": "Más adelante, el asesor de estilo podrá combinar tiempo, estación, actividad, armario y preferencias con comentarios directos y respetuosos.",
+        "source": "Preparado"
+      },
+      "knowledge": {
+        "category": "¿Sabías que…?",
+        "title": "Las pequeñas decisiones suelen superar a los grandes esfuerzos puntuales",
+        "body": "Es más fácil repetir un pequeño paso que un plan perfecto. Más adelante, las tarjetas podrán adaptarse a los objetivos, la edad y la hora del día.",
+        "source": "Ejemplo de demostración"
+      },
+      "activity": {
+        "category": "Actividad",
+        "title": "Cuando quieras hacer algo",
+        "body": "El modelo permite futuras sugerencias como paseos, recetas, cuestionarios, ejercicios mentales, música, películas o pequeños proyectos según el tiempo y la hora.",
+        "source": "Preparado"
+      },
+      "quote": {
+        "category": "Cita",
+        "title": "Calidad antes que cantidad",
+        "body": "Las tarjetas de citas están preparadas, pero no presentan citas inventadas como reales. Cada cita futura necesitará una fuente o una indicación clara de que es un resumen.",
+        "source": "Requiere una fuente"
+      }
+    }
+  },
+  "notices": {
+    "wakeAlarm": {
+      "title": "La alarma está sonando.",
+      "time": "Alarma a {{time}}",
+      "body": "Hora de despertar.",
+      "stop": "Apaga la alarma.",
+      "snooze": "Posponer 5 min"
+    },
+    "eyebrow": "Recordatorios y soporte de memoria",
+    "title": "Avisos",
+    "subtitle": "Planifica tus propios recordatorios y practica pequeñas estrategias de memoria.",
+    "quick": {
+      "title": "Sugerencias rápidas",
+      "body": "Elija una sugerencia y compruebe el tiempo y la repetición antes de activarla.",
+      "confirmation": "{{text}} · {{date}} {{time}} · {{repeat}}"
+    },
+    "suggestions": {
+      "glasses": "Gafas",
+      "medicine": "Medicina",
+      "water": "Beber agua",
+      "item": "Traer un artículo",
+      "leave": "Hora de irse",
+      "call": "Llama a alguien.",
+      "laundry": "Iniciar o recoger la lavandería",
+      "pause": "Tómate un descanso.",
+      "bed": "Hora de acostarse"
+    },
+    "form": {
+      "title": "Crear recordatorio personalizado",
+      "editTitle": "Editar el recordatorio",
+      "text": "Texto",
+      "description": "Descripción",
+      "date": "Fecha",
+      "time": "Hora",
+      "repeat": "Repetir",
+      "weekdays": "Elegir días laborables",
+      "activate": "Activar el recordatorio",
+      "save": "Guardar cambios",
+      "cancel": "Cancelar"
+    },
+    "repeat": {
+      "once": "Nunca",
+      "daily": "Diariamente",
+      "selected_weekdays": "Días laborables seleccionados",
+      "weekly": "Semanal"
+    },
+    "weekdays": {
+      "monday": "Lun",
+      "tuesday": "Mar",
+      "wednesday": "Mié",
+      "thursday": "Jue",
+      "friday": "Vie",
+      "saturday": "Sáb",
+      "sunday": "Dom"
+    },
+    "saved": {
+      "title": "Recordatorios guardados",
+      "empty": "Todavía no hay recordatorios guardados.",
+      "schedule": "{{date}} a {{time}} · {{repeat}}",
+      "next": "Siguiente: {{time}}",
+      "none": "No hay tiempo."
+    },
+    "actions": {
+      "edit": "Editar",
+      "enable": "Activar",
+      "disable": "Inhabilitar temporalmente",
+      "complete": "Marcar como completado",
+      "snooze": "Posponer 30 min",
+      "delete": "Borrar"
+    },
+    "delete": {
+      "confirm": "¿Borrar este recordatorio? Esto no puede deshacerse.",
+      "yes": "Sí, borrar",
+      "no": "Cancelar"
+    },
+    "status": {
+      "created": "El recordatorio se guarda y se activa en la aplicación.",
+      "saved": "Se actualizó el recordatorio.",
+      "enabled": "El recordatorio está activo de nuevo.",
+      "disabled": "El recordatorio está temporalmente desactivado.",
+      "completed": "El recordatorio está marcado como completo.",
+      "snoozed": "El recordatorio aparecerá de nuevo en 30 minutos.",
+      "deleted": "Se suprimió el recordatorio."
+    },
+    "capabilities": {
+      "title": "Notificaciones del sistema",
+      "request": "Habilitar las notificaciones del sistema",
+      "notification": {
+        "default": "Las notificaciones del sistema no están habilitadas.",
+        "granted": "Las notificaciones del sistema están permitidas en este navegador.",
+        "denied": "Las notificaciones del sistema son denegadas en este navegador.",
+        "unsupported": "Las notificaciones del sistema no son compatibles aquí."
+      },
+      "permissionGranted": "Se permiten las notificaciones del sistema.",
+      "permissionDenied": "Las notificaciones del sistema no estaban habilitadas. El recordatorio permanece en la aplicación.",
+      "permissionUnsupported": "Las notificaciones del sistema no son compatibles aquí. El recordatorio permanece en la aplicación.",
+      "mode": {
+        "pwa": "La aplicación se está ejecutando como un PWA instalado.",
+        "browser": "La aplicación se está ejecutando en una pestaña del navegador."
+      },
+      "serviceWorkerAvailable": "Hay compatibilidad con service workers, pero la entrega solo se confirma cuando ocurre.",
+      "serviceWorkerUnavailable": "No hay compatibilidad con service workers. Los recordatorios solo funcionan mientras la aplicación está abierta.",
+      "disclosure": "Un recordatorio guardado no es una entrega del sistema confirmada. La aplicación no programa notificaciones nativas o de pantalla de bloqueo. La pantalla de bloqueo sólo muestra texto neutral de Viktkollen; el contenido aparece después de abrir la aplicación."
+    },
+    "speech": {
+      "title": "Voz del sistema",
+      "available": "La voz del sistema se puede utilizar mientras la aplicación está abierta.",
+      "unavailable": "La voz del sistema no está soportada en este dispositivo.",
+      "enable": "Activar la voz del sistema",
+      "includeSensitive": "Leer el texto de mi recordatorio durante la vista previa",
+      "preview": "Reproducir vista previa",
+      "previewNeutral": "Tienes un recordatorio en Viktkollen.",
+      "limits": "La voz nunca se inicia automáticamente y no funciona en segundo plano ni en la pantalla de bloqueo. El soporte futuro requiere una aplicación nativa o Capacitor."
+    },
+    "battery": {
+      "title": "Ayuda con la batería",
+      "body": "Consulta el nivel de batería localmente y crea un recordatorio de carga.",
+      "enable": "Activar la ayuda local con la batería",
+      "latest": "Última lectura",
+      "noData": "Aún no se ha guardado ninguna lectura.",
+      "percentLine": "{{percent}}% · {{source}}",
+      "average": "Uso medio",
+      "averageValue": "{{value}}% por hora",
+      "averageLearning": "{{count}} de 3 intervalos listos",
+      "today": "Hoy",
+      "todayEmpty": "No hay suficientes datos hoy.",
+      "todayValue": "{{value}}% utilizado",
+      "manualPercent": "Batería %",
+      "targetReadyAt": "Listo a las",
+      "safetyMargin": "Margen de seguridad en horas",
+      "schoolMode": "Modo escolar: plan para un día largo",
+      "saveManual": "Guardar el nivel manual",
+      "readApi": "Leer desde el dispositivo",
+      "createReminder": "Crear recordatorio para cargar el móvil",
+      "source": {
+        "api": "dispositivo",
+        "manual": "manual"
+      },
+      "recommendation": {
+        "inactive": "Habilitar la ayuda de la batería para empezar a aprender.",
+        "empty": "Guarde un primer nivel de batería para comenzar.",
+        "charging": "El teléfono se está cargando ahora. La aplicación sólo guarda datos mientras está abierto.",
+        "learning": "Estoy aprendiendo su uso de la batería. Por ahora sugiero cargar alrededor del {{percent}}%.",
+        "chargeSoon": "Planifica la carga ahora. Tu umbral de seguridad es aproximadamente el {{percent}}%.",
+        "ok": "La batería se ve bien. El umbral de carga sugerido es de aproximadamente {{percent}}%."
+      },
+      "reminder": {
+        "title": "Cargar el móvil",
+        "description": "La ayuda de la batería sugiere cargar antes de que el nivel baje por debajo de aproximadamente {{percent}}%."
+      },
+      "status": {
+        "enabled": "La ayuda de la batería está habilitada localmente.",
+        "disabled": "La ayuda con la batería está desactivada.",
+        "invalidPercent": "Introduzca un valor de 0 a 100.",
+        "savedManual": "El nivel de batería se guardó localmente.",
+        "savedApi": "El nivel de batería fue leído desde el dispositivo y guardado localmente.",
+        "apiUnavailable": "Este navegador no puede leer la batería automáticamente.",
+        "reminderPrepared": "El recordatorio de carga se prepara en el formulario."
+      },
+      "limits": {
+        "api": "La lectura automática de la batería se utiliza sólo cuando el navegador es compatible con la API de estado de la batería.",
+        "manual": "En el iPhone y muchos navegadores, la entrada manual es necesaria porque la API de estado de la batería no está disponible.",
+        "background": "La aplicación web no puede vigilar la batería en segundo plano ni garantizar avisos en la pantalla de bloqueo. Para ello se requiere soporte nativo o Capacitor en el futuro."
+      }
+    },
+    "memory": {
+      "title": "Entrena tu memoria",
+      "createReminder": "Crear recordatorio desde la técnica",
+      "reminderPrepared": "La técnica de memoria está preparada en el formulario.",
+      "back": "Atrás",
+      "locationSoon": "Las señales basadas en la ubicación están llegando pronto. La aplicación nunca solicita el permiso de ubicación automáticamente.",
+      "techniques": {
+        "associate": {
+          "title": "Conectar",
+          "body": "Conecta lo que quieras recordar a una acción ordinaria.",
+          "example": "Ejemplo: llaves cuando te pones la chaqueta.",
+          "reminder": "Conecta lo que importa con tu chaqueta"
+        },
+        "image": {
+          "title": "Crear una imagen",
+          "body": "Imagínese el artículo claramente en un lugar familiar.",
+          "example": "Ejemplo: imagina las gafas encima del cepillo de dientes.",
+          "reminder": "Crea una imagen de lo que debes recordar"
+        },
+        "walk": {
+          "title": "Caminata de memoria",
+          "body": "Coloque cada artículo a lo largo de una ruta familiar imaginada.",
+          "example": "Ejemplo: teléfono en la puerta y llaves en el pasillo.",
+          "reminder": "Toma el paseo de la memoria"
+        },
+        "repeat": {
+          "title": "Repetir más tarde",
+          "body": "Recuerde poco después y otra vez más tarde el mismo día.",
+          "example": "Ejemplo: di la lista después del almuerzo.",
+          "reminder": "Repita la lista más tarde"
+        },
+        "steps": {
+          "title": "Dividir en pasos",
+          "body": "Convierta una tarea larga en pequeños pasos en orden.",
+          "example": "Ejemplo: preparar, comprobar, salir.",
+          "reminder": "Revisar el siguiente pequeño paso"
+        },
+        "location": {
+          "title": "Señal basada en la ubicación",
+          "body": "Planifique una señal futura conectada a un lugar.",
+          "example": "Ejemplo: recuérdate cuando llegues a casa.",
+          "reminder": "Planifique una señal basada en la ubicación"
+        },
+        "say": {
+          "title": "Dilo en voz alta.",
+          "body": "Di el siguiente paso en voz alta para hacerlo más claro.",
+          "example": "Ejemplo: Ahora me llevo mi billetera.",
+          "reminder": "Di el siguiente paso en voz alta"
+        },
+        "checklist": {
+          "title": "Lista de verificación",
+          "body": "Escribe una lista corta y compruébala en el mismo orden.",
+          "example": "Ejemplo: teléfono, llaves, billetera.",
+          "reminder": "Comprobar la lista de verificación"
+        }
+      }
+    },
+    "privacy": "Los recordatorios se almacenan localmente en este navegador y no se comparten con la Sala Social o el asesor de IA. El uso futuro de IA requiere consentimiento separado. Esto es soporte de memoria, no asesoramiento médico."
+  },
+  "wellbeing": {
+    "sectionLabel": "Bienestar y apoyo seguro",
+    "eyebrow": "Apoyo opcional",
+    "title": "Bienestar",
+    "coachEntry": {
+      "title": "Habla con el asesor de IA",
+      "body": "Continúa la conversación con el asesor de IA de Viktkollen. Se conserva tu historial de chat.",
+      "cta": "Abrir el asesor de IA"
+    },
+    "intro": {
+      "general": "Un espacio tranquilo para registrar cómo te sientes, hacer ejercicios y crear un plan de seguridad. Es apoyo, no atención médica.",
+      "child": "Un lugar tranquilo para expresar cómo ha ido el día y encontrar a una persona adulta de confianza cuando lo necesites.",
+      "teen": "Apoyo tranquilo ante el estrés escolar, las preocupaciones, la soledad y los días difíciles. Tú decides qué guardar."
+    },
+    "moods": {
+      "great": "Muy bien",
+      "good": "Bien",
+      "okay": "Regular",
+      "heavy": "Difícil",
+      "veryHard": "Muy difícil"
+    },
+    "reasons": {
+      "stress": "Estrés",
+      "worry": "Preocupación",
+      "sad": "Ánimo bajo",
+      "lonely": "Soledad",
+      "angry": "Ira",
+      "sleep": "Problemas para dormir",
+      "preferNot": "Prefiero no decirlo"
+    },
+    "checkIn": {
+      "title": "Registro voluntario",
+      "private": "Nada se guardará hasta que lo elijas.",
+      "saved": "Último registro guardado localmente.",
+      "moodAria": "Elige cómo te sientes hoy",
+      "reasonsAria": "Elige qué te afecta",
+      "note": "Nota propia",
+      "save": "Guardar registro",
+      "skip": "Omitir"
+    },
+    "quick": {
+      "title": "Ayúdame ahora",
+      "breathe": {
+        "icon": "○",
+        "title": "Respira conmigo"
+      },
+      "grounding": {
+        "icon": "5",
+        "title": "Ayúdame a conectar con el presente"
+      },
+      "distract": {
+        "icon": "◇",
+        "title": "Necesito distraerme"
+      },
+      "write": {
+        "icon": "✎",
+        "title": "Expresarlo por escrito"
+      },
+      "contact": {
+        "icon": "☎",
+        "title": "Contacta con alguien"
+      },
+      "helpNow": {
+        "icon": "!",
+        "title": "Necesito ayuda ahora"
+      }
+    },
+    "exercises": {
+      "stop": "Detener",
+      "limits": "Los ejercicios funcionan localmente y no son tratamiento o diagnóstico.",
+      "breathe": {
+        "title": "Respiración tranquila",
+        "steps": [
+          "Inspira suavemente contando hasta cuatro.",
+          "Mantén el aire suavemente contando hasta uno.",
+          "Espira lentamente contando hasta seis.",
+          "Repite solo si te sientes bien."
+        ]
+      },
+      "grounding": {
+        "title": "Conecta con el presente: 5-4-3-2-1",
+        "steps": [
+          "Observa cinco cosas.",
+          "Siente cuatro cosas.",
+          "Escucha tres sonidos.",
+          "Percibe dos olores.",
+          "Nombra una cosa que puedas hacer ahora."
+        ]
+      },
+      "distract": {
+        "title": "Una distracción amable",
+        "steps": [
+          "Elige algo pequeño y concreto.",
+          "Pon un temporizador de cinco minutos.",
+          "Haz solo el primer paso.",
+          "Para si no te ayuda."
+        ]
+      },
+      "write": {
+        "title": "Expresarlo por escrito",
+        "steps": [
+          "Escribe durante dos minutos sin censurarte.",
+          "Marca una frase que te importe.",
+          "Elige un siguiente paso o cierra el texto."
+        ]
+      },
+      "contact": {
+        "title": "Contacta con una persona de confianza",
+        "steps": [
+          "Elige a alguien en quien confíes.",
+          "Usa el borrador de mensaje de abajo.",
+          "Envíalo tú cuando estés preparado."
+        ]
+      },
+      "relax": {
+        "title": "Relajación corta",
+        "steps": [
+          "Relaja los hombros.",
+          "Siente los pies en el suelo.",
+          "Relaja la mandíbula.",
+          "Suelta el aire con calma."
+        ]
+      },
+      "nextStep": {
+        "title": "Divide el siguiente paso",
+        "steps": [
+          "Escribe lo que te parece difícil.",
+          "Elige una parte que lleve menos de dos minutos.",
+          "Haz solo esa parte."
+        ]
+      }
+    },
+    "coach": {
+      "eyebrow": "IA con modo de seguridad",
+      "title": "Asesor de IA para el bienestar",
+      "preview": "Modo de vista previa",
+      "available": "IA conectada",
+      "body": "Más adelante, la IA podrá ayudarte a expresar lo que sientes y a preparar el contacto con otras personas. No es un psicólogo, médico ni terapeuta.",
+      "prompt": "¿Qué quieres poner en palabras?",
+      "placeholder": "Ningún motor de IA está conectado aquí, así que no se muestra ninguna conversación falsa.",
+      "safety": "Ante un peligro, la IA no es el primer recurso adecuado. Contacta con una persona de confianza o con los servicios de emergencia."
+    },
+    "contact": {
+      "title": "Contacta con alguien",
+      "name": "Nombre de contacto",
+      "message": "Borrador de mensaje",
+      "limit": "La aplicación no envía mensajes ni lee tus contactos. Tú decides si copias o envías el texto."
+    },
+    "emergency": {
+      "title": "Ayuda de emergencia",
+      "call112": "Llamar al 112",
+      "noDelay": "Si tú o alguien más está en peligro inmediato: llama al 112 ahora. La aplicación no bloquea esto y no contacta con nadie por ti.",
+      "future": "La estructura para 1177 y las líneas de soporte están preparadas para el futuro, pero los datos de contacto deben ser verificados antes de mostrarse.",
+      "choices": {
+        "calm": "Necesito calmarme.",
+        "contact": "Quiero contactar con alguien.",
+        "unsafe": "No siento seguridad",
+        "otherDanger": "Alguien más está en peligro."
+      }
+    },
+    "plan": {
+      "title": "Plan de seguridad",
+      "private": "Almacenado sólo localmente.",
+      "delete": "Eliminar el plan de seguridad",
+      "confirmDelete": "Sí, eliminar el plan",
+      "cancelDelete": "Cancelar",
+      "fields": {
+        "warningSigns": "Señales de que las cosas están empeorando",
+        "helps": "Lo que normalmente ayuda",
+        "safePeople": "Personas seguras",
+        "safePlaces": "Lugares seguros",
+        "careContacts": "Contactos de atención",
+        "personalSupportLine": "Sentencia de apoyo personal"
+      }
+    },
+    "status": {
+      "skipped": "Registro omitido. No se guardó nada.",
+      "checkInSaved": "Registro guardado localmente.",
+      "planCleared": "Plan de seguridad eliminado."
+    },
+    "privacy": "Almacenamiento: {{key}}, esquema v1, los check-ins se mantienen durante {{days}} días. Los datos de bienestar no se incluyen en la copia de seguridad/exportación en la nube en este sprint."
+  },
+  "economy": {
+    "sectionLabel": "Economía",
+    "eyebrow": "Datos locales",
+    "title": "Economía",
+    "subtitle": "Gastos manuales, presupuestos, deudas, facturas y ahorro sin conexión bancaria.",
+    "tabs": {
+      "aria": "Tabuladores de economía",
+      "overview": "Sinopsis",
+      "purchases": "Compras",
+      "budget": "Presupuesto",
+      "debts": "Deudas",
+      "bills": "Facturas",
+      "saving": "Guardar"
+    },
+    "actions": {
+      "cancel": "Cancelar",
+      "clearAll": "Eliminar todos los datos de Economía",
+      "confirmClearAll": "Sí, eliminar todos los datos de Economía",
+      "confirmPayment": "Confirmar el pago",
+      "confirmSavingTransaction": "Confirmar transacción de ahorro",
+      "delete": "Borrar",
+      "deleteConfirm": "La supresión requiere confirmación.",
+      "deleteYes": "Sí, borrar",
+      "hideAmounts": "Ocultar las cantidades",
+      "reminderDraft": "Crear un borrador de recordatorio",
+      "saveBill": "Guardar factura",
+      "saveBudget": "Ahorrar presupuesto",
+      "saveDebt": "Ahorrar deuda",
+      "saveGoal": "Guardar objetivo",
+      "saveIncome": "Ahorrar ingresos",
+      "savePurchase": "Guardar la compra",
+      "saveSubscription": "Guardar suscripción",
+      "showAmounts": "Mostrar los importes"
+    },
+    "assistant": {
+      "placeholder": "El asistente de Economía sólo está preparado como política/capacidad y viene más tarde. Aquí no se utiliza IA, banco o motor."
+    },
+    "billStatus": {
+      "overdue": "Atrasada",
+      "paid": "Pagada",
+      "soon": "Pronto.",
+      "upcoming": "Próximamente"
+    },
+    "budget": {
+      "forecastMissing": "Aún no hay suficientes datos para un pronóstico.",
+      "inside": "Dentro del presupuesto.",
+      "over": "El presupuesto se supera, sin juzgar el lenguaje.",
+      "used": "Usted ha usado {{percent}}. {{remaining}} restos.",
+      "zero": "El presupuesto 0 se maneja sin división."
+    },
+    "categories": {
+      "housing": "Vivienda",
+      "food": "Alimentos",
+      "transport": "Transporte",
+      "shopping": "Compras",
+      "subscriptions": "Suscripciones",
+      "health": "Salud",
+      "fun": "Diversión",
+      "debt": "Deuda y reembolsos",
+      "other": "Otros"
+    },
+    "debts": {
+      "avalanche": "Avalancha",
+      "estimate": "Final estimado: {{months}} meses",
+      "monthly": "Pago mensual previsto: {{amount}}",
+      "noEstimate": "No se estima el acabado sin datos de pago.",
+      "payment": "Registrar el pago de la deuda",
+      "snowball": "Bola de nieve",
+      "summary": "Sinopsis de la deuda",
+      "total": "Deuda restante: {{amount}}"
+    },
+    "empty": {
+      "noBudgets": "Todavía no hay presupuesto para el mes seleccionado.",
+      "noDebts": "No hay deudas registradas.",
+      "noPurchases": "Todavía no hay compras en la categoría.",
+      "noRows": "Todavía no hay entradas manuales.",
+      "noSaving": "Todavía no hay metas de ahorro.",
+      "noWheel": "No hay gastos registrados para el mes seleccionado. El tablero no muestra datos de ejemplo."
+    },
+    "fields": {
+      "amount": "Monto",
+      "amountHidden": "Cantidades ocultas",
+      "category": "Categoría",
+      "choose": "Elegir",
+      "confirmed": "Ingresos confirmados",
+      "date": "Fecha",
+      "debt": "Deuda",
+      "description": "Descripción o tienda",
+      "dueDate": "Fecha de vencimiento",
+      "dueDay": "Día de vencimiento",
+      "goal": "Objetivo de ahorro",
+      "interest": "Porcentaje de interés",
+      "minimumPayment": "Pago mensual mínimo",
+      "monthlyPlan": "Plan mensual opcional",
+      "name": "Nombre",
+      "nextPayment": "Siguiente pago",
+      "note": "Nota",
+      "originalAmount": "Importe original",
+      "paymentMethod": "Método de pago sin número de tarjeta",
+      "period": "Período",
+      "plannedPayment": "Pago mensual previsto",
+      "remainingAmount": "Importe restante",
+      "repeat": "Repetir",
+      "startDate": "Fecha de inicio",
+      "targetAmount": "Importe objetivo",
+      "targetDate": "Fecha objetivo",
+      "type": "Tipo",
+      "currentAmount": "Ahorro actual"
+    },
+    "overview": {
+      "categoryDetail": "{{amount}}, {{percent}}, {{count}} compras.",
+      "emptyBasis": "Base vacía. La cantidad restante positiva no se muestra sin ingresos registrados.",
+      "expenses": "Gastos",
+      "income": "Ingresos confirmados",
+      "incomeForm": "Ingresos manuales",
+      "manualPartial": "Datos manuales guardados localmente. El registro puede estar incompleto.",
+      "month": "Mes",
+      "remaining": "Restante este mes",
+      "saved": "Ahorrado este mes",
+      "upcomingBills": "Próximas facturas"
+    },
+    "period": {
+      "monthly": "Mensual",
+      "quarterly": "Trimestral",
+      "yearly": "Anualmente"
+    },
+    "privacy": {
+      "activate": "Activar la economía local",
+      "delete": "La opción de borrar está al final de la sección Economía.",
+      "eyebrow": "Activación voluntaria",
+      "intro": "Antes de empezar: Economía solo guarda lo que registras.",
+      "local": "Los datos se almacenan localmente en este navegador.",
+      "noBank": "Ningún banco, Banca Abierta, número de tarjeta o cuenta está conectado.",
+      "noSecrets": "Viktkollen nunca pide contraseñas bancarias o códigos BankID.",
+      "storage": "Almacenamiento: {{key}}, esquema v{{schema}}, retención: {{retention}}. No incluido en la nube de respaldo, sincronización, importación o exportación.",
+      "storageTitle": "Privacidad y almacenamiento"
+    },
+    "repeat": {
+      "none": "Ninguno",
+      "monthly": "Mensual",
+      "quarterly": "Trimestral",
+      "yearly": "Anualmente"
+    },
+    "saving": {
+      "deposit": "Depósito",
+      "remaining": "{{amount}} restantes",
+      "transaction": "Operación de ahorro manual",
+      "withdrawal": "Retirada"
+    },
+    "status": {
+      "activated": "Economía activada localmente.",
+      "cleared": "Todos los datos de Economy se eliminaron localmente.",
+      "deleted": "Entrada eliminada.",
+      "hidden": "Las cantidades están escondidas en Economy.",
+      "invalidAmount": "Introduzca una cantidad válida.",
+      "missingName": "Introduzca un nombre o descripción.",
+      "missingSelection": "Elige primero de la lista.",
+      "paymentConfirmed": "Operación manual confirmada.",
+      "saved": "Guardado localmente.",
+      "visible": "Las cantidades son visibles de nuevo."
+    },
+    "subscriptions": {
+      "title": "Suscripciones",
+      "year": "por año"
+    },
+    "types": {
+      "purchase": "Compra",
+      "refund": "Importe de las restituciones"
+    },
+    "wheel": {
+      "description": "Mesa redonda con gastos mensuales por categoría.",
+      "table": "Alternativa de texto para el tablero de gastos",
+      "title": "Junta redonda de gastos",
+      "columns": {
+        "amount": "Monto",
+        "category": "Categoría",
+        "share": "Compartir"
+      }
+    }
+  },
+  "education": {
+    "media": {
+      "age": {
+        "family": "Default para familias"
+      },
+      "category": {
+        "family-life": "Vida familiar animal",
+        "first-year": "Primer año del bebé",
+        "general": "Generalidades",
+        "insects": "Insectos fascinantes",
+        "pregnancy": "Embarazo",
+        "unusual-animals": "Animales inusuales"
+      },
+      "captionsPlanned": "Títulos previstos",
+      "disclosure": {
+        "aiMedical": "Ilustración educativa generada por la IA - no imágenes médicas.",
+        "aiNature": "Ilustración generada por la IA - no imágenes auténticas de la naturaleza.",
+        "verified": "Human-revisado y publicado."
+      },
+      "fields": {
+        "age": "Edad",
+        "captions": "Títulos",
+        "length": "Longitud",
+        "source": "Fuente",
+        "transcript": "Alternativa de texto"
+      },
+      "lengthMissing": "Aún no se ha establecido",
+      "previewAria": "Previsualización de medios",
+      "sourcePlanned": "El origen se selecciona en la publicación",
+      "status": {
+        "future": "Vendrá más tarde.",
+        "missing": "Falta contenido",
+        "needsReview": "Requiere lenguaje o revisión de hechos",
+        "planned": "Vídeo que viene más tarde",
+        "working": "Trabajo"
+      },
+      "transcriptPlanned": "Variante de texto prevista",
+      "videoAvailable": "Vídeo verificado disponible",
+      "videoPlaceholder": "No se ha publicado ningún vídeo"
+    },
+    "signLanguage": {
+      "eyebrow": "Accesibilidad y comunicación",
+      "title": "Lenguaje de señas",
+      "subtitle": "El primer idioma compatible es la lengua de signos sueca (STS). ASL, BSL y el sistema de signos internacional se mantienen separados para el futuro.",
+      "entriesAria": "Entradas de lenguaje de señas",
+      "entries": {
+        "learn": "Aprender",
+        "phrases": "Frases comunes",
+        "practice": "Práctica",
+        "talk": "Hablar con el signo IA"
+      },
+      "languages": {
+        "asl": "ASL - Lenguaje de señas estadounidense",
+        "bsl": "BSL - Lenguaje de señas británico",
+        "internationalSign": "Signo internacional - futuras frases internacionales limitadas",
+        "sts": "STS - Lenguaje de señas sueco"
+      },
+      "settings": {
+        "preference": "Preferencia de comunicación",
+        "signLanguage": "Lenguaje de señas seleccionado",
+        "speech": "Discurso sobre",
+        "text": "Prefiere texto",
+        "textVerified": "Prefiere texto y vídeo de signos verificados",
+        "visual": "Prefiere respuestas visuales"
+      },
+      "talk": {
+        "aiEyebrow": "Amigo de la IA",
+        "capabilities": "Futuras capacidades de lenguaje de signos",
+        "interpreterLimit": "El amigo de IA nunca reemplaza a un intérprete calificado en lenguaje de signos en salud, asuntos legales, contacto con la autoridad o emergencias.",
+        "limits": "La IA está claramente etiquetada como IA. No improvisa signos, mezcla lenguajes de signos ni presenta movimientos de manos generados por IA como enseñanza correcta.",
+        "noVerifiedVideo": "Todavía no existe ninguna versión verificada del lenguaje de signos. La respuesta se muestra como texto.",
+        "openCoach": "Abrir el asesor de IA existente",
+        "preview": "Área de firma futura",
+        "questionLabel": "Su pregunta",
+        "textAnswer": "Mostrar respuesta de texto",
+        "textFallback": "La respuesta de texto es la única función disponible en esta versión.",
+        "title": "Hablar con el signo IA"
+      },
+      "capabilities": {
+        "humanReviewed": "Revisión humana",
+        "selectedSignLanguage": "Lenguaje de señas seleccionado",
+        "signInputRecognition": "Reconocimiento de entradas de firma",
+        "textSvar": "Respuesta de texto",
+        "verifiedSignAvatar": "Firma verificada avatar",
+        "verifiedSignVideo": "Vídeo de cartel verificado"
+      },
+      "learn": {
+        "title": "Aprender",
+        "categories": {
+          "body": "Cuerpo",
+          "everyday": "Todos los días",
+          "family": "Familia",
+          "feelings": "Sentimientos",
+          "food": "Alimentos",
+          "greetings": "Saludos",
+          "helpSafety": "Ayuda y seguridad",
+          "numbersTime": "Números y hora",
+          "school": "Escuela"
+        },
+        "status": {
+          "needsReview": "Requiere revisión del idioma",
+          "planned": "Vídeo que viene más tarde",
+          "videoLater": "Vídeo verificado aún no está disponible"
+        }
+      },
+      "phraseMeta": "{{language}} · {{status}} · texto alternativo preparado",
+      "phrasesTitle": "Frases comunes",
+      "phrases": {
+        "call112": "Llamar al 112",
+        "doNotUnderstand": "No entiendo.",
+        "hello": "Hola.",
+        "howAreYou": "¿Cómo estás?",
+        "hungry": "Tengo hambre.",
+        "needHelp": "Necesito ayuda.",
+        "pain": "Estoy sufriendo.",
+        "repeat": "¿Puedes repetirlo?",
+        "thanks": "Gracias.",
+        "toilet": "¿Dónde está el baño?"
+      },
+      "practice": {
+        "active": "El modo espejo está activo. No se realiza grabación, almacenamiento, carga o análisis biométrico.",
+        "body": "Usted puede utilizar voluntariamente la cámara como un espejo. La aplicación no juzga bien o mal.",
+        "consent": "Consisto en iniciar la cámara como un espejo local",
+        "consentRequired": "Se requiere el consentimiento activo antes de iniciar la cámara.",
+        "noRecording": "Ninguna cámara está activa. El modo espejo no almacena nada.",
+        "start": "Iniciar espejo",
+        "stop": "Parar la cámara",
+        "stopped": "La cámara se detuvo.",
+        "title": "Práctica",
+        "unavailable": "El modo espejo no está disponible aquí.",
+        "videoAria": "Previsualización de la cámara local"
+      }
+    },
+    "animalWorld": {
+      "aiPolicy": "El comportamiento animal generado por la IA no debe ser mostrado como prueba documental. El texto de hecho debe ser verificado con fuentes zoológicas creíbles antes de su publicación.",
+      "categoriesTitle": "Categorías",
+      "categoryPlaceholder": "El contenido viene más tarde y requiere revisión de los hechos.",
+      "eyebrow": "Descubre la naturaleza",
+      "examplesTitle": "Contenido preparado",
+      "guide": {
+        "placeholder": "Preguntar a la guía de la naturaleza viene después. No se muestran respuestas falsas de IA.",
+        "title": "Pregunte a la guía de la naturaleza"
+      },
+      "mediaTitle": "Tarjetas de vídeo",
+      "subtitle": "Los animales, insectos y comportamientos se pueden descubrir más tarde con fuentes, subtítulos y etiquetas claras.",
+      "title": "Mundo animal",
+      "categories": {
+        "birds": "Aves",
+        "familyLife": "Vida familiar animal",
+        "insects": "Insectos fascinantes",
+        "seas": "Mares y lagos",
+        "survivors": "Sobrevivientes de la naturaleza",
+        "unusualAnimals": "Animales inusuales"
+      },
+      "examples": {
+        "ants": {
+          "description": "Tarjeta de futuro sobre la cooperación y la agricultura, después de la revisión de los hechos.",
+          "title": "Hormigas de hoja"
+        },
+        "axolotl": {
+          "description": "La ilustración de IA planeada requiere un etiquetado claro y una verificación de hechos.",
+          "title": "Ajolote"
+        },
+        "gulls": {
+          "description": "El futuro video sobre nidos, polluelos y comportamiento de los padres.",
+          "title": "Gaviotas que cuidan de los polluelos"
+        }
+      },
+      "futureExamples": {
+        "axolotl": "Ajolote",
+        "deepSea": "Animales de aguas profundas",
+        "familyCooperation": "Animales que cooperan en familia",
+        "gulls": "Las gaviotas construyen nidos y cuidan de los polluelos",
+        "leafcutterAnts": "Hormigas de hoja",
+        "mantisShrimp": "Camarones Mantis",
+        "octopus": "Inteligencia de pulpo",
+        "orchidMantis": "Mantis de orquídea",
+        "penguins": "Comportamiento de crianza de pingüinos emperador",
+        "tardigrades": "Tardígrados"
+      }
+    },
+    "pregnancyFirstYear": {
+      "address": {
+        "current": "Texto seleccionado: {{value}}",
+        "label": "Palabras",
+        "options": {
+          "mother": "madre",
+          "parent": "padre",
+          "partner": "socio",
+          "pregnantPerson": "embarazada"
+        },
+        "title": "Elegir la redacción"
+      },
+      "care": {
+        "body": "Si está preocupado: póngase en contacto con una partera, clínica de salud infantil, médico o 1177. En peligro inmediato: llame al 112.",
+        "emergency": "Llamar al 112",
+        "title": "¿Cuándo debo buscar cuidado?"
+      },
+      "empty": "La estructura de base existe. El contenido asegurado de calidad viene más tarde.",
+      "eyebrow": "Apoyo educativo",
+      "firstYear": {
+        "title": "Primer año del bebé",
+        "areas": {
+          "bonding": "Contacto y enlace",
+          "bvc": "Clínica de salud infantil y reconocimientos médicos",
+          "communication": "Comunicación",
+          "feeding": "Alimentación",
+          "movement": "Movimiento",
+          "play": "Reproducir",
+          "safety": "Seguridad",
+          "senses": "Sentidos",
+          "sleep": "Dormir"
+        }
+      },
+      "guide": {
+        "placeholder": "Pregunte sobre el embarazo y el primer año llega más tarde y requiere una estricta política de seguridad médica.",
+        "title": "Pregunte sobre el embarazo y el primer año"
+      },
+      "mediaTitle": "Arquitectura de vídeo",
+      "medicalPolicy": "La aplicación no diagnostica, evalúa el desarrollo individual o reemplaza a una partera, clínica de salud infantil, médico o 1177.",
+      "parts": {
+        "birth": "Nacimiento",
+        "care": "¿Cuándo debo buscar cuidado?",
+        "months03": "De 0 a 3 meses",
+        "months46": "4 a 6 meses",
+        "months79": "7-9 meses",
+        "months1012": "10 a 12 meses",
+        "parent": "Por el padre",
+        "pregnancy": "Embarazo"
+      },
+      "partsTitle": "Partes",
+      "subtitle": "Una estructura sencilla y honesta para el embarazo y el primer año. No reemplaza el cuidado.",
+      "timeline": {
+        "birthPrep": "Preparación para el nacimiento",
+        "title": "Embarazo",
+        "trimester1": "Trimestre 1",
+        "trimester2": "Trimestre 2",
+        "trimester3": "Trimestre 3"
+      },
+      "title": "Embarazo y primer año",
+      "media": {
+        "firstYear": {
+          "description": "Las áreas del primer año pueden recibir video revisado más adelante.",
+          "title": "Básicos de primer año"
+        },
+        "timeline": {
+          "description": "Estructura educativa sin imágenes médicas.",
+          "title": "Cronología del embarazo"
+        }
+      }
+    }
+  },
+  "settings": {
+    "legal": {
+      "title": "Condiciones de compra y privacidad",
+      "provider": "Proveedor del servicio",
+      "emailLabel": "Correo de contacto",
+      "terms": "Condiciones de compra",
+      "subscription": "Suscripciones y pagos",
+      "paymentText": "El precio, el periodo de suscripción, la renovación y las demás condiciones de pago deben mostrarse antes de realizar una compra. Revisa los detalles antes de confirmar el pago.",
+      "usage": "Uso de la aplicación",
+      "usageText": "Eres responsable de utilizar la aplicación legalmente y de proporcionar información lo más precisa posible. Los resultados de la IA son orientativos y no sustituyen una evaluación médica ni el asesoramiento profesional.",
+      "privacy": "Privacidad",
+      "data": "Datos y uso",
+      "dataText": "La aplicación puede tratar la información que facilitas, como datos de cuenta, peso y comidas, y contenido necesario para las funciones que utilizas. Esta información se usa para proporcionar las funciones de la aplicación.",
+      "ai": "Funciones de IA",
+      "aiText": "Al utilizar una función de IA, la información necesaria para el análisis solicitado puede enviarse a un proveedor de servicios. Lee la información y los avisos de consentimiento que aparezcan antes de enviar contenido para su análisis.",
+      "choices": "Tus opciones",
+      "choicesText": "Utiliza los ajustes de cuenta y privacidad de la aplicación para las opciones disponibles sobre tus datos. Los datos de contacto para consultas de privacidad se añadirán aquí cuando estén confirmados.",
+      "contact": "Contacto"
+    },
+    "language": {
+      "description": "Cambia de idioma al instante sin recargar. El sueco sigue siendo el idioma de origen.",
+      "help": "El idioma elegido se guarda en tu perfil, si existe, o en este navegador.",
+      "label": "Idioma",
+      "title": "Idioma"
+    },
+    "more": {
+      "categories": "Categorías",
+      "heading": "Más",
+      "offline": "Sin conexión",
+      "online": "En línea",
+      "signInForCloud": "Inicia sesión para sincronizar con la nube",
+      "synced": "Todo está sincronizado",
+      "back": "Atrás"
+    },
+    "reminders": {
+      "timeLabel": "Hora de {{reminder}}",
+      "descriptionMeal": "Te ayuda a recordar que registres las comidas de hoy.",
+      "descriptionWater": "Te recuerda beber agua durante el día.",
+      "descriptionWeight": "Te recuerda registrar tu peso.",
+      "note": "Los pequeños recordatorios pueden ayudarte a mantener hábitos duraderos.",
+      "title": "Recordatorios diarios"
+    },
+    "profile": {
+      "demoData": "Datos de demostración",
+      "demoDataDescription": "Borra el progreso local y el historial de retos y cuestionarios para empezar de nuevo.",
+      "resetDemoData": "Restablecer datos de demostración",
+      "resetDone": "Datos de demostración restablecidos",
+      "title": "Ajustes"
+    },
+    "folders": {
+      "accessibility": {
+        "title": "Accesibilidad y ayudas",
+        "description": "Las adaptaciones y el apoyo vienen después"
+      },
+      "security": {
+        "title": "Seguridad y copia",
+        "description": "Copia, restaurar, sync, nube"
+      },
+      "notifications": {
+        "title": "Avisos y recordatorios",
+        "description": "Avisos inteligentes, recordatorios, planes"
+      },
+      "importExport": {
+        "title": "Importar y exportar",
+        "description": "Importación y exportación de datos"
+      },
+      "goals": {
+        "title": "Metas y progreso",
+        "description": "Metas de peso, logros"
+      },
+      "coach": {
+        "title": "Asesor de IA",
+        "description": "Asesor de IA completo"
+      },
+      "wellbeing": {
+        "title": "Bienestar",
+        "description": "Ejercicios de calma y plan de seguridad"
+      },
+      "economy": {
+        "title": "Economía",
+        "description": "Gastos, presupuesto, deudas y ahorro"
+      },
+      "signLanguage": {
+        "title": "Lenguaje de señas",
+        "description": "STS, frases y futuras ayudas seguras para la lengua de signos"
+      },
+      "animalWorld": {
+        "title": "Mundo animal",
+        "description": "Animales, insectos y pistas de vídeo comprobadas"
+      },
+      "pregnancyFirstYear": {
+        "title": "Embarazo y primer año",
+        "description": "Embarazo, primer año y orientación en el cuidado"
+      },
+      "nutrition": {
+        "title": "Alimentos",
+        "description": "Comidas y análisis de alimentos"
+      },
+      "archive": {
+        "title": "Archivo e historial",
+        "description": "Historial de copias, registros"
+      },
+      "settings": {
+        "title": "Ajustes",
+        "description": "Ajustes de la app, dispositivos"
+      }
+    },
+    "accessibility": {
+      "title": "Accesibilidad y ayudas",
+      "eyebrow": "Preparado para futuras adaptaciones",
+      "intro": "Las opciones futuras para hacer Viktkollen más fácil de usar de diferentes maneras se recogen aquí.",
+      "sectionListLabel": "Ámbitos para futuras adaptaciones de la accesibilidad",
+      "backToHub": "Volver a Accesibilidad y ayudas",
+      "comingLater": "Vendrá más tarde.",
+      "openEye": "Abrir el ojo de IA",
+      "openEar": "Abrir IA Ear",
+      "readingOptionsLabel": "Previsualizaciones locales de lectura",
+      "readingPreviewTitle": "Lectura de la vista previa",
+      "readingPreview": "Esta es una vista previa local. Sólo cambia el texto en esta vista de accesibilidad.",
+      "readingSimplePreview": "Versión corta: elija un modo a la vez. Siempre puede volver a la vista regular.",
+      "readAloudNote": "Read-loud está preparado para el futuro. No se utiliza ningún servicio externo o IA aquí.",
+      "cognitiveExampleTitle": "Paso a paso.",
+      "cognitiveExample": {
+        "steps": [
+          "Elige lo que quieras hacer.",
+          "Lea la breve confirmación.",
+          "Continúe cuando se sienta bien."
+        ]
+      },
+      "setup": {
+        "title": "Personalizar Viktkollen",
+        "intro": "¿Quieres hacer que la aplicación sea más fácil de usar? Siempre puedes cambiar esto de nuevo en Accesibilidad y ayudas.",
+        "textSizeLegend": "Tamaño del texto",
+        "optionsLegend": "Más opciones",
+        "previewLabel": "Vista previa",
+        "previewText": "Así es como se ven el texto y los botones con sus opciones.",
+        "previewButton": "Botón de ejemplo",
+        "reset": "Reiniciar",
+        "finish": "Hecho",
+        "skip": "Ahora no."
+      },
+      "preferences": {
+        "saved": "La configuración se actualizó.",
+        "reset": "Reiniciar los ajustes de accesibilidad",
+        "resetConfirm": "¿Restablecer solo la configuración de accesibilidad en esta vista?",
+        "resetAction": "Reiniciar",
+        "resetDone": "Los ajustes fueron reiniciados",
+        "displayLegend": "Mostrar en esta vista",
+        "feedbackLegend": "Retroalimentación visual y háptica",
+        "motorLegend": "Soporte motor en este punto de vista",
+        "readingLegend": "Lectura en esta vista",
+        "seniorLegend": "Sus opciones en esta vista",
+        "highContrast": "Contraste más claro",
+        "reduceMotion": "Reducir la animación",
+        "visualFeedback": "Indicador de enfoque más claro",
+        "hapticFeedback": "Vibración para prensas importantes",
+        "largeControls": "Botones más grandes y blancos de toque",
+        "avoidPreciseGestures": "Evitar gestos precisos",
+        "extraInteractionTime": "Dame más tiempo.",
+        "keyboardFriendly": "Modo amigable con el teclado",
+        "lineSpacing": "Más espacio entre líneas",
+        "largerText": "Texto más grande",
+        "simpleReading": "Texto más sencillo",
+        "textSize": {
+          "normal": "Texto normal",
+          "large": "Texto grande",
+          "extra-large": "Texto extragrande"
+        },
+        "soundNotOnlySignal": "El sonido nunca debe ser la única señal. Las elecciones importantes también se muestran claramente en esta visión.",
+        "back": "Atrás",
+        "next": "Siguiente",
+        "finish": "Terminar y empezar de nuevo",
+        "resetStep": "Empezar de nuevo",
+        "remindWhere": "Recuérdame dónde estaba.",
+        "remindWhereNote": "Venir más tarde. Esta vista no salva donde estabas.",
+        "seniorMode": "Modo extra claro",
+        "seniorModeOn": "El modo extra claro está activado",
+        "seniorPackageActive": "El modo extra claro está activo: texto más grande y botones, contraste más claro, menos movimiento y texto más simple en esta vista.",
+        "seniorPackageNote": "Activar un modo claro solo para Accesibilidad y ayudas."
+      },
+      "navigationSpeech": {
+        "legend": "Lectura de la navegación",
+        "toggle": "Lectura de la navegación",
+        "rateLegend": "Velocidad de lectura elevada",
+        "rates": {
+          "slow": "Lenta",
+          "normal": "Normal",
+          "fast": "Rápido."
+        },
+        "note": "Desactiva por defecto. Lee el enfoque sólo durante la navegación del teclado en esta vista. La velocidad elegida también se aplica a la lectura en voz alta en voz alta y comunicación.",
+        "speaking": "Lectura",
+        "stopped": "Detenido",
+        "complete": "Completa",
+        "error": "No se pudo leer en voz alta. Puede seguir usando los controles.",
+        "unsupported": "El volumen de lectura no está soportado en este dispositivo. Puede continuar usando los controles.",
+        "genericControl": "Control",
+        "states": {
+          "checked": "marcada",
+          "unchecked": "sin comprobar",
+          "expanded": "ampliado",
+          "collapsed": "colapso",
+          "selected": "seleccionado",
+          "notSelected": "no seleccionado",
+          "pressed": "prensado",
+          "notPressed": "sin prensar",
+          "disabled": "desactivado",
+          "input": "campo de entrada",
+          "password": "campo contraseña"
+        }
+      },
+      "previewSimpleMode": "Previsualizar el modo simple",
+      "endSimplePreview": "Fin de la vista previa",
+      "simplePreviewIntro": "Esta vista previa se aplica sólo a la accesibilidad y ayudas y no cambia Viktkollen en otro lugar.",
+      "simplePreviewItems": {
+        "largeButtons": "Botones más grandes",
+        "shortTexts": "Texto más corto",
+        "fewerChoices": "Menos opciones a la vez",
+        "clearSymbols": "Borrar símbolos",
+        "oneStep": "Paso a paso.",
+        "calmerUi": "Interfaz más calmante"
+      },
+      "focusNarration": {
+        "title": "Dime lo que destaco",
+        "description": "El apoyo futuro para describir lo que recibe el enfoque. No hay narración o resaltado sucede todavía."
+      },
+      "communication": {
+        "label": "Discurso y comunicación",
+        "privacy": "Texto y lectura en voz alta permanecer en este dispositivo y no se guardan.",
+        "groups": {
+          "basic": "Básico",
+          "needs": "Necesidades",
+          "help": "Ayuda",
+          "wellbeing": "Bienestar",
+          "communication": "Comunicación"
+        },
+        "phrases": {
+          "yes": "Sí.",
+          "no": "No",
+          "thanks": "Gracias.",
+          "wait": "Espera.",
+          "help": "Ayúdame.",
+          "needHelp": "Necesito ayuda.",
+          "dontUnderstand": "No entiendo.",
+          "writeInstead": "Escribe en su lugar",
+          "repeat": "¿Puedes repetir eso?",
+          "pause": "Necesito un descanso.",
+          "pain": "Estoy sufriendo.",
+          "hungry": "Tengo hambre.",
+          "thirsty": "Tengo sed.",
+          "toilet": "Necesito usar el inodoro.",
+          "callContact": "Llama a mi contacto",
+          "cannotSpeakNow": "No puedo hablar ahora.",
+          "tired": "Estoy cansada.",
+          "wantHome": "Quiero ir a casa."
+        },
+        "customLabel": "Di esto por mí.",
+        "customPlaceholder": "Escribe una frase corta",
+        "selectedLabel": "Texto seleccionado",
+        "speak": "Leer en voz alta",
+        "stop": "Detener",
+        "showLarge": "Mostrar grande",
+        "clear": "Limpiar",
+        "restore": "Deshacer despejado",
+        "closeLarge": "Cerrar texto grande",
+        "largeLabel": "Texto grande",
+        "unsupported": "En este dispositivo no se admite lectura en voz alta. Muestra o lee el texto en su lugar.",
+        "speaking": "Lectura",
+        "complete": "El texto está completo.",
+        "stopped": "El texto permanece.",
+        "error": "No se pudo leer en voz alta. Todavía se puede mostrar y leer el texto.",
+        "guidanceTitle": "Cómo usar este soporte",
+        "guidanceSteps": {
+          "select": "Elija una frase o escriba una frase corta.",
+          "showOrRead": "Elija Mostrar grande o leer en voz alta.",
+          "stop": "Elija Stop para finalizar lectura en voz alta."
+        },
+        "readGuidance": "Leer ayuda en voz alta",
+        "guidanceReadText": "Cómo usar este soporte. Elija una frase o escriba una oración corta. Elija Mostrar grande o leer en voz alta. Elija Parar para terminar de leer en voz alta.",
+        "writeToAi": "Escribir a IA en lugar de hablar",
+        "writeToAiNote": "No se usa ninguna conexión de IA aquí.",
+        "myPhrases": {
+          "title": "Mis frases",
+          "privacy": "Sus frases guardadas permanecen sólo en este dispositivo. Nunca se envían a ningún servidor.",
+          "inputLabel": "Escribe tu propia frase",
+          "save": "Guardar frase",
+          "saved": "Frase guardada.",
+          "delete": "Borrar",
+          "deleteAria": "Suprímase la frase {{phrase}}",
+          "deleteConfirm": "¿Quiere borrar la frase \"{{phrase}}\"?",
+          "deleteYes": "Sí, borrar",
+          "deleteNo": "Cancelar",
+          "undoDelete": "Deshacer borrar \"{{phrase}}\"",
+          "empty": "Escriba un poco de texto antes de guardar.",
+          "tooLong": "La frase es demasiado larga, máximo 120 caracteres.",
+          "duplicate": "Esa frase ya está guardada.",
+          "limitReached": "Has guardado el número máximo de frases (20). Borrar una para guardar una nueva.",
+          "emptyList": "Todavía no hay frases guardadas."
+        }
+      },
+      "routines": {
+        "title": "Paso a paso",
+        "privacy": "Sus rutinas permanecen sólo en este dispositivo. Nunca se envían a ningún servidor.",
+        "emptyList": "No hay rutinas todavía. Cree su primera rutina a continuación.",
+        "stepCount": "{{count}} pasos",
+        "create": "Crear una nueva rutina",
+        "createTitle": "Crear rutina",
+        "editTitle": "Editar rutina",
+        "edit": "Editar",
+        "nameLabel": "Nombre de rutina",
+        "stepLabel": "Medida {{number}}",
+        "addStep": "Añadir paso",
+        "removeStep": "Eliminar paso",
+        "removeStepAria": "Eliminar paso {{number}}",
+        "moveUp": "Subir",
+        "moveUpAria": "Sube el paso {{number}}",
+        "moveDown": "Bajar",
+        "moveDownAria": "Baja el paso {{number}}",
+        "save": "Guardar rutina",
+        "cancel": "Cancelar",
+        "saved": "Rutina guardada.",
+        "emptyName": "Escriba un nombre antes de guardar.",
+        "nameTooLong": "El nombre es demasiado largo. Máximo 60 caracteres.",
+        "emptySteps": "Agregar al menos un paso antes de guardar.",
+        "stepTooLong": "Un paso es demasiado largo. Máximo 120 caracteres.",
+        "tooManySteps": "Demasiados pasos. Máximo 20 pasos por rutina.",
+        "limitReached": "Ha guardado el número máximo de rutinas (10). Borrar una para crear una nueva.",
+        "delete": "Borrar",
+        "deleteAria": "Suprímase la rutina {{name}}",
+        "deleteConfirm": "¿Desea borrar la rutina \"{{name}}\"?",
+        "deleteYes": "Sí, borrar",
+        "deleteNo": "Cancelar",
+        "templatesLabel": "Elija una plantilla (opcional)",
+        "templates": {
+          "morning": {
+            "name": "Mañana",
+            "steps": [
+              "Lávate la cara.",
+              "Desayuna.",
+              "Cepilla tus dientes",
+              "Vístete."
+            ]
+          },
+          "evening": {
+            "name": "Buenas noches",
+            "steps": [
+              "Cepilla tus dientes",
+              "Cambiar a pijamas",
+              "Guarda las pantallas.",
+              "Vete a la cama."
+            ]
+          },
+          "readyToGo": {
+            "name": "Prepárate para ir.",
+            "steps": [
+              "Ponte la chaqueta.",
+              "Ponte los zapatos.",
+              "Toma tus llaves.",
+              "Sal fuera."
+            ]
+          },
+          "walk": {
+            "name": "Sencillo paseo",
+            "steps": [
+              "Ponte los zapatos.",
+              "Ponte la chaqueta.",
+              "Sal fuera.",
+              "Camina una vuelta.",
+              "Vuelve a casa."
+            ]
+          }
+        },
+        "run": {
+          "start": "Comienzo",
+          "progress": "Medida {{current}} de {{total}}",
+          "back": "Atrás",
+          "next": "Siguiente",
+          "done": "Hecho",
+          "exit": "Salir",
+          "complete": "¡Hecho!",
+          "close": "Cerrar",
+          "runAgain": "Ejecutar de nuevo"
+        }
+      },
+      "sections": {
+        "vision": {
+          "title": "Visión",
+          "summary": "Visualización y contraste",
+          "description": "Las adaptaciones futuras para visualización, contraste, texto y claridad se pueden recoger aquí. Ya puede abrir IA Eye en Smart Camera."
+        },
+        "hearing": {
+          "title": "Audiencia",
+          "summary": "Señales sonoras y visuales",
+          "description": "Las futuras adaptaciones para el sonido, las señales visuales y las notificaciones se pueden recoger aquí. Ya puede abrir IA Ear en Smart Camera."
+        },
+        "speech": {
+          "title": "& Comunicación de voz",
+          "summary": "Soporte para la autoexpresión",
+          "description": "El apoyo futuro para el habla, la comunicación y formas alternativas de expresarse puede ser recogido aquí.",
+          "items": {
+            "textToSpeech": "Texto → discurso",
+            "tapPhrases": "Frases utilizables",
+            "pictureSupport": "Soporte para imágenes",
+            "writeToAi": "Escribir a IA en lugar de hablar",
+            "communicationCards": "Tarjetas de comunicación"
+          }
+        },
+        "routines": {
+          "title": "Paso a paso",
+          "summary": "rutinas simples, un paso a la vez",
+          "description": "Crea una rutina simple con tus propios pasos y pásalo paso a paso, a tu propio ritmo."
+        },
+        "motor": {
+          "title": "Competencias motoras",
+          "summary": "Movimientos y controles",
+          "description": "Las adaptaciones futuras para el movimiento, los controles y la interacción más fácil se pueden recopilar aquí.",
+          "items": {
+            "largeTargets": "Grandes objetivos del grifo",
+            "fewerGestures": "Menos gestos precisos",
+            "keyboard": "Teclado",
+            "switch": "Conmutador/botón auxiliar",
+            "voiceControl": "Control de voz",
+            "extraTime": "Tiempo adicional para la interacción"
+          }
+        },
+        "reading": {
+          "title": "Lectura",
+          "summary": "Comodidad de texto y lectura",
+          "description": "Elija una vista previa local para el texto en esta vista. No cambia Viktkollen en otro lugar.",
+          "items": {
+            "largerText": "Texto más grande",
+            "extraLargeText": "Texto extragrande",
+            "clearerText": "Texto más claro",
+            "lineSpacing": "Más espaciado de líneas",
+            "simplifiedText": "Texto simplificado",
+            "readAloud": "Leer texto en voz alta"
+          }
+        },
+        "cognitive": {
+          "title": "Apoyo cognitivo",
+          "summary": "Estructura y panorama general",
+          "description": "Ejemplos de apoyo futuro para la estructura, recordatorios y visión general se muestran aquí.",
+          "items": {
+            "shortInstructions": "Instrucciones breves",
+            "stepByStep": "Paso a paso",
+            "fewerChoices": "Menos opciones a la vez",
+            "clearConfirmations": "Borrar confirmaciones",
+            "memorySupport": "Soporte de memoria",
+            "predictableNavigation": "Navegación previsible",
+            "pictureSupport": "Imágenes/símbolos de apoyo"
+          }
+        },
+        "simple": {
+          "title": "Modo simple",
+          "summary": "Experiencia simplificada",
+          "description": "Pruebe una vista previa local y temporal de una interfaz más tranquila.",
+          "items": {}
+        },
+        "senior": {
+          "title": "Adultos mayores",
+          "summary": "Apoyo diario",
+          "description": "Las adaptaciones futuras y el apoyo a las necesidades cotidianas pueden recogerse aquí.",
+          "items": {
+            "largeText": "Texto más grande",
+            "largeButtons": "Botones más grandes",
+            "simpleNavigation": "Navegación simplificada",
+            "readAloud": "Leer en voz alta",
+            "clearContrast": "Contraste más claro",
+            "reminderSupport": "Soporte para recordatorios"
+          }
+        }
+      }
+    },
+    "sectionLabel": "Más funciones y ajustes",
+    "company": {
+      "title": "Datos de la empresa",
+      "aria": "Datos de la empresa bajo Privacidad",
+      "name": "Nombre",
+      "address": "Dirección",
+      "registrationNumber": "Número de registro de la empresa",
+      "notProvided": "No se ha proporcionado"
+    },
+    "accountEyebrow": "Cuenta",
+    "accountTitle": "Perfil y cuenta",
+    "signedInAs": "Sesión iniciada como",
+    "unknownEmail": "correo desconocido",
+    "profileBasis": "Datos del perfil",
+    "unnamedProfile": "Perfil sin nombre",
+    "goalMissing": "Falta el objetivo",
+    "activityMissing": "Falta la actividad",
+    "profileAnytime": "Puedes completar tu perfil cuando quieras.",
+    "remoteImageAnalysis": "Análisis remoto de imágenes",
+    "remoteGrantedSince": "Autorizado para este usuario desde {{date}}.",
+    "remoteNotGranted": "El análisis remoto de imágenes no está autorizado para este usuario.",
+    "revokeConsent": "Retirar el consentimiento para analizar imágenes",
+    "appSettingsDevices": "Ajustes de la aplicación y dispositivos",
+    "thisDevice": "Este dispositivo",
+    "localOnly": "Almacenamiento local: los datos solo se guardan en este dispositivo.",
+    "localAndCloud": "Almacenamiento local: los datos se guardan aquí y se sincronizan con la nube cuando inicias sesión.",
+    "searchInApp": "Buscar en la aplicación",
+    "usageToggle": "Mostrar u ocultar suscripción y uso",
+    "editProfile": "Editar perfil",
+    "signingOut": "Cerrando sesión…",
+    "aboutTitle": "Acerca de Viktkollen",
+    "aboutBody": "Viktkollen ofrece apoyo general para la salud y el bienestar. La información no constituye asesoramiento médico, diagnóstico ni tratamiento.",
+    "deleteAccountData": "Eliminar la cuenta y los datos",
+    "deleteAccountHelp": "La supresión requiere iniciar sesión y verificación del servidor. Los datos de la nube se eliminan antes de la cuenta de autenticación, y la aplicación se retira después de una eliminación exitosa.",
+    "checkDeletionStatus": "Comprobar el estado de eliminación",
+    "confirmDeleteLabel": "Confirmar con la cuenta de eliminación de texto",
+    "deleting": "Suprimiendo...",
+    "deleteAccount": "Eliminar cuenta",
+    "deleteConfirmPhrase": "eliminar cuenta",
+    "writeExactDeletePhrase": "Tipo exactamente: {{phrase}}",
+    "deletionDryRunOk": "El contrato del servidor responde. Los datos de la nube y la eliminación de la cuenta todavía requieren la configuración correcta del servidor.",
+    "deletionCheckFailed": "No se pudo comprobar la eliminación de la cuenta.",
+    "deleteFailed": "La cuenta no pudo ser eliminada de forma segura.",
+    "deleteSuccess": "Los datos de la cuenta fueron eliminados.",
+    "deletePartialLocal": "El servidor borró los datos de la cuenta, pero la limpieza local sólo se completó parcialmente.",
+    "cloudError": "No se pudo mostrar el estado de la nube",
+    "remindersError": "No se pudieron mostrar recordatorios",
+    "notificationsError": "No se pudo mostrar el centro de notificación",
+    "archiveError": "No se pudo mostrar el archivo",
+    "goalsProgressError": "No se pudo mostrar el progreso",
+    "nutritionError": "Los alimentos no se pueden mostrar",
+    "coachError": "No se pudo mostrar IA Coach",
+    "wellbeingError": "El bienestar no puede ser mostrado",
+    "economyError": "No se pudo mostrar la economía",
+    "signLanguageError": "No se pudo mostrar el lenguaje de señas",
+    "animalWorldError": "El mundo animal no podía ser mostrado",
+    "pregnancyFirstYearError": "El embarazo y el primer año no pudieron ser mostrados",
+    "search": {
+      "open": "Abrir búsqueda global",
+      "dialog": "Búsqueda global",
+      "input": "Buscar en Viktkollen",
+      "placeholder": "Buscar en Viktkollen…",
+      "results": "Resultados de búsqueda",
+      "noExactMatches": "No hay coincidencias exactas para «{{query}}». Estas son algunas alternativas.",
+      "resultCount_one": "{{count}} resultado",
+      "resultCount_other": "{{count}} resultados",
+      "groups": {
+        "popular": "Popular",
+        "quickActions": "Acciones rápidas",
+        "suggestions": "Sugerencias para ti",
+        "recent": "Usado recientemente"
+      }
+    }
+  },
+  "coach": {
+    "chatInput": {
+      "label": "Pregunta para IA Coach",
+      "placeholder": "Escribe una pregunta...",
+      "send": "Enviar",
+      "startVoice": "Iniciar conversación de voz",
+      "endVoice": "Fin de la conversación",
+      "aiVoice": "Voz IA"
+    },
+    "voiceStatus": {
+      "aborted": "Se interrumpió la entrada de voz. Toque el micrófono y vuelva a intentarlo.",
+      "listening": "Escuchando...",
+      "micDenied": "Se denegó el permiso de micrófono. Permita que el micrófono y vuelva a intentarlo.",
+      "micDeniedBrowser": "Se denegó el permiso de micrófono. Permita que el micrófono en el navegador y vuelva a intentarlo.",
+      "micNotFound": "No se encontró ningún micrófono.",
+      "micNotFoundType": "No se encontró ningún micrófono. Compruebe el micrófono o escriba su pregunta.",
+      "micStartFailed": "El micrófono no pudo arrancar. Toque e inténtelo de nuevo.",
+      "micStartFailedType": "El micrófono no pudo arrancar. Intente de nuevo o escriba su pregunta.",
+      "micUnavailable": "El micrófono no está disponible en este navegador.",
+      "noSpeech": "No oí nada. Toque el micrófono y vuelva a intentarlo.",
+      "processing": "Procesamiento...",
+      "requiresHttps": "El micrófono requiere HTTPS. Pruebe en una sesión segura del navegador.",
+      "speaking": "IA está hablando...",
+      "startingMic": "🎤  Empezando micrófono...",
+      "startingVoice": "Iniciando la voz de la IA...",
+      "unsupported": "La entrada de voz no es compatible en este navegador. Escriba su pregunta en su lugar."
+    },
+    "overlay": {
+      "aiLabel": "Claramente presentado como IA... no como una persona real.",
+      "clearChat": "Borrar el chat",
+      "close": "Cerrar IA Coach",
+      "endCall": "Fin de la llamada",
+      "end": "Fin",
+      "intro": "Tu entrenador personal de IA para el peso, hábitos y motivación.",
+      "mute": "Silenciar",
+      "online": "En línea",
+      "startVoice": "Pulsa para hablar",
+      "stopResponse": "Detener la respuesta",
+      "status": {
+        "ready": "Listo",
+        "listening": "Escucha...",
+        "speaking": "IA está hablando..."
+      },
+      "suggestionsTitle": "Preguntas de ejemplo",
+      "title": "Asesor de IA",
+      "unmute": "Enciende el micrófono",
+      "robotAlt": "Asesor de IA de Viktkollen"
+    }
+  },
+  "aiEar": {
+    "title": "Oído de IA",
+    "intro": "Grabe un sonido o elija un archivo de audio. El IA Ear le dice si suena como un pájaro, un discurso, una música o algo más.",
+    "record": "Registro",
+    "chooseFile": "Elegir archivo de audio",
+    "recordingStatus": "El micrófono está encendido, grabando en marcha.",
+    "recordingProgress": "Micrófono en – {{seconds}} s de {{max}} s",
+    "stopRecording": "Detener la grabación",
+    "preparing": "Preparando el audio...",
+    "ready": "La grabación está lista.",
+    "readyTruncated": "La grabación está lista (se analizan los primeros {{max}} segundos).",
+    "privacy": "Al pulsar Analyse, sólo se envía este sonido al servidor Viktkollen para su análisis. El audio no se guarda y nada de lo que se dice es transcrito.",
+    "analyze": "Analizar el sonido",
+    "newRecording": "Nueva grabación",
+    "analyzing": "El IA Ear está escuchando... la primera vez puede tomar hasta medio minuto.",
+    "cancel": "Cancelar",
+    "retry": "Inténtalo de nuevo",
+    "footer": "El IA Ear es un prototipo. El resultado es una indicación, no una garantía.",
+    "modes": {
+      "legend": "¿Qué quieres usar?",
+      "access": {
+        "free": "Libre",
+        "premium": "Prima"
+      },
+      "sound": {
+        "title": "Reconocimiento de sonido",
+        "description": "Reconocer los sonidos a tu alrededor",
+        "instruction": "Graba un sonido a tu alrededor.",
+        "resultLabel": "IA oye"
+      },
+      "bird": {
+        "title": "Sonidos de aves",
+        "description": "Trata de identificar la llamada del pájaro",
+        "instruction": "Graba el pájaro con la mayor claridad posible.",
+        "resultLabel": "Lo más probable",
+        "alternatives": "Alternativas",
+        "noBird": "Ningún pájaro fue claramente escuchado."
+      },
+      "speech": {
+        "title": "Discurso → texto",
+        "description": "Convertir el discurso en texto escrito",
+        "instruction": "Presiona Empieza a escuchar y hablar. El texto aparece mientras hablas."
+      },
+      "melody": {
+        "title": "Hum / cantar",
+        "description": "Analizar una melodía jorobada o cantada",
+        "instruction": "Hum o cantar la melodía.",
+        "sendNotice": "La melodía también se envía a ACRCloud para sugerir una canción y un artista. El audio no se almacena.",
+        "unavailable": "Hum / sing requiere Premium y no está disponible todavía. No se envía audio.",
+        "noMatch": "No se encontró ninguna melodía",
+        "noMatchBody": "Trate de tararear más claramente o grabar de nuevo.",
+        "unknownArtist": "Artista desconocido",
+        "footer": "ACRCloud – el resultado es una sugerencia.",
+        "autoStopHint": "La grabación se detiene por sí misma después de un par de segundos de silencio, o después de 20 segundos.",
+        "uncertainTitle": "Coincidencia incierta",
+        "uncertainBody": "La melodía se asemeja a varias canciones. Canta el coro de nuevo, un poco más, para una respuesta más segura.",
+        "suggestions": "Tal vez uno de estos"
+      }
+    },
+    "dictation": {
+      "start": "Empieza a escuchar",
+      "stop": "Deja de escuchar.",
+      "listening": "Escucha...",
+      "done": "Hecho. El texto está bajo transcripción.",
+      "transcriptTitle": "Transcripción",
+      "empty": "Aún no hay mensaje.",
+      "interimLabel": "He oído ahora mismo",
+      "copy": "Copiar el texto",
+      "copied": "Copiado",
+      "copyFailed": "El texto no pudo ser copiado.",
+      "clear": "Limpiar el texto",
+      "cleared": "El texto está despejado.",
+      "privacy": "El navegador convierte el discurso en texto. Dependiendo del navegador, el audio puede ser procesado por el proveedor del navegador, por ejemplo Google o Apple. Viktkollen no recibe el audio y no almacena el texto.",
+      "unsupported": {
+        "title": "Discurso → texto no es compatible con este navegador",
+        "body": "Prueba Chrome, Edge o Safari."
+      },
+      "errors": {
+        "aborted": {
+          "title": "Se interrumpió la escucha",
+          "body": "Pulsa Inténtalo de nuevo."
+        },
+        "audio_capture": {
+          "title": "No se encontró ningún micrófono.",
+          "body": "Revise el micrófono y vuelva a intentarlo."
+        },
+        "insecure": {
+          "title": "Discurso → texto necesita una conexión segura",
+          "body": "Abre la aplicación en https."
+        },
+        "mic_denied": {
+          "title": "El micrófono no está permitido",
+          "body": "Permitir que el micrófono en el navegador para utilizar el discurso → texto."
+        },
+        "no_speech": {
+          "title": "No se escuchó ningún discurso.",
+          "body": "Hable un poco más cerca del micrófono y vuelva a intentarlo."
+        },
+        "recognition_error": {
+          "title": "El reconocimiento del discurso no funcionó",
+          "body": "Inténtalo de nuevo en un momento."
+        },
+        "unsupported": {
+          "title": "Discurso → texto no es compatible con este navegador",
+          "body": "Prueba Chrome, Edge o Safari."
+        }
+      }
+    },
+    "hints": {
+      "closer": "Grabar más cerca del sonido.",
+      "lessNoise": "Reduzca el ruido de fondo.",
+      "tryAgain": "Intenta de nuevo."
+    },
+    "results": {
+      "insufficient_signal": {
+        "title": "La señal de audio no fue suficiente.",
+        "body": "El IA Ear escuchó muy poco como para decir nada."
+      },
+      "unavailable": {
+        "title": "El IA Ear no está disponible temporalmente",
+        "body": "Inténtalo de nuevo en un momento."
+      },
+      "speech": {
+        "title": "El oído IA escucha principalmente el discurso",
+        "body": "El IA Ear no transcribe lo que se dice y no guarda audio."
+      },
+      "music": {
+        "title": "El IA Ear escucha principalmente música"
+      },
+      "human_whistle": {
+        "title": "Suena más como un silbido humano que como una llamada de pájaro."
+      },
+      "mixed_scene": {
+        "title": "Hay varios sonidos a la vez",
+        "body": "El IA Ear no puede señalar una sola fuente."
+      },
+      "species_lead": {
+        "title": "Suena como un pájaro"
+      },
+      "species_caveat": {
+        "title": "El IA Ear escucha algo parecido a un pájaro, pero la especie es incierta",
+        "body": "Esto es sólo un posible candidato."
+      },
+      "unresolved": {
+        "title": "El IA Ear no pudo identificar el sonido de forma suficientemente fiable",
+        "body": "Pruebe una nueva grabación, preferiblemente más cerca del sonido."
+      }
+    },
+    "errors": {
+      "aborted": {
+        "title": "El análisis fue cancelado.",
+        "body": "No se guardó nada."
+      },
+      "auth_required": {
+        "title": "Inicia sesión para usar el oído IA",
+        "body": "Tu sesión necesita ser renovada."
+      },
+      "consent_required": {
+        "title": "No se pudo aprobar el audio para su análisis",
+        "body": "Intenta de nuevo."
+      },
+      "invalid_audio": {
+        "title": "El audio no se pudo leer",
+        "body": "Intenta grabar de nuevo."
+      },
+      "invalid_response": {
+        "title": "Algo salió mal.",
+        "body": "Inténtalo de nuevo en un momento."
+      },
+      "network": {
+        "title": "Sin conexión al servicio",
+        "body": "Compruebe su conexión y vuelva a intentarlo."
+      },
+      "not_available": {
+        "title": "El IA Ear no está disponible ahora mismo",
+        "body": "Inténtalo de nuevo más tarde."
+      },
+      "offline": {
+        "title": "Pareces estar fuera de línea.",
+        "body": "Conéctate a Internet y vuelve a intentarlo."
+      },
+      "rate_limited": {
+        "title": "Demasiados intentos en este momento",
+        "body": "Espera un momento y vuelve a intentarlo."
+      },
+      "service_unavailable": {
+        "title": "El IA Ear no está disponible temporalmente",
+        "body": "Inténtalo de nuevo en un momento."
+      },
+      "timeout": {
+        "title": "Tardó demasiado tiempo.",
+        "body": "El primer análisis puede llevar más tiempo."
+      },
+      "too_large": {
+        "title": "El archivo de audio es demasiado grande",
+        "body": "Elija una grabación más corta."
+      },
+      "unsupported_media": {
+        "title": "El formato de audio no es compatible",
+        "body": "Grabe directamente en la aplicación o elija otro archivo de audio."
+      },
+      "audio_empty": {
+        "title": "No se encontró audio",
+        "body": "Intenta grabar de nuevo."
+      },
+      "audio_too_large": {
+        "title": "El archivo de audio es demasiado grande",
+        "body": "Elija una grabación más corta."
+      },
+      "audio_too_short": {
+        "title": "La grabación es demasiado corta.",
+        "body": "Grabar al menos medio segundo."
+      },
+      "audio_undecodable": {
+        "title": "El audio no se pudo leer",
+        "body": "Elige otro archivo o graba directamente en la aplicación."
+      },
+      "audio_unsupported": {
+        "title": "El audio no está soportado en este navegador",
+        "body": "Prueba con otro navegador."
+      },
+      "mic_denied": {
+        "title": "El micrófono no está permitido",
+        "body": "Permitir que el micrófono en su navegador para grabar."
+      },
+      "mic_unavailable": {
+        "title": "No se encontró ningún micrófono.",
+        "body": "En su lugar, puede elegir un archivo de audio."
+      },
+      "not_audio": {
+        "title": "Eso no es un archivo de audio.",
+        "body": "Elija un archivo de audio."
+      }
+    }
+  },
+  "social": {
+    "room": {
+      "eyebrow": "Cálmate juntos.",
+      "title": "La Sala",
+      "intro": "Una habitación tranquila para los amigos, no una alimentación social.",
+      "tabsAria": "Vistas a la habitación",
+      "tabs": {
+        "room": "Sala",
+        "chat": "Charla",
+        "watch": "Mira.",
+        "board": "Junta",
+        "games": "Juegos"
+      },
+      "loading": "Cargando información social conectada.",
+      "welcome": {
+        "title": "Bienvenido.",
+        "body": "Vayan a su propio ritmo. Hay lugar para un saludo tranquilo o una pausa.",
+        "chatShortcut": "Ir a la charla de amigos"
+      },
+      "friends": {
+        "title": "Amigos en línea",
+        "online_one": "{{count}} amigo está en línea ahora mismo.",
+        "online_other": "{{count}} amigos están en línea ahora mismo.",
+        "empty": "Ningún amigo verificado está en línea ahora mismo."
+      },
+      "clips": {
+        "title": "Los clips de esta noche",
+        "body": "Los clips oficiales aparecerán aquí cuando se añadan."
+      },
+      "tip": {
+        "title": "Consejo diario de calma",
+        "body": "Una pequeña pausa entre las cosas puede hacer que la noche sea más suave."
+      },
+      "board": {
+        "title": "La Junta",
+        "preview": "Información importante de Viktkollen se recopila aquí.",
+        "fromViktkollen": "De Viktkollen",
+        "body": "Características, instrucciones, seguridad, privacidad, información operativa y desafíos voluntarios aparecen aquí."
+      },
+      "restMode": {
+        "title": "Modo de descanso",
+        "body": "Reduzca la estimulación sin cambiar sus datos de salud o actividad.",
+        "on": "El modo de descanso está activado",
+        "off": "Activar el modo de descanso"
+      },
+      "chat": {
+        "title": "Charla de amigos",
+        "disconnected": "El chat de amigos no está conectado. No aparecen amigos, mensajes o indicadores de mecanografía sin datos en vivo.",
+        "ready": "El chat de amigos está conectado con datos reales.",
+        "empty": "Aún no hay conversaciones reales.",
+        "surface": "Esta superficie está lista para charlas privadas y grupales cuando se habilita la vida social.",
+        "actionsAria": "Opciones de charla",
+        "private": "Chat privado",
+        "group": "Chat grupal",
+        "safety": "Bloquear e informar son características de seguridad para futuros chats."
+      },
+      "watch": {
+        "title": "Observad juntos.",
+        "body": "Todavía no hay contenido conectado.",
+        "safety": "Aquí solo pueden aparecer enlaces oficiales o incrustaciones gestionados por el administrador. No se pueden raspar, descargar ni reproducir automáticamente."
+      },
+      "games": {
+        "title": "Los juegos vienen más tarde.",
+        "body": "Aquí solo aparecerán actividades voluntarias y tranquilas. No hay juegos, cambios en los datos de salud o recompensas manipulativas activas."
+      },
+      "player": {
+        "aria": "Jugador de ambiente tranquilo",
+        "title": "Paisaje sonoro tranquilo",
+        "trackName": "Paisaje sonoro seleccionado: {{track}}",
+        "unavailable": "No hay archivos de audio locales aprobados disponibles. La reproducción está desactivada.",
+        "play": "Reproducir el paisaje sonoro seleccionado",
+        "pause": "Pausa el paisaje sonoro seleccionado",
+        "volume": "Volumen",
+        "tracksAria": "Elegir el paisaje sonoro",
+        "timerAria": "Elija el temporizador de sueño",
+        "timer": "{{minutes}} minutos",
+        "tracks": {
+          "rain": "Lluvia",
+          "ocean": "Océano",
+          "piano": "Piano suave",
+          "spa": "Spa"
+        }
+      }
+    },
+    "addFriend": "Añadir amigo",
+    "chat": "Charla",
+    "friend": "Amigo",
+    "friends": "Amigos",
+    "noConversationYet": "Todavía no hay conversación.",
+    "openChat": "Abrir el chat",
+    "signInToUse": "Inicia sesión para entrenar y permanecer conectados.",
+    "trainingTogether": "Entrene y manténgase conectados.",
+    "close": "Cerrar",
+    "titleFriends": "Amigos",
+    "titleChat": "Charla",
+    "navAria": "Navegación social",
+    "tabs": {
+      "chat": "Charla",
+      "friends": "Amigos",
+      "requests": "Solicitudes",
+      "search": "Buscar",
+      "profile": "Perfil"
+    },
+    "signInCloud": "Inicia sesión con una cuenta en la nube para usar amigos y chat. No se muestran datos falsos.",
+    "loadFriendsError": "No se pudo cargar a los amigos.",
+    "loadChatError": "No se pudo cargar el chat.",
+    "searchFailed": "La búsqueda falló.",
+    "sendFailed": "No se pudo enviar el mensaje.",
+    "openChatFailed": "No se pudo abrir el chat.",
+    "saveProfileFailed": "No se pudo guardar el perfil.",
+    "createPublicProfile": "Crear un perfil social público. El correo electrónico y el teléfono no se copian.",
+    "currentUsername": "Corriente: @{{username}}",
+    "username": "Nombre de usuario",
+    "displayName": "Mostrar nombre",
+    "saveProfile": "Guardar perfil",
+    "noChatsYet": "Aún no hay chats. Añade un amigo para empezar.",
+    "remove": "Eliminar",
+    "block": "Bloque",
+    "emptyFriends": "Entrene y manténgase conectados.",
+    "request": "Solicitud",
+    "accept": "Aceptar",
+    "decline": "Rechazar",
+    "sentTo": "Enviado a {{name}}",
+    "waiting": "Esperando",
+    "noRequests": "No hay peticiones de amigos.",
+    "searchUsername": "Buscar nombre de usuario",
+    "searchPlaceholder": "nombre de usuario",
+    "search": "Buscar",
+    "sendFriendRequest": "Enviar solicitud de amistad",
+    "noMessages": "Aún no hay mensajes.",
+    "message": "Mensaje",
+    "messagePlaceholder": "Escribe un mensaje",
+    "send": "Enviar"
+  },
+  "onboarding": {
+    "title": "Crea tu perfil",
+    "welcome": "Te damos la bienvenida a Viktkollen",
+    "copy": "Responde unas preguntas breves u omite lo que prefieras completar después. El perfil solo se usa para ofrecer objetivos, consejos y contexto de escaneo más relevantes.",
+    "canChangeLater": "puedes cambiarlo después",
+    "fields": {
+      "name": "Nombre",
+      "goal": "¿Qué quieres conseguir?",
+      "startWeight": "Peso inicial",
+      "goalWeight": "Peso objetivo",
+      "height": "Altura",
+      "activityLevel": "Nivel de actividad",
+      "dietaryPreference": "Preferencia alimentaria",
+      "avoidances": "Alimentos que evitas"
+    },
+    "placeholders": {
+      "name": "Tu nombre",
+      "startWeight": "p. ej., 91,8",
+      "goalWeight": "p. ej., 84,0",
+      "height": "p. ej., 178",
+      "avoidances": "p. ej., cacahuetes, cerdo"
+    },
+    "dietary": {
+      "omnivore": "Omnívora",
+      "vegetarian": "Vegetariana",
+      "vegan": "Vegana",
+      "pescatarian": "Pescetariana",
+      "custom": "Personalizada"
+    }
+  },
+  "bodyScan": {
+    "title": "Exploración corporal",
+    "yourBodyToday": "Tu cuerpo hoy",
+    "close": "Cerrar",
+    "original": "Original",
+    "simulation": "Simulación",
+    "showOriginal": "Mostrar original",
+    "compareAria": "Original o simulación",
+    "days7": "7 días",
+    "days30": "30 días",
+    "noWeightChangeYet": "No hay cambio de peso que comparar todavía.",
+    "noCurrentWeight": "No hay peso actual registrado.",
+    "bodyChange": "Cambio corporal",
+    "latestScan": "Última exploración",
+    "unknownDate": "fecha desconocida",
+    "confidence": "Confianza",
+    "noPreviousScan": "No hay escaneo previo.",
+    "start": "Comienzo",
+    "now": "Ahora",
+    "goal": "Objetivo",
+    "ago30": "Hace 30 días",
+    "weight": "Peso",
+    "aiEstimateNote": "Las mediciones estimadas por IA son aproximadas, no exactas.",
+    "noPreviousCompare": "No hay exploración previa con la que comparar.",
+    "strengths": "Puntos fuertes",
+    "followUp": "Seguimiento",
+    "basis": "Base",
+    "bodyComposition": "Composición corporal",
+    "posture": "Postura",
+    "safetyFallback": "Un análisis de imagen es una estimación visual, no una medición médica.",
+    "weatherClothes": "Clima y ropa",
+    "weatherTodayIn": "El tiempo hoy en {{city}}",
+    "weatherToday": "El tiempo hoy",
+    "feelsLike": "Se siente como",
+    "wind": "Viento",
+    "rainRisk": "Riesgo de lluvia",
+    "sunrise": "Amanecer",
+    "sunset": "Ocaso",
+    "missing": "falta",
+    "noWeather": "No hay datos meteorológicos.",
+    "clothingAdvice": "Consejo de ropa",
+    "changeBody": "Cambio de cuerpo",
+    "bodyShape": "MANUFACTURA DEL CUERPO",
+    "visualSimulation": "SIMULACIÓN VISUAL",
+    "reset": "Reiniciar",
+    "smartCamera": "Cámara inteligente",
+    "smartCameraNote": "La cámara inteligente es un centro separado para la memoria, el equipo y la comprobación final. La vista previa en vivo se mantiene local.",
+    "openSmartCamera": "Abrir cámara inteligente",
+    "openBodyScan": "Abrir escaneo corporal",
+    "newScan": "Nuevo escaneo",
+    "startScan": "Iniciar escaneo",
+    "back": "Atrás",
+    "stopCamera": "Parar la cámara",
+    "startCamera": "Inicio de la cámara",
+    "flipCamera": "Voltear la cámara",
+    "standInFrame": "Estoy correctamente en el marco",
+    "chooseImage": "Elegir imagen",
+    "chooseImageAria": "Elija la imagen {{label}} para el análisis del cuerpo de IA",
+    "cancelCountdown": "Cancelar cuenta regresiva",
+    "zoom": "Ampliar",
+    "anglesAria": "Ángulos de imagen",
+    "frameHint": "Coloca todo tu cuerpo en el marco.",
+    "doneSuffix": "hecho",
+    "cameraPreviewAria": "Previsualización de la cámara para el escaneo corporal",
+    "card": {
+      "timelineFilters": {
+        "all": "Todos",
+        "days30": "Últimos 30 días",
+        "days90": "Últimos 90 días"
+      },
+      "markers": {
+        "shoulders": {
+          "label": "Los hombros",
+          "text": "Rastreado con el tiempo."
+        },
+        "arms": {
+          "label": "Armas",
+          "text": "Aún no hay un cambio claro."
+        },
+        "waist": {
+          "label": "Cintura",
+          "text": "Posible evolución positiva."
+        },
+        "hips": {
+          "label": "Hipas",
+          "text": "Rastreado con el tiempo."
+        },
+        "legs": {
+          "label": "Piernas",
+          "text": "Aún no hay un cambio claro."
+        }
+      },
+      "fields": {
+        "status": "Situación",
+        "source": "Fuente",
+        "generatedAt": "Generado",
+        "summary": "Resumen",
+        "bodyComposition": "Composición corporal",
+        "posture": "Postura",
+        "strengths": "Puntos fuertes",
+        "improvementAreas": "Esferas de mejora",
+        "recommendations": "Recomendaciones",
+        "nextSteps": "Próximas medidas",
+        "comparison": "Cambio desde el último análisis",
+        "progressSummary": "Progresos realizados con el tiempo",
+        "visualConsistency": "Consistencia de la imagen",
+        "routineFeedback": "Comentarios de rutina",
+        "monthlyFocus": "Concéntrate este mes",
+        "confidenceLevel": "Nivel de confianza",
+        "limitations": "Limitaciones",
+        "sourceReason": "Fuente del resultado",
+        "confidence": "Confianza",
+        "safetyNote": "Nota de seguridad"
+      },
+      "goals": {
+        "nextPhoto": "Tome la siguiente foto en un plazo de 7 días.",
+        "sameAngle": "Mantenga el mismo ángulo de la foto.",
+        "logWeight": "Sigue registrando tu peso regularmente.",
+        "keepHabits": "Continúe con su dieta actual y sus hábitos de ejercicio."
+      },
+      "sourceLabel": {
+        "ai": "Estimación de IA",
+        "failed": "No se pudo analizar",
+        "local": "Estimación local",
+        "measured": "Medido por ti",
+        "mock": "Demostración"
+      },
+      "aiStatus": {
+        "none": "Aún no se ha realizado ningún análisis",
+        "aiOk": "Análisis de IA completado",
+        "mockUsed": "Se usó una demostración"
+      },
+      "nextRec": {
+        "first": "Crear el primer análisis",
+        "wait": "Espera unos días.",
+        "due": "Es hora de un nuevo análisis"
+      },
+      "emptyInsights": {
+        "create": "Cree un análisis para obtener información personal.",
+        "twoPhotos": "Dos fotos dan mejor base.",
+        "consistent": "Las fotos consistentes hacen las comparaciones más claras."
+      },
+      "timelineSummaryFallback": "Análisis completo.",
+      "status": {
+        "waitingPhotos": "Esperando fotos",
+        "waitingAngles": "Esperando tres ángulos",
+        "ready": "Listo para analizar",
+        "analyzing": "Analizando el cuerpo...",
+        "aiAnalyzing": "IA analizando...",
+        "preparing": "Preparando imágenes...",
+        "sending": "Enviando análisis...",
+        "resultReady": "El resultado está listo.",
+        "complete": "Análisis completo",
+        "failed": "Falló el análisis",
+        "freeLimit": "Límite gratuito alcanzado",
+        "couldNotComplete": "El análisis no pudo completarse."
+      },
+      "freeLimitReason": "Has alcanzado el límite gratuito de tres análisis locales. Premium podrá desbloquearse más adelante.",
+      "summaryWithDate": "Último análisis guardado {{date}}. Las comparaciones mejoran cuando se toman fotos regularmente.",
+      "summaryEmpty": "Cuando guardas tu primer análisis aparece aquí con historia y comparaciones a lo largo del tiempo.",
+      "nextSteps": {
+        "first1": "Crea tu primer análisis.",
+        "first2": "Tome fotos desde el frente, lado y espalda.",
+        "first3": "Utilice el mismo lugar e iluminación desde el principio.",
+        "second1": "Crear otro análisis para la comparación.",
+        "second2": "Tome los tres ángulos siguientes con la misma luz y distancia.",
+        "second3": "Guarde el siguiente análisis en 7 días.",
+        "ongoing1": "Sigue rastreando el progreso semanalmente.",
+        "ongoing2": "Compara fotos con la misma luz y distancia.",
+        "ongoing3": "Mantenga la rutina simple y consistente."
+      },
+      "weeklyFocusFallback": "Concéntrate en cambios constantes, no en resultados rápidos.",
+      "quality": {
+        "frontLabel": "Foto delantera seleccionada",
+        "sideLabel": "Foto lateral seleccionada",
+        "backLabel": "Foto de atrás seleccionada",
+        "done": "Hecho",
+        "waiting": "Esperando",
+        "sameLightLabel": "Misma iluminación recomendada",
+        "sameLightValue": "Para mejores comparaciones",
+        "sameDistanceLabel": "Se recomienda la misma distancia",
+        "sameDistanceValue": "Para un análisis más uniforme",
+        "similarClothesLabel": "Ropa similar recomendada",
+        "similarClothesValue": "Para un cambio más claro"
+      },
+      "progress": {
+        "weightTrend": "Tendencia del peso",
+        "weightTrendValue": "Tendencia estable",
+        "frequency": "Frecuencia de análisis",
+        "noDataYet": "Aún no se dispone de datos",
+        "needsAnother": "Necesita uno más.",
+        "goodRhythm": "Buen ritmo",
+        "photoConsistency": "Consistencia de la foto",
+        "trackedOverTime": "Seguimiento a lo largo del tiempo",
+        "buildRoutine": "Construir rutina",
+        "nextRecommended": "Análisis recomendado a continuación",
+        "afterFirst": "Después del primer análisis",
+        "totalAnalyses": "Total de análisis",
+        "latestDate": "Última fecha",
+        "noAnalysis": "Sin análisis",
+        "daysSinceLatest": "Días desde la última",
+        "daysCount": "{{count}} días",
+        "noAnalysisYet": "Aún no se ha realizado ningún análisis",
+        "aiResults": "Resultados de la IA",
+        "mockResults": "Resultados de demostración locales",
+        "averageInterval": "Intervalo medio",
+        "nextAnalysis": "Siguiente análisis",
+        "createFirst": "Crear primero"
+      },
+      "errors": {
+        "imageReadFailed": "La imagen no se pudo leer. Elija otra imagen y vuelva a intentarlo.",
+        "imageReadAborted": "La lectura de imágenes fue cancelada. Seleccione la imagen de nuevo para continuar.",
+        "quotaUnavailable": "El cupo del cuerpo-escaneo no se pudo cargar. Pruebe de nuevo en un momento.",
+        "freeLimitKeep": "Límite gratuito alcanzado. Puede mantener el historial o eliminar un análisis. El pago se transmite más tarde a través de backend verificado.",
+        "missingFront": "Falta la foto frontal.",
+        "missingSide": "Falta la foto lateral.",
+        "missingBack": "Falta la foto de atrás.",
+        "freeLimitDelete": "Límite gratuito alcanzado. Borrar un análisis o esperar a que se verifique el acceso premium.",
+        "couldNotStart": "El análisis no pudo iniciarse.",
+        "approveFirst": "Aprobar primero el análisis de IA.",
+        "freeLimitDev": "Límite gratuito alcanzado. Previsualización Dev sólo se puede utilizar en el modo de desarrollo.",
+        "exportFailed": "Exportar falló. Intente de nuevo o compruebe la configuración de descarga de su navegador.",
+        "noImportFile": "Ningún archivo de importación seleccionado.",
+        "importFailed": "Falló la importación. Asegúrese de que el archivo es un archivo JSON exportado de Viktkollen.",
+        "importReadFailed": "No se pudo leer el archivo de importación. Elija otro archivo JSON e inténtelo de nuevo.",
+        "importAborted": "La importación fue cancelada. Seleccione el archivo de nuevo para continuar."
+      },
+      "demoPhotos": {
+        "back": "Demo volver",
+        "front": "Frente de demostración",
+        "side": "Demostración de perfil"
+      },
+      "demo": {
+        "bodyComposition": "El análisis de demostración muestra una visión general estable sin valores médicos exactos.",
+        "comparisonBetter": "Hay un nuevo punto de comparación en la línea de tiempo.",
+        "comparisonNextFocus": "Tome el siguiente análisis de demostración con la misma iluminación y distancia.",
+        "comparisonUnchanged": "El resultado de la demo no hace ninguna afirmación de cambio visual de confianza.",
+        "firstBetter": "Este es tu primer análisis.",
+        "firstNextFocus": "Crear un nuevo análisis en una semana.",
+        "firstUnchanged": "No hay análisis previos que comparar con todavía.",
+        "confidenceMedium": "Medio",
+        "improvement": "Mantenga la rutina de fotos simple y consistente.",
+        "limitation": "El análisis de demostración no utiliza la interpretación de imágenes reales.",
+        "monthlyFocus": "Construir una rutina constante con análisis recurrentes.",
+        "nextStep": "Tome el siguiente análisis en unos 7 días.",
+        "posture": "La postura se evalúa como estable en el resultado de demostración.",
+        "progressSummary": "El análisis de demostración crea un punto de prueba para el progreso con el tiempo.",
+        "routineFeedback": "La regularidad hace que la línea de tiempo sea más útil cuando el análisis real está conectado.",
+        "safetyNote": "El análisis de imágenes es una estimación de IA y no sustituye una escala, una cinta o una evaluación médica.",
+        "strength": "Usted tiene un punto de partida claro para futuras comparaciones.",
+        "summary": "El análisis de demostración se crea y se muestra como una estimación local.",
+        "visualConsistency": "La misma luz, distancia y ángulo dan mejores comparaciones."
+      },
+      "heading": {
+        "eyebrow": "Análisis corporal de la IA",
+        "title": "Primer paso",
+        "intro": "La IA estimará la composición corporal y rastreará los cambios a lo largo del tiempo.",
+        "hubTitle": "Exploración corporal",
+        "modeLabel": "Elegir el modo",
+        "modePhoto": "Toma dos fotos.",
+        "modeVideo": "Análisis de vídeo guiado (pronto)",
+        "modeVideoHint": "Un flujo guiado para dos fotos, frontal y lateral. No se almacena ni se envía ningún vídeo.",
+        "modeVideoComingSoonTitle": "Análisis de vídeo guiado – viene en una actualización futura",
+        "modeVideoComingSoonBody": "Este modo no está terminado todavía y no se iniciará la cámara. Utilice Tome dos fotos para un escaneo de cuerpo de trabajo hoy.",
+        "modeVideoBackToPhoto": "Volver a Tomar dos fotos",
+        "modePhotoHint": "Tome o elija dos imágenes usted mismo, un ángulo a la vez.",
+        "privacySummary": "Privacidad y almacenamiento",
+        "moreInfo": "Más información",
+        "devTools": "Herramientas de prueba Dev",
+        "createDemoAria": "Crear análisis de demostración en modo desarrollador",
+        "createDemo": "Crear análisis de demostración",
+        "resultEyebrow": "Resultado",
+        "resultFailedTitle": "El análisis no pudo completarse",
+        "errorBadge": "Error",
+        "retry": "Inténtalo de nuevo",
+        "compareEyebrow": "Comparación",
+        "compareTitle": "Cambio desde el último análisis",
+        "compareActive": "Activa",
+        "compareFirst": "Primero",
+        "firstAnalysis": "Este es tu primer análisis.",
+        "previousScans": "🕘  Exploraciones anteriores"
+      },
+      "privacy": {
+        "localCamera": "La cámara en vivo se ejecuta localmente. La aplicación no guarda el vídeo original; se necesitan dos fotogramas.",
+        "sendImages": "Al pulsar Analyze body, dos archivos de imagen se envían al `/api/body-analysis` de Viktkollen sobre HTTPS mientras se inicia la sesión.",
+        "openai": "El servidor envía las imágenes a OpenAI Vision para su análisis. La clave de API no está en la interfaz.",
+        "localHistory": "Los resultados de análisis y las previsualizaciones de imágenes se pueden guardar en el historial local del dispositivo. No se implementa almacenamiento en la nube para imágenes corporales.",
+        "exportDelete": "Exportar elimina los datos de imágenes y mantiene sólo los nombres de archivos. Eliminar un escaneo elimina las previsualizaciones locales; las llamadas de IA ya enviadas no se pueden recordar."
+      }
+    },
+    "uploader": {
+      "cameraOffTapToStart": "La cámara está apagada. Pulsa Iniciar cámara o elige una imagen.",
+      "cameraStopped": "La cámara se detuvo.",
+      "countdownCancelled": "Cuenta atrás cancelada.",
+      "noLiveCamera": "La cámara en vivo no es compatible aquí. Utilice Elegir imagen como copia de seguridad.",
+      "cameraReady": "Cámara lista. Coloque todo su cuerpo en el marco para {{label}}.",
+      "retakeAngle": "Retoma {{label}}.",
+      "selectedAngle": "Ángulo seleccionado: {{label}}.",
+      "lightPending": "La iluminación se mide cuando la imagen de la cámara está lista.",
+      "frameNotReady": "La imagen de la cámara aún no está lista.",
+      "saveFailed": "La imagen no se pudo guardar. Inténtalo de nuevo.",
+      "reencodeFailed": "La imagen no se pudo preparar. Elija una imagen JPEG o PNG.",
+      "doneNextReady": "{{doneLabel}}. El siguiente paso está listo.",
+      "startOrChoose": "Inicie la cámara o elija una imagen para el ángulo seleccionado.",
+      "takePlace": "Póngase en posición para {{label}}.",
+      "openScanAria": "Escáner abierto para {{label}}",
+      "step": "Medida {{n}}",
+      "active": "Activa",
+      "waiting": "Esperando",
+      "selectedImageAlt": "Imagen seleccionada {{label}}",
+      "retakeAria": "Retoma {{label}}",
+      "retake": "Retoma",
+      "analyzeAria": "Iniciar análisis del cuerpo de IA con las dos fotos seleccionadas",
+      "analyze": "Analizar el cuerpo"
+    },
+    "guided": {
+      "title": "Exploración corporal",
+      "stepPrepare": "1 de 4 · Preparar",
+      "stepFront": "2 de 4 · Frente",
+      "stepSide": "3 de 4 · Lados",
+      "stepBack": "4 de 5 · Atrás",
+      "stepReview": "4 de 4 · Revisión",
+      "voiceOn": "Guía de voz sobre",
+      "voiceOff": "Guía de voz apagada",
+      "tipPlaceStable": "Coloque su teléfono constantemente",
+      "tipDistance": "Párate a 1-1,5 m de distancia",
+      "tipBackUp": "Retrocede hasta que todo tu cuerpo sea visible",
+      "timerLabel": "Elija el temporizador para la foto automática",
+      "timerOption": "{{seconds}} seg",
+      "timerPill": "Temporizador: {{seconds}} seg",
+      "startCamera": "Encienda la cámara",
+      "startCameraHint": "La cámara se abre después del toque. Aún no se ha tomado ninguna foto.",
+      "systemTitle": "Exploración corporal",
+      "systemProgress": "{{taken}} de {{total}} fotos",
+      "systemSaved": "guardado",
+      "systemPromptFirst": "Tome la foto {{label}} con la cámara de su teléfono.",
+      "systemPromptNext": "Foto siguiente: {{label}}",
+      "systemOpenCamera": "Abrir la cámara",
+      "systemTakeNext": "Toma la siguiente foto.",
+      "systemAllDone": "Dos fotos están listas, puedes analizarlas cuando quieras.",
+      "systemCancelled": "No se tomó ninguna foto. Las fotos ya tomadas se guardan. Toque suavemente para abrir la cámara de nuevo.",
+      "systemFailed": "La foto no se pudo leer. Pulsa para intentarlo de nuevo.",
+      "systemChooseAngle": "Elija el ángulo del cuerpo que desea fotografiar",
+      "systemPoseFront": "Coloque el teléfono para que todo su cuerpo esté en el marco, de la cabeza a los pies. Párese recto y mantenga los brazos ligeramente lejos de su cuerpo.",
+      "systemPoseSide": "Coloque el teléfono para que todo su cuerpo esté en el marco, de la cabeza a los pies. Póngase de pie con su lado hacia la cámara, párese recto y sostenga sus brazos ligeramente lejos de su cuerpo.",
+      "systemTakePhoto": "Tomar una foto – {{label}}",
+      "systemRetakePhoto": "Foto de retoque – {{label}}",
+      "captureModeLabel": "Elige cómo quieres tomar las fotos",
+      "openCamera": "Abrir la cámara",
+      "guidedScan": "Exploración guiada",
+      "nativeCameraHint": "Tome dos fotos con la cámara de su teléfono: frontal y lateral.",
+      "nativeTake": "Cámara abierta – {{label}}",
+      "nativeRetake": "Retoma – {{label}}",
+      "nativeReview": "Repasar fotos",
+      "voiceFront": "Quédate quieto, toca cuando estés listo.",
+      "voiceSide": "Póngase de pie con su lado hacia la cámara. Póngase derecho y sostenga los brazos ligeramente lejos de su cuerpo.",
+      "voiceBack": "Gira a la derecha otra vez.",
+      "frontPrompt": "Quédate quieto, toca cuando estés listo.",
+      "startFirstPhoto": "Iniciar la primera foto",
+      "startFirstPhotoHint": "Sólo empiezas la primera foto tú mismo.",
+      "takePhotoNow": "Toma una foto ahora.",
+      "sideAutoHint": "Una vez en su lugar, la foto se toma automáticamente en {{seconds}} seg.",
+      "backInstruction": "Quédate con la espalda a la cámara.",
+      "backAutoHint": "La foto se toma automáticamente en {{seconds}} seg.",
+      "pause": "Pausa",
+      "resume": "Continuación",
+      "noButtonNeeded": "No se necesita ningún botón. La foto se toma automáticamente.",
+      "reviewTitle": "Tus fotos",
+      "retakeAll": "Volver a tomar fotos",
+      "retakeOne": "Retoma {{label}}",
+      "weightNote": "El peso no se mide a partir de una foto. Los resultados se muestran como estimaciones y rangos.",
+      "zoomAria": "Ampliar",
+      "cameraOff": "La cámara está apagada.",
+      "framePlacementAria": "Marco de colocación - asegúrese de que todo el cuerpo está a la vista"
+    }
+  },
+  "journey": {
+    "sectionLabel": "Mi viaje",
+    "eyebrow": "Mi viaje",
+    "title": "Mi viaje",
+    "intro": "Su peso, comida, cuerpo, actividad y progreso, todo en un solo lugar.",
+    "tabsAriaLabel": "Mi viaje - navegación",
+    "tabs": {
+      "overview": "Sinopsis",
+      "progress": "Peso y cuerpo",
+      "nutrition": "Alimentos",
+      "activity": "Actividad",
+      "goals": "Objetivos y hábitos",
+      "coach": "Entrenador",
+      "reports": "Informes"
+    },
+    "overview": {
+      "latestWeight": "Peso más alto",
+      "goalWeight": "Objetivo de peso",
+      "caloriesToday": "Calorías hoy",
+      "proteinToday": "Proteína de hoy",
+      "trend": "Tendencia",
+      "continueTitle": "Continúe su viaje"
+    },
+    "progressError": "No se pudo mostrar peso y cuerpo",
+    "nutritionError": "Los alimentos no se pueden mostrar",
+    "activityError": "No se pudo mostrar la actividad",
+    "goalsError": "No se pudieron mostrar metas y hábitos",
+    "coachError": "Coach no se puede mostrar",
+    "reportsError": "No se pudieron presentar los informes"
+  },
+  "progress": {
+    "sectionLabel": "Progreso y estadísticas",
+    "eyebrow": "Progreso",
+    "centerEyebrow": "Centro de progreso",
+    "title": "Progreso",
+    "intro": "Abre una carpeta en lugar de desplazarte por todo de una vez.",
+    "foldersAria": "Carpetas de progreso",
+    "back": "Atrás",
+    "loading": "Cargando carpeta…",
+    "folders": {
+      "weight": {
+        "title": "Peso",
+        "description": "Registro, estadísticas y tendencia"
+      },
+      "bodyScan": {
+        "title": "Escaneo corporal",
+        "description": "Cámara, guía de pose y resultados"
+      },
+      "photos": {
+        "title": "Fotos de progreso",
+        "description": "Historial, filtros y antes/después"
+      },
+      "reports": {
+        "title": "Informes e ideas",
+        "description": "Informe mensual e ideas de IA"
+      },
+      "tools": {
+        "title": "Historial y herramientas",
+        "description": "Filtros, exportación y otras herramientas"
+      }
+    },
+    "summaries": {
+      "noWeight": "Sin peso",
+      "noChange": "Sin cambio",
+      "totalChange": "{{change}} en total",
+      "latestScanExists": "Hay un escaneo reciente",
+      "noScanYet": "Aún no hay escaneo",
+      "startNew": "Empezar nuevo",
+      "photoCount_one": "{{count}} foto",
+      "photoCount_other": "{{count}} fotos",
+      "noPhotosYet": "Todavía no hay fotos",
+      "latestToday": "Última hoy",
+      "latestPhotoSaved": "Última foto guardada",
+      "monthlyReport": "Informe mensual",
+      "aiInsights": "Ideas de IA",
+      "filterExport": "Filtros, exportación, etc.",
+      "historyTools": "Historia y otras herramientas"
+    },
+    "photos": {
+      "savedCount": "{{count}} fotos guardadas"
+    },
+    "reports": {
+      "monthlySummary": "Informe mensual",
+      "showMoreReportCenter": "Mostrar más sobre el centro de informes",
+      "dashboardError": "Su progreso no pudo ser mostrado."
+    },
+    "dashboard": {
+      "title": "Su progreso",
+      "intro": "La ingesta real, la planificación, los hábitos y la tendencia del peso se mantienen separados.",
+      "periodAria": "Elija el período de progreso",
+      "periods": {
+        "7d": "7 días",
+        "30d": "30 días",
+        "90d": "3 meses",
+        "180d": "6 meses",
+        "365d": "1 año",
+        "all": "Todos"
+      },
+      "showMoreDevelopment": "Mostrar más sobre el progreso",
+      "showMoreWeeklyReport": "Mostrar más sobre el informe semanal",
+      "comparisonEyebrow": "Período vs período",
+      "comparisonTitle": "Comparación",
+      "weightTrend": "Tendencia del peso",
+      "weightChangeDelta": "{{value}} kg de diferencia",
+      "weighIns": "Pesaje",
+      "weighInsInPeriod": "{{count}} en el período seleccionado",
+      "meals": "Comidas",
+      "proteinGoal": "Objetivo de las proteínas",
+      "percentagePoints": "{{value}} puntos porcentuales",
+      "steps": "Pasos",
+      "stepsPerDay": "{{value}} pasos/día",
+      "checkIns": "Registros diarios",
+      "noComparisonTitle": "Todavía no hay una comparación fiable del período.",
+      "noComparisonFallback": "El período anterior carece de datos suficientes.",
+      "bodyScanEyebrow": "Historial de exploración del cuerpo",
+      "bodyScanTitle": "Estimación de la IA por separado",
+      "scanCount": "{{count}} exploraciones",
+      "latestScan": "Última exploración",
+      "aiWeightRange": "Gama de peso de la IA",
+      "confidenceLabel": "Confianza",
+      "imagesAngles": "Imágenes/ángulos",
+      "imagesAnglesValue": "{{images}} / {{views}}",
+      "noBodyScanTitle": "Ninguna exploración corporal en el período seleccionado.",
+      "noBodyScanHint": "Ejecute un nuevo escáner corporal para ver las estimaciones de IA por separado del peso medido.",
+      "dataQualityEyebrow": "Calidad de los datos",
+      "dataQualityTitle": "Base",
+      "score": "Puntuación",
+      "scoreValue": "{{score}}/100",
+      "forecastConfidence": "Confianza en el pronóstico",
+      "confidence": {
+        "high": "Alta",
+        "insufficient": "Insuficiente",
+        "low": "Baja",
+        "medium": "Medio",
+        "uncertain": "Incierto"
+      },
+      "missing": "Falta"
+    },
+    "center": {
+      "eyebrow": "Peso, medidas corporales y progreso",
+      "title": "Centro de progreso",
+      "missing": "Falta",
+      "insufficientData": "No hay datos suficientes",
+      "filters": {
+        "all": "Todos"
+      },
+      "timelineTypes": {
+        "weight": "Peso",
+        "bodyMeasure": "Medidas del cuerpo",
+        "photo": "Foto",
+        "ai": "IA"
+      },
+      "chartRanges": {
+        "7": "7 días",
+        "30": "30 días",
+        "90": "3 meses",
+        "180": "6 meses",
+        "365": "1 año",
+        "all": "Todos",
+        "custom": "Personalizado"
+      },
+      "weightEditor": {
+        "eyebrow": "Editor de peso",
+        "editTitle": "Editar entrada de peso",
+        "addTitle": "Añadir peso",
+        "date": "Fecha",
+        "time": "Hora",
+        "weightKg": "Peso en kg",
+        "weightPlaceholder": "Por ejemplo, 90.1",
+        "source": "Fuente",
+        "note": "Nota",
+        "notePlaceholder": "Nota facultativa",
+        "saveChanges": "Guardar cambios",
+        "saveWeight": "Ahorrar peso"
+      },
+      "statGrid": {
+        "eyebrow": "Análisis de peso",
+        "basedOn": "Basado en {{range}}",
+        "dateRange": "{{from}} a {{to}}",
+        "latestWeight": "Peso más alto",
+        "startWeight": "Peso inicial",
+        "totalChange": "Variación total",
+        "last7Days": "Últimos 7 días",
+        "last30Days": "Últimos 30 días",
+        "weeklyRate": "Tasa semanal",
+        "monthlyRate": "Tasa mensual",
+        "average": "Promedio",
+        "highestWeight": "Peso más alto",
+        "lowestWeight": "Peso más bajo",
+        "registrationDays": "Días de pesaje",
+        "currentStreak": "Racha actual",
+        "trendNote": "Tendencia: {{trend}}. Estabilidad: {{stability}}. El análisis distingue entre datos insuficientes y estabilidad real.",
+        "trend": {
+          "down": "Abajo",
+          "up": "Arriba",
+          "stable": "Estable",
+          "insufficient": "No hay datos suficientes"
+        },
+        "stability": {
+          "stable": "Estable",
+          "normal": "Variación normal",
+          "high": "Alta variación",
+          "insufficient": "No hay datos suficientes"
+        }
+      },
+      "chart": {
+        "eyebrow": "Gráfico de peso",
+        "title": "Peso diario medido, tendencia y objetivo",
+        "rangeAria": "Elija el intervalo de tiempo para el gráfico de peso",
+        "fromDate": "Desde la fecha",
+        "toDate": "Hasta la fecha",
+        "showRaw": "Peso en bruto",
+        "showMovingAverage": "Media de 7 días",
+        "showWeeklyAverage": "Promedio semanal",
+        "showGoal": "Objetivo/inicio",
+        "chartAria": "Gráfico de peso utilizando solo el peso medido o introducido por el usuario. El valor diario utiliza el último pesaje por fecha.",
+        "emptyTitle": "No hay datos de peso para el rango seleccionado.",
+        "emptyHint": "Elija otro rango o agregue una entrada de peso.",
+        "svgTitle": "Gráfico de peso",
+        "svgDesc": "El gráfico de peso utiliza solamente peso medido o introducido por el usuario. Las estimaciones de IA de las exploraciones corporales no se mezclan en la serie principal.",
+        "ruleNote": "Regla: el gráfico principal utiliza solo el peso real medido/entrado por el usuario. Si existen varios pesajes en el mismo día, el último pesaje se utiliza como valor diario."
+      },
+      "goal": {
+        "eyebrow": "Centro de objetivos",
+        "title": "Objetivo de peso e hitos",
+        "saveGoal": "Guardar objetivo",
+        "startDate": "Fecha de inicio",
+        "weeklyRate": "Tasa objetivo por semana (kg)",
+        "desiredGoalDate": "Fecha de meta deseada",
+        "currentWeight": "Peso actual",
+        "kilosChanged": "Kilos cambiados",
+        "kilosRemaining": "Kilos restantes",
+        "progressComplete": "Progresos realizados",
+        "estimatedGoalDate": "Fecha estimada de la meta",
+        "registrationQuality": "Calidad de la inscripción",
+        "qualityGood": "Bien.",
+        "qualityLow": "No hay datos suficientes",
+        "milestonesNote": "Hitos: 10%, 25%, 50%, 75%, 90%, 100%. La previsión es una estimación, no una promesa de resultados."
+      },
+      "history": {
+        "eyebrow": "Antecedentes de peso",
+        "hits": "{{count}} coincidencias",
+        "clearFilters": "Limpiar filtros",
+        "search": "Buscar",
+        "source": "Fuente",
+        "fromDate": "Desde la fecha",
+        "toDate": "Hasta la fecha",
+        "selectAllVisible": "Seleccionar todos los visibles",
+        "unselectAll": "Deseleccionar todo",
+        "exportSelected": "Exportar seleccionado",
+        "deleteSelected": "Eliminar seleccionado",
+        "emptyTitle": "Ninguna entrada de peso coincide con los filtros.",
+        "emptyHint": "Ajustar los filtros o añadir una nueva entrada de peso.",
+        "atTime": "{{date}} a {{time}}",
+        "edit": "Editar",
+        "copy": "Copiar"
+      },
+      "measurements": {
+        "eyebrow": "Medidas del cuerpo",
+        "count": "{{count}} mediciones",
+        "date": "Fecha",
+        "type": "Tipo de medición",
+        "valueCm": "Valor en cm",
+        "note": "Nota",
+        "save": "Guardar la medición del cuerpo",
+        "emptyTitle": "Todavía no hay medidas corporales.",
+        "emptyHint": "Agregue una medición para ver el cambio con el tiempo.",
+        "firstLatest": "Primero: {{first}} · Últimos: {{latest}}",
+        "percentChange": "Variación del {{percent}}%",
+        "edit": "Editar"
+      },
+      "reports": {
+        "eyebrow": "Informes",
+        "title": "Informe semanal y mensual",
+        "createWeek": "Crear semana",
+        "createMonth": "Crear mes",
+        "clear": "Limpiar",
+        "emptyTitle": "Todavía no hay historia de informes.",
+        "emptyHint": "Cree un informe cuando desee guardar un resumen local.",
+        "monthly": "Informe mensual",
+        "weekly": "Informe semanal",
+        "version": "v{{version}}",
+        "weightChange": "Cambio de peso: {{value}}",
+        "measurementCount": "Medidas del cuerpo: {{count}}",
+        "photoCount": "Fotos: {{count}}"
+      },
+      "timeline": {
+        "eyebrow": "Calendario de progreso",
+        "events": "{{count}} eventos",
+        "dataType": "Tipo de datos",
+        "sorting": "Ordenar",
+        "newestFirst": "El más nuevo primero",
+        "oldestFirst": "La más antigua primero.",
+        "fromDate": "Desde la fecha",
+        "toDate": "Hasta la fecha",
+        "emptyTitle": "No hay eventos que coincidan con los filtros.",
+        "emptyHint": "La línea de tiempo se construye dinámicamente a partir de peso, mediciones, fotos y análisis de IA."
+      },
+      "importExport": {
+        "eyebrow": "Importación/exportación",
+        "title": "Datos de progreso JSON",
+        "includeImages": "Exportar con imágenes",
+        "sizeNote": "Tamaño estimado de exportación: {{size}}. Auth, sesiones, tokens y datos de Supabase nunca se exportan.",
+        "export": "Datos sobre el progreso de las exportaciones",
+        "importJson": "Importar JSON",
+        "importAria": "Importar datos de progreso desde el archivo JSON"
+      },
+      "projection": {
+        "eyebrow": "Pronóstico",
+        "title": "Estimación local",
+        "uncertainty": "Incertidumbre: {{level}}",
+        "uncertaintyLevels": {
+          "high": "alta",
+          "medium": "medio",
+          "low": "baja"
+        },
+        "goalWeight": "Peso de los objetivos",
+        "in4Weeks": "En 4 semanas",
+        "in8Weeks": "En 8 semanas",
+        "in12Weeks": "En 12 semanas",
+        "note": "Con base en {{basedOn}}. La tendencia semanal es {{trend}}. La previsión se muestra sólo cuando los datos son suficientes y la extrapolación es limitada."
+      },
+      "insights": {
+        "eyebrow": "Perspectivas",
+        "title": "Modalidades de progreso locales",
+        "emptyTitle": "No hay suficientes datos recientes para una visión clara.",
+        "emptyHint": "Las perspicacias mejoran cuando el peso, las medidas o las fotos se registran con el tiempo.",
+        "basedOn": "Basado en: {{basis}}"
+      },
+      "confirms": {
+        "deleteWeight": "¿Quieres quitar esta entrada de peso?",
+        "deleteWeights": "¿Desea eliminar {{count}} entradas de peso seleccionadas?",
+        "deleteMeasurement": "¿Quieres quitar esta medición del cuerpo?",
+        "duplicateReport": "Un informe para este período ya existe hoy. ¿Crear de todos modos?",
+        "deleteReport": "¿Quieres quitar el informe?",
+        "clearReports": "¿Quieres borrar todo el historial de informes locales?",
+        "replaceImport": "Esto reemplaza sólo los datos de peso y progreso locales. ¿Desea continuar?"
+      },
+      "confirmDialog": {
+        "deleteWeight": {
+          "title": "Eliminar la entrada de peso",
+          "confirm": "Eliminar"
+        },
+        "deleteWeights": {
+          "title": "Eliminar las entradas de peso seleccionadas",
+          "confirm": "Eliminar"
+        },
+        "deleteMeasurement": {
+          "title": "Eliminar la medición del cuerpo",
+          "confirm": "Eliminar"
+        },
+        "duplicateReport": {
+          "title": "El informe ya existe",
+          "confirm": "Crear de todos modos"
+        },
+        "deleteReport": {
+          "title": "Eliminar informe",
+          "confirm": "Eliminar"
+        },
+        "clearReports": {
+          "title": "Limpiar el historial de informes",
+          "confirm": "Limpiar"
+        },
+        "replaceImport": {
+          "title": "Reemplazar los datos de progreso",
+          "confirm": "Reemplazar"
+        }
+      },
+      "dateTimeDialog": {
+        "copy": "Copiar",
+        "copyTitle": "Copiar el peso {{value}} kg de {{date}}"
+      },
+      "prompts": {
+        "copyDate": "¿Qué fecha debe obtener la copia? (AAAA-MM-DD)",
+        "copyTime": "¿A qué hora debe llegar la copia?",
+        "importMode": "La importación contiene {{weights}} entradas de peso, {{measurements}} medidas del cuerpo y {{reports}} informes. Tipo \"slå ihop\" o \"ersätt\".",
+        "importModeDefault": "slå ihop",
+        "importSummary": "La importación contiene {{weights}} entradas de peso, {{measurements}} medidas corporales y {{reports}} informes."
+      },
+      "importStatus": {
+        "noFile": "Ningún archivo seleccionado.",
+        "cancelled": "Importación cancelada.",
+        "success": "Datos de progreso importados.",
+        "failed": "Falló la importación. Compruebe el archivo JSON."
+      }
+    }
+  },
+  "nutrition": {
+    "sectionLabel": "Comida y nutrición",
+    "title": "Comida",
+    "eyebrow": "Comida",
+    "todayNutrition": "Nutrición de hoy",
+    "quickActions": "Acciones rápidas",
+    "todayMeals": "Comidas de hoy",
+    "aiInsight": "Idea de IA",
+    "todayCheckIn": "Check-in de hoy",
+    "labels": {
+      "kcal": "kcal",
+      "protein": "Proteína",
+      "carbs": "Carbohidratos",
+      "fat": "Grasa",
+      "energy": "Energía",
+      "steps": "Pasos",
+      "mood": "Ánimo",
+      "movement": "Movimiento"
+    },
+    "goalMissing": "Falta el objetivo",
+    "today": "Hoy",
+    "scanFood": "Escanear comida",
+    "addMeal": "Añadir comida",
+    "recipes": "Recetas",
+    "planDay": "Planificar el día",
+    "noMealLogged": "Nada registrado",
+    "meal": "Comida",
+    "addTypeAria": "Añádase {{type}}",
+    "insightWithMeals": "Los datos de hoy están listos. Siguiente paso: mantener el almuerzo simple con proteínas.",
+    "insightEmpty": "No ha registrado una comida todavía. Siguiente paso: añadir el almuerzo o escanear los alimentos.",
+    "insightMoreWithMeals": "Se registran {{count}} comidas. Abra el escáner o el plan si desea ajustar el día.",
+    "insightMoreEmpty": "Escanee el plato o agregue desayuno, almuerzo, cena o un bocadillo.",
+    "showMore": "Mostrar más",
+    "showLess": "Mostrar menos",
+    "yes": "Sí.",
+    "no": "No",
+    "changeCheckIn": "Cambiar el check-in y la lista de verificación de alimentos",
+    "mealCenterError": "Centro de comidas no se puede mostrar",
+    "loadingMealCenter": "Cargando el centro de comidas...",
+    "patternsHistory": "& Histórico de patrones",
+    "openHistory": "Historial abierto y patrones semanales",
+    "tools": "Herramientas",
+    "favorites": "Favoritos",
+    "barcode": "Código de barras",
+    "nutritionGoals": "Metas nutricionales",
+    "importReviewMore": "Importación, revisión y más",
+    "mealSlots": {
+      "breakfast": "Desayuno",
+      "lunch": "Almuerzo",
+      "dinner": "Cena",
+      "snack": "Tentempié"
+    },
+    "logger": {
+      "eyebrow": "Alimentación, comidas y nutrición",
+      "title": "Centro de comidas",
+      "dateNavAria": "Fecha para el resumen nutricional",
+      "previousDay": "Día anterior",
+      "nextDay": "Al día siguiente",
+      "selectedDate": "Fecha seleccionada",
+      "viewToggleAria": "Elegir vista de nutrición",
+      "views": {
+        "day": "Día",
+        "week": "Semana",
+        "month": "Mes",
+        "planner": "Planificador",
+        "generator": "Plan de IA"
+      },
+      "activeViewAria": "Visión de la nutrición activa",
+      "loadingView": "Cargando la vista de nutrición...",
+      "loadingScanner": "Cargando escáner...",
+      "legacyPhotoAnalysis": "Análisis fotográfico del legado",
+      "mealUpdated": "La comida ha sido actualizada.",
+      "undo": "Deshacer",
+      "templateSaveFailed": "La comida no se pudo guardar como una plantilla.",
+      "templateSaved": "{{name}} se guardó como plantilla.",
+      "recipeTemplateSaveFailed": "La receta no se pudo guardar como una plantilla.",
+      "confirms": {
+        "deleteMeal": "¿Quieres quitarte esta comida?",
+        "deleteFavorite": "¿Quieres quitarte este favorito?",
+        "clearGoals": "¿Quieres limpiar todas las metas de nutrición?",
+        "replaceImport": "Esto reemplaza los datos de nutrición solo localmente. ¿Desea continuar?"
+      },
+      "confirmDialog": {
+        "deleteMeal": {
+          "title": "Retirar la comida",
+          "confirm": "Eliminar"
+        },
+        "deleteFavorite": {
+          "title": "Eliminar favorito",
+          "confirm": "Eliminar"
+        },
+        "clearGoals": {
+          "title": "Objetivos de nutrición claros",
+          "confirm": "Limpiar"
+        },
+        "replaceImport": {
+          "title": "Sustitúyanse los datos nutricionales",
+          "confirm": "Reemplazar"
+        }
+      },
+      "dateTimeDialog": {
+        "add": "Añadir",
+        "copy": "Copiar",
+        "copyTitle": "Copia {{name}}",
+        "favoriteTitle": "Añádase {{name}}"
+      },
+      "prompts": {
+        "copyDate": "¿Qué fecha debe obtener la copia? (AAAA-MM-DD)",
+        "copyTime": "¿A qué hora debe llegar la copia?",
+        "favoriteDate": "¿En qué fecha debería añadirse el favorito?",
+        "favoriteTime": "¿A qué hora?",
+        "importMode": "La importación contiene {{mealCount}} comidas, {{favoriteCount}} favoritos, {{mealTemplateCount}} plantillas, {{recipeCount}} recetas y {{goalsLabel}}. Tipo \"slå ihop\" o \"ersätt\".",
+        "importModeDefault": "slå ihop",
+        "hasGoals": "objetivos de nutrición",
+        "noGoals": "sin objetivos de nutrición",
+        "importSummary": "La importación contiene {{mealCount}} comidas, {{favoriteCount}} favoritos, {{mealTemplateCount}} plantillas, {{recipeCount}} recetas y {{goalsLabel}}."
+      },
+      "importStatus": {
+        "noFile": "Ningún archivo seleccionado.",
+        "cancelled": "Importación cancelada.",
+        "success": "Datos nutricionales importados.",
+        "failed": "Falló la importación. Compruebe el archivo JSON."
+      }
+    },
+    "scanner": {
+      "title": "Escanea los alimentos",
+      "subtitle": "Tome o elija una foto clara de la comida.",
+      "imagePickerAria": "Selección de imágenes para Nutrition Scanner",
+      "takePhoto": "Tomar una foto",
+      "takePhotoAria": "Tome una nueva foto de comida con la cámara",
+      "chooseImage": "Elegir imagen",
+      "chooseImageAria": "Elija una imagen de comida de la biblioteca de fotos",
+      "previewAltNamed": "Vista previa de {{fileName}}",
+      "previewAlt": "Previsualización temporal de la imagen seleccionada",
+      "changeImage": "Cambiar imagen",
+      "consentGranted": "Anteriormente permitió que esta imagen fuera analizada con IA.",
+      "revokeConsent": "Revocar el consentimiento",
+      "consentLabel": "Permito que la imagen se envíe para un análisis temporal de IA. La imagen original no se guarda y reviso el resultado antes de guardar.",
+      "analyzing": "Analizando la comida...",
+      "analyzeFood": "Analizar los alimentos",
+      "aiNotWorking": "¿El análisis de IA no funciona?",
+      "localEstimateHint": "El análisis alternativo da una estimación aproximada sin interpretar la imagen con IA.",
+      "analyzingShort": "Analizando...",
+      "localEstimate": "Estimación aproximada local",
+      "liveCameraNote": "La cámara en vivo normalmente requiere HTTPS o localhost en Safari. En HTTP LAN, el selector de archivos con cámara/biblioteca de fotos se utiliza como copia de seguridad.",
+      "privacyNote": "La imagen sólo se envía temporalmente para su análisis. No se envía información de perfil, historia o cuenta con ella.",
+      "developerInfo": "Información del desarrollador",
+      "remoteDebugAria": "Depuración remota",
+      "connectionStatus": "Situación: {{status}}",
+      "online": "En línea",
+      "offline": "Desconectado",
+      "mealSuggestion": "Sugerencia de comidas",
+      "localNotAiInterpreted": "El contenido de la imagen no ha sido interpretado por IA. La sugerencia se basa en metadatos y rangos generales.",
+      "estimatedPortion": "Parte estimada: {{portion}}",
+      "confidenceLine": "Confianza: {{level}}",
+      "imageQualitySuffix": "· Imagen: {{quality}}",
+      "identifiedComponents": "Componentes identificados",
+      "piecesCount": "{{count}} piezas",
+      "cookingMethodsLine": "Cocina: {{methods}}",
+      "portionConfidenceLine": "Porción de confianza: {{level}}",
+      "identityConfidenceLine": "Confianza en la identidad: {{level}}",
+      "couldAlsoBe": "También podría ser: {{names}}. Tipo exacto incierto.",
+      "toCheck": "Para comprobar",
+      "editDetails": "Editar detalles",
+      "mealName": "Nombre de la comida",
+      "mealType": "Tipo de comida",
+      "date": "Fecha",
+      "time": "Hora",
+      "portion": "Porción",
+      "ingredients": "Ingredientes",
+      "dbMatchSummary": "Coincidencia de la base de datos: {{exactMatch}} exacta, {{normalizedMatch}} normalizada, {{manualDatabase}} manual/base de datos, {{needsSelection}} necesita selección, {{aiEstimate}} estimaciones de IA. Total {{total}}.",
+      "addOil": "Añadir aceite",
+      "addSauce": "Añadir salsa",
+      "addDrink": "Añadir bebida",
+      "addIngredient": "Añadir ingrediente",
+      "note": "Nota",
+      "whatIsSaved": "Esto es lo que se guardará",
+      "totalMismatch": "Compruebe el total: los ingredientes y el valor de ahorro difieren claramente.",
+      "openMealHistory": "Historial de comidas abiertas",
+      "saveAnyway": "Guardar de todos modos",
+      "saving": "Guardando…",
+      "saveMeal": "Ahorrar comida",
+      "openSavedMeal": "Abrir comida guardada",
+      "proteinLine": "Proteína {{value}}",
+      "approxCalories": "* {{value}}",
+      "missing": "Falta",
+      "unknownPortion": "Parte desconocida",
+      "amountUncertain": "Monto incierto",
+      "portionGramsRange": "aproximadamente {{min}}-{{max}} g",
+      "portionApproxMid": "aproximadamente {{mid}} g ({{min}}-{{max}} g)",
+      "gramsRange": "{{min}}–{{max}} g",
+      "stages": {
+        "identifying": "Identificación de los alimentos",
+        "portions": "Estimación de porciones",
+        "nutrition": "Cálculo de la nutrición"
+      },
+      "status": {
+        "idle": "Elija o tome una foto de comida para empezar.",
+        "stillSelected": "La imagen sigue seleccionada. Haga clic en analizar cuando desee continuar.",
+        "prepared": "La imagen se prepara localmente. Haga clic en analizar cuando desee continuar.",
+        "analyzingRemote": "Analizando la comida...",
+        "analyzingLocal": "Creando una estimación aproximada sin interpretación de imágenes...",
+        "reviewReady": "La sugerencia de análisis está lista. Revise y edite antes de guardar.",
+        "saved": "La comida se guardó en el registro de comidas sin datos de imagen.",
+        "cleared": "El escáner fue despejado.",
+        "consentOn": "El análisis de IA está aprobado para este usuario.",
+        "consentOff": "El análisis de IA está apagado para este usuario.",
+        "consentRevoked": "Tienes que aprobarlo de nuevo antes del siguiente análisis de IA."
+      },
+      "errors": {
+        "prepareFailed": "La imagen no se pudo preparar.",
+        "prepareFailedRetry": "La imagen no se pudo preparar. Elija otra imagen y vuelva a intentarlo.",
+        "analysisFailed": "El análisis no pudo completarse.",
+        "remoteInvalid": "El análisis de IA no devolvió un resultado válido. No se muestra ninguna estimación local automáticamente.",
+        "analysisStartFailed": "El análisis no se pudo iniciar. Intente de nuevo o elija otra imagen.",
+        "analysisStartFailedShort": "El análisis no pudo iniciarse.",
+        "saveFailed": "La comida no se pudo guardar. Compruebe los detalles e inténtelo de nuevo."
+      },
+      "dataSources": {
+        "aiEstimate": "Estimación de IA",
+        "barcode": "Código de barras",
+        "databaseDerived": "Base de datos calculada",
+        "manual": "Valor manual",
+        "nutritionDatabase": "Base de datos de alimentos"
+      },
+      "provider": {
+        "remote": "Análisis de la IA",
+        "local": "Estimación aproximada local"
+      },
+      "confidence": {
+        "high": "Alta",
+        "insufficient": "Insuficiente",
+        "low": "Baja",
+        "medium": "Medio"
+      },
+      "imageQuality": {
+        "excellent": "Excelente",
+        "good": "Bien.",
+        "poor": "Pobres",
+        "screen": "Foto de pantalla",
+        "usable": "Utilizable"
+      },
+      "cookingMethods": {
+        "baked": "Horneado",
+        "boiled": "Hervida",
+        "breaded": "Panecillos",
+        "fried": "Frito/panfrito",
+        "grilled": "A la parrilla",
+        "raw": "Crudo",
+        "roasted": "Asados",
+        "steamed": "Al vapor"
+      },
+      "categories": {
+        "carbohydrate": "Carbohidrato",
+        "fat": "Fuente de grasa",
+        "protein": "Proteína",
+        "sauce": "Salsa/vestido",
+        "unknown": "Desconocido",
+        "vegetables": "Hortalizas",
+        "fallback": "Componente"
+      },
+      "macros": {
+        "calories": "Calorías",
+        "protein": "Proteína",
+        "carbs": "Carburos",
+        "fat": "Grasa",
+        "carbohydrates": "carbohidratos",
+        "fiber": "fibra",
+        "kcal": "kcal",
+        "proteinShort": "proteína",
+        "carbsShort": "carbohidratos",
+        "fatShort": "grasa"
+      },
+      "mealTypes": {
+        "Frukost": "Desayuno",
+        "Lunch": "Almuerzo",
+        "Middag": "Cena",
+        "Mellanmål": "Tentempié",
+        "Dryck": "Bebe.",
+        "Annat": "Otros"
+      },
+      "ingredient": {
+        "name": "Ingrediente",
+        "amount": "Monto",
+        "unit": "Unidad",
+        "uncertain": "Incierto",
+        "summaryLine": "{{amount}} {{unit}} · {{confidence}} confianza",
+        "summaryLineRange": "Aproximadamente {{min}}–{{max}} {{unit}} · {{confidence}} confianza",
+        "checks": {
+          "energy_recomputed": "La energía fue recalculada para emparejar proteínas, carbohidratos y grasa.",
+          "energy_unusual": "Inusualmente alta energía para verduras – por favor compruebe.",
+          "macros_scaled": "Los valores nutricionales se ajustaron a un nivel posible.",
+          "portion_capped": "La cantidad parecía inverosímilmente grande y fue bajada – por favor verifique.",
+          "portion_typical": "La cantidad no era claramente visible – se utiliza una porción típica."
+        },
+        "dataSourceNote": "Fuente de datos: {{source}}. Confianza original: {{confidence}}.",
+        "sourceFood": "Valores nutricionales de la Agencia Sueca de Alimentos: {{name}}.",
+        "aiFallback": "Los valores nutricionales son una estimación de IA – no hay coincidencia segura en la base de datos de la Agencia Sueca de Alimentos.",
+        "useDatabase": "Base de datos de alimentos de uso: {{name}}",
+        "multipleMatches": "Existen varias posibles sugerencias de bases de datos. Elija manualmente para que la estimación de IA no se reemplace incorrectamente.",
+        "noMatch": "No se encontró ninguna coincidencia confiable en la base de datos, la estimación de IA se mantiene hasta que la cambies."
+      },
+      "component": {
+        "summaryNeedsReview": "{{confidence}} confianza: {{category}}. Revisión de las necesidades del tipo exacto.",
+        "summaryWithReason": "{{confidence}} confianza: {{category}}. {{reason}}",
+        "summaryPortionEstimated": "{{confidence}} confianza: {{category}}. La cantidad porción se estima.",
+        "summaryBasic": "{{confidence}} confianza: {{category}}.",
+        "macroRange": "{{macro}} {{range}}"
+      },
+      "uncertainties": {
+        "exactTypeUncertain": "{{name}}: tipo exacto incierto ({{alternatives}}).",
+        "lowConfidence": "{{name}}: baja confianza en la identificación.",
+        "mediumConfidence": "{{name}}: confianza media, revisión visual.",
+        "portionEstimate": "{{name}}: el tamaño de la porción es una estimación.",
+        "sauceNeedsReview": "{{name}}: revisión exacta de las necesidades de tipo.",
+        "namedReason": "{{name}}: {{reason}}"
+      }
+    },
+    "scanProgress": "Progreso estimado del análisis: {{progress}} por ciento",
+    "consentDisplay": {
+      "change": "Cambiar preferencia de visualización",
+      "legend": "Pedir autorización para el análisis de IA",
+      "always": "Preguntar cada vez",
+      "never": "No volver a preguntar"
+    },
+    "uncertainDetails": "Datos inciertos"
+  },
+  "ready": {
+    "title": "¡Listos!",
+    "levelLabel": "Elegir nivel",
+    "levelPlaceholder": "Elegir nivel",
+    "levels": {
+      "preschool": "Enseñanza preescolar",
+      "f3": "Grados F–3",
+      "mid46": "Grados 4 a 6",
+      "mid79": "Grados 7–9",
+      "highschool": "Secundaria superior"
+    },
+    "greeting": {
+      "morning": "¡Buenos días! Vamos a prepararte.",
+      "afternoon": "¡Hola! Vamos a prepararte.",
+      "evening": "¡Buenas noches! Vamos a prepararte."
+    },
+    "checklist": {
+      "title": "¿Listo para irnos?",
+      "progress": "{{done}} de {{total}}",
+      "progressShort": "{{done}} de {{total}}",
+      "empty": "No hay elementos guardados todavía. Agrega lo que quieras recordar.",
+      "showExamples": "Mostrar sugerencias de ejemplo",
+      "useExample": "Añadir",
+      "add": "Añadir elemento",
+      "emptyError": "Escriba lo que desea añadir antes de guardar.",
+      "editLabel": "Editar elemento",
+      "markDone": "Marca {{label}} tal como se hizo",
+      "markOpen": "Marca {{label}} como no se ha hecho",
+      "deleteAria": "Suprímase {{label}}",
+      "deleteConfirm": "¿Desea borrar este elemento? Esto no puede deshacerse.",
+      "deleteYes": "Sí, borrar"
+    },
+    "forgot": {
+      "title": "Olvidé algo.",
+      "input": "Describe lo que olvidaste.",
+      "placeholder": "Olvidé el cargador.",
+      "ask": "Continuar",
+      "confirm": "¿Desea añadir {{label}} a la lista de verificación?",
+      "added": "Se ha añadido {{label}} a la lista de verificación."
+    },
+    "ai": {
+      "gridAria": "¡Ayuda de IA en Listo!"
+    },
+    "eye": {
+      "title": "Ojo de IA",
+      "body": "Revise la bolsa con la cámara",
+      "start": "Comprobación de inicio",
+      "notConnected": "Aún no está conectado",
+      "notConnectedBody": "IA Eye está preparado en la interfaz de usuario, pero aún no se ha conectado ningún análisis general de objetos. No se envía ninguna imagen y no se muestra ningún análisis simulado como IA real.",
+      "limits": {
+        "visibleOnly": "Sólo puede describir objetos visibles en la imagen.",
+        "noGuarantee": "Nunca garantiza que la bolsa está completa.",
+        "uncertain": "Dice cuando es incierto o cuando algo puede estar fuera del marco.",
+        "noFace": "Sin identificación facial.",
+        "noChildId": "No se identifica a los niños."
+      }
+    },
+    "companion": {
+      "title": "Tu amigo de IA.",
+      "body": "Pregunta, habla o busca ayuda",
+      "talk": "Habla ahora.",
+      "aiLabel": "Claramente presentado como IA... no como una persona real.",
+      "cardTitle": "Tu amigo de IA.",
+      "summary": "Un tono tranquilo, corto y tranquilizador."
+    },
+    "quickActions": {
+      "profile": {
+        "title": "Perfil",
+        "subtitle": "Tu amigo de IA."
+      },
+      "eye": {
+        "title": "Ojo de IA",
+        "subtitle": "Comprobar con la cámara"
+      },
+      "memory": {
+        "title": "Capacitación en memoria",
+        "subtitle": "Recuerda mejor."
+      }
+    },
+    "avatar": {
+      "pick": "Elegir avatar",
+      "disclaimer": "Los Avatares son personajes de IA estilizados, no niños o compañeros de verdad."
+    },
+    "avatars": {
+      "nova": "Nova",
+      "kai": "Kai",
+      "mira": "Mira",
+      "sol": "Sol",
+      "rio": "Río",
+      "ash": "Ceniza",
+      "quill": "Quill",
+      "zen": "Zen"
+    },
+    "memory": {
+      "title": "Capacitación en memoria",
+      "subtitle": "Elige una manera de recordar",
+      "showAll": "Mostrar todas las técnicas ›",
+      "allTitle": "Todas las técnicas",
+      "comingSoon": "Próximamente.",
+      "locationSoon": "Las señales basadas en la ubicación llegan cuando el sprint de Place está integrado. No se recopilan datos de ubicación aquí.",
+      "techniques": {
+        "image": {
+          "title": "Memoria de imagen",
+          "body": "Vea una imagen clara del artículo en un lugar familiar.",
+          "example": "Ejemplo: vea el cargador en la parte superior de sus zapatos."
+        },
+        "story": {
+          "title": "Historia",
+          "body": "Vincular los artículos en un cuento corto en orden.",
+          "example": "Ejemplo: la mochila se encuentra con el portátil en la puerta."
+        },
+        "walk": {
+          "title": "Caminata de memoria",
+          "body": "Coloque cada elemento a lo largo de un camino familiar.",
+          "example": "Ejemplo: teléfono en la puerta y llaves en el pasillo."
+        },
+        "repeat": {
+          "title": "Repetir",
+          "body": "Recordar la lista más tarde el mismo día.",
+          "example": "Ejemplo: di la lista después del almuerzo."
+        },
+        "associate": {
+          "title": "Asociado",
+          "body": "Vincular lo que necesita recordar a una acción común.",
+          "example": "Ejemplo: llaves cuando te pones la chaqueta."
+        },
+        "chunk": {
+          "title": "Recorte en grupos",
+          "body": "Agrupar los artículos en paquetes pequeños.",
+          "example": "Ejemplo: tecnología en un grupo y PE en otro."
+        },
+        "acrostic": {
+          "title": "Primera carta",
+          "body": "Haga una frase de las primeras letras.",
+          "example": "Ejemplo: B-L-G para mochila, portátil, gafas."
+        },
+        "acronym": {
+          "title": "Abreviaturas",
+          "body": "Cree una abreviatura corta que pueda repetir.",
+          "example": "Ejemplo: BLC para mochila, portátil, cargador."
+        },
+        "rhyme": {
+          "title": "Rima",
+          "body": "Encuentra una rima que encierre lo importante.",
+          "example": "Ejemplo: cargador cerca antes de irme de aquí."
+        },
+        "song": {
+          "title": "Canción y ritmo",
+          "body": "Di la lista a un ritmo simple.",
+          "example": "Ejemplo: cuenta en tiempo: una mochila, dos portátiles."
+        },
+        "say": {
+          "title": "Dilo en voz alta",
+          "body": "Di el siguiente paso en voz alta para que sea más claro.",
+          "example": "Ejemplo: Ahora me llevo mi billetera."
+        },
+        "teach": {
+          "title": "Enseñar a otra persona",
+          "body": "Explique la lista a un adulto de confianza o a usted mismo.",
+          "example": "Ejemplo: narra el pedido de embalaje en voz alta."
+        },
+        "recall": {
+          "title": "Recuperación activa",
+          "body": "Trate de recordar sin mirar, a continuación, comparar.",
+          "example": "Ejemplo: cerrar la lista y recordar tres elementos."
+        },
+        "spaced": {
+          "title": "Repetición espaciada",
+          "body": "Practique, detenga y recuerde más tarde.",
+          "example": "Ejemplo: verifique la lista mañana y tarde."
+        },
+        "color": {
+          "title": "Codificación de color",
+          "body": "Dale a las categorías sus propios colores.",
+          "example": "Ejemplo: azul para escuela y verde para deportes."
+        },
+        "photoChecklist": {
+          "title": "Lista de verificación fotográfica",
+          "body": "Utilice su propia lista de fotos como soporte, sin análisis de IA silencioso.",
+          "example": "Ejemplo: una foto de artículos empaquetados que te revisas a ti mismo."
+        },
+        "fixedPlace": {
+          "title": "Lugar fijo",
+          "body": "Dale a los artículos importantes un lugar de casa.",
+          "example": "Ejemplo: llaves en el tazón del pasillo."
+        },
+        "bodyChain": {
+          "title": "Cadena corporal",
+          "body": "Vincular cada artículo a una parte del cuerpo o bolsillo.",
+          "example": "Ejemplo: auriculares en el bolsillo de la chaqueta."
+        },
+        "topThree": {
+          "title": "Los tres primeros",
+          "body": "Escoge tres cosas que deben venir.",
+          "example": "Ejemplo: teléfono, llaves, cargador."
+        },
+        "doNow": {
+          "title": "Hazlo ahora.",
+          "body": "Haga la pequeña acción ahora en lugar de más tarde.",
+          "example": "Ejemplo: poner el cargador en la bolsa de inmediato."
+        },
+        "reverseChecklist": {
+          "title": "Lista de verificación al revés",
+          "body": "Revisa la lista del final antes de irte.",
+          "example": "Ejemplo: comience con el último elemento de la lista."
+        },
+        "objectSignal": {
+          "title": "Objeto como señal",
+          "body": "Deje que un objeto le recuerde el siguiente paso.",
+          "example": "Ejemplo: zapatos por la puerta significa comprobar la lista."
+        },
+        "location": {
+          "title": "Señal basada en la ubicación",
+          "body": "Planifique una señal futura conectada a un lugar.",
+          "example": "Ejemplo: recuérdate cuando llegues a casa."
+        }
+      }
+    },
+    "next": {
+      "title": "Siguiente",
+      "empty": "Nada planeado todavía.",
+      "add": "Añadir un tiempo o recordatorio",
+      "demo": "ejemplo",
+      "reminderTitle": "Recordatorios",
+      "reminderSubtitle": "Configurar las notificaciones"
+    }
+  },
+  "place": {
+    "walkie": {
+      "start": "Empieza a hablar.",
+      "stop": "Deja de hablar.",
+      "toggleHint": "Toque una vez para empezar a hablar y una vez más parar. No es necesario sostener.",
+      "hold": "Espera a hablar.",
+      "holdActive": "Hablando...",
+      "holdHint": "O mantenga presionado el botón y suelte cuando haya terminado.",
+      "statusReady": "Walkie-talkie listo, tu micrófono está apagado.",
+      "statusTalking": "Estás transmitiendo, el miembro de la familia puede oírte."
+    },
+    "safetyAlert": {
+      "title": "Alerta de seguridad",
+      "whatHappened": "¿Qué pasó?",
+      "body": "Envíe rápidamente una alerta y su última ubicación a los miembros de la familia aprobados.",
+      "sending": "Enviando alerta de seguridad...",
+      "sent": "Alerta de seguridad enviada a la familia.",
+      "historyTitle": "Últimas alertas de seguridad en la familia",
+      "reasons": {
+        "threatened": "Me siento amenazado.",
+        "lost": "Estoy perdido.",
+        "injured": "Me he hecho daño.",
+        "unsafe": "Me siento inseguro.",
+        "pickup": "Necesito que me recojan.",
+        "other": "Otros – Necesito ayuda"
+      }
+    },
+    "checkin": {
+      "prompt": "Enviar un rápido check-in a la familia",
+      "sending": "Enviando el check-in...",
+      "sent": "{{label}} enviado a la familia.",
+      "choices": {
+        "ok": "Estoy bien.",
+        "home": "Estoy en casa.",
+        "on_way": "Estoy en camino."
+      }
+    },
+    "push": {
+      "label": "Notificaciones push:",
+      "active": "Activa",
+      "inactive": "Aún no está activado",
+      "denied": "Permiso denegado",
+      "unsupported": "No soportado en este dispositivo",
+      "unknown": "No se pudo comprobar el estado"
+    },
+    "notice": {
+      "close": "Cerrar aviso"
+    },
+    "sharingStatus": {
+      "active": "Uso compartido activo de la ubicación",
+      "received": "La última ubicación ha sido recibida de la familia."
+    },
+    "safePlaceNotifications": {
+      "title": "Notificaciones de lugar",
+      "arrival": "Notificar cuando la persona llegue aquí",
+      "departure": "Notificar cuando la persona salga del lugar",
+      "on": "Activo en la aplicación",
+      "off": "Desactivado"
+    },
+    "voiceCall": {
+      "aria": "Hable con {{name}}",
+      "title": "Charla · {{name}}",
+      "intro": "Comience una llamada de voz con el miembro de la familia.",
+      "call": "Llamada",
+      "calling": "Llamando al {{name}}...",
+      "incoming": "{{name}} te está llamando.",
+      "answer": "Respuesta",
+      "decline": "Disminución",
+      "inProgress": "Llamada en curso con {{name}}",
+      "micPending": "El micrófono comienza cuando la llamada se conecta.",
+      "walkieLabel": "Walkie-talkie",
+      "end": "Fin de la llamada",
+      "audioConnecting": "Conectando audio...",
+      "audioConnected": "🔊  Audio conectado",
+      "audioFailed": "La conexión de audio falló.",
+      "audioTapToStart": "Toca la pantalla si el audio no se inicia automáticamente.",
+      "loadFailed": "La llamada no se pudo cargar.",
+      "startFailed": "La llamada no pudo ser iniciada.",
+      "updateFailed": "La llamada no se pudo actualizar.",
+      "micBlocked": "El micrófono está bloqueado. Permita que el micrófono de Viktkollen y vuelva a intentarlo.",
+      "micFailed": "El micrófono no pudo arrancar."
+    },
+    "errors": {
+      "familyMembers": "Los miembros de la familia no se podían cargar.",
+      "safePlaces": "Los lugares seguros no se podían cargar.",
+      "safetyAlerts": "No se pudieron cargar alertas de seguridad.",
+      "checkins": "Los check-ins no se pudieron cargar.",
+      "placeHistory": "El historial de ubicación no se pudo cargar.",
+      "retentionLoad": "El tiempo de almacenamiento no se pudo cargar.",
+      "settingsLoad": "La configuración de ubicación no se pudo cargar.",
+      "placeSave": "No se pudo guardar el lugar.",
+      "placeDelete": "El lugar no pudo ser eliminado.",
+      "notificationChange": "La notificación de lugar no pudo modificarse.",
+      "nameSave": "No se pudo guardar el nombre.",
+      "safetyAlertSend": "No se pudo enviar la alerta de seguridad.",
+      "checkinSend": "El check-in no pudo ser enviado.",
+      "retentionChange": "El tiempo de almacenamiento no se pudo cambiar."
+    },
+    "details": {
+      "arrived": "📍  {{name}} llegó a {{place}}.",
+      "left": "🚶 {{name}} salió de {{place}}.",
+      "connected": "Conectado",
+      "off": "Desactivado",
+      "latestShared": "Última ubicación compartida",
+      "updated": "Actualizado {{time}}",
+      "lastUpdated": "Ultima actualización {{time}}",
+      "accuracy": "Precisión ±{{meters}} m",
+      "radius": "radio {{meters}} m",
+      "delete": "Borrar",
+      "safePlacesHint": "Guarde su última posición compartida GPS como hogar, escuela u otro lugar seguro.",
+      "safePlaceName": "Nombre del lugar seguro",
+      "safePlacePlaceholder": "Hogar o escuela",
+      "saving": "Guardando…",
+      "saveLatest": "Guardar la ubicación más reciente",
+      "realtimeHint": "Colocar notificaciones funciona en tiempo real mientras Viktkollen está abierto. El estado de push anterior muestra si este dispositivo puede recibir notificaciones push cuando la aplicación está cerrada.",
+      "noLocationAttached": "📍  No se adjunta ninguna ubicación compartida",
+      "alertSharedInfo": "La razón seleccionada, la hora y la última ubicación compartida se envían a la familia. La función no se pone en contacto con 112.",
+      "call112": "En grave peligro – llame al 112.",
+      "noEmergencyContact": "Las alertas de seguridad no se ponen en contacto con el 112 o con el centro de emergencia automáticamente.",
+      "checkinsTitle": "Últimos registros en la familia",
+      "checkinDefault": "✓ Registro de entrada",
+      "checkinSharedInfo": "El check-in, la hora y la última ubicación compartida se envían a la familia cuando el uso compartido de la ubicación está activo.",
+      "retentionQuestion": "¿Cuánto tiempo se debe mantener el historial de ubicación?",
+      "retentionInfo": "Inmediatamente significa que no se mantiene ningún historial de ubicación. Cuando eliges un tiempo más corto, el historial existente también se abrevia y se eliminan las entradas antiguas.",
+      "encryptionInfo": "Las coordenadas se cifran en el navegador antes de enviarlas a Supabase. La clave de cifrado no se almacena en Supabase.",
+      "savingSetting": "Guardando la configuración...",
+      "historyTitle": "Su último historial de ubicación cifrada",
+      "locked": "No se puede desbloquear en este dispositivo.",
+      "historyOff": "El historial de ubicación está apagado.",
+      "historyEmpty": "Todavía no se ha guardado ningún historial de ubicación.",
+      "gpsStatusTitle": "Estado del GPS",
+      "gpsLabel": "GPS:",
+      "gpsActive": "Activa",
+      "gpsPaused": "Pausa",
+      "gpsStarting": "Comenzando...",
+      "gpsOff": "Desactivado",
+      "lastUpdatedLabel": "Última actualización:",
+      "accuracyLabel": "Precisión:",
+      "gpsInfo": "Actualizaciones GPS mientras Viktkollen está activo. Cuando la aplicación está en segundo plano, el seguimiento se detiene y comienza de nuevo cuando regresas.",
+      "viewersTitle": "¿Quién puede ver mi ubicación?",
+      "noViewers": "Ningún otro miembro de la familia está conectado todavía.",
+      "historyGroupTitle": "Historial de ubicación",
+      "historyGroupHint": "Elija cuánto tiempo deben mantenerse las posiciones anteriores.",
+      "notificationsTitle": "Notificaciones y batería",
+      "batterySaver": "Guardador de batería",
+      "batterySaverOn": "El ahorrador de batería reduce la frecuencia con que se actualiza la posición GPS.",
+      "batterySaverOff": "Se utiliza la frecuencia normal de actualización.",
+      "nameTitle": "Tu nombre en la familia",
+      "namePlaceholder": "Ejemplo: Hassan",
+      "saveName": "Guardar nombre",
+      "seenAs": "La familia te ve como:",
+      "sharingTitle": "Intercambio de la ubicación",
+      "stopSharing": "Dejar de compartir ubicación"
+    },
+    "retention": {
+      "m0": "Inmediatamente",
+      "m60": "1 hora",
+      "m120": "2 horas",
+      "m360": "6 horas",
+      "m1440": "24 horas",
+      "m10080": "7 días",
+      "m43200": "30 días"
+    },
+    "title": "Lugar",
+    "subtitle": "Visión general de la ubicación segura para la familia — honestamente preparado sin GPS falso.",
+    "featuresAria": "Características del lugar",
+    "consent": {
+      "title": "Intercambio voluntario de la ubicación",
+      "body": "Compartir la ubicación requiere el consentimiento claro de los tutores. Nada se almacena o se comparte hasta que usted apruebe activamente.",
+      "toggle": "Aprobo el uso compartido voluntario de la ubicación",
+      "sharingToggle": "Compartir mi ubicación con los tutores aprobados",
+      "note": "Puede desactivar el intercambio en cualquier momento. No hay seguimiento oculto o de fondo."
+    },
+    "status": {
+      "requiresConsent": "Requiere compartir ubicación aprobada",
+      "notConnected": "Aún no está conectado",
+      "comingSoon": "Llegando al siguiente paso"
+    },
+    "features": {
+      "familyMap": {
+        "title": "Mapa familiar",
+        "body": "Vea dónde están los miembros de la familia cuando compartir está activo y conectado.",
+        "empty": "Nadie está compartiendo su ubicación con usted todavía.",
+        "emptyBody": "Los miembros de la familia aparecen aquí una vez que deciden compartir su ubicación con usted."
+      },
+      "childLocation": {
+        "title": "Ubicación del niño",
+        "body": "Ubicación conocida actual o última - se muestra sólo con el uso compartido aprobado y una conexión real.",
+        "empty": "Todavía no se ha compartido ninguna ubicación actual.",
+        "emptyBody": "La ubicación compartida más reciente aparece aquí una vez que un miembro de la familia decide compartirla."
+      },
+      "status": {
+        "title": "Situación",
+        "body": "En la escuela, dejó la escuela o de camino a casa... sin estados falsos.",
+        "empty": "Todavía no se puede determinar el estado.",
+        "emptyBody": "El estado aparece aquí cuando un miembro de la familia comparte voluntariamente su ubicación actual."
+      },
+      "safePlaces": {
+        "title": "Lugares seguros",
+        "body": "Hogar, escuela y otros lugares que se definen a sí mismo.",
+        "empty": "Todavía no se han añadido lugares seguros.",
+        "emptyBody": "Más tarde puedes añadir lugares como Home, School u otros que quieras usar para el estado y las notificaciones."
+      },
+      "placeNotifications": {
+        "title": "Notificaciones de lugar",
+        "body": "Recordatorios cuando alguien se va o llega a un lugar seguro.",
+        "empty": "Todavía no hay notificaciones de lugares habilitadas.",
+        "emptyBody": "Más tarde puedes elegir notificaciones para cuando alguien llegue o salga de un lugar seguro."
+      },
+      "sos": {
+        "title": "SOS",
+        "body": "Emergencia: no se pone en contacto con los servicios de emergencia hasta que exista una verdadera integración.",
+        "action": "SOS (desconectado)",
+        "empty": "SOS no está conectado a ningún contacto de emergencia todavía.",
+        "emptyBody": "En caso de peligro inmediato, llame al 112."
+      },
+      "allOkCheckin": {
+        "title": "Todo bien.",
+        "body": "Check-in rápido a tutores sin falsas garantías de seguridad.",
+        "empty": "El check-in aún no está conectado a ningún destinatario.",
+        "emptyBody": "Una vez que la función está conectada, usted será capaz de hacer saber a su familia que todo está bien."
+      },
+      "placeHistory": {
+        "title": "Historial de ubicación",
+        "body": "Lugares y movimientos pasados — sólo con el consentimiento y un motor real.",
+        "empty": "Todavía no existe ningún historial de ubicación.",
+        "emptyBody": "El historial de ubicación aparecerá aquí una vez que la función haya sido habilitada y se hayan guardado actualizaciones de ubicación reales."
+      },
+      "batterySaver": {
+        "title": "Modo de ahorro de batería",
+        "body": "Reducir la frecuencia de actualización cuando el uso compartido de la ubicación está activo.",
+        "toggle": "Activar el ahorrador de batería (preparado)",
+        "statusOn": "El modo de ahorro de batería está activado.",
+        "statusOff": "El modo de ahorro de batería está apagado.",
+        "disclaimer": "El modo de ahorro de batería es una configuración guardada para la función de ubicación. Aún no se ha conectado ningún cambio automático al GPS o al seguimiento de fondo."
+      },
+      "sharingSettings": {
+        "title": "Configuración de uso compartido de la ubicación",
+        "body": "Administrar quién puede ver la ubicación y cuándo compartir está activo.",
+        "statusOn": "El uso compartido de la ubicación está en marcha.",
+        "statusOff": "El uso compartido de la ubicación está apagado.",
+        "disclaimer": "Compartir ubicación es una configuración guardada. Todavía no se ha iniciado ningún uso compartido automático de GPS o de fondo por esta configuración."
+      }
+    },
+    "disclaimer": {
+      "title": "Importante sobre Place"
+    },
+    "limits": {
+      "noGps": "Aquí no se habilita ninguna función de GPS o mapa.",
+      "noTracking": "No hay seguimiento oculto ni monitoreo continuo.",
+      "noEmergency": "SOS no se pone en contacto con los servicios de emergencia en esta versión.",
+      "separateSprint": "Mapa real, familiares e historia llegan en el siguiente paso."
+    }
+  },
+  "confirm": {
+    "archiveDelete": {
+      "confirm": "Eliminar permanentemente",
+      "description": "¿Desea eliminar permanentemente el elemento archivado?",
+      "title": "Eliminar elemento archivado"
+    },
+    "coachHistory": {
+      "confirm": "Limpiar",
+      "description": "¿Quieres limpiar toda la historia del entrenador?",
+      "title": "Limpiar el historial del entrenador"
+    },
+    "coachMemory": {
+      "confirm": "Olvidalo.",
+      "description": "¿Quieres olvidar todos los recuerdos de entrenador derivados? Las preferencias se mantienen.",
+      "title": "Olvida los recuerdos de entrenadores derivados"
+    },
+    "dietaryClear": {
+      "confirm": "Limpiar",
+      "description": "¿Quieres eliminar tus preferencias de comida guardada?",
+      "title": "Preferencias claras en materia de alimentos"
+    },
+    "planner": {
+      "clearShopping": {
+        "confirm": "Limpiar",
+        "description": "¿Desea borrar la lista de compras para la semana seleccionada?",
+        "title": "Limpiar la lista de compras"
+      },
+      "clearWeek": {
+        "confirm": "Limpiar",
+        "description": "¿Desea borrar el plan de la semana seleccionada?",
+        "title": "Plan de semana claro"
+      },
+      "copyReplace": {
+        "confirm": "Reemplazar",
+        "description": "¿Quieres reemplazar las comidas existentes en los días de destino?",
+        "title": "Sustitúyanse las comidas"
+      },
+      "removeMeal": {
+        "confirm": "Eliminar",
+        "description": "¿Quieres quitar la comida planeada?",
+        "title": "Eliminar la comida planificada"
+      },
+      "removeRegistered": {
+        "confirm": "Eliminar del plan",
+        "description": "La comida estaba registrada. ¿Quieres quitarla del plan?",
+        "title": "La comida fue registrada."
+      }
+    },
+    "progressPhoto": {
+      "confirm": "Borrar",
+      "description": "¿Quieres borrar esta foto de progreso?",
+      "title": "Borrar la foto de progreso"
+    },
+    "recipeDelete": {
+      "confirm": "Borrar",
+      "description": "¿Desea borrar la receta?",
+      "title": "Eliminar la receta"
+    },
+    "templateDelete": {
+      "confirm": "Borrar",
+      "description": "¿Desea borrar la plantilla \"{{name}}\"?",
+      "title": "Borrar la plantilla"
+    }
+  }
+}

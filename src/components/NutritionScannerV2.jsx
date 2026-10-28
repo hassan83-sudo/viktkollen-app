@@ -1763,6 +1763,11 @@ function NutritionScannerV2({
             </p>
           )}
 
+          <div className="scanner-actions">
+            <button type="button" className="secondary-button" disabled={isSaving} onClick={() => cameraInputRef.current?.click()}>
+              {i18n.language?.startsWith('sv') ? 'Ta ny bild' : t('scanner.takePhoto')}
+            </button>
+          </div>
           <div className="habit-actions">
             <button type="button" onClick={handleCancel}>{t('common:actions.cancel')}</button>
             {savedMealId && <a className="secondary-button" href="#meal-history">{t('scanner.openSavedMeal')}</a>}

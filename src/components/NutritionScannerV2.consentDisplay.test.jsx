@@ -12,6 +12,7 @@ import {
   readNutritionRemoteConsent,
 } from '../services/nutritionRemoteConsent.js'
 import NutritionScannerV2 from './NutritionScannerV2.jsx'
+import { changeAppLanguage } from '../i18n/index.js'
 
 const analyzeNutritionPhoto = vi.hoisted(() => vi.fn(async () => ({ ok: false, errorCode: 'test_stop' })))
 
@@ -38,7 +39,8 @@ describe('NutritionScannerV2 "Fråga inte igen"', () => {
   let root
   let clock = 0
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    await changeAppLanguage('sv')
     localStorage.clear()
     analyzeNutritionPhoto.mockClear()
     vi.spyOn(performance, 'now').mockImplementation(() => clock)

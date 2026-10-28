@@ -432,6 +432,7 @@ function IngredientEditor({ disabled, item, match, onApplySuggestion, onChange, 
 }
 
 function ScannerAnalyzingStatus() {
+  const { t } = useTranslation('nutrition')
   const [progress, setProgress] = useState(0)
 
   useEffect(() => {
@@ -446,7 +447,7 @@ function ScannerAnalyzingStatus() {
     return () => window.clearInterval(timer)
   }, [])
 
-  return <span aria-label={`Uppskattat analysförlopp ${progress} procent`}>{progress} %</span>
+  return <span aria-label={t('scanProgress', { progress })}>{progress} %</span>
 }
 
 function NutritionScannerV2({
@@ -1558,11 +1559,11 @@ function NutritionScannerV2({
           className="secondary-button scanner-consent-display-toggle"
           onClick={() => handleConsentInfoDisplayChange('always')}
         >
-          Ändra visningsval
+          {t('consentDisplay.change')}
         </button>
       ) : (
       <fieldset className="scanner-consent-display">
-        <legend>Fråga om godkännande av AI-analys</legend>
+        <legend>{t('consentDisplay.legend')}</legend>
         <label>
           <input
             type="radio"
@@ -1571,7 +1572,7 @@ function NutritionScannerV2({
             checked={consentInfoDisplay === 'always'}
             onChange={() => handleConsentInfoDisplayChange('always')}
           />
-          <span>Fråga varje gång</span>
+          <span>{t('consentDisplay.always')}</span>
         </label>
         <label>
           <input
@@ -1581,7 +1582,7 @@ function NutritionScannerV2({
             checked={consentInfoDisplay === 'never'}
             onChange={() => handleConsentInfoDisplayChange('never')}
           />
-          <span>Fråga inte igen</span>
+          <span>{t('consentDisplay.never')}</span>
         </label>
       </fieldset>
       )}
@@ -1747,7 +1748,7 @@ function NutritionScannerV2({
                   <path d="M10.3 3.9 1.8 18.1A2 2 0 0 0 3.5 21h17a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0Z" />
                   <path d="M12 9v4m0 4h.01" />
                 </svg>
-                {'Osäkra uppgifter'} ({reviewUncertainties.length})
+                {t('uncertainDetails')} ({reviewUncertainties.length})
               </summary>
               <ul className="health-dashboard-list">
                 {[...new Set(reviewUncertainties)].map((item) => <li key={item}>{item}</li>)}

@@ -148,7 +148,7 @@ describe('Hem → Skanna maten', () => {
     expect(document.body.textContent).toContain('Bekräfta först')
 
     fireEvent.click(consentCheckbox())
-    await analyzeWithAi()
+    await flush()
     expect(analyzeNutritionPhoto).toHaveBeenCalledTimes(1)
     expect(analyzeNutritionPhoto.mock.calls[0][1].consentApproved).toBe(true)
   })
@@ -189,7 +189,7 @@ describe('Hem → Skanna maten', () => {
     expect(analyzeNutritionPhoto).not.toHaveBeenCalled()
 
     fireEvent.click(consentCheckbox())
-    await analyzeWithAi()
+    await flush()
     expect(analyzeNutritionPhoto).toHaveBeenCalledTimes(1)
   })
 
@@ -246,9 +246,40 @@ describe('Hem → Skanna maten', () => {
     // Bildval från mobilen finns kvar.
     expect(document.querySelector('#nutrition-scanner-photo-library-input')).not.toBeNull()
 
-    await analyzeWithAi()
     expect(analyzeNutritionPhoto).toHaveBeenCalledTimes(1)
     expect(analyzeNutritionPhoto.mock.calls[0][1].consentApproved).toBe(true)
+  })
+
+  it('automatically analyzes native camera and library photos once each, with manual retry after failure', async () => {
+    chooseNeverAsk()
+    renderScanner()
+    const camera = document.querySelector('#nutrition-scanner-photo-camera-input')
+    fireEvent.change(camera, { target: { files: [new File(['a'], 'camera.jpg', { type: 'image/jpeg' })] } })
+    await flush()
+    expect(analyzeNutritionPhoto).toHaveBeenCalledTimes(1)
+
+    // The mock returns an error: rerenders and preference toggles must not retry it.
+    fireEvent.click(screen.getByRole('button', { name: 'Ändra visningsval' }))
+    await flush()
+    fireEvent.click(document.querySelector('input[name="nutrition-consent-display"][value="never"]'))
+    await flush()
+    expect(analyzeNutritionPhoto).toHaveBeenCalledTimes(1)
+    await analyzeWithAi()
+    expect(analyzeNutritionPhoto).toHaveBeenCalledTimes(2)
+
+    const library = document.querySelector('#nutrition-scanner-photo-library-input')
+    fireEvent.change(library, { target: { files: [new File(['b'], 'library.jpg', { type: 'image/jpeg' })] } })
+    await flush()
+    expect(analyzeNutritionPhoto).toHaveBeenCalledTimes(3)
+    await flush()
+    expect(analyzeNutritionPhoto).toHaveBeenCalledTimes(3)
+  })
+
+  it('does not start an analysis when the scanner opens without a selected photo', async () => {
+    chooseNeverAsk()
+    renderScanner()
+    await flush()
+    expect(analyzeNutritionPhoto).not.toHaveBeenCalled()
   })
 
   it('stops the preview camera when the user leaves the scanner', async () => {

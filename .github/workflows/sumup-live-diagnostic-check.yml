@@ -1,0 +1,21 @@
+name: SumUp Live diagnostic checks
+on:
+  pull_request:
+    paths:
+      - 'api/billing/user/index.js'
+      - 'api/billing/user/sumupLiveDiagnostic.test.js'
+      - '.github/workflows/sumup-live-diagnostic-check.yml'
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run api/billing/user/sumupLiveDiagnostic.test.js
+      - run: npx eslint api/billing/user/index.js api/billing/user/sumupLiveDiagnostic.test.js
+      - run: npm run build

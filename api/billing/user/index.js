@@ -5,7 +5,8 @@ import { handleCheckoutRequest, handleCheckoutStatusRequest } from '../../_share
 import { createServerCheckoutIntentPorts, prepareSumUpSandboxSetup } from '../../_shared/billing/sumupSandboxSetup.js'
 import { handleWebhookRequest } from '../../_shared/billing/providerWebhookIngress.js'
 import { executeUserBillingIntent } from '../../_shared/billing/userLifecycleIntent.js'
-import { lookupBillingAdmin } from '../../_shared/billing/admin.js'
+import { lookupBillingAdmin, requireBillingAdmin } from '../../_shared/billing/admin.js'
+import { getConfiguredSumUpAdapter } from '../../_shared/billing/providers/sumup.js'
 import { readPlanComparison } from '../../_shared/billing/planComparisonRead.js'
 import { readUsageSnapshot } from '../../_shared/billing/usageSnapshotRead.js'
 import { applyOwnerFoodScanStatus, resolveFoodScanOwnerStatus } from '../../_shared/billing/foodScanOwnerExemption.js'
@@ -53,7 +54,7 @@ const POST_OPS = Object.freeze({
   '/api/billing/cancel-undo': 'undo_cancel',
 })
 
-const INTERNAL_OPS = Object.freeze(['quota', 'subscription', 'entitlements', 'plans', 'usage', 'capability'])
+const INTERNAL_OPS = Object.freeze(['quota', 'subscription', 'entitlements', 'plans', 'usage', 'capability', 'sumup_live_check'])
 
 function header(request, name) {
   const headers = request?.headers || {}
@@ -251,6 +252,30 @@ async function handlePlans(request, response, auth, requestId) {
   })
 }
 
+async function handleSumUpLiveCheck(request, response, requestId) {
+  // Diagnostic only: no checkout, no credentials or merchant details in responses.
+  const admin = await requireBillingAdmin(request, { requestId })
+  if (!admin.ok) return response.status(admin.status).json({ ok: false, error: admin.error, requestId })
+  if (process.env.VERCEL_ENV !== 'production') {
+    return response.status(403).json({ ok: false, code: 'PRODUCTION_ONLY', requestId })
+  }
+  const adapter = getConfiguredSumUpAdapter()
+  if (!adapter?.merchantCode || typeof adapter.transport?.retrieveMerchant !== 'function') {
+    return response.status(503).json({ ok: false, code: 'SUMUP_NOT_CONFIGURED', requestId })
+  }
+  try {
+    const merchant = await adapter.transport.retrieveMerchant(adapter.merchantCode)
+    const passed = merchant?.merchant_code === adapter.merchantCode && merchant?.sandbox === false
+    return response.status(passed ? 200 : 409).json({
+      ok: passed,
+      code: passed ? 'LIVE_MERCHANT_PASS' : 'LIVE_MERCHANT_MISMATCH',
+      requestId,
+    })
+  } catch {
+    return response.status(502).json({ ok: false, code: 'LIVE_MERCHANT_UNVERIFIED', requestId })
+  }
+}
+
 async function handleCapability(request, response, auth, requestId) {
   void request.query?.billing_admin
   void request.query?.isAdmin
@@ -377,6 +402,11 @@ export default async function handler(request, response) {
       safeMessage: 'Okänd sökväg.',
       status: 404,
     })
+  }
+
+  if (operation === 'sumup_live_check') {
+    if (request.method !== 'GET') return response.status(405).json({ ok: false, code: 'METHOD_NOT_ALLOWED', requestId })
+    return handleSumUpLiveCheck(request, response, requestId)
   }
 
   if (request.method !== 'GET') {

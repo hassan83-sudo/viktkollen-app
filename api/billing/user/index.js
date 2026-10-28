@@ -272,14 +272,19 @@ async function handleSumUpLiveCheck(request, response, requestId) {
   }
   try {
     const merchant = await adapter.transport.retrieveMerchant(adapter.merchantCode)
-    // A missing sandbox flag is not proof of a Live merchant. Fail closed and
-    // distinguish an actual merchant mismatch from an inconclusive response.
+    // SumUp's /v0.1/me endpoint independently identifies the account bound
+    // to this API key. Both identities must match the configured merchant.
+    // Neither identity match nor an omitted sandbox field proves Live status.
+    const identity = await adapter.transport.retrieveCurrentMerchant()
     const codeMatches = merchant?.merchant_code === adapter.merchantCode
+      && identity?.merchant_code === adapter.merchantCode
+    const sandboxKnownLive = merchant?.sandbox === false && identity?.sandbox === false
+    const sandboxDetected = merchant?.sandbox === true || identity?.sandbox === true
     const code = !codeMatches
       ? 'LIVE_MERCHANT_MISMATCH'
-      : merchant?.sandbox === true
+      : sandboxDetected
         ? 'LIVE_MERCHANT_SANDBOX'
-        : merchant?.sandbox === false
+        : sandboxKnownLive
           ? 'LIVE_MERCHANT_PASS'
           : 'LIVE_MERCHANT_SANDBOX_UNSPECIFIED'
     return response.status(code === 'LIVE_MERCHANT_PASS' ? 200 : code === 'LIVE_MERCHANT_SANDBOX_UNSPECIFIED' ? 502 : 409).json({

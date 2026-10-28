@@ -276,18 +276,25 @@ async function handleSumUpLiveCheck(request, response, requestId) {
     // to this API key. Both identities must match the configured merchant.
     // Neither identity match nor an omitted sandbox field proves Live status.
     const identity = await adapter.transport.retrieveCurrentMerchant()
-    const codeMatches = merchant?.merchant_code === adapter.merchantCode
-      && identity?.merchant_code === adapter.merchantCode
+    const merchantCode = merchant?.merchant_code
+    const identityCode = identity?.merchant_code
+    // Missing fields are inconclusive, not evidence of a different merchant.
+    // Do not infer identity from other unverified response shapes.
+    const codeMismatch = (typeof merchantCode === 'string' && merchantCode !== adapter.merchantCode)
+      || (typeof identityCode === 'string' && identityCode !== adapter.merchantCode)
+    const codeUnspecified = typeof merchantCode !== 'string' || typeof identityCode !== 'string'
     const sandboxKnownLive = merchant?.sandbox === false && identity?.sandbox === false
     const sandboxDetected = merchant?.sandbox === true || identity?.sandbox === true
-    const code = !codeMatches
+    const code = codeMismatch
       ? 'LIVE_MERCHANT_MISMATCH'
-      : sandboxDetected
-        ? 'LIVE_MERCHANT_SANDBOX'
-        : sandboxKnownLive
-          ? 'LIVE_MERCHANT_PASS'
-          : 'LIVE_MERCHANT_SANDBOX_UNSPECIFIED'
-    return response.status(code === 'LIVE_MERCHANT_PASS' ? 200 : code === 'LIVE_MERCHANT_SANDBOX_UNSPECIFIED' ? 502 : 409).json({
+      : codeUnspecified
+        ? 'LIVE_MERCHANT_IDENTITY_UNSPECIFIED'
+        : sandboxDetected
+          ? 'LIVE_MERCHANT_SANDBOX'
+          : sandboxKnownLive
+            ? 'LIVE_MERCHANT_PASS'
+            : 'LIVE_MERCHANT_SANDBOX_UNSPECIFIED'
+    return response.status(code === 'LIVE_MERCHANT_PASS' ? 200 : (code === 'LIVE_MERCHANT_SANDBOX_UNSPECIFIED' || code === 'LIVE_MERCHANT_IDENTITY_UNSPECIFIED') ? 502 : 409).json({
       ok: code === 'LIVE_MERCHANT_PASS',
       code,
       requestId,

@@ -633,6 +633,7 @@ function oneTimeRpc(db, calls = []) {
     if (name === ONE_TIME_ACTIVATION_RPC) {
       const start = new Date(args.p_paid_at)
       const result = await db.activate({
+        cancelAtPeriodEnd: true,
         checkoutId: args.p_checkout_id,
         periodEnd: new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         periodStart: start.toISOString(),

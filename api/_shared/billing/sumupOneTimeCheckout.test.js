@@ -49,6 +49,7 @@ function sumUpCheckout(reference, overrides = {}) {
 
 function rpcFor(db) {
   const activations = []
+  const renewal = []
   async function callRpc(name, args) {
     if (name === ONE_TIME_READ_RPC) {
       const intent = db.getIntent(args.p_checkout_id)
@@ -66,6 +67,7 @@ function rpcFor(db) {
       activations.push(args)
       const start = new Date(args.p_paid_at)
       const result = await db.activate({
+        cancelAtPeriodEnd: true,
         checkoutId: args.p_checkout_id,
         periodEnd: new Date(start.getTime() + 30 * DAY).toISOString(),
         periodStart: start.toISOString(),
@@ -75,11 +77,12 @@ function rpcFor(db) {
         providerEventId: args.p_provider_event_id,
         providerSubscriptionRef: args.p_provider_subscription_ref,
       })
+      renewal.push(result.cancelAtPeriodEnd)
       return { access_granted: true, current_period_end: result.currentPeriodEnd, plan_id: result.planId, user_id: result.userId }
     }
     throw new Error(`unexpected ${name}`)
   }
-  return { activations, callRpc }
+  return { activations, callRpc, renewal }
 }
 
 function transportWith(state) {
@@ -158,7 +161,7 @@ describe('SumUp Hosted Checkout, engångsköp', () => {
     const reference = await boundIntent(db)
     const state = { checkout: sumUpCheckout(reference) }
     const transport = transportWith(state)
-    const { activations, callRpc } = rpcFor(db)
+    const { activations, callRpc, renewal } = rpcFor(db)
     const registry = createProviderRegistry()
     registry.register(createSumUpCheckoutAdapter({ merchantCode: MERCHANT, testOnly: true, transport }))
 
@@ -190,6 +193,8 @@ describe('SumUp Hosted Checkout, engångsköp', () => {
     expect(db.getIntent(reference).status).toBe('consumed')
     expect(db.quotaPlan(USER)).toBe(PLAN)
     expect(db.subscriptionCount(USER)).toBe(1)
+    expect(renewal.length).toBeGreaterThan(0)
+    expect(renewal.every((flag) => flag === true)).toBe(true)
     const periodEnd = new Date(results[0].currentPeriodEnd).getTime()
     expect(periodEnd - new Date(state.checkout.transactions[0].timestamp).getTime()).toBe(30 * DAY)
 

@@ -385,7 +385,13 @@ export function createPhotoAnalysisReviewDraft(analysis = {}, options = {}) {
     components: normalized.components,
     date: normalized.analysisDate,
     detectedItems: normalized.detectedItems,
-    mealName: normalized.detectedItems[0]?.name ? `Foto: ${getNutritionPhotoFoodDisplayName(normalized.detectedItems[0].name)}` : 'Måltid från foto',
+    mealName: (() => {
+      // Dish names are independent of the ingredient order returned by the model.
+      // Keep all detected items untouched for the ingredient breakdown.
+      const pizza = normalized.detectedItems.find((item) => /pizza/i.test(item.name || ''))
+      const namedItem = pizza || normalized.detectedItems[0]
+      return namedItem?.name ? `Foto: ${getNutritionPhotoFoodDisplayName(namedItem.name)}` : 'Måltid från foto'
+    })(),
     mealType: options.mealType || 'Lunch',
     note: 'Näring uppskattad från foto och granskad före sparning.',
     nutrition: normalized.nutrition,

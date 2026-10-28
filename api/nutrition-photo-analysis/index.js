@@ -214,7 +214,7 @@ function createPrompt(mealType) {
   return [
     'Viktkollen food photo analysis. Reply with compact JSON only, no markdown:',
     `{"items":[{"name":"","bank":"","cat":"","cook":"","g":[0,0],"conf":"","gconf":"","alt":[],"per100":[0,0,0,0]}],"quality":"","conf":"","note":""}`,
-    `1. One item per visually distinct food, max ${NUTRITION_PHOTO_MAX_COMPONENTS}. Keep every visible sauce, dressing, dip, oil/butter, bread, breading and topping as its own item; split dishes into their visible parts (burger: bun, patty, cheese, vegetables, sauce). Recognize the complete dish first: pizza (including pizza with meat and vegetables), lasagne, soup or stew must be named as that dish, never as its first topping or ingredient. For pizza, return one pizza item including its toppings, not separate meat, cheese or crust items; avoid double counting. Do not merge separate foods; do not count the same food twice.`,
+    `1. One item per visually distinct food, max ${NUTRITION_PHOTO_MAX_COMPONENTS}. Keep every visible sauce, dressing, dip, oil/butter, bread, breading and topping as its own item; split dishes into their visible parts (burger: bun, patty, cheese, vegetables, sauce). Recognize the complete dish first: pizza (including pizza with meat and vegetables), lasagne, soup or stew must be named as that dish, never as its first topping or ingredient. For pizza, return one pizza item including its toppings, not separate meat, cheese or crust items; avoid double counting. The first item MUST be the complete dish (e.g. 'Kebabpizza'), never 'kebabkött'. If the pizza item already includes toppings in its grams and per100 nutrition, NEVER add those toppings again as separate items. Do not merge separate foods; do not count the same food twice.`,
     '2. name: short Swedish name for the user. bank: Swedish name in Livsmedelsverket style, main food first, then cut/type, then cooking, e.g. "Kyckling bröstfilé stekt", "Ris vitt kokt", "Broccoli kokt", "Pommes frites ugnsstekta", "Lax ugnsstekt", "Nötfärs stekt", "Potatis kokt", "Bearnaisesås".',
     '3. cat: protein|carbohydrate|vegetables|sauce|fat|drink|unknown. cook: fried|breaded|grilled|boiled|baked|steamed|raw or "" - only with visible cues (browning, crust, grill marks, breading, oil sheen).',
     '4. Identity: judge colour, texture, shape, surface and cooking cues; check texture before naming meat or fish. Chicken: matte white-beige meat with long parallel fibres, often grill marks or a seasoned crust. Fish: flakes in layers, white or pink segments, often skin or sheen. Also check pork vs chicken, beef vs lamb, rice vs bulgur/couscous, potato vs sweet potato, cream sauce vs yoghurt sauce. conf high only when unmistakable; otherwise medium or low with up to 2 likely alternatives in alt. Never present a guess as certain. An unidentifiable food is "Okänd komponent" with conf low.',
@@ -319,6 +319,10 @@ export function componentsFromCompactItems(items = []) {
 export async function expandCompactPayload(payload = {}, foodBankOptions = {}) {
   if (!payload || !Array.isArray(payload.items)) return { foodBank: null, payload }
   const components = componentsFromCompactItems(payload.items)
+  // Keep the recognizable dish first, even when the model lists a topping first.
+  // Do not discard components here: the model may have estimated only the pizza base.
+  const pizzaIndex = components.findIndex((component) => /\bpizza\b|\bpizz[a-zåäö]*\b/i.test(component.name))
+  if (pizzaIndex > 0) components.unshift(components.splice(pizzaIndex, 1)[0])
   const { lookup, matches } = await matchComponentsToFoodBank(components, foodBankOptions)
   const withBank = components.map((component) => {
     const match = matches.get(component.id)

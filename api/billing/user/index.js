@@ -422,7 +422,17 @@ export default async function handler(request, response) {
 
   if (operation === 'sumup_live_check') {
     if (request.method !== 'GET') return response.status(405).json({ ok: false, code: 'METHOD_NOT_ALLOWED', requestId })
-    return handleSumUpLiveCheck(request, response, requestId)
+    // Diagnostic checkpoints contain no identity, credentials, or merchant data.
+    // If no checkpoint appears in runtime logs, investigate function startup/imports.
+    console.info('[billing-live-check] entered')
+    try {
+      const result = await handleSumUpLiveCheck(request, response, requestId)
+      console.info('[billing-live-check] completed', response.statusCode)
+      return result
+    } catch {
+      console.error('[billing-live-check] unexpected_handler_failure')
+      return response.status(503).json({ ok: false, code: 'LIVE_DIAGNOSTIC_INTERNAL_ERROR', requestId })
+    }
   }
 
   if (request.method !== 'GET') {

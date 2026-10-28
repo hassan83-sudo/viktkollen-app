@@ -8,6 +8,7 @@ import {
   activateVerifiedOneTimeCheckout,
   createOneTimeIntentReader,
   hostedCheckoutUrls,
+  LIVE_CHECKOUT_ENV,
   ONE_TIME_ACTIVATION_RPC,
   ONE_TIME_READ_RPC,
   oneTimeCheckoutStatus,
@@ -374,6 +375,81 @@ describe('start av engångsköp', () => {
       'nope',
     ]) {
       expect(hostedCheckoutUrls('chk_1', { BILLING_PUBLIC_BASE_URL: value }), value).toBeNull()
+    }
+  })
+
+  it('slår inte på Live från klienten eller från ett annat värde än true', async () => {
+    for (const value of [undefined, '', '1', 'TRUE', 'yes', ' true']) {
+      const calls = setup()
+      const result = await beginCheckout({
+        body: { BILLING_SUMUP_LIVE_ENABLED: 'true', live_enabled: true, plan_id: PLAN, sumup_live: true },
+        env: {
+          BILLING_PUBLIC_BASE_URL: 'https://viktkollen-app.vercel.app',
+          ...(value === undefined ? {} : { [LIVE_CHECKOUT_ENV]: value }),
+          SUPABASE_URL: 'https://bxmdlckrlwzdtcxnsqqr.supabase.co',
+          VITE_SUPABASE_URL: 'https://bxmdlckrlwzdtcxnsqqr.supabase.co',
+        },
+        userId: USER,
+      })
+      expect(result, String(value)).toMatchObject({ accessGranted: false, code: 'STAGING_IDENTITY_REQUIRED', status: 503 })
+      expect(calls.create).toEqual([])
+      expect(calls.merchant).toBe(0)
+    }
+  })
+
+  it('håller Sandbox och Live åtskilda och tillåter produktionsadressen bara när Live är på', async () => {
+    const productionEnv = {
+      [LIVE_CHECKOUT_ENV]: 'true',
+      BILLING_PUBLIC_BASE_URL: 'https://viktkollen-app.vercel.app',
+      SUPABASE_URL: 'https://bxmdlckrlwzdtcxnsqqr.supabase.co',
+      VITE_SUPABASE_URL: 'https://bxmdlckrlwzdtcxnsqqr.supabase.co',
+    }
+    const stagingWithLive = setup()
+    const stagingRefused = await beginCheckout({
+      body: { plan_id: PLAN },
+      env: { ...productionEnv, SUPABASE_URL: 'https://armtslzspuebmlysnooq.supabase.co', VITE_SUPABASE_URL: 'https://armtslzspuebmlysnooq.supabase.co' },
+      userId: USER,
+    })
+    expect(stagingRefused).toMatchObject({ accessGranted: false, code: 'LIVE_IDENTITY_REQUIRED', status: 403 })
+    expect(stagingWithLive.merchant).toBe(0)
+    expect(stagingWithLive.create).toEqual([])
+
+    const sandboxMerchant = setup()
+    const sandboxRefused = await beginCheckout({ body: { plan_id: PLAN }, env: productionEnv, userId: USER })
+    expect(sandboxRefused).toMatchObject({ accessGranted: false, code: 'LIVE_IDENTITY_REQUIRED', status: 403 })
+    expect(sandboxMerchant.create).toEqual([])
+    expect(sandboxMerchant.cancel).toEqual([])
+
+    const previewAddress = setup({ merchant: { merchant_code: MERCHANT, sandbox: false } })
+    const previewRefused = await beginCheckout({
+      body: { plan_id: PLAN },
+      env: { ...productionEnv, BILLING_PUBLIC_BASE_URL: 'https://viktkollen-preview.example' },
+      userId: USER,
+    })
+    expect(previewRefused).toMatchObject({ accessGranted: false, code: 'PROVIDER_NOT_CONFIGURED', status: 503 })
+    expect(previewAddress.create).toEqual([])
+    expect(previewAddress.cancel).toEqual(['chk_new'])
+
+    for (const origin of [
+      'https://viktkollen-app.vercel.app',
+      'https://viktkollen-app-appsonthego-s-projects.vercel.app',
+      'https://viktkollen-app-git-main-appsonthego-s-projects.vercel.app',
+    ]) {
+      const calls = setup({ merchant: { merchant_code: MERCHANT, sandbox: false } })
+      const ready = await beginCheckout({
+        body: { plan_id: PLAN, purpose: 'SETUP_RECURRING_PAYMENT' },
+        env: { ...productionEnv, BILLING_PUBLIC_BASE_URL: origin },
+        userId: USER,
+      })
+      expect(ready, origin).toMatchObject({ code: 'CHECKOUT_PENDING', hostedCheckoutUrl: HOSTED })
+      expect(calls.create[0]).toMatchObject({
+        amount: 4,
+        currency: 'SEK',
+        redirect_url: `${origin}/?vk_checkout=chk_new#installningar`,
+        return_url: `${origin}/api/billing/webhook`,
+      })
+      expect(calls.create[0].purpose).toBeUndefined()
+      expect(calls.create[0].hosted_checkout).toEqual({ enabled: true })
     }
   })
 

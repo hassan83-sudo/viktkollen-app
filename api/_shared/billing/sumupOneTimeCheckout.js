@@ -12,6 +12,7 @@ export const ONE_TIME_READ_RPC = 'billing.read_one_time_checkout'
 export const ONE_TIME_TTL_SECONDS = 30 * 60
 export const STAGING_SUPABASE_REF = 'armtslzspuebmlysnooq'
 export const PRODUCTION_SUPABASE_REF = 'bxmdlckrlwzdtcxnsqqr'
+export const LIVE_CHECKOUT_ENV = 'BILLING_SUMUP_LIVE_ENABLED'
 
 const PRODUCTION_APP_HOSTS = new Set([
   'viktkollen-app.vercel.app',
@@ -27,13 +28,37 @@ export function supabaseProjectRef(value) {
   }
 }
 
-/** Preview checkout may use only the staging project. Production is refused. */
+/** Live stays off unless the server env is exactly the string true. */
+export function liveCheckoutEnabled(env = process.env) {
+  return env?.[LIVE_CHECKOUT_ENV] === 'true'
+}
+
+/**
+ * Sandbox and Live are separate closed pairs.
+ * Off: both Supabase URLs are the staging project.
+ * On: both Supabase URLs are the production project.
+ * A mixed or missing pair is refused.
+ */
+export function oneTimeCheckoutMode(env = process.env) {
+  const server = supabaseProjectRef(env?.SUPABASE_URL)
+  const client = supabaseProjectRef(env?.VITE_SUPABASE_URL)
+  const live = liveCheckoutEnabled(env)
+  if (!server || !client || server !== client) {
+    return { ok: false, code: live ? 'LIVE_IDENTITY_REQUIRED' : 'STAGING_IDENTITY_REQUIRED' }
+  }
+  if (live) {
+    return server === PRODUCTION_SUPABASE_REF
+      ? { ok: true, mode: 'live' }
+      : { ok: false, code: 'LIVE_IDENTITY_REQUIRED' }
+  }
+  return server === STAGING_SUPABASE_REF
+    ? { ok: true, mode: 'sandbox' }
+    : { ok: false, code: 'STAGING_IDENTITY_REQUIRED' }
+}
+
+/** Preview checkout may use only the staging project. Production is refused while Live is off. */
 export function stagingSupabaseReady(env = process.env) {
-  const server = supabaseProjectRef(env.SUPABASE_URL)
-  const client = supabaseProjectRef(env.VITE_SUPABASE_URL)
-  if (!server || !client) return false
-  if (server === PRODUCTION_SUPABASE_REF || client === PRODUCTION_SUPABASE_REF) return false
-  return server === STAGING_SUPABASE_REF && client === STAGING_SUPABASE_REF
+  return oneTimeCheckoutMode(env).mode === 'sandbox'
 }
 
 const CHECKOUT_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -45,8 +70,8 @@ function failure(code, state = 'failed') {
 
 /**
  * Webhook and return addresses come from server configuration only, never
- * from the request. BILLING_PUBLIC_BASE_URL is the app origin, e.g.
- * https://viktkollen-git-<branch>.vercel.app on an isolated Preview.
+ * from the request. While Live is off the origin is the isolated Preview.
+ * While Live is on it is one of the production app origins.
  */
 export function hostedCheckoutUrls(checkoutId, env = process.env) {
   const raw = typeof env.BILLING_PUBLIC_BASE_URL === 'string' ? env.BILLING_PUBLIC_BASE_URL.trim() : ''
@@ -57,9 +82,11 @@ export function hostedCheckoutUrls(checkoutId, env = process.env) {
   } catch {
     return null
   }
+  const productionHost = PRODUCTION_APP_HOSTS.has(base.hostname)
+  const live = liveCheckoutEnabled(env)
   if (base.protocol !== 'https:' || base.username || base.password || base.search || base.hash
     || (base.pathname !== '/' && base.pathname !== '')
-    || PRODUCTION_APP_HOSTS.has(base.hostname)) {
+    || (live ? !productionHost : productionHost)) {
     return null
   }
   const origin = base.origin

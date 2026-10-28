@@ -16,7 +16,8 @@ function quotaPlan(state, userId) {
 /**
  * Local stand-in for billing.activate_verified_checkout. State commits only
  * after subscription creation, provider-ref binding, assignment sync, and
- * intent consumption all succeed.
+ * intent consumption all succeed. Renewal stays on unless the caller is the
+ * one-time Hosted Checkout path and passes cancelAtPeriodEnd.
  */
 export function createInMemoryCheckoutActivation({ now = () => new Date(), plans = new Map() } = {}) {
   let state = { assignments: [], intents: [], quotaReservations: [], subscriptions: [] }
@@ -55,7 +56,7 @@ export function createInMemoryCheckoutActivation({ now = () => new Date(), plans
         reject('provider_subscription_conflict')
       }
       const subscription = {
-        cancelAtPeriodEnd: false,
+        cancelAtPeriodEnd: input.cancelAtPeriodEnd === true,
         currentPeriodEnd: input.periodEnd,
         currentPeriodStart: input.periodStart,
         planId: intent.planId,
@@ -140,6 +141,9 @@ export function createInMemoryCheckoutActivation({ now = () => new Date(), plans
     quotaPlan(userId) {
       return quotaPlan(state, userId)
     },
+    subscriptionCount(userId) {
+      return state.subscriptions.filter((row) => !userId || row.userId === userId).length
+    },
     quotaReservations() {
       return state.quotaReservations.length
     },
@@ -150,6 +154,7 @@ function resultFrom(intent, subscription, assignmentPlanId) {
   return {
     accessGranted: true,
     assignmentPlanId,
+    cancelAtPeriodEnd: subscription.cancelAtPeriodEnd === true,
     currentPeriodEnd: subscription.currentPeriodEnd,
     planId: intent.planId,
     proration: false,

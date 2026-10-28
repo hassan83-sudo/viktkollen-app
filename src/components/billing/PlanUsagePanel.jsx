@@ -36,13 +36,24 @@ function formatQuotaReset(periodEnd) {
   if (Number.isNaN(date.getTime())) return ''
   const parts = new Intl.DateTimeFormat('sv-SE', {
     day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
     month: 'numeric',
     timeZone: 'Europe/Stockholm',
   }).formatToParts(date)
   const day = Number(parts.find((part) => part.type === 'day')?.value)
   const month = Number(parts.find((part) => part.type === 'month')?.value)
   if (!day || !month || !MONTHS[month - 1]) return ''
-  return `${day} ${MONTHS[month - 1]}`
+  const label = `${day} ${MONTHS[month - 1]}`
+  const midnightUtc = date.getUTCHours() === 0
+    && date.getUTCMinutes() === 0
+    && date.getUTCSeconds() === 0
+    && date.getUTCMilliseconds() === 0
+  if (midnightUtc) return label
+  const hour = parts.find((part) => part.type === 'hour')?.value
+  const minute = parts.find((part) => part.type === 'minute')?.value
+  if (!hour || !minute) return label
+  return `${label} kl. ${hour}:${minute}`
 }
 
 // Funktioner där servern kan ge ägarkontot obegränsad månadskvot.
@@ -136,6 +147,7 @@ function PlanUsagePanel({ authLoading = false, isAuthenticated = false }) {
         : 'loading'
 
   const resetLabel = snapshot?.period?.end ? formatQuotaReset(snapshot.period.end) : ''
+  const accessLabel = snapshot?.access?.end ? formatQuotaReset(snapshot.access.end) : ''
   const quotas = Array.isArray(snapshot?.quotas)
     ? snapshot.quotas.map(presentQuota).filter((row) => row?.label)
     : []
@@ -156,7 +168,10 @@ function PlanUsagePanel({ authLoading = false, isAuthenticated = false }) {
           </p>
           <p>{snapshot.plan.priceText}</p>
           {resetLabel ? (
-            <p aria-label={`Kvoten återställs ${resetLabel}`}>Återställs {resetLabel}</p>
+            <p aria-label={`Kvoten återställs ${resetLabel}`}>Kvoten återställs {resetLabel}</p>
+          ) : null}
+          {accessLabel ? (
+            <p aria-label={`Tillgång till ${accessLabel}`}>Tillgång till {accessLabel}</p>
           ) : null}
           {quotas.length ? (
             <ul className="plan-usage-list">

@@ -1,11 +1,18 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createInMemoryCheckoutActivation } from '../checkoutActivation.js'
-import { beginCheckout, getCheckoutAdapter, setCheckoutAdapterForTests, setCheckoutPortsForTests, setCheckoutSaleReaderForTests } from '../checkoutIntent.js'
+import {
+  beginCheckout,
+  getCheckoutAdapter,
+  setCheckoutAdapterForTests,
+  setCheckoutPortsForTests,
+  setCheckoutSaleReaderForTests,
+  setOneTimeCheckoutPortsForTests,
+} from '../checkoutIntent.js'
+import { ONE_TIME_ACTIVATION_RPC, ONE_TIME_READ_RPC } from '../sumupOneTimeCheckout.js'
 import { createProviderRegistry, normalizeProviderEvent } from '../paymentProviderContract.js'
-import { createMemoryCheckoutIntents, createMemoryProviderBindings, createMemoryProviderInbox, createProviderEventProcessor } from '../providerEventProcessor.js'
 import { ingestProviderWebhook } from '../providerWebhookIngress.js'
 import {
   createSumUpCheckoutAdapter,
@@ -56,6 +63,10 @@ function paidCheckout(overrides = {}) {
   }
 }
 
+async function retrieveSandboxMerchant(code) {
+  return { merchant_code: code, sandbox: true }
+}
+
 function transportFor(checkout) {
   const calls = []
   return {
@@ -72,6 +83,7 @@ function transportFor(checkout) {
         status: 'PENDING',
       }
     },
+    retrieveMerchant: retrieveSandboxMerchant,
     async retrieveCheckout(id) {
       calls.push({ id, op: 'retrieve' })
       return { ...checkout, checkout_reference: checkout.checkout_reference, id }
@@ -91,10 +103,18 @@ function adapterFor(db, checkout = paidCheckout(), transport = transportFor(chec
   }
 }
 
+beforeEach(() => {
+  vi.stubEnv('BILLING_PUBLIC_BASE_URL', 'https://viktkollen-preview.example')
+  vi.stubEnv('SUPABASE_URL', 'https://armtslzspuebmlysnooq.supabase.co')
+  vi.stubEnv('VITE_SUPABASE_URL', 'https://armtslzspuebmlysnooq.supabase.co')
+})
+
 afterEach(() => {
   setCheckoutAdapterForTests(null)
   setCheckoutPortsForTests(null)
+  setOneTimeCheckoutPortsForTests(null)
   setCheckoutSaleReaderForTests(null)
+  vi.unstubAllEnvs()
 })
 
 describe('BILL-10A SumUp adapter', () => {
@@ -108,7 +128,7 @@ describe('BILL-10A SumUp adapter', () => {
     const source = readFileSync(new URL('./sumup.js', import.meta.url), 'utf8')
     expect(source).not.toMatch(/VITE_|sk_live|whsec_|pan|cvv|card_number|user_entitlements|\/v0\.1\/refunds/i)
     expect(source).not.toMatch(/stripe/i)
-  })
+  }, 20000)
 
   it('derives SEK major units exactly for the low-price plans', () => {
     for (const [planId, major] of PLANS) {
@@ -151,7 +171,7 @@ describe('BILL-10A SumUp adapter', () => {
       known: planId.startsWith('plan.prelim'),
     }))
     setCheckoutAdapterForTests(adapter)
-    setCheckoutPortsForTests(ports(db))
+    setOneTimeCheckoutPortsForTests(oneTimePorts(db))
     const pending = await beginCheckout({
       body: { amount: 4, currency: 'sek', plan_id: 'plan.prelim.sek.month.04', user_id: OTHER },
       userId: USER,
@@ -166,6 +186,12 @@ describe('BILL-10A SumUp adapter', () => {
     expect(transport.calls[0].body).toMatchObject({ amount: 4, currency: 'SEK', merchant_code: MERCHANT })
     expect(transport.calls[0].body.amount).not.toBe(400)
     expect(transport.calls[0].body.customer_id).toBeUndefined()
+    expect(transport.calls[0].body).toMatchObject({
+      redirect_url: `https://viktkollen-preview.example/?vk_checkout=${pending.checkoutId}#installningar`,
+      return_url: 'https://viktkollen-preview.example/api/billing/webhook',
+    })
+    expect(transport.calls[0].body.purpose).toBeUndefined()
+    expect(new Date(transport.calls[0].body.valid_until).toISOString()).toBe(db.getIntent(pending.checkoutId).expiresAt)
     expect(db.getIntent(pending.checkoutId)).toMatchObject({
       planId: 'plan.prelim.sek.month.04',
       provider: 'sumup',
@@ -180,6 +206,7 @@ describe('BILL-10A SumUp adapter', () => {
       testOnly: true,
       transport: {
         async createCheckout() { throw new Error('network') },
+        retrieveMerchant: retrieveSandboxMerchant,
         async retrieveCheckout() { throw new Error('network') },
       },
     })
@@ -213,6 +240,7 @@ describe('BILL-10A SumUp adapter', () => {
           status: 'PENDING',
         }
       },
+      retrieveMerchant: retrieveSandboxMerchant,
       async retrieveCheckout() {
         throw new Error('not used')
       },
@@ -223,7 +251,7 @@ describe('BILL-10A SumUp adapter', () => {
       testOnly: true,
       transport,
     }))
-    setCheckoutPortsForTests(ports(db))
+    setOneTimeCheckoutPortsForTests(oneTimePorts(db))
     const pending = await beginCheckout({
       body: { plan_id: 'plan.prelim.sek.month.04' },
       userId: USER,
@@ -262,12 +290,13 @@ describe('BILL-10A SumUp adapter', () => {
             status: 'PENDING',
           }
         },
+        retrieveMerchant: retrieveSandboxMerchant,
         async retrieveCheckout() {
           throw new Error('not used')
         },
       },
     }))
-    setCheckoutPortsForTests(ports(db))
+    setOneTimeCheckoutPortsForTests(oneTimePorts(db))
     const pending = await beginCheckout({
       body: { plan_id: 'plan.prelim.sek.month.04' },
       userId: USER,
@@ -328,18 +357,13 @@ describe('BILL-10A SumUp adapter', () => {
               status: 'PENDING',
             }
           },
+          retrieveMerchant: retrieveSandboxMerchant,
           async retrieveCheckout() {
             throw new Error('not used')
           },
         },
       }))
-      setCheckoutPortsForTests({
-        ...ports(db),
-        bindCheckoutRef(input) {
-          binds += 1
-          return db.bindCheckoutRef(input)
-        },
-      })
+      setOneTimeCheckoutPortsForTests(oneTimePorts(db, { onBind: () => { binds += 1 } }))
       const result = await beginCheckout({
         body: { plan_id: 'plan.prelim.sek.month.04' },
         userId: USER,
@@ -358,37 +382,26 @@ describe('BILL-10A SumUp adapter', () => {
     const { adapter } = adapterFor(db, paidCheckout(), transport)
     setCheckoutSaleReaderForTests(() => ({ active: true, enabledForSale: true, known: true }))
     setCheckoutAdapterForTests(adapter)
-    setCheckoutPortsForTests(ports(db))
+    setOneTimeCheckoutPortsForTests(oneTimePorts(db))
     const pending = await beginCheckout({
       body: { plan_id: 'plan.prelim.sek.month.04' },
       userId: USER,
     })
     transport.calls.length = 0
-    const checkout = paidCheckout({ checkout_reference: pending.checkoutId })
+    // A hosted one-time checkout has no SumUp customer; the owner comes from the stored purchase.
+    const checkout = paidCheckout({
+      checkout_reference: pending.checkoutId,
+      customer_id: undefined,
+      transactions: [{ ...paidCheckout().transactions[0], timestamp: new Date().toISOString() }],
+    })
     transport.retrieveCheckout = async (id) => {
       transport.calls.push({ id, op: 'retrieve' })
       return store.get('checkout') || checkout
     }
     const registry = createProviderRegistry()
     registry.register(adapter)
-    const processor = createProviderEventProcessor({
-      activation: { async syncFromSubscription() { return { plan_id: 'plan.prelim.sek.month.04' } } },
-      bindings: createMemoryProviderBindings(),
-      durableActivate: (event) => db.activate({
-        checkoutId: event.checkoutId,
-        periodEnd: event.periodEnd,
-        periodStart: event.periodStart,
-        provider: event.provider,
-        providerCheckoutRef: event.providerCheckoutRef,
-        providerCustomerRef: event.providerCustomerRef,
-        providerEventId: event.providerEventId,
-        providerSubscriptionRef: event.providerSubscriptionRef,
-      }),
-      inbox: createMemoryProviderInbox(),
-      intents: createMemoryCheckoutIntents(),
-      renewals: { async applyTrustedRenewal() { throw new Error('not used') } },
-      subscriptions: { async createSubscription() { throw new Error('not used') } },
-    })
+    const rpcCalls = []
+    const callRpc = oneTimeRpc(db, rpcCalls)
     const note = JSON.stringify({
       amount: 1,
       currency: 'USD',
@@ -404,7 +417,7 @@ describe('BILL-10A SumUp adapter', () => {
 
     store.set('checkout', { ...checkout, status: 'PENDING' })
     const pendingPayment = await ingestProviderWebhook({
-      applyTrusted: (event) => processor.apply(event),
+      callRpc,
       rawBody: note,
       registry,
     })
@@ -413,35 +426,35 @@ describe('BILL-10A SumUp adapter', () => {
 
     store.set('checkout', { ...checkout, status: 'FAILED' })
     await expect(ingestProviderWebhook({
-      applyTrusted: (event) => processor.apply(event),
+      callRpc,
       rawBody: note,
       registry,
     })).resolves.toMatchObject({ code: 'PAYMENT_FAILED' })
 
     store.set('checkout', { ...checkout, amount: 5 })
     await expect(ingestProviderWebhook({
-      applyTrusted: (event) => processor.apply(event),
+      callRpc,
       rawBody: note,
       registry,
     })).resolves.toMatchObject({ code: 'AMOUNT_MISMATCH' })
 
     store.set('checkout', { ...checkout, currency: 'EUR' })
     await expect(ingestProviderWebhook({
-      applyTrusted: (event) => processor.apply(event),
+      callRpc,
       rawBody: note,
       registry,
     })).resolves.toMatchObject({ code: 'CURRENCY_MISMATCH' })
 
     store.set('checkout', { ...checkout, checkout_reference: 'chk_other' })
     await expect(ingestProviderWebhook({
-      applyTrusted: (event) => processor.apply(event),
+      callRpc,
       rawBody: note,
       registry,
     })).resolves.toMatchObject({ code: 'CHECKOUT_INTENT_MISSING' })
 
     store.set('checkout', { ...checkout, merchant_code: 'MOTHER1' })
     await expect(ingestProviderWebhook({
-      applyTrusted: (event) => processor.apply(event),
+      callRpc,
       rawBody: note,
       registry,
     })).resolves.toMatchObject({ code: 'MERCHANT_MISMATCH' })
@@ -450,15 +463,16 @@ describe('BILL-10A SumUp adapter', () => {
 
     store.set('checkout', { ...checkout, status: 'EXPIRED' })
     await expect(ingestProviderWebhook({
-      applyTrusted: (event) => processor.apply(event),
+      callRpc,
       rawBody: note,
       registry,
-    })).resolves.toMatchObject({ code: 'PAYMENT_FAILED' })
+    })).resolves.toMatchObject({ code: 'PAYMENT_EXPIRED' })
+    expect(rpcCalls.filter((name) => name === ONE_TIME_ACTIVATION_RPC)).toEqual([])
     expect(db.quotaPlan(USER)).toBe('plan.free')
 
     store.set('checkout', checkout)
     const verified = await ingestProviderWebhook({
-      applyTrusted: (event) => processor.apply(event),
+      callRpc,
       rawBody: note,
       registry,
     })
@@ -466,7 +480,7 @@ describe('BILL-10A SumUp adapter', () => {
     expect(db.quotaPlan(USER)).toBe('plan.prelim.sek.month.04')
     expect(db.getIntent(pending.checkoutId).status).toBe('consumed')
     const replay = await ingestProviderWebhook({
-      applyTrusted: (event) => processor.apply(event),
+      callRpc,
       rawBody: note,
       registry,
     })
@@ -478,11 +492,11 @@ describe('BILL-10A SumUp adapter', () => {
         currency: 'SEK',
         id: '11111111-2222-4333-8444-555555555555',
         status: 'SUCCESSFUL',
-        timestamp: '2026-09-27T09:00:00.000Z',
+        timestamp: checkout.transactions[0].timestamp,
       }],
     })
     const conflict = await ingestProviderWebhook({
-      applyTrusted: (event) => processor.apply(event),
+      callRpc,
       rawBody: note,
       registry,
     })
@@ -575,6 +589,65 @@ describe('BILL-10A SumUp adapter', () => {
     await expect(denied.createCheckout({ amount: 4 })).rejects.toMatchObject({ code: 'SUMUP_REFERENCE_EXISTS' })
   })
 })
+
+// SumUp Hosted Checkout (engångsköp) ports on the in-memory database.
+function oneTimePorts(db, { onBind } = {}) {
+  return {
+    async bind({ checkoutId, providerCheckoutRef }) {
+      onBind?.()
+      return db.bindCheckoutRef({ checkoutId, provider: 'sumup', providerCheckoutRef })
+    },
+    async cancel(checkoutId) {
+      return db.cancelIntent(checkoutId)
+    },
+    async open({ planId, userId }) {
+      const intent = await db.createIntent({ planId, provider: 'sumup', userId })
+      return {
+        checkoutId: intent.checkoutId,
+        expiresAt: db.getIntent(intent.checkoutId).expiresAt,
+        hostedUrl: '',
+        planId,
+        providerCheckoutRef: '',
+        reused: false,
+      }
+    },
+  }
+}
+
+// The activation RPCs on the in-memory database: 30 days from the verified payment.
+function oneTimeRpc(db, calls = []) {
+  return async (name, args) => {
+    calls.push(name)
+    if (name === ONE_TIME_READ_RPC) {
+      const intent = db.getIntent(args.p_checkout_id)
+      return intent && {
+        checkout_id: intent.checkoutId,
+        expires_at: intent.expiresAt,
+        plan_id: intent.planId,
+        provider: intent.provider,
+        provider_checkout_ref: intent.providerCheckoutRef,
+        status: intent.status,
+        user_id: intent.userId,
+      }
+    }
+    if (name === ONE_TIME_ACTIVATION_RPC) {
+      const start = new Date(args.p_paid_at)
+      const result = await db.activate({
+        cancelAtPeriodEnd: true,
+        checkoutId: args.p_checkout_id,
+        periodEnd: new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        periodStart: start.toISOString(),
+        provider: args.p_provider,
+        providerCheckoutRef: args.p_provider_checkout_ref,
+        providerCustomerRef: args.p_provider_customer_ref,
+        providerEventId: args.p_provider_event_id,
+        providerSubscriptionRef: args.p_provider_subscription_ref,
+      })
+      return { access_granted: result.accessGranted, current_period_end: result.currentPeriodEnd, plan_id: result.planId, user_id: result.userId }
+    }
+    throw new Error(`unexpected rpc ${name}`)
+  }
+}
 
 function ports(db) {
   return {

@@ -244,6 +244,28 @@ describe('BILL-2 quota engine', () => {
     expect(b.status).toBe(QUOTA_STATUS.RESERVED)
   })
 
+  it('uses the free food quota after a paid period has ended and keeps the paid quota while it is open', async () => {
+    const assignments = createInMemoryPlanAssignmentStore()
+    const paid = {
+      current_period_start: '2026-03-02T00:00:00.000Z',
+      plan_id: 'plan.prelim.sek.month.04',
+      plan_version: 1,
+      user_id: USER,
+    }
+    await assignments.set({ ...paid, current_period_end: '2026-04-01T00:00:00.000Z' })
+    const expired = engineAt('2026-05-15T12:00:00.000Z', { assignments })
+    const deniedPaid = await expired.inspectQuota({ feature: 'food.scan', userId: USER })
+    expect(deniedPaid.limit).toBe(5)
+    const reserved = await expired.reserveQuota({ feature: 'food.scan', quantity: 1, user: USER })
+    expect(reserved.status).toBe(QUOTA_STATUS.RESERVED)
+    expect(reserved.remaining).toBe(4)
+
+    await assignments.set({ ...paid, current_period_end: '2026-05-15T12:00:00.000Z' })
+    const open = engineAt('2026-04-15T12:00:00.000Z', { assignments })
+    const allowed = await open.inspectQuota({ feature: 'food.scan', userId: USER })
+    expect(allowed.limit).toBe(10)
+  })
+
   it('rejects illegal reservation state transitions', () => {
     expect(() => assertReservationTransition('COMMITTED', 'PENDING')).toThrow(/illegal_reservation_transition/)
     expect(() => assertReservationTransition('COMMITTED', 'ROLLED_BACK')).toThrow(/illegal_reservation_transition/)

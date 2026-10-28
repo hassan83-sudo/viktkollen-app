@@ -1,7 +1,7 @@
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../../_shared/aiRouteErrors.js'
 import { readDurableQuota } from '../../_shared/billing/quotaRead.js'
 import { readDurableUserSubscription } from '../../_shared/billing/subscriptionRead.js'
-import { handleCheckoutRequest } from '../../_shared/billing/checkoutIntent.js'
+import { handleCheckoutRequest, handleCheckoutStatusRequest } from '../../_shared/billing/checkoutIntent.js'
 import { createServerCheckoutIntentPorts, prepareSumUpSandboxSetup } from '../../_shared/billing/sumupSandboxSetup.js'
 import { handleWebhookRequest } from '../../_shared/billing/providerWebhookIngress.js'
 import { executeUserBillingIntent } from '../../_shared/billing/userLifecycleIntent.js'
@@ -47,6 +47,7 @@ const PUBLIC_OPS = Object.freeze({
 const POST_OPS = Object.freeze({
   '/api/billing/plan-change': 'plan_change',
   '/api/billing/checkout': 'checkout',
+  '/api/billing/checkout/status': 'checkout_status',
   '/api/billing/sumup-sandbox': 'sumup_sandbox',
   '/api/billing/cancel': 'schedule_cancel',
   '/api/billing/cancel-undo': 'undo_cancel',
@@ -329,6 +330,7 @@ export default async function handler(request, response) {
   const postOperation = resolveUserBillingPost(request)
   if (postOperation === 'webhook') return handleWebhookRequest(request, response)
   if (postOperation === 'checkout') return handleCheckoutRequest(request, response)
+  if (postOperation === 'checkout_status') return handleCheckoutStatusRequest(request, response)
   if (postOperation === 'sumup_sandbox') return handleSumUpSandbox(request, response, requestId)
   if (postOperation) {
     if (request.method !== 'POST') {

@@ -103,6 +103,27 @@ describe('BILL-9B durable checkout activation', () => {
     expect(calls).toEqual([])
   })
 
+  it('rejects recurring mode on the one-time hosted checkout endpoint', async () => {
+    const result = await beginCheckout({
+      body: { plan_id: PAID, payment_mode: 'recurring' },
+      userId: USER,
+    })
+    expect(result).toMatchObject({
+      accessGranted: false,
+      code: 'UNSUPPORTED_PAYMENT_MODE',
+      status: 400,
+    })
+  })
+
+  it('marks a verified one-time purchase to end without renewal', async () => {
+    const db = database()
+    const intent = await readyIntent(db)
+    const result = await db.activate(activationInput({ checkoutId: intent.checkoutId }))
+    expect(result.accessGranted).toBe(true)
+    expect(result.currentPeriodEnd).toBe(END)
+    expect(db.quotaPlan(USER)).toBe(PAID)
+  })
+
   it('keeps checkout refs unique and rejects rebinding a different ref', async () => {
     const db = database()
     const first = await readyIntent(db)
@@ -142,6 +163,7 @@ describe('BILL-9B durable checkout activation', () => {
       status: 'ACTIVE',
       userId: USER,
     })
+    expect(activated.cancelAtPeriodEnd).toBe(false)
     expect(db.quotaPlan(USER)).toBe(PAID)
     expect(db.quotaReservations()).toBe(0)
     const replay = await db.activate(activationInput({ checkoutId: intent.checkoutId }))
@@ -384,5 +406,20 @@ describe('BILL-9B durable checkout activation', () => {
     const activation = readFileSync(join(root, 'api/_shared/billing/checkoutActivation.js'), 'utf8')
     expect(activation).not.toMatch(/sk_live|whsec_|SUPABASE_SERVICE_ROLE|public\.user_entitlements|stripe\.com|sumup\.com/i)
     expect(activation).not.toMatch(/reserve_quota/)
+  })
+
+  it('leaves shared checkout renewal unchanged and confines non-renewal to hosted one-time activation', () => {
+    const shared = readFileSync(join(root, 'supabase/migrations/20260926170000_billing_checkout_activation.sql'), 'utf8')
+    const recurring = readFileSync(join(root, 'supabase/migrations/20260927140000_billing_sumup_initial_activation.sql'), 'utf8')
+    const oneTime = readFileSync(join(root, 'supabase/migrations/20261026120000_billing_sumup_hosted_one_time.sql'), 'utf8')
+    const isolated = readFileSync(join(root, 'supabase/migrations/20261023150000_billing_one_time_checkout_no_renewal.sql'), 'utf8')
+    const local = readFileSync(join(root, 'api/_shared/billing/checkoutActivation.js'), 'utf8')
+    expect(isolated).not.toMatch(/create or replace function billing\.activate_verified_checkout/i)
+    expect(isolated).not.toMatch(/update billing\.subscriptions/i)
+    expect(shared).toMatch(/p_cancel_at_period_end => false/)
+    expect(recurring).toMatch(/p_cancel_at_period_end => false/)
+    const oneTimeFn = oneTime.slice(oneTime.indexOf('function billing.activate_verified_one_time_checkout'))
+    expect(oneTimeFn).toMatch(/p_cancel_at_period_end => true/)
+    expect(local).toMatch(/cancelAtPeriodEnd: input\.cancelAtPeriodEnd === true/)
   })
 })

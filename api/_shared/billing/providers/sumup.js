@@ -141,10 +141,16 @@ export function createSumUpCheckoutAdapter({
     provider: SUMUP_PROVIDER,
     testOnly,
     transport,
-    async prepare({ checkoutId, planId }) {
+    // returnUrl: SumUp skickar CHECKOUT_STATUS_CHANGED dit (webhook).
+    // redirectUrl: kunden skickas tillbaka dit; den ger aldrig tillgång.
+    // validUntil: SumUp tar inte emot betalning efter att vårt köp gått ut.
+    async prepare({ checkoutId, planId, redirectUrl, returnUrl, validUntil }) {
       const priced = priceForPlan(planId, catalog)
       if (!priced || !TOKEN_RE.test(String(checkoutId || '')) || String(checkoutId).length > 64) {
         throw coded('INVALID_PLAN')
+      }
+      if (!httpsUrl(returnUrl) || !httpsUrl(redirectUrl, { allowHash: true }) || Number.isNaN(new Date(validUntil || '').getTime())) {
+        throw coded('PROVIDER_NOT_CONFIGURED')
       }
       let created
       try {
@@ -155,9 +161,23 @@ export function createSumUpCheckoutAdapter({
           description: 'Viktkollen',
           hosted_checkout: { enabled: true },
           merchant_code: merchantCode,
+          redirect_url: redirectUrl,
+          return_url: returnUrl,
+          valid_until: new Date(validUntil).toISOString(),
         })
       } catch (error) {
-        throw coded(error?.code === 'SUMUP_UNAVAILABLE' ? 'SUMUP_CHECKOUT_FAILED' : 'SUMUP_CHECKOUT_FAILED')
+        // Same reference already created (retry after a timeout): reuse that checkout.
+        if (error?.code !== 'SUMUP_REFERENCE_EXISTS' || typeof transport.listCheckouts !== 'function') {
+          throw coded('SUMUP_CHECKOUT_FAILED')
+        }
+        try {
+          const listed = await transport.listCheckouts(checkoutId)
+          const rows = Array.isArray(listed) ? listed : (listed?.checkouts || listed?.items || [])
+          if (rows.length !== 1 || !CHECKOUT_ID_RE.test(String(rows[0]?.id || ''))) throw coded('SUMUP_CHECKOUT_FAILED')
+          created = await transport.retrieveCheckout(rows[0].id)
+        } catch {
+          throw coded('SUMUP_CHECKOUT_FAILED')
+        }
       }
       const checkoutRef = String(created?.id || '')
       const hostedCheckoutUrl = String(created?.hosted_checkout_url || '')
@@ -208,7 +228,8 @@ export function createSumUpCheckoutAdapter({
       if (checkout.purpose === 'SETUP_RECURRING_PAYMENT') {
         return closed('SUMUP_SETUP_REQUIRES_ATOMIC_ACTIVATION', 400)
       }
-      const period = sumUpMonthPeriod(paidAt)
+      // Hosted checkout is a one-time purchase: exactly 30 days of access.
+      const period = { start: paidAt.toISOString(), end: new Date(paidAt.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString() }
       return {
         ok: true,
         payload: {
@@ -237,6 +258,19 @@ function priceForPlan(planId, catalog) {
 }
 
 const HOSTED_PAGE_ID_RE = /^[A-Za-z0-9_-]{1,128}$/
+
+function httpsUrl(value, { allowHash = false } = {}) {
+  try {
+    const url = new URL(String(value || ''))
+    return url.protocol === 'https:' && url.username === '' && url.password === '' && (allowHash || url.hash === '')
+  } catch {
+    return false
+  }
+}
+
+export function isOfficialSumUpHostedUrl(value) {
+  return officialHostedUrl(value)
+}
 
 function officialHostedUrl(value) {
   if (typeof value !== 'string' || value.length === 0) return false

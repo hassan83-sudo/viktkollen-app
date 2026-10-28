@@ -3,6 +3,7 @@ import { createProviderRegistry, getPaymentProviderRegistry, getTrustedProviderA
 import { getConfiguredSumUpAdapter, isSumUpCheckoutNotification, SUMUP_PROVIDER, sumUpNotificationCheckoutId } from './providers/sumup.js'
 import { createServerSubscriptionRpcCaller, mapBillingRpcError } from './subscriptionRpcCaller.js'
 import { activateVerifiedSumUpSetup, createServerSumUpCheckoutIntentReader } from './sumupInitialActivation.js'
+import { activateVerifiedOneTimeCheckout, createOneTimeIntentReader } from './sumupOneTimeCheckout.js'
 
 const PUBLIC_CODES = new Set([
   'AMOUNT_MISMATCH',
@@ -78,6 +79,18 @@ function seal(applied) {
   return fail(code, httpStatus(code))
 }
 
+const ONE_TIME_RETRY_CODES = new Set(['SUMUP_UNAVAILABLE', 'durable_operation_unavailable', 'billing_rpc_failed', 'activation_unconfirmed'])
+
+// SumUp retries non-2xx notifications. Transient errors ask for a retry; a still
+// pending payment is acknowledged and grants nothing (a later notification follows).
+function sealOneTime(result) {
+  if (result?.ok === true && result?.accessGranted === true) return { accessGranted: true, ok: true, status: 200 }
+  const code = String(result?.code || 'BILLING_FAILED')
+  if (ONE_TIME_RETRY_CODES.has(code)) return fail(code, 503)
+  if (result?.state === 'pending') return fail(code, 202)
+  return fail(code, 400)
+}
+
 function adapterWithIntents(adapter, callRpc) {
   if (adapter?.provider !== SUMUP_PROVIDER) return adapter
   if (typeof adapter.intents?.get === 'function' || typeof callRpc !== 'function') return adapter
@@ -104,7 +117,17 @@ async function activateVerifiedSetupNotification({ adapter, callRpc, now, rawBod
   } catch {
     return fail('SUMUP_UNAVAILABLE', 503)
   }
-  if (checkout?.purpose !== 'SETUP_RECURRING_PAYMENT') return null
+  if (checkout?.purpose !== 'SETUP_RECURRING_PAYMENT') {
+    // Hosted one-time purchase: same verification and activation as the return view.
+    if (typeof callRpc !== 'function' || !adapter.merchantCode) return fail('PROVIDER_NOT_CONFIGURED', 503)
+    return sealOneTime(await activateVerifiedOneTimeCheckout({
+      callRpc,
+      merchantCode: adapter.merchantCode,
+      providerCheckoutRef: checkoutId,
+      readIntent: createOneTimeIntentReader(callRpc),
+      transport: adapter.transport,
+    }))
+  }
   if (typeof callRpc !== 'function' || typeof adapter.intents?.get !== 'function' || !adapter.merchantCode) {
     return fail('PROVIDER_NOT_CONFIGURED', 503)
   }

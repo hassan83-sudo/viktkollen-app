@@ -23,6 +23,9 @@ export function createInMemoryPlanAssignmentStore(defaultPlanId = 'plan.free') {
       }
       const stored = Object.freeze({
         assigned_at: assignment.assigned_at || new Date().toISOString(),
+        ...(assignment.current_period_end ? { current_period_end: assignment.current_period_end } : {}),
+        ...(assignment.current_period_start ? { current_period_start: assignment.current_period_start } : {}),
+        ...(assignment.quota_window ? { quota_window: assignment.quota_window } : {}),
         plan_id: assignment.plan_id,
         plan_version: assignment.plan_version,
         source: assignment.source || 'server',

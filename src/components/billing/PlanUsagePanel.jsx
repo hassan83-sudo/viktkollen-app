@@ -136,6 +136,7 @@ function PlanUsagePanel({ authLoading = false, isAuthenticated = false }) {
         : 'loading'
 
   const resetLabel = snapshot?.period?.end ? formatQuotaReset(snapshot.period.end) : ''
+  const accessLabel = snapshot?.access?.end ? formatQuotaReset(snapshot.access.end) : ''
   const quotas = Array.isArray(snapshot?.quotas)
     ? snapshot.quotas.map(presentQuota).filter((row) => row?.label)
     : []
@@ -156,7 +157,10 @@ function PlanUsagePanel({ authLoading = false, isAuthenticated = false }) {
           </p>
           <p>{snapshot.plan.priceText}</p>
           {resetLabel ? (
-            <p aria-label={`Kvoten återställs ${resetLabel}`}>Återställs {resetLabel}</p>
+            <p aria-label={`Kvoten återställs ${resetLabel}`}>Kvoten återställs {resetLabel}</p>
+          ) : null}
+          {accessLabel ? (
+            <p aria-label={`Tillgång till ${accessLabel}`}>Tillgång till {accessLabel}</p>
           ) : null}
           {quotas.length ? (
             <ul className="plan-usage-list">

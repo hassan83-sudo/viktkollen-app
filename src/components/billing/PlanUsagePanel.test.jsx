@@ -71,7 +71,8 @@ describe('PlanUsagePanel', () => {
     expect(screen.getByText('18 kvar')).toBeTruthy()
     expect(screen.getByText('Gratis')).toBeTruthy()
     expect(screen.getByText('0 kr/mån')).toBeTruthy()
-    expect(screen.getByText('Återställs 1 oktober')).toBeTruthy()
+    expect(screen.getByText('Kvoten återställs 1 oktober')).toBeTruthy()
+    expect(screen.queryByText(/Tillgång till/)).toBeNull()
     expect(screen.getByText('Ingår utan användningsgräns')).toBeTruthy()
     expect(screen.getAllByText('Obegränsat')).toHaveLength(1)
     expect(screen.getByText('Vänchatt')).toBeTruthy()
@@ -85,6 +86,21 @@ describe('PlanUsagePanel', () => {
     expect(screen.queryByText('99 kr/mån')).toBeNull()
     expect(container.textContent).not.toMatch(/ai\.text\.request|food\.scan|body\.scan|ai\.eye\.analysis|tts\.request|gps_standard|ready_avatar|smart_ai/)
     expect(container.querySelector('.plan-usage').scrollWidth).toBeLessThanOrEqual(390)
+  })
+
+  it('shows the paid access date separately from the calendar quota reset', async () => {
+    mockSnapshot({
+      ok: true,
+      snapshot: {
+        ...snapshot,
+        access: { end: '2026-11-27T09:22:46.000Z' },
+        period: { end: '2026-11-01T00:00:00.000Z' },
+        plan: { name: '4 kr', priceText: '4 kr/mån' },
+      },
+    })
+    render(<PlanUsagePanel isAuthenticated />)
+    expect(await screen.findByText('Kvoten återställs 1 november')).toBeTruthy()
+    expect(screen.getByText('Tillgång till 27 november')).toBeTruthy()
   })
 
   it('shows zero usage and an exhausted quota without a negative remainder', async () => {

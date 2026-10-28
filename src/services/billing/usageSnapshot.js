@@ -63,6 +63,7 @@ function numberedQuota(key, limit, used) {
 }
 
 export function buildUsageSnapshot({
+  accessPeriodEnd = null,
   entitlements = [],
   now = new Date(),
   period,
@@ -93,12 +94,15 @@ export function buildUsageSnapshot({
     if (!row || row.enabled === false || row.limit_kind !== 'UNLIMITED') continue
     unlimited.push({ key: item.key })
   }
-  return {
+  const snapshot = {
     period: { end: period.period_end },
     plan: priceFields(plan.price_minor),
     quotas,
     unlimited,
   }
+  const accessEnd = new Date(accessPeriodEnd || '')
+  if (!Number.isNaN(accessEnd.getTime())) snapshot.access = { end: accessEnd.toISOString() }
+  return snapshot
 }
 
 export function entitlementsFromPlan(plan) {

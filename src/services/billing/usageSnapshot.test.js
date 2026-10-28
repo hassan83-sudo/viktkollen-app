@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { getPlanById } from './planCatalog.js'
-import { countReservationUsage, snapshotForPlan } from './usageSnapshot.js'
+import { buildUsageSnapshot, countReservationUsage, snapshotForPlan } from './usageSnapshot.js'
 
 const NOW = new Date('2026-09-23T12:00:00.000Z')
 
@@ -92,6 +92,53 @@ describe('usage snapshot', () => {
       periodStart: '2026-09-01T00:00:00.000Z',
       unit: 'requests',
     })).toBe(2)
+  })
+
+  it('counts request calls and leaves token quantities out of the same feature', () => {
+    const period = { period_end: '2026-11-01T00:00:00.000Z', period_start: '2026-10-01T00:00:00.000Z' }
+    const requests = Array.from({ length: 7 }, () => ({
+      actual_quantity: 1,
+      feature: 'ai.text.request',
+      period_start: period.period_start,
+      quantity: 1,
+      status: 'COMMITTED',
+      unit: 'requests',
+    }))
+    const snapshot = buildUsageSnapshot({
+      accessPeriodEnd: '2026-11-27T09:22:46.000Z',
+      entitlements: [{
+        enabled: true,
+        feature: 'ai.text.request',
+        limit_kind: 'NUMBER',
+        limit_value: 50,
+        unit: 'requests',
+      }],
+      now: new Date('2026-10-28T12:00:00.000Z'),
+      period,
+      plan: { price_minor: 400 },
+      reservations: [
+        ...requests,
+        {
+          actual_quantity: 8899,
+          feature: 'ai.text.request',
+          period_start: period.period_start,
+          quantity: 8899,
+          status: 'COMMITTED',
+          unit: 'tokens',
+        },
+        {
+          actual_quantity: 1,
+          feature: 'ai.text.request',
+          period_start: '2026-09-01T00:00:00.000Z',
+          quantity: 1,
+          status: 'COMMITTED',
+          unit: 'requests',
+        },
+      ],
+    })
+    expect(snapshot.period.end).toBe('2026-11-01T00:00:00.000Z')
+    expect(snapshot.access.end).toBe('2026-11-27T09:22:46.000Z')
+    expect(snapshot.quotas).toEqual([{ key: 'ai_coach', limit: 50, remaining: 43, used: 7 }])
   })
 
   it('shows a paid price from the server plan without a purchase field', () => {

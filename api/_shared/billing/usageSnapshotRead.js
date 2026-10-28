@@ -110,6 +110,7 @@ export async function readPostgresUsageSnapshot(client, userId) {
     client.schema('billing').from('quota_reservations').select('feature, unit, status, quantity, actual_quantity, expires_at, period_start').eq('user_id', userId),
   )
   return buildUsageSnapshot({
+    accessPeriodEnd: planId === 'plan.free' ? null : openPeriods[0]?.current_period_end,
     entitlements,
     period,
     plan: { price_minor: plan.price_minor },

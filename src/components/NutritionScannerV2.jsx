@@ -1463,6 +1463,7 @@ function NutritionScannerV2({
 
   return (
     <section ref={scannerSectionRef} className="photo-meal-tool scanner-tool nutrition-scanner-v2" aria-labelledby="nutrition-scanner-v2-heading">
+      <div style={{ display: analysis && reviewDraft ? 'none' : 'contents' }}>
       <div className="scanner-start-header">
         <h3 id="nutrition-scanner-v2-heading" ref={headingRef} tabIndex={-1}>{t('scanner.title')}</h3>
         <div className="scanner-start-guide">
@@ -1652,6 +1653,11 @@ function NutritionScannerV2({
             </dl>
           </section>
         </details>
+      )}
+
+      </div>
+      {analysis && reviewDraft && error && (
+        <p className="analysis-status" role="alert">{error}</p>
       )}
 
       {analysis && reviewDraft && (

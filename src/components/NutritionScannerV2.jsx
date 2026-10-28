@@ -441,7 +441,7 @@ function ScannerAnalyzingStatus() {
       const elapsed = Date.now() - startedAt
       const estimated = elapsed < 7000
         ? Math.floor(90 * elapsed / 7000)
-        : Math.min(99, 90 + Math.floor((elapsed - 7000) / 900))
+        : Math.min(99, 90 + Math.floor((elapsed - 7000) / 400))
       setProgress((current) => Math.max(current, estimated))
     }, 120)
     return () => window.clearInterval(timer)
@@ -558,7 +558,7 @@ function NutritionScannerV2({
 
     const targetY = Math.max(
       0,
-      window.scrollY + target.getBoundingClientRect().top - nav.offsetHeight - 16,
+      window.scrollY + target.getBoundingClientRect().top - 16,
     )
     const maxY = Math.max(
       0,

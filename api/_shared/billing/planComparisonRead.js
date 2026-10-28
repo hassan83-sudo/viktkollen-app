@@ -1,7 +1,7 @@
 import { createSupabaseAdminClient } from '../supabaseServer.js'
 import { buildPlanComparison } from '../../../src/services/billing/planComparison.js'
 import { defaultPlanCatalog } from '../../../src/services/billing/planCatalog.js'
-import { planIdForOpenPeriod } from '../../../src/services/billing/paidPeriod.js'
+import { planIdForOpenPeriod, planIdForSubscription } from '../../../src/services/billing/paidPeriod.js'
 
 let testReader = null
 
@@ -97,13 +97,13 @@ async function listRows(query, operation) {
 export async function readPostgresPlanComparison(client, userId) {
   try {
     const assignment = await maybeSingle(
-      client.schema('billing').from('user_plan_assignments').select('plan_id').eq('user_id', userId),
+      client.schema('billing').from('user_plan_assignments').select('plan_id, source').eq('user_id', userId),
       'user_plan_assignments',
     )
     const assignedPlanId = assignment?.plan_id || 'plan.free'
     const openPeriods = assignedPlanId === 'plan.free' ? [] : await listRows(
       client.schema('billing').from('subscriptions')
-        .select('current_period_end')
+        .select('current_period_end, current_period_start, status, past_due_grace_until')
         .eq('user_id', userId)
         .eq('plan_id', assignedPlanId)
         .in('status', ['TRIALING', 'ACTIVE', 'PAST_DUE'])
@@ -111,9 +111,11 @@ export async function readPostgresPlanComparison(client, userId) {
         .limit(1),
       'subscriptions',
     )
-    const currentPlanId = planIdForOpenPeriod({
+    const currentPlanId = planIdForSubscription({
       assignedPlanId,
-      periodEnd: openPeriods[0]?.current_period_end || (assignedPlanId === 'plan.free' ? null : new Date(0).toISOString()),
+      source: assignment?.source,
+      subscription: openPeriods[0],
+      now: new Date(),
     })
     const planRows = await listRows(
       client.schema('billing').from('plans').select('plan_id, price_minor, currency, active'),

@@ -88,6 +88,7 @@ describe('readPostgresUsageSnapshot', () => {
         },
       ],
       subscriptions: [{
+        current_period_start: '2026-10-01T00:00:00.000Z',
         current_period_end: '2026-11-27T09:22:46.000Z',
         plan_id: 'plan.prelim.sek.month.04',
         status: 'ACTIVE',
@@ -177,4 +178,25 @@ describe('readPostgresUsageSnapshot', () => {
       used: 4,
     })
   })
+
+  it.each([
+    ['ACTIVE', '2026-10-29T00:00:00.000Z', null, 5],
+    ['PAST_DUE', '2026-10-01T00:00:00.000Z', '2026-10-28T12:00:00.000Z', 5],
+    ['PAST_DUE', '2026-10-01T00:00:00.000Z', '2026-10-28T13:00:00.000Z', 50],
+  ])('shows the correct quota for %s with start %s and grace %s', async (status, start, grace, limit) => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-28T12:00:00.000Z'))
+    const paid = 'plan.prelim.sek.month.04'
+    const snapshot = await readPostgresUsageSnapshot(client({
+      user_plan_assignments: [{ user_id: USER, plan_id: paid, source: 'server' }],
+      subscriptions: [{ user_id: USER, plan_id: paid, status,
+        current_period_start: start, current_period_end: '2026-11-27T00:00:00.000Z',
+        past_due_grace_until: grace }],
+      plans: ['plan.free', paid].map((plan_id) => ({ plan_id, active: true, billing_interval: 'month', price_minor: plan_id === paid ? 400 : 0 })),
+      plan_entitlements: ['plan.free', paid].map((plan_id) => ({ plan_id, feature: 'ai.text.request', enabled: true, limit_kind: 'NUMBER', limit_value: plan_id === paid ? 50 : 5, unit: 'requests' })),
+      quota_reservations: [],
+    }), USER)
+    expect(snapshot.quotas.find((row) => row.key === 'ai_coach').limit).toBe(limit)
+  })
+
 })

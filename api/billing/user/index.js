@@ -297,6 +297,12 @@ async function handleSumUpLiveCheck(request, response, requestId) {
     return response.status(code === 'LIVE_MERCHANT_PASS' ? 200 : (code === 'LIVE_MERCHANT_SANDBOX_UNSPECIFIED' || code === 'LIVE_MERCHANT_IDENTITY_UNSPECIFIED') ? 502 : 409).json({
       ok: code === 'LIVE_MERCHANT_PASS',
       code,
+      ...(code === 'LIVE_MERCHANT_SANDBOX_UNSPECIFIED' ? {
+        sandboxFields: {
+          merchant: typeof merchant?.sandbox === 'boolean' ? 'present' : 'missing',
+          account: typeof identity?.sandbox === 'boolean' ? 'present' : 'missing',
+        },
+      } : {}),
       requestId,
     })
   } catch {

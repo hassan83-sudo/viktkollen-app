@@ -25,8 +25,9 @@ Engångsköpet kan därför tas i bruk utan att återkommande debitering slås p
 
 Följande är förberett och ska inte köras förrän det godkänns. Main och Production ska inte röras.
 
-1. Både `SUPABASE_URL` och `VITE_SUPABASE_URL` på den aktuella Preview ska peka på `https://armtslzspuebmlysnooq.supabase.co`. Projektet `bxmdlckrlwzdtcxnsqqr` är Production och får inte användas. Koden vägrar starta köpet om någon av adresserna saknas eller pekar på Production.
-2. `BILLING_PUBLIC_BASE_URL` ska vara exakt den Preview-adress som kunden ser, som https-ursprung utan sökväg. Production-adresserna `viktkollen-app.vercel.app`, `viktkollen-app-appsonthego-s-projects.vercel.app` och `viktkollen-app-git-main-appsonthego-s-projects.vercel.app` avvisas.
-3. SumUp-nyckeln ska vara Sandbox. Innan en checkout skapas hämtar servern handlaren och kräver `sandbox === true` och samma merchant code. Svaret loggas inte.
-4. När projektidentiteten är verifierad appliceras bara dessa två migrationer på Staging: `20261026120000_billing_sumup_hosted_one_time.sql` och `20261026130000_billing_quota_respects_period_end.sql`. Ingen av dem sätter `enabled_for_sale`.
-5. Därefter, och bara mot Staging, aktiveras försäljning av `plan.prelim.sek.month.04` via den befintliga adminåtgärden `set_plan_availability`. Det ska inte skrivas som en migration.
+1. `BILLING_SUMUP_LIVE_ENABLED` är en servervariabel. Bara det exakta värdet `true` slår på Live. Den är av som standard, och klienten kan inte skicka med den.
+2. Av: både `SUPABASE_URL` och `VITE_SUPABASE_URL` ska peka på `https://armtslzspuebmlysnooq.supabase.co`. Handlaren måste ha `sandbox === true` och samma merchant code. Production-projektet `bxmdlckrlwzdtcxnsqqr` avvisas.
+3. På: båda Supabase-adresserna ska peka på `https://bxmdlckrlwzdtcxnsqqr.supabase.co`. Handlaren måste ha `sandbox === false` och samma merchant code. Staging tillsammans med Live avvisas.
+4. `BILLING_PUBLIC_BASE_URL` är https-ursprung utan sökväg, användare, fråga eller fragment. Av avvisas `viktkollen-app.vercel.app`, `viktkollen-app-appsonthego-s-projects.vercel.app` och `viktkollen-app-git-main-appsonthego-s-projects.vercel.app`. På godtages bara de adresserna, för webhook och återkomst. Svaret från handlaren loggas inte.
+5. När projektidentiteten är verifierad appliceras bara dessa två migrationer på Staging: `20261026120000_billing_sumup_hosted_one_time.sql` och `20261026130000_billing_quota_respects_period_end.sql`. Ingen av dem sätter `enabled_for_sale`.
+6. Därefter, och bara mot Staging, aktiveras försäljning av `plan.prelim.sek.month.04` via den befintliga adminåtgärden `set_plan_availability`. Det ska inte skrivas som en migration.

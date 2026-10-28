@@ -10,8 +10,8 @@ import {
   createOneTimeIntentReader,
   hostedCheckoutUrls,
   isValidHostedCheckoutUrl,
+  oneTimeCheckoutMode,
   oneTimeCheckoutStatus,
-  stagingSupabaseReady,
 } from './sumupOneTimeCheckout.js'
 import { createServerSubscriptionRpcCaller } from './subscriptionRpcCaller.js'
 
@@ -109,6 +109,9 @@ export async function beginCheckout({
   void input.subscription_id
   void input.user_id
   void input.userId
+  void input.BILLING_SUMUP_LIVE_ENABLED
+  void input.live_enabled
+  void input.sumup_live
 
   const paymentMode = input.payment_mode == null ? 'one_time' : input.payment_mode
   if (paymentMode !== 'one_time') return fail('UNSUPPORTED_PAYMENT_MODE', 400)
@@ -195,19 +198,24 @@ export async function beginCheckout({
  * plan or an open subscription is refused. Nothing here grants access.
  */
 async function beginSumUpOneTimeCheckout({ adapter, env, planId, ports, userId }) {
-  if (!stagingSupabaseReady(env)) return fail('STAGING_IDENTITY_REQUIRED', 503, { validated: true })
+  const identity = oneTimeCheckoutMode(env)
+  if (!identity.ok) {
+    return fail(identity.code, identity.code === 'LIVE_IDENTITY_REQUIRED' ? 403 : 503, { validated: true })
+  }
+  const identityCode = identity.mode === 'live' ? 'LIVE_IDENTITY_REQUIRED' : 'SANDBOX_IDENTITY_REQUIRED'
   if (typeof adapter?.transport?.retrieveMerchant !== 'function' || !adapter.merchantCode) {
-    return fail('SANDBOX_IDENTITY_REQUIRED', 403, { validated: true })
+    return fail(identityCode, 403, { validated: true })
   }
   let merchant
   try {
     merchant = await adapter.transport.retrieveMerchant(adapter.merchantCode)
   } catch {
-    return fail('SANDBOX_IDENTITY_REQUIRED', 403, { validated: true })
+    return fail(identityCode, 403, { validated: true })
   }
-  if (merchant?.sandbox !== true || merchant?.merchant_code !== adapter.merchantCode) {
-    return fail('SANDBOX_IDENTITY_REQUIRED', 403, { validated: true })
-  }
+  const sandbox = merchant?.sandbox
+  const merchantMatches = merchant?.merchant_code === adapter.merchantCode
+    && (identity.mode === 'live' ? sandbox === false : sandbox === true)
+  if (!merchantMatches) return fail(identityCode, 403, { validated: true })
   if (typeof ports?.open !== 'function' || typeof ports?.bind !== 'function' || typeof ports?.cancel !== 'function') {
     return fail('DURABLE_UNAVAILABLE', 503, { validated: true })
   }

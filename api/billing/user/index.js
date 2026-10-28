@@ -277,7 +277,7 @@ async function handleSumUpLiveCheck(request, response, requestId) {
     // Neither identity match nor an omitted sandbox field proves Live status.
     const identity = await adapter.transport.retrieveCurrentMerchant()
     const merchantCode = merchant?.merchant_code
-    const identityCode = identity?.merchant_code
+    const identityCode = identity?.merchant_code ?? identity?.merchant_profile?.merchant_code
     // Missing fields are inconclusive, not evidence of a different merchant.
     // Do not infer identity from other unverified response shapes.
     const codeMismatch = (typeof merchantCode === 'string' && merchantCode !== adapter.merchantCode)

@@ -265,10 +265,19 @@ async function handleSumUpLiveCheck(request, response, requestId) {
   }
   try {
     const merchant = await adapter.transport.retrieveMerchant(adapter.merchantCode)
-    const passed = merchant?.merchant_code === adapter.merchantCode && merchant?.sandbox === false
-    return response.status(passed ? 200 : 409).json({
-      ok: passed,
-      code: passed ? 'LIVE_MERCHANT_PASS' : 'LIVE_MERCHANT_MISMATCH',
+    // A missing sandbox flag is not proof of a Live merchant. Fail closed and
+    // distinguish an actual merchant mismatch from an inconclusive response.
+    const codeMatches = merchant?.merchant_code === adapter.merchantCode
+    const code = !codeMatches
+      ? 'LIVE_MERCHANT_MISMATCH'
+      : merchant?.sandbox === true
+        ? 'LIVE_MERCHANT_SANDBOX'
+        : merchant?.sandbox === false
+          ? 'LIVE_MERCHANT_PASS'
+          : 'LIVE_MERCHANT_UNVERIFIED'
+    return response.status(code === 'LIVE_MERCHANT_PASS' ? 200 : code === 'LIVE_MERCHANT_UNVERIFIED' ? 502 : 409).json({
+      ok: code === 'LIVE_MERCHANT_PASS',
+      code,
       requestId,
     })
   } catch {

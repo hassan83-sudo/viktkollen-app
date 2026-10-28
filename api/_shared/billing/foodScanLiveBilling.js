@@ -91,8 +91,10 @@ async function readControlRow(client, table, column, value) {
 }
 
 export async function loadFoodScanOperationalControls(client) {
-  const featureControl = await readControlRow(client, 'feature_controls', 'feature_id', FOOD_SCAN_CANARY.feature_id)
-  const providerRow = await readControlRow(client, 'provider_controls', 'provider_id', FOOD_SCAN_CANARY.provider_id)
+  const [featureControl, providerRow] = await Promise.all([
+    readControlRow(client, 'feature_controls', 'feature_id', FOOD_SCAN_CANARY.feature_id),
+    readControlRow(client, 'provider_controls', 'provider_id', FOOD_SCAN_CANARY.provider_id),
+  ])
   return {
     featureControl,
     providerControls: providerRow ? [providerRow] : [],

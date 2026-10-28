@@ -1,3 +1,4 @@
+import './NutritionScannerAnalysisStatus.css'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { currentCameraEpoch, releaseCameraStream, releaseVideoElement, retainCameraStream } from '../features/shared/camera/cameraLifecycle.js'
 import { useTranslation } from 'react-i18next'
@@ -447,7 +448,21 @@ function ScannerAnalyzingStatus() {
     return () => window.clearInterval(timer)
   }, [])
 
-  return <span aria-label={t('scanProgress', { progress })}>{progress} %</span>
+  return (
+    <div className="scanner-analysis-status">
+      <span className="scanner-analysis-spinner" aria-hidden="true" />
+      <div className="scanner-analysis-status-content">
+        <div className="scanner-analysis-status-heading">
+          <strong>{t('scanner.analyzing').replace(/[….]+$/, '')}</strong>
+          <span>{progress} %</span>
+        </div>
+        <div className="scanner-analysis-track" role="progressbar" aria-label={t('scanProgress', { progress })} aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
+          <span style={{ width: `${progress}%` }} />
+        </div>
+        <p>{t('analysisProgressHint')}</p>
+      </div>
+    </div>
+  )
 }
 
 function NutritionScannerV2({
@@ -1540,14 +1555,16 @@ function NutritionScannerV2({
             alt={fileName ? t('scanner.previewAltNamed', { fileName }) : t('scanner.previewAlt')}
           />
           <div className="scanner-actions scanner-preview-analyze">
-            <button
-              className="primary-button"
-              type="button"
-              disabled={!hasActiveImagePayload || isAnalyzing || !isOnline}
-              onClick={(event) => handleAnalysisAction('remote', event)}
-            >
-              {isAnalyzing ? <>{t('scanner.analyzing')} <ScannerAnalyzingStatus /></> : t('scanner.analyzeFood')}
-            </button>
+            {isAnalyzing && <ScannerAnalyzingStatus />}
+              <button
+                hidden={isAnalyzing}
+                className="primary-button"
+                type="button"
+                disabled={!hasActiveImagePayload || isAnalyzing || !isOnline}
+                onClick={(event) => handleAnalysisAction('remote', event)}
+              >
+                {t('scanner.analyzeFood')}
+              </button>
           </div>
           <div className="scanner-actions scanner-preview-actions">
             <button type="button" className="secondary-button" onClick={() => fileInputRef.current?.click()}>{t('scanner.changeImage')}</button>
@@ -1609,10 +1626,11 @@ function NutritionScannerV2({
       </fieldset>
       )}
       {!previewUrl && (
-      <div className="scanner-actions scanner-primary-actions">
-          <button className="primary-button" type="button" disabled={!hasActiveImagePayload || isAnalyzing || !isOnline} onClick={(event) => handleAnalysisAction('remote', event)}>
-            {isAnalyzing ? <>{t('scanner.analyzing')} <ScannerAnalyzingStatus /></> : t('scanner.analyzeFood')}
-          </button>
+        <div className="scanner-actions scanner-primary-actions">
+          {isAnalyzing && <ScannerAnalyzingStatus />}
+            <button hidden={isAnalyzing} className="primary-button" type="button" disabled={!hasActiveImagePayload || isAnalyzing || !isOnline} onClick={(event) => handleAnalysisAction('remote', event)}>
+              {t('scanner.analyzeFood')}
+            </button>
         </div>
       )}
       <details className="scanner-secondary-analysis">

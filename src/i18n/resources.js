@@ -1707,6 +1707,7 @@ const sv = {
   },
   nutrition: {
     scanProgress: 'Uppskattat analysförlopp {{progress}} procent',
+    analysisProgressHint: 'Identifierar mat och uppskattar näring.',
     consentDisplay: { change: 'Ändra visningsval', legend: 'Fråga om godkännande av AI-analys', always: 'Fråga varje gång', never: 'Fråga inte igen' },
     uncertainDetails: 'Osäkra uppgifter',
     sectionLabel: 'Mat och nutrition',
@@ -3727,6 +3728,7 @@ const en = {
   },
   nutrition: {
     scanProgress: 'Estimated analysis progress {{progress}} percent',
+    analysisProgressHint: 'Identifying food and estimating nutrition.',
     consentDisplay: { change: 'Change display preference', legend: 'Ask for approval of AI analysis', always: 'Ask every time', never: 'Do not ask again' },
     uncertainDetails: 'Uncertain details',
     sectionLabel: 'Food and nutrition',

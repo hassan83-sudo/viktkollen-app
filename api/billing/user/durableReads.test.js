@@ -39,6 +39,9 @@ function fakeBillingClient(tables, calls) {
               filters.push((row) => row[column] > value)
               return api
             },
+            order() {
+              return api
+            },
             limit() {
               return api
             },

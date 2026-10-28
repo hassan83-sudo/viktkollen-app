@@ -1681,9 +1681,9 @@ function NutritionScannerV2({
       {analysis && reviewDraft && (
         <form ref={reviewRef} className="inline-edit-form nutrition-scanner-review" onSubmit={saveMeal}>
           <div className="scanner-review-hero">
-            <div className="scanner-review-hero-main">
-              {previewUrl && <img className="scanner-result-photo" src={previewUrl} alt={t('scanner.previewAlt')} />}
-              <div className="scanner-review-hero-heading">
+            <div className="scanner-review-hero-main" style={{ display: "flex", flexDirection: "column", alignItems: "stretch" }}>
+              {previewUrl && <img className="scanner-result-photo" src={previewUrl} alt={t('scanner.previewAlt')} style={{ width: "100%", height: "auto", aspectRatio: "4 / 3", objectFit: "cover", maxHeight: "none" }} />}
+              <div className="scanner-review-hero-heading" style={{ width: "100%", textAlign: "center" }}>
             <span className={`scanner-provider-badge ${analysis.provider.type === 'remote' ? 'is-remote' : 'is-local'}`}>
               {providerBadgeLabel(analysis.provider.type, t)}
             </span>

@@ -440,9 +440,9 @@ function ScannerAnalyzingStatus() {
     const startedAt = Date.now()
     const timer = window.setInterval(() => {
       const elapsed = Date.now() - startedAt
-      const estimated = elapsed < 7000
-        ? Math.floor(90 * elapsed / 7000)
-        : Math.min(99, 90 + Math.floor((elapsed - 7000) / 900))
+      const estimated = elapsed < 10000
+        ? Math.floor(93 * elapsed / 10000)
+        : Math.min(99, 93 + Math.floor((elapsed - 10000) / 900))
       setProgress((current) => Math.max(current, estimated))
     }, 120)
     return () => window.clearInterval(timer)

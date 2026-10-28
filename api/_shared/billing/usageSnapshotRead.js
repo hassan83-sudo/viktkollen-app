@@ -6,6 +6,7 @@ import {
   entitlementsFromPlan,
   snapshotForPlan,
 } from '../../../src/services/billing/usageSnapshot.js'
+import { EFFECTIVE_PLAN_SUBSCRIPTION_COLUMNS, effectivePlanId } from './effectivePlan.js'
 
 let testReader = null
 
@@ -81,9 +82,11 @@ async function listRows(query) {
 
 export async function readPostgresUsageSnapshot(client, userId) {
   const assignment = await maybeSingle(
-    client.schema('billing').from('user_plan_assignments').select('plan_id').eq('user_id', userId),
+    client.schema('billing').from('user_plan_assignments').select('plan_id, source').eq('user_id', userId),
   )
-  const planId = assignment?.plan_id || 'plan.free'
+  const planId = await effectivePlanId(assignment, (assigned) => listRows(
+    client.schema('billing').from('subscriptions').select(EFFECTIVE_PLAN_SUBSCRIPTION_COLUMNS).eq('user_id', userId).eq('plan_id', assigned),
+  ))
   const plan = await maybeSingle(
     client.schema('billing').from('plans').select('plan_id, price_minor, billing_interval, active').eq('plan_id', planId),
   )

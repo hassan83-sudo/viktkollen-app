@@ -1,6 +1,7 @@
 import { createSupabaseAdminClient } from '../supabaseServer.js'
 import { buildPlanComparison } from '../../../src/services/billing/planComparison.js'
 import { defaultPlanCatalog } from '../../../src/services/billing/planCatalog.js'
+import { EFFECTIVE_PLAN_SUBSCRIPTION_COLUMNS, effectivePlanId } from './effectivePlan.js'
 
 let testReader = null
 
@@ -26,6 +27,7 @@ export function installCatalogPlanComparisonForTests({
 
 const PLAN_READ_OPERATIONS = new Set([
   'user_plan_assignments',
+  'subscriptions',
   'plans',
   'plan_entitlements',
   'build_plan_comparison',
@@ -92,9 +94,13 @@ async function listRows(query, operation) {
 export async function readPostgresPlanComparison(client, userId) {
   try {
     const assignment = await maybeSingle(
-      client.schema('billing').from('user_plan_assignments').select('plan_id').eq('user_id', userId),
+      client.schema('billing').from('user_plan_assignments').select('plan_id, source').eq('user_id', userId),
       'user_plan_assignments',
     )
+    const currentPlanId = await effectivePlanId(assignment, (assigned) => listRows(
+      client.schema('billing').from('subscriptions').select(EFFECTIVE_PLAN_SUBSCRIPTION_COLUMNS).eq('user_id', userId).eq('plan_id', assigned),
+      'subscriptions',
+    ))
     const planRows = await listRows(
       client.schema('billing').from('plans').select('plan_id, price_minor, currency, active'),
       'plans',
@@ -127,7 +133,7 @@ export async function readPostgresPlanComparison(client, userId) {
     }
     try {
       return buildPlanComparison({
-        currentPlanId: assignment?.plan_id || 'plan.free',
+        currentPlanId,
         plans: planRows.map((row, index) => ({
           active: row.active !== false,
           currency: row.currency,

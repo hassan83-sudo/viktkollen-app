@@ -2,6 +2,7 @@ import { createSupabaseAdminClient } from '../supabaseServer.js'
 import { QUOTA_STATUS } from '../../../src/services/billing/catalog.js'
 import { resolveFeatureId } from '../../../src/services/billing/features.js'
 import { periodBounds } from '../../../src/services/billing/period.js'
+import { EFFECTIVE_PLAN_SUBSCRIPTION_COLUMNS, effectivePlanId } from './effectivePlan.js'
 
 /**
  * Same feature set as billing.reserve_quota. A display read must not call
@@ -99,9 +100,11 @@ export async function readDurableQuota({
   try {
     const billing = client.schema('billing')
     const assignment = await maybeSingle(
-      billing.from('user_plan_assignments').select('plan_id, plan_version').eq('user_id', userId),
+      billing.from('user_plan_assignments').select('plan_id, plan_version, source').eq('user_id', userId),
     )
-    const planId = assignment?.plan_id || 'plan.free'
+    const planId = await effectivePlanId(assignment, (assigned) => listRows(
+      billing.from('subscriptions').select(EFFECTIVE_PLAN_SUBSCRIPTION_COLUMNS).eq('user_id', userId).eq('plan_id', assigned),
+    ), now)
     const plan = await maybeSingle(
       billing.from('plans').select('plan_id, billing_interval, active').eq('plan_id', planId),
     )

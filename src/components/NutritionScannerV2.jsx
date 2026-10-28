@@ -232,6 +232,9 @@ function foodThumbnailSymbol(name = '') {
   const value = String(name).toLocaleLowerCase('sv')
   if (/köttbull|meatball/.test(value)) return '🍖'
   if (/potatis|potato/.test(value)) return '🥔'
+  if (/banan|banana/.test(value)) return '🍌'
+  if (/blåbär|blabar|blueberr/.test(value)) return '🫐'
+  if (/lök|onion/.test(value)) return '🧅'
   if (/morot|carrot/.test(value)) return '🥕'
   if (/persilja|parsley|ört|herb/.test(value)) return '🌿'
   if (/sås|sauce|grädd|cream/.test(value)) return '🥣'

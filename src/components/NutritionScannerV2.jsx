@@ -2,6 +2,7 @@ import './NutritionScannerAnalysisStatus.css'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { currentCameraEpoch, releaseCameraStream, releaseVideoElement, retainCameraStream } from '../features/shared/camera/cameraLifecycle.js'
 import { createPortal } from 'react-dom'
+import { getFoodEmoji } from '../services/nutrition/foodEmoji.js'
 import { useTranslation } from 'react-i18next'
 import {
   commitPhotoAnalysisMeal,
@@ -229,28 +230,6 @@ function createScannerImageDebugState(payload = null) {
   }
 }
 
-function foodThumbnailSymbol(name = '') {
-  const value = String(name).toLocaleLowerCase('sv')
-  if (/köttbull|meatball/.test(value)) return '🍖'
-  if (/potatis|potato/.test(value)) return '🥔'
-  if (/banan|banana/.test(value)) return '🍌'
-  if (/blåbär|blabar|blueberr/.test(value)) return '🫐'
-  if (/lök|onion/.test(value)) return '🧅'
-  if (/morot|carrot/.test(value)) return '🥕'
-  if (/persilja|parsley|ört|herb/.test(value)) return '🌿'
-  if (/sås|sauce|grädd|cream/.test(value)) return '🥣'
-  if (/lingon|sylt|jam|berry/.test(value)) return '🫐'
-  if (/kyckling|chicken/.test(value)) return '🍗'
-  if (/ris|rice/.test(value)) return '🍚'
-  if (/broccoli/.test(value)) return '🥦'
-  if (/fisk|fish|lax|salmon/.test(value)) return '🐟'
-  if (/ägg|egg/.test(value)) return '🥚'
-  if (/sallad|salad/.test(value)) return '🥗'
-  if (/pasta|spaghetti/.test(value)) return '🍝'
-  if (/pizza/.test(value)) return '🍕'
-  if (/bröd|bread/.test(value)) return '🍞'
-  return '🍽️'
-}
 
 function componentPortionLabel(component, t) {
   const portion = component?.portionEstimate
@@ -1762,7 +1741,7 @@ function NutritionScannerV2({
                 {analysis.components.map((component) => (
                   <details className="scanner-component-card" key={component.id}>
                     <summary>
-                      <span className="scanner-food-thumb" aria-hidden="true">{foodThumbnailSymbol(component.name)}</span>
+                      <span className="scanner-food-thumb" aria-hidden="true">{getFoodEmoji(component.name)}</span>
                       <span className="scanner-food-content">
                         <span className="scanner-food-topline">
                           <strong>{getNutritionPhotoFoodDisplayName(component.name)}</strong>

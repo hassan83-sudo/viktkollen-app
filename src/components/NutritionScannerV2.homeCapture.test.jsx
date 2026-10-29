@@ -16,6 +16,7 @@ import {
 } from '../services/nutritionScanHomeCapture.js'
 import OverviewDashboard from './app/OverviewDashboard.jsx'
 import NutritionScannerV2 from './NutritionScannerV2.jsx'
+import { createLocalNutritionPhotoEstimate } from '../services/nutritionPhotoLocalAnalysis.js'
 
 const analyzeNutritionPhoto = vi.hoisted(() => vi.fn(async () => ({ ok: false, errorCode: 'test_stop' })))
 
@@ -280,6 +281,40 @@ describe('Hem → Skanna maten', () => {
     renderScanner()
     await flush()
     expect(analyzeNutritionPhoto).not.toHaveBeenCalled()
+  })
+
+  it.each(['success', 'failure'])('shows only the photo and percentage during analysis and restores the view on %s', async (outcome) => {
+    chooseNeverAsk()
+    let finish
+    analyzeNutritionPhoto.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    const background = document.createElement('button')
+    background.textContent = 'Background navigation'
+    document.body.append(background)
+    try {
+      await captureFromHome()
+      const dialog = screen.getByRole('dialog')
+      expect(dialog.querySelector('img').getAttribute('src')).toBe('blob:home-capture')
+      expect(dialog.textContent.trim()).toMatch(/^\d+ %$/)
+      expect(dialog.querySelector('button')).toBeNull()
+      expect(screen.getAllByRole('progressbar')).toHaveLength(1)
+      expect(document.activeElement).toBe(dialog)
+      expect(background.inert).toBe(true)
+      expect(document.body.style.overflow).toBe('hidden')
+      const analysis = createLocalNutritionPhotoEstimate({ imageMetadata: {} })
+      analysis.provider.type = 'remote'
+      await act(async () => finish(outcome === 'success'
+        ? { ok: true, analysis }
+        : { ok: false, warning: 'Testfel' }))
+      await flush()
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(background.inert).not.toBe(true)
+      expect(document.body.style.overflow).not.toBe('hidden')
+      expect(analyzeNutritionPhoto).toHaveBeenCalledTimes(1)
+      if (outcome === 'success') expect(document.querySelector('.nutrition-scanner-review')).not.toBeNull()
+      else expect(screen.getByRole('alert').textContent).toContain('Testfel')
+    } finally {
+      background.remove()
+    }
   })
 
   it('stops the preview camera when the user leaves the scanner', async () => {

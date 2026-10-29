@@ -1,6 +1,7 @@
 import './NutritionScannerAnalysisStatus.css'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { currentCameraEpoch, releaseCameraStream, releaseVideoElement, retainCameraStream } from '../features/shared/camera/cameraLifecycle.js'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import {
   commitPhotoAnalysisMeal,
@@ -435,7 +436,7 @@ function IngredientEditor({ disabled, item, match, onApplySuggestion, onChange, 
   )
 }
 
-function ScannerAnalyzingStatus() {
+function ScannerAnalyzingStatus({ focused = false }) {
   const { t } = useTranslation('nutrition')
   const [progress, setProgress] = useState(0)
 
@@ -450,6 +451,19 @@ function ScannerAnalyzingStatus() {
     }, 120)
     return () => window.clearInterval(timer)
   }, [])
+
+  if (focused) {
+    return (
+      <div role="progressbar" aria-label={t('scanProgress', { progress })} aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} style={{ position: 'relative', width: 'clamp(108px, 20dvh, 160px)', aspectRatio: '1', flexShrink: 0 }}>
+        <svg viewBox="0 0 120 120" aria-hidden="true" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+          <defs><linearGradient id="food-analysis-progress-gradient"><stop stopColor="#25e6d5" /><stop offset="1" stopColor="#8b42ff" /></linearGradient></defs>
+          <circle cx="60" cy="60" r="54" fill="none" stroke="#1b324a" strokeWidth="5" />
+          <circle cx="60" cy="60" r="54" fill="none" stroke="url(#food-analysis-progress-gradient)" strokeWidth="5" strokeLinecap="round" pathLength="100" strokeDasharray={`${progress} 100`} />
+        </svg>
+        <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#fff', fontSize: 'clamp(28px, 5dvh, 40px)', fontVariantNumeric: 'tabular-nums' }}>{progress} %</span>
+      </div>
+    )
+  }
 
   return (
     <div className="scanner-analysis-status">
@@ -485,6 +499,7 @@ function NutritionScannerV2({
   const cameraInputRef = useRef(null)
   const reviewRef = useRef(null)
   const photoPreviewRef = useRef(null)
+  const analysisOverlayRef = useRef(null)
   const liveCameraVideoRef = useRef(null)
   const liveCameraStreamRef = useRef(null)
   // iPhones egen kamera (filinmatningen) och förhandsvisningen ska aldrig ha
@@ -839,6 +854,23 @@ function NutritionScannerV2({
       currentImageRef.current?.revoke?.()
     }
   }, [])
+
+  useEffect(() => {
+    if (!isAnalyzing) return undefined
+    const overlay = analysisOverlayRef.current
+    const previousFocus = document.activeElement
+    const previousOverflow = document.body.style.overflow
+    const background = [...document.body.children].filter(element => element !== overlay && !element.contains(overlay))
+    const previousInert = background.map(element => element.inert)
+    background.forEach(element => { element.inert = true })
+    document.body.style.overflow = 'hidden'
+    overlay?.focus({ preventScroll: true })
+    return () => {
+      background.forEach((element, index) => { element.inert = previousInert[index] })
+      document.body.style.overflow = previousOverflow
+      if (previousFocus?.isConnected) previousFocus.focus?.({ preventScroll: true })
+    }
+  }, [isAnalyzing])
 
   useEffect(() => {
     function updateOnlineState() {
@@ -1480,6 +1512,15 @@ function NutritionScannerV2({
   }
 
   return (
+    <>
+      {isAnalyzing && createPortal(
+        <div ref={analysisOverlayRef} role="dialog" aria-modal="true" aria-label={t('scanner.analyzing')} tabIndex={-1}
+          onKeyDown={(event) => { if (event.key === 'Tab') event.preventDefault() }}
+          style={{ position: 'fixed', inset: 0, zIndex: 2147483000, background: '#101827', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'clamp(20px, 4dvh, 36px)', padding: 'max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))', boxSizing: 'border-box', outline: 'none' }}>
+          {previewUrl && <img src={previewUrl} alt={t('scanner.previewAlt')} style={{ display: 'block', width: '100%', maxWidth: '560px', height: 'min(62dvh, 640px)', minHeight: 0, objectFit: 'contain', borderRadius: '28px' }} />}
+          <ScannerAnalyzingStatus focused />
+        </div>, document.body,
+      )}
     <section ref={scannerSectionRef} className="photo-meal-tool scanner-tool nutrition-scanner-v2" aria-labelledby="nutrition-scanner-v2-heading">
       <div style={{ display: analysis && reviewDraft ? 'none' : 'contents' }}>
       <div className="scanner-start-header">
@@ -1558,7 +1599,7 @@ function NutritionScannerV2({
             alt={fileName ? t('scanner.previewAltNamed', { fileName }) : t('scanner.previewAlt')}
           />
           <div className="scanner-actions scanner-preview-analyze">
-            {isAnalyzing && <ScannerAnalyzingStatus />}
+            {/* Analysis progress is shown in the focused overlay. */}
               <button
                 hidden={isAnalyzing}
                 className="primary-button"
@@ -1630,7 +1671,7 @@ function NutritionScannerV2({
       )}
       {!previewUrl && (
         <div className="scanner-actions scanner-primary-actions">
-          {isAnalyzing && <ScannerAnalyzingStatus />}
+          {/* Analysis progress is shown in the focused overlay. */}
             <button hidden={isAnalyzing} className="primary-button" type="button" disabled={!hasActiveImagePayload || isAnalyzing || !isOnline} onClick={(event) => handleAnalysisAction('remote', event)}>
               {t('scanner.analyzeFood')}
             </button>
@@ -1895,6 +1936,7 @@ function NutritionScannerV2({
         </form>
       )}
     </section>
+    </>
   )
 }
 

@@ -10,10 +10,40 @@ async function openHelp(page) {
   return panel
 }
 
+// The offline session cannot pass Supabase auth, so the reply is mocked.
+// The button is the real handoff the panel shows only when handoff is true.
+function handoffReply(answer) {
+  return (route) => route.fulfill({
+    json: {
+      answer,
+      featureIds: ['settings.plan'],
+      handoff: true,
+      ok: true,
+      source: 'verified-customer',
+      status: 'answered',
+    },
+  })
+}
+
+async function openSupportThroughHandoff(help, { handoff, placeholder, question, region, send }) {
+  await expect(help.getByRole('region', { name: region })).toHaveCount(0)
+  await help.getByRole('textbox', { name: placeholder }).fill(question)
+  await help.getByRole('button', { name: send, exact: true }).click()
+  await help.getByRole('button', { name: handoff }).click()
+  return help.getByRole('region', { name: region })
+}
+
 test('free accounts get AI help and no human support submission form', async ({ page }) => {
+  await page.route('**/api/ai-help', handoffReply('Om felet syns kvar kan du fortsätta med mänsklig support.'))
   await page.route('**/api/support', (route) => route.fulfill({ json: { ok: true, eligible: false, tickets: [] } }))
   const help = await openHelp(page)
-  const support = help.getByRole('region', { name: 'Mänsklig support' })
+  const support = await openSupportThroughHandoff(help, {
+    handoff: 'Fortsätt med mänsklig support',
+    placeholder: 'Fråga om Viktkollen',
+    question: 'Betalningen fungerar inte',
+    region: 'Mänsklig support',
+    send: 'Skicka',
+  })
   await support.getByRole('button', { name: 'Kontrollera supportåtkomst' }).click()
   await expect(support.getByText('Inga ärenden.')).toBeVisible()
   await expect(support.getByRole('button', { name: 'Skicka supportärende' })).toHaveCount(0)
@@ -26,6 +56,7 @@ test('a paid request enters the admin queue, can be prioritized and receives a h
   // polling endpoint inside this offline fixture instead of Vite's HTML fallback.
   await page.route('**/api/security-center', (route) => route.fulfill({ json: { ok: true, events: [] } }))
   await page.route('**/api/billing/capability', (route) => route.fulfill({ json: { ok: true, billing_admin: true } }))
+  await page.route('**/api/ai-help', handoffReply('Om felet syns kvar kan du fortsätta med mänsklig support.'))
   await page.route('**/api/support**', async (route) => {
     const admin = route.request().url().includes('resource=admin')
     const command = route.request().method() === 'POST' ? route.request().postDataJSON() : null
@@ -41,7 +72,13 @@ test('a paid request enters the admin queue, can be prioritized and receives a h
   })
   const help = await openHelp(page)
   await expect(page.getByRole('region', { name: 'Säkerhetscentral' })).toContainText('0 senaste händelser.')
-  const support = help.getByRole('region', { name: 'Mänsklig support' })
+  const support = await openSupportThroughHandoff(help, {
+    handoff: 'Fortsätt med mänsklig support',
+    placeholder: 'Fråga om Viktkollen',
+    question: 'Betalningen fungerar inte',
+    region: 'Mänsklig support',
+    send: 'Skicka',
+  })
   await support.getByRole('button', { name: 'Kontrollera supportåtkomst' }).click()
   await support.getByRole('combobox').selectOption('billing')
   await support.getByRole('textbox', { name: 'Meddelande' }).fill('Jag behöver hjälp med en betalningsfråga.')
@@ -60,6 +97,26 @@ test('a paid request enters the admin queue, can be prioritized and receives a h
   await support.getByRole('button', { name: 'Uppdatera ärenden' }).click()
   await expect(support.getByText('Vi hjälper dig med betalningsfrågan här.', { exact: false })).toBeVisible()
   expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1)
+})
+
+test('english help opens human support through the same handoff', async ({ page }) => {
+  await page.route('**/api/ai-help', handoffReply('If the fault is still visible, you can continue with human support.'))
+  await page.route('**/api/support', (route) => route.fulfill({ json: { ok: true, eligible: false, tickets: [] } }))
+  await openHelp(page)
+  await page.locator('.profile-settings-panel select').selectOption('en')
+  const help = page.getByRole('region', { name: 'AI Help', exact: true })
+  await expect(help).toHaveAttribute('lang', 'en')
+  const support = await openSupportThroughHandoff(help, {
+    handoff: 'Continue with human support',
+    placeholder: 'Ask about Viktkollen',
+    question: 'The payment is not working',
+    region: 'Human support',
+    send: 'Send',
+  })
+  await support.getByRole('button', { name: 'Check support access' }).click()
+  await expect(support.getByText('No tickets.')).toBeVisible()
+  await expect(support.getByRole('button', { name: 'Send support request' })).toHaveCount(0)
+  await expect(help.getByRole('textbox', { name: 'Ask about Viktkollen' })).toBeVisible()
 })
 
 test('explicit scanner navigation uses the real app intent; AI-Hjälp itself never requests the camera', async ({ page }) => {

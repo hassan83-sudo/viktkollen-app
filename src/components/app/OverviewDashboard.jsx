@@ -356,7 +356,7 @@ function OverviewLiveMeta({
     try { return window.localStorage.getItem('viktkollen:halloween-theme') === 'on' }
     catch { return false }
   })
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.classList.toggle('viktkollen-halloween-on', halloweenEnabled)
     return () => document.documentElement.classList.remove('viktkollen-halloween-on')
   }, [halloweenEnabled])
@@ -428,7 +428,11 @@ function OverviewLiveMeta({
       <p>
         <span><OverviewIcon name="calendar" /> {shortWeekday(liveContext.weekday)} {liveContext.dateLabel}</span>
         <span><OverviewIcon name="clock" /> {liveContext.timeLabel}</span>
-        {city ? <span>{city}</span> : null}
+        <span
+          className="overview-weather-city"
+          aria-hidden={city ? undefined : 'true'}
+          style={{ flexBasis: '100%', minHeight: '1.2em', visibility: city ? undefined : 'hidden' }}
+        >{city || ' '}</span>
       </p>
       <p
         className="overview-weather-row"
@@ -968,7 +972,7 @@ function OverviewPrimaryActions({
                     alt={action.alt}
                     decoding="async"
                     height={action.imageHeight}
-                    loading="lazy"
+                    loading="eager"
                     src={action.image}
                     width={action.imageWidth}
                   />

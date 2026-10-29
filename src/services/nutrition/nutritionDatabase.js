@@ -1,4 +1,4 @@
-import referenceBank from './livsmedelsverketFoods.json'
+import referenceBank from './livsmedelsverketFoods.json' with { type: 'json' }
 import { getFoodEmoji } from './foodEmoji.js'
 
 function round(value) {

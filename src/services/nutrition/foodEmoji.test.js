@@ -1,3 +1,6 @@
+import process from 'node:process'
+import { execFileSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 import { matchPhotoIngredientToDatabase } from '../nutritionPhotoIngredientMatching.js'
 import { describe, expect, it } from 'vitest'
 import { getFoodEmoji } from './foodEmoji.js'
@@ -24,6 +27,11 @@ describe('food emojis', () => {
 })
 
 describe('extended local food bank', () => {
+  it('loads in native Node without a bundler, as the server does', () => {
+    const output = execFileSync(process.execPath, ['--input-type=module', '-e', "import('./nutritionDatabase.js').then(bank => console.log(bank.nutritionReferenceFoods.length))"], { cwd: fileURLToPath(new URL('.', import.meta.url)), encoding: 'utf8' })
+    expect(output.trim()).toBe('2606')
+  })
+
   it('has unique IDs and finite serving nutrition', () => {
     expect(new Set(nutritionFoods.map(food => food.id)).size).toBe(nutritionFoods.length)
     for (const food of nutritionFoods) {

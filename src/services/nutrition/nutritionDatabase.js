@@ -1,3 +1,5 @@
+import { getFoodEmoji } from './foodEmoji.js'
+
 function round(value) {
   return Math.round((value + Number.EPSILON) * 10) / 10
 }
@@ -7,6 +9,7 @@ function withServingNutrition(food) {
 
   return {
     ...food,
+    emoji: getFoodEmoji(food.name),
     calories: round(food.caloriesPer100g * factor),
     carbs: round(food.carbsPer100g * factor),
     defaultServing: food.defaultServing,
@@ -472,6 +475,395 @@ const foods = [
     defaultPortionGrams: 4,
     defaultServing: '1 tsk',
   },
+  // Verified Livsmedelsverket rows from nutrition_food_bank, 2026-10-29.
+  // Keep preparation-specific names and source IDs with the nutrient values.
+  ...[
+    {
+      "id": "ananas",
+      "name": "Ananas",
+      "aliases": [
+        "ananas"
+      ],
+      "category": "fruit",
+      "caloriesPer100g": 47,
+      "proteinPer100g": 0.6,
+      "carbsPer100g": 10.2,
+      "fatPer100g": 0,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "550",
+      "sourceVersion": "2026-06-30T15:26:46.54"
+    },
+    {
+      "id": "aubergine",
+      "name": "Aubergine",
+      "aliases": [
+        "aubergine"
+      ],
+      "category": "vegetable",
+      "caloriesPer100g": 19,
+      "proteinPer100g": 1.1,
+      "carbsPer100g": 2.2,
+      "fatPer100g": 0.1,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "372",
+      "sourceVersion": "2026-06-29T00:28:48.68"
+    },
+    {
+      "id": "blabar",
+      "name": "Blåbär",
+      "aliases": [
+        "blåbär"
+      ],
+      "category": "fruit",
+      "caloriesPer100g": 53,
+      "proteinPer100g": 0.7,
+      "carbsPer100g": 9.1,
+      "fatPer100g": 0.8,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "555",
+      "sourceVersion": "2026-06-29T00:32:32.283"
+    },
+    {
+      "id": "blomkal",
+      "name": "Blomkål",
+      "aliases": [
+        "blomkål"
+      ],
+      "category": "vegetable",
+      "caloriesPer100g": 25,
+      "proteinPer100g": 1.7,
+      "carbsPer100g": 3.7,
+      "fatPer100g": 0,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "322",
+      "sourceVersion": "2026-06-30T11:08:21.293"
+    },
+    {
+      "id": "bulgur-kokt",
+      "name": "Bulgur kokt",
+      "aliases": [
+        "bulgur kokt",
+        "kokt bulgur"
+      ],
+      "category": "carb",
+      "caloriesPer100g": 129,
+      "proteinPer100g": 4.3,
+      "carbsPer100g": 23.1,
+      "fatPer100g": 1.2,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "830",
+      "sourceVersion": "2026-06-29T00:39:22.267"
+    },
+    {
+      "id": "cashew-rostade",
+      "name": "Cashewnötter rostade u. salt",
+      "aliases": [
+        "cashewnötter rostade",
+        "rostade cashewnötter"
+      ],
+      "category": "fat",
+      "caloriesPer100g": 597,
+      "proteinPer100g": 18,
+      "carbsPer100g": 19.1,
+      "fatPer100g": 48.7,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "1557",
+      "sourceVersion": "2026-06-29T00:58:03.7"
+    },
+    {
+      "id": "champinjon",
+      "name": "Champinjon",
+      "aliases": [
+        "champinjon",
+        "champinjoner"
+      ],
+      "category": "vegetable",
+      "caloriesPer100g": 27,
+      "proteinPer100g": 2.4,
+      "carbsPer100g": 2.7,
+      "fatPer100g": 0.2,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "333",
+      "sourceVersion": "2026-06-29T00:27:42.857"
+    },
+    {
+      "id": "couscous-tillagad",
+      "name": "Couscous tillagad",
+      "aliases": [
+        "couscous tillagad",
+        "tillagad couscous",
+        "couscous kokt",
+        "kokt couscous"
+      ],
+      "category": "carb",
+      "caloriesPer100g": 108,
+      "proteinPer100g": 3.8,
+      "carbsPer100g": 21.8,
+      "fatPer100g": 0.2,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "832",
+      "sourceVersion": "2026-06-29T00:39:26.447"
+    },
+    {
+      "id": "hallon",
+      "name": "Hallon",
+      "aliases": [
+        "hallon"
+      ],
+      "category": "fruit",
+      "caloriesPer100g": 34,
+      "proteinPer100g": 1.2,
+      "carbsPer100g": 4.1,
+      "fatPer100g": 0.6,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "523",
+      "sourceVersion": "2026-06-29T00:31:52.95"
+    },
+    {
+      "id": "jordgubbar",
+      "name": "Jordgubbar",
+      "aliases": [
+        "jordgubbe",
+        "jordgubbar"
+      ],
+      "category": "fruit",
+      "caloriesPer100g": 41,
+      "proteinPer100g": 0.5,
+      "carbsPer100g": 8.3,
+      "fatPer100g": 0.2,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "526",
+      "sourceVersion": "2026-07-01T09:09:41.427"
+    },
+    {
+      "id": "jordnotter-rostade",
+      "name": "Jordnötter rostade",
+      "aliases": [
+        "jordnötter rostade",
+        "rostade jordnötter"
+      ],
+      "category": "fat",
+      "caloriesPer100g": 605,
+      "proteinPer100g": 22.4,
+      "carbsPer100g": 9.3,
+      "fatPer100g": 51.3,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "1561",
+      "sourceVersion": "2026-06-29T00:58:10.86"
+    },
+    {
+      "id": "kiwi-gron",
+      "name": "Kiwi grön",
+      "aliases": [
+        "kiwi grön",
+        "grön kiwi",
+        "kiwi"
+      ],
+      "category": "fruit",
+      "caloriesPer100g": 53,
+      "proteinPer100g": 0.9,
+      "carbsPer100g": 9,
+      "fatPer100g": 0.7,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "565",
+      "sourceVersion": "2026-06-30T15:27:01.693"
+    },
+    {
+      "id": "mango",
+      "name": "Mango",
+      "aliases": [
+        "mango"
+      ],
+      "category": "fruit",
+      "caloriesPer100g": 52,
+      "proteinPer100g": 0.7,
+      "carbsPer100g": 11.2,
+      "fatPer100g": 0,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "574",
+      "sourceVersion": "2026-06-30T13:13:58.063"
+    },
+    {
+      "id": "paron",
+      "name": "Päron",
+      "aliases": [
+        "päron"
+      ],
+      "category": "fruit",
+      "caloriesPer100g": 54,
+      "proteinPer100g": 0.3,
+      "carbsPer100g": 11.5,
+      "fatPer100g": 0.1,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "583",
+      "sourceVersion": "2026-06-29T00:33:17.773"
+    },
+    {
+      "id": "persika",
+      "name": "Persika",
+      "aliases": [
+        "persika"
+      ],
+      "category": "fruit",
+      "caloriesPer100g": 42,
+      "proteinPer100g": 0.8,
+      "carbsPer100g": 8.5,
+      "fatPer100g": 0,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "580",
+      "sourceVersion": "2026-06-30T15:27:55.733"
+    },
+    {
+      "id": "plommon",
+      "name": "Plommon",
+      "aliases": [
+        "plommon"
+      ],
+      "category": "fruit",
+      "caloriesPer100g": 44,
+      "proteinPer100g": 0.7,
+      "carbsPer100g": 9.1,
+      "fatPer100g": 0,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "582",
+      "sourceVersion": "2026-06-30T15:28:06.073"
+    },
+    {
+      "id": "rodkal",
+      "name": "Rödkål",
+      "aliases": [
+        "rödkål"
+      ],
+      "category": "vegetable",
+      "caloriesPer100g": 31,
+      "proteinPer100g": 1.1,
+      "carbsPer100g": 4.7,
+      "fatPer100g": 0.3,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "355",
+      "sourceVersion": "2026-06-29T00:28:20.207"
+    },
+    {
+      "id": "sotmandel",
+      "name": "Sötmandel",
+      "aliases": [
+        "sötmandel",
+        "sotmandel"
+      ],
+      "category": "fat",
+      "caloriesPer100g": 592,
+      "proteinPer100g": 20.7,
+      "carbsPer100g": 0.5,
+      "fatPer100g": 53.2,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "1575",
+      "sourceVersion": "2026-06-29T00:58:38.207"
+    },
+    {
+      "id": "valnotter",
+      "name": "Valnötter",
+      "aliases": [
+        "valnötter"
+      ],
+      "category": "fat",
+      "caloriesPer100g": 680,
+      "proteinPer100g": 13.8,
+      "carbsPer100g": 8.3,
+      "fatPer100g": 64.8,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "1576",
+      "sourceVersion": "2026-06-29T00:58:40.55"
+    },
+    {
+      "id": "vattenmelon",
+      "name": "Vattenmelon",
+      "aliases": [
+        "vattenmelon"
+      ],
+      "category": "fruit",
+      "caloriesPer100g": 34,
+      "proteinPer100g": 0.6,
+      "carbsPer100g": 7.5,
+      "fatPer100g": 0,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "549",
+      "sourceVersion": "2026-06-29T00:32:26.107"
+    },
+    {
+      "id": "vindruvor",
+      "name": "Vindruvor",
+      "aliases": [
+        "vindruvor"
+      ],
+      "category": "fruit",
+      "caloriesPer100g": 70,
+      "proteinPer100g": 0.6,
+      "carbsPer100g": 15.6,
+      "fatPer100g": 0.2,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "587",
+      "sourceVersion": "2026-06-29T00:33:26.373"
+    },
+    {
+      "id": "vitkal",
+      "name": "Vitkål",
+      "aliases": [
+        "vitkål"
+      ],
+      "category": "vegetable",
+      "caloriesPer100g": 32,
+      "proteinPer100g": 1.2,
+      "carbsPer100g": 5.7,
+      "fatPer100g": 0,
+      "defaultPortionGrams": 100,
+      "defaultServing": "100 g",
+      "source": "livsmedelsverket",
+      "sourceFoodId": "370",
+      "sourceVersion": "2026-06-30T15:26:32.187"
+    }
+  ],
 ].map(withServingNutrition)
 
 export const nutritionFoods = foods

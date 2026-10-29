@@ -1,6 +1,7 @@
 import { createSupabaseAdminClient } from '../supabaseServer.js'
 import { buildPlanComparison } from '../../../src/services/billing/planComparison.js'
 import { defaultPlanCatalog } from '../../../src/services/billing/planCatalog.js'
+import { planIdForOpenPeriod, planIdForSubscription } from '../../../src/services/billing/paidPeriod.js'
 
 let testReader = null
 
@@ -16,7 +17,10 @@ export function installCatalogPlanComparisonForTests({
   const reader = async (userId) => {
     const assignment = assignments ? await assignments.get(userId) : { plan_id: 'plan.free' }
     return buildPlanComparison({
-      currentPlanId: assignment?.plan_id || 'plan.free',
+      currentPlanId: planIdForOpenPeriod({
+        assignedPlanId: assignment?.plan_id || 'plan.free',
+        periodEnd: assignment?.current_period_end,
+      }),
       plans: plans || catalog,
     })
   }
@@ -26,6 +30,7 @@ export function installCatalogPlanComparisonForTests({
 
 const PLAN_READ_OPERATIONS = new Set([
   'user_plan_assignments',
+  'subscriptions',
   'plans',
   'plan_entitlements',
   'build_plan_comparison',
@@ -92,9 +97,26 @@ async function listRows(query, operation) {
 export async function readPostgresPlanComparison(client, userId) {
   try {
     const assignment = await maybeSingle(
-      client.schema('billing').from('user_plan_assignments').select('plan_id').eq('user_id', userId),
+      client.schema('billing').from('user_plan_assignments').select('plan_id, source').eq('user_id', userId),
       'user_plan_assignments',
     )
+    const assignedPlanId = assignment?.plan_id || 'plan.free'
+    const openPeriods = assignedPlanId === 'plan.free' ? [] : await listRows(
+      client.schema('billing').from('subscriptions')
+        .select('current_period_end, current_period_start, status, past_due_grace_until')
+        .eq('user_id', userId)
+        .eq('plan_id', assignedPlanId)
+        .in('status', ['TRIALING', 'ACTIVE', 'PAST_DUE'])
+        .gt('current_period_end', new Date().toISOString())
+        .limit(1),
+      'subscriptions',
+    )
+    const currentPlanId = planIdForSubscription({
+      assignedPlanId,
+      source: assignment?.source,
+      subscription: openPeriods[0],
+      now: new Date(),
+    })
     const planRows = await listRows(
       client.schema('billing').from('plans').select('plan_id, price_minor, currency, active'),
       'plans',
@@ -127,7 +149,7 @@ export async function readPostgresPlanComparison(client, userId) {
     }
     try {
       return buildPlanComparison({
-        currentPlanId: assignment?.plan_id || 'plan.free',
+        currentPlanId,
         plans: planRows.map((row, index) => ({
           active: row.active !== false,
           currency: row.currency,

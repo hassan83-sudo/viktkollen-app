@@ -8,7 +8,9 @@ import {
 import { createAsyncMutex } from './asyncMutex.js'
 import { isUnlimitedLimit, limitValue } from './entitlementModel.js'
 import { getFeatureDefinition, resolveFeatureId } from './features.js'
-import { inPeriod, periodBounds } from './period.js'
+import { inPeriod } from './period.js'
+import { planIdForOpenPeriod } from './paidPeriod.js'
+import { quotaPeriodForPlan, reservationCountsTowardQuota } from './quotaWindow.js'
 import { defaultPlanCatalog, getPlanById, getPlanEntitlement } from './planCatalog.js'
 import { createInMemoryPlanAssignmentStore } from './planAssignment.js'
 import { createInMemoryReservationStore } from './reservationStore.js'
@@ -17,16 +19,11 @@ import { getUsageRepository } from './usageRepository.js'
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 function subscriptionPeriod(assignment, plan, nowDate) {
-  const start = assignment?.current_period_start ? new Date(assignment.current_period_start) : null
-  const end = assignment?.current_period_end ? new Date(assignment.current_period_end) : null
-  if (start && end && !Number.isNaN(start.getTime()) && end.getTime() > start.getTime()) {
-    return {
-      interval: plan.billing_interval,
-      period_end: end.toISOString(),
-      period_start: start.toISOString(),
-    }
-  }
-  return periodBounds(plan.billing_interval, nowDate)
+  return quotaPeriodForPlan({
+    now: nowDate,
+    planInterval: plan.billing_interval,
+    subscription: assignment?.quota_window === 'subscription' ? assignment : null,
+  })
 }
 const MAX_QUANTITY = 1_000_000_000
 const TERMINAL = new Set([
@@ -101,7 +98,7 @@ export function createInMemoryAtomicBackend({
     let reserved = 0
     for (const row of reservationRows) {
       if (row.user_id !== userId || row.feature !== feature || row.unit !== unit) continue
-      if (row.period_start !== period.period_start) continue
+      if (!reservationCountsTowardQuota(row, { period, planId: period.plan_id })) continue
       if (row.status === RESERVATION_STATUS.ROLLED_BACK) continue
       if (row.status === RESERVATION_STATUS.EXPIRED) continue
       if (row.status === RESERVATION_STATUS.PENDING && isExpired(row, nowDate)) continue
@@ -135,9 +132,14 @@ export function createInMemoryAtomicBackend({
     void clientClaim
     const nowDate = now()
     const assignment = await assignments.get(userId)
-    const plan = getPlanById(assignment.plan_id, catalog)
+    const effectivePlanId = planIdForOpenPeriod({
+      assignedPlanId: assignment.plan_id,
+      now: nowDate,
+      periodEnd: assignment.current_period_end,
+    })
+    const plan = getPlanById(effectivePlanId, catalog)
     if (!plan) return quotaResult(QUOTA_STATUS.DENIED_UNKNOWN_PLAN)
-    const period = subscriptionPeriod(assignment, plan, nowDate)
+    const period = subscriptionPeriod(effectivePlanId === assignment.plan_id ? assignment : {}, plan, nowDate)
 
     if (!definition.metered) {
       return quotaResult(QUOTA_STATUS.ALLOWED_UNMETERED, {
@@ -254,8 +256,16 @@ export function createInMemoryAtomicBackend({
         overage_quantity: 0,
         period_end: snapshot.period_end,
         period_start: snapshot.period_start,
-        plan_id: assignment.plan_id,
-        plan_version: assignment.plan_version,
+        plan_id: planIdForOpenPeriod({
+          assignedPlanId: assignment.plan_id,
+          now: now(),
+          periodEnd: assignment.current_period_end,
+        }),
+        plan_version: getPlanById(planIdForOpenPeriod({
+          assignedPlanId: assignment.plan_id,
+          now: now(),
+          periodEnd: assignment.current_period_end,
+        }), catalog)?.version || assignment.plan_version,
         quantity: qty,
         reservation_id: reservation_id || randomUUID(),
         status: RESERVATION_STATUS.PENDING,

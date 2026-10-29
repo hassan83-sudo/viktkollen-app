@@ -8,6 +8,13 @@ import { buildPlanComparison } from '../../services/billing/planComparison.js'
 import { defaultPlanCatalog } from '../../services/billing/planCatalog.js'
 import PlanComparison from './PlanComparison.jsx'
 
+const { openHostedCheckout } = vi.hoisted(() => ({ openHostedCheckout: vi.fn() }))
+
+vi.mock('../../services/billing/checkoutReturn.js', async () => {
+  const actual = await vi.importActual('../../services/billing/checkoutReturn.js')
+  return { ...actual, openHostedCheckout }
+})
+
 const getSession = vi.fn()
 
 vi.mock('../../services/supabaseClient.js', () => ({
@@ -131,6 +138,35 @@ describe('PlanComparison', () => {
     expect(screen.queryByText('20')).toBeNull()
     expect(screen.queryByText('1 500')).toBeNull()
     expect(screen.getByText('Kommer snart')).toBeTruthy()
+  })
+
+  it('sends the 4 kr plan to the SumUp hosted checkout page', async () => {
+    const plan = {
+      ...comparison.plans.find((row) => row.priceText === '4 kr/mån'),
+      forSale: true,
+      offerKey: 'sek-400',
+    }
+    getSession.mockResolvedValue({ data: { session: { access_token: 'session-token' } } })
+    openHostedCheckout.mockClear()
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (String(url) === '/api/billing/checkout') {
+        return {
+          json: async () => ({ hostedCheckoutUrl: 'https://checkout.sumup.com/pay/page-1' }),
+          ok: true,
+          status: 202,
+        }
+      }
+      return { json: async () => ({ comparison: { plans: [plan] }, ok: true }), ok: true, status: 200 }
+    }))
+    render(<PlanComparison isAuthenticated />)
+    fireEvent.click(await screen.findByText('Jämför abonnemang'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Betala en gång – 30 dagar, ingen förnyelse' }))
+    await waitFor(() => {
+      expect(openHostedCheckout).toHaveBeenCalledWith('https://checkout.sumup.com/pay/page-1')
+    })
+    const checkoutCall = vi.mocked(fetch).mock.calls.find((call) => call[0] === '/api/billing/checkout')
+    expect(JSON.parse(checkoutCall[1].body)).toEqual({ offer_key: 'sek-400', payment_mode: 'one_time' })
+    expect(checkoutCall[1].headers.Authorization).toBe('Bearer session-token')
   })
 
   it('keeps a sale flag from adding a purchase action', async () => {

@@ -31,12 +31,30 @@ function fakeBillingClient(tables, calls) {
               filters.push([column, value])
               return api
             },
+            in(column, values) {
+              filters.push((row) => values.includes(row[column]))
+              return api
+            },
+            gt(column, value) {
+              filters.push((row) => row[column] > value)
+              return api
+            },
+            order() {
+              return api
+            },
+            limit() {
+              return api
+            },
             maybeSingle: async () => ({
-              data: rows.find((row) => filters.every(([column, value]) => row[column] === value)) || null,
+              data: rows.find((row) => filters.every((filter) => (
+                Array.isArray(filter) ? row[filter[0]] === filter[1] : filter(row)
+              ))) || null,
               error: null,
             }),
             then(resolve, reject) {
-              const data = rows.filter((row) => filters.every(([column, value]) => row[column] === value))
+              const data = rows.filter((row) => filters.every((filter) => (
+                Array.isArray(filter) ? row[filter[0]] === filter[1] : filter(row)
+              )))
               return Promise.resolve({ data, error: null }).then(resolve, reject)
             },
           }
@@ -344,5 +362,15 @@ describe('owner unlimited body.scan quota read', () => {
     const disabled = await readQuota()
     expect(disabled.body.quota.owner_unlimited).toBeUndefined()
     expect(disabled.body.quota.remaining).toBe(9)
+  })
+
+  it('uses the free quota when the paid period has ended', async () => {
+    setSupabaseAdminClientForTests(fakeBillingClient(tablesFor({
+      subscriptions: [{ ...paidSubscription, current_period_end: '2026-09-01T00:00:00.000Z', status: 'ACTIVE' }],
+    }), []))
+    const response = await readQuota()
+    expect(response.statusCode).toBe(200)
+    expect(response.body.quota.plan_id).toBe('plan.free')
+    expect(response.body.quota.limit).toBe(3)
   })
 })

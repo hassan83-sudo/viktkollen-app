@@ -2,6 +2,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppErrorBoundary from '../AppErrorBoundary.jsx'
 import BugMonitorAdminEntry from '../billing/BugMonitorAdminEntry.jsx'
+import SandboxMerchantDiagnosticButton from '../billing/SandboxMerchantDiagnosticButton.jsx'
 import TestFeedbackPage from '../../features/testFeedback/TestFeedbackPage.jsx'
 import PlanCommercialAdmin from '../billing/PlanCommercialAdmin.jsx'
 import PlanComparison from '../billing/PlanComparison.jsx'
@@ -454,12 +455,12 @@ function MoreSection({
                 </div>
               </details>
 
-              <details aria-label="Företagsuppgifter under Integritet">
-                <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Företagsuppgifter</summary>
+              <details aria-label={t('company.aria')}>
+                <summary style={{ cursor: 'pointer', fontWeight: 700 }}>{t('company.title')}</summary>
                 <p><strong>{t('legal.provider')}:</strong> AppsOnTheGo</p>
-                <p><strong>Namn:</strong> Hassan Kayed</p>
-                <p><strong>Adress:</strong> Harlyckegatan 5 C, 256 58 Helsingborg</p>
-                <p><strong>Organisationsnummer:</strong> {/^(?:\d{6}[- ]?\d{4}|\d{8}[- ]?\d{4})$/.test((import.meta.env.VITE_PUBLIC_LEGAL_ORG_NUMBER || "").trim()) ? import.meta.env.VITE_PUBLIC_LEGAL_ORG_NUMBER.trim() : "Ej angivet"}</p>
+                <p><strong>{t('company.name')}:</strong> Hassan Kayed</p>
+                <p><strong>{t('company.address')}:</strong> Harlyckegatan 5 C, 256 58 Helsingborg</p>
+                <p><strong>{t('company.registrationNumber')}:</strong> {/^(?:\d{6}[- ]?\d{4}|\d{8}[- ]?\d{4})$/.test((import.meta.env.VITE_PUBLIC_LEGAL_ORG_NUMBER || "").trim()) ? import.meta.env.VITE_PUBLIC_LEGAL_ORG_NUMBER.trim() : t('company.notProvided')}</p>
                 <p><strong>{t('legal.emailLabel')}:</strong> </p>
               </details>
             </section>
@@ -485,6 +486,7 @@ function MoreSection({
 
             {isAuthenticated ? <PlanCommercialAdmin /> : null}
             {isAuthenticated ? <BugMonitorAdminEntry key={userId || 'signed-out'} /> : null}
+            {isAuthenticated ? <SandboxMerchantDiagnosticButton /> : null}
 
             <div className="app-information">
               <h3>{t('aboutTitle')}</h3>

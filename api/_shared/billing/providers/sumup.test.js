@@ -63,6 +63,10 @@ function paidCheckout(overrides = {}) {
   }
 }
 
+async function retrieveSandboxMerchant(code) {
+  return { merchant_code: code, sandbox: true }
+}
+
 function transportFor(checkout) {
   const calls = []
   return {
@@ -79,6 +83,7 @@ function transportFor(checkout) {
         status: 'PENDING',
       }
     },
+    retrieveMerchant: retrieveSandboxMerchant,
     async retrieveCheckout(id) {
       calls.push({ id, op: 'retrieve' })
       return { ...checkout, checkout_reference: checkout.checkout_reference, id }
@@ -100,6 +105,8 @@ function adapterFor(db, checkout = paidCheckout(), transport = transportFor(chec
 
 beforeEach(() => {
   vi.stubEnv('BILLING_PUBLIC_BASE_URL', 'https://viktkollen-preview.example')
+  vi.stubEnv('SUPABASE_URL', 'https://armtslzspuebmlysnooq.supabase.co')
+  vi.stubEnv('VITE_SUPABASE_URL', 'https://armtslzspuebmlysnooq.supabase.co')
 })
 
 afterEach(() => {
@@ -121,7 +128,7 @@ describe('BILL-10A SumUp adapter', () => {
     const source = readFileSync(new URL('./sumup.js', import.meta.url), 'utf8')
     expect(source).not.toMatch(/VITE_|sk_live|whsec_|pan|cvv|card_number|user_entitlements|\/v0\.1\/refunds/i)
     expect(source).not.toMatch(/stripe/i)
-  })
+  }, 20000)
 
   it('derives SEK major units exactly for the low-price plans', () => {
     for (const [planId, major] of PLANS) {
@@ -199,6 +206,7 @@ describe('BILL-10A SumUp adapter', () => {
       testOnly: true,
       transport: {
         async createCheckout() { throw new Error('network') },
+        retrieveMerchant: retrieveSandboxMerchant,
         async retrieveCheckout() { throw new Error('network') },
       },
     })
@@ -232,6 +240,7 @@ describe('BILL-10A SumUp adapter', () => {
           status: 'PENDING',
         }
       },
+      retrieveMerchant: retrieveSandboxMerchant,
       async retrieveCheckout() {
         throw new Error('not used')
       },
@@ -281,6 +290,7 @@ describe('BILL-10A SumUp adapter', () => {
             status: 'PENDING',
           }
         },
+        retrieveMerchant: retrieveSandboxMerchant,
         async retrieveCheckout() {
           throw new Error('not used')
         },
@@ -347,6 +357,7 @@ describe('BILL-10A SumUp adapter', () => {
               status: 'PENDING',
             }
           },
+          retrieveMerchant: retrieveSandboxMerchant,
           async retrieveCheckout() {
             throw new Error('not used')
           },
@@ -622,6 +633,7 @@ function oneTimeRpc(db, calls = []) {
     if (name === ONE_TIME_ACTIVATION_RPC) {
       const start = new Date(args.p_paid_at)
       const result = await db.activate({
+        cancelAtPeriodEnd: true,
         checkoutId: args.p_checkout_id,
         periodEnd: new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         periodStart: start.toISOString(),

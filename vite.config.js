@@ -186,6 +186,7 @@ export function shouldBuildBodyScanPreview(env = process.env) {
 export default defineConfig(({ mode }) => {
   loadServerOnlyDevEnv(mode)
   const bodyScanPreview = shouldBuildBodyScanPreview()
+  const sandboxMerchantDiagnostic = process.env.VERCEL_ENV === 'preview'
 
   return {
     build: {
@@ -205,6 +206,7 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       __VK_BODY_SCAN_PREVIEW__: JSON.stringify(bodyScanPreview),
+      __VK_SANDBOX_MERCHANT_DIAGNOSTIC__: JSON.stringify(sandboxMerchantDiagnostic),
     },
     plugins: [react(), basicSsl(), legacyAiApiDevMiddleware(), nutritionPhotoApiDevMiddleware()],
     server: {

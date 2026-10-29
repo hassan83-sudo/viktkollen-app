@@ -2,6 +2,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppErrorBoundary from '../AppErrorBoundary.jsx'
 import BugMonitorAdminEntry from '../billing/BugMonitorAdminEntry.jsx'
+import SandboxMerchantDiagnosticButton from '../billing/SandboxMerchantDiagnosticButton.jsx'
 import TestFeedbackPage from '../../features/testFeedback/TestFeedbackPage.jsx'
 import PlanCommercialAdmin from '../billing/PlanCommercialAdmin.jsx'
 import PlanComparison from '../billing/PlanComparison.jsx'
@@ -485,6 +486,7 @@ function MoreSection({
 
             {isAuthenticated ? <PlanCommercialAdmin /> : null}
             {isAuthenticated ? <BugMonitorAdminEntry key={userId || 'signed-out'} /> : null}
+            {isAuthenticated ? <SandboxMerchantDiagnosticButton /> : null}
 
             <div className="app-information">
               <h3>{t('aboutTitle')}</h3>

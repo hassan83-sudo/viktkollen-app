@@ -114,6 +114,8 @@ export default createProviderRouteHandler({
   logFields: (outcome) => ({ candidateCount: outcome.candidates?.length || 0, matched: Boolean(outcome.matched) }),
   logName: '[api/ai-ear-humming-recognition]',
   maxBytes: MAX_AUDIO_BYTES,
+  // AI-örats funktionsspärr först; humning är dessutom bara för ägaren under testperioden.
+  featureKey: 'aiEar',
   ownerOnly: true,
   purpose: analysisConsentPurposes.audioHummingRecognition,
   rateLimitEnv: 'AI_EAR_HUMMING_RATE_LIMIT_MAX',

@@ -32,7 +32,7 @@ const { default: AccessibilityHub } = await import('../more/AccessibilityHub.jsx
 const { default: AiCoachOverlay } = await import('../AiCoachOverlay.jsx')
 const { default: ChatInput } = await import('../ChatInput.jsx')
 const { default: AiCoachControls } = await import('../aiCoach/AiCoachControls.jsx')
-const { default: AiEarMode } = await import('../../features/ai-ear/AiEarMode.jsx')
+const { default: AiEarMode, AiEarWorkspace } = await import('../../features/ai-ear/AiEarMode.jsx')
 const { default: ReadySection } = await import('../sections/ReadySection.jsx')
 const { default: SocialStage } = await import('../../features/social/components/SocialStage.jsx')
 const { default: BottomNavigation } = await import('../app/BottomNavigation.jsx')
@@ -189,7 +189,13 @@ describe('automated accessibility regression suite (A11Y-8F)', () => {
     })
 
     it('AI-örat', async () => {
-      render(<main><AiEarMode deps={{ blobToWav: vi.fn(), interpret: vi.fn() }} /></main>)
+      render(<main><AiEarWorkspace deps={{ blobToWav: vi.fn(), interpret: vi.fn() }} ensureAccess={async () => true} /></main>)
+      await expectNoBlockingViolations()
+    })
+
+    it('AI-örat: Under utveckling', async () => {
+      render(<main><AiEarMode deps={{ loadFeatureAccess: async () => 'locked' }} /></main>)
+      await screen.findByText('Under utveckling')
       await expectNoBlockingViolations()
     })
 
@@ -219,7 +225,7 @@ describe('automated accessibility regression suite (A11Y-8F)', () => {
     })
 
     it('AI-örat: record button and audio file upload', () => {
-      render(<AiEarMode deps={{ blobToWav: vi.fn(), interpret: vi.fn() }} />)
+      render(<AiEarWorkspace deps={{ blobToWav: vi.fn(), interpret: vi.fn() }} ensureAccess={async () => true} />)
       expect(screen.getByRole('button', { name: 'Spela in' })).toBeTruthy()
       const upload = screen.getByLabelText('Välj ljudfil')
       expect(upload.getAttribute('type')).toBe('file')

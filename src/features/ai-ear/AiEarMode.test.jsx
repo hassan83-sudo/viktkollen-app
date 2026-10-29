@@ -5,8 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { aiEarRouteInternals } from '../../../api/ai-ear/interpret/index.js'
 import i18n from '../../i18n/index.js'
-import AiEarMode from './AiEarMode.jsx'
+import { AiEarWorkspace } from './AiEarMode.jsx'
 import { backendFixtures } from './fixtures/backendFixtures.js'
+
+// Behavior of the unlocked view; the server-verified lock is covered in AiEarMode.lock.test.jsx.
+const allowAccess = async () => true
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -27,7 +30,7 @@ function makeDeps(overrides = {}) {
 }
 
 async function readyWithFile(deps) {
-  render(<AiEarMode deps={deps} />)
+  render(<AiEarWorkspace ensureAccess={allowAccess} deps={deps} />)
   chooseFile()
   await screen.findByText('Analysera ljudet')
 }
@@ -62,7 +65,7 @@ describe('AiEarMode', () => {
 
   it('starts idle: no microphone, no network, no analysis until the user acts', () => {
     const deps = makeDeps()
-    render(<AiEarMode deps={deps} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={deps} />)
 
     expect(screen.getByText('Spela in')).toBeTruthy()
     expect(screen.getByText('Välj ljudfil')).toBeTruthy()
@@ -124,14 +127,14 @@ describe('AiEarMode', () => {
 
   it('rejects an oversized or non-audio file before any processing', async () => {
     const deps = makeDeps()
-    render(<AiEarMode deps={deps} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={deps} />)
     chooseFile(new File([new Uint8Array(10)], 'bild.png', { type: 'image/png' }))
     expect(await screen.findByRole('alert')).toBeTruthy()
     expect(screen.getByText('Det där är inte en ljudfil')).toBeTruthy()
     expect(deps.blobToWav).not.toHaveBeenCalled()
 
     cleanup()
-    render(<AiEarMode deps={deps} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={deps} />)
     const big = new File([new Uint8Array(10)], 'stor.wav', { type: 'audio/wav' })
     Object.defineProperty(big, 'size', { value: 30 * 1024 * 1024 })
     chooseFile(big)
@@ -141,7 +144,7 @@ describe('AiEarMode', () => {
 
   it('shows a friendly message when the audio cannot be decoded', async () => {
     const deps = makeDeps({ blobToWav: vi.fn(async () => { throw new Error('audio_undecodable') }) })
-    render(<AiEarMode deps={deps} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={deps} />)
     chooseFile()
     expect(await screen.findByText('Ljudet kunde inte läsas')).toBeTruthy()
   })
@@ -196,7 +199,7 @@ describe('AiEarMode', () => {
     let resolve
     const deps = makeDeps({ interpret: vi.fn((args) => new Promise((r) => { signal = args.signal; resolve = r })) })
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    render(<AiEarMode deps={deps} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={deps} />)
     chooseFile()
     fireEvent.click(await screen.findByText('Analysera ljudet'))
     await screen.findByText(/AI-örat lyssnar/)
@@ -211,7 +214,7 @@ describe('AiEarMode', () => {
   it('records with the microphone, stops the tracks, and only then offers analysis', async () => {
     const env = fakeRecorderEnv()
     const deps = makeDeps({ getUserMedia: vi.fn(async () => env.stream), MediaRecorderImpl: env.MediaRecorderImpl })
-    render(<AiEarMode deps={deps} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={deps} />)
 
     fireEvent.click(screen.getByText('Spela in'))
     expect(await screen.findByText(/Mikrofon aktiv/)).toBeTruthy()
@@ -228,7 +231,7 @@ describe('AiEarMode', () => {
   it('stops the microphone if the component unmounts while recording', async () => {
     const env = fakeRecorderEnv()
     const deps = makeDeps({ getUserMedia: vi.fn(async () => env.stream), MediaRecorderImpl: env.MediaRecorderImpl })
-    render(<AiEarMode deps={deps} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={deps} />)
     fireEvent.click(screen.getByText('Spela in'))
     await screen.findByText(/Mikrofon aktiv/)
 
@@ -238,7 +241,7 @@ describe('AiEarMode', () => {
 
   it('explains denied microphone permission and offers the file alternative', async () => {
     const deps = makeDeps({ getUserMedia: vi.fn(async () => { throw Object.assign(new Error('denied'), { name: 'NotAllowedError' }) }), MediaRecorderImpl: class {} })
-    render(<AiEarMode deps={deps} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={deps} />)
     fireEvent.click(screen.getByText('Spela in'))
 
     expect(await screen.findByText('Mikrofonen är inte tillåten')).toBeTruthy()
@@ -266,7 +269,7 @@ describe('AiEarMode accessibility (A11Y-8D)', () => {
   afterEach(() => cleanup())
 
   it('offers microphone recording and a file upload as keyboard-reachable, named controls', () => {
-    render(<AiEarMode deps={makeDeps()} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={makeDeps()} />)
     const record = screen.getByRole('button', { name: 'Spela in' })
     const file = screen.getByLabelText('Välj ljudfil')
     expect(file.getAttribute('type')).toBe('file')
@@ -280,7 +283,7 @@ describe('AiEarMode accessibility (A11Y-8D)', () => {
   it('announces the microphone once as status text and keeps the per-second counter out of the live region', async () => {
     const env = fakeRecorderEnv()
     const deps = makeDeps({ getUserMedia: vi.fn(async () => env.stream), MediaRecorderImpl: env.MediaRecorderImpl })
-    render(<AiEarMode deps={deps} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={deps} />)
     fireEvent.click(screen.getByRole('button', { name: 'Spela in' }))
 
     const status = await screen.findByRole('status')
@@ -293,7 +296,7 @@ describe('AiEarMode accessibility (A11Y-8D)', () => {
 
   it('links the privacy note to the Analyse button and shows the result as text', async () => {
     const deps = makeDeps()
-    render(<AiEarMode deps={deps} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={deps} />)
     chooseFile()
     const analyse = await screen.findByRole('button', { name: 'Analysera ljudet' })
     expect(document.getElementById(analyse.getAttribute('aria-describedby')).textContent).toMatch(/skickas just det här ljudet/)
@@ -308,7 +311,7 @@ describe('AiEarMode accessibility (A11Y-8D)', () => {
 
   it('is localized (English)', async () => {
     await i18n.changeLanguage('en')
-    render(<AiEarMode deps={makeDeps()} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={makeDeps()} />)
     expect(screen.getByRole('region', { name: 'AI Ear' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Record' })).toBeTruthy()
     expect(screen.getByLabelText('Choose audio file').getAttribute('type')).toBe('file')

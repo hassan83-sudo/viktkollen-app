@@ -43,6 +43,7 @@ export function mapAiEarHttpError(status, payload) {
   if (status === 400 || status === 415) return { reason: reason === 'unsupported_media' ? 'unsupported_media' : 'invalid_audio', retryable: false }
   if (status === 413 || code === 'REQUEST_TOO_LARGE') return { reason: 'too_large', retryable: false }
   if (status === 401 || code === 'AUTH_REQUIRED' || code === 'AUTH_INVALID' || code === 'AUTH_EXPIRED') return { reason: 'auth_required', retryable: false }
+  if (status === 403 && code === 'FEATURE_LOCKED') return { reason: 'feature_locked', retryable: false }
   if (status === 403 && code === 'CONSENT_REQUIRED') return { reason: 'consent_required', retryable: false }
   if (status === 429 || code === 'RATE_LIMITED') return { reason: 'rate_limited', retryable: true }
   if (status === 504 || code === 'PROVIDER_TIMEOUT') return { reason: 'timeout', retryable: true }

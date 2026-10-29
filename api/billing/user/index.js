@@ -6,6 +6,7 @@ import { createServerCheckoutIntentPorts, prepareSumUpSandboxSetup } from '../..
 import { handleWebhookRequest } from '../../_shared/billing/providerWebhookIngress.js'
 import { executeUserBillingIntent } from '../../_shared/billing/userLifecycleIntent.js'
 import { lookupBillingAdmin, requireBillingAdmin } from '../../_shared/billing/admin.js'
+import { listFeatureAccess } from '../../_shared/featureAccess.js'
 import { getConfiguredSumUpAdapter } from '../../_shared/billing/providers/sumup.js'
 import { readPlanComparison } from '../../_shared/billing/planComparisonRead.js'
 import { readUsageSnapshot } from '../../_shared/billing/usageSnapshotRead.js'
@@ -316,6 +317,8 @@ async function handleCapability(request, response, auth, requestId) {
   void request.query?.role
   return response.status(200).json({
     billing_admin: await lookupBillingAdmin(auth.user.id),
+    // Same server decision the feature routes enforce (api/_shared/featureAccess.js).
+    features: await listFeatureAccess(auth.user.id),
     ok: true,
     requestId,
   })

@@ -1,7 +1,10 @@
 import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
-import { isAllowedAnalysisConsentPurpose, issueAnalysisConsentToken } from '../_shared/analysisConsent.js'
+import { analysisConsentPurposes, isAllowedAnalysisConsentPurpose, issueAnalysisConsentToken } from '../_shared/analysisConsent.js'
+import { checkFeatureAccess, sendFeatureLocked } from '../_shared/featureAccess.js'
+
+const AI_EAR_PURPOSES = new Set([analysisConsentPurposes.aiEarInterpret, analysisConsentPurposes.audioHummingRecognition])
 
 /**
  * Issues a short-lived, HMAC-signed analysis consent token.
@@ -89,6 +92,12 @@ export default async function handler(request, response) {
       requestId,
       status: 403,
     })
+  }
+
+  // AI-örats samtycken utfärdas inte när funktionen är spärrad för kontot.
+  if (AI_EAR_PURPOSES.has(purpose)) {
+    const access = await checkFeatureAccess('aiEar', auth.user.id)
+    if (!access.allowed) return sendFeatureLocked(response, requestId)
   }
 
   const issued = issueAnalysisConsentToken({

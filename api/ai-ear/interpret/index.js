@@ -1,6 +1,7 @@
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../../_shared/aiRouteErrors.js'
 import { checkAiRouteRateLimit } from '../../_shared/aiRateLimiter.js'
 import { verifySupabaseUser } from '../../_shared/verifySupabaseUser.js'
+import { checkFeatureAccess, sendFeatureLocked } from '../../_shared/featureAccess.js'
 import { analysisConsentPurposes, verifyAnalysisConsentToken } from '../../_shared/analysisConsent.js'
 import { getGoogleIdToken } from '../../_shared/googleIdToken.js'
 import handleHummingRecognition from '../../_shared/aiEarHummingRoute.js'
@@ -209,6 +210,10 @@ async function interpretHandler(request, response) {
   if (!auth.authenticated) {
     return response.status(auth.status).json({ error: auth.error, ok: false })
   }
+
+  // Funktionsspärr: före body, rate limit, samtycke och backend (fågel- och ljudigenkänning).
+  const access = await checkFeatureAccess('aiEar', auth.user.id)
+  if (!access.allowed) return sendFeatureLocked(response, requestId)
 
   const contentType = String(getHeader(request, 'content-type') || '').toLowerCase()
   if (!/^audio\/(wav|x-wav|wave)(;|$)/.test(contentType)) {

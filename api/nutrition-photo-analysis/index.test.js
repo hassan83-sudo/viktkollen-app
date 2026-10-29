@@ -17,6 +17,37 @@ import {
 import { analysisConsentPurposes, computeCanonicalImageHash, issueAnalysisConsentToken } from '../_shared/analysisConsent.js'
 import { setFoodScanOwnerExemptionDepsForTests } from '../_shared/billing/foodScanOwnerExemption.js'
 
+describe('whole-meal portion cross-check', () => {
+  const pizzaItems = [
+    { name: 'Pizzabotten med tomatsås', bank: '', cat: 'carbohydrate', g: [200, 230], conf: 'medium', gconf: 'medium', per100: [250, 8, 45, 5] },
+    { name: 'Ost riven', bank: '', cat: 'protein', g: [40, 50], conf: 'medium', gconf: 'medium', per100: [300, 25, 2, 20] },
+  ]
+
+  it('flags a large disagreement without silently inflating component weights', async () => {
+    const { payload } = await nutritionPhotoRouteInternals.expandCompactPayload({
+      items: pizzaItems, wholeG: [700, 850], conf: 'high', quality: 'good',
+    })
+    expect(payload.confidence).toBe('low')
+    expect(payload.warnings).toEqual([expect.stringContaining('portionsstorlek')])
+    expect(payload.components[0].portionEstimate.gramsMax).toBe(230)
+  })
+
+  it('does not flag overlapping whole-meal and ingredient mass estimates', async () => {
+    const { payload } = await nutritionPhotoRouteInternals.expandCompactPayload({
+      items: pizzaItems, wholeG: [230, 320], conf: 'medium',
+    })
+    expect(payload.warnings).toEqual([])
+    expect(payload.confidence).toBe('medium')
+  })
+
+  it('does not invent a mass warning when scale is unknown', async () => {
+    const { payload } = await nutritionPhotoRouteInternals.expandCompactPayload({
+      items: pizzaItems, wholeG: [null, null], conf: 'low',
+    })
+    expect(payload.warnings).toEqual([])
+  })
+})
+
 const TEST_SECRET = 'test-analysis-consent-secret-32-plus'
 const USER_ID = 'a1111111-1111-4111-8111-111111111111'
 const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4])

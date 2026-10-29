@@ -9,9 +9,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { aiEarRouteInternals } from '../../../api/ai-ear/interpret/index.js'
 import { LAUNCH_UNMETERED_FEATURES } from '../../services/billing/commercialPlanMatrix.js'
 import i18n from '../../i18n/index.js'
-import AiEarMode from './AiEarMode.jsx'
+import { AiEarWorkspace } from './AiEarMode.jsx'
+
 import { aiEarModes } from './aiEarModes.js'
 import { backendFixtures } from './fixtures/backendFixtures.js'
+
+// Behavior of the unlocked view; the server-verified lock is covered in AiEarMode.lock.test.jsx.
+const allowAccess = async () => true
 
 // AI-EAR-1: four separate modes inside AI Örat. Sound and bird use the
 // existing free server hop; speech (AI-EAR-2C1) is free and runs in the
@@ -36,7 +40,7 @@ function chooseFile() {
 
 async function analyseIn(modeName, result) {
   const deps = makeDeps(result)
-  render(<AiEarMode deps={deps} />)
+  render(<AiEarWorkspace ensureAccess={allowAccess} deps={deps} />)
   fireEvent.click(screen.getByRole('radio', { name: modeName }))
   chooseFile()
   fireEvent.click(await screen.findByRole('button', { name: 'Analysera ljudet' }))
@@ -52,7 +56,7 @@ describe('AI Örat modes (AI-EAR-1)', () => {
   afterEach(() => cleanup())
 
   it('shows four modes as one named radio group without access badges', () => {
-    render(<AiEarMode deps={makeDeps()} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={makeDeps()} />)
     const group = screen.getByRole('group', { name: 'Vad vill du använda?' })
     const radios = within(group).getAllByRole('radio')
     expect(radios).toHaveLength(4)
@@ -72,7 +76,7 @@ describe('AI Örat modes (AI-EAR-1)', () => {
   })
 
   it('changes the heading and the instructions with the selected mode', () => {
-    render(<AiEarMode deps={makeDeps()} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={makeDeps()} />)
     const cases = [
       ['Fågelljud', 'Spela in fågeln så tydligt som möjligt.'],
       ['Tal → text', 'Tryck på Starta lyssning och prata. Texten visas medan du pratar.'],
@@ -90,7 +94,7 @@ describe('AI Örat modes (AI-EAR-1)', () => {
   // everyone else sees it locked, with no recorder and no request.
   it('Tal → text cannot record a file; Humma / sjung is locked for an ordinary user', async () => {
     const deps = { ...makeDeps(), identifyHumming: vi.fn(), loadHummingAccess: vi.fn(async () => false) }
-    render(<AiEarMode deps={deps} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={deps} />)
     fireEvent.click(screen.getByRole('radio', { name: /^Tal → text/ }))
     expect(screen.queryByRole('button', { name: 'Spela in' })).toBeNull()
     expect(document.querySelector('input[type="file"]')).toBeNull()
@@ -106,7 +110,7 @@ describe('AI Örat modes (AI-EAR-1)', () => {
 
   it('Humma / sjung is locked when the owner check fails', async () => {
     const deps = { ...makeDeps(), identifyHumming: vi.fn(), loadHummingAccess: vi.fn(async () => { throw new Error('offline') }) }
-    render(<AiEarMode deps={deps} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={deps} />)
     fireEvent.click(screen.getByRole('radio', { name: /^Humma \/ sjung/ }))
     await Promise.resolve()
     expect(screen.queryByRole('button', { name: 'Spela in' })).toBeNull()
@@ -116,7 +120,7 @@ describe('AI Örat modes (AI-EAR-1)', () => {
   it('Humma / sjung records and asks ACRCloud only for the verified owner', async () => {
     const identifyHumming = vi.fn(async () => ({ matched: true, ok: true, result: { alternatives: [{ artist: 'B', title: 'Andra låten' }], artist: 'Artist A', certain: true, title: 'Låten' } }))
     const deps = { ...makeDeps(), identifyHumming, loadHummingAccess: vi.fn(async () => true) }
-    render(<AiEarMode deps={deps} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={deps} />)
     fireEvent.click(screen.getByRole('radio', { name: /^Humma \/ sjung/ }))
     expect(await screen.findByRole('button', { name: 'Spela in' })).toBeTruthy()
     expect(screen.queryByText('Humma / sjung kräver Premium och är inte tillgängligt ännu. Inget ljud skickas.')).toBeNull()
@@ -134,7 +138,7 @@ describe('AI Örat modes (AI-EAR-1)', () => {
   it('Humma / sjung shows an uncertain ACRCloud match only as suggestions', async () => {
     const identifyHumming = vi.fn(async () => ({ matched: true, ok: true, result: { alternatives: [{ artist: 'B', title: 'Andra låten' }], artist: 'El Hasnaoui', certain: false, title: "Merhaba l'ehbab" } }))
     const deps = { ...makeDeps(), identifyHumming, loadHummingAccess: vi.fn(async () => true) }
-    render(<AiEarMode deps={deps} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={deps} />)
     fireEvent.click(screen.getByRole('radio', { name: /^Humma \/ sjung/ }))
     await screen.findByRole('button', { name: 'Spela in' })
     chooseFile()
@@ -156,7 +160,7 @@ describe('AI Örat modes (AI-EAR-1)', () => {
     const getUserMedia = vi.fn(async () => ({ getTracks: () => [{ stop: vi.fn() }] }))
     const identifyHumming = vi.fn(async () => ({ matched: true, ok: true, result: { alternatives: [], artist: 'Enrique Iglesias', certain: true, title: 'Bailando' } }))
     const deps = { ...makeDeps(), createLevelMeter: () => null, getUserMedia, identifyHumming, loadHummingAccess: vi.fn(async () => true), MediaRecorderImpl: FakeRecorder }
-    render(<AiEarMode deps={deps} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={deps} />)
     fireEvent.click(screen.getByRole('radio', { name: /^Humma \/ sjung/ }))
     const record = await screen.findByRole('button', { name: 'Spela in' })
     expect(record.getAttribute('aria-describedby')).toBe('ai-ear-humming-start-notice')
@@ -182,7 +186,7 @@ describe('AI Örat modes (AI-EAR-1)', () => {
     const getUserMedia = vi.fn(async () => ({ getTracks: () => [{ stop: vi.fn() }] }))
     const createLevelMeter = vi.fn(() => null)
     const deps = { ...makeDeps(), createLevelMeter, getUserMedia, loadHummingAccess: vi.fn(async () => true), MediaRecorderImpl: FakeRecorder }
-    render(<AiEarMode deps={deps} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={deps} />)
     fireEvent.click(screen.getByRole('button', { name: 'Spela in' }))
     await screen.findByRole('button', { name: 'Stoppa inspelningen' })
     expect(getUserMedia).toHaveBeenCalledWith({ audio: true })
@@ -196,7 +200,7 @@ describe('AI Örat modes (AI-EAR-1)', () => {
   it('Humma / sjung results are localized (English)', async () => {
     await i18n.changeLanguage('en')
     const deps = { ...makeDeps(), identifyHumming: vi.fn(async () => ({ matched: false, ok: true })), loadHummingAccess: vi.fn(async () => true) }
-    render(<AiEarMode deps={deps} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={deps} />)
     fireEvent.click(screen.getByRole('radio', { name: /^Hum \/ sing/ }))
     await screen.findByRole('button', { name: 'Record' })
     chooseFile()
@@ -236,7 +240,7 @@ describe('AI Örat modes (AI-EAR-1)', () => {
 
   it('the modes cannot change while recording or analysing', async () => {
     const deps = { ...makeDeps(), interpret: vi.fn(() => new Promise(() => {})) }
-    render(<AiEarMode deps={deps} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={deps} />)
     chooseFile()
     fireEvent.click(await screen.findByRole('button', { name: 'Analysera ljudet' }))
     expect(screen.getByRole('group', { name: 'Vad vill du använda?' }).disabled).toBe(true)
@@ -244,7 +248,7 @@ describe('AI Örat modes (AI-EAR-1)', () => {
 
   it('is localized (English)', async () => {
     await i18n.changeLanguage('en')
-    render(<AiEarMode deps={makeDeps()} />)
+    render(<AiEarWorkspace ensureAccess={allowAccess} deps={makeDeps()} />)
     expect(screen.getByRole('group', { name: 'What do you want to use?' })).toBeTruthy()
     expect(screen.getByRole('radio', { name: /^Speech → text Turn speech into written text$/ })).toBeTruthy()
     await i18n.changeLanguage('sv')

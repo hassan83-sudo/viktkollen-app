@@ -5,7 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import i18n from '../../i18n/index.js'
 import { createAiEarDictation } from '../../services/aiEarDictation.js'
-import AiEarMode from './AiEarMode.jsx'
+import { AiEarWorkspace } from './AiEarMode.jsx'
+
+// Behavior of the unlocked view; the server-verified lock is covered in AiEarMode.lock.test.jsx.
+const allowAccess = async () => true
+
 
 // AI-EAR-2C: Tal → text in AI Örat, driven through the real dictation
 // controller with a fake browser SpeechRecognition.
@@ -53,7 +57,7 @@ function setup({ key, supported = true, writeClipboard = vi.fn(async () => {}) }
       writeClipboard,
     },
   }
-  const view = render(<AiEarMode deps={deps} />)
+  const view = render(<AiEarWorkspace ensureAccess={allowAccess} deps={deps} />)
   return { ...view, deps, recorders, speech, writeClipboard }
 }
 

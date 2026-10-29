@@ -2,6 +2,7 @@ import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from './aiRoute
 import { checkAiRouteRateLimit } from './aiRateLimiter.js'
 import { verifySupabaseUser } from './verifySupabaseUser.js'
 import { lookupBillingAdmin } from './billing/admin.js'
+import { checkFeatureAccess, sendFeatureLocked } from './featureAccess.js'
 import { verifyAnalysisConsentToken } from './analysisConsent.js'
 
 /**
@@ -157,12 +158,13 @@ export async function fetchProviderJson(url, init, { timeoutMs, fetchImpl = glob
  * @param {string} options.purpose   analysisConsentPurposes value
  * @param {number} options.maxBytes  provider-specific audio cap (further capped to the Vercel body limit)
  * @param {boolean} [options.ownerOnly] require an active billing_admin (the verified owner) before any provider work
+ * @param {string} [options.featureKey] featureAccess key checked right after sign-in (e.g. 'aiEar')
  * @param {() => boolean} options.isConfigured
  * @param {(audio: {data: Buffer, size: number, contentType: string}) => Promise<object>} options.callProvider
  * @param {(outcome: object, requestId: string) => object} options.buildBody JSON body for HTTP 200
  * @param {(outcome: object) => object} options.logFields non-sensitive fields to log on success
  */
-export function createProviderRouteHandler({ allowedTypes = defaultAllowedAudioTypes, buildBody, callProvider, idPrefix, isConfigured, logFields = () => ({}), logName, maxBytes, ownerOnly = false, purpose, rateLimitEnv, rateRoute }) {
+export function createProviderRouteHandler({ allowedTypes = defaultAllowedAudioTypes, buildBody, callProvider, featureKey = '', idPrefix, isConfigured, logFields = () => ({}), logName, maxBytes, ownerOnly = false, purpose, rateLimitEnv, rateRoute }) {
   const allowed = new Set(allowedTypes)
   const cap = () => Math.min(maxBytes, VERCEL_BODY_LIMIT_BYTES)
   const fail = (response, status, aiCode, requestId, retryable = false, reason) => {
@@ -189,6 +191,11 @@ export function createProviderRouteHandler({ allowedTypes = defaultAllowedAudioT
 
     const auth = await verifySupabaseUser(request, { requestId })
     if (!auth.authenticated) return response.status(auth.status).json({ error: auth.error, ok: false })
+
+    if (featureKey) {
+      const access = await checkFeatureAccess(featureKey, auth.user.id)
+      if (!access.allowed) return sendFeatureLocked(response, requestId)
+    }
 
     // Owner check before configuration, the body, consent and the provider,
     // so other accounts learn nothing and cannot spend a provider call.

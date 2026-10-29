@@ -1836,6 +1836,11 @@
     "intro": "Grabe un sonido o elija un archivo de audio. El IA Ear le dice si suena como un pájaro, un discurso, una música o algo más.",
     "record": "Registro",
     "chooseFile": "Elegir archivo de audio",
+    "locked": {
+      "body": "Oído de IA aún no está disponible. Puedes ver la página, pero el micrófono y el análisis de audio están desactivados.",
+      "checking": "Comprobando si Oído de IA está disponible …",
+      "title": "En desarrollo"
+    },
     "recordingStatus": "El micrófono está encendido, grabando en marcha.",
     "recordingProgress": "Micrófono en – {{seconds}} s de {{max}} s",
     "stopRecording": "Detener la grabación",

@@ -8,6 +8,7 @@ import { setAiRateLimitAdapterForTests } from '../../_shared/aiRateLimiter.js'
 import { setSupabaseAuthVerifierForTests } from '../../_shared/verifySupabaseUser.js'
 import { analysisConsentPurposes, computeCanonicalImageHash, issueAnalysisConsentToken } from '../../_shared/analysisConsent.js'
 import { clearGoogleIdTokenCacheForTests } from '../../_shared/googleIdToken.js'
+import { setBillingAdminServiceForTests } from '../../_shared/billing/admin.js'
 
 const TEST_SECRET = 'test-analysis-consent-secret-32-plus'
 const USER_ID = 'ear-user-a'
@@ -121,6 +122,8 @@ describe('AI-örat server-side hop', () => {
     clearGoogleIdTokenCacheForTests()
     setAiRateLimitAdapterForTests()
     setSupabaseAuthVerifierForTests(async (token) => (token === 'valid-token' ? { user: { id: USER_ID } } : { error: { message: 'invalid' } }))
+    // AI-örat is admin-only (api/_shared/featureAccess.js): these tests run as the verified billing_admin.
+    setBillingAdminServiceForTests({ hasBillingAdmin: async (userId) => userId === USER_ID })
     vi.spyOn(console, 'info').mockImplementation(() => {})
     vi.spyOn(console, 'warn').mockImplementation(() => {})
     vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -130,6 +133,7 @@ describe('AI-örat server-side hop', () => {
     process.env = { ...originalEnv }
     vi.unstubAllGlobals()
     setSupabaseAuthVerifierForTests(null)
+    setBillingAdminServiceForTests(null)
     setAiRateLimitAdapterForTests()
   })
 

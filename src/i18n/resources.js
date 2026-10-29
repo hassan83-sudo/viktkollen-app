@@ -742,6 +742,11 @@ const sv = {
     intro: 'Spela in ett ljud eller välj en ljudfil. AI-örat säger om det låter som en fågel, tal, musik eller något annat.',
     record: 'Spela in',
     chooseFile: 'Välj ljudfil',
+    locked: {
+      body: 'AI Örat är inte tillgängligt ännu. Du kan titta på sidan, men mikrofonen och ljudanalysen är avstängda.',
+      checking: 'Kontrollerar om AI Örat är tillgängligt …',
+      title: 'Under utveckling',
+    },
     recordingStatus: 'Mikrofonen är aktiv. Inspelningen pågår.',
     recordingProgress: 'Mikrofon aktiv – {{seconds}} s av {{max}} s',
     stopRecording: 'Stoppa inspelningen',
@@ -2763,6 +2768,11 @@ const en = {
     intro: 'Record a sound or choose an audio file. The AI Ear tells you whether it sounds like a bird, speech, music or something else.',
     record: 'Record',
     chooseFile: 'Choose audio file',
+    locked: {
+      body: 'AI Ear is not available yet. You can look at the page, but the microphone and audio analysis are turned off.',
+      checking: 'Checking whether AI Ear is available …',
+      title: 'In development',
+    },
     recordingStatus: 'The microphone is on. Recording in progress.',
     recordingProgress: 'Microphone on – {{seconds}} s of {{max}} s',
     stopRecording: 'Stop recording',

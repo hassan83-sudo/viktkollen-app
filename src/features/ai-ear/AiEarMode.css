@@ -329,3 +329,19 @@
 @media (prefers-reduced-motion: reduce) {
   .ai-ear-hero-icon { filter: none; }
 }
+
+/* Funktionsspärr: "Under utveckling" i stället för arbetsytan. */
+.ai-ear-locked {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(127, 127, 127, 0.35);
+  border-radius: 14px;
+}
+
+.ai-ear-locked p {
+  margin: 0;
+}
+
+.ai-ear-locked-title {
+  margin-bottom: 6px !important;
+}

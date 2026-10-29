@@ -9,6 +9,7 @@ import AiEarDictation from './AiEarDictation.jsx'
 import { aiEarModes, defaultAiEarModeId, getAiEarMode } from './aiEarModes.js'
 import { buildAiEarErrorView, buildAiEarModeView, buildHummingView } from './aiEarViewModel.js'
 import { useAiEarRecorder } from './useAiEarRecorder.js'
+import { useFeatureAccess } from '../../services/featureAccess/useFeatureAccess.js'
 import './AiEarMode.css'
 
 /**
@@ -26,6 +27,13 @@ import './AiEarMode.css'
  *
  * AI-EAR-2B: mikrofonen (getUserMedia, MediaRecorder, timer, maxtid,
  * uppstädning) ägs av useAiEarRecorder.js. Här finns flödet runt den.
+ *
+ * Funktionsspärr: AiEarMode visar bara "Under utveckling" tills servern har
+ * godkänt kontot (api/_shared/featureAccess.js, nu bara billing_admin).
+ * Arbetsytan, och därmed mikrofon och inspelning, monteras först efter
+ * godkännandet och kontrolleras igen precis före varje mikrofonstart. Försvinner
+ * åtkomsten avmonteras arbetsytan: inspelaren stoppar mikrofonen och en pågående
+ * analys avbryts. Servern nekar ändå varje anrop för sig.
  *
  * Ljudet hålls bara i minnet under sessionen: det sparas aldrig, skrivs aldrig
  * till localStorage/databas och loggas aldrig. Inga Google-uppgifter finns i
@@ -50,9 +58,59 @@ const defaultDeps = {
   MediaRecorderImpl: typeof MediaRecorder === 'undefined' ? null : MediaRecorder,
 }
 
+function lockedMicrophone() {
+  const message = 'feature_locked'
+  if (typeof DOMException === 'function') return new DOMException(message, 'NotAllowedError')
+  const error = new Error(message)
+  error.name = 'NotAllowedError'
+  return error
+}
+
 export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {}) {
   const { t } = useTranslation('aiEar')
-  const deps = { ...defaultDeps, ...depsOverride }
+  const access = useFeatureAccess('aiEar', depsOverride?.loadFeatureAccess ? { load: depsOverride.loadFeatureAccess } : undefined)
+
+  if (access.state !== 'allowed') {
+    return (
+      <section className="ai-ear" aria-labelledby="ai-ear-title">
+        <div className="ai-ear-hero" aria-hidden="true"><span className="ai-ear-wave">▂▅▇▃▆</span><span className="ai-ear-hero-icon">👂</span><span className="ai-ear-wave">▆▃▇▅▂</span></div>
+        <div className="ai-ear-kicker">♫ AI ÖRAT</div>
+        <h3 id="ai-ear-title" className="ai-ear-title">{t('title')}</h3>
+        <p className="ai-ear-intro">{t('intro')}</p>
+        <div className="ai-ear-locked" role="status" aria-busy={access.state === 'checking'}>
+          {access.state === 'checking'
+            ? <p>{t('locked.checking')}</p>
+            : (
+              <>
+                <p className="ai-ear-locked-title"><strong>{t('locked.title')}</strong></p>
+                <p>{t('locked.body')}</p>
+              </>
+            )}
+        </div>
+      </section>
+    )
+  }
+
+  return <AiEarWorkspace deps={depsOverride} ensureAccess={access.ensure} locale={locale} onAccessLost={access.lock} />
+}
+
+/**
+ * Arbetsytan med mikrofon, inspelning och analys. Renderas bara av AiEarMode
+ * efter att servern har godkänt åtkomsten. ensureAccess krävs: utan den
+ * startar mikrofonen aldrig.
+ */
+export function AiEarWorkspace({ deps: depsOverride, ensureAccess, locale = 'sv-SE', onAccessLost } = {}) {
+  const { t } = useTranslation('aiEar')
+  const merged = { ...defaultDeps, ...depsOverride }
+  // A fresh server check right before the microphone may start.
+  const deps = {
+    ...merged,
+    getUserMedia: async (constraints) => {
+      const allowed = typeof ensureAccess === 'function' ? await ensureAccess().catch(() => false) : false
+      if (allowed !== true) throw lockedMicrophone()
+      return merged.getUserMedia(constraints)
+    },
+  }
   const depsRef = useRef(deps)
   useEffect(() => {
     depsRef.current = deps
@@ -199,6 +257,14 @@ export default function AiEarMode({ deps: depsOverride, locale = 'sv-SE' } = {})
     if (outcome.reason === 'aborted') {
       setPhase('ready')
       return
+    }
+    if (outcome.reason === 'feature_locked' || outcome.reason === 'consent_required') {
+      // The server refused: check again, and lock the view if access is gone.
+      const stillAllowed = typeof ensureAccess === 'function' ? await ensureAccess().catch(() => false) : false
+      if (!stillAllowed) {
+        onAccessLost?.()
+        return
+      }
     }
     showError(outcome.reason)
   }

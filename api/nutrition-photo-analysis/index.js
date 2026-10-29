@@ -213,13 +213,14 @@ function validateImage(image) {
 function createPrompt(mealType) {
   return [
     'Viktkollen food photo analysis. Reply with compact JSON only, no markdown:',
-    `{"items":[{"name":"","bank":"","cat":"","cook":"","g":[0,0],"conf":"","gconf":"","alt":[],"per100":[0,0,0,0]}],"quality":"","conf":"","note":""}`,
+    `{"items":[{"name":"","bank":"","cat":"","cook":"","g":[0,0],"conf":"","gconf":"","alt":[],"per100":[0,0,0,0]}],"quality":"","conf":"","wholeG":[0,0],"note":""}`,
     `1. One item per visually distinct food, max ${NUTRITION_PHOTO_MAX_COMPONENTS}. Keep every visible sauce, dressing, dip, oil/butter, bread, breading and topping as its own item; split dishes into their visible parts (burger: bun, patty, cheese, vegetables, sauce). Recognize the complete dish first: pizza (including pizza with meat and vegetables), lasagne, soup or stew must be named as that dish, never as its first topping or ingredient. For pizza, the first item must be named 'Pizzabotten med tomatsås' and represent ONLY dough and tomato sauce in its grams and per100 values. Never name this ingredient after the complete pizza, since a whole-pizza database match would include toppings twice. Return visible toppings (meat, cheese, vegetables, sauces) as SEPARATE subsequent items with their own grams and nutrition. Never include toppings in the first item's weight or nutrition, and never count any food twice. This keeps the meal title correct while retaining ingredient details. Do not merge separate foods; do not count the same food twice.`,
     '2. name: short Swedish name for the user. bank: Swedish name in Livsmedelsverket style, main food first, then cut/type, then cooking, e.g. "Kyckling bröstfilé stekt", "Ris vitt kokt", "Broccoli kokt", "Pommes frites ugnsstekta", "Lax ugnsstekt", "Nötfärs stekt", "Potatis kokt", "Bearnaisesås".',
     '3. cat: protein|carbohydrate|vegetables|sauce|fat|drink|unknown. cook: fried|breaded|grilled|boiled|baked|steamed|raw or "" - only with visible cues (browning, crust, grill marks, breading, oil sheen).',
     '4. Identity: judge colour, texture, shape, surface and cooking cues; check texture before naming meat or fish. Chicken: matte white-beige meat with long parallel fibres, often grill marks or a seasoned crust. Fish: flakes in layers, white or pink segments, often skin or sheen. Also check pork vs chicken, beef vs lamb, rice vs bulgur/couscous, potato vs sweet potato, cream sauce vs yoghurt sauce. conf high only when unmistakable; otherwise medium or low with up to 2 likely alternatives in alt. Never present a guess as certain. An unidentifiable food is "Okänd komponent" with conf low.',
     '5. g: grams for each item separately as [min,max]. Use visible area x height/thickness, shape (flat layer, mound, pieces) and density. Do not assume a plate size; judge scale from several cues together (cutlery, glass, hand, packaging, rim, pieces of known size) and widen the range when cues are weak. Overlapping or partly hidden food: count only what is visible or clearly implied (e.g. rice under sauce), never twice, and lower gconf; count only visible pieces. Sanity-check against typical servings (meat/fish 100-200, rice/pasta/potato 150-300, vegetables 50-150, sauce 20-80, butter/oil 5-15); [null,null] when impossible. gconf: high|medium|low.',
     '5b. Before finalizing, assess the WHOLE meal and its plausible total edible mass from the visible dish geometry. Compare this whole-meal estimate with the sum of all component gram ranges. If the components together are implausibly light or heavy, revise the component gram ranges proportionally while preserving visible relative amounts. For pizza, distinguish a whole pizza from a slice, consider diameter and crust thickness only when image cues support them, and include crust, cheese, meat, vegetables and sauces exactly once. Never force a typical calorie total or invent a precise diameter; use broad gram ranges and low gconf when scale is unknown.',
+    '5c. wholeG: independently estimate total edible meal mass as [min,max] grams BEFORE summing components. Do not derive wholeG from item grams. If the image has no reliable scale, use [null,null]. This is a consistency check, not a target to force.',
     '6. per100: your estimate of kcal, protein g, carbs g, fat g per 100 g of the item as served, including cooking fat and breading. Used only as a labelled fallback when the food database has no safe match.',
     '7. Never invent hidden ingredients. quality: good|usable|poor (light, blur, occlusion, photo of a screen). conf: overall high|medium|low. note: max 100 characters in Swedish, factual, no health or diet advice.',
     `Meal type: ${safeText(mealType, 'unknown', 40)}.`,
@@ -334,15 +335,26 @@ export async function expandCompactPayload(payload = {}, foodBankOptions = {}) {
     return summary
   }, {})
   const note = safeText(payload.note, '', 120)
+  const wholeMass = compactGrams(payload.wholeG)
+  const knownMass = components.reduce((total, item) => {
+    const portion = item.portionEstimate
+    if (portion?.gramsMin === null || portion?.gramsMax === null) return total
+    total.min += portion.gramsMin
+    total.max += portion.gramsMax
+    return total
+  }, { min: 0, max: 0 })
+  const massConflict = wholeMass.gramsMin !== null && knownMass.max > 0 &&
+    (knownMass.max < wholeMass.gramsMin * 0.75 || knownMass.min > wholeMass.gramsMax * 1.25)
+  const massWarning = 'Osäker portionsstorlek: hel måltid och ingrediensmängder stämmer inte överens.'
   return {
     foodBank: { lookupOk: lookup.ok, reason: lookup.reason, statuses },
     payload: {
       components: withBank,
-      confidence: compactConfidence(payload.conf, 'low'),
+      confidence: massConflict ? 'low' : compactConfidence(payload.conf, 'low'),
       imageQuality: safeText(payload.quality, 'usable', 20),
-      limitations: [],
+      limitations: massConflict ? [massWarning] : [],
       safeSummary: note,
-      warnings: [],
+      warnings: massConflict ? [massWarning] : [],
     },
   }
 }

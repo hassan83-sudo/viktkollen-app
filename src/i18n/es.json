@@ -3317,6 +3317,7 @@
       }
     },
     "scanProgress": "Progreso estimado del análisis: {{progress}} por ciento",
+    "analysisProgressHint": "Identificando alimentos y estimando la nutrición.",
     "consentDisplay": {
       "change": "Cambiar preferencia de visualización",
       "legend": "Pedir autorización para el análisis de IA",

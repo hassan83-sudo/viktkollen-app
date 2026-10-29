@@ -21,13 +21,22 @@ SumUp har ingen prenumerationsresurs. En förnyelse kräver ett separat flöde s
 
 Engångsköpet kan därför tas i bruk utan att återkommande debitering slås på.
 
-## Förberett för Staging, inte kört
+## Migrationshistorik
 
-Följande är förberett och ska inte köras förrän det godkänns. Main och Production ska inte röras.
+Historiken ska inte skrivas om. `supabase db push` ska inte användas.
+
+Git-filen `20261023150000_billing_one_time_checkout_no_renewal.sql` är ett tomt skal. Den ändrar inte `billing.activate_verified_checkout` och inga befintliga abonnemang. Production har samma innehåll registrerat som `20261028120403` med namnet `billing_one_time_checkout_no_renewal`. Versionen `20261023150000` finns inte i Production och ska inte läggas till.
+
+Engångsbetalningens fyra SQL-filer är redan applicerade i Production: `20261026120000`, `20261026130000`, `20261028110000` och `20261028120000`. Ingen av dem ska köras igen, och ingen ny migration krävs före merge.
+
+Staging har de tre första. `20261028120000` är inte applicerad där. Den skärper `billing.open_paid_plan_id` med periodstart, betalningsanstånd och admin-seed. Båda miljöerna har redan funktionerna för att öppna, aktivera och avsluta ett engångsköp, samt kolumnerna `provider_hosted_url` och `quota_window`. Funktionskroppen för betald kvot är därför stramare i Production än i Staging.
+
+## Live förblir av
+
+Följande är förberett och ska inte aktiveras förrän det godkänns. Production och Main ska inte ändras av den här texten.
 
 1. `BILLING_SUMUP_LIVE_ENABLED` är en servervariabel. Bara det exakta värdet `true` slår på Live. Den är av som standard, och klienten kan inte skicka med den.
 2. Av: både `SUPABASE_URL` och `VITE_SUPABASE_URL` ska peka på `https://armtslzspuebmlysnooq.supabase.co`. Handlaren måste ha `sandbox === true` och samma merchant code. Production-projektet `bxmdlckrlwzdtcxnsqqr` avvisas.
 3. På: båda Supabase-adresserna ska peka på `https://bxmdlckrlwzdtcxnsqqr.supabase.co`. Handlaren måste ha `sandbox === false` och samma merchant code. Staging tillsammans med Live avvisas.
 4. `BILLING_PUBLIC_BASE_URL` är https-ursprung utan sökväg, användare, fråga eller fragment. Av avvisas `viktkollen-app.vercel.app`, `viktkollen-app-appsonthego-s-projects.vercel.app` och `viktkollen-app-git-main-appsonthego-s-projects.vercel.app`. På godtages bara de adresserna, för webhook och återkomst. Svaret från handlaren loggas inte.
-5. När projektidentiteten är verifierad appliceras bara dessa två migrationer på Staging: `20261026120000_billing_sumup_hosted_one_time.sql` och `20261026130000_billing_quota_respects_period_end.sql`. Ingen av dem sätter `enabled_for_sale`.
-6. Därefter, och bara mot Staging, aktiveras försäljning av `plan.prelim.sek.month.04` via den befintliga adminåtgärden `set_plan_availability`. Det ska inte skrivas som en migration.
+5. Försäljning av `plan.prelim.sek.month.04` styrs av den befintliga adminåtgärden `set_plan_availability`. Det ska inte skrivas som en migration. Live-flaggan ska förbli av tills en separat godkänd kontroll har visat att Production-nyckeln tillhör en handlare med `sandbox === false`.

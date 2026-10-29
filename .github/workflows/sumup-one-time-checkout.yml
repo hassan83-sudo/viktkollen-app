@@ -1,0 +1,31 @@
+name: SumUp one-time checkout
+
+on:
+  pull_request:
+    paths:
+      - 'api/_shared/billing/checkoutActivation.js'
+      - 'api/_shared/billing/checkoutActivation.test.js'
+      - 'api/_shared/billing/checkoutIntent.js'
+      - 'api/_shared/billing/sumupOneTimeCheckout.js'
+      - 'api/_shared/billing/sumupOneTimeCheckout.test.js'
+      - 'docs/billing/sumup-one-time-and-recurring.md'
+      - '.github/workflows/sumup-one-time-checkout.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run api/_shared/billing/sumupOneTimeCheckout.test.js api/_shared/billing/checkoutActivation.test.js src/components/billing/CheckoutReturnStatus.test.jsx src/components/billing/PlanComparison.test.jsx
+      - run: npx eslint api/_shared/billing/sumupOneTimeCheckout.js api/_shared/billing/sumupOneTimeCheckout.test.js api/_shared/billing/checkoutIntent.js
+      - run: npm run build

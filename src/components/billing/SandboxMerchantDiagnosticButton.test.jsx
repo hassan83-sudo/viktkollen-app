@@ -91,8 +91,10 @@ describe('preview sandbox merchant diagnostic button', () => {
 
   it('shows the control only on a preview host', () => {
     expect(previewSandboxDiagnosticEnabled('viktkollen-app.vercel.app')).toBe(false)
+    expect(previewSandboxDiagnosticEnabled('viktkollen-app-appsonthego-s-projects.vercel.app')).toBe(false)
     expect(previewSandboxDiagnosticEnabled('viktkollen-app-git-main-appsonthego-s-projects.vercel.app')).toBe(false)
     expect(previewSandboxDiagnosticEnabled('viktkollen-app-git-feature-sumup-705353-appsonthego-s-projects.vercel.app')).toBe(true)
+    expect(previewSandboxDiagnosticEnabled('viktkollen-2m8k60cxu-appsonthego-s-projects.vercel.app')).toBe(true)
   })
 
   it('shows a gate code and does not invent a merchant result', () => {

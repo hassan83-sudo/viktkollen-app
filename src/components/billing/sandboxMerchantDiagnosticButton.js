@@ -23,7 +23,8 @@ const GATE_CODES = new Set([
 
 export function previewSandboxDiagnosticEnabled(hostname = globalThis.location?.hostname || '') {
   const host = String(hostname || '').toLowerCase()
-  if (!host.startsWith('viktkollen-app-') || !host.endsWith('-appsonthego-s-projects.vercel.app')) return false
+  // Git aliases start with viktkollen-app-. Deployment hosts are viktkollen-<id>-.
+  if (!host.startsWith('viktkollen-') || !host.endsWith('-appsonthego-s-projects.vercel.app')) return false
   if (host.includes('git-main') || PRODUCTION_APP_HOSTS.has(host)) return false
   return true
 }

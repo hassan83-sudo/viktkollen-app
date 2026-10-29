@@ -62,13 +62,14 @@ function overlaps(span, spans) {
   return spans.some((existing) => span.start < existing.end && span.end > existing.start)
 }
 
+const aliases = getNutritionAliases()
+  .map(({ alias, food }) => ({
+    alias: normalizeText(alias),
+    food,
+  }))
+  .sort((first, second) => second.alias.length - first.alias.length)
+
 function findFoodMatches(normalized) {
-  const aliases = getNutritionAliases()
-    .map(({ alias, food }) => ({
-      alias: normalizeText(alias),
-      food,
-    }))
-    .sort((first, second) => second.alias.length - first.alias.length)
   const spans = []
   const matches = []
 

@@ -1,3 +1,4 @@
+import referenceBank from './livsmedelsverketFoods.json' with { type: 'json' }
 import { getFoodEmoji } from './foodEmoji.js'
 
 function round(value) {
@@ -866,15 +867,33 @@ const foods = [
   ],
 ].map(withServingNutrition)
 
-export const nutritionFoods = foods
+// Full reference bank, with exact preparation names and source versions.
+export const nutritionReferenceFoods = referenceBank.foods.map((row) => withServingNutrition({
+  id: `livsmedelsverket:${row[0]}`,
+  name: row[1],
+  aliases: [row[1].toLocaleLowerCase('sv-SE')],
+  source: referenceBank.source,
+  sourceFoodId: row[0],
+  sourceVersion: row[2],
+  caloriesPer100g: row[3],
+  proteinPer100g: row[4],
+  carbsPer100g: row[5],
+  fatPer100g: row[6],
+  category: 'reference',
+  defaultPortionGrams: 100,
+  defaultServing: '100 g',
+}))
+
+// Keep quick aliases, but include each official source ID only once.
+const existingSourceIds = new Set(foods.filter(food => food.source === 'livsmedelsverket').map(food => food.sourceFoodId))
+export const nutritionFoods = [...foods, ...nutritionReferenceFoods.filter(food => !existingSourceIds.has(food.sourceFoodId))]
 
 export function getNutritionFoodById(id) {
   return nutritionFoods.find((food) => food.id === id) || null
 }
 
+const nutritionAliases = nutritionFoods.flatMap((food) => food.aliases.map((alias) => ({ alias, food })))
+
 export function getNutritionAliases() {
-  return nutritionFoods.flatMap((food) => food.aliases.map((alias) => ({
-    alias,
-    food,
-  })))
+  return nutritionAliases
 }

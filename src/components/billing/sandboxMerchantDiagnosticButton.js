@@ -1,4 +1,8 @@
-/* global __VK_SANDBOX_MERCHANT_DIAGNOSTIC__ */
+const PRODUCTION_APP_HOSTS = new Set([
+  'viktkollen-app.vercel.app',
+  'viktkollen-app-appsonthego-s-projects.vercel.app',
+  'viktkollen-app-git-main-appsonthego-s-projects.vercel.app',
+])
 
 const MERCHANT_RESULTS = new Set(['MATCH', 'MISMATCH'])
 const SANDBOX_RESULTS = new Set(['SANDBOX_TRUE', 'SANDBOX_FALSE', 'SANDBOX_UNSPECIFIED'])
@@ -17,9 +21,11 @@ const GATE_CODES = new Set([
   'SUPABASE_NOT_STAGING',
 ])
 
-export function previewSandboxDiagnosticEnabled() {
-  return typeof __VK_SANDBOX_MERCHANT_DIAGNOSTIC__ !== 'undefined'
-    && __VK_SANDBOX_MERCHANT_DIAGNOSTIC__ === true
+export function previewSandboxDiagnosticEnabled(hostname = globalThis.location?.hostname || '') {
+  const host = String(hostname || '').toLowerCase()
+  if (!host.startsWith('viktkollen-app-') || !host.endsWith('-appsonthego-s-projects.vercel.app')) return false
+  if (host.includes('git-main') || PRODUCTION_APP_HOSTS.has(host)) return false
+  return true
 }
 
 export function formatSandboxDiagnosticResult(payload, status) {

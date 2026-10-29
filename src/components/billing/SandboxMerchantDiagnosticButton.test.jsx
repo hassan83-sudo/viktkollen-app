@@ -2,7 +2,10 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import SandboxMerchantDiagnosticButton from './SandboxMerchantDiagnosticButton.jsx'
-import { formatSandboxDiagnosticResult } from './sandboxMerchantDiagnosticButton.js'
+import {
+  formatSandboxDiagnosticResult,
+  previewSandboxDiagnosticEnabled,
+} from './sandboxMerchantDiagnosticButton.js'
 
 const getSession = vi.fn()
 
@@ -84,6 +87,12 @@ describe('preview sandbox merchant diagnostic button', () => {
     })
     expect(fetchImpl.mock.calls.some(([path]) => String(path).includes('checkout'))).toBe(false)
     expect(screen.getByRole('status').textContent.includes('admin-token')).toBe(false)
+  })
+
+  it('shows the control only on a preview host', () => {
+    expect(previewSandboxDiagnosticEnabled('viktkollen-app.vercel.app')).toBe(false)
+    expect(previewSandboxDiagnosticEnabled('viktkollen-app-git-main-appsonthego-s-projects.vercel.app')).toBe(false)
+    expect(previewSandboxDiagnosticEnabled('viktkollen-app-git-feature-sumup-705353-appsonthego-s-projects.vercel.app')).toBe(true)
   })
 
   it('shows a gate code and does not invent a merchant result', () => {

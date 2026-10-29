@@ -378,6 +378,17 @@ describe('start av engångsköp', () => {
     }
   })
 
+  it('skapar ingen checkout när API-nyckeln saknas', async () => {
+    setCheckoutAdapterForTests(null)
+    vi.stubEnv('SUMUP_API_KEY', '')
+    vi.stubEnv('SUMUP_MERCHANT_CODE', '')
+    setCheckoutSaleReaderForTests(() => ({ active: true, enabledForSale: true, known: true }))
+    const result = await beginCheckout({ body: { plan_id: PLAN }, userId: USER })
+    expect(result).toMatchObject({ accessGranted: false, code: 'PROVIDER_NOT_CONFIGURED', status: 503 })
+    expect(result.checkoutId).toBeUndefined()
+    expect(result.hostedCheckoutUrl).toBeUndefined()
+  })
+
   it('slår inte på Live från klienten eller från ett annat värde än true', async () => {
     for (const value of [undefined, '', '1', 'TRUE', 'yes', ' true']) {
       const calls = setup()

@@ -1,6 +1,7 @@
+import { matchPhotoIngredientToDatabase } from '../nutritionPhotoIngredientMatching.js'
 import { describe, expect, it } from 'vitest'
 import { getFoodEmoji } from './foodEmoji.js'
-import { getNutritionFoodById, nutritionFoods } from './nutritionDatabase.js'
+import { getNutritionFoodById, nutritionFoods, nutritionReferenceFoods, getNutritionAliases } from './nutritionDatabase.js'
 
 describe('food emojis', () => {
   it.each([
@@ -23,10 +24,8 @@ describe('food emojis', () => {
 })
 
 describe('extended local food bank', () => {
-  it('has unique IDs and aliases and finite serving nutrition', () => {
+  it('has unique IDs and finite serving nutrition', () => {
     expect(new Set(nutritionFoods.map(food => food.id)).size).toBe(nutritionFoods.length)
-    const aliases = nutritionFoods.flatMap(food => food.aliases.map(alias => alias.toLowerCase()))
-    expect(new Set(aliases).size).toBe(aliases.length)
     for (const food of nutritionFoods) {
       expect(food.emoji).toBeTruthy()
       for (const key of ['calories', 'protein', 'carbs', 'fat']) {
@@ -34,6 +33,25 @@ describe('extended local food bank', () => {
         expect(food[key]).toBeGreaterThanOrEqual(0)
       }
     }
+  })
+
+  it('includes every official entry exactly once in the local bank', () => {
+    expect(nutritionReferenceFoods).toHaveLength(2606)
+    const official = nutritionFoods.filter(food => food.source === 'livsmedelsverket')
+    expect(official).toHaveLength(2606)
+    expect(new Set(official.map(food => food.sourceFoodId)).size).toBe(2606)
+    expect(new Set(official.map(food => food.sourceFoodId))).toEqual(new Set(nutritionReferenceFoods.map(food => food.sourceFoodId)))
+    expect(getNutritionAliases().some(entry => entry.food.sourceFoodId === '830')).toBe(true)
+  })
+
+  it('matches a full-bank food and keeps ambiguous names unselected', () => {
+    const frozenPineapple = matchPhotoIngredientToDatabase({ name: 'Ananas frysvara' })
+    expect(frozenPineapple.status).toBe('exactMatch')
+    expect(frozenPineapple.matchedFood.id).toBe('livsmedelsverket:4225')
+    expect(frozenPineapple.matchedFood.nutritionPer100g.calories).toBe(53)
+    const orange = matchPhotoIngredientToDatabase({ name: 'Apelsin' })
+    expect(orange.status).toBe('multipleMatches')
+    expect(orange.matchedFood).toBeNull()
   })
 
   it('preserves source IDs and cooked preparation for added grains', () => {

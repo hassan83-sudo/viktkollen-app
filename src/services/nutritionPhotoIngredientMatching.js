@@ -114,6 +114,12 @@ function isUnsafePlainChickenMatch(item = {}, normalizedName = '', food = {}) {
   return cookingSpecificChickenTerms.some((term) => candidates.includes(normalizePhotoIngredientName(term)))
 }
 
+const baseAliases = getNutritionAliases().map((entry) => ({
+  ...entry,
+  normalizedAlias: normalizePhotoIngredientName(entry.alias),
+}))
+const aliases = addConservativeAliases(baseAliases)
+
 export function matchPhotoIngredientToDatabase(item = {}, options = {}) {
   const maxSuggestions = options.maxSuggestions || 4
   const name = String(item.name || '')
@@ -122,11 +128,6 @@ export function matchPhotoIngredientToDatabase(item = {}, options = {}) {
     return { matchedFood: null, status: 'noMatch', suggestions: [] }
   }
 
-  const baseAliases = getNutritionAliases().map((entry) => ({
-    ...entry,
-    normalizedAlias: normalizePhotoIngredientName(entry.alias),
-  }))
-  const aliases = addConservativeAliases(baseAliases)
   if (hasAmbiguousSauceAlternatives(item, normalizedName)) {
     const suggestions = uniqueFoods(aliases.filter((entry) =>
       normalizedName.includes(entry.normalizedAlias) || entry.normalizedAlias.includes(normalizedName)))

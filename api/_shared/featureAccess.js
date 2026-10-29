@@ -2,47 +2,54 @@ import { lookupBillingAdmin } from './billing/admin.js'
 import { aiRouteErrorCodes, sendSafeAiError } from './aiRouteErrors.js'
 
 /**
- * Funktionsspärr i servern. Avgör per funktion om en inloggad användare får
- * starta den. Samma svar används av API-rutterna (som nekar) och av
- * /api/billing/capability (som appen visar låset utifrån), så klient och
- * server kan inte vara oense.
+ * Funktionsspärr i servern. Ett enda beslut per funktion och användare, som
+ * används både av API-rutterna (som nekar) och av /api/billing/capability
+ * (som appen visar låset utifrån). Klient och server kan därför inte vara oense.
  *
- * - 'admin_only': bara ett verifierat billing_admin-konto. Rollen läses i
- *   servern (billing.has_billing_admin) vid varje anrop. Om den inte kan
- *   verifieras nekas åtkomsten.
- * - 'open': alla inloggade.
+ * Styrning (bara i servern, via miljövariabler):
+ * - Huvudbrytare FEATURE_RESTRICTIONS: exakt 'off' stänger av hela
+ *   begränsningen, så att alla funktioner beter sig som före spärren och bara
+ *   deras befintliga säkerhetsspärrar gäller. Alla andra värden, och saknad
+ *   variabel, betyder på.
+ * - Lista FEATURE_RESTRICTIONS_LOCKED: kommaseparerade funktionsnycklar som är
+ *   spärrade medan huvudbrytaren är på. Saknas variabeln gäller
+ *   DEFAULT_LOCKED_FEATURES. Bara nycklar i RESTRICTABLE_FEATURES räknas;
+ *   okända nycklar ignoreras. En tom lista spärrar ingenting.
  *
- * Varje funktion kan öppnas separat med miljövariabeln i FEATURE_ACCESS_ENV
- * satt till exakt 'open'. Alla andra värden, och saknad variabel, ger
- * policyns läge. Spärren raderar eller ändrar ingen data.
+ * En spärrad funktion får bara användas av ett verifierat billing_admin-konto.
+ * Rollen läses i servern (billing.has_billing_admin) vid varje anrop; kan den
+ * inte verifieras nekas åtkomsten. Spärren raderar eller ändrar ingen data.
  *
- * Bara AI-örat är inkopplat.
+ * Bara AI-örat är inkopplat. En ny funktion kopplas in genom att dess nyckel
+ * läggs i RESTRICTABLE_FEATURES och dess rutter anropar checkFeatureAccess.
  */
-export const FEATURE_ACCESS_POLICY = Object.freeze({
-  aiEar: 'admin_only',
-})
-
-export const FEATURE_ACCESS_ENV = Object.freeze({
-  aiEar: 'FEATURE_ACCESS_AI_EAR',
-})
+export const RESTRICTABLE_FEATURES = Object.freeze(['aiEar'])
+export const DEFAULT_LOCKED_FEATURES = Object.freeze(['aiEar'])
 
 export const FEATURE_ACCESS = Object.freeze({
   ALLOWED: 'allowed',
   LOCKED: 'locked',
 })
 
-export function featureAccessMode(featureKey, env = process.env) {
-  const policy = FEATURE_ACCESS_POLICY[featureKey]
-  if (!policy) return 'open'
-  const override = String(env?.[FEATURE_ACCESS_ENV[featureKey]] || '').trim()
-  return override === 'open' ? 'open' : policy
+/** The server's restriction settings: { enabled, locked: string[] }. */
+export function readFeatureRestrictions(env = process.env) {
+  const enabled = String(env?.FEATURE_RESTRICTIONS ?? '').trim() !== 'off'
+  const raw = env?.FEATURE_RESTRICTIONS_LOCKED
+  const requested = raw == null ? DEFAULT_LOCKED_FEATURES : String(raw).split(',').map((key) => key.trim())
+  const locked = RESTRICTABLE_FEATURES.filter((key) => requested.includes(key))
+  return { enabled, locked }
+}
+
+export function isFeatureRestricted(featureKey, env = process.env) {
+  const { enabled, locked } = readFeatureRestrictions(env)
+  return enabled && locked.includes(featureKey)
 }
 
 /**
  * @returns {Promise<{ allowed: boolean, reason: 'open' | 'admin' | 'not_admin' | 'unverified' }>}
  */
 export async function checkFeatureAccess(featureKey, userId, { env = process.env, lookupAdmin = lookupBillingAdmin } = {}) {
-  if (featureAccessMode(featureKey, env) === 'open') return { allowed: true, reason: 'open' }
+  if (!isFeatureRestricted(featureKey, env)) return { allowed: true, reason: 'open' }
   if (!userId) return { allowed: false, reason: 'unverified' }
   let isAdmin
   try {
@@ -53,9 +60,9 @@ export async function checkFeatureAccess(featureKey, userId, { env = process.env
   return isAdmin === true ? { allowed: true, reason: 'admin' } : { allowed: false, reason: 'not_admin' }
 }
 
-/** Access for every policed feature, for the capability response. */
+/** Access for every restrictable feature, for the capability response. */
 export async function listFeatureAccess(userId, options = {}) {
-  const entries = await Promise.all(Object.keys(FEATURE_ACCESS_POLICY).map(async (featureKey) => {
+  const entries = await Promise.all(RESTRICTABLE_FEATURES.map(async (featureKey) => {
     const { allowed } = await checkFeatureAccess(featureKey, userId, options)
     return [featureKey, allowed ? FEATURE_ACCESS.ALLOWED : FEATURE_ACCESS.LOCKED]
   }))

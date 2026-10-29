@@ -7,7 +7,7 @@ import billingUserHandler from '../billing/user/index.js'
 import { setAiRateLimitAdapterForTests } from './aiRateLimiter.js'
 import { analysisConsentPurposes, computeCanonicalImageHash } from './analysisConsent.js'
 import { setBillingAdminServiceForTests } from './billing/admin.js'
-import { checkFeatureAccess, featureAccessMode, listFeatureAccess } from './featureAccess.js'
+import { checkFeatureAccess, isFeatureRestricted, listFeatureAccess, readFeatureRestrictions } from './featureAccess.js'
 import { setSupabaseAuthVerifierForTests } from './verifySupabaseUser.js'
 
 const ADMIN_ID = 'admin-user'
@@ -61,12 +61,20 @@ describe('funktionsspärr: regel', () => {
     await expect(checkFeatureAccess('aiEar', ADMIN_ID, { env: {}, lookupAdmin: async () => 'yes' })).resolves.toMatchObject({ allowed: false })
   })
 
-  it('öppnas bara med exakt FEATURE_ACCESS_AI_EAR=open, och rör inga andra funktioner', async () => {
-    expect(featureAccessMode('aiEar', {})).toBe('admin_only')
-    expect(featureAccessMode('aiEar', { FEATURE_ACCESS_AI_EAR: 'open' })).toBe('open')
-    for (const value of ['OPEN', 'true', '1', 'all', ' ']) expect(featureAccessMode('aiEar', { FEATURE_ACCESS_AI_EAR: value })).toBe('admin_only')
-    expect(featureAccessMode('foodScan', {})).toBe('open')
-    await expect(listFeatureAccess(USER_ID, { env: {}, lookupAdmin: async () => false })).resolves.toEqual({ aiEar: 'locked' })
+  it('styrs av huvudbrytaren och listan med spärrade funktioner, bara kända nycklar räknas', async () => {
+    expect(readFeatureRestrictions({})).toEqual({ enabled: true, locked: ['aiEar'] })
+    expect(readFeatureRestrictions({ FEATURE_RESTRICTIONS: 'off' })).toEqual({ enabled: false, locked: ['aiEar'] })
+    for (const value of ['OFF', 'false', '0', '', 'on']) expect(readFeatureRestrictions({ FEATURE_RESTRICTIONS: value }).enabled, value).toBe(true)
+    expect(readFeatureRestrictions({ FEATURE_RESTRICTIONS_LOCKED: '' }).locked).toEqual([])
+    expect(readFeatureRestrictions({ FEATURE_RESTRICTIONS_LOCKED: ' aiEar , bodyScan, foo' }).locked).toEqual(['aiEar'])
+    expect(isFeatureRestricted('aiEar', {})).toBe(true)
+    expect(isFeatureRestricted('aiEar', { FEATURE_RESTRICTIONS: 'off' })).toBe(false)
+    expect(isFeatureRestricted('aiEar', { FEATURE_RESTRICTIONS_LOCKED: '' })).toBe(false)
+    expect(isFeatureRestricted('foodScan', {})).toBe(false)
+    const lookupAdmin = async () => false
+    await expect(checkFeatureAccess('aiEar', USER_ID, { env: { FEATURE_RESTRICTIONS: 'off' }, lookupAdmin })).resolves.toEqual({ allowed: true, reason: 'open' })
+    await expect(listFeatureAccess(USER_ID, { env: {}, lookupAdmin })).resolves.toEqual({ aiEar: 'locked' })
+    await expect(listFeatureAccess(USER_ID, { env: { FEATURE_RESTRICTIONS: 'off' }, lookupAdmin })).resolves.toEqual({ aiEar: 'allowed' })
     await expect(listFeatureAccess(ADMIN_ID, { env: {}, lookupAdmin: async () => true })).resolves.toEqual({ aiEar: 'allowed' })
   })
 })
@@ -86,7 +94,8 @@ describe('funktionsspärr: AI-örats servervägar', () => {
       AI_EAR_ENABLED: 'true',
       ANALYSIS_CONSENT_SECRET: 'a'.repeat(40),
     }
-    delete process.env.FEATURE_ACCESS_AI_EAR
+    delete process.env.FEATURE_RESTRICTIONS
+    delete process.env.FEATURE_RESTRICTIONS_LOCKED
     rateLimitCalls = []
     setAiRateLimitAdapterForTests({
       consume(entry) {
@@ -184,5 +193,59 @@ describe('funktionsspärr: AI-örats servervägar', () => {
     })
     expect((await capability('user-token')).body).toMatchObject({ billing_admin: false, features: { aiEar: 'locked' }, ok: true })
     expect((await capability('admin-token')).body).toMatchObject({ billing_admin: true, features: { aiEar: 'allowed' }, ok: true })
+  })
+
+  describe('huvudbrytaren av: beteendet före spärren, med befintliga säkerhetsspärrar', () => {
+    beforeEach(() => {
+      process.env.FEATURE_RESTRICTIONS = 'off'
+    })
+
+    it('släpper vanlig användare förbi spärren till de befintliga kontrollerna för ljudanalys', async () => {
+      const response = await call(earHandler, streamRequest({ token: 'user-token' }))
+      expect(response.body.error.code).not.toBe('FEATURE_LOCKED')
+      expect(response.body.error.code).toBe('CONSENT_REQUIRED')
+      expect(rateLimitCalls).toEqual(['aiEar'])
+      expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    it('behåller AI_EAR_ENABLED som serverbrytare', async () => {
+      process.env.AI_EAR_ENABLED = 'false'
+      const response = await call(earHandler, streamRequest({ token: 'admin-token' }))
+      expect(response.statusCode).toBe(503)
+      expect(response.body.error.code).toBe('PROVIDER_NOT_CONFIGURED')
+    })
+
+    it('behåller humningens ägarspärr', async () => {
+      const response = await call(earHandler, streamRequest({
+        contentType: 'multipart/form-data; boundary=x',
+        token: 'user-token',
+        url: '/api/ai-ear/interpret?__vk_route=humming',
+      }))
+      expect(response.statusCode).toBe(403)
+      expect(response.body.error.code).toBe('INVALID_REQUEST')
+      expect(fetchMock).not.toHaveBeenCalled()
+      expect(rateLimitCalls).toEqual([])
+    })
+
+    it('utfärdar AI-örat-samtycke som förut och visar funktionen som tillåten i appen', async () => {
+      const imageHash = computeCanonicalImageHash([{ bytes: Buffer.from([1, 2, 3]), label: 'image' }])
+      const consent = await call(consentHandler, {
+        body: JSON.stringify({ imageHash, purpose: analysisConsentPurposes.aiEarInterpret, uiConsentApproved: true }),
+        headers: { authorization: 'Bearer user-token', 'content-type': 'application/json' },
+        method: 'POST',
+        socket: { remoteAddress: '127.0.0.1' },
+      })
+      expect(consent.statusCode).toBe(200)
+      expect(typeof consent.body.token).toBe('string')
+      const capability = await call(billingUserHandler, { headers: { authorization: 'Bearer user-token' }, method: 'GET', query: {}, url: '/api/billing/capability' })
+      expect(capability.body).toMatchObject({ billing_admin: false, features: { aiEar: 'allowed' }, ok: true })
+    })
+  })
+
+  it('öppnar AI-örat när nyckeln tas bort ur listan, utan att stänga huvudbrytaren', async () => {
+    process.env.FEATURE_RESTRICTIONS_LOCKED = ''
+    const response = await call(earHandler, streamRequest({ token: 'user-token' }))
+    expect(response.body.error.code).not.toBe('FEATURE_LOCKED')
+    expect(rateLimitCalls).toEqual(['aiEar'])
   })
 })

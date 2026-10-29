@@ -5,11 +5,11 @@ const foodEmojis = [
   [/\b(hamburgare|hamburger|burgare|burger)\b/, '🍔'],
   [/\b(pommes|fries)\b/, '🍟'],
   [/\b(taco|tacos)\b/, '🌮'],
-  [/\b(burrito|wrap|wraps)\b/, '🌯'],
+  [/\b(burrito|wrap|wraps|tortilla(?:brod|s)?)\b/, '🌯'],
   [/\b(korv|sausage|hot dog)\b/, '🌭'],
   [/\b(sushi)\b/, '🍣'],
   [/\b(pasta|spaghetti|lasagne|lasagna|nudlar|noodles)\b/, '🍝'],
-  [/\b(sallad|salad)\b/, '🥗'],
+  [/\b(?:isbergs?sallad|sallad|salad|lettuce)\b/, '🥗'],
   [/\b(soppa|soup|gryta|stew)\b/, '🥣'],
   [/\b(smorgas|sandwich|macka)\b/, '🥪'],
   [/\b(pannkaka|pannkakor|pancakes)\b/, '🥞'],
@@ -51,7 +51,7 @@ const foodEmojis = [
   [/\b(jordnotter|cashewnotter|valnotter|sotmandel|mandel|notter|peanuts|cashews|walnuts|almonds|nuts)\b/, '🥜'],
   [/\b(kottbullar|kottbulle|meatballs|meatball)\b/, '🍖'],
   [/\b(kyckling|kycklingfile|kycklingbrost|kalkon|chicken|turkey)\b/, '🍗'],
-  [/\b(notkott|flask|flaskkott|biff|kottfars|beef|pork|steak)\b/, '🥩'],
+  [/\b(notkott|flask(?:karre|kott|file)?|biff|kottfars|beef|pork|steak)\b/, '🥩'],
   [/\b(rakor|shrimp|prawns)\b/, '🍤'],
   [/\b(fisk|lax|torsk|tonfisk|fish|salmon|cod|tuna)\b/, '🐟'],
   [/\b(agg|aggen|egg|eggs)\b/, '🥚'],
@@ -72,7 +72,7 @@ const foodEmojis = [
   [/\b(kaffe|coffee)\b/, '☕'],
   [/\b(te|tea)\b/, '🍵'],
   [/\b(lask|soda|juice)\b/, '🥤'],
-  [/\b(sas|sauce|gradd|cream|sylt|jam|majonnas|mayonnaise)\b/, '🥣'],
+  [/\b(kramig\s+sas|sas|sauce|gradd|cream|sylt|jam|majonnas|mayonnaise)\b/, '🥣'],
 ]
 
 export function getFoodEmoji(name = '') {

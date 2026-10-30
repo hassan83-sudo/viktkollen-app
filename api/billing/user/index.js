@@ -8,6 +8,7 @@ import { executeUserBillingIntent } from '../../_shared/billing/userLifecycleInt
 import { lookupBillingAdmin, requireBillingAdmin } from '../../_shared/billing/admin.js'
 import { listFeatureAccess } from '../../_shared/featureAccess.js'
 import { getConfiguredSumUpAdapter } from '../../_shared/billing/providers/sumup.js'
+import { classifySumUpMerchantIdentity } from '../../_shared/billing/sumupOneTimeCheckout.js'
 import { readPlanComparison } from '../../_shared/billing/planComparisonRead.js'
 import { readUsageSnapshot } from '../../_shared/billing/usageSnapshotRead.js'
 import { applyOwnerFoodScanStatus, resolveFoodScanOwnerStatus } from '../../_shared/billing/foodScanOwnerExemption.js'
@@ -273,37 +274,38 @@ async function handleSumUpLiveCheck(request, response, requestId) {
   }
   try {
     const merchant = await adapter.transport.retrieveMerchant(adapter.merchantCode)
-    // SumUp's /v0.1/me endpoint independently identifies the account bound
-    // to this API key. Both identities must match the configured merchant.
-    // Neither identity match nor an omitted sandbox field proves Live status.
-    const identity = await adapter.transport.retrieveCurrentMerchant()
-    const merchantCode = merchant?.merchant_code
-    const identityCode = identity?.merchant_code ?? identity?.merchant_profile?.merchant_code
-    // Missing fields are inconclusive, not evidence of a different merchant.
-    // Do not infer identity from other unverified response shapes.
-    const codeMismatch = (typeof merchantCode === 'string' && merchantCode !== adapter.merchantCode)
-      || (typeof identityCode === 'string' && identityCode !== adapter.merchantCode)
-    const codeUnspecified = typeof merchantCode !== 'string' || typeof identityCode !== 'string'
-    const sandboxKnownLive = merchant?.sandbox === false && identity?.sandbox === false
-    const sandboxDetected = merchant?.sandbox === true || identity?.sandbox === true
-    const code = codeMismatch
-      ? 'LIVE_MERCHANT_MISMATCH'
-      : codeUnspecified
-        ? 'LIVE_MERCHANT_IDENTITY_UNSPECIFIED'
-        : sandboxDetected
-          ? 'LIVE_MERCHANT_SANDBOX'
-          : sandboxKnownLive
-            ? 'LIVE_MERCHANT_PASS'
-            : 'LIVE_MERCHANT_SANDBOX_UNSPECIFIED'
-    return response.status(code === 'LIVE_MERCHANT_PASS' ? 200 : (code === 'LIVE_MERCHANT_SANDBOX_UNSPECIFIED' || code === 'LIVE_MERCHANT_IDENTITY_UNSPECIFIED') ? 502 : 409).json({
-      ok: code === 'LIVE_MERCHANT_PASS',
+    // /v0.1/me is an extra read. SumUp no longer treats it as proof that a
+    // token belongs to one merchant. A contradictory body is still refused.
+    let account = null
+    if (typeof adapter.transport.retrieveCurrentMerchant === 'function') {
+      try {
+        account = await adapter.transport.retrieveCurrentMerchant()
+      } catch {
+        account = null
+      }
+    }
+    const kind = classifySumUpMerchantIdentity({
+      account,
+      configuredCode: adapter.merchantCode,
+      merchant,
+      mode: 'live',
+    })
+    const code = {
+      currency_mismatch: 'LIVE_MERCHANT_CURRENCY',
+      invalid: 'LIVE_MERCHANT_IDENTITY_UNSPECIFIED',
+      live_confirmed_merchant: 'LIVE_MERCHANT_CONFIRMED',
+      live_explicit: 'LIVE_MERCHANT_PASS',
+      merchant_mismatch: 'LIVE_MERCHANT_MISMATCH',
+      sandbox_merchant: 'LIVE_MERCHANT_SANDBOX',
+      unspecified: 'LIVE_MERCHANT_SANDBOX_UNSPECIFIED',
+    }[kind] || 'LIVE_MERCHANT_UNVERIFIED'
+    const ok = code === 'LIVE_MERCHANT_PASS' || code === 'LIVE_MERCHANT_CONFIRMED'
+    const status = ok
+      ? 200
+      : (code === 'LIVE_MERCHANT_SANDBOX_UNSPECIFIED' || code === 'LIVE_MERCHANT_IDENTITY_UNSPECIFIED' ? 502 : 409)
+    return response.status(status).json({
+      ok,
       code,
-      ...(code === 'LIVE_MERCHANT_SANDBOX_UNSPECIFIED' ? {
-        sandboxFields: {
-          merchant: typeof merchant?.sandbox === 'boolean' ? 'present' : 'missing',
-          account: typeof identity?.sandbox === 'boolean' ? 'present' : 'missing',
-        },
-      } : {}),
       requestId,
     })
   } catch {

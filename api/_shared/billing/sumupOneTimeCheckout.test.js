@@ -6,12 +6,15 @@ import { createSumUpCheckoutAdapter } from './providers/sumup.js'
 import { handleWebhookRequest } from './providerWebhookIngress.js'
 import {
   activateVerifiedOneTimeCheckout,
+  classifySumUpMerchantIdentity,
   createOneTimeIntentReader,
   hostedCheckoutUrls,
   LIVE_CHECKOUT_ENV,
   ONE_TIME_ACTIVATION_RPC,
   ONE_TIME_READ_RPC,
   oneTimeCheckoutStatus,
+  SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
+  sumUpMerchantIdentityAccepted,
 } from './sumupOneTimeCheckout.js'
 
 const USER = '11111111-1111-4111-8111-111111111111'
@@ -270,11 +273,11 @@ describe('SumUp Hosted Checkout, engångsköp', () => {
 })
 
 describe('start av engångsköp', () => {
-  function setup({ open, createCheckout, merchant } = {}) {
-    const calls = { bind: [], cancel: [], create: [], list: 0, merchant: 0 }
+  function setup({ account, createCheckout, merchant, merchantCode = MERCHANT, open } = {}) {
+    const calls = { account: 0, bind: [], cancel: [], create: [], list: 0, merchant: 0 }
     setCheckoutSaleReaderForTests(() => ({ active: true, enabledForSale: true, known: true }))
     setCheckoutAdapterForTests(createSumUpCheckoutAdapter({
-      merchantCode: MERCHANT,
+      merchantCode,
       testOnly: true,
       transport: {
         async retrieveMerchant(code) {
@@ -282,17 +285,22 @@ describe('start av engångsköp', () => {
           if (merchant instanceof Error) throw merchant
           return merchant || { merchant_code: code, sandbox: true }
         },
+        async retrieveCurrentMerchant() {
+          calls.account += 1
+          if (account instanceof Error) throw account
+          return account
+        },
         async createCheckout(body) {
           calls.create.push(body)
           if (createCheckout) return createCheckout(body)
-          return { amount: body.amount, checkout_reference: body.checkout_reference, currency: 'SEK', hosted_checkout_url: HOSTED, id: SUMUP_ID, merchant_code: MERCHANT, status: 'PENDING' }
+          return { amount: body.amount, checkout_reference: body.checkout_reference, currency: 'SEK', hosted_checkout_url: HOSTED, id: SUMUP_ID, merchant_code: merchantCode, status: 'PENDING' }
         },
         async listCheckouts(reference) {
           calls.list += 1
           return [{ id: SUMUP_ID, checkout_reference: reference }]
         },
         async retrieveCheckout() {
-          return { amount: 4, checkout_reference: 'chk_new', currency: 'SEK', hosted_checkout_url: HOSTED, id: SUMUP_ID, merchant_code: MERCHANT, status: 'PENDING' }
+          return { amount: 4, checkout_reference: 'chk_new', currency: 'SEK', hosted_checkout_url: HOSTED, id: SUMUP_ID, merchant_code: merchantCode, status: 'PENDING' }
         },
       },
     }))
@@ -484,6 +492,150 @@ describe('start av engångsköp', () => {
     expect(refused).toMatchObject({ accessGranted: false, code: 'SANDBOX_IDENTITY_REQUIRED', status: 403 })
     expect(live.create).toEqual([])
     expect(live.cancel).toEqual([])
+  })
+
+  it('släpper igenom den bekräftade produktionshandlaren när SumUp utelämnar sandbox', async () => {
+    const productionEnv = {
+      [LIVE_CHECKOUT_ENV]: 'true',
+      BILLING_PUBLIC_BASE_URL: 'https://viktkollen-app.vercel.app',
+      SUPABASE_URL: 'https://bxmdlckrlwzdtcxnsqqr.supabase.co',
+      VITE_SUPABASE_URL: 'https://bxmdlckrlwzdtcxnsqqr.supabase.co',
+    }
+    const confirmed = {
+      default_currency: 'SEK',
+      merchant_code: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
+    }
+    for (const merchant of [confirmed, { ...confirmed, sandbox: null }]) {
+      const calls = setup({
+        account: new Error('me_unsupported'),
+        merchant,
+        merchantCode: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
+      })
+      const ready = await beginCheckout({ body: { offer_key: 'sek-400', price_minor: 1 }, env: productionEnv, userId: USER })
+      expect(ready).toMatchObject({ code: 'CHECKOUT_PENDING', hostedCheckoutUrl: HOSTED })
+      expect(calls.create[0]).toMatchObject({ amount: 4, currency: 'SEK', merchant_code: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE })
+      expect(calls.merchant).toBe(1)
+    }
+  })
+
+  it('behandlar inte ett saknat sandbox-fält som Production för någon annan handlare', async () => {
+    const productionEnv = {
+      [LIVE_CHECKOUT_ENV]: 'true',
+      BILLING_PUBLIC_BASE_URL: 'https://viktkollen-app.vercel.app',
+      SUPABASE_URL: 'https://bxmdlckrlwzdtcxnsqqr.supabase.co',
+      VITE_SUPABASE_URL: 'https://bxmdlckrlwzdtcxnsqqr.supabase.co',
+    }
+    const cases = [
+      { merchant: { default_currency: 'SEK', merchant_code: MERCHANT }, merchantCode: MERCHANT },
+      { merchant: { default_currency: 'SEK', merchant_code: MERCHANT, sandbox: null }, merchantCode: MERCHANT },
+      { merchant: { default_currency: 'EUR', merchant_code: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE }, merchantCode: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE },
+      { merchant: { default_currency: 'SEK', merchant_code: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE, sandbox: true }, merchantCode: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE },
+      { merchant: { default_currency: 'SEK', merchant_code: 'MOTHER1', sandbox: false }, merchantCode: MERCHANT },
+      { merchant: { default_currency: 'EUR', merchant_code: MERCHANT, sandbox: false }, merchantCode: MERCHANT },
+      { account: { merchant_code: MERCHANT, sandbox: true }, merchant: { default_currency: 'SEK', merchant_code: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE }, merchantCode: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE },
+      { merchant: new Error('sumup_unauthorized'), merchantCode: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE },
+    ]
+    for (const [index, input] of cases.entries()) {
+      const calls = setup(input)
+      const refused = await beginCheckout({ body: { plan_id: PLAN }, env: productionEnv, userId: USER })
+      expect(refused, String(index)).toMatchObject({ accessGranted: false, code: 'LIVE_IDENTITY_REQUIRED', status: 403 })
+      expect(calls.create, String(index)).toEqual([])
+    }
+
+    const staging = setup({
+      merchant: { default_currency: 'SEK', merchant_code: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE },
+      merchantCode: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
+    })
+    const sandboxRefused = await beginCheckout({ body: { plan_id: PLAN }, userId: USER })
+    expect(sandboxRefused).toMatchObject({ accessGranted: false, code: 'SANDBOX_IDENTITY_REQUIRED', status: 403 })
+    expect(staging.create).toEqual([])
+    expect(staging.account).toBe(0)
+  })
+})
+
+describe('SumUp-handlarens miljö', () => {
+  const confirmed = {
+    default_currency: 'SEK',
+    merchant_code: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
+  }
+
+  it('skiljer explicit sandbox, explicit live, null och saknat fält', () => {
+    expect(classifySumUpMerchantIdentity({
+      configuredCode: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
+      merchant: { ...confirmed, sandbox: true },
+      mode: 'live',
+    })).toBe('sandbox_merchant')
+    expect(classifySumUpMerchantIdentity({
+      configuredCode: MERCHANT,
+      merchant: { default_currency: 'SEK', merchant_code: MERCHANT, sandbox: false },
+      mode: 'live',
+    })).toBe('live_explicit')
+    expect(classifySumUpMerchantIdentity({
+      configuredCode: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
+      merchant: { ...confirmed, sandbox: null },
+      mode: 'live',
+    })).toBe('live_confirmed_merchant')
+    expect(classifySumUpMerchantIdentity({
+      account: { default_currency: 'SEK', merchant_code: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE },
+      configuredCode: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
+      merchant: confirmed,
+      mode: 'live',
+    })).toBe('live_confirmed_merchant')
+    expect(classifySumUpMerchantIdentity({
+      configuredCode: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
+      merchant: { ...confirmed, sandbox: 'false' },
+      mode: 'live',
+    })).toBe('invalid')
+    expect(sumUpMerchantIdentityAccepted({
+      configuredCode: MERCHANT,
+      merchant: { default_currency: 'SEK', merchant_code: MERCHANT },
+      mode: 'live',
+    })).toBe(false)
+    expect(sumUpMerchantIdentityAccepted({
+      configuredCode: MERCHANT,
+      merchant: { merchant_code: MERCHANT, sandbox: null },
+      mode: 'sandbox',
+    })).toBe(false)
+    expect(sumUpMerchantIdentityAccepted({
+      configuredCode: MERCHANT,
+      merchant: { merchant_code: MERCHANT, sandbox: true },
+      mode: 'sandbox',
+    })).toBe(true)
+  })
+
+  it('nekar fel handlare, fel valuta och en sandbox-nyckel som pekar på ett annat konto', () => {
+    expect(classifySumUpMerchantIdentity({
+      configuredCode: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
+      merchant: { ...confirmed, merchant_code: MERCHANT },
+      mode: 'live',
+    })).toBe('merchant_mismatch')
+    expect(classifySumUpMerchantIdentity({
+      account: { default_currency: 'SEK', merchant_code: MERCHANT },
+      configuredCode: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
+      merchant: confirmed,
+      mode: 'live',
+    })).toBe('merchant_mismatch')
+    expect(classifySumUpMerchantIdentity({
+      configuredCode: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
+      merchant: { ...confirmed, default_currency: 'EUR' },
+      mode: 'live',
+    })).toBe('currency_mismatch')
+    expect(classifySumUpMerchantIdentity({
+      configuredCode: MERCHANT,
+      merchant: { merchant_code: MERCHANT, sandbox: false, default_currency: 'EUR' },
+      mode: 'live',
+    })).toBe('currency_mismatch')
+    expect(classifySumUpMerchantIdentity({
+      account: { sandbox: true },
+      configuredCode: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
+      merchant: confirmed,
+      mode: 'live',
+    })).toBe('sandbox_merchant')
+    expect(classifySumUpMerchantIdentity({
+      configuredCode: '',
+      merchant: confirmed,
+      mode: 'live',
+    })).toBe('unspecified')
   })
 })
 

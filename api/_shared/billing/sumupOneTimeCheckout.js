@@ -56,6 +56,82 @@ export function oneTimeCheckoutMode(env = process.env) {
     : { ok: false, code: 'STAGING_IDENTITY_REQUIRED' }
 }
 
+/**
+ * SumUp confirmed in writing that merchant profile MB8SGFBR is an active
+ * live production account. The confirmation is not a substitute for the
+ * API response: it only identifies which omitted sandbox field can be
+ * read together with the other checks below.
+ */
+export const SUMUP_CONFIRMED_LIVE_MERCHANT_CODE = 'MB8SGFBR'
+
+export function sumUpMerchantCode(record) {
+  const code = record?.merchant_code ?? record?.merchant_profile?.merchant_code
+  return typeof code === 'string' && /^[A-Za-z0-9]{5,32}$/.test(code) ? code : ''
+}
+
+/** Official Merchant.sandbox is optional. null and a missing field are the same: unknown. */
+export function sumUpSandboxSignal(record) {
+  if (!record || typeof record !== 'object') return 'absent'
+  const value = record.sandbox
+  if (value == null) return 'absent'
+  if (value === true) return 'sandbox'
+  if (value === false) return 'live'
+  return 'invalid'
+}
+
+function sumUpCurrencySignal(record) {
+  const currency = record?.default_currency
+  if (currency == null || currency === '') return 'absent'
+  return currency === 'SEK' ? 'sek' : 'other'
+}
+
+/**
+ * Sandbox and production share https://api.sumup.com. SumUp's documented
+ * distinction is Merchant.sandbox, and that field may be omitted.
+ * A missing field is never treated as production by itself.
+ * Live accepts sandbox === false for the configured merchant.
+ * Live also accepts a missing or null field only for MB8SGFBR, only when
+ * default_currency is SEK, and only when the API key retrieved that merchant.
+ * An explicit sandbox === true always refuses Live. A contradictory /v0.1/me
+ * account refuses Live. Sandbox mode still requires sandbox === true.
+ */
+export function classifySumUpMerchantIdentity({ account, configuredCode, merchant, mode }) {
+  const merchantCode = sumUpMerchantCode(merchant)
+  const configured = sumUpMerchantCode({ merchant_code: configuredCode })
+  if (!merchantCode || !configured) return 'unspecified'
+  if (merchantCode !== configured) return 'merchant_mismatch'
+  const signal = sumUpSandboxSignal(merchant)
+  if (signal === 'invalid') return 'invalid'
+  if (mode === 'sandbox') {
+    if (signal === 'sandbox') return 'sandbox_ok'
+    if (signal === 'live') return 'live_merchant'
+    return 'unspecified'
+  }
+  if (mode !== 'live') return 'unspecified'
+  if (signal === 'sandbox') return 'sandbox_merchant'
+  if (sumUpCurrencySignal(merchant) === 'other') return 'currency_mismatch'
+  if (account) {
+    const accountCode = sumUpMerchantCode(account)
+    if (accountCode && accountCode !== merchantCode) return 'merchant_mismatch'
+    const accountSignal = sumUpSandboxSignal(account)
+    if (accountSignal === 'sandbox') return 'sandbox_merchant'
+    if (accountSignal === 'invalid') return 'invalid'
+    if (sumUpCurrencySignal(account) === 'other') return 'currency_mismatch'
+  }
+  if (signal === 'live') return 'live_explicit'
+  if (sumUpCurrencySignal(merchant) !== 'sek') return 'unspecified'
+  if (merchantCode !== SUMUP_CONFIRMED_LIVE_MERCHANT_CODE) return 'unspecified'
+  if (account && sumUpMerchantCode(account) !== SUMUP_CONFIRMED_LIVE_MERCHANT_CODE) return 'unspecified'
+  return 'live_confirmed_merchant'
+}
+
+export function sumUpMerchantIdentityAccepted(input) {
+  const kind = classifySumUpMerchantIdentity(input)
+  if (input?.mode === 'sandbox') return kind === 'sandbox_ok'
+  if (input?.mode === 'live') return kind === 'live_explicit' || kind === 'live_confirmed_merchant'
+  return false
+}
+
 /** Preview checkout may use only the staging project. Production is refused while Live is off. */
 export function stagingSupabaseReady(env = process.env) {
   return oneTimeCheckoutMode(env).mode === 'sandbox'

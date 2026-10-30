@@ -8,6 +8,8 @@ on:
       - 'api/_shared/billing/checkoutIntent.js'
       - 'api/_shared/billing/sumupOneTimeCheckout.js'
       - 'api/_shared/billing/sumupOneTimeCheckout.test.js'
+      - 'api/billing/user/index.js'
+      - 'api/billing/user/sumupLiveDiagnostic.test.js'
       - 'docs/billing/sumup-one-time-and-recurring.md'
       - '.github/workflows/sumup-one-time-checkout.yml'
   workflow_dispatch:
@@ -26,6 +28,6 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - run: npx vitest run api/_shared/billing/sumupOneTimeCheckout.test.js api/_shared/billing/checkoutActivation.test.js src/components/billing/CheckoutReturnStatus.test.jsx src/components/billing/PlanComparison.test.jsx
-      - run: npx eslint api/_shared/billing/sumupOneTimeCheckout.js api/_shared/billing/sumupOneTimeCheckout.test.js api/_shared/billing/checkoutIntent.js
+      - run: npx vitest run api/_shared/billing/sumupOneTimeCheckout.test.js api/_shared/billing/checkoutActivation.test.js api/billing/user/sumupLiveDiagnostic.test.js src/components/billing/CheckoutReturnStatus.test.jsx src/components/billing/PlanComparison.test.jsx
+      - run: npx eslint api/_shared/billing/sumupOneTimeCheckout.js api/_shared/billing/sumupOneTimeCheckout.test.js api/_shared/billing/checkoutIntent.js api/billing/user/index.js api/billing/user/sumupLiveDiagnostic.test.js
       - run: npm run build

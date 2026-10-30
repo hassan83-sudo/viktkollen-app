@@ -12,6 +12,10 @@ import {
   isValidHostedCheckoutUrl,
   oneTimeCheckoutMode,
   oneTimeCheckoutStatus,
+  SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
+  sumUpMerchantCode,
+  sumUpMerchantIdentityAccepted,
+  sumUpSandboxSignal,
 } from './sumupOneTimeCheckout.js'
 import { createServerSubscriptionRpcCaller } from './subscriptionRpcCaller.js'
 
@@ -212,10 +216,29 @@ async function beginSumUpOneTimeCheckout({ adapter, env, planId, ports, userId }
   } catch {
     return fail(identityCode, 403, { validated: true })
   }
-  const sandbox = merchant?.sandbox
-  const merchantMatches = merchant?.merchant_code === adapter.merchantCode
-    && (identity.mode === 'live' ? sandbox === false : sandbox === true)
-  if (!merchantMatches) return fail(identityCode, 403, { validated: true })
+  let account = null
+  const confirmedOmission = identity.mode === 'live'
+    && sumUpSandboxSignal(merchant) === 'absent'
+    && sumUpMerchantCode(merchant) === SUMUP_CONFIRMED_LIVE_MERCHANT_CODE
+    && adapter.merchantCode === SUMUP_CONFIRMED_LIVE_MERCHANT_CODE
+  if (confirmedOmission && typeof adapter.transport.retrieveCurrentMerchant === 'function') {
+    try {
+      account = await adapter.transport.retrieveCurrentMerchant()
+    } catch {
+      // SumUp no longer documents /v0.1/me as the merchant guarantee.
+      // A successful body that contradicts MB8SGFBR is refused below.
+      // A transport failure leaves the documented v1 merchant check in place.
+      account = null
+    }
+  }
+  if (!sumUpMerchantIdentityAccepted({
+    account,
+    configuredCode: adapter.merchantCode,
+    merchant,
+    mode: identity.mode,
+  })) {
+    return fail(identityCode, 403, { validated: true })
+  }
   if (typeof ports?.open !== 'function' || typeof ports?.bind !== 'function' || typeof ports?.cancel !== 'function') {
     return fail('DURABLE_UNAVAILABLE', 503, { validated: true })
   }

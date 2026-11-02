@@ -130,7 +130,7 @@ export async function beginCheckout({
     try {
       admin = await isBillingAdmin(userId) === true
     } catch {
-      admin = false
+      // A failed admin lookup stays closed. The initial false is the refusal.
     }
     if (!admin) return fail('INVALID_PLAN', 400)
   }

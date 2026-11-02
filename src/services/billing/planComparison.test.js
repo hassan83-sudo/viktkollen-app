@@ -62,6 +62,17 @@ describe('plan comparison', () => {
     expect(comparison.plans.find((plan) => plan.priceText === '49 kr/mån').forSale).toBe(false)
   })
 
+  it('håller 12-kronorsplanen borta från den vanliga prislistan', () => {
+    const comparison = buildPlanComparison({
+      plans: defaultPlanCatalog.map((plan) => (
+        plan.id === 'plan.prelim.sek.month.12' ? { ...plan, enabled_for_sale: true } : plan
+      )),
+    })
+    const twelve = comparison.plans.find((plan) => plan.priceText === '12 kr/mån')
+    expect(twelve).toMatchObject({ forSale: false, offerKey: '' })
+    expect(comparison.plans.find((plan) => plan.priceText === '4 kr/mån').forSale).toBe(false)
+  })
+
   it('does not invent a quota when a server entitlement is missing', () => {
     const free = getPlanById('plan.free')
     const entitlementsFlat = Object.values(free.entitlements)

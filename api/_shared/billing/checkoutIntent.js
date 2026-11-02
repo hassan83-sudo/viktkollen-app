@@ -2,7 +2,8 @@ import { createSupabaseAdminClient } from '../supabaseServer.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../aiRouteErrors.js'
 import { verifySupabaseUser } from '../verifySupabaseUser.js'
 import { readServerPlanSale } from './userLifecycleIntent.js'
-import { getPlanById, listActivePlans } from '../../../src/services/billing/planCatalog.js'
+import { lookupBillingAdmin } from './admin.js'
+import { ADMIN_ONE_TIME_PLAN_ID, getPlanById, listActivePlans } from '../../../src/services/billing/planCatalog.js'
 import { createServerCheckoutIntentPorts } from './sumupSandboxSetup.js'
 import { getConfiguredSumUpAdapter, minorUnitsFromSumUpAmount, SUMUP_PROVIDER } from './providers/sumup.js'
 import {
@@ -88,6 +89,7 @@ function readBody(body) {
 export async function beginCheckout({
   body,
   env = process.env,
+  isBillingAdmin = lookupBillingAdmin,
   oneTimePorts,
   ports = checkoutPortsOverride || createServerCheckoutIntentPorts(),
   readSale = saleReaderOverride || defaultReadSale,
@@ -114,6 +116,8 @@ export async function beginCheckout({
   void input.user_id
   void input.userId
   void input.BILLING_SUMUP_LIVE_ENABLED
+  void input.billing_admin
+  void input.isAdmin
   void input.live_enabled
   void input.sumup_live
 
@@ -121,6 +125,15 @@ export async function beginCheckout({
   if (paymentMode !== 'one_time') return fail('UNSUPPORTED_PAYMENT_MODE', 400)
   const planId = String(input.plan_id || planIdFromOfferKey(input.offer_key)).trim()
   if (!PLAN_ID_RE.test(planId) || planId === 'plan.free') return fail('INVALID_PLAN', 400)
+  if (planId === ADMIN_ONE_TIME_PLAN_ID) {
+    let admin = false
+    try {
+      admin = await isBillingAdmin(userId) === true
+    } catch {
+      admin = false
+    }
+    if (!admin) return fail('INVALID_PLAN', 400)
+  }
   if (typeof readSale !== 'function') return fail('DURABLE_UNAVAILABLE', 503)
   let sale
   try {

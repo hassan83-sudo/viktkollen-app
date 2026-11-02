@@ -359,6 +359,52 @@ describe('start av engångsköp', () => {
     expect(calls.bind).toHaveLength(1)
   })
 
+  it('öppnar 12 kronor bara för en faktureringsadministratör och låter servern sätta beloppet', async () => {
+    let opened = ''
+    const calls = setup({
+      open: async ({ planId }) => {
+        opened = planId
+        return {
+          checkoutId: 'chk_new',
+          expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+          hostedUrl: '',
+          planId,
+          providerCheckoutRef: '',
+          reused: false,
+        }
+      },
+    })
+    const denied = await beginCheckout({
+      body: { billing_admin: true, offer_key: 'sek-1200', price_minor: 1200 },
+      isBillingAdmin: async () => false,
+      userId: USER,
+    })
+    expect(denied).toMatchObject({ accessGranted: false, code: 'INVALID_PLAN' })
+    expect(calls.create).toEqual([])
+
+    const mismatched = await beginCheckout({
+      body: { amount: 4, offer_key: 'sek-1200' },
+      isBillingAdmin: async () => true,
+      userId: USER,
+    })
+    expect(mismatched).toMatchObject({ accessGranted: false, code: 'INVALID_AMOUNT' })
+    expect(calls.create).toEqual([])
+
+    const created = await beginCheckout({
+      body: { offer_key: 'sek-1200' },
+      isBillingAdmin: async () => true,
+      userId: USER,
+    })
+    expect(created).toMatchObject({ accessGranted: false, code: 'CHECKOUT_PENDING' })
+    expect(opened).toBe('plan.prelim.sek.month.12')
+    expect(calls.create).toEqual([expect.objectContaining({
+      amount: 12,
+      currency: 'SEK',
+      hosted_checkout: { enabled: true },
+    })])
+    expect(calls.create[0].purpose).toBeUndefined()
+  })
+
   it('översätter köpnyckeln från planlistan på servern', async () => {
     let opened = ''
     setup({ open: async ({ planId }) => { opened = planId; return { checkoutId: 'chk_new', expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(), hostedUrl: '', planId, providerCheckoutRef: '', reused: false } } })

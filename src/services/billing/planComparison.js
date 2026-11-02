@@ -1,3 +1,4 @@
+import { ADMIN_ONE_TIME_PLAN_ID } from './planCatalog.js'
 import { entitlementsFromPlan } from './usageSnapshot.js'
 
 const METERED_QUOTAS = Object.freeze([
@@ -69,14 +70,15 @@ export function buildPlanComparison({ currentPlanId = '', plans = [] } = {}) {
     const price = formatPlanPrice(plan.price_minor, plan.currency || 'SEK')
     if (!price) continue
     const quotas = quotasFromEntitlements(entitlementsOf(plan))
+    const offered = plan.enabled_for_sale === true && plan.id !== ADMIN_ONE_TIME_PLAN_ID
     cards.push({
       complimentary: plan.price_minor === 0,
       complete: Array.isArray(quotas),
       current: plan.id === currentPlanId,
-      forSale: plan.enabled_for_sale === true,
+      forSale: offered,
       name: price.name,
       // Neutral köpnyckel: servern översätter den själv; interna plan-id visas inte.
-      offerKey: plan.enabled_for_sale === true && plan.currency === 'SEK' && Number.isInteger(plan.price_minor) && plan.price_minor > 0
+      offerKey: offered && plan.currency === 'SEK' && Number.isInteger(plan.price_minor) && plan.price_minor > 0
         ? `sek-${plan.price_minor}`
         : '',
       priceMinor: plan.price_minor,

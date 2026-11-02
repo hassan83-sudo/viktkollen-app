@@ -11,6 +11,10 @@ const PRELIMINARY_SEK_MAJOR = Object.freeze([
   4, 7, 9, 12, 15, 19, 29, 39, 49, 59, 69, 79, 89, 99,
 ])
 
+// Tillfällig produktionskontroll. Ordinarie köp förblir 4 SEK.
+// 12 SEK finns redan som planrad, men får bara öppnas av en faktureringsadministratör.
+export const ADMIN_ONE_TIME_PLAN_ID = 'plan.prelim.sek.month.12'
+
 const launchUnmetered = new Set(LAUNCH_UNMETERED_FEATURES)
 
 function entitlementsFor(quotas) {

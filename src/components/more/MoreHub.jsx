@@ -72,9 +72,6 @@ function MoreHub({ activeFolder, children, isAuthenticated, onBack, onOpen, onOp
     const { title } = folderCopy(t, folder)
     return (
       <div className="more-hub-view" ref={viewRef}>
-        <button className="more-hub-back" type="button" onClick={onBack}>
-          ← {t('more.back')}
-        </button>
         <header className="more-hub-view-heading">
           <p className="eyebrow">{t('more.heading')}</p>
           <h1>{title}</h1>
@@ -88,6 +85,10 @@ function MoreHub({ activeFolder, children, isAuthenticated, onBack, onOpen, onOp
         ) : folder.id === 'kronofogden' ? (
           <DebtCaseSection type="kronofogden" />
         ) : children}
+        <button className="vk-shared-bottom-back" type="button" onClick={onBack}>
+          <span className="vk-shared-bottom-back-icon" aria-hidden="true">‹</span>
+          <span>{t('more.back')}</span>
+        </button>
       </div>
     )
   }

@@ -6,9 +6,12 @@ import { createLocalSubscriptionLifecycle } from '../../../src/services/billing/
 import { toPublicSubscription } from './subscriptionRead.js'
 import { getConfiguredSumUpAdapter } from './providers/sumup.js'
 import {
+  createServerSumUpInstrumentFingerprintReader,
   createSumUpRecurring,
   createSumUpRecurringState,
+  instrumentFingerprint,
   renewalReference,
+  SUMUP_INSTRUMENT_FINGERPRINT_RPC,
   sumUpCustomerIdForUser,
 } from './sumupRecurring.js'
 
@@ -277,6 +280,67 @@ describe('BILL-10B SumUp recurring foundation', () => {
     expect(rejected.results[0].code).toBe('RENEWAL_ATTEMPT_CONFLICT')
     expect(conflicted.transport.calls.createCheckout).toBe(0)
     expect(conflicted.transport.calls.processCheckout).toBe(0)
+  })
+
+  it('charges only the instrument whose token matches the stored fingerprint', async () => {
+    const saved = instrumentFingerprint(TOKEN)
+    const other = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
+    const opened = await world()
+    opened.transport.listPaymentInstruments = async () => [
+      { active: true, token: other },
+      { active: true, token: TOKEN },
+    ]
+    const recurring = createSumUpRecurring({
+      lifecycle: opened.local.lifecycle,
+      merchantCode: MERCHANT,
+      now: () => NOW,
+      readInstrumentFingerprint: createServerSumUpInstrumentFingerprintReader(async (name, args) => {
+        expect(name).toBe(SUMUP_INSTRUMENT_FINGERPRINT_RPC)
+        expect(args).toEqual({ p_subscription_id: opened.sumup.subscription_id })
+        return saved
+      }),
+      state: opened.state,
+      transport: opened.transport,
+    })
+    const charged = await recurring.processDueRenewals({ subscriptions: [opened.sumup] })
+    expect(charged.results[0].code).toBe('RENEWAL_SUCCEEDED')
+    expect(opened.transport.calls.lastProcess.token).toBe(TOKEN)
+
+    const unmatched = await world(OTHER)
+    unmatched.transport.listPaymentInstruments = async () => [{ active: true, token: other }]
+    const stopped = createSumUpRecurring({
+      lifecycle: unmatched.local.lifecycle,
+      merchantCode: MERCHANT,
+      now: () => NOW,
+      readInstrumentFingerprint: async () => saved,
+      state: unmatched.state,
+      transport: unmatched.transport,
+    })
+    const denied = await stopped.processDueRenewals({ subscriptions: [unmatched.sumup] })
+    expect(denied.results[0].code).toBe('MISSING_INSTRUMENT')
+    expect(unmatched.transport.calls.createCheckout).toBe(0)
+    expect(unmatched.transport.calls.processCheckout).toBe(0)
+    expect(unmatched.transport.calls.lastProcess).toBeUndefined()
+
+    const absent = await world('33333333-3333-4333-8333-333333333333')
+    let listed = 0
+    absent.transport.listPaymentInstruments = async () => {
+      listed += 1
+      return [{ active: true, token: TOKEN }]
+    }
+    const closed = createSumUpRecurring({
+      lifecycle: absent.local.lifecycle,
+      merchantCode: MERCHANT,
+      now: () => NOW,
+      readInstrumentFingerprint: createServerSumUpInstrumentFingerprintReader(async () => null),
+      state: absent.state,
+      transport: absent.transport,
+    })
+    const missing = await closed.processDueRenewals({ subscriptions: [absent.sumup] })
+    expect(missing.results[0].code).toBe('MISSING_INSTRUMENT')
+    expect(listed).toBe(0)
+    expect(absent.transport.calls.createCheckout).toBe(0)
+    expect(absent.transport.calls.processCheckout).toBe(0)
   })
 
   it('locks the unapplied migration to server-only fingerprint storage', () => {

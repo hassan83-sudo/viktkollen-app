@@ -4,6 +4,18 @@ import { getPlanById } from '../../../src/services/billing/planCatalog.js'
 import { minorUnitsFromSumUpAmount, sumUpMajorFromMinor, SUMUP_PROVIDER } from './providers/sumup.js'
 
 const DUE_STATUS = new Set([SUBSCRIPTION_STATUS.ACTIVE, SUBSCRIPTION_STATUS.PAST_DUE])
+const FINGERPRINT_RE = /^[0-9a-f]{64}$/
+export const SUMUP_INSTRUMENT_FINGERPRINT_RPC = 'billing.read_sumup_instrument_fingerprint'
+
+export function createServerSumUpInstrumentFingerprintReader(callRpc) {
+  return async function readInstrumentFingerprint(subscriptionId) {
+    if (typeof callRpc !== 'function') return null
+    const data = await callRpc(SUMUP_INSTRUMENT_FINGERPRINT_RPC, {
+      p_subscription_id: subscriptionId,
+    })
+    return FINGERPRINT_RE.test(data) ? data : null
+  }
+}
 
 export function sumUpCustomerIdForUser(userId) {
   const compact = String(userId || '').replace(/-/g, '').toLowerCase()
@@ -85,6 +97,7 @@ export function createSumUpRecurring({
   lifecycle,
   merchantCode,
   now = () => new Date(),
+  readInstrumentFingerprint = null,
   state = createSumUpRecurringState(),
   transport,
 } = {}) {
@@ -195,7 +208,7 @@ export function createSumUpRecurring({
   }
 
   async function renewOne(subscription) {
-    const binding = state.instruments.find((row) => row.subscriptionId === subscription.subscription_id && row.userId === subscription.user_id)
+    const binding = await bindingFor(subscription)
     if (!binding) return { charged: false, code: 'MISSING_INSTRUMENT', subscriptionId: subscription.subscription_id }
     const planId = chargePlanId(subscription)
     const priced = priceFor(planId)
@@ -222,6 +235,9 @@ export function createSumUpRecurring({
     }
     let checkout = await singleCheckout(transport, reference)
     if (!checkout) {
+      if (!await oneMatchingToken(binding)) {
+        return { charged: false, code: 'MISSING_INSTRUMENT', subscriptionId: subscription.subscription_id }
+      }
       try {
         checkout = await transport.createCheckout({
           amount: priced.amount,
@@ -244,9 +260,8 @@ export function createSumUpRecurring({
     }
     if (verified.status === 'PAID') return applySuccess(subscription, attempt, verified)
     if (verified.status === 'FAILED' || verified.status === 'EXPIRED') return applyFailure(subscription, attempt)
-    const instruments = await transport.listPaymentInstruments(binding.customerId)
-    const matches = (Array.isArray(instruments) ? instruments : []).filter((row) => instrumentFingerprint(row?.token) === binding.fingerprint)
-    if (matches.length !== 1) return { charged: false, code: 'MISSING_INSTRUMENT', subscriptionId: subscription.subscription_id }
+    const instrumentToken = await oneMatchingToken(binding)
+    if (!instrumentToken) return { charged: false, code: 'MISSING_INSTRUMENT', subscriptionId: subscription.subscription_id }
     markSumUpRenewalProcessing(state, {
       reference: attempt.reference,
       subscriptionId: subscription.subscription_id,
@@ -255,7 +270,7 @@ export function createSumUpRecurring({
       await transport.processCheckout(verified.id, {
         customer_id: binding.customerId,
         payment_type: 'card',
-        token: matches[0].token,
+        token: instrumentToken,
       })
     } catch (error) {
       return { ambiguous: true, charged: false, code: error?.code || 'SUMUP_TIMEOUT', subscriptionId: subscription.subscription_id }
@@ -264,6 +279,39 @@ export function createSumUpRecurring({
     if (after.status === 'PAID' && samePrice(after, priced)) return applySuccess(subscription, attempt, after)
     if (after.status === 'FAILED' || after.status === 'EXPIRED') return applyFailure(subscription, attempt)
     return { ambiguous: true, charged: false, code: 'RENEWAL_AMBIGUOUS', subscriptionId: subscription.subscription_id }
+  }
+
+  async function bindingFor(subscription) {
+    const customerId = sumUpCustomerIdForUser(subscription.user_id)
+    if (!customerId) return null
+    if (typeof readInstrumentFingerprint === 'function') {
+      let stored = null
+      try {
+        stored = await readInstrumentFingerprint(subscription.subscription_id)
+      } catch {
+        stored = null
+      }
+      if (!FINGERPRINT_RE.test(stored)) return null
+      return { customerId, fingerprint: stored }
+    }
+    const memory = state.instruments.find((row) => row.subscriptionId === subscription.subscription_id && row.userId === subscription.user_id)
+    if (!memory || memory.customerId !== customerId || !FINGERPRINT_RE.test(memory.fingerprint)) return null
+    return { customerId, fingerprint: memory.fingerprint }
+  }
+
+  async function oneMatchingToken(binding) {
+    let instruments
+    try {
+      instruments = await transport.listPaymentInstruments(binding.customerId)
+    } catch {
+      return null
+    }
+    const matches = (Array.isArray(instruments) ? instruments : []).filter((row) => {
+      if (!row || row.active === false) return false
+      return instrumentFingerprint(row.token) === binding.fingerprint
+    })
+    if (matches.length !== 1) return null
+    return matches[0].token
   }
 
   async function reconcile(subscription, attempt, priced) {

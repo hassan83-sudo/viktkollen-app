@@ -1,84 +1,102 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createWardrobePhoto, wardrobePhotoCanvas } from '../../../services/wardrobePhoto.js'
 import { scanObjectBankPhoto } from '../../../services/objectBankScan.js'
 import WardrobeGarmentForm from './WardrobeGarmentForm.jsx'
-
 vi.mock('../../../services/wardrobePhoto.js', () => ({ createWardrobePhoto: vi.fn(), wardrobePhotoCanvas: vi.fn() }))
 vi.mock('../../../services/objectBankScan.js', () => ({ scanObjectBankPhoto: vi.fn() }))
+vi.mock('../../../services/supabaseClient.js', () => ({ isWardrobeOffline: false }))
 afterEach(() => { cleanup(); vi.resetAllMocks() })
 const photo = 'data:image/jpeg;base64,YWJj'
+const review = { verdict: 'garment', reason: null, personPresent: false, singleItem: true, name: 'Blå skjorta', category: 'Skjorta', colorName: 'Blå', colorHex: '#446fa4' }
+beforeEach(() => { createWardrobePhoto.mockResolvedValue(photo); wardrobePhotoCanvas.mockResolvedValue({}) })
 async function choosePhoto() {
-  createWardrobePhoto.mockResolvedValue(photo)
   fireEvent.change(screen.getByLabelText('Fotografera eller välj bild'), { target: { files: [new File(['image'], 'shirt.jpg', { type: 'image/jpeg' })] } })
-  await screen.findByAltText('Förhandsvisning av nytt plagg')
+  await waitFor(() => expect(createWardrobePhoto).toHaveBeenCalled())
 }
-
-describe('wardrobe photo consent', () => {
-  it('requires separate local consent, never analyzes automatically, and resets consent for the next image', async () => {
-    const onAdd = vi.fn(() => true)
-    render(<WardrobeGarmentForm onAdd={onAdd} />)
-    await choosePhoto()
-    fireEvent.change(screen.getByLabelText('Plaggets namn'), { target: { value: 'Tröjan' } })
-    expect(screen.getByRole('button', { name: 'Spara plagg' }).disabled).toBe(true)
-    expect(scanObjectBankPhoto).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('checkbox', { name: /sparas i den här webbläsaren/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Spara plagg' }))
-    expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ name: 'Tröjan', image: photo }))
-    await choosePhoto()
-    expect(screen.getByRole('checkbox', { name: /sparas i den här webbläsaren/ }).checked).toBe(false)
-    expect(screen.getByRole('checkbox', { name: /skickas för AI-analys/ }).checked).toBe(false)
-  })
-
-  it('sends exactly one explicit analysis and uses suggestions only after manual selection', async () => {
-    let resolve
-    wardrobePhotoCanvas.mockResolvedValue({})
-    scanObjectBankPhoto.mockImplementation(() => new Promise((done) => { resolve = done }))
+function consent() {
+  fireEvent.click(screen.getByRole('checkbox', { name: /skickas för AI-analys/ }))
+  fireEvent.click(screen.getByRole('checkbox', { name: /sparas i den här webbläsaren/ }))
+}
+describe('mandatory wardrobe photo review', () => {
+  it('never saves or sends a photo without AI consent and explicit approval', async () => {
     const onAdd = vi.fn()
     render(<WardrobeGarmentForm onAdd={onAdd} />)
     await choosePhoto()
-    const analyze = screen.getByRole('button', { name: 'Analysera vald bild' })
-    expect(analyze.disabled).toBe(true)
-    fireEvent.click(screen.getByRole('checkbox', { name: /skickas för AI-analys/ }))
-    fireEvent.click(analyze); fireEvent.click(analyze)
-    await waitFor(() => expect(scanObjectBankPhoto).toHaveBeenCalledTimes(1))
-    await act(async () => resolve({ ok: true, result: { items: ['Skjorta'] } }))
+    await screen.findByAltText('Förhandsvisning av nytt plagg')
+    fireEvent.change(screen.getByLabelText('Plaggets namn'), { target: { value: 'Tröja' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: /sparas i den här webbläsaren/ }))
+    fireEvent.submit(screen.getByRole('form'))
+    expect(scanObjectBankPhoto).not.toHaveBeenCalled()
     expect(onAdd).not.toHaveBeenCalled()
-    expect(screen.getByLabelText('Plaggets namn').value).toBe('')
-    fireEvent.click(screen.getByRole('button', { name: 'Använd namnet: Skjorta' }))
-    expect(screen.getByLabelText('Plaggets namn').value).toBe('Skjorta')
-    expect(analyze.disabled).toBe(true)
+    expect(screen.queryByRole('region', { name: 'AI-granskning klar' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Spara plagg' }).disabled).toBe(true)
   })
-
-  it('aborts an in-flight analysis on unmount and does not save a late result', async () => {
-    wardrobePhotoCanvas.mockResolvedValue({})
+  it('analyzes once, prefills editable fields and saves only the approved image', async () => {
+    let resolveReview
+    scanObjectBankPhoto.mockImplementation(() => new Promise((resolve) => { resolveReview = resolve }))
+    const onAdd = vi.fn(() => true)
+    render(<WardrobeGarmentForm onAdd={onAdd} />)
+    consent(); await choosePhoto()
+    await waitFor(() => expect(scanObjectBankPhoto).toHaveBeenCalledTimes(1))
+    expect(screen.queryByRole('region', { name: 'AI-granskning klar' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Spara plagg' }).disabled).toBe(true)
+    await act(async () => resolveReview({ ok: true, result: review }))
+    await waitFor(() => expect(screen.getByLabelText('Plaggets namn').value).toBe('Blå skjorta'))
+    const summary = screen.getByRole('region', { name: 'AI-granskning klar' })
+    expect(summary.textContent).toContain('Plagg: Blå skjorta')
+    expect(summary.textContent).toContain('Kategori: Skjorta')
+    expect(summary.textContent).toContain('Färg: Blå')
+    expect(summary.textContent).toContain('Bilden är godkänd för garderoben.')
+    expect(summary.compareDocumentPosition(screen.getByRole('button', { name: 'Spara plagg' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(scanObjectBankPhoto).toHaveBeenCalledTimes(1)
+    expect(scanObjectBankPhoto.mock.calls[0][0]).toMatchObject({ mode: 'wardrobe', consentApproved: true })
+    expect(screen.getByLabelText('Plaggtyp').value).toBe('Skjorta')
+    fireEvent.change(screen.getByLabelText('Plaggets namn'), { target: { value: 'Min skjorta' } })
+    expect(summary.textContent).toContain('Plagg: Blå skjorta')
+    fireEvent.click(screen.getByRole('button', { name: 'Spara plagg' }))
+    expect(onAdd).toHaveBeenCalledWith({ name: 'Min skjorta', type: 'Skjorta', color: '#446fa4', image: photo })
+    expect(screen.queryByRole('region', { name: 'AI-granskning klar' })).toBeNull()
+  })
+  it.each([{ ok: true, result: { verdict: 'reject', reason: 'person' } }, { ok: true, result: { items: ['Skjorta'] } }, { ok: false, reason: 'quota_exceeded' }])('discards rejected or unreviewed photos; permits manual text only: %j', async (response) => {
+    scanObjectBankPhoto.mockResolvedValue(response)
+    const onAdd = vi.fn(() => true)
+    render(<WardrobeGarmentForm onAdd={onAdd} />)
+    consent(); await choosePhoto()
+    await waitFor(() => expect(screen.getByRole('status').textContent).not.toBe('Granskar bilden…'))
+    expect(screen.queryByAltText('Förhandsvisning av nytt plagg')).toBeNull()
+    expect(screen.queryByRole('region', { name: 'AI-granskning klar' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Spara plagg' }).disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('Plaggets namn'), { target: { value: 'Egen tröja' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Spara plagg' }))
+    expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ image: '' }))
+  })
+  it('opens the camera after successful save-and-next and requires a new review', async () => {
+    scanObjectBankPhoto.mockResolvedValue({ ok: true, result: review })
+    const onAdd = vi.fn(() => true)
+    render(<WardrobeGarmentForm onAdd={onAdd} />)
+    consent(); await choosePhoto()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Spara och fota nästa' }).disabled).toBe(false))
+    const click = vi.spyOn(screen.getByLabelText('Ta bild med kameran'), 'click')
+    fireEvent.click(screen.getByRole('button', { name: 'Spara och fota nästa' }))
+    expect(onAdd).toHaveBeenCalledTimes(1); expect(click).toHaveBeenCalledTimes(1)
+    expect(screen.queryByAltText('Förhandsvisning av nytt plagg')).toBeNull()
+    scanObjectBankPhoto.mockResolvedValue({ ok: true, result: { verdict: 'reject', reason: 'person' } })
+    await choosePhoto()
+    await screen.findByText(/Bilden avvisades/)
+    expect(onAdd).toHaveBeenCalledTimes(1)
+  })
+  it('aborts on unmount and ignores late approval', async () => {
     let resolve
     scanObjectBankPhoto.mockImplementation(() => new Promise((done) => { resolve = done }))
     const onAdd = vi.fn()
     const view = render(<WardrobeGarmentForm onAdd={onAdd} />)
-    await choosePhoto()
-    fireEvent.click(screen.getByRole('checkbox', { name: /skickas för AI-analys/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Analysera vald bild' }))
+    consent(); await choosePhoto()
     await waitFor(() => expect(scanObjectBankPhoto).toHaveBeenCalledTimes(1))
     const signal = scanObjectBankPhoto.mock.calls[0][0].signal
-    view.unmount()
-    expect(signal.aborted).toBe(true)
-    await act(async () => resolve({ ok: true, result: { items: ['Skjorta'] } }))
+    view.unmount(); expect(signal.aborted).toBe(true)
+    await act(async () => resolve({ ok: true, result: review }))
     expect(onAdd).not.toHaveBeenCalled()
-  })
-
-  it('keeps manual entry available after a denied or unavailable analysis', async () => {
-    wardrobePhotoCanvas.mockResolvedValue({})
-    scanObjectBankPhoto.mockResolvedValue({ ok: false, reason: 'quota_exceeded' })
-    render(<WardrobeGarmentForm onAdd={() => true} />)
-    await choosePhoto()
-    fireEvent.click(screen.getByRole('checkbox', { name: /skickas för AI-analys/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Analysera vald bild' }))
-    await screen.findByText(/AI-förslag är inte tillgängliga/)
-    expect(scanObjectBankPhoto).toHaveBeenCalledTimes(1)
-    fireEvent.change(screen.getByLabelText('Plaggets namn'), { target: { value: 'Egen tröja' } })
-    fireEvent.click(screen.getByRole('checkbox', { name: /sparas i den här webbläsaren/ }))
-    expect(screen.getByRole('button', { name: 'Spara plagg' }).disabled).toBe(false)
   })
 })

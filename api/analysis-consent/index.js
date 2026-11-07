@@ -1,3 +1,4 @@
+import { wardrobeAiConfig } from '../_shared/wardrobeAiStaging.js'
 import { blockWardrobeApi } from '../_shared/wardrobeStagingGuard.js'
 import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
@@ -17,7 +18,7 @@ import { isAllowedAnalysisConsentPurpose, issueAnalysisConsentToken } from '../_
  * computed locally.
  */
 export default async function handler(request, response) {
-  if (blockWardrobeApi(response)) return
+  if (blockWardrobeApi(response, process.env, 'analysis-consent')) return
   // Offline-only wardrobe Preview: reject before auth, billing, AI or database effects.
 
   const requestId = `consent-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
@@ -96,7 +97,7 @@ export default async function handler(request, response) {
   }
 
   const issued = issueAnalysisConsentToken({
-    env: process.env,
+    env: wardrobeAiConfig(process.env) ? { ...process.env, ANALYSIS_CONSENT_SECRET: wardrobeAiConfig(process.env).consentSecret } : process.env,
     imageHash,
     purpose,
     userId: auth.user.id,

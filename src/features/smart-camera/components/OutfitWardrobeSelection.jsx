@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { isWardrobePhoto, markWardrobeWorn, readWardrobe, removeWardrobeGarment, updateWardrobe, wardrobeChangedEvent } from '../../../services/wardrobeStorage.js'
+import { garmentTypes, isWardrobePhoto, markWardrobeWorn, readWardrobe, removeWardrobeGarment, updateWardrobe, wardrobeChangedEvent } from '../../../services/wardrobeStorage.js'
 import WardrobeGarmentForm from './WardrobeGarmentForm.jsx'
 import WardrobeMannequin from './WardrobeMannequin.jsx'
 import './wardrobe.css'
@@ -10,6 +10,7 @@ export default function OutfitWardrobeSelection() {
   const [outfitName, setOutfitName] = useState('')
   const [notice, setNotice] = useState('')
   const [deleting, setDeleting] = useState(null)
+  const [editing, setEditing] = useState(null)
   useEffect(() => {
     const refresh = () => setWardrobe(readWardrobe())
     window.addEventListener(wardrobeChangedEvent, refresh)
@@ -61,6 +62,21 @@ export default function OutfitWardrobeSelection() {
                   />
                   {garment.name}{typeof garment.type === 'string' && garment.type ? ` · ${garment.type}` : ''}
                 </label>
+                {editing?.id === garment.id ? <form aria-label={`Redigera ${garment.name}`} onSubmit={(event) => {
+                  event.preventDefault()
+                  if (!editing.name.trim() || !garmentTypes.includes(editing.type) || !/^#[0-9a-f]{6}$/i.test(editing.color)) return
+                  if (save((current) => ({ ...current, garments: current.garments.map((item) => item.id === editing.id
+                    ? { ...item, name: editing.name.trim().slice(0, 60), type: editing.type, color: editing.color } : item) }))) {
+                    setEditing(null); setNotice('Plaggets uppgifter har sparats.')
+                  }
+                }}>
+                  <label>Nytt namn<input required maxLength={60} value={editing.name} onChange={(event) => setEditing({ ...editing, name: event.target.value })} /></label>
+                  <label>Ny plaggtyp<select value={editing.type} onChange={(event) => setEditing({ ...editing, type: event.target.value })}>{garmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
+                  <label>Ny färg<input type="color" value={editing.color} onChange={(event) => setEditing({ ...editing, color: event.target.value })} /></label>
+                  <button type="submit">Spara ändringar</button>
+                  <button type="button" onClick={() => setEditing(null)}>Avbryt redigering</button>
+                </form> : <button type="button" onClick={() => setEditing({ id: garment.id, name: garment.name,
+                  type: garmentTypes.includes(garment.type) ? garment.type : garmentTypes[0], color: /^#[0-9a-f]{6}$/i.test(garment.color || '') ? garment.color : '#446fa4' })}>Redigera {garment.name}</button>}
                 {deleting === garment.id ? <div>
                   <p>Radera {garment.name}, bilden och dess kopplingar till outfits och historik?</p>
                   <button type="button" onClick={() => {

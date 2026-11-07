@@ -1,3 +1,4 @@
+import { wardrobeAiConfig } from './wardrobeAiStaging.js'
 import { isWardrobePreview, WARDROBE_API_DISABLED } from './wardrobeStagingGuard.js'
 import { createClient } from '@supabase/supabase-js'
 import { aiRouteErrorCodes, makeSafeAiRouteError } from './aiRouteErrors.js'
@@ -27,6 +28,8 @@ function timeoutPromise(ms) {
 
 function getSupabaseServerConfig(env = process.env) {
   if (isWardrobePreview(env)) return { anonKey: '', url: '' }
+  const wardrobe = wardrobeAiConfig(env)
+  if (wardrobe) return { url: wardrobe.url, anonKey: wardrobe.anon }
   return {
     anonKey: env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || '',
     url: env.SUPABASE_URL || env.VITE_SUPABASE_URL || '',

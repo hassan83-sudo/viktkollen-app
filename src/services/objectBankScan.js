@@ -1,3 +1,4 @@
+import { validateWardrobeReview } from './wardrobeReview.js'
 import {
   analysisConsentPurposes,
   requestAnalysisConsentToken,
@@ -76,7 +77,7 @@ function canvasToBlob(canvas, type = 'image/jpeg', quality = 0.85) {
  * @param {AbortSignal} [params.signal]
  * @returns {Promise<{ok: true, result: {items: Array<{id, status}>}} | {ok: false, reason: string}>}
  */
-export async function scanObjectBankPhoto({ canvas, consentApproved, signal } = {}) {
+export async function scanObjectBankPhoto({ canvas, consentApproved, signal, mode } = {}) {
   if (consentApproved !== true) {
     return { ok: false, reason: 'consent_not_approved' }
   }
@@ -114,6 +115,7 @@ export async function scanObjectBankPhoto({ canvas, consentApproved, signal } = 
 
     const formData = new FormData()
     formData.append('image', blob, 'object-bank.jpg')
+    if (mode === 'wardrobe') formData.append('mode', 'wardrobe')
 
     const response = await fetch(ANALYSIS_ENDPOINT, {
       body: formData,
@@ -133,6 +135,11 @@ export async function scanObjectBankPhoto({ canvas, consentApproved, signal } = 
       payload = await response.json()
     } catch {
       return { ok: false, reason: 'invalid_response' }
+    }
+
+    if (mode === 'wardrobe') {
+      if (!response.ok || payload?.ok !== true) return { ok: false, reason: payload?.error?.code || `http_${response.status}` }
+      return { ok: true, result: validateWardrobeReview(payload.result) }
     }
 
     if (!response.ok || payload?.ok === false || !Array.isArray(payload?.result?.items) || !payload.result.items.every((item) => typeof item === 'string')) {

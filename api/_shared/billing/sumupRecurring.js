@@ -6,6 +6,7 @@ import { minorUnitsFromSumUpAmount, sumUpMajorFromMinor, SUMUP_PROVIDER } from '
 const DUE_STATUS = new Set([SUBSCRIPTION_STATUS.ACTIVE, SUBSCRIPTION_STATUS.PAST_DUE])
 const FINGERPRINT_RE = /^[0-9a-f]{64}$/
 export const SUMUP_INSTRUMENT_FINGERPRINT_RPC = 'billing.read_sumup_instrument_fingerprint'
+export const SUMUP_RENEWAL_RESERVE_RPC = 'billing.reserve_sumup_renewal_attempt'
 
 export function createServerSumUpInstrumentFingerprintReader(callRpc) {
   return async function readInstrumentFingerprint(subscriptionId) {
@@ -14,6 +15,37 @@ export function createServerSumUpInstrumentFingerprintReader(callRpc) {
       p_subscription_id: subscriptionId,
     })
     return FINGERPRINT_RE.test(data) ? data : null
+  }
+}
+
+export function createServerSumUpRenewalReserver(callRpc) {
+  return async function reserveRenewalAttempt({ periodEnd, reference, subscriptionId } = {}) {
+    const conflict = new Error('renewal_attempt_conflict')
+    conflict.code = 'renewal_attempt_conflict'
+    if (typeof callRpc !== 'function') throw conflict
+    let data
+    try {
+      data = await callRpc(SUMUP_RENEWAL_RESERVE_RPC, {
+        p_checkout_reference: reference,
+        p_period_end: new Date(periodEnd).toISOString(),
+        p_subscription_id: subscriptionId,
+      })
+    } catch (error) {
+      const message = `${error?.code || ''} ${error?.message || ''}`
+      if (message.includes('renewal_attempt_conflict') || message.includes('23505') || message.toLowerCase().includes('unique')) {
+        throw conflict
+      }
+      throw error
+    }
+    if (!data || data.checkout_reference !== reference || typeof data.status !== 'string') throw conflict
+    return {
+      inserted: data.inserted === true,
+      periodEnd: new Date(periodEnd).toISOString(),
+      providerCheckoutRef: '',
+      reference,
+      status: data.status,
+      subscriptionId,
+    }
   }
 }
 
@@ -98,6 +130,7 @@ export function createSumUpRecurring({
   merchantCode,
   now = () => new Date(),
   readInstrumentFingerprint = null,
+  reserveRenewalAttempt = null,
   state = createSumUpRecurringState(),
   transport,
 } = {}) {
@@ -214,18 +247,37 @@ export function createSumUpRecurring({
     const priced = priceFor(planId)
     if (!priced) return { charged: false, code: 'INVALID_PLAN', subscriptionId: subscription.subscription_id }
     const reference = renewalReference(subscription.subscription_id, subscription.current_period_end)
+    const sharedReservation = typeof reserveRenewalAttempt === 'function'
     let attempt
     try {
-      attempt = reserveSumUpRenewalAttempt(state, {
-        periodEnd: subscription.current_period_end,
-        reference,
-        subscriptionId: subscription.subscription_id,
-      })
+      attempt = sharedReservation
+        ? await reserveRenewalAttempt({
+          periodEnd: subscription.current_period_end,
+          reference,
+          subscriptionId: subscription.subscription_id,
+        })
+        : reserveSumUpRenewalAttempt(state, {
+          periodEnd: subscription.current_period_end,
+          reference,
+          subscriptionId: subscription.subscription_id,
+        })
     } catch (error) {
       if (error?.code === 'renewal_attempt_conflict') {
         return { charged: false, code: 'RENEWAL_ATTEMPT_CONFLICT', subscriptionId: subscription.subscription_id }
       }
       throw error
+    }
+    if (sharedReservation) {
+      if (attempt.inserted !== true) {
+        if (attempt.status === 'succeeded') {
+          return { charged: false, code: 'RENEWAL_SUCCEEDED', subscriptionId: subscription.subscription_id }
+        }
+        if (attempt.status === 'failed') {
+          return { charged: false, code: 'RENEWAL_FAILED', subscriptionId: subscription.subscription_id }
+        }
+        return { charged: false, code: 'RENEWAL_IN_PROGRESS', subscriptionId: subscription.subscription_id }
+      }
+      state.attempts.push(attempt)
     }
     if (attempt.status === 'succeeded') return applySuccess(subscription, attempt)
     if (attempt.status === 'failed') return { charged: false, code: 'RENEWAL_FAILED', subscriptionId: subscription.subscription_id }

@@ -343,9 +343,14 @@ async function handleSumUpSandbox(request, response, requestId) {
       ok: false,
     })
   }
+  void request.body?.billing_admin
+  void request.body?.isAdmin
+  void request.body?.live
+  void request.body?.sandbox
   const result = await prepareSumUpSandboxSetup({
     clientAmount: request.body?.amount,
     clientCurrency: request.body?.currency,
+    isBillingAdmin: lookupBillingAdmin,
     ports: createServerCheckoutIntentPorts(),
     userId: auth.user.id,
   })

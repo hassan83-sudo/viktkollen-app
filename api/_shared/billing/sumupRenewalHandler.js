@@ -1,8 +1,8 @@
-import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../../_shared/aiRouteErrors.js'
-import { requireBillingAdmin } from '../../_shared/billing/admin.js'
-import { runDueSumUpRenewal } from '../../_shared/billing/sumupRenewalRun.js'
+import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../aiRouteErrors.js'
+import { requireBillingAdmin } from './admin.js'
+import { runDueSumUpRenewal } from './sumupRenewalRun.js'
 
-export default async function handler(request, response) {
+export async function handleSumUpRenewal(request, response) {
   const requestId = `bill-sumup-renewal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   setNoStoreHeaders(response)
   if (request.method !== 'POST') {

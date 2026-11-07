@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -15,9 +15,9 @@ import {
   SUMUP_RENEWAL_FINISH_RPC,
   SUMUP_RENEWAL_RESERVE_RPC,
 } from '../../_shared/billing/sumupRecurring.js'
+import { handleSumUpRenewal as handler } from '../../_shared/billing/sumupRenewalHandler.js'
 import { clearSupabaseAdminClientForTests, setSupabaseAdminClientForTests } from '../../_shared/supabaseServer.js'
 import { setSupabaseAuthVerifierForTests } from '../../_shared/verifySupabaseUser.js'
-import handler from './index.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../../..')
 const ADMIN = '11111111-1111-4111-8111-111111111111'
@@ -256,9 +256,13 @@ describe('POST /api/billing/sumup-renewal', () => {
   it('stays manual: no cron, and the user billing route does not renew', () => {
     const vercel = readFileSync(join(root, 'vercel.json'), 'utf8')
     const userRoute = readFileSync(join(root, 'api/billing/user/index.js'), 'utf8')
-    const route = readFileSync(join(root, 'api/billing/sumup-renewal/index.js'), 'utf8')
+    const adminRoute = readFileSync(join(root, 'api/billing/admin/index.js'), 'utf8')
+    const route = readFileSync(join(root, 'api/_shared/billing/sumupRenewalHandler.js'), 'utf8')
+    expect(existsSync(join(root, 'api/billing/sumup-renewal/index.js'))).toBe(false)
     expect(vercel).not.toMatch(/crons/)
-    expect(userRoute).not.toMatch(/sumupRenewalRun|processDueRenewals/)
+    expect(vercel).toMatch(/\/api\/billing\/sumup-renewal/)
+    expect(userRoute).not.toMatch(/sumupRenewalRun|processDueRenewals|handleSumUpRenewal/)
+    expect(adminRoute).toMatch(/__vk_route === 'sumup_renewal'/)
     expect(route).toMatch(/requireBillingAdmin/)
     expect(route).toMatch(/runDueSumUpRenewal/)
     expect(route).not.toMatch(/setInterval|cron/)

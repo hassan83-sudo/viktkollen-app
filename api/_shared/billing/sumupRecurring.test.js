@@ -7,11 +7,13 @@ import { toPublicSubscription } from './subscriptionRead.js'
 import { getConfiguredSumUpAdapter } from './providers/sumup.js'
 import {
   createServerSumUpInstrumentFingerprintReader,
+  createServerSumUpRenewalReserver,
   createSumUpRecurring,
   createSumUpRecurringState,
   instrumentFingerprint,
   renewalReference,
   SUMUP_INSTRUMENT_FINGERPRINT_RPC,
+  SUMUP_RENEWAL_RESERVE_RPC,
   sumUpCustomerIdForUser,
 } from './sumupRecurring.js'
 
@@ -341,6 +343,83 @@ describe('BILL-10B SumUp recurring foundation', () => {
     expect(listed).toBe(0)
     expect(absent.transport.calls.createCheckout).toBe(0)
     expect(absent.transport.calls.processCheckout).toBe(0)
+  })
+
+  it('lets one shared reservation charge and stops the other server instance', async () => {
+    const saved = instrumentFingerprint(TOKEN)
+    const opened = await world()
+    const rows = []
+    const callRpc = async (name, args) => {
+      if (name === SUMUP_INSTRUMENT_FINGERPRINT_RPC) {
+        expect(args).toEqual({ p_subscription_id: opened.sumup.subscription_id })
+        return saved
+      }
+      if (name !== SUMUP_RENEWAL_RESERVE_RPC) throw new Error('unexpected rpc')
+      const reference = args.p_checkout_reference
+      const period = args.p_period_end
+      const existing = rows.find((row) => row.reference === reference)
+      if (existing) {
+        if (existing.subscriptionId !== args.p_subscription_id || existing.periodEnd !== period) {
+          const error = new Error('renewal_attempt_conflict')
+          error.code = 'renewal_attempt_conflict'
+          throw error
+        }
+        return { checkout_reference: reference, inserted: false, status: existing.status }
+      }
+      rows.push({
+        periodEnd: period,
+        reference,
+        status: 'reserved',
+        subscriptionId: args.p_subscription_id,
+      })
+      return { checkout_reference: reference, inserted: true, status: 'reserved' }
+    }
+    const reader = createServerSumUpInstrumentFingerprintReader(callRpc)
+    const reserver = createServerSumUpRenewalReserver(callRpc)
+    const instance = () => createSumUpRecurring({
+      lifecycle: opened.local.lifecycle,
+      merchantCode: MERCHANT,
+      now: () => NOW,
+      readInstrumentFingerprint: reader,
+      reserveRenewalAttempt: reserver,
+      state: createSumUpRecurringState(),
+      transport: opened.transport,
+    })
+    const [winner, loser] = await Promise.all([
+      instance().processDueRenewals({ subscriptions: [opened.sumup] }),
+      instance().processDueRenewals({ subscriptions: [opened.sumup] }),
+    ])
+    expect([winner.results[0].code, loser.results[0].code].sort()).toEqual(['RENEWAL_IN_PROGRESS', 'RENEWAL_SUCCEEDED'])
+    expect(opened.transport.calls.createCheckout).toBe(1)
+    expect(opened.transport.calls.processCheckout).toBe(1)
+    expect(opened.transport.calls.lastProcess.token).toBe(TOKEN)
+    expect(JSON.stringify(winner)).not.toContain(TOKEN)
+    expect(JSON.stringify(loser)).not.toContain(TOKEN)
+
+    const closed = createSumUpRecurring({
+      lifecycle: opened.local.lifecycle,
+      merchantCode: MERCHANT,
+      now: () => NOW,
+      readInstrumentFingerprint: async () => saved,
+      reserveRenewalAttempt: createServerSumUpRenewalReserver(async (name, args) => {
+        expect(name).toBe(SUMUP_RENEWAL_RESERVE_RPC)
+        return { checkout_reference: args.p_checkout_reference, status: 'reserved' }
+      }),
+      state: createSumUpRecurringState(),
+      transport: opened.transport,
+    })
+    const replay = await closed.processDueRenewals({ subscriptions: [opened.sumup] })
+    expect(replay.results[0].code).toBe('RENEWAL_IN_PROGRESS')
+    expect(opened.transport.calls.createCheckout).toBe(1)
+    expect(opened.transport.calls.processCheckout).toBe(1)
+
+    const sql = readFileSync(join(root, 'supabase/migrations/20261107120000_billing_reserve_sumup_renewal_inserted.sql'), 'utf8')
+    expect(sql).toMatch(/inserted_count = 1/)
+    expect(sql).toMatch(/when unique_violation then/)
+    expect(sql).toMatch(/revoke all on function billing\.reserve_sumup_renewal_attempt\(text, text, timestamptz\) from public, anon, authenticated, service_role/)
+    expect(sql).toMatch(/grant execute on function billing\.reserve_sumup_renewal_attempt\(text, text, timestamptz\) to service_role/)
+    expect(sql).not.toMatch(/grant execute on function billing\.reserve_sumup_renewal_attempt\(text, text, timestamptz\) to (public|anon|authenticated)/)
+    expect(sql).not.toMatch(/\btoken text\b|card_number|cvv/)
   })
 
   it('locks the unapplied migration to server-only fingerprint storage', () => {

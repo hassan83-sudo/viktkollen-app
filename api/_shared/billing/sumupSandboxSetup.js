@@ -9,6 +9,14 @@ import {
   sumUpMajorFromMinor,
 } from './providers/sumup.js'
 import { sumUpCustomerIdForUser } from './sumupRecurring.js'
+import {
+  liveCheckoutEnabled,
+  oneTimeCheckoutMode,
+  SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
+  sumUpMerchantCode,
+  sumUpMerchantIdentityAccepted,
+  sumUpSandboxSignal,
+} from './sumupOneTimeCheckout.js'
 
 export const SANDBOX_SETUP_PLAN_ID = 'plan.prelim.sek.month.04'
 const CHECKOUT_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -142,22 +150,65 @@ export function createServerCheckoutIntentPorts({ client, env = process.env } = 
   }
 }
 
+async function liveSetupAllowed({ env, isBillingAdmin, merchant, merchantCode, transport, userId }) {
+  if (!liveCheckoutEnabled(env)) return { ok: false, code: 'SANDBOX_IDENTITY_REQUIRED', status: 403 }
+  const identity = oneTimeCheckoutMode(env)
+  if (!identity.ok || identity.mode !== 'live') {
+    return { ok: false, code: 'LIVE_IDENTITY_REQUIRED', status: 403 }
+  }
+  let admin = false
+  if (typeof isBillingAdmin === 'function') {
+    try {
+      admin = await isBillingAdmin(userId) === true
+    } catch {
+      admin = false
+    }
+  }
+  if (!admin) return { ok: false, code: 'LIVE_ADMIN_REQUIRED', status: 403 }
+  let account = null
+  const confirmedOmission = sumUpSandboxSignal(merchant) === 'absent'
+    && sumUpMerchantCode(merchant) === SUMUP_CONFIRMED_LIVE_MERCHANT_CODE
+    && merchantCode === SUMUP_CONFIRMED_LIVE_MERCHANT_CODE
+  if (confirmedOmission && typeof transport.retrieveCurrentMerchant === 'function') {
+    try {
+      account = await transport.retrieveCurrentMerchant()
+    } catch {
+      account = null
+    }
+  }
+  if (!sumUpMerchantIdentityAccepted({
+    account,
+    configuredCode: merchantCode,
+    merchant,
+    mode: 'live',
+  })) {
+    return { ok: false, code: 'LIVE_IDENTITY_REQUIRED', status: 403 }
+  }
+  return { ok: true }
+}
+
 /**
- * Sandbox-only 4 SEK recurring setup. Proves the merchant is a SumUp sandbox,
- * then creates the existing checkout intent and uses its id as the SumUp
- * checkout reference. Does not grant access and ignores any client amount
- * or currency.
+ * 4 SEK recurring setup. The sandbox branch requires a SumUp sandbox merchant.
+ * The live branch is separate: it requires the live env flag, the production
+ * Supabase project, a verified production merchant, and a server-side
+ * billing_admin check. Client amount, currency, and admin flags are ignored.
+ * The checkout reuses SETUP_RECURRING_PAYMENT and does not grant access.
  */
 export async function prepareSumUpSandboxSetup({
+  billingAdmin,
   clientAmount,
   clientCurrency,
   env = process.env,
+  isBillingAdmin,
+  live,
   ports,
   transport,
   userId,
 } = {}) {
+  void billingAdmin
   void clientAmount
   void clientCurrency
+  void live
   const priced = catalogPrice()
   const customerId = sumUpCustomerIdForUser(userId)
   if (!priced || !customerId) return closed('INVALID_PLAN', 400)
@@ -176,8 +227,17 @@ export async function prepareSumUpSandboxSetup({
   } catch {
     return closed('SANDBOX_IDENTITY_REQUIRED', 403)
   }
-  if (merchant?.sandbox !== true || merchant?.merchant_code !== config.merchantCode) {
-    return closed('SANDBOX_IDENTITY_REQUIRED', 403)
+  const sandboxMerchant = merchant?.sandbox === true && merchant?.merchant_code === config.merchantCode
+  if (!sandboxMerchant) {
+    const liveGate = await liveSetupAllowed({
+      env,
+      isBillingAdmin,
+      merchant,
+      merchantCode: config.merchantCode,
+      transport: http,
+      userId,
+    })
+    if (!liveGate.ok) return closed(liveGate.code, liveGate.status)
   }
 
   let intent

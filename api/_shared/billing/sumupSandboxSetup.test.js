@@ -11,6 +11,11 @@ import {
   SANDBOX_SETUP_PLAN_ID,
 } from './sumupSandboxSetup.js'
 import { sumUpWidgetMountConfig } from '../../../src/services/billing/sumupWidgetMount.js'
+import {
+  LIVE_CHECKOUT_ENV,
+  PRODUCTION_SUPABASE_REF,
+  SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
+} from './sumupOneTimeCheckout.js'
 
 const USER = '11111111-1111-4111-8111-111111111111'
 const CHECKOUT_ID = '7164c99b-13cb-42a1-8ba1-3c2c46a29de7'
@@ -63,15 +68,17 @@ function memoryPorts() {
   }
 }
 
-function transportFor({ amount = 4, sandbox = true, status = 'PENDING' } = {}) {
+function transportFor({ amount = 4, merchant = {}, sandbox = true, status = 'PENDING' } = {}) {
   const calls = []
+  let merchantCode = 'MTEST01'
   let reference = ''
   return {
     calls,
     async createCheckout(body) {
       calls.push(['createCheckout', body])
+      merchantCode = body.merchant_code
       reference = body.checkout_reference
-      return { ...checkoutRow(amount, status), checkout_reference: reference }
+      return { ...checkoutRow(amount, status), checkout_reference: reference, merchant_code: merchantCode }
     },
     async createCustomer(body) {
       calls.push(['createCustomer', body])
@@ -82,12 +89,23 @@ function transportFor({ amount = 4, sandbox = true, status = 'PENDING' } = {}) {
     },
     async retrieveCheckout(id) {
       calls.push(['retrieveCheckout', id])
-      return { ...checkoutRow(amount, status), checkout_reference: reference, id }
+      return { ...checkoutRow(amount, status), checkout_reference: reference, id, merchant_code: merchantCode }
     },
     async retrieveMerchant(code) {
       calls.push(['retrieveMerchant', code])
-      return { merchant_code: code, sandbox }
+      return { merchant_code: code, sandbox, ...merchant }
     },
+  }
+}
+
+function liveEnv() {
+  const project = `https://${PRODUCTION_SUPABASE_REF}.supabase.co`
+  return {
+    [LIVE_CHECKOUT_ENV]: 'true',
+    SUMUP_API_KEY: 'test-only-key',
+    SUMUP_MERCHANT_CODE: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
+    SUPABASE_URL: project,
+    VITE_SUPABASE_URL: project,
   }
 }
 
@@ -269,6 +287,121 @@ describe('SumUp sandbox 4 SEK setup', () => {
     expect(`${widget}\n${mount}`).not.toMatch(/SUMUP_API_KEY|SUMUP_MERCHANT_CODE|card_number|cvv|pan\b/i)
     expect(mount).toContain('https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js')
     expect(widget).toContain('SUMUP_PAYMENT_WIDGET_SCRIPT')
+  })
+
+  it('opens a live setup only for a server-verified billing admin', async () => {
+    const transport = transportFor({
+      merchant: { default_currency: 'SEK' },
+      sandbox: false,
+    })
+    const ports = memoryPorts()
+    const result = await prepareSumUpSandboxSetup({
+      billingAdmin: true,
+      clientAmount: 12,
+      env: liveEnv(),
+      isBillingAdmin: async () => true,
+      ports,
+      transport,
+      userId: USER,
+    })
+    const body = transport.calls.find((call) => call[0] === 'createCheckout')[1]
+    expect(result).toMatchObject({
+      accessGranted: false,
+      amount: 4,
+      checkoutId: CHECKOUT_ID,
+      currency: 'SEK',
+      ok: true,
+      purpose: 'SETUP_RECURRING_PAYMENT',
+    })
+    expect(body).toMatchObject({
+      amount: 4,
+      currency: 'SEK',
+      merchant_code: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
+      purpose: 'SETUP_RECURRING_PAYMENT',
+    })
+    expect(body.hosted_checkout).toBeUndefined()
+    expect(body.token).toBeUndefined()
+    expect(JSON.stringify(body)).not.toMatch(/card_number|cvv|pan\b/i)
+    const webhook = readFileSync(join(root, 'api/_shared/billing/providerWebhookIngress.js'), 'utf8')
+    const activation = readFileSync(join(root, 'api/_shared/billing/sumupInitialActivation.js'), 'utf8')
+    expect(webhook).toContain('activateVerifiedSumUpSetup')
+    expect(activation).toContain('p_instrument_fingerprint: fingerprint')
+    expect(activation).not.toMatch(/p_payment_instrument_token|p_card_token/)
+  })
+
+  it('refuses live setup without the env flag, production merchant, or server admin', async () => {
+    const admin = async () => true
+    const flaggedOff = { ...liveEnv(), [LIVE_CHECKOUT_ENV]: 'false' }
+    const withoutFlag = await prepareSumUpSandboxSetup({
+      billingAdmin: true,
+      env: flaggedOff,
+      isBillingAdmin: admin,
+      ports: memoryPorts(),
+      transport: transportFor({ merchant: { default_currency: 'SEK' }, sandbox: false }),
+      userId: USER,
+    })
+    expect(withoutFlag).toMatchObject({ code: 'SANDBOX_IDENTITY_REQUIRED', ok: false })
+    expect(withoutFlag.checkoutId).toBeUndefined()
+
+    const clientAdmin = await prepareSumUpSandboxSetup({
+      billingAdmin: true,
+      env: liveEnv(),
+      ports: memoryPorts(),
+      transport: transportFor({ merchant: { default_currency: 'SEK' }, sandbox: false }),
+      userId: USER,
+    })
+    expect(clientAdmin).toMatchObject({ code: 'LIVE_ADMIN_REQUIRED', ok: false })
+
+    const denied = await prepareSumUpSandboxSetup({
+      env: liveEnv(),
+      isBillingAdmin: async () => false,
+      ports: memoryPorts(),
+      transport: transportFor({ merchant: { default_currency: 'SEK' }, sandbox: false }),
+      userId: USER,
+    })
+    expect(denied).toMatchObject({ code: 'LIVE_ADMIN_REQUIRED', ok: false })
+    const route = readFileSync(join(root, 'api/billing/user/index.js'), 'utf8')
+    expect(route).toContain('isBillingAdmin: lookupBillingAdmin')
+    expect(route).toContain('void request.body?.billing_admin')
+    expect(route).not.toMatch(/sumupRecurring|processDueRenewals/)
+  })
+
+  it('accepts the confirmed live merchant only when the account does not contradict it', async () => {
+    const transport = transportFor({ merchant: { default_currency: 'SEK', sandbox: undefined }, sandbox: true })
+    transport.retrieveMerchant = async (code) => {
+      transport.calls.push(['retrieveMerchant', code])
+      return { default_currency: 'SEK', merchant_code: code }
+    }
+    transport.retrieveCurrentMerchant = async () => {
+      transport.calls.push(['retrieveCurrentMerchant'])
+      return { merchant_code: 'MOTHER1', sandbox: true }
+    }
+    const refused = await prepareSumUpSandboxSetup({
+      env: liveEnv(),
+      isBillingAdmin: async () => true,
+      ports: memoryPorts(),
+      transport,
+      userId: USER,
+    })
+    expect(refused).toMatchObject({ code: 'LIVE_IDENTITY_REQUIRED', ok: false })
+    expect(transport.calls.map((call) => call[0])).toEqual(['retrieveMerchant', 'retrieveCurrentMerchant'])
+
+    const accepted = transportFor({ sandbox: true })
+    accepted.retrieveMerchant = async (code) => ({ default_currency: 'SEK', merchant_code: code })
+    accepted.retrieveCurrentMerchant = async () => ({
+      default_currency: 'SEK',
+      merchant_code: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
+    })
+    const ports = memoryPorts()
+    const result = await prepareSumUpSandboxSetup({
+      env: liveEnv(),
+      isBillingAdmin: async () => true,
+      ports,
+      transport: accepted,
+      userId: USER,
+    })
+    expect(result).toMatchObject({ amount: 4, ok: true, purpose: 'SETUP_RECURRING_PAYMENT' })
+    expect(ports.created).toHaveLength(1)
   })
 })
 

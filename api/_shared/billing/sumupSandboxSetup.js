@@ -18,7 +18,7 @@ import {
   sumUpSandboxSignal,
 } from './sumupOneTimeCheckout.js'
 
-export const SANDBOX_SETUP_PLAN_ID = 'plan.prelim.sek.month.04'
+export const SANDBOX_SETUP_PLAN_ID = 'plan.prelim.sek.month.09'
 const CHECKOUT_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const INTENT_ID_RE = /^[A-Za-z0-9._:-]{1,80}$/
 const INTENT_TTL_MS = 30 * 60 * 1000
@@ -29,10 +29,10 @@ function closed(code, status) {
 
 function catalogPrice() {
   const plan = getPlanById(SANDBOX_SETUP_PLAN_ID)
-  if (!plan || plan.currency !== 'SEK' || plan.active !== true || plan.price_minor !== 400) return null
+  if (!plan || plan.currency !== 'SEK' || plan.active !== true || plan.price_minor !== 900) return null
   const amount = sumUpMajorFromMinor(plan.price_minor)
-  if (amount !== 4) return null
-  return { amount, minor: 400 }
+  if (amount !== 9) return null
+  return { amount, minor: 900 }
 }
 
 function durablePorts(ports) {
@@ -188,7 +188,8 @@ async function liveSetupAllowed({ env, isBillingAdmin, merchant, merchantCode, t
 }
 
 /**
- * 4 SEK recurring setup. The sandbox branch requires a SumUp sandbox merchant.
+ * 9 SEK billing-admin recurring setup. The ordinary 4 SEK plan is unchanged.
+ * The sandbox branch requires a SumUp sandbox merchant.
  * The live branch is separate: it requires the live env flag, the production
  * Supabase project, a verified production merchant, and a server-side
  * billing_admin check. Client amount, currency, and admin flags are ignored.

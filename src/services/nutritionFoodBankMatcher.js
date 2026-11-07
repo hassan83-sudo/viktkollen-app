@@ -84,17 +84,17 @@ const englishFoodAliases = Object.freeze({
   gris: ['pork'], flask: ['pork'], flaskkott: ['pork'], lamm: ['lamb'],
   kalkon: ['turkey'], anka: ['duck'], lax: ['salmon'], torsk: ['cod'],
   tonfisk: ['tuna'], rakor: ['shrimp'], agg: ['egg'],
-  potatis: ['potato'], sotpotatis: ['sweet'], ris: ['rice'],
+  potatis: ['potato'], sotpotatis: ['sweet potato'], ris: ['rice'],
   pasta: ['pasta', 'macaroni', 'spaghetti'], makaroner: ['macaroni'],
   brod: ['bread'], havre: ['oats'], havregryn: ['oats'],
   mjolk: ['milk'], ost: ['cheese'], smor: ['butter'], yoghurt: ['yogurt'],
   apple: ['apple'], applen: ['apple'], banan: ['banana'],
   tomat: ['tomato'], broccoli: ['broccoli'], morot: ['carrot'],
   lok: ['onion'], vitlok: ['garlic'], gurka: ['cucumber'],
-  paprika: ['pepper'], spenat: ['spinach'], svamp: ['mushroom'],
+  paprika: ['bell pepper'], spenat: ['spinach'], svamp: ['mushroom'],
   jordnot: ['peanut'], jordnotssmor: ['peanut'], bonor: ['beans'],
   linser: ['lentils'], kikartor: ['chickpeas'],
-  appel: ['apple'], apple: ['apple'],
+  appel: ['apple'],
 })
 const englishToSwedish = new Map(Object.entries(englishFoodAliases)
   .flatMap(([swedish, english]) => english.map((word) => [word, swedish])))

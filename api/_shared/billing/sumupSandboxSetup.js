@@ -29,10 +29,10 @@ function closed(code, status) {
 
 function catalogPrice() {
   const plan = getPlanById(SANDBOX_SETUP_PLAN_ID)
-  if (!plan || plan.currency !== 'SEK' || plan.active !== true || plan.price_minor !== 900) return null
+  if (!plan || plan.currency !== 'SEK' || plan.active !== true || plan.price_minor !== 1200) return null
   const amount = sumUpMajorFromMinor(plan.price_minor)
-  if (amount !== 9) return null
-  return { amount, minor: 900 }
+  if (amount !== 12) return null
+  return { amount, minor: 1200 }
 }
 
 function durablePorts(ports) {
@@ -188,7 +188,7 @@ async function liveSetupAllowed({ env, isBillingAdmin, merchant, merchantCode, t
 }
 
 /**
- * 9 SEK billing-admin recurring setup. The ordinary 4 SEK plan is unchanged.
+ * 12 SEK billing-admin recurring setup. The ordinary 4 SEK plan is unchanged.
  * The sandbox branch requires a SumUp sandbox merchant.
  * The live branch is separate: it requires the live env flag, the production
  * Supabase project, a verified production merchant, and a server-side

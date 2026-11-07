@@ -22,7 +22,7 @@ const USER = '11111111-1111-4111-8111-111111111111'
 const CHECKOUT_ID = '7164c99b-13cb-42a1-8ba1-3c2c46a29de7'
 const root = join(dirname(fileURLToPath(import.meta.url)), '../../..')
 
-function checkoutBody(reference, amount = 9) {
+function checkoutBody(reference, amount = 12) {
   return {
     amount,
     checkout_reference: reference,
@@ -34,7 +34,7 @@ function checkoutBody(reference, amount = 9) {
   }
 }
 
-function checkoutRow(amount = 9, status = 'PENDING') {
+function checkoutRow(amount = 12, status = 'PENDING') {
   return {
     amount,
     checkout_reference: 'chk_placeholder',
@@ -69,7 +69,7 @@ function memoryPorts() {
   }
 }
 
-function transportFor({ amount = 9, merchant = {}, sandbox = true, status = 'PENDING' } = {}) {
+function transportFor({ amount = 12, merchant = {}, sandbox = true, status = 'PENDING' } = {}) {
   const calls = []
   let merchantCode = 'MTEST01'
   let reference = ''
@@ -110,10 +110,10 @@ function liveEnv() {
   }
 }
 
-describe('SumUp sandbox 9 SEK setup', () => {
+describe('SumUp sandbox 12 SEK setup', () => {
   const env = { SUMUP_API_KEY: 'test-only-key', SUMUP_MERCHANT_CODE: 'MTEST01' }
 
-  it('serializes exactly 9 SEK from the catalog and ignores a client amount', async () => {
+  it('serializes exactly 12 SEK from the catalog and ignores a client amount', async () => {
     const transport = transportFor()
     const ports = memoryPorts()
     const result = await prepareSumUpSandboxSetup({
@@ -127,7 +127,7 @@ describe('SumUp sandbox 9 SEK setup', () => {
     const reference = ports.created[0]
     expect(result).toMatchObject({
       accessGranted: false,
-      amount: 9,
+      amount: 12,
       checkoutId: CHECKOUT_ID,
       currency: 'SEK',
       ok: true,
@@ -144,9 +144,11 @@ describe('SumUp sandbox 9 SEK setup', () => {
     expect(body).toEqual(checkoutBody(reference))
     expect(body.checkout_reference.startsWith('chk_')).toBe(true)
     expect(body.checkout_reference.startsWith('sb')).toBe(false)
-    expect(SANDBOX_SETUP_PLAN_ID).toBe('plan.prelim.sek.month.09')
+    expect(SANDBOX_SETUP_PLAN_ID).toBe('plan.prelim.sek.month.12')
     expect(getPlanById('plan.prelim.sek.month.04').price_minor).toBe(400)
-    expect(JSON.stringify(body)).toContain('"amount":9')
+    expect(getPlanById('plan.prelim.sek.month.09').price_minor).toBe(900)
+    expect(getPlanById('plan.prelim.sek.month.12').price_minor).toBe(1200)
+    expect(JSON.stringify(body)).toContain('"amount":12')
     expect(JSON.stringify(body)).not.toContain('"amount":400')
     expect(JSON.stringify(body)).not.toContain('"amount":0.04')
     expect(body.hosted_checkout).toBeUndefined()
@@ -220,7 +222,7 @@ describe('SumUp sandbox 9 SEK setup', () => {
     expect(transport.calls).toEqual([])
   })
 
-  it('rejects a provider amount that is not 9 SEK and cancels the intent', async () => {
+  it('rejects a provider amount that is not 12 SEK and cancels the intent', async () => {
     const transport = transportFor({ amount: 400 })
     const ports = memoryPorts()
     const rpcCalls = []
@@ -300,7 +302,7 @@ describe('SumUp sandbox 9 SEK setup', () => {
     const ports = memoryPorts()
     const result = await prepareSumUpSandboxSetup({
       billingAdmin: true,
-      clientAmount: 12,
+      clientAmount: 4,
       env: liveEnv(),
       isBillingAdmin: async () => true,
       ports,
@@ -310,14 +312,14 @@ describe('SumUp sandbox 9 SEK setup', () => {
     const body = transport.calls.find((call) => call[0] === 'createCheckout')[1]
     expect(result).toMatchObject({
       accessGranted: false,
-      amount: 9,
+      amount: 12,
       checkoutId: CHECKOUT_ID,
       currency: 'SEK',
       ok: true,
       purpose: 'SETUP_RECURRING_PAYMENT',
     })
     expect(body).toMatchObject({
-      amount: 9,
+      amount: 12,
       currency: 'SEK',
       merchant_code: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
       purpose: 'SETUP_RECURRING_PAYMENT',
@@ -403,7 +405,7 @@ describe('SumUp sandbox 9 SEK setup', () => {
       transport: accepted,
       userId: USER,
     })
-    expect(result).toMatchObject({ amount: 9, ok: true, purpose: 'SETUP_RECURRING_PAYMENT' })
+    expect(result).toMatchObject({ amount: 12, ok: true, purpose: 'SETUP_RECURRING_PAYMENT' })
     expect(ports.created).toHaveLength(1)
   })
 })

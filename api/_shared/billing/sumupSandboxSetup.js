@@ -1,4 +1,4 @@
-import { getPlanById } from '../../../src/services/billing/planCatalog.js'
+import { ADMIN_RECURRING_SETUP_PLAN_ID, getPlanById } from '../../../src/services/billing/planCatalog.js'
 import { sumUpWidgetMountConfig } from '../../../src/services/billing/sumupWidgetMount.js'
 import { createSupabaseAdminClient } from '../supabaseServer.js'
 import {
@@ -18,7 +18,7 @@ import {
   sumUpSandboxSignal,
 } from './sumupOneTimeCheckout.js'
 
-export const SANDBOX_SETUP_PLAN_ID = 'plan.prelim.sek.month.09'
+export const SANDBOX_SETUP_PLAN_ID = ADMIN_RECURRING_SETUP_PLAN_ID
 const CHECKOUT_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const INTENT_ID_RE = /^[A-Za-z0-9._:-]{1,80}$/
 const INTENT_TTL_MS = 30 * 60 * 1000

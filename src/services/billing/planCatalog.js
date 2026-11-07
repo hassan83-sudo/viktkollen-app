@@ -12,8 +12,13 @@ const PRELIMINARY_SEK_MAJOR = Object.freeze([
 ])
 
 // Tillfällig produktionskontroll. Ordinarie köp förblir 4 SEK.
-// 12 SEK finns redan som planrad, men får bara öppnas av en faktureringsadministratör.
+// 9 och 12 SEK finns som planrader, men får bara öppnas av en faktureringsadministratör.
 export const ADMIN_ONE_TIME_PLAN_ID = 'plan.prelim.sek.month.12'
+export const ADMIN_RECURRING_SETUP_PLAN_ID = 'plan.prelim.sek.month.09'
+
+export function isBillingAdminOnlyPlan(planId) {
+  return planId === ADMIN_ONE_TIME_PLAN_ID || planId === ADMIN_RECURRING_SETUP_PLAN_ID
+}
 
 const launchUnmetered = new Set(LAUNCH_UNMETERED_FEATURES)
 

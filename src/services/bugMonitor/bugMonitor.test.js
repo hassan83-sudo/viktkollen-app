@@ -1,13 +1,17 @@
+import process from 'node:process'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   acceptBugReport,
   acknowledgeBugGroup,
   planBugInvestigation,
+  recordServerBug,
   resetBugMonitorForTests,
   sanitizeBugReport,
+  serverReleaseName,
   summarizeBugReports,
 } from './bugMonitor.js'
 import { buildClientBugPayload } from './bugMonitorClient.js'
+import { setBugMonitorStoreForTests } from './bugMonitorStore.js'
 
 const limits = { dedupeMs: 1000, hourlyCap: 2, maxReports: 10 }
 
@@ -136,5 +140,33 @@ describe('bug monitor reports', () => {
       source: 'ai-help',
     })
     expect(JSON.stringify(payload)).not.toMatch(/hemlig|hunter2/)
+  })
+})
+
+describe('server bug release label', () => {
+  afterEach(() => {
+    setBugMonitorStoreForTests()
+  })
+
+  it('maps the Vercel environment to the stored release', () => {
+    expect(serverReleaseName({ VERCEL_ENV: 'production' })).toBe('production')
+    expect(serverReleaseName({ VERCEL_ENV: 'preview' })).toBe('preview')
+    expect(serverReleaseName({ VERCEL_ENV: 'development' })).toBe('development')
+    expect(serverReleaseName({})).toBe('local')
+  })
+
+  it('labels server errors in Production as production, not local', () => {
+    const calls = []
+    setBugMonitorStoreForTests({ accept: (input, context) => { calls.push(context); return { ok: true } } })
+    const previous = process.env.VERCEL_ENV
+    process.env.VERCEL_ENV = 'production'
+    try {
+      recordServerBug({ fingerprint: 'server-providerunavaila' })
+    } finally {
+      if (previous === undefined) delete process.env.VERCEL_ENV
+      else process.env.VERCEL_ENV = previous
+    }
+    expect(calls).toHaveLength(1)
+    expect(calls[0].release).toBe('production')
   })
 })

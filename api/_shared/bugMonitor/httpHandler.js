@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../aiRouteErrors.js'
 import { requireBillingAdmin } from '../billing/admin.js'
 import { verifySupabaseUser } from '../verifySupabaseUser.js'
-import { planBugInvestigation } from '../../../src/services/bugMonitor/bugMonitor.js'
+import { planBugInvestigation, serverReleaseName } from '../../../src/services/bugMonitor/bugMonitor.js'
 import { resolveBugMonitorStore } from '../../../src/services/bugMonitor/bugMonitorStore.js'
 
 let testAdminCheck = null
@@ -13,13 +13,6 @@ export function setBugMonitorAdminLookupForTests(check = null) {
 
 function hashActor(userId) {
   return createHash('sha256').update(`viktkollen-bug-monitor:${userId}`).digest('hex').slice(0, 16)
-}
-
-function releaseName() {
-  if (process.env.VERCEL_ENV === 'production') return 'production'
-  if (process.env.VERCEL_ENV === 'preview') return 'preview'
-  if (process.env.VERCEL_ENV === 'development') return 'development'
-  return 'local'
 }
 
 function readJson(request) {
@@ -196,7 +189,7 @@ export default async function handler(request, response) {
       source: body.source === 'ai-help' ? 'ai-help' : 'frontend',
     }, {
       actorKey: actor.actorKey,
-      release: releaseName(),
+      release: serverReleaseName(),
     })
   } catch {
     return unavailable(response, requestId)

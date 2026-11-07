@@ -77,10 +77,42 @@ function isCookingToken(token) {
   return cookingTokenToGroup.has(token)
 }
 
+// Bilingual headword aliases for USDA SR Legacy. Keep the Swedish food-bank
+// lookup unchanged; aliases only add candidates when USDA is present.
+const englishFoodAliases = Object.freeze({
+  kyckling: ['chicken'], not: ['beef'], notkott: ['beef'], notfars: ['beef'],
+  gris: ['pork'], flask: ['pork'], flaskkott: ['pork'], lamm: ['lamb'],
+  kalkon: ['turkey'], anka: ['duck'], lax: ['salmon'], torsk: ['cod'],
+  tonfisk: ['tuna'], rakor: ['shrimp'], agg: ['egg'],
+  potatis: ['potato'], ris: ['rice'],
+  pasta: ['pasta', 'macaroni', 'spaghetti'], makaroner: ['macaroni'],
+  brod: ['bread'], havre: ['oats'], havregryn: ['oats'],
+  mjolk: ['milk'], ost: ['cheese'], smor: ['butter'], yoghurt: ['yogurt'],
+  apple: ['apple'], applen: ['apple'], banan: ['banana'],
+  tomat: ['tomato'], broccoli: ['broccoli'], morot: ['carrot'],
+  lok: ['onion'], vitlok: ['garlic'], gurka: ['cucumber'],
+  spenat: ['spinach'], svamp: ['mushroom'],
+  jordnot: ['peanut'], jordnotssmor: ['peanut'], bonor: ['beans'],
+  linser: ['lentils'], kikartor: ['chickpeas'],
+  appel: ['apple'],
+})
+const englishToSwedish = new Map(Object.entries(englishFoodAliases)
+  .flatMap(([swedish, english]) => english.map((word) => [word, swedish])))
+function englishAliasesForHead(head) {
+  const exact = englishFoodAliases[head]
+  if (exact) return exact
+  const compound = Object.keys(englishFoodAliases)
+    .filter((key) => key.length >= 4 && head.startsWith(key))
+    .sort((a, b) => b.length - a.length)[0]
+  return compound ? englishFoodAliases[compound] : []
+}
+
 // Svenska sammansättningar: "kycklingbrost" ska matcha "kyckling", "kycklingfile" ska matcha "kyckling".
 export function tokensMatch(a, b) {
   if (!a || !b) return false
   if (a === b) return true
+  if (englishFoodAliases[a]?.includes(b) || englishFoodAliases[b]?.includes(a)) return true
+  if (englishToSwedish.has(a) && englishToSwedish.has(b) && englishToSwedish.get(a) === englishToSwedish.get(b)) return true
   const [shorter, longer] = a.length <= b.length ? [a, b] : [b, a]
   if (shorter.length < 4) return false
   return longer.startsWith(shorter) || (shorter.length >= 5 && longer.includes(shorter))
@@ -106,9 +138,15 @@ export function buildFoodBankQuery(component = {}) {
 export function foodBankSearchPrefixes(component = {}) {
   const heads = new Set()
   const query = buildFoodBankQuery(component)
-  if (query.head) heads.add(query.head)
+  if (query.head) {
+    heads.add(query.head)
+    englishAliasesForHead(query.head).forEach((alias) => heads.add(alias))
+  }
   const displayHead = buildFoodBankQuery({ name: component.name }).head
-  if (displayHead) heads.add(displayHead)
+  if (displayHead) {
+    heads.add(displayHead)
+    englishAliasesForHead(displayHead).forEach((alias) => heads.add(alias))
+  }
   return [...heads]
     .map((head) => head.slice(0, Math.min(head.length, 6)))
     .filter((prefix) => prefix.length >= 3)
@@ -189,7 +227,7 @@ export function selectFoodBankMatch(component = {}, rows = []) {
     .map((row) => scoreFoodBankCandidate(query, row))
     .filter(Boolean)
     .filter((entry) => foodBankRowToFood(entry.row))
-    .sort((a, b) => b.score - a.score || a.row.name.length - b.row.name.length)
+    .sort((a, b) => b.score - a.score || (a.row.source === 'livsmedelsverket' ? -1 : 1) - (b.row.source === 'livsmedelsverket' ? -1 : 1) || a.row.name.length - b.row.name.length)
 
   const suggestions = scored.slice(0, 3).map((entry) => foodBankRowToFood(entry.row))
   const best = scored[0]

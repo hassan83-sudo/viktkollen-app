@@ -1,0 +1,21 @@
+name: USDA food lookup tests
+on:
+  push:
+    branches: [feature/usda-bilingual-food-lookup]
+  pull_request:
+    paths:
+      - 'src/services/nutritionFoodBankMatcher.js'
+      - 'tests/nutritionFoodBankUsdaAliases.test.js'
+      - '.github/workflows/usda-food-lookup.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run USDA matching regression tests
+        run: node --test tests/nutritionFoodBankUsdaAliases.test.js

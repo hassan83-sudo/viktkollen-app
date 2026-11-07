@@ -33,7 +33,7 @@ describe('SumUpSandboxWidget', () => {
           ok: true,
           payload: {
             accessGranted: false,
-            amount: 4,
+            amount: 9,
             checkoutId: CHECKOUT_ID,
             currency: 'SEK',
             ok: true,

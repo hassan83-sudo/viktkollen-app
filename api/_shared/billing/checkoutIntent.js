@@ -3,7 +3,7 @@ import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../aiRout
 import { verifySupabaseUser } from '../verifySupabaseUser.js'
 import { readServerPlanSale } from './userLifecycleIntent.js'
 import { lookupBillingAdmin } from './admin.js'
-import { ADMIN_ONE_TIME_PLAN_ID, getPlanById, listActivePlans } from '../../../src/services/billing/planCatalog.js'
+import { getPlanById, isBillingAdminOnlyPlan, listActivePlans } from '../../../src/services/billing/planCatalog.js'
 import { createServerCheckoutIntentPorts } from './sumupSandboxSetup.js'
 import { getConfiguredSumUpAdapter, minorUnitsFromSumUpAmount, SUMUP_PROVIDER } from './providers/sumup.js'
 import {
@@ -125,7 +125,7 @@ export async function beginCheckout({
   if (paymentMode !== 'one_time') return fail('UNSUPPORTED_PAYMENT_MODE', 400)
   const planId = String(input.plan_id || planIdFromOfferKey(input.offer_key)).trim()
   if (!PLAN_ID_RE.test(planId) || planId === 'plan.free') return fail('INVALID_PLAN', 400)
-  if (planId === ADMIN_ONE_TIME_PLAN_ID) {
+  if (isBillingAdminOnlyPlan(planId)) {
     let admin = false
     try {
       admin = await isBillingAdmin(userId) === true

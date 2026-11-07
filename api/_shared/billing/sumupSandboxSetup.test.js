@@ -10,6 +10,7 @@ import {
   prepareSumUpSandboxSetup,
   SANDBOX_SETUP_PLAN_ID,
 } from './sumupSandboxSetup.js'
+import { getPlanById } from '../../../src/services/billing/planCatalog.js'
 import { sumUpWidgetMountConfig } from '../../../src/services/billing/sumupWidgetMount.js'
 import {
   LIVE_CHECKOUT_ENV,
@@ -21,7 +22,7 @@ const USER = '11111111-1111-4111-8111-111111111111'
 const CHECKOUT_ID = '7164c99b-13cb-42a1-8ba1-3c2c46a29de7'
 const root = join(dirname(fileURLToPath(import.meta.url)), '../../..')
 
-function checkoutBody(reference, amount = 4) {
+function checkoutBody(reference, amount = 9) {
   return {
     amount,
     checkout_reference: reference,
@@ -33,7 +34,7 @@ function checkoutBody(reference, amount = 4) {
   }
 }
 
-function checkoutRow(amount = 4, status = 'PENDING') {
+function checkoutRow(amount = 9, status = 'PENDING') {
   return {
     amount,
     checkout_reference: 'chk_placeholder',
@@ -68,7 +69,7 @@ function memoryPorts() {
   }
 }
 
-function transportFor({ amount = 4, merchant = {}, sandbox = true, status = 'PENDING' } = {}) {
+function transportFor({ amount = 9, merchant = {}, sandbox = true, status = 'PENDING' } = {}) {
   const calls = []
   let merchantCode = 'MTEST01'
   let reference = ''
@@ -109,10 +110,10 @@ function liveEnv() {
   }
 }
 
-describe('SumUp sandbox 4 SEK setup', () => {
+describe('SumUp sandbox 9 SEK setup', () => {
   const env = { SUMUP_API_KEY: 'test-only-key', SUMUP_MERCHANT_CODE: 'MTEST01' }
 
-  it('serializes exactly 4 SEK from the catalog and ignores a client amount', async () => {
+  it('serializes exactly 9 SEK from the catalog and ignores a client amount', async () => {
     const transport = transportFor()
     const ports = memoryPorts()
     const result = await prepareSumUpSandboxSetup({
@@ -126,7 +127,7 @@ describe('SumUp sandbox 4 SEK setup', () => {
     const reference = ports.created[0]
     expect(result).toMatchObject({
       accessGranted: false,
-      amount: 4,
+      amount: 9,
       checkoutId: CHECKOUT_ID,
       currency: 'SEK',
       ok: true,
@@ -143,7 +144,9 @@ describe('SumUp sandbox 4 SEK setup', () => {
     expect(body).toEqual(checkoutBody(reference))
     expect(body.checkout_reference.startsWith('chk_')).toBe(true)
     expect(body.checkout_reference.startsWith('sb')).toBe(false)
-    expect(JSON.stringify(body)).toContain('"amount":4')
+    expect(SANDBOX_SETUP_PLAN_ID).toBe('plan.prelim.sek.month.09')
+    expect(getPlanById('plan.prelim.sek.month.04').price_minor).toBe(400)
+    expect(JSON.stringify(body)).toContain('"amount":9')
     expect(JSON.stringify(body)).not.toContain('"amount":400')
     expect(JSON.stringify(body)).not.toContain('"amount":0.04')
     expect(body.hosted_checkout).toBeUndefined()
@@ -217,7 +220,7 @@ describe('SumUp sandbox 4 SEK setup', () => {
     expect(transport.calls).toEqual([])
   })
 
-  it('rejects a provider amount that is not 4 SEK and cancels the intent', async () => {
+  it('rejects a provider amount that is not 9 SEK and cancels the intent', async () => {
     const transport = transportFor({ amount: 400 })
     const ports = memoryPorts()
     const rpcCalls = []
@@ -307,14 +310,14 @@ describe('SumUp sandbox 4 SEK setup', () => {
     const body = transport.calls.find((call) => call[0] === 'createCheckout')[1]
     expect(result).toMatchObject({
       accessGranted: false,
-      amount: 4,
+      amount: 9,
       checkoutId: CHECKOUT_ID,
       currency: 'SEK',
       ok: true,
       purpose: 'SETUP_RECURRING_PAYMENT',
     })
     expect(body).toMatchObject({
-      amount: 4,
+      amount: 9,
       currency: 'SEK',
       merchant_code: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
       purpose: 'SETUP_RECURRING_PAYMENT',
@@ -400,7 +403,7 @@ describe('SumUp sandbox 4 SEK setup', () => {
       transport: accepted,
       userId: USER,
     })
-    expect(result).toMatchObject({ amount: 4, ok: true, purpose: 'SETUP_RECURRING_PAYMENT' })
+    expect(result).toMatchObject({ amount: 9, ok: true, purpose: 'SETUP_RECURRING_PAYMENT' })
     expect(ports.created).toHaveLength(1)
   })
 })

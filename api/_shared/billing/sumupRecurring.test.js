@@ -3,16 +3,22 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { createLocalSubscriptionLifecycle } from '../../../src/services/billing/subscriptionLifecycle.js'
+import { createProviderRegistry } from './paymentProviderContract.js'
+import { ingestProviderWebhook } from './providerWebhookIngress.js'
 import { toPublicSubscription } from './subscriptionRead.js'
-import { getConfiguredSumUpAdapter } from './providers/sumup.js'
+import { getConfiguredSumUpAdapter, SUMUP_PROVIDER } from './providers/sumup.js'
 import {
   createServerSumUpInstrumentFingerprintReader,
+  createServerSumUpRenewalClaimer,
+  createServerSumUpRenewalFinisher,
   createServerSumUpRenewalReserver,
   createSumUpRecurring,
   createSumUpRecurringState,
   instrumentFingerprint,
   renewalReference,
   SUMUP_INSTRUMENT_FINGERPRINT_RPC,
+  SUMUP_RENEWAL_CLAIM_RPC,
+  SUMUP_RENEWAL_FINISH_RPC,
   SUMUP_RENEWAL_RESERVE_RPC,
   sumUpCustomerIdForUser,
 } from './sumupRecurring.js'
@@ -28,6 +34,7 @@ const NOW = new Date('2026-09-27T00:00:00.000Z')
 const START = '2026-08-27T00:00:00.000Z'
 const END = '2026-09-27T00:00:00.000Z'
 const NEXT_END = '2026-10-27T00:00:00.000Z'
+const RENEWAL_LEASE_MS = 900 * 1000
 
 describe('BILL-10B SumUp recurring foundation', () => {
   it('requires auth and derives the user, plan, amount, and SEK without granting access', async () => {
@@ -439,6 +446,255 @@ describe('BILL-10B SumUp recurring foundation', () => {
     const recurring = readFileSync(join(root, 'api/_shared/billing/sumupRecurring.js'), 'utf8')
     expect(recurring).not.toMatch(/refund|prorat/i)
   })
+
+  it('resumes one expired reservation without charging a live or unknown attempt', async () => {
+    const opened = await world()
+    const database = renewalDatabase(instrumentFingerprint(TOKEN))
+    const reference = renewalReference(opened.sumup.subscription_id, opened.sumup.current_period_end)
+    const periodEnd = new Date(END).toISOString()
+    database.seed({
+      periodEnd,
+      reference,
+      subscriptionId: opened.sumup.subscription_id,
+      updatedAt: Date.now(),
+    })
+    const renew = () => durableRecurring(opened, database).processDueRenewals({ subscriptions: [opened.sumup] })
+    const live = await renew()
+    expect(live.results[0].code).toBe('RENEWAL_IN_PROGRESS')
+    expect(opened.transport.calls.createCheckout).toBe(0)
+    expect(opened.transport.calls.processCheckout).toBe(0)
+    expect(opened.transport.calls.listCheckouts).toBe(0)
+
+    database.rows[0].updatedAt = Date.now() - RENEWAL_LEASE_MS - 1
+    const resumed = await renew()
+    expect(resumed.results[0].code).toBe('RENEWAL_SUCCEEDED')
+    expect(opened.transport.calls.createCheckout).toBe(1)
+    expect(opened.transport.calls.processCheckout).toBe(1)
+    expect(opened.transport.checkoutCount()).toBe(1)
+    expect(database.rows[0].status).toBe('succeeded')
+    const advanced = await opened.local.subscriptions.getSubscription(opened.sumup.subscription_id)
+    expect(advanced.current_period_end).toBe(NEXT_END)
+
+    const replay = await renew()
+    expect(replay.results[0].code).toBe('RENEWAL_SUCCEEDED')
+    expect(opened.transport.calls.processCheckout).toBe(1)
+    const once = await opened.local.subscriptions.getSubscription(opened.sumup.subscription_id)
+    expect(once.current_period_end).toBe(NEXT_END)
+
+    const created = await world(OTHER)
+    const createdDb = renewalDatabase(instrumentFingerprint(TOKEN))
+    const createdReference = renewalReference(created.sumup.subscription_id, created.sumup.current_period_end)
+    const createdCheckout = await created.transport.createCheckout({
+      amount: 4,
+      checkout_reference: createdReference,
+      currency: 'SEK',
+      customer_id: sumUpCustomerIdForUser(OTHER),
+      merchant_code: MERCHANT,
+      purpose: 'CHECKOUT',
+    })
+    createdDb.seed({
+      periodEnd,
+      providerCheckoutRef: createdCheckout.id,
+      reference: createdReference,
+      status: 'created',
+      subscriptionId: created.sumup.subscription_id,
+      updatedAt: Date.now(),
+    })
+    const held = await durableRecurring(created, createdDb).processDueRenewals({ subscriptions: [created.sumup] })
+    expect(held.results[0].code).toBe('RENEWAL_IN_PROGRESS')
+    expect(created.transport.calls.processCheckout).toBe(0)
+    createdDb.rows[0].updatedAt = Date.now() - RENEWAL_LEASE_MS - 1
+    const continued = await durableRecurring(created, createdDb).processDueRenewals({ subscriptions: [created.sumup] })
+    expect(continued.results[0].code).toBe('RENEWAL_SUCCEEDED')
+    expect(created.transport.calls.createCheckout).toBe(1)
+    expect(created.transport.calls.processCheckout).toBe(1)
+    expect(created.transport.checkoutCount()).toBe(1)
+  })
+
+  it('does not charge a checkout again when its payment result is still unknown', async () => {
+    const opened = await world()
+    const database = renewalDatabase(instrumentFingerprint(TOKEN))
+    opened.transport.failProcess = true
+    opened.transport.outcome = 'PENDING'
+    const crashed = await durableRecurring(opened, database).processDueRenewals({ subscriptions: [opened.sumup] })
+    expect(crashed.results[0].code).toBe('SUMUP_TIMEOUT')
+    expect(database.rows[0].status).toBe('processing')
+    expect(opened.transport.calls.processCheckout).toBe(1)
+
+    database.rows[0].updatedAt = Date.now() - RENEWAL_LEASE_MS - 1
+    const [first, second] = await Promise.all([
+      durableRecurring(opened, database).processDueRenewals({ subscriptions: [opened.sumup] }),
+      durableRecurring(opened, database).processDueRenewals({ subscriptions: [opened.sumup] }),
+    ])
+    expect([first.results[0].code, second.results[0].code]).toEqual(['RENEWAL_AMBIGUOUS', 'RENEWAL_AMBIGUOUS'])
+    expect(opened.transport.calls.processCheckout).toBe(1)
+    expect(database.rows[0].status).toBe('processing')
+
+    opened.transport.markRenewal({ status: 'PAID' })
+    const settled = await durableRecurring(opened, database).processDueRenewals({ subscriptions: [opened.sumup] })
+    expect(settled.results[0].code).toBe('RENEWAL_SUCCEEDED')
+    expect(opened.transport.calls.processCheckout).toBe(1)
+    expect(database.rows[0].status).toBe('succeeded')
+    const row = await opened.local.subscriptions.getSubscription(opened.sumup.subscription_id)
+    expect(row.current_period_end).toBe(NEXT_END)
+    const replay = await durableRecurring(opened, database).processDueRenewals({ subscriptions: [opened.sumup] })
+    expect(replay.results[0].code).toBe('RENEWAL_SUCCEEDED')
+    expect(opened.transport.calls.processCheckout).toBe(1)
+    const kept = await opened.local.subscriptions.getSubscription(opened.sumup.subscription_id)
+    expect(kept.current_period_end).toBe(NEXT_END)
+
+    const paid = await world('33333333-3333-4333-8333-333333333333')
+    const paidDb = renewalDatabase(instrumentFingerprint(TOKEN))
+    const paidReference = renewalReference(paid.sumup.subscription_id, paid.sumup.current_period_end)
+    await paid.transport.createCheckout({
+      amount: 4,
+      checkout_reference: paidReference,
+      currency: 'SEK',
+      customer_id: sumUpCustomerIdForUser('33333333-3333-4333-8333-333333333333'),
+      merchant_code: MERCHANT,
+      purpose: 'CHECKOUT',
+    })
+    paid.transport.markRenewal({ status: 'PAID' })
+    paidDb.seed({
+      periodEnd: new Date(END).toISOString(),
+      reference: paidReference,
+      status: 'reserved',
+      subscriptionId: paid.sumup.subscription_id,
+      updatedAt: Date.now() - RENEWAL_LEASE_MS - 1,
+    })
+    const booked = await durableRecurring(paid, paidDb).processDueRenewals({ subscriptions: [paid.sumup] })
+    expect(booked.results[0].code).toBe('RENEWAL_SUCCEEDED')
+    expect(paid.transport.calls.processCheckout).toBe(0)
+    expect(paid.transport.calls.createCheckout).toBe(1)
+    const paidRow = await paid.local.subscriptions.getSubscription(paid.sumup.subscription_id)
+    expect(paidRow.current_period_end).toBe(NEXT_END)
+
+    const failed = await world('44444444-4444-4444-8444-444444444444')
+    const failedDb = renewalDatabase(instrumentFingerprint(TOKEN))
+    const failedReference = renewalReference(failed.sumup.subscription_id, failed.sumup.current_period_end)
+    await failed.transport.createCheckout({
+      amount: 4,
+      checkout_reference: failedReference,
+      currency: 'SEK',
+      customer_id: sumUpCustomerIdForUser('44444444-4444-4444-8444-444444444444'),
+      merchant_code: MERCHANT,
+      purpose: 'CHECKOUT',
+    })
+    failed.transport.markRenewal({ status: 'FAILED' })
+    failedDb.seed({
+      periodEnd: new Date(END).toISOString(),
+      reference: failedReference,
+      status: 'reserved',
+      subscriptionId: failed.sumup.subscription_id,
+      updatedAt: Date.now() - RENEWAL_LEASE_MS - 1,
+    })
+    const pastDue = await durableRecurring(failed, failedDb).processDueRenewals({ subscriptions: [failed.sumup] })
+    expect(pastDue.results[0].code).toBe('RENEWAL_FAILED')
+    expect(failed.transport.calls.processCheckout).toBe(0)
+    const failedRow = await failed.local.subscriptions.getSubscription(failed.sumup.subscription_id)
+    expect(failedRow.status).toBe('PAST_DUE')
+    expect(failedRow.current_period_end).toBe(END)
+  })
+
+  it('lets one server instance charge and keeps the other from sending a second charge', async () => {
+    const opened = await world()
+    const database = renewalDatabase(instrumentFingerprint(TOKEN))
+    const instance = () => durableRecurring(opened, database).processDueRenewals({ subscriptions: [opened.sumup] })
+    const [winner, loser] = await Promise.all([instance(), instance()])
+    expect(opened.transport.calls.processCheckout).toBe(1)
+    expect(opened.transport.checkoutCount()).toBe(1)
+    expect([winner.results[0].code, loser.results[0].code].sort()).toEqual(['RENEWAL_IN_PROGRESS', 'RENEWAL_SUCCEEDED'])
+    const row = await opened.local.subscriptions.getSubscription(opened.sumup.subscription_id)
+    expect(row.current_period_end).toBe(NEXT_END)
+
+    const expired = await world(OTHER)
+    const expiredDb = renewalDatabase(instrumentFingerprint(TOKEN))
+    expiredDb.seed({
+      periodEnd: new Date(END).toISOString(),
+      reference: renewalReference(expired.sumup.subscription_id, expired.sumup.current_period_end),
+      subscriptionId: expired.sumup.subscription_id,
+      updatedAt: Date.now() - RENEWAL_LEASE_MS - 1,
+    })
+    const expiredInstance = () => durableRecurring(expired, expiredDb).processDueRenewals({ subscriptions: [expired.sumup] })
+    const pair = await Promise.all([expiredInstance(), expiredInstance()])
+    expect(expired.transport.calls.processCheckout).toBe(1)
+    expect(expired.transport.checkoutCount()).toBe(1)
+    expect(pair.map((item) => item.results[0].code).filter((code) => code === 'RENEWAL_SUCCEEDED').length).toBeGreaterThan(0)
+    const expiredRow = await expired.local.subscriptions.getSubscription(expired.sumup.subscription_id)
+    expect(expiredRow.current_period_end).toBe(NEXT_END)
+    expect(JSON.stringify(pair)).not.toContain(TOKEN)
+  })
+
+  it('acknowledges a renewal webhook without one-time activation or another charge', async () => {
+    const reference = renewalReference('sub-renewal', END)
+    const checkoutId = '4f3a9c0e-6b1d-4a77-9e20-0c5d8a7b6e11'
+    let checkoutReference = reference
+    let processed = 0
+    let rpc = 0
+    const registry = createProviderRegistry()
+    registry.register({
+      merchantCode: MERCHANT,
+      provider: SUMUP_PROVIDER,
+      async verify() {
+        throw new Error('renewal webhook must not verify a signature')
+      },
+      transport: {
+        async processCheckout() {
+          processed += 1
+        },
+        async retrieveCheckout() {
+          return {
+            checkout_reference: checkoutReference,
+            id: checkoutId,
+            purpose: 'CHECKOUT',
+            status: 'PAID',
+          }
+        },
+      },
+    })
+    const acked = await ingestProviderWebhook({
+      callRpc: async () => {
+        rpc += 1
+        return null
+      },
+      rawBody: JSON.stringify({ event_type: 'CHECKOUT_STATUS_CHANGED', id: checkoutId }),
+      registry,
+    })
+    expect(acked).toEqual({ accessGranted: false, ok: true, status: 200 })
+    expect(processed).toBe(0)
+    expect(rpc).toBe(0)
+
+    checkoutReference = 'chk_one_time'
+    const oneTime = await ingestProviderWebhook({
+      callRpc: null,
+      rawBody: JSON.stringify({ event_type: 'CHECKOUT_STATUS_CHANGED', id: checkoutId }),
+      registry,
+    })
+    expect(oneTime).toMatchObject({ accessGranted: false, code: 'PROVIDER_NOT_CONFIGURED', ok: false, status: 503 })
+    expect(processed).toBe(0)
+  })
+
+  it('locks the renewal claim migration to the two server-only functions', () => {
+    const sql = readFileSync(join(root, 'supabase/migrations/20261107140000_billing_sumup_renewal_claim_finish.sql'), 'utf8')
+    const names = [...sql.matchAll(/create or replace function ([a-z0-9_.]+)/g)].map((match) => match[1])
+    expect(names).toEqual([
+      'billing.claim_sumup_renewal_attempt',
+      'billing.finish_sumup_renewal_attempt',
+    ])
+    expect(sql).toMatch(/interval '900 seconds'/)
+    expect(sql).toMatch(/p_takeover/)
+    expect(sql).toMatch(/security definer/)
+    expect(sql).toMatch(/set search_path = pg_catalog, pg_temp/)
+    expect(sql).toMatch(/revoke all on function billing\.claim_sumup_renewal_attempt\(text, text, timestamptz, text, text, boolean\) from public, anon, authenticated, service_role/)
+    expect(sql).toMatch(/grant execute on function billing\.claim_sumup_renewal_attempt\(text, text, timestamptz, text, text, boolean\) to service_role/)
+    expect(sql).toMatch(/revoke all on function billing\.finish_sumup_renewal_attempt\(text, text, timestamptz, text, text\) from public, anon, authenticated, service_role/)
+    expect(sql).toMatch(/grant execute on function billing\.finish_sumup_renewal_attempt\(text, text, timestamptz, text, text\) to service_role/)
+    expect(sql).not.toMatch(/grant execute on function billing\.claim_sumup_renewal_attempt\([^)]*\) to (public|anon|authenticated)/)
+    expect(sql).not.toMatch(/grant execute on function billing\.finish_sumup_renewal_attempt\([^)]*\) to (public|anon|authenticated)/)
+    expect(sql).not.toMatch(/function billing\.reserve_sumup_renewal_attempt|cleanup_disposable_test_subscription|create table|drop table|delete from/i)
+    expect(sql).not.toMatch(/grant select|grant insert|grant update|grant delete/i)
+    expect(sql).not.toMatch(/\btoken text\b|card_number|cvv/)
+  })
 })
 
 async function world(userId = USER, periodEnd = END, periodStart = START, options = {}) {
@@ -483,7 +739,7 @@ async function bind(opened, userId = USER) {
 function fakeTransport() {
   const checkouts = []
   let seq = 0
-  const calls = { createCheckout: 0, createCustomer: 0, processCheckout: 0 }
+  const calls = { createCheckout: 0, createCustomer: 0, listCheckouts: 0, processCheckout: 0 }
   const transport = {
     calls,
     outcome: 'PAID',
@@ -511,6 +767,7 @@ function fakeTransport() {
       return { ...row }
     },
     async listCheckouts(reference) {
+      calls.listCheckouts += 1
       return checkouts.filter((row) => row.checkout_reference === reference).map((row) => ({ ...row }))
     },
     async listPaymentInstruments() {
@@ -540,6 +797,127 @@ function fakeTransport() {
       const row = checkouts.find((item) => item.purpose === 'SETUP_RECURRING_PAYMENT')
       if (row) Object.assign(row, patch)
     },
+    markRenewal(patch) {
+      const row = checkouts.find((item) => item.purpose === 'CHECKOUT')
+      if (row) Object.assign(row, patch)
+    },
+    checkoutCount() {
+      return checkouts.length
+    },
   }
   return transport
+}
+
+function durableRecurring(opened, database) {
+  const callRpc = (name, args) => database.call(name, args)
+  return createSumUpRecurring({
+    claimRenewalAttempt: createServerSumUpRenewalClaimer(callRpc),
+    finishRenewalAttempt: createServerSumUpRenewalFinisher(callRpc),
+    lifecycle: opened.local.lifecycle,
+    merchantCode: MERCHANT,
+    now: () => NOW,
+    readInstrumentFingerprint: createServerSumUpInstrumentFingerprintReader(callRpc),
+    reserveRenewalAttempt: createServerSumUpRenewalReserver(callRpc),
+    state: createSumUpRecurringState(),
+    transport: opened.transport,
+  })
+}
+
+function renewalDatabase(fingerprint) {
+  const rows = []
+  const now = () => Date.now()
+  function reject(code) {
+    const error = new Error(code)
+    error.code = code
+    throw error
+  }
+  function rowFor(args) {
+    const row = rows.find((item) => item.reference === args.p_checkout_reference)
+    if (!row) reject('renewal_attempt_not_found')
+    if (row.subscriptionId !== args.p_subscription_id || row.periodEnd !== args.p_period_end) reject('renewal_attempt_conflict')
+    return row
+  }
+  function leaseOpen(row) {
+    return now() - row.updatedAt < RENEWAL_LEASE_MS
+  }
+  function claimView(row, claimed, takeoverAllowed) {
+    return {
+      checkout_reference: row.reference,
+      claimed,
+      provider_checkout_ref: row.providerCheckoutRef,
+      status: row.status,
+      takeover_allowed: takeoverAllowed,
+    }
+  }
+  return {
+    rows,
+    seed(fields) {
+      rows.push({
+        providerCheckoutRef: '',
+        status: 'reserved',
+        updatedAt: now(),
+        ...fields,
+      })
+    },
+    call(name, args) {
+      if (name === SUMUP_INSTRUMENT_FINGERPRINT_RPC) return fingerprint
+      if (name === SUMUP_RENEWAL_RESERVE_RPC) {
+        const existing = rows.find((item) => item.reference === args.p_checkout_reference)
+        if (existing) {
+          if (existing.subscriptionId !== args.p_subscription_id || existing.periodEnd !== args.p_period_end) {
+            reject('renewal_attempt_conflict')
+          }
+          return { checkout_reference: existing.reference, inserted: false, status: existing.status }
+        }
+        rows.push({
+          periodEnd: args.p_period_end,
+          providerCheckoutRef: '',
+          reference: args.p_checkout_reference,
+          status: 'reserved',
+          subscriptionId: args.p_subscription_id,
+          updatedAt: now(),
+        })
+        return { checkout_reference: args.p_checkout_reference, inserted: true, status: 'reserved' }
+      }
+      if (name === SUMUP_RENEWAL_CLAIM_RPC) {
+        const row = rowFor(args)
+        const ref = args.p_provider_checkout_ref || ''
+        if (args.p_takeover === true && leaseOpen(row)) return claimView(row, false, false)
+        if (args.p_to_status === 'created') {
+          if (row.status === 'processing' || row.status === 'succeeded' || row.status === 'failed') return claimView(row, false, false)
+          if (row.status === 'created') {
+            if (ref && row.providerCheckoutRef !== ref) reject('renewal_attempt_conflict')
+            return claimView(row, false, true)
+          }
+          if (row.status !== 'reserved') reject('illegal_renewal_transition')
+          if (!ref) return claimView(row, false, true)
+          row.status = 'created'
+          row.providerCheckoutRef = ref
+          row.updatedAt = now()
+          return claimView(row, true, true)
+        }
+        if (row.status === 'processing' || row.status === 'succeeded' || row.status === 'failed' || row.status === 'reserved') {
+          return claimView(row, false, false)
+        }
+        if (row.status !== 'created') reject('illegal_renewal_transition')
+        if (ref && row.providerCheckoutRef !== ref) reject('renewal_attempt_conflict')
+        row.status = 'processing'
+        row.updatedAt = now()
+        return claimView(row, true, true)
+      }
+      if (name === SUMUP_RENEWAL_FINISH_RPC) {
+        const row = rowFor(args)
+        const ref = args.p_provider_checkout_ref || ''
+        if (ref && row.providerCheckoutRef && ref !== row.providerCheckoutRef) reject('renewal_attempt_conflict')
+        if (row.status === args.p_status) return { checkout_reference: row.reference, status: row.status }
+        if (row.status === 'succeeded' || row.status === 'failed') reject('renewal_attempt_conflict')
+        if (!['reserved', 'created', 'processing'].includes(row.status)) reject('illegal_renewal_transition')
+        if (!row.providerCheckoutRef && ref) row.providerCheckoutRef = ref
+        row.status = args.p_status
+        row.updatedAt = now()
+        return { checkout_reference: row.reference, status: row.status }
+      }
+      throw new Error(`unexpected rpc ${name}`)
+    },
+  }
 }

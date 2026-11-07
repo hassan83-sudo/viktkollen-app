@@ -118,6 +118,11 @@ async function activateVerifiedSetupNotification({ adapter, callRpc, now, rawBod
     return fail('SUMUP_UNAVAILABLE', 503)
   }
   if (checkout?.purpose !== 'SETUP_RECURRING_PAYMENT') {
+    // A renewal checkout is settled by the renewal worker. Acknowledge the
+    // notification so SumUp stops retrying, without one-time activation.
+    if (/^rn[0-9a-f]{40}$/.test(String(checkout?.checkout_reference || ''))) {
+      return { accessGranted: false, ok: true, status: 200 }
+    }
     // Hosted one-time purchase: same verification and activation as the return view.
     if (typeof callRpc !== 'function' || !adapter.merchantCode) return fail('PROVIDER_NOT_CONFIGURED', 503)
     return sealOneTime(await activateVerifiedOneTimeCheckout({

@@ -6,6 +6,8 @@ import { minorUnitsFromSumUpAmount, sumUpMajorFromMinor, SUMUP_PROVIDER } from '
 const DUE_STATUS = new Set([SUBSCRIPTION_STATUS.ACTIVE, SUBSCRIPTION_STATUS.PAST_DUE])
 const FINGERPRINT_RE = /^[0-9a-f]{64}$/
 export const SUMUP_INSTRUMENT_FINGERPRINT_RPC = 'billing.read_sumup_instrument_fingerprint'
+export const SUMUP_RENEWAL_CLAIM_RPC = 'billing.claim_sumup_renewal_attempt'
+export const SUMUP_RENEWAL_FINISH_RPC = 'billing.finish_sumup_renewal_attempt'
 export const SUMUP_RENEWAL_RESERVE_RPC = 'billing.reserve_sumup_renewal_attempt'
 
 export function createServerSumUpInstrumentFingerprintReader(callRpc) {
@@ -46,6 +48,82 @@ export function createServerSumUpRenewalReserver(callRpc) {
       status: data.status,
       subscriptionId,
     }
+  }
+}
+
+function renewalAttemptConflict() {
+  const conflict = new Error('renewal_attempt_conflict')
+  conflict.code = 'renewal_attempt_conflict'
+  return conflict
+}
+
+function rethrowRenewalConflict(error) {
+  const message = `${error?.code || ''} ${error?.message || ''}`
+  if (message.includes('renewal_attempt_conflict') || message.includes('23505') || message.toLowerCase().includes('unique')) {
+    throw renewalAttemptConflict()
+  }
+  throw error
+}
+
+export function createServerSumUpRenewalClaimer(callRpc) {
+  return async function claimRenewalAttempt({
+    periodEnd,
+    providerCheckoutRef = '',
+    reference,
+    subscriptionId,
+    takeover,
+    toStatus,
+  } = {}) {
+    if (typeof callRpc !== 'function' || (takeover !== true && takeover !== false)) throw renewalAttemptConflict()
+    if (toStatus !== 'created' && toStatus !== 'processing') throw renewalAttemptConflict()
+    let data
+    try {
+      data = await callRpc(SUMUP_RENEWAL_CLAIM_RPC, {
+        p_checkout_reference: reference,
+        p_period_end: new Date(periodEnd).toISOString(),
+        p_provider_checkout_ref: providerCheckoutRef || '',
+        p_subscription_id: subscriptionId,
+        p_takeover: takeover,
+        p_to_status: toStatus,
+      })
+    } catch (error) {
+      rethrowRenewalConflict(error)
+    }
+    if (!data || data.checkout_reference !== reference || typeof data.status !== 'string' || (data.claimed !== true && data.claimed !== false)) {
+      throw renewalAttemptConflict()
+    }
+    return {
+      claimed: data.claimed === true,
+      providerCheckoutRef: typeof data.provider_checkout_ref === 'string' ? data.provider_checkout_ref : '',
+      status: data.status,
+      takeoverAllowed: data.takeover_allowed === true,
+    }
+  }
+}
+
+export function createServerSumUpRenewalFinisher(callRpc) {
+  return async function finishRenewalAttempt({
+    periodEnd,
+    providerCheckoutRef = '',
+    reference,
+    status,
+    subscriptionId,
+  } = {}) {
+    if (typeof callRpc !== 'function' || (status !== 'succeeded' && status !== 'failed')) throw renewalAttemptConflict()
+    let data
+    try {
+      data = await callRpc(SUMUP_RENEWAL_FINISH_RPC, {
+        p_checkout_reference: reference,
+        p_period_end: new Date(periodEnd).toISOString(),
+        p_provider_checkout_ref: providerCheckoutRef || '',
+        p_status: status,
+        p_subscription_id: subscriptionId,
+      })
+    } catch (error) {
+      rethrowRenewalConflict(error)
+    }
+    if (!data || data.checkout_reference !== reference || data.status !== status) throw renewalAttemptConflict()
+    return { providerCheckoutRef: providerCheckoutRef || '', status: data.status }
   }
 }
 
@@ -126,6 +204,8 @@ export function markSumUpRenewalProcessing(state, { reference, subscriptionId } 
  * SumUp rejects a second checkout with that reference.
  */
 export function createSumUpRecurring({
+  claimRenewalAttempt = null,
+  finishRenewalAttempt = null,
   lifecycle,
   merchantCode,
   now = () => new Date(),
@@ -248,6 +328,9 @@ export function createSumUpRecurring({
     if (!priced) return { charged: false, code: 'INVALID_PLAN', subscriptionId: subscription.subscription_id }
     const reference = renewalReference(subscription.subscription_id, subscription.current_period_end)
     const sharedReservation = typeof reserveRenewalAttempt === 'function'
+    const durableClaims = sharedReservation
+      && typeof claimRenewalAttempt === 'function'
+      && typeof finishRenewalAttempt === 'function'
     let attempt
     try {
       attempt = sharedReservation
@@ -269,6 +352,7 @@ export function createSumUpRecurring({
     }
     if (sharedReservation) {
       if (attempt.inserted !== true) {
+        if (durableClaims) return recoverShared(subscription, attempt, priced, binding)
         if (attempt.status === 'succeeded') {
           return { charged: false, code: 'RENEWAL_SUCCEEDED', subscriptionId: subscription.subscription_id }
         }
@@ -278,6 +362,7 @@ export function createSumUpRecurring({
         return { charged: false, code: 'RENEWAL_IN_PROGRESS', subscriptionId: subscription.subscription_id }
       }
       state.attempts.push(attempt)
+      if (durableClaims) return openAndCharge(subscription, attempt, priced, binding, false)
     }
     if (attempt.status === 'succeeded') return applySuccess(subscription, attempt)
     if (attempt.status === 'failed') return { charged: false, code: 'RENEWAL_FAILED', subscriptionId: subscription.subscription_id }
@@ -341,7 +426,7 @@ export function createSumUpRecurring({
       try {
         stored = await readInstrumentFingerprint(subscription.subscription_id)
       } catch {
-        stored = null
+        // A failed lookup leaves the fingerprint unread.
       }
       if (!FINGERPRINT_RE.test(stored)) return null
       return { customerId, fingerprint: stored }
@@ -411,6 +496,174 @@ export function createSumUpRecurring({
       status: applied.subscription.status,
       subscriptionId: subscription.subscription_id,
     }
+  }
+
+  async function recoverShared(subscription, attempt, priced, binding) {
+    if (attempt.status === 'succeeded') {
+      await finishDurable(attempt, 'succeeded', attempt.providerCheckoutRef)
+      return applySuccess(subscription, attempt)
+    }
+    if (attempt.status === 'failed') {
+      await finishDurable(attempt, 'failed', attempt.providerCheckoutRef)
+      return applyFailure(subscription, attempt)
+    }
+    if (attempt.status === 'processing') return reconcileDurable(subscription, attempt, priced, binding)
+    if (attempt.status !== 'reserved' && attempt.status !== 'created') {
+      return { charged: false, code: 'illegal_renewal_transition', subscriptionId: subscription.subscription_id }
+    }
+    const probe = await claimRenewalAttempt({
+      periodEnd: attempt.periodEnd,
+      providerCheckoutRef: '',
+      reference: attempt.reference,
+      subscriptionId: attempt.subscriptionId,
+      takeover: true,
+      toStatus: 'created',
+    })
+    if (probe.status === 'processing') return reconcileDurable(subscription, attempt, priced, binding)
+    if (probe.status === 'succeeded' || probe.status === 'failed') {
+      attempt.status = probe.status
+      attempt.providerCheckoutRef = probe.providerCheckoutRef || attempt.providerCheckoutRef
+      return recoverShared(subscription, attempt, priced, binding)
+    }
+    if (probe.takeoverAllowed !== true || (probe.status !== 'reserved' && probe.status !== 'created')) {
+      return { charged: false, code: 'RENEWAL_IN_PROGRESS', subscriptionId: subscription.subscription_id }
+    }
+    attempt.status = probe.status
+    if (probe.providerCheckoutRef) attempt.providerCheckoutRef = probe.providerCheckoutRef
+    return openAndCharge(subscription, attempt, priced, binding, true)
+  }
+
+  async function openAndCharge(subscription, attempt, priced, binding, takeover) {
+    const reference = attempt.reference
+    let checkout = await singleCheckout(transport, reference)
+    if (!checkout && attempt.status !== 'reserved') {
+      return { ambiguous: true, charged: false, code: 'RENEWAL_AMBIGUOUS', subscriptionId: subscription.subscription_id }
+    }
+    if (!checkout) {
+      if (!await oneMatchingToken(binding)) {
+        return { charged: false, code: 'MISSING_INSTRUMENT', subscriptionId: subscription.subscription_id }
+      }
+      try {
+        checkout = await transport.createCheckout({
+          amount: priced.amount,
+          checkout_reference: reference,
+          currency: 'SEK',
+          customer_id: binding.customerId,
+          description: 'Viktkollen',
+          merchant_code: merchantCode,
+          purpose: 'CHECKOUT',
+        })
+      } catch (error) {
+        checkout = await singleCheckout(transport, reference)
+        if (!checkout) return { ambiguous: true, charged: false, code: error?.code || 'SUMUP_TIMEOUT', subscriptionId: subscription.subscription_id }
+      }
+    }
+    let chargeTakeover = takeover
+    if (attempt.status === 'reserved') {
+      const created = await claimRenewalAttempt({
+        periodEnd: attempt.periodEnd,
+        providerCheckoutRef: checkout.id,
+        reference,
+        subscriptionId: attempt.subscriptionId,
+        takeover: chargeTakeover,
+        toStatus: 'created',
+      })
+      attempt.providerCheckoutRef = created.providerCheckoutRef || checkout.id
+      if (created.status === 'processing' || created.status === 'succeeded' || created.status === 'failed') {
+        attempt.status = created.status
+        return recoverShared(subscription, attempt, priced, binding)
+      }
+      if (created.claimed === true) {
+        chargeTakeover = false
+        attempt.status = 'created'
+      } else if (chargeTakeover === true && created.status === 'created' && created.takeoverAllowed === true) {
+        attempt.status = 'created'
+      } else {
+        attempt.status = created.status
+        return { charged: false, code: 'RENEWAL_IN_PROGRESS', subscriptionId: subscription.subscription_id }
+      }
+    }
+    const verified = checkout?.id ? await transport.retrieveCheckout(checkout.id) : null
+    if (!verified || !samePrice(verified, priced) || verified.customer_id !== binding.customerId) {
+      return { charged: false, code: 'AMOUNT_MISMATCH', subscriptionId: subscription.subscription_id }
+    }
+    if (verified.status === 'PAID') {
+      await finishDurable(attempt, 'succeeded', verified.id)
+      return applySuccess(subscription, attempt, verified)
+    }
+    if (verified.status === 'FAILED' || verified.status === 'EXPIRED') {
+      await finishDurable(attempt, 'failed', verified.id)
+      return applyFailure(subscription, attempt)
+    }
+    if (verified.status !== 'PENDING') {
+      return { ambiguous: true, charged: false, code: 'RENEWAL_AMBIGUOUS', subscriptionId: subscription.subscription_id }
+    }
+    const instrumentToken = await oneMatchingToken(binding)
+    if (!instrumentToken) return { charged: false, code: 'MISSING_INSTRUMENT', subscriptionId: subscription.subscription_id }
+    const processing = await claimRenewalAttempt({
+      periodEnd: attempt.periodEnd,
+      providerCheckoutRef: verified.id,
+      reference,
+      subscriptionId: attempt.subscriptionId,
+      takeover: chargeTakeover,
+      toStatus: 'processing',
+    })
+    attempt.providerCheckoutRef = processing.providerCheckoutRef || verified.id
+    if (processing.claimed !== true) {
+      attempt.status = processing.status
+      if (processing.status === 'processing' || processing.status === 'succeeded' || processing.status === 'failed') {
+        return recoverShared(subscription, attempt, priced, binding)
+      }
+      return { charged: false, code: 'RENEWAL_IN_PROGRESS', subscriptionId: subscription.subscription_id }
+    }
+    attempt.status = 'processing'
+    try {
+      await transport.processCheckout(verified.id, {
+        customer_id: binding.customerId,
+        payment_type: 'card',
+        token: instrumentToken,
+      })
+    } catch (error) {
+      return { ambiguous: true, charged: false, code: error?.code || 'SUMUP_TIMEOUT', subscriptionId: subscription.subscription_id }
+    }
+    const after = await transport.retrieveCheckout(verified.id)
+    if (after?.status === 'PAID' && samePrice(after, priced) && after.customer_id === binding.customerId) {
+      await finishDurable(attempt, 'succeeded', verified.id)
+      return applySuccess(subscription, attempt, after)
+    }
+    if (after?.status === 'FAILED' || after?.status === 'EXPIRED') {
+      await finishDurable(attempt, 'failed', verified.id)
+      return applyFailure(subscription, attempt)
+    }
+    return { ambiguous: true, charged: false, code: 'RENEWAL_AMBIGUOUS', subscriptionId: subscription.subscription_id }
+  }
+
+  async function reconcileDurable(subscription, attempt, priced, binding) {
+    const checkout = await singleCheckout(transport, attempt.reference)
+    if (!checkout?.id) return { ambiguous: true, charged: false, code: 'RENEWAL_AMBIGUOUS', subscriptionId: subscription.subscription_id }
+    const verified = await transport.retrieveCheckout(checkout.id)
+    if (verified?.status === 'PAID' && samePrice(verified, priced) && verified.customer_id === binding.customerId) {
+      await finishDurable(attempt, 'succeeded', verified.id)
+      return applySuccess(subscription, attempt, verified)
+    }
+    if (verified?.status === 'FAILED' || verified?.status === 'EXPIRED') {
+      await finishDurable(attempt, 'failed', verified.id)
+      return applyFailure(subscription, attempt)
+    }
+    return { ambiguous: true, charged: false, code: 'RENEWAL_AMBIGUOUS', subscriptionId: subscription.subscription_id }
+  }
+
+  async function finishDurable(attempt, status, providerCheckoutRef) {
+    const finished = await finishRenewalAttempt({
+      periodEnd: attempt.periodEnd,
+      providerCheckoutRef: providerCheckoutRef || '',
+      reference: attempt.reference,
+      status,
+      subscriptionId: attempt.subscriptionId,
+    })
+    attempt.status = finished.status
+    if (providerCheckoutRef) attempt.providerCheckoutRef = providerCheckoutRef
+    return finished
   }
 }
 

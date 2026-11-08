@@ -30,6 +30,7 @@ import { buildOutfitWeatherFacts, outfitFeedbackDisclaimer, outfitVisionReady } 
 import AiEarMode from '../../ai-ear/AiEarMode.jsx'
 import ForgottenItemsCheck from './ForgottenItemsCheck.jsx'
 import SmartCameraLiveView from './SmartCameraLiveView.jsx'
+import OutfitWardrobeSelection from './OutfitWardrobeSelection.jsx'
 
 function ModeHeader({ mode, onBack, title }) {
   return (
@@ -184,6 +185,7 @@ function OutfitMode({ onCameraActive, weather }) {
       {!outfitVisionReady && (
         <p>Jag kan inte bedöma färgkombinationer från kameran ännu. Använd spegeln i live-preview och vädret nedan.</p>
       )}
+      <OutfitWardrobeSelection />
       {facts.available ? (
         <section className="smart-camera-weather">
           <h3>Väder just nu</h3>

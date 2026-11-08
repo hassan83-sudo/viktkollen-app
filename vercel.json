@@ -113,6 +113,14 @@
       "destination": "/api/billing/admin?__vk_route=sumup_renewal"
     },
     {
+      "source": "/api/billing/sumup-checkout-inspect",
+      "destination": "/api/billing/admin?__vk_route=sumup_checkout_inspect"
+    },
+    {
+      "source": "/api/billing/sumup-checkout-inspect/",
+      "destination": "/api/billing/admin?__vk_route=sumup_checkout_inspect"
+    },
+    {
       "source": "/api/billing/webhook",
       "destination": "/api/billing/user?__vk_route=webhook"
     },

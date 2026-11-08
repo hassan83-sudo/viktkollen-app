@@ -20,6 +20,7 @@ import {
 import { rejectPlanCommercialOverrides } from '../../../src/services/billing/planCommercialControl.js'
 import { aggregateProviderTelemetry } from '../../../src/services/billing/providerTelemetry.js'
 import { resolveDurableUsageRepository } from '../../_shared/billing/durableUsageRepository.js'
+import { handleSumUpCheckoutInspect } from '../../_shared/billing/sumupCheckoutInspect.js'
 import { handleSumUpRenewal } from '../../_shared/billing/sumupRenewalHandler.js'
 
 function readBody(request) {
@@ -107,6 +108,7 @@ function invalidAdmin(response, requestId, code = 'INVALID_ADMIN_REQUEST') {
 
 export default async function handler(request, response) {
   if (request.query?.__vk_route === 'sumup_renewal') return handleSumUpRenewal(request, response)
+  if (request.query?.__vk_route === 'sumup_checkout_inspect') return handleSumUpCheckoutInspect(request, response)
   const requestId = `bill-admin-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   setNoStoreHeaders(response)
 

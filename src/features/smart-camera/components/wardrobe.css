@@ -19,3 +19,9 @@
   .digital-wardrobe .wardrobe-layout { grid-template-columns: minmax(0, 1fr); }
   .digital-wardrobe .wardrobe-mannequin { max-width: 260px; justify-self: center; }
 }
+
+.digital-wardrobe .wardrobe-outfit-stack-list { display: grid; gap: 12px; list-style: none; padding: 0; margin: 0; }
+.digital-wardrobe .wardrobe-outfit-stack-list li { display: grid; justify-items: center; gap: 6px; padding: 10px; border: 1px solid #aeb9c6; border-radius: 12px; }
+.digital-wardrobe .wardrobe-outfit-stack-list img { display: block; width: 100%; max-width: 190px; height: 150px; object-fit: contain; }
+.digital-wardrobe .wardrobe-outfit-stack-list span { font-size: .9rem; text-align: center; }
+.digital-wardrobe .wardrobe-outfit-stack-color { width: 90px; height: 110px; border-radius: 8px; }

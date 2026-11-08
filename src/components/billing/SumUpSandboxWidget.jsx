@@ -39,7 +39,7 @@ export default function SumUpSandboxWidget({
     let cancelled = false
     prepare().then((result) => {
       if (cancelled) return
-      if (!result?.ok || result.payload?.accessGranted !== false || result.payload?.amount !== 9 || result.payload?.currency !== 'SEK') {
+      if (!result?.ok || result.payload?.accessGranted !== false || result.payload?.amount !== 12 || result.payload?.currency !== 'SEK') {
         setPhase(result?.status === 401 ? 'signed-out' : 'unavailable')
         return
       }
@@ -98,7 +98,7 @@ export default function SumUpSandboxWidget({
       <div className="panel-heading">
         <div>
           <p className="eyebrow">SumUp sandbox</p>
-          <h2>9 SEK recurring setup</h2>
+          <h2>12 SEK recurring setup</h2>
         </div>
       </div>
       <p>Kortuppgifter skickas till SumUp. Den här sidan ger ingen betald åtkomst.</p>

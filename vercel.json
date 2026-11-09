@@ -121,6 +121,14 @@
       "destination": "/api/billing/admin?__vk_route=sumup_checkout_inspect"
     },
     {
+      "source": "/api/billing/sumup-setup-attach-existing",
+      "destination": "/api/billing/admin?__vk_route=sumup_setup_attach_existing"
+    },
+    {
+      "source": "/api/billing/sumup-setup-attach-existing/",
+      "destination": "/api/billing/admin?__vk_route=sumup_setup_attach_existing"
+    },
+    {
       "source": "/api/billing/webhook",
       "destination": "/api/billing/user?__vk_route=webhook"
     },

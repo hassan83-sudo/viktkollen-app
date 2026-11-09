@@ -7,8 +7,12 @@ import { PLAN_ASSIGNMENT_RPC } from '../../../src/services/billing/planAssignmen
 import { SUMUP_CHECKOUT_INTENT_RPC, SUMUP_INITIAL_ACTIVATION_RPC } from './sumupInitialActivation.js'
 import { ONE_TIME_ACTIVATION_RPC, ONE_TIME_READ_RPC } from './sumupOneTimeCheckout.js'
 
+// Keep the string here to avoid a circular import with sumupSetupAttachExisting.js.
+const SUMUP_SETUP_ATTACH_EXISTING_RPC = 'billing.attach_verified_sumup_setup_to_existing'
+
 const SAFE_MESSAGES = new Map([
   ['assignment_sync_unconfirmed', 'assignment_sync_unconfirmed'],
+  ['cancel_not_cleared', 'cancel_not_cleared'],
   ['checkout_binding_mismatch', 'checkout_binding_mismatch'],
   ['checkout_intent_cancelled', 'checkout_intent_cancelled'],
   ['checkout_intent_consumed', 'checkout_intent_consumed'],
@@ -31,11 +35,13 @@ const SAFE_MESSAGES = new Map([
   ['invalid_period', 'invalid_period'],
   ['invalid_status', 'invalid_status'],
   ['invalid_user_id', 'invalid_user_id'],
+  ['period_changed', 'period_changed'],
   ['period_expired', 'period_expired'],
   ['provider_checkout_mismatch', 'provider_checkout_mismatch'],
   ['provider_mismatch', 'provider_mismatch'],
   ['provider_subscription_conflict', 'provider_subscription_conflict'],
   ['subscription_not_found', 'subscription_not_found'],
+  ['subscription_user_mismatch', 'subscription_user_mismatch'],
   ['unknown_plan', 'unknown_plan'],
 ])
 
@@ -67,6 +73,7 @@ function allowedRpcNames() {
     PLAN_ASSIGNMENT_RPC,
     SUMUP_CHECKOUT_INTENT_RPC,
     SUMUP_INITIAL_ACTIVATION_RPC,
+    SUMUP_SETUP_ATTACH_EXISTING_RPC,
     ONE_TIME_ACTIVATION_RPC,
     ONE_TIME_READ_RPC,
   ])

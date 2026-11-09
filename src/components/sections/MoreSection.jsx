@@ -6,6 +6,7 @@ import TestFeedbackPage from '../../features/testFeedback/TestFeedbackPage.jsx'
 import PlanCommercialAdmin from '../billing/PlanCommercialAdmin.jsx'
 import PlanComparison from '../billing/PlanComparison.jsx'
 import PlanUsagePanel from '../billing/PlanUsagePanel.jsx'
+import SumUpCheckoutInspectAdmin from '../billing/SumUpCheckoutInspectAdmin.jsx'
 import SumUpSandboxWidget from '../billing/SumUpSandboxWidget.jsx'
 import CloudBackupPanel from '../CloudBackupPanel.jsx'
 import CloudStatusPanel from '../CloudStatusPanel.jsx'
@@ -484,6 +485,7 @@ function MoreSection({
             </div>
 
             {isAuthenticated ? <PlanCommercialAdmin /> : null}
+            {isAuthenticated ? <SumUpCheckoutInspectAdmin /> : null}
             {isAuthenticated ? <BugMonitorAdminEntry key={userId || 'signed-out'} /> : null}
 
             <div className="app-information">

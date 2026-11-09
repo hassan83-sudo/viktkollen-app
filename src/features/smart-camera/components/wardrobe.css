@@ -25,3 +25,9 @@
 .digital-wardrobe .wardrobe-outfit-stack-list img { display: block; width: 100%; max-width: 190px; height: 150px; object-fit: contain; }
 .digital-wardrobe .wardrobe-outfit-stack-list span { font-size: .9rem; text-align: center; }
 .digital-wardrobe .wardrobe-outfit-stack-color { width: 90px; height: 110px; border-radius: 8px; }
+
+/* Display selected clothing as one continuous outfit, not separate cards. */
+.digital-wardrobe .wardrobe-outfit-stack-list { gap: 0; justify-items: center; }
+.digital-wardrobe .wardrobe-outfit-stack-list li { width: 100%; max-width: 190px; box-sizing: border-box; gap: 0; padding: 0; border: 0; border-radius: 0; }
+.digital-wardrobe .wardrobe-outfit-stack-list img { width: 100%; max-width: 190px; height: auto; max-height: 150px; object-fit: contain; }
+.digital-wardrobe .wardrobe-outfit-stack-list span { font-size: .75rem; line-height: 1.2; }

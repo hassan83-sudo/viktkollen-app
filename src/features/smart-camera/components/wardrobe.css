@@ -31,3 +31,12 @@
 .digital-wardrobe .wardrobe-outfit-stack-list li { width: 100%; max-width: 190px; box-sizing: border-box; gap: 0; padding: 0; border: 0; border-radius: 0; }
 .digital-wardrobe .wardrobe-outfit-stack-list img { width: 100%; max-width: 190px; height: auto; max-height: 150px; object-fit: contain; }
 .digital-wardrobe .wardrobe-outfit-stack-list span { font-size: .75rem; line-height: 1.2; }
+
+/* Cut-out garment preview: align clothing closely, without labels between pieces. */
+.digital-wardrobe .wardrobe-outfit-stack-list { display: flex; flex-direction: column; align-items: center; gap: 0; }
+.digital-wardrobe .wardrobe-outfit-stack-list .wardrobe-outfit-piece { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 210px; padding: 0; margin: 0; }
+.digital-wardrobe .wardrobe-outfit-stack-list .wardrobe-outfit-piece img { display: block; width: auto; max-width: 100%; height: auto; max-height: none; object-fit: contain; }
+.digital-wardrobe .wardrobe-outfit-stack-list .wardrobe-outfit-top img { max-height: 160px; }
+.digital-wardrobe .wardrobe-outfit-stack-list .wardrobe-outfit-bottom img { max-height: 190px; }
+.digital-wardrobe .wardrobe-outfit-stack-list .wardrobe-outfit-shoes img { max-height: 90px; }
+.digital-wardrobe .wardrobe-outfit-stack-list .wardrobe-outfit-piece-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

@@ -3,6 +3,7 @@ import { garmentTypes } from '../../../services/wardrobeStorage.js'
 import { createWardrobePhoto } from '../../../services/wardrobePhoto.js'
 
 export default function WardrobeGarmentForm({ onAdd }) {
+  const nameInput = useRef(null)
   const [name, setName] = useState('')
   const [type, setType] = useState(garmentTypes[0])
   const [color, setColor] = useState('#446fa4')
@@ -33,9 +34,14 @@ export default function WardrobeGarmentForm({ onAdd }) {
 
   const canSave = !busy && Boolean(name.trim())
   function save(nextPhoto) {
-    if (!canSave) return
-    if (onAdd({ name: name.trim().slice(0, 60), type, color, image })) {
+    const enteredName = nameInput.current?.value?.trim() || ''
+    if (busy || !enteredName) {
+      nameInput.current?.focus()
+      return
+    }
+    if (onAdd({ name: enteredName.slice(0, 60), type, color, image })) {
       generation.current += 1
+      if (nameInput.current) nameInput.current.value = ''
       setName('')
       setImage('')
       setNotice('Plagget är sparat lokalt.')
@@ -53,7 +59,8 @@ export default function WardrobeGarmentForm({ onAdd }) {
       <img className="wardrobe-photo-preview" src={image} alt="Förhandsvisning av nytt plagg" />
       <button type="button" disabled={busy} onClick={() => { generation.current += 1; setImage(''); setNotice('') }}>Ta bort osparad bild</button>
     </>}
-    <label>Plaggets namn<input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} required /></label>
+    <label htmlFor="wardrobe-new-garment-name">Plaggets namn</label>
+    <input id="wardrobe-new-garment-name" ref={nameInput} type="text" autoComplete="off" maxLength={60} required onInput={(event) => setName(event.currentTarget.value)} />
     <label>Plaggtyp<select value={type} onChange={(e) => setType(e.target.value)}>{garmentTypes.map((value) => <option key={value}>{value}</option>)}</select></label>
     <label>Färg på dockan<input type="color" value={color} onChange={(e) => setColor(e.target.value)} /></label>
     <button type="submit" disabled={!canSave}>Spara plagg</button>

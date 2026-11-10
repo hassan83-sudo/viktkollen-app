@@ -27,6 +27,12 @@
       "maxDuration": 30
     }
   },
+  "crons": [
+    {
+      "path": "/api/billing/sumup-renewal",
+      "schedule": "15 3 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/billing/quota",

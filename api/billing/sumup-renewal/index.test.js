@@ -6,7 +6,9 @@ import { createBillingAdminService } from '../../../src/services/billing/adminSe
 import { setBillingAdminServiceForTests } from '../../_shared/billing/admin.js'
 import {
   createServerSumUpRenewalRpcCaller,
+  isSumUpRenewalDue,
   runDueSumUpRenewal,
+  runScheduledDueSumUpRenewals,
 } from '../../_shared/billing/sumupRenewalRun.js'
 import {
   instrumentFingerprint,
@@ -15,7 +17,10 @@ import {
   SUMUP_RENEWAL_FINISH_RPC,
   SUMUP_RENEWAL_RESERVE_RPC,
 } from '../../_shared/billing/sumupRecurring.js'
-import { handleSumUpRenewal as handler } from '../../_shared/billing/sumupRenewalHandler.js'
+import {
+  authorizeSumUpRenewalCron,
+  handleSumUpRenewal as handler,
+} from '../../_shared/billing/sumupRenewalHandler.js'
 import { clearSupabaseAdminClientForTests, setSupabaseAdminClientForTests } from '../../_shared/supabaseServer.js'
 import { setSupabaseAuthVerifierForTests } from '../../_shared/verifySupabaseUser.js'
 
@@ -27,8 +32,11 @@ const TOKEN = '6878cb7f-6515-47bf-bdd9-1408d270fdce'
 const FINGERPRINT = instrumentFingerprint(TOKEN)
 const DUE_END = '2026-09-27T00:00:00.000Z'
 const FUTURE_END = '2026-12-27T00:00:00.000Z'
+const TWELVE_SEK_PERIOD_END = '2026-12-02T12:31:32.390Z'
 const NOW = new Date('2026-11-07T00:00:00.000Z')
+const CRON_SECRET = 'test-cron-secret-16'
 const ENV = { SUMUP_API_KEY: 'test-key', SUMUP_MERCHANT_CODE: 'MTEST01' }
+const CRON_ENV = { ...ENV, CRON_SECRET }
 
 function response() {
   return {
@@ -50,7 +58,7 @@ function request({ body = {}, method = 'POST', token = 'admin-token' } = {}) {
   }
 }
 
-function subscription(userId, periodEnd, status = 'ACTIVE') {
+function subscription(userId, periodEnd, status = 'ACTIVE', overrides = {}) {
   return {
     cancel_at_period_end: false,
     current_period_end: periodEnd,
@@ -61,6 +69,7 @@ function subscription(userId, periodEnd, status = 'ACTIVE') {
     status,
     subscription_id: `sub-${userId.slice(0, 8)}`,
     user_id: userId,
+    ...overrides,
   }
 }
 
@@ -253,19 +262,22 @@ describe('POST /api/billing/sumup-renewal', () => {
     clearSupabaseAdminClientForTests()
   })
 
-  it('stays manual: no cron, and the user billing route does not renew', () => {
-    const vercel = readFileSync(join(root, 'vercel.json'), 'utf8')
+  it('keeps the manual admin path and schedules the shared renewal route at 03:15 UTC', () => {
+    const vercel = JSON.parse(readFileSync(join(root, 'vercel.json'), 'utf8'))
     const userRoute = readFileSync(join(root, 'api/billing/user/index.js'), 'utf8')
     const adminRoute = readFileSync(join(root, 'api/billing/admin/index.js'), 'utf8')
     const route = readFileSync(join(root, 'api/_shared/billing/sumupRenewalHandler.js'), 'utf8')
     expect(existsSync(join(root, 'api/billing/sumup-renewal/index.js'))).toBe(false)
-    expect(vercel).not.toMatch(/crons/)
-    expect(vercel).toMatch(/\/api\/billing\/sumup-renewal/)
+    expect(vercel.crons).toEqual([{ path: '/api/billing/sumup-renewal', schedule: '15 3 * * *' }])
+    expect(vercel.rewrites.some((row) => row.source === '/api/billing/sumup-renewal'
+      && row.destination === '/api/billing/admin?__vk_route=sumup_renewal')).toBe(true)
     expect(userRoute).not.toMatch(/sumupRenewalRun|processDueRenewals|handleSumUpRenewal/)
     expect(adminRoute).toMatch(/__vk_route === 'sumup_renewal'/)
     expect(route).toMatch(/requireBillingAdmin/)
     expect(route).toMatch(/runDueSumUpRenewal/)
-    expect(route).not.toMatch(/setInterval|cron/)
+    expect(route).toMatch(/runScheduledDueSumUpRenewals/)
+    expect(route).toMatch(/authorizeSumUpRenewalCron/)
+    expect(route).not.toMatch(/setInterval/)
   })
 
   it('rejects anonymous and non-admin callers before reading a subscription', async () => {
@@ -382,5 +394,87 @@ describe('runDueSumUpRenewal', () => {
     expect(replay.results[0].code).toBe('RENEWAL_SUCCEEDED')
     expect(http.calls).toEqual({ createCheckout: 1, processCheckout: 1 })
     expect(booked.events.size).toBe(1)
+  })
+})
+
+describe('scheduled SumUp renewal', () => {
+  it('requires CRON_SECRET Bearer auth and never treats a user JWT as the scheduler secret', () => {
+    expect(authorizeSumUpRenewalCron({ headers: {} }, CRON_ENV)).toBe(false)
+    expect(authorizeSumUpRenewalCron({ headers: { authorization: 'Bearer wrong-secret-16xx' } }, CRON_ENV)).toBe(false)
+    expect(authorizeSumUpRenewalCron({ headers: { authorization: 'Bearer admin-token' } }, CRON_ENV)).toBe(false)
+    expect(authorizeSumUpRenewalCron({ headers: { authorization: `Bearer ${CRON_SECRET}` } }, {
+      CRON_SECRET: '',
+    })).toBe(false)
+    expect(authorizeSumUpRenewalCron({ headers: { authorization: `Bearer ${CRON_SECRET}` } }, CRON_ENV)).toBe(true)
+  })
+
+  it('does not renew the existing 12 SEK period before 2026-12-02T12:31:32.390Z', () => {
+    const row = subscription(ADMIN, TWELVE_SEK_PERIOD_END, 'ACTIVE', {
+      plan_id: 'plan.prelim.sek.month.12',
+      subscription_id: '3ad2bfcf-431b-42c4-9c8f-bf32c6cff0c1',
+    })
+    expect(isSumUpRenewalDue(row, new Date('2026-12-02T12:31:32.389Z'))).toBe(false)
+    expect(isSumUpRenewalDue(row, new Date('2026-12-02T12:31:32.390Z'))).toBe(true)
+    expect(isSumUpRenewalDue({ ...row, cancel_at_period_end: true }, new Date('2026-12-03T00:00:00.000Z'))).toBe(false)
+  })
+
+  it('renews only expired open periods across users and skips cancel_at_period_end', async () => {
+    const database = renewalDatabase()
+    const http = transport()
+    const booked = lifecycle()
+    const rows = [
+      subscription(ADMIN, FUTURE_END),
+      subscription(OTHER, DUE_END),
+      subscription('33333333-3333-4333-8333-333333333333', DUE_END, 'ACTIVE', {
+        cancel_at_period_end: true,
+        subscription_id: 'sub-cancelled',
+      }),
+    ]
+    const result = await runScheduledDueSumUpRenewals({
+      client: billingClient(rows, database),
+      env: CRON_ENV,
+      lifecycle: booked,
+      now: () => NOW,
+      transport: http,
+    })
+    expect(result).toMatchObject({ considered: 1, ok: true })
+    expect(result.results).toEqual([
+      expect.objectContaining({ charged: true, code: 'RENEWAL_SUCCEEDED', subscriptionId: 'sub-22222222' }),
+    ])
+    expect(http.calls).toEqual({ createCheckout: 1, processCheckout: 1 })
+    expect(booked.events.size).toBe(1)
+  })
+
+  it('lets the cron path run without a user JWT while the manual path still requires billing_admin', async () => {
+    const scheduled = response()
+    await handler(request({
+      method: 'GET',
+      token: CRON_SECRET,
+    }), scheduled, {
+      env: CRON_ENV,
+      runManual: async () => {
+        throw new Error('manual path must not run for cron')
+      },
+      runScheduled: async () => ({
+        considered: 0,
+        ok: true,
+        results: [],
+        status: 200,
+      }),
+    })
+    expect(scheduled.statusCode).toBe(200)
+    expect(scheduled.body).toMatchObject({ considered: 0, ok: true, scheduled: true })
+
+    const denied = response()
+    await handler(request({ method: 'GET', token: 'admin-token' }), denied, {
+      env: CRON_ENV,
+      runManual: async () => {
+        throw new Error('manual path must not run for GET')
+      },
+      runScheduled: async () => {
+        throw new Error('scheduled path must not run without CRON_SECRET')
+      },
+    })
+    expect(denied.statusCode).toBe(405)
   })
 })

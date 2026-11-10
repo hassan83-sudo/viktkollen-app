@@ -32,9 +32,16 @@ export default function OutfitWardrobeSelection() {
   }
 
   function toggleGarment(id) {
-    save((current) => ({ ...current, selectedGarmentIds: current.selectedGarmentIds.includes(id)
-      ? current.selectedGarmentIds.filter((selectedId) => selectedId !== id)
-      : [...current.selectedGarmentIds, id] }))
+    save((current) => {
+      const selected = current.selectedGarmentIds
+      if (selected.includes(id)) return { ...current, selectedGarmentIds: selected.filter((value) => value !== id) }
+      const garment = current.garments.find((item) => item.id === id)
+      // Switching shoes replaces only the currently selected shoes, never saved garments.
+      const withoutPreviousShoes = garment?.type === 'Skor'
+        ? selected.filter((value) => current.garments.find((item) => item.id === value)?.type !== 'Skor')
+        : selected
+      return { ...current, selectedGarmentIds: [...withoutPreviousShoes, id] }
+    })
   }
 
   return (
@@ -77,13 +84,14 @@ export default function OutfitWardrobeSelection() {
                   <button type="button" onClick={() => setEditing(null)}>Avbryt redigering</button>
                 </form> : <button type="button" onClick={() => setEditing({ id: garment.id, name: garment.name,
                   type: garmentTypes.includes(garment.type) ? garment.type : garmentTypes[0], color: /^#[0-9a-f]{6}$/i.test(garment.color || '') ? garment.color : '#446fa4' })}>Redigera {garment.name}</button>}
+                {wardrobe.selectedGarmentIds.includes(garment.id) && <button type="button" onClick={() => toggleGarment(garment.id)}>Ta av från outfit</button>}
                 {deleting === garment.id ? <div>
                   <p>Radera {garment.name}, bilden och dess kopplingar till outfits och historik?</p>
                   <button type="button" onClick={() => {
                     try { setWardrobe(removeWardrobeGarment(garment.id)); setDeleting(null); setNotice('Plagget och bilden har raderats.') } catch { setNotice('Kunde inte radera plagget.') }
                   }}>Bekräfta radering</button>
                   <button type="button" onClick={() => setDeleting(null)}>Avbryt</button>
-                </div> : <button type="button" onClick={() => setDeleting(garment.id)}>Ta bort {garment.name}</button>}
+                </div> : <button type="button" onClick={() => setDeleting(garment.id)}>Radera permanent: {garment.name}</button>}
               </li>
             ))}
           </ul>

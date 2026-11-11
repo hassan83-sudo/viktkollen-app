@@ -213,7 +213,8 @@ function validateImage(image) {
 function createPrompt(mealType) {
   return [
     'Viktkollen food photo analysis. Reply with compact JSON only, no markdown:',
-    `{"items":[{"name":"","bank":"","cat":"","cook":"","g":[0,0],"conf":"","gconf":"","alt":[],"per100":[0,0,0,0]}],"quality":"","conf":"","wholeG":[0,0],"dishShape":"unknown","note":""}`,
+    'FIRST determine dishShape from the PHOTO and return it as the FIRST JSON property. For one triangular wedge of pizza on a plate (pointed tip and wide crust end), dishShape MUST be pizza_slice. For a complete circular pizza, dishShape MUST be whole_pizza. Do not call a single wedge whole_pizza. For pizza with unclear shape use unknown. For all other foods use unknown. This is a visual portion classification, independent of the ingredient names.',
+    `{"dishShape":"unknown","items":[{"name":"","bank":"","cat":"","cook":"","g":[0,0],"conf":"","gconf":"","alt":[],"per100":[0,0,0,0]}],"quality":"","conf":"","wholeG":[0,0],"note":""}`,
     `1. One item per visually distinct food, max ${NUTRITION_PHOTO_MAX_COMPONENTS}. Keep every visible sauce, dressing, dip, oil/butter, bread, breading and topping as its own item; split dishes into their visible parts (burger: bun, patty, cheese, vegetables, sauce). Recognize the complete dish first: pizza (including pizza with meat and vegetables), lasagne, soup or stew must be named as that dish, never as its first topping or ingredient. For pizza, the first item must be named 'Pizzabotten med tomatsås' and represent ONLY dough and tomato sauce in its grams and per100 values. Never name this ingredient after the complete pizza, since a whole-pizza database match would include toppings twice. Return visible toppings (meat, cheese, vegetables, sauces) as SEPARATE subsequent items with their own grams and nutrition. Never include toppings in the first item's weight or nutrition, and never count any food twice. This keeps the meal title correct while retaining ingredient details. Do not merge separate foods; do not count the same food twice.`,
     '2. name: short Swedish name for the user. bank: Swedish name in Livsmedelsverket style, main food first, then cut/type, then cooking, e.g. "Kyckling bröstfilé stekt", "Ris vitt kokt", "Broccoli kokt", "Pommes frites ugnsstekta", "Lax ugnsstekt", "Nötfärs stekt", "Potatis kokt", "Bearnaisesås".',
     '3. cat: protein|carbohydrate|vegetables|sauce|fat|drink|unknown. cook: fried|breaded|grilled|boiled|baked|steamed|raw or "" - only with visible cues (browning, crust, grill marks, breading, oil sheen).',
@@ -485,7 +486,7 @@ function validateProviderPayload(payload = {}) {
       estimatedServing: portionEstimate.description,
       imageQuality,
       ingredients,
-      dishShape: ['pizza_slice', 'whole_pizza'].includes(payload.dishShape) ? payload.dishShape : 'unknown',
+      dishShape: ['pizza_slice', 'whole_pizza'].includes(String(payload.dishShape || '').trim().toLowerCase()) ? String(payload.dishShape).trim().toLowerCase() : 'unknown',
       limitations: Array.isArray(payload.limitations) ? payload.limitations.map((item) => safeText(item, '', 160)).filter(Boolean).slice(0, 6) : [],
       modelVersion: 3,
       mealTotals: estimatedNutrition,

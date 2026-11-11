@@ -35,6 +35,7 @@ const allowedAnalysisKeys = new Set([
   'components',
   'cookingMethods',
   'detectedItems',
+  'dishShape',
   'analysisQuality',
   'estimatedNutrition',
   'estimatedServing',

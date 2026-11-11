@@ -324,6 +324,7 @@ export function normalizeNutritionPhotoAnalysis(value = {}, options = {}) {
     components,
     detectedItems,
     ingredients,
+    dishShape: source.dishShape === 'pizza_slice' || source.dishShape === 'whole_pizza' ? source.dishShape : 'unknown',
     analysisQuality,
     estimatedNutrition,
     estimatedServing: portionEstimate.description,
@@ -390,7 +391,10 @@ export function createPhotoAnalysisReviewDraft(analysis = {}, options = {}) {
       // Keep all detected items untouched for the ingredient breakdown.
       const pizza = normalized.detectedItems.find((item) => /pizza/i.test(item.name || ''))
       const hasKebab = normalized.detectedItems.some((item) => /kebab/i.test(item.name || ''))
+      if (pizza && normalized.dishShape === 'pizza_slice') return 'Foto: Pizzaslice'
+      if (pizza && normalized.dishShape === 'whole_pizza') return 'Foto: Pizza'
       if (pizza && /pizzabotten/i.test(pizza.name || '') && hasKebab) return 'Foto: Kebabpizza'
+      if (pizza && /pizzabotten/i.test(pizza.name || '')) return 'Foto: Pizza'
       const namedItem = pizza || normalized.detectedItems[0]
       return namedItem?.name ? `Foto: ${getNutritionPhotoFoodDisplayName(namedItem.name)}` : 'Måltid från foto'
     })(),

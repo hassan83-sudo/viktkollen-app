@@ -433,13 +433,16 @@ function ScannerAnalyzingStatus({ focused = false }) {
 
   if (focused) {
     return (
-      <div role="progressbar" aria-label={t('scanProgress', { progress })} aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} style={{ position: 'relative', width: 'clamp(108px, 20dvh, 160px)', aspectRatio: '1', flexShrink: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', width: '100%' }}>
+        <div role="progressbar" aria-label={t('scanProgress', { progress })} aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} style={{ position: 'relative', width: 'clamp(108px, 20dvh, 160px)', aspectRatio: '1', flexShrink: 0 }}>
         <svg viewBox="0 0 120 120" aria-hidden="true" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
           <defs><linearGradient id="food-analysis-progress-gradient"><stop stopColor="#25e6d5" /><stop offset="1" stopColor="#8b42ff" /></linearGradient></defs>
           <circle cx="60" cy="60" r="54" fill="none" stroke="#1b324a" strokeWidth="5" />
           <circle cx="60" cy="60" r="54" fill="none" stroke="url(#food-analysis-progress-gradient)" strokeWidth="5" strokeLinecap="round" pathLength="100" strokeDasharray={`${progress} 100`} />
         </svg>
         <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#fff', fontSize: 'clamp(28px, 5dvh, 40px)', fontVariantNumeric: 'tabular-nums' }}>{progress} %</span>
+        </div>
+        <p style={{ margin: 0, color: '#fff', fontSize: '14px', textAlign: 'center', lineHeight: 1.5 }}>Beräknar kalorier, protein, fett och kolhydrater…</p>
       </div>
     )
   }

@@ -58,7 +58,7 @@ export default function OutfitWardrobeSelection() {
   return (
     <section aria-label="Din garderob" className="digital-wardrobe">
       <h3>Din garderob</h3>
-      <p>Plagg, bilder och outfits sparas bara i den här webbläsarprofilen, utan molnsynk eller krypterad förvaring. Andra som använder samma profil kan se dem. Rensar du webbläsardata försvinner garderoben.</p>
+      <p>När du är inloggad synkroniseras garderoben med ditt konto. Dina kläder sparas även lokalt i webbläsaren. Om synkroniseringen misslyckas finns de kvar lokalt.</p>
       <p role="status">{syncStatus}</p>
       <WardrobeGarmentForm onAdd={(garment) => {
         if (wardrobe.garments.length >= 100) { setNotice('Garderoben rymmer högst 100 plagg. Ta bort ett först.'); return false }

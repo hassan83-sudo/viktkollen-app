@@ -281,7 +281,11 @@ export function componentsFromCompactItems(items = []) {
     }
     const portion = checkPortionPlausibility({ ...base, ...compactGrams(source.g) })
     const energy = checkPer100Consistency(compactPer100(source.per100), base)
-    const aiPer100 = energy.per100
+    // Verified Livsmedelsverket reference: Pizzadeg tillagad hemlagad. Use as
+    // a clearly approximate fallback for the dough-dominant pizza base when
+    // the food-bank lookup cannot safely match; never use whole-pizza values.
+    const pizzaBase = /^pizzabotten med tomatsås$/i.test(base.name.trim())
+    const aiPer100 = pizzaBase ? { calories: 240, carbs: 41.3, protein: 5.4, fat: 5 } : energy.per100
     const flags = [...portion.flags, ...energy.flags]
     const grams = { gramsMax: portion.gramsMax, gramsMin: portion.gramsMin }
     const portionAdjusted = portion.flags.length > 0

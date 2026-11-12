@@ -60,15 +60,17 @@ export default function OutfitWardrobeSelection() {
           <ul className="wardrobe-grid">
             {garments.map((garment) => (
               <li key={garment.id}>
-                {isWardrobePhoto(garment.image) ? <img className="wardrobe-thumbnail" src={garment.image} alt={garment.name} /> : <span className="wardrobe-placeholder" aria-hidden="true">👕</span>}
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={wardrobe.selectedGarmentIds.includes(garment.id)}
-                    onChange={() => toggleGarment(garment.id)}
-                  />
-                  {garment.name}{typeof garment.type === 'string' && garment.type ? ` · ${garment.type}` : ''}
-                </label>
+                <button
+                  type="button"
+                  className="wardrobe-garment-select"
+                  aria-pressed={wardrobe.selectedGarmentIds.includes(garment.id)}
+                  aria-label={`${wardrobe.selectedGarmentIds.includes(garment.id) ? 'Ta av' : 'Välj'} ${garment.name}`}
+                  onClick={() => toggleGarment(garment.id)}
+                >
+                  {isWardrobePhoto(garment.image) ? <img className="wardrobe-thumbnail" src={garment.image} alt="" /> : <span className="wardrobe-placeholder" aria-hidden="true">👕</span>}
+                  <span>{garment.name}{typeof garment.type === 'string' && garment.type ? ` · ${garment.type}` : ''}</span>
+                  <span className="wardrobe-garment-select-status">{wardrobe.selectedGarmentIds.includes(garment.id) ? 'Vald ✓' : 'Välj plagg'}</span>
+                </button>
                 {editing?.id === garment.id ? <form aria-label={`Redigera ${garment.name}`} onSubmit={(event) => {
                   event.preventDefault()
                   if (!editing.name.trim() || !garmentTypes.includes(editing.type) || !/^#[0-9a-f]{6}$/i.test(editing.color)) return

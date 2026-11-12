@@ -40,3 +40,22 @@
 .digital-wardrobe .wardrobe-outfit-stack-list .wardrobe-outfit-bottom img { max-height: 190px; }
 .digital-wardrobe .wardrobe-outfit-stack-list .wardrobe-outfit-shoes img { max-height: 90px; }
 .digital-wardrobe .wardrobe-outfit-stack-list .wardrobe-outfit-piece-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* The garment photo itself is the selection control, with a visible selected state. */
+.digital-wardrobe .wardrobe-garment-select {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 6px;
+  width: 100%;
+  height: auto;
+  padding: 6px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: center;
+}
+.digital-wardrobe .wardrobe-garment-select[aria-pressed="true"] { border-color: #27c7e5; background: rgba(39, 199, 229, .12); }
+.digital-wardrobe .wardrobe-garment-select:focus-visible { outline: 3px solid #27c7e5; outline-offset: 2px; }
+.digital-wardrobe .wardrobe-garment-select-status { font-weight: 700; font-size: .85rem; }

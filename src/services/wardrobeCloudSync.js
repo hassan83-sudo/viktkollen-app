@@ -46,6 +46,7 @@ export async function startWardrobeCloudSync(onStatus = () => {}) {
       // Back up the combined wardrobe to the account before changing local storage.
       const { error: mergeError } = await supabase.from('user_wardrobes').update({ wardrobe: combined, updated_at: new Date().toISOString() }).eq('user_id', identity)
       if (!active || userId !== identity) return
+      if (revision !== startingRevision) { onStatus('Lokala ändringar upptäcktes under synkronisering. Dina kläder är kvar lokalt.'); return }
       if (mergeError) { onStatus('Kunde inte säkerhetskopiera kläderna till kontot. Lokala kläder är oförändrade.'); return }
       applyingRemote = true
       try { updateWardrobe(() => combined) } catch { onStatus('Kläderna är sparade på kontot men kunde inte visas lokalt.'); return } finally { applyingRemote = false }
@@ -59,6 +60,7 @@ export async function startWardrobeCloudSync(onStatus = () => {}) {
         : readWardrobe()
       const { error: insertError } = await supabase.from('user_wardrobes').insert({ user_id: identity, wardrobe: firstWardrobe })
       if (!active || userId !== identity) return
+      if (revision !== startingRevision) { onStatus('Lokala ändringar upptäcktes under synkronisering. Dina kläder är kvar lokalt.'); return }
       if (insertError) {
         onStatus('Kunde inte starta molnsynkronisering. Dina kläder finns kvar lokalt.')
         return

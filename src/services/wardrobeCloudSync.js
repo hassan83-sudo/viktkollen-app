@@ -4,6 +4,21 @@ import { readWardrobe, updateWardrobe, wardrobeChangedEvent } from './wardrobeSt
 const hasData = (wardrobe) => Boolean(wardrobe?.garments?.length || wardrobe?.outfits?.length || wardrobe?.worn?.length)
 let applyingRemote = false
 
+function combineWardrobes(remote, local) {
+  const combineBy = (a = [], b = [], key) => {
+    const merged = new Map()
+    for (const item of a) if (item?.[key]) merged.set(item[key], item)
+    for (const item of b) if (item?.[key] && !merged.has(item[key])) merged.set(item[key], item)
+    return [...merged.values()]
+  }
+  return {
+    garments: combineBy(remote.garments, local.garments, 'id'),
+    outfits: combineBy(remote.outfits, local.outfits, 'id'),
+    worn: combineBy(remote.worn, local.worn, 'date'),
+    selectedGarmentIds: [...new Set([...(remote.selectedGarmentIds || []), ...(local.selectedGarmentIds || [])])],
+  }
+}
+
 // Local data is kept until the cloud confirms a successful save.
 export async function startWardrobeCloudSync(onStatus = () => {}) {
   if (!supabase) return () => {}
@@ -25,18 +40,25 @@ export async function startWardrobeCloudSync(onStatus = () => {}) {
     if (data?.wardrobe && hasData(data.wardrobe)) {
       if (revision !== startingRevision) { onStatus('Lokala ändringar upptäcktes. Synkroniseringen pausades för att skydda dina kläder.'); return }
       const local = readWardrobe()
-      if (hasData(local) && JSON.stringify(local) !== JSON.stringify(data.wardrobe)) {
-        // Never overwrite either existing wardrobe without explicit conflict resolution.
-        onStatus('Det finns kläder både lokalt och på kontot. Ingen garderob har skrivits över.')
-        return
-      }
+      const combined = hasData(local) ? combineWardrobes(data.wardrobe, local) : data.wardrobe
+      // Back up the combined wardrobe to the account before changing local storage.
+      const { error: mergeError } = await supabase.from('user_wardrobes').update({ wardrobe: combined, updated_at: new Date().toISOString() }).eq('user_id', identity)
+      if (!active || userId !== identity) return
+      if (mergeError) { onStatus('Kunde inte säkerhetskopiera kläderna till kontot. Lokala kläder är oförändrade.'); return }
       applyingRemote = true
-      try { updateWardrobe(() => data.wardrobe) } catch { onStatus('Kunde inte läsa kontots garderob lokalt.'); return } finally { applyingRemote = false }
+      try { updateWardrobe(() => combined) } catch { onStatus('Kläderna är sparade på kontot men kunde inte visas lokalt.'); return } finally { applyingRemote = false }
       initialized = true
       onStatus('Garderoben är synkroniserad med ditt konto.')
     } else {
+      // Insert only: a simultaneous device must never overwrite an existing account wardrobe.
+      const { error: insertError } = await supabase.from('user_wardrobes').insert({ user_id: identity, wardrobe: readWardrobe() })
+      if (!active || userId !== identity) return
+      if (insertError) {
+        onStatus('Kunde inte starta molnsynkronisering. Dina kläder finns kvar lokalt.')
+        return
+      }
       initialized = true
-      await upload()
+      onStatus('Garderoben är sparad på ditt konto.')
     }
   }
 

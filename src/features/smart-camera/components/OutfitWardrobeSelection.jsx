@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { garmentTypes, isWardrobePhoto, markWardrobeWorn, readWardrobe, removeWardrobeGarment, updateWardrobe, wardrobeChangedEvent } from '../../../services/wardrobeStorage.js'
 import WardrobeGarmentForm from './WardrobeGarmentForm.jsx'
+import { startWardrobeCloudSync } from '../../../services/wardrobeCloudSync.js'
 import WardrobeMannequin from './WardrobeMannequin.jsx'
 import './wardrobe.css'
 
@@ -10,6 +11,7 @@ export default function OutfitWardrobeSelection() {
   const [outfitName, setOutfitName] = useState('')
   const [notice, setNotice] = useState('')
   const [deleting, setDeleting] = useState(null)
+  const [syncStatus, setSyncStatus] = useState('')
   const [editing, setEditing] = useState(null)
   useEffect(() => {
     const refresh = () => setWardrobe(readWardrobe())
@@ -21,6 +23,15 @@ export default function OutfitWardrobeSelection() {
       window.removeEventListener('storage', refresh)
       window.removeEventListener('focus', refresh)
     }
+  }, [])
+  useEffect(() => {
+    let disposed = false
+    let stop = null
+    void startWardrobeCloudSync((message) => { if (!disposed) setSyncStatus(message) }).then((cleanup) => {
+      if (disposed) cleanup()
+      else stop = cleanup
+    })
+    return () => { disposed = true; stop?.() }
   }, [])
   const selected = wardrobe.selectedGarmentIds.map((id) => wardrobe.garments.find((garment) => garment.id === id)).filter(Boolean)
   const garments = wardrobe.garments.filter((garment) => `${garment.name} ${garment.type}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
@@ -47,7 +58,8 @@ export default function OutfitWardrobeSelection() {
   return (
     <section aria-label="Din garderob" className="digital-wardrobe">
       <h3>Din garderob</h3>
-      <p>Plagg, bilder och outfits sparas bara i den här webbläsarprofilen, utan molnsynk eller krypterad förvaring. Andra som använder samma profil kan se dem. Rensar du webbläsardata försvinner garderoben.</p>
+      <p>När du är inloggad synkroniseras garderoben med ditt konto. Dina kläder sparas även lokalt i webbläsaren. Om synkroniseringen misslyckas finns de kvar lokalt.</p>
+      <p role="status">{syncStatus}</p>
       <WardrobeGarmentForm onAdd={(garment) => {
         if (wardrobe.garments.length >= 100) { setNotice('Garderoben rymmer högst 100 plagg. Ta bort ett först.'); return false }
         return save((current) => ({ ...current, garments: [...current.garments, { ...garment, id: crypto.randomUUID(), createdAt: new Date().toISOString() }] }))

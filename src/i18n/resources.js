@@ -130,7 +130,7 @@ const sv = {
     bodyCardHint: 'Öppnar scanningen med röstguide',
     cardActions: {
       openCamera: 'Öppna kameran',
-      scanFood: 'Skanna maten',
+      scanFood: 'Skanna mat/frukt eller grönsak',
     },
     mood: {
       chat: 'Chatten',

@@ -750,6 +750,7 @@ function OverviewPrimaryActions({
   onNavigateSection,
   onOpenBodyScan,
   onOpenEar,
+  onOpenWardrobe,
   onOpenEyes,
   onOpenFoodScan,
   onOpenSmartCamera,
@@ -897,19 +898,19 @@ function OverviewPrimaryActions({
       onClick: openFood,
       imageOnClick: navigateToFoodScan,
     },
-    ...(smartCameraOn && isFeatureEnabled('aiEar', featureFlags) ? [{
+    ...(smartCameraOn ? [{
       accent: 'body',
-      alt: '',
+      alt: 'Brun garderob',
       art: 'body',
-      description: t('home:actionDescriptions.ear'),
-      footerLabel: t('aiEar:title'),
-      hitLabel: t('aiEar:title'),
-      image: '/viktkollen-ai-ear-home.webp',
+      description: 'Välj kläder och skapa outfits',
+      footerLabel: 'Min garderob',
+      hitLabel: 'Öppna Min garderob',
+      image: '/wardrobe-home.svg',
       imageHeight: 542,
       imageWidth: 480,
-      icon: 'ear',
-      label: t('aiEar:title'),
-      onClick: onOpenEar,
+      icon: 'wardrobe',
+      label: 'Min garderob',
+      onClick: onOpenWardrobe,
     }] : []),
   ]
 
@@ -1536,6 +1537,11 @@ function OverviewDashboard({
           featureFlags={flags}
           onNavigateSection={onNavigateSection}
           onOpenBodyScan={() => setBodyScanOpen(true)}
+          onOpenWardrobe={() => {
+            setBodyScanOpen(false)
+            setSmartCameraInitialMode('outfit')
+            setSmartCameraOpen(true)
+          }}
           onOpenEar={() => {
             setBodyScanOpen(false)
             setSmartCameraInitialMode('ai-ear')
@@ -1582,6 +1588,18 @@ function OverviewDashboard({
           <GlobalSearch compact onNavigate={onSearchNavigate} />
         </div>
       </div>
+
+      {isFeatureEnabled('aiEar', flags) && (
+        <button type="button" onClick={() => {
+          setBodyScanOpen(false)
+          setSmartCameraInitialMode('ai-ear')
+          setSmartCameraOpen(true)
+        }} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '12px 16px', marginBottom: 14, borderRadius: 16, border: '1px solid rgba(85,190,235,.4)', background: 'linear-gradient(120deg, #112b3d, #101a35)', color: '#fff', textAlign: 'left', cursor: 'pointer' }}>
+          <img src="/viktkollen-ai-ear-home.webp" alt="" width="58" height="65" style={{ objectFit: 'contain', borderRadius: 10 }} />
+          <strong style={{ flex: 1 }}>AI Örat</strong>
+          <span aria-hidden="true">›</span>
+        </button>
+      )}
 
       <section className="overview-home-section" aria-labelledby="overview-today-title">
         <h2 id="overview-today-title">{t('home:todayMood')}</h2>

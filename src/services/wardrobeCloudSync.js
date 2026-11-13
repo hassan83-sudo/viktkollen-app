@@ -42,7 +42,8 @@ export async function startWardrobeCloudSync(onStatus = () => {}) {
     if (data?.wardrobe && hasData(data.wardrobe)) {
       if (revision !== startingRevision) { onStatus('Lokala ändringar upptäcktes. Synkroniseringen pausades för att skydda dina kläder.'); return }
       const local = readWardrobe()
-      const combined = hasData(local) && !previouslySyncedUser ? combineWardrobes(data.wardrobe, local) : data.wardrobe
+      const combined = hasData(local) && (!previouslySyncedUser || previouslySyncedUser === identity)
+        ? combineWardrobes(data.wardrobe, local) : data.wardrobe
       // Back up the combined wardrobe to the account before changing local storage.
       const { error: mergeError } = await supabase.from('user_wardrobes').update({ wardrobe: combined, updated_at: new Date().toISOString() }).eq('user_id', identity)
       if (!active || userId !== identity) return
@@ -58,7 +59,10 @@ export async function startWardrobeCloudSync(onStatus = () => {}) {
       const firstWardrobe = previouslySyncedUser && previouslySyncedUser !== identity
         ? { garments: [], outfits: [], worn: [], selectedGarmentIds: [] }
         : readWardrobe()
-      const { error: insertError } = await supabase.from('user_wardrobes').insert({ user_id: identity, wardrobe: firstWardrobe })
+      if (revision !== startingRevision) { onStatus('Lokala ändringar upptäcktes. Synkroniseringen pausades för att skydda dina kläder.'); return }
+      // An existing empty row must be updated, not inserted again (duplicate key).
+      const request = data ? supabase.from('user_wardrobes').update({ wardrobe: firstWardrobe, updated_at: new Date().toISOString() }).eq('user_id', identity) : supabase.from('user_wardrobes').insert({ user_id: identity, wardrobe: firstWardrobe })
+      const { error: insertError } = await request
       if (!active || userId !== identity) return
       if (revision !== startingRevision) { onStatus('Lokala ändringar upptäcktes under synkronisering. Dina kläder är kvar lokalt.'); return }
       if (insertError) {

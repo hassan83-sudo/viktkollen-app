@@ -47,6 +47,7 @@ import {
 import {
   getNutritionPhotoFoodDisplayName,
 } from '../services/nutritionPhotoDisplay.js'
+import { toEarlyIngredientViews } from '../services/nutritionPhotoStreamingIngredients.js'
 import { getCurrentTimeString, getTodayDateString, mealTypes } from '../services/nutritionService.js'
 import { buildRemotePhotoIngredientMatchSummary } from '../services/nutritionFoodBank.js'
 import { safeLogger } from '../services/safeLogger.js'
@@ -415,9 +416,11 @@ function IngredientEditor({ disabled, item, match, onApplySuggestion, onChange, 
   )
 }
 
-function ScannerAnalyzingStatus({ focused = false }) {
+function ScannerAnalyzingStatus({ earlyIngredients = [], focused = false }) {
   const { t } = useTranslation('nutrition')
   const [progress, setProgress] = useState(0)
+  const [ingredientIndex, setIngredientIndex] = useState(0)
+  const identified = Array.isArray(earlyIngredients) ? earlyIngredients.filter((row) => row?.name) : []
 
   useEffect(() => {
     const startedAt = Date.now()
@@ -431,6 +434,19 @@ function ScannerAnalyzingStatus({ focused = false }) {
     return () => window.clearInterval(timer)
   }, [])
 
+  useEffect(() => {
+    setIngredientIndex(0)
+    if (identified.length <= 1) return undefined
+    const timer = window.setInterval(() => {
+      setIngredientIndex((current) => (current + 1) % identified.length)
+    }, 1600)
+    return () => window.clearInterval(timer)
+  }, [identified.length])
+
+  const activeIngredient = identified.length
+    ? identified[Math.min(ingredientIndex, identified.length - 1)]
+    : null
+
   if (focused) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', width: '100%' }}>
@@ -442,9 +458,15 @@ function ScannerAnalyzingStatus({ focused = false }) {
         </svg>
         <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#fff', fontSize: 'clamp(28px, 5dvh, 40px)', fontVariantNumeric: 'tabular-nums' }}>{progress} %</span>
         </div>
-        <div aria-label="Exempel på ingredienser" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', minHeight: '104px', justifyContent: 'center' }}>
-          <span aria-hidden="true" style={{ fontSize: 'clamp(42px, 8dvh, 64px)', lineHeight: 1, transition: 'opacity 180ms ease' }}>{['🍅', '🥕', '🧀', '🥦', '🍎', '🥑', '🍞', '🍓'][Math.floor(progress / 12) % 8]}</span>
-          <span style={{ color: '#fff', fontSize: '14px', textAlign: 'center' }}>{['Tomat', 'Morot', 'Ost', 'Broccoli', 'Äpple', 'Avokado', 'Bröd', 'Jordgubbe'][Math.floor(progress / 12) % 8]}</span>
+        <div aria-live="polite" aria-label={t('scanner.earlyIngredientsLabel')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', minHeight: '104px', justifyContent: 'center' }}>
+          {activeIngredient ? (
+            <>
+              <span aria-hidden="true" style={{ fontSize: 'clamp(42px, 8dvh, 64px)', lineHeight: 1, transition: 'opacity 180ms ease' }}>{activeIngredient.illustration}</span>
+              <span style={{ color: '#fff', fontSize: '14px', textAlign: 'center' }}>{activeIngredient.name}</span>
+            </>
+          ) : (
+            <span style={{ color: 'rgba(255,255,255,0.82)', fontSize: '14px', textAlign: 'center', maxWidth: '16rem' }}>{t('scanner.waitingForIngredients')}</span>
+          )}
         </div>
       </div>
     )
@@ -513,6 +535,7 @@ function NutritionScannerV2({
   const [analysis, setAnalysis] = useState(null)
   const [reviewDraft, setReviewDraft] = useState(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [earlyIngredients, setEarlyIngredients] = useState([])
   const [isSaving, setIsSaving] = useState(false)
   const [savedMealId, setSavedMealId] = useState('')
   const [allowDuplicate, setAllowDuplicate] = useState(false)
@@ -614,6 +637,7 @@ function NutritionScannerV2({
     setReviewDraft(null)
     setSavedMealId('')
     setAllowDuplicate(false)
+    setEarlyIngredients([])
   }
 
   function updateRemoteDebug(patch) {
@@ -1169,6 +1193,7 @@ function NutritionScannerV2({
     let controller = null
     clearAnalysisReviewState()
     setIsAnalyzing(true)
+    setEarlyIngredients([])
     setError('')
     setStatus(providerType === 'remote' ? t('scanner.status.analyzingRemote') : t('scanner.status.analyzingLocal'))
 
@@ -1227,6 +1252,12 @@ function NutritionScannerV2({
         }, {
           analysisDate: today,
           consentApproved: remoteConsentApprovedForAttempt,
+          onIngredient: (name) => {
+            setEarlyIngredients((current) => toEarlyIngredientViews([
+              ...current.map((row) => row.name),
+              name,
+            ]))
+          },
           providerType,
           signal: controller.signal,
         })
@@ -1503,7 +1534,7 @@ function NutritionScannerV2({
           onKeyDown={(event) => { if (event.key === 'Tab') event.preventDefault() }}
           style={{ position: 'fixed', inset: 0, zIndex: 2147483000, background: '#101827', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'clamp(20px, 4dvh, 36px)', padding: 'max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))', boxSizing: 'border-box', outline: 'none' }}>
           {previewUrl && <img src={previewUrl} alt={t('scanner.previewAlt')} style={{ display: 'block', width: '100%', maxWidth: '560px', height: 'min(62dvh, 640px)', minHeight: 0, objectFit: 'contain', borderRadius: '28px' }} />}
-          <ScannerAnalyzingStatus focused />
+          <ScannerAnalyzingStatus earlyIngredients={earlyIngredients} focused />
         </div>, document.body,
       )}
     <section ref={scannerSectionRef} className="photo-meal-tool scanner-tool nutrition-scanner-v2" aria-labelledby="nutrition-scanner-v2-heading">

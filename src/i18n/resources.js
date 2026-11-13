@@ -1847,6 +1847,8 @@ const sv = {
       aiNotWorking: 'AI-analys fungerar inte?',
       localEstimateHint: 'Alternativ analys ger en grov uppskattning utan att tolka bilden med AI.',
       analyzingShort: 'Analyserar...',
+      earlyIngredientsLabel: 'Identifierade ingredienser',
+      waitingForIngredients: 'Identifierar ingredienser…',
       localEstimate: 'Lokal grov uppskattning',
       liveCameraNote:
         'Livekamera kräver normalt HTTPS eller localhost i Safari. På HTTP-LAN används filväljaren med kamera/bildbibliotek som fallback.',
@@ -3873,6 +3875,8 @@ const en = {
       aiNotWorking: 'AI analysis not working?',
       localEstimateHint: 'Alternative analysis gives a rough estimate without interpreting the image with AI.',
       analyzingShort: 'Analyzing...',
+      earlyIngredientsLabel: 'Identified ingredients',
+      waitingForIngredients: 'Identifying ingredients…',
       localEstimate: 'Local rough estimate',
       liveCameraNote:
         'Live camera normally requires HTTPS or localhost in Safari. On HTTP LAN, the file picker with camera/photo library is used as a fallback.',

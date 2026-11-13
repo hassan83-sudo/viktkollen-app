@@ -228,6 +228,141 @@ function createProviderResponseParseError({
   }
 }
 
+function appendStreamTextDelta(event, currentText) {
+  if (!event || typeof event !== 'object') return currentText
+  const type = String(event.type || '')
+  if (type === 'response.output_text.delta' || type.endsWith('output_text.delta')) {
+    const delta = typeof event.delta === 'string'
+      ? event.delta
+      : typeof event.text === 'string'
+        ? event.text
+        : ''
+    return `${currentText || ''}${delta}`
+  }
+  if (type === 'response.output_text.done' && typeof event.text === 'string') {
+    return event.text
+  }
+  return currentText
+}
+
+function completedStreamResponseData(event, accumulatedText) {
+  if (event?.response && typeof event.response === 'object') return event.response
+  if (event?.type === 'response.completed' && event?.response) return event.response
+  return {
+    output_text: accumulatedText,
+    usage: event?.usage || event?.response?.usage,
+  }
+}
+
+async function readProviderStreamResponse(response, {
+  onTextDelta,
+  requestId,
+} = {}) {
+  const upstreamStatus = response.status
+  const upstreamStatusText = safeText(response.statusText, '', 80)
+  if (!response.ok) {
+    return readProviderJsonResponse(response, requestId)
+  }
+  if (!response.body || typeof response.body.getReader !== 'function') {
+    return {
+      data: {},
+      error: createProviderResponseParseError({
+        parseErrorCode: 'providerStreamUnavailable',
+        requestId,
+        status: 502,
+        upstreamStatus,
+        upstreamStatusText,
+      }),
+      ok: false,
+      upstreamStatus,
+      upstreamStatusText,
+    }
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let accumulatedText = ''
+  let completedData = null
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const chunks = buffer.split(/\n\n/)
+      buffer = chunks.pop() || ''
+      for (const chunk of chunks) {
+        const dataLines = chunk
+          .split('\n')
+          .filter((line) => line.startsWith('data:'))
+          .map((line) => line.slice(5).trim())
+          .filter(Boolean)
+        if (!dataLines.length) continue
+        const payload = dataLines.join('\n')
+        if (payload === '[DONE]') continue
+        let event
+        try {
+          event = JSON.parse(payload)
+        } catch {
+          continue
+        }
+        const nextText = appendStreamTextDelta(event, accumulatedText)
+        if (nextText !== accumulatedText) {
+          accumulatedText = nextText
+          if (typeof onTextDelta === 'function') {
+            try { await onTextDelta(accumulatedText) } catch { /* progress is best-effort */ }
+          }
+        }
+        if (String(event?.type || '').includes('completed') || event?.response?.status === 'completed') {
+          completedData = completedStreamResponseData(event, accumulatedText)
+        }
+      }
+    }
+  } catch (error) {
+    return {
+      data: {},
+      error: createProviderResponseParseError({
+        parseErrorCode: 'providerStreamReadFailed',
+        parseErrorName: error?.name,
+        requestId,
+        status: 502,
+        upstreamStatus,
+        upstreamStatusText,
+      }),
+      ok: false,
+      upstreamStatus,
+      upstreamStatusText,
+    }
+  }
+
+  const data = completedData || { output_text: accumulatedText }
+  if (!extractResponseText(data) && !accumulatedText.trim()) {
+    return {
+      data: {},
+      error: createProviderResponseParseError({
+        parseErrorCode: 'emptyProviderBody',
+        requestId,
+        status: 502,
+        upstreamStatus,
+        upstreamStatusText,
+      }),
+      ok: false,
+      upstreamStatus,
+      upstreamStatusText,
+    }
+  }
+  if (!extractResponseText(data) && accumulatedText.trim()) {
+    data.output_text = accumulatedText
+  }
+  return {
+    data,
+    ok: true,
+    upstreamStatus,
+    upstreamStatusText,
+  }
+}
+
 async function readProviderJsonResponse(response, requestId) {
   const upstreamStatus = response.status
   const upstreamStatusText = safeText(response.statusText, '', 80)
@@ -455,6 +590,7 @@ export async function callOpenAiJson({
   input,
   maxOutputTokens,
   model,
+  onTextDelta,
   requestId = createSafeRequestId(),
   signal,
   temperature = 0.2,
@@ -473,6 +609,7 @@ export async function callOpenAiJson({
 
   const config = getAiGatewayConfig(type, env)
   const timeout = timeoutSignal(timeoutMs || config.timeoutMs, signal)
+  const useStream = typeof onTextDelta === 'function'
 
   try {
     const response = await fetchImpl(OPENAI_API_URL, {
@@ -484,6 +621,7 @@ export async function callOpenAiJson({
         ),
         model: model || config.model,
         ...(type === 'photo' ? { store: false } : {}),
+        ...(useStream ? { stream: true } : {}),
         temperature,
       }),
       headers: {
@@ -495,7 +633,9 @@ export async function callOpenAiJson({
       signal: timeout.signal,
     })
 
-    const parsedResponse = await readProviderJsonResponse(response, requestId)
+    const parsedResponse = useStream
+      ? await readProviderStreamResponse(response, { onTextDelta, requestId })
+      : await readProviderJsonResponse(response, requestId)
     const data = parsedResponse.data
     if (!response.ok) {
       const code = response.status === 429
@@ -616,12 +756,14 @@ export async function callOpenAiJson({
 }
 
 export const openAiGatewayInternals = {
+  appendStreamTextDelta,
   buckets,
   createOutputTextDiagnostics,
   extractResponseText,
   extractJsonCandidate,
   findFirstCompleteJsonObject,
   getOutputChunkCount,
+  readProviderStreamResponse,
   safeText,
   safeProviderErrorCode,
   createSafeThrownFetchDiagnostics,

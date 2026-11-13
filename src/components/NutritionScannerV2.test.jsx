@@ -125,7 +125,9 @@ describe('NutritionScannerV2', () => {
     expect(source).toContain('scanner-review-hero')
     expect(source).toContain("t('scanner.analyzing')")
     // Den kompakta designen visar uppskattad procent i analysknappen i stället för stegtexter.
-    expect(source).toContain('<ScannerAnalyzingStatus />')
+    expect(source).toContain('<ScannerAnalyzingStatus earlyIngredients={earlyIngredients} focused />')
+    expect(source).toContain("t('scanner.waitingForIngredients')")
+    expect(source).not.toContain("['Tomat', 'Morot', 'Ost', 'Broccoli', 'Äpple', 'Avokado', 'Bröd', 'Jordgubbe']")
     expect(source).toContain("t('scanner.identifiedComponents')")
     expect(source).toContain('nutrition-component-list')
     expect(source).toContain('scanner-component-card')

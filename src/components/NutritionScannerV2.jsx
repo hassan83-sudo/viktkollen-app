@@ -442,7 +442,10 @@ function ScannerAnalyzingStatus({ focused = false }) {
         </svg>
         <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#fff', fontSize: 'clamp(28px, 5dvh, 40px)', fontVariantNumeric: 'tabular-nums' }}>{progress} %</span>
         </div>
-        <p style={{ margin: 0, color: '#fff', fontSize: '14px', textAlign: 'center', lineHeight: 1.5 }}>Beräknar kalorier, protein, fett och kolhydrater…</p>
+        <div aria-label="Exempel på ingredienser" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', minHeight: '104px', justifyContent: 'center' }}>
+          <span aria-hidden="true" style={{ fontSize: 'clamp(42px, 8dvh, 64px)', lineHeight: 1, transition: 'opacity 180ms ease' }}>{['🍅', '🥕', '🧀', '🥦', '🍎', '🥑', '🍞', '🍓'][Math.floor(progress / 12) % 8]}</span>
+          <span style={{ color: '#fff', fontSize: '14px', textAlign: 'center' }}>{['Tomat', 'Morot', 'Ost', 'Broccoli', 'Äpple', 'Avokado', 'Bröd', 'Jordgubbe'][Math.floor(progress / 12) % 8]}</span>
+        </div>
       </div>
     )
   }

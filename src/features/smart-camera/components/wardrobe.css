@@ -59,3 +59,33 @@
 .digital-wardrobe .wardrobe-garment-select[aria-pressed="true"] { border-color: #27c7e5; background: rgba(39, 199, 229, .12); }
 .digital-wardrobe .wardrobe-garment-select:focus-visible { outline: 3px solid #27c7e5; outline-offset: 2px; }
 .digital-wardrobe .wardrobe-garment-select-status { font-weight: 700; font-size: .85rem; }
+
+
+/* Compact mobile wardrobe layout; existing features and weather remain available. */
+.digital-wardrobe { color: #f7f7fc; background: #0d101d; border-radius: 18px; padding: 12px; }
+.digital-wardrobe .wardrobe-app-header h3 { font-size: 1.22rem; margin: 0 0 4px; }
+.digital-wardrobe .wardrobe-app-header p { font-size: .78rem; color: #aeb6cb; margin: 0 0 12px; }
+.digital-wardrobe .wardrobe-tabs { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); background: #242838; padding: 3px; border-radius: 13px; margin: 10px 0; }
+.digital-wardrobe .wardrobe-tabs button { min-height: 38px; padding: 7px 2px; border: 0; border-radius: 10px; background: transparent; color: #e8e8f3; font-size: .82rem; }
+.digital-wardrobe .wardrobe-tabs button.active { background: #8860e8; color: white; }
+.digital-wardrobe .wardrobe-sync-details { margin: 8px 0; font-size: .76rem; color: #bfc8da; }
+.digital-wardrobe .wardrobe-sync-details summary { min-height: 24px; }
+.digital-wardrobe .wardrobe-add-toggle { display: block; width: 100%; border: 0; border-radius: 13px; background: linear-gradient(105deg,#22c7e5,#8358e8); color: white; font-weight: 700; margin: 10px 0; }
+.digital-wardrobe .wardrobe-search { font-size: .78rem; margin: 12px 0; }
+.digital-wardrobe .wardrobe-search input { background: #1d2232; color: white; border: 1px solid #40495f; border-radius: 10px; padding: 0 12px; }
+.digital-wardrobe .wardrobe-layout { grid-template-columns: minmax(0,1fr); }
+.digital-wardrobe fieldset { padding: 0; border: 0; }
+.digital-wardrobe fieldset legend { font-size: .82rem; padding: 6px 0; color: #c8d0e4; }
+.digital-wardrobe .wardrobe-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+.digital-wardrobe .wardrobe-grid li { padding: 5px; border: 1px solid #303b54; background: #1c2333; border-radius: 12px; }
+.digital-wardrobe .wardrobe-garment-select { padding: 0; gap: 4px; background: transparent; border-radius: 9px; }
+.digital-wardrobe .wardrobe-thumbnail { display: block; height: 142px; width: 100%; object-fit: contain; background: #f5f5f6; border-radius: 9px; }
+.digital-wardrobe .wardrobe-garment-name { font-size: .81rem; justify-self: start; padding-left: 4px; }
+.digital-wardrobe .wardrobe-garment-select-status { font-size: .7rem; }
+.digital-wardrobe .wardrobe-details-toggle { width: 100%; min-height: 30px; padding: 4px; border: 0; background: transparent; color: #b8c8f3; font-size: .75rem; }
+.digital-wardrobe .wardrobe-garment-actions { display: grid; gap: 5px; }
+.digital-wardrobe .wardrobe-garment-actions button { font-size: .76rem; min-height: 38px; }
+.digital-wardrobe .wardrobe-outfits-panel { margin-top: 12px; }
+.digital-wardrobe .wardrobe-outfits-panel h4 { margin: 10px 0; }
+.digital-wardrobe .wardrobe-outfits li { background: #1c2333; border: 1px solid #303b54; padding: 10px; border-radius: 12px; }
+@media (min-width: 720px) { .digital-wardrobe { max-width: 650px; margin-inline: auto; } .digital-wardrobe .wardrobe-thumbnail { height: 180px; } }

@@ -749,7 +749,6 @@ function OverviewPrimaryActions({
   featureFlags,
   onNavigateSection,
   onOpenBodyScan,
-  onOpenEar,
   onOpenWardrobe,
   onOpenEyes,
   onOpenFoodScan,

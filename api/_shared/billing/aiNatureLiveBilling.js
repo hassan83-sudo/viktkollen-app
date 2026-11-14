@@ -168,6 +168,7 @@ export async function executeAiNatureMeteredOperation({
   }
 
   const billing = await executeDurableMeteredBillingOperation({
+    usageEventPlan: aiNatureUsageEventPlan,
     clientClaim: {},
     commit: (input) => runtime.quota.commitReservation(input),
     evaluate: runtime.evaluate || ((input) => evaluateBillingOperation(input, {

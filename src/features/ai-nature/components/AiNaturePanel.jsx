@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { createCameraSession } from '../../shared/camera/cameraSession.js'
 import { requestNatureIdentification } from '../aiNatureAnalysisService.js'
+import { requestAiNatureConsent } from '../aiNatureConsentService.js'
 
 const safetyMessage = 'Ät aldrig svampar, bär eller växter enbart utifrån en bildidentifiering.'
 
-export default function AiNaturePanel({ onClose, analysisEnabled = false, accessToken, requestConsentToken }) {
+export default function AiNaturePanel({ onClose, analysisEnabled = false, accessToken }) {
   const videoRef = useRef(null)
   const sessionRef = useRef(null)
   const [cameraActive, setCameraActive] = useState(false)
@@ -62,7 +63,7 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false, access
   }
 
   async function identify() {
-    if (!analysisEnabled || busy || !photo || !accessToken || typeof requestConsentToken !== 'function') return
+    if (!analysisEnabled || busy || !photo || !accessToken) return
     setBusy(true)
     setCameraError('')
     const controller = new AbortController()
@@ -71,7 +72,7 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false, access
       const image = await (await fetch(photo)).blob()
       // Called only after the user presses the explicit approval button.
       // The parent must issue an image-bound consent token for this exact blob.
-      const consentToken = await requestConsentToken({ image, purpose: 'aiNatureIdentification', uiConsentApproved: true })
+      const consentToken = await requestAiNatureConsent({ image, accessToken, signal: controller.signal })
       if (controller.signal.aborted) return
       const result = await requestNatureIdentification({ image, accessToken, consentToken, signal: controller.signal })
       if (!controller.signal.aborted) setIdentification(result)

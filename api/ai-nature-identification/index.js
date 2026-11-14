@@ -6,8 +6,8 @@ import { analysisConsentPurposes, verifyAnalysisConsentToken } from '../_shared/
 import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
 
-// AI Natur remains fail-closed until a dedicated metered billing feature is
-// configured. Never reuse food-scan or AI-eye credits for nature scans.
+// AI Natur remains fail-closed until its own operational control is enabled.
+// Free nature scans share the food.scan monthly quota, not AI Eye credits.
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024
 const IMAGE_TYPES = {
   'image/jpeg': (b) => b[0] === 0xff && b[1] === 0xd8,
@@ -85,7 +85,7 @@ export default async function handler(request, response) {
 
   const runtime = await resolveAiNatureBillingRuntime()
   // The feature must have its own operational control row before activation.
-  // No fallback to the AI Eye or food-scan allowance is permitted.
+  // Operational permission is independent; quota usage shares food.scan.
   if (!runtime?.ok || runtime.featureControl?.mode !== 'ENABLED' || !runtime.providerControls?.length) {
     return fail(response, requestId, aiRouteErrorCodes.FEATURE_LOCKED, 503)
   }

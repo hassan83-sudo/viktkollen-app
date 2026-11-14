@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { createCameraSession } from '../../shared/camera/cameraSession.js'
+import { requestNatureIdentification } from '../aiNatureAnalysisService.js'
 
 const safetyMessage = 'Ät aldrig svampar, bär eller växter enbart utifrån en bildidentifiering.'
 
-export default function AiNaturePanel({ onClose }) {
+export default function AiNaturePanel({ onClose, analysisEnabled = false, accessToken, requestConsentToken }) {
   const videoRef = useRef(null)
   const sessionRef = useRef(null)
   const [cameraActive, setCameraActive] = useState(false)
@@ -11,12 +12,14 @@ export default function AiNaturePanel({ onClose }) {
   const [photo, setPhoto] = useState(null)
   const [identification, setIdentification] = useState(null)
   const [busy, setBusy] = useState(false)
+  const abortRef = useRef(null)
 
   useEffect(() => {
     const session = createCameraSession({ facingMode: 'environment' })
     sessionRef.current = session
     return () => {
       session.stop()
+      abortRef.current?.abort()
       sessionRef.current = null
     }
   }, [])
@@ -58,7 +61,30 @@ export default function AiNaturePanel({ onClose }) {
     reader.readAsDataURL(file)
   }
 
+  async function identify() {
+    if (!analysisEnabled || busy || !photo || !accessToken || typeof requestConsentToken !== 'function') return
+    setBusy(true)
+    setCameraError('')
+    const controller = new AbortController()
+    abortRef.current = controller
+    try {
+      const image = await (await fetch(photo)).blob()
+      // Called only after the user presses the explicit approval button.
+      // The parent must issue an image-bound consent token for this exact blob.
+      const consentToken = await requestConsentToken({ image, purpose: 'aiNatureIdentification', uiConsentApproved: true })
+      if (controller.signal.aborted) return
+      const result = await requestNatureIdentification({ image, accessToken, consentToken, signal: controller.signal })
+      if (!controller.signal.aborted) setIdentification(result)
+    } catch (error) {
+      if (!controller.signal.aborted) setCameraError(error?.message || 'Analysen kunde inte genomföras.')
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null
+      setBusy(false)
+    }
+  }
+
   function reset() {
+    abortRef.current?.abort()
     setPhoto(null)
     setIdentification(null)
     setCameraError('')
@@ -88,8 +114,8 @@ export default function AiNaturePanel({ onClose }) {
       </div>
 
       {cameraError && <p role="alert">{cameraError}</p>}
-      <p style={{ fontSize: 13, opacity: 0.85 }}>Bilden stannar på din enhet tills du uttryckligen godkänner analys. AI-analysen är ännu inte aktiverad.</p>
-      {photo && <button type="button" disabled={true} title="AI Natur är spärrad tills separat kvot och betalningskontroll är verifierade">Identifiera med AI – kommer snart</button>}
+      <p style={{ fontSize: 13, opacity: 0.85 }}>Bilden stannar på din enhet tills du uttryckligen godkänner analys. {analysisEnabled ? 'Godkänn endast om du vill skicka bilden för AI-analys.' : 'AI-analysen är ännu inte aktiverad.'}</p>
+      {photo && <button type="button" onClick={identify} disabled={!analysisEnabled || !accessToken || typeof requestConsentToken !== 'function' || busy} title={!analysisEnabled ? "AI Natur är spärrad tills separat kvot och betalningskontroll är verifierade" : undefined}>{busy ? "Identifierar…" : analysisEnabled ? "Godkänn och identifiera med AI" : "Identifiera med AI – kommer snart"}</button>}
       {busy && <p role="status">Identifierar art…</p>}
       {identification && (
         <article aria-live="polite" style={{ marginTop: 18 }}>

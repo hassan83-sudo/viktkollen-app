@@ -42,6 +42,21 @@ import {
 } from '../services/nutrition/nutritionEngine.js'
 
 const dayNames = ['Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag', 'Söndag']
+const primaryMealTypes = ['Frukost', 'Lunch', 'Middag', 'Kvällsmål']
+function monthDates(month) {
+  const [year, number] = month.split('-').map(Number)
+  const offset = (new Date(year, number - 1, 1).getDay() + 6) % 7
+  const last = new Date(year, number, 0).getDate()
+  return Array.from({ length: offset + last }, (_, index) => {
+    const day = index - offset + 1
+    return day < 1 ? null : `${year}-${String(number).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  })
+}
+function shiftMonth(month, offset) {
+  const [year, number] = month.split('-').map(Number)
+  const date = new Date(year, number - 1 + offset, 1)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
 
 function formatNumber(value, suffix) {
   return Number.isFinite(value) && value > 0
@@ -154,7 +169,7 @@ function PlannedMealForm({
         <label className="field">
           <span>Måltidstyp</span>
           <select value={draft.mealType} onChange={(event) => onChange('mealType', event.target.value)}>
-            {plannedMealTypes.map((type) => <option key={type}>{type}</option>)}
+            {[...primaryMealTypes, ...plannedMealTypes.filter((type) => !primaryMealTypes.includes(type))].map((type) => <option key={type} value={type}>{type === 'Kvällsmål' ? 'Kvällsmat' : type}</option>)}
           </select>
         </label>
         <label className="field">
@@ -275,6 +290,7 @@ function WeeklyMealPlanner({
   const [plans, setPlans] = useState(() => readMealPlans())
   const [shoppingLists, setShoppingLists] = useState(() => readShoppingLists())
   const [weekStart, setWeekStart] = useState(() => getMealPlanWeekStart())
+  const [visibleMonth, setVisibleMonth] = useState(() => getLocalDateString().slice(0, 7))
   const [draft, setDraft] = useState(() => emptyDraft(getMealPlanWeekStart()))
   const [editingMealId, setEditingMealId] = useState('')
   const [errors, setErrors] = useState({})
@@ -295,6 +311,10 @@ function WeeklyMealPlanner({
   const confirmFocusTarget = useRef(null)
   const focusAfterConfirm = useFocusAfterConfirm()
 
+  const calendarDates = useMemo(() => monthDates(visibleMonth), [visibleMonth])
+  const calendarMeals = useMemo(() => Object.fromEntries(
+    calendarDates.filter(Boolean).map(date => [date, getMealPlanWeek(plans, getMealPlanWeekStart(date)).days[date] || []])
+  ), [calendarDates, plans])
   const week = useMemo(() => getMealPlanWeek(plans, weekStart), [plans, weekStart])
   const weekDates = useMemo(() => getMealPlanWeekDates(weekStart), [weekStart])
   const summary = useMemo(() => buildPlannedWeekSummary(week, nutritionGoals), [nutritionGoals, week])
@@ -517,6 +537,28 @@ function WeeklyMealPlanner({
         <button className="secondary-button" type="button" onClick={() => setWeekStart(addLocalDays(weekStart, 7))}>Nästa vecka</button>
         <button className="secondary-button" type="button" onClick={() => setWeekStart(getMealPlanWeekStart(getLocalDateString()))}>Denna vecka</button>
       </nav>
+
+      <section className="nutrition-card" aria-label="Månadsalmanacka för måltider">
+        <nav className="meal-planner-week-nav" aria-label="Månadsnavigation">
+          <button type="button" className="secondary-button" onClick={() => setVisibleMonth(shiftMonth(visibleMonth, -1))}>Föregående månad</button>
+          <strong>{new Date(Number(visibleMonth.slice(0, 4)), Number(visibleMonth.slice(5)) - 1, 1).toLocaleDateString('sv-SE', { month: 'long', year: 'numeric' })}</strong>
+          <button type="button" className="secondary-button" onClick={() => setVisibleMonth(shiftMonth(visibleMonth, 1))}>Nästa månad</button>
+        </nav>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '0.3rem' }}>
+          {dayNames.map(name => <strong key={name} style={{ textAlign: 'center' }}>{name.slice(0, 2)}</strong>)}
+          {calendarDates.map((date, index) => date ? (
+            <button key={date} type="button" className="secondary-button"
+              aria-label={`${date}, ${calendarMeals[date].length} planerade måltider`}
+              aria-pressed={draft.date === date}
+              style={{ minWidth: 0, padding: '0.45rem 0.15rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}
+              onClick={() => { setWeekStart(getMealPlanWeekStart(date)); resetForm(date) }}>
+              <strong>{Number(date.slice(-2))}</strong>
+              <small>{calendarMeals[date].length ? `${calendarMeals[date].length} mål` : '–'}</small>
+            </button>
+          ) : <span key={`empty-${index}`} />)}
+        </div>
+        <p>Välj en dag för att lägga till frukost, lunch, middag eller kvällsmat. Sparade recept kan användas i samma plan.</p>
+      </section>
 
       {status && <p className="nutrition-edit-status" role="status">{status}</p>}
 

@@ -147,16 +147,18 @@ function canRollback(dispatchState) {
     || dispatchState === PROVIDER_DISPATCH_STATE.DISPATCHED_CONFIRMED_FAILURE_NOT_BILLABLE
 }
 
-async function writeUsage({ calls, operationId, order, recordUsage, userId }) {
+async function writeUsage({ calls, operationId, order, recordUsage, userId, usageEventPlan = foodScanUsageEventPlan }) {
   if (typeof recordUsage !== 'function') return { ok: true, skipped: true }
   calls.usage += 1
   order.push('usage')
-  const result = await recordUsage(foodScanUsageEventPlan({ operationId, userId }))
+  const result = await recordUsage(usageEventPlan({ operationId, userId }))
   if (result && result.ok === false) return result
   return { ok: true, duplicate: result?.duplicate === true }
 }
 
 async function recoverLedger({
+      usageEventPlan,
+  usageEventPlan,
   commit,
   operationId,
   recordUsage,
@@ -227,6 +229,9 @@ async function recoverLedger({
 
     if (row.usage_ok !== true) {
       const usage = await writeUsage({
+    usageEventPlan,
+      usageEventPlan,
+        usageEventPlan,
         calls,
         operationId,
         order,
@@ -284,6 +289,7 @@ async function recoverLedger({
  * may insert the same event_id earlier as dispatch authority.
  */
 export async function executeMeteredBillingOperation({
+  usageEventPlan = foodScanUsageEventPlan,
   clientClaim = {},
   commit,
   evaluate = evaluateBillingOperation,
@@ -323,6 +329,7 @@ export async function executeMeteredBillingOperation({
   if (inflight.has(`${instanceKey}:${scopedId}`)) return inflight.get(`${instanceKey}:${scopedId}`)
 
   const run = runLifecycle({
+    usageEventPlan,
     clientClaim,
     commit,
     evaluate,
@@ -357,6 +364,7 @@ export async function executeDurableMeteredBillingOperation(input = {}) {
 }
 
 async function runLifecycle({
+  usageEventPlan,
   clientClaim,
   commit,
   evaluate,
@@ -376,6 +384,7 @@ async function runLifecycle({
   const prior = store && typeof store.get === 'function' ? await store.get(operationId) : null
   if (prior) {
     const recovered = await recoverLedger({
+      usageEventPlan,
       commit,
       operationId,
       recordUsage,
@@ -501,6 +510,7 @@ async function runLifecycle({
   const durableNow = store && typeof store.get === 'function' ? await store.get(operationId) : null
   if (durableNow?.dispatch_started) {
     const recovered = await recoverLedger({
+      usageEventPlan,
       commit,
       operationId,
       recordUsage,
@@ -563,6 +573,7 @@ async function runLifecycle({
     }
     if (durableClaim?.result === DISPATCH_CAS_RESULT.ALREADY_DISPATCHED) {
       const recovered = await recoverLedger({
+      usageEventPlan,
         commit,
         operationId,
         recordUsage,
@@ -709,6 +720,8 @@ async function runLifecycle({
     }
 
     const usage = await writeUsage({
+    usageEventPlan,
+      usageEventPlan,
       calls,
       operationId,
       order,
@@ -790,6 +803,7 @@ async function runLifecycle({
   }
 
   const usage = await writeUsage({
+    usageEventPlan,
     calls,
     operationId,
     order,

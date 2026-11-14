@@ -1,3 +1,6 @@
+import { identifyNatureImage } from '../_shared/aiNatureIdentification.js'
+import { createAiNatureOperationId, executeAiNatureMeteredOperation, mapAiNatureBillingHttp, resolveAiNatureBillingRuntime } from '../_shared/billing/aiNatureLiveBilling.js'
+import { DISPATCH_CAS_RESULT } from '../../src/services/billing/durableOperationStore.js'
 import { verifySupabaseUser } from '../_shared/verifySupabaseUser.js'
 import { analysisConsentPurposes, verifyAnalysisConsentToken } from '../_shared/analysisConsent.js'
 import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
@@ -80,8 +83,47 @@ export default async function handler(request, response) {
   })
   if (!consent.ok) return fail(response, requestId, aiRouteErrorCodes.CONSENT_REQUIRED, 403)
 
-  // A separate quota/billing configuration is required before any provider
-  // call. Intentionally return 503; no image is sent to OpenAI and no charge
-  // can occur through this unfinished route.
-  return fail(response, requestId, aiRouteErrorCodes.FEATURE_LOCKED, 503)
+  const runtime = await resolveAiNatureBillingRuntime()
+  // The feature must have its own operational control row before activation.
+  // No fallback to the AI Eye or food-scan allowance is permitted.
+  if (!runtime.ok || !runtime.featureControl || !runtime.providerControls.length) {
+    return fail(response, requestId, aiRouteErrorCodes.FEATURE_LOCKED, 503)
+  }
+  const clientAttemptId = String(request.headers?.['x-viktkollen-request-id'] || '').slice(0, 80)
+  const operationId = createAiNatureOperationId({ clientAttemptId, userId: auth.user.id })
+  let analysis = null
+  let providerError = null
+  let providerInvoked = false
+  const { billing } = await executeAiNatureMeteredOperation({
+    operationId, instanceKey: requestId, runtime, userId: auth.user.id,
+    executeProvider: async ({ markDispatched }) => {
+      const claim = await markDispatched()
+      if (claim?.result !== DISPATCH_CAS_RESULT.FIRST_DISPATCH) {
+        return { ok: false, providerRequestStarted: false, code: 'alreadyDispatched' }
+      }
+      providerInvoked = true
+      const result = await identifyNatureImage({
+        imageBytes: bytes, mimeType, userId: auth.user.id,
+        usageRepository: runtime.usageRepository,
+      })
+      if (!result.ok) {
+        providerError = result.code
+        return { ok: false, providerRequestStarted: true, code: result.code }
+      }
+      analysis = result.identification
+      return { ok: true }
+    },
+  })
+  const mapped = mapAiNatureBillingHttp(billing, {
+    analysisOk: Boolean(analysis), providerAttempted: providerInvoked,
+  })
+  if (mapped.kind === 'success') {
+    return response.status(200).json({ ok: true, result: analysis, requestId })
+  }
+  return sendSafeAiError(response, {
+    code: mapped.code || aiRouteErrorCodes.PROVIDER_UNAVAILABLE,
+    requestId,
+    retryable: mapped.retryable ?? true,
+    status: mapped.status || 502,
+  })
 }

@@ -18,23 +18,28 @@ export async function requestNatureIdentification({
     throw new Error('Inloggning och uttryckligt bildsamtycke krävs.')
   }
 
-  const form = new FormData()
-  form.append('image', image, 'naturbild')
+  const bytes = new Uint8Array(await image.arrayBuffer())
+  let binary = ''
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000))
+  }
+  const imageBase64 = btoa(binary)
   const response = await fetch('/api/ai-nature-identification', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
       'x-viktkollen-consent-token': consentToken,
       ...(requestId ? { 'x-viktkollen-request-id': requestId } : {}),
     },
-    body: form,
+    body: JSON.stringify({ mimeType: image.type, imageBase64 }),
     signal,
     cache: 'no-store',
     credentials: 'same-origin',
   })
   const result = await response.json().catch(() => null)
-  if (!response.ok || result?.ok !== true || !result?.identification) {
+  if (!response.ok || result?.ok !== true || !result?.result) {
     throw new Error(result?.message || 'AI Natur är inte tillgänglig just nu.')
   }
-  return result.identification
+  return result.result
 }

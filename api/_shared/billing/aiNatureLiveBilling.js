@@ -28,6 +28,16 @@ export const AI_NATURE_BILLING = Object.freeze({
   unit: 'requests',
 })
 
+// Both routes reserve against food.scan atomically in PostgreSQL.
+// Nature keeps its own feature identity, operational gate and usage event.
+function sharedFoodScanQuota(quota) {
+  return {
+    ...quota,
+    inspectQuota: (input) => quota.inspectQuota({ ...input, feature: 'food.scan' }),
+    reserveQuota: (input) => quota.reserveQuota({ ...input, feature: 'food.scan' }),
+  }
+}
+
 let testRuntimeOverride = null
 
 export function setAiNatureBillingRuntimeForTests(runtime = null) {
@@ -36,10 +46,10 @@ export function setAiNatureBillingRuntimeForTests(runtime = null) {
 
 export function installAiNatureBillingTestRuntime(overrides = {}) {
   const usageRepository = overrides.usageRepository || createInMemoryUsageRepository()
-  const quota = overrides.quota || createQuotaEngine({
+  const quota = sharedFoodScanQuota(overrides.quota || createQuotaEngine({
     assignments: overrides.assignments,
     usageRepository,
-  })
+  }))
   const recordUsage = (input) => recordUsageEvent(input, usageRepository)
   let operationStore
   try {
@@ -91,9 +101,9 @@ export async function resolveAiNatureBillingRuntime() {
   if (!client) return { ok: false, code: 'DURABLE_STORE_UNAVAILABLE' }
   try {
     const usageRepository = createPostgresUsageRepository({ client })
-    const quota = createQuotaEngine({
+    const quota = sharedFoodScanQuota(createQuotaEngine({
       backend: createPostgresQuotaBackend(createSupabaseBillingRpcQuery(client)),
-    })
+    }))
     const featureControl = await readControlRow(client, 'feature_controls', 'feature_id', AI_NATURE_BILLING.feature_id)
     const providerRow = await readControlRow(client, 'provider_controls', 'provider_id', AI_NATURE_BILLING.provider_id)
     const recordUsage = (input) => recordUsageEvent(input, usageRepository)

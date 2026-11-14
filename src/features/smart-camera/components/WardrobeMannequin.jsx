@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { isWardrobePhoto } from '../../../services/wardrobeStorage.js'
+import { garmentSlot, isWardrobePhoto } from '../../../services/wardrobeStorage.js'
 
-const priority = { 'Jacka': 0, 'Tröja': 1, 'Skjorta': 1, 'Klänning': 1, 'Byxor': 2, 'Jeans': 2, 'Skor': 3, 'Accessoar': 4, 'Annat': 5 }
+const priority = { outer: 0, top: 1, dress: 1, bottom: 2, shoes: 3, accessory: 4 }
 const isLight = (r, g, b) => Math.min(r, g, b) >= 224 && Math.max(r, g, b) - Math.min(r, g, b) <= 24
 
 // Only remove near-white background connected to the image border.
@@ -76,7 +76,7 @@ function OutfitGarment({ garment }) {
       .catch(() => {})
     return () => { active = false }
   }, [garment.image])
-  return <li className={`wardrobe-outfit-piece wardrobe-outfit-${garment.type === 'Skor' ? 'shoes' : ['Byxor', 'Jeans'].includes(garment.type) ? 'bottom' : 'top'}`}>
+  return <li className={`wardrobe-outfit-piece wardrobe-outfit-${['shoes', 'bottom'].includes(garmentSlot(garment.type)) ? garmentSlot(garment.type) : 'top'}`}>
     {isWardrobePhoto(garment.image)
       ? <img src={cutout || garment.image} alt={`${garment.name}, ${garment.type}`} />
       : <div className="wardrobe-outfit-stack-color" style={{ backgroundColor: /^#[0-9a-f]{6}$/i.test(garment.color || '') ? garment.color : '#446fa4' }} aria-hidden="true" />}
@@ -85,7 +85,7 @@ function OutfitGarment({ garment }) {
 }
 
 export default function WardrobeMannequin({ garments }) {
-  const ordered = [...garments].sort((a, b) => (priority[a.type] ?? 5) - (priority[b.type] ?? 5))
+  const ordered = [...garments].sort((a, b) => (priority[garmentSlot(a.type)] ?? 5) - (priority[garmentSlot(b.type)] ?? 5))
   return <section className="wardrobe-mannequin wardrobe-outfit-stack" aria-label="Vald outfit">
     <h4>Din outfit</h4>
     {!ordered.length ? <p>Välj kläder ovan för att se dem här.</p> : (

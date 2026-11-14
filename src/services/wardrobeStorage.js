@@ -1,6 +1,6 @@
 export const wardrobeStorageKey = 'viktkollen.notice.wardrobe.v1'
 export const wardrobeChangedEvent = 'viktkollen:wardrobe-changed'
-export const garmentTypes = ['Tröja', 'Skjorta', 'Byxor', 'Jeans', 'Jacka', 'Klänning', 'Skor', 'Accessoar', 'Annat']
+export const garmentTypes = ['Tröja', 'T-shirt', 'Linne', 'Skjorta', 'Blus', 'Pikétröja', 'Hoodie', 'Sweatshirt', 'Cardigan', 'Kofta', 'Tröja med polokrage', 'Kavaj', 'Kostym', 'Väst', 'Jacka', 'Kappa', 'Rock', 'Regnjacka', 'Overall', 'Byxor', 'Jeans', 'Shorts', 'Kjol', 'Klänning', 'Jumpsuit', 'Leggings', 'Träningskläder', 'Badkläder', 'Bikini', 'Baddräkt', 'Badbyxor', 'Pyjamas', 'Nattlinne', 'Morgonrock', 'Underställ', 'Strumpor', 'Knästrumpor', 'Strumpbyxor', 'Kalsonger', 'Boxershorts', 'Trosor', 'BH', 'Sport-BH', 'Underkläder', 'Skor', 'Sneakers', 'Stövlar', 'Sandaler', 'Tofflor', 'Mössa', 'Keps', 'Hatt', 'Halsduk', 'Sjal', 'Handskar', 'Vantar', 'Bälte', 'Slips', 'Fluga', 'Väska', 'Accessoar', 'Annat']
 const empty = () => ({ garments: [], worn: [], outfits: [], selectedGarmentIds: [] })
 export const isWardrobePhoto = (value) => typeof value === 'string' && value.length <= 200000 && /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(value)
 

@@ -29,6 +29,8 @@ const launchUnmetered = new Set(LAUNCH_UNMETERED_FEATURES)
 function entitlementsFor(quotas) {
   const entries = { ...unmeteredEntitlements() }
   const limitByFeature = new Map(Object.values(quotas).map((quota) => [quota.feature, quota.limit]))
+  // Nature shares food.scan's allowance; no second pool of free requests.
+  limitByFeature.set('ai.nature.identification', limitByFeature.get('food.scan'))
   for (const [id, feature] of Object.entries(BILLING_FEATURES)) {
     if (!feature.metered) continue
     entries[id] = createEntitlement({

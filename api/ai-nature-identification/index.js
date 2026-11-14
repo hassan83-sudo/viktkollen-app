@@ -86,7 +86,7 @@ export default async function handler(request, response) {
   const runtime = await resolveAiNatureBillingRuntime()
   // The feature must have its own operational control row before activation.
   // No fallback to the AI Eye or food-scan allowance is permitted.
-  if (!runtime.ok || !runtime.featureControl || !runtime.providerControls.length) {
+  if (!runtime?.ok || runtime.featureControl?.mode !== 'ENABLED' || !runtime.providerControls?.length) {
     return fail(response, requestId, aiRouteErrorCodes.FEATURE_LOCKED, 503)
   }
   const clientAttemptId = String(request.headers?.['x-viktkollen-request-id'] || '').slice(0, 80)

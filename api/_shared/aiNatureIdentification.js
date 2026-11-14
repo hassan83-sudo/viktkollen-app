@@ -1,3 +1,5 @@
+import { callOpenAiJson, getAiGatewayConfig } from './openaiGateway.js'
+
 /**
  * AI Natur: isolated species-identification contract.
  * No route, UI placement or OpenAI call is enabled by this module.
@@ -42,4 +44,37 @@ export function normalizeNatureIdentification(input) {
     safetyNote: clean(data.safetyNote, 400) ||
       'Ät eller hantera inte okända växter, bär eller svampar utifrån enbart bildidentifiering.',
   }
+}
+
+/**
+ * Provider adapter only. The caller MUST authenticate the user, verify
+ * image-bound explicit consent, enforce rate limits and reserve billing
+ * before invoking this function. Never expose this function as an API route.
+ */
+export async function identifyNatureImage({ imageBytes, mimeType, userId, usageRepository } = {}) {
+  const supported = new Set(['image/jpeg', 'image/png', 'image/webp'])
+  if (!supported.has(mimeType) || !Buffer.isBuffer(imageBytes) || !imageBytes.length ||
+      imageBytes.length > 8 * 1024 * 1024) {
+    return { ok: false, code: 'invalidImage' }
+  }
+  const config = getAiGatewayConfig('photo')
+  const result = await callOpenAiJson({
+    feature: 'ai.nature.identification',
+    input: [{
+      role: 'user',
+      content: [
+        { type: 'input_text', text: natureIdentificationInstructions },
+        { type: 'input_image', detail: 'high',
+          image_url: `data:${mimeType};base64,${imageBytes.toString('base64')}` },
+      ],
+    }],
+    maxOutputTokens: 650,
+    model: config.model,
+    timeoutMs: config.timeoutMs,
+    type: 'photo',
+    userId,
+    usageRepository,
+  })
+  if (!result.ok) return { ok: false, code: result.error?.code || 'providerUnavailable' }
+  return { ok: true, identification: normalizeNatureIdentification(result.value) }
 }

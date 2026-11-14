@@ -11,6 +11,7 @@ import {
   requestAnalysisConsentToken,
   withAnalysisConsentTokenHeader,
 } from './security/analysisConsentProof.js'
+import { extractStreamingIngredientNames } from './nutritionPhotoStreamingIngredients.js'
 
 export const nutritionPhotoProviderTypes = ['mock', 'remote']
 export const nutritionPhotoAnalysisTimeoutMs = 60000
@@ -174,6 +175,61 @@ function safeRemoteWarning(status, errorCode) {
   if (status >= 500) return 'Remote bildanalys är tillfälligt otillgänglig.'
 
   return 'Remote bildanalys kunde inte slutföras.'
+}
+
+async function readNutritionPhotoSse(response, { onIngredient } = {}) {
+  if (!response.body || typeof response.body.getReader !== 'function') {
+    throw new Error('stream_unavailable')
+  }
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let completePayload = null
+  let seen = []
+
+  const emitName = (name) => {
+    const text = safeText(name, '', 80)
+    if (!text || seen.includes(text)) return
+    seen = [...seen, text]
+    if (typeof onIngredient === 'function') onIngredient(text)
+  }
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const chunks = buffer.split(/\n\n/)
+    buffer = chunks.pop() || ''
+    for (const chunk of chunks) {
+      const dataLines = chunk
+        .split('\n')
+        .filter((line) => line.startsWith('data:'))
+        .map((line) => line.slice(5).trim())
+        .filter(Boolean)
+      if (!dataLines.length) continue
+      let event
+      try {
+        event = JSON.parse(dataLines.join('\n'))
+      } catch {
+        continue
+      }
+      if (event?.type === 'ingredient' && event.name) emitName(event.name)
+      if (event?.type === 'complete') completePayload = event
+      if (event?.type === 'error') {
+        return {
+          error: event.error || { code: 'PROVIDER_UNAVAILABLE' },
+          ok: false,
+        }
+      }
+      // Defensive: if a partial text field ever appears, extract names without inventing.
+      if (typeof event?.partialText === 'string') {
+        for (const name of extractStreamingIngredientNames(event.partialText, seen)) emitName(name)
+      }
+    }
+  }
+
+  if (!completePayload) throw new Error('stream_incomplete')
+  return completePayload
 }
 
 export async function analyzeNutritionPhoto(input = {}, options = {}) {
@@ -353,6 +409,7 @@ export async function analyzeNutritionPhoto(input = {}, options = {}) {
     const response = await fetch('/api/nutrition-photo-analysis', {
       body: await createRemoteFormData(input),
       headers: withAnalysisConsentTokenHeader({
+        Accept: 'text/event-stream, application/json',
         Authorization: auth.authorizationHeader,
         'x-viktkollen-client-id': getTransientClientId(),
         'x-viktkollen-request-id': clientAttemptId,
@@ -411,7 +468,14 @@ export async function analyzeNutritionPhoto(input = {}, options = {}) {
 
     let payload
     try {
-      payload = await response.json()
+      const contentType = String(response.headers?.get?.('content-type') || '')
+      if (contentType.includes('text/event-stream')) {
+        payload = await readNutritionPhotoSse(response, {
+          onIngredient: typeof options.onIngredient === 'function' ? options.onIngredient : null,
+        })
+      } else {
+        payload = await response.json()
+      }
     } catch {
       logRemoteDiagnostic('remote-json-failed', {
         fallbackReason: 'invalid_json',
@@ -525,5 +589,6 @@ export async function analyzeNutritionPhoto(input = {}, options = {}) {
 export const nutritionPhotoProviderInternals = {
   createMockAnalysis,
   createRemoteFormData,
+  readNutritionPhotoSse,
   safeRemoteWarning,
 }

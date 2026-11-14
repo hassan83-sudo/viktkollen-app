@@ -2,6 +2,7 @@ import {
   callOpenAiJson,
   getAiGatewayConfig,
 } from '../_shared/openaiGateway.js'
+import { extractStreamingIngredientNames } from '../../src/services/nutritionPhotoStreamingIngredients.js'
 import { aiRouteErrorCodes, mapGatewayErrorCode, sendSafeAiError, setNoStoreHeaders } from '../_shared/aiRouteErrors.js'
 import { checkAiRouteRateLimit } from '../_shared/aiRateLimiter.js'
 import { createImageFingerprint, runDedupedAiRequest } from '../_shared/aiRequestDeduper.js'
@@ -214,6 +215,7 @@ function createPrompt(mealType) {
   return [
     'Viktkollen food photo analysis. Reply with compact JSON only, no markdown:',
     'FIRST determine dishShape from the PHOTO and return it as the FIRST JSON property. For one triangular wedge of pizza on a plate (pointed tip and wide crust end), dishShape MUST be pizza_slice. For a complete circular pizza, dishShape MUST be whole_pizza. Do not call a single wedge whole_pizza. For pizza with unclear shape use unknown. For all other foods use unknown. This is a visual portion classification, independent of the ingredient names.',
+    'After dishShape, emit the items array next. For each item, fill the name field first with the short Swedish food name before other fields so names appear early in the stream. Never invent hidden foods.',
     `{"dishShape":"unknown","items":[{"name":"","bank":"","cat":"","cook":"","g":[0,0],"conf":"","gconf":"","alt":[],"per100":[0,0,0,0]}],"quality":"","conf":"","wholeG":[0,0],"note":""}`,
     `1. One item per visually distinct food, max ${NUTRITION_PHOTO_MAX_COMPONENTS}. Keep every visible sauce, dressing, dip, oil/butter, bread, breading and topping as its own item; split dishes into their visible parts (burger: bun, patty, cheese, vegetables, sauce). Recognize the complete dish first: pizza (including pizza with meat and vegetables), lasagne, soup or stew must be named as that dish, never as its first topping or ingredient. For pizza, the first item must be named 'Pizzabotten med tomatsås' and represent ONLY the baked dough and thin tomato sauce layer in its grams. Set its bank field to 'Pizzadeg tillagad hemlagad' so the server can match baked pizza dough rather than a complete pizza including toppings. This is an approximation for the dough-dominant base; if tomato sauce is substantial, return it as a separate ingredient and exclude it from the base grams. Never use a whole-pizza food-bank entry for the base. Never name this ingredient after the complete pizza, since a whole-pizza database match would include toppings twice. Return visible toppings (meat, cheese, vegetables, sauces) as SEPARATE subsequent items with their own grams and nutrition. Never include toppings in the first item's weight or nutrition, and never count any food twice. This keeps the meal title correct while retaining ingredient details. Do not merge separate foods; do not count the same food twice.`,
     '2. name: short Swedish name for the user. bank: Swedish name in Livsmedelsverket style, main food first, then cut/type, then cooking, e.g. "Kyckling bröstfilé stekt", "Ris vitt kokt", "Broccoli kokt", "Pommes frites ugnsstekta", "Lax ugnsstekt", "Nötfärs stekt", "Potatis kokt", "Bearnaisesås".',
@@ -509,7 +511,32 @@ function validateProviderPayload(payload = {}) {
   }
 }
 
-async function callOpenAi(image, mealType, { accessToken = '', requestId, usageRepository, userId } = {}) {
+function wantsIngredientStream(request) {
+  const accept = String(getHeader(request, 'accept') || '').toLowerCase()
+  return accept.includes('text/event-stream')
+}
+
+function writeSseEvent(response, payload) {
+  response.write(`data: ${JSON.stringify(payload)}\n\n`)
+}
+
+function beginIngredientStream(response, requestId) {
+  response.statusCode = 200
+  response.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
+  response.setHeader('Cache-Control', 'no-store, no-transform')
+  response.setHeader('Connection', 'keep-alive')
+  response.setHeader('X-Accel-Buffering', 'no')
+  if (typeof response.flushHeaders === 'function') response.flushHeaders()
+  writeSseEvent(response, { ok: true, requestId, type: 'started' })
+}
+
+async function callOpenAi(image, mealType, {
+  accessToken = '',
+  onIngredient,
+  requestId,
+  usageRepository,
+  userId,
+} = {}) {
   if (!process.env.OPENAI_API_KEY) {
     const error = new Error('missing_configuration')
     error.code = 'serverConfiguration'
@@ -518,6 +545,7 @@ async function callOpenAi(image, mealType, { accessToken = '', requestId, usageR
 
   const imageUrl = `data:${image.contentType};base64,${image.data.toString('base64')}`
   const config = getAiGatewayConfig('photo')
+  let seenNames = []
   const result = await callOpenAiJson({
     feature: 'food.scan',
     input: [{
@@ -529,6 +557,18 @@ async function callOpenAi(image, mealType, { accessToken = '', requestId, usageR
     }],
     maxOutputTokens: NUTRITION_PHOTO_MAX_OUTPUT_TOKENS,
     model: config.model || DEFAULT_MODEL,
+    ...(typeof onIngredient === 'function'
+      ? {
+          onTextDelta: async (partialText) => {
+            const next = extractStreamingIngredientNames(partialText, seenNames)
+            for (const name of next) {
+              if (seenNames.includes(name)) continue
+              seenNames = [...seenNames, name]
+              await onIngredient(name)
+            }
+          },
+        }
+      : {}),
     requestId,
     timeoutMs: REQUEST_TIMEOUT_MS,
     type: 'photo',
@@ -580,6 +620,7 @@ export default async function handler(request, response) {
   const requestId = `photo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   setNoStoreHeaders(response)
   const clientAttemptId = safeText(getHeader(request, 'x-viktkollen-request-id'), '', 80)
+  let streamStarted = false
 
   if (request.method !== 'POST') {
     response.setHeader('Allow', 'POST')
@@ -697,6 +738,7 @@ export default async function handler(request, response) {
       userId: auth.user.id,
     })
     let photoResult = null
+    const streamIngredients = wantsIngredientStream(request)
     const { billing } = await executeFoodScanMeteredOperation({
       clientClaim: {},
       instanceKey: requestId,
@@ -718,12 +760,26 @@ export default async function handler(request, response) {
         if (claim?.result === DISPATCH_CAS_RESULT.ALREADY_DISPATCHED || (claim && claim.claimed === false && claim.result !== DISPATCH_CAS_RESULT.FIRST_DISPATCH)) {
           return { ok: false, providerRequestStarted: false, code: 'alreadyDispatched' }
         }
+        if (streamIngredients && !streamStarted) {
+          beginIngredientStream(response, requestId)
+          streamStarted = true
+        }
         const { promise: providerPromise } = runDedupedAiRequest({
           fingerprint: createImageFingerprint(image),
           route: 'nutritionPhoto',
           userId: auth.user.id,
         }, () => callOpenAi(image, parsedRequest.parsed.fields.mealType, {
           accessToken: verifySupabaseUserInternals.getBearerToken(request).token || '',
+          ...(streamStarted
+            ? {
+                onIngredient: (name) => {
+                  writeSseEvent(response, {
+                    name: safeText(name, '', 80),
+                    type: 'ingredient',
+                  })
+                },
+              }
+            : {}),
           requestId: operationId,
           usageRepository: runtime.usageRepository,
           userId: auth.user.id,
@@ -733,6 +789,7 @@ export default async function handler(request, response) {
           modelName: getAiGatewayConfig('photo').model || DEFAULT_MODEL,
           operationId,
           requestId,
+          streamIngredients: streamStarted === true,
           upstreamRequestStarted: true,
         })
         try {
@@ -805,13 +862,35 @@ export default async function handler(request, response) {
         requestCompleted: true,
         requestId,
         source: 'remote',
+        streamIngredients: streamStarted === true,
       })
+      if (streamStarted) {
+        writeSseEvent(response, {
+          analysis: photoResult.analysis,
+          ok: true,
+          requestId,
+          source: 'remote',
+          type: 'complete',
+        })
+        response.end()
+        return undefined
+      }
       return response.status(200).json({
         analysis: photoResult.analysis,
         ok: true,
         requestId,
         source: 'remote',
       })
+    }
+    if (streamStarted) {
+      writeSseEvent(response, {
+        error: { code: mapped.code, retryable: mapped.retryable === true },
+        ok: false,
+        requestId,
+        type: 'error',
+      })
+      response.end()
+      return undefined
     }
     return sendSafeAiError(response, {
       code: mapped.code,
@@ -869,6 +948,16 @@ export default async function handler(request, response) {
       upstreamStatus: Number.isFinite(Number(error?.upstreamStatus)) ? Number(error.upstreamStatus) : '',
       upstreamStatusText: safeText(error?.upstreamStatusText, '', 80),
     })
+    if (streamStarted) {
+      writeSseEvent(response, {
+        error: { code, retryable: code !== aiRouteErrorCodes.PROVIDER_NOT_CONFIGURED },
+        ok: false,
+        requestId,
+        type: 'error',
+      })
+      response.end()
+      return undefined
+    }
     return sendSafeAiError(response, {
       code,
       requestId,

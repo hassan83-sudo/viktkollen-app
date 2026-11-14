@@ -30,7 +30,7 @@ export const AI_NATURE_BILLING = Object.freeze({
 
 // Both routes reserve against food.scan atomically in PostgreSQL.
 // Nature keeps its own feature identity, operational gate and usage event.
-function sharedFoodScanQuota(quota) {
+export function sharedFoodScanQuota(quota) {
   return {
     ...quota,
     inspectQuota: (input) => quota.inspectQuota({ ...input, feature: 'food.scan' }),

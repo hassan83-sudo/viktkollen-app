@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { createCameraSession } from '../../shared/camera/cameraSession.js'
 import { requestNatureIdentification } from '../aiNatureAnalysisService.js'
 import { requestAiNatureConsent } from '../aiNatureConsentService.js'
+import { supabase } from '../../../services/supabaseClient.js'
 
 const safetyMessage = 'Ät aldrig svampar, bär eller växter enbart utifrån en bildidentifiering.'
 
-export default function AiNaturePanel({ onClose, analysisEnabled = false, accessToken }) {
+export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
   const videoRef = useRef(null)
   const sessionRef = useRef(null)
   const [cameraActive, setCameraActive] = useState(false)
@@ -63,12 +64,15 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false, access
   }
 
   async function identify() {
-    if (!analysisEnabled || busy || !photo || !accessToken) return
+    if (!analysisEnabled || busy || !photo) return
     setBusy(true)
     setCameraError('')
     const controller = new AbortController()
     abortRef.current = controller
     try {
+      const { data, error } = await supabase.auth.getSession()
+      const accessToken = data?.session?.access_token
+      if (error || !accessToken) throw new Error('Du behöver vara inloggad för att analysera bilden.')
       const image = await (await fetch(photo)).blob()
       // Called only after the user presses the explicit approval button.
       // The parent must issue an image-bound consent token for this exact blob.

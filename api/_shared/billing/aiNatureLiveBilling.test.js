@@ -46,4 +46,30 @@ describe('AI Natur: faktiska API-faktureringens kvotkedja', () => {
     expect(events[0].event_type).toBe('ai.nature.identification')
     expect(events[0].feature).toBe('ai.nature.identification')
   })
+  it('nekar sjätte naturskanningen före AI-anrop när den delade kvoten är slut', async () => {
+    const runtime = installAiNatureBillingTestRuntime({
+      evaluate: async () => ({
+        allowed: true,
+        decision: 'ALLOW',
+        quota_plan: { action: QUOTA_PLAN_ACTION.RESERVE_ON_EXECUTE },
+        warnings: [],
+      }),
+    })
+    for (let i = 0; i < 5; i += 1) {
+      const reservation_id = `exhausted-food-${i}`
+      const reserved = await runtime.quota.reserveQuota({
+        feature: 'food.scan', quantity: 1, reservation_id, unit: 'requests', user: userId,
+      })
+      expect(reserved.status).toBe('RESERVED')
+      expect((await runtime.quota.commitReservation({ reservation_id, actual_quantity: 1 })).status).toBe('COMMITTED')
+    }
+    const provider = vi.fn()
+    const operationId = createAiNatureOperationId({ clientAttemptId: 'exhausted-nature', userId })
+    const { billing } = await executeAiNatureMeteredOperation({
+      executeProvider: provider, operationId, runtime, userId,
+    })
+    expect(billing.outcome).toBe('DENIED_RESERVE')
+    expect(provider).not.toHaveBeenCalled()
+  })
+
 })

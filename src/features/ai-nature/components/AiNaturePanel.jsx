@@ -75,7 +75,7 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
       if (error || !accessToken) throw new Error('Du behöver vara inloggad för att analysera bilden.')
       const image = await (await fetch(photo)).blob()
       // Called only after the user presses the explicit approval button.
-      // The parent must issue an image-bound consent token for this exact blob.
+      // Request an image-bound consent token for this exact blob.
       const consentToken = await requestAiNatureConsent({ image, accessToken, signal: controller.signal })
       if (controller.signal.aborted) return
       const result = await requestNatureIdentification({ image, accessToken, consentToken, signal: controller.signal })
@@ -120,7 +120,7 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
 
       {cameraError && <p role="alert">{cameraError}</p>}
       <p style={{ fontSize: 13, opacity: 0.85 }}>Bilden stannar på din enhet tills du uttryckligen godkänner analys. {analysisEnabled ? 'Godkänn endast om du vill skicka bilden för AI-analys.' : 'AI-analysen är ännu inte aktiverad.'}</p>
-      {photo && <button type="button" onClick={identify} disabled={!analysisEnabled || !accessToken || typeof requestConsentToken !== 'function' || busy} title={!analysisEnabled ? "AI Natur är spärrad tills separat kvot och betalningskontroll är verifierade" : undefined}>{busy ? "Identifierar…" : analysisEnabled ? "Godkänn och identifiera med AI" : "Identifiera med AI – kommer snart"}</button>}
+      {photo && <button type="button" onClick={identify} disabled={!analysisEnabled || busy} title={!analysisEnabled ? "AI Natur är spärrad tills separat kvot och betalningskontroll är verifierade" : undefined}>{busy ? "Identifierar…" : analysisEnabled ? "Godkänn och identifiera med AI" : "Identifiera med AI – kommer snart"}</button>}
       {busy && <p role="status">Identifierar art…</p>}
       {identification && (
         <article aria-live="polite" style={{ marginTop: 18 }}>

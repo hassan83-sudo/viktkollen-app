@@ -30,11 +30,11 @@ export function updateWardrobe(change) {
 }
 
 export function garmentSlot(type) {
-  if (['Byxor', 'Jeans'].includes(type)) return 'bottom'
-  if (type === 'Skor') return 'shoes'
-  if (type === 'Jacka') return 'outer'
-  if (type === 'Klänning') return 'dress'
-  if (['Accessoar', 'Annat'].includes(type)) return 'accessory'
+  if (['Byxor', 'Jeans', 'Shorts', 'Kjol', 'Leggings', 'Badbyxor', 'Kalsonger', 'Boxershorts', 'Trosor', 'Strumpbyxor'].includes(type)) return 'bottom'
+  if (['Skor', 'Sneakers', 'Stövlar', 'Sandaler', 'Tofflor', 'Strumpor', 'Knästrumpor'].includes(type)) return 'shoes'
+  if (['Jacka', 'Kappa', 'Rock', 'Regnjacka', 'Kavaj', 'Väst'].includes(type)) return 'outer'
+  if (['Klänning', 'Jumpsuit', 'Overall', 'Baddräkt', 'Nattlinne'].includes(type)) return 'dress'
+  if (['Accessoar', 'Annat', 'Mössa', 'Keps', 'Hatt', 'Halsduk', 'Sjal', 'Handskar', 'Vantar', 'Bälte', 'Slips', 'Fluga', 'Väska'].includes(type)) return 'accessory'
   return 'top'
 }
 

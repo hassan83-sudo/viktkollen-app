@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 const DEFAULT_WINDOW_MS = 10 * 60 * 1000
 const DEFAULT_LIMITS = {
   adaptiveCoach: 8,
+  aiNature: 8,
   aiEar: 10,
   // Burst cap for ACRCloud humming. Not a monthly quota; the owner is included.
   aiEarHumming: 20,
@@ -71,6 +72,7 @@ export function checkAiRouteRateLimit({
 } = {}) {
   const routeName = [
     'adaptiveCoach',
+    'aiNature',
     'aiEar',
     'aiEarHumming',
     'analysisConsent',

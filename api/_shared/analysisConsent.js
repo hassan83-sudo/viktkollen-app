@@ -58,6 +58,7 @@ export const analysisConsentPurposes = Object.freeze({
   forgottenItemsAnalysis: 'forgotten-items-analysis',
   objectBankScan: 'object-bank-scan',
   nutritionPhotoAnalysis: 'nutrition-photo-analysis',
+  aiNatureIdentification: 'ai-nature-identification',
 })
 
 const allowedPurposes = new Set(Object.values(analysisConsentPurposes))

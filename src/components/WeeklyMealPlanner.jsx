@@ -363,14 +363,14 @@ function WeeklyMealPlanner({
     setDraft((current) => ({ ...current, [key]: value }))
   }
 
-  function addTemplate(template, date = weekDates[0]) {
+  function addTemplate(template, date = draft.date) {
     const result = createPlannedMealFromTemplate(template, { date })
     if (!result.meal) return
     savePlans(addPlannedMeal(plans, weekStart, result.meal))
     setStatus(`${result.meal.title} lades till i planen.`)
   }
 
-  function addRecipe(recipe, date = weekDates[0]) {
+  function addRecipe(recipe, date = draft.date) {
     const result = recipeToPlannedMeal(recipe, { date })
     if (!result.meal) return
     savePlans(addPlannedMeal(plans, weekStart, result.meal))

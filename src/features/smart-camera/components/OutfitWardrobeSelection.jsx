@@ -13,6 +13,10 @@ export default function OutfitWardrobeSelection() {
   const [deleting, setDeleting] = useState(null)
   const [syncStatus, setSyncStatus] = useState('')
   const [editing, setEditing] = useState(null)
+  const [tab, setTab] = useState('clothes')
+  const [adding, setAdding] = useState(false)
+  const [category, setCategory] = useState('Alla')
+  const [activeGarment, setActiveGarment] = useState(null)
   useEffect(() => {
     const refresh = () => setWardrobe(readWardrobe())
     window.addEventListener(wardrobeChangedEvent, refresh)
@@ -34,7 +38,7 @@ export default function OutfitWardrobeSelection() {
     return () => { disposed = true; stop?.() }
   }, [])
   const selected = wardrobe.selectedGarmentIds.map((id) => wardrobe.garments.find((garment) => garment.id === id)).filter(Boolean)
-  const garments = wardrobe.garments.filter((garment) => `${garment.name} ${garment.type}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
+  const garments = wardrobe.garments.filter((garment) => `${garment.name} ${garment.type}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()) && (tab !== 'categories' || category === 'Alla' || garment.type === category))
 
   function save(change) {
     try { setWardrobe(updateWardrobe(change)); setNotice(''); return true } catch {
@@ -57,15 +61,18 @@ export default function OutfitWardrobeSelection() {
 
   return (
     <section aria-label="Din garderob" className="digital-wardrobe">
-      <h3>Din garderob</h3>
-      <p>När du är inloggad synkroniseras garderoben med ditt konto. Dina kläder sparas även lokalt i webbläsaren. Om synkroniseringen misslyckas finns de kvar lokalt.</p>
+      <header className="wardrobe-app-header"><h3>♧ Min garderob</h3><p>Välj kläder, kombinera och spara outfits</p></header>
+      <nav className="wardrobe-tabs" aria-label="Garderobens vyer"><button type="button" className={tab === 'clothes' ? 'active' : ''} aria-pressed={tab === 'clothes'} onClick={() => setTab('clothes')}>Mina kläder</button><button type="button" className={tab === 'outfits' ? 'active' : ''} aria-pressed={tab === 'outfits'} onClick={() => setTab('outfits')}>Outfits</button><button type="button" className={tab === 'categories' ? 'active' : ''} aria-pressed={tab === 'categories'} onClick={() => setTab('categories')}>Kategorier</button></nav>
+      <details className="wardrobe-sync-details"><summary>Så sparas dina kläder</summary><p>När du är inloggad synkroniseras garderoben med ditt konto. Dina kläder sparas även lokalt i webbläsaren. Om synkroniseringen misslyckas finns de kvar lokalt.</p></details>
       <p role="status">{syncStatus}</p>
-      <WardrobeGarmentForm onAdd={(garment) => {
+      <button className="wardrobe-add-toggle" type="button" onClick={() => { setAdding(!adding); setTab('clothes') }}>{adding ? 'Stäng Lägg till plagg' : '📷 Lägg till plagg'}</button>
+      {adding && <WardrobeGarmentForm onAdd={(garment) => {
         if (wardrobe.garments.length >= 100) { setNotice('Garderoben rymmer högst 100 plagg. Ta bort ett först.'); return false }
         return save((current) => ({ ...current, garments: [...current.garments, { ...garment, id: crypto.randomUUID(), createdAt: new Date().toISOString() }] }))
-      }} />
-      <label>Sök plagg<input type="search" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
-      <div className="wardrobe-layout"><div>
+      }} />}
+      {tab !== 'outfits' && <label className="wardrobe-search">Sök plagg<input type="search" placeholder="Sök plagg..." value={query} onChange={(event) => setQuery(event.target.value)} /></label>}
+      {tab === 'categories' && <div className="wardrobe-categories"><label>Plaggtyp<select value={category} onChange={(event) => setCategory(event.target.value)}><option>Alla</option>{garmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label></div>}
+      {tab !== 'outfits' && <div className="wardrobe-layout"><div>
       {wardrobe.garments.length ? (
         <fieldset>
           <legend>Välj ett eller flera plagg</legend>
@@ -80,10 +87,11 @@ export default function OutfitWardrobeSelection() {
                   onClick={() => toggleGarment(garment.id)}
                 >
                   {isWardrobePhoto(garment.image) ? <img className="wardrobe-thumbnail" src={garment.image} alt="" /> : <span className="wardrobe-placeholder" aria-hidden="true">👕</span>}
-                  <span>{garment.name}{typeof garment.type === 'string' && garment.type ? ` · ${garment.type}` : ''}</span>
+                  <span className="wardrobe-garment-name">{garment.name}{typeof garment.type === 'string' && garment.type ? ` · ${garment.type}` : ''}</span>
                   <span className="wardrobe-garment-select-status">{wardrobe.selectedGarmentIds.includes(garment.id) ? 'Vald ✓' : 'Välj plagg'}</span>
                 </button>
-                {editing?.id === garment.id ? <form aria-label={`Redigera ${garment.name}`} onSubmit={(event) => {
+                <button type="button" className="wardrobe-details-toggle" aria-expanded={activeGarment === garment.id} onClick={() => setActiveGarment(activeGarment === garment.id ? null : garment.id)}>{activeGarment === garment.id ? 'Dölj alternativ' : '⋮ Alternativ'}</button>
+                {(activeGarment === garment.id || editing?.id === garment.id || deleting === garment.id) && <div className="wardrobe-garment-actions">{editing?.id === garment.id ? <form aria-label={`Redigera ${garment.name}`} onSubmit={(event) => {
                   event.preventDefault()
                   if (!editing.name.trim() || !garmentTypes.includes(editing.type) || !/^#[0-9a-f]{6}$/i.test(editing.color)) return
                   if (save((current) => ({ ...current, garments: current.garments.map((item) => item.id === editing.id
@@ -105,7 +113,7 @@ export default function OutfitWardrobeSelection() {
                     try { setWardrobe(removeWardrobeGarment(garment.id)); setDeleting(null); setNotice('Plagget och bilden har raderats.') } catch { setNotice('Kunde inte radera plagget.') }
                   }}>Bekräfta radering</button>
                   <button type="button" onClick={() => setDeleting(null)}>Avbryt</button>
-                </div> : <button type="button" onClick={() => setDeleting(garment.id)}>Radera permanent: {garment.name}</button>}
+                </div> : <button type="button" onClick={() => setDeleting(garment.id)}>Radera permanent: {garment.name}</button>}</div>}
               </li>
             ))}
           </ul>
@@ -121,8 +129,8 @@ export default function OutfitWardrobeSelection() {
         try { setWardrobe(markWardrobeWorn(selected.map((garment) => garment.id))); setNotice('Valda plagg har markerats som använda idag.') } catch { setNotice('Kunde inte spara användningen.') }
       }}>Jag har dessa idag</button>
       <p>Urvalet sparas. Historiken ändras först när du väljer ”Jag har dessa idag”.</p>
-      </div><WardrobeMannequin garments={selected} /></div>
-      <form onSubmit={(event) => {
+      </div><WardrobeMannequin garments={selected} /></div>}
+      {tab === 'outfits' && <div className="wardrobe-outfits-panel"><h4>Skapa och hantera outfits</h4><WardrobeMannequin garments={selected} /><form onSubmit={(event) => {
         event.preventDefault()
         if (!outfitName.trim() || !selected.length) return
         if (wardrobe.outfits.length >= 30) { setNotice('Du kan spara högst 30 outfits.'); return }
@@ -138,6 +146,7 @@ export default function OutfitWardrobeSelection() {
         <button type="button" onClick={() => save((current) => ({ ...current, selectedGarmentIds: outfit.garmentIds.filter((id) => current.garments.some((garment) => garment.id === id)) }))}>Välj {outfit.name}</button>
         <button type="button" onClick={() => save((current) => ({ ...current, outfits: current.outfits.filter((item) => item.id !== outfit.id) }))}>Radera outfit {outfit.name}</button>
       </li>)}</ul>
+      </div>}
       <p role="status">{notice}</p>
     </section>
   )

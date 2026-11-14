@@ -157,7 +157,6 @@ async function writeUsage({ calls, operationId, order, recordUsage, userId, usag
 }
 
 async function recoverLedger({
-      usageEventPlan,
   usageEventPlan,
   commit,
   operationId,
@@ -229,8 +228,6 @@ async function recoverLedger({
 
     if (row.usage_ok !== true) {
       const usage = await writeUsage({
-    usageEventPlan,
-      usageEventPlan,
         usageEventPlan,
         calls,
         operationId,
@@ -573,7 +570,7 @@ async function runLifecycle({
     }
     if (durableClaim?.result === DISPATCH_CAS_RESULT.ALREADY_DISPATCHED) {
       const recovered = await recoverLedger({
-      usageEventPlan,
+        usageEventPlan,
         commit,
         operationId,
         recordUsage,
@@ -720,7 +717,6 @@ async function runLifecycle({
     }
 
     const usage = await writeUsage({
-    usageEventPlan,
       usageEventPlan,
       calls,
       operationId,

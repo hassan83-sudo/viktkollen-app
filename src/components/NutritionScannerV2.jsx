@@ -458,6 +458,7 @@ function ScannerAnalyzingStatus({ earlyIngredients = [], focused = false }) {
         </svg>
         <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#fff', fontSize: 'clamp(28px, 5dvh, 40px)', fontVariantNumeric: 'tabular-nums' }}>{progress} %</span>
         </div>
+        <p style={{ margin: 0, color: 'rgba(255,255,255,0.85)', fontSize: '14px', textAlign: 'center' }}>Skanningen tar cirka 10 sekunder.</p>
         <div aria-live="polite" aria-label={t('scanner.earlyIngredientsLabel')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', minHeight: '104px', justifyContent: 'center' }}>
           {activeIngredient ? (
             <>

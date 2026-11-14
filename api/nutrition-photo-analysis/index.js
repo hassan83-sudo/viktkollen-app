@@ -503,6 +503,7 @@ function validateProviderPayload(payload = {}) {
       nutrition,
       portionEstimate,
       providerType: 'remote',
+      produceFacts: payload.produceFacts || null,
       safeSummary: safeText(payload.safeSummary, 'Remote bildanalys gav ett granskningsbart uppskattningsförslag.', 220),
       totalsValidation: totalsComparison,
       uncertainIngredients,

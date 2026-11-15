@@ -87,11 +87,6 @@ function OutfitGarment({ garment }) {
 export default function WardrobeMannequin({ garments }) {
   const [body, setBody] = useState('woman')
   const ordered = [...garments].sort((a, b) => (priority[garmentSlot(a.type)] ?? 5) - (priority[garmentSlot(b.type)] ?? 5))
-  const layers = {
-    top: [...ordered].reverse().find((garment) => ['top', 'outer', 'dress'].includes(garmentSlot(garment.type))),
-    bottom: [...ordered].reverse().find((garment) => garmentSlot(garment.type) === 'bottom'),
-    shoes: [...ordered].reverse().find((garment) => garmentSlot(garment.type) === 'shoes'),
-  }
   return <section className="wardrobe-mannequin" aria-label="Vald outfit">
     <h4>Din outfit</h4>
     <div className="wardrobe-body-choice" role="group" aria-label="Välj docka">
@@ -114,19 +109,3 @@ export default function WardrobeMannequin({ garments }) {
   </section>
 }
 
-function DollGarment({ garment, slot }) {
-  const [cutout, setCutout] = useState(null)
-  useEffect(() => {
-    let active = true
-    setCutout(null)
-    if (isWardrobePhoto(garment.image)) isolateLightBackground(garment.image)
-      .then((result) => { if (active) setCutout(result) })
-      .catch(() => {})
-    return () => { active = false }
-  }, [garment.image])
-  return <div className={`wardrobe-doll-layer wardrobe-doll-layer-${slot}`}>
-    {isWardrobePhoto(garment.image)
-      ? <img src={cutout || garment.image} alt="" />
-      : <div className="wardrobe-doll-layer-color" style={{ backgroundColor: /^#[0-9a-f]{6}$/i.test(garment.color || '') ? garment.color : '#446fa4' }} />}
-  </div>
-}

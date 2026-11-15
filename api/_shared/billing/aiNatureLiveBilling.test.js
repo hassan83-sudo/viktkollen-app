@@ -215,6 +215,8 @@ describe('AI Natur: kostnadsspärr med gränsvärden från databasen', () => {
           thresholdRow({ amount_minor: 5000, period: 'MONTHLY', threshold_id: 'nature-monthly-hard' }),
           thresholdRow({ enabled: false, threshold_id: 'nature-disabled' }),
           thresholdRow({ feature_id: 'food.scan', threshold_id: 'food-daily-hard' }),
+          thresholdRow({ scope: 'GLOBAL', feature_id: null, threshold_id: 'global-daily-hard' }),
+          thresholdRow({ scope: 'GLOBAL', feature_id: null, period: 'MONTHLY', threshold_id: 'global-monthly-hard' }),
         ],
         usage_events: [],
       },
@@ -227,6 +229,7 @@ describe('AI Natur: kostnadsspärr med gränsvärden från databasen', () => {
     const thresholdQuery = client.queries.find((query) => query.table === 'cost_thresholds')
     expect(thresholdQuery.schema).toBe('billing')
     expect(thresholdQuery.filters).toEqual([['eq', 'enabled', true]])
+    // Existing global limits must not affect AI Nature's dedicated limits.
     expect(runtime.selectedThresholds.map((row) => row.threshold_id).sort())
       .toEqual(['nature-daily-hard', 'nature-monthly-hard'])
 

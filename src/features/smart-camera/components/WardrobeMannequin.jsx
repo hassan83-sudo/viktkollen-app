@@ -85,11 +85,48 @@ function OutfitGarment({ garment }) {
 }
 
 export default function WardrobeMannequin({ garments }) {
+  const [body, setBody] = useState('woman')
   const ordered = [...garments].sort((a, b) => (priority[garmentSlot(a.type)] ?? 5) - (priority[garmentSlot(b.type)] ?? 5))
-  return <section className="wardrobe-mannequin wardrobe-outfit-stack" aria-label="Vald outfit">
+  const layers = {
+    top: [...ordered].reverse().find((garment) => ['top', 'outer', 'dress'].includes(garmentSlot(garment.type))),
+    bottom: [...ordered].reverse().find((garment) => garmentSlot(garment.type) === 'bottom'),
+    shoes: [...ordered].reverse().find((garment) => garmentSlot(garment.type) === 'shoes'),
+  }
+  return <section className="wardrobe-mannequin" aria-label="Vald outfit">
     <h4>Din outfit</h4>
-    {!ordered.length ? <p>Välj kläder ovan för att se dem här.</p> : (
-      <ul className="wardrobe-outfit-stack-list">{ordered.map((garment) => <OutfitGarment key={garment.id} garment={garment} />)}</ul>
-    )}
+    <div className="wardrobe-body-choice" role="group" aria-label="Välj docka">
+      <button type="button" aria-pressed={body === 'woman'} onClick={() => setBody('woman')}>Kvinna</button>
+      <button type="button" aria-pressed={body === 'man'} onClick={() => setBody('man')}>Man</button>
+    </div>
+    <div className={`wardrobe-doll wardrobe-doll-${body}`} role="img" aria-label={ordered.length ? `Docka med ${ordered.map((g) => g.name).join(', ')}` : 'Docka utan kläder'}>
+      <svg className="wardrobe-doll-body" viewBox="0 0 220 460" aria-hidden="true">
+        <defs><linearGradient id="wardrobe-doll-shade" x1="0" x2="1"><stop stopColor="#8791a7"/><stop offset=".5" stopColor="#e4e7ef"/><stop offset="1" stopColor="#8994ac"/></linearGradient></defs>
+        <ellipse cx="110" cy="39" rx="23" ry="32" fill="url(#wardrobe-doll-shade)"/>
+        <path d="M100 66 L120 66 L124 85 L96 85 Z" fill="url(#wardrobe-doll-shade)"/>
+        <path d="M95 82 Q74 83 64 94 L45 195 Q42 212 54 216 Q64 220 69 202 L85 135 L83 220 Q80 249 91 260 L129 260 Q140 249 137 220 L135 135 L151 202 Q156 220 166 216 Q178 212 175 195 L156 94 Q146 83 125 82 Z" fill="url(#wardrobe-doll-shade)"/>
+        <path d={body === 'woman' ? 'M91 255 L110 255 L107 345 L101 424 Q100 441 88 441 L83 433 L83 345 Z M110 255 L129 255 L137 345 L137 433 L132 441 Q120 441 119 424 L113 345 Z' : 'M87 255 L110 255 L107 345 L101 424 Q100 441 88 441 L83 433 L83 345 Z M110 255 L133 255 L137 345 L137 433 L132 441 Q120 441 119 424 L113 345 Z'} fill="url(#wardrobe-doll-shade)"/>
+      </svg>
+      {Object.entries(layers).map(([slot, garment]) => garment && <DollGarment key={slot + garment.id} garment={garment} slot={slot} />)}
+    </div>
+    <p className="wardrobe-doll-note">Förhandsvisning framifrån. Passformen är ungefärlig och fungerar bäst med plagg fotograferade rakt framifrån mot ljus bakgrund.</p>
+    {!ordered.length && <p>Välj kläder ovan för att prova dem på dockan.</p>}
+    {!!ordered.length && <details><summary>Valda plagg</summary><ul className="wardrobe-outfit-stack-list">{ordered.map((garment) => <OutfitGarment key={garment.id} garment={garment} />)}</ul></details>}
   </section>
+}
+
+function DollGarment({ garment, slot }) {
+  const [cutout, setCutout] = useState(null)
+  useEffect(() => {
+    let active = true
+    setCutout(null)
+    if (isWardrobePhoto(garment.image)) isolateLightBackground(garment.image)
+      .then((result) => { if (active) setCutout(result) })
+      .catch(() => {})
+    return () => { active = false }
+  }, [garment.image])
+  return <div className={`wardrobe-doll-layer wardrobe-doll-layer-${slot}`}>
+    {isWardrobePhoto(garment.image)
+      ? <img src={cutout || garment.image} alt="" />
+      : <div className="wardrobe-doll-layer-color" style={{ backgroundColor: /^#[0-9a-f]{6}$/i.test(garment.color || '') ? garment.color : '#446fa4' }} />}
+  </div>
 }

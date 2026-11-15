@@ -1561,7 +1561,7 @@ function OverviewDashboard({
         />
       </section>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 1fr)', gap: 8, alignItems: 'stretch', marginTop: 12, marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, alignItems: 'stretch', marginTop: 12, marginBottom: 14 }}>
         <button
           type="button"
           onClick={() => {
@@ -1571,21 +1571,23 @@ function OverviewDashboard({
           }}
           style={{
             display: 'flex', alignItems: 'center', gap: 12, width: '100%',
-            padding: '14px', marginTop: 12, borderRadius: 16, textAlign: 'left',
+            padding: '12px 8px', borderRadius: 16, textAlign: 'left',
             border: '1px solid rgba(172,120,86,.55)', color: '#fff',
             background: 'linear-gradient(120deg, #282033, #0b1830)', cursor: 'pointer',
           }}
         >
-          <span aria-hidden="true" style={{ fontSize: 32 }}>📋</span>
+          <span aria-hidden="true" style={{ fontSize: 26 }}>📋</span>
           <span style={{ flex: 1, display: 'grid', gap: 3 }}>
             <strong>{t('home:checklists.title')}</strong>
-            <small style={{ color: '#bed0ed' }}>{t('home:checklists.description')}</small>
+            
           </span>
           <span aria-hidden="true" style={{ fontSize: 22 }}>›</span>
         </button>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 0 }}>
-          <GlobalSearch compact onNavigate={onSearchNavigate} />
-        </div>
+        <button type="button" onClick={() => onNavigateSection?.('nutrition', 'plan')} aria-label="Öppna Matkalender"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 4, minWidth: 0, padding: '8px', borderRadius: 16, border: '1px solid #a855f7', background: 'linear-gradient(145deg,#160d2c,#0b1428)', color: '#fff', cursor: 'pointer' }}>
+          <span aria-hidden="true" style={{ fontSize: 36, lineHeight: 1 }}>🗓️</span>
+          <strong>Matkalender</strong>
+        </button>
       </div>
 
       {isFeatureEnabled('aiEar', flags) && (

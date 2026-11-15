@@ -3,6 +3,10 @@ import { garmentSlot, isWardrobePhoto } from '../../../services/wardrobeStorage.
 import { cutoutLightBackground } from './wardrobeCutout.js'
 
 const priority = { outer: 0, top: 1, dress: 1, bottom: 2, shoes: 3, accessory: 4 }
+const MANNEQUINS = {
+  woman: { src: '/wardrobe-mannequin.webp', width: 253, height: 566, alt: 'Skyltdocka i vit t-shirt, svarta byxor och vita sneakers' },
+  man: { src: '/wardrobe-mannequin-man.webp', width: 1024, height: 1536, alt: 'Manlig skyltdocka i vit t-shirt, svarta byxor och vita sneakers' },
+}
 // Only remove near-white background connected to the image border.
 // Dark, patterned or ambiguous backgrounds are deliberately kept, and cutouts
 // with holes or loose fragments are rejected (see wardrobeCutout.js).
@@ -46,6 +50,8 @@ function OutfitGarment({ garment, onCutout }) {
 }
 
 export default function WardrobeMannequin({ garments }) {
+  const [body, setBody] = useState('woman')
+  const mannequin = MANNEQUINS[body]
   const [cutouts, setCutouts] = useState({})
   const onCutout = useCallback((id, result) => setCutouts((current) => current[id] === result ? current : { ...current, [id]: result }), [])
   const ordered = [...garments].sort((a, b) => (priority[garmentSlot(a.type)] ?? 5) - (priority[garmentSlot(b.type)] ?? 5))
@@ -55,14 +61,18 @@ export default function WardrobeMannequin({ garments }) {
   }).filter(Boolean)
   return <section className="wardrobe-mannequin" aria-label="Vald outfit">
     <h4>Din outfit</h4>
-    <div className="wardrobe-doll">
+    <div className="wardrobe-body-choice" role="group" aria-label="Välj docka">
+      <button type="button" aria-pressed={body === 'woman'} onClick={() => setBody('woman')}>Kvinna</button>
+      <button type="button" aria-pressed={body === 'man'} onClick={() => setBody('man')}>Man</button>
+    </div>
+    <div className={`wardrobe-doll wardrobe-doll-${body}`}>
       <img
         className="wardrobe-doll-photo"
-        src="/wardrobe-mannequin.webp"
-        width="253"
-        height="566"
+        src={mannequin.src}
+        width={mannequin.width}
+        height={mannequin.height}
         decoding="async"
-        alt="Skyltdocka i vit t-shirt, svarta byxor och vita sneakers"
+        alt={mannequin.alt}
       />
       {layers.map(({ slot, garment, image }) => <div key={slot} className={`wardrobe-doll-layer wardrobe-doll-layer-${slot}`}><img src={image} alt={`${garment.name} på dockan (ungefärlig förhandsvisning)`} /></div>)}
     </div>

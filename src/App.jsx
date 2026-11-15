@@ -2948,6 +2948,10 @@ function App() {
   const handleDailyCoachAction = useCallback((sectionId, targetId) => {
     logNavigationOrigin('section-target-navigation:before', { sectionId, targetId: targetId || '' })
 
+    if (sectionId === 'nutrition' && targetId === 'plan') {
+      setNutritionIntent({ id: Date.now(), panel: 'plan' })
+    }
+
     if (sectionId === 'nutrition' && (targetId === 'nutrition-scanner-v2' || targetId === 'scanner')) {
       setNutritionIntent({ id: Date.now(), panel: 'scanner' })
     }

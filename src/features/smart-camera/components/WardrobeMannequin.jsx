@@ -98,7 +98,7 @@ export default function WardrobeMannequin({ garments }) {
       <button type="button" aria-pressed={body === 'woman'} onClick={() => setBody('woman')}>Kvinna</button>
       <button type="button" aria-pressed={body === 'man'} onClick={() => setBody('man')}>Man</button>
     </div>
-    <div className={`wardrobe-doll wardrobe-doll-${body}`} role="img" aria-label={ordered.length ? `Docka med ${ordered.map((g) => g.name).join(', ')}` : 'Docka utan kläder'}>
+    <div className={`wardrobe-doll wardrobe-doll-${body}`} role="img" aria-label="Docka utan valda plagg">
       <svg className="wardrobe-doll-body" viewBox="0 0 220 460" aria-hidden="true">
         <defs><linearGradient id="wardrobe-doll-shade" x1="0" x2="1"><stop stopColor="#8791a7"/><stop offset=".5" stopColor="#e4e7ef"/><stop offset="1" stopColor="#8994ac"/></linearGradient></defs>
         <ellipse cx="110" cy="39" rx="23" ry="32" fill="url(#wardrobe-doll-shade)"/>
@@ -106,10 +106,10 @@ export default function WardrobeMannequin({ garments }) {
         <path d="M95 82 Q74 83 64 94 L45 195 Q42 212 54 216 Q64 220 69 202 L85 135 L83 220 Q80 249 91 260 L129 260 Q140 249 137 220 L135 135 L151 202 Q156 220 166 216 Q178 212 175 195 L156 94 Q146 83 125 82 Z" fill="url(#wardrobe-doll-shade)"/>
         <path d={body === 'woman' ? 'M91 255 L110 255 L107 345 L101 424 Q100 441 88 441 L83 433 L83 345 Z M110 255 L129 255 L137 345 L137 433 L132 441 Q120 441 119 424 L113 345 Z' : 'M87 255 L110 255 L107 345 L101 424 Q100 441 88 441 L83 433 L83 345 Z M110 255 L133 255 L137 345 L137 433 L132 441 Q120 441 119 424 L113 345 Z'} fill="url(#wardrobe-doll-shade)"/>
       </svg>
-      {Object.entries(layers).map(([slot, garment]) => garment && <DollGarment key={slot + garment.id} garment={garment} slot={slot} />)}
+      
     </div>
-    <p className="wardrobe-doll-note">Förhandsvisning framifrån. Passformen är ungefärlig och fungerar bäst med plagg fotograferade rakt framifrån mot ljus bakgrund.</p>
-    {!ordered.length && <p>Välj kläder ovan för att prova dem på dockan.</p>}
+    <p className="wardrobe-doll-note">Dockan visas utan dina sparade plagg. Kläderna finns kvar i garderoben.</p>
+    {!ordered.length && <p>Välj plagg i garderoben för att skapa en outfit.</p>}
     {!!ordered.length && <details><summary>Valda plagg</summary><ul className="wardrobe-outfit-stack-list">{ordered.map((garment) => <OutfitGarment key={garment.id} garment={garment} />)}</ul></details>}
   </section>
 }

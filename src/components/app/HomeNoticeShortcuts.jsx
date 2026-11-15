@@ -1,8 +1,9 @@
 import { useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import GlobalSearch from './GlobalSearch.jsx'
 
-function HomeNoticeShortcuts({ onOpenNotices, onOpenPlace }) {
+function HomeNoticeShortcuts({ onOpenNotices, onOpenPlace, onSearchNavigate }) {
   const { t } = useTranslation('home')
   const [target, setTarget] = useState(null)
   const shortcuts = [
@@ -119,7 +120,7 @@ function HomeNoticeShortcuts({ onOpenNotices, onOpenPlace }) {
           outline-offset: 3px;
         }
         .overview-quick-buttons button { overflow-wrap: normal; word-break: normal; hyphens: none; font-size: clamp(10px, 2.8vw, 12px); }
-        .overview-place-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px; border-radius: 20px; border: 1px solid rgba(144,125,255,.24); background: linear-gradient(135deg, rgba(18,35,51,.96), rgba(20,24,47,.96)); }
+        .overview-place-card { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px; border-radius: 20px; border: 1px solid rgba(144,125,255,.24); background: linear-gradient(135deg, rgba(18,35,51,.96), rgba(20,24,47,.96)); }
         .overview-place-card button { min-height: 44px; border: 0; border-radius: 999px; padding: 10px 18px; background: linear-gradient(135deg, #22c7e8, #815cf6); color: #06111f; font: inherit; cursor: pointer; }
         .overview-place-card button:focus-visible { outline: 2px solid #79e7f2; outline-offset: 3px; }
         .overview-more-section {
@@ -160,7 +161,7 @@ function HomeNoticeShortcuts({ onOpenNotices, onOpenPlace }) {
       </article>
       <article className="overview-place-card is-place" aria-label={t('quickShortcuts.place')}>
         <strong>📍 {t('quickShortcuts.place')}</strong>
-        <button type="button" onClick={() => onOpenPlace?.()}>{t('quickShortcuts.openPlace')}</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}><GlobalSearch compact onNavigate={onSearchNavigate} /><button type="button" onClick={() => onOpenPlace?.()}>{t('quickShortcuts.openPlace')}</button></div>
       </article>
     </>,
     target,

@@ -458,6 +458,7 @@ function ScannerAnalyzingStatus({ earlyIngredients = [], focused = false }) {
         </svg>
         <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#fff', fontSize: 'clamp(28px, 5dvh, 40px)', fontVariantNumeric: 'tabular-nums' }}>{progress} %</span>
         </div>
+        <p style={{ margin: 0, color: 'rgba(255,255,255,0.85)', fontSize: '14px', textAlign: 'center' }}>Skanningen tar cirka 10 sekunder.</p>
         <div aria-live="polite" aria-label={t('scanner.earlyIngredientsLabel')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', minHeight: '104px', justifyContent: 'center' }}>
           {activeIngredient ? (
             <>
@@ -1829,6 +1830,21 @@ function NutritionScannerV2({
               </div>
             </section>
           )}
+          {analysis.produceFacts?.name && (
+            <section className="scanner-review-section" aria-label="Fakta om frukt eller grönsak">
+              <h4>Visste du detta om {analysis.produceFacts.name}?</h4>
+              {[
+                ['Ursprung', analysis.produceFacts.origin],
+                ['Vitaminer', analysis.produceFacts.vitamins],
+                ['Näringsfördelar', analysis.produceFacts.benefit],
+                ['Intressant fakta', analysis.produceFacts.curiosity],
+              ].filter(([, value]) => value).map(([label, value]) => (
+                <p key={label}><strong>{label}:</strong> {value}</p>
+              ))}
+              <small>Allmän information, inte en medicinsk bedömning.</small>
+            </section>
+          )}
+
           {duplicate.status !== 'noDuplicate' && (
             <p className="analysis-status">
               {duplicate.message} {duplicate.existingMealId && <a href="#meal-history">{t('scanner.openMealHistory')}</a>}

@@ -86,10 +86,21 @@ function OutfitGarment({ garment }) {
 
 export default function WardrobeMannequin({ garments }) {
   const ordered = [...garments].sort((a, b) => (priority[garmentSlot(a.type)] ?? 5) - (priority[garmentSlot(b.type)] ?? 5))
-  return <section className="wardrobe-mannequin wardrobe-outfit-stack" aria-label="Vald outfit">
+  return <section className="wardrobe-mannequin" aria-label="Vald outfit">
     <h4>Din outfit</h4>
-    {!ordered.length ? <p>Välj kläder ovan för att se dem här.</p> : (
-      <ul className="wardrobe-outfit-stack-list">{ordered.map((garment) => <OutfitGarment key={garment.id} garment={garment} />)}</ul>
-    )}
+    <div className="wardrobe-doll">
+      <img
+        className="wardrobe-doll-photo"
+        src="/wardrobe-mannequin.webp"
+        width="253"
+        height="566"
+        decoding="async"
+        alt="Skyltdocka i vit t-shirt, svarta byxor och vita sneakers"
+      />
+    </div>
+    <p className="wardrobe-doll-note">Dockan visas utan dina sparade plagg. Kläderna finns kvar i garderoben.</p>
+    {!ordered.length && <p>Välj plagg i garderoben för att skapa en outfit.</p>}
+    {!!ordered.length && <details><summary>Valda plagg</summary><ul className="wardrobe-outfit-stack-list">{ordered.map((garment) => <OutfitGarment key={garment.id} garment={garment} />)}</ul></details>}
   </section>
 }
+

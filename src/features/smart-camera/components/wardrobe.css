@@ -89,3 +89,14 @@
 .digital-wardrobe .wardrobe-outfits-panel h4 { margin: 10px 0; }
 .digital-wardrobe .wardrobe-outfits li { background: #1c2333; border: 1px solid #303b54; padding: 10px; border-radius: 12px; }
 @media (min-width: 720px) { .digital-wardrobe { max-width: 650px; margin-inline: auto; } .digital-wardrobe .wardrobe-thumbnail { height: 180px; } }
+
+/* Mannequin preview. The wardrobe data and outfit history are unchanged. */
+.digital-wardrobe .wardrobe-doll { width: 100%; max-width: 260px; aspect-ratio: 253 / 566; margin: 0 auto; position: relative; overflow: hidden; border-radius: 16px; background: radial-gradient(ellipse at 50% 40%, #28314a 0%, #101523 75%); }
+.digital-wardrobe .wardrobe-doll-photo { width: 100%; height: 100%; display: block; object-fit: cover; }
+.digital-wardrobe .wardrobe-doll-layer { position: absolute; display: grid; place-items: center; overflow: hidden; }
+.digital-wardrobe .wardrobe-doll-layer img { width: 100%; height: 100%; object-fit: fill; }
+.digital-wardrobe .wardrobe-doll-layer-top { left: 18%; top: 17%; width: 64%; height: 41%; z-index: 2; }
+.digital-wardrobe .wardrobe-doll-layer-bottom { left: 32%; top: 53%; width: 36%; height: 39%; z-index: 3; }
+.digital-wardrobe .wardrobe-doll-layer-shoes { left: 31%; top: 89%; width: 38%; height: 10%; z-index: 4; }
+.digital-wardrobe .wardrobe-doll-layer-color { width: 75%; height: 90%; border-radius: 14px; opacity: .8; }
+.digital-wardrobe .wardrobe-doll-note { font-size: .75rem; color: #c5cce0; line-height: 1.45; }

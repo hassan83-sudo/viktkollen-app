@@ -161,6 +161,10 @@ function NutritionSection({
   }, [onScrollToTarget])
 
   useEffect(() => {
+    if (navigationIntent?.panel === 'plan') {
+      showPanel('plan')
+      return
+    }
     if (navigationIntent?.panel !== 'scanner') return
 
     window.requestAnimationFrame(() => {

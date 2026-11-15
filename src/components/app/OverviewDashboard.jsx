@@ -1585,7 +1585,17 @@ function OverviewDashboard({
         </button>
         <button type="button" onClick={() => onNavigateSection?.('nutrition', 'plan')} aria-label="Öppna Matkalender"
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 4, minWidth: 0, padding: '8px', borderRadius: 16, border: '1px solid #a855f7', background: 'linear-gradient(145deg,#160d2c,#0b1428)', color: '#fff', cursor: 'pointer' }}>
-          <span aria-hidden="true" style={{ fontSize: 36, lineHeight: 1 }}>🗓️</span>
+          <svg aria-hidden="true" viewBox="0 0 120 100" style={{ width: '100%', maxWidth: 118, height: 82, filter: 'drop-shadow(0 0 9px #9d36ff)' }}>
+            <rect x="8" y="5" width="104" height="90" rx="16" fill="#0b0c20" stroke="#b94bff" strokeWidth="2" />
+            <rect x="24" y="18" width="73" height="66" rx="8" fill="#f8eadb" stroke="#db773c" strokeWidth="3" />
+            <path d="M24 27q0-9 8-9h57q8 0 8 9v18H24z" fill="#c92132" />
+            {[40,57,74,90].map(x => <g key={x}><path d={`M${x} 12v14`} stroke="#d7dce5" strokeWidth="5" strokeLinecap="round" /></g>)}
+            <text x="60" y="38" textAnchor="middle" fontSize="12" fontWeight="bold" fill="white">MAT</text>
+            <path d="M34 55h53M34 65h53M34 75h53M46 49v31M60 49v31M74 49v31" stroke="#c6b6a9" strokeWidth="1.4" />
+            <path d="M52 66l8 7 17-19" fill="none" stroke="#ed283d" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="18" cy="79" r="10" fill="#e52b21" /><circle cx="31" cy="83" r="9" fill="#f24222" />
+            <path d="M18 69l-6-5 7 2 4-6 1 8M31 74l-3-7 7 5 5-3-4 8" fill="#36b958" />
+          </svg>
           <strong>Matkalender</strong>
         </button>
       </div>

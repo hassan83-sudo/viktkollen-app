@@ -1,5 +1,23 @@
 import { collectCostThresholdSummaries } from '../../../src/services/billing/costThresholdSelection.js'
 import { defaultCostCatalog } from '../../../src/services/billing/costCatalog.js'
+
+// Preliminary internal estimate, not a customer price or measured provider cost.
+const AI_NATURE_ESTIMATED_SEK_ORE_PER_REQUEST = 2
+const aiNatureCostCatalog = Object.freeze([
+  ...defaultCostCatalog,
+  Object.freeze({
+    currency: 'SEK',
+    effective_from: null,
+    effective_to: null,
+    model: '', // Nature usage events currently do not record a model.
+    per_quantity: 1,
+    price_minor: AI_NATURE_ESTIMATED_SEK_ORE_PER_REQUEST,
+    provider: 'openai',
+    service: 'ai.nature.identification',
+    status: 'CONFIGURED',
+    unit: 'requests',
+  }),
+])
 import { ENFORCEMENT_DECISION } from '../../../src/services/billing/catalog.js'
 import { createUsageBackedDispatchStore } from '../../../src/services/billing/durableOperationStore.js'
 import { evaluateBillingOperation } from '../../../src/services/billing/enforcementOrchestrator.js'
@@ -112,7 +130,7 @@ export async function resolveAiNatureBillingRuntime() {
       .from('cost_thresholds').select('*').eq('enabled', true)
     if (thresholdsError) throw thresholdsError
     const costGuard = await collectCostThresholdSummaries({
-      catalog: defaultCostCatalog,
+      catalog: aiNatureCostCatalog,
       featureId: AI_NATURE_BILLING.feature_id,
       repository: usageRepository,
       thresholds: thresholds || [],

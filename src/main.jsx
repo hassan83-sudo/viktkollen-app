@@ -11,6 +11,7 @@ import './features/account/passwordSettingsEnhancer.js'
 import './features/social/ambientSoundEnhancer.js'
 import './features/social/chatTranslationEnhancer.js'
 import App from './App.jsx'
+import MeyoMusicPlayer from './components/app/MeyoMusicPlayer.jsx'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import './dark-theme.css'
 import './components/AiCoachOverlay.mobile.css'
@@ -39,6 +40,7 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AppErrorBoundary area="root" title="Appen kunde inte visas">
       <App />
+      <MeyoMusicPlayer />
     </AppErrorBoundary>
   </StrictMode>,
 )

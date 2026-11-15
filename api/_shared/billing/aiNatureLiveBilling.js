@@ -167,6 +167,17 @@ export async function executeAiNatureMeteredOperation({
     }
   }
 
+  // Production must never dispatch a paid AI request without an active cost guard.
+  // Injected test evaluators are isolated and do not call the real provider.
+  if (!runtime.evaluate && (!Array.isArray(runtime.selectedThresholds) || runtime.selectedThresholds.length === 0)) {
+    return {
+      billing: {
+        decision: ENFORCEMENT_DECISION.DENY_COST_UNAVAILABLE,
+        outcome: LIFECYCLE_OUTCOME.DENIED_EVALUATE,
+      },
+    }
+  }
+
   const billing = await executeDurableMeteredBillingOperation({
     usageEventPlan: aiNatureUsageEventPlan,
     clientClaim: {},

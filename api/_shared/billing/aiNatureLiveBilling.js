@@ -133,7 +133,8 @@ export async function resolveAiNatureBillingRuntime() {
       catalog: aiNatureCostCatalog,
       featureId: AI_NATURE_BILLING.feature_id,
       repository: usageRepository,
-      thresholds: thresholds || [],
+      // AI Nature uses its own hard limits; unrelated services retain global limits.
+      thresholds: (thresholds || []).filter((row) => row.scope === 'FEATURE' && row.feature_id === AI_NATURE_BILLING.feature_id),
     })
     const recordUsage = (input) => recordUsageEvent(input, usageRepository)
     const operationStore = createUsageBackedDispatchStore({

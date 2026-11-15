@@ -1,3 +1,5 @@
+import { collectCostThresholdSummaries } from '../../../src/services/billing/costThresholdSelection.js'
+import { defaultCostCatalog } from '../../../src/services/billing/costCatalog.js'
 import { ENFORCEMENT_DECISION } from '../../../src/services/billing/catalog.js'
 import { createUsageBackedDispatchStore } from '../../../src/services/billing/durableOperationStore.js'
 import { evaluateBillingOperation } from '../../../src/services/billing/enforcementOrchestrator.js'
@@ -106,6 +108,15 @@ export async function resolveAiNatureBillingRuntime() {
     }))
     const featureControl = await readControlRow(client, 'feature_controls', 'feature_id', AI_NATURE_BILLING.feature_id)
     const providerRow = await readControlRow(client, 'provider_controls', 'provider_id', AI_NATURE_BILLING.provider_id)
+    const { data: thresholds, error: thresholdsError } = await client.schema('billing')
+      .from('cost_thresholds').select('*').eq('enabled', true)
+    if (thresholdsError) throw thresholdsError
+    const costGuard = await collectCostThresholdSummaries({
+      catalog: defaultCostCatalog,
+      featureId: AI_NATURE_BILLING.feature_id,
+      repository: usageRepository,
+      thresholds: thresholds || [],
+    })
     const recordUsage = (input) => recordUsageEvent(input, usageRepository)
     const operationStore = createUsageBackedDispatchStore({
       recordUsage,
@@ -119,8 +130,8 @@ export async function resolveAiNatureBillingRuntime() {
       providerControls: providerRow ? [providerRow] : [],
       quota,
       recordUsage,
-      selectedThresholds: [],
-      summariesByKey: {},
+      selectedThresholds: costGuard.selectedThresholds,
+      summariesByKey: costGuard.summariesByKey,
       usageRepository,
     }
   } catch {

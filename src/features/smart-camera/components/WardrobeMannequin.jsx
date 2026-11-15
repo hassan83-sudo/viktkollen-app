@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { garmentSlot, isWardrobePhoto } from '../../../services/wardrobeStorage.js'
+import { cutoutLightBackground } from './wardrobeCutout.js'
 
 const priority = { outer: 0, top: 1, dress: 1, bottom: 2, shoes: 3, accessory: 4 }
-const isLight = (r, g, b) => Math.min(r, g, b) >= 224 && Math.max(r, g, b) - Math.min(r, g, b) <= 24
-
 // Only remove near-white background connected to the image border.
-// Dark, patterned or ambiguous backgrounds are deliberately kept.
+// Dark, patterned or ambiguous backgrounds are deliberately kept, and cutouts
+// with holes or loose fragments are rejected (see wardrobeCutout.js).
 async function isolateLightBackground(src) {
   const image = new Image()
   await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; image.src = src })
@@ -16,53 +16,14 @@ async function isolateLightBackground(src) {
   const ctx = canvas.getContext('2d', { willReadFrequently: true })
   if (!ctx) return null
   ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
-  const { width: w, height: h } = canvas
-  const frame = ctx.getImageData(0, 0, w, h)
-  const data = frame.data
-  const total = w * h
-  let border = 0, light = 0
-  for (let x = 0; x < w; x++) for (const y of [0, h - 1]) {
-    const p = (y * w + x) * 4; border++; if (isLight(data[p], data[p + 1], data[p + 2])) light++
-  }
-  for (let y = 1; y < h - 1; y++) for (const x of [0, w - 1]) {
-    const p = (y * w + x) * 4; border++; if (isLight(data[p], data[p + 1], data[p + 2])) light++
-  }
-  if (light / border < 0.85) return null
-  const seen = new Uint8Array(total)
-  const queue = new Int32Array(total)
-  let head = 0, tail = 0
-  const enqueue = (i) => {
-    if (i < 0 || i >= total || seen[i]) return
-    const p = i * 4
-    if (!isLight(data[p], data[p + 1], data[p + 2])) return
-    seen[i] = 1; queue[tail++] = i
-  }
-  for (let x = 0; x < w; x++) { enqueue(x); enqueue((h - 1) * w + x) }
-  for (let y = 0; y < h; y++) { enqueue(y * w); enqueue(y * w + w - 1) }
-  while (head < tail) {
-    const i = queue[head++], x = i % w
-    if (x > 0) enqueue(i - 1)
-    if (x + 1 < w) enqueue(i + 1)
-    if (i >= w) enqueue(i - w)
-    if (i + w < total) enqueue(i + w)
-  }
-  if (tail < total * 0.03 || tail > total * 0.92) return null
-  let minX = w, minY = h, maxX = -1, maxY = -1
-  for (let i = 0; i < total; i++) {
-    const p = i * 4
-    if (seen[i]) data[p + 3] = 0
-    else if (data[p + 3] > 0) {
-      const x = i % w, y = (i / w) | 0
-      minX = Math.min(minX, x); minY = Math.min(minY, y)
-      maxX = Math.max(maxX, x); maxY = Math.max(maxY, y)
-    }
-  }
-  if (maxX < minX || maxY < minY) return null
+  const frame = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  const box = cutoutLightBackground(frame.data, canvas.width, canvas.height)
+  if (!box) return null
   ctx.putImageData(frame, 0, 0)
   const cropped = document.createElement('canvas')
-  cropped.width = maxX - minX + 1
-  cropped.height = maxY - minY + 1
-  cropped.getContext('2d').drawImage(canvas, minX, minY, cropped.width, cropped.height, 0, 0, cropped.width, cropped.height)
+  cropped.width = box.maxX - box.minX + 1
+  cropped.height = box.maxY - box.minY + 1
+  cropped.getContext('2d').drawImage(canvas, box.minX, box.minY, cropped.width, cropped.height, 0, 0, cropped.width, cropped.height)
   return cropped.toDataURL('image/png')
 }
 
@@ -71,9 +32,9 @@ function OutfitGarment({ garment, onCutout }) {
   useEffect(() => {
     let active = true
     setCutout(null)
-    if (isWardrobePhoto(garment.image)) isolateLightBackground(garment.image)
-      .then((result) => { if (active) { setCutout(result); onCutout?.(garment.id, result) } })
-      .catch(() => {})
+    const done = (result) => { if (active) { setCutout(result); onCutout?.(garment.id, result) } }
+    if (isWardrobePhoto(garment.image)) isolateLightBackground(garment.image).then(done).catch(() => done(null))
+    else onCutout?.(garment.id, null)
     return () => { active = false }
   }, [garment.id, garment.image, onCutout])
   return <li className={`wardrobe-outfit-piece wardrobe-outfit-${['shoes', 'bottom'].includes(garmentSlot(garment.type)) ? garmentSlot(garment.type) : 'top'}`}>

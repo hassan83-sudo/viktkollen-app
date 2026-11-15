@@ -72,4 +72,18 @@ describe('AI Natur: faktiska API-faktureringens kvotkedja', () => {
     expect(provider).not.toHaveBeenCalled()
   })
 
+  it('stoppar AI-anrop när produktionskostnadsspärr saknar gränsvärden', async () => {
+    const runtime = installAiNatureBillingTestRuntime()
+    const provider = vi.fn()
+    const operationId = createAiNatureOperationId({ clientAttemptId: 'no-cost-threshold', userId })
+    const { billing } = await executeAiNatureMeteredOperation({
+      executeProvider: provider, operationId, runtime, userId,
+    })
+    expect(billing.outcome).toBe('DENIED_EVALUATE')
+    expect(provider).not.toHaveBeenCalled()
+    expect((await runtime.quota.inspectQuota({
+      feature: 'food.scan', unit: 'requests', userId,
+    })).used).toBe(0)
+  })
+
 })

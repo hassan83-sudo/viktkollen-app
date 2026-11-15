@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { garmentSlot, isWardrobePhoto } from '../../../services/wardrobeStorage.js'
 
 const priority = { outer: 0, top: 1, dress: 1, bottom: 2, shoes: 3, accessory: 4 }
@@ -66,16 +66,16 @@ async function isolateLightBackground(src) {
   return cropped.toDataURL('image/png')
 }
 
-function OutfitGarment({ garment }) {
+function OutfitGarment({ garment, onCutout }) {
   const [cutout, setCutout] = useState(null)
   useEffect(() => {
     let active = true
     setCutout(null)
     if (isWardrobePhoto(garment.image)) isolateLightBackground(garment.image)
-      .then((result) => { if (active) setCutout(result) })
+      .then((result) => { if (active) { setCutout(result); onCutout?.(garment.id, result) } })
       .catch(() => {})
     return () => { active = false }
-  }, [garment.image])
+  }, [garment.id, garment.image, onCutout])
   return <li className={`wardrobe-outfit-piece wardrobe-outfit-${['shoes', 'bottom'].includes(garmentSlot(garment.type)) ? garmentSlot(garment.type) : 'top'}`}>
     {isWardrobePhoto(garment.image)
       ? <img src={cutout || garment.image} alt={`${garment.name}, ${garment.type}`} />
@@ -85,7 +85,13 @@ function OutfitGarment({ garment }) {
 }
 
 export default function WardrobeMannequin({ garments }) {
+  const [cutouts, setCutouts] = useState({})
+  const onCutout = useCallback((id, result) => setCutouts((current) => current[id] === result ? current : { ...current, [id]: result }), [])
   const ordered = [...garments].sort((a, b) => (priority[garmentSlot(a.type)] ?? 5) - (priority[garmentSlot(b.type)] ?? 5))
+  const layers = ['top', 'bottom', 'shoes'].map((slot) => {
+    const garment = [...ordered].reverse().find((item) => garmentSlot(item.type) === slot && cutouts[item.id])
+    return garment ? { slot, garment, image: cutouts[garment.id] } : null
+  }).filter(Boolean)
   return <section className="wardrobe-mannequin" aria-label="Vald outfit">
     <h4>Din outfit</h4>
     <div className="wardrobe-doll">
@@ -97,10 +103,11 @@ export default function WardrobeMannequin({ garments }) {
         decoding="async"
         alt="Skyltdocka i vit t-shirt, svarta byxor och vita sneakers"
       />
+      {layers.map(({ slot, garment, image }) => <div key={slot} className={`wardrobe-doll-layer wardrobe-doll-layer-${slot}`}><img src={image} alt={`${garment.name} på dockan (ungefärlig förhandsvisning)`} /></div>)}
     </div>
-    <p className="wardrobe-doll-note">Dockan visas utan dina sparade plagg. Kläderna finns kvar i garderoben.</p>
+    <p className="wardrobe-doll-note">Valda plagg med ljus bakgrund kan visas ungefärligt på dockan. Passformen är inte exakt. Plagg utan frilagd bild visas under Valda plagg. Dina sparade kläder ändras inte.</p>
     {!ordered.length && <p>Välj plagg i garderoben för att skapa en outfit.</p>}
-    {!!ordered.length && <details><summary>Valda plagg</summary><ul className="wardrobe-outfit-stack-list">{ordered.map((garment) => <OutfitGarment key={garment.id} garment={garment} />)}</ul></details>}
+    {!!ordered.length && <details><summary>Valda plagg</summary><ul className="wardrobe-outfit-stack-list">{ordered.map((garment) => <OutfitGarment key={garment.id} garment={garment} onCutout={onCutout} />)}</ul></details>}
   </section>
 }
 

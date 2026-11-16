@@ -97,18 +97,30 @@ export function cutoutLightBackground(data, w, h) {
   if (!parts || parts > MAX_SIGNIFICANT_PARTS) return null
   if ((foreground - kept) / foreground > MAX_SPECK_SHARE) return null
 
-  // 3. Holes: background removed between the garment's top and bottom in a column
-  //    means the fill leaked into the garment (light stripes, prints or fabric).
+  // 3. Holes: background removed with garment both above and below it (same
+  //    column) and both left and right of it (same row) means the fill leaked
+  //    into the garment (light prints or fabric). Concave outlines such as a
+  //    waist above a wide skirt, the gap between trouser legs or the area under
+  //    a sleeve are open on one side and are not counted.
+  const colTop = new Int32Array(w).fill(-1)
+  const colBottom = new Int32Array(w).fill(-1)
+  const rowLeft = new Int32Array(h).fill(-1)
+  const rowRight = new Int32Array(h).fill(-1)
+  for (let i = 0; i < total; i++) {
+    if (!keep[label[i]]) continue
+    const x = i % w
+    const y = (i / w) | 0
+    if (colTop[x] < 0) colTop[x] = y
+    colBottom[x] = y
+    if (rowLeft[y] < 0) rowLeft[y] = x
+    rowRight[y] = x
+  }
   let enclosed = 0
-  for (let x = 0; x < w; x++) {
-    let top = -1
-    let bottom = -1
-    for (let y = 0; y < h; y++) {
-      if (keep[label[y * w + x]]) { if (top < 0) top = y; bottom = y }
-    }
-    for (let y = top + 1; top >= 0 && y < bottom; y++) {
-      if (background[y * w + x]) enclosed++
-    }
+  for (let i = 0; i < total; i++) {
+    if (!background[i]) continue
+    const x = i % w
+    const y = (i / w) | 0
+    if (y > colTop[x] && y < colBottom[x] && x > rowLeft[y] && x < rowRight[y]) enclosed++
   }
   if (enclosed / kept > MAX_ENCLOSED_BACKGROUND_SHARE) return null
 

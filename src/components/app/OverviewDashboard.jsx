@@ -760,6 +760,7 @@ function OverviewPrimaryActions({
   const prefersReducedMotion = usePrefersReducedMotion()
   const [foodCameraInput, setFoodCameraInput] = useState(null)
   const [foodLibraryInput, setFoodLibraryInput] = useState(null)
+  const [natureOpen, setNatureOpen] = useState(false)
   const [showTapPulse, setShowTapPulse] = useState(() => {
     if (typeof window === 'undefined') return false
     try {
@@ -869,18 +870,18 @@ function OverviewPrimaryActions({
   const actions = [
     {
       accent: 'eyes',
-      alt: t('home:actionAlts.eyes'),
+      alt: 'AI Natur',
       art: 'eyes',
-      description: t('home:actionDescriptions.smartCamera'),
-      footerLabel: t('home:cardActions.openCamera'),
-      hitLabel: t('home:labels.openAiEyes'),
-      image: '/viktkollen-ai-eyes-home.webp',
+      description: 'Upptäck djur, växter och natur – under utveckling',
+      footerLabel: 'Öppna AI Natur',
+      hitLabel: 'Öppna AI Natur',
+      image: '/ai-natur-home.svg',
       imageHeight: 623,
       imageWidth: 480,
       icon: 'eye',
-      imageOnClick: openSmartCameraHub,
-      label: t('home:labels.aiEyes'),
-      onClick: openEyes,
+      imageOnClick: () => setNatureOpen(true),
+      label: 'AI Natur',
+      onClick: () => setNatureOpen(true),
     },
     {
       accent: 'food',
@@ -953,6 +954,19 @@ function OverviewPrimaryActions({
         type="file"
         onChange={handleFoodCameraFile}
       />
+      {natureOpen && (
+        <div role="dialog" aria-modal="true" aria-label="AI Natur" style={{ position: 'fixed', inset: 0, zIndex: 9999, overflowY: 'auto', padding: 20, background: 'linear-gradient(160deg,#071b15,#123d29)' }}>
+          <button type="button" onClick={() => setNatureOpen(false)} style={{ color: '#fff', background: 'transparent', border: '1px solid #8bbca3', borderRadius: 12, padding: 12 }}>← Tillbaka</button>
+          <h2 style={{ color: '#fff', textAlign: 'center' }}>🌿 AI Natur</h2>
+          <p style={{ color: '#e5ffed', textAlign: 'center' }}>Skanna och upptäck naturen omkring dig</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 12, marginTop: 24 }}>
+            {['Djur','Växter & blommor','Träd','Svampar','Hav & vatten','Insekter & smådjur','Flaggor','Fåglar'].map((name) => (
+              <div key={name} style={{ color: '#fff', background: '#24573c', border: '1px solid #7dce94', borderRadius: 16, padding: 18, textAlign: 'center' }}>{name}</div>
+            ))}
+          </div>
+          <p style={{ color: '#e5ffed', textAlign: 'center', marginTop: 24 }}>Skanningen är under utveckling.</p>
+        </div>
+      )}
       <section className="overview-primary-actions" data-glow-level={glowLevel} aria-label={t('home:labels.home')}>
       {actions.map((action) => (
         <div className={`overview-primary-action is-${action.accent}`} key={action.label}>
@@ -1600,17 +1614,26 @@ function OverviewDashboard({
         </button>
       </div>
 
-      {isFeatureEnabled('aiEar', flags) && (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 8, marginBottom: 14 }}>
         <button type="button" onClick={() => {
           setBodyScanOpen(false)
-          setSmartCameraInitialMode('ai-ear')
+          setSmartCameraInitialMode('eyes')
           setSmartCameraOpen(true)
-        }} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '12px 16px', marginBottom: 14, borderRadius: 16, border: '1px solid rgba(85,190,235,.4)', background: 'linear-gradient(120deg, #112b3d, #101a35)', color: '#fff', textAlign: 'left', cursor: 'pointer' }}>
-          <img src="/viktkollen-ai-ear-home.webp" alt="" width="58" height="65" style={{ objectFit: 'contain', borderRadius: 10 }} />
-          <strong style={{ flex: 1 }}>AI Örat</strong>
-          <span aria-hidden="true">›</span>
+        }} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, padding: '12px 8px', borderRadius: 16, border: '1px solid rgba(85,190,235,.4)', background: 'linear-gradient(120deg, #112b3d, #101a35)', color: '#fff', cursor: 'pointer' }}>
+          <img src="/viktkollen-ai-eyes-home.webp" alt="" width="48" height="60" style={{ objectFit: 'contain', borderRadius: 10 }} />
+          <strong style={{ flex: 1 }}>AI Ögat</strong>
         </button>
-      )}
+        {isFeatureEnabled('aiEar', flags) && (
+          <button type="button" onClick={() => {
+            setBodyScanOpen(false)
+            setSmartCameraInitialMode('ai-ear')
+            setSmartCameraOpen(true)
+          }} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, padding: '12px 8px', borderRadius: 16, border: '1px solid rgba(85,190,235,.4)', background: 'linear-gradient(120deg, #112b3d, #101a35)', color: '#fff', cursor: 'pointer' }}>
+            <img src="/viktkollen-ai-ear-home.webp" alt="" width="48" height="60" style={{ objectFit: 'contain', borderRadius: 10 }} />
+            <strong style={{ flex: 1 }}>AI Örat</strong>
+          </button>
+        )}
+      </div>
 
       <section className="overview-home-section" aria-labelledby="overview-today-title">
         <h2 id="overview-today-title">{t('home:todayMood')}</h2>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { garmentSlot, isWardrobePhoto } from '../../../services/wardrobeStorage.js'
-import { cutoutLightBackground, splitShoePair } from './wardrobeCutout.js'
+import { cutoutLightBackground, cutoutShoePair, splitShoePair } from './wardrobeCutout.js'
 
 const priority = { outer: 0, top: 1, dress: 1, bottom: 2, shoes: 3, accessory: 4 }
 const MANNEQUINS = {
@@ -30,15 +30,31 @@ async function isolateLightBackground(src, { splitShoes = false } = {}) {
   const ctx = canvas.getContext('2d', { willReadFrequently: true })
   if (!ctx) return null
   ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
+  const original = ctx.getImageData(0, 0, canvas.width, canvas.height)
   const frame = ctx.getImageData(0, 0, canvas.width, canvas.height)
   const box = cutoutLightBackground(frame.data, canvas.width, canvas.height)
-  if (!box) return null
-  ctx.putImageData(frame, 0, 0)
-  const pair = splitShoes ? splitShoePair(box.parts) : null
-  return {
-    image: cropToDataUrl(canvas, box),
-    shoes: pair ? pair.map((part) => cropToDataUrl(canvas, part)) : null,
+  let wholeImage = null
+  if (box) {
+    ctx.putImageData(frame, 0, 0)
+    wholeImage = cropToDataUrl(canvas, box)
+    const pair = splitShoes ? splitShoePair(box.parts) : null
+    if (pair) return { image: wholeImage, shoes: pair.map((part) => cropToDataUrl(canvas, part)) }
   }
+  if (splitShoes) {
+    // White or light shoes are removed together with a light background by the
+    // general cutout. Try the shoe cutout, which keeps what differs from the
+    // background and fills each shoe's inside.
+    const shoeCanvas = document.createElement('canvas')
+    shoeCanvas.width = canvas.width
+    shoeCanvas.height = canvas.height
+    const shoeCtx = shoeCanvas.getContext('2d')
+    const shoes = shoeCtx ? cutoutShoePair(original.data, canvas.width, canvas.height) : null
+    if (shoes) {
+      shoeCtx.putImageData(original, 0, 0)
+      return { image: wholeImage, shoes: shoes.parts.map((part) => cropToDataUrl(shoeCanvas, part)) }
+    }
+  }
+  return wholeImage ? { image: wholeImage, shoes: null } : null
 }
 
 function OutfitGarment({ garment, onCutout }) {

@@ -241,23 +241,7 @@ function MealLogger({
   }, [initialPanel])
 
   useEffect(() => {
-    if (navigationIntent?.panel !== 'plan') return
-
-    setNutritionViewMode('planner')
-    let frame2 = 0
-    const frame1 = window.requestAnimationFrame(() => {
-      frame2 = window.requestAnimationFrame(() => {
-        document.getElementById('nutrition-view-panel')?.scrollIntoView({
-          behavior: 'instant',
-          block: 'start',
-        })
-      })
-    })
-
-    return () => {
-      window.cancelAnimationFrame(frame1)
-      if (frame2) window.cancelAnimationFrame(frame2)
-    }
+    if (navigationIntent?.panel === 'plan') setNutritionViewMode('planner')
   }, [navigationIntent])
 
   useEffect(() => {
@@ -816,6 +800,7 @@ function MealLogger({
             />
           ) : nutritionViewMode === 'planner' ? (
             <WeeklyMealPlanner
+              calendarNavigationId={navigationIntent?.panel === 'plan' ? navigationIntent.id : null}
               dietaryPreferences={dietaryPreferences}
               meals={normalizedMeals}
               nutritionGoals={normalizedGoals}

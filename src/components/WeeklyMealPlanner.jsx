@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ConfirmDialog from './a11y/ConfirmDialog.jsx'
 import { useFocusAfterConfirm } from './a11y/useFocusAfterConfirm.js'

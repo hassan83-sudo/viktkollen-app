@@ -577,7 +577,7 @@ function WeeklyMealPlanner({
         <div style={{ display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:7,marginTop:18 }}>
           <button type="button" className="secondary-button" aria-current="page">▣ Almanacka</button>
           <button type="button" className="secondary-button" onClick={() => document.getElementById('matkalender-recipes')?.scrollIntoView({behavior:'smooth'})}>♧ Mina recept</button>
-          <button type="button" className="secondary-button" onClick={() => document.getElementById('matkalender-recipes')?.scrollIntoView({behavior:'smooth'})}>♡ Favoriter</button>
+          <button type="button" className="secondary-button" onClick={() => document.getElementById('matkalender-meal-form')?.scrollIntoView({behavior:'smooth'})}>＋ Lägg till</button>
         </div>
       </section>
 
@@ -668,7 +668,7 @@ function WeeklyMealPlanner({
             </div>
           </section>
 
-          <section className="nutrition-card">
+          <section id="matkalender-recipes" className="nutrition-card">
             <div className="nutrition-card-heading">
               <div>
                 <p className="eyebrow">Recept</p>

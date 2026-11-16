@@ -160,3 +160,227 @@ export function splitShoePair(parts) {
   if (sizeRatio < MIN_SHOE_SIZE_RATIO || heightRatio < MIN_SHOE_HEIGHT_RATIO) return null
   return [left, right]
 }
+
+// --- Shoes on a light or plain background (white sneakers included) ---
+// The general cutout removes every light pixel connected to the border, which
+// also removes white shoes. Shoes instead keep every pixel that differs from the
+// measured background colour (sole, outline, laces, shadow), close small gaps and
+// fill each shoe's inside, so a white upper inside a visible outline is kept.
+
+const SHOE_BORDER_MAX_SPREAD = 28 // border must be one plain colour
+const SHOE_MIN_DIFF = 14
+const SHOE_CLOSE_RADIUS = 2
+const SHOE_MIN_SOLIDITY = 0.45 // shoe area / its bounding box
+const SHOE_MIN_ASPECT = 0.6
+const SHOE_MAX_ASPECT = 4.5
+const SHOE_MIN_SHARE = 0.01 // a shoe must cover at least 1% of the picture
+const SHOE_MAX_SHARE = 0.6
+const SHOE_SPLIT_MAX_VALLEY = 0.45 // touching shoes (toe to toe) split at a column this thin
+
+function median(values) {
+  const sorted = Float64Array.from(values).sort()
+  return sorted[sorted.length >> 1]
+}
+
+function grow(mask, w, h, radius, value) {
+  // Square dilation (value 1) or erosion (value 0), done as two 1-D passes.
+  const total = w * h
+  const tmp = new Uint8Array(total)
+  const out = new Uint8Array(total)
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let hit = value === 1 ? 0 : 1
+      for (let d = -radius; d <= radius; d++) {
+        const xx = x + d
+        const v = xx < 0 || xx >= w ? 0 : mask[y * w + xx]
+        if (value === 1 && v) { hit = 1; break }
+        if (value === 0 && !v) { hit = 0; break }
+      }
+      tmp[y * w + x] = hit
+    }
+  }
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let hit = value === 1 ? 0 : 1
+      for (let d = -radius; d <= radius; d++) {
+        const yy = y + d
+        const v = yy < 0 || yy >= h ? 0 : tmp[yy * w + x]
+        if (value === 1 && v) { hit = 1; break }
+        if (value === 0 && !v) { hit = 0; break }
+      }
+      out[y * w + x] = hit
+    }
+  }
+  return out
+}
+
+function fillHoles(mask, w, h) {
+  // Everything not reachable from the border through empty pixels is inside.
+  const total = w * h
+  const outside = new Uint8Array(total)
+  const queue = new Int32Array(total)
+  let end = 0
+  for (let i = 0; i < total; i++) {
+    const x = i % w
+    const y = (i / w) | 0
+    if ((x === 0 || y === 0 || x === w - 1 || y === h - 1) && !mask[i]) { outside[i] = 1; queue[end] = i; end += 1 }
+  }
+  const neighbours = new Int32Array(4)
+  for (let head = 0; head < end; head++) {
+    const i = queue[head]
+    const x = i % w
+    let count = 0
+    if (x > 0) { neighbours[count] = i - 1; count += 1 }
+    if (x + 1 < w) { neighbours[count] = i + 1; count += 1 }
+    if (i >= w) { neighbours[count] = i - w; count += 1 }
+    if (i + w < total) { neighbours[count] = i + w; count += 1 }
+    for (let k = 0; k < count; k++) {
+      const n = neighbours[k]
+      if (!outside[n] && !mask[n]) { outside[n] = 1; queue[end] = n; end += 1 }
+    }
+  }
+  const filled = new Uint8Array(total)
+  for (let i = 0; i < total; i++) filled[i] = outside[i] ? 0 : 1
+  return filled
+}
+
+function components(mask, w, h) {
+  const total = w * h
+  const label = new Int32Array(total)
+  const queue = new Int32Array(total)
+  const neighbours = new Int32Array(4)
+  const boxes = []
+  for (let start = 0; start < total; start++) {
+    if (!mask[start] || label[start]) continue
+    const id = boxes.length + 1
+    const box = { id, minX: w, minY: h, maxX: -1, maxY: -1, size: 0 }
+    label[start] = id
+    queue[0] = start
+    let end = 1
+    for (let head = 0; head < end; head++) {
+      const i = queue[head]
+      const x = i % w
+      const y = (i / w) | 0
+      box.size += 1
+      if (x < box.minX) box.minX = x
+      if (x > box.maxX) box.maxX = x
+      if (y < box.minY) box.minY = y
+      if (y > box.maxY) box.maxY = y
+      let count = 0
+      if (x > 0) { neighbours[count] = i - 1; count += 1 }
+      if (x + 1 < w) { neighbours[count] = i + 1; count += 1 }
+      if (i >= w) { neighbours[count] = i - w; count += 1 }
+      if (i + w < total) { neighbours[count] = i + w; count += 1 }
+      for (let k = 0; k < count; k++) {
+        const n = neighbours[k]
+        if (mask[n] && !label[n]) { label[n] = id; queue[end] = n; end += 1 }
+      }
+    }
+    boxes.push(box)
+  }
+  return { boxes, label }
+}
+
+function boxOf(mask, w, minX, maxX, minY, maxY, keepLabel, label) {
+  const box = { minX: Infinity, minY: Infinity, maxX: -1, maxY: -1, size: 0 }
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      const i = y * w + x
+      if (!mask[i] || (keepLabel && label[i] !== keepLabel)) continue
+      box.size += 1
+      if (x < box.minX) box.minX = x
+      if (x > box.maxX) box.maxX = x
+      if (y < box.minY) box.minY = y
+      if (y > box.maxY) box.maxY = y
+    }
+  }
+  return box.size ? box : null
+}
+
+function plausibleShoe(box, total) {
+  const bw = box.maxX - box.minX + 1
+  const bh = box.maxY - box.minY + 1
+  const aspect = bw / bh
+  return box.size >= total * SHOE_MIN_SHARE && box.size <= total * SHOE_MAX_SHARE &&
+    box.size / (bw * bh) >= SHOE_MIN_SOLIDITY && aspect >= SHOE_MIN_ASPECT && aspect <= SHOE_MAX_ASPECT
+}
+
+/**
+ * Cuts a pair of shoes out of a plain background, in place. Returns
+ * { parts: [left, right] } with each shoe's box, or null when the picture
+ * cannot be split into two clean, solid shoes. Nothing is drawn on the
+ * mannequin for null, so no background boxes ever cover the doll.
+ */
+export function cutoutShoePair(data, w, h) {
+  const total = w * h
+  if (w < 8 || h < 8) return null
+  const rs = []
+  const gs = []
+  const bs = []
+  for (let i = 0; i < total; i++) {
+    const x = i % w
+    const y = (i / w) | 0
+    if (x !== 0 && y !== 0 && x !== w - 1 && y !== h - 1) continue
+    rs.push(data[i * 4]); gs.push(data[i * 4 + 1]); bs.push(data[i * 4 + 2])
+  }
+  const bg = [median(rs), median(gs), median(bs)]
+  // The border must be one plain colour: most border pixels close to the median.
+  let plain = 0
+  for (let k = 0; k < rs.length; k++) {
+    const d = Math.max(Math.abs(rs[k] - bg[0]), Math.abs(gs[k] - bg[1]), Math.abs(bs[k] - bg[2]))
+    if (d <= SHOE_BORDER_MAX_SPREAD) plain++
+  }
+  if (plain / rs.length < 0.9) return null
+
+  const diff = new Uint8Array(total)
+  for (let i = 0; i < total; i++) {
+    const p = i * 4
+    const d = Math.max(Math.abs(data[p] - bg[0]), Math.abs(data[p + 1] - bg[1]), Math.abs(data[p + 2] - bg[2]))
+    diff[i] = data[p + 3] !== 0 && d > SHOE_MIN_DIFF ? 1 : 0
+  }
+  // Close small gaps in the outline, then fill each shoe's inside.
+  const closed = grow(grow(diff, w, h, SHOE_CLOSE_RADIUS, 1), w, h, SHOE_CLOSE_RADIUS, 0)
+  const mask = fillHoles(closed, w, h)
+
+  const { boxes, label } = components(mask, w, h)
+  const big = boxes.filter((box) => box.size >= total * SHOE_MIN_SHARE).sort((a, b) => b.size - a.size)
+  let pair = null
+  if (big.length >= 2) {
+    pair = [big[0], big[1]].sort((a, b) => a.minX - b.minX)
+  } else if (big.length === 1) {
+    // Two touching shoes: split at the thinnest column in the middle part.
+    const one = big[0]
+    const widthOne = one.maxX - one.minX + 1
+    const columns = new Int32Array(widthOne)
+    for (let y = one.minY; y <= one.maxY; y++) {
+      for (let x = one.minX; x <= one.maxX; x++) {
+        if (label[y * w + x] === one.id) columns[x - one.minX] += 1
+      }
+    }
+    let peak = 0
+    for (let k = 0; k < widthOne; k++) if (columns[k] > peak) peak = columns[k]
+    let cut = -1
+    let low = Infinity
+    for (let k = Math.floor(widthOne * 0.35); k <= Math.ceil(widthOne * 0.65) && k < widthOne; k++) {
+      if (columns[k] < low) { low = columns[k]; cut = k }
+    }
+    if (cut > 0 && low <= peak * SHOE_SPLIT_MAX_VALLEY) {
+      const left = boxOf(mask, w, one.minX, one.minX + cut - 1, one.minY, one.maxY, one.id, label)
+      const right = boxOf(mask, w, one.minX + cut + 1, one.maxX, one.minY, one.maxY, one.id, label)
+      if (left && right) pair = [left, right]
+      for (let y = one.minY; y <= one.maxY; y++) label[y * w + one.minX + cut] = 0
+    }
+  }
+  if (!pair || !pair.every((box) => plausibleShoe(box, total))) return null
+  const split = splitShoePair(pair)
+  if (!split) return null
+
+  // Keep only the two shoes; everything else becomes transparent.
+  for (let i = 0; i < total; i++) {
+    const x = i % w
+    const y = (i / w) | 0
+    const inShoe = mask[i] && label[i] !== 0 && split.some((box) => x >= box.minX && x <= box.maxX && y >= box.minY && y <= box.maxY)
+    if (!inShoe) data[i * 4 + 3] = 0
+  }
+  return { parts: split }
+}

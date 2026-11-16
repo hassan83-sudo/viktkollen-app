@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cutoutLightBackground, splitShoePair } from './wardrobeCutout.js'
+import { cutoutLightBackground, cutoutShoePair, splitShoePair } from './wardrobeCutout.js'
 
 const WHITE = [250, 250, 250]
 const NAVY = [35, 45, 90]
@@ -112,5 +112,63 @@ describe('splitShoePair', () => {
   it('avvisar saknade delar', () => {
     expect(splitShoePair(undefined)).toBeNull()
     expect(splitShoePair([])).toBeNull()
+  })
+})
+
+describe('cutoutShoePair (vita skor mot ljus bakgrund)', () => {
+  const BG = [250, 250, 250]
+  const UPPER = [247, 247, 247]
+  const OUTLINE = [196, 198, 202]
+  // A white side-view shoe: light upper inside a grey outline, grey sole below.
+  const shoe = (x, y, x0, x1) => {
+    if (!inRect(x, y, x0, 20, x1, 52)) return null
+    if (y >= 46) return [230, 230, 232]
+    if (x === x0 || x === x1 || y === 20) return OUTLINE
+    return UPPER
+  }
+  const pairImage = (x0a, x1a, x0b, x1b, paint = shoe) => image(160, 70, (x, y) => paint(x, y, x0a, x1a) || paint(x, y, x0b, x1b) || BG)
+
+  it('frilägger vita skor som står isär och delar dem i vänster och höger', () => {
+    const data = pairImage(10, 70, 90, 150)
+    const result = cutoutShoePair(data, 160, 70)
+    expect(result.parts.map(({ minX, maxX }) => [minX, maxX])).toEqual([[10, 70], [90, 150]])
+    expect(alphaAt(data, 160, 40, 30)).toBe(255) // white upper is kept
+    expect(alphaAt(data, 160, 80, 30)).toBe(0) // background between the shoes is removed
+    expect(alphaAt(data, 160, 2, 2)).toBe(0)
+  })
+
+  it('delar vita skor som nuddar varandra vid tårna', () => {
+    // Real shoes get lower towards the toe; here the toes of both shoes meet.
+    const sloped = (x, y, x0, x1, toeRight) => {
+      const along = toeRight ? (x - x0) / (x1 - x0) : (x1 - x) / (x1 - x0)
+      const top = 20 + Math.round(along * 22)
+      if (!inRect(x, y, x0, top, x1, 52)) return null
+      if (y >= 46) return [230, 230, 232]
+      if (x === x0 || x === x1 || y === top) return OUTLINE
+      return UPPER
+    }
+    const data = image(160, 70, (x, y) => sloped(x, y, 10, 79, true) || sloped(x, y, 80, 150, false) || BG)
+    const result = cutoutShoePair(data, 160, 70)
+    expect(result).not.toBeNull()
+    expect(result.parts).toHaveLength(2)
+  })
+
+  it('ritar inget när skorna inte syns mot bakgrunden', () => {
+    const faint = (x, y, x0, x1) => (inRect(x, y, x0, 20, x1, 52) ? [248, 248, 248] : null)
+    expect(cutoutShoePair(pairImage(10, 70, 90, 150, faint), 160, 70)).toBeNull()
+  })
+
+  it('ritar inget för en enda sko', () => {
+    expect(cutoutShoePair(image(160, 70, (x, y) => shoe(x, y, 40, 120) || BG), 160, 70)).toBeNull()
+  })
+
+  it('ritar inget för skor som överlappar varandra', () => {
+    const dark = (x, y, x0, x1) => (inRect(x, y, x0, 20, x1, 52) ? [40, 30, 25] : null)
+    expect(cutoutShoePair(pairImage(10, 90, 60, 150, dark), 160, 70)).toBeNull()
+  })
+
+  it('ritar inget på en mönstrad bakgrund', () => {
+    const data = image(160, 70, (x, y) => shoe(x, y, 10, 70) || shoe(x, y, 90, 150) || ((x + y) % 2 ? [250, 250, 250] : [30, 30, 30]))
+    expect(cutoutShoePair(data, 160, 70)).toBeNull()
   })
 })

@@ -2961,7 +2961,7 @@ function App() {
       setMoreIntent({ id: Date.now(), targetId: targetId || 'mal-framsteg' })
       setActiveAppSection('more')
     } else if (sectionId === 'nutrition') {
-      setMoreIntent({ id: Date.now(), targetId: targetId || 'mat' })
+      setMoreIntent({ id: Date.now(), targetId: targetId === 'plan' ? 'mat' : (targetId || 'mat') })
       setActiveAppSection('more')
     } else if (sectionId === 'coach') {
       setMoreIntent({ id: Date.now(), targetId: targetId || 'ai-coach' })

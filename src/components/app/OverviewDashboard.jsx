@@ -1622,18 +1622,18 @@ function OverviewDashboard({
           setBodyScanOpen(false)
           setSmartCameraInitialMode('eyes')
           setSmartCameraOpen(true)
-        }} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, padding: '12px 8px', borderRadius: 16, border: '1px solid rgba(85,190,235,.4)', background: 'linear-gradient(120deg, #112b3d, #101a35)', color: '#fff', cursor: 'pointer' }}>
-          <img src="/viktkollen-ai-eyes-home.webp" alt="" width="48" height="60" style={{ objectFit: 'contain', borderRadius: 10 }} />
-          <strong style={{ flex: 1 }}>AI Ögat</strong>
+        }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'space-between', gap: 8, minWidth: 0, minHeight: 245, padding: '10px', borderRadius: 16, border: '1px solid rgba(85,190,235,.4)', background: 'linear-gradient(120deg, #112b3d, #101a35)', color: '#fff', cursor: 'pointer' }}>
+          <img src="/viktkollen-ai-eyes-home.webp" alt="" style={{ width: '100%', height: 190, objectFit: 'contain', borderRadius: 10 }} />
+          <strong style={{ textAlign: 'center', fontSize: 15 }}>AI Ögat</strong>
         </button>
         {isFeatureEnabled('aiEar', flags) && (
           <button type="button" onClick={() => {
             setBodyScanOpen(false)
             setSmartCameraInitialMode('ai-ear')
             setSmartCameraOpen(true)
-          }} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, padding: '12px 8px', borderRadius: 16, border: '1px solid rgba(85,190,235,.4)', background: 'linear-gradient(120deg, #112b3d, #101a35)', color: '#fff', cursor: 'pointer' }}>
-            <img src="/viktkollen-ai-ear-home.webp" alt="" width="48" height="60" style={{ objectFit: 'contain', borderRadius: 10 }} />
-            <strong style={{ flex: 1 }}>AI Örat</strong>
+          }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'space-between', gap: 8, minWidth: 0, minHeight: 245, padding: '10px', borderRadius: 16, border: '1px solid rgba(85,190,235,.4)', background: 'linear-gradient(120deg, #112b3d, #101a35)', color: '#fff', cursor: 'pointer' }}>
+            <img src="/viktkollen-ai-ear-home.webp" alt="" style={{ width: '100%', height: 190, objectFit: 'contain', borderRadius: 10 }} />
+            <strong style={{ textAlign: 'center', fontSize: 15 }}>AI Örat</strong>
           </button>
         )}
       </div>

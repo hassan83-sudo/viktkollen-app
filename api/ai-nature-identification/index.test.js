@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import handler from './index.js'
+import handler from '../_shared/aiNatureHttpHandler.js'
 import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
 import { setAiRateLimitAdapterForTests } from '../_shared/aiRateLimiter.js'
 import { computeCanonicalImageHash, issueAnalysisConsentToken } from '../_shared/analysisConsent.js'

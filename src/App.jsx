@@ -2981,7 +2981,7 @@ function App() {
 
       if (target) {
         scrollTargetInApp(target)
-      } else if (!(sectionId === 'nutrition' && (targetId === 'nutrition-scanner-v2' || targetId === 'scanner'))) {
+      } else if (!(sectionId === 'nutrition' && (targetId === 'nutrition-scanner-v2' || targetId === 'scanner' || targetId === 'plan'))) {
         // Matscannern laddas separat; MealLogger scrollar dit när den finns.
         // Att scrolla till toppen här gav ett hopp förbi skannern.
         scrollAppToTop()

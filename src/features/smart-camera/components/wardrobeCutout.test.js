@@ -47,11 +47,11 @@ describe('cutoutLightBackground', () => {
     expect(cutoutLightBackground(data, 100, 100)).toBeNull()
   })
 
-  it('avvisar ett mörkt plagg med ljust parti som når sidan och blir ett hål', () => {
-    // A light panel inside the torso that touches the side seam, so the fill leaks in.
+  it('avvisar ett mörkt plagg med ljust tryck som läcker ut till sidan och blir ett hål', () => {
+    // A light print inside the torso, joined to the side seam by a thin light line.
     const data = image(100, 100, (x, y) => {
       if (!tee(x, y)) return null
-      return inRect(x, y, 30, 55, 58, 68) ? WHITE : NAVY
+      return inRect(x, y, 40, 52, 62, 72) || inRect(x, y, 30, 61, 40, 62) ? WHITE : NAVY
     })
     expect(cutoutLightBackground(data, 100, 100)).toBeNull()
   })
@@ -170,5 +170,20 @@ describe('cutoutShoePair (vita skor mot ljus bakgrund)', () => {
   it('ritar inget på en mönstrad bakgrund', () => {
     const data = image(160, 70, (x, y) => shoe(x, y, 10, 70) || shoe(x, y, 90, 150) || ((x + y) % 2 ? [250, 250, 250] : [30, 30, 30]))
     expect(cutoutShoePair(data, 160, 70)).toBeNull()
+  })
+})
+
+describe('cutoutLightBackground (klänningar och konkava former)', () => {
+  it('godkänner en klänning med smal midja och vid kjol', () => {
+    const dress = (x, y) => {
+      if (inRect(x, y, 35, 10, 65, 40)) return [150, 30, 45] // bodice
+      if (inRect(x, y, 25, 10, 75, 18)) return [150, 30, 45] // shoulders and sleeves
+      if (y > 40 && y <= 90) {
+        const half = 15 + (y - 40) * 0.6 // skirt widens towards the hem
+        if (x >= 50 - half && x <= 50 + half) return [150, 30, 45]
+      }
+      return null
+    }
+    expect(cutoutLightBackground(image(100, 100, dress), 100, 100)).not.toBeNull()
   })
 })

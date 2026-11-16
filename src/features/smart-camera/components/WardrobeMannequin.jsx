@@ -82,7 +82,8 @@ export default function WardrobeMannequin({ garments }) {
   const [cutouts, setCutouts] = useState({})
   const onCutout = useCallback((id, result) => setCutouts((current) => current[id] === result ? current : { ...current, [id]: result }), [])
   const ordered = [...garments].sort((a, b) => (priority[garmentSlot(a.type)] ?? 5) - (priority[garmentSlot(b.type)] ?? 5))
-  const layers = ['top', 'bottom'].map((slot) => {
+  // Dress comes before top in the DOM so a top chosen together with it is drawn over it.
+  const layers = ['dress', 'top', 'bottom'].map((slot) => {
     const garment = [...ordered].reverse().find((item) => garmentSlot(item.type) === slot && cutouts[item.id]?.image)
     return garment ? { slot, garment, image: cutouts[garment.id].image } : null
   }).filter(Boolean)

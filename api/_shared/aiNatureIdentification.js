@@ -8,7 +8,7 @@ import { callOpenAiJson, getAiGatewayConfig } from './openaiGateway.js'
  */
 export const natureCategories = Object.freeze([
   'flower', 'plant', 'tree', 'mushroom', 'berry', 'bird',
-  'insect', 'animal', 'other',
+  'insect', 'animal', 'rock', 'other',
 ])
 
 const clean = (value, max = 300) => String(value ?? '')
@@ -19,10 +19,10 @@ const clean = (value, max = 300) => String(value ?? '')
   .slice(0, max)
 
 export const natureIdentificationInstructions = [
-  'Identify the visible wild plant, tree, flower, fungus, berry, bird, insect or animal from the photograph.',
+  'Identify the visible wild plant, tree, flower, fungus, berry, bird, insect, animal, rock, mineral or geological material from the photograph.',
   'Return one JSON object with category, swedishName, scientificName, description, facts,',
   'confidence (high, medium or low), uncertain, potentiallyPoisonous and safetyNote.',
-  'Use Swedish for all explanatory text. Do not invent an exact species when the photo is ambiguous.',
+  'Use Swedish for all explanatory text. For rocks and minerals use category rock, and name the likely material without claiming certainty from a photo. Do not invent an exact species when the photo is ambiguous.',
   'If unsure, use a broader taxon and set uncertain to true. Never declare mushrooms, berries',
   'or plants safe to eat based on a photograph. Never give definitive medical or toxicity assurances.',
 ].join(' ')

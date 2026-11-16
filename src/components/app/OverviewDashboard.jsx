@@ -870,17 +870,17 @@ function OverviewPrimaryActions({
   const actions = [
     {
       accent: 'eyes',
-      alt: 'AI Natur',
+      alt: 'AI Natur mm',
       art: 'eyes',
       description: 'Upptäck djur, växter och natur – under utveckling',
-      footerLabel: 'Öppna AI Natur',
-      hitLabel: 'Öppna AI Natur',
+      footerLabel: 'Öppna AI Natur mm',
+      hitLabel: 'Öppna AI Natur mm',
       image: '/ai-natur-home.svg',
       imageHeight: 623,
       imageWidth: 480,
       icon: 'eye',
       imageOnClick: () => setNatureOpen(true),
-      label: 'AI Natur',
+      label: 'AI Natur mm',
       onClick: () => setNatureOpen(true),
     },
     {
@@ -955,9 +955,9 @@ function OverviewPrimaryActions({
         onChange={handleFoodCameraFile}
       />
       {natureOpen && (
-        <div role="dialog" aria-modal="true" aria-label="AI Natur" style={{ position: 'fixed', inset: 0, zIndex: 9999, overflowY: 'auto', padding: 20, background: 'linear-gradient(160deg,#071b15,#123d29)' }}>
+        <div role="dialog" aria-modal="true" aria-label="AI Natur mm" style={{ position: 'fixed', inset: 0, zIndex: 9999, overflowY: 'auto', padding: 20, background: 'linear-gradient(160deg,#071b15,#123d29)' }}>
           <button type="button" onClick={() => setNatureOpen(false)} style={{ color: '#fff', background: 'transparent', border: '1px solid #8bbca3', borderRadius: 12, padding: 12 }}>← Tillbaka</button>
-          <h2 style={{ color: '#fff', textAlign: 'center' }}>🌿 AI Natur</h2>
+          <h2 style={{ color: '#fff', textAlign: 'center' }}>🌿 AI Natur mm</h2>
           <p style={{ color: '#e5ffed', textAlign: 'center' }}>Skanna och upptäck naturen omkring dig</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 12, marginTop: 24 }}>
             {['Djur','Växter & blommor','Träd','Svampar','Hav & vatten','Insekter & smådjur','Flaggor','Fåglar'].map((name) => (

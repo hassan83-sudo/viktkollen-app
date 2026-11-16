@@ -96,13 +96,13 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
   }
 
   return (
-    <section className="ai-nature-panel" aria-label="AI Natur" style={{ maxWidth: 560, margin: '0 auto', padding: 16, color: 'inherit' }}>
+    <section className="ai-nature-panel" aria-label="AI Natur mm" style={{ maxWidth: 560, margin: '0 auto', padding: 16, color: 'inherit' }}>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <div>
-          <h2 style={{ margin: 0 }}>AI Natur</h2>
-          <p style={{ margin: '6px 0 16px' }}>Upptäck träd, blommor, växter, svampar, fåglar, insekter och djur.</p>
+          <h2 style={{ margin: 0 }}>AI Natur mm</h2>
+          <p style={{ margin: '6px 0 16px' }}>Upptäck träd, blommor, växter, svampar, fåglar, insekter, djur och stenar.</p>
         </div>
-        {onClose && <button type="button" onClick={onClose} aria-label="Stäng AI Natur">Stäng</button>}
+        {onClose && <button type="button" onClick={onClose} aria-label="Stäng AI Natur mm">Stäng</button>}
       </header>
 
       <div style={{ position: 'relative', borderRadius: 18, overflow: 'hidden', background: '#14241a', minHeight: 230, display: 'grid', placeItems: 'center' }}>
@@ -120,7 +120,7 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
 
       {cameraError && <p role="alert">{cameraError}</p>}
       <p style={{ fontSize: 13, opacity: 0.85 }}>Bilden stannar på din enhet tills du uttryckligen godkänner analys. {analysisEnabled ? 'Godkänn endast om du vill skicka bilden för AI-analys.' : 'AI-analysen är ännu inte aktiverad.'}</p>
-      {photo && <button type="button" onClick={identify} disabled={!analysisEnabled || busy} title={!analysisEnabled ? "AI Natur är spärrad tills separat kvot och betalningskontroll är verifierade" : undefined}>{busy ? "Identifierar…" : analysisEnabled ? "Godkänn och identifiera med AI" : "Identifiera med AI – kommer snart"}</button>}
+      {photo && <button type="button" onClick={identify} disabled={!analysisEnabled || busy} title={!analysisEnabled ? "AI Natur mm är spärrad tills separat kvot och betalningskontroll är verifierade" : undefined}>{busy ? "Identifierar…" : analysisEnabled ? "Godkänn och identifiera med AI" : "Identifiera med AI – kommer snart"}</button>}
       {busy && <p role="status">Identifierar art…</p>}
       {identification && (
         <article aria-live="polite" style={{ marginTop: 18 }}>

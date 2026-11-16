@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ConfirmDialog from './a11y/ConfirmDialog.jsx'
 import { useFocusAfterConfirm } from './a11y/useFocusAfterConfirm.js'
@@ -279,6 +279,7 @@ function ShoppingListPanel({
 }
 
 function WeeklyMealPlanner({
+  calendarNavigationId,
   dietaryPreferences,
   meals,
   nutritionGoals,
@@ -287,6 +288,20 @@ function WeeklyMealPlanner({
   templates,
 }) {
   const { t: tConfirm } = useTranslation('confirm')
+  useEffect(() => {
+    if (!calendarNavigationId) return undefined
+    let secondFrame = 0
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        document.getElementById('matkalender-calendar')?.scrollIntoView({ behavior: 'instant', block: 'start' })
+      })
+    })
+    return () => {
+      window.cancelAnimationFrame(firstFrame)
+      if (secondFrame) window.cancelAnimationFrame(secondFrame)
+    }
+  }, [calendarNavigationId])
+
   const [plans, setPlans] = useState(() => readMealPlans())
   const [shoppingLists, setShoppingLists] = useState(() => readShoppingLists())
   const [weekStart, setWeekStart] = useState(() => getMealPlanWeekStart())
@@ -538,7 +553,7 @@ function WeeklyMealPlanner({
         <button className="secondary-button" type="button" onClick={() => setWeekStart(getMealPlanWeekStart(getLocalDateString()))}>Denna vecka</button>
       </nav>
 
-      <section aria-label="Matkalender" style={{ padding: 14, borderRadius: 22, background: 'linear-gradient(150deg,#060b1b,#0a1021)', color: '#fff', border: '1px solid #453065' }}>
+      <section id="matkalender-calendar" aria-label="Matkalender" style={{ padding: 14, borderRadius: 22, background: 'linear-gradient(150deg,#060b1b,#0a1021)', color: '#fff', border: '1px solid #453065' }}>
         <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <strong style={{ fontSize: '1.25rem' }}>♧ Matkalender</strong>
           <button type="button" className="secondary-button" aria-label="Lägg till måltid" onClick={() => document.getElementById('matkalender-meal-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' })} style={{ borderRadius: '50%', background: '#27e2ed', color: '#04101e', fontSize: 24, minWidth: 44, minHeight: 44 }}>+</button>

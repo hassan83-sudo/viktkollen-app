@@ -3,6 +3,7 @@ export const USAGE_EVENT_TYPES = Object.freeze([
   'ai.voice.session',
   'tts.request',
   'food.scan',
+  'ai.nature.identification',
   'ai.eye.analysis',
   'ai.ear.interpret',
   'body.scan',

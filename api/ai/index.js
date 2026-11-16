@@ -1,3 +1,4 @@
+import aiNatureHandler from '../_shared/aiNatureHttpHandler.js'
 import { buildAiCoachContext } from '../../src/services/aiCoachContext.js'
 import { createDeterministicAiCoachReply } from '../../src/services/aiCoachDeterministicReplies.js'
 import { classifyAiCoachIntent } from '../../src/services/aiCoachIntentService.js'
@@ -635,6 +636,7 @@ function readVkRoute(request) {
 
 export default async function handler(request, response) {
   const route = readVkRoute(request)
+  if (route === 'ai-nature-identification') return aiNatureHandler(request, response)
   if (route === 'ai-help') return handleAiHelpRequest(request, response)
   if (route === 'support') return supportHandler(request, response)
   if (route === 'support-alerts') return supportAlertsHandler(request, response)

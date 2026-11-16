@@ -42,6 +42,23 @@ export function createPostgresUsageRepository({ client } = {}) {
       if (error) throw error
       return data || []
     },
+    async listInPeriod({ eventTypes, period_end, period_start } = {}) {
+      const start = new Date(period_start)
+      const end = new Date(period_end)
+      if (!Array.isArray(eventTypes) || eventTypes.length === 0 ||
+          !Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) ||
+          start >= end) unavailable('unbounded_usage_query')
+      const { data, error } = await table()
+        .select('event_id,event_type,feature,provider,model,unit,quantity,occurred_at,cost_basis,metadata')
+        .in('event_type', eventTypes)
+        .gte('occurred_at', start.toISOString())
+        .lt('occurred_at', end.toISOString())
+        .order('occurred_at', { ascending: true })
+        .limit(10001)
+      if (error) throw error
+      if ((data || []).length > 10000) unavailable('usage_query_limit_exceeded')
+      return data || []
+    },
     async insert(event) {
       const row = toPersistedUsageRow(event)
       const { data, error } = await table().insert(row).select('*').maybeSingle()

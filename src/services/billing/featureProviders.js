@@ -9,6 +9,7 @@ import { resolveProviderId } from './providers.js'
 export const FEATURE_REQUIRED_PROVIDERS = Object.freeze({
   'ai.ear.interpret': Object.freeze(['google.cloud_run.ai_ear']),
   'ai.eye.analysis': Object.freeze(['openai']),
+  'ai.nature.identification': Object.freeze(['openai']),
   'ai.text.request': Object.freeze(['openai']),
   'ai.voice.session': Object.freeze(['openai']),
   'body.scan': Object.freeze(['openai']),

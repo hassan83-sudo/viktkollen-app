@@ -1514,6 +1514,9 @@ function OverviewDashboard({
         <div className="overview-header-weather-art" aria-hidden="true">
           <span className="overview-weather-hero-icon">{liveContext.weather?.icon || '☁'}</span>
         </div>
+        <div style={{ position: 'relative', zIndex: 2, marginTop: 12, marginBottom: 8, maxWidth: 420 }}>
+          <GlobalSearch compact onNavigate={onSearchNavigate} />
+        </div>
         <div className={showHeaderActions ? 'overview-header-actions' : 'overview-header-actions sr-only'} inert={!showHeaderActions}>
           <button
             aria-label={t('home:showSmartNotices')}

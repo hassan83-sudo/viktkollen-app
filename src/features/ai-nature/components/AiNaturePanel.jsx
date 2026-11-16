@@ -128,6 +128,7 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
           {identification.scientificName && <p><i>{identification.scientificName}</i></p>}
           <p>{identification.description}</p>
           {identification.facts?.length > 0 && <ul>{identification.facts.map((fact, i) => <li key={i}>{fact}</li>)}</ul>}
+          {identification.reproduction && <section aria-label="Fortplantning"><h4>Fortplantning</h4><p>{identification.reproduction}</p></section>}
           {identification.uncertain && <p>Artbestämningen är osäker.</p>}
           {identification.potentiallyPoisonous && <p role="alert">Kan vara giftig.</p>}
           <p>{identification.safetyNote || safetyMessage}</p>

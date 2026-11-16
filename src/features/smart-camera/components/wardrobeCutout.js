@@ -112,20 +112,51 @@ export function cutoutLightBackground(data, w, h) {
   }
   if (enclosed / kept > MAX_ENCLOSED_BACKGROUND_SHARE) return null
 
-  // 4. Make background and loose specks transparent; measure the kept garment.
+  // 4. Make background and loose specks transparent; measure the kept garment
+  //    and each kept part (a pair of shoes has two parts).
   let minX = w
   let minY = h
   let maxX = -1
   let maxY = -1
+  const partBoxes = new Map()
   for (let i = 0; i < total; i++) {
-    if (!keep[label[i]]) { data[i * 4 + 3] = 0; continue }
+    const id = label[i]
+    if (!keep[id]) { data[i * 4 + 3] = 0; continue }
     const x = i % w
     const y = (i / w) | 0
     if (x < minX) minX = x
     if (x > maxX) maxX = x
     if (y < minY) minY = y
     if (y > maxY) maxY = y
+    const part = partBoxes.get(id)
+    if (!part) partBoxes.set(id, { maxX: x, maxY: y, minX: x, minY: y, size: sizes[id] })
+    else {
+      if (x < part.minX) part.minX = x
+      if (x > part.maxX) part.maxX = x
+      if (y > part.maxY) part.maxY = y
+    }
   }
   if (maxX < minX || maxY < minY) return null
-  return { maxX, maxY, minX, minY }
+  const partList = [...partBoxes.values()].sort((a, b) => a.minX - b.minX)
+  return { maxX, maxY, minX, minY, parts: partList }
+}
+
+const MIN_SHOE_SIZE_RATIO = 0.5 // the smaller shoe must be at least half the larger
+const MIN_SHOE_HEIGHT_RATIO = 0.6
+
+/**
+ * Returns [left, right] part boxes when a cut-out pair of shoes can be split
+ * reliably into two shoes side by side, otherwise null (the pair is then not
+ * drawn on the mannequin).
+ */
+export function splitShoePair(parts) {
+  if (!Array.isArray(parts) || parts.length !== 2) return null
+  const [left, right] = [...parts].sort((a, b) => a.minX - b.minX)
+  if (left.maxX >= right.minX) return null
+  const sizeRatio = Math.min(left.size, right.size) / Math.max(left.size, right.size)
+  const leftHeight = left.maxY - left.minY + 1
+  const rightHeight = right.maxY - right.minY + 1
+  const heightRatio = Math.min(leftHeight, rightHeight) / Math.max(leftHeight, rightHeight)
+  if (sizeRatio < MIN_SHOE_SIZE_RATIO || heightRatio < MIN_SHOE_HEIGHT_RATIO) return null
+  return [left, right]
 }

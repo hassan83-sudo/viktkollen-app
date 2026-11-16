@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cutoutLightBackground } from './wardrobeCutout.js'
+import { cutoutLightBackground, splitShoePair } from './wardrobeCutout.js'
 
 const WHITE = [250, 250, 250]
 const NAVY = [35, 45, 90]
@@ -27,14 +27,16 @@ function alphaAt(data, w, x, y) {
 describe('cutoutLightBackground', () => {
   it('frilägger ett helt mörkt plagg och returnerar dess yttermått', () => {
     const data = image(100, 100, (x, y) => (tee(x, y) ? NAVY : null))
-    expect(cutoutLightBackground(data, 100, 100)).toEqual({ minX: 10, minY: 20, maxX: 90, maxY: 90 })
+    expect(cutoutLightBackground(data, 100, 100)).toMatchObject({ minX: 10, minY: 20, maxX: 90, maxY: 90 })
     expect(alphaAt(data, 100, 0, 0)).toBe(0)
     expect(alphaAt(data, 100, 50, 50)).toBe(255)
   })
 
   it('godkänner ett par skor som två separata delar', () => {
     const data = image(120, 60, (x, y) => (inRect(x, y, 10, 20, 50, 40) || inRect(x, y, 70, 20, 110, 40) ? [60, 40, 30] : null))
-    expect(cutoutLightBackground(data, 120, 60)).toEqual({ minX: 10, minY: 20, maxX: 110, maxY: 40 })
+    const box = cutoutLightBackground(data, 120, 60)
+    expect(box).toMatchObject({ minX: 10, minY: 20, maxX: 110, maxY: 40 })
+    expect(box.parts.map(({ minX, maxX }) => [minX, maxX])).toEqual([[10, 50], [70, 110]])
   })
 
   it('avvisar en randig tröja vars ljusa ränder skulle klippas bort som hål', () => {
@@ -71,7 +73,44 @@ describe('cutoutLightBackground', () => {
 
   it('tar bort lösa prickar så att de inte förstorar plaggets yttermått', () => {
     const data = image(100, 100, (x, y) => (tee(x, y) || (x === 95 && y === 5) ? NAVY : null))
-    expect(cutoutLightBackground(data, 100, 100)).toEqual({ minX: 10, minY: 20, maxX: 90, maxY: 90 })
+    expect(cutoutLightBackground(data, 100, 100)).toMatchObject({ minX: 10, minY: 20, maxX: 90, maxY: 90 })
     expect(alphaAt(data, 100, 95, 5)).toBe(0)
+  })
+})
+
+describe('splitShoePair', () => {
+  const part = (minX, maxX, minY = 20, maxY = 40, size = (maxX - minX + 1) * (maxY - minY + 1)) => ({ minX, maxX, minY, maxY, size })
+
+  it('delar ett par i vänster och höger sko', () => {
+    const left = part(10, 50)
+    const right = part(70, 110)
+    expect(splitShoePair([right, left])).toEqual([left, right])
+  })
+
+  it('delar skor ur en riktig friläggning', () => {
+    const data = image(120, 60, (x, y) => (inRect(x, y, 10, 20, 50, 40) || inRect(x, y, 70, 20, 110, 40) ? [60, 40, 30] : null))
+    const pair = splitShoePair(cutoutLightBackground(data, 120, 60).parts)
+    expect(pair.map(({ minX }) => minX)).toEqual([10, 70])
+  })
+
+  it('avvisar skor som går ihop till en enda del', () => {
+    expect(splitShoePair([part(10, 110)])).toBeNull()
+  })
+
+  it('avvisar delar som överlappar i sidled', () => {
+    expect(splitShoePair([part(10, 60), part(55, 110)])).toBeNull()
+  })
+
+  it('avvisar ett par där den ena delen är mycket mindre', () => {
+    expect(splitShoePair([part(10, 50), part(70, 80)])).toBeNull()
+  })
+
+  it('avvisar ett par med mycket olika höjd', () => {
+    expect(splitShoePair([part(10, 50, 0, 60), part(70, 110, 30, 40, 41 * 61)])).toBeNull()
+  })
+
+  it('avvisar saknade delar', () => {
+    expect(splitShoePair(undefined)).toBeNull()
+    expect(splitShoePair([])).toBeNull()
   })
 })

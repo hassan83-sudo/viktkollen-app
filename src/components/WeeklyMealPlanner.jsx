@@ -538,26 +538,47 @@ function WeeklyMealPlanner({
         <button className="secondary-button" type="button" onClick={() => setWeekStart(getMealPlanWeekStart(getLocalDateString()))}>Denna vecka</button>
       </nav>
 
-      <section className="nutrition-card" aria-label="Månadsalmanacka för måltider">
-        <nav className="meal-planner-week-nav" aria-label="Månadsnavigation">
-          <button type="button" className="secondary-button" onClick={() => setVisibleMonth(shiftMonth(visibleMonth, -1))}>Föregående månad</button>
-          <strong>{new Date(Number(visibleMonth.slice(0, 4)), Number(visibleMonth.slice(5)) - 1, 1).toLocaleDateString('sv-SE', { month: 'long', year: 'numeric' })}</strong>
-          <button type="button" className="secondary-button" onClick={() => setVisibleMonth(shiftMonth(visibleMonth, 1))}>Nästa månad</button>
-        </nav>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '0.3rem' }}>
-          {dayNames.map(name => <strong key={name} style={{ textAlign: 'center' }}>{name.slice(0, 2)}</strong>)}
-          {calendarDates.map((date, index) => date ? (
-            <button key={date} type="button" className="secondary-button"
-              aria-label={`${date}, ${calendarMeals[date].length} planerade måltider`}
-              aria-pressed={draft.date === date}
-              style={{ minWidth: 0, padding: '0.45rem 0.15rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}
-              onClick={() => { setWeekStart(getMealPlanWeekStart(date)); resetForm(date) }}>
-              <strong>{Number(date.slice(-2))}</strong>
-              <small>{calendarMeals[date].length ? `${calendarMeals[date].length} mål` : '–'}</small>
-            </button>
-          ) : <span key={`empty-${index}`} />)}
+      <section aria-label="Matkalender" style={{ padding: 14, borderRadius: 22, background: 'linear-gradient(150deg,#060b1b,#0a1021)', color: '#fff', border: '1px solid #453065' }}>
+        <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <strong style={{ fontSize: '1.25rem' }}>♧ Matkalender</strong>
+          <button type="button" className="secondary-button" aria-label="Lägg till måltid" onClick={() => document.getElementById('matkalender-meal-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' })} style={{ borderRadius: '50%', background: '#27e2ed', color: '#04101e', fontSize: 24, minWidth: 44, minHeight: 44 }}>+</button>
+        </header>
+        <div style={{ border: '1px solid #7135a2', borderRadius: 20, overflow: 'hidden' }}>
+          <nav aria-label="Välj månad" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(90deg,#36114f,#221139)', padding: '9px 12px' }}>
+            <button type="button" className="secondary-button" aria-label="Föregående månad" onClick={() => setVisibleMonth(shiftMonth(visibleMonth,-1))}>‹</button>
+            <strong style={{ textTransform: 'capitalize' }}>{new Date(Number(visibleMonth.slice(0,4)), Number(visibleMonth.slice(5))-1, 1).toLocaleDateString('sv-SE',{month:'long',year:'numeric'})}</strong>
+            <button type="button" className="secondary-button" aria-label="Nästa månad" onClick={() => setVisibleMonth(shiftMonth(visibleMonth,1))}>›</button>
+          </nav>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,minmax(0,1fr))', gap: 3, padding: '12px 7px 14px' }}>
+            {dayNames.map(name => <strong key={name} style={{ textAlign: 'center', fontSize: 12, color: '#c1cce6' }}>{name.slice(0,3)}</strong>)}
+            {calendarDates.map((date,index) => date ? (
+              <button key={date} type="button" aria-label={`${date}, ${calendarMeals[date].length} måltider`} aria-pressed={draft.date===date}
+                onClick={() => { setWeekStart(getMealPlanWeekStart(date)); resetForm(date) }}
+                style={{ minWidth: 0, minHeight: 39, padding: '4px 0', border: 'none', borderRadius: 10, color: draft.date===date?'#fff':new Date(date+'T12:00:00').getDay()===0?'#ff4562':'#f7f8ff', background: draft.date===date?'linear-gradient(135deg,#ab24fb,#7136ec)':'transparent', fontWeight: 700, cursor: 'pointer' }}>
+                {Number(date.slice(-2))}{calendarMeals[date].length>0 && <span aria-hidden="true" style={{ display:'block',height:3,width:12,margin:'1px auto',borderRadius:5,background:'#29e5e8' }}/>}
+              </button>
+            ) : <span key={`empty-${index}`} />)}
+          </div>
         </div>
-        <p>Välj en dag för att lägga till frukost, lunch, middag eller kvällsmat. Sparade recept kan användas i samma plan.</p>
+        <div style={{ marginTop: 14, marginBottom: 10, padding: '10px 14px', borderRadius: 14, background: 'linear-gradient(90deg,#671391,#42145f)', border: '1px solid #b837f4', fontWeight: 700 }}>
+          ▣ {new Date(draft.date+'T12:00:00').toLocaleDateString('sv-SE',{weekday:'long',day:'numeric',month:'long'})}
+        </div>
+        <div style={{ display: 'grid', gap: 9 }}>
+          {[
+            ['Frukost','🥞','Frukost'],['Lunch','🥗','Lunch'],['Middag','🍲','Middag'],['Kvällsmat','🍓','Kvällsmål']
+          ].map(([label,emoji,type]) => (
+            <button key={label} type="button" onClick={() => { setWeekStart(getMealPlanWeekStart(draft.date)); setEditingMealId(''); setDraft({...emptyDraft(draft.date),mealType:type}); document.getElementById('matkalender-meal-form')?.scrollIntoView({behavior:'smooth',block:'center'}) }}
+              style={{ display:'flex',alignItems:'center',gap:14,minHeight:55,width:'100%',padding:'5px 9px',borderRadius:28,border:'1px solid #48546f',background:'linear-gradient(90deg,#141e33,#080e1e)',color:'#fff',cursor:'pointer',textAlign:'left' }}>
+              <span aria-hidden="true" style={{fontSize:26}}>{emoji}</span><strong style={{flex:1}}>{label}</strong>
+              <span aria-hidden="true" style={{display:'grid',placeItems:'center',borderRadius:'50%',width:36,height:36,background:'#24ddea',color:'#001522',fontSize:26,fontWeight:800}}>+</span>
+            </button>
+          ))}
+        </div>
+        <div style={{ display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:7,marginTop:18 }}>
+          <button type="button" className="secondary-button" aria-current="page">▣ Almanacka</button>
+          <button type="button" className="secondary-button" onClick={() => document.getElementById('matkalender-recipes')?.scrollIntoView({behavior:'smooth'})}>♧ Mina recept</button>
+          <button type="button" className="secondary-button" onClick={() => document.getElementById('matkalender-recipes')?.scrollIntoView({behavior:'smooth'})}>♡ Favoriter</button>
+        </div>
       </section>
 
       {status && <p className="nutrition-edit-status" role="status">{status}</p>}
@@ -607,7 +628,7 @@ function WeeklyMealPlanner({
         </section>
 
         <aside className="meal-planner-sidebar">
-          <section className="nutrition-card">
+          <section id="matkalender-meal-form" className="nutrition-card">
             <div className="nutrition-card-heading">
               <div>
                 <p className="eyebrow">Lägg till</p>

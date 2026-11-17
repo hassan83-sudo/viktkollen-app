@@ -548,7 +548,7 @@ function WeeklyMealPlanner({
       <section id="matkalender-calendar" aria-label="Matkalender" style={{ padding: 14, borderRadius: 22, background: 'linear-gradient(150deg,#060b1b,#0a1021)', color: '#fff', border: '1px solid #453065' }}>
         <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <strong style={{ fontSize: '1.25rem' }}>♧ Matkalender</strong>
-          <button type="button" className="secondary-button" aria-label="Lägg till måltid" onClick={() => document.getElementById('matkalender-meal-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' })} style={{ borderRadius: '50%', background: '#27e2ed', color: '#04101e', fontSize: 24, minWidth: 44, minHeight: 44 }}>+</button>
+          <button type="button" className="secondary-button" aria-label="Lägg till måltid" onClick={() => document.getElementById('matkalender-meal-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} style={{ borderRadius: '50%', background: '#27e2ed', color: '#04101e', fontSize: 24, minWidth: 44, minHeight: 44 }}>+</button>
         </header>
         <div style={{ border: '1px solid #7135a2', borderRadius: 20, overflow: 'hidden' }}>
           <nav aria-label="Välj månad" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(90deg,#36114f,#221139)', padding: '9px 12px' }}>
@@ -574,7 +574,7 @@ function WeeklyMealPlanner({
           {[
             ['Frukost','🥞','Frukost'],['Lunch','🥗','Lunch'],['Middag','🍲','Middag'],['Kvällsmat','🍓','Kvällsmål']
           ].map(([label,emoji,type]) => (
-            <button key={label} type="button" onClick={() => { setWeekStart(getMealPlanWeekStart(draft.date)); setEditingMealId(''); setDraft({...emptyDraft(draft.date),mealType:type}); document.getElementById('matkalender-meal-form')?.scrollIntoView({behavior:'smooth',block:'center'}) }}
+            <button key={label} type="button" onClick={() => { setWeekStart(getMealPlanWeekStart(draft.date)); setEditingMealId(''); setDraft({...emptyDraft(draft.date),mealType:type}); document.getElementById('matkalender-meal-form')?.scrollIntoView({behavior:'smooth',block:'start'}) }}
               style={{ display:'flex',alignItems:'center',gap:14,minHeight:55,width:'100%',padding:'5px 9px',borderRadius:28,border:'1px solid #48546f',background:'linear-gradient(90deg,#141e33,#080e1e)',color:'#fff',cursor:'pointer',textAlign:'left' }}>
               <span aria-hidden="true" style={{fontSize:26}}>{emoji}</span><strong style={{flex:1}}>{label}</strong>
               <span aria-hidden="true" style={{display:'grid',placeItems:'center',borderRadius:'50%',width:36,height:36,background:'#24ddea',color:'#001522',fontSize:26,fontWeight:800}}>+</span>
@@ -602,7 +602,7 @@ function WeeklyMealPlanner({
       </section>
       <div className="meal-planner-layout">
         <aside className="meal-planner-sidebar">
-          <section id="matkalender-meal-form" className="nutrition-card">
+          <section id="matkalender-meal-form" className="nutrition-card" style={{ scrollMarginTop: 16 }}>
             <div className="nutrition-card-heading">
               <div>
                 <p className="eyebrow">Lägg till</p>

@@ -1,5 +1,6 @@
 import { lazy, memo, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import AiNaturePanel from '../../features/ai-nature/components/AiNaturePanel.jsx'
 import AchievementPreviewCard from './AchievementPreviewCard.jsx'
 import GlobalSearch from './GlobalSearch.jsx'
 import DailyCoachCard from './DailyCoachCard.jsx'
@@ -955,16 +956,8 @@ function OverviewPrimaryActions({
         onChange={handleFoodCameraFile}
       />
       {natureOpen && (
-        <div role="dialog" aria-modal="true" aria-label="AI Natur mm" style={{ position: 'fixed', inset: 0, zIndex: 9999, overflowY: 'auto', padding: 20, background: 'linear-gradient(160deg,#071b15,#123d29)' }}>
-          <button type="button" onClick={() => setNatureOpen(false)} style={{ color: '#fff', background: 'transparent', border: '1px solid #8bbca3', borderRadius: 12, padding: 12 }}>← Tillbaka</button>
-          <h2 style={{ color: '#fff', textAlign: 'center' }}>🌿 AI Natur mm</h2>
-          <p style={{ color: '#e5ffed', textAlign: 'center' }}>Skanna och upptäck naturen omkring dig</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 12, marginTop: 24 }}>
-            {['Djur','Växter & blommor','Träd','Svampar','Hav & vatten','Insekter & smådjur','Flaggor','Fåglar'].map((name) => (
-              <div key={name} style={{ color: '#fff', background: '#24573c', border: '1px solid #7dce94', borderRadius: 16, padding: 18, textAlign: 'center' }}>{name}</div>
-            ))}
-          </div>
-          <p style={{ color: '#e5ffed', textAlign: 'center', marginTop: 24 }}>Skanningen är under utveckling.</p>
+        <div role="dialog" aria-modal="true" aria-label="AI Natur mm" style={{ position: 'fixed', inset: 0, zIndex: 9999, overflowY: 'auto', padding: 20, background: 'linear-gradient(160deg,#071b15,#123d29)', color: '#fff' }}>
+          <AiNaturePanel onClose={() => setNatureOpen(false)} analysisEnabled />
         </div>
       )}
       <section className="overview-primary-actions" data-glow-level={glowLevel} aria-label={t('home:labels.home')}>

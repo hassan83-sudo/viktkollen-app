@@ -306,7 +306,7 @@ function WeeklyMealPlanner({
   const [shoppingLists, setShoppingLists] = useState(() => readShoppingLists())
   const [weekStart, setWeekStart] = useState(() => getMealPlanWeekStart())
   const [visibleMonth, setVisibleMonth] = useState(() => getLocalDateString().slice(0, 7))
-  const [draft, setDraft] = useState(() => emptyDraft(getMealPlanWeekStart()))
+  const [draft, setDraft] = useState(() => emptyDraft(getLocalDateString()))
   const [editingMealId, setEditingMealId] = useState('')
   const [errors, setErrors] = useState({})
   const [recipeSearch, setRecipeSearch] = useState('')
@@ -540,18 +540,10 @@ function WeeklyMealPlanner({
     <section className="nutrition-card weekly-meal-planner" aria-labelledby="weekly-meal-planner-title">
       <div className="nutrition-card-heading">
         <div>
-          <p className="eyebrow">Veckoplanering</p>
-          <h3 id="weekly-meal-planner-title">Planera måltider</h3>
-          <span>Planerade värden är uppskattningar och räknas inte som registrerat intag.</span>
+          <p className="eyebrow">Matkalender</p>
+          <h3 id="weekly-meal-planner-title">Välj dag och måltid</h3>
         </div>
       </div>
-
-      <nav className="meal-planner-week-nav" aria-label="Veckonavigation">
-        <button className="secondary-button" type="button" onClick={() => setWeekStart(addLocalDays(weekStart, -7))}>Föregående vecka</button>
-        <strong>{getMealPlanWeekLabel(weekStart)}</strong>
-        <button className="secondary-button" type="button" onClick={() => setWeekStart(addLocalDays(weekStart, 7))}>Nästa vecka</button>
-        <button className="secondary-button" type="button" onClick={() => setWeekStart(getMealPlanWeekStart(getLocalDateString()))}>Denna vecka</button>
-      </nav>
 
       <section id="matkalender-calendar" aria-label="Matkalender" style={{ padding: 14, borderRadius: 22, background: 'linear-gradient(150deg,#060b1b,#0a1021)', color: '#fff', border: '1px solid #453065' }}>
         <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -598,50 +590,17 @@ function WeeklyMealPlanner({
 
       {status && <p className="nutrition-edit-status" role="status">{status}</p>}
 
-      <div className="meal-planner-summary-grid">
-        <div><span>Planerade dagar</span><strong>{summary.plannedDayCount}/7</strong></div>
-        <div><span>Planerade måltider</span><strong>{summary.mealCount}</strong></div>
-        <div><span>Snitt protein</span><strong>{summary.averageProtein ? `${Math.round(summary.averageProtein)} g` : 'Saknas'}</strong></div>
-        <div><span>Snitt kalorier</span><strong>{summary.averageCalories ? `${Math.round(summary.averageCalories)} kcal` : 'Saknas'}</strong></div>
-      </div>
-
+      <section aria-label="Måltider för valt datum" style={{marginTop:12}}>
+        {(calendarMeals[draft.date] || []).length > 0 && (
+          <div style={{display:'grid',gap:8}}>
+            {(calendarMeals[draft.date] || []).map(meal => (
+              <PlannedMealCard key={meal.id} meal={meal} weekDates={weekDates}
+                onEdit={editMeal} onMove={moveMeal} onRegister={registerAsMeal} onRemove={removeMeal} />
+            ))}
+          </div>
+        )}
+      </section>
       <div className="meal-planner-layout">
-        <section className="meal-planner-days">
-          {weekDates.map((date, index) => {
-            const dayMeals = week.days[date] || []
-            const daySummary = buildPlannedDaySummary(dayMeals, nutritionGoals)
-            return (
-              <article className="meal-planner-day" key={date}>
-                <div className="meal-planner-day-heading">
-                  <div>
-                    <h4>{dayNames[index]}</h4>
-                    <span>{date}</span>
-                  </div>
-                  <button className="secondary-button" ref={(element) => { dayAddButtons.current[date] = element }} type="button" onClick={() => resetForm(date)}>Lägg till måltid</button>
-                </div>
-                <dl className="meal-planner-day-stats">
-                  <div><dt>Antal</dt><dd>{daySummary.mealCount}</dd></div>
-                  <div><dt>Planerat protein</dt><dd>{formatNumber(daySummary.totals.protein, 'g')}</dd></div>
-                  <div><dt>Planerade kalorier</dt><dd>{formatNumber(daySummary.totals.calories, 'kcal')}</dd></div>
-                </dl>
-                {dayMeals.length ? dayMeals.map((meal) => (
-                  <PlannedMealCard
-                    key={meal.id}
-                    meal={meal}
-                    weekDates={weekDates}
-                    onEdit={editMeal}
-                    onMove={moveMeal}
-                    onRegister={registerAsMeal}
-                    onRemove={removeMeal}
-                  />
-                )) : (
-                  <div className="nutrition-empty"><span>Inga måltider planerade.</span></div>
-                )}
-              </article>
-            )
-          })}
-        </section>
-
         <aside className="meal-planner-sidebar">
           <section id="matkalender-meal-form" className="nutrition-card">
             <div className="nutrition-card-heading">
@@ -707,78 +666,9 @@ function WeeklyMealPlanner({
             </div>
           </section>
 
-          <section className="nutrition-card">
-            <div className="nutrition-card-heading">
-              <div>
-                <p className="eyebrow">Kopiera</p>
-                <h4>Kopiera dagens plan</h4>
-              </div>
-            </div>
-            <div className="meal-template-form-grid">
-              <label className="field">
-                <span>Från dag</span>
-                <select value={copySourceDate} onChange={(event) => setCopySourceDate(event.target.value)}>
-                  <option value="">Välj dag</option>
-                  {weekDates.map((date) => <option key={date} value={date}>{date}</option>)}
-                </select>
-              </label>
-              <label className="field">
-                <span>Till</span>
-                <select value={copyScope} onChange={(event) => setCopyScope(event.target.value)}>
-                  <option value="date">Vald dag</option>
-                  <option value="weekdays">Vardagar</option>
-                  <option value="week">Hela veckan</option>
-                </select>
-              </label>
-              {copyScope === 'date' && (
-                <label className="field">
-                  <span>Måldag</span>
-                  <select value={copyTargetDate} onChange={(event) => setCopyTargetDate(event.target.value)}>
-                    <option value="">Välj dag</option>
-                    {weekDates.map((date) => <option key={date} value={date}>{date}</option>)}
-                  </select>
-                </label>
-              )}
-              <label className="field">
-                <span>Läge</span>
-                <select value={copyMode} onChange={(event) => setCopyMode(event.target.value)}>
-                  <option value="append">Lägg till efter befintliga</option>
-                  <option value="replace">Ersätt befintliga</option>
-                </select>
-              </label>
-            </div>
-            <button type="button" onClick={copyDay}>Kopiera dagens plan</button>
-          </section>
-
-          <section className="nutrition-card">
-            <div className="nutrition-card-heading">
-              <div>
-                <p className="eyebrow">Insikter</p>
-                <h4>Planeringsstöd</h4>
-              </div>
-            </div>
-            <ul className="meal-planner-insights">
-              {insights.map((insight) => <li key={insight}>{insight}</li>)}
-            </ul>
-            <ul className="meal-planner-insights">
-              {suggestions.map((suggestion) => <li key={suggestion}>{suggestion}</li>)}
-            </ul>
-            <button className="secondary-button danger-button" type="button" onClick={clearWeek}>Rensa veckoplan</button>
-          </section>
         </aside>
       </div>
 
-      <ShoppingListPanel
-        list={shoppingList}
-        status={shoppingStatus}
-        onAddManualItem={addManualItem}
-        onClearChecked={clearChecked}
-        onClearList={clearShopping}
-        onCopy={copyShoppingList}
-        onRemoveItem={removeShoppingItem}
-        onToggleItem={toggleShopping}
-        onUpdateFromPlan={updateShopping}
-      />
       {confirmRequest && (
         <ConfirmDialog
           confirmLabel={tConfirm(`planner.${confirmRequest.kind}.confirm`)}

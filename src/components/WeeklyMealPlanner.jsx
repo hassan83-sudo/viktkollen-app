@@ -399,7 +399,14 @@ function WeeklyMealPlanner({
       ingredients: splitIngredientInput(draft.ingredients),
     })
     setErrors(result.errors)
-    if (!result.meal) return
+    if (!result.meal) {
+      window.requestAnimationFrame(() => {
+        const invalidField = document.querySelector('#matkalender-meal-form [aria-invalid="true"]')
+        invalidField?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        invalidField?.focus({ preventScroll: true })
+      })
+      return
+    }
 
     if (editingMealId) {
       savePlans(updatePlannedMeal(plans, weekStart, editingMealId, result.meal))

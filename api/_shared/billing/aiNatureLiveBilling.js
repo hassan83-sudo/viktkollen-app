@@ -153,7 +153,12 @@ export async function resolveAiNatureBillingRuntime() {
       summariesByKey: costGuard.summariesByKey,
       usageRepository,
     }
-  } catch {
+  } catch (error) {
+    // Log only the database error code and operation name; never credentials or row contents.
+    console.error('[ai-nature] billing runtime unavailable', {
+      code: typeof error?.code === 'string' ? error.code.slice(0, 32) : 'unknown',
+      type: error?.name === 'PostgrestError' ? 'postgrest' : 'runtime',
+    })
     return { ok: false, code: 'DURABLE_STORE_UNAVAILABLE' }
   }
 }

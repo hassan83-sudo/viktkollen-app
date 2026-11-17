@@ -141,19 +141,23 @@ export function mapFoodScanBillingHttp(result = {}, {
   if (decision === ENFORCEMENT_DECISION.DENY_AUTH) {
     return { code: aiRouteErrorCodes.AUTH_REQUIRED, kind: 'error', retryable: false, status: 401 }
   }
+  // securitySignal only tells Security Center why access was refused; the
+  // response code, status and billing outcome are unchanged.
+  if (decision === ENFORCEMENT_DECISION.DENY_ENTITLEMENT) {
+    return { code: aiRouteErrorCodes.SAFETY_BLOCKED, kind: 'error', retryable: false, securitySignal: 'premium_denied', status: 403 }
+  }
   if ([
     ENFORCEMENT_DECISION.DENY_FEATURE_DISABLED,
     ENFORCEMENT_DECISION.DENY_FEATURE_MAINTENANCE,
     ENFORCEMENT_DECISION.DENY_PROVIDER_UNAVAILABLE,
     ENFORCEMENT_DECISION.DENY_PROVIDER_MAINTENANCE,
-    ENFORCEMENT_DECISION.DENY_ENTITLEMENT,
     ENFORCEMENT_DECISION.DENY_COST_HARD_STOP,
     ENFORCEMENT_DECISION.DENY_COST_UNAVAILABLE,
   ].includes(decision)) {
     return { code: aiRouteErrorCodes.SAFETY_BLOCKED, kind: 'error', retryable: false, status: 403 }
   }
   if (decision === ENFORCEMENT_DECISION.DENY_QUOTA || result.outcome === LIFECYCLE_OUTCOME.DENIED_RESERVE) {
-    return { code: aiRouteErrorCodes.RATE_LIMITED, kind: 'error', retryable: true, status: 429 }
+    return { code: aiRouteErrorCodes.RATE_LIMITED, kind: 'error', retryable: true, securitySignal: 'quota_exceeded', status: 429 }
   }
   if (result.outcome === LIFECYCLE_OUTCOME.PERSISTENCE_FAILURE) {
     return {

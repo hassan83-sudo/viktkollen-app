@@ -547,6 +547,8 @@ export default async function handler(request, response) {
       code: mapped.code,
       requestId,
       retryable: mapped.retryable,
+      securityFeature: 'object-bank',
+      securitySignal: mapped.securitySignal,
       status: mapped.status,
     })
   } catch (error) {

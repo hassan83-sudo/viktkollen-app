@@ -4,6 +4,8 @@ import { verifySupabaseUser } from '../verifySupabaseUser.js'
 import { readServerPlanSale } from './userLifecycleIntent.js'
 import { getPlanById } from '../../../src/services/billing/planCatalog.js'
 import { getConfiguredSumUpAdapter, minorUnitsFromSumUpAmount, SUMUP_PROVIDER } from './providers/sumup.js'
+import { SECURITY_EVENT_TYPES } from '../../../src/services/security/securityEvents.js'
+import { queueSecurityEvent } from '../security/securityEventStore.js'
 
 const PLAN_ID_RE = /^[A-Za-z0-9._-]{1,80}$/
 let saleReaderOverride = null
@@ -181,6 +183,12 @@ export async function handleCheckoutRequest(request, response) {
     body: request.body,
     userId: auth.user.id,
   })
+  // The app never sends amount or currency; the server prices the plan. A
+  // mismatch can only come from an edited request. Observation only: the
+  // checkout decision above is unchanged.
+  if (result.code === 'INVALID_AMOUNT' || result.code === 'INVALID_CURRENCY') {
+    queueSecurityEvent({ feature: 'checkout', type: SECURITY_EVENT_TYPES.BILLING_TAMPER_ATTEMPT })
+  }
   return response.status(result.status).json({
     accessGranted: false,
     ...(result.checkoutId ? { checkoutId: result.checkoutId } : {}),

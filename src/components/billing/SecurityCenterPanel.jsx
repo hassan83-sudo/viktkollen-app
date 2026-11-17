@@ -9,6 +9,8 @@ const LABELS = {
   AI_USAGE_SPIKE: 'Ovanligt hög AI-användning',
   API_RATE_LIMITED: 'Anropsgräns uppnådd',
   MONITORING_UNAVAILABLE: 'Övervakningen otillgänglig',
+  ADMIN_ACCESS_DENIED: 'Obehörigt försök till adminfunktion',
+  QUOTA_EXCEEDED: 'Kvot överskriden',
 }
 
 export default function SecurityCenterPanel({ token }) {

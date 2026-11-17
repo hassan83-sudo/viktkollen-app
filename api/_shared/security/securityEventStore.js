@@ -2,6 +2,7 @@ import { waitUntil as vercelWaitUntil } from '@vercel/functions'
 
 import { createSupabaseAdminClient } from '../supabaseServer.js'
 import { classifySecurityEvent } from '../../../src/services/security/securityEvents.js'
+import { shouldWriteSecurityEvent } from './securityGuard.js'
 
 let waitUntilOverride = null
 
@@ -33,7 +34,9 @@ export async function recordSecurityEvent(input, { client } = {}) {
  * until it settles instead of being frozen mid-request. Never throws.
  */
 export function queueSecurityEvent(input, options = {}) {
-  const pending = recordSecurityEvent(input, options).catch(() => false)
+  const event = classifySecurityEvent(input)
+  if (!event || !shouldWriteSecurityEvent(`${event.type}:${event.feature}`)) return Promise.resolve(false)
+  const pending = recordSecurityEvent(event, options).catch(() => false)
   try {
     (waitUntilOverride || vercelWaitUntil)(pending)
   } catch {

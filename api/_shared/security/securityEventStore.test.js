@@ -1,9 +1,14 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { queueSecurityEvent, recordSecurityEvent, setSecurityWaitUntilForTests } from './securityEventStore.js'
+import { resetSecurityGuardForTests } from './securityGuard.js'
 import { sendSafeAiError } from '../aiRouteErrors.js'
 import { clearSupabaseAdminClientForTests, setSupabaseAdminClientForTests } from '../supabaseServer.js'
 
 describe('security event persistence', () => {
+  beforeEach(() => {
+    resetSecurityGuardForTests()
+  })
+
   it('writes only trusted classified fields', async () => {
     const rpc = vi.fn(async () => ({ data: 7, error: null }))
     const client = { rpc }

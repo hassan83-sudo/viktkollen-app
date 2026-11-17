@@ -59,4 +59,21 @@ describe('Security Center migration dependencies', () => {
       expect((await db.query('select * from public.security_center_recent_events(50)')).rows).toEqual(aggregated)
     } finally { await db.close() }
   }, 15000)
+
+  it('accepts the Sprint 2 admin and quota types with server severity only', async () => {
+    const db = await database()
+    try {
+      for (const migration of migrations) await db.exec(migration.sql)
+      const accepted = await db.query(`select
+        public.security_center_record_event('ADMIN_ACCESS_DENIED','high','bug-monitor') as admin,
+        public.security_center_record_event('QUOTA_EXCEEDED','medium','food-scan') as quota,
+        public.security_center_record_event('ADMIN_ACCESS_DENIED','medium','bug-monitor') as wrong_severity,
+        public.security_center_record_event('MADE_UP','high','bug-monitor') as unknown`)
+      expect(accepted.rows[0].admin).not.toBeNull()
+      expect(accepted.rows[0].quota).not.toBeNull()
+      expect(accepted.rows[0].wrong_severity).toBeNull()
+      expect(accepted.rows[0].unknown).toBeNull()
+      await expect(db.exec("insert into security_center.events(type,severity,feature) values ('MADE_UP','high','x')")).rejects.toThrow()
+    } finally { await db.close() }
+  }, 15000)
 })

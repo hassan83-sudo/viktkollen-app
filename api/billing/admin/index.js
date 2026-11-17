@@ -118,7 +118,7 @@ export default async function handler(request, response) {
     })
   }
 
-  const admin = await requireBillingAdmin(request, { requestId })
+  const admin = await requireBillingAdmin(request, { requestId, securityFeature: 'billing-admin' })
   if (!admin.ok) {
     return response.status(admin.status).json({
       error: admin.error,

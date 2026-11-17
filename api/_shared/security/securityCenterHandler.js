@@ -9,7 +9,7 @@ export default async function handler(request, response) {
     response.setHeader('Allow', 'GET')
     return sendSafeAiError(response, { code: aiRouteErrorCodes.INVALID_REQUEST, requestId, status: 405 })
   }
-  const admin = await requireBillingAdmin(request, { requestId })
+  const admin = await requireBillingAdmin(request, { requestId, securityFeature: 'security-center' })
   if (!admin.ok) {
     return sendSafeAiError(response, { code: admin.error?.code || aiRouteErrorCodes.AUTH_REQUIRED, requestId, status: admin.status || 401 })
   }

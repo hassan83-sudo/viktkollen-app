@@ -153,6 +153,31 @@ describe('cutoutShoePair (vita skor mot ljus bakgrund)', () => {
     expect(result.parts).toHaveLength(2)
   })
 
+  it('frilägger skor framifrån som nuddar varandra och står i en mjuk skugga', () => {
+    // Product photo seen from the front: two tall shoes side by side whose
+    // soles touch, on a light background with a soft grey floor shadow.
+    const W = 120
+    const H = 140
+    const shadow = (x, y) => {
+      const s = Math.max(0, 26 - Math.hypot((x - 57) * 0.6, y - 112) * 0.5)
+      return [245 - s, 246 - s, 248 - s].map(Math.round)
+    }
+    const front = (x, y, cx) => {
+      const r = ((x - cx) / 22) ** 2 + ((y - 70) / 45) ** 2
+      if (r > 1) return null
+      return r > 0.9 ? [150, 140, 130] : [225, 220, 210]
+    }
+    const data = image(W, H, (x, y) => front(x, y, 38) || front(x, y, 76) || shadow(x, y))
+    const result = cutoutShoePair(data, W, H)
+    expect(result).not.toBeNull()
+    const [left, right] = result.parts
+    expect(left.maxX).toBeLessThan(right.minX)
+    expect(left.maxY).toBeLessThanOrEqual(116) // the shadow below is not part of the shoe
+    expect(alphaAt(data, W, 38, 70)).toBe(255)
+    expect(alphaAt(data, W, 76, 70)).toBe(255)
+    expect(alphaAt(data, W, 57, 125)).toBe(0) // darkest part of the shadow is removed
+  })
+
   it('ritar inget när skorna inte syns mot bakgrunden', () => {
     const faint = (x, y, x0, x1) => (inRect(x, y, x0, 20, x1, 52) ? [248, 248, 248] : null)
     expect(cutoutShoePair(pairImage(10, 70, 90, 150, faint), 160, 70)).toBeNull()

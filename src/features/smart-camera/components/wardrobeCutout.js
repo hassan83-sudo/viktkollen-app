@@ -183,11 +183,17 @@ const SHOE_BORDER_MAX_SPREAD = 28 // border must be one plain colour
 const SHOE_MIN_DIFF = 14
 const SHOE_CLOSE_RADIUS = 2
 const SHOE_MIN_SOLIDITY = 0.45 // shoe area / its bounding box
-const SHOE_MIN_ASPECT = 0.6
+const SHOE_MIN_ASPECT = 0.35 // shoes seen from the front are tall and narrow
 const SHOE_MAX_ASPECT = 4.5
 const SHOE_MIN_SHARE = 0.01 // a shoe must cover at least 1% of the picture
 const SHOE_MAX_SHARE = 0.6
 const SHOE_SPLIT_MAX_VALLEY = 0.45 // touching shoes (toe to toe) split at a column this thin
+// Shoes seen from the front touch along the soles. They are still split when the
+// thin column is clearly lower than both shoes and starts well below both tops.
+const SHOE_SPLIT_MAX_TOUCHING_VALLEY = 0.65
+const SHOE_SPLIT_MIN_TOP_GAP = 0.15 // share of the pair's height
+const SHOE_SHADOW_MAX_STEP = 6 // a soft shadow changes at most this much per pixel
+const SHOE_SHADOW_MAX_DIFF = 60
 
 function median(values) {
   const sorted = Float64Array.from(values).sort()
@@ -309,6 +315,46 @@ function boxOf(mask, w, minX, maxX, minY, maxY, keepLabel, label) {
   return box.size ? box : null
 }
 
+function smoothBackground(data, w, h, bg) {
+  // Background reachable from the border through small steps only. Product
+  // photos often have a soft grey shadow under and beside the shoes; it darkens
+  // gradually, while a shoe's outline is a sharp edge, so the shadow is found
+  // here and not mistaken for shoe.
+  const total = w * h
+  const seen = new Uint8Array(total)
+  const queue = new Int32Array(total)
+  const near = (i) => {
+    const p = i * 4
+    return data[p + 3] !== 0 && Math.max(Math.abs(data[p] - bg[0]), Math.abs(data[p + 1] - bg[1]), Math.abs(data[p + 2] - bg[2])) <= SHOE_SHADOW_MAX_DIFF
+  }
+  const step = (i, j) => Math.max(
+    Math.abs(data[i * 4] - data[j * 4]),
+    Math.abs(data[i * 4 + 1] - data[j * 4 + 1]),
+    Math.abs(data[i * 4 + 2] - data[j * 4 + 2]),
+  )
+  let end = 0
+  for (let i = 0; i < total; i++) {
+    const x = i % w
+    const y = (i / w) | 0
+    if ((x === 0 || y === 0 || x === w - 1 || y === h - 1) && near(i)) { seen[i] = 1; queue[end] = i; end += 1 }
+  }
+  const neighbours = new Int32Array(4)
+  for (let head = 0; head < end; head++) {
+    const i = queue[head]
+    const x = i % w
+    let count = 0
+    if (x > 0) { neighbours[count] = i - 1; count += 1 }
+    if (x + 1 < w) { neighbours[count] = i + 1; count += 1 }
+    if (i >= w) { neighbours[count] = i - w; count += 1 }
+    if (i + w < total) { neighbours[count] = i + w; count += 1 }
+    for (let k = 0; k < count; k++) {
+      const n = neighbours[k]
+      if (!seen[n] && step(i, n) <= SHOE_SHADOW_MAX_STEP && near(n)) { seen[n] = 1; queue[end] = n; end += 1 }
+    }
+  }
+  return seen
+}
+
 function plausibleShoe(box, total) {
   const bw = box.maxX - box.minX + 1
   const bh = box.maxY - box.minY + 1
@@ -344,11 +390,12 @@ export function cutoutShoePair(data, w, h) {
   }
   if (plain / rs.length < 0.9) return null
 
+  const shadow = smoothBackground(data, w, h, bg)
   const diff = new Uint8Array(total)
   for (let i = 0; i < total; i++) {
     const p = i * 4
     const d = Math.max(Math.abs(data[p] - bg[0]), Math.abs(data[p + 1] - bg[1]), Math.abs(data[p + 2] - bg[2]))
-    diff[i] = data[p + 3] !== 0 && d > SHOE_MIN_DIFF ? 1 : 0
+    diff[i] = data[p + 3] !== 0 && d > SHOE_MIN_DIFF && !shadow[i] ? 1 : 0
   }
   // Close small gaps in the outline, then fill each shoe's inside.
   const closed = grow(grow(diff, w, h, SHOE_CLOSE_RADIUS, 1), w, h, SHOE_CLOSE_RADIUS, 0)
@@ -364,9 +411,12 @@ export function cutoutShoePair(data, w, h) {
     const one = big[0]
     const widthOne = one.maxX - one.minX + 1
     const columns = new Int32Array(widthOne)
+    const tops = new Int32Array(widthOne).fill(h)
     for (let y = one.minY; y <= one.maxY; y++) {
       for (let x = one.minX; x <= one.maxX; x++) {
-        if (label[y * w + x] === one.id) columns[x - one.minX] += 1
+        if (label[y * w + x] !== one.id) continue
+        columns[x - one.minX] += 1
+        if (y < tops[x - one.minX]) tops[x - one.minX] = y
       }
     }
     let peak = 0
@@ -376,7 +426,21 @@ export function cutoutShoePair(data, w, h) {
     for (let k = Math.floor(widthOne * 0.35); k <= Math.ceil(widthOne * 0.65) && k < widthOne; k++) {
       if (columns[k] < low) { low = columns[k]; cut = k }
     }
-    if (cut > 0 && low <= peak * SHOE_SPLIT_MAX_VALLEY) {
+    let touching = false
+    if (cut > 0 && low <= peak * SHOE_SPLIT_MAX_TOUCHING_VALLEY) {
+      // Two shoes side by side: a column clearly lower than the shoes on both
+      // sides, whose top lies well below the tops of both shoes.
+      let leftPeak = 0
+      let rightPeak = 0
+      let leftTop = h
+      let rightTop = h
+      for (let k = 0; k < cut; k++) { leftPeak = Math.max(leftPeak, columns[k]); leftTop = Math.min(leftTop, tops[k]) }
+      for (let k = cut + 1; k < widthOne; k++) { rightPeak = Math.max(rightPeak, columns[k]); rightTop = Math.min(rightTop, tops[k]) }
+      const gap = (one.maxY - one.minY + 1) * SHOE_SPLIT_MIN_TOP_GAP
+      touching = low <= Math.min(leftPeak, rightPeak) * SHOE_SPLIT_MAX_TOUCHING_VALLEY &&
+        tops[cut] - leftTop >= gap && tops[cut] - rightTop >= gap
+    }
+    if (cut > 0 && (low <= peak * SHOE_SPLIT_MAX_VALLEY || touching)) {
       const left = boxOf(mask, w, one.minX, one.minX + cut - 1, one.minY, one.maxY, one.id, label)
       const right = boxOf(mask, w, one.minX + cut + 1, one.maxX, one.minY, one.maxY, one.id, label)
       if (left && right) pair = [left, right]

@@ -94,32 +94,31 @@
 .digital-wardrobe .wardrobe-body-choice { display: flex; gap: 8px; margin-bottom: 10px; }
 .digital-wardrobe .wardrobe-body-choice button { flex: 1; border-radius: 10px; border: 1px solid #54607b; background: #1d2436; color: #fff; min-height: 40px; }
 .digital-wardrobe .wardrobe-body-choice button[aria-pressed="true"] { background: #7958da; border-color: #a999ff; }
-.digital-wardrobe .wardrobe-doll { width: 100%; max-width: 260px; aspect-ratio: 253 / 566; margin: 0 auto; position: relative; overflow: hidden; border-radius: 16px; background: radial-gradient(ellipse at 50% 40%, #28314a 0%, #101523 75%); }
+.digital-wardrobe .wardrobe-doll { width: 100%; max-width: 260px; aspect-ratio: 604 / 1133; margin: 0 auto; position: relative; overflow: hidden; border-radius: 16px; background: radial-gradient(ellipse at 50% 40%, #28314a 0%, #101523 75%); }
 .digital-wardrobe .wardrobe-doll-photo { width: 100%; height: 100%; display: block; object-fit: cover; }
-/* Garment boxes follow the body of wardrobe-mannequin.webp (253x566):
-   shoulders ~15%, waist ~41%, ankles ~86%, soles ~97% of the height. */
+/* Garment boxes follow the body of wardrobe-mannequin-woman-v2.webp (604x1133):
+   neck ~16%, shoulders ~18.5%, waist ~32%, hips ~45%, knees ~65%,
+   ankles ~88%, soles ~98.5% of the height. */
 .digital-wardrobe .wardrobe-doll-layer { position: absolute; overflow: hidden; pointer-events: none; }
 .digital-wardrobe .wardrobe-doll-layer img { width: 100%; height: 100%; object-fit: contain; object-position: 50% 0; }
-.digital-wardrobe .wardrobe-doll-layer-top { left: 14%; top: 15%; width: 72%; height: 37%; z-index: 3; }
-.digital-wardrobe .wardrobe-doll-layer-bottom { left: 29%; top: 40.5%; width: 42%; height: 46%; z-index: 2; }
+.digital-wardrobe .wardrobe-doll-layer-top { left: 18%; top: 16.5%; width: 64%; height: 33%; z-index: 3; }
+.digital-wardrobe .wardrobe-doll-layer-bottom { left: 29%; top: 38.5%; width: 44%; height: 51%; z-index: 2; }
 /* Dress / jumpsuit: from the shoulders down past the knees. */
-.digital-wardrobe .wardrobe-doll-layer-dress { left: 14%; top: 15%; width: 72%; height: 57%; z-index: 3; }
-/* One shoe per foot (woman: feet at 28-42% and 59-72% wide, 86-96.5% high). */
+.digital-wardrobe .wardrobe-doll-layer-dress { left: 18%; top: 16.5%; width: 64%; height: 54%; z-index: 3; }
+/* One shoe per foot (woman: feet at 34-43% and 59-68% wide, 93-98.5% high). */
 .digital-wardrobe .wardrobe-doll-layer-shoe-left,
-.digital-wardrobe .wardrobe-doll-layer-shoe-right { top: 86%; width: 22%; height: 10.5%; z-index: 4; }
-.digital-wardrobe .wardrobe-doll-layer-shoe-left { left: 24%; }
-.digital-wardrobe .wardrobe-doll-layer-shoe-right { left: 54.5%; }
+.digital-wardrobe .wardrobe-doll-layer-shoe-right { top: 90.5%; width: 17%; height: 8.5%; z-index: 4; }
+.digital-wardrobe .wardrobe-doll-layer-shoe-left { left: 30%; }
+.digital-wardrobe .wardrobe-doll-layer-shoe-right { left: 55%; }
 .digital-wardrobe .wardrobe-doll-layer-shoe-left img,
 .digital-wardrobe .wardrobe-doll-layer-shoe-right img { object-position: 50% 100%; }
-/* Male mannequin (wardrobe-mannequin-man.webp, 1024x1536, shown with cover):
-   shoulders ~16%, waist ~43.5%, ankles ~85%, soles ~92.5%; broader body. */
-.digital-wardrobe .wardrobe-doll-man .wardrobe-doll-layer-top { left: 9%; top: 16%; width: 82%; height: 33%; }
-.digital-wardrobe .wardrobe-doll-man .wardrobe-doll-layer-bottom { left: 26%; top: 43.5%; width: 47%; height: 41.5%; }
-.digital-wardrobe .wardrobe-doll-man .wardrobe-doll-layer-dress { left: 9%; top: 16%; width: 82%; height: 55%; }
-/* Man: feet at 25-38% and 62-74% of the shown width, 85-93% high. */
-.digital-wardrobe .wardrobe-doll-man .wardrobe-doll-layer-shoe-left,
-.digital-wardrobe .wardrobe-doll-man .wardrobe-doll-layer-shoe-right { top: 84.5%; width: 22%; height: 8.5%; }
-.digital-wardrobe .wardrobe-doll-man .wardrobe-doll-layer-shoe-left { left: 20.3%; }
-.digital-wardrobe .wardrobe-doll-man .wardrobe-doll-layer-shoe-right { left: 56.9%; }
+/* Male mannequin (wardrobe-mannequin-man-v2.webp, 604x1133): neck ~14.5%,
+   shoulders ~17%, waist ~31%, hips ~44%, ankles ~87%, soles ~98.5%; broader shoulders. */
+.digital-wardrobe .wardrobe-doll-man .wardrobe-doll-layer-top { left: 15%; top: 15%; width: 70%; height: 33%; }
+.digital-wardrobe .wardrobe-doll-man .wardrobe-doll-layer-bottom { left: 28%; top: 37.5%; width: 45%; height: 51.5%; }
+.digital-wardrobe .wardrobe-doll-man .wardrobe-doll-layer-dress { left: 15%; top: 15%; width: 70%; height: 55%; }
+/* Man: feet at 31-42% and 60-70% of the width, 93-98.5% high. */
+.digital-wardrobe .wardrobe-doll-man .wardrobe-doll-layer-shoe-left { left: 28%; }
+.digital-wardrobe .wardrobe-doll-man .wardrobe-doll-layer-shoe-right { left: 56.5%; }
 .digital-wardrobe .wardrobe-doll-layer-color { width: 75%; height: 90%; border-radius: 14px; opacity: .8; }
 .digital-wardrobe .wardrobe-doll-note { font-size: .75rem; color: #c5cce0; line-height: 1.45; }

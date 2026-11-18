@@ -4,8 +4,8 @@ import { cutoutLightBackground, cutoutShoePair, splitShoePair } from './wardrobe
 
 const priority = { outer: 0, top: 1, dress: 1, bottom: 2, shoes: 3, accessory: 4 }
 const MANNEQUINS = {
-  woman: { src: '/wardrobe-mannequin.webp', width: 253, height: 566, alt: 'Skyltdocka i vit t-shirt, svarta byxor och vita sneakers' },
-  man: { src: '/wardrobe-mannequin-man.webp', width: 1024, height: 1536, alt: 'Manlig skyltdocka i vit t-shirt, svarta byxor och vita sneakers' },
+  woman: { src: '/wardrobe-mannequin-woman-v2.webp', width: 604, height: 1133, alt: 'Kvinnlig skyltdocka utan kläder och skor' },
+  man: { src: '/wardrobe-mannequin-man-v2.webp', width: 604, height: 1133, alt: 'Manlig skyltdocka utan kläder och skor' },
 }
 // Only remove near-white background connected to the image border.
 // Dark, patterned or ambiguous backgrounds are deliberately kept, and cutouts

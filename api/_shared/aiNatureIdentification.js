@@ -72,7 +72,7 @@ export async function identifyNatureImage({ imageBytes, mimeType, userId, usageR
           image_url: `data:${mimeType};base64,${imageBytes.toString('base64')}` },
       ],
     }],
-    maxOutputTokens: 650,
+    maxOutputTokens: 900,
     model: config.model,
     timeoutMs: config.timeoutMs,
     type: 'photo',

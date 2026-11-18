@@ -127,6 +127,8 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
           <h3>{identification.swedishName}</h3>
           {identification.scientificName && <p><i>{identification.scientificName}</i></p>}
           <p>{identification.description}</p>
+          {identification.reproduction && <section aria-label="Fortplantning"><h4>Fortplantning</h4><p>{identification.reproduction}</p></section>}
+          {identification.rootSpread && <section aria-label="Rötter under marken"><h4>Rötter under marken</h4><p>{identification.rootSpread}</p></section>}
           {identification.facts?.length > 0 && <ul>{identification.facts.map((fact, i) => <li key={i}>{fact}</li>)}</ul>}
           {identification.uncertain && <p>Artbestämningen är osäker.</p>}
           {identification.potentiallyPoisonous && <p role="alert">Kan vara giftig.</p>}

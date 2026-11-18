@@ -81,7 +81,7 @@ export default function SmartCameraChecklists({ onBack, onOpenBank }) {
             ))}
           </ul>
           <h3>Lägg till från föremålsbanken</h3>
-          <input aria-label="Sök i föremålsbanken" placeholder="Sök bland 623 föremål" value={query} onChange={(event) => setQuery(event.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: 12, borderRadius: 12 }} />
+          <input aria-label="Sök i föremålsbanken" placeholder={`Sök bland ${bank.length} föremål`} value={query} onChange={(event) => setQuery(event.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: 12, borderRadius: 12 }} />
           <label style={{ display: 'grid', gap: 6, marginTop: 12 }}>Välj kategori<select value={bankCategory} onChange={(event) => setBankCategory(event.target.value)} style={{ padding: 12, borderRadius: 12 }}>{categories.map((value) => <option key={value}>{value}</option>)}</select></label>
           <p style={{ color: '#b9cae5' }}>Tryck på + för att lägga till ett föremål i listan. Visar högst 100 åt gången – använd sökning eller kategori för fler.</p>
           {results.length > 0 && <ul style={{ padding: 0, listStyle: 'none', maxHeight: 260, overflowY: 'auto' }}>{results.map((item) => <li key={item.id} style={{ padding: 5 }}><button type="button" className="secondary-button" onClick={() => addItem(item.name)}>+ {item.name} · {item.category}</button></li>)}</ul>}

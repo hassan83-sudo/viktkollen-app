@@ -72,7 +72,7 @@ export default function OutfitWardrobeSelection() {
       }} />}
       {tab !== 'outfits' && <label className="wardrobe-search">Sök plagg<input type="search" placeholder="Sök plagg..." value={query} onChange={(event) => setQuery(event.target.value)} /></label>}
       {tab === 'categories' && <div className="wardrobe-categories"><label>Plaggtyp<select value={category} onChange={(event) => setCategory(event.target.value)}><option>Alla</option>{garmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label></div>}
-      {tab !== 'outfits' && <div className="wardrobe-layout"><div>
+      {tab !== 'outfits' && <div className="wardrobe-layout"><WardrobeMannequin garments={selected} /><div>
       {wardrobe.garments.length ? (
         <fieldset>
           <legend>Välj ett eller flera plagg</legend>
@@ -129,7 +129,7 @@ export default function OutfitWardrobeSelection() {
         try { setWardrobe(markWardrobeWorn(selected.map((garment) => garment.id))); setNotice('Valda plagg har markerats som använda idag.') } catch { setNotice('Kunde inte spara användningen.') }
       }}>Jag har dessa idag</button>
       <p>Urvalet sparas. Historiken ändras först när du väljer ”Jag har dessa idag”.</p>
-      </div><WardrobeMannequin garments={selected} /></div>}
+      </div></div>}
       {tab === 'outfits' && <div className="wardrobe-outfits-panel"><h4>Skapa och hantera outfits</h4><WardrobeMannequin garments={selected} /><form onSubmit={(event) => {
         event.preventDefault()
         if (!outfitName.trim() || !selected.length) return

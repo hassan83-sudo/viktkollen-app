@@ -125,3 +125,17 @@
 
 /* Keep the outfit preview above the garment picker on all screen sizes. */
 .digital-wardrobe .wardrobe-layout { grid-template-columns: minmax(0, 1fr); }
+
+/* Wardrobe: mannequin on the left, selectable garments on the right, including mobile. */
+.digital-wardrobe .wardrobe-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: start; }
+.digital-wardrobe .wardrobe-layout .wardrobe-mannequin { width: 100%; min-width: 0; max-width: none; margin: 0; justify-self: stretch; }
+.digital-wardrobe .wardrobe-layout .wardrobe-clothes-column { min-width: 0; max-height: 620px; overflow-y: auto; overscroll-behavior: contain; }
+.digital-wardrobe .wardrobe-layout .wardrobe-grid { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.digital-wardrobe .wardrobe-layout .wardrobe-grid li { padding: 4px; }
+.digital-wardrobe .wardrobe-layout .wardrobe-thumbnail { height: 94px; }
+.digital-wardrobe .wardrobe-layout .wardrobe-garment-name { overflow-wrap: anywhere; }
+@media (min-width: 720px) {
+  .digital-wardrobe .wardrobe-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+  .digital-wardrobe .wardrobe-layout .wardrobe-thumbnail { height: 140px; }
+  .digital-wardrobe .wardrobe-layout .wardrobe-clothes-column { max-height: 760px; }
+}

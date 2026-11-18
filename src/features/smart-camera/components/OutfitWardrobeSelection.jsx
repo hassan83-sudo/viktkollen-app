@@ -72,7 +72,7 @@ export default function OutfitWardrobeSelection() {
       }} />}
       {tab !== 'outfits' && <label className="wardrobe-search">Sök plagg<input type="search" placeholder="Sök plagg..." value={query} onChange={(event) => setQuery(event.target.value)} /></label>}
       {tab === 'categories' && <div className="wardrobe-categories"><label>Plaggtyp<select value={category} onChange={(event) => setCategory(event.target.value)}><option>Alla</option>{garmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label></div>}
-      {tab !== 'outfits' && <div className="wardrobe-layout"><WardrobeMannequin garments={selected} /><div>
+      {tab !== 'outfits' && <div className="wardrobe-layout"><WardrobeMannequin garments={selected} /><div className="wardrobe-clothes-column">
       {wardrobe.garments.length ? (
         <fieldset>
           <legend>Välj ett eller flera plagg</legend>

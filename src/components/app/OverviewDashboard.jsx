@@ -1333,6 +1333,12 @@ function OverviewDashboard({
 }) {
   const { t } = useTranslation(['common', 'home', 'social'])
   const flags = getFeatureFlags(featureFlags)
+  const checklistShortcuts = [
+    { id: 'checklists-bank', icon: '📋', title: t('home:checklists.title') },
+  ]
+  if (isFeatureEnabled('smartCamera', flags) && isFeatureEnabled('memory', flags)) {
+    checklistShortcuts.push({ id: 'pack', icon: '🧳', title: 'Packning' })
+  }
   // 'forgotten' opens the AI Eye (Smart kamera) flow; 'ai-ear' opens AI Ear - both are
   // existing Smart kamera modes, reached the same one-shot way from outside Home.
   const initialSmartCameraMode = isFeatureEnabled('smartCamera', flags)
@@ -1572,27 +1578,37 @@ function OverviewDashboard({
       </section>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, alignItems: 'stretch', marginTop: 12, marginBottom: 14 }}>
-        <button
-          type="button"
-          onClick={() => {
-            setBodyScanOpen(false)
-            setSmartCameraInitialMode('checklists-bank')
-            setSmartCameraOpen(true)
-          }}
+        <div
+          role="group"
+          aria-label={t('home:checklists.title')}
           style={{
-            display: 'flex', alignItems: 'center', gap: 12, width: '100%',
-            padding: '12px 8px', borderRadius: 16, textAlign: 'left',
-            border: '1px solid rgba(172,120,86,.55)', color: '#fff',
-            background: 'linear-gradient(120deg, #282033, #0b1830)', cursor: 'pointer',
+            display: 'grid', gridAutoRows: '1fr', minWidth: 0, borderRadius: 16,
+            border: '1px solid rgba(172,120,86,.55)',
+            background: 'linear-gradient(120deg, #282033, #0b1830)',
           }}
         >
-          <span aria-hidden="true" style={{ fontSize: 26 }}>📋</span>
-          <span style={{ flex: 1, display: 'grid', gap: 3 }}>
-            <strong>{t('home:checklists.title')}</strong>
-            
-          </span>
-          <span aria-hidden="true" style={{ fontSize: 22 }}>›</span>
-        </button>
+          {checklistShortcuts.map(({ id, icon, title }, index) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => {
+                setBodyScanOpen(false)
+                setSmartCameraInitialMode(id)
+                setSmartCameraOpen(true)
+              }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, minWidth: 0,
+                padding: '8px', border: 0, borderRadius: 15, textAlign: 'left',
+                borderTop: index > 0 ? '1px solid rgba(172,120,86,.55)' : undefined,
+                color: '#fff', background: 'transparent', cursor: 'pointer',
+              }}
+            >
+              <span aria-hidden="true" style={{ fontSize: 26 }}>{icon}</span>
+              <strong style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{title}</strong>
+              <span aria-hidden="true" style={{ fontSize: 22 }}>›</span>
+            </button>
+          ))}
+        </div>
         <button type="button" onClick={() => onNavigateSection?.('nutrition', 'plan')} aria-label="Öppna Matkalender"
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 4, minWidth: 0, padding: '8px', borderRadius: 16, border: '1px solid #a855f7', background: 'linear-gradient(145deg,#160d2c,#0b1428)', color: '#fff', cursor: 'pointer' }}>
           <svg aria-hidden="true" viewBox="0 0 120 100" style={{ width: '100%', maxWidth: 118, height: 82, filter: 'drop-shadow(0 0 9px #9d36ff)' }}>

@@ -8,14 +8,38 @@ export default function SmartCameraHub({ flags, onSelectMode }) {
     { id: 'outfit', icon: '👕', title: 'Kläder & stil', description: 'Få tips och förslag utifrån din garderob.', glow: '#05b86d' },
     { id: 'grooming', icon: '💇', title: 'Hår & frisyr', description: 'Få tips, inspiration och stiltips.', glow: '#dd742a' },
   ]
+  const checklistCard = { id: 'checklists-bank', icon: '📋', title: 'Checklistor', description: 'Ta bild på t.ex. kylskåp, skåp eller innehåll.', glow: '#ac7856' }
+  const packingCard = { id: 'pack', icon: '🧳', title: 'Packning', description: 'Skapa checklistor utifrån din resa.', glow: '#007bff' }
   const utilityCards = [
-    { id: 'pack', icon: '🧳', title: 'Packning', description: 'Skapa checklistor utifrån din resa.', glow: '#007bff' },
     { id: 'where', icon: '📦', title: 'Hem & saker', description: 'Identifiera objekt, få råd och inspiration.', glow: '#ae875e' },
-    { id: 'checklists-bank', icon: '📋', title: 'Checklistor', description: 'Ta bild på t.ex. kylskåp, skåp eller innehåll.', glow: '#ac7856' },
     { id: 'routines', icon: '📖', title: 'Rutiner', description: 'Skapa och följ rutiner med hjälp av AI.', glow: '#286eff' },
   ]
-  const availableUtility = utilityCards.filter((card) => card.id === 'checklists-bank' || secondary.some((mode) => mode.id === card.id))
+  const availableUtility = utilityCards.filter((card) => secondary.some((mode) => mode.id === card.id))
+  const showPacking = secondary.some((mode) => mode.id === packingCard.id)
   const availableFeatured = featuredCards.filter((card) => primary.some((mode) => mode.id === card.id))
+
+  const renderUtilityButton = (card, grouped = false) => (
+    <button
+      key={card.id}
+      type="button"
+      onClick={() => onSelectMode(card.id)}
+      style={{
+        position: 'relative', display: 'flex', alignItems: 'center', minWidth: 0, minHeight: 93,
+        gap: 8, padding: '12px 9px', color: '#fff', textAlign: 'left',
+        border: grouped ? 0 : `1px solid ${card.glow}55`,
+        borderRadius: grouped ? (card.id === checklistCard.id ? '15px 15px 0 0' : '0 0 15px 15px') : 16,
+        background: `radial-gradient(ellipse at 0% 100%, ${card.glow}44, transparent 64%), linear-gradient(125deg, #12102a, #07152b)`,
+        cursor: 'pointer',
+      }}
+    >
+      <span aria-hidden="true" style={{ fontSize: 36, lineHeight: 1, flexShrink: 0, filter: `drop-shadow(0 0 8px ${card.glow}99)` }}>{card.icon}</span>
+      <span style={{ display: 'grid', gap: 4, minWidth: 0, paddingRight: 4 }}>
+        <strong style={{ fontSize: 12, lineHeight: 1.15 }}>{card.title}</strong>
+        <span style={{ fontSize: 10, lineHeight: 1.35, color: '#bed0ed' }}>{card.description}</span>
+      </span>
+      <span aria-hidden="true" style={{ position: 'absolute', right: 6, top: 7, borderRadius: '50%', background: '#24314b', width: 23, height: 23, display: 'grid', placeItems: 'center', fontSize: 20 }}>›</span>
+    </button>
+  )
 
   return (
     <div className="smart-camera-hub">
@@ -85,27 +109,23 @@ export default function SmartCameraHub({ flags, onSelectMode }) {
         </nav>
       </section>
       <nav aria-label="Packning, hem, checklistor och rutiner" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 9, marginBottom: 18 }}>
-        {availableUtility.map((card) => (
-          <button
-            key={card.id}
-            type="button"
-            onClick={() => onSelectMode(card.id)}
+        {showPacking ? (
+          <div
+            role="group"
+            aria-label="Checklistor och Packning"
             style={{
-              position: 'relative', display: 'flex', alignItems: 'center', minWidth: 0, minHeight: 93,
-              gap: 8, padding: '12px 9px', borderRadius: 16, color: '#fff', textAlign: 'left',
-              border: `1px solid ${card.glow}55`,
-              background: `radial-gradient(ellipse at 0% 100%, ${card.glow}44, transparent 64%), linear-gradient(125deg, #12102a, #07152b)`,
-              cursor: 'pointer',
+              display: 'grid', minWidth: 0, borderRadius: 16,
+              gridRow: availableUtility.length === 2 ? 'span 2' : undefined,
+              border: `1px solid ${checklistCard.glow}55`,
             }}
           >
-            <span aria-hidden="true" style={{ fontSize: 36, lineHeight: 1, flexShrink: 0, filter: `drop-shadow(0 0 8px ${card.glow}99)` }}>{card.icon}</span>
-            <span style={{ display: 'grid', gap: 4, minWidth: 0, paddingRight: 4 }}>
-              <strong style={{ fontSize: 12, lineHeight: 1.15 }}>{card.title}</strong>
-              <span style={{ fontSize: 10, lineHeight: 1.35, color: '#bed0ed' }}>{card.description}</span>
-            </span>
-            <span aria-hidden="true" style={{ position: 'absolute', right: 6, top: 7, borderRadius: '50%', background: '#24314b', width: 23, height: 23, display: 'grid', placeItems: 'center', fontSize: 20 }}>›</span>
-          </button>
-        ))}
+            {renderUtilityButton(checklistCard, true)}
+            <div style={{ borderTop: `1px solid ${checklistCard.glow}55`, display: 'grid' }}>
+              {renderUtilityButton(packingCard, true)}
+            </div>
+          </div>
+        ) : renderUtilityButton(checklistCard)}
+        {availableUtility.map((card) => renderUtilityButton(card))}
       </nav>
       {secondary.some((mode) => mode.id === 'recall') && (
         <button

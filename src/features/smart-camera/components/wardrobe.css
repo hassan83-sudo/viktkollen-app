@@ -122,3 +122,6 @@
 .digital-wardrobe .wardrobe-doll-man .wardrobe-doll-layer-shoe-right { left: 56.5%; }
 .digital-wardrobe .wardrobe-doll-layer-color { width: 75%; height: 90%; border-radius: 14px; opacity: .8; }
 .digital-wardrobe .wardrobe-doll-note { font-size: .75rem; color: #c5cce0; line-height: 1.45; }
+
+/* Keep the outfit preview above the garment picker on all screen sizes. */
+.digital-wardrobe .wardrobe-layout { grid-template-columns: minmax(0, 1fr); }

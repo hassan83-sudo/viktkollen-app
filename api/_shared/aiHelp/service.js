@@ -387,7 +387,7 @@ export async function answerAiHelpQuestion({
         input,
         max_output_tokens: maxOutputTokens,
         model,
-        reasoning: { effort: 'minimal' },
+        reasoning: { effort: 'low' },
         text: { verbosity: 'low' },
       }),
       headers: {

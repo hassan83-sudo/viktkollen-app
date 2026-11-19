@@ -6,9 +6,52 @@ import { getSmartCameraMode } from '../smartCameraModes.js'
 import SmartCameraHub from './SmartCameraHub.jsx'
 import SmartCameraObjectBank from './SmartCameraObjectBank.jsx'
 import SmartCameraChecklists from './SmartCameraChecklists.jsx'
-import SmartCameraObjectScan from './SmartCameraObjectScan.jsx'
+import { getCurrentAiAuthorization, hasSameAiAuthUser } from '../../../services/ai/aiAuthTransport.js'
+import { hasForgottenCameraAccess } from '../../../services/billing/forgottenAccess.js'
 import SmartCameraModeViews from './SmartCameraModeViews.jsx'
 import SmartCameraPrivacyCard from './SmartCameraPrivacyCard.jsx'
+
+function PaidCameraTest({ children, onBack }) {
+  const [access, setAccess] = useState('loading')
+
+  useEffect(() => {
+    const controller = new AbortController()
+    async function checkAccess() {
+      try {
+        const auth = await getCurrentAiAuthorization()
+        if (!auth.ok) {
+          if (!controller.signal.aborted) setAccess(auth.errorCode === 'AUTH_REQUIRED' ? 'denied' : 'unavailable')
+          return
+        }
+        const response = await fetch('/api/billing/subscription', {
+          headers: { Authorization: auth.authorizationHeader },
+          signal: controller.signal,
+        })
+        if (!response.ok) throw new Error('subscription_unavailable')
+        const { subscription } = await response.json()
+        const sameUser = await hasSameAiAuthUser(auth.userScope)
+        if (!controller.signal.aborted) setAccess(sameUser && hasForgottenCameraAccess(subscription) ? 'allowed' : 'denied')
+      } catch {
+        if (!controller.signal.aborted) setAccess('unavailable')
+      }
+    }
+    checkAccess()
+    return () => controller.abort()
+  }, [])
+
+  if (access === 'allowed') return children
+  return (
+    <section>
+      <button type="button" className="secondary-button" onClick={onBack}>← Vardagshjälp</button>
+      <h2>Har jag glömt något?</h2>
+      <p role="status">{{
+        loading: 'Kontrollerar ditt abonnemang …',
+        denied: 'Kameratestet är tillgängligt med ett aktivt betalabonnemang.',
+        unavailable: 'Abonnemanget kunde inte kontrolleras. Öppna testet igen om en stund.',
+      }[access]}</p>
+    </section>
+  )
+}
 
 export default function SmartCameraStage({
   adapters = {},
@@ -23,7 +66,9 @@ export default function SmartCameraStage({
   const flags = featureFlags || getFeatureFlags()
   const [modeId, setModeId] = useState(initialMode)
   const [cameraActive, setCameraActive] = useState(false)
-  const mode = getSmartCameraMode(modeId, flags)
+  const mode = ['eyes', 'object-scan'].includes(modeId) ? null : getSmartCameraMode(modeId, flags)
+  const backToHub = () => setModeId('')
+  const modeView = mode && <SmartCameraModeViews adapters={adapters} mode={mode} voiceBar={voiceBar} onBack={backToHub} onCameraActive={setCameraActive} />
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -52,7 +97,7 @@ export default function SmartCameraStage({
   return createPortal(
     <div className="smart-camera-stage" role="dialog" aria-labelledby="smart-camera-title" aria-modal="true">
       <div className="smart-camera-stage-bar">
-        <h1 id="smart-camera-title">Smart kamera</h1>
+        <h1 id="smart-camera-title">Vardagshjälp</h1>
         <p className="smart-camera-hw-indicator" aria-live="polite">
           {cameraActive && <span className="is-camera">● Kamera aktiv</span>}
           {isMicrophoneActive && <span className="is-mic">● Mikrofon aktiv</span>}
@@ -62,15 +107,13 @@ export default function SmartCameraStage({
       <div className="smart-camera-stage-body">
         {modeId === 'object-bank'
           ? <SmartCameraObjectBank onBack={() => setModeId('')} onOpenChecklists={() => setModeId('checklists-bank')} />
-          : modeId === 'checklists-bank'
-            ? <SmartCameraChecklists onBack={() => setModeId('')} onOpenBank={() => setModeId('object-bank')} />
-            : modeId === 'object-scan'
-              ? <SmartCameraObjectScan onBack={() => setModeId('')} onOpenBank={() => setModeId('object-bank')} onCameraActive={setCameraActive} />
-              : mode
-                ? <SmartCameraModeViews adapters={adapters} mode={mode} voiceBar={voiceBar} onBack={() => setModeId('')} onCameraActive={setCameraActive} />
-                : <SmartCameraHub flags={flags} onSelectMode={setModeId} />}
+          : modeId === 'checklists-bank' || modeId === 'personal-care'
+            ? <SmartCameraChecklists key={modeId} personalCare={modeId === 'personal-care'} onBack={backToHub} onOpenBank={() => setModeId('object-bank')} />
+            : mode?.id === 'forgotten'
+              ? <PaidCameraTest onBack={backToHub}>{modeView}</PaidCameraTest>
+              : modeView || <SmartCameraHub flags={flags} onSelectMode={setModeId} />}
         <SmartCameraPrivacyCard
-          aiReceivesFrame={modeId === 'object-scan'}
+          aiReceivesFrame={false}
           audioToServer={mode?.id === 'ai-ear'}
           cameraActive={cameraActive}
           savedLabels={['Checklistor, rutiner och objektplatser sparas lokalt om du redigerar dem.']}

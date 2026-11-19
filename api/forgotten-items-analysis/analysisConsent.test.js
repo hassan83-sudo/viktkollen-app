@@ -8,6 +8,18 @@ import { installAiEyeBillingTestRuntime, setAiEyeBillingRuntimeForTests } from '
 import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.js'
 import { analysisConsentPurposes, computeCanonicalImageHash, issueAnalysisConsentToken } from '../_shared/analysisConsent.js'
 
+vi.mock('../_shared/billing/subscriptionRead.js', () => ({
+  readDurableUserSubscription: vi.fn(async () => ({
+    unavailable: false,
+    subscription: {
+      status: 'ACTIVE',
+      plan_id: 'plan.prelim.sek.month.49',
+      current_period_start: new Date(Date.now() - 60000).toISOString(),
+      current_period_end: new Date(Date.now() + 60000).toISOString(),
+    },
+  })),
+}))
+
 const TEST_SECRET = 'a'.repeat(40)
 const SHORT_SECRET = 'too-short-secret'
 const USER_ID = 'forgotten-items-consent-user'

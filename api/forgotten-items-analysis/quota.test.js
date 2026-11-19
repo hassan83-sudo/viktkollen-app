@@ -2,6 +2,7 @@ import { Readable } from 'node:stream'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import handler from './index.js'
+import { readDurableUserSubscription } from '../_shared/billing/subscriptionRead.js'
 import { analysisConsentPurposes, computeCanonicalImageHash, issueAnalysisConsentToken } from '../_shared/analysisConsent.js'
 import { resetAiRequestDeduperForTests } from '../_shared/aiRequestDeduper.js'
 import { setAiRateLimitAdapterForTests } from '../_shared/aiRateLimiter.js'
@@ -10,6 +11,18 @@ import { setSupabaseAuthVerifierForTests } from '../_shared/verifySupabaseUser.j
 import { createInMemoryPlanAssignmentStore } from '../../src/services/billing/planAssignment.js'
 import { createQuotaEngine } from '../../src/services/billing/quotaEngine.js'
 import { createInMemoryUsageRepository } from '../../src/services/billing/usageRepository.js'
+
+vi.mock('../_shared/billing/subscriptionRead.js', () => ({
+  readDurableUserSubscription: vi.fn(async () => ({
+    unavailable: false,
+    subscription: {
+      status: 'ACTIVE',
+      plan_id: 'plan.prelim.sek.month.49',
+      current_period_start: new Date(Date.now() - 60000).toISOString(),
+      current_period_end: new Date(Date.now() + 60000).toISOString(),
+    },
+  })),
+}))
 
 const TEST_SECRET = 'a'.repeat(40)
 const FREE_USER = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1'
@@ -148,7 +161,15 @@ describe('ai.eye.analysis server quota', () => {
     })
   }
 
-  it('allows free requests 1-25 and denies the next before the provider', async () => {
+  it('denies a user without a current paid subscription before dispatch', async () => {
+    readDurableUserSubscription.mockResolvedValueOnce({ unavailable: false, subscription: { status: 'NONE', plan_id: 'plan.free' } })
+    const provider = stubAiSuccess()
+    const response = await callRoute({ userId: FREE_USER })
+    expect(response.statusCode).toBe(403)
+    expect(provider).not.toHaveBeenCalled()
+  })
+
+  it('allows the default quota of 25 requests for a verified subscriber and denies the next before the provider', async () => {
     const fetchImpl = stubAiSuccess()
     const reserveSpy = vi.spyOn(runtime.quota, 'reserveQuota')
     currentUser = FREE_USER

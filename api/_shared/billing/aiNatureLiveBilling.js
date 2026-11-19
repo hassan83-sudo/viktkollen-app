@@ -217,9 +217,22 @@ export async function executeAiNatureMeteredOperation({
     usageEventPlan: aiNatureUsageEventPlan,
     clientClaim: {},
     commit: (input) => runtime.quota.commitReservation(input),
-    evaluate: runtime.evaluate || ((input) => evaluateBillingOperation(input, {
-      inspectQuota: (args) => runtime.quota.inspectQuota(args),
-    })),
+    evaluate: async (input) => {
+      const decision = await (runtime.evaluate
+        ? runtime.evaluate(input)
+        : evaluateBillingOperation(input, {
+          inspectQuota: (args) => runtime.quota.inspectQuota(args),
+        }))
+      if (!decision?.allowed) {
+        // Log only enum-like billing decision metadata, never user IDs, tokens, images or costs.
+        console.warn('[ai-nature] billing evaluation denied', {
+          decision: String(decision?.decision || 'UNKNOWN').slice(0, 64),
+          cost_reason: String(decision?.cost_reason || '').slice(0, 64),
+          cost_result: String(decision?.cost_result || '').slice(0, 64),
+        })
+      }
+      return decision
+    },
     evaluateInput: {
       featureControl: runtime.featureControl,
       featureId: AI_NATURE_BILLING.feature_id,

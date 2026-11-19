@@ -1,80 +1,9 @@
 import { useMemo, useState } from 'react'
+import PersonalCareLists from './PersonalCareLists.jsx'
 import { PRESETS, loadCustom } from './SmartCameraObjectBank.jsx'
 
 const KEY = 'viktkollen-smart-camera-checklists-v1'
-const CARE_NOTES_KEY = 'viktkollen-smart-camera-care-notes-v1'
 const CARE_CATEGORIES = ['Smink', 'Hårvård', 'Hygien']
-const CARE_FIELDS = [
-  { id: 'food', label: 'Mat jag gillar', example: 'Jag blir glad av att äta jordgubbar.' },
-  { id: 'activities', label: 'Saker jag vill göra', example: 'Jag vill ta en lugn promenad.' },
-  { id: 'comfort', label: 'Det här brukar hjälpa mig', example: 'En värmekudde och en serie.' },
-]
-
-function loadCareNotes() {
-  try {
-    const notes = JSON.parse(window.localStorage.getItem(CARE_NOTES_KEY) || '{}')
-    return Object.fromEntries(CARE_FIELDS.map(({ id }) => [id, typeof notes?.[id] === 'string' ? notes[id] : '']))
-  } catch {
-    return {}
-  }
-}
-
-function PeriodNotes() {
-  const [notes, setNotes] = useState(loadCareNotes)
-  const [draft, setDraft] = useState(notes)
-  const [showNotes, setShowNotes] = useState(false)
-  const [feedback, setFeedback] = useState('')
-
-  function saveNotes(event) {
-    event.preventDefault()
-    const next = Object.fromEntries(CARE_FIELDS.map(({ id }) => [id, (draft[id] || '').trim()]))
-    try {
-      window.localStorage.setItem(CARE_NOTES_KEY, JSON.stringify(next))
-      setNotes(next)
-      setShowNotes(true)
-      setFeedback('Anteckningarna är sparade.')
-    } catch {
-      setFeedback('Det gick inte att spara anteckningarna i den här webbläsaren.')
-    }
-  }
-
-  return (
-    <section aria-label="Mina mensdagar" style={{ marginTop: 16 }}>
-      <h4>Mina mensdagar</h4>
-      <button type="button" className="secondary-button" aria-expanded={showNotes} onClick={() => setShowNotes(!showNotes)}>Mensdag idag</button>
-      {showNotes && (
-        CARE_FIELDS.some(({ id }) => notes[id]) ? (
-          <dl>
-            {CARE_FIELDS.filter(({ id }) => notes[id]).map(({ id, label }) => (
-              <div key={id} style={{ marginTop: 8 }}>
-                <dt><strong>{label}</strong></dt>
-                <dd style={{ margin: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{notes[id]}</dd>
-              </div>
-            ))}
-          </dl>
-        ) : <p>Du har inga sparade anteckningar ännu.</p>
-      )}
-      <details style={{ marginTop: 12 }}>
-        <summary>Skriv eller ändra anteckningar</summary>
-        <form onSubmit={saveNotes} style={{ display: 'grid', gap: 10, marginTop: 10 }}>
-          {CARE_FIELDS.map(({ id, label, example }) => (
-            <label key={id} style={{ display: 'grid', gap: 4 }}>
-              {label}
-              <textarea rows={2} maxLength={1000} value={draft[id] || ''} placeholder={example} onChange={(event) => {
-                setDraft({ ...draft, [id]: event.target.value })
-                setFeedback('')
-              }} />
-            </label>
-          ))}
-          <button type="submit" className="primary-button">Spara anteckningar</button>
-        </form>
-      </details>
-      {feedback && <p role="status">{feedback}</p>}
-      <p className="smart-camera-note">Anteckningarna sparas i den här webbläsaren.</p>
-    </section>
-  )
-}
-
 const load = () => {
   try {
     const data = JSON.parse(window.localStorage.getItem(KEY) || '[]')
@@ -83,7 +12,7 @@ const load = () => {
 }
 const uid = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(36).slice(2)
 
-export default function SmartCameraChecklists({ onBack, onOpenBank }) {
+export default function SmartCameraChecklists({ onBack, onOpenBank, personalCare = false }) {
   const [lists, setLists] = useState(load)
   const [selectedId, setSelectedId] = useState(null)
   const [title, setTitle] = useState('')
@@ -132,12 +61,13 @@ export default function SmartCameraChecklists({ onBack, onOpenBank }) {
 
   return (
     <section aria-label="Mina checklistor" style={{ color: '#fff', padding: '8px 0 28px' }}>
-      <button type="button" className="secondary-button" onClick={onBack}>← Smart kamera</button>
-      <h2>Checklistor</h2>
+      <button type="button" className="secondary-button" onClick={onBack}>← Vardagshjälp</button>
+      <h2>{personalCare ? 'Min egenvård' : 'Checklistor'}</h2>
       <p style={{ color: '#b9cae5' }}>Spara listor och bocka av manuellt. Ingen AI eller kamera behövs.</p>
       {error && <p role="alert" style={{ color: '#ffb7c6' }}>{error}</p>}
-      <details style={{ background: '#0c1931', border: '1px solid #29416b', borderRadius: 12, padding: 12, margin: '12px 0' }}>
-        <summary><strong>Smink &amp; egenvård</strong></summary>
+      {personalCare && <PersonalCareLists />}
+      {personalCare && <details style={{ background: '#0c1931', border: '1px solid #29416b', borderRadius: 12, padding: 12, margin: '12px 0' }}>
+        <summary><strong>Smink, hårvård &amp; hygien</strong></summary>
         <label style={{ display: 'grid', gap: 6, marginTop: 12 }}>
           Välj egenvårdskategori
           <select value={careCategory} onChange={(event) => setCareCategory(event.target.value)} style={{ padding: 10, borderRadius: 10 }}>
@@ -152,8 +82,7 @@ export default function SmartCameraChecklists({ onBack, onOpenBank }) {
             </li>
           ))}
         </ul>
-        <PeriodNotes />
-      </details>
+      </details>}
       {active ? (
         <>
           <button type="button" className="secondary-button" onClick={() => setSelectedId(null)}>← Alla listor</button>

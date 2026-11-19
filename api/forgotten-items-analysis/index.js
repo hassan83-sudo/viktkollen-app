@@ -1,3 +1,5 @@
+import { readDurableUserSubscription } from '../_shared/billing/subscriptionRead.js'
+import { hasForgottenCameraAccess } from '../../src/services/billing/forgottenAccess.js'
 import {
   callOpenAiJson,
   getAiGatewayConfig,
@@ -460,6 +462,19 @@ export default async function handler(request, response) {
       // image bytes.
       console.warn('[api/forgotten-items-analysis] Analysis consent rejected', { reason: consent.reason, requestId })
       return safeError(response, 403, 'consentRequired', undefined, false, requestId)
+    }
+
+    const subscription = await readDurableUserSubscription(auth.user.id)
+    if (subscription.unavailable || !hasForgottenCameraAccess(subscription.subscription)) {
+      return sendSafeAiError(response, {
+        code: subscription.unavailable ? aiRouteErrorCodes.PROVIDER_UNAVAILABLE : aiRouteErrorCodes.FEATURE_LOCKED,
+        requestId,
+        retryable: subscription.unavailable,
+        safeMessage: subscription.unavailable
+          ? 'Abonnemanget kunde inte kontrolleras.'
+          : 'Kameratestet kräver ett aktivt betalabonnemang.',
+        status: subscription.unavailable ? 503 : 403,
+      })
     }
 
     if (!process.env.OPENAI_API_KEY) {

@@ -1564,7 +1564,7 @@ function OverviewDashboard({
           }}
           onOpenEyes={() => {
             setBodyScanOpen(false)
-            setSmartCameraInitialMode('eyes')
+            setSmartCameraInitialMode('')
             setSmartCameraOpen(true)
           }}
           onOpenSmartCamera={() => {
@@ -1629,11 +1629,11 @@ function OverviewDashboard({
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 8, marginBottom: 14 }}>
         <button type="button" onClick={() => {
           setBodyScanOpen(false)
-          setSmartCameraInitialMode('eyes')
+          setSmartCameraInitialMode('')
           setSmartCameraOpen(true)
         }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'space-between', gap: 8, minWidth: 0, minHeight: 245, padding: '10px', borderRadius: 16, border: '1px solid rgba(85,190,235,.4)', background: 'linear-gradient(120deg, #112b3d, #101a35)', color: '#fff', cursor: 'pointer' }}>
           <img src="/viktkollen-ai-eyes-home.webp" alt="" style={{ width: '100%', height: 190, objectFit: 'contain', borderRadius: 10 }} />
-          <strong style={{ textAlign: 'center', fontSize: 15 }}>AI Ögat</strong>
+          <strong style={{ textAlign: 'center', fontSize: 15 }}>Vardagshjälp</strong>
         </button>
         {isFeatureEnabled('aiEar', flags) && (
           <button type="button" onClick={() => {

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { eyesFeature } from '../../eyes/eyesFeature.js'
 import {
   createChecklist,
   createItemLocation,
@@ -19,17 +18,14 @@ import { mouthFeature } from '../../mouth/mouthFeature.js'
 import {
   checkMeCountdownStart,
   checkMeCountdownStepMs,
-  checkMeObservationDisclaimer,
-  checkMeVisionReady,
   getCheckMeStep,
   getNextCheckMeIndex,
 } from '../checkMeGuide.js'
 import { compareChecklistToVisibleItems } from '../itemVisibility.js'
 import { getReadyPromptDisclaimer, lastCheckSteps } from '../lastCheckGuide.js'
-import { buildOutfitWeatherFacts, outfitFeedbackDisclaimer, outfitVisionReady } from '../outfitAdvice.js'
+import { buildOutfitWeatherFacts } from '../outfitAdvice.js'
 import AiEarMode from '../../ai-ear/AiEarMode.jsx'
 import ForgottenItemsCheck from './ForgottenItemsCheck.jsx'
-import SmartCameraLiveView from './SmartCameraLiveView.jsx'
 import OutfitWardrobeSelection from './OutfitWardrobeSelection.jsx'
 
 function ModeHeader({ mode, onBack, title }) {
@@ -108,14 +104,12 @@ function ChecklistEditor({ list, onChange }) {
   )
 }
 
-function ItemsMode({ cameraActive, list, onCameraActive, onChange, usesCamera }) {
+function ItemsMode({ list, onChange }) {
   const comparison = compareChecklistToVisibleItems(list.items)
   return (
     <>
-      <SmartCameraLiveView enabled={usesCamera} onActiveChange={onCameraActive} />
       <p className="smart-camera-note">
-        Jag identifierar inte föremål automatiskt ännu. Markera det du själv ser.
-        Om något inte syns i bild betyder det inte att du har glömt det.
+        Bocka av det du har packat eller lagt fram.
       </p>
       <ChecklistEditor list={list} onChange={onChange} />
       <section className="smart-camera-compare">
@@ -126,12 +120,11 @@ function ItemsMode({ cameraActive, list, onCameraActive, onChange, usesCamera })
         <h3>Kontrollera</h3>
         {comparison.check.map((item) => <p key={item.id}>? {item.message}</p>)}
       </section>
-      {!cameraActive && usesCamera && <p className="smart-camera-note">Kameran är valfri. Du kan bocka av listan manuellt.</p>}
     </>
   )
 }
 
-function CheckMeMode({ onCameraActive }) {
+function CheckMeMode() {
   const [index, setIndex] = useState(0)
   const [countdown, setCountdown] = useState(null)
   const timerRef = useRef(0)
@@ -160,7 +153,6 @@ function CheckMeMode({ onCameraActive }) {
 
   return (
     <>
-      <SmartCameraLiveView enabled onActiveChange={onCameraActive} />
       <p className="smart-camera-pose">{current.step.label}</p>
       <p>{current.step.prompt}</p>
       {countdown !== null && <p className="smart-camera-count">{countdown}</p>}
@@ -171,20 +163,15 @@ function CheckMeMode({ onCameraActive }) {
       >
         Starta 3 → 2 → 1
       </button>
-      {!checkMeVisionReady && <p className="smart-camera-note">{checkMeObservationDisclaimer}</p>}
+      <p className="smart-camera-note">Använd en spegel för att gå igenom stegen själv.</p>
     </>
   )
 }
 
-function OutfitMode({ onCameraActive, weather }) {
+function OutfitMode({ weather }) {
   const facts = useMemo(() => buildOutfitWeatherFacts(weather), [weather])
   return (
     <>
-      <SmartCameraLiveView enabled onActiveChange={onCameraActive} />
-      <p className="smart-camera-note">{outfitFeedbackDisclaimer}</p>
-      {!outfitVisionReady && (
-        <p>Jag kan inte bedöma färgkombinationer från kameran ännu. Använd spegeln i live-preview och vädret nedan.</p>
-      )}
       <OutfitWardrobeSelection />
       {facts.available ? (
         <section className="smart-camera-weather">
@@ -337,14 +324,13 @@ function RoutinesMode({ memory, onSave }) {
   )
 }
 
-function LastCheckMode({ memory, onCameraActive, weather }) {
+function LastCheckMode({ memory, weather }) {
   const [done, setDone] = useState({})
   const facts = buildOutfitWeatherFacts(weather)
   const carry = memory.checklists.find((list) => list.kind === 'carry')
 
   return (
     <>
-      <SmartCameraLiveView enabled onActiveChange={onCameraActive} />
       <ol className="smart-camera-last-check">
         {lastCheckSteps.map((step) => (
           <li key={step.id}>
@@ -361,7 +347,7 @@ function LastCheckMode({ memory, onCameraActive, weather }) {
       </ol>
       {carry && <p>Checklista: {carry.items.map((item) => item.label).join(', ')}</p>}
       {facts.available && <p>{facts.facts.join(' · ')}</p>}
-      <p className="smart-camera-note">Sista kollen är en genomgång du bockar av själv. Kameran bevisar inte att något är klart.</p>
+      <p className="smart-camera-note">Bocka av stegen när du har kontrollerat dem.</p>
     </>
   )
 }
@@ -425,9 +411,8 @@ function upsertCarryList(memory, nextList) {
   }
 }
 
-function CarryListsMode({ memory, onCameraActive, onSave }) {
+function CarryListsMode({ memory, onSave }) {
   const [selectedId, setSelectedId] = useState('')
-  const [cameraOpen, setCameraOpen] = useState(false)
   const [customTitle, setCustomTitle] = useState('')
   const lists = collectCarryLists(memory)
   const selected = lists.find((list) => list.id === selectedId) || null
@@ -451,22 +436,6 @@ function CarryListsMode({ memory, onCameraActive, onSave }) {
     setSelectedId(next.id)
   }
 
-  if (cameraOpen && selected) {
-    return (
-      <>
-        <button className="secondary-button" type="button" onClick={() => setCameraOpen(false)}>
-          Tillbaka till listan
-        </button>
-        <ItemsMode
-          list={selected}
-          onCameraActive={onCameraActive}
-          onChange={persistList}
-          usesCamera
-        />
-      </>
-    )
-  }
-
   if (selected) {
     return (
       <>
@@ -475,16 +444,13 @@ function CarryListsMode({ memory, onCameraActive, onSave }) {
         </button>
         <h3>{selected.title}</h3>
         <ChecklistEditor list={selected} onChange={persistList} />
-        <button className="primary-button" type="button" onClick={() => setCameraOpen(true)}>
-          Kamera
-        </button>
       </>
     )
   }
 
   return (
     <>
-      <p className="smart-camera-note">Välj en lista, redigera den och kontrollera sakerna med kamera. Befintliga listor skrivs inte över.</p>
+      <p className="smart-camera-note">Välj en lista, redigera den och bocka av det du har lagt fram.</p>
       {lists.length > 0 && (
         <nav className="smart-camera-mode-grid is-secondary" aria-label="Sparade ta-med-listor">
           {lists.map((list) => (
@@ -585,14 +551,15 @@ export default function SmartCameraModeViews({
   return (
     <div className="smart-camera-mode">
       <ModeHeader mode={selected} onBack={onBack} />
-      {selected.id === 'check-me' && <CheckMeMode onCameraActive={onCameraActive} />}
+      {selected.id === 'check-me' && <CheckMeMode />}
       {selected.id === 'grooming' && (
-        <>
-          <SmartCameraLiveView enabled onActiveChange={onCameraActive} />
-          <p className="smart-camera-note">{checkMeObservationDisclaimer}</p>
-        </>
+        <ul>
+          <li>Välj en frisyr som passar dagens planer.</li>
+          <li>Lägg fram borste, hårsnoddar eller stylingprodukter du vill använda.</li>
+          <li>Gör sista kollen i spegeln.</li>
+        </ul>
       )}
-      {selected.id === 'outfit' && <OutfitMode onCameraActive={onCameraActive} weather={adapters?.weather} />}
+      {selected.id === 'outfit' && <OutfitMode weather={adapters?.weather} />}
       {(selected.id === 'items' || selected.id === 'pack') && (
         <ItemsMode
           list={selected.id === 'pack'
@@ -603,7 +570,6 @@ export default function SmartCameraModeViews({
                 title: 'Resa',
               })
             : carryList}
-          onCameraActive={onCameraActive}
           onChange={(nextList) => {
             const exists = memory.checklists.some((list) => list.id === nextList.id)
             persist({
@@ -613,7 +579,6 @@ export default function SmartCameraModeViews({
                 : [...memory.checklists, nextList],
             })
           }}
-          usesCamera={selected.usesCamera}
         />
       )}
       {selected.id === 'forgotten' && (
@@ -635,7 +600,7 @@ export default function SmartCameraModeViews({
       {selected.id === 'ai-ear' && <AiEarMode />}
       {selected.id === 'get-ready' && <GetReadyMode memory={memory} onSave={persist} />}
       {selected.id === 'carry-lists' && (
-        <CarryListsMode memory={memory} onCameraActive={onCameraActive} onSave={persist} />
+        <CarryListsMode memory={memory} onSave={persist} />
       )}
       {selected.id === 'ask-ai' && (
         <>
@@ -653,27 +618,11 @@ export default function SmartCameraModeViews({
         </>
       )}
       {selected.id === 'last-check' && (
-        <LastCheckMode memory={memory} onCameraActive={onCameraActive} weather={adapters?.weather} />
+        <LastCheckMode memory={memory} weather={adapters?.weather} />
       )}
       {selected.id === 'where' && <WhereMode memory={memory} onSave={persist} />}
       {selected.id === 'recall' && <RecallMode memory={memory} />}
       {selected.id === 'routines' && <RoutinesMode memory={memory} onSave={persist} />}
-      {selected.id === 'eyes' && (
-        <>
-          <SmartCameraLiveView enabled onActiveChange={onCameraActive} />
-          <label className="primary-button">
-            📷 Öppna kamera
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              aria-label="Öppna mobilens kamera"
-              hidden
-            />
-          </label>
-          <p className="smart-camera-note">{eyesFeature.emptyState}</p>
-        </>
-      )}
       {selected.id === 'mouth' && <p className="smart-camera-note">{mouthFeature.emptyState}</p>}
     </div>
   )

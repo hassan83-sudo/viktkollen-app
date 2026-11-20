@@ -82,6 +82,21 @@ function Wardrobe3DPreview({ body, garments }) {
   const [angle, setAngle] = useState(0)
   const canvasRef = useRef(null)
   const slots = Object.fromEntries(garments.map(g => [garmentSlot(g.type), g]))
+  const [photos, setPhotos] = useState({})
+  useEffect(() => {
+    let active = true
+    const selected = ['outer', 'top', 'dress', 'bottom'].map(slot => [slot, slots[slot]?.image])
+      .filter(([, src]) => isWardrobePhoto(src))
+    Promise.all(selected.map(async ([slot, src]) => {
+      try {
+        const image = new Image()
+        image.src = src
+        await image.decode()
+        return [slot, image]
+      } catch { return null }
+    })).then(results => { if (active) setPhotos(Object.fromEntries(results.filter(Boolean))) })
+    return () => { active = false }
+  }, [garments])
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -142,6 +157,26 @@ function Wardrobe3DPreview({ body, garments }) {
       }
       cylinder(side*20, 21, 44, 15, 12, 23, slots.shoes ? chosenColor('shoes','#333842') : skin)
     }
+    // Project the front of each selected garment onto the visible body silhouette.
+    // This is a 2.5D photo preview; side and back views retain geometric materials.
+    const patches = []
+    const patch = (slot, y0, y1, halfWidth0, halfWidth1, centerX = 0) => {
+      if (!photos[slot]) return
+      const depth = slot === 'bottom' ? 19 : 28
+      patches.push({ slot, corners: [
+        [centerX-halfWidth0,y0,depth],[centerX+halfWidth0,y0,depth],
+        [centerX+halfWidth1,y1,depth],[centerX-halfWidth1,y1,depth]
+      ] })
+    }
+    if (slots.dress) patch('dress', 145, 341, hips+14, shoulders)
+    else {
+      if (slots.top) patch('top', 261, 341, hips, shoulders)
+      if (slots.bottom) {
+        patch('bottom', 43, 226, 17, 21, -20)
+        patch('bottom', 43, 226, 17, 21, 20)
+      }
+    }
+    if (slots.outer) patch('outer', 261, 341, hips+3, shoulders+3)
     shapes.sort((a,b)=>b.z-a.z)
     for (const face of shapes) {
       const points = face.verts.map(v=>project(...v))
@@ -154,14 +189,34 @@ function Wardrobe3DPreview({ body, garments }) {
       ctx.fillStyle = 'rgba(0,0,0,'+(1-face.shade)*0.48+')'
       ctx.fill()
     }
-  }, [angle, body, garments])
+    if (Math.cos(theta) > 0.2) {
+      for (const item of patches) {
+        const img = photos[item.slot]
+        if (!img) continue
+        const points = item.corners.map(v => project(...v))
+        const xs = points.map(p => p[0]), ys = points.map(p => p[1])
+        const minX = Math.min(...xs), maxX = Math.max(...xs)
+        const minY = Math.min(...ys), maxY = Math.max(...ys)
+        if (maxX-minX < 1 || maxY-minY < 1) continue
+        ctx.save()
+        ctx.beginPath()
+        ctx.moveTo(...points[0])
+        for (const p of points.slice(1)) ctx.lineTo(...p)
+        ctx.closePath()
+        ctx.clip()
+        ctx.globalAlpha = Math.min(1, Math.cos(theta) * 1.3)
+        ctx.drawImage(img, minX, minY, maxX-minX, maxY-minY)
+        ctx.restore()
+      }
+    }
+  }, [angle, body, garments, photos])
   return <div className="wardrobe-3d-preview">
     <canvas ref={canvasRef} width="260" height="440" role="img" aria-label="Roterbar tredimensionell provdocka med förenklade klädformer" style={{width:'100%',maxWidth:260,height:'auto',background:'#182034',borderRadius:12}} />
     <div style={{display:'flex',gap:6,justifyContent:'center'}}>
       <button type="button" onClick={()=>setAngle(a=>a-30)} aria-label="Rotera dockan åt vänster">Vänster</button>
       <button type="button" onClick={()=>setAngle(a=>a+30)} aria-label="Rotera dockan åt höger">Höger</button>
     </div>
-    <p className="wardrobe-doll-note">3D-prototyp: tröjor, ytterplagg, byxor och klänningar följer förenklade kroppsformer. Fotoplagg är ännu inte omvandlade till 3D.</p>
+    <p className="wardrobe-doll-note">3D-prototyp: tröjor, ytterplagg, byxor och klänningar följer förenklade kroppsformer. Klädfoton visas på dockans framsida när de finns. Sid- och baksida är fortfarande förenklade, inte exakt 3D-passform.</p>
   </div>
 }
 

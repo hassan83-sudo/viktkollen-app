@@ -83,9 +83,11 @@ function Wardrobe3DPreview({ body, garments }) {
   const canvasRef = useRef(null)
   const slots = Object.fromEntries(garments.map(g => [garmentSlot(g.type), g]))
   const [photos, setPhotos] = useState({})
+  const photoSources = ['outer', 'top', 'dress', 'bottom'].map(slot => slots[slot]?.image || '').join('\u0001')
   useEffect(() => {
     let active = true
-    const selected = ['outer', 'top', 'dress', 'bottom'].map(slot => [slot, slots[slot]?.image])
+    const sources = photoSources.split('\u0001')
+    const selected = ['outer', 'top', 'dress', 'bottom'].map((slot, index) => [slot, sources[index]])
       .filter(([, src]) => isWardrobePhoto(src))
     Promise.all(selected.map(async ([slot, src]) => {
       try {
@@ -96,13 +98,12 @@ function Wardrobe3DPreview({ body, garments }) {
       } catch { return null }
     })).then(results => { if (active) setPhotos(Object.fromEntries(results.filter(Boolean))) })
     return () => { active = false }
-  }, [garments])
+  }, [photoSources])
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    const w = 260, h = 440
     ctx.clearRect(0, 0, w, h)
     const theta = angle * Math.PI / 180
     const project = (x, y, z) => {

@@ -109,20 +109,38 @@ function Wardrobe3DPreview({ body, garments }) {
     }
     const skin = '#c9a48c'
     const chosenColor = (slot, fallback) => /^#[0-9a-f]{6}$/i.test(slots[slot]?.color || '') ? slots[slot].color : fallback
-    const pants = chosenColor('bottom','#344765'), top = chosenColor('top','#617fa2')
+    const pants = chosenColor('bottom','#344765')
+    const top = chosenColor('top','#617fa2')
     const dress = slots.dress ? chosenColor('dress','#8865a3') : null
+    const outer = slots.outer ? chosenColor('outer','#455769') : null
     const female = body === 'woman'
-    cylinder(0, 342, 374, 19, 19, 18, skin)
-    cylinder(0, 374, 405, 18, 12, 17, skin)
-    cylinder(0, 405, 417, 11, 10, 11, skin)
-    cylinder(0, 265, 344, female ? 39 : 40, female ? 45 : 52, 26, dress || (slots.top ? top : skin))
-    cylinder(0, 226, 265, 39, female ? 39 : 40, 27, dress || (slots.top ? top : skin))
+    const shoulders = female ? 43 : 51
+    const waist = female ? 31 : 36
+    const hips = female ? 43 : 39
+    // Body segments taper between joints so clothes follow the torso and limbs.
+    cylinder(0, 343, 374, 17, 17, 16, skin)
+    cylinder(0, 375, 406, 18, 13, 17, skin)
+    cylinder(0, 406, 418, 12, 10, 11, skin)
+    cylinder(0, 303, 343, waist, shoulders, 24, outer || dress || (slots.top ? top : skin))
+    cylinder(0, 261, 303, hips, waist, 25, outer || dress || (slots.top ? top : skin))
+    cylinder(0, 228, 261, hips, hips, 25, dress || (slots.bottom ? pants : skin))
+    if (dress) {
+      // A skirt hangs from the hips rather than following separate trouser legs.
+      cylinder(0, 143, 228, hips + 17, hips, 25, dress)
+    }
     for (const side of [-1,1]) {
-      cylinder(side*(female?48:55), 254, 331, 12, 14, 13, slots.top || dress ? (dress || top) : skin)
-      cylinder(side*(female?49:56), 200, 254, 10, 12, 11, skin)
-      cylinder(side*20, 114, 226, 17, 21, 18, dress || (slots.bottom ? pants : skin))
-      cylinder(side*20, 40, 114, 12, 16, 14, slots.bottom ? pants : skin)
-      cylinder(side*20, 22, 43, 15, 12, 23, slots.shoes ? chosenColor('shoes','#333842') : skin)
+      const armX = side * (shoulders + 5)
+      const sleeve = outer || (slots.top ? top : dress)
+      cylinder(armX, 285, 335, 12, 15, 13, sleeve || skin)
+      cylinder(armX + side*3, 228, 285, 9, 12, 11, outer || skin)
+      cylinder(armX + side*3, 211, 228, 9, 9, 9, skin)
+      if (!dress) {
+        cylinder(side*20, 121, 228, 16, 21, 18, slots.bottom ? pants : skin)
+        cylinder(side*20, 43, 121, 11, 16, 13, slots.bottom ? pants : skin)
+      } else {
+        cylinder(side*20, 43, 143, 11, 16, 13, skin)
+      }
+      cylinder(side*20, 21, 44, 15, 12, 23, slots.shoes ? chosenColor('shoes','#333842') : skin)
     }
     shapes.sort((a,b)=>b.z-a.z)
     for (const face of shapes) {
@@ -143,7 +161,7 @@ function Wardrobe3DPreview({ body, garments }) {
       <button type="button" onClick={()=>setAngle(a=>a-30)} aria-label="Rotera dockan åt vänster">Vänster</button>
       <button type="button" onClick={()=>setAngle(a=>a+30)} aria-label="Rotera dockan åt höger">Höger</button>
     </div>
-    <p className="wardrobe-doll-note">3D-prototyp: kläderna visas som kroppsformade färgytor. Fotoplagg har ännu inte exakt 3D-passform.</p>
+    <p className="wardrobe-doll-note">3D-prototyp: tröjor, ytterplagg, byxor och klänningar följer förenklade kroppsformer. Fotoplagg är ännu inte omvandlade till 3D.</p>
   </div>
 }
 

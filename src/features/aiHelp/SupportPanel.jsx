@@ -99,6 +99,7 @@ export default function SupportPanel({ admin = false }) {
 
   return <section className="app-information support-panel" aria-label={admin ? chrome.adminTitle : chrome.title} dir={getLanguageDefinition(language).direction} lang={language}>
     <h3>{admin ? chrome.adminTitle : chrome.title}</h3>
+    {!admin && <><p><strong>Kundtjänst – alla dagar i veckan</strong></p><p>Vi finns vanligtvis tillgängliga mellan kl. 09.00 och 22.00.</p><p>Vi försöker svara inom 30 minuter, men ibland kan det ta upp till 24 timmar.</p></>}
     <p>{chrome.policy}</p>
     {!opened && <button type="button" className="secondary-button" onClick={() => setOpened(true)}>{chrome.check}</button>}
     {opened && <>

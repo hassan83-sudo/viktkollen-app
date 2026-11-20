@@ -62,7 +62,7 @@ export default function SmartCameraChecklists({ onBack, onOpenBank, personalCare
   return (
     <section aria-label="Mina checklistor" style={{ color: '#fff', padding: '8px 0 28px' }}>
       <button type="button" className="secondary-button" onClick={onBack}>← Vardagshjälp</button>
-      <h2>{personalCare ? 'Min egenvård' : 'Checklistor'}</h2>
+      <h2>{personalCare ? 'Egenvård' : 'Checklistor'}</h2>
       <p style={{ color: '#b9cae5' }}>Spara listor och bocka av manuellt. Ingen AI eller kamera behövs.</p>
       {error && <p role="alert" style={{ color: '#ffb7c6' }}>{error}</p>}
       {personalCare && <PersonalCareLists />}

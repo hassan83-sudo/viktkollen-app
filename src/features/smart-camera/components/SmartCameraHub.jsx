@@ -20,7 +20,7 @@ export default function SmartCameraHub({ flags, onSelectMode }) {
   return (
     <div className="smart-camera-hub">
       <button type="button" className="primary-button" onClick={() => onSelectMode('personal-care')} style={{ width: '100%', margin: '12px 0 18px' }}>
-        Min egenvård
+        Egenvård
       </button>
       <section aria-label="Praktisk hjälp i vardagen" style={{ marginBottom: 18 }}>
         <h3 style={{ margin: '0 0 3px', color: '#fff', fontSize: 19 }}>Praktisk hjälp i vardagen</h3>

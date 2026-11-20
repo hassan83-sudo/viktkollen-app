@@ -35,6 +35,9 @@ export default function SupportPanel({ admin = false }) {
   const [loadFailed, setLoadFailed] = useState(false)
   const [message, setMessage] = useState('')
   const [category, setCategory] = useState('technical')
+  const [delayHours, setDelayHours] = useState(10)
+  const [selectedTickets, setSelectedTickets] = useState([])
+  const [bulkAudience, setBulkAudience] = useState('waiting')
   const requestId = useRef(null)
   const seen = useRef(new Set())
   const active = useRef(true)
@@ -97,6 +100,18 @@ export default function SupportPanel({ admin = false }) {
     } finally { if (active.current) setBusy(false) }
   }
 
+  async function sendBulkDelay() {
+    if (busy || !window.confirm('Skicka fördröjningsmeddelandet till valda kunder?')) return
+    const ticketIds = bulkAudience === 'selected' ? selectedTickets : null
+    if (bulkAudience === 'selected' && !ticketIds.length) { setNotice('Välj minst ett ärende.'); return }
+    setBusy(true)
+    try {
+      const result = await requestSupport({ admin: true, command: { action: 'bulk_delay', hours: delayHours, ticketIds } })
+      setNotice(result.ok ? `Meddelandet skickades till ${result.sentCount} ärenden.` : 'Utskicket misslyckades. Inga bekräftade utskick.')
+      if (result.ok) { setSelectedTickets([]); await load() }
+    } finally { setBusy(false) }
+  }
+
   return <section className="app-information support-panel" aria-label={admin ? chrome.adminTitle : chrome.title} dir={getLanguageDefinition(language).direction} lang={language}>
     <h3>{admin ? chrome.adminTitle : chrome.title}</h3>
     {!admin && <><p><strong>Kundtjänst – alla dagar i veckan</strong></p><p>Vi finns vanligtvis tillgängliga mellan kl. 09.00 och 22.00.</p><p>Vi försöker svara inom 30 minuter, men ibland kan det ta upp till 24 timmar.</p></>}
@@ -106,6 +121,16 @@ export default function SupportPanel({ admin = false }) {
       <p>{chrome.notice}</p>
       <button type="button" className="secondary-button" onClick={() => { void load() }} disabled={busy}>{chrome.refresh}</button>
       {admin && <>
+        <div className="app-information" aria-label="Massmeddelande om svarstid">
+          <h4>Massmeddelande om längre svarstid</h4>
+          <label>Beräknad svarstid: {delayHours} {delayHours === 1 ? 'timme' : 'timmar'}
+            <input type="range" min="1" max="24" step="1" value={delayHours} onChange={event => setDelayHours(Number(event.target.value))} />
+          </label>
+          <label>Mottagare <select value={bulkAudience} onChange={event => setBulkAudience(event.target.value)}><option value="waiting">Alla väntande ärenden</option><option value="selected">Markerade ärenden</option></select></label>
+          {bulkAudience === 'selected' && (data?.tickets || []).filter(ticket => ['open','in_progress'].includes(ticket.status)).map(ticket => <label key={ticket.id}><input type="checkbox" checked={selectedTickets.includes(ticket.id)} onChange={event => setSelectedTickets(current => event.target.checked ? [...current,ticket.id] : current.filter(id => id !== ticket.id))} /> {ticket.category} · {ticket.id}</label>)}
+          <p>Vi har för närvarande många supportärenden. Det kan därför dröja upp till {delayHours} {delayHours === 1 ? 'timme' : 'timmar'} innan du får svar. Tack för ditt tålamod!</p>
+          <button type="button" className="secondary-button" disabled={busy || !data || (bulkAudience === 'selected' && !selectedTickets.length)} onClick={() => void sendBulkDelay()}>Skicka till valda kunder</button>
+        </div>
         <p role="status">{chrome.pending}: {data?.pendingCount ?? '—'}</p>
         <button className="secondary-button" type="button" onClick={async () => {
           try {

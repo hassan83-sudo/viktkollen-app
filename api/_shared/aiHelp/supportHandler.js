@@ -25,13 +25,23 @@ export default async function supportHandler(request, response) {
     }
   } catch { return fail(400, 'INVALID_REQUEST') }
   const action = request.method === 'GET' ? 'list' : body.action
-  if (!(isAdmin ? ['list', 'update', 'reply'] : ['list', 'create', 'reply']).includes(action)) return fail(400, 'INVALID_REQUEST')
+  if (!(isAdmin ? ['list', 'update', 'reply', 'bulk_delay'] : ['list', 'create', 'reply']).includes(action)) return fail(400, 'INVALID_REQUEST')
   const message = typeof body.message === 'string' ? body.message.trim() : ''
   if (['create', 'reply'].includes(action) && (!message || message.length > 2000)) return fail(400, 'INVALID_REQUEST')
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   if (['update', 'reply'].includes(action) && !uuid.test(body.ticketId || '')) return fail(400, 'INVALID_REQUEST')
   if (['update', 'reply'].includes(action) && (!Number.isInteger(body.version) || body.version < 1)) return fail(400, 'INVALID_REQUEST')
   if (action === 'create' && !uuid.test(body.requestId || '')) return fail(400, 'INVALID_REQUEST')
+  if (action === 'bulk_delay') {
+    if (!Number.isInteger(body.hours) || body.hours < 1 || body.hours > 24 || (body.ticketIds !== null && body.ticketIds !== undefined && (!Array.isArray(body.ticketIds) || body.ticketIds.length < 1 || body.ticketIds.length > 200 || body.ticketIds.some(id => !uuid.test(id))))) return fail(400, 'INVALID_REQUEST')
+    try {
+      const client = createSupabaseAdminClient()
+      if (!client) return fail(503, 'SUPPORT_UNAVAILABLE')
+      const { data, error } = await client.schema('support').rpc('bulk_delay_notice', { p_actor: auth.user.id, p_hours: body.hours, p_ticket_ids: body.ticketIds || null })
+      if (error || !data) return fail(503, 'SUPPORT_UNAVAILABLE')
+      return response.status(data.ok ? 200 : 403).json(data.ok ? data : { ok: false, error: { code: data.code || 'FORBIDDEN' } })
+    } catch { return fail(503, 'SUPPORT_UNAVAILABLE') }
+  }
   const command = {
     category: ['billing', 'technical', 'account', 'other'].includes(body.category) ? body.category : 'other',
     message, requestId: body.requestId, ticketId: body.ticketId,

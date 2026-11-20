@@ -6,6 +6,7 @@ import TestFeedbackPage from '../../features/testFeedback/TestFeedbackPage.jsx'
 import PlanCommercialAdmin from '../billing/PlanCommercialAdmin.jsx'
 import PlanComparison from '../billing/PlanComparison.jsx'
 import PlanUsagePanel from '../billing/PlanUsagePanel.jsx'
+import CancelSubscriptionSelfService from '../billing/CancelSubscriptionSelfService.jsx'
 import SumUpCheckoutInspectAdmin from '../billing/SumUpCheckoutInspectAdmin.jsx'
 import SumUpSandboxWidget from '../billing/SumUpSandboxWidget.jsx'
 import CloudBackupPanel from '../CloudBackupPanel.jsx'
@@ -364,6 +365,7 @@ function MoreSection({
               <summary style={{ cursor: "pointer", fontWeight: 700 }}>{t("usageToggle")}</summary>
               <PlanUsagePanel authLoading={authLoading} isAuthenticated={isAuthenticated} />
             </details>
+            <CancelSubscriptionSelfService isAuthenticated={isAuthenticated} />
             <PlanComparison authLoading={authLoading} isAuthenticated={isAuthenticated} />
 
             <div className="app-information">

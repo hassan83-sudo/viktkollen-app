@@ -100,7 +100,7 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <div>
           <h2 style={{ margin: 0 }}>AI Natur mm</h2>
-          <p style={{ margin: '6px 0 16px' }}>Upptäck träd, blommor, växter, svampar, fåglar, insekter, djur, fiskar och stenar.</p>
+          <p style={{ margin: '6px 0 16px' }}>Upptäck träd, blommor, växter, frukt, grönsaker, svampar, fåglar, insekter, djur, fiskar och stenar.</p>
         </div>
         {onClose && <button type="button" onClick={onClose} aria-label="Stäng AI Natur mm">Stäng</button>}
       </header>
@@ -129,16 +129,16 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
           <p>{identification.description}</p>
           {identification.reproduction && <section aria-label="Fortplantning"><h4>Fortplantning</h4><p>{identification.reproduction}</p></section>}
           {identification.rootSpread && <section aria-label="Rötter under marken"><h4>Rötter under marken</h4><p>{identification.rootSpread}</p></section>}
-          {['flower', 'plant'].includes(identification.category) && [
+          {['flower', 'plant', 'fruit', 'vegetable'].includes(identification.category) && [
             ['habitat', 'Ursprung och växtplats'],
-            ['floweringPeriod', 'Blomningsperiod'],
+            ['floweringPeriod', ['fruit', 'vegetable'].includes(identification.category) ? 'Växt- och skördesäsong' : 'Blomningsperiod'],
             ['lifespan', 'Livslängd'],
             ['care', 'Solljus, vatten och jord'],
             ['toxicity', 'Giftighet för människor och husdjur'],
           ].map(([field, label]) => identification[field] && (
             <section key={field} aria-label={label}><h4>{label}</h4><p>{identification[field]}</p></section>
           ))}
-          {['animal', 'fish'].includes(identification.category) && [
+          {['animal', 'fish', 'insect'].includes(identification.category) && [
             ['animalHabitat', 'Livsmiljö och utbredning'],
             ['animalSize', 'Storlek och vikt'],
             ['animalLifespan', 'Livslängd'],

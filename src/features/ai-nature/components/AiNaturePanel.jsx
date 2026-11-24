@@ -129,6 +129,15 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
           <p>{identification.description}</p>
           {identification.reproduction && <section aria-label="Fortplantning"><h4>Fortplantning</h4><p>{identification.reproduction}</p></section>}
           {identification.rootSpread && <section aria-label="Rötter under marken"><h4>Rötter under marken</h4><p>{identification.rootSpread}</p></section>}
+          {['flower', 'plant'].includes(identification.category) && [
+            ['habitat', 'Ursprung och växtplats'],
+            ['floweringPeriod', 'Blomningsperiod'],
+            ['lifespan', 'Livslängd'],
+            ['care', 'Solljus, vatten och jord'],
+            ['toxicity', 'Giftighet för människor och husdjur'],
+          ].map(([field, label]) => identification[field] && (
+            <section key={field} aria-label={label}><h4>{label}</h4><p>{identification[field]}</p></section>
+          ))}
           {identification.facts?.length > 0 && <ul>{identification.facts.map((fact, i) => <li key={i}>{fact}</li>)}</ul>}
           {identification.uncertain && <p>Artbestämningen är osäker.</p>}
           {identification.potentiallyPoisonous && <p role="alert">Kan vara giftig.</p>}

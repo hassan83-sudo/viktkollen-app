@@ -7,7 +7,7 @@ import { callOpenAiJson, getAiGatewayConfig } from './openaiGateway.js'
  * rate limits and billing before calling the model.
  */
 export const natureCategories = Object.freeze([
-  'flower', 'plant', 'tree', 'mushroom', 'berry', 'bird',
+  'flower', 'plant', 'tree', 'mushroom', 'berry', 'fruit', 'vegetable', 'bird',
   'insect', 'animal', 'fish', 'rock', 'other',
 ])
 
@@ -25,8 +25,9 @@ export const natureIdentificationInstructions = [
   'reproduction: a short Swedish explanation of how the identified organism reproduces, including egg-laying frequency or season only when reliably known; use an empty string when not applicable or unknown.',
   'rootSpread: for trees and rooted plants only, a short Swedish explanation of typical lateral root spread beneath the soil relative to the crown and approximate depth only when reliably supported; distinguish species-level estimates from measurements and explain that soil, moisture and age affect spread. Do not invent exact metres from a photo. For other categories return an empty string.',
   'For flower and plant categories only, also return habitat (origin and natural habitat), floweringPeriod, lifespan, care (light, water and soil), and toxicity (known risks to humans and pets, never claim safety). Keep each field concise, use empty strings if unknown or not applicable. Include identifying features in description and seed dispersal in reproduction when known. For other categories omit these extra fields.',
-  'For animal and fish categories only, return animalHabitat (habitat and geographic range), animalSize (typical size and weight), animalLifespan, animalDiet (food and hunting), animalPredators, animalMovement (speed and locomotion), animalBehavior (day/night activity, hibernation and migration), animalRisks (risks to humans), animalConservation (conservation status with scope if known). In reproduction include mating season, gestation or incubation, typical offspring or egg count and frequency when reliably known. Use concise Swedish phrases, omit unknown or inapplicable details, never invent numbers or infer individual age or weight from the image. Keep the complete JSON within the output budget.',
+  'For animal, fish and insect categories only, return animalHabitat (habitat and geographic range), animalSize (typical size and weight), animalLifespan, animalDiet (food and hunting), animalPredators, animalMovement (speed and locomotion), animalBehavior (day/night activity, hibernation and migration), animalRisks (risks to humans), animalConservation (conservation status with scope if known). In reproduction include mating season, gestation or incubation, typical offspring or egg count and frequency when reliably known. Use concise Swedish phrases, omit unknown or inapplicable details, never invent numbers or infer individual age or weight from the image. Keep the complete JSON within the output budget.',
   'For fish use category fish, including sharks and rays; other aquatic animals retain their appropriate category. Return the same animal fields as for animal, with animalHabitat including freshwater, brackish or marine habitat, geographic range and typical depth when known; animalMovement includes swimming and migration; reproduction includes spawning season, egg count and frequency or live birth where applicable. Never infer exact individual size, age or weight, or declare a fish safe to eat from a photograph. Keep fields concise and omit unknown details.',
+  'For insects use category insect and the animal fields, including life stages, metamorphosis, egg-laying season, typical egg count and frequency when known, habitat, diet, predators, activity, ecological role and risks such as stings or bites. For fruit and vegetables use fruit or vegetable (berries retain berry), and return habitat (origin and growing regions), floweringPeriod (growing and harvest season), lifespan (plant life cycle), care (cultivation, light, water and soil), toxicity (known risks, no edibility assurance), description and facts about characteristics. Do not estimate nutritional values in nature identification. Keep all fields concise and omit unknown details.',
   'Use Swedish for all explanatory text. For rocks and minerals use category rock, and name the likely material without claiming certainty from a photo. Do not invent an exact species when the photo is ambiguous.',
   'If unsure, use a broader taxon and set uncertain to true. Never declare mushrooms, berries',
   'or plants safe to eat based on a photograph. Never give definitive medical or toxicity assurances.',
@@ -44,14 +45,14 @@ export function normalizeNatureIdentification(input) {
     description: clean(data.description, 600),
     reproduction: clean(data.reproduction, 500),
     rootSpread: ['tree', 'plant', 'flower'].includes(category) ? clean(data.rootSpread, 500) : '',
-    ...(['flower', 'plant'].includes(category) ? {
+    ...(['flower', 'plant', 'fruit', 'vegetable'].includes(category) ? {
       habitat: clean(data.habitat, 300),
       floweringPeriod: clean(data.floweringPeriod, 200),
       lifespan: clean(data.lifespan, 200),
       care: clean(data.care, 350),
       toxicity: clean(data.toxicity, 350),
     } : {}),
-    ...(['animal', 'fish'].includes(category) ? {
+    ...(['animal', 'fish', 'insect'].includes(category) ? {
       animalHabitat: clean(data.animalHabitat, 300),
       animalSize: clean(data.animalSize, 200),
       animalLifespan: clean(data.animalLifespan, 200),

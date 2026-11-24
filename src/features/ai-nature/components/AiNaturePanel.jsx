@@ -138,6 +138,19 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
           ].map(([field, label]) => identification[field] && (
             <section key={field} aria-label={label}><h4>{label}</h4><p>{identification[field]}</p></section>
           ))}
+          {identification.category === 'animal' && [
+            ['animalHabitat', 'Livsmiljö och utbredning'],
+            ['animalSize', 'Storlek och vikt'],
+            ['animalLifespan', 'Livslängd'],
+            ['animalDiet', 'Föda och jaktbeteende'],
+            ['animalPredators', 'Naturliga fiender'],
+            ['animalMovement', 'Hastighet och rörelse'],
+            ['animalBehavior', 'Beteende, vinterdvala och migration'],
+            ['animalRisks', 'Risker för människor'],
+            ['animalConservation', 'Bevarandestatus'],
+          ].map(([field, label]) => identification[field] && (
+            <section key={field} aria-label={label}><h4>{label}</h4><p>{identification[field]}</p></section>
+          ))}
           {identification.facts?.length > 0 && <ul>{identification.facts.map((fact, i) => <li key={i}>{fact}</li>)}</ul>}
           {identification.uncertain && <p>Artbestämningen är osäker.</p>}
           {identification.potentiallyPoisonous && <p role="alert">Kan vara giftig.</p>}

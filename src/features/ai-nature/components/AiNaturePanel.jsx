@@ -100,7 +100,7 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <div>
           <h2 style={{ margin: 0 }}>AI Natur mm</h2>
-          <p style={{ margin: '6px 0 16px' }}>Upptäck träd, blommor, växter, svampar, fåglar, insekter, djur och stenar.</p>
+          <p style={{ margin: '6px 0 16px' }}>Upptäck träd, blommor, växter, svampar, fåglar, insekter, djur, fiskar och stenar.</p>
         </div>
         {onClose && <button type="button" onClick={onClose} aria-label="Stäng AI Natur mm">Stäng</button>}
       </header>
@@ -138,13 +138,13 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
           ].map(([field, label]) => identification[field] && (
             <section key={field} aria-label={label}><h4>{label}</h4><p>{identification[field]}</p></section>
           ))}
-          {identification.category === 'animal' && [
+          {['animal', 'fish'].includes(identification.category) && [
             ['animalHabitat', 'Livsmiljö och utbredning'],
             ['animalSize', 'Storlek och vikt'],
             ['animalLifespan', 'Livslängd'],
             ['animalDiet', 'Föda och jaktbeteende'],
             ['animalPredators', 'Naturliga fiender'],
-            ['animalMovement', 'Hastighet och rörelse'],
+            ['animalMovement', identification.category === 'fish' ? 'Simning och vandring' : 'Hastighet och rörelse'],
             ['animalBehavior', 'Beteende, vinterdvala och migration'],
             ['animalRisks', 'Risker för människor'],
             ['animalConservation', 'Bevarandestatus'],

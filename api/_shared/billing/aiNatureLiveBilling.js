@@ -132,7 +132,17 @@ export async function resolveAiNatureBillingRuntime() {
     const costGuard = await collectCostThresholdSummaries({
       catalog: aiNatureCostCatalog,
       featureId: AI_NATURE_BILLING.feature_id,
-      repository: usageRepository,
+      repository: {
+        async listInPeriod(input) {
+          const events = await usageRepository.listInPeriod(input)
+          // Dispatch records already carry the per-request estimate. Provider
+          // token telemetry is retained in storage but is not a second charge.
+          return events.filter(event => !(event.event_type === AI_NATURE_BILLING.feature_id
+            && event.provider === 'openai'
+            && event.unit === 'tokens'
+            && String(event.event_id || '').startsWith('provider.')))
+        },
+      },
       // AI Nature uses its own hard limits; unrelated services retain global limits.
       thresholds: (thresholds || []).filter((row) => row.scope === 'FEATURE' && row.feature_id === AI_NATURE_BILLING.feature_id),
     })

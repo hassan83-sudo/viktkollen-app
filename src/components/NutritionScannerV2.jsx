@@ -1830,20 +1830,6 @@ function NutritionScannerV2({
               </div>
             </section>
           )}
-          {analysis.produceFacts?.name && (
-            <section className="scanner-review-section" aria-label="Fakta om frukt eller grönsak">
-              <h4>Visste du detta om {analysis.produceFacts.name}?</h4>
-              {[
-                ['Ursprung', analysis.produceFacts.origin],
-                ['Vitaminer', analysis.produceFacts.vitamins],
-                ['Näringsfördelar', analysis.produceFacts.benefit],
-                ['Intressant fakta', analysis.produceFacts.curiosity],
-              ].filter(([, value]) => value).map(([label, value]) => (
-                <p key={label}><strong>{label}:</strong> {value}</p>
-              ))}
-              <small>Allmän information, inte en medicinsk bedömning.</small>
-            </section>
-          )}
 
           {duplicate.status !== 'noDuplicate' && (
             <p className="analysis-status">

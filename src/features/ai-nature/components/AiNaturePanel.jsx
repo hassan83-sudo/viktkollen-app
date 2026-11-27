@@ -138,6 +138,13 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
           ].map(([field, label]) => identification[field] && (
             <section key={field} aria-label={label}><h4>{label}</h4><p>{identification[field]}</p></section>
           ))}
+          {['fruit', 'vegetable'].includes(identification.category) && [
+            ['vitamins', 'Vitaminer'],
+            ['benefit', 'Näringsfördelar'],
+            ['curiosity', 'Intressant fakta'],
+          ].map(([field, label]) => identification[field] && (
+            <section key={field} aria-label={label}><h4>{label}</h4><p>{identification[field]}</p></section>
+          ))}
           {['animal', 'fish', 'insect'].includes(identification.category) && [
             ['animalHabitat', 'Livsmiljö och utbredning'],
             ['animalSize', 'Storlek och vikt'],

@@ -62,45 +62,10 @@ describe('PlanComparison', () => {
     fireEvent.click(summary)
     expect(details.open).toBe(true)
     const prices = screen.getAllByText(/kr\/mån$|^Gratis$/)
-    expect(prices.map((node) => node.textContent)).toEqual([
-      'Gratis',
-      '4 kr/mån',
-      '7 kr/mån',
-      '9 kr/mån',
-      '12 kr/mån',
-      '15 kr/mån',
-      '19 kr/mån',
-      '29 kr/mån',
-      '39 kr/mån',
-      '49 kr/mån',
-      '59 kr/mån',
-      '69 kr/mån',
-      '79 kr/mån',
-      '89 kr/mån',
-      '99 kr/mån',
-    ])
-    expect(screen.getAllByText('Kommer snart')).toHaveLength(14)
-    expect(screen.getByText('Din plan')).toBeTruthy()
+    expect(prices.map(node => node.textContent)).toEqual(['Gratis', '12 kr/mån'])
     expect(card('Gratis').getByText('Din plan')).toBeTruthy()
-    expect(card('Gratis').getByText('20')).toBeTruthy()
     expect(card('Gratis').getByText('5')).toBeTruthy()
-    expect(card('Gratis').getByText('3')).toBeTruthy()
-    expect(card('Gratis').getByText('25')).toBeTruthy()
-
-    expect(card('9 kr/mån').getByText('70')).toBeTruthy()
-    expect(card('9 kr/mån').getByText('20')).toBeTruthy()
-    expect(card('9 kr/mån').getByText('8')).toBeTruthy()
-    expect(card('9 kr/mån').getByText('80')).toBeTruthy()
-
-    expect(card('49 kr/mån').getAllByText('500')).toHaveLength(2)
-    expect(card('49 kr/mån').getByText('160')).toBeTruthy()
-    expect(card('49 kr/mån').getByText('50')).toBeTruthy()
-
-    expect(card('79 kr/mån').getAllByText('1 000')).toHaveLength(2)
-    expect(card('89 kr/mån').getAllByText('1 250')).toHaveLength(2)
-    expect(card('99 kr/mån').getAllByText('1 500')).toHaveLength(2)
-    expect(card('99 kr/mån').getByText('400')).toBeTruthy()
-    expect(card('99 kr/mån').getByText('150')).toBeTruthy()
+    expect(card('12 kr/mån').getByText('30')).toBeTruthy()
 
     expect(screen.getByText('Vänchatt')).toBeTruthy()
     expect(screen.getByText('Röstinmatning')).toBeTruthy()
@@ -140,11 +105,11 @@ describe('PlanComparison', () => {
     expect(screen.getByText('Kommer snart')).toBeTruthy()
   })
 
-  it('sends the 4 kr plan to the SumUp hosted checkout page', async () => {
+  it('sends the 12 kr plan to the SumUp hosted checkout page', async () => {
     const plan = {
-      ...comparison.plans.find((row) => row.priceText === '4 kr/mån'),
+      ...comparison.plans.find((row) => row.priceText === '12 kr/mån'),
       forSale: true,
-      offerKey: 'sek-400',
+      offerKey: 'sek-1200',
     }
     getSession.mockResolvedValue({ data: { session: { access_token: 'session-token' } } })
     openHostedCheckout.mockClear()
@@ -165,7 +130,7 @@ describe('PlanComparison', () => {
       expect(openHostedCheckout).toHaveBeenCalledWith('https://checkout.sumup.com/pay/page-1')
     })
     const checkoutCall = vi.mocked(fetch).mock.calls.find((call) => call[0] === '/api/billing/checkout')
-    expect(JSON.parse(checkoutCall[1].body)).toEqual({ offer_key: 'sek-400', payment_mode: 'one_time' })
+    expect(JSON.parse(checkoutCall[1].body)).toEqual({ offer_key: 'sek-1200', payment_mode: 'one_time' })
     expect(checkoutCall[1].headers.Authorization).toBe('Bearer session-token')
   })
 
@@ -173,7 +138,7 @@ describe('PlanComparison', () => {
     mockComparison({
       comparison: {
         plans: [{
-          ...comparison.plans.find((plan) => plan.priceText === '4 kr/mån'),
+          ...comparison.plans.find((plan) => plan.priceText === '12 kr/mån'),
           forSale: true,
         }],
       },

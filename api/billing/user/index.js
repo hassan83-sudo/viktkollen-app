@@ -18,6 +18,8 @@ import {
   resolveBodyScanOwnerStatus,
 } from '../../_shared/billing/bodyScanOwnerExemption.js'
 import { verifySupabaseUser } from '../../_shared/verifySupabaseUser.js'
+import { accountTrial } from '../../_shared/billing/accountTrial.js'
+import { isEntitledStatus } from '../../../src/services/billing/effectivePlan.js'
 
 function legacyCompatibilityEntitlement(userId) {
   return {
@@ -39,6 +41,7 @@ function legacyCompatibilityEntitlement(userId) {
 }
 
 const PUBLIC_OPS = Object.freeze({
+  '/api/billing/trial': 'trial',
   '/api/billing/quota': 'quota',
   '/api/billing/subscription': 'subscription',
   '/api/billing/plans': 'plans',
@@ -48,6 +51,7 @@ const PUBLIC_OPS = Object.freeze({
 })
 
 const POST_OPS = Object.freeze({
+  '/api/billing/trial': 'start_trial',
   '/api/billing/plan-change': 'plan_change',
   '/api/billing/checkout': 'checkout',
   '/api/billing/checkout/status': 'checkout_status',
@@ -56,7 +60,7 @@ const POST_OPS = Object.freeze({
   '/api/billing/cancel-undo': 'undo_cancel',
 })
 
-const INTERNAL_OPS = Object.freeze(['quota', 'subscription', 'entitlements', 'plans', 'usage', 'capability', 'sumup_live_check'])
+const INTERNAL_OPS = Object.freeze(['quota', 'subscription', 'entitlements', 'plans', 'usage', 'capability', 'sumup_live_check', 'trial'])
 
 function header(request, name) {
   const headers = request?.headers || {}
@@ -199,6 +203,7 @@ async function handleSubscription(request, response, auth, requestId) {
     ok: true,
     requestId,
     subscription: result.subscription,
+    accessGranted: result.subscription.plan_id !== 'plan.free' && isEntitledStatus(result.subscription, new Date()),
   })
 }
 
@@ -397,6 +402,20 @@ export default async function handler(request, response) {
   void request.query?.op
 
   const postOperation = resolveUserBillingPost(request)
+  if (postOperation === 'start_trial' || resolveUserBillingOperation(request) === 'trial') {
+    if (!['GET', 'POST'].includes(request.method)) {
+      response.setHeader('Allow', 'GET, POST')
+      return response.status(405).json({ ok: false, error: { code: 'INVALID_REQUEST' } })
+    }
+    const trialAuth = await verifySupabaseUser(request, { requestId })
+    if (!trialAuth.authenticated) return response.status(trialAuth.status).json({ ok: false, error: trialAuth.error })
+    const result = await accountTrial({ userId: trialAuth.user.id, start: request.method === 'POST' })
+    return response.status(result.status).json({
+      ok: result.ok,
+      ...(result.ok ? { trial: result.trial, subscription: result.subscription } : { error: { code: result.code } }),
+      requestId,
+    })
+  }
   if (postOperation === 'webhook') return handleWebhookRequest(request, response)
   if (postOperation === 'checkout') return handleCheckoutRequest(request, response)
   if (postOperation === 'checkout_status') return handleCheckoutStatusRequest(request, response)

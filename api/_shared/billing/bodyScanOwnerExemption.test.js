@@ -62,7 +62,7 @@ describe('body.scan owner exemption', () => {
   })
 
   it('does not turn on the food.scan exemption', async () => {
-    setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async () => true })
+    setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => 0, isAdmin: async () => true })
     expect((await resolveFoodScanOwnerExemption({ env: ON, userId: OWNER })).reason).toBe('disabled')
   })
 

@@ -2,7 +2,7 @@ import { BASELINE_PLAN_ID } from './effectivePlan.js'
 
 export function hasForgottenCameraAccess(subscription, now = Date.now()) {
   return Boolean(
-    subscription?.status === 'ACTIVE'
+    ['ACTIVE', 'TRIALING'].includes(subscription?.status)
     && subscription.plan_id
     && subscription.plan_id !== BASELINE_PLAN_ID
     && Date.parse(subscription.current_period_start) <= now

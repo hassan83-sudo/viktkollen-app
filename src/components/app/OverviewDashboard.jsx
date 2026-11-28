@@ -1,4 +1,5 @@
 import { lazy, memo, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import SubscriptionGate from '../billing/SubscriptionGate.jsx'
 import { useTranslation } from 'react-i18next'
 import AiNaturePanel from '../../features/ai-nature/components/AiNaturePanel.jsx'
 import AchievementPreviewCard from './AchievementPreviewCard.jsx'
@@ -1864,11 +1865,13 @@ function OverviewDashboard({
       <section className="overview-more-section home-last-content" aria-labelledby="overview-more-title">
         <h2 id="overview-more-title">{t('home:moreForToday')}</h2>
         <CollapsibleDashboardSection id="meal-planner" title={t('home:mealPlanTitle')}>
+          <SubscriptionGate feature="mealCalendar">
           <DailyMealPlannerCard
             date={selectedDate}
             meals={meals}
             nutritionGoals={nutritionGoals}
           />
+          </SubscriptionGate>
         </CollapsibleDashboardSection>
         <CollapsibleDashboardSection id="weekly-progress" title={t('home:last7Days')}>
           <WeeklyProgressSection

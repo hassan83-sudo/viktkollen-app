@@ -1,4 +1,4 @@
-import { isBillingAdminOnlyPlan } from './planCatalog.js'
+import { isBillingAdminOnlyPlan, PUBLIC_PAID_PLAN_ID } from './planCatalog.js'
 import { entitlementsFromPlan } from './usageSnapshot.js'
 
 const METERED_QUOTAS = Object.freeze([
@@ -67,6 +67,7 @@ export function buildPlanComparison({ currentPlanId = '', plans = [] } = {}) {
   const cards = []
   for (const plan of plans) {
     if (!plan || plan.active === false) continue
+    if (plan.id !== 'plan.free' && plan.id !== PUBLIC_PAID_PLAN_ID) continue
     const price = formatPlanPrice(plan.price_minor, plan.currency || 'SEK')
     if (!price) continue
     const quotas = quotasFromEntitlements(entitlementsOf(plan))

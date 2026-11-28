@@ -17,9 +17,15 @@ const enabled = { FOOD_SCAN_OWNER_UNLIMITED: 'true' }
 afterEach(() => setFoodScanOwnerExemptionDepsForTests(null))
 
 describe('food.scan owner exemption', () => {
+  it('never bypasses the five-scan trial allowance even for an owner', async () => {
+    const countRecentScans = vi.fn(async () => 0)
+    setFoodScanOwnerExemptionDepsForTests({ countRecentScans, isAdmin: async () => true, readSubscription: async () => ({ subscription: { status: 'TRIALING' }, unavailable: false }) })
+    expect(await resolveFoodScanOwnerExemption({ env: enabled, userId: OWNER })).toEqual({ exempt: false, reason: 'trial_quota' })
+    expect(countRecentScans).not.toHaveBeenCalled()
+  })
   it('is off unless the server flag is exactly "true"', async () => {
     const isAdmin = vi.fn(async () => true)
-    setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin })
+    setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => 0, isAdmin })
     for (const value of [undefined, '', '1', 'TRUE', 'yes', 'false']) {
       expect(await resolveFoodScanOwnerExemption({ env: { FOOD_SCAN_OWNER_UNLIMITED: value }, userId: OWNER }))
         .toEqual({ exempt: false, reason: 'disabled' })
@@ -29,20 +35,20 @@ describe('food.scan owner exemption', () => {
   })
 
   it('requires an active billing_admin from the server-side lookup', async () => {
-    setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async () => false })
+    setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => 0, isAdmin: async () => false })
     expect(await resolveFoodScanOwnerExemption({ env: enabled, userId: OWNER })).toEqual({ exempt: false, reason: 'not_admin' })
   })
 
   it('fails closed when the admin lookup errors or returns a non-boolean', async () => {
-    setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async () => { throw new Error('rpc down') } })
+    setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => 0, isAdmin: async () => { throw new Error('rpc down') } })
     expect((await resolveFoodScanOwnerExemption({ env: enabled, userId: OWNER })).exempt).toBe(false)
-    setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async () => 'true' })
+    setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => 0, isAdmin: async () => 'true' })
     expect((await resolveFoodScanOwnerExemption({ env: enabled, userId: OWNER })).exempt).toBe(false)
   })
 
   it('rejects missing or malformed user ids before any lookup', async () => {
     const isAdmin = vi.fn(async () => true)
-    setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin })
+    setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => 0, isAdmin })
     expect(await resolveFoodScanOwnerExemption({ env: enabled, userId: '' })).toEqual({ exempt: false, reason: 'invalid_user' })
     expect(await resolveFoodScanOwnerExemption({ env: enabled, userId: "x' or 1=1" })).toEqual({ exempt: false, reason: 'invalid_user' })
     expect(isAdmin).not.toHaveBeenCalled()
@@ -50,7 +56,7 @@ describe('food.scan owner exemption', () => {
 
   it('grants unlimited monthly scans to the verified owner below the daily cap', async () => {
     const countRecentScans = vi.fn(async () => 42)
-    setFoodScanOwnerExemptionDepsForTests({ countRecentScans, isAdmin: async (id) => id === OWNER })
+    setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans, isAdmin: async (id) => id === OWNER })
     const now = new Date('2026-10-12T12:00:00Z')
     expect(await resolveFoodScanOwnerExemption({ env: enabled, now, userId: OWNER }))
       .toEqual({ dailyCap: FOOD_SCAN_OWNER_DAILY_CAP_DEFAULT, exempt: true, reason: 'owner_unlimited', usedLast24h: 42 })
@@ -58,10 +64,10 @@ describe('food.scan owner exemption', () => {
   })
 
   it('stops the exemption at the durable daily cap and when the cap cannot be read', async () => {
-    setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 100, isAdmin: async () => true })
+    setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => 100, isAdmin: async () => true })
     expect(await resolveFoodScanOwnerExemption({ env: enabled, userId: OWNER }))
       .toMatchObject({ exempt: false, reason: 'daily_cap' })
-    setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => { throw new Error('db') }, isAdmin: async () => true })
+    setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => { throw new Error('db') }, isAdmin: async () => true })
     expect(await resolveFoodScanOwnerExemption({ env: enabled, userId: OWNER }))
       .toEqual({ exempt: false, reason: 'cap_unavailable' })
   })

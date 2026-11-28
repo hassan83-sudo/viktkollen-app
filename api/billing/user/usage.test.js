@@ -70,7 +70,7 @@ describe('GET /api/billing/usage', () => {
     it('shows unlimited food scanning with the daily cap for the server-verified owner', async () => {
       process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
       const isAdmin = vi.fn(async (id) => id === USER)
-      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 7, isAdmin })
+      setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => 7, isAdmin })
 
       const response = await call(createRequest({ query: { user_id: OTHER } }))
 
@@ -83,20 +83,20 @@ describe('GET /api/billing/usage', () => {
 
     it('keeps showing the owner status when the daily cap is reached', async () => {
       process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
-      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 100, isAdmin: async () => true })
+      setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => 100, isAdmin: async () => true })
       expect(foodScanRow(await call(createRequest()))).toMatchObject({ owner_unlimited: true, used_last_24h: 100 })
     })
 
     it('shows the real monthly quota to regular users, when the flag is off, and on lookup errors', async () => {
       process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
-      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async () => false })
+      setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => 0, isAdmin: async () => false })
       expect(foodScanRow(await call(createRequest()))).toEqual({ key: 'food_scan', limit: 5, remaining: 5, used: 0 })
 
-      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => { throw new Error('db') }, isAdmin: async () => true })
+      setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => { throw new Error('db') }, isAdmin: async () => true })
       expect(foodScanRow(await call(createRequest()))).toMatchObject({ limit: 5 })
 
       delete process.env.FOOD_SCAN_OWNER_UNLIMITED
-      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async () => true })
+      setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => 0, isAdmin: async () => true })
       expect(foodScanRow(await call(createRequest()))).toMatchObject({ limit: 5 })
     })
   })

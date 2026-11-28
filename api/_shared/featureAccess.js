@@ -1,5 +1,9 @@
 import { lookupBillingAdmin } from './billing/admin.js'
 import { aiRouteErrorCodes, sendSafeAiError } from './aiRouteErrors.js'
+import { readDurableUserSubscription } from './billing/subscriptionRead.js'
+import { isEntitledStatus } from '../../src/services/billing/effectivePlan.js'
+
+export const SUBSCRIPTION_FEATURES = Object.freeze(['wardrobe', 'mealCalendar', 'checklists', 'personalCare', 'subscriptionFeatures'])
 
 /**
  * Funktionsspärr i servern. Ett enda beslut per funktion och användare, som
@@ -48,7 +52,18 @@ export function isFeatureRestricted(featureKey, env = process.env) {
 /**
  * @returns {Promise<{ allowed: boolean, reason: 'open' | 'admin' | 'not_admin' | 'unverified' }>}
  */
-export async function checkFeatureAccess(featureKey, userId, { env = process.env, lookupAdmin = lookupBillingAdmin } = {}) {
+export async function checkFeatureAccess(featureKey, userId, { env = process.env, lookupAdmin = lookupBillingAdmin, readSubscription = readDurableUserSubscription } = {}) {
+  if (SUBSCRIPTION_FEATURES.includes(featureKey)) {
+    if (!userId) return { allowed: false, reason: 'unverified' }
+    try {
+      const result = await readSubscription(userId)
+      const allowed = !result.unavailable && result.subscription?.plan_id !== 'plan.free'
+        && isEntitledStatus(result.subscription, new Date())
+      return { allowed: Boolean(allowed), reason: allowed ? 'subscription' : 'subscription_required' }
+    } catch {
+      return { allowed: false, reason: 'unverified' }
+    }
+  }
   if (!isFeatureRestricted(featureKey, env)) return { allowed: true, reason: 'open' }
   if (!userId) return { allowed: false, reason: 'unverified' }
   let isAdmin
@@ -62,8 +77,16 @@ export async function checkFeatureAccess(featureKey, userId, { env = process.env
 
 /** Access for every restrictable feature, for the capability response. */
 export async function listFeatureAccess(userId, options = {}) {
-  const entries = await Promise.all(RESTRICTABLE_FEATURES.map(async (featureKey) => {
-    const { allowed } = await checkFeatureAccess(featureKey, userId, options)
+  let subscriptionRead
+  const sharedOptions = {
+    ...options,
+    readSubscription: () => {
+      subscriptionRead ||= (options.readSubscription || readDurableUserSubscription)(userId)
+      return subscriptionRead
+    },
+  }
+  const entries = await Promise.all([...RESTRICTABLE_FEATURES, ...SUBSCRIPTION_FEATURES].map(async (featureKey) => {
+    const { allowed } = await checkFeatureAccess(featureKey, userId, sharedOptions)
     return [featureKey, allowed ? FEATURE_ACCESS.ALLOWED : FEATURE_ACCESS.LOCKED]
   }))
   return Object.fromEntries(entries)

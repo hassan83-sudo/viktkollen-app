@@ -45,7 +45,7 @@ function database() {
 
 function paidCheckout(overrides = {}) {
   return {
-    amount: 4,
+    amount: 12,
     checkout_reference: 'chk_1',
     currency: 'SEK',
     customer_id: 'cus_bill10a',
@@ -53,7 +53,7 @@ function paidCheckout(overrides = {}) {
     merchant_code: MERCHANT,
     status: 'PAID',
     transactions: [{
-      amount: 4,
+      amount: 12,
       currency: 'SEK',
       id: TRANSACTION_ID,
       status: 'SUCCESSFUL',
@@ -147,11 +147,11 @@ describe('BILL-10A SumUp adapter', () => {
     setCheckoutAdapterForTests(adapter)
     setCheckoutPortsForTests(ports(db))
     await expect(beginCheckout({
-      body: { amount: 400, currency: 'SEK', plan_id: 'plan.prelim.sek.month.04', user_id: OTHER },
+      body: { amount: 400, currency: 'SEK', plan_id: 'plan.prelim.sek.month.12', user_id: OTHER },
       userId: USER,
     })).resolves.toMatchObject({ code: 'INVALID_AMOUNT' })
     await expect(beginCheckout({
-      body: { amount: 4, currency: 'USD', plan_id: 'plan.prelim.sek.month.04' },
+      body: { amount: 12, currency: 'USD', plan_id: 'plan.prelim.sek.month.12' },
       userId: USER,
     })).resolves.toMatchObject({ code: 'INVALID_CURRENCY' })
     await expect(beginCheckout({
@@ -173,7 +173,7 @@ describe('BILL-10A SumUp adapter', () => {
     setCheckoutAdapterForTests(adapter)
     setOneTimeCheckoutPortsForTests(oneTimePorts(db))
     const pending = await beginCheckout({
-      body: { amount: 4, currency: 'sek', plan_id: 'plan.prelim.sek.month.04', user_id: OTHER },
+      body: { amount: 12, currency: 'sek', plan_id: 'plan.prelim.sek.month.12', user_id: OTHER },
       userId: USER,
     })
     expect(pending).toMatchObject({
@@ -183,7 +183,7 @@ describe('BILL-10A SumUp adapter', () => {
       validated: true,
     })
     expect(pending.hostedCheckoutUrl).not.toMatch(/api\.sumup\.com|Bearer|MTEST01/)
-    expect(transport.calls[0].body).toMatchObject({ amount: 4, currency: 'SEK', merchant_code: MERCHANT })
+    expect(transport.calls[0].body).toMatchObject({ amount: 12, currency: 'SEK', merchant_code: MERCHANT })
     expect(transport.calls[0].body.amount).not.toBe(400)
     expect(transport.calls[0].body.customer_id).toBeUndefined()
     expect(transport.calls[0].body).toMatchObject({
@@ -193,7 +193,7 @@ describe('BILL-10A SumUp adapter', () => {
     expect(transport.calls[0].body.purpose).toBeUndefined()
     expect(new Date(transport.calls[0].body.valid_until).toISOString()).toBe(db.getIntent(pending.checkoutId).expiresAt)
     expect(db.getIntent(pending.checkoutId)).toMatchObject({
-      planId: 'plan.prelim.sek.month.04',
+      planId: 'plan.prelim.sek.month.12',
       provider: 'sumup',
       providerCheckoutRef: CHECKOUT_ID,
       status: 'pending',
@@ -212,7 +212,7 @@ describe('BILL-10A SumUp adapter', () => {
     })
     setCheckoutAdapterForTests(failing)
     const failed = await beginCheckout({
-      body: { plan_id: 'plan.prelim.sek.month.07' },
+      body: { plan_id: 'plan.prelim.sek.month.12' },
       userId: USER,
     })
     expect(failed).toMatchObject({ accessGranted: false, code: 'SUMUP_CHECKOUT_FAILED' })
@@ -253,7 +253,7 @@ describe('BILL-10A SumUp adapter', () => {
     }))
     setOneTimeCheckoutPortsForTests(oneTimePorts(db))
     const pending = await beginCheckout({
-      body: { plan_id: 'plan.prelim.sek.month.04' },
+      body: { plan_id: 'plan.prelim.sek.month.12' },
       userId: USER,
     })
     expect(pending).toMatchObject({
@@ -298,7 +298,7 @@ describe('BILL-10A SumUp adapter', () => {
     }))
     setOneTimeCheckoutPortsForTests(oneTimePorts(db))
     const pending = await beginCheckout({
-      body: { plan_id: 'plan.prelim.sek.month.04' },
+      body: { plan_id: 'plan.prelim.sek.month.12' },
       userId: USER,
     })
     expect(pending).toMatchObject({
@@ -365,7 +365,7 @@ describe('BILL-10A SumUp adapter', () => {
       }))
       setOneTimeCheckoutPortsForTests(oneTimePorts(db, { onBind: () => { binds += 1 } }))
       const result = await beginCheckout({
-        body: { plan_id: 'plan.prelim.sek.month.04' },
+        body: { plan_id: 'plan.prelim.sek.month.12' },
         userId: USER,
       })
       expect(result).toMatchObject({ accessGranted: false, code: 'SUMUP_CHECKOUT_FAILED' })
@@ -384,7 +384,7 @@ describe('BILL-10A SumUp adapter', () => {
     setCheckoutAdapterForTests(adapter)
     setOneTimeCheckoutPortsForTests(oneTimePorts(db))
     const pending = await beginCheckout({
-      body: { plan_id: 'plan.prelim.sek.month.04' },
+      body: { plan_id: 'plan.prelim.sek.month.12' },
       userId: USER,
     })
     transport.calls.length = 0
@@ -477,7 +477,7 @@ describe('BILL-10A SumUp adapter', () => {
       registry,
     })
     expect(verified).toMatchObject({ accessGranted: true, ok: true })
-    expect(db.quotaPlan(USER)).toBe('plan.prelim.sek.month.04')
+    expect(db.quotaPlan(USER)).toBe('plan.prelim.sek.month.12')
     expect(db.getIntent(pending.checkoutId).status).toBe('consumed')
     const replay = await ingestProviderWebhook({
       callRpc,
@@ -488,7 +488,7 @@ describe('BILL-10A SumUp adapter', () => {
     store.set('checkout', {
       ...checkout,
       transactions: [{
-        amount: 4,
+        amount: 12,
         currency: 'SEK',
         id: '11111111-2222-4333-8444-555555555555',
         status: 'SUCCESSFUL',
@@ -512,17 +512,17 @@ describe('BILL-10A SumUp adapter', () => {
         seen.push({ authorization: options.headers.Authorization, body: JSON.parse(options.body), method: options.method, url })
         return {
           async json() {
-            return { amount: 4, checkout_reference: 'chk_1', currency: 'SEK', id: CHECKOUT_ID, merchant_code: MERCHANT, status: 'PENDING' }
+            return { amount: 12, checkout_reference: 'chk_1', currency: 'SEK', id: CHECKOUT_ID, merchant_code: MERCHANT, status: 'PENDING' }
           },
           ok: true,
         }
       },
     })
-    await transport.createCheckout({ amount: 4, checkout_reference: 'chk_1', currency: 'SEK', merchant_code: MERCHANT })
+    await transport.createCheckout({ amount: 12, checkout_reference: 'chk_1', currency: 'SEK', merchant_code: MERCHANT })
     expect(seen[0].url).toBe('https://api.sumup.com/v0.1/checkouts')
     expect(seen[0].method).toBe('POST')
     expect(seen[0].authorization).toBe('Bearer test-only-key')
-    expect(seen[0].body.amount).toBe(4)
+    expect(seen[0].body.amount).toBe(12)
     const db = database()
     const checkout = {
       ...paidCheckout({ checkout_reference: 'chk_1' }),
@@ -530,7 +530,7 @@ describe('BILL-10A SumUp adapter', () => {
       payment_instrument: { token: '6878cb7f-6515-47bf-bdd9-1408d270fdce' },
     }
     const { adapter } = adapterFor(db, checkout)
-    await db.createIntent({ planId: 'plan.prelim.sek.month.04', provider: 'sumup', userId: USER })
+    await db.createIntent({ planId: 'plan.prelim.sek.month.12', provider: 'sumup', userId: USER })
     await db.bindCheckoutRef({ checkoutId: 'chk_1', provider: 'sumup', providerCheckoutRef: CHECKOUT_ID })
     const verified = await adapter.verify({
       rawBody: JSON.stringify({ event_type: 'CHECKOUT_STATUS_CHANGED', id: CHECKOUT_ID }),
@@ -664,7 +664,7 @@ function walk(dir, hits) {
       walk(full, hits)
       continue
     }
-    if (!/\.(js|jsx|ts|tsx)$/.test(entry.name)) continue
+    if (!/\.(js|jsx|ts|tsx)$/.test(entry.name) || /\.test\./.test(entry.name)) continue
     const text = readFileSync(full, 'utf8')
     if (/providers\/sumup|SUMUP_API_KEY|SUMUP_MERCHANT_CODE/.test(text)) hits.push(entry.name)
   }

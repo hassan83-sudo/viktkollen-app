@@ -910,7 +910,7 @@ describe('nutrition photo analysis API route', () => {
     it('lifts the 12 per 10 minutes limit only for the server-verified owner', async () => {
       process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
       const isAdmin = vi.fn(async (id) => id === USER_ID)
-      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 20, isAdmin })
+      setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => 20, isAdmin })
       const fetchMock = stubProvider()
 
       const statuses = await scanMany(15)
@@ -921,7 +921,7 @@ describe('nutrition photo analysis API route', () => {
 
     it('keeps the 12 per 10 minutes limit for regular users', async () => {
       process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
-      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async () => false })
+      setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => 0, isAdmin: async () => false })
       stubProvider()
 
       const responses = await scanResponses(13)
@@ -933,7 +933,7 @@ describe('nutrition photo analysis API route', () => {
     })
 
     it('keeps the 12 per 10 minutes limit for the owner when the flag is off or the daily cap is reached', async () => {
-      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async () => true })
+      setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => 0, isAdmin: async () => true })
       stubProvider()
       delete process.env.FOOD_SCAN_OWNER_UNLIMITED
       let responses = await scanResponses(13)
@@ -941,7 +941,7 @@ describe('nutrition photo analysis API route', () => {
 
       setAiRateLimitAdapterForTests()
       process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
-      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 100, isAdmin: async () => true })
+      setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => 100, isAdmin: async () => true })
       responses = await scanResponses(13)
       expect(responses[12].statusCode).toBe(429)
       expect(responses[12].headers['Retry-After']).toBeDefined()
@@ -949,7 +949,7 @@ describe('nutrition photo analysis API route', () => {
 
     it('keeps the 12 per 10 minutes limit when the owner lookup fails', async () => {
       process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
-      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async () => { throw new Error('rpc down') } })
+      setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => 0, isAdmin: async () => { throw new Error('rpc down') } })
       stubProvider()
 
       const responses = await scanResponses(13)
@@ -959,7 +959,7 @@ describe('nutrition photo analysis API route', () => {
 
     it('keeps the normal monthly quota for regular users even when the flag is on', async () => {
       process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
-      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async () => false })
+      setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => 0, isAdmin: async () => false })
       stubProvider()
 
       const statuses = await scanMany(6)
@@ -971,7 +971,7 @@ describe('nutrition photo analysis API route', () => {
     it('ignores client attempts to claim admin or unlimited status', async () => {
       process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
       const isAdmin = vi.fn(async () => false)
-      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin })
+      setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => 0, isAdmin })
       stubProvider()
 
       const statuses = await scanMany(6, { 'x-viktkollen-admin': 'true', 'x-viktkollen-plan': 'unlimited' })
@@ -983,7 +983,7 @@ describe('nutrition photo analysis API route', () => {
 
     it('lets the verified owner scan past the monthly limit while usage is still recorded', async () => {
       process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
-      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin: async (id) => id === USER_ID })
+      setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => 0, isAdmin: async (id) => id === USER_ID })
       const runtime = installFoodScanBillingTestRuntime()
       const fetchMock = stubProvider()
 
@@ -998,7 +998,7 @@ describe('nutrition photo analysis API route', () => {
     it('does not exempt the owner when the flag is off', async () => {
       delete process.env.FOOD_SCAN_OWNER_UNLIMITED
       const isAdmin = vi.fn(async () => true)
-      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 0, isAdmin })
+      setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => 0, isAdmin })
       stubProvider()
 
       const statuses = await scanMany(6)
@@ -1010,7 +1010,7 @@ describe('nutrition photo analysis API route', () => {
     it('falls back to the normal quota when the owner daily cap is reached', async () => {
       process.env.FOOD_SCAN_OWNER_UNLIMITED = 'true'
       process.env.FOOD_SCAN_OWNER_DAILY_CAP = '3'
-      setFoodScanOwnerExemptionDepsForTests({ countRecentScans: async () => 3, isAdmin: async () => true })
+      setFoodScanOwnerExemptionDepsForTests({ readSubscription: async () => ({ subscription: { status: 'ACTIVE' }, unavailable: false }), countRecentScans: async () => 3, isAdmin: async () => true })
       stubProvider()
 
       const statuses = await scanMany(6)

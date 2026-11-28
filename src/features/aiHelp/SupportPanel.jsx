@@ -117,7 +117,7 @@ export default function SupportPanel({ admin = false, userId = null, initiallyOp
   return <section className="app-information support-panel" aria-label={admin ? chrome.adminTitle : chrome.title} dir={getLanguageDefinition(language).direction} lang={language}>
     <h3>{admin ? chrome.adminTitle : chrome.title}</h3>
     {!admin && <><p><strong>Kundtjänst – alla dagar i veckan</strong></p><p>Vi finns vanligtvis tillgängliga mellan kl. 09.00 och 22.00.</p><p>Vi försöker svara inom 30 minuter, men ibland kan det ta upp till 24 timmar.</p></>}
-    <p>{chrome.policy}</p>
+    <p>{chrome.policy}</p>{!admin && <p>Även gratisanvändare kan kontakta oss om betalningar.</p>}
     {!opened && <button type="button" className="secondary-button" onClick={() => setOpened(true)}>{chrome.check}</button>}
     {opened && <>
       <p>{chrome.notice}</p>
@@ -142,17 +142,17 @@ export default function SupportPanel({ admin = false, userId = null, initiallyOp
         }}>{chrome.enableNotifications}</button>
       </>}
       {(loadFailed || notice) && <p role="status">{loadFailed ? chrome.error : notice}</p>}
-      {!admin && data?.eligible === true && <form onSubmit={async (event) => {
+      {!admin && data && <form onSubmit={async (event) => {
         event.preventDefault()
         requestId.current ||= crypto.randomUUID()
-        if (await command({ action: 'create', requestId: requestId.current, category, message })) { setMessage(''); requestId.current = null }
+        if (await command({ action: 'create', requestId: requestId.current, category: data.eligible ? category : 'billing', message })) { setMessage(''); requestId.current = null }
       }}>
-        <label>{chrome.title}<select disabled={busy} value={category} onChange={(e) => { setCategory(e.target.value); requestId.current = null }}>{['billing','technical','account','other'].map((value) => <option key={value} value={value}>{chrome[value]}</option>)}</select></label>
+        <label>{chrome.title}<select disabled={busy} value={data.eligible ? category : 'billing'} onChange={(e) => { setCategory(e.target.value); requestId.current = null }}>{(data.eligible ? ['billing','technical','account','other'] : ['billing']).map((value) => <option key={value} value={value}>{chrome[value]}</option>)}</select></label>
         <label>{chrome.message}<textarea disabled={busy} value={message} maxLength={2000} placeholder={chrome.placeholder} onChange={(e) => { setMessage(e.target.value); requestId.current = null }} /></label>
         <button className="secondary-button" disabled={busy || !message.trim()}>{chrome.create}</button>
       </form>}
       {data?.tickets?.length === 0 && <p>{chrome.empty}</p>}
-      {(data?.tickets || []).map((ticket) => <Ticket key={`${ticket.id}:${ticket.version}`} ticket={ticket} admin={admin} chrome={chrome} busy={busy} eligible={data?.eligible === true} onCommand={command} />)}
+      {(data?.tickets || []).map((ticket) => <Ticket key={`${ticket.id}:${ticket.version}`} ticket={ticket} admin={admin} chrome={chrome} busy={busy} eligible={data?.eligible === true || ticket.category === 'billing'} onCommand={command} />)}
     </>}
   </section>
 }

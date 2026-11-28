@@ -5,6 +5,34 @@ import { requestSupport } from './supportClient.js'
 import { markSupportRead } from './SupportInboxButton.jsx'
 import { supportChrome } from './supportChrome.js'
 
+const supportHours = {
+  "sv": [
+    "Kundtjänst – alla dagar i veckan",
+    "Vi finns vanligtvis tillgängliga mellan kl. 09.00 och 22.00.",
+    "Vi försöker svara inom 30 minuter, men ibland kan det ta upp till 24 timmar."
+  ],
+  "en": [
+    "Customer service – every day",
+    "We are usually available from 09:00 to 22:00.",
+    "We aim to reply within 30 minutes, but it may take up to 24 hours."
+  ],
+  "es": [
+    "Atención al cliente – todos los días",
+    "Normalmente estamos disponibles de 09:00 a 22:00.",
+    "Intentamos responder en 30 minutos, pero podemos tardar hasta 24 horas."
+  ],
+  "ar": [
+    "خدمة العملاء – كل أيام الأسبوع",
+    "نتوفر عادةً من الساعة 09:00 إلى 22:00.",
+    "نحاول الرد خلال 30 دقيقة، وقد يستغرق الرد حتى 24 ساعة."
+  ],
+  "zh-CN": [
+    "客户服务 – 每天开放",
+    "我们通常每天09:00至22:00提供服务。",
+    "我们尽量在30分钟内回复，但最长可能需要24小时。"
+  ]
+}
+
 function Ticket({ ticket, admin, chrome, onCommand, busy, eligible }) {
   const [reply, setReply] = useState('')
   const [priority, setPriority] = useState(ticket.priority)
@@ -29,6 +57,7 @@ export default function SupportPanel({ admin = false, userId = null, initiallyOp
   const { i18n } = useTranslation()
   const language = normalizeLanguageCode(i18n.resolvedLanguage || i18n.language)
   const chrome = supportChrome(language)
+  const hours = supportHours[language] || supportHours.en
   const [opened, setOpened] = useState(admin || initiallyOpened)
   const [data, setData] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -116,8 +145,8 @@ export default function SupportPanel({ admin = false, userId = null, initiallyOp
 
   return <section className="app-information support-panel" aria-label={admin ? chrome.adminTitle : chrome.title} dir={getLanguageDefinition(language).direction} lang={language}>
     <h3>{admin ? chrome.adminTitle : chrome.title}</h3>
-    {!admin && <><p><strong>Kundtjänst – alla dagar i veckan</strong></p><p>Vi finns vanligtvis tillgängliga mellan kl. 09.00 och 22.00.</p><p>Vi försöker svara inom 30 minuter, men ibland kan det ta upp till 24 timmar.</p></>}
-    <p>{chrome.policy}</p>{!admin && <p>Även gratisanvändare kan kontakta oss om betalningar.</p>}
+    {!admin && <><p><strong>{hours[0]}</strong></p><p>{hours[1]}</p><p>{hours[2]}</p></>}
+    <p>{chrome.policy}</p>
     {!opened && <button type="button" className="secondary-button" onClick={() => setOpened(true)}>{chrome.check}</button>}
     {opened && <>
       <p>{chrome.notice}</p>

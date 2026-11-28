@@ -10,6 +10,8 @@ import JourneySection from './features/journey/JourneySection.jsx'
 import { commitHelpSectionOpen, isAiHelpSectionAllowed } from './features/aiHelp/aiHelpTools.js'
 import PlaceSection from './components/sections/PlaceSection.jsx'
 import AiHelpPanel from './features/aiHelp/AiHelpPanel.jsx'
+import SupportInboxButton from './features/aiHelp/SupportInboxButton.jsx'
+import SupportPanel from './features/aiHelp/SupportPanel.jsx'
 import ProgressSection from './components/sections/ProgressSection.jsx'
 import ReadySection from './components/sections/ReadySection.jsx'
 import WellbeingSection from './components/sections/WellbeingSection.jsx'
@@ -3221,6 +3223,7 @@ function App() {
     <main className="app-shell">
         <PwaExperience showDiagnostics={showInternalTools} />
         <GlobalSyncStatus />
+        {authSession && <div style={{display:'flex',justifyContent:'flex-end',padding:'4px 12px'}}><SupportInboxButton key={authUserId} userId={authUserId} onOpen={() => { handleAppSectionChange('support'); setTimeout(() => window.dispatchEvent(new Event('viktkollen:open-human-support')), 0) }} /></div>}
         <ReminderBanner
           dueReminders={dueReminders}
           onComplete={handleReminderComplete}
@@ -3350,6 +3353,8 @@ function App() {
             <article className="panel">
               <h2>Kundtjänst</h2>
               <p>Få hjälp med appen, abonnemang, betalningar och ditt konto.</p>
+              <SupportInboxButton key={authUserId} userId={authUserId} onOpen={() => window.dispatchEvent(new Event('viktkollen:open-human-support'))} />
+              <SupportPanel key={authUserId || 'guest'} userId={authUserId} initiallyOpened />
               <AiHelpPanel />
             </article>
           </AppSection>

@@ -123,7 +123,7 @@ export async function readPostgresUsageSnapshot(client, userId) {
     accessPeriodEnd: planId === 'plan.free' ? null : openPeriods[0]?.current_period_end,
     entitlements,
     period,
-    plan: { price_minor: plan.price_minor },
+    plan: { id: plan.plan_id, price_minor: plan.price_minor },
     reservations,
   })
 }

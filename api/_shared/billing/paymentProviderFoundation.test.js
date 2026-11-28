@@ -23,7 +23,7 @@ import { createLocalSubscriptionLifecycle } from '../../../src/services/billing/
 const root = join(dirname(fileURLToPath(import.meta.url)), '../../..')
 const USER = '11111111-1111-4111-8111-111111111111'
 const OTHER = '22222222-2222-4222-8222-222222222222'
-const PAID = 'plan.prelim.sek.month.04'
+const PAID = 'plan.prelim.sek.month.12'
 const OTHER_PLAN = 'plan.prelim.sek.month.07'
 const START = '2026-09-01T00:00:00.000Z'
 const END = '2026-10-01T00:00:00.000Z'
@@ -64,7 +64,7 @@ function checkoutRequest(body, token = 'valid-token') {
 }
 
 function harness() {
-  const local = createLocalSubscriptionLifecycle()
+  const local = createLocalSubscriptionLifecycle({ now: () => new Date('2026-09-15T00:00:00Z') })
   const intents = createMemoryCheckoutIntents()
   const processor = createProviderEventProcessor({
     activation: local.activation,

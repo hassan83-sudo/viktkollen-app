@@ -22,7 +22,7 @@ const OTHER = '22222222-2222-4222-8222-222222222222'
 const SUMUP_ID = '4f3a9c0e-6b1d-4a77-9e20-0c5d8a7b6e11'
 const TX_ID = '6b425463-3e1b-431d-83fa-1e51c2925e99'
 const MERCHANT = 'MTEST01'
-const PLAN = 'plan.prelim.sek.month.04'
+const PLAN = 'plan.prelim.sek.month.12'
 const HOSTED = 'https://checkout.sumup.com/pay/abc123'
 const DAY = 24 * 60 * 60 * 1000
 
@@ -40,13 +40,13 @@ async function boundIntent(db, userId = USER) {
 
 function sumUpCheckout(reference, overrides = {}) {
   return {
-    amount: 4,
+    amount: 12,
     checkout_reference: reference,
     currency: 'SEK',
     id: SUMUP_ID,
     merchant_code: MERCHANT,
     status: 'PAID',
-    transactions: [{ amount: 4, currency: 'SEK', id: TX_ID, status: 'SUCCESSFUL', timestamp: new Date().toISOString() }],
+    transactions: [{ amount: 12, currency: 'SEK', id: TX_ID, status: 'SUCCESSFUL', timestamp: new Date().toISOString() }],
     ...overrides,
   }
 }
@@ -217,8 +217,8 @@ describe('SumUp Hosted Checkout, engångsköp', () => {
       ['WRONG_CHECKOUT_REF', { id: '99999999-9999-4999-8999-999999999999' }],
       ['PURPOSE_MISMATCH', { purpose: 'SETUP_RECURRING_PAYMENT' }],
       ['PAYMENT_BINDING_UNAVAILABLE', { transactions: [
-        { amount: 4, currency: 'SEK', id: TX_ID, status: 'SUCCESSFUL', timestamp: new Date().toISOString() },
-        { amount: 4, currency: 'SEK', id: '11111111-2222-4333-8444-555555555555', status: 'SUCCESSFUL', timestamp: new Date().toISOString() },
+        { amount: 12, currency: 'SEK', id: TX_ID, status: 'SUCCESSFUL', timestamp: new Date().toISOString() },
+        { amount: 12, currency: 'SEK', id: '11111111-2222-4333-8444-555555555555', status: 'SUCCESSFUL', timestamp: new Date().toISOString() },
       ] }],
       ['AMOUNT_MISMATCH', { transactions: [{ amount: 1, currency: 'SEK', id: TX_ID, status: 'SUCCESSFUL', timestamp: new Date().toISOString() }] }],
       ['PAYMENT_FAILED', { status: 'FAILED' }],
@@ -300,7 +300,7 @@ describe('start av engångsköp', () => {
           return [{ id: SUMUP_ID, checkout_reference: reference }]
         },
         async retrieveCheckout() {
-          return { amount: 4, checkout_reference: 'chk_new', currency: 'SEK', hosted_checkout_url: HOSTED, id: SUMUP_ID, merchant_code: merchantCode, status: 'PENDING' }
+          return { amount: 12, checkout_reference: 'chk_new', currency: 'SEK', hosted_checkout_url: HOSTED, id: SUMUP_ID, merchant_code: merchantCode, status: 'PENDING' }
         },
       },
     }))
@@ -359,90 +359,26 @@ describe('start av engångsköp', () => {
     expect(calls.bind).toHaveLength(1)
   })
 
-  it('öppnar 12 kronor bara för en faktureringsadministratör och låter servern sätta beloppet', async () => {
-    let opened = ''
-    const calls = setup({
-      open: async ({ planId }) => {
-        opened = planId
-        return {
-          checkoutId: 'chk_new',
-          expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-          hostedUrl: '',
-          planId,
-          providerCheckoutRef: '',
-          reused: false,
-        }
-      },
-    })
-    const denied = await beginCheckout({
-      body: { billing_admin: true, offer_key: 'sek-1200', price_minor: 1200 },
-      isBillingAdmin: async () => false,
-      userId: USER,
-    })
-    expect(denied).toMatchObject({ accessGranted: false, code: 'INVALID_PLAN' })
+  it('öppnar 12 kronor för vanliga konton och låter servern sätta beloppet', async () => {
+    const calls = setup()
+    expect(await beginCheckout({ body: { amount: 4, offer_key: 'sek-1200' }, userId: USER })).toMatchObject({ code: 'INVALID_AMOUNT' })
     expect(calls.create).toEqual([])
-
-    const mismatched = await beginCheckout({
-      body: { amount: 4, offer_key: 'sek-1200' },
-      isBillingAdmin: async () => true,
-      userId: USER,
-    })
-    expect(mismatched).toMatchObject({ accessGranted: false, code: 'INVALID_AMOUNT' })
-    expect(calls.create).toEqual([])
-
-    const created = await beginCheckout({
-      body: { offer_key: 'sek-1200' },
-      isBillingAdmin: async () => true,
-      userId: USER,
-    })
-    expect(created).toMatchObject({ accessGranted: false, code: 'CHECKOUT_PENDING' })
-    expect(opened).toBe('plan.prelim.sek.month.12')
-    expect(calls.create).toEqual([expect.objectContaining({
-      amount: 12,
-      currency: 'SEK',
-      hosted_checkout: { enabled: true },
-    })])
-    expect(calls.create[0].purpose).toBeUndefined()
+    expect(await beginCheckout({ body: { offer_key: 'sek-1200', price_minor: 1 }, isBillingAdmin: async () => false, userId: USER })).toMatchObject({ code: 'CHECKOUT_PENDING', accessGranted: false })
+    expect(calls.create).toEqual([expect.objectContaining({ amount: 12, currency: 'SEK', hosted_checkout: { enabled: true } })])
   })
 
-  it('öppnar 9 kronor bara för en faktureringsadministratör', async () => {
-    let opened = ''
-    const calls = setup({
-      open: async ({ planId }) => {
-        opened = planId
-        return {
-          checkoutId: 'chk_new',
-          expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-          hostedUrl: '',
-          planId,
-          providerCheckoutRef: '',
-          reused: false,
-        }
-      },
-    })
-    const denied = await beginCheckout({
-      body: { billing_admin: true, offer_key: 'sek-900', plan_id: 'plan.prelim.sek.month.09' },
-      isBillingAdmin: async () => false,
-      userId: USER,
-    })
-    expect(denied).toMatchObject({ accessGranted: false, code: 'INVALID_PLAN' })
+  it('nekar utgångna skanningspaket även för administratörer', async () => {
+    const calls = setup()
+    for (const price of [400, 700, 900, 1500, 9900]) {
+      expect(await beginCheckout({ body: { offer_key: 'sek-' + price }, isBillingAdmin: async () => true, userId: USER })).toMatchObject({ code: 'INVALID_PLAN' })
+    }
     expect(calls.create).toEqual([])
-
-    const created = await beginCheckout({
-      body: { offer_key: 'sek-900' },
-      isBillingAdmin: async () => true,
-      userId: USER,
-    })
-    expect(created).toMatchObject({ accessGranted: false, code: 'CHECKOUT_PENDING' })
-    expect(opened).toBe('plan.prelim.sek.month.09')
-    expect(calls.create).toEqual([expect.objectContaining({ amount: 9, currency: 'SEK' })])
-    expect(calls.create[0].purpose).toBeUndefined()
   })
 
   it('översätter köpnyckeln från planlistan på servern', async () => {
     let opened = ''
     setup({ open: async ({ planId }) => { opened = planId; return { checkoutId: 'chk_new', expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(), hostedUrl: '', planId, providerCheckoutRef: '', reused: false } } })
-    await expect(beginCheckout({ body: { offer_key: 'sek-400' }, userId: USER })).resolves.toMatchObject({ code: 'CHECKOUT_PENDING' })
+    await expect(beginCheckout({ body: { offer_key: 'sek-1200' }, userId: USER })).resolves.toMatchObject({ code: 'CHECKOUT_PENDING' })
     expect(opened).toBe(PLAN)
     for (const offer of ['sek-401', 'sek-0', 'eur-400', 'plan.prelim.sek.month.04x']) {
       await expect(beginCheckout({ body: { offer_key: offer }, userId: USER }), offer).resolves.toMatchObject({ code: 'INVALID_PLAN' })
@@ -542,7 +478,7 @@ describe('start av engångsköp', () => {
       })
       expect(ready, origin).toMatchObject({ code: 'CHECKOUT_PENDING', hostedCheckoutUrl: HOSTED })
       expect(calls.create[0]).toMatchObject({
-        amount: 4,
+        amount: 12,
         currency: 'SEK',
         redirect_url: `${origin}/?vk_checkout=chk_new#installningar`,
         return_url: `${origin}/api/billing/webhook`,
@@ -591,9 +527,9 @@ describe('start av engångsköp', () => {
         merchant,
         merchantCode: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE,
       })
-      const ready = await beginCheckout({ body: { offer_key: 'sek-400', price_minor: 1 }, env: productionEnv, userId: USER })
+      const ready = await beginCheckout({ body: { offer_key: 'sek-1200', price_minor: 1 }, env: productionEnv, userId: USER })
       expect(ready).toMatchObject({ code: 'CHECKOUT_PENDING', hostedCheckoutUrl: HOSTED })
-      expect(calls.create[0]).toMatchObject({ amount: 4, currency: 'SEK', merchant_code: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE })
+      expect(calls.create[0]).toMatchObject({ amount: 12, currency: 'SEK', merchant_code: SUMUP_CONFIRMED_LIVE_MERCHANT_CODE })
       expect(calls.merchant).toBe(1)
     }
   })

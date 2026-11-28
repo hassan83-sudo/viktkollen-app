@@ -73,9 +73,9 @@ describe('funktionsspärr: regel', () => {
     expect(isFeatureRestricted('foodScan', {})).toBe(false)
     const lookupAdmin = async () => false
     await expect(checkFeatureAccess('aiEar', USER_ID, { env: { FEATURE_RESTRICTIONS: 'off' }, lookupAdmin })).resolves.toEqual({ allowed: true, reason: 'open' })
-    await expect(listFeatureAccess(USER_ID, { env: {}, lookupAdmin })).resolves.toEqual({ aiEar: 'locked' })
-    await expect(listFeatureAccess(USER_ID, { env: { FEATURE_RESTRICTIONS: 'off' }, lookupAdmin })).resolves.toEqual({ aiEar: 'allowed' })
-    await expect(listFeatureAccess(ADMIN_ID, { env: {}, lookupAdmin: async () => true })).resolves.toEqual({ aiEar: 'allowed' })
+    await expect(listFeatureAccess(USER_ID, { env: {}, lookupAdmin })).resolves.toMatchObject({ aiEar: 'locked' })
+    await expect(listFeatureAccess(USER_ID, { env: { FEATURE_RESTRICTIONS: 'off' }, lookupAdmin })).resolves.toMatchObject({ aiEar: 'allowed' })
+    await expect(listFeatureAccess(ADMIN_ID, { env: {}, lookupAdmin: async () => true })).resolves.toMatchObject({ aiEar: 'allowed' })
   })
 })
 

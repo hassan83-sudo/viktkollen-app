@@ -145,6 +145,7 @@ export async function executeUserBillingIntent({
 
   const current = await deps.readSubscription(userId)
   if (current?.unavailable) return fail('DURABLE_UNAVAILABLE', 503)
+  if (current?.subscription?.plan_id === 'plan.trial.30days') return fail('OPERATION_NOT_ALLOWED', 409)
   if (!current?.subscriptionId || !OPEN_STATUS.has(current.subscription?.status)) {
     return fail('SUBSCRIPTION_MISSING', 404)
   }

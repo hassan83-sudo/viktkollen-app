@@ -1,4 +1,23 @@
-import { getCurrentAiAuthorization } from '../ai/aiAuthTransport.js'
+import { getCurrentAiAuthorization, hasSameAiAuthUser } from '../ai/aiAuthTransport.js'
+
+export async function loadSubscriptionAccess() {
+  try {
+    const auth = await getCurrentAiAuthorization()
+    if (!auth.ok) return 'locked'
+    const response = await fetch('/api/billing/subscription', { headers: { Authorization: auth.authorizationHeader } })
+    const payload = await response.json()
+    if (!response.ok || payload?.accessGranted !== true || !await hasSameAiAuthUser(auth.userScope)) return 'locked'
+    const subscription = payload.subscription
+    return {
+      state: 'allowed',
+      expiresAt: subscription.status === 'PAST_DUE'
+        ? Math.min(Date.parse(subscription.current_period_end), Date.parse(subscription.past_due_grace_until))
+        : Date.parse(subscription.current_period_end),
+    }
+  } catch {
+    return 'locked'
+  }
+}
 
 // Frågar servern om den inloggade användaren får starta en spärrad funktion.
 // Svaret kommer från samma serverregel som API-rutterna använder

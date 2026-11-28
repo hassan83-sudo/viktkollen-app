@@ -35,6 +35,14 @@
   ],
   "rewrites": [
     {
+      "source": "/api/billing/trial",
+      "destination": "/api/billing/user?__vk_route=start_trial"
+    },
+    {
+      "source": "/api/billing/trial/",
+      "destination": "/api/billing/user?__vk_route=start_trial"
+    },
+    {
       "source": "/api/billing/quota",
       "destination": "/api/billing/user?__vk_route=quota"
     },

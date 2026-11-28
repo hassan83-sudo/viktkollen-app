@@ -11,17 +11,13 @@ const PRELIMINARY_SEK_MAJOR = Object.freeze([
   4, 7, 9, 12, 15, 19, 29, 39, 49, 59, 69, 79, 89, 99,
 ])
 
-// Tillfällig produktionskontroll. Ordinarie köp förblir 4 SEK.
-// 9 och 12 SEK finns som planrader, men får bara öppnas av en faktureringsadministratör.
-// Det återkommande billing_admin-testet använder den befintliga 12-kronorsplanen.
+// Existing setup and renewal code keeps these identifiers. Public sale is 12 SEK.
 export const ADMIN_ONE_TIME_PLAN_ID = 'plan.prelim.sek.month.12'
 export const ADMIN_RECURRING_SETUP_PLAN_ID = ADMIN_ONE_TIME_PLAN_ID
 const ADMIN_HIDDEN_NINE_PLAN_ID = 'plan.prelim.sek.month.09'
 
 export function isBillingAdminOnlyPlan(planId) {
-  return planId === ADMIN_ONE_TIME_PLAN_ID
-    || planId === ADMIN_RECURRING_SETUP_PLAN_ID
-    || planId === ADMIN_HIDDEN_NINE_PLAN_ID
+  return planId === ADMIN_HIDDEN_NINE_PLAN_ID
 }
 
 const launchUnmetered = new Set(LAUNCH_UNMETERED_FEATURES)
@@ -111,16 +107,34 @@ const paidPlans = PRELIMINARY_SEK_MAJOR.map((major, index) => {
   })
 })
 
-export const defaultPlanCatalog = Object.freeze([freePlan, ...paidPlans])
+validateCommercialPlanCatalog([freePlan, ...paidPlans])
 
-validateCommercialPlanCatalog(defaultPlanCatalog)
+// A separate snapshot keeps the paid quota and existing SumUp subscriptions intact.
+export const TRIAL_PLAN_ID = 'plan.trial.30days'
+export const PUBLIC_PAID_PLAN_ID = 'plan.prelim.sek.month.12'
+const trialBase = paidPlans.find((plan) => plan.id === PUBLIC_PAID_PLAN_ID)
+const trialQuotas = Object.freeze({
+  ...trialBase.commercial_quotas,
+  food_scan_requests: Object.freeze({ ...trialBase.commercial_quotas.food_scan_requests, limit: 5 }),
+})
+const trialPlan = createPlan({
+  commercial_quotas: trialQuotas,
+  commercial_status: 'ACTIVE',
+  display_order: 15,
+  entitlements: entitlementsFor(trialQuotas),
+  id: TRIAL_PLAN_ID,
+  name: '30 dagar gratis',
+  price_minor: 0,
+})
+export const defaultPlanCatalog = Object.freeze([freePlan, ...paidPlans])
 
 export function listActivePlans(catalog = defaultPlanCatalog) {
   return catalog.filter((plan) => plan.active).sort((a, b) => a.display_order - b.display_order)
 }
 
 export function getPlanById(planId, catalog = defaultPlanCatalog) {
-  return catalog.find((plan) => plan.id === planId) || null
+  return catalog.find((plan) => plan.id === planId)
+    || (catalog === defaultPlanCatalog && planId === TRIAL_PLAN_ID ? trialPlan : null)
 }
 
 export function validatePlan(plan = {}) {

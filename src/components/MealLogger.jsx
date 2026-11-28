@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import SubscriptionGate from './billing/SubscriptionGate.jsx'
 import { useTranslation } from 'react-i18next'
 import {
   addDays,
@@ -799,6 +800,7 @@ function MealLogger({
               onDateChange={changeSelectedDate}
             />
           ) : nutritionViewMode === 'planner' ? (
+            <SubscriptionGate feature="mealCalendar">
             <WeeklyMealPlanner
               calendarNavigationId={navigationIntent?.panel === 'plan' ? navigationIntent.id : null}
               dietaryPreferences={dietaryPreferences}
@@ -808,6 +810,7 @@ function MealLogger({
               templates={mealTemplates}
               onMealsChange={onMealsChange}
             />
+            </SubscriptionGate>
           ) : nutritionViewMode === 'generator' ? (
             <AIMealGenerator
               dietaryPreferences={dietaryPreferences}

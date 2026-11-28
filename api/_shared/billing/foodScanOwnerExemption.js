@@ -20,6 +20,7 @@ import { QUOTA_STATUS } from '../../../src/services/billing/catalog.js'
 import { FOOD_SCAN_CANARY } from '../../../src/services/billing/foodScanCanary.js'
 import { createSupabaseAdminClient } from '../supabaseServer.js'
 import { lookupBillingAdmin } from './admin.js'
+import { readDurableUserSubscription } from './subscriptionRead.js'
 
 export const FOOD_SCAN_OWNER_FLAG = 'FOOD_SCAN_OWNER_UNLIMITED'
 export const FOOD_SCAN_OWNER_DAILY_CAP_ENV = 'FOOD_SCAN_OWNER_DAILY_CAP'
@@ -48,6 +49,7 @@ export async function countFoodScanEventsSince({ client = createSupabaseAdminCli
 const defaultDeps = Object.freeze({
   countRecentScans: countFoodScanEventsSince,
   isAdmin: lookupBillingAdmin,
+  readSubscription: readDurableUserSubscription,
 })
 let deps = defaultDeps
 
@@ -74,6 +76,15 @@ export async function resolveFoodScanOwnerExemption({ env = process.env, now = n
     .then(() => deps.isAdmin(id))
     .catch(() => false)
   if (admin !== true) return { exempt: false, reason: 'not_admin' }
+
+  // Even an owner has exactly five scans while using the account trial.
+  try {
+    const current = await deps.readSubscription(id)
+    if (current.unavailable) return { exempt: false, reason: 'subscription_unavailable' }
+    if (current.subscription?.status === 'TRIALING') return { exempt: false, reason: 'trial_quota' }
+  } catch {
+    return { exempt: false, reason: 'subscription_unavailable' }
+  }
 
   const dailyCap = resolveOwnerDailyCap(env)
   let usedLast24h

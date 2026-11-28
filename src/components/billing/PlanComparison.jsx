@@ -3,6 +3,7 @@ import { supabase } from '../../services/supabaseClient.js'
 import CheckoutReturnStatus from './CheckoutReturnStatus.jsx'
 import { openHostedCheckout, readReturnedCheckoutId } from '../../services/billing/checkoutReturn.js'
 import './PlanComparison.css'
+import TrialOffer from './TrialOffer.jsx'
 
 const LABELS = Object.freeze({
   ai_coach: 'AI-coach',
@@ -162,6 +163,8 @@ function PlanComparison({ authLoading = false, isAuthenticated = false }) {
       ) : null}
       <details>
         <summary id="plan-compare-title">Jämför abonnemang</summary>
+        {isAuthenticated && <TrialOffer onStarted={() => setReloadKey((value) => value + 1)} />}
+        <p>Gratis: 5 skanningar per månad, gemensamt för mat och AI Natur. Konto med e-postadress och lösenord. Abonnemang: 12 kr/månad, alla abonnemangsfunktioner ingår. Separata skanningar säljs inte. Redan köpta krediter behålls.</p>
         {state === 'loading' ? <p role="status">Hämtar abonnemang…</p> : null}
         {state === 'signed-out' ? <p>Logga in för att jämföra abonnemang.</p> : null}
         {state === 'unavailable' ? <p role="status">Jämförelsen kunde inte hämtas just nu.</p> : null}

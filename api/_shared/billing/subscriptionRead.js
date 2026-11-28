@@ -22,6 +22,9 @@ export function emptySubscriptionDto() {
 
 export function toPublicSubscription(row) {
   if (!row) return emptySubscriptionDto()
+  if (row.plan_id === 'plan.trial.30days' && Date.parse(row.current_period_end) <= Date.now()) {
+    return { ...emptySubscriptionDto(), status: 'EXPIRED' }
+  }
   return {
     cancel_at_period_end: row.cancel_at_period_end === true,
     current_period_end: row.current_period_end || null,

@@ -105,7 +105,7 @@ export function buildUsageSnapshot({
   }
   const snapshot = {
     period: { end: period.period_end },
-    plan: priceFields(plan.price_minor),
+    plan: plan.id === 'plan.trial.30days' ? { name: 'Provperiod', priceText: '30 dagar gratis' } : priceFields(plan.price_minor),
     quotas,
     unlimited,
   }

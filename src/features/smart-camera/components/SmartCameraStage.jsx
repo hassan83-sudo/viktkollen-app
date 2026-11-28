@@ -6,51 +6,12 @@ import { getSmartCameraMode } from '../smartCameraModes.js'
 import SmartCameraHub from './SmartCameraHub.jsx'
 import SmartCameraObjectBank from './SmartCameraObjectBank.jsx'
 import SmartCameraChecklists from './SmartCameraChecklists.jsx'
-import { getCurrentAiAuthorization, hasSameAiAuthUser } from '../../../services/ai/aiAuthTransport.js'
-import { hasForgottenCameraAccess } from '../../../services/billing/forgottenAccess.js'
 import SmartCameraModeViews from './SmartCameraModeViews.jsx'
 import SmartCameraPrivacyCard from './SmartCameraPrivacyCard.jsx'
+import SubscriptionGate from '../../../components/billing/SubscriptionGate.jsx'
 
 function PaidCameraTest({ children, onBack }) {
-  const [access, setAccess] = useState('loading')
-
-  useEffect(() => {
-    const controller = new AbortController()
-    async function checkAccess() {
-      try {
-        const auth = await getCurrentAiAuthorization()
-        if (!auth.ok) {
-          if (!controller.signal.aborted) setAccess(auth.errorCode === 'AUTH_REQUIRED' ? 'denied' : 'unavailable')
-          return
-        }
-        const response = await fetch('/api/billing/subscription', {
-          headers: { Authorization: auth.authorizationHeader },
-          signal: controller.signal,
-        })
-        if (!response.ok) throw new Error('subscription_unavailable')
-        const { subscription } = await response.json()
-        const sameUser = await hasSameAiAuthUser(auth.userScope)
-        if (!controller.signal.aborted) setAccess(sameUser && hasForgottenCameraAccess(subscription) ? 'allowed' : 'denied')
-      } catch {
-        if (!controller.signal.aborted) setAccess('unavailable')
-      }
-    }
-    checkAccess()
-    return () => controller.abort()
-  }, [])
-
-  if (access === 'allowed') return children
-  return (
-    <section>
-      <button type="button" className="secondary-button" onClick={onBack}>← Vardagshjälp</button>
-      <h2>Har jag glömt något?</h2>
-      <p role="status">{{
-        loading: 'Kontrollerar ditt abonnemang …',
-        denied: 'Kameratestet är tillgängligt med ett aktivt betalabonnemang.',
-        unavailable: 'Abonnemanget kunde inte kontrolleras. Öppna testet igen om en stund.',
-      }[access]}</p>
-    </section>
-  )
+  return <SubscriptionGate onBack={onBack}>{children}</SubscriptionGate>
 }
 
 export default function SmartCameraStage({
@@ -69,6 +30,7 @@ export default function SmartCameraStage({
   const mode = ['eyes', 'object-scan'].includes(modeId) ? null : getSmartCameraMode(modeId, flags)
   const backToHub = () => setModeId('')
   const modeView = mode && <SmartCameraModeViews adapters={adapters} mode={mode} voiceBar={voiceBar} onBack={backToHub} onCameraActive={setCameraActive} />
+  const subscriptionMode = ['outfit', 'grooming', 'items', 'pack', 'get-ready', 'carry-lists', 'last-check', 'routines'].includes(modeId)
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -108,10 +70,11 @@ export default function SmartCameraStage({
         {modeId === 'object-bank'
           ? <SmartCameraObjectBank onBack={() => setModeId('')} onOpenChecklists={() => setModeId('checklists-bank')} />
           : modeId === 'checklists-bank' || modeId === 'personal-care'
-            ? <SmartCameraChecklists key={modeId} personalCare={modeId === 'personal-care'} onBack={backToHub} onOpenBank={() => setModeId('object-bank')} />
+            ? <SubscriptionGate key={modeId} feature={modeId === 'personal-care' ? 'personalCare' : 'checklists'} onBack={backToHub}><SmartCameraChecklists personalCare={modeId === 'personal-care'} onBack={backToHub} onOpenBank={() => setModeId('object-bank')} /></SubscriptionGate>
             : mode?.id === 'forgotten'
               ? <PaidCameraTest onBack={backToHub}>{modeView}</PaidCameraTest>
-              : modeView || <SmartCameraHub flags={flags} onSelectMode={setModeId} />}
+              : subscriptionMode ? <SubscriptionGate key={modeId} onBack={backToHub}>{modeView}</SubscriptionGate>
+                : modeView || <SmartCameraHub flags={flags} onSelectMode={setModeId} />}
         <SmartCameraPrivacyCard
           aiReceivesFrame={false}
           audioToServer={mode?.id === 'ai-ear'}

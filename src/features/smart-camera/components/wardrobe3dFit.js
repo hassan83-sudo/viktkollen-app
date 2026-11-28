@@ -288,7 +288,11 @@ function legWear(spec, garment, ease, pad, y0) {
   const waist = spec.torso.find((station) => station.y === spec.waistY) || spec.torso[3]
   const hip = spec.torso.find((station) => station.y === spec.hipY) || spec.torso[1]
   const groups = [group('bottom-pelvis', 'bottom', loftY([
-    { y: spec.hipY - 2, rx: hip.rx, rz: hip.rz },
+    // Extend the pelvis into the overlapping upper thighs, covering the
+    // lower torso without closing the gap between the lower legs.
+    { y: spec.hipY - 12, rx: hip.rx * 0.88, rz: hip.rz * 0.92 },
+    { y: spec.hipY - 8, rx: hip.rx, rz: hip.rz },
+    { y: spec.hipY, rx: hip.rx, rz: hip.rz },
     { y: spec.waistY, rx: waist.rx, rz: waist.rz },
   ], 28, ease, pad), { texture: 'bottom', color, uvKind: 'wrap' })]
   const legs = spec.leg.filter((station) => station.y >= y0 && station.y <= spec.hipY + 1)

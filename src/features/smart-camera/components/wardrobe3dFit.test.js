@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bodySpec, buildFigureParts, clothingGroups, groupBounds, projectPoint, widthNear, wrapDegrees } from './wardrobe3dFit.js'
+import { bodySpec, buildFigureParts, clothingGroups, dominantOpaqueColorFromPixels, groupBounds, projectPoint, widthNear, wrapDegrees } from './wardrobe3dFit.js'
 
 const layers = [
   { slot: 'top', type: 'Tröja', color: '#2255aa' },
@@ -40,6 +40,25 @@ function vertex(mesh, score) {
 }
 
 describe('wardrobe 3D fit', () => {
+  it('reads the fill colour from the garment photo', () => {
+    const paint = (rgb, count) => {
+      const data = new Uint8ClampedArray(count * 4)
+      for (let i = 0; i < count; i += 1) data.set([rgb[0], rgb[1], rgb[2], rgb[3] ?? 255], i * 4)
+      return data
+    }
+    const beige = new Uint8ClampedArray(8 * 4)
+    beige.set(paint([196, 165, 116], 6))
+    beige.set(paint([31, 78, 137], 1), 6 * 4)
+    beige.set(paint([255, 255, 255], 1), 7 * 4)
+    const fill = dominantOpaqueColorFromPixels(beige)
+    expect(fill[0]).toBeGreaterThan(0.6)
+    expect(fill[0]).toBeGreaterThan(fill[2])
+    expect(Math.max(...dominantOpaqueColorFromPixels(paint([18, 18, 20], 4)))).toBeLessThan(0.15)
+    const blue = dominantOpaqueColorFromPixels(paint([31, 78, 137], 4))
+    expect(blue[2]).toBeGreaterThan(blue[0])
+    expect(dominantOpaqueColorFromPixels(paint([255, 255, 255, 0], 3))).toBeNull()
+  })
+
   it('turns both bodies through a full circle and back to the front', () => {
     expect(wrapDegrees(360)).toBe(0)
     expect(wrapDegrees(-45)).toBe(315)
@@ -91,6 +110,7 @@ describe('wardrobe 3D fit', () => {
     const body = clothingGroups('woman', []).length
     expect(body).toBe(0)
     expect(widthNear(torso, 120)).toBeGreaterThan(bodySpec('woman').torso.find((station) => station.y === 120).rx + 0.8)
+    expect(widthNear(torso, 120)).toBeLessThan(widthNear(torso, bodySpec('woman').shoulderY))
     expect(groupBounds(torso).minY).toBeGreaterThan(90)
     expect(groupBounds(torso).maxY).toBeLessThan(160)
     expect(groups.filter((item) => item.id.startsWith('top-sleeve'))).toHaveLength(2)

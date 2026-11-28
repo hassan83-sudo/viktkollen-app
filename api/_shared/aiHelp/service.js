@@ -49,6 +49,131 @@ const supportFaq = [
   [/^(?:är kroppsskanningen exakt|är kroppsscanningen exakt)[?!.]*$/iu, ['Nej. Kroppsscanningen ger uppskattningar.','Resultaten är inte medicinska mätningar eller diagnoser.']],
 ]
 
+
+const translatedSupportFaq = {
+  "en": [
+    [
+      "What are your opening hours?",
+      "Customer service is usually available every day from 09:00 to 22:00. We aim to reply within 30 minutes, but it may take up to 24 hours."
+    ],
+    [
+      "When will I get a reply?",
+      "We aim to reply within 30 minutes, but it may take up to 24 hours. You can leave the app and read the reply later."
+    ],
+    [
+      "Can free users contact support?",
+      "Free users can use AI Help and human support for billing issues. Paid subscribers can also receive human support for other issues."
+    ],
+    [
+      "Can I close the app while waiting?",
+      "Yes. Replies are saved in your support ticket. You can read them later."
+    ],
+    [
+      "Where can I see support replies?",
+      "Unread replies are indicated by the message icon in the app. Customers do not receive support push notifications."
+    ],
+    [
+      "Is food scanning accurate?",
+      "Food scanning estimates quantities and nutrition. Check ingredients and quantities before saving."
+    ],
+    [
+      "Is body scanning accurate?",
+      "Body scanning provides estimates, not medical measurements or diagnoses."
+    ]
+  ],
+  "es": [
+    [
+      "¿Cuál es el horario de atención?",
+      "Normalmente atendemos todos los días de 09:00 a 22:00. Intentamos responder en 30 minutos, pero podemos tardar hasta 24 horas."
+    ],
+    [
+      "¿Cuándo recibiré una respuesta?",
+      "Intentamos responder en 30 minutos, pero podemos tardar hasta 24 horas. Puedes salir de la aplicación y leer la respuesta después."
+    ],
+    [
+      "¿Los usuarios gratuitos pueden contactar con soporte?",
+      "Los usuarios gratuitos pueden usar la ayuda IA y recibir atención humana para problemas de pago. Los suscriptores de pago también pueden recibir atención humana para otros asuntos."
+    ],
+    [
+      "¿Puedo cerrar la aplicación mientras espero?",
+      "Sí. Las respuestas se guardan en tu solicitud de asistencia."
+    ],
+    [
+      "¿Dónde veo las respuestas de soporte?",
+      "El icono de mensajes indica las respuestas no leídas. No enviamos notificaciones push de soporte a clientes."
+    ],
+    [
+      "¿Es exacto el escaneo de alimentos?",
+      "Las cantidades y los nutrientes son estimaciones. Comprueba los ingredientes y las cantidades antes de guardar."
+    ],
+    [
+      "¿Es exacto el escaneo corporal?",
+      "Son estimaciones, no mediciones médicas ni diagnósticos."
+    ]
+  ],
+  "ar": [
+    [
+      "ما ساعات عمل خدمة العملاء؟",
+      "تتوفر خدمة العملاء عادةً يوميًا من الساعة 09:00 إلى 22:00. نحاول الرد خلال 30 دقيقة، وقد يستغرق الرد حتى 24 ساعة."
+    ],
+    [
+      "متى سأحصل على رد؟",
+      "نحاول الرد خلال 30 دقيقة، وقد يستغرق الرد حتى 24 ساعة. يمكنك مغادرة التطبيق وقراءة الرد لاحقًا."
+    ],
+    [
+      "هل يمكن للمستخدمين المجانيين التواصل مع الدعم؟",
+      "يمكن للمستخدمين المجانيين استخدام المساعدة الذكية والدعم البشري لمشكلات الدفع. ويمكن للمشتركين المدفوعين الحصول على الدعم البشري للمشكلات الأخرى أيضًا."
+    ],
+    [
+      "هل يمكنني إغلاق التطبيق أثناء الانتظار؟",
+      "نعم، تُحفظ الردود في طلب الدعم ويمكنك قراءتها لاحقًا."
+    ],
+    [
+      "أين أجد ردود الدعم؟",
+      "يشير رمز الرسائل إلى الردود غير المقروءة. لا نرسل إشعارات دفع للعملاء بشأن الدعم."
+    ],
+    [
+      "هل مسح الطعام دقيق؟",
+      "الكميات والقيم الغذائية تقديرية. تحقق من المكونات والكميات قبل الحفظ."
+    ],
+    [
+      "هل مسح الجسم دقيق؟",
+      "النتائج تقديرية وليست قياسات طبية أو تشخيصات."
+    ]
+  ],
+  "zh-CN": [
+    [
+      "客服工作时间是什么？",
+      "客服通常每天09:00至22:00提供服务。我们尽量在30分钟内回复，但最长可能需要24小时。"
+    ],
+    [
+      "什么时候能收到回复？",
+      "我们尽量在30分钟内回复，但最长可能需要24小时。您可以退出应用，稍后查看回复。"
+    ],
+    [
+      "免费用户可以联系人工客服吗？",
+      "免费用户可以使用AI帮助，并就付款问题联系人工客服。付费订阅用户还可以就其他问题联系人工客服。"
+    ],
+    [
+      "等待回复时可以关闭应用吗？",
+      "可以。回复会保存在您的客服工单中，您可以稍后查看。"
+    ],
+    [
+      "在哪里查看客服回复？",
+      "应用中的消息图标会提示未读回复。客服不会向客户发送推送通知。"
+    ],
+    [
+      "食物扫描准确吗？",
+      "食物扫描提供食物分量和营养成分的估算值。保存前请核对食材和分量。"
+    ],
+    [
+      "身体扫描准确吗？",
+      "身体扫描结果仅为估算，不属于医学测量或诊断。"
+    ]
+  ]
+}
+const normalizeFaq = value => value.normalize('NFKC').toLowerCase().replace(/[?!.؟。！]+$/u, '').trim()
+
 const OPENAI_API_URL = 'https://api.openai.com/v1/responses'
 const DEFAULT_MODEL = 'gpt-5-mini'
 const REQUEST_TIMEOUT_MS = 20000
@@ -265,6 +390,9 @@ export async function answerAiHelpQuestion({
     const match = supportFaq.find(([pattern]) => pattern.test(question.trim()))
     if (match) return { ok: true, status: 'answered', source: 'local', language: validated.language, answer: match[1].join(' '), featureIds: [], followUps: ['Vilka är öppettider?', 'Kan gratisanvändare få support?'] }
   }
+  const translatedPack = translatedSupportFaq[validated.language.code]
+  const translatedMatch = translatedPack?.find(([prompt]) => normalizeFaq(prompt) === normalizeFaq(question))
+  if (translatedMatch) return { ok: true, status: 'answered', source: 'local', language: validated.language, answer: translatedMatch[1], featureIds: [], followUps: translatedPack.filter(item => item !== translatedMatch).slice(0, 2).map(item => item[0]) }
   const destination = directHelpDestination(question)
   if (destination) return {
     ok: true, status: 'answered', source: 'local', language: validated.language,

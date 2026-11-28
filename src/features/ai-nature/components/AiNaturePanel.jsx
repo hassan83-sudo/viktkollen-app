@@ -127,7 +127,20 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
       {busy && <p role="status">{previewName ? `Preliminär identifiering: ${previewName}. Hämtar övrig information…` : 'Identifierar art…'}</p>}
       {identification && (
         <article aria-live="polite" style={{ marginTop: 18 }}>
-          <h3>{identification.swedishName}</h3>
+          <h3 style={{
+            display: 'inline-block',
+            maxWidth: '100%',
+            boxSizing: 'border-box',
+            margin: 0,
+            padding: '6px 12px',
+            borderRadius: 8,
+            backgroundColor: '#14241a',
+            color: '#ffda8a',
+            fontFamily: 'Georgia, serif',
+            fontSize: 'clamp(1.25rem, 5vw, 1.75rem)',
+            lineHeight: 1.2,
+            overflowWrap: 'anywhere',
+          }}>{identification.swedishName}</h3>
           {identification.scientificName && <p><i>{identification.scientificName}</i></p>}
           <p>{identification.description}</p>
           {identification.reproduction && <section aria-label="Fortplantning"><h4>Fortplantning</h4><p>{identification.reproduction}</p></section>}

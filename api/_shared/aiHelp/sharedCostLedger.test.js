@@ -236,4 +236,10 @@ describe('shared AI Help cost ledger', () => {
     expect((await ledger.snapshot()).reservations[0].status).toBe('reserved')
     expect((await otherProcess.snapshot()).periods).toHaveLength(1)
   })
+
+  it('accepts the 1024 output token cap and refuses anything above it', async () => {
+    const ledger = createSharedCostLedger({ now: () => start })
+    expect((await ledger.reserve(reserveInput({ maxOutputTokens: 1024 }))).ok).toBe(true)
+    expect(await ledger.reserve(reserveInput({ maxOutputTokens: 1025, userHash: secondUser }))).toMatchObject({ ok: false, reason: 'invalid_request' })
+  })
 })

@@ -261,7 +261,7 @@ describe('AI Help language and model contract', () => {
     expect(JSON.stringify([result, warning.mock.calls])).not.toMatch(/PRIVATE_/)
   })
 
-  it('asks for a short answer so gpt-5-mini can finish inside the 400 token cap', async () => {
+  it('asks for a short answer so gpt-5-mini can finish inside the 1024 token cap', async () => {
     const fetchImpl = vi.fn(async () => ({
       ok: true,
       json: async () => ({

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import {
+  AI_HELP_DEFAULT_MAX_OUTPUT_TOKENS,
   AI_HELP_INPUT_USD_PER_MILLION,
   AI_HELP_OUTPUT_USD_PER_MILLION,
   aiHelpCostSek,
@@ -96,7 +97,7 @@ function reserveLocked(state, input, dbNow) {
   if (userLimit === null || userLimit < 1) return { ok: false, reason: 'invalid_request' }
   if (windowSeconds === null || windowSeconds < 1) return { ok: false, reason: 'invalid_request' }
   if (maxInputTokens === null || maxInputTokens < 1) return { ok: false, reason: 'invalid_request' }
-  if (maxOutputTokens === null || maxOutputTokens < 1 || maxOutputTokens > 400) {
+  if (maxOutputTokens === null || maxOutputTokens < 1 || maxOutputTokens > AI_HELP_DEFAULT_MAX_OUTPUT_TOKENS) {
     return { ok: false, reason: 'invalid_request' }
   }
   if (sekPerUsd === null || sekPerUsd <= 0) return { ok: false, reason: 'invalid_request' }

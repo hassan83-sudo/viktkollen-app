@@ -306,6 +306,10 @@ function WeeklyMealPlanner({
   const [shoppingLists, setShoppingLists] = useState(() => readShoppingLists())
   const [weekStart, setWeekStart] = useState(() => getMealPlanWeekStart())
   const [visibleMonth, setVisibleMonth] = useState(() => getLocalDateString().slice(0, 7))
+  const maxCalendarMonth = '2030-12'
+  const minCalendarMonth = getLocalDateString().slice(0, 7)
+  const calendarYears = Array.from({ length: 2030 - Number(minCalendarMonth.slice(0, 4)) + 1 }, (_, index) => Number(minCalendarMonth.slice(0, 4)) + index)
+
   const [draft, setDraft] = useState(() => emptyDraft(getLocalDateString()))
   const [editingMealId, setEditingMealId] = useState('')
   const [errors, setErrors] = useState({})
@@ -356,6 +360,14 @@ function WeeklyMealPlanner({
     [recipeSearch, recipes],
   )
 
+  function changeCalendarMonth(nextMonth) {
+    if (nextMonth < minCalendarMonth || nextMonth > maxCalendarMonth) return
+    setVisibleMonth(nextMonth)
+    const selectedDate = nextMonth === minCalendarMonth ? getLocalDateString() : `${nextMonth}-01`
+    setWeekStart(getMealPlanWeekStart(selectedDate))
+    resetForm(selectedDate)
+  }
+
   function savePlans(nextPlans) {
     const saved = writeMealPlans(nextPlans)
     setPlans(saved)
@@ -381,7 +393,7 @@ function WeeklyMealPlanner({
   function addTemplate(template, date = draft.date) {
     const result = createPlannedMealFromTemplate(template, { date })
     if (!result.meal) return
-    savePlans(addPlannedMeal(plans, weekStart, result.meal))
+    savePlans(addPlannedMeal(plans, getMealPlanWeekStart(result.meal.date), result.meal))
     setStatus(`${result.meal.title} lades till i planen.`)
   }
 
@@ -409,7 +421,7 @@ function WeeklyMealPlanner({
     }
 
     if (editingMealId) {
-      savePlans(updatePlannedMeal(plans, weekStart, editingMealId, result.meal))
+      savePlans(updatePlannedMeal(plans, getMealPlanWeekStart(result.meal.date), editingMealId, result.meal))
       setStatus('Planerad måltid uppdaterad.')
     } else {
       savePlans(addPlannedMeal(plans, weekStart, result.meal))
@@ -559,9 +571,14 @@ function WeeklyMealPlanner({
         </header>
         <div style={{ border: '1px solid #7135a2', borderRadius: 20, overflow: 'hidden' }}>
           <nav aria-label="Välj månad" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(90deg,#36114f,#221139)', padding: '9px 12px' }}>
-            <button type="button" className="secondary-button" aria-label="Föregående månad" onClick={() => setVisibleMonth(shiftMonth(visibleMonth,-1))}>‹</button>
-            <strong style={{ textTransform: 'capitalize' }}>{new Date(Number(visibleMonth.slice(0,4)), Number(visibleMonth.slice(5))-1, 1).toLocaleDateString('sv-SE',{month:'long',year:'numeric'})}</strong>
-            <button type="button" className="secondary-button" aria-label="Nästa månad" onClick={() => setVisibleMonth(shiftMonth(visibleMonth,1))}>›</button>
+            <button type="button" className="secondary-button" aria-label="Föregående månad" disabled={visibleMonth <= minCalendarMonth} onClick={() => changeCalendarMonth(shiftMonth(visibleMonth,-1))}>‹</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+              <strong style={{ textTransform: 'capitalize', fontSize: 13 }}>{new Date(Number(visibleMonth.slice(0,4)), Number(visibleMonth.slice(5))-1, 1).toLocaleDateString('sv-SE',{month:'long'})}</strong>
+              <select aria-label="Välj år" value={visibleMonth.slice(0, 4)} onChange={(event) => changeCalendarMonth(`${event.target.value}-${visibleMonth.slice(5)}`)} style={{ maxWidth: 86, padding: '6px 2px', background: '#221139', color: '#fff', borderRadius: 8 }}>
+                {calendarYears.map(year => <option key={year} value={year}>{year}</option>)}
+              </select>
+            </div>
+            <button type="button" className="secondary-button" aria-label="Nästa månad" disabled={visibleMonth >= maxCalendarMonth} onClick={() => changeCalendarMonth(shiftMonth(visibleMonth,1))}>›</button>
           </nav>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,minmax(0,1fr))', gap: 3, padding: '12px 7px 14px' }}>
             {dayNames.map(name => <strong key={name} style={{ textAlign: 'center', fontSize: 12, color: '#c1cce6' }}>{name.slice(0,3)}</strong>)}

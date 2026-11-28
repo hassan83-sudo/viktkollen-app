@@ -1,5 +1,6 @@
 import { identifyNatureImage } from './aiNatureIdentification.js'
 import { createAiNatureOperationId, executeAiNatureMeteredOperation, mapAiNatureBillingHttp, resolveAiNatureBillingRuntime } from './billing/aiNatureLiveBilling.js'
+import { withOwnerUnlimitedQuota } from './billing/foodScanOwnerExemption.js'
 import { DISPATCH_CAS_RESULT } from '../../src/services/billing/durableOperationStore.js'
 import { verifySupabaseUser } from './verifySupabaseUser.js'
 import { analysisConsentPurposes, verifyAnalysisConsentToken } from './analysisConsent.js'
@@ -8,6 +9,7 @@ import { aiRouteErrorCodes, sendSafeAiError, setNoStoreHeaders } from './aiRoute
 
 // AI Natur remains fail-closed until its own operational control is enabled.
 // Free nature scans share the food.scan monthly quota, not AI Eye credits.
+const UNLIMITED_NATURE_SCAN_EMAIL = 'hassan83@live.se'
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024
 const IMAGE_TYPES = {
   'image/jpeg': (b) => b[0] === 0xff && b[1] === 0xd8,
@@ -113,8 +115,13 @@ export default async function handler(request, response) {
   let analysis = null
   let providerError = null
   let providerInvoked = false
+  const ownerUnlimited = auth.user.emailConfirmed
+    && auth.user.email.toLowerCase() === UNLIMITED_NATURE_SCAN_EMAIL
   const { billing } = await executeAiNatureMeteredOperation({
-    operationId, instanceKey: requestId, runtime, userId: auth.user.id,
+    operationId,
+    instanceKey: requestId,
+    runtime: ownerUnlimited ? { ...runtime, quota: withOwnerUnlimitedQuota(runtime.quota) } : runtime,
+    userId: auth.user.id,
     executeProvider: async ({ markDispatched }) => {
       const claim = await markDispatched()
       if (claim?.result !== DISPATCH_CAS_RESULT.FIRST_DISPATCH) {

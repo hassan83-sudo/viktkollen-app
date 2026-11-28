@@ -9,6 +9,7 @@ const safetyMessage = 'Ät aldrig svampar, bär eller växter enbart utifrån en
 export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
   const videoRef = useRef(null)
   const sessionRef = useRef(null)
+  const fileReaderRef = useRef(null)
   const [cameraActive, setCameraActive] = useState(false)
   const [cameraError, setCameraError] = useState('')
   const [photo, setPhoto] = useState(null)
@@ -22,6 +23,7 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
     sessionRef.current = session
     return () => {
       session.stop()
+      fileReaderRef.current?.abort()
       abortRef.current?.abort()
       sessionRef.current = null
     }
@@ -43,41 +45,51 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
     const canvas = sessionRef.current?.captureFrame(videoRef.current)
     if (!canvas) return setCameraError('Bilden kunde inte tas.')
     const image = canvas.toDataURL('image/jpeg', 0.85)
-    setPhoto(image)
-    setIdentification(null)
+    fileReaderRef.current?.abort()
     stopCamera()
+    showAndAnalyze(image)
   }
 
   function selectFile(event) {
     const file = event.target.files?.[0]
+    event.target.value = ''
     if (!file) return
+    fileReaderRef.current?.abort()
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 8 * 1024 * 1024) {
       setCameraError('Välj en JPG-, PNG- eller WebP-bild på högst 8 MB.')
       return
     }
     const reader = new FileReader()
+    fileReaderRef.current = reader
     reader.onload = () => {
-      setPhoto(typeof reader.result === 'string' ? reader.result : null)
-      setIdentification(null)
-      setCameraError('')
+      if (typeof reader.result === 'string') showAndAnalyze(reader.result)
+    }
+    reader.onerror = () => setCameraError('Bilden kunde inte läsas.')
+    reader.onloadend = () => {
+      if (fileReaderRef.current === reader) fileReaderRef.current = null
     }
     reader.readAsDataURL(file)
   }
 
-  async function identify() {
-    if (!analysisEnabled || busy || !photo) return
+  function showAndAnalyze(image) {
+    setPhoto(image)
+    setIdentification(null)
+    setCameraError('')
+    if (analysisEnabled) void identify(image)
+  }
+
+  async function identify(photoDataUrl) {
+    abortRef.current?.abort()
     setPreviewName('')
     setBusy(true)
-    setCameraError('')
     const controller = new AbortController()
     abortRef.current = controller
     try {
       const { data, error } = await supabase.auth.getSession()
       const accessToken = data?.session?.access_token
       if (error || !accessToken) throw new Error('Du behöver vara inloggad för att analysera bilden.')
-      const image = await (await fetch(photo)).blob()
-      // Called only after the user presses the explicit approval button.
-      // Request an image-bound consent token for this exact blob.
+      const image = await (await fetch(photoDataUrl, { signal: controller.signal })).blob()
+      // The labeled capture or file choice approves this exact image for analysis.
       const consentToken = await requestAiNatureConsent({ image, accessToken, signal: controller.signal })
       if (controller.signal.aborted) return
       const result = await requestNatureIdentification({ image, accessToken, consentToken, signal: controller.signal, onProgress: name => { if (!controller.signal.aborted) setPreviewName(name) } })
@@ -85,13 +97,16 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
     } catch (error) {
       if (!controller.signal.aborted) setCameraError(error?.message || 'Analysen kunde inte genomföras.')
     } finally {
-      if (abortRef.current === controller) abortRef.current = null
-      setPreviewName('')
-      setBusy(false)
+      if (abortRef.current === controller) {
+        abortRef.current = null
+        setPreviewName('')
+        setBusy(false)
+      }
     }
   }
 
   function reset() {
+    fileReaderRef.current?.abort()
     abortRef.current?.abort()
     setPhoto(null)
     setIdentification(null)
@@ -113,17 +128,20 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
         {photo ? <img src={photo} alt="Vald naturbild" style={{ width: '100%', maxHeight: 400, objectFit: 'contain' }} /> : !cameraActive && <span style={{ color: '#dcefe0', padding: 24, textAlign: 'center' }}>Ta en bild eller välj ett foto från din enhet.</span>}
       </div>
 
+      <p style={{ fontSize: 13, opacity: 0.85 }}>
+        {analysisEnabled
+          ? 'När du väljer eller tar en bild för AI-analys skickas den direkt för att identifieras.'
+          : 'AI-analysen är ännu inte aktiverad.'}
+      </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
         {!cameraActive && !photo && <button type="button" onClick={startCamera}>Öppna kameran</button>}
-        {cameraActive && <button type="button" onClick={takePhoto}>Ta bild</button>}
+        {cameraActive && <button type="button" onClick={takePhoto}>{analysisEnabled ? 'Ta bild för AI-analys' : 'Ta bild'}</button>}
         {cameraActive && <button type="button" onClick={stopCamera}>Stäng kameran</button>}
-        {!cameraActive && <label style={{ cursor: 'pointer', padding: '8px 12px', border: '1px solid currentColor', borderRadius: 8 }}>Välj bild<input type="file" accept="image/jpeg,image/png,image/webp" onChange={selectFile} style={{ display: 'none' }} /></label>}
+        {!cameraActive && <label style={{ cursor: 'pointer', padding: '8px 12px', border: '1px solid currentColor', borderRadius: 8 }}>{analysisEnabled ? 'Välj bild för AI-analys' : 'Välj bild'}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={selectFile} style={{ display: 'none' }} /></label>}
         {photo && <button type="button" onClick={reset}>Välj en annan bild</button>}
       </div>
 
       {cameraError && <p role="alert">{cameraError}</p>}
-      <p style={{ fontSize: 13, opacity: 0.85 }}>Bilden stannar på din enhet tills du uttryckligen godkänner analys. {analysisEnabled ? 'Godkänn endast om du vill skicka bilden för AI-analys.' : 'AI-analysen är ännu inte aktiverad.'}</p>
-      {photo && <button type="button" onClick={identify} disabled={!analysisEnabled || busy} title={!analysisEnabled ? "AI Natur mm är spärrad tills separat kvot och betalningskontroll är verifierade" : undefined}>{busy ? "Identifierar…" : analysisEnabled ? "Godkänn och identifiera med AI" : "Identifiera med AI – kommer snart"}</button>}
       {busy && <p role="status">{previewName ? `Preliminär identifiering: ${previewName}. Hämtar övrig information…` : 'Identifierar art…'}</p>}
       {identification && (
         <article aria-live="polite" style={{ marginTop: 18 }}>

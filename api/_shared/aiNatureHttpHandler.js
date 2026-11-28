@@ -91,6 +91,25 @@ export default async function handler(request, response) {
   }
   const clientAttemptId = String(request.headers?.['x-viktkollen-request-id'] || '').slice(0, 80)
   const operationId = createAiNatureOperationId({ clientAttemptId, userId: auth.user.id })
+  const wantsStream = String(request.headers?.accept || '').includes('text/event-stream')
+  let streaming = false
+  let lastName = ''
+  const emit = (event) => response.write(`data: ${JSON.stringify(event)}\n\n`)
+  const onTextDelta = wantsStream ? (text) => {
+    const match = text.match(/^\s*(?:```(?:json)?\s*)?\{\s*"swedishName"\s*:\s*("(?:[^"\\]|\\.)*")/)
+    if (!match) return
+    const name = String(JSON.parse(match[1])).replace(/[<>]/g, '').slice(0, 100)
+    if (!name || name === lastName) return
+    if (!streaming) {
+      response.statusCode = 200
+      response.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
+      response.setHeader('Cache-Control', 'no-store, no-transform')
+      response.flushHeaders?.()
+      streaming = true
+    }
+    lastName = name
+    emit({ type: 'progress', name })
+  } : undefined
   let analysis = null
   let providerError = null
   let providerInvoked = false
@@ -105,6 +124,7 @@ export default async function handler(request, response) {
       const result = await identifyNatureImage({
         imageBytes: bytes, mimeType, userId: auth.user.id,
         usageRepository: runtime.usageRepository,
+        onTextDelta,
       })
       if (!result.ok) {
         providerError = result.code
@@ -117,6 +137,10 @@ export default async function handler(request, response) {
   const mapped = mapAiNatureBillingHttp(billing, {
     analysisOk: Boolean(analysis), providerAttempted: providerInvoked,
   })
+  if (streaming) {
+    emit(mapped.kind === 'success' ? { type: 'result', ok: true, result: analysis } : { type: 'error', ok: false })
+    return response.end()
+  }
   if (mapped.kind === 'success') {
     return response.status(200).json({ ok: true, result: analysis, requestId })
   }

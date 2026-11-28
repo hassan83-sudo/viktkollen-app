@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { normalizeLanguageCode, getLanguageDefinition } from '../../i18n/languages.js'
 import { requestSupport } from './supportClient.js'
+import { markSupportRead } from './SupportInboxButton.jsx'
 import { supportChrome } from './supportChrome.js'
 
 function Ticket({ ticket, admin, chrome, onCommand, busy, eligible }) {
@@ -24,11 +25,11 @@ function Ticket({ ticket, admin, chrome, onCommand, busy, eligible }) {
   </article>
 }
 
-export default function SupportPanel({ admin = false }) {
+export default function SupportPanel({ admin = false, userId = null, initiallyOpened = false }) {
   const { i18n } = useTranslation()
   const language = normalizeLanguageCode(i18n.resolvedLanguage || i18n.language)
   const chrome = supportChrome(language)
-  const [opened, setOpened] = useState(admin)
+  const [opened, setOpened] = useState(admin || initiallyOpened)
   const [data, setData] = useState(null)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
@@ -72,9 +73,10 @@ export default function SupportPanel({ admin = false }) {
         }
       }
       setData(result)
+      if (!admin && userId) for (const ticket of result.tickets || []) markSupportRead(userId, ticket)
       setLoadFailed(false)
     } finally { inFlight.current = false }
-  }, [admin])
+  }, [admin, userId])
   useEffect(() => {
     if (!opened) return undefined
     // Start asynchronously; cleanup prevents a private reply reaching an unmounted/account-switched panel.

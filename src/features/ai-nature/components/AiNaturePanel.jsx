@@ -5,6 +5,13 @@ import { supabase } from '../../../services/supabaseClient.js'
 
 const safetyMessage = 'Ät aldrig svampar, bär eller växter enbart utifrån en bildidentifiering.'
 
+const animalCategoryLabels = {
+  animal: 'Djur',
+  bird: 'Djur (fågel)',
+  fish: 'Djur (fisk)',
+  insect: 'Insekt',
+}
+
 export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
   const fileReaderRef = useRef(null)
   const [imageError, setImageError] = useState('')
@@ -82,6 +89,8 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
     setImageError('')
   }
 
+  const categoryLabel = animalCategoryLabels[identification?.category]
+
   return (
     <section className="ai-nature-panel" aria-label="AI Natur mm" style={{ maxWidth: 560, margin: '0 auto', padding: 16, color: 'inherit' }}>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -125,8 +134,7 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
             lineHeight: 1.2,
             overflowWrap: 'anywhere',
           }}>{identification.swedishName}</h3>
-          {identification.category === 'animal' && <p><strong>Kategori: Djur</strong></p>}
-          {identification.category === 'insect' && <p><strong>Kategori: Insekt</strong></p>}
+          {categoryLabel && <p><strong>Kategori: {categoryLabel}</strong></p>}
           {identification.scientificName && <p><i>{identification.scientificName}</i></p>}
           <p>{identification.description}</p>
           {identification.reproduction && <section aria-label="Fortplantning"><h4>Fortplantning</h4><p>{identification.reproduction}</p></section>}

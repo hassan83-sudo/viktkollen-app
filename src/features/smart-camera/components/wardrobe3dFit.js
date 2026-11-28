@@ -723,8 +723,13 @@ void main() {
   vec3 color = uColor;
   if (uUseTexture > 0.5) {
     vec4 tex = texture2D(uTex, uv);
-    if (tex.a < 0.12) discard;
-    color = tex.rgb;
+    // The pelvis is a solid cloth shell: transparent photo pixels must not expose the body.
+    if (uUseTexture > 1.5) {
+      color = mix(uColor, tex.rgb, smoothstep(0.12, 0.95, tex.a));
+    } else {
+      if (tex.a < 0.12) discard;
+      color = tex.rgb;
+    }
   }
   float lambert = dot(normalize(vNormal), normalize(vec3(-0.18, 0.52, 0.82)));
   float light = 0.34 + 0.66 * clamp(lambert, 0.0, 1.0);
@@ -850,6 +855,7 @@ export function mountWardrobe3D(canvas) {
             count: part.indices.length,
             color: part.color,
             texture: part.texture,
+            solidPelvis: part.id === 'bottom-pelvis' && part.slot === 'bottom',
           })
         }
         for (const name of ['top', 'bottom', 'dress', 'outer', 'shoes-left', 'shoes-right']) uploadTexture(name, photos?.[name]?.source || null)
@@ -883,7 +889,7 @@ export function mountWardrobe3D(canvas) {
         if (tex) {
           gl.activeTexture(gl.TEXTURE0)
           gl.bindTexture(gl.TEXTURE_2D, tex)
-          gl.uniform1f(loc.useTexture, 1)
+          gl.uniform1f(loc.useTexture, buffer.solidPelvis ? 2 : 1)
         } else {
           gl.uniform1f(loc.useTexture, 0)
         }

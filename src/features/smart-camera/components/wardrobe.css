@@ -122,6 +122,10 @@
 .digital-wardrobe .wardrobe-doll-man .wardrobe-doll-layer-shoe-right { left: 56.5%; }
 .digital-wardrobe .wardrobe-doll-layer-color { width: 75%; height: 90%; border-radius: 14px; opacity: .8; }
 .digital-wardrobe .wardrobe-doll-note { font-size: .75rem; color: #c5cce0; line-height: 1.45; }
+.digital-wardrobe .wardrobe-3d-preview { display: grid; gap: 8px; }
+.digital-wardrobe .wardrobe-3d-stage { width: 100%; max-width: 340px; aspect-ratio: 520 / 880; margin: 0 auto; border-radius: 16px; overflow: hidden; background: radial-gradient(ellipse at 50% 38%, #24365c 0%, #10182c 74%); }
+.digital-wardrobe .wardrobe-3d-stage canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+.digital-wardrobe .wardrobe-3d-toggle { width: 100%; margin: 8px 0; border-radius: 10px; border: 1px solid #54607b; background: #1d2436; color: #fff; }
 
 /* Keep the outfit preview above the garment picker on all screen sizes. */
 .digital-wardrobe .wardrobe-layout { grid-template-columns: minmax(0, 1fr); }

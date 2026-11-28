@@ -15,6 +15,42 @@ export function parseGarmentColor(hex, fallback) {
   return [(n >> 16) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]
 }
 
+// Most common opaque colour in the saved photo. Near-white background is
+// ignored so a beige garment is not filled with a stored default blue.
+export function dominantOpaqueColorFromPixels(data) {
+  const bins = new Map()
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i]
+    const g = data[i + 1]
+    const b = data[i + 2]
+    const a = data[i + 3]
+    if (a <= 24 || (r >= 245 && g >= 245 && b >= 245)) continue
+    const key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4)
+    bins.set(key, (bins.get(key) || 0) + 1)
+  }
+  let best = null
+  let count = 0
+  for (const [key, n] of bins) {
+    if (n > count) {
+      best = key
+      count = n
+    }
+  }
+  if (best == null) return null
+  return [
+    (((best >> 8) & 15) * 17) / 255,
+    (((best >> 4) & 15) * 17) / 255,
+    ((best & 15) * 17) / 255,
+  ]
+}
+
+export function dominantOpaqueColor(canvas) {
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx) return null
+  const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  return dominantOpaqueColorFromPixels(data)
+}
+
 export function projectPoint(x, y, z, yaw, aspect = 520 / 880) {
   const c = Math.cos(yaw)
   const s = Math.sin(yaw)
@@ -226,18 +262,22 @@ function neckline(spec, flare = 2.05) {
 function sleeveStations(spec, cut) {
   if (cut === 'none') return []
   const top = spec.arm[0]
-  const widen = (station, extra) => ({ ...station, rx: station.rx + extra, rz: station.rz + extra })
+  const cap = { y: spec.shoulderY + 1.4, x: top.x * 0.28, rx: top.rx + 5.4, rz: top.rz + 2.6 }
   if (cut === 'cap') {
     return [
-      widen(top, 1.1),
-      widen({ y: top.y - 7, x: top.x + 1.4, rx: top.rx * 0.9, rz: top.rz * 0.9 }, 0),
+      cap,
+      { y: top.y - 8, x: top.x * 0.92, rx: top.rx + 0.6, rz: top.rz + 0.4 },
     ]
   }
   const minY = cut === 'short' ? top.y - 18 : spec.arm[spec.arm.length - 1].y - 0.1
-  const stations = spec.arm.filter((station) => station.y >= minY).map((station, index) => widen(station, index === 0 ? 1.1 : 0))
-  const ready = stations.length >= 2 ? stations : spec.arm.slice(0, 2).map((station, index) => widen(station, index === 0 ? 1.1 : 0))
-  ready[0] = { ...ready[0], x: ready[0].x * 0.72, rx: ready[0].rx + 2.8, rz: ready[0].rz + 1.4 }
-  return ready
+  const arm = spec.arm.filter((station) => station.y >= minY)
+  const chain = arm.length >= 2 ? arm : spec.arm.slice(0, 2)
+  const root = { ...chain[0], x: chain[0].x * 0.78, rx: chain[0].rx + 1.4, rz: chain[0].rz + 0.7 }
+  const rest = chain.slice(1).map((station, index, list) => {
+    const taper = 0.45 * (1 - index / Math.max(1, list.length))
+    return { ...station, rx: station.rx + taper, rz: station.rz + taper * 0.7 }
+  })
+  return [cap, root, ...rest]
 }
 
 function pushSleeves(groups, spec, slot, texture, color, cut, ease, pad) {
@@ -255,15 +295,21 @@ function pushSleeves(groups, spec, slot, texture, color, cut, ease, pad) {
 
 function topGroups(spec, garment) {
   const cut = sleeveCut(garment.type)
-  const ease = 1.16
-  const pad = 1.1
+  const ease = 1.12
+  const pad = 0.7
   const color = parseGarmentColor(garment.color, COLORS.top)
+  const hip = spec.torso.find((station) => station.y === spec.hipY) || spec.torso[1]
+  const shoulder = spec.torso.find((station) => station.y === spec.shoulderY) || spec.torso[spec.torso.length - 3]
+  const neck = spec.neck[0]
   const stations = [
-    ...torsoSlice(spec, spec.hipY, spec.shoulderY),
-    neckline(spec, 2.2),
+    { y: hip.y - 2, rx: hip.rx * 1.04, rz: hip.rz },
+    ...torsoSlice(spec, spec.hipY, spec.shoulderY).filter((station) => station.y !== spec.shoulderY),
+    { y: shoulder.y, rx: shoulder.rx * 1.06, rz: shoulder.rz * 1.02 },
+    { y: neck.y - 1, rx: Math.max(neck.rx * 2.3, shoulder.rx * 0.55), rz: neck.rz * 2.1 },
+    { y: neck.y + 2.4, rx: neck.rx * 1.35, rz: neck.rz * 1.25 },
   ]
   const groups = [group('top-torso', 'top', loftY(stations, 32, ease, pad), { texture: 'top', color, uvKind: 'wrap' })]
-  pushSleeves(groups, spec, 'top', 'top', color, cut, ease + 0.02, pad)
+  pushSleeves(groups, spec, 'top', 'top', color, cut, ease + 0.03, pad)
   return groups
 }
 
@@ -727,13 +773,8 @@ void main() {
   vec3 color = uColor;
   if (uUseTexture > 0.5) {
     vec4 tex = texture2D(uTex, uv);
-    // Trouser shells are solid cloth: transparent photo pixels must not expose the body.
-    if (uUseTexture > 1.5) {
-      color = mix(uColor, tex.rgb, smoothstep(0.12, 0.95, tex.a));
-    } else {
-      if (tex.a < 0.12) discard;
-      color = tex.rgb;
-    }
+    // Transparent pixels take the photo's own colour, never a stored default.
+    color = mix(uColor, tex.rgb, smoothstep(0.12, 0.95, tex.a));
   }
   float lambert = dot(normalize(vNormal), normalize(vec3(-0.18, 0.52, 0.82)));
   float light = 0.34 + 0.66 * clamp(lambert, 0.0, 1.0);
@@ -859,7 +900,6 @@ export function mountWardrobe3D(canvas) {
             count: part.indices.length,
             color: part.color,
             texture: part.texture,
-            solidCloth: part.slot === 'bottom' && (part.id === 'bottom-pelvis' || part.id.startsWith('bottom-leg-')),
           })
         }
         for (const name of ['top', 'bottom', 'dress', 'outer', 'shoes-left', 'shoes-right']) uploadTexture(name, photos?.[name]?.source || null)
@@ -887,13 +927,13 @@ export function mountWardrobe3D(canvas) {
         gl.enableVertexAttribArray(loc.uv)
         gl.vertexAttribPointer(loc.uv, 2, gl.FLOAT, false, 0, 0)
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer.idx)
-        gl.uniform3fv(loc.color, buffer.color)
+        gl.uniform3fv(loc.color, photo?.fill || buffer.color)
         const rect = photo?.bounds || { u0: 0, v0: 0, u1: 1, v1: 1 }
         gl.uniform4f(loc.uvRect, rect.u0, rect.v0, rect.u1, rect.v1)
         if (tex) {
           gl.activeTexture(gl.TEXTURE0)
           gl.bindTexture(gl.TEXTURE_2D, tex)
-          gl.uniform1f(loc.useTexture, buffer.solidCloth ? 2 : 1)
+          gl.uniform1f(loc.useTexture, 1)
         } else {
           gl.uniform1f(loc.useTexture, 0)
         }

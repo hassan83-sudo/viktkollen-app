@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { garmentSlot, isWardrobePhoto } from '../../../services/wardrobeStorage.js'
 import { cutoutLightBackground, cutoutShoePair, splitShoePair } from './wardrobeCutout.js'
-import { mountWardrobe3D, opaqueUvRect, wrapDegrees } from './wardrobe3dFit.js'
+import { dominantOpaqueColor, mountWardrobe3D, opaqueUvRect, wrapDegrees } from './wardrobe3dFit.js'
 
 const priority = { outer: 0, top: 1, dress: 1, bottom: 2, shoes: 3, accessory: 4 }
 const MANNEQUINS = {
@@ -101,17 +101,19 @@ function imageToCanvas(image) {
   return canvas
 }
 
+let textureSerial = 0
+
 async function textureFromSrc(src, splitShoes) {
   let isolated
   try { isolated = await isolateLightBackground(src, { splitShoes }) } catch { isolated = null }
   const main = imageToCanvas(await loadImage(isolated?.image || src))
-  const texture = { source: main, bounds: opaqueUvRect(main) }
+  const texture = { source: main, bounds: opaqueUvRect(main), fill: dominantOpaqueColor(main), token: ++textureSerial }
   if (!splitShoes) return texture
   if (isolated?.shoes?.length === 2) {
     const pair = []
     for (const url of isolated.shoes) {
       const canvas = imageToCanvas(await loadImage(url))
-      pair.push({ source: canvas, bounds: opaqueUvRect(canvas) })
+      pair.push({ source: canvas, bounds: opaqueUvRect(canvas), fill: dominantOpaqueColor(canvas), token: ++textureSerial })
     }
     return { ...texture, left: pair[0], right: pair[1] }
   }
@@ -136,7 +138,10 @@ function fittedGarments(garments) {
 function slotKey(slots) {
   return ['outer', 'top', 'dress', 'bottom', 'shoes'].map((slot) => {
     const item = slots[slot]
-    return `${slot}:${item?.type || ''}:${item?.color || ''}:${item?.image?.length || 0}:${item?.image?.slice(-32) || ''}`
+    const image = item?.image || ''
+    let hash = 0
+    for (let i = 0; i < image.length; i += 64) hash = (Math.imul(hash, 33) + image.charCodeAt(i)) >>> 0
+    return `${slot}:${item?.type || ''}:${item?.color || ''}:${image.length}:${hash}`
   }).join('|')
 }
 
@@ -196,7 +201,7 @@ function Wardrobe3DPreview({ body, garments }) {
       garments: fitted,
       photos: gpuPhotos,
       yaw: angle * Math.PI / 180,
-      key: `${body}|${photoKey}|${Object.entries(gpuPhotos).map(([, photo]) => photo?.source?.width || 0).join(',')}`,
+      key: `${body}|${photoKey}|${Object.entries(gpuPhotos).map(([, photo]) => photo?.token || 0).join(',')}`,
     })
   }, [angle, body, photos, photoKey, slots])
 

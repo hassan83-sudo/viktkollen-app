@@ -37,6 +37,18 @@ import { recordUnansweredQuestion } from './unansweredStore.js'
 import { renderCaseControl } from './caseOutcome.js'
 import { renderTroubleAnswer } from './troubleshooting.js'
 
+
+// Exact, general FAQs only; personal billing questions continue to verified readers.
+const supportFaq = [
+  [/^(?:vilka är |vad har ni för )?öppettider(?: för kundtjänst)?[?!.]*$/iu, ['Kundtjänsten finns vanligtvis tillgänglig alla dagar kl. 09–22.','Vi försöker svara inom 30 minuter, men det kan ta upp till 24 timmar.']],
+  [/^(?:hur lång (?:är )?svarstid(?:en)?|när får jag svar|hur länge måste jag vänta på support)[?!.]*$/iu, ['Vi försöker svara inom 30 minuter, men ibland tar det upp till 24 timmar.','Du kan lämna appen och läsa svaret senare i kundtjänsten.']],
+  [/^(?:kan gratisanvändare få (?:personlig )?support|är kundtjänst gratis|kan jag kontakta kundtjänst utan abonnemang)[?!.]*$/iu, ['Gratisanvändare kan använda AI-Hjälp och personlig support för betalningsärenden.','Betalande kunder kan även få personlig hjälp med andra ärenden.']],
+  [/^(?:måste jag vänta i appen|måste appen vara öppen för att få svar|kan jag stänga appen medan jag väntar)[?!.]*$/iu, ['Nej. Supportsvaret sparas i ditt ärende.','Du kan öppna kundtjänsten senare och läsa svaret.']],
+  [/^(?:får jag pushnotiser från kundtjänst|hur ser jag nya supportsvar|var ser jag supportsvar)[?!.]*$/iu, ['Nya supportsvar visas med en olästmarkering vid meddelandeikonen i appen.','Kundtjänsten skickar inte pushnotiser till kunder.']],
+  [/^(?:är matskanningen exakt|är matscanningen exakt|stämmer kalorierna alltid)[?!.]*$/iu, ['Nej. Bildanalysen uppskattar mängder och näringsvärden.','Kontrollera ingredienser och mängder innan du sparar måltiden.']],
+  [/^(?:är kroppsskanningen exakt|är kroppsscanningen exakt)[?!.]*$/iu, ['Nej. Kroppsscanningen ger uppskattningar.','Resultaten är inte medicinska mätningar eller diagnoser.']],
+]
+
 const OPENAI_API_URL = 'https://api.openai.com/v1/responses'
 const DEFAULT_MODEL = 'gpt-5-mini'
 const REQUEST_TIMEOUT_MS = 20000
@@ -249,6 +261,10 @@ export async function answerAiHelpQuestion({
   }
 
   const question = validated.messages[validated.messages.length - 1].content
+  if (validated.language.code === 'sv') {
+    const match = supportFaq.find(([pattern]) => pattern.test(question.trim()))
+    if (match) return { ok: true, status: 'answered', source: 'local', language: validated.language, answer: match[1].join(' '), featureIds: [], followUps: ['Vilka är öppettider?', 'Kan gratisanvändare få support?'] }
+  }
   const destination = directHelpDestination(question)
   if (destination) return {
     ok: true, status: 'answered', source: 'local', language: validated.language,

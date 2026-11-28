@@ -14,6 +14,7 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
   const [photo, setPhoto] = useState(null)
   const [identification, setIdentification] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [previewName, setPreviewName] = useState('')
   const abortRef = useRef(null)
 
   useEffect(() => {
@@ -65,6 +66,7 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
 
   async function identify() {
     if (!analysisEnabled || busy || !photo) return
+    setPreviewName('')
     setBusy(true)
     setCameraError('')
     const controller = new AbortController()
@@ -78,12 +80,13 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
       // Request an image-bound consent token for this exact blob.
       const consentToken = await requestAiNatureConsent({ image, accessToken, signal: controller.signal })
       if (controller.signal.aborted) return
-      const result = await requestNatureIdentification({ image, accessToken, consentToken, signal: controller.signal })
+      const result = await requestNatureIdentification({ image, accessToken, consentToken, signal: controller.signal, onProgress: name => { if (!controller.signal.aborted) setPreviewName(name) } })
       if (!controller.signal.aborted) setIdentification(result)
     } catch (error) {
       if (!controller.signal.aborted) setCameraError(error?.message || 'Analysen kunde inte genomföras.')
     } finally {
       if (abortRef.current === controller) abortRef.current = null
+      setPreviewName('')
       setBusy(false)
     }
   }
@@ -121,7 +124,7 @@ export default function AiNaturePanel({ onClose, analysisEnabled = false }) {
       {cameraError && <p role="alert">{cameraError}</p>}
       <p style={{ fontSize: 13, opacity: 0.85 }}>Bilden stannar på din enhet tills du uttryckligen godkänner analys. {analysisEnabled ? 'Godkänn endast om du vill skicka bilden för AI-analys.' : 'AI-analysen är ännu inte aktiverad.'}</p>
       {photo && <button type="button" onClick={identify} disabled={!analysisEnabled || busy} title={!analysisEnabled ? "AI Natur mm är spärrad tills separat kvot och betalningskontroll är verifierade" : undefined}>{busy ? "Identifierar…" : analysisEnabled ? "Godkänn och identifiera med AI" : "Identifiera med AI – kommer snart"}</button>}
-      {busy && <p role="status">Identifierar art…</p>}
+      {busy && <p role="status">{previewName ? `Preliminär identifiering: ${previewName}. Hämtar övrig information…` : 'Identifierar art…'}</p>}
       {identification && (
         <article aria-live="polite" style={{ marginTop: 18 }}>
           <h3>{identification.swedishName}</h3>
